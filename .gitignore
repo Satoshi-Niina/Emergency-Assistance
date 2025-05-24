@@ -1,0 +1,30 @@
+# Node modules
+node_modules/
+**/node_modules/
+
+# Env files
+.env
+server/.env
+
+# Vite build output
+dist/
+
+# Log files
+*.log
+
+# VSCode settings
+.vscode/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Coverage
+coverage/
+
+# Uploads (optional: keep if needed)
+public/uploads/
+uploads/
