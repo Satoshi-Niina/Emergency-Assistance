@@ -342,6 +342,27 @@ export default function Chat() {
             )}
           </Button>
 
+          {/* 履歴クリアボタン */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={clearChatHistory}
+            disabled={isClearing}
+            className="flex items-center gap-1 border-orange-400 bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs h-7 py-0 px-2"
+          >
+            {isClearing ? (
+              <>
+                <Loader2 className="h-3 w-3 animate-spin text-orange-600" />
+                <span className="text-xs">クリア中</span>
+              </>
+            ) : (
+              <>
+                <Trash2 className="h-3 w-3 text-orange-600" />
+                <span className="text-xs">履歴クリア</span>
+              </>
+            )}
+          </Button>
+
           {/* チャット終了ボタン - よりコンパクトに */}
           <Button 
             variant="destructive"

@@ -33,27 +33,6 @@ export default function Header() {
         </Sheet>
         <div className="flex items-center">
           <h1 className="text-xl font-semibold mr-3">応急処置チャットシステム</h1>
-          {location === "/chat" && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={clearChatHistory}
-              disabled={isClearing}
-              className="bg-transparent border border-white hover:bg-red-100 hover:text-red-800 text-white"
-            >
-              {isClearing ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                  <span className="text-xs">クリア中</span>
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  <span className="text-xs">履歴クリア</span>
-                </>
-              )}
-            </Button>
-          )}
         </div>
       </div>
       <div className="flex items-center">
