@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useChat } from "@/context/chat-context";
+import { useAuth } from "@/context/auth-context";
 import MessageBubble from "@/components/chat/message-bubble";
 import MessageInput from "@/components/chat/message-input";
 import TextSelectionControls from "@/components/chat/text-selection-controls";
@@ -18,6 +19,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useOrientation } from "@/hooks/use-orientation";
 
 export default function Chat() {
+  const { user } = useAuth();
   const {
     messages,
     isLoading,
@@ -315,7 +317,10 @@ export default function Chat() {
       {/* ヘッダー - 12インチノートPC向けにコンパクト化 */}
       <div className="border-b border-blue-200 p-1 md:p-2 flex justify-between items-center bg-blue-100 mobile-landscape-header" style={{ minHeight: 'auto' }}>
         <div className="flex items-center">
-          {/* タイトル表示を削除 */}
+          {/* ユーザー名表示 */}
+          <span className="text-blue-800 font-medium text-sm">
+            {user?.display_name || user?.username || 'ゲスト'}
+          </span>
         </div>
 
         <div className="flex items-center gap-1 md:gap-2">
