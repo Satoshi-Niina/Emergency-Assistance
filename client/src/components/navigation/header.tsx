@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "@/context/auth-context";
 import { useChat } from "@/context/chat-context";
 import { Button } from "@/components/ui/button";
-import { Menu, Settings, Trash2, Loader2 } from "lucide-react";
+import { Menu, Trash2, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs } from "./tabs";
@@ -57,14 +57,6 @@ export default function Header() {
         </div>
       </div>
       <div className="flex items-center">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="ml-2 text-white"
-          onClick={() => location !== "/settings" && window.location.assign("/settings")}
-        >
-          <Settings />
-        </Button>
         <div className="ml-3 flex items-center">
           <span className="text-sm">{user?.displayName}</span>
           <span className="ml-2 bg-secondary text-white text-xs px-2 py-0.5 rounded-full">
