@@ -142,6 +142,27 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const authData = await authResponse.json();
       console.log('認証成功:', authData);
 
+      // ① localStorageから既存chatIdをまず読む
+      const savedChatId = localStorage.getItem('currentChatId');
+      console.log('保存されているchatId:', savedChatId);
+
+      if (savedChatId) {
+        console.log('保存されたchatIdの存在確認中...');
+        // ② サーバーにそのchatIdが存在するか確認
+        const response = await apiRequest('GET', `/api/chats/${savedChatId}`);
+        
+        if (response.ok) {
+          console.log('保存されたchatIdが有効です:', savedChatId);
+          setChatId(savedChatId);
+          return savedChatId;
+        } else {
+          console.log('保存されたchatIdが無効です。リセットします。');
+          // ③ 存在しなければ完全にリセット
+          localStorage.removeItem('currentChatId');
+          setChatId(null);
+        }
+      }
+
       // 既存のチャットを取得する
       console.log('既存チャット取得中...');
       const chatsResponse = await apiRequest('GET', '/api/chats');
@@ -165,7 +186,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return chats[0].id;
       }
 
-      // チャットが存在しない場合は新しいチャットを作成
+      // ④ ここで新規作成に進む
       console.log('新しいチャットを作成中...');
       const createResponse = await apiRequest('POST', '/api/chats', {
         title: '保守用車ナレッジチャット'
@@ -180,8 +201,6 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const newChat = await createResponse.json();
       console.log('新しいチャットが作成されました:', newChat);
       setChatId(newChat.id);
-      
-      // ⭐ ここでlocalStorageも更新
       localStorage.setItem('currentChatId', newChat.id);
       return newChat.id;
     } catch (error) {
