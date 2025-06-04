@@ -321,27 +321,6 @@ export default function Chat() {
         </div>
 
         <div className="flex items-center gap-1 md:gap-2">
-          {/* 履歴クリアボタン */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={clearChatHistory}
-            disabled={isClearing}
-            className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white border-0"
-          >
-            {isClearing ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin text-white" />
-                <span className="text-lg">クリア中</span>
-              </>
-            ) : (
-              <>
-                <Trash2 className="h-4 w-4 text-white" />
-                <span className="text-lg">履歴クリア</span>
-              </>
-            )}
-          </Button>
-
           {/* チャット履歴送信ボタン */}
           <Button 
             variant="outline"
@@ -395,6 +374,29 @@ export default function Chat() {
         >
           <Heart className="h-6 w-6 text-white" />
           <span className="text-lg font-bold">応急処置ガイド</span>
+        </Button>
+      </div>
+
+      {/* 応急処置サポートタブの直下に履歴クリアボタンを左端に配置 */}
+      <div className="w-full flex justify-start items-center p-2 bg-blue-50 border-b border-blue-200">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={clearChatHistory}
+          disabled={isClearing}
+          className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white border-0"
+        >
+          {isClearing ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin text-white" />
+              <span className="text-lg">履歴クリア</span>
+            </>
+          ) : (
+            <>
+              <Trash2 className="h-4 w-4 text-white" />
+              <span className="text-lg">履歴クリア</span>
+            </>
+          )}
         </Button>
       </div>
 
