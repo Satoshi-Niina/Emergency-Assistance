@@ -321,56 +321,35 @@ export default function Chat() {
         </div>
 
         <div className="flex items-center gap-1 md:gap-2">
-          {/* チャット履歴送信ボタン - よりコンパクトに */}
+          {/* チャット履歴送信ボタン */}
           <Button 
             variant="outline"
             size="sm"
             onClick={exportChatHistory}
             disabled={isExporting || !hasUnexportedMessages}
-            className="flex items-center gap-1 border-green-400 bg-green-50 hover:bg-green-100 text-green-700 text-xs h-7 py-0 px-2"
+            className="flex items-center gap-1 border-green-400 bg-green-50 hover:bg-green-100 text-green-700"
           >
             {isExporting ? (
               <>
                 <Loader2 className="h-3 w-3 animate-spin text-green-600" />
-                <span className="text-xs">送信中</span>
+                <span className="text-lg">送信中</span>
               </>
             ) : (
               <>
                 <Send className="h-3 w-3 text-green-600" />
-                <span className="text-xs">履歴送信</span>
+                <span className="text-lg">履歴送信</span>
               </>
             )}
           </Button>
 
-          {/* 履歴クリアボタン */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={clearChatHistory}
-            disabled={isClearing}
-            className="flex items-center gap-1 border-orange-400 bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs h-7 py-0 px-2"
-          >
-            {isClearing ? (
-              <>
-                <Loader2 className="h-3 w-3 animate-spin text-orange-600" />
-                <span className="text-xs">クリア中</span>
-              </>
-            ) : (
-              <>
-                <Trash2 className="h-3 w-3 text-orange-600" />
-                <span className="text-xs">履歴クリア</span>
-              </>
-            )}
-          </Button>
-
-          {/* チャット終了ボタン - よりコンパクトに */}
+          {/* チャット終了ボタン */}
           <Button 
             variant="destructive"
             size="sm"
             onClick={handleEndChat}
-            className="flex items-center gap-1 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white border-0 h-7 py-0 px-2"
+            className="flex items-center gap-1 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white border-0"
           >
-            <span className="text-xs">チャット終了</span>
+            <span className="text-lg">チャット終了</span>
           </Button>
         </div>
       </div>
@@ -395,6 +374,29 @@ export default function Chat() {
         >
           <Heart className="h-6 w-6 text-white" />
           <span className="text-lg font-bold">応急処置ガイド</span>
+        </Button>
+      </div>
+
+      {/* 履歴クリアボタン - 左端に配置 */}
+      <div className="w-full flex justify-start items-center px-2 py-1 bg-blue-50">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={clearChatHistory}
+          disabled={isClearing}
+          className="bg-transparent border border-white hover:bg-red-100 hover:text-red-800 text-red-600"
+        >
+          {isClearing ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              <span className="text-lg font-bold">クリア中</span>
+            </>
+          ) : (
+            <>
+              <Trash2 className="h-4 w-4 mr-1" />
+              <span className="text-lg font-bold">履歴クリア</span>
+            </>
+          )}
         </Button>
       </div>
 
