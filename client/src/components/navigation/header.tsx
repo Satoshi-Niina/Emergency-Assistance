@@ -57,7 +57,7 @@ export default function Header() {
         </div>
       </div>
       <div className="flex items-center">
-        <span className="text-sm text-white">ログインユーザー：{user?.display_name || user?.username || 'ゲスト'}</span>
+        <span className="text-sm text-white">ログインユーザー：<span className="font-bold">{user?.display_name || user?.username || 'ゲスト'}</span></span>
         <span className="ml-2 bg-secondary text-white text-xs px-2 py-0.5 rounded-full">
           {user?.role === "admin" ? "管理者" : "一般"}
         </span>
