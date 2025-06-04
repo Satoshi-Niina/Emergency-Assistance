@@ -316,8 +316,27 @@ export default function Chat() {
     <div className="flex flex-col w-full h-full overflow-auto bg-blue-50 chat-layout-container overflow-scroll-container" style={{ maxWidth: '100vw', overflowX: 'hidden' }}>
       {/* ヘッダー - 12インチノートPC向けにコンパクト化 */}
       <div className="border-b border-blue-200 p-1 md:p-2 flex justify-between items-center bg-blue-100 mobile-landscape-header" style={{ minHeight: 'auto' }}>
-        <div className="flex items-center">
-          {/* タイトル表示を削除 */}
+        <div className="flex items-center gap-1 md:gap-2">
+          {/* 履歴クリアボタン - 左端 */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={clearChatHistory}
+            disabled={isClearing}
+            className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white border-0"
+          >
+            {isClearing ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin text-white" />
+                <span className="text-lg">履歴クリア</span>
+              </>
+            ) : (
+              <>
+                <Trash2 className="h-4 w-4 text-white" />
+                <span className="text-lg">履歴クリア</span>
+              </>
+            )}
+          </Button>
         </div>
 
         <div className="flex items-center gap-1 md:gap-2">
@@ -377,28 +396,7 @@ export default function Chat() {
         </Button>
       </div>
 
-      {/* 応急処置サポートタブの直下に履歴クリアボタンを左端に配置 */}
-      <div className="w-full flex justify-start items-center p-2 bg-blue-50 border-b border-blue-200">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={clearChatHistory}
-          disabled={isClearing}
-          className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white border-0"
-        >
-          {isClearing ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin text-white" />
-              <span className="text-lg">履歴クリア</span>
-            </>
-          ) : (
-            <>
-              <Trash2 className="h-4 w-4 text-white" />
-              <span className="text-lg">履歴クリア</span>
-            </>
-          )}
-        </Button>
-      </div>
+      
 
       
 
