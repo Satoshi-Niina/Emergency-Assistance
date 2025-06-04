@@ -181,23 +181,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  app.get("/api/auth/me", async (req, res) => {
-    if (!req.session.userId) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
+  app.get("/api/auth/me", requireAuth, async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
 
-    const user = await storage.getUser(req.session.userId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+      const user = await storage.getUser(req.session.userId);
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
 
-    return res.json({ 
-      id: user.id, 
-      username: user.username, 
-      displayName: user.displayName, 
-      role: user.role,
-      department: user.department
-    });
+      return res.json({
+        id: user.id,
+        username: user.username,
+        displayName: user.displayName,
+        role: user.role,
+        department: user.department
+      });
+    } catch (error) {
+      console.error("Error in /api/auth/me:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
   });
 
   // User management routes (admin only)
@@ -981,6 +986,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       type: 'system',
       content: 'Connected to Emergency Recovery Chat WebSocket server'
     }));
+  });
+
+  // Chat routes
+  app.get("/api/chats/:chatId/messages", requireAuth, async (req, res) => {
+    try {
+      const chatId = parseInt(req.params.chatId);
+      if (isNaN(chatId)) {
+        return res.status(400).json({ message: "Invalid chat ID" });
+      }
+
+      const messages = await storage.getMessagesForChat(chatId);
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/chats/:chatId/messages", requireAuth, async (req, res) => {
+    try {
+      const chatId = parseInt(req.params.chatId);
+      if (isNaN(chatId)) {
+        return res.status(400).json({ message: "Invalid chat ID" });
+      }
+
+      await storage.clearChatMessages(chatId);
+      res.json({ message: "Messages cleared" });
+    } catch (error) {
+      console.error("Error clearing messages:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
   });
   app.use('/api/troubleshooting', troubleshootingRouter);
   app.use('/api/users', usersRouter);
