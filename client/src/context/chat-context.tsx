@@ -161,6 +161,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (chats && chats.length > 0) {
         console.log('既存チャットを使用:', chats[0].id);
         setChatId(chats[0].id);
+        localStorage.setItem('currentChatId', chats[0].id);
         return chats[0].id;
       }
 
@@ -179,6 +180,9 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const newChat = await createResponse.json();
       console.log('新しいチャットが作成されました:', newChat);
       setChatId(newChat.id);
+      
+      // ⭐ ここでlocalStorageも更新
+      localStorage.setItem('currentChatId', newChat.id);
       return newChat.id;
     } catch (error) {
       console.error('チャット初期化エラー詳細:', error);
@@ -461,6 +465,11 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('APIレスポンス:', response.status, response.statusText);
 
       if (!response.ok) {
+        // 404エラーの場合はchatIdをクリア
+        if (response.status === 404) {
+          localStorage.removeItem('currentChatId');
+          setChatId(null);
+        }
         const errorText = await response.text();
         console.error('APIエラー詳細:', errorText);
         throw new Error(`メッセージの送信に失敗しました: ${response.status} ${errorText}`);
@@ -760,6 +769,11 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         // レスポンスをチェック
         if (!response.ok) {
+          // 404エラーの場合はchatIdをクリア
+          if (response.status === 404) {
+            localStorage.removeItem('currentChatId');
+            setChatId(null);
+          }
           // エラーの詳細情報を取得
           try {
             const errorData = await response.json();
