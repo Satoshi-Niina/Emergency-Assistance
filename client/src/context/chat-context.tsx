@@ -148,16 +148,22 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (savedChatId) {
         console.log('保存されたchatIdの存在確認中...');
-        // ② サーバーにそのchatIdが存在するか確認
-        const response = await apiRequest('GET', `/api/chats/${savedChatId}`);
-        
-        if (response.ok) {
-          console.log('保存されたchatIdが有効です:', savedChatId);
-          setChatId(savedChatId);
-          return savedChatId;
-        } else {
-          console.log('保存されたchatIdが無効です。リセットします。');
-          // ③ 存在しなければ完全にリセット
+        try {
+          // ② サーバーにそのchatIdが存在するか確認
+          const response = await apiRequest('GET', `/api/chats/${savedChatId}`);
+          
+          if (response.ok) {
+            console.log('保存されたchatIdが有効です:', savedChatId);
+            setChatId(savedChatId);
+            return savedChatId;
+          } else {
+            console.log('保存されたchatIdが無効です。リセットします。', response.status);
+            // ③ 存在しなければ完全にリセット
+            localStorage.removeItem('currentChatId');
+            setChatId(null);
+          }
+        } catch (error) {
+          console.error('保存されたchatIdの確認中にエラー:', error);
           localStorage.removeItem('currentChatId');
           setChatId(null);
         }
@@ -165,11 +171,23 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // 既存のチャットを取得する
       console.log('既存チャット取得中...');
-      const chatsResponse = await apiRequest('GET', '/api/chats');
-      console.log('チャット取得レスポンス:', chatsResponse.status, chatsResponse.statusText);
+      let chatsResponse;
+      try {
+        chatsResponse = await apiRequest('GET', '/api/chats');
+        console.log('チャット取得レスポンス:', chatsResponse.status, chatsResponse.statusText);
+      } catch (error) {
+        console.error('チャット取得APIリクエストエラー:', error);
+        throw new Error(`チャット取得のAPIリクエストに失敗しました: ${error.message || error}`);
+      }
 
       if (!chatsResponse.ok) {
-        const errorText = await chatsResponse.text();
+        let errorText = '';
+        try {
+          errorText = await chatsResponse.text();
+        } catch (textError) {
+          console.error('エラーレスポンスの読み取りに失敗:', textError);
+          errorText = `レスポンス読み取り失敗 (${chatsResponse.status})`;
+        }
         console.error('チャット取得エラー:', errorText);
         // 認証エラーなどの場合は処理を中断
         throw new Error(`チャットの取得に失敗しました: ${chatsResponse.status} ${errorText}`);
@@ -190,12 +208,24 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // ④ ここで新規作成に進む
       console.log('新しいチャットを作成中...');
-      const createResponse = await apiRequest('POST', '/api/chats', {
-        title: '保守用車ナレッジチャット'
-      });
+      let createResponse;
+      try {
+        createResponse = await apiRequest('POST', '/api/chats', {
+          title: '保守用車ナレッジチャット'
+        });
+      } catch (error) {
+        console.error('チャット作成APIリクエストエラー:', error);
+        throw new Error(`チャット作成のAPIリクエストに失敗しました: ${error.message || error}`);
+      }
 
       if (!createResponse.ok) {
-        const errorText = await createResponse.text();
+        let errorText = '';
+        try {
+          errorText = await createResponse.text();
+        } catch (textError) {
+          console.error('エラーレスポンスの読み取りに失敗:', textError);
+          errorText = `レスポンス読み取り失敗 (${createResponse.status})`;
+        }
         console.error('チャット作成エラー:', errorText);
         throw new Error(`チャットの作成に失敗しました: ${createResponse.status} ${errorText}`);
       }
@@ -207,11 +237,27 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return newChat.id;
     } catch (error) {
       console.error('チャット初期化エラー詳細:', error);
+      
+      // エラーの詳細情報を取得
+      let errorMessage = 'Unknown error';
+      let isAuthError = false;
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        isAuthError = error.message.includes('401') || error.message.includes('認証');
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error && typeof error === 'object') {
+        errorMessage = error.message || error.toString() || JSON.stringify(error);
+      }
+      
+      console.error('エラーメッセージ:', errorMessage);
+      
       // 401エラーの場合はトーストを表示しない（未ログイン時）
-      if (!(error instanceof Error && error.message.includes('401'))) {
+      if (!isAuthError) {
         toast({
           title: 'チャット初期化エラー',
-          description: `チャットの初期化に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          description: `チャットの初期化に失敗しました: ${errorMessage}`,
           variant: 'destructive',
         });
       }
