@@ -19,11 +19,10 @@ const __dirname = path.dirname(__filename);
 // .envファイルの読み込み
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
-// 環境変数の確認
-console.log("[DEBUG] Environment variables loaded:", {
-  OPENAI_API_KEY: process.env.OPENAI_API_KEY ? "Set" : "Not set",
-  NODE_ENV: process.env.NODE_ENV
-});
+// 環境変数の確認（最小限のログ）
+if (!process.env.OPENAI_API_KEY) {
+  console.log("Warning: OPENAI_API_KEY not set");
+}
 
 const app = express();
 app.use(express.json());
@@ -56,35 +55,11 @@ app.get('/test', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'public', 'api-test.html'));
 });
 
-// Log all requests for debugging
+// Minimal request logging
 app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  console.log(`[DEBUG] Request received: ${req.method} ${path}`);
-
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-
-    if (capturedJsonResponse) {
-      logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-    }
-
-    if (logLine.length > 80) {
-      logLine = logLine.slice(0, 79) + "…";
-    }
-
-    log(logLine);
-  });
-
+  if (req.path.startsWith('/api/')) {
+    console.log(`${req.method} ${req.path}`);
+  }
   next();
 });
 
@@ -99,19 +74,14 @@ async function openBrowser(url: string) {
 
 (async () => {
   try {
-    // ストレージをアプリケーションのローカル変数として保存
+    // Initialize application
     app.locals.storage = storage;
-    console.log('ストレージをアプリケーション変数として設定しました');
-
-    // サーバー起動時に知識ベースを初期化
-    console.log('知識ベースの初期化を開始...');
     initializeKnowledgeBase();
-    console.log('知識ベースの初期化が完了しました');
 
-    // ディレクトリの確認と作成 - uploads不要
+    // Create required directories
     const dirs = [
       'knowledge-base/images',
-      'knowledge-base/json',
+      'knowledge-base/json', 
       'knowledge-base/data',
       'knowledge-base/media',
       'knowledge-base/ppt'
@@ -120,26 +90,18 @@ async function openBrowser(url: string) {
     for (const dir of dirs) {
       const dirPath = path.join(process.cwd(), dir);
       if (!fs.existsSync(dirPath)) {
-        console.log(`ディレクトリを作成: ${dir}`);
         fs.mkdirSync(dirPath, { recursive: true });
       }
     }
 
-    // サーバー起動時にuploadsのデータをknowledge-baseにコピー
-    console.log('uploads -> knowledge-base への同期を開始...');
-    try {
-      // APIが起動した後に実行するために少し待機
-      setTimeout(async () => {
-        try {
-          const syncResult = await axios.post('http://localhost:5000/api/tech-support/sync-knowledge-base?direction=uploads-to-kb');
-          console.log('アップロードデータの同期結果:', syncResult.data);
-        } catch (syncErr: any) {
-          console.error('同期API呼び出しエラー:', syncErr?.message || '不明なエラー');
-        }
-      }, 3000);
-    } catch (syncErr) {
-      console.error('同期処理中にエラーが発生しました:', syncErr);
-    }
+    // Sync uploads to knowledge-base (silent)
+    setTimeout(async () => {
+      try {
+        await axios.post('http://localhost:5000/api/tech-support/sync-knowledge-base?direction=uploads-to-kb');
+      } catch (syncErr) {
+        // Silent sync - no console output
+      }
+    }, 3000);
   } catch (err) {
     console.error('知識ベースの初期化中にエラーが発生しました:', err);
   }
@@ -163,34 +125,24 @@ async function openBrowser(url: string) {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
   const port = 5000;
-  const url = `http://localhost:${port}`;
-  console.log(`サーバーを起動します: ${url}`);
-
-  // 現在のポートが使用中かどうかをチェックして、使用可能なポートで起動する
+  
   const startServer = (portToUse: number) => {
-    server.listen(portToUse, 'localhost', async () => {
-      const serverUrl = `http://localhost:${portToUse}`;
-      console.log(`サーバーが起動しました: ${serverUrl}`);
-      console.log('ブラウザを開いています...');
+    server.listen(portToUse, '0.0.0.0', async () => {
+      console.log(`Server running on http://localhost:${portToUse}`);
       try {
-        await openBrowser(serverUrl);
+        await openBrowser(`http://localhost:${portToUse}`);
       } catch (e) {
-        console.log('ブラウザを自動で開けませんでした');
+        // Silent browser open failure
       }
-      console.log('定期クリーンアップがスケジュールされました (毎月1日 午前3時実行)');
     }).on('error', (err: NodeJS.ErrnoException) => {
-      console.error('サーバー起動エラー:', err);
       if (err.code === 'EADDRINUSE') {
-        console.error(`ポート ${portToUse} は既に使用されています。別のポートを試します。`);
-        // 次のポートを試す
         startServer(portToUse + 1);
+      } else {
+        console.error('Server error:', err);
       }
     });
   };
 
-  // 5000番ポートから試行開始
   startServer(port);
 })();
