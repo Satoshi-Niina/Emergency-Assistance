@@ -181,9 +181,11 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // チャットが存在する場合は最初のチャットを使用
       if (chats && chats.length > 0) {
         console.log('既存チャットを使用:', chats[0].id);
-        setChatId(chats[0].id);
-        localStorage.setItem('currentChatId', chats[0].id);
-        return chats[0].id;
+        const existingChatId = chats[0].id;
+        setChatId(existingChatId);
+        localStorage.setItem('currentChatId', existingChatId);
+        console.log('既存チャットIDを設定しました:', existingChatId);
+        return existingChatId;
       }
 
       // ④ ここで新規作成に進む
@@ -462,6 +464,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
         currentChatId = newChatId;
         setChatId(newChatId);
+        console.log('新しいチャットIDを設定しました:', newChatId);
       }
 
       setIsLoading(true);
