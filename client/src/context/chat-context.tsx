@@ -430,18 +430,20 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       console.log('メッセージ送信開始:', content);
       
-      if (!chatId) {
+      let currentChatId = chatId;
+      if (!currentChatId) {
         console.log('チャットIDが無いため初期化します');
         const newChatId = await initializeChat();
         if (!newChatId) {
           throw new Error('チャットの初期化に失敗しました');
         }
+        currentChatId = newChatId;
+        setChatId(newChatId);
       }
 
       setIsLoading(true);
       setDraftMessage(null);
 
-      const currentChatId = chatId || 1;
       const useOnlyKnowledgeBase = localStorage.getItem('useOnlyKnowledgeBase') !== 'false';
 
       console.log('APIリクエスト送信:', {
@@ -726,17 +728,17 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const sendEmergencyGuide = useCallback(async (guideData: any) => {
     try {
       // チャットIDがない場合は初期化を試みる
-      if (!chatId) {
+      let currentChatId = chatId;
+      if (!currentChatId) {
         const newChatId = await initializeChat();
         if (!newChatId) {
           throw new Error('チャットの初期化に失敗しました');
         }
+        currentChatId = newChatId;
+        setChatId(newChatId);
       }
 
       setIsLoading(true);
-
-      // 現在のチャットIDを取得し、localStorageにも保存（他のコンポーネントからアクセスできるように）
-      const currentChatId = chatId || 1;
       localStorage.setItem('currentChatId', String(currentChatId));
       console.log('応急処置ガイド: チャットID', currentChatId, 'にデータを送信します');
 
