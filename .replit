@@ -1,3 +1,4 @@
+
 modules = ["nodejs-20", "web", "bash", "postgresql-16"]
 run = "tsx server/index.ts"
 hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
@@ -18,7 +19,3 @@ exposeLocalhost = true
 [[ports]]
 localPort = 5001
 externalPort = 3000
-
-[[ports]]
-localPort = 5002
-externalPort = 3001
