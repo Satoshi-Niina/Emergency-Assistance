@@ -124,47 +124,69 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // チャットの初期化
   const initializeChat = useCallback(async () => {
     try {
+      console.log('チャット初期化開始');
       setIsInitializing(true);
 
       // 認証状態を確認
+      console.log('認証状態確認中...');
       const authResponse = await apiRequest('GET', '/api/auth/me');
+      console.log('認証レスポンス:', authResponse.status, authResponse.statusText);
+      
       if (!authResponse.ok) {
+        console.log('認証失敗 - ログインページにリダイレクトします');
         // ログインページにリダイレクト
         window.location.href = '/login';
         return null;
       }
 
+      const authData = await authResponse.json();
+      console.log('認証成功:', authData);
+
       // 既存のチャットを取得する
+      console.log('既存チャット取得中...');
       const chatsResponse = await apiRequest('GET', '/api/chats');
+      console.log('チャット取得レスポンス:', chatsResponse.status, chatsResponse.statusText);
 
       if (!chatsResponse.ok) {
+        const errorText = await chatsResponse.text();
+        console.error('チャット取得エラー:', errorText);
         // 認証エラーなどの場合は処理を中断
-        throw new Error('チャットの取得に失敗しました');
+        throw new Error(`チャットの取得に失敗しました: ${chatsResponse.status} ${errorText}`);
       }
 
       const chats = await chatsResponse.json();
+      console.log('取得したチャット:', chats);
 
       // チャットが存在する場合は最初のチャットを使用
       if (chats && chats.length > 0) {
+        console.log('既存チャットを使用:', chats[0].id);
         setChatId(chats[0].id);
         return chats[0].id;
       }
 
       // チャットが存在しない場合は新しいチャットを作成
+      console.log('新しいチャットを作成中...');
       const createResponse = await apiRequest('POST', '/api/chats', {
         title: '保守用車ナレッジチャット'
       });
 
+      if (!createResponse.ok) {
+        const errorText = await createResponse.text();
+        console.error('チャット作成エラー:', errorText);
+        throw new Error(`チャットの作成に失敗しました: ${createResponse.status} ${errorText}`);
+      }
+
       const newChat = await createResponse.json();
+      console.log('新しいチャットが作成されました:', newChat);
       setChatId(newChat.id);
       return newChat.id;
     } catch (error) {
-      console.error('Failed to initialize chat:', error);
+      console.error('チャット初期化エラー詳細:', error);
       // 401エラーの場合はトーストを表示しない（未ログイン時）
       if (!(error instanceof Error && error.message.includes('401'))) {
         toast({
           title: 'チャット初期化エラー',
-          description: 'チャットの初期化に失敗しました。',
+          description: `チャットの初期化に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`,
           variant: 'destructive',
         });
       }
@@ -342,12 +364,17 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         count: 10
       });
 
+      console.log('画像検索APIレスポンス:', response.status, response.statusText);
+
       if (!response.ok) {
-        throw new Error('画像検索に失敗しました');
+        const errorText = await response.text();
+        console.error('画像検索APIエラー詳細:', errorText);
+        throw new Error(`画像検索に失敗しました: ${response.status} ${errorText}`);
       }
 
       const results = await response.json();
       console.log('検索結果数:', results.images?.length || 0);
+      console.log('検索結果詳細:', results);
 
       if (!results.images || results.images.length === 0) {
         console.log(`「${text}」に関する検索結果はありませんでした`);
@@ -362,10 +389,10 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         })));
       }
     } catch (error) {
-      console.error('検索エラー:', error);
+      console.error('検索エラー詳細:', error);
       toast({
         title: '検索エラー',
-        description: '画像の検索に失敗しました。',
+        description: `画像の検索に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: 'destructive',
       });
       setSearchResults([]);
@@ -401,7 +428,10 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // メッセージ送信関数
   const sendMessage = useCallback(async (content: string, mediaUrls?: { type: string, url: string, thumbnail?: string }[]) => {
     try {
+      console.log('メッセージ送信開始:', content);
+      
       if (!chatId) {
+        console.log('チャットIDが無いため初期化します');
         const newChatId = await initializeChat();
         if (!newChatId) {
           throw new Error('チャットの初期化に失敗しました');
@@ -414,17 +444,28 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const currentChatId = chatId || 1;
       const useOnlyKnowledgeBase = localStorage.getItem('useOnlyKnowledgeBase') !== 'false';
 
+      console.log('APIリクエスト送信:', {
+        chatId: currentChatId,
+        content,
+        useOnlyKnowledgeBase
+      });
+
       const response = await apiRequest('POST', `/api/chats/${currentChatId}/messages`, { 
         content,
         useOnlyKnowledgeBase,
         usePerplexity: false
       });
 
+      console.log('APIレスポンス:', response.status, response.statusText);
+
       if (!response.ok) {
-        throw new Error('メッセージの送信に失敗しました');
+        const errorText = await response.text();
+        console.error('APIエラー詳細:', errorText);
+        throw new Error(`メッセージの送信に失敗しました: ${response.status} ${errorText}`);
       }
 
       const data = await response.json();
+      console.log('受信データ:', data);
 
       const allMedia = [
         ...(tempMedia || []),
@@ -451,10 +492,13 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setTempMedia([]);
       setRecordedText('');
       searchBySelectedText(content);
+      
+      console.log('メッセージ送信完了');
     } catch (error) {
+      console.error('メッセージ送信エラー詳細:', error);
       toast({
         title: 'メッセージ送信エラー',
-        description: 'メッセージを送信できませんでした。',
+        description: `メッセージを送信できませんでした: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: 'destructive',
       });
     } finally {
