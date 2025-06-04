@@ -7,10 +7,8 @@ import fs from "fs";
 import axios from "axios";
 import { storage } from "./storage";
 import dotenv from 'dotenv';
-import { exec } from 'child_process';
 import { runCleanup } from '../scripts/scheduled-cleanup.js';
 import { fileURLToPath } from 'url';
-import open from 'open';
 
 // __dirnameの代替
 const __filename = fileURLToPath(import.meta.url);
@@ -63,14 +61,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// ブラウザを開く関数
-async function openBrowser(url: string) {
-  try {
-    await open(url);
-  } catch (e) {
-    console.log('ブラウザを自動で開けませんでした:', e);
-  }
-}
+
 
 (async () => {
   try {
@@ -128,13 +119,8 @@ async function openBrowser(url: string) {
   const port = 5000;
 
   const startServer = (portToUse: number) => {
-    server.listen(portToUse, '0.0.0.0', async () => {
+    server.listen(portToUse, '0.0.0.0', () => {
       console.log(`Server running on port ${portToUse}`);
-      try {
-        await openBrowser(`http://localhost:${portToUse}`);
-      } catch (e) {
-        // Silent browser open failure
-      }
     }).on('error', (err: NodeJS.ErrnoException) => {
       if (err.code === 'EADDRINUSE') {
         console.log(`Port ${portToUse} in use, trying ${portToUse + 1}`);
