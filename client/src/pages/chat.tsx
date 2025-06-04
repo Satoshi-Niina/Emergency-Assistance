@@ -321,6 +321,27 @@ export default function Chat() {
         </div>
 
         <div className="flex items-center gap-1 md:gap-2">
+          {/* 履歴クリアボタン */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={clearChatHistory}
+            disabled={isClearing}
+            className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white border-0"
+          >
+            {isClearing ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin text-white" />
+                <span className="text-lg">クリア中</span>
+              </>
+            ) : (
+              <>
+                <Trash2 className="h-4 w-4 text-white" />
+                <span className="text-lg">履歴クリア</span>
+              </>
+            )}
+          </Button>
+
           {/* チャット履歴送信ボタン */}
           <Button 
             variant="outline"
@@ -377,28 +398,7 @@ export default function Chat() {
         </Button>
       </div>
 
-      {/* 履歴クリアボタン - 左端に配置 */}
-      <div className="w-full flex justify-start items-center px-2 py-1 bg-blue-50">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={clearChatHistory}
-          disabled={isClearing}
-          className="bg-transparent border border-white hover:bg-red-100 hover:text-red-800 text-red-600"
-        >
-          {isClearing ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin mr-1" />
-              <span className="text-lg font-bold">クリア中</span>
-            </>
-          ) : (
-            <>
-              <Trash2 className="h-4 w-4 mr-1" />
-              <span className="text-lg font-bold">履歴クリア</span>
-            </>
-          )}
-        </Button>
-      </div>
+      
 
       <div className="flex-1 flex flex-col md:flex-row overflow-auto chat-layout-container" style={{ minHeight: '75vh' }}>
         {/* Chat Messages Area - 領域を2/3に縮小し、縦を元に戻す */}
