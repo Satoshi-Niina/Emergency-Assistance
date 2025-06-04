@@ -129,7 +129,7 @@ async function openBrowser(url: string) {
   
   const startServer = (portToUse: number) => {
     server.listen(portToUse, '0.0.0.0', async () => {
-      console.log(`Server running on http://localhost:${portToUse}`);
+      console.log(`Server running on port ${portToUse}`);
       try {
         await openBrowser(`http://localhost:${portToUse}`);
       } catch (e) {
@@ -137,6 +137,7 @@ async function openBrowser(url: string) {
       }
     }).on('error', (err: NodeJS.ErrnoException) => {
       if (err.code === 'EADDRINUSE') {
+        console.log(`Port ${portToUse} in use, trying ${portToUse + 1}`);
         startServer(portToUse + 1);
       } else {
         console.error('Server error:', err);
