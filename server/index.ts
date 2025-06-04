@@ -126,7 +126,7 @@ async function openBrowser(url: string) {
   }
 
   const port = 5000;
-  
+
   const startServer = (portToUse: number) => {
     server.listen(portToUse, '0.0.0.0', async () => {
       console.log(`Server running on port ${portToUse}`);
