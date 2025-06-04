@@ -21,7 +21,7 @@ externalPort = 3000
 exposeLocalhost = true
 
 [workflows]
-runButton = "Development Start"
+runButton = "Development"
 
 [[workflows.workflow]]
 name = "Project"
@@ -153,10 +153,10 @@ task = "shell.exec"
 args = "cd server && PORT=5000 npm run dev"
 
 [[workflows.workflow]]
-name = "Development Start"
+name = "Development"
 author = 39467490
 mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm run dev"
+args = "tsx server/index.ts"
