@@ -20,7 +20,7 @@ localPort = 5001
 externalPort = 3000
 
 [workflows]
-runButton = "Development"
+runButton = "Direct Start"
 
 [[workflows.workflow]]
 name = "Project"
@@ -153,6 +153,15 @@ args = "cd server && PORT=5000 npm run dev"
 
 [[workflows.workflow]]
 name = "Development"
+author = 39467490
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "tsx server/index.ts"
+
+[[workflows.workflow]]
+name = "Direct Start"
 author = 39467490
 mode = "sequential"
 
