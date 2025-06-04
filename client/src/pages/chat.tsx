@@ -37,7 +37,7 @@ export default function Chat() {
     isClearing,
     isRecording
   } = useChat();
-  
+
   const [isEndChatDialogOpen, setIsEndChatDialogOpen] = useState(false);
 
   // Fetch messages for the current chat
@@ -68,33 +68,33 @@ export default function Chat() {
   const displayMessages = isClearing 
     ? [] 
     : (messages?.length > 0 ? messages : (data as any[] || []));
-  
+
   // メッセージクリア時にデータも更新
   useEffect(() => {
     // メッセージが空になった場合（クリアされた場合）のハンドリング
     if (messages !== undefined && messages.length === 0) {
       const chatClearedTimestamp = localStorage.getItem('chat_cleared_timestamp');
-      
+
       // キャッシュクリア処理（タイムスタンプの有無に関わらず実行）
       console.log('チャット履歴クリア後の状態を維持します');
-      
+
       // ローカルストレージのクエリキャッシュをクリア
       for (const key of Object.keys(localStorage)) {
         if (key.startsWith('rq-/api/chats/')) {
           localStorage.removeItem(key);
         }
       }
-      
+
       // クエリキャッシュを完全に削除
       queryClient.removeQueries({ queryKey: ['/api/chats/1/messages'] });
-      
+
       // 空の配列を強制的にセット
       queryClient.setQueryData(['/api/chats/1/messages'], []);
-      
+
       // React Queryのキャッシュ操作用にグローバル変数としてqueryClientを設定
       // @ts-ignore - これにより他のコンポーネントからもアクセス可能
       window.queryClient = queryClient;
-      
+
       // 特殊パラメータを付けて明示的にサーバーにクリア要求を送信
       const fetchClearedData = async () => {
         try {
@@ -114,20 +114,20 @@ export default function Chat() {
           console.error('クリア要求送信エラー:', error);
         }
       };
-      
+
       fetchClearedData();
-      
+
       // クリアフラグを削除（1度だけ実行するため）
       if (chatClearedTimestamp) {
         localStorage.removeItem('chat_cleared_timestamp');
         console.log('チャットクリアタイムスタンプをクリア');
       }
-      
+
       // 少し間をおいて再確認
       const intervalId = setInterval(() => {
         queryClient.setQueryData(['/api/chats/1/messages'], []);
       }, 500);
-      
+
       // 10秒後にクリア監視を終了
       setTimeout(() => {
         clearInterval(intervalId);
@@ -137,7 +137,7 @@ export default function Chat() {
 
   // woutorのLocationフックを取得
   const [, setLocation] = useLocation();
-  
+
   // チャット終了確認ダイアログを表示
   const handleEndChat = () => {
     if (hasUnexportedMessages) {
@@ -159,7 +159,7 @@ export default function Chat() {
             localStorage.removeItem(key);
           }
         }
-        
+
         // JavaScript直接のリダイレクトを使用（より確実なリダイレクト）
         window.location.href = "/login";
       })
@@ -176,15 +176,15 @@ export default function Chat() {
     try {
       await exportChatHistory();
       setIsEndChatDialogOpen(false);
-      
+
       // 送信完了後、ログアウト処理を実行
       await fetch("/api/auth/logout", {
         method: "POST",
         credentials: "include"
       });
-      
+
       console.log("送信して終了: ログアウト成功 - ログイン画面に遷移します");
-      
+
       // キャッシュをクリア
       queryClient.clear();
       // ローカルストレージのクエリキャッシュをクリア
@@ -193,7 +193,7 @@ export default function Chat() {
           localStorage.removeItem(key);
         }
       }
-      
+
       // JavaScript直接のリダイレクトを使用（より確実なリダイレクト）
       window.location.href = "/login";
     } catch (error) {
@@ -205,19 +205,19 @@ export default function Chat() {
 
   const isMobile = useIsMobile();
   const orientation = useOrientation();
-  
+
   // スクロール挙動の最適化 (モバイル対応)
   useEffect(() => {
     // 基本スクロール設定を適用
     document.body.style.overflow = 'auto';
     document.documentElement.style.overflow = 'auto';
-    
+
     // モバイル端末の場合、横向きの時に検索ボタンの位置を調整する
     const handleOrientationChange = () => {
       // 検索結果を表示するスライダーがあれば位置調整
       const searchSlider = document.getElementById('mobile-search-slider');
       const chatMessages = document.querySelector('.chat-messages-container') as HTMLElement;
-      
+
       if (searchSlider) {
         // チャットエリアのスタイルを初期化
         if (chatMessages) {
@@ -225,7 +225,7 @@ export default function Chat() {
           chatMessages.style.flex = '';
           chatMessages.style.maxWidth = '';
         }
-        
+
         // 初期状態では検索パネルは非表示にする
         if (!searchResults || searchResults.length === 0) {
           searchSlider.style.display = 'none';
@@ -233,11 +233,11 @@ export default function Chat() {
         } else {
           searchSlider.style.display = 'block';
         }
-        
+
         // 横向きの場合でも検索パネルは表示しない（検索時のみ表示）
         // 初期状態では非表示
         searchSlider.style.transform = 'translateY(100%)';
-        
+
         // 横向き・縦向き共通の設定
         if (orientation === 'landscape') {
           // 検索パネルを右側に配置
@@ -256,7 +256,7 @@ export default function Chat() {
           searchSlider.style.backgroundColor = '#eff6ff';
           searchSlider.style.paddingTop = '0';
           searchSlider.style.overflowY = 'auto';
-          
+
           // 横向きの場合は丸ボタンを非表示に
           const searchButton = document.querySelector('.mobile-search-button') as HTMLElement;
           if (searchButton) {
@@ -275,7 +275,7 @@ export default function Chat() {
           searchSlider.style.transition = 'transform 300ms ease-in-out';
           searchSlider.style.borderLeft = 'none';
           searchSlider.style.borderTop = '1px solid #bfdbfe';
-          
+
           // 丸ボタン位置を元に戻す
           const searchButton = document.querySelector('.mobile-search-button') as HTMLElement;
           if (searchButton) {
@@ -285,19 +285,19 @@ export default function Chat() {
         }
       }
     };
-    
+
     // 初期実行
     handleOrientationChange();
-    
+
     // イベントリスナー登録
     window.addEventListener('resize', handleOrientationChange);
     window.addEventListener('orientationchange', handleOrientationChange);
-    
+
     // クリーンアップ
     return () => {
       window.removeEventListener('resize', handleOrientationChange);
       window.removeEventListener('orientationchange', handleOrientationChange);
-      
+
       // 検索結果エリアを元に戻す
       const chatMessages = document.querySelector('.chat-messages-container') as HTMLElement;
       if (chatMessages) {
@@ -307,7 +307,7 @@ export default function Chat() {
       }
     };
   }, [orientation, searchResults]);
-  
+
   // 応急処置モーダルの状態管理
   const [emergencyGuideOpen, setEmergencyGuideOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
@@ -321,11 +321,6 @@ export default function Chat() {
         </div>
 
         <div className="flex items-center gap-1 md:gap-2">
-          {/* ユーザー名表示 - 右端に移動 */}
-          <span className="text-blue-800 font-medium text-sm mr-2">
-            {user?.display_name || user?.username || 'ゲスト'}
-          </span>
-          
           {/* チャット履歴送信ボタン - よりコンパクトに */}
           <Button 
             variant="outline"
@@ -346,7 +341,7 @@ export default function Chat() {
               </>
             )}
           </Button>
-          
+
           {/* チャット終了ボタン - よりコンパクトに */}
           <Button 
             variant="destructive"
@@ -358,7 +353,7 @@ export default function Chat() {
           </Button>
         </div>
       </div>
-      
+
       {/* 応急処置ガイドボタン - タブ前に配置して目立たせる */}
       <div className="w-full flex justify-center items-center p-2 bg-gradient-to-r from-blue-100 to-blue-50 border-b border-blue-200">
         <Button
@@ -381,11 +376,11 @@ export default function Chat() {
           <span className="text-lg font-bold">応急処置ガイド</span>
         </Button>
       </div>
-      
+
       <div className="flex-1 flex flex-col md:flex-row overflow-auto chat-layout-container" style={{ minHeight: '75vh' }}>
         {/* Chat Messages Area - 領域を2/3に縮小し、縦を元に戻す */}
         <div className="flex-1 flex flex-col h-full min-h-[75vh] overflow-auto md:w-2/3 bg-white chat-messages-container" style={{ maxWidth: '100%', overflowX: 'hidden' }}>
-          
+
           {/* Chat Messages - 高さを1.5倍に */}
           <div id="chatMessages" className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 md:px-6 space-y-4 min-w-[300px]" style={{ minHeight: '60vh' }}>
             {messagesLoading || isLoading ? (
@@ -409,7 +404,7 @@ export default function Chat() {
                 ))}
               </>
             )}
-            
+
             {/* プレビュー用の一時メッセージ (録音中テキストと撮影した画像のプレビュー) */}
             {draftMessage && draftMessage.content && (
               <div className="w-full md:max-w-2xl mx-auto">
@@ -430,12 +425,12 @@ export default function Chat() {
                 />
               </div>
             )}
-            
+
             {/* デバッグ表示 - ドラフトメッセージの状態を確認 */}
             <div className="hidden">
               <p>draftMessage: {draftMessage ? JSON.stringify(draftMessage) : 'null'}</p>
             </div>
-            
+
           </div>
 
           {/* エクスポート状態表示 */}
@@ -464,7 +459,7 @@ export default function Chat() {
             </div>
           </div>
         </div>
-        
+
         {/* モバイル用検索結果スライダー - 縦向き表示の時のみフローティングボタンを表示 */}
         {searchResults && searchResults.length > 0 && isMobile && orientation === 'portrait' && (
           <div className="fixed bottom-20 right-4 md:hidden mobile-search-button">
@@ -488,7 +483,7 @@ export default function Chat() {
             </Button>
           </div>
         )}
-        
+
         <div 
           id="mobile-search-slider" 
           className={`fixed transition-transform duration-300 ease-in-out md:hidden z-50 ${
@@ -655,7 +650,7 @@ export default function Chat() {
       {/* Modals */}
       <CameraModal />
       <ImagePreviewModal />
-      
+
       {/* 応急処置ガイドモーダル（モバイル・デスクトップ共通） */}
       <Dialog open={emergencyGuideOpen} onOpenChange={setEmergencyGuideOpen}>
         <DialogContent className={`bg-blue-50 border border-blue-200 ${isMobile ? 'w-[95%] max-w-md' : 'max-w-3xl'}`}>
