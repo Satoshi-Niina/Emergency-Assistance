@@ -1,3 +1,4 @@
+typescript
 import { useEffect, useState } from "react";
 import { useChat } from "@/context/chat-context";
 import { useAuth } from "@/context/auth-context";
@@ -20,7 +21,7 @@ import { useOrientation } from "@/hooks/use-orientation";
 
 export default function Chat() {
   const { user, isLoading: authLoading } = useAuth();
-  
+
   // 認証状態をチェックして、未認証の場合はログイン画面にリダイレクト
   useEffect(() => {
     if (!authLoading && !user) {
@@ -43,14 +44,15 @@ export default function Chat() {
     draftMessage,
     clearChatHistory,
     isClearing,
-    isRecording
+    isRecording,
+    chatId: currentChatId // currentChatId を useChat から取得
   } = useChat();
 
   const [isEndChatDialogOpen, setIsEndChatDialogOpen] = useState(false);
 
   // Fetch messages for the current chat
   const { data, isLoading: messagesLoading } = useQuery({
-    queryKey: ['/api/chats/1/messages'],
+    queryKey: [`/api/chats/${currentChatId}/messages`],
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
@@ -93,11 +95,55 @@ export default function Chat() {
         }
       }
 
+      // React Queryのキャッシュをクリア
+      try {
+        // @ts-ignore
+        if (window.queryClient) {
+          window.queryClient.removeQueries({ queryKey: [`/api/chats/${currentChatId}/messages`] });
+          window.queryClient.setQueryData([`/api/chats/${currentChatId}/messages`], []);
+        }
+      } catch (cacheError) {
+        console.error('キャッシュクリアエラー:', cacheError);
+      }
+
+      // React Queryのキャッシュをクリア
+      try {
+        // @ts-ignore
+        if (window.queryClient) {
+          window.queryClient.removeQueries({ queryKey: [`/api/chats/${currentChatId}/messages`] });
+          window.queryClient.setQueryData([`/api/chats/${currentChatId}/messages`], []);
+        }
+      } catch (cacheError) {
+        console.error('キャッシュクリアエラー:', cacheError);
+      }
+
+      // React Queryのキャッシュをクリア
+      try {
+        // @ts-ignore
+        if (window.queryClient) {
+          window.queryClient.removeQueries({ queryKey: [`/api/chats/${currentChatId}/messages`] });
+          window.queryClient.setQueryData([`/api/chats/${currentChatId}/messages`], []);
+        }
+      } catch (cacheError) {
+        console.error('キャッシュクリアエラー:', cacheError);
+      }
+
+      // React Queryのキャッシュをクリア
+      try {
+        // @ts-ignore
+        if (window.queryClient) {
+          window.queryClient.removeQueries({ queryKey: [`/api/chats/${currentChatId}/messages`] });
+          window.queryClient.setQueryData([`/api/chats/${currentChatId}/messages`], []);
+        }
+      } catch (cacheError) {
+        console.error('キャッシュクリアエラー:', cacheError);
+      }
+
       // クエリキャッシュを完全に削除
-      queryClient.removeQueries({ queryKey: ['/api/chats/1/messages'] });
+      queryClient.removeQueries({ queryKey: [`/api/chats/${currentChatId}/messages`] });
 
       // 空の配列を強制的にセット
-      queryClient.setQueryData(['/api/chats/1/messages'], []);
+      queryClient.setQueryData([`/api/chats/${currentChatId}/messages`], []);
 
       // React Queryのキャッシュ操作用にグローバル変数としてqueryClientを設定
       // @ts-ignore - これにより他のコンポーネントからもアクセス可能
@@ -107,7 +153,7 @@ export default function Chat() {
       const fetchClearedData = async () => {
         try {
           // タイムスタンプパラメータを使用してキャッシュバスティング
-          const clearUrl = `/api/chats/1/messages?clear=true&_t=${Date.now()}`;
+          const clearUrl = `/api/chats/${currentChatId}/messages?clear=true&_t=${Date.now()}`;
           await fetch(clearUrl, {
             credentials: 'include',
             cache: 'no-cache',
@@ -133,7 +179,7 @@ export default function Chat() {
 
       // 少し間をおいて再確認
       const intervalId = setInterval(() => {
-        queryClient.setQueryData(['/api/chats/1/messages'], []);
+        queryClient.setQueryData([`/api/chats/${currentChatId}/messages`], []);
       }, 500);
 
       // 10秒後にクリア監視を終了
@@ -141,7 +187,7 @@ export default function Chat() {
         clearInterval(intervalId);
       }, 10000);
     }
-  }, [messages, queryClient]);
+  }, [messages, queryClient, currentChatId]);
 
   // woutorのLocationフックを取得
   const [, setLocation] = useLocation();
@@ -404,9 +450,9 @@ export default function Chat() {
         </Button>
       </div>
 
-      
 
-      
+
+
 
       <div className="flex-1 flex flex-col md:flex-row overflow-auto chat-layout-container" style={{ minHeight: '75vh' }}>
         {/* Chat Messages Area - 領域を2/3に縮小し、縦を元に戻す */}
