@@ -3,7 +3,9 @@ import {
   messages, type Message, type InsertMessage,
   chats, type Chat, type InsertChat,
   chatExports, type ChatExport, type InsertChatExport,
-  media, type Media, type InsertMedia
+  media, type Media, type InsertMedia,
+  documents, type Document, type InsertDocument,
+  keywords, type Keyword, type InsertKeyword
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, like, sql } from "drizzle-orm";
@@ -144,7 +146,7 @@ export class DatabaseStorage implements IStorage {
     return chat;
   }
   
-  async getChatsForUser(userId: string): Promise<Chat[]> {
+  async getChatsForUser(userId: number): Promise<Chat[]> {
     return db.select().from(chats).where(eq(chats.userId, userId));
   }
   
@@ -215,6 +217,30 @@ export class DatabaseStorage implements IStorage {
   
   
   
+  // Document methods
+  async getDocument(id: number): Promise<Document | undefined> {
+    const [document] = await db.select().from(documents).where(eq(documents.id, id));
+    return document;
+  }
+  
+  async getDocumentsForUser(userId: number): Promise<Document[]> {
+    return db.select().from(documents).where(eq(documents.userId, userId));
+  }
+  
+  async createDocument(document: InsertDocument): Promise<Document> {
+    const [newDocument] = await db.insert(documents).values(document).returning();
+    return newDocument;
+  }
+  
+  async updateDocument(id: number, updates: Partial<Document>): Promise<Document | undefined> {
+    const [updatedDocument] = await db
+      .update(documents)
+      .set(updates)
+      .where(eq(documents.id, id))
+      .returning();
+    return updatedDocument;
+  }
+  
   // Keyword methods
   async getKeywordsForDocument(documentId: number): Promise<Keyword[]> {
     return db.select().from(keywords).where(eq(keywords.documentId, documentId));
@@ -265,7 +291,7 @@ export class DatabaseStorage implements IStorage {
       .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
   }
 
-  async saveChatExport(chatId: string, userId: string, timestamp: Date): Promise<void> {
+  async saveChatExport(chatId: string, userId: number, timestamp: Date): Promise<void> {
     await db.insert(chatExports).values({
       chatId,
       userId,
