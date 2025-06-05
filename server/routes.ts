@@ -137,14 +137,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   const requireAuth = (req: Request, res: Response, next: Function) => {
     try {
-      console.log('認証チェック:', {
-        hasSession: !!req.session,
-        userId: req.session?.userId,
-        url: req.url
-      });
-      
+      // Silent auth check
       if (!req.session || !req.session.userId) {
-        console.warn('認証失敗: セッションまたはユーザーIDが存在しません');
         return res.status(401).json({ 
           success: false,
           message: "Unauthorized",
@@ -152,10 +146,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      console.log(`認証成功: ユーザーID=${req.session.userId}`);
+      // 重要: 必ずnext()を呼ぶ
       next();
     } catch (error) {
-      console.error('認証ミドルウェアエラー:', error);
+      // Silent error handling - エラーでもレスポンスを返して終了
       return res.status(500).json({
         success: false,
         message: "Authentication error",
@@ -166,16 +160,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Admin middleware
   const requireAdmin = async (req: Request, res: Response, next: Function) => {
-    if (!req.session.userId) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
 
-    const user = await storage.getUser(req.session.userId);
-    if (!user || user.role !== 'admin') {
-      return res.status(403).json({ message: "Forbidden" });
-    }
+      const user = await storage.getUser(req.session.userId);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Forbidden" });
+      }
 
-    next();
+      // 重要: 必ずnext()を呼ぶ
+      next();
+    } catch (error) {
+      // エラー時も必ずレスポンスを返して終了
+      return res.status(500).json({ message: "Admin check failed" });
+    }
   };
 
   // Auth routes

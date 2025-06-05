@@ -15,10 +15,19 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // .envファイルの読み込み
-dotenv.config({ path: path.resolve(__dirname, '.env') });
+try {
+  dotenv.config({ path: path.resolve(__dirname, '.env') });
+} catch (envError) {
+  // Silent env loading error
+}
 
-// 環境変数の確認（サイレント）
-// OpenAI API key check moved to silent mode
+// 環境変数の安全な確認
+const requiredEnvVars = ['OPENAI_API_KEY', 'SESSION_SECRET'];
+requiredEnvVars.forEach(envVar => {
+  if (!process.env[envVar]) {
+    // Silent env var warning
+  }
+});
 
 const app = express();
 app.use(express.json());
@@ -174,3 +183,24 @@ app.use((req, res, next) => {
     }
   });
 })();
+
+// プロセス終了時のクリーンアップ
+process.on('SIGTERM', () => {
+  // Silent cleanup
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  // Silent cleanup
+  process.exit(0);
+});
+
+process.on('uncaughtException', (error) => {
+  // Silent uncaught exception handling
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  // Silent unhandled rejection handling
+  process.exit(1);
+});
