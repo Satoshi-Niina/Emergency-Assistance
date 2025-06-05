@@ -121,10 +121,33 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const BUFFER_INTERVAL = 300; // バッファリング間隔を300ミリ秒に戻す
   const SILENCE_THRESHOLD = 1000; // 無音検出時間は1秒のまま
 
-  const initializeChat = async (): Promise<void> => {
+  const initializeChat = async (): Promise<string | null> => {
     console.log('チャット初期化開始');
 
     try {
+      // 既存のchatIdをlocalStorageから取得
+      const savedChatId = localStorage.getItem('currentChatId');
+      
+      if (savedChatId) {
+        console.log('保存されたチャットIDを確認中:', savedChatId);
+        
+        // サーバーに存在するか確認
+        try {
+          const response = await apiRequest('GET', `/api/chats/${savedChatId}`);
+          if (response.ok) {
+            console.log('既存のチャットIDが有効です:', savedChatId);
+            setChatId(savedChatId);
+            return savedChatId;
+          } else {
+            console.log('既存のチャットIDが無効です。削除します:', savedChatId);
+            localStorage.removeItem('currentChatId');
+          }
+        } catch (error) {
+          console.log('チャットID検証エラー。削除します:', error);
+          localStorage.removeItem('currentChatId');
+        }
+      }
+
       console.log('認証状態確認中...');
 
       // 認証状態を確認
@@ -177,7 +200,8 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           // 認証に失敗した場合でもUUIDダミーチャットIDを設定
           const dummyChatId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
           setChatId(dummyChatId);
-          return;
+          localStorage.setItem('currentChatId', dummyChatId);
+          return dummyChatId;
         }
       }
 
@@ -191,12 +215,16 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // newChat.idがUUID形式であることを確認
       if (newChat.id && typeof newChat.id === 'string' && newChat.id.length > 10) {
         setChatId(newChat.id);
+        localStorage.setItem('currentChatId', newChat.id);
         console.log('UUIDチャットIDを設定:', newChat.id);
+        return newChat.id;
       } else {
         console.warn('サーバーから無効なチャットIDが返されました:', newChat.id);
         // フォールバック用のUUID
         const fallbackId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
         setChatId(fallbackId);
+        localStorage.setItem('currentChatId', fallbackId);
+        return fallbackId;
       }
 
     } catch (error) {
@@ -204,13 +232,20 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // エラーが発生した場合はUUIDフォーマットのデフォルトIDを使用
       const fallbackId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
       setChatId(fallbackId);
+      localStorage.setItem('currentChatId', fallbackId);
+      return fallbackId;
     }
   };
 
   // コンポーネントマウント時にチャットを初期化
   useEffect(() => {
-    initializeChat();
-  }, [initializeChat]);
+    if (!isInitializing && !chatId) {
+      setIsInitializing(true);
+      initializeChat().finally(() => {
+        setIsInitializing(false);
+      });
+    }
+  }, []);
 
   // チャットメッセージの初期読み込み
   useEffect(() => {
@@ -457,7 +492,6 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           throw new Error('チャットの初期化に失敗しました');
         }
         currentChatId = newChatId;
-        setChatId(newChatId);
         console.log('新しいチャットIDを設定しました:', newChatId);
       }
 
@@ -797,7 +831,6 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           throw new Error('チャットの初期化に失敗しました');
         }
         currentChatId = newChatId;
-        setChatId(newChatId);
       }
 
       setIsLoading(true);
