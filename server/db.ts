@@ -30,16 +30,30 @@ const sql = postgres(DATABASE_URL, {
 // Create drizzle database instance
 export const db = drizzle(sql, { schema });
 
-// Add connection health check function
+// Add connection health check function with retry logic
 export async function checkDatabaseConnection(): Promise<boolean> {
-  try {
-    // Simple connection test
-    await sql`SELECT 1 as test`;
-    return true;
-  } catch (error) {
-    console.warn('Database connection failed:', error.message);
-    return false;
+  const maxRetries = 3;
+  let retryCount = 0;
+
+  while (retryCount < maxRetries) {
+    try {
+      // Simple connection test
+      await sql`SELECT 1 as test`;
+      return true;
+    } catch (error) {
+      retryCount++;
+      console.warn(`Database connection attempt ${retryCount}/${maxRetries} failed:`, error.message);
+      
+      if (retryCount >= maxRetries) {
+        return false;
+      }
+      
+      // Wait before retry
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
   }
+  
+  return false;
 }
 
 // データベース接続プールの設定を改善
