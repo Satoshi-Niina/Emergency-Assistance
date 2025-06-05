@@ -125,21 +125,56 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // チャット初期化関数を修正
   const initializeChat = useCallback(async () => {
-    if (isInitializing || chatId) return chatId;
+    if (isInitializing) return chatId;
 
     setIsInitializing(true);
 
     try {
-      const savedChatId = localStorage.getItem('currentChatId');
-      if (savedChatId) {
-        setChatId(savedChatId);
-        console.log('ローカルストレージからchatIdを復元:', savedChatId);
-        return savedChatId;
+      // 認証状態を確認
+      const authResponse = await apiRequest('GET', '/api/auth/me');
+      if (!authResponse.ok) {
+        console.log('認証が無効です。ログイン画面にリダイレクトします。');
+        localStorage.removeItem('currentChatId');
+        setChatId(null);
+        window.location.href = '/login';
+        return null;
       }
 
-      // サーバーに新規作成リクエスト送信
+      // 既存のchatIdがある場合は検証
+      if (chatId) {
+        const chatResponse = await apiRequest('GET', `/api/chats/${chatId}/messages`);
+        if (chatResponse.ok) {
+          console.log('既存のchatIdを使用:', chatId);
+          return chatId;
+        } else {
+          console.log('既存のchatIdが無効です。新規作成します。');
+          localStorage.removeItem('currentChatId');
+          setChatId(null);
+        }
+      }
+
+      // ローカルストレージから復元を試行
+      const savedChatId = localStorage.getItem('currentChatId');
+      if (savedChatId) {
+        const chatResponse = await apiRequest('GET', `/api/chats/${savedChatId}/messages`);
+        if (chatResponse.ok) {
+          setChatId(savedChatId);
+          console.log('ローカルストレージからchatIdを復元:', savedChatId);
+          return savedChatId;
+        } else {
+          console.log('保存されたchatIdが無効です。');
+          localStorage.removeItem('currentChatId');
+        }
+      }
+
+      // 新規チャット作成
       const response = await apiRequest('POST', '/api/chats', { title: '新規チャット' });
       if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          console.log('認証エラーです。ログイン画面にリダイレクトします。');
+          window.location.href = '/login';
+          return null;
+        }
         throw new Error('新規チャット作成に失敗しました');
       }
 
@@ -151,11 +186,14 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     } catch (error) {
       console.error('チャット初期化エラー:', error);
+      // 認証エラーの場合はログイン画面へ
+      localStorage.removeItem('currentChatId');
+      setChatId(null);
       return null;
     } finally {
       setIsInitializing(false);
     }
-  }, [chatId, isInitializing]);
+  }, [isInitializing, chatId]);
 
   // コンポーネントマウント時にチャットを初期化（一回だけ）
   useEffect(() => {
@@ -177,6 +215,16 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             ...msg,
             timestamp: new Date(msg.timestamp)
           })));
+        } else if (response.status === 401 || response.status === 403) {
+          console.log('メッセージ読み込み時に認証エラーが発生しました。');
+          localStorage.removeItem('currentChatId');
+          setChatId(null);
+          window.location.href = '/login';
+        } else if (response.status === 404) {
+          console.log('チャットが見つかりません。新規作成します。');
+          localStorage.removeItem('currentChatId');
+          setChatId(null);
+          initializeChat();
         }
       } catch (error) {
         // エラーが実際に意味のある内容を持つ場合のみログ出力
@@ -191,7 +239,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (chatId) {
       loadMessages();
     }
-  }, [chatId]);
+  }, [chatId, initializeChat]);
 
   // 認識テキストの類似度を確認する関数（部分文字列か判定）
   const isSubstringOrSimilar = (text1: string, text2: string): boolean => {
@@ -456,40 +504,40 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('APIレスポンス:', response.status, response.statusText);
 
       if (!response.ok) {
-        // 認証エラーの場合は適切にエラーメッセージを表示
+        // 認証エラーの場合は即座にログイン画面へリダイレクト
         if (response.status === 401 || response.status === 403) {
-          console.log('認証エラーが発生しました。');
-
-          // エラー時はダミーのAIレスポンスを表示
-          const authErrorMessage = {
-            id: Date.now() + 1,
-            content: `認証エラーが発生しました。チャット終了ボタンを押してログインし直してください。`,
-            role: 'assistant' as const,
-            timestamp: new Date()
-          };
-
-          setMessages(prev => [...prev, authErrorMessage]);
+          console.log('認証エラーが発生しました。ログイン画面にリダイレクトします。');
+          localStorage.removeItem('currentChatId');
+          setChatId(null);
+          
+          // エラー時は楽観的に追加したユーザーメッセージを削除
+          setMessages(prev => prev.slice(0, -1));
+          
+          // ログイン画面にリダイレクト
+          window.location.href = '/login';
           return;
         }
 
-        // 404エラーの場合はchatIdをクリア
+        // 404エラーの場合はchatIdをクリアして再初期化
         if (response.status === 404) {
+          console.log('チャットが見つかりません。新規作成します。');
           localStorage.removeItem('currentChatId');
           setChatId(null);
+          
+          // 新しいチャットで再試行
+          const newChatId = await initializeChat();
+          if (newChatId) {
+            // 再帰的に送信を試行
+            return sendMessage(content, mediaUrls);
+          }
         }
 
         const errorText = await response.text();
         console.error('APIエラー詳細:', errorText);
 
-        // エラー時はダミーのAIレスポンスを表示
-        const errorMessage = {
-          id: Date.now() + 1,
-          content: `申し訳ございません。現在システムにアクセスできません。入力されたメッセージ「${content}」について、後ほど再度お試しください。`,
-          role: 'assistant' as const,
-          timestamp: new Date()
-        };
+        // エラー時は楽観的に追加したユーザーメッセージを削除
+        setMessages(prev => prev.slice(0, -1));
 
-        setMessages(prev => [...prev, errorMessage]);
         throw new Error(`メッセージの送信に失敗しました: ${response.status} ${errorText}`);
       }
 
