@@ -186,7 +186,7 @@ export class DatabaseStorage implements IStorage {
       if (messageIds.length > 0) {
         // メッセージIDごとに個別に削除（SQLインジェクションを避けるため）
         for (const messageId of messageIds) {
-          await db.delete(media).where(eq(media.messageId, messageId.toString()));
+          await db.delete(media).where(eq(media.messageId, messageId));
         }
       }
       
@@ -269,7 +269,7 @@ export class DatabaseStorage implements IStorage {
     const matchingDocuments: Document[] = [];
     for (const docId of documentIds) {
       if (docId === null) continue;
-      const doc = await this.getDocument(docId.toString());
+      const doc = await this.getDocument(docId);
       if (doc) {
         matchingDocuments.push(doc);
       }
