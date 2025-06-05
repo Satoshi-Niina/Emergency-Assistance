@@ -72,37 +72,26 @@ app.use((req, res, next) => {
   try {
     // Initialize application
     app.locals.storage = storage;
+    
+    // Knowledge base initialization - don't block on failure
     try {
       initializeKnowledgeBase();
+      console.log('Knowledge base initialized successfully');
     } catch (initError) {
-      // Silent initialization
+      console.warn('Knowledge base initialization failed, continuing...');
     }
 
-    // Test database connection with retry logic
-    let dbConnected = false;
-    let retryCount = 0;
-    const maxRetries = 3;
-
-    while (!dbConnected && retryCount < maxRetries) {
-      try {
-        const { checkDatabaseConnection } = await import('./db.js');
-        dbConnected = await checkDatabaseConnection();
-        if (!dbConnected) {
-          retryCount++;
-          // Silent retry
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        }
-      } catch (dbError) {
-        retryCount++;
-        if (retryCount < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        }
+    // Database connection check - simplified
+    try {
+      const { checkDatabaseConnection } = await import('./db.js');
+      const dbConnected = await checkDatabaseConnection();
+      if (dbConnected) {
+        console.log('Database connection verified');
+      } else {
+        console.warn('Database connection failed, some features may not work');
       }
-    }
-
-    if (!dbConnected) {
-      // データベース接続失敗でもサーバーは起動する
-      // Silent database warning
+    } catch (dbError) {
+      console.warn('Database check failed, continuing with startup');
     }
 
     // Create required directories
@@ -133,28 +122,17 @@ app.use((req, res, next) => {
     // Silent knowledge base initialization error
   }
 
-  const server = await registerRoutes(app);
+  const httpServer = await registerRoutes(app);
+  server = httpServer; // グローバル変数に保存
 
   // グローバルエラーハンドラー（必ずレスポンスを返す）
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    let message = err.message || "Internal Server Error";
-
-    // データベース接続エラーの場合
-    if (err.code === '57P01' || err.message?.includes('terminating connection due to administrator command')) {
-      message = "Database connection was reset. Please try again.";
-    } else if (err.code === 'ECONNRESET' || err.message?.includes('connection') || err.severity === 'FATAL') {
-      message = "Database connection error. Please try again.";
-    }
+    const message = err.message || "Internal Server Error";
 
     // 必ずレスポンスを返す（エラーでプロセスを停止させない）
     if (!res.headersSent) {
       res.status(status).json({ message });
-    }
-
-    // エラーログは最小限に
-    if (status >= 500) {
-      // Silent server error handling
     }
   });
 
@@ -169,65 +147,51 @@ app.use((req, res, next) => {
 
   const port = 5000;
 
-  // ポート衝突時に再試行する
-  const startServer = (portToTry: number, retries = 3): void => {
-    server.listen(portToTry, '0.0.0.0', () => {
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`Server ready on port ${portToTry}`);
-      }
-    }).on('error', (err: NodeJS.ErrnoException) => {
-      if (err.code === 'EADDRINUSE' && retries > 0) {
-        // ポートが使用中の場合、少し待ってから再試行
-        setTimeout(() => {
-          startServer(portToTry, retries - 1);
-        }, 2000);
-      } else if (err.code === 'EADDRINUSE') {
-        // 再試行回数が尽きた場合は終了
-        process.exit(1);
-      } else {
-        // その他のエラーは無視してサーバー継続
-      }
-    });
-  };
-
-  startServer(port);
+  // サーバー起動
+  const port = 5000;
+  httpServer.listen(port, '0.0.0.0', () => {
+    console.log(`Server ready on port ${port}`);
+  }).on('error', (err: NodeJS.ErrnoException) => {
+    console.error('Server startup error:', err.message);
+    if (err.code === 'EADDRINUSE') {
+      console.error(`Port ${port} is already in use`);
+      process.exit(1);
+    }
+  });
 })();
 
 // プロセス終了処理を安全にする
 let isShuttingDown = false;
+let server: any = null;
 
 const gracefulShutdown = (signal: string) => {
   if (isShuttingDown) return;
   isShuttingDown = true;
   
-  // Silent graceful shutdown
-  setTimeout(() => {
+  console.log(`Received ${signal}, shutting down gracefully...`);
+  
+  // サーバーを閉じる
+  if (server) {
+    server.close(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
+  } else {
     process.exit(0);
-  }, 1000);
+  }
 };
 
+// プロセス終了シグナルのハンドリング
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-// 未捕獲例外でもプロセスを即座に終了させない
+// 未捕獲例外のハンドリング - ログのみ出力してプロセスは継続
 process.on('uncaughtException', (error) => {
-  if (!isShuttingDown) {
-    // Silent error handling - don't crash immediately
-    setTimeout(() => {
-      if (!isShuttingDown) {
-        gracefulShutdown('uncaughtException');
-      }
-    }, 500);
-  }
+  console.error('Uncaught Exception:', error.message);
+  // プロセスを終了させない
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  if (!isShuttingDown) {
-    // Silent error handling - don't crash immediately
-    setTimeout(() => {
-      if (!isShuttingDown) {
-        gracefulShutdown('unhandledRejection');
-      }
-    }, 500);
-  }
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // プロセスを終了させない
 });

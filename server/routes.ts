@@ -134,46 +134,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })
   );
 
-  // Auth middleware
+  // Auth middleware - 無限ループを防ぐ
   const requireAuth = (req: Request, res: Response, next: Function) => {
-    try {
-      // Silent auth check
-      if (!req.session || !req.session.userId) {
-        return res.status(401).json({ 
-          success: false,
-          message: "Unauthorized",
-          error: "セッションが無効です。再度ログインしてください。"
-        });
-      }
-      
-      // 重要: 必ずnext()を呼ぶ
-      next();
-    } catch (error) {
-      // Silent error handling - エラーでもレスポンスを返して終了
-      return res.status(500).json({
-        success: false,
-        message: "Authentication error",
-        error: "認証処理中にエラーが発生しました"
-      });
+    // すでに認証済みかチェック
+    if (req.session && typeof req.session.userId === 'number' && req.session.userId > 0) {
+      return next(); // 認証済みの場合は即座にnext()
     }
+    
+    // 認証されていない場合
+    return res.status(401).json({ 
+      success: false,
+      message: "Unauthorized"
+    });
   };
 
-  // Admin middleware
+  // Admin middleware - 無限ループを防ぐ
   const requireAdmin = async (req: Request, res: Response, next: Function) => {
-    try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
+    // セッションチェック
+    if (!req.session || typeof req.session.userId !== 'number' || req.session.userId <= 0) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
 
+    try {
       const user = await storage.getUser(req.session.userId);
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: "Forbidden" });
       }
-
-      // 重要: 必ずnext()を呼ぶ
-      next();
+      return next(); // 管理者の場合は即座にnext()
     } catch (error) {
-      // エラー時も必ずレスポンスを返して終了
       return res.status(500).json({ message: "Admin check failed" });
     }
   };
