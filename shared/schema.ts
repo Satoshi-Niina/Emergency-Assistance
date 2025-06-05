@@ -79,7 +79,7 @@ export const chatExports = pgTable('chat_exports', {
 // ドキュメントテーブルの定義
 // ナレッジベースのドキュメントを管理
 export const documents = pgTable('documents', {
-  id: text('id').primaryKey().default(sql`gen_random_uuid()`), // UUIDを自動生成
+  id: text('id').primaryKey().default(sql`gen_random_uuid()`),
   title: text('title').notNull(),
   content: text('content').notNull(),
   userId: text('user_id').notNull(),
@@ -89,8 +89,8 @@ export const documents = pgTable('documents', {
 // キーワードテーブルの定義
 // ドキュメント検索用のキーワードを管理
 export const keywords = pgTable('keywords', {
-  id: text('id').primaryKey().default(sql`gen_random_uuid()`), // UUIDを自動生成
-  documentId: text('document_id').references(() => documents.id), // UUID参照
+  id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+  documentId: text('document_id').references(() => documents.id),
   word: text('word').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
