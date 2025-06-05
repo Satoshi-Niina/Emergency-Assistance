@@ -146,12 +146,30 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: 60000, // 1分間はキャッシュを使用
-      retry: false,
-      refetchOnMount: true, // コンポーネントがマウントされるたびに再取得
+      staleTime: 5000, // 5秒に短縮してより新鮮なデータを取得
+      retry: (failureCount, error) => {
+        // メッセージ関連のクエリは最大2回リトライ
+        if (error && (error as any).message?.includes('messages')) {
+          return failureCount < 2;
+        }
+        return false;
+      },
+      refetchOnMount: true,
+      // メッセージ更新後の即座再取得
+      refetchOnReconnect: true,
     },
     mutations: {
       retry: false,
+      // mutation成功後の自動invalidation
+      onSuccess: (data, variables, context) => {
+        // メッセージ送信後はメッセージリストを即座に無効化
+        if (context && (context as any).type === 'message') {
+          const chatId = (context as any).chatId;
+          if (chatId) {
+            queryClient.invalidateQueries({ queryKey: [`/api/chats/${chatId}/messages`] });
+          }
+        }
+      },
     },
   },
 });

@@ -77,8 +77,83 @@ export const storage = {
       and(eq(messages.chatId, chatId), gt(messages.createdAt, timestamp))
     );
   },
-  createMessage: async (message: InsertMessage): Promise<Message> => {
-    return new DatabaseStorage().createMessage(message);
+  async saveMessage(message: {
+    chatId: string;
+    senderId: string;
+    content: string;
+    isAiResponse?: boolean;
+    media?: Array<{
+      type: string;
+      url: string;
+      description?: string;
+    }>;
+  }) {
+    try {
+      console.log('メッセージ保存開始:', { chatId: message.chatId, senderId: message.senderId, hasContent: !!message.content });
+
+      // 必須フィールドの厳密な検証
+      if (!message.chatId || typeof message.chatId !== 'string' || message.chatId.trim().length === 0) {
+        throw new Error('chatIdが無効です');
+      }
+      if (!message.senderId || typeof message.senderId !== 'string' || message.senderId.trim().length === 0) {
+        throw new Error('senderIdが無効です');
+      }
+      if (!message.content || typeof message.content !== 'string' || message.content.trim().length === 0) {
+        throw new Error('contentが無効です');
+      }
+
+      // UUIDを生成
+      const messageId = generateId();
+
+      // メッセージデータの完全性を保証
+      const messageData = {
+        id: messageId,
+        chatId: message.chatId.trim(),
+        senderId: message.senderId.trim(),
+        content: message.content.trim(),
+        isAiResponse: Boolean(message.isAiResponse), // 明示的にboolean化
+        createdAt: new Date()
+      };
+
+      console.log('保存するメッセージデータ:', messageData);
+
+      const savedMessage = await db.insert(messages).values(messageData).returning();
+
+      if (!savedMessage || savedMessage.length === 0) {
+        throw new Error('メッセージの保存に失敗しました');
+      }
+
+      console.log('メッセージ保存成功:', savedMessage[0].id);
+
+      // メディアがある場合の処理
+      if (message.media && Array.isArray(message.media) && message.media.length > 0) {
+        console.log(`${message.media.length}件のメディアを保存中...`);
+        for (const mediaItem of message.media) {
+          // メディアアイテムの検証
+          if (!mediaItem.type || !mediaItem.url || typeof mediaItem.type !== 'string' || typeof mediaItem.url !== 'string') {
+            console.warn('無効なメディアアイテムをスキップ:', mediaItem);
+            continue;
+          }
+
+          const mediaData = {
+            id: generateId(),
+            messageId: savedMessage[0].id,
+            type: mediaItem.type.trim(),
+            url: mediaItem.url.trim(),
+            description: mediaItem.description?.trim() || null,
+            createdAt: new Date()
+          };
+
+          await db.insert(media).values(mediaData);
+          console.log('メディア保存成功:', mediaData.id);
+        }
+      }
+
+      return savedMessage[0];
+    } catch (error) {
+      console.error('メッセージ保存エラー:', error);
+      throw error;
+    }
   },
   clearChatMessages: async (chatId: string): Promise<void> => {
     // UUIDのためstring型で処理

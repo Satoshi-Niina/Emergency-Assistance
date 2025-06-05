@@ -75,9 +75,44 @@ export default function Chat() {
 
   // Show messages from the context or from the query
   // クリア処理中は空配列を表示し、それ以外の場合はmessagesまたはデータを表示
-  const displayMessages = isClearing 
+  const rawDisplayMessages = isClearing 
     ? [] 
     : (messages?.length > 0 ? messages : (data as any[] || []));
+
+  // データの完全性検証とフィルタリング
+  const displayMessages = rawDisplayMessages.filter((message: any) => {
+    // 必須フィールドの存在確認
+    if (!message || typeof message !== 'object') {
+      console.warn('無効なメッセージオブジェクト:', message);
+      return false;
+    }
+    
+    // IDの存在確認（部分的成功の検出）
+    if (!message.id || typeof message.id !== 'string' || message.id.trim().length === 0) {
+      console.warn('IDが無効なメッセージを除外:', message);
+      return false;
+    }
+    
+    // コンテンツの存在確認
+    if (!message.content || typeof message.content !== 'string' || message.content.trim().length === 0) {
+      console.warn('コンテンツが無効なメッセージを除外:', message);
+      return false;
+    }
+    
+    // senderIdの存在確認
+    if (!message.senderId || typeof message.senderId !== 'string') {
+      console.warn('senderIdが無効なメッセージを除外:', message);
+      return false;
+    }
+    
+    // isAiResponseの型確認
+    if (message.isAiResponse !== undefined && typeof message.isAiResponse !== 'boolean') {
+      console.warn('isAiResponseの型が無効、自動修正:', message.id);
+      message.isAiResponse = Boolean(message.isAiResponse);
+    }
+    
+    return true;
+  });
 
   // メッセージクリア時にデータも更新
   useEffect(() => {

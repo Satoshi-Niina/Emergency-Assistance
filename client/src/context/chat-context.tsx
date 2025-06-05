@@ -181,20 +181,20 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       const data = await response.json();
-      
+
       if (!data || !data.id) {
         throw new Error('チャット作成のレスポンスが無効です');
       }
-      
+
       setChatId(data.id);
       localStorage.setItem('currentChatId', data.id);
       console.log('新規チャット作成完了:', data.id);
-      
+
       // 作成されたチャットが実際に存在するか確認
       let retryCount = 0;
       const maxRetries = 3;
       let verifyResponse;
-      
+
       do {
         verifyResponse = await apiRequest('GET', `/api/chats/${data.id}`);
         if (verifyResponse.ok) {
@@ -209,11 +209,11 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }
         }
       } while (retryCount < maxRetries);
-      
+
       if (!verifyResponse.ok) {
         throw new Error('作成されたチャットの確認に失敗しました');
       }
-      
+
       return data.id;
 
     } catch (error) {
@@ -520,12 +520,12 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       const useOnlyKnowledgeBase = localStorage.getItem('useOnlyKnowledgeBase') !== 'false';
 
+      // APIリクエスト送信
       console.log('APIリクエスト送信:', {
         chatId: currentChatId,
         content,
         useOnlyKnowledgeBase
       });
-
 
       const response = await apiRequest('POST', `/api/chats/${currentChatId}/messages`, { 
         content,
@@ -541,10 +541,10 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           console.log('認証エラーが発生しました。ログイン画面にリダイレクトします。');
           localStorage.removeItem('currentChatId');
           setChatId(null);
-          
+
           // エラー時は楽観的に追加したユーザーメッセージを削除
           setMessages(prev => prev.slice(0, -1));
-          
+
           // ログイン画面にリダイレクト
           window.location.href = '/login';
           return;
@@ -555,36 +555,36 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           console.log('チャットが見つかりません。新規作成します。');
           localStorage.removeItem('currentChatId');
           setChatId(null);
-          
+
           // エラー時は楽観的に追加したユーザーメッセージを削除
           setMessages(prev => prev.slice(0, -1));
-          
+
           // 新しいチャットで再試行
           const newChatId = await initializeChat();
           if (newChatId) {
             currentChatId = newChatId;
             console.log('新しいチャットで再試行:', currentChatId);
-            
+
             // 新しいチャットIDで再度APIリクエスト
             const retryResponse = await apiRequest('POST', `/api/chats/${currentChatId}/messages`, { 
               content,
               useOnlyKnowledgeBase,
               usePerplexity: false
             });
-            
+
             if (!retryResponse.ok) {
               const retryErrorText = await retryResponse.text();
               console.error('再試行でもAPIエラー:', retryErrorText);
               throw new Error(`メッセージの送信に失敗しました: ${retryResponse.status} ${retryErrorText}`);
             }
-            
+
             const retryData = await retryResponse.json();
-            
+
             // 再試行成功時のレスポンス処理
             if (!retryData || !retryData.userMessage || !retryData.aiMessage) {
               throw new Error('サーバーから無効なレスポンスを受信しました');
             }
-            
+
             // 再試行でメッセージを表示
             setMessages(prev => [
               ...prev,
@@ -602,7 +602,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 timestamp: new Date(retryData.aiMessage.timestamp)
               }
             ]);
-            
+
             setTempMedia([]);
             setRecordedText('');
             searchBySelectedText(content);
