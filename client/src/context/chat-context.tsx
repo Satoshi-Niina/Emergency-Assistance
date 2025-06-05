@@ -363,6 +363,13 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('検索結果数:', results.images?.length || 0);
       console.log('検索結果詳細:', results);
 
+      // レスポンスがHTMLかチェック
+      if (typeof results === 'string' && results.includes('<!DOCTYPE html>')) {
+        console.error('画像検索APIがHTMLを返しました - エンドポイントエラー');
+        setSearchResults([]);
+        return;
+      }
+
       if (!results.images || results.images.length === 0) {
         console.log(`「${text}」に関する検索結果はありませんでした`);
         setSearchResults([]);
@@ -493,6 +500,12 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       const data = await response.json();
       console.log('受信データ:', data);
+      
+      // APIレスポンスの形式チェック
+      if (!data.userMessage || !data.aiMessage) {
+        console.error('APIレスポンス形式エラー:', data);
+        throw new Error('サーバーから無効なレスポンスを受信しました');
+      }
 
       // APIレスポンスでメッセージを更新
       setMessages(prev => {
