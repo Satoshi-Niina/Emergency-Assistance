@@ -720,6 +720,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         const userMessage = await storage.createMessage(messageData);
+        
+        if (!userMessage || !userMessage.id) {
+          throw new Error('ユーザーメッセージの保存に失敗しました');
+        }
+        
         console.log(`ユーザーメッセージ保存完了: ID=${userMessage.id}`);
 
         // AI応答を生成
@@ -742,6 +747,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
 
         const aiMessage = await storage.createMessage(aiMessageData);
+        
+        if (!aiMessage || !aiMessage.id) {
+          throw new Error('AI応答メッセージの保存に失敗しました');
+        }
+        
         console.log(`AI応答メッセージ保存完了: ID=${aiMessage.id}`);
 
         return res.json({
