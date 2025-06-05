@@ -689,9 +689,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/chats/:id/messages", requireAuth, async (req, res) => {
     try {
       const chatId = req.params.id;
-      const { content, useOnlyKnowledgeBase = true, isAiResponse = false } = req.body;
+      const { content, senderId, createdAt, useOnlyKnowledgeBase = true, isAiResponse = false } = req.body;
 
-      console.log(`メッセージ送信API呼び出し: chatId=${chatId}, content=${content}, isAi=${isAiResponse}`);
+      console.log(`メッセージ送信API呼び出し: chatId=${chatId}, content=${content}, senderId=${senderId}, isAi=${isAiResponse}`);
 
       if (!content || typeof content !== 'string' || content.trim().length === 0) {
         return res.status(400).json({ 
@@ -699,6 +699,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: "Content is required and cannot be empty" 
         });
       }
+
+      // senderIdの柔軟なチェック（クライアントから送信されない場合はセッションから取得）
+      const finalSenderId = senderId || req.session.userId;
+      if (!finalSenderId) {
+        return res.status(400).json({ 
+          success: false,
+          message: "SenderId is required" 
+        });
+      }
+
+      // createdAtの柔軟なチェック（送信されない場合は現在時刻を使用）
+      const finalCreatedAt = createdAt ? new Date(createdAt) : new Date();
 
       const chat = await storage.getChat(chatId);
       if (!chat) {
@@ -715,8 +727,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const messageData = insertMessageSchema.parse({
           chatId: chatId,
           content: content.trim(),
-          senderId: req.session.userId,
-          isAiResponse: false
+          senderId: finalSenderId,
+          isAiResponse: false,
+          createdAt: finalCreatedAt
         });
 
         const userMessage = await storage.createMessage(messageData);

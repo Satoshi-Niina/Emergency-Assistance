@@ -527,9 +527,23 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         useOnlyKnowledgeBase
       });
 
+      // 認証状態を確認してsenderIdを取得
+      const authResponse = await apiRequest('GET', '/api/auth/me');
+      let senderId = null;
+      
+      if (authResponse.ok) {
+        const authData = await authResponse.json();
+        senderId = authData.id;
+      }
+
+      if (!senderId) {
+        throw new Error('認証情報を取得できませんでした');
+      }
+
       const response = await apiRequest('POST', `/api/chats/${currentChatId}/messages`, { 
         content,
-        senderId: req.session?.userId, // senderIdを明示的に送信
+        senderId, // 確実にsenderIdを送信
+        createdAt: new Date().toISOString(), // createdAtも明示的に送信
         useOnlyKnowledgeBase,
         usePerplexity: false
       });
