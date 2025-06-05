@@ -2,33 +2,14 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "@shared/schema";
 
-// Set DATABASE_URL
-const DATABASE_URL = process.env.DATABASE_URL || "postgresql://postgres:takabeni@0.0.0.0:5432/maintenance";
+// データベース関連の初期化は一時的に無効化
+console.log('💡 データベース機能は一時的に無効化されています');
 
-// Initialize postgres client with enhanced Replit-optimized config
-const sql = postgres(DATABASE_URL, {
-  max: 3, // Reduced connection pool size for stability
-  idle_timeout: 30, // Increased idle timeout
-  connect_timeout: 60, // Increased connect timeout
-  max_lifetime: 60 * 10, // Increased max lifetime to 10 minutes
-  connection_timeout: 60,
-  keepalive: true,
-  prepare: false, // Disable prepared statements for better compatibility
-  debug: false, // Always disable debug logs
-  onnotice: () => {}, // Suppress all notices
-  // Silent connection handling
-  onclose: () => {
-    // Silent connection close handling
-  },
-  onparameter: () => {}, // Suppress parameter notices
-  // Handle connection errors gracefully
-  transform: {
-    undefined: null,
-  },
-});
-
-// Create drizzle database instance
-export const db = drizzle(sql, { schema });
+// ダミーのデータベース関数をエクスポート
+export const db = {
+  connect: () => Promise.resolve(),
+  close: () => Promise.resolve()
+};
 
 // Add connection health check function with retry logic
 export async function checkDatabaseConnection(): Promise<boolean> {
