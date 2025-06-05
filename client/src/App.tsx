@@ -160,4 +160,3 @@ function App() {
 }
 
 export default App;
-```Reordering AuthProvider and QueryClientProvider and adjusting closing tags in App component.

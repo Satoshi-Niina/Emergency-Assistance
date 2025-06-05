@@ -580,7 +580,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setMessages(prev => {
         if (prev.length === 0) return prev;
         const lastMessage = prev[prev.length - 1];
-        // 最後のメッセージが今送信しようとしたメッセージ（IDが一時的なもの）の場合は削除
+        // 最後のメッセージが今送信しようとしたメッセージの場合は削除
         if (lastMessage && lastMessage.role === 'user' && lastMessage.content === content) {
           return prev.slice(0, -1);
         }
