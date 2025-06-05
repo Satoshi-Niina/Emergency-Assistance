@@ -1022,3 +1022,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/users', usersRouter);
   return httpServer;
 }
+
+// This function is missing from the original code, adding it here to complete it based on the intent
+async function generateResponse(text: string, model: string | null, knowledgeBaseResults: any): Promise<string> {
+    if (model === 'perplexity') {
+        const { processPerplexityRequest } = await import('./lib/perplexity');
+        const perplexityResponse = await processPerplexityRequest(text, '', knowledgeBaseResults !== undefined);
+        return perplexityResponse.content;
+    } else {
+        const { processOpenAIRequest } = await import('./lib/openai');
+        return await processOpenAIRequest(text, knowledgeBaseResults !== undefined);
+    }
+}
+
+// This function is also missing, adding it here to complete it based on the intent
+async function searchKnowledgeBase(query: string): Promise<any> {
+    // Implement your knowledge base search logic here
+    return [];
+}
