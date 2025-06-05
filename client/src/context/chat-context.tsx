@@ -438,6 +438,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         useOnlyKnowledgeBase
       });
 
+      
       const response = await apiRequest('POST', `/api/chats/${currentChatId}/messages`, { 
         content,
         useOnlyKnowledgeBase,
