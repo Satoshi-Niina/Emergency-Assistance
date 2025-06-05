@@ -134,10 +134,10 @@ export const insertChatSchema = z.object({
 
 export const insertMessageSchema = z.object({
   chatId: z.string().min(1),
-  senderId: z.string().min(1).nullable().optional(), // AIメッセージはnullを許可
+  senderId: z.string().min(1).nullable().optional(), // AIメッセージの場合はnull、ユーザーメッセージの場合は必須
   content: z.string().min(1),
   isAiResponse: z.boolean().default(false),
-  createdAt: z.date().or(z.string().transform(str => new Date(str))).optional() // createdAtを追加
+  createdAt: z.date().or(z.string().transform(str => new Date(str))).optional()
 });
 
 export const insertMediaSchema = z.object({

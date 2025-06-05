@@ -297,8 +297,11 @@ export const storage = {
     const { v4: uuidv4 } = await import('uuid');
     const id = uuidv4();
 
-    // AIメッセージの場合はsenderIdをnullに、ユーザーメッセージの場合は必須
-    const senderId = messageData.isAiResponse ? null : messageData.senderId;
+    // AIメッセージの場合はsenderIdを明示的にnullに設定
+    let senderId = null;
+    if (!messageData.isAiResponse && messageData.senderId) {
+      senderId = messageData.senderId;
+    }
 
     // createdAtを柔軟に処理（送信されている場合はそれを使用、なければ現在時刻）
     const createdAt = messageData.createdAt ? new Date(messageData.createdAt) : new Date();
@@ -306,7 +309,7 @@ export const storage = {
     const finalMessageData = {
       id,
       chatId: messageData.chatId,
-      senderId,
+      senderId, // AIメッセージの場合は明示的にnull
       content: messageData.content,
       isAiResponse: messageData.isAiResponse || false,
       createdAt
@@ -314,13 +317,20 @@ export const storage = {
 
     console.log('保存するメッセージデータ（senderId確認）:', {
       ...finalMessageData,
+      senderIdIsNull: senderId === null,
+      isAiResponse: messageData.isAiResponse,
       createdAt: finalMessageData.createdAt?.toISOString()
     });
 
-    const [savedMessage] = await db.insert(messages).values(finalMessageData).returning();
-    
-    console.log('メッセージ保存完了:', savedMessage.id);
-    return savedMessage;
+    try {
+      const [savedMessage] = await db.insert(messages).values(finalMessageData).returning();
+      console.log('メッセージ保存完了:', savedMessage.id);
+      return savedMessage;
+    } catch (error) {
+      console.error('メッセージ保存エラー詳細:', error);
+      console.error('保存しようとしたデータ:', finalMessageData);
+      throw error;
+    }
   },
 };
 
