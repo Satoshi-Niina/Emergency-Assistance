@@ -121,36 +121,35 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const BUFFER_INTERVAL = 300; // バッファリング間隔を300ミリ秒に戻す
   const SILENCE_THRESHOLD = 1000; // 無音検出時間は1秒のまま
 
-  // チャット初期化関数を簡素化
+  // チャット初期化関数を修正
   const initializeChat = useCallback(async () => {
     if (isInitializing || chatId) return chatId;
 
     setIsInitializing(true);
 
     try {
-      // ローカルストレージから復元を試行
       const savedChatId = localStorage.getItem('currentChatId');
       if (savedChatId) {
-        const parsedChatId = parseInt(savedChatId, 10);
-        if (!isNaN(parsedChatId)) {
-          setChatId(parsedChatId);
-          console.log('ローカルストレージからchatIdを復元:', parsedChatId);
-          return parsedChatId;
-        }
+        setChatId(savedChatId);
+        console.log('ローカルストレージからchatIdを復元:', savedChatId);
+        return savedChatId;
       }
 
-      // デフォルトchatId=1を使用（認証チェックは他の場所で実施）
-      setChatId(1);
-      localStorage.setItem('currentChatId', '1');
-      console.log('デフォルトchatId=1を設定');
-      return 1;
+      // サーバーに新規作成リクエスト送信
+      const response = await apiRequest('POST', '/api/chats', { title: '新規チャット' });
+      if (!response.ok) {
+        throw new Error('新規チャット作成に失敗しました');
+      }
+
+      const data = await response.json();
+      setChatId(data.id);
+      localStorage.setItem('currentChatId', data.id);
+      console.log('新規チャット作成完了:', data.id);
+      return data.id;
 
     } catch (error) {
       console.error('チャット初期化エラー:', error);
-      // エラー時もデフォルトchatId=1を使用
-      setChatId(1);
-      localStorage.setItem('currentChatId', '1');
-      return 1;
+      return null;
     } finally {
       setIsInitializing(false);
     }
