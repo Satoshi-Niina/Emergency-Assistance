@@ -136,15 +136,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Auth middleware
   const requireAuth = (req: Request, res: Response, next: Function) => {
-    console.log('認証チェック:', {
-      sessionId: req.sessionID,
-      userId: req.session?.userId,
-      hasSession: !!req.session,
-      sessionData: req.session
-    });
-    
+    // 認証チェックのログを最小化
     if (!req.session || !req.session.userId) {
-      console.log('認証失敗: セッションまたはユーザーIDが無効');
       return res.status(401).json({ 
         success: false,
         message: "Unauthorized",
@@ -207,15 +200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/auth/me", async (req, res) => {
     try {
-      console.log('認証確認リクエスト:', {
-        sessionExists: !!req.session,
-        sessionId: req.sessionID,
-        userId: req.session?.userId,
-        cookies: req.headers.cookie
-      });
-
       if (!req.session || !req.session.userId) {
-        console.log('認証失敗: セッション無効');
         return res.status(401).json({ 
           success: false,
           message: "Not authenticated",
@@ -225,10 +210,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = await storage.getUser(req.session.userId);
       if (!user) {
-        console.log('認証失敗: ユーザーが見つかりません');
         // セッションを破棄
         req.session.destroy((err) => {
-          if (err) console.error('セッション破棄エラー:', err);
+          // Silent error handling
         });
         return res.status(401).json({ 
           success: false,
@@ -237,7 +221,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      console.log('認証成功:', user.username);
       return res.json({
         success: true,
         id: user.id,
@@ -602,80 +585,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // 履歴送信のためのAPI
-  app.post("/api/chats/:id/export", requireAuth, async (req, res) => {
-    try {
-      const userId = req.session.userId!;
-      const chatId = req.params.id; // UUIDなのでstring型として扱う
-      const { lastExportTimestamp } = req.body;
-
-      const chat = await storage.getChat(chatId);
-      if (!chat) {
-        return res.status(404).json({ message: "Chat not found" });
-      }
-
-      // チャットアクセス制限を一時的に緩和
-      console.log(`チャットエクスポート: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${userId}`);
-      // if (chat.userId !== userId) {
-      //   return res.status(403).json({ message: "Forbidden" });
-      // }
-
-      // 指定されたタイムスタンプ以降のメッセージを取得
-      const messages = await storage.getMessagesForChatAfterTimestamp(
-        chatId, 
-        lastExportTimestamp ? new Date(lastExportTimestamp) : new Date(0)
-      );
-
-      // 現在のタイムスタンプを記録（次回の履歴送信で使用）
-      const exportTimestamp = new Date();
-
-      // チャットのエクスポートレコードを保存
-      await storage.saveChatExport(chatId, userId, exportTimestamp);
-
-      // メッセージが存在する場合、フォーマット済みデータも自動的に生成・保存
-      if (messages.length > 0) {
-        try {
-          // フォーマット済みデータを生成（外部システム向け）
-          const allMessages = await storage.getMessagesForChat(chatId);
-
-          // メッセージIDごとにメディアを取得
-          const messageMedia: Record<number, any[]> = {};
-          for (const message of allMessages) {
-            messageMedia[message.id] = await storage.getMediaForMessage(message.id);
-          }
-
-          // 最新のエクスポート記録を取得
-          const lastExport = await storage.getLastChatExport(chatId);
-
-          // 外部システム用にフォーマット
-          const formattedData = await formatChatHistoryForExternalSystem(
-            chat,
-            allMessages,
-            messageMedia,
-            lastExport
-          );
-
-          // ファイルとして保存
-          const { exportFileManager } = await import('./lib/export-file-manager');
-          exportFileManager.saveFormattedExport(chatId, formattedData);
-
-          console.log(`チャット ${chatId} のフォーマット済みデータを自動生成しました`);
-        } catch (formatError) {
-          console.error("フォーマット済みデータの生成中にエラーが発生しました:", formatError);
-          // フォーマット処理の失敗はメインの応答に影響しないようにするため、エラーをキャッチするだけ
-        }
-      }
-
-      res.json({ 
-        success: true, 
-        exportTimestamp,
-        messageCount: messages.length
-      });
-    } catch (error) {
-      console.error("Error exporting chat history:", error);
-      res.status(500).json({ error: "Failed to export chat history" });
-    }
-  });
+  
 
   // 外部AI分析システム向けフォーマット済みデータを取得するAPI
   app.get("/api/chats/:id/export-formatted", requireAuth, async (req, res) => {
