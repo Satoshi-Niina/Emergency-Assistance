@@ -17,10 +17,8 @@ const __dirname = path.dirname(__filename);
 // .envファイルの読み込み
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
-// 環境変数の確認（最小限のログ）
-if (!process.env.OPENAI_API_KEY) {
-  console.log("Warning: OPENAI_API_KEY not set");
-}
+// 環境変数の確認（サイレント）
+// OpenAI API key check moved to silent mode
 
 const app = express();
 app.use(express.json());
@@ -53,11 +51,9 @@ app.get('/test', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'public', 'api-test.html'));
 });
 
-// Minimal request logging
+// Silent request logging
 app.use((req, res, next) => {
-  if (req.path.startsWith('/api/')) {
-    console.log(`${req.method} ${req.path}`);
-  }
+  // Silent API request handling
   next();
 });
 
@@ -80,12 +76,11 @@ app.use((req, res, next) => {
         dbConnected = await checkDatabaseConnection();
         if (!dbConnected) {
           retryCount++;
-          console.log(`Database connection attempt ${retryCount}/${maxRetries} failed, retrying in 2 seconds...`);
+          // Silent retry
           await new Promise(resolve => setTimeout(resolve, 2000));
         }
       } catch (dbError) {
         retryCount++;
-        console.log(`Database connection attempt ${retryCount}/${maxRetries} failed:`, dbError.message);
         if (retryCount < maxRetries) {
           await new Promise(resolve => setTimeout(resolve, 2000));
         }
@@ -93,9 +88,7 @@ app.use((req, res, next) => {
     }
 
     if (!dbConnected) {
-      console.log('Warning: Could not establish database connection. Server will continue but database operations may fail.');
-    } else {
-      console.log('Database connection established successfully');
+      // Silent database connection warning
     }
 
     // Create required directories
@@ -123,7 +116,7 @@ app.use((req, res, next) => {
       }
     }, 3000);
   } catch (err) {
-    console.error('知識ベースの初期化中にエラーが発生しました:', err);
+    // Silent knowledge base initialization error
   }
 
   const server = await registerRoutes(app);
@@ -140,8 +133,7 @@ app.use((req, res, next) => {
       message = "Database connection error. Please try again.";
       // Silent handling - no console output
     } else {
-      // Only log non-database errors
-      console.error('Server error:', err.message);
+      // Silent error handling
     }
 
     res.status(status).json({ message });
@@ -171,7 +163,7 @@ app.use((req, res, next) => {
       console.error(`Port ${port} is already in use. Exiting.`);
       process.exit(1);
     } else {
-      console.error('Server error:', err);
+      // Silent server error handling
     }
   });
 })();
