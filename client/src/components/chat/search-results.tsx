@@ -200,106 +200,29 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
                     decoding="async" // 非同期デコードで表示を高速化
                     // 画像読み込みエラー時の包括的なフォールバック処理
                     onError={(e) => {
-                      // 画像読み込みエラー時の包括的なフォールバック処理
-                      try {
-                        const imgElement = e.currentTarget;
-                        const originalSrc = imgElement.src || '';
-
-                        console.log('画像読み込みエラー (', result.id || index, '):', originalSrc);
-
-                        // 空のsrcや無効なsrcの場合は早期リターン
-                        if (!originalSrc || originalSrc === window.location.href || originalSrc.endsWith('/')) {
-                          console.log('無効な画像パスのためエラー表示をスキップ');
-                          return;
-                        }
-
-                        // 1. 専用フォールバックURLが指定されている場合
-                        if (result.pngFallbackUrl && result.pngFallbackUrl.trim() !== '') {
-                          console.log('指定されたフォールバックURLを使用:', result.pngFallbackUrl);
-                          imgElement.src = fixImagePath(result.pngFallbackUrl);
-                          return;
-                        }
-
-                        // 2. 拡張子ベースのフォールバック（SVG→PNG、JPEG→PNG）
-                        if (originalSrc.includes('.svg')) {
-                          // SVGが読み込めない場合はPNGに変更
-                          console.log('SVG読み込みエラー、PNG代替に切り替え:', originalSrc, '->', originalSrc.replace(/\.svg$/, '.png'));
-                          const pngPath = originalSrc.replace(/\.svg$/, '.png');
-                          imgElement.src = pngPath;
-                          return;
-                        }
-
-                        if (originalSrc.includes('.jpeg') || originalSrc.includes('.jpg')) {
-                          // JPEGが読み込めない場合はPNGに変更
-                          console.log('JPEG読み込みエラー、PNG代替に切り替え');
-                          const pngPath = originalSrc.replace(/\.(jpeg|jpg)$/, '.png');
-                          imgElement.src = pngPath;
-                          return;
-                        }
-
-                        // 3. ファイル名を抽出して実際に存在する画像を探す
-                        // 例: engine_001.svg → mc_1745235933176_img_001.png に変更
-                        const fileName = originalSrc.split('/').pop();
-                        if (fileName) {
-                          // ファイル名から番号部分を抽出
-                          const numMatch = fileName.match(/_(\d+)\./);
-                          if (numMatch && numMatch[1]) {
-                            const imgNum = numMatch[1];
-                            console.log(`ファイル番号 ${imgNum} を持つ実在画像を検索`);
-
-                            // 実在する画像ファイルパターンで置き換え
-                            const realImagePattern = `/knowledge-base/images/mc_1745235933176_img_${imgNum}.png`;
-                            console.log('実際の画像パターンに置き換え:', realImagePattern);
-                            imgElement.src = realImagePattern;
-                            return;
-                          }
-                        }
-
-                        // 4. パスの修正を試みる（knowledge-baseパスが含まれていない場合）
-                        if (!originalSrc.includes('/knowledge-base/')) {
-                          const fileName = originalSrc.split('/').pop();
-                          if (fileName) {
-                            console.log('パス形式エラー、knowledge-baseパスに修正');
-                            imgElement.src = `/knowledge-base/images/${fileName}`;
-                            return;
-                          }
-                        }
-
-                        // 5. 既知の実在する画像を代替として使用
-                        // ファイルの存在が確認された画像のいずれかを表示
-                        console.log('既知の実在画像に置き換え');
-                        const existingImages = [
-                          '/knowledge-base/images/mc_1745235933176_img_001.png',
-                          '/knowledge-base/images/mc_1745235933176_img_003.png',
-                          '/knowledge-base/images/mc_1745235933176_img_004.png'
-                        ];
-                        // カテゴリに応じた画像を選択
-                        let selectedImage = existingImages[0]; // デフォルト
-                        if (result.title && result.title.includes('エンジン')) {
-                          selectedImage = existingImages[0];
-                        } else if (result.title && (result.title.includes('冷却') || result.title.includes('水'))) {
-                          selectedImage = existingImages[1];
-                        } else if (result.title && (result.title.includes('ブレーキ') || result.title.includes('制動'))) {
-                          selectedImage = existingImages[2];
-                        }
-                        console.log('実在画像に置き換え:', selectedImage);
-                        imgElement.src = selectedImage;
+                      // 無限ループを防ぐため、エラーフラグをチェック
+                      const imgElement = e.currentTarget;
+                      
+                      // すでにエラー処理済みの場合は何もしない
+                      if (imgElement.dataset.errorHandled === 'true') {
                         return;
-
-                        // 6. 最終手段: エラー表示用のデフォルト画像を表示
-                        console.log('フォールバック失敗、エラー表示に切り替え');
-                        imgElement.style.display = 'none'; // 画像を非表示
-
-                        // エラー表示をコンテナに追加
-                        const container = imgElement.parentElement;
-                        if (container) {
-                          const errorElement = document.createElement('div');
-                          errorElement.className = 'flex items-center justify-center h-full w-full bg-gray-100 text-gray-500';
-                          errorElement.textContent = '画像を読み込めません';
-                          container.appendChild(errorElement);
-                        }
-                      } catch (errorHandlingErr) {
-                        console.error('エラー処理中に例外が発生:', errorHandlingErr);
+                      }
+                      
+                      // エラー処理済みフラグを設定
+                      imgElement.dataset.errorHandled = 'true';
+                      
+                      console.log('画像読み込みエラー:', imgElement.src);
+                      
+                      // 画像を非表示にしてエラー表示に切り替え
+                      imgElement.style.display = 'none';
+                      
+                      // エラー表示をコンテナに追加
+                      const container = imgElement.parentElement;
+                      if (container && !container.querySelector('.error-display')) {
+                        const errorElement = document.createElement('div');
+                        errorElement.className = 'error-display flex items-center justify-center h-full w-full bg-gray-100 text-gray-500 text-sm';
+                        errorElement.textContent = '画像読み込み失敗';
+                        container.appendChild(errorElement);
                       }
                     }}
                     onLoad={(e) => {
