@@ -26,11 +26,11 @@ export const chats = pgTable('chats', {
 });
 
 // メッセージテーブルの定義
-// チャット内のメッセージを管理
+// チャット内の個別メッセージを管理
 export const messages = pgTable('messages', {
   id: text('id').primaryKey().default(sql`gen_random_uuid()`), // UUIDを自動生成
-  chatId: text("chat_id").notNull().references(() => chats.id), // 関連するチャットのID
-  senderId: text('sender_id').notNull(), // 送信者のID
+  chatId: text('chat_id').notNull().references(() => chats.id), // 関連するチャットのID
+  senderId: text('sender_id'), // 送信者のID (AIメッセージの場合はnull)
   content: text('content').notNull(), // メッセージの内容
   isAiResponse: boolean('is_ai_response').notNull().default(false), // AIの応答かどうか
   createdAt: timestamp('created_at').defaultNow().notNull() // 送信日時
@@ -133,9 +133,9 @@ export const insertChatSchema = z.object({
 });
 
 export const insertMessageSchema = z.object({
-  chatId: z.string(),
-  content: z.string(),
-  senderId: z.string(),
+  chatId: z.string().min(1),
+  senderId: z.string().min(1).nullable().optional(), // AIメッセージはnullを許可
+  content: z.string().min(1),
   isAiResponse: z.boolean().default(false)
 });
 
