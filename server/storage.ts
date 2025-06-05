@@ -70,7 +70,18 @@ export const storage = {
     return new DatabaseStorage().getMessage(id);
   },
   getMessagesForChat: async (chatId: string): Promise<Message[]> => {
-    return db.select().from(messages).where(eq(messages.chatId, chatId));
+    const result = await db.select().from(messages).where(eq(messages.chatId, chatId));
+    
+    // 不正なデータを除外
+    return result.filter(message => 
+      message.id && 
+      message.id.trim().length > 0 && 
+      message.content && 
+      message.content.trim().length > 0 &&
+      message.senderId &&
+      message.senderId.trim().length > 0 &&
+      message.createdAt
+    );
   },
   getMessagesForChatAfterTimestamp: async (chatId: string, timestamp: Date): Promise<Message[]> => {
     return db.select().from(messages).where(

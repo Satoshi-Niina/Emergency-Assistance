@@ -1119,18 +1119,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Chat routes
+  // Get messages for a chat
   app.get("/api/chats/:chatId/messages", requireAuth, async (req, res) => {
     try {
-      const chatId = req.params.chatId;
-      if (!chatId) {
-        return res.status(400).json({ message: "Invalid chat ID" });
-      }
+      const { chatId } = req.params;
+      console.log(`メッセージ取得: chatId=${chatId}, userId=${req.session.userId}`);
 
       const messages = await storage.getMessagesForChat(chatId);
-      res.json(messages);
+
+      // 不正なメッセージを除外（二重チェック）
+      const validMessages = messages.filter(message => {
+        if (!message.id || !message.content || !message.senderId || !message.createdAt) {
+          console.warn('不正なメッセージを除外:', message.id);
+          return false;
+        }
+        return true;
+      });
+
+      // Include media for each message
+      const messagesWithMedia = await Promise.all(
+        validMessages.map(async (message) => {
+          try {
+            const media = await storage.getMediaForMessage(message.id);
+            return { ...message, media };
+          } catch (error) {
+            console.warn(`メディア取得エラー (message ID: ${message.id}):`, error);
+            return { ...message, media: [] };
+          }
+        })
+      );
+
+      console.log(`メッセージ取得完了: ${messagesWithMedia.length}件`);
+      res.json(messagesWithMedia);
     } catch (error) {
       console.error("Error fetching messages:", error);
-      res.status(500).json({ message: "Internal server error" });
+      res.status(500).json({ 
+        success: false,
+        message: "メッセージの取得に失敗しました",
+        error: error.message 
+      });
     }
   });
 
