@@ -1,4 +1,3 @@
-typescript
 import { useEffect, useState } from "react";
 import { useChat } from "@/context/chat-context";
 import { useAuth } from "@/context/auth-context";
@@ -476,7 +475,7 @@ export default function Chat() {
                 {displayMessages
                   .filter((message: any) => message && message.content && message.content.trim().length > 0)
                   .map((message: any, index: number) => (
-                    <div key={`message-${message.id || `temp-${index}`}`} className="w-full md:max-w-2xl mx-auto">
+                    <div key={`message-${message.id || index}-${message.timestamp || Date.now()}`} className="w-full md:max-w-2xl mx-auto">
                       <MessageBubble message={message} />
                     </div>
                   ))}

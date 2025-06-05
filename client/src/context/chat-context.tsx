@@ -177,7 +177,10 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           })));
         }
       } catch (error) {
-        if (error && typeof error === 'object' && Object.keys(error).length > 0) {
+        // エラーが実際に意味のある内容を持つ場合のみログ出力
+        if (error && typeof error === 'object' && 'message' in error && error.message) {
+          console.error('Failed to load messages:', error.message);
+        } else if (typeof error === 'string' && error.trim().length > 0) {
           console.error('Failed to load messages:', error);
         }
       }
@@ -972,7 +975,10 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setLastExportTimestamp(new Date(data.timestamp));
       }
     } catch (error) {
-      if (error && typeof error === 'object' && Object.keys(error).length > 0) {
+      // エラーが実際に意味のある内容を持つ場合のみログ出力
+      if (error && typeof error === 'object' && 'message' in error && error.message) {
+        console.error('Failed to fetch last export:', error.message);
+      } else if (typeof error === 'string' && error.trim().length > 0) {
         console.error('Failed to fetch last export:', error);
       }
     }
