@@ -429,10 +429,11 @@ export default function Chat() {
                 {displayMessages
                   .filter((message: any) => message && message.content && message.content.trim().length > 0)
                   .map((message: any, index: number) => {
-                    // より一意性の高いキーを生成
-                    const uniqueKey = message.id 
-                      ? `msg-${message.id}-${message.role || 'unknown'}` 
-                      : `temp-${index}-${message.timestamp || Date.now()}-${message.content?.substring(0, 10) || 'empty'}`;
+                    // createdAtを安全に取得し、確実にユニークなキーを生成
+                    const messageId = message.id || `temp-${index}`;
+                    const timestamp = message.createdAt || message.timestamp || new Date();
+                    const timestampStr = timestamp instanceof Date ? timestamp.getTime() : new Date(timestamp).getTime();
+                    const uniqueKey = `msg-${messageId}-${timestampStr}-${message.isAiResponse ? 'ai' : 'user'}`;
 
                     return (
                       <div key={uniqueKey} className="w-full md:max-w-2xl mx-auto">

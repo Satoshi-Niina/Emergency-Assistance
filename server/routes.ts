@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { loginSchema, insertUserSchema, insertChatSchema, insertMessageSchema, insertMediaSchema, users, chatExports, documents, insertDocumentSchema } from "@shared/schema";
+import { loginSchema, insertUserSchema, insertChatSchema, insertMessageSchema, insertMediaSchema, insertDocumentSchema, users, chatExports, documents } from "@shared/schema";
 import { z } from "zod";
 import session from "express-session";
 import { WebSocket, WebSocketServer } from "ws";
@@ -26,12 +26,21 @@ import { emergencyFlowRouter } from './routes/emergency-flow-router';
 import { registerSyncRoutes } from './routes/sync-routes';
 import { flowGeneratorRouter } from './routes/flow-generator';
 import { usersRouter } from './routes/users';
+import { eq, asc, sql } from "drizzle-orm";
+import { messages, messageMedia } from "@shared/schema";
+import { canAccessChat, getChatUserId, saveMessage } from "./lib/db-utils";
 
 // Extend the express-session types
 declare module 'express-session' {
   interface SessionData {
     userId: number;
     userRole: string;
+  }
+}
+
+interface AuthenticatedRequest extends Request {
+  session: {
+    userId: number;
   }
 }
 

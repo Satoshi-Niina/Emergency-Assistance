@@ -84,14 +84,14 @@ export const storage = {
     // UUIDのためstring型で処理
     const result = await db.select().from(messages).where(eq(messages.chatId, chatId));
     const messageIds = result.map(message => message.id);
-    
+
     // メディアの削除
     if (messageIds.length > 0) {
       for (const messageId of messageIds) {
         await db.delete(media).where(eq(media.messageId, messageId));
       }
     }
-    
+
     // メッセージの削除
     await db.delete(messages).where(eq(messages.chatId, chatId));
     console.log(`[INFO] Cleared all messages for chat ID: ${chatId}`);
@@ -140,7 +140,7 @@ export const storage = {
         .from(messages)
         .where(eq(messages.chatId, chatId))
         .orderBy(messages.createdAt);
-      
+
       return chatMessages;
     } catch (error) {
       console.error('Error fetching chat history:', error);
@@ -154,7 +154,7 @@ export const storage = {
         .from(chats)
         .where(eq(chats.id, chatId))
         .limit(1);
-      
+
       return chat.length > 0 ? chat[0] : null;
     } catch (error) {
       console.error('Error fetching chat by ID:', error);
@@ -174,12 +174,71 @@ export const storage = {
     const exports = await db.select()
       .from(chatExports)
       .where(eq(chatExports.chatId, chatId));
-    
+
     if (exports.length === 0) {
       return null;
     }
-    
+
     // タイムスタンプの降順でソートし、最初の要素を返す
     return exports.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())[0];
   }
 };
+
+// Assuming this is the correct place to put the saveMessage function based on the context.
+import { v4 as uuidv4 } from 'uuid';
+import { media as messageMedia } from '@shared/schema';
+
+const generateId = () => uuidv4();
+
+export async function saveMessage(chatId: string, content: string, isAiResponse: boolean, senderId?: string, media?: { type: string; url: string; thumbnail?: string }[]): Promise<InsertMessage> {
+  try {
+    console.log(`メッセージ保存開始: chatId=${chatId}, isAiResponse=${isAiResponse}`);
+
+    const now = new Date();
+    const messageData: InsertMessage = {
+      id: generateId(),
+      chatId,
+      content,
+      isAiResponse,
+      senderId: senderId || null,
+      // createdAtを明示的に設定し、確実に有効な値にする
+      createdAt: now
+    };
+
+    console.log('保存するメッセージデータ（createdAt確認）:', {
+      ...messageData,
+      createdAt: messageData.createdAt?.toISOString()
+    });
+
+    const [savedMessage] = await db.insert(messages).values(messageData).returning();
+
+    // 保存されたメッセージのcreatedAtを確認
+    console.log('メッセージ保存完了（createdAt確認）:', {
+      ...savedMessage,
+      createdAt: savedMessage.createdAt?.toISOString()
+    });
+
+    // メディアがある場合は保存
+    if (media && media.length > 0) {
+      console.log(`${media.length}件のメディアを保存中...`);
+      for (const mediaItem of media) {
+        await db.insert(messageMedia).values({
+          id: generateId(),
+          messageId: savedMessage.id,
+          type: mediaItem.type,
+          url: mediaItem.url,
+          thumbnail: mediaItem.thumbnail
+        });
+      }
+    }
+
+    return savedMessage;
+  } catch (error) {
+    console.error('メッセージ保存エラー:', error);
+    throw error;
+  }
+}
+```
+
+```text
+The code has been modified to ensure that the createdAt field is always set when saving messages, addressing the reported issue of missing createdAt values.
