@@ -81,17 +81,18 @@ app.use((req, res, next) => {
       console.warn('Knowledge base initialization failed, continuing...');
     }
 
-    // Database connection check - simplified
+    // Database connection check - with graceful fallback
     try {
       const { checkDatabaseConnection } = await import('./db.js');
       const dbConnected = await checkDatabaseConnection();
       if (dbConnected) {
         console.log('Database connection verified');
       } else {
-        console.warn('Database connection failed, some features may not work');
+        console.warn('Database connection failed, continuing without DB features');
+        // サーバーは継続して起動（DB無しでも動作するように）
       }
     } catch (dbError) {
-      console.warn('Database check failed, continuing with startup');
+      console.warn('Database initialization error, continuing with limited functionality:', dbError.message);
     }
 
     // Create required directories
@@ -126,13 +127,34 @@ app.use((req, res, next) => {
   server = httpServer; // グローバル変数に保存
 
   // グローバルエラーハンドラー（必ずレスポンスを返す）
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
+    // エラーログ出力
+    console.error(`Error ${status} on ${req.method} ${req.url}:`, message);
+    if (err.stack) {
+      console.error('Stack trace:', err.stack);
+    }
+
     // 必ずレスポンスを返す（エラーでプロセスを停止させない）
     if (!res.headersSent) {
-      res.status(status).json({ message });
+      res.status(status).json({ 
+        success: false,
+        message,
+        error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+      });
+    }
+  });
+
+  // 404ハンドラー
+  app.use((req: Request, res: Response) => {
+    if (!res.headersSent) {
+      res.status(404).json({
+        success: false,
+        message: "Route not found",
+        path: req.url
+      });
     }
   });
 
@@ -148,7 +170,6 @@ app.use((req, res, next) => {
   const port = 5000;
 
   // サーバー起動
-  const port = 5000;
   httpServer.listen(port, '0.0.0.0', () => {
     console.log(`Server ready on port ${port}`);
   }).on('error', (err: NodeJS.ErrnoException) => {
@@ -163,6 +184,7 @@ app.use((req, res, next) => {
 // プロセス終了処理を安全にする
 let isShuttingDown = false;
 let server: any = null;
+let shutdownTimeout: NodeJS.Timeout | null = null;
 
 const gracefulShutdown = (signal: string) => {
   if (isShuttingDown) return;
@@ -170,13 +192,26 @@ const gracefulShutdown = (signal: string) => {
   
   console.log(`Received ${signal}, shutting down gracefully...`);
   
+  // 強制終了タイムアウトを設定（10秒）
+  shutdownTimeout = setTimeout(() => {
+    console.error('Force shutdown due to timeout');
+    process.exit(1);
+  }, 10000);
+  
   // サーバーを閉じる
   if (server) {
-    server.close(() => {
-      console.log('Server closed');
-      process.exit(0);
+    server.close((err: any) => {
+      if (shutdownTimeout) clearTimeout(shutdownTimeout);
+      if (err) {
+        console.error('Error during server shutdown:', err);
+        process.exit(1);
+      } else {
+        console.log('Server closed gracefully');
+        process.exit(0);
+      }
     });
   } else {
+    if (shutdownTimeout) clearTimeout(shutdownTimeout);
     process.exit(0);
   }
 };
@@ -185,13 +220,20 @@ const gracefulShutdown = (signal: string) => {
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-// 未捕獲例外のハンドリング - ログのみ出力してプロセスは継続
+// 未捕獲例外のハンドリング - ログ出力後に安全に終了
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error.message);
-  // プロセスを終了させない
+  console.error('Stack trace:', error.stack);
+  
+  // グレースフルシャットダウンを試行
+  if (!isShuttingDown) {
+    gracefulShutdown('uncaughtException');
+  }
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  // プロセスを終了させない
+  
+  // ログのみ出力（プロセスは継続）
+  // 重大なエラーの場合のみシャットダウンを検討
 });

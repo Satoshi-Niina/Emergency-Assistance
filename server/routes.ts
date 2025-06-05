@@ -134,18 +134,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })
   );
 
-  // Auth middleware - 無限ループを防ぐ
+  // Auth middleware - 無限ループを完全に防ぐ
   const requireAuth = (req: Request, res: Response, next: Function) => {
-    // すでに認証済みかチェック
-    if (req.session && typeof req.session.userId === 'number' && req.session.userId > 0) {
-      return next(); // 認証済みの場合は即座にnext()
+    try {
+      // セッション存在チェック
+      if (!req.session) {
+        return res.status(401).json({ 
+          success: false,
+          message: "No session"
+        });
+      }
+
+      // ユーザーID存在チェック
+      if (typeof req.session.userId !== 'number' || req.session.userId <= 0) {
+        return res.status(401).json({ 
+          success: false,
+          message: "Invalid user session"
+        });
+      }
+
+      // 認証済み - 必ずnext()を呼ぶ
+      return next();
+    } catch (error) {
+      // エラー時は必ず401を返して終了
+      return res.status(401).json({ 
+        success: false,
+        message: "Authentication error"
+      });
     }
-    
-    // 認証されていない場合
-    return res.status(401).json({ 
-      success: false,
-      message: "Unauthorized"
-    });
   };
 
   // Admin middleware - 無限ループを防ぐ
