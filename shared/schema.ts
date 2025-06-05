@@ -1,4 +1,3 @@
-
 // データベースに必要なdrizzle-ormの型とヘルパーをインポート
 import { pgTable, text, timestamp, jsonb, integer, boolean } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
@@ -30,7 +29,7 @@ export const chats = pgTable('chats', {
 // チャット内のメッセージを管理
 export const messages = pgTable('messages', {
   id: text('id').primaryKey().default(sql`gen_random_uuid()`), // UUIDを自動生成
-  chatId: text('chat_id').notNull(), // 関連するチャットのID
+  chatId: text("chat_id").notNull().references(() => chats.id), // 関連するチャットのID
   senderId: text('sender_id').notNull(), // 送信者のID
   content: text('content').notNull(), // メッセージの内容
   isAiResponse: boolean('is_ai_response').notNull().default(false), // AIの応答かどうか

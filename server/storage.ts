@@ -10,6 +10,7 @@ import {
 import session from "express-session";
 import { DatabaseStorage } from "./database-storage";
 import { db } from './db';
+import { eq, and, gt } from 'drizzle-orm';
 
 // データベース接続テスト
 const testDatabaseConnection = async () => {
@@ -46,8 +47,9 @@ export const storage = {
   },
 
   // Chat methods
-  getChat: async (id: number): Promise<Chat | undefined> => {
-    return new DatabaseStorage().getChat(id);
+  getChat: async (id: string): Promise<Chat | undefined> => {
+    const [chat] = await db.select().from(chats).where(eq(chats.id, id)).limit(1);
+    return chat;
   },
   getChatsForUser: async (userId: number): Promise<Chat[]> => {
     return new DatabaseStorage().getChatsForUser(userId);
@@ -59,19 +61,21 @@ export const storage = {
       chat.id = uuidv4();
     }
 
-    const [chat] = await db.insert(chats).values(chat).returning();
-    return chat;
+    const [newChat] = await db.insert(chats).values(chat).returning();
+    return newChat;
   },
 
   // Message methods
   getMessage: async (id: number): Promise<Message | undefined> => {
     return new DatabaseStorage().getMessage(id);
   },
-  getMessagesForChat: async (chatId: number): Promise<Message[]> => {
-    return new DatabaseStorage().getMessagesForChat(chatId);
+  getMessagesForChat: async (chatId: string): Promise<Message[]> => {
+    return db.select().from(messages).where(eq(messages.chatId, chatId)).orderBy(messages.timestamp);
   },
-  getMessagesForChatAfterTimestamp: async (chatId: number, timestamp: Date): Promise<Message[]> => {
-    return new DatabaseStorage().getMessagesForChatAfterTimestamp(chatId, timestamp);
+  getMessagesForChatAfterTimestamp: async (chatId: string, timestamp: Date): Promise<Message[]> => {
+    return db.select().from(messages).where(
+      and(eq(messages.chatId, chatId), gt(messages.timestamp, timestamp))
+    ).orderBy(messages.timestamp);
   },
   createMessage: async (message: InsertMessage): Promise<Message> => {
     return new DatabaseStorage().createMessage(message);
