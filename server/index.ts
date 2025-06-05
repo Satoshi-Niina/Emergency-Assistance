@@ -101,7 +101,8 @@ app.use((req, res, next) => {
     }
 
     if (!dbConnected) {
-      // Silent database connection warning
+      // データベース接続失敗でもサーバーは起動する
+      // Silent database warning
     }
 
     // Create required directories
@@ -134,26 +135,26 @@ app.use((req, res, next) => {
 
   const server = await registerRoutes(app);
 
+  // グローバルエラーハンドラー（必ずレスポンスを返す）
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     let message = err.message || "Internal Server Error";
 
-    // Handle specific database connection errors silently
+    // データベース接続エラーの場合
     if (err.code === '57P01' || err.message?.includes('terminating connection due to administrator command')) {
       message = "Database connection was reset. Please try again.";
-      // Silent handling - no console output
     } else if (err.code === 'ECONNRESET' || err.message?.includes('connection') || err.severity === 'FATAL') {
       message = "Database connection error. Please try again.";
-      // Silent handling - no console output
-    } else {
-      // Silent error handling
     }
 
-    res.status(status).json({ message });
+    // 必ずレスポンスを返す（エラーでプロセスを停止させない）
+    if (!res.headersSent) {
+      res.status(status).json({ message });
+    }
 
-    // Don't throw the error for database connection issues - let the app continue
-    if (err.code !== '57P01' && err.code !== 'ECONNRESET') {
-      throw err;
+    // エラーログは最小限に
+    if (status >= 500) {
+      // Silent server error handling
     }
   });
 
@@ -168,39 +169,65 @@ app.use((req, res, next) => {
 
   const port = 5000;
 
-  // Use a fixed port and handle errors properly
-  server.listen(port, '0.0.0.0', () => {
-    // Silent server start - minimal logging only
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`Server ready on port ${port}`);
-    }
-  }).on('error', (err: NodeJS.ErrnoException) => {
-    if (err.code === 'EADDRINUSE') {
-      console.error(`Port ${port} is already in use. Exiting.`);
-      process.exit(1);
-    } else {
-      // Silent server error handling
-    }
-  });
+  // ポート衝突時に再試行する
+  const startServer = (portToTry: number, retries = 3): void => {
+    server.listen(portToTry, '0.0.0.0', () => {
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`Server ready on port ${portToTry}`);
+      }
+    }).on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE' && retries > 0) {
+        // ポートが使用中の場合、少し待ってから再試行
+        setTimeout(() => {
+          startServer(portToTry, retries - 1);
+        }, 2000);
+      } else if (err.code === 'EADDRINUSE') {
+        // 再試行回数が尽きた場合は終了
+        process.exit(1);
+      } else {
+        // その他のエラーは無視してサーバー継続
+      }
+    });
+  };
+
+  startServer(port);
 })();
 
-// プロセス終了時のクリーンアップ
-process.on('SIGTERM', () => {
-  // Silent cleanup
-  process.exit(0);
-});
+// プロセス終了処理を安全にする
+let isShuttingDown = false;
 
-process.on('SIGINT', () => {
-  // Silent cleanup
-  process.exit(0);
-});
+const gracefulShutdown = (signal: string) => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  
+  // Silent graceful shutdown
+  setTimeout(() => {
+    process.exit(0);
+  }, 1000);
+};
 
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// 未捕獲例外でもプロセスを即座に終了させない
 process.on('uncaughtException', (error) => {
-  // Silent uncaught exception handling
-  process.exit(1);
+  if (!isShuttingDown) {
+    // Silent error handling - don't crash immediately
+    setTimeout(() => {
+      if (!isShuttingDown) {
+        gracefulShutdown('uncaughtException');
+      }
+    }, 500);
+  }
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  // Silent unhandled rejection handling
-  process.exit(1);
+  if (!isShuttingDown) {
+    // Silent error handling - don't crash immediately
+    setTimeout(() => {
+      if (!isShuttingDown) {
+        gracefulShutdown('unhandledRejection');
+      }
+    }, 500);
+  }
 });
