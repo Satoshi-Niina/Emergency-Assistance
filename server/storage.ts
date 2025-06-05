@@ -10,7 +10,7 @@ import {
 import session from "express-session";
 import { DatabaseStorage } from "./database-storage";
 import { db } from './db';
-import { eq, and, gt } from 'drizzle-orm';
+import { eq, and, gt, sql } from 'drizzle-orm';
 
 // データベース接続テスト
 const testDatabaseConnection = async () => {
@@ -88,7 +88,7 @@ export const storage = {
       description?: string;
     }>;
   }) {
-    // トランザクション内で実行して原子性を保証
+    // 生SQLでの実装に変更してデータベース接続問題を回避
     return await db.transaction(async (tx) => {
       try {
         console.log('メッセージ保存開始:', { chatId: message.chatId, senderId: message.senderId, hasContent: !!message.content });
@@ -115,35 +115,34 @@ export const storage = {
           throw new Error(`ユーザーID ${message.senderId} が存在しません`);
         }
 
-        // UUIDを生成
-        const messageId = generateId();
+        // 明示的にUUIDとタイムスタンプを生成
+        const id = generateId();
+        const createdAt = new Date().toISOString();
+        const chatId = message.chatId.trim();
+        const senderId = message.senderId.trim();
+        const content = message.content.trim();
+        const isAiResponse = Boolean(message.isAiResponse);
 
-        // メッセージデータの完全性を保証
-        const messageData = {
-          id: messageId,
-          chatId: message.chatId.trim(),
-          senderId: message.senderId.trim(),
-          content: message.content.trim(),
-          isAiResponse: Boolean(message.isAiResponse), // 明示的にboolean化
-          createdAt: new Date()
-        };
+        console.log('保存するメッセージデータ:', { id, chatId, senderId, content, isAiResponse, createdAt });
 
-        console.log('保存するメッセージデータ:', messageData);
+        // 生SQLでメッセージを挿入
+        const result = await tx.execute(
+          sql`INSERT INTO messages (id, chat_id, sender_id, content, is_ai_response, created_at) 
+              VALUES (${id}, ${chatId}, ${senderId}, ${content}, ${isAiResponse}, ${createdAt}) 
+              RETURNING *`
+        );
 
-        // メッセージを保存
-        const savedMessage = await tx.insert(messages).values(messageData).returning();
-
-        if (!savedMessage || savedMessage.length === 0) {
+        if (!result.rows || result.rows.length === 0) {
           throw new Error('メッセージの保存に失敗しました');
         }
 
-        console.log('メッセージ保存成功:', savedMessage[0].id);
+        const savedMessage = result.rows[0];
+        console.log('メッセージ保存成功:', savedMessage.id);
 
         // メディアがある場合の処理
         if (message.media && Array.isArray(message.media) && message.media.length > 0) {
           console.log(`${message.media.length}件のメディアを保存中...`);
           
-          const mediaDataList = [];
           for (const mediaItem of message.media) {
             // メディアアイテムの検証
             if (!mediaItem.type || !mediaItem.url || typeof mediaItem.type !== 'string' || typeof mediaItem.url !== 'string') {
@@ -151,30 +150,29 @@ export const storage = {
               continue;
             }
 
-            mediaDataList.push({
-              id: generateId(),
-              messageId: savedMessage[0].id,
-              type: mediaItem.type.trim(),
-              url: mediaItem.url.trim(),
-              description: mediaItem.description?.trim() || null,
-              createdAt: new Date()
-            });
-          }
+            const mediaId = generateId();
+            const mediaCreatedAt = new Date().toISOString();
 
-          // 全メディアを一括保存
-          if (mediaDataList.length > 0) {
-            await tx.insert(media).values(mediaDataList);
-            console.log(`メディア一括保存成功: ${mediaDataList.length}件`);
+            await tx.execute(
+              sql`INSERT INTO media (id, message_id, type, url, description, created_at) 
+                  VALUES (${mediaId}, ${savedMessage.id}, ${mediaItem.type.trim()}, ${mediaItem.url.trim()}, ${mediaItem.description?.trim() || null}, ${mediaCreatedAt})`
+            );
           }
+          console.log(`メディア保存完了: ${message.media.length}件`);
         }
 
-        // 保存されたメッセージを再取得して整合性を確認
-        const verifyMessage = await tx.select().from(messages).where(eq(messages.id, savedMessage[0].id)).limit(1);
-        if (!verifyMessage || verifyMessage.length === 0) {
-          throw new Error('保存されたメッセージの検証に失敗しました');
-        }
+        // 保存されたメッセージを再構築して返す
+        const messageResult = {
+          id: savedMessage.id,
+          chatId: savedMessage.chat_id,
+          senderId: savedMessage.sender_id,
+          content: savedMessage.content,
+          isAiResponse: savedMessage.is_ai_response,
+          createdAt: new Date(savedMessage.created_at)
+        };
 
-        return verifyMessage[0];
+        console.log('メッセージ保存完了:', messageResult.id);
+        return messageResult;
       } catch (error) {
         console.error('メッセージ保存エラー:', error);
         // トランザクションが自動的にロールバックされる
