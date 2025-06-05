@@ -318,6 +318,9 @@ export const storage = {
     });
 
     const [savedMessage] = await db.insert(messages).values(finalMessageData).returning();
+    
+    console.log('メッセージ保存完了:', savedMessage.id);
+    return savedMessage;
   },
 };
 

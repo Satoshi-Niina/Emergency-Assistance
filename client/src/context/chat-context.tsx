@@ -529,6 +529,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       const response = await apiRequest('POST', `/api/chats/${currentChatId}/messages`, { 
         content,
+        senderId: req.session?.userId, // senderIdを明示的に送信
         useOnlyKnowledgeBase,
         usePerplexity: false
       });

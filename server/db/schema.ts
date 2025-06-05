@@ -24,7 +24,7 @@ const chats = pgTable('chats', {
 const messages = pgTable('messages', {
   id: text('id').primaryKey().default(sql`gen_random_uuid()`),
   chatId: text('chat_id').notNull().references(() => chats.id),
-  senderId: text('sender_id').notNull().references(() => users.id),
+  senderId: text('sender_id').references(() => users.id),
   content: text('content').notNull(),
   isAiResponse: boolean('is_ai_response').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow().notNull()
