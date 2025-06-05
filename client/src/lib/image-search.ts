@@ -139,6 +139,7 @@ async function loadImageSearchData() {
         return {
           id: `slide_${slide['スライド番号']}`,
           file: imagePath,
+          url: imagePath, // urlプロパティも追加
           title: slideTitle,
           category: "保守用車マニュアル",
           keywords: keywords,
@@ -246,6 +247,7 @@ async function loadImageSearchData() {
             return {
               id: `img_${index+1}`,
               file: imagePath,
+              url: imagePath, // urlプロパティも追加
               title: title,
               category: category,
               keywords: keywords,
