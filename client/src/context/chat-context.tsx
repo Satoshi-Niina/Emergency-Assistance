@@ -578,9 +578,10 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       // エラー時は楽観的に追加したユーザーメッセージを削除（まだ削除されていない場合）
       setMessages(prev => {
+        if (prev.length === 0) return prev;
         const lastMessage = prev[prev.length - 1];
         // 最後のメッセージが今送信しようとしたメッセージ（IDが一時的なもの）の場合は削除
-        if (lastMessage && lastMessage.id === userMessage.id) {
+        if (lastMessage && lastMessage.role === 'user' && lastMessage.content === content) {
           return prev.slice(0, -1);
         }
         return prev;
