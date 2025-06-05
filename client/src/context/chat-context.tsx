@@ -140,14 +140,15 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return null;
       }
 
-      // 既存のchatIdがある場合は検証
+      // 既存のchatIdがある場合は存在確認
       if (chatId) {
-        const chatResponse = await apiRequest('GET', `/api/chats/${chatId}/messages`);
-        if (chatResponse.ok) {
-          console.log('既存のchatIdを使用:', chatId);
+        console.log('既存のchatIdをサーバーで確認:', chatId);
+        const chatExistsResponse = await apiRequest('GET', `/api/chats/${chatId}`);
+        if (chatExistsResponse.ok) {
+          console.log('既存のchatIdをサーバーで確認完了:', chatId);
           return chatId;
         } else {
-          console.log('既存のchatIdが無効です。新規作成します。');
+          console.log('既存のchatIdがサーバーに存在しません。新規作成します。');
           localStorage.removeItem('currentChatId');
           setChatId(null);
         }
@@ -156,13 +157,14 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // ローカルストレージから復元を試行
       const savedChatId = localStorage.getItem('currentChatId');
       if (savedChatId) {
-        const chatResponse = await apiRequest('GET', `/api/chats/${savedChatId}/messages`);
-        if (chatResponse.ok) {
+        console.log('ローカルストレージのchatIdをサーバーで確認:', savedChatId);
+        const chatExistsResponse = await apiRequest('GET', `/api/chats/${savedChatId}`);
+        if (chatExistsResponse.ok) {
           setChatId(savedChatId);
-          console.log('ローカルストレージからchatIdを復元:', savedChatId);
+          console.log('ローカルストレージからchatIdを復元完了:', savedChatId);
           return savedChatId;
         } else {
-          console.log('保存されたchatIdが無効です。');
+          console.log('保存されたchatIdがサーバーに存在しません。削除して新規作成します。');
           localStorage.removeItem('currentChatId');
         }
       }
@@ -189,9 +191,27 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('新規チャット作成完了:', data.id);
       
       // 作成されたチャットが実際に存在するか確認
-      const verifyResponse = await apiRequest('GET', `/api/chats/${data.id}/messages`);
+      let retryCount = 0;
+      const maxRetries = 3;
+      let verifyResponse;
+      
+      do {
+        verifyResponse = await apiRequest('GET', `/api/chats/${data.id}`);
+        if (verifyResponse.ok) {
+          console.log('新規作成されたチャットの存在確認完了:', data.id);
+          break;
+        } else {
+          retryCount++;
+          console.warn(`チャット存在確認失敗 (${retryCount}/${maxRetries}):`, data.id);
+          if (retryCount < maxRetries) {
+            // 短時間待機してリトライ
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
+        }
+      } while (retryCount < maxRetries);
+      
       if (!verifyResponse.ok) {
-        console.warn('作成されたチャットの確認に失敗しました');
+        throw new Error('作成されたチャットの確認に失敗しました');
       }
       
       return data.id;
