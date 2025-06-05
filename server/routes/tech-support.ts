@@ -558,91 +558,47 @@ router.post('/clear-cache', (req, res) => {
   }
 });
 
-/**
- * JSON ファイル一覧を取得するエンドポイント
- * 最新のJSONファイルを優先的に取得
- */
+// JSONファイル一覧を取得するAPI
 router.get('/list-json-files', (req, res) => {
   try {
-    console.log('JSONファイル一覧取得リクエストを受信...');
+    const jsonDir = path.join(process.cwd(), 'knowledge-base', 'json');
 
-    // ファイルは知識ベースディレクトリに一元化
-    const jsonDirs = [
-      path.join(process.cwd(), 'knowledge-base', 'json')  // メインの場所
-    ];
-
-    let allJsonFiles: string[] = [];
-
-    // 問題が発生しているファイルのブラックリスト
-    const blacklistedFiles = [
-      'guide_1744876404679_metadata.json', // 問題が発生しているファイル
-      'guide_metadata.json'  // 別の問題が報告されているファイル
-    ];
-    console.log(`ブラックリストファイル: ${blacklistedFiles.join(', ')}`);
-
-    // 各ディレクトリからメタデータJSONファイルを収集
-    for (const jsonDir of jsonDirs) {
-      if (fs.existsSync(jsonDir)) {
-        // ディレクトリの内容を確認し、すべてのファイルをログ出力
-        const allFiles = fs.readdirSync(jsonDir);
-        console.log(`${jsonDir}内のすべてのファイル:`, allFiles);
-
-        // 実在するJSONファイルのみフィルタリング
-        const files = allFiles
-          .filter(file => file.endsWith('_metadata.json'))
-          .filter(file => {
-            // ブラックリストにあるファイルを除外
-            if (blacklistedFiles.includes(file)) {
-              console.log(`ブラックリストのため除外: ${file}`);
-              return false;
-            }
-
-            // 実際にファイルが存在するか確認
-            const filePath = path.join(jsonDir, file);
-            const exists = fs.existsSync(filePath);
-            if (!exists) {
-              console.log(`ファイルが実際には存在しないため除外: ${filePath}`);
-              return false;
-            }
-
-            return true;
-          });
-
-        console.log(`${jsonDir}内の有効なメタデータファイル: ${files.length}件`);
-        allJsonFiles = [...allJsonFiles, ...files];
-      } else {
-        // ディレクトリが存在しない場合は作成
-        fs.mkdirSync(jsonDir, { recursive: true });
-        console.log(`ディレクトリを作成しました: ${jsonDir}`);
-      }
+    if (!fs.existsSync(jsonDir)) {
+      return res.json([]);
     }
 
-    // 重複を排除して一意のファイル名リストにする
-    const uniqueJsonFiles = Array.from(new Set(allJsonFiles));
-    console.log(`重複除外後のファイル数: ${uniqueJsonFiles.length}件`);
+    // ブラックリストファイル
+    const blacklistFiles = ['guide_1744876404679_metadata.json', 'guide_metadata.json'];
 
-    // タイムスタンプでソート（新しい順）
-    const sortedFiles = uniqueJsonFiles.sort((a, b) => {
-      // ファイル名からタイムスタンプを抽出: mc_1744105287121_metadata.json -> 1744105287121
-      const timestampA = a.split('_')[1] || '0';
-      const timestampB = b.split('_')[1] || '0';
-      return parseInt(timestampB) - parseInt(timestampA);
-    });
+    // ディレクトリ内のすべてのJSONファイルを取得
+    const allFiles = fs.readdirSync(jsonDir).filter(file => 
+      file.endsWith('.json') && 
+      file.includes('metadata') &&
+      !blacklistFiles.includes(file)
+    );
 
-    // 応答ヘッダーを設定して、キャッシュを無効化
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    res.setHeader('Surrogate-Control', 'no-store');
+    // 重複を除去（Set を使用）
+    const uniqueFiles = [...new Set(allFiles)];
 
-    // ファイル一覧をJSONで返す
-    return res.json(sortedFiles);
+    // ファイルの詳細情報を取得
+    const fileDetails = uniqueFiles.map(filename => {
+      const fullPath = path.join(jsonDir, filename);
+      try {
+        const stats = fs.statSync(fullPath);
+        return {
+          filename,
+          fullPath,
+          size: stats.size,
+          lastModified: stats.mtime
+        };
+      } catch (error) {
+        return null;
+      }
+    }).filter(file => file !== null);
+
+    res.json(fileDetails);
   } catch (error) {
-    console.error('JSONファイル一覧取得エラー:', error);
-    return res.status(500).json({
-      error: 'JSONファイル一覧の取得に失敗しました',
-      details: error instanceof Error ? error.message : String(error)
-    });
+    res.status(500).json({ error: 'JSONファイル一覧の取得に失敗しました' });
   }
 });
 
