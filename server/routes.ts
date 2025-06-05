@@ -123,9 +123,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       secret: process.env.SESSION_SECRET || "emergency-recovery-secret",
       resave: false,
       saveUninitialized: false,
+      rolling: true, // セッションの有効期限を延長
       cookie: { 
         secure: false, // Set to false for development in Replit
-        maxAge: 86400000 // 24 hours
+        httpOnly: true, // XSS対策
+        maxAge: 86400000, // 24 hours
+        sameSite: 'lax' // CSRF対策
       },
       store: storage.sessionStore,
     })
@@ -133,8 +136,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Auth middleware
   const requireAuth = (req: Request, res: Response, next: Function) => {
-    if (!req.session.userId) {
-      return res.status(401).json({ message: "Unauthorized" });
+    console.log('認証チェック:', {
+      sessionId: req.sessionID,
+      userId: req.session?.userId,
+      hasSession: !!req.session,
+      sessionData: req.session
+    });
+    
+    if (!req.session || !req.session.userId) {
+      console.log('認証失敗: セッションまたはユーザーIDが無効');
+      return res.status(401).json({ 
+        success: false,
+        message: "Unauthorized",
+        error: "セッションが無効です。再度ログインしてください。"
+      });
     }
     next();
   };
@@ -190,18 +205,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  app.get("/api/auth/me", requireAuth, async (req, res) => {
+  app.get("/api/auth/me", async (req, res) => {
     try {
-      if (!req.session.userId) {
-        return res.status(401).json({ message: "Not authenticated" });
+      console.log('認証確認リクエスト:', {
+        sessionExists: !!req.session,
+        sessionId: req.sessionID,
+        userId: req.session?.userId,
+        cookies: req.headers.cookie
+      });
+
+      if (!req.session || !req.session.userId) {
+        console.log('認証失敗: セッション無効');
+        return res.status(401).json({ 
+          success: false,
+          message: "Not authenticated",
+          error: "セッションが無効です"
+        });
       }
 
       const user = await storage.getUser(req.session.userId);
       if (!user) {
-        return res.status(401).json({ message: "User not found" });
+        console.log('認証失敗: ユーザーが見つかりません');
+        // セッションを破棄
+        req.session.destroy((err) => {
+          if (err) console.error('セッション破棄エラー:', err);
+        });
+        return res.status(401).json({ 
+          success: false,
+          message: "User not found",
+          error: "ユーザーが見つかりません"
+        });
       }
 
+      console.log('認証成功:', user.username);
       return res.json({
+        success: true,
         id: user.id,
         username: user.username,
         displayName: user.displayName,
@@ -210,7 +248,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error in /api/auth/me:", error);
-      return res.status(500).json({ message: "Internal server error" });
+      return res.status(500).json({ 
+        success: false,
+        message: "Internal server error",
+        error: error.message
+      });
     }
   });
 
