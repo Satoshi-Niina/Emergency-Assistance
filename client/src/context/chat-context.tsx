@@ -179,9 +179,21 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       const data = await response.json();
+      
+      if (!data || !data.id) {
+        throw new Error('チャット作成のレスポンスが無効です');
+      }
+      
       setChatId(data.id);
       localStorage.setItem('currentChatId', data.id);
       console.log('新規チャット作成完了:', data.id);
+      
+      // 作成されたチャットが実際に存在するか確認
+      const verifyResponse = await apiRequest('GET', `/api/chats/${data.id}/messages`);
+      if (!verifyResponse.ok) {
+        console.warn('作成されたチャットの確認に失敗しました');
+      }
+      
       return data.id;
 
     } catch (error) {
@@ -524,11 +536,60 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           localStorage.removeItem('currentChatId');
           setChatId(null);
           
+          // エラー時は楽観的に追加したユーザーメッセージを削除
+          setMessages(prev => prev.slice(0, -1));
+          
           // 新しいチャットで再試行
           const newChatId = await initializeChat();
           if (newChatId) {
-            // 再帰的に送信を試行
-            return sendMessage(content, mediaUrls);
+            currentChatId = newChatId;
+            console.log('新しいチャットで再試行:', currentChatId);
+            
+            // 新しいチャットIDで再度APIリクエスト
+            const retryResponse = await apiRequest('POST', `/api/chats/${currentChatId}/messages`, { 
+              content,
+              useOnlyKnowledgeBase,
+              usePerplexity: false
+            });
+            
+            if (!retryResponse.ok) {
+              const retryErrorText = await retryResponse.text();
+              console.error('再試行でもAPIエラー:', retryErrorText);
+              throw new Error(`メッセージの送信に失敗しました: ${retryResponse.status} ${retryErrorText}`);
+            }
+            
+            const retryData = await retryResponse.json();
+            
+            // 再試行成功時のレスポンス処理
+            if (!retryData || !retryData.userMessage || !retryData.aiMessage) {
+              throw new Error('サーバーから無効なレスポンスを受信しました');
+            }
+            
+            // 再試行でメッセージを表示
+            setMessages(prev => [
+              ...prev,
+              {
+                ...retryData.userMessage,
+                timestamp: new Date(retryData.userMessage.timestamp),
+                media: allMedia.length > 0 ? allMedia.map((media, idx) => ({
+                  id: Date.now() + idx,
+                  messageId: retryData.userMessage.id,
+                  ...media
+                })) : []
+              },
+              {
+                ...retryData.aiMessage,
+                timestamp: new Date(retryData.aiMessage.timestamp)
+              }
+            ]);
+            
+            setTempMedia([]);
+            setRecordedText('');
+            searchBySelectedText(content);
+            console.log('再試行でメッセージ送信完了');
+            return;
+          } else {
+            throw new Error('新しいチャットの作成に失敗しました');
           }
         }
 
