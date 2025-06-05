@@ -153,7 +153,7 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
       <div className="flex flex-col gap-4">
         {results.map((result, index) => (
           <div 
-            key={`search-result-${result.id || index}`}
+            key={`search-result-${result.id || index}-${result.url || index}`}
             className="thumbnail-item rounded-lg overflow-hidden bg-transparent shadow-sm w-full hover:bg-blue-50 transition-colors"
             onClick={() => {
               // イメージプレビューモーダルを表示
