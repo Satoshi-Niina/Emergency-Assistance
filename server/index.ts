@@ -141,7 +141,7 @@ app.use((req, res, next) => {
       // Silent handling - no console output
     } else {
       // Only log non-database errors
-      console.error('Server error:', err.message);e);
+      console.error('Server error:', err.message);
     }
 
     res.status(status).json({ message });
