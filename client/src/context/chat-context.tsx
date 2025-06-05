@@ -175,7 +175,13 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
 
       if (!response.ok) {
-        throw new Error('チャット作成に失敗しました');
+        // 認証エラーの場合はログイン画面にリダイレクト
+        if (response.status === 401 || response.status === 403) {
+          console.log('認証エラーが発生しました。ログイン画面にリダイレクトします。');
+          window.location.href = '/login';
+          return;
+        }
+        throw new Error(`チャット作成に失敗しました: ${response.status}`);
       }
 
       const newChat = await response.json();
@@ -498,11 +504,19 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('APIレスポンス:', response.status, response.statusText);
 
       if (!response.ok) {
+        // 認証エラーの場合はログイン画面にリダイレクト
+        if (response.status === 401 || response.status === 403) {
+          console.log('認証エラーが発生しました。ログイン画面にリダイレクトします。');
+          window.location.href = '/login';
+          return;
+        }
+        
         // 404エラーの場合はchatIdをクリア
         if (response.status === 404) {
           localStorage.removeItem('currentChatId');
           setChatId(null);
         }
+        
         const errorText = await response.text();
         console.error('APIエラー詳細:', errorText);
 
@@ -576,12 +590,12 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
       console.error('メッセージ送信エラー詳細:', error);
       
-      // エラー時は楽観的に追加したユーザーメッセージを削除（まだ削除されていない場合）
+      // エラー時は楽観的に追加したユーザーメッセージを削除
       setMessages(prev => {
         if (prev.length === 0) return prev;
         const lastMessage = prev[prev.length - 1];
         // 最後のメッセージが今送信しようとしたメッセージの場合は削除
-        if (lastMessage && lastMessage.role === 'user' && lastMessage.content === content) {
+        if (lastMessage && lastMessage.role === 'user' && lastMessage.content === content && lastMessage.id === userMessage.id) {
           return prev.slice(0, -1);
         }
         return prev;

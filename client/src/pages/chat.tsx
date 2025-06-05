@@ -423,7 +423,7 @@ export default function Chat() {
                 {displayMessages
                   .filter((message: any) => message && message.content && message.content.trim().length > 0)
                   .map((message: any, index: number) => (
-                    <div key={`message-${message.id || `temp-${index}`}-${message.timestamp || Date.now()}-${index}`} className="w-full md:max-w-2xl mx-auto">
+                    <div key={`message-${message.id || index}-${index}`} className="w-full md:max-w-2xl mx-auto">
                       <MessageBubble message={message} />
                     </div>
                   ))}
