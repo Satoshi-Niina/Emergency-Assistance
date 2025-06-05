@@ -937,7 +937,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const response = await apiRequest('GET', `/api/chats/${chatId}/last-export`);
       const data = await response.json();
 
-      if (data.timestamp) {
+            if (data.timestamp) {
         setLastExportTimestamp(new Date(data.timestamp));
       }
     } catch (error) {

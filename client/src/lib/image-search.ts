@@ -460,6 +460,9 @@ let lastSearchText = '';
 let lastSearchResults: any[] = [];
 // 検索中フラグ（同時に複数の検索が走らないようにするため）
 let isSearching = false;
+// エラー発生時のクールダウン時間（ミリ秒）
+let lastErrorTime = 0;
+const ERROR_COOLDOWN = 5000; // 5秒間のクールダウン
 
 /**
  * 検索処理を強制的にキャンセルする関数
@@ -478,6 +481,28 @@ export const cancelSearch = (): void => {
  */
 export const searchByText = async (text: string, autoStopAfterResults: boolean = true): Promise<any[]> => {
   try {
+    // 検索中の場合は処理をスキップ
+    if (isSearching) {
+      console.log('画像検索が実行中のため、リクエストをスキップします');
+      return lastSearchResults;
+    }
+    
+    // エラークールダウン中の場合はスキップ
+    const currentTime = Date.now();
+    if (currentTime - lastErrorTime < ERROR_COOLDOWN) {
+      console.log('エラークールダウン中のため、画像検索をスキップします');
+      return [];
+    }
+    
+    // 同じテキストでの連続検索を防止
+    if (text === lastSearchText && lastSearchResults.length > 0) {
+      console.log('同じテキストでの連続検索を防止:', text);
+      return lastSearchResults;
+    }
+    
+    isSearching = true;
+    lastSearchText = text;
+    
     console.log('画像検索開始:', text);
     
     // 最初にデータが存在することを確認
@@ -550,9 +575,13 @@ export const searchByText = async (text: string, autoStopAfterResults: boolean =
     }
     
     console.log(`検索結果: ${searchResults.length}件見つかりました`);
+    lastSearchResults = searchResults;
     return searchResults;
   } catch (error) {
     console.error('画像検索エラー:', error);
-    throw new Error('画像検索に失敗しました');
+    lastErrorTime = Date.now(); // エラー時刻を記録
+    return []; // エラー時は空の配列を返す
+  } finally {
+    isSearching = false; // 検索終了フラグをリセット
   }
 };
