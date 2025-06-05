@@ -63,7 +63,11 @@ app.use((req, res, next) => {
   try {
     // Initialize application
     app.locals.storage = storage;
-    initializeKnowledgeBase();
+    try {
+      initializeKnowledgeBase();
+    } catch (initError) {
+      // Silent initialization
+    }
 
     // Test database connection with retry logic
     let dbConnected = false;
@@ -157,7 +161,10 @@ app.use((req, res, next) => {
 
   // Use a fixed port and handle errors properly
   server.listen(port, '0.0.0.0', () => {
-    console.log(`Server running on port ${port}`);
+    // Silent server start - minimal logging only
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`Server ready on port ${port}`);
+    }
   }).on('error', (err: NodeJS.ErrnoException) => {
     if (err.code === 'EADDRINUSE') {
       console.error(`Port ${port} is already in use. Exiting.`);
