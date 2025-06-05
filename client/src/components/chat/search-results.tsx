@@ -202,20 +202,20 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
                     onError={(e) => {
                       // 無限ループを防ぐため、エラーフラグをチェック
                       const imgElement = e.currentTarget;
-                      
+
                       // すでにエラー処理済みの場合は何もしない
                       if (imgElement.dataset.errorHandled === 'true') {
                         return;
                       }
-                      
+
                       // エラー処理済みフラグを設定
                       imgElement.dataset.errorHandled = 'true';
-                      
+
                       console.log('画像読み込みエラー:', imgElement.src);
-                      
+
                       // 画像を非表示にしてエラー表示に切り替え
                       imgElement.style.display = 'none';
-                      
+
                       // エラー表示をコンテナに追加
                       const container = imgElement.parentElement;
                       if (container && !container.querySelector('.error-display')) {
