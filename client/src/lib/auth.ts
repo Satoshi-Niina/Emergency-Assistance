@@ -1,6 +1,8 @@
 import { apiRequest } from './queryClient';
 import { LoginCredentials } from '@shared/schema';
 
+const API_BASE_URL = 'http://localhost:5000/api';
+
 /**
  * Login a user with the provided credentials
  * @param credentials The login credentials
@@ -41,14 +43,14 @@ export const getCurrentUser = async () => {
     const response = await fetch('/api/auth/me', {
       credentials: 'include'
     });
-    
+
     if (!response.ok) {
       if (response.status === 401) {
         return null;
       }
       throw new Error('Failed to get current user');
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('Get current user error:', error);

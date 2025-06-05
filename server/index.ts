@@ -118,18 +118,15 @@ app.use((req, res, next) => {
 
   const port = 5000;
 
-  const startServer = (portToUse: number) => {
-    server.listen(portToUse, '0.0.0.0', () => {
-      console.log(`Server running on port ${portToUse}`);
-    }).on('error', (err: NodeJS.ErrnoException) => {
-      if (err.code === 'EADDRINUSE') {
-        console.log(`Port ${portToUse} in use, trying ${portToUse + 1}`);
-        startServer(portToUse + 1);
-      } else {
-        console.error('Server error:', err);
-      }
-    });
-  };
-
-  startServer(port);
+  // Use a fixed port and handle errors properly
+  server.listen(port, '0.0.0.0', () => {
+    console.log(`Server running on port ${port}`);
+  }).on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`Port ${port} is already in use. Exiting.`);
+      process.exit(1);
+    } else {
+      console.error('Server error:', err);
+    }
+  });
 })();
