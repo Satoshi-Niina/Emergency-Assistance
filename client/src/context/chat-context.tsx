@@ -177,7 +177,9 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           })));
         }
       } catch (error) {
-        console.error('Failed to load messages:', error);
+        if (error && typeof error === 'object' && Object.keys(error).length > 0) {
+          console.error('Failed to load messages:', error);
+        }
       }
     };
 
@@ -357,7 +359,9 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         })));
       }
     } catch (error) {
-      console.error('検索エラー詳細:', error);
+      if (error && typeof error === 'object' && Object.keys(error).length > 0) {
+        console.error('検索エラー詳細:', error);
+      }
       toast({
         title: '検索エラー',
         description: `画像の検索に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -437,7 +441,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         useOnlyKnowledgeBase
       });
 
-      
+
       const response = await apiRequest('POST', `/api/chats/${currentChatId}/messages`, { 
         content,
         useOnlyKnowledgeBase,
@@ -540,7 +544,9 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       console.log('メッセージ送信完了');
     } catch (error) {
-      console.error('メッセージ送信エラー詳細:', error);
+      if (error && typeof error === 'object' && Object.keys(error).length > 0) {
+        console.error('メッセージ送信エラー詳細:', error);
+      }
 
       // エラー時は楽観的に追加したユーザーメッセージを削除
       setMessages(prev => {
@@ -749,7 +755,9 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       return data;
     } catch (error) {
-      console.error('エクスポートエラー:', error);
+      if (error && typeof error === 'object' && Object.keys(error).length > 0) {
+        console.error('エクスポートエラー:', error);
+      }
       toast({
         title: 'エクスポートエラー',
         description: 'チャット履歴のエクスポートに失敗しました。',
@@ -774,7 +782,9 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       return await response.json();
     } catch (error) {
-      console.error('フォーマット済みデータの取得エラー:', error);
+      if (error && typeof error === 'object' && Object.keys(error).length > 0) {
+        console.error('フォーマット済みデータの取得エラー:', error);
+      }
       return {};
     }
   }, [chatId]);
@@ -860,7 +870,9 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw apiError; // 上位のエラーハンドラーに再スロー
       }
     } catch (error) {
-      console.error('緊急ガイド送信エラー:', error);
+      if (error && typeof error === 'object' && Object.keys(error).length > 0) {
+        console.error('緊急ガイド送信エラー:', error);
+      }
       toast({
         title: '緊急ガイド送信エラー',
         description: '応急処置ガイドの送信に失敗しました。ログインしているか確認してください。',
@@ -937,7 +949,9 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         variant: 'destructive',
       });
     } catch (error) {
-      console.error('チャット履歴削除エラー:', error);
+      if (error && typeof error === 'object' && Object.keys(error).length > 0) {
+        console.error('チャット履歴削除エラー:', error);
+      }
       toast({
         title: 'チャット履歴削除エラー',
         description: 'チャット履歴の削除に失敗しました。ローカルの状態はクリアされました。',
@@ -958,7 +972,9 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setLastExportTimestamp(new Date(data.timestamp));
       }
     } catch (error) {
-      console.error('Failed to fetch last export:', error);
+      if (error && typeof error === 'object' && Object.keys(error).length > 0) {
+        console.error('Failed to fetch last export:', error);
+      }
     }
   }, [chatId]);
 
