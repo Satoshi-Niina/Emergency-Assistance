@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Send, AlertTriangle, Loader2, Trash2, Heart } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useLocation } from "wouter";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";```typescript
 import { useOrientation } from "@/hooks/use-orientation";
 
 export default function Chat() {
@@ -480,7 +480,7 @@ export default function Chat() {
                     const uniqueKey = message.id 
                       ? `msg-${message.id}-${message.role || 'unknown'}` 
                       : `temp-${index}-${message.timestamp || Date.now()}-${message.content?.substring(0, 10) || 'empty'}`;
-                    
+
                     return (
                       <div key={uniqueKey} className="w-full md:max-w-2xl mx-auto">
                         <MessageBubble message={message} />

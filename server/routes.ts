@@ -1139,6 +1139,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Internal server error" });
     }
   });
+
+  // Chat routes
+  app.post('/api/chats', requireAuth, async (req, res) => {
+    try {
+      const { title } = req.body;
+      const userId = req.session.userId!;
+
+      const { v4: uuidv4 } = await import('uuid');
+      const newChatId = uuidv4();
+
+      const chatData = insertChatSchema.parse({
+        id: newChatId,
+        title: title || `Chat ${new Date().toISOString()}`,
+        userId: userId // ✅ UUIDは文字列のまま使用
+      });
+
+      const chat = await storage.createChat(chatData);
+      return res.json(chat);
+    } catch (error) {
+      console.error('Error creating chat:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  app.get('/api/chats/:id/messages', requireAuth, async (req, res) => {
+    try {
+      const chatId = req.params.id; // ✅ UUIDは文字列のまま使用
+
+      const chatMessages = await storage.getMessagesForChat(chatId);
+
+      res.json(chatMessages);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/chats/:id/messages', requireAuth, async (req, res) => {
+    try {
+      const chatId = req.params.id; // ✅ UUIDは文字列のまま使用
+      const { content, isAiResponse } = req.body;
+      const senderId = req.session.userId!; // ✅ UUIDは文字列のまま使用
+
+      const messageData = insertMessageSchema.parse({
+        chatId: chatId,
+        content: content,
+        senderId: senderId,
+        isAiResponse: isAiResponse || false
+      });
+
+      const message = await storage.createMessage(messageData);
+
+      return res.json(message);
+    } catch (error) {
+      console.error('Error creating message:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  app.delete('/api/chats/:id', requireAuth, async (req, res) => {
+    try {
+      const chatId = req.params.id; // ✅ UUIDは文字列のまま使用
+
+      await storage.deleteChat(chatId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting chat:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
   app.use('/api/troubleshooting', troubleshootingRouter);
   app.use('/api/users', usersRouter);
 
