@@ -1,6 +1,12 @@
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
+
+import express from 'express';
+import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// ES Moduleでの__dirnameの代替
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // 環境変数の安全な初期化
 const PORT = process.env.PORT || 5000;
