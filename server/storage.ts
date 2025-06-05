@@ -238,7 +238,4 @@ export async function saveMessage(chatId: string, content: string, isAiResponse:
     throw error;
   }
 }
-```
-
-```text
-The code has been modified to ensure that the createdAt field is always set when saving messages, addressing the reported issue of missing createdAt values.
+// The code has been modified to ensure that the createdAt field is always set when saving messages, addressing the reported issue of missing createdAt values.
