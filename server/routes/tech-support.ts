@@ -402,6 +402,60 @@ const upload = multer({
 const router = express.Router();
 
 /**
+ * 画像検索エンドポイント
+ * フロントエンドからの画像検索リクエストを処理
+ */
+router.post('/search-image', (req, res) => {
+  try {
+    const { query } = req.body;
+    
+    if (!query) {
+      return res.status(400).json({ 
+        images: [],
+        error: 'クエリが指定されていません' 
+      });
+    }
+
+    console.log(`画像検索リクエスト: "${query}"`);
+
+    // 画像検索データの読み込み
+    const imageSearchDataPath = path.join(process.cwd(), 'knowledge-base', 'data', 'image_search_data.json');
+    
+    if (!fs.existsSync(imageSearchDataPath)) {
+      console.log('画像検索データが見つかりません');
+      return res.json({ images: [] });
+    }
+
+    const imageSearchData = JSON.parse(fs.readFileSync(imageSearchDataPath, 'utf8'));
+    
+    // クエリに基づいて画像を検索
+    const results = imageSearchData.filter((item: any) => {
+      const searchableText = `${item.title} ${item.description} ${item.keywords.join(' ')} ${item.category}`.toLowerCase();
+      return searchableText.includes(query.toLowerCase());
+    });
+
+    console.log(`検索結果: ${results.length}件`);
+
+    // 統一されたレスポンス形式で返す
+    return res.json({
+      images: results.map((item: any) => ({
+        url: item.file,
+        title: item.title,
+        description: item.description,
+        category: item.category,
+        keywords: item.keywords
+      }))
+    });
+  } catch (error) {
+    console.error('画像検索エラー:', error);
+    return res.status(500).json({
+      images: [],
+      error: '画像検索中にエラーが発生しました'
+    });
+  }
+});
+
+/**
  * キャッシュをクリアするエンドポイント
  * 削除操作後にクライアントがこれを呼び出すことで、最新情報を確実に取得
  */

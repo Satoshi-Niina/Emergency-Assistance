@@ -53,7 +53,14 @@ export const storage = {
     return new DatabaseStorage().getChatsForUser(userId);
   },
   createChat: async (chat: InsertChat): Promise<Chat> => {
-    return new DatabaseStorage().createChat(chat);
+    // UUIDが指定されていない場合は生成
+    if (!chat.id) {
+      const { v4: uuidv4 } = await import('uuid');
+      chat.id = uuidv4();
+    }
+
+    const [chat] = await db.insert(chats).values(chat).returning();
+    return chat;
   },
 
   // Message methods

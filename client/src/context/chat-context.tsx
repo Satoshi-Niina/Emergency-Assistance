@@ -132,7 +132,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         const authResponse = await apiRequest('GET', '/api/auth/me');
         console.log('認証レスポンス:', authResponse.status, authResponse.statusText);
-        
+
         if (!authResponse.ok) {
           console.log('ユーザーは未認証です');
           // 認証エラーの場合は、ログインページにリダイレクトせずにデフォルトのチャットIDを使用
@@ -171,7 +171,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return defaultChatId;
     } catch (error) {
       console.error('チャット初期化エラー詳細:', error);
-      
+
       // エラーが発生してもデフォルトのチャットIDを使用
       const defaultChatId = '1';
       console.log('エラー時のフォールバック、デフォルトチャットIDを使用:', defaultChatId);
@@ -422,10 +422,10 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // メッセージ送信関数
   const sendMessage = useCallback(async (content: string, mediaUrls?: { type: string, url: string, thumbnail?: string }[]) => {
     let currentChatId = chatId;
-    
+
     try {
       console.log('メッセージ送信開始:', content);
-      
+
       if (!currentChatId) {
         console.log('チャットIDが無いため初期化します');
         const newChatId = await initializeChat();
@@ -485,7 +485,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
         const errorText = await response.text();
         console.error('APIエラー詳細:', errorText);
-        
+
         // エラー時はダミーのAIレスポンスを表示
         const errorMessage = {
           id: Date.now() + 1,
@@ -493,14 +493,14 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           role: 'assistant' as const,
           timestamp: new Date()
         };
-        
+
         setMessages(prev => [...prev, errorMessage]);
         throw new Error(`メッセージの送信に失敗しました: ${response.status} ${errorText}`);
       }
 
       const data = await response.json();
       console.log('受信データ:', data);
-      
+
       // APIレスポンスの形式チェック
       if (!data.userMessage || !data.aiMessage) {
         console.error('APIレスポンス形式エラー:', data);
@@ -520,19 +520,19 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             ...media
           })) : []
         };
-        
+
         newMessages.push({
           ...data.aiMessage,
           timestamp: new Date(data.aiMessage.timestamp)
         });
-        
+
         return newMessages;
       });
 
       setTempMedia([]);
       setRecordedText('');
       searchBySelectedText(content);
-      
+
       console.log('メッセージ送信完了');
     } catch (error) {
       console.error('メッセージ送信エラー詳細:', error);
