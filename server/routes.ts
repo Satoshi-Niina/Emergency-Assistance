@@ -1023,6 +1023,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   app.use('/api/troubleshooting', troubleshootingRouter);
   app.use('/api/users', usersRouter);
+
+  // 静的ファイルの配信
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+  app.use('/knowledge-base', express.static(path.join(process.cwd(), 'knowledge-base')));
+
+  // 画像ファイル専用の静的配信ルート
+  app.use('/knowledge-base/images', express.static(path.join(process.cwd(), 'knowledge-base', 'images'), {
+    setHeaders: (res, path) => {
+      // 画像ファイルのキャッシュ設定
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    }
+  }));
   return httpServer;
 }
 
