@@ -66,16 +66,16 @@ export const storage = {
   },
 
   // Message methods
-  getMessage: async (id: number): Promise<Message | undefined> => {
+  getMessage: async (id: string): Promise<Message | undefined> => {
     return new DatabaseStorage().getMessage(id);
   },
   getMessagesForChat: async (chatId: string): Promise<Message[]> => {
-    return db.select().from(messages).where(eq(messages.chatId, chatId)).orderBy(messages.timestamp);
+    return db.select().from(messages).where(eq(messages.chatId, chatId));
   },
   getMessagesForChatAfterTimestamp: async (chatId: string, timestamp: Date): Promise<Message[]> => {
     return db.select().from(messages).where(
-      and(eq(messages.chatId, chatId), gt(messages.timestamp, timestamp))
-    ).orderBy(messages.timestamp);
+      and(eq(messages.chatId, chatId), gt(messages.createdAt, timestamp))
+    );
   },
   createMessage: async (message: InsertMessage): Promise<Message> => {
     return new DatabaseStorage().createMessage(message);
@@ -134,7 +134,7 @@ export const storage = {
   },
 
   // Chat export methods
-  saveChatExport: async (chatId: string, userId: number, timestamp: Date): Promise<void> => {
+  saveChatExport: async (chatId: string, userId: string, timestamp: Date): Promise<void> => {
     await db.insert(chatExports).values({
       chatId,
       userId,
