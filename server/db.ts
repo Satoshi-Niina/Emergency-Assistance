@@ -31,12 +31,13 @@ const sql = postgres(DATABASE_URL, {
 export const db = drizzle(sql, { schema });
 
 // Add connection health check function
-export async function checkDatabaseConnection() {
+export async function checkDatabaseConnection(): Promise<boolean> {
   try {
-    await sql`SELECT 1`;
+    // Silent database connection test
+    await db.select().from(users).limit(1);
     return true;
   } catch (error) {
-    // Silent connection check - no logging
+    // Silent database connection error
     return false;
   }
 }
