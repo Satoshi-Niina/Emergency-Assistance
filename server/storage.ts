@@ -51,7 +51,7 @@ export const storage = {
     const [chat] = await db.select().from(chats).where(eq(chats.id, id)).limit(1);
     return chat;
   },
-  getChatsForUser: async (userId: string): Promise<Chat[]> => {
+  getChatsForUser: async (userId: number): Promise<Chat[]> => {
     return new DatabaseStorage().getChatsForUser(userId);
   },
   createChat: async (chat: InsertChat): Promise<Chat> => {
@@ -134,7 +134,7 @@ export const storage = {
   },
 
   // Chat export methods
-  saveChatExport: async (chatId: string, userId: string, timestamp: Date): Promise<void> => {
+  saveChatExport: async (chatId: string, userId: number, timestamp: Date): Promise<void> => {
     await db.insert(chatExports).values({
       chatId,
       userId,
