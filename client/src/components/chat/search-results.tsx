@@ -7,7 +7,7 @@ import { cancelSearch, reloadImageSearchData } from "@/lib/image-search";
 // 画像パスを修正するヘルパー関数 - PNG形式に統一
 function fixImagePath(path: string | undefined): string {
   if (!path) return '';
-  
+
   // knowledge-base/images/ パスを持っていれば変更しない
   if (path.includes('/knowledge-base/images/')) {
     // SVG拡張子の場合はPNGに変換
@@ -16,7 +16,7 @@ function fixImagePath(path: string | undefined): string {
     }
     return path;
   }
-  
+
   // /uploads/images/ から始まる場合は /knowledge-base/images/ に変換
   if (path.includes('/uploads/images/')) {
     let newPath = path.replace('/uploads/images/', '/knowledge-base/images/');
@@ -26,7 +26,7 @@ function fixImagePath(path: string | undefined): string {
     }
     return newPath;
   }
-  
+
   // /images/ から始まる場合は /knowledge-base/images/ に変換
   if (path.startsWith('/images/')) {
     let newPath = path.replace('/images/', '/knowledge-base/images/');
@@ -36,7 +36,7 @@ function fixImagePath(path: string | undefined): string {
     }
     return newPath;
   }
-  
+
   // /uploads/ から始まるがサブフォルダが不明確な場合
   if (path.startsWith('/uploads/') && !path.includes('/uploads/data/') && !path.includes('/uploads/json/')) {
     const parts = path.split('/');
@@ -49,7 +49,7 @@ function fixImagePath(path: string | undefined): string {
       return `/knowledge-base/images/${fileName}`;
     }
   }
-  
+
   // 単なるファイル名の場合（パスがない）
   if (!path.includes('/')) {
     // SVG拡張子の場合はPNGに変換
@@ -61,7 +61,7 @@ function fixImagePath(path: string | undefined): string {
       return `/knowledge-base/images/${path}`;
     }
   }
-  
+
   return path;
 }
 
@@ -87,7 +87,7 @@ interface SearchResultsProps {
 export default function SearchResults({ results, onClear }: SearchResultsProps) {
   const orientation = useOrientation();
   const { isMobile } = useIsMobile();
-  
+
   // コンポーネントマウント時に画像検索データを再読み込み
   useEffect(() => {
     // 画像検索データの初期化を実行
@@ -123,10 +123,10 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
   // デバイスに応じたレイアウトクラス
   // iPhoneの場合は特別なスタイルを適用
   const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
-  
+
   // 画面方向に応じたスタイルの設定
   const isLandscape = orientation === 'landscape';
-  
+
   // モバイル&横向きの場合は全画面表示、それ以外は通常表示
   const containerClass = isMobile && isLandscape
     ? "fixed inset-0 z-50 bg-transparent p-4 overflow-auto chat-controls-container"
@@ -148,12 +148,12 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
           </div>
         </div>
       )}
-      
+
       {/* サムネイル縦一列表示 */}
       <div className="flex flex-col gap-4">
-        {results.map((result) => (
+        {results.map((result, index) => (
           <div 
-            key={result.id} 
+            key={`search-result-${result.id || index}`}
             className="thumbnail-item rounded-lg overflow-hidden bg-transparent shadow-sm w-full hover:bg-blue-50 transition-colors"
             onClick={() => {
               // イメージプレビューモーダルを表示
@@ -184,12 +184,12 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
                       decoding="async"
                     />
                   )}
-                  
+
                   {/* 画像読み込み中のプレースホルダー - サムネイルサイズに最適化 */}
                   <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
                     <div className="w-10 h-10 rounded-full border-2 border-blue-500 border-t-transparent animate-spin"></div>
                   </div>
-                  
+
                   {/* メイン画像表示 - 用途に応じた適切な画像形式を使用 */}
                   <img 
                     src={fixImagePath(result.url || '')} 
@@ -200,19 +200,26 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
                     decoding="async" // 非同期デコードで表示を高速化
                     // 画像読み込みエラー時の包括的なフォールバック処理
                     onError={(e) => {
-                      const imgElement = e.currentTarget;
-                      const originalSrc = imgElement.src || '';
-                      
-                      console.log(`画像読み込みエラー (${result.id}): ${originalSrc}`);
-                      
+                      // 画像読み込みエラー時の包括的なフォールバック処理
                       try {
-                        // 1. 専用フォールバックURLが指定されている場合はそちらを優先
+                        const imgElement = e.currentTarget;
+                        const originalSrc = imgElement.src || '';
+
+                        console.log('画像読み込みエラー (', result.id || index, '):', originalSrc);
+
+                        // 空のsrcや無効なsrcの場合は早期リターン
+                        if (!originalSrc || originalSrc === window.location.href || originalSrc.endsWith('/')) {
+                          console.log('無効な画像パスのためエラー表示をスキップ');
+                          return;
+                        }
+
+                        // 1. 専用フォールバックURLが指定されている場合
                         if (result.pngFallbackUrl && result.pngFallbackUrl.trim() !== '') {
-                          console.log('指定されたフォールバックに切り替え:', result.pngFallbackUrl);
+                          console.log('指定されたフォールバックURLを使用:', result.pngFallbackUrl);
                           imgElement.src = fixImagePath(result.pngFallbackUrl);
                           return;
                         }
-                        
+
                         // 2. 拡張子ベースのフォールバック（SVG→PNG、JPEG→PNG）
                         if (originalSrc.includes('.svg')) {
                           // SVGが読み込めない場合はPNGに変更
@@ -221,7 +228,7 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
                           imgElement.src = pngPath;
                           return;
                         }
-                        
+
                         if (originalSrc.includes('.jpeg') || originalSrc.includes('.jpg')) {
                           // JPEGが読み込めない場合はPNGに変更
                           console.log('JPEG読み込みエラー、PNG代替に切り替え');
@@ -229,7 +236,7 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
                           imgElement.src = pngPath;
                           return;
                         }
-                        
+
                         // 3. ファイル名を抽出して実際に存在する画像を探す
                         // 例: engine_001.svg → mc_1745235933176_img_001.png に変更
                         const fileName = originalSrc.split('/').pop();
@@ -239,7 +246,7 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
                           if (numMatch && numMatch[1]) {
                             const imgNum = numMatch[1];
                             console.log(`ファイル番号 ${imgNum} を持つ実在画像を検索`);
-                            
+
                             // 実在する画像ファイルパターンで置き換え
                             const realImagePattern = `/knowledge-base/images/mc_1745235933176_img_${imgNum}.png`;
                             console.log('実際の画像パターンに置き換え:', realImagePattern);
@@ -247,7 +254,7 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
                             return;
                           }
                         }
-                        
+
                         // 4. パスの修正を試みる（knowledge-baseパスが含まれていない場合）
                         if (!originalSrc.includes('/knowledge-base/')) {
                           const fileName = originalSrc.split('/').pop();
@@ -257,7 +264,7 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
                             return;
                           }
                         }
-                        
+
                         // 5. 既知の実在する画像を代替として使用
                         // ファイルの存在が確認された画像のいずれかを表示
                         console.log('既知の実在画像に置き換え');
@@ -278,11 +285,11 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
                         console.log('実在画像に置き換え:', selectedImage);
                         imgElement.src = selectedImage;
                         return;
-                        
+
                         // 6. 最終手段: エラー表示用のデフォルト画像を表示
                         console.log('フォールバック失敗、エラー表示に切り替え');
                         imgElement.style.display = 'none'; // 画像を非表示
-                        
+
                         // エラー表示をコンテナに追加
                         const container = imgElement.parentElement;
                         if (container) {
@@ -299,7 +306,7 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
                       // 画像が正常に読み込まれたらクラスを調整
                       const imgElement = e.currentTarget;
                       imgElement.classList.add('loaded');
-                      
+
                       // プレースホルダーを非表示
                       const container = imgElement.parentElement;
                       if (container) {
