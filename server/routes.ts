@@ -688,81 +688,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/chats/:id/messages", requireAuth, async (req, res) => {
     try {
-      const chat = await storage.getChat(req.params.id); // UUIDなのでstring型として扱う
-      const { content, useOnlyKnowledgeBase = true } = req.body;
+      const chatId = req.params.id;
+      const { content, useOnlyKnowledgeBase = true, isAiResponse = false } = req.body;
 
-      if (!chat) {
-        return res.status(404).json({ message: "Chat not found" });
-      }
+      console.log(`メッセージ送信API呼び出し: chatId=${chatId}, content=${content}, isAi=${isAiResponse}`);
 
-      // チャットアクセス制限を一時的に緩和 (すべてのログインユーザーが全チャットにアクセス可能)
-      console.log(`チャットアクセス: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${req.session.userId}`);
-      console.log(`設定: ナレッジベースのみを使用=${useOnlyKnowledgeBase}`);
-      // if (chat.userId !== req.session.userId) {
-      //   return res.status(403).json({ message: "Forbidden" });
-      // }
-
-      const messageData = insertMessageSchema.parse({
-        ...req.body,
-        chatId: chat.id,
-        senderId: req.session.userId,
-        isAiResponse: false
-      });
-
-      const message = await storage.createMessage(messageData);
-
-      // AI モデル切り替えフラグ (将来的に設定ページから変更可能に)
-      // 一時的にPerplexity機能を無効化
-      const usePerplexity = false; // req.body.usePerplexity || false;
-
-      let aiResponse = '';
-      let citations: any[] = [];
-
-      // 現時点ではPerplexity API未対応のため、OpenAIのみ使用
-      // OpenAI API を使用 (デフォルト)
-      console.log(`OpenAIモデルを使用`);
-      aiResponse = await processOpenAIRequest(message.content, useOnlyKnowledgeBase);
-
-      // Perplexity API は一時的に無効化
-      /*
-      if (usePerplexity) {
-        // Perplexity API を使用
-        console.log(`Perplexityモデルを使用`);
-        const perplexityResponse = await processPerplexityRequest(message.content, '', useOnlyKnowledgeBase);
-        aiResponse = perplexityResponse.content;
-        citations = perplexityResponse.citations;
-      } else {
-        // OpenAI API を使用 (デフォルト)
-        console.log(`OpenAIモデルを使用`);
-        aiResponse = await processOpenAIRequest(message.content, useOnlyKnowledgeBase);
-      }
-      */
-
-      // 引用情報がある場合は末尾に追加
-      if (citations && citations.length > 0) {
-        aiResponse += '\n\n参考情報：';
-        citations.forEach((citation, index) => {
-          aiResponse += `\n[${index + 1}] ${citation.url}`;
+      if (!content || typeof content !== 'string' || content.trim().length === 0) {
+        return res.status(400).json({ 
+          success: false,
+          message: "Content is required and cannot be empty" 
         });
       }
 
-      // Create AI response message
-      const aiMessage = await storage.createMessage({
-        content: aiResponse,
-        chatId: chat.id,
-        isAiResponse: true,
-        senderId: null
-      });
-
-      return res.json({
-        userMessage: message,
-        aiMessage
-      });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: error.errors });
+      const chat = await storage.getChat(chatId);
+      if (!chat) {
+        return res.status(404).json({ 
+          success: false,
+          message: "Chat not found" 
+        });
       }
-      return res.status(500).json({ message: "Internal server error" });
+
+      // ユーザーメッセージのみを処理（AI応答は別途処理）
+      if (!isAiResponse) {
+        console.log(`ユーザーメッセージを保存: ${content.substring(0, 50)}...`);
+        
+        const messageData = insertMessageSchema.parse({
+          chatId: chatId,
+          content: content.trim(),
+          senderId: req.session.userId,
+          isAiResponse: false
+        });
+
+        const userMessage = await storage.createMessage(messageData);
+        console.log(`ユーザーメッセージ保存完了: ID=${userMessage.id}`);
+
+        // AI応答を生成
+        let aiResponse = '';
+        try {
+          console.log(`AI応答生成開始: ナレッジベースのみ=${useOnlyKnowledgeBase}`);
+          aiResponse = await processOpenAIRequest(content.trim(), useOnlyKnowledgeBase);
+          console.log(`AI応答生成完了: ${aiResponse.substring(0, 100)}...`);
+        } catch (aiError) {
+          console.error('AI応答生成エラー:', aiError);
+          aiResponse = 'AI応答の生成中にエラーが発生しました。しばらく後に再試行してください。';
+        }
+
+        // AI応答メッセージを保存
+        const aiMessageData = insertMessageSchema.parse({
+          chatId: chatId,
+          content: aiResponse,
+          senderId: null, // AIメッセージはsenderIdをnullに設定
+          isAiResponse: true
+        });
+
+        const aiMessage = await storage.createMessage(aiMessageData);
+        console.log(`AI応答メッセージ保存完了: ID=${aiMessage.id}`);
+
+        return res.json({
+          success: true,
+          userMessage: {
+            id: userMessage.id,
+            content: userMessage.content,
+            senderId: userMessage.senderId,
+            isAiResponse: userMessage.isAiResponse,
+            createdAt: userMessage.createdAt,
+            chatId: userMessage.chatId
+          },
+          aiMessage: {
+            id: aiMessage.id,
+            content: aiMessage.content,
+            senderId: aiMessage.senderId,
+            isAiResponse: aiMessage.isAiResponse,
+            createdAt: aiMessage.createdAt,
+            chatId: aiMessage.chatId
+          }
+        });
+      } else {
+        // AI応答メッセージの直接送信（システム使用）
+        const messageData = insertMessageSchema.parse({
+          chatId: chatId,
+          content: content.trim(),
+          senderId: null,
+          isAiResponse: true
+        });
+
+        const message = await storage.createMessage(messageData);
+        return res.json({
+          success: true,
+          message: {
+            id: message.id,
+            content: message.content,
+            senderId: message.senderId,
+            isAiResponse: message.isAiResponse,
+            createdAt: message.createdAt,
+            chatId: message.chatId
+          }
+        });
+      }
+    } catch (error) {
+      console.error("メッセージ送信API エラー:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          success: false,
+          message: "Validation error",
+          errors: error.errors 
+        });
+      }
+      
+      return res.status(500).json({ 
+        success: false,
+        message: "Internal server error",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
@@ -1164,27 +1202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/chats/:id/messages', requireAuth, async (req, res) => {
-    try {
-      const chatId = req.params.id; // ✅ UUIDは文字列のまま使用
-      const { content, isAiResponse } = req.body;
-      const senderId = req.session.userId!; // ✅ UUIDは文字列のまま使用
-
-      const messageData = insertMessageSchema.parse({
-        chatId: chatId,
-        content: content,
-        senderId: senderId,
-        isAiResponse: isAiResponse || false
-      });
-
-      const message = await storage.createMessage(messageData);
-
-      return res.json(message);
-    } catch (error) {
-      console.error('Error creating message:', error);
-      res.status(500).json({ message: 'Internal server error' });
-    }
-  });
+  
 
   app.delete('/api/chats/:id', requireAuth, async (req, res) => {
     try {
