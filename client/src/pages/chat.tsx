@@ -19,7 +19,15 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useOrientation } from "@/hooks/use-orientation";
 
 export default function Chat() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  
+  // 認証状態をチェックして、未認証の場合はログイン画面にリダイレクト
+  useEffect(() => {
+    if (!authLoading && !user) {
+      console.log('ユーザーが未認証です。ログイン画面にリダイレクトします。');
+      window.location.href = '/login';
+    }
+  }, [user, authLoading]);
   const {
     messages,
     isLoading,
