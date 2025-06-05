@@ -325,8 +325,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/chats", requireAuth, async (req, res) => {
     try {
+      const { v4: uuidv4 } = await import('uuid');
+      const newChatId = uuidv4();
+      
       const chatData = insertChatSchema.parse({
         ...req.body,
+        id: newChatId,
         userId: req.session.userId
       });
 
