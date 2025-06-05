@@ -45,15 +45,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (response.ok) {
           const userData = await response.json();
-          setUser(userData);
+          if (userData.success && userData.id && userData.username) {
+            setUser(userData);
+            console.log('認証成功:', userData.username);
+          } else {
+            console.warn('無効なユーザーデータ:', userData);
+            setUser(null);
+          }
         } else if (response.status === 401) {
+          console.log('未認証状態です');
+          setUser(null);
+        } else if (response.status === 502) {
+          console.error('サーバー接続エラー (502)');
           setUser(null);
         } else {
-          // その他のエラーも静音化
+          console.warn(`認証チェックエラー: ${response.status}`);
           setUser(null);
         }
       } catch (error) {
-        // ネットワークエラーも静音化
+        console.error('認証チェック中にエラーが発生:', error);
         setUser(null);
       } finally {
         setIsLoading(false);

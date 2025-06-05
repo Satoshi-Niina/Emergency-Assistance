@@ -136,15 +136,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Auth middleware
   const requireAuth = (req: Request, res: Response, next: Function) => {
-    // 認証チェックのログを最小化
-    if (!req.session || !req.session.userId) {
-      return res.status(401).json({ 
+    try {
+      console.log('認証チェック:', {
+        hasSession: !!req.session,
+        userId: req.session?.userId,
+        url: req.url
+      });
+      
+      if (!req.session || !req.session.userId) {
+        console.warn('認証失敗: セッションまたはユーザーIDが存在しません');
+        return res.status(401).json({ 
+          success: false,
+          message: "Unauthorized",
+          error: "セッションが無効です。再度ログインしてください。"
+        });
+      }
+      
+      console.log(`認証成功: ユーザーID=${req.session.userId}`);
+      next();
+    } catch (error) {
+      console.error('認証ミドルウェアエラー:', error);
+      return res.status(500).json({
         success: false,
-        message: "Unauthorized",
-        error: "セッションが無効です。再度ログインしてください。"
+        message: "Authentication error",
+        error: "認証処理中にエラーが発生しました"
       });
     }
-    next();
   };
 
   // Admin middleware
@@ -700,8 +717,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // senderIdの柔軟なチェック（クライアントから送信されない場合はセッションから取得）
-      const finalSenderId = senderId || req.session.userId;
+      // 認証されたユーザーの存在確認
+      const authenticatedUser = await storage.getUser(req.session.userId);
+      if (!authenticatedUser) {
+        console.error(`認証されたユーザーが存在しません: ${req.session.userId}`);
+        return res.status(401).json({
+          success: false,
+          message: "User not found",
+          error: "認証されたユーザーが見つかりません"
+        });
+      }
+
+      // senderIdの決定（認証されたユーザーIDを優先）
+      const finalSenderId = req.session.userId;
+      console.log(`送信者ID確定: ${finalSenderId} (${authenticatedUser.username})`);
+
       if (!finalSenderId) {
         return res.status(400).json({ 
           success: false,

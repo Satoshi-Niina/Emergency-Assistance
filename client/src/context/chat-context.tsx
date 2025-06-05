@@ -530,7 +530,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // 認証状態を確認してsenderIdを取得
       const authResponse = await apiRequest('GET', '/api/auth/me');
       let senderId = null;
-      
+
       if (authResponse.ok) {
         const authData = await authResponse.json();
         senderId = authData.id;
@@ -539,6 +539,46 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (!senderId) {
         throw new Error('認証情報を取得できませんでした');
       }
+
+      // New Code - Message sending function with authentication check
+      const sendMessageInternal = async (chatId: string, content: string, senderId: string) => {
+        try {
+          // 認証状態の事前チェック
+          const authResponse = await fetch('/api/auth/me', {
+            credentials: 'include',
+            headers: {
+              'Cache-Control': 'no-cache'
+            }
+          });
+
+          if (!authResponse.ok) {
+            throw new Error('認証が必要です。ログインしてください。');
+          }
+
+          const authData = await authResponse.json();
+          if (!authData.success || !authData.id) {
+            throw new Error('認証情報が無効です。再度ログインしてください。');
+          }
+
+          console.log('メッセージ送信前認証チェック完了:', authData.username);
+
+          const createdAt = new Date().toISOString();
+
+          const response = await apiRequest('POST', `/api/chats/${chatId}/messages`, {
+            content,
+            senderId: authData.id, // 認証されたユーザーIDを使用
+            createdAt,
+            useOnlyKnowledgeBase: useOnlyKnowledgeBase
+          });
+
+          const result = await response.json();
+          console.log('メッセージ送信成功:', result);
+          return result;
+        } catch (error) {
+          console.error('メッセージ送信エラー:', error);
+          throw error;
+        }
+      };
 
       const response = await apiRequest('POST', `/api/chats/${currentChatId}/messages`, { 
         content,
