@@ -169,7 +169,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // 新規チャット作成
       console.log('新規チャットを作成します');
-      
+
       // 認証状態を確認してからチャット作成
       try {
         const authCheck = await apiRequest('GET', '/api/auth/me');
@@ -183,7 +183,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         window.location.href = '/login';
         return;
       }
-      
+
       const response = await apiRequest('POST', '/api/chats', { 
         title: '新規チャット',
         timestamp: new Date().toISOString()
@@ -519,19 +519,28 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('APIレスポンス:', response.status, response.statusText);
 
       if (!response.ok) {
-        // 認証エラーの場合はログイン画面にリダイレクト
+        // 認証エラーの場合は適切にエラーメッセージを表示
         if (response.status === 401 || response.status === 403) {
-          console.log('認証エラーが発生しました。ログイン画面にリダイレクトします。');
-          window.location.href = '/login';
+          console.log('認証エラーが発生しました。');
+
+          // エラー時はダミーのAIレスポンスを表示
+          const authErrorMessage = {
+            id: Date.now() + 1,
+            content: `認証エラーが発生しました。ログインし直してからご利用ください。`,
+            role: 'assistant' as const,
+            timestamp: new Date()
+          };
+
+          setMessages(prev => [...prev, authErrorMessage]);
           return;
         }
-        
+
         // 404エラーの場合はchatIdをクリア
         if (response.status === 404) {
           localStorage.removeItem('currentChatId');
           setChatId(null);
         }
-        
+
         const errorText = await response.text();
         console.error('APIエラー詳細:', errorText);
 
@@ -553,20 +562,20 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // APIレスポンスの形式チェック
       if (!data || !data.userMessage || !data.aiMessage) {
         console.error('APIレスポンス形式エラー:', data);
-        
+
         // エラー時は楽観的に追加したユーザーメッセージを削除
         setMessages(prev => prev.slice(0, -1));
-        
+
         throw new Error('サーバーから無効なレスポンスを受信しました');
       }
 
       // メッセージの内容を検証
       if (!data.userMessage.content || !data.aiMessage.content) {
         console.error('メッセージ内容が空です:', data);
-        
+
         // エラー時は楽観的に追加したユーザーメッセージを削除
         setMessages(prev => prev.slice(0, -1));
-        
+
         throw new Error('メッセージの内容が無効です');
       }
 
@@ -574,7 +583,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setMessages(prev => {
         // 最後のユーザーメッセージを正式なデータで置き換え、AIメッセージを追加
         const newMessages = [...prev];
-        
+
         // 安全に最後のメッセージを置き換え
         if (newMessages.length > 0) {
           newMessages[newMessages.length - 1] = {
@@ -604,7 +613,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('メッセージ送信完了');
     } catch (error) {
       console.error('メッセージ送信エラー詳細:', error);
-      
+
       // エラー時は楽観的に追加したユーザーメッセージを削除
       setMessages(prev => {
         if (prev.length === 0) return prev;
@@ -615,7 +624,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
         return prev;
       });
-      
+
       toast({
         title: 'メッセージ送信エラー',
         description: `メッセージを送信できませんでした: ${error instanceof Error ? error.message : 'Unknown error'}`,
