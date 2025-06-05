@@ -734,12 +734,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // AI応答メッセージを保存
-        const aiMessageData = insertMessageSchema.parse({
+        const aiMessageData = {
           chatId: chatId,
           content: aiResponse,
           senderId: null, // AIメッセージはsenderIdをnullに設定
           isAiResponse: true
-        });
+        };
 
         const aiMessage = await storage.createMessage(aiMessageData);
         console.log(`AI応答メッセージ保存完了: ID=${aiMessage.id}`);
@@ -765,12 +765,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } else {
         // AI応答メッセージの直接送信（システム使用）
-        const messageData = insertMessageSchema.parse({
+        const messageData = {
           chatId: chatId,
           content: content.trim(),
           senderId: null,
           isAiResponse: true
-        });
+        };
 
         const message = await storage.createMessage(messageData);
         return res.json({

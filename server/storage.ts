@@ -293,38 +293,31 @@ export const storage = {
     // タイムスタンプの降順でソートし、最初の要素を返す
     return exports.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())[0];
   },
-  createMessage: async (message: InsertMessage): Promise<Message> => {
-    try {
-      // Generate UUID for the message if not provided
-      if (!message.id) {
-        const { v4: uuidv4 } = await import('uuid');
-        message.id = uuidv4();
-      }
+  createMessage: async (messageData: any): Promise<Message> => {
+    const { v4: uuidv4 } = await import('uuid');
+    const id = uuidv4();
+    const now = new Date();
 
-      // バリデーション
-      if (!message.content || message.content.trim().length === 0) {
-        throw new Error('Message content cannot be empty');
-      }
+    // AIメッセージの場合はsenderIdをnullに、ユーザーメッセージの場合は必須
+    const senderId = messageData.isAiResponse ? null : messageData.senderId;
 
-      if (!message.chatId) {
-        throw new Error('Chat ID is required');
-      }
+    // createdAtを明示的に設定し、確実に有効な値にする
+    const finalMessageData = {
+      id,
+      chatId: messageData.chatId,
+      senderId,
+      content: messageData.content,
+      isAiResponse: messageData.isAiResponse || false,
+      // createdAtを明示的に設定し、確実に有効な値にする
+      createdAt: now
+    };
 
-      // senderId のバリデーション (AI応答の場合はnullを許可)
-      if (!message.isAiResponse && !message.senderId) {
-        throw new Error('Sender ID is required for user messages');
-      }
+    console.log('保存するメッセージデータ（senderId確認）:', {
+      ...finalMessageData,
+      createdAt: finalMessageData.createdAt?.toISOString()
+    });
 
-      console.log(`メッセージ保存中: chatId=${message.chatId}, isAi=${message.isAiResponse}, content=${message.content.substring(0, 50)}...`);
-
-      const [newMessage] = await db.insert(messages).values(message).returning();
-
-      console.log(`メッセージ保存完了: ID=${newMessage.id}, createdAt=${newMessage.createdAt}`);
-      return newMessage;
-    } catch (error) {
-      console.error('Message creation error:', error);
-      throw error;
-    }
+    const [savedMessage] = await db.insert(messages).values(finalMessageData).returning();
   },
 };
 
