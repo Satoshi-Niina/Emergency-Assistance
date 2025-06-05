@@ -370,7 +370,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/chats/:id/export', async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
-      const chatId = parseInt(req.params.id);
+      const chatId = req.params.id; // UUIDなのでstring型として扱う
       const { lastExportTimestamp } = req.body;
 
       const chat = await storage.getChat(chatId);
@@ -442,7 +442,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/chats/:id/messages", requireAuth, async (req, res) => {
-    const chatId = parseInt(req.params.id);
+    const chatId = req.params.id; // UUIDなのでstring型として扱う
     const clearCache = req.query.clear === 'true';
 
     const chat = await storage.getChat(chatId);
@@ -483,7 +483,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // チャット履歴をクリアするAPI
   app.post("/api/chats/:id/clear", requireAuth, async (req, res) => {
     try {
-      const chatId = parseInt(req.params.id);
+      const chatId = req.params.id; // UUIDなのでstring型として扱う
 
       const chat = await storage.getChat(chatId);
       if (!chat) {
@@ -521,7 +521,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/chats/:id/export", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const chatId = parseInt(req.params.id);
+      const chatId = req.params.id; // UUIDなのでstring型として扱う
       const { lastExportTimestamp } = req.body;
 
       const chat = await storage.getChat(chatId);
@@ -596,7 +596,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/chats/:id/export-formatted", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const chatId = parseInt(req.params.id);
+      const chatId = req.params.id; // UUIDなのでstring型として扱う
 
       // チャット情報を取得
       const chat = await storage.getChat(chatId);
@@ -640,7 +640,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // チャットの最後のエクスポート履歴を取得
   app.get("/api/chats/:id/last-export", requireAuth, async (req, res) => {
     try {
-      const chatId = parseInt(req.params.id);
+      const chatId = req.params.id; // UUIDなのでstring型として扱う
       const chat = await storage.getChat(chatId);
 
       if (!chat) {
@@ -664,7 +664,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 応急処置ガイドなどのシステムメッセージをチャットに追加するためのエンドポイント
   app.post("/api/chats/:id/messages/system", requireAuth, async (req, res) => {
     try {
-      const chatId = parseInt(req.params.id);
+      const chatId = req.params.id; // UUIDなのでstring型として扱う
       // フロントエンドから受け取るパラメータをスキーマに合わせて調整
       const { content, isUserMessage = true } = req.body;
 
@@ -693,7 +693,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/chats/:id/messages", requireAuth, async (req, res) => {
     try {
-      const chat = await storage.getChat(parseInt(req.params.id));
+      const chat = await storage.getChat(req.params.id); // UUIDなのでstring型として扱う
       const { content, useOnlyKnowledgeBase = true } = req.body;
 
       if (!chat) {

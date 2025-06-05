@@ -94,7 +94,7 @@ export function registerSyncRoutes(app: Express): void {
       }
       
       const userId = req.session.userId;
-      const chatId = parseInt(req.params.id);
+      const chatId = req.params.id; // UUIDなのでstring型として扱う
       const { messages } = req.body;
       
       // チャットの存在確認
