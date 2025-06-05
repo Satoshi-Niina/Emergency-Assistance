@@ -145,7 +145,7 @@ app.use((req, res, next) => {
     }
 
     res.status(status).json({ message });
-    
+
     // Don't throw the error for database connection issues - let the app continue
     if (err.code !== '57P01' && err.code !== 'ECONNRESET') {
       throw err;

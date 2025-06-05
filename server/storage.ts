@@ -71,7 +71,7 @@ export const storage = {
   },
   getMessagesForChat: async (chatId: string): Promise<Message[]> => {
     const result = await db.select().from(messages).where(eq(messages.chatId, chatId));
-    
+
     // 不正なデータを除外
     return result.filter(message => 
       message.id && 
@@ -153,7 +153,7 @@ export const storage = {
         // メディアがある場合の処理
         if (message.media && Array.isArray(message.media) && message.media.length > 0) {
           console.log(`${message.media.length}件のメディアを保存中...`);
-          
+
           for (const mediaItem of message.media) {
             // メディアアイテムの検証
             if (!mediaItem.type || !mediaItem.url || typeof mediaItem.type !== 'string' || typeof mediaItem.url !== 'string') {
@@ -292,7 +292,40 @@ export const storage = {
 
     // タイムスタンプの降順でソートし、最初の要素を返す
     return exports.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())[0];
-  }
+  },
+  createMessage: async (message: InsertMessage): Promise<Message> => {
+    try {
+      // Generate UUID for the message if not provided
+      if (!message.id) {
+        const { v4: uuidv4 } = await import('uuid');
+        message.id = uuidv4();
+      }
+
+      // バリデーション
+      if (!message.content || message.content.trim().length === 0) {
+        throw new Error('Message content cannot be empty');
+      }
+
+      if (!message.chatId) {
+        throw new Error('Chat ID is required');
+      }
+
+      // senderId のバリデーション (AI応答の場合はnullを許可)
+      if (!message.isAiResponse && !message.senderId) {
+        throw new Error('Sender ID is required for user messages');
+      }
+
+      console.log(`メッセージ保存中: chatId=${message.chatId}, isAi=${message.isAiResponse}, content=${message.content.substring(0, 50)}...`);
+
+      const [newMessage] = await db.insert(messages).values(message).returning();
+
+      console.log(`メッセージ保存完了: ID=${newMessage.id}, createdAt=${newMessage.createdAt}`);
+      return newMessage;
+    } catch (error) {
+      console.error('Message creation error:', error);
+      throw error;
+    }
+  },
 };
 
 // Assuming this is the correct place to put the saveMessage function based on the context.
