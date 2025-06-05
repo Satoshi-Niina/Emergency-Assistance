@@ -51,7 +51,7 @@ export const storage = {
     const [chat] = await db.select().from(chats).where(eq(chats.id, id)).limit(1);
     return chat;
   },
-  getChatsForUser: async (userId: number): Promise<Chat[]> => {
+  getChatsForUser: async (userId: string): Promise<Chat[]> => {
     return new DatabaseStorage().getChatsForUser(userId);
   },
   createChat: async (chat: InsertChat): Promise<Chat> => {
@@ -80,8 +80,21 @@ export const storage = {
   createMessage: async (message: InsertMessage): Promise<Message> => {
     return new DatabaseStorage().createMessage(message);
   },
-  clearChatMessages: async (chatId: number): Promise<void> => {
-    return new DatabaseStorage().clearChatMessages(chatId);
+  clearChatMessages: async (chatId: string): Promise<void> => {
+    // UUIDのためstring型で処理
+    const result = await db.select().from(messages).where(eq(messages.chatId, chatId));
+    const messageIds = result.map(message => message.id);
+    
+    // メディアの削除
+    if (messageIds.length > 0) {
+      for (const messageId of messageIds) {
+        await db.delete(media).where(eq(media.messageId, messageId));
+      }
+    }
+    
+    // メッセージの削除
+    await db.delete(messages).where(eq(messages.chatId, chatId));
+    console.log(`[INFO] Cleared all messages for chat ID: ${chatId}`);
   },
 
   // Media methods
@@ -121,10 +134,23 @@ export const storage = {
   },
 
   // Chat export methods
-  saveChatExport: async (chatId: number, userId: number, timestamp: Date): Promise<void> => {
-    return new DatabaseStorage().saveChatExport(chatId, userId, timestamp);
+  saveChatExport: async (chatId: string, userId: string, timestamp: Date): Promise<void> => {
+    await db.insert(chatExports).values({
+      chatId,
+      userId,
+      timestamp
+    });
   },
-  getLastChatExport: async (chatId: number): Promise<ChatExport | null> => {
-    return new DatabaseStorage().getLastChatExport(chatId);
+  getLastChatExport: async (chatId: string): Promise<ChatExport | null> => {
+    const exports = await db.select()
+      .from(chatExports)
+      .where(eq(chatExports.chatId, chatId));
+    
+    if (exports.length === 0) {
+      return null;
+    }
+    
+    // タイムスタンプの降順でソートし、最初の要素を返す
+    return exports.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())[0];
   }
 };
