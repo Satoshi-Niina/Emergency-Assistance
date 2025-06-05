@@ -50,10 +50,18 @@ export default function Chat() {
   const [isEndChatDialogOpen, setIsEndChatDialogOpen] = useState(false);
 
   // Fetch messages for the current chat
-  const { data, isLoading: messagesLoading } = useQuery({
+  const { data, isLoading: messagesLoading, error } = useQuery({
     queryKey: chatId ? [`/api/chats/${chatId}/messages`] : [],
     enabled: !!chatId,
     staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: (failureCount, error) => {
+      // 502エラーの場合はリトライしない
+      if (error && 'status' in error && error.status === 502) {
+        return false;
+      }
+      return failureCount < 3;
+    },
+    retryDelay: 1000,
   });
 
   useEffect(() => {

@@ -132,13 +132,16 @@ app.use((req, res, next) => {
     const status = err.status || err.statusCode || 500;
     let message = err.message || "Internal Server Error";
 
-    // Handle specific database connection errors
+    // Handle specific database connection errors silently
     if (err.code === '57P01' || err.message?.includes('terminating connection due to administrator command')) {
       message = "Database connection was reset. Please try again.";
-      console.log('Database connection terminated by administrator, connection will be re-established on retry');
+      // Silent handling - no console output
     } else if (err.code === 'ECONNRESET' || err.message?.includes('connection') || err.severity === 'FATAL') {
       message = "Database connection error. Please try again.";
-      console.log('Database connection error:', err.message);
+      // Silent handling - no console output
+    } else {
+      // Only log non-database errors
+      console.error('Server error:', err.message);e);
     }
 
     res.status(status).json({ message });

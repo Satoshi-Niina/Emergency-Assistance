@@ -35,7 +35,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        console.log('ユーザー情報取得を開始');
         const response = await fetch("/api/auth/me", {
           credentials: "include",
           headers: {
@@ -44,23 +43,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         });
         
-        console.log('認証レスポンス:', response.status, response.statusText);
-        
         if (response.ok) {
           const userData = await response.json();
-          console.log('認証成功:', userData.username);
           setUser(userData);
         } else if (response.status === 401) {
-          // 認証エラーの場合は明示的にnullを設定
           setUser(null);
-          console.log("ユーザーは未認証です - ログインが必要");
         } else {
-          // その他のエラー
-          console.error('認証エラー:', response.status, await response.text());
+          // その他のエラーも静音化
           setUser(null);
         }
       } catch (error) {
-        console.error("認証確認でネットワークエラー:", error);
+        // ネットワークエラーも静音化
         setUser(null);
       } finally {
         setIsLoading(false);
