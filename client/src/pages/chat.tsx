@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Send, AlertTriangle, Loader2, Trash2, Heart } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useLocation } from "wouter";
-import { useIsMobile } from "@/hooks/use-mobile";```typescript
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useOrientation } from "@/hooks/use-orientation";
 
 export default function Chat() {

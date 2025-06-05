@@ -40,27 +40,27 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
   }
 
   const isUserMessage = !message.isAiResponse;
-  
+
   // タイムスタンプの安全な処理
   const getValidTimestamp = () => {
     // createdAt を優先して使用、なければtimestampを使用
     const timestamp = message.createdAt || (message as any).timestamp;
-    
+
     if (!timestamp) {
       return new Date(); // 現在時刻をデフォルトとして使用
     }
-    
+
     // 文字列の場合は変換を試行
     if (typeof timestamp === 'string') {
       const parsed = new Date(timestamp);
       return isNaN(parsed.getTime()) ? new Date() : parsed;
     }
-    
+
     // Dateオブジェクトの場合はそのまま使用
     if (timestamp instanceof Date) {
       return isNaN(timestamp.getTime()) ? new Date() : timestamp;
     }
-    
+
     // その他の場合は現在時刻を使用
     return new Date();
   };
