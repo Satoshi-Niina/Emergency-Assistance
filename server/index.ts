@@ -69,6 +69,35 @@ app.use((req, res, next) => {
     app.locals.storage = storage;
     initializeKnowledgeBase();
 
+    // Test database connection with retry logic
+    let dbConnected = false;
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    while (!dbConnected && retryCount < maxRetries) {
+      try {
+        const { checkDatabaseConnection } = await import('./db.js');
+        dbConnected = await checkDatabaseConnection();
+        if (!dbConnected) {
+          retryCount++;
+          console.log(`Database connection attempt ${retryCount}/${maxRetries} failed, retrying in 2 seconds...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      } catch (dbError) {
+        retryCount++;
+        console.log(`Database connection attempt ${retryCount}/${maxRetries} failed:`, dbError.message);
+        if (retryCount < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      }
+    }
+
+    if (!dbConnected) {
+      console.log('Warning: Could not establish database connection. Server will continue but database operations may fail.');
+    } else {
+      console.log('Database connection established successfully');
+    }
+
     // Create required directories
     const dirs = [
       'knowledge-base/images',
@@ -101,10 +130,23 @@ app.use((req, res, next) => {
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    let message = err.message || "Internal Server Error";
+
+    // Handle specific database connection errors
+    if (err.code === '57P01' || err.message?.includes('terminating connection due to administrator command')) {
+      message = "Database connection was reset. Please try again.";
+      console.log('Database connection terminated by administrator, connection will be re-established on retry');
+    } else if (err.code === 'ECONNRESET' || err.message?.includes('connection') || err.severity === 'FATAL') {
+      message = "Database connection error. Please try again.";
+      console.log('Database connection error:', err.message);
+    }
 
     res.status(status).json({ message });
-    throw err;
+    
+    // Don't throw the error for database connection issues - let the app continue
+    if (err.code !== '57P01' && err.code !== 'ECONNRESET') {
+      throw err;
+    }
   });
 
   // importantly only setup vite in development and after
