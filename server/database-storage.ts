@@ -139,12 +139,12 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Chat methods
-  async getChat(id: number): Promise<Chat | undefined> {
+  async getChat(id: string): Promise<Chat | undefined> {
     const [chat] = await db.select().from(chats).where(eq(chats.id, id));
     return chat;
   }
   
-  async getChatsForUser(userId: number): Promise<Chat[]> {
+  async getChatsForUser(userId: string): Promise<Chat[]> {
     return db.select().from(chats).where(eq(chats.userId, userId));
   }
   
@@ -159,7 +159,7 @@ export class DatabaseStorage implements IStorage {
     return message;
   }
   
-  async getMessagesForChat(chatId: number): Promise<Message[]> {
+  async getMessagesForChat(chatId: string): Promise<Message[]> {
     const result = await db.select()
       .from(messages)
       .where(eq(messages.chatId, chatId));
@@ -174,7 +174,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   // チャットメッセージをクリアする関数
-  async clearChatMessages(chatId: number): Promise<void> {
+  async clearChatMessages(chatId: string): Promise<void> {
     try {
       // このチャットに関連するメディアを先に削除する
       const chatMessages = await this.getMessagesForChat(chatId);
@@ -253,7 +253,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // チャットエクスポート関連のメソッド
-  async getMessagesForChatAfterTimestamp(chatId: number, timestamp: Date): Promise<Message[]> {
+  async getMessagesForChatAfterTimestamp(chatId: string, timestamp: Date): Promise<Message[]> {
     // 基準日時より後のメッセージを取得
     const allMessages = await db.select()
       .from(messages)
@@ -265,7 +265,7 @@ export class DatabaseStorage implements IStorage {
       .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
   }
 
-  async saveChatExport(chatId: number, userId: number, timestamp: Date): Promise<void> {
+  async saveChatExport(chatId: string, userId: string, timestamp: Date): Promise<void> {
     await db.insert(chatExports).values({
       chatId,
       userId,
@@ -273,7 +273,7 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async getLastChatExport(chatId: number): Promise<ChatExport | null> {
+  async getLastChatExport(chatId: string): Promise<ChatExport | null> {
     const exports = await db.select()
       .from(chatExports)
       .where(eq(chatExports.chatId, chatId));
