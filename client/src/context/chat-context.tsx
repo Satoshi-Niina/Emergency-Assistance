@@ -169,6 +169,21 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // 新規チャット作成
       console.log('新規チャットを作成します');
+      
+      // 認証状態を確認してからチャット作成
+      try {
+        const authCheck = await apiRequest('GET', '/api/auth/me');
+        if (!authCheck.ok) {
+          console.log('認証が必要です。ログイン画面にリダイレクトします。');
+          window.location.href = '/login';
+          return;
+        }
+      } catch (authError) {
+        console.log('認証確認エラー。ログイン画面にリダイレクトします。');
+        window.location.href = '/login';
+        return;
+      }
+      
       const response = await apiRequest('POST', '/api/chats', { 
         title: '新規チャット',
         timestamp: new Date().toISOString()
@@ -595,7 +610,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (prev.length === 0) return prev;
         const lastMessage = prev[prev.length - 1];
         // 最後のメッセージが今送信しようとしたメッセージの場合は削除
-        if (lastMessage && lastMessage.role === 'user' && lastMessage.content === content && lastMessage.id === userMessage.id) {
+        if (lastMessage && lastMessage.role === 'user' && lastMessage.content === content) {
           return prev.slice(0, -1);
         }
         return prev;
