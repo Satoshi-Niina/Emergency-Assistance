@@ -80,11 +80,10 @@ export default function Chat() {
 
   // メッセージクリア時にデータも更新
   useEffect(() => {
-    // メッセージが空になった場合（クリアされた場合）のハンドリング
-    if (messages !== undefined && messages.length === 0) {
-      const chatClearedTimestamp = localStorage.getItem('chat_cleared_timestamp');
-
-      // キャッシュクリア処理（タイムスタンプの有無に関わらず実行）
+    // 明示的なチャット履歴クリア後のみ処理を実行
+    const chatClearedTimestamp = localStorage.getItem('chat_cleared_timestamp');
+    
+    if (messages !== undefined && messages.length === 0 && chatClearedTimestamp) {
       console.log('チャット履歴クリア後の状態を維持します');
 
       // ローカルストレージのクエリキャッシュをクリア
@@ -96,62 +95,18 @@ export default function Chat() {
 
       // React Queryのキャッシュをクリア
       try {
+        queryClient.removeQueries({ queryKey: [`/api/chats/${chatId}/messages`] });
+        queryClient.setQueryData([`/api/chats/${chatId}/messages`], []);
+        
         // @ts-ignore
-        if (window.queryClient) {
-          window.queryClient.removeQueries({ queryKey: [`/api/chats/${chatId}/messages`] });
-          window.queryClient.setQueryData([`/api/chats/${chatId}/messages`], []);
-        }
+        window.queryClient = queryClient;
       } catch (cacheError) {
         console.error('キャッシュクリアエラー:', cacheError);
       }
 
-      // React Queryのキャッシュをクリア
-      try {
-        // @ts-ignore
-        if (window.queryClient) {
-          window.queryClient.removeQueries({ queryKey: [`/api/chats/${chatId}/messages`] });
-          window.queryClient.setQueryData([`/api/chats/${chatId}/messages`], []);
-        }
-      } catch (cacheError) {
-        console.error('キャッシュクリアエラー:', cacheError);
-      }
-
-      // React Queryのキャッシュをクリア
-      try {
-        // @ts-ignore
-        if (window.queryClient) {
-          window.queryClient.removeQueries({ queryKey: [`/api/chats/${chatId}/messages`] });
-          window.queryClient.setQueryData([`/api/chats/${chatId}/messages`], []);
-        }
-      } catch (cacheError) {
-        console.error('キャッシュクリアエラー:', cacheError);
-      }
-
-      // React Queryのキャッシュをクリア
-      try {
-        // @ts-ignore
-        if (window.queryClient) {
-          window.queryClient.removeQueries({ queryKey: [`/api/chats/${chatId}/messages`] });
-          window.queryClient.setQueryData([`/api/chats/${chatId}/messages`], []);
-        }
-      } catch (cacheError) {
-        console.error('キャッシュクリアエラー:', cacheError);
-      }
-
-      // クエリキャッシュを完全に削除
-      queryClient.removeQueries({ queryKey: [`/api/chats/${chatId}/messages`] });
-
-      // 空の配列を強制的にセット
-      queryClient.setQueryData([`/api/chats/${chatId}/messages`], []);
-
-      // React Queryのキャッシュ操作用にグローバル変数としてqueryClientを設定
-      // @ts-ignore - これにより他のコンポーネントからもアクセス可能
-      window.queryClient = queryClient;
-
-      // 特殊パラメータを付けて明示的にサーバーにクリア要求を送信
+      // 明示的なクリア後のみサーバーにクリア確認を送信
       const fetchClearedData = async () => {
         try {
-          // タイムスタンプパラメータを使用してキャッシュバスティング
           const clearUrl = `/api/chats/${chatId}/messages?clear=true&_t=${Date.now()}`;
           await fetch(clearUrl, {
             credentials: 'include',
@@ -171,10 +126,8 @@ export default function Chat() {
       fetchClearedData();
 
       // クリアフラグを削除（1度だけ実行するため）
-      if (chatClearedTimestamp) {
-        localStorage.removeItem('chat_cleared_timestamp');
-        console.log('チャットクリアタイムスタンプをクリア');
-      }
+      localStorage.removeItem('chat_cleared_timestamp');
+      console.log('チャットクリアタイムスタンプをクリア');
 
       // 少し間をおいて再確認
       const intervalId = setInterval(() => {
