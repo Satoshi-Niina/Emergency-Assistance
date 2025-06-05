@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useOrientation } from "@/hooks/use-orientation";
+import { v4 as uuidv4 } from "uuid";
 
 export default function Chat() {
   const { user, isLoading: authLoading } = useAuth();
@@ -429,11 +430,17 @@ export default function Chat() {
                 {displayMessages
                   .filter((message: any) => message && message.content && message.content.trim().length > 0)
                   .map((message: any, index: number) => {
-                    // createdAtを安全に取得し、確実にユニークなキーを生成
-                    const messageId = message.id || `temp-${index}`;
+                    // IDが無い場合はuuidv4で統一的に生成
+                    const messageId = message.id || uuidv4();
                     const timestamp = message.createdAt || message.timestamp || new Date();
                     const timestampStr = timestamp instanceof Date ? timestamp.getTime() : new Date(timestamp).getTime();
-                    const uniqueKey = `msg-${messageId}-${timestampStr}-${message.isAiResponse ? 'ai' : 'user'}`;
+                    // chatIdとindexを含めた確実にユニークなキーを生成
+                    const uniqueKey = `${chatId || 'no-chat'}-${messageId}-${index}-${timestampStr}-${message.isAiResponse ? 'ai' : 'user'}`;
+
+                    // メッセージにIDが無い場合は設定
+                    if (!message.id) {
+                      message.id = messageId;
+                    }
 
                     return (
                       <div key={uniqueKey} className="w-full md:max-w-2xl mx-auto">
@@ -449,14 +456,15 @@ export default function Chat() {
               <div className="w-full md:max-w-2xl mx-auto">
                 <MessageBubble
                   message={{
-                    id: -1, // 一時的なID
+                    id: uuidv4(), // uuidv4で統一的にID生成
                     content: draftMessage.content,
-                    senderId: 1, // 現在のユーザーID
+                    senderId: user?.id || uuidv4(), // 現在のユーザーIDまたは一時ID
                     isAiResponse: false,
                     timestamp: new Date(),
+                    createdAt: new Date(),
                     media: draftMessage.media?.map((m, idx) => ({
-                      id: idx,
-                      messageId: -1,
+                      id: uuidv4(), // メディアIDもuuidv4で生成
+                      messageId: uuidv4(),
                       ...m
                     }))
                   }}
@@ -464,11 +472,6 @@ export default function Chat() {
                 />
               </div>
             )}
-
-            {/* デバッグ表示 - ドラフトメッセージの状態を確認 */}
-            <div className="hidden">
-              <p>draftMessage: {draftMessage ? JSON.stringify(draftMessage) : 'null'}</p>
-            </div>
 
           </div>
 
@@ -561,9 +564,9 @@ export default function Chat() {
             <div className="search-results-wrapper p-2">
               {/* 直接画像を表示 - 重複フォーム対策 */}
               <div className="flex flex-col gap-4">
-                {searchResults.map((result) => (
+                {searchResults.map((result, index) => (
                   <div 
-                    key={result.id} 
+                    key={`${chatId || 'search'}-result-${result.id || uuidv4()}-${index}`} 
                     className="thumbnail-item rounded-lg overflow-hidden bg-transparent shadow-sm w-full hover:bg-blue-50 transition-colors"
                     onClick={() => {
                       // イメージプレビューモーダルを表示
