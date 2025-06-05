@@ -43,14 +43,14 @@ export default function Chat() {
     clearChatHistory,
     isClearing,
     isRecording,
-    chatId: currentChatId // currentChatId を useChat から取得
+    chatId // currentChatId を useChat から取得
   } = useChat();
 
   const [isEndChatDialogOpen, setIsEndChatDialogOpen] = useState(false);
 
   // Fetch messages for the current chat
   const { data, isLoading: messagesLoading } = useQuery({
-    queryKey: [`/api/chats/${currentChatId}/messages`],
+    queryKey: [`/api/chats/${chatId}/messages`],
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
@@ -97,8 +97,8 @@ export default function Chat() {
       try {
         // @ts-ignore
         if (window.queryClient) {
-          window.queryClient.removeQueries({ queryKey: [`/api/chats/${currentChatId}/messages`] });
-          window.queryClient.setQueryData([`/api/chats/${currentChatId}/messages`], []);
+          window.queryClient.removeQueries({ queryKey: [`/api/chats/${chatId}/messages`] });
+          window.queryClient.setQueryData([`/api/chats/${chatId}/messages`], []);
         }
       } catch (cacheError) {
         console.error('キャッシュクリアエラー:', cacheError);
@@ -108,8 +108,8 @@ export default function Chat() {
       try {
         // @ts-ignore
         if (window.queryClient) {
-          window.queryClient.removeQueries({ queryKey: [`/api/chats/${currentChatId}/messages`] });
-          window.queryClient.setQueryData([`/api/chats/${currentChatId}/messages`], []);
+          window.queryClient.removeQueries({ queryKey: [`/api/chats/${chatId}/messages`] });
+          window.queryClient.setQueryData([`/api/chats/${chatId}/messages`], []);
         }
       } catch (cacheError) {
         console.error('キャッシュクリアエラー:', cacheError);
@@ -119,8 +119,8 @@ export default function Chat() {
       try {
         // @ts-ignore
         if (window.queryClient) {
-          window.queryClient.removeQueries({ queryKey: [`/api/chats/${currentChatId}/messages`] });
-          window.queryClient.setQueryData([`/api/chats/${currentChatId}/messages`], []);
+          window.queryClient.removeQueries({ queryKey: [`/api/chats/${chatId}/messages`] });
+          window.queryClient.setQueryData([`/api/chats/${chatId}/messages`], []);
         }
       } catch (cacheError) {
         console.error('キャッシュクリアエラー:', cacheError);
@@ -130,18 +130,18 @@ export default function Chat() {
       try {
         // @ts-ignore
         if (window.queryClient) {
-          window.queryClient.removeQueries({ queryKey: [`/api/chats/${currentChatId}/messages`] });
-          window.queryClient.setQueryData([`/api/chats/${currentChatId}/messages`], []);
+          window.queryClient.removeQueries({ queryKey: [`/api/chats/${chatId}/messages`] });
+          window.queryClient.setQueryData([`/api/chats/${chatId}/messages`], []);
         }
       } catch (cacheError) {
         console.error('キャッシュクリアエラー:', cacheError);
       }
 
       // クエリキャッシュを完全に削除
-      queryClient.removeQueries({ queryKey: [`/api/chats/${currentChatId}/messages`] });
+      queryClient.removeQueries({ queryKey: [`/api/chats/${chatId}/messages`] });
 
       // 空の配列を強制的にセット
-      queryClient.setQueryData([`/api/chats/${currentChatId}/messages`], []);
+      queryClient.setQueryData([`/api/chats/${chatId}/messages`], []);
 
       // React Queryのキャッシュ操作用にグローバル変数としてqueryClientを設定
       // @ts-ignore - これにより他のコンポーネントからもアクセス可能
@@ -151,7 +151,7 @@ export default function Chat() {
       const fetchClearedData = async () => {
         try {
           // タイムスタンプパラメータを使用してキャッシュバスティング
-          const clearUrl = `/api/chats/${currentChatId}/messages?clear=true&_t=${Date.now()}`;
+          const clearUrl = `/api/chats/${chatId}/messages?clear=true&_t=${Date.now()}`;
           await fetch(clearUrl, {
             credentials: 'include',
             cache: 'no-cache',
@@ -177,7 +177,7 @@ export default function Chat() {
 
       // 少し間をおいて再確認
       const intervalId = setInterval(() => {
-        queryClient.setQueryData([`/api/chats/${currentChatId}/messages`], []);
+        queryClient.setQueryData([`/api/chats/${chatId}/messages`], []);
       }, 500);
 
       // 10秒後にクリア監視を終了
@@ -185,7 +185,7 @@ export default function Chat() {
         clearInterval(intervalId);
       }, 10000);
     }
-  }, [messages, queryClient, currentChatId]);
+  }, [messages, queryClient, chatId]);
 
   // woutorのLocationフックを取得
   const [, setLocation] = useLocation();

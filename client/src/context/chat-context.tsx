@@ -35,6 +35,7 @@ interface ChatContextValue {
   setDraftMessage: (message: { content: string, media?: { type: string, url: string, thumbnail?: string }[] } | null) => void;
   clearChatHistory: () => Promise<void>;
   isClearing: boolean;
+  chatId: number | string | null; // currentChatIdとして使用
 }
 
 // チャットコンテキストの作成
@@ -69,7 +70,8 @@ export const useChat = () => {
       draftMessage: null,
       setDraftMessage: () => {},
       clearChatHistory: async () => {},
-      isClearing: false
+      isClearing: false,
+      chatId: null
     } as unknown as ChatContextValue;
   }
   return context;
@@ -1029,7 +1031,8 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     draftMessage,
     setDraftMessage,
     clearChatHistory,
-    isClearing
+    isClearing,
+    chatId // currentChatIdとして使用するためchatIdを追加
   };
 
   return (
