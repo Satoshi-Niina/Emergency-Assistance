@@ -24,7 +24,6 @@ import emergencyGuideRouter from './routes/emergency-guide';
 import { emergencyFlowRouter } from './routes/emergency-flow-router';
 import { registerSyncRoutes } from './routes/sync-routes';
 import { flowGeneratorRouter } from './routes/flow-generator';
-import troubleshootingRouter from './routes/troubleshooting.js';
 import { usersRouter } from './routes/users';
 
 // Extend the express-session types
@@ -327,7 +326,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { v4: uuidv4 } = await import('uuid');
       const newChatId = uuidv4();
-      
+
       const chatData = insertChatSchema.parse({
         ...req.body,
         id: newChatId,
@@ -857,7 +856,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const docPath = path.join(process.cwd(), 'knowledge-base', document.title);
 
       if (!fs.existsSync(docPath)) {
-        return res.status(404).json({ error: 'ドキュメントファイルが見つかりません: ' + docPath });
+        return res.status(404).json({ error: 'ドキュメントファイルが見つかりません:```text
+ + docPath });
       }
 
       console.log(`ドキュメント再処理を開始: ${docPath}`);
@@ -995,8 +995,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Chat routes
   app.get("/api/chats/:chatId/messages", requireAuth, async (req, res) => {
     try {
-      const chatId = parseInt(req.params.chatId);
-      if (isNaN(chatId)) {
+      const chatId = req.params.chatId;
+      if (!chatId) {
         return res.status(400).json({ message: "Invalid chat ID" });
       }
 
@@ -1010,8 +1010,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/chats/:chatId/messages", requireAuth, async (req, res) => {
     try {
-      const chatId = parseInt(req.params.chatId);
-      if (isNaN(chatId)) {
+      const chatId = req.params.chatId;
+      if (!chatId) {
         return res.status(400).json({ message: "Invalid chat ID" });
       }
 
