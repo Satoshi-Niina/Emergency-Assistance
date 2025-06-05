@@ -474,11 +474,18 @@ export default function Chat() {
                 {/* 通常のメッセージリスト */}
                 {displayMessages
                   .filter((message: any) => message && message.content && message.content.trim().length > 0)
-                  .map((message: any, index: number) => (
-                    <div key={`message-${message.id || index}-${message.timestamp || Date.now()}`} className="w-full md:max-w-2xl mx-auto">
-                      <MessageBubble message={message} />
-                    </div>
-                  ))}
+                  .map((message: any, index: number) => {
+                    // より一意性の高いキーを生成
+                    const uniqueKey = message.id 
+                      ? `msg-${message.id}-${message.role || 'unknown'}` 
+                      : `temp-${index}-${message.timestamp || Date.now()}-${message.content?.substring(0, 10) || 'empty'}`;
+                    
+                    return (
+                      <div key={uniqueKey} className="w-full md:max-w-2xl mx-auto">
+                        <MessageBubble message={message} />
+                      </div>
+                    );
+                  })}
               </>
             )}
 
