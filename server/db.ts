@@ -33,11 +33,11 @@ export const db = drizzle(sql, { schema });
 // Add connection health check function
 export async function checkDatabaseConnection(): Promise<boolean> {
   try {
-    // より軽量な接続テスト
+    // Simple connection test
     await sql`SELECT 1 as test`;
     return true;
   } catch (error) {
-    // 接続エラーでもサーバーを停止させない
+    console.warn('Database connection failed:', error.message);
     return false;
   }
 }
@@ -46,7 +46,7 @@ export async function checkDatabaseConnection(): Promise<boolean> {
 export async function ensureDatabaseConnection(): Promise<boolean> {
   let retries = 0;
   const maxRetries = 3;
-  
+
   while (retries < maxRetries) {
     try {
       const isConnected = await checkDatabaseConnection();
@@ -63,6 +63,6 @@ export async function ensureDatabaseConnection(): Promise<boolean> {
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
-  
+
   return false;
 }
