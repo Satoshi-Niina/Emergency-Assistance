@@ -32,6 +32,12 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
   const [isSpeaking, setIsSpeaking] = useState(false);
   const { toast } = useToast();
 
+  // メッセージの有効性をチェック
+  if (!message || !message.content || message.content.trim().length === 0) {
+    console.warn('無効なメッセージがレンダリングされようとしました:', message);
+    return null;
+  }
+
   const isUserMessage = !message.isAiResponse;
   const formattedTime = format(
     new Date(message.timestamp), 

@@ -522,25 +522,44 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('受信データ:', data);
 
       // APIレスポンスの形式チェック
-      if (!data.userMessage || !data.aiMessage) {
+      if (!data || !data.userMessage || !data.aiMessage) {
         console.error('APIレスポンス形式エラー:', data);
+        
+        // エラー時は楽観的に追加したユーザーメッセージを削除
+        setMessages(prev => prev.slice(0, -1));
+        
         throw new Error('サーバーから無効なレスポンスを受信しました');
+      }
+
+      // メッセージの内容を検証
+      if (!data.userMessage.content || !data.aiMessage.content) {
+        console.error('メッセージ内容が空です:', data);
+        
+        // エラー時は楽観的に追加したユーザーメッセージを削除
+        setMessages(prev => prev.slice(0, -1));
+        
+        throw new Error('メッセージの内容が無効です');
       }
 
       // APIレスポンスでメッセージを更新
       setMessages(prev => {
         // 最後のユーザーメッセージを正式なデータで置き換え、AIメッセージを追加
         const newMessages = [...prev];
-        newMessages[newMessages.length - 1] = {
-          ...data.userMessage,
-          timestamp: new Date(data.userMessage.timestamp),
-          media: allMedia.length > 0 ? allMedia.map((media, idx) => ({
-            id: Date.now() + idx,
-            messageId: data.userMessage.id,
-            ...media
-          })) : []
-        };
+        
+        // 安全に最後のメッセージを置き換え
+        if (newMessages.length > 0) {
+          newMessages[newMessages.length - 1] = {
+            ...data.userMessage,
+            timestamp: new Date(data.userMessage.timestamp),
+            media: allMedia.length > 0 ? allMedia.map((media, idx) => ({
+              id: Date.now() + idx,
+              messageId: data.userMessage.id,
+              ...media
+            })) : []
+          };
+        }
 
+        // AIメッセージを追加
         newMessages.push({
           ...data.aiMessage,
           timestamp: new Date(data.aiMessage.timestamp)
@@ -556,6 +575,17 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('メッセージ送信完了');
     } catch (error) {
       console.error('メッセージ送信エラー詳細:', error);
+      
+      // エラー時は楽観的に追加したユーザーメッセージを削除（まだ削除されていない場合）
+      setMessages(prev => {
+        const lastMessage = prev[prev.length - 1];
+        // 最後のメッセージが今送信しようとしたメッセージ（IDが一時的なもの）の場合は削除
+        if (lastMessage && lastMessage.id === userMessage.id) {
+          return prev.slice(0, -1);
+        }
+        return prev;
+      });
+      
       toast({
         title: 'メッセージ送信エラー',
         description: `メッセージを送信できませんでした: ${error instanceof Error ? error.message : 'Unknown error'}`,
