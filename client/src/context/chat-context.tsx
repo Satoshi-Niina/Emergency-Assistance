@@ -141,20 +141,29 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (savedChatId) {
         const parsedChatId = parseInt(savedChatId, 10);
         if (!isNaN(parsedChatId)) {
-          // サーバーに本当に存在するか確認
-          console.log('保存されたchatIdの存在確認:', parsedChatId);
-          const checkResponse = await apiRequest('GET', `/api/chats/${parsedChatId}`);
+          try {
+            // サーバーに本当に存在するか確認
+            console.log('保存されたchatIdの存在確認:', parsedChatId);
+            const checkResponse = await apiRequest('GET', `/api/chats/${parsedChatId}`);
 
-          if (checkResponse.ok) {
-            setChatId(parsedChatId);
-            console.log('ローカルストレージからchatIdを復元:', parsedChatId);
-            setIsInitializing(false);
-            return parsedChatId;
-          } else {
-            // 存在しないならlocalStorageをクリアして新規作成に進む
-            console.log('保存されたchatIdが存在しません。クリアして新規作成します:', parsedChatId);
+            if (checkResponse.ok) {
+              setChatId(parsedChatId);
+              console.log('ローカルストレージからchatIdを復元:', parsedChatId);
+              setIsInitializing(false);
+              return parsedChatId;
+            } else {
+              // 存在しないならlocalStorageをクリアして新規作成に進む
+              console.log('保存されたchatIdが存在しません。クリアして新規作成します:', parsedChatId);
+              localStorage.removeItem('currentChatId');
+            }
+          } catch (checkError) {
+            console.warn('チャット存在確認でエラー:', checkError);
             localStorage.removeItem('currentChatId');
           }
+        } else {
+          // 無効なchatIdの場合もクリア
+          console.log('無効なchatIdをクリアします:', savedChatId);
+          localStorage.removeItem('currentChatId');
         }
       }
 
