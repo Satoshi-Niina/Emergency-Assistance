@@ -366,6 +366,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // チャット履歴取得API
+  app.get('/api/chats/:id/history', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const chatId = req.params.id;
+
+      // チャットの存在確認
+      const chat = await storage.getChat(chatId);
+      if (!chat) {
+        return res.status(404).json({ message: "Chat not found" });
+      }
+
+      // チャット履歴を取得
+      const messages = await storage.getMessagesForChat(chatId);
+
+      res.json({ 
+        success: true, 
+        chatId,
+        history: messages,
+        count: messages.length 
+      });
+    } catch (error) {
+      console.error('Error fetching chat history:', error);
+      res.status(500).json({ 
+        message: "Failed to fetch chat history",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // チャットエクスポート機能
   app.post('/api/chats/:id/export', async (req: Request, res: Response) => {
     try {

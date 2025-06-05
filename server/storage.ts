@@ -133,6 +133,35 @@ export const storage = {
     return new DatabaseStorage().searchDocumentsByKeyword(keyword);
   },
 
+  // Chat history methods (using existing chats/messages schema)
+  getChatHistory: async (chatId: string): Promise<any[]> => {
+    try {
+      const chatMessages = await db.select()
+        .from(messages)
+        .where(eq(messages.chatId, chatId))
+        .orderBy(messages.createdAt);
+      
+      return chatMessages;
+    } catch (error) {
+      console.error('Error fetching chat history:', error);
+      return [];
+    }
+  },
+
+  getChatById: async (chatId: string): Promise<any | null> => {
+    try {
+      const chat = await db.select()
+        .from(chats)
+        .where(eq(chats.id, chatId))
+        .limit(1);
+      
+      return chat.length > 0 ? chat[0] : null;
+    } catch (error) {
+      console.error('Error fetching chat by ID:', error);
+      return null;
+    }
+  },
+
   // Chat export methods
   saveChatExport: async (chatId: string, userId: string, timestamp: Date): Promise<void> => {
     await db.insert(chatExports).values({
