@@ -105,10 +105,22 @@ export default function Chat() {
       return false;
     }
     
+    // createdAtの存在確認（500エラーで部分的に保存されたメッセージの検出）
+    if (!message.createdAt && !message.timestamp) {
+      console.warn('作成日時が無効なメッセージを除外（部分的保存の可能性）:', message.id);
+      return false;
+    }
+    
     // isAiResponseの型確認
     if (message.isAiResponse !== undefined && typeof message.isAiResponse !== 'boolean') {
       console.warn('isAiResponseの型が無効、自動修正:', message.id);
       message.isAiResponse = Boolean(message.isAiResponse);
+    }
+    
+    // chatIdの整合性確認
+    if (chatId && message.chatId && message.chatId !== chatId) {
+      console.warn('chatIdが不一致のメッセージを除外:', message.id, '期待:', chatId, '実際:', message.chatId);
+      return false;
     }
     
     return true;

@@ -88,72 +88,99 @@ export const storage = {
       description?: string;
     }>;
   }) {
-    try {
-      console.log('メッセージ保存開始:', { chatId: message.chatId, senderId: message.senderId, hasContent: !!message.content });
+    // トランザクション内で実行して原子性を保証
+    return await db.transaction(async (tx) => {
+      try {
+        console.log('メッセージ保存開始:', { chatId: message.chatId, senderId: message.senderId, hasContent: !!message.content });
 
-      // 必須フィールドの厳密な検証
-      if (!message.chatId || typeof message.chatId !== 'string' || message.chatId.trim().length === 0) {
-        throw new Error('chatIdが無効です');
-      }
-      if (!message.senderId || typeof message.senderId !== 'string' || message.senderId.trim().length === 0) {
-        throw new Error('senderIdが無効です');
-      }
-      if (!message.content || typeof message.content !== 'string' || message.content.trim().length === 0) {
-        throw new Error('contentが無効です');
-      }
+        // 必須フィールドの厳密な検証
+        if (!message.chatId || typeof message.chatId !== 'string' || message.chatId.trim().length === 0) {
+          throw new Error('chatIdが無効です');
+        }
+        if (!message.senderId || typeof message.senderId !== 'string' || message.senderId.trim().length === 0) {
+          throw new Error('senderIdが無効です');
+        }
+        if (!message.content || typeof message.content !== 'string' || message.content.trim().length === 0) {
+          throw new Error('contentが無効です');
+        }
 
-      // UUIDを生成
-      const messageId = generateId();
+        // chatIdとsenderIdの存在確認
+        const chatExists = await tx.select().from(chats).where(eq(chats.id, message.chatId)).limit(1);
+        if (!chatExists || chatExists.length === 0) {
+          throw new Error(`チャットID ${message.chatId} が存在しません`);
+        }
 
-      // メッセージデータの完全性を保証
-      const messageData = {
-        id: messageId,
-        chatId: message.chatId.trim(),
-        senderId: message.senderId.trim(),
-        content: message.content.trim(),
-        isAiResponse: Boolean(message.isAiResponse), // 明示的にboolean化
-        createdAt: new Date()
-      };
+        const userExists = await tx.select().from(users).where(eq(users.id, message.senderId)).limit(1);
+        if (!userExists || userExists.length === 0) {
+          throw new Error(`ユーザーID ${message.senderId} が存在しません`);
+        }
 
-      console.log('保存するメッセージデータ:', messageData);
+        // UUIDを生成
+        const messageId = generateId();
 
-      const savedMessage = await db.insert(messages).values(messageData).returning();
+        // メッセージデータの完全性を保証
+        const messageData = {
+          id: messageId,
+          chatId: message.chatId.trim(),
+          senderId: message.senderId.trim(),
+          content: message.content.trim(),
+          isAiResponse: Boolean(message.isAiResponse), // 明示的にboolean化
+          createdAt: new Date()
+        };
 
-      if (!savedMessage || savedMessage.length === 0) {
-        throw new Error('メッセージの保存に失敗しました');
-      }
+        console.log('保存するメッセージデータ:', messageData);
 
-      console.log('メッセージ保存成功:', savedMessage[0].id);
+        // メッセージを保存
+        const savedMessage = await tx.insert(messages).values(messageData).returning();
 
-      // メディアがある場合の処理
-      if (message.media && Array.isArray(message.media) && message.media.length > 0) {
-        console.log(`${message.media.length}件のメディアを保存中...`);
-        for (const mediaItem of message.media) {
-          // メディアアイテムの検証
-          if (!mediaItem.type || !mediaItem.url || typeof mediaItem.type !== 'string' || typeof mediaItem.url !== 'string') {
-            console.warn('無効なメディアアイテムをスキップ:', mediaItem);
-            continue;
+        if (!savedMessage || savedMessage.length === 0) {
+          throw new Error('メッセージの保存に失敗しました');
+        }
+
+        console.log('メッセージ保存成功:', savedMessage[0].id);
+
+        // メディアがある場合の処理
+        if (message.media && Array.isArray(message.media) && message.media.length > 0) {
+          console.log(`${message.media.length}件のメディアを保存中...`);
+          
+          const mediaDataList = [];
+          for (const mediaItem of message.media) {
+            // メディアアイテムの検証
+            if (!mediaItem.type || !mediaItem.url || typeof mediaItem.type !== 'string' || typeof mediaItem.url !== 'string') {
+              console.warn('無効なメディアアイテムをスキップ:', mediaItem);
+              continue;
+            }
+
+            mediaDataList.push({
+              id: generateId(),
+              messageId: savedMessage[0].id,
+              type: mediaItem.type.trim(),
+              url: mediaItem.url.trim(),
+              description: mediaItem.description?.trim() || null,
+              createdAt: new Date()
+            });
           }
 
-          const mediaData = {
-            id: generateId(),
-            messageId: savedMessage[0].id,
-            type: mediaItem.type.trim(),
-            url: mediaItem.url.trim(),
-            description: mediaItem.description?.trim() || null,
-            createdAt: new Date()
-          };
-
-          await db.insert(media).values(mediaData);
-          console.log('メディア保存成功:', mediaData.id);
+          // 全メディアを一括保存
+          if (mediaDataList.length > 0) {
+            await tx.insert(media).values(mediaDataList);
+            console.log(`メディア一括保存成功: ${mediaDataList.length}件`);
+          }
         }
-      }
 
-      return savedMessage[0];
-    } catch (error) {
-      console.error('メッセージ保存エラー:', error);
-      throw error;
-    }
+        // 保存されたメッセージを再取得して整合性を確認
+        const verifyMessage = await tx.select().from(messages).where(eq(messages.id, savedMessage[0].id)).limit(1);
+        if (!verifyMessage || verifyMessage.length === 0) {
+          throw new Error('保存されたメッセージの検証に失敗しました');
+        }
+
+        return verifyMessage[0];
+      } catch (error) {
+        console.error('メッセージ保存エラー:', error);
+        // トランザクションが自動的にロールバックされる
+        throw error;
+      }
+    });
   },
   clearChatMessages: async (chatId: string): Promise<void> => {
     // UUIDのためstring型で処理
