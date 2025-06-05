@@ -54,7 +54,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // User methods
-  async getUser(id: number): Promise<User | undefined> {
+  async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
@@ -73,7 +73,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
   
-  async updateUser(id: number, userData: Partial<User>): Promise<User> {
+  async updateUser(id: string, userData: Partial<User>): Promise<User> {
     const [user] = await db
       .update(users)
       .set(userData)
@@ -82,7 +82,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
   
-  async deleteUser(id: number): Promise<void> {
+  async deleteUser(id: string): Promise<void> {
     try {
       // 関連するデータを削除する順序が重要
       
@@ -119,7 +119,7 @@ export class DatabaseStorage implements IStorage {
       }
       
       // 5. ユーザーに関連するドキュメントを検索
-      const userDocuments = await db.select().from(documents).where(eq(documents.userId, id.toString()));
+      const userDocuments = await db.select().from(documents).where(eq(documents.userId, id));
       
       // 6. 各ドキュメントとそのキーワードを削除
       for (const document of userDocuments) {
@@ -146,7 +146,7 @@ export class DatabaseStorage implements IStorage {
     return chat;
   }
   
-  async getChatsForUser(userId: number): Promise<Chat[]> {
+  async getChatsForUser(userId: string): Promise<Chat[]> {
     return db.select().from(chats).where(eq(chats.userId, userId));
   }
   
@@ -166,8 +166,8 @@ export class DatabaseStorage implements IStorage {
       .from(messages)
       .where(eq(messages.chatId, chatId));
     
-    // resultをtimestampで昇順にソート
-    return result.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    // resultをcreatedAtで昇順にソート
+    return result.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   }
   
   async createMessage(message: InsertMessage): Promise<Message> {
@@ -287,11 +287,11 @@ export class DatabaseStorage implements IStorage {
     
     // JSでフィルタリング
     return allMessages
-      .filter(msg => msg.timestamp > timestamp)
-      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+      .filter(msg => msg.createdAt > timestamp)
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   }
 
-  async saveChatExport(chatId: string, userId: number, timestamp: Date): Promise<void> {
+  async saveChatExport(chatId: string, userId: string, timestamp: Date): Promise<void> {
     await db.insert(chatExports).values({
       chatId,
       userId,
