@@ -62,29 +62,54 @@ export async function apiRequest(
     ? `${url}&_t=${Date.now()}` 
     : `${url}?_t=${Date.now()}`;
 
-  const res = await fetch(urlWithCache, {
-    method,
-    headers,
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
-    // キャッシュ制御を追加
-    cache: method === 'GET' ? 'no-cache' : 'default'
-  });
+  try {
+    const res = await fetch(urlWithCache, {
+      method,
+      headers,
+      body: data ? JSON.stringify(data) : undefined,
+      credentials: "include",
+      // キャッシュ制御を追加
+      cache: method === 'GET' ? 'no-cache' : 'default'
+    });
 
-  // キャッシュクリアヘッダーをチェック
-  if (res.headers.get('X-Chat-Cleared') === 'true') {
-    console.log('サーバーからキャッシュクリア指示を受信');
-    // ローカルストレージの関連キーをクリア
-    const keyPrefix = 'rq-' + url.split('?')[0];
-    for (const key of Object.keys(localStorage)) {
-      if (key.startsWith(keyPrefix)) {
-        localStorage.removeItem(key);
+    // 401エラー（認証失敗）の場合は特別処理
+    if (res.status === 401) {
+      console.warn('認証エラー: セッションが無効です');
+      // セッション無効の場合はページをリロードしてログイン画面に誘導
+      window.location.href = '/login';
+      throw new Error('認証が必要です。ログインしてください。');
+    }
+
+    // 502エラー（サーバー接続問題）の場合
+    if (res.status === 502) {
+      console.error('サーバー接続エラー: 502 Bad Gateway');
+      throw new Error('サーバーに接続できません。しばらく待ってから再試行してください。');
+    }
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`API Error ${res.status}:`, errorText);
+      throw new Error(`サーバーエラー: ${res.status} ${res.statusText}`);
+    }
+
+    // キャッシュクリアヘッダーをチェック
+    if (res.headers.get('X-Chat-Cleared') === 'true') {
+      console.log('サーバーからキャッシュクリア指示を受信');
+      // ローカルストレージの関連キーをクリア
+      const keyPrefix = 'rq-' + url.split('?')[0];
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith(keyPrefix)) {
+          localStorage.removeItem(key);
+        }
       }
     }
-  }
 
-  await throwIfResNotOk(res);
-  return res;
+    await throwIfResNotOk(res);
+    return res;
+  } catch (error) {
+    console.error('API Request failed:', error);
+    throw error;
+  }
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
