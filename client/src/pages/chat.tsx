@@ -12,8 +12,7 @@ import TroubleshootingSelector from "@/components/troubleshooting/troubleshootin
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Send, AlertTriangle, Loader2, Trash2, LifeBuoy, Image, Hammer, Heart, FileText } from "lucide-react";
+import { Send, AlertTriangle, Loader2, Trash2, Heart } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -477,7 +476,7 @@ export default function Chat() {
                 {displayMessages
                   .filter((message: any) => message && message.content && message.content.trim().length > 0)
                   .map((message: any, index: number) => (
-                    <div key={`message-${message.id || index}-${index}`} className="w-full md:max-w-2xl mx-auto">
+                    <div key={`message-${message.id || `temp-${index}`}`} className="w-full md:max-w-2xl mx-auto">
                       <MessageBubble message={message} />
                     </div>
                   ))}
