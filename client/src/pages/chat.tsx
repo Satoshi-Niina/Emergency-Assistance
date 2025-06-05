@@ -50,7 +50,8 @@ export default function Chat() {
 
   // Fetch messages for the current chat
   const { data, isLoading: messagesLoading } = useQuery({
-    queryKey: [`/api/chats/${chatId}/messages`],
+    queryKey: chatId ? [`/api/chats/${chatId}/messages`] : [],
+    enabled: !!chatId,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
