@@ -296,20 +296,20 @@ export const storage = {
   createMessage: async (messageData: any): Promise<Message> => {
     const { v4: uuidv4 } = await import('uuid');
     const id = uuidv4();
-    const now = new Date();
 
     // AIメッセージの場合はsenderIdをnullに、ユーザーメッセージの場合は必須
     const senderId = messageData.isAiResponse ? null : messageData.senderId;
 
-    // createdAtを明示的に設定し、確実に有効な値にする
+    // createdAtを柔軟に処理（送信されている場合はそれを使用、なければ現在時刻）
+    const createdAt = messageData.createdAt ? new Date(messageData.createdAt) : new Date();
+
     const finalMessageData = {
       id,
       chatId: messageData.chatId,
       senderId,
       content: messageData.content,
       isAiResponse: messageData.isAiResponse || false,
-      // createdAtを明示的に設定し、確実に有効な値にする
-      createdAt: now
+      createdAt
     };
 
     console.log('保存するメッセージデータ（senderId確認）:', {
