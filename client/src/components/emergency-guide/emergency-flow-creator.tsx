@@ -983,8 +983,9 @@ const EmergencyFlowCreator: React.FC = () => {
 
       if (result.success) {
         toast({
-          title: "削除成功",
-          description: "キャラクターが削除されました        });
+            title: "削除成功",
+            description: "キャラクターが削除されました"
+          });
         // 削除後にフローリストを再取得
         fetchFlowList();
       } else {
