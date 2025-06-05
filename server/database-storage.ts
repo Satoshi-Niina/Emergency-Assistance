@@ -119,7 +119,7 @@ export class DatabaseStorage implements IStorage {
       }
       
       // 5. ユーザーに関連するドキュメントを検索
-      const userDocuments = await db.select().from(documents).where(eq(documents.userId, id));
+      const userDocuments = await db.select().from(documents).where(eq(documents.userId, id.toString()));
       
       // 6. 各ドキュメントとそのキーワードを削除
       for (const document of userDocuments) {
@@ -156,7 +156,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Message methods
-  async getMessage(id: number): Promise<Message | undefined> {
+  async getMessage(id: string): Promise<Message | undefined> {
     const [message] = await db.select().from(messages).where(eq(messages.id, id));
     return message;
   }
@@ -186,7 +186,7 @@ export class DatabaseStorage implements IStorage {
       if (messageIds.length > 0) {
         // メッセージIDごとに個別に削除（SQLインジェクションを避けるため）
         for (const messageId of messageIds) {
-          await db.delete(media).where(eq(media.messageId, messageId));
+          await db.delete(media).where(eq(media.messageId, messageId.toString()));
         }
       }
       
@@ -201,12 +201,12 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Media methods
-  async getMedia(id: number): Promise<Media | undefined> {
+  async getMedia(id: string): Promise<Media | undefined> {
     const [mediaItem] = await db.select().from(media).where(eq(media.id, id));
     return mediaItem;
   }
   
-  async getMediaForMessage(messageId: number): Promise<Media[]> {
+  async getMediaForMessage(messageId: string): Promise<Media[]> {
     return db.select().from(media).where(eq(media.messageId, messageId));
   }
   
@@ -218,12 +218,12 @@ export class DatabaseStorage implements IStorage {
   
   
   // Document methods
-  async getDocument(id: number): Promise<Document | undefined> {
+  async getDocument(id: string): Promise<Document | undefined> {
     const [document] = await db.select().from(documents).where(eq(documents.id, id));
     return document;
   }
   
-  async getDocumentsForUser(userId: number): Promise<Document[]> {
+  async getDocumentsForUser(userId: string): Promise<Document[]> {
     return db.select().from(documents).where(eq(documents.userId, userId));
   }
   
@@ -232,7 +232,7 @@ export class DatabaseStorage implements IStorage {
     return newDocument;
   }
   
-  async updateDocument(id: number, updates: Partial<Document>): Promise<Document | undefined> {
+  async updateDocument(id: string, updates: Partial<Document>): Promise<Document | undefined> {
     const [updatedDocument] = await db
       .update(documents)
       .set(updates)
@@ -242,7 +242,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Keyword methods
-  async getKeywordsForDocument(documentId: number): Promise<Keyword[]> {
+  async getKeywordsForDocument(documentId: string): Promise<Keyword[]> {
     return db.select().from(keywords).where(eq(keywords.documentId, documentId));
   }
   
@@ -269,7 +269,7 @@ export class DatabaseStorage implements IStorage {
     const matchingDocuments: Document[] = [];
     for (const docId of documentIds) {
       if (docId === null) continue;
-      const doc = await this.getDocument(docId);
+      const doc = await this.getDocument(docId.toString());
       if (doc) {
         matchingDocuments.push(doc);
       }

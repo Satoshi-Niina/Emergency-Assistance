@@ -40,7 +40,7 @@ export const messages = pgTable('messages', {
 // 画像や動画などのメディアファイルを管理
 export const media = pgTable('media', {
   id: text('id').primaryKey().default(sql`gen_random_uuid()`), // UUIDを自動生成
-  messageId: integer('message_id').notNull(), // 関連するメッセージのID
+  messageId: text('message_id').notNull().references(() => messages.id), // 関連するメッセージのID (UUID)
   type: text('type').notNull(), // メディアの種類（画像、動画など）
   url: text('url').notNull(), // メディアファイルのURL
   description: text('description'), // メディアの説明（オプション）
@@ -79,7 +79,7 @@ export const chatExports = pgTable('chat_exports', {
 // ドキュメントテーブルの定義
 // ナレッジベースのドキュメントを管理
 export const documents = pgTable('documents', {
-  id: integer('id').primaryKey(),
+  id: text('id').primaryKey().default(sql`gen_random_uuid()`), // UUIDを自動生成
   title: text('title').notNull(),
   content: text('content').notNull(),
   userId: text('user_id').notNull(),
@@ -89,8 +89,8 @@ export const documents = pgTable('documents', {
 // キーワードテーブルの定義
 // ドキュメント検索用のキーワードを管理
 export const keywords = pgTable('keywords', {
-  id: integer('id').primaryKey(),
-  documentId: integer('document_id').references(() => documents.id),
+  id: text('id').primaryKey().default(sql`gen_random_uuid()`), // UUIDを自動生成
+  documentId: text('document_id').references(() => documents.id), // UUID参照
   word: text('word').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
@@ -140,7 +140,7 @@ export const insertMessageSchema = z.object({
 });
 
 export const insertMediaSchema = z.object({
-  messageId: z.number(),
+  messageId: z.string(),
   type: z.string(),
   url: z.string(),
   description: z.string().optional()
@@ -153,7 +153,7 @@ export const insertDocumentSchema = z.object({
 });
 
 export const insertKeywordSchema = z.object({
-  documentId: z.number(),
+  documentId: z.string(),
   word: z.string()
 });
 
