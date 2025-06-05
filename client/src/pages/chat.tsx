@@ -82,7 +82,7 @@ export default function Chat() {
   useEffect(() => {
     // 明示的なチャット履歴クリア後のみ処理を実行
     const chatClearedTimestamp = localStorage.getItem('chat_cleared_timestamp');
-    
+
     if (messages !== undefined && messages.length === 0 && chatClearedTimestamp) {
       console.log('チャット履歴クリア後の状態を維持します');
 
@@ -97,7 +97,7 @@ export default function Chat() {
       try {
         queryClient.removeQueries({ queryKey: [`/api/chats/${chatId}/messages`] });
         queryClient.setQueryData([`/api/chats/${chatId}/messages`], []);
-        
+
         // @ts-ignore
         window.queryClient = queryClient;
       } catch (cacheError) {
@@ -429,15 +429,15 @@ export default function Chat() {
                 {displayMessages
                   .filter((message: any) => message && message.content && message.content.trim().length > 0)
                   .map((message: any, index: number) => {
-                    // createdAtを安全に取得し、確実にユニークなキーを生成
-                    const messageId = message.id || `temp-${index}`;
-                    const timestamp = message.createdAt || message.timestamp || new Date();
-                    const timestampStr = timestamp instanceof Date ? timestamp.getTime() : new Date(timestamp).getTime();
-                    const uniqueKey = `msg-${messageId}-${timestampStr}-${message.isAiResponse ? 'ai' : 'user'}`;
+                  // createdatを安全に取得し、確実にユニークなキーを生成
+                    const messageid = message.id || `temp-${index}`;
+                    const timestamp = message.createdat || message.timestamp || new Date();
+                    const timestampstr = timestamp instanceof Date ? timestamp.getTime() : new Date(timestamp).getTime();
+                    const uniquekey = `msg-${messageid}-${timestampstr}-${message.isairesponse ? 'ai' : 'user'}`;
 
                     return (
-                      <div key={uniqueKey} className="w-full md:max-w-2xl mx-auto">
-                        <MessageBubble message={message} />
+                      <div key={uniquekey} className="w-full md:max-w-2xl mx-auto">
+                        <messagebubble message={message} />
                       </div>
                     );
                   })}
@@ -445,25 +445,25 @@ export default function Chat() {
             )}
 
             {/* プレビュー用の一時メッセージ (録音中テキストと撮影した画像のプレビュー) */}
-            {draftMessage && draftMessage.content && (
-              <div className="w-full md:max-w-2xl mx-auto">
-                <MessageBubble
-                  message={{
-                    id: -1, // 一時的なID
-                    content: draftMessage.content,
-                    senderId: 1, // 現在のユーザーID
-                    isAiResponse: false,
-                    timestamp: new Date(),
-                    media: draftMessage.media?.map((m, idx) => ({
-                      id: idx,
-                      messageId: -1,
-                      ...m
-                    }))
-                  }}
-                  isDraft={true}
-                />
-              </div>
-            )}
+          {draftmessage && draftmessage.content && (
+            <div className="w-full md:max-w-2xl mx-auto">
+              <messagebubble
+                message={{
+                  id: -1, // 一時的なid
+                  content: draftmessage.content,
+                  senderid: 1, // 現在のユーザーid
+                  isairesponse: false,
+                  timestamp: new Date(),
+                  media: draftmessage.media?.map((m, idx) => ({
+                    id: idx,
+                    messageid: -1,
+                    ...m
+                  }))
+                }}
+                isdraft={true}
+              />
+            </div>
+          )}
 
             {/* デバッグ表示 - ドラフトメッセージの状態を確認 */}
             <div className="hidden">
