@@ -76,6 +76,41 @@ export const chatExports = pgTable('chat_exports', {
   timestamp: timestamp('timestamp').defaultNow().notNull() // エクスポート実行日時
 });
 
+// ドキュメントテーブルの定義
+// ナレッジベースのドキュメントを管理
+export const documents = pgTable('documents', {
+  id: integer('id').primaryKey(),
+  title: text('title').notNull(),
+  content: text('content').notNull(),
+  userId: text('user_id').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+// キーワードテーブルの定義
+// ドキュメント検索用のキーワードを管理
+export const keywords = pgTable('keywords', {
+  id: integer('id').primaryKey(),
+  documentId: integer('document_id').references(() => documents.id),
+  word: text('word').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+// TypeScript型定義（drizzle-ormから自動生成）
+export type User = typeof users.$inferSelect;
+export type InsertUser = typeof users.$inferInsert;
+export type Chat = typeof chats.$inferSelect;
+export type InsertChat = typeof chats.$inferInsert;
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = typeof messages.$inferInsert;
+export type Media = typeof media.$inferSelect;
+export type InsertMedia = typeof media.$inferInsert;
+export type ChatExport = typeof chatExports.$inferSelect;
+export type InsertChatExport = typeof chatExports.$inferInsert;
+export type Document = typeof documents.$inferSelect;
+export type InsertDocument = typeof documents.$inferInsert;
+export type Keyword = typeof keywords.$inferSelect;
+export type InsertKeyword = typeof keywords.$inferInsert;
+
 // Zodスキーマの定義（バリデーション用）
 import { z } from 'zod';
 
@@ -117,6 +152,11 @@ export const insertDocumentSchema = z.object({
   userId: z.string()
 });
 
+export const insertKeywordSchema = z.object({
+  documentId: z.number(),
+  word: z.string()
+});
+
 export const schema = {
   users,
   chats,
@@ -125,4 +165,6 @@ export const schema = {
   emergencyFlows,
   images,
   chatExports,
+  documents,
+  keywords,
 };
