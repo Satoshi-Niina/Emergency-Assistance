@@ -856,8 +856,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const docPath = path.join(process.cwd(), 'knowledge-base', document.title);
 
       if (!fs.existsSync(docPath)) {
-        return res.status(404).json({ error: 'ドキュメントファイルが見つかりません:```text
- + docPath });
+        return res.status(404).json({ error: 'ドキュメントファイルが見つかりません: ' + docPath });
       }
 
       console.log(`ドキュメント再処理を開始: ${docPath}`);
