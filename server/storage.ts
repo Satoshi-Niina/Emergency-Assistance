@@ -115,8 +115,8 @@ export const storage = {
           throw new Error(`ユーザーID ${message.senderId} が存在しません`);
         }
 
-        // 明示的にUUIDとタイムスタンプを生成
-        const id = generateId();
+        // INSERT処理前にuuidv4()でIDを明示的に生成
+        const id = uuidv4();
         const createdAt = new Date().toISOString();
         const chatId = message.chatId.trim();
         const senderId = message.senderId.trim();
@@ -150,7 +150,7 @@ export const storage = {
               continue;
             }
 
-            const mediaId = generateId();
+            const mediaId = uuidv4();
             const mediaCreatedAt = new Date().toISOString();
 
             await tx.execute(
