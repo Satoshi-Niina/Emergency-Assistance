@@ -408,7 +408,7 @@ const router = express.Router();
 router.post('/search-image', (req, res) => {
   try {
     const { query } = req.body;
-    
+
     if (!query) {
       return res.status(400).json({ 
         images: [],
@@ -420,14 +420,14 @@ router.post('/search-image', (req, res) => {
 
     // 画像検索データの読み込み
     const imageSearchDataPath = path.join(process.cwd(), 'knowledge-base', 'data', 'image_search_data.json');
-    
+
     if (!fs.existsSync(imageSearchDataPath)) {
       console.log('画像検索データが見つかりません');
       return res.json({ images: [] });
     }
 
     const imageSearchData = JSON.parse(fs.readFileSync(imageSearchDataPath, 'utf8'));
-    
+
     // クエリに基づいて画像を検索
     const results = imageSearchData.filter((item: any) => {
       const searchableText = `${item.title} ${item.description} ${item.keywords.join(' ')} ${item.category}`.toLowerCase();
