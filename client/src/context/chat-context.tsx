@@ -942,13 +942,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       toast({
         title: 'チャット履歴を削除しました',
         description: '全てのメッセージが削除されました。',
-      });
-    }Implement UUID chat ID and fallback mechanism for unauthenticated users.    } catch (error) {
-      console.error('チャット履歴削除エラー:', error);
-      toast({
-        title: 'チャット履歴削除エラー',
-        description: 'チャット履歴の削除に失敗しました。ローカルの状態はクリアされました。',
-        variant: 'destructive',
+      variant: 'destructive',
       });
     }
   }, [chatId, toast]);
