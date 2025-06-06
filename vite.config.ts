@@ -32,9 +32,15 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0',
-    port: 5000,
-    open: true,
+    port: 5001,
+    open: false,
     allowedHosts: 'all',
-    strictPort: false
+    strictPort: false,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true
+      }
+    }
   },
 });
