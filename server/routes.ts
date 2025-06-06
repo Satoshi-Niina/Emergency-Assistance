@@ -122,7 +122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Auth middleware
-  const requireAuth = (req: Request, res: Response, next: Function) => {
+  const requireAuth = async (req: Request, res: Response, next: Function) => {
     if (!req.session.userId) {
       // 開発環境では自動的にデフォルトユーザーでログイン
       const adminUser = await storage.getUserByUsername('admin');
@@ -194,10 +194,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/auth/me", async (req, res) => {
     if (!req.session.userId) {
       // 開発環境では自動的にデフォルトユーザーでログイン
-      const adminUser = await storage.getUserByUsername('admin');
-      if (adminUser) {
-        req.session.userId = adminUser.id;
-        req.session.userRole = 'admin';
+      try {
+        const adminUser = await storage.getUserByUsername('admin');
+        if (adminUser) {
+          req.session.userId = adminUser.id;
+          req.session.userRole = 'admin';
+        }
+      } catch (error) {
+        console.error('管理者ユーザー取得エラー:', error);
       }
     }
 
