@@ -37,7 +37,7 @@ export default function Header() {
       </div>
       <div className="flex items-center">
         <div className="ml-3 flex items-center">
-          <span className="text-sm">{user?.displayName}</span>
+          <span className="text-sm">ログインユーザー：{user?.username || 'ゲスト'}</span>
         </div>
       </div>
     </header>
