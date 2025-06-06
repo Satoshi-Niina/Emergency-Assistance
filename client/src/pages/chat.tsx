@@ -123,39 +123,9 @@ export default function Chat() {
 
   return (
     <div className="flex flex-col w-full h-full overflow-auto bg-blue-50 chat-layout-container overflow-scroll-container" style={{ maxWidth: '100vw', overflowX: 'hidden' }}>
-      {/* メインヘッダー - 青い背景に白文字でタイトルとユーザー名 */}
-      <div className="bg-blue-600 text-white p-3 flex justify-between items-center">
-        <div className="flex items-center">
-          <h1 className="text-lg font-bold">応急処置チャットシステム</h1>
-        </div>
-        <div className="text-sm">
-          <span>ログインユーザー：{user?.username || 'ゲスト'}</span>
-        </div>
-      </div>
-
-      {/* タブナビゲーション - 背景は薄い灰色 */}
+      {/* ボタン行 - 左に履歴クリア、右に履歴送信とチャット終了 */}
       <div className="bg-gray-100 border-b border-gray-200 px-4 py-2">
-        <div className="flex gap-4">
-          <button className="px-4 py-2 bg-blue-500 text-white rounded-md flex items-center gap-2">
-            <LifeBuoy className="h-4 w-4" />
-            <span>応急処置サポート</span>
-          </button>
-          <button className="px-4 py-2 text-gray-600 flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            <span>基礎データ管理</span>
-          </button>
-          <button className="px-4 py-2 text-gray-600 flex items-center gap-2">
-            <Heart className="h-4 w-4" />
-            <span>応急処置データ管理</span>
-          </button>
-          <button className="px-4 py-2 text-gray-600 flex items-center gap-2">
-            <Settings className="h-4 w-4" />
-            <span>設定</span>
-          </button>
-        </div>
-
-        {/* ボタン行 - 左に履歴クリア、右に履歴送信とチャット終了 */}
-        <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-300">
+        <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             {/* 履歴クリアボタン - 青塗りつぶし白文字白枠線スタイル */}
             <Button 
