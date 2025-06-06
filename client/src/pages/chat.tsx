@@ -13,7 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Send, AlertTriangle, Loader2, Trash2, LifeBuoy, Image, Hammer, Heart, FileText, Menu } from "lucide-react";
+import { Send, AlertTriangle, Loader2, Trash2, LifeBuoy, Image, Hammer, Heart, FileText, Menu, Settings } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -326,7 +326,7 @@ export default function Chat() {
         </div>
       </div>
 
-      {/* タブナビゲーション */}
+      {/* タブナビゲーション - 背景は薄い灰色 */}
       <div className="bg-gray-100 border-b border-gray-200 px-4 py-2">
         <div className="flex gap-4">
           <button className="px-4 py-2 bg-blue-500 text-white rounded-md flex items-center gap-2">
@@ -342,11 +342,12 @@ export default function Chat() {
             <span>応急処置データ管理</span>
           </button>
           <button className="px-4 py-2 text-gray-600 flex items-center gap-2">
+            <Settings className="h-4 w-4" />
             <span>設定</span>
           </button>
         </div>
         
-        {/* ボタン行 - 添付画像の通り履歴クリア、履歴送信、チャット終了の配置 */}
+        {/* ボタン行 - 左に履歴クリア、右に履歴送信とチャット終了 */}
         <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-300">
           <div className="flex items-center gap-2">
             {/* 履歴クリアボタン - 青塗りつぶし白文字白枠線スタイル */}
@@ -372,7 +373,7 @@ export default function Chat() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* 履歴送信ボタン */}
+            {/* 履歴送信ボタン - 緑色 */}
             <Button 
               variant="outline"
               size="sm"
@@ -393,7 +394,7 @@ export default function Chat() {
               )}
             </Button>
             
-            {/* チャット終了ボタン */}
+            {/* チャット終了ボタン - オレンジ色 */}
             <Button 
               variant="destructive"
               size="sm"
@@ -406,7 +407,7 @@ export default function Chat() {
         </div>
       </div>
       
-      {/* 応急処置ガイドボタン */}
+      {/* 応急処置ガイドボタン - 中央に配置 */}
       <div className="w-full flex justify-center items-center p-4 bg-gradient-to-r from-blue-100 to-blue-50 border-b border-blue-200">
         <Button
           variant="default"
