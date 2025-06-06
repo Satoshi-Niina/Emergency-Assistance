@@ -8,21 +8,13 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// 接続プールの設定とエラーハンドリングを追加
-const client = postgres(process.env.DATABASE_URL, {
+// PostgreSQL接続の設定
+const sql = postgres(process.env.DATABASE_URL, {
   max: 10,
   idle_timeout: 20,
   connect_timeout: 10,
   onnotice: () => {},
   onparameter: () => {},
-  socket: {
-    keepalive: true
-  }
 });
 
-// 接続エラーのハンドリング
-client.on('error', (err) => {
-  console.error('Database connection error:', err);
-});
-
-export const db = drizzle(client, { schema });
+export const db = drizzle(sql, { schema });
