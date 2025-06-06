@@ -125,9 +125,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const requireAuth = (req: Request, res: Response, next: Function) => {
     if (!req.session.userId) {
       // 開発環境では自動的にデフォルトユーザーでログイン
-      console.log('認証されていないユーザーをデフォルトユーザー(ID: 1)でログインします');
-      req.session.userId = 1;
-      req.session.userRole = 'admin';
+      const adminUser = await storage.getUserByUsername('admin');
+      if (adminUser) {
+        req.session.userId = adminUser.id;
+        req.session.userRole = 'admin';
+      }
     }
     next();
   };
@@ -136,8 +138,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const requireAdmin = async (req: Request, res: Response, next: Function) => {
     if (!req.session.userId) {
       // 開発環境では自動的にデフォルトユーザーでログイン
-      req.session.userId = 1;
-      req.session.userRole = 'admin';
+      const adminUser = await storage.getUserByUsername('admin');
+      if (adminUser) {
+        req.session.userId = adminUser.id;
+        req.session.userRole = 'admin';
+      }
     }
 
     const user = await storage.getUser(req.session.userId);
@@ -189,8 +194,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/auth/me", async (req, res) => {
     if (!req.session.userId) {
       // 開発環境では自動的にデフォルトユーザーでログイン
-      req.session.userId = 1;
-      req.session.userRole = 'admin';
+      const adminUser = await storage.getUserByUsername('admin');
+      if (adminUser) {
+        req.session.userId = adminUser.id;
+        req.session.userRole = 'admin';
+      }
     }
 
     let user = await storage.getUser(req.session.userId);
