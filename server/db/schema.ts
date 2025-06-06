@@ -92,3 +92,16 @@ export const schema = {
 
 // Export individual tables
 export { users, chats, messages, media, emergencyFlows, images, documents, keywords, chatExports };
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  createdAt: Date;
+}
+
+export interface Message {
+  id: string;
+  content: string;
+  senderId: string;
+  timestamp: Date;
+}
