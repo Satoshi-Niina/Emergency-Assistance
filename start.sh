@@ -7,5 +7,5 @@ npm install
 echo "クライアントの依存関係をインストール中..."
 cd client && npm install && cd ..
 
-echo "アプリケーションを起動中..."
-npm run dev:all
+echo "サーバーを起動中..."
+npm run dev

@@ -1,28 +1,37 @@
-import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Route, Switch } from 'wouter';
-import Header from './components/navigation/header';
-import Chat from './pages/chat';
-import NotFound from './pages/not-found';
-import './index.css';
 
-const queryClient = new QueryClient();
+import { useState, useEffect } from 'react';
 
-function App() {
+export default function App() {
+  const [apiStatus, setApiStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [serverMessage, setServerMessage] = useState<string>('');
+
+  useEffect(() => {
+    // サーバーのヘルスチェック
+    fetch('/api/health')
+      .then(res => res.json())
+      .then(data => {
+        setApiStatus('success');
+        setServerMessage('サーバーと正常に通信できています');
+      })
+      .catch(err => {
+        setApiStatus('error');
+        setServerMessage('サーバーとの通信に失敗しました');
+        console.error('API Error:', err);
+      });
+  }, []);
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen bg-background text-foreground">
-        <Header />
-        <main className="container mx-auto px-4 py-8">
-          <Switch>
-            <Route path="/" component={Chat} />
-            <Route path="/chat" component={Chat} />
-            <Route component={NotFound} />
-          </Switch>
-        </main>
+    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+      <h1>Tech Support Assistant</h1>
+      <div style={{ 
+        padding: '10px', 
+        borderRadius: '5px',
+        backgroundColor: apiStatus === 'success' ? '#d4edda' : apiStatus === 'error' ? '#f8d7da' : '#fff3cd',
+        border: `1px solid ${apiStatus === 'success' ? '#c3e6cb' : apiStatus === 'error' ? '#f5c6cb' : '#ffeaa7'}`
+      }}>
+        <strong>ステータス:</strong> {apiStatus === 'loading' ? '接続中...' : serverMessage}
       </div>
-    </QueryClientProvider>
+      <p>アプリケーションが正常に起動しました。</p>
+    </div>
   );
 }
-
-export default App;
