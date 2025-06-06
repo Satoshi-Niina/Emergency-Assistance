@@ -153,8 +153,8 @@ function App() {
       <AuthProvider>
         <ChatProvider>
           <Router />
-          <Toaster />
         </ChatProvider>
+        <Toaster />
       </AuthProvider>
     </QueryClientProvider>
   );

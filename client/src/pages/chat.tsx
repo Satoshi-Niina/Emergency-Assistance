@@ -11,7 +11,7 @@ import TroubleshootingSelector from "@/components/troubleshooting/troubleshootin
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
-import { Send, Loader2, Trash2, Heart, FileText, Menu, Settings } from "lucide-react";
+import { Send, Loader2, Trash2, Heart, FileText, Menu, Settings, LifeBuoy } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
