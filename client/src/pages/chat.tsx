@@ -322,7 +322,7 @@ export default function Chat() {
           <h1 className="text-lg font-bold">応急処置チャットシステム</h1>
         </div>
         <div className="text-sm">
-          <span>ユーザー名：{user?.username || 'ゲスト'}</span>
+          <span>ログインユーザー：{user?.username || 'ゲスト'}</span>
         </div>
       </div>
 
@@ -340,6 +340,9 @@ export default function Chat() {
           <button className="px-4 py-2 text-gray-600 flex items-center gap-2">
             <Heart className="h-4 w-4" />
             <span>応急処置データ管理</span>
+          </button>
+          <button className="px-4 py-2 text-gray-600 flex items-center gap-2">
+            <span>設定</span>
           </button>
         </div>
       </div>
