@@ -9,14 +9,13 @@ import { speakText, stopSpeaking } from "@/lib/text-to-speech";
 
 interface MessageBubbleProps {
   message: {
-    id: string;
+    id: number;
     content: string;
-    senderId: string | null;
+    senderId: number | null;
     isAiResponse: boolean;
-    createdAt?: Date | string | null;
-    timestamp?: Date | string | null; // 後方互換性のため残す
+    timestamp: Date;
     media?: {
-      id: string;
+      id: number;
       type: string;
       url: string;
       thumbnail?: string;
@@ -33,40 +32,9 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
   const [isSpeaking, setIsSpeaking] = useState(false);
   const { toast } = useToast();
 
-  // メッセージの有効性をチェック
-  if (!message || !message.content || message.content.trim().length === 0) {
-    console.warn('無効なメッセージがレンダリングされようとしました:', message);
-    return null;
-  }
-
   const isUserMessage = !message.isAiResponse;
-
-  // タイムスタンプの安全な処理
-  const getValidTimestamp = () => {
-    // createdAt を優先して使用、なければtimestampを使用
-    const timestamp = message.createdAt || (message as any).timestamp;
-
-    if (!timestamp) {
-      return new Date(); // 現在時刻をデフォルトとして使用
-    }
-
-    // 文字列の場合は変換を試行
-    if (typeof timestamp === 'string') {
-      const parsed = new Date(timestamp);
-      return isNaN(parsed.getTime()) ? new Date() : parsed;
-    }
-
-    // Dateオブジェクトの場合はそのまま使用
-    if (timestamp instanceof Date) {
-      return isNaN(timestamp.getTime()) ? new Date() : timestamp;
-    }
-
-    // その他の場合は現在時刻を使用
-    return new Date();
-  };
-
   const formattedTime = format(
-    getValidTimestamp(), 
+    new Date(message.timestamp), 
     "HH:mm", 
     { locale: ja }
   );

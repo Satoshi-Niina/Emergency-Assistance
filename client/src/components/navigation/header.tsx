@@ -1,58 +1,76 @@
+import { useState } from "react";
+import { useAuth } from "@/context/auth-context";
+import { useChat } from "@/context/chat-context";
+import { Button } from "@/components/ui/button";
+import { Menu, Settings, Trash2, Loader2 } from "lucide-react";
+import { useLocation } from "wouter";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Tabs } from "./tabs";
 
-import React from 'react';
-import { Button } from '@/components/ui/button';
-import { LogOut, Menu, X } from 'lucide-react';
-import { useAuth } from '@/hooks/use-auth';
-
-interface HeaderProps {
-  isMenuOpen: boolean;
-  setIsMenuOpen: (open: boolean) => void;
-}
-
-export function Header({ isMenuOpen, setIsMenuOpen }: HeaderProps) {
-  const { user, signOut } = useAuth();
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-    } catch (error) {
-      console.error('Sign out error:', error);
-    }
-  };
+export default function Header() {
+  const { user } = useAuth();
+  const { clearChatHistory, isClearing } = useChat();
+  const [location] = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-      <div className="flex items-center space-x-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          className="md:hidden"
-        >
-          {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </Button>
-        <h1 className="text-xl font-semibold text-gray-800">
-          緊急対応システム
-        </h1>
-      </div>
-      
-      <div className="flex items-center space-x-3">
-        {user && (
-          <>
-            <span className="text-sm text-gray-600 hidden sm:inline">
-              {user.email}
-            </span>
+    <header className="bg-primary text-white py-3 px-4 flex items-center justify-between shadow-md">
+      <div className="flex items-center">
+        <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon" className="mr-3 text-white">
+              <Menu />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="p-0">
+            <div className="bg-primary text-white p-4">
+              <h2 className="text-xl font-semibold">Emergency Recovery Chat</h2>
+            </div>
+            <nav className="p-4">
+              <Tabs currentPath={location} vertical onNavigate={() => setSidebarOpen(false)} />
+            </nav>
+          </SheetContent>
+        </Sheet>
+        <div className="flex items-center">
+          <h1 className="text-xl font-semibold mr-3">応急処置チャットシステム</h1>
+          {location === "/chat" && (
             <Button
               variant="outline"
               size="sm"
-              onClick={handleSignOut}
-              className="flex items-center space-x-1"
+              onClick={clearChatHistory}
+              disabled={isClearing}
+              className="bg-transparent border border-white hover:bg-red-100 hover:text-red-800 text-white"
             >
-              <LogOut className="h-4 w-4" />
-              <span className="hidden sm:inline">ログアウト</span>
+              {isClearing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  <span className="text-xs">クリア中</span>
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  <span className="text-xs">履歴クリア</span>
+                </>
+              )}
             </Button>
-          </>
-        )}
+          )}
+        </div>
+      </div>
+      <div className="flex items-center">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="ml-2 text-white"
+          onClick={() => location !== "/settings" && window.location.assign("/settings")}
+        >
+          <Settings />
+        </Button>
+        <div className="ml-3 flex items-center">
+          <span className="text-sm">{user?.displayName}</span>
+          <span className="ml-2 bg-secondary text-white text-xs px-2 py-0.5 rounded-full">
+            {user?.role === "admin" ? "管理者" : "一般"}
+          </span>
+        </div>
       </div>
     </header>
   );
