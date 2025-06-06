@@ -640,7 +640,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // AI モデル切り替えフラグ (将来的に設定ページから変更可能に)
       // 一時的にPerplexity機能を無効化
-      const usePerplexity = false; // req.body.usePerplexity || false;
+      // const usePerplexity = false; // req.body.usePerplexity || false;
 
       let aiResponse = '';
       let citations: any[] = [];
