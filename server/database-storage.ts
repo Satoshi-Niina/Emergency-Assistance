@@ -4,7 +4,7 @@ import {
   chats, type Chat, type InsertChat,
   chatExports, type ChatExport, type InsertChatExport,
   media, type Media, type InsertMedia
-} from "@shared/schema";
+} from "../shared/schema";
 import { db } from "./db";
 import { eq, desc, like, sql } from "drizzle-orm";
 import session from "express-session";
