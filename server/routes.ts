@@ -860,7 +860,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // ドキュメントとその関連ファイルを削除
       const success = removeDocumentFromKnowledgeBase(docId);
 
-      if (success) {
+      if (success){
         // 画像検索データを再初期化
         fetch('http://localhost:5000/api/tech-support/init-image-search-data', {
           method: 'POST'
