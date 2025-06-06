@@ -44,3 +44,52 @@ export default function Header() {
     </header>
   );
 }
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Menu } from "lucide-react";
+import { useAuth } from "@/context/auth-context";
+
+export default function Header() {
+  const { user, logout } = useAuth();
+
+  return (
+    <header className="border-b border-neutral-200 bg-white">
+      <div className="flex h-16 items-center justify-between px-4">
+        <div className="flex items-center gap-4">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="md:hidden">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left">
+              <nav className="flex flex-col gap-4">
+                <a href="/chat">Chat</a>
+                <a href="/processing">Processing</a>
+                <a href="/settings">Settings</a>
+                {user?.role === 'admin' && (
+                  <>
+                    <a href="/users">Users</a>
+                    <a href="/documents">Documents</a>
+                    <a href="/emergency-guide">Emergency Guide</a>
+                    <a href="/troubleshooting">Troubleshooting</a>
+                  </>
+                )}
+              </nav>
+            </SheetContent>
+          </Sheet>
+          <h1 className="text-xl font-semibold">Tech Support Assistant</h1>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-gray-600">
+            {user?.username}
+          </span>
+          <Button variant="outline" onClick={logout}>
+            Logout
+          </Button>
+        </div>
+      </div>
+    </header>
+  );
+}

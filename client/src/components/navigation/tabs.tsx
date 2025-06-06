@@ -89,3 +89,43 @@ export function Tabs({ currentPath, vertical = false, onNavigate }: TabsProps) {
     </div>
   );
 }
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/auth-context";
+
+interface TabsProps {
+  currentPath: string;
+}
+
+export function Tabs({ currentPath }: TabsProps) {
+  const { user } = useAuth();
+
+  const tabs = [
+    { path: '/chat', label: 'Chat', show: true },
+    { path: '/processing', label: 'Processing', show: true },
+    { path: '/settings', label: 'Settings', show: true },
+    { path: '/users', label: 'Users', show: user?.role === 'admin' },
+    { path: '/documents', label: 'Documents', show: user?.role === 'admin' },
+    { path: '/emergency-guide', label: 'Emergency Guide', show: user?.role === 'admin' },
+    { path: '/troubleshooting', label: 'Troubleshooting', show: user?.role === 'admin' },
+  ];
+
+  return (
+    <nav className="flex space-x-1 p-1">
+      {tabs.filter(tab => tab.show).map((tab) => (
+        <Button
+          key={tab.path}
+          variant={currentPath === tab.path ? "default" : "ghost"}
+          size="sm"
+          asChild
+          className={cn(
+            "text-sm",
+            currentPath === tab.path && "bg-blue-600 text-white"
+          )}
+        >
+          <a href={tab.path}>{tab.label}</a>
+        </Button>
+      ))}
+    </nav>
+  );
+}
