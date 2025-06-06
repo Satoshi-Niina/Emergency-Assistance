@@ -686,10 +686,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aiMessage
       });
     } catch (error) {
+      console.error('メッセージ送信処理エラー:', {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined,
+        chatId,
+        content,
+        userId
+      });
+
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors });
       }
-      return res.status(500).json({ message: "Internal server error" });
+      return res.status(500).json({ 
+        message: "Internal server error",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
@@ -848,9 +859,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ドキュメント再処理
   app.post('/api/knowledge/:docId/process', requireAuth, requireAdmin, async (req, res) => {
     try {
-      const docId = req.params.docId;
-
-      // ナレッジベースからドキュメント情報を取得
+      const docId = req.params.docId;      // ナレッジベースからドキュメント情報を取得
       const documents = listKnowledgeBaseDocuments();
       const document = documents.find(doc => doc.id === docId);
 

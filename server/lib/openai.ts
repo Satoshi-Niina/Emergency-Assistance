@@ -43,6 +43,17 @@ console.log("[DEBUG] OpenAI API KEY exists:", process.env.OPENAI_API_KEY ? "YES"
  */
 export async function processOpenAIRequest(prompt: string, useKnowledgeBase: boolean = true): Promise<string> {
   try {
+    console.log(`OpenAI API呼び出し開始: useKnowledgeBase=${useKnowledgeBase}, message="${prompt}"`);
+
+    const apiKey = process.env.OPENAI_API_KEY || process.env.REPLIT_SECRET_OPENAI_API_KEY;
+    if (!apiKey) {
+      console.error('OpenAI API key not found');
+      return 'OpenAI APIキーが設定されていません。';
+    }
+
+    console.log('OpenAI API Key exists:', !!apiKey);
+    console.log('OpenAI API Key prefix:', apiKey.substring(0, 10) + '...');
+
     // システムプロンプトを設定
     let systemPrompt = "あなたは保守用車支援システムの一部として機能するAIアシスタントです。ユーザーの質問に対して、正確で実用的な回答を提供してください。";
 
@@ -53,6 +64,7 @@ export async function processOpenAIRequest(prompt: string, useKnowledgeBase: boo
     }
 
     // OpenAI API呼び出し
+    console.log('OpenAI APIリクエストを送信中...');
     const response = await openai.chat.completions.create({
       model: OPENAI_MODEL,
       messages: [
@@ -63,16 +75,44 @@ export async function processOpenAIRequest(prompt: string, useKnowledgeBase: boo
       // JSON形式の強制は解除
     });
 
+    console.log('OpenAI APIレスポンス受信:', {
+      id: response.id,
+      model: response.model,
+      usage: response.usage,
+      choicesLength: response.choices?.length
+    });
+
     // レスポンスからテキストを抽出
     const responseText = response.choices[0].message.content || '';
+    console.log('OpenAI応答を受信しました:', responseText.substring(0, 100) + '...');
     return responseText;
   } catch (error: any) {
-    console.error('OpenAI API エラー:', error.message);
-    if (error.response) {
-      console.error('レスポンスステータス:', error.response.status);
-      console.error('レスポンスデータ:', error.response.data);
+    console.error('OpenAI API Error Details:', {
+      message: error.message,
+      code: error.code,
+      type: error.type,
+      status: error.status,
+      stack: error.stack
+    });
+
+    // 特定のエラータイプに応じたメッセージを返す
+    if (error.code === 'insufficient_quota') {
+      return 'OpenAI APIのクォータが不足しています。';
+    } else if (error.code === 'invalid_api_key') {
+      return 'OpenAI APIキーが無効です。';
+    } else if (error.code === 'rate_limit_exceeded') {
+      return 'OpenAI APIのリクエスト制限に達しました。しばらく待ってから再試行してください。';
+    } else if (error.message?.includes('timeout')) {
+      return 'OpenAI APIのリクエストがタイムアウトしました。';
+    } else if (error.status === 401) {
+      return 'OpenAI APIキーの認証に失敗しました。';
+    } else if (error.status === 429) {
+      return 'OpenAI APIのレート制限に達しました。';
+    } else if (error.status >= 500) {
+      return 'OpenAI APIサーバーでエラーが発生しました。';
+    } else {
+      return `OpenAI APIエラー: ${error.message || 'Unknown error'}`;
     }
-    throw new Error(`OpenAI APIリクエスト中にエラーが発生しました: ${error.message}`);
   }
 }
 
