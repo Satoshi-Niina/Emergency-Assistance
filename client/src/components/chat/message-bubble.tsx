@@ -33,7 +33,7 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
   const { toast } = useToast();
 
   const isUserMessage = !message.isAiResponse;
-  
+
   // 日時フォーマットのエラーハンドリング
   let formattedTime = "--:--";
   try {
@@ -289,7 +289,12 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
             </div>
           )}
         </div>
-        <span className="text-xs text-blue-400">{formattedTime}</span>
+        <span className="text-xs text-blue-400">
+          {message.timestamp || message.createdAt 
+            ? format(new Date(message.timestamp || message.createdAt), "HH:mm", { locale: ja })
+            : "時刻不明"
+          }
+        </span>
       </div>
       <div>
         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${

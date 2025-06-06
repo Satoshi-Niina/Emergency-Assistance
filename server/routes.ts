@@ -711,7 +711,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         content: aiResponse,
         chatId: chat.id,
         isAiResponse: true,
-        senderId: null
+        senderId: req.session.userId // AIメッセージも送信者IDを設定
       });
 
       return res.json({
