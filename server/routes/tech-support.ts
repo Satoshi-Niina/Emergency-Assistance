@@ -16,14 +16,14 @@ function ensureDirectoryExists(directory: string) {
 // ファイルクリーンアップユーティリティ
 function cleanupTempDirectory(dirPath: string): void {
   if (!fs.existsSync(dirPath)) return;
-
+  
   try {
     const files = fs.readdirSync(dirPath);
-
+    
     for (const file of files) {
       const filePath = path.join(dirPath, file);
       const stat = fs.statSync(filePath);
-
+      
       if (stat.isDirectory()) {
         // 再帰的にディレクトリを削除
         cleanupTempDirectory(filePath);
@@ -33,7 +33,7 @@ function cleanupTempDirectory(dirPath: string): void {
         fs.unlinkSync(filePath);
       }
     }
-
+    
     console.log(`ディレクトリをクリーンアップしました: ${dirPath}`);
   } catch (error) {
     console.error(`ディレクトリのクリーンアップに失敗しました: ${dirPath}`, error);
@@ -46,30 +46,30 @@ async function cleanupTempDirectories(): Promise<void> {
   // 知識ベースディレクトリ
   const rootDir = process.cwd();
   const knowledgeBaseDir = path.join(rootDir, 'knowledge-base');
-
+  
   // 一時ファイル配置用ディレクトリ
   const publicImagesDir = path.join(rootDir, 'public/images');
   const publicUploadsDir = path.join(rootDir, 'public/uploads');
   const uploadsDir = path.join(rootDir, 'uploads');
-
+  
   // クリーンアップ対象の一時ディレクトリリスト
   const tempDirs = [
     path.join(knowledgeBaseDir, 'temp'),
     path.join(uploadsDir, 'temp'),
     path.join(publicUploadsDir, 'temp')
   ];
-
+  
   // 一時ディレクトリの処理
   for (const dirPath of tempDirs) {
     if (!fs.existsSync(dirPath)) continue;
-
+    
     try {
       const files = fs.readdirSync(dirPath);
-
+      
       for (const file of files) {
         const filePath = path.join(dirPath, file);
         const stat = fs.statSync(filePath);
-
+        
         if (stat.isDirectory()) {
           // ディレクトリの場合は再帰的に処理
           await verifyAndCleanupDirectory(filePath);
@@ -78,13 +78,13 @@ async function cleanupTempDirectories(): Promise<void> {
           await verifyAndCleanupFile(filePath, path.basename(dirPath));
         }
       }
-
+      
       console.log(`一時ディレクトリをクリーンアップしました: ${dirPath}`);
     } catch (error) {
       console.error(`一時ディレクトリのクリーンアップ中にエラーが発生しました: ${dirPath}`, error);
     }
   }
-
+  
   // knowledge-baseに移動済みのファイルをuploadsとpublic/uploadsから削除
   try {
     await cleanupRedundantFiles();
@@ -111,29 +111,29 @@ async function detectAndRemoveDuplicateImages(): Promise<{removed: number, error
   const knowledgeImagesDir = path.join(process.cwd(), 'knowledge-base/images');
   let removedCount = 0;
   let errorCount = 0;
-
+  
   if (!fs.existsSync(knowledgeImagesDir)) {
     console.log(`画像ディレクトリが存在しません: ${knowledgeImagesDir}`);
     return { removed: 0, errors: 0 };
   }
-
+  
   try {
     // 画像ファイル一覧を取得
     const imageFiles = fs.readdirSync(knowledgeImagesDir)
       .filter(file => file.endsWith('.png') || file.endsWith('.jpg') || file.endsWith('.jpeg'));
-
+    
     console.log(`knowledge-base/imagesディレクトリ内の画像ファイル数: ${imageFiles.length}件`);
     if (imageFiles.length <= 1) return { removed: 0, errors: 0 };
-
+    
     // ファイル名のプレフィックスでグループ化する正規表現パターン
     // mc_1745233987873_img_001 -> mc_1745233987873
     const prefixPattern = /^(mc_\d+)_/;
-
+    
     // ハッシュ値とファイルパスのマップ
     const fileHashes = new Map<string, string[]>();
     // ファイル名のプレフィックスでグループ化
     const prefixGroups = new Map<string, string[]>();
-
+    
     // まずファイル名のプレフィックスでグループ化（タイムスタンプ違いの可能性がある同名ファイルを見つける）
     for (const file of imageFiles) {
       const match = file.match(prefixPattern);
@@ -145,18 +145,18 @@ async function detectAndRemoveDuplicateImages(): Promise<{removed: number, error
         prefixGroups.get(prefix)!.push(file);
       }
     }
-
+    
     // 重複の可能性があるグループのみを検査（パフォーマンス改善のため）
     for (const entry of Array.from(prefixGroups.entries())) {
       const [prefix, files] = entry;
       if (files.length > 1) {
         console.log(`プレフィックス "${prefix}" で ${files.length}件の潜在的な重複ファイルを検出`);
-
+        
         // 各ファイルのハッシュを計算して重複を検出
         for (const file of files) {
           const filePath = path.join(knowledgeImagesDir, file);
           const hash = await calculateImageHash(filePath);
-
+          
           if (hash) {
             if (!fileHashes.has(hash)) {
               fileHashes.set(hash, []);
@@ -166,23 +166,23 @@ async function detectAndRemoveDuplicateImages(): Promise<{removed: number, error
         }
       }
     }
-
+    
     // 重複ファイルを削除（最も新しいタイムスタンプのファイル以外）
     for (const entry of Array.from(fileHashes.entries())) {
       const [hash, filePaths] = entry;
       if (filePaths.length > 1) {
         console.log(`ハッシュ値 ${hash} で ${filePaths.length}件の重複ファイルを検出`);
-
+        
         // ファイル名からタイムスタンプを抽出して最新のファイルを特定
         const timestamps = filePaths.map((filePath: string) => {
           const fileName = path.basename(filePath);
           const match = fileName.match(/mc_(\d+)/);
           return match ? parseInt(match[1]) : 0;
         });
-
+        
         // 最大のタイムスタンプを持つファイルのインデックス
         const latestFileIndex = timestamps.indexOf(Math.max(...timestamps));
-
+        
         // 最新以外のファイルを削除
         for (let i = 0; i < filePaths.length; i++) {
           if (i !== latestFileIndex) {
@@ -198,7 +198,7 @@ async function detectAndRemoveDuplicateImages(): Promise<{removed: number, error
         }
       }
     }
-
+    
     return { removed: removedCount, errors: errorCount };
   } catch (error) {
     console.error('重複画像検出処理でエラーが発生しました:', error);
@@ -215,20 +215,20 @@ async function cleanupRedundantFiles(): Promise<{removed: number, errors: number
     path.join(rootDir, 'public/uploads/images'),
     path.join(rootDir, 'public/images')
   ];
-
+  
   let removedCount = 0;
   let errorCount = 0;
-
+  
   try {
     // knowledge-base/imagesのファイル一覧を取得
     if (!fs.existsSync(knowledgeImagesDir)) {
       console.log(`ディレクトリが存在しません: ${knowledgeImagesDir}`);
       return { removed: 0, errors: 0 };
     }
-
+    
     const knowledgeImages = fs.readdirSync(knowledgeImagesDir);
     console.log(`知識ベースディレクトリ内のファイル数: ${knowledgeImages.length}件`);
-
+    
     // 各アップロードディレクトリをチェック
     for (const dir of uploadsDirs) {
       if (!fs.existsSync(dir)) {
@@ -238,10 +238,10 @@ async function cleanupRedundantFiles(): Promise<{removed: number, errors: number
         console.log(`ディレクトリを作成しました: ${dir}`);
         continue;
       }
-
+      
       const uploadedFiles = fs.readdirSync(dir);
       console.log(`ディレクトリ内のファイル数: ${dir} - ${uploadedFiles.length}件`);
-
+      
       for (const file of uploadedFiles) {
         // knowledge-baseに同名のファイルが存在する場合は削除
         if (knowledgeImages.includes(file)) {
@@ -256,7 +256,7 @@ async function cleanupRedundantFiles(): Promise<{removed: number, errors: number
         }
       }
     }
-
+    
     console.log(`重複ファイル削除結果: 成功=${removedCount}件, 失敗=${errorCount}件`);
     return { removed: removedCount, errors: errorCount };
   } catch (error) {
@@ -271,7 +271,7 @@ async function verifyAndCleanupFile(filePath: string, subDir: string): Promise<v
     const fileName = path.basename(filePath);
     const fileExt = path.extname(fileName);
     const baseNameWithoutExt = path.basename(fileName, fileExt);
-
+    
     // knowledge-baseの対応するディレクトリパス
     let kbTargetDir = '';
     if (subDir === 'images') {
@@ -286,7 +286,7 @@ async function verifyAndCleanupFile(filePath: string, subDir: string): Promise<v
       console.log(`一時ファイルを削除しました: ${filePath}`);
       return;
     }
-
+    
     // knowledge-baseに対応するファイルが存在するか確認
     const kbTargetPath = path.join(kbTargetDir, fileName);
     if (fs.existsSync(kbTargetPath)) {
@@ -296,7 +296,7 @@ async function verifyAndCleanupFile(filePath: string, subDir: string): Promise<v
     } else {
       console.log(`警告: knowledge-baseに対応するファイルが見つからないため、削除をスキップします: ${filePath}`);
     }
-
+    
   } catch (error) {
     console.error(`ファイルの検証・クリーンアップに失敗しました: ${filePath}`, error);
   }
@@ -305,14 +305,14 @@ async function verifyAndCleanupFile(filePath: string, subDir: string): Promise<v
 // ディレクトリを再帰的に検証して削除
 async function verifyAndCleanupDirectory(dirPath: string): Promise<void> {
   if (!fs.existsSync(dirPath)) return;
-
+  
   try {
     const files = fs.readdirSync(dirPath);
-
+    
     for (const file of files) {
       const filePath = path.join(dirPath, file);
       const stat = fs.statSync(filePath);
-
+      
       if (stat.isDirectory()) {
         await verifyAndCleanupDirectory(filePath);
       } else {
@@ -322,7 +322,7 @@ async function verifyAndCleanupDirectory(dirPath: string): Promise<void> {
         await verifyAndCleanupFile(filePath, topDir);
       }
     }
-
+    
     // ディレクトリが空になったら削除
     const remainingFiles = fs.readdirSync(dirPath);
     if (remainingFiles.length === 0) {
@@ -357,7 +357,7 @@ const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     // 処理タイプによって保存先を変更
     const processingType = req.body.processingType || 'document';
-
+    
     if (file.mimetype.includes('svg') || file.mimetype.includes('image')) {
       // 画像ファイルはすべてknowledge-baseのimagesディレクトリに直接保存
       cb(null, knowledgeBaseImagesDir);
@@ -378,7 +378,7 @@ const storage = multer.diskStorage({
     const sanitizedName = originalName.split('.')[0]
       .replace(/[\/\\:*?"<>|]/g, '')
       .replace(/\s+/g, '_');
-
+    
     // MC + 日本語部分を含む名前を保持しつつ、一意性を確保
     cb(null, `${sanitizedName}_${uniqueId}${extname}`);
   }
@@ -390,7 +390,7 @@ const upload = multer({
     // 許可する拡張子
     const allowedExtensions = ['.pdf', '.docx', '.xlsx', '.pptx', '.svg', '.png', '.jpg', '.jpeg', '.gif'];
     const ext = path.extname(file.originalname).toLowerCase();
-
+    
     if (allowedExtensions.includes(ext)) {
       cb(null, true);
     } else {
@@ -402,67 +402,13 @@ const upload = multer({
 const router = express.Router();
 
 /**
- * 画像検索エンドポイント
- * フロントエンドからの画像検索リクエストを処理
- */
-router.post('/search-image', (req, res) => {
-  try {
-    const { query } = req.body;
-
-    if (!query) {
-      return res.status(400).json({ 
-        images: [],
-        error: 'クエリが指定されていません' 
-      });
-    }
-
-    console.log(`画像検索リクエスト: "${query}"`);
-
-    // 画像検索データの読み込み
-    const imageSearchDataPath = path.join(process.cwd(), 'knowledge-base', 'data', 'image_search_data.json');
-
-    if (!fs.existsSync(imageSearchDataPath)) {
-      console.log('画像検索データが見つかりません');
-      return res.json({ images: [] });
-    }
-
-    const imageSearchData = JSON.parse(fs.readFileSync(imageSearchDataPath, 'utf8'));
-
-    // クエリに基づいて画像を検索
-    const results = imageSearchData.filter((item: any) => {
-      const searchableText = `${item.title} ${item.description} ${item.keywords.join(' ')} ${item.category}`.toLowerCase();
-      return searchableText.includes(query.toLowerCase());
-    });
-
-    console.log(`検索結果: ${results.length}件`);
-
-    // 統一されたレスポンス形式で返す
-    return res.json({
-      images: results.map((item: any) => ({
-        url: item.file,
-        title: item.title,
-        description: item.description,
-        category: item.category,
-        keywords: item.keywords
-      }))
-    });
-  } catch (error) {
-    console.error('画像検索エラー:', error);
-    return res.status(500).json({
-      images: [],
-      error: '画像検索中にエラーが発生しました'
-    });
-  }
-});
-
-/**
  * キャッシュをクリアするエンドポイント
  * 削除操作後にクライアントがこれを呼び出すことで、最新情報を確実に取得
  */
 router.post('/clear-cache', (req, res) => {
   try {
     console.log('サーバーキャッシュクリア要求を受信しました');
-
+    
     // 知識ベースJSONディレクトリの再検証
     const jsonDir = path.join(process.cwd(), 'knowledge-base', 'json');
     if (fs.existsSync(jsonDir)) {
@@ -470,7 +416,7 @@ router.post('/clear-cache', (req, res) => {
         // 実際のファイル一覧を取得
         const files = fs.readdirSync(jsonDir);
         console.log(`検証: knowledge-base/jsonディレクトリに${files.length}個のファイルが存在`);
-
+        
         // キャッシュからファイルの実在性を再チェック
         for (const file of files) {
           const fullPath = path.join(jsonDir, file);
@@ -486,46 +432,46 @@ router.post('/clear-cache', (req, res) => {
         console.error('ディレクトリ読み取りエラー:', readErr);
       }
     }
-
+    
     // index.json ファイルの再構築（トラッキングファイル）
     const indexJsonPath = path.join(process.cwd(), 'knowledge-base', 'index.json');
-
+    
     try {
       // 実際のファイルリストを取得
       const jsonFiles = fs.existsSync(jsonDir) ? fs.readdirSync(jsonDir) : [];
-
+      
       // 現在のメタデータファイルから最新インデックスを再構築
       const indexData = {
         lastUpdated: new Date().toISOString(),
         guides: [] as any[],
         fileCount: jsonFiles.length
       };
-
+      
       // ブラックリストファイル（無視するファイル）
       const blacklistFiles = ['guide_1744876404679_metadata.json', 'guide_metadata.json'];
-
+      
       // 有効なメタデータファイルのみを追加
       const validFiles = jsonFiles.filter(file => 
         file.endsWith('_metadata.json') && 
         !blacklistFiles.includes(file)
       );
-
+      
       console.log('有効なJSONファイル:', validFiles);
-
+      
       // インデックスに追加
       for (const file of validFiles) {
         try {
           const content = fs.readFileSync(path.join(jsonDir, file), 'utf8');
           const data = JSON.parse(content);
           const id = file.replace('_metadata.json', '');
-
+          
           let title = id;
           if (data.metadata && data.metadata.タイトル) {
             title = data.metadata.タイトル;
           } else if (data.title) {
             title = data.title;
           }
-
+          
           indexData.guides.push({
             id,
             title,
@@ -536,14 +482,14 @@ router.post('/clear-cache', (req, res) => {
           console.error(`ファイルの解析エラー ${file}:`, parseErr);
         }
       }
-
+      
       // インデックスを保存
       fs.writeFileSync(indexJsonPath, JSON.stringify(indexData, null, 2), 'utf8');
       console.log('index.jsonファイルを更新しました');
     } catch (indexErr) {
       console.error('index.json更新エラー:', indexErr);
     }
-
+    
     return res.json({
       success: true,
       message: 'サーバーキャッシュをクリアしました',
@@ -558,47 +504,91 @@ router.post('/clear-cache', (req, res) => {
   }
 });
 
-// JSONファイル一覧を取得するAPI
+/**
+ * JSON ファイル一覧を取得するエンドポイント
+ * 最新のJSONファイルを優先的に取得
+ */
 router.get('/list-json-files', (req, res) => {
   try {
-    const jsonDir = path.join(process.cwd(), 'knowledge-base', 'json');
-
-    if (!fs.existsSync(jsonDir)) {
-      return res.json([]);
-    }
-
-    // ブラックリストファイル
-    const blacklistFiles = ['guide_1744876404679_metadata.json', 'guide_metadata.json'];
-
-    // ディレクトリ内のすべてのJSONファイルを取得
-    const allFiles = fs.readdirSync(jsonDir).filter(file => 
-      file.endsWith('.json') && 
-      file.includes('metadata') &&
-      !blacklistFiles.includes(file)
-    );
-
-    // 重複を除去（Set を使用）
-    const uniqueFiles = [...new Set(allFiles)];
-
-    // ファイルの詳細情報を取得
-    const fileDetails = uniqueFiles.map(filename => {
-      const fullPath = path.join(jsonDir, filename);
-      try {
-        const stats = fs.statSync(fullPath);
-        return {
-          filename,
-          fullPath,
-          size: stats.size,
-          lastModified: stats.mtime
-        };
-      } catch (error) {
-        return null;
+    console.log('JSONファイル一覧取得リクエストを受信...');
+    
+    // ファイルは知識ベースディレクトリに一元化
+    const jsonDirs = [
+      path.join(process.cwd(), 'knowledge-base', 'json')  // メインの場所
+    ];
+    
+    let allJsonFiles: string[] = [];
+    
+    // 問題が発生しているファイルのブラックリスト
+    const blacklistedFiles = [
+      'guide_1744876404679_metadata.json', // 問題が発生しているファイル
+      'guide_metadata.json'  // 別の問題が報告されているファイル
+    ];
+    console.log(`ブラックリストファイル: ${blacklistedFiles.join(', ')}`);
+    
+    // 各ディレクトリからメタデータJSONファイルを収集
+    for (const jsonDir of jsonDirs) {
+      if (fs.existsSync(jsonDir)) {
+        // ディレクトリの内容を確認し、すべてのファイルをログ出力
+        const allFiles = fs.readdirSync(jsonDir);
+        console.log(`${jsonDir}内のすべてのファイル:`, allFiles);
+        
+        // 実在するJSONファイルのみフィルタリング
+        const files = allFiles
+          .filter(file => file.endsWith('_metadata.json'))
+          .filter(file => {
+            // ブラックリストにあるファイルを除外
+            if (blacklistedFiles.includes(file)) {
+              console.log(`ブラックリストのため除外: ${file}`);
+              return false;
+            }
+            
+            // 実際にファイルが存在するか確認
+            const filePath = path.join(jsonDir, file);
+            const exists = fs.existsSync(filePath);
+            if (!exists) {
+              console.log(`ファイルが実際には存在しないため除外: ${filePath}`);
+              return false;
+            }
+            
+            return true;
+          });
+        
+        console.log(`${jsonDir}内の有効なメタデータファイル: ${files.length}件`);
+        allJsonFiles = [...allJsonFiles, ...files];
+      } else {
+        // ディレクトリが存在しない場合は作成
+        fs.mkdirSync(jsonDir, { recursive: true });
+        console.log(`ディレクトリを作成しました: ${jsonDir}`);
       }
-    }).filter(file => file !== null);
-
-    res.json(fileDetails);
+    }
+    
+    // 重複を排除して一意のファイル名リストにする
+    const uniqueJsonFiles = Array.from(new Set(allJsonFiles));
+    console.log(`重複除外後のファイル数: ${uniqueJsonFiles.length}件`);
+    
+    // タイムスタンプでソート（新しい順）
+    const sortedFiles = uniqueJsonFiles.sort((a, b) => {
+      // ファイル名からタイムスタンプを抽出: mc_1744105287121_metadata.json -> 1744105287121
+      const timestampA = a.split('_')[1] || '0';
+      const timestampB = b.split('_')[1] || '0';
+      return parseInt(timestampB) - parseInt(timestampA);
+    });
+    
+    // 応答ヘッダーを設定して、キャッシュを無効化
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+    
+    // ファイル一覧をJSONで返す
+    return res.json(sortedFiles);
   } catch (error) {
-    res.status(500).json({ error: 'JSONファイル一覧の取得に失敗しました' });
+    console.error('JSONファイル一覧取得エラー:', error);
+    return res.status(500).json({
+      error: 'JSONファイル一覧の取得に失敗しました',
+      details: error instanceof Error ? error.message : String(error)
+    });
   }
 });
 
@@ -609,23 +599,23 @@ router.get('/list-json-files', (req, res) => {
 router.post('/init-image-search-data', async (req, res) => {
   try {
     console.log('画像検索データの初期化を実行します');
-
+    
     // 画像検索データJSONファイルのパス
     // knowledge-baseのデータディレクトリを作成
     const knowledgeBaseDataDir = path.join(process.cwd(), 'knowledge-base', 'data');
     if (!fs.existsSync(knowledgeBaseDataDir)) {
       fs.mkdirSync(knowledgeBaseDataDir, { recursive: true });
     }
-
+    
     // 画像検索データJSONファイルのパス（knowledge-baseに一元化）
     const imageSearchDataPath = path.join(knowledgeBaseDataDir, 'image_search_data.json');
-
+    
     // 画像ディレクトリの参照 - 一元化するためにknowledge-baseだけを使用
     const imagesDir = path.join(process.cwd(), 'knowledge-base', 'images');
-
+    
     // ディレクトリが存在するか確認し、なければ作成
     ensureDirectoryExists(imagesDir);
-
+    
     // 初期データを作成（PNG形式のみに統一）
     const initialData = [
       {
@@ -661,18 +651,18 @@ router.post('/init-image-search-data', async (req, res) => {
         description: "保守用車の運転キャビン内部配置図。操作機器と計器類の位置を表示。"
       }
     ];
-
+    
     // 既存のimagesディレクトリから検出されたPNGファイルを追加
     try {
       // imagesディレクトリ内のすべてのPNGファイルを取得
       const pngFiles = fs.readdirSync(imagesDir)
         .filter(file => file.toLowerCase().endsWith('.png'));
-
+      
       for (const pngFile of pngFiles) {
         const pngId = pngFile.replace('.png', '');
         // 既に初期データとして含まれていない場合のみ追加
         const exists = initialData.some(item => item.id === pngId);
-
+        
         if (!exists) {
           // 新しいアイテム作成
           initialData.push({
@@ -688,37 +678,37 @@ router.post('/init-image-search-data', async (req, res) => {
     } catch (dirErr) {
       console.error('PNGファイル検出中にエラー:', dirErr);
     }
-
+    
     // 既存データがある場合は読み込んで上書き更新する
     let existingData: any[] = [];
     let updatedData: any[] = [];
-
+    
     if (fs.existsSync(imageSearchDataPath)) {
       try {
         const jsonContent = fs.readFileSync(imageSearchDataPath, 'utf8');
         existingData = JSON.parse(jsonContent);
         console.log(`既存の画像検索データを読み込みました: ${existingData.length}件`);
-
+        
         // 既存データのIDマップを作成
         const existingItemsMap = new Map<string, any>();
         existingData.forEach((item: any) => {
           existingItemsMap.set(item.id, item);
         });
-
+        
         // 初期データを既存データで上書き更新
         updatedData = initialData.map(item => {
           return existingItemsMap.has(item.id) 
             ? { ...item, ...existingItemsMap.get(item.id) } // 既存データで上書き
             : item; // 新規データはそのまま
         });
-
+        
         // 既存データで初期データに含まれていないものを追加
         existingData.forEach((item: any) => {
           if (!updatedData.some(updatedItem => updatedItem.id === item.id)) {
             updatedData.push(item);
           }
         });
-
+        
         console.log(`データを統合しました: ${updatedData.length}件（新規: ${updatedData.length - existingData.length}件）`);
       } catch (jsonErr) {
         console.error("JSON読み込みエラー:", jsonErr);
@@ -727,13 +717,13 @@ router.post('/init-image-search-data', async (req, res) => {
     } else {
       updatedData = initialData;
     }
-
+    
     // JSONファイルに保存 - knowledge-baseに一元化
     fs.writeFileSync(imageSearchDataPath, JSON.stringify(updatedData, null, 2));
-
+    
     console.log(`データをknowledge-base/dataに保存しました`);
     console.log(`画像検索データを初期化しました: ${updatedData.length}件`);
-
+    
     return res.json({
       success: true,
       count: updatedData.length,
@@ -755,11 +745,11 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     if (!file) return res.status(400).json({ error: "ファイルがアップロードされていません" });
 
     console.log(`ファイルアップロード処理開始: ${file.originalname}`);
-
+    
     // 元ファイルを保存するかどうかのフラグを取得（デフォルトではfalse）
     const keepOriginalFile = req.body.keepOriginalFile === 'true';
     console.log(`元ファイル保存: ${keepOriginalFile ? '有効' : '無効（デフォルト）'}`);
-
+    
     // アップロード開始時に一時ディレクトリのクリーンアップを実行
     try {
       // 知識ベース一時ディレクトリをクリーンアップ
@@ -769,50 +759,50 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       console.error('一時ディレクトリのクリーンアップに失敗しました:', cleanupError);
       // クリーンアップの失敗は無視して処理を続行
     }
-
+    
     // 一時的にバッファを保存（元ファイル保存オプションがオフの場合、後で削除）
     const filePath = file.path;
     const fileExt = path.extname(file.originalname).toLowerCase();
     const fileBaseName = path.basename(file.path);
     const filesDir = path.dirname(file.path);
     const processingType = req.body.processingType || 'document';
-
+    
     console.log(`処理タイプ: ${processingType}`);
     console.log(`ファイルパス: ${filePath}`);
     console.log(`ファイル拡張子: ${fileExt}`);
-
+    
     // 画像検索用データ処理の場合
     if (processingType === 'image_search' && ['.svg', '.png', '.jpg', '.jpeg', '.gif'].includes(fileExt)) {
       try {
         console.log("画像検索用データ処理を開始します");
-
+        
         // ファイル名から一意のIDを生成
         const fileId = path.basename(filePath, fileExt).toLowerCase().replace(/\s+/g, '_');
-
+        
         // 全ての形式をPNGに統一するため、SVG/JPG/GIFなどからPNGへの変換を実行
         let pngFilePath = '';
         let originalFilePath = filePath;
         let updatedFilePath = filePath;
         let updatedFileExt = fileExt;
-
+        
         if (fileExt !== '.png') {
           try {
             // 元のファイルパスを保持
             const origFilePath = filePath;
-
+            
             // PNGファイルパスを生成
             pngFilePath = path.join(
               publicImagesDir, 
               `${path.basename(filePath, fileExt)}.png`
             );
-
+            
             console.log(`${fileExt}形式からPNG形式に変換: ${pngFilePath}`);
-
+            
             if (fileExt === '.svg') {
               // SVGの場合は特別な処理
               const svgContent = fs.readFileSync(origFilePath, 'utf8');
               const svgBuffer = Buffer.from(svgContent);
-
+              
               await sharp(svgBuffer)
                 .png()
                 .toFile(pngFilePath);
@@ -822,9 +812,9 @@ router.post('/upload', upload.single('file'), async (req, res) => {
                 .png()
                 .toFile(pngFilePath);
             }
-
+            
             console.log(`PNG形式に変換完了: ${pngFilePath}`);
-
+            
             // 以降の処理では変換したPNGファイルを使用
             originalFilePath = origFilePath; // 元のパスを記録
             updatedFilePath = pngFilePath; // 処理中のファイルパスを更新
@@ -835,19 +825,19 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             pngFilePath = '';
           }
         }
-
+        
         // 画像検索データJSONを読み込むか新規作成
         const knowledgeBaseDataDir = path.join(process.cwd(), 'knowledge-base', 'data');
         if (!fs.existsSync(knowledgeBaseDataDir)) {
           fs.mkdirSync(knowledgeBaseDataDir, { recursive: true });
         }
-
+        
         // データの保存先は knowledge-base/data のみに一元化
         const imageSearchDataPath = path.join(knowledgeBaseDataDir, 'image_search_data.json');
-
+        
         // 画像検索データの初期化
         let imageSearchData = [];
-
+        
         if (fs.existsSync(imageSearchDataPath)) {
           try {
             const jsonContent = fs.readFileSync(imageSearchDataPath, 'utf8');
@@ -859,15 +849,15 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             imageSearchData = [];
           }
         }
-
+        
         // タイトルと説明を生成（ファイル名から推測）
         const fileName = path.basename(file.originalname, fileExt);
         const title = fileName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-
+        
         // カテゴリの推測
         let category = '';
         let keywords = [];
-
+        
         if (fileName.includes('engine') || fileName.includes('motor')) {
           category = 'エンジン';
           keywords = ["エンジン", "モーター", "動力系"];
@@ -884,17 +874,17 @@ router.post('/upload', upload.single('file'), async (req, res) => {
           category = '保守用車パーツ';
           keywords = ["保守", "部品", "修理"];
         }
-
+        
         // ファイル名から追加のキーワードを抽出（数字や特殊文字を除去して単語分割）
         const additionalKeywords = fileName
           .replace(/[0-9_\-\.]/g, ' ')
           .split(/\s+/)
           .filter(word => word.length > 1)
           .map(word => word.toLowerCase());
-
+        
         // 重複を除去して既存のキーワードと結合
         const uniqueKeywords = Array.from(new Set([...keywords, ...additionalKeywords]));
-
+        
         // 詳細情報を充実させるための処理内容
         const details = [
           `保守用車の${category}に関する技術図面`,
@@ -902,7 +892,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
           `整備・点検・修理に使用`,
           `技術マニュアル参照資料`
         ];
-
+        
         // 新しい画像検索アイテムを作成（より詳細な情報を含む）
         const newImageItem = {
           id: fileId,
@@ -925,7 +915,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             documentId: fileId.split('_')[0] // ドキュメントIDの関連付け
           }
         };
-
+        
         // 既存のデータに新しいアイテムを追加または更新
         const existingIndex = imageSearchData.findIndex((item: any) => item.id === fileId);
         if (existingIndex >= 0) {
@@ -933,12 +923,12 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         } else {
           imageSearchData.push(newImageItem);
         }
-
+        
         // 更新したデータを知識ベースに書き込み
         fs.writeFileSync(imageSearchDataPath, JSON.stringify(imageSearchData, null, 2));
-
+        
         console.log(`画像検索データを知識ベースに更新しました: ${imageSearchData.length}件`);
-
+        
         // 元ファイルを保存するオプションがオフの場合、元ファイルを削除
         if (!keepOriginalFile) {
           try {
@@ -951,7 +941,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             // ファイル削除に失敗しても処理は続行
           }
         }
-
+        
         // 結果を返す
         return res.json({
           success: true,
@@ -977,12 +967,12 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         });
       }
     }
-
+    
     // 通常の文書処理（従来のコード）
     let extractedText = "";
     let pageCount = 0;
     let metadata: any = {};
-
+    
     try {
       switch (fileExt) {
         case '.pdf':
@@ -991,17 +981,17 @@ router.post('/upload', upload.single('file'), async (req, res) => {
           pageCount = pdfResult.pageCount;
           metadata = { pageCount, type: 'pdf' };
           break;
-
+        
         case '.docx':
           extractedText = await extractWordText(filePath);
           metadata = { type: 'docx' };
           break;
-
+          
         case '.xlsx':
           extractedText = await extractExcelText(filePath);
           metadata = { type: 'xlsx' };
           break;
-
+          
         case '.pptx':
           extractedText = await extractPptxText(filePath);
           // PPTXの場合は画像も抽出済み
@@ -1014,47 +1004,47 @@ router.post('/upload', upload.single('file'), async (req, res) => {
           };
           break;
       }
-
+      
       // extracted_data.jsonへのデータ追加
       const knowledgeBaseDataDir = path.join(process.cwd(), 'knowledge-base', 'data');
       if (!fs.existsSync(knowledgeBaseDataDir)) {
         fs.mkdirSync(knowledgeBaseDataDir, { recursive: true });
       }
-
+      
       const extractedDataPath = path.join(knowledgeBaseDataDir, 'extracted_data.json');
-
+      
       // ファイルが存在するか確認し、存在しない場合は空のJSONを作成
       if (!fs.existsSync(extractedDataPath)) {
         fs.writeFileSync(extractedDataPath, JSON.stringify({ vehicleData: [] }, null, 2));
       }
-
+      
       // 既存データの読み込み
       const extractedData = JSON.parse(fs.readFileSync(extractedDataPath, 'utf-8'));
-
+      
       // 車両データキーが存在するか確認
       const vehicleDataKey = 'vehicleData';
       if (!extractedData[vehicleDataKey]) {
         extractedData[vehicleDataKey] = [];
       }
-
+      
       const vehicleData = extractedData[vehicleDataKey];
-
+      
       // 新規データの追加
       // メタデータJSONファイル関連の処理
       // 1. タイムスタンプとファイル名生成
       const timestamp = Date.now();
       const prefix = path.basename(filePath, path.extname(filePath)).substring(0, 2).toLowerCase().replace(/[^a-zA-Z0-9]/g, '');
       const metadataFileName = `${prefix}_${timestamp}_metadata.json`;
-
+      
       // 2. knowledge-baseディレクトリ内のJSONフォルダ確保
       const jsonDir = path.join(process.cwd(), 'knowledge-base', 'json');
       if (!fs.existsSync(jsonDir)) {
         fs.mkdirSync(jsonDir, { recursive: true });
       }
-
+      
       // 3. メタデータファイルパス生成
       const metadataFilePath = path.join(jsonDir, metadataFileName);
-
+      
       // 4. 車両データオブジェクト生成（メタデータJSONの参照パスを含む）
       const newData = {
         id: path.basename(filePath, path.extname(filePath)),
@@ -1067,7 +1057,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         metadata_json: `/knowledge-base/json/${metadataFileName}`,
         keywords: [fileExt.substring(1).toUpperCase(), "技術文書", "サポート", file.originalname]
       };
-
+      
       // 5. メタデータJSONの内容を準備
       const metadataContent = {
         filename: file.originalname,
@@ -1078,13 +1068,13 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         extractedText: extractedText,
         ...metadata
       };
-
+      
       fs.writeFileSync(metadataFilePath, JSON.stringify(metadataContent, null, 2));
       console.log(`メタデータJSONを保存: ${metadataFilePath}`);
-
+      
       // 後方互換性のために元の場所にも保存
       fs.writeFileSync(`${filePath}_metadata.json`, JSON.stringify(metadataContent, null, 2));
-
+      
       // 車両データに追加
       const existingIndex = vehicleData.findIndex((item: any) => item.id === newData.id);
       if (existingIndex >= 0) {
@@ -1092,10 +1082,10 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       } else {
         vehicleData.push(newData);
       }
-
+      
       // 更新したデータを書き込み
       fs.writeFileSync(extractedDataPath, JSON.stringify(extractedData, null, 2));
-
+      
       // ナレッジベースへの追加を試みる
       try {
         await addDocumentToKnowledgeBase(filePath);
@@ -1103,7 +1093,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         console.error("ナレッジベースへの追加エラー:", kbError);
         // ナレッジベースへの追加に失敗しても処理は続行
       }
-
+      
       // 元ファイルを保存するオプションがオフの場合、元ファイルを削除
       if (!keepOriginalFile) {
         try {
@@ -1116,7 +1106,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
           // ファイル削除に失敗しても処理は続行
         }
       }
-
+      
       return res.json({
         success: true,
         file: {
@@ -1128,7 +1118,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         extractedTextPreview: extractedText.substring(0, 200) + "...",
         metadata: metadata
       });
-
+      
     } catch (processingError) {
       console.error("ファイル処理エラー:", processingError);
       return res.status(500).json({ 
@@ -1136,7 +1126,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         details: processingError instanceof Error ? processingError.message : String(processingError)
       });
     }
-
+    
   } catch (error) {
     console.error("アップロードエラー:", error);
     return res.status(500).json({ 
@@ -1154,7 +1144,7 @@ router.post('/cleanup-uploads', async (req, res) => {
   try {
     // クリーンアップ処理を実行
     await cleanupTempDirectories();
-
+    
     return res.json({
       success: true,
       message: 'uploadsディレクトリのクリーンアップを実行しました'
@@ -1175,20 +1165,20 @@ router.post('/sync-knowledge-base', async (req, res) => {
   try {
     // 前方互換性のため、APIは残しておくが実際の同期処理は行わない
     // すべてのファイルはknowledge-baseに一元化されるので、同期は不要
-
+    
     // knowledge-baseのディレクトリパス（参照のみ）
     const knowledgeBaseDirs: Record<string, string> = {
       images: path.join(process.cwd(), 'knowledge-base', 'images'),
       json: path.join(process.cwd(), 'knowledge-base', 'json'),
       data: path.join(process.cwd(), 'knowledge-base', 'data')
     };
-
+    
     // ディレクトリが存在することだけ確認
     for (const [dirType, kbDir] of Object.entries(knowledgeBaseDirs)) {
       // ディレクトリが存在しない場合は作成
       ensureDirectoryExists(kbDir);
     }
-
+    
     // 実際の同期は行わず、空の結果を返す
     const syncResults: Record<string, any> = {
       images: {
@@ -1210,10 +1200,10 @@ router.post('/sync-knowledge-base', async (req, res) => {
         copiedCount: 0
       }
     };
-
+    
     // 方向パラメータは使わないが、互換性のためにコメントに残す
     // const direction = req.query.direction || 'kb-to-uploads';
-
+    
     return res.json({
       success: true,
       message: 'データを同期しました (knowledge-base)',
@@ -1235,22 +1225,22 @@ router.post('/sync-knowledge-base', async (req, res) => {
 router.post('/cleanup-uploads', async (req, res) => {
   try {
     console.log('アップロードファイルのクリーンアップリクエストを受信...');
-
+    
     // 一時ディレクトリのクリーンアップ
     await cleanupTempDirectories();
-
+    
     // knowledge-baseに移動済みのファイルを一時ディレクトリから削除
     const result = await cleanupRedundantFiles();
-
+    
     // 重複した画像ファイルのクリーンアップはオプション（重たい処理なのでデフォルトは実行しない）
     const detectDuplicates = req.query.detectDuplicates === 'true' || req.body.detectDuplicates === true;
     let duplicateResult = { removed: 0, errors: 0 };
-
+    
     if (detectDuplicates) {
       console.log('knowledge-base内の重複画像検出と削除を実行...');
       duplicateResult = await detectAndRemoveDuplicateImages();
     }
-
+    
     return res.json({
       success: true,
       message: 'アップロードディレクトリのクリーンアップが完了しました',
@@ -1277,9 +1267,9 @@ router.post('/cleanup-uploads', async (req, res) => {
 router.post('/detect-duplicate-images', async (req, res) => {
   try {
     console.log('重複画像検出リクエストを受信...');
-
+    
     const result = await detectAndRemoveDuplicateImages();
-
+    
     return res.json({
       success: true,
       message: '重複画像の検出と削除が完了しました',
@@ -1303,7 +1293,7 @@ router.post('/detect-duplicate-images', async (req, res) => {
 router.post('/sync-directories', async (req, res) => {
   try {
     console.log('ディレクトリ同期リクエストを受信...');
-
+    
     const rootDir = process.cwd();
     const knowledgeBaseImagesDir = path.join(rootDir, 'knowledge-base/images');
     const tempImageDirs = [
@@ -1311,28 +1301,28 @@ router.post('/sync-directories', async (req, res) => {
       path.join(rootDir, 'public/uploads/images'),
       path.join(rootDir, 'public/images')
     ];
-
+    
     // 各ディレクトリが存在することを確認
     ensureDirectoryExists(knowledgeBaseImagesDir);
     for (const dir of tempImageDirs) {
       ensureDirectoryExists(dir);
     }
-
+    
     let syncResults = {
       toKnowledgeBase: 0,
       fromKnowledgeBase: 0,
       errors: 0
     };
-
+    
     // knowledge-baseにファイルをコピー（アップロードディレクトリから）
     for (const sourceDir of tempImageDirs) {
       if (!fs.existsSync(sourceDir)) continue;
-
+      
       const files = fs.readdirSync(sourceDir);
       for (const file of files) {
         const sourcePath = path.join(sourceDir, file);
         const targetPath = path.join(knowledgeBaseImagesDir, file);
-
+        
         // knowledge-baseに存在しない場合のみコピー
         if (!fs.existsSync(targetPath)) {
           try {
@@ -1347,15 +1337,15 @@ router.post('/sync-directories', async (req, res) => {
         }
       }
     }
-
+    
     // knowledge-baseから一時ディレクトリにファイルをコピー（必要に応じて）
     const kbFiles = fs.readdirSync(knowledgeBaseImagesDir);
     for (const file of kbFiles) {
       const sourcePath = path.join(knowledgeBaseImagesDir, file);
-
+      
       for (const targetDir of tempImageDirs) {
         const targetPath = path.join(targetDir, file);
-
+        
         // 一時ディレクトリに存在しない場合のみコピー
         if (!fs.existsSync(targetPath)) {
           try {
@@ -1370,10 +1360,10 @@ router.post('/sync-directories', async (req, res) => {
         }
       }
     }
-
+    
     // クリーンアップ（重複ファイルの削除）
     await cleanupRedundantFiles();
-
+    
     return res.json({
       success: true,
       message: 'ディレクトリ同期が完了しました',
@@ -1398,9 +1388,9 @@ router.get('/knowledge-base-files', async (req, res) => {
       json: path.join(process.cwd(), 'knowledge-base', 'json'),
       data: path.join(process.cwd(), 'knowledge-base', 'data')
     };
-
+    
     const files: Record<string, string[]> = {};
-
+    
     for (const [dirType, dir] of Object.entries(knowledgeBaseDirs)) {
       if (fs.existsSync(dir)) {
         files[dirType] = fs.readdirSync(dir).filter(file => {
@@ -1411,7 +1401,7 @@ router.get('/knowledge-base-files', async (req, res) => {
         files[dirType] = [];
       }
     }
-
+    
     return res.json({
       success: true,
       files
@@ -1433,25 +1423,25 @@ async function cleanupOrphanedJsonFiles(): Promise<{removed: number, errors: num
   const jsonDir = path.join(process.cwd(), 'knowledge-base', 'json');
   let removedCount = 0;
   let errorCount = 0;
-
+  
   try {
     if (!fs.existsSync(jsonDir)) {
       console.log(`JSONディレクトリが存在しません: ${jsonDir}`);
       return { removed: 0, errors: 0 };
     }
-
+    
     // 特定のファイルをブラックリスト化（特殊な用途のファイルなど）
     const blacklistFiles = ['guide_1744876404679_metadata.json', 'guide_metadata.json'];
-
+    
     // メタデータJSONファイル一覧を取得
     const allFiles = fs.readdirSync(jsonDir);
     const metadataFiles = allFiles.filter(file => 
       file.endsWith('_metadata.json') && 
       !blacklistFiles.includes(file)
     );
-
+    
     console.log(`JSONディレクトリ内のメタデータファイル: ${metadataFiles.length}件`);
-
+    
     // knowledge-base内のドキュメントディレクトリ一覧を取得
     const knowledgeBaseDir = path.join(process.cwd(), 'knowledge-base');
     const docDirs = fs.readdirSync(knowledgeBaseDir)
@@ -1462,7 +1452,7 @@ async function cleanupOrphanedJsonFiles(): Promise<{removed: number, errors: num
         return match ? `mc_${match[1]}` : '';
       })
       .filter(Boolean);  // 空文字列を除外
-
+    
     // 新しいドキュメント構造も考慮
     const documentsDir = path.join(knowledgeBaseDir, 'documents');
     if (fs.existsSync(documentsDir)) {
@@ -1473,21 +1463,21 @@ async function cleanupOrphanedJsonFiles(): Promise<{removed: number, errors: num
           return match ? `mc_${match[1]}` : '';
         })
         .filter(Boolean);
-
+        
       // 配列を結合
       docDirs.push(...moreDocs);
     }
-
+    
     console.log(`知識ベース内のドキュメントプレフィックス: ${docDirs.length}件`);
-
+    
     // 各メタデータファイルをチェック
     for (const file of metadataFiles) {
       // ファイル名のプレフィックスを抽出（例: mc_1744105287766_metadata.jsonからmc_1744105287766）
       const prefix = file.split('_metadata.json')[0];
-
+      
       // 対応するドキュメントが存在するかチェック
       const hasMatchingDocument = docDirs.some(docPrefix => docPrefix === prefix);
-
+      
       if (!hasMatchingDocument) {
         // 対応するドキュメントが存在しない場合は孤立したJSONファイルと判断して削除
         try {
@@ -1501,7 +1491,7 @@ async function cleanupOrphanedJsonFiles(): Promise<{removed: number, errors: num
         }
       }
     }
-
+    
     console.log(`孤立したJSONファイル削除結果: 成功=${removedCount}件, 失敗=${errorCount}件`);
     return { removed: removedCount, errors: errorCount };
   } catch (error) {
@@ -1518,7 +1508,7 @@ router.post('/cleanup-json', async (req, res) => {
   try {
     console.log('孤立JSONファイルクリーンアップリクエスト受信');
     const result = await cleanupOrphanedJsonFiles();
-
+    
     return res.json({
       success: true,
       removed: result.removed,
@@ -1538,7 +1528,7 @@ router.post('/cleanup-json', async (req, res) => {
 router.post('/clear-cache', async (req, res) => {
   try {
     console.log('サーバーキャッシュクリア要求を受信しました');
-
+    
     // 知識ベースJSONディレクトリの再検証
     const jsonDir = path.join(process.cwd(), 'knowledge-base', 'json');
     if (fs.existsSync(jsonDir)) {
@@ -1546,7 +1536,7 @@ router.post('/clear-cache', async (req, res) => {
         // 実際のファイル一覧を取得
         const files = fs.readdirSync(jsonDir);
         console.log(`検証: knowledge-base/jsonディレクトリに${files.length}個のファイルが存在`);
-
+        
         // キャッシュからファイルの実在性を再チェック
         for (const file of files) {
           const fullPath = path.join(jsonDir, file);
@@ -1562,32 +1552,32 @@ router.post('/clear-cache', async (req, res) => {
         console.error('ディレクトリ読み取りエラー:', readErr);
       }
     }
-
+    
     // index.json ファイルの再構築（トラッキングファイル）
     const indexJsonPath = path.join(process.cwd(), 'knowledge-base', 'index.json');
-
+    
     try {
       // 実際のファイルリストを取得
       const jsonFiles = fs.existsSync(jsonDir) ? fs.readdirSync(jsonDir) : [];
-
+      
       // 現在のメタデータファイルから最新インデックスを再構築
       const indexData = {
         lastUpdated: new Date().toISOString(),
         guides: [] as any[],
         fileCount: jsonFiles.length
       };
-
+      
       // インデックスファイルに書き込み
       fs.writeFileSync(indexJsonPath, JSON.stringify(indexData, null, 2));
       console.log(`インデックスファイルを更新しました: ${indexJsonPath}`);
     } catch (indexErr) {
       console.error('インデックスファイル更新エラー:', indexErr);
     }
-
+    
     // image_search_data.jsonの再読み込み
     try {
       const imageSearchDataPath = path.join(process.cwd(), 'knowledge-base', 'data', 'image_search_data.json');
-
+      
       // ファイルが存在する場合、キャッシュデータを再読み込み
       if (fs.existsSync(imageSearchDataPath)) {
         fs.readFileSync(imageSearchDataPath, 'utf8');
@@ -1598,20 +1588,20 @@ router.post('/clear-cache', async (req, res) => {
     } catch (imageDataErr) {
       console.error('画像検索データ読み込みエラー:', imageDataErr);
     }
-
+    
     // 孤立したJSONファイルのクリーンアップを実行
     try {
       // 孤立JSONファイルの検出と削除を実行
       const cleanupResult = await cleanupOrphanedJsonFiles();
       console.log(`孤立JSONファイルクリーンアップ: ${cleanupResult.removed}件削除, ${cleanupResult.errors}件エラー`);
-
+      
       if (cleanupResult.removed > 0) {
         console.log('孤立JSONファイルが検出・削除されました。メタデータを更新します');
       }
     } catch (cleanupErr) {
       console.error('孤立JSONファイルクリーンアップエラー:', cleanupErr);
     }
-
+    
     // カスタムイベントエミッタでキャッシュクリアをクライアントに通知
     return res.json({ 
       success: true, 

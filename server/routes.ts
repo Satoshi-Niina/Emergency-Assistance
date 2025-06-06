@@ -1,8 +1,7 @@
 import type { Express, Request, Response } from "express";
-import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { loginSchema, insertUserSchema, insertChatSchema, insertMessageSchema, insertMediaSchema, insertDocumentSchema, users, chatExports, documents } from "@shared/schema";
+import { loginSchema, insertUserSchema, insertChatSchema, insertMessageSchema, insertMediaSchema, users, chatExports, documents, insertDocumentSchema } from "@shared/schema";
 import { z } from "zod";
 import session from "express-session";
 import { WebSocket, WebSocketServer } from "ws";
@@ -25,22 +24,14 @@ import emergencyGuideRouter from './routes/emergency-guide';
 import { emergencyFlowRouter } from './routes/emergency-flow-router';
 import { registerSyncRoutes } from './routes/sync-routes';
 import { flowGeneratorRouter } from './routes/flow-generator';
+import troubleshootingRouter from './routes/troubleshooting.js';
 import { usersRouter } from './routes/users';
-import { eq, asc, sql } from "drizzle-orm";
-import { messages, messageMedia } from "@shared/schema";
-import { canAccessChat, getChatUserId, saveMessage } from "./lib/db-utils";
 
 // Extend the express-session types
 declare module 'express-session' {
   interface SessionData {
     userId: number;
     userRole: string;
-  }
-}
-
-interface AuthenticatedRequest extends Request {
-  session: {
-    userId: number;
   }
 }
 
@@ -123,63 +114,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       secret: process.env.SESSION_SECRET || "emergency-recovery-secret",
       resave: false,
       saveUninitialized: false,
-      rolling: true, // セッションの有効期限を延長
       cookie: { 
         secure: false, // Set to false for development in Replit
-        httpOnly: true, // XSS対策
-        maxAge: 86400000, // 24 hours
-        sameSite: 'lax' // CSRF対策
+        maxAge: 86400000 // 24 hours
       },
       store: storage.sessionStore,
     })
   );
 
-  // Auth middleware - 無限ループを完全に防ぐ
+  // Auth middleware
   const requireAuth = (req: Request, res: Response, next: Function) => {
-    try {
-      // セッション存在チェック
-      if (!req.session) {
-        return res.status(401).json({ 
-          success: false,
-          message: "No session"
-        });
-      }
-
-      // ユーザーID存在チェック
-      if (typeof req.session.userId !== 'number' || req.session.userId <= 0) {
-        return res.status(401).json({ 
-          success: false,
-          message: "Invalid user session"
-        });
-      }
-
-      // 認証済み - 必ずnext()を呼ぶ
-      return next();
-    } catch (error) {
-      // エラー時は必ず401を返して終了
-      return res.status(401).json({ 
-        success: false,
-        message: "Authentication error"
-      });
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Unauthorized" });
     }
+    next();
   };
 
-  // Admin middleware - 無限ループを防ぐ
+  // Admin middleware
   const requireAdmin = async (req: Request, res: Response, next: Function) => {
-    // セッションチェック
-    if (!req.session || typeof req.session.userId !== 'number' || req.session.userId <= 0) {
+    if (!req.session.userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    try {
-      const user = await storage.getUser(req.session.userId);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Forbidden" });
-      }
-      return next(); // 管理者の場合は即座にnext()
-    } catch (error) {
-      return res.status(500).json({ message: "Admin check failed" });
+    const user = await storage.getUser(req.session.userId);
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({ message: "Forbidden" });
     }
+
+    next();
   };
 
   // Auth routes
@@ -220,44 +182,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/auth/me", async (req, res) => {
-    try {
-      if (!req.session || !req.session.userId) {
-        return res.status(401).json({ 
-          success: false,
-          message: "Not authenticated",
-          error: "セッションが無効です"
-        });
-      }
-
-      const user = await storage.getUser(req.session.userId);
-      if (!user) {
-        // セッションを破棄
-        req.session.destroy((err) => {
-          // Silent error handling
-        });
-        return res.status(401).json({ 
-          success: false,
-          message: "User not found",
-          error: "ユーザーが見つかりません"
-        });
-      }
-
-      return res.json({
-        success: true,
-        id: user.id,
-        username: user.username,
-        displayName: user.displayName,
-        role: user.role,
-        department: user.department
-      });
-    } catch (error) {
-      console.error("Error in /api/auth/me:", error);
-      return res.status(500).json({ 
-        success: false,
-        message: "Internal server error",
-        error: error.message
-      });
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Not authenticated" });
     }
+
+    const user = await storage.getUser(req.session.userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.json({ 
+      id: user.id, 
+      username: user.username, 
+      displayName: user.displayName, 
+      role: user.role,
+      department: user.department
+    });
   });
 
   // User management routes (admin only)
@@ -380,12 +320,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/chats", requireAuth, async (req, res) => {
     try {
-      const { v4: uuidv4 } = await import('uuid');
-      const newChatId = uuidv4();
-
       const chatData = insertChatSchema.parse({
         ...req.body,
-        id: newChatId,
         userId: req.session.userId
       });
 
@@ -399,67 +335,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // 特定のチャットを取得（バリデーション用）
-  app.get('/api/chats/:id', async (req: Request, res: Response) => {
-    try {
-      const chatId = req.params.id;
+  app.get("/api/chats/:id", requireAuth, async (req, res) => {
+    const chat = await storage.getChat(parseInt(req.params.id));
 
-      // UUIDフォーマットの基本的な検証
-      if (!chatId || typeof chatId !== 'string' || chatId.length < 10) {
-        return res.status(400).json({ error: '無効なチャットIDです' });
-      }
-
-      const chat = await storage.getChat(chatId);
-      if (!chat) {
-        return res.status(404).json({ error: 'チャットが見つかりません' });
-      }
-
-      res.json(chat);
-    } catch (error) {
-      console.error('チャット取得エラー:', error);
-      res.status(500).json({ error: 'チャット取得に失敗しました' });
+    if (!chat) {
+      return res.status(404).json({ message: "Chat not found" });
     }
+
+    if (chat.userId !== req.session.userId) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    return res.json(chat);
   });
 
-  // チャット履歴取得API
-  app.get('/api/chats/:id/history', requireAuth, async (req: Request, res: Response) => {
+  app.get("/api/chats/:id/messages", requireAuth, async (req, res) => {
+    const chatId = parseInt(req.params.id);
+    const clearCache = req.query.clear === 'true';
+
+    const chat = await storage.getChat(chatId);
+
+    if (!chat) {
+      return res.status(404).json({ message: "Chat not found" });
+    }
+
+    // チャットアクセス制限を一時的に緩和 (すべてのログインユーザーがすべてのチャットを閲覧可能に)
+    console.log(`チャット閲覧: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${req.session.userId}`);
+    // if (chat.userId !== req.session.userId) {
+    //   return res.status(403).json({ message: "Forbidden" });
+    // }
+
+    // クリアフラグが立っている場合、空の配列を返す
+    if (clearCache) {
+      // キャッシュクリアが要求された場合は空配列を返す
+      console.log(`[DEBUG] Chat messages cache cleared for chat ID: ${chatId}`);
+      // キャッシュクリアヘッダーを追加
+      res.setHeader('X-Chat-Cleared', 'true');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      return res.json([]);
+    }
+
+    const messages = await storage.getMessagesForChat(chat.id);
+
+    // Get media for each message
+    const messagesWithMedia = await Promise.all(
+      messages.map(async (message) => {
+        const media = await storage.getMediaForMessage(message.id);
+        return { ...message, media };
+      })
+    );
+
+    return res.json(messagesWithMedia);
+  });
+
+  // チャット履歴をクリアするAPI
+  app.post("/api/chats/:id/clear", requireAuth, async (req, res) => {
     try {
-      const userId = req.session.userId!;
-      if (!userId) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
+      const chatId = parseInt(req.params.id);
 
-      const chatId = req.params.id;
-
-      // チャットの存在確認
       const chat = await storage.getChat(chatId);
       if (!chat) {
         return res.status(404).json({ message: "Chat not found" });
       }
 
-      // チャット履歴を取得
-      const messages = await storage.getMessagesForChat(chatId);
+      // チャットアクセス制限を一時的に緩和 (すべてのログインユーザーが全チャットの履歴をクリア可能に)
+      console.log(`チャット履歴クリア: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${req.session.userId}`);
+      // if (chat.userId !== req.session.userId) {
+      //   return res.status(403).json({ message: "Forbidden" });
+      // }
 
-      res.json({ 
-        success: true, 
-        chatId,
-        history: messages,
-        count: messages.length 
+      // メッセージとそれに関連するメディアを実際に削除する
+      try {
+        // データベースからメッセージを削除する
+        await storage.clearChatMessages(chatId);
+        console.log(`[DEBUG] Chat messages cleared for chat ID: ${chatId}`);
+      } catch (dbError) {
+        console.error(`Error clearing messages from database: ${dbError}`);
+        // データベースエラーが発生した場合でもUIクリアは続行
+      }
+
+      // クライアント側でのクリア用フラグをセット
+      return res.json({ 
+        cleared: true,
+        message: "Chat cleared successfully" 
       });
     } catch (error) {
-      console.error('Error fetching chat history:', error);
-      res.status(500).json({ 
-        message: "Failed to fetch chat history",
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
+      console.error('Chat clear error:', error);
+      return res.status(500).json({ message: "Error clearing chat" });
     }
   });
 
-  // チャットエクスポート機能
-  app.post('/api/chats/:id/export', async (req: Request, res: Response) => {
+  // 履歴送信のためのAPI
+  app.post("/api/chats/:id/export", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const chatId = req.params.id; // UUIDなのでstring型として扱う
+      const chatId = parseInt(req.params.id);
       const { lastExportTimestamp } = req.body;
 
       const chat = await storage.getChat(chatId);
@@ -530,89 +500,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/chats/:id/messages", requireAuth, async (req, res) => {
-    const chatId = req.params.id; // UUIDなのでstring型として扱う
-    const clearCache = req.query.clear === 'true';
-
-    const chat = await storage.getChat(chatId);
-
-    if (!chat) {
-      return res.status(404).json({ message: "Chat not found" });
-    }
-
-    // チャットアクセス制限を一時的に緩和 (すべてのログインユーザーがすべてのチャットを閲覧可能に)
-    console.log(`チャット閲覧: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${req.session.userId}`);
-    // if (chat.userId !== req.session.userId) {
-    //   return res.status(403).json({ message: "Forbidden" });
-    // }
-
-    // クリアフラグが立っている場合、空の配列を返す
-    if (clearCache) {
-      // キャッシュクリアが要求された場合は空配列を返す
-      console.log(`[DEBUG] Chat messages cache cleared for chat ID: ${chatId}`);
-      // キャッシュクリアヘッダーを追加
-      res.setHeader('X-Chat-Cleared', 'true');
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      return res.json([]);
-    }
-
-    const messages = await storage.getMessagesForChat(chat.id);
-
-    // Get media for each message
-    const messagesWithMedia = await Promise.all(
-      messages.map(async (message) => {
-        const media = await storage.getMediaForMessage(message.id);
-        return { ...message, media };
-      })
-    );
-
-    return res.json(messagesWithMedia);
-  });
-
-  // チャット履歴をクリアするAPI
-  app.post("/api/chats/:id/clear", requireAuth, async (req, res) => {
-    try {
-      const chatId = req.params.id; // UUIDなのでstring型として扱う
-
-      const chat = await storage.getChat(chatId);
-      if (!chat) {
-        return res.status(404).json({ message: "Chat not found" });
-      }
-
-      // チャットアクセス制限を一時的に緩和 (すべてのログインユーザーが全チャットの履歴をクリア可能に)
-      console.log(`チャット履歴クリア: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${req.session.userId}`);
-      // if (chat.userId !== req.session.userId) {
-      //   return res.status(403).json({ message: "Forbidden" });
-      // }
-
-      // メッセージとそれに関連するメディアを実際に削除する
-      try {
-        // データベースからメッセージを削除する
-        await storage.clearChatMessages(chatId);
-        console.log(`[DEBUG] Chat messages cleared for chat ID: ${chatId}`);
-      } catch (dbError) {
-        console.error(`Error clearing messages from database: ${dbError}`);
-        // データベースエラーが発生した場合でもUIクリアは続行
-      }
-
-      // クライアント側でのクリア用フラグをセット
-      return res.json({ 
-        cleared: true,
-        message: "Chat cleared successfully" 
-      });
-    } catch (error) {
-      console.error('Chat clear error:', error);
-      return res.status(500).json({ message: "Error clearing chat" });
-    }
-  });
-
-  
-
   // 外部AI分析システム向けフォーマット済みデータを取得するAPI
   app.get("/api/chats/:id/export-formatted", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const chatId = req.params.id; // UUIDなのでstring型として扱う
+      const chatId = parseInt(req.params.id);
 
       // チャット情報を取得
       const chat = await storage.getChat(chatId);
@@ -656,7 +548,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // チャットの最後のエクスポート履歴を取得
   app.get("/api/chats/:id/last-export", requireAuth, async (req, res) => {
     try {
-      const chatId = req.params.id; // UUIDなのでstring型として扱う
+      const chatId = parseInt(req.params.id);
       const chat = await storage.getChat(chatId);
 
       if (!chat) {
@@ -680,7 +572,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 応急処置ガイドなどのシステムメッセージをチャットに追加するためのエンドポイント
   app.post("/api/chats/:id/messages/system", requireAuth, async (req, res) => {
     try {
-      const chatId = req.params.id; // UUIDなのでstring型として扱う
+      const chatId = parseInt(req.params.id);
       // フロントエンドから受け取るパラメータをスキーマに合わせて調整
       const { content, isUserMessage = true } = req.body;
 
@@ -709,155 +601,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/chats/:id/messages", requireAuth, async (req, res) => {
     try {
-      const chatId = req.params.id;
-      const { content, senderId, createdAt, useOnlyKnowledgeBase = true, isAiResponse = false } = req.body;
+      const chat = await storage.getChat(parseInt(req.params.id));
+      const { content, useOnlyKnowledgeBase = true } = req.body;
 
-      console.log(`メッセージ送信API呼び出し: chatId=${chatId}, content=${content}, senderId=${senderId}, isAi=${isAiResponse}`);
-
-      if (!content || typeof content !== 'string' || content.trim().length === 0) {
-        return res.status(400).json({ 
-          success: false,
-          message: "Content is required and cannot be empty" 
-        });
-      }
-
-      // 認証されたユーザーの存在確認
-      const authenticatedUser = await storage.getUser(req.session.userId);
-      if (!authenticatedUser) {
-        console.error(`認証されたユーザーが存在しません: ${req.session.userId}`);
-        return res.status(401).json({
-          success: false,
-          message: "User not found",
-          error: "認証されたユーザーが見つかりません"
-        });
-      }
-
-      // senderIdの決定（認証されたユーザーIDを優先）
-      const finalSenderId = req.session.userId;
-      console.log(`送信者ID確定: ${finalSenderId} (${authenticatedUser.username})`);
-
-      if (!finalSenderId) {
-        return res.status(400).json({ 
-          success: false,
-          message: "SenderId is required" 
-        });
-      }
-
-      // createdAtの柔軟なチェック（送信されない場合は現在時刻を使用）
-      const finalCreatedAt = createdAt ? new Date(createdAt) : new Date();
-
-      const chat = await storage.getChat(chatId);
       if (!chat) {
-        return res.status(404).json({ 
-          success: false,
-          message: "Chat not found" 
-        });
+        return res.status(404).json({ message: "Chat not found" });
       }
 
-      // ユーザーメッセージのみを処理（AI応答は別途処理）
-      if (!isAiResponse) {
-        console.log(`ユーザーメッセージを保存: ${content.substring(0, 50)}...`);
-        
-        const messageData = insertMessageSchema.parse({
-          chatId: chatId,
-          content: content.trim(),
-          senderId: finalSenderId,
-          isAiResponse: false,
-          createdAt: finalCreatedAt
-        });
+      // チャットアクセス制限を一時的に緩和 (すべてのログインユーザーが全チャットにアクセス可能)
+      console.log(`チャットアクセス: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${req.session.userId}`);
+      console.log(`設定: ナレッジベースのみを使用=${useOnlyKnowledgeBase}`);
+      // if (chat.userId !== req.session.userId) {
+      //   return res.status(403).json({ message: "Forbidden" });
+      // }
 
-        const userMessage = await storage.createMessage(messageData);
-        
-        if (!userMessage || !userMessage.id) {
-          throw new Error('ユーザーメッセージの保存に失敗しました');
-        }
-        
-        console.log(`ユーザーメッセージ保存完了: ID=${userMessage.id}`);
-
-        // AI応答を生成
-        let aiResponse = '';
-        try {
-          console.log(`AI応答生成開始: ナレッジベースのみ=${useOnlyKnowledgeBase}`);
-          aiResponse = await processOpenAIRequest(content.trim(), useOnlyKnowledgeBase);
-          console.log(`AI応答生成完了: ${aiResponse.substring(0, 100)}...`);
-        } catch (aiError) {
-          console.error('AI応答生成エラー:', aiError);
-          aiResponse = 'AI応答の生成中にエラーが発生しました。しばらく後に再試行してください。';
-        }
-
-        // AI応答メッセージを保存
-        const aiMessageData = {
-          chatId: chatId,
-          content: aiResponse,
-          senderId: null, // AIメッセージはsenderIdをnullに設定
-          isAiResponse: true
-        };
-
-        const aiMessage = await storage.createMessage(aiMessageData);
-        
-        if (!aiMessage || !aiMessage.id) {
-          throw new Error('AI応答メッセージの保存に失敗しました');
-        }
-        
-        console.log(`AI応答メッセージ保存完了: ID=${aiMessage.id}`);
-
-        return res.json({
-          success: true,
-          userMessage: {
-            id: userMessage.id,
-            content: userMessage.content,
-            senderId: userMessage.senderId,
-            isAiResponse: userMessage.isAiResponse,
-            createdAt: userMessage.createdAt,
-            chatId: userMessage.chatId
-          },
-          aiMessage: {
-            id: aiMessage.id,
-            content: aiMessage.content,
-            senderId: aiMessage.senderId,
-            isAiResponse: aiMessage.isAiResponse,
-            createdAt: aiMessage.createdAt,
-            chatId: aiMessage.chatId
-          }
-        });
-      } else {
-        // AI応答メッセージの直接送信（システム使用）
-        const messageData = {
-          chatId: chatId,
-          content: content.trim(),
-          senderId: null,
-          isAiResponse: true
-        };
-
-        const message = await storage.createMessage(messageData);
-        return res.json({
-          success: true,
-          message: {
-            id: message.id,
-            content: message.content,
-            senderId: message.senderId,
-            isAiResponse: message.isAiResponse,
-            createdAt: message.createdAt,
-            chatId: message.chatId
-          }
-        });
-      }
-    } catch (error) {
-      console.error("メッセージ送信API エラー:", error);
-      
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          success: false,
-          message: "Validation error",
-          errors: error.errors 
-        });
-      }
-      
-      return res.status(500).json({ 
-        success: false,
-        message: "Internal server error",
-        error: error instanceof Error ? error.message : 'Unknown error'
+      const messageData = insertMessageSchema.parse({
+        ...req.body,
+        chatId: chat.id,
+        senderId: req.session.userId,
+        isAiResponse: false
       });
+
+      const message = await storage.createMessage(messageData);
+
+      // AI モデル切り替えフラグ (将来的に設定ページから変更可能に)
+      // 一時的にPerplexity機能を無効化
+      const usePerplexity = false; // req.body.usePerplexity || false;
+
+      let aiResponse = '';
+      let citations: any[] = [];
+
+      // 現時点ではPerplexity API未対応のため、OpenAIのみ使用
+      // OpenAI API を使用 (デフォルト)
+      console.log(`OpenAIモデルを使用`);
+      aiResponse = await processOpenAIRequest(message.content, useOnlyKnowledgeBase);
+
+      // Perplexity API は一時的に無効化
+      /*
+      if (usePerplexity) {
+        // Perplexity API を使用
+        console.log(`Perplexityモデルを使用`);
+        const perplexityResponse = await processPerplexityRequest(message.content, '', useOnlyKnowledgeBase);
+        aiResponse = perplexityResponse.content;
+        citations = perplexityResponse.citations;
+      } else {
+        // OpenAI API を使用 (デフォルト)
+        console.log(`OpenAIモデルを使用`);
+        aiResponse = await processOpenAIRequest(message.content, useOnlyKnowledgeBase);
+      }
+      */
+
+      // 引用情報がある場合は末尾に追加
+      if (citations && citations.length > 0) {
+        aiResponse += '\n\n参考情報：';
+        citations.forEach((citation, index) => {
+          aiResponse += `\n[${index + 1}] ${citation.url}`;
+        });
+      }
+
+      // Create AI response message
+      const aiMessage = await storage.createMessage({
+        content: aiResponse,
+        chatId: chat.id,
+        isAiResponse: true,
+        senderId: null
+      });
+
+      return res.json({
+        userMessage: message,
+        aiMessage
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors });
+      }
+      return res.status(500).json({ message: "Internal server error" });
     }
   });
 
@@ -1164,147 +982,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       content: 'Connected to Emergency Recovery Chat WebSocket server'
     }));
   });
-
-  // Chat routes
-  // Get messages for a chat
-  app.get("/api/chats/:chatId/messages", requireAuth, async (req, res) => {
-    try {
-      const { chatId } = req.params;
-      console.log(`メッセージ取得: chatId=${chatId}, userId=${req.session.userId}`);
-
-      const messages = await storage.getMessagesForChat(chatId);
-
-      // 不正なメッセージを除外（二重チェック）
-      const validMessages = messages.filter(message => {
-        if (!message.id || !message.content || !message.senderId || !message.createdAt) {
-          console.warn('不正なメッセージを除外:', message.id);
-          return false;
-        }
-        return true;
-      });
-
-      // Include media for each message
-      const messagesWithMedia = await Promise.all(
-        validMessages.map(async (message) => {
-          try {
-            const media = await storage.getMediaForMessage(message.id);
-            return { ...message, media };
-          } catch (error) {
-            console.warn(`メディア取得エラー (message ID: ${message.id}):`, error);
-            return { ...message, media: [] };
-          }
-        })
-      );
-
-      console.log(`メッセージ取得完了: ${messagesWithMedia.length}件`);
-      res.json(messagesWithMedia);
-    } catch (error) {
-      console.error("Error fetching messages:", error);
-      res.status(500).json({ 
-        success: false,
-        message: "メッセージの取得に失敗しました",
-        error: error.message 
-      });
-    }
-  });
-
-  app.delete("/api/chats/:chatId/messages", requireAuth, async (req, res) => {
-    try {
-      const chatId = req.params.chatId;
-      if (!chatId) {
-        return res.status(400).json({ message: "Invalid chat ID" });
-      }
-
-      await storage.clearChatMessages(chatId);
-      res.json({ message: "Messages cleared" });
-    } catch (error) {
-      console.error("Error clearing messages:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Chat routes
-  app.post('/api/chats', requireAuth, async (req, res) => {
-    try {
-      const { title } = req.body;
-      const userId = req.session.userId!;
-
-      const { v4: uuidv4 } = await import('uuid');
-      const newChatId = uuidv4();
-
-      const chatData = insertChatSchema.parse({
-        id: newChatId,
-        title: title || `Chat ${new Date().toISOString()}`,
-        userId: userId // ✅ UUIDは文字列のまま使用
-      });
-
-      const chat = await storage.createChat(chatData);
-      return res.json(chat);
-    } catch (error) {
-      console.error('Error creating chat:', error);
-      res.status(500).json({ message: 'Internal server error' });
-    }
-  });
-
-  app.get('/api/chats/:id/messages', requireAuth, async (req, res) => {
-    try {
-      const chatId = req.params.id; // ✅ UUIDは文字列のまま使用
-
-      const chatMessages = await storage.getMessagesForChat(chatId);
-
-      res.json(chatMessages);
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-      res.status(500).json({ message: 'Internal server error' });
-    }
-  });
-
-  
-
-  app.delete('/api/chats/:id', requireAuth, async (req, res) => {
-    try {
-      const chatId = req.params.id; // ✅ UUIDは文字列のまま使用
-
-      await storage.deleteChat(chatId);
-      res.json({ success: true });
-    } catch (error) {
-      console.error('Error deleting chat:', error);
-      res.status(500).json({ message: 'Internal server error' });
-    }
-  });
-
   app.use('/api/troubleshooting', troubleshootingRouter);
   app.use('/api/users', usersRouter);
-
-  // 静的ファイルの配信
-  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
-  app.use('/knowledge-base', express.static(path.join(process.cwd(), 'knowledge-base')));
-
-  // 画像ファイル専用の静的配信ルート
-  app.use('/knowledge-base/images', express.static(path.join(process.cwd(), 'knowledge-base', 'images'), {
-    setHeaders: (res, path) => {
-      // 画像ファイルのキャッシュ設定
-      res.setHeader('Cache-Control', 'public, max-age=3600');
-      res.setHeader('Access-Control-Allow-Origin', '*');
-    }
-  }));
   return httpServer;
-}
-
-// This function is missing from the original code, adding it here to complete it based on the intent
-async function generateResponse(text: string, model: string | null, knowledgeBaseResults: any): Promise<string> {
-    if (model === 'perplexity') {
-        const { processPerplexityRequest } = await import('./lib/perplexity');
-        const perplexityResponse = await processPerplexityRequest(text, '', knowledgeBaseResults !== undefined);
-        return perplexityResponse.content;
-    } else {
-        const { processOpenAIRequest } = await import('./lib/openai');
-        return await processOpenAIRequest(text, knowledgeBaseResults !== undefined);
-    }
-}
-
-// This function is also missing, adding it here to complete it based on the intent
-async function searchKnowledgeBase(query: string): Promise<any> {
-    // Implement your knowledge base search logic here
-    return [];
 }
