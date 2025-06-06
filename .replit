@@ -1,0 +1,21 @@
+modules = ["nodejs-20"]
+
+[workflows]
+runButton = "Install and Run"
+
+[[workflows.workflow]]
+name = "Install and Run"
+author = 39467490
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm install"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm install"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd .. && npm run dev:all"
