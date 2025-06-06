@@ -149,12 +149,20 @@ import { QueryClient } from '@tanstack/react-query';
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5分
-      retry: 3,
-      refetchOnWindowFocus: false,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      retry: (failureCount, error) => {
+        // Don't retry on 4xx errors except 429
+        if (error instanceof Error) {
+          const status = (error as any).status;
+          if (status >= 400 && status < 500 && status !== 429) {
+            return false;
+          }
+        }
+        return failureCount < 3;
+      },
     },
     mutations: {
-      retry: 1,
+      retry: false,
     },
   },
 });
