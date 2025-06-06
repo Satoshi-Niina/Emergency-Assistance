@@ -154,7 +154,7 @@ export default function Chat() {
             <span>設定</span>
           </button>
         </div>
-        
+
         {/* ボタン行 - 左に履歴クリア、右に履歴送信とチャット終了 */}
         <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-300">
           <div className="flex items-center gap-2">
@@ -201,7 +201,7 @@ export default function Chat() {
                 </>
               )}
             </Button>
-            
+
             {/* チャット終了ボタン - オレンジ色 */}
             <Button 
               variant="destructive"
@@ -214,7 +214,7 @@ export default function Chat() {
           </div>
         </div>
       </div>
-      
+
       {/* 応急処置ガイドボタン - 中央に配置 */}
       <div className="w-full flex justify-center items-center p-4 bg-gradient-to-r from-blue-100 to-blue-50 border-b border-blue-200">
         <Button
@@ -237,11 +237,11 @@ export default function Chat() {
           <span className="text-lg font-bold">応急処置ガイド</span>
         </Button>
       </div>
-      
+
       <div className="flex-1 flex flex-col md:flex-row overflow-auto chat-layout-container" style={{ minHeight: '75vh' }}>
         {/* Chat Messages Area - 領域を2/3に縮小し、縦を元に戻す */}
         <div className="flex-1 flex flex-col h-full min-h-[75vh] overflow-auto md:w-2/3 bg-white chat-messages-container" style={{ maxWidth: '100%', overflowX: 'hidden' }}>
-          
+
           {/* Chat Messages - 高さを1.5倍に */}
           <div id="chatMessages" className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 md:px-6 space-y-4 min-w-[300px]" style={{ minHeight: '60vh' }}>
             {messagesLoading || isLoading ? (
@@ -265,7 +265,7 @@ export default function Chat() {
                 ))}
               </>
             )}
-            
+
             {/* プレビュー用の一時メッセージ (録音中テキストと撮影した画像のプレビュー) */}
             {draftMessage && draftMessage.content && (
               <div className="w-full md:max-w-2xl mx-auto">
@@ -286,12 +286,12 @@ export default function Chat() {
                 />
               </div>
             )}
-            
+
             {/* デバッグ表示 - ドラフトメッセージの状態を確認 */}
             <div className="hidden">
               <p>draftMessage: {draftMessage ? JSON.stringify(draftMessage) : 'null'}</p>
             </div>
-            
+
           </div>
 
           {/* エクスポート状態表示 */}
@@ -313,9 +313,9 @@ export default function Chat() {
             </div>
           </div>
         </div>
-        
+
         {/* モバイル用検索結果スライダー - 縦向き表示の時のみフローティングボタンを表示 */}
-        
+
       </div>
 
       {/* 未送信のチャット履歴がある場合の警告ダイアログ */}
@@ -390,7 +390,7 @@ export default function Chat() {
       {/* Modals */}
       <CameraModal />
       <ImagePreviewModal />
-      
+
       {/* 応急処置ガイドモーダル（モバイル・デスクトップ共通） */}
       <Dialog open={emergencyGuideOpen} onOpenChange={setEmergencyGuideOpen}>
         <DialogContent className={`bg-blue-50 border border-blue-200 ${isMobile ? 'w-[95%] max-w-md' : 'max-w-3xl'}`}>
