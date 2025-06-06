@@ -11,5 +11,8 @@
     pkgs.cairo
     pkgs.pango
     pkgs.pixman
+    pkgs.glib
+    pkgs.fontconfig
+    pkgs.freetype
   ];
 }
