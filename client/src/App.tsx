@@ -146,16 +146,23 @@ function Router() {
   );
 }
 
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
+import { Toaster } from "@/components/ui/toaster";
+import { AuthProvider } from "@/context/auth-context";
+import { ChatProvider } from "@/context/chat-context";
+//import Router from "./Router"; // Removed duplicate Router import
+
 function App() {
   return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
         <ChatProvider>
           <Router />
           <Toaster />
         </ChatProvider>
-      </QueryClientProvider>
-    </AuthProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 
