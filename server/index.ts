@@ -16,11 +16,16 @@ import open from 'open';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// .envファイルの読み込み
+// .envファイルの読み込み（複数箇所から）
 dotenv.config({ path: path.resolve(__dirname, '.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
-// 環境変数の確認
-console.log("[DEBUG] OpenAI API KEY exists:", process.env.OPENAI_API_KEY ? "YES" : "NO");
+// 環境変数の確認（Replitシークレットも含む）
+const openaiKey = process.env.OPENAI_API_KEY || process.env.REPLIT_SECRET_OPENAI_API_KEY;
+console.log("[DEBUG] OpenAI API KEY exists:", openaiKey ? "YES" : "NO");
+if (openaiKey) {
+  console.log("[DEBUG] OpenAI API KEY prefix:", openaiKey.substring(0, 10) + "...");
+}
 
 const app = express();
 app.use(express.json());

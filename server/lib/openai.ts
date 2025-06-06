@@ -13,9 +13,23 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 const OPENAI_MODEL = "gpt-4o";
 
-// OpenAI クライアントの初期化
+// 複数の場所から.envファイルを読み込み
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: path.resolve(process.cwd(), 'server/.env') });
+
+// APIキーの取得（Replitシークレットも考慮）
+const apiKey = process.env.OPENAI_API_KEY || process.env.REPLIT_SECRET_OPENAI_API_KEY;
+
+console.log("[DEBUG] OpenAI initialization - API KEY exists:", apiKey ? "YES" : "NO");
+console.log("[DEBUG] OpenAI API KEY prefix:", apiKey ? apiKey.substring(0, 10) + "..." : "NOT FOUND");
+
+if (!apiKey) {
+  console.error("[ERROR] OpenAI API Key not found in environment variables");
+  throw new Error("OpenAI API Key not configured");
+}
+
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: apiKey,
 });
 
 // APIキーが存在するか確認
@@ -31,13 +45,13 @@ export async function processOpenAIRequest(prompt: string, useKnowledgeBase: boo
   try {
     // システムプロンプトを設定
     let systemPrompt = "あなたは保守用車支援システムの一部として機能するAIアシスタントです。ユーザーの質問に対して、正確で実用的な回答を提供してください。";
-    
+
     // ナレッジベースから関連情報を取得して含める
     if (useKnowledgeBase) {
       const { generateSystemPromptWithKnowledge } = await import('./knowledge-base');
       systemPrompt = await generateSystemPromptWithKnowledge(prompt);
     }
-    
+
     // OpenAI API呼び出し
     const response = await openai.chat.completions.create({
       model: OPENAI_MODEL,
@@ -71,7 +85,7 @@ export async function summarizeText(text: string): Promise<string> {
   try {
     // 長すぎるテキストを切り詰める
     const truncatedText = text.length > 4000 ? text.substring(0, 4000) + "..." : text;
-    
+
     const response = await openai.chat.completions.create({
       model: OPENAI_MODEL,
       messages: [
@@ -103,7 +117,7 @@ export async function generateKeywords(text: string): Promise<string[]> {
   try {
     // 長すぎるテキストを切り詰める
     const truncatedText = text.length > 4000 ? text.substring(0, 4000) + "..." : text;
-    
+
     const response = await openai.chat.completions.create({
       model: OPENAI_MODEL,
       messages: [
@@ -187,7 +201,7 @@ export async function generateSearchQuery(text: string): Promise<string> {
   try {
     // 長すぎるテキストを切り詰める
     const truncatedText = text.length > 200 ? text.substring(0, 200) + "..." : text;
-    
+
     const response = await openai.chat.completions.create({
       model: OPENAI_MODEL,
       messages: [
