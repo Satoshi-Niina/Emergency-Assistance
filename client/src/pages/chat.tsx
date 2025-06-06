@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useChat } from "@/context/chat-context";
 import { useAuth } from "@/context/auth-context";
@@ -12,8 +11,7 @@ import TroubleshootingSelector from "@/components/troubleshooting/troubleshootin
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Send, AlertTriangle, Loader2, Trash2, LifeBuoy, Image, Hammer, Heart, FileText, Menu, Settings } from "lucide-react";
+import { Send, AlertTriangle, Loader2, Trash2, LifeBuoy, Heart, FileText, Menu, Settings } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -37,7 +35,7 @@ export default function Chat() {
     isClearing,
     isRecording
   } = useChat();
-  
+
   const { user } = useAuth();
   const [isEndChatDialogOpen, setIsEndChatDialogOpen] = useState(false);
 
@@ -65,41 +63,32 @@ export default function Chat() {
   }, [setSelectedText]);
 
   // Show messages from the context or from the query
-  // クリア処理中は空配列を表示し、それ以外の場合はmessagesまたはデータを表示
   const displayMessages = isClearing 
     ? [] 
     : (messages?.length > 0 ? messages : (data as any[] || []));
-  
+
   // メッセージクリア時にデータも更新
   useEffect(() => {
-    // メッセージが空になった場合（クリアされた場合）のハンドリング
     if (messages !== undefined && messages.length === 0) {
       const chatClearedTimestamp = localStorage.getItem('chat_cleared_timestamp');
-      
-      // キャッシュクリア処理（タイムスタンプの有無に関わらず実行）
+
       console.log('チャット履歴クリア後の状態を維持します');
-      
-      // ローカルストレージのクエリキャッシュをクリア
+
       for (const key of Object.keys(localStorage)) {
         if (key.startsWith('rq-/api/chats/')) {
           localStorage.removeItem(key);
         }
       }
-      
-      // クエリキャッシュを完全に削除
+
       queryClient.removeQueries({ queryKey: ['/api/chats/1/messages'] });
-      
-      // 空の配列を強制的にセット
       queryClient.setQueryData(['/api/chats/1/messages'], []);
-      
+
       // React Queryのキャッシュ操作用にグローバル変数としてqueryClientを設定
       // @ts-ignore - これにより他のコンポーネントからもアクセス可能
       window.queryClient = queryClient;
-      
-      // 特殊パラメータを付けて明示的にサーバーにクリア要求を送信
+
       const fetchClearedData = async () => {
         try {
-          // タイムスタンプパラメータを使用してキャッシュバスティング
           const clearUrl = `/api/chats/1/messages?clear=true&_t=${Date.now()}`;
           await fetch(clearUrl, {
             credentials: 'include',
@@ -115,98 +104,79 @@ export default function Chat() {
           console.error('クリア要求送信エラー:', error);
         }
       };
-      
+
       fetchClearedData();
-      
-      // クリアフラグを削除（1度だけ実行するため）
+
       if (chatClearedTimestamp) {
         localStorage.removeItem('chat_cleared_timestamp');
         console.log('チャットクリアタイムスタンプをクリア');
       }
-      
-      // 少し間をおいて再確認
+
       const intervalId = setInterval(() => {
         queryClient.setQueryData(['/api/chats/1/messages'], []);
       }, 500);
-      
-      // 10秒後にクリア監視を終了
+
       setTimeout(() => {
         clearInterval(intervalId);
       }, 10000);
     }
   }, [messages, queryClient]);
 
-  // woutorのLocationフックを取得
   const [, setLocation] = useLocation();
-  
-  // チャット終了確認ダイアログを表示
+
   const handleEndChat = () => {
     if (hasUnexportedMessages) {
       setIsEndChatDialogOpen(true);
     } else {
-      // 未送信のメッセージがなければログイン画面に戻る
-      // APIにログアウトリクエストを送信してからリダイレクト
       fetch("/api/auth/logout", {
         method: "POST",
         credentials: "include"
       })
       .then(() => {
         console.log("ログアウト成功 - ログイン画面に遷移します");
-        // キャッシュをクリア
         queryClient.clear();
-        // ローカルストレージのクエリキャッシュをクリア
         for (const key of Object.keys(localStorage)) {
           if (key.startsWith('rq-')) {
             localStorage.removeItem(key);
           }
         }
-        
-        // JavaScript直接のリダイレクトを使用（より確実なリダイレクト）
         window.location.href = "/login";
       })
       .catch(error => {
         console.error("ログアウトエラー:", error);
-        // エラーが発生してもログイン画面に遷移
         window.location.href = "/login";
       });
     }
   };
 
-  // チャットを送信して終了
   const handleSendAndEnd = async () => {
     try {
       await exportChatHistory();
       setIsEndChatDialogOpen(false);
-      
-      // 送信完了後、ログアウト処理を実行
+
       await fetch("/api/auth/logout", {
         method: "POST",
         credentials: "include"
       });
-      
+
       console.log("送信して終了: ログアウト成功 - ログイン画面に遷移します");
-      
-      // キャッシュをクリア
+
       queryClient.clear();
-      // ローカルストレージのクエリキャッシュをクリア
       for (const key of Object.keys(localStorage)) {
         if (key.startsWith('rq-')) {
           localStorage.removeItem(key);
         }
       }
-      
-      // JavaScript直接のリダイレクトを使用（より確実なリダイレクト）
       window.location.href = "/login";
     } catch (error) {
       console.error("チャット終了エラー:", error);
-      // エラーが発生してもログイン画面に遷移
       window.location.href = "/login";
     }
   };
 
   const isMobile = useIsMobile();
   const orientation = useOrientation();
-  
+
   // スクロール挙動の最適化 (モバイル対応)
   useEffect(() => {
     // 基本スクロール設定を適用
@@ -308,8 +278,7 @@ export default function Chat() {
       }
     };
   }, [orientation, searchResults]);
-  
-  // 応急処置モーダルの状態管理
+
   const [emergencyGuideOpen, setEmergencyGuideOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
 
