@@ -15,7 +15,7 @@ const users = pgTable('users', {
 
 const media = pgTable('media', {
   id: text('id').primaryKey().default(sql`gen_random_uuid()`),
-  messageId: integer('message_id').notNull(),
+  messageId: text('message_id').notNull(),
   type: text('type').notNull(),
   url: text('url').notNull(),
   description: text('description'),

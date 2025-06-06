@@ -33,11 +33,17 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
   const { toast } = useToast();
 
   const isUserMessage = !message.isAiResponse;
-  const formattedTime = format(
-    new Date(message.timestamp), 
-    "HH:mm", 
-    { locale: ja }
-  );
+  
+  // 日時フォーマットのエラーハンドリング
+  let formattedTime = "--:--";
+  try {
+    const timestamp = message.timestamp;
+    if (timestamp && !isNaN(new Date(timestamp).getTime())) {
+      formattedTime = format(new Date(timestamp), "HH:mm", { locale: ja });
+    }
+  } catch (error) {
+    console.error('日時フォーマットエラー:', error, 'timestamp:', message.timestamp);
+  }
 
   // Handle text selection within this message
   const handleMouseUp = () => {
