@@ -16,10 +16,10 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
+    "baseUrl": "./src",
     "paths": {
-      "@/*": ["src/*"],
-      "@shared/*": ["../shared/*"]
+      "@/*": ["./*"],
+      "@shared/*": ["../../shared/*"]
     }
   },
   "include": ["src/**/*", "../shared/**/*"],
