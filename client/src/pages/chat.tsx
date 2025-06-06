@@ -19,6 +19,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 export default function Chat() {
   const {
     messages,
+    setMessages,
     isLoading,
     selectedText,
     setSelectedText,
@@ -29,6 +30,7 @@ export default function Chat() {
     isExporting,
     hasUnexportedMessages,
     draftMessage,
+    setDraftMessage,
     clearChatHistory,
     isClearing,
     isRecording
@@ -122,18 +124,27 @@ export default function Chat() {
   const [searchKeyword, setSearchKeyword] = useState("");
 
   return (
-    <div className="flex flex-col w-full h-full overflow-auto bg-blue-50 chat-layout-container overflow-scroll-container" style={{ maxWidth: '100vw', overflowX: 'hidden' }}>
+    <div className="flex flex-col w-full h-full overflow-auto bg-blue-900 chat-layout-container overflow-scroll-container" style={{ maxWidth: '100vw', overflowX: 'hidden' }}>
       {/* ボタン行 - 左に履歴クリア、右に履歴送信とチャット終了 */}
       <div className="bg-gray-100 border-b border-gray-200 px-4 py-2">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-            {/* 履歴クリアボタン - 青塗りつぶし白文字白枠線スタイル */}
+            {/* 履歴クリアボタン - 濃い青塗りつぶし白文字白枠線スタイル */}
             <Button 
               variant="outline"
               size="sm"
-              onClick={clearChatHistory}
+              onClick={() => {
+                // チャット履歴をクリア
+                clearChatHistory();
+                // メッセージ表示エリアもクリア
+                setMessages([]);
+                // 検索結果もクリア
+                clearSearchResults();
+                // ドラフトメッセージもクリア
+                setDraftMessage(null);
+              }}
               disabled={isClearing || !displayMessages.length}
-              className="flex items-center gap-1 bg-blue-600 text-white border-white hover:bg-blue-700 text-sm h-8 py-0 px-3"
+              className="flex items-center gap-1 bg-blue-800 text-white border-white hover:bg-blue-900 text-sm h-8 py-0 px-3"
             >
               {isClearing ? (
                 <>
