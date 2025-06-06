@@ -144,32 +144,17 @@ export const getQueryFn: <T>(options: {
     return await res.json();
   };
 
+import { QueryClient } from '@tanstack/react-query';
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      queryFn: getQueryFn({ on401: "throw" }),
-      refetchInterval: false,
+      staleTime: 5 * 60 * 1000, // 5分
+      retry: 3,
       refetchOnWindowFocus: false,
-      staleTime: 5000,
-      retry: (failureCount, error) => {
-        if (error && (error as any).message?.includes('messages')) {
-          return failureCount < 2;
-        }
-        return false;
-      },
-      refetchOnMount: true,
-      refetchOnReconnect: true,
     },
     mutations: {
-      retry: false,
-      onSuccess: (data, variables, context) => {
-        if (context && (context as any).type === 'message') {
-          const chatId = (context as any).chatId;
-          if (chatId) {
-            queryClient.invalidateQueries({ queryKey: [`/api/chats/${chatId}/messages`] });
-          }
-        }
-      },
+      retry: 1,
     },
   },
 });
