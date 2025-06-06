@@ -1,15 +1,20 @@
+
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "@shared/schema";
 
-// データベース関連の初期化は一時的に無効化
-console.log('💡 データベース機能は一時的に無効化されています');
+// PostgreSQL接続設定
+const connectionString = process.env.DATABASE_URL || "postgresql://user:password@localhost:5432/emergency_recovery";
 
-// ダミーのデータベース関数をエクスポート
-export const db = {
-  connect: () => Promise.resolve(),
-  close: () => Promise.resolve()
-};
+// PostgreSQL接続プール作成
+const sql = postgres(connectionString, {
+  max: 10,
+  idle_timeout: 20,
+  connect_timeout: 10,
+});
+
+// Drizzle ORMインスタンス作成
+export const db = drizzle(sql, { schema });
 
 // Add connection health check function with retry logic
 export async function checkDatabaseConnection(): Promise<boolean> {

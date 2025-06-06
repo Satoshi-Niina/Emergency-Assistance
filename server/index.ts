@@ -15,6 +15,18 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_for_developmen
 // Express アプリケーションの初期化
 const app = express();
 
+// データベース接続確認
+import { checkDatabaseConnection } from './db';
+checkDatabaseConnection().then(isConnected => {
+  if (isConnected) {
+    console.log('✅ データベース接続確認完了');
+  } else {
+    console.warn('⚠️ データベース接続に失敗しました（開発環境では継続して動作します）');
+  }
+}).catch(err => {
+  console.warn('⚠️ データベース接続エラー:', err.message);
+});
+
 // 基本的なミドルウェア
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
