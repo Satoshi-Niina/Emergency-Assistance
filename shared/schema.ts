@@ -1,3 +1,4 @@
+
 // データベースに必要なdrizzle-ormの型とヘルパーをインポート
 import { pgTable, text, timestamp, jsonb, integer, boolean } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
@@ -26,11 +27,11 @@ export const chats = pgTable('chats', {
 });
 
 // メッセージテーブルの定義
-// チャット内の個別メッセージを管理
+// チャット内のメッセージを管理
 export const messages = pgTable('messages', {
   id: text('id').primaryKey().default(sql`gen_random_uuid()`), // UUIDを自動生成
-  chatId: text('chat_id').notNull().references(() => chats.id), // 関連するチャットのID
-  senderId: text('sender_id'), // 送信者のID (AIメッセージの場合はnull)
+  chatId: text('chat_id').notNull(), // 関連するチャットのID
+  senderId: text('sender_id').notNull(), // 送信者のID
   content: text('content').notNull(), // メッセージの内容
   isAiResponse: boolean('is_ai_response').notNull().default(false), // AIの応答かどうか
   createdAt: timestamp('created_at').defaultNow().notNull() // 送信日時
@@ -40,7 +41,7 @@ export const messages = pgTable('messages', {
 // 画像や動画などのメディアファイルを管理
 export const media = pgTable('media', {
   id: text('id').primaryKey().default(sql`gen_random_uuid()`), // UUIDを自動生成
-  messageId: text('message_id').notNull().references(() => messages.id), // 関連するメッセージのID (UUID)
+  messageId: integer('message_id').notNull(), // 関連するメッセージのID
   type: text('type').notNull(), // メディアの種類（画像、動画など）
   url: text('url').notNull(), // メディアファイルのURL
   description: text('description'), // メディアの説明（オプション）
@@ -76,41 +77,6 @@ export const chatExports = pgTable('chat_exports', {
   timestamp: timestamp('timestamp').defaultNow().notNull() // エクスポート実行日時
 });
 
-// ドキュメントテーブルの定義
-// ナレッジベースのドキュメントを管理
-export const documents = pgTable('documents', {
-  id: text('id').primaryKey().default(sql`gen_random_uuid()`),
-  title: text('title').notNull(),
-  content: text('content').notNull(),
-  userId: text('user_id').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull()
-});
-
-// キーワードテーブルの定義
-// ドキュメント検索用のキーワードを管理
-export const keywords = pgTable('keywords', {
-  id: text('id').primaryKey().default(sql`gen_random_uuid()`),
-  documentId: text('document_id').references(() => documents.id),
-  word: text('word').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull()
-});
-
-// TypeScript型定義（drizzle-ormから自動生成）
-export type User = typeof users.$inferSelect;
-export type InsertUser = typeof users.$inferInsert;
-export type Chat = typeof chats.$inferSelect;
-export type InsertChat = typeof chats.$inferInsert;
-export type Message = typeof messages.$inferSelect;
-export type InsertMessage = typeof messages.$inferInsert;
-export type Media = typeof media.$inferSelect;
-export type InsertMedia = typeof media.$inferInsert;
-export type ChatExport = typeof chatExports.$inferSelect;
-export type InsertChatExport = typeof chatExports.$inferInsert;
-export type Document = typeof documents.$inferSelect;
-export type InsertDocument = typeof documents.$inferInsert;
-export type Keyword = typeof keywords.$inferSelect;
-export type InsertKeyword = typeof keywords.$inferInsert;
-
 // Zodスキーマの定義（バリデーション用）
 import { z } from 'zod';
 
@@ -133,15 +99,14 @@ export const insertChatSchema = z.object({
 });
 
 export const insertMessageSchema = z.object({
-  chatId: z.string().min(1),
-  senderId: z.string().min(1).nullable().optional(), // AIメッセージの場合はnull、ユーザーメッセージの場合は必須
-  content: z.string().min(1),
-  isAiResponse: z.boolean().default(false),
-  createdAt: z.date().or(z.string().transform(str => new Date(str))).optional()
+  chatId: z.string(),
+  content: z.string(),
+  senderId: z.string(),
+  isAiResponse: z.boolean().default(false)
 });
 
 export const insertMediaSchema = z.object({
-  messageId: z.string(),
+  messageId: z.number(),
   type: z.string(),
   url: z.string(),
   description: z.string().optional()
@@ -153,11 +118,6 @@ export const insertDocumentSchema = z.object({
   userId: z.string()
 });
 
-export const insertKeywordSchema = z.object({
-  documentId: z.string(),
-  word: z.string()
-});
-
 export const schema = {
   users,
   chats,
@@ -166,6 +126,4 @@ export const schema = {
   emergencyFlows,
   images,
   chatExports,
-  documents,
-  keywords,
 };
