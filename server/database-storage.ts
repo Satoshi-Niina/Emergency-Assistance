@@ -164,8 +164,12 @@ export class DatabaseStorage implements IStorage {
       .from(messages)
       .where(eq(messages.chatId, chatId));
     
-    // resultをtimestampで昇順にソート
-    return result.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    // resultをtimestampで昇順にソート（undefinedチェックを追加）
+    return result.sort((a, b) => {
+      const aTime = a.timestamp ? a.timestamp.getTime() : 0;
+      const bTime = b.timestamp ? b.timestamp.getTime() : 0;
+      return aTime - bTime;
+    });
   }
   
   async createMessage(message: InsertMessage): Promise<Message> {
@@ -259,10 +263,14 @@ export class DatabaseStorage implements IStorage {
       .from(messages)
       .where(eq(messages.chatId, chatId));
     
-    // JSでフィルタリング
+    // JSでフィルタリング（undefinedチェックを追加）
     return allMessages
-      .filter(msg => msg.timestamp > timestamp)
-      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+      .filter(msg => msg.timestamp && msg.timestamp > timestamp)
+      .sort((a, b) => {
+        const aTime = a.timestamp ? a.timestamp.getTime() : 0;
+        const bTime = b.timestamp ? b.timestamp.getTime() : 0;
+        return aTime - bTime;
+      });
   }
 
   async saveChatExport(chatId: number, userId: number, timestamp: Date): Promise<void> {
