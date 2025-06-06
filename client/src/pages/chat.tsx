@@ -322,7 +322,7 @@ export default function Chat() {
           <h1 className="text-lg font-bold">応急処置チャットシステム</h1>
         </div>
         <div className="text-sm">
-          <span>ログインユーザー：{user?.username || 'ゲスト'}</span>
+          <span>ユーザー名：</span>
         </div>
       </div>
 
@@ -346,7 +346,7 @@ export default function Chat() {
           </button>
         </div>
         
-        {/* ボタン行 - 履歴クリア、履歴送信、チャット終了をタブエリアに統合 */}
+        {/* ボタン行 - 添付画像の通り履歴クリア、履歴送信、チャット終了の配置 */}
         <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-300">
           <div className="flex items-center gap-2">
             {/* 履歴クリアボタン - 青塗りつぶし白文字白枠線スタイル */}
@@ -372,23 +372,23 @@ export default function Chat() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* 履歴送信ボタン - 文字サイズ1.5倍 */}
+            {/* 履歴送信ボタン */}
             <Button 
               variant="outline"
-              size="lg"
+              size="sm"
               onClick={exportChatHistory}
               disabled={isExporting || !hasUnexportedMessages}
-              className="flex items-center gap-2 border-green-400 bg-green-50 hover:bg-green-100 text-green-700 h-10 py-0 px-4"
+              className="flex items-center gap-2 border-green-400 bg-green-50 hover:bg-green-100 text-green-700 h-8 py-0 px-3"
             >
               {isExporting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin text-green-600" />
-                  <span className="text-lg font-medium">送信中</span>
+                  <span className="text-sm">送信中</span>
                 </>
               ) : (
                 <>
                   <Send className="h-4 w-4 text-green-600" />
-                  <span className="text-lg font-medium">履歴送信</span>
+                  <span className="text-sm">履歴送信</span>
                 </>
               )}
             </Button>
