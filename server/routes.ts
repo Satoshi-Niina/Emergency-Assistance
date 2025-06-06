@@ -24,7 +24,6 @@ import emergencyGuideRouter from './routes/emergency-guide';
 import { emergencyFlowRouter } from './routes/emergency-flow-router';
 import { registerSyncRoutes } from './routes/sync-routes';
 import { flowGeneratorRouter } from './routes/flow-generator';
-import troubleshootingRouter from './routes/troubleshooting.js';
 import { usersRouter } from './routes/users';
 
 // Extend the express-session types
@@ -601,11 +600,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/chats/:id/messages", requireAuth, async (req, res) => {
     try {
-      const chat = await storage.getChat(parseInt(req.params.id));
-      const { content, useOnlyKnowledgeBase = true } = req.body;
+      const chatId = parseInt(req.params.id);
+      const { content, useOnlyKnowledgeBase = true, usePerplexity = false } = req.body;
+      const userId = req.session.userId || 1; // デフォルトユーザーID
 
+      let chat = await storage.getChat(chatId);
       if (!chat) {
-        return res.status(404).json({ message: "Chat not found" });
+        // チャットが存在しない場合は自動的に作成
+        console.log(`メッセージ送信時: チャットID ${chatId} が存在しないため、新規作成します`);
+        try {
+          chat = await storage.createChat({
+            id: chatId,
+            userId: userId,
+            title: "新しいチャット",
+            description: "自動作成されたチャット"
+          });
+          console.log(`メッセージ送信時: チャットID ${chatId} を作成しました`);
+        } catch (createError) {
+          console.error("メッセージ送信時のチャット作成エラー:", createError);
+          return res.status(500).json({ message: "Failed to create chat" });
+        }
       }
 
       // チャットアクセス制限を一時的に緩和 (すべてのログインユーザーが全チャットにアクセス可能)
