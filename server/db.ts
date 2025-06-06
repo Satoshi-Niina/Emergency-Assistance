@@ -1,21 +1,28 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import * as schema from "@shared/schema";
+import * as schema from "@db/schema";
 
-// Set DATABASE_URL
-const DATABASE_URL = process.env.DATABASE_URL || "postgresql://postgres:takabeni@0.0.0.0:5432/maintenance";
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    "DATABASE_URL must be set. Did you forget to provision a database?",
+  );
+}
 
-// Initialize postgres client with Replit-optimized config
-const sql = postgres(DATABASE_URL, {
-  max: 3, // Replitの無料枠に合わせて調整
-  idle_timeout: 30,
-  connect_timeout: 15,
-  max_lifetime: 60 * 10,
-  connection_timeout: 10,
-  keepalive: true,
-  debug: process.env.NODE_ENV === 'development',
-  onnotice: () => {}, // Replitのログを抑制
+// 接続プールの設定とエラーハンドリングを追加
+const client = postgres(process.env.DATABASE_URL, {
+  max: 10,
+  idle_timeout: 20,
+  connect_timeout: 10,
+  onnotice: () => {},
+  onparameter: () => {},
+  socket: {
+    keepalive: true
+  }
 });
 
-// Create drizzle database instance
-export const db = drizzle(sql, { schema });
+// 接続エラーのハンドリング
+client.on('error', (err) => {
+  console.error('Database connection error:', err);
+});
+
+export const db = drizzle(client, { schema });

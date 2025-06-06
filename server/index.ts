@@ -85,6 +85,17 @@ async function openBrowser(url: string) {
   try {
     // 初期化
     app.locals.storage = storage;
+    
+    // データベース接続テスト
+    try {
+      const { db } = await import('./db');
+      await db.execute('SELECT 1');
+      console.log('Database connection successful');
+    } catch (dbError) {
+      console.error('Database connection failed:', dbError);
+      // データベース接続失敗時もサーバーを起動
+    }
+    
     initializeKnowledgeBase();
 
     // 必要なディレクトリを作成
@@ -147,4 +158,30 @@ async function openBrowser(url: string) {
   };
 
   startServer(port);
+
+  // プロセス終了時のクリーンアップ
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM signal received: closing HTTP server');
+    server.close(() => {
+      console.log('HTTP server closed');
+    });
+  });
+
+  process.on('SIGINT', () => {
+    console.log('SIGINT signal received: closing HTTP server');
+    server.close(() => {
+      console.log('HTTP server closed');
+    });
+  });
+
+  // 未処理のPromise拒否をキャッチ
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  });
+
+  // 未処理の例外をキャッチ
+  process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception thrown:', error);
+    process.exit(1);
+  });
 })();
