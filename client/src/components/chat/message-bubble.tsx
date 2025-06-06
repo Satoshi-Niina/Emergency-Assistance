@@ -37,12 +37,17 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
   // 日時フォーマットのエラーハンドリング
   let formattedTime = "--:--";
   try {
-    const timestamp = message.timestamp;
-    if (timestamp && !isNaN(new Date(timestamp).getTime())) {
-      formattedTime = format(new Date(timestamp), "HH:mm", { locale: ja });
+    // timestampまたはcreatedAtから有効な日時を取得
+    const timestamp = message.timestamp || (message as any).createdAt;
+    if (timestamp) {
+      const date = new Date(timestamp);
+      if (!isNaN(date.getTime())) {
+        formattedTime = format(date, "HH:mm", { locale: ja });
+      }
     }
   } catch (error) {
     console.error('日時フォーマットエラー:', error, 'timestamp:', message.timestamp);
+    formattedTime = "時刻不明";
   }
 
   // Handle text selection within this message
@@ -289,12 +294,7 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
             </div>
           )}
         </div>
-        <span className="text-xs text-blue-400">
-          {message.timestamp || message.createdAt 
-            ? format(new Date(message.timestamp || message.createdAt), "HH:mm", { locale: ja })
-            : "時刻不明"
-          }
-        </span>
+        <span className="text-xs text-blue-400">{formattedTime}</span>
       </div>
       <div>
         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
