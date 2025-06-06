@@ -10,6 +10,10 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
+args = "cd Emergency-Assistance-main/Emergency-Assistance-main"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
 args = "npm install"
 
 [[workflows.workflow.tasks]]
