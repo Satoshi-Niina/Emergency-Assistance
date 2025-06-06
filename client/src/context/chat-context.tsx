@@ -12,6 +12,7 @@ const MAX_TEXT_LENGTH = 50;
 // チャットコンテキストの型定義
 interface ChatContextValue {
   messages: Message[];
+  setMessages: (messages: Message[] | ((prev: Message[]) => Message[])) => void;
   isLoading: boolean;
   searching: boolean;
   searchResults: any[];
@@ -878,6 +879,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // コンテキスト値を提供
   const contextValue: ChatContextValue = {
     messages,
+    setMessages,
     isLoading,
     searching,
     searchResults,
