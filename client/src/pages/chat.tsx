@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useChat } from "@/context/chat-context";
-import { useAuth } from "@/context/auth-context";
 import MessageBubble from "@/components/chat/message-bubble";
 import MessageInput from "@/components/chat/message-input";
 import TextSelectionControls from "@/components/chat/text-selection-controls";
@@ -11,23 +10,14 @@ import TroubleshootingSelector from "@/components/troubleshooting/troubleshootin
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
-import { Send, AlertTriangle, Loader2, Trash2, Heart } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Send, AlertTriangle, Loader2, Trash2, LifeBuoy, Image, Hammer, Heart, FileText } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useOrientation } from "@/hooks/use-orientation";
-import { v4 as uuidv4 } from "uuid";
 
 export default function Chat() {
-  const { user, isLoading: authLoading } = useAuth();
-
-  // 認証状態をチェックして、未認証の場合はログイン画面にリダイレクト
-  useEffect(() => {
-    if (!authLoading && !user) {
-      console.log('ユーザーが未認証です。ログイン画面にリダイレクトします。');
-      window.location.href = '/login';
-    }
-  }, [user, authLoading]);
   const {
     messages,
     isLoading,
@@ -43,25 +33,15 @@ export default function Chat() {
     draftMessage,
     clearChatHistory,
     isClearing,
-    isRecording,
-    chatId // currentChatId を useChat から取得
+    isRecording
   } = useChat();
-
+  
   const [isEndChatDialogOpen, setIsEndChatDialogOpen] = useState(false);
 
   // Fetch messages for the current chat
-  const { data, isLoading: messagesLoading, error } = useQuery({
-    queryKey: chatId ? [`/api/chats/${chatId}/messages`] : [],
-    enabled: !!chatId,
+  const { data, isLoading: messagesLoading } = useQuery({
+    queryKey: ['/api/chats/1/messages'],
     staleTime: 1000 * 60 * 5, // 5 minutes
-    retry: (failureCount, error) => {
-      // 502エラーの場合はリトライしない
-      if (error && 'status' in error && error.status === 502) {
-        return false;
-      }
-      return failureCount < 3;
-    },
-    retryDelay: 1000,
   });
 
   useEffect(() => {
@@ -83,87 +63,41 @@ export default function Chat() {
 
   // Show messages from the context or from the query
   // クリア処理中は空配列を表示し、それ以外の場合はmessagesまたはデータを表示
-  const rawDisplayMessages = isClearing 
+  const displayMessages = isClearing 
     ? [] 
     : (messages?.length > 0 ? messages : (data as any[] || []));
-
-  // データの完全性検証とフィルタリング
-  const displayMessages = rawDisplayMessages.filter((message: any) => {
-    // 必須フィールドの存在確認
-    if (!message || typeof message !== 'object') {
-      console.warn('無効なメッセージオブジェクト:', message);
-      return false;
-    }
-    
-    // IDの存在確認（部分的成功の検出）
-    if (!message.id || typeof message.id !== 'string' || message.id.trim().length === 0) {
-      console.warn('IDが無効なメッセージを除外:', message);
-      return false;
-    }
-    
-    // コンテンツの存在確認
-    if (!message.content || typeof message.content !== 'string' || message.content.trim().length === 0) {
-      console.warn('コンテンツが無効なメッセージを除外:', message);
-      return false;
-    }
-    
-    // senderIdの存在確認
-    if (!message.senderId || typeof message.senderId !== 'string') {
-      console.warn('senderIdが無効なメッセージを除外:', message);
-      return false;
-    }
-    
-    // createdAtの存在確認（500エラーで部分的に保存されたメッセージの検出）
-    if (!message.createdAt && !message.timestamp) {
-      console.warn('作成日時が無効なメッセージを除外（部分的保存の可能性）:', message.id);
-      return false;
-    }
-    
-    // isAiResponseの型確認
-    if (message.isAiResponse !== undefined && typeof message.isAiResponse !== 'boolean') {
-      console.warn('isAiResponseの型が無効、自動修正:', message.id);
-      message.isAiResponse = Boolean(message.isAiResponse);
-    }
-    
-    // chatIdの整合性確認
-    if (chatId && message.chatId && message.chatId !== chatId) {
-      console.warn('chatIdが不一致のメッセージを除外:', message.id, '期待:', chatId, '実際:', message.chatId);
-      return false;
-    }
-    
-    return true;
-  });
-
+  
   // メッセージクリア時にデータも更新
   useEffect(() => {
-    // 明示的なチャット履歴クリア後のみ処理を実行
-    const chatClearedTimestamp = localStorage.getItem('chat_cleared_timestamp');
-
-    if (messages !== undefined && messages.length === 0 && chatClearedTimestamp) {
+    // メッセージが空になった場合（クリアされた場合）のハンドリング
+    if (messages !== undefined && messages.length === 0) {
+      const chatClearedTimestamp = localStorage.getItem('chat_cleared_timestamp');
+      
+      // キャッシュクリア処理（タイムスタンプの有無に関わらず実行）
       console.log('チャット履歴クリア後の状態を維持します');
-
+      
       // ローカルストレージのクエリキャッシュをクリア
       for (const key of Object.keys(localStorage)) {
         if (key.startsWith('rq-/api/chats/')) {
           localStorage.removeItem(key);
         }
       }
-
-      // React Queryのキャッシュをクリア
-      try {
-        queryClient.removeQueries({ queryKey: [`/api/chats/${chatId}/messages`] });
-        queryClient.setQueryData([`/api/chats/${chatId}/messages`], []);
-
-        // @ts-ignore
-        window.queryClient = queryClient;
-      } catch (cacheError) {
-        console.error('キャッシュクリアエラー:', cacheError);
-      }
-
-      // 明示的なクリア後のみサーバーにクリア確認を送信
+      
+      // クエリキャッシュを完全に削除
+      queryClient.removeQueries({ queryKey: ['/api/chats/1/messages'] });
+      
+      // 空の配列を強制的にセット
+      queryClient.setQueryData(['/api/chats/1/messages'], []);
+      
+      // React Queryのキャッシュ操作用にグローバル変数としてqueryClientを設定
+      // @ts-ignore - これにより他のコンポーネントからもアクセス可能
+      window.queryClient = queryClient;
+      
+      // 特殊パラメータを付けて明示的にサーバーにクリア要求を送信
       const fetchClearedData = async () => {
         try {
-          const clearUrl = `/api/chats/${chatId}/messages?clear=true&_t=${Date.now()}`;
+          // タイムスタンプパラメータを使用してキャッシュバスティング
+          const clearUrl = `/api/chats/1/messages?clear=true&_t=${Date.now()}`;
           await fetch(clearUrl, {
             credentials: 'include',
             cache: 'no-cache',
@@ -178,28 +112,30 @@ export default function Chat() {
           console.error('クリア要求送信エラー:', error);
         }
       };
-
+      
       fetchClearedData();
-
+      
       // クリアフラグを削除（1度だけ実行するため）
-      localStorage.removeItem('chat_cleared_timestamp');
-      console.log('チャットクリアタイムスタンプをクリア');
-
+      if (chatClearedTimestamp) {
+        localStorage.removeItem('chat_cleared_timestamp');
+        console.log('チャットクリアタイムスタンプをクリア');
+      }
+      
       // 少し間をおいて再確認
       const intervalId = setInterval(() => {
-        queryClient.setQueryData([`/api/chats/${chatId}/messages`], []);
+        queryClient.setQueryData(['/api/chats/1/messages'], []);
       }, 500);
-
+      
       // 10秒後にクリア監視を終了
       setTimeout(() => {
         clearInterval(intervalId);
       }, 10000);
     }
-  }, [messages, queryClient, chatId]);
+  }, [messages, queryClient]);
 
   // woutorのLocationフックを取得
   const [, setLocation] = useLocation();
-
+  
   // チャット終了確認ダイアログを表示
   const handleEndChat = () => {
     if (hasUnexportedMessages) {
@@ -221,7 +157,7 @@ export default function Chat() {
             localStorage.removeItem(key);
           }
         }
-
+        
         // JavaScript直接のリダイレクトを使用（より確実なリダイレクト）
         window.location.href = "/login";
       })
@@ -238,15 +174,15 @@ export default function Chat() {
     try {
       await exportChatHistory();
       setIsEndChatDialogOpen(false);
-
+      
       // 送信完了後、ログアウト処理を実行
       await fetch("/api/auth/logout", {
         method: "POST",
         credentials: "include"
       });
-
+      
       console.log("送信して終了: ログアウト成功 - ログイン画面に遷移します");
-
+      
       // キャッシュをクリア
       queryClient.clear();
       // ローカルストレージのクエリキャッシュをクリア
@@ -255,7 +191,7 @@ export default function Chat() {
           localStorage.removeItem(key);
         }
       }
-
+      
       // JavaScript直接のリダイレクトを使用（より確実なリダイレクト）
       window.location.href = "/login";
     } catch (error) {
@@ -267,19 +203,19 @@ export default function Chat() {
 
   const isMobile = useIsMobile();
   const orientation = useOrientation();
-
+  
   // スクロール挙動の最適化 (モバイル対応)
   useEffect(() => {
     // 基本スクロール設定を適用
     document.body.style.overflow = 'auto';
     document.documentElement.style.overflow = 'auto';
-
+    
     // モバイル端末の場合、横向きの時に検索ボタンの位置を調整する
     const handleOrientationChange = () => {
       // 検索結果を表示するスライダーがあれば位置調整
       const searchSlider = document.getElementById('mobile-search-slider');
       const chatMessages = document.querySelector('.chat-messages-container') as HTMLElement;
-
+      
       if (searchSlider) {
         // チャットエリアのスタイルを初期化
         if (chatMessages) {
@@ -287,7 +223,7 @@ export default function Chat() {
           chatMessages.style.flex = '';
           chatMessages.style.maxWidth = '';
         }
-
+        
         // 初期状態では検索パネルは非表示にする
         if (!searchResults || searchResults.length === 0) {
           searchSlider.style.display = 'none';
@@ -295,11 +231,11 @@ export default function Chat() {
         } else {
           searchSlider.style.display = 'block';
         }
-
+        
         // 横向きの場合でも検索パネルは表示しない（検索時のみ表示）
         // 初期状態では非表示
         searchSlider.style.transform = 'translateY(100%)';
-
+        
         // 横向き・縦向き共通の設定
         if (orientation === 'landscape') {
           // 検索パネルを右側に配置
@@ -318,7 +254,7 @@ export default function Chat() {
           searchSlider.style.backgroundColor = '#eff6ff';
           searchSlider.style.paddingTop = '0';
           searchSlider.style.overflowY = 'auto';
-
+          
           // 横向きの場合は丸ボタンを非表示に
           const searchButton = document.querySelector('.mobile-search-button') as HTMLElement;
           if (searchButton) {
@@ -337,7 +273,7 @@ export default function Chat() {
           searchSlider.style.transition = 'transform 300ms ease-in-out';
           searchSlider.style.borderLeft = 'none';
           searchSlider.style.borderTop = '1px solid #bfdbfe';
-
+          
           // 丸ボタン位置を元に戻す
           const searchButton = document.querySelector('.mobile-search-button') as HTMLElement;
           if (searchButton) {
@@ -347,19 +283,19 @@ export default function Chat() {
         }
       }
     };
-
+    
     // 初期実行
     handleOrientationChange();
-
+    
     // イベントリスナー登録
     window.addEventListener('resize', handleOrientationChange);
     window.addEventListener('orientationchange', handleOrientationChange);
-
+    
     // クリーンアップ
     return () => {
       window.removeEventListener('resize', handleOrientationChange);
       window.removeEventListener('orientationchange', handleOrientationChange);
-
+      
       // 検索結果エリアを元に戻す
       const chatMessages = document.querySelector('.chat-messages-container') as HTMLElement;
       if (chatMessages) {
@@ -369,7 +305,7 @@ export default function Chat() {
       }
     };
   }, [orientation, searchResults]);
-
+  
   // 応急処置モーダルの状態管理
   const [emergencyGuideOpen, setEmergencyGuideOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
@@ -378,63 +314,45 @@ export default function Chat() {
     <div className="flex flex-col w-full h-full overflow-auto bg-blue-50 chat-layout-container overflow-scroll-container" style={{ maxWidth: '100vw', overflowX: 'hidden' }}>
       {/* ヘッダー - 12インチノートPC向けにコンパクト化 */}
       <div className="border-b border-blue-200 p-1 md:p-2 flex justify-between items-center bg-blue-100 mobile-landscape-header" style={{ minHeight: 'auto' }}>
-        <div className="flex items-center gap-1 md:gap-2">
-          {/* 履歴クリアボタン - 左端 */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={clearChatHistory}
-            disabled={isClearing}
-            className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white border-0"
-          >
-            {isClearing ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin text-white" />
-                <span className="text-lg">履歴クリア</span>
-              </>
-            ) : (
-              <>
-                <Trash2 className="h-4 w-4 text-white" />
-                <span className="text-lg">履歴クリア</span>
-              </>
-            )}
-          </Button>
+        <div className="flex items-center">
+          {/* タイトル表示を削除 */}
         </div>
 
         <div className="flex items-center gap-1 md:gap-2">
-          {/* チャット履歴送信ボタン */}
+          
+          {/* チャット履歴送信ボタン - よりコンパクトに */}
           <Button 
             variant="outline"
             size="sm"
             onClick={exportChatHistory}
             disabled={isExporting || !hasUnexportedMessages}
-            className="flex items-center gap-1 border-green-400 bg-green-50 hover:bg-green-100 text-green-700"
+            className="flex items-center gap-1 border-green-400 bg-green-50 hover:bg-green-100 text-green-700 text-xs h-7 py-0 px-2"
           >
             {isExporting ? (
               <>
                 <Loader2 className="h-3 w-3 animate-spin text-green-600" />
-                <span className="text-lg">送信中</span>
+                <span className="text-xs">送信中</span>
               </>
             ) : (
               <>
                 <Send className="h-3 w-3 text-green-600" />
-                <span className="text-lg">履歴送信</span>
+                <span className="text-xs">履歴送信</span>
               </>
             )}
           </Button>
-
-          {/* チャット終了ボタン */}
+          
+          {/* チャット終了ボタン - よりコンパクトに */}
           <Button 
             variant="destructive"
             size="sm"
             onClick={handleEndChat}
-            className="flex items-center gap-1 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white border-0"
+            className="flex items-center gap-1 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white border-0 h-7 py-0 px-2"
           >
-            <span className="text-lg">チャット終了</span>
+            <span className="text-xs">チャット終了</span>
           </Button>
         </div>
       </div>
-
+      
       {/* 応急処置ガイドボタン - タブ前に配置して目立たせる */}
       <div className="w-full flex justify-center items-center p-2 bg-gradient-to-r from-blue-100 to-blue-50 border-b border-blue-200">
         <Button
@@ -457,15 +375,11 @@ export default function Chat() {
           <span className="text-lg font-bold">応急処置ガイド</span>
         </Button>
       </div>
-
-
-
-
-
+      
       <div className="flex-1 flex flex-col md:flex-row overflow-auto chat-layout-container" style={{ minHeight: '75vh' }}>
         {/* Chat Messages Area - 領域を2/3に縮小し、縦を元に戻す */}
         <div className="flex-1 flex flex-col h-full min-h-[75vh] overflow-auto md:w-2/3 bg-white chat-messages-container" style={{ maxWidth: '100%', overflowX: 'hidden' }}>
-
+          
           {/* Chat Messages - 高さを1.5倍に */}
           <div id="chatMessages" className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 md:px-6 space-y-4 min-w-[300px]" style={{ minHeight: '60vh' }}>
             {messagesLoading || isLoading ? (
@@ -482,44 +396,27 @@ export default function Chat() {
             ) : (
               <>
                 {/* 通常のメッセージリスト */}
-                {displayMessages
-                  .filter((message: any) => message && message.content && message.content.trim().length > 0)
-                  .map((message: any, index: number) => {
-                    // IDが無い場合はuuidv4で統一的に生成
-                    const messageId = message.id || uuidv4();
-                    const timestamp = message.createdAt || message.timestamp || new Date();
-                    const timestampStr = timestamp instanceof Date ? timestamp.getTime() : new Date(timestamp).getTime();
-                    // chatIdとindexを含めた確実にユニークなキーを生成
-                    const uniqueKey = `${chatId || 'no-chat'}-${messageId}-${index}-${timestampStr}-${message.isAiResponse ? 'ai' : 'user'}`;
-
-                    // メッセージにIDが無い場合は設定
-                    if (!message.id) {
-                      message.id = messageId;
-                    }
-
-                    return (
-                      <div key={uniqueKey} className="w-full md:max-w-2xl mx-auto">
-                        <MessageBubble message={message} />
-                      </div>
-                    );
-                  })}
+                {displayMessages.map((message: any, index: number) => (
+                  <div key={index} className="w-full md:max-w-2xl mx-auto">
+                    <MessageBubble message={message} />
+                  </div>
+                ))}
               </>
             )}
-
+            
             {/* プレビュー用の一時メッセージ (録音中テキストと撮影した画像のプレビュー) */}
             {draftMessage && draftMessage.content && (
               <div className="w-full md:max-w-2xl mx-auto">
                 <MessageBubble
                   message={{
-                    id: uuidv4(), // uuidv4で統一的にID生成
+                    id: -1, // 一時的なID
                     content: draftMessage.content,
-                    senderId: user?.id || uuidv4(), // 現在のユーザーIDまたは一時ID
+                    senderId: 1, // 現在のユーザーID
                     isAiResponse: false,
                     timestamp: new Date(),
-                    createdAt: new Date(),
                     media: draftMessage.media?.map((m, idx) => ({
-                      id: uuidv4(), // メディアIDもuuidv4で生成
-                      messageId: uuidv4(),
+                      id: idx,
+                      messageId: -1,
                       ...m
                     }))
                   }}
@@ -527,7 +424,12 @@ export default function Chat() {
                 />
               </div>
             )}
-
+            
+            {/* デバッグ表示 - ドラフトメッセージの状態を確認 */}
+            <div className="hidden">
+              <p>draftMessage: {draftMessage ? JSON.stringify(draftMessage) : 'null'}</p>
+            </div>
+            
           </div>
 
           {/* エクスポート状態表示 */}
@@ -556,7 +458,7 @@ export default function Chat() {
             </div>
           </div>
         </div>
-
+        
         {/* モバイル用検索結果スライダー - 縦向き表示の時のみフローティングボタンを表示 */}
         {searchResults && searchResults.length > 0 && isMobile && orientation === 'portrait' && (
           <div className="fixed bottom-20 right-4 md:hidden mobile-search-button">
@@ -580,7 +482,7 @@ export default function Chat() {
             </Button>
           </div>
         )}
-
+        
         <div 
           id="mobile-search-slider" 
           className={`fixed transition-transform duration-300 ease-in-out md:hidden z-50 ${
@@ -619,9 +521,9 @@ export default function Chat() {
             <div className="search-results-wrapper p-2">
               {/* 直接画像を表示 - 重複フォーム対策 */}
               <div className="flex flex-col gap-4">
-                {searchResults.map((result, index) => (
+                {searchResults.map((result) => (
                   <div 
-                    key={`${chatId || 'search'}-result-${result.id || uuidv4()}-${index}`} 
+                    key={result.id} 
                     className="thumbnail-item rounded-lg overflow-hidden bg-transparent shadow-sm w-full hover:bg-blue-50 transition-colors"
                     onClick={() => {
                       // イメージプレビューモーダルを表示
@@ -747,7 +649,7 @@ export default function Chat() {
       {/* Modals */}
       <CameraModal />
       <ImagePreviewModal />
-
+      
       {/* 応急処置ガイドモーダル（モバイル・デスクトップ共通） */}
       <Dialog open={emergencyGuideOpen} onOpenChange={setEmergencyGuideOpen}>
         <DialogContent className={`bg-blue-50 border border-blue-200 ${isMobile ? 'w-[95%] max-w-md' : 'max-w-3xl'}`}>

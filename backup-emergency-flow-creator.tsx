@@ -9,8 +9,6 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, Save, X, Edit, Edit3, File, FileText, Plus, Download, FolderOpen, Trash2, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
-import { Textarea } from '@/components/ui/textarea';
-import TroubleshootingViewer from './troubleshooting-viewer';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,7 +27,7 @@ const EmergencyFlowCreator: React.FC = () => {
   // activeTabは使用しなくなったため削除
   
   // ファイル編集タブ内のサブタブ
-  const [characterDesignTab, setCharacterDesignTab] = useState<string>('flowEditor');
+  const [characterDesignTab, setCharacterDesignTab] = useState<string>('new');
   
   // アップロード関連の状態
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -43,57 +41,9 @@ const EmergencyFlowCreator: React.FC = () => {
   // フロー編集の状態
   const [flowData, setFlowData] = useState<any>(null);
   
-  // フロー削除関連の状態
+  // キャラクター削除関連の状態
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
-  const [flowToDelete, setFlowToDelete] = useState<any | null>(null);
-  
-  // フロー削除ハンドラ
-  const handleDeleteFlow = (flow: any) => {
-    setFlowToDelete(flow);
-    setShowConfirmDelete(true);
-  };
-  
-  // 削除の実行
-  const executeDelete = async () => {
-    if (flowToDelete) {
-      try {
-        setShowConfirmDelete(false);
-        
-        // APIを呼び出して削除実行
-        const response = await fetch(`/api/emergency-flow/delete/${flowToDelete.id}`, {
-          method: 'DELETE',
-        });
-        
-        if (!response.ok) {
-          throw new Error(`削除に失敗しました: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        
-        if (result.success) {
-          // 削除成功
-          toast({
-            title: "削除成功",
-            description: `${flowToDelete.title} が削除されました`,
-          });
-          
-          // リストを更新
-          fetchFlowList();
-        } else {
-          throw new Error(result.error || '削除処理でエラーが発生しました');
-        }
-      } catch (error) {
-        console.error('削除エラー:', error);
-        toast({
-          title: "削除エラー",
-          description: error instanceof Error ? error.message : "ファイルの削除に失敗しました",
-          variant: "destructive",
-        });
-      } finally {
-        setFlowToDelete(null);
-      }
-    }
-  };
+  const [flowToDelete, setFlowToDelete] = useState<string | null>(null);
   
   // 保存済みフローのリスト
   const [flowList, setFlowList] = useState<any[]>([]);
@@ -282,8 +232,8 @@ const EmergencyFlowCreator: React.FC = () => {
             console.log("アップロードで読み込んだフローデータ:", enhancedData);
             setFlowData(enhancedData);
             
-            // 読み込み成功したら、キャラクター編集用にフローエディタタブに切り替え
-            setCharacterDesignTab('flowEditor');
+            // 読み込み成功したら、キャラクター編集用に「新規作成」タブに切り替え
+            setCharacterDesignTab('new');
             setUploadSuccess(true);
             toast({
               title: "JSONファイル読込み成功",
@@ -719,7 +669,7 @@ const EmergencyFlowCreator: React.FC = () => {
   const handleCreateNewFlow = () => {
     // 空のフローデータで初期化
     setFlowData({
-      title: '新規応急処置フロー',
+      title: '',
       description: '',
       fileName: '',
       nodes: [
@@ -1003,7 +953,7 @@ const EmergencyFlowCreator: React.FC = () => {
       setFlowToDelete(null);
     }
   };
-
+  
   return (
     <>
       <Card className="w-full h-screen max-h-[calc(100vh-120px)] overflow-auto">
@@ -1033,7 +983,7 @@ const EmergencyFlowCreator: React.FC = () => {
               className="hidden"
             />
 
-            {/* 新規作成タブ - フローチャート作成用のReactFlowコンポーネント */}
+            {/* 新規作成タブ */}
             <TabsContent value="new" className="h-full">
               <EmergencyFlowEditor 
                 onSave={handleSaveFlow}
@@ -1041,7 +991,7 @@ const EmergencyFlowCreator: React.FC = () => {
                 initialData={flowData ? {
                   ...flowData,
                   id: flowData.id || undefined,
-                  title: flowData.title || '新規応急処置フロー',
+                  title: flowData.title || '',
                   description: flowData.description || '',
                   fileName: uploadedFileName || flowData.fileName || '',
                   nodes: Array.isArray(flowData.nodes) ? flowData.nodes : [],
@@ -1065,13 +1015,28 @@ const EmergencyFlowCreator: React.FC = () => {
             {/* ファイル編集タブ */}
             <TabsContent value="file" className="h-full">
               <div className="space-y-4">
-                {/* 保存済みファイル一覧 */}
-                <div className="mt-2">
+                {/* 開発中の通知 */}
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+                  <div className="flex items-center">
+                    <AlertTriangle className="h-6 w-6 text-yellow-500 mr-3" />
+                    <div>
+                      <p className="text-sm font-medium text-yellow-800">
+                        この機能は現在作成中です
+                      </p>
+                      <p className="text-xs text-yellow-700 mt-1">
+                        ファイル編集機能は準備中です。現在は保存済みキャラクターの管理のみ利用可能です。
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* 保存済みキャラクター一覧 */}
+                <div className="mt-6">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-lg font-medium">応急処置フロー一覧</h3>
+                    <h3 className="text-lg font-medium">保存データ一覧</h3>
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" onClick={fetchFlowList} disabled={isLoadingFlowList}>
-                        <RefreshCw className={`mr-2 h-4 w-4 ${isLoadingFlowList ? 'animate-spin' : ''}`} />
+                        <RefreshCw className="mr-2 h-4 w-4" />
                         更新
                       </Button>
                       <Button variant="default" size="sm" onClick={handleCreateNewFlow}>
@@ -1082,47 +1047,24 @@ const EmergencyFlowCreator: React.FC = () => {
                   </div>
                   
                   {isLoadingFlowList ? (
-                    <div className="py-8 text-center text-gray-500 flex flex-col items-center">
-                      <RefreshCw className="h-8 w-8 animate-spin mb-2 text-blue-500" />
-                      <p>フローデータを読込中...</p>
-                    </div>
+                    <div className="py-4 text-center text-gray-500">読込中...</div>
                   ) : flowList.length === 0 ? (
-                    <div className="py-12 text-center border border-dashed rounded-lg">
-                      <div className="flex flex-col items-center justify-center space-y-2">
-                        <FolderOpen className="h-12 w-12 text-gray-400" />
-                        <h3 className="text-lg font-medium text-gray-600">保存済みのデータはありません</h3>
-                        <p className="text-sm text-gray-500">
-                          新規フローを作成するか、右上の「新規作成」ボタンをクリックしてください
-                        </p>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="mt-2"
-                          onClick={handleCreateNewFlow}
-                        >
-                          <Plus className="mr-2 h-4 w-4" />
-                          新規フロー作成
-                        </Button>
-                      </div>
-                    </div>
+                    <div className="py-4 text-center text-gray-500">保存済みのデータはありません</div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {flowList.map(flow => (
-                        <Card key={flow.id} className="overflow-hidden border hover:border-blue-300 hover:shadow-md transition-all">
+                        <Card key={flow.id} className="overflow-hidden">
                           <CardHeader className="p-4 pb-2">
                             <CardTitle className="text-md">{flow.title}</CardTitle>
                             <CardDescription className="text-xs">
-                              {flow.createdAt ? `作成日: ${new Date(flow.createdAt).toLocaleString()}` : "作成日不明"}
+                              作成日: {new Date(flow.createdAt).toLocaleString()}
                             </CardDescription>
                           </CardHeader>
                           <CardContent className="p-4 pt-2">
                             <div className="flex justify-between gap-2">
                               <div>
-                                <Badge variant={flow.source === 'troubleshooting' ? 'secondary' : 'outline'} className="mr-2">
+                                <Badge variant="outline" className="mr-2">
                                   {flow.fileName ? flow.fileName.split('.')[0] : 'デフォルト'}
-                                </Badge>
-                                <Badge variant="outline" className="text-xs">
-                                  {flow.source === 'troubleshooting' ? 'トラブルシューティング' : 'フロー'}
                                 </Badge>
                               </div>
                               <div className="flex gap-2">
@@ -1163,7 +1105,7 @@ const EmergencyFlowCreator: React.FC = () => {
                                           
                                           // ステップデータを追加
                                           if (troubleshootingData.steps && troubleshootingData.steps.length > 0) {
-                                            troubleshootingData.steps.forEach((step: any, index: number) => {
+                                            troubleshootingData.steps.forEach((step, index) => {
                                               flowNodes.push({
                                                 id: `step_${index + 1}`,
                                                 type: 'step',
@@ -1171,7 +1113,7 @@ const EmergencyFlowCreator: React.FC = () => {
                                                 data: { 
                                                   label: `ステップ ${index + 1}: ${step.title || '手順'}`, 
                                                   message: step.content || '詳細なし'
-                                                } as any
+                                                }
                                               });
                                             });
                                           } else {
@@ -1183,7 +1125,7 @@ const EmergencyFlowCreator: React.FC = () => {
                                               data: { 
                                                 label: `${flow.title || 'ステップ'} 1`, 
                                                 message: `${flow.fileName || '不明'} のデータです。内容を編集してください。` 
-                                              } as any
+                                              }
                                             });
                                           }
                                           
@@ -1249,7 +1191,7 @@ const EmergencyFlowCreator: React.FC = () => {
                                                 data: { 
                                                   label: `エラー: ${flow.title}`, 
                                                   message: `データの取得に失敗しました。\nエラー: ${error.message}` 
-                                                } as any
+                                                }
                                               },
                                               {
                                                 id: 'end',
@@ -1308,7 +1250,7 @@ const EmergencyFlowCreator: React.FC = () => {
                                             data: { 
                                               label: `${flow.title || 'ステップ'} 1`, 
                                               message: `この内容は編集できます。\n\n${flow.fileName || 'unknown'} ファイルのデータです。` 
-                                            } as any
+                                            }
                                           },
                                           {
                                             id: 'end',

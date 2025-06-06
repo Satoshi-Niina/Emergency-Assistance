@@ -12,19 +12,19 @@ import { searchByText } from '@/lib/image-search';
 // 画像パスを修正するヘルパー関数
 function handleImagePath(imagePath: string): string {
   if (!imagePath) return '';
-
+  
   // すでに絶対URLの場合はそのまま返す
   if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
     return imagePath;
   }
-
+  
   // 相対パスの場合、先頭の/を削除してoriginを追加
   // replit環境では、先頭の/を含む相対パスが正しく解決されないことがある
   let path = imagePath;
   if (path.startsWith('/')) {
     path = path.substring(1);
   }
-
+  
   // 現在のオリジンと結合
   const baseUrl = window.location.origin;
   return `${baseUrl}/${path}`;
@@ -89,17 +89,17 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
         credentials: 'include',
         cache: 'no-cache'
       });
-
+      
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
-
+      
       const data = await response.json();
       console.log('取得したトラブルシューティングデータ:', data);
-
+      
       // データ形式を確認し、必要に応じて変換
       let formattedData = { ...data };
-
+      
       // 最初のステップを設定
       if (data && data.steps && data.steps.length > 0) {
         // ステップデータの形式を標準化 (content → message への変換)
@@ -110,9 +110,9 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
             message: step.message || step.content || '',
           };
         });
-
+        
         formattedData.steps = formattedSteps;
-
+        
         // 標準化されたデータを設定
         setFlowData(formattedData);
         setCurrentStep(formattedData.steps[0]);
@@ -135,23 +135,22 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
   useEffect(() => {
     fetchFlowData();
   }, [fetchFlowData]);
-
+  
   // チャットからのフロー選択イベントを受け取るリスナー
   useEffect(() => {
+    // チャットから送信されたメッセージ内容からフローIDを取得するイベントリスナー
     const handleSelectFlow = (event: CustomEvent) => {
-      if (event.detail?.flowId === id) {
-        console.log('既に同じフローを表示中です');
-        return;
-      }
-
-      if (event.detail?.flowId) {
-        const autoDisplay = event.detail.autoDisplay || false;
-
+      if (event.detail && event.detail.flowId) {
+        console.log('チャットからフローIDを受信:', event.detail.flowId);
+        
+        // 自動表示フラグがある場合（検索結果が1件のみの場合）
+        const autoDisplay = event.detail.autoDisplay === true;
+        
         if (event.detail.flowId === id) {
           console.log('既に同じフローを表示中です');
           return;
         }
-
+        
         // 検索結果が複数ある場合は選択リストを表示
         if (event.detail.results && event.detail.results.length > 1 && !autoDisplay) {
           // 複数の選択肢がある場合、選択リストを表示するイベントを発火
@@ -163,15 +162,15 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
           }));
           return;
         }
-
+        
         // 自動表示フラグがある場合、または検索結果が1つだけの場合は直接リダイレクト
         window.location.href = `/emergency-guide/${event.detail.flowId}`;
       }
     };
-
+    
     // イベントリスナーを登録
     window.addEventListener('select-troubleshooting-flow', handleSelectFlow as EventListener);
-
+    
     // クリーンアップ
     return () => {
       window.removeEventListener('select-troubleshooting-flow', handleSelectFlow as EventListener);
@@ -188,27 +187,27 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
       setChecklistItems(initialState);
     }
   }, [currentStep]);
-
+  
   // 画像キーワードが変わったときに検索を実行
   useEffect(() => {
     if (!currentStep) return;
-
+    
     // ステップの内容から関連キーワードを抽出して画像検索する
     const extractKeywordsFromText = (text: string) => {
       // 日本語の重要なキーワードを抽出（名詞を中心に）
       // 簡易的な実装として、2文字以上の単語を抽出
       const words = text.match(/[一-龠]+|[ぁ-ん]+|[ァ-ヴー]+|[a-zA-Z0-9]+/g) || [];
-
+      
       // 助詞や助動詞などの一般的な語を除外
       const stopWords = ['した', 'します', 'ます', 'です', 'ない', 'する', 'なる', 'いる', 'ある', 'れる', 'られる', 
         'ので', 'から', 'より', 'また', 'および', 'または', 'など', 'して', 'として', 'について', 'により'];
-
+      
       return words
         .filter(word => word.length >= 2) // 2文字以上の単語のみ
         .filter(word => !stopWords.includes(word)) // ストップワードを除外
         .slice(0, 5); // 最大5単語まで
     };
-
+    
     // 画像検索を実行
     const performImageSearch = async () => {
       // 1. ステップに直接画像URLが指定されている場合は検索しない
@@ -216,7 +215,7 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
         console.log('ステップに直接画像が指定されているため検索は実行しません', currentStep.image || currentStep.imageUrl);
         return;
       }
-
+      
       // 2. キーワード検索の実行
       if (currentStep.imageKeywords && currentStep.imageKeywords.length > 0) {
         console.log('画像キーワードによる検索を実行:', currentStep.imageKeywords);
@@ -224,17 +223,17 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
           // キーワードを文字列に結合して検索
           const searchText = currentStep.imageKeywords.join(' ');
           const results = await searchByText(searchText);
-
+          
           console.log('検索結果:', results);
           setSearchResults(results);
-
+          
           // 検索結果があれば、最初の画像を表示
           if (results && results.length > 0) {
             const firstResult = results[0];
             // パスを正しく解決
             const imageUrl = handleImagePath(firstResult.file || firstResult.url);
             console.log('画像表示: キーワード検索結果の画像を表示', imageUrl);
-
+            
             // ブラウザのイベントディスパッチを使用してプレビュー表示のみ実行
             window.dispatchEvent(new CustomEvent('preview-image', { 
               detail: { 
@@ -256,27 +255,27 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
           // メッセージからキーワードを抽出
           const keywords = extractKeywordsFromText(message);
           console.log('テキストから抽出したキーワード:', keywords);
-
+          
           // 抽出したキーワードで検索
           const searchText = keywords.join(' ');
           console.log('検索キーワード:', searchText);
           console.log('キーワードタイプ:', typeof searchText, searchText.length, Array.isArray(searchText));
-
+          
           if (!searchText.trim()) {
             console.log('検索テキストが空のため検索をスキップします');
             return;
           }
-
+          
           const results = await searchByText(searchText);
           setSearchResults(results);
-
+          
           // 検索結果があれば、最初の画像を表示
           if (results && results.length > 0) {
             const firstResult = results[0];
             // パスを正しく解決
             const imageUrl = handleImagePath(firstResult.file || firstResult.url);
             console.log('画像表示: メッセージからの検索結果の画像を表示', imageUrl);
-
+            
             // プレビュー表示のみ実行
             window.dispatchEvent(new CustomEvent('preview-image', { 
               detail: { 
@@ -291,14 +290,9 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
         }
       }
     };
-
+    
     // 検索実行
     performImageSearch();
-
-    return () => {
-      // Cleanup function (if needed)
-      setSearchResults([]);
-    };
   }, [currentStep]);
 
   // 次のステップに進む
@@ -322,14 +316,14 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
       const similarIdStep = flowData.steps.find(step => 
         step.id && (nextStepId.startsWith(step.id) || step.id.startsWith(nextStepId))
       );
-
+      
       if (similarIdStep) {
         console.log(`元のステップ「${nextStepId}」が見つからなかったため、類似ステップ「${similarIdStep.id}」に移動します`);
         setCurrentStep(similarIdStep);
         setChecklistItems({});
         return;
       }
-
+      
       // 2. 現在のステップの次のステップを探す
       if (currentStep && currentStep.id) {
         const currentIndex = flowData.steps.findIndex(step => step.id === currentStep.id);
@@ -341,7 +335,7 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
           return;
         }
       }
-
+      
       // フォールバックも失敗した場合は警告表示（エラーではなく警告に変更）
       toast({
         title: '警告',
@@ -354,12 +348,12 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
   // 前のステップに戻る
   const goToPreviousStep = useCallback(() => {
     if (stepHistory.length === 0 || !flowData) return;
-
+    
     // 履歴から最後のステップIDを取得
     const prevStepHistory = [...stepHistory];
     const prevStepId = prevStepHistory.pop();
     setStepHistory(prevStepHistory);
-
+    
     // 前のステップを設定
     if (prevStepId) {
       const prevStep = flowData.steps.find(step => step.id === prevStepId);
@@ -413,7 +407,7 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
           return;
         }
       }
-
+      
       toast({
         title: '注意',
         description: `選択肢「${option.text || ''}」の次のステップが指定されていません`,
@@ -428,7 +422,7 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
   // トラブルシューティングの内容をチャットに送信
   const sendTroubleshootingToChat = useCallback(() => {
     if (!flowData || !currentStep) return;
-
+    
     // ユーザーがログインしているか確認
     if (!user) {
       toast({
@@ -439,17 +433,17 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
       });
       return;
     }
-
+    
     // ガイドタイトルを設定
     const guideTitle = flowData.title || flowData.id.replace(/_/g, ' ');
-
+    
     // 現在表示中の手順のみを送信するようにコンテンツを作成
     let guideContent = `**${guideTitle} - 現在の手順**\n\n`;
-
+    
     // 現在のステップの内容を追加
     const message = currentStep.message || currentStep.content || '';
     guideContent += `${message}\n\n`;
-
+    
     // チェックリストがある場合は追加
     if (currentStep.checklist && currentStep.checklist.length > 0) {
       guideContent += '**確認項目**：\n';
@@ -461,7 +455,7 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
         guideContent += `${checkMark}${item}\n`;
       });
     }
-
+    
     // 画像情報の追加
     if (currentStep.image || currentStep.imageUrl) {
       // 直接指定された画像がある場合
@@ -471,28 +465,28 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
       const firstResult = searchResults[0];
       guideContent += `\n**関連画像**: ${firstResult.file || firstResult.url}\n`;
       guideContent += `\n**画像説明**: ${firstResult.title || '関連画像'}\n`;
-
+      
       // 他の検索結果があれば、追加情報として表示
       if (searchResults.length > 1) {
         guideContent += `\n**その他の関連画像**: ${searchResults.length - 1}件\n`;
       }
-
+      
       // キーワード情報も追加
       if (currentStep.imageKeywords && currentStep.imageKeywords.length > 0) {
         guideContent += `\n**検索キーワード**: ${currentStep.imageKeywords.join(', ')}\n`;
       }
     }
-
+    
     // チャットへガイドを送信
     sendEmergencyGuide({ title: guideTitle, content: guideContent });
-
+    
     // 送信完了メッセージ
     toast({
       title: '送信完了',
       description: '現在表示中の手順をチャットに送信しました',
       duration: 3000,
     });
-
+    
     // ガイドを表示後、トラブルシューティング画面を閉じる
     onExit?.();
   }, [flowData, currentStep, sendEmergencyGuide, onExit, user, toast, searchResults, checklistItems]);
@@ -502,7 +496,7 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
   const handleExit = useCallback(() => {
     // 処理済み内容は自動的にチャットに送信しない
     console.log('応急処置ガイド処理を終了します。チャットへの自動送信はスキップします。');
-
+    
     // 単純に終了処理を呼び出す
     onExit?.();
   }, [onExit]);
@@ -555,13 +549,13 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
           </div>
         )}
       </CardHeader>
-
+      
       <CardContent>
         {/* メッセージ */}
         <div className="mb-4">
           <p className="whitespace-pre-line">{getStepText(currentStep)}</p>
         </div>
-
+        
         {/* 画像（直接指定された場合）- ここでの表示とチャットエリアの関係画像表示を連携させる */}
         {(currentStep.image || currentStep.imageUrl) && (
           <div className="mb-4 flex justify-center">
@@ -570,14 +564,14 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
               <div className="loading-placeholder absolute inset-0 flex items-center justify-center z-0 bg-gray-100 rounded-md">
                 <div className="w-12 h-12 rounded-full border-4 border-blue-600 border-t-transparent animate-spin"></div>
               </div>
-
+              
               <img
                 src={handleImagePath(currentStep.image || currentStep.imageUrl || '')}
                 alt="応急処置ガイド図"
                 className="max-h-80 object-contain rounded-md cursor-pointer z-10 relative"
                 onLoad={(e) => {
                   setImageLoading(false);
-
+                  
                   // 画像読み込みが完了したらプレースホルダーを非表示にする
                   const imgElement = e.currentTarget;
                   const parent = imgElement.parentElement;
@@ -587,7 +581,7 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
                       placeholder.classList.add('hidden');
                     });
                   }
-
+                  
                   // 関係画像エリアにこの画像を表示するためのイベントを発火
                   // プレビューのみ表示し、チャットへの送信は行わない
                   const imageTitle = flowData?.id || "応急処置ガイド";
@@ -601,10 +595,10 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
                 }}
                 onError={(e) => {
                   setImageLoading(false);
-
+                  
                   const imgElement = e.currentTarget;
                   const parent = imgElement.parentElement;
-
+                  
                   // エラー時の表示
                   if (parent) {
                     // プレースホルダーを非表示
@@ -612,7 +606,7 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
                     placeholders.forEach(placeholder => {
                       placeholder.classList.add('hidden');
                     });
-
+                    
                     // エラーメッセージを表示
                     const errorDiv = document.createElement('div');
                     errorDiv.className = 'absolute inset-0 flex items-center justify-center bg-red-50 text-red-600 rounded-md border border-red-200 z-20';
@@ -641,7 +635,7 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
             </div>
           </div>
         )}
-
+        
         {/* 検索結果から表示される画像（直接指定がない場合のみ） */}
         {!currentStep.image && !currentStep.imageUrl && searchResults && searchResults.length > 0 && (
           <div className="mb-4">
@@ -655,7 +649,7 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
                 {searchResults.length}件の画像
               </span>
             </div>
-
+            
             {/* 最初の検索結果を表示 */}
             <div className="flex justify-center">
               <div className="relative flex justify-center items-center min-h-[200px] min-w-[200px] w-full max-w-md">
@@ -676,7 +670,7 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
                 />
               </div>
             </div>
-
+            
             {/* キーワード表示 */}
             {currentStep.imageKeywords && currentStep.imageKeywords.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1">
@@ -689,7 +683,7 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
             )}
           </div>
         )}
-
+        
         {/* 選択肢（ある場合） */}
         {currentStep.options && currentStep.options.length > 0 && (
           <div className="mb-4 space-y-2">
@@ -706,7 +700,7 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
             ))}
           </div>
         )}
-
+        
         {/* チェックリスト（ある場合） */}
         {currentStep.checklist && currentStep.checklist.length > 0 && (
           <div className="mb-4 space-y-3">
@@ -729,7 +723,7 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
           </div>
         )}
       </CardContent>
-
+      
       <CardFooter className="flex flex-col gap-3">
         <div className="flex justify-between w-full">
           <Button
@@ -759,22 +753,22 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
               try {
                 const guideTitle = flowData.title || flowData.id.replace(/_/g, ' ');
                 let guideContent = `**${guideTitle} - 処理履歴**\n\n`;
-
+                
                 // 履歴ステップを取得
                 const displayedStepIds = [...stepHistory, currentStep.id].filter(Boolean) as string[];
                 const displayedSteps = displayedStepIds.map(stepId => 
                   flowData.steps.find(step => step.id === stepId)
                 ).filter(Boolean) as TroubleshootingStep[];
-
+                
                 // シンプルな日本語テキストでステップの詳細な流れを構築
                 let flowDetails = [];
-
+                
                 // 各ステップでの選択内容と結果を記録
                 displayedSteps.forEach((step, index) => {
                   // ステップの基本情報
                   const stepTitle = step.title || `ステップ ${index + 1}`;
                   const stepDescription = step.message || step.content || '';
-
+                  
                   // 各ステップの詳細を作成
                   let stepDetail = {
                     title: stepTitle,
@@ -782,18 +776,18 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
                     selected: null,
                     result: null
                   };
-
+                  
                   // 次のステップがある場合、このステップでの選択内容を記録
                   if (index < displayedSteps.length - 1) {
                     const nextStep = displayedSteps[index + 1];
-
+                    
                     // 現在のステップに選択肢がある場合
                     if (step.options && step.options.length > 0) {
                       // 次のステップに繋がる選択肢を特定
                       const selectedOption = step.options.find(opt => 
                         (opt.next === nextStep.id) || (opt.nextStep === nextStep.id)
                       );
-
+                      
                       // 選択肢が見つかったら記録
                       if (selectedOption) {
                         stepDetail.selected = selectedOption.text || selectedOption.label || '次へ';
@@ -801,35 +795,35 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
                       }
                     }
                   }
-
+                  
                   // 詳細をリストに追加
                   flowDetails.push(stepDetail);
                 });
-
+                
                 // フローのサマリーを作成（簡易表示用）
                 let flowSummary = '';
                 displayedSteps.forEach((step, index) => {
                   const stepTitle = step.title || `ステップ ${index + 1}`;
-
+                  
                   if (index === 0) {
                     flowSummary = stepTitle;
                   } else {
                     flowSummary += ` → ${stepTitle}`;
                   }
                 });
-
+                
                 // 現在の状態を確認
                 const currentStepDescription = currentStep.message || currentStep.content || '';
-
+                
                 // メッセージを組み立て（詳細な日本語テキスト形式）
                 guideContent = `■ ${guideTitle}\n\n`;
-
+                
                 // 手順の詳細を表示
                 guideContent += `【実施した手順の詳細】\n`;
                 flowDetails.forEach((detail, index) => {
                   // ステップ番号と名前
                   guideContent += `${index + 1}. ${detail.title}\n`;
-
+                  
                   // 短い説明を追加（あれば）
                   if (detail.description) {
                     const shortDesc = detail.description.length > 50 
@@ -837,19 +831,19 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
                       : detail.description;
                     guideContent += `   ${shortDesc}\n`;
                   }
-
+                  
                   // 選択内容と結果を追加（あれば）
                   if (detail.selected) {
                     guideContent += `   選択: 「${detail.selected}」 → ${detail.result}\n`;
                   }
-
+                  
                   // ステップ間に空行を追加
                   guideContent += '\n';
                 });
-
+                
                 // 簡易フロー概要を追加
                 guideContent += `【フロー概要】\n${flowSummary}\n\n`;
-
+                
                 // 現在の状態を追加
                 guideContent += `【現在の状態】\n${currentStep.title || '手順完了'}`;
                 if (currentStepDescription) {
@@ -859,7 +853,7 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
                     : currentStepDescription;
                   guideContent += `\n${shortCurrentDesc}`;
                 }
-
+                
                 // 現在のステップの確認項目があれば追加（現在のステップのみ）
                 if (currentStep.checklist && currentStep.checklist.length > 0) {
                   guideContent += `\n\n【確認項目】\n`;
@@ -870,21 +864,21 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
                     guideContent += `- [${checkMark}] ${item}\n`;
                   });
                 }
-
+                
                 // チャットへガイドを送信
                 console.log('表示履歴を含めたステップをチャットに送信します');
-
+                
                 // 現在のチャットIDを取得（通常は1）
                 const chatId = localStorage.getItem('currentChatId') || '1';
                 console.log('応急処置ガイド: チャットID', chatId, 'にデータを送信します');
-
+                
                 // 送信前にメッセージを表示
                 toast({
                   title: '送信中',
                   description: 'チャットに送信しています...',
                   duration: 2000,
                 });
-
+                
                 // 標準のチャットAPIを使用してユーザーメッセージを送信
                 fetch(`/api/chats/${chatId}/messages`, {
                   method: 'POST',
@@ -904,14 +898,14 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
                 })
                 .then(result => {
                   console.log('ユーザーメッセージ送信結果:', result);
-
+                  
                   // 送信完了メッセージ
                   toast({
                     title: '送信完了',
                     description: '表示した手順をチャットに送信しました',
                     duration: 3000,
                   });
-
+                  
                   // チャット画面に自動リダイレクト
                   setTimeout(() => {
                     window.location.href = '/chat';
