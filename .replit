@@ -19,3 +19,7 @@ args = "cd client && npm install && cd .."
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run dev:all"
+
+[[ports]]
+localPort = 5001
+externalPort = 80
