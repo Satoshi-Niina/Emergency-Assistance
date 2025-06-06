@@ -1,5 +1,7 @@
+
 import { useEffect, useState } from "react";
 import { useChat } from "@/context/chat-context";
+import { useAuth } from "@/context/auth-context";
 import MessageBubble from "@/components/chat/message-bubble";
 import MessageInput from "@/components/chat/message-input";
 import TextSelectionControls from "@/components/chat/text-selection-controls";
@@ -11,7 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Send, AlertTriangle, Loader2, Trash2, LifeBuoy, Image, Hammer, Heart, FileText } from "lucide-react";
+import { Send, AlertTriangle, Loader2, Trash2, LifeBuoy, Image, Hammer, Heart, FileText, Menu } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -36,6 +38,7 @@ export default function Chat() {
     isRecording
   } = useChat();
   
+  const { user } = useAuth();
   const [isEndChatDialogOpen, setIsEndChatDialogOpen] = useState(false);
 
   // Fetch messages for the current chat
@@ -312,49 +315,96 @@ export default function Chat() {
 
   return (
     <div className="flex flex-col w-full h-full overflow-auto bg-blue-50 chat-layout-container overflow-scroll-container" style={{ maxWidth: '100vw', overflowX: 'hidden' }}>
-      {/* ヘッダー - 12インチノートPC向けにコンパクト化 */}
-      <div className="border-b border-blue-200 p-1 md:p-2 flex justify-between items-center bg-blue-100 mobile-landscape-header" style={{ minHeight: 'auto' }}>
-        <div className="flex items-center">
-          {/* タイトル表示を削除 */}
+      {/* メインヘッダー - 青い背景に白文字でタイトルとユーザー名 */}
+      <div className="bg-blue-600 text-white p-3 flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <Menu className="h-6 w-6" />
+          <h1 className="text-lg font-bold">応急処置チャットシステム</h1>
         </div>
+        <div className="text-sm">
+          <span>ユーザー名：{user?.username || 'ゲスト'}</span>
+        </div>
+      </div>
 
-        <div className="flex items-center gap-1 md:gap-2">
-          
-          {/* チャット履歴送信ボタン - よりコンパクトに */}
+      {/* タブナビゲーション */}
+      <div className="bg-gray-100 border-b border-gray-200 px-4 py-2">
+        <div className="flex gap-4">
+          <button className="px-4 py-2 bg-blue-500 text-white rounded-md flex items-center gap-2">
+            <LifeBuoy className="h-4 w-4" />
+            <span>応急処置サポート</span>
+          </button>
+          <button className="px-4 py-2 text-gray-600 flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            <span>基礎データ管理</span>
+          </button>
+          <button className="px-4 py-2 text-gray-600 flex items-center gap-2">
+            <Heart className="h-4 w-4" />
+            <span>応急処置データ管理</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ボタン行 - 履歴クリア、履歴送信、チャット終了 */}
+      <div className="bg-gray-50 border-b border-gray-200 p-3 flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          {/* 履歴クリアボタン - 左端に配置 */}
           <Button 
             variant="outline"
             size="sm"
-            onClick={exportChatHistory}
-            disabled={isExporting || !hasUnexportedMessages}
-            className="flex items-center gap-1 border-green-400 bg-green-50 hover:bg-green-100 text-green-700 text-xs h-7 py-0 px-2"
+            onClick={clearChatHistory}
+            disabled={isClearing || !displayMessages.length}
+            className="flex items-center gap-1 border-red-400 bg-red-50 hover:bg-red-100 text-red-700 text-sm h-8 py-0 px-3"
           >
-            {isExporting ? (
+            {isClearing ? (
               <>
-                <Loader2 className="h-3 w-3 animate-spin text-green-600" />
-                <span className="text-xs">送信中</span>
+                <Loader2 className="h-4 w-4 animate-spin text-red-600" />
+                <span className="text-sm">クリア中</span>
               </>
             ) : (
               <>
-                <Send className="h-3 w-3 text-green-600" />
-                <span className="text-xs">履歴送信</span>
+                <Trash2 className="h-4 w-4 text-red-600" />
+                <span className="text-sm">履歴クリア</span>
+              </>
+            )}
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* 履歴送信ボタン - 文字サイズ1.5倍 */}
+          <Button 
+            variant="outline"
+            size="lg"
+            onClick={exportChatHistory}
+            disabled={isExporting || !hasUnexportedMessages}
+            className="flex items-center gap-2 border-green-400 bg-green-50 hover:bg-green-100 text-green-700 h-10 py-0 px-4"
+          >
+            {isExporting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin text-green-600" />
+                <span className="text-lg font-medium">送信中</span>
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4 text-green-600" />
+                <span className="text-lg font-medium">履歴送信</span>
               </>
             )}
           </Button>
           
-          {/* チャット終了ボタン - よりコンパクトに */}
+          {/* チャット終了ボタン */}
           <Button 
             variant="destructive"
             size="sm"
             onClick={handleEndChat}
-            className="flex items-center gap-1 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white border-0 h-7 py-0 px-2"
+            className="flex items-center gap-1 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white border-0 h-8 py-0 px-3"
           >
-            <span className="text-xs">チャット終了</span>
+            <span className="text-sm">チャット終了</span>
           </Button>
         </div>
       </div>
       
-      {/* 応急処置ガイドボタン - タブ前に配置して目立たせる */}
-      <div className="w-full flex justify-center items-center p-2 bg-gradient-to-r from-blue-100 to-blue-50 border-b border-blue-200">
+      {/* 応急処置ガイドボタン */}
+      <div className="w-full flex justify-center items-center p-4 bg-gradient-to-r from-blue-100 to-blue-50 border-b border-blue-200">
         <Button
           variant="default"
           size="lg"

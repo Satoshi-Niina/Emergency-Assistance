@@ -41,13 +41,19 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
     const timestamp = message.timestamp || (message as any).createdAt;
     if (timestamp) {
       const date = new Date(timestamp);
+      // 無効な日時の場合は現在時刻を使用
       if (!isNaN(date.getTime())) {
         formattedTime = format(date, "HH:mm", { locale: ja });
+      } else {
+        formattedTime = format(new Date(), "HH:mm", { locale: ja });
       }
+    } else {
+      // timestampがない場合は現在時刻を使用
+      formattedTime = format(new Date(), "HH:mm", { locale: ja });
     }
   } catch (error) {
     console.error('日時フォーマットエラー:', error, 'timestamp:', message.timestamp);
-    formattedTime = "時刻不明";
+    formattedTime = format(new Date(), "HH:mm", { locale: ja });
   }
 
   // Handle text selection within this message
