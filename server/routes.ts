@@ -722,9 +722,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('メッセージ送信処理エラー:', {
         error: error instanceof Error ? error.message : error,
         stack: error instanceof Error ? error.stack : undefined,
-        chatId,
-        content,
-        userId
+        chatId: req.params.id, // chatId変数の代わりにreq.params.idを使用
+        content: req.body.content, // content変数の代わりにreq.body.contentを使用
+        userId: req.session.userId // userId変数の代わりにreq.session.userIdを使用
       });
 
       if (error instanceof z.ZodError) {
