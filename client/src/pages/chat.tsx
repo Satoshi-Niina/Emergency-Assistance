@@ -125,12 +125,11 @@ export default function Chat() {
     <div className="flex flex-col w-full h-full overflow-auto bg-blue-50 chat-layout-container overflow-scroll-container" style={{ maxWidth: '100vw', overflowX: 'hidden' }}>
       {/* メインヘッダー - 青い背景に白文字でタイトルとユーザー名 */}
       <div className="bg-blue-600 text-white p-3 flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <Menu className="h-6 w-6" />
+        <div className="flex items-center">
           <h1 className="text-lg font-bold">応急処置チャットシステム</h1>
         </div>
         <div className="text-sm">
-          <span>ユーザー名：</span>
+          <span>ログインユーザー：{user?.username || 'ゲスト'}</span>
         </div>
       </div>
 
