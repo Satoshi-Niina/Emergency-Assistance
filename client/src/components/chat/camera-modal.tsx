@@ -127,13 +127,21 @@ export default function CameraModal() {
       const ctx = canvas.getContext('2d');
       if (ctx && videoRef.current) {
         ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-        // 高品質のJPEG画像としてBase64エンコード
+        // 高品質のJPEG画像としてBase64エンコード（適切なMIME型プレフィックス付き）
         const imageData = canvas.toDataURL('image/jpeg', 0.8);
+        
+        // Base64データが正しい形式になっているかチェック
+        if (!imageData.startsWith('data:image/')) {
+          console.error('Base64データの形式が不正です:', imageData.substring(0, 50));
+          return;
+        }
+        
         console.log('撮影画像をBase64形式で生成:', {
           format: 'image/jpeg',
           quality: 0.8,
           dataLength: imageData.length,
           isBase64: imageData.startsWith('data:image/'),
+          mimeType: imageData.split(';')[0],
           preview: imageData.substring(0, 50) + '...'
         });
         setCapturedImage(imageData);
