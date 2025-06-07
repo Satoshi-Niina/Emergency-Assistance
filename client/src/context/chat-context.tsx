@@ -726,7 +726,8 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // レスポンスデータを取得
         const data = await response.json();
         console.log('応急処置ガイド: 送信成功', data);
-        // AI応答メッセージとして右側に表示
+        
+        // AI応答メッセージとして右側に表示（ユーザーメッセージは送信しない）
         const aiGuideMessage = {
           id: Date.now(),
           chatId: currentChatId,
@@ -736,7 +737,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           timestamp: new Date()
         };
 
-        // メッセージを追加（右側のAI応答として表示される）
+        // AI応答メッセージのみを追加（右側に表示される）
         setMessages(prev => [...prev, aiGuideMessage]);
 
         // 関連する画像検索も実行
