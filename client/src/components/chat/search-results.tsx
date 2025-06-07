@@ -256,11 +256,20 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
           const imageSrc = fixImagePath(result.url || result.file || '');
 
           const handleImageClick = (imageSrc: string, title: string) => {
+            // 説明文を結合して表示
+            const description = result.description || result.content || '';
+            const detailedContent = [
+              title,
+              description,
+              result.category ? `カテゴリ: ${result.category}` : '',
+              result.keywords ? `キーワード: ${result.keywords.join(', ')}` : ''
+            ].filter(Boolean).join('\n\n');
+
             window.dispatchEvent(new CustomEvent('preview-image', { 
               detail: { 
                 url: imageSrc,
                 title: title,
-                content: result.content,
+                content: detailedContent,
                 metadata_json: result.metadata_json,
                 all_slides: result.all_slides?.map(slide => fixImagePath(slide))
               } 
