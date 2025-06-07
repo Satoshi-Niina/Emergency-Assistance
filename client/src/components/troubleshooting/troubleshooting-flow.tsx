@@ -798,7 +798,12 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
 
                 // 送信成功後はフロー画面を閉じる
                 console.log('応急処置ガイド送信完了 - フロー画面を閉じます');
-                onExit?.();
+                if (onExit) {
+                  onExit();
+                } else {
+                  // onExitが定義されていない場合は、ページを閉じる
+                  window.history.back();
+                }
 
               } catch (error) {
                 console.error('緊急ガイド送信エラー:', error);
