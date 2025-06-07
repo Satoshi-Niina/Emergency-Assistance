@@ -31,7 +31,7 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
       key: this.azureKey ? `${this.azureKey.substring(0, 10)}...` : 'なし',
       region: this.azureRegion 
     });
-    
+
     const speechConfig = SpeechConfig.fromSubscription(this.azureKey, this.azureRegion);
     speechConfig.speechRecognitionLanguage = 'ja-JP';
     speechConfig.setProperty('SpeechServiceConnection_InitialSilenceTimeoutMs', '3000');
@@ -97,6 +97,19 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
   }
 
   sendToServer?: (text: string) => void;
+
+  private getReasonText(reason: ResultReason): string {
+    switch (reason) {
+      case ResultReason.RecognizedSpeech:
+        return 'RecognizedSpeech (音声認識成功)';
+      case ResultReason.NoMatch:
+        return 'NoMatch (音声検出なし)';
+      case ResultReason.Canceled:
+        return 'Canceled (キャンセル)';
+      default:
+        return `Unknown (${reason})`;
+    }
+  }
 }
 
 export class WebSpeechRecognizer implements ISpeechRecognizer {
@@ -116,13 +129,13 @@ export class WebSpeechRecognizer implements ISpeechRecognizer {
     console.log('🌐 WebSpeech初期化開始');
     const SpeechRecognition =
       (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
-    
+
     console.log('🔍 WebSpeech API サポート確認:', {
       webkitSpeechRecognition: !!(window as any).webkitSpeechRecognition,
       SpeechRecognition: !!(window as any).SpeechRecognition,
       userAgent: navigator.userAgent
     });
-    
+
     if (!SpeechRecognition) {
       console.error('❌ Web Speech API not supported');
       throw new Error('Web Speech API not supported');
@@ -169,7 +182,7 @@ export class WebSpeechRecognizer implements ISpeechRecognizer {
 
   start() {
     console.log('🎤 WebSpeech音声認識開始');
-    
+
     // マイクアクセス許可を明示的に確認
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       navigator.mediaDevices.getUserMedia({ audio: true })
