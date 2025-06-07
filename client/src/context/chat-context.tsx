@@ -495,7 +495,15 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           requestData.mediaUrls = mediaUrls;
         }
 
-        console.log('API送信データ:', requestData);
+        console.log('API送信データ:', {
+          ...requestData,
+          mediaUrls: mediaUrls?.map(m => ({
+            type: m.type,
+            urlLength: m.url.length,
+            isBase64: m.url.startsWith('data:'),
+            urlPrefix: m.url.substring(0, 50) + '...'
+          }))
+        });
 
         const response = await apiRequest('POST', `/api/chats/${currentChatId}/messages`, requestData);
 

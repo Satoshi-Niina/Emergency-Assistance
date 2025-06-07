@@ -158,7 +158,8 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
           index: i,
           type: m.type,
           urlPrefix: m.url.substring(0, 50) + '...',
-          urlLength: m.url.length
+          urlLength: m.url.length,
+          isBase64: m.url.startsWith('data:')
         }))
       });
     }
@@ -168,23 +169,44 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
         {message.media && message.media.length > 0 && (
           <div className="mt-3">
             {message.media.map((media, index) => (
-              <div key={index} className="mt-2">
+              <div key={`${message.id}-media-${index}`} className="mt-2">
                 {media.type === 'image' && (
                   <div className="relative">
                     <img
                       src={media.url}
                       alt="添付画像"
                       className="rounded-lg w-full max-w-xs cursor-pointer border border-blue-200 shadow-md"
+                      style={{ maxHeight: '300px', objectFit: 'contain' }}
                       onClick={() => handleImagePreview(media.url)}
-                      onLoad={() => {
-                        console.log('画像読み込み成功:', media.url);
+                      onLoad={(e) => {
+                        console.log('画像読み込み成功:', {
+                          messageId: message.id,
+                          mediaIndex: index,
+                          width: (e.target as HTMLImageElement).naturalWidth,
+                          height: (e.target as HTMLImageElement).naturalHeight,
+                          urlType: media.url.startsWith('data:') ? 'base64' : 'url'
+                        });
                       }}
                       onError={(e) => {
-                        console.error('画像読み込みエラー:', media.url);
+                        console.error('画像読み込みエラー:', {
+                          messageId: message.id,
+                          mediaIndex: index,
+                          url: media.url.substring(0, 100) + '...',
+                          isBase64: media.url.startsWith('data:')
+                        });
+                        
                         const img = e.target as HTMLImageElement;
                         img.onerror = null; // Prevent infinite loop
-                        // カメラ画像の場合はプレースホルダーを表示しない
-                        if (!media.url.startsWith('data:image/') && !img.src.includes('/placeholder-image.png')) {
+                        
+                        // Base64画像の場合はエラー表示を出す
+                        if (media.url.startsWith('data:image/')) {
+                          img.style.display = 'none';
+                          // エラーメッセージを表示するための要素を作成
+                          const errorDiv = document.createElement('div');
+                          errorDiv.className = 'flex items-center justify-center bg-gray-100 border border-gray-300 rounded-lg p-4 max-w-xs';
+                          errorDiv.innerHTML = '<span class="text-gray-500 text-sm">画像の表示に失敗しました</span>';
+                          img.parentNode?.insertBefore(errorDiv, img);
+                        } else if (!img.src.includes('/placeholder-image.png')) {
                           img.src = '/placeholder-image.png';
                         }
                       }}
@@ -207,12 +229,26 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
                       src={media.url}
                       controls
                       className="rounded-lg w-full max-w-xs border border-blue-200 shadow-md"
+                      style={{ maxHeight: '300px' }}
                       onClick={(e) => {
                         // Stop propagation to prevent both video control and preview
                         e.stopPropagation();
                       }}
+                      onLoadedMetadata={(e) => {
+                        console.log('動画メタデータ読み込み成功:', {
+                          messageId: message.id,
+                          mediaIndex: index,
+                          duration: (e.target as HTMLVideoElement).duration,
+                          urlType: media.url.startsWith('blob:') ? 'blob' : 'url'
+                        });
+                      }}
                       onError={(e) => {
-                        console.error('動画読み込みエラー:', media.url);
+                        console.error('動画読み込みエラー:', {
+                          messageId: message.id,
+                          mediaIndex: index,
+                          url: media.url.substring(0, 100) + '...',
+                          isBlob: media.url.startsWith('blob:')
+                        });
                       }}
                     />
                     <div
