@@ -211,7 +211,18 @@ export default function UsersPage() {
   const updateUserMutation = useMutation({
     mutationFn: async (userData: Partial<UserData>) => {
       if (!selectedUserId) throw new Error("ユーザーIDが選択されていません");
+      
+      console.log(`[DEBUG] ユーザー更新リクエスト送信: ID="${selectedUserId}"`, userData);
+      console.log(`[DEBUG] selectedUserId type: ${typeof selectedUserId}, length: ${selectedUserId.length}`);
+      
       const res = await apiRequest("PATCH", `/api/users/${selectedUserId}`, userData);
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error(`[ERROR] ユーザー更新失敗: ${res.status}`, errorData);
+        throw new Error(errorData.message || `HTTP ${res.status}: ユーザー更新に失敗しました`);
+      }
+      
       return await res.json();
     },
     onSuccess: () => {
