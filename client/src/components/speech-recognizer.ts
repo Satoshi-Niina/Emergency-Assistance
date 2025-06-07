@@ -27,13 +27,20 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
 
   start() {
     console.log('🎤 Azure音声認識開始');
+    console.log('🔑 Azure設定確認:', { 
+      key: this.azureKey ? `${this.azureKey.substring(0, 10)}...` : 'なし',
+      region: this.azureRegion 
+    });
+    
     const speechConfig = SpeechConfig.fromSubscription(this.azureKey, this.azureRegion);
     speechConfig.speechRecognitionLanguage = 'ja-JP';
     speechConfig.setProperty('SpeechServiceConnection_InitialSilenceTimeoutMs', '3000');
     speechConfig.setProperty('SpeechServiceConnection_EndSilenceTimeoutMs', '1000');
 
+    console.log('🎙️ マイクロフォンアクセスを要求中...');
     const audioConfig = AudioConfig.fromDefaultMicrophoneInput();
     this.recognizer = new SpeechRecognizer(speechConfig, audioConfig);
+    console.log('🎯 SpeechRecognizer作成完了');
 
     this.recognizer.recognizing = (_, e) => {
       console.log('🎯 Azure認識中:', e.result.text);
@@ -106,13 +113,23 @@ export class WebSpeechRecognizer implements ISpeechRecognizer {
   private readonly CHECK_INTERVAL = 200; // チェック間隔: 200ms
 
   constructor() {
+    console.log('🌐 WebSpeech初期化開始');
     const SpeechRecognition =
       (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+    
+    console.log('🔍 WebSpeech API サポート確認:', {
+      webkitSpeechRecognition: !!(window as any).webkitSpeechRecognition,
+      SpeechRecognition: !!(window as any).SpeechRecognition,
+      userAgent: navigator.userAgent
+    });
+    
     if (!SpeechRecognition) {
+      console.error('❌ Web Speech API not supported');
       throw new Error('Web Speech API not supported');
     }
 
     this.recognition = new SpeechRecognition();
+    console.log('✅ WebSpeech認識エンジン作成完了');
     this.recognition.lang = 'ja-JP';
     this.recognition.interimResults = true;
     this.recognition.continuous = true;
@@ -140,12 +157,35 @@ export class WebSpeechRecognizer implements ISpeechRecognizer {
     this.recognition.onerror = (event) => {
       console.error('❌ WebSpeech認識エラー:', event.error);
     };
+
+    this.recognition.onstart = () => {
+      console.log('🟢 WebSpeech認識開始イベント');
+    };
+
+    this.recognition.onstop = () => {
+      console.log('🔴 WebSpeech認識停止イベント');
+    };
   }
 
   start() {
     console.log('🎤 WebSpeech音声認識開始');
-    this.recognition.start();
-    this.lastSpokenTime = Date.now();
+    
+    // マイクアクセス許可を明示的に確認
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(() => {
+          console.log('✅ マイクアクセス許可済み');
+          this.recognition.start();
+          this.lastSpokenTime = Date.now();
+        })
+        .catch((error) => {
+          console.error('❌ マイクアクセス拒否:', error);
+        });
+    } else {
+      console.log('⚠️ getUserMediaが利用できません - 直接開始します');
+      this.recognition.start();
+      this.lastSpokenTime = Date.now();
+    }
 
     this.silenceCheckInterval = setInterval(() => {
       const now = Date.now();
