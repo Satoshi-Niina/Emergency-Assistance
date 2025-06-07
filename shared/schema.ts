@@ -137,12 +137,6 @@ export const insertDocumentSchema = z.object({
   userId: z.string()
 });
 
-export const insertDocumentSchema = z.object({
-  title: z.string(),
-  content: z.string(),
-  userId: z.string()
-});
-
 export const insertKeywordSchema = z.object({
   documentId: z.string().optional(),
   word: z.string()
