@@ -214,12 +214,19 @@ export default function UsersPage() {
       
       console.log(`[DEBUG] ユーザー更新リクエスト送信: ID="${selectedUserId}"`, userData);
       console.log(`[DEBUG] selectedUserId type: ${typeof selectedUserId}, length: ${selectedUserId.length}`);
+      console.log(`[DEBUG] selectedUserId bytes:`, selectedUserId ? Array.from(selectedUserId).map(c => c.charCodeAt(0)) : 'null');
+      console.log(`[DEBUG] API URL:`, `/api/users/${selectedUserId}`);
+      console.log(`[DEBUG] 送信データ:`, JSON.stringify(userData, null, 2));
       
       const res = await apiRequest("PATCH", `/api/users/${selectedUserId}`, userData);
+      
+      console.log(`[DEBUG] レスポンスステータス: ${res.status}`);
+      console.log(`[DEBUG] レスポンスヘッダー:`, Object.fromEntries(res.headers.entries()));
       
       if (!res.ok) {
         const errorData = await res.json();
         console.error(`[ERROR] ユーザー更新失敗: ${res.status}`, errorData);
+        console.error(`[ERROR] 完全なエラーレスポンス:`, JSON.stringify(errorData, null, 2));
         throw new Error(errorData.message || `HTTP ${res.status}: ユーザー更新に失敗しました`);
       }
       
