@@ -33,6 +33,19 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
   const { toast } = useToast();
 
   const isUserMessage = !message.isAiResponse;
+  
+  // 応急処置ガイドメッセージかどうかを判定
+  const isEmergencyGuideMessage = message.content && message.content.includes('応急処置ガイド実施記録');
+  
+  // デバッグ用：応急処置ガイドメッセージの場合はログ出力
+  if (isEmergencyGuideMessage) {
+    console.log('🔵 応急処置ガイドメッセージを表示します:', {
+      id: message.id,
+      isAiResponse: message.isAiResponse,
+      contentStart: message.content.substring(0, 50) + '...',
+      timestamp: message.timestamp
+    });
+  }
 
   // 日時フォーマットのエラーハンドリング
   let formattedTime = "--:--";
