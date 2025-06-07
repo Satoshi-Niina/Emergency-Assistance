@@ -425,19 +425,22 @@ router.post('/image-search', async (req, res) => {
       console.log(`  ${index + 1}. title: "${item.title}", keywords: [${item.keywords?.join(', ')}], searchText: "${item.searchText || ''}"`);
     });
 
-    // Fuse.jsで検索 - より緩い設定に変更
+    // Fuse.jsで検索 - より厳密な設定に変更
     const fuse = new Fuse(searchData, {
       keys: [
         { name: 'title', weight: 1.0 },
         { name: 'description', weight: 0.8 },
-        { name: 'keywords', weight: 0.6 },
-        { name: 'searchText', weight: 0.4 }
+        { name: 'keywords', weight: 1.2 }, // キーワードの重みを増加
+        { name: 'searchText', weight: 0.6 }
       ],
-      threshold: 0.8, // 0.6から0.8に変更（より緩い検索）
+      threshold: 0.4, // より厳密な検索（0.8から0.4に変更）
       includeScore: true,
       ignoreLocation: true,
       useExtendedSearch: true,
-      minMatchCharLength: 1 // 最小マッチ文字数を1に設定
+      minMatchCharLength: 2, // 最小マッチ文字数を2に増加
+      distance: 100, // 検索距離を制限
+      shouldSort: true,
+      findAllMatches: false // すべてではなく、より良いマッチのみ
     });
 
     const results = fuse.search(query);
@@ -741,17 +744,28 @@ router.post('/init-image-search-data', async (req, res) => {
 
                   // 実際にファイルが存在する場合のみ追加
                   if (existingImageFiles.includes(imagePath)) {
+                    // 詳細な説明文を生成
+                    const slideTitle = slide['タイトル'] || `スライド ${index + 1}`;
+                    const slideContent = slide['本文'] ? slide['本文'].join('。') : '';
+                    const slideNotes = slide['ノート'] || '';
+                    
+                    const description = [
+                      `${slideTitle}の詳細図`,
+                      slideContent,
+                      slideNotes.length > 0 ? `補足：${slideNotes}` : ''
+                    ].filter(Boolean).join('。');
+
                     const slideData = {
                       id: `slide_${slide['スライド番号'] || index + 1}`,
                       file: imagePath,
-                      title: slide['タイトル'] || `スライド ${index + 1}`,
+                      title: slideTitle,
                       category: "保守用車マニュアル",
                       keywords: [
-                        slide['タイトル'] || `スライド ${index + 1}`,
+                        slideTitle,
                         ...(slide['本文'] || []),
                         "保守用車", "マニュアル"
                       ].filter(Boolean),
-                      description: "",
+                      description: description,
                       searchText: [
                         slide['タイトル'],
                         ...(slide['本文'] || []),
@@ -774,14 +788,35 @@ router.post('/init-image-search-data', async (req, res) => {
 
                 // 実際にファイルが存在する場合のみ追加
                 if (existingImageFiles.includes(imagePath)) {
+                  // 元のファイル名から詳細情報を抽出
+                  const originalName = img['元のファイル名'] || '';
+                  let category = "部品写真";
+                  let description = `保守用車の部品画像です。`;
+                  let keywords = ["保守用車", "部品", "写真"];
+                  
+                  // ファイル名に基づいてカテゴリと説明を設定
+                  if (originalName.includes('engine') || originalName.includes('エンジン')) {
+                    category = "エンジン部品";
+                    description = "保守用車のエンジン関連部品の詳細画像です。エンジンの構造や部品配置を確認できます。";
+                    keywords = ["保守用車", "エンジン", "動力系", "部品"];
+                  } else if (originalName.includes('brake') || originalName.includes('ブレーキ')) {
+                    category = "ブレーキ系統";
+                    description = "保守用車のブレーキ系統部品の詳細画像です。制動装置の構造や配置を確認できます。";
+                    keywords = ["保守用車", "ブレーキ", "制動装置", "部品"];
+                  } else if (originalName.includes('wheel') || originalName.includes('車輪')) {
+                    category = "足回り";
+                    description = "保守用車の足回り部品の詳細画像です。車輪やサスペンション部品を確認できます。";
+                    keywords = ["保守用車", "車輪", "足回り", "部品"];
+                  }
+
                   const imageData = {
                     id: `img_${index + 1}`,
                     file: imagePath,
-                    title: `部品画像 ${index + 1}`,
-                    category: "部品写真",
-                    keywords: ["保守用車", "部品", "写真"],
-                    description: "",
-                    searchText: `部品画像 ${index + 1} 保守用車 部品 写真`
+                    title: `${category} ${index + 1}`,
+                    category: category,
+                    keywords: keywords,
+                    description: description,
+                    searchText: `${category} ${index + 1} ${keywords.join(' ')}`
                   };
                   newData.push(imageData);
                 }
