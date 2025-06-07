@@ -4,21 +4,17 @@ import path from 'path';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // 正しいknowledge-base/jsonディレクトリのパスを設定
-    const metadataDir = path.join(process.cwd(), 'knowledge-base', 'json');
+    // knowledge-base/data/metadata/images ディレクトリのパスを設定
+    const metadataDir = path.join(process.cwd(), 'public', 'knowledge-base', 'data', 'metadata', 'images');
     
     // ディレクトリが存在しない場合は作成
     if (!fs.existsSync(metadataDir)) {
       fs.mkdirSync(metadataDir, { recursive: true });
     }
 
-    // JSONファイルの一覧を取得（実際に存在するファイルのみ）
+    // JSONファイルの一覧を取得
     const files = fs.readdirSync(metadataDir)
-      .filter(file => file.endsWith('_metadata.json'))
-      .filter(file => {
-        const filePath = path.join(metadataDir, file);
-        return fs.existsSync(filePath);
-      })
+      .filter(file => file.endsWith('.json'))
       .sort((a, b) => {
         // 最新のファイルを先頭に
         const statA = fs.statSync(path.join(metadataDir, a));
