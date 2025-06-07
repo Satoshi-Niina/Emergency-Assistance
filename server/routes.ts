@@ -26,6 +26,7 @@ import { registerSyncRoutes } from './routes/sync-routes';
 import { flowGeneratorRouter } from './routes/flow-generator';
 import { usersRouter } from './routes/users';
 import express from 'express';
+import { NextFunction } from "connect";
 
 // Extend the express-session types
 declare module 'express-session' {
@@ -861,7 +862,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const keyword = req.query.q as string;
 
       if (!keyword) {
-        return res.status(400).json({ message: "Search query is required" });
+        return res.status(400).json({ message: "Search query is required"});
       }
 
       const documents = await storage.searchDocumentsByKeyword(keyword);
@@ -1101,7 +1102,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }));
   });
   app.use('/api/troubleshooting', troubleshootingRouter);
+  
+import usersRouter from './routes/users';
+
+// ルーター設定のデバッグ用ミドルウェア
+const routeDebugger = (req: Request, res: Response, next: NextFunction) => {
+  if (req.path.includes('/users/')) {
+    console.log(`[ROUTER DEBUG] ${req.method} ${req.originalUrl}`);
+    console.log(`[ROUTER DEBUG] Path: ${req.path}`);
+    console.log(`[ROUTER DEBUG] Params:`, req.params);
+  }
+  next();
+};
+
   // ユーザー管理ルート
-  app.use('/api/users', usersRouter);
+  app.use('/api/users', routeDebugger, usersRouter);
   return httpServer;
 }
