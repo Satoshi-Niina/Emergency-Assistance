@@ -26,7 +26,7 @@ async function loadImageSearchData() {
     
     // 最新のmetadataJSONを探す
     const dirResponse = await fetch(`/api/tech-support/list-json-files?t=${timestamp}`);
-    let metadataFile = 'mc_1744105287766_metadata.json'; // デフォルトファイル
+    let metadataFile = 'mc_1747961263575_metadata.json'; // デフォルトファイル
     
     if (dirResponse.ok) {
       const fileList = await dirResponse.json();
@@ -42,10 +42,29 @@ async function loadImageSearchData() {
     try {
       const response = await fetch(`/knowledge-base/json/${metadataFile}?t=${timestamp}`);
       if (!response.ok) {
-        console.warn(`メタデータファイルが見つかりません: ${metadataFile}`);
-        return []; // 空の配列を返す
+        console.warn(`メタデータファイルが見つかりません: ${metadataFile}, ステータス: ${response.status}`);
+        // ディレクトリから最新ファイルを再取得してリトライ
+        if (dirResponse.ok) {
+          const fileList = await dirResponse.json();
+          if (Array.isArray(fileList) && fileList.length > 0) {
+            metadataFile = fileList[0];
+            console.log(`代替ファイルでリトライ: ${metadataFile}`);
+            const retryResponse = await fetch(`/knowledge-base/json/${metadataFile}?t=${timestamp}`);
+            if (retryResponse.ok) {
+              metadata = await retryResponse.json();
+            } else {
+              console.error(`代替ファイルも読み込めませんでした: ${metadataFile}`);
+              return [];
+            }
+          } else {
+            return [];
+          }
+        } else {
+          return [];
+        }
+      } else {
+        metadata = await response.json();
       }
-      metadata = await response.json();
     } catch (error) {
       console.warn("メタデータJSONの読み込みに失敗しました:", error);
       return []; // エラー時は空の配列を返す
