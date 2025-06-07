@@ -57,20 +57,26 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
     const speechConfig = SpeechConfig.fromSubscription(this.azureKey, this.azureRegion);
     speechConfig.speechRecognitionLanguage = 'ja-JP';
     
-    // 基本的な音声認識設定に簡素化
-    speechConfig.setProperty('SpeechServiceConnection_InitialSilenceTimeoutMs', '8000');
-    speechConfig.setProperty('SpeechServiceConnection_EndSilenceTimeoutMs', '3000');
+    // より短いタイムアウト設定で迅速な応答を目指す
+    speechConfig.setProperty('SpeechServiceConnection_InitialSilenceTimeoutMs', '5000');
+    speechConfig.setProperty('SpeechServiceConnection_EndSilenceTimeoutMs', '1000');
     
-    // 認識モードをInteractiveに変更（より短い発話に適している）
-    speechConfig.setProperty('SpeechServiceConnection_RecoMode', 'INTERACTIVE');
+    // 認識感度を上げる設定
+    speechConfig.setProperty('Speech_SegmentationSilenceTimeoutMs', '500');
+    speechConfig.setProperty('SpeechServiceConnection_SingleShotTimeout', '15000');
     
-    // 音声検出の閾値を下げる
-    speechConfig.setProperty('Speech_SegmentationSilenceTimeoutMs', '1500');
-    speechConfig.setProperty('SpeechServiceConnection_SingleShotTimeout', '20000');
-    
-    // 日本語認識の最適化
+    // 日本語特化の設定
     speechConfig.setProperty('SpeechServiceConnection_AutoDetectSourceLanguages', 'ja-JP');
-    speechConfig.setProperty('SpeechServiceConnection_LanguageIdMode', 'Continuous');
+    speechConfig.setProperty('SpeechServiceConnection_RecoMode', 'CONVERSATION');
+    
+    // 認識精度向上のための追加設定
+    speechConfig.setProperty('SpeechServiceConnection_EnableAudioLogging', 'true');
+    speechConfig.setProperty('SpeechServiceConnection_ContinuousRecognitionMode', 'true');
+    speechConfig.setProperty('SpeechServiceConnection_TranslationRequestStablePartialResult', 'true');
+    
+    // 音声品質設定
+    speechConfig.setProperty('AudioConfig_PlaybackBufferLengthInMs', '50');
+    speechConfig.setProperty('AudioConfig_CaptureBufferLengthInMs', '50');
     
     console.log('🎚️ Azure音声設定完了:', {
       language: 'ja-JP',
@@ -114,11 +120,15 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
       console.log('🎯 Azure認識中:', {
         text: e.result.text || '(なし)',
         reason: this.getReasonText(e.result.reason),
+        duration: e.result.duration,
+        offset: e.result.offset,
+        resultId: e.result.resultId,
         properties: e.result.properties ? Object.fromEntries(e.result.properties) : 'なし'
       });
       if (e.result.text && e.result.text.trim()) {
         this.accumulatedText = e.result.text;
         this.lastSpokenTime = Date.now();
+        console.log('📝 認識中テキスト蓄積:', this.accumulatedText);
       }
     };
 
@@ -128,8 +138,10 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
         reason: this.getReasonText(e.result.reason),
         duration: e.result.duration,
         offset: e.result.offset,
+        resultId: e.result.resultId,
         properties: e.result.properties ? Object.fromEntries(e.result.properties) : 'なし',
-        errorDetails: e.result.errorDetails || 'なし'
+        errorDetails: e.result.errorDetails || 'なし',
+        hasAccumulatedText: !!this.accumulatedText
       });
       
       if (e.result.reason === ResultReason.RecognizedSpeech && e.result.text && e.result.text.trim()) {
@@ -138,12 +150,20 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
         console.log('📋 バッファに追加:', e.result.text.trim());
       } else if (e.result.reason === ResultReason.NoMatch) {
         console.log('🔍 音声が検出されませんでした');
-        console.log('🔧 デバッグ情報:', {
+        console.log('🔧 NoMatchデバッグ情報:', {
           duration: e.result.duration,
           offset: e.result.offset,
           hasAudio: e.result.duration > 0,
-          suggestion: '短く明確に「テスト」と話してみてください'
+          accumulatedText: this.accumulatedText,
+          suggestion: this.accumulatedText ? '認識中テキストがありましたが最終認識に失敗' : '音声が明確でない可能性があります'
         });
+        
+        // 認識中テキストがある場合はそれを使用
+        if (this.accumulatedText && this.accumulatedText.trim()) {
+          console.log('🔄 認識中テキストを使用:', this.accumulatedText);
+          this.textBuffer.push(this.accumulatedText.trim());
+          this.lastSpokenTime = Date.now();
+        }
       }
     };
 
@@ -152,8 +172,15 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
       console.error('❌ Azure認識キャンセル:', {
         reason: e.reason,
         errorCode: e.errorCode,
-        errorDetails: e.errorDetails
+        errorDetails: e.errorDetails,
+        sessionId: e.sessionId || 'なし',
+        offset: e.offset || 'なし'
       });
+      
+      // エラーコード別の対処法を表示
+      if (e.errorCode) {
+        console.error('💡 エラー対処法:', this.getErrorSolution(e.errorCode));
+      }
     };
 
     this.lastSpokenTime = Date.now();
@@ -283,6 +310,21 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
         return 'Canceled (キャンセル)';
       default:
         return `Unknown (${reason})`;
+    }
+  }
+
+  private getErrorSolution(errorCode: string): string {
+    switch (errorCode) {
+      case 'ConnectionFailure':
+        return 'ネットワーク接続を確認してください';
+      case 'AuthenticationFailure':
+        return 'Azure APIキーと地域を確認してください';
+      case 'TooManyRequests':
+        return 'しばらく待ってから再試行してください';
+      case 'Forbidden':
+        return 'Azure Speech Serviceの設定を確認してください';
+      default:
+        return `エラーコード: ${errorCode} - Azure Speechサポートに問い合わせてください`;
     }
   }
 }
