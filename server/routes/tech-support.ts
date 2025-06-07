@@ -1710,7 +1710,7 @@ router.post('/clear-cache', async (req, res) => {
       success: true, 
       message: 'サーバーキャッシュをクリアしました' 
     });
-  This commit modifies the image search data initialization API to include only existing files.   } catch (err) {
+  } catch (err) {
     console.error('キャッシュクリアエラー:', err);
     return res.status(500).json({ 
       error: 'キャッシュクリア中にエラーが発生しました' 
