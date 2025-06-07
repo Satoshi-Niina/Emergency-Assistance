@@ -40,16 +40,10 @@ router.patch('/:id', async (req, res) => {
       return res.status(400).json({ message: "ユーザー名と表示名は必須です" });
     }
 
-    // 全ユーザーを取得してデバッグ
-    const allUsers = await db.query.users.findMany();
-    console.log(`全ユーザー一覧:`, allUsers.map(u => ({ id: u.id, username: u.username })));
-
     // ユーザー存在確認
     const existingUser = await db.query.users.findFirst({
       where: eq(users.id, id)
     });
-
-    console.log(`検索結果: existingUser=`, existingUser);
 
     if (!existingUser) {
       console.log(`ユーザーが見つかりません: ID=${id}`);

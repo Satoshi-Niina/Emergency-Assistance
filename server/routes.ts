@@ -25,7 +25,6 @@ import { emergencyFlowRouter } from './routes/emergency-flow-router';
 import { registerSyncRoutes } from './routes/sync-routes';
 import { flowGeneratorRouter } from './routes/flow-generator';
 import { usersRouter } from './routes/users';
-import express from 'express';
 
 // Extend the express-session types
 declare module 'express-session' {
@@ -467,12 +466,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const afterMessages = await storage.getMessagesForChat(chatId);
         const afterCount = afterMessages.length;
         deletedMessageCount = beforeCount - afterCount;
-
+        
         console.log(`削除後のメッセージ数: ${afterCount}, 削除されたメッセージ数: ${deletedMessageCount}`);
 
         if (afterCount > 0) {
           console.warn(`警告: ${afterCount}件のメッセージが残っています`);
-
+          
           // 強制削除フラグが設定されている場合は、残ったメッセージも個別に削除
           if (force || clearAll) {
             console.log('強制削除モードで残存メッセージを個別削除します');
@@ -1101,7 +1100,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }));
   });
   app.use('/api/troubleshooting', troubleshootingRouter);
-  // ユーザー管理ルート
   app.use('/api/users', usersRouter);
   return httpServer;
 }
