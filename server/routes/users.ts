@@ -166,7 +166,7 @@ router.patch('/:id', async (req, res) => {
     };
 
     // パスワードが提供され、かつ空文字でない場合のみ更新
-    if (password && typeof password === 'string' && password.trim() !== '') {
+    if (typeof password === 'string' && password.trim() !== '') {
       const bcrypt = require('bcrypt');
       updateData.password = await bcrypt.hash(password, 10);
       console.log(`パスワードも更新します: ID=${id}`);

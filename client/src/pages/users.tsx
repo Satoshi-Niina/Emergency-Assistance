@@ -305,7 +305,13 @@ export default function UsersPage() {
       return;
     }
 
-    updateUserMutation.mutate(editUser);
+    // 空のパスワードフィールドを除去して送信
+    const sanitizedEditUser = { ...editUser };
+    if (!sanitizedEditUser.password || sanitizedEditUser.password.trim() === '') {
+      delete sanitizedEditUser.password;
+    }
+    
+    updateUserMutation.mutate(sanitizedEditUser);
   };
 
   // 管理者でない場合のローディング表示
