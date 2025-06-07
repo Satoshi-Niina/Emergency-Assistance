@@ -99,21 +99,11 @@ export default function Chat() {
       await exportChatHistory();
       setIsEndChatDialogOpen(false);
 
-      console.log("チャットエクスポート完了。ログアウト処理をスキップしてチャット画面を維持します。");
-
-                // 成功トーストを表示
-                //toast({
-                //  title: "エクスポート完了",
-                //  description: "応急処置の記録を送信しました",
-                //});
-
-                // ダイアログを閉じる
-                //setShowEndDialog(false);
-
-
+      console.log("チャットエクスポート完了。チャット画面を維持します。");
     } catch (error) {
-      console.error("チャット終了エラー:", error);
-      window.location.href = "/login";
+      console.error("チャットエクスポートエラー:", error);
+      setIsEndChatDialogOpen(false);
+      console.log("エラーが発生しましたが、チャット画面を維持します。");
     }
   };
 
@@ -312,7 +302,7 @@ export default function Chat() {
                 variant="destructive" 
                 onClick={() => {
                   setIsEndChatDialogOpen(false);
-                  console.log("送信せずに終了が選択されました - ダイアログを閉じるのみ");
+                  console.log("送信せずに終了が選択されました - ダイアログを閉じてチャット画面を維持します");
                 }}
                 className="bg-red-500 hover:bg-red-600"
               >
