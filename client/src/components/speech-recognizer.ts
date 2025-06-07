@@ -58,6 +58,7 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
       if (silenceDuration > this.SILENCE_DETECTION_TIME && this.textBuffer.length > 0) {
         const combinedText = this.textBuffer.join(' ').trim();
         if (combinedText) {
+          console.log('📤 Azure送信:', combinedText);
           this.sendToServer?.(combinedText);
         }
         this.textBuffer = [];
@@ -138,6 +139,7 @@ export class WebSpeechRecognizer implements ISpeechRecognizer {
       if (silenceDuration > this.SILENCE_DETECTION_TIME && this.textBuffer.length > 0) {
         const combinedText = this.textBuffer.join(' ').trim();
         if (combinedText) {
+          console.log('📤 WebSpeech送信:', combinedText);
           this.sendToServer?.(combinedText);
         }
         this.textBuffer = [];

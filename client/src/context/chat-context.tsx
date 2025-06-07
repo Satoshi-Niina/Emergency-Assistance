@@ -568,11 +568,13 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         async (text: string) => {
           if (!text.trim()) return;
 
+          console.log('🔊 音声認識結果受信:', text);
           setLastAudioInputTime(Date.now());
 
           if (micSilenceTimeoutId) clearTimeout(micSilenceTimeoutId);
           const silenceId = setTimeout(() => {
             if (Date.now() - lastAudioInputTime >= AUTO_STOP_THRESHOLD) {
+              console.log('⏰ 自動停止タイマー発動');
               stopSpeechRecognition();
               stopBrowserSpeechRecognition();
               setIsRecording(false);
@@ -588,11 +590,13 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           // 認識テキストをバッファに追加
           setRecognitionBuffer(prev => {
             const newBuffer = [...prev, text];
+            console.log('📝 バッファ更新:', newBuffer);
 
             // バッファリングタイマーをリセット
             if (bufferTimeoutId) clearTimeout(bufferTimeoutId);
             const timeoutId = setTimeout(() => {
               const combinedText = newBuffer.join(' ');
+              console.log('💬 メッセージ送信:', combinedText);
               sendMessage(combinedText);
               setRecognitionBuffer([]);
             }, BUFFER_INTERVAL);
