@@ -814,7 +814,8 @@ router.post('/init-image-search-data', async (req, res) => {
                     file: imagePath,
                     title: `${category} ${index + 1}`,
                     category: category,
-                    keywords: [...keywords, "エンジン", "整備", "修理", "部品"],
+                    keywords:```tool_code
+[...keywords, "エンジン", "整備", "修理", "部品"],
                     description: description,
                     searchText: `${category} ${index + 1} ${keywords.join(' ')} エンジン 整備 修理 部品 保守用車 マニュアル`
                   };
@@ -1011,8 +1012,11 @@ router.post('/upload', upload.single('file'), async (req, res) => {
           .filter(word => word.length > 1)
           .map(word => word.toLowerCase());
 
-        // 重複を除去して既存のキーワードと結合
-        const uniqueKeywords = Array.from(new Set([...keywords, ...additionalKeywords]));
+        // 基本キーワードと追加キーワードを結合
+        const keywords = ["保守用車", "部品", "写真", "エンジン", "整備", "修理", ...additionalKeywords];
+
+        // 検索用の統合テキスト
+        const searchText = [title, category, ...keywords, "動力", "機械", "運転"].join(' ');
 
         // 詳細情報を充実させるための処理内容
         const details = [
@@ -1030,10 +1034,10 @@ router.post('/upload', upload.single('file'), async (req, res) => {
           pngFallback: '',
           title: title,
           category: category,
-          keywords: uniqueKeywords,
+          keywords: keywords,
           description: `保守用車の${category}に関する図面または写真です。${title}の詳細を示しています。`,
           details: details.join('. '),
-          searchText: `${title} ${category} ${uniqueKeywords.join(' ')} 保守用車 技術図面 整備 点検 修理`,
+          searchText: `${title} ${category} ${keywords.join(' ')} 保守用車 技術図面 整備 点検 修理`,
           metadata: {
             uploadDate: new Date().toISOString(),
             fileSize: file.size,
