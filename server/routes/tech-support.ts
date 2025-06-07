@@ -3,6 +3,7 @@ import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
+import Fuse from 'fuse.js';
 import { processDocument, extractPdfText, extractWordText, extractExcelText, extractPptxText } from '../lib/document-processor';
 import { addDocumentToKnowledgeBase } from '../lib/knowledge-base';
 
@@ -413,7 +414,7 @@ router.post('/image-search', async (req, res) => {
 
     // 画像検索データを読み込み
     const searchDataPath = path.join(process.cwd(), 'knowledge-base', 'data', 'image_search_data.json');
-    const rawData = await fs.readFile(searchDataPath, 'utf-8');
+    const rawData = fs.readFileSync(searchDataPath, 'utf-8');
     const searchData = JSON.parse(rawData);
 
     console.log('画像検索データを読み込み:', `${searchData.length}件`);
