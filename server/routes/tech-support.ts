@@ -748,7 +748,7 @@ router.post('/init-image-search-data', async (req, res) => {
                     const slideTitle = slide['タイトル'] || `スライド ${index + 1}`;
                     const slideContent = slide['本文'] ? slide['本文'].join('。') : '';
                     const slideNotes = slide['ノート'] || '';
-                    
+
                     const description = [
                       `${slideTitle}の詳細図`,
                       slideContent,
@@ -763,13 +763,13 @@ router.post('/init-image-search-data', async (req, res) => {
                       keywords: [
                         slideTitle,
                         ...(slide['本文'] || []),
-                        "保守用車", "マニュアル"
+                        "保守用車", "マニュアル", "エンジン", "整備", "修理", "部品"
                       ].filter(Boolean),
                       description: description,
                       searchText: [
-                        slide['タイトル'],
+                        slideTitle,
                         ...(slide['本文'] || []),
-                        "保守用車マニュアル"
+                        "保守用車マニュアル", "エンジン", "整備", "修理", "部品", "車両", "動力"
                       ].filter(Boolean).join(' ')
                     };
                     newData.push(slideData);
@@ -793,7 +793,7 @@ router.post('/init-image-search-data', async (req, res) => {
                   let category = "部品写真";
                   let description = `保守用車の部品画像です。`;
                   let keywords = ["保守用車", "部品", "写真"];
-                  
+
                   // ファイル名に基づいてカテゴリと説明を設定
                   if (originalName.includes('engine') || originalName.includes('エンジン')) {
                     category = "エンジン部品";
@@ -814,9 +814,10 @@ router.post('/init-image-search-data', async (req, res) => {
                     file: imagePath,
                     title: `${category} ${index + 1}`,
                     category: category,
-                    keywords: keywords,
+                    keywords:```javascript
+ [...keywords, "エンジン", "整備", "修理", "部品"],
                     description: description,
-                    searchText: `${category} ${index + 1} ${keywords.join(' ')}`
+                    searchText: `${category} ${index + 1} ${keywords.join(' ')} エンジン 整備 修理 部品 保守用車 マニュアル`
                   };
                   newData.push(imageData);
                 }
@@ -1682,7 +1683,7 @@ router.post('/clear-cache', async (req, res) => {
       }
     }
 
-    // index.json ファイルの再構築（トラッキングファイル）
+    // index.json ファイルの再構築の（トラッキングファイル）
     const indexJsonPath = path.join(process.cwd(), 'knowledge-base', 'index.json');
 
     try {
