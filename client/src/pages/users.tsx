@@ -525,6 +525,9 @@ export default function UsersPage() {
                   onChange={handleEditInputChange}
                   placeholder="パスワードを変更しない場合は空欄のまま"
                 />
+                 <p className="text-sm text-gray-500 mt-1">
+                    ※パスワードを変更しない場合は空のままにしてください
+                  </p>
               </div>
 
               <div className="grid gap-2">
