@@ -484,15 +484,25 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // バックグラウンドでAPIに送信を試行
       try {
-        const response = await apiRequest('POST', `/api/chats/${currentChatId}/messages`, { 
+        const requestData = { 
           content,
-          mediaUrls: mediaUrls || [],
           useOnlyKnowledgeBase: localStorage.getItem('useOnlyKnowledgeBase') !== 'false',
           usePerplexity: false
-        });
+        };
+
+        // メディアがある場合のみmediaUrlsを追加
+        if (mediaUrls && mediaUrls.length > 0) {
+          requestData.mediaUrls = mediaUrls;
+        }
+
+        console.log('API送信データ:', requestData);
+
+        const response = await apiRequest('POST', `/api/chats/${currentChatId}/messages`, requestData);
 
         if (response.ok) {
           const data = await response.json();
+          console.log('API応答データ:', data);
+          
           // APIからの応答でメッセージを更新
           setMessages(prev => prev.map(msg => 
             msg.id === aiMessage.id 
@@ -502,6 +512,9 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               : msg
           ));
         } else {
+          const errorText = await response.text();
+          console.error('API応答エラー:', response.status, errorText);
+          
           // API失敗時はローカルの応答メッセージを更新
           setMessages(prev => prev.map(msg => 
             msg.id === aiMessage.id 
@@ -905,6 +918,8 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setHasUnexportedMessages(false);
       setTempMedia([]);
       setDraftMessage(null);
+      setRecordedText('');
+      setSelectedText('');
       clearSearchResults();
 
       // 応急処置ガイドメッセージもローカルストレージから削除
@@ -955,6 +970,11 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         description: 'チャット履歴が削除されました',
       });
 
+      // クリア状態を少し長めに保持してから解除
+      setTimeout(() => {
+        setIsClearing(false);
+      }, 2000);
+
     } catch (error) {
       console.error('チャット履歴削除エラー:', error);
       // エラーが発生してもローカル状態はクリアを維持
@@ -967,27 +987,29 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         description: 'チャット履歴の削除に失敗しました',
         variant: 'destructive',
       });
-    } finally {
-      setIsClearing(false);
+      
+      setTimeout(() => {
+        setIsClearing(false);
+      }, 1000);
     }
   }, [chatId, clearSearchResults, toast]);
 
   // チャットIDが変更されたときにメッセージを読み込む
   useEffect(() => {
     const loadMessages = async () => {
-      if (!chatId || isInitializing || isClearing) return;
+      if (!chatId || isInitializing) return;
+
+      // クリア操作中は読み込みをスキップ
+      if (isClearing) {
+        console.log('クリア操作中のためメッセージ読み込みをスキップしました');
+        return;
+      }
 
       try {
         setIsLoading(true);
         const response = await apiRequest('GET', `/api/chats/${chatId}/messages`);
 
         if (response.ok) {
-          // クリア操作中の場合は読み込みをスキップ
-          if (isClearing) {
-            console.log('クリア操作中のためメッセージ読み込みをスキップしました');
-            return;
-          }
-
           const data = await response.json();
 
           // レスポンスヘッダーでクリア状態を確認
@@ -1013,7 +1035,14 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     };
 
-    loadMessages();
+    // クリア操作が完了してから一定時間待ってからメッセージを読み込む
+    const timeoutId = setTimeout(() => {
+      if (!isClearing) {
+        loadMessages();
+      }
+    }, isClearing ? 1000 : 0);
+
+    return () => clearTimeout(timeoutId);
   }, [chatId, isInitializing, isClearing]);
 
   // 最後のエクスポート履歴を取得
