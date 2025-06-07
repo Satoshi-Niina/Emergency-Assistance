@@ -25,11 +25,11 @@ export default function CameraModal() {
   const [stream, setStream] = useState<MediaStream | null>(null);
   // 常に背面カメラを使用する（切替機能なし）
   const [useBackCamera] = useState(true);
-  
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<BlobPart[]>([]);
-  
+
   const { captureImage, sendMessage } = useChat();
   const { toast } = useToast();
   const orientation = useOrientation();
@@ -38,7 +38,7 @@ export default function CameraModal() {
     // Listen for open-camera event
     const handleOpenCamera = () => setIsOpen(true);
     window.addEventListener('open-camera', handleOpenCamera);
-    
+
     return () => {
       window.removeEventListener('open-camera', handleOpenCamera);
     };
@@ -63,9 +63,9 @@ export default function CameraModal() {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
-      
+
       console.log('カメラ開始: facingMode =', useBackCamera ? "environment" : "user");
-      
+
       // カメラ制約を明示的に設定
       const constraints = { 
         video: { 
@@ -75,11 +75,11 @@ export default function CameraModal() {
         },
         audio: isVideoMode 
       };
-      
+
       const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-      
+
       setStream(mediaStream);
-      
+
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
       }
@@ -92,7 +92,7 @@ export default function CameraModal() {
       });
     }
   };
-  
+
   // カメラ切り替え機能は削除（常に背面カメラのみを使用）
 
   const stopCamera = () => {
@@ -100,17 +100,17 @@ export default function CameraModal() {
       stream.getTracks().forEach(track => track.stop());
       setStream(null);
     }
-    
+
     if (isRecording) {
       stopRecording();
     }
-    
+
     setCapturedImage(null);
   };
 
   const handleCapture = () => {
     if (!videoRef.current) return;
-    
+
     if (isVideoMode) {
       // Toggle video recording
       if (isRecording) {
@@ -123,7 +123,7 @@ export default function CameraModal() {
       const canvas = document.createElement('canvas');
       canvas.width = videoRef.current.videoWidth;
       canvas.height = videoRef.current.videoHeight;
-      
+
       const ctx = canvas.getContext('2d');
       if (ctx && videoRef.current) {
         ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
@@ -135,24 +135,24 @@ export default function CameraModal() {
 
   const startRecording = () => {
     recordedChunksRef.current = [];
-    
+
     if (stream) {
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
-      
+
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           recordedChunksRef.current.push(event.data);
         }
       };
-      
+
       mediaRecorder.onstop = () => {
         const blob = new Blob(recordedChunksRef.current, { type: 'video/mp4' });
         const videoUrl = URL.createObjectURL(blob);
         setCapturedImage(videoUrl);
         setIsRecording(false);
       };
-      
+
       mediaRecorder.start();
       setIsRecording(true);
     }
@@ -167,36 +167,37 @@ export default function CameraModal() {
   const handleSend = async () => {
     if (capturedImage) {
       const mediaType = isVideoMode ? 'video' : 'image';
-      
-      // メディアデータの形式を統一
-      const mediaUrl = { 
-        type: mediaType, 
-        url: capturedImage,
-        timestamp: Date.now()
-      };
-      
-      console.log('カメラから送信する画像/動画:', {
-        type: mediaUrl.type,
-        urlLength: mediaUrl.url.length,
-        urlPrefix: mediaUrl.url.substring(0, 50) + '...',
-        isBase64: mediaUrl.url.startsWith('data:')
+
+      // チャットに画像を送信
+    try {
+      console.log('撮影した画像をチャットに送信します');
+
+      // Base64データから画像タイプを判定
+      const mimeMatch = capturedImage.match(/data:([^;]+);/);
+      const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
+
+      // メディア配列として送信
+      const mediaUrls = [{
+        type: 'image',
+        url: capturedImage, // Base64データURL
+        thumbnail: capturedImage // サムネイルも同じデータを使用
+      }];
+
+      console.log('送信するメディアデータ:', {
+        type: 'image',
+        urlLength: capturedImage.length,
+        mimeType: mimeType,
+        isBase64: capturedImage.startsWith('data:image/')
       });
-      
-      try {
-        // カメラで撮影した画像であることを明示
-        const messageContent = isVideoMode ? "動画を撮影しました" : "写真を撮影しました";
-        await sendMessage(messageContent, [mediaUrl]);
-        console.log('画像/動画の送信が完了しました');
-        setIsOpen(false);
-        setCapturedImage(null);
-      } catch (error) {
-        console.error('画像/動画の送信に失敗しました:', error);
-        toast({
-          title: "送信エラー",
-          description: "画像/動画の送信に失敗しました。もう一度お試しください。",
-          variant: "destructive",
-        });
-      }
+
+      // 画像のみ送信（テキストは空文字列）
+      await sendMessage('', mediaUrls);
+
+      setIsOpen(false);
+      setCapturedImage(null);
+    } catch (error) {
+      console.error('画像送信エラー:', error);
+    }
     }
   };
 
@@ -204,10 +205,10 @@ export default function CameraModal() {
     if (isRecording) {
       stopRecording();
     }
-    
+
     setIsVideoMode(!isVideoMode);
     setCapturedImage(null);
-    
+
     // Restart camera with new settings
     stopCamera();
     setTimeout(() => startCamera(), 300);
@@ -240,7 +241,7 @@ export default function CameraModal() {
             </Button>
           </div>
         </DialogHeader>
-        
+
         <div className="relative bg-black">
           {!capturedImage ? (
             <video 
@@ -267,9 +268,9 @@ export default function CameraModal() {
               />
             )
           )}
-          
+
           {/* カメラ切り替えボタンは削除 - 常に背面カメラを使用 */}
-          
+
           {/* Camera Controls - Different for Photo and Video modes */}
           {!capturedImage && (
             <div className="absolute bottom-4 left-0 right-0 flex justify-center space-x-4">
@@ -320,7 +321,7 @@ export default function CameraModal() {
             </div>
           )}
         </div>
-        
+
         <div className="p-4 bg-blue-50">
           {capturedImage ? (
             <Button 
