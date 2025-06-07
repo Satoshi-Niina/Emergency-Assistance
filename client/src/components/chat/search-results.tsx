@@ -151,6 +151,12 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
       
       {/* サムネイル縦一列表示 */}
       <div className="flex flex-col gap-4">
+        {/* デバッグ情報 */}
+        {results.length > 0 && (
+          <div className="text-xs text-gray-500 p-2 bg-gray-50 rounded">
+            検索結果: {results.length}件
+          </div>
+        )}
         {results.map((result) => (
           <div 
             key={result.id} 
@@ -190,125 +196,39 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
                     <div className="w-10 h-10 rounded-full border-2 border-blue-500 border-t-transparent animate-spin"></div>
                   </div>
                   
-                  {/* メイン画像表示 - 用途に応じた適切な画像形式を使用 */}
+                  {/* メイン画像表示 - シンプルな表示ロジック */}
                   <img 
                     src={fixImagePath(result.url || '')} 
                     alt={result.title || "応急処置サポート"} 
                     className="w-full h-full object-contain bg-white p-1 z-10 relative"
-                    style={{ minHeight: '96px', minWidth: '96px' }} // 最小サイズを設定して白い画像問題を防止
-                    loading="eager" // 急いで読み込んで点滅を防止
-                    decoding="async" // 非同期デコードで表示を高速化
-                    // 画像読み込みエラー時の包括的なフォールバック処理
+                    style={{ minHeight: '96px', minWidth: '96px' }}
+                    loading="eager"
+                    decoding="async"
                     onError={(e) => {
                       const imgElement = e.currentTarget;
-                      const originalSrc = imgElement.src || '';
+                      console.log(`画像読み込みエラー: ${imgElement.src}`);
                       
-                      console.log(`画像読み込みエラー (${result.id}): ${originalSrc}`);
-                      
-                      try {
-                        // 1. 専用フォールバックURLが指定されている場合はそちらを優先
-                        if (result.pngFallbackUrl && result.pngFallbackUrl.trim() !== '') {
-                          console.log('指定されたフォールバックに切り替え:', result.pngFallbackUrl);
-                          imgElement.src = fixImagePath(result.pngFallbackUrl);
-                          return;
-                        }
-                        
-                        // 2. 拡張子ベースのフォールバック（SVG→PNG、JPEG→PNG）
-                        if (originalSrc.includes('.svg')) {
-                          // SVGが読み込めない場合はPNGに変更
-                          console.log('SVG読み込みエラー、PNG代替に切り替え:', originalSrc, '->', originalSrc.replace(/\.svg$/, '.png'));
-                          const pngPath = originalSrc.replace(/\.svg$/, '.png');
-                          imgElement.src = pngPath;
-                          return;
-                        }
-                        
-                        if (originalSrc.includes('.jpeg') || originalSrc.includes('.jpg')) {
-                          // JPEGが読み込めない場合はPNGに変更
-                          console.log('JPEG読み込みエラー、PNG代替に切り替え');
-                          const pngPath = originalSrc.replace(/\.(jpeg|jpg)$/, '.png');
-                          imgElement.src = pngPath;
-                          return;
-                        }
-                        
-                        // 3. ファイル名を抽出して実際に存在する画像を探す
-                        // 例: engine_001.svg → mc_1745235933176_img_001.png に変更
-                        const fileName = originalSrc.split('/').pop();
-                        if (fileName) {
-                          // ファイル名から番号部分を抽出
-                          const numMatch = fileName.match(/_(\d+)\./);
-                          if (numMatch && numMatch[1]) {
-                            const imgNum = numMatch[1];
-                            console.log(`ファイル番号 ${imgNum} を持つ実在画像を検索`);
-                            
-                            // 実在する画像ファイルパターンで置き換え
-                            const realImagePattern = `/knowledge-base/images/mc_1745235933176_img_${imgNum}.png`;
-                            console.log('実際の画像パターンに置き換え:', realImagePattern);
-                            imgElement.src = realImagePattern;
-                            return;
-                          }
-                        }
-                        
-                        // 4. パスの修正を試みる（knowledge-baseパスが含まれていない場合）
-                        if (!originalSrc.includes('/knowledge-base/')) {
-                          const fileName = originalSrc.split('/').pop();
-                          if (fileName) {
-                            console.log('パス形式エラー、knowledge-baseパスに修正');
-                            imgElement.src = `/knowledge-base/images/${fileName}`;
-                            return;
-                          }
-                        }
-                        
-                        // 5. 既知の実在する画像を代替として使用
-                        // ファイルの存在が確認された画像のいずれかを表示
-                        console.log('既知の実在画像に置き換え');
-                        const existingImages = [
-                          '/knowledge-base/images/mc_1745235933176_img_001.png',
-                          '/knowledge-base/images/mc_1745235933176_img_003.png',
-                          '/knowledge-base/images/mc_1745235933176_img_004.png'
-                        ];
-                        // カテゴリに応じた画像を選択
-                        let selectedImage = existingImages[0]; // デフォルト
-                        if (result.title && result.title.includes('エンジン')) {
-                          selectedImage = existingImages[0];
-                        } else if (result.title && (result.title.includes('冷却') || result.title.includes('水'))) {
-                          selectedImage = existingImages[1];
-                        } else if (result.title && (result.title.includes('ブレーキ') || result.title.includes('制動'))) {
-                          selectedImage = existingImages[2];
-                        }
-                        console.log('実在画像に置き換え:', selectedImage);
-                        imgElement.src = selectedImage;
-                        return;
-                        
-                        // 6. 最終手段: エラー表示用のデフォルト画像を表示
-                        console.log('フォールバック失敗、エラー表示に切り替え');
-                        imgElement.style.display = 'none'; // 画像を非表示
-                        
-                        // エラー表示をコンテナに追加
-                        const container = imgElement.parentElement;
-                        if (container) {
-                          const errorElement = document.createElement('div');
-                          errorElement.className = 'flex items-center justify-center h-full w-full bg-gray-100 text-gray-500';
-                          errorElement.textContent = '画像を読み込めません';
-                          container.appendChild(errorElement);
-                        }
-                      } catch (errorHandlingErr) {
-                        console.error('エラー処理中に例外が発生:', errorHandlingErr);
+                      // シンプルなエラー表示
+                      imgElement.style.display = 'none';
+                      const container = imgElement.parentElement;
+                      if (container && !container.querySelector('.error-message')) {
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'error-message flex items-center justify-center h-full w-full bg-gray-100 text-gray-500 text-sm';
+                        errorDiv.textContent = '画像読み込み失敗';
+                        container.appendChild(errorDiv);
                       }
                     }}
                     onLoad={(e) => {
-                      // 画像が正常に読み込まれたらクラスを調整
                       const imgElement = e.currentTarget;
-                      imgElement.classList.add('loaded');
+                      console.log(`画像読み込み成功: ${imgElement.src}`);
                       
                       // プレースホルダーを非表示
                       const container = imgElement.parentElement;
                       if (container) {
-                        const placeholders = container.querySelectorAll('.animate-spin');
-                        placeholders.forEach(ph => {
-                          if (ph.parentElement) {
-                            ph.parentElement.style.display = 'none';
-                          }
-                        });
+                        const placeholder = container.querySelector('.animate-spin');
+                        if (placeholder && placeholder.parentElement) {
+                          placeholder.parentElement.style.display = 'none';
+                        }
                       }
                     }}
                   />
