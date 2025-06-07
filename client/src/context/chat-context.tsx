@@ -739,36 +739,62 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         // メッセージを即座に追加（右側のAI応答として表示される）
         console.log('AI応答メッセージを追加:', aiGuideMessage);
-        setMessages(prev => {
-          // 重複チェック：同じコンテンツのメッセージが既に存在するかチェック
-          const isDuplicate = prev.some(msg => 
-            msg.content && msg.content.includes(guideData.title) && 
-            msg.content.includes('応急処置ガイド実施記録')
-          );
+        
+        // 強制的にUI更新を確実に行う
+        setTimeout(() => {
+          setMessages(prev => {
+            // 重複チェック：同じタイトルのメッセージが既に存在するかチェック
+            const isDuplicate = prev.some(msg => 
+              msg.content && msg.content.includes(guideData.title) && 
+              msg.content.includes('応急処置ガイド実施記録')
+            );
+            
+            if (isDuplicate) {
+              console.log('重複メッセージを検出したため追加をスキップします');
+              return prev;
+            }
+            
+            const newMessages = [...prev, aiGuideMessage];
+            console.log('メッセージ配列更新後:', newMessages.length, '件');
+            console.log('追加されたメッセージ:', aiGuideMessage);
+            
+            // ローカルストレージにも保存して永続化
+            try {
+              localStorage.setItem('emergencyGuideMessage', JSON.stringify(aiGuideMessage));
+            } catch (error) {
+              console.warn('ローカルストレージへの保存に失敗:', error);
+            }
+            
+            return newMessages;
+          });
           
-          if (isDuplicate) {
-            console.log('重複メッセージを検出したため追加をスキップします');
-            return prev;
-          }
-          
-          const newMessages = [...prev, aiGuideMessage];
-          console.log('メッセージ配列更新後:', newMessages.length, '件');
-          
-          // ローカルストレージにも保存して永続化
-          try {
-            localStorage.setItem('emergencyGuideMessage', JSON.stringify(aiGuideMessage));
-          } catch (error) {
-            console.warn('ローカルストレージへの保存に失敗:', error);
-          }
-          
-          return newMessages;
-        });
+          // チャットエリアを最下部にスクロール
+          setTimeout(() => {
+            const chatContainer = document.getElementById('chatMessages');
+            if (chatContainer) {
+              chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+          }, 100);
+        }, 100);
 
         // 関連する画像検索も実行
         if (guideData.title) {
           searchBySelectedText(guideData.title);
         }
 
+        // メッセージ表示の成功を確認するためのログ
+        console.log('緊急ガイドメッセージの送信が完了しました');
+        
+        // UIの強制更新を確実に行う
+        setTimeout(() => {
+          console.log('現在のメッセージ数:', messages.length);
+          
+          // React DevToolsやデバッグのための追加情報
+          window.dispatchEvent(new CustomEvent('emergency-guide-sent', {
+            detail: { guideData, timestamp: new Date() }
+          }));
+        }, 200);
+        
         return data;
       } catch (apiError) {
         console.error('APIリクエストエラー:', apiError);
