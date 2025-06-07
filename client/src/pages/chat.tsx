@@ -67,6 +67,17 @@ export default function Chat() {
     ? [] 
     : (messages?.length > 0 ? messages : (data as any[] || []));
 
+  // デバッグ用：表示メッセージの確認
+  useEffect(() => {
+    console.log('Chat.tsx - 表示メッセージ数:', displayMessages.length);
+    if (displayMessages.length > 0) {
+      const emergencyMessages = displayMessages.filter(msg => 
+        msg.content && msg.content.includes('応急処置ガイド実施記録')
+      );
+      console.log('Chat.tsx - 応急処置メッセージ数:', emergencyMessages.length);
+    }
+  }, [displayMessages]);
+
   const [, setLocation] = useLocation();
 
   const handleEndChat = () => {
