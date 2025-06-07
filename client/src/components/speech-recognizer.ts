@@ -51,19 +51,29 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
         mode: 'Interactive'
       });
 
-      // AudioConfig作成 - fromDefaultMicrophoneInput()の代わりにfromStreamInput()を使用
+      // AudioConfig作成 - より互換性の高い方法を使用
       console.log('🎯 AudioConfig作成中...');
-      this.audioConfig = SpeechSDK.AudioConfig.fromStreamInput(
-        SpeechSDK.AudioInputStream.createPushStream(
-          SpeechSDK.AudioStreamFormat.getWaveFormatPCM(16000, 16, 1)
-        )
-      );
-
-      console.log('🔧 AudioConfig設定:', {
-        type: 'StreamInput',
-        sampleRate: '16000Hz',
-        channels: 1
-      });
+      try {
+        // まずdefaultMicrophoneInputを試行
+        this.audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+        console.log('🔧 AudioConfig設定:', {
+          type: 'DefaultMicrophoneInput',
+          status: 'success'
+        });
+      } catch (error) {
+        console.log('⚠️ DefaultMicrophoneInput失敗、StreamInputを試行');
+        // フォールバックとしてStreamInputを使用
+        this.audioConfig = SpeechSDK.AudioConfig.fromStreamInput(
+          SpeechSDK.AudioInputStream.createPushStream(
+            SpeechSDK.AudioStreamFormat.getWaveFormatPCM(16000, 16, 1)
+          )
+        );
+        console.log('🔧 AudioConfig設定:', {
+          type: 'StreamInput',
+          sampleRate: '16000Hz',
+          channels: 1
+        });
+      }
 
       // SpeechRecognizer作成
       this.recognizer = new SpeechSDK.SpeechRecognizer(speechConfig, this.audioConfig);
@@ -245,27 +255,52 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
 
   private cleanup(): void {
     if (this.recognizer) {
-      this.recognizer.stopContinuousRecognitionAsync(
-        () => {
-          console.log('🛑 Azure音声認識停止完了');
-          if (this.recognizer) {
-            this.recognizer.close();
-            this.recognizer = null;
+      try {
+        this.recognizer.stopContinuousRecognitionAsync(
+          () => {
+            console.log('🛑 Azure音声認識停止完了');
+            if (this.recognizer) {
+              try {
+                this.recognizer.close();
+              } catch (error) {
+                console.warn('⚠️ Recognizer close警告:', error);
+              }
+              this.recognizer = null;
+            }
+          },
+          (error) => {
+            console.error('❌ Azure音声認識停止エラー:', error);
+            if (this.recognizer) {
+              try {
+                this.recognizer.close();
+              } catch (closeError) {
+                console.warn('⚠️ Recognizer close警告:', closeError);
+              }
+              this.recognizer = null;
+            }
           }
-        },
-        (error) => {
-          console.error('❌ Azure音声認識停止エラー:', error);
-          if (this.recognizer) {
-            this.recognizer.close();
-            this.recognizer = null;
-          }
-        }
-      );
+        );
+      } catch (error) {
+        console.error('❌ 停止処理エラー:', error);
+        // 強制的にリセット
+        this.recognizer = null;
+      }
     }
 
     if (this.audioConfig) {
-      this.audioConfig.close();
-      this.audioConfig = null;
+      try {
+        // closeメソッドが存在し、かつfunctionであることを確認
+        if (this.audioConfig && typeof this.audioConfig.close === 'function') {
+          this.audioConfig.close();
+          console.log('✅ AudioConfig正常終了');
+        } else {
+          console.warn('⚠️ AudioConfig.closeメソッドが利用できません');
+        }
+      } catch (error) {
+        console.warn('⚠️ AudioConfig終了警告:', error);
+      } finally {
+        this.audioConfig = null;
+      }
     }
   }
 }
