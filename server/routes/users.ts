@@ -84,15 +84,35 @@ router.patch('/:id', async (req, res) => {
       byteComparison: Buffer.from(existingUser.id, 'utf8').equals(Buffer.from(id, 'utf8'))
     } : 'null');
 
-    // 方法2: SQL直接実行でテスト
+    // 方法2: SQL直接実行でテスト（パラメータ化クエリを使用）
     try {
-      const directResult = await db.execute(`SELECT * FROM users WHERE id = '${id}'`);
-      console.log(`[DEBUG] 直接SQL検索結果:`, directResult);
+      const directResult = await db.execute(sql`SELECT * FROM users WHERE id = ${id}`);
+      console.log(`[DEBUG] パラメータ化SQL検索結果:`, directResult);
     } catch (sqlError) {
-      console.error(`[ERROR] 直接SQL実行失敗:`, sqlError);
+      console.error(`[ERROR] パラメータ化SQL実行失敗:`, sqlError);
     }
 
-    if (!existingUser) {
+    // 方法3: 全ユーザーから手動検索
+    const manualMatch = allUsers.find(u => u.id === id);
+    console.log(`[DEBUG] 手動検索結果:`, manualMatch ? {
+      id: manualMatch.id,
+      username: manualMatch.username,
+      found: true
+    } : 'null');
+
+    // 方法4: IDの完全一致チェック
+    console.log(`[DEBUG] 完全一致チェック:`, allUsers.map(u => ({
+      storedId: u.id,
+      requestId: id,
+      exact: u.id === id,
+      strict: u.id.valueOf() === id.valueOf(),
+      toString: u.id.toString() === id.toString()
+    })));
+
+    // 最終的にユーザーを取得（手動検索の結果を優先）
+    const finalUser = existingUser || manualMatch;
+
+    if (!finalUser) {
       console.log(`[ERROR] ユーザーが見つかりません: ID="${id}"`);
       console.log(`[ERROR] 利用可能なID一覧:`, allUsers.map(u => `"${u.id}"`));
       console.log(`[ERROR] 文字コード比較:`, allUsers.map(u => ({
@@ -115,6 +135,12 @@ router.patch('/:id', async (req, res) => {
         }
       });
     }
+
+    console.log(`[DEBUG] 最終的に見つかったユーザー:`, {
+      id: finalUser.id,
+      username: finalUser.username,
+      source: existingUser ? 'drizzle_query' : 'manual_search'
+    });
 
     // 更新データを準備
     const updateData: any = {
