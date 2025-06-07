@@ -75,6 +75,16 @@ export default function Chat() {
         msg.content && msg.content.includes('応急処置ガイド実施記録')
       );
       console.log('Chat.tsx - 応急処置メッセージ数:', emergencyMessages.length);
+      
+      // 各メッセージの詳細情報を出力
+      displayMessages.forEach((msg, index) => {
+        console.log(`Chat.tsx - メッセージ${index}:`, {
+          id: msg.id,
+          isAiResponse: msg.isAiResponse,
+          isEmergencyGuide: msg.content && msg.content.includes('応急処置ガイド実施記録'),
+          contentStart: msg.content ? msg.content.substring(0, 30) + '...' : 'null'
+        });
+      });
     }
   }, [displayMessages]);
 
