@@ -85,7 +85,7 @@ async function openBrowser(url: string) {
   try {
     // 初期化
     app.locals.storage = storage;
-    
+
     // データベース接続テスト
     try {
       const { db } = await import('./db');
@@ -95,7 +95,7 @@ async function openBrowser(url: string) {
       console.error('Database connection failed:', dbError);
       // データベース接続失敗時もサーバーを起動
     }
-    
+
     initializeKnowledgeBase();
 
     // 必要なディレクトリを作成
