@@ -108,8 +108,23 @@ export default function Chat() {
   };
 
   const isMobile = useIsMobile();
+  // 応急処置ガイドの状態
   const [emergencyGuideOpen, setEmergencyGuideOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
+
+  // 応急処置ガイド画面を閉じるイベントリスナー
+  useEffect(() => {
+    const handleCloseEmergencyGuide = () => {
+      console.log('応急処置ガイド画面を閉じるイベントを受信');
+      setEmergencyGuideOpen(false);
+    };
+
+    window.addEventListener('close-emergency-guide', handleCloseEmergencyGuide);
+
+    return () => {
+      window.removeEventListener('close-emergency-guide', handleCloseEmergencyGuide);
+    };
+  }, []);
 
   return (
     <div className="flex flex-col w-full h-full overflow-auto bg-blue-900 chat-layout-container overflow-scroll-container" style={{ maxWidth: '100vw', overflowX: 'hidden' }}>

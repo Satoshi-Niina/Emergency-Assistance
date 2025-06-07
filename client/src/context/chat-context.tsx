@@ -740,8 +740,27 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // メッセージを即座に追加（右側のAI応答として表示される）
         console.log('AI応答メッセージを追加:', aiGuideMessage);
         setMessages(prev => {
+          // 重複チェック：同じコンテンツのメッセージが既に存在するかチェック
+          const isDuplicate = prev.some(msg => 
+            msg.content && msg.content.includes(guideData.title) && 
+            msg.content.includes('応急処置ガイド実施記録')
+          );
+          
+          if (isDuplicate) {
+            console.log('重複メッセージを検出したため追加をスキップします');
+            return prev;
+          }
+          
           const newMessages = [...prev, aiGuideMessage];
           console.log('メッセージ配列更新後:', newMessages.length, '件');
+          
+          // ローカルストレージにも保存して永続化
+          try {
+            localStorage.setItem('emergencyGuideMessage', JSON.stringify(aiGuideMessage));
+          } catch (error) {
+            console.warn('ローカルストレージへの保存に失敗:', error);
+          }
+          
           return newMessages;
         });
 
@@ -787,6 +806,14 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setTempMedia([]);
       setDraftMessage(null);
       clearSearchResults();
+      
+      // 応急処置ガイドメッセージもローカルストレージから削除
+      try {
+        localStorage.removeItem('emergencyGuideMessage');
+        console.log('応急処置ガイドメッセージをローカルストレージから削除しました');
+      } catch (error) {
+        console.warn('ローカルストレージからの削除に失敗:', error);
+      }
 
       // サーバーへのリクエストを実行してデータベースをクリア
       if (chatId) {
