@@ -149,6 +149,20 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
   };
 
   const renderMedia = () => {
+    // デバッグログ：メディア情報を出力
+    if (message.media && message.media.length > 0) {
+      console.log('メディア表示:', {
+        messageId: message.id,
+        mediaCount: message.media.length,
+        mediaDetails: message.media.map((m, i) => ({
+          index: i,
+          type: m.type,
+          urlPrefix: m.url.substring(0, 50) + '...',
+          urlLength: m.url.length
+        }))
+      });
+    }
+
     return (
       <>
         {message.media && message.media.length > 0 && (
@@ -158,15 +172,19 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
                 {media.type === 'image' && (
                   <div className="relative">
                     <img
-                      src={media.url.startsWith('data:') ? media.url : `/knowledge-base/images/${media.url}`}
+                      src={media.url}
                       alt="添付画像"
                       className="rounded-lg w-full max-w-xs cursor-pointer border border-blue-200 shadow-md"
                       onClick={() => handleImagePreview(media.url)}
+                      onLoad={() => {
+                        console.log('画像読み込み成功:', media.url);
+                      }}
                       onError={(e) => {
                         console.error('画像読み込みエラー:', media.url);
                         const img = e.target as HTMLImageElement;
                         img.onerror = null; // Prevent infinite loop
-                        if (!img.src.includes('/placeholder-image.png')) {
+                        // カメラ画像の場合はプレースホルダーを表示しない
+                        if (!media.url.startsWith('data:image/') && !img.src.includes('/placeholder-image.png')) {
                           img.src = '/placeholder-image.png';
                         }
                       }}
