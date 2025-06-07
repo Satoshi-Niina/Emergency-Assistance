@@ -261,7 +261,7 @@ export default function Chat() {
 
             {/* デバッグ表示 - ドラフトメッセージの状態を確認 */}
             <div className="hidden">
-              <p>draftMessage: {draftMessage ? JSON.stringify(draftMessage) : 'null'</p>
+              <p>draftMessage: {draftMessage ? JSON.stringify(draftMessage) : 'null'}</p>
             </div>
 
           </div>

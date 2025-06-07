@@ -36,7 +36,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 自動ログインを完全に無効化 - 常に未認証状態で開始
     setUser(null);
     setIsLoading(false);
-    console.log("認証チェック無効化 - 手動ログインが必要です");
+    if (process.env.NODE_ENV === 'development') {
+      console.log("認証チェック無効化 - 手動ログインが必要です");
+    }
   }, []);
 
   const login = async (username: string, password: string) => {
