@@ -58,6 +58,22 @@ app.get('/test', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'public', 'api-test.html'));
 });
 
+// ネットワーク診断エンドポイントを追加
+app.get('/api/network-test', (req, res) => {
+  const networkInfo = {
+    timestamp: new Date().toISOString(),
+    headers: req.headers,
+    ip: req.ip || req.connection.remoteAddress,
+    method: req.method,
+    url: req.url,
+    userAgent: req.get('User-Agent'),
+    status: 'connected'
+  };
+  
+  console.log('ネットワークテスト実行:', networkInfo);
+  res.json(networkInfo);
+});
+
 // Minimal request logging
 app.use((req, res, next) => {
   if (req.path.startsWith('/api/')) {
@@ -141,10 +157,13 @@ async function openBrowser(url: string) {
   const port = 5000;
   const startServer = (portToUse: number) => {
     server.listen(portToUse, '0.0.0.0', async () => {
-      const serverUrl = `http://localhost:${portToUse}`;
+      const serverUrl = `http://0.0.0.0:${portToUse}`;
       console.log(`サーバー起動: ${serverUrl}`);
+      console.log(`外部アクセス用URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`);
       try {
-        await openBrowser(serverUrl);
+        // Replitの場合は外部URLでブラウザを開く
+        const externalUrl = `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev` || `http://localhost:${portToUse}`;
+        await openBrowser(externalUrl);
       } catch (e) {
         // ブラウザオープンエラーは無視
       }
