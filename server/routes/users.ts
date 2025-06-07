@@ -33,27 +33,50 @@ router.patch('/:id', async (req, res) => {
     const { id } = req.params; // IDはstringとして扱う
     const { username, display_name, role, department, password } = req.body;
 
-    console.log(`ユーザー更新リクエスト: ID=${id}`, { username, display_name, role, department, hasPassword: !!password });
+    console.log(`[DEBUG] ユーザー更新リクエスト: ID="${id}" (type: ${typeof id})`);
+    console.log(`[DEBUG] リクエストボディ:`, { username, display_name, role, department, hasPassword: !!password });
 
     // バリデーション
     if (!username || !display_name) {
+      console.log(`[DEBUG] バリデーション失敗: username="${username}", display_name="${display_name}"`);
       return res.status(400).json({ message: "ユーザー名と表示名は必須です" });
     }
 
     // 全ユーザーを取得してデバッグ
     const allUsers = await db.query.users.findMany();
-    console.log(`全ユーザー一覧:`, allUsers.map(u => ({ id: u.id, username: u.username })));
+    console.log(`[DEBUG] 全ユーザー一覧 (${allUsers.length}件):`, 
+      allUsers.map(u => ({ 
+        id: u.id, 
+        username: u.username, 
+        idType: typeof u.id,
+        idLength: u.id ? u.id.length : 'null'
+      }))
+    );
+
+    // IDのフォーマットを確認
+    console.log(`[DEBUG] 検索対象ID: "${id}" (length: ${id.length}, type: ${typeof id})`);
 
     // ユーザー存在確認
     const existingUser = await db.query.users.findFirst({
       where: eq(users.id, id)
     });
 
-    console.log(`検索結果: existingUser=`, existingUser);
+    console.log(`[DEBUG] 検索結果: existingUser=`, existingUser ? {
+      id: existingUser.id,
+      username: existingUser.username,
+      foundMatch: existingUser.id === id
+    } : 'null');
 
     if (!existingUser) {
-      console.log(`ユーザーが見つかりません: ID=${id}`);
-      return res.status(404).json({ message: "ユーザーが見つかりません" });
+      console.log(`[ERROR] ユーザーが見つかりません: ID="${id}"`);
+      console.log(`[ERROR] 利用可能なID一覧:`, allUsers.map(u => `"${u.id}"`));
+      return res.status(404).json({ 
+        message: "ユーザーが見つかりません",
+        debug: {
+          requestedId: id,
+          availableIds: allUsers.map(u => u.id)
+        }
+      });
     }
 
     // 更新データを準備
