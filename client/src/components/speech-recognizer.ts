@@ -16,6 +16,12 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
   private accumulatedText: string = '';
   private lastSpokenTime: number = 0;
   private silenceCheckInterval: any = null;
+  private textBuffer: string[] = [];
+
+  // 共通パラメータ
+  private readonly SILENCE_DETECTION_TIME = 1000; // 無音検知: 1秒
+  private readonly AUTO_STOP_TIME = 10000; // 自動停止: 10秒
+  private readonly CHECK_INTERVAL = 200; // チェック間隔: 200ms
 
   constructor(private azureKey: string, private azureRegion: string) {}
 
@@ -23,19 +29,21 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
     const speechConfig = SpeechConfig.fromSubscription(this.azureKey, this.azureRegion);
     speechConfig.speechRecognitionLanguage = 'ja-JP';
     speechConfig.setProperty('SpeechServiceConnection_InitialSilenceTimeoutMs', '3000');
-    speechConfig.setProperty('SpeechServiceConnection_EndSilenceTimeoutMs', '1500');
+    speechConfig.setProperty('SpeechServiceConnection_EndSilenceTimeoutMs', '1000');
 
     const audioConfig = AudioConfig.fromDefaultMicrophoneInput();
     this.recognizer = new SpeechRecognizer(speechConfig, audioConfig);
 
     this.recognizer.recognizing = (_, e) => {
-      this.accumulatedText = e.result.text;
-      this.lastSpokenTime = Date.now();
+      if (e.result.text.trim()) {
+        this.accumulatedText = e.result.text;
+        this.lastSpokenTime = Date.now();
+      }
     };
 
     this.recognizer.recognized = (_, e) => {
-      if (e.result.reason === ResultReason.RecognizedSpeech) {
-        this.accumulatedText = e.result.text;
+      if (e.result.reason === ResultReason.RecognizedSpeech && e.result.text.trim()) {
+        this.textBuffer.push(e.result.text.trim());
         this.lastSpokenTime = Date.now();
       }
     };
@@ -46,15 +54,21 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
       const now = Date.now();
       const silenceDuration = now - this.lastSpokenTime;
 
-      if (silenceDuration > 2000 && this.accumulatedText !== '') {
-        this.sendToServer?.(this.accumulatedText);
+      // 1秒の無音検知でバッファ内容を送信
+      if (silenceDuration > this.SILENCE_DETECTION_TIME && this.textBuffer.length > 0) {
+        const combinedText = this.textBuffer.join(' ').trim();
+        if (combinedText) {
+          this.sendToServer?.(combinedText);
+        }
+        this.textBuffer = [];
         this.accumulatedText = '';
       }
 
-      if (silenceDuration > 15000) {
+      // 10秒で自動停止
+      if (silenceDuration > this.AUTO_STOP_TIME) {
         this.stop();
       }
-    }, 500);
+    }, this.CHECK_INTERVAL);
   }
 
   stop() {
@@ -75,7 +89,13 @@ export class WebSpeechRecognizer implements ISpeechRecognizer {
   private accumulatedText: string = '';
   private lastSpokenTime: number = 0;
   private silenceCheckInterval: any = null;
+  private textBuffer: string[] = [];
   public sendToServer?: (text: string) => void;
+
+  // 共通パラメータ
+  private readonly SILENCE_DETECTION_TIME = 1000; // 無音検知: 1秒
+  private readonly AUTO_STOP_TIME = 10000; // 自動停止: 10秒
+  private readonly CHECK_INTERVAL = 200; // チェック間隔: 200ms
 
   constructor() {
     const SpeechRecognition =
@@ -90,20 +110,19 @@ export class WebSpeechRecognizer implements ISpeechRecognizer {
     this.recognition.continuous = true;
 
     this.recognition.onresult = (event: SpeechRecognitionEvent) => {
-      let interim = '';
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
-        if (result.isFinal) {
-          this.accumulatedText += result[0].transcript + ' ';
-        } else {
-          interim += result[0].transcript;
+        if (result.isFinal && result[0].transcript.trim()) {
+          this.textBuffer.push(result[0].transcript.trim());
+          this.lastSpokenTime = Date.now();
         }
       }
-      this.lastSpokenTime = Date.now();
     };
 
     this.recognition.onend = () => {
-      this.start();
+      if (this.silenceCheckInterval) {
+        this.start();
+      }
     };
   }
 
@@ -115,15 +134,21 @@ export class WebSpeechRecognizer implements ISpeechRecognizer {
       const now = Date.now();
       const silenceDuration = now - this.lastSpokenTime;
 
-      if (silenceDuration > 2000 && this.accumulatedText !== '') {
-        this.sendToServer?.(this.accumulatedText);
+      // 1秒の無音検知でバッファ内容を送信
+      if (silenceDuration > this.SILENCE_DETECTION_TIME && this.textBuffer.length > 0) {
+        const combinedText = this.textBuffer.join(' ').trim();
+        if (combinedText) {
+          this.sendToServer?.(combinedText);
+        }
+        this.textBuffer = [];
         this.accumulatedText = '';
       }
 
-      if (silenceDuration > 15000) {
+      // 10秒で自動停止
+      if (silenceDuration > this.AUTO_STOP_TIME) {
         this.stop();
       }
-    }, 500);
+    }, this.CHECK_INTERVAL);
   }
 
   stop() {
