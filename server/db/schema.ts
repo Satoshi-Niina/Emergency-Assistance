@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 
 // Define all tables first
 const users = pgTable('users', {
-  id: serial('id').primaryKey(),
+  id: text('id').primaryKey().default(sql`gen_random_uuid()`),
   username: text('username').notNull().unique(),
   password: text('password').notNull(),
   display_name: text('display_name').notNull(),
