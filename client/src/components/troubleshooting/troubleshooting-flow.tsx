@@ -747,7 +747,7 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
         <Button 
           variant="secondary" 
           className="w-full" 
-          onClick={() => {
+          onClick={async () => {
             // これまでに表示したすべてのステップ（履歴を含めて）をチャットに送信
             if (currentStep && flowData) {
               try {
