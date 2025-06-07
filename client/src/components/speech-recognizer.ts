@@ -54,11 +54,32 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
       throw new Error('マイクロフォンアクセスが拒否されました');
     }
 
-    const speechConfig = SpeechConfig.fromSubscription(this.azureKey, this.azureRegion);
+    // SpeechConfigを安全に作成
+    let speechConfig: SpeechConfig;
+    try {
+      speechConfig = SpeechConfig.fromSubscription(this.azureKey, this.azureRegion);
+      console.log('✅ SpeechConfig作成成功');
+    } catch (configError) {
+      console.error('❌ SpeechConfig作成失敗:', configError);
+      throw new Error(`Azure Speech設定エラー: ${configError}`);
+    }
     
     // 言語設定を確実に適用
-    speechConfig.speechRecognitionLanguage = 'ja-JP';
-    speechConfig.setProperty('SpeechServiceConnection_RecognitionMode', 'Conversation');
+    try {
+      speechConfig.speechRecognitionLanguage = 'ja-JP';
+      console.log('✅ 言語設定適用: ja-JP');
+    } catch (langError) {
+      console.error('❌ 言語設定失敗:', langError);
+      throw new Error('日本語設定に失敗しました');
+    }
+    
+    // 認識モードを安全に設定
+    try {
+      speechConfig.setProperty('SpeechServiceConnection_RecognitionMode', 'Interactive');
+      console.log('✅ 認識モード設定: Interactive');
+    } catch (modeError) {
+      console.warn('⚠️ 認識モード設定をスキップ:', modeError);
+    }
     
     // 音声認識の基本設定を最適化
     speechConfig.setProperty('SpeechServiceConnection_InitialSilenceTimeoutMs', '5000');
@@ -90,19 +111,41 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
     });
     
     console.log('🎯 AudioConfig作成中...');
-    const audioConfig = AudioConfig.fromDefaultMicrophoneInput();
     
-    // AudioConfigの詳細設定
-    audioConfig.setProperty('SPEECH_INPUT_AUDIO_PROCESSING_ENABLE_DEFAULT', 'true');
-    audioConfig.setProperty('SPEECH_INPUT_AUDIO_PROCESSING_ENABLE_ECHO_CANCELLATION', 'true');
-    audioConfig.setProperty('SPEECH_INPUT_AUDIO_PROCESSING_ENABLE_NOISE_SUPPRESSION', 'true');
-    audioConfig.setProperty('SPEECH_INPUT_AUDIO_PROCESSING_ENABLE_AUTOMATIC_GAIN_CONTROL', 'true');
+    // 環境依存問題を回避するため、最小限の設定でAudioConfigを作成
+    let audioConfig: AudioConfig;
+    try {
+      audioConfig = AudioConfig.fromDefaultMicrophoneInput();
+      console.log('✅ AudioConfig作成成功 - デフォルトマイクロフォン');
+    } catch (error) {
+      console.warn('⚠️ デフォルトマイク設定失敗、代替方法を試行:', error);
+      // 代替方法: より基本的なAudioConfig作成
+      audioConfig = AudioConfig.fromDefaultMicrophoneInput();
+    }
     
-    // AudioConfigのプロパティを設定
-    console.log('🔧 AudioConfig設定:', {
+    // 音声前処理設定を環境に応じて安全に適用
+    try {
+      // WebKit系ブラウザでは音声前処理を無効化
+      const isWebKit = /webkit/i.test(navigator.userAgent);
+      const isSafari = /safari/i.test(navigator.userAgent) && !/chrome/i.test(navigator.userAgent);
+      
+      if (!isWebKit && !isSafari) {
+        // Chrome等でのみ音声前処理を有効化
+        audioConfig.setProperty('SPEECH_INPUT_AUDIO_PROCESSING_ENABLE_DEFAULT', 'false');
+        console.log('🔧 Chrome環境: 音声前処理無効化');
+      } else {
+        console.log('🔧 WebKit/Safari環境: 音声前処理スキップ');
+      }
+    } catch (processingError) {
+      console.warn('⚠️ 音声前処理設定をスキップ:', processingError);
+    }
+    
+    console.log('🔧 AudioConfig設定完了:', {
       source: 'DefaultMicrophone',
       format: 'PCM 16kHz 16bit mono',
-      processing: 'Enhanced'
+      browser: navigator.userAgent.includes('Chrome') ? 'Chrome' : 
+               navigator.userAgent.includes('Safari') ? 'Safari' : 'Other',
+      processing: 'Minimal'
     });
     
     this.recognizer = new SpeechRecognizer(speechConfig, audioConfig);
@@ -190,8 +233,21 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
         errorCode: e.errorCode,
         errorDetails: e.errorDetails,
         sessionId: e.sessionId || 'なし',
-        offset: e.offset || 'なし'
+        offset: e.offset || 'なし',
+        browser: navigator.userAgent
       });
+      
+      // WebSocket接続エラーの特別処理
+      if (e.errorDetails?.includes('websocket error code: 1007') || 
+          e.errorDetails?.includes('Invalid \'language\' query parameter')) {
+        console.error('🔧 WebSocket接続エラー検出 - 環境依存問題の可能性');
+        console.error('💡 対策: WebSpeech APIに自動切替を検討');
+        
+        // WebSpeech APIへの自動切替を提案
+        if (confirm('Azure Speech SDKで問題が発生しました。ブラウザ標準の音声認識に切り替えますか？')) {
+          this.switchToWebSpeech();
+        }
+      }
       
       // エラーコード別の対処法を表示
       if (e.errorCode) {
@@ -330,6 +386,22 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
     }
   }
 
+  private switchToWebSpeech() {
+    try {
+      console.log('🔄 WebSpeech APIに切り替え中...');
+      this.stop(); // 現在の認識を停止
+      
+      // WebSpeechRecognizerに切り替え
+      const webSpeechRecognizer = new WebSpeechRecognizer();
+      webSpeechRecognizer.sendToServer = this.sendToServer;
+      webSpeechRecognizer.start();
+      
+      console.log('✅ WebSpeech APIに切り替え完了');
+    } catch (switchError) {
+      console.error('❌ WebSpeech APIへの切り替えに失敗:', switchError);
+    }
+  }
+
   private getErrorSolution(errorCode: string): string {
     switch (errorCode) {
       case 'ConnectionFailure':
@@ -340,6 +412,8 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
         return 'しばらく待ってから再試行してください';
       case 'Forbidden':
         return 'Azure Speech Serviceの設定を確認してください';
+      case '2': // WebSocket protocol error
+        return 'WebSocket接続エラー - ブラウザ互換性問題の可能性';
       default:
         return `エラーコード: ${errorCode} - Azure Speechサポートに問い合わせてください`;
     }
