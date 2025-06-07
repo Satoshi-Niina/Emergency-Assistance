@@ -796,18 +796,19 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
                   description: `応急処置ガイド「${guideTitle}」をチャットに送信しました。チャット画面をご確認ください。`,
                 });
 
-                // 送信成功後はフロー画面を閉じる
-                console.log('応急処置ガイド送信完了 - フロー画面を閉じます');
+                // 送信成功後は応急処置ガイド画面を閉じる
+                console.log('応急処置ガイド送信完了 - 応急処置ガイド画面を閉じます');
                 
-                // 少し遅延を入れてからフロー画面を閉じる
-                setTimeout(() => {
-                  if (onExit) {
-                    onExit();
-                  } else {
-                    // onExitが定義されていない場合は、チャット画面に遷移
-                    window.location.href = '/chat';
-                  }
-                }, 500);
+                // 応急処置ガイド画面を閉じるイベントを発火
+                window.dispatchEvent(new CustomEvent('close-emergency-guide'));
+                
+                // フロー画面も閉じる
+                if (onExit) {
+                  onExit();
+                } else {
+                  // フォールバック：チャット画面に遷移
+                  window.location.href = '/chat';
+                }
 
               } catch (error) {
                 console.error('緊急ガイド送信エラー:', error);
