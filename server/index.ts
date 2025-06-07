@@ -70,7 +70,7 @@ app.get('/api/network-test', (req, res) => {
     userAgent: req.get('User-Agent'),
     status: 'connected'
   };
-  
+
   logDebug('ネットワークテスト実行:', networkInfo);
   res.json(networkInfo);
 });
@@ -161,10 +161,10 @@ async function openBrowser(url: string) {
       const serverUrl = `http://0.0.0.0:${portToUse}`;
       logInfo(`サーバー起動: ${serverUrl}`);
       logInfo(`外部アクセス用URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`);
-      
+
       // ログレベル設定を表示
       showLogConfig();
-      
+
       try {
         // Replitの場合は外部URLでブラウザを開く
         const externalUrl = `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev` || `http://localhost:${portToUse}`;

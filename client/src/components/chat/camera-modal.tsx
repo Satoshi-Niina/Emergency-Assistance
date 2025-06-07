@@ -119,18 +119,37 @@ export default function CameraModal() {
         startRecording();
       }
     } else {
-      // Capture image - 確実にBase64形式で生成
+      // Capture image - 画像サイズを制限して圧縮
       const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
+      const video = videoRef.current;
+      
+      // 最大幅・高さを制限（例: 1024px）
+      const maxWidth = 1024;
+      const maxHeight = 1024;
+      let { videoWidth, videoHeight } = video;
+      
+      // アスペクト比を保持してリサイズ
+      if (videoWidth > maxWidth || videoHeight > maxHeight) {
+        const aspectRatio = videoWidth / videoHeight;
+        if (videoWidth > videoHeight) {
+          videoWidth = maxWidth;
+          videoHeight = maxWidth / aspectRatio;
+        } else {
+          videoHeight = maxHeight;
+          videoWidth = maxHeight * aspectRatio;
+        }
+      }
+      
+      canvas.width = videoWidth;
+      canvas.height = videoHeight;
 
       const ctx = canvas.getContext('2d');
-      if (ctx && videoRef.current) {
-        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+      if (ctx && video) {
+        ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
         
         try {
-          // 高品質のJPEG画像としてBase64エンコード（適切なMIME型プレフィックス付き）
-          const imageData = canvas.toDataURL('image/jpeg', 0.8);
+          // 圧縮率を高めに設定してファイルサイズを削減（品質0.6）
+          const imageData = canvas.toDataURL('image/jpeg', 0.6);
           
           // Base64データが正しい形式になっているかチェック
           if (!imageData.startsWith('data:image/')) {
@@ -141,8 +160,11 @@ export default function CameraModal() {
           
           console.log('✅ 撮影画像をBase64形式で生成成功:', {
             format: 'image/jpeg',
-            quality: 0.8,
+            quality: 0.6,
+            originalSize: `${video.videoWidth}x${video.videoHeight}`,
+            compressedSize: `${videoWidth}x${videoHeight}`,
             dataLength: imageData.length,
+            dataSizeMB: (imageData.length / 1024 / 1024).toFixed(2),
             isValidBase64: imageData.startsWith('data:image/jpeg;base64,'),
             mimeType: imageData.split(';')[0],
             preview: imageData.substring(0, 50) + '...'
