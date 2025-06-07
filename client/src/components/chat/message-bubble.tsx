@@ -305,9 +305,10 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
             {(() => {
               const content = message.content.trim();
               
-              // 画像データの判定条件を拡張
+              // 画像データの判定条件を強化
               const isImageContent = (
-                content.startsWith('data:image/') ||           // Base64画像データ
+                content.startsWith('data:image/') ||           // Base64画像データ（正しい形式）
+                content.startsWith('data:,') ||               // 不完全なBase64データ
                 content.startsWith('/uploads/') ||             // アップロード画像パス
                 content.startsWith('blob:') ||                 // Blob URL
                 content.startsWith('/knowledge-base/images/') || // ナレッジベース画像
@@ -317,10 +318,29 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
               if (isImageContent) {
                 console.log('画像コンテンツを検出:', {
                   messageId: message.id,
-                  contentType: content.startsWith('data:') ? 'base64' : 'url',
+                  contentType: content.startsWith('data:image/') ? 'base64-valid' : 
+                              content.startsWith('data:') ? 'base64-invalid' : 'url',
                   contentLength: content.length,
+                  mimeType: content.startsWith('data:') ? content.split(';')[0] : 'N/A',
                   preview: content.substring(0, 100) + '...'
                 });
+
+                // 不完全なBase64データの場合は警告表示
+                if (content.startsWith('data:,') || (content.startsWith('data:') && !content.includes('image/'))) {
+                  return (
+                    <div className="mt-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-yellow-700 text-sm">
+                        ⚠️ 画像データが不完全です。再度撮影してください。
+                      </p>
+                      <details className="mt-2">
+                        <summary className="text-xs text-yellow-600 cursor-pointer">デバッグ情報</summary>
+                        <p className="text-xs text-yellow-600 mt-1 font-mono break-all">
+                          {content.substring(0, 200)}...
+                        </p>
+                      </details>
+                    </div>
+                  );
+                }
 
                 return (
                   <div className="mt-2">
@@ -331,29 +351,31 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
                       style={{ maxHeight: '300px', objectFit: 'contain' }}
                       onClick={() => handleImagePreview(content)}
                       onLoad={(e) => {
-                        console.log('content内画像読み込み成功:', {
+                        console.log('✅ content内画像読み込み成功:', {
                           messageId: message.id,
                           width: (e.target as HTMLImageElement).naturalWidth,
                           height: (e.target as HTMLImageElement).naturalHeight,
-                          urlType: content.startsWith('data:') ? 'base64' : 'url'
+                          urlType: content.startsWith('data:image/') ? 'base64-valid' : 'url',
+                          fileSize: Math.round(content.length / 1024) + 'KB'
                         });
                       }}
                       onError={(e) => {
-                        console.error('content内画像読み込みエラー:', {
+                        console.error('❌ content内画像読み込みエラー:', {
                           messageId: message.id,
                           url: content.substring(0, 100) + '...',
-                          isBase64: content.startsWith('data:image/')
+                          isBase64: content.startsWith('data:image/'),
+                          mimeType: content.startsWith('data:') ? content.split(';')[0] : 'N/A'
                         });
                         
                         const img = e.target as HTMLImageElement;
                         img.onerror = null; // Prevent infinite loop
                         
                         // Base64画像の場合はエラー表示
-                        if (content.startsWith('data:image/')) {
+                        if (content.startsWith('data:')) {
                           img.style.display = 'none';
                           const errorDiv = document.createElement('div');
-                          errorDiv.className = 'flex items-center justify-center bg-gray-100 border border-gray-300 rounded-lg p-4 max-w-xs';
-                          errorDiv.innerHTML = '<span class="text-gray-500 text-sm">画像の表示に失敗しました</span>';
+                          errorDiv.className = 'flex items-center justify-center bg-red-50 border border-red-200 rounded-lg p-4 max-w-xs';
+                          errorDiv.innerHTML = '<span class="text-red-600 text-sm">❌ Base64画像の表示に失敗しました</span>';
                           img.parentNode?.insertBefore(errorDiv, img);
                         }
                       }}
