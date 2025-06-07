@@ -772,105 +772,116 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       setIsClearing(true);
 
-      // サーバーへのリクエストを最初に実行して確実にデータベースをクリア
+      // まずローカル状態を即座にクリア（UIの即座の反映のため）
+      console.log('ローカル状態を即座にクリアします');
+      setMessages([]);
+      setSearchResults([]);
+      setLastExportTimestamp(null);
+      setHasUnexportedMessages(false);
+      setTempMedia([]);
+      setDraftMessage(null);
+      clearSearchResults();
+
+      // サーバーへのリクエストを実行してデータベースをクリア
       if (chatId) {
         try {
           console.log(`チャット履歴削除開始: chatId=${chatId}`);
-          
+
           // 強制クリアフラグ付きでサーバーに送信
           const response = await apiRequest('POST', `/api/chats/${chatId}/clear`, {
             force: true,
             clearAll: true
           });
-          
+
           if (!response.ok) {
             const errorText = await response.text();
             console.error(`サーバーでのチャット履歴削除に失敗: ${response.status} - ${errorText}`);
             throw new Error(`削除APIエラー: ${response.status}`);
           }
-          
+
           const result = await response.json();
           console.log('サーバー側削除結果:', result);
+
+          // サーバー削除成功後、再度ローカル状態をクリア（確実に空にするため）
+          setMessages([]);
+          setSearchResults([]);
+          clearSearchResults();
+
         } catch (error) {
           console.error('サーバー側削除エラー:', error);
-          // サーバー側の削除に失敗した場合もローカルクリアは続行
+          // サーバー側の削除に失敗した場合もローカルクリアは維持
+          setMessages([]);
+          setSearchResults([]);
+          clearSearchResults();
         }
       }
 
-      // ローカルの状態をクリア
-      setMessages([]);
-      setSearchResults([]);
-      setHasUnexportedMessages(false);
-      setLastExportTimestamp(null);
-      setDraftMessage(null);
-      setRecordedText('');
-      setLastSentText('');
-      setRecognitionPhrases([]);
-      setBlockSending(false);
-      setIsProcessing(false);
-
-      // 音声認識を停止
-      stopSpeechRecognition();
-      stopBrowserSpeechRecognition();
-
-      // カスタムイベントを発行
-      if (typeof window !== 'undefined') {
-        const clearEvent = new CustomEvent('clear-draft-message');
-        window.dispatchEvent(clearEvent);
-
-        const resetEvent = new CustomEvent('reset-recognition-phrases');
-        window.dispatchEvent(resetEvent);
-      }
-
-      // クリア時のタイムスタンプを保存
-      const clearTimestamp = Date.now().toString();
-      localStorage.setItem('chat_cleared_timestamp', clearTimestamp);
-
-      // React Queryのキャッシュを強制的にクリア
-      try {
-        // @ts-ignore
-        if (window.queryClient) {
-          console.log('React Queryキャッシュをクリアします');
-          window.queryClient.removeQueries({ queryKey: ['/api/chats/1/messages'] });
-          window.queryClient.setQueryData(['/api/chats/1/messages'], []);
-          // 強制的に無効化してサーバーから再取得
-          window.queryClient.invalidateQueries({ queryKey: ['/api/chats/1/messages'] });
-        }
-      } catch (cacheError) {
-        console.error('キャッシュクリアエラー:', cacheError);
-      }
-
-      // 少し待ってからメッセージを再読み込み（削除が反映されているか確認）
-      setTimeout(async () => {
-        try {
-          const verifyResponse = await apiRequest('GET', `/api/chats/${chatId}/messages?clear=true`);
-          if (verifyResponse.ok) {
-            const remainingMessages = await verifyResponse.json();
-            console.log('削除後の残存メッセージ数:', remainingMessages.length);
-            if (remainingMessages.length > 0) {
-              console.warn('メッセージが完全に削除されていません:', remainingMessages);
-            }
-          }
-        } catch (verifyError) {
-          console.error('削除確認エラー:', verifyError);
-        }
-      }, 1000);
-
+      // 成功メッセージを表示
       toast({
-        title: 'チャット履歴を削除しました',
-        description: '全てのメッセージが削除されました。',
+        title: '削除完了',
+        description: 'チャット履歴が削除されました',
       });
+
     } catch (error) {
       console.error('チャット履歴削除エラー:', error);
+      // エラーが発生してもローカル状態はクリアを維持
+      setMessages([]);
+      setSearchResults([]);
+      clearSearchResults();
+
       toast({
-        title: 'チャット履歴削除エラー',
-        description: 'チャット履歴の削除に失敗しました。ページを再読み込みしてください。',
+        title: '削除エラー',
+        description: 'チャット履歴の削除に失敗しました',
         variant: 'destructive',
       });
     } finally {
       setIsClearing(false);
     }
-  }, [chatId, toast]);
+  }, [chatId, clearSearchResults, toast]);
+
+  // チャットIDが変更されたときにメッセージを読み込む
+  useEffect(() => {
+    const loadMessages = async () => {
+      if (!chatId || isInitializing || isClearing) return;
+
+      try {
+        setIsLoading(true);
+        const response = await apiRequest('GET', `/api/chats/${chatId}/messages`);
+
+        if (response.ok) {
+          // クリア操作中の場合は読み込みをスキップ
+          if (isClearing) {
+            console.log('クリア操作中のためメッセージ読み込みをスキップしました');
+            return;
+          }
+
+          const data = await response.json();
+
+          // レスポンスヘッダーでクリア状態を確認
+          const isChatCleared = response.headers.get('X-Chat-Cleared') === 'true';
+
+          if (isChatCleared || data.length === 0) {
+            console.log(`チャットID ${chatId} はクリアされています`);
+            setMessages([]);
+          } else {
+            console.log(`チャットID ${chatId} のメッセージを読み込みました: ${data.length}件`);
+            setMessages(data.map((msg: any) => ({
+              ...msg,
+              timestamp: new Date(msg.timestamp)
+            })));
+          }
+        } else {
+          console.error('メッセージの読み込みに失敗しました');
+        }
+      } catch (error) {
+        console.error('メッセージ読み込みエラー:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadMessages();
+  }, [chatId, isInitializing, isClearing]);
 
   // 最後のエクスポート履歴を取得
   const fetchLastExport = useCallback(async () => {
