@@ -732,7 +732,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           chatId: currentChatId,
           content: `応急処置ガイド「${guideData.title}」を実施しました`,
           isAiResponse: false,
-          senderId: senderId,
+          senderId: senderId || 'user',
           timestamp: new Date()
         };
 
