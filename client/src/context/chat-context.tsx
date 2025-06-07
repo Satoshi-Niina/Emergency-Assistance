@@ -370,7 +370,35 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // メッセージ送信関数
   const sendMessage = useCallback(async (content: string, mediaUrls?: { type: string, url: string, thumbnail?: string }[]) => {
+    if (!content.trim() && (!mediaUrls || mediaUrls.length === 0)) return;
+
+    setIsLoading(true);
+
     try {
+      const userMessage: Message = {
+        id: Date.now(),
+        content: content.trim(),
+        sender: 'user',
+        timestamp: new Date(),
+        mediaUrls: mediaUrls
+      };
+
+      console.log('メッセージ送信開始:', { chatId, content, mediaUrls });
+
+      // メディアURLsのデバッグログ
+      if (mediaUrls && mediaUrls.length > 0) {
+        console.log('送信するメディア情報:');
+        mediaUrls.forEach((media, index) => {
+          console.log(`  ${index + 1}. タイプ: ${media.type}, URL: ${media.url}`);
+          // URLが有効かチェック
+          if (media.type === 'image' && media.url.startsWith('data:image/')) {
+            console.log(`    Base64画像データ: ${media.url.substring(0, 50)}...`);
+          }
+        });
+      }
+
+      setMessages(prev => [...prev, userMessage]);
+
       // チャットIDが設定されていない場合は初期化
       let currentChatId = chatId;
       if (!currentChatId) {
@@ -697,7 +725,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // ChatMessage形式でメッセージを作成
       const timestamp = Date.now();
-      
+
       // ユーザーメッセージ（左側）
       const userMessage = {
         id: timestamp,
@@ -721,7 +749,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('🏥 ChatMessage形式でメッセージを作成しました:');
       console.log('- ユーザーメッセージ:', userMessage);
       console.log('- AIメッセージ:', aiMessage);
-      
+
       // メッセージを即座にローカル状態に追加
       setMessages(prevMessages => {
         console.log('✅ メッセージをローカル状態に追加 - 現在のメッセージ数:', prevMessages.length);
@@ -769,7 +797,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           console.log('チャットエリアを最下部にスクロールしました');
         }
       }, 100);
-      
+
       // イベント送信
       window.dispatchEvent(new CustomEvent('emergency-guide-sent', {
         detail: { 
@@ -780,7 +808,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           aiMessage
         }
       }));
-      
+
       // ChatMessage形式で結果を返す
       return {
         success: true,
@@ -788,10 +816,10 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         aiMessage,
         guideData
       };
-      
+
     } catch (error) {
       console.error('緊急ガイド送信エラー:', error);
-      
+
       // エラーの種類に応じてメッセージを分岐
       if (error instanceof Error && error.message.includes('API')) {
         toast({
@@ -806,7 +834,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           variant: 'destructive',
         });
       }
-      
+
       // エラーが発生してもチャット機能は継続
       return {
         success: false,
@@ -834,7 +862,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setTempMedia([]);
       setDraftMessage(null);
       clearSearchResults();
-      
+
       // 応急処置ガイドメッセージもローカルストレージから削除
       try {
         localStorage.removeItem('emergencyGuideMessage');
