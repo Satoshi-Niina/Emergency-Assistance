@@ -789,30 +789,32 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         guideData
       };
       
-    } catch (apiError) {
-      console.error('APIリクエストエラー:', apiError);
-      toast({
-        title: 'API通信エラー',
-        description: 'サーバーとの通信中にエラーが発生しました',
-        variant: 'destructive',
-      });
+    } catch (error) {
+      console.error('緊急ガイド送信エラー:', error);
+      
+      // エラーの種類に応じてメッセージを分岐
+      if (error instanceof Error && error.message.includes('API')) {
+        toast({
+          title: 'API通信エラー',
+          description: 'サーバーとの通信中にエラーが発生しました',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: '緊急ガイド送信エラー',
+          description: '応急処置ガイドの送信に失敗しました。',
+          variant: 'destructive',
+        });
+      }
       
       // エラーが発生してもチャット機能は継続
       return {
         success: false,
-        error: apiError,
+        error: error,
         userMessage: null,
         aiMessage: null,
         guideData
       };
-    } catch (error) {
-      console.error('緊急ガイド送信エラー:', error);
-      toast({
-        title: '緊急ガイド送信エラー',
-        description: '応急処置ガイドの送信に失敗しました。ログインしているか確認してください。',
-        variant: 'destructive',
-      });
-      return null;
     } finally {
       setIsLoading(false);
     }
