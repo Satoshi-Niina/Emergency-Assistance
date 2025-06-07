@@ -33,47 +33,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { toast } = useToast();
 
   useEffect(() => {
-    // 自動ログインを無効化 - セッションの確認のみ行う
-    const checkSession = async () => {
-      try {
-        // localStorage からログイン状態を確認
-        const hasValidSession = localStorage.getItem('user_logged_in') === 'true';
-        
-        if (hasValidSession) {
-          // 有効なセッションがあると記録されている場合のみサーバーに確認
-          const response = await fetch("/api/auth/me", {
-            credentials: "include",
-            headers: {
-              'Cache-Control': 'no-cache',
-              'Pragma': 'no-cache'
-            }
-          });
-          
-          if (response.ok) {
-            const userData = await response.json();
-            setUser(userData);
-            console.log("セッションが有効です:", userData.username);
-          } else {
-            // セッションが無効になっている場合はクリア
-            localStorage.removeItem('user_logged_in');
-            setUser(null);
-            console.log("セッションが無効になりました");
-          }
-        } else {
-          // セッション記録がない場合は未認証状態を設定
-          setUser(null);
-          console.log("未認証状態です");
-        }
-      } catch (error) {
-        console.error("Session check failed:", error);
-        localStorage.removeItem('user_logged_in');
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    checkSession();
+    // 自動ログインを完全に無効化 - 常に未認証状態で開始
+    setUser(null);
+    setIsLoading(false);
+    console.log("認証チェック無効化 - 手動ログインが必要です");
   }, []);
 
   const login = async (username: string, password: string) => {
@@ -87,8 +50,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       setUser(userData);
-      // ログイン状態をローカルストレージに記録
-      localStorage.setItem('user_logged_in', 'true');
       toast({
         title: "ログイン成功",
         description: `ようこそ、${userData.display_name || userData.username}さん`,
@@ -110,8 +71,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(true);
       await apiRequest("POST", "/api/auth/logout");
       setUser(null);
-      // ログイン状態をローカルストレージから削除
-      localStorage.removeItem('user_logged_in');
       toast({
         title: "ログアウト成功",
         description: "ログアウトしました",
