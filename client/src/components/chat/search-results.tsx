@@ -160,6 +160,7 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
     }
   };
 
+  // 画像読み込みエラーハンドラ
   const handleImageError = (imgElement: HTMLImageElement, result: SearchResult, retryCount = 0) => {
     console.warn(`画像読み込みエラー: ${imgElement.src} (試行回数: ${retryCount + 1})`);
 
