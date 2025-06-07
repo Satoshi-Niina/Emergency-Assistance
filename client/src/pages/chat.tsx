@@ -110,7 +110,7 @@ export default function Chat() {
                 // ダイアログを閉じる
                 //setShowEndDialog(false);
 
-      
+
     } catch (error) {
       console.error("チャット終了エラー:", error);
       window.location.href = "/login";
@@ -312,7 +312,7 @@ export default function Chat() {
                 variant="destructive" 
                 onClick={() => {
                   setIsEndChatDialogOpen(false);
-                  console.log("送信せずに終了が選択されました");
+                  console.log("送信せずに終了が選択されました - ダイアログを閉じるのみ");
                 }}
                 className="bg-red-500 hover:bg-red-600"
               >

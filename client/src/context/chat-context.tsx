@@ -726,17 +726,27 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // レスポンスデータを取得
         const data = await response.json();
         console.log('応急処置ガイド: 送信成功', data);
-        // 応急処置ガイドの内容をAI応答として表示
-        const emergencyGuideMessage = {
+        // ユーザーメッセージを追加（左側）
+        const userGuideMessage = {
           id: Date.now(),
           chatId: currentChatId,
-          content: `■ ${guideData.title}\n\n【実施した手順の詳細】\n${guideData.content}`,
+          content: `応急処置ガイド「${guideData.title}」を実施しました`,
+          isAiResponse: false,
+          senderId: senderId,
+          timestamp: new Date()
+        };
+
+        // AI応答メッセージを追加（右側）
+        const aiGuideMessage = {
+          id: Date.now() + 1,
+          chatId: currentChatId,
+          content: `■ ${guideData.title}\n\n【実施した手順の詳細】\n${guideData.content}\n\n【AI分析】\n応急処置が正常に実施されました。今後の対応について何かご質問があればお聞かせください。`,
           isAiResponse: true,
           senderId: 'ai',
           timestamp: new Date()
         };
 
-        setMessages(prev => [...prev, emergencyGuideMessage]);
+        setMessages(prev => [...prev, userGuideMessage, aiGuideMessage]);
 
         // 関連する画像検索も実行
         if (guideData.title) {
