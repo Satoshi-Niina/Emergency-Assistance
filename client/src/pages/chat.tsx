@@ -67,24 +67,38 @@ export default function Chat() {
     ? [] 
     : (messages?.length > 0 ? messages : (data as any[] || []));
 
-  // デバッグ用：表示メッセージの確認
+  // デバッグ用：表示メッセージの確認と応急処置ガイドメッセージの監視
   useEffect(() => {
-    console.log('Chat.tsx - 表示メッセージ数:', displayMessages.length);
+    console.log('📊 Chat.tsx - 表示メッセージ数:', displayMessages.length);
+    
     if (displayMessages.length > 0) {
       const emergencyMessages = displayMessages.filter(msg => 
-        msg.content && msg.content.includes('応急処置ガイド実施記録')
+        msg.content && (
+          msg.content.includes('応急処置ガイド実施記録') ||
+          msg.content.includes('応急処置ガイド「') ||
+          msg.content.includes('を実施しました')
+        )
       );
-      console.log('Chat.tsx - 応急処置メッセージ数:', emergencyMessages.length);
       
-      // 各メッセージの詳細情報を出力
-      displayMessages.forEach((msg, index) => {
-        console.log(`Chat.tsx - メッセージ${index}:`, {
-          id: msg.id,
-          isAiResponse: msg.isAiResponse,
-          isEmergencyGuide: msg.content && msg.content.includes('応急処置ガイド実施記録'),
-          contentStart: msg.content ? msg.content.substring(0, 30) + '...' : 'null'
+      console.log('🏥 Chat.tsx - 応急処置関連メッセージ数:', emergencyMessages.length);
+      
+      if (emergencyMessages.length > 0) {
+        console.log('✅ Chat.tsx - 応急処置ガイドメッセージが表示されています:');
+        emergencyMessages.forEach((msg, index) => {
+          console.log(`  ${index + 1}. ID: ${msg.id}, AI応答: ${msg.isAiResponse}, 内容: ${msg.content.substring(0, 50)}...`);
         });
-      });
+      }
+      
+      // 最新のメッセージが応急処置関連かチェック
+      const latestMessage = displayMessages[displayMessages.length - 1];
+      if (latestMessage && latestMessage.content && latestMessage.content.includes('応急処置ガイド')) {
+        console.log('🔔 Chat.tsx - 最新メッセージが応急処置ガイド関連です:', {
+          id: latestMessage.id,
+          isAiResponse: latestMessage.isAiResponse,
+          timestamp: latestMessage.timestamp,
+          contentPreview: latestMessage.content.substring(0, 100) + '...'
+        });
+      }
     }
   }, [displayMessages]);
 
@@ -133,17 +147,36 @@ export default function Chat() {
   const [emergencyGuideOpen, setEmergencyGuideOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
 
-  // 応急処置ガイド画面を閉じるイベントリスナー
+  // 応急処置ガイド関連のイベントリスナー
   useEffect(() => {
     const handleCloseEmergencyGuide = () => {
       console.log('応急処置ガイド画面を閉じるイベントを受信');
       setEmergencyGuideOpen(false);
     };
 
+    const handleEmergencyGuideSent = (event: any) => {
+      console.log('🏥 応急処置ガイド送信イベントを受信:', event.detail);
+      
+      // 送信後に画面を自動的にスクロール
+      setTimeout(() => {
+        const chatContainer = document.getElementById('chatMessages');
+        if (chatContainer) {
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+          console.log('📜 応急処置ガイド送信後にチャットを最下部にスクロールしました');
+        }
+        
+        // 応急処置ガイド画面を閉じる
+        setEmergencyGuideOpen(false);
+        console.log('🏥 応急処置ガイド送信後に画面を閉じました');
+      }, 500);
+    };
+
     window.addEventListener('close-emergency-guide', handleCloseEmergencyGuide);
+    window.addEventListener('emergency-guide-sent', handleEmergencyGuideSent);
 
     return () => {
       window.removeEventListener('close-emergency-guide', handleCloseEmergencyGuide);
+      window.removeEventListener('emergency-guide-sent', handleEmergencyGuideSent);
     };
   }, []);
 

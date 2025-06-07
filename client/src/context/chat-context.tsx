@@ -737,12 +737,33 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           timestamp: new Date()
         };
 
-        // メッセージを即座に追加（右側のAI応答として表示される）
-        console.log('AI応急処置ガイドメッセージを追加:', aiGuideMessage);
+        // ユーザーメッセージを追加（左側）
+        const userGuideMessage = {
+          id: Date.now(),
+          chatId: currentChatId,
+          content: `応急処置ガイド「${guideData.title}」を実施しました`,
+          isAiResponse: false,
+          senderId: 'user',
+          timestamp: new Date()
+        };
+
+        // AI応答メッセージを追加（右側）
+        const aiGuideMessage = {
+          id: Date.now() + 1,
+          chatId: currentChatId,
+          content: `■ 応急処置ガイド実施記録\n\n**${guideData.title}**\n\n${guideData.content}\n\n---\n**AI分析**: 応急処置手順が正常に記録されました。実施状況に関して追加のご質問がございましたらお聞かせください。`,
+          isAiResponse: true,
+          senderId: 'ai',
+          timestamp: new Date()
+        };
+
+        console.log('応急処置ガイドメッセージを追加します:');
+        console.log('- ユーザーメッセージ:', userGuideMessage);
+        console.log('- AIメッセージ:', aiGuideMessage);
         
-        // 重複チェックを行い、メッセージを確実に追加
+        // メッセージを確実に追加
         setMessages(prevMessages => {
-          console.log('現在のメッセージ数（追加前）:', prevMessages.length);
+          console.log('✅ メッセージ追加処理開始 - 現在のメッセージ数:', prevMessages.length);
           
           // 重複チェック：同じタイトルのメッセージが既に存在するかチェック
           const isDuplicate = prevMessages.some(msg => 
@@ -751,23 +772,32 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           );
           
           if (isDuplicate) {
-            console.log('重複メッセージを検出したため追加をスキップします');
+            console.log('⚠️ 重複メッセージを検出したため追加をスキップします');
             return prevMessages;
           }
           
-          // 新しいメッセージ配列を作成
-          const newMessages = [...prevMessages, aiGuideMessage];
-          console.log('応急処置ガイドメッセージ追加後:', newMessages.length, '件');
-          console.log('追加されたメッセージID:', aiGuideMessage.id);
-          console.log('追加されたメッセージ内容（先頭100文字）:', aiGuideMessage.content.substring(0, 100));
+          // 両方のメッセージを追加
+          const newMessages = [...prevMessages, userGuideMessage, aiGuideMessage];
+          console.log('✅ 応急処置ガイドメッセージ追加完了:', newMessages.length, '件');
+          console.log('✅ 追加されたユーザーメッセージID:', userGuideMessage.id);
+          console.log('✅ 追加されたAIメッセージID:', aiGuideMessage.id);
           
           // ローカルストレージにも保存して永続化
           try {
-            localStorage.setItem('emergencyGuideMessage', JSON.stringify(aiGuideMessage));
-            console.log('応急処置ガイドメッセージをローカルストレージに保存しました');
+            localStorage.setItem('lastEmergencyGuideMessages', JSON.stringify([userGuideMessage, aiGuideMessage]));
+            console.log('✅ 応急処置ガイドメッセージをローカルストレージに保存しました');
           } catch (error) {
-            console.warn('ローカルストレージへの保存に失敗:', error);
+            console.warn('❌ ローカルストレージへの保存に失敗:', error);
           }
+          
+          // 即座にUIに反映されるよう強制的にリレンダリング
+          setTimeout(() => {
+            console.log('✅ 応急処置ガイドメッセージ追加後の状態確認:', {
+              totalMessages: newMessages.length,
+              lastUserMessage: newMessages[newMessages.length - 2]?.content?.substring(0, 50) + '...',
+              lastAiMessage: newMessages[newMessages.length - 1]?.content?.substring(0, 50) + '...'
+            });
+          }, 100);
           
           return newMessages;
         });
@@ -787,31 +817,75 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }, 100);
         
         // メッセージ表示の成功を確認するためのログ
-        console.log('応急処置ガイドメッセージの送信が完了しました');
+        console.log('✅ 応急処置ガイドメッセージの送信が完了しました');
         
         // UI状態の確認処理（表示確認用）
         setTimeout(() => {
           setMessages(current => {
-            console.log('応急処置ガイド送信後の現在のメッセージ数:', current.length);
-            const hasEmergencyMessage = current.some(msg => 
-              msg.content && msg.content.includes('応急処置ガイド実施記録')
-            );
-            console.log('応急処置ガイドメッセージが配列に存在するか:', hasEmergencyMessage);
+            console.log('🔍 応急処置ガイド送信後の現在のメッセージ数:', current.length);
             
-            if (hasEmergencyMessage) {
+            const emergencyMessages = current.filter(msg => 
+              msg.content && (
+                msg.content.includes('応急処置ガイド実施記録') ||
+                msg.content.includes(`応急処置ガイド「${guideData.title}」を実施しました`)
+              )
+            );
+            
+            console.log('🔍 応急処置ガイド関連メッセージ数:', emergencyMessages.length);
+            
+            if (emergencyMessages.length >= 1) {
               console.log('✅ 応急処置ガイドメッセージが正常に配列に追加されています');
+              console.log('📝 メッセージ詳細:', emergencyMessages.map(msg => ({
+                id: msg.id,
+                isAiResponse: msg.isAiResponse,
+                contentPreview: msg.content.substring(0, 50) + '...'
+              })));
+              
+              // 成功トーストを表示
+              toast({
+                title: '応急処置ガイド記録完了',
+                description: 'チャット履歴に応急処置の実施記録が追加されました',
+              });
             } else {
-              console.error('❌ 応急処置ガイドメッセージが配列に見つかりません');
+              console.error('❌ 応急処置ガイドメッセージが配列に見つかりません - 再試行します');
+              
+              // 緊急措置として再度メッセージを追加
+              const emergencyUserMessage = {
+                id: Date.now() + 1000,
+                chatId: currentChatId,
+                content: `応急処置ガイド「${guideData.title}」を実施しました`,
+                isAiResponse: false,
+                senderId: 'user',
+                timestamp: new Date()
+              };
+
+              const emergencyAiMessage = {
+                id: Date.now() + 1001,
+                chatId: currentChatId,
+                content: `■ 応急処置ガイド実施記録\n\n**${guideData.title}**\n\n${guideData.content}\n\n---\n**AI分析**: 応急処置手順が正常に記録されました。`,
+                isAiResponse: true,
+                senderId: 'ai',
+                timestamp: new Date()
+              };
+
+              console.log('🔄 緊急措置として応急処置ガイドメッセージを再追加します');
+              return [...current, emergencyUserMessage, emergencyAiMessage];
             }
             
             // React DevToolsやデバッグのための追加情報
             window.dispatchEvent(new CustomEvent('emergency-guide-sent', {
-              detail: { guideData, timestamp: new Date(), messageCount: current.length }
+              detail: { 
+                guideData, 
+                timestamp: new Date(), 
+                messageCount: current.length,
+                emergencyMessageCount: emergencyMessages.length,
+                success: emergencyMessages.length >= 1
+              }
             }));
             
-            return current; // 状態は変更せず、ログのみ
+            return current; // 通常時は状態は変更せず
           });
-        }, 500);
+        }, 300);
         
         return data;
       } catch (apiError) {
