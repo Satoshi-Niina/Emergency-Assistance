@@ -57,16 +57,23 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
     const speechConfig = SpeechConfig.fromSubscription(this.azureKey, this.azureRegion);
     speechConfig.speechRecognitionLanguage = 'ja-JP';
     
-    // 音声検出感度を最適化
-    speechConfig.setProperty('SpeechServiceConnection_InitialSilenceTimeoutMs', '8000');
-    speechConfig.setProperty('SpeechServiceConnection_EndSilenceTimeoutMs', '3000');
-    speechConfig.setProperty('SpeechServiceConnection_Mode', 'Interactive');
-    speechConfig.setProperty('SpeechServiceConnection_RecoMode', 'INTERACTIVE');
+    // 音声検出感度を大幅に改善
+    speechConfig.setProperty('SpeechServiceConnection_InitialSilenceTimeoutMs', '15000');
+    speechConfig.setProperty('SpeechServiceConnection_EndSilenceTimeoutMs', '5000');
+    speechConfig.setProperty('SpeechServiceConnection_Mode', 'Conversation');
+    speechConfig.setProperty('SpeechServiceConnection_RecoMode', 'CONVERSATION');
     speechConfig.setProperty('SpeechServiceConnection_EnableAudioLogging', 'true');
     
-    // マイク入力感度の設定
+    // 音声認識感度の詳細設定
+    speechConfig.setProperty('SpeechServiceConnection_SilenceTimeoutMs', '2000');
+    speechConfig.setProperty('SpeechServiceConnection_SingleShotTimeout', '30000');
+    speechConfig.setProperty('SpeechServiceConnection_AutoDetectSourceLanguages', 'ja-JP');
+    
+    // 音声品質と感度の最適化
+    speechConfig.setProperty('AudioConfig_AudioProcessingOptions', 'AEC_NoiseSuppression_AGC');
     speechConfig.setProperty('AudioConfig_DeviceNameForCapture', 'Default');
-    speechConfig.setProperty('AudioConfig_PlaybackBufferLengthInMs', '50');
+    speechConfig.setProperty('AudioConfig_PlaybackBufferLengthInMs', '100');
+    speechConfig.setProperty('Speech_SegmentationSilenceTimeoutMs', '2000');
     
     console.log('🎚️ Azure音声設定完了:', {
       language: 'ja-JP',
@@ -134,9 +141,16 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
     };
 
     this.lastSpokenTime = Date.now();
+    
+    // 音声検出の追加設定
+    this.recognizer.properties.setProperty('SpeechServiceConnection_PhraseListTopic', 'ja-JP');
+    this.recognizer.properties.setProperty('SpeechServiceConnection_WordLevelTimestamps', 'true');
+    
+    console.log('🚀 Azure連続音声認識を開始します...');
     this.recognizer.startContinuousRecognitionAsync(
       () => {
-        console.log('✅ Azure認識開始成功 - 話してください');
+        console.log('✅ Azure認識開始成功 - 日本語で話してください（大きめの声で）');
+        console.log('💡 ヒント: 「こんにちは」「テスト」など短い言葉から試してください');
       },
       (error) => {
         console.error('❌ Azure認識開始エラー:', error);
@@ -179,41 +193,59 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
 
   private async testMicrophoneLevel(stream: MediaStream): Promise<void> {
     return new Promise((resolve) => {
-      console.log('🔊 マイクロフォン音声レベルテスト開始（3秒間）');
+      console.log('🔊 マイクロフォン音声レベルテスト開始（5秒間）- 話してみてください');
       
       const audioContext = new AudioContext();
       const analyser = audioContext.createAnalyser();
       const microphone = audioContext.createMediaStreamSource(stream);
       
-      analyser.fftSize = 256;
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.3;
       const bufferLength = analyser.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
       
       microphone.connect(analyser);
       
       let maxLevel = 0;
+      let avgLevel = 0;
       let sampleCount = 0;
+      let speechDetected = false;
       const startTime = Date.now();
+      const levels: number[] = [];
       
       const checkLevel = () => {
         analyser.getByteFrequencyData(dataArray);
         
-        // 音声レベルを計算
+        // 音声レベルを計算（より精密に）
         let sum = 0;
         for (let i = 0; i < bufferLength; i++) {
           sum += dataArray[i];
         }
         const average = sum / bufferLength;
+        levels.push(average);
         maxLevel = Math.max(maxLevel, average);
+        avgLevel = levels.reduce((a, b) => a + b, 0) / levels.length;
         sampleCount++;
         
-        if (Date.now() - startTime < 3000) {
+        // 音声検出の閾値を下げる
+        if (average > 15) {
+          speechDetected = true;
+        }
+        
+        // リアルタイムレベル表示（1秒ごと）
+        if (sampleCount % 10 === 0) {
+          console.log(`🎵 音声レベル: ${average.toFixed(1)} (最大: ${maxLevel.toFixed(1)}, 平均: ${avgLevel.toFixed(1)})`);
+        }
+        
+        if (Date.now() - startTime < 5000) {
           setTimeout(checkLevel, 100);
         } else {
           console.log('📊 マイクテスト結果:', {
             maxLevel: maxLevel.toFixed(2),
+            avgLevel: avgLevel.toFixed(2),
             samples: sampleCount,
-            status: maxLevel > 5 ? '✅ 音声検出可能' : '⚠️ 音声レベル低'
+            speechDetected,
+            recommendation: speechDetected ? '✅ 音声検出良好' : maxLevel > 10 ? '⚠️ もう少し大きな声で話してください' : '❌ マイク音量を上げてください'
           });
           
           audioContext.close();
