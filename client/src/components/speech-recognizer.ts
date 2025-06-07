@@ -25,25 +25,58 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
 
   constructor(private azureKey: string, private azureRegion: string) {}
 
-  start() {
+  async start() {
     console.log('🎤 Azure音声認識開始');
     console.log('🔑 Azure設定確認:', { 
       key: this.azureKey ? `${this.azureKey.substring(0, 10)}...` : 'なし',
       region: this.azureRegion 
     });
 
+    // マイクアクセス許可を事前に確認
+    try {
+      console.log('🎙️ マイクロフォンアクセス許可を確認中...');
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log('✅ マイクロフォンアクセス許可済み');
+      stream.getTracks().forEach(track => track.stop()); // リソースを解放
+    } catch (error) {
+      console.error('❌ マイクロフォンアクセス拒否:', error);
+      throw new Error('マイクロフォンアクセスが拒否されました');
+    }
+
     const speechConfig = SpeechConfig.fromSubscription(this.azureKey, this.azureRegion);
     speechConfig.speechRecognitionLanguage = 'ja-JP';
-    speechConfig.setProperty('SpeechServiceConnection_InitialSilenceTimeoutMs', '3000');
-    speechConfig.setProperty('SpeechServiceConnection_EndSilenceTimeoutMs', '1000');
-
-    console.log('🎙️ マイクロフォンアクセスを要求中...');
+    
+    // より詳細な設定でデバッグ
+    speechConfig.setProperty('SpeechServiceConnection_InitialSilenceTimeoutMs', '5000');
+    speechConfig.setProperty('SpeechServiceConnection_EndSilenceTimeoutMs', '2000');
+    speechConfig.setProperty('SpeechServiceConnection_Mode', 'Interactive');
+    
+    console.log('🎯 AudioConfig作成中...');
     const audioConfig = AudioConfig.fromDefaultMicrophoneInput();
     this.recognizer = new SpeechRecognizer(speechConfig, audioConfig);
     console.log('🎯 SpeechRecognizer作成完了');
 
+    // セッションイベントの追加
+    this.recognizer.sessionStarted = (_, e) => {
+      console.log('🟢 Azure音声認識セッション開始:', e.sessionId);
+    };
+
+    this.recognizer.sessionStopped = (_, e) => {
+      console.log('🔴 Azure音声認識セッション停止:', e.sessionId);
+    };
+
+    // 音声検出イベント
+    this.recognizer.speechStartDetected = (_, e) => {
+      console.log('🎵 音声検出開始 - 話し始めました');
+      this.lastSpokenTime = Date.now();
+    };
+
+    this.recognizer.speechEndDetected = (_, e) => {
+      console.log('🔇 音声検出終了 - 話し終わりました');
+    };
+
     this.recognizer.recognizing = (_, e) => {
-      console.log('🎯 Azure認識中:', e.result.text);
+      console.log('🎯 Azure認識中:', e.result.text, 'Reason:', this.getReasonText(e.result.reason));
       if (e.result.text.trim()) {
         this.accumulatedText = e.result.text;
         this.lastSpokenTime = Date.now();
@@ -51,17 +84,39 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
     };
 
     this.recognizer.recognized = (_, e) => {
-      console.log('✅ Azure認識完了:', e.result.text, 'Reason:', e.result.reason);
+      console.log('✅ Azure認識完了:', {
+        text: e.result.text,
+        reason: this.getReasonText(e.result.reason),
+        duration: e.result.duration,
+        offset: e.result.offset
+      });
+      
       if (e.result.reason === ResultReason.RecognizedSpeech && e.result.text.trim()) {
         this.textBuffer.push(e.result.text.trim());
         this.lastSpokenTime = Date.now();
         console.log('📋 バッファに追加:', e.result.text.trim());
+      } else if (e.result.reason === ResultReason.NoMatch) {
+        console.log('🔍 音声が検出されませんでした - マイクが正常に動作しているか確認してください');
       }
     };
 
+    // エラーハンドリングの強化
+    this.recognizer.canceled = (_, e) => {
+      console.error('❌ Azure認識キャンセル:', {
+        reason: e.reason,
+        errorCode: e.errorCode,
+        errorDetails: e.errorDetails
+      });
+    };
+
+    this.lastSpokenTime = Date.now();
     this.recognizer.startContinuousRecognitionAsync(
-      () => console.log('✅ Azure認識開始成功'),
-      (error) => console.error('❌ Azure認識開始エラー:', error)
+      () => {
+        console.log('✅ Azure認識開始成功 - 話してください');
+      },
+      (error) => {
+        console.error('❌ Azure認識開始エラー:', error);
+      }
     );
 
     this.silenceCheckInterval = setInterval(() => {
