@@ -127,24 +127,31 @@ export default function CameraModal() {
       const ctx = canvas.getContext('2d');
       if (ctx && videoRef.current) {
         ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-        // 高品質のJPEG画像としてBase64エンコード（適切なMIME型プレフィックス付き）
-        const imageData = canvas.toDataURL('image/jpeg', 0.8);
         
-        // Base64データが正しい形式になっているかチェック
-        if (!imageData.startsWith('data:image/')) {
-          console.error('Base64データの形式が不正です:', imageData.substring(0, 50));
-          return;
+        try {
+          // 高品質のJPEG画像としてBase64エンコード（適切なMIME型プレフィックス付き）
+          const imageData = canvas.toDataURL('image/jpeg', 0.8);
+          
+          // Base64データが正しい形式になっているかチェック
+          if (!imageData.startsWith('data:image/')) {
+            console.error('Base64データの形式が不正です:', imageData.substring(0, 50));
+            console.error('canvas.toDataURL()の結果:', typeof imageData, imageData.length);
+            return;
+          }
+          
+          console.log('✅ 撮影画像をBase64形式で生成成功:', {
+            format: 'image/jpeg',
+            quality: 0.8,
+            dataLength: imageData.length,
+            isValidBase64: imageData.startsWith('data:image/jpeg;base64,'),
+            mimeType: imageData.split(';')[0],
+            preview: imageData.substring(0, 50) + '...'
+          });
+          
+          setCapturedImage(imageData);
+        } catch (error) {
+          console.error('canvas.toDataURL()でエラーが発生:', error);
         }
-        
-        console.log('撮影画像をBase64形式で生成:', {
-          format: 'image/jpeg',
-          quality: 0.8,
-          dataLength: imageData.length,
-          isBase64: imageData.startsWith('data:image/'),
-          mimeType: imageData.split(';')[0],
-          preview: imageData.substring(0, 50) + '...'
-        });
-        setCapturedImage(imageData);
       }
     }
   };
@@ -185,19 +192,28 @@ export default function CameraModal() {
       try {
         console.log('撮影した画像をチャットに送信します');
 
-        // Base64データから画像タイプを判定
-        const mimeMatch = capturedImage.match(/data:([^;]+);/);
-        const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+        // capturedImageが既にBase64形式かチェック
+        let finalImageData = capturedImage;
+        
+        if (!capturedImage.startsWith('data:image/')) {
+          console.log('画像データがBase64形式ではありません。変換します:', typeof capturedImage);
+          // もしObjectやBlobの場合は、ここで変換処理を追加
+          if (typeof capturedImage === 'object') {
+            console.error('画像データがオブジェクト形式です。Base64変換が必要です。');
+            return;
+          }
+          finalImageData = `data:image/jpeg;base64,${capturedImage}`;
+        }
 
         console.log('送信する画像データ:', {
-          mimeType: mimeType,
-          urlLength: capturedImage.length,
-          isBase64: capturedImage.startsWith('data:image/'),
-          preview: capturedImage.substring(0, 50) + '...'
+          isBase64: finalImageData.startsWith('data:image/'),
+          urlLength: finalImageData.length,
+          mimeType: finalImageData.split(';')[0],
+          preview: finalImageData.substring(0, 50) + '...'
         });
 
-        // 画像データを直接contentに格納して送信
-        await sendMessage(capturedImage);
+        // 完全なBase64データURLを直接contentに格納して送信
+        await sendMessage(finalImageData);
 
         setIsOpen(false);
         setCapturedImage(null);
