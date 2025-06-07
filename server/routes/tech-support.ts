@@ -1012,10 +1012,10 @@ router.post('/upload', upload.single('file'), async (req, res) => {
           .map(word => word.toLowerCase());
 
         // 基本キーワードと追加キーワードを結合
-        const keywords = ["保守用車", "部品", "写真", "エンジン", "整備", "修理", ...additionalKeywords];
+        const allKeywords = ["保守用車", "部品", "写真", "エンジン", "整備", "修理", ...additionalKeywords];
 
         // 検索用の統合テキスト
-        const searchText = [title, category, ...keywords, "動力", "機械", "運転"].join(' ');
+        const searchText = [title, category, ...allKeywords, "動力", "機械", "運転"].join(' ');
 
         // 詳細情報を充実させるための処理内容
         const details = [
@@ -1033,10 +1033,10 @@ router.post('/upload', upload.single('file'), async (req, res) => {
           pngFallback: '',
           title: title,
           category: category,
-          keywords: keywords,
+          keywords: allKeywords,
           description: `保守用車の${category}に関する図面または写真です。${title}の詳細を示しています。`,
           details: details.join('. '),
-          searchText: `${title} ${category} ${keywords.join(' ')} 保守用車 技術図面 整備 点検 修理`,
+          searchText: `${title} ${category} ${allKeywords.join(' ')} 保守用車 技術図面 整備 点検 修理`,
           metadata: {
             uploadDate: new Date().toISOString(),
             fileSize: file.size,
