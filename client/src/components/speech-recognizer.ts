@@ -32,11 +32,22 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
       region: this.azureRegion 
     });
 
-    // マイクアクセス許可を事前に確認
+    // マイクアクセス許可を事前に確認し、音声レベルをテスト
     try {
       console.log('🎙️ マイクロフォンアクセス許可を確認中...');
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 16000
+        } 
+      });
       console.log('✅ マイクロフォンアクセス許可済み');
+      
+      // 音声レベルを3秒間監視
+      await this.testMicrophoneLevel(stream);
+      
       stream.getTracks().forEach(track => track.stop()); // リソースを解放
     } catch (error) {
       console.error('❌ マイクロフォンアクセス拒否:', error);
@@ -46,10 +57,23 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
     const speechConfig = SpeechConfig.fromSubscription(this.azureKey, this.azureRegion);
     speechConfig.speechRecognitionLanguage = 'ja-JP';
     
-    // より詳細な設定でデバッグ
-    speechConfig.setProperty('SpeechServiceConnection_InitialSilenceTimeoutMs', '5000');
-    speechConfig.setProperty('SpeechServiceConnection_EndSilenceTimeoutMs', '2000');
+    // 音声検出感度を最適化
+    speechConfig.setProperty('SpeechServiceConnection_InitialSilenceTimeoutMs', '8000');
+    speechConfig.setProperty('SpeechServiceConnection_EndSilenceTimeoutMs', '3000');
     speechConfig.setProperty('SpeechServiceConnection_Mode', 'Interactive');
+    speechConfig.setProperty('SpeechServiceConnection_RecoMode', 'INTERACTIVE');
+    speechConfig.setProperty('SpeechServiceConnection_EnableAudioLogging', 'true');
+    
+    // マイク入力感度の設定
+    speechConfig.setProperty('AudioConfig_DeviceNameForCapture', 'Default');
+    speechConfig.setProperty('AudioConfig_PlaybackBufferLengthInMs', '50');
+    
+    console.log('🎚️ Azure音声設定完了:', {
+      language: 'ja-JP',
+      initialSilence: '8000ms',
+      endSilence: '3000ms',
+      mode: 'Interactive'
+    });
     
     console.log('🎯 AudioConfig作成中...');
     const audioConfig = AudioConfig.fromDefaultMicrophoneInput();
@@ -152,6 +176,54 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
   }
 
   sendToServer?: (text: string) => void;
+
+  private async testMicrophoneLevel(stream: MediaStream): Promise<void> {
+    return new Promise((resolve) => {
+      console.log('🔊 マイクロフォン音声レベルテスト開始（3秒間）');
+      
+      const audioContext = new AudioContext();
+      const analyser = audioContext.createAnalyser();
+      const microphone = audioContext.createMediaStreamSource(stream);
+      
+      analyser.fftSize = 256;
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      
+      microphone.connect(analyser);
+      
+      let maxLevel = 0;
+      let sampleCount = 0;
+      const startTime = Date.now();
+      
+      const checkLevel = () => {
+        analyser.getByteFrequencyData(dataArray);
+        
+        // 音声レベルを計算
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          sum += dataArray[i];
+        }
+        const average = sum / bufferLength;
+        maxLevel = Math.max(maxLevel, average);
+        sampleCount++;
+        
+        if (Date.now() - startTime < 3000) {
+          setTimeout(checkLevel, 100);
+        } else {
+          console.log('📊 マイクテスト結果:', {
+            maxLevel: maxLevel.toFixed(2),
+            samples: sampleCount,
+            status: maxLevel > 5 ? '✅ 音声検出可能' : '⚠️ 音声レベル低'
+          });
+          
+          audioContext.close();
+          resolve();
+        }
+      };
+      
+      checkLevel();
+    });
+  }
 
   private getReasonText(reason: ResultReason): string {
     switch (reason) {
