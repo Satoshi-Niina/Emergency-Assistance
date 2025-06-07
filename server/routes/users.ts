@@ -2,7 +2,7 @@
 import { Router } from 'express';
 import { users } from '@shared/schema';
 import { db } from '../db';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
 const router = Router();
 
@@ -37,6 +37,11 @@ router.patch('/:id', async (req, res) => {
     console.log(`[DEBUG] リクエストボディ:`, { username, display_name, role, department, hasPassword: !!password });
     console.log(`[DEBUG] Full request params:`, req.params);
     console.log(`[DEBUG] Full request URL:`, req.url);
+    console.log(`[DEBUG] セッション情報:`, { 
+      sessionUserId: req.session?.userId, 
+      sessionUserRole: req.session?.userRole,
+      hasSession: !!req.session 
+    });
 
     // バリデーション
     if (!username || !display_name) {
@@ -72,10 +77,16 @@ router.patch('/:id', async (req, res) => {
     // 異なる検索方法を試行
     console.log(`[DEBUG] 検索クエリを実行中...`);
     
-    // 方法1: 基本的な検索
-    const existingUser = await db.query.users.findFirst({
-      where: eq(users.id, id)
-    });
+    // 方法1: 基本的な検索（UUIDの文字列形式で検索）
+    let existingUser;
+    try {
+      existingUser = await db.query.users.findFirst({
+        where: eq(users.id, id)
+      });
+    } catch (queryError) {
+      console.error(`[ERROR] Drizzle検索エラー:`, queryError);
+      existingUser = null;
+    }
 
     console.log(`[DEBUG] 基本検索結果:`, existingUser ? {
       id: existingUser.id,

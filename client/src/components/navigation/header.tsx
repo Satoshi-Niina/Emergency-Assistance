@@ -37,7 +37,10 @@ export default function Header() {
       </div>
       <div className="flex items-center">
         <div className="ml-3 flex items-center">
-          <span className="text-sm">ログインユーザー：{user?.username || 'ゲスト'}</span>
+          <span className="text-sm">
+            ログインユーザー：{user?.display_name || user?.username || 'ゲスト'} 
+            {user?.role && ` (${user.role === 'admin' ? '管理者' : '一般ユーザー'})`}
+          </span>
         </div>
       </div>
     </header>
