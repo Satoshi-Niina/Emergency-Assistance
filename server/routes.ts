@@ -424,6 +424,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/chats/:id/clear", requireAuth, async (req, res) => {
     try {
       const chatId = parseInt(req.params.id);
+      const { force, clearAll } = req.body;
+
+      console.log(`チャット履歴クリア開始: chatId=${chatId}, force=${force}, clearAll=${clearAll}`);
 
       const chat = await storage.getChat(chatId);
       if (!chat) {
@@ -432,28 +435,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // チャットアクセス制限を一時的に緩和 (すべてのログインユーザーが全チャットの履歴をクリア可能に)
       console.log(`チャット履歴クリア: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${req.session.userId}`);
-      // if (chat.userId !== req.session.userId) {
-      //   return res.status(403).json({ message: "Forbidden" });
-      // }
 
-      // メッセージとそれに関連するメディアを実際に削除する
+      let deletedMessageCount = 0;
+      let deletedMediaCount = 0;
+
       try {
-        // データベースからメッセージを削除する
-        await storage.clearChatMessages(chatId);
-        console.log(`[DEBUG] Chat messages cleared for chat ID: ${chatId}`);
+        // まず現在のメッセージ数を確認
+        const beforeMessages = await storage.getMessagesForChat(chatId);
+        const beforeCount = beforeMessages.length;
+        console.log(`削除前のメッセージ数: ${beforeCount}`);
+
+        // 各メッセージに関連するメディアも削除
+        for (const message of beforeMessages) {
+          try {
+            const media = await storage.getMediaForMessage(message.id);
+            for (const mediaItem of media) {
+              await storage.deleteMedia(mediaItem.id);
+              deletedMediaCount++;
+            }
+          } catch (mediaError) {
+            console.error(`メディア削除エラー (messageId: ${message.id}):`, mediaError);
+          }
+        }
+
+        // データベースからメッセージを完全削除
+        const result = await storage.clearChatMessages(chatId);
+        console.log(`データベース削除結果:`, result);
+
+        // 削除後のメッセージ数を確認
+        const afterMessages = await storage.getMessagesForChat(chatId);
+        const afterCount = afterMessages.length;
+        deletedMessageCount = beforeCount - afterCount;
+        
+        console.log(`削除後のメッセージ数: ${afterCount}, 削除されたメッセージ数: ${deletedMessageCount}`);
+
+        if (afterCount > 0) {
+          console.warn(`警告: ${afterCount}件のメッセージが残っています`);
+          
+          // 強制削除フラグが設定されている場合は、残ったメッセージも個別に削除
+          if (force || clearAll) {
+            console.log('強制削除モードで残存メッセージを個別削除します');
+            for (const remainingMessage of afterMessages) {
+              try {
+                await storage.deleteMessage(remainingMessage.id);
+                console.log(`個別削除完了: messageId=${remainingMessage.id}`);
+                deletedMessageCount++;
+              } catch (individualDeleteError) {
+                console.error(`個別削除エラー (messageId: ${remainingMessage.id}):`, individualDeleteError);
+              }
+            }
+          }
+        }
+
       } catch (dbError) {
-        console.error(`Error clearing messages from database: ${dbError}`);
-        // データベースエラーが発生した場合でもUIクリアは続行
+        console.error(`データベース削除エラー:`, dbError);
+        return res.status(500).json({ 
+          message: "Database deletion failed",
+          error: dbError.message 
+        });
       }
 
-      // クライアント側でのクリア用フラグをセット
+      // 最終確認
+      const finalMessages = await storage.getMessagesForChat(chatId);
+      const finalCount = finalMessages.length;
+
+      console.log(`チャット履歴クリア完了: chatId=${chatId}, 削除メッセージ数=${deletedMessageCount}, 削除メディア数=${deletedMediaCount}, 最終メッセージ数=${finalCount}`);
+
       return res.json({ 
         cleared: true,
-        message: "Chat cleared successfully" 
+        message: "Chat cleared successfully",
+        deletedMessages: deletedMessageCount,
+        deletedMedia: deletedMediaCount,
+        remainingMessages: finalCount,
+        timestamp: new Date().toISOString()
       });
     } catch (error) {
       console.error('Chat clear error:', error);
-      return res.status(500).json({ message: "Error clearing chat" });
+      return res.status(500).json({ 
+        message: "Error clearing chat",
+        error: error.message 
+      });
     }
   });
 

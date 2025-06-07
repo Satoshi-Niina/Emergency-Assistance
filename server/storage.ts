@@ -70,7 +70,68 @@ export const storage = {
     return new DatabaseStorage().createMessage(message);
   },
   clearChatMessages: async (chatId: number): Promise<void> => {
-    return new DatabaseStorage().clearChatMessages(chatId);
+    try {
+      console.log(`データベースからチャット${chatId}のメッセージを削除開始`);
+
+      // まずメディアファイルも削除
+      const mediaStmt = this.db.prepare(`
+        DELETE FROM media 
+        WHERE message_id IN (
+          SELECT id FROM messages WHERE chat_id = ?
+        )
+      `);
+      const mediaResult = mediaStmt.run(chatId);
+      console.log(`メディア削除結果:`, mediaResult);
+
+      // メッセージを削除
+      const messageStmt = this.db.prepare("DELETE FROM messages WHERE chat_id = ?");
+      const messageResult = messageStmt.run(chatId);
+      console.log(`メッセージ削除結果:`, messageResult);
+
+      // 削除を確認
+      const checkStmt = this.db.prepare("SELECT COUNT(*) as count FROM messages WHERE chat_id = ?");
+      const remainingCount = checkStmt.get(chatId) as { count: number };
+      console.log(`削除後の残存メッセージ数: ${remainingCount.count}`);
+
+      return {
+        deletedMessages: messageResult.changes || 0,
+        deletedMedia: mediaResult.changes || 0,
+        remainingMessages: remainingCount.count
+      };
+    } catch (error) {
+      console.error('clearChatMessages error:', error);
+      throw error;
+    }
+  },
+
+  deleteMessage: async (messageId: number) => {
+    try {
+      // まずメディアを削除
+      const mediaStmt = this.db.prepare("DELETE FROM media WHERE message_id = ?");
+      const mediaResult = mediaStmt.run(messageId);
+
+      // メッセージを削除
+      const messageStmt = this.db.prepare("DELETE FROM messages WHERE id = ?");
+      const messageResult = messageStmt.run(messageId);
+
+      return {
+        deletedMessage: messageResult.changes || 0,
+        deletedMedia: mediaResult.changes || 0
+      };
+    } catch (error) {
+      console.error('deleteMessage error:', error);
+      throw error;
+    }
+  },
+
+  deleteMedia: async (mediaId: number) => {
+    try {
+      const stmt = this.db.prepare("DELETE FROM media WHERE id = ?");
+      return stmt.run(mediaId);
+    } catch (error) {
+      console.error('deleteMedia error:', error);
+      throw error;
+    }
   },
 
   // Media methods

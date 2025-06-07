@@ -770,7 +770,34 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // チャット履歴を全て削除する関数
   const clearChatHistory = useCallback(async () => {
     try {
-      // まずローカルの状態をクリア
+      setIsClearing(true);
+
+      // サーバーへのリクエストを最初に実行して確実にデータベースをクリア
+      if (chatId) {
+        try {
+          console.log(`チャット履歴削除開始: chatId=${chatId}`);
+          
+          // 強制クリアフラグ付きでサーバーに送信
+          const response = await apiRequest('POST', `/api/chats/${chatId}/clear`, {
+            force: true,
+            clearAll: true
+          });
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`サーバーでのチャット履歴削除に失敗: ${response.status} - ${errorText}`);
+            throw new Error(`削除APIエラー: ${response.status}`);
+          }
+          
+          const result = await response.json();
+          console.log('サーバー側削除結果:', result);
+        } catch (error) {
+          console.error('サーバー側削除エラー:', error);
+          // サーバー側の削除に失敗した場合もローカルクリアは続行
+        }
+      }
+
+      // ローカルの状態をクリア
       setMessages([]);
       setSearchResults([]);
       setHasUnexportedMessages(false);
@@ -799,32 +826,35 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const clearTimestamp = Date.now().toString();
       localStorage.setItem('chat_cleared_timestamp', clearTimestamp);
 
-      // React Queryのキャッシュをクリア
+      // React Queryのキャッシュを強制的にクリア
       try {
         // @ts-ignore
         if (window.queryClient) {
+          console.log('React Queryキャッシュをクリアします');
           window.queryClient.removeQueries({ queryKey: ['/api/chats/1/messages'] });
           window.queryClient.setQueryData(['/api/chats/1/messages'], []);
+          // 強制的に無効化してサーバーから再取得
+          window.queryClient.invalidateQueries({ queryKey: ['/api/chats/1/messages'] });
         }
       } catch (cacheError) {
         console.error('キャッシュクリアエラー:', cacheError);
       }
 
-      // サーバーへのリクエストは最後に実行
-      if (chatId) {
-        setIsClearing(true);
+      // 少し待ってからメッセージを再読み込み（削除が反映されているか確認）
+      setTimeout(async () => {
         try {
-          const response = await apiRequest('POST', `/api/chats/${chatId}/clear`);
-          if (!response.ok) {
-            console.warn(`サーバーでのチャット履歴削除に失敗しました (${response.status})`);
+          const verifyResponse = await apiRequest('GET', `/api/chats/${chatId}/messages?clear=true`);
+          if (verifyResponse.ok) {
+            const remainingMessages = await verifyResponse.json();
+            console.log('削除後の残存メッセージ数:', remainingMessages.length);
+            if (remainingMessages.length > 0) {
+              console.warn('メッセージが完全に削除されていません:', remainingMessages);
+            }
           }
-        } catch (error) {
-          console.error('APIリクエストエラー:', error);
-          // エラーは無視（ローカルの状態は既にクリア済み）
-        } finally {
-          setIsClearing(false);
+        } catch (verifyError) {
+          console.error('削除確認エラー:', verifyError);
         }
-      }
+      }, 1000);
 
       toast({
         title: 'チャット履歴を削除しました',
@@ -834,9 +864,11 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.error('チャット履歴削除エラー:', error);
       toast({
         title: 'チャット履歴削除エラー',
-        description: 'チャット履歴の削除に失敗しました。ローカルの状態はクリアされました。',
+        description: 'チャット履歴の削除に失敗しました。ページを再読み込みしてください。',
         variant: 'destructive',
       });
+    } finally {
+      setIsClearing(false);
     }
   }, [chatId, toast]);
 
