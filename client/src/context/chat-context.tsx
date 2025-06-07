@@ -119,8 +119,9 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [micSilenceTimeoutId, setMicSilenceTimeoutId] = useState<NodeJS.Timeout | null>(null);
   const [recognitionBuffer, setRecognitionBuffer] = useState<string[]>([]);
   const [bufferTimeoutId, setBufferTimeoutId] = useState<NodeJS.Timeout | null>(null);
-  const BUFFER_INTERVAL = 300; // バッファリング間隔を300ミリ秒に戻す
-  const SILENCE_THRESHOLD = 1000; // 無音検出時間は1秒のまま
+  const BUFFER_INTERVAL = 200; // バッファリング間隔を200ミリ秒に統一
+  const SILENCE_THRESHOLD = 1000; // 無音検出時間: 1秒
+  const AUTO_STOP_THRESHOLD = 10000; // 自動停止時間: 10秒
 
   // チャットの初期化
   const initializeChat = useCallback(async () => {
@@ -571,7 +572,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
           if (micSilenceTimeoutId) clearTimeout(micSilenceTimeoutId);
           const silenceId = setTimeout(() => {
-            if (Date.now() - lastAudioInputTime >= SILENCE_THRESHOLD) {
+            if (Date.now() - lastAudioInputTime >= AUTO_STOP_THRESHOLD) {
               stopSpeechRecognition();
               stopBrowserSpeechRecognition();
               setIsRecording(false);
@@ -581,7 +582,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               setLastSentText('');
               setRecordedText('');
             }
-          }, SILENCE_THRESHOLD);
+          }, AUTO_STOP_THRESHOLD);
           setMicSilenceTimeoutId(silenceId);
 
           // 認識テキストをバッファに追加
