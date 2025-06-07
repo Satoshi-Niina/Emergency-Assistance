@@ -691,115 +691,103 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       setIsLoading(true);
 
-      // 現在のチャットIDを取得し、localStorageにも保存（他のコンポーネントからアクセスできるように）
+      // 現在のチャットIDを取得
       const currentChatId = chatId || 1;
-      localStorage.setItem('currentChatId', String(currentChatId));
       console.log('応急処置ガイド: チャットID', currentChatId, 'にデータを送信します');
 
-      // ログ出力を追加（デバッグ用）
-      console.log('送信データ:', {
+      // ChatMessage形式でメッセージを作成
+      const timestamp = Date.now();
+      
+      // ユーザーメッセージ（左側）
+      const userMessage = {
+        id: timestamp,
         chatId: currentChatId,
-        guideData: {
-          ...guideData,
-          content: guideData.content ? guideData.content.substring(0, 100) + '...' : null
-        }
+        content: `応急処置ガイド「${guideData.title}」を実施しました`,
+        isAiResponse: false,
+        senderId: 'user',
+        timestamp: new Date()
+      };
+
+      // AI応答メッセージ（右側）
+      const aiMessage = {
+        id: timestamp + 1,
+        chatId: currentChatId,
+        content: `■ 応急処置ガイド実施記録\n\n**${guideData.title}**\n\n${guideData.content}\n\n---\n**AI分析**: 応急処置手順が正常に記録されました。実施状況に関して追加のご質問がございましたらお聞かせください。`,
+        isAiResponse: true,
+        senderId: 'ai',
+        timestamp: new Date()
+      };
+
+      console.log('🏥 ChatMessage形式でメッセージを作成しました:');
+      console.log('- ユーザーメッセージ:', userMessage);
+      console.log('- AIメッセージ:', aiMessage);
+      
+      // メッセージを即座にローカル状態に追加
+      setMessages(prevMessages => {
+        console.log('✅ メッセージをローカル状態に追加 - 現在のメッセージ数:', prevMessages.length);
+        const newMessages = [...prevMessages, userMessage, aiMessage];
+        console.log('✅ 応急処置ガイドメッセージ追加完了:', newMessages.length, '件');
+        return newMessages;
       });
 
+      // バックエンドにも送信を試行（非同期）
       try {
-        // 緊急ガイド専用のエンドポイントを使用
         const response = await apiRequest('POST', `/api/emergency-guide/send`, {
           chatId: currentChatId,
-          guideData
+          guideData,
+          userMessage,
+          aiMessage
         });
 
-        // レスポンスをチェック
-        if (!response.ok) {
-          // エラーの詳細情報を取得
-          try {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'ガイドの送信に失敗しました');
-          } catch (parseError) {
-            throw new Error(`ガイドの送信に失敗しました (${response.status})`);
-          }
+        if (response.ok) {
+          const data = await response.json();
+          console.log('応急処置ガイド: サーバーへの送信成功', data);
+        } else {
+          console.warn('サーバーへの送信は失敗しましたが、ローカルメッセージは表示されています');
         }
+      } catch (apiError) {
+        console.error('API送信エラー:', apiError);
+        // サーバー送信に失敗してもローカルメッセージは表示済み
+      }
 
-        // レスポンスデータを取得
-        const data = await response.json();
-        console.log('応急処置ガイド: 送信成功', data);
-        
-        // ユニークなタイムスタンプベースのIDを生成
-        const timestamp = Date.now();
-        
-        // ユーザーメッセージを追加（左側）
-        const userGuideMessage = {
-          id: timestamp,
-          chatId: currentChatId,
-          content: `応急処置ガイド「${guideData.title}」を実施しました`,
-          isAiResponse: false,
-          senderId: 'user',
-          timestamp: new Date()
-        };
+      // 関連する画像検索も実行
+      if (guideData.title) {
+        searchBySelectedText(guideData.title);
+      }
 
-        // AI応答メッセージを追加（右側）
-        const aiResponseMessage = {
-          id: timestamp + 1,
-          chatId: currentChatId,
-          content: `■ 応急処置ガイド実施記録\n\n**${guideData.title}**\n\n${guideData.content}\n\n---\n**AI分析**: 応急処置手順が正常に記録されました。実施状況に関して追加のご質問がございましたらお聞かせください。`,
-          isAiResponse: true,
-          senderId: 'ai',
-          timestamp: new Date()
-        };
+      // 成功トーストを表示
+      toast({
+        title: '応急処置ガイド記録完了',
+        description: 'チャット履歴に応急処置の実施記録が追加されました',
+      });
 
-        console.log('🏥 応急処置ガイドメッセージを追加します:');
-        console.log('- ユーザーメッセージ:', userGuideMessage);
-        console.log('- AIメッセージ:', aiResponseMessage);
-        
-        // メッセージを強制的に追加（同期的に処理）
-        setMessages(prevMessages => {
-          console.log('✅ メッセージ追加処理開始 - 現在のメッセージ数:', prevMessages.length);
-          
-          // 両方のメッセージを追加
-          const newMessages = [...prevMessages, userGuideMessage, aiResponseMessage];
-          console.log('✅ 応急処置ガイドメッセージ追加完了:', newMessages.length, '件');
-          console.log('✅ 追加されたユーザーメッセージID:', userGuideMessage.id);
-          console.log('✅ 追加されたAIメッセージID:', aiResponseMessage.id);
-          
-          return newMessages;
-        });
-
-        // 関連する画像検索も実行
-        if (guideData.title) {
-          searchBySelectedText(guideData.title);
+      // スクロール処理
+      setTimeout(() => {
+        const chatContainer = document.getElementById('chatMessages');
+        if (chatContainer) {
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+          console.log('チャットエリアを最下部にスクロールしました');
         }
-
-        // 成功トーストを表示
-        toast({
-          title: '応急処置ガイド記録完了',
-          description: 'チャット履歴に応急処置の実施記録が追加されました',
-        });
-
-        // スクロール処理を独立して実行
-        setTimeout(() => {
-          const chatContainer = document.getElementById('chatMessages');
-          if (chatContainer) {
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-            console.log('チャットエリアを最下部にスクロールしました');
-          }
-        }, 100);
-        
-        // メッセージ表示の成功を確認するためのログ
-        console.log('✅ 応急処置ガイドメッセージの送信が完了しました');
-        
-        // イベント送信
-        window.dispatchEvent(new CustomEvent('emergency-guide-sent', {
-          detail: { 
-            guideData, 
-            timestamp: new Date(), 
-            success: true
-          }
-        }));
-        
-        return data;
+      }, 100);
+      
+      // イベント送信
+      window.dispatchEvent(new CustomEvent('emergency-guide-sent', {
+        detail: { 
+          guideData, 
+          timestamp: new Date(), 
+          success: true,
+          userMessage,
+          aiMessage
+        }
+      }));
+      
+      // ChatMessage形式で結果を返す
+      return {
+        success: true,
+        userMessage,
+        aiMessage,
+        guideData
+      };
       } catch (apiError) {
         console.error('APIリクエストエラー:', apiError);
         toast({
