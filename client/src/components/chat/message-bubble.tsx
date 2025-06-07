@@ -301,38 +301,77 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
           }`}
         >
           <div className="relative">
-            {/* contentが画像URLまたはBase64データの場合は画像として表示 */}
-            {(message.content.startsWith('data:image/') || 
-              message.content.startsWith('/uploads/') || 
-              message.content.startsWith('blob:') ||
-              /\.(jpg|jpeg|png|gif|webp)$/i.test(message.content)) ? (
-              <div className="mt-2">
-                <img
-                  src={message.content}
-                  alt="送信された画像"
-                  className="rounded-lg w-full max-w-xs cursor-pointer border border-blue-200 shadow-md"
-                  style={{ maxHeight: '300px', objectFit: 'contain' }}
-                  onClick={() => handleImagePreview(message.content)}
-                  onLoad={(e) => {
-                    console.log('content内画像読み込み成功:', {
-                      messageId: message.id,
-                      width: (e.target as HTMLImageElement).naturalWidth,
-                      height: (e.target as HTMLImageElement).naturalHeight,
-                      urlType: message.content.startsWith('data:') ? 'base64' : 'url'
-                    });
-                  }}
-                  onError={(e) => {
-                    console.error('content内画像読み込みエラー:', {
-                      messageId: message.id,
-                      url: message.content.substring(0, 100) + '...',
-                      isBase64: message.content.startsWith('data:image/')
-                    });
-                  }}
-                />
-              </div>
-            ) : message.content.trim() ? (
-              <p className={`${!isUserMessage ? "text-blue-600" : "text-black"}`}>{message.content}</p>
-            ) : null}
+            {/* contentが画像データかどうかを判定して表示 */}
+            {(() => {
+              const content = message.content.trim();
+              
+              // 画像データの判定条件を拡張
+              const isImageContent = (
+                content.startsWith('data:image/') ||           // Base64画像データ
+                content.startsWith('/uploads/') ||             // アップロード画像パス
+                content.startsWith('blob:') ||                 // Blob URL
+                content.startsWith('/knowledge-base/images/') || // ナレッジベース画像
+                /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(content) // 画像ファイル拡張子
+              );
+
+              if (isImageContent) {
+                console.log('画像コンテンツを検出:', {
+                  messageId: message.id,
+                  contentType: content.startsWith('data:') ? 'base64' : 'url',
+                  contentLength: content.length,
+                  preview: content.substring(0, 100) + '...'
+                });
+
+                return (
+                  <div className="mt-2">
+                    <img
+                      src={content}
+                      alt="送信された画像"
+                      className="rounded-lg w-full max-w-xs cursor-pointer border border-blue-200 shadow-md"
+                      style={{ maxHeight: '300px', objectFit: 'contain' }}
+                      onClick={() => handleImagePreview(content)}
+                      onLoad={(e) => {
+                        console.log('content内画像読み込み成功:', {
+                          messageId: message.id,
+                          width: (e.target as HTMLImageElement).naturalWidth,
+                          height: (e.target as HTMLImageElement).naturalHeight,
+                          urlType: content.startsWith('data:') ? 'base64' : 'url'
+                        });
+                      }}
+                      onError={(e) => {
+                        console.error('content内画像読み込みエラー:', {
+                          messageId: message.id,
+                          url: content.substring(0, 100) + '...',
+                          isBase64: content.startsWith('data:image/')
+                        });
+                        
+                        const img = e.target as HTMLImageElement;
+                        img.onerror = null; // Prevent infinite loop
+                        
+                        // Base64画像の場合はエラー表示
+                        if (content.startsWith('data:image/')) {
+                          img.style.display = 'none';
+                          const errorDiv = document.createElement('div');
+                          errorDiv.className = 'flex items-center justify-center bg-gray-100 border border-gray-300 rounded-lg p-4 max-w-xs';
+                          errorDiv.innerHTML = '<span class="text-gray-500 text-sm">画像の表示に失敗しました</span>';
+                          img.parentNode?.insertBefore(errorDiv, img);
+                        }
+                      }}
+                    />
+                  </div>
+                );
+              } else if (content) {
+                // テキストコンテンツの場合
+                return (
+                  <p className={`${!isUserMessage ? "text-blue-600" : "text-black"}`}>
+                    {content}
+                  </p>
+                );
+              } else {
+                // コンテンツが空の場合
+                return null;
+              }
+            })()}
 
             {/* テキスト選択時のコピーボタン */}
             {showCopyButton && (
