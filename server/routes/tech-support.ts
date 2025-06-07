@@ -402,6 +402,101 @@ const upload = multer({
 const router = express.Router();
 
 /**
+ * 画像検索APIエンドポイント
+ * クライアントからのFuse.js検索リクエストを処理
+ */
+router.post('/image-search', async (req, res) => {
+  try {
+    const { query, count = 10 } = req.body;
+    
+    if (!query || typeof query !== 'string') {
+      return res.status(400).json({ 
+        error: 'クエリパラメータが必要です',
+        images: [] 
+      });
+    }
+
+    console.log(`画像検索APIリクエスト: query="${query}", count=${count}`);
+    
+    // knowledge-base/data/image_search_data.json からデータを読み込み
+    const knowledgeBaseDataDir = path.join(process.cwd(), 'knowledge-base', 'data');
+    const imageSearchDataPath = path.join(knowledgeBaseDataDir, 'image_search_data.json');
+    
+    let imageSearchData = [];
+    
+    if (fs.existsSync(imageSearchDataPath)) {
+      try {
+        const jsonContent = fs.readFileSync(imageSearchDataPath, 'utf8');
+        imageSearchData = JSON.parse(jsonContent);
+        console.log(`画像検索データを読み込み: ${imageSearchData.length}件`);
+      } catch (jsonErr) {
+        console.error("画像検索データの読み込みエラー:", jsonErr);
+        return res.status(500).json({ 
+          error: '画像検索データの読み込みに失敗しました',
+          images: [] 
+        });
+      }
+    } else {
+      console.warn(`画像検索データファイルが見つかりません: ${imageSearchDataPath}`);
+      return res.json({ 
+        images: [],
+        message: '画像検索データが初期化されていません' 
+      });
+    }
+
+    // 簡単なキーワード検索を実装（Fuse.jsの代替）
+    const searchResults = imageSearchData.filter((item: any) => {
+      if (!item) return false;
+      
+      const searchFields = [
+        item.title || '',
+        item.category || '',
+        item.description || '',
+        ...(item.keywords || []),
+        item.searchText || ''
+      ].join(' ').toLowerCase();
+      
+      const queryLower = query.toLowerCase();
+      const keywords = queryLower.split(/\s+/).filter(k => k.length > 0);
+      
+      // すべてのキーワードが含まれているかチェック
+      return keywords.some(keyword => searchFields.includes(keyword));
+    });
+
+    // 結果を制限
+    const limitedResults = searchResults.slice(0, count);
+    
+    console.log(`画像検索結果: ${limitedResults.length}件見つかりました`);
+    
+    // クライアントが期待する形式で結果を返す
+    const formattedResults = limitedResults.map((item: any) => ({
+      id: item.id,
+      url: item.file,
+      file: item.file,
+      title: item.title || '',
+      description: item.description || '',
+      category: item.category || '',
+      keywords: item.keywords || [],
+      metadata: item.metadata || {}
+    }));
+
+    return res.json({
+      images: formattedResults,
+      total: formattedResults.length,
+      query: query
+    });
+    
+  } catch (error) {
+    console.error('画像検索APIエラー:', error);
+    return res.status(500).json({ 
+      error: '画像検索中にエラーが発生しました',
+      details: error instanceof Error ? error.message : String(error),
+      images: [] 
+    });
+  }
+});
+
+/**
  * キャッシュをクリアするエンドポイント
  * 削除操作後にクライアントがこれを呼び出すことで、最新情報を確実に取得
  */
