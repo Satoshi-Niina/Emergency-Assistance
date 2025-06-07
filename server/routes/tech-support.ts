@@ -814,8 +814,7 @@ router.post('/init-image-search-data', async (req, res) => {
                     file: imagePath,
                     title: `${category} ${index + 1}`,
                     category: category,
-                    keywords:```javascript
- [...keywords, "エンジン", "整備", "修理", "部品"],
+                    keywords: [...keywords, "エンジン", "整備", "修理", "部品"],
                     description: description,
                     searchText: `${category} ${index + 1} ${keywords.join(' ')} エンジン 整備 修理 部品 保守用車 マニュアル`
                   };
