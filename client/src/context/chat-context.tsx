@@ -375,14 +375,58 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoading(true);
 
     try {
-      const userMessage: Message = {
-        id: Date.now(),
-        content: content.trim(),
-        sender: 'user',
-        timestamp: new Date(),
-        mediaUrls: mediaUrls
-      };
+      //   const userMessage: Message = {
+      //     id: Date.now(),
+      //     content: content.trim(),
+      //     sender: 'user',
+      //     timestamp: new Date(),
+      //     mediaUrls: mediaUrls
+      //   };
 
+      //   console.log('メッセージ送信開始:', { chatId, content, mediaUrls });
+
+      //   // メディアURLsのデバッグログ
+      //   if (mediaUrls && mediaUrls.length > 0) {
+      //     console.log('送信するメディア情報:');
+      //     mediaUrls.forEach((media, index) => {
+      //       console.log(`  ${index + 1}. タイプ: ${media.type}, URL: ${media.url}`);
+      //       // URLが有効かチェック
+      //       if (media.type === 'image' && media.url.startsWith('data:image/')) {
+      //         console.log(`    Base64画像データ: ${media.url.substring(0, 50)}...`);
+      //       }
+      //     });
+      //   }
+
+      //   setMessages(prev => [...prev, userMessage]);
+
+      //   // チャットIDが設定されていない場合は初期化
+      //   let currentChatId = chatId;
+      //   if (!currentChatId) {
+      //     currentChatId = await initializeChat();
+      //     if (!currentChatId) {
+      //       currentChatId = 1; // フォールバック
+      //     }
+      //   }
+
+      //   setIsLoading(true);
+      //   setDraftMessage(null);
+
+      //   console.log('メッセージ送信開始:', { chatId: currentChatId, content });
+
+      //   // ローカルでメッセージを即座に表示
+      //   const userMessage = {
+      //     id: Date.now(),
+      //     chatId: currentChatId,
+      //     content,
+      //     isAiResponse: false,
+      //     senderId: 'user',
+      //     timestamp: new Date(),
+      //     media: (mediaUrls || []).map((media, idx) => ({
+      //       id: Date.now() + idx,
+      //       messageId: Date.now(),
+      //       ...media
+      //     }))
+      //   };
       console.log('メッセージ送信開始:', { chatId, content, mediaUrls });
 
       // メディアURLsのデバッグログ
@@ -396,8 +440,6 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }
         });
       }
-
-      setMessages(prev => [...prev, userMessage]);
 
       // チャットIDが設定されていない場合は初期化
       let currentChatId = chatId;
@@ -427,6 +469,9 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           ...media
         }))
       };
+
+      setMessages(prev => [...prev, userMessage]);
+
 
       const aiMessage = {
         id: Date.now() + 1,
