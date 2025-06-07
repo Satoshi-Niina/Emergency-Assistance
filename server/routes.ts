@@ -1103,17 +1103,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   app.use('/api/troubleshooting', troubleshootingRouter);
   
-import usersRouter from './routes/users';
-
-// ルーター設定のデバッグ用ミドルウェア
-const routeDebugger = (req: Request, res: Response, next: NextFunction) => {
-  if (req.path.includes('/users/')) {
-    console.log(`[ROUTER DEBUG] ${req.method} ${req.originalUrl}`);
-    console.log(`[ROUTER DEBUG] Path: ${req.path}`);
-    console.log(`[ROUTER DEBUG] Params:`, req.params);
-  }
-  next();
-};
+  // ルーター設定のデバッグ用ミドルウェア
+  const routeDebugger = (req: Request, res: Response, next: NextFunction) => {
+    if (req.path.includes('/users/')) {
+      console.log(`[ROUTER DEBUG] ${req.method} ${req.originalUrl}`);
+      console.log(`[ROUTER DEBUG] Path: ${req.path}`);
+      console.log(`[ROUTER DEBUG] Params:`, req.params);
+    }
+    next();
+  };
 
   // ユーザー管理ルート
   app.use('/api/users', routeDebugger, usersRouter);
