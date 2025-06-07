@@ -311,16 +311,8 @@ export default function Chat() {
               <Button 
                 variant="destructive" 
                 onClick={() => {
+                  setIsEndChatDialogOpen(false);
                   console.log("送信せずに終了が選択されました");
-
-                  // 確認トーストを表示
-                 // toast({
-                 //   title: "終了しました",
-                 //   description: "応急処置ガイドを終了しました",
-                 // });
-
-                  // ダイアログを閉じる
-                  //setShowEndDialog(false);
                 }}
                 className="bg-red-500 hover:bg-red-600"
               >

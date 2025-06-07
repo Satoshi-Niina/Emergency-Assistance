@@ -63,12 +63,12 @@ const cleanupSpecificFiles = () => {
       console.log('問題となるファイルを削除します:', problemFile);
       fs.unlinkSync(problemFile);
     }
-    
+
     // 関連する画像を削除
     if (fs.existsSync(kbImageDir)) {
       const imageFiles = fs.readdirSync(kbImageDir);
       const relatedImages = imageFiles.filter(img => img.startsWith('guide_1744876404679'));
-      
+
       relatedImages.forEach(imgFile => {
         const imgPath = path.join(kbImageDir, imgFile);
         if (fs.existsSync(imgPath)) {
@@ -103,7 +103,7 @@ const storage = multer.diskStorage({
 const fileFilter = (_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   const allowedExtensions = ['.pptx', '.ppt', '.pdf', '.xlsx', '.xls', '.json'];
   const ext = path.extname(file.originalname).toLowerCase();
-  
+
   if (allowedExtensions.includes(ext)) {
     cb(null, true);
   } else {
@@ -124,37 +124,37 @@ async function processPowerPointFile(filePath: string): Promise<any> {
   try {
     const fileId = `guide_${Date.now()}`;
     const fileExtension = path.extname(filePath);
-    
+
     // PPTXファイルを解凍してXMLとして処理
     if (fileExtension.toLowerCase() === '.pptx') {
       const zip = new AdmZip(filePath);
       const extractDir = path.join(kbTempDir, fileId);
-      
+
       // 一時ディレクトリが存在しない場合は作成
       if (!fs.existsSync(kbTempDir)) {
         fs.mkdirSync(kbTempDir, { recursive: true });
       }
-      
+
       if (!fs.existsSync(extractDir)) {
         fs.mkdirSync(extractDir, { recursive: true });
       }
-      
+
       // ZIPとして展開
       zip.extractAllTo(extractDir, true);
-      
+
       // スライドXMLファイルを探す
       const slidesDir = path.join(extractDir, 'ppt', 'slides');
       const slideFiles = fs.existsSync(slidesDir) 
         ? fs.readdirSync(slidesDir).filter(file => file.startsWith('slide') && file.endsWith('.xml'))
         : [];
-      
+
       // スライドのテキスト内容を抽出
       const slides: any[] = [];
       for (let i = 0; i < slideFiles.length; i++) {
         const slideNumber = i + 1;
         const slideFilePath = path.join(slidesDir, slideFiles[i]);
         const slideContent = fs.readFileSync(slideFilePath, 'utf8');
-        
+
         // 画像の参照を探す
         const imageRefs: string[] = [];
         const imageRegex = /r:embed="rId(\d+)"/g;
@@ -162,7 +162,7 @@ async function processPowerPointFile(filePath: string): Promise<any> {
         while ((match = imageRegex.exec(slideContent)) !== null) {
           imageRefs.push(match[1]);
         }
-        
+
         // テキスト内容の抽出
         const textRegex = /<a:t>(.*?)<\/a:t>/g;
         const texts: string[] = [];
@@ -171,7 +171,7 @@ async function processPowerPointFile(filePath: string): Promise<any> {
             texts.push(match[1].trim());
           }
         }
-        
+
         // ノート（スピーカーノート）の内容を取得
         const noteFilePath = path.join(extractDir, 'ppt', 'notesSlides', `notesSlide${slideNumber}.xml`);
         let noteContent = '';
@@ -184,35 +184,35 @@ async function processPowerPointFile(filePath: string): Promise<any> {
             }
           }
         }
-        
+
         // メディアファイルを探して保存
         const imageTexts: { 画像パス: string, テキスト: string }[] = [];
         const mediaDir = path.join(extractDir, 'ppt', 'media');
         if (fs.existsSync(mediaDir)) {
           const mediaFiles = fs.readdirSync(mediaDir);
-          
+
           // 各画像ファイルを処理
           for (const mediaFile of mediaFiles) {
             const sourcePath = path.join(mediaDir, mediaFile);
             const targetFileName = `${fileId}_slide${slideNumber}_${mediaFile}`;
             const targetPath = path.join(kbImageDir, targetFileName);
-            
+
             // 画像をコピー
             fs.copyFileSync(sourcePath, targetPath);
-            
+
             // 画像パスの作成（相対パス）
             const relativePath = `/knowledge-base/images/${targetFileName}`;
-            
+
             // 画像に関連するテキストを見つける（画像の近くのテキスト要素から）
             const imageText = texts.length > 0 ? texts[0] : '画像の説明がありません';
-            
+
             imageTexts.push({
               画像パス: relativePath,
               テキスト: imageText
             });
           }
         }
-        
+
         // スライドデータの構築
         slides.push({
           スライド番号: slideNumber,
@@ -222,45 +222,45 @@ async function processPowerPointFile(filePath: string): Promise<any> {
           画像テキスト: imageTexts
         });
       }
-      
+
       // プレゼンテーションのメタデータを取得
       const corePropsPath = path.join(extractDir, 'docProps', 'core.xml');
       let title = path.basename(filePath, fileExtension);
       let creator = '';
       let created = new Date().toISOString();
       let modified = new Date().toISOString();
-      
+
       if (fs.existsSync(corePropsPath)) {
         const coreProps = fs.readFileSync(corePropsPath, 'utf8');
-        
+
         // タイトルを取得
         const titleMatch = /<dc:title>(.*?)<\/dc:title>/g.exec(coreProps);
         if (titleMatch && titleMatch[1]) {
           title = titleMatch[1];
         }
-        
+
         // 作成者を取得
         const creatorMatch = /<dc:creator>(.*?)<\/dc:creator>/g.exec(coreProps);
         if (creatorMatch && creatorMatch[1]) {
           creator = creatorMatch[1];
         }
-        
+
         // 作成日を取得
         const createdMatch = /<dcterms:created>(.*?)<\/dcterms:created>/g.exec(coreProps);
         if (createdMatch && createdMatch[1]) {
           created = createdMatch[1];
         }
-        
+
         // 更新日を取得
         const modifiedMatch = /<dcterms:modified>(.*?)<\/dcterms:modified>/g.exec(coreProps);
         if (modifiedMatch && modifiedMatch[1]) {
           modified = modifiedMatch[1];
         }
       }
-      
+
       // 一時ディレクトリを削除
       fs.rmSync(extractDir, { recursive: true, force: true });
-      
+
       // 最終的なJSONオブジェクトを作成
       const result = {
         metadata: {
@@ -272,11 +272,11 @@ async function processPowerPointFile(filePath: string): Promise<any> {
         },
         slides
       };
-      
+
       // JSONファイルを知識ベースディレクトリに保存
       const kbJsonFilePath = path.join(kbJsonDir, `${fileId}_metadata.json`);
       fs.writeFileSync(kbJsonFilePath, JSON.stringify(result, null, 2));
-      
+
       return {
         id: fileId,
         filePath: kbJsonFilePath,
@@ -300,7 +300,7 @@ async function processJsonFile(filePath: string): Promise<any> {
   try {
     const fileId = `guide_${Date.now()}`;
     console.log(`JSONファイル処理: ID=${fileId}`);
-    
+
     // 知識ベースディレクトリが存在することを確認
     if (!fs.existsSync(kbJsonDir)) {
       fs.mkdirSync(kbJsonDir, { recursive: true });
@@ -309,11 +309,11 @@ async function processJsonFile(filePath: string): Promise<any> {
 
     const fileContent = fs.readFileSync(filePath, 'utf8');
     const jsonData = JSON.parse(fileContent);
-    
+
     // ファイルパスとファイル名をログ出力
     console.log(`元のファイルパス: ${filePath}`);
     console.log(`元のファイル名: ${path.basename(filePath)}`);
-    
+
     // アップロードされた画像パスがある場合、相対パスに変換
     if (jsonData.steps) {
       for (const step of jsonData.steps) {
@@ -322,19 +322,19 @@ async function processJsonFile(filePath: string): Promise<any> {
         }
       }
     }
-    
+
     // 知識ベースディレクトリに一箇所だけ保存（画像パスはナレッジベースの相対パスを使用）
     const kbJsonFilePath = path.join(kbJsonDir, `${fileId}_metadata.json`);
     console.log(`保存先ファイルパス: ${kbJsonFilePath}`);
-    
+
     // JSONデータを文字列に変換して保存（コピーではなく書き込み）
     fs.writeFileSync(kbJsonFilePath, JSON.stringify(jsonData, null, 2));
     console.log(`ファイルを保存しました: ${kbJsonFilePath}`);
-    
+
     // タイトルなどの情報を取得
     const title = jsonData.title || path.basename(filePath, '.json');
     const slideCount = jsonData.steps ? jsonData.steps.length : 0;
-    
+
     return {
       id: fileId,
       filePath: kbJsonFilePath,
@@ -356,14 +356,14 @@ router.post('/process', upload.single('file'), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'ファイルがアップロードされていません' });
     }
-    
+
     // 自動フロー生成オプションを取得
     const autoGenerateFlow = req.body.autoGenerateFlow === 'true';
     const filePath = req.file.path;
     const fileExtension = path.extname(filePath).toLowerCase();
-    
+
     let result;
-    
+
     // ファイル形式に応じた処理
     if (fileExtension === '.json') {
       log(`JSONファイル処理: ${filePath}`);
@@ -377,7 +377,7 @@ router.post('/process', upload.single('file'), async (req, res) => {
         error: 'サポートされていないファイル形式です。現在の処理はPowerPointとJSONのみサポートしています。' 
       });
     }
-    
+
     // JSONに保存されている画像パスがナレッジベース形式に変換されていることを確認
     if (fileExtension === '.json') {
       // ナレッジベースディレクトリのパスを確保
@@ -385,13 +385,13 @@ router.post('/process', upload.single('file'), async (req, res) => {
       if (!fs.existsSync(knowledgeBaseDir)) {
         fs.mkdirSync(knowledgeBaseDir, { recursive: true });
       }
-      
+
       const knowledgeBaseImagesDir = path.join(knowledgeBaseDir, 'images');
       if (!fs.existsSync(knowledgeBaseImagesDir)) {
         fs.mkdirSync(knowledgeBaseImagesDir, { recursive: true });
       }
     }
-    
+
     // レスポンス用のデータ
     const responseData = {
       success: true,
@@ -399,12 +399,12 @@ router.post('/process', upload.single('file'), async (req, res) => {
       guideId: result.id,
       data: result
     };
-    
+
     // 自動フロー生成が有効な場合は、非同期でフロー生成プロセスを開始
     if (autoGenerateFlow) {
       // まずレスポンスを返してクライアントを待たせない
       res.json(responseData);
-      
+
       try {
         console.log(`自動フロー生成を開始: ${result.id}`);
         // 別プロセスでフロー生成APIを呼び出す（バックグラウンド処理）
@@ -427,11 +427,11 @@ router.post('/process', upload.single('file'), async (req, res) => {
         console.error('自動フロー生成開始エラー:', error);
         // エラーが発生してもクライアントには既にレスポンスを返しているので何もしない
       }
-      
+
       // レスポンスは既に返しているのでここでは何もしない
       return;
     }
-    
+
     // 自動フロー生成が無効な場合は通常のレスポンスを返す
     return res.json(responseData);
   } catch (error) {
@@ -447,33 +447,33 @@ router.post('/process', upload.single('file'), async (req, res) => {
 router.get('/list', (_req, res) => {
   try {
     console.log('ガイド一覧を取得します...');
-    
+
     // 知識ベースディレクトリからファイルを読み取る
     if (!fs.existsSync(kbJsonDir)) {
       return res.status(404).json({ error: 'ディレクトリが見つかりません' });
     }
-    
+
     // キャッシュバスティングのためにファイル一覧を再スキャン
     const allFiles = fs.readdirSync(kbJsonDir);
     console.log('全ファイル一覧:', allFiles);
-    
+
     // 特定のファイルを除外するためのブラックリスト
     const blacklist = ['guide_1744876404679_metadata.json'];
-    
+
     // メタデータファイルのみをフィルタリング（かつブラックリストを除外）
     const files = allFiles
       .filter(file => file.endsWith('_metadata.json') && !blacklist.includes(file));
-    
+
     console.log('フィルタリング後のメタデータファイル一覧:', files);
-    
+
     const guides = files.map(file => {
       try {
         const filePath = path.join(kbJsonDir, file);
         const content = fs.readFileSync(filePath, 'utf8');
         const data = JSON.parse(content);
-        
+
         const id = file.split('_')[0] + '_' + file.split('_')[1];
-        
+
         // JSONデータの形式に応じて処理
         // 通常のPowerPoint由来の形式
         if (data.metadata && data.slides) {
@@ -522,19 +522,19 @@ router.get('/list', (_req, res) => {
         };
       }
     });
-    
+
     // リスト取得前の最終状態チェック（完全にファイルシステムと同期するため）
     console.log('応急ガイド一覧をレスポンス送信前に最終検証:');
     console.log('- JSONディレクトリの内容:', fs.readdirSync(kbJsonDir));
     console.log('- 返却するガイド数:', guides.length);
     console.log('- ガイドID一覧:', guides.map(g => g.id).join(', '));
-    
+
     // ヘッダーの追加でキャッシュを無効化
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     res.setHeader('Surrogate-Control', 'no-store');
-    
+
     // レスポンスを返す
     res.json(guides);
   } catch (error) {
@@ -549,15 +549,15 @@ router.get('/detail/:id', (req, res) => {
     const id = req.params.id;
     const files = fs.readdirSync(kbJsonDir)
       .filter(file => file.startsWith(id) && file.endsWith('_metadata.json'));
-    
+
     if (files.length === 0) {
       return res.status(404).json({ error: 'ガイドが見つかりません' });
     }
-    
+
     const filePath = path.join(kbJsonDir, files[0]);
     const content = fs.readFileSync(filePath, 'utf8');
     const data = JSON.parse(content);
-    
+
     // アップロードパス(/uploads/)からナレッジベースパス(/knowledge-base/)への変換
     // スライド内の画像パスを更新
     if (data.slides && Array.isArray(data.slides)) {
@@ -573,10 +573,10 @@ router.get('/detail/:id', (req, res) => {
         }
       });
     }
-    
+
     // JSONファイル内のデータが修正されたらファイルも更新（オプション）
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-    
+
     res.json({
       id,
       filePath,
@@ -594,28 +594,28 @@ router.post('/update/:id', (req, res) => {
   try {
     const id = req.params.id;
     const { data } = req.body;
-    
+
     if (!data) {
       return res.status(400).json({ error: 'データが提供されていません' });
     }
-    
+
     const files = fs.readdirSync(kbJsonDir)
       .filter(file => file.startsWith(id) && file.endsWith('_metadata.json'));
-    
+
     if (files.length === 0) {
       return res.status(404).json({ error: 'ガイドが見つかりません' });
     }
-    
+
     const filePath = path.join(kbJsonDir, files[0]);
-    
+
     // 更新日時を現在の日時に設定
     if (data.metadata) {
       data.metadata.修正日 = new Date().toISOString();
     }
-    
+
     // ファイルに書き込み
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-    
+
     res.json({
       success: true,
       message: 'ガイドデータが更新されました',
@@ -632,24 +632,24 @@ router.delete('/delete/:id', async (req, res) => {
   try {
     const id = req.params.id;
     console.log(`応急処置ガイド削除リクエスト: ID=${id}`);
-    
+
     // 知識ベースJson（メタデータ）ディレクトリから直接ファイルを検索
     if (!fs.existsSync(kbJsonDir)) {
       return res.status(404).json({ error: 'JSONディレクトリが見つかりません' });
     }
-    
+
     // すべてのJSONファイルを検索し、マッチするものを選択
     const jsonFiles = fs.readdirSync(kbJsonDir);
     console.log(`削除処理: ID=${id}, ファイル一覧:`, jsonFiles);
-    
+
     // IDによる検索方法を選択
     const matchingFiles: string[] = [];
-    
+
     if (id.startsWith('mc_')) {
       // mc_形式のIDの場合は厳密なID検索 (数値部分で照合)
       const idPrefix = id.split('_')[1]; // mc_123456 -> 123456
       console.log(`mc_タイプのID検索: プレフィックス=${idPrefix}`);
-      
+
       jsonFiles.forEach(file => {
         if (file.includes(idPrefix)) {
           matchingFiles.push(file);
@@ -663,22 +663,22 @@ router.delete('/delete/:id', async (req, res) => {
         }
       });
     }
-    
+
     console.log(`マッチするファイル (${matchingFiles.length}件):`, matchingFiles);
-    
+
     if (matchingFiles.length === 0) {
       return res.status(404).json({ error: `指定されたガイド (ID: ${id}) が見つかりません` });
     }
-    
+
     // 最初のファイルからタイトル情報などを取得
     const mainFilePath = path.join(kbJsonDir, matchingFiles[0]);
     let title = `ファイル_${id}`;
-    
+
     // JSONファイルの内容を読み取り、タイトルなどを取得
     try {
       const content = fs.readFileSync(mainFilePath, 'utf8');
       const data = JSON.parse(content);
-      
+
       if (data.metadata && data.metadata.タイトル) {
         title = data.metadata.タイトル;
       } else if (data.title) {
@@ -687,7 +687,7 @@ router.delete('/delete/:id', async (req, res) => {
     } catch (readError) {
       console.warn(`削除前のファイル内容読み取りに失敗: ${mainFilePath}`, readError);
     }
-    
+
     // すべてのマッチするファイルを削除
     let deletedCount = 0;
     for (const file of matchingFiles) {
@@ -698,22 +698,22 @@ router.delete('/delete/:id', async (req, res) => {
         deletedCount++;
       }
     }
-    
+
     console.log(`削除されたJSONファイル数: ${deletedCount}件`);
-    
+
     // index.jsonから該当エントリを削除（存在する場合）
     const indexPath = path.join(knowledgeBaseDir, 'index.json');
     if (fs.existsSync(indexPath)) {
       try {
         const indexContent = fs.readFileSync(indexPath, 'utf8');
         const indexData = JSON.parse(indexContent);
-        
+
         // IDに基づいてエントリを削除
         if (Array.isArray(indexData.guides)) {
           const beforeCount = indexData.guides.length;
           indexData.guides = indexData.guides.filter((guide: any) => guide.id !== id);
           const afterCount = indexData.guides.length;
-          
+
           if (beforeCount !== afterCount) {
             fs.writeFileSync(indexPath, JSON.stringify(indexData, null, 2));
             console.log(`インデックスから削除しました: ${beforeCount - afterCount}エントリ`);
@@ -723,13 +723,13 @@ router.delete('/delete/:id', async (req, res) => {
         console.warn('インデックスの更新に失敗しました:', indexError);
       }
     }
-    
+
     // 関連する画像ファイルを削除
     try {
       if (fs.existsSync(kbImageDir)) {
         const imageFiles = fs.readdirSync(kbImageDir);
         const relatedImages = imageFiles.filter(img => img.startsWith(id));
-        
+
         for (const imgFile of relatedImages) {
           const imgPath = path.join(kbImageDir, imgFile);
           fs.unlinkSync(imgPath);
@@ -739,20 +739,20 @@ router.delete('/delete/:id', async (req, res) => {
     } catch (imgError) {
       console.warn('関連画像の削除中にエラーが発生しました:', imgError);
     }
-    
+
     console.log(`応急処置ガイドを削除しました: ID=${id}, タイトル=${title}`);
-    
+
     // 削除後の最終確認（ファイルシステムを再チェック）
     const remainingFiles = fs.readdirSync(kbJsonDir);
     console.log('----------- 削除後の状態 -----------');
     console.log('削除したID:', id);
     console.log('削除後のディレクトリ内容:', remainingFiles);
     console.log('削除したファイル:', matchingFiles);
-    
+
     // 削除が不完全な場合は強制再試行（最大3回）
     for (let attempt = 0; attempt < 3; attempt++) {
       let allDeleted = true;
-      
+
       for (const file of matchingFiles) {
         const filePath = path.join(kbJsonDir, file);
         if (fs.existsSync(filePath)) {
@@ -764,7 +764,7 @@ router.delete('/delete/:id', async (req, res) => {
             console.log(`  → 削除成功: ${filePath}`);
           } catch (e) {
             console.error(`  → 削除失敗: ${e}`);
-            
+
             // 100ms待機してから再試行
             await new Promise(resolve => setTimeout(resolve, 100));
             try {
@@ -778,16 +778,16 @@ router.delete('/delete/:id', async (req, res) => {
           }
         }
       }
-      
+
       if (allDeleted) {
         console.log(`すべてのファイルが正常に削除されました (試行: ${attempt + 1}回目で完了)`);
         break;
       }
-      
+
       // 次の試行前に少し待機
       await new Promise(resolve => setTimeout(resolve, 200));
     }
-    
+
     // 最終チェック（すべての試行が終わった後）
     // 非同期で削除タスクをキューに入れる
     setTimeout(() => {
@@ -799,7 +799,7 @@ router.delete('/delete/:id', async (req, res) => {
             console.log(`バックグラウンド削除: ${filePath}`);
           }
         }
-        
+
         // 追加のクリーンアップ: トラブルシューティングディレクトリ内の関連ファイルも削除
         const troubleshootingDir = path.join(knowledgeBaseDir, 'troubleshooting');
         if (fs.existsSync(troubleshootingDir)) {
@@ -816,14 +816,14 @@ router.delete('/delete/:id', async (req, res) => {
         console.error('バックグラウンド削除エラー:', e);
       }
     }, 1000);
-    
+
     // キャッシュバスティングのためのヘッダー設定
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     res.setHeader('Surrogate-Control', 'no-store');
     res.setHeader('Content-Type', 'application/json');
-    
+
     return res.json({
       success: true,
       message: `応急処置ガイド「${title}」を削除しました`,
@@ -840,14 +840,14 @@ router.delete('/delete/:id', async (req, res) => {
 router.post('/send', async (req, res) => {
   try {
     const { chatId, guideData } = req.body;
-    
+
     if (!chatId || !guideData) {
       return res.status(400).json({ 
         success: false,
         message: "チャットIDとガイドデータが必要です" 
       });
     }
-    
+
     // ログ出力強化
     console.log('------------------------------------');
     console.log('応急処置ガイドデータをチャットに送信:');
@@ -856,20 +856,19 @@ router.post('/send', async (req, res) => {
     console.log(`content: ${guideData.content?.substring(0, 100)}...`);
     console.log(`sessionUserId: ${req?.session?.userId || 'unknown'}`);
     console.log('------------------------------------');
-    
+
     // ユーザーIDの取得（認証済みでない場合のフォールバック）
     const senderId = req.session?.userId || 1; // 認証されていない場合はデフォルトユーザーIDを使用
-    
+
     // ストレージの取得
     const storage = req.app.locals.storage;
     if (!storage) {
       console.error('ストレージが初期化されていません');
-      return res.status(500).json({ 
-        success: false,
+      return res.status(500).json({ success: false,
         message: "サーバー内部エラー: ストレージが初期化されていません" 
       });
     }
-    
+
     try {
       // 1. ユーザーのガイド内容メッセージを作成
       const userMessage = await storage.createMessage({
@@ -878,17 +877,17 @@ router.post('/send', async (req, res) => {
         isAiResponse: false,
         senderId
       });
-      
+
       // 2. AIの応答メッセージを作成（確認応答）
       const aiMessage = await storage.createMessage({
         chatId: Number(chatId),
-        content: `応急処置ガイド「${guideData.title || ""}」を受け取りました。手順に従って作業を続けてください。`,
+        content: `■ ${guideData.title}\n\n【実施した手順の詳細】\n${guideData.content}\n\n【AI分析】\nAIが分析した結果をここに表示します。`,
         isAiResponse: true,
         senderId
       });
-      
+
       console.log('チャットメッセージを作成しました:', userMessage.id, aiMessage.id);
-      
+
       return res.json({
         success: true,
         userMessage,
@@ -916,14 +915,14 @@ router.post('/send', async (req, res) => {
 router.post('/system-message', async (req, res) => {
   try {
     const { chatId, content, isUserMessage = false } = req.body;
-    
+
     if (!chatId || !content) {
       return res.status(400).json({ 
         success: false,
         message: "チャットIDとメッセージ内容が必要です" 
       });
     }
-    
+
     // ログ出力
     console.log('------------------------------------');
     console.log('システムメッセージをチャットに送信:');
@@ -932,14 +931,14 @@ router.post('/system-message', async (req, res) => {
     console.log(`isUserMessage: ${isUserMessage}`);
     console.log(`sessionUserId: ${req?.session?.userId || 'unknown'}`);
     console.log('------------------------------------');
-    
+
     // ユーザーIDの取得（認証済みでない場合のフォールバック）
     const senderId = req.session?.userId || 1;
-    
+
     // DBストレージが直接使用可能か確認
     try {
       const { storage } = require('../storage');
-      
+
       // メッセージを作成
       const message = await storage.createMessage({
         chatId: Number(chatId),
@@ -948,16 +947,16 @@ router.post('/system-message', async (req, res) => {
         isUserMessage: isUserMessage,
         timestamp: new Date()
       });
-      
+
       console.log('システムメッセージを作成しました:', message.id);
-      
+
       return res.json({
         success: true,
         message
       });
     } catch (storageError) {
       console.error('ストレージエラー:', storageError);
-      
+
       // 代替手段: アプリケーション変数からストレージを取得
       const appStorage = req.app.locals.storage;
       if (appStorage) {
@@ -969,9 +968,9 @@ router.post('/system-message', async (req, res) => {
           isUserMessage: isUserMessage,
           timestamp: new Date()
         });
-        
+
         console.log('代替ストレージでシステムメッセージを作成しました:', message.id);
-        
+
         return res.json({
           success: true,
           message
@@ -994,22 +993,22 @@ router.post('/system-message', async (req, res) => {
 router.post('/send-to-chat/:guideId/:chatId', async (req, res) => {
   try {
     const { guideId, chatId } = req.params;
-    
+
     // ガイドデータを取得
     const files = fs.readdirSync(kbJsonDir)
       .filter(file => file.startsWith(guideId) && file.endsWith('_metadata.json'));
-    
+
     if (files.length === 0) {
       return res.status(404).json({ error: 'ガイドが見つかりません' });
     }
-    
+
     const filePath = path.join(kbJsonDir, files[0]);
     const content = fs.readFileSync(filePath, 'utf8');
     const guideData = JSON.parse(content);
-    
+
     // JSONデータの形式に応じてメッセージ内容を作成
     let messageContent = '';
-    
+
     // PowerPoint由来の形式の場合
     if (guideData.metadata && guideData.slides) {
       messageContent = `応急処置ガイド「${guideData.metadata.タイトル}」が共有されました。\n\n${guideData.metadata.説明}`;
@@ -1022,7 +1021,7 @@ router.post('/send-to-chat/:guideId/:chatId', async (req, res) => {
     else {
       messageContent = `応急処置ガイド「${path.basename(filePath, '_metadata.json')}」が共有されました。`;
     }
-    
+
     // チャットにメッセージを送信するAPIを呼び出す
     const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/chats/${chatId}/messages/system`, {
       method: 'POST',
@@ -1034,13 +1033,13 @@ router.post('/send-to-chat/:guideId/:chatId', async (req, res) => {
         isUserMessage: false
       })
     });
-    
+
     if (!response.ok) {
       throw new Error('チャットへのメッセージ送信に失敗しました');
     }
-    
+
     const result = await response.json() as { id: string };
-    
+
     res.json({
       success: true,
       message: 'ガイドがチャットに送信されました',
