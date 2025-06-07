@@ -30,8 +30,10 @@ router.get('/', async (req, res) => {
 // ✅ ユーザー更新
 router.patch('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    const { username, display_name, role, department } = req.body;
+    const { id } = req.params; // IDはstringとして扱う
+    const { username, display_name, role, department, password } = req.body;
+
+    console.log(`ユーザー更新リクエスト: ID=${id}`, { username, display_name, role, department, hasPassword: !!password });
 
     // バリデーション
     if (!username || !display_name) {
@@ -44,18 +46,29 @@ router.patch('/:id', async (req, res) => {
     });
 
     if (!existingUser) {
+      console.log(`ユーザーが見つかりません: ID=${id}`);
       return res.status(404).json({ message: "ユーザーが見つかりません" });
+    }
+
+    // 更新データを準備
+    const updateData: any = {
+      username,
+      display_name,
+      role,
+      department
+    };
+
+    // パスワードが提供された場合のみ更新
+    if (password && password.trim() !== '') {
+      const bcrypt = require('bcrypt');
+      updateData.password = await bcrypt.hash(password, 10);
+      console.log(`パスワードも更新します: ID=${id}`);
     }
 
     // ユーザー更新
     const [updatedUser] = await db
       .update(users)
-      .set({
-        username,
-        display_name,
-        role,
-        department
-      })
+      .set(updateData)
       .where(eq(users.id, id))
       .returning({
         id: users.id,
@@ -65,6 +78,7 @@ router.patch('/:id', async (req, res) => {
         department: users.department
       });
 
+    console.log(`ユーザー更新成功: ID=${id}`);
     res.json(updatedUser);
   } catch (error) {
     console.error("Error updating user:", error);
@@ -75,7 +89,9 @@ router.patch('/:id', async (req, res) => {
 // ✅ ユーザー削除
 router.delete('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params; // IDはstringとして扱う
+
+    console.log(`ユーザー削除リクエスト: ID=${id}`);
 
     // ユーザー存在確認
     const existingUser = await db.query.users.findFirst({
@@ -83,12 +99,14 @@ router.delete('/:id', async (req, res) => {
     });
 
     if (!existingUser) {
+      console.log(`削除対象ユーザーが見つかりません: ID=${id}`);
       return res.status(404).json({ message: "ユーザーが見つかりません" });
     }
 
     // ユーザー削除
     await db.delete(users).where(eq(users.id, id));
 
+    console.log(`ユーザー削除成功: ID=${id}`);
     res.json({ message: "ユーザーが削除されました" });
   } catch (error) {
     console.error("Error deleting user:", error);

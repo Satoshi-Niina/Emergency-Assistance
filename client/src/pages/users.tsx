@@ -96,17 +96,18 @@ export default function UsersPage() {
   const [showNewUserDialog, setShowNewUserDialog] = useState(false);
   const [showEditUserDialog, setShowEditUserDialog] = useState(false);
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [newUser, setNewUser] = useState<Partial<NewUserData>>({
     username: "",
     password: "",
     display_name: "",
     role: "employee",
   });
-  const [editUser, setEditUser] = useState<Partial<UserData>>({
+  const [editUser, setEditUser] = useState<Partial<UserData & { password?: string }>>({
     username: "",
     display_name: "",
     role: "employee",
+    password: "",
   });
 
   // フォームの値をリセット
@@ -194,13 +195,14 @@ export default function UsersPage() {
       username: userData.username,
       display_name: userData.display_name,
       role: userData.role,
-      department: userData.department
+      department: userData.department,
+      password: "" // パスワードフィールドを空で初期化
     });
     setShowEditUserDialog(true);
   };
 
   // ユーザー削除準備
-  const handleDeleteUser = (userId: number) => {
+  const handleDeleteUser = (userId: string) => {
     setSelectedUserId(userId);
     setShowDeleteConfirmDialog(true);
   };
@@ -510,6 +512,18 @@ export default function UsersPage() {
                   value={editUser.display_name}
                   onChange={handleEditInputChange}
                   required
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="edit-password">新しいパスワード（変更する場合のみ）</Label>
+                <Input
+                  id="edit-password"
+                  name="password"
+                  type="password"
+                  value={editUser.password || ""}
+                  onChange={handleEditInputChange}
+                  placeholder="パスワードを変更しない場合は空欄のまま"
                 />
               </div>
 
