@@ -748,7 +748,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         };
 
         // AI応答メッセージを追加（右側）
-        const aiGuideMessage = {
+        const aiResponseMessage = {
           id: Date.now() + 1,
           chatId: currentChatId,
           content: `■ 応急処置ガイド実施記録\n\n**${guideData.title}**\n\n${guideData.content}\n\n---\n**AI分析**: 応急処置手順が正常に記録されました。実施状況に関して追加のご質問がございましたらお聞かせください。`,
@@ -777,14 +777,14 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }
           
           // 両方のメッセージを追加
-          const newMessages = [...prevMessages, userGuideMessage, aiGuideMessage];
+          const newMessages = [...prevMessages, userGuideMessage, aiResponseMessage];
           console.log('✅ 応急処置ガイドメッセージ追加完了:', newMessages.length, '件');
           console.log('✅ 追加されたユーザーメッセージID:', userGuideMessage.id);
-          console.log('✅ 追加されたAIメッセージID:', aiGuideMessage.id);
+          console.log('✅ 追加されたAIメッセージID:', aiResponseMessage.id);
           
           // ローカルストレージにも保存して永続化
           try {
-            localStorage.setItem('lastEmergencyGuideMessages', JSON.stringify([userGuideMessage, aiGuideMessage]));
+            localStorage.setItem('lastEmergencyGuideMessages', JSON.stringify([userGuideMessage, aiResponseMessage]));
             console.log('✅ 応急処置ガイドメッセージをローカルストレージに保存しました');
           } catch (error) {
             console.warn('❌ ローカルストレージへの保存に失敗:', error);
@@ -859,7 +859,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 timestamp: new Date()
               };
 
-              const emergencyAiMessage = {
+              const emergencyAiResponseMessage = {
                 id: Date.now() + 1001,
                 chatId: currentChatId,
                 content: `■ 応急処置ガイド実施記録\n\n**${guideData.title}**\n\n${guideData.content}\n\n---\n**AI分析**: 応急処置手順が正常に記録されました。`,
@@ -869,7 +869,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               };
 
               console.log('🔄 緊急措置として応急処置ガイドメッセージを再追加します');
-              return [...current, emergencyUserMessage, emergencyAiMessage];
+              return [...current, emergencyUserMessage, emergencyAiResponseMessage];
             }
             
             // React DevToolsやデバッグのための追加情報
