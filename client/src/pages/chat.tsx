@@ -99,20 +99,18 @@ export default function Chat() {
       await exportChatHistory();
       setIsEndChatDialogOpen(false);
 
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include"
-      });
+      console.log("チャットエクスポート完了。ログアウト処理をスキップしてチャット画面を維持します。");
 
-      console.log("送信して終了: ログアウト成功 - ログイン画面に遷移します");
+                // 成功トーストを表示
+                //toast({
+                //  title: "エクスポート完了",
+                //  description: "応急処置の記録を送信しました",
+                //});
 
-      queryClient.clear();
-      for (const key of Object.keys(localStorage)) {
-        if (key.startsWith('rq-')) {
-          localStorage.removeItem(key);
-        }
-      }
-      window.location.href = "/login";
+                // ダイアログを閉じる
+                //setShowEndDialog(false);
+
+      
     } catch (error) {
       console.error("チャット終了エラー:", error);
       window.location.href = "/login";
@@ -263,7 +261,7 @@ export default function Chat() {
 
             {/* デバッグ表示 - ドラフトメッセージの状態を確認 */}
             <div className="hidden">
-              <p>draftMessage: {draftMessage ? JSON.stringify(draftMessage) : 'null'}</p>
+              <p>draftMessage: {draftMessage ? JSON.stringify(draftMessage) : 'null'</p>
             </div>
 
           </div>
@@ -313,29 +311,16 @@ export default function Chat() {
               <Button 
                 variant="destructive" 
                 onClick={() => {
-                  setIsEndChatDialogOpen(false);
-                  // 直接ログアウト処理を実行
-                  fetch("/api/auth/logout", {
-                    method: "POST",
-                    credentials: "include"
-                  })
-                  .then(() => {
-                    console.log("送信せずに終了: ログアウト成功");
-                    queryClient.clear();
-                    // ローカルストレージのクエリキャッシュをクリア
-                    for (const key of Object.keys(localStorage)) {
-                      if (key.startsWith('rq-')) {
-                        localStorage.removeItem(key);
-                      }
-                    }
-                    // JavaScript直接のリダイレクトを使用（より確実なリダイレクト）
-                    window.location.href = "/login";
-                  })
-                  .catch((error) => {
-                    console.error("送信せずに終了: ログアウトエラー:", error);
-                    // エラーが発生してもログイン画面に遷移
-                    window.location.href = "/login";
-                  });
+                  console.log("送信せずに終了が選択されました");
+
+                  // 確認トーストを表示
+                 // toast({
+                 //   title: "終了しました",
+                 //   description: "応急処置ガイドを終了しました",
+                 // });
+
+                  // ダイアログを閉じる
+                  //setShowEndDialog(false);
                 }}
                 className="bg-red-500 hover:bg-red-600"
               >
