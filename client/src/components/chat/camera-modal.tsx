@@ -119,7 +119,7 @@ export default function CameraModal() {
         startRecording();
       }
     } else {
-      // Capture image
+      // Capture image - 確実にBase64形式で生成
       const canvas = document.createElement('canvas');
       canvas.width = videoRef.current.videoWidth;
       canvas.height = videoRef.current.videoHeight;
@@ -127,7 +127,15 @@ export default function CameraModal() {
       const ctx = canvas.getContext('2d');
       if (ctx && videoRef.current) {
         ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-        const imageData = canvas.toDataURL('image/jpeg');
+        // 高品質のJPEG画像としてBase64エンコード
+        const imageData = canvas.toDataURL('image/jpeg', 0.8);
+        console.log('撮影画像をBase64形式で生成:', {
+          format: 'image/jpeg',
+          quality: 0.8,
+          dataLength: imageData.length,
+          isBase64: imageData.startsWith('data:image/'),
+          preview: imageData.substring(0, 50) + '...'
+        });
         setCapturedImage(imageData);
       }
     }
@@ -166,38 +174,28 @@ export default function CameraModal() {
 
   const handleSend = async () => {
     if (capturedImage) {
-      const mediaType = isVideoMode ? 'video' : 'image';
+      try {
+        console.log('撮影した画像をチャットに送信します');
 
-      // チャットに画像を送信
-    try {
-      console.log('撮影した画像をチャットに送信します');
+        // Base64データから画像タイプを判定
+        const mimeMatch = capturedImage.match(/data:([^;]+);/);
+        const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
 
-      // Base64データから画像タイプを判定
-      const mimeMatch = capturedImage.match(/data:([^;]+);/);
-      const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
+        console.log('送信する画像データ:', {
+          mimeType: mimeType,
+          urlLength: capturedImage.length,
+          isBase64: capturedImage.startsWith('data:image/'),
+          preview: capturedImage.substring(0, 50) + '...'
+        });
 
-      // メディア配列として送信
-      const mediaUrls = [{
-        type: 'image',
-        url: capturedImage, // Base64データURL
-        thumbnail: capturedImage // サムネイルも同じデータを使用
-      }];
+        // 画像データを直接contentに格納して送信
+        await sendMessage(capturedImage);
 
-      console.log('送信するメディアデータ:', {
-        type: 'image',
-        urlLength: capturedImage.length,
-        mimeType: mimeType,
-        isBase64: capturedImage.startsWith('data:image/')
-      });
-
-      // 画像のみ送信（テキストは空文字列）
-      await sendMessage('', mediaUrls);
-
-      setIsOpen(false);
-      setCapturedImage(null);
-    } catch (error) {
-      console.error('画像送信エラー:', error);
-    }
+        setIsOpen(false);
+        setCapturedImage(null);
+      } catch (error) {
+        console.error('画像送信エラー:', error);
+      }
     }
   };
 
