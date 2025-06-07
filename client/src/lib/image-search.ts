@@ -33,7 +33,9 @@ async function loadImageSearchData() {
       if (Array.isArray(fileList) && fileList.length > 0) {
         // 最新のメタデータファイルを選択
         metadataFile = fileList[0];
+        if (process.env.NODE_ENV === 'development') {
         console.log(`最新のメタデータファイルを使用します: ${metadataFile}`);
+      }
       }
     }
     
@@ -74,7 +76,9 @@ async function loadImageSearchData() {
     imageSearchData = [];
     
     if (metadata && metadata.slides && Array.isArray(metadata.slides)) {
-      console.log(`メタデータJSONを読み込みました: ${metadata.slides.length}件のスライド`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`メタデータJSONを読み込みました: ${metadata.slides.length}件のスライド`);
+      }
       
       // メタデータの検証とデータ品質チェック用カウンター
       let validSlideCount = 0;
@@ -174,8 +178,10 @@ async function loadImageSearchData() {
         };
       });
       
-      // 品質チェック結果をログ
-      console.log(`スライド処理結果: 有効=${validSlideCount}, 無効なパス=${invalidPathCount}, タイトル欠落=${missingTitleCount}`);
+      // 品質チェック結果をログ（開発環境のみ）
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`スライド処理結果: 有効=${validSlideCount}, 無効なパス=${invalidPathCount}, タイトル欠落=${missingTitleCount}`);
+      }
       
       // 有効な画像パスを持つスライドのみを追加し、データの整合性を確保
       slidesData
@@ -190,7 +196,9 @@ async function loadImageSearchData() {
       
       // 埋め込み画像もデータに追加 (PNGを優先) - 強化版
       if (metadata.embeddedImages && Array.isArray(metadata.embeddedImages)) {
-        console.log(`${metadata.embeddedImages.length}件の埋め込み画像を処理します`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`${metadata.embeddedImages.length}件の埋め込み画像を処理します`);
+        }
         
         // 画像処理の統計を追跡
         let validImageCount = 0;
@@ -311,7 +319,9 @@ async function loadImageSearchData() {
           .forEach((item: any) => imageSearchData.push(item));
       }
       
-      console.log(`検索用データを準備完了: ${imageSearchData.length}件`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`検索用データを準備完了: ${imageSearchData.length}件`);
+      }
     } else {
       throw new Error('メタデータのフォーマットが無効です');
     }

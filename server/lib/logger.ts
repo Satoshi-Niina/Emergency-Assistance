@@ -9,12 +9,18 @@ export enum LogLevel {
 // 環境変数からログレベルを取得（デフォルトはERROR）
 const getLogLevel = (): LogLevel => {
   const level = process.env.LOG_LEVEL?.toUpperCase();
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  
+  if (!isDevelopment) {
+    return LogLevel.ERROR; // 本番環境では常にERRORのみ
+  }
+  
   switch (level) {
     case 'DEBUG': return LogLevel.DEBUG;
     case 'INFO': return LogLevel.INFO;
     case 'WARN': return LogLevel.WARN;
     case 'ERROR': return LogLevel.ERROR;
-    default: return LogLevel.ERROR; // 本番環境ではERRORのみ
+    default: return LogLevel.WARN; // 開発環境のデフォルトはWARN
   }
 };
 
