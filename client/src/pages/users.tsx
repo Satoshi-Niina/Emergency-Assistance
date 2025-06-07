@@ -192,7 +192,7 @@ export default function UsersPage() {
     setSelectedUserId(userData.id);
     setEditUser({
       username: userData.username,
-      display_nameName: userData.display_nameName,
+      display_name: userData.display_name,
       role: userData.role,
       department: userData.department
     });
@@ -276,7 +276,7 @@ export default function UsersPage() {
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // バリデーション
-    if (!editUser.username || !editUser.display_nameName) {
+    if (!editUser.username || !editUser.display_name) {
       toast({
         title: "入力エラー",
         description: "必須項目を入力してください",
@@ -424,7 +424,6 @@ export default function UsersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
                   <TableHead>ユーザー名</TableHead>
                   <TableHead>表示名</TableHead>
                   <TableHead>権限</TableHead>
@@ -436,7 +435,6 @@ export default function UsersPage() {
                 {users && users.length > 0 ? (
                   users.map((user) => (
                     <TableRow key={user.id}>
-                      <TableCell>{user.id}</TableCell>
                       <TableCell>{user.username}</TableCell>
                       <TableCell>{user.display_name}</TableCell>
                       <TableCell>
@@ -470,7 +468,7 @@ export default function UsersPage() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center">
+                    <TableCell colSpan={5} className="text-center">
                       ユーザーが見つかりません
                     </TableCell>
                   </TableRow>
