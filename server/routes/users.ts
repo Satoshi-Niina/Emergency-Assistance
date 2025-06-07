@@ -35,11 +35,22 @@ router.patch('/:id', async (req, res) => {
 
     console.log(`[DEBUG] ユーザー更新リクエスト: ID="${id}" (type: ${typeof id})`);
     console.log(`[DEBUG] リクエストボディ:`, { username, display_name, role, department, hasPassword: !!password });
+    console.log(`[DEBUG] Full request params:`, req.params);
+    console.log(`[DEBUG] Full request URL:`, req.url);
 
     // バリデーション
     if (!username || !display_name) {
       console.log(`[DEBUG] バリデーション失敗: username="${username}", display_name="${display_name}"`);
       return res.status(400).json({ message: "ユーザー名と表示名は必須です" });
+    }
+
+    // データベース接続テスト
+    try {
+      const testQuery = await db.execute('SELECT 1 as test');
+      console.log(`[DEBUG] データベース接続テスト成功:`, testQuery);
+    } catch (dbError) {
+      console.error(`[ERROR] データベース接続失敗:`, dbError);
+      return res.status(500).json({ message: "データベース接続エラー" });
     }
 
     // 全ユーザーを取得してデバッグ
@@ -49,32 +60,58 @@ router.patch('/:id', async (req, res) => {
         id: u.id, 
         username: u.username, 
         idType: typeof u.id,
-        idLength: u.id ? u.id.length : 'null'
+        idLength: u.id ? u.id.length : 'null',
+        exactMatch: u.id === id
       }))
     );
 
     // IDのフォーマットを確認
     console.log(`[DEBUG] 検索対象ID: "${id}" (length: ${id.length}, type: ${typeof id})`);
+    console.log(`[DEBUG] ID bytes:`, Buffer.from(id, 'utf8'));
 
-    // ユーザー存在確認
+    // 異なる検索方法を試行
+    console.log(`[DEBUG] 検索クエリを実行中...`);
+    
+    // 方法1: 基本的な検索
     const existingUser = await db.query.users.findFirst({
       where: eq(users.id, id)
     });
 
-    console.log(`[DEBUG] 検索結果: existingUser=`, existingUser ? {
+    console.log(`[DEBUG] 基本検索結果:`, existingUser ? {
       id: existingUser.id,
       username: existingUser.username,
-      foundMatch: existingUser.id === id
+      exactMatch: existingUser.id === id,
+      byteComparison: Buffer.from(existingUser.id, 'utf8').equals(Buffer.from(id, 'utf8'))
     } : 'null');
+
+    // 方法2: SQL直接実行でテスト
+    try {
+      const directResult = await db.execute(`SELECT * FROM users WHERE id = '${id}'`);
+      console.log(`[DEBUG] 直接SQL検索結果:`, directResult);
+    } catch (sqlError) {
+      console.error(`[ERROR] 直接SQL実行失敗:`, sqlError);
+    }
 
     if (!existingUser) {
       console.log(`[ERROR] ユーザーが見つかりません: ID="${id}"`);
       console.log(`[ERROR] 利用可能なID一覧:`, allUsers.map(u => `"${u.id}"`));
+      console.log(`[ERROR] 文字コード比較:`, allUsers.map(u => ({
+        storedId: u.id,
+        requestId: id,
+        match: u.id === id,
+        lengthMatch: u.id.length === id.length,
+        includes: u.id.includes(id) || id.includes(u.id)
+      })));
+      
       return res.status(404).json({ 
         message: "ユーザーが見つかりません",
         debug: {
           requestedId: id,
-          availableIds: allUsers.map(u => u.id)
+          requestedIdLength: id.length,
+          availableIds: allUsers.map(u => u.id),
+          possibleMatches: allUsers.filter(u => 
+            u.id.includes(id) || id.includes(u.id) || u.id.toLowerCase() === id.toLowerCase()
+          )
         }
       });
     }
