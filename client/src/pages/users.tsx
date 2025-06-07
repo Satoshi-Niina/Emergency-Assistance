@@ -105,7 +105,7 @@ export default function UsersPage() {
   });
   const [editUser, setEditUser] = useState<Partial<UserData>>({
     username: "",
-    display_nameName: "",
+    display_name: "",
     role: "employee",
   });
 
@@ -114,7 +114,7 @@ export default function UsersPage() {
     setNewUser({
       username: "",
       password: "",
-      display_Name: "",
+      display_name: "",
       role: "employee",
       department: "",
     });
@@ -352,7 +352,7 @@ export default function UsersPage() {
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="display_Name">表示名</Label>
+                    <Label htmlFor="display_name">表示名</Label>
                     <Input
                       id="display_name"
                       name="display_name"
