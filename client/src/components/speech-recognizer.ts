@@ -57,26 +57,21 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
     const speechConfig = SpeechConfig.fromSubscription(this.azureKey, this.azureRegion);
     speechConfig.speechRecognitionLanguage = 'ja-JP';
     
-    // より短いタイムアウト設定で迅速な応答を目指す
-    speechConfig.setProperty('SpeechServiceConnection_InitialSilenceTimeoutMs', '5000');
-    speechConfig.setProperty('SpeechServiceConnection_EndSilenceTimeoutMs', '1000');
+    // 音声認識の基本設定を最適化
+    speechConfig.setProperty('SpeechServiceConnection_InitialSilenceTimeoutMs', '8000');
+    speechConfig.setProperty('SpeechServiceConnection_EndSilenceTimeoutMs', '2000');
     
-    // 認識感度を上げる設定
-    speechConfig.setProperty('Speech_SegmentationSilenceTimeoutMs', '500');
-    speechConfig.setProperty('SpeechServiceConnection_SingleShotTimeout', '15000');
+    // 連続認識のための設定
+    speechConfig.setProperty('Speech_SegmentationSilenceTimeoutMs', '1000');
+    speechConfig.setProperty('SpeechServiceConnection_SingleShotTimeout', '30000');
     
-    // 日本語特化の設定
-    speechConfig.setProperty('SpeechServiceConnection_AutoDetectSourceLanguages', 'ja-JP');
-    speechConfig.setProperty('SpeechServiceConnection_RecoMode', 'CONVERSATION');
+    // 認識精度を向上させる設定
+    speechConfig.setProperty('SpeechServiceConnection_RecoMode', 'INTERACTIVE');
+    speechConfig.setProperty('SpeechServiceConnection_EnableAudioLogging', 'false');
     
-    // 認識精度向上のための追加設定
-    speechConfig.setProperty('SpeechServiceConnection_EnableAudioLogging', 'true');
-    speechConfig.setProperty('SpeechServiceConnection_ContinuousRecognitionMode', 'true');
-    speechConfig.setProperty('SpeechServiceConnection_TranslationRequestStablePartialResult', 'true');
-    
-    // 音声品質設定
-    speechConfig.setProperty('AudioConfig_PlaybackBufferLengthInMs', '50');
-    speechConfig.setProperty('AudioConfig_CaptureBufferLengthInMs', '50');
+    // 日本語認識の最適化
+    speechConfig.setProperty('SpeechServiceConnection_AutoDetectSourceLanguages', 'false');
+    speechConfig.outputFormat = 1; // Simple format
     
     console.log('🎚️ Azure音声設定完了:', {
       language: 'ja-JP',
@@ -110,6 +105,7 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
     this.recognizer.speechStartDetected = (_, e) => {
       console.log('🎵 音声検出開始 - 話し始めました');
       this.lastSpokenTime = Date.now();
+      this.accumulatedText = ''; // 新しい音声検出時にリセット
     };
 
     this.recognizer.speechEndDetected = (_, e) => {
@@ -117,53 +113,50 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
     };
 
     this.recognizer.recognizing = (_, e) => {
-      console.log('🎯 Azure認識中:', {
-        text: e.result.text || '(なし)',
-        reason: this.getReasonText(e.result.reason),
-        duration: e.result.duration,
-        offset: e.result.offset,
-        resultId: e.result.resultId,
-        properties: e.result.properties ? Object.fromEntries(e.result.properties) : 'なし'
-      });
-      if (e.result.text && e.result.text.trim()) {
-        this.accumulatedText = e.result.text;
+      const interimText = e.result.text?.trim();
+      if (interimText) {
+        console.log('🎯 Azure認識中:', interimText);
+        this.accumulatedText = interimText;
         this.lastSpokenTime = Date.now();
-        console.log('📝 認識中テキスト蓄積:', this.accumulatedText);
       }
     };
 
     this.recognizer.recognized = (_, e) => {
       console.log('✅ Azure認識完了:', {
-        text: e.result.text || '(なし)',
+        text: e.result.text || undefined,
         reason: this.getReasonText(e.result.reason),
         duration: e.result.duration,
         offset: e.result.offset,
-        resultId: e.result.resultId,
-        properties: e.result.properties ? Object.fromEntries(e.result.properties) : 'なし',
-        errorDetails: e.result.errorDetails || 'なし',
-        hasAccumulatedText: !!this.accumulatedText
+        resultId: e.result.resultId
       });
       
-      if (e.result.reason === ResultReason.RecognizedSpeech && e.result.text && e.result.text.trim()) {
-        this.textBuffer.push(e.result.text.trim());
-        this.lastSpokenTime = Date.now();
-        console.log('📋 バッファに追加:', e.result.text.trim());
-      } else if (e.result.reason === ResultReason.NoMatch) {
-        console.log('🔍 音声が検出されませんでした');
-        console.log('🔧 NoMatchデバッグ情報:', {
-          duration: e.result.duration,
-          offset: e.result.offset,
-          hasAudio: e.result.duration > 0,
-          accumulatedText: this.accumulatedText,
-          suggestion: this.accumulatedText ? '認識中テキストがありましたが最終認識に失敗' : '音声が明確でない可能性があります'
-        });
+      // 成功した音声認識の処理
+      if (e.result.reason === ResultReason.RecognizedSpeech) {
+        const recognizedText = e.result.text?.trim();
+        if (recognizedText) {
+          console.log('🎯 認識成功:', recognizedText);
+          this.textBuffer.push(recognizedText);
+          this.lastSpokenTime = Date.now();
+          this.accumulatedText = ''; // リセット
+        } else {
+          console.log('⚠️ 認識成功だが空のテキスト');
+        }
+      } 
+      // マッチしなかった場合の処理
+      else if (e.result.reason === ResultReason.NoMatch) {
+        console.log('🔍 音声が検出されませんでした - マイクが正常に動作しているか確認してください');
         
-        // 認識中テキストがある場合はそれを使用
+        // 認識中に蓄積されたテキストがあれば使用
         if (this.accumulatedText && this.accumulatedText.trim()) {
-          console.log('🔄 認識中テキストを使用:', this.accumulatedText);
+          console.log('🔄 認識中テキストを最終結果として使用:', this.accumulatedText.trim());
           this.textBuffer.push(this.accumulatedText.trim());
           this.lastSpokenTime = Date.now();
+          this.accumulatedText = '';
         }
+      }
+      // キャンセルされた場合
+      else if (e.result.reason === ResultReason.Canceled) {
+        console.log('❌ 認識がキャンセルされました');
       }
     };
 
@@ -208,15 +201,16 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
       if (silenceDuration > this.SILENCE_DETECTION_TIME && this.textBuffer.length > 0) {
         const combinedText = this.textBuffer.join(' ').trim();
         if (combinedText) {
-          console.log('📤 Azure送信:', combinedText);
+          console.log('📤 Azure音声認識結果を送信:', combinedText);
           this.sendToServer?.(combinedText);
+          this.textBuffer = [];
+          this.accumulatedText = '';
         }
-        this.textBuffer = [];
-        this.accumulatedText = '';
       }
 
       // 10秒で自動停止
       if (silenceDuration > this.AUTO_STOP_TIME) {
+        console.log('⏰ 10秒無音のため自動停止します');
         this.stop();
       }
     }, this.CHECK_INTERVAL);
