@@ -68,6 +68,25 @@ export const images = pgTable('images', {
   createdAt: timestamp('created_at').defaultNow().notNull() // 作成日時
 });
 
+// ドキュメントテーブルの定義
+// システムで管理する文書を管理
+export const documents = pgTable('documents', {
+  id: text('id').primaryKey().default(sql`gen_random_uuid()`), // UUIDを自動生成
+  title: text('title').notNull(), // ドキュメントのタイトル
+  content: text('content').notNull(), // ドキュメントの内容
+  userId: text('user_id').notNull(), // 作成者のユーザーID
+  createdAt: timestamp('created_at').defaultNow().notNull() // 作成日時
+});
+
+// キーワードテーブルの定義
+// ドキュメント検索用のキーワードを管理
+export const keywords = pgTable('keywords', {
+  id: text('id').primaryKey().default(sql`gen_random_uuid()`), // UUIDを自動生成
+  documentId: text('document_id'), // 関連するドキュメントのID
+  word: text('word').notNull(), // キーワード
+  createdAt: timestamp('created_at').defaultNow().notNull() // 作成日時
+});
+
 // チャットエクスポートテーブルの定義
 // チャット履歴のエクスポート記録を管理
 export const chatExports = pgTable('chat_exports', {
@@ -118,11 +137,46 @@ export const insertDocumentSchema = z.object({
   userId: z.string()
 });
 
+export const insertDocumentSchema = z.object({
+  title: z.string(),
+  content: z.string(),
+  userId: z.string()
+});
+
+export const insertKeywordSchema = z.object({
+  documentId: z.string().optional(),
+  word: z.string()
+});
+
+// Type exports for better TypeScript support
+export type User = typeof users.$inferSelect;
+export type InsertUser = typeof users.$inferInsert;
+
+export type Chat = typeof chats.$inferSelect;
+export type InsertChat = typeof chats.$inferInsert;
+
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = typeof messages.$inferInsert;
+
+export type Media = typeof media.$inferSelect;
+export type InsertMedia = typeof media.$inferInsert;
+
+export type Document = typeof documents.$inferSelect;
+export type InsertDocument = typeof documents.$inferInsert;
+
+export type Keyword = typeof keywords.$inferSelect;
+export type InsertKeyword = typeof keywords.$inferInsert;
+
+export type ChatExport = typeof chatExports.$inferSelect;
+export type InsertChatExport = typeof chatExports.$inferInsert;
+
 export const schema = {
   users,
   chats,
   messages,
   media,
+  documents,
+  keywords,
   emergencyFlows,
   images,
   chatExports,
