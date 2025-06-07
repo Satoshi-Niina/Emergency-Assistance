@@ -453,7 +453,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(true);
       setDraftMessage(null);
 
-      console.log('メッセージ送信開始:', { chatId: currentChatId, content });
+      console.log('メッセージ送信開始:', { chatId: currentChatId, content, mediaUrls });
 
       // ローカルでメッセージを即座に表示
       const userMessage = {
@@ -470,9 +470,6 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }))
       };
 
-      setMessages(prev => [...prev, userMessage]);
-
-
       const aiMessage = {
         id: Date.now() + 1,
         chatId: currentChatId,
@@ -482,12 +479,14 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         timestamp: new Date()
       };
 
+      // メッセージを一度だけ追加
       setMessages(prev => [...prev, userMessage, aiMessage]);
 
       // バックグラウンドでAPIに送信を試行
       try {
         const response = await apiRequest('POST', `/api/chats/${currentChatId}/messages`, { 
           content,
+          mediaUrls: mediaUrls || [],
           useOnlyKnowledgeBase: localStorage.getItem('useOnlyKnowledgeBase') !== 'false',
           usePerplexity: false
         });
