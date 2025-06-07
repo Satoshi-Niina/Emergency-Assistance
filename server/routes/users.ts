@@ -165,13 +165,13 @@ router.patch('/:id', async (req, res) => {
       department
     };
 
-    // パスワードが提供され、かつ空文字でない場合のみ更新
-    if (typeof password === 'string' && password.trim() !== '') {
+    // パスワードが有効な場合のみ更新（undefined、null、空文字、空白文字は全て除外）
+    if (password && typeof password === 'string' && password.trim().length > 0) {
       const bcrypt = require('bcrypt');
       updateData.password = await bcrypt.hash(password, 10);
       console.log(`パスワードも更新します: ID=${id}`);
     } else {
-      console.log(`パスワードは未記入のため、現在のパスワードを維持します: ID=${id}`);
+      console.log(`パスワードは未記入または無効のため、現在のパスワードを維持します: ID=${id}`, { password: password, type: typeof password });
     }
 
     // ユーザー更新
