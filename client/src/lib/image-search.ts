@@ -454,7 +454,7 @@ const fuseOptions = {
     { name: 'details', weight: 0.6 },
     { name: 'searchText', weight: 1.0 }, // 検索用テキストフィールドを最高の重みで追加
   ],
-  threshold: 0.4, // 閾値を高めに設定して、より幅広い一致を許容
+  threshold: 0.8, // 閾値を0.8に設定して検索精度を調整
   ignoreLocation: true, // 単語の位置を無視して検索
   useExtendedSearch: true, // 拡張検索モード
   minMatchCharLength: 1, // 部分一致の条件を緩和 (1文字一致から検索対象に)
