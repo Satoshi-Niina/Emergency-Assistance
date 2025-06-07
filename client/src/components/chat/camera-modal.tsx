@@ -167,12 +167,25 @@ export default function CameraModal() {
   const handleSend = async () => {
     if (capturedImage) {
       const mediaType = isVideoMode ? 'video' : 'image';
-      const mediaUrl = { type: mediaType, url: capturedImage };
       
-      console.log('カメラから送信する画像/動画:', mediaUrl);
+      // メディアデータの形式を統一
+      const mediaUrl = { 
+        type: mediaType, 
+        url: capturedImage,
+        timestamp: Date.now()
+      };
+      
+      console.log('カメラから送信する画像/動画:', {
+        type: mediaUrl.type,
+        urlLength: mediaUrl.url.length,
+        urlPrefix: mediaUrl.url.substring(0, 50) + '...',
+        isBase64: mediaUrl.url.startsWith('data:')
+      });
       
       try {
-        await sendMessage("", [mediaUrl]);
+        // カメラで撮影した画像であることを明示
+        const messageContent = isVideoMode ? "動画を撮影しました" : "写真を撮影しました";
+        await sendMessage(messageContent, [mediaUrl]);
         console.log('画像/動画の送信が完了しました');
         setIsOpen(false);
         setCapturedImage(null);
