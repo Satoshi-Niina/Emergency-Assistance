@@ -425,7 +425,7 @@ router.post('/image-search', async (req, res) => {
       console.log(`  ${index + 1}. title: "${item.title}", keywords: [${item.keywords?.join(', ')}], searchText: "${item.searchText || ''}"`);
     });
 
-    // Fuse.jsで検索 - より厳密な設定に変更
+    // Fuse.jsで検索 - バランスの取れた検索設定
     const fuse = new Fuse(searchData, {
       keys: [
         { name: 'title', weight: 1.0 },
@@ -433,11 +433,11 @@ router.post('/image-search', async (req, res) => {
         { name: 'keywords', weight: 1.2 }, // キーワードの重みを増加
         { name: 'searchText', weight: 0.6 }
       ],
-      threshold: 0.4, // より厳密な検索（0.8から0.4に変更）
+      threshold: 0.6, // より柔軟な検索（0.4から0.6に変更）
       includeScore: true,
       ignoreLocation: true,
       useExtendedSearch: true,
-      minMatchCharLength: 2, // 最小マッチ文字数を2に増加
+      minMatchCharLength: 1, // 最小マッチ文字数を1に変更（短い検索語にも対応）
       distance: 100, // 検索距離を制限
       shouldSort: true,
       findAllMatches: false // すべてではなく、より良いマッチのみ
