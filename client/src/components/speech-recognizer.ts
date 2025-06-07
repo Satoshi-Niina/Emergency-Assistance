@@ -26,6 +26,7 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
   constructor(private azureKey: string, private azureRegion: string) {}
 
   start() {
+    console.log('🎤 Azure音声認識開始');
     const speechConfig = SpeechConfig.fromSubscription(this.azureKey, this.azureRegion);
     speechConfig.speechRecognitionLanguage = 'ja-JP';
     speechConfig.setProperty('SpeechServiceConnection_InitialSilenceTimeoutMs', '3000');
@@ -35,6 +36,7 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
     this.recognizer = new SpeechRecognizer(speechConfig, audioConfig);
 
     this.recognizer.recognizing = (_, e) => {
+      console.log('🎯 Azure認識中:', e.result.text);
       if (e.result.text.trim()) {
         this.accumulatedText = e.result.text;
         this.lastSpokenTime = Date.now();
@@ -42,13 +44,18 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
     };
 
     this.recognizer.recognized = (_, e) => {
+      console.log('✅ Azure認識完了:', e.result.text, 'Reason:', e.result.reason);
       if (e.result.reason === ResultReason.RecognizedSpeech && e.result.text.trim()) {
         this.textBuffer.push(e.result.text.trim());
         this.lastSpokenTime = Date.now();
+        console.log('📋 バッファに追加:', e.result.text.trim());
       }
     };
 
-    this.recognizer.startContinuousRecognitionAsync();
+    this.recognizer.startContinuousRecognitionAsync(
+      () => console.log('✅ Azure認識開始成功'),
+      (error) => console.error('❌ Azure認識開始エラー:', error)
+    );
 
     this.silenceCheckInterval = setInterval(() => {
       const now = Date.now();
@@ -111,23 +118,32 @@ export class WebSpeechRecognizer implements ISpeechRecognizer {
     this.recognition.continuous = true;
 
     this.recognition.onresult = (event: SpeechRecognitionEvent) => {
+      console.log('🎯 WebSpeech結果受信:', event.results.length, '件');
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
+        console.log(`📝 結果${i}:`, result[0].transcript, 'isFinal:', result.isFinal);
         if (result.isFinal && result[0].transcript.trim()) {
           this.textBuffer.push(result[0].transcript.trim());
           this.lastSpokenTime = Date.now();
+          console.log('📋 WebSpeechバッファに追加:', result[0].transcript.trim());
         }
       }
     };
 
     this.recognition.onend = () => {
+      console.log('🔄 WebSpeech認識終了 - 再開始します');
       if (this.silenceCheckInterval) {
         this.start();
       }
     };
+
+    this.recognition.onerror = (event) => {
+      console.error('❌ WebSpeech認識エラー:', event.error);
+    };
   }
 
   start() {
+    console.log('🎤 WebSpeech音声認識開始');
     this.recognition.start();
     this.lastSpokenTime = Date.now();
 
