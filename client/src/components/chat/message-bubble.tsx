@@ -301,7 +301,38 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
           }`}
         >
           <div className="relative">
-            <p className={`${!isUserMessage ? "text-blue-600" : "text-black"}`}>{message.content}</p>
+            {/* contentが画像URLまたはBase64データの場合は画像として表示 */}
+            {(message.content.startsWith('data:image/') || 
+              message.content.startsWith('/uploads/') || 
+              message.content.startsWith('blob:') ||
+              /\.(jpg|jpeg|png|gif|webp)$/i.test(message.content)) ? (
+              <div className="mt-2">
+                <img
+                  src={message.content}
+                  alt="送信された画像"
+                  className="rounded-lg w-full max-w-xs cursor-pointer border border-blue-200 shadow-md"
+                  style={{ maxHeight: '300px', objectFit: 'contain' }}
+                  onClick={() => handleImagePreview(message.content)}
+                  onLoad={(e) => {
+                    console.log('content内画像読み込み成功:', {
+                      messageId: message.id,
+                      width: (e.target as HTMLImageElement).naturalWidth,
+                      height: (e.target as HTMLImageElement).naturalHeight,
+                      urlType: message.content.startsWith('data:') ? 'base64' : 'url'
+                    });
+                  }}
+                  onError={(e) => {
+                    console.error('content内画像読み込みエラー:', {
+                      messageId: message.id,
+                      url: message.content.substring(0, 100) + '...',
+                      isBase64: message.content.startsWith('data:image/')
+                    });
+                  }}
+                />
+              </div>
+            ) : message.content.trim() ? (
+              <p className={`${!isUserMessage ? "text-blue-600" : "text-black"}`}>{message.content}</p>
+            ) : null}
 
             {/* テキスト選択時のコピーボタン */}
             {showCopyButton && (
@@ -313,8 +344,6 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
                 <Copy size={14} />
               </button>
             )}
-
-            {/* ドラフトメッセージのヒントを削除し、直接入力として扱う */}
           </div>
 
           {/* Display media attachments if any */}

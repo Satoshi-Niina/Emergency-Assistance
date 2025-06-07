@@ -459,7 +459,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const userMessage = {
         id: Date.now(),
         chatId: currentChatId,
-        content,
+        content: content || '', // 空文字列の場合もサポート
         isAiResponse: false,
         senderId: 'user',
         timestamp: new Date(),
@@ -496,8 +496,11 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
 
         console.log('API送信データ:', {
-          ...requestData,
-          mediaUrls: mediaUrls?.map(m => ({
+          content: requestData.content,
+          useOnlyKnowledgeBase: requestData.useOnlyKnowledgeBase,
+          usePerplexity: requestData.usePerplexity,
+          mediaCount: mediaUrls?.length || 0,
+          mediaDetails: mediaUrls?.map(m => ({
             type: m.type,
             urlLength: m.url.length,
             isBase64: m.url.startsWith('data:'),
