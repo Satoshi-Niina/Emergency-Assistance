@@ -1,4 +1,3 @@
-
 import { Router } from 'express';
 import { users } from '@shared/schema';
 import { db } from '../db';
@@ -19,7 +18,7 @@ router.get('/', async (req, res) => {
         department: true
       }
     });
-    
+
     res.json(allUsers);
   } catch (error) {
     console.error("Error fetching users:", error);
@@ -27,8 +26,13 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ✅ ユーザー更新
+// ユーザー情報を更新 - ルーティングを明確化
 router.patch('/:id', async (req, res) => {
+  console.log(`[DEBUG] PATCH /users/:id エンドポイントが呼ばれました`);
+  console.log(`[DEBUG] req.method: ${req.method}`);
+  console.log(`[DEBUG] req.originalUrl: ${req.originalUrl}`);
+  console.log(`[DEBUG] req.path: ${req.path}`);
+  console.log(`[DEBUG] req.baseUrl: ${req.baseUrl}`);
   try {
     const { id } = req.params; // IDはstringとして扱う
     const { username, display_name, role, department, password } = req.body;
@@ -76,7 +80,7 @@ router.patch('/:id', async (req, res) => {
 
     // 異なる検索方法を試行
     console.log(`[DEBUG] 検索クエリを実行中...`);
-    
+
     // 方法1: 基本的な検索（UUIDの文字列形式で検索）
     let existingUser;
     try {
@@ -133,7 +137,7 @@ router.patch('/:id', async (req, res) => {
         lengthMatch: u.id.length === id.length,
         includes: u.id.includes(id) || id.includes(u.id)
       })));
-      
+
       return res.status(404).json({ 
         message: "ユーザーが見つかりません",
         debug: {
