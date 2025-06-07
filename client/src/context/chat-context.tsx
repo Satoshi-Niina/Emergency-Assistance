@@ -729,7 +729,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         // AI応答メッセージとして右側に表示（ユーザーメッセージは送信しない）
         const aiGuideMessage = {
-          id: Date.now(),
+          id: Date.now() + Math.random(), // IDの重複を避ける
           chatId: currentChatId,
           content: `■ 応急処置ガイド実施記録\n\n**${guideData.title}**\n\n${guideData.content}\n\n---\n**AI分析**: 応急処置手順が正常に記録されました。実施状況に関して追加のご質問がございましたらお聞かせください。`,
           isAiResponse: true,
@@ -737,8 +737,13 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           timestamp: new Date()
         };
 
-        // AI応答メッセージのみを追加（右側に表示される）
-        setMessages(prev => [...prev, aiGuideMessage]);
+        // メッセージを即座に追加（右側のAI応答として表示される）
+        console.log('AI応答メッセージを追加:', aiGuideMessage);
+        setMessages(prev => {
+          const newMessages = [...prev, aiGuideMessage];
+          console.log('メッセージ配列更新後:', newMessages.length, '件');
+          return newMessages;
+        });
 
         // 関連する画像検索も実行
         if (guideData.title) {
