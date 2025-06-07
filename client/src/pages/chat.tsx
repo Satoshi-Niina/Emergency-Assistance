@@ -133,15 +133,9 @@ export default function Chat() {
             <Button 
               variant="outline"
               size="sm"
-              onClick={() => {
-                // チャット履歴をクリア
-                clearChatHistory();
-                // メッセージ表示エリアもクリア
-                setMessages([]);
-                // 検索結果もクリア
-                clearSearchResults();
-                // ドラフトメッセージもクリア
-                setDraftMessage(null);
+              onClick={async () => {
+                // チャット履歴をクリア（この中でローカル状態もクリアされる）
+                await clearChatHistory();
               }}
               disabled={isClearing || !displayMessages.length}
               className="flex items-center gap-1 bg-blue-800 text-white border-white hover:bg-blue-900 text-sm h-8 py-0 px-3"
