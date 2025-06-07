@@ -11,6 +11,7 @@ import { exec } from 'child_process';
 import { runCleanup } from '../scripts/scheduled-cleanup.js';
 import { fileURLToPath } from 'url';
 import open from 'open';
+import { logDebug, logInfo, logWarn, logError, showLogConfig } from './lib/logger';
 
 // __dirnameの代替
 const __filename = fileURLToPath(import.meta.url);
@@ -22,9 +23,9 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 // 環境変数の確認（Replitシークレットも含む）
 const openaiKey = process.env.OPENAI_API_KEY || process.env.REPLIT_SECRET_OPENAI_API_KEY;
-console.log("[DEBUG] OpenAI API KEY exists:", openaiKey ? "YES" : "NO");
+logDebug("OpenAI API KEY exists:", openaiKey ? "YES" : "NO");
 if (openaiKey) {
-  console.log("[DEBUG] OpenAI API KEY prefix:", openaiKey.substring(0, 10) + "...");
+  logDebug("OpenAI API KEY prefix:", openaiKey.substring(0, 10) + "...");
 }
 
 const app = express();
@@ -46,7 +47,7 @@ app.use('/uploads/:dir', (req, res) => {
   // 許可されたディレクトリのみリダイレクト
   if (['images', 'data', 'json', 'media', 'ppt'].includes(dir)) {
     const redirectPath = `/knowledge-base/${dir}${req.path}`;
-    console.log(`リダイレクト: ${req.path} -> ${redirectPath}`);
+    logDebug(`リダイレクト: ${req.path} -> ${redirectPath}`);
     res.redirect(redirectPath);
   } else {
     res.status(404).send('Not found');
@@ -70,7 +71,7 @@ app.get('/api/network-test', (req, res) => {
     status: 'connected'
   };
   
-  console.log('ネットワークテスト実行:', networkInfo);
+  logDebug('ネットワークテスト実行:', networkInfo);
   res.json(networkInfo);
 });
 
@@ -93,7 +94,7 @@ async function openBrowser(url: string) {
   try {
     await open(url);
   } catch (e) {
-    console.log('ブラウザを自動で開けませんでした:', e);
+    logDebug('ブラウザを自動で開けませんでした:', e);
   }
 }
 
@@ -106,9 +107,9 @@ async function openBrowser(url: string) {
     try {
       const { db } = await import('./db');
       await db.execute('SELECT 1');
-      console.log('Database connection successful');
+      logInfo('Database connection successful');
     } catch (dbError) {
-      console.error('Database connection failed:', dbError);
+      logError('Database connection failed:', dbError);
       // データベース接続失敗時もサーバーを起動
     }
 
@@ -132,7 +133,7 @@ async function openBrowser(url: string) {
       }
     }, 3000);
   } catch (err) {
-    console.error('知識ベースの初期化中にエラーが発生しました:', err);
+    logError('知識ベースの初期化中にエラーが発生しました:', err);
   }
 
   const server = await registerRoutes(app);
@@ -158,8 +159,12 @@ async function openBrowser(url: string) {
   const startServer = (portToUse: number) => {
     server.listen(portToUse, '0.0.0.0', async () => {
       const serverUrl = `http://0.0.0.0:${portToUse}`;
-      console.log(`サーバー起動: ${serverUrl}`);
-      console.log(`外部アクセス用URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`);
+      logInfo(`サーバー起動: ${serverUrl}`);
+      logInfo(`外部アクセス用URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`);
+      
+      // ログレベル設定を表示
+      showLogConfig();
+      
       try {
         // Replitの場合は外部URLでブラウザを開く
         const externalUrl = `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev` || `http://localhost:${portToUse}`;
@@ -171,7 +176,7 @@ async function openBrowser(url: string) {
       if (err.code === 'EADDRINUSE') {
         startServer(portToUse + 1);
       } else {
-        console.error('サーバーエラー:', err.message);
+        logError('サーバーエラー:', err.message);
       }
     });
   };
@@ -180,27 +185,27 @@ async function openBrowser(url: string) {
 
   // プロセス終了時のクリーンアップ
   process.on('SIGTERM', () => {
-    console.log('SIGTERM signal received: closing HTTP server');
+    logInfo('SIGTERM signal received: closing HTTP server');
     server.close(() => {
-      console.log('HTTP server closed');
+      logInfo('HTTP server closed');
     });
   });
 
   process.on('SIGINT', () => {
-    console.log('SIGINT signal received: closing HTTP server');
+    logInfo('SIGINT signal received: closing HTTP server');
     server.close(() => {
-      console.log('HTTP server closed');
+      logInfo('HTTP server closed');
     });
   });
 
   // 未処理のPromise拒否をキャッチ
   process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    logError('Unhandled Rejection at:', promise, 'reason:', reason);
   });
 
   // 未処理の例外をキャッチ
   process.on('uncaughtException', (error) => {
-    console.error('Uncaught Exception thrown:', error);
+    logError('Uncaught Exception thrown:', error);
     process.exit(1);
   });
 })();
