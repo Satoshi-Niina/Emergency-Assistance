@@ -436,11 +436,17 @@ export const reloadImageSearchData = () => {
   loadImageSearchData();
 };
 
-// 画像検索データが更新されたときにリロードするイベントリスナー
-window.addEventListener('image-search-data-updated', () => {
-  console.log('画像検索データの更新を検知しました。再読み込みします。');
-  loadImageSearchData();
-});
+// 重複リスナーを防ぐためのフラグ
+let eventListenerAdded = false;
+
+// 画像検索データが更新されたときにリロードするイベントリスナー（重複防止）
+if (!eventListenerAdded) {
+  window.addEventListener('image-search-data-updated', () => {
+    console.log('画像検索データの更新を検知しました。再読み込みします。');
+    loadImageSearchData();
+  });
+  eventListenerAdded = true;
+}
 
 // Fuse.js 画像検索用の設定
 const fuseOptions = {
@@ -454,7 +460,7 @@ const fuseOptions = {
     { name: 'details', weight: 0.6 },
     { name: 'searchText', weight: 1.0 }, // 検索用テキストフィールドを最高の重みで追加
   ],
-  threshold: 0.4, // 閾値を0.4に下げて検索を緩和（0.8は厳しすぎる）
+  threshold: 1.0, // 閾値を1.0に設定して全てマッチさせる（表示確認用）
   ignoreLocation: true, // 単語の位置を無視して検索
   useExtendedSearch: true, // 拡張検索モード
   minMatchCharLength: 2, // 最小2文字一致で検索精度向上
