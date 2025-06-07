@@ -1,5 +1,5 @@
 
-import { createSpeechRecognizer, ISpeechRecognizer } from '../components/speech-recognizer';
+import { createSpeechRecognizer, ISpeechRecognizer, WebSpeechRecognizer } from '../components/speech-recognizer';
 
 let currentRecognizer: ISpeechRecognizer | null = null;
 
@@ -10,8 +10,8 @@ export const startSpeechRecognition = (
 ) => {
   try {
     // 環境変数からAzureの認証情報を取得
-    const azureKey = process.env.VITE_AZURE_SPEECH_KEY || '';
-    const azureRegion = process.env.VITE_AZURE_SPEECH_REGION || 'japaneast';
+    const azureKey = import.meta.env.VITE_AZURE_SPEECH_KEY || '';
+    const azureRegion = import.meta.env.VITE_AZURE_SPEECH_REGION || 'japaneast';
     
     if (!azureKey) {
       throw new Error('Azure Speech APIキーが設定されていません');
@@ -41,7 +41,6 @@ export const startBrowserSpeechRecognition = (
 ) => {
   try {
     // WebSpeechRecognizerを直接使用
-    const { WebSpeechRecognizer } = require('../components/speech-recognizer');
     currentRecognizer = new WebSpeechRecognizer();
     currentRecognizer.sendToServer = onResult;
     currentRecognizer.start();
