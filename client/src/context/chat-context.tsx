@@ -726,16 +726,17 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // レスポンスデータを取得
         const data = await response.json();
         console.log('応急処置ガイド: 送信成功', data);
-        // AI応答メッセージのみを追加（右側に表示）
+        // AI応答メッセージとして右側に表示
         const aiGuideMessage = {
           id: Date.now(),
           chatId: currentChatId,
-          content: `■ ${guideData.title}\n\n【実施した手順の詳細】\n${guideData.content}\n\n【AI分析】\n応急処置手順が記録されました。実施状況や追加のご質問があればお聞かせください。`,
+          content: `■ 応急処置ガイド実施記録\n\n**${guideData.title}**\n\n${guideData.content}\n\n---\n**AI分析**: 応急処置手順が正常に記録されました。実施状況に関して追加のご質問がございましたらお聞かせください。`,
           isAiResponse: true,
           senderId: 'ai',
           timestamp: new Date()
         };
 
+        // メッセージを追加（右側のAI応答として表示される）
         setMessages(prev => [...prev, aiGuideMessage]);
 
         // 関連する画像検索も実行

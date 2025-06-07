@@ -796,9 +796,9 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
                   description: `応急処置ガイド「${guideTitle}」をチャットに送信しました。チャット画面をご確認ください。`,
                 });
 
-                // 送信成功後はモーダルを閉じるだけで、チャット画面への遷移は行わない
-                // ユーザーがチャット画面に戻れるようにする
-                console.log('応急処置ガイド送信完了 - チャット画面に留まります');
+                // 送信成功後はフロー画面を閉じる
+                console.log('応急処置ガイド送信完了 - フロー画面を閉じます');
+                onExit?.();
 
               } catch (error) {
                 console.error('緊急ガイド送信エラー:', error);
