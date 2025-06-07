@@ -64,11 +64,13 @@ router.patch('/:id', async (req, res) => {
       department
     };
 
-    // パスワードが提供された場合のみ更新
-    if (password && password.trim() !== '') {
+    // パスワードが提供され、かつ空文字でない場合のみ更新
+    if (password && typeof password === 'string' && password.trim() !== '') {
       const bcrypt = require('bcrypt');
       updateData.password = await bcrypt.hash(password, 10);
       console.log(`パスワードも更新します: ID=${id}`);
+    } else {
+      console.log(`パスワードは未記入のため、現在のパスワードを維持します: ID=${id}`);
     }
 
     // ユーザー更新
