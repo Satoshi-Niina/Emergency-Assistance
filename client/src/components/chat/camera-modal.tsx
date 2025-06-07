@@ -168,9 +168,22 @@ export default function CameraModal() {
     if (capturedImage) {
       const mediaType = isVideoMode ? 'video' : 'image';
       const mediaUrl = { type: mediaType, url: capturedImage };
-      await sendMessage("", [mediaUrl]);
-      setIsOpen(false);
-      setCapturedImage(null);
+      
+      console.log('カメラから送信する画像/動画:', mediaUrl);
+      
+      try {
+        await sendMessage("", [mediaUrl]);
+        console.log('画像/動画の送信が完了しました');
+        setIsOpen(false);
+        setCapturedImage(null);
+      } catch (error) {
+        console.error('画像/動画の送信に失敗しました:', error);
+        toast({
+          title: "送信エラー",
+          description: "画像/動画の送信に失敗しました。もう一度お試しください。",
+          variant: "destructive",
+        });
+      }
     }
   };
 
