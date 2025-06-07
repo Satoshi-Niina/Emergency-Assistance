@@ -307,9 +307,21 @@ export default function UsersPage() {
 
     // 空のパスワードフィールドを除去して送信
     const sanitizedEditUser = { ...editUser };
-    if (!sanitizedEditUser.password || sanitizedEditUser.password.trim() === '') {
+    
+    // パスワードが空、undefined、null、空白文字の場合は完全に除去
+    if (!sanitizedEditUser.password || 
+        typeof sanitizedEditUser.password !== 'string' || 
+        sanitizedEditUser.password.trim().length === 0) {
       delete sanitizedEditUser.password;
+      console.log('空のパスワードフィールドを除去しました');
+    } else {
+      console.log('パスワードフィールドを送信します');
     }
+    
+    console.log('送信するユーザーデータ:', { 
+      ...sanitizedEditUser, 
+      password: sanitizedEditUser.password ? '[SET]' : '[NOT_SET]' 
+    });
     
     updateUserMutation.mutate(sanitizedEditUser);
   };
