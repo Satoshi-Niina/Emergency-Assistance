@@ -406,93 +406,83 @@ const router = express.Router();
  * クライアントからのFuse.js検索リクエストを処理
  */
 router.post('/image-search', async (req, res) => {
+  const { query, count = 10 } = req.body;
+
   try {
-    const { query, count = 10 } = req.body;
+    console.log('画像検索APIリクエスト:', `query="${query}", count=${count}`);
 
-    if (!query || typeof query !== 'string') {
-      return res.status(400).json({ 
-        error: 'クエリパラメータが必要です',
-        images: [] 
-      });
-    }
+    // 画像検索データを読み込み
+    const searchDataPath = path.join(process.cwd(), 'knowledge-base', 'data', 'image_search_data.json');
+    const rawData = await fs.readFile(searchDataPath, 'utf-8');
+    const searchData = JSON.parse(rawData);
 
-    console.log(`画像検索APIリクエスト: query="${query}", count=${count}`);
+    console.log('画像検索データを読み込み:', `${searchData.length}件`);
 
-    // knowledge-base/data/image_search_data.json からデータを読み込み
-    const knowledgeBaseDataDir = path.join(process.cwd(), 'knowledge-base', 'data');
-    const imageSearchDataPath = path.join(knowledgeBaseDataDir, 'image_search_data.json');
-
-    let imageSearchData = [];
-
-    if (fs.existsSync(imageSearchDataPath)) {
-      try {
-        const jsonContent = fs.readFileSync(imageSearchDataPath, 'utf8');
-        imageSearchData = JSON.parse(jsonContent);
-        console.log(`画像検索データを読み込み: ${imageSearchData.length}件`);
-      } catch (jsonErr) {
-        console.error("画像検索データの読み込みエラー:", jsonErr);
-        return res.status(500).json({ 
-          error: '画像検索データの読み込みに失敗しました',
-          images: [] 
-        });
-      }
-    } else {
-      console.warn(`画像検索データファイルが見つかりません: ${imageSearchDataPath}`);
-      return res.json({ 
-        images: [],
-        message: '画像検索データが初期化されていません' 
-      });
-    }
-
-    // 簡単なキーワード検索を実装（Fuse.jsの代替）
-    const searchResults = imageSearchData.filter((item: any) => {
-      if (!item) return false;
-
-      const searchFields = [
-        item.title || '',
-        item.category || '',
-        item.description || '',
-        ...(item.keywords || []),
-        item.searchText || ''
-      ].join(' ').toLowerCase();
-
-      const queryLower = query.toLowerCase();
-      const keywords = queryLower.split(/\s+/).filter(k => k.length > 0);
-
-      // すべてのキーワードが含まれているかチェック
-      return keywords.some(keyword => searchFields.includes(keyword));
+    // デバッグ: 最初の数件のデータ内容を確認
+    console.log('検索データサンプル (最初の3件):');
+    searchData.slice(0, 3).forEach((item, index) => {
+      console.log(`  ${index + 1}. title: "${item.title}", keywords: [${item.keywords?.join(', ')}], searchText: "${item.searchText || ''}"`);
     });
 
-    // 結果を制限
-    const limitedResults = searchResults.slice(0, count);
+    // Fuse.jsで検索 - より緩い設定に変更
+    const fuse = new Fuse(searchData, {
+      keys: [
+        { name: 'title', weight: 1.0 },
+        { name: 'description', weight: 0.8 },
+        { name: 'keywords', weight: 0.6 },
+        { name: 'searchText', weight: 0.4 }
+      ],
+      threshold: 0.8, // 0.6から0.8に変更（より緩い検索）
+      includeScore: true,
+      ignoreLocation: true,
+      useExtendedSearch: true,
+      minMatchCharLength: 1 // 最小マッチ文字数を1に設定
+    });
 
-    console.log(`画像検索結果: ${limitedResults.length}件見つかりました`);
+    const results = fuse.search(query);
+    console.log('Fuse.js検索結果:', `${results.length}件見つかりました`);
 
-    // クライアントが期待する形式で結果を返す
-    const formattedResults = limitedResults.map((item: any) => ({
-      id: item.id,
-      url: item.file,
-      file: item.file,
-      title: item.title || '',
-      description: item.description || '',
-      category: item.category || '',
-      keywords: item.keywords || [],
-      metadata: item.metadata || {}
+    // 結果が少ない場合は部分一致も試行
+    if (results.length === 0) {
+      console.log('Fuse.jsで結果が見つからないため、部分一致検索を実行します');
+      const partialMatches = searchData.filter(item => {
+        const searchableText = [
+          item.title || '',
+          item.description || '',
+          ...(item.keywords || []),
+          item.searchText || ''
+        ].join(' ').toLowerCase();
+
+        return searchableText.includes(query.toLowerCase());
+      });
+
+      console.log('部分一致検索結果:', `${partialMatches.length}件見つかりました`);
+
+      const images = partialMatches.slice(0, count).map((item, index) => ({
+        id: item.id,
+        url: item.file,
+        file: item.file,
+        title: item.title,
+        type: 'image',
+        relevance: 0.5 // 部分一致は中程度のrelevance
+      }));
+
+      return res.json({ images });
+    }
+
+    const images = results.slice(0, count).map(result => ({
+      id: result.item.id,
+      url: result.item.file,
+      file: result.item.file,
+      title: result.item.title,
+      type: 'image',
+      relevance: 1 - (result.score || 0)
     }));
 
-    return res.json({
-      images: formattedResults,
-      total: formattedResults.length,
-      query: query
-    });
-
-  } catch (error) {
-    console.error('画像検索APIエラー:', error);
-    return res.status(500).json({ 
-      error: '画像検索中にエラーが発生しました',
-      details: error instanceof Error ? error.message : String(error),
-      images: [] 
-    });
+    res.json({ images });
+  } catch (err) {
+    console.error('Image search error:', err);
+    res.status(500).json({ error: 'Image search failed' });
   }
 });
 
