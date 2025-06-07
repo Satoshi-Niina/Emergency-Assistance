@@ -140,8 +140,7 @@ export function createSpeechRecognizer(azureKey: string, azureRegion: string): I
   }
 }
 
-// WebSpeechRecognizerクラスもエクスポート
-export { WebSpeechRecognizer, AzureSpeechRecognizer };
+
 
 function isIOS(): boolean {
   return /iP(hone|od|ad)/.test(navigator.platform);
