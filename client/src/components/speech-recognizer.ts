@@ -55,22 +55,31 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
     }
 
     const speechConfig = SpeechConfig.fromSubscription(this.azureKey, this.azureRegion);
+    
+    // 言語設定を確実に適用
     speechConfig.speechRecognitionLanguage = 'ja-JP';
+    speechConfig.setProperty('SpeechServiceConnection_RecognitionMode', 'Conversation');
     
     // 音声認識の基本設定を最適化
-    speechConfig.setProperty('SpeechServiceConnection_InitialSilenceTimeoutMs', '8000');
-    speechConfig.setProperty('SpeechServiceConnection_EndSilenceTimeoutMs', '2000');
+    speechConfig.setProperty('SpeechServiceConnection_InitialSilenceTimeoutMs', '5000');
+    speechConfig.setProperty('SpeechServiceConnection_EndSilenceTimeoutMs', '3000');
     
     // 連続認識のための設定
-    speechConfig.setProperty('Speech_SegmentationSilenceTimeoutMs', '1000');
-    speechConfig.setProperty('SpeechServiceConnection_SingleShotTimeout', '30000');
+    speechConfig.setProperty('Speech_SegmentationSilenceTimeoutMs', '2000');
+    speechConfig.setProperty('SpeechServiceConnection_SingleShotTimeout', '15000');
     
     // 認識精度を向上させる設定
-    speechConfig.setProperty('SpeechServiceConnection_RecoMode', 'INTERACTIVE');
-    speechConfig.setProperty('SpeechServiceConnection_EnableAudioLogging', 'false');
+    speechConfig.setProperty('SpeechServiceConnection_RecoMode', 'CONVERSATION');
+    speechConfig.setProperty('SpeechServiceConnection_EnableAudioLogging', 'true');
     
     // 日本語認識の最適化
     speechConfig.setProperty('SpeechServiceConnection_AutoDetectSourceLanguages', 'false');
+    speechConfig.setProperty('SpeechServiceConnection_LanguageIdMode', 'None');
+    
+    // 音声検出の感度を調整
+    speechConfig.setProperty('SpeechServiceConnection_VoiceActivityTimeout', '5000');
+    speechConfig.setProperty('SpeechServiceConnection_PhraseTimeout', '15000');
+    
     speechConfig.outputFormat = 1; // Simple format
     
     console.log('🎚️ Azure音声設定完了:', {
@@ -83,10 +92,17 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
     console.log('🎯 AudioConfig作成中...');
     const audioConfig = AudioConfig.fromDefaultMicrophoneInput();
     
+    // AudioConfigの詳細設定
+    audioConfig.setProperty('SPEECH_INPUT_AUDIO_PROCESSING_ENABLE_DEFAULT', 'true');
+    audioConfig.setProperty('SPEECH_INPUT_AUDIO_PROCESSING_ENABLE_ECHO_CANCELLATION', 'true');
+    audioConfig.setProperty('SPEECH_INPUT_AUDIO_PROCESSING_ENABLE_NOISE_SUPPRESSION', 'true');
+    audioConfig.setProperty('SPEECH_INPUT_AUDIO_PROCESSING_ENABLE_AUTOMATIC_GAIN_CONTROL', 'true');
+    
     // AudioConfigのプロパティを設定
     console.log('🔧 AudioConfig設定:', {
       source: 'DefaultMicrophone',
-      format: 'PCM 16kHz 16bit mono'
+      format: 'PCM 16kHz 16bit mono',
+      processing: 'Enhanced'
     });
     
     this.recognizer = new SpeechRecognizer(speechConfig, audioConfig);
@@ -127,7 +143,8 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
         reason: this.getReasonText(e.result.reason),
         duration: e.result.duration,
         offset: e.result.offset,
-        resultId: e.result.resultId
+        resultId: e.result.resultId,
+        confidence: e.result.properties?.getProperty('Speech.ResponseSpeechRecognitionConfidence', 'N/A')
       });
       
       // 成功した音声認識の処理
@@ -144,7 +161,13 @@ export class AzureSpeechRecognizer implements ISpeechRecognizer {
       } 
       // マッチしなかった場合の処理
       else if (e.result.reason === ResultReason.NoMatch) {
-        console.log('🔍 音声が検出されませんでした - マイクが正常に動作しているか確認してください');
+        const noMatchDetails = e.result.properties?.getProperty('Speech.NoMatchReason', '不明');
+        console.log('🔍 音声が検出されませんでした:', {
+          詳細: noMatchDetails,
+          継続時間: e.result.duration,
+          オフセット: e.result.offset
+        });
+        console.log('💡 対策: より大きくはっきりと話してください。背景雑音を減らしてください。');
         
         // 認識中に蓄積されたテキストがあれば使用
         if (this.accumulatedText && this.accumulatedText.trim()) {
