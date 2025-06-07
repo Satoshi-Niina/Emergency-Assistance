@@ -119,13 +119,13 @@ export default function CameraModal() {
         startRecording();
       }
     } else {
-      // Capture image - 画像サイズを制限して圧縮
+      // Capture image - 150dpi相当（約874px × 1240px）に圧縮
       const canvas = document.createElement('canvas');
       const video = videoRef.current;
       
-      // 最大幅・高さを制限（例: 1024px）
-      const maxWidth = 1024;
-      const maxHeight = 1024;
+      // 150dpi相当の最大解像度に制限
+      const maxWidth = 874;   // 150dpi相当の幅
+      const maxHeight = 1240; // 150dpi相当の高さ
       let { videoWidth, videoHeight } = video;
       
       // アスペクト比を保持してリサイズ
@@ -148,8 +148,8 @@ export default function CameraModal() {
         ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
         
         try {
-          // 圧縮率を高めに設定してファイルサイズを削減（品質0.6）
-          const imageData = canvas.toDataURL('image/jpeg', 0.6);
+          // より高い圧縮率でファイルサイズを最小化（品質0.4）
+          const imageData = canvas.toDataURL('image/jpeg', 0.4);
           
           // Base64データが正しい形式になっているかチェック
           if (!imageData.startsWith('data:image/')) {
@@ -160,9 +160,11 @@ export default function CameraModal() {
           
           console.log('✅ 撮影画像をBase64形式で生成成功:', {
             format: 'image/jpeg',
-            quality: 0.6,
+            quality: 0.4,
+            resolution: '150dpi相当',
             originalSize: `${video.videoWidth}x${video.videoHeight}`,
             compressedSize: `${videoWidth}x${videoHeight}`,
+            maxResolution: `${maxWidth}x${maxHeight}`,
             dataLength: imageData.length,
             dataSizeMB: (imageData.length / 1024 / 1024).toFixed(2),
             isValidBase64: imageData.startsWith('data:image/jpeg;base64,'),
