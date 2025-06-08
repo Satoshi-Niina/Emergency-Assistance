@@ -15,18 +15,28 @@ const BACKUP_DIR = path.join(KNOWLEDGE_BASE_DIR, 'backups');
 const INDEX_FILE = path.join(DATA_DIR, 'knowledge_index.json');
 
 // 知識ベースの初期化
-export function initializeKnowledgeBase() {
-  console.log('知識ベースの初期化を開始...');
-  
-  // 必要なディレクトリを作成
-  [KNOWLEDGE_BASE_DIR, DATA_DIR, TEXT_DIR, TROUBLESHOOTING_DIR, BACKUP_DIR].forEach(dir => {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+export async function initializeKnowledgeBase() {
+  try {
+    // 必要なディレクトリを作成（非同期で実行）
+    const directories = [KNOWLEDGE_BASE_DIR, DATA_DIR, TEXT_DIR, TROUBLESHOOTING_DIR, BACKUP_DIR];
+    
+    for (const dir of directories) {
+      try {
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+      } catch (error) {
+        console.warn(`ディレクトリ作成警告 ${dir}:`, error);
+        // 致命的でないエラーは継続
+      }
     }
-  });
-  
-  console.log('Knowledge base directories initialized');
-  console.log('知識ベースの初期化が完了しました');
+    
+    console.log('Knowledge base directories initialized');
+    return true;
+  } catch (error) {
+    console.error('知識ベース初期化エラー:', error);
+    throw error;
+  }
 }
 
 /**
