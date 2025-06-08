@@ -535,82 +535,74 @@ export const cancelSearch = (): void => {
  * @returns 検索結果の配列
  */
 export const searchByText = async (text: string, autoStopAfterResults: boolean = true): Promise<any[]> => {
+  // 重複検索防止
+  if (isSearching) {
+    console.log('既に検索中のため、新しい検索をスキップします');
+    return [];
+  }
+
   try {
+    isSearching = true;
     console.log('画像検索開始:', text);
     
     // 最初にデータが存在することを確認
     if (imageSearchData.length === 0) {
       console.log('画像検索データが読み込まれていないため再ロード');
       await loadImageSearchData();
+      
+      // データが空の場合は早期リターン
+      if (imageSearchData.length === 0) {
+        console.warn('画像検索データが空です');
+        return [];
+      }
     }
     
-    // クエリの最適化を試みる
-    try {
-      const response = await apiRequest('POST', '/api/optimize-search-query', { text });
-      
-      // レスポンスの検証を追加
-      if (!response.ok) {
-        console.warn(`検索クエリ最適化APIが失敗しました: ${response.status}`);
-        return getFuseInstance().search(text); // 元のテキストで検索を続行
-      }
-      
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        console.warn(`無効なContent-Type: ${contentType}`);
-        return getFuseInstance().search(text); // 元のテキストで検索を続行
-      }
-      
-      const data = await response.json();
-      if (!data || typeof data.optimizedQuery !== 'string') {
-        console.warn('無効なレスポンス形式');
-        return getFuseInstance().search(text); // 元のテキストで検索を続行
-      }
-      
-      const optimizedQuery = data.optimizedQuery || text;
-      console.log('検索クエリを最適化:', text, '->', optimizedQuery);
-      text = optimizedQuery;
-    } catch (error) {
-      console.error('検索クエリ最適化エラー:', error);
-      // 最適化に失敗した場合は元のテキストを使用
-    }
+    // クエリの最適化をスキップして直接検索（パフォーマンス改善）
+    let optimizedText = text;
     
     // Fuseインスタンスを取得して検索を実行
     const fuse = getFuseInstance();
     
     // キーワードを分割して検索
-    const keywords = text.split(/\s+/).filter(k => k.length > 0);
+    const keywords = optimizedText.split(/\s+/).filter(k => k.length > 0);
     let searchResults: any[] = [];
     
     if (keywords.length > 1) {
       console.log(`複数キーワード検索: ${keywords.join(', ')}`);
       // 複数のキーワードがある場合、各キーワードで検索
+      const resultMap = new Map<string | number, any>();
+      
       for (const keyword of keywords) {
         const results = fuse.search(keyword);
-        searchResults.push(...results);
+        results.forEach(result => {
+          const existingResult = resultMap.get(result.item.id);
+          if (!existingResult || (existingResult.score && result.score && result.score < existingResult.score)) {
+            resultMap.set(result.item.id, result);
+          }
+        });
       }
       
-      // 重複を除去（IDをキーとして使用）
-      const uniqueResults = new Map<string | number, any>();
-      searchResults.forEach(result => {
-        const existingResult = uniqueResults.get(result.item.id);
-        if (!existingResult || (existingResult.score && result.score && result.score < existingResult.score)) {
-          uniqueResults.set(result.item.id, result);
-        }
-      });
-      
-      searchResults = Array.from(uniqueResults.values());
+      searchResults = Array.from(resultMap.values());
     } else if (keywords.length === 1) {
       console.log(`単一キーワード検索: ${keywords[0]}`);
       searchResults = fuse.search(keywords[0]);
     } else {
       console.log(`検索キーワードが抽出できなかったため検索をスキップします`);
-      searchResults = [];
+      return [];
     }
     
-    console.log(`検索結果: ${searchResults.length}件見つかりました`);
-    return searchResults;
+    // 結果を制限（パフォーマンス改善）
+    const limitedResults = searchResults.slice(0, 20);
+    console.log(`検索結果: ${limitedResults.length}件見つかりました（全${searchResults.length}件中）`);
+    
+    return limitedResults;
   } catch (error) {
     console.error('画像検索エラー:', error);
-    throw new Error('画像検索に失敗しました');
+    return []; // エラー時は空配列を返してクラッシュを防ぐ
+  } finally {
+    // 検索完了後、少し遅延してからフラグを解除
+    setTimeout(() => {
+      isSearching = false;
+    }, 100);
   }
 };

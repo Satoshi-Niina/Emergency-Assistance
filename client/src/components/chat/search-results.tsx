@@ -152,8 +152,6 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
   // 画像のロード処理を改善
   const handleImageLoad = (imgElement: HTMLImageElement, result: SearchResult) => {
     try {
-      console.log('画像ロード完了:', imgElement.src);
-
       // ローディングプレースホルダーを非表示
       const placeholder = imgElement.parentElement?.querySelector('.loading-placeholder');
       if (placeholder) {
@@ -164,65 +162,31 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
     }
   };
 
-  // 画像読み込みエラーハンドラ
+  // 画像読み込みエラーハンドラ（簡素化）
   const handleImageError = (imgElement: HTMLImageElement, result: SearchResult, retryCount = 0) => {
     try {
-      console.warn(`画像読み込みエラー: ${imgElement.src} (試行回数: ${retryCount + 1})`);
-
-      const maxRetries = 2; // リトライ回数を減らして無限ループを防止
-
-      if (retryCount < maxRetries) {
-        // リトライ処理
-        setTimeout(() => {
-          try {
-            // さまざまなパターンを試行
-            let retryPath = '';
-
-            if (retryCount === 0) {
-              // 1回目: knowledge-base/images/ パスで試行
-              retryPath = fixImagePath(result.url || result.file || '');
-            } else if (retryCount === 1) {
-              // 2回目: ファイル名だけでknowledge-base/images/から試行
-              const fileName = (result.url || result.file || '').split('/').pop();
-              retryPath = fileName ? `/knowledge-base/images/${fileName}` : '';
-            }
-
-            if (retryPath && retryPath !== imgElement.src) {
-              console.log(`画像パスを修正してリトライ: ${retryPath}`);
-              imgElement.src = retryPath;
-              imgElement.onerror = () => handleImageError(imgElement, result, retryCount + 1);
-            } else {
-              handleImageError(imgElement, result, retryCount + 1);
-            }
-          } catch (retryError) {
-            console.error('リトライ処理エラー:', retryError);
-            handleImageError(imgElement, result, maxRetries); // エラー表示に進む
-          }
-        }, 300 * (retryCount + 1)); // 指数バックオフを短縮
-        return;
+      if (retryCount === 0) {
+        // 1回だけリトライ（knowledge-base/images/パスで）
+        const fileName = (result.url || result.file || '').split('/').pop();
+        const retryPath = fileName ? `/knowledge-base/images/${fileName}` : '';
+        
+        if (retryPath && retryPath !== imgElement.src) {
+          imgElement.src = retryPath;
+          imgElement.onerror = () => handleImageError(imgElement, result, 1);
+          return;
+        }
       }
 
-      // 最大試行回数に達した場合の処理
-      console.log('最大試行回数に達しました。エラー表示に切り替えます');
-
-      // ローディングプレースホルダーを非表示
+      // エラー表示
       const placeholder = imgElement.parentElement?.querySelector('.loading-placeholder');
       if (placeholder) {
         (placeholder as HTMLElement).style.display = 'none';
       }
 
-      // 画像を非表示にしてエラーメッセージを表示
       imgElement.style.display = 'none';
 
       const container = imgElement.parentElement;
-      if (container) {
-        // 既存のエラー表示があれば削除
-        const existingError = container.querySelector('.image-error');
-        if (existingError) {
-          existingError.remove();
-        }
-
-        // エラー表示要素を作成
+      if (container && !container.querySelector('.image-error')) {
         const errorElement = document.createElement('div');
         errorElement.className = 'image-error flex items-center justify-center h-full w-full bg-gray-100 text-gray-500 text-sm rounded-md min-h-[150px]';
         errorElement.innerHTML = `
