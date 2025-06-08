@@ -24,14 +24,14 @@ async function loadImageSearchData() {
     console.log('既に読み込み中のため、重複読み込みを防止します');
     return [];
   }
-  
+
   if (isDataLoaded && imageSearchData.length > 0) {
     console.log('データは既に読み込み済みです');
     return imageSearchData;
   }
 
   isLoading = true;
-  
+
   try {
     // 最新のJSON ファイルを取得する
     const timestamp = new Date().getTime();
@@ -148,7 +148,7 @@ async function loadImageSearchData() {
         // キーワードを生成（本文とタイトルから）- 検証付き
         const keywords = [];
 
-        // タイトルをキーワードに追加
+        //// タイトルをキーワードに追加
         if (slideTitle && typeof slideTitle === 'string' && slideTitle.trim() !== '') {
           keywords.push(slideTitle.trim());
         }
@@ -347,7 +347,7 @@ async function loadImageSearchData() {
       if (process.env.NODE_ENV === 'development') {
         console.log(`検索用データを準備完了: ${imageSearchData.length}件`);
       }
-      
+
       // データ読み込み完了フラグを設定
       isDataLoaded = true;
     } else {
@@ -583,7 +583,7 @@ export const searchByText = async (text: string, isNewMessage: boolean = false):
     console.log('履歴メッセージの検索はスキップ - 新規入力のみ処理');
     return [];
   }
-  
+
   // 一時的に画像検索を無効化（安定性確保）
   console.log('🚫 画像検索は安定性のため一時無効化中');
   return [];
@@ -705,12 +705,12 @@ export const searchByText = async (text: string, isNewMessage: boolean = false):
     const limitedResults = searchResults.slice(0, 15).filter(result => 
       result && result.item && result.item.id && result.item.file
     );
-    
+
     console.log(`検索結果: ${limitedResults.length}件見つかりました（全${searchResults.length}件中）`);
 
     // 結果をキャッシュ
     lastSearchResults = limitedResults;
-    
+
     return limitedResults;
   } catch (error) {
     console.error('画像検索エラー:', error);
