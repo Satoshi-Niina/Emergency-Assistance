@@ -34,20 +34,26 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Health check endpoints - only for production deployment
+// Health check endpoints - always available but different behavior
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'healthy',
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Production-only root endpoint for deployment health checks
 if (process.env.NODE_ENV === 'production') {
   app.get('/', (req, res) => {
     res.status(200).json({ 
       status: 'ok', 
       timestamp: new Date().toISOString(),
-      service: 'rest-express'
+      service: 'rest-express',
+      version: '1.0.0'
     });
   });
 }
-
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'healthy' });
-});
 
 // Serve static files from public directory
 app.use('/static', express.static(path.join(process.cwd(), 'public')));
