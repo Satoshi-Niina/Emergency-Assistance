@@ -584,14 +584,6 @@ export const searchByText = async (text: string, isNewMessage: boolean = false):
     return [];
   }
 
-  // 一時的に画像検索を無効化（安定性確保）
-  console.log('🚫 画像検索は安定性のため一時無効化中');
-  return [];
-
-  // 以下は無効化されています（安定性確保後に有効化予定）
-
-  // 以下のコードは現在無効化されています
-  /*
   // 自動検索完全無効化チェック
   if (typeof window !== 'undefined' && (window as any)._fuseSearchDisabled) {
     console.log('自動検索が無効化されているため、検索をスキップします');
@@ -623,7 +615,6 @@ export const searchByText = async (text: string, isNewMessage: boolean = false):
     console.log('同じテキストの重複検索をスキップします:', text);
     return lastSearchResults;
   }
-  */
 
   lastSearchTime = currentTime;
   lastSearchText = text;

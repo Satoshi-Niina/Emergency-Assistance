@@ -536,6 +536,18 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         };
 
         setMessages(prev => [...prev, aiMessage]);
+        
+        // 新規メッセージに対して画像検索を実行
+        try {
+          const { searchByText } = await import('@/lib/image-search');
+          const searchResults = await searchByText(content, true);
+          if (searchResults && searchResults.length > 0) {
+            console.log('🔍 画像検索結果:', searchResults.length, '件');
+            setSearchResults(searchResults);
+          }
+        } catch (searchError) {
+          console.warn('画像検索エラー:', searchError);
+        }
       }
     } catch (error) {
       console.error('メッセージ送信エラー:', error);
@@ -860,6 +872,18 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // 緊急ガイド送信時は自動検索を完全無効化
       console.log('🏥 緊急ガイド送信完了 - 自動検索は実行しません');
+      
+      // 新規メッセージに対して画像検索を実行
+      try {
+        const { searchByText } = await import('@/lib/image-search');
+        const searchResults = await searchByText(userMessageContent, true);
+        if (searchResults && searchResults.length > 0) {
+          console.log('🔍 画像検索結果:', searchResults.length, '件');
+          setSearchResults(searchResults);
+        }
+      } catch (searchError) {
+        console.warn('画像検索エラー:', searchError);
+      }
 
       // 成功トーストを表示
       toast({
