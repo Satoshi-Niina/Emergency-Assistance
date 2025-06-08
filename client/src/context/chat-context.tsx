@@ -541,12 +541,26 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         try {
           const { searchByText } = await import('@/lib/image-search');
           const searchResults = await searchByText(content, true);
+          console.log('🔍 画像検索実行結果:', searchResults?.length || 0, '件');
+          
           if (searchResults && searchResults.length > 0) {
-            console.log('🔍 画像検索結果:', searchResults.length, '件');
-            setSearchResults(searchResults);
+            // 検索結果を処理して画像パスを修正
+            const processedResults = searchResults.map((result: any) => ({
+              ...result.item,
+              id: result.item?.id || Math.random(),
+              url: result.item?.file || result.item?.url,
+              title: result.item?.title || '関連画像'
+            }));
+            
+            console.log('🖼️ 関係画像エリアに表示:', processedResults.length, '件');
+            setSearchResults(processedResults);
+          } else {
+            console.log('🔍 画像検索結果なし');
+            setSearchResults([]);
           }
         } catch (searchError) {
           console.warn('画像検索エラー:', searchError);
+          setSearchResults([]);
         }
       }
     } catch (error) {
@@ -877,12 +891,26 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         const { searchByText } = await import('@/lib/image-search');
         const searchResults = await searchByText(userMessageContent, true);
+        console.log('🔍 緊急ガイド用画像検索結果:', searchResults?.length || 0, '件');
+        
         if (searchResults && searchResults.length > 0) {
-          console.log('🔍 画像検索結果:', searchResults.length, '件');
-          setSearchResults(searchResults);
+          // 検索結果を処理して画像パスを修正
+          const processedResults = searchResults.map((result: any) => ({
+            ...result.item,
+            id: result.item?.id || Math.random(),
+            url: result.item?.file || result.item?.url,
+            title: result.item?.title || '関連画像'
+          }));
+          
+          console.log('🖼️ 緊急ガイド関連画像表示:', processedResults.length, '件');
+          setSearchResults(processedResults);
+        } else {
+          console.log('🔍 緊急ガイド用画像検索結果なし');
+          setSearchResults([]);
         }
       } catch (searchError) {
-        console.warn('画像検索エラー:', searchError);
+        console.warn('緊急ガイド画像検索エラー:', searchError);
+        setSearchResults([]);
       }
 
       // 成功トーストを表示
