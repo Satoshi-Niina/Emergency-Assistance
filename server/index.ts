@@ -89,26 +89,10 @@ async function openBrowser(url: string) {
 }
 
 (async () => {
-  try {
-    // 初期化
-    app.locals.storage = storage;
-
-    // Skip database connection test during startup for faster deployment
-    // Database connections will be handled lazily when needed
-
-    // 必要なディレクトリを作成（高速化）
-    const dirs = ['knowledge-base/images', 'knowledge-base/json', 'knowledge-base/data', 'knowledge-base/media', 'knowledge-base/ppt'];
-    dirs.forEach(dir => {
-      const dirPath = path.join(process.cwd(), dir);
-      if (!fs.existsSync(dirPath)) {
-        fs.mkdirSync(dirPath, { recursive: true });
-      }
-    });
-
-    // Knowledge base will be initialized after server starts listening
-  } catch (err) {
-    logError('知識ベースの初期化中にエラーが発生しました:', err);
-  }
+  // 初期化
+  app.locals.storage = storage;
+  
+  // All directory creation and knowledge base initialization moved to lazy loading
 
   const server = await registerRoutes(app);
 
@@ -135,16 +119,6 @@ async function openBrowser(url: string) {
     if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
       logInfo(`外部URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`);
     }
-    
-    // Initialize knowledge base after server is listening
-    setTimeout(() => {
-      try {
-        initializeKnowledgeBase();
-        logDebug('知識ベースの初期化が完了しました');
-      } catch (err) {
-        logError('知識ベースの初期化中にエラーが発生しました:', err);
-      }
-    }, 100);
   }).on('error', (err: NodeJS.ErrnoException) => {
     logError('サーバーエラー:', err.message);
     process.exit(1);
