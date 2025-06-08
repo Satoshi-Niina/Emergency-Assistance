@@ -680,17 +680,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let aiResponse = '';
       let citations: any[] = [];
 
+      const getAIResponse = async (content: string, useKnowledgeBase: boolean): Promise<any> => {
+        try {
+          return await processOpenAIRequest(content, useKnowledgeBase);
+        } catch (error) {
+          console.error('OpenAI処理エラー:', error);
+          return 'AI応答の生成に失敗しました。';
+        }
+      };
+
       // 現時点ではPerplexity API未対応のため、OpenAIのみ使用
       // OpenAI API を使用 (デフォルト)
       console.log(`OpenAIモデルを使用`);
-      aiResponse = await processOpenAIRequest(message.content, useOnlyKnowledgeBase);
+      aiResponse = await getAIResponse(message.content, useOnlyKnowledgeBase);
 
       // Perplexity API は一時的に無効化
       /*
       if (usePerplexity) {
         // Perplexity API を使用
         console.log(`Perplexityモデルを使用`);
-        const perplexityResponse = await processPerplexityRequest(message.content, '', useOnlyKnowledgeBase);
+        const perplexityResponse = await processPerplexityRequest(message.content, '', useKnowledgeBaseOnly);
         aiResponse = perplexityResponse.content;
         citations = perplexityResponse.citations;
       } else {
@@ -708,26 +717,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // AIレスポンスの内容を検証
-      const responseContent = typeof aiResponse === 'string' ? aiResponse : String(aiResponse || '');
-      console.log('サーバー側AIレスポンス検証:', { 
-        type: typeof aiResponse, 
+      // AIからの応答を取得
+      const aiResponse = await getAIResponse(content, useOnlyKnowledgeBase);
+
+      // 応答の型チェックとサニタイズ
+      let responseContent: string;
+      if (typeof aiResponse === 'string') {
+        responseContent = aiResponse;
+        console.log('サーバー側AIレスポンス検証:', { 
+          type: 'string',
+          content: responseContent.substring(0, 100) + '...',
+          length: responseContent.length
+        });
+      } else if (aiResponse && typeof aiResponse === 'object') {
+        // オブジェクト型の場合、適切なプロパティから文字列を抽出
+        responseContent = aiResponse.content || aiResponse.text || aiResponse.message || JSON.stringify(aiResponse);
+        console.log('サーバー側AIレスポンス検証:', { 
+          type: 'object',
+          content: responseContent.substring(0, 100) + '...',
+          length: responseContent.length,
+          originalKeys: Object.keys(aiResponse),
+          extractedFrom: aiResponse.content ? 'content' : aiResponse.text ? 'text' : aiResponse.message ? 'message' : 'JSON'
+        });
+      } else {
+        responseContent = 'AI応答の処理中にエラーが発生しました。';
+        console.error('サーバー側AIレスポンス検証: 不正な型', { 
+          type: typeof aiResponse, 
+          value: aiResponse 
+        });
+      }
+
+      console.log('📤 クライアントに送信するAIレスポンス:', {
+        type: typeof responseContent,
         content: responseContent.substring(0, 100) + '...',
-        length: responseContent.length 
+        length: responseContent.length,
+        isValidString: typeof responseContent === 'string' && responseContent.trim().length > 0
       });
-
-      // AIレスポンスメッセージを作成
-      const aiMessage = await storage.createMessage({
-        chatId,
-        content: responseContent || 'レスポンスの生成に失敗しました',
+      // AIメッセージを保存
+      const aiMessage = await db.insert(messages).values({
+        chatId: chatId,
+        content: responseContent,
         isAiResponse: true,
-        senderId: req.session.userId // AIメッセージも送信者IDを設定
+        senderId: null,
+      }).returning().get();
+
+      // クライアントに送信するレスポンス構造を明確にする
+      const responseMessage = {
+        ...aiMessage,
+        content: responseContent, // 必ず文字列であることを保証
+        text: responseContent, // 互換性のため
+        timestamp: aiMessage.createdAt || new Date()
+      };
+
+      console.log('📤 最終レスポンス:', {
+        id: responseMessage.id,
+        contentType: typeof responseMessage.content,
+        contentPreview: responseMessage.content.substring(0, 100) + '...',
+        hasValidContent: !!responseMessage.content && responseMessage.content.trim().length > 0
       });
 
-      return res.json({
-        userMessage: message,
-        aiMessage
-      });
+      res.json(responseMessage);
     } catch (error) {
       console.error('メッセージ送信処理エラー:', {
         error: error instanceof Error ? error.message : error,
@@ -805,8 +854,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Search routes
   app.get("/api/search", requireAuth, async (req, res) => {
-    try {
-      const keyword = req.query.q as string;
+    try {      const keyword = req.query.q as string;
 
       if (!keyword) {
         return res.status(400).json({ message: "Search query is required"});
