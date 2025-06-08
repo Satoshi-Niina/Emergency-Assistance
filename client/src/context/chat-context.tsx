@@ -912,11 +912,13 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setSelectedText('');
       clearSearchResults();
 
-      // 2. ローカルキャッシュのクリア
+      // 2. ローカルキャッシュのクリア（強制的にクリア）
       try {
         queryClient.removeQueries({ queryKey: [`/api/chats/${chatId}/messages`] });
         queryClient.removeQueries({ queryKey: ['search_results'] });
-        console.log('📦 ローカルキャッシュをクリアしました');
+        queryClient.invalidateQueries({ queryKey: [`/api/chats/${chatId}/messages`] });
+        queryClient.clear(); // 全キャッシュをクリア
+        console.log('📦 ローカルキャッシュを強制的にクリアしました');
       } catch (localError) {
         console.warn('ローカルキャッシュクリアエラー:', localError);
       }
@@ -950,13 +952,16 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // 起動時は常に新しいチャットとして開始（復元処理なし）
   useEffect(() => {
     if (chatId && !isClearing) {
-      console.log('🆕 新しいチャットセッションを開始');
+      console.log('🆕 新しいチャットセッションを開始 - 履歴読み込みを無効化');
       setMessages([]);
       setSearchResults([]);
       setLastExportTimestamp(null);
       setHasUnexportedMessages(false);
+      
+      // キャッシュもクリア
+      queryClient.removeQueries({ queryKey: [`/api/chats/${chatId}/messages`] });
     }
-  }, [chatId, isClearing]);
+  }, [chatId, isClearing, queryClient]);
 
   // 最後のエクスポート履歴を取得
   const fetchLastExport = useCallback(async () => {

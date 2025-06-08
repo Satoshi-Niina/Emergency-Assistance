@@ -43,6 +43,7 @@ export default function Chat() {
   const { data, isLoading: messagesLoading } = useQuery({
     queryKey: ['/api/chats/1/messages'],
     staleTime: 1000 * 60 * 5, // 5 minutes
+    enabled: !isClearing, // クリア中は無効化
   });
 
   useEffect(() => {
@@ -63,7 +64,8 @@ export default function Chat() {
   }, [setSelectedText]);
 
   // Show messages from the context or from the query
-  const displayMessages = isClearing 
+  // クリア中またはクリア直後は空のリストを表示
+  const displayMessages = (isClearing || messages?.length === 0) 
     ? [] 
     : (messages?.length > 0 ? messages : (data as any[] || []));
 
