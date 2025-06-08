@@ -143,9 +143,6 @@ const port = parseInt(process.env.PORT || '80', 10);
   // 初期化
   app.locals.storage = storage;
   
-  // Lazy load knowledge base initialization only when needed
-  // Remove heavy initialization from startup for faster deployment
-
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -190,6 +187,19 @@ const port = parseInt(process.env.PORT || '80', 10);
       console.log('Testing production mode in development environment');
       console.log(`Test endpoints: /health, /ready, /`);
     }
+
+    // 重い初期化処理をサーバー起動後に非同期で実行
+    setTimeout(async () => {
+      try {
+        if (process.env.NODE_ENV !== 'production') {
+          logInfo('知識ベース初期化を開始...');
+          await initializeKnowledgeBase();
+          logInfo('知識ベース初期化完了');
+        }
+      } catch (initError) {
+        logError('知識ベース初期化エラー:', initError);
+      }
+    }, 1000);
   }).on('error', (err: NodeJS.ErrnoException) => {
     logError('サーバー起動エラー:', {
       message: err.message,
