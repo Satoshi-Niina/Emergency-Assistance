@@ -97,7 +97,7 @@ async function openBrowser(url: string) {
     let dbConnected = false;
     let retryCount = 0;
     const maxRetries = 3;
-    
+
     while (!dbConnected && retryCount < maxRetries) {
       try {
         const { db } = await import('./db');
@@ -107,7 +107,7 @@ async function openBrowser(url: string) {
       } catch (dbError) {
         retryCount++;
         logWarn(`Database connection failed (attempt ${retryCount}/${maxRetries})`);
-        
+
         if (retryCount < maxRetries) {
           await new Promise(resolve => setTimeout(resolve, 5000));
         } else {
@@ -115,6 +115,10 @@ async function openBrowser(url: string) {
         }
       }
     }
+
+    logDebug('知識ベースの初期化を開始...');
+    logDebug('Knowledge base directories initialized');
+    logDebug('知識ベースの初期化が完了しました');
 
     initializeKnowledgeBase();
 

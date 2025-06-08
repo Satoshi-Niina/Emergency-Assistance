@@ -361,7 +361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const chatId = parseInt(req.params.id);
       const { force, clearAll } = req.body;
 
-      console.log(`チャット履歴クリア開始: chatId=${chatId}, force=${force}, clearAll=${clearAll}`);
+      logDebug(`チャット履歴クリア開始: chatId=${chatId}, force=${force}, clearAll=${clearAll}`);
 
       const chat = await storage.getChat(chatId);
       if (!chat) {
@@ -369,7 +369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // チャットアクセス制限を一時的に緩和 (すべてのログインユーザーが全チャットの履歴をクリア可能に)
-      console.log(`チャット履歴クリア: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${req.session.userId}`);
+      logDebug(`チャット履歴クリア: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${req.session.userId}`);
 
       let deletedMessageCount = 0;
       let deletedMediaCount = 0;
@@ -378,7 +378,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // まず現在のメッセージ数を確認
         const beforeMessages = await storage.getMessagesForChat(chatId);
         const beforeCount = beforeMessages.length;
-        console.log(`削除前のメッセージ数: ${beforeCount}`);
+        logDebug(`削除前のメッセージ数: ${beforeCount}`);
 
         // 各メッセージに関連するメディアも削除
         for (const message of beforeMessages) {
@@ -389,16 +389,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
               deletedMediaCount++;
             }
           } catch (mediaError) {
-            console.error(`メディア削除エラー (messageId: ${message.id}):`, mediaError);
+            logError(`メディア削除エラー (messageId: ${message.id}):`, mediaError);
           }
         }
 
         // データベースからメッセージを完全削除
         try {
           const result = await storage.clearChatMessages(chatId);
-          console.log(`データベース削除結果:`, result);
+          logDebug(`データベース削除結果:`, result);
         } catch (clearError) {
-          console.error('clearChatMessages実行エラー:', clearError);
+          logError('clearChatMessages実行エラー:', clearError);
           // 個別削除にフォールバック
         }
 
@@ -407,28 +407,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const afterCount = afterMessages.length;
         deletedMessageCount = beforeCount - afterCount;
 
-        console.log(`削除後のメッセージ数: ${afterCount}, 削除されたメッセージ数: ${deletedMessageCount}`);
+        logDebug(`削除後のメッセージ数: ${afterCount}, 削除されたメッセージ数: ${deletedMessageCount}`);
 
         if (afterCount > 0) {
-          console.warn(`警告: ${afterCount}件のメッセージが残っています`);
+          logWarn(`警告: ${afterCount}件のメッセージが残っています`);
 
           // 強制削除または残存メッセージの個別削除
           if (force || clearAll) {
-            console.log('強制削除モードで残存メッセージを個別削除します');
+            logDebug('強制削除モードで残存メッセージを個別削除します');
             for (const remainingMessage of afterMessages) {
               try {
                 await storage.deleteMessage(remainingMessage.id);
-                console.log(`個別削除完了: messageId=${remainingMessage.id}`);
+                logDebug(`個別削除完了: messageId=${remainingMessage.id}`);
                 deletedMessageCount++;
               } catch (individualDeleteError) {
-                console.error(`個別削除エラー (messageId: ${remainingMessage.id}):`, individualDeleteError);
+                logError(`個別削除エラー (messageId: ${remainingMessage.id}):`, individualDeleteError);
               }
             }
           }
         }
 
       } catch (dbError) {
-        console.error(`データベース削除エラー:`, dbError);
+        logError(`データベース削除エラー:`, dbError);
         return res.status(500).json({ 
           message: "Database deletion failed",
           error: dbError.message 
@@ -439,7 +439,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const finalMessages = await storage.getMessagesForChat(chatId);
       const finalCount = finalMessages.length;
 
-      console.log(`チャット履歴クリア完了: chatId=${chatId}, 削除メッセージ数=${deletedMessageCount}, 削除メディア数=${deletedMediaCount}, 最終メッセージ数=${finalCount}`);
+      logDebug(`チャット履歴クリア完了: chatId=${chatId}, 削除メッセージ数=${deletedMessageCount}, 削除メディア数=${deletedMediaCount}, 最終メッセージ数=${finalCount}`);
 
       return res.json({ 
         cleared: true,
@@ -545,7 +545,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // アクセス権チェック
-      console.log(`フォーマット済みエクスポート: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${userId}`);
+      logDebug(`フォーマット済みエクスポート: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${userId}`);
       if (chat.userId !== userId && req.session.userRole !== 'admin') {
         return res.status(403).json({ message: "Access denied" });
       }
@@ -613,7 +613,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // チャットアクセス制限を一時的に緩和
-      console.log(`システムメッセージ送信: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${req.session.userId}`);
+      logDebug(`システムメッセージ送信: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${req.session.userId}`);
 
       // メッセージを作成（スキーマに合わせてフィールドを調整）
       const message = await storage.createMessage({
@@ -639,23 +639,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let chat = await storage.getChat(chatId);
       if (!chat) {
         // チャットが存在しない場合は自動的に作成
-        console.log(`メッセージ送信時: チャットID ${chatId} が存在しないため、新規作成します`);
+        logDebug(`メッセージ送信時: チャットID ${chatId} が存在しないため、新規作成します`);
         try {
           chat = await storage.createChat({
             id: chatId,
             userId: userId,
             title: "新しいチャット"
           });
-          console.log(`メッセージ送信時: チャットID ${chatId} を作成しました`);
+          logDebug(`メッセージ送信時: チャットID ${chatId} を作成しました`);
         } catch (createError) {
-          console.error("メッセージ送信時のチャット作成エラー:", createError);
+          logError("メッセージ送信時のチャット作成エラー:", createError);
           return res.status(500).json({ message: "Failed to create chat" });
         }
       }
 
       // チャットアクセス制限を一時的に緩和 (すべてのログインユーザーが全チャットにアクセス可能)
-      console.log(`チャットアクセス: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${req.session.userId}`);
-      console.log(`設定: ナレッジベースのみを使用=${useOnlyKnowledgeBase}`);
+      logDebug(`チャットアクセス: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${req.session.userId}`);
+      logDebug(`設定: ナレッジベースのみを使用=${useOnlyKnowledgeBase}`);
       // if (chat.userId !== req.session.userId) {
       //   return res.status(403).json({ message: "Forbidden" });
       // }
@@ -704,7 +704,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      console.log('📤 クライアントに送信するAIレスポンス:', {
+      logDebug('📤 クライアントに送信するAIレスポンス:', {
         type: typeof responseContent,
         content: responseContent.substring(0, 100) + '...',
         length: responseContent.length,
@@ -727,7 +727,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestamp: aiMessage.createdAt || new Date()
       };
 
-      console.log('📤 最終レスポンス:', {
+      logDebug('📤 最終レスポンス:', {
         id: responseMessage.id,
         contentType: typeof responseMessage.content,
         contentPreview: responseMessage.content.substring(0, 100) + '...',
@@ -736,12 +736,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(responseMessage);
     } catch (error) {
-      console.error('メッセージ送信処理エラー:', {
+      logError('メッセージ送信処理エラー:', {
         error: error instanceof Error ? error.message : error,
         stack: error instanceof Error ? error.stack : undefined,
-        chatId: req.params.id, // chatId変数の代わりにreq.params.idを使用
-        content: req.body.content, // content変数の代わりにreq.body.contentを使用
-        userId: req.session.userId // userId変数の代わりにreq.session.userIdを使用
+        chatId: req.params.id,
+        content: req.body.content,
+        userId: req.session.userId
       });
 
       if (error instanceof z.ZodError) {
@@ -830,7 +830,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/knowledge', requireAuth, (req, res) => {
     try {
       const documents = listKnowledgeBaseDocuments();
-      console.log('ナレッジベース一覧結果:', documents);
+      logDebug('ナレッジベース一覧結果:', documents);
       res.json(documents);
     } catch (error) {
       console.error('Error listing knowledge base documents:', error);

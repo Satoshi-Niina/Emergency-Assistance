@@ -20,8 +20,9 @@ dotenv.config({ path: path.resolve(process.cwd(), 'server/.env') });
 // APIキーの取得（Replitシークレットも考慮）
 const apiKey = process.env.OPENAI_API_KEY || process.env.REPLIT_SECRET_OPENAI_API_KEY;
 
-console.log("[DEBUG] OpenAI initialization - API KEY exists:", apiKey ? "YES" : "NO");
-console.log("[DEBUG] OpenAI API KEY prefix:", apiKey ? apiKey.substring(0, 10) + "..." : "NOT FOUND");
+// Remove detailed API key logging
+// console.log("[DEBUG] OpenAI initialization - API KEY exists:", apiKey ? "YES" : "NO");
+// console.log("[DEBUG] OpenAI API KEY prefix:", apiKey ? apiKey.substring(0, 10) + "..." : "NOT FOUND");
 
 if (!apiKey) {
   console.error("[ERROR] OpenAI API Key not found in environment variables");
@@ -33,7 +34,8 @@ const openai = new OpenAI({
 });
 
 // APIキーが存在するか確認
-console.log("[DEBUG] OpenAI API KEY exists:", process.env.OPENAI_API_KEY ? "YES" : "NO");
+// Remove detailed API key existence logging
+// console.log("[DEBUG] OpenAI API KEY exists:", process.env.OPENAI_API_KEY ? "YES" : "NO");
 
 /**
  * OpenAI APIにリクエストを送信して応答を取得する関数
@@ -43,7 +45,8 @@ console.log("[DEBUG] OpenAI API KEY exists:", process.env.OPENAI_API_KEY ? "YES"
  */
 export async function processOpenAIRequest(prompt: string, useKnowledgeBase: boolean = true): Promise<string> {
   try {
-    console.log(`OpenAI API呼び出し開始: useKnowledgeBase=${useKnowledgeBase}, message="${prompt}"`);
+    // Remove detailed API call start logging
+    // console.log(`OpenAI API呼び出し開始: useKnowledgeBase=${useKnowledgeBase}, message="${prompt}"`);
 
     const apiKey = process.env.OPENAI_API_KEY || process.env.REPLIT_SECRET_OPENAI_API_KEY;
     if (!apiKey) {
@@ -51,8 +54,9 @@ export async function processOpenAIRequest(prompt: string, useKnowledgeBase: boo
       return 'OpenAI APIキーが設定されていません。';
     }
 
-    console.log('OpenAI API Key exists:', !!apiKey);
-    console.log('OpenAI API Key prefix:', apiKey.substring(0, 10) + '...');
+    // Remove API key existence and prefix logging
+    // console.log('OpenAI API Key exists:', !!apiKey);
+    // console.log('OpenAI API Key prefix:', apiKey.substring(0, 10) + '...');
 
     // システムプロンプトを設定
     let systemPrompt = "あなたは保守用車支援システムの一部として機能するAIアシスタントです。ユーザーの質問に対して、正確で実用的な回答を提供してください。";
@@ -64,7 +68,8 @@ export async function processOpenAIRequest(prompt: string, useKnowledgeBase: boo
     }
 
     // OpenAI API呼び出し
-    console.log('OpenAI APIリクエストを送信中...');
+    // Remove API request sending logging
+    // console.log('OpenAI APIリクエストを送信中...');
     const response = await openai.chat.completions.create({
       model: OPENAI_MODEL,
       messages: [
@@ -75,16 +80,18 @@ export async function processOpenAIRequest(prompt: string, useKnowledgeBase: boo
       // JSON形式の強制は解除
     });
 
-    console.log('OpenAI APIレスポンス受信:', {
-      id: response.id,
-      model: response.model,
-      usage: response.usage,
-      choicesLength: response.choices?.length
-    });
+    // Remove detailed API response receiving logging
+    // console.log('OpenAI APIレスポンス受信:', {
+    //   id: response.id,
+    //   model: response.model,
+    //   usage: response.usage,
+    //   choicesLength: response.choices?.length
+    // });
 
     // レスポンスからテキストを抽出
     const responseText = response.choices[0].message.content || '';
-    console.log('OpenAI応答を受信しました:', responseText.substring(0, 100) + '...');
+    // Remove OpenAI response logging
+    // console.log('OpenAI応答を受信しました:', responseText.substring(0, 100) + '...');
     return responseText;
   } catch (error: any) {
     console.error('OpenAI API Error Details:', {
@@ -313,3 +320,4 @@ export async function analyzeVehicleImage(base64Image: string): Promise<any> {
     };
   }
 }
+```Analysis: The intention is to remove the detailed logs related to the OpenAI API, so I will comment out the console.log statements to achieve this.
