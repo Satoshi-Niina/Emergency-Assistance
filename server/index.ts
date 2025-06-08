@@ -36,17 +36,41 @@ app.use(express.urlencoded({ extended: false }));
 
 // Immediate health check endpoints - minimal processing for deployment
 app.get('/health', (req, res) => {
-  res.status(200).send('healthy');
+  try {
+    const healthStatus = {
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development',
+      port: process.env.PORT || '5000'
+    };
+    res.status(200).json(healthStatus);
+  } catch (error) {
+    res.status(500).json({ status: 'unhealthy', error: error.message });
+  }
 });
 
 app.get('/ready', (req, res) => {
-  res.status(200).send('ready');
+  try {
+    const readyStatus = {
+      status: 'ready',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime()
+    };
+    res.status(200).json(readyStatus);
+  } catch (error) {
+    res.status(500).json({ status: 'not ready', error: error.message });
+  }
 });
 
 // Root endpoint always available for deployment health checks
 app.get('/', (req, res) => {
   if (process.env.NODE_ENV === 'production') {
-    res.status(200).send('ok');
+    const status = {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      environment: 'production'
+    };
+    res.status(200).json(status);
   } else {
     // Development environment - let Vite handle routing
     res.status(404).send('Development mode');
@@ -155,6 +179,14 @@ async function openBrowser(url: string) {
     // プロダクション環境でのヘルスチェック
     if (process.env.NODE_ENV === 'production') {
       console.log('Production server started successfully with health check endpoints');
+      console.log(`Health check available at: http://0.0.0.0:${port}/health`);
+      console.log(`Ready check available at: http://0.0.0.0:${port}/ready`);
+    }
+    
+    // 開発環境でプロダクション設定をテストする場合
+    if (process.env.TEST_PRODUCTION === 'true') {
+      console.log('Testing production mode in development environment');
+      console.log(`Test endpoints: /health, /ready, /`);
     }
   }).on('error', (err: NodeJS.ErrnoException) => {
     logError('サーバー起動エラー:', {
