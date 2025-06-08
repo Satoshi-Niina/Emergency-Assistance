@@ -113,13 +113,18 @@ app.get('/api/network-test', (req, res) => {
   res.json(networkInfo);
 });
 
-// Minimal request logging
+// プロダクション環境用のリクエストロギング
 app.use((req, res, next) => {
   if (req.path.startsWith('/api/')) {
     const start = Date.now();
     res.on("finish", () => {
       const duration = Date.now() - start;
-      if (res.statusCode >= 400) {
+      if (process.env.NODE_ENV === 'production') {
+        // プロダクションでは重要なエラーのみログ
+        if (res.statusCode >= 500) {
+          console.error(`[ERROR] ${req.method} ${req.path} ${res.statusCode} in ${duration}ms`);
+        }
+      } else if (res.statusCode >= 400) {
         log(`${req.method} ${req.path} ${res.statusCode} in ${duration}ms`);
       }
     });
@@ -190,18 +195,30 @@ const port = process.env.NODE_ENV === 'production'
       console.log(`Test endpoints: /health, /ready, /`);
     }
 
-    // 重い初期化処理をサーバー起動後に非同期で実行
-    setTimeout(async () => {
-      try {
-        if (process.env.NODE_ENV !== 'production') {
+    // 環境に応じた初期化処理
+    if (process.env.NODE_ENV === 'production') {
+      // プロダクション環境では起動速度を優先
+      setTimeout(async () => {
+        try {
+          console.log('Production: Background initialization started');
+          await initializeKnowledgeBase();
+          console.log('Production: Background initialization completed');
+        } catch (initError) {
+          console.error('Production initialization error:', initError);
+        }
+      }, 5000); // プロダクションでは5秒後に初期化
+    } else {
+      // 開発環境では従来通り
+      setTimeout(async () => {
+        try {
           logInfo('知識ベース初期化を開始...');
           await initializeKnowledgeBase();
           logInfo('知識ベース初期化完了');
+        } catch (initError) {
+          logError('知識ベース初期化エラー:', initError);
         }
-      } catch (initError) {
-        logError('知識ベース初期化エラー:', initError);
-      }
-    }, 1000);
+      }, 1000);
+    }
   }).on('error', (err: NodeJS.ErrnoException) => {
     logError('サーバー起動エラー:', {
       message: err.message,
@@ -234,12 +251,23 @@ const port = process.env.NODE_ENV === 'production'
 
   // 未処理のPromise拒否をキャッチ
   process.on('unhandledRejection', (reason, promise) => {
-    logError('Unhandled Rejection at:', promise, 'reason:', reason);
+    if (process.env.NODE_ENV === 'production') {
+      console.error('Production: Unhandled Rejection:', reason);
+      // プロダクションでは致命的でない限り継続
+    } else {
+      logError('Unhandled Rejection at:', promise, 'reason:', reason);
+    }
   });
 
   // 未処理の例外をキャッチ
   process.on('uncaughtException', (error) => {
-    logError('Uncaught Exception thrown:', error);
-    process.exit(1);
+    if (process.env.NODE_ENV === 'production') {
+      console.error('Production: Uncaught Exception:', error.message);
+      // プロダクションでは即座に終了
+      process.exit(1);
+    } else {
+      logError('Uncaught Exception thrown:', error);
+      process.exit(1);
+    }
   });
 })();
