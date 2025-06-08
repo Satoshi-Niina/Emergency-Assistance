@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
+import { useQueryClient } from '@tanstack/react-query';
 import { startSpeechRecognition, stopSpeechRecognition, startBrowserSpeechRecognition, stopBrowserSpeechRecognition } from '../lib/azure-speech';
 import { Message } from '@shared/schema';
 
@@ -99,6 +100,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   } | null>(null);
 
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // 最後に送信したテキストを保存する変数（重複送信防止用）
   const [lastSentText, setLastSentText] = useState<string>('');
@@ -946,6 +948,17 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.warn('ローカルストレージからの削除に失敗:', error);
       }
 
+      // QueryClientのキャッシュを無効化
+      const queryClient = useQueryClient();
+      await queryClient.invalidateQueries({
+        queryKey: [`/api/chats/${chatId}/messages`]
+      });
+      
+      // キャッシュを完全に削除
+      queryClient.removeQueries({
+        queryKey: [`/api/chats/${chatId}/messages`]
+      });
+
       // サーバーへのリクエストを実行してデータベースをクリア
       if (chatId) {
         try {
@@ -971,6 +984,11 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setSearchResults([]);
           clearSearchResults();
 
+          // キャッシュを再度クリア
+          await queryClient.invalidateQueries({
+            queryKey: [`/api/chats/${chatId}/messages`]
+          });
+
         } catch (error) {
           console.error('サーバー側削除エラー:', error);
           // サーバー側の削除に失敗した場合もローカルクリアは維持
@@ -989,7 +1007,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // クリア状態を少し長めに保持してから解除
       setTimeout(() => {
         setIsClearing(false);
-      }, 2000);
+      }, 3000); // 3秒に延長
 
     } catch (error) {
       console.error('チャット履歴削除エラー:', error);
@@ -1023,6 +1041,12 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       try {
         setIsLoading(true);
+        
+        // キャッシュを無効化してから読み込み
+        await queryClient.invalidateQueries({
+          queryKey: [`/api/chats/${chatId}/messages`]
+        });
+        
         const response = await apiRequest('GET', `/api/chats/${chatId}/messages`);
 
         if (response.ok) {
@@ -1056,10 +1080,10 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (!isClearing) {
         loadMessages();
       }
-    }, isClearing ? 1000 : 0);
+    }, isClearing ? 3000 : 0); // クリア中の待機時間を3秒に延長
 
     return () => clearTimeout(timeoutId);
-  }, [chatId, isInitializing, isClearing]);
+  }, [chatId, isInitializing, isClearing, queryClient]);
 
   // 最後のエクスポート履歴を取得
   const fetchLastExport = useCallback(async () => {
