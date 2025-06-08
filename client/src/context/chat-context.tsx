@@ -388,13 +388,13 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const normalizeMessage = useCallback((message: any): Message => {
     // contentが文字列でない場合の正規化
     let normalizedContent = '';
-    
+
     if (typeof message.content === 'string') {
       normalizedContent = message.content;
     } else if (typeof message.content === 'object' && message.content !== null) {
       // オブジェクト型からの文字列抽出
       console.warn('オブジェクト型のcontentを正規化します:', message.content);
-      
+
       // 画像データの場合は preview プロパティを優先
       if (message.content.preview && typeof message.content.preview === 'string') {
         normalizedContent = message.content.preview;
@@ -921,11 +921,11 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.log('📦 ローカルキャッシュを強制的にクリアしました');
       } catch (localError) {
         console.warn('ローカルキャッシュクリアエラー:', localError);
-      }
+            }
 
       // 3. 新しいチャットセッションとして初期化
       console.log('🆕 新しいチャットセッションを開始します');
-      
+
       toast({
         title: 'クリア完了',
         description: '新しいチャットを開始しました',
@@ -933,12 +933,12 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     } catch (error) {
       console.error('🚨 チャット履歴クリアエラー:', error);
-      
+
       // エラー時もローカル状態は確実にクリア
       setMessages([]);
       setSearchResults([]);
       setHasUnexportedMessages(false);
-      
+
       toast({
         title: 'クリアエラー',
         description: 'エラーが発生しましたが、画面はクリアされました',
