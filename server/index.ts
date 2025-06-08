@@ -116,13 +116,7 @@ async function openBrowser(url: string) {
       }
     }
 
-    logDebug('知識ベースの初期化を開始...');
-    logDebug('Knowledge base directories initialized');
-    logDebug('知識ベースの初期化が完了しました');
-
-    initializeKnowledgeBase();
-
-    // 必要なディレクトリを作成
+    // 必要なディレクトリを作成（高速化）
     const dirs = ['knowledge-base/images', 'knowledge-base/json', 'knowledge-base/data', 'knowledge-base/media', 'knowledge-base/ppt'];
     dirs.forEach(dir => {
       const dirPath = path.join(process.cwd(), dir);
@@ -131,14 +125,15 @@ async function openBrowser(url: string) {
       }
     });
 
-    // バックグラウンドで同期実行
-    setTimeout(async () => {
+    // 知識ベース初期化を遅延実行（サーバー起動後）
+    setImmediate(() => {
       try {
-        await axios.post('http://localhost:5000/api/tech-support/sync-knowledge-base?direction=uploads-to-kb');
+        initializeKnowledgeBase();
+        logDebug('知識ベースの初期化が完了しました');
       } catch (err) {
-        // エラーは無視
+        logError('知識ベースの初期化中にエラーが発生しました:', err);
       }
-    }, 3000);
+    });
   } catch (err) {
     logError('知識ベースの初期化中にエラーが発生しました:', err);
   }
@@ -162,20 +157,12 @@ async function openBrowser(url: string) {
     serveStatic(app);
   }
 
-  const port = 5000;
+  const port = process.env.PORT || 5000;
   const startServer = (portToUse: number) => {
-    server.listen(portToUse, '0.0.0.0', async () => {
+    server.listen(portToUse, '0.0.0.0', () => {
       logInfo(`サーバー起動: ポート ${portToUse}`);
       if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
         logInfo(`外部URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`);
-      }
-
-      try {
-        // Replitの場合は外部URLでブラウザを開く
-        const externalUrl = `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev` || `http://localhost:${portToUse}`;
-        await openBrowser(externalUrl);
-      } catch (e) {
-        // ブラウザオープンエラーは無視
       }
     }).on('error', (err: NodeJS.ErrnoException) => {
       if (err.code === 'EADDRINUSE') {
