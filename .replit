@@ -5,7 +5,7 @@ run = ["sh", "-c", "NODE_ENV=production PORT=80 npm start"]
 build = ["sh", "-c", "npm run build"]
 
 [[ports]]
-localPort = 5000
+localPort = 80
 externalPort = 80
 
 [workflows]

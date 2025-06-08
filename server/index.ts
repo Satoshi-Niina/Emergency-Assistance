@@ -136,6 +136,9 @@ async function openBrowser(url: string) {
   }
 }
 
+// Bind to port immediately for faster deployment
+const port = parseInt(process.env.PORT || '80', 10);
+
 (async () => {
   // 初期化
   app.locals.storage = storage;
@@ -169,7 +172,6 @@ async function openBrowser(url: string) {
     }
   }
 
-  const port = parseInt(process.env.PORT || '5000', 10);
   server.listen(port, '0.0.0.0', () => {
     logInfo(`サーバー起動: ポート ${port} (環境: ${process.env.NODE_ENV || 'development'})`);
     if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
