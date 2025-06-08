@@ -169,7 +169,7 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
         // 1回だけリトライ（knowledge-base/images/パスで）
         const fileName = (result.url || result.file || '').split('/').pop();
         const retryPath = fileName ? `/knowledge-base/images/${fileName}` : '';
-        
+
         if (retryPath && retryPath !== imgElement.src) {
           imgElement.src = retryPath;
           imgElement.onerror = () => handleImageError(imgElement, result, 1);
@@ -267,9 +267,9 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
                       if (img.dataset.initialized === 'true') {
                         return;
                       }
-                      
+
                       img.dataset.initialized = 'true';
-                      
+
                       // 画像の読み込み処理を設定（遅延読み込み）
                       const observer = new IntersectionObserver((entries) => {
                         entries.forEach(entry => {
@@ -281,13 +281,18 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
                           }
                         });
                       });
-                      
+
                       observer.observe(img);
                     }
                   }}
                   alt={result.title || '関連画像'}
                   className="absolute inset-0 w-full h-full object-cover z-10 rounded-md"
                   loading="lazy"
+                  onError={(e) => {
+        console.error('画像の読み込みに失敗しました:', result.file);
+        // エラー画像の場合は非表示にする
+        e.currentTarget.style.display = 'none';
+      }}
                 />
               </div>
 
