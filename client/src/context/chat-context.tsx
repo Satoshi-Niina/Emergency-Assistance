@@ -517,15 +517,18 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // 一意のIDを生成（時間ベース + ランダム）
       const messageId = Date.now() + Math.random();
 
-      // 新しいメッセージを作成（構造統一：contentは必ず文字列）
+      // 新しいメッセージを作成（構造統一）
       const newMessage: Message = {
         id: messageId,
-        content: safeContent,
-        text: safeContent, // 旧形式互換性のためtextも保持
+        chatId: chatId,
+        content: safeContent,    // メイン表示用
+        text: safeContent,       // 互換性用（contentと同じ値）
+        isAiResponse: false,
+        senderId: userId,
         media: mediaUrls || [],
         role: 'user' as const,
         createdAt: new Date(),
-        chatId: chatId
+        timestamp: new Date()
       };
 
       // メッセージの内容をログで確認

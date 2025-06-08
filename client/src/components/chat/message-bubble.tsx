@@ -353,10 +353,10 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
                   // 画像データかどうかを判定
                   const isImageContent = (
                     content.startsWith('data:image/') ||
-                    content.startsWith('/uploads/') ||
-                    content.startsWith('blob:') ||
-                    content.startsWith('/knowledge-base/images/') ||
-                    /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(content)
+                    trimmedContent.startsWith('/uploads/') ||
+                    trimmedContent.startsWith('blob:') ||
+                    trimmedContent.startsWith('/knowledge-base/images/') ||
+                    /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(trimmedContent)
                   );
 
                   if (isImageContent) {
@@ -413,15 +413,16 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
               }
 
               const content = rawContent.trim();
+              const trimmedContent = content.trim();
 
               // 画像データの判定条件を強化
               const isImageContent = (
                 content.startsWith('data:image/') ||           // Base64画像データ（正しい形式）
                 content.startsWith('data:,') ||               // 不完全なBase64データ
-                content.startsWith('/uploads/') ||             // アップロード画像パス
-                content.startsWith('blob:') ||                 // Blob URL
-                content.startsWith('/knowledge-base/images/') || // ナレッジベース画像
-                /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(content) // 画像ファイル拡張子
+                trimmedContent.startsWith('/uploads/') ||             // アップロード画像パス
+                trimmedContent.startsWith('blob:') ||                 // Blob URL
+                trimmedContent.startsWith('/knowledge-base/images/') || // ナレッジベース画像
+                /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(trimmedContent) // 画像ファイル拡張子
               );
 
               if (isImageContent) {
