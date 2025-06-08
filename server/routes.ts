@@ -728,7 +728,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         chatId: chatId,
         content: responseContent,
         isAiResponse: true,
-        senderId: null,
+        senderId: req.session.userId || '1', // AIメッセージでもsenderIdが必要
       }).returning();
 
       // クライアントに送信するレスポンス構造を統一化
