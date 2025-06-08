@@ -152,35 +152,14 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     initializeChat();
   }, [initializeChat]);
 
-  // チャットメッセージの初期読み込み（一回のみ実行）
+  // 起動時は常に新しいチャットとして開始（履歴読み込みなし）
   useEffect(() => {
-    const loadMessages = async () => {
-      if (!chatId || isInitializing) return;
-
-      try {
-        console.log(`📝 初回メッセージ読み込み開始: chatId=${chatId}`);
-        const response = await apiRequest('GET', `/api/chats/${chatId}/messages`);
-        if (response.ok) {
-          const data = await response.json();
-          
-          // サーバーからの正式データのみを使用
-          if (Array.isArray(data)) {
-            const normalizedMessages = data.map((msg: any) => normalizeMessage(msg));
-            setMessages(normalizedMessages);
-            console.log(`📝 初回読み込み完了: ${normalizedMessages.length}件のメッセージ`);
-          } else {
-            console.log('📝 サーバーからのメッセージデータが配列ではありません');
-            setMessages([]);
-          }
-        }
-      } catch (error) {
-        console.error('📝 初回メッセージ読み込みエラー:', error);
-        setMessages([]);
-      }
-    };
-
     if (chatId && !isInitializing) {
-      loadMessages();
+      console.log(`📝 新しいチャットとして開始: chatId=${chatId}`);
+      setMessages([]); // 常に空のメッセージリストで開始
+      setSearchResults([]);
+      setLastExportTimestamp(null);
+      setHasUnexportedMessages(false);
     }
   }, [chatId, isInitializing]);
 
@@ -937,34 +916,13 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [chatId, searchBySelectedText, toast]);
 
-  // チャット履歴を全て削除する関数（サーバーDBを正本とする）
+  // ローカルチャット履歴をクリアする関数（軽量版）
   const clearChatHistory = useCallback(async () => {
     try {
       setIsClearing(true);
-      console.log('🗑️ チャット履歴の完全削除を開始します');
+      console.log('🗑️ ローカルチャット履歴をクリアします');
 
-      // 1. サーバー側で強制削除（最優先）
-      if (chatId) {
-        try {
-          const response = await apiRequest('DELETE', `/api/chats/${chatId}/messages?force=true&clearAll=true`, {
-            force: true,
-            clearAll: true,
-            hardDelete: true,
-            timestamp: Date.now()
-          });
-
-          if (response.ok) {
-            const result = await response.json();
-            console.log('✅ サーバー削除完了:', result);
-          } else {
-            console.warn('⚠️ サーバー削除が部分的に失敗しました');
-          }
-        } catch (serverError) {
-          console.error('❌ サーバー削除エラー:', serverError);
-        }
-      }
-
-      // 2. ローカル状態の完全リセット
+      // ローカル状態の完全リセット
       setMessages([]);
       setSearchResults([]);
       setLastExportTimestamp(null);
@@ -975,95 +933,47 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setSelectedText('');
       clearSearchResults();
 
-      // 3. ストレージとキャッシュのクリア
+      // ローカルキャッシュのクリア
       try {
-        // LocalStorageクリア
-        const keysToRemove = [
-          'emergencyGuideMessage',
-          'chat_messages', 
-          'search_results',
-          'draft_message',
-          'last_export',
-          'image_search_cache'
-        ];
-        keysToRemove.forEach(key => localStorage.removeItem(key));
-        localStorage.setItem('chat_cleared_timestamp', Date.now().toString());
-
-        // QueryClientキャッシュクリア
         queryClient.removeQueries({ queryKey: [`/api/chats/${chatId}/messages`] });
         queryClient.removeQueries({ queryKey: ['search_results'] });
-        queryClient.clear();
-
-        console.log('📦 ローカルデータとキャッシュをクリアしました');
+        console.log('📦 ローカルキャッシュをクリアしました');
       } catch (localError) {
         console.warn('ローカルクリアエラー:', localError);
       }
 
       toast({
-        title: '削除完了',
-        description: 'チャット履歴がサーバーから完全に削除されました',
+        title: 'クリア完了',
+        description: 'ローカルチャット履歴をクリアしました',
       });
 
     } catch (error) {
-      console.error('🚨 チャット履歴削除エラー:', error);
+      console.error('🚨 チャット履歴クリアエラー:', error);
       
       // エラー時もローカル状態は確実にクリア
       setMessages([]);
       setSearchResults([]);
       
       toast({
-        title: '削除エラー',
-        description: 'エラーが発生しましたが、ローカルデータはクリアされました',
+        title: 'クリアエラー',
+        description: 'エラーが発生しましたが、画面はクリアされました',
         variant: 'destructive',
       });
     } finally {
-      // クリア状態を短時間維持してから解除
-      setTimeout(() => {
-        setIsClearing(false);
-      }, 2000);
+      setIsClearing(false);
     }
   }, [chatId, clearSearchResults, toast, queryClient]);
 
-  // サーバー再起動後の状態復元処理（一回のみ）
+  // 起動時は常に新しいチャットとして開始（復元処理なし）
   useEffect(() => {
-    const restoreFromServer = async () => {
-      if (!chatId || isClearing) return;
-      
-      // クリア済みフラグをチェック
-      const clearTimestamp = localStorage.getItem('chat_cleared_timestamp');
-      if (clearTimestamp) {
-        const timeSinceCleared = Date.now() - parseInt(clearTimestamp);
-        if (timeSinceCleared < 30000) { // 30秒間はクリア状態を維持
-          console.log('📝 クリア後のため復元をスキップ');
-          setMessages([]);
-          return;
-        }
-      }
-
-      try {
-        console.log('🔄 サーバーからの状態復元を開始');
-        const response = await apiRequest('GET', `/api/chats/${chatId}/messages`);
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (Array.isArray(data) && data.length > 0) {
-            const normalizedMessages = data.map((msg: any) => normalizeMessage(msg));
-            setMessages(normalizedMessages);
-            console.log(`🔄 サーバーから復元完了: ${normalizedMessages.length}件`);
-          } else {
-            console.log('🔄 サーバーに履歴なし、空状態を維持');
-            setMessages([]);
-          }
-        }
-      } catch (error) {
-        console.error('🔄 サーバー復元エラー:', error);
-      }
-    };
-
-    // ページ読み込み完了後に一度だけ実行
-    const restoreTimer = setTimeout(restoreFromServer, 500);
-    return () => clearTimeout(restoreTimer);
-  }, [chatId]); // chatIdが変わったときのみ実行
+    if (chatId && !isClearing) {
+      console.log('🆕 新しいチャットセッションを開始');
+      setMessages([]);
+      setSearchResults([]);
+      setLastExportTimestamp(null);
+      setHasUnexportedMessages(false);
+    }
+  }, [chatId, isClearing]);
 
   // 最後のエクスポート履歴を取得
   const fetchLastExport = useCallback(async () => {
