@@ -23,10 +23,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 // 環境変数の確認（Replitシークレットも含む）
 const openaiKey = process.env.OPENAI_API_KEY || process.env.REPLIT_SECRET_OPENAI_API_KEY;
-logDebug("OpenAI API KEY exists:", openaiKey ? "YES" : "NO");
-if (openaiKey) {
-  logDebug("OpenAI API KEY prefix:", openaiKey.substring(0, 10) + "...");
-}
+// セキュリティのためAPIキー情報のログ出力を削除
 
 const app = express();
 app.use(express.json());
@@ -47,7 +44,6 @@ app.use('/uploads/:dir', (req, res) => {
   // 許可されたディレクトリのみリダイレクト
   if (['images', 'data', 'json', 'media', 'ppt'].includes(dir)) {
     const redirectPath = `/knowledge-base/${dir}${req.path}`;
-    logDebug(`リダイレクト: ${req.path} -> ${redirectPath}`);
     res.redirect(redirectPath);
   } else {
     res.status(404).send('Not found');
@@ -63,15 +59,9 @@ app.get('/test', (req, res) => {
 app.get('/api/network-test', (req, res) => {
   const networkInfo = {
     timestamp: new Date().toISOString(),
-    headers: req.headers,
-    ip: req.ip || req.connection.remoteAddress,
-    method: req.method,
-    url: req.url,
-    userAgent: req.get('User-Agent'),
     status: 'connected'
   };
 
-  logDebug('ネットワークテスト実行:', networkInfo);
   res.json(networkInfo);
 });
 
@@ -116,13 +106,12 @@ async function openBrowser(url: string) {
         dbConnected = true;
       } catch (dbError) {
         retryCount++;
-        logError(`Database connection failed (attempt ${retryCount}/${maxRetries}):`, dbError);
+        logWarn(`Database connection failed (attempt ${retryCount}/${maxRetries})`);
         
         if (retryCount < maxRetries) {
-          logInfo(`Retrying database connection in 5 seconds...`);
           await new Promise(resolve => setTimeout(resolve, 5000));
         } else {
-          logWarn('Database connection failed after all retries. Server will start without database.');
+          logWarn('Database connection failed. Server will start without database.');
         }
       }
     }
@@ -172,12 +161,10 @@ async function openBrowser(url: string) {
   const port = 5000;
   const startServer = (portToUse: number) => {
     server.listen(portToUse, '0.0.0.0', async () => {
-      const serverUrl = `http://0.0.0.0:${portToUse}`;
-      logInfo(`サーバー起動: ${serverUrl}`);
-      logInfo(`外部アクセス用URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`);
-
-      // ログレベル設定を表示
-      showLogConfig();
+      logInfo(`サーバー起動: ポート ${portToUse}`);
+      if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
+        logInfo(`外部URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`);
+      }
 
       try {
         // Replitの場合は外部URLでブラウザを開く
