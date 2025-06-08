@@ -126,14 +126,14 @@ async function openBrowser(url: string) {
     });
 
     // 知識ベース初期化を遅延実行（サーバー起動後）
-    setImmediate(() => {
+    setTimeout(() => {
       try {
         initializeKnowledgeBase();
         logDebug('知識ベースの初期化が完了しました');
       } catch (err) {
         logError('知識ベースの初期化中にエラーが発生しました:', err);
       }
-    });
+    }, 100);
   } catch (err) {
     logError('知識ベースの初期化中にエラーが発生しました:', err);
   }
@@ -158,22 +158,15 @@ async function openBrowser(url: string) {
   }
 
   const port = parseInt(process.env.PORT || '5000', 10);
-  const startServer = (portToUse: number) => {
-    server.listen(portToUse, '0.0.0.0', () => {
-      logInfo(`サーバー起動: ポート ${portToUse}`);
-      if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
-        logInfo(`外部URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`);
-      }
-    }).on('error', (err: NodeJS.ErrnoException) => {
-      if (err.code === 'EADDRINUSE') {
-        startServer(portToUse + 1);
-      } else {
-        logError('サーバーエラー:', err.message);
-      }
-    });
-  };
-
-  startServer(port);
+  server.listen(port, '0.0.0.0', () => {
+    logInfo(`サーバー起動: ポート ${port}`);
+    if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
+      logInfo(`外部URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`);
+    }
+  }).on('error', (err: NodeJS.ErrnoException) => {
+    logError('サーバーエラー:', err.message);
+    process.exit(1);
+  });
 
   // プロセス終了時のクリーンアップ
   process.on('SIGTERM', () => {
