@@ -578,8 +578,14 @@ if (typeof window !== 'undefined') {
  * @returns 検索結果の配列
  */
 export const searchByText = async (text: string, isNewMessage: boolean = false): Promise<any[]> => {
-  // 🚫 全ての画像検索を一時的に無効化（ループ防止）
-  console.log('🚫 画像検索は完全無効化中 - ページ安定性優先');
+  // 新規メッセージ以外は完全にスキップ（履歴による無限ループ防止）
+  if (!isNewMessage) {
+    console.log('履歴メッセージの検索はスキップ - 新規入力のみ処理');
+    return [];
+  }
+  
+  // 一時的に画像検索を無効化（安定性確保）
+  console.log('🚫 画像検索は安定性のため一時無効化中');
   return [];
 
   // 以下は無効化されています（安定性確保後に有効化予定）

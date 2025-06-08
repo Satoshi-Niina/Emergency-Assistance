@@ -161,10 +161,15 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const response = await apiRequest('GET', `/api/chats/${chatId}/messages`);
         if (response.ok) {
           const data = await response.json();
-          setMessages(data.map((msg: any) => ({
+          // メッセージ構造を統一（textとcontentの両方を確保）
+          const normalizedMessages = data.map((msg: any) => ({
             ...msg,
-            timestamp: new Date(msg.timestamp)
-          })));
+            content: msg.content || msg.text || '',
+            text: msg.text || msg.content || '',
+            timestamp: new Date(msg.timestamp || msg.createdAt || new Date())
+          }));
+          
+          setMessages(normalizedMessages);
         }
       } catch (error) {
         console.error('Failed to load messages:', error);
@@ -431,10 +436,11 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // 一意のIDを生成（時間ベース + ランダム）
       const messageId = Date.now() + Math.random();
 
-      // 新しいメッセージを作成
+      // 新しいメッセージを作成（構造統一：textとcontentの両方を保持）
       const newMessage: Message = {
         id: messageId,
         content,
+        text: content, // 旧形式互換性のためtextも保持
         media: mediaUrls || [],
         role: 'user' as const,
         createdAt: new Date(),
@@ -748,21 +754,25 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // ChatMessage形式でメッセージを作成
       const timestamp = Date.now();
 
-      // ユーザーメッセージ（左側）
+      // ユーザーメッセージ（左側）- 構造統一
+      const userMessageContent = `応急処置ガイド「${guideData.title}」を実施しました`;
       const userMessage = {
         id: timestamp,
         chatId: currentChatId,
-        content: `応急処置ガイド「${guideData.title}」を実施しました`,
+        content: userMessageContent,
+        text: userMessageContent,
         isAiResponse: false,
         senderId: 'user',
         timestamp: new Date()
       };
 
-      // AI応答メッセージ（右側）
+      // AI応答メッセージ（右側）- 構造統一
+      const aiMessageContent = `■ 応急処置ガイド実施記録\n\n**${guideData.title}**\n\n${guideData.content}\n\n---\n**AI分析**: 応急処置手順が正常に記録されました。実施状況に関して追加のご質問がございましたらお聞かせください。`;
       const aiMessage = {
         id: timestamp + 1,
         chatId: currentChatId,
-        content: `■ 応急処置ガイド実施記録\n\n**${guideData.title}**\n\n${guideData.content}\n\n---\n**AI分析**: 応急処置手順が正常に記録されました。実施状況に関して追加のご質問がございましたらお聞かせください。`,
+        content: aiMessageContent,
+        text: aiMessageContent,
         isAiResponse: true,
         senderId: 'ai',
         timestamp: new Date()
