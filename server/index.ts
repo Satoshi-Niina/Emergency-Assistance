@@ -34,26 +34,24 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Health check endpoints - always available but different behavior
+// Immediate health check endpoints - minimal processing for deployment
 app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'healthy',
-    environment: process.env.NODE_ENV || 'development',
-    timestamp: new Date().toISOString()
-  });
+  res.status(200).send('healthy');
 });
 
-// Production-only root endpoint for deployment health checks
-if (process.env.NODE_ENV === 'production') {
-  app.get('/', (req, res) => {
-    res.status(200).json({ 
-      status: 'ok', 
-      timestamp: new Date().toISOString(),
-      service: 'rest-express',
-      version: '1.0.0'
-    });
-  });
-}
+app.get('/ready', (req, res) => {
+  res.status(200).send('ready');
+});
+
+// Root endpoint always available for deployment health checks
+app.get('/', (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    res.status(200).send('ok');
+  } else {
+    // Development environment - let Vite handle routing
+    res.status(404).send('Development mode');
+  }
+});
 
 // Serve static files from public directory
 app.use('/static', express.static(path.join(process.cwd(), 'public')));
@@ -118,7 +116,8 @@ async function openBrowser(url: string) {
   // 初期化
   app.locals.storage = storage;
   
-  // All directory creation and knowledge base initialization moved to lazy loading
+  // Lazy load knowledge base initialization only when needed
+  // Remove heavy initialization from startup for faster deployment
 
   const server = await registerRoutes(app);
 
@@ -130,9 +129,7 @@ async function openBrowser(url: string) {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
+  // Setup environment-specific routing
   if (process.env.NODE_ENV !== "production") {
     await setupVite(app, server);
   } else {
@@ -141,13 +138,9 @@ async function openBrowser(url: string) {
       logInfo('静的ファイル配信を設定しました');
     } catch (staticError) {
       logError('静的ファイル配信の設定エラー:', staticError);
-      // プロダクション環境でも基本的なルートは動作するようにフォールバック
+      // Minimal fallback for production
       app.get('*', (req, res) => {
-        res.status(200).json({ 
-          status: 'ok',
-          message: 'Server is running',
-          timestamp: new Date().toISOString()
-        });
+        res.status(200).send('Server running');
       });
     }
   }
