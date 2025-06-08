@@ -136,8 +136,10 @@ async function openBrowser(url: string) {
   }
 }
 
-// Bind to port immediately for faster deployment
-const port = parseInt(process.env.PORT || '80', 10);
+// 環境に応じたポート設定
+const port = process.env.NODE_ENV === 'production' 
+  ? parseInt(process.env.PORT || '80', 10)
+  : parseInt(process.env.PORT || '5000', 10);
 
 (async () => {
   // 初期化
