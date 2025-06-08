@@ -186,26 +186,26 @@ export default function Chat() {
       <div className="bg-gray-100 border-b border-gray-200 px-4 py-2">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-            {/* 履歴クリアボタン - 濃い青塗りつぶし白文字白枠線スタイル */}
+            {/* 履歴クリアボタン - 紫色で重要性を示す */}
             <Button 
               variant="outline"
               size="sm"
               onClick={async () => {
-                // チャット履歴をクリア（この中でローカル状態もクリアされる）
+                // チャット履歴をクリア（履歴送信→データベース削除→新しいチャット開始）
                 await clearChatHistory();
               }}
               disabled={isClearing || !displayMessages.length}
-              className="flex items-center gap-1 bg-blue-800 text-white border-white hover:bg-blue-900 text-sm h-8 py-0 px-3"
+              className="flex items-center gap-1 bg-purple-600 text-white border-white hover:bg-purple-700 text-sm h-8 py-0 px-3"
             >
               {isClearing ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">クリア中</span>
+                  <span className="text-sm">送信・削除中</span>
                 </>
               ) : (
                 <>
                   <Trash2 className="h-4 w-4" />
-                  <span className="text-sm">履歴クリア</span>
+                  <span className="text-sm">履歴送信・クリア</span>
                 </>
               )}
             </Button>
