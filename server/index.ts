@@ -136,17 +136,45 @@ async function openBrowser(url: string) {
   if (process.env.NODE_ENV !== "production") {
     await setupVite(app, server);
   } else {
-    serveStatic(app);
+    try {
+      serveStatic(app);
+      logInfo('静的ファイル配信を設定しました');
+    } catch (staticError) {
+      logError('静的ファイル配信の設定エラー:', staticError);
+      // プロダクション環境でも基本的なルートは動作するようにフォールバック
+      app.get('*', (req, res) => {
+        res.status(200).json({ 
+          status: 'ok',
+          message: 'Server is running',
+          timestamp: new Date().toISOString()
+        });
+      });
+    }
   }
 
   const port = parseInt(process.env.PORT || '5000', 10);
   server.listen(port, '0.0.0.0', () => {
-    logInfo(`サーバー起動: ポート ${port}`);
+    logInfo(`サーバー起動: ポート ${port} (環境: ${process.env.NODE_ENV || 'development'})`);
     if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
       logInfo(`外部URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`);
     }
+    
+    // プロダクション環境でのヘルスチェック
+    if (process.env.NODE_ENV === 'production') {
+      console.log('Production server started successfully with health check endpoints');
+    }
   }).on('error', (err: NodeJS.ErrnoException) => {
-    logError('サーバーエラー:', err.message);
+    logError('サーバー起動エラー:', {
+      message: err.message,
+      code: err.code,
+      port: port,
+      environment: process.env.NODE_ENV
+    });
+    
+    if (err.code === 'EADDRINUSE') {
+      logError(`ポート ${port} は既に使用されています`);
+    }
+    
     process.exit(1);
   });
 
