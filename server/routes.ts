@@ -635,9 +635,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/chats/:id/messages", requireAuth, async (req, res) => {
     try {
-      const chatId = parseInt(req.params.id);
+      const chatId = req.params.id; // string型のまま使用
       const { content, useOnlyKnowledgeBase = true, usePerplexity = false } = req.body;
-      const userId = req.session.userId || 1; // デフォルトユーザーID
+      const userId = req.session.userId || '1'; // デフォルトユーザーID（string型）
 
       let chat = await storage.getChat(chatId);
       if (!chat) {
@@ -647,8 +647,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           chat = await storage.createChat({
             id: chatId,
             userId: userId,
-            title: "新しいチャット",
-            description: "自動作成されたチャット"
+            title: "新しいチャット"
           });
           console.log(`メッセージ送信時: チャットID ${chatId} を作成しました`);
         } catch (createError) {
@@ -665,8 +664,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // }
 
       const messageData = insertMessageSchema.parse({
-        ...req.body,
-        chatId: chat.id,
+        chatId: chatId,
+        content: content,
         senderId: req.session.userId,
         isAiResponse: false
       });

@@ -112,27 +112,28 @@ export const insertUserSchema = z.object({
 });
 
 export const insertChatSchema = z.object({
+  id: z.string().optional(),
   userId: z.string(),
   title: z.string().optional()
 });
 
 export const insertMessageSchema = z.object({
-  chatId: z.number(),
+  chatId: z.string(),
   content: z.string(),
   isAiResponse: z.boolean().default(false),
-  senderId: z.number().nullable(),
+  senderId: z.string().nullable(),
 });
 
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 
 // 統一されたChatMessage型定義
 export interface ChatMessage {
-  id: number;
-  chatId: number;
+  id: string;
+  chatId: string;
   content: string;  // メイン表示用（テキストまたは画像URL）
   text: string;     // 互換性用（contentと同じ値）
   isAiResponse: boolean;
-  senderId: number | null;
+  senderId: string | null;
   createdAt: Date;
   timestamp?: Date;
   role?: 'user' | 'assistant';
