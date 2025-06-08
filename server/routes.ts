@@ -1081,5 +1081,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ユーザー管理ルート
   app.use('/api/users', routeDebugger, usersRouter);
+
+  // 汎用ロギング関数
+  function logDebug(message: string, ...args: any[]) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug(message, ...args);
+    }
+  }
+
+  function logInfo(message: string, ...args: any[]) {
+      console.info(message, ...args);
+  }
+
+  function logWarn(message: string, ...args: any[]) {
+    console.warn(message, ...args);
+  }
+
+  function logError(message: string, ...args: any[]) {
+    console.error(message, ...args);
+  }
+
+  // トラブルシューティングAPI
+  app.get('/api/troubleshooting/list', async (req, res) => {
+    try {
+      const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+
+      if (!fs.existsSync(troubleshootingDir)) {
+        return res.json([]);
+      }
+
+      const files = fs.readdirSync(troubleshootingDir).filter(file => file.endsWith('.json'));
+      const troubleshootingList = [];
+
+      for (const file of files) {
+        try {
+          const filePath = path.join(troubleshootingDir, file);
+          const content = fs.readFileSync(filePath, 'utf8');
+          const data = JSON.parse(content);
+
+          troubleshootingList.push(data);
+        } catch (error) {
+          logError(`Error reading file ${file}:`, error);
+        }
+      }
+
+      res.json(troubleshootingList);
+    } catch (error) {
+      logError('Error in troubleshooting list:', error);
+      res.status(500).json({ error: 'Failed to load troubleshooting data' });
+    }
+  });
+
+  app.get('/api/chat/:chatId/export', async (req, res) => {
+    try {
+      const { chatId } = req.params;
+      const chatUserId = req.query.userId as string;
+      const sessionUserId = req.session?.userId;
+
+      if (chatUserId && sessionUserId && chatUserId !== sessionUserId) {
+          logWarn(`Unauthorized chat access attempt`);
+          return res.status(403).json({ message: "Unauthorized access to chat" });
+      }
+
+    } catch (error) {
+        console.error("チャットのエクスポート中にエラーが発生しました:", error);
+        res.status(500).json({ error: "チャットのエクスポートに失敗しました" });
+    }
+});
+
   return httpServer;
 }
