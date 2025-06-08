@@ -403,18 +403,12 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // 楽観的にメッセージを追加
       setMessages(prev => [...prev, newMessage]);
 
-      // サーバーにメッセージを送信（画像検索と並行して実行）
-      const messagePromise = apiRequest('POST', '/api/chats/1/messages', {
+      // サーバーにメッセージを送信
+      const response = await apiRequest('POST', '/api/chats/1/messages', {
         content,
         media: mediaUrls,
         chatId: chatId
       });
-
-      // 画像検索は音声認識時のみ実行（テキスト入力時は実行しない）
-      // これにより重複実行を防止
-
-      // メッセージ送信の完了を待つ
-      const response = await messagePromise;
 
       if (!response.ok) {
         throw new Error('メッセージの送信に失敗しました');
@@ -451,7 +445,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, queryClient, toast, chatId, searchBySelectedText]);
+  }, [isLoading, queryClient, toast, chatId]);
 
   // 音声認識の初期化を最適化
   const initializeSpeechRecognition = useCallback(() => {
@@ -939,8 +933,10 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // チャットIDが変更されたときにメッセージを読み込む
   useEffect(() => {
+    let isMounted = true; // コンポーネントがマウントされているかの確認
+
     const loadMessages = async () => {
-      if (!chatId || isInitializing) return;
+      if (!chatId || isInitializing || !isMounted) return;
 
       // クリア操作中は読み込みをスキップ
       if (isClearing) {
@@ -951,16 +947,12 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         setIsLoading(true);
 
-        // キャッシュを無効化してから読み込み
-        try {
-          await queryClient.invalidateQueries({
-            queryKey: [`/api/chats/${chatId}/messages`]
-          });
-        } catch (cacheError) {
-          console.warn('メッセージ読み込み前のキャッシュクリアでエラー発生:', cacheError);
-        }
+        // 強制的に空のメッセージから開始（サーバー再起動後の古いデータを回避）
+        setMessages([]);
 
         const response = await apiRequest('GET', `/api/chats/${chatId}/messages`);
+
+        if (!isMounted) return; // アンマウント後は処理しない
 
         if (response.ok) {
           const data = await response.json();
@@ -970,33 +962,40 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
           if (isChatCleared || data.length === 0) {
             console.log(`チャットID ${chatId} はクリアされています`);
-            setMessages([]);
+            if (isMounted) setMessages([]);
           } else {
             console.log(`チャットID ${chatId} のメッセージを読み込みました: ${data.length}件`);
-            setMessages(data.map((msg: any) => ({
-              ...msg,
-              timestamp: new Date(msg.timestamp)
-            })));
+            if (isMounted) {
+              setMessages(data.map((msg: any) => ({
+                ...msg,
+                timestamp: new Date(msg.timestamp)
+              })));
+            }
           }
         } else {
           console.error('メッセージの読み込みに失敗しました');
+          if (isMounted) setMessages([]); // エラー時は空配列
         }
       } catch (error) {
         console.error('メッセージ読み込みエラー:', error);
+        if (isMounted) setMessages([]); // エラー時は空配列
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     };
 
     // クリア操作が完了してから一定時間待ってからメッセージを読み込む
     const timeoutId = setTimeout(() => {
-      if (!isClearing) {
+      if (!isClearing && isMounted) {
         loadMessages();
       }
-    }, isClearing ? 3000 : 0); // クリア中の待機時間を3秒に延長
+    }, isClearing ? 3000 : 100); // 通常時は100ms待機
 
-    return () => clearTimeout(timeoutId);
-  }, [chatId, isInitializing, isClearing, queryClient]);
+    return () => {
+      isMounted = false; // アンマウント時にフラグを設定
+      clearTimeout(timeoutId);
+    };
+  }, [chatId, isInitializing, isClearing]);
 
   // 最後のエクスポート履歴を取得
   const fetchLastExport = useCallback(async () => {

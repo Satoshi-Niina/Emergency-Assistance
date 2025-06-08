@@ -81,8 +81,12 @@ export default function MessageInput() {
 
     console.log('送信するテキスト:', textToSend);
 
-    // メッセージを送信（画像検索はsendMessage内で実行されるため、ここでは実行しない）
+    // メッセージを送信
     await sendMessage(textToSend);
+
+    // チャット入力からの自動画像検索は無効化（クラッシュ防止のため）
+    // 画像検索は手動で実行するか、音声認識時のみ実行
+    console.log('チャット入力から送信:', textToSend, '（自動画像検索は無効化）');
 
     // 入力欄をクリア
     setMessage("");

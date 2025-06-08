@@ -167,11 +167,18 @@ export class DatabaseStorage implements IStorage {
       .where(eq(messages.chatId, chatId));
 
     // resultをtimestampで昇順にソート（undefinedチェックを追加）
-    return result.sort((a, b) => {
+    const sortedMessages = result.sort((a, b) => {
       const aTime = a.timestamp ? a.timestamp.getTime() : 0;
       const bTime = b.timestamp ? b.timestamp.getTime() : 0;
       return aTime - bTime;
     });
+
+    // 明示的にメッセージが空の場合はログ出力
+    if (sortedMessages.length === 0) {
+      console.log(`[INFO] チャットID ${chatId} にはメッセージがありません（クリア済みまたは新規チャット）`);
+    }
+
+    return sortedMessages;
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {
