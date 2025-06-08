@@ -93,28 +93,8 @@ async function openBrowser(url: string) {
     // 初期化
     app.locals.storage = storage;
 
-    // データベース接続テスト（リトライ機能付き）
-    let dbConnected = false;
-    let retryCount = 0;
-    const maxRetries = 3;
-
-    while (!dbConnected && retryCount < maxRetries) {
-      try {
-        const { db } = await import('./db');
-        await db.execute('SELECT 1');
-        logInfo('Database connection successful');
-        dbConnected = true;
-      } catch (dbError) {
-        retryCount++;
-        logWarn(`Database connection failed (attempt ${retryCount}/${maxRetries})`);
-
-        if (retryCount < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 5000));
-        } else {
-          logWarn('Database connection failed. Server will start without database.');
-        }
-      }
-    }
+    // Skip database connection test during startup for faster deployment
+    // Database connections will be handled lazily when needed
 
     // 必要なディレクトリを作成（高速化）
     const dirs = ['knowledge-base/images', 'knowledge-base/json', 'knowledge-base/data', 'knowledge-base/media', 'knowledge-base/ppt'];
@@ -125,15 +105,7 @@ async function openBrowser(url: string) {
       }
     });
 
-    // 知識ベース初期化を遅延実行（サーバー起動後）
-    setTimeout(() => {
-      try {
-        initializeKnowledgeBase();
-        logDebug('知識ベースの初期化が完了しました');
-      } catch (err) {
-        logError('知識ベースの初期化中にエラーが発生しました:', err);
-      }
-    }, 100);
+    // Knowledge base will be initialized after server starts listening
   } catch (err) {
     logError('知識ベースの初期化中にエラーが発生しました:', err);
   }
@@ -157,12 +129,22 @@ async function openBrowser(url: string) {
     serveStatic(app);
   }
 
-  const port = parseInt(process.env.PORT || '5000', 10);
+  const port = parseInt(process.env.PORT || '80', 10);
   server.listen(port, '0.0.0.0', () => {
     logInfo(`サーバー起動: ポート ${port}`);
     if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
       logInfo(`外部URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`);
     }
+    
+    // Initialize knowledge base after server is listening
+    setTimeout(() => {
+      try {
+        initializeKnowledgeBase();
+        logDebug('知識ベースの初期化が完了しました');
+      } catch (err) {
+        logError('知識ベースの初期化中にエラーが発生しました:', err);
+      }
+    }, 100);
   }).on('error', (err: NodeJS.ErrnoException) => {
     logError('サーバーエラー:', err.message);
     process.exit(1);
