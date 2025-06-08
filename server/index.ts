@@ -103,14 +103,28 @@ async function openBrowser(url: string) {
     // 初期化
     app.locals.storage = storage;
 
-    // データベース接続テスト
-    try {
-      const { db } = await import('./db');
-      await db.execute('SELECT 1');
-      logInfo('Database connection successful');
-    } catch (dbError) {
-      logError('Database connection failed:', dbError);
-      // データベース接続失敗時もサーバーを起動
+    // データベース接続テスト（リトライ機能付き）
+    let dbConnected = false;
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (!dbConnected && retryCount < maxRetries) {
+      try {
+        const { db } = await import('./db');
+        await db.execute('SELECT 1');
+        logInfo('Database connection successful');
+        dbConnected = true;
+      } catch (dbError) {
+        retryCount++;
+        logError(`Database connection failed (attempt ${retryCount}/${maxRetries}):`, dbError);
+        
+        if (retryCount < maxRetries) {
+          logInfo(`Retrying database connection in 5 seconds...`);
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        } else {
+          logWarn('Database connection failed after all retries. Server will start without database.');
+        }
+      }
     }
 
     initializeKnowledgeBase();

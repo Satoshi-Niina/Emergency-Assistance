@@ -10,11 +10,14 @@ if (!process.env.DATABASE_URL) {
 
 // PostgreSQL接続の設定
 const sql = postgres(process.env.DATABASE_URL, {
-  max: 10,
-  idle_timeout: 20,
-  connect_timeout: 10,
+  max: 5,
+  idle_timeout: 30,
+  connect_timeout: 30,
+  socket_timeout: 60,
   onnotice: () => {},
   onparameter: () => {},
+  retry_delay: 1000,
+  max_lifetime: 60 * 30,
 });
 
 export const db = drizzle(sql, { schema });
