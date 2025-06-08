@@ -81,7 +81,7 @@ export default function MessageInput() {
 
     console.log('送信するテキスト:', textToSend);
 
-    // メッセージを送信（sendMessage内で自動的に画像検索も実行される）
+    // メッセージを送信（画像検索はsendMessage内で実行されるため、ここでは実行しない）
     await sendMessage(textToSend);
 
     // 入力欄をクリア

@@ -410,47 +410,8 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         chatId: chatId
       });
 
-      // 画像検索のキーワードかどうかチェック
-      const imageSearchKeywords = [
-        'ブレーキ', 'brake', 'エンジン', 'engine', '冷却', 'cooling', 'ラジエーター', 'radiator',
-        'ホイール', 'wheel', '車輪', 'タイヤ', 'tire', '部品', 'parts', '設備', 'equipment',
-        '機械', 'machine', '保守', 'maintenance', '点検', 'inspection', '修理', 'repair',
-        '故障', 'failure', '異常', 'abnormal', '音', 'sound', '振動', 'vibration'
-      ];
-      const hasImageKeyword = imageSearchKeywords.some(keyword => 
-        content.toLowerCase().includes(keyword.toLowerCase())
-      );
-
-      // 画像検索を並行して実行（ノンブロッキング）
-      if (hasImageKeyword) {
-        console.log('🔍 メッセージから画像検索キーワードを検出:', content);
-        
-        // 画像検索を独立して実行（エラーハンドリング強化）
-        const imageSearchPromise = searchBySelectedText(content).then(() => {
-          // モバイルで検索結果パネルを表示
-          const isMobile = window.innerWidth <= 768;
-          if (isMobile) {
-            const slider = document.getElementById('mobile-search-slider');
-            if (slider) {
-              slider.classList.add('search-panel-visible');
-              const orientation = window.matchMedia('(orientation: landscape)').matches ? 'landscape' : 'portrait';
-              
-              if (orientation === 'landscape') {
-                slider.style.transform = 'translateX(0)';
-              } else {
-                slider.style.transform = 'translateY(0)';
-              }
-            }
-          }
-        }).catch(error => {
-          console.error('自動画像検索エラー:', error);
-          setSearching(false);
-          setSearchResults([]);
-        });
-
-        // 画像検索は独立して実行（メッセージ送信をブロックしない）
-        imageSearchPromise;
-      }
+      // 画像検索は音声認識時のみ実行（テキスト入力時は実行しない）
+      // これにより重複実行を防止
 
       // メッセージ送信の完了を待つ
       const response = await messagePromise;
@@ -900,10 +861,15 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         try {
           console.log(`チャット履歴削除開始: chatId=${chatId}`);
 
+          // 削除前に検索結果もクリア
+          setSearchResults([]);
+          clearSearchResults();
+
           // 強制クリアフラグ付きでサーバーに送信
-          const response = await apiRequest('POST', `/api/chats/${chatId}/clear`, {
+          const response = await apiRequest('DELETE', `/api/chats/${chatId}/messages`, {
             force: true,
-            clearAll: true
+            clearAll: true,
+            timestamp: Date.now()
           });
 
           if (!response.ok) {
