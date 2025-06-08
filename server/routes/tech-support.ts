@@ -711,14 +711,11 @@ router.post('/init-image-search-data', async (req, res) => {
   try {
     logInfo('Image search data initialization started');
 
-    const imagesDir = path.join(process.cwd(), 'knowledge-base', 'images');
+    const imagesDir = path.join(knowledgeBaseDir, 'images');
     const jsonDir = path.join(process.cwd(), 'knowledge-base', 'json');
 
     logPath('Images directory:', imagesDir);
     logPath('JSON directory:', jsonDir);
-
-    // 実際に存在する画像ファイルのリストを取得
-    const imagesDir = path.join(knowledgeBaseDir, 'images');
     let existingImageFiles: string[] = [];
 
     if (fs.existsSync(imagesDir)) {
@@ -748,7 +745,6 @@ router.post('/init-image-search-data', async (req, res) => {
     }
 
     // JSON/metadataファイルから新しいデータを生成
-    const jsonDir = path.join(knowledgeBaseDir, 'json');
     let newData: any[] = [];
 
     if (fs.existsSync(jsonDir)) {
