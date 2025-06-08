@@ -157,7 +157,7 @@ async function openBrowser(url: string) {
     serveStatic(app);
   }
 
-  const port = process.env.PORT || 5000;
+  const port = parseInt(process.env.PORT || '5000', 10);
   const startServer = (portToUse: number) => {
     server.listen(portToUse, '0.0.0.0', () => {
       logInfo(`サーバー起動: ポート ${portToUse}`);
