@@ -373,193 +373,77 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // メッセージ送信関数
   const sendMessage = useCallback(async (content: string, mediaUrls?: { type: string, url: string, thumbnail?: string }[]) => {
-    if (!content.trim() && (!mediaUrls || mediaUrls.length === 0)) return;
-
-    setIsLoading(true);
-
     try {
-      //   const userMessage: Message = {
-      //     id: Date.now(),
-      //     content: content.trim(),
-      //     sender: 'user',
-      //     timestamp: new Date(),
-      //     mediaUrls: mediaUrls
-      //   };
-
-      //   console.log('メッセージ送信開始:', { chatId, content, mediaUrls });
-
-      //   // メディアURLsのデバッグログ
-      //   if (mediaUrls && mediaUrls.length > 0) {
-      //     console.log('送信するメディア情報:');
-      //     mediaUrls.forEach((media, index) => {
-      //       console.log(`  ${index + 1}. タイプ: ${media.type}, URL: ${media.url}`);
-      //       // URLが有効かチェック
-      //       if (media.type === 'image' && media.url.startsWith('data:image/')) {
-      //         console.log(`    Base64画像データ: ${media.url.substring(0, 50)}...`);
-      //       }
-      //     });
-      //   }
-
-      //   setMessages(prev => [...prev, userMessage]);
-
-      //   // チャットIDが設定されていない場合は初期化
-      //   let currentChatId = chatId;
-      //   if (!currentChatId) {
-      //     currentChatId = await initializeChat();
-      //     if (!currentChatId) {
-      //       currentChatId = 1; // フォールバック
-      //     }
-      //   }
-
-      //   setIsLoading(true);
-      //   setDraftMessage(null);
-
-      //   console.log('メッセージ送信開始:', { chatId: currentChatId, content });
-
-      //   // ローカルでメッセージを即座に表示
-      //   const userMessage = {
-      //     id: Date.now(),
-      //     chatId: currentChatId,
-      //     content,
-      //     isAiResponse: false,
-      //     senderId: 'user',
-      //     timestamp: new Date(),
-      //     media: (mediaUrls || []).map((media, idx) => ({
-      //       id: Date.now() + idx,
-      //       messageId: Date.now(),
-      //       ...media
-      //     }))
-      //   };
-      console.log('メッセージ送信開始:', { chatId, content, mediaUrls });
-
-      // メディアURLsのデバッグログ
-      if (mediaUrls && mediaUrls.length > 0) {
-        console.log('送信するメディア情報:');
-        mediaUrls.forEach((media, index) => {
-          console.log(`  ${index + 1}. タイプ: ${media.type}, URL: ${media.url}`);
-          // URLが有効かチェック
-          if (media.type === 'image' && media.url.startsWith('data:image/')) {
-            console.log(`    Base64画像データ: ${media.url.substring(0, 50)}...`);
-          }
-        });
-      }
-
-      // チャットIDが設定されていない場合は初期化
-      let currentChatId = chatId;
-      if (!currentChatId) {
-        currentChatId = await initializeChat();
-        if (!currentChatId) {
-          currentChatId = 1; // フォールバック
-        }
-      }
-
       setIsLoading(true);
-      setDraftMessage(null);
 
-      console.log('メッセージ送信開始:', { chatId: currentChatId, content, mediaUrls });
-
-      // ローカルでメッセージを即座に表示
-      const userMessage = {
+      // 新しいメッセージを作成
+      const newMessage: Message = {
         id: Date.now(),
-        chatId: currentChatId,
-        content: content || '', // 空文字列の場合もサポート
-        isAiResponse: false,
-        senderId: 'user',
-        timestamp: new Date(),
-        media: (mediaUrls || []).map((media, idx) => ({
-          id: Date.now() + idx,
-          messageId: Date.now(),
-          ...media
-        }))
+        content,
+        media: mediaUrls || [],
+        role: 'user' as const,
+        createdAt: new Date(),
+        chatId: chatId
       };
 
-      const aiMessage = {
-        id: Date.now() + 1,
-        chatId: currentChatId,
-        content: '処理中...',
-        isAiResponse: true,
-        senderId: 'ai',
-        timestamp: new Date()
-      };
+      // ドラフトメッセージをクリア
+      setDraftMessage(null);
+      setRecordedText('');
 
-      // メッセージを一度だけ追加
-      setMessages(prev => [...prev, userMessage, aiMessage]);
+      // 楽観的にメッセージを追加
+      setMessages(prev => [...prev, newMessage]);
 
-      // バックグラウンドでAPIに送信を試行
-      try {
-        const requestData = { 
-          content,
-          useOnlyKnowledgeBase: localStorage.getItem('useOnlyKnowledgeBase') !== 'false',
-          usePerplexity: false
-        };
+      // 画像検索のキーワードかどうかチェックして自動実行
+      const imageSearchKeywords = ['ブレーキ', 'エンジン', '冷却', 'ホイール', '車輪', '部品', '設備', '機械', '保守', '点検'];
+      const hasImageKeyword = imageSearchKeywords.some(keyword => 
+        content.includes(keyword)
+      );
 
-        // メディアがある場合のみmediaUrlsを追加
-        if (mediaUrls && mediaUrls.length > 0) {
-          requestData.mediaUrls = mediaUrls;
-        }
-
-        console.log('API送信データ:', {
-          content: requestData.content,
-          useOnlyKnowledgeBase: requestData.useOnlyKnowledgeBase,
-          usePerplexity: requestData.usePerplexity,
-          mediaCount: mediaUrls?.length || 0,
-          mediaDetails: mediaUrls?.map(m => ({
-            type: m.type,
-            urlLength: m.url.length,
-            isBase64: m.url.startsWith('data:'),
-            urlPrefix: m.url.substring(0, 50) + '...'
-          }))
+      if (hasImageKeyword) {
+        console.log('🔍 メッセージから画像検索キーワードを検出:', content);
+        // 画像検索を非同期で実行（メッセージ送信をブロックしない）
+        searchBySelectedText(content).catch(error => {
+          console.error('自動画像検索エラー:', error);
         });
-
-        const response = await apiRequest('POST', `/api/chats/${currentChatId}/messages`, requestData);
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log('API応答データ:', data);
-          
-          // APIからの応答でメッセージを更新
-          setMessages(prev => prev.map(msg => 
-            msg.id === aiMessage.id 
-              ? { ...data.aiMessage, timestamp: new Date(data.aiMessage.timestamp) }
-              : msg.id === userMessage.id
-              ? { ...data.userMessage, timestamp: new Date(data.userMessage.timestamp) }
-              : msg
-          ));
-        } else {
-          const errorText = await response.text();
-          console.error('API応答エラー:', response.status, errorText);
-          
-          // API失敗時はローカルの応答メッセージを更新
-          setMessages(prev => prev.map(msg => 
-            msg.id === aiMessage.id 
-              ? { ...msg, content: 'サーバーとの通信に失敗しました。ローカルでメッセージを保持しています。' }
-              : msg
-          ));
-        }
-      } catch (apiError) {
-        console.error('API送信エラー:', apiError);
-        // API失敗時はローカルの応答メッセージを更新
-        setMessages(prev => prev.map(msg => 
-          msg.id === aiMessage.id 
-            ? { ...msg, content: 'サーバーとの通信に失敗しました。ローカルでメッセージを保持しています。' }
-            : msg
-        ));
       }
 
-      setTempMedia([]);
-      setRecordedText('');
-      searchBySelectedText(content);
+      const response = await apiRequest('POST', '/api/chats/1/messages', {
+        content,
+        media: mediaUrls,
+        chatId: chatId
+      });
+
+      if (!response.ok) {
+        throw new Error('メッセージの送信に失敗しました');
+      }
+
+      const savedMessage = await response.json();
+
+      // サーバーから返されたメッセージでローカルメッセージを更新
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === newMessage.id ? { ...savedMessage, id: savedMessage.id } : msg
+        )
+      );
+
+      // 未エクスポートフラグを設定
+      setHasUnexportedMessages(true);
+
+      queryClient.invalidateQueries({ queryKey: ['/api/chats/1/messages'] });
     } catch (error) {
       console.error('メッセージ送信エラー:', error);
       toast({
-        title: 'メッセージ送信エラー',
-        description: 'メッセージを送信できませんでした。',
-        variant: 'destructive',
+        title: "エラー",
+        description: "メッセージの送信に失敗しました",
+        variant: "destructive",
       });
+
+      // エラー時は楽観的に追加したメッセージを削除
+      setMessages(prev => prev.filter(msg => msg.id !== Date.now()));
     } finally {
       setIsLoading(false);
     }
-  }, [chatId, initializeChat, searchBySelectedText, tempMedia, toast]);
+  }, [queryClient, toast, chatId, searchBySelectedText]);
 
   // 音声認識の初期化を最適化
   const initializeSpeechRecognition = useCallback(() => {
@@ -955,7 +839,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         await queryClient.invalidateQueries({
           queryKey: [`/api/chats/${chatId}/messages`]
         });
-        
+
         // キャッシュを完全に削除
         queryClient.removeQueries({
           queryKey: [`/api/chats/${chatId}/messages`]
@@ -1027,13 +911,13 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // エラーの種類に応じてメッセージを分岐
       const errorMessage = error instanceof Error ? error.message : 'チャット履歴の削除に失敗しました';
-      
+
       toast({
         title: '削除エラー',
         description: `${errorMessage}（ローカルデータはクリアされました）`,
         variant: 'destructive',
       });
-      
+
       setTimeout(() => {
         setIsClearing(false);
       }, 2000);
@@ -1053,7 +937,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       try {
         setIsLoading(true);
-        
+
         // キャッシュを無効化してから読み込み
         try {
           await queryClient.invalidateQueries({
@@ -1062,7 +946,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } catch (cacheError) {
           console.warn('メッセージ読み込み前のキャッシュクリアでエラー発生:', cacheError);
         }
-        
+
         const response = await apiRequest('GET', `/api/chats/${chatId}/messages`);
 
         if (response.ok) {
