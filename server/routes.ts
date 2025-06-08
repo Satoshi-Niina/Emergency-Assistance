@@ -677,7 +677,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 一時的にPerplexity機能を無効化
       // const usePerplexity = false; // req.body.usePerplexity || false;
 
-      let aiResponse = '';
       let citations: any[] = [];
 
       const getAIResponse = async (content: string, useKnowledgeBase: boolean): Promise<any> => {
@@ -688,34 +687,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return 'AI応答の生成に失敗しました。';
         }
       };
-
-      // 現時点ではPerplexity API未対応のため、OpenAIのみ使用
-      // OpenAI API を使用 (デフォルト)
-      console.log(`OpenAIモデルを使用`);
-      aiResponse = await getAIResponse(message.content, useOnlyKnowledgeBase);
-
-      // Perplexity API は一時的に無効化
-      /*
-      if (usePerplexity) {
-        // Perplexity API を使用
-        console.log(`Perplexityモデルを使用`);
-        const perplexityResponse = await processPerplexityRequest(message.content, '', useKnowledgeBaseOnly);
-        aiResponse = perplexityResponse.content;
-        citations = perplexityResponse.citations;
-      } else {
-        // OpenAI API を使用 (デフォルト)
-        console.log(`OpenAIモデルを使用`);
-        aiResponse = await processOpenAIRequest(message.content, useOnlyKnowledgeBase);
-      }
-      */
-
-      // 引用情報がある場合は末尾に追加
-      if (citations && citations.length > 0) {
-        aiResponse += '\n\n参考情報：';
-        citations.forEach((citation, index) => {
-          aiResponse += `\n[${index + 1}] ${citation.url}`;
-        });
-      }
 
       // AIからの応答を取得
       const aiResponse = await getAIResponse(content, useOnlyKnowledgeBase);
