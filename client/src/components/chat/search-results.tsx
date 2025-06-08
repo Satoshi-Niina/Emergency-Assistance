@@ -174,23 +174,21 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
       const originalSrc = imgElement.src;
       console.error(`画像読み込みエラー (試行${retryCount + 1}):`, originalSrc);
 
-      if (retryCount < 3) {
+      if (retryCount < 2) {
         let retryPath = '';
         const fileName = (result.url || result.file || '').split('/').pop();
 
-        if (retryCount === 0) {
-          // 1回目: knowledge-base/images/パスで再試行
-          retryPath = fileName ? `/knowledge-base/images/${fileName}` : '';
-        } else if (retryCount === 1 && fileName) {
-          // 2回目: PNGに拡張子を変換して再試行
-          const baseName = fileName.replace(/\.(jpg|jpeg|svg|gif)$/i, '');
-          retryPath = `/knowledge-base/images/${baseName}.png`;
-        } else if (retryCount === 2 && fileName) {
-          // 3回目: 元のファイル名でそのまま再試行
+        if (retryCount === 0 && fileName) {
+          // 1回目: 直接knowledge-base/images/パスで再試行
           retryPath = `/knowledge-base/images/${fileName}`;
+        } else if (retryCount === 1 && fileName) {
+          // 2回目: ファイル存在確認をスキップして次の処理へ
+          console.warn(`画像ファイルが見つかりません: ${fileName}`);
+          // エラー表示に直接移行
+          retryCount = 99; // 強制的にエラー表示へ
         }
 
-        if (retryPath && retryPath !== originalSrc) {
+        if (retryPath && retryPath !== originalSrc && retryCount < 2) {
           console.log(`画像読み込み再試行 ${retryCount + 1}:`, retryPath);
           imgElement.src = retryPath;
           imgElement.onerror = () => handleImageError(imgElement, result, retryCount + 1);
