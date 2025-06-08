@@ -813,9 +813,10 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const clearChatHistory = useCallback(async () => {
     try {
       setIsClearing(true);
+      setIsLoadingMessages(true);
 
-      // まずローカル状態を即座にクリア（UIの即座の反映のため）
-      console.log('ローカル状態を即座にクリアします');
+      // 即座にローカル状態をクリア
+      console.log('🗑️ ローカル状態を即座にクリアします');
       setMessages([]);
       setSearchResults([]);
       setLastExportTimestamp(null);
@@ -826,117 +827,102 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setSelectedText('');
       clearSearchResults();
 
-      // 応急処置ガイドメッセージもローカルストレージから削除
+      // ローカルストレージもクリア
       try {
         localStorage.removeItem('emergencyGuideMessage');
-        // クリア実行のタイムスタンプを保存
         localStorage.setItem('chat_cleared_timestamp', Date.now().toString());
-        console.log('応急処置ガイドメッセージをローカルストレージから削除しました');
+        console.log('📦 ローカルストレージをクリアしました');
       } catch (error) {
-        console.warn('ローカルストレージからの削除に失敗:', error);
+        console.warn('ローカルストレージクリアエラー:', error);
       }
 
-      // QueryClientのキャッシュを無効化
+      // キャッシュを完全削除
       try {
-        await queryClient.invalidateQueries({
-          queryKey: [`/api/chats/${chatId}/messages`]
-        });
-
-        // キャッシュを完全に削除
-        queryClient.removeQueries({
-          queryKey: [`/api/chats/${chatId}/messages`]
-        });
+        queryClient.removeQueries({ queryKey: [`/api/chats/${chatId}/messages`] });
+        queryClient.clear();
+        console.log('🔄 QueryClientキャッシュをクリアしました');
       } catch (cacheError) {
-        console.warn('キャッシュクリアでエラー発生:', cacheError);
+        console.warn('キャッシュクリアエラー:', cacheError);
       }
 
-      // サーバーへのリクエストを実行してデータベースをクリア
+      // サーバー側削除（複数回試行）
       if (chatId) {
-        try {
-          console.log(`チャット履歴削除開始: chatId=${chatId}`);
-
-          // 削除前に検索結果もクリア
-          setSearchResults([]);
-          clearSearchResults();
-
-          // 強制クリアフラグ付きでサーバーに送信
-          const response = await apiRequest('DELETE', `/api/chats/${chatId}/messages`, {
-            force: true,
-            clearAll: true,
-            timestamp: Date.now()
-          });
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`サーバーでのチャット履歴削除に失敗: ${response.status} - ${errorText}`);
-            throw new Error(`削除APIエラー: ${response.status}`);
-          }
-
-          const result = await response.json();
-          console.log('サーバー側削除結果:', result);
-
-          // サーバー削除成功後、再度ローカル状態をクリア（確実に空にするため）
-          setMessages([]);
-          setSearchResults([]);
-          clearSearchResults();
-
-          // キャッシュを再度クリア
+        for (let attempt = 0; attempt < 3; attempt++) {
           try {
-            await queryClient.invalidateQueries({
-              queryKey: [`/api/chats/${chatId}/messages`]
-            });
-          } catch (cacheError) {
-            console.warn('サーバー削除後のキャッシュクリアでエラー発生:', cacheError);
-          }
+            console.log(`🔄 サーバー削除試行 ${attempt + 1}/3: chatId=${chatId}`);
 
-        } catch (error) {
-          console.error('サーバー側削除エラー:', error);
-          // サーバー側の削除に失敗した場合もローカルクリアは維持
-          setMessages([]);
-          setSearchResults([]);
-          clearSearchResults();
+            const response = await apiRequest('DELETE', `/api/chats/${chatId}/messages`, {
+              force: true,
+              clearAll: true,
+              attempt: attempt + 1,
+              timestamp: Date.now()
+            });
+
+            if (response.ok) {
+              const result = await response.json();
+              console.log(`✅ サーバー削除成功 (試行 ${attempt + 1}):`, result);
+              break;
+            } else {
+              const errorText = await response.text();
+              console.error(`❌ サーバー削除失敗 (試行 ${attempt + 1}): ${response.status} - ${errorText}`);
+              if (attempt === 2) throw new Error(`削除APIエラー: ${response.status}`);
+            }
+          } catch (error) {
+            console.error(`❌ サーバー削除エラー (試行 ${attempt + 1}):`, error);
+            if (attempt === 2) {
+              console.warn('⚠️ サーバー削除に失敗しましたが、ローカルクリアは実行済みです');
+            }
+          }
         }
       }
 
-      // 成功メッセージを表示
+      // 最終的にローカル状態を再確認してクリア
+      setMessages([]);
+      setSearchResults([]);
+      clearSearchResults();
+
       toast({
         title: '削除完了',
         description: 'チャット履歴が削除されました',
       });
 
-      // クリア状態を少し長めに保持してから解除
+      // 長めの待機時間でクリア状態を維持
       setTimeout(() => {
         setIsClearing(false);
-      }, 3000); // 3秒に延長
+        setIsLoadingMessages(false);
+      }, 5000);
 
     } catch (error) {
-      console.error('チャット履歴削除エラー:', error);
-      // エラーが発生してもローカル状態はクリアを維持
+      console.error('🚨 チャット履歴削除エラー:', error);
+      
+      // エラーが発生してもローカル状態は確実にクリア
       setMessages([]);
       setSearchResults([]);
       clearSearchResults();
 
-      // エラーの種類に応じてメッセージを分岐
-      const errorMessage = error instanceof Error ? error.message : 'チャット履歴の削除に失敗しました';
-
       toast({
         title: '削除エラー',
-        description: `${errorMessage}（ローカルデータはクリアされました）`,
+        description: `チャット履歴の削除でエラーが発生しましたが、ローカルデータはクリアされました`,
         variant: 'destructive',
       });
 
       setTimeout(() => {
         setIsClearing(false);
-      }, 2000);
+        setIsLoadingMessages(false);
+      }, 3000);
     }
   }, [chatId, clearSearchResults, toast]);
 
+  // 読み込み処理の重複防止
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+
   // チャットIDが変更されたときにメッセージを読み込む
   useEffect(() => {
-    let isMounted = true; // コンポーネントがマウントされているかの確認
+    let isMounted = true;
+    let loadTimeoutId: NodeJS.Timeout | null = null;
 
     const loadMessages = async () => {
-      if (!chatId || isInitializing || !isMounted) return;
+      if (!chatId || isInitializing || !isMounted || isLoadingMessages) return;
 
       // クリア操作中は読み込みをスキップ
       if (isClearing) {
@@ -945,55 +931,69 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       try {
+        setIsLoadingMessages(true);
         setIsLoading(true);
 
-        // 強制的に空のメッセージから開始（サーバー再起動後の古いデータを回避）
+        // ローカル状態を即座にクリア
         setMessages([]);
 
-        const response = await apiRequest('GET', `/api/chats/${chatId}/messages`);
+        // キャッシュクリアヘッダーを含むリクエスト
+        const response = await apiRequest('GET', `/api/chats/${chatId}/messages`, undefined, {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        });
 
-        if (!isMounted) return; // アンマウント後は処理しない
+        if (!isMounted) return;
 
         if (response.ok) {
           const data = await response.json();
 
-          // レスポンスヘッダーでクリア状態を確認
+          // サーバー側でクリア済みかチェック
           const isChatCleared = response.headers.get('X-Chat-Cleared') === 'true';
 
-          if (isChatCleared || data.length === 0) {
-            console.log(`チャットID ${chatId} はクリアされています`);
+          if (isChatCleared || !data || data.length === 0) {
+            console.log(`チャットID ${chatId} はクリア済みまたは空です`);
             if (isMounted) setMessages([]);
           } else {
             console.log(`チャットID ${chatId} のメッセージを読み込みました: ${data.length}件`);
             if (isMounted) {
-              setMessages(data.map((msg: any) => ({
+              // 重複チェックして設定
+              const uniqueMessages = data.filter((msg: any, index: number, self: any[]) => 
+                index === self.findIndex(m => m.id === msg.id)
+              );
+              
+              setMessages(uniqueMessages.map((msg: any) => ({
                 ...msg,
-                timestamp: new Date(msg.timestamp)
+                timestamp: new Date(msg.timestamp || msg.createdAt)
               })));
             }
           }
         } else {
-          console.error('メッセージの読み込みに失敗しました');
-          if (isMounted) setMessages([]); // エラー時は空配列
+          console.error('メッセージの読み込みに失敗しました:', response.status);
+          if (isMounted) setMessages([]);
         }
       } catch (error) {
         console.error('メッセージ読み込みエラー:', error);
-        if (isMounted) setMessages([]); // エラー時は空配列
+        if (isMounted) setMessages([]);
       } finally {
-        if (isMounted) setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+          setIsLoadingMessages(false);
+        }
       }
     };
 
-    // クリア操作が完了してから一定時間待ってからメッセージを読み込む
-    const timeoutId = setTimeout(() => {
-      if (!isClearing && isMounted) {
+    // 読み込み遅延（重複防止）
+    loadTimeoutId = setTimeout(() => {
+      if (!isClearing && isMounted && !isLoadingMessages) {
         loadMessages();
       }
-    }, isClearing ? 3000 : 100); // 通常時は100ms待機
+    }, isClearing ? 5000 : 200);
 
     return () => {
-      isMounted = false; // アンマウント時にフラグを設定
-      clearTimeout(timeoutId);
+      isMounted = false;
+      if (loadTimeoutId) clearTimeout(loadTimeoutId);
     };
   }, [chatId, isInitializing, isClearing]);
 

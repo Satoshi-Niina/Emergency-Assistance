@@ -189,24 +189,64 @@ export class DatabaseStorage implements IStorage {
   // チャットメッセージをクリアする関数
   async clearChatMessages(chatId: number): Promise<void> {
     try {
+      console.log(`[INFO] チャット履歴削除開始: chatId=${chatId}`);
+      
       // このチャットに関連するメディアを先に削除する
       const chatMessages = await this.getMessagesForChat(chatId);
       const messageIds = chatMessages.map(message => message.id);
+      
+      console.log(`[INFO] 削除対象メッセージ数: ${messageIds.length}`);
 
       // メディアの削除（存在する場合）
+      let deletedMediaCount = 0;
       if (messageIds.length > 0) {
-        // メッセージIDごとに個別に削除（SQLインジェクションを避けるため）
+        // メッセージIDごとに個別に削除
         for (const messageId of messageIds) {
-          await db.delete(media).where(eq(media.messageId, messageId));
+          try {
+            const result = await db.delete(media).where(eq(media.messageId, messageId));
+            console.log(`[DEBUG] メディア削除: messageId=${messageId}`);
+            deletedMediaCount++;
+          } catch (mediaError) {
+            console.error(`[ERROR] メディア削除エラー (messageId: ${messageId}):`, mediaError);
+          }
         }
       }
 
-      // メッセージの削除
-      await db.delete(messages).where(eq(messages.chatId, chatId));
+      // メッセージの削除（複数回試行）
+      let deletedMessageCount = 0;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const result = await db.delete(messages).where(eq(messages.chatId, chatId));
+          console.log(`[INFO] メッセージ削除試行 ${attempt + 1}: 完了`);
+          
+          // 削除確認
+          const remainingMessages = await this.getMessagesForChat(chatId);
+          if (remainingMessages.length === 0) {
+            console.log(`[SUCCESS] 全メッセージ削除完了: chatId=${chatId}`);
+            break;
+          } else {
+            console.warn(`[WARNING] 試行 ${attempt + 1} 後も ${remainingMessages.length} 件のメッセージが残存`);
+            if (attempt === 2) {
+              // 最後の試行で個別削除
+              for (const msg of remainingMessages) {
+                try {
+                  await db.delete(messages).where(eq(messages.id, msg.id));
+                  deletedMessageCount++;
+                } catch (individualError) {
+                  console.error(`[ERROR] 個別削除エラー (id: ${msg.id}):`, individualError);
+                }
+              }
+            }
+          }
+        } catch (deleteError) {
+          console.error(`[ERROR] メッセージ削除試行 ${attempt + 1} エラー:`, deleteError);
+          if (attempt === 2) throw deleteError;
+        }
+      }
 
-      console.log(`[INFO] Cleared all messages for chat ID: ${chatId}`);
+      console.log(`[SUCCESS] チャット履歴削除完了: chatId=${chatId}, 削除メディア=${deletedMediaCount}, 削除メッセージ=${deletedMessageCount}`);
     } catch (error) {
-      console.error(`[ERROR] Failed to clear messages for chat ID: ${chatId}:`, error);
+      console.error(`[ERROR] チャット履歴削除失敗: chatId=${chatId}:`, error);
       throw error;
     }
   }
