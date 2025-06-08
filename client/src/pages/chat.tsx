@@ -289,10 +289,22 @@ export default function Chat() {
             ) : (
               <>
                 {/* 通常のメッセージリスト */}
-                {displayMessages.map((message: any, index: number) => (
-                  <div key={index} className="w-full md:max-w-2xl mx-auto">
-                    <MessageBubble message={message} />
-                  </div>
+                {displayMessages.map((message: any, index: number) => {
+                  // メッセージ構造の安全性チェック
+                  const safeMessage = {
+                    ...message,
+                    content: message.content || message.text || '',
+                    text: message.text || message.content || '',
+                    id: message.id || `temp_${index}`,
+                    timestamp: message.timestamp || message.createdAt || new Date()
+                  };
+                  
+                  return (
+                    <div key={safeMessage.id || index} className="w-full md:max-w-2xl mx-auto">
+                      <MessageBubble message={safeMessage} />
+                    </div>
+                  );
+                })}
                 ))}
               </>
             )}

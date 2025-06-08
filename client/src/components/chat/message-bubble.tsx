@@ -72,8 +72,9 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
   // Handle text selection within this message
   const handleMouseUp = () => {
     const selection = window.getSelection();
-    if (selection && selection.toString().trim().length > 0) {
-      const selectedTextValue = selection.toString().trim();
+    const selectionText = selection?.toString();
+    if (selection && selectionText && selectionText.trim().length > 0) {
+      const selectedTextValue = selectionText.trim();
       setLocalSelectedText(selectedTextValue);
       setShowCopyButton(true);
     } else {
@@ -105,8 +106,9 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
         duration: 2000,
       });
     } else {
-      // AIの回答のみ読み上げ可能
-      if (!isUserMessage && message.content) {
+      // AIの回答のみ読み上げ可能（null/undefinedチェック強化）
+      const messageContent = message.content || (message as any).text || '';
+      if (!isUserMessage && messageContent && typeof messageContent === 'string' && messageContent.trim()) {
         setIsSpeaking(true);
         toast({
           title: "音声読み上げを開始します",
@@ -114,7 +116,7 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
         });
 
         try {
-          await speakText(message.content, {
+          await speakText(messageContent, {
             rate: 1.0,
             pitch: 1.0,
             lang: 'ja-JP'
@@ -303,7 +305,20 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
           <div className="relative">
             {/* contentが画像データかどうかを判定して表示 */}
             {(() => {
-              const content = message.content.trim();
+              // メッセージコンテンツの安全な取得（content優先、textをフォールバック）
+              const rawContent = message.content || (message as any).text || '';
+              
+              // null/undefinedチェックを強化
+              if (!rawContent || typeof rawContent !== 'string') {
+                console.warn('メッセージコンテンツが無効です:', { messageId: message.id, content: rawContent });
+                return (
+                  <p className="text-gray-500 italic">
+                    [メッセージ内容を読み込めませんでした]
+                  </p>
+                );
+              }
+              
+              const content = rawContent.trim();
               
               // 画像データの判定条件を強化
               const isImageContent = (
