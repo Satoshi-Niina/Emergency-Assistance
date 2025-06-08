@@ -47,12 +47,16 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/ready', (req, res) => {
-  res.status(200).send('OK');
+  if (knowledgeBaseReady) {
+    res.status(200).json({ status: 'ready', knowledgeBase: 'initialized' });
+  } else {
+    res.status(200).json({ status: 'ready', knowledgeBase: 'initializing' });
+  }
 });
 
 // Root endpoint always available for deployment health checks
 app.get('/', (req, res) => {
-  res.status(200).send('OK');
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // Serve static files from public directory
@@ -166,8 +170,13 @@ const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
       console.log(`Health endpoints: /health, /ready`);
     }
     
-    // 重い初期化は起動後に非同期実行
-    initializePostStartup();
+    // 軽量な初期化のみ実行
+    if (process.env.NODE_ENV !== 'production') {
+      initializePostStartup();
+    } else {
+      // プロダクション環境では非同期で初期化
+      initializePostStartup();
+    }
   }).on('error', (err: NodeJS.ErrnoException) => {
     console.error('サーバー起動エラー:', {
       message: err.message,
@@ -221,27 +230,20 @@ const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
   });
 })();
 
+// 知識ベースの準備状況を追跡
+let knowledgeBaseReady = false;
+
 // 起動後初期化処理
 async function initializePostStartup() {
-  if (process.env.NODE_ENV === 'production') {
-    // プロダクション環境では3秒遅延でヘルスチェックを確実に通す
-    setTimeout(async () => {
-      try {
-        console.log("知識ベースの初期化を開始...");
-        await initializeKnowledgeBase();
-        console.log("知識ベースの初期化完了");
-      } catch (err) {
-        console.error("初期化時にエラーが発生:", err);
-      }
-    }, 3000);
-  } else {
-    // 開発環境では即座に初期化
+  // 初期化は非同期で実行し、ヘルスチェックをブロックしない
+  setImmediate(async () => {
     try {
-      secureLog("知識ベースの初期化を開始...");
+      console.log("知識ベースの初期化を開始...");
       await initializeKnowledgeBase();
-      secureLog("知識ベースの初期化完了");
+      console.log("知識ベースの初期化完了");
+      knowledgeBaseReady = true;
     } catch (err) {
       console.error("初期化時にエラーが発生:", err);
     }
-  }
+  });
 }
