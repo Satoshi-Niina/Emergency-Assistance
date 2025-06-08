@@ -894,13 +894,55 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [chatId, searchBySelectedText, toast]);
 
-  // ローカルチャット履歴をクリアする関数（軽量版）
+  // チャット履歴をクリアする関数（履歴送信→データベース削除→新しいチャット開始）
   const clearChatHistory = useCallback(async () => {
     try {
       setIsClearing(true);
-      console.log('🗑️ ローカルチャット履歴をクリアします');
+      console.log('🗑️ チャット履歴クリア開始: 履歴送信→データベース削除→新しいチャット開始');
 
-      // ローカル状態の完全リセット
+      // 1. まず未送信メッセージがある場合は履歴送信
+      if (hasUnexportedMessages && messages.length > 0) {
+        console.log('📤 未送信メッセージを先に送信します');
+        try {
+          await exportChatHistory();
+          console.log('✅ 履歴送信完了');
+        } catch (exportError) {
+          console.error('履歴送信エラー:', exportError);
+          toast({
+            title: '履歴送信エラー',
+            description: '履歴の送信に失敗しましたが、クリアを続行します',
+            variant: 'destructive',
+          });
+        }
+      }
+
+      // 2. データベースからチャット履歴を削除
+      if (chatId) {
+        console.log('🗄️ データベースからチャット履歴を削除します');
+        try {
+          const response = await apiRequest('POST', `/api/chats/${chatId}/clear`, {
+            force: true,
+            clearAll: true
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            console.log('✅ データベース削除完了:', result);
+          } else {
+            throw new Error('データベース削除に失敗しました');
+          }
+        } catch (dbError) {
+          console.error('データベース削除エラー:', dbError);
+          toast({
+            title: 'データベース削除エラー',
+            description: 'サーバーでの削除に失敗しましたが、ローカルをクリアします',
+            variant: 'destructive',
+          });
+        }
+      }
+
+      // 3. ローカル状態の完全リセット
+      console.log('🔄 ローカル状態をリセットします');
       setMessages([]);
       setSearchResults([]);
       setLastExportTimestamp(null);
@@ -911,18 +953,21 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setSelectedText('');
       clearSearchResults();
 
-      // ローカルキャッシュのクリア
+      // 4. ローカルキャッシュのクリア
       try {
         queryClient.removeQueries({ queryKey: [`/api/chats/${chatId}/messages`] });
         queryClient.removeQueries({ queryKey: ['search_results'] });
         console.log('📦 ローカルキャッシュをクリアしました');
       } catch (localError) {
-        console.warn('ローカルクリアエラー:', localError);
+        console.warn('ローカルキャッシュクリアエラー:', localError);
       }
 
+      // 5. 新しいチャットとして再初期化
+      console.log('🆕 新しいチャットセッションを開始します');
+      
       toast({
         title: 'クリア完了',
-        description: 'ローカルチャット履歴をクリアしました',
+        description: '履歴をデータベースに送信し、新しいチャットを開始しました',
       });
 
     } catch (error) {
@@ -931,16 +976,17 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // エラー時もローカル状態は確実にクリア
       setMessages([]);
       setSearchResults([]);
+      setHasUnexportedMessages(false);
       
       toast({
         title: 'クリアエラー',
-        description: 'エラーが発生しましたが、画面はクリアされました',
+        description: 'エラーが発生しましたが、ローカル画面はクリアされました',
         variant: 'destructive',
       });
     } finally {
       setIsClearing(false);
     }
-  }, [chatId, clearSearchResults, toast, queryClient]);
+  }, [chatId, messages.length, hasUnexportedMessages, exportChatHistory, clearSearchResults, toast, queryClient]);
 
   // 起動時は常に新しいチャットとして開始（復元処理なし）
   useEffect(() => {
