@@ -152,29 +152,37 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     initializeChat();
   }, [initializeChat]);
 
-  // チャットメッセージの初期読み込み
+  // チャットメッセージの初期読み込み（一回のみ実行）
   useEffect(() => {
     const loadMessages = async () => {
-      if (!chatId) return;
+      if (!chatId || isInitializing) return;
 
       try {
+        console.log(`📝 初回メッセージ読み込み開始: chatId=${chatId}`);
         const response = await apiRequest('GET', `/api/chats/${chatId}/messages`);
         if (response.ok) {
           const data = await response.json();
-          // メッセージ正規化処理を適用
-          const normalizedMessages = data.map((msg: any) => normalizeMessage(msg));
           
-          setMessages(normalizedMessages);
+          // サーバーからの正式データのみを使用
+          if (Array.isArray(data)) {
+            const normalizedMessages = data.map((msg: any) => normalizeMessage(msg));
+            setMessages(normalizedMessages);
+            console.log(`📝 初回読み込み完了: ${normalizedMessages.length}件のメッセージ`);
+          } else {
+            console.log('📝 サーバーからのメッセージデータが配列ではありません');
+            setMessages([]);
+          }
         }
       } catch (error) {
-        console.error('Failed to load messages:', error);
+        console.error('📝 初回メッセージ読み込みエラー:', error);
+        setMessages([]);
       }
     };
 
-    if (chatId) {
+    if (chatId && !isInitializing) {
       loadMessages();
     }
-  }, [chatId]);
+  }, [chatId, isInitializing]);
 
   // 認識テキストの類似度を確認する関数（部分文字列か判定）
   const isSubstringOrSimilar = (text1: string, text2: string): boolean => {
@@ -519,14 +527,14 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // サーバーから返されたメッセージでローカルメッセージを更新
       setMessages(prev => {
         const updatedMessages = prev.map(msg => 
-          msg.id === messageId ? { ...savedMessage, timestamp: new Date(savedMessage.timestamp) } : msg
+          msg.id === messageId 
+            ? { ...normalizeMessage(savedMessage), timestamp: new Date(savedMessage.timestamp) } 
+            : msg
         );
 
-        // 更新後に同期的にキャッシュを無効化
-        setTimeout(() => {
-          queryClient.setQueryData(['/api/chats/1/messages'], updatedMessages);
-          queryClient.invalidateQueries({ queryKey: ['/api/chats/1/messages'] });
-        }, 0);
+        // サーバーとの同期を確実にする
+        queryClient.setQueryData([`/api/chats/${chatId}/messages`], updatedMessages);
+        console.log('📝 メッセージをサーバーと同期しました:', savedMessage.id);
 
         return updatedMessages;
       });
@@ -929,14 +937,34 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [chatId, searchBySelectedText, toast]);
 
-  // チャット履歴を全て削除する関数
+  // チャット履歴を全て削除する関数（サーバーDBを正本とする）
   const clearChatHistory = useCallback(async () => {
     try {
       setIsClearing(true);
-      setIsLoadingMessages(true);
+      console.log('🗑️ チャット履歴の完全削除を開始します');
 
-      // 即座にローカル状態をクリア
-      console.log('🗑️ ローカル状態を即座にクリアします');
+      // 1. サーバー側で強制削除（最優先）
+      if (chatId) {
+        try {
+          const response = await apiRequest('DELETE', `/api/chats/${chatId}/messages?force=true&clearAll=true`, {
+            force: true,
+            clearAll: true,
+            hardDelete: true,
+            timestamp: Date.now()
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            console.log('✅ サーバー削除完了:', result);
+          } else {
+            console.warn('⚠️ サーバー削除が部分的に失敗しました');
+          }
+        } catch (serverError) {
+          console.error('❌ サーバー削除エラー:', serverError);
+        }
+      }
+
+      // 2. ローカル状態の完全リセット
       setMessages([]);
       setSearchResults([]);
       setLastExportTimestamp(null);
@@ -947,12 +975,12 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setSelectedText('');
       clearSearchResults();
 
-      // 完全なストレージクリア
+      // 3. ストレージとキャッシュのクリア
       try {
-        // LocalStorage完全クリア
+        // LocalStorageクリア
         const keysToRemove = [
           'emergencyGuideMessage',
-          'chat_messages',
+          'chat_messages', 
           'search_results',
           'draft_message',
           'last_export',
@@ -961,193 +989,81 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         keysToRemove.forEach(key => localStorage.removeItem(key));
         localStorage.setItem('chat_cleared_timestamp', Date.now().toString());
 
-        // SessionStorage完全クリア
-        sessionStorage.clear();
-        console.log('📦 全ストレージをクリアしました');
-      } catch (error) {
-        console.warn('ストレージクリアエラー:', error);
-      }
-
-      // キャッシュとインデックスDBの完全削除
-      try {
+        // QueryClientキャッシュクリア
         queryClient.removeQueries({ queryKey: [`/api/chats/${chatId}/messages`] });
         queryClient.removeQueries({ queryKey: ['search_results'] });
-        queryClient.removeQueries({ queryKey: ['image_search'] });
         queryClient.clear();
 
-        // IndexedDBもクリア
-        if ('indexedDB' in window) {
-          const deleteDB = indexedDB.deleteDatabase('chat_cache');
-          deleteDB.onsuccess = () => console.log('IndexedDBをクリアしました');
-        }
-        console.log('🔄 全キャッシュをクリアしました');
-      } catch (cacheError) {
-        console.warn('キャッシュクリアエラー:', cacheError);
+        console.log('📦 ローカルデータとキャッシュをクリアしました');
+      } catch (localError) {
+        console.warn('ローカルクリアエラー:', localError);
       }
-
-      // サーバー側削除（強制削除フラグ付き）
-      if (chatId) {
-        try {
-          console.log(`🔄 サーバー削除実行: chatId=${chatId}`);
-
-          const response = await apiRequest('DELETE', `/api/chats/${chatId}/messages?force=true&clearAll=true`, {
-            force: true,
-            clearAll: true,
-            hardDelete: true,
-            timestamp: Date.now()
-          });
-
-          if (response.ok) {
-            const result = await response.json();
-            console.log(`✅ サーバー削除成功:`, result);
-          } else {
-            console.warn(`⚠️ サーバー削除に失敗しましたが、ローカルクリアは実行済みです`);
-          }
-        } catch (error) {
-          console.error(`❌ サーバー削除エラー:`, error);
-        }
-      }
-
-      // 最終的にローカル状態を再確認してクリア
-      setMessages([]);
-      setSearchResults([]);
-      clearSearchResults();
 
       toast({
         title: '削除完了',
-        description: 'チャット履歴が削除されました',
+        description: 'チャット履歴がサーバーから完全に削除されました',
       });
-
-      // 長めの待機時間でクリア状態を維持
-      setTimeout(() => {
-        setIsClearing(false);
-        setIsLoadingMessages(false);
-      }, 5000);
 
     } catch (error) {
       console.error('🚨 チャット履歴削除エラー:', error);
-
-      // エラーが発生してもローカル状態は確実にクリア
+      
+      // エラー時もローカル状態は確実にクリア
       setMessages([]);
       setSearchResults([]);
-      clearSearchResults();
-
+      
       toast({
         title: '削除エラー',
-        description: `チャット履歴の削除でエラーが発生しましたが、ローカルデータはクリアされました`,
+        description: 'エラーが発生しましたが、ローカルデータはクリアされました',
         variant: 'destructive',
       });
-
+    } finally {
+      // クリア状態を短時間維持してから解除
       setTimeout(() => {
         setIsClearing(false);
-        setIsLoadingMessages(false);
-      }, 3000);
+      }, 2000);
     }
-  }, [chatId, clearSearchResults, toast]);
+  }, [chatId, clearSearchResults, toast, queryClient]);
 
-  // 読み込み処理の重複防止
-  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-
-  // チャットIDが変更されたときにメッセージを読み込む
+  // サーバー再起動後の状態復元処理（一回のみ）
   useEffect(() => {
-    let isMounted = true;
-    let loadTimeoutId: NodeJS.Timeout | null = null;
-
-    const loadMessages = async () => {
-      if (!chatId || isInitializing || !isMounted || isLoadingMessages) return;
-
-      // クリア操作中またはクリア後10秒間は読み込みをスキップ
-      if (isClearing) {
-        console.log('クリア操作中のためメッセージ読み込みをスキップしました');
-        return;
-      }
-
-      // クリア後の時間チェックを追加
+    const restoreFromServer = async () => {
+      if (!chatId || isClearing) return;
+      
+      // クリア済みフラグをチェック
       const clearTimestamp = localStorage.getItem('chat_cleared_timestamp');
       if (clearTimestamp) {
         const timeSinceCleared = Date.now() - parseInt(clearTimestamp);
-        if (timeSinceCleared < 10000) { // 10秒間は読み込みブロック
-          console.log('クリア後10秒以内のためメッセージ読み込みをスキップしました');
+        if (timeSinceCleared < 30000) { // 30秒間はクリア状態を維持
+          console.log('📝 クリア後のため復元をスキップ');
+          setMessages([]);
           return;
         }
       }
 
       try {
-        setIsLoadingMessages(true);
-        setIsLoading(true);
-
-        // ローカル状態を即座にクリア
-        setMessages([]);
-
-        // キャッシュクリアヘッダーを含むリクエスト
-        const response = await apiRequest('GET', `/api/chats/${chatId}/messages`, undefined, {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        });
-
-        if (!isMounted) return;
-
+        console.log('🔄 サーバーからの状態復元を開始');
+        const response = await apiRequest('GET', `/api/chats/${chatId}/messages`);
+        
         if (response.ok) {
           const data = await response.json();
-
-          // サーバー側でクリア済みかチェック
-          const isChatCleared = response.headers.get('X-Chat-Cleared') === 'true';
-
-          if (isChatCleared || !data || data.length === 0) {
-            console.log(`チャットID ${chatId} はクリア済みまたは空です`);
-            if (isMounted) setMessages([]);
+          if (Array.isArray(data) && data.length > 0) {
+            const normalizedMessages = data.map((msg: any) => normalizeMessage(msg));
+            setMessages(normalizedMessages);
+            console.log(`🔄 サーバーから復元完了: ${normalizedMessages.length}件`);
           } else {
-            console.log(`チャットID ${chatId} のメッセージを読み込みました: ${data.length}件`);
-            if (isMounted) {
-              // 重複チェックして設定
-              const uniqueMessages = data.filter((msg: any, index: number, self: any[]) => 
-                index === self.findIndex(m => m.id === msg.id)
-              );
-
-              // メッセージ正規化を適用
-              const normalizedMessages = uniqueMessages.map((msg: any) => normalizeMessage(msg));
-
-              setMessages(normalizedMessages);
-            }
+            console.log('🔄 サーバーに履歴なし、空状態を維持');
+            setMessages([]);
           }
-        } else {
-          console.error('メッセージの読み込みに失敗しました:', response.status);
-          if (isMounted) setMessages([]);
         }
       } catch (error) {
-        console.error('メッセージ読み込みエラー:', error);
-        if (isMounted) setMessages([]);
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-          setIsLoadingMessages(false);
-        }
+        console.error('🔄 サーバー復元エラー:', error);
       }
     };
 
-    // 読み込み遅延（重複防止）- クリア操作時はより長い遅延
-    const delay = isClearing ? 15000 : 200;
-    loadTimeoutId = setTimeout(() => {
-      if (!isClearing && isMounted && !isLoadingMessages) {
-        // 再度クリア状態をチェック
-        const clearTimestamp = localStorage.getItem('chat_cleared_timestamp');
-        if (clearTimestamp) {
-          const timeSinceCleared = Date.now() - parseInt(clearTimestamp);
-          if (timeSinceCleared < 10000) {
-            console.log('setTimeout内でクリア後チェック: 読み込みをスキップ');
-            return;
-          }
-        }
-        loadMessages();
-      }
-    }, delay);
-
-    return () => {
-      isMounted = false;
-      if (loadTimeoutId) clearTimeout(loadTimeoutId);
-    };
-  }, [chatId, isInitializing, isClearing]);
+    // ページ読み込み完了後に一度だけ実行
+    const restoreTimer = setTimeout(restoreFromServer, 500);
+    return () => clearTimeout(restoreTimer);
+  }, [chatId]); // chatIdが変わったときのみ実行
 
   // 最後のエクスポート履歴を取得
   const fetchLastExport = useCallback(async () => {
