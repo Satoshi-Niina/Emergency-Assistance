@@ -386,22 +386,32 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // メッセージ正規化処理
   const normalizeMessage = useCallback((message: any): Message => {
+    // メッセージの基本構造を確認
+    console.log('🔍 メッセージ正規化開始:', {
+      id: message.id,
+      hasContent: !!message.content,
+      contentType: typeof message.content,
+      hasText: !!message.text,
+      messageKeys: Object.keys(message || {})
+    });
+
     // contentが文字列でない場合の正規化
     let normalizedContent = '';
 
     if (typeof message.content === 'string') {
       normalizedContent = message.content;
+      console.log('✅ 文字列contentを使用:', normalizedContent.substring(0, 50) + '...');
     } else if (typeof message.content === 'object' && message.content !== null) {
       // オブジェクト型からの文字列抽出
-      console.warn('オブジェクト型のcontentを正規化します:', message.content);
+      console.warn('⚠️ オブジェクト型のcontentを正規化します:', message.content);
 
       // 画像データの場合は preview プロパティを優先
       if (message.content.preview && typeof message.content.preview === 'string') {
         normalizedContent = message.content.preview;
-        console.log('画像データのpreviewを抽出:', normalizedContent.substring(0, 50) + '...');
+        console.log('🖼️ 画像データのpreviewを抽出:', normalizedContent.substring(0, 50) + '...');
       } else if (message.content.url && typeof message.content.url === 'string') {
         normalizedContent = message.content.url;
-        console.log('画像データのurlを抽出:', normalizedContent);
+        console.log('🔗 画像データのurlを抽出:', normalizedContent);
       } else {
         // その他のプロパティから抽出
         normalizedContent = message.content.text || 
@@ -409,20 +419,40 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                            message.content.message || 
                            message.content.data ||
                            JSON.stringify(message.content);
+        console.log('📝 その他のプロパティから抽出:', normalizedContent.substring(0, 50) + '...');
       }
     } else if (message.text && typeof message.text === 'string') {
       normalizedContent = message.text;
+      console.log('✅ textプロパティを使用:', normalizedContent.substring(0, 50) + '...');
+    } else if (message.message && typeof message.message === 'string') {
+      // サーバーレスポンスでmessageプロパティが使われる場合
+      normalizedContent = message.message;
+      console.log('✅ messageプロパティを使用:', normalizedContent.substring(0, 50) + '...');
     } else {
-      console.warn('メッセージコンテンツを正規化できませんでした:', message);
+      console.error('❌ メッセージコンテンツを正規化できませんでした:', {
+        message,
+        contentType: typeof message.content,
+        hasText: !!message.text,
+        hasMessage: !!message.message
+      });
       normalizedContent = '[メッセージ内容を読み込めませんでした]';
     }
 
-    return {
+    // 正規化されたメッセージを作成
+    const normalizedMessage = {
       ...message,
       content: normalizedContent,
       text: normalizedContent, // 互換性のため
       timestamp: message.timestamp ? new Date(message.timestamp) : new Date(message.createdAt || new Date())
     };
+
+    console.log('✅ メッセージ正規化完了:', {
+      id: normalizedMessage.id,
+      contentLength: normalizedContent.length,
+      contentPreview: normalizedContent.substring(0, 50) + '...'
+    });
+
+    return normalizedMessage;
   }, []);
 
   // メッセージ送信関数
@@ -482,19 +512,34 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       const savedMessage = await response.json();
-      console.log('メッセージ送信完了:', savedMessage);
+      console.log('📨 サーバーからのメッセージレスポンス:', {
+        response: savedMessage,
+        responseType: typeof savedMessage,
+        keys: Object.keys(savedMessage || {})
+      });
 
       // サーバーから返されたメッセージでローカルメッセージを更新
       setMessages(prev => {
-        const updatedMessages = prev.map(msg => 
-          msg.id === messageId 
-            ? { ...normalizeMessage(savedMessage), timestamp: new Date(savedMessage.timestamp) } 
-            : msg
-        );
+        const updatedMessages = prev.map(msg => {
+          if (msg.id === messageId) {
+            // サーバーレスポンスを正規化
+            const normalizedServerMessage = normalizeMessage(savedMessage);
+            console.log('🔄 サーバーメッセージを正規化:', {
+              original: savedMessage,
+              normalized: normalizedServerMessage
+            });
+            
+            return { 
+              ...normalizedServerMessage, 
+              timestamp: new Date(savedMessage.timestamp || savedMessage.createdAt || new Date())
+            };
+          }
+          return msg;
+        });
 
         // サーバーとの同期を確実にする
         queryClient.setQueryData([`/api/chats/${chatId}/messages`], updatedMessages);
-        console.log('📝 メッセージをサーバーと同期しました:', savedMessage.id);
+        console.log('📝 メッセージをサーバーと同期しました:', savedMessage.id || 'unknown');
 
         return updatedMessages;
       });
