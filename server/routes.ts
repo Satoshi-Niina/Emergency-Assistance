@@ -426,19 +426,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             }
           }
-        }メッセージも個別に削除
-          if (force || clearAll) {
-            console.log('強制削除モードで残存メッセージを個別削除します');
-            for (const remainingMessage of afterMessages) {
-              try {
-                await storage.deleteMessage(remainingMessage.id);
-                console.log(`個別削除完了: messageId=${remainingMessage.id}`);
-                deletedMessageCount++;
-              } catch (individualDeleteError) {
-                console.error(`個別削除エラー (messageId: ${remainingMessage.id}):`, individualDeleteError);
-              }
-            }
-          }
         }
 
       } catch (dbError) {
