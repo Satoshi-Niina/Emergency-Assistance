@@ -407,27 +407,33 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (hasImageKeyword) {
         console.log('🔍 メッセージから画像検索キーワードを検出:', content);
         // 画像検索を非同期で実行（メッセージ送信をブロックしない）
-        searchBySelectedText(content).then(() => {
-          // モバイルで検索結果パネルを表示
-          const isMobile = window.innerWidth <= 768;
-          if (isMobile) {
-            const slider = document.getElementById('mobile-search-slider');
-            if (slider) {
-              slider.classList.add('search-panel-visible');
-              const orientation = window.matchMedia('(orientation: landscape)').matches ? 'landscape' : 'portrait';
-              
-              if (orientation === 'landscape') {
-                // 横向きの場合は右から表示
-                slider.style.transform = 'translateX(0)';
-              } else {
-                // 縦向きの場合は下から表示
-                slider.style.transform = 'translateY(0)';
+        // エラーハンドリングを強化してクラッシュを防止
+        setTimeout(() => {
+          searchBySelectedText(content).then(() => {
+            // モバイルで検索結果パネルを表示
+            const isMobile = window.innerWidth <= 768;
+            if (isMobile) {
+              const slider = document.getElementById('mobile-search-slider');
+              if (slider) {
+                slider.classList.add('search-panel-visible');
+                const orientation = window.matchMedia('(orientation: landscape)').matches ? 'landscape' : 'portrait';
+                
+                if (orientation === 'landscape') {
+                  // 横向きの場合は右から表示
+                  slider.style.transform = 'translateX(0)';
+                } else {
+                  // 縦向きの場合は下から表示
+                  slider.style.transform = 'translateY(0)';
+                }
               }
             }
-          }
-        }).catch(error => {
-          console.error('自動画像検索エラー:', error);
-        });
+          }).catch(error => {
+            console.error('自動画像検索エラー:', error);
+            // エラーが発生してもアプリケーションを継続
+            setSearching(false);
+            setSearchResults([]);
+          });
+        }, 100); // 少し遅延させてメッセージ送信完了を待つ
       }
 
       const response = await apiRequest('POST', '/api/chats/1/messages', {

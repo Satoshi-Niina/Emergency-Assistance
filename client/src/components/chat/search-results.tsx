@@ -151,85 +151,91 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
 
   // 画像のロード処理を改善
   const handleImageLoad = (imgElement: HTMLImageElement, result: SearchResult) => {
-    console.log('画像ロード完了:', imgElement.src);
+    try {
+      console.log('画像ロード完了:', imgElement.src);
 
-    // ローディングプレースホルダーを非表示
-    const placeholder = imgElement.parentElement?.querySelector('.loading-placeholder');
-    if (placeholder) {
-      (placeholder as HTMLElement).style.display = 'none';
+      // ローディングプレースホルダーを非表示
+      const placeholder = imgElement.parentElement?.querySelector('.loading-placeholder');
+      if (placeholder) {
+        (placeholder as HTMLElement).style.display = 'none';
+      }
+    } catch (error) {
+      console.error('画像ロード処理エラー:', error);
     }
   };
 
   // 画像読み込みエラーハンドラ
   const handleImageError = (imgElement: HTMLImageElement, result: SearchResult, retryCount = 0) => {
-    console.warn(`画像読み込みエラー: ${imgElement.src} (試行回数: ${retryCount + 1})`);
+    try {
+      console.warn(`画像読み込みエラー: ${imgElement.src} (試行回数: ${retryCount + 1})`);
 
-    const maxRetries = 3;
+      const maxRetries = 2; // リトライ回数を減らして無限ループを防止
 
-    if (retryCount < maxRetries) {
-      // リトライ処理
-      setTimeout(() => {
-        // さまざまなパターンを試行
-        let retryPath = '';
+      if (retryCount < maxRetries) {
+        // リトライ処理
+        setTimeout(() => {
+          try {
+            // さまざまなパターンを試行
+            let retryPath = '';
 
-        if (retryCount === 0) {
-          // 1回目: knowledge-base/images/ パスで試行
-          retryPath = fixImagePath(result.url || result.file || '');
-        } else if (retryCount === 1) {
-          // 2回目: ファイル名だけでknowledge-base/images/から試行
-          const fileName = (result.url || result.file || '').split('/').pop();
-          retryPath = fileName ? `/knowledge-base/images/${fileName}` : '';
-        } else if (retryCount === 2) {
-          // 3回目: PNGファイルとして試行
-          const fileName = (result.url || result.file || '').split('/').pop();
-          if (fileName) {
-            const nameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
-            retryPath = `/knowledge-base/images/${nameWithoutExt}.png`;
+            if (retryCount === 0) {
+              // 1回目: knowledge-base/images/ パスで試行
+              retryPath = fixImagePath(result.url || result.file || '');
+            } else if (retryCount === 1) {
+              // 2回目: ファイル名だけでknowledge-base/images/から試行
+              const fileName = (result.url || result.file || '').split('/').pop();
+              retryPath = fileName ? `/knowledge-base/images/${fileName}` : '';
+            }
+
+            if (retryPath && retryPath !== imgElement.src) {
+              console.log(`画像パスを修正してリトライ: ${retryPath}`);
+              imgElement.src = retryPath;
+              imgElement.onerror = () => handleImageError(imgElement, result, retryCount + 1);
+            } else {
+              handleImageError(imgElement, result, retryCount + 1);
+            }
+          } catch (retryError) {
+            console.error('リトライ処理エラー:', retryError);
+            handleImageError(imgElement, result, maxRetries); // エラー表示に進む
           }
-        }
-
-        if (retryPath && retryPath !== imgElement.src) {
-          console.log(`画像パスを修正してリトライ: ${retryPath}`);
-          imgElement.src = retryPath;
-          imgElement.onerror = () => handleImageError(imgElement, result, retryCount + 1);
-        } else {
-          handleImageError(imgElement, result, retryCount + 1);
-        }
-      }, 500 * (retryCount + 1)); // 指数バックオフ
-      return;
-    }
-
-    // 最大試行回数に達した場合の処理
-    console.log('最大試行回数に達しました。エラー表示に切り替えます');
-
-    // ローディングプレースホルダーを非表示
-    const placeholder = imgElement.parentElement?.querySelector('.loading-placeholder');
-    if (placeholder) {
-      (placeholder as HTMLElement).style.display = 'none';
-    }
-
-    // 画像を非表示にしてエラーメッセージを表示
-    imgElement.style.display = 'none';
-
-    const container = imgElement.parentElement;
-    if (container) {
-      // 既存のエラー表示があれば削除
-      const existingError = container.querySelector('.image-error');
-      if (existingError) {
-        existingError.remove();
+        }, 300 * (retryCount + 1)); // 指数バックオフを短縮
+        return;
       }
 
-      // エラー表示要素を作成
-      const errorElement = document.createElement('div');
-      errorElement.className = 'image-error flex items-center justify-center h-full w-full bg-gray-100 text-gray-500 text-sm rounded-md min-h-[150px]';
-      errorElement.innerHTML = `
-        <div class="text-center p-4">
-          <div class="text-gray-400 mb-2">📷</div>
-          <div>画像を読み込めません</div>
-          <div class="text-xs mt-1">${result.title || 'タイトル不明'}</div>
-        </div>
-      `;
-      container.appendChild(errorElement);
+      // 最大試行回数に達した場合の処理
+      console.log('最大試行回数に達しました。エラー表示に切り替えます');
+
+      // ローディングプレースホルダーを非表示
+      const placeholder = imgElement.parentElement?.querySelector('.loading-placeholder');
+      if (placeholder) {
+        (placeholder as HTMLElement).style.display = 'none';
+      }
+
+      // 画像を非表示にしてエラーメッセージを表示
+      imgElement.style.display = 'none';
+
+      const container = imgElement.parentElement;
+      if (container) {
+        // 既存のエラー表示があれば削除
+        const existingError = container.querySelector('.image-error');
+        if (existingError) {
+          existingError.remove();
+        }
+
+        // エラー表示要素を作成
+        const errorElement = document.createElement('div');
+        errorElement.className = 'image-error flex items-center justify-center h-full w-full bg-gray-100 text-gray-500 text-sm rounded-md min-h-[150px]';
+        errorElement.innerHTML = `
+          <div class="text-center p-4">
+            <div class="text-gray-400 mb-2">📷</div>
+            <div>画像を読み込めません</div>
+            <div class="text-xs mt-1">${result.title || 'タイトル不明'}</div>
+          </div>
+        `;
+        container.appendChild(errorElement);
+      }
+    } catch (error) {
+      console.error('画像エラーハンドリング処理エラー:', error);
     }
   };
 
@@ -293,12 +299,20 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
                 <img
                   ref={(img) => {
                     if (img && imageSrc) {
+                      // 重複処理を防ぐためのフラグチェック
+                      if (img.dataset.initialized === 'true') {
+                        return;
+                      }
+                      
+                      img.dataset.initialized = 'true';
+                      
                       // 画像の読み込み処理を設定
                       img.onload = () => handleImageLoad(img, result);
                       img.onerror = () => handleImageError(img, result);
 
                       // srcを設定（すでに設定されている場合は再設定しない）
-                      if (img.src !== imageSrc) {
+                      const currentSrc = img.getAttribute('src');
+                      if (!currentSrc || currentSrc !== imageSrc) {
                         console.log('画像を読み込み開始:', imageSrc);
                         img.src = imageSrc;
                       }
