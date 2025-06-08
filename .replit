@@ -1,30 +1,44 @@
+
+entrypoint = "server/index.ts"
 modules = ["nodejs-20"]
 
+[nix]
+channel = "stable-24_05"
+
+[env]
+PATH = "${REPLIT_NIX_CACHE}/bin"
+XDG_CONFIG_HOME = "${REPLIT_NIX_CACHE}/.config"
+npm_config_prefix = "${REPLIT_NIX_CACHE}"
+
+[languages]
+
+[languages.javascript]
+pattern = "**/{*.js,*.jsx,*.ts,*.tsx}"
+syntax = "javascript"
+
+[languages.javascript.languageServer]
+start = "typescript-language-server --stdio"
+
+[gitHubImport]
+requiredFiles = [".replit", "replit.nix"]
+
 [deployment]
-run = ["sh", "-c", "cross-env NODE_ENV=production node dist/index.js"]
-build = ["sh", "-c", "npm run build"]
+run = ["node", "dist/index.js"]
+build = ["npm", "run", "build"]
+deploymentTarget = "cloudrun"
+
+[packager]
+language = "nodejs"
+
+[packager.features]
+packageSearch = true
+guessImports = true
+enabledForHosting = false
 
 [[ports]]
 localPort = 5000
 externalPort = 80
 
-[workflows]
-runButton = "Start Server"
-
-[[workflows.workflow]]
-name = "Start Server"
-author = 39467490
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev"
-
-[[workflows.workflow]]
-name = "Production Start"
-author = 39467490
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "NODE_ENV=production npm start"
+[[ports]]
+localPort = 5000
+externalPort = 443

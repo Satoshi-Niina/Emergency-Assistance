@@ -69,19 +69,6 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
-// Immediate health check endpoints - minimal processing for deployment
-app.get('/health', (req, res) => {
-  res.status(200).send('OK');
-});
-
-app.get('/ready', (req, res) => {
-  if (knowledgeBaseReady) {
-    res.status(200).json({ status: 'ready', knowledgeBase: 'initialized' });
-  } else {
-    res.status(200).json({ status: 'ready', knowledgeBase: 'initializing' });
-  }
-});
-
 // セキュリティヘッダーを追加
 app.use((req, res, next) => {
   res.header('X-Frame-Options', 'SAMEORIGIN');
@@ -91,9 +78,33 @@ app.use((req, res, next) => {
   next();
 });
 
-// Root endpoint always available for deployment health checks
+// 統一されたヘルスチェックエンドポイント
+const healthStatus = () => ({
+  status: 'ok',
+  timestamp: new Date().toISOString(),
+  environment: process.env.NODE_ENV || 'development',
+  knowledgeBase: knowledgeBaseReady ? 'ready' : 'initializing',
+  version: '1.0.0'
+});
+
+// デプロイメント用の即座応答エンドポイント（処理時間最小化）
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
+app.get('/ready', (req, res) => {
+  res.status(200).json(healthStatus());
+});
+
+// Root endpoint - プロダクションではアプリケーション、開発では API
 app.get('/', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  if (process.env.NODE_ENV === 'production') {
+    // プロダクションでは静的配信に任せる
+    return;
+  } else {
+    // 開発環境では API レスポンス
+    res.status(200).json(healthStatus());
+  }
 });
 
 // Serve static files from public directory
@@ -160,8 +171,9 @@ async function openBrowser(url: string) {
   }
 }
 
-// ポート設定の最適化
-const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
+// ポート設定の最適化（Replitデプロイ対応）
+const port = process.env.PORT ? parseInt(process.env.PORT) : 
+             process.env.REPLIT_DEV_DOMAIN ? 5000 : 3000;
 
 (async () => {
   // 初期化
@@ -182,13 +194,40 @@ const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
     await setupVite(app, server);
   } else {
     try {
-      serveStatic(app);
-      secureLog('静的ファイル配信を設定しました');
+      // プロダクション用の静的ファイル配信
+      const distPath = path.join(process.cwd(), 'client', 'dist');
+      if (fs.existsSync(distPath)) {
+        app.use(express.static(distPath));
+        app.get('*', (req, res, next) => {
+          // API リクエストは除外
+          if (req.path.startsWith('/api/') || req.path.startsWith('/knowledge-base/')) {
+            return next();
+          }
+          // その他は index.html を返す
+          const indexPath = path.join(distPath, 'index.html');
+          if (fs.existsSync(indexPath)) {
+            res.sendFile(indexPath);
+          } else {
+            res.status(404).json({ error: 'Application not built' });
+          }
+        });
+        secureLog('プロダクション用静的ファイル配信を設定しました');
+      } else {
+        console.error('ビルドファイルが見つかりません:', distPath);
+        app.get('*', (req, res) => {
+          if (req.path.startsWith('/api/')) {
+            return;
+          }
+          res.status(503).json({ error: 'Application building...' });
+        });
+      }
     } catch (staticError) {
       console.error('静的ファイル配信の設定エラー:', staticError);
-      // Minimal fallback for production
       app.get('*', (req, res) => {
-        res.status(200).send('Server running');
+        if (req.path.startsWith('/api/')) {
+          return;
+        }
+        res.status(500).json({ error: 'Server configuration error' });
       });
     }
   }
@@ -248,11 +287,14 @@ const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
   process.on('unhandledRejection', (reason, promise) => {
     if (process.env.NODE_ENV === 'production') {
       // プロダクションでは重要なエラーのみログ出力
-      if (reason && typeof reason === 'object' && reason.toString().includes('ECONNRESET')) {
-        // 接続リセットエラーは無視（よくある問題）
+      if (reason && typeof reason === 'object' && 
+          (reason.toString().includes('ECONNRESET') || 
+           reason.toString().includes('EPIPE') ||
+           reason.toString().includes('ENOTFOUND'))) {
+        // 一般的なネットワークエラーは無視
         return;
       }
-      console.error('Unhandled Rejection:', reason);
+      console.error('Critical Error:', reason);
     } else {
       logError('Unhandled Rejection at:', promise, 'reason:', reason);
     }
