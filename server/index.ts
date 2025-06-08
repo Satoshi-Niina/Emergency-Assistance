@@ -129,7 +129,7 @@ async function openBrowser(url: string) {
     serveStatic(app);
   }
 
-  const port = parseInt(process.env.PORT || '80', 10);
+  const port = parseInt(process.env.PORT || '5000', 10);
   server.listen(port, '0.0.0.0', () => {
     logInfo(`サーバー起動: ポート ${port}`);
     if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
