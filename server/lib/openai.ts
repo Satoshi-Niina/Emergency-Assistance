@@ -320,4 +320,3 @@ export async function analyzeVehicleImage(base64Image: string): Promise<any> {
     };
   }
 }
-```Analysis: The intention is to remove the detailed logs related to the OpenAI API, so I will comment out the console.log statements to achieve this.
