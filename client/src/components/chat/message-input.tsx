@@ -85,13 +85,19 @@ export default function MessageInput() {
     await sendMessage(textToSend);
 
     // 自動画像検索は完全無効化（安定性のため）
-    console.log('💬 チャット入力から送信:', textToSend, '（画像検索無効）');
+    console.log('💬 チャット入力から送信:', textToSend, '（画像検索完全無効）');
     
-    // 検索関連の処理をすべてキャンセル
+    // 検索関連の処理をすべてキャンセル・無効化
     try {
       if (typeof window !== 'undefined') {
+        // 検索処理の強制停止
         window.dispatchEvent(new CustomEvent('cancel-image-search'));
         window.dispatchEvent(new CustomEvent('clear-search-results'));
+        window.dispatchEvent(new CustomEvent('disable-auto-search'));
+        
+        // Fuse検索のデバウンス処理もクリア
+        clearTimeout((window as any)._fuseSearchTimeout);
+        (window as any)._fuseSearchDisabled = true;
       }
     } catch (error) {
       console.warn('検索キャンセル処理でエラー:', error);
