@@ -191,12 +191,3 @@ export const schema = {
   images,
   chatExports,
 };
-export const exampleSchema = {
-  // Add your shared schema definitions here
-  version: '1.0.0'
-};
-
-export default exampleSchema;
-
-// Re-export existing schema from server/db/schema if it exists
-export * from '../server/db/schema';
