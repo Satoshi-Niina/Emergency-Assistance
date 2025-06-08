@@ -426,12 +426,22 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } else if (typeof message.content === 'object' && message.content !== null) {
       // オブジェクト型からの文字列抽出
       console.warn('オブジェクト型のcontentを正規化します:', message.content);
-      normalizedContent = message.content.text || 
-                         message.content.content || 
-                         message.content.message || 
-                         message.content.preview ||
-                         message.content.url ||
-                         JSON.stringify(message.content);
+      
+      // 画像データの場合は preview プロパティを優先
+      if (message.content.preview && typeof message.content.preview === 'string') {
+        normalizedContent = message.content.preview;
+        console.log('画像データのpreviewを抽出:', normalizedContent.substring(0, 50) + '...');
+      } else if (message.content.url && typeof message.content.url === 'string') {
+        normalizedContent = message.content.url;
+        console.log('画像データのurlを抽出:', normalizedContent);
+      } else {
+        // その他のプロパティから抽出
+        normalizedContent = message.content.text || 
+                           message.content.content || 
+                           message.content.message || 
+                           message.content.data ||
+                           JSON.stringify(message.content);
+      }
     } else if (message.text && typeof message.text === 'string') {
       normalizedContent = message.text;
     } else {
@@ -475,6 +485,15 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         createdAt: new Date(),
         chatId: chatId
       };
+
+      // メッセージの内容をログで確認
+      console.log('送信メッセージ作成:', {
+        id: messageId,
+        contentType: typeof safeContent,
+        contentPreview: safeContent.substring(0, 100) + '...',
+        isBase64: safeContent.startsWith('data:image/'),
+        mediaCount: mediaUrls?.length || 0
+      });
 
       // ドラフトメッセージをクリア
       setDraftMessage(null);
