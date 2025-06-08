@@ -20,6 +20,18 @@ let imageSearchData: ImageSearchItem[] = [];
 
 // 画像検索専用JSONデータを読み込む
 async function loadImageSearchData() {
+  if (isLoading) {
+    console.log('既に読み込み中のため、重複読み込みを防止します');
+    return [];
+  }
+  
+  if (isDataLoaded && imageSearchData.length > 0) {
+    console.log('データは既に読み込み済みです');
+    return imageSearchData;
+  }
+
+  isLoading = true;
+  
   try {
     // 最新のJSON ファイルを取得する
     const timestamp = new Date().getTime();
@@ -335,6 +347,9 @@ async function loadImageSearchData() {
       if (process.env.NODE_ENV === 'development') {
         console.log(`検索用データを準備完了: ${imageSearchData.length}件`);
       }
+      
+      // データ読み込み完了フラグを設定
+      isDataLoaded = true;
     } else {
       throw new Error('メタデータのフォーマットが無効です');
     }
@@ -462,15 +477,28 @@ async function loadImageSearchData() {
     // サンプルデータは使用せず、空の配列を返す（ユーザー要求により）
     console.log("サンプル画像データを表示しないように設定しました");
     imageSearchData = [];
+  } finally {
+    isLoading = false;
   }
 }
 
-// アプリケーション起動時にデータをロード
-loadImageSearchData();
+// データ読み込み制御フラグ
+let isDataLoaded = false;
+let isLoading = false;
+
+// アプリケーション起動時にデータをロード（1回のみ）
+if (!isDataLoaded && !isLoading) {
+  loadImageSearchData();
+}
 
 // データを強制的に再読み込む関数を提供
 export const reloadImageSearchData = () => {
+  if (isLoading) {
+    console.log('既に読み込み中のため、再読み込みをスキップします');
+    return;
+  }
   console.log('画像検索データを強制的に再読み込みします');
+  isDataLoaded = false;
   loadImageSearchData();
 };
 
@@ -478,10 +506,13 @@ export const reloadImageSearchData = () => {
 let eventListenerAdded = false;
 
 // 画像検索データが更新されたときにリロードするイベントリスナー（重複防止）
-if (!eventListenerAdded) {
+if (!eventListenerAdded && typeof window !== 'undefined') {
   window.addEventListener('image-search-data-updated', () => {
-    console.log('画像検索データの更新を検知しました。再読み込みします。');
-    loadImageSearchData();
+    if (!isLoading) {
+      console.log('画像検索データの更新を検知しました。再読み込みします。');
+      isDataLoaded = false;
+      loadImageSearchData();
+    }
   });
   eventListenerAdded = true;
 }

@@ -845,34 +845,26 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.warn('キャッシュクリアエラー:', cacheError);
       }
 
-      // サーバー側削除（複数回試行）
+      // サーバー側削除（強制削除フラグ付き）
       if (chatId) {
-        for (let attempt = 0; attempt < 3; attempt++) {
-          try {
-            console.log(`🔄 サーバー削除試行 ${attempt + 1}/3: chatId=${chatId}`);
+        try {
+          console.log(`🔄 サーバー削除実行: chatId=${chatId}`);
 
-            const response = await apiRequest('DELETE', `/api/chats/${chatId}/messages`, {
-              force: true,
-              clearAll: true,
-              attempt: attempt + 1,
-              timestamp: Date.now()
-            });
+          const response = await apiRequest('DELETE', `/api/chats/${chatId}/messages?force=true&clearAll=true`, {
+            force: true,
+            clearAll: true,
+            hardDelete: true,
+            timestamp: Date.now()
+          });
 
-            if (response.ok) {
-              const result = await response.json();
-              console.log(`✅ サーバー削除成功 (試行 ${attempt + 1}):`, result);
-              break;
-            } else {
-              const errorText = await response.text();
-              console.error(`❌ サーバー削除失敗 (試行 ${attempt + 1}): ${response.status} - ${errorText}`);
-              if (attempt === 2) throw new Error(`削除APIエラー: ${response.status}`);
-            }
-          } catch (error) {
-            console.error(`❌ サーバー削除エラー (試行 ${attempt + 1}):`, error);
-            if (attempt === 2) {
-              console.warn('⚠️ サーバー削除に失敗しましたが、ローカルクリアは実行済みです');
-            }
+          if (response.ok) {
+            const result = await response.json();
+            console.log(`✅ サーバー削除成功:`, result);
+          } else {
+            console.warn(`⚠️ サーバー削除に失敗しましたが、ローカルクリアは実行済みです`);
           }
+        } catch (error) {
+          console.error(`❌ サーバー削除エラー:`, error);
         }
       }
 

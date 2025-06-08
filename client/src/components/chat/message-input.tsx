@@ -84,12 +84,17 @@ export default function MessageInput() {
     // メッセージを送信
     await sendMessage(textToSend);
 
-    // チャット入力からの自動画像検索は完全無効化（安定性のため）
-    console.log('💬 チャット入力から送信:', textToSend, '（自動画像検索は無効化済み）');
+    // 自動画像検索は完全無効化（安定性のため）
+    console.log('💬 チャット入力から送信:', textToSend, '（画像検索無効）');
     
-    // 画像検索をキャンセルしてクリーンアップ
-    if (typeof window !== 'undefined' && window.dispatchEvent) {
-      window.dispatchEvent(new CustomEvent('cancel-image-search'));
+    // 検索関連の処理をすべてキャンセル
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('cancel-image-search'));
+        window.dispatchEvent(new CustomEvent('clear-search-results'));
+      }
+    } catch (error) {
+      console.warn('検索キャンセル処理でエラー:', error);
     }
 
     // 入力欄をクリア
