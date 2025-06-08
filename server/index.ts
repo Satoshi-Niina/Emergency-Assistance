@@ -43,11 +43,11 @@ app.use(express.urlencoded({ extended: false }));
 
 // Immediate health check endpoints - minimal processing for deployment
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'healthy' });
+  res.status(200).send('OK');
 });
 
 app.get('/ready', (req, res) => {
-  res.status(200).json({ status: 'ready' });
+  res.status(200).send('OK');
 });
 
 // Root endpoint always available for deployment health checks
@@ -223,25 +223,25 @@ const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
 
 // 起動後初期化処理
 async function initializePostStartup() {
-  try {
-    if (process.env.NODE_ENV === 'production') {
-      // プロダクション環境では非同期で初期化（ヘルスチェックをブロックしない）
-      setImmediate(async () => {
-        try {
-          console.log("知識ベースの初期化を開始...");
-          await initializeKnowledgeBase();
-          console.log("知識ベースの初期化完了");
-        } catch (err) {
-          console.error("初期化時にエラーが発生:", err);
-        }
-      });
-    } else {
-      // 開発環境では即座に初期化
+  if (process.env.NODE_ENV === 'production') {
+    // プロダクション環境では3秒遅延でヘルスチェックを確実に通す
+    setTimeout(async () => {
+      try {
+        console.log("知識ベースの初期化を開始...");
+        await initializeKnowledgeBase();
+        console.log("知識ベースの初期化完了");
+      } catch (err) {
+        console.error("初期化時にエラーが発生:", err);
+      }
+    }, 3000);
+  } else {
+    // 開発環境では即座に初期化
+    try {
       secureLog("知識ベースの初期化を開始...");
       await initializeKnowledgeBase();
       secureLog("知識ベースの初期化完了");
+    } catch (err) {
+      console.error("初期化時にエラーが発生:", err);
     }
-  } catch (err) {
-    console.error("初期化時にエラーが発生:", err);
   }
 }
