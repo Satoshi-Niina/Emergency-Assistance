@@ -725,12 +725,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isValidString: typeof responseContent === 'string' && responseContent.trim().length > 0
       });
       // AIメッセージを保存
-      const aiMessage = await db.insert(messages).values({
+      const [aiMessage] = await db.insert(messages).values({
         chatId: chatId,
         content: responseContent,
         isAiResponse: true,
         senderId: null,
-      }).returning().get();
+      }).returning();
 
       // クライアントに送信するレスポンス構造を明確にする
       const responseMessage = {
