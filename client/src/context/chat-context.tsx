@@ -949,19 +949,16 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [chatId, clearSearchResults, toast, queryClient]);
 
-  // 起動時は常に新しいチャットとして開始（復元処理なし）
+  // 起動時は常に新しいチャットとして開始（無駄な処理なし）
   useEffect(() => {
     if (chatId && !isClearing) {
-      console.log('🆕 新しいチャットセッションを開始 - 履歴読み込みを無効化');
+      console.log('🆕 新しいチャットセッションを開始');
       setMessages([]);
       setSearchResults([]);
       setLastExportTimestamp(null);
       setHasUnexportedMessages(false);
-      
-      // キャッシュもクリア
-      queryClient.removeQueries({ queryKey: [`/api/chats/${chatId}/messages`] });
     }
-  }, [chatId, isClearing, queryClient]);
+  }, [chatId, isClearing]);
 
   // 最後のエクスポート履歴を取得
   const fetchLastExport = useCallback(async () => {
