@@ -275,11 +275,11 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, [draftMessage]);
 
-  // 選択テキストで検索する関数（新規入力のみ）
-  const searchBySelectedText = useCallback(async (text: string, isNewInput: boolean = false) => {
-    // 新規入力以外は検索しない
-    if (!isNewInput) {
-      console.log('履歴からの検索はスキップします - 新規入力のみ検索対象');
+  // 選択テキストで検索する関数（手動検索のみ）
+  const searchBySelectedText = useCallback(async (text: string, isManualSearch: boolean = false) => {
+    // 手動検索以外は完全に無効化
+    if (!isManualSearch) {
+      console.log('⚠️ 自動検索は無効化されています - 手動検索のみ実行可能');
       return;
     }
 
@@ -295,28 +295,9 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return;
       }
 
-      console.log('検索キーワード:', text);
-
-      // カンマやスペースで区切られた複数のキーワード対応
-      const keywords = text.split(/[,\s]+/).map(k => k.trim()).filter(Boolean);
-
-      if (keywords.length === 0) {
-        console.log('有効なキーワードがないため、検索をスキップします');
-        return;
-      }
-
-      const keywordType = keywords.map(k => {
-        // 特定のパターンに基づいてキーワードタイプを判断
-        if (/^[A-Z0-9]{2,}-\d+$/.test(k)) return 'model';
-        if (/部品|装置|ユニット|モジュール/.test(k)) return 'component';
-        return '';
-      });
-
-      console.log('キーワードタイプ:', ...keywordType);
+      console.log('🔍 手動画像検索開始:', text);
 
       setSearching(true);
-
-      console.log('画像検索開始:', text);
 
       // タイムアウト付きで画像検索APIを呼び出す
       const controller = new AbortController();
@@ -845,11 +826,8 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // サーバー送信に失敗してもローカルメッセージは表示済み
       }
 
-      // 検索結果は履歴に保存せず、即時表示のみ
-      // 新規メッセージ以外の検索は実行しない
-      console.log('📝 緊急ガイド送信: 検索結果は履歴保存なし');
-      // 自動画像検索は完全無効化 - 履歴ループ防止
-      console.log('📝 緊急ガイド: 自動検索は無効化済み');
+      // 緊急ガイド送信時は自動検索を完全無効化
+      console.log('🏥 緊急ガイド送信完了 - 自動検索は実行しません');
 
       // 成功トーストを表示
       toast({

@@ -338,7 +338,7 @@ export default function Chat() {
 
           {/* エクスポート状態表示 */}
           {/* Text Selection Controls - Only show when text is selected */}
-          {selectedText && <TextSelectionControls text={selectedText} onSearch={searchBySelectedText} />}
+          {selectedText && <TextSelectionControls text={selectedText} onSearch={(text) => searchBySelectedText(text, true)} />}
 
           {/* Message Input */}
           <MessageInput />
