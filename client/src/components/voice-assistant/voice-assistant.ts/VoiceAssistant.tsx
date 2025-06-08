@@ -1,10 +1,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { createSpeechRecognizer, ISpeechRecognizer } from '../speech-recognizer';
+import { startSpeechRecognition, stopSpeechRecognition, startBrowserSpeechRecognition, stopBrowserSpeechRecognition } from '../../lib/azure-speech';
 
 const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void }) => {
   const [isRecording, setIsRecording] = useState(false);
-  const recognizerRef = useRef<ISpeechRecognizer | null>(null);
   const speechBufferRef = useRef<string[]>([]);
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSpeechTimeRef = useRef<number>(0);
@@ -70,19 +69,28 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
       speechBufferRef.current = [];
       lastSpeechTimeRef.current = Date.now();
       
-      console.log('🎤 音声認識開始 -', isIOS() ? 'Web Speech API' : 'Azure Speech SDK');
+      const isIOSDevice = isIOS();
+      console.log('🎤 音声認識開始 -', isIOSDevice ? 'Web Speech API' : 'Azure Speech SDK');
       
-      // speech-recognizer.tsのファクトリ関数を使用
-      recognizerRef.current = createSpeechRecognizer(azureKey, azureRegion);
-      
-      // 認識結果を受信する処理を設定
-      recognizerRef.current.sendToServer = (text: string) => {
+      // 認識結果を受信する処理
+      const handleResult = (text: string) => {
         console.log('🔊 音声認識結果受信:', text);
         addToBuffer(text);
       };
       
-      // 認識開始
-      await recognizerRef.current.start();
+      // エラーハンドリング
+      const handleError = (error: string) => {
+        console.error('❌ 音声認識エラー:', error);
+        setIsRecording(false);
+        alert('音声認識エラー: ' + error);
+      };
+      
+      // iOS/Safariの場合はWeb Speech API、それ以外はAzure Speech SDKを使用
+      if (isIOSDevice) {
+        startBrowserSpeechRecognition(handleResult, handleError);
+      } else {
+        startSpeechRecognition(handleResult, handleError);
+      }
       
     } catch (error) {
       console.error('❌ 音声認識開始エラー:', error);
@@ -97,9 +105,11 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
     
     console.log('🛑 音声認識停止');
     
-    if (recognizerRef.current) {
-      recognizerRef.current.stop();
-      recognizerRef.current = null;
+    // 適切な停止関数を呼び出し
+    if (isIOS()) {
+      stopBrowserSpeechRecognition();
+    } else {
+      stopSpeechRecognition();
     }
     
     // 残っているバッファを処理
@@ -114,8 +124,12 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
       if (silenceTimeoutRef.current) {
         clearTimeout(silenceTimeoutRef.current);
       }
-      if (recognizerRef.current) {
-        recognizerRef.current.stop();
+      if (isRecording) {
+        if (isIOS()) {
+          stopBrowserSpeechRecognition();
+        } else {
+          stopSpeechRecognition();
+        }
       }
     };
   }, []);
