@@ -20,7 +20,7 @@ export default function MessageInput() {
     draftMessage,
     setDraftMessage
   } = useChat();
-  
+
   // ドラフトメッセージを更新する（ユーザー入力用）
   const updateDraftMessage = (content: string) => {
     // 手動入力の場合のみコンテキスト直接更新（音声認識との重複防止）
@@ -37,7 +37,7 @@ export default function MessageInput() {
   const isMobile = useIsMobile();
   const inputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  
+
   // 選択されたテキストが変更されたら入力欄に反映
   useEffect(() => {
     if (selectedText) {
@@ -49,7 +49,7 @@ export default function MessageInput() {
       }
     }
   }, [selectedText, isMobile]);
-  
+
   // 録音テキストをリアルタイムでチャットエリア（左側）のみに反映する
   useEffect(() => {
     if (isRecording && recordedText) {
@@ -58,7 +58,7 @@ export default function MessageInput() {
         // 新しい関数を使用してドラフトメッセージを更新（イベント発火とコンテキスト更新を両方行う）
         console.log('関数から直接ドラフトメッセージを設定:', recordedText);
         updateDraftMessage(recordedText);
-        
+
         // デバッグログ
         if (isRecording) {
           console.log('録音中のテキストをチャット側のみに表示:', recordedText);
@@ -73,20 +73,20 @@ export default function MessageInput() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // 録音テキストか入力テキストのいずれかを使用
     // 入力欄にテキストがある場合は優先的に使用し、なければ録音テキストを使用
     const textToSend = message.trim() || recordedText.trim();
     if (!textToSend || isLoading) return;
-    
+
     console.log('送信するテキスト:', textToSend);
-    
+
     // メッセージを送信（sendMessage内で自動的に画像検索も実行される）
     await sendMessage(textToSend);
-    
+
     // 入力欄をクリア
     setMessage("");
-    
+
     // フォーカス処理
     if (isMobile && textareaRef.current) {
       textareaRef.current.focus();
@@ -109,7 +109,7 @@ export default function MessageInput() {
       // マイク権限の確認
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach(track => track.stop()); // 確認後すぐに停止
-      
+
       // マイク録音機能の切り替え
       if (!isRecording) {
         console.log('録音開始');
@@ -117,7 +117,7 @@ export default function MessageInput() {
       } else {
         console.log('録音停止');
         stopRecording();
-        
+
         if (recordedText.trim()) {
           console.log('録音停止：ドラフトメッセージを設定:', recordedText.trim());
           updateDraftMessage(recordedText.trim());
@@ -133,7 +133,7 @@ export default function MessageInput() {
       }
     }
   };
-  
+
   // テキスト入力欄をクリアする
   const handleClearText = () => {
     setMessage("");
@@ -162,7 +162,7 @@ export default function MessageInput() {
             <Mic className={`h-5 w-5 ${isRecording ? "text-white" : "text-orange-600"}`} />
           </Button>
         </div>
-        
+
         {/* デスクトップ向けマイクボタン - 左配置 - コンパクト化 */}
         <div className="hidden md:flex md:flex-col md:items-center md:mr-2">
           <span className="text-xs font-medium text-orange-700 mb-0.5">マイク</span>
@@ -178,7 +178,7 @@ export default function MessageInput() {
             <Mic className={`h-5 w-5 ${isRecording ? "text-white" : "text-orange-600"}`} />
           </Button>
         </div>
-        
+
         {/* 入力エリア - 小さめ固定高さでオーバーフロー時はスクロール */}
         <div className="flex-1 flex items-center bg-white border border-blue-200 rounded-full px-3 py-1 shadow-inner">
           {isMobile ? (
@@ -245,7 +245,7 @@ export default function MessageInput() {
             <Send className="h-4 w-4 text-blue-600" />
           </Button>
         </div>
-        
+
         {/* モバイル向けカメラボタン - 右配置 - コンパクト化 */}
         <div className="md:hidden flex flex-col items-center ml-2">
           <span className="text-xs font-medium text-indigo-700 mb-0.5">カメラ</span>
@@ -259,7 +259,7 @@ export default function MessageInput() {
             <Camera className="h-5 w-5 text-indigo-600" />
           </Button>
         </div>
-        
+
         {/* デスクトップ向けのカメラボタン - 右配置 - コンパクト化 */}
         <div className="hidden md:flex md:flex-col md:items-center md:ml-2">
           <span className="text-xs font-medium text-indigo-700 mb-0.5">カメラ</span>

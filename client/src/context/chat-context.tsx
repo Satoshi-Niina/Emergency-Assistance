@@ -394,15 +394,38 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setMessages(prev => [...prev, newMessage]);
 
       // 画像検索のキーワードかどうかチェックして自動実行
-      const imageSearchKeywords = ['ブレーキ', 'エンジン', '冷却', 'ホイール', '車輪', '部品', '設備', '機械', '保守', '点検'];
+      const imageSearchKeywords = [
+        'ブレーキ', 'brake', 'エンジン', 'engine', '冷却', 'cooling', 'ラジエーター', 'radiator',
+        'ホイール', 'wheel', '車輪', 'タイヤ', 'tire', '部品', 'parts', '設備', 'equipment',
+        '機械', 'machine', '保守', 'maintenance', '点検', 'inspection', '修理', 'repair',
+        '故障', 'failure', '異常', 'abnormal', '音', 'sound', '振動', 'vibration'
+      ];
       const hasImageKeyword = imageSearchKeywords.some(keyword => 
-        content.includes(keyword)
+        content.toLowerCase().includes(keyword.toLowerCase())
       );
 
       if (hasImageKeyword) {
         console.log('🔍 メッセージから画像検索キーワードを検出:', content);
         // 画像検索を非同期で実行（メッセージ送信をブロックしない）
-        searchBySelectedText(content).catch(error => {
+        searchBySelectedText(content).then(() => {
+          // モバイルで検索結果パネルを表示
+          const isMobile = window.innerWidth <= 768;
+          if (isMobile) {
+            const slider = document.getElementById('mobile-search-slider');
+            if (slider) {
+              slider.classList.add('search-panel-visible');
+              const orientation = window.matchMedia('(orientation: landscape)').matches ? 'landscape' : 'portrait';
+              
+              if (orientation === 'landscape') {
+                // 横向きの場合は右から表示
+                slider.style.transform = 'translateX(0)';
+              } else {
+                // 縦向きの場合は下から表示
+                slider.style.transform = 'translateY(0)';
+              }
+            }
+          }
+        }).catch(error => {
           console.error('自動画像検索エラー:', error);
         });
       }
