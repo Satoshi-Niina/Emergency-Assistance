@@ -254,11 +254,11 @@ export async function generateSearchQuery(text: string): Promise<string> {
       messages: [
         { 
           role: "system", 
-          content: "あなたは検索クエリの最適化専門家です。ユーザーの質問や文章から、検索エンジンで使用するのに最適な検索クエリを生成してください。" 
+          content: "You are a search query optimization expert. Generate optimal search queries for search engines from user questions or text." 
         },
         { 
           role: "user", 
-          content: `以下のテキストから、関連する技術文書を検索するための最適な検索キーワードを5～10語で抽出してください。専門用語を優先し、余分な接続詞や前置詞は除外してください:\n\n${truncatedText}` 
+          content: `Extract optimal search keywords (5-10 words) from the following text for searching related technical documents. Prioritize technical terms and exclude unnecessary conjunctions and prepositions:\n\n${truncatedText}` 
         }
       ],
       temperature: 0.3,
@@ -268,7 +268,7 @@ export async function generateSearchQuery(text: string): Promise<string> {
     const query = response.choices[0].message.content?.trim() || truncatedText;
     return query;
   } catch (error: any) {
-    console.error('検索クエリ生成エラー:', error.message);
+    console.error('Search query generation error:', error.message);
     // エラーが発生した場合は元のテキストを返す
     return text;
   }
