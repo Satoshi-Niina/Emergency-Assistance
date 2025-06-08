@@ -86,6 +86,11 @@ export default function MessageInput() {
 
     // チャット入力からの自動画像検索は完全無効化（安定性のため）
     console.log('💬 チャット入力から送信:', textToSend, '（自動画像検索は無効化済み）');
+    
+    // 画像検索をキャンセルしてクリーンアップ
+    if (typeof window !== 'undefined' && window.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('cancel-image-search'));
+    }
 
     // 入力欄をクリア
     setMessage("");

@@ -894,7 +894,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     } catch (error) {
       console.error('🚨 チャット履歴削除エラー:', error);
-      
+
       // エラーが発生してもローカル状態は確実にクリア
       setMessages([]);
       setSearchResults([]);
@@ -962,7 +962,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               const uniqueMessages = data.filter((msg: any, index: number, self: any[]) => 
                 index === self.findIndex(m => m.id === msg.id)
               );
-              
+
               setMessages(uniqueMessages.map((msg: any) => ({
                 ...msg,
                 timestamp: new Date(msg.timestamp || msg.createdAt)
@@ -1068,3 +1068,4 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     </ChatContext.Provider>
   );
 };
+// Disable automatic image search feature due to stability issues.
