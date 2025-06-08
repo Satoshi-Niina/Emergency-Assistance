@@ -129,19 +129,30 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
 
   // 画像パスを修正する関数（knowledge-base/imagesに統一）
   const fixImagePath = (originalPath: string): string => {
-    if (!originalPath) return '';
+    if (!originalPath) {
+      console.warn('空の画像パスが渡されました');
+      return '';
+    }
+
+    console.log('画像パス修正前:', originalPath);
 
     // 既に正しいパスの場合はそのまま返す
     if (originalPath.startsWith('/knowledge-base/images/')) {
+      console.log('正しいパスのため変更なし:', originalPath);
       return originalPath;
     }
 
     // ファイル名だけを抽出
     const fileName = originalPath.split('/').pop();
-    if (!fileName) return originalPath;
+    if (!fileName) {
+      console.warn('ファイル名を抽出できませんでした:', originalPath);
+      return originalPath;
+    }
 
     // knowledge-base/imagesパスに統一
-    return `/knowledge-base/images/${fileName}`;
+    const fixedPath = `/knowledge-base/images/${fileName}`;
+    console.log('画像パス修正後:', fixedPath);
+    return fixedPath;
   };
 
   // 画像のロード処理を改善
@@ -157,20 +168,42 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
     }
   };
 
-  // 画像読み込みエラーハンドラ（簡素化）
+  // 画像読み込みエラーハンドラ（強化版）
   const handleImageError = (imgElement: HTMLImageElement, result: SearchResult, retryCount = 0) => {
     try {
-      if (retryCount === 0) {
-        // 1回だけリトライ（knowledge-base/images/パスで）
-        const fileName = (result.url || result.file || '').split('/').pop();
-        const retryPath = fileName ? `/knowledge-base/images/${fileName}` : '';
+      const originalSrc = imgElement.src;
+      console.error(`画像読み込みエラー (試行${retryCount + 1}):`, originalSrc);
 
-        if (retryPath && retryPath !== imgElement.src) {
+      if (retryCount < 3) {
+        let retryPath = '';
+        const fileName = (result.url || result.file || '').split('/').pop();
+
+        if (retryCount === 0) {
+          // 1回目: knowledge-base/images/パスで再試行
+          retryPath = fileName ? `/knowledge-base/images/${fileName}` : '';
+        } else if (retryCount === 1 && fileName) {
+          // 2回目: PNGに拡張子を変換して再試行
+          const baseName = fileName.replace(/\.(jpg|jpeg|svg|gif)$/i, '');
+          retryPath = `/knowledge-base/images/${baseName}.png`;
+        } else if (retryCount === 2 && fileName) {
+          // 3回目: 元のファイル名でそのまま再試行
+          retryPath = `/knowledge-base/images/${fileName}`;
+        }
+
+        if (retryPath && retryPath !== originalSrc) {
+          console.log(`画像読み込み再試行 ${retryCount + 1}:`, retryPath);
           imgElement.src = retryPath;
-          imgElement.onerror = () => handleImageError(imgElement, result, 1);
+          imgElement.onerror = () => handleImageError(imgElement, result, retryCount + 1);
           return;
         }
       }
+
+      // すべての再試行が失敗した場合の処理
+      console.error('すべての画像読み込み試行が失敗しました:', {
+        originalUrl: result.url || result.file,
+        fileName: (result.url || result.file || '').split('/').pop(),
+        title: result.title
+      });
 
       // エラー表示
       const placeholder = imgElement.parentElement?.querySelector('.loading-placeholder');
@@ -184,10 +217,12 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
       if (container && !container.querySelector('.image-error')) {
         const errorElement = document.createElement('div');
         errorElement.className = 'image-error flex items-center justify-center h-full w-full bg-gray-100 text-gray-500 text-sm rounded-md min-h-[150px]';
+        const fileName = (result.url || result.file || '').split('/').pop() || 'ファイル名不明';
         errorElement.innerHTML = `
           <div class="text-center p-4">
             <div class="text-gray-400 mb-2">📷</div>
-            <div>画像を読み込めません</div>
+            <div class="font-medium">画像が見つかりません</div>
+            <div class="text-xs mt-1 text-gray-400">${fileName}</div>
             <div class="text-xs mt-1">${result.title || 'タイトル不明'}</div>
           </div>
         `;
