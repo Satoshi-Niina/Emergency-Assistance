@@ -48,6 +48,20 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
     
     if (combinedText.length >= MIN_SPEECH_LENGTH) {
       onRecognized(combinedText);
+      
+      // 画像検索のキーワードかどうかチェック
+      const imageSearchKeywords = ['ブレーキ', 'エンジン', '冷却', 'ホイール', '車輪', '部品', '設備'];
+      const hasImageKeyword = imageSearchKeywords.some(keyword => 
+        combinedText.includes(keyword)
+      );
+      
+      if (hasImageKeyword) {
+        console.log('🔍 音声から画像検索キーワードを検出:', combinedText);
+        // 画像検索を実行
+        window.dispatchEvent(new CustomEvent('voice-search-request', {
+          detail: { query: combinedText }
+        }));
+      }
     } else {
       console.log('⚠️ 発話が短すぎます:', combinedText);
     }

@@ -155,13 +155,21 @@ async function loadImageSearchData() {
           slideTitle,
           ...(slide['本文'] || []),
           "保守用車マニュアル", // カテゴリも検索できるように
-          "エンジン", "車両", "設備", "機械", "部品" // 一般的な検索キーワードを追加
+          "エンジン", "車両", "設備", "機械", "部品", // 一般的な検索キーワードを追加
+          "ブレーキ", "brake", "制動", "制動装置",
+          "冷却", "ラジエーター", "radiator", "cooling",
+          "ホイール", "wheel", "車輪", "タイヤ", "tire",
+          "駆動", "動力", "power", "drive"
         ].filter(Boolean);
         
         // キーワードにも一般的な用語を追加
         const enhancedKeywords = [
           ...keywords,
-          "エンジン", "車両", "設備", "機械", "部品", "保守", "点検"
+          "エンジン", "車両", "設備", "機械", "部品", "保守", "点検",
+          "ブレーキ", "brake", "制動", "制動装置",
+          "冷却", "ラジエーター", "radiator", "cooling",
+          "ホイール", "wheel", "車輪", "タイヤ", "tire",
+          "駆動", "動力", "power", "drive"
         ];
         
         validSlideCount++;
@@ -273,6 +281,10 @@ async function loadImageSearchData() {
             const keywords = [
               "保守用車", "部品", "写真", 
               "エンジン", "車両", "設備", "機械", "保守", "点検",
+              "ブレーキ", "brake", "制動", "制動装置",
+              "冷却", "ラジエーター", "radiator", "cooling",
+              "ホイール", "wheel", "車輪", "タイヤ", "tire",
+              "駆動", "動力", "power", "drive",
               ...additionalKeywords
             ];
             
@@ -280,7 +292,8 @@ async function loadImageSearchData() {
             const searchText = [
               title, category, 
               ...keywords,
-              "エンジン関連", "車両部品", "保守用機械"
+              "エンジン関連", "車両部品", "保守用機械",
+              "ブレーキ系統", "制動系統", "冷却系統", "駆動系統"
             ].join(' ');
             
             validImageCount++;
@@ -477,16 +490,16 @@ if (!eventListenerAdded) {
 const fuseOptions = {
   includeScore: true,
   keys: [
-    { name: 'title', weight: 0.7 },
-    { name: 'category', weight: 0.5 },
-    { name: 'description', weight: 0.4 },
+    { name: 'title', weight: 0.6 },
+    { name: 'category', weight: 0.4 },
+    { name: 'description', weight: 0.3 },
     { name: 'keywords', weight: 1.0 }, // キーワードの重みを最高に
     { name: 'searchText', weight: 1.0 }, // 検索用テキストフィールドを最高の重みで追加
   ],
-  threshold: 0.1, // 閾値を0.1に設定してほぼ全てマッチ（表示確認用）
+  threshold: 0.6, // 閾値を緩くして部分一致も含める
   ignoreLocation: true, // 単語の位置を無視して検索
   useExtendedSearch: false, // 拡張検索モードを無効にして基本検索
-  minMatchCharLength: 1, // 最小1文字一致で緩い検索
+  minMatchCharLength: 2, // 最小2文字一致
   distance: 1000, // 単語間距離制限を緩く
   findAllMatches: true, // すべての一致を見つける
   isCaseSensitive: false, // 大文字小文字を区別しない
