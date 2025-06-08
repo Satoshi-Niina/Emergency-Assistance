@@ -13,6 +13,13 @@ import { fileURLToPath } from 'url';
 import open from 'open';
 import { logDebug, logInfo, logWarn, logError, showLogConfig } from './lib/logger';
 
+// セキュアログ関数
+function secureLog(msg: string, ...args: any[]) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(msg, ...args);
+  }
+}
+
 // __dirnameの代替
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -141,10 +148,8 @@ async function openBrowser(url: string) {
   }
 }
 
-// 環境に応じたポート設定
-const port = process.env.NODE_ENV === 'production' 
-  ? parseInt(process.env.PORT || '80', 10)
-  : parseInt(process.env.PORT || '5000', 10);
+// ポート設定の最適化
+const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
 
 (async () => {
   // 初期化
@@ -166,9 +171,9 @@ const port = process.env.NODE_ENV === 'production'
   } else {
     try {
       serveStatic(app);
-      logInfo('静的ファイル配信を設定しました');
+      secureLog('静的ファイル配信を設定しました');
     } catch (staticError) {
-      logError('静的ファイル配信の設定エラー:', staticError);
+      console.error('静的ファイル配信の設定エラー:', staticError);
       // Minimal fallback for production
       app.get('*', (req, res) => {
         res.status(200).send('Server running');
@@ -177,50 +182,23 @@ const port = process.env.NODE_ENV === 'production'
   }
 
   server.listen(port, '0.0.0.0', () => {
-    logInfo(`サーバー起動: ポート ${port} (環境: ${process.env.NODE_ENV || 'development'})`);
+    console.log(`🚀 Server is running on port ${port}`);
+    secureLog(`サーバー起動: ポート ${port} (環境: ${process.env.NODE_ENV || 'development'})`);
+    
     if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
-      logInfo(`外部URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`);
+      secureLog(`外部URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`);
     }
     
     // プロダクション環境でのヘルスチェック
     if (process.env.NODE_ENV === 'production') {
-      console.log('Production server started successfully with health check endpoints');
-      console.log(`Health check available at: http://0.0.0.0:${port}/health`);
-      console.log(`Ready check available at: http://0.0.0.0:${port}/ready`);
+      console.log('Production server started successfully');
+      console.log(`Health endpoints: /health, /ready`);
     }
     
-    // 開発環境でプロダクション設定をテストする場合
-    if (process.env.TEST_PRODUCTION === 'true') {
-      console.log('Testing production mode in development environment');
-      console.log(`Test endpoints: /health, /ready, /`);
-    }
-
-    // 環境に応じた初期化処理
-    if (process.env.NODE_ENV === 'production') {
-      // プロダクション環境では起動速度を優先
-      setTimeout(async () => {
-        try {
-          console.log('Production: Background initialization started');
-          await initializeKnowledgeBase();
-          console.log('Production: Background initialization completed');
-        } catch (initError) {
-          console.error('Production initialization error:', initError);
-        }
-      }, 5000); // プロダクションでは5秒後に初期化
-    } else {
-      // 開発環境では従来通り
-      setTimeout(async () => {
-        try {
-          logInfo('知識ベース初期化を開始...');
-          await initializeKnowledgeBase();
-          logInfo('知識ベース初期化完了');
-        } catch (initError) {
-          logError('知識ベース初期化エラー:', initError);
-        }
-      }, 1000);
-    }
+    // 重い初期化は起動後に非同期実行
+    initializePostStartup();
   }).on('error', (err: NodeJS.ErrnoException) => {
-    logError('サーバー起動エラー:', {
+    console.error('サーバー起動エラー:', {
       message: err.message,
       code: err.code,
       port: port,
@@ -228,7 +206,7 @@ const port = process.env.NODE_ENV === 'production'
     });
     
     if (err.code === 'EADDRINUSE') {
-      logError(`ポート ${port} は既に使用されています`);
+      console.error(`ポート ${port} は既に使用されています`);
     }
     
     process.exit(1);
@@ -236,16 +214,16 @@ const port = process.env.NODE_ENV === 'production'
 
   // プロセス終了時のクリーンアップ
   process.on('SIGTERM', () => {
-    logInfo('SIGTERM signal received: closing HTTP server');
+    secureLog('SIGTERM signal received: closing HTTP server');
     server.close(() => {
-      logInfo('HTTP server closed');
+      secureLog('HTTP server closed');
     });
   });
 
   process.on('SIGINT', () => {
-    logInfo('SIGINT signal received: closing HTTP server');
+    secureLog('SIGINT signal received: closing HTTP server');
     server.close(() => {
-      logInfo('HTTP server closed');
+      secureLog('HTTP server closed');
     });
   });
 
@@ -271,3 +249,28 @@ const port = process.env.NODE_ENV === 'production'
     }
   });
 })();
+
+// 起動後初期化処理
+async function initializePostStartup() {
+  try {
+    if (process.env.NODE_ENV === 'production') {
+      // プロダクション環境では少し遅延させて初期化
+      setTimeout(async () => {
+        try {
+          console.log("知識ベースの初期化を開始...");
+          await initializeKnowledgeBase();
+          console.log("知識ベースの初期化完了");
+        } catch (err) {
+          console.error("初期化時にエラーが発生:", err);
+        }
+      }, 3000);
+    } else {
+      // 開発環境では即座に初期化
+      secureLog("知識ベースの初期化を開始...");
+      await initializeKnowledgeBase();
+      secureLog("知識ベースの初期化完了");
+    }
+  } catch (err) {
+    console.error("初期化時にエラーが発生:", err);
+  }
+}
