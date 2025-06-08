@@ -43,41 +43,17 @@ app.use(express.urlencoded({ extended: false }));
 
 // Immediate health check endpoints - minimal processing for deployment
 app.get('/health', (req, res) => {
-  try {
-    const healthStatus = {
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV || 'development',
-      port: process.env.PORT || '5000'
-    };
-    res.status(200).json(healthStatus);
-  } catch (error) {
-    res.status(500).json({ status: 'unhealthy', error: error.message });
-  }
+  res.status(200).json({ status: 'healthy' });
 });
 
 app.get('/ready', (req, res) => {
-  try {
-    const readyStatus = {
-      status: 'ready',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime()
-    };
-    res.status(200).json(readyStatus);
-  } catch (error) {
-    res.status(500).json({ status: 'not ready', error: error.message });
-  }
+  res.status(200).json({ status: 'ready' });
 });
 
 // Root endpoint always available for deployment health checks
 app.get('/', (req, res) => {
   if (process.env.NODE_ENV === 'production') {
-    const status = {
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      environment: 'production'
-    };
-    res.status(200).json(status);
+    res.status(200).json({ status: 'ok' });
   } else {
     // Development environment - let Vite handle routing
     res.status(404).send('Development mode');
@@ -254,8 +230,8 @@ const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
 async function initializePostStartup() {
   try {
     if (process.env.NODE_ENV === 'production') {
-      // プロダクション環境では少し遅延させて初期化
-      setTimeout(async () => {
+      // プロダクション環境では非同期で初期化（ヘルスチェックをブロックしない）
+      setImmediate(async () => {
         try {
           console.log("知識ベースの初期化を開始...");
           await initializeKnowledgeBase();
@@ -263,7 +239,7 @@ async function initializePostStartup() {
         } catch (err) {
           console.error("初期化時にエラーが発生:", err);
         }
-      }, 3000);
+      });
     } else {
       // 開発環境では即座に初期化
       secureLog("知識ベースの初期化を開始...");
