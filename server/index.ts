@@ -21,6 +21,11 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
+// Set NODE_ENV if not set
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = 'development';
+}
+
 // 環境変数の確認（Replitシークレットも含む）
 const openaiKey = process.env.OPENAI_API_KEY || process.env.REPLIT_SECRET_OPENAI_API_KEY;
 // セキュリティのためAPIキー情報のログ出力を削除
@@ -120,7 +125,7 @@ async function openBrowser(url: string) {
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
+  if (process.env.NODE_ENV !== "production") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
