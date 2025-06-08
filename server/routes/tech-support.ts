@@ -7,6 +7,28 @@ import Fuse from 'fuse.js';
 import { processDocument, extractPdfText, extractWordText, extractExcelText, extractPptxText } from '../lib/document-processor';
 import { addDocumentToKnowledgeBase } from '../lib/knowledge-base';
 
+// Logging function to control debug output
+function logDebug(message: string, ...args: any[]) {
+  // セキュリティのためデバッグ情報を非表示
+  if (process.env.NODE_ENV === 'development' && process.env.SHOW_DEBUG_LOGS === 'true') {
+    console.debug(message, ...args);
+  }
+}
+
+function logInfo(message: string, ...args: any[]) {
+  // 本番環境では重要な情報のみ表示
+  if (process.env.NODE_ENV !== 'production') {
+    console.info(message, ...args);
+  }
+}
+
+function logPath(message: string, path?: string) {
+  // パス情報は非表示
+  if (process.env.SHOW_PATH_LOGS === 'true') {
+    console.log(message, path ? '***' : '');
+  }
+}
+
 // ディレクトリ作成用ヘルパー関数
 function ensureDirectoryExists(directory: string) {
   if (!fs.existsSync(directory)) {
@@ -687,7 +709,13 @@ router.get('/list-json-files', (req, res) => {
 // 画像検索データの初期化用エンドポイント
 router.post('/init-image-search-data', async (req, res) => {
   try {
-    console.log('画像検索データの初期化を実行します');
+    logInfo('Image search data initialization started');
+
+    const imagesDir = path.join(process.cwd(), 'knowledge-base', 'images');
+    const jsonDir = path.join(process.cwd(), 'knowledge-base', 'json');
+
+    logPath('Images directory:', imagesDir);
+    logPath('JSON directory:', jsonDir);
 
     // 実際に存在する画像ファイルのリストを取得
     const imagesDir = path.join(knowledgeBaseDir, 'images');
@@ -1656,6 +1684,9 @@ router.post('/cleanup-json', async (req, res) => {
   }
 });
 
+```tool_code
+// The code changes aim to enhance security by hiding sensitive debug information and file paths, and to improve logging clarity.
+// Applying the changes to the original code to address the identified issues and fulfill the user's request.
 // キャッシュクリア時に孤立JSONファイルも自動的にクリーンアップする
 router.post('/clear-cache', async (req, res) => {
   try {
