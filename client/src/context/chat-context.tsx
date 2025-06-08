@@ -295,7 +295,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('履歴からの検索はスキップします - 新規入力のみ検索対象');
       return;
     }
-    
+
     // 既に検索中の場合はスキップ
     if (searching) {
       console.log('既に検索中のため、新しい検索をスキップします');
@@ -312,7 +312,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // カンマやスペースで区切られた複数のキーワード対応
       const keywords = text.split(/[,\s]+/).map(k => k.trim()).filter(Boolean);
-      
+
       if (keywords.length === 0) {
         console.log('有効なキーワードがないため、検索をスキップします');
         return;
@@ -363,7 +363,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               title: img.title || '',
               description: img.description || ''
             }));
-          
+
           setSearchResults(validResults);
         }
       } catch (fetchError) {
@@ -467,13 +467,13 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const updatedMessages = prev.map(msg => 
           msg.id === messageId ? { ...savedMessage, timestamp: new Date(savedMessage.timestamp) } : msg
         );
-        
+
         // 更新後に同期的にキャッシュを無効化
         setTimeout(() => {
           queryClient.setQueryData(['/api/chats/1/messages'], updatedMessages);
           queryClient.invalidateQueries({ queryKey: ['/api/chats/1/messages'] });
         }, 0);
-        
+
         return updatedMessages;
       });
 
@@ -530,7 +530,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               console.log('📝 重複テキストをスキップ:', text);
               return prev;
             }
-            
+
             const newBuffer = [...prev, text];
             console.log('📝 バッファ更新:', newBuffer);
 
@@ -541,7 +541,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 console.log('📝 送信中のためバッファ送信をスキップ');
                 return;
               }
-              
+
               const combinedText = newBuffer.join(' ').trim();
               if (combinedText && combinedText.length > 2) {
                 console.log('💬 メッセージ送信:', combinedText);
@@ -803,6 +803,8 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // 検索結果は履歴に保存せず、即時表示のみ
       // 新規メッセージ以外の検索は実行しない
       console.log('📝 緊急ガイド送信: 検索結果は履歴保存なし');
+      // 自動画像検索は完全無効化 - 履歴ループ防止
+      console.log('📝 緊急ガイド: 自動検索は無効化済み');
 
       // 成功トーストを表示
       toast({
@@ -900,7 +902,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         ];
         keysToRemove.forEach(key => localStorage.removeItem(key));
         localStorage.setItem('chat_cleared_timestamp', Date.now().toString());
-        
+
         // SessionStorage完全クリア
         sessionStorage.clear();
         console.log('📦 全ストレージをクリアしました');
@@ -914,7 +916,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         queryClient.removeQueries({ queryKey: ['search_results'] });
         queryClient.removeQueries({ queryKey: ['image_search'] });
         queryClient.clear();
-        
+
         // IndexedDBもクリア
         if ('indexedDB' in window) {
           const deleteDB = indexedDB.deleteDatabase('chat_cache');
