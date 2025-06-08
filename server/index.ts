@@ -210,8 +210,12 @@ const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
   // 未処理のPromise拒否をキャッチ
   process.on('unhandledRejection', (reason, promise) => {
     if (process.env.NODE_ENV === 'production') {
-      console.error('Production: Unhandled Rejection:', reason);
-      // プロダクションでは致命的でない限り継続
+      // プロダクションでは重要なエラーのみログ出力
+      if (reason && typeof reason === 'object' && reason.toString().includes('ECONNRESET')) {
+        // 接続リセットエラーは無視（よくある問題）
+        return;
+      }
+      console.error('Unhandled Rejection:', reason);
     } else {
       logError('Unhandled Rejection at:', promise, 'reason:', reason);
     }
@@ -219,12 +223,14 @@ const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
 
   // 未処理の例外をキャッチ
   process.on('uncaughtException', (error) => {
-    if (process.env.NODE_ENV === 'production') {
-      console.error('Production: Uncaught Exception:', error.message);
-      // プロダクションでは即座に終了
-      process.exit(1);
+    console.error('Uncaught Exception:', error.message);
+    // グレースフルシャットダウンを試行
+    if (server) {
+      server.close(() => {
+        process.exit(1);
+      });
+      setTimeout(() => process.exit(1), 5000);
     } else {
-      logError('Uncaught Exception thrown:', error);
       process.exit(1);
     }
   });
@@ -232,9 +238,18 @@ const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
 
 // 知識ベースの準備状況を追跡
 let knowledgeBaseReady = false;
+let initializationInProgress = false;
 
 // 起動後初期化処理
 async function initializePostStartup() {
+  // 既に初期化中または完了している場合はスキップ
+  if (initializationInProgress || knowledgeBaseReady) {
+    console.log("知識ベース初期化: 既に実行中または完了済み");
+    return;
+  }
+  
+  initializationInProgress = true;
+  
   // 初期化は非同期で実行し、ヘルスチェックをブロックしない
   setImmediate(async () => {
     try {
@@ -242,8 +257,11 @@ async function initializePostStartup() {
       await initializeKnowledgeBase();
       console.log("知識ベースの初期化完了");
       knowledgeBaseReady = true;
+      initializationInProgress = false;
     } catch (err) {
       console.error("初期化時にエラーが発生:", err);
+      initializationInProgress = false;
+      // エラーが発生しても他の機能は継続
     }
   });
 }
