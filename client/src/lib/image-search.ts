@@ -324,7 +324,27 @@ async function loadImageSearchData() {
 
         console.log(`埋め込み画像処理結果: 有効=${validImageCount}, 無効パス=${invalidPathCount}`);
 
-        // 有効な画像のみを追加（PNG形式に統一）
+        // 実際に存在する画像ファイルのリスト
+        const existingImageFiles = [
+          'mc_1747961263575_img_001.png',
+          'mc_1747961263575_img_003.png', 
+          'mc_1747961263575_img_004.png',
+          'mc_1747961263575_img_005.png',
+          'mc_1747961263575_img_006.png',
+          'mc_1747961263575_img_012.png',
+          'mc_1747961263575_img_013.png',
+          'mc_1747961263575_img_016.png',
+          'mc_1747961263575_img_017.png',
+          'mc_1747961263575_img_018.png',
+          'mc_1747961263575_img_019.png',
+          'mc_1747961263575_img_020.png',
+          'mc_1747961263575_img_021.png',
+          'mc_1747961263575_img_022.png',
+          'mc_1747961263575_img_026.png',
+          'mc_1747961263575_img_027.png'
+        ];
+
+        // 有効な画像のみを追加（PNG形式に統一 + 実ファイル存在確認）
         embeddedImages
           .filter((item: any) => {
             // 有効なパスであることを確認
@@ -339,7 +359,15 @@ async function loadImageSearchData() {
             // 有効なキーワードがあることを確認
             const hasValidKeywords = Array.isArray(item.keywords) && item.keywords.length > 0;
 
-            return hasValidPath && hasValidTitle && hasValidKeywords;
+            // 実際に存在するファイルかどうかを確認
+            const fileName = item.file ? item.file.split('/').pop() : '';
+            const fileExists = fileName && existingImageFiles.includes(fileName);
+
+            if (hasValidPath && hasValidTitle && hasValidKeywords && !fileExists) {
+              console.warn(`画像ファイルが存在しないため除外: ${fileName}`);
+            }
+
+            return hasValidPath && hasValidTitle && hasValidKeywords && fileExists;
           })
           .forEach((item: any) => imageSearchData.push(item));
       }

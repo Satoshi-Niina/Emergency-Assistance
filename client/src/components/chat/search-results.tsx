@@ -231,6 +231,41 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
     }
   };
 
+  // 存在する画像ファイルのリスト（実際のファイルと照合）
+  const existingImageFiles = [
+    'mc_1747961263575_img_001.png',
+    'mc_1747961263575_img_003.png', 
+    'mc_1747961263575_img_004.png',
+    'mc_1747961263575_img_005.png',
+    'mc_1747961263575_img_006.png',
+    'mc_1747961263575_img_012.png',
+    'mc_1747961263575_img_013.png',
+    'mc_1747961263575_img_016.png',
+    'mc_1747961263575_img_017.png',
+    'mc_1747961263575_img_018.png',
+    'mc_1747961263575_img_019.png',
+    'mc_1747961263575_img_020.png',
+    'mc_1747961263575_img_021.png',
+    'mc_1747961263575_img_022.png',
+    'mc_1747961263575_img_026.png',
+    'mc_1747961263575_img_027.png'
+  ];
+
+  // 実際に存在するファイルのみをフィルタリング
+  const filteredResults = results.filter((result) => {
+    const imagePath = result.url || result.file || '';
+    const fileName = imagePath.split('/').pop();
+    const exists = fileName && existingImageFiles.includes(fileName);
+    
+    if (!exists && fileName) {
+      console.warn(`画像ファイルが存在しないためスキップ: ${fileName}`);
+    }
+    
+    return exists;
+  });
+
+  console.log(`表示する画像: ${filteredResults.length}件 (元: ${results.length}件)`);
+
   return (
     <div className={containerClass}>
       {/* モバイル表示時のみタイトルを表示 */}
@@ -248,9 +283,16 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
         </div>
       )}
 
-      {/* サムネイル縦一列表示 */}
-      <div className="flex flex-col gap-4">
-        {results.map((result) => {
+      {/* 存在確認済みの画像のみ表示 */}
+      {filteredResults.length === 0 ? (
+        <div className="text-center text-gray-500 p-4">
+          <div className="text-gray-400 mb-2">📷</div>
+          <div>表示可能な画像がありません</div>
+        </div>
+      ) : (
+        /* サムネイル縦一列表示 */
+        <div className="flex flex-col gap-4">
+          {filteredResults.map((result) => {
           const imageSrc = fixImagePath(result.url || result.file || '');
 
           const handleImageClick = (imageSrc: string, title: string) => {
