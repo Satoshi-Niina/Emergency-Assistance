@@ -1,7 +1,7 @@
 modules = ["nodejs-20"]
 
 [deployment]
-run = ["sh", "-c", "npm start"]
+run = ["sh", "-c", "cross-env NODE_ENV=production node dist/index.js"]
 build = ["sh", "-c", "npm run build"]
 
 [[ports]]
