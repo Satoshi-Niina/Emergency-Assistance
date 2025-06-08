@@ -81,45 +81,8 @@ export default function MessageInput() {
     
     console.log('送信するテキスト:', textToSend);
     
-    // メッセージを送信
+    // メッセージを送信（sendMessage内で自動的に画像検索も実行される）
     await sendMessage(textToSend);
-    
-    // 画像検索のキーワードかどうかチェック
-    const imageSearchKeywords = ['ブレーキ', 'エンジン', '冷却', 'ホイール', '車輪', '部品', '設備', '機械', '保守', '点検'];
-    const hasImageKeyword = imageSearchKeywords.some(keyword => 
-      textToSend.includes(keyword)
-    );
-    
-    if (hasImageKeyword) {
-      console.log('🔍 チャット入力から画像検索キーワードを検出:', textToSend);
-      
-      // メッセージと同じテキストで画像検索を自動実行
-      try {
-        // 送信したメッセージを使って画像検索を実行
-        await searchBySelectedText(textToSend);
-        
-        // モバイルで検索結果パネルを表示
-        if (isMobile) {
-          const slider = document.getElementById('mobile-search-slider');
-          if (slider) {
-            slider.classList.add('search-panel-visible');
-            const orientation = window.matchMedia('(orientation: landscape)').matches ? 'landscape' : 'portrait';
-            
-            if (orientation === 'landscape') {
-              // 横向きの場合は右から表示
-              slider.style.transform = 'translateX(0)';
-            } else {
-              // 縦向きの場合は下から表示
-              slider.style.transform = 'translateY(0)';
-            }
-          }
-        }
-      } catch (error) {
-        console.error('自動画像検索エラー:', error);
-      }
-    } else {
-      console.log('チャット入力に画像検索キーワードが含まれていません:', textToSend);
-    }
     
     // 入力欄をクリア
     setMessage("");
