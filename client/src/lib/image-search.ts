@@ -486,10 +486,10 @@ async function loadImageSearchData() {
 let isDataLoaded = false;
 let isLoading = false;
 
-// アプリケーション起動時にデータをロード（1回のみ）
-if (!isDataLoaded && !isLoading) {
-  loadImageSearchData();
-}
+// データ読み込みを完全に無効化（手動検索時のみ必要に応じて読み込み）
+// if (!isDataLoaded && !isLoading) {
+//   loadImageSearchData();
+// }
 
 // データを強制的に再読み込む関数を提供
 export const reloadImageSearchData = () => {
@@ -578,6 +578,12 @@ if (typeof window !== 'undefined') {
  * @returns 検索結果の配列
  */
 export const searchByText = async (text: string, autoStopAfterResults: boolean = true): Promise<any[]> => {
+  // 自動検索を完全に無効化
+  console.log('自動画像検索は無効化されています - 手動検索のみ利用可能');
+  return [];
+
+  // 以下のコードは現在無効化されています
+  /*
   // 自動検索完全無効化チェック
   if (typeof window !== 'undefined' && (window as any)._fuseSearchDisabled) {
     console.log('自動検索が無効化されているため、検索をスキップします');
@@ -609,6 +615,7 @@ export const searchByText = async (text: string, autoStopAfterResults: boolean =
     console.log('同じテキストの重複検索をスキップします:', text);
     return lastSearchResults;
   }
+  */
 
   lastSearchTime = currentTime;
   lastSearchText = text;

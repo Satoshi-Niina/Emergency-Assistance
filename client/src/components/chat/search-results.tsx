@@ -96,6 +96,10 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
       // 検索結果が表示されたら、実行中の検索をキャンセルして点滅を防止
       try {
         cancelSearch();
+        // 自動検索も完全無効化
+        if (typeof window !== 'undefined') {
+          (window as any)._fuseSearchDisabled = true;
+        }
       } catch (error) {
         console.warn('検索キャンセル処理でエラー:', error);
       }

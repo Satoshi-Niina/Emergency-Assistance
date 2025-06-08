@@ -794,10 +794,10 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // サーバー送信に失敗してもローカルメッセージは表示済み
       }
 
-      // 関連する画像検索も実行
-      if (guideData.title) {
-        searchBySelectedText(guideData.title);
-      }
+      // 自動画像検索は無効化
+      // if (guideData.title) {
+      //   searchBySelectedText(guideData.title);
+      // }
 
       // 成功トーストを表示
       toast({
