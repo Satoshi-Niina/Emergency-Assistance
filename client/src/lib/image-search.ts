@@ -584,9 +584,15 @@ export const searchByText = async (text: string, autoStopAfterResults: boolean =
     return [];
   }
 
+  // 空のテキストや短いテキストはスキップ
+  if (!text || text.trim().length < 2) {
+    console.log('検索テキストが短すぎるため、検索をスキップします');
+    return [];
+  }
+
   const currentTime = Date.now();
 
-  // 重複検索防止
+  // 重複検索防止（より厳格に）
   if (isSearching) {
     console.log('既に検索中のため、新しい検索をスキップします');
     return [];
@@ -598,70 +604,107 @@ export const searchByText = async (text: string, autoStopAfterResults: boolean =
     return [];
   }
 
+  // 同じテキストの重複検索を防止
+  if (text === lastSearchText) {
+    console.log('同じテキストの重複検索をスキップします:', text);
+    return lastSearchResults;
+  }
+
   lastSearchTime = currentTime;
+  lastSearchText = text;
 
   try {
     isSearching = true;
     console.log('画像検索開始:', text);
 
-    // 最初にデータが存在することを確認
-    if (imageSearchData.length === 0) {
+    // データが読み込まれていない場合のみ読み込み
+    if (imageSearchData.length === 0 && !isLoading) {
       console.log('画像検索データが読み込まれていないため再ロード');
       await loadImageSearchData();
 
       // データが空の場合は早期リターン
       if (imageSearchData.length === 0) {
         console.warn('画像検索データが空です');
+        lastSearchResults = [];
         return [];
       }
     }
 
-    // クエリの最適化をスキップして直接検索（パフォーマンス改善）
-    let optimizedText = text;
+    // データ読み込み中の場合は待機
+    if (isLoading) {
+      console.log('データ読み込み中のため検索をスキップします');
+      return [];
+    }
 
-    // Fuseインスタンスを取得して検索を実行
-    const fuse = getFuseInstance();
+    // Fuseインスタンスを安全に取得
+    let fuse;
+    try {
+      fuse = getFuseInstance();
+    } catch (fuseError) {
+      console.error('Fuseインスタンスの作成に失敗:', fuseError);
+      return [];
+    }
 
     // キーワードを分割して検索
-    const keywords = optimizedText.split(/\s+/).filter(k => k.length > 0);
+    const keywords = text.trim().split(/\s+/).filter(k => k.length > 1);
     let searchResults: any[] = [];
 
-    if (keywords.length > 1) {
-      console.log(`複数キーワード検索: ${keywords.join(', ')}`);
-      // 複数のキーワードがある場合、各キーワードで検索
-      const resultMap = new Map<string | number, any>();
+    if (keywords.length === 0) {
+      console.log('有効なキーワードが見つからないため検索をスキップします');
+      return [];
+    }
 
-      for (const keyword of keywords) {
-        const results = fuse.search(keyword);
-        results.forEach(result => {
-          const existingResult = resultMap.get(result.item.id);
-          if (!existingResult || (existingResult.score && result.score && result.score < existingResult.score)) {
-            resultMap.set(result.item.id, result);
+    try {
+      if (keywords.length > 1) {
+        console.log(`複数キーワード検索: ${keywords.join(', ')}`);
+        // 複数のキーワードがある場合、各キーワードで検索
+        const resultMap = new Map<string | number, any>();
+
+        for (const keyword of keywords) {
+          try {
+            const results = fuse.search(keyword);
+            results.forEach(result => {
+              if (result && result.item && result.item.id) {
+                const existingResult = resultMap.get(result.item.id);
+                if (!existingResult || (existingResult.score && result.score && result.score < existingResult.score)) {
+                  resultMap.set(result.item.id, result);
+                }
+              }
+            });
+          } catch (keywordError) {
+            console.warn(`キーワード "${keyword}" の検索でエラー:`, keywordError);
           }
-        });
-      }
+        }
 
-      searchResults = Array.from(resultMap.values());
-    } else if (keywords.length === 1) {
-      console.log(`単一キーワード検索: ${keywords[0]}`);
-      searchResults = fuse.search(keywords[0]);
-    } else {
-      console.log(`検索キーワードが抽出できなかったため検索をスキップします`);
+        searchResults = Array.from(resultMap.values());
+      } else if (keywords.length === 1) {
+        console.log(`単一キーワード検索: ${keywords[0]}`);
+        searchResults = fuse.search(keywords[0]);
+      }
+    } catch (searchError) {
+      console.error('Fuse検索処理でエラー:', searchError);
       return [];
     }
 
     // 結果を制限（パフォーマンス改善）
-    const limitedResults = searchResults.slice(0, 20);
+    const limitedResults = searchResults.slice(0, 15).filter(result => 
+      result && result.item && result.item.id && result.item.file
+    );
+    
     console.log(`検索結果: ${limitedResults.length}件見つかりました（全${searchResults.length}件中）`);
 
+    // 結果をキャッシュ
+    lastSearchResults = limitedResults;
+    
     return limitedResults;
   } catch (error) {
     console.error('画像検索エラー:', error);
+    lastSearchResults = [];
     return []; // エラー時は空配列を返してクラッシュを防ぐ
   } finally {
     // 検索完了後、少し遅延してからフラグを解除
     setTimeout(() => {
       isSearching = false;
-    }, 100);
+    }, 200);
   }
 };

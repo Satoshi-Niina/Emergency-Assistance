@@ -94,7 +94,11 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
   useEffect(() => {
     if (results && results.length > 0) {
       // 検索結果が表示されたら、実行中の検索をキャンセルして点滅を防止
-      cancelSearch();
+      try {
+        cancelSearch();
+      } catch (error) {
+        console.warn('検索キャンセル処理でエラー:', error);
+      }
     }
   }, [results]);
 
@@ -240,37 +244,68 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
                 {/* 実際の画像 */}
                 <img
                   ref={(img) => {
-                    if (img && imageSrc) {
-                      // 重複処理を防ぐためのフラグチェック
-                      if (img.dataset.initialized === 'true') {
-                        return;
+                    if (!img || !imageSrc) return;
+
+                    // 重複処理を防ぐためのフラグチェック
+                    if (img.dataset.initialized === 'true') {
+                      return;
+                    }
+
+                    img.dataset.initialized = 'true';
+
+                    // 既存のオブザーバーをクリーンアップ
+                    if (img.dataset.observer) {
+                      try {
+                        const existingObserver = (img as any).__intersectionObserver;
+                        if (existingObserver) {
+                          existingObserver.disconnect();
+                        }
+                      } catch (error) {
+                        console.warn('既存オブザーバーのクリーンアップエラー:', error);
                       }
+                    }
 
-                      img.dataset.initialized = 'true';
-
-                      // 画像の読み込み処理を設定（遅延読み込み）
-                      const observer = new IntersectionObserver((entries) => {
-                        entries.forEach(entry => {
-                          if (entry.isIntersecting) {
+                    // 画像の読み込み処理を設定（遅延読み込み）
+                    const observer = new IntersectionObserver((entries) => {
+                      entries.forEach(entry => {
+                        if (entry.isIntersecting && img) {
+                          try {
                             img.onload = () => handleImageLoad(img, result);
                             img.onerror = () => handleImageError(img, result);
                             img.src = imageSrc;
                             observer.unobserve(img);
+                            observer.disconnect();
+                          } catch (error) {
+                            console.error('画像読み込み設定エラー:', error);
                           }
-                        });
+                        }
                       });
+                    }, {
+                      threshold: 0.1,
+                      rootMargin: '50px'
+                    });
 
+                    try {
                       observer.observe(img);
+                      (img as any).__intersectionObserver = observer;
+                      img.dataset.observer = 'true';
+                    } catch (error) {
+                      console.error('IntersectionObserverエラー:', error);
+                      // フォールバック: 直接画像を読み込み
+                      img.src = imageSrc;
                     }
                   }}
                   alt={result.title || '関連画像'}
                   className="absolute inset-0 w-full h-full object-cover z-10 rounded-md"
                   loading="lazy"
                   onError={(e) => {
-        console.error('画像の読み込みに失敗しました:', result.file);
-        // エラー画像の場合は非表示にする
-        e.currentTarget.style.display = 'none';
-      }}
+                    try {
+                      console.error('画像の読み込みに失敗しました:', result.file || result.url);
+                      e.currentTarget.style.display = 'none';
+                    } catch (error) {
+                      console.error('画像エラーハンドリングエラー:', error);
+                    }
+                  }}
                 />
               </div>
 

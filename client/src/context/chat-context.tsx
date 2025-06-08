@@ -290,12 +290,28 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // 選択テキストで検索する関数
   const searchBySelectedText = useCallback(async (text: string) => {
+    // 既に検索中の場合はスキップ
+    if (searching) {
+      console.log('既に検索中のため、新しい検索をスキップします');
+      return;
+    }
+
     try {
-      if (!text) return;
+      if (!text || !text.trim()) {
+        console.log('検索テキストが空のため、検索をスキップします');
+        return;
+      }
+
       console.log('検索キーワード:', text);
 
       // カンマやスペースで区切られた複数のキーワード対応
       const keywords = text.split(/[,\s]+/).map(k => k.trim()).filter(Boolean);
+      
+      if (keywords.length === 0) {
+        console.log('有効なキーワードがないため、検索をスキップします');
+        return;
+      }
+
       const keywordType = keywords.map(k => {
         // 特定のパターンに基づいてキーワードタイプを判断
         if (/^[A-Z0-9]{2,}-\d+$/.test(k)) return 'model';
@@ -309,30 +325,53 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       console.log('画像検索開始:', text);
 
-      // 画像検索APIを呼び出す
-      const response = await apiRequest('POST', '/api/tech-support/image-search', { 
-        query: text,
-        count: 10
-      });
+      // タイムアウト付きで画像検索APIを呼び出す
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒タイムアウト
 
-      if (!response.ok) {
-        throw new Error('画像検索に失敗しました');
-      }
+      try {
+        const response = await apiRequest('POST', '/api/tech-support/image-search', { 
+          query: text,
+          count: 10
+        }, undefined, { signal: controller.signal });
 
-      const results = await response.json();
-      console.log('検索結果数:', results.images?.length || 0);
+        clearTimeout(timeoutId);
 
-      if (!results.images || results.images.length === 0) {
-        console.log(`「${text}」に関する検索結果はありませんでした`);
-        setSearchResults([]);
-      } else {
-        setSearchResults(results.images.map((img: any) => ({
-          ...img,
-          src: img.url || img.file,
-          alt: img.title || img.description || '画像',
-          title: img.title || '',
-          description: img.description || ''
-        })));
+        if (!response.ok) {
+          throw new Error('画像検索に失敗しました');
+        }
+
+        const results = await response.json();
+        console.log('検索結果数:', results.images?.length || 0);
+
+        if (!results.images || results.images.length === 0) {
+          console.log(`「${text}」に関する検索結果はありませんでした`);
+          setSearchResults([]);
+        } else {
+          const validResults = results.images
+            .filter((img: any) => img && (img.url || img.file))
+            .map((img: any) => ({
+              ...img,
+              src: img.url || img.file,
+              alt: img.title || img.description || '画像',
+              title: img.title || '',
+              description: img.description || ''
+            }));
+          
+          setSearchResults(validResults);
+        }
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        if (fetchError.name === 'AbortError') {
+          console.log('検索がタイムアウトしました');
+          toast({
+            title: '検索タイムアウト',
+            description: '検索に時間がかかりすぎたため中断しました。',
+            variant: 'destructive',
+          });
+        } else {
+          throw fetchError;
+        }
       }
     } catch (error) {
       console.error('検索エラー:', error);
@@ -345,7 +384,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } finally {
       setSearching(false);
     }
-  }, [toast]);
+  }, [searching, toast]);
 
   // 検索結果をクリアする関数
   const clearSearchResults = useCallback(() => {
