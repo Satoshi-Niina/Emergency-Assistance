@@ -196,10 +196,10 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
                           url: media.url.substring(0, 100) + '...',
                           isBase64: media.url.startsWith('data:')
                         });
-                        
+
                         const img = e.target as HTMLImageElement;
                         img.onerror = null; // Prevent infinite loop
-                        
+
                         // Base64画像の場合はエラー表示を出す
                         if (media.url.startsWith('data:image/')) {
                           img.style.display = 'none';
@@ -247,7 +247,7 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
                       onError={(e) => {
                         console.error('動画読み込みエラー:', {
                           messageId: message.id,
-                          mediaIndex: index,
+                                                    mediaIndex: index,
                           url: media.url.substring(0, 100) + '...',
                           isBlob: media.url.startsWith('blob:')
                         });
@@ -307,7 +307,7 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
             {(() => {
               // メッセージコンテンツの安全な取得と型チェック
               const rawContent = message.content || (message as any).text || '';
-              
+
               // 型による分岐処理
               if (rawContent === null || rawContent === undefined) {
                 console.warn('メッセージコンテンツがnull/undefinedです:', { messageId: message.id });
@@ -317,7 +317,7 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
                   </p>
                 );
               }
-              
+
               // オブジェクト型の場合の処理
               if (typeof rawContent === 'object') {
                 console.warn('メッセージコンテンツがオブジェクトです:', { 
@@ -326,10 +326,10 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
                   contentKeys: Object.keys(rawContent || {}),
                   content: rawContent 
                 });
-                
+
                 // オブジェクトから適切な文字列を抽出する試み
                 let extractedText = '';
-                
+
                 if (rawContent && typeof rawContent === 'object') {
                   // 一般的なプロパティから文字列を抽出
                   extractedText = (rawContent as any).text || 
@@ -337,19 +337,19 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
                                 (rawContent as any).message || 
                                 (rawContent as any).data || 
                                 '';
-                  
+
                   // 画像データの可能性をチェック
                   if ((rawContent as any).contentType && (rawContent as any).contentType.startsWith('image/')) {
                     extractedText = (rawContent as any).preview || (rawContent as any).url || '';
                   }
                 }
-                
+
                 // 抽出できた場合はそれを使用、できない場合はエラー表示
                 if (extractedText && typeof extractedText === 'string') {
                   console.log('オブジェクトから文字列を抽出しました:', extractedText.substring(0, 50) + '...');
                   // 抽出した文字列で処理を続行
                   const content = extractedText.trim();
-                  
+
                   // 画像データかどうかを判定
                   const isImageContent = (
                     content.startsWith('data:image/') ||
@@ -358,7 +358,7 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
                     content.startsWith('/knowledge-base/images/') ||
                     /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(content)
                   );
-                  
+
                   if (isImageContent) {
                     return (
                       <div className="mt-2">
@@ -397,7 +397,7 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
                   );
                 }
               }
-              
+
               // 文字列以外の型の場合
               if (typeof rawContent !== 'string') {
                 console.warn('メッセージコンテンツが文字列ではありません:', { 
@@ -411,9 +411,9 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
                   </p>
                 );
               }
-              
+
               const content = rawContent.trim();
-              
+
               // 画像データの判定条件を強化
               const isImageContent = (
                 content.startsWith('data:image/') ||           // Base64画像データ（正しい形式）
@@ -475,10 +475,10 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
                           isBase64: content.startsWith('data:image/'),
                           mimeType: content.startsWith('data:') ? content.split(';')[0] : 'N/A'
                         });
-                        
+
                         const img = e.target as HTMLImageElement;
                         img.onerror = null; // Prevent infinite loop
-                        
+
                         // Base64画像の場合はエラー表示
                         if (content.startsWith('data:')) {
                           img.style.display = 'none';

@@ -278,7 +278,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  
+
 
   // Chat routes
   app.get("/api/chats", requireAuth, async (req, res) => {
@@ -708,10 +708,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Create AI response message
+      // AIレスポンスの内容を検証
+      const responseContent = typeof aiResponse === 'string' ? aiResponse : String(aiResponse || '');
+      console.log('サーバー側AIレスポンス検証:', { 
+        type: typeof aiResponse, 
+        content: responseContent.substring(0, 100) + '...',
+        length: responseContent.length 
+      });
+
+      // AIレスポンスメッセージを作成
       const aiMessage = await storage.createMessage({
-        content: aiResponse,
-        chatId: chat.id,
+        chatId,
+        content: responseContent || 'レスポンスの生成に失敗しました',
         isAiResponse: true,
         senderId: req.session.userId // AIメッセージも送信者IDを設定
       });
@@ -1041,7 +1049,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }));
   });
   app.use('/api/troubleshooting', troubleshootingRouter);
-  
+
   // ルーター設定のデバッグ用ミドルウェア
   const routeDebugger = (req: Request, res: Response, next: NextFunction) => {
     if (req.path.includes('/users/')) {
