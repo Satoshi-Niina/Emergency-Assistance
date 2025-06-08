@@ -732,11 +732,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         senderId: null,
       }).returning();
 
-      // クライアントに送信するレスポンス構造を明確にする
+      // クライアントに送信するレスポンス構造を統一化
       const responseMessage = {
         ...aiMessage,
-        content: responseContent, // 必ず文字列であることを保証
-        text: responseContent, // 互換性のため
+        content: responseContent, // メイン表示用
+        text: responseContent,    // 互換性用（contentと同じ値）
+        role: 'assistant' as const,
         timestamp: aiMessage.createdAt || new Date()
       };
 

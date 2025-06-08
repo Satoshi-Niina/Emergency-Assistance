@@ -1,4 +1,3 @@
-
 // データベースに必要なdrizzle-ormの型とヘルパーをインポート
 import { pgTable, text, timestamp, jsonb, integer, boolean } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
@@ -118,11 +117,30 @@ export const insertChatSchema = z.object({
 });
 
 export const insertMessageSchema = z.object({
-  chatId: z.string(),
+  chatId: z.number(),
   content: z.string(),
-  senderId: z.string(),
-  isAiResponse: z.boolean().default(false)
+  isAiResponse: z.boolean().default(false),
+  senderId: z.number().nullable(),
 });
+
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
+
+// 統一されたChatMessage型定義
+export interface ChatMessage {
+  id: number;
+  chatId: number;
+  content: string;  // メイン表示用（テキストまたは画像URL）
+  text: string;     // 互換性用（contentと同じ値）
+  isAiResponse: boolean;
+  senderId: number | null;
+  createdAt: Date;
+  timestamp?: Date;
+  role?: 'user' | 'assistant';
+  media?: { type: string, url: string, thumbnail?: string }[];
+}
+
+// 既存のMessage型はChatMessageのエイリアスとして維持（互換性のため）
+export interface Message extends ChatMessage {}
 
 export const insertMediaSchema = z.object({
   messageId: z.number(),
@@ -148,9 +166,6 @@ export type InsertUser = typeof users.$inferInsert;
 
 export type Chat = typeof chats.$inferSelect;
 export type InsertChat = typeof chats.$inferInsert;
-
-export type Message = typeof messages.$inferSelect;
-export type InsertMessage = typeof messages.$inferInsert;
 
 export type Media = typeof media.$inferSelect;
 export type InsertMedia = typeof media.$inferInsert;
