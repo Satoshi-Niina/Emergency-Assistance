@@ -52,12 +52,7 @@ app.get('/ready', (req, res) => {
 
 // Root endpoint always available for deployment health checks
 app.get('/', (req, res) => {
-  if (process.env.NODE_ENV === 'production') {
-    res.status(200).json({ status: 'ok' });
-  } else {
-    // Development environment - let Vite handle routing
-    res.status(404).send('Development mode');
-  }
+  res.status(200).send('OK');
 });
 
 // Serve static files from public directory
