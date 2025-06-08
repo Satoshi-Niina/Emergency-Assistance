@@ -943,21 +943,26 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // 応急処置ガイドメッセージもローカルストレージから削除
       try {
         localStorage.removeItem('emergencyGuideMessage');
+        // クリア実行のタイムスタンプを保存
+        localStorage.setItem('chat_cleared_timestamp', Date.now().toString());
         console.log('応急処置ガイドメッセージをローカルストレージから削除しました');
       } catch (error) {
         console.warn('ローカルストレージからの削除に失敗:', error);
       }
 
       // QueryClientのキャッシュを無効化
-      const queryClient = useQueryClient();
-      await queryClient.invalidateQueries({
-        queryKey: [`/api/chats/${chatId}/messages`]
-      });
-      
-      // キャッシュを完全に削除
-      queryClient.removeQueries({
-        queryKey: [`/api/chats/${chatId}/messages`]
-      });
+      try {
+        await queryClient.invalidateQueries({
+          queryKey: [`/api/chats/${chatId}/messages`]
+        });
+        
+        // キャッシュを完全に削除
+        queryClient.removeQueries({
+          queryKey: [`/api/chats/${chatId}/messages`]
+        });
+      } catch (cacheError) {
+        console.warn('キャッシュクリアでエラー発生:', cacheError);
+      }
 
       // サーバーへのリクエストを実行してデータベースをクリア
       if (chatId) {
@@ -985,9 +990,13 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           clearSearchResults();
 
           // キャッシュを再度クリア
-          await queryClient.invalidateQueries({
-            queryKey: [`/api/chats/${chatId}/messages`]
-          });
+          try {
+            await queryClient.invalidateQueries({
+              queryKey: [`/api/chats/${chatId}/messages`]
+            });
+          } catch (cacheError) {
+            console.warn('サーバー削除後のキャッシュクリアでエラー発生:', cacheError);
+          }
 
         } catch (error) {
           console.error('サーバー側削除エラー:', error);
@@ -1016,15 +1025,18 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setSearchResults([]);
       clearSearchResults();
 
+      // エラーの種類に応じてメッセージを分岐
+      const errorMessage = error instanceof Error ? error.message : 'チャット履歴の削除に失敗しました';
+      
       toast({
         title: '削除エラー',
-        description: 'チャット履歴の削除に失敗しました',
+        description: `${errorMessage}（ローカルデータはクリアされました）`,
         variant: 'destructive',
       });
       
       setTimeout(() => {
         setIsClearing(false);
-      }, 1000);
+      }, 2000);
     }
   }, [chatId, clearSearchResults, toast]);
 
@@ -1043,9 +1055,13 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setIsLoading(true);
         
         // キャッシュを無効化してから読み込み
-        await queryClient.invalidateQueries({
-          queryKey: [`/api/chats/${chatId}/messages`]
-        });
+        try {
+          await queryClient.invalidateQueries({
+            queryKey: [`/api/chats/${chatId}/messages`]
+          });
+        } catch (cacheError) {
+          console.warn('メッセージ読み込み前のキャッシュクリアでエラー発生:', cacheError);
+        }
         
         const response = await apiRequest('GET', `/api/chats/${chatId}/messages`);
 
