@@ -50,7 +50,7 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
       onRecognized(combinedText);
       
       // 画像検索のキーワードかどうかチェック
-      const imageSearchKeywords = ['ブレーキ', 'エンジン', '冷却', 'ホイール', '車輪', '部品', '設備'];
+      const imageSearchKeywords = ['ブレーキ', 'エンジン', '冷却', 'ホイール', '車輪', '部品', '設備', '機械', '保守', '点検'];
       const hasImageKeyword = imageSearchKeywords.some(keyword => 
         combinedText.includes(keyword)
       );
