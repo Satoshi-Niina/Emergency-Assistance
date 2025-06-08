@@ -69,7 +69,7 @@ export default function Chat() {
   // デバッグ用：表示メッセージの確認と応急処置ガイドメッセージの監視
   useEffect(() => {
     console.log('📊 Chat.tsx - 表示メッセージ数:', displayMessages.length);
-    
+
     if (displayMessages.length > 0) {
       const emergencyMessages = displayMessages.filter(msg => 
         msg.content && (
@@ -78,16 +78,16 @@ export default function Chat() {
           msg.content.includes('を実施しました')
         )
       );
-      
+
       console.log('🏥 Chat.tsx - 応急処置関連メッセージ数:', emergencyMessages.length);
-      
+
       if (emergencyMessages.length > 0) {
         console.log('✅ Chat.tsx - 応急処置ガイドメッセージが表示されています:');
         emergencyMessages.forEach((msg, index) => {
           console.log(`  ${index + 1}. ID: ${msg.id}, AI応答: ${msg.isAiResponse}, 内容: ${msg.content.substring(0, 50)}...`);
         });
       }
-      
+
       // 最新のメッセージが応急処置関連かチェック
       const latestMessage = displayMessages[displayMessages.length - 1];
       if (latestMessage && latestMessage.content && latestMessage.content.includes('応急処置ガイド')) {
@@ -155,7 +155,7 @@ export default function Chat() {
 
     const handleEmergencyGuideSent = (event: any) => {
       console.log('🏥 応急処置ガイド送信イベントを受信:', event.detail);
-      
+
       // 送信後に画面を自動的にスクロール
       setTimeout(() => {
         const chatContainer = document.getElementById('chatMessages');
@@ -163,7 +163,7 @@ export default function Chat() {
           chatContainer.scrollTop = chatContainer.scrollHeight;
           console.log('📜 応急処置ガイド送信後にチャットを最下部にスクロールしました');
         }
-        
+
         // 応急処置ガイド画面を閉じる
         setEmergencyGuideOpen(false);
         console.log('🏥 応急処置ガイド送信後に画面を閉じました');
@@ -297,7 +297,7 @@ export default function Chat() {
                     id: message.id || `temp_${index}`,
                     timestamp: message.timestamp || message.createdAt || new Date()
                   };
-                  
+
                   return (
                     <div key={safeMessage.id || index} className="w-full md:max-w-2xl mx-auto">
                       <MessageBubble message={safeMessage} />
