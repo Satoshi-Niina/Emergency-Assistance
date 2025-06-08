@@ -867,12 +867,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  ```
   // ドキュメント削除
   app.delete('/api/knowledge/:docId', requireAuth, requireAdmin, (req, res) => {
     try {
       const docId = req.params.docId;
-      console.log(`ドキュメント削除リクエスト受信: ID=${docId}`);
+      logInfo(`Document deletion request: ID=${docId}`);
 
       // ドキュメントとその関連ファイルを削除
       const success = removeDocumentFromKnowledgeBase(docId);
@@ -883,48 +882,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
           method: 'POST'
         }).then(response => {
           if (response.ok) {
-            console.log('画像検索データを再初期化しました');
+            logInfo('Image search data reinitialized');
           } else {
-            console.warn('画像検索データの再初期化に失敗しました');
+            logWarn('Failed to reinitialize image search data');
           }
         }).catch(err => {
-          console.error('画像検索データ再初期化エラー:', err);
+          logError('Image search data reinitialization error:', err);
         });
 
         res.json({ 
           success: true, 
-          message: 'ドキュメントとその関連ファイルが正常に削除されました',
+          message: 'Document and related files deleted successfully',
           docId: docId
         });
       } else {
-        res.status(404).json({ error: '指定されたドキュメントが見つかりません' });
+        res.status(404).json({ error: 'Document not found' });
       }
     } catch (error) {
-      console.error('Error removing document:', error);
-      const errorMessage = error instanceof Error ? error.message : '不明なエラー';
-      res.status(500).json({ error: 'ドキュメントの削除に失敗しました: ' + errorMessage });
+      logError('Error removing document:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ error: 'Failed to delete document: ' + errorMessage });
     }
   });
 
   // ドキュメント再処理
   app.post('/api/knowledge/:docId/process', requireAuth, requireAdmin, async (req, res) => {
     try {
-      const docId = req.params.docId;      // ナレッジベースからドキュメント情報を取得
+      const docId = req.params.docId;
+      // ナレッジベースからドキュメント情報を取得
       const documents = listKnowledgeBaseDocuments();
       const document = documents.find(doc => doc.id === docId);
 
       if (!document) {
-        return res.status(404).json({ error: '指定されたドキュメントが見つかりません' });
+        return res.status(404).json({ error: 'Document not found' });
       }
 
       // ドキュメントのパスを取得
       const docPath = path.join(process.cwd(), 'knowledge-base', document.title);
 
       if (!fs.existsSync(docPath)) {
-        return res.status(404).json({ error: 'ドキュメントファイルが見つかりません: ' + docPath });
+        return res.status(404).json({ error: 'Document file not found: ' + docPath });
       }
 
-      console.log(`ドキュメント再処理を開始: ${docPath}`);
+      logInfo(`Starting document reprocessing: ${docPath}`);
 
       // 再処理を実行
       const newDocId = await addDocumentToKnowledgeBase(docPath);
@@ -932,11 +932,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ 
         success: true, 
         docId: newDocId, 
-        message: 'ドキュメントが正常に再処理されました'       });
+        message: 'Document reprocessed successfully'
+      });
     } catch (error) {
-      console.error('Error processing document:', error);
-      const errorMessage = error instanceof Error ? error.message : '不明なエラー';
-      res.status(500).json({ error: 'ドキュメントの再処理に失敗しました: ' + errorMessage });
+      logError('Error processing document:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ error: 'Failed to reprocess document: ' + errorMessage });
     }
   });
 
