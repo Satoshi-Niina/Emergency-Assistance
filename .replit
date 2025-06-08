@@ -1,11 +1,11 @@
 modules = ["nodejs-20"]
 
 [deployment]
-run = ["sh", "-c", "PORT=80 npm start"]
+run = ["sh", "-c", "NODE_ENV=production PORT=80 npm start"]
 build = ["sh", "-c", "npm run build"]
 
 [[ports]]
-localPort = 80
+localPort = 5000
 externalPort = 80
 
 [workflows]
@@ -18,4 +18,4 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "PORT=80 npm run dev"
+args = "npm run dev"
