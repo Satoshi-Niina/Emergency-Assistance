@@ -88,29 +88,7 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
   const orientation = useOrientation();
   const { isMobile } = useIsMobile();
 
-  // コンポーネントマウント時に画像検索データを再読み込み
-  useEffect(() => {
-    // 画像検索データの初期化を実行
-    console.log('SearchResultsコンポーネントがマウントされました。画像検索データを初期化します。');
-    fetch('/api/tech-support/init-image-search-data', { 
-      method: 'POST',
-      cache: 'no-store'
-    })
-    .then(response => {
-      if (response.ok) {
-        return response.json();
-      }
-      throw new Error('画像検索データの初期化に失敗しました');
-    })
-    .then(data => {
-      console.log('画像検索データの初期化が完了しました:', data);
-      // 初期化が成功したら、データを再読み込み
-      reloadImageSearchData();
-    })
-    .catch(error => {
-      console.error('画像検索データの初期化中にエラーが発生しました:', error);
-    });
-  }, []);
+  // 初期化は削除（重複防止）
 
   // 検索結果を表示したら検索処理を停止（点滅問題解決）
   useEffect(() => {
