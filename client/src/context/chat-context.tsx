@@ -161,13 +161,8 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const response = await apiRequest('GET', `/api/chats/${chatId}/messages`);
         if (response.ok) {
           const data = await response.json();
-          // メッセージ構造を統一（textとcontentの両方を確保）
-          const normalizedMessages = data.map((msg: any) => ({
-            ...msg,
-            content: msg.content || msg.text || '',
-            text: msg.text || msg.content || '',
-            timestamp: new Date(msg.timestamp || msg.createdAt || new Date())
-          }));
+          // メッセージ正規化処理を適用
+          const normalizedMessages = data.map((msg: any) => normalizeMessage(msg));
           
           setMessages(normalizedMessages);
         }
@@ -421,6 +416,37 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [toast]);
 
+  // メッセージ正規化処理
+  const normalizeMessage = useCallback((message: any): Message => {
+    // contentが文字列でない場合の正規化
+    let normalizedContent = '';
+    
+    if (typeof message.content === 'string') {
+      normalizedContent = message.content;
+    } else if (typeof message.content === 'object' && message.content !== null) {
+      // オブジェクト型からの文字列抽出
+      console.warn('オブジェクト型のcontentを正規化します:', message.content);
+      normalizedContent = message.content.text || 
+                         message.content.content || 
+                         message.content.message || 
+                         message.content.preview ||
+                         message.content.url ||
+                         JSON.stringify(message.content);
+    } else if (message.text && typeof message.text === 'string') {
+      normalizedContent = message.text;
+    } else {
+      console.warn('メッセージコンテンツを正規化できませんでした:', message);
+      normalizedContent = '[メッセージ内容を読み込めませんでした]';
+    }
+
+    return {
+      ...message,
+      content: normalizedContent,
+      text: normalizedContent, // 互換性のため
+      timestamp: message.timestamp ? new Date(message.timestamp) : new Date(message.createdAt || new Date())
+    };
+  }, []);
+
   // メッセージ送信関数
   const sendMessage = useCallback(async (content: string, mediaUrls?: { type: string, url: string, thumbnail?: string }[]) => {
     // 重複送信防止
@@ -429,18 +455,21 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return;
     }
 
+    // コンテンツの型安全性を保証
+    const safeContent = typeof content === 'string' ? content : String(content || '');
+
     try {
       setIsLoading(true);
-      console.log('メッセージ送信開始:', content);
+      console.log('メッセージ送信開始:', safeContent);
 
       // 一意のIDを生成（時間ベース + ランダム）
       const messageId = Date.now() + Math.random();
 
-      // 新しいメッセージを作成（構造統一：textとcontentの両方を保持）
+      // 新しいメッセージを作成（構造統一：contentは必ず文字列）
       const newMessage: Message = {
         id: messageId,
-        content,
-        text: content, // 旧形式互換性のためtextも保持
+        content: safeContent,
+        text: safeContent, // 旧形式互換性のためtextも保持
         media: mediaUrls || [],
         role: 'user' as const,
         createdAt: new Date(),
@@ -1057,10 +1086,10 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 index === self.findIndex(m => m.id === msg.id)
               );
 
-              setMessages(uniqueMessages.map((msg: any) => ({
-                ...msg,
-                timestamp: new Date(msg.timestamp || msg.createdAt)
-              })));
+              // メッセージ正規化を適用
+              const normalizedMessages = uniqueMessages.map((msg: any) => normalizeMessage(msg));
+
+              setMessages(normalizedMessages);
             }
           }
         } else {

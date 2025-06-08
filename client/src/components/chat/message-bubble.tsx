@@ -305,15 +305,109 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
           <div className="relative">
             {/* contentが画像データかどうかを判定して表示 */}
             {(() => {
-              // メッセージコンテンツの安全な取得（content優先、textをフォールバック）
+              // メッセージコンテンツの安全な取得と型チェック
               const rawContent = message.content || (message as any).text || '';
               
-              // null/undefinedチェックを強化
-              if (!rawContent || typeof rawContent !== 'string') {
-                console.warn('メッセージコンテンツが無効です:', { messageId: message.id, content: rawContent });
+              // 型による分岐処理
+              if (rawContent === null || rawContent === undefined) {
+                console.warn('メッセージコンテンツがnull/undefinedです:', { messageId: message.id });
                 return (
                   <p className="text-gray-500 italic">
-                    [メッセージ内容を読み込めませんでした]
+                    [メッセージ内容がありません]
+                  </p>
+                );
+              }
+              
+              // オブジェクト型の場合の処理
+              if (typeof rawContent === 'object') {
+                console.warn('メッセージコンテンツがオブジェクトです:', { 
+                  messageId: message.id, 
+                  contentType: typeof rawContent,
+                  contentKeys: Object.keys(rawContent || {}),
+                  content: rawContent 
+                });
+                
+                // オブジェクトから適切な文字列を抽出する試み
+                let extractedText = '';
+                
+                if (rawContent && typeof rawContent === 'object') {
+                  // 一般的なプロパティから文字列を抽出
+                  extractedText = (rawContent as any).text || 
+                                (rawContent as any).content || 
+                                (rawContent as any).message || 
+                                (rawContent as any).data || 
+                                '';
+                  
+                  // 画像データの可能性をチェック
+                  if ((rawContent as any).contentType && (rawContent as any).contentType.startsWith('image/')) {
+                    extractedText = (rawContent as any).preview || (rawContent as any).url || '';
+                  }
+                }
+                
+                // 抽出できた場合はそれを使用、できない場合はエラー表示
+                if (extractedText && typeof extractedText === 'string') {
+                  console.log('オブジェクトから文字列を抽出しました:', extractedText.substring(0, 50) + '...');
+                  // 抽出した文字列で処理を続行
+                  const content = extractedText.trim();
+                  
+                  // 画像データかどうかを判定
+                  const isImageContent = (
+                    content.startsWith('data:image/') ||
+                    content.startsWith('/uploads/') ||
+                    content.startsWith('blob:') ||
+                    content.startsWith('/knowledge-base/images/') ||
+                    /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(content)
+                  );
+                  
+                  if (isImageContent) {
+                    return (
+                      <div className="mt-2">
+                        <img
+                          src={content}
+                          alt="抽出された画像"
+                          className="rounded-lg w-full max-w-xs cursor-pointer border border-blue-200 shadow-md"
+                          style={{ maxHeight: '300px', objectFit: 'contain' }}
+                          onClick={() => handleImagePreview(content)}
+                          onError={(e) => {
+                            console.error('抽出画像の読み込みエラー:', content.substring(0, 100));
+                          }}
+                        />
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <p className={`${!isUserMessage ? "text-blue-600" : "text-black"}`}>
+                        {content}
+                      </p>
+                    );
+                  }
+                } else {
+                  return (
+                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-yellow-700 text-sm">
+                        ⚠️ メッセージ形式に問題があります（オブジェクト型）
+                      </p>
+                      <details className="mt-2">
+                        <summary className="text-xs text-yellow-600 cursor-pointer">詳細情報</summary>
+                        <pre className="text-xs text-yellow-600 mt-1 overflow-auto max-h-20">
+                          {JSON.stringify(rawContent, null, 2)}
+                        </pre>
+                      </details>
+                    </div>
+                  );
+                }
+              }
+              
+              // 文字列以外の型の場合
+              if (typeof rawContent !== 'string') {
+                console.warn('メッセージコンテンツが文字列ではありません:', { 
+                  messageId: message.id, 
+                  contentType: typeof rawContent,
+                  content: rawContent 
+                });
+                return (
+                  <p className="text-gray-500 italic">
+                    [サポートされていないメッセージ形式: {typeof rawContent}]
                   </p>
                 );
               }
