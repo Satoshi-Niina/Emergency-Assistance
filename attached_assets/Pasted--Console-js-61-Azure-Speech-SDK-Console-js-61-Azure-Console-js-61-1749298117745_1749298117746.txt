@@ -1,0 +1,53 @@
+録音開始
+Console.js:61 🖥️ デスクトップブラウザ検出 - Azure Speech SDKを使用
+Console.js:61 🎤 Azure音声認識開始
+Console.js:61 🔑 Azure設定確認: Object
+Console.js:61 🎙️ マイクロフォンアクセス許可を確認中...
+Console.js:61 ✅ マイクロフォンアクセス許可済み
+Console.js:61 🔊 マイクロフォン音声レベルテスト開始（5秒間）- 話してみてください
+Console.js:61 🎵 音声レベル: 12.95 (最大: 12.9, 平均: 11.2)
+Console.js:61 🎵 音声レベル: 10.91 (最大: 16.2, 平均: 12.4)
+Console.js:61 🎵 音声レベル: 13.84 (最大: 16.2, 平均: 12.2)
+Console.js:61 🎵 音声レベル: 48.09 (最大: 50.4, 平均: 16.5)
+Console.js:61 🎵 音声レベル: 34.31 (最大: 50.4, 平均: 21.4)
+Console.js:61 🎵 音声レベル: 26.95 (最大: 50.4, 平均: 22.6)
+Console.js:61 🎵 音声レベル: 18.05 (最大: 50.4, 平均: 22.2)
+Console.js:61 🎵 音声レベル: 19.21 (最大: 50.4, 平均: 21.9)
+Console.js:61 🎵 音声レベル: 18.27 (最大: 50.4, 平均: 21.5)
+Console.js:61 📊 マイクテスト結果: {maxLevel: '50.40', avgLevel: '21.39', samples: 49, speechDetected: true, recommendation: '✅ 音声検出良好'}
+Console.js:61 🎚️ Azure音声設定完了: {language: 'ja-JP', initialSilence: '8000ms', endSilence: '3000ms', mode: 'Interactive'}
+Console.js:61 🎯 AudioConfig作成中...
+Console.js:61 🔧 AudioConfig設定: {type: 'StreamInput', sampleRate: '16000Hz', channels: 1}
+Console.js:61 🎯 SpeechRecognizer作成完了
+Console.js:61 🚀 Azure連続音声認識を開始します...
+Console.js:61 🟢 Azure音声認識セッション開始: 4D39388B9E9C45A7BDB954FE40366EF3
+Console.js:61 ✅ Azure認識開始成功 - 日本語で話してください（大きめの声で）
+Console.js:61 💡 ヒント: 「こんにちは」「テスト」など短い言葉から試してください
+Console.js:61 録音停止
+Console.js:61  マイクアクセスエラー: TypeError: Cannot read properties of undefined (reading 'then')
+    at AudioConfigImpl.close (AudioConfig.ts:241:32)
+    at AzureSpeechRecognizer.cleanup (speech-recognizer.ts:267:24)
+    at AzureSpeechRecognizer.stop (speech-recognizer.ts:243:10)
+    at stopSpeechRecognition (azure-speech.ts:32:23)
+    at chat-context.tsx:712:5
+    at handleMicClick (message-input.tsx:144:9)
+Mt.forEach.n.<computed> @ Console.js:61
+handleMicClick @ message-input.tsx:152
+await in handleMicClick
+callCallback2 @ react-dom.development.js:4164
+invokeGuardedCallbackDev @ react-dom.development.js:4213
+invokeGuardedCallback @ react-dom.development.js:4277
+invokeGuardedCallbackAndCatchFirstError @ react-dom.development.js:4291
+executeDispatch @ react-dom.development.js:9041
+processDispatchQueueItemsInOrder @ react-dom.development.js:9073
+processDispatchQueue @ react-dom.development.js:9086
+dispatchEventsForPlugins @ react-dom.development.js:9097
+(anonymous) @ react-dom.development.js:9288
+batchedUpdates$1 @ react-dom.development.js:26179
+batchedUpdates @ react-dom.development.js:3991
+dispatchEventForPluginEventSystem @ react-dom.development.js:9287
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ react-dom.development.js:6465
+dispatchEvent @ react-dom.development.js:6457
+dispatchDiscreteEvent @ react-dom.development.js:6430
+Console.js:61 🔴 Azure音声認識セッション停止: 4D39388B9E9C45A7BDB954FE40366EF3
+Console.js:61 🛑 Azure音声認識停止完了

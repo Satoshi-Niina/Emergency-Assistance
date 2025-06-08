@@ -1,0 +1,10 @@
+# .gitignore 作成内容
+.env
+.env.*.local
+node_modules/
+dist/
+build/
+*.log
+*.sqlite
+*.sqlite-journal
+.DS_Store
