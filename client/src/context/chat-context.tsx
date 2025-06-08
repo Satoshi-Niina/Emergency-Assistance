@@ -499,101 +499,44 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return normalizedMessage;
   }, []);
 
-  // メッセージ送信関数
+  // メッセージ送信関数（シンプル化）
   const sendMessage = useCallback(async (content: string, mediaUrls?: { type: string, url: string, thumbnail?: string }[]) => {
-    // 重複送信防止
-    if (isLoading || !content.trim()) {
-      console.log('メッセージ送信をスキップ: 読み込み中または空のコンテンツ');
-      return;
-    }
+    if (isLoading || !content.trim()) return;
 
-    // コンテンツの型安全性を保証
-    const safeContent = typeof content === 'string' ? content : String(content || '');
+    setIsLoading(true);
+    
+    // ユーザーメッセージを即座に表示
+    const userMessage: Message = {
+      id: Date.now(),
+      content: content,
+      isAiResponse: false,
+      timestamp: new Date(),
+      media: mediaUrls || []
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setDraftMessage(null);
 
     try {
-      setIsLoading(true);
-      console.log('メッセージ送信開始:', safeContent);
-
-      // 一意のIDを生成（時間ベース + ランダム）
-      const messageId = Date.now() + Math.random();
-
-      // 新しいメッセージを作成（構造統一）
-      const newMessage: Message = {
-        id: messageId,
-        chatId: chatId,
-        content: safeContent,    // メイン表示用
-        text: safeContent,       // 互換性用（contentと同じ値）
-        isAiResponse: false,
-        senderId: userId,
-        media: mediaUrls || [],
-        role: 'user' as const,
-        createdAt: new Date(),
-        timestamp: new Date()
-      };
-
-      // メッセージの内容をログで確認
-      console.log('送信メッセージ作成:', {
-        id: messageId,
-        contentType: typeof safeContent,
-        contentPreview: safeContent.substring(0, 100) + '...',
-        isBase64: safeContent.startsWith('data:image/'),
-        mediaCount: mediaUrls?.length || 0
-      });
-
-      // ドラフトメッセージをクリア
-      setDraftMessage(null);
-      setRecordedText('');
-
-      // 楽観的にメッセージを追加
-      setMessages(prev => [...prev, newMessage]);
-
-      // サーバーにメッセージを送信
+      // AIレスポンスを取得
       const response = await apiRequest('POST', '/api/chats/1/messages', {
         content,
-        media: mediaUrls,
-        chatId: chatId
+        media: mediaUrls
       });
 
-      if (!response.ok) {
-        throw new Error('メッセージの送信に失敗しました');
+      if (response.ok) {
+        const aiResponse = await response.json();
+        
+        // AIメッセージを追加
+        const aiMessage: Message = {
+          id: Date.now() + 1,
+          content: aiResponse.content || aiResponse.text || 'レスポンスエラー',
+          isAiResponse: true,
+          timestamp: new Date()
+        };
+
+        setMessages(prev => [...prev, aiMessage]);
       }
-
-      const savedMessage = await response.json();
-      console.log('📨 サーバーからのメッセージレスポンス:', {
-        response: savedMessage,
-        responseType: typeof savedMessage,
-        keys: Object.keys(savedMessage || {})
-      });
-
-      // サーバーから返されたメッセージでローカルメッセージを更新
-      setMessages(prev => {
-        const updatedMessages = prev.map(msg => {
-          if (msg.id === messageId) {
-            // サーバーレスポンスを正規化
-            const normalizedServerMessage = normalizeMessage(savedMessage);
-            console.log('🔄 サーバーメッセージを正規化:', {
-              original: savedMessage,
-              normalized: normalizedServerMessage
-            });
-            
-            return { 
-              ...normalizedServerMessage, 
-              timestamp: new Date(savedMessage.timestamp || savedMessage.createdAt || new Date())
-            };
-          }
-          return msg;
-        });
-
-        // サーバーとの同期を確実にする
-        queryClient.setQueryData([`/api/chats/${chatId}/messages`], updatedMessages);
-        console.log('📝 メッセージをサーバーと同期しました:', savedMessage.id || 'unknown');
-
-        return updatedMessages;
-      });
-
-      // 未エクスポートフラグを設定
-      setHasUnexportedMessages(true);
-
     } catch (error) {
       console.error('メッセージ送信エラー:', error);
       toast({
@@ -601,13 +544,10 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         description: "メッセージの送信に失敗しました",
         variant: "destructive",
       });
-
-      // エラー時は楽観的に追加したメッセージを削除
-      setMessages(prev => prev.filter(msg => msg.content !== content));
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, queryClient, toast, chatId]);
+  }, [isLoading, toast]);
 
   // 音声認識の初期化を最適化
   const initializeSpeechRecognition = useCallback(() => {

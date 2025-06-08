@@ -303,206 +303,34 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
           }`}
         >
           <div className="relative">
-            {/* contentが画像データかどうかを判定して表示 */}
+            {/* シンプルなコンテンツ表示 */}
             {(() => {
-              // メッセージコンテンツの安全な取得と型チェック
-              const rawContent = message.content || (message as any).text || '';
+              const content = message.content || '';
+              
+              // 画像データの判定
+              const isImage = content.startsWith('data:image/') || 
+                             content.includes('.jpg') || 
+                             content.includes('.png') || 
+                             content.includes('/knowledge-base/images/');
 
-              // 型による分岐処理
-              if (rawContent === null || rawContent === undefined) {
-                console.warn('メッセージコンテンツがnull/undefinedです:', { messageId: message.id });
+              if (isImage) {
                 return (
-                  <p className="text-gray-500 italic">
-                    [メッセージ内容がありません]
-                  </p>
+                  <img
+                    src={content}
+                    alt="画像"
+                    className="rounded-lg max-w-xs cursor-pointer"
+                    style={{ maxHeight: '300px', objectFit: 'contain' }}
+                    onClick={() => handleImagePreview(content)}
+                  />
                 );
               }
 
-              // オブジェクト型の場合の処理
-              if (typeof rawContent === 'object') {
-                console.warn('メッセージコンテンツがオブジェクトです:', { 
-                  messageId: message.id, 
-                  contentType: typeof rawContent,
-                  contentKeys: Object.keys(rawContent || {}),
-                  content: rawContent 
-                });
-
-                // オブジェクトから適切な文字列を抽出する試み
-                let extractedText = '';
-
-                if (rawContent && typeof rawContent === 'object') {
-                  // 一般的なプロパティから文字列を抽出
-                  extractedText = (rawContent as any).text || 
-                                (rawContent as any).content || 
-                                (rawContent as any).message || 
-                                (rawContent as any).data || 
-                                '';
-
-                  // 画像データの可能性をチェック
-                  if ((rawContent as any).contentType && (rawContent as any).contentType.startsWith('image/')) {
-                    extractedText = (rawContent as any).preview || (rawContent as any).url || '';
-                  }
-                }
-
-                // 抽出できた場合はそれを使用、できない場合はエラー表示
-                if (extractedText && typeof extractedText === 'string') {
-                  console.log('オブジェクトから文字列を抽出しました:', extractedText.substring(0, 50) + '...');
-                  // 抽出した文字列で処理を続行
-                  const content = extractedText.trim();
-
-                  // 画像データかどうかを判定
-                  const isImageContent = (
-                    content.startsWith('data:image/') ||
-                    trimmedContent.startsWith('/uploads/') ||
-                    trimmedContent.startsWith('blob:') ||
-                    trimmedContent.startsWith('/knowledge-base/images/') ||
-                    /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(trimmedContent)
-                  );
-
-                  if (isImageContent) {
-                    return (
-                      <div className="mt-2">
-                        <img
-                          src={content}
-                          alt="抽出された画像"
-                          className="rounded-lg w-full max-w-xs cursor-pointer border border-blue-200 shadow-md"
-                          style={{ maxHeight: '300px', objectFit: 'contain' }}
-                          onClick={() => handleImagePreview(content)}
-                          onError={(e) => {
-                            console.error('抽出画像の読み込みエラー:', content.substring(0, 100));
-                          }}
-                        />
-                      </div>
-                    );
-                  } else {
-                    return (
-                      <p className={`${!isUserMessage ? "text-blue-600" : "text-black"}`}>
-                        {content}
-                      </p>
-                    );
-                  }
-                } else {
-                  return (
-                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <p className="text-yellow-700 text-sm">
-                        ⚠️ メッセージ形式に問題があります（オブジェクト型）
-                      </p>
-                      <details className="mt-2">
-                        <summary className="text-xs text-yellow-600 cursor-pointer">詳細情報</summary>
-                        <pre className="text-xs text-yellow-600 mt-1 overflow-auto max-h-20">
-                          {JSON.stringify(rawContent, null, 2)}
-                        </pre>
-                      </details>
-                    </div>
-                  );
-                }
-              }
-
-              // 文字列以外の型の場合
-              if (typeof rawContent !== 'string') {
-                console.warn('メッセージコンテンツが文字列ではありません:', { 
-                  messageId: message.id, 
-                  contentType: typeof rawContent,
-                  content: rawContent 
-                });
-                return (
-                  <p className="text-gray-500 italic">
-                    [サポートされていないメッセージ形式: {typeof rawContent}]
-                  </p>
-                );
-              }
-
-              const content = rawContent.trim();
-              const trimmedContent = content.trim();
-
-              // 画像データの判定条件を強化
-              const isImageContent = (
-                content.startsWith('data:image/') ||           // Base64画像データ（正しい形式）
-                content.startsWith('data:,') ||               // 不完全なBase64データ
-                trimmedContent.startsWith('/uploads/') ||             // アップロード画像パス
-                trimmedContent.startsWith('blob:') ||                 // Blob URL
-                trimmedContent.startsWith('/knowledge-base/images/') || // ナレッジベース画像
-                /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(trimmedContent) // 画像ファイル拡張子
+              // テキストの場合
+              return (
+                <p className={!isUserMessage ? "text-blue-600" : "text-black"}>
+                  {content}
+                </p>
               );
-
-              if (isImageContent) {
-                console.log('画像コンテンツを検出:', {
-                  messageId: message.id,
-                  contentType: content.startsWith('data:image/') ? 'base64-valid' : 
-                              content.startsWith('data:') ? 'base64-invalid' : 'url',
-                  contentLength: content.length,
-                  mimeType: content.startsWith('data:') ? content.split(';')[0] : 'N/A',
-                  preview: content.substring(0, 100) + '...'
-                });
-
-                // 不完全なBase64データの場合は警告表示
-                if (content.startsWith('data:,') || (content.startsWith('data:') && !content.includes('image/'))) {
-                  return (
-                    <div className="mt-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <p className="text-yellow-700 text-sm">
-                        ⚠️ 画像データが不完全です。再度撮影してください。
-                      </p>
-                      <details className="mt-2">
-                        <summary className="text-xs text-yellow-600 cursor-pointer">デバッグ情報</summary>
-                        <p className="text-xs text-yellow-600 mt-1 font-mono break-all">
-                          {content.substring(0, 200)}...
-                        </p>
-                      </details>
-                    </div>
-                  );
-                }
-
-                return (
-                  <div className="mt-2">
-                    <img
-                      src={content}
-                      alt="送信された画像"
-                      className="rounded-lg w-full max-w-xs cursor-pointer border border-blue-200 shadow-md"
-                      style={{ maxHeight: '300px', objectFit: 'contain' }}
-                      onClick={() => handleImagePreview(content)}
-                      onLoad={(e) => {
-                        console.log('✅ content内画像読み込み成功:', {
-                          messageId: message.id,
-                          width: (e.target as HTMLImageElement).naturalWidth,
-                          height: (e.target as HTMLImageElement).naturalHeight,
-                          urlType: content.startsWith('data:image/') ? 'base64-valid' : 'url',
-                          fileSize: Math.round(content.length / 1024) + 'KB'
-                        });
-                      }}
-                      onError={(e) => {
-                        console.error('❌ content内画像読み込みエラー:', {
-                          messageId: message.id,
-                          url: content.substring(0, 100) + '...',
-                          isBase64: content.startsWith('data:image/'),
-                          mimeType: content.startsWith('data:') ? content.split(';')[0] : 'N/A'
-                        });
-
-                        const img = e.target as HTMLImageElement;
-                        img.onerror = null; // Prevent infinite loop
-
-                        // Base64画像の場合はエラー表示
-                        if (content.startsWith('data:')) {
-                          img.style.display = 'none';
-                          const errorDiv = document.createElement('div');
-                          errorDiv.className = 'flex items-center justify-center bg-red-50 border border-red-200 rounded-lg p-4 max-w-xs';
-                          errorDiv.innerHTML = '<span class="text-red-600 text-sm">❌ Base64画像の表示に失敗しました</span>';
-                          img.parentNode?.insertBefore(errorDiv, img);
-                        }
-                      }}
-                    />
-                  </div>
-                );
-              } else if (content) {
-                // テキストコンテンツの場合
-                return (
-                  <p className={`${!isUserMessage ? "text-blue-600" : "text-black"}`}>
-                    {content}
-                  </p>
-                );
-              } else {
-                // コンテンツが空の場合
-                return null;
-              }
             })()}
 
             {/* テキスト選択時のコピーボタン */}
