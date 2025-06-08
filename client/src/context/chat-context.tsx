@@ -373,12 +373,22 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // メッセージ送信関数
   const sendMessage = useCallback(async (content: string, mediaUrls?: { type: string, url: string, thumbnail?: string }[]) => {
+    // 重複送信防止
+    if (isLoading || !content.trim()) {
+      console.log('メッセージ送信をスキップ: 読み込み中または空のコンテンツ');
+      return;
+    }
+
     try {
       setIsLoading(true);
+      console.log('メッセージ送信開始:', content);
+
+      // 一意のIDを生成（時間ベース + ランダム）
+      const messageId = Date.now() + Math.random();
 
       // 新しいメッセージを作成
       const newMessage: Message = {
-        id: Date.now(),
+        id: messageId,
         content,
         media: mediaUrls || [],
         role: 'user' as const,
@@ -393,7 +403,14 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // 楽観的にメッセージを追加
       setMessages(prev => [...prev, newMessage]);
 
-      // 画像検索のキーワードかどうかチェックして自動実行
+      // サーバーにメッセージを送信（画像検索と並行して実行）
+      const messagePromise = apiRequest('POST', '/api/chats/1/messages', {
+        content,
+        media: mediaUrls,
+        chatId: chatId
+      });
+
+      // 画像検索のキーワードかどうかチェック
       const imageSearchKeywords = [
         'ブレーキ', 'brake', 'エンジン', 'engine', '冷却', 'cooling', 'ラジエーター', 'radiator',
         'ホイール', 'wheel', '車輪', 'タイヤ', 'tire', '部品', 'parts', '設備', 'equipment',
@@ -404,61 +421,62 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         content.toLowerCase().includes(keyword.toLowerCase())
       );
 
+      // 画像検索を並行して実行（ノンブロッキング）
       if (hasImageKeyword) {
         console.log('🔍 メッセージから画像検索キーワードを検出:', content);
-        // 画像検索を非同期で実行（メッセージ送信をブロックしない）
-        // エラーハンドリングを強化してクラッシュを防止
-        setTimeout(() => {
-          searchBySelectedText(content).then(() => {
-            // モバイルで検索結果パネルを表示
-            const isMobile = window.innerWidth <= 768;
-            if (isMobile) {
-              const slider = document.getElementById('mobile-search-slider');
-              if (slider) {
-                slider.classList.add('search-panel-visible');
-                const orientation = window.matchMedia('(orientation: landscape)').matches ? 'landscape' : 'portrait';
-                
-                if (orientation === 'landscape') {
-                  // 横向きの場合は右から表示
-                  slider.style.transform = 'translateX(0)';
-                } else {
-                  // 縦向きの場合は下から表示
-                  slider.style.transform = 'translateY(0)';
-                }
+        
+        // 画像検索を独立して実行（エラーハンドリング強化）
+        const imageSearchPromise = searchBySelectedText(content).then(() => {
+          // モバイルで検索結果パネルを表示
+          const isMobile = window.innerWidth <= 768;
+          if (isMobile) {
+            const slider = document.getElementById('mobile-search-slider');
+            if (slider) {
+              slider.classList.add('search-panel-visible');
+              const orientation = window.matchMedia('(orientation: landscape)').matches ? 'landscape' : 'portrait';
+              
+              if (orientation === 'landscape') {
+                slider.style.transform = 'translateX(0)';
+              } else {
+                slider.style.transform = 'translateY(0)';
               }
             }
-          }).catch(error => {
-            console.error('自動画像検索エラー:', error);
-            // エラーが発生してもアプリケーションを継続
-            setSearching(false);
-            setSearchResults([]);
-          });
-        }, 100); // 少し遅延させてメッセージ送信完了を待つ
+          }
+        }).catch(error => {
+          console.error('自動画像検索エラー:', error);
+          setSearching(false);
+          setSearchResults([]);
+        });
+
+        // 画像検索は独立して実行（メッセージ送信をブロックしない）
+        imageSearchPromise;
       }
 
-      const response = await apiRequest('POST', '/api/chats/1/messages', {
-        content,
-        media: mediaUrls,
-        chatId: chatId
-      });
+      // メッセージ送信の完了を待つ
+      const response = await messagePromise;
 
       if (!response.ok) {
         throw new Error('メッセージの送信に失敗しました');
       }
 
       const savedMessage = await response.json();
+      console.log('メッセージ送信完了:', savedMessage);
 
       // サーバーから返されたメッセージでローカルメッセージを更新
       setMessages(prev => 
         prev.map(msg => 
-          msg.id === newMessage.id ? { ...savedMessage, id: savedMessage.id } : msg
+          msg.id === messageId ? { ...savedMessage, timestamp: new Date(savedMessage.timestamp) } : msg
         )
       );
 
       // 未エクスポートフラグを設定
       setHasUnexportedMessages(true);
 
-      queryClient.invalidateQueries({ queryKey: ['/api/chats/1/messages'] });
+      // キャッシュを無効化（非同期）
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['/api/chats/1/messages'] });
+      }, 100);
+
     } catch (error) {
       console.error('メッセージ送信エラー:', error);
       toast({
@@ -468,11 +486,11 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
 
       // エラー時は楽観的に追加したメッセージを削除
-      setMessages(prev => prev.filter(msg => msg.id !== Date.now()));
+      setMessages(prev => prev.filter(msg => msg.content !== content));
     } finally {
       setIsLoading(false);
     }
-  }, [queryClient, toast, chatId, searchBySelectedText]);
+  }, [isLoading, queryClient, toast, chatId, searchBySelectedText]);
 
   // 音声認識の初期化を最適化
   const initializeSpeechRecognition = useCallback(() => {
