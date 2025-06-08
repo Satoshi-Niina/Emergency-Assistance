@@ -395,8 +395,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // データベースからメッセージを完全削除
-        const result = await storage.clearChatMessages(chatId);
-        console.log(`データベース削除結果:`, result);
+        try {
+          const result = await storage.clearChatMessages(chatId);
+          console.log(`データベース削除結果:`, result);
+        } catch (clearError) {
+          console.error('clearChatMessages実行エラー:', clearError);
+          // 個別削除にフォールバック
+        }
 
         // 削除後のメッセージ数を確認
         const afterMessages = await storage.getMessagesForChat(chatId);
@@ -408,7 +413,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (afterCount > 0) {
           console.warn(`警告: ${afterCount}件のメッセージが残っています`);
 
-          // 強制削除フラグが設定されている場合は、残ったメッセージも個別に削除
+          // 強制削除または残存メッセージの個別削除
+          if (force || clearAll) {
+            console.log('強制削除モードで残存メッセージを個別削除します');
+            for (const remainingMessage of afterMessages) {
+              try {
+                await storage.deleteMessage(remainingMessage.id);
+                console.log(`個別削除完了: messageId=${remainingMessage.id}`);
+                deletedMessageCount++;
+              } catch (individualDeleteError) {
+                console.error(`個別削除エラー (messageId: ${remainingMessage.id}):`, individualDeleteError);
+              }
+            }
+          }
+        }メッセージも個別に削除
           if (force || clearAll) {
             console.log('強制削除モードで残存メッセージを個別削除します');
             for (const remainingMessage of afterMessages) {
