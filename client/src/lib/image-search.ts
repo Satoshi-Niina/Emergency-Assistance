@@ -572,12 +572,18 @@ if (typeof window !== 'undefined') {
 }
 
 /**
- * テキストクエリに基づいて画像データを検索
- * @param text 検索クエリテキスト
- * @param autoStopAfterResults 結果が見つかったら検索を自動停止するかどうか
+ * 新規入力メッセージのみを対象とした画像検索
+ * @param text 新規入力されたテキスト（履歴ではない）
+ * @param isNewMessage 新規メッセージかどうかのフラグ
  * @returns 検索結果の配列
  */
-export const searchByText = async (text: string, autoStopAfterResults: boolean = true): Promise<any[]> => {
+export const searchByText = async (text: string, isNewMessage: boolean = false): Promise<any[]> => {
+  // 新規メッセージ以外は検索しない
+  if (!isNewMessage) {
+    console.log('履歴メッセージの検索はスキップします');
+    return [];
+  }
+
   // 自動検索を完全に無効化
   console.log('自動画像検索は無効化されています - 手動検索のみ利用可能');
   return [];

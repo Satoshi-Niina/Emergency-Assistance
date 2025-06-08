@@ -90,7 +90,7 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
 
   // 初期化は削除（重複防止）
 
-  // 検索結果を表示したら検索処理を停止（点滅問題解決）
+  // 検索結果は即時表示のみ - 履歴保存なし
   useEffect(() => {
     if (results && results.length > 0) {
       // 検索結果が表示されたら、実行中の検索をキャンセルして点滅を防止
@@ -100,11 +100,23 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
         if (typeof window !== 'undefined') {
           (window as any)._fuseSearchDisabled = true;
         }
+        
+        // 検索結果をローカルストレージに保存しない設定
+        console.log('🔍 検索結果は即時表示のみ - 履歴保存なし');
+        
+        // 検索結果の自動クリアタイマー（30秒後）
+        const clearTimer = setTimeout(() => {
+          console.log('🔍 検索結果を自動クリア');
+          onClear();
+        }, 30000);
+        
+        // クリーンアップ
+        return () => clearTimeout(clearTimer);
       } catch (error) {
         console.warn('検索キャンセル処理でエラー:', error);
       }
     }
-  }, [results]);
+  }, [results, onClear]);
 
   // デバイスに応じたレイアウトクラス
   // iPhoneの場合は特別なスタイルを適用
