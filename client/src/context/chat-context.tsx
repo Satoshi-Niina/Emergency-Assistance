@@ -288,8 +288,14 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, [draftMessage]);
 
-  // 選択テキストで検索する関数
-  const searchBySelectedText = useCallback(async (text: string) => {
+  // 選択テキストで検索する関数（新規入力のみ）
+  const searchBySelectedText = useCallback(async (text: string, isNewInput: boolean = false) => {
+    // 新規入力以外は検索しない
+    if (!isNewInput) {
+      console.log('履歴からの検索はスキップします - 新規入力のみ検索対象');
+      return;
+    }
+    
     // 既に検索中の場合はスキップ
     if (searching) {
       console.log('既に検索中のため、新しい検索をスキップします');
@@ -794,10 +800,9 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // サーバー送信に失敗してもローカルメッセージは表示済み
       }
 
-      // 自動画像検索は無効化
-      // if (guideData.title) {
-      //   searchBySelectedText(guideData.title);
-      // }
+      // 検索結果は履歴に保存せず、即時表示のみ
+      // 新規メッセージ以外の検索は実行しない
+      console.log('📝 緊急ガイド送信: 検索結果は履歴保存なし');
 
       // 成功トーストを表示
       toast({
@@ -882,20 +887,40 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setSelectedText('');
       clearSearchResults();
 
-      // ローカルストレージもクリア
+      // 完全なストレージクリア
       try {
-        localStorage.removeItem('emergencyGuideMessage');
+        // LocalStorage完全クリア
+        const keysToRemove = [
+          'emergencyGuideMessage',
+          'chat_messages',
+          'search_results',
+          'draft_message',
+          'last_export',
+          'image_search_cache'
+        ];
+        keysToRemove.forEach(key => localStorage.removeItem(key));
         localStorage.setItem('chat_cleared_timestamp', Date.now().toString());
-        console.log('📦 ローカルストレージをクリアしました');
+        
+        // SessionStorage完全クリア
+        sessionStorage.clear();
+        console.log('📦 全ストレージをクリアしました');
       } catch (error) {
-        console.warn('ローカルストレージクリアエラー:', error);
+        console.warn('ストレージクリアエラー:', error);
       }
 
-      // キャッシュを完全削除
+      // キャッシュとインデックスDBの完全削除
       try {
         queryClient.removeQueries({ queryKey: [`/api/chats/${chatId}/messages`] });
+        queryClient.removeQueries({ queryKey: ['search_results'] });
+        queryClient.removeQueries({ queryKey: ['image_search'] });
         queryClient.clear();
-        console.log('🔄 QueryClientキャッシュをクリアしました');
+        
+        // IndexedDBもクリア
+        if ('indexedDB' in window) {
+          const deleteDB = indexedDB.deleteDatabase('chat_cache');
+          deleteDB.onsuccess = () => console.log('IndexedDBをクリアしました');
+        }
+        console.log('🔄 全キャッシュをクリアしました');
       } catch (cacheError) {
         console.warn('キャッシュクリアエラー:', cacheError);
       }
