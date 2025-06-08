@@ -386,23 +386,41 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // メッセージ正規化処理
   const normalizeMessage = useCallback((message: any): Message => {
-    // メッセージの基本構造を確認
+    // メッセージの基本構造を詳しく確認
     console.log('🔍 メッセージ正規化開始:', {
       id: message.id,
       hasContent: !!message.content,
       contentType: typeof message.content,
       hasText: !!message.text,
-      messageKeys: Object.keys(message || {})
+      hasMessage: !!message.message,
+      messageKeys: Object.keys(message || {}),
+      fullMessage: message // 完全なメッセージオブジェクトをログ出力
     });
 
     // contentが文字列でない場合の正規化
     let normalizedContent = '';
 
-    if (typeof message.content === 'string') {
+    // 1. まず直接的な文字列プロパティをチェック
+    if (typeof message.content === 'string' && message.content.trim()) {
       normalizedContent = message.content;
       console.log('✅ 文字列contentを使用:', normalizedContent.substring(0, 50) + '...');
-    } else if (typeof message.content === 'object' && message.content !== null) {
-      // オブジェクト型からの文字列抽出
+    } else if (typeof message.text === 'string' && message.text.trim()) {
+      normalizedContent = message.text;
+      console.log('✅ textプロパティを使用:', normalizedContent.substring(0, 50) + '...');
+    } else if (typeof message.message === 'string' && message.message.trim()) {
+      normalizedContent = message.message;
+      console.log('✅ messageプロパティを使用:', normalizedContent.substring(0, 50) + '...');
+    }
+    // 2. サーバーレスポンスの特殊な構造をチェック（OpenAI APIレスポンス等）
+    else if (message.choices && Array.isArray(message.choices) && message.choices.length > 0) {
+      const choice = message.choices[0];
+      if (choice.message && typeof choice.message.content === 'string') {
+        normalizedContent = choice.message.content;
+        console.log('✅ OpenAI API形式のレスポンスから抽出:', normalizedContent.substring(0, 50) + '...');
+      }
+    }
+    // 3. ネストされたオブジェクトからの抽出
+    else if (typeof message.content === 'object' && message.content !== null) {
       console.warn('⚠️ オブジェクト型のcontentを正規化します:', message.content);
 
       // 画像データの場合は preview プロパティを優先
@@ -413,29 +431,53 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         normalizedContent = message.content.url;
         console.log('🔗 画像データのurlを抽出:', normalizedContent);
       } else {
-        // その他のプロパティから抽出
-        normalizedContent = message.content.text || 
-                           message.content.content || 
-                           message.content.message || 
-                           message.content.data ||
-                           JSON.stringify(message.content);
-        console.log('📝 その他のプロパティから抽出:', normalizedContent.substring(0, 50) + '...');
+        // その他のプロパティから抽出を試行
+        const possibleContent = message.content.text || 
+                               message.content.content || 
+                               message.content.message || 
+                               message.content.data || 
+                               message.content.response ||
+                               message.content.answer;
+        
+        if (typeof possibleContent === 'string' && possibleContent.trim()) {
+          normalizedContent = possibleContent;
+          console.log('📝 ネストされたプロパティから抽出:', normalizedContent.substring(0, 50) + '...');
+        } else {
+          // オブジェクトをJSON文字列として表示（最後の手段）
+          normalizedContent = JSON.stringify(message.content, null, 2);
+          console.log('📄 オブジェクトをJSON文字列として表示');
+        }
       }
-    } else if (message.text && typeof message.text === 'string') {
-      normalizedContent = message.text;
-      console.log('✅ textプロパティを使用:', normalizedContent.substring(0, 50) + '...');
-    } else if (message.message && typeof message.message === 'string') {
-      // サーバーレスポンスでmessageプロパティが使われる場合
-      normalizedContent = message.message;
-      console.log('✅ messageプロパティを使用:', normalizedContent.substring(0, 50) + '...');
-    } else {
+    }
+    // 4. どのプロパティからも文字列が取得できない場合
+    else {
       console.error('❌ メッセージコンテンツを正規化できませんでした:', {
         message,
         contentType: typeof message.content,
         hasText: !!message.text,
-        hasMessage: !!message.message
+        hasMessage: !!message.message,
+        hasChoices: !!message.choices
       });
-      normalizedContent = '[メッセージ内容を読み込めませんでした]';
+      
+      // より詳細なデバッグ情報を表示
+      console.log('🔍 詳細デバッグ - 利用可能なプロパティ:', {
+        messageKeys: Object.keys(message),
+        contentKeys: message.content ? Object.keys(message.content) : 'content is null/undefined',
+        textType: typeof message.text,
+        messageType: typeof message.message
+      });
+      
+      normalizedContent = `[メッセージ内容を読み込めませんでした - デバッグ: ${JSON.stringify({
+        id: message.id,
+        keys: Object.keys(message),
+        contentType: typeof message.content
+      })}]`;
+    }
+
+    // 空のコンテンツの場合のフォールバック
+    if (!normalizedContent || !normalizedContent.trim()) {
+      normalizedContent = '[空のメッセージです]';
+      console.warn('⚠️ 空のコンテンツのためフォールバック文字列を使用');
     }
 
     // 正規化されたメッセージを作成
@@ -449,7 +491,9 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     console.log('✅ メッセージ正規化完了:', {
       id: normalizedMessage.id,
       contentLength: normalizedContent.length,
-      contentPreview: normalizedContent.substring(0, 50) + '...'
+      contentPreview: normalizedContent.substring(0, 100) + '...',
+      originalMessageType: typeof message.content,
+      normalizedSuccessfully: !!normalizedContent && normalizedContent.trim().length > 0
     });
 
     return normalizedMessage;
