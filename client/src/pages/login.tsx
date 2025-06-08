@@ -62,7 +62,7 @@ export default function Login() {
                     <FormItem>
                       <FormLabel>ユーザー名</FormLabel>
                       <FormControl>
-                        <Input placeholder="ユーザー名を入力" {...field} />
+                        <Input placeholder="ユーザー名を入力" autoComplete="off" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -75,7 +75,7 @@ export default function Login() {
                     <FormItem>
                       <FormLabel>パスワード</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="パスワードを入力" {...field} />
+                        <Input type="password" placeholder="パスワードを入力" autoComplete="new-password" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
