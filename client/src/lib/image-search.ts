@@ -518,6 +518,10 @@ let lastSearchText = '';
 let lastSearchResults: any[] = [];
 // 検索中フラグ（同時に複数の検索が走らないようにするため）
 let isSearching = false;
+// 最後の検索時刻（短時間での重複検索を防止）
+let lastSearchTime = 0;
+// 検索間隔制限（ミリ秒）
+const SEARCH_INTERVAL_LIMIT = 1000;
 
 /**
  * 検索処理を強制的にキャンセルする関数
@@ -535,11 +539,21 @@ export const cancelSearch = (): void => {
  * @returns 検索結果の配列
  */
 export const searchByText = async (text: string, autoStopAfterResults: boolean = true): Promise<any[]> => {
+  const currentTime = Date.now();
+  
   // 重複検索防止
   if (isSearching) {
     console.log('既に検索中のため、新しい検索をスキップします');
     return [];
   }
+  
+  // 短時間での重複検索を防止
+  if (currentTime - lastSearchTime < SEARCH_INTERVAL_LIMIT) {
+    console.log('検索間隔が短すぎるため、検索をスキップします');
+    return [];
+  }
+  
+  lastSearchTime = currentTime;
 
   try {
     isSearching = true;

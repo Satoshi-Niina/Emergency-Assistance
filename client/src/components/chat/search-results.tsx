@@ -270,16 +270,19 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
                       
                       img.dataset.initialized = 'true';
                       
-                      // 画像の読み込み処理を設定
-                      img.onload = () => handleImageLoad(img, result);
-                      img.onerror = () => handleImageError(img, result);
-
-                      // srcを設定（すでに設定されている場合は再設定しない）
-                      const currentSrc = img.getAttribute('src');
-                      if (!currentSrc || currentSrc !== imageSrc) {
-                        console.log('画像を読み込み開始:', imageSrc);
-                        img.src = imageSrc;
-                      }
+                      // 画像の読み込み処理を設定（遅延読み込み）
+                      const observer = new IntersectionObserver((entries) => {
+                        entries.forEach(entry => {
+                          if (entry.isIntersecting) {
+                            img.onload = () => handleImageLoad(img, result);
+                            img.onerror = () => handleImageError(img, result);
+                            img.src = imageSrc;
+                            observer.unobserve(img);
+                          }
+                        });
+                      });
+                      
+                      observer.observe(img);
                     }
                   }}
                   alt={result.title || '関連画像'}
