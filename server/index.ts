@@ -34,14 +34,16 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Health check endpoints for deployment
-app.get('/', (req, res) => {
-  res.status(200).json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    service: 'rest-express'
+// Health check endpoints - only for production deployment
+if (process.env.NODE_ENV === 'production') {
+  app.get('/', (req, res) => {
+    res.status(200).json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      service: 'rest-express'
+    });
   });
-});
+}
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'healthy' });
