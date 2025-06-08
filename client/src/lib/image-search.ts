@@ -578,6 +578,12 @@ if (typeof window !== 'undefined') {
  * @returns 検索結果の配列
  */
 export const searchByText = async (text: string, autoStopAfterResults: boolean = true): Promise<any[]> => {
+  // 自動検索完全無効化チェック
+  if (typeof window !== 'undefined' && (window as any)._fuseSearchDisabled) {
+    console.log('自動検索が無効化されているため、検索をスキップします');
+    return [];
+  }
+
   const currentTime = Date.now();
 
   // 重複検索防止

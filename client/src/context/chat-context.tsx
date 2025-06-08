@@ -418,19 +418,22 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('メッセージ送信完了:', savedMessage);
 
       // サーバーから返されたメッセージでローカルメッセージを更新
-      setMessages(prev => 
-        prev.map(msg => 
+      setMessages(prev => {
+        const updatedMessages = prev.map(msg => 
           msg.id === messageId ? { ...savedMessage, timestamp: new Date(savedMessage.timestamp) } : msg
-        )
-      );
+        );
+        
+        // 更新後に同期的にキャッシュを無効化
+        setTimeout(() => {
+          queryClient.setQueryData(['/api/chats/1/messages'], updatedMessages);
+          queryClient.invalidateQueries({ queryKey: ['/api/chats/1/messages'] });
+        }, 0);
+        
+        return updatedMessages;
+      });
 
       // 未エクスポートフラグを設定
       setHasUnexportedMessages(true);
-
-      // キャッシュを無効化（非同期）
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['/api/chats/1/messages'] });
-      }, 100);
 
     } catch (error) {
       console.error('メッセージ送信エラー:', error);
@@ -475,18 +478,31 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }, AUTO_STOP_THRESHOLD);
           setMicSilenceTimeoutId(silenceId);
 
-          // 認識テキストをバッファに追加
+          // 認識テキストをバッファに追加（重複防止強化）
           setRecognitionBuffer(prev => {
+            // 同じテキストの重複を防止
+            if (prev.includes(text)) {
+              console.log('📝 重複テキストをスキップ:', text);
+              return prev;
+            }
+            
             const newBuffer = [...prev, text];
             console.log('📝 バッファ更新:', newBuffer);
 
             // バッファリングタイマーをリセット
             if (bufferTimeoutId) clearTimeout(bufferTimeoutId);
             const timeoutId = setTimeout(() => {
-              const combinedText = newBuffer.join(' ');
-              console.log('💬 メッセージ送信:', combinedText);
-              sendMessage(combinedText);
-              setRecognitionBuffer([]);
+              if (isLoading) {
+                console.log('📝 送信中のためバッファ送信をスキップ');
+                return;
+              }
+              
+              const combinedText = newBuffer.join(' ').trim();
+              if (combinedText && combinedText.length > 2) {
+                console.log('💬 メッセージ送信:', combinedText);
+                sendMessage(combinedText);
+                setRecognitionBuffer([]);
+              }
             }, BUFFER_INTERVAL);
             setBufferTimeoutId(timeoutId);
 
@@ -916,10 +932,20 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const loadMessages = async () => {
       if (!chatId || isInitializing || !isMounted || isLoadingMessages) return;
 
-      // クリア操作中は読み込みをスキップ
+      // クリア操作中またはクリア後10秒間は読み込みをスキップ
       if (isClearing) {
         console.log('クリア操作中のためメッセージ読み込みをスキップしました');
         return;
+      }
+
+      // クリア後の時間チェックを追加
+      const clearTimestamp = localStorage.getItem('chat_cleared_timestamp');
+      if (clearTimestamp) {
+        const timeSinceCleared = Date.now() - parseInt(clearTimestamp);
+        if (timeSinceCleared < 10000) { // 10秒間は読み込みブロック
+          console.log('クリア後10秒以内のためメッセージ読み込みをスキップしました');
+          return;
+        }
       }
 
       try {
@@ -976,12 +1002,22 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     };
 
-    // 読み込み遅延（重複防止）
+    // 読み込み遅延（重複防止）- クリア操作時はより長い遅延
+    const delay = isClearing ? 15000 : 200;
     loadTimeoutId = setTimeout(() => {
       if (!isClearing && isMounted && !isLoadingMessages) {
+        // 再度クリア状態をチェック
+        const clearTimestamp = localStorage.getItem('chat_cleared_timestamp');
+        if (clearTimestamp) {
+          const timeSinceCleared = Date.now() - parseInt(clearTimestamp);
+          if (timeSinceCleared < 10000) {
+            console.log('setTimeout内でクリア後チェック: 読み込みをスキップ');
+            return;
+          }
+        }
         loadMessages();
       }
-    }, isClearing ? 5000 : 200);
+    }, delay);
 
     return () => {
       isMounted = false;
