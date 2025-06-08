@@ -149,6 +149,12 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
       return originalPath;
     }
 
+    // 実際に存在するファイルかチェック
+    if (!existingImageFiles.includes(fileName)) {
+      console.warn(`ファイルが存在しません: ${fileName}`);
+      return '';
+    }
+
     // knowledge-base/imagesパスに統一
     const fixedPath = `/knowledge-base/images/${fileName}`;
     console.log('画像パス修正後:', fixedPath);
@@ -172,62 +178,62 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
   const handleImageError = (imgElement: HTMLImageElement, result: SearchResult, retryCount = 0) => {
     try {
       const originalSrc = imgElement.src;
-      console.error(`画像読み込みエラー (試行${retryCount + 1}):`, originalSrc);
+      const fileName = (result.url || result.file || '').split('/').pop() || '';
+      
+      console.error(`画像読み込みエラー (試行${retryCount + 1}):`, {
+        src: originalSrc,
+        fileName: fileName,
+        fileExists: existingImageFiles.includes(fileName)
+      });
 
-      if (retryCount < 2) {
-        let retryPath = '';
-        const fileName = (result.url || result.file || '').split('/').pop();
+      // ファイルが存在しない場合は即座にエラー表示
+      if (!existingImageFiles.includes(fileName)) {
+        console.error(`ファイルが存在リストにありません: ${fileName}`);
+        showImageError(imgElement, result, fileName);
+        return;
+      }
 
-        if (retryCount === 0 && fileName) {
-          // 1回目: 直接knowledge-base/images/パスで再試行
-          retryPath = `/knowledge-base/images/${fileName}`;
-        } else if (retryCount === 1 && fileName) {
-          // 2回目: ファイル存在確認をスキップして次の処理へ
-          console.warn(`画像ファイルが見つかりません: ${fileName}`);
-          // エラー表示に直接移行
-          retryCount = 99; // 強制的にエラー表示へ
-        }
-
-        if (retryPath && retryPath !== originalSrc && retryCount < 2) {
-          console.log(`画像読み込み再試行 ${retryCount + 1}:`, retryPath);
+      // リトライ処理
+      if (retryCount < 1) {
+        const retryPath = `/knowledge-base/images/${fileName}`;
+        if (retryPath !== originalSrc) {
+          console.log(`画像読み込み再試行:`, retryPath);
           imgElement.src = retryPath;
           imgElement.onerror = () => handleImageError(imgElement, result, retryCount + 1);
           return;
         }
       }
 
-      // すべての再試行が失敗した場合の処理
-      console.error('すべての画像読み込み試行が失敗しました:', {
-        originalUrl: result.url || result.file,
-        fileName: (result.url || result.file || '').split('/').pop(),
-        title: result.title
-      });
-
-      // エラー表示
-      const placeholder = imgElement.parentElement?.querySelector('.loading-placeholder');
-      if (placeholder) {
-        (placeholder as HTMLElement).style.display = 'none';
-      }
-
-      imgElement.style.display = 'none';
-
-      const container = imgElement.parentElement;
-      if (container && !container.querySelector('.image-error')) {
-        const errorElement = document.createElement('div');
-        errorElement.className = 'image-error flex items-center justify-center h-full w-full bg-gray-100 text-gray-500 text-sm rounded-md min-h-[150px]';
-        const fileName = (result.url || result.file || '').split('/').pop() || 'ファイル名不明';
-        errorElement.innerHTML = `
-          <div class="text-center p-4">
-            <div class="text-gray-400 mb-2">📷</div>
-            <div class="font-medium">画像が見つかりません</div>
-            <div class="text-xs mt-1 text-gray-400">${fileName}</div>
-            <div class="text-xs mt-1">${result.title || 'タイトル不明'}</div>
-          </div>
-        `;
-        container.appendChild(errorElement);
-      }
+      // 再試行も失敗した場合
+      showImageError(imgElement, result, fileName);
     } catch (error) {
       console.error('画像エラーハンドリング処理エラー:', error);
+    }
+  };
+
+  // エラー表示の共通関数
+  const showImageError = (imgElement: HTMLImageElement, result: SearchResult, fileName: string) => {
+    // プレースホルダーを非表示
+    const placeholder = imgElement.parentElement?.querySelector('.loading-placeholder');
+    if (placeholder) {
+      (placeholder as HTMLElement).style.display = 'none';
+    }
+
+    imgElement.style.display = 'none';
+
+    const container = imgElement.parentElement;
+    if (container && !container.querySelector('.image-error')) {
+      const errorElement = document.createElement('div');
+      errorElement.className = 'image-error flex items-center justify-center h-full w-full bg-gray-100 text-gray-500 text-sm rounded-md min-h-[150px]';
+      errorElement.innerHTML = `
+        <div class="text-center p-4">
+          <div class="text-gray-400 mb-2">📷</div>
+          <div class="font-medium">画像が見つかりません</div>
+          <div class="text-xs mt-1 text-gray-400">${fileName}</div>
+          <div class="text-xs mt-1">${result.title || 'タイトル不明'}</div>
+        </div>
+      `;
+      container.appendChild(errorElement);
     }
   };
 
@@ -363,7 +369,8 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
