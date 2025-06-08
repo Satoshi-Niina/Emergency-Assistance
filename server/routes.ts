@@ -328,7 +328,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     // チャットアクセス制限を一時的に緩和 (すべてのログインユーザーがすべてのチャットを閲覧可能に)
-    console.log(`チャット閲覧: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${req.session.userId}`);
     // if (chat.userId !== req.session.userId) {
     //   return res.status(403).json({ message: "Forbidden" });
     // }
@@ -472,7 +471,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // チャットアクセス制限を一時的に緩和
-      console.log(`チャットエクスポート: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${userId}`);
       // if (chat.userId !== userId) {
       //   return res.status(403).json({ message: "Forbidden" });
       // }
@@ -590,7 +588,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // チャットアクセス制限を一時的に緩和
-      console.log(`チャットエクスポート履歴: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${req.session.userId}`);
       // if (chat.userId !== req.session.userId) {
       //   return res.status(403).json({ message: "Forbidden" });
       // }
@@ -694,21 +691,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let responseContent: string;
       if (typeof aiResponse === 'string') {
         responseContent = aiResponse;
-        console.log('サーバー側AIレスポンス検証:', { 
-          type: 'string',
-          content: responseContent.substring(0, 100) + '...',
-          length: responseContent.length
-        });
+        
       } else if (aiResponse && typeof aiResponse === 'object') {
         // オブジェクト型の場合、適切なプロパティから文字列を抽出
         responseContent = aiResponse.content || aiResponse.text || aiResponse.message || JSON.stringify(aiResponse);
-        console.log('サーバー側AIレスポンス検証:', { 
-          type: 'object',
-          content: responseContent.substring(0, 100) + '...',
-          length: responseContent.length,
-          originalKeys: Object.keys(aiResponse),
-          extractedFrom: aiResponse.content ? 'content' : aiResponse.text ? 'text' : aiResponse.message ? 'message' : 'JSON'
-        });
+        
       } else {
         responseContent = 'AI応答の処理中にエラーが発生しました。';
         console.error('サーバー側AIレスポンス検証: 不正な型', { 
@@ -880,6 +867,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  ```
   // ドキュメント削除
   app.delete('/api/knowledge/:docId', requireAuth, requireAdmin, (req, res) => {
     try {
