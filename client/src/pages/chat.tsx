@@ -191,7 +191,7 @@ export default function Chat() {
               variant="outline"
               size="sm"
               onClick={async () => {
-                // チャット履歴をクリア（履歴送信→データベース削除→新しいチャット開始）
+                // チャット履歴をクリア（表面的にクリア→新しいチャット開始）
                 await clearChatHistory();
               }}
               disabled={isClearing || !displayMessages.length}
@@ -200,12 +200,12 @@ export default function Chat() {
               {isClearing ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">送信・削除中</span>
+                  <span className="text-sm">クリア中</span>
                 </>
               ) : (
                 <>
                   <Trash2 className="h-4 w-4" />
-                  <span className="text-sm">履歴送信・クリア</span>
+                  <span className="text-sm">新しいチャット</span>
                 </>
               )}
             </Button>
