@@ -39,11 +39,11 @@ export default function Chat() {
   const { user } = useAuth();
   const [isEndChatDialogOpen, setIsEndChatDialogOpen] = useState(false);
 
-  // Fetch messages for the current chat
+  // 新しいチャットとして開始するため、メッセージ読み込みは無効化
   const { data, isLoading: messagesLoading } = useQuery({
     queryKey: ['/api/chats/1/messages'],
     staleTime: 1000 * 60 * 5, // 5 minutes
-    enabled: !isClearing, // クリア中は無効化
+    enabled: false, // 新しいチャットとして開始するため常に無効
   });
 
   useEffect(() => {
@@ -63,11 +63,8 @@ export default function Chat() {
     };
   }, [setSelectedText]);
 
-  // Show messages from the context or from the query
-  // クリア中またはクリア直後は空のリストを表示
-  const displayMessages = (isClearing || messages?.length === 0) 
-    ? [] 
-    : (messages?.length > 0 ? messages : (data as any[] || []));
+  // 新しいチャットとして開始 - 常にcontextのメッセージのみ表示
+  const displayMessages = isClearing ? [] : (messages || []);
 
   // デバッグ用：表示メッセージの確認と応急処置ガイドメッセージの監視
   useEffect(() => {
@@ -277,9 +274,9 @@ export default function Chat() {
 
           {/* Chat Messages - 高さを1.5倍に */}
           <div id="chatMessages" className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 md:px-6 space-y-4 min-w-[300px]" style={{ minHeight: '60vh' }}>
-            {messagesLoading || isLoading ? (
+            {isLoading ? (
               <div className="flex items-center justify-center h-full">
-                <p className="text-blue-700">メッセージを読み込み中...</p>
+                <p className="text-blue-700">メッセージを送信中...</p>
               </div>
             ) : !displayMessages || displayMessages.length === 0 ? (
               <div className={`flex items-center justify-center h-full text-center ${isRecording ? 'hidden' : ''}`}>
