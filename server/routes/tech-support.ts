@@ -3,6 +3,11 @@ import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
+import { fileURLToPath } from 'url';
+
+// ESモジュール用の__dirname代替
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import Fuse from 'fuse.js';
 import { processDocument, extractPdfText, extractWordText, extractExcelText, extractPptxText } from '../lib/document-processor';
 import { addDocumentToKnowledgeBase } from '../lib/knowledge-base';
