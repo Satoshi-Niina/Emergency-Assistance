@@ -12,11 +12,11 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5001,
-    allowedHosts: 'all',
+    allowedHosts: ['all'],
     strictPort: false,
     hmr: {
       port: 5002,
-      clientPort: 5002
+      host: '0.0.0.0'
     },
     proxy: {
       '/api': {
