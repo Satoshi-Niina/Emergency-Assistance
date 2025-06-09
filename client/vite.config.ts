@@ -11,13 +11,12 @@ export default defineConfig({
     host: "0.0.0.0",
     port: 5173,
     strictPort: true,
-    allowedHosts: "all",
     cors: {
       origin: true,
       credentials: true
     },
-    hmr: false,
-    ws: false
+    hmr: false, // HMR完全無効化
+    ws: false, // WebSocket完全無効化
     proxy: {
       "/api": {
         target: "http://0.0.0.0:5000",
