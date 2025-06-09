@@ -1,3 +1,4 @@
+
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -11,13 +12,7 @@ export default defineConfig({
       '@shared/schema': path.resolve(__dirname, '../shared/schema.ts')
     }
   },
-  build: {
-    outDir: 'dist',
-    emptyOutDir: true,
-    sourcemap: false,
-    minify: true
-  },
-  // 開発サーバー完全無効化
-  server: false,
-  preview: false
+  server: {
+    allowedHosts: 'all'
+  }
 });
