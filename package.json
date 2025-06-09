@@ -7,7 +7,7 @@
     "dev": "tsx --watch server/index.ts",
     "dev:client": "cd client && npm run dev",
     "dev:all": "concurrently \"npm run dev\" \"npm run dev:client\"",
-    "start": "node server/index.js",
+    "start": "tsx server/index.ts",
     "build": "npm run build:client && npm run build:server",
     "build:server": "tsx --build server/tsconfig.json",
     "build:client": "cd client && npm install && npm run build",
