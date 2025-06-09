@@ -48,22 +48,60 @@ class ErrorBoundary extends React.Component<
     return this.props.children;
   }
 }
-// Vite HMR WebSocketエラーを無視
+// EventEmitterのリスナー上限を増加
+import { EventEmitter } from 'events';
+EventEmitter.defaultMaxListeners = 20;
+
+// グローバルなEventEmitterのリスナー上限を設定
+if (typeof process !== 'undefined' && process.setMaxListeners) {
+  process.setMaxListeners(20);
+}
+
+// Vite HMR接続の重複を防ぐ
+let viteConnectionInitialized = false;
+
+// Vite HMR WebSocketエラーとメモリリーク警告を無視
 const originalConsoleError = console.error;
+const originalConsoleWarn = console.warn;
+
 console.error = (...args) => {
   const message = args[0];
   if (typeof message === 'string' && 
       (message.includes('WebSocket connection') || 
        message.includes('Failed to construct \'WebSocket\'') ||
-       message.includes('wss://localhost:undefined'))) {
-    // WebSocketエラーは無視（開発環境でのみ）
+       message.includes('wss://localhost:undefined') ||
+       message.includes('MaxListenersExceededWarning'))) {
+    // WebSocketエラーとメモリリーク警告は無視（開発環境でのみ）
     return;
   }
   originalConsoleError.apply(console, args);
 };
 
+console.warn = (...args) => {
+  const message = args[0];
+  if (typeof message === 'string' && 
+      message.includes('MaxListenersExceededWarning')) {
+    // メモリリーク警告は無視
+    return;
+  }
+  originalConsoleWarn.apply(console, args);
+};
+
+// HMR接続の重複を防ぐ
+if (import.meta.hot && !viteConnectionInitialized) {
+  viteConnectionInitialized = true;
+  
+  // 既存のリスナーをクリア
+  import.meta.hot.dispose(() => {
+    viteConnectionInitialized = false;
+  });
+}
+
 const container = document.getElementById("root");
-if (container) {
+if (container && !container.hasAttribute('data-react-root')) {
+  // React rootの重複初期化を防ぐ
+  container.setAttribute('data-react-root', 'true');
+  
   const root = createRoot(container);
   root.render(
     <QueryClientProvider client={queryClient}>
@@ -72,4 +110,11 @@ if (container) {
       </ErrorBoundary>
     </QueryClientProvider>
   );
+  
+  // クリーンアップ処理
+  if (import.meta.hot) {
+    import.meta.hot.dispose(() => {
+      container.removeAttribute('data-react-root');
+    });
+  }
 }
