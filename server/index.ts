@@ -72,7 +72,7 @@ const initializeProcessLock = async () => {
 
     // 短時間待機
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     // 新しいロックファイルを作成
     fs.writeFileSync(PROCESS_LOCK_FILE, process.pid.toString());
     console.log(`🔒 Process lock acquired: PID ${process.pid}`);
