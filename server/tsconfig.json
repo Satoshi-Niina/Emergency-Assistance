@@ -1,26 +1,12 @@
-
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "module": "ESNext",
-    "target": "ES2022",
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
+    "outDir": "../dist/server",
+    "rootDir": ".",
+    "moduleResolution": "node",
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
-    "skipLibCheck": true,
-    "baseUrl": "..",
-    "paths": {
-      "@shared/*": ["../shared/*"],
-      "@shared/schema": ["../shared/schema.ts"]
-    }
+    "allowSyntheticDefaultImports": true
   },
-  "include": [
-    "./**/*",
-    "../shared/**/*"
-  ]
+  "include": ["**/*"],
+  "exclude": ["node_modules", "dist"]
 }
