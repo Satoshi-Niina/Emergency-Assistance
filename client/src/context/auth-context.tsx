@@ -33,12 +33,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { toast } = useToast();
 
   useEffect(() => {
-    // 自動ログインを完全に無効化 - 常に未認証状態で開始
-    setUser(null);
-    setIsLoading(false);
-    if (process.env.NODE_ENV === 'development') {
-      console.log("認証チェック無効化 - 手動ログインが必要です");
-    }
+    const checkAuth = async () => {
+      try {
+        setIsLoading(true);
+        const response = await apiRequest("GET", "/api/auth/me");
+        if (response.ok) {
+          const userData = await response.json();
+          if (userData && userData.id) {
+            setUser(userData);
+            console.log("✅ 認証状態を復元:", userData.username);
+          }
+        }
+      } catch (error) {
+        console.log("認証チェック失敗 - ログインが必要です");
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuth();
   }, []);
 
   const login = async (username: string, password: string) => {
