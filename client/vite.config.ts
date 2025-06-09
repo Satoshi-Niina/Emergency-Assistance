@@ -12,11 +12,16 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5001,
-    allowedHosts: ['all'],
+    allowedHosts: 'all',
     strictPort: false,
     hmr: {
       port: 5002,
       host: '0.0.0.0'
+    },
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET,PUT,POST,DELETE,OPTIONS',
+      'Access-Control-Allow-Headers': '*'
     },
     proxy: {
       '/api': {
