@@ -4,6 +4,7 @@ import cors from 'cors';
 import path from 'path';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
+import session from 'express-session';
 
 dotenv.config();
 
@@ -13,8 +14,23 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
 app.use(express.json());
+
+// セッション設定
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-secret-key-here',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: false, // HTTPSを使用する場合はtrueに設定
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24時間
+  }
+}));
 
 // knowledge-base静的ファイル配信
 const knowledgeBasePath = path.resolve(__dirname, '../knowledge-base');
@@ -31,14 +47,20 @@ app.post('/api/auth/login', (req, res) => {
     // デモ用認証
     if ((username === 'niina' && password === '0077') || 
         (username === 'employee' && password === 'employee123')) {
+        const user = {
+            id: username === 'niina' ? '1' : '2',
+            username: username,
+            display_name: username === 'niina' ? '管理者' : '一般ユーザー',
+            role: username === 'niina' ? 'admin' : 'employee'
+        };
+        
+        // セッションにユーザー情報を保存
+        req.session.userId = user.id;
+        req.session.user = user;
+        
         res.json({
             success: true,
-            user: {
-                id: username === 'niina' ? '1' : '2',
-                username: username,
-                display_name: username === 'niina' ? '管理者' : '一般ユーザー',
-                role: username === 'niina' ? 'admin' : 'employee'
-            }
+            user: user
         });
     } else {
         res.status(401).json({
@@ -49,11 +71,22 @@ app.post('/api/auth/login', (req, res) => {
 });
 
 app.post('/api/auth/logout', (req, res) => {
-    res.json({ success: true });
+    req.session.destroy((err) => {
+        if (err) {
+            console.error('セッション破棄エラー:', err);
+            return res.status(500).json({ success: false, message: 'ログアウトに失敗しました' });
+        }
+        res.clearCookie('connect.sid');
+        res.json({ success: true });
+    });
 });
 
 app.get('/api/auth/me', (req, res) => {
-    res.status(401).json({ message: 'Not authenticated' });
+    if (req.session && req.session.user) {
+        res.json(req.session.user);
+    } else {
+        res.status(401).json({ message: 'Not authenticated' });
+    }
 });
 
 app.get('/api/health', (req, res) => {
