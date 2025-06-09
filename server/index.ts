@@ -261,10 +261,25 @@ console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   if (process.env.NODE_ENV !== "production") {
     await setupVite(app, server);
   } else {
-    // プロダクション用の静的ファイル配信
-    const distPath = path.join(process.cwd(), 'dist');
-    console.log('Checking dist path:', distPath);
-    console.log('Dist exists:', fs.existsSync(distPath));
+    // プロダクション用の静的ファイル配信 - 複数のパスをチェック
+    const possibleDistPaths = [
+      path.join(process.cwd(), 'dist'),
+      path.join(process.cwd(), 'client', 'dist'),
+      path.join(process.cwd(), 'build')
+    ];
+    
+    let distPath = '';
+    for (const pathToCheck of possibleDistPaths) {
+      if (fs.existsSync(pathToCheck)) {
+        distPath = pathToCheck;
+        console.log('Found dist path:', distPath);
+        break;
+      }
+    }
+    
+    if (!distPath) {
+      console.log('No dist path found. Checked:', possibleDistPaths);
+    }
 
     // 診断用エンドポイントを追加
     app.get('/api/debug/files', (req, res) => {
@@ -286,7 +301,7 @@ console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
       }
     });
 
-    if (fs.existsSync(distPath)) {
+    if (distPath && fs.existsSync(distPath)) {
       // 静的ファイルの詳細ログ
       const distFiles = fs.readdirSync(distPath);
       console.log('Available dist files:', distFiles);
