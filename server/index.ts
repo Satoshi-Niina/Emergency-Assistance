@@ -13,6 +13,7 @@ import { fileURLToPath } from 'url';
 import open from 'open';
 import { logDebug, logInfo, logWarn, logError, showLogConfig } from './lib/logger';
 import { WebSocketServer } from 'ws';
+import cors from 'cors';
 
 // セキュアログ関数
 function secureLog(msg: string, ...args: any[]) {
@@ -102,17 +103,24 @@ process.on('SIGINT', cleanup);
 process.on('SIGTERM', cleanup);
 
 // CORS設定
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
-  res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,Cache-Control,Pragma');
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(204);
-  } else {
-    next();
-  }
-});
+app.use(cors({
+  origin: (origin, callback) => {
+    // 開発環境では全てのoriginを許可
+    if (!origin || 
+        origin.includes('localhost') || 
+        origin.includes('0.0.0.0') || 
+        origin.includes('replit.dev') ||
+        origin.includes('repl.co')) {
+      callback(null, true);
+    } else {
+      callback(null, true); // 開発環境では全て許可
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Set-Cookie']
+}));
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
