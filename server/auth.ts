@@ -6,6 +6,7 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
+import bcrypt from 'bcrypt';
 
 declare global {
   namespace Express {
@@ -54,7 +55,6 @@ export function setupAuth(app: Express) {
         }
         
         // bcryptでパスワードをハッシュ化して比較
-        const bcrypt = require('bcrypt');
         const isValidPassword = await bcrypt.compare(password, user.password);
         if (!isValidPassword) {
           return done(null, false);
@@ -84,7 +84,6 @@ export function setupAuth(app: Express) {
         return res.status(400).send("Username already exists");
       }
 
-      const bcrypt = require('bcrypt');
       const hashedPassword = await bcrypt.hash(req.body.password, 10);
       
       const user = await storage.createUser({
