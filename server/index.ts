@@ -84,7 +84,7 @@ await initializeProcessLock();
 
 // Express設定
 const app = express();
-const port = process.env.PORT || 5000;
+const port = parseInt(process.env.PORT || '5000', 10);
 
 // プロセス終了時のクリーンアップ（簡略化）
 const cleanup = () => {
