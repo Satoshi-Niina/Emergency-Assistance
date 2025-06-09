@@ -4,7 +4,7 @@ import "./index.css";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import React from "react";
-import ReactDOM from "react-dom/client";
+
 // Error boundary component
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode }, 
@@ -48,100 +48,60 @@ class ErrorBoundary extends React.Component<
     return this.props.children;
   }
 }
-// EventEmitterのリスナー上限を増加
-import { EventEmitter } from 'events';
-EventEmitter.defaultMaxListeners = 30;
 
-// グローバルなEventEmitterのリスナー上限を設定
-if (typeof process !== 'undefined' && process.setMaxListeners) {
-  process.setMaxListeners(30);
-}
+// グローバル初期化フラグ
+const REACT_INIT_KEY = '__REACT_APP_INITIALIZED__';
 
-// 完全なVite HMR重複防止システム
-const VITE_HMR_KEY = '__VITE_HMR_INITIALIZED__';
-let viteHmrInitialized = (window as any)[VITE_HMR_KEY] || false;
+// すでに初期化済みかチェック
+if (!(window as any)[REACT_INIT_KEY]) {
+  console.log('🚀 Initializing React app (first time)');
 
-// HMR初期化をグローバルレベルで管理
-const initializeHMR = () => {
-  if (viteHmrInitialized || !(window as any)[VITE_HMR_KEY]) {
-    console.log('🔥 Initializing Vite HMR (first time)');
-    (window as any)[VITE_HMR_KEY] = true;
-    viteHmrInitialized = true;
+  // グローバルフラグを設定
+  (window as any)[REACT_INIT_KEY] = true;
 
-    if (import.meta.hot) {
-      import.meta.hot.accept(() => {
-        console.log('[HMR] Module updated');
-      });
+  // コンソールのノイズを削減
+  const originalError = console.error;
+  const originalWarn = console.warn;
 
-      import.meta.hot.dispose(() => {
-        console.log('[HMR] Module disposed');
-      });
+  console.error = (...args) => {
+    const message = String(args[0] || '');
+    if (message.includes('WebSocket') || 
+        message.includes('vite') || 
+        message.includes('MaxListeners')) {
+      return;
     }
+    originalError.apply(console, args);
+  };
+
+  console.warn = (...args) => {
+    const message = String(args[0] || '');
+    if (message.includes('MaxListeners')) {
+      return;
+    }
+    originalWarn.apply(console, args);
+  };
+
+  // DOM要素の存在確認
+  const container = document.getElementById("root");
+  if (!container) {
+    console.error('Root element not found');
   } else {
-    console.log('🔥 Vite HMR already initialized, skipping');
+    // React rootの重複作成を防ぐ
+    if (!container.hasAttribute('data-react-initialized')) {
+      container.setAttribute('data-react-initialized', 'true');
+
+      const root = createRoot(container);
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <ErrorBoundary>
+            <App />
+          </ErrorBoundary>
+        </QueryClientProvider>
+      );
+
+      console.log('✅ React app initialized successfully');
+    }
   }
-};
-
-// 開発環境でのみHMR初期化
-if (import.meta.env.DEV) {
-  initializeHMR();
-}
-
-// Vite HMR WebSocketエラーとメモリリーク警告を無視
-const originalConsoleError = console.error;
-const originalConsoleWarn = console.warn;
-
-console.error = (...args) => {
-  const message = args[0];
-  if (typeof message === 'string' && 
-      (message.includes('WebSocket connection') || 
-       message.includes('Failed to construct \'WebSocket\'') ||
-       message.includes('wss://localhost:undefined') ||
-       message.includes('MaxListenersExceededWarning'))) {
-    // WebSocketエラーとメモリリーク警告は無視（開発環境でのみ）
-    return;
-  }
-  originalConsoleError.apply(console, args);
-};
-
-console.warn = (...args) => {
-  const message = args[0];
-  if (typeof message === 'string' && 
-      message.includes('MaxListenersExceededWarning')) {
-    // メモリリーク警告は無視
-    return;
-  }
-  originalConsoleWarn.apply(console, args);
-};
-
-// HMR接続の重複を防ぐ
-if (import.meta.hot && !viteHmrInitialized) {
-  viteHmrInitialized = true;
-
-  // 既存のリスナーをクリア
-  import.meta.hot.dispose(() => {
-    viteHmrInitialized = false;
-  });
-}
-
-const container = document.getElementById("root");
-if (container && !container.hasAttribute('data-react-root')) {
-  // React rootの重複初期化を防ぐ
-  container.setAttribute('data-react-root', 'true');
-
-  const root = createRoot(container);
-  root.render(
-    <QueryClientProvider client={queryClient}>
-      <ErrorBoundary>
-        <App />
-      </ErrorBoundary>
-    </QueryClientProvider>
-  );
-
-  // クリーンアップ処理
-  if (import.meta.hot) {
-    import.meta.hot.dispose(() => {
-      container.removeAttribute('data-react-root');
-    });
-  }
+} else {
+  console.log('⚠️ React app already initialized, skipping');
 }

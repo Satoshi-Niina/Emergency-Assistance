@@ -77,7 +77,7 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "echo \"🛑 Force stopping all processes...\""
+args = "echo \"🛑 Forcefully stopping all processes...\""
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
@@ -90,14 +90,6 @@ args = "pkill -9 -f \"vite\" 2>/dev/null || true"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "pkill -9 -f \"tsx\" 2>/dev/null || true"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "pkill -9 -f \"node.*5000\" 2>/dev/null || true"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "pkill -9 -f \"node.*5173\" 2>/dev/null || true"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
@@ -117,11 +109,15 @@ args = "rm -f /tmp/troubleshooting-server.lock"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
+args = "echo \"⏳ Waiting for cleanup...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
 args = "sleep 5"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "echo \"🧹 Clearing cache...\""
+args = "echo \"🧹 Clearing caches...\""
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
@@ -133,19 +129,7 @@ args = "rm -rf node_modules/.cache 2>/dev/null || true"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "echo \"📦 Installing dependencies...\""
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install --silent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && npm install --silent && cd .."
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "echo \"🚀 Starting stable application...\""
+args = "echo \"📦 Starting application...\""
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"

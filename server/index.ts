@@ -49,58 +49,77 @@ console.log(`   __dirname: ${__dirname}`);
 const openaiKey = process.env.OPENAI_API_KEY || process.env.REPLIT_SECRET_OPENAI_API_KEY;
 // セキュリティのためAPIキー情報のログ出力を削除
 
-// プロセス重複防止とシングルトン管理
+// 強化されたプロセス重複防止システム
 const PROCESS_LOCK_FILE = '/tmp/troubleshooting-server.lock';
-const PROCESS_MARKER = `troubleshooting-server-${Date.now()}`;
+const PROCESS_MARKER = `troubleshooting-server-${Date.now()}-${process.pid}`;
 process.title = 'troubleshooting-server';
+
+// グローバル初期化フラグ
+const GLOBAL_INIT_FLAG = '__TROUBLESHOOTING_SERVER_INITIALIZED__';
+
+// 同一プロセス内での重複初期化を防ぐ
+if ((global as any)[GLOBAL_INIT_FLAG]) {
+  console.log('⚠️ Server already initializing in this process, exiting...');
+  process.exit(0);
+}
+(global as any)[GLOBAL_INIT_FLAG] = true;
 
 // 既存プロセスの確認とクリーンアップ
 const initializeProcessLock = async () => {
   try {
     console.log(`🔧 Initializing process lock (PID: ${process.pid})`);
     
-    // 全ての関連プロセスを強制終了
+    // 段階的なプロセス終了
     const killProcesses = () => new Promise<void>((resolve) => {
       const commands = [
-        `pkill -9 -f "troubleshooting-server" 2>/dev/null || true`,
+        `pkill -15 -f "troubleshooting-server" 2>/dev/null || true`, // SIGTERM最初
+        `sleep 2`,
+        `pkill -9 -f "troubleshooting-server" 2>/dev/null || true`,  // SIGKILL後
         `pkill -9 -f "tsx.*server/index.ts" 2>/dev/null || true`,
-        `pkill -9 -f "node.*5000" 2>/dev/null || true`,
-        `pkill -9 -f "vite.*5173" 2>/dev/null || true`,
+        `pkill -9 -f "npm run dev" 2>/dev/null || true`,
         `fuser -k 5000/tcp 2>/dev/null || true`,
         `fuser -k 5173/tcp 2>/dev/null || true`
       ];
       
       let completed = 0;
-      commands.forEach(cmd => {
-        exec(cmd, () => {
-          completed++;
-          if (completed === commands.length) {
-            resolve();
-          }
+      const executeCommand = (index: number) => {
+        if (index >= commands.length) {
+          resolve();
+          return;
+        }
+        
+        exec(commands[index], () => {
+          setTimeout(() => executeCommand(index + 1), 500);
         });
-      });
+      };
       
-      // タイムアウト設定
-      setTimeout(resolve, 3000);
+      executeCommand(0);
+      setTimeout(resolve, 8000); // 強制タイムアウト
     });
 
     await killProcesses();
     
-    // ロックファイルクリーンアップ
+    // ロックファイル管理
     if (fs.existsSync(PROCESS_LOCK_FILE)) {
+      try {
+        const lockData = JSON.parse(fs.readFileSync(PROCESS_LOCK_FILE, 'utf8'));
+        console.log(`🔍 Found existing lock: PID ${lockData.pid}, Age: ${Date.now() - lockData.startTime}ms`);
+      } catch (e) {
+        console.log(`🧹 Removing corrupted lock file`);
+      }
       fs.unlinkSync(PROCESS_LOCK_FILE);
-      console.log(`🧹 Cleaned up existing lock file`);
     }
 
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
     // 新しいロックファイルを作成
     fs.writeFileSync(PROCESS_LOCK_FILE, JSON.stringify({
       pid: process.pid,
       marker: PROCESS_MARKER,
-      startTime: Date.now()
+      startTime: Date.now(),
+      node_env: process.env.NODE_ENV
     }));
-    console.log(`🔒 Process lock acquired: PID ${process.pid}, Marker: ${PROCESS_MARKER}`);
+    console.log(`🔒 Process lock acquired: PID ${process.pid}`);
   } catch (error) {
     console.error('Lock file management error:', error);
   }
