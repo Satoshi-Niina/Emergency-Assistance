@@ -49,103 +49,79 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-// 複数レベルでの初期化防止
-const REACT_INIT_KEY = '__REACT_APP_INITIALIZED__';
-const REACT_ROOT_KEY = '__REACT_ROOT_INSTANCE__';
-const REACT_LOCK_KEY = '__REACT_INITIALIZATION_LOCK__';
+// 最強の初期化防止策
+const REACT_SINGLETON_KEY = '__REACT_SINGLETON_GUARD__';
+const DOM_CONTAINER_ID = 'root';
 
-const container = document.getElementById("root");
+// 即座に終了条件をチェック
+if ((window as any)[REACT_SINGLETON_KEY]) {
+  console.log('⛔ React already initialized, terminating script');
+  throw new Error('React initialization blocked - already running');
+}
 
-// ページレベルでの初期化状態チェック
-const PAGE_LOAD_KEY = '__PAGE_LOAD_TIMESTAMP__';
-const currentPageLoad = (window as any)[PAGE_LOAD_KEY] || Date.now();
-(window as any)[PAGE_LOAD_KEY] = currentPageLoad;
+// シングルトンガードを即座に設定
+(window as any)[REACT_SINGLETON_KEY] = true;
 
-// より厳密な重複チェック
-const isAlreadyInitialized = 
-  !!(window as any)[REACT_INIT_KEY] || 
-  !!(window as any)[REACT_ROOT_KEY] ||
-  !!(window as any)[REACT_LOCK_KEY] ||
-  (container && container.hasAttribute('data-react-initialized')) ||
-  (container && container.children.length > 0) ||
-  (container && container.querySelector('[data-reactroot]'));
+const container = document.getElementById(DOM_CONTAINER_ID);
+if (!container) {
+  console.error('❌ Root container not found');
+  throw new Error('Root container missing');
+}
 
-console.log(`🔍 React initialization check (Page Load: ${currentPageLoad}):`, {
-  hasInitKey: !!(window as any)[REACT_INIT_KEY],
-  hasRootKey: !!(window as any)[REACT_ROOT_KEY],
-  hasLockKey: !!(window as any)[REACT_LOCK_KEY],
-  hasDataAttr: container && container.hasAttribute('data-react-initialized'),
-  hasChildren: container && container.children.length > 0,
-  isAlreadyInitialized
-});
+// DOM状態の厳密チェック
+if (container.children.length > 0 || container.hasAttribute('data-react-root')) {
+  console.log('⛔ DOM already contains React content, aborting');
+  throw new Error('React DOM already populated');
+}
 
-if (!isAlreadyInitialized) {
-  // 初期化ロックを設定
-  (window as any)[REACT_LOCK_KEY] = true;
-  console.log('🚀 Initializing React app (first time)');
+// Viteの完全無効化
+if (typeof window !== 'undefined') {
+  // WebSocketの完全削除
+  delete (window as any).WebSocket;
+  (window as any).WebSocket = undefined;
+  
+  // Vite関連機能の無効化
+  delete (window as any).__vite_plugin_react_preamble_installed__;
+  
+  // コンソールフィルタリング
+  const originalConsole = { ...console };
+  ['log', 'warn', 'info'].forEach(method => {
+    (console as any)[method] = (...args: any[]) => {
+      const msg = String(args[0] || '');
+      if (!msg.includes('[vite]') && !msg.includes('connecting') && !msg.includes('connected')) {
+        (originalConsole as any)[method](...args);
+      }
+    };
+  });
+}
 
-  // グローバルフラグを設定
-  (window as any)[REACT_INIT_KEY] = true;
-
-  // 全てのVite/WebSocket関連機能を無効化
-  const originalWebSocket = (window as any).WebSocket;
-  if (originalWebSocket) {
-    (window as any).WebSocket = undefined;
-    delete (window as any).WebSocket;
-  }
-
-  // コンソールログを完全にクリーンに
-  const originalLog = console.log;
-  console.log = (...args) => {
-    const msg = String(args[0] || '');
-    if (!msg.includes('[vite]') && !msg.includes('WebSocket')) {
-      originalLog.apply(console, args);
-    }
-  };
-
-  if (!container) {
-    console.error('Root element not found');
-  } else {
-    // 既存のrootインスタンスを確認
-    if ((window as any)[REACT_ROOT_KEY]) {
-      console.log('⚠️ React root already exists, aborting initialization');
-      return;
-    }
-
-    // DOM状態の最終確認
-    if (container.children.length > 0) {
-      console.log('⚠️ Container already has content, aborting initialization');
-      return;
-    }
-
-    // React rootの重複作成を防ぐ
-    container.setAttribute('data-react-initialized', 'true');
-
-    try {
-      const root = createRoot(container);
-
-      // rootインスタンスを保存
-      (window as any)[REACT_ROOT_KEY] = root;
-      (window as any)[REACT_INIT_KEY] = true;
+try {
+  console.log('🚀 Starting single React instance');
+  
+  // DOM属性を設定
+  container.setAttribute('data-react-root', 'true');
+  container.setAttribute('data-initialized', Date.now().toString());
+  
+  const root = createRoot(container);
+  
+  // グローバル参照を設定
+  (window as any).__REACT_ROOT__ = root;
 
     root.render(
-        <QueryClientProvider client={queryClient}>
-          <ErrorBoundary>
-            <App />
-          </ErrorBoundary>
-        </QueryClientProvider>
-      );
+    <QueryClientProvider client={queryClient}>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </QueryClientProvider>
+  );
 
-      console.log('✅ React app initialized successfully');
-    } catch (error) {
-      console.error('❌ React initialization failed:', error);
-      // クリーンアップ
-      delete (window as any)[REACT_ROOT_KEY];
-      delete (window as any)[REACT_INIT_KEY];
-      delete (window as any)[REACT_LOCK_KEY];
-      container.removeAttribute('data-react-initialized');
-    }
-  }
-} else {
-  console.log('⚠️ React app already initialized, skipping');
+  console.log('✅ React singleton initialized successfully');
+  
+} catch (error) {
+  console.error('❌ React initialization failed:', error);
+  // 失敗時のクリーンアップ
+  delete (window as any)[REACT_SINGLETON_KEY];
+  delete (window as any).__REACT_ROOT__;
+  container.removeAttribute('data-react-root');
+  container.removeAttribute('data-initialized');
 }

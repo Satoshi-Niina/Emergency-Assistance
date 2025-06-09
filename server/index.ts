@@ -50,19 +50,24 @@ const openaiKey = process.env.OPENAI_API_KEY || process.env.REPLIT_SECRET_OPENAI
 // セキュリティのためAPIキー情報のログ出力を削除
 
 // 強化されたプロセス重複防止システム
-const PROCESS_LOCK_FILE = '/tmp/troubleshooting-server.lock';
-const PROCESS_MARKER = `troubleshooting-server-${Date.now()}-${process.pid}`;
-process.title = 'troubleshooting-server';
+// 最強のサーバー重複防止
+const SERVER_SINGLETON_KEY = '__SERVER_SINGLETON_GUARD__';
+const SERVER_PID_KEY = '__SERVER_PROCESS_ID__';
 
-// グローバル初期化フラグ
-const GLOBAL_INIT_FLAG = '__TROUBLESHOOTING_SERVER_INITIALIZED__';
-
-// より厳密な重複初期化防止
-if ((global as any)[GLOBAL_INIT_FLAG]) {
-  console.log('⚠️ Server already initializing in this process, exiting...');
-  process.exit(1);
+// 即座に重複チェック
+if ((global as any)[SERVER_SINGLETON_KEY]) {
+  console.log('⛔ Server already running, force exit');
+  process.exit(0);
 }
-(global as any)[GLOBAL_INIT_FLAG] = true;
+
+// シングルトンフラグを即座に設定
+(global as any)[SERVER_SINGLETON_KEY] = true;
+(global as any)[SERVER_PID_KEY] = process.pid;
+
+// プロセスタイトルを一意に設定
+process.title = `troubleshooting-server-${process.pid}`;
+
+console.log(`🚀 Starting singleton server: PID ${process.pid}`);
 
 // プロセス重複防止の強化
 const processId = `${process.pid}-${Date.now()}`;
