@@ -4,14 +4,14 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "tsx server/index.ts",
-    "dev:frontend": "cd client && npm run dev",
-    "dev:all": "concurrently \"npm run dev\" \"npm run dev:frontend\"",
-    "migrate": "drizzle-kit push:pg",
-    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outfile=server/index.js --alias:@shared/schema=./shared/schema.ts --alias:@shared=./shared",
-    "start": "cross-env NODE_ENV=production node server/index.js",
-    "check": "tsc",
-    "db:push": "drizzle-kit push"
+    "dev": "tsx --watch server/index.ts",
+    "dev:client": "cd client && npm run dev",
+    "dev:all": "concurrently \"npm run dev\" \"npm run dev:client\"",
+    "start": "node dist/server/index.js",
+    "build": "npm run build:client && npm run build:server",
+    "build:server": "tsc -p server/tsconfig.json",
+    "build:client": "cd client && npm install && npm run build",
+    "postbuild": "cp -r client/dist/* dist/ 2>/dev/null || true"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
