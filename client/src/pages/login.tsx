@@ -14,9 +14,9 @@ export default function Login() {
   const { login, user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   
-  // Redirect if already logged in
+  // Redirect if already logged in (but only after proper authentication)
   useEffect(() => {
-    if (!authLoading && user) {
+    if (!authLoading && user && user.username) {
       setLocation("/chat");
     }
   }, [user, authLoading, setLocation]);
