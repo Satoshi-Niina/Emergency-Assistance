@@ -53,8 +53,10 @@ export function setupAuth(app: Express) {
           return done(null, false);
         }
         
-        // プレーンテキストでパスワードを保存しているため、直接比較（本番環境ではハッシュ化すべき）
-        if (user.password !== password) {
+        // bcryptでパスワードをハッシュ化して比較
+        const bcrypt = require('bcrypt');
+        const isValidPassword = await bcrypt.compare(password, user.password);
+        if (!isValidPassword) {
           return done(null, false);
         }
         
@@ -82,9 +84,12 @@ export function setupAuth(app: Express) {
         return res.status(400).send("Username already exists");
       }
 
+      const bcrypt = require('bcrypt');
+      const hashedPassword = await bcrypt.hash(req.body.password, 10);
+      
       const user = await storage.createUser({
         ...req.body,
-        password: req.body.password, // 本番環境では hashPassword(req.body.password) を使用すべき
+        password: hashedPassword,
       });
 
       req.login(user, (err) => {
