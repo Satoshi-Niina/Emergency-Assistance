@@ -193,41 +193,59 @@ const port = process.env.PORT ? parseInt(process.env.PORT) :
   if (process.env.NODE_ENV !== "production") {
     await setupVite(app, server);
   } else {
-    try {
-      // プロダクション用の静的ファイル配信
-      const distPath = path.join(process.cwd(), 'client', 'dist');
-      if (fs.existsSync(distPath)) {
-        app.use(express.static(distPath));
-        app.get('*', (req, res, next) => {
-          // API リクエストは除外
-          if (req.path.startsWith('/api/') || req.path.startsWith('/knowledge-base/')) {
-            return next();
+    // プロダクション用の静的ファイル配信
+    const distPath = path.join(process.cwd(), 'client', 'dist');
+    console.log('Checking dist path:', distPath);
+    console.log('Dist exists:', fs.existsSync(distPath));
+    
+    if (fs.existsSync(distPath)) {
+      app.use(express.static(distPath, { 
+        index: false,
+        setHeaders: (res, path) => {
+          if (path.endsWith('.html')) {
+            res.setHeader('Cache-Control', 'no-cache');
           }
-          // その他は index.html を返す
-          const indexPath = path.join(distPath, 'index.html');
-          if (fs.existsSync(indexPath)) {
-            res.sendFile(indexPath);
-          } else {
-            res.status(404).json({ error: 'Application not built' });
-          }
-        });
-        secureLog('プロダクション用静的ファイル配信を設定しました');
-      } else {
-        console.error('ビルドファイルが見つかりません:', distPath);
-        app.get('*', (req, res) => {
-          if (req.path.startsWith('/api/')) {
-            return;
-          }
-          res.status(503).json({ error: 'Application building...' });
-        });
-      }
-    } catch (staticError) {
-      console.error('静的ファイル配信の設定エラー:', staticError);
+        }
+      }));
+      
+      // SPA routing - すべての非APIリクエストをindex.htmlに送る
+      app.get('*', (req, res, next) => {
+        // API と知識ベースのリクエストは除外
+        if (req.path.startsWith('/api/') || 
+            req.path.startsWith('/knowledge-base/') ||
+            req.path.startsWith('/static/')) {
+          return next();
+        }
+        
+        const indexPath = path.join(distPath, 'index.html');
+        console.log('Serving index.html for:', req.path);
+        
+        if (fs.existsSync(indexPath)) {
+          res.sendFile(indexPath);
+        } else {
+          console.error('index.html not found at:', indexPath);
+          res.status(404).send('Application not found');
+        }
+      });
+      
+      console.log('プロダクション用静的ファイル配信を設定しました');
+    } else {
+      console.error('ビルドファイルが見つかりません:', distPath);
+      
+      // ビルドされていない場合の対応
       app.get('*', (req, res) => {
         if (req.path.startsWith('/api/')) {
           return;
         }
-        res.status(500).json({ error: 'Server configuration error' });
+        res.status(503).send(`
+          <html>
+            <body>
+              <h1>Application Not Built</h1>
+              <p>The application has not been built for production.</p>
+              <p>Expected build directory: ${distPath}</p>
+            </body>
+          </html>
+        `);
       });
     }
   }
