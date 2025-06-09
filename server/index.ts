@@ -52,53 +52,55 @@ const openaiKey = process.env.OPENAI_API_KEY || process.env.REPLIT_SECRET_OPENAI
 const PROCESS_LOCK_FILE = '/tmp/troubleshooting-server.lock';
 process.title = 'troubleshooting-server';
 
-// 既存プロセスの確認
-try {
-  if (fs.existsSync(PROCESS_LOCK_FILE)) {
-    const lockContent = fs.readFileSync(PROCESS_LOCK_FILE, 'utf8');
-    const existingPid = parseInt(lockContent.trim());
-    
-    try {
-      process.kill(existingPid, 0); // プロセス存在確認
-      console.log(`🔄 Existing process ${existingPid} detected, terminating...`);
-      process.kill(existingPid, 'SIGTERM');
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    } catch (e) {
-      // プロセスが既に終了している場合
-      console.log('🧹 Stale lock file removed');
+// 既存プロセスの確認とクリーンアップ
+const initializeProcessLock = async () => {
+  try {
+    // 強制的にロックファイルを削除
+    if (fs.existsSync(PROCESS_LOCK_FILE)) {
+      fs.unlinkSync(PROCESS_LOCK_FILE);
+      console.log('🧹 Previous lock file removed');
     }
+
+    // ポート占有プロセスを強制終了
+    const { exec } = require('child_process');
+    exec(`lsof -ti:${port}`, (error, stdout) => {
+      if (stdout.trim()) {
+        console.log(`🔪 Killing process on port ${port}: ${stdout.trim()}`);
+        exec(`kill -9 ${stdout.trim()}`);
+      }
+    });
+
+    // 短時間待機
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
-    fs.unlinkSync(PROCESS_LOCK_FILE);
+    // 新しいロックファイルを作成
+    fs.writeFileSync(PROCESS_LOCK_FILE, process.pid.toString());
+    console.log(`🔒 Process lock acquired: PID ${process.pid}`);
+  } catch (error) {
+    console.error('Lock file management error:', error);
   }
-  
-  // 新しいロックファイルを作成
-  fs.writeFileSync(PROCESS_LOCK_FILE, process.pid.toString());
-  console.log(`🔒 Process lock acquired: PID ${process.pid}`);
-} catch (error) {
-  console.error('Lock file management error:', error);
-}
+};
+
+await initializeProcessLock();
 
 // Express設定
 const app = express();
 const port = process.env.PORT || 5000;
 
-// プロセス終了時のクリーンアップ
+// プロセス終了時のクリーンアップ（簡略化）
 const cleanup = () => {
-  console.log('🛑 Graceful shutdown initiated...');
   try {
     if (fs.existsSync(PROCESS_LOCK_FILE)) {
       fs.unlinkSync(PROCESS_LOCK_FILE);
-      console.log('🧹 Lock file cleaned up');
     }
   } catch (e) {
-    console.error('Cleanup error:', e);
+    // エラーは無視
   }
   process.exit(0);
 };
 
 process.on('SIGINT', cleanup);
 process.on('SIGTERM', cleanup);
-process.on('exit', cleanup);
 
 // CORS設定を強化
 app.use((req, res, next) => {
@@ -426,21 +428,20 @@ console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     });
   });
 
-  // 未処理のPromise拒否をキャッチ
+  // 未処理のPromise拒否をキャッチ（簡略化）
   process.on('unhandledRejection', (reason, promise) => {
-    if (process.env.NODE_ENV === 'production') {
-      // プロダクションでは重要なエラーのみログ出力
-      if (reason && typeof reason === 'object' && 
-          (reason.toString().includes('ECONNRESET') || 
-           reason.toString().includes('EPIPE') ||
-           reason.toString().includes('ENOTFOUND'))) {
-        // 一般的なネットワークエラーは無視
-        return;
+    // 一般的なネットワークエラーは無視
+    if (reason && typeof reason === 'object') {
+      const reasonStr = reason.toString();
+      if (reasonStr.includes('ECONNRESET') || 
+          reasonStr.includes('EPIPE') ||
+          reasonStr.includes('ENOTFOUND') ||
+          reasonStr.includes('socket hang up')) {
+        return; // 無視
       }
-      console.error('Critical Error:', reason);
-    } else {
-      logError('Unhandled Rejection at:', promise, 'reason:', reason);
     }
+    // 重要なエラーのみログ出力
+    console.error('Unhandled Rejection:', reason);
   });
 
   // 未処理の例外をキャッチ
