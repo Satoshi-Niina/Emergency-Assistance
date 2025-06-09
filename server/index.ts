@@ -232,10 +232,7 @@ const port = process.env.PORT ? parseInt(process.env.PORT) :
     }
   }
 
-  const PORT = process.env.PORT ? parseInt(process.env.PORT) : 
-             process.env.REPLIT_DEV_DOMAIN ? 5000 : 3000;
-const HOST = '0.0.0.0';
-  server.listen(PORT, HOST, () => {
+  server.listen(port, '0.0.0.0', () => {
     console.log(`🚀 Server is running on port ${port}`);
     secureLog(`サーバー起動: ポート ${port} (環境: ${process.env.NODE_ENV || 'development'})`);
 
