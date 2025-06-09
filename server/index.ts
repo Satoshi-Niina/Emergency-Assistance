@@ -72,16 +72,18 @@ const initializeProcessLock = async () => {
     // 段階的なプロセス終了
     const killProcesses = () => new Promise<void>((resolve) => {
       const commands = [
-        `pkill -15 -f "troubleshooting-server" 2>/dev/null || true`, // SIGTERM最初
-        `sleep 2`,
-        `pkill -9 -f "troubleshooting-server" 2>/dev/null || true`,  // SIGKILL後
+        `pkill -15 -f "troubleshooting-server" 2>/dev/null || true`,
+        `pkill -15 -f "vite" 2>/dev/null || true`,
+        `sleep 3`,
+        `pkill -9 -f "troubleshooting-server" 2>/dev/null || true`,
         `pkill -9 -f "tsx.*server/index.ts" 2>/dev/null || true`,
         `pkill -9 -f "npm run dev" 2>/dev/null || true`,
+        `pkill -9 -f "vite" 2>/dev/null || true`,
         `fuser -k 5000/tcp 2>/dev/null || true`,
-        `fuser -k 5173/tcp 2>/dev/null || true`
+        `fuser -k 5173/tcp 2>/dev/null || true`,
+        `fuser -k 5002/tcp 2>/dev/null || true`
       ];
       
-      let completed = 0;
       const executeCommand = (index: number) => {
         if (index >= commands.length) {
           resolve();
@@ -89,12 +91,12 @@ const initializeProcessLock = async () => {
         }
         
         exec(commands[index], () => {
-          setTimeout(() => executeCommand(index + 1), 500);
+          setTimeout(() => executeCommand(index + 1), 300);
         });
       };
       
       executeCommand(0);
-      setTimeout(resolve, 8000); // 強制タイムアウト
+      setTimeout(resolve, 10000); // より長いタイムアウト
     });
 
     await killProcesses();

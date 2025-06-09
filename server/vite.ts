@@ -20,12 +20,16 @@ export function log(message: string, source = "express") {
 }
 
 export async function setupVite(app: Express, server: Server) {
+  // Viteの重複初期化を防ぐ
+  if ((global as any).__VITE_INITIALIZED__) {
+    console.log('⚠️ Vite already initialized, skipping...');
+    return;
+  }
+  (global as any).__VITE_INITIALIZED__ = true;
+
   const serverOptions = {
     middlewareMode: true,
-    hmr: { 
-      server,
-      port: 5002
-    },
+    hmr: false, // HMRを無効化してループを防ぐ
     host: '0.0.0.0',
     allowedHosts: 'all'
   };
@@ -36,8 +40,11 @@ export async function setupVite(app: Express, server: Server) {
     customLogger: {
       ...viteLogger,
       error: (msg, options) => {
+        // 致命的でないエラーは無視
+        if (msg.includes('ECONNRESET') || msg.includes('WebSocket')) {
+          return;
+        }
         viteLogger.error(msg, options);
-        process.exit(1);
       },
     },
     server: serverOptions,
