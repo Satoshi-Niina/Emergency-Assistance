@@ -4,14 +4,27 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
-  optimizeDeps: {
-    exclude: ["lucide-react"],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+      '@shared': path.resolve(__dirname, '../shared'),
+      '@shared/schema': path.resolve(__dirname, '../shared/schema.ts')
+    }
+  },
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: undefined
+      }
+    }
   },
   server: {
+    allowedHosts: 'all',
     host: "0.0.0.0",
     port: 5173,
     strictPort: true,
-    allowedHosts: "all",
     cors: {
       origin: true,
       credentials: true
@@ -41,5 +54,8 @@ export default defineConfig({
       origin: true,
       credentials: true
     }
-  }
+  },
+  optimizeDeps: {
+    exclude: ["lucide-react"],
+  },
 });
