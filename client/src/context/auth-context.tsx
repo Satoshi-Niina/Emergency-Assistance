@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -32,39 +32,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        setIsLoading(true);
-        const response = await apiRequest("GET", "/api/auth/me");
-        if (response.ok) {
-          const userData = await response.json();
-          if (userData && userData.id) {
-            setUser(userData);
-            console.log("✅ 認証状態を復元:", userData.username);
-          }
-        }
-      } catch (error) {
-        console.log("認証チェック失敗 - ログインが必要です");
-        setUser(null);
-      } finally {
-        setIsLoading(false);
+  const getCurrentUser = async () => {
+    try {
+      const response = await apiRequest("GET", "/api/auth/me");
+      if (response.ok) {
+        const userData = await response.json();
+        return userData;
+      } else {
+        return null;
       }
-    };
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      return null;
+    }
+  };
 
+  const checkAuth = useCallback(async () => {
+    if (isLoading) return;
+
+    setIsLoading(true);
+    try {
+      const userData = await getCurrentUser();
+      if (userData && userData.username) {
+        setUser(userData);
+        console.log('✅ 認証成功:', userData);
+      } else {
+        setUser(null);
+        console.log('❌ 認証失敗 - ユーザー情報なし');
+      }
+    } catch (error) {
+      console.error('❌ 認証チェックエラー:', error);
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isLoading]);
+
+
+  useEffect(() => {
     checkAuth();
-  }, []);
+  }, [checkAuth]);
 
   const login = async (username: string, password: string) => {
     try {
       setIsLoading(true);
       const response = await apiRequest("POST", "/api/auth/login", { username, password });
       const userData = await response.json();
-      
+
       if (!userData || !userData.id || !userData.username) {
         throw new Error("Invalid response data");
       }
-      
+
       setUser(userData);
       toast({
         title: "ログイン成功",
