@@ -323,42 +323,57 @@ console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   });
 
   function startServer() {
-    server.listen(port, '0.0.0.0', () => {
-      console.log(`🚀 Server is running on port ${port}`);
-      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`Host: 0.0.0.0:${port}`);
+    try {
+      server.listen(port, '0.0.0.0', () => {
+        console.log(`🚀 Server is running on port ${port}`);
+        console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+        console.log(`Host: 0.0.0.0:${port}`);
 
-      if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
-        console.log(`External URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`);
-      }
+        if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
+          console.log(`External URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`);
+        }
 
-    // プロダクション環境でのヘルスチェック
-      if (process.env.NODE_ENV === 'production') {
-        console.log('Production server started successfully');
-        console.log(`Health endpoints: /api/health, /api/ready`);
-      }
+        // プロダクション環境でのヘルスチェック
+        if (process.env.NODE_ENV === 'production') {
+          console.log('Production server started successfully');
+          console.log(`Health endpoints: /api/health, /api/ready`);
+        }
 
-      // 軽量な初期化のみ実行
-      if (process.env.NODE_ENV !== 'production') {
-        initializePostStartup();
-      } else {
-        // プロダクション環境では非同期で初期化
-        initializePostStartup();
-      }
-    }).on('error', (err: NodeJS.ErrnoException) => {
-    console.error('サーバー起動エラー:', {
-      message: err.message,
-      code: err.code,
-      port: port,
-      environment: process.env.NODE_ENV
-    });
+        // 軽量な初期化のみ実行
+        if (process.env.NODE_ENV !== 'production') {
+          initializePostStartup();
+        } else {
+          // プロダクション環境では非同期で初期化
+          initializePostStartup();
+        }
+      }).on('error', (err: NodeJS.ErrnoException) => {
+        console.error('サーバー起動エラー:', {
+          message: err.message,
+          code: err.code,
+          port: port,
+          environment: process.env.NODE_ENV
+        });
 
-    if (err.code === 'EADDRINUSE') {
-      console.error(`ポート ${port} は既に使用されています`);
+        if (err.code === 'EADDRINUSE') {
+          console.error(`ポート ${port} は既に使用されています`);
+          // ポート使用中の場合、プロセスを特定して停止を試行
+          const { exec } = require('child_process');
+          exec(`lsof -ti:${port}`, (error, stdout) => {
+            if (stdout.trim()) {
+              console.log(`Killing process ${stdout.trim()} using port ${port}`);
+              exec(`kill -9 ${stdout.trim()}`, () => {
+                setTimeout(startServer, 2000);
+              });
+            }
+          });
+        } else {
+          process.exit(1);
+        }
+      });
+    } catch (error) {
+      console.error('Server startup failed:', error);
+      process.exit(1);
     }
-
-    process.exit(1);
-    });
   }
 
   // プロセス終了時のクリーンアップ
