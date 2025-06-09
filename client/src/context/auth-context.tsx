@@ -47,31 +47,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const checkAuth = useCallback(async () => {
-    if (isLoading) return;
-
-    setIsLoading(true);
-    try {
-      const userData = await getCurrentUser();
-      if (userData && userData.username) {
-        setUser(userData);
-        console.log('✅ 認証成功:', userData);
-      } else {
-        setUser(null);
-        console.log('❌ 認証失敗 - ユーザー情報なし');
-      }
-    } catch (error) {
-      console.error('❌ 認証チェックエラー:', error);
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isLoading]);
-
-
   useEffect(() => {
+    const checkAuth = async () => {
+      if (!isLoading) {
+        setIsLoading(true);
+        try {
+          const userData = await getCurrentUser();
+          if (userData && userData.username) {
+            setUser(userData);
+            console.log('✅ 認証成功:', userData);
+          } else {
+            setUser(null);
+            console.log('❌ 認証失敗 - ユーザー情報なし');
+          }
+        } catch (error) {
+          console.error('❌ 認証チェックエラー:', error);
+          setUser(null);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
     checkAuth();
-  }, [checkAuth]);
+  }, []); // 空の依存配列で初回のみ実行
 
   const login = async (username: string, password: string) => {
     try {
