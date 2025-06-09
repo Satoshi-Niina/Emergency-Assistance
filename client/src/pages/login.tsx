@@ -17,7 +17,10 @@ export default function Login() {
   // Redirect if already logged in (but only after proper authentication)
   useEffect(() => {
     if (!authLoading && user && user.username) {
+      console.log('ログイン済みユーザーを検出 - チャット画面に遷移');
       setLocation("/chat");
+    } else if (!authLoading && !user) {
+      console.log('未ログインユーザー - ログイン画面を表示');
     }
   }, [user, authLoading, setLocation]);
 
