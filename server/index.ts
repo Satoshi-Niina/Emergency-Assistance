@@ -48,23 +48,57 @@ console.log(`   __dirname: ${__dirname}`);
 const openaiKey = process.env.OPENAI_API_KEY || process.env.REPLIT_SECRET_OPENAI_API_KEY;
 // セキュリティのためAPIキー情報のログ出力を削除
 
-// プロセス重複防止
+// プロセス重複防止とシングルトン管理
+const PROCESS_LOCK_FILE = '/tmp/troubleshooting-server.lock';
 process.title = 'troubleshooting-server';
+
+// 既存プロセスの確認
+try {
+  if (fs.existsSync(PROCESS_LOCK_FILE)) {
+    const lockContent = fs.readFileSync(PROCESS_LOCK_FILE, 'utf8');
+    const existingPid = parseInt(lockContent.trim());
+    
+    try {
+      process.kill(existingPid, 0); // プロセス存在確認
+      console.log(`🔄 Existing process ${existingPid} detected, terminating...`);
+      process.kill(existingPid, 'SIGTERM');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    } catch (e) {
+      // プロセスが既に終了している場合
+      console.log('🧹 Stale lock file removed');
+    }
+    
+    fs.unlinkSync(PROCESS_LOCK_FILE);
+  }
+  
+  // 新しいロックファイルを作成
+  fs.writeFileSync(PROCESS_LOCK_FILE, process.pid.toString());
+  console.log(`🔒 Process lock acquired: PID ${process.pid}`);
+} catch (error) {
+  console.error('Lock file management error:', error);
+}
 
 // Express設定
 const app = express();
 const port = process.env.PORT || 5000;
 
 // プロセス終了時のクリーンアップ
-process.on('SIGINT', () => {
+const cleanup = () => {
   console.log('🛑 Graceful shutdown initiated...');
+  try {
+    if (fs.existsSync(PROCESS_LOCK_FILE)) {
+      fs.unlinkSync(PROCESS_LOCK_FILE);
+      console.log('🧹 Lock file cleaned up');
+    }
+  } catch (e) {
+    console.error('Cleanup error:', e);
+  }
   process.exit(0);
-});
+};
 
-process.on('SIGTERM', () => {
-  console.log('🛑 Server terminated');
-  process.exit(0);
-});
+process.on('SIGINT', cleanup);
+process.on('SIGTERM', cleanup);
+process.on('exit', cleanup);
 
 // CORS設定を強化
 app.use((req, res, next) => {
