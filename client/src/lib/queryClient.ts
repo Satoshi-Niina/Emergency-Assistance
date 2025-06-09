@@ -159,7 +159,7 @@ export const queryClient = new QueryClient({
 const setupWebSocket = (token: string) => {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const host = window.location.hostname;
-  
+
   // デプロイメント環境では標準ポートを使用、開発環境では5000番ポートを使用
   let wsUrl;
   if (window.location.hostname.includes('replit.app') || window.location.hostname.includes('replit.dev')) {
@@ -188,7 +188,7 @@ export function testWebSocketConnection(): Promise<boolean> {
   return new Promise((resolve) => {
     try {
       const ws = setupWebSocket('test-token');
-      
+
       const timeout = setTimeout(() => {
         ws.close();
         resolve(false);
