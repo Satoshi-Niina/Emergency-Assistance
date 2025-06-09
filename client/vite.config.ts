@@ -1,3 +1,4 @@
+
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -14,14 +15,14 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    sourcemap: false,
+    minify: false,
     rollupOptions: {
       output: {
         manualChunks: undefined
       }
     }
   },
-  server: {
-    hmr: false,
-    ws: false
-  }
+  server: false,
+  preview: false
 });
