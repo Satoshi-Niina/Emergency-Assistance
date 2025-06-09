@@ -23,7 +23,7 @@ start = "typescript-language-server --stdio"
 requiredFiles = [".replit", "replit.nix"]
 
 [deployment]
-run = ["node", "dist/index.js"]
+run = ["sh", "-c", "node server/index.js"]
 build = ["npm", "run", "build"]
 deploymentTarget = "cloudrun"
 
