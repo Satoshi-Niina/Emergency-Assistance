@@ -24,7 +24,7 @@ requiredFiles = [".replit", "replit.nix"]
 
 [deployment]
 run = ["sh", "-c", "node server/index.js"]
-build = ["sh", "-c", "npm run build"]
+build = ["sh", "-c", "npm install && cd client && npm install && cd .. && npm run build"]
 deploymentTarget = "cloudrun"
 
 [packager]
