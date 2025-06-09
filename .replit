@@ -49,38 +49,6 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "echo \"🧹 Cleaning up existing processes...\""
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "killall -9 node npm vite 2>/dev/null || true"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "rm -f /tmp/troubleshooting-server.lock"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "sleep 3"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "echo \"📦 Installing dependencies...\""
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install --silent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && npm install --silent && cd .."
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "echo \"🚀 Starting application...\""
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
 args = "npm run dev:all"
 
 [[workflows.workflow]]
@@ -91,6 +59,23 @@ mode = "sequential"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "pkill -f \"npm run dev\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev:all"
+
+[[workflows.workflow]]
+name = "Clean Start"
+author = 39467490
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = 'pkill -f "npm\|vite\|tsx" 2>/dev/null || true'
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "sleep 2"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
