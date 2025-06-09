@@ -77,60 +77,16 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "echo \"🛑 Forcefully stopping all processes...\""
+args = "pkill -f \"tsx.*server/index.ts\" 2>/dev/null || true"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pkill -9 -f \"npm run dev\" 2>/dev/null || true"
+args = "pkill -f \"vite\" 2>/dev/null || true"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pkill -9 -f \"vite\" 2>/dev/null || true"
+args = "sleep 2"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pkill -9 -f \"tsx\" 2>/dev/null || true"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "pkill -9 -f \"troubleshooting-server\" 2>/dev/null || true"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "fuser -k 5000/tcp 2>/dev/null || true"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "fuser -k 5173/tcp 2>/dev/null || true"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "rm -f /tmp/troubleshooting-server.lock"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "echo \"⏳ Waiting for cleanup...\""
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "sleep 5"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "echo \"🧹 Clearing caches...\""
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "rm -rf client/node_modules/.vite 2>/dev/null || true"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "rm -rf node_modules/.cache 2>/dev/null || true"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "echo \"📦 Starting application...\""
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev:all"
+args = "npm run dev"

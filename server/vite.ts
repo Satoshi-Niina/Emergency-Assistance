@@ -20,18 +20,29 @@ export function log(message: string, source = "express") {
 }
 
 export async function setupVite(app: Express, server: Server) {
-  // Viteの重複初期化を防ぐ
-  if ((global as any).__VITE_INITIALIZED__) {
-    console.log('⚠️ Vite already initialized, skipping...');
+  // 複数レベルでの重複初期化防止
+  const VITE_LOCK_KEY = '__VITE_SERVER_LOCK__';
+  
+  if ((global as any)[VITE_LOCK_KEY]) {
+    console.log('⚠️ Vite server already running, aborting...');
     return;
   }
-  (global as any).__VITE_INITIALIZED__ = true;
+  
+  // プロセスレベルでのロック
+  (global as any)[VITE_LOCK_KEY] = {
+    pid: process.pid,
+    timestamp: Date.now()
+  };
 
   const serverOptions = {
     middlewareMode: true,
-    hmr: false, // HMRを無効化してループを防ぐ
+    hmr: false, // HMR完全無効化
     host: '0.0.0.0',
-    allowedHosts: 'all'
+    allowedHosts: 'all',
+    watch: null, // ファイル監視も無効化
+    fs: {
+      strict: false
+    }
   };
 
   const vite = await createViteServer({

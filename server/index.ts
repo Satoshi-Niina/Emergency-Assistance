@@ -57,12 +57,22 @@ process.title = 'troubleshooting-server';
 // グローバル初期化フラグ
 const GLOBAL_INIT_FLAG = '__TROUBLESHOOTING_SERVER_INITIALIZED__';
 
-// 同一プロセス内での重複初期化を防ぐ
+// より厳密な重複初期化防止
 if ((global as any)[GLOBAL_INIT_FLAG]) {
   console.log('⚠️ Server already initializing in this process, exiting...');
-  process.exit(0);
+  setTimeout(() => process.exit(0), 100);
+  return;
 }
 (global as any)[GLOBAL_INIT_FLAG] = true;
+
+// 追加の安全措置
+process.on('uncaughtException', (error) => {
+  if (error.message.includes('EADDRINUSE')) {
+    console.log('Port already in use, terminating...');
+    process.exit(0);
+  }
+  throw error;
+});
 
 // 既存プロセスの確認とクリーンアップ
 const initializeProcessLock = async () => {

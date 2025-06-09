@@ -49,16 +49,24 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-// 強化されたグローバル初期化フラグ
+// 複数レベルでの初期化防止
 const REACT_INIT_KEY = '__REACT_APP_INITIALIZED__';
 const REACT_ROOT_KEY = '__REACT_ROOT_INSTANCE__';
+const REACT_LOCK_KEY = '__REACT_INITIALIZATION_LOCK__';
 
-// DOM要素とグローバル状態の両方をチェック
 const container = document.getElementById("root");
-const isAlreadyInitialized = !!(window as any)[REACT_INIT_KEY] || 
-                            (container && container.hasAttribute('data-react-initialized'));
+
+// より厳密な重複チェック
+const isAlreadyInitialized = 
+  !!(window as any)[REACT_INIT_KEY] || 
+  !!(window as any)[REACT_ROOT_KEY] ||
+  !!(window as any)[REACT_LOCK_KEY] ||
+  (container && container.hasAttribute('data-react-initialized')) ||
+  (container && container.children.length > 0);
 
 if (!isAlreadyInitialized) {
+  // 初期化ロックを設定
+  (window as any)[REACT_LOCK_KEY] = true;
   console.log('🚀 Initializing React app (first time)');
 
   // グローバルフラグを設定
@@ -91,26 +99,43 @@ if (!isAlreadyInitialized) {
   } else {
     // 既存のrootインスタンスを確認
     if ((window as any)[REACT_ROOT_KEY]) {
-      console.log('⚠️ React root already exists, skipping initialization');
+      console.log('⚠️ React root already exists, aborting initialization');
+      return;
+    }
+
+    // DOM状態の最終確認
+    if (container.children.length > 0) {
+      console.log('⚠️ Container already has content, aborting initialization');
       return;
     }
 
     // React rootの重複作成を防ぐ
     container.setAttribute('data-react-initialized', 'true');
-    const root = createRoot(container);
     
-    // rootインスタンスを保存
-    (window as any)[REACT_ROOT_KEY] = root;
+    try {
+      const root = createRoot(container);
+      
+      // rootインスタンスを保存
+      (window as any)[REACT_ROOT_KEY] = root;
+      (window as any)[REACT_INIT_KEY] = true;
 
     root.render(
-      <QueryClientProvider client={queryClient}>
-        <ErrorBoundary>
-          <App />
-        </ErrorBoundary>
-      </QueryClientProvider>
-    );
+        <QueryClientProvider client={queryClient}>
+          <ErrorBoundary>
+            <App />
+          </ErrorBoundary>
+        </QueryClientProvider>
+      );
 
-    console.log('✅ React app initialized successfully');
+      console.log('✅ React app initialized successfully');
+    } catch (error) {
+      console.error('❌ React initialization failed:', error);
+      // クリーンアップ
+      delete (window as any)[REACT_ROOT_KEY];
+      delete (window as any)[REACT_INIT_KEY];
+      delete (window as any)[REACT_LOCK_KEY];
+      container.removeAttribute('data-react-initialized');
+    }
   }
 } else {
   console.log('⚠️ React app already initialized, skipping');
