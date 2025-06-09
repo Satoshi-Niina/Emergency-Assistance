@@ -57,35 +57,35 @@ if (typeof process !== 'undefined' && process.setMaxListeners) {
   process.setMaxListeners(30);
 }
 
-// Vite HMR接続の重複を防ぐシングルトン管理
-let viteHmrInitialized = false;
+// 完全なVite HMR重複防止システム
+const VITE_HMR_KEY = '__VITE_HMR_INITIALIZED__';
+let viteHmrInitialized = (window as any)[VITE_HMR_KEY] || false;
 
-// HMR接続のクリーンアップ関数
-const cleanupHMR = () => {
-  if (import.meta.hot) {
-    import.meta.hot.dispose(() => {
-      viteHmrInitialized = false;
-    });
-  }
-};
-
-// HMR初期化をシングルトンで管理
+// HMR初期化をグローバルレベルで管理
 const initializeHMR = () => {
-  if (!viteHmrInitialized && import.meta.hot) {
+  if (viteHmrInitialized || !(window as any)[VITE_HMR_KEY]) {
+    console.log('🔥 Initializing Vite HMR (first time)');
+    (window as any)[VITE_HMR_KEY] = true;
     viteHmrInitialized = true;
 
-    import.meta.hot.accept(() => {
-      console.log('[HMR] Module updated');
-    });
+    if (import.meta.hot) {
+      import.meta.hot.accept(() => {
+        console.log('[HMR] Module updated');
+      });
 
-    import.meta.hot.dispose(() => {
-      viteHmrInitialized = false;
-    });
+      import.meta.hot.dispose(() => {
+        console.log('[HMR] Module disposed');
+      });
+    }
+  } else {
+    console.log('🔥 Vite HMR already initialized, skipping');
   }
 };
 
-// HMR初期化
-initializeHMR();
+// 開発環境でのみHMR初期化
+if (import.meta.env.DEV) {
+  initializeHMR();
+}
 
 // Vite HMR WebSocketエラーとメモリリーク警告を無視
 const originalConsoleError = console.error;

@@ -51,51 +51,56 @@ const openaiKey = process.env.OPENAI_API_KEY || process.env.REPLIT_SECRET_OPENAI
 
 // プロセス重複防止とシングルトン管理
 const PROCESS_LOCK_FILE = '/tmp/troubleshooting-server.lock';
+const PROCESS_MARKER = `troubleshooting-server-${Date.now()}`;
 process.title = 'troubleshooting-server';
 
 // 既存プロセスの確認とクリーンアップ
 const initializeProcessLock = async () => {
   try {
-    // 既存のロックファイルをチェック
-    if (fs.existsSync(PROCESS_LOCK_FILE)) {
-      const existingPid = fs.readFileSync(PROCESS_LOCK_FILE, 'utf8').trim();
-      console.log(`🔍 Found existing lock file with PID: ${existingPid}`);
+    console.log(`🔧 Initializing process lock (PID: ${process.pid})`);
+    
+    // 全ての関連プロセスを強制終了
+    const killProcesses = () => new Promise<void>((resolve) => {
+      const commands = [
+        `pkill -9 -f "troubleshooting-server" 2>/dev/null || true`,
+        `pkill -9 -f "tsx.*server/index.ts" 2>/dev/null || true`,
+        `pkill -9 -f "node.*5000" 2>/dev/null || true`,
+        `pkill -9 -f "vite.*5173" 2>/dev/null || true`,
+        `fuser -k 5000/tcp 2>/dev/null || true`,
+        `fuser -k 5173/tcp 2>/dev/null || true`
+      ];
       
-      // 既存プロセスが生きているかチェック
-      try {
-        process.kill(parseInt(existingPid), 0); // プロセス存在チェック
-        console.log(`⚠️  Process ${existingPid} is still running, terminating...`);
-        process.kill(parseInt(existingPid), 'SIGTERM');
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      } catch (e) {
-        console.log(`📝 Process ${existingPid} not found (already terminated)`);
-      }
-      
-      fs.unlinkSync(PROCESS_LOCK_FILE);
-    }
-
-    // ポート占有プロセスを強制終了
-    const killPortProcess = () => new Promise<void>((resolve) => {
-      exec(`lsof -ti:${port}`, (error, stdout) => {
-        if (stdout.trim()) {
-          const pids = stdout.trim().split('\n');
-          pids.forEach(pid => {
-            if (pid !== process.pid.toString()) {
-              console.log(`🔪 Killing process on port ${port}: ${pid}`);
-              exec(`kill -9 ${pid}`);
-            }
-          });
-        }
-        resolve();
+      let completed = 0;
+      commands.forEach(cmd => {
+        exec(cmd, () => {
+          completed++;
+          if (completed === commands.length) {
+            resolve();
+          }
+        });
       });
+      
+      // タイムアウト設定
+      setTimeout(resolve, 3000);
     });
 
-    await killPortProcess();
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await killProcesses();
+    
+    // ロックファイルクリーンアップ
+    if (fs.existsSync(PROCESS_LOCK_FILE)) {
+      fs.unlinkSync(PROCESS_LOCK_FILE);
+      console.log(`🧹 Cleaned up existing lock file`);
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
     // 新しいロックファイルを作成
-    fs.writeFileSync(PROCESS_LOCK_FILE, process.pid.toString());
-    console.log(`🔒 Process lock acquired: PID ${process.pid}`);
+    fs.writeFileSync(PROCESS_LOCK_FILE, JSON.stringify({
+      pid: process.pid,
+      marker: PROCESS_MARKER,
+      startTime: Date.now()
+    }));
+    console.log(`🔒 Process lock acquired: PID ${process.pid}, Marker: ${PROCESS_MARKER}`);
   } catch (error) {
     console.error('Lock file management error:', error);
   }
@@ -107,20 +112,31 @@ await initializeProcessLock();
 const app = express();
 const port = parseInt(process.env.PORT || '5000', 10);
 
-// プロセス終了時のクリーンアップ（簡略化）
-const cleanup = () => {
+// プロセス終了時のクリーンアップ
+const cleanup = (signal: string) => {
+  console.log(`🛑 Cleanup initiated by ${signal} (PID: ${process.pid})`);
   try {
+    // ロックファイルの内容を確認して、自分のプロセスかチェック
     if (fs.existsSync(PROCESS_LOCK_FILE)) {
-      fs.unlinkSync(PROCESS_LOCK_FILE);
+      const lockData = JSON.parse(fs.readFileSync(PROCESS_LOCK_FILE, 'utf8'));
+      if (lockData.marker === PROCESS_MARKER || lockData.pid === process.pid) {
+        fs.unlinkSync(PROCESS_LOCK_FILE);
+        console.log(`🧹 Lock file cleaned up`);
+      }
     }
   } catch (e) {
-    // エラーは無視
+    // ロックファイルの削除エラーは無視
   }
-  process.exit(0);
+  
+  // 強制終了前に少し待機
+  setTimeout(() => {
+    process.exit(0);
+  }, 500);
 };
 
-process.on('SIGINT', cleanup);
-process.on('SIGTERM', cleanup);
+process.on('SIGINT', () => cleanup('SIGINT'));
+process.on('SIGTERM', () => cleanup('SIGTERM'));
+process.on('exit', () => cleanup('EXIT'));
 
 // CORS設定
 app.use(cors({

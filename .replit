@@ -77,27 +77,39 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "echo \"🛑 Stopping all processes...\""
+args = "echo \"🛑 Force stopping all processes...\""
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pkill -f \"npm run dev\" 2>/dev/null || true"
+args = "pkill -9 -f \"npm run dev\" 2>/dev/null || true"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pkill -f \"vite\" 2>/dev/null || true"
+args = "pkill -9 -f \"vite\" 2>/dev/null || true"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pkill -f \"tsx\" 2>/dev/null || true"
+args = "pkill -9 -f \"tsx\" 2>/dev/null || true"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pkill -f \"node.*5000\" 2>/dev/null || true"
+args = "pkill -9 -f \"node.*5000\" 2>/dev/null || true"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pkill -f \"node.*5173\" 2>/dev/null || true"
+args = "pkill -9 -f \"node.*5173\" 2>/dev/null || true"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pkill -9 -f \"troubleshooting-server\" 2>/dev/null || true"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "fuser -k 5000/tcp 2>/dev/null || true"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "fuser -k 5173/tcp 2>/dev/null || true"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
@@ -105,7 +117,7 @@ args = "rm -f /tmp/troubleshooting-server.lock"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "sleep 3"
+args = "sleep 5"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
