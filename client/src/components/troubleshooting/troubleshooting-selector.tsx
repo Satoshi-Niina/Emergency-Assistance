@@ -26,38 +26,38 @@ export default function TroubleshootingSelector({
   const [filteredFlows, setFilteredFlows] = useState<TroubleshootingFlow[]>([]);
   const [selectedFlow, setSelectedFlow] = useState<string | null>(null);
 
-  // トラブルシューティングフローのリストを取得
-  useEffect(() => {
-    const fetchFlows = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch("/api/troubleshooting");
-        if (!response.ok) {
-          throw new Error(`Error ${response.status}: ${response.statusText}`);
-        }
+  // トラブルシューティングフローを取得
+  const fetchFlows = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/troubleshooting");
 
-        const data = await response.json();
-        setFlows(data);
-        setFilteredFlows(data);
-      } catch (error) {
-        console.error(
-          "トラブルシューティングデータの取得に失敗しました:",
-          error,
-        );
-        toast({
-          title: "エラー",
-          description: "トラブルシューティングデータの取得に失敗しました",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    };
 
+      const data = await response.json();
+      console.log("取得したフローデータ:", data);
+      setFlows(data);
+      setFilteredFlows(data);
+    } catch (error) {
+      console.error("フロー取得エラー:", error);
+      toast({
+        title: "エラー",
+        description: "フローの取得に失敗しました",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 初期データ取得
+  useEffect(() => {
     fetchFlows();
-  }, [toast]);
+  }, []);
 
-  // 初期キーワードがある場合は自動検索を実行
+  // フローを検索
   useEffect(() => {
     if (
       initialSearchKeyword &&
