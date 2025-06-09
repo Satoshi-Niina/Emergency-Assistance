@@ -88,22 +88,22 @@ const healthStatus = () => ({
 });
 
 // デプロイメント用の即座応答エンドポイント（処理時間最小化）
-app.get('/health', (req, res) => {
+app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
-app.get('/ready', (req, res) => {
+app.get('/api/ready', (req, res) => {
   res.status(200).json(healthStatus());
 });
 
-// Root endpoint - プロダクションではアプリケーション、開発では API
-app.get('/', (req, res) => {
+// Root endpoint - 開発環境でもViteの処理に委ねる
+app.get('/', (req, res, next) => {
   if (process.env.NODE_ENV === 'production') {
     // プロダクションでは静的配信に任せる
-    return;
+    return next();
   } else {
-    // 開発環境では API レスポンス
-    res.status(200).json(healthStatus());
+    // 開発環境ではViteに処理を委ねる
+    return next();
   }
 });
 
