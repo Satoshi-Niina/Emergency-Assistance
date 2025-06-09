@@ -39,6 +39,22 @@ enabledForHosting = false
 localPort = 5000
 externalPort = 80
 
-[[ports]]
-localPort = 5000
-externalPort = 443
+[workflows]
+runButton = "Start Application"
+
+[[workflows.workflow]]
+name = "Start Application"
+author = 39467490
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm install"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm install && cd .."
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev:all"
