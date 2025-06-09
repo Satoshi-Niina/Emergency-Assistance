@@ -12,6 +12,7 @@ export default defineConfig({
     alias: {
       "@": resolve(__dirname, "./client/src"),
       "@shared": resolve(__dirname, "./shared"),
+      "@shared/schema": resolve(__dirname, "./shared/schema.ts"),
     },
   },
   root: "./client",
