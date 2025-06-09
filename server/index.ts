@@ -34,9 +34,9 @@ try {
   console.warn('⚠️  Failed to load .env files:', error instanceof Error ? error.message : error);
 }
 
-// Set NODE_ENV if not set
+// Set NODE_ENV if not set - デプロイ時はproductionに設定
 if (!process.env.NODE_ENV) {
-  process.env.NODE_ENV = 'development';
+  process.env.NODE_ENV = process.env.REPLIT_DEPLOYMENT ? 'production' : 'development';
 }
 
 console.log('🔧 Environment check:');
@@ -263,9 +263,10 @@ console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   } else {
     // プロダクション用の静的ファイル配信 - 複数のパスをチェック
     const possibleDistPaths = [
-      path.join(process.cwd(), 'dist'),
       path.join(process.cwd(), 'client', 'dist'),
-      path.join(process.cwd(), 'build')
+      path.join(process.cwd(), 'dist'),
+      path.join(process.cwd(), 'build'),
+      path.join(__dirname, '..', 'client', 'dist')
     ];
     
     let distPath = '';
