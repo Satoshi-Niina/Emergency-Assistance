@@ -17,19 +17,21 @@ export default defineConfig({
     },
     hmr: {
       port: 5173,
-      host: "0.0.0.0"
+      host: "0.0.0.0",
+      clientPort: 5173,
+      overlay: false
     },
     proxy: {
       "/api": {
         target: "http://0.0.0.0:5000",
         changeOrigin: true,
         secure: false,
+        timeout: 30000,
         configure: (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {
-            console.log('proxy error', err);
-          });
-          proxy.on('proxyReq', (proxyReq, req, _res) => {
-            console.log('Sending Request to the Target:', req.method, req.url);
+            if (!err.message.includes('ECONNRESET')) {
+              console.log('proxy error', err);
+            }
           });
         },
       },

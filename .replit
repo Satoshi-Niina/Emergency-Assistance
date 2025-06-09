@@ -93,11 +93,19 @@ args = "pkill -f \"tsx\" 2>/dev/null || true"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
+args = "pkill -f \"node.*5000\" 2>/dev/null || true"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pkill -f \"node.*5173\" 2>/dev/null || true"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
 args = "rm -f /tmp/troubleshooting-server.lock"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "sleep 5"
+args = "sleep 3"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
