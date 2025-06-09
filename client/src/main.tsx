@@ -120,10 +120,10 @@ if (!isAlreadyInitialized) {
 
     // React rootの重複作成を防ぐ
     container.setAttribute('data-react-initialized', 'true');
-    
+
     try {
       const root = createRoot(container);
-      
+
       // rootインスタンスを保存
       (window as any)[REACT_ROOT_KEY] = root;
       (window as any)[REACT_INIT_KEY] = true;
