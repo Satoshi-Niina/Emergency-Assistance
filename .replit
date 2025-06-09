@@ -49,6 +49,22 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
+args = "echo \"🛑 Cleaning up processes...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = 'pkill -f "npm\|vite\|tsx" 2>/dev/null || true'
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "sleep 3"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🚀 Starting application...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
 args = "npm run dev:all"
 
 [[workflows.workflow]]
