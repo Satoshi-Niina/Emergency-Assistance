@@ -29,11 +29,7 @@ args = "cd client && npm install && cd .."
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm run build:client"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev"
+args = "npm run dev:all"
 
 [[workflows.workflow]]
 name = "Express Static Server"
