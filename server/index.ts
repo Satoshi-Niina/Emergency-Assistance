@@ -219,10 +219,15 @@ const port = process.env.PORT ? parseInt(process.env.PORT) :
     });
     
     if (fs.existsSync(distPath)) {
+      // 静的ファイルの詳細ログ
+      const distFiles = fs.readdirSync(distPath);
+      console.log('Available dist files:', distFiles);
+      
       app.use(express.static(distPath, { 
         index: false,
-        setHeaders: (res, path) => {
-          if (path.endsWith('.html')) {
+        setHeaders: (res, filePath) => {
+          console.log('Serving static file:', filePath);
+          if (filePath.endsWith('.html')) {
             res.setHeader('Cache-Control', 'no-cache');
           }
         }
@@ -234,28 +239,42 @@ const port = process.env.PORT ? parseInt(process.env.PORT) :
         if (req.path.startsWith('/api/') || 
             req.path.startsWith('/knowledge-base/') ||
             req.path.startsWith('/static/')) {
+          console.log('Skipping SPA routing for:', req.path);
           return next();
         }
         
         const indexPath = path.join(distPath, 'index.html');
-        console.log('Serving index.html for:', req.path);
+        console.log('Attempting to serve index.html for:', req.path, 'from:', indexPath);
         
         if (fs.existsSync(indexPath)) {
+          console.log('Successfully serving index.html');
           res.sendFile(indexPath);
         } else {
           console.error('index.html not found at:', indexPath);
-          res.status(404).send('Application not found');
+          console.error('Available files in dist:', fs.readdirSync(distPath));
+          res.status(500).send(`
+            <html>
+              <body>
+                <h1>Application Error</h1>
+                <p>index.html not found</p>
+                <p>Dist path: ${distPath}</p>
+                <p>Available files: ${fs.readdirSync(distPath).join(', ')}</p>
+              </body>
+            </html>
+          `);
         }
       });
       
       console.log('プロダクション用静的ファイル配信を設定しました');
     } else {
       console.error('ビルドファイルが見つかりません:', distPath);
+      console.error('Current working directory:', process.cwd());
+      console.error('Available directories:', fs.readdirSync(process.cwd()));
       
       // ビルドされていない場合の対応
-      app.get('*', (req, res) => {
+      app.get('*', (req, res, next) => {
         if (req.path.startsWith('/api/')) {
-          return;
+          return next();
         }
         res.status(503).send(`
           <html>
@@ -263,6 +282,8 @@ const port = process.env.PORT ? parseInt(process.env.PORT) :
               <h1>Application Not Built</h1>
               <p>The application has not been built for production.</p>
               <p>Expected build directory: ${distPath}</p>
+              <p>Current directory: ${process.cwd()}</p>
+              <p>Available directories: ${fs.readdirSync(process.cwd()).join(', ')}</p>
             </body>
           </html>
         `);
