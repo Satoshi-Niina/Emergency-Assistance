@@ -50,15 +50,42 @@ class ErrorBoundary extends React.Component<
 }
 // EventEmitterのリスナー上限を増加
 import { EventEmitter } from 'events';
-EventEmitter.defaultMaxListeners = 20;
+EventEmitter.defaultMaxListeners = 30;
 
 // グローバルなEventEmitterのリスナー上限を設定
 if (typeof process !== 'undefined' && process.setMaxListeners) {
-  process.setMaxListeners(20);
+  process.setMaxListeners(30);
 }
 
-// Vite HMR接続の重複を防ぐ
-let viteConnectionInitialized = false;
+// Vite HMR接続の重複を防ぐシングルトン管理
+let viteHmrInitialized = false;
+
+// HMR接続のクリーンアップ関数
+const cleanupHMR = () => {
+  if (import.meta.hot) {
+    import.meta.hot.dispose(() => {
+      viteHmrInitialized = false;
+    });
+  }
+};
+
+// HMR初期化をシングルトンで管理
+const initializeHMR = () => {
+  if (!viteHmrInitialized && import.meta.hot) {
+    viteHmrInitialized = true;
+
+    import.meta.hot.accept(() => {
+      console.log('[HMR] Module updated');
+    });
+
+    import.meta.hot.dispose(() => {
+      viteHmrInitialized = false;
+    });
+  }
+};
+
+// HMR初期化
+initializeHMR();
 
 // Vite HMR WebSocketエラーとメモリリーク警告を無視
 const originalConsoleError = console.error;
@@ -88,12 +115,12 @@ console.warn = (...args) => {
 };
 
 // HMR接続の重複を防ぐ
-if (import.meta.hot && !viteConnectionInitialized) {
-  viteConnectionInitialized = true;
-  
+if (import.meta.hot && !viteHmrInitialized) {
+  viteHmrInitialized = true;
+
   // 既存のリスナーをクリア
   import.meta.hot.dispose(() => {
-    viteConnectionInitialized = false;
+    viteHmrInitialized = false;
   });
 }
 
@@ -101,7 +128,7 @@ const container = document.getElementById("root");
 if (container && !container.hasAttribute('data-react-root')) {
   // React rootの重複初期化を防ぐ
   container.setAttribute('data-react-root', 'true');
-  
+
   const root = createRoot(container);
   root.render(
     <QueryClientProvider client={queryClient}>
@@ -110,7 +137,7 @@ if (container && !container.hasAttribute('data-react-root')) {
       </ErrorBoundary>
     </QueryClientProvider>
   );
-  
+
   // クリーンアップ処理
   if (import.meta.hot) {
     import.meta.hot.dispose(() => {

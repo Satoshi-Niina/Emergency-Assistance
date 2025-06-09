@@ -56,22 +56,42 @@ process.title = 'troubleshooting-server';
 // 既存プロセスの確認とクリーンアップ
 const initializeProcessLock = async () => {
   try {
-    // 強制的にロックファイルを削除
+    // 既存のロックファイルをチェック
     if (fs.existsSync(PROCESS_LOCK_FILE)) {
+      const existingPid = fs.readFileSync(PROCESS_LOCK_FILE, 'utf8').trim();
+      console.log(`🔍 Found existing lock file with PID: ${existingPid}`);
+      
+      // 既存プロセスが生きているかチェック
+      try {
+        process.kill(parseInt(existingPid), 0); // プロセス存在チェック
+        console.log(`⚠️  Process ${existingPid} is still running, terminating...`);
+        process.kill(parseInt(existingPid), 'SIGTERM');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } catch (e) {
+        console.log(`📝 Process ${existingPid} not found (already terminated)`);
+      }
+      
       fs.unlinkSync(PROCESS_LOCK_FILE);
-      console.log('🧹 Previous lock file removed');
     }
 
     // ポート占有プロセスを強制終了
-    exec(`lsof -ti:${port}`, (error, stdout) => {
-      if (stdout.trim()) {
-        console.log(`🔪 Killing process on port ${port}: ${stdout.trim()}`);
-        exec(`kill -9 ${stdout.trim()}`);
-      }
+    const killPortProcess = () => new Promise<void>((resolve) => {
+      exec(`lsof -ti:${port}`, (error, stdout) => {
+        if (stdout.trim()) {
+          const pids = stdout.trim().split('\n');
+          pids.forEach(pid => {
+            if (pid !== process.pid.toString()) {
+              console.log(`🔪 Killing process on port ${port}: ${pid}`);
+              exec(`kill -9 ${pid}`);
+            }
+          });
+        }
+        resolve();
+      });
     });
 
-    // 短時間待機
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await killPortProcess();
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
     // 新しいロックファイルを作成
     fs.writeFileSync(PROCESS_LOCK_FILE, process.pid.toString());
