@@ -16,8 +16,9 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     sourcemap: false,
-    minify: false
+    minify: true
   },
+  // 開発サーバー完全無効化
   server: false,
   preview: false
 });
