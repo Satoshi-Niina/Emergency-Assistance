@@ -15,13 +15,8 @@ export default defineConfig({
       origin: true,
       credentials: true
     },
-    hmr: {
-      port: 5173,
-      host: "0.0.0.0",
-      clientPort: 5173,
-      overlay: false,
-      timeout: 30000
-    },
+    hmr: false, // HMR完全無効化
+    ws: false, // WebSocket完全無効化
     proxy: {
       "/api": {
         target: "http://0.0.0.0:5000",

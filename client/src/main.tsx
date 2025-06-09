@@ -87,15 +87,36 @@ if (!isAlreadyInitialized) {
   // グローバルフラグを設定
   (window as any)[REACT_INIT_KEY] = true;
 
-  // コンソールのノイズを削減
+  // Vite接続を完全ブロック
   const originalError = console.error;
   const originalWarn = console.warn;
+  const originalLog = console.log;
+
+  // WebSocketとVite接続を完全に無効化
+  if (typeof WebSocket !== 'undefined') {
+    const OriginalWebSocket = WebSocket;
+    (window as any).WebSocket = function(...args: any[]) {
+      const url = args[0];
+      if (typeof url === 'string' && (url.includes('vite') || url.includes('/@vite'))) {
+        // Vite関連のWebSocket接続をブロック
+        return {
+          close: () => {},
+          send: () => {},
+          addEventListener: () => {},
+          removeEventListener: () => {},
+          readyState: 3 // CLOSED
+        };
+      }
+      return new OriginalWebSocket(...args);
+    };
+  }
 
   console.error = (...args) => {
     const message = String(args[0] || '');
     if (message.includes('WebSocket') || 
         message.includes('vite') || 
-        message.includes('MaxListeners')) {
+        message.includes('MaxListeners') ||
+        message.includes('[vite]')) {
       return;
     }
     originalError.apply(console, args);
@@ -103,10 +124,19 @@ if (!isAlreadyInitialized) {
 
   console.warn = (...args) => {
     const message = String(args[0] || '');
-    if (message.includes('MaxListeners')) {
+    if (message.includes('MaxListeners') ||
+        message.includes('[vite]')) {
       return;
     }
     originalWarn.apply(console, args);
+  };
+
+  console.log = (...args) => {
+    const message = String(args[0] || '');
+    if (message.includes('[vite]')) {
+      return;
+    }
+    originalLog.apply(console, args);
   };
 
   if (!container) {
