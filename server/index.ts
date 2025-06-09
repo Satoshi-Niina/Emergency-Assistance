@@ -27,7 +27,7 @@ const __dirname = path.dirname(__filename);
 
 // .envファイルの読み込み（複数箇所から）
 try {
-  dotenv.config({ path: path.resolve(__dirname, '.env') });
+  dotenv.config({ path: path.resolve(process.cwd(), 'server/.env') });
   dotenv.config({ path: path.resolve(process.cwd(), '.env') });
   console.log('✅ Environment files loaded');
 } catch (error) {
@@ -250,8 +250,7 @@ console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     const possibleDistPaths = [
       path.join(process.cwd(), 'client', 'dist'),
       path.join(process.cwd(), 'dist'),
-      path.join(process.cwd(), 'build'),
-      path.join(__dirname, '..', 'client', 'dist')
+      path.join(process.cwd(), 'build')
     ];
 
     let distPath = '';
