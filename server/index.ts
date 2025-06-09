@@ -194,7 +194,7 @@ const port = process.env.PORT ? parseInt(process.env.PORT) :
     await setupVite(app, server);
   } else {
     // プロダクション用の静的ファイル配信
-    const distPath = path.join(process.cwd(), 'client', 'dist');
+    const distPath = path.join(process.cwd(), 'dist');
     console.log('Checking dist path:', distPath);
     console.log('Dist exists:', fs.existsSync(distPath));
     
