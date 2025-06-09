@@ -77,6 +77,10 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
+args = 'pkill -f "node\|tsx\|npm" 2>/dev/null || true'
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
 args = "npm install"
 
 [[workflows.workflow.tasks]]
@@ -85,7 +89,7 @@ args = "cd client && npm install && cd .."
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm run dev:simple"
+args = "npm run dev:all"
 
 [[workflows.workflow]]
 name = "Start Simple Server"
