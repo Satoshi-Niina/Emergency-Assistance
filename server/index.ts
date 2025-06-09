@@ -172,8 +172,7 @@ async function openBrowser(url: string) {
 }
 
 // ポート設定の最適化（Replitデプロイ対応）
-const port = process.env.PORT ? parseInt(process.env.PORT) : 
-             process.env.REPLIT_DEV_DOMAIN ? 5000 : 3000;
+const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
 
 (async () => {
   // 初期化
@@ -293,16 +292,17 @@ const port = process.env.PORT ? parseInt(process.env.PORT) :
 
   server.listen(port, '0.0.0.0', () => {
     console.log(`🚀 Server is running on port ${port}`);
-    secureLog(`サーバー起動: ポート ${port} (環境: ${process.env.NODE_ENV || 'development'})`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`Host: 0.0.0.0:${port}`);
 
     if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
-      secureLog(`外部URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`);
+      console.log(`External URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`);
     }
 
     // プロダクション環境でのヘルスチェック
     if (process.env.NODE_ENV === 'production') {
       console.log('Production server started successfully');
-      console.log(`Health endpoints: /health, /ready`);
+      console.log(`Health endpoints: /api/health, /api/ready`);
     }
 
     // 軽量な初期化のみ実行
