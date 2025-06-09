@@ -68,14 +68,29 @@ if ((global as any)[GLOBAL_INIT_FLAG]) {
 const processId = `${process.pid}-${Date.now()}`;
 console.log(`🚀 Starting server process: ${processId}`);
 
-// 既存プロセスを強制終了
-exec('pkill -f "tsx.*server/index.ts" 2>/dev/null || true', () => {
-  exec('pkill -f "npm run dev" 2>/dev/null || true', () => {
+// より強力なプロセス終了
+const forceKillProcesses = () => {
+  const commands = [
+    'pkill -9 -f "tsx.*server/index.ts" 2>/dev/null || true',
+    'pkill -9 -f "npm run dev" 2>/dev/null || true', 
+    'pkill -9 -f "vite" 2>/dev/null || true',
+    'pkill -9 -f "troubleshooting-server" 2>/dev/null || true',
+    'fuser -k 5000/tcp 2>/dev/null || true',
+    'fuser -k 5173/tcp 2>/dev/null || true'
+  ];
+  
+  commands.forEach((cmd, index) => {
     setTimeout(() => {
-      console.log('Previous processes cleaned up');
-    }, 1000);
+      exec(cmd, () => {
+        if (index === commands.length - 1) {
+          console.log('All previous processes terminated');
+        }
+      });
+    }, index * 500);
   });
-});
+};
+
+forceKillProcesses();
 
 // 追加の安全措置
 process.on('uncaughtException', (error) => {

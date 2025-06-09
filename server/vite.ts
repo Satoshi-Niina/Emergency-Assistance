@@ -47,7 +47,9 @@ export async function setupVite(app: Express, server: Server) {
     watch: null, // ファイル監視も無効化
     fs: {
       strict: false
-    }
+    },
+    ws: false, // WebSocket完全無効化
+    cors: false
   };
 
   const vite = await createViteServer({
