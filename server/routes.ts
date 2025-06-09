@@ -27,6 +27,7 @@ import { flowGeneratorRouter } from './routes/flow-generator';
 import { usersRouter } from './routes/users';
 import express from 'express';
 import { NextFunction } from "connect";
+import bcrypt from 'bcrypt';
 
 // Extend the express-session types
 declare module 'express-session' {
