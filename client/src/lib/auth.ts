@@ -8,10 +8,18 @@ import { LoginCredentials } from '@shared/schema';
  */
 export const login = async (credentials: LoginCredentials) => {
   try {
-    // サーバーに送信（ハードコードされたチェックを削除）
-    const response = await apiRequest('POST', '/api/auth/login', credentials);
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify(credentials)
+    });
+    
     if (!response.ok) {
-      throw new Error('認証サーバーからのレスポンスエラー');
+      const errorData = await response.json().catch(() => ({ message: '認証エラー' }));
+      throw new Error(errorData.message || '認証サーバーからのレスポンスエラー');
     }
     return await response.json();
   } catch (error) {
@@ -25,7 +33,10 @@ export const login = async (credentials: LoginCredentials) => {
  */
 export const logout = async () => {
   try {
-    await apiRequest('POST', '/api/auth/logout');
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include'
+    });
   } catch (error) {
     console.error('Logout error:', error);
     throw new Error('ログアウトに失敗しました');

@@ -1,34 +1,36 @@
 
-import express from 'express';
-import cors from 'cors';
-import path from 'path';
-import dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
-import session from 'express-session';
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const dotenv = require('dotenv');
+const session = require('express-session');
 
 dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({
-  origin: true,
-  credentials: true
+  origin: ['http://localhost:3000', 'https://*.replit.dev', 'https://*.repl.co'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
 }));
+
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // セッション設定
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-secret-key-here',
+  secret: process.env.SESSION_SECRET || 'emergency-recovery-system-secret-key-2024',
   resave: false,
   saveUninitialized: false,
+  name: 'emergency.session',
   cookie: {
-    secure: false, // HTTPSを使用する場合はtrueに設定
+    secure: false,
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24時間
+    maxAge: 24 * 60 * 60 * 1000, // 24時間
+    sameSite: 'lax'
   }
 }));
 
@@ -95,8 +97,9 @@ app.get('/api/health', (req, res) => {
 
 // SPAルーティング（APIルート以外は全てindex.htmlを返す）
 app.get('*', (req, res) => {
+    const fs = require('fs');
     const indexPath = path.join(distPath, 'index.html');
-    if (require('fs').existsSync(indexPath)) {
+    if (fs.existsSync(indexPath)) {
         res.sendFile(indexPath);
     } else {
         res.status(503).send('<h1>Application not built</h1><p>Run: npm run build:client</p>');
