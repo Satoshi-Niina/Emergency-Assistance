@@ -17,12 +17,10 @@ const __dirname = path.dirname(__filename);
 // .envファイルの読み込み
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-// 環境変数の確認
-console.log("[DEBUG] Environment variables loaded:", {
-  OPENAI_API_KEY: process.env.OPENAI_API_KEY ? "Set" : "Not set",
-  NODE_ENV: process.env.NODE_ENV,
-  DATABASE_URL: process.env.DATABASE_URL ? "Set" : "Not set"
-});
+// 環境変数の確認（本番環境では非表示）
+if (process.env.NODE_ENV === 'development') {
+  console.log("[INFO] Development mode - Environment check completed");
+}
 
 const app = express();
 app.use(express.json());
@@ -32,12 +30,16 @@ app.use(express.urlencoded({ extended: false }));
 (async () => {
   try {
     app.locals.storage = storage;
-    console.log('ストレージをアプリケーション変数として設定しました');
+    // ストレージ設定
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[INFO] Storage configured');
+    }
 
     // サーバー起動時に知識ベースを初期化
-    console.log('知識ベースの初期化を開始...');
     await initializeKnowledgeBase();
-    console.log('知識ベースの初期化が完了しました');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[INFO] Knowledge base initialized');
+    }
 
     // ディレクトリの確認と作成
     const dirs = [
@@ -51,25 +53,25 @@ app.use(express.urlencoded({ extended: false }));
     for (const dir of dirs) {
       const dirPath = path.join(process.cwd(), dir);
       if (!fs.existsSync(dirPath)) {
-        console.log(`ディレクトリを作成: ${dir}`);
         fs.mkdirSync(dirPath, { recursive: true });
       }
     }
 
     // サーバー起動時にuploadsのデータをknowledge-baseにコピー
-    console.log('uploads -> knowledge-base への同期を開始...');
     try {
       // APIが起動した後に実行するために少し待機
       setTimeout(async () => {
         try {
-          const syncResult = await axios.post('http://localhost:5000/api/tech-support/sync-knowledge-base?direction=uploads-to-kb');
-          console.log('アップロードデータの同期結果:', syncResult.data);
+          await axios.post('http://localhost:5000/api/tech-support/sync-knowledge-base?direction=uploads-to-kb');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[INFO] Data synchronization completed');
+          }
         } catch (syncErr: any) {
-          console.error('同期エラー:', syncErr?.message || '不明なエラー');
+          console.error('[ERROR] Sync failed');
         }
       }, 3000);
     } catch (syncErr) {
-      console.error('同期処理エラー:', syncErr);
+      console.error('[ERROR] Sync process failed');
     }
 
     const server = await registerRoutes(app);
