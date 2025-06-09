@@ -22,17 +22,22 @@ export function log(message: string, source = "express") {
 export async function setupVite(app: Express, server: Server) {
   // 複数レベルでの重複初期化防止
   const VITE_LOCK_KEY = '__VITE_SERVER_LOCK__';
+  const PROCESS_VITE_KEY = `__VITE_PROCESS_${process.pid}__`;
   
-  if ((global as any)[VITE_LOCK_KEY]) {
-    console.log('⚠️ Vite server already running, aborting...');
+  // 同一プロセス内での重複チェック
+  if ((global as any)[VITE_LOCK_KEY] || (global as any)[PROCESS_VITE_KEY]) {
+    console.log('⚠️ Vite server already running in this process, aborting...');
     return;
   }
   
-  // プロセスレベルでのロック
-  (global as any)[VITE_LOCK_KEY] = {
+  // プロセスレベルでのロック（二重ロック）
+  (global as any)[VITE_LOCK_KEY] = true;
+  (global as any)[PROCESS_VITE_KEY] = {
     pid: process.pid,
     timestamp: Date.now()
   };
+
+  console.log(`🔧 Setting up Vite server (PID: ${process.pid})`);
 
   const serverOptions = {
     middlewareMode: true,

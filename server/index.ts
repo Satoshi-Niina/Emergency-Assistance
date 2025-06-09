@@ -60,16 +60,28 @@ const GLOBAL_INIT_FLAG = '__TROUBLESHOOTING_SERVER_INITIALIZED__';
 // より厳密な重複初期化防止
 if ((global as any)[GLOBAL_INIT_FLAG]) {
   console.log('⚠️ Server already initializing in this process, exiting...');
-  setTimeout(() => process.exit(0), 100);
-  return;
+  process.exit(1);
 }
 (global as any)[GLOBAL_INIT_FLAG] = true;
+
+// プロセス重複防止の強化
+const processId = `${process.pid}-${Date.now()}`;
+console.log(`🚀 Starting server process: ${processId}`);
+
+// 既存プロセスを強制終了
+exec('pkill -f "tsx.*server/index.ts" 2>/dev/null || true', () => {
+  exec('pkill -f "npm run dev" 2>/dev/null || true', () => {
+    setTimeout(() => {
+      console.log('Previous processes cleaned up');
+    }, 1000);
+  });
+});
 
 // 追加の安全措置
 process.on('uncaughtException', (error) => {
   if (error.message.includes('EADDRINUSE')) {
     console.log('Port already in use, terminating...');
-    process.exit(0);
+    process.exit(1);
   }
   throw error;
 });

@@ -56,13 +56,28 @@ const REACT_LOCK_KEY = '__REACT_INITIALIZATION_LOCK__';
 
 const container = document.getElementById("root");
 
+// ページレベルでの初期化状態チェック
+const PAGE_LOAD_KEY = '__PAGE_LOAD_TIMESTAMP__';
+const currentPageLoad = (window as any)[PAGE_LOAD_KEY] || Date.now();
+(window as any)[PAGE_LOAD_KEY] = currentPageLoad;
+
 // より厳密な重複チェック
 const isAlreadyInitialized = 
   !!(window as any)[REACT_INIT_KEY] || 
   !!(window as any)[REACT_ROOT_KEY] ||
   !!(window as any)[REACT_LOCK_KEY] ||
   (container && container.hasAttribute('data-react-initialized')) ||
-  (container && container.children.length > 0);
+  (container && container.children.length > 0) ||
+  (container && container.querySelector('[data-reactroot]'));
+
+console.log(`🔍 React initialization check (Page Load: ${currentPageLoad}):`, {
+  hasInitKey: !!(window as any)[REACT_INIT_KEY],
+  hasRootKey: !!(window as any)[REACT_ROOT_KEY],
+  hasLockKey: !!(window as any)[REACT_LOCK_KEY],
+  hasDataAttr: container && container.hasAttribute('data-react-initialized'),
+  hasChildren: container && container.children.length > 0,
+  isAlreadyInitialized
+});
 
 if (!isAlreadyInitialized) {
   // 初期化ロックを設定
