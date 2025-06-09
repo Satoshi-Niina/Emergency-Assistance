@@ -49,11 +49,16 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-// グローバル初期化フラグ
+// 強化されたグローバル初期化フラグ
 const REACT_INIT_KEY = '__REACT_APP_INITIALIZED__';
+const REACT_ROOT_KEY = '__REACT_ROOT_INSTANCE__';
 
-// すでに初期化済みかチェック
-if (!(window as any)[REACT_INIT_KEY]) {
+// DOM要素とグローバル状態の両方をチェック
+const container = document.getElementById("root");
+const isAlreadyInitialized = !!(window as any)[REACT_INIT_KEY] || 
+                            (container && container.hasAttribute('data-react-initialized'));
+
+if (!isAlreadyInitialized) {
   console.log('🚀 Initializing React app (first time)');
 
   // グローバルフラグを設定
@@ -81,26 +86,31 @@ if (!(window as any)[REACT_INIT_KEY]) {
     originalWarn.apply(console, args);
   };
 
-  // DOM要素の存在確認
-  const container = document.getElementById("root");
   if (!container) {
     console.error('Root element not found');
   } else {
-    // React rootの重複作成を防ぐ
-    if (!container.hasAttribute('data-react-initialized')) {
-      container.setAttribute('data-react-initialized', 'true');
-
-      const root = createRoot(container);
-      root.render(
-        <QueryClientProvider client={queryClient}>
-          <ErrorBoundary>
-            <App />
-          </ErrorBoundary>
-        </QueryClientProvider>
-      );
-
-      console.log('✅ React app initialized successfully');
+    // 既存のrootインスタンスを確認
+    if ((window as any)[REACT_ROOT_KEY]) {
+      console.log('⚠️ React root already exists, skipping initialization');
+      return;
     }
+
+    // React rootの重複作成を防ぐ
+    container.setAttribute('data-react-initialized', 'true');
+    const root = createRoot(container);
+    
+    // rootインスタンスを保存
+    (window as any)[REACT_ROOT_KEY] = root;
+
+    root.render(
+      <QueryClientProvider client={queryClient}>
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
+      </QueryClientProvider>
+    );
+
+    console.log('✅ React app initialized successfully');
   }
 } else {
   console.log('⚠️ React app already initialized, skipping');
