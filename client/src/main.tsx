@@ -5,13 +5,21 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import React from "react";
 
-// Singleton protection
+// Robust singleton protection
 const REACT_INITIALIZED = '__REACT_APP_INITIALIZED__';
-if ((window as any)[REACT_INITIALIZED]) {
-  console.log('⛔ React already initialized');
+const REACT_ROOT_EXISTS = '__REACT_ROOT_EXISTS__';
+
+// Check multiple conditions to prevent duplicate initialization
+if ((window as any)[REACT_INITIALIZED] || 
+    (window as any)[REACT_ROOT_EXISTS] ||
+    document.getElementById('root')?.hasAttribute('data-react-initialized')) {
+  console.log('⛔ React already initialized, aborting');
   throw new Error('React already initialized');
 }
+
+// Set multiple flags immediately
 (window as any)[REACT_INITIALIZED] = true;
+(window as any)[REACT_ROOT_EXISTS] = true;
 
 // Error boundary
 class ErrorBoundary extends React.Component<
@@ -56,6 +64,9 @@ const container = document.getElementById('root');
 if (!container) {
   throw new Error('Root container not found');
 }
+
+// Mark container as initialized
+container.setAttribute('data-react-initialized', 'true');
 
 console.log('🚀 Initializing React application');
 const root = createRoot(container);

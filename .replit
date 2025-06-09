@@ -68,7 +68,7 @@ localPort = 5173
 externalPort = 5173
 
 [workflows]
-runButton = "Build and Start"
+runButton = "Express Only"
 
 [[workflows.workflow]]
 name = "Start Application"
@@ -149,3 +149,20 @@ args = "cd client && npm run build"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "tsx server/index.ts"
+
+[[workflows.workflow]]
+name = "Express Only"
+author = 39467490
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = 'pkill -f "vite\|node\|tsx" 2>/dev/null || true'
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm run build"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "DISABLE_VITE=true NODE_ENV=production tsx server/index.ts"

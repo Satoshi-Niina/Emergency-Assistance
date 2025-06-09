@@ -35,11 +35,16 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Static file serving
+// Force disable Vite and serve static files only
+process.env.DISABLE_VITE = 'true';
+process.env.NODE_ENV = 'production';
+
 const distPath = path.join(process.cwd(), 'client', 'dist');
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
   console.log('✅ Serving static files from:', distPath);
+} else {
+  console.log('⚠️ Dist directory not found, creating minimal fallback');
 }
 
 // Knowledge base static files
