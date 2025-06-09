@@ -159,29 +159,76 @@ export const queryClient = new QueryClient({
 const setupWebSocket = (token: string) => {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const host = window.location.hostname;
-  const port = '5000';
-  const wsUrl = `${protocol}//${host}:${port}/ws?token=${token}`;
-
-  const ws = new WebSocket(wsUrl);
-  ws.binaryType = 'arraybuffer';  // バイナリデータの高速処理
+  
+  // デプロイメント環境では標準ポートを使用、開発環境では5000番ポートを使用
+  let wsUrl;
+  if (window.location.hostname.includes('replit.app') || window.location.hostname.includes('replit.dev')) {
+    // Replitデプロイメント環境
+    wsUrl = `${protocol}//${host}/ws?token=${token}`;
+  } else {
+    // 開発環境
+    const port = window.location.port || '5000';
+    wsUrl = `${protocol}//${host}:${port}/ws?token=${token}`;
+  }
 
   console.log('WebSocket接続を開始:', wsUrl);
-  return ws;
+
+  try {
+    const ws = new WebSocket(wsUrl);
+    ws.binaryType = 'arraybuffer';  // バイナリデータの高速処理
+    return ws;
+  } catch (error) {
+    console.error('WebSocket作成エラー:', error);
+    throw error;
+  }
 };
+
+// WebSocket接続のテスト関数
+export function testWebSocketConnection(): Promise<boolean> {
+  return new Promise((resolve) => {
+    try {
+      const ws = setupWebSocket('test-token');
+      
+      const timeout = setTimeout(() => {
+        ws.close();
+        resolve(false);
+      }, 5000);
+
+      ws.onopen = () => {
+        clearTimeout(timeout);
+        ws.close();
+        resolve(true);
+      };
+
+      ws.onerror = () => {
+        clearTimeout(timeout);
+        resolve(false);
+      };
+    } catch (error) {
+      console.error('WebSocket接続テストエラー:', error);
+      resolve(false);
+    }
+  });
+}
 
 // Placeholder function, assuming this is where message processing happens
 export async function processMessage(text: string): Promise<string> {
-  // ステップ形式のレスポンスを取得
-  const response = await apiRequest('POST', '/api/chatgpt/steps', { text });
-  const data = await response.json();
-  if (data.steps) {
-    // ステップ形式のレスポンスを整形
-    let formattedResponse = `${data.title}\n\n`;
-    data.steps.forEach((step: { description: string }, index: number) => {
-      formattedResponse += `${index + 1}. ${step.description}\n`;
-    });
-    return formattedResponse;
-  } else {
-    return data.response;
+  try {
+    // ステップ形式のレスポンスを取得
+    const response = await apiRequest('POST', '/api/chatgpt/steps', { text });
+    const data = await response.json();
+    if (data.steps) {
+      // ステップ形式のレスポンスを整形
+      let formattedResponse = `${data.title}\n\n`;
+      data.steps.forEach((step: { description: string }, index: number) => {
+        formattedResponse += `${index + 1}. ${step.description}\n`;
+      });
+      return formattedResponse;
+    } else {
+      return data.response;
+    }
+  } catch (error) {
+    console.error('メッセージ処理エラー:', error);
+    return 'メッセージの処理中にエラーが発生しました。';
   }
 }
