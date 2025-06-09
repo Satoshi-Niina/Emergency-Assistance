@@ -198,6 +198,26 @@ const port = process.env.PORT ? parseInt(process.env.PORT) :
     console.log('Checking dist path:', distPath);
     console.log('Dist exists:', fs.existsSync(distPath));
     
+    // 診断用エンドポイントを追加
+    app.get('/api/debug/files', (req, res) => {
+      try {
+        const distExists = fs.existsSync(distPath);
+        const files = distExists ? fs.readdirSync(distPath) : [];
+        const indexExists = fs.existsSync(path.join(distPath, 'index.html'));
+        
+        res.json({
+          distPath,
+          distExists,
+          indexExists,
+          files,
+          cwd: process.cwd(),
+          nodeEnv: process.env.NODE_ENV
+        });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+    
     if (fs.existsSync(distPath)) {
       app.use(express.static(distPath, { 
         index: false,
