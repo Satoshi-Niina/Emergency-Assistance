@@ -12,11 +12,17 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5001,
-    allowedHosts: ['all'],
+    allowedHosts: 'all',
+    strictPort: false,
+    hmr: {
+      port: 5002,
+      clientPort: 5002
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:5000',
-        changeOrigin: true
+        changeOrigin: true,
+        secure: false
       },
       // WebSocket用のプロキシ設定
       "/ws": {
