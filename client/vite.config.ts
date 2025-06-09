@@ -13,6 +13,7 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5001,
     strictPort: true,
+    allowedHosts: 'all',
     hmr: {
       port: 5002,
       host: '0.0.0.0'
