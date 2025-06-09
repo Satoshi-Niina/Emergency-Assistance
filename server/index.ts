@@ -349,8 +349,8 @@ console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     throw err;
   });
 
-  // Setup environment-specific routing
-  if (process.env.NODE_ENV !== "production" && process.env.DISABLE_VITE !== 'true') {
+  // Setup environment-specific routing - Force disable Vite to prevent infinite connections
+  if (false) {
     await setupVite(app, server);
   } else {
     // プロダクション用の静的ファイル配信 - 複数のパスをチェック

@@ -50,19 +50,17 @@ class ErrorBoundary extends React.Component<
 }
 
 // 最強の初期化防止策
-const REACT_SINGLETON_KEY = '__REACT_SINGLETON_GUARD__';
-const DOM_CONTAINER_ID = 'root';
+const REACT_SINGLETON_KEY = '__REACT_SINGLETON_INITIALIZED__';
+const REACT_ROOT_KEY = '__REACT_ROOT_INSTANCE__';
+const REACT_INIT_KEY = '__REACT_INIT_COMPLETE__';
 
-// 即座に終了条件をチェック
+// 即座にチェック - 既に初期化済みなら処理を停止
 if ((window as any)[REACT_SINGLETON_KEY]) {
-  console.log('⛔ React already initialized, terminating script');
-  throw new Error('React initialization blocked - already running');
+  console.log('⛔ React already initialized, stopping duplicate initialization');
+  throw new Error('React already initialized');
 }
 
-// シングルトンガードを即座に設定
-(window as any)[REACT_SINGLETON_KEY] = true;
-
-const container = document.getElementById(DOM_CONTAINER_ID);
+const container = document.getElementById('root');
 if (!container) {
   console.error('❌ Root container not found');
   throw new Error('Root container missing');
@@ -79,10 +77,10 @@ if (typeof window !== 'undefined') {
   // WebSocketの完全削除
   delete (window as any).WebSocket;
   (window as any).WebSocket = undefined;
-  
+
   // Vite関連機能の無効化
   delete (window as any).__vite_plugin_react_preamble_installed__;
-  
+
   // コンソールフィルタリング
   const originalConsole = { ...console };
   ['log', 'warn', 'info'].forEach(method => {
@@ -96,14 +94,18 @@ if (typeof window !== 'undefined') {
 }
 
 try {
-  console.log('🚀 Starting single React instance');
-  
+  // 初期化開始の宣言
+  console.log('🚀 React initialization starting...');
+
+  // 即座にシングルトンフラグを設定
+  (window as any)[REACT_SINGLETON_KEY] = true;
+
   // DOM属性を設定
   container.setAttribute('data-react-root', 'true');
   container.setAttribute('data-initialized', Date.now().toString());
-  
+
   const root = createRoot(container);
-  
+
   // グローバル参照を設定
   (window as any).__REACT_ROOT__ = root;
 
@@ -116,7 +118,7 @@ try {
   );
 
   console.log('✅ React singleton initialized successfully');
-  
+
 } catch (error) {
   console.error('❌ React initialization failed:', error);
   // 失敗時のクリーンアップ
