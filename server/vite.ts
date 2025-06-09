@@ -20,6 +20,20 @@ export function log(message: string, source = "express") {
 }
 
 export async function setupVite(app: Express, server: Server) {
+  // 環境変数でViteを完全無効化
+  if (process.env.DISABLE_VITE === 'true') {
+    console.log('🚫 Vite completely disabled by environment variable');
+    // 静的ファイル配信のみ設定
+    const clientDistPath = path.resolve(process.cwd(), 'client', 'dist');
+    if (fs.existsSync(clientDistPath)) {
+      app.use(express.static(clientDistPath));
+      app.get('*', (req, res) => {
+        res.sendFile(path.join(clientDistPath, 'index.html'));
+      });
+    }
+    return;
+  }
+
   // 複数レベルでの重複初期化防止
   const VITE_LOCK_KEY = '__VITE_SERVER_LOCK__';
   const PROCESS_VITE_KEY = `__VITE_PROCESS_${process.pid}__`;

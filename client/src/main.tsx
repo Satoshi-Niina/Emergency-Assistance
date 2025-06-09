@@ -92,23 +92,28 @@ if (!isAlreadyInitialized) {
   const originalWarn = console.warn;
   const originalLog = console.log;
 
-  // WebSocketとVite接続を完全に無効化
+  // WebSocketを完全に無効化（全ての接続をブロック）
   if (typeof WebSocket !== 'undefined') {
-    const OriginalWebSocket = WebSocket;
+    console.log('🚫 WebSocket completely disabled');
     (window as any).WebSocket = function(...args: any[]) {
-      const url = args[0];
-      if (typeof url === 'string' && (url.includes('vite') || url.includes('/@vite'))) {
-        // Vite関連のWebSocket接続をブロック
-        return {
-          close: () => {},
-          send: () => {},
-          addEventListener: () => {},
-          removeEventListener: () => {},
-          readyState: 3 // CLOSED
-        };
-      }
-      return new OriginalWebSocket(...args);
+      console.log('🚫 WebSocket connection blocked:', args[0]);
+      // 全てのWebSocket接続をブロック
+      return {
+        close: () => {},
+        send: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        readyState: 3, // CLOSED
+        CONNECTING: 0,
+        OPEN: 1,
+        CLOSING: 2,
+        CLOSED: 3
+      };
     };
+    
+    // WebSocketコンストラクタも無効化
+    delete (window as any).WebSocket;
+    (window as any).WebSocket = undefined;
   }
 
   console.error = (...args) => {
