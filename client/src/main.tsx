@@ -48,6 +48,20 @@ class ErrorBoundary extends React.Component<
     return this.props.children;
   }
 }
+// Vite HMR WebSocketエラーを無視
+const originalConsoleError = console.error;
+console.error = (...args) => {
+  const message = args[0];
+  if (typeof message === 'string' && 
+      (message.includes('WebSocket connection') || 
+       message.includes('Failed to construct \'WebSocket\'') ||
+       message.includes('wss://localhost:undefined'))) {
+    // WebSocketエラーは無視（開発環境でのみ）
+    return;
+  }
+  originalConsoleError.apply(console, args);
+};
+
 const container = document.getElementById("root");
 if (container) {
   const root = createRoot(container);

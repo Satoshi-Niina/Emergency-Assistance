@@ -12,6 +12,7 @@ import { runCleanup } from '../scripts/scheduled-cleanup.js';
 import { fileURLToPath } from 'url';
 import open from 'open';
 import { logDebug, logInfo, logWarn, logError, showLogConfig } from './lib/logger';
+import { WebSocketServer } from 'ws';
 
 // セキュアログ関数
 function secureLog(msg: string, ...args: any[]) {
@@ -213,14 +214,14 @@ console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     const distPath = path.join(process.cwd(), 'dist');
     console.log('Checking dist path:', distPath);
     console.log('Dist exists:', fs.existsSync(distPath));
-    
+
     // 診断用エンドポイントを追加
     app.get('/api/debug/files', (req, res) => {
       try {
         const distExists = fs.existsSync(distPath);
         const files = distExists ? fs.readdirSync(distPath) : [];
         const indexExists = fs.existsSync(path.join(distPath, 'index.html'));
-        
+
         res.json({
           distPath,
           distExists,
@@ -233,12 +234,12 @@ console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
         res.status(500).json({ error: error.message });
       }
     });
-    
+
     if (fs.existsSync(distPath)) {
       // 静的ファイルの詳細ログ
       const distFiles = fs.readdirSync(distPath);
       console.log('Available dist files:', distFiles);
-      
+
       app.use(express.static(distPath, { 
         index: false,
         setHeaders: (res, filePath) => {
@@ -248,7 +249,7 @@ console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
           }
         }
       }));
-      
+
       // SPA routing - すべての非APIリクエストをindex.htmlに送る
       app.get('*', (req, res, next) => {
         // API と知識ベースのリクエストは除外
@@ -258,10 +259,10 @@ console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
           console.log('Skipping SPA routing for:', req.path);
           return next();
         }
-        
+
         const indexPath = path.join(distPath, 'index.html');
         console.log('Attempting to serve index.html for:', req.path, 'from:', indexPath);
-        
+
         if (fs.existsSync(indexPath)) {
           console.log('Successfully serving index.html');
           res.sendFile(indexPath);
@@ -280,13 +281,13 @@ console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
           `);
         }
       });
-      
+
       console.log('プロダクション用静的ファイル配信を設定しました');
     } else {
       console.error('ビルドファイルが見つかりません:', distPath);
       console.error('Current working directory:', process.cwd());
       console.error('Available directories:', fs.readdirSync(process.cwd()));
-      
+
       // ビルドされていない場合の対応
       app.get('*', (req, res, next) => {
         if (req.path.startsWith('/api/')) {

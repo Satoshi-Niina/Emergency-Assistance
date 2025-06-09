@@ -16,7 +16,13 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true
-      }
-    }
+      },
+      // WebSocket用のプロキシ設定
+      "/ws": {
+        target: "ws://localhost:5000",
+        ws: true,
+        changeOrigin: true,
+      },
+    },
   }
-}); 
+});
