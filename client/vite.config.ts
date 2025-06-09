@@ -17,7 +17,7 @@ export default defineConfig({
       credentials: true
     },
     hmr: false,
-    ws: false
+    ws: false,
     proxy: {
       "/api": {
         target: "http://0.0.0.0:5000",

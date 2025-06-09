@@ -68,7 +68,7 @@ app.use('/knowledge-base/json', express.static(path.join(process.cwd(), 'knowled
 
       const indexPath = path.join(distPath, 'index.html');
       if (fs.existsSync(indexPath)) {
-        res.sendFile(indexPath);
+        res.sendFile(path.resolve(indexPath));
       } else {
         res.status(503).send('<h1>Application not built</h1><p>Run: cd client && npm run build</p>');
       }
