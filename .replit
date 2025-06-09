@@ -23,7 +23,7 @@ start = "typescript-language-server --stdio"
 requiredFiles = [".replit", "replit.nix"]
 
 [deployment]
-run = ["sh", "-c", "node server/index.js"]
+run = ["sh", "-c", "npm start"]
 build = ["sh", "-c", "npm install && cd client && npm install && cd .. && npm run build"]
 deploymentTarget = "cloudrun"
 
