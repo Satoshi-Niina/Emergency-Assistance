@@ -1,3 +1,4 @@
+
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -10,6 +11,10 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+
+// knowledge-base静的ファイル配信
+const knowledgeBasePath = path.resolve(__dirname, '../knowledge-base');
+app.use('/knowledge-base', express.static(knowledgeBasePath));
 
 // 静的ファイル配信
 const distPath = path.resolve(__dirname, '../client/dist');

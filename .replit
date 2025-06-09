@@ -1,3 +1,4 @@
+
 entrypoint = "server/index.ts"
 modules = ["nodejs-20"]
 
@@ -9,7 +10,7 @@ PATH = "${REPLIT_NIX_CACHE}/bin"
 XDG_CONFIG_HOME = "${REPLIT_NIX_CACHE}/.config"
 npm_config_prefix = "${REPLIT_NIX_CACHE}"
 
-run = "npm run dev"
+run = "npm run dev:all"
 
 [workflows]
 runButton = "Start Application"
