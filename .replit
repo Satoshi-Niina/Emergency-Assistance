@@ -24,7 +24,7 @@ requiredFiles = [".replit", "replit.nix"]
 
 [deployment]
 run = ["sh", "-c", "npm start"]
-build = ["sh", "-c", "npm run build"]
+build = ["sh", "-c", "npm run build:client"]
 deploymentTarget = "cloudrun"
 
 [packager]
@@ -38,6 +38,10 @@ enabledForHosting = false
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 5001
+externalPort = 3000
 
 [workflows]
 runButton = "Start Application"
