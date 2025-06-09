@@ -53,12 +53,12 @@ app.use((req, res, next) => {
   } else if (!origin) {
     res.header('Access-Control-Allow-Origin', '*');
   }
-  
+
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
   res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,Cache-Control,Pragma,X-Custom-Header');
   res.header('Access-Control-Max-Age', '86400');
-  
+
   if (req.method === 'OPTIONS') {
     res.sendStatus(204);
   } else {
@@ -178,7 +178,7 @@ const port = process.env.PORT ? parseInt(process.env.PORT) :
 (async () => {
   // 初期化
   app.locals.storage = storage;
-  
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -232,20 +232,23 @@ const port = process.env.PORT ? parseInt(process.env.PORT) :
     }
   }
 
-  server.listen(port, '0.0.0.0', () => {
+  const PORT = process.env.PORT ? parseInt(process.env.PORT) : 
+             process.env.REPLIT_DEV_DOMAIN ? 5000 : 3000;
+const HOST = '0.0.0.0';
+  server.listen(PORT, HOST, () => {
     console.log(`🚀 Server is running on port ${port}`);
     secureLog(`サーバー起動: ポート ${port} (環境: ${process.env.NODE_ENV || 'development'})`);
-    
+
     if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
       secureLog(`外部URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`);
     }
-    
+
     // プロダクション環境でのヘルスチェック
     if (process.env.NODE_ENV === 'production') {
       console.log('Production server started successfully');
       console.log(`Health endpoints: /health, /ready`);
     }
-    
+
     // 軽量な初期化のみ実行
     if (process.env.NODE_ENV !== 'production') {
       initializePostStartup();
@@ -260,11 +263,11 @@ const port = process.env.PORT ? parseInt(process.env.PORT) :
       port: port,
       environment: process.env.NODE_ENV
     });
-    
+
     if (err.code === 'EADDRINUSE') {
       console.error(`ポート ${port} は既に使用されています`);
     }
-    
+
     process.exit(1);
   });
 
@@ -326,9 +329,9 @@ async function initializePostStartup() {
     console.log("知識ベース初期化: 既に実行中または完了済み");
     return;
   }
-  
+
   initializationInProgress = true;
-  
+
   // 初期化は非同期で実行し、ヘルスチェックをブロックしない
   setImmediate(async () => {
     try {
