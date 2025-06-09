@@ -58,3 +58,16 @@ args = "cd client && npm install && cd .."
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run dev:all"
+
+[[workflows.workflow]]
+name = "Restart Dev Server"
+author = 39467490
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pkill -f \"npm run dev\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev:all"
