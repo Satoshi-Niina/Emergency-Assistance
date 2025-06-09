@@ -25,13 +25,23 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // .envファイルの読み込み（複数箇所から）
-dotenv.config({ path: path.resolve(__dirname, '.env') });
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+try {
+  dotenv.config({ path: path.resolve(__dirname, '.env') });
+  dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+  console.log('✅ Environment files loaded');
+} catch (error) {
+  console.warn('⚠️  Failed to load .env files:', error instanceof Error ? error.message : error);
+}
 
 // Set NODE_ENV if not set
 if (!process.env.NODE_ENV) {
   process.env.NODE_ENV = 'development';
 }
+
+console.log('🔧 Environment check:');
+console.log(`   NODE_ENV: ${process.env.NODE_ENV}`);
+console.log(`   CWD: ${process.cwd()}`);
+console.log(`   __dirname: ${__dirname}`);
 
 // 環境変数の確認（Replitシークレットも含む）
 const openaiKey = process.env.OPENAI_API_KEY || process.env.REPLIT_SECRET_OPENAI_API_KEY;
@@ -174,11 +184,18 @@ async function openBrowser(url: string) {
 // ポート設定の最適化（Replitデプロイ対応）
 const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
 
-(async () => {
-  // 初期化
-  app.locals.storage = storage;
+console.log('🚀 Starting server initialization...');
+console.log(`📍 Port: ${port}`);
+console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 
-  const server = await registerRoutes(app);
+(async () => {
+  try {
+    // 初期化
+    console.log('📦 Initializing storage...');
+    app.locals.storage = storage;
+
+  console.log('🛣️  Registering routes...');
+    const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -372,7 +389,15 @@ const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
       process.exit(1);
     }
   });
-})();
+} catch (error) {
+    console.error('❌ Server initialization failed:', error);
+    console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
+    process.exit(1);
+  }
+})().catch(error => {
+  console.error('❌ Unhandled server startup error:', error);
+  process.exit(1);
+});
 
 // 知識ベースの準備状況を追跡
 let knowledgeBaseReady = false;
