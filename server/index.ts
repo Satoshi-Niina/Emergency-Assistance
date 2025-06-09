@@ -101,27 +101,12 @@ const cleanup = () => {
 process.on('SIGINT', cleanup);
 process.on('SIGTERM', cleanup);
 
-// CORS設定を強化
+// CORS設定
 app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  const allowedOrigins = [
-    'https://replit.com',
-    'https://*.replit.dev',
-    'https://*.replit.app',
-    process.env.REPL_SLUG ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev` : null
-  ].filter(Boolean);
-
-  if (origin && allowedOrigins.some(allowed => origin.match(allowed?.replace('*', '.*')))) {
-    res.header('Access-Control-Allow-Origin', origin);
-  } else if (!origin) {
-    res.header('Access-Control-Allow-Origin', '*');
-  }
-
+  res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
-  res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,Cache-Control,Pragma,X-Custom-Header');
-  res.header('Access-Control-Max-Age', '86400');
-
+  res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,Cache-Control,Pragma');
   if (req.method === 'OPTIONS') {
     res.sendStatus(204);
   } else {
@@ -268,7 +253,7 @@ console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
       path.join(process.cwd(), 'build'),
       path.join(__dirname, '..', 'client', 'dist')
     ];
-    
+
     let distPath = '';
     for (const pathToCheck of possibleDistPaths) {
       if (fs.existsSync(pathToCheck)) {
@@ -277,7 +262,7 @@ console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
         break;
       }
     }
-    
+
     if (!distPath) {
       console.log('No dist path found. Checked:', possibleDistPaths);
     }

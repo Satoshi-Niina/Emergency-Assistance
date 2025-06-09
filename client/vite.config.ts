@@ -14,20 +14,15 @@ export default defineConfig({
     port: 5001,
     strictPort: true,
     hmr: {
-      port: 5002
+      port: 5002,
+      host: '0.0.0.0'
     },
     proxy: {
       '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false
-      },
-      // WebSocket用のプロキシ設定
-      "/ws": {
-        target: "ws://localhost:5000",
-        ws: true,
-        changeOrigin: true,
-      },
-    },
+      }
+    }
   }
 });
