@@ -1,33 +1,16 @@
-
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import { resolve } from "path";
-import { fileURLToPath } from "url";
-
-const __dirname = fileURLToPath(new URL('.', import.meta.url));
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      "@": resolve(__dirname, "./client/src"),
-      "@shared": resolve(__dirname, "./shared"),
-      "@shared/schema": resolve(__dirname, "./shared/schema.ts"),
-    },
-  },
-  root: "./client",
-  build: {
-    outDir: "../dist",
-    emptyOutDir: true,
+      '@shared': path.resolve(__dirname, '../shared'),
+      '@shared/schema': path.resolve(__dirname, '../shared/schema.ts')
+    }
   },
   server: {
-    port: 5001,
-    proxy: {
-      "/api": {
-        target: "http://localhost:5000",
-        changeOrigin: true,
-      },
-    },
-  },
-  
+    allowedHosts: 'all'
+  }
 });
