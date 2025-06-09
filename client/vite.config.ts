@@ -16,12 +16,7 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     sourcemap: false,
-    minify: false,
-    rollupOptions: {
-      output: {
-        manualChunks: undefined
-      }
-    }
+    minify: false
   },
   server: false,
   preview: false
