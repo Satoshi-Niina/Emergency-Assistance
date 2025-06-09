@@ -24,6 +24,38 @@ app.use('/knowledge-base', express.static(knowledgeBasePath));
 const distPath = path.resolve(__dirname, '../client/dist');
 app.use(express.static(distPath));
 
+// 認証エンドポイント
+app.post('/api/auth/login', (req, res) => {
+    const { username, password } = req.body;
+    
+    // デモ用認証
+    if ((username === 'niina' && password === '0077') || 
+        (username === 'employee' && password === 'employee123')) {
+        res.json({
+            success: true,
+            user: {
+                id: username === 'niina' ? '1' : '2',
+                username: username,
+                display_name: username === 'niina' ? '管理者' : '一般ユーザー',
+                role: username === 'niina' ? 'admin' : 'employee'
+            }
+        });
+    } else {
+        res.status(401).json({
+            success: false,
+            message: 'ユーザー名またはパスワードが正しくありません'
+        });
+    }
+});
+
+app.post('/api/auth/logout', (req, res) => {
+    res.json({ success: true });
+});
+
+app.get('/api/auth/me', (req, res) => {
+    res.status(401).json({ message: 'Not authenticated' });
+});
+
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok' });
 });
