@@ -19,7 +19,8 @@ export default defineConfig({
       port: 5173,
       host: "0.0.0.0",
       clientPort: 5173,
-      overlay: false
+      overlay: false,
+      timeout: 30000
     },
     proxy: {
       "/api": {
