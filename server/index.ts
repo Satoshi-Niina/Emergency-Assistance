@@ -62,7 +62,6 @@ const initializeProcessLock = async () => {
     }
 
     // ポート占有プロセスを強制終了
-    const { exec } = require('child_process');
     exec(`lsof -ti:${port}`, (error, stdout) => {
       if (stdout.trim()) {
         console.log(`🔪 Killing process on port ${port}: ${stdout.trim()}`);
@@ -361,7 +360,6 @@ console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   }
 
   // ポート使用状況を事前チェック
-  const { exec } = require('child_process');
   exec(`lsof -ti:${port}`, (error, stdout) => {
     if (stdout.trim()) {
       console.warn(`⚠️  Port ${port} is already in use by process ${stdout.trim()}`);
