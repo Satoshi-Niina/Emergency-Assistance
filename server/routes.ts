@@ -691,11 +691,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let responseContent: string;
       if (typeof aiResponse === 'string') {
         responseContent = aiResponse;
-        
+
       } else if (aiResponse && typeof aiResponse === 'object') {
         // オブジェクト型の場合、適切なプロパティから文字列を抽出
         responseContent = aiResponse.content || aiResponse.text || aiResponse.message || JSON.stringify(aiResponse);
-        
+
       } else {
         responseContent = 'AI応答の処理中にエラーが発生しました。';
         console.error('サーバー側AIレスポンス検証: 不正な型', { 
