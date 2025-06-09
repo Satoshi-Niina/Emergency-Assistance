@@ -308,29 +308,44 @@ console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     }
   }
 
-  server.listen(port, '0.0.0.0', () => {
-    console.log(`🚀 Server is running on port ${port}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`Host: 0.0.0.0:${port}`);
-
-    if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
-      console.log(`External URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`);
+  // ポート使用状況を事前チェック
+  const { exec } = require('child_process');
+  exec(`lsof -ti:${port}`, (error, stdout) => {
+    if (stdout.trim()) {
+      console.warn(`⚠️  Port ${port} is already in use by process ${stdout.trim()}`);
+      console.log('Attempting to kill existing process...');
+      exec(`kill -9 ${stdout.trim()}`, () => {
+        startServer();
+      });
+    } else {
+      startServer();
     }
+  });
+
+  function startServer() {
+    server.listen(port, '0.0.0.0', () => {
+      console.log(`🚀 Server is running on port ${port}`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`Host: 0.0.0.0:${port}`);
+
+      if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
+        console.log(`External URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`);
+      }
 
     // プロダクション環境でのヘルスチェック
-    if (process.env.NODE_ENV === 'production') {
-      console.log('Production server started successfully');
-      console.log(`Health endpoints: /api/health, /api/ready`);
-    }
+      if (process.env.NODE_ENV === 'production') {
+        console.log('Production server started successfully');
+        console.log(`Health endpoints: /api/health, /api/ready`);
+      }
 
-    // 軽量な初期化のみ実行
-    if (process.env.NODE_ENV !== 'production') {
-      initializePostStartup();
-    } else {
-      // プロダクション環境では非同期で初期化
-      initializePostStartup();
-    }
-  }).on('error', (err: NodeJS.ErrnoException) => {
+      // 軽量な初期化のみ実行
+      if (process.env.NODE_ENV !== 'production') {
+        initializePostStartup();
+      } else {
+        // プロダクション環境では非同期で初期化
+        initializePostStartup();
+      }
+    }).on('error', (err: NodeJS.ErrnoException) => {
     console.error('サーバー起動エラー:', {
       message: err.message,
       code: err.code,
@@ -343,7 +358,8 @@ console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     }
 
     process.exit(1);
-  });
+    });
+  }
 
   // プロセス終了時のクリーンアップ
   process.on('SIGTERM', () => {

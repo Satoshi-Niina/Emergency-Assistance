@@ -1016,15 +1016,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Set up WebSocket server for real-time chat
   const wss = new WebSocketServer({ 
-    noServer: true
+    noServer: true,
+    path: '/ws'
   });
 
-  // Handle upgrade requests
+  // Handle upgrade requests with better error handling
   httpServer.on('upgrade', (request, socket, head) => {
-    if (request.url?.startsWith('/ws')) {
-      wss.handleUpgrade(request, socket, head, (ws) => {
-        wss.emit('connection', ws, request);
-      });
+    try {
+      if (request.url?.startsWith('/ws')) {
+        wss.handleUpgrade(request, socket, head, (ws) => {
+          wss.emit('connection', ws, request);
+        });
+      } else {
+        socket.destroy();
+      }
+    } catch (error) {
+      console.error('WebSocket upgrade error:', error);
+      socket.destroy();
     }
   });
 
