@@ -77,35 +77,19 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pkill -9 -f \"node\" 2>/dev/null || true"
+args = 'pkill -9 -f "node\|tsx\|npm\|vite" 2>/dev/null || true'
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pkill -9 -f \"tsx\" 2>/dev/null || true"
+args = "fuser -k 5000/tcp 5173/tcp 2>/dev/null || true"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pkill -9 -f \"npm\" 2>/dev/null || true"
+args = "sleep 2"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pkill -9 -f \"vite\" 2>/dev/null || true"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "fuser -k 5000/tcp 2>/dev/null || true"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "fuser -k 5173/tcp 2>/dev/null || true"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "sleep 3"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "NODE_ENV=development tsx server/index.ts"
+args = "DISABLE_VITE=true tsx server/index.ts"
 
 [[workflows.workflow]]
 name = "Start Simple Server"

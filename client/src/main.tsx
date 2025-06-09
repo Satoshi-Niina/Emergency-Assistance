@@ -87,61 +87,20 @@ if (!isAlreadyInitialized) {
   // グローバルフラグを設定
   (window as any)[REACT_INIT_KEY] = true;
 
-  // Vite接続を完全ブロック
-  const originalError = console.error;
-  const originalWarn = console.warn;
-  const originalLog = console.log;
-
-  // WebSocketを完全に無効化（全ての接続をブロック）
-  if (typeof WebSocket !== 'undefined') {
-    console.log('🚫 WebSocket completely disabled');
-    (window as any).WebSocket = function(...args: any[]) {
-      console.log('🚫 WebSocket connection blocked:', args[0]);
-      // 全てのWebSocket接続をブロック
-      return {
-        close: () => {},
-        send: () => {},
-        addEventListener: () => {},
-        removeEventListener: () => {},
-        readyState: 3, // CLOSED
-        CONNECTING: 0,
-        OPEN: 1,
-        CLOSING: 2,
-        CLOSED: 3
-      };
-    };
-    
-    // WebSocketコンストラクタも無効化
-    delete (window as any).WebSocket;
+  // 全てのVite/WebSocket関連機能を無効化
+  const originalWebSocket = (window as any).WebSocket;
+  if (originalWebSocket) {
     (window as any).WebSocket = undefined;
+    delete (window as any).WebSocket;
   }
 
-  console.error = (...args) => {
-    const message = String(args[0] || '');
-    if (message.includes('WebSocket') || 
-        message.includes('vite') || 
-        message.includes('MaxListeners') ||
-        message.includes('[vite]')) {
-      return;
-    }
-    originalError.apply(console, args);
-  };
-
-  console.warn = (...args) => {
-    const message = String(args[0] || '');
-    if (message.includes('MaxListeners') ||
-        message.includes('[vite]')) {
-      return;
-    }
-    originalWarn.apply(console, args);
-  };
-
+  // コンソールログを完全にクリーンに
+  const originalLog = console.log;
   console.log = (...args) => {
-    const message = String(args[0] || '');
-    if (message.includes('[vite]')) {
-      return;
+    const msg = String(args[0] || '');
+    if (!msg.includes('[vite]') && !msg.includes('WebSocket')) {
+      originalLog.apply(console, args);
     }
-    originalLog.apply(console, args);
   };
 
   if (!container) {
