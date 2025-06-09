@@ -23,8 +23,10 @@ export default defineConfig({
   },
   build: {
     outDir: 'client/dist',
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       input: './client/index.html'
     }
-  }
+  },
+  logLevel: 'warn'
 });

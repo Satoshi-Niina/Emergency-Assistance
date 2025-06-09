@@ -31,7 +31,7 @@ export async function initializeKnowledgeBase() {
       }
     }
     
-    console.log('Knowledge base directories initialized');
+    // Knowledge base directories initialized
     return true;
   } catch (error) {
     console.error('知識ベース初期化エラー:', error);

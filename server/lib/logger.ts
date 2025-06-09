@@ -20,7 +20,7 @@ const getLogLevel = (): LogLevel => {
     case 'INFO': return LogLevel.INFO;
     case 'WARN': return LogLevel.WARN;
     case 'ERROR': return LogLevel.ERROR;
-    default: return LogLevel.INFO; // 開発環境のデフォルトはINFO（DEBUGとWARNを削減）
+    default: return LogLevel.WARN; // 開発環境のデフォルトはWARN（重要な情報のみ表示）
   }
 };
 
