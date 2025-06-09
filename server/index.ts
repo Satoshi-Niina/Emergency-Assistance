@@ -345,7 +345,7 @@ console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   });
 
   // Setup environment-specific routing
-  if (process.env.NODE_ENV !== "production") {
+  if (process.env.NODE_ENV !== "production" && process.env.DISABLE_VITE !== 'true') {
     await setupVite(app, server);
   } else {
     // プロダクション用の静的ファイル配信 - 複数のパスをチェック
