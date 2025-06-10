@@ -108,7 +108,8 @@ app.use(express.urlencoded({ extended: false }));
     const PORT = process.env.PORT || 5000;
 
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`サーバーが起動しました: http://localhost:${PORT}`);
+      console.log(`サーバーが起動しました: http://0.0.0.0:${PORT}`);
+      console.log(`外部アクセス可能: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
     });
 
   } catch (err) {
