@@ -12,24 +12,7 @@ npm_config_prefix = "${REPLIT_NIX_CACHE}"
 run = "npm run dev:all"
 
 [workflows]
-runButton = "Production Server"
-
-[[workflows.workflow]]
-name = "Start Application"
-author = 39467490
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run build:client"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev"
+runButton = "Development Server"
 
 [[workflows.workflow]]
 name = "Development Server"
@@ -39,36 +22,6 @@ mode = "sequential"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd client && npm run dev"
-
-[[workflows.workflow]]
-name = "Full Stack Development"
-author = 39467490
-mode = "parallel"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && npm run dev"
-
-[[workflows.workflow]]
-name = "Production Server"
-author = 39467490
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run build:client"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm start"
 
 [[ports]]
 localPort = 3000
@@ -81,3 +34,7 @@ externalPort = 3001
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[deployment]
+deploymentTarget = "cloudrun"
+run = ["sh", "-c", "npm run dev:all"]
