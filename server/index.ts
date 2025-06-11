@@ -106,7 +106,12 @@ app.use(express.urlencoded({ extended: false }));
     });
 
     const PORT = process.env.PORT || 5000;
-
+    
+    // ✅ Replitのヘルスチェック用エンドポイント（追加）
+    app.get('/', (req, res) => {
+      res.status(200).send('OK');
+    });
+    
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`サーバーが起動しました: http://0.0.0.0:${PORT}`);
       console.log(`外部アクセス可能: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
