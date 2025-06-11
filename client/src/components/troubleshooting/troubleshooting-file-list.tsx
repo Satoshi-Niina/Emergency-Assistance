@@ -126,7 +126,7 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
             </div>
           ) : (
-            <ScrollArea className="h-[500px]">
+            <ScrollArea className="h-[400px]">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -140,8 +140,8 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
                   {flowList.map((flow) => (
                     <TableRow key={flow.id}>
                       <TableCell className="font-medium">{flow.title}</TableCell>
-                      <TableCell>{flow.description}</TableCell>
-                      <TableCell>{new Date(flow.lastUpdated).toLocaleString()}</TableCell>
+                      <TableCell className="max-w-xs truncate">{flow.description}</TableCell>
+                      <TableCell className="text-sm">{new Date(flow.lastUpdated).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button
