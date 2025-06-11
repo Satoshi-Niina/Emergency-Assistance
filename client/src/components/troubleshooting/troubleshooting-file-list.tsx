@@ -132,16 +132,18 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
                   <TableRow>
                     <TableHead>タイトル</TableHead>
                     <TableHead>説明</TableHead>
-                    <TableHead>最終更新</TableHead>
                     <TableHead className="text-right">操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {flowList.map((flow) => (
                     <TableRow key={flow.id}>
-                      <TableCell className="font-medium">{flow.title}</TableCell>
-                      <TableCell className="max-w-xs truncate">{flow.description}</TableCell>
-                      <TableCell className="text-sm">{new Date(flow.lastUpdated).toLocaleDateString()}</TableCell>
+                      <TableCell className="font-medium max-w-md">
+                        <div className="break-words leading-tight">{flow.title}</div>
+                      </TableCell>
+                      <TableCell className="max-w-sm">
+                        <div className="break-words leading-tight text-sm text-gray-600">{flow.description}</div>
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button
