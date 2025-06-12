@@ -1092,9 +1092,18 @@ const EmergencyGuideEdit: React.FC = () => {
             <CardContent>
               <Tabs defaultValue="metadata" className="w-full">
                 <TabsList className="grid grid-cols-3 mb-4">
-                  <TabsTrigger value="metadata">メタデータ</TabsTrigger>
-                  <TabsTrigger value="slides">スライド内容</TabsTrigger>
-                  <TabsTrigger value="preview">プレビュー</TabsTrigger>
+                  <TabsTrigger value="metadata" className={isEditing ? 'data-[state=active]:bg-yellow-100' : ''}>
+                    メタデータ
+                    {isEditing && <span className="ml-1 text-yellow-600">●</span>}
+                  </TabsTrigger>
+                  <TabsTrigger value="slides" className={isEditing ? 'data-[state=active]:bg-yellow-100' : ''}>
+                    スライド内容
+                    {isEditing && <span className="ml-1 text-yellow-600">●</span>}
+                  </TabsTrigger>
+                  <TabsTrigger value="preview" className={isEditing ? 'data-[state=active]:bg-blue-100' : ''}>
+                    プレビュー
+                    {isEditing && <span className="ml-1 text-blue-600">👁</span>}
+                  </TabsTrigger>
                 </TabsList>
 
                 {/* メタデータタブ */}
@@ -1339,21 +1348,87 @@ const EmergencyGuideEdit: React.FC = () => {
                 <TabsContent value="preview">
                   <div className="space-y-4">
                     <div className="bg-blue-50 p-4 rounded-lg mb-4">
-                      <h3 className="font-medium mb-2 text-blue-700">プレビュー表示</h3>
-                      <p className="text-sm text-blue-700">
-                        {isEditing ? "現在編集中の内容をプレビュー表示しています。" : "保存されている内容を表示しています。"}
-                        編集内容はリアルタイムに反映されます。
-                      </p>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h3 className="font-medium mb-2 text-blue-700">プレビュー表示</h3>
+                          <p className="text-sm text-blue-700">
+                            {isEditing ? "現在編集中の内容をプレビュー表示しています。" : "保存されている内容を表示しています。"}
+                            編集内容はリアルタイムに反映されます。
+                          </p>
+                        </div>
+                        {isEditing && (
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                // メタデータタブに戻る
+                                const tabsList = document.querySelector('[role="tablist"]');
+                                const metadataTab = tabsList?.querySelector('[value="metadata"]') as HTMLElement;
+                                metadataTab?.click();
+                              }}
+                            >
+                              <Pencil className="h-4 w-4 mr-1" />
+                              メタデータ編集に戻る
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                // スライド内容タブに戻る
+                                const tabsList = document.querySelector('[role="tablist"]');
+                                const slidesTab = tabsList?.querySelector('[value="slides"]') as HTMLElement;
+                                slidesTab?.click();
+                              }}
+                            >
+                              <Pencil className="h-4 w-4 mr-1" />
+                              スライド編集に戻る
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    <Card className="border-green-200">
-                      <CardHeader className="bg-green-50 rounded-t-lg">
-                        <CardTitle>
-                          {isEditing ? editedGuideData?.metadata.タイトル : guideData?.data.metadata.タイトル || "タイトルなし"}
-                        </CardTitle>
-                        <CardDescription>
-                          作成者: {isEditing ? editedGuideData?.metadata.作成者 : guideData?.data.metadata.作成者 || "不明"}
-                        </CardDescription>
+                    <Card className={`${isEditing ? 'border-yellow-300 bg-yellow-50' : 'border-green-200'}`}>
+                      <CardHeader className={`${isEditing ? 'bg-yellow-100' : 'bg-green-50'} rounded-t-lg`}>
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <CardTitle className="flex items-center gap-2">
+                              {isEditing && (
+                                <Badge variant="outline" className="bg-yellow-200 text-yellow-800 border-yellow-400">
+                                  編集中
+                                </Badge>
+                              )}
+                              {isEditing ? editedGuideData?.metadata.タイトル : guideData?.data.metadata.タイトル || "タイトルなし"}
+                            </CardTitle>
+                            <CardDescription>
+                              作成者: {isEditing ? editedGuideData?.metadata.作成者 : guideData?.data.metadata.作成者 || "不明"}
+                            </CardDescription>
+                          </div>
+                          {isEditing && (
+                            <div className="text-right">
+                              <div className="text-xs text-yellow-700 mb-1">⚠️ 未保存の変更があります</div>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={handleSaveClick}
+                                disabled={isSaving}
+                              >
+                                {isSaving ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                    保存中...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Save className="h-4 w-4 mr-1" />
+                                    変更を保存
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          )}
+                        </div>
                       </CardHeader>
                       <CardContent className="pt-4">
                         <div className="prose max-w-none">
@@ -1372,10 +1447,33 @@ const EmergencyGuideEdit: React.FC = () => {
                           <h3 className="text-lg font-medium mt-6 mb-2">スライド内容</h3>
                           <div className="space-y-6">
                             {(isEditing ? editedGuideData?.slides : guideData?.data.slides || []).map((slide: any, idx: number) => (
-                              <div key={idx} className="border rounded-lg p-4 bg-gray-50">
-                                <h4 className="text-lg font-bold mb-2">
-                                  {slide.スライド番号}. {slide.タイトル}
-                                </h4>
+                              <div key={idx} className={`border rounded-lg p-4 ${isEditing ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50'}`}>
+                                <div className="flex justify-between items-center mb-2">
+                                  <h4 className="text-lg font-bold">
+                                    {slide.スライド番号}. {slide.タイトル}
+                                  </h4>
+                                  {isEditing && (
+                                    <div className="flex gap-2">
+                                      <Badge variant="outline" className="text-xs bg-yellow-200 text-yellow-800">
+                                        編集中
+                                      </Badge>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          // 該当スライドを選択してスライド編集タブに戻る
+                                          setSelectedSlideIndex(idx);
+                                          const tabsList = document.querySelector('[role="tablist"]');
+                                          const slidesTab = tabsList?.querySelector('[value="slides"]') as HTMLElement;
+                                          slidesTab?.click();
+                                        }}
+                                      >
+                                        <Pencil className="h-3 w-3 mr-1" />
+                                        編集
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
 
                                 {slide.本文.map((text: string, textIdx: number) => (
                                   <p key={textIdx} className="mb-2 whitespace-pre-line">
