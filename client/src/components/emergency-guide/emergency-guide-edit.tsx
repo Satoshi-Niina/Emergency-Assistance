@@ -360,6 +360,46 @@ const EmergencyGuideEdit: React.FC = () => {
     setConnectionNumbers(uniqueConnections);
   };
 
+  // フローノード追加関数
+  const addFlowNode = (nodeType: 'step' | 'decision') => {
+    if (!isEditing || !editedGuideData) return;
+
+    const nodeId = `${nodeType}_${Date.now()}`;
+    const nodeTitle = nodeType === 'step' ? '新しいステップ' : '新しい条件分岐';
+    const nodeMessage = nodeType === 'step' ? 
+      'ここにステップの内容を記述してください' : 
+      'ここに判断条件を記述してください（例：エンジンオイルが漏れていますか？）';
+
+    // 新しいスライドデータを作成
+    const newSlide = {
+      スライド番号: editedGuideData.slides.length + 1,
+      タイトル: nodeTitle,
+      本文: [nodeMessage],
+      ノート: nodeType === 'decision' ? '条件分岐：「はい」「いいえ」「その他」の3つの分岐があります' : '',
+      画像テキスト: [],
+      nodeType: nodeType, // ノードタイプを追加
+      nodeId: nodeId
+    };
+
+    // スライドを追加
+    const updatedSlides = [...editedGuideData.slides, newSlide];
+    
+    // スライド番号を再計算
+    updatedSlides.forEach((slide, index) => {
+      slide.スライド番号 = index + 1;
+    });
+
+    setEditedGuideData({
+      ...editedGuideData,
+      slides: updatedSlides
+    });
+
+    toast({
+      title: `${nodeType === 'step' ? 'ステップ' : '条件分岐'}ノードを追加`,
+      description: `新しい${nodeTitle}をスライドに追加しました`,
+    });
+  };
+
   // 接続番号を一括更新する関数
   const updateAllConnectionNumbers = (oldValue: string, newValue: string) => {
     if (!editedGuideData) return;
@@ -916,7 +956,7 @@ const EmergencyGuideEdit: React.FC = () => {
                 <TabsList className="grid grid-cols-4 mb-4">
                   <TabsTrigger value="metadata">メタデータ</TabsTrigger>
                   <TabsTrigger value="slides">スライド内容</TabsTrigger>
-                  <TabsTrigger value="connections">接続番号</TabsTrigger>
+                  <TabsTrigger value="node-editing">ノード編集</TabsTrigger>
                   <TabsTrigger value="preview">プレビュー</TabsTrigger>
                 </TabsList>
 
@@ -1106,81 +1146,105 @@ const EmergencyGuideEdit: React.FC = () => {
                   </div>
                 </TabsContent>
 
-                {/* 接続番号タブ */}
-                <TabsContent value="connections">
-                  <div className="space-y-4">
+                {/* ノード編集タブ */}
+                <TabsContent value="node-editing">
+                  <div className="space-y-6">
                     <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-lg font-medium">検出された接続番号</h3>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => setShowConnectionDialog(true)}
-                        disabled={!isEditing}
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        接続番号を追加
-                      </Button>
+                      <h3 className="text-lg font-medium">フロー図ノード編集</h3>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => addFlowNode('step')}
+                          disabled={!isEditing}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          ステップノード追加
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => addFlowNode('decision')}
+                          disabled={!isEditing}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          条件分岐ノード追加
+                        </Button>
+                      </div>
                     </div>
 
-                    {connectionNumbers.length === 0 ? (
-                      <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg">
-                        <p>接続番号が見つかりませんでした</p>
-                        <p className="text-sm mt-2">テキスト内の「接続番号: 数字」パターンを検索します</p>
+                    <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                      <h4 className="font-medium text-blue-800 mb-2">ノード編集について</h4>
+                      <div className="space-y-2 text-sm text-blue-700">
+                        <div>• <span className="font-medium">ステップノード</span>：順次実行される手順やアクションを表します</div>
+                        <div>• <span className="font-medium">条件分岐ノード</span>：判断が必要な場面で使用し、「はい/いいえ/その他」の分岐を作成できます</div>
+                        <div>• 各ノードはスライド間に適用され、フローチャート形式で応急処置手順を視覚化します</div>
                       </div>
-                    ) : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>場所</TableHead>
-                            <TableHead>接続番号</TableHead>
-                            <TableHead className="text-right">操作</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {connectionNumbers.map((conn) => (
-                            <TableRow key={conn.id}>
-                              <TableCell>{conn.label}</TableCell>
-                              <TableCell>
-                                {isEditing ? (
-                                  <Input
-                                    value={conn.value}
-                                    onChange={(e) => {
-                                      // 現在の値を保存
-                                      const oldValue = conn.value;
-                                      // 新しい値でコネクション番号を更新
-                                      const updatedConnections = connectionNumbers.map(c => 
-                                        c.id === conn.id ? { ...c, value: e.target.value } : c
-                                      );
-                                      setConnectionNumbers(updatedConnections);
-                                    }}
-                                    className="w-24"
-                                  />
-                                ) : (
-                                  <Badge>{conn.value}</Badge>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {isEditing && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                      const newValue = prompt(`接続番号 ${conn.value} を変更`, conn.value);
-                                      if (newValue && newValue !== conn.value) {
-                                        updateAllConnectionNumbers(conn.value, newValue);
-                                      }
-                                    }}
-                                  >
-                                    <Pencil className="h-4 w-4" />
-                                    <span className="sr-only">編集</span>
-                                  </Button>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    )}
+                    </div>
+
+                    {/* 仮想的なフローノード表示エリア */}
+                    <div className="border rounded-lg p-4 bg-gray-50 min-h-[400px]">
+                      <div className="text-center text-gray-500 py-8">
+                        <div className="space-y-4">
+                          <div className="bg-white border border-blue-300 rounded-lg p-4 mx-auto max-w-md">
+                            <div className="font-medium text-blue-800">開始ノード</div>
+                            <div className="text-sm text-gray-600 mt-1">応急処置フローの開始点</div>
+                          </div>
+                          
+                          <div className="flex justify-center">
+                            <ArrowDown className="h-6 w-6 text-gray-400" />
+                          </div>
+                          
+                          <div className="bg-white border border-green-300 rounded-lg p-4 mx-auto max-w-md">
+                            <div className="font-medium text-green-800">ステップノード例</div>
+                            <div className="text-sm text-gray-600 mt-1">
+                              エンジンの状態を確認してください<br/>
+                              - 異音がないか<br/>
+                              - 煙が出ていないか
+                            </div>
+                          </div>
+                          
+                          <div className="flex justify-center">
+                            <ArrowDown className="h-6 w-6 text-gray-400" />
+                          </div>
+                          
+                          <div className="bg-white border border-yellow-300 rounded-lg p-4 mx-auto max-w-md">
+                            <div className="font-medium text-yellow-800">条件分岐ノード例</div>
+                            <div className="text-sm text-gray-600 mt-1">
+                              エンジンは正常に動作していますか？<br/>
+                              <div className="mt-2 flex justify-between text-xs">
+                                <span className="text-green-600">→はい</span>
+                                <span className="text-red-600">→いいえ</span>
+                                <span className="text-orange-600">→その他</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="mt-8 p-4 bg-yellow-50 rounded-lg">
+                          <p className="text-sm">
+                            {isEditing ? 
+                              "編集モードです。上部のボタンからノードを追加できます。" :
+                              "編集モードに切り替えてノードの追加・編集を行ってください。"
+                            }
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 条件分岐設定ヘルプ */}
+                    <div className="border rounded-lg p-4 bg-slate-50">
+                      <h4 className="font-medium mb-2">条件分岐の設定方法</h4>
+                      <div className="space-y-2 text-sm text-gray-700">
+                        <div>1. <span className="font-medium">判断条件</span>を明確に記述してください（例：「エンジンオイルが漏れていますか？」）</div>
+                        <div>2. <span className="font-medium text-green-600">「はい」の場合</span>の次のステップを接続します</div>
+                        <div>3. <span className="font-medium text-red-600">「いいえ」の場合</span>の次のステップを接続します</div>
+                        <div>4. <span className="font-medium text-orange-600">「その他・不明」の場合</span>の次のステップを接続します</div>
+                        <div className="mt-3 p-2 bg-blue-50 rounded text-blue-700">
+                          💡 各分岐は異なる応急処置手順につながり、状況に応じた適切な対応を案内します
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </TabsContent>
 
