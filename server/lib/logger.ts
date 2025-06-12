@@ -66,6 +66,47 @@ export const logError = (...args: any[]): void => {
  * ログレベルの設定状況を表示
  */
 export const showLogConfig = (): void => {
-  const levelNames = ['ERROR', 'WARN', 'INFO', 'DEBUG'];
-  logInfo(`ログレベル設定: ${levelNames[currentLogLevel]}`);
+  if (process.env.NODE_ENV === 'development') {
+    const levelNames = ['ERROR', 'WARN', 'INFO', 'DEBUG'];
+    logInfo(`ログレベル設定: ${levelNames[currentLogLevel]}`);
+  }
+};
+
+/**
+ * セキュリティ関連の情報をマスクする関数
+ */
+export const maskSensitiveInfo = (message: string): string => {
+  if (process.env.NODE_ENV === 'production') {
+    return message
+      .replace(/password[=:]\s*[^\s,}]+/gi, 'password=***')
+      .replace(/token[=:]\s*[^\s,}]+/gi, 'token=***')
+      .replace(/key[=:]\s*[^\s,}]+/gi, 'key=***')
+      .replace(/secret[=:]\s*[^\s,}]+/gi, 'secret=***')
+      .replace(/api[_-]?key[=:]\s*[^\s,}]+/gi, 'api_key=***');
+  }
+  return message;
+};
+
+/**
+ * セキュリティを考慮したログ出力関数
+ */
+export const logSecure = (level: 'debug' | 'info' | 'warn' | 'error', ...args: any[]): void => {
+  const maskedArgs = args.map(arg => 
+    typeof arg === 'string' ? maskSensitiveInfo(arg) : arg
+  );
+  
+  switch (level) {
+    case 'debug':
+      logDebug(...maskedArgs);
+      break;
+    case 'info':
+      logInfo(...maskedArgs);
+      break;
+    case 'warn':
+      logWarn(...maskedArgs);
+      break;
+    case 'error':
+      logError(...maskedArgs);
+      break;
+  }
 };
