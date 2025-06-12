@@ -1627,7 +1627,7 @@ const EmergencyGuideEdit: React.FC = () => {
                               </div>
                             )}
                           </div>
-                          ))}
+                          )}
 
                           {/* 最後の矢印 */}
                           <div className="flex justify-center">
