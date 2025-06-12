@@ -153,12 +153,6 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
       return originalPath;
     }
 
-    // 実際に存在するファイルかチェック
-    if (!existingImageFiles.includes(fileName)) {
-      console.warn(`ファイルが存在しません: ${fileName}`);
-      return '';
-    }
-
     // knowledge-base/imagesパスに統一
     const fixedPath = `/knowledge-base/images/${fileName}`;
     console.log('画像パス修正後:', fixedPath);
@@ -178,7 +172,7 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
     }
   };
 
-  // 画像読み込みエラーハンドラ（強化版）
+  // 画像読み込みエラーハンドラ（簡略版）
   const handleImageError = (imgElement: HTMLImageElement, result: SearchResult, retryCount = 0) => {
     try {
       const originalSrc = imgElement.src;
@@ -186,18 +180,10 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
       
       console.error(`画像読み込みエラー (試行${retryCount + 1}):`, {
         src: originalSrc,
-        fileName: fileName,
-        fileExists: existingImageFiles.includes(fileName)
+        fileName: fileName
       });
 
-      // ファイルが存在しない場合は即座にエラー表示
-      if (!existingImageFiles.includes(fileName)) {
-        console.error(`ファイルが存在リストにありません: ${fileName}`);
-        showImageError(imgElement, result, fileName);
-        return;
-      }
-
-      // リトライ処理
+      // リトライ処理（1回のみ）
       if (retryCount < 1) {
         const retryPath = `/knowledge-base/images/${fileName}`;
         if (retryPath !== originalSrc) {
@@ -241,37 +227,24 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
     }
   };
 
-  // 存在する画像ファイルのリスト（実際のファイルと照合）
-  const existingImageFiles = [
-    'mc_1747961263575_img_001.png',
-    'mc_1747961263575_img_003.png', 
-    'mc_1747961263575_img_004.png',
-    'mc_1747961263575_img_005.png',
-    'mc_1747961263575_img_006.png',
-    'mc_1747961263575_img_012.png',
-    'mc_1747961263575_img_013.png',
-    'mc_1747961263575_img_016.png',
-    'mc_1747961263575_img_017.png',
-    'mc_1747961263575_img_018.png',
-    'mc_1747961263575_img_019.png',
-    'mc_1747961263575_img_020.png',
-    'mc_1747961263575_img_021.png',
-    'mc_1747961263575_img_022.png',
-    'mc_1747961263575_img_026.png',
-    'mc_1747961263575_img_027.png'
-  ];
-
-  // 実際に存在するファイルのみをフィルタリング
+  // より柔軟な存在確認ロジック
   const filteredResults = results.filter((result) => {
     const imagePath = result.url || result.file || '';
     const fileName = imagePath.split('/').pop();
-    const exists = fileName && existingImageFiles.includes(fileName);
     
-    if (!exists && fileName) {
-      console.warn(`画像ファイルが存在しないためスキップ: ${fileName}`);
+    // ファイル名が存在し、画像拡張子を持つ場合は表示する
+    if (fileName && (fileName.endsWith('.png') || fileName.endsWith('.jpg') || fileName.endsWith('.jpeg'))) {
+      console.log(`✅ 画像ファイルを表示対象に追加: ${fileName}`);
+      return true;
     }
     
-    return exists;
+    if (!fileName) {
+      console.warn(`❌ ファイル名が取得できません: ${imagePath}`);
+      return false;
+    }
+    
+    console.warn(`❌ 画像ファイルとして認識されません: ${fileName}`);
+    return false;
   });
 
   console.log(`表示する画像: ${filteredResults.length}件 (元: ${results.length}件)`);
