@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -984,9 +983,7 @@ const EmergencyGuideEdit: React.FC = () => {
           });
         }
       }
-    };
-
-    window.addEventListener('search-emergency-guide', handleSearchEvent as EventListener);
+    };      window.addEventListener('search-emergency-guide', handleSearchEvent as EventListener);
     return () => {
       window.removeEventListener('search-emergency-guide', handleSearchEvent, handleSearchEvent as EventListener);
     };
