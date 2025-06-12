@@ -35,11 +35,14 @@ app.use(express.urlencoded({ extended: false }));
       console.log('[INFO] Storage configured');
     }
 
-    // サーバー起動時に知識ベースを初期化
-    await initializeKnowledgeBase();
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[INFO] Knowledge base initialized');
-    }
+    // サーバー起動時に知識ベースを初期化（非同期で実行）
+    initializeKnowledgeBase().then(() => {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[INFO] Knowledge base initialized');
+      }
+    }).catch(err => {
+      console.error('[ERROR] Knowledge base initialization failed:', err);
+    });
 
     // ディレクトリの確認と作成
     const dirs = [
@@ -57,21 +60,16 @@ app.use(express.urlencoded({ extended: false }));
       }
     }
 
-    // サーバー起動時にuploadsのデータをknowledge-baseにコピー
-    try {
-      // APIが起動した後に実行するために少し待機
+    // サーバー起動時の同期処理（開発環境のみ）
+    if (process.env.NODE_ENV === 'development') {
       setTimeout(async () => {
         try {
           await axios.post('http://localhost:5000/api/tech-support/sync-knowledge-base?direction=uploads-to-kb');
-          if (process.env.NODE_ENV === 'development') {
-            console.log('[INFO] Data synchronization completed');
-          }
+          console.log('[INFO] Data synchronization completed');
         } catch (syncErr: any) {
           console.error('[ERROR] Sync failed');
         }
-      }, 3000);
-    } catch (syncErr) {
-      console.error('[ERROR] Sync process failed');
+      }, 1000); // 待機時間を短縮
     }
 
     const server = await registerRoutes(app);
@@ -114,7 +112,9 @@ app.use(express.urlencoded({ extended: false }));
     
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`サーバーが起動しました: http://0.0.0.0:${PORT}`);
-      console.log(`外部アクセス可能: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`外部アクセス可能: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
+      }
     });
 
   } catch (err) {
