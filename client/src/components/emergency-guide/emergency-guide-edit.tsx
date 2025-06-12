@@ -1399,6 +1399,56 @@ const EmergencyGuideEdit: React.FC = () => {
                                       {slide.本文.map((text: string, textIdx: number) => (
                                         <p key={textIdx} className="text-gray-700 whitespace-pre-line">{text}</p>
                                       ))}
+                                      
+                                      {/* 条件分岐ノードの場合は選択肢ボタンを表示 */}
+                                      {slide.ノート && slide.ノート.includes('条件分岐') && (
+                                        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                                          <div className="text-sm font-medium text-yellow-800 mb-3">選択肢（プレビュー）</div>
+                                          <div className="space-y-2">
+                                            {/* 本文から選択肢を自動抽出して表示 */}
+                                            {slide.本文.map((text: string, textIdx: number) => {
+                                              // 番号付きリストや選択肢を検出
+                                              const choices = text.split('\n').filter(line => 
+                                                line.match(/^\d+\.|^[・•]\s*|^[ア-ン][\)）]\s*|^[①-⑩]\s*/)
+                                              );
+                                              
+                                              return choices.length > 0 ? (
+                                                <div key={textIdx} className="space-y-1">
+                                                  {choices.map((choice, choiceIdx) => {
+                                                    const cleanChoice = choice.replace(/^\d+\.|^[・•]\s*|^[ア-ン][\)）]\s*|^[①-⑩]\s*/, '').trim();
+                                                    if (!cleanChoice) return null;
+                                                    
+                                                    return (
+                                                      <button
+                                                        key={choiceIdx}
+                                                        className="w-full text-left p-2 bg-white border border-gray-300 rounded hover:bg-blue-50 hover:border-blue-400 transition-colors text-sm"
+                                                        onClick={() => {
+                                                          // スライド遷移の実装（次のスライドへ）
+                                                          const nextSlideIndex = slideIndex + 1;
+                                                          if (nextSlideIndex < (isEditing ? editedGuideData?.slides.length || 0 : guideData?.data.slides?.length || 0)) {
+                                                            const slideElement = document.querySelector(`[data-slide-index="${nextSlideIndex}"]`);
+                                                            if (slideElement) {
+                                                              slideElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                              slideElement.classList.add('ring-2', 'ring-green-500', 'ring-offset-2');
+                                                              setTimeout(() => {
+                                                                slideElement.classList.remove('ring-2', 'ring-green-500', 'ring-offset-2');
+                                                              }, 2000);
+                                                            }
+                                                          }
+                                                        }}
+                                                      >
+                                                        {cleanChoice}
+                                                        <span className="text-xs text-gray-500 ml-2">→ スライド{slideIndex + 2}</span>
+                                                      </button>
+                                                    );
+                                                  })}
+                                                </div>
+                                              ) : null;
+                                            })}
+                                          </div>
+                                        </div>
+                                      )}
+                                      
                                       {slide.ノート && (
                                         <div className="mt-2 pt-2 border-t border-gray-200">
                                           <span className="text-xs text-gray-500">ノート:</span>
@@ -1591,11 +1641,50 @@ const EmergencyGuideEdit: React.FC = () => {
                                     </div>
                                   )}
 
-                                  {/* 条件分岐の場合、分岐先を表示 */}
+                                  {/* 条件分岐の場合、選択肢ボタンを表示 */}
                                   {slide.ノート && slide.ノート.includes('条件分岐') && (
-                                    <div className="text-xs text-yellow-600 mt-1 space-y-1">
+                                    <div className="mt-2 space-y-1">
+                                      {/* 本文から選択肢を自動抽出 */}
+                                      {slide.本文.map((text: string, textIdx: number) => {
+                                        const choices = text.split('\n').filter(line => 
+                                          line.match(/^\d+\.|^[・•]\s*|^[ア-ン][\)）]\s*|^[①-⑩]\s*/)
+                                        );
+                                        
+                                        return choices.length > 0 ? (
+                                          <div key={textIdx} className="space-y-1">
+                                            {choices.map((choice, choiceIdx) => {
+                                              const cleanChoice = choice.replace(/^\d+\.|^[・•]\s*|^[ア-ン][\)）]\s*|^[①-⑩]\s*/, '').trim();
+                                              if (!cleanChoice) return null;
+                                              
+                                              return (
+                                                <button
+                                                  key={choiceIdx}
+                                                  className="block w-full text-left text-xs bg-yellow-100 border border-yellow-300 rounded px-2 py-1 hover:bg-yellow-200 transition-colors"
+                                                  onClick={() => {
+                                                    // 次のスライドへスクロール
+                                                    const nextSlideIndex = idx + 1;
+                                                    const nextSlideElement = document.querySelector(`[data-slide-index="${nextSlideIndex}"]`);
+                                                    if (nextSlideElement) {
+                                                      nextSlideElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                      nextSlideElement.classList.add('ring-2', 'ring-green-500', 'ring-offset-2');
+                                                      setTimeout(() => {
+                                                        nextSlideElement.classList.remove('ring-2', 'ring-green-500', 'ring-offset-2');
+                                                      }, 2000);
+                                                    }
+                                                  }}
+                                                >
+                                                  {cleanChoice}
+                                                  <span className="text-gray-500 ml-1">→ スライド{idx + 2}</span>
+                                                </button>
+                                              );
+                                            })}
+                                          </div>
+                                        ) : null;
+                                      })}
+                                      
+                                      {/* 既存の分岐情報も表示 */}
                                       {parseBranchConditions(slide.ノート).map((branch, branchIdx) => (
-                                        <div key={branchIdx} className="bg-yellow-200 px-1 rounded">
+                                        <div key={branchIdx} className="bg-yellow-200 px-1 rounded text-xs">
                                           {branch.condition} → {branch.target}
                                         </div>
                                       ))}
