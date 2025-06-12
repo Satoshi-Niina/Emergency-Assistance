@@ -539,7 +539,11 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         // 新規メッセージに対して画像検索を実行
         try {
-          const { searchByText } = await import('@/lib/image-search');
+          const { searchByText, reloadImageSearchData } = await import('@/lib/image-search');
+          
+          // まず画像検索データの初期化を確認
+          await reloadImageSearchData();
+          
           const searchResults = await searchByText(content, true);
           console.log('🔍 画像検索実行結果:', searchResults?.length || 0, '件');
           
