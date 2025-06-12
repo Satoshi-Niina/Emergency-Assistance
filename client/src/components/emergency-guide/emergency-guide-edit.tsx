@@ -993,8 +993,6 @@ const EmergencyGuideEdit: React.FC = () => {
   }, [guideFiles, toast]);
 
   // 日付のフォーマット
-  Adding visual cues for node types and branching conditions to the preview tab enhances the user experience.
-``````text
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
