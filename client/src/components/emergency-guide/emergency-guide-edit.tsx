@@ -3075,17 +3075,13 @@ const EmergencyGuideEdit: React.FC = () => {
                               <div className={
                                 "px-6 py-4 shadow-lg rounded-lg border-2 max-w-md w-full relative " +
                                 (slide.ノート && slide.ノート.includes('条件分岐') 
-                                  ? 'bg-yellow-100 border-yellow-500 transform rotate-45' 
+                                  ? 'bg-yellow-100 border-yellow-500' 
                                   : slide.ノート && (slide.ノート.includes('ステップ') || slide.ノート.includes('手順'))
                                   ? 'bg-green-100 border-green-500'
                                   : 'bg-blue-100 border-blue-500') +
                                 (isEditing ? ' hover:shadow-xl transition-shadow cursor-pointer' : '')
                               }>
-                                <div className={
-                                  slide.ノート && slide.ノート.includes('条件分岐') 
-                                    ? 'transform -rotate-45 text-center' 
-                                    : ''
-                                }>
+                                <div className="text-center">
                                   <div className={
                                     "font-bold mb-2 flex items-center justify-center gap-1 " +
                                     (slide.ノート && slide.ノート.includes('条件分岐') 
