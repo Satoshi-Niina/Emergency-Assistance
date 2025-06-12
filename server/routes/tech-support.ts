@@ -1298,6 +1298,29 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 });
 
 /**
+ * ログファイルをクリーンアップするエンドポイント
+ */
+router.post('/cleanup-logs', async (req, res) => {
+  try {
+    const { cleanupLogFiles } = await import('../../scripts/cleanup-logs.js');
+    const result = cleanupLogFiles();
+    
+    return res.json({
+      success: true,
+      message: 'ログファイルのクリーンアップが完了しました',
+      deletedCount: result.deletedCount,
+      totalSize: result.totalSize
+    });
+  } catch (error) {
+    console.error('ログクリーンアップエラー:', error);
+    return res.status(500).json({ 
+      error: 'ログクリーンアップに失敗しました',
+      details: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+/**
  * uploads内のファイルをクリーンアップするエンドポイント
  * knowledge-baseに存在しないファイルは削除されない
  */
