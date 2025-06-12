@@ -58,6 +58,7 @@ interface GuideFile {
   title: string;
   createdAt: string;
   slideCount: number;
+  description: string;
 }
 
 // メタデータフィールドの型
@@ -96,7 +97,7 @@ interface ConnectionNumber {
 
 const EmergencyGuideEdit: React.FC = () => {
   const { toast } = useToast();
-  
+
   // ガイドファイルリストの状態
   const [guideFiles, setGuideFiles] = useState<GuideFile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,12 +107,12 @@ const EmergencyGuideEdit: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [editedGuideData, setEditedGuideData] = useState<any>(null);
   const [showEditCard, setShowEditCard] = useState(false); // 編集カードを表示するかどうかのフラグ
-  
+
   // 削除確認ダイアログの状態
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<GuideFile | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  
+
   // 接続番号の状態
   const [connectionNumbers, setConnectionNumbers] = useState<ConnectionNumber[]>([]);
   const [showConnectionDialog, setShowConnectionDialog] = useState(false);
@@ -119,7 +120,7 @@ const EmergencyGuideEdit: React.FC = () => {
     label: '',
     value: ''
   });
-  
+
   // ガイドファイル一覧を取得
   const fetchGuideFiles = async () => {
     try {
@@ -127,11 +128,11 @@ const EmergencyGuideEdit: React.FC = () => {
       // キャッシュバスティングのためにタイムスタンプパラメータを追加
       const timestamp = new Date().getTime();
       const response = await fetch(`/api/emergency-guide/list?_t=${timestamp}`);
-      
+
       if (!response.ok) {
         throw new Error('ガイドファイル一覧の取得に失敗しました');
       }
-      
+
       const data = await response.json();
       console.log('サーバーから取得したガイド一覧:', data);
       setGuideFiles(data);
@@ -146,21 +147,21 @@ const EmergencyGuideEdit: React.FC = () => {
       setLoading(false);
     }
   };
-  
+
   // ガイド詳細データの取得
   const fetchGuideData = async (id: string) => {
     try {
       setLoading(true);
       const response = await fetch(`/api/emergency-guide/detail/${id}`);
-      
+
       if (!response.ok) {
         throw new Error('ガイド詳細データの取得に失敗しました');
       }
-      
+
       const data = await response.json();
       setGuideData(data);
       setEditedGuideData(JSON.parse(JSON.stringify(data.data))); // ディープコピー
-      
+
       // テキスト内の接続番号を抽出
       extractConnectionNumbers(data.data);
     } catch (error) {
@@ -174,10 +175,10 @@ const EmergencyGuideEdit: React.FC = () => {
       setLoading(false);
     }
   };
-  
+
   // 詳細表示ダイアログの状態
   const [showGuideDetailDialog, setShowGuideDetailDialog] = useState(false);
-  
+
   // 保存確認ダイアログの状態
   const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false);
   const [saveChanges, setSaveChanges] = useState<{
@@ -185,7 +186,7 @@ const EmergencyGuideEdit: React.FC = () => {
     modified: number;
     deleted: number;
   }>({ added: 0, modified: 0, deleted: 0 });
-  
+
   // スライド追加ダイアログの状態
   const [showAddSlideDialog, setShowAddSlideDialog] = useState(false);
   const [addSlidePosition, setAddSlidePosition] = useState<number | null>(null);
@@ -194,15 +195,15 @@ const EmergencyGuideEdit: React.FC = () => {
     本文: [''],
     ノート: ''
   });
-  
+
   // 変更内容を分析する関数
   const analyzeChanges = () => {
     if (!guideData || !editedGuideData) return { added: 0, modified: 0, deleted: 0 };
-    
+
     let added = 0;
     let modified = 0;
     let deleted = 0;
-    
+
     // メタデータの変更をチェック
     const metadataKeys = ['タイトル', '作成者', '説明'] as const;
     metadataKeys.forEach(key => {
@@ -210,20 +211,20 @@ const EmergencyGuideEdit: React.FC = () => {
         modified++;
       }
     });
-    
+
     // スライド数の変更をチェック
     if (guideData.data.slides.length > editedGuideData.slides.length) {
       deleted += guideData.data.slides.length - editedGuideData.slides.length;
     } else if (guideData.data.slides.length < editedGuideData.slides.length) {
       added += editedGuideData.slides.length - guideData.data.slides.length;
     }
-    
+
     // 共通するスライドの変更をチェック
     const minSlideCount = Math.min(guideData.data.slides.length, editedGuideData.slides.length);
     for (let i = 0; i < minSlideCount; i++) {
       const origSlide = guideData.data.slides[i];
       const editedSlide = editedGuideData.slides[i];
-      
+
       // スライドの各部分を比較
       if (origSlide.タイトル !== editedSlide.タイトル || 
           origSlide.ノート !== editedSlide.ノート ||
@@ -231,18 +232,18 @@ const EmergencyGuideEdit: React.FC = () => {
         modified++;
       }
     }
-    
+
     return { added, modified, deleted };
   };
 
   // 保存ボタンがクリックされたときの処理
   const handleSaveClick = () => {
     if (!selectedGuideId || !editedGuideData) return;
-    
+
     // 変更内容を分析
     const changes = analyzeChanges();
     setSaveChanges(changes);
-    
+
     // 変更がある場合、確認ダイアログを表示
     if (changes.added > 0 || changes.modified > 0 || changes.deleted > 0) {
       setShowSaveConfirmDialog(true);
@@ -259,7 +260,7 @@ const EmergencyGuideEdit: React.FC = () => {
   // ガイドデータの更新
   const updateGuideData = async () => {
     if (!selectedGuideId || !editedGuideData) return;
-    
+
     try {
       setIsSaving(true);
       const response = await fetch(`/api/emergency-guide/update/${selectedGuideId}`, {
@@ -272,17 +273,17 @@ const EmergencyGuideEdit: React.FC = () => {
           connectionNumbers: connectionNumbers
         })
       });
-      
+
       if (!response.ok) {
         throw new Error('応急処置ガイドデータの更新に失敗しました');
       }
-      
+
       // 更新成功
       toast({
         title: '更新完了',
         description: '応急処置ガイドデータを更新しました',
       });
-      
+
       // 最新データを再取得
       fetchGuideData(selectedGuideId);
       setIsEditing(false);
@@ -301,12 +302,12 @@ const EmergencyGuideEdit: React.FC = () => {
       setIsSaving(false);
     }
   };
-  
+
   // テキスト内の接続番号を抽出する関数
   const extractConnectionNumbers = (data: any) => {
     const connections: ConnectionNumber[] = [];
     const regex = /接続番号\s*[:：]\s*(\d+)/g;
-    
+
     // メタデータの説明から抽出
     if (data.metadata && data.metadata.説明) {
       let match;
@@ -318,7 +319,7 @@ const EmergencyGuideEdit: React.FC = () => {
         });
       }
     }
-    
+
     // 各スライドの本文から抽出
     if (data.slides) {
       data.slides.forEach((slide: any, slideIndex: number) => {
@@ -335,7 +336,7 @@ const EmergencyGuideEdit: React.FC = () => {
             }
           });
         }
-        
+
         // ノートからも抽出
         if (slide.ノート) {
           let match;
@@ -350,28 +351,28 @@ const EmergencyGuideEdit: React.FC = () => {
         }
       });
     }
-    
+
     // 重複を除去
     const uniqueConnections = connections.filter((connection, index, self) => 
       index === self.findIndex((c) => c.value === connection.value)
     );
-    
+
     setConnectionNumbers(uniqueConnections);
   };
-  
+
   // 接続番号を一括更新する関数
   const updateAllConnectionNumbers = (oldValue: string, newValue: string) => {
     if (!editedGuideData) return;
-    
+
     const updatedData = JSON.parse(JSON.stringify(editedGuideData));
     const regex = new RegExp(`接続番号\\s*[:：]\\s*${oldValue}`, 'g');
     const replacement = `接続番号: ${newValue}`;
-    
+
     // メタデータの説明を更新
     if (updatedData.metadata && updatedData.metadata.説明) {
       updatedData.metadata.説明 = updatedData.metadata.説明.replace(regex, replacement);
     }
-    
+
     // 各スライドの本文を更新
     if (updatedData.slides) {
       updatedData.slides.forEach((slide: any) => {
@@ -383,9 +384,9 @@ const EmergencyGuideEdit: React.FC = () => {
         }
       });
     }
-    
+
     setEditedGuideData(updatedData);
-    
+
     // 接続番号リストも更新
     setConnectionNumbers(prev => 
       prev.map(conn => 
@@ -394,13 +395,13 @@ const EmergencyGuideEdit: React.FC = () => {
           : conn
       )
     );
-    
+
     toast({
       title: '接続番号を更新',
       description: `接続番号 ${oldValue} を ${newValue} に変更しました`,
     });
   };
-  
+
   // 新しい接続番号を追加
   const addConnectionNumber = () => {
     if (!newConnection.label || !newConnection.value) {
@@ -411,7 +412,7 @@ const EmergencyGuideEdit: React.FC = () => {
       });
       return;
     }
-    
+
     // 既存の接続番号リストを更新
     const newId = `custom-${Date.now()}`;
     setConnectionNumbers([
@@ -422,21 +423,21 @@ const EmergencyGuideEdit: React.FC = () => {
         value: newConnection.value
       }
     ]);
-    
+
     // 入力フォームをリセット
     setNewConnection({ label: '', value: '' });
     setShowConnectionDialog(false);
-    
+
     toast({
       title: '接続番号を追加',
       description: `新しい接続番号 (${newConnection.value}) を追加しました`,
     });
   };
-  
+
   // メタデータの編集ハンドラ
   const handleMetadataChange = (field: MetadataField, value: string) => {
     if (!editedGuideData) return;
-    
+
     setEditedGuideData({
       ...editedGuideData,
       metadata: {
@@ -445,7 +446,7 @@ const EmergencyGuideEdit: React.FC = () => {
       }
     });
   };
-  
+
   // スライド追加ダイアログを表示する関数
   const showAddSlideDialogAt = (position: number) => {
     setAddSlidePosition(position);
@@ -456,7 +457,7 @@ const EmergencyGuideEdit: React.FC = () => {
     });
     setShowAddSlideDialog(true);
   };
-  
+
   // 新しいスライドを追加する関数
   const handleAddSlide = () => {
     if (!editedGuideData) return;
@@ -468,13 +469,13 @@ const EmergencyGuideEdit: React.FC = () => {
       });
       return;
     }
-    
+
     const position = addSlidePosition !== null ? addSlidePosition : editedGuideData.slides.length;
     const updatedSlides = [...editedGuideData.slides];
-    
+
     // 新しいスライド番号を計算（追加位置のスライド番号）
     const newSlideNumber = position + 1;
-    
+
     // 新しいスライドを作成
     const newSlide = {
       スライド番号: newSlideNumber,
@@ -483,66 +484,66 @@ const EmergencyGuideEdit: React.FC = () => {
       ノート: newSlideData.ノート,
       画像テキスト: []
     };
-    
+
     // スライドを指定位置に挿入
     updatedSlides.splice(position, 0, newSlide);
-    
+
     // 挿入後のスライドの番号を更新
     for (let i = position + 1; i < updatedSlides.length; i++) {
       updatedSlides[i].スライド番号 = i + 1;
     }
-    
+
     // データを更新
     setEditedGuideData({
       ...editedGuideData,
       slides: updatedSlides
     });
-    
+
     // ダイアログを閉じる
     setShowAddSlideDialog(false);
     setAddSlidePosition(null);
-    
+
     toast({
       title: "スライド追加",
       description: `新しいスライド「${newSlideData.タイトル}」を追加しました`,
     });
   };
-  
+
   // スライド内容の編集ハンドラ
   const handleSlideChange = (slideIndex: number, field: string, value: any) => {
     if (!editedGuideData) return;
-    
+
     const updatedSlides = [...editedGuideData.slides];
     updatedSlides[slideIndex] = {
       ...updatedSlides[slideIndex],
       [field]: value
     };
-    
+
     setEditedGuideData({
       ...editedGuideData,
       slides: updatedSlides
     });
   };
-  
+
   // スライド本文テキストの編集ハンドラ
   const handleSlideTextChange = (slideIndex: number, textIndex: number, value: string) => {
     if (!editedGuideData) return;
-    
+
     const updatedSlides = [...editedGuideData.slides];
     const updatedTexts = [...updatedSlides[slideIndex].本文];
     updatedTexts[textIndex] = value;
-    
+
     updatedSlides[slideIndex] = {
       ...updatedSlides[slideIndex],
       本文: updatedTexts
     };
-    
+
     setEditedGuideData({
       ...editedGuideData,
       slides: updatedSlides
     });
   };
-  
+
   // フロー生成を処理する関数
   const handleGenerateFlow = async (guideId: string, guideTitle: string) => {
     try {
@@ -550,26 +551,26 @@ const EmergencyGuideEdit: React.FC = () => {
         title: 'フロー生成中',
         description: `「${guideTitle}」からフローを生成しています...`,
       });
-      
+
       const response = await fetch(`/api/flow-generator/generate-from-guide/${guideId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         }
       });
-      
+
       if (!response.ok) {
         throw new Error('フロー生成に失敗しました');
       }
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         toast({
           title: 'フロー生成完了',
           description: `「${data.flowData.title}」フローが生成されました`,
         });
-        
+
         // フロー編集画面に遷移 (ts_ プレフィックスを追加してトラブルシューティングデータを示す)
         const guideIdPrefix = 'ts_';
         window.location.href = `/emergency-guide?tab=flow&guideId=${guideIdPrefix}${guideId}`;
@@ -585,25 +586,25 @@ const EmergencyGuideEdit: React.FC = () => {
       });
     }
   };
-  
+
   // ガイド削除処理
   const handleDeleteGuide = async () => {
     if (!fileToDelete) return;
-    
+
     try {
       setIsDeleting(true);
-      
+
       // 削除開始メッセージを表示
       toast({
         title: '削除中',
         description: `「${fileToDelete.title}」を削除しています...`,
       });
-      
+
       // 削除リクエストを送信
       const response = await fetch(`/api/emergency-guide/delete/${fileToDelete.id}`, {
         method: 'DELETE'
       });
-      
+
       // レスポンスを確認
       if (response.ok) {
         // 削除成功メッセージを表示
@@ -611,15 +612,15 @@ const EmergencyGuideEdit: React.FC = () => {
           title: '削除完了',
           description: `「${fileToDelete.title}」を削除しました`,
         });
-        
+
         // 一覧から該当項目を削除（クライアント側で即時反映）
         setGuideFiles(prevFiles => 
           prevFiles.filter(f => f.id !== fileToDelete.id)
         );
-        
+
         // サーバー側の処理完了を待つため十分な遅延を設定
         console.log(`ID=${fileToDelete.id}を削除しました。リスト更新を待機中...`);
-        
+
         // サーバーキャッシュをクリア
         try {
           console.log('サーバーキャッシュをクリア中...');
@@ -634,12 +635,12 @@ const EmergencyGuideEdit: React.FC = () => {
         } catch (e) {
           console.error('キャッシュクリア失敗:', e);
         }
-        
+
         // より長い遅延を設定してサーバー側の処理完了を確実に待つ (3秒)
         setTimeout(() => {
           console.log('サーバーからデータを再取得します...');
           fetchGuideFiles();
-          
+
           // さらに遅延して2回目のフェッチを実行（削除後の整合性を確保するため）
           setTimeout(() => {
             console.log('整合性確認のため、2回目のデータ取得を実行...');
@@ -666,19 +667,19 @@ const EmergencyGuideEdit: React.FC = () => {
       setFileToDelete(null);
     }
   };
-  
+
   // 初期データの読み込み
   useEffect(() => {
     fetchGuideFiles();
   }, []);
-  
+
   // ガイドが選択されたときの処理
   useEffect(() => {
     if (selectedGuideId) {
       fetchGuideData(selectedGuideId);
     }
   }, [selectedGuideId]);
-  
+
   // 検索イベントリスナーの設定
   useEffect(() => {
     const handleSearchEvent = (event: Event) => {
@@ -686,30 +687,30 @@ const EmergencyGuideEdit: React.FC = () => {
       if (customEvent.detail && customEvent.detail.keyword) {
         const keyword = customEvent.detail.keyword;
         console.log(`応急処置ガイド編集: 検索キーワード「${keyword}」を受信`);
-        
+
         // ガイドファイル一覧から検索
         const matchingGuides = guideFiles.filter(guide => 
           guide.title.includes(keyword) || 
           guide.fileName.includes(keyword)
         );
-        
+
         if (matchingGuides.length > 0) {
           console.log(`検索結果: ${matchingGuides.length}件のガイドが見つかりました`);
-          
+
           // 最初の一致するガイドを選択
           const selectedGuide = matchingGuides[0];
           setSelectedGuideId(selectedGuide.id);
-          
+
           // フロータブに切り替えるためのイベントを発行
           // トラブルシューティングフローを表示するために ts_ プレフィックスを追加
           const guideId = `ts_${selectedGuide.id}`;
           console.log(`フロー表示に切り替え: ${guideId}`);
-          
+
           // フロータブに切り替えるイベントを発行
           window.dispatchEvent(new CustomEvent('switch-to-flow-tab', { 
             detail: { guideId }
           }));
-          
+
           toast({
             title: "検索結果",
             description: `${matchingGuides.length}件のガイドが「${keyword}」に一致しました`,
@@ -730,7 +731,7 @@ const EmergencyGuideEdit: React.FC = () => {
       window.removeEventListener('search-emergency-guide', handleSearchEvent as EventListener);
     };
   }, [guideFiles, toast]);
-  
+
   // 日付のフォーマット
   const formatDate = (dateString: string) => {
     try {
@@ -746,12 +747,12 @@ const EmergencyGuideEdit: React.FC = () => {
       return dateString;
     }
   };
-  
+
   return (
     <div className="container mx-auto p-4">
       <div className="flex flex-col gap-6">
         {/* ヘッダー - ページ上部に既にタイトルがあるので削除 */}
-        
+
         {/* 削除確認ダイアログ */}
         <WarningDialog
           open={showDeleteDialog}
@@ -763,7 +764,7 @@ const EmergencyGuideEdit: React.FC = () => {
           }}
           onConfirm={handleDeleteGuide}
         />
-        
+
         {/* ガイドファイル一覧 */}
         <Card>
           <CardHeader>
@@ -798,7 +799,14 @@ const EmergencyGuideEdit: React.FC = () => {
                         key={file.id}
                         className={selectedGuideId === file.id ? 'bg-indigo-50' : ''}
                       >
-                        <TableCell className="font-medium">{file.title}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="space-y-1">
+                            <div className="font-semibold">{file.title}</div>
+                            <div className="text-xs text-gray-500 whitespace-pre-line">
+                              {file.description || "説明なし"}
+                            </div>
+                          </div>
+                        </TableCell>
                         <TableCell>{formatDate(file.createdAt)}</TableCell>
                         <TableCell>{file.slideCount}</TableCell>
                         <TableCell className="text-right">
@@ -811,7 +819,7 @@ const EmergencyGuideEdit: React.FC = () => {
                                 setSelectedGuideId(file.id);
                                 setIsEditing(true);
                                 setShowEditCard(true); // 編集カードを表示
-                                
+
                                 // ファイル読み込み開始
                                 fetchGuideData(file.id);
                               }}
@@ -843,7 +851,7 @@ const EmergencyGuideEdit: React.FC = () => {
             )}
           </CardContent>
         </Card>
-        
+
         {/* ガイド編集エリア */}
         {selectedGuideId && guideData && showEditCard && (
           <Card>
@@ -911,7 +919,7 @@ const EmergencyGuideEdit: React.FC = () => {
                   <TabsTrigger value="connections">接続番号</TabsTrigger>
                   <TabsTrigger value="preview">プレビュー</TabsTrigger>
                 </TabsList>
-                
+
                 {/* メタデータタブ */}
                 <TabsContent value="metadata">
                   <div className="space-y-4">
@@ -944,7 +952,7 @@ const EmergencyGuideEdit: React.FC = () => {
                           disabled={!isEditing}
                         />
                       </div>
-                      
+
                       {/* メタデータのリアルタイムプレビュー */}
                       {isEditing && (
                         <div className="mt-4 border rounded-lg p-4 bg-slate-50">
@@ -969,14 +977,15 @@ const EmergencyGuideEdit: React.FC = () => {
                     </div>
                   </div>
                 </TabsContent>
-                
+
                 {/* スライド内容タブ */}
                 <TabsContent value="slides">
                   <div className="space-y-8">
                     {/* スライド追加ボタン（最初のスライドの前） */}
                     {isEditing && (
                       <div className="flex justify-center mb-4">
-                        <Button 
+```text
+        <Button 
                           variant="ghost" 
                           size="sm" 
                           className="border border-dashed border-gray-300 text-gray-500 hover:text-blue-600 w-3/4"
@@ -987,7 +996,7 @@ const EmergencyGuideEdit: React.FC = () => {
                         </Button>
                       </div>
                     )}
-                  
+
                     {(isEditing ? editedGuideData.slides : guideData?.data.slides || []).map((slide: any, slideIndex: number) => {
                       return (
                         <div key={slideIndex}>
@@ -1009,7 +1018,7 @@ const EmergencyGuideEdit: React.FC = () => {
                               disabled={!isEditing}
                             />
                           </div>
-                          
+
                           <div className="grid gap-2">
                             <Label htmlFor={`slide-${slideIndex}-text`}>本文</Label>
                             {slide.本文.map((text: string, textIndex: number) => (
@@ -1024,7 +1033,7 @@ const EmergencyGuideEdit: React.FC = () => {
                               />
                             ))}
                           </div>
-                          
+
                           <div className="grid gap-2">
                             <Label htmlFor={`slide-${slideIndex}-note`}>ノート</Label>
                             <Textarea
@@ -1035,7 +1044,7 @@ const EmergencyGuideEdit: React.FC = () => {
                               disabled={!isEditing}
                             />
                           </div>
-                          
+
                           {/* リアルタイムプレビュー */}
                           {isEditing && (
                             <div className="mt-4 border rounded-lg p-4 bg-slate-50">
@@ -1056,7 +1065,7 @@ const EmergencyGuideEdit: React.FC = () => {
                               </div>
                             </div>
                           )}
-                          
+
                           {slide.画像テキスト && slide.画像テキスト.length > 0 && (
                             <div className="grid gap-2">
                               <Label>画像</Label>
@@ -1076,7 +1085,7 @@ const EmergencyGuideEdit: React.FC = () => {
                           )}
                         </CardContent>
                       </Card>
-                      
+
                       {/* スライド間に追加ボタン */}
                       {isEditing && (
                         <div className="flex justify-center my-4">
@@ -1096,7 +1105,7 @@ const EmergencyGuideEdit: React.FC = () => {
                     })}
                   </div>
                 </TabsContent>
-                
+
                 {/* 接続番号タブ */}
                 <TabsContent value="connections">
                   <div className="space-y-4">
@@ -1112,7 +1121,7 @@ const EmergencyGuideEdit: React.FC = () => {
                         接続番号を追加
                       </Button>
                     </div>
-                    
+
                     {connectionNumbers.length === 0 ? (
                       <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg">
                         <p>接続番号が見つかりませんでした</p>
@@ -1174,7 +1183,7 @@ const EmergencyGuideEdit: React.FC = () => {
                     )}
                   </div>
                 </TabsContent>
-                
+
                 {/* プレビュータブ - 現在編集中の内容を表示 */}
                 <TabsContent value="preview">
                   <div className="space-y-4">
@@ -1185,7 +1194,7 @@ const EmergencyGuideEdit: React.FC = () => {
                         編集内容はリアルタイムに反映されます。
                       </p>
                     </div>
-                    
+
                     <Card className="border-green-200">
                       <CardHeader className="bg-green-50 rounded-t-lg">
                         <CardTitle>
@@ -1201,14 +1210,14 @@ const EmergencyGuideEdit: React.FC = () => {
                           <p className="whitespace-pre-line mb-4">
                             {isEditing ? editedGuideData?.metadata.説明 : guideData?.data.metadata.説明 || "説明はありません"}
                           </p>
-                          
+
                           <div className="bg-blue-50 p-4 rounded-lg mb-6">
                             <h4 className="font-medium text-blue-800 mb-2">応急処置ガイドプレビュー</h4>
                             <p className="text-sm text-blue-700">
                               このプレビューは実際の応急処置ガイドの表示形式です。
                             </p>
                           </div>
-                          
+
                           <h3 className="text-lg font-medium mt-6 mb-2">スライド内容</h3>
                           <div className="space-y-6">
                             {(isEditing ? editedGuideData?.slides : guideData?.data.slides || []).map((slide: any, idx: number) => (
@@ -1216,20 +1225,20 @@ const EmergencyGuideEdit: React.FC = () => {
                                 <h4 className="text-lg font-bold mb-2">
                                   {slide.スライド番号}. {slide.タイトル}
                                 </h4>
-                                
+
                                 {slide.本文.map((text: string, textIdx: number) => (
                                   <p key={textIdx} className="mb-2 whitespace-pre-line">
                                     {text}
                                   </p>
                                 ))}
-                                
+
                                 {slide.ノート && (
                                   <div className="mt-3 p-2 bg-yellow-50 rounded border border-yellow-200">
                                     <h5 className="text-sm font-medium text-yellow-800 mb-1">ノート:</h5>
                                     <p className="text-sm text-yellow-800 whitespace-pre-line">{slide.ノート}</p>
                                   </div>
                                 )}
-                                
+
                                 {slide.画像テキスト && slide.画像テキスト.length > 0 && (
                                   <div className="mt-4 grid grid-cols-2 gap-4">
                                     {slide.画像テキスト.map((imgText: any, imgIdx: number) => (
@@ -1256,7 +1265,7 @@ const EmergencyGuideEdit: React.FC = () => {
             </CardContent>
           </Card>
         )}
-        
+
         {/* 接続番号追加ダイアログ */}
         <Dialog open={showConnectionDialog} onOpenChange={setShowConnectionDialog}>
           <DialogContent className="sm:max-w-md">
@@ -1296,7 +1305,7 @@ const EmergencyGuideEdit: React.FC = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-        
+
         {/* 保存確認ダイアログ */}
         <Dialog open={showSaveConfirmDialog} onOpenChange={setShowSaveConfirmDialog}>
           <DialogContent className="sm:max-w-md">
@@ -1337,7 +1346,7 @@ const EmergencyGuideEdit: React.FC = () => {
           </DialogContent>
         </Dialog>
       </div>
-      
+
       {/* スライド追加ダイアログ */}
       <Dialog open={showAddSlideDialog} onOpenChange={setShowAddSlideDialog}>
         <DialogContent className="sm:max-w-md">
