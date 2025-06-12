@@ -1492,7 +1492,7 @@ const EmergencyGuideEdit: React.FC = () => {
                     )}
                   </div>
 
-                  <Card className={`${isEditing ? 'border-yellow-300 bg-yellow-50' : 'border-green-200'}`}>
+                  <Card className={isEditing ? 'border-yellow-300 bg-yellow-50' : 'border-green-200'}>
                     <CardHeader className={`${isEditing ? 'bg-yellow-100' : 'bg-green-50'} rounded-t-lg`}>
                       <div className="flex justify-between items-center">
                         <div>
