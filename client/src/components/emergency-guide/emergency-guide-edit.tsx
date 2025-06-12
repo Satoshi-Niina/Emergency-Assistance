@@ -1342,147 +1342,122 @@ const EmergencyGuideEdit: React.FC = () => {
                   </div>
                 </TabsContent>
 
-
-
                 {/* プレビュータブ - 現在編集中の内容を表示 */}
                 <TabsContent value="preview">
-                  
-                    
-                      
-                        
-                          
-                            {isEditing ? "現在編集中の内容をプレビュー表示しています。" : "保存されている内容を表示しています。"}
-                            編集内容はリアルタイムに反映されます。
-                          
-                        
-                      
-                    
-
-                    <Card className={`${isEditing ? 'border-yellow-300 bg-yellow-50' : 'border-green-200'}`}>
-                      <CardHeader className={`${isEditing ? 'bg-yellow-100' : 'bg-green-50'} rounded-t-lg`}>
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <CardTitle className="flex items-center gap-2">
-                              {isEditing && (
-                                <Badge variant="outline" className="bg-yellow-200 text-yellow-800 border-yellow-400">
-                                  編集中
-                                </Badge>
-                              )}
-                              {isEditing ? editedGuideData?.metadata.タイトル : guideData?.data.metadata.タイトル || "タイトルなし"}
-                            </CardTitle>
-                            <CardDescription>
-                              作成者: {isEditing ? editedGuideData?.metadata.作成者 : guideData?.data.metadata.作成者 || "不明"}
-                            </CardDescription>
-                          </div>
-                          {isEditing && (
-                            <div className="text-right">
-                              <div className="text-xs text-yellow-700 mb-1">⚠️ 未保存の変更があります</div>
-                              <Button
-                                variant="default"
-                                size="sm"
-                                onClick={handleSaveClick}
-                                disabled={isSaving}
-                              >
-                                {isSaving ? (
-                                  <>
-                                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                                    保存中...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Save className="h-4 w-4 mr-1" />
-                                    変更を保存
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                          )}
+                  {isEditing ? (
+                    "現在編集中の内容をプレビュー表示しています。"
+                  ) : (
+                    "保存されている内容を表示しています。"
+                  )}
+                  編集内容はリアルタイムに反映されます。
+                  <Card className={`${isEditing ? 'border-yellow-300 bg-yellow-50' : 'border-green-200'}`}>
+                    <CardHeader className={`${isEditing ? 'bg-yellow-100' : 'bg-green-50'} rounded-t-lg`}>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <CardTitle className="flex items-center gap-2">
+                            {isEditing && (
+                              <Badge variant="outline" className="bg-yellow-200 text-yellow-800 border-yellow-400">
+                                編集中
+                              </Badge>
+                            )}
+                            {isEditing ? editedGuideData?.metadata.タイトル : guideData?.data.metadata.タイトル || "タイトルなし"}
+                          </CardTitle>
+                          <CardDescription>
+                            作成者: {isEditing ? editedGuideData?.metadata.作成者 : guideData?.data.metadata.作成者 || "不明"}
+                          </CardDescription>
                         </div>
-                      </CardHeader>
-                      <CardContent className="pt-4">
-                        <div className="prose max-w-none">
-                          <h3 className="text-lg font-medium mb-2">概要</h3>
-                          <p className="whitespace-pre-line mb-4">
-                            {isEditing ? editedGuideData?.metadata.説明 : guideData?.data.metadata.説明 || "説明はありません"}
-                          </p>
-
-                          
-                            
-                              応急処置ガイドプレビュー
-                            
-                            
-                              このプレビューは実際の応急処置ガイドの表示形式です。
-                            
-                          
-
-                          <h3 className="text-lg font-medium mt-6 mb-2">スライド内容</h3>
-                          <div className="space-y-6">
-                            {(isEditing ? editedGuideData?.slides : guideData?.data.slides || []).map((slide: any, idx: number) => (
-                              <div key={idx} className={`border rounded-lg p-4 ${isEditing ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50'}`}>
-                                <div className="flex justify-between items-center mb-2">
-                                  <h4 className="text-lg font-bold">
-                                    {slide.スライド番号}. {slide.タイトル}
-                                  </h4>
-                                  {isEditing && (
-                                    
-                                        編集中
-                                      
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                          // 該当スライドを選択してスライド編集タブに戻る
-                                          setSelectedSlideIndex(idx);
-                                          const tabsList = document.querySelector('[role="tablist"]');
-                                          const slidesTab = tabsList?.querySelector('[value="slides"]') as HTMLElement;
-                                          slidesTab?.click();
-                                        }}
-                                      >
-                                        <Pencil className="h-3 w-3 mr-1" />
-                                        編集
-                                      </Button>
-                                    
-                                  )}
-                                </div>
-
-                                {slide.本文.map((text: string, textIdx: number) => (
-                                  <p key={textIdx} className="mb-2 whitespace-pre-line">
-                                    {text}
-                                  </p>
-                                ))}
-
-                                {slide.ノート && (
-                                  
-                                    
-                                      ノート:
-                                    
-                                    {slide.ノート}
-                                  
-                                )}
-
-                                {slide.画像テキスト && slide.画像テキスト.length > 0 && (
-                                  
-                                    {slide.画像テキスト.map((imgText: any, imgIdx: number) => (
-                                      
-                                        
-                                          <img 
-                                            src={imgText.画像パス} 
-                                            alt={`スライド${slide.スライド番号}の画像${imgIdx + 1}`}
-                                            className="max-w-full h-auto rounded"
-                                          />
-                                          {imgText.テキスト}
-                                        
-                                      
-                                    ))}
-                                  
+                        {isEditing && (
+                          <div className="text-right">
+                            <div className="text-xs text-yellow-700 mb-1">⚠️ 未保存の変更があります</div>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={handleSaveClick}
+                              disabled={isSaving}
+                            >
+                              {isSaving ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                  保存中...
+                                </>
+                              ) : (
+                                <>
+                                  <Save className="h-4 w-4 mr-1" />
+                                  変更を保存
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-4">
+                      <div className="prose max-w-none">
+                        <h3 className="text-lg font-medium mb-2">概要</h3>
+                        <p className="whitespace-pre-line mb-4">
+                          {isEditing ? editedGuideData?.metadata.説明 : guideData?.data.metadata.説明 || "説明はありません"}
+                        </p>
+                        <h3 className="text-lg font-medium mt-6 mb-2">スライド内容</h3>
+                        <div className="space-y-6">
+                          {(isEditing ? editedGuideData?.slides : guideData?.data.slides || []).map((slide: any, idx: number) => (
+                            <div key={idx} className={`border rounded-lg p-4 ${isEditing ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50'}`}>
+                              <div className="flex justify-between items-center mb-2">
+                                <h4 className="text-lg font-bold">
+                                  {slide.スライド番号}. {slide.タイトル}
+                                </h4>
+                                {isEditing && (
+                                  <>
+                                    <Badge variant="outline" className="bg-yellow-200 text-yellow-800 border-yellow-400">
+                                      編集中
+                                    </Badge>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        // 該当スライドを選択してスライド編集タブに戻る
+                                        setSelectedSlideIndex(idx);
+                                        const tabsList = document.querySelector('[role="tablist"]');
+                                        const slidesTab = tabsList?.querySelector('[value="slides"]') as HTMLElement;
+                                        slidesTab?.click();
+                                      }}
+                                    >
+                                      <Pencil className="h-3 w-3 mr-1" />
+                                      編集
+                                    </Button>
+                                  </>
                                 )}
                               </div>
-                            ))}
-                          </div>
+                              {slide.本文.map((text: string, textIdx: number) => (
+                                <p key={textIdx} className="mb-2 whitespace-pre-line">
+                                  {text}
+                                </p>
+                              ))}
+                              {slide.ノート && (
+                                <div className="mt-2 flex items-start gap-2">
+                                  <div className="text-gray-500 text-xs font-bold">ノート:</div>
+                                  <div className="text-gray-700 whitespace-pre-line">{slide.ノート}</div>
+                                </div>
+                              )}
+                              {slide.画像テキスト && slide.画像テキスト.length > 0 && (
+                                <div className="mt-4 grid grid-cols-2 gap-4">
+                                  {slide.画像テキスト.map((imgText: any, imgIdx: number) => (
+                                    <div key={imgIdx} className="space-y-2">
+                                      <img
+                                        src={imgText.画像パス}
+                                        alt={`スライド${slide.スライド番号}の画像${imgIdx + 1}`}
+                                        className="max-w-full h-auto rounded"
+                                      />
+                                      <div className="text-gray-600">{imgText.テキスト}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
                         </div>
-                      </CardContent>
-                    </Card>
-                  
+                      </div>
+                    </CardContent>
+                  </Card>
                 </TabsContent>
               </Tabs>
             </CardContent>
@@ -1498,8 +1473,8 @@ const EmergencyGuideEdit: React.FC = () => {
                 新しい接続番号とその説明ラベルを入力してください
               </DialogDescription>
             </DialogHeader>
-            
-              
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
                 <Label htmlFor="conn-label">説明ラベル</Label>
                 <Input
                   id="conn-label"
@@ -1507,8 +1482,8 @@ const EmergencyGuideEdit: React.FC = () => {
                   value={newConnection.label}
                   onChange={(e) => setNewConnection({ ...newConnection, label: e.target.value })}
                 />
-              
-              
+              </div>
+              <div className="grid gap-2">
                 <Label htmlFor="conn-value">接続番号</Label>
                 <Input
                   id="conn-value"
@@ -1516,8 +1491,8 @@ const EmergencyGuideEdit: React.FC = () => {
                   value={newConnection.value}
                   onChange={(e) => setNewConnection({ ...newConnection, value: e.target.value })}
                 />
-              
-            
+              </div>
+            </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowConnectionDialog(false)}>
                 キャンセル
@@ -1538,25 +1513,26 @@ const EmergencyGuideEdit: React.FC = () => {
                 以下の変更を保存しますか？
               </DialogDescription>
             </DialogHeader>
-            
-              
-                {saveChanges.added > 0 && (
-                  
-                    新しい項目追加: {saveChanges.added}件
-                  
-                )}
-                {saveChanges.modified > 0 && (
-                  
-                    項目の変更: {saveChanges.modified}件
-                  
-                )}
-                {saveChanges.deleted > 0 && (
-                  
-                    項目の削除: {saveChanges.deleted}件
-                  
-                )}
-              
-            
+            <div className="grid gap-4 py-4">
+              {saveChanges.added > 0 && (
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">追加</Badge>
+                  新しい項目追加: {saveChanges.added}件
+                </div>
+              )}
+              {saveChanges.modified > 0 && (
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">変更</Badge>
+                  項目の変更: {saveChanges.modified}件
+                </div>
+              )}
+              {saveChanges.deleted > 0 && (
+                <div className="flex items-center gap-2">
+                  <Badge variant="destructive">削除</Badge>
+                  項目の削除: {saveChanges.deleted}件
+                </div>
+              )}
+            </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowSaveConfirmDialog(false)}>
                 キャンセル
@@ -1574,63 +1550,63 @@ const EmergencyGuideEdit: React.FC = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      
 
-      {/* スライド追加ダイアログ */}
-      <Dialog open={showAddSlideDialog} onOpenChange={setShowAddSlideDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>新しいスライドを追加</DialogTitle>
-            <DialogDescription>
-              {addSlidePosition !== null && editedGuideData ? (
-                addSlidePosition < editedGuideData.slides.length ? 
-                  `スライド ${addSlidePosition + 1} と ${addSlidePosition + 2} の間に新しいスライドを追加します。` :
-                  `最後に新しいスライドを追加します。`
-              ) : '新しいスライドを追加します。'}
-            </DialogDescription>
-          </DialogHeader>
-          
-            
-              <Label htmlFor="new-slide-title">タイトル</Label>
-              <Input 
-                id="new-slide-title" 
-                value={newSlideData.タイトル} 
-                onChange={e => setNewSlideData({...newSlideData, タイトル: e.target.value})}
-                placeholder="新しいスライドのタイトル"
-              />
-            
-            
-              <Label htmlFor="new-slide-content">本文</Label>
-              <Textarea 
-                id="new-slide-content" 
-                value={newSlideData.本文[0] || ''} 
-                onChange={e => setNewSlideData({...newSlideData, 本文: [e.target.value]})}
-                placeholder="スライドの内容を入力してください"
-                rows={3}
-              />
-            
-            
-              <Label htmlFor="new-slide-note">ノート</Label>
-              <Textarea 
-                id="new-slide-note" 
-                value={newSlideData.ノート} 
-                onChange={e => setNewSlideData({...newSlideData, ノート: e.target.value})}
-                placeholder="補足説明やノート（オプション）"
-                rows={2}
-              />
-            
-          
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setShowAddSlideDialog(false)}>
-              キャンセル
-            </Button>
-            <Button type="button" onClick={handleAddSlide}>
-              追加
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    
+        {/* スライド追加ダイアログ */}
+        <Dialog open={showAddSlideDialog} onOpenChange={setShowAddSlideDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>新しいスライドを追加</DialogTitle>
+              <DialogDescription>
+                {addSlidePosition !== null && editedGuideData ? (
+                  addSlidePosition < editedGuideData.slides.length ?
+                    `スライド ${addSlidePosition + 1} と ${addSlidePosition + 2} の間に新しいスライドを追加します。` :
+                    `最後に新しいスライドを追加します。`
+                ) : '新しいスライドを追加します。'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="new-slide-title">タイトル</Label>
+                <Input
+                  id="new-slide-title"
+                  value={newSlideData.タイトル}
+                  onChange={e => setNewSlideData({ ...newSlideData, タイトル: e.target.value })}
+                  placeholder="新しいスライドのタイトル"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="new-slide-content">本文</Label>
+                <Textarea
+                  id="new-slide-content"
+                  value={newSlideData.本文[0] || ''}
+                  onChange={e => setNewSlideData({ ...newSlideData, 本文: [e.target.value] })}
+                  placeholder="スライドの内容を入力してください"
+                  rows={3}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="new-slide-note">ノート</Label>
+                <Textarea
+                  id="new-slide-note"
+                  value={newSlideData.ノート}
+                  onChange={e => setNewSlideData({ ...newSlideData, ノート: e.target.value })}
+                  placeholder="補足説明やノート（オプション）"
+                  rows={2}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setShowAddSlideDialog(false)}>
+                キャンセル
+              </Button>
+              <Button type="button" onClick={handleAddSlide}>
+                追加
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
   );
 };
 
