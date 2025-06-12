@@ -711,6 +711,30 @@ router.get('/list-json-files', (req, res) => {
 /**
  * 技術サポート文書のアップロードと処理を行うエンドポイント
  */
+// ユーティリティ関数：フォールバック画像検索データを生成
+function generateFallbackImageSearchData() {
+  return [
+    {
+      id: "fallback_image_1",
+      file: "/knowledge-base/images/fallback_image_1.png",
+      title: "フォールバック画像1",
+      category: "一般",
+      keywords: ["フォールバック", "画像", "一般"],
+      description: "システムが初期化されていない場合のフォールバック画像です。",
+      searchText: "フォールバック 画像 一般 システム 初期化",
+    },
+    {
+      id: "fallback_image_2",
+      file: "/knowledge-base/images/fallback_image_2.png",
+      title: "フォールバック画像2",
+      category: "警告",
+      keywords: ["フォールバック", "画像", "警告"],
+      description: "データが利用できないことを示すフォールバック画像です。",
+      searchText: "フォールバック 画像 警告 データ 利用不可",
+    },
+  ];
+}
+
 // 画像検索データの初期化用エンドポイント
 router.post('/init-image-search-data', async (req, res) => {
   try {
@@ -800,7 +824,7 @@ router.post('/init-image-search-data', async (req, res) => {
                         ...(slide['本文'] || []),
                         "保守用車マニュアル", "エンジン", "整備", "修理", "部品", "車両", "動力"
                       ].filter(Boolean).join(' ')
-                    };
+                    };```javascript
                     newData.push(slideData);
                   }
                 }
@@ -1304,7 +1328,7 @@ router.post('/cleanup-logs', async (req, res) => {
   try {
     const { cleanupLogFiles } = await import('../../scripts/cleanup-logs.js');
     const result = cleanupLogFiles();
-    
+
     return res.json({
       success: true,
       message: 'ログファイルのクリーンアップが完了しました',
@@ -1660,9 +1684,7 @@ async function cleanupOrphanedJsonFiles(): Promise<{removed: number, errors: num
       const prefix = file.split('_metadata.json')[0];
 
       // 対応するドキュメントが存在するかチェック
-      const hasMatchingDocument = docDirs.some(docPrefix => docPrefix === prefix);
-
-      if (!hasMatchingDocument) {
+      const hasMatchingDocument = docDirs.some(docPrefix => docPrefix === prefix);      if (!hasMatchingDocument) {
         // 対応するドキュメントが存在しない場合は孤立したJSONファイルと判断して削除
         try {
           const filePath = path.join(jsonDir, file);
