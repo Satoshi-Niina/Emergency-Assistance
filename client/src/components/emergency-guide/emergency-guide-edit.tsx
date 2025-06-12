@@ -4,7 +4,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -993,6 +992,7 @@ const EmergencyGuideEdit: React.FC = () => {
   }, [guideFiles, toast]);
 
   // 日付のフォーマット
+```text
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
@@ -1347,130 +1347,131 @@ const EmergencyGuideEdit: React.FC = () => {
                                             </Badge>
                                           )}
                                         </CardTitle>
-                                  </div>
-                                </CardHeader>
-                                <CardContent className="pt-4 space-y-4">
-                                  <div className="grid gap-2">
-                                      <Label htmlFor={`slide-${slideIndex}-text`}>本文</Label>
-                                      {Array.isArray(slide.本文) ? slide.本文.map((text: string, textIndex: number) => (
+                                      </div>
+                                    </CardHeader>
+                                    <CardContent className="pt-4 space-y-4">
+                                      <div className="grid gap-2">
+                                        <Label htmlFor={`slide-${slideIndex}-text`}>本文</Label>
+                                        {Array.isArray(slide.本文) ? slide.本文.map((text: string, textIndex: number) => (
+                                          <Textarea
+                                            key={textIndex}
+                                            id={`slide-${slideIndex}-text-${textIndex}`}
+                                            rows={3}
+                                            value={text || ''}
+                                            onChange={(e) => handleSlideTextChange(slideIndex, textIndex, e.target.value)}
+                                            disabled={!isEditing}
+                                            className="mb-2"
+                                          />
+                                        )) : (
+                                          <Textarea
+                                            id={`slide-${slideIndex}-text-0`}
+                                            rows={3}
+                                            value=""
+                                            onChange={(e) => handleSlideTextChange(slideIndex, 0, e.target.value)}
+                                            disabled={!isEditing}
+                                            placeholder="本文がありません"
+                                          />
+                                        )}
+                                      </div>
+
+                                      <div className="grid gap-2">
+                                        <Label htmlFor={`slide-${slideIndex}-note`}>ノート</Label>
                                         <Textarea
-                                          key={textIndex}
-                                          id={`slide-${slideIndex}-text-${textIndex}`}
+                                          id={`slide-${slideIndex}-note`}
                                           rows={3}
-                                          value={text || ''}
-                                          onChange={(e) => handleSlideTextChange(slideIndex, textIndex, e.target.value)}
+                                          value={slide.ノート}
+                                          onChange={(e) => handleSlideChange(slideIndex, 'ノート', e.target.value)}
                                           disabled={!isEditing}
-                                          className="mb-2"
                                         />
-                                      )) : (
-                                        <Textarea
-                                          id={`slide-${slideIndex}-text-0`}
-                                          rows={3}
-                                          value=""
-                                          onChange={(e) => handleSlideTextChange(slideIndex, 0, e.target.value)}
-                                          disabled={!isEditing}
-                                          placeholder="本文がありません"
-                                        />
+                                      </div>
+
+                                      {/* リアルタイムプレビュー */}
+                                      {isEditing && (
+                                        <div className="mt-4 border rounded-lg p-4 bg-slate-50">
+                                          <div className="text-xs text-blue-600 mb-2">スライドプレビュー（リアルタイム更新）</div>
+                                          <div className="space-y-3">
+                                            {slide.タイトル && (
+                                              <h3 className="font-bold text-lg">{slide.タイトル}</h3>
+                                            )}
+                                            {slide.本文.map((text: string, textIdx: number) => (
+                                              <p key={textIdx} className="text-gray-700 whitespace-pre-line">{text}</p>
+                                            ))}
+                                            {slide.ノート && (
+                                              <div className="mt-2 pt-2 border-t border-gray-200">
+                                                <span className="text-xs text-gray-500">ノート:</span>
+                                                <p className="text-sm text-gray-600 italic">{slide.ノート}</p>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
                                       )}
-                                    </div>
 
-                                  <div className="grid gap-2">
-                                    <Label htmlFor={`slide-${slideIndex}-note`}>ノート</Label>
-                                    <Textarea
-                                      id={`slide-${slideIndex}-note`}
-                                      rows={3}
-                                      value={slide.ノート}
-                                      onChange={(e) => handleSlideChange(slideIndex, 'ノート', e.target.value)}
-                                      disabled={!isEditing}
-                                    />
-                                  </div>
-
-                                  {/* リアルタイムプレビュー */}
-                                  {isEditing && (
-                                    <div className="mt-4 border rounded-lg p-4 bg-slate-50">
-                                      <div className="text-xs text-blue-600 mb-2">スライドプレビュー（リアルタイム更新）</div>
-                                      <div className="space-y-3">
-                                        {slide.タイトル && (
-                                          <h3 className="font-bold text-lg">{slide.タイトル}</h3>
-                                        )}
-                                        {slide.本文.map((text: string, textIdx: number) => (
-                                          <p key={textIdx} className="text-gray-700 whitespace-pre-line">{text}</p>
-                                        ))}
-                                        {slide.ノート && (
-                                          <div className="mt-2 pt-2 border-t border-gray-200">
-                                            <span className="text-xs text-gray-500">ノート:</span>
-                                            <p className="text-sm text-gray-600 italic">{slide.ノート}</p>
+                                      {slide.画像テキスト && slide.画像テキスト.length > 0 && (
+                                        <div className="grid gap-2">
+                                          <Label>画像</Label>
+                                          <div className="grid grid-cols-2 gap-4">
+                                            {slide.画像テキスト.map((imgText: any, imgIndex: number) => (
+                                              <div key={imgIndex} className="border rounded-lg p-2">
+                                                <img 
+                                                  src={imgText.画像パス} 
+                                                  alt={`スライド${slide.スライド番号}の画像${imgIndex + 1}`}
+                                                  className="w-full h-auto mb-2 rounded"
+                                                />
+                                                <p className="text-sm text-gray-600">{imgText.テキスト}</p>
+                                              </div>
+                                            ))}
                                           </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  )}
+                                        </div>
+                                      )}
+                                    </CardContent>
+                                  </Card>
+                                </div>
 
-                                  {slide.画像テキスト && slide.画像テキスト.length > 0 && (
-                                    <div className="grid gap-2">
-                                      <Label>画像</Label>
-                                      <div className="grid grid-cols-2 gap-4">
-                                        {slide.画像テキスト.map((imgText: any, imgIndex: number) => (
-                                          <div key={imgIndex} className="border rounded-lg p-2">
-                                            <img 
-                                              src={imgText.画像パス} 
-                                              alt={`スライド${slide.スライド番号}の画像${imgIndex + 1}`}
-                                              className="w-full h-auto mb-2 rounded"
-                                            />
-                                            <p className="text-sm text-gray-600">{imgText.テキスト}</p>
-                                          </div>
-                                        ))}
-                                      </div>
+                                {/* スライド間に追加ボタン */}
+                                {isEditing && (
+                                  <div className="flex justify-center my-4">
+                                    <div className="flex gap-2">
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="border border-dashed border-gray-300 text-gray-500 hover:text-blue-600"
+                                        onClick={() => showAddSlideDialogAt(slideIndex + 1)}
+                                      >
+                                        <Plus className="h-3.5 w-3.5 mr-1" />
+                                        スライド追加
+                                      </Button>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="border border-dashed border-green-300 text-green-600 hover:text-green-700"
+                                        onClick={() => addFlowNodeAt('step', slideIndex + 1)}
+                                      >
+                                        <Plus className="h-3.5 w-3.5 mr-1" />
+                                        ステップノード
+                                      </Button>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="border border-dashed border-yellow-300 text-yellow-600 hover:text-yellow-700"
+                                        onClick={() => addFlowNodeAt('decision', slideIndex + 1)}
+                                      >
+                                        <Plus className="h-3.5 w-3.5 mr-1" />
+                                        条件分岐ノード
+                                      </Button>
                                     </div>
-                                  )}
-                                </CardContent>
-                              </Card>
-
-                              {/* スライド間に追加ボタン */}
-                              {isEditing && (
-                                <div className="flex justify-center my-4">
-                                  <div className="flex gap-2">
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      className="border border-dashed border-gray-300 text-gray-500 hover:text-blue-600"
-                                      onClick={() => showAddSlideDialogAt(slideIndex + 1)}
-                                    >
-                                      <Plus className="h-3.5 w-3.5 mr-1" />
-                                      スライド追加
-                                    </Button>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      className="border border-dashed border-green-300 text-green-600 hover:text-green-700"
-                                      onClick={() => addFlowNodeAt('step', slideIndex + 1)}
-                                    >
-                                      <Plus className="h-3.5 w-3.5 mr-1" />
-                                      ステップノード
-                                    </Button>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      className="border border-dashed border-yellow-300 text-yellow-600 hover:text-yellow-700"
-                                      onClick={() => addFlowNodeAt('decision', slideIndex + 1)}
-                                    >
-                                      <Plus className="h-3.5 w-3.5 mr-1" />
-                                      条件分岐ノード
-                                    </Button>
                                   </div>
-                                </div>
-                              )}
+                                )}
 
-                              {slideIndex < slideLength - 1 && (
-                                <div className="flex justify-center">
-                                  <ArrowDown className="h-6 w-6 text-gray-400" />
-                                </div>
-                              )}
-                            </React.Fragment>
+                                {slideIndex < slideLength - 1 && (
+                                  <div className="flex justify-center">
+                                    <ArrowDown className="h-6 w-6 text-gray-400" />
+                                  </div>
+                                )}
+                              </React.Fragment>
                             );
                           })}
-                  </div>
-                </TabsContent>
+                    </div>
+</TabsContent>
 
                 {/* プレビュータブ - ノード形式でスライドを表示 */}
                 <TabsContent value="preview">
@@ -1788,7 +1789,7 @@ const EmergencyGuideEdit: React.FC = () => {
               onClick={() => {
                 if (contextMenu.slideIndex !== null) {
                   handleDeleteSlide(contextMenu.slideIndex);
-                }
+                                }
               }}
             >
                             <Trash2 className="h-4 w-4" />
