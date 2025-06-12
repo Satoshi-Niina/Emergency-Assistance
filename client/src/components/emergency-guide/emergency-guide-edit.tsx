@@ -1795,9 +1795,7 @@ const EmergencyGuideEdit: React.FC = () => {
               スライドを削除
                         </button>
           </div>
-        )}
-
-        {/* スライド追加ダイアログ */}
+        )}        {/* スライド追加ダイアログ */}
         <Dialog open={showAddSlideDialog} onOpenChange={setShowAddSlideDialog}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
