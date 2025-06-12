@@ -227,19 +227,34 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
     }
   };
 
-  // より柔軟な存在確認ロジック
+  // より柔軟な存在確認ロジック（複数のプロパティから画像パスを取得）
   const filteredResults = results.filter((result) => {
-    const imagePath = result.url || result.file || '';
+    // 複数のプロパティから画像パスを取得を試行
+    const imagePath = result.url || result.file || result.src || result.pngFallback || '';
+    
+    console.log('🔍 画像パス取得試行:', {
+      url: result.url,
+      file: result.file, 
+      src: result.src,
+      pngFallback: result.pngFallback,
+      finalPath: imagePath
+    });
+    
+    if (!imagePath) {
+      console.warn(`❌ すべてのプロパティから画像パスが取得できません:`, result);
+      return false;
+    }
+    
     const fileName = imagePath.split('/').pop();
     
     // ファイル名が存在し、画像拡張子を持つ場合は表示する
     if (fileName && (fileName.endsWith('.png') || fileName.endsWith('.jpg') || fileName.endsWith('.jpeg'))) {
-      console.log(`✅ 画像ファイルを表示対象に追加: ${fileName}`);
+      console.log(`✅ 画像ファイルを表示対象に追加: ${fileName} (パス: ${imagePath})`);
       return true;
     }
     
     if (!fileName) {
-      console.warn(`❌ ファイル名が取得できません: ${imagePath}`);
+      console.warn(`❌ ファイル名が取得できません - パス: ${imagePath}`);
       return false;
     }
     
@@ -276,7 +291,16 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
         /* サムネイル縦一列表示 */
         <div className="flex flex-col gap-4">
           {filteredResults.map((result) => {
-          const imageSrc = fixImagePath(result.url || result.file || '');
+          // 複数のプロパティから画像パスを取得
+          const imagePath = result.url || result.file || result.src || result.pngFallback || '';
+          const imageSrc = fixImagePath(imagePath);
+          
+          console.log('🖼️ 画像表示:', {
+            resultId: result.id,
+            originalPath: imagePath,
+            fixedPath: imageSrc,
+            title: result.title
+          });
 
           const handleImageClick = (imageSrc: string, title: string) => {
             // 説明文を結合して表示
