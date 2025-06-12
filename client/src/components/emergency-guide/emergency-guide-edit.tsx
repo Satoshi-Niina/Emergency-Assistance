@@ -678,7 +678,7 @@ const EmergencyGuideEdit: React.FC = () => {
   // 右クリックメニューハンドラ
   const handleContextMenu = (e: React.MouseEvent, slideIndex: number) => {
     if (!isEditing) return;
-    
+
     e.preventDefault();
     setContextMenu({
       show: true,
@@ -993,6 +993,8 @@ const EmergencyGuideEdit: React.FC = () => {
   }, [guideFiles, toast]);
 
   // 日付のフォーマット
+  Adding visual cues for node types and branching conditions to the preview tab enhances the user experience.
+``````text
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
@@ -1006,6 +1008,21 @@ const EmergencyGuideEdit: React.FC = () => {
     } catch (e) {
       return dateString;
     }
+  };
+
+  // 分岐条件を解析する関数
+  const parseBranchConditions = (note: string) => {
+    const branches: { condition: string; target: string }[] = [];
+    const lines = note.split('\n');
+
+    lines.forEach(line => {
+      if (line.includes('→')) {
+        const [condition, target] = line.split('→').map(s => s.trim());
+        branches.push({ condition, target });
+      }
+    });
+
+    return branches;
   };
 
   return (
@@ -1459,7 +1476,7 @@ const EmergencyGuideEdit: React.FC = () => {
                       <div className="text-gray-600">保存されている内容を表示しています。</div>
                     )}
                   </div>
-                  
+
                   <Card className={`${isEditing ? 'border-yellow-300 bg-yellow-50' : 'border-green-200'}`}>
                     <CardHeader className={`${isEditing ? 'bg-yellow-100' : 'bg-green-50'} rounded-t-lg`}>
                       <div className="flex justify-between items-center">
@@ -1507,9 +1524,9 @@ const EmergencyGuideEdit: React.FC = () => {
                         <p className="whitespace-pre-line mb-4">
                           {isEditing ? editedGuideData?.metadata.説明 : guideData?.data.metadata.説明 || "説明はありません"}
                         </p>
-                        
+
                         <h3 className="text-lg font-medium mt-6 mb-4">フロー構造プレビュー</h3>
-                        
+
                         {/* フローノードとして表示 */}
                         <div className="space-y-4">
                           {/* 開始ノード */}
@@ -1518,90 +1535,108 @@ const EmergencyGuideEdit: React.FC = () => {
                               開始
                             </div>
                           </div>
-                          
+
                           {/* 矢印 */}
                           <div className="flex justify-center">
                             <ArrowDown className="h-6 w-6 text-gray-400" />
                           </div>
-                          
+
                           {/* スライドノード */}
                           {(isEditing ? editedGuideData?.slides : guideData?.data.slides || []).map((slide: any, idx: number) => (
                             <div key={idx}>
                               {/* スライドノード */}
-                              <div className="flex justify-center">
+                              <div className={`
+                                px-6 py-4 shadow-lg rounded-lg border-2 max-w-md w-full relative
+                                ${slide.ノート && slide.ノート.includes('条件分岐') 
+                                  ? 'bg-yellow-100 border-yellow-500 transform rotate-45' 
+                                  : slide.ノート && (slide.ノート.includes('ステップ') || slide.ノート.includes('手順'))
+                                  ? 'bg-green-100 border-green-500'
+                                  : 'bg-blue-100 border-blue-500'
+                                }
+                                ${isEditing ? 'hover:shadow-xl transition-shadow cursor-pointer' : ''}
+                              `}>
                                 <div className={`
-                                  px-6 py-4 shadow-lg rounded-lg border-2 max-w-md w-full relative
                                   ${slide.ノート && slide.ノート.includes('条件分岐') 
-                                    ? 'bg-yellow-100 border-yellow-500 transform rotate-45' 
-                                    : 'bg-blue-100 border-blue-500'
+                                    ? 'transform -rotate-45 text-center' 
+                                    : ''
                                   }
-                                  ${isEditing ? 'hover:shadow-xl transition-shadow cursor-pointer' : ''}
                                 `}>
                                   <div className={`
+                                    font-bold mb-2 flex items-center justify-center gap-1
                                     ${slide.ノート && slide.ノート.includes('条件分岐') 
-                                      ? 'transform -rotate-45 text-center' 
-                                      : ''
+                                      ? 'text-yellow-800' 
+                                      : slide.ノート && (slide.ノート.includes('ステップ') || slide.ノート.includes('手順'))
+                                      ? 'text-green-800'
+                                      : 'text-blue-800'
                                     }
                                   `}>
-                                    <div className={`
-                                      font-bold mb-2 
-                                      ${slide.ノート && slide.ノート.includes('条件分岐') 
-                                        ? 'text-yellow-800' 
-                                        : 'text-blue-800'
-                                      }
-                                    `}>
-                                      ステップ {slide.スライド番号}
-                                    </div>
-                                    <div className="text-sm font-medium mb-2">{slide.タイトル}</div>
-                                    {slide.本文.length > 0 && (
-                                      <div className="text-xs text-gray-700 line-clamp-2">
-                                        {slide.本文[0]}
-                                      </div>
-                                    )}
-                                    {slide.ノート && (
-                                      <div className="text-xs text-gray-500 mt-1 italic">
-                                        {slide.ノート.length > 50 ? slide.ノート.substring(0, 50) + '...' : slide.ノート}
-                                      </div>
-                                    )}
+                                    {slide.ノート && slide.ノート.includes('条件分岐') ? '🔀' 
+                                     : slide.ノート && (slide.ノート.includes('ステップ') || slide.ノート.includes('手順')) ? '🔧' 
+                                     : '📄'}
+                                    ステップ {slide.スライド番号}
                                   </div>
-                                  
-                                  {/* 編集ボタン */}
-                                  {isEditing && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="absolute top-2 right-2 h-6 w-6 p-1"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        console.log(`編集ボタンがクリックされました: スライド ${idx + 1}`);
-                                        setSelectedSlideIndex(idx);
-                                        const tabSwitchEvent = new CustomEvent('switch-to-slides-tab', {
-                                          detail: { slideIndex: idx }
-                                        });
-                                        window.dispatchEvent(tabSwitchEvent);
-                                        console.log(`タブ切り替えイベントを発行: スライド ${idx}`);
-                                      }}
-                                    >
-                                      <Pencil className="h-3 w-3" />
-                                    </Button>
+                                  <div className="text-sm font-medium mb-2">{slide.タイトル}</div>
+                                  {slide.本文.length > 0 && (
+                                    <div className="text-xs text-gray-700 line-clamp-2">
+                                      {slide.本文[0]}
+                                    </div>
+                                  )}
+
+                                  {/* 条件分岐の場合、分岐先を表示 */}
+                                  {slide.ノート && slide.ノート.includes('条件分岐') && (
+                                    <div className="text-xs text-yellow-600 mt-1 space-y-1">
+                                      {parseBranchConditions(slide.ノート).map((branch, branchIdx) => (
+                                        <div key={branchIdx} className="bg-yellow-200 px-1 rounded">
+                                          {branch.condition} → {branch.target}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {slide.ノート && !slide.ノート.includes('条件分岐') && (
+                                    <div className="text-xs text-gray-500 mt-1 italic">
+                                      {slide.ノート.length > 30 ? slide.ノート.substring(0, 30) + '...' : slide.ノート}
+                                    </div>
                                   )}
                                 </div>
+
+                                {/* 編集ボタン */}
+                                {isEditing && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="absolute top-2 right-2 h-6 w-6 p-1"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      console.log(`編集ボタンがクリックされました: スライド ${idx + 1}`);
+                                      setSelectedSlideIndex(idx);
+                                      const tabSwitchEvent = new CustomEvent('switch-to-slides-tab', {
+                                        detail: { slideIndex: idx }
+                                      });
+                                      window.dispatchEvent(tabSwitchEvent);
+                                      console.log(`タブ切り替えイベントを発行: スライド ${idx}`);
+                                    }}
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                )}
                               </div>
-                              
-                              {/* 矢印（最後のスライド以外） */}
-                              {idx < (isEditing ? editedGuideData?.slides.length : guideData?.data.slides.length || 0) - 1 && (
-                                <div className="flex justify-center">
-                                  <ArrowDown className="h-6 w-6 text-gray-400" />
-                                </div>
-                              )}
                             </div>
+
+                            {/* 矢印（最後のスライド以外） */}
+                            {idx < (isEditing ? editedGuideData?.slides.length : guideData?.data.slides.length || 0) - 1 && (
+                              <div className="flex justify-center">
+                                <ArrowDown className="h-6 w-6 text-gray-400" />
+                              </div>
+                            )}
+                          </div>
                           ))}
-                          
+
                           {/* 最後の矢印 */}
                           <div className="flex justify-center">
                             <ArrowDown className="h-6 w-6 text-gray-400" />
                           </div>
-                          
+
                           {/* 終了ノード */}
                           <div className="flex justify-center">
                             <div className="px-6 py-3 shadow-lg rounded-full bg-red-500 text-white font-bold text-center min-w-[120px]">
@@ -1609,7 +1644,7 @@ const EmergencyGuideEdit: React.FC = () => {
                             </div>
                           </div>
                         </div>
-                        
+
                         {/* 画像がある場合の表示 */}
                         {(isEditing ? editedGuideData?.slides : guideData?.data.slides || []).some((slide: any) => 
                           slide.画像テキスト && slide.画像テキスト.length > 0
