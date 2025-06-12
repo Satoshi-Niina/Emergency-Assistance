@@ -199,6 +199,9 @@ const EmergencyGuideEdit: React.FC = () => {
   // ドラッグ&ドロップの状態
   const [draggedSlideIndex, setDraggedSlideIndex] = useState<number | null>(null);
   const [selectedSlideIndex, setSelectedSlideIndex] = useState<number | null>(null);
+  
+  // タブ切り替えの状態
+  const [activeTabValue, setActiveTabValue] = useState<string>("metadata");
 
   // 変更内容を分析する関数
   const analyzeChanges = () => {
@@ -703,6 +706,43 @@ const EmergencyGuideEdit: React.FC = () => {
     };
   }, [handleKeyDown]);
 
+  // タブ切り替えイベントリスナーの設定
+  useEffect(() => {
+    const handleTabSwitchEvent = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail && customEvent.detail.slideIndex !== undefined) {
+        console.log(`タブ切り替えイベントを受信: スライド ${customEvent.detail.slideIndex}`);
+        
+        // スライドタブに切り替え
+        setActiveTabValue("slides");
+        
+        // DOM更新後にスクロール処理を実行
+        setTimeout(() => {
+          const slideElement = document.querySelector(`[data-slide-index="${customEvent.detail.slideIndex}"]`);
+          if (slideElement) {
+            console.log(`スライド要素が見つかりました: ${customEvent.detail.slideIndex}`);
+            slideElement.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'center' 
+            });
+            // 選択状態を視覚的に強調
+            slideElement.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
+            setTimeout(() => {
+              slideElement.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2');
+            }, 2000);
+          } else {
+            console.log(`スライド要素が見つかりません: ${customEvent.detail.slideIndex}`);
+          }
+        }, 100);
+      }
+    };
+
+    window.addEventListener('switch-to-slides-tab', handleTabSwitchEvent as EventListener);
+    return () => {
+      window.removeEventListener('switch-to-slides-tab', handleTabSwitchEvent as EventListener);
+    };
+  }, []);
+
   // スライド本文テキストの編集ハンドラ
   const handleSlideTextChange = (slideIndex: number, textIndex: number, value: string) => {
     if (!editedGuideData) return;
@@ -1090,7 +1130,7 @@ const EmergencyGuideEdit: React.FC = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="metadata" className="w-full">
+              <Tabs value={activeTabValue} onValueChange={setActiveTabValue} className="w-full">
                 <TabsList className="grid grid-cols-3 mb-4 border-2 border-indigo-300 bg-indigo-50 rounded-lg p-1 shadow-md">
                   <TabsTrigger 
                     value="metadata" 
@@ -1441,47 +1481,13 @@ const EmergencyGuideEdit: React.FC = () => {
                                         // 該当スライドを選択
                                         setSelectedSlideIndex(idx);
                                         
-                                        // 直接的なタブ切り替え - より確実な方法
-                                        const tabsList = document.querySelector('[role="tablist"]');
-                                        const slidesTabTrigger = tabsList?.querySelector('[value="slides"]') as HTMLButtonElement;
+                                        // カスタムイベントを発行してタブ切り替えを要求
+                                        const tabSwitchEvent = new CustomEvent('switch-to-slides-tab', {
+                                          detail: { slideIndex: idx }
+                                        });
+                                        window.dispatchEvent(tabSwitchEvent);
                                         
-                                        if (slidesTabTrigger) {
-                                          console.log('スライドタブを見つけました。クリックします。');
-                                          slidesTabTrigger.click();
-                                          
-                                          // タブ切り替え後の処理
-                                          setTimeout(() => {
-                                            console.log('タブ切り替え後の処理を開始');
-                                            const slideElement = document.querySelector(`[data-slide-index="${idx}"]`);
-                                            if (slideElement) {
-                                              console.log(`スライド要素を見つけました: ${idx}`);
-                                              slideElement.scrollIntoView({ 
-                                                behavior: 'smooth', 
-                                                block: 'center' 
-                                              });
-                                              // 選択状態を視覚的に強調
-                                              slideElement.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
-                                              setTimeout(() => {
-                                                slideElement.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2');
-                                              }, 2000);
-                                            } else {
-                                              console.log(`スライド要素が見つかりません: data-slide-index="${idx}"`);
-                                              // 再試行
-                                              setTimeout(() => {
-                                                const retrySlideElement = document.querySelector(`[data-slide-index="${idx}"]`);
-                                                if (retrySlideElement) {
-                                                  console.log(`再試行でスライド要素を見つけました: ${idx}`);
-                                                  retrySlideElement.scrollIntoView({ 
-                                                    behavior: 'smooth', 
-                                                    block: 'center' 
-                                                  });
-                                                }
-                                              }, 500);
-                                            }
-                                          }, 300);
-                                        } else {
-                                          console.log('スライドタブが見つかりません');
-                                        }
+                                        console.log(`タブ切り替えイベントを発行: スライド ${idx}
                                       }}
                                     >
                                       <Pencil className="h-3 w-3 mr-1" />
