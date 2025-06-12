@@ -1436,27 +1436,49 @@ const EmergencyGuideEdit: React.FC = () => {
                                       variant="ghost"
                                       size="sm"
                                       onClick={() => {
-                                        // 該当スライドを選択してスライド編集タブに戻る
+                                        // 該当スライドを選択
                                         setSelectedSlideIndex(idx);
-                                        const tabsList = document.querySelector('[role="tablist"]');
-                                        const slidesTab = tabsList?.querySelector('[value="slides"]') as HTMLElement;
-                                        slidesTab?.click();
                                         
-                                        // スライド編集タブに切り替わった後、該当スライドまでスクロール
-                                        setTimeout(() => {
-                                          const slideElement = document.querySelector(`[data-slide-index="${idx}"]`);
-                                          if (slideElement) {
-                                            slideElement.scrollIntoView({ 
-                                              behavior: 'smooth', 
-                                              block: 'center' 
-                                            });
-                                            // 選択状態を視覚的に強調
-                                            slideElement.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
-                                            setTimeout(() => {
-                                              slideElement.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2');
-                                            }, 2000);
-                                          }
-                                        }, 100);
+                                        // タブ切り替えイベントを発行して、スライド編集タブに切り替える
+                                        const tabsElement = document.querySelector('[data-state="active"][value="preview"]')?.closest('[role="tablist"]');
+                                        const slidesTab = tabsElement?.querySelector('[value="slides"]') as HTMLButtonElement;
+                                        
+                                        if (slidesTab) {
+                                          // タブを切り替え
+                                          slidesTab.click();
+                                          
+                                          // タブ切り替え完了後にスクロール処理を実行
+                                          const waitForTabSwitch = () => {
+                                            const slidesTabContent = document.querySelector('[data-state="active"][value="slides"]');
+                                            if (slidesTabContent) {
+                                              // さらに遅延を設けてDOM更新を確実に待つ
+                                              setTimeout(() => {
+                                                const slideElement = document.querySelector(`[data-slide-index="${idx}"]`);
+                                                if (slideElement) {
+                                                  slideElement.scrollIntoView({ 
+                                                    behavior: 'smooth', 
+                                                    block: 'center' 
+                                                  });
+                                                  // 選択状態を視覚的に強調
+                                                  slideElement.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
+                                                  setTimeout(() => {
+                                                    slideElement.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2');
+                                                  }, 2000);
+                                                } else {
+                                                  console.log(`スライド要素が見つかりません: data-slide-index="${idx}"`);
+                                                }
+                                              }, 200);
+                                            } else {
+                                              // タブ切り替えがまだ完了していない場合は再試行
+                                              setTimeout(waitForTabSwitch, 50);
+                                            }
+                                          };
+                                          
+                                          // タブ切り替え完了を待つ
+                                          setTimeout(waitForTabSwitch, 100);
+                                        } else {
+                                          console.log('スライドタブが見つかりません');
+                                        }
                                       }}
                                     >
                                       <Pencil className="h-3 w-3 mr-1" />
