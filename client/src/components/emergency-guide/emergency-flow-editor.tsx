@@ -512,7 +512,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
             <Button size="sm" onClick={handleSave}><Save className="mr-1 h-4 w-4" />保存</Button>
           </div>
           <CardDescription>
-            ドラッグ＆ドロップでフローチャートを作成できます。ノードをクリックすると右側のパネルでテキスト編集ができます。
+            ドラッグ＆ドロップでフローチャートを作成できます。ノードをクリックすると右側の「ノード編集」パネルでテキスト編集ができます。判断ノードでは条件分岐を設定し、各ハンドルから次のノードに接続してください。
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col lg:flex-row h-[70vh]">
@@ -551,10 +551,15 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
           {/* 右側のプロパティパネル */}
           <Card className="w-full lg:w-96 mt-4 lg:mt-0 lg:ml-4 overflow-auto">
             <CardHeader>
-              <CardTitle>{selectedNode ? "選択ノード編集" : "フロー情報"}</CardTitle>
+              <CardTitle>{selectedNode ? "ノード編集" : "フロー情報"}</CardTitle>
               {selectedNode && (
                 <CardDescription>
-                  選択されたノードの内容を編集できます
+                  {selectedNode.type === 'decision' ? 
+                    '条件分岐ノードの設定 - 判断条件を設定し、各ハンドルから次のノードに接続してください' :
+                    selectedNode.type === 'step' ? 
+                    'ステップノードの内容を編集できます' :
+                    'ノードの設定を編集できます'
+                  }
                 </CardDescription>
               )}
             </CardHeader>
@@ -573,14 +578,30 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
                   
                   {selectedNode.type !== 'start' && selectedNode.type !== 'end' && (
                     <div>
-                      <Label htmlFor="node-message">内容</Label>
+                      <Label htmlFor="node-message">
+                        {selectedNode.type === 'decision' ? '判断条件' : '内容'}
+                      </Label>
                       <Textarea
                         id="node-message"
                         value={selectedNode.data.message || ''}
                         onChange={(e) => updateNodeData('message', e.target.value)}
-                        placeholder="ステップの内容"
-                        rows={4}
+                        placeholder={
+                          selectedNode.type === 'decision' ? 
+                          "例：エンジンが急に停止した場合とゆっくり停止した場合の判断条件を記述してください" :
+                          "ステップの内容"
+                        }
+                        rows={selectedNode.type === 'decision' ? 6 : 4}
                       />
+                      {selectedNode.type === 'decision' && (
+                        <div className="mt-2 p-3 bg-blue-50 rounded-md text-sm">
+                          <div className="font-medium text-blue-800 mb-1">条件分岐の接続方法：</div>
+                          <div className="space-y-1 text-blue-700">
+                            <div>• <span className="font-medium text-green-600">右側（緑）</span>：「はい」の場合の次のノード</div>
+                            <div>• <span className="font-medium text-red-600">下側（赤）</span>：「いいえ」の場合の次のノード</div>
+                            <div>• <span className="font-medium text-orange-600">左側（オレンジ）</span>：「その他」の場合の次のノード</div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                   
