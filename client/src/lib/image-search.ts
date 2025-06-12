@@ -678,10 +678,10 @@ const fuseOptions = {
     { name: 'keywords', weight: 1.0 }, // キーワードの重みを最高に
     { name: 'searchText', weight: 1.0 }, // 検索用テキストフィールドを最高の重みで追加
   ],
-  threshold: 0.6, // 閾値を緩くして部分一致も含める
+  threshold: 0.8, // 閾値をさらに緩くして、より多くの結果を含める
   ignoreLocation: true, // 単語の位置を無視して検索
   useExtendedSearch: false, // 拡張検索モードを無効にして基本検索
-  minMatchCharLength: 2, // 最小2文字一致
+  minMatchCharLength: 1, // 最小1文字一致に変更
   distance: 1000, // 単語間距離制限を緩く
   findAllMatches: true, // すべての一致を見つける
   isCaseSensitive: false, // 大文字小文字を区別しない
@@ -772,7 +772,8 @@ export const searchByText = async (text: string, isNewMessage: boolean = false):
 
   try {
     isSearching = true;
-    console.log('画像検索開始:', text);
+    console.log('🔍 画像検索開始:', text);
+    console.log('📊 現在の検索データ件数:', imageSearchData.length);
 
     // データが読み込まれていない場合のみ読み込み
     if (imageSearchData.length === 0 && !isLoading) {
@@ -785,6 +786,8 @@ export const searchByText = async (text: string, isNewMessage: boolean = false):
         lastSearchResults = [];
         return [];
       }
+
+      console.log('📊 データ読み込み後の件数:', imageSearchData.length);
     }
 
     // データ読み込み中の場合は待機
@@ -793,10 +796,21 @@ export const searchByText = async (text: string, isNewMessage: boolean = false):
       return [];
     }
 
+    // データの実際の内容をデバッグ
+    if (imageSearchData.length > 0) {
+      console.log('🔍 検索データサンプル:', {
+        firstItem: imageSearchData[0],
+        totalCount: imageSearchData.length,
+        sampleTitles: imageSearchData.slice(0, 3).map(item => item.title),
+        sampleKeywords: imageSearchData.slice(0, 3).map(item => item.keywords)
+      });
+    }
+
     // Fuseインスタンスを安全に取得
     let fuse;
     try {
       fuse = getFuseInstance();
+      console.log('✅ Fuseインスタンス作成成功');
     } catch (fuseError) {
       console.error('Fuseインスタンスの作成に失敗:', fuseError);
       return [];
@@ -811,6 +825,8 @@ export const searchByText = async (text: string, isNewMessage: boolean = false):
       return [];
     }
 
+    console.log('🔎 検索キーワード:', keywords);
+
     try {
       if (keywords.length > 1) {
         console.log(`複数キーワード検索: ${keywords.join(', ')}`);
@@ -819,7 +835,10 @@ export const searchByText = async (text: string, isNewMessage: boolean = false):
 
         for (const keyword of keywords) {
           try {
+            console.log(`🔍 キーワード "${keyword}" で検索中...`);
             const results = fuse.search(keyword);
+            console.log(`📊 キーワード "${keyword}" の検索結果: ${results.length}件`);
+            
             results.forEach(result => {
               if (result && result.item && result.item.id) {
                 const existingResult = resultMap.get(result.item.id);
@@ -834,9 +853,44 @@ export const searchByText = async (text: string, isNewMessage: boolean = false):
         }
 
         searchResults = Array.from(resultMap.values());
+        console.log(`📊 複数キーワード統合結果: ${searchResults.length}件`);
       } else if (keywords.length === 1) {
         console.log(`単一キーワード検索: ${keywords[0]}`);
         searchResults = fuse.search(keywords[0]);
+        console.log(`📊 単一キーワード検索結果: ${searchResults.length}件`);
+      }
+
+      // 検索結果の詳細をログ出力
+      if (searchResults.length > 0) {
+        console.log('🎯 検索結果詳細:', {
+          count: searchResults.length,
+          samples: searchResults.slice(0, 3).map(result => ({
+            id: result.item?.id,
+            title: result.item?.title,
+            score: result.score,
+            file: result.item?.file
+          }))
+        });
+      } else {
+        console.log('❌ 検索結果が見つかりませんでした');
+        
+        // デバッグ: 手動で一致するものがあるかチェック
+        const manualCheck = imageSearchData.filter(item => {
+          const titleMatch = item.title && item.title.includes(keywords[0]);
+          const keywordMatch = item.keywords && item.keywords.some(k => k.includes(keywords[0]));
+          const searchTextMatch = item.searchText && item.searchText.includes(keywords[0]);
+          return titleMatch || keywordMatch || searchTextMatch;
+        });
+        
+        console.log('🔍 手動チェック結果:', {
+          keyword: keywords[0],
+          manualMatches: manualCheck.length,
+          samples: manualCheck.slice(0, 2).map(item => ({
+            id: item.id,
+            title: item.title,
+            matchingKeywords: item.keywords?.filter(k => k.includes(keywords[0]))
+          }))
+        });
       }
     } catch (searchError) {
       console.error('Fuse検索処理でエラー:', searchError);
@@ -848,14 +902,14 @@ export const searchByText = async (text: string, isNewMessage: boolean = false):
       result && result.item && result.item.id && result.item.file
     );
 
-    console.log(`検索結果: ${limitedResults.length}件見つかりました（全${searchResults.length}件中）`);
+    console.log(`✅ 最終検索結果: ${limitedResults.length}件見つかりました（全${searchResults.length}件中）`);
 
     // 結果をキャッシュ
     lastSearchResults = limitedResults;
 
     return limitedResults;
   } catch (error) {
-    console.error('画像検索エラー:', error);
+    console.error('❌ 画像検索エラー:', error);
     lastSearchResults = [];
     return []; // エラー時は空配列を返してクラッシュを防ぐ
   } finally {
