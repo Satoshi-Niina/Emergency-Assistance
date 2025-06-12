@@ -400,6 +400,47 @@ const EmergencyGuideEdit: React.FC = () => {
     });
   };
 
+  // 位置指定でノードを追加する関数
+  const addFlowNodeAt = (nodeType: 'step' | 'decision', insertPosition: number) => {
+    if (!isEditing || !editedGuideData) return;
+
+    const nodeId = `${nodeType}_${Date.now()}`;
+    const nodeTitle = nodeType === 'step' ? '新しいステップ' : '新しい条件分岐';
+    const nodeMessage = nodeType === 'step' ? 
+      'ここにステップの内容を記述してください' : 
+      'ここに判断条件を記述してください（例：エンジンオイルが漏れていますか？）';
+
+    // 新しいスライドデータを作成
+    const newSlide = {
+      スライド番号: insertPosition + 1,
+      タイトル: nodeTitle,
+      本文: [nodeMessage],
+      ノート: nodeType === 'decision' ? '条件分岐：「はい」「いいえ」「その他」の3つの分岐があります' : '',
+      画像テキスト: [],
+      nodeType: nodeType,
+      nodeId: nodeId
+    };
+
+    // 指定位置にスライドを挿入
+    const updatedSlides = [...editedGuideData.slides];
+    updatedSlides.splice(insertPosition, 0, newSlide);
+
+    // 挿入後のスライド番号を再計算
+    updatedSlides.forEach((slide, index) => {
+      slide.スライド番号 = index + 1;
+    });
+
+    setEditedGuideData({
+      ...editedGuideData,
+      slides: updatedSlides
+    });
+
+    toast({
+      title: `${nodeType === 'step' ? 'ステップ' : '条件分岐'}ノードを追加`,
+      description: `位置 ${insertPosition + 1} に新しい${nodeTitle}を追加しました`,
+    });
+  };
+
   // 接続番号を一括更新する関数
   const updateAllConnectionNumbers = (oldValue: string, newValue: string) => {
     if (!editedGuideData) return;
@@ -1127,15 +1168,35 @@ const EmergencyGuideEdit: React.FC = () => {
                       {/* スライド間に追加ボタン */}
                       {isEditing && (
                         <div className="flex justify-center my-4">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="border border-dashed border-gray-300 text-gray-500 hover:text-blue-600"
-                            onClick={() => showAddSlideDialogAt(slideIndex + 1)}
-                          >
-                            <Plus className="h-3.5 w-3.5 mr-1" />
-                            ここにスライドを追加
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="border border-dashed border-gray-300 text-gray-500 hover:text-blue-600"
+                              onClick={() => showAddSlideDialogAt(slideIndex + 1)}
+                            >
+                              <Plus className="h-3.5 w-3.5 mr-1" />
+                              スライド追加
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="border border-dashed border-green-300 text-green-600 hover:text-green-700"
+                              onClick={() => addFlowNodeAt('step', slideIndex + 1)}
+                            >
+                              <Plus className="h-3.5 w-3.5 mr-1" />
+                              ステップノード
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="border border-dashed border-yellow-300 text-yellow-600 hover:text-yellow-700"
+                              onClick={() => addFlowNodeAt('decision', slideIndex + 1)}
+                            >
+                              <Plus className="h-3.5 w-3.5 mr-1" />
+                              条件分岐ノード
+                            </Button>
+                          </div>
                         </div>
                       )}
                       </div>
