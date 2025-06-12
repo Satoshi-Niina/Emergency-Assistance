@@ -1313,7 +1313,9 @@ const EmergencyGuideEdit: React.FC = () => {
                     )}
 
                     {(isEditing ? editedGuideData.slides : guideData?.data.slides || []).map((slide: any, slideIndex: number) => {
-                            const slideLength = (isEditing ? editedGuideData?.slides.length : guideData?.data.slides.length) || 0;
+                            // 値を外に取り出してネストを避ける
+                            const currentSlides = isEditing ? editedGuideData?.slides : guideData?.data.slides;
+                            const slideLength = currentSlides?.length || 0;
 
                             return (
                               <div 
@@ -1629,7 +1631,7 @@ const EmergencyGuideEdit: React.FC = () => {
                               </div>
                             </div>
 
-                            {idx < ((isEditing ? editedGuideData?.slides.length : guideData?.data.slides.length) || 0) - 1 && (
+                            {slideIndex < slideLength - 1 && (
                               <div className="flex justify-center">
                                 <ArrowDown className="h-6 w-6 text-gray-400" />
                               </div>
