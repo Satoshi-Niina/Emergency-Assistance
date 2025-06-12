@@ -199,7 +199,7 @@ const EmergencyGuideEdit: React.FC = () => {
   // ドラッグ&ドロップの状態
   const [draggedSlideIndex, setDraggedSlideIndex] = useState<number | null>(null);
   const [selectedSlideIndex, setSelectedSlideIndex] = useState<number | null>(null);
-  
+
   // タブ切り替えの状態
   const [activeTabValue, setActiveTabValue] = useState<string>("metadata");
 
@@ -712,10 +712,10 @@ const EmergencyGuideEdit: React.FC = () => {
       const customEvent = event as CustomEvent;
       if (customEvent.detail && customEvent.detail.slideIndex !== undefined) {
         console.log(`タブ切り替えイベントを受信: スライド ${customEvent.detail.slideIndex}`);
-        
+
         // スライドタブに切り替え
         setActiveTabValue("slides");
-        
+
         // DOM更新後にスクロール処理を実行
         setTimeout(() => {
           const slideElement = document.querySelector(`[data-slide-index="${customEvent.detail.slideIndex}"]`);
@@ -987,6 +987,7 @@ const EmergencyGuideEdit: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle>ファイル一覧</CardTitle>
+            <CardContent>
             <CardDescription>編集するファイルを選択してください</CardDescription>
           </CardHeader>
           <CardContent>
@@ -1352,7 +1353,7 @@ const EmergencyGuideEdit: React.FC = () => {
                                   <div key={imgIndex} className="border rounded-lg p-2">
                                     <img 
                                       src={imgText.画像パス} 
-                                      alt={`スライド${slide.スライド番号}の画像${imgIndex + 1}`}
+                                      alt={`スライド${slide.スライド番号}の画像${imgIdx + 1}`}
                                       className="w-full h-auto mb-2 rounded"
                                     />
                                     <p className="text-sm text-gray-600">{imgText.テキスト}</p>
@@ -1477,16 +1478,16 @@ const EmergencyGuideEdit: React.FC = () => {
                                       size="sm"
                                       onClick={() => {
                                         console.log(`編集ボタンがクリックされました: スライド ${idx + 1}`);
-                                        
+
                                         // 該当スライドを選択
                                         setSelectedSlideIndex(idx);
-                                        
+
                                         // カスタムイベントを発行してタブ切り替えを要求
                                         const tabSwitchEvent = new CustomEvent('switch-to-slides-tab', {
                                           detail: { slideIndex: idx }
                                         });
                                         window.dispatchEvent(tabSwitchEvent);
-                                        
+
                                         console.log(`タブ切り替えイベントを発行: スライド ${idx}
                                       }}
                                     >
