@@ -823,8 +823,8 @@ router.post('/init-image-search-data', async (req, res) => {
                         slideTitle,
                         ...(slide['本文'] || []),
                         "保守用車マニュアル", "エンジン", "整備", "修理", "部品", "車両", "動力"
-                      ].filter(Boolean).join(' ')
-                    };```javascript
+                      ].filter(Boolean).join(' ')```tool_code
+                    };
                     newData.push(slideData);
                   }
                 }

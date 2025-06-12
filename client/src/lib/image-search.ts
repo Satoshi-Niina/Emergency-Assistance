@@ -637,10 +637,10 @@ function generateFallbackSearchData(): ImageSearchItem[] {
 let isDataLoaded = false;
 let isLoading = false;
 
-// データ読み込みを完全に無効化（手動検索時のみ必要に応じて読み込み）
-// if (!isDataLoaded && !isLoading) {
-//   loadImageSearchData();
-// }
+// アプリケーション起動時に画像検索データを読み込み
+if (!isDataLoaded && !isLoading) {
+  loadImageSearchData();
+}
 
 // データを強制的に再読み込む関数を提供
 export const reloadImageSearchData = () => {
