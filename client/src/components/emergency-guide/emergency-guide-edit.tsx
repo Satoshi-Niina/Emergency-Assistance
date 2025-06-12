@@ -1420,7 +1420,7 @@ const EmergencyGuideEdit: React.FC = () => {
                                               <div key={imgIndex} className="border rounded-lg p-2">
                                                 <img 
                                                   src={imgText.画像パス} 
-                                                  alt={`スライド${slide.スライド番号}の画像${imgIndex + 1}`}
+                                                  alt={'スライド' + slide.スライド番号 + 'の画像' + (imgIndex + 1)}
                                                   className="w-full h-auto mb-2 rounded"
                                                 />
                                                 <p className="text-sm text-gray-600">{imgText.テキスト}</p>
