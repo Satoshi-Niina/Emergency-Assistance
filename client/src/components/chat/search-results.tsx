@@ -94,10 +94,10 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
 
   // 初期化は削除（重複防止）
 
-  // 検索結果は単発表示のみ - 履歴監視完全停止
+  // 検索結果の表示管理 - 自動クリアを無効化
   useEffect(() => {
     if (results && results.length > 0) {
-      console.log('🔍 検索結果表示開始 - 履歴監視なし');
+      console.log('🔍 検索結果表示開始 - 継続表示モード');
       
       // 実行中の検索をキャンセル
       try {
@@ -109,13 +109,8 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
         console.warn('検索キャンセルエラー:', error);
       }
       
-      // 短時間で自動クリア（ループ防止）
-      const clearTimer = setTimeout(() => {
-        console.log('🔍 検索結果を短時間でクリア（ループ防止）');
-        onClear();
-      }, 15000); // 15秒に短縮
-      
-      return () => clearTimeout(clearTimer);
+      // 自動クリア機能を無効化 - 画像は手動でクリアするまで表示し続ける
+      console.log('📌 画像検索結果を継続表示します（自動クリアなし）');
     }
   }, [results.length]); // results全体ではなくlengthのみ監視
 
@@ -266,16 +261,17 @@ export default function SearchResults({ results, onClear }: SearchResultsProps) 
 
   return (
     <div className={containerClass}>
-      {/* モバイル表示時のみタイトルを表示 */}
-      {isMobile && (
-        <div className="sticky top-0 bg-blue-600 text-white p-2 z-10 mb-3">
+      {/* 検索結果ヘッダー - デスクトップ・モバイル共通で表示 */}
+      {filteredResults.length > 0 && (
+        <div className="sticky top-0 bg-blue-600 text-white p-2 z-10 mb-3 rounded-t-md">
           <div className="flex justify-between items-center">
-            <h2 className="font-medium text-lg">関係画像</h2>
+            <h2 className="font-medium text-lg">関連画像 ({filteredResults.length}件)</h2>
             <button 
               onClick={onClear}
-              className="text-white hover:text-blue-200"
+              className="text-white hover:text-blue-200 px-2 py-1 rounded hover:bg-blue-500 transition-colors"
+              title="画像をクリア"
             >
-              ✕
+              ✕ クリア
             </button>
           </div>
         </div>
