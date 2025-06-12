@@ -1198,6 +1198,7 @@ const EmergencyGuideEdit: React.FC = () => {
                       return (
                         <div 
                           key={slideIndex}
+                          data-slide-index={slideIndex}
                           draggable={isEditing}
                           onDragStart={(e) => handleDragStart(e, slideIndex)}
                           onDragOver={(e) => handleDragOver(e, slideIndex)}
@@ -1210,7 +1211,7 @@ const EmergencyGuideEdit: React.FC = () => {
                             ${draggedSlideIndex === slideIndex ? 'opacity-50' : ''}
                           `}
                           tabIndex={isEditing ? 0 : -1}
-                        >
+                        ></div>
                           <Card className="border-indigo-200">
                             <CardHeader className="bg-indigo-50 rounded-t-lg">
                               <div className="flex justify-between items-center">
@@ -1419,6 +1420,22 @@ const EmergencyGuideEdit: React.FC = () => {
                                         const tabsList = document.querySelector('[role="tablist"]');
                                         const slidesTab = tabsList?.querySelector('[value="slides"]') as HTMLElement;
                                         slidesTab?.click();
+                                        
+                                        // スライド編集タブに切り替わった後、該当スライドまでスクロール
+                                        setTimeout(() => {
+                                          const slideElement = document.querySelector(`[data-slide-index="${idx}"]`);
+                                          if (slideElement) {
+                                            slideElement.scrollIntoView({ 
+                                              behavior: 'smooth', 
+                                              block: 'center' 
+                                            });
+                                            // 選択状態を視覚的に強調
+                                            slideElement.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
+                                            setTimeout(() => {
+                                              slideElement.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2');
+                                            }, 2000);
+                                          }
+                                        }, 100);
                                       }}
                                     >
                                       <Pencil className="h-3 w-3 mr-1" />
