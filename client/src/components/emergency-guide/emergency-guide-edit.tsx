@@ -647,7 +647,7 @@ const EmergencyGuideEdit: React.FC = () => {
     });
 
     setDraggedSlideIndex(null);
-    
+
     toast({
       title: "スライドを移動しました",
       description: `スライド ${draggedSlideIndex + 1} を位置 ${targetIndex + 1} に移動しました`,
@@ -688,7 +688,7 @@ const EmergencyGuideEdit: React.FC = () => {
   // キーボードイベントハンドラ
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (!isEditing || selectedSlideIndex === null) return;
-    
+
     if (e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault();
       handleDeleteSlide(selectedSlideIndex);
@@ -1342,52 +1342,21 @@ const EmergencyGuideEdit: React.FC = () => {
                   </div>
                 </TabsContent>
 
-                
+
 
                 {/* プレビュータブ - 現在編集中の内容を表示 */}
                 <TabsContent value="preview">
-                  <div className="space-y-4">
-                    <div className="bg-blue-50 p-4 rounded-lg mb-4">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <h3 className="font-medium mb-2 text-blue-700">プレビュー表示</h3>
-                          <p className="text-sm text-blue-700">
+                  
+                    
+                      
+                        
+                          
                             {isEditing ? "現在編集中の内容をプレビュー表示しています。" : "保存されている内容を表示しています。"}
                             編集内容はリアルタイムに反映されます。
-                          </p>
-                        </div>
-                        {isEditing && (
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                // メタデータタブに戻る
-                                const tabsList = document.querySelector('[role="tablist"]');
-                                const metadataTab = tabsList?.querySelector('[value="metadata"]') as HTMLElement;
-                                metadataTab?.click();
-                              }}
-                            >
-                              <Pencil className="h-4 w-4 mr-1" />
-                              メタデータ編集に戻る
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                // スライド内容タブに戻る
-                                const tabsList = document.querySelector('[role="tablist"]');
-                                const slidesTab = tabsList?.querySelector('[value="slides"]') as HTMLElement;
-                                slidesTab?.click();
-                              }}
-                            >
-                              <Pencil className="h-4 w-4 mr-1" />
-                              スライド編集に戻る
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                          
+                        
+                      
+                    
 
                     <Card className={`${isEditing ? 'border-yellow-300 bg-yellow-50' : 'border-green-200'}`}>
                       <CardHeader className={`${isEditing ? 'bg-yellow-100' : 'bg-green-50'} rounded-t-lg`}>
@@ -1437,12 +1406,14 @@ const EmergencyGuideEdit: React.FC = () => {
                             {isEditing ? editedGuideData?.metadata.説明 : guideData?.data.metadata.説明 || "説明はありません"}
                           </p>
 
-                          <div className="bg-blue-50 p-4 rounded-lg mb-6">
-                            <h4 className="font-medium text-blue-800 mb-2">応急処置ガイドプレビュー</h4>
-                            <p className="text-sm text-blue-700">
+                          
+                            
+                              応急処置ガイドプレビュー
+                            
+                            
                               このプレビューは実際の応急処置ガイドの表示形式です。
-                            </p>
-                          </div>
+                            
+                          
 
                           <h3 className="text-lg font-medium mt-6 mb-2">スライド内容</h3>
                           <div className="space-y-6">
@@ -1453,10 +1424,9 @@ const EmergencyGuideEdit: React.FC = () => {
                                     {slide.スライド番号}. {slide.タイトル}
                                   </h4>
                                   {isEditing && (
-                                    <div className="flex gap-2">
-                                      <Badge variant="outline" className="text-xs bg-yellow-200 text-yellow-800">
+                                    
                                         編集中
-                                      </Badge>
+                                      
                                       <Button
                                         variant="ghost"
                                         size="sm"
@@ -1471,7 +1441,7 @@ const EmergencyGuideEdit: React.FC = () => {
                                         <Pencil className="h-3 w-3 mr-1" />
                                         編集
                                       </Button>
-                                    </div>
+                                    
                                   )}
                                 </div>
 
@@ -1482,25 +1452,29 @@ const EmergencyGuideEdit: React.FC = () => {
                                 ))}
 
                                 {slide.ノート && (
-                                  <div className="mt-3 p-2 bg-yellow-50 rounded border border-yellow-200">
-                                    <h5 className="text-sm font-medium text-yellow-800 mb-1">ノート:</h5>
-                                    <p className="text-sm text-yellow-800 whitespace-pre-line">{slide.ノート}</p>
-                                  </div>
+                                  
+                                    
+                                      ノート:
+                                    
+                                    {slide.ノート}
+                                  
                                 )}
 
                                 {slide.画像テキスト && slide.画像テキスト.length > 0 && (
-                                  <div className="mt-4 grid grid-cols-2 gap-4">
+                                  
                                     {slide.画像テキスト.map((imgText: any, imgIdx: number) => (
-                                      <div key={imgIdx} className="flex flex-col items-center">
-                                        <img 
-                                          src={imgText.画像パス} 
-                                          alt={`スライド${slide.スライド番号}の画像${imgIdx + 1}`}
-                                          className="max-w-full h-auto rounded"
-                                        />
-                                        <p className="text-sm text-center mt-1">{imgText.テキスト}</p>
-                                      </div>
+                                      
+                                        
+                                          <img 
+                                            src={imgText.画像パス} 
+                                            alt={`スライド${slide.スライド番号}の画像${imgIdx + 1}`}
+                                            className="max-w-full h-auto rounded"
+                                          />
+                                          {imgText.テキスト}
+                                        
+                                      
                                     ))}
-                                  </div>
+                                  
                                 )}
                               </div>
                             ))}
@@ -1508,7 +1482,7 @@ const EmergencyGuideEdit: React.FC = () => {
                         </div>
                       </CardContent>
                     </Card>
-                  </div>
+                  
                 </TabsContent>
               </Tabs>
             </CardContent>
@@ -1524,8 +1498,8 @@ const EmergencyGuideEdit: React.FC = () => {
                 新しい接続番号とその説明ラベルを入力してください
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
+            
+              
                 <Label htmlFor="conn-label">説明ラベル</Label>
                 <Input
                   id="conn-label"
@@ -1533,8 +1507,8 @@ const EmergencyGuideEdit: React.FC = () => {
                   value={newConnection.label}
                   onChange={(e) => setNewConnection({ ...newConnection, label: e.target.value })}
                 />
-              </div>
-              <div className="grid gap-2">
+              
+              
                 <Label htmlFor="conn-value">接続番号</Label>
                 <Input
                   id="conn-value"
@@ -1542,8 +1516,8 @@ const EmergencyGuideEdit: React.FC = () => {
                   value={newConnection.value}
                   onChange={(e) => setNewConnection({ ...newConnection, value: e.target.value })}
                 />
-              </div>
-            </div>
+              
+            
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowConnectionDialog(false)}>
                 キャンセル
@@ -1564,19 +1538,25 @@ const EmergencyGuideEdit: React.FC = () => {
                 以下の変更を保存しますか？
               </DialogDescription>
             </DialogHeader>
-            <div className="py-4">
-              <ul className="list-disc pl-5 space-y-2">
+            
+              
                 {saveChanges.added > 0 && (
-                  <li>新しい項目追加: {saveChanges.added}件</li>
+                  
+                    新しい項目追加: {saveChanges.added}件
+                  
                 )}
                 {saveChanges.modified > 0 && (
-                  <li>項目の変更: {saveChanges.modified}件</li>
+                  
+                    項目の変更: {saveChanges.modified}件
+                  
                 )}
                 {saveChanges.deleted > 0 && (
-                  <li>項目の削除: {saveChanges.deleted}件</li>
+                  
+                    項目の削除: {saveChanges.deleted}件
+                  
                 )}
-              </ul>
-            </div>
+              
+            
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowSaveConfirmDialog(false)}>
                 キャンセル
@@ -1594,7 +1574,7 @@ const EmergencyGuideEdit: React.FC = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+      
 
       {/* スライド追加ダイアログ */}
       <Dialog open={showAddSlideDialog} onOpenChange={setShowAddSlideDialog}>
@@ -1609,8 +1589,8 @@ const EmergencyGuideEdit: React.FC = () => {
               ) : '新しいスライドを追加します。'}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
+          
+            
               <Label htmlFor="new-slide-title">タイトル</Label>
               <Input 
                 id="new-slide-title" 
@@ -1618,8 +1598,8 @@ const EmergencyGuideEdit: React.FC = () => {
                 onChange={e => setNewSlideData({...newSlideData, タイトル: e.target.value})}
                 placeholder="新しいスライドのタイトル"
               />
-            </div>
-            <div className="grid gap-2">
+            
+            
               <Label htmlFor="new-slide-content">本文</Label>
               <Textarea 
                 id="new-slide-content" 
@@ -1628,8 +1608,8 @@ const EmergencyGuideEdit: React.FC = () => {
                 placeholder="スライドの内容を入力してください"
                 rows={3}
               />
-            </div>
-            <div className="grid gap-2">
+            
+            
               <Label htmlFor="new-slide-note">ノート</Label>
               <Textarea 
                 id="new-slide-note" 
@@ -1638,8 +1618,8 @@ const EmergencyGuideEdit: React.FC = () => {
                 placeholder="補足説明やノート（オプション）"
                 rows={2}
               />
-            </div>
-          </div>
+            
+          
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setShowAddSlideDialog(false)}>
               キャンセル
@@ -1650,7 +1630,7 @@ const EmergencyGuideEdit: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    
   );
 };
 
