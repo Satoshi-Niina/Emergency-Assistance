@@ -203,6 +203,19 @@ const EmergencyGuideEdit: React.FC = () => {
   // タブ切り替えの状態
   const [activeTabValue, setActiveTabValue] = useState<string>("metadata");
 
+  // 右クリックメニューの状態
+  const [contextMenu, setContextMenu] = useState<{
+    show: boolean;
+    x: number;
+    y: number;
+    slideIndex: number | null;
+  }>({
+    show: false,
+    x: 0,
+    y: 0,
+    slideIndex: null
+  });
+
   // 変更内容を分析する関数
   const analyzeChanges = () => {
     if (!guideData || !editedGuideData) return { added: 0, modified: 0, deleted: 0 };
@@ -662,6 +675,30 @@ const EmergencyGuideEdit: React.FC = () => {
     setDraggedSlideIndex(null);
   };
 
+  // 右クリックメニューハンドラ
+  const handleContextMenu = (e: React.MouseEvent, slideIndex: number) => {
+    if (!isEditing) return;
+    
+    e.preventDefault();
+    setContextMenu({
+      show: true,
+      x: e.clientX,
+      y: e.clientY,
+      slideIndex: slideIndex
+    });
+    setSelectedSlideIndex(slideIndex);
+  };
+
+  // コンテキストメニューを非表示にする
+  const hideContextMenu = () => {
+    setContextMenu({
+      show: false,
+      x: 0,
+      y: 0,
+      slideIndex: null
+    });
+  };
+
   // スライド削除ハンドラ
   const handleDeleteSlide = (slideIndex: number) => {
     if (!editedGuideData || !isEditing) return;
@@ -681,6 +718,7 @@ const EmergencyGuideEdit: React.FC = () => {
     });
 
     setSelectedSlideIndex(null);
+    hideContextMenu();
 
     toast({
       title: "スライドを削除しました",
@@ -692,17 +730,21 @@ const EmergencyGuideEdit: React.FC = () => {
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (!isEditing || selectedSlideIndex === null) return;
 
-    if (e.key === 'Delete' || e.key === 'Backspace') {
+    // Shift+Dキーでスライド削除
+    if (e.shiftKey && e.key === 'D') {
       e.preventDefault();
       handleDeleteSlide(selectedSlideIndex);
     }
+    // BackspaceやDeleteキーでの削除は無効化（テキスト編集時の誤削除を防ぐ）
   }, [isEditing, selectedSlideIndex, editedGuideData]);
 
   // キーボードイベントリスナーの設定
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('click', hideContextMenu);
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('click', hideContextMenu);
     };
   }, [handleKeyDown]);
 
@@ -1235,7 +1277,7 @@ const EmergencyGuideEdit: React.FC = () => {
                         <div className="space-y-1 text-sm text-blue-700">
                           <div>• <span className="font-medium">ドラッグ&ドロップ</span>：スライドをドラッグして順序を変更できます</div>
                           <div>• <span className="font-medium">スライド選択</span>：スライドをクリックして選択できます</div>
-                          <div>• <span className="font-medium">削除</span>：選択したスライドでDeleteキーまたはBackspaceキーを押すと削除されます</div>
+                          <div>• <span className="font-medium">削除</span>：スライドを右クリックして「削除」、または選択後にShift+Dキーで削除できます</div>
                         </div>
                       </div>
                     )}
@@ -1266,6 +1308,7 @@ const EmergencyGuideEdit: React.FC = () => {
                           onDrop={(e) => handleDrop(e, slideIndex)}
                           onDragEnd={handleDragEnd}
                           onClick={() => setSelectedSlideIndex(slideIndex)}
+                          onContextMenu={(e) => handleContextMenu(e, slideIndex)}
                           className={`
                             ${isEditing ? 'cursor-move' : ''}
                             ${selectedSlideIndex === slideIndex ? 'ring-2 ring-blue-500 ring-offset-2' : ''}
@@ -1281,7 +1324,7 @@ const EmergencyGuideEdit: React.FC = () => {
                                   スライド {slide.スライド番号}: {slide.タイトル}
                                   {selectedSlideIndex === slideIndex && isEditing && (
                                     <Badge variant="outline" className="ml-2 text-xs">
-                                      選択中 (Deleteキーで削除)
+                                      選択中 (右クリックまたはShift+Dで削除)
                                     </Badge>
                                   )}
                                 </CardTitle>
@@ -1619,6 +1662,30 @@ const EmergencyGuideEdit: React.FC = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* 右クリックコンテキストメニュー */}
+        {contextMenu.show && contextMenu.slideIndex !== null && (
+          <div
+            className="fixed bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50"
+            style={{
+              left: contextMenu.x,
+              top: contextMenu.y
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-2"
+              onClick={() => {
+                if (contextMenu.slideIndex !== null) {
+                  handleDeleteSlide(contextMenu.slideIndex);
+                }
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+              スライドを削除
+            </button>
+          </div>
+        )}
 
         {/* スライド追加ダイアログ */}
         <Dialog open={showAddSlideDialog} onOpenChange={setShowAddSlideDialog}>
