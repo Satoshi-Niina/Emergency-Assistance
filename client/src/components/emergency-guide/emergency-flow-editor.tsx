@@ -512,7 +512,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
             <Button size="sm" onClick={handleSave}><Save className="mr-1 h-4 w-4" />保存</Button>
           </div>
           <CardDescription>
-            ドラッグ＆ドロップでフローチャートを作成できます。ノードをクリックして詳細を編集してください。
+            ドラッグ＆ドロップでフローチャートを作成できます。ノードをクリックすると右側のパネルでテキスト編集ができます。
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col lg:flex-row h-[70vh]">
@@ -551,7 +551,12 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
           {/* 右側のプロパティパネル */}
           <Card className="w-full lg:w-96 mt-4 lg:mt-0 lg:ml-4 overflow-auto">
             <CardHeader>
-              <CardTitle>{selectedNode ? "ノード編集" : "フロー情報"}</CardTitle>
+              <CardTitle>{selectedNode ? "選択ノード編集" : "フロー情報"}</CardTitle>
+              {selectedNode && (
+                <CardDescription>
+                  選択されたノードの内容を編集できます
+                </CardDescription>
+              )}
             </CardHeader>
             <CardContent>
               {selectedNode ? (
