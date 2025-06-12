@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
-import { Settings, Info, User, Bell, Shield, Database, Volume2, UserPlus, FileType, Book, LogOut, Save, FileX } from "lucide-react";
+import { Settings, Info, User, Bell, Shield, Database, Volume2, UserPlus, FileType, Book, LogOut, Save, FileX, Trash2 } from "lucide-react";
 import { WarningDialog } from "@/components/shared/warning-dialog";
 import { Link } from "wouter";
 
