@@ -548,13 +548,21 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           console.log('🔍 画像検索実行結果:', searchResults?.length || 0, '件');
 
           if (searchResults && searchResults.length > 0) {
-            // 検索結果を処理して画像パスを修正
-            const processedResults = searchResults.map((result: any) => ({
-              ...result.item,
-              id: result.item?.id || Math.random(),
-              url: result.item?.file || result.item?.url,
-              title: result.item?.title || '関連画像'
-            }));
+            // 検索結果を処理して画像パスを修正（Fuse.js結果構造に対応）
+            const processedResults = searchResults.map((result: any) => {
+              // Fuse.jsの検索結果の場合、itemプロパティに実データが格納される
+              const actualResult = result.item || result;
+              
+              return {
+                ...actualResult,
+                id: actualResult.id || Math.random(),
+                url: actualResult.file || actualResult.url,
+                file: actualResult.file || actualResult.url,
+                title: actualResult.title || '関連画像',
+                description: actualResult.description || '',
+                category: actualResult.category || ''
+              };
+            });
 
             console.log('🖼️ 関係画像エリアに表示:', processedResults.length, '件');
             setSearchResults(processedResults);
