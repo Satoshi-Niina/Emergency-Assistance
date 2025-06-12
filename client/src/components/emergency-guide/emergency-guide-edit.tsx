@@ -987,7 +987,6 @@ const EmergencyGuideEdit: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle>ファイル一覧</CardTitle>
-            <CardContent>
             <CardDescription>編集するファイルを選択してください</CardDescription>
           </CardHeader>
           <CardContent>
@@ -1353,7 +1352,7 @@ const EmergencyGuideEdit: React.FC = () => {
                                   <div key={imgIndex} className="border rounded-lg p-2">
                                     <img 
                                       src={imgText.画像パス} 
-                                      alt={`スライド${slide.スライド番号}の画像${imgIdx + 1}`}
+                                      alt={`スライド${slide.スライド番号}の画像${imgIndex + 1}`}
                                       className="w-full h-auto mb-2 rounded"
                                     />
                                     <p className="text-sm text-gray-600">{imgText.テキスト}</p>
@@ -1488,7 +1487,7 @@ const EmergencyGuideEdit: React.FC = () => {
                                         });
                                         window.dispatchEvent(tabSwitchEvent);
 
-                                        console.log(`タブ切り替えイベントを発行: スライド ${idx}
+                                        console.log(`タブ切り替えイベントを発行: スライド ${idx}`);
                                       }}
                                     >
                                       <Pencil className="h-3 w-3 mr-1" />
