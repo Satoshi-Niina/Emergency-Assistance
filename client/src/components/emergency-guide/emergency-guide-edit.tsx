@@ -981,14 +981,17 @@ const EmergencyGuideEdit: React.FC = () => {
             description: '「' + keyword + '」に一致するガイドは見つかりませんでした',
             variant: "destructive",
           });
-        }
-The code has been modified to correctly display the branch options in the preview tab for conditional branching nodes, including displaying a message if no options are set.```text
-      }
-    };      window.addEventListener('search-emergency-guide', handleSearchEvent as EventListener);
-    return () => {
-      window.removeEventListener('search-emergency-guide', handleSearchEvent, handleSearchEvent as EventListener);
-    };
-  }, [guideFiles, toast]);
+        }The code has been modified to handle syntax errors and dynamically display selection input form fields.```text
+                                }
+                              }
+                            }
+                          };
+
+                          window.addEventListener('search-emergency-guide', handleSearchEvent as EventListener);
+                          return () => {
+                            window.removeEventListener('search-emergency-guide', handleSearchEvent as EventListener);
+                          };
+                        }, [guideFiles, toast]);
 
   // 日付のフォーマット
   const formatDate = (dateString: string) => {
@@ -1401,52 +1404,104 @@ The code has been modified to correctly display the branch options in the previe
                                         <p key={textIdx} className="text-gray-700 whitespace-pre-line">{text}</p>
                                       ))}
 
-                                      {/* 条件分岐ノードの場合は選択肢ボタンを表示 */}
+                                      {/* 条件分岐の場合、選択肢設定フォームを表示 */}
                                       {slide.ノート && slide.ノート.includes('条件分岐') && (
                                         <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
-                                          <div className="text-sm font-medium text-yellow-800 mb-3">選択肢（プレビュー）</div>
-                                          <div className="space-y-2">
-                                            {/* 本文から選択肢を自動抽出して表示 */}
-                                            {slide.本文.map((text: string, textIdx: number) => {
-                                              // 番号付きリストや選択肢を検出
-                                              const choices = text.split('\n').filter(line => 
-                                                line.match(/^\d+\.|^[・•]\s*|^[ア-ン][\)）]\s*|^[①-⑩]\s*/)
-                                              );
+                                          <div className="text-sm font-medium text-yellow-800 mb-3">選択肢設定</div>
+                                          {isEditing ? (
+                                            <div className="space-y-3">
+                                              {[0, 1, 2, 3].map(branchIndex => {
+                                                const branches = slide.branches || [];
+                                                const branch = branches[branchIndex] || { text: '', targetSlide: null };
 
-                                              return choices.length > 0 ? (
-                                                <div key={textIdx} className="space-y-1">
-                                                  {choices.map((choice, choiceIdx) => {
-                                                    const cleanChoice = choice.replace(/^\d+\.|^[・•]\s*|^[ア-ン][\)）]\s*|^[①-⑩]\s*/, '').trim();
-                                                    if (!cleanChoice) return null;
+                                                // 入力がある項目のみ表示するか、入力中の項目、または最初の空の項目を表示
+                                                const hasContent = branch.text && branch.text.trim();
+                                                const isFirstEmpty = branchIndex === 0 || branches.slice(0, branchIndex).some(b => b.text && b.text.trim());
 
-                                                    return (
-                                                      <button
-                                                        key={choiceIdx}
-                                                        className="w-full text-left p-2 bg-white border border-gray-300 rounded hover:bg-blue-50 hover:border-blue-400 transition-colors text-sm"
-                                                        onClick={() => {
-                                                          // スライド遷移の実装（次のスライドへ）
-                                                          const nextSlideIndex = slideIndex + 1;
-                                                          if (nextSlideIndex < (isEditing ? editedGuideData?.slides.length || 0 : guideData?.data.slides?.length || 0)) {
-                                                            const slideElement = document.querySelector(`[data-slide-index="${nextSlideIndex}"]`);
-                                                            if (slideElement) {
-                                                              slideElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                                              slideElement.classList.add('ring-2', 'ring-green-500', 'ring-offset-2');
-                                                              setTimeout(() => {
-                                                                slideElement.classList.remove('ring-2', 'ring-green-500', 'ring-offset-2');
-                                                              }, 2000);
-                                                            }
+                                                if (!hasContent && !isFirstEmpty) return null;
+
+                                                return (
+                                                  <div key={branchIndex} className="grid grid-cols-2 gap-2">
+                                                    <Input
+                                                      placeholder={`選択肢${branchIndex + 1}のテキスト`}
+                                                      value={branch.text || ''}
+                                                      onChange={(e) => {
+                                                        const updatedBranches = [...(slide.branches || [])];
+                                                        while (updatedBranches.length <= branchIndex) {
+                                                          updatedBranches.push({ text: '', targetSlide: null });
+                                                        }
+                                                        updatedBranches[branchIndex] = {
+                                                          ...updatedBranches[branchIndex],
+                                                          text: e.target.value
+                                                        };
+                                                        handleSlideChange(slideIndex, 'branches', updatedBranches);
+                                                      }}
+                                                      className="text-sm"
+                                                    />
+                                                    <select
+                                                      value={branch.targetSlide || ''}
+                                                      onChange={(e) => {
+                                                        const updatedBranches = [...(slide.branches || [])];
+                                                        while (updatedBranches.length <= branchIndex) {
+                                                          updatedBranches.push({ text: '', targetSlide: null });
+                                                        }
+                                                        updatedBranches[branchIndex] = {
+                                                          ...updatedBranches[branchIndex],
+                                                          targetSlide: e.target.value ? parseInt(e.target.value) : null
+                                                        };
+                                                        handleSlideChange(slideIndex, 'branches', updatedBranches);
+                                                      }}
+                                                      className="text-sm border border-gray-300 rounded px-2 py-1"
+                                                    >
+                                                      <option value="">遷移先を選択</option>
+                                                      {(isEditing ? editedGuideData?.slides : guideData?.data.slides || []).map((targetSlide: any, targetIndex: number) => (
+                                                        <option key={targetIndex} value={targetSlide.スライド番号}>
+                                                          スライド{targetSlide.スライド番号}: {targetSlide.タイトル}
+                                                        </option>
+                                                      ))}
+                                                    </select>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          ) : (
+                                            <div className="space-y-2">
+                                              {(slide.branches || [])
+                                                .filter((branch: any) => branch.text && branch.text.trim())
+                                                .map((branch: any, branchIdx: number) => (
+                                                  <button
+                                                    key={branchIdx}
+                                                    className="w-full text-left p-2 bg-white border border-gray-300 rounded hover:bg-blue-50 hover:border-blue-400 transition-colors text-sm"
+                                                    onClick={() => {
+                                                      if (branch.targetSlide) {
+                                                        const targetSlideIndex = (isEditing ? editedGuideData?.slides : guideData?.data.slides || [])
+                                                          .findIndex((s: any) => s.スライド番号 === branch.targetSlide);
+
+                                                        if (targetSlideIndex !== -1) {
+                                                          const slideElement = document.querySelector(`[data-slide-index="${targetSlideIndex}"]`);
+                                                          if (slideElement) {
+                                                            slideElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                            slideElement.classList.add('ring-2', 'ring-green-500', 'ring-offset-2');
+                                                            setTimeout(() => {
+                                                              slideElement.classList.remove('ring-2', 'ring-green-500', 'ring-offset-2');
+                                                            }, 2000);
                                                           }
-                                                        }}
-                                                      >
-                                                        {cleanChoice}
-                                                        <span className="text-xs text-gray-500 ml-2">→ スライド{slideIndex + 2}</span>
-                                                      </button>
-                                                    );
-                                                  })}
-                                                </div>
-                                              ) : null;
-                                            })}
-                                          </div>
+                                                        }
+                                                      }
+                                                    }}
+                                                  >
+                                                    {branch.text}
+                                                    <span className="text-xs text-gray-500 ml-2">
+                                                      → {branch.targetSlide ? `スライド${branch.targetSlide}` : '未設定'}
+                                                    </span>
+                                                  </button>
+                                                ))}
+
+                                              {(!slide.branches || slide.branches.filter((b: any) => b.text && b.text.trim()).length === 0) && (
+                                                <div className="text-xs text-gray-500 italic">選択肢が設定されていません</div>
+                                              )}
+                                            </div>
+                                          )}
                                         </div>
                                       )}
 
@@ -1642,7 +1697,7 @@ The code has been modified to correctly display the branch options in the previe
                                     </div>
                                   )}
 
-                                  {/* 条件分岐の場合、設定された選択肢ボタンを表示 */}
+                                  {/* 条件分岐の場合、選択肢設定フォームを表示 */}
                                   {slide.ノート && slide.ノート.includes('条件分岐') && (
                                     <div className="mt-2 space-y-1">
                                       {(slide.branches || [])
@@ -1685,7 +1740,8 @@ The code has been modified to correctly display the branch options in the previe
 
                                   {slide.ノート && !slide.ノート.includes('条件分岐') && (
                                     <div className="text-xs text-gray-500 mt-1 italic">
-                                      {slide.ノート.length > 30 ? slide.ノート.substring(0, 30) + '...' : slide.ノート}
+                                      {slide.ノート.length > 30 ?```text
+slide.ノート.substring(0, 30) + '...' : slide.ノート}
                                     </div>
                                   )}
                                 </div>
@@ -1740,7 +1796,7 @@ The code has been modified to correctly display the branch options in the previe
                         ) && (
                           <div className="mt-8">
                             <h4 className="text-md font-medium mb-4">関連画像</h4>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">```text
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                               {(isEditing ? editedGuideData?.slides : guideData?.data.slides || []).map((slide: any, slideIdx: number) => 
                                 slide.画像テキスト?.map((imgText: any, imgIdx: number) => (
                                   <div key={slideIdx + '-' + imgIdx} className="border rounded-lg p-2 bg-white">
