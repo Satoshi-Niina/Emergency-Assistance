@@ -1111,15 +1111,15 @@ const EmergencyFlowCreator: React.FC = () => {
                         <Card key={flow.id} className="overflow-hidden border hover:border-blue-300 hover:shadow-md transition-all">
                           <CardHeader className="p-4 pb-2">
                             <CardTitle 
-                              className="text-md break-words overflow-hidden text-ellipsis leading-tight"
+                              className="text-md leading-tight"
                               style={{
-                                display: '-webkit-box',
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: 'vertical',
-                                wordBreak: 'break-word',
-                                lineHeight: '1.3',
-                                maxHeight: '2.6em',
-                                minHeight: '1.3em'
+                                wordBreak: 'break-all',
+                                overflowWrap: 'anywhere',
+                                whiteSpace: 'normal',
+                                lineHeight: '1.4',
+                                maxHeight: '3.5em',
+                                overflow: 'hidden',
+                                display: 'block'
                               }}
                             >
                               {flow.title}
