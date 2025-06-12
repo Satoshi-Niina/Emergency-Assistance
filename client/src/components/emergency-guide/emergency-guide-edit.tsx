@@ -1798,7 +1798,7 @@ const EmergencyGuideEdit: React.FC = () => {
                   addSlidePosition < editedGuideData.slides.length ?
                     `スライド ${addSlidePosition + 1} と ${addSlidePosition + 2} の間に新しいスライドを追加します。` :
                     `最後に新しいスライドを追加します。`
-                ) : '新しいスライドを追加します。'}
+                ) : `新しいスライドを追加します。`}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
