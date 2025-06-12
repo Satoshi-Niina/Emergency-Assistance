@@ -95,7 +95,7 @@ export default function SettingsPage() {
 
       toast({
         title: "設定を保存しました",
-        description: "アプリケーション設定が正常に保存されました。",
+        description: `設定が正常に保存されました。`,
       });
     } catch (error) {
       toast({
