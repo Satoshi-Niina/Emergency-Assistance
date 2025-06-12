@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
-import { Settings, Info, User, Bell, Shield, Database, Volume2, UserPlus, FileType, Book, LogOut, Save } from "lucide-react";
+import { Settings, Info, User, Bell, Shield, Database, Volume2, UserPlus, FileType, Book, LogOut, Save, FileX } from "lucide-react";
 import { WarningDialog } from "@/components/shared/warning-dialog";
 import { Link } from "wouter";
 
@@ -13,7 +13,7 @@ export default function SettingsPage() {
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const [showWarningDialog, setShowWarningDialog] = useState(false);
-  
+
   // Settings state
   const [notifications, setNotifications] = useState(true);
   const [textToSpeech, setTextToSpeech] = useState(true);
@@ -30,7 +30,7 @@ export default function SettingsPage() {
         const savedSettings = localStorage.getItem('emergencyRecoverySettings');
         if (savedSettings) {
           const settings = JSON.parse(savedSettings);
-          
+
           if (settings.notifications !== undefined) setNotifications(settings.notifications);
           if (settings.textToSpeech !== undefined) setTextToSpeech(settings.textToSpeech);
           if (settings.speechVolume !== undefined) setSpeechVolume(settings.speechVolume);
@@ -43,10 +43,10 @@ export default function SettingsPage() {
         console.error('設定の読み込みに失敗しました:', error);
       }
     };
-    
+
     loadSettings();
   }, []);
-  
+
   // 設定変更時の保存
   useEffect(() => {
     const saveSettings = () => {
@@ -60,9 +60,9 @@ export default function SettingsPage() {
           useOnlyKnowledgeBase,
           usePerplexity
         };
-        
+
         localStorage.setItem('emergencyRecoverySettings', JSON.stringify(settings));
-        
+
         // ナレッジベース使用設定を別途保存 (チャットコンテキストで参照するため)
         localStorage.setItem('useOnlyKnowledgeBase', useOnlyKnowledgeBase.toString());
         localStorage.setItem('usePerplexity', usePerplexity.toString());
@@ -70,7 +70,7 @@ export default function SettingsPage() {
         console.error('設定の保存に失敗しました:', error);
       }
     };
-    
+
     saveSettings();
   }, [notifications, textToSpeech, speechVolume, darkMode, autoSave, useOnlyKnowledgeBase, usePerplexity]);
 
@@ -86,13 +86,13 @@ export default function SettingsPage() {
         useOnlyKnowledgeBase,
         usePerplexity
       };
-      
+
       localStorage.setItem('emergencyRecoverySettings', JSON.stringify(settings));
-      
+
       // 設定を別途保存 (チャットコンテキストで参照するため)
       localStorage.setItem('useOnlyKnowledgeBase', useOnlyKnowledgeBase.toString());
       localStorage.setItem('usePerplexity', usePerplexity.toString());
-      
+
       toast({
         title: "設定を保存しました",
         description: "アプリケーション設定が正常に保存されました。",
@@ -105,7 +105,7 @@ export default function SettingsPage() {
       });
     }
   };
-  
+
   const handleLogout = async () => {
     setShowWarningDialog(true);
   };
@@ -121,6 +121,54 @@ export default function SettingsPage() {
       });
     } finally {
       setShowWarningDialog(false);
+    }
+  };
+
+  const handleCleanupUploads = async () => {
+    try {
+      const response = await fetch('/api/tech-support/cleanup-uploads', {
+        method: 'POST'
+      });
+
+      if (!response.ok) {
+        throw new Error('クリーンアップに失敗しました');
+      }
+
+      const result = await response.json();
+      toast({
+        title: "クリーンアップ完了",
+        description: `アップロードファイルをクリーンアップしました`
+      });
+    } catch (error) {
+      toast({
+        title: "エラー",
+        description: "クリーンアップに失敗しました",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleCleanupLogs = async () => {
+    try {
+      const response = await fetch('/api/tech-support/cleanup-logs', {
+        method: 'POST'
+      });
+
+      if (!response.ok) {
+        throw new Error('ログクリーンアップに失敗しました');
+      }
+
+      const result = await response.json();
+      toast({
+        title: "ログクリーンアップ完了",
+        description: `${result.deletedCount}件のログファイルを削除しました (${(result.totalSize / 1024 / 1024).toFixed(2)} MB)`
+      });
+    } catch (error) {
+      toast({
+        title: "エラー",
+        description: "ログクリーンアップに失敗しました",
+        variant: "destructive"
+      });
     }
   };
 
@@ -180,7 +228,7 @@ export default function SettingsPage() {
                   className="data-[state=checked]:bg-blue-500"
                 />
               </div>
-              
+
               <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
                 <div>
                   <p className="font-medium text-blue-700">音声読み上げ</p>
@@ -192,7 +240,7 @@ export default function SettingsPage() {
                   className="data-[state=checked]:bg-blue-500"
                 />
               </div>
-              
+
               {textToSpeech && (
                 <div className="py-2 border-t border-blue-100 pt-3">
                   <p className="font-medium mb-2 text-blue-700">音声の音量</p>
@@ -234,7 +282,7 @@ export default function SettingsPage() {
                   className="data-[state=checked]:bg-indigo-500"
                 />
               </div>
-              
+
               <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
                 <div>
                   <p className="font-medium text-indigo-700">自動保存</p>
@@ -246,7 +294,7 @@ export default function SettingsPage() {
                   className="data-[state=checked]:bg-indigo-500"
                 />
               </div>
-              
+
               <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
                 <div>
                   <p className="font-medium text-indigo-700">独自の技術資料のみを使用</p>
@@ -258,7 +306,7 @@ export default function SettingsPage() {
                   className="data-[state=checked]:bg-indigo-500"
                 />
               </div>
-              
+
               <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
                 <div>
                   <p className="font-medium text-indigo-700">Perplexity AIを使用</p>
@@ -277,7 +325,7 @@ export default function SettingsPage() {
                   className="data-[state=checked]:bg-purple-500 opacity-60"
                 />
               </div>
-              
+
               <div className="py-2 border-t border-blue-100 pt-3 flex justify-end">
                 <Button
                   onClick={saveSettings}
@@ -314,7 +362,7 @@ export default function SettingsPage() {
                     </Button>
                   </Link>
                 </div>
-                
+
                 <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
                   <div>
                     <p className="font-medium text-blue-800">ドキュメント管理</p>
@@ -326,6 +374,26 @@ export default function SettingsPage() {
                       管理
                     </Button>
                   </Link>
+                </div>
+
+                <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
+                  <Button
+                    onClick={handleCleanupUploads}
+                    variant="destructive"
+                    className="w-full"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    一時ファイルを削除
+                  </Button>
+
+                  <Button
+                    onClick={handleCleanupLogs}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <FileX className="mr-2 h-4 w-4" />
+                    ログファイルを削除
+                  </Button>
                 </div>
 
                 <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
