@@ -40,8 +40,8 @@
     },
     {
       "id": "decision1",
-      "title": "実態の確認",
-      "description": "1.エンジン停止時のエンジン回転が急に停止・徐々に停止したか？\n2.\n",
+      "title": "新しい条件分岐",
+      "description": "エンジンが停止した時の状況を教えてください。",
       "imageUrl": "",
       "type": "decision",
       "options": [
@@ -58,7 +58,7 @@
           "conditionType": "no"
         }
       ],
-      "message": "1.エンジン停止時のエンジン回転が急に停止・徐々に停止したか？\n2.\n"
+      "message": "エンジンが停止した時の状況を教えてください。"
     },
     {
       "id": "step2a",
@@ -296,5 +296,5 @@
       "options": []
     }
   ],
-  "updatedAt": "2025-06-12T04:00:53.775Z"
+  "updatedAt": "2025-06-12T09:43:47.785Z"
 }
