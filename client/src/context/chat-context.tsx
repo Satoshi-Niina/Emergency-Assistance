@@ -893,17 +893,18 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // 新規メッセージに対して画像検索を実行
       try {
-        const { searchByText } = await import('@/lib/image-search');
-        const searchResults = await searchByText(userMessageContent, true);
+        const { searchImages } = await import('@/lib/image-search');
+        const searchResults = await searchImages(userMessageContent);
         console.log('🔍 緊急ガイド用画像検索結果:', searchResults?.length || 0, '件');
 
         if (searchResults && searchResults.length > 0) {
           // 検索結果を処理して画像パスを修正
-          const processedResults = searchResults.map((result: any) => ({
-            ...result.item,
-            id: result.item?.id || Math.random(),
-            url: result.item?.file || result.item?.url,
-            title: result.item?.title || '関連画像'
+          const processedResults = searchResults.map((result: any, index: number) => ({
+            ...result,
+            id: result?.id || `img_${index}`,
+            url: result?.file || result?.url,
+            title: result?.title || '関連画像',
+            type: 'image'
           }));
 
           console.log('🖼️ 緊急ガイド関連画像表示:', processedResults.length, '件');

@@ -68,10 +68,14 @@ function fixImagePath(path: string | undefined): string {
 interface SearchResult {
   id: number | string;
   title: string;
-  type: string; // 'image' | 'text' | 'ai-response' | string
+  type?: string; // 'image' | 'text' | 'ai-response' | string
   url?: string;
+  file?: string; // 画像ファイルパス
   pngFallbackUrl?: string; // 代替画像のURL（非推奨、互換性のために残す）
   content?: string;
+  description?: string;
+  category?: string;
+  keywords?: string[];
   relevance?: number;
   timestamp?: Date;
   metadata_json?: string;
