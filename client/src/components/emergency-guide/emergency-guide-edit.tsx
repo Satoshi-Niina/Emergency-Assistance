@@ -1357,39 +1357,39 @@ const EmergencyGuideEdit: React.FC = () => {
                                     </CardHeader>
                                     <CardContent className="pt-4 space-y-4">
                                       <div className="grid gap-2">
-                                        <Label htmlFor={`slide-${slideIndex}-text`}>本文</Label>
-                                        {Array.isArray(slide.本文) ? slide.本文.map((text: string, textIndex: number) => (
-                                          <Textarea
-                                            key={textIndex}
-                                            id={`slide-${slideIndex}-text-${textIndex}`}
-                                            rows={3}
-                                            value={text || ''}
-                                            onChange={(e) => handleSlideTextChange(slideIndex, textIndex, e.target.value)}
-                                            disabled={!isEditing}
-                                            className="mb-2"
-                                          />
-                                        )) : (
-                                          <Textarea
-                                            id={`slide-${slideIndex}-text-0`}
-                                            rows={3}
-                                            value=""
-                                            onChange={(e) => handleSlideTextChange(slideIndex, 0, e.target.value)}
-                                            disabled={!isEditing}
-                                            placeholder="本文がありません"
-                                          />
-                                        )}
-                                      </div>
+                                          <Label htmlFor={'slide-' + slideIndex + '-text'}>本文</Label>
+                                          {Array.isArray(slide.本文) ? slide.本文.map((text: string, textIndex: number) => (
+                                            <Textarea
+                                              key={textIndex}
+                                              id={'slide-' + slideIndex + '-text-' + textIndex}
+                                              rows={3}
+                                              value={text || ''}
+                                              onChange={(e) => handleSlideTextChange(slideIndex, textIndex, e.target.value)}
+                                              disabled={!isEditing}
+                                              className="mb-2"
+                                            />
+                                          )) : (
+                                            <Textarea
+                                              id={'slide-' + slideIndex + '-text-0'}
+                                              rows={3}
+                                              value=""
+                                              onChange={(e) => handleSlideTextChange(slideIndex, 0, e.target.value)}
+                                              disabled={!isEditing}
+                                              placeholder="本文がありません"
+                                            />
+                                          )}
+                                        </div>
 
-                                      <div className="grid gap-2">
-                                        <Label htmlFor={`slide-${slideIndex}-note`}>ノート</Label>
-                                        <Textarea
-                                          id={`slide-${slideIndex}-note`}
-                                          rows={3}
-                                          value={slide.ノート}
-                                          onChange={(e) => handleSlideChange(slideIndex, 'ノート', e.target.value)}
-                                          disabled={!isEditing}
-                                        />
-                                      </div>
+                                        <div className="grid gap-2">
+                                          <Label htmlFor={'slide-' + slideIndex + '-note'}>ノート</Label>
+                                          <Textarea
+                                            id={'slide-' + slideIndex + '-note'}
+                                            rows={3}
+                                            value={slide.ノート}
+                                            onChange={(e) => handleSlideChange(slideIndex, 'ノート', e.target.value)}
+                                            disabled={!isEditing}
+                                          />
+                                        </div>
 
                                       {/* リアルタイムプレビュー */}
                                       {isEditing && (
