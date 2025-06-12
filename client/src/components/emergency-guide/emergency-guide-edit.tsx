@@ -1091,16 +1091,37 @@ const EmergencyGuideEdit: React.FC = () => {
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="metadata" className="w-full">
-                <TabsList className="grid grid-cols-3 mb-4">
-                  <TabsTrigger value="metadata" className={isEditing ? 'data-[state=active]:bg-yellow-100' : ''}>
+                <TabsList className="grid grid-cols-3 mb-4 border-2 border-indigo-300 bg-indigo-50 rounded-lg p-1 shadow-md">
+                  <TabsTrigger 
+                    value="metadata" 
+                    className={`
+                      border-2 border-transparent rounded-md transition-all duration-200
+                      ${isEditing ? 'data-[state=active]:bg-yellow-100 data-[state=active]:border-yellow-400' : 'data-[state=active]:bg-white data-[state=active]:border-indigo-400'}
+                      hover:bg-white hover:border-indigo-200 font-medium
+                    `}
+                  >
                     メタデータ
                     {isEditing && <span className="ml-1 text-yellow-600">●</span>}
                   </TabsTrigger>
-                  <TabsTrigger value="slides" className={isEditing ? 'data-[state=active]:bg-yellow-100' : ''}>
+                  <TabsTrigger 
+                    value="slides" 
+                    className={`
+                      border-2 border-transparent rounded-md transition-all duration-200
+                      ${isEditing ? 'data-[state=active]:bg-yellow-100 data-[state=active]:border-yellow-400' : 'data-[state=active]:bg-white data-[state=active]:border-indigo-400'}
+                      hover:bg-white hover:border-indigo-200 font-medium
+                    `}
+                  >
                     スライド内容
                     {isEditing && <span className="ml-1 text-yellow-600">●</span>}
                   </TabsTrigger>
-                  <TabsTrigger value="preview" className={isEditing ? 'data-[state=active]:bg-blue-100' : ''}>
+                  <TabsTrigger 
+                    value="preview" 
+                    className={`
+                      border-2 border-transparent rounded-md transition-all duration-200
+                      ${isEditing ? 'data-[state=active]:bg-blue-100 data-[state=active]:border-blue-400' : 'data-[state=active]:bg-white data-[state=active]:border-indigo-400'}
+                      hover:bg-white hover:border-indigo-200 font-medium
+                    `}
+                  >
                     プレビュー
                     {isEditing && <span className="ml-1 text-blue-600">👁</span>}
                   </TabsTrigger>
