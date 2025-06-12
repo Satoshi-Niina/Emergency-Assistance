@@ -981,17 +981,16 @@ const EmergencyGuideEdit: React.FC = () => {
             description: '「' + keyword + '」に一致するガイドは見つかりませんでした',
             variant: "destructive",
           });
-        }The code has been modified to handle syntax errors and dynamically display selection input form fields.```text
-                                }
-                              }
-                            }
-                          };
+        }
+      }
+    };
 
-                          window.addEventListener('search-emergency-guide', handleSearchEvent as EventListener);
-                          return () => {
-                            window.removeEventListener('search-emergency-guide', handleSearchEvent as EventListener);
-                          };
-                        }, [guideFiles, toast]);
+    window.addEventListener('```text
+window.addEventListener('search-emergency-guide', handleSearchEvent as EventListener);
+    return () => {
+      window.removeEventListener('search-emergency-guide', handleSearchEvent as EventListener);
+    };
+  }, [guideFiles, toast]);
 
   // 日付のフォーマット
   const formatDate = (dateString: string) => {
@@ -1740,8 +1739,7 @@ const EmergencyGuideEdit: React.FC = () => {
 
                                   {slide.ノート && !slide.ノート.includes('条件分岐') && (
                                     <div className="text-xs text-gray-500 mt-1 italic">
-                                      {slide.ノート.length > 30 ?```text
-slide.ノート.substring(0, 30) + '...' : slide.ノート}
+                                      {slide.ノート.length > 30 ? slide.ノート.substring(0, 30) + '...' : slide.ノート}
                                     </div>
                                   )}
                                 </div>
