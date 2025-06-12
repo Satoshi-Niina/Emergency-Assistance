@@ -46,7 +46,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Pencil, Save, X, Plus, Trash2, FileText, LifeBuoy, Sparkles, AlertCircle, RefreshCcw } from 'lucide-react';
+import { Loader2, Pencil, Save, X, Plus, Trash2, FileText, LifeBuoy, Sparkles, AlertCircle, RefreshCcw, ArrowDown } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { WarningDialog } from '../shared/warning-dialog';
 
