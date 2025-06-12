@@ -245,9 +245,7 @@ export default function TroubleshootingSelector({
                 <div className="w-full">
                   <div className="flex justify-between items-center">
                     <p className="font-medium">{flow.description}</p>
-                    <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full">
-                      {flow.id.replace(/_/g, " ")}
-                    </span>
+
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
                     {flow.trigger && flow.trigger.slice(0, 3).join(", ")}
