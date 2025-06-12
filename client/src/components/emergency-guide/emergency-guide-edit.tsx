@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Card,
@@ -195,6 +195,10 @@ const EmergencyGuideEdit: React.FC = () => {
     本文: [''],
     ノート: ''
   });
+
+  // ドラッグ&ドロップの状態
+  const [draggedSlideIndex, setDraggedSlideIndex] = useState<number | null>(null);
+  const [selectedSlideIndex, setSelectedSlideIndex] = useState<number | null>(null);
 
   // 変更内容を分析する関数
   const analyzeChanges = () => {
@@ -605,6 +609,99 @@ const EmergencyGuideEdit: React.FC = () => {
       slides: updatedSlides
     });
   };
+
+  // ドラッグ開始ハンドラ
+  const handleDragStart = (e: React.DragEvent, slideIndex: number) => {
+    if (!isEditing) {
+      e.preventDefault();
+      return;
+    }
+    setDraggedSlideIndex(slideIndex);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  // ドラッグオーバーハンドラ
+  const handleDragOver = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (draggedSlideIndex === null || draggedSlideIndex === targetIndex) return;
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  // ドロップハンドラ
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (!editedGuideData || draggedSlideIndex === null || draggedSlideIndex === targetIndex) return;
+
+    const updatedSlides = [...editedGuideData.slides];
+    const [draggedSlide] = updatedSlides.splice(draggedSlideIndex, 1);
+    updatedSlides.splice(targetIndex, 0, draggedSlide);
+
+    // スライド番号を再計算
+    updatedSlides.forEach((slide, index) => {
+      slide.スライド番号 = index + 1;
+    });
+
+    setEditedGuideData({
+      ...editedGuideData,
+      slides: updatedSlides
+    });
+
+    setDraggedSlideIndex(null);
+    
+    toast({
+      title: "スライドを移動しました",
+      description: `スライド ${draggedSlideIndex + 1} を位置 ${targetIndex + 1} に移動しました`,
+    });
+  };
+
+  // ドラッグ終了ハンドラ
+  const handleDragEnd = () => {
+    setDraggedSlideIndex(null);
+  };
+
+  // スライド削除ハンドラ
+  const handleDeleteSlide = (slideIndex: number) => {
+    if (!editedGuideData || !isEditing) return;
+
+    const updatedSlides = [...editedGuideData.slides];
+    const deletedSlide = updatedSlides[slideIndex];
+    updatedSlides.splice(slideIndex, 1);
+
+    // スライド番号を再計算
+    updatedSlides.forEach((slide, index) => {
+      slide.スライド番号 = index + 1;
+    });
+
+    setEditedGuideData({
+      ...editedGuideData,
+      slides: updatedSlides
+    });
+
+    setSelectedSlideIndex(null);
+
+    toast({
+      title: "スライドを削除しました",
+      description: `「${deletedSlide.タイトル}」を削除しました`,
+    });
+  };
+
+  // キーボードイベントハンドラ
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (!isEditing || selectedSlideIndex === null) return;
+    
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      handleDeleteSlide(selectedSlideIndex);
+    }
+  }, [isEditing, selectedSlideIndex, editedGuideData]);
+
+  // キーボードイベントリスナーの設定
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handleKeyDown]);
 
   // スライド本文テキストの編集ハンドラ
   const handleSlideTextChange = (slideIndex: number, textIndex: number, value: string) => {
@@ -1062,6 +1159,18 @@ const EmergencyGuideEdit: React.FC = () => {
                 {/* スライド内容タブ */}
                 <TabsContent value="slides">
                   <div className="space-y-8">
+                    {/* 操作説明 */}
+                    {isEditing && (
+                      <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                        <h4 className="font-medium text-blue-800 mb-2">スライド操作方法</h4>
+                        <div className="space-y-1 text-sm text-blue-700">
+                          <div>• <span className="font-medium">ドラッグ&ドロップ</span>：スライドをドラッグして順序を変更できます</div>
+                          <div>• <span className="font-medium">スライド選択</span>：スライドをクリックして選択できます</div>
+                          <div>• <span className="font-medium">削除</span>：選択したスライドでDeleteキーまたはBackspaceキーを押すと削除されます</div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* スライド追加ボタン（最初のスライドの前） */}
                     {isEditing && (
                       <div className="flex justify-center mb-4">
@@ -1079,12 +1188,32 @@ const EmergencyGuideEdit: React.FC = () => {
 
                     {(isEditing ? editedGuideData.slides : guideData?.data.slides || []).map((slide: any, slideIndex: number) => {
                       return (
-                        <div key={slideIndex}>
+                        <div 
+                          key={slideIndex}
+                          draggable={isEditing}
+                          onDragStart={(e) => handleDragStart(e, slideIndex)}
+                          onDragOver={(e) => handleDragOver(e, slideIndex)}
+                          onDrop={(e) => handleDrop(e, slideIndex)}
+                          onDragEnd={handleDragEnd}
+                          onClick={() => setSelectedSlideIndex(slideIndex)}
+                          className={`
+                            ${isEditing ? 'cursor-move' : ''}
+                            ${selectedSlideIndex === slideIndex ? 'ring-2 ring-blue-500 ring-offset-2' : ''}
+                            ${draggedSlideIndex === slideIndex ? 'opacity-50' : ''}
+                          `}
+                          tabIndex={isEditing ? 0 : -1}
+                        >
                           <Card className="border-indigo-200">
                             <CardHeader className="bg-indigo-50 rounded-t-lg">
                               <div className="flex justify-between items-center">
                                 <CardTitle className="text-lg">
+                                  <span className="mr-2">⋮⋮</span>
                                   スライド {slide.スライド番号}: {slide.タイトル}
+                                  {selectedSlideIndex === slideIndex && isEditing && (
+                                    <Badge variant="outline" className="ml-2 text-xs">
+                                      選択中 (Deleteキーで削除)
+                                    </Badge>
+                                  )}
                                 </CardTitle>
                           </div>
                         </CardHeader>
