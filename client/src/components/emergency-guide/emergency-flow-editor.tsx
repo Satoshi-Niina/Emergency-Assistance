@@ -513,7 +513,6 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
           </div>
           <CardDescription>
             ドラッグ＆ドロップでフローチャートを作成できます。ノードをクリックして詳細を編集してください。
-            {fileName && <div className="mt-2 text-sm font-medium text-blue-600">読込中のファイル: {fileName}</div>}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col lg:flex-row h-[70vh]">
