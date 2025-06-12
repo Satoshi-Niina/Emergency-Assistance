@@ -438,7 +438,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                                message.content.data || 
                                message.content.response ||
                                message.content.answer;
-        
+
         if (typeof possibleContent === 'string' && possibleContent.trim()) {
           normalizedContent = possibleContent;
           console.log('📝 ネストされたプロパティから抽出:', normalizedContent.substring(0, 50) + '...');
@@ -458,7 +458,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         hasMessage: !!message.message,
         hasChoices: !!message.choices
       });
-      
+
       // より詳細なデバッグ情報を表示
       console.log('🔍 詳細デバッグ - 利用可能なプロパティ:', {
         messageKeys: Object.keys(message),
@@ -466,7 +466,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         textType: typeof message.text,
         messageType: typeof message.message
       });
-      
+
       normalizedContent = `[メッセージ内容を読み込めませんでした - デバッグ: ${JSON.stringify({
         id: message.id,
         keys: Object.keys(message),
@@ -504,7 +504,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (isLoading || !content.trim()) return;
 
     setIsLoading(true);
-    
+
     // ユーザーメッセージを即座に表示
     const userMessage: Message = {
       id: Date.now(),
@@ -526,7 +526,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (response.ok) {
         const aiResponse = await response.json();
-        
+
         // AIメッセージを追加
         const aiMessage: Message = {
           id: Date.now() + 1,
@@ -536,17 +536,17 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         };
 
         setMessages(prev => [...prev, aiMessage]);
-        
+
         // 新規メッセージに対して画像検索を実行
         try {
           const { searchByText, reloadImageSearchData } = await import('@/lib/image-search');
-          
+
           // まず画像検索データの初期化を確認
           await reloadImageSearchData();
-          
+
           const searchResults = await searchByText(content, true);
           console.log('🔍 画像検索実行結果:', searchResults?.length || 0, '件');
-          
+
           if (searchResults && searchResults.length > 0) {
             // 検索結果を処理して画像パスを修正
             const processedResults = searchResults.map((result: any) => ({
@@ -555,7 +555,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               url: result.item?.file || result.item?.url,
               title: result.item?.title || '関連画像'
             }));
-            
+
             console.log('🖼️ 関係画像エリアに表示:', processedResults.length, '件');
             setSearchResults(processedResults);
           } else {
@@ -890,13 +890,13 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // 緊急ガイド送信時は自動検索を完全無効化
       console.log('🏥 緊急ガイド送信完了 - 自動検索は実行しません');
-      
+
       // 新規メッセージに対して画像検索を実行
       try {
         const { searchByText } = await import('@/lib/image-search');
         const searchResults = await searchByText(userMessageContent, true);
         console.log('🔍 緊急ガイド用画像検索結果:', searchResults?.length || 0, '件');
-        
+
         if (searchResults && searchResults.length > 0) {
           // 検索結果を処理して画像パスを修正
           const processedResults = searchResults.map((result: any) => ({
@@ -905,7 +905,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             url: result.item?.file || result.item?.url,
             title: result.item?.title || '関連画像'
           }));
-          
+
           console.log('🖼️ 緊急ガイド関連画像表示:', processedResults.length, '件');
           setSearchResults(processedResults);
         } else {
@@ -980,7 +980,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } finally {
       setIsLoading(false);
     }
-  }, [chatId, searchBySelectedText, toast]);
+  }, [chatId, toast]);
 
   // チャット履歴をクリアする関数（表面的にクリア→新しいチャット開始）
   const clearChatHistory = useCallback(async () => {
@@ -1119,4 +1119,4 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     </ChatContext.Provider>
   );
 };
-// Disable automatic image search feature due to stability issues.
+// The image search logic is modified to ensure its execution and handle potential errors.
