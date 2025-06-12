@@ -1110,13 +1110,20 @@ const EmergencyFlowCreator: React.FC = () => {
                       {flowList.map(flow => (
                         <Card key={flow.id} className="overflow-hidden border hover:border-blue-300 hover:shadow-md transition-all">
                           <CardHeader className="p-4 pb-2">
-                            <CardTitle className="text-md break-words overflow-hidden text-ellipsis" style={{
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical',
-                              lineHeight: '1.2',
-                              maxHeight: '2.4em'
-                            }}>{flow.title}</CardTitle>
+                            <CardTitle 
+                              className="text-md break-words overflow-hidden text-ellipsis leading-tight"
+                              style={{
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                wordBreak: 'break-word',
+                                lineHeight: '1.3',
+                                maxHeight: '2.6em',
+                                minHeight: '1.3em'
+                              }}
+                            >
+                              {flow.title}
+                            </CardTitle>
                             <CardDescription className="text-xs">
                               {flow.createdAt ? `作成日: ${new Date(flow.createdAt).toLocaleString()}` : "作成日不明"}
                             </CardDescription>
