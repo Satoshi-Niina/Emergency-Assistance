@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -126,7 +127,7 @@ const EmergencyGuideEdit: React.FC = () => {
       setLoading(true);
       // キャッシュバスティングのためにタイムスタンプパラメータを追加
       const timestamp = new Date().getTime();
-      const response = await fetch(`/api/emergency-guide/list?_t=${timestamp}`);
+      const response = await fetch('/api/emergency-guide/list?_t=' + timestamp);
 
       if (!response.ok) {
         throw new Error('ガイドファイル一覧の取得に失敗しました');
@@ -151,7 +152,7 @@ const EmergencyGuideEdit: React.FC = () => {
   const fetchGuideData = async (id: string) => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/emergency-guide/detail/${id}`);
+      const response = await fetch('/api/emergency-guide/detail/' + id);
 
       if (!response.ok) {
         throw new Error('ガイド詳細データの取得に失敗しました');
@@ -282,7 +283,7 @@ const EmergencyGuideEdit: React.FC = () => {
 
     try {
       setIsSaving(true);
-      const response = await fetch(`/api/emergency-guide/update/${selectedGuideId}`, {
+      const response = await fetch('/api/emergency-guide/update/' + selectedGuideId, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -332,8 +333,8 @@ const EmergencyGuideEdit: React.FC = () => {
       let match;
       while ((match = regex.exec(data.metadata.説明)) !== null) {
         connections.push({
-          id: `metadata-${connections.length}`,
-          label: `メタデータの説明`,
+          id: 'metadata-' + connections.length,
+          label: 'メタデータの説明',
           value: match[1]
         });
       }
@@ -348,8 +349,8 @@ const EmergencyGuideEdit: React.FC = () => {
             regex.lastIndex = 0; // 正規表現のインデックスをリセット
             while ((match = regex.exec(text)) !== null) {
               connections.push({
-                id: `slide-${slideIndex}-text-${textIndex}-${connections.length}`,
-                label: `スライド ${slide.スライド番号} の本文`,
+                id: 'slide-' + slideIndex + '-text-' + textIndex + '-' + connections.length,
+                label: 'スライド ' + slide.スライド番号 + ' の本文',
                 value: match[1]
               });
             }
@@ -362,8 +363,8 @@ const EmergencyGuideEdit: React.FC = () => {
           regex.lastIndex = 0;
           while ((match = regex.exec(slide.ノート)) !== null) {
             connections.push({
-              id: `slide-${slideIndex}-note-${connections.length}`,
-              label: `スライド ${slide.スライド番号} のノート`,
+              id: 'slide-' + slideIndex + '-note-' + connections.length,
+              label: 'スライド ' + slide.スライド番号 + ' のノート',
               value: match[1]
             });
           }
@@ -383,7 +384,7 @@ const EmergencyGuideEdit: React.FC = () => {
   const addFlowNode = (nodeType: 'step' | 'decision') => {
     if (!isEditing || !editedGuideData) return;
 
-    const nodeId = `${nodeType}_${Date.now()}`;
+    const nodeId = nodeType + '_' + Date.now();
     const nodeTitle = nodeType === 'step' ? '新しいステップ' : '新しい条件分岐';
     const nodeMessage = nodeType === 'step' ? 
       'ここにステップの内容を記述してください' : 
@@ -414,8 +415,8 @@ const EmergencyGuideEdit: React.FC = () => {
     });
 
     toast({
-      title: `${nodeType === 'step' ? 'ステップ' : '条件分岐'}ノードを追加`,
-      description: `新しい${nodeTitle}をスライドに追加しました`,
+      title: (nodeType === 'step' ? 'ステップ' : '条件分岐') + 'ノードを追加',
+      description: '新しい' + nodeTitle + 'をスライドに追加しました',
     });
   };
 
@@ -423,7 +424,7 @@ const EmergencyGuideEdit: React.FC = () => {
   const addFlowNodeAt = (nodeType: 'step' | 'decision', insertPosition: number) => {
     if (!isEditing || !editedGuideData) return;
 
-    const nodeId = `${nodeType}_${Date.now()}`;
+    const nodeId = nodeType + '_' + Date.now();
     const nodeTitle = nodeType === 'step' ? '新しいステップ' : '新しい条件分岐';
     const nodeMessage = nodeType === 'step' ? 
       'ここにステップの内容を記述してください' : 
@@ -455,8 +456,8 @@ const EmergencyGuideEdit: React.FC = () => {
     });
 
     toast({
-      title: `${nodeType === 'step' ? 'ステップ' : '条件分岐'}ノードを追加`,
-      description: `位置 ${insertPosition + 1} に新しい${nodeTitle}を追加しました`,
+      title: (nodeType === 'step' ? 'ステップ' : '条件分岐') + 'ノードを追加',
+      description: '位置 ' + (insertPosition + 1) + ' に新しい' + nodeTitle + 'を追加しました',
     });
   };
 
@@ -465,8 +466,8 @@ const EmergencyGuideEdit: React.FC = () => {
     if (!editedGuideData) return;
 
     const updatedData = JSON.parse(JSON.stringify(editedGuideData));
-    const regex = new RegExp(`接続番号\\s*[:：]\\s*${oldValue}`, 'g');
-    const replacement = `接続番号: ${newValue}`;
+    const regex = new RegExp('接続番号\\s*[:：]\\s*' + oldValue, 'g');
+    const replacement = '接続番号: ' + newValue;
 
     // メタデータの説明を更新
     if (updatedData.metadata && updatedData.metadata.説明) {
@@ -498,7 +499,7 @@ const EmergencyGuideEdit: React.FC = () => {
 
     toast({
       title: '接続番号を更新',
-      description: `接続番号 ${oldValue} を ${newValue} に変更しました`,
+      description: '接続番号 ' + oldValue + ' を ' + newValue + ' に変更しました',
     });
   };
 
@@ -514,7 +515,7 @@ const EmergencyGuideEdit: React.FC = () => {
     }
 
     // 既存の接続番号リストを更新
-    const newId = `custom-${Date.now()}`;
+    const newId = 'custom-' + Date.now();
     setConnectionNumbers([
       ...connectionNumbers,
       {
@@ -530,7 +531,7 @@ const EmergencyGuideEdit: React.FC = () => {
 
     toast({
       title: '接続番号を追加',
-      description: `新しい接続番号 (${newConnection.value}) を追加しました`,
+      description: '新しい接続番号 (' + newConnection.value + ') を追加しました',
     });
   };
 
@@ -605,7 +606,7 @@ const EmergencyGuideEdit: React.FC = () => {
 
     toast({
       title: "スライド追加",
-      description: `新しいスライド「${newSlideData.タイトル}」を追加しました`,
+      description: '新しいスライド「' + newSlideData.タイトル + '」を追加しました',
     });
   };
 
@@ -665,7 +666,7 @@ const EmergencyGuideEdit: React.FC = () => {
 
     toast({
       title: "スライドを移動しました",
-      description: `スライド ${draggedSlideIndex + 1} を位置 ${targetIndex + 1} に移動しました`,
+      description: 'スライド ' + (draggedSlideIndex + 1) + ' を位置 ' + (targetIndex + 1) + ' に移動しました',
     });
   };
 
@@ -721,7 +722,7 @@ const EmergencyGuideEdit: React.FC = () => {
 
     toast({
       title: "スライドを削除しました",
-      description: `「${deletedSlide.タイトル}」を削除しました`,
+      description: '「' + deletedSlide.タイトル + '」を削除しました',
     });
   };
 
@@ -752,16 +753,16 @@ const EmergencyGuideEdit: React.FC = () => {
     const handleTabSwitchEvent = (event: Event) => {
       const customEvent = event as CustomEvent;
       if (customEvent.detail && customEvent.detail.slideIndex !== undefined) {
-        console.log(`タブ切り替えイベントを受信: スライド ${customEvent.detail.slideIndex}`);
+        console.log('タブ切り替えイベントを受信: スライド ' + customEvent.detail.slideIndex);
 
         // スライドタブに切り替え
         setActiveTabValue("slides");
 
         // DOM更新後にスクロール処理を実行
         setTimeout(() => {
-          const slideElement = document.querySelector(`[data-slide-index="${customEvent.detail.slideIndex}"]`);
+          const slideElement = document.querySelector('[data-slide-index="' + customEvent.detail.slideIndex + '"]');
           if (slideElement) {
-            console.log(`スライド要素が見つかりました: ${customEvent.detail.slideIndex}`);
+            console.log('スライド要素が見つかりました: ' + customEvent.detail.slideIndex);
             slideElement.scrollIntoView({ 
               behavior: 'smooth', 
               block: 'center' 
@@ -772,7 +773,7 @@ const EmergencyGuideEdit: React.FC = () => {
               slideElement.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2');
             }, 2000);
           } else {
-            console.log(`スライド要素が見つかりません: ${customEvent.detail.slideIndex}`);
+            console.log('スライド要素が見つかりません: ' + customEvent.detail.slideIndex);
           }
         }, 100);
       }
@@ -808,10 +809,10 @@ const EmergencyGuideEdit: React.FC = () => {
     try {
       toast({
         title: 'フロー生成中',
-        description: `「${guideTitle}」からフローを生成しています...`,
+        description: '「' + guideTitle + '」からフローを生成しています...',
       });
 
-      const response = await fetch(`/api/flow-generator/generate-from-guide/${guideId}`, {
+      const response = await fetch('/api/flow-generator/generate-from-guide/' + guideId, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -827,12 +828,12 @@ const EmergencyGuideEdit: React.FC = () => {
       if (data.success) {
         toast({
           title: 'フロー生成完了',
-          description: `「${data.flowData.title}」フローが生成されました`,
+          description: '「' + data.flowData.title + '」フローが生成されました',
         });
 
         // フロー編集画面に遷移 (ts_ プレフィックスを追加してトラブルシューティングデータを示す)
         const guideIdPrefix = 'ts_';
-        window.location.href = `/emergency-guide?tab=flow&guideId=${guideIdPrefix}${guideId}`;
+        window.location.href = '/emergency-guide?tab=flow&guideId=' + guideIdPrefix + guideId;
       } else {
         throw new Error(data.error || 'フロー生成に失敗しました');
       }
@@ -856,11 +857,11 @@ const EmergencyGuideEdit: React.FC = () => {
       // 削除開始メッセージを表示
       toast({
         title: '削除中',
-        description: `「${fileToDelete.title}」を削除しています...`,
+        description: '「' + fileToDelete.title + '」を削除しています...',
       });
 
       // 削除リクエストを送信
-      const response = await fetch(`/api/emergency-guide/delete/${fileToDelete.id}`, {
+      const response = await fetch('/api/emergency-guide/delete/' + fileToDelete.id, {
         method: 'DELETE'
       });
 
@@ -869,7 +870,7 @@ const EmergencyGuideEdit: React.FC = () => {
         // 削除成功メッセージを表示
         toast({
           title: '削除完了',
-          description: `「${fileToDelete.title}」を削除しました`,
+          description: '「' + fileToDelete.title + '」を削除しました',
         });
 
         // 一覧から該当項目を削除（クライアント側で即時反映）
@@ -878,7 +879,7 @@ const EmergencyGuideEdit: React.FC = () => {
         );
 
         // サーバー側の処理完了を待つため十分な遅延を設定
-        console.log(`ID=${fileToDelete.id}を削除しました。リスト更新を待機中...`);
+        console.log('ID=' + fileToDelete.id + 'を削除しました。リスト更新を待機中...');
 
         // サーバーキャッシュをクリア
         try {
@@ -945,7 +946,7 @@ const EmergencyGuideEdit: React.FC = () => {
       const customEvent = event as CustomEvent;
       if (customEvent.detail && customEvent.detail.keyword) {
         const keyword = customEvent.detail.keyword;
-        console.log(`応急処置ガイド編集: 検索キーワード「${keyword}」を受信`);
+        console.log('応急処置ガイド編集: 検索キーワード「' + keyword + '」を受信');
 
         // ガイドファイル一覧から検索
         const matchingGuides = guideFiles.filter(guide => 
@@ -954,7 +955,7 @@ const EmergencyGuideEdit: React.FC = () => {
         );
 
         if (matchingGuides.length > 0) {
-          console.log(`検索結果: ${matchingGuides.length}件のガイドが見つかりました`);
+          console.log('検索結果: ' + matchingGuides.length + '件のガイドが見つかりました');
 
           // 最初の一致するガイドを選択
           const selectedGuide = matchingGuides[0];
@@ -962,8 +963,8 @@ const EmergencyGuideEdit: React.FC = () => {
 
           // フロータブに切り替えるためのイベントを発行
           // トラブルシューティングフローを表示するために ts_ プレフィックスを追加
-          const guideId = `ts_${selectedGuide.id}`;
-          console.log(`フロー表示に切り替え: ${guideId}`);
+          const guideId = 'ts_' + selectedGuide.id;
+          console.log('フロー表示に切り替え: ' + guideId);
 
           // フロータブに切り替えるイベントを発行
           window.dispatchEvent(new CustomEvent('switch-to-flow-tab', { 
@@ -972,13 +973,13 @@ const EmergencyGuideEdit: React.FC = () => {
 
           toast({
             title: "検索結果",
-            description: `${matchingGuides.length}件のガイドが「${keyword}」に一致しました`,
+            description: matchingGuides.length + '件のガイドが「' + keyword + '」に一致しました',
           });
         } else {
-          console.log(`検索結果: 「${keyword}」に一致するガイドは見つかりませんでした`);
+          console.log('検索結果: 「' + keyword + '」に一致するガイドは見つかりませんでした');
           toast({
             title: "検索結果なし",
-            description: `「${keyword}」に一致するガイドは見つかりませんでした`,
+            description: '「' + keyword + '」に一致するガイドは見つかりませんでした',
             variant: "destructive",
           });
         }
@@ -992,7 +993,6 @@ const EmergencyGuideEdit: React.FC = () => {
   }, [guideFiles, toast]);
 
   // 日付のフォーマット
-```text
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
@@ -1319,165 +1319,165 @@ const EmergencyGuideEdit: React.FC = () => {
                     )}
 
                     {(isEditing ? editedGuideData.slides : guideData?.data.slides || []).map((slide: any, slideIndex: number) => {
-                            // 値を外に取り出してネストを避ける
-                            const currentSlides = isEditing ? editedGuideData?.slides : guideData?.data.slides;
-                            const slideLength = currentSlides?.length || 0;
+                      // 値を外に取り出してネストを避ける
+                      const currentSlides = isEditing ? editedGuideData?.slides : guideData?.data.slides;
+                      const slideLength = currentSlides?.length || 0;
 
-                            return (
-                              <React.Fragment key={slideIndex}>
-                                <div 
-                                  data-slide-index={slideIndex}
-                                  draggable={isEditing}
-                                  onDragStart={(e) => handleDragStart(e, slideIndex)}
-                                  onDragOver={(e) => handleDragOver(e, slideIndex)}
-                                  onDrop={(e) => handleDrop(e, slideIndex)}
-                                  onDragEnd={handleDragEnd}
-                                  onClick={() => setSelectedSlideIndex(slideIndex)}
-                                  onContextMenu={(e) => handleContextMenu(e, slideIndex)}
-                                  className={
-                                    (isEditing ? 'cursor-move ' : '') +
-                                    (selectedSlideIndex === slideIndex ? 'ring-2 ring-blue-500 ring-offset-2 ' : '') +
-                                    (draggedSlideIndex === slideIndex ? 'opacity-50' : '')
-                                  }
-                                  tabIndex={isEditing ? 0 : -1}
-                                >
-                                  <Card className="border-indigo-200">
-                                    <CardHeader className="bg-indigo-50 rounded-t-lg">
-                                      <div className="flex justify-between items-center">
-                                        <CardTitle className="text-lg">
-                                          <span className="mr-2">⋮⋮</span>
-                                          スライド {slide.スライド番号}: {slide.タイトル}
-                                          {selectedSlideIndex === slideIndex && isEditing && (
-                                            <Badge variant="outline" className="ml-2 text-xs">
-                                              選択中 (右クリックまたはShift+Dで削除)
-                                            </Badge>
-                                          )}
-                                        </CardTitle>
-                                      </div>
-                                    </CardHeader>
-                                    <CardContent className="pt-4 space-y-4">
-                                      <div className="grid gap-2">
-                                          <Label htmlFor={'slide-' + slideIndex + '-text'}>本文</Label>
-                                          {Array.isArray(slide.本文) ? slide.本文.map((text: string, textIndex: number) => (
-                                            <Textarea
-                                              key={textIndex}
-                                              id={'slide-' + slideIndex + '-text-' + textIndex}
-                                              rows={3}
-                                              value={text || ''}
-                                              onChange={(e) => handleSlideTextChange(slideIndex, textIndex, e.target.value)}
-                                              disabled={!isEditing}
-                                              className="mb-2"
-                                            />
-                                          )) : (
-                                            <Textarea
-                                              id={'slide-' + slideIndex + '-text-0'}
-                                              rows={3}
-                                              value=""
-                                              onChange={(e) => handleSlideTextChange(slideIndex, 0, e.target.value)}
-                                              disabled={!isEditing}
-                                              placeholder="本文がありません"
-                                            />
-                                          )}
-                                        </div>
-
-                                        <div className="grid gap-2">
-                                          <Label htmlFor={'slide-' + slideIndex + '-note'}>ノート</Label>
-                                          <Textarea
-                                            id={'slide-' + slideIndex + '-note'}
-                                            rows={3}
-                                            value={slide.ノート}
-                                            onChange={(e) => handleSlideChange(slideIndex, 'ノート', e.target.value)}
-                                            disabled={!isEditing}
-                                          />
-                                        </div>
-
-                                      {/* リアルタイムプレビュー */}
-                                      {isEditing && (
-                                        <div className="mt-4 border rounded-lg p-4 bg-slate-50">
-                                          <div className="text-xs text-blue-600 mb-2">スライドプレビュー（リアルタイム更新）</div>
-                                          <div className="space-y-3">
-                                            {slide.タイトル && (
-                                              <h3 className="font-bold text-lg">{slide.タイトル}</h3>
-                                            )}
-                                            {slide.本文.map((text: string, textIdx: number) => (
-                                              <p key={textIdx} className="text-gray-700 whitespace-pre-line">{text}</p>
-                                            ))}
-                                            {slide.ノート && (
-                                              <div className="mt-2 pt-2 border-t border-gray-200">
-                                                <span className="text-xs text-gray-500">ノート:</span>
-                                                <p className="text-sm text-gray-600 italic">{slide.ノート}</p>
-                                              </div>
-                                            )}
-                                          </div>
-                                        </div>
-                                      )}
-
-                                      {slide.画像テキスト && slide.画像テキスト.length > 0 && (
-                                        <div className="grid gap-2">
-                                          <Label>画像</Label>
-                                          <div className="grid grid-cols-2 gap-4">
-                                            {slide.画像テキスト.map((imgText: any, imgIndex: number) => (
-                                              <div key={imgIndex} className="border rounded-lg p-2">
-                                                <img 
-                                                  src={imgText.画像パス} 
-                                                  alt={'スライド' + slide.スライド番号 + 'の画像' + (imgIndex + 1)}
-                                                  className="w-full h-auto mb-2 rounded"
-                                                />
-                                                <p className="text-sm text-gray-600">{imgText.テキスト}</p>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      )}
-                                    </CardContent>
-                                  </Card>
+                      return (
+                        <React.Fragment key={slideIndex}>
+                          <div 
+                            data-slide-index={slideIndex}
+                            draggable={isEditing}
+                            onDragStart={(e) => handleDragStart(e, slideIndex)}
+                            onDragOver={(e) => handleDragOver(e, slideIndex)}
+                            onDrop={(e) => handleDrop(e, slideIndex)}
+                            onDragEnd={handleDragEnd}
+                            onClick={() => setSelectedSlideIndex(slideIndex)}
+                            onContextMenu={(e) => handleContextMenu(e, slideIndex)}
+                            className={
+                              (isEditing ? 'cursor-move ' : '') +
+                              (selectedSlideIndex === slideIndex ? 'ring-2 ring-blue-500 ring-offset-2 ' : '') +
+                              (draggedSlideIndex === slideIndex ? 'opacity-50' : '')
+                            }
+                            tabIndex={isEditing ? 0 : -1}
+                          >
+                            <Card className="border-indigo-200">
+                              <CardHeader className="bg-indigo-50 rounded-t-lg">
+                                <div className="flex justify-between items-center">
+                                  <CardTitle className="text-lg">
+                                    <span className="mr-2">⋮⋮</span>
+                                    スライド {slide.スライド番号}: {slide.タイトル}
+                                    {selectedSlideIndex === slideIndex && isEditing && (
+                                      <Badge variant="outline" className="ml-2 text-xs">
+                                        選択中 (右クリックまたはShift+Dで削除)
+                                      </Badge>
+                                    )}
+                                  </CardTitle>
+                                </div>
+                              </CardHeader>
+                              <CardContent className="pt-4 space-y-4">
+                                <div className="grid gap-2">
+                                  <Label htmlFor={'slide-' + slideIndex + '-text'}>本文</Label>
+                                  {Array.isArray(slide.本文) ? slide.本文.map((text: string, textIndex: number) => (
+                                    <Textarea
+                                      key={textIndex}
+                                      id={'slide-' + slideIndex + '-text-' + textIndex}
+                                      rows={3}
+                                      value={text || ''}
+                                      onChange={(e) => handleSlideTextChange(slideIndex, textIndex, e.target.value)}
+                                      disabled={!isEditing}
+                                      className="mb-2"
+                                    />
+                                  )) : (
+                                    <Textarea
+                                      id={'slide-' + slideIndex + '-text-0'}
+                                      rows={3}
+                                      value=""
+                                      onChange={(e) => handleSlideTextChange(slideIndex, 0, e.target.value)}
+                                      disabled={!isEditing}
+                                      placeholder="本文がありません"
+                                    />
+                                  )}
                                 </div>
 
-                                {/* スライド間に追加ボタン */}
+                                <div className="grid gap-2">
+                                  <Label htmlFor={'slide-' + slideIndex + '-note'}>ノート</Label>
+                                  <Textarea
+                                    id={'slide-' + slideIndex + '-note'}
+                                    rows={3}
+                                    value={slide.ノート}
+                                    onChange={(e) => handleSlideChange(slideIndex, 'ノート', e.target.value)}
+                                    disabled={!isEditing}
+                                  />
+                                </div>
+
+                                {/* リアルタイムプレビュー */}
                                 {isEditing && (
-                                  <div className="flex justify-center my-4">
-                                    <div className="flex gap-2">
-                                      <Button 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        className="border border-dashed border-gray-300 text-gray-500 hover:text-blue-600"
-                                        onClick={() => showAddSlideDialogAt(slideIndex + 1)}
-                                      >
-                                        <Plus className="h-3.5 w-3.5 mr-1" />
-                                        スライド追加
-                                      </Button>
-                                      <Button 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        className="border border-dashed border-green-300 text-green-600 hover:text-green-700"
-                                        onClick={() => addFlowNodeAt('step', slideIndex + 1)}
-                                      >
-                                        <Plus className="h-3.5 w-3.5 mr-1" />
-                                        ステップノード
-                                      </Button>
-                                      <Button 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        className="border border-dashed border-yellow-300 text-yellow-600 hover:text-yellow-700"
-                                        onClick={() => addFlowNodeAt('decision', slideIndex + 1)}
-                                      >
-                                        <Plus className="h-3.5 w-3.5 mr-1" />
-                                        条件分岐ノード
-                                      </Button>
+                                  <div className="mt-4 border rounded-lg p-4 bg-slate-50">
+                                    <div className="text-xs text-blue-600 mb-2">スライドプレビュー（リアルタイム更新）</div>
+                                    <div className="space-y-3">
+                                      {slide.タイトル && (
+                                        <h3 className="font-bold text-lg">{slide.タイトル}</h3>
+                                      )}
+                                      {slide.本文.map((text: string, textIdx: number) => (
+                                        <p key={textIdx} className="text-gray-700 whitespace-pre-line">{text}</p>
+                                      ))}
+                                      {slide.ノート && (
+                                        <div className="mt-2 pt-2 border-t border-gray-200">
+                                          <span className="text-xs text-gray-500">ノート:</span>
+                                          <p className="text-sm text-gray-600 italic">{slide.ノート}</p>
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                 )}
 
-                                {slideIndex < slideLength - 1 && (
-                                  <div className="flex justify-center">
-                                    <ArrowDown className="h-6 w-6 text-gray-400" />
+                                {slide.画像テキスト && slide.画像テキスト.length > 0 && (
+                                  <div className="grid gap-2">
+                                    <Label>画像</Label>
+                                    <div className="grid grid-cols-2 gap-4">
+                                      {slide.画像テキスト.map((imgText: any, imgIndex: number) => (
+                                        <div key={imgIndex} className="border rounded-lg p-2">
+                                          <img 
+                                            src={imgText.画像パス} 
+                                            alt={'スライド' + slide.スライド番号 + 'の画像' + (imgIndex + 1)}
+                                            className="w-full h-auto mb-2 rounded"
+                                          />
+                                          <p className="text-sm text-gray-600">{imgText.テキスト}</p>
+                                        </div>
+                                      ))}
+                                    </div>
                                   </div>
                                 )}
-                              </React.Fragment>
-                            );
-                          })}
-                    </div>
-</TabsContent>
+                              </CardContent>
+                            </Card>
+                          </div>
+
+                          {/* スライド間に追加ボタン */}
+                          {isEditing && (
+                            <div className="flex justify-center my-4">
+                              <div className="flex gap-2">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="border border-dashed border-gray-300 text-gray-500 hover:text-blue-600"
+                                  onClick={() => showAddSlideDialogAt(slideIndex + 1)}
+                                >
+                                  <Plus className="h-3.5 w-3.5 mr-1" />
+                                  スライド追加
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="border border-dashed border-green-300 text-green-600 hover:text-green-700"
+                                  onClick={() => addFlowNodeAt('step', slideIndex + 1)}
+                                >
+                                  <Plus className="h-3.5 w-3.5 mr-1" />
+                                  ステップノード
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="border border-dashed border-yellow-300 text-yellow-600 hover:text-yellow-700"
+                                  onClick={() => addFlowNodeAt('decision', slideIndex + 1)}
+                                >
+                                  <Plus className="h-3.5 w-3.5 mr-1" />
+                                  条件分岐ノード
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+
+                          {slideIndex < slideLength - 1 && (
+                            <div className="flex justify-center">
+                              <ArrowDown className="h-6 w-6 text-gray-400" />
+                            </div>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </div>
+                </TabsContent>
 
                 {/* プレビュータブ - ノード形式でスライドを表示 */}
                 <TabsContent value="preview">
@@ -1560,31 +1560,28 @@ const EmergencyGuideEdit: React.FC = () => {
                           {(isEditing ? editedGuideData?.slides : guideData?.data.slides || []).map((slide: any, idx: number) => (
                             <div key={idx}>
                               {/* スライドノード */}
-                              <div className={`
-                                px-6 py-4 shadow-lg rounded-lg border-2 max-w-md w-full relative
-                                ${slide.ノート && slide.ノート.includes('条件分岐') 
+                              <div className={
+                                "px-6 py-4 shadow-lg rounded-lg border-2 max-w-md w-full relative " +
+                                (slide.ノート && slide.ノート.includes('条件分岐') 
                                   ? 'bg-yellow-100 border-yellow-500 transform rotate-45' 
                                   : slide.ノート && (slide.ノート.includes('ステップ') || slide.ノート.includes('手順'))
                                   ? 'bg-green-100 border-green-500'
-                                  : 'bg-blue-100 border-blue-500'
-                                }
-                                ${isEditing ? 'hover:shadow-xl transition-shadow cursor-pointer' : ''}
-                              `}>
-                                <div className={`
-                                  ${slide.ノート && slide.ノート.includes('条件分岐') 
+                                  : 'bg-blue-100 border-blue-500') +
+                                (isEditing ? ' hover:shadow-xl transition-shadow cursor-pointer' : '')
+                              }>
+                                <div className={
+                                  slide.ノート && slide.ノート.includes('条件分岐') 
                                     ? 'transform -rotate-45 text-center' 
                                     : ''
-                                  }
-                                `}>
-                                  <div className={`
-                                    font-bold mb-2 flex items-center justify-center gap-1
-                                    ${slide.ノート && slide.ノート.includes('条件分岐') 
+                                }>
+                                  <div className={
+                                    "font-bold mb-2 flex items-center justify-center gap-1 " +
+                                    (slide.ノート && slide.ノート.includes('条件分岐') 
                                       ? 'text-yellow-800' 
                                       : slide.ノート && (slide.ノート.includes('ステップ') || slide.ノート.includes('手順'))
                                       ? 'text-green-800'
-                                      : 'text-blue-800'
-                                    }
-                                  `}>
+                                      : 'text-blue-800')
+                                  }>
                                     {slide.ノート && slide.ノート.includes('条件分岐') ? '🔀' 
                                      : slide.ノート && (slide.ノート.includes('ステップ') || slide.ノート.includes('手順')) ? '🔧' 
                                      : '📄'}
@@ -1623,28 +1620,28 @@ const EmergencyGuideEdit: React.FC = () => {
                                     className="absolute top-2 right-2 h-6 w-6 p-1"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      console.log(`編集ボタンがクリックされました: スライド ${idx + 1}`);
+                                      console.log('編集ボタンがクリックされました: スライド ' + (idx + 1));
                                       setSelectedSlideIndex(idx);
                                       const tabSwitchEvent = new CustomEvent('switch-to-slides-tab', {
                                         detail: { slideIndex: idx }
                                       });
                                       window.dispatchEvent(tabSwitchEvent);
-                                      console.log(`タブ切り替えイベントを発行: スライド ${idx}`);
+                                      console.log('タブ切り替えイベントを発行: スライド ' + idx);
                                     }}
                                   >
                                     <Pencil className="h-3 w-3" />
                                   </Button>
                                 )}
                               </div>
-                            </div>
 
-                            {slideIndex < slideLength - 1 && (
-                              <div className="flex justify-center">
-                                <ArrowDown className="h-6 w-6 text-gray-400" />
-                              </div>
-                            )}
-                          </div>
-                          )}
+                              {/* 矢印 */}
+                              {idx < (isEditing ? editedGuideData?.slides?.length || 0 : guideData?.data.slides?.length || 0) - 1 && (
+                                <div className="flex justify-center">
+                                  <ArrowDown className="h-6 w-6 text-gray-400" />
+                                </div>
+                              )}
+                            </div>
+                          ))}
 
                           {/* 最後の矢印 */}
                           <div className="flex justify-center">
@@ -1668,10 +1665,10 @@ const EmergencyGuideEdit: React.FC = () => {
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                               {(isEditing ? editedGuideData?.slides : guideData?.data.slides || []).map((slide: any, slideIdx: number) => 
                                 slide.画像テキスト?.map((imgText: any, imgIdx: number) => (
-                                  <div key={`${slideIdx}-${imgIdx}`} className="border rounded-lg p-2 bg-white">
+                                  <div key={slideIdx + '-' + imgIdx} className="border rounded-lg p-2 bg-white">
                                     <img
                                       src={imgText.画像パス}
-                                      alt={`ステップ${slide.スライド番号}の画像${imgIdx + 1}`}
+                                      alt={'ステップ' + slide.スライド番号 + 'の画像' + (imgIdx + 1)}
                                       className="w-full h-32 object-cover rounded mb-2"
                                     />
                                     <div className="text-xs text-gray-600 mb-1">
@@ -1795,14 +1792,16 @@ const EmergencyGuideEdit: React.FC = () => {
               onClick={() => {
                 if (contextMenu.slideIndex !== null) {
                   handleDeleteSlide(contextMenu.slideIndex);
-                                }
+                }
               }}
             >
-                            <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-4 w-4" />
               スライドを削除
-                        </button>
+            </button>
           </div>
-        )}        {/* スライド追加ダイアログ */}
+        )}
+
+        {/* スライド追加ダイアログ */}
         <Dialog open={showAddSlideDialog} onOpenChange={setShowAddSlideDialog}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
@@ -1810,9 +1809,9 @@ const EmergencyGuideEdit: React.FC = () => {
               <DialogDescription>
                 {addSlidePosition !== null && editedGuideData ? (
                   addSlidePosition < editedGuideData.slides.length ?
-                    `スライド ${addSlidePosition + 1} と ${addSlidePosition + 2} の間に新しいスライドを追加します。` :
-                    `最後に新しいスライドを追加します。`
-                ) : `新しいスライドを追加します。`}
+                    'スライド ' + (addSlidePosition + 1) + ' と ' + (addSlidePosition + 2) + ' の間に新しいスライドを追加します。' :
+                    '最後に新しいスライドを追加します。'
+                ) : '新しいスライドを追加します。'}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
