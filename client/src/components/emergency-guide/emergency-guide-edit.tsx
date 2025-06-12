@@ -383,7 +383,7 @@ const EmergencyGuideEdit: React.FC = () => {
 
     // スライドを追加
     const updatedSlides = [...editedGuideData.slides, newSlide];
-    
+
     // スライド番号を再計算
     updatedSlides.forEach((slide, index) => {
       slide.スライド番号 = index + 1;
@@ -1024,8 +1024,7 @@ const EmergencyGuideEdit: React.FC = () => {
                     {/* スライド追加ボタン（最初のスライドの前） */}
                     {isEditing && (
                       <div className="flex justify-center mb-4">
-```text
-        <Button 
+                        <Button 
                           variant="ghost" 
                           size="sm" 
                           className="border border-dashed border-gray-300 text-gray-500 hover:text-blue-600 w-3/4"
@@ -1050,29 +1049,28 @@ const EmergencyGuideEdit: React.FC = () => {
                         </CardHeader>
                         <CardContent className="pt-4 space-y-4">
                           <div className="grid gap-2">
-                            <Label htmlFor={`slide-${slideIndex}-title`}>タイトル</Label>
-                            <Input
-                              id={`slide-${slideIndex}-title`}
-                              value={slide.タイトル}
-                              onChange={(e) => handleSlideChange(slideIndex, 'タイトル', e.target.value)}
-                              disabled={!isEditing}
-                            />
-                          </div>
-
-                          <div className="grid gap-2">
-                            <Label htmlFor={`slide-${slideIndex}-text`}>本文</Label>
-                            {slide.本文.map((text: string, textIndex: number) => (
-                              <Textarea
-                                key={textIndex}
-                                id={`slide-${slideIndex}-text-${textIndex}`}
-                                rows={3}
-                                value={text}
-                                onChange={(e) => handleSlideTextChange(slideIndex, textIndex, e.target.value)}
-                                disabled={!isEditing}
-                                className="mb-2"
-                              />
-                            ))}
-                          </div>
+                              <Label htmlFor={`slide-${slideIndex}-text`}>本文</Label>
+                              {Array.isArray(slide.本文) ? slide.本文.map((text: string, textIndex: number) => (
+                                <Textarea
+                                  key={textIndex}
+                                  id={`slide-${slideIndex}-text-${textIndex}`}
+                                  rows={3}
+                                  value={text || ''}
+                                  onChange={(e) => handleSlideTextChange(slideIndex, textIndex, e.target.value)}
+                                  disabled={!isEditing}
+                                  className="mb-2"
+                                />
+                              )) : (
+                                <Textarea
+                                  id={`slide-${slideIndex}-text-0`}
+                                  rows={3}
+                                  value=""
+                                  onChange={(e) => handleSlideTextChange(slideIndex, 0, e.target.value)}
+                                  disabled={!isEditing}
+                                  placeholder="本文がありません"
+                                />
+                              )}
+                            </div>
 
                           <div className="grid gap-2">
                             <Label htmlFor={`slide-${slideIndex}-note`}>ノート</Label>
@@ -1190,11 +1188,11 @@ const EmergencyGuideEdit: React.FC = () => {
                             <div className="font-medium text-blue-800">開始ノード</div>
                             <div className="text-sm text-gray-600 mt-1">応急処置フローの開始点</div>
                           </div>
-                          
+
                           <div className="flex justify-center">
                             <ArrowDown className="h-6 w-6 text-gray-400" />
                           </div>
-                          
+
                           <div className="bg-white border border-green-300 rounded-lg p-4 mx-auto max-w-md">
                             <div className="font-medium text-green-800">ステップノード例</div>
                             <div className="text-sm text-gray-600 mt-1">
@@ -1203,11 +1201,11 @@ const EmergencyGuideEdit: React.FC = () => {
                               - 煙が出ていないか
                             </div>
                           </div>
-                          
+
                           <div className="flex justify-center">
                             <ArrowDown className="h-6 w-6 text-gray-400" />
                           </div>
-                          
+
                           <div className="bg-white border border-yellow-300 rounded-lg p-4 mx-auto max-w-md">
                             <div className="font-medium text-yellow-800">条件分岐ノード例</div>
                             <div className="text-sm text-gray-600 mt-1">
@@ -1220,7 +1218,7 @@ const EmergencyGuideEdit: React.FC = () => {
                             </div>
                           </div>
                         </div>
-                        
+
                         <div className="mt-8 p-4 bg-yellow-50 rounded-lg">
                           <p className="text-sm">
                             {isEditing ? 
