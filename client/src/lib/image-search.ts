@@ -48,14 +48,30 @@ async function loadImageSearchData(): Promise<void> {
   console.log('📊 画像検索データの読み込みを開始します');
 
   try {
-    // knowledge-baseからJSONを読み込み
-    const response = await fetch('/knowledge-base/data/image_search_data.json?t=' + Date.now(), {
+    // まずknowledge-baseからJSONを読み込み
+    let response = await fetch('/knowledge-base/data/image_search_data.json?t=' + Date.now(), {
       cache: 'no-store',
       headers: {
         'pragma': 'no-cache',
         'cache-control': 'no-cache'
       }
     });
+
+    // knowledge-baseから読み込めない場合は、APIから初期化
+    if (!response.ok) {
+      console.log('knowledge-baseから読み込めないため、APIから初期化します');
+      const initResponse = await fetch('/api/tech-support/init-image-search-data', {
+        method: 'POST'
+      });
+      
+      if (initResponse.ok) {
+        console.log('APIからの初期化が成功しました');
+        // 再度knowledge-baseから読み込み
+        response = await fetch('/knowledge-base/data/image_search_data.json?t=' + Date.now(), {
+          cache: 'no-store'
+        });
+      }
+    }
 
     if (response.ok) {
       const data = await response.json();
@@ -127,7 +143,21 @@ export async function searchImages(query: string): Promise<ImageSearchData[]> {
       isDataLoaded, 
       dataCount: imageSearchData.length 
     });
-    return [];
+    
+    // データが読み込まれていない場合は再読み込みを試行
+    if (!isDataLoaded) {
+      console.log('🔄 データの再読み込みを試行します');
+      await loadImageSearchData();
+      
+      // 再読み込み後に再度チェック
+      if (fuse && imageSearchData.length > 0) {
+        console.log('✅ 再読み込み後にデータが利用可能になりました');
+      } else {
+        return [];
+      }
+    } else {
+      return [];
+    }
   }
 
   if (!query || query.trim().length === 0) {
@@ -169,6 +199,24 @@ export const reloadImageSearchData = async (): Promise<void> => {
   imageSearchData = [];
   fuse = null;
   await loadImageSearchData();
+};
+
+// 検索キャンセル用の変数
+let searchAbortController: AbortController | null = null;
+
+// 検索をキャンセルする関数
+export const cancelSearch = (): void => {
+  if (searchAbortController) {
+    searchAbortController.abort();
+    searchAbortController = null;
+    console.log('検索キャンセルイベントを受信');
+    console.log('画像検索処理がキャンセルされました');
+  }
+};
+
+// 検索関数を更新して、テキストベース検索も追加
+export const searchByText = async (query: string, isManualSearch: boolean = false): Promise<any[]> => {
+  return await searchImages(query);
 };
 
 // 初期化関数
