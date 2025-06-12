@@ -1032,7 +1032,7 @@ const EmergencyGuideEdit: React.FC = () => {
         <WarningDialog
           open={showDeleteDialog}
           title="ファイル削除の確認"
-          message={fileToDelete ? `「${fileToDelete.title}」を削除してもよろしいですか？\n削除すると元に戻せません。` : ''}
+          message={fileToDelete ? '「' + fileToDelete.title + '」を削除してもよろしいですか？\n削除すると元に戻せません。' : ''}
           onCancel={() => {
             setShowDeleteDialog(false);
             setFileToDelete(null);
