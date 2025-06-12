@@ -1621,7 +1621,7 @@ const EmergencyGuideEdit: React.FC = () => {
                               </div>
                             </div>
 
-                            {idx < (isEditing ? editedGuideData?.slides.length : guideData?.data.slides.length || 0) - 1 && (
+                            {idx < ((isEditing ? editedGuideData?.slides.length : guideData?.data.slides.length) || 0) - 1 && (
                               <div className="flex justify-center">
                                 <ArrowDown className="h-6 w-6 text-gray-400" />
                               </div>
