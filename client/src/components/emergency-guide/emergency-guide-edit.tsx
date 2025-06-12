@@ -1447,14 +1447,19 @@ const EmergencyGuideEdit: React.FC = () => {
                   </div>
                 </TabsContent>
 
-                {/* プレビュータブ - 現在編集中の内容を表示 */}
+                {/* プレビュータブ - ノード形式でスライドを表示 */}
                 <TabsContent value="preview">
-                  {isEditing ? (
-                    "現在編集中の内容をプレビュー表示しています。"
-                  ) : (
-                    "保存されている内容を表示しています。"
-                  )}
-                  編集内容はリアルタイムに反映されます。
+                  <div className="mb-4">
+                    {isEditing ? (
+                      <div className="flex items-center gap-2 text-yellow-700">
+                        <AlertCircle className="h-4 w-4" />
+                        現在編集中の内容をプレビュー表示しています。編集内容はリアルタイムに反映されます。
+                      </div>
+                    ) : (
+                      <div className="text-gray-600">保存されている内容を表示しています。</div>
+                    )}
+                  </div>
+                  
                   <Card className={`${isEditing ? 'border-yellow-300 bg-yellow-50' : 'border-green-200'}`}>
                     <CardHeader className={`${isEditing ? 'bg-yellow-100' : 'bg-green-50'} rounded-t-lg`}>
                       <div className="flex justify-between items-center">
@@ -1502,71 +1507,134 @@ const EmergencyGuideEdit: React.FC = () => {
                         <p className="whitespace-pre-line mb-4">
                           {isEditing ? editedGuideData?.metadata.説明 : guideData?.data.metadata.説明 || "説明はありません"}
                         </p>
-                        <h3 className="text-lg font-medium mt-6 mb-2">スライド内容</h3>
-                        <div className="space-y-6">
+                        
+                        <h3 className="text-lg font-medium mt-6 mb-4">フロー構造プレビュー</h3>
+                        
+                        {/* フローノードとして表示 */}
+                        <div className="space-y-4">
+                          {/* 開始ノード */}
+                          <div className="flex justify-center">
+                            <div className="px-6 py-3 shadow-lg rounded-full bg-green-500 text-white font-bold text-center min-w-[120px]">
+                              開始
+                            </div>
+                          </div>
+                          
+                          {/* 矢印 */}
+                          <div className="flex justify-center">
+                            <ArrowDown className="h-6 w-6 text-gray-400" />
+                          </div>
+                          
+                          {/* スライドノード */}
                           {(isEditing ? editedGuideData?.slides : guideData?.data.slides || []).map((slide: any, idx: number) => (
-                            <div key={idx} className={`border rounded-lg p-4 ${isEditing ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50'}`}>
-                              <div className="flex justify-between items-center mb-2">
-                                <h4 className="text-lg font-bold">
-                                  {slide.スライド番号}. {slide.タイトル}
-                                </h4>
-                                {isEditing && (
-                                  <>
-                                    <Badge variant="outline" className="bg-yellow-200 text-yellow-800 border-yellow-400">
-                                      編集中
-                                    </Badge>
+                            <div key={idx}>
+                              {/* スライドノード */}
+                              <div className="flex justify-center">
+                                <div className={`
+                                  px-6 py-4 shadow-lg rounded-lg border-2 max-w-md w-full relative
+                                  ${slide.ノート && slide.ノート.includes('条件分岐') 
+                                    ? 'bg-yellow-100 border-yellow-500 transform rotate-45' 
+                                    : 'bg-blue-100 border-blue-500'
+                                  }
+                                  ${isEditing ? 'hover:shadow-xl transition-shadow cursor-pointer' : ''}
+                                `}>
+                                  <div className={`
+                                    ${slide.ノート && slide.ノート.includes('条件分岐') 
+                                      ? 'transform -rotate-45 text-center' 
+                                      : ''
+                                    }
+                                  `}>
+                                    <div className={`
+                                      font-bold mb-2 
+                                      ${slide.ノート && slide.ノート.includes('条件分岐') 
+                                        ? 'text-yellow-800' 
+                                        : 'text-blue-800'
+                                      }
+                                    `}>
+                                      ステップ {slide.スライド番号}
+                                    </div>
+                                    <div className="text-sm font-medium mb-2">{slide.タイトル}</div>
+                                    {slide.本文.length > 0 && (
+                                      <div className="text-xs text-gray-700 line-clamp-2">
+                                        {slide.本文[0]}
+                                      </div>
+                                    )}
+                                    {slide.ノート && (
+                                      <div className="text-xs text-gray-500 mt-1 italic">
+                                        {slide.ノート.length > 50 ? slide.ノート.substring(0, 50) + '...' : slide.ノート}
+                                      </div>
+                                    )}
+                                  </div>
+                                  
+                                  {/* 編集ボタン */}
+                                  {isEditing && (
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      onClick={() => {
+                                      className="absolute top-2 right-2 h-6 w-6 p-1"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
                                         console.log(`編集ボタンがクリックされました: スライド ${idx + 1}`);
-
-                                        // 該当スライドを選択
                                         setSelectedSlideIndex(idx);
-
-                                        // カスタムイベントを発行してタブ切り替えを要求
                                         const tabSwitchEvent = new CustomEvent('switch-to-slides-tab', {
                                           detail: { slideIndex: idx }
                                         });
                                         window.dispatchEvent(tabSwitchEvent);
-
                                         console.log(`タブ切り替えイベントを発行: スライド ${idx}`);
                                       }}
                                     >
-                                      <Pencil className="h-3 w-3 mr-1" />
-                                      編集
+                                      <Pencil className="h-3 w-3" />
                                     </Button>
-                                  </>
-                                )}
-                              </div>
-                              {slide.本文.map((text: string, textIdx: number) => (
-                                <p key={textIdx} className="mb-2 whitespace-pre-line">
-                                  {text}
-                                </p>
-                              ))}
-                              {slide.ノート && (
-                                <div className="mt-2 flex items-start gap-2">
-                                  <div className="text-gray-500 text-xs font-bold">ノート:</div>
-                                  <div className="text-gray-700 whitespace-pre-line">{slide.ノート}</div>
+                                  )}
                                 </div>
-                              )}
-                              {slide.画像テキスト && slide.画像テキスト.length > 0 && (
-                                <div className="mt-4 grid grid-cols-2 gap-4">
-                                  {slide.画像テキスト.map((imgText: any, imgIdx: number) => (
-                                    <div key={imgIdx} className="space-y-2">
-                                      <img
-                                        src={imgText.画像パス}
-                                        alt={`スライド${slide.スライド番号}の画像${imgIdx + 1}`}
-                                        className="max-w-full h-auto rounded"
-                                      />
-                                      <div className="text-gray-600">{imgText.テキスト}</div>
-                                    </div>
-                                  ))}
+                              </div>
+                              
+                              {/* 矢印（最後のスライド以外） */}
+                              {idx < (isEditing ? editedGuideData?.slides.length : guideData?.data.slides.length || 0) - 1 && (
+                                <div className="flex justify-center">
+                                  <ArrowDown className="h-6 w-6 text-gray-400" />
                                 </div>
                               )}
                             </div>
                           ))}
+                          
+                          {/* 最後の矢印 */}
+                          <div className="flex justify-center">
+                            <ArrowDown className="h-6 w-6 text-gray-400" />
+                          </div>
+                          
+                          {/* 終了ノード */}
+                          <div className="flex justify-center">
+                            <div className="px-6 py-3 shadow-lg rounded-full bg-red-500 text-white font-bold text-center min-w-[120px]">
+                              終了
+                            </div>
+                          </div>
                         </div>
+                        
+                        {/* 画像がある場合の表示 */}
+                        {(isEditing ? editedGuideData?.slides : guideData?.data.slides || []).some((slide: any) => 
+                          slide.画像テキスト && slide.画像テキスト.length > 0
+                        ) && (
+                          <div className="mt-8">
+                            <h4 className="text-md font-medium mb-4">関連画像</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                              {(isEditing ? editedGuideData?.slides : guideData?.data.slides || []).map((slide: any, slideIdx: number) => 
+                                slide.画像テキスト?.map((imgText: any, imgIdx: number) => (
+                                  <div key={`${slideIdx}-${imgIdx}`} className="border rounded-lg p-2 bg-white">
+                                    <img
+                                      src={imgText.画像パス}
+                                      alt={`ステップ${slide.スライド番号}の画像${imgIdx + 1}`}
+                                      className="w-full h-32 object-cover rounded mb-2"
+                                    />
+                                    <div className="text-xs text-gray-600 mb-1">
+                                      ステップ {slide.スライド番号}
+                                    </div>
+                                    <div className="text-xs text-gray-700">{imgText.テキスト}</div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
