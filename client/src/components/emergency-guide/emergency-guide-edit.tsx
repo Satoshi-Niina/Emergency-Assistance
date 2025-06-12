@@ -1334,11 +1334,11 @@ const EmergencyGuideEdit: React.FC = () => {
                                   onDragEnd={handleDragEnd}
                                   onClick={() => setSelectedSlideIndex(slideIndex)}
                                   onContextMenu={(e) => handleContextMenu(e, slideIndex)}
-                                  className={`
-                                    ${isEditing ? 'cursor-move' : ''}
-                                    ${selectedSlideIndex === slideIndex ? 'ring-2 ring-blue-500 ring-offset-2' : ''}
-                                    ${draggedSlideIndex === slideIndex ? 'opacity-50' : ''}
-                                  `}
+                                  className={
+                                    (isEditing ? 'cursor-move ' : '') +
+                                    (selectedSlideIndex === slideIndex ? 'ring-2 ring-blue-500 ring-offset-2 ' : '') +
+                                    (draggedSlideIndex === slideIndex ? 'opacity-50' : '')
+                                  }
                                   tabIndex={isEditing ? 0 : -1}
                                 >
                                   <Card className="border-indigo-200">
