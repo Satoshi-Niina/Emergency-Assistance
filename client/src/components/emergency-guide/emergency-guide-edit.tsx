@@ -1211,7 +1211,7 @@ const EmergencyGuideEdit: React.FC = () => {
                             ${draggedSlideIndex === slideIndex ? 'opacity-50' : ''}
                           `}
                           tabIndex={isEditing ? 0 : -1}
-                        ></div>
+                        >
                           <Card className="border-indigo-200">
                             <CardHeader className="bg-indigo-50 rounded-t-lg">
                               <div className="flex justify-between items-center">
