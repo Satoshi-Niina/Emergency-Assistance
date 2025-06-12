@@ -108,6 +108,15 @@ const DecisionNode = memo(({ data }: NodeProps) => {
               {data.message}
             </div>
           )}
+          
+          {/* 条件表示（簡略版） */}
+          {(data.yesCondition || data.noCondition || data.otherCondition) && (
+            <div className="mt-1 text-xs" style={{ maxHeight: '40px', overflow: 'hidden' }}>
+              {data.yesCondition && <div className="text-green-600">✓ {data.yesCondition.substring(0, 15)}...</div>}
+              {data.noCondition && <div className="text-red-600">✗ {data.noCondition.substring(0, 15)}...</div>}
+              {data.otherCondition && <div className="text-orange-600">? {data.otherCondition.substring(0, 15)}...</div>}
+            </div>
+          )}
         </div>
       </div>
       
@@ -593,12 +602,76 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
                         rows={selectedNode.type === 'decision' ? 6 : 4}
                       />
                       {selectedNode.type === 'decision' && (
-                        <div className="mt-2 p-3 bg-blue-50 rounded-md text-sm">
-                          <div className="font-medium text-blue-800 mb-1">条件分岐の接続方法：</div>
-                          <div className="space-y-1 text-blue-700">
-                            <div>• <span className="font-medium text-green-600">右側（緑）</span>：「はい」の場合の次のノード</div>
-                            <div>• <span className="font-medium text-red-600">下側（赤）</span>：「いいえ」の場合の次のノード</div>
-                            <div>• <span className="font-medium text-orange-600">左側（オレンジ）</span>：「その他」の場合の次のノード</div>
+                        <div className="mt-4 space-y-3">
+                          <div className="p-3 bg-blue-50 rounded-md text-sm">
+                            <div className="font-medium text-blue-800 mb-1">条件分岐の接続方法：</div>
+                            <div className="space-y-1 text-blue-700">
+                              <div>• <span className="font-medium text-green-600">右側（緑）</span>：「はい」の場合の次のノード</div>
+                              <div>• <span className="font-medium text-red-600">下側（赤）</span>：「いいえ」の場合の次のノード</div>
+                              <div>• <span className="font-medium text-orange-600">左側（オレンジ）</span>：「その他」の場合の次のノード</div>
+                            </div>
+                          </div>
+                          
+                          {/* 条件分岐の選択肢設定 */}
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">分岐選択肢の設定</Label>
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                                <Input
+                                  placeholder="「はい」の場合の条件（例：エンジンが急に停止）"
+                                  value={selectedNode.data.yesCondition || ''}
+                                  onChange={(e) => updateNodeData('yesCondition', e.target.value)}
+                                  className="text-sm"
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                                <Input
+                                  placeholder="「いいえ」の場合の条件（例：エンジンがゆっくり停止）"
+                                  value={selectedNode.data.noCondition || ''}
+                                  onChange={(e) => updateNodeData('noCondition', e.target.value)}
+                                  className="text-sm"
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                                <Input
+                                  placeholder="「その他」の場合の条件（例：原因不明）"
+                                  value={selectedNode.data.otherCondition || ''}
+                                  onChange={(e) => updateNodeData('otherCondition', e.target.value)}
+                                  className="text-sm"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 現在の接続状況表示 */}
+                          <div className="p-2 bg-gray-50 rounded-md text-xs">
+                            <div className="font-medium mb-1">現在の接続状況：</div>
+                            {(() => {
+                              const connectedEdges = edges.filter(edge => edge.source === selectedNode.id);
+                              const yesConnection = connectedEdges.find(edge => edge.sourceHandle === 'yes');
+                              const noConnection = connectedEdges.find(edge => edge.sourceHandle === 'no');
+                              const otherConnection = connectedEdges.find(edge => edge.sourceHandle === 'other');
+                              
+                              return (
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-1">
+                                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                    <span>はい: {yesConnection ? `${nodes.find(n => n.id === yesConnection.target)?.data.label || '不明'}` : '未接続'}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                                    <span>いいえ: {noConnection ? `${nodes.find(n => n.id === noConnection.target)?.data.label || '不明'}` : '未接続'}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                                    <span>その他: {otherConnection ? `${nodes.find(n => n.id === otherConnection.target)?.data.label || '不明'}` : '未接続'}</span>
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
                       )}
