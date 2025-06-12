@@ -985,8 +985,7 @@ const EmergencyGuideEdit: React.FC = () => {
       }
     };
 
-    window.addEventListener('```text
-window.addEventListener('search-emergency-guide', handleSearchEvent as EventListener);
+    window.addEventListener('search-emergency-guide', handleSearchEvent as EventListener);
     return () => {
       window.removeEventListener('search-emergency-guide', handleSearchEvent as EventListener);
     };
