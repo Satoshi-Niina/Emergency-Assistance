@@ -328,17 +328,51 @@ router.get('/:id', async (req: Request, res: Response) => {
     // 🎯 ファイル名が指定されている場合は優先して使用
     if (fileName && typeof fileName === 'string') {
       const specifiedPath = path.join(troubleshootingDir, fileName);
+      console.log(`🎯 指定ファイル優先読み込み: ${fileName} -> ${specifiedPath}`);
+      console.log(`🔍 ファイル存在確認: ${fs.existsSync(specifiedPath)}`);
+      
       if (fs.existsSync(specifiedPath)) {
         try {
           const content = fs.readFileSync(specifiedPath, 'utf-8');
           const data = JSON.parse(content);
           targetFilePath = specifiedPath;
           targetFlowData = data;
-          console.log(`✅ 指定ファイルで発見: ${fileName} (ID: ${data.id})`);
+          console.log(`✅ 指定ファイルで発見: ${fileName} (ID: ${data.id}, ステップ数: ${data.steps?.length || 0})`);
+          
+          // 強制的にリターンして他の検索をスキップ
+          console.log(`🎯 指定ファイル読み込み完了 - 他の検索をスキップ`);
         } catch (error) {
           console.warn(`⚠️ 指定ファイル ${fileName} の読み込みエラー:`, error);
         }
+      } else {
+        console.warn(`⚠️ 指定ファイルが存在しません: ${specifiedPath}`);
       }
+    }
+
+    // 🚀 指定ファイルで見つかった場合は早期リターン
+    if (targetFlowData && fileName) {
+      console.log(`🎯 指定ファイル処理完了 - 早期リターン`);
+      
+      // データの整合性チェック
+      if (targetFlowData.id !== id) {
+        console.warn(`⚠️ ID不一致を修正: 要求=${id}, 実際=${targetFlowData.id}`);
+        targetFlowData.id = id;
+      }
+
+      res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'X-Fresh-Load': 'true',
+        'X-Timestamp': Date.now().toString(),
+        'X-Request-ID': id,
+        'X-Found-ID': targetFlowData.id,
+        'X-Target-File': path.basename(targetFilePath),
+        'X-File-Path': targetFilePath,
+        'X-Steps-Count': (targetFlowData.steps?.length || 0).toString()
+      });
+
+      return res.status(200).json(targetFlowData);
     }
 
     // ファイル名指定で見つからない場合は全ファイル検索

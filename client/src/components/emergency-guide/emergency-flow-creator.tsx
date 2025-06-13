@@ -232,14 +232,15 @@ const EmergencyFlowCreator: React.FC = () => {
 
       // 🎯 ファイルパスを使用してAPIリクエスト
       const timestamp = Date.now();
-      const response = await fetch(`/api/emergency-flow/${flowId}?t=${timestamp}&fresh=true&fileName=${targetFlow.fileName}`, {
+      const response = await fetch(`/api/emergency-flow/${flowId}?t=${timestamp}&fresh=true&fileName=${encodeURIComponent(targetFlow.fileName)}`, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
           'Expires': '0',
           'X-Target-File': targetFlow.fileName,
-          'X-Target-Path': filePath
+          'X-Target-Path': filePath,
+          'X-Force-File': targetFlow.fileName
         }
       });
 
