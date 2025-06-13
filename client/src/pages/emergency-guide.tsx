@@ -46,7 +46,27 @@ const EmergencyGuidePage: React.FC = () => {
   // フローデータ更新イベントのリスナー
   useEffect(() => {
     const refreshList = async () => {
-      // 他のコンポーネントに更新通知を送る
+      console.log('フローリスト更新イベントを受信、再読み込みします');
+      // フローリストを強制的に再取得
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('forceRefreshFlowList', {
+          detail: { timestamp: Date.now() }
+        }));
+      }
+    };
+
+    window.addEventListener("flowDataUpdated", refreshList);
+    window.addEventListener("troubleshootingDataUpdated", refreshList);
+    window.addEventListener("emergencyFlowSaved", refreshList);
+    
+    return () => {
+      window.removeEventListener("flowDataUpdated", refreshList);
+      window.removeEventListener("troubleshootingDataUpdated", refreshList);
+      window.removeEventListener("emergencyFlowSaved", refreshList);
+    };
+  }, []);
+
+  // 他のコンポーネントに更新通知を送る
       window.dispatchEvent(new CustomEvent('emergency-guide-refresh', { 
         detail: { timestamp: Date.now() }
       }));

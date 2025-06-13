@@ -730,10 +730,13 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
                     </Label>
                     <Input
                       id="node-label"
-                      className="w-full"
+                      className="w-full border-2 border-blue-300 focus:border-blue-500"
                       value={selectedNode.data.label || ''}
                       onChange={(e) => {
-                        updateNodeData('label', e.target.value);
+                        const newValue = e.target.value;
+                        // updateNodeDataを呼び出してselectedNodeを更新
+                        updateNodeData('label', newValue);
+                        
                         // リアルタイムでノードのラベルを更新
                         setNodes((nds) =>
                           nds.map((node) => {
@@ -742,21 +745,30 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
                                 ...node,
                                 data: {
                                   ...node.data,
-                                  label: e.target.value,
+                                  label: newValue,
                                 },
                               };
                             }
                             return node;
                           })
                         );
+                        
+                        // selectedNodeも同期して更新
+                        setSelectedNode(prev => prev ? {
+                          ...prev,
+                          data: {
+                            ...prev.data,
+                            label: newValue
+                          }
+                        } : null);
                       }}
                       placeholder={
                         selectedNode.type === 'decision' ? "例：エンジン停止の状況確認" :
                         selectedNode.type === 'step' ? "例：安全確保手順" : "ノードラベル"
                       }
                     />
-                    <div className="text-xs text-gray-500 mt-1">
-                      このタイトルが応急処置ガイドのスライドタイトルとして表示されます（リアルタイム反映）
+                    <div className="text-xs text-green-600 mt-1 font-medium">
+                      ✅ スライドタイトル編集機能：入力すると即座にノードに反映され、保存時に確実に保存されます
                     </div>
                   </div>
 
