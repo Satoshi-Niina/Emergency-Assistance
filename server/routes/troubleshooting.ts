@@ -52,54 +52,78 @@ router.get('/', (req, res) => {
   }
 });
 
-// 個別のトラブルシューティングフローを取得
+// 特定のトラブルシューティングデータ取得
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`Fetching troubleshooting data for ID: ${id}`);
+    const timestamp = Date.now();
 
-    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    const filePath = path.join(troubleshootingDir, `${id}.json`);
+    console.log(`🔄 [${timestamp}] トラブルシューティングデータ取得: ID=${id}`);
 
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ 
-        error: 'ファイルが見つかりません',
-        id: id,
-        path: filePath
-      });
+    // 複数のディレクトリから検索
+    const searchPaths = [
+      path.join(process.cwd(), 'knowledge-base', 'troubleshooting', `${id}.json`),
+      path.join(process.cwd(), 'knowledge-base', 'json', `${id}.json`)
+    ];
+
+    let data = null;
+    let foundPath = null;
+
+    for (const filePath of searchPaths) {
+      if (fs.existsSync(filePath)) {
+        console.log(`📁 ファイル発見: ${filePath}`);
+        foundPath = filePath;
+
+        // ファイル統計情報
+        const stats = fs.statSync(filePath);
+        console.log(`📊 ファイル情報: size=${stats.size}, modified=${stats.mtime.toISOString()}`);
+
+        // ファイル読み込み
+        const content = fs.readFileSync(filePath, 'utf8');
+        data = JSON.parse(content);
+
+        // データの完全性チェック
+        if (!data.steps) data.steps = [];
+        if (!data.triggerKeywords) data.triggerKeywords = [];
+
+        console.log(`✅ データ読み込み成功:`, {
+          id: data.id,
+          title: data.title,
+          stepsCount: data.steps.length
+        });
+        break;
+      }
     }
 
-    // ファイルの統計情報を取得してキャッシュを無効化
-    const stats = fs.statSync(filePath);
-    const fileContent = fs.readFileSync(filePath, 'utf8');
-    const data = JSON.parse(fileContent);
-
-    // タイムスタンプを追加してキャッシュを無効化
-    data._fileStats = {
-      mtime: stats.mtime,
-      size: stats.size
-    };
-
-    // updatedAtフィールドがある場合はログ出力
-    if (data.updatedAt) {
-      console.log(`Data was last updated at: ${data.updatedAt}`);
+    if (!data) {
+      console.log(`❌ ファイルが見つかりません: ${id}`);
+      return res.status(404).json({ error: 'データが見つかりません' });
     }
 
-    console.log(`Successfully loaded troubleshooting data:`, data);
-
-    // 強力なキャッシュ無効化ヘッダーを設定
+    // 最強のキャッシュ無効化ヘッダー
     res.set({
-      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0, s-maxage=0',
       'Pragma': 'no-cache',
-      'Expires': '0',
+      'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
       'Last-Modified': new Date().toUTCString(),
-      'ETag': `"${Date.now()}-${Math.random()}"`
+      'ETag': `"${timestamp}-${Math.random().toString(36)}"`,
+      'X-Accel-Expires': '0',
+      'Vary': '*'
     });
 
-    res.json(data);
+    // レスポンスデータに追加情報を付与
+    const responseData = {
+      ...data,
+      loadedAt: new Date().toISOString(),
+      requestTimestamp: timestamp,
+      filePath: foundPath
+    };
+
+    console.log(`📤 レスポンス送信: ${JSON.stringify(responseData).length}文字`);
+    res.json(responseData);
   } catch (error) {
-    console.error('Error fetching troubleshooting data:', error);
-    res.status(500).json({ error: 'Failed to fetch troubleshooting data' });
+    console.error('❌ トラブルシューティングデータ取得エラー:', error);
+    res.status(500).json({ error: 'データの取得に失敗しました' });
   }
 });
 

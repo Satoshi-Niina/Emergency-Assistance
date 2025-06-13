@@ -115,24 +115,58 @@ const TroubleshootingViewer: React.FC<TroubleshootingViewerProps> = ({ data, onS
     }
 
     try {
+      setIsSaving(true);
+      
+      // ローカルデータを即座に更新
       const updatedData = { ...localData };
       updatedData.steps[currentStep].title = editingTitleValue.trim();
       updatedData.updatedAt = new Date().toISOString();
+      updatedData.savedTimestamp = Date.now();
 
+      console.log('💾 スライドタイトルを保存:', {
+        stepId: updatedData.steps[currentStep].id,
+        oldTitle: localData.steps[currentStep].title,
+        newTitle: editingTitleValue.trim(),
+        timestamp: updatedData.savedTimestamp
+      });
+
+      // UI即座更新
       setLocalData(updatedData);
+      
+      // サーバーに保存
       await onSave(updatedData);
 
+      // 編集モード終了
       setIsEditingTitle(false);
+      setEditingTitleValue('');
+
+      // 成功通知
       toast({
         title: "保存完了",
         description: "スライドタイトルを更新しました",
       });
+
+      // 強制リフレッシュイベント発火
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('troubleshootingDataUpdated', {
+          detail: { 
+            id: updatedData.id, 
+            data: updatedData,
+            action: 'titleUpdate',
+            timestamp: updatedData.savedTimestamp
+          }
+        }));
+      }
+
     } catch (error) {
+      console.error('❌ タイトル保存エラー:', error);
       toast({
         title: "保存エラー",
         description: "タイトルの保存中にエラーが発生しました",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -377,37 +411,49 @@ const TroubleshootingViewer: React.FC<TroubleshootingViewerProps> = ({ data, onS
           <div className="flex items-center justify-between">
             <div className="flex-1">
               {isEditingTitle ? (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={editingTitleValue}
-                    onChange={(e) => setEditingTitleValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleSaveTitle();
-                      if (e.key === 'Escape') handleCancelTitleEdit();
-                    }}
-                    className="flex-1 px-2 py-1 border rounded text-lg font-semibold"
-                    autoFocus
-                    placeholder="スライドタイトルを入力してください"
-                  />
-                  <Button size="sm" onClick={handleSaveTitle} disabled={!editingTitleValue.trim()}>
-                    <Save className="h-4 w-4" />
+                <div className="flex items-center gap-2 w-full">
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={editingTitleValue}
+                      onChange={(e) => setEditingTitleValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && editingTitleValue.trim()) handleSaveTitle();
+                        if (e.key === 'Escape') handleCancelTitleEdit();
+                      }}
+                      className="w-full px-3 py-2 border-2 border-blue-300 rounded text-lg font-semibold focus:outline-none focus:border-blue-500"
+                      autoFocus
+                      placeholder="スライドタイトルを入力してください"
+                      disabled={isSaving}
+                    />
+                  </div>
+                  <Button 
+                    size="sm" 
+                    onClick={handleSaveTitle} 
+                    disabled={!editingTitleValue.trim() || isSaving}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                   </Button>
-                  <Button size="sm" variant="outline" onClick={handleCancelTitleEdit}>
+                  <Button size="sm" variant="outline" onClick={handleCancelTitleEdit} disabled={isSaving}>
                     ×
                   </Button>
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
-                  <CardTitle 
-                    className="text-lg cursor-pointer hover:bg-gray-100 px-2 py-1 rounded flex-1" 
-                    onClick={handleStartTitleEdit}
-                    title="クリックしてタイトルを編集"
-                  >
-                    ステップ {currentStep + 1}/{localData.steps.length}: {localData.steps[currentStep]?.title || '（タイトル未設定）'}
-                    <Edit className="inline ml-2 h-4 w-4 opacity-50" />
-                  </CardTitle>
-                  <Button size="sm" variant="outline" onClick={handleStartTitleEdit}>
+                <div className="flex items-center gap-2 w-full">
+                  <div className="flex-1">
+                    <CardTitle 
+                      className="text-lg cursor-pointer hover:bg-blue-50 px-3 py-2 rounded border-2 border-transparent hover:border-blue-200 transition-all" 
+                      onClick={handleStartTitleEdit}
+                      title="クリックしてタイトルを編集"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>ステップ {currentStep + 1}/{localData.steps.length}: {localData.steps[currentStep]?.title || '（タイトル未設定）'}</span>
+                        <Edit className="h-4 w-4 opacity-50 ml-2" />
+                      </div>
+                    </CardTitle>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={handleStartTitleEdit} className="shrink-0">
                     <Edit className="h-4 w-4 mr-1" />
                     タイトル編集
                   </Button>
