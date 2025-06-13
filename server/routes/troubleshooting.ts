@@ -129,7 +129,7 @@ router.get('/:id', async (req, res) => {
       ...data,
       loadedAt: new Date().toISOString(),
       requestTimestamp: timestamp,
-      filePath: foundPath
+      filePath: filePath
     };
 
     console.log(`📤 レスポンス送信: ${JSON.stringify(responseData).length}文字`);
