@@ -26,7 +26,7 @@ router.get('/', (req, res) => {
       .map(file => {
         try {
           const filePath = path.join(troubleshootingDir, file);
-          
+
           if (!fs.existsSync(filePath)) {
             console.error(`❌ ファイルが存在しません: ${filePath}`);
             return null;
@@ -120,20 +120,20 @@ router.get('/:id', async (req, res) => {
     // ⭐ 強化されたファイル読み込み処理
     let content: string;
     let data: any;
-    
+
     try {
       // ファイル内容を複数回読み込んで検証
       content = fs.readFileSync(filePath, 'utf8');
       console.log(`📄 ファイル読み込み完了: ${content.length}文字`);
-      
+
       // JSON解析前にファイル内容の一部を確認
       const contentPreview = content.substring(0, 200) + (content.length > 200 ? '...' : '');
       console.log(`📝 ファイル内容プレビュー: ${contentPreview}`);
-      
+
       // 厳密なJSON検証
       data = JSON.parse(content);
       console.log(`✅ JSON解析成功`);
-      
+
     } catch (parseError) {
       console.error(`❌ JSON解析エラー:`, parseError);
       return res.status(500).json({ 
@@ -147,12 +147,12 @@ router.get('/:id', async (req, res) => {
       console.log(`❌ データが空です: ${id}`);
       return res.status(404).json({ error: 'データが見つかりません' });
     }
-    
+
     if (!data.steps) {
       console.log(`⚠️ stepsプロパティが存在しません。空配列で初期化します。`);
       data.steps = [];
     }
-    
+
     if (!data.triggerKeywords) {
       console.log(`⚠️ triggerKeywordsプロパティが存在しません。空配列で初期化します。`);
       data.triggerKeywords = [];
@@ -183,11 +183,11 @@ router.get('/:id', async (req, res) => {
     if (stepsCount < 10) {
       console.warn(`⚠️ ステップ数が期待値より少ない: 実際=${stepsCount}, 期待値=10以上`);
       console.warn(`🔍 missing steps検証のため、ファイル内容再確認...`);
-      
+
       // ファイル内容に不足しているステップIDを探索
       const expectedStepIds = ['start', 'step1', 'decision1', 'step2a', 'step2b', 'step3a', 'step3b', 'step3c', 'step3d', 'step3e', 'step3f', 'step3g', 'decision2', 'step_success', 'step_failure'];
       const missingSteps = expectedStepIds.filter(expectedId => !allStepIds.includes(expectedId));
-      
+
       console.warn(`❌ 不足しているステップID:`, missingSteps);
     }
 
@@ -308,19 +308,19 @@ router.delete('/delete/:id', async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`🗑️ フロー削除: ID=${id}`);
-    
+
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
     const filePath = path.join(troubleshootingDir, `${id}.json`);
-    
+
     if (!fs.existsSync(filePath)) {
       console.log(`❌ 削除対象ファイルが存在しません: ${filePath}`);
       return res.status(404).json({ error: 'ファイルが見つかりません' });
     }
-    
+
     // ファイルを削除
     fs.unlinkSync(filePath);
     console.log(`✅ ファイル削除完了: ${filePath}`);
-    
+
     res.json({ 
       success: true, 
       message: 'ファイルが削除されました',
