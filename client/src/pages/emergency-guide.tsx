@@ -185,8 +185,13 @@ const EmergencyGuidePage: React.FC = () => {
 
       setFlowList(uniqueData || []);
 
-      // ローカルストレージにもキャッシュ（削除チェック用）
+      // 古いキャッシュを完全にクリア
       if (typeof window !== 'undefined') {
+        localStorage.removeItem('emergencyFlowList');
+        localStorage.removeItem('troubleshootingCache'); 
+        localStorage.removeItem('flowCache');
+        
+        // 新しいデータのみをキャッシュ
         localStorage.setItem('emergencyFlowList', JSON.stringify({
           data: uniqueData,
           timestamp: timestamp

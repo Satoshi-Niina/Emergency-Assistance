@@ -228,36 +228,38 @@ router.get('/list', async (req, res) => {
       console.log(`🔍 トラブルシューティングディレクトリ: ${troubleshootingDir}`);
 
       if (fs.existsSync(troubleshootingDir)) {
-        const allowedFiles = ['engine_stop_no_start.json']; // 許可するファイルのみ
+        // 厳格なファイル名チェック - engine_stop_no_start.jsonのみ許可
+        const targetFile = 'engine_stop_no_start.json';
+        const targetPath = path.join(troubleshootingDir, targetFile);
 
-        const troubleshootingFiles = fs.readdirSync(troubleshootingDir)
-          .filter(file => file.endsWith('.json') && allowedFiles.includes(file))
-          .map(file => {
-            try {
-              const filePath = path.join(troubleshootingDir, file);
-              const content = fs.readFileSync(filePath, 'utf-8');
-              const data = JSON.parse(content);
+        console.log(`🎯 対象ファイル確認: ${targetPath}`);
+        console.log(`📁 ファイル存在: ${fs.existsSync(targetPath)}`);
 
-              console.log(`📁 で発見: ${file} (ID: ${data.id}, ステップ数: ${data.steps?.length || 0})`);
+        if (fs.existsSync(targetPath)) {
+          try {
+            const content = fs.readFileSync(targetPath, 'utf-8');
+            const data = JSON.parse(content);
 
-              return {
-                id: data.id,
-                title: data.title,
-                description: data.description,
-                trigger: data.triggerKeywords || [],
-                slides: [], // 互換性のため
-                createdAt: data.updatedAt || new Date().toISOString(),
-                fileName: file
-              };
-            } catch (error) {
-              console.error(`❌ ファイル読み込みエラー ${file}:`, error);
-              return null;
-            }
-          })
-          .filter(flow => flow !== null);
+            console.log(`✅ 読み込み成功: ${targetFile} (ID: ${data.id}, ステップ数: ${data.steps?.length || 0})`);
 
-        flows.push(...troubleshootingFiles);
-        console.log(`✅ トラブルシューティングフロー追加: ${troubleshootingFiles.length}件（許可ファイルのみ）`);
+            const flowData = {
+              id: data.id,
+              title: data.title,
+              description: data.description,
+              trigger: data.triggerKeywords || [],
+              slides: [], // 互換性のため
+              createdAt: data.updatedAt || new Date().toISOString(),
+              fileName: targetFile
+            };
+
+            flows.push(flowData);
+            console.log(`✅ フロー追加完了: 1件（${targetFile}のみ）`);
+          } catch (error) {
+            console.error(`❌ ファイル読み込みエラー ${targetFile}:`, error);
+          }
+        } else {
+          console.log(`⚠️ 対象ファイルが存在しません: ${targetFile}`);
+        }
       }
     } catch (error) {
       console.error('❌ トラブルシューティングディレクトリ読み込みエラー:', error);
