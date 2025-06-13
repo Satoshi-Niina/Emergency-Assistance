@@ -6,7 +6,7 @@ import { log } from '../vite';
 const router = express.Router();
 
 // トラブルシューティングデータを更新
-router.post('/update-troubleshooting/:id', async (req: Request, res: Response) => {
+router.put('/update-troubleshooting/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     
@@ -32,25 +32,36 @@ router.post('/update-troubleshooting/:id', async (req: Request, res: Response) =
     // リクエストボディからデータを取得
     const troubleshootingData = req.body;
     
-    // ファイルが存在するか確認
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({
-        success: false,
-        error: '指定されたトラブルシューティングファイルが見つかりません'
-      });
+    // バックアップを作成（既存ファイルがある場合）
+    if (fs.existsSync(filePath)) {
+      const backupPath = `${filePath}.backup.${Date.now()}`;
+      fs.copyFileSync(filePath, backupPath);
+      log(`バックアップ作成: ${backupPath}`);
     }
     
     // 更新日時を設定
     troubleshootingData.updatedAt = new Date().toISOString();
+    troubleshootingData.savedTimestamp = Date.now();
     
     // ファイルに書き込み
     fs.writeFileSync(filePath, JSON.stringify(troubleshootingData, null, 2));
     
+    // 書き込み確認
+    const verifyContent = fs.readFileSync(filePath, 'utf-8');
+    const parsedContent = JSON.parse(verifyContent);
+    
     log(`トラブルシューティングデータを更新しました: ${fileId}.json`);
+    log(`保存されたデータ確認: ID=${parsedContent.id}, ステップ数=${parsedContent.steps?.length || 0}`);
     
     return res.status(200).json({
       success: true,
-      message: 'トラブルシューティングデータが更新されました'
+      message: 'トラブルシューティングデータが更新されました',
+      savedData: {
+        id: parsedContent.id,
+        title: parsedContent.title,
+        stepCount: parsedContent.steps?.length || 0,
+        savedTimestamp: parsedContent.savedTimestamp
+      }
     });
   } catch (error) {
     console.error('トラブルシューティング更新エラー:', error);
