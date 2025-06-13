@@ -92,8 +92,26 @@ router.post('/save', async (req, res) => {
 
     // JSONファイルとして保存
     try {
-      fs.writeFileSync(filePath, JSON.stringify(saveData, null, 2), 'utf8');
-      console.log('✅ ファイル保存成功:', filePath);
+      // 保存前にバックアップを作成
+      if (fs.existsSync(filePath)) {
+        const backupPath = `${filePath}.backup.${Date.now()}`;
+        fs.copyFileSync(filePath, backupPath);
+        console.log('💾 バックアップ作成:', backupPath);
+      }
+
+      // 原子的書き込み（一時ファイル経由）
+      const tempFilePath = `${filePath}.tmp.${Date.now()}`;
+      const saveDataString = JSON.stringify(saveData, null, 2);
+      
+      fs.writeFileSync(tempFilePath, saveDataString, 'utf8');
+      
+      // 一時ファイルが正常に書き込まれた場合のみ、元ファイルを置き換え
+      if (fs.existsSync(tempFilePath)) {
+        fs.renameSync(tempFilePath, filePath);
+        console.log('✅ 原子的ファイル保存成功:', filePath);
+      } else {
+        throw new Error('一時ファイルの作成に失敗しました');
+      }
       
       // ファイルが実際に存在することを確認
       if (fs.existsSync(filePath)) {
@@ -101,7 +119,8 @@ router.post('/save', async (req, res) => {
         console.log('📊 保存されたファイル情報:', {
           path: filePath,
           size: fileStats.size,
-          modified: fileStats.mtime
+          modified: fileStats.mtime,
+          saveTimestamp: saveData.savedTimestamp || 'N/A'
         });
         
         // 保存後のディレクトリ一覧を表示
@@ -114,10 +133,39 @@ router.post('/save', async (req, res) => {
         console.log('✅ 保存されたデータの確認:', {
           id: parsedContent.id,
           title: parsedContent.title,
-          fileSize: savedContent.length
+          fileSize: savedContent.length,
+          stepCount: parsedContent.steps?.length || 0,
+          nodeCount: parsedContent.nodes?.length || 0,
+          edgeCount: parsedContent.edges?.length || 0,
+          savedTimestamp: parsedContent.savedTimestamp
         });
       } else {
         throw new Error('ファイルが保存されませんでした');
+      }
+
+      // 古いバックアップファイルのクリーンアップ（最新5つまで保持）
+      try {
+        const backupFiles = fs.readdirSync(troubleshootingDir)
+          .filter(file => file.startsWith(`${flowData.id}.json.backup.`))
+          .sort((a, b) => {
+            const timeA = parseInt(a.split('.backup.')[1] || '0');
+            const timeB = parseInt(b.split('.backup.')[1] || '0');
+            return timeB - timeA; // 新しい順
+          });
+
+        if (backupFiles.length > 5) {
+          const filesToDelete = backupFiles.slice(5);
+          filesToDelete.forEach(file => {
+            try {
+              fs.unlinkSync(path.join(troubleshootingDir, file));
+              console.log('🗑️ 古いバックアップを削除:', file);
+            } catch (err) {
+              console.warn('⚠️ バックアップ削除エラー:', err);
+            }
+          });
+        }
+      } catch (cleanupError) {
+        console.warn('⚠️ バックアップクリーンアップエラー:', cleanupError);
       }
     } catch (fileError) {
       console.error('❌ ファイル保存エラー:', fileError);

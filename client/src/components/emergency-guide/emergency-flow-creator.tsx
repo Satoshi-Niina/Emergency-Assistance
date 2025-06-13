@@ -1071,6 +1071,43 @@ const EmergencyFlowCreator: React.FC = () => {
     }
   };
 
+  // フロー詳細の読み込み（トラブルシューティングデータから）
+  const loadFlowFromTroubleshooting = async (flowId: string): Promise<any> => {
+    try {
+      console.log(`📖 トラブルシューティングフロー読み込み開始: ID=${flowId}`);
+
+      // キャッシュバスターを追加
+      const cacheBuster = `timestamp=${Date.now()}&random=${Math.random()}`;
+      const response = await fetch(`/api/emergency-flow/detail/${flowId}?${cacheBuster}`, {
+        cache: 'no-cache',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ API応答受信:', result);
+
+      if (!result.data) {
+        throw new Error('データが見つかりません');
+      }
+
+      const troubleshootingData = result.data;
+      console.log('📊 取得したトラブルシューティングデータ:', troubleshootingData);
+
+      return enhanceFlowDataForEditor(troubleshootingData);
+    } catch (error) {
+      console.error('❌ フロー読み込みエラー:', error);
+      throw error;
+    }
+  };
+
   return (
     <>
       <Card className="w-full h-screen max-h-[calc(100vh-120px)] overflow-auto">

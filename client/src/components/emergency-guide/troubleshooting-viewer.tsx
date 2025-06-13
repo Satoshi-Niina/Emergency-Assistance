@@ -388,8 +388,9 @@ const TroubleshootingViewer: React.FC<TroubleshootingViewerProps> = ({ data, onS
                     }}
                     className="flex-1 px-2 py-1 border rounded text-lg font-semibold"
                     autoFocus
+                    placeholder="スライドタイトルを入力してください"
                   />
-                  <Button size="sm" onClick={handleSaveTitle}>
+                  <Button size="sm" onClick={handleSaveTitle} disabled={!editingTitleValue.trim()}>
                     <Save className="h-4 w-4" />
                   </Button>
                   <Button size="sm" variant="outline" onClick={handleCancelTitleEdit}>
@@ -397,10 +398,20 @@ const TroubleshootingViewer: React.FC<TroubleshootingViewerProps> = ({ data, onS
                   </Button>
                 </div>
               ) : (
-                <CardTitle className="text-lg cursor-pointer hover:bg-gray-100 px-2 py-1 rounded" onClick={handleStartTitleEdit}>
-                  ステップ {currentStep + 1}/{localData.steps.length}: {localData.steps[currentStep]?.title}
-                  <Edit className="inline ml-2 h-4 w-4 opacity-50" />
-                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <CardTitle 
+                    className="text-lg cursor-pointer hover:bg-gray-100 px-2 py-1 rounded flex-1" 
+                    onClick={handleStartTitleEdit}
+                    title="クリックしてタイトルを編集"
+                  >
+                    ステップ {currentStep + 1}/{localData.steps.length}: {localData.steps[currentStep]?.title || '（タイトル未設定）'}
+                    <Edit className="inline ml-2 h-4 w-4 opacity-50" />
+                  </CardTitle>
+                  <Button size="sm" variant="outline" onClick={handleStartTitleEdit}>
+                    <Edit className="h-4 w-4 mr-1" />
+                    タイトル編集
+                  </Button>
+                </div>
               )}
             </div>
           </div>
