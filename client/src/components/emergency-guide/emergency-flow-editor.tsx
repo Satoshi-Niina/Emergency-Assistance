@@ -435,6 +435,17 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
 
   // フローデータの保存処理
   const handleSave = useCallback(async () => {
+    console.log('🔄 保存開始 - 現在のノード状態:', {
+      totalNodes: nodes.length,
+      decisionNodes: nodes.filter(n => n.type === 'decision').length,
+      conditions: nodes.filter(n => n.type === 'decision').map(n => ({
+        id: n.id,
+        yesCondition: n.data.yesCondition,
+        noCondition: n.data.noCondition,
+        otherCondition: n.data.otherCondition
+      }))
+    });
+
     // バリデーション
     if (!flowTitle.trim()) {
       toast({
@@ -484,26 +495,34 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
       // 条件分岐ノードの場合、詳細なoptions情報と条件テキストを確実に保持
       if (node.type === 'decision') {
         const connectedEdges = edges.filter(edge => edge.source === node.id);
+        
+        // 条件分岐の条件テキストを確実に保存（空文字列でも保存）
+        step.yesCondition = node.data.yesCondition || '';
+        step.noCondition = node.data.noCondition || '';
+        step.otherCondition = node.data.otherCondition || '';
+        
+        // 接続されたエッジから選択肢を生成
         step.options = connectedEdges.map(edge => ({
-          text: edge.sourceHandle === 'yes' ? (node.data.yesCondition || 'はい') :
-                edge.sourceHandle === 'no' ? (node.data.noCondition || 'いいえ') :
-                edge.sourceHandle === 'other' ? (node.data.otherCondition || 'その他') : '選択肢',
+          text: edge.sourceHandle === 'yes' ? (step.yesCondition || 'はい') :
+                edge.sourceHandle === 'no' ? (step.noCondition || 'いいえ') :
+                edge.sourceHandle === 'other' ? (step.otherCondition || 'その他') : '選択肢',
           nextStepId: edge.target,
           isTerminal: false,
           conditionType: edge.sourceHandle === 'yes' ? 'yes' : 
                         edge.sourceHandle === 'no' ? 'no' : 'other'
         }));
-
-        // 条件分岐の条件テキストを必ず保存
-        step.yesCondition = node.data.yesCondition || '';
-        step.noCondition = node.data.noCondition || '';
-        step.otherCondition = node.data.otherCondition || '';
         
-        console.log(`🔀 条件分岐ノード ${node.id} の条件を保存:`, {
+        console.log(`🔀 条件分岐ノード ${node.id} の保存詳細:`, {
+          title: step.title,
           yesCondition: step.yesCondition,
           noCondition: step.noCondition,
           otherCondition: step.otherCondition,
-          optionsCount: step.options?.length || 0
+          optionsCount: step.options?.length || 0,
+          nodeData: {
+            yesCondition: node.data.yesCondition,
+            noCondition: node.data.noCondition,
+            otherCondition: node.data.otherCondition
+          }
         });
       } else {
         // その他のノードの場合
