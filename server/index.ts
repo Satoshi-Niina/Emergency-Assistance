@@ -1,4 +1,3 @@
-
 import 'dotenv/config' 
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
@@ -104,12 +103,12 @@ app.use(express.urlencoded({ extended: false }));
     });
 
     const PORT = process.env.PORT || 5000;
-    
+
     // ✅ Replitのヘルスチェック用エンドポイント（追加）
     app.get('/', (req, res) => {
       res.status(200).send('OK');
     });
-    
+
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`サーバーが起動しました: http://0.0.0.0:${PORT}`);
       if (process.env.NODE_ENV === 'development') {
