@@ -132,7 +132,19 @@ router.get('/:id', async (req, res) => {
       id: data.id,
       title: data.title,
       stepsCount: data.steps.length,
-      filePath: filePath
+      filePath: filePath,
+      fileSize: content.length,
+      allStepIds: data.steps.map(s => s.id),
+      stepTypes: data.steps.map(s => ({ id: s.id, type: s.type, title: s.title }))
+    });
+
+    // 🔍 ファイル内容の詳細確認
+    console.log(`🔍 ファイル内容詳細:`, {
+      rawFileSize: content.length,
+      parsedStepsCount: data.steps?.length || 0,
+      hasAllExpectedSteps: data.steps?.length >= 10,
+      firstFewSteps: data.steps?.slice(0, 3).map(s => ({ id: s.id, title: s.title })),
+      lastFewSteps: data.steps?.slice(-3).map(s => ({ id: s.id, title: s.title }))
     });
 
     if (!data) {
