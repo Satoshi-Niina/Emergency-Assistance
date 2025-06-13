@@ -576,13 +576,22 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
               {selectedNode ? (
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="node-label">ラベル</Label>
+                    <Label htmlFor="node-label">
+                      {selectedNode.type === 'decision' ? 'スライドタイトル（判断）' : 
+                       selectedNode.type === 'step' ? 'スライドタイトル（ステップ）' : 'ラベル'}
+                    </Label>
                     <Input
                       id="node-label"
                       value={selectedNode.data.label || ''}
                       onChange={(e) => updateNodeData('label', e.target.value)}
-                      placeholder="ノードラベル"
+                      placeholder={
+                        selectedNode.type === 'decision' ? "例：エンジン停止の状況確認" :
+                        selectedNode.type === 'step' ? "例：安全確保手順" : "ノードラベル"
+                      }
                     />
+                    <div className="text-xs text-gray-500 mt-1">
+                      このタイトルが応急処置ガイドのスライドタイトルとして表示されます
+                    </div>
                   </div>
 
                   {selectedNode.type !== 'start' && selectedNode.type !== 'end' && (

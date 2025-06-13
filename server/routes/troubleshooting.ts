@@ -76,11 +76,13 @@ router.get('/:id', async (req, res) => {
 
     console.log(`Successfully loaded troubleshooting data:`, data);
 
-    // レスポンスヘッダーでキャッシュを無効化
+    // 強力なキャッシュ無効化ヘッダーを設定
     res.set({
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
       'Pragma': 'no-cache',
-      'Expires': '0'
+      'Expires': '0',
+      'Last-Modified': new Date().toUTCString(),
+      'ETag': `"${Date.now()}-${Math.random()}"`
     });
 
     res.json(data);
