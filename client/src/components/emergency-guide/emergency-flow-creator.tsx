@@ -292,34 +292,59 @@ const EmergencyFlowCreator: React.FC = () => {
     }
   };
 
-  // フロー削除
+  // フロー削除 - 物理ファイル削除とフロー一覧からの完全除去
   const deleteFlow = async (flowId: string) => {
     setIsDeleting(true);
     try {
+      console.log(`🗑️ フロー削除開始: ${flowId}`);
+
       const response = await fetch(`/api/emergency-flow/${flowId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'X-Force-Delete': 'true'
+        }
       });
 
       if (!response.ok) {
         throw new Error('削除に失敗しました');
       }
 
+      const result = await response.json();
+      console.log(`✅ 削除レスポンス:`, result);
+
       toast({
         title: "削除完了",
-        description: "フローが削除されました",
+        description: "フローが完全に削除されました",
       });
 
       // 削除されたアイテムが現在編集中の場合はクリア
       if (selectedFlowForEdit === flowId) {
         setSelectedFlowForEdit(null);
         setCurrentFlowData(null);
+        setSelectedFilePath(null);
       }
 
-      // フロー一覧を更新
+      // フロー一覧から削除されたアイテムを即座に除去
+      setFlowList(prevList => {
+        const filteredList = prevList.filter(flow => flow.id !== flowId);
+        console.log(`🔄 フロー一覧から除去: ${flowId} (残り: ${filteredList.length}件)`);
+        return filteredList;
+      });
+
+      // サーバーから最新のフロー一覧を強制取得
       await fetchFlowList(true);
 
+      // 他のコンポーネントに削除完了を通知
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flowDeleted', {
+          detail: { deletedId: flowId }
+        }));
+        window.dispatchEvent(new CustomEvent('forceRefreshFlowList'));
+      }
+
     } catch (error) {
-      console.error('削除エラー:', error);
+      console.error('❌ 削除エラー:', error);
       toast({
         title: "削除エラー",
         description: "フローの削除に失敗しました",
