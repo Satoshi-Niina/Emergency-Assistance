@@ -501,6 +501,14 @@ router.post('/save/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const { filePath: requestFilePath, ...saveData } = req.body;
 
+    // 🚨 filePathが必須であることを確認
+    if (!requestFilePath) {
+      return res.status(400).json({
+        success: false,
+        error: 'ファイルパス（filePath）が指定されていません'
+      });
+    }
+
     console.log(`💾 フローデータ保存開始: ID=${id}`, {
       title: saveData.title,
       stepsCount: saveData.steps?.length || 0,
@@ -510,27 +518,33 @@ router.post('/save/:id', async (req: Request, res: Response) => {
 
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
     
-    // ファイルパスが指定されている場合はそれを使用、そうでなければデフォルト
-    let filePath;
-    if (requestFilePath) {
-      // 絶対パスか相対パスかを判定
-      filePath = path.isAbsolute(requestFilePath) 
-        ? requestFilePath 
-        : path.join(process.cwd(), requestFilePath);
-      console.log(`🎯 指定されたファイルパスを使用: ${filePath}`);
-    } else {
-      filePath = path.join(troubleshootingDir, `${id}.json`);
-      console.log(`📁 デフォルトファイルパスを使用: ${filePath}`);
+    // 🎯 パスの正規化とバリデーション強化
+    const normalizedRequestPath = requestFilePath.replace(/\\/g, '/');
+    
+    // troubleshootingディレクトリ内であることを厳密チェック
+    if (!normalizedRequestPath.startsWith('knowledge-base/troubleshooting/')) {
+      return res.status(400).json({
+        success: false,
+        error: `保存先パスが不正です。knowledge-base/troubleshooting/内のみ許可されています: ${normalizedRequestPath}`
+      });
     }
 
-    // ファイルがknowledge-base/troubleshootingディレクトリ内にあることを確認
+    // 絶対パスに変換
+    const filePath = path.isAbsolute(normalizedRequestPath) 
+      ? normalizedRequestPath 
+      : path.join(process.cwd(), normalizedRequestPath);
+
+    console.log(`🎯 バリデーション済みファイルパス: ${filePath}`);
+
+    // 最終的なディレクトリチェック
     const normalizedFilePath = path.normalize(filePath);
     const normalizedTroubleshootingDir = path.normalize(troubleshootingDir);
     
     if (!normalizedFilePath.startsWith(normalizedTroubleshootingDir)) {
-      console.warn(`⚠️ ファイルパスがtroubleshootingディレクトリ外: ${normalizedFilePath}`);
-      filePath = path.join(troubleshootingDir, `${id}.json`);
-      console.log(`🔄 安全のためデフォルトパスに変更: ${filePath}`);
+      return res.status(400).json({
+        success: false,
+        error: `保存パスがtroubleshootingディレクトリ外です: ${normalizedFilePath}`
+      });
     }
 
     if (!fs.existsSync(troubleshootingDir)) {

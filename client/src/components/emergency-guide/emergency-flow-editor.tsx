@@ -195,27 +195,22 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         savedTimestamp: Date.now()
       };
 
-      // 🎯 常にファイルパス指定で保存
-      const targetFilePath = selectedFilePath || `knowledge-base/troubleshooting/${editedFlow.id}.json`;
+      // 🎯 保存先パスを確実に指定（troubleshootingディレクトリ限定）
+      const targetFilePath = selectedFilePath && selectedFilePath.includes('knowledge-base/troubleshooting')
+        ? selectedFilePath 
+        : `knowledge-base/troubleshooting/${editedFlow.id}.json`;
 
-      const requestData = {
-        filePath: targetFilePath,
-        ...saveData
-      };
+      // パスの正規化とバリデーション
+      const normalizedPath = targetFilePath.replace(/\\/g, '/');
+      if (!normalizedPath.startsWith('knowledge-base/troubleshooting/')) {
+        throw new Error('保存先はknowledge-base/troubleshootingディレクトリ内のみ許可されています');
+      }
 
-      console.log(`💾 ファイルパス指定保存: ${targetFilePath}`, requestData);
-
-      // 🎯 統一されたAPIエンドポイントで保存（ファイルパス明示）
-      console.log(`💾 保存実行:`, {
-        id: editedFlow.id,
-        stepsCount: saveData.steps?.length || 0,
-        timestamp: saveData.savedTimestamp,
-        targetFilePath: targetFilePath
-      });
+      console.log(`💾 確実なファイルパス指定保存: ${normalizedPath}`);
 
       const requestBody = {
-        ...saveData,
-        filePath: targetFilePath // 明示的にファイルパスを指定
+        filePath: normalizedPath, // 必須：保存先パスを明示
+        ...saveData
       };
 
       const response = await fetch(`/api/emergency-flow-router/save/${editedFlow.id}`, {
