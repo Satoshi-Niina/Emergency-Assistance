@@ -21,10 +21,11 @@ import path from 'path';
 // 応急処置フロー保存エンドポイントを追加
 router.post('/save', async (req, res) => {
   try {
-    const flowData = req.body;
+    const { filePath: requestFilePath, ...flowData } = req.body;
     console.log('🔄 フロー保存リクエストを受信:', {
       id: flowData?.id,
       title: flowData?.title,
+      requestFilePath: requestFilePath,
       hasNodes: !!flowData?.nodes,
       hasSteps: !!flowData?.steps
     });
@@ -37,25 +38,44 @@ router.post('/save', async (req, res) => {
       });
     }
 
-    // knowledge-base/troubleshootingディレクトリのパス
-    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    console.log('📁 保存先ディレクトリ:', troubleshootingDir);
-    
-    // ディレクトリが存在しない場合は作成
-    if (!fs.existsSync(troubleshootingDir)) {
-      console.log('📁 ディレクトリを作成します:', troubleshootingDir);
-      fs.mkdirSync(troubleshootingDir, { recursive: true });
+    // 🎯 保存先パスを決定：リクエストのfilePathを優先、fallbackはtroubleshootingディレクトリ
+    let filePath;
+    if (requestFilePath) {
+      // リクエストでパスが指定されている場合はそれを使用
+      filePath = path.isAbsolute(requestFilePath) 
+        ? requestFilePath 
+        : path.join(process.cwd(), requestFilePath);
+      
+      // セキュリティチェック：troubleshootingディレクトリ内のみ許可
+      const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+      const normalizedFilePath = path.normalize(filePath);
+      const normalizedTroubleshootingDir = path.normalize(troubleshootingDir);
+      
+      if (!normalizedFilePath.startsWith(normalizedTroubleshootingDir)) {
+        console.warn(`⚠️ 保存先がtroubleshootingディレクトリ外: ${normalizedFilePath}`);
+        return res.status(400).json({
+          success: false,
+          error: '保存先はknowledge-base/troubleshootingディレクトリ内のみ許可されています'
+        });
+      }
+      
+      console.log('🎯 指定されたファイルパスを使用:', filePath);
     } else {
-      console.log('✅ ディレクトリは既に存在します');
-      // 既存ファイル一覧を表示
-      const existingFiles = fs.readdirSync(troubleshootingDir);
-      console.log('📂 既存ファイル一覧:', existingFiles);
+      // fallback: troubleshootingディレクトリにIDベースで保存
+      const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+      const fileName = `${flowData.id}.json`;
+      filePath = path.join(troubleshootingDir, fileName);
+      console.log('📁 デフォルトファイルパスを使用:', filePath);
     }
 
-    // ファイル名を生成（IDベース）
-    const fileName = `${flowData.id}.json`;
-    const filePath = path.join(troubleshootingDir, fileName);
-    console.log('💾 保存ファイルパス:', filePath);
+    // 保存先ディレクトリが存在することを確認
+    const targetDir = path.dirname(filePath);
+    if (!fs.existsSync(targetDir)) {
+      console.log('📁 ディレクトリを作成します:', targetDir);
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+
+    console.log('💾 最終保存ファイルパス:', filePath);
 
     // 既存ファイルが存在する場合、その構造を読み込んで保持
     let existingData = {};
