@@ -208,77 +208,73 @@ function updateIndexFile(metadata: any) {
 
 // 削除: POST /saveエンドポイントは不要（PUTに統一）
 
-// 🎯 フロー一覧取得
-router.get('/list', async (req, res) => {
+// フロー一覧を取得するエンドポイント（knowledge-base/troubleshootingからのみ）
+router.get('/list', (req, res) => {
   try {
-    console.log('🔍 トラブルシューティングディレクトリ:', TROUBLESHOOTING_DIR);
+    console.log('🔍 緊急フロー一覧取得を開始 (troubleshootingディレクトリのみ)');
 
-    // ディレクトリ内のJSONファイルを取得
+    // knowledge-base/troubleshootingディレクトリのみを対象とする
+    if (!fs.existsSync(TROUBLESHOOTING_DIR)) {
+      console.log(`❗ troubleshootingディレクトリが存在しません: ${TROUBLESHOOTING_DIR}`);
+      return res.json([]);
+    }
+
+    // JSONファイルのみを取得（古いファイルを除外）
     const files = fs.readdirSync(TROUBLESHOOTING_DIR)
-      .filter(file => file.endsWith('.json'));
+      .filter(file => {
+        // JSONファイルのみ
+        if (!file.endsWith('.json')) return false;
 
-    console.log('📁 見つかったファイル:', files);
+        // 古いファイルを明示的に除外
+        const excludeFiles = [
+          'engine_restart_issue.json',
+          'parking_brake_release_issue.json'
+        ];
 
-    // const flowList = [];
-    // for (const file of files) {
-    //   try {
-    //     const filePath = path.join(TROUBLESHOOTING_DIR, file);
-    //     const content = fs.readFileSync(filePath, 'utf-8');
-    //     const data = JSON.parse(content);
+        if (excludeFiles.includes(file)) {
+          console.log(`🚫 古いファイルを除外: ${file}`);
+          return false;
+        }
 
-    //     if (data && data.id && data.title) {
-    //       console.log(`✅ ファイル ${file} を読み込み:`, {
-    //         id: data.id,
-    //         title: data.title,
-    //         stepsCount: data.steps?.length || 0
-    //       });
+        return true;
+      })
+      .sort();
 
-    //       flowList.push({
-    //         id: data.id,
-    //         title: data.title,
-    //         description: data.description || '',
-    //         fileName: file,
-    //         createdAt: data.createdAt || data.updatedAt || new Date().toISOString(),
-    //         trigger: data.triggerKeywords || [],
-    //         slides: []
-    //       });
-    //     } else {
-    //       console.log(`❌ 無効なデータ: ${file}`);
-    //     }
-    //   } catch (error) {
-    //     console.error(`❌ ファイル ${file} の読み込みエラー:`, error);
-    //   }
-    // }
+    console.log(`📁 発見されたファイル数: ${files.length}`, files);
 
-    // res.set({
-    //   'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
-    //   'Pragma': 'no-cache',
-    //   'Expires': '0',
-    //   'X-Fresh-Load': 'true',
-    //   'X-Timestamp': Date.now().toString()
-    // });
+    const flows = files.map(fileName => {
+      try {
+        const filePath = path.join(TROUBLESHOOTING_DIR, fileName);
+        const content = fs.readFileSync(filePath, 'utf8');
+        const data = JSON.parse(content);
 
-    // return res.status(200).json(flowList);
+        // 基本的なフロー情報を返す
+        return {
+          id: data.id || path.basename(fileName, '.json'),
+          title: data.title || fileName,
+          description: data.description || '',
+          fileName: fileName,
+          createdAt: data.createdAt || new Date().toISOString(),
+          trigger: data.triggerKeywords || data.trigger || [],
+          slides: data.steps || data.slides || []
+        };
+      } catch (parseError) {
+        console.error(`❌ ファイル解析エラー: ${fileName}`, parseError);
+        return null;
+      }
+    }).filter(flow => flow !== null);
 
-    const jsonFiles = fs.readdirSync(TROUBLESHOOTING_DIR).filter(file => file.endsWith(".json"));
-    const flowList = jsonFiles.map(file => {
-      const content = fs.readFileSync(path.join(TROUBLESHOOTING_DIR, file), "utf-8");
-      const data = JSON.parse(content);
-      return {
-        id: data.id,
-        title: data.title,
-        description: data.description || "",
-        fileName: file,
-        createdAt: data.updatedAt || new Date().toISOString(),
-      };
-    });
-    res.json(flowList);
+    console.log(`✅ 処理済みフロー数: ${flows.length} (troubleshootingディレクトリのみ)`);
+
+    // キャッシュ無効化ヘッダーを設定
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
+    res.json(flows);
   } catch (error) {
     console.error('❌ フロー一覧取得エラー:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'フロー一覧の取得に失敗しました'
-    });
+    res.status(500).json({ error: 'フロー一覧の取得に失敗しました' });
   }
 });
 
