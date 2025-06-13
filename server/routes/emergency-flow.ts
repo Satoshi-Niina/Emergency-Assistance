@@ -47,6 +47,9 @@ router.post('/save', async (req, res) => {
       fs.mkdirSync(troubleshootingDir, { recursive: true });
     } else {
       console.log('✅ ディレクトリは既に存在します');
+      // 既存ファイル一覧を表示
+      const existingFiles = fs.readdirSync(troubleshootingDir);
+      console.log('📂 既存ファイル一覧:', existingFiles);
     }
 
     // ファイル名を生成（IDベース）
@@ -70,8 +73,22 @@ router.post('/save', async (req, res) => {
       if (fs.existsSync(filePath)) {
         const fileStats = fs.statSync(filePath);
         console.log('📊 保存されたファイル情報:', {
+          path: filePath,
           size: fileStats.size,
           modified: fileStats.mtime
+        });
+        
+        // 保存後のディレクトリ一覧を表示
+        const updatedFiles = fs.readdirSync(troubleshootingDir);
+        console.log('📂 保存後のディレクトリ内容:', updatedFiles);
+        
+        // 保存されたファイルの内容を読み返して確認
+        const savedContent = fs.readFileSync(filePath, 'utf8');
+        const parsedContent = JSON.parse(savedContent);
+        console.log('✅ 保存されたデータの確認:', {
+          id: parsedContent.id,
+          title: parsedContent.title,
+          fileSize: savedContent.length
         });
       } else {
         throw new Error('ファイルが保存されませんでした');
@@ -115,37 +132,55 @@ router.post('/save', async (req, res) => {
 router.get('/list', async (req, res) => {
   try {
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    console.log('🔍 一覧取得: troubleshootingDir =', troubleshootingDir);
     
     if (!fs.existsSync(troubleshootingDir)) {
+      console.log('📁 ディレクトリが存在しません:', troubleshootingDir);
+      // ディレクトリが存在しない場合は作成
+      fs.mkdirSync(troubleshootingDir, { recursive: true });
       return res.json([]);
     }
 
-    const files = fs.readdirSync(troubleshootingDir)
-      .filter(file => file.endsWith('.json'))
+    const allFiles = fs.readdirSync(troubleshootingDir);
+    console.log('📂 ディレクトリ内の全ファイル:', allFiles);
+
+    const jsonFiles = allFiles.filter(file => file.endsWith('.json'));
+    console.log('📋 JSONファイル一覧:', jsonFiles);
+
+    const files = jsonFiles
       .map(file => {
         try {
           const filePath = path.join(troubleshootingDir, file);
+          console.log(`📖 ファイル読み込み中: ${filePath}`);
+          
           const content = fs.readFileSync(filePath, 'utf8');
           const data = JSON.parse(content);
+          console.log(`✅ ファイル読み込み成功: ${file}`, {
+            id: data.id,
+            title: data.title,
+            hasSteps: !!data.steps,
+            hasNodes: !!data.nodes
+          });
           
           return {
             id: data.id || file.replace('.json', ''),
             title: data.title || 'タイトル不明',
             description: data.description || '',
             fileName: file,
-            createdAt: data.createdAt || data.savedAt || new Date().toISOString(),
+            createdAt: data.createdAt || data.savedAt || data.updatedAt || new Date().toISOString(),
             source: 'troubleshooting'
           };
         } catch (error) {
-          console.error(`ファイル読み込みエラー: ${file}`, error);
+          console.error(`❌ ファイル読み込みエラー: ${file}`, error);
           return null;
         }
       })
       .filter(item => item !== null);
 
+    console.log(`📊 最終結果: ${files.length}個のフローを取得`);
     res.json(files);
   } catch (error) {
-    console.error('フロー一覧取得エラー:', error);
+    console.error('❌ フロー一覧取得エラー:', error);
     res.status(500).json({ error: 'フロー一覧の取得に失敗しました' });
   }
 });
