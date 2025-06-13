@@ -256,7 +256,8 @@ router.get('/list', (req, res) => {
           fileName: fileName,
           createdAt: data.createdAt || new Date().toISOString(),
           trigger: data.triggerKeywords || data.trigger || [],
-          slides: data.steps || data.slides || []
+          slides: data.steps || data.slides || [],
+          steps: data.steps || data.slides || [] // エディター互換性のため
         };
       } catch (parseError) {
         console.error(`❌ ファイル解析エラー: ${fileName}`, parseError);

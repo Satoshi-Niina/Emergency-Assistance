@@ -71,8 +71,8 @@ const EmergencyFlowCreator: React.FC = () => {
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 15);
 
-      // emergency-flowエンドポイントに統一
-      const response = await fetch(`/api/emergency-flow/list?_t=${timestamp}&_r=${randomId}`, {
+      // emergency-flow-routerエンドポイントに統一
+      const response = await fetch(`/api/emergency-flow-router/list?_t=${timestamp}&_r=${randomId}`, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
@@ -251,19 +251,17 @@ const EmergencyFlowCreator: React.FC = () => {
         console.log('🧹 ブラウザキャッシュクリア完了');
       }
 
-      // 🎯 フロー一覧と同じAPIエンドポイントを使用してファイルから直接読み込み
+      // 🎯 統一されたAPIエンドポイントで直接取得
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 15);
-      const cacheBuster = `${timestamp}_${randomId}`;
       
-      const response = await fetch(`/api/emergency-flow/list?t=${cacheBuster}&force=true&_cb=${Date.now()}`, {
+      const response = await fetch(`/api/emergency-flow-router/${flowId}?ts=${timestamp}&_r=${randomId}`, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
           'Pragma': 'no-cache',
           'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
-          'X-Force-Fresh': 'true',
-          'X-Request-ID': cacheBuster
+          'X-Force-Fresh': 'true'
         }
       });
 
@@ -271,21 +269,16 @@ const EmergencyFlowCreator: React.FC = () => {
         throw new Error(`フローデータの取得に失敗しました (${response.status})`);
       }
 
-      const flowsList = await response.json();
-      const data = flowsList.find(flow => flow.id === flowId);
-
-      if (!data) {
-        throw new Error(`指定されたフロー（ID: ${flowId}）が見つかりません`);
-      }
+      const data = await response.json();
 
       // 🎯 フロー一覧のデータ構造をエディター用に変換
       const editorData = {
         id: data.id,
         title: data.title,
         description: data.description || '',
-        triggerKeywords: data.trigger || [],
-        steps: data.slides || [],
-        updatedAt: data.createdAt || new Date().toISOString()
+        triggerKeywords: data.trigger || data.triggerKeywords || [],
+        steps: data.slides || data.steps || [],
+        updatedAt: data.createdAt || data.updatedAt || new Date().toISOString()
       };
 
       // 🔍 データ整合性の厳密チェック
