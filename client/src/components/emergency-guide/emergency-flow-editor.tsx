@@ -139,6 +139,9 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         description: "フローが正常に保存されました",
       });
 
+      // 保存されたデータで現在の編集データを更新
+      setEditedFlow(saveData);
+
       // 親コンポーネントに保存完了を通知
       if (onSave) {
         onSave(saveData);
@@ -158,17 +161,47 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
           detail: { 
             flowId: editedFlow.id, 
             data: saveData,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            forceRefresh: true
           }
         }));
       });
 
-      // フロー一覧の強制更新
-      setTimeout(() => {
+      // 保存後にサーバーから最新データを再取得
+      setTimeout(async () => {
+        try {
+          const refreshResponse = await fetch(`/api/emergency-flow/${editedFlow.id}?ts=${Date.now()}`, {
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            }
+          });
+          
+          if (refreshResponse.ok) {
+            const refreshData = await refreshResponse.json();
+            if (refreshData.data) {
+              console.log('🔄 保存後のデータ再取得成功:', refreshData.data);
+              setEditedFlow(refreshData.data);
+              
+              // 再取得したデータでさらにイベント発行
+              window.dispatchEvent(new CustomEvent('flowDataRefreshed', {
+                detail: { 
+                  flowId: editedFlow.id, 
+                  data: refreshData.data,
+                  timestamp: Date.now()
+                }
+              }));
+            }
+          }
+        } catch (error) {
+          console.error('保存後のデータ再取得エラー:', error);
+        }
+        
+        // フロー一覧の強制更新
         window.dispatchEvent(new CustomEvent('forceRefreshFlowList', {
           detail: { forceRefresh: true }
         }));
-      }, 500);
+      }, 1000);
 
     } catch (error) {
       console.error('❌ 保存エラー:', error);
