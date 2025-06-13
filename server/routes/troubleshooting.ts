@@ -8,46 +8,62 @@ const router = Router();
 router.get('/', (req, res) => {
   try {
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    console.log('トラブルシューティングディレクトリ:', troubleshootingDir);
+    console.log('🔍 トラブルシューティングディレクトリ:', troubleshootingDir);
 
     if (!fs.existsSync(troubleshootingDir)) {
-      console.log('トラブルシューティングディレクトリが存在しません');
+      console.log('⚠️ トラブルシューティングディレクトリが存在しません');
       return res.json([]);
     }
 
     const files = fs.readdirSync(troubleshootingDir);
-    console.log('見つかったファイル:', files);
+    console.log('📁 見つかったファイル:', files);
 
-    const troubleshootingFlows = files
-      .filter(file => file.endsWith('.json'))
+    const jsonFiles = files.filter(file => file.endsWith('.json') && !file.includes('.backup'));
+    console.log('📋 処理対象JSONファイル:', jsonFiles);
+
+    const troubleshootingFlows = jsonFiles
       .map(file => {
         try {
           const filePath = path.join(troubleshootingDir, file);
           const content = fs.readFileSync(filePath, 'utf-8');
           const data = JSON.parse(content);
-          console.log(`ファイル ${file} を読み込み:`, data);
+          
+          console.log(`✅ ファイル ${file} を読み込み:`, {
+            id: data.id,
+            title: data.title,
+            stepsCount: data.steps?.length || 0
+          });
 
           // データ構造を統一化
           return {
             id: data.id || file.replace('.json', ''),
-            title: data.title || data.name || 'タイトルなし',
-            description: data.description || data.summary || '',
-            trigger: data.trigger || data.keywords || [],
-            slides: data.slides || [],
-            createdAt: data.createdAt || new Date().toISOString(),
-            fileName: file
+            title: data.title || 'タイトルなし',
+            description: data.description || '',
+            trigger: data.triggerKeywords || data.trigger || [],
+            steps: data.steps || [],
+            createdAt: data.updatedAt || data.createdAt || new Date().toISOString(),
+            fileName: file,
+            source: 'troubleshooting'
           };
         } catch (error) {
-          console.error(`ファイル ${file} の読み込みエラー:`, error);
+          console.error(`❌ ファイル ${file} の読み込みエラー:`, error);
           return null;
         }
       })
       .filter(data => data !== null);
 
-    console.log('返すデータ:', troubleshootingFlows);
+    console.log(`📤 返すデータ: ${troubleshootingFlows.length}件`);
+    
+    // 強力なキャッシュ無効化
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+      'Pragma': 'no-cache',
+      'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT'
+    });
+    
     res.json(troubleshootingFlows);
   } catch (error) {
-    console.error('トラブルシューティングフロー取得エラー:', error);
+    console.error('❌ トラブルシューティングフロー取得エラー:', error);
     res.status(500).json({ error: 'Failed to fetch troubleshooting flows' });
   }
 });
@@ -60,39 +76,36 @@ router.get('/:id', async (req, res) => {
 
     console.log(`🔄 [${timestamp}] トラブルシューティングデータ取得: ID=${id}`);
 
-    // 複数のディレクトリから検索
-    const searchPaths = [
-      path.join(process.cwd(), 'knowledge-base', 'troubleshooting', `${id}.json`),
-      path.join(process.cwd(), 'knowledge-base', 'json', `${id}.json`)
-    ];
+    // knowledge-base/troubleshootingディレクトリのみから読み込み
+    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const filePath = path.join(troubleshootingDir, `${id}.json`);
 
     let data = null;
-    let foundPath = null;
+    
+    console.log(`📁 ファイルパス確認: ${filePath}`);
+    console.log(`📁 ファイル存在確認: ${fs.existsSync(filePath)}`);
 
-    for (const filePath of searchPaths) {
-      if (fs.existsSync(filePath)) {
-        console.log(`📁 ファイル発見: ${filePath}`);
-        foundPath = filePath;
+    if (fs.existsSync(filePath)) {
+      console.log(`📁 ファイル発見: ${filePath}`);
 
-        // ファイル統計情報
-        const stats = fs.statSync(filePath);
-        console.log(`📊 ファイル情報: size=${stats.size}, modified=${stats.mtime.toISOString()}`);
+      // ファイル統計情報
+      const stats = fs.statSync(filePath);
+      console.log(`📊 ファイル情報: size=${stats.size}, modified=${stats.mtime.toISOString()}`);
 
-        // ファイル読み込み
-        const content = fs.readFileSync(filePath, 'utf8');
-        data = JSON.parse(content);
+      // ファイル読み込み
+      const content = fs.readFileSync(filePath, 'utf8');
+      data = JSON.parse(content);
 
-        // データの完全性チェック
-        if (!data.steps) data.steps = [];
-        if (!data.triggerKeywords) data.triggerKeywords = [];
+      // データの完全性チェック
+      if (!data.steps) data.steps = [];
+      if (!data.triggerKeywords) data.triggerKeywords = [];
 
-        console.log(`✅ データ読み込み成功:`, {
-          id: data.id,
-          title: data.title,
-          stepsCount: data.steps.length
-        });
-        break;
-      }
+      console.log(`✅ データ読み込み成功:`, {
+        id: data.id,
+        title: data.title,
+        stepsCount: data.steps.length,
+        filePath: filePath
+      });
     }
 
     if (!data) {

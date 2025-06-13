@@ -351,9 +351,10 @@ router.get('/:id', async (req: Request, res: Response) => {
       return res.status(200).json(targetFlowData);
     }
 
-    // ファイル名指定で見つからない場合は全ファイル検索
+    // ファイル名指定で見つからない場合は全ファイル検索（バックアップファイルを除外）
     if (!targetFlowData && fs.existsSync(troubleshootingDir)) {
-      const files = fs.readdirSync(troubleshootingDir).filter(f => f.endsWith('.json'));
+      const files = fs.readdirSync(troubleshootingDir)
+        .filter(f => f.endsWith('.json') && !f.includes('.backup'));
       console.log(`📁 利用可能なファイル: ${files.join(', ')}`);
 
       for (const file of files) {
@@ -362,11 +363,13 @@ router.get('/:id', async (req: Request, res: Response) => {
           const content = fs.readFileSync(filePath, 'utf-8');
           const data = JSON.parse(content);
           
+          console.log(`🔍 ファイル確認: ${file} (ID: ${data.id})`);
+          
           // IDが一致するファイルを探す
           if (data.id === id) {
             targetFilePath = filePath;
             targetFlowData = data;
-            console.log(`✅ ID一致ファイル発見: ${file} (ID: ${data.id})`);
+            console.log(`✅ ID一致ファイル発見: ${file} (ID: ${data.id}, ステップ数: ${data.steps?.length || 0})`);
             break;
           }
         } catch (error) {
@@ -378,16 +381,20 @@ router.get('/:id', async (req: Request, res: Response) => {
     // 直接ファイル名でも試す（フォールバック）
     if (!targetFlowData) {
       const directPath = path.join(troubleshootingDir, `${id}.json`);
+      console.log(`🔍 直接パス確認: ${directPath}`);
+      
       if (fs.existsSync(directPath)) {
         try {
           const content = fs.readFileSync(directPath, 'utf-8');
           const data = JSON.parse(content);
           targetFlowData = data;
           targetFilePath = directPath;
-          console.log(`✅ 直接パスで発見: ${id}.json`);
+          console.log(`✅ 直接パスで発見: ${id}.json (ステップ数: ${data.steps?.length || 0})`);
         } catch (error) {
           console.warn(`⚠️ 直接パス読み込みエラー:`, error);
         }
+      } else {
+        console.warn(`⚠️ 直接パスファイルが存在しません: ${directPath}`);
       }
     }
 
