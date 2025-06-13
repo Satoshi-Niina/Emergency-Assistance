@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -43,7 +42,7 @@ interface FlowData {
 const EmergencyFlowCreator: React.FC = () => {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // 状態管理
   const [activeTab, setActiveTab] = useState<'new' | 'upload' | 'edit'>('new');
   const [flowList, setFlowList] = useState<FlowFile[]>([]);
@@ -55,7 +54,7 @@ const EmergencyFlowCreator: React.FC = () => {
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [selectedFlowForEdit, setSelectedFlowForEdit] = useState<string | null>(null);
   const [currentFlowData, setCurrentFlowData] = useState<FlowData | null>(null);
-  
+
   // 削除関連
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [flowToDelete, setFlowToDelete] = useState<FlowFile | null>(null);
@@ -67,11 +66,12 @@ const EmergencyFlowCreator: React.FC = () => {
       setIsLoadingFlowList(true);
       console.log(`📋 フロー一覧取得開始 (forceRefresh: ${forceRefresh})`);
 
-      // キャッシュバスティング
+      // 強力なキャッシュバスティング
       const timestamp = Date.now();
-      const cacheParams = forceRefresh ? 
-        `?_t=${timestamp}&_r=${Math.random().toString(36).substring(2)}&force_refresh=true` : 
-        `?_t=${timestamp}`;
+      const randomId = Math.random().toString(36).substring(2, 15);
+      const sessionId = Math.floor(Math.random() * 1000000);
+
+      const cacheParams = `?_t=${timestamp}&_r=${randomId}&_s=${sessionId}&force=${forceRefresh ? '1' : '0'}`;
 
       const response = await fetch(`/api/emergency-flow/list${cacheParams}`, {
         method: 'GET',
@@ -80,54 +80,64 @@ const EmergencyFlowCreator: React.FC = () => {
           'Pragma': 'no-cache',
           'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
           'X-Requested-With': 'XMLHttpRequest',
-          'X-Force-Refresh': forceRefresh ? 'true' : 'false'
+          'X-Force-Refresh': forceRefresh ? 'true' : 'false',
+          'X-Timestamp': timestamp.toString()
         }
       });
 
       if (!response.ok) {
-        throw new Error(`フロー一覧の取得に失敗: ${response.status}`);
+        throw new Error(`フロー一覧の取得に失敗: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
-      console.log(`✅ 取得したフローデータ:`, data);
+      console.log(`📊 サーバーから取得したデータ:`, {
+        count: data.length,
+        items: data.map(item => ({ id: item.id, title: item.title, fileName: item.fileName }))
+      });
 
       // データの整合性チェック
       const validData = Array.isArray(data) ? data : [];
-      
+
       // 重複除去
       const uniqueData = validData.filter((item, index, arr) => 
         arr.findIndex(t => t.id === item.id) === index
       );
 
-      // 既存のリストと比較して削除されたファイルを検出
+      // 既存のリストと比較して変更を検出
       const currentIds = new Set(uniqueData.map(item => item.id));
+      const previousIds = new Set(flowList.map(item => item.id));
+
       const removedItems = flowList.filter(item => !currentIds.has(item.id));
-      
+      const addedItems = uniqueData.filter(item => !previousIds.has(item.id));
+
       if (removedItems.length > 0) {
-        console.log(`🗑️ 削除されたファイルを検出:`, removedItems);
+        console.log(`🗑️ 削除されたファイル:`, removedItems.map(item => item.fileName));
         removedItems.forEach(item => {
           toast({
             title: "ファイル削除を検出",
-            description: `「${item.title}」が削除されました`,
-            variant: "default"
+            description: `"${item.title}" が削除されました`,
+            variant: "destructive"
           });
         });
       }
 
-      setFlowList(uniqueData);
+      if (addedItems.length > 0) {
+        console.log(`➕ 追加されたファイル:`, addedItems.map(item => item.fileName));
+      }
 
-      // グローバル更新イベント発行
-      window.dispatchEvent(new CustomEvent('forceRefreshFlowList', {
-        detail: { flowList: uniqueData }
-      }));
+      // 確実に状態を更新
+      setFlowList([...uniqueData]);
+
+      console.log(`✅ フロー一覧を更新: ${uniqueData.length}件`);
 
     } catch (error) {
       console.error('❌ フロー一覧取得エラー:', error);
       toast({
         title: "エラー",
-        description: "フロー一覧の取得に失敗しました",
+        description: `フロー一覧の取得に失敗しました: ${error.message}`,
         variant: "destructive"
       });
+      // エラー時は空の配列を設定
       setFlowList([]);
     } finally {
       setIsLoadingFlowList(false);
@@ -215,10 +225,10 @@ const EmergencyFlowCreator: React.FC = () => {
       }
 
       const result = await response.json();
-      
+
       setUploadSuccess(true);
       setUploadedFileName(selectedFile.name);
-      
+
       toast({
         title: "アップロード完了",
         description: `${selectedFile.name} がアップロードされました`,
@@ -226,7 +236,7 @@ const EmergencyFlowCreator: React.FC = () => {
 
       // フロー一覧を更新
       await fetchFlowList(true);
-      
+
       // 編集タブに切り替え
       setActiveTab('edit');
 
@@ -255,15 +265,15 @@ const EmergencyFlowCreator: React.FC = () => {
           'Cache-Control': 'no-cache'
         }
       });
-      
+
       if (!response.ok) {
         throw new Error('フローデータの取得に失敗しました');
       }
-      
+
       const data = await response.json();
       setCurrentFlowData(data);
       setSelectedFlowForEdit(flowId);
-      
+
     } catch (error) {
       console.error('フローデータ取得エラー:', error);
       toast({
