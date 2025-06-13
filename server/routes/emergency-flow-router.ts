@@ -154,11 +154,13 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     // キャッシュを無効化するヘッダーを設定
     res.set({
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
       'Pragma': 'no-cache',
       'Expires': '0',
       'Last-Modified': afterStats.mtime.toUTCString(),
-      'ETag': `"${afterStats.mtime.getTime()}-${afterStats.size}"`
+      'ETag': `"${afterStats.mtime.getTime()}-${afterStats.size}"`,
+      'X-Force-Refresh': 'true',
+      'X-Updated-At': new Date().toISOString()
     });
 
     return res.status(200).json({
@@ -514,6 +516,12 @@ router.get('/:id', async (req: Request, res: Response) => {
     console.log(`📁 検索パス: ${directFilePath}`);
     console.log(`📂 ディレクトリ存在: ${fs.existsSync(troubleshootingDir)}`);
     console.log(`📄 ファイル存在: ${fs.existsSync(directFilePath)}`);
+
+    // ディレクトリ内のファイル一覧を表示（デバッグ用）
+    if (fs.existsSync(troubleshootingDir)) {
+      const allFiles = fs.readdirSync(troubleshootingDir);
+      console.log(`📂 ディレクトリ内の全ファイル:`, allFiles);
+    }
 
     if (fs.existsSync(directFilePath)) {
       console.log(`✅ ファイル発見: ${directFilePath}`);
