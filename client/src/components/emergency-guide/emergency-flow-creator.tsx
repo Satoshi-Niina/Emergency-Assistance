@@ -462,8 +462,8 @@ const EmergencyFlowCreator: React.FC = () => {
         // 即座にフローリストを更新（キャッシュをクリア）
         await fetchFlowList();
 
-        // 保存後はデータを保持し、継続編集可能にする
-        // setFlowData({}) を削除して継続編集を可能にする
+        // 保存後はデータを保持し、継続編集可能にする（setFlowDataは削除しない）
+        // 保存が完了したら「ファイル編集」タブに戻る
         setCharacterDesignTab('file');
 
         // 少し遅れてもう一度リフレッシュ（確実にデータが更新されるように）
@@ -1016,28 +1016,46 @@ const EmergencyFlowCreator: React.FC = () => {
       // 条件分岐ノードの条件情報を確実に復元
       let finalNodes = enhancedData.nodes || [];
       if (enhancedData.steps && Array.isArray(enhancedData.steps)) {
+        console.log('🔄 条件分岐ノード復元処理開始');
         finalNodes = finalNodes.map(node => {
           if (node.type === 'decision') {
             const correspondingStep = enhancedData.steps.find(step => step.id === node.id);
             if (correspondingStep) {
               console.log(`🔀 条件分岐ノード ${node.id} の条件復元:`, {
-                yesCondition: correspondingStep.yesCondition,
-                noCondition: correspondingStep.noCondition,
-                otherCondition: correspondingStep.otherCondition
+                stepData: {
+                  yesCondition: correspondingStep.yesCondition,
+                  noCondition: correspondingStep.noCondition,
+                  otherCondition: correspondingStep.otherCondition
+                },
+                nodeData: {
+                  yesCondition: node.data?.yesCondition,
+                  noCondition: node.data?.noCondition,
+                  otherCondition: node.data?.otherCondition
+                }
               });
+              
               return {
                 ...node,
                 data: {
                   ...node.data,
-                  yesCondition: correspondingStep.yesCondition || '',
-                  noCondition: correspondingStep.noCondition || '',
-                  otherCondition: correspondingStep.otherCondition || ''
+                  label: node.data.label || correspondingStep.title || '判断',
+                  message: node.data.message || correspondingStep.message || correspondingStep.description || '',
+                  yesCondition: correspondingStep.yesCondition || node.data?.yesCondition || '',
+                  noCondition: correspondingStep.noCondition || node.data?.noCondition || '',
+                  otherCondition: correspondingStep.otherCondition || node.data?.otherCondition || ''
                 }
               };
             }
           }
           return node;
         });
+        
+        console.log('✅ 条件分岐ノード復元完了:', finalNodes.filter(n => n.type === 'decision').map(n => ({
+          id: n.id,
+          yesCondition: n.data.yesCondition,
+          noCondition: n.data.noCondition,
+          otherCondition: n.data.otherCondition
+        })));
       }
 
       // 最終的なフローデータを構築（条件分岐情報を確実に含む）
