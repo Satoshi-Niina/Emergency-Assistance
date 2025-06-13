@@ -214,50 +214,78 @@ const EmergencyFlowCreator: React.FC = () => {
     try {
       console.log(`🔄 フロー編集データ読み込み: ${flowId}`);
 
-      // 🎯 フロー一覧からファイルパスを取得
+      // 🎯 フロー一覧からファイル情報を取得
       const targetFlow = flowList.find(flow => flow.id === flowId);
-      if (targetFlow) {
-        const filePath = `knowledge-base/troubleshooting/${targetFlow.fileName}`;
-        setSelectedFilePath(filePath);
-        console.log(`📁 編集対象ファイルパス設定: ${filePath}`);
+      if (!targetFlow) {
+        throw new Error(`フローが見つかりません: ${flowId}`);
       }
 
+      const filePath = `knowledge-base/troubleshooting/${targetFlow.fileName}`;
+      setSelectedFilePath(filePath);
+      console.log(`📁 編集対象ファイルパス設定: ${filePath}`);
+      console.log(`📋 対象フロー詳細:`, {
+        id: targetFlow.id,
+        title: targetFlow.title,
+        fileName: targetFlow.fileName,
+        filePath: filePath
+      });
+
+      // 🎯 ファイルパスを使用してAPIリクエスト
       const timestamp = Date.now();
-      const response = await fetch(`/api/emergency-flow/${flowId}?t=${timestamp}&fresh=true`, {
+      const response = await fetch(`/api/emergency-flow/${flowId}?t=${timestamp}&fresh=true&fileName=${targetFlow.fileName}`, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
-          'Expires': '0'
+          'Expires': '0',
+          'X-Target-File': targetFlow.fileName,
+          'X-Target-Path': filePath
         }
       });
 
       if (!response.ok) {
-        throw new Error('フローデータの取得に失敗しました');
+        throw new Error(`フローデータの取得に失敗しました (${response.status})`);
       }
 
       const data = await response.json();
 
       console.log(`✅ 取得したフローデータ:`, {
-        id: data.id,
+        requestedId: flowId,
+        retrievedId: data.id,
         title: data.title,
         stepsCount: data.steps?.length || 0,
-        requestedId: flowId
+        fileName: targetFlow.fileName,
+        filePath: filePath
       });
 
-      // IDが一致することを確認
+      // データの整合性チェック
       if (data.id !== flowId) {
-        console.warn(`⚠️ ID不一致: 要求=${flowId}, 取得=${data.id}`);
+        console.warn(`⚠️ ID不一致検出:`, {
+          要求: flowId,
+          取得: data.id,
+          ファイル名: targetFlow.fileName
+        });
+        
+        // IDを修正
+        data.id = flowId;
+        console.log(`🔧 IDを修正しました: ${flowId}`);
       }
 
       setCurrentFlowData(data);
       setSelectedFlowForEdit(flowId);
 
+      console.log(`🎯 フロー編集準備完了:`, {
+        flowId: flowId,
+        filePath: filePath,
+        dataLoaded: !!data,
+        stepsCount: data.steps?.length || 0
+      });
+
     } catch (error) {
-      console.error('フローデータ取得エラー:', error);
+      console.error('❌ フローデータ取得エラー:', error);
       toast({
         title: "エラー",
-        description: "フローデータの読み込みに失敗しました",
+        description: error instanceof Error ? error.message : "フローデータの読み込みに失敗しました",
         variant: "destructive"
       });
     }
