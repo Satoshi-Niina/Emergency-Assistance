@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -319,6 +319,83 @@ const TroubleshootingViewer: React.FC<TroubleshootingViewerProps> = ({ data, onS
       ],
       edges: []
     };
+  };
+
+  useEffect(() => {
+    const handleFlowListUpdate = () => {
+      console.log('フローリスト更新イベントを受信、再読み込みします');
+      fetchFlowList();
+    };
+
+    const handleTroubleshootingUpdate = () => {
+      console.log('トラブルシューティングデータ更新イベントを受信、再読み込みします');
+      fetchFlowList();
+    };
+
+    window.addEventListener('flowDataUpdated', handleFlowListUpdate);
+    window.addEventListener('troubleshootingDataUpdated', handleTroubleshootingUpdate);
+    window.addEventListener('emergencyFlowSaved', handleFlowListUpdate);
+
+    return () => {
+      window.removeEventListener('flowDataUpdated', handleFlowListUpdate);
+      window.removeEventListener('troubleshootingDataUpdated', handleTroubleshootingUpdate);
+      window.removeEventListener('emergencyFlowSaved', handleFlowListUpdate);
+    };
+  }, []);
+
+  useEffect(() => {
+    fetchFlowList();
+  }, []);
+
+  const fetchFlowList = async () => {
+    try {
+      console.log('🔄 フローリスト取得開始');
+
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2);
+      const sessionId = Math.random().toString(36).substring(2, 15);
+      const nonce = Math.floor(Math.random() * 10000000);
+
+      const cacheBusterUrl = `/api/emergency-flow/list?` + 
+        `timestamp=${timestamp}&` +
+        `random=${randomId}&` +
+        `session=${sessionId}&` +
+        `nonce=${nonce}&` +
+        `nocache=true&` +
+        `force=${Date.now()}&` +
+        `v=${Math.random()}&` +
+        `refresh=true`;
+
+      const response = await fetch(cacheBusterUrl, {
+        method: 'GET',
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'If-None-Match': '*',
+          'X-Requested-With': 'XMLHttpRequest',
+          'If-Modified-Since': 'Thu, 01 Jan 1970 00:00:00 GMT',
+          'X-Force-Fresh': 'true'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('📋 取得したフローデータ:', data);
+
+      // 古いリストをクリアしてから新しいデータを設定
+      setFlowList([]);
+      setTimeout(() => {
+        setFlowList(Array.isArray(data) ? data : []);
+      }, 100);
+    } catch (error) {
+      console.error('❌ フローリスト取得エラー:', error);
+      setFlowList([]);
+    }
   };
 
   // 編集モードの場合
