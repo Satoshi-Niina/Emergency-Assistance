@@ -917,7 +917,7 @@ const EmergencyFlowCreator: React.FC = () => {
     return enhancedData;
   };
 
-  // 特定のフローを読み込む
+  // 特定のフローを読み込む（古いデータ問題を根本解決）
   const loadFlow = async (id: string) => {
     try {
       console.log(`🔄 フローデータの取得開始: ID=${id}`);
@@ -925,9 +925,8 @@ const EmergencyFlowCreator: React.FC = () => {
       // 現在の状態を完全にクリア（古いデータの表示を防ぐ）
       setFlowData(null);
       setUploadedFileName('');
-      setFlowEditorData(null);
 
-      // 複数の強力なキャッシュバスター
+      // APIキャッシュを強制的に無効化
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2);
       const sessionId = Math.random().toString(36).substring(2, 15);
@@ -942,20 +941,23 @@ const EmergencyFlowCreator: React.FC = () => {
         `nonce=${nonce}&` +
         `nocache=true&` +
         `force=${Date.now()}&` +
-        `v=${Math.random()}`;
+        `v=${Math.random()}&` +
+        `refresh=true`;
 
-      console.log(`📡 リクエストURL: ${cacheBusterUrl}`);
+      console.log(`📡 フレッシュデータ取得URL: ${cacheBusterUrl}`);
 
       const response = await fetch(cacheBusterUrl, {
         method: 'GET',
+        cache: 'no-store', // ブラウザキャッシュも無効化
         headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
-            'Pragma': 'no-cache',
-            'Expires': '0',
-            'If-None-Match': '*',
-            'X-Requested-With': 'XMLHttpRequest',
-            'If-Modified-Since': 'Thu, 01 Jan 1970 00:00:00 GMT'
-          }
+          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'If-None-Match': '*',
+          'X-Requested-With': 'XMLHttpRequest',
+          'If-Modified-Since': 'Thu, 01 Jan 1970 00:00:00 GMT',
+          'X-Force-Fresh': 'true'
+        }
       });
 
       if (!response.ok) {
@@ -963,12 +965,12 @@ const EmergencyFlowCreator: React.FC = () => {
         throw new Error('フローデータの取得に失敗しました');
       }
 
-      const data = await response.json();
-      console.log("APIからの応答データ:", data);
+      const responseData = await response.json();
+      console.log("🎯 APIからの最新応答データ:", responseData);
 
       // データ構造を確認
-      if (!data || !data.data) {
-        console.error("応答データが無効です:", data);
+      if (!responseData || !responseData.data) {
+        console.error("❌ 応答データが無効です:", responseData);
         toast({
           title: "データエラー",
           description: "フローデータの形式が無効です",
@@ -977,56 +979,58 @@ const EmergencyFlowCreator: React.FC = () => {
         return;
       }
 
-      // フローデータを処理
-      console.log("処理前のデータ:", data.data);
-      const enhancedData = processFlowData(data.data);
+      const rawData = responseData.data;
+      console.log("📊 処理前のrawデータ:", rawData);
 
-      console.log("APIから読み込んだフローデータ:", enhancedData);
+      // 条件分岐情報を含むデータの完全復元
+      const enhancedData = processFlowDataWithConditions(rawData);
+
+      console.log("✨ 条件分岐を含む処理済みデータ:", enhancedData);
 
       // データが有効かチェック
       if (!enhancedData || typeof enhancedData !== 'object') {
-        console.error("読み込んだフローデータが無効です。", enhancedData);
+        console.error("❌ 読み込んだフローデータが無効です。", enhancedData);
         toast({
           title: "データエラー",
           description: "フローデータの形式が正しくありません",
           variant: "destructive",
         });
         return;
-      }      // 読み込んだデータを各キャラクターのノードとエッジに適用
-      // 開始ノード、ステップノード、判断ノード、終了ノードに適用
-      const startNode = enhancedData.nodes?.find((node: any) => node.type === 'start') || null;
-      const stepNodes = enhancedData.nodes?.filter((node: any) => node.type === 'step') || [];
-      const decisionNodes = enhancedData.nodes?.filter((node: any) => node.type === 'decision') || [];
-      const endNodes = enhancedData.nodes?.filter((node: any) => node.type === 'end') || [];
+      }
 
-      // IDを含めたフルデータをセット
+      // フロー一覧から最新のメタデータを取得
       const flow = flowList.find(f => f.id === id);
-      const flowMetadata = flow ? {
-        id: flow.id,
-        title: flow.title || 'フロー',
-        description: flow.description || '',
-        fileName: flow.fileName || `${flow.title || 'flow'}.json`
-      } : {
-        id,
-        title: enhancedData.title || 'フロー',
-        description: enhancedData.description || '',
-        fileName: enhancedData.fileName || 'flow.json'
+      const flowMetadata = {
+        id: id,
+        title: enhancedData.title || flow?.title || 'フロー',
+        description: enhancedData.description || flow?.description || '',
+        fileName: enhancedData.fileName || flow?.fileName || `${enhancedData.title || 'flow'}.json`
       };
 
-      // 設定するデータをログに出力して確認
+      // 最終的なフローデータを構築（条件分岐情報を確実に含む）
       const finalFlowData = {
         ...enhancedData,
         ...flowMetadata,
-        // 各キャラクターに適したノードとエッジを含むことを確認
-        nodes: [...(enhancedData.nodes || [])],
-        edges: [...(enhancedData.edges || [])]
+        nodes: enhancedData.nodes || [],
+        edges: enhancedData.edges || [],
+        steps: enhancedData.steps || [],
+        loadedAt: new Date().toISOString(),
+        loadTimestamp: timestamp
       };
 
-      console.log("設定するフローデータ:", finalFlowData);
+      console.log("🎯 最終設定データ:", {
+        id: finalFlowData.id,
+        title: finalFlowData.title,
+        nodeCount: finalFlowData.nodes?.length || 0,
+        edgeCount: finalFlowData.edges?.length || 0,
+        stepCount: finalFlowData.steps?.length || 0,
+        conditionNodes: finalFlowData.nodes?.filter(n => n.type === 'decision').length || 0,
+        loadTimestamp: finalFlowData.loadTimestamp
+      });
 
       // ノードとエッジが存在することを確認
       if (!finalFlowData.nodes || finalFlowData.nodes.length === 0) {
-        console.warn("ノードデータが存在しません。デフォルトノードを追加します。");
+        console.warn("⚠️ ノードデータが存在しません。デフォルトノードを追加します。");
         finalFlowData.nodes = [{
           id: 'start',
           type: 'start',
@@ -1037,11 +1041,9 @@ const EmergencyFlowCreator: React.FC = () => {
 
       // フローデータに適用
       setFlowData(finalFlowData);
-
-      // ファイル名を設定
       setUploadedFileName(flowMetadata.fileName);
 
-      console.log("設定完了:", {
+      console.log("✅ データ設定完了:", {
         flowData: finalFlowData,
         fileName: flowMetadata.fileName
       });
@@ -1051,16 +1053,59 @@ const EmergencyFlowCreator: React.FC = () => {
 
       toast({
         title: "フロー読込み完了",
-        description: "フローデータをエディタで編集できます",
+        description: `フローデータをエディタで編集できます（条件分岐: ${finalFlowData.nodes?.filter(n => n.type === 'decision').length || 0}個）`,
       });
     } catch (error) {
-      console.error('フロー読込みエラー:', error);
+      console.error('💥 フロー読込みエラー:', error);
       toast({
         title: "エラー",
         description: "フローデータの読込みに失敗しました",
         variant: "destructive",
       });
     }
+  };
+
+  /**
+   * 条件分岐情報を含むフローデータを正しく処理する関数
+   * @param rawData APIから取得した生データ
+   * @returns 条件分岐情報を含む完全なフローデータ
+   */
+  const processFlowDataWithConditions = (rawData: any) => {
+    console.log("🔀 条件分岐データ処理開始:", rawData);
+
+    // 基本的なデータ処理
+    const baseData = processFlowData(rawData);
+
+    // stepsデータから条件分岐情報を復元
+    if (rawData.steps && Array.isArray(rawData.steps)) {
+      const enhancedNodes = baseData.nodes?.map(node => {
+        if (node.type === 'decision') {
+          // 対応するstepデータを検索
+          const correspondingStep = rawData.steps.find(step => step.id === node.id);
+          if (correspondingStep) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                yesCondition: correspondingStep.yesCondition || '',
+                noCondition: correspondingStep.noCondition || '',
+                otherCondition: correspondingStep.otherCondition || ''
+              }
+            };
+          }
+        }
+        return node;
+      }) || [];
+
+      console.log("🎯 条件分岐情報を復元したノード:", enhancedNodes.filter(n => n.type === 'decision'));
+
+      return {
+        ...baseData,
+        nodes: enhancedNodes
+      };
+    }
+
+    return baseData;
   };
 
   // キャラクター削除実行

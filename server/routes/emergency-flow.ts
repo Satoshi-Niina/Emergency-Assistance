@@ -75,20 +75,35 @@ router.post('/save', async (req, res) => {
       }
     }
 
-    // フローデータを正しい形式で保存（既存の基本情報を保持しつつ、フロー情報を完全に更新）
+    // フローデータを正しい形式で保存（条件分岐情報を確実に保持）
     const saveData = {
       id: flowData.id || existingData.id,
       title: flowData.title,
       description: flowData.description || existingData.description || '',
       triggerKeywords: flowData.triggerKeywords || existingData.triggerKeywords || [],
-      steps: flowData.steps || [],
+      steps: flowData.steps || [], // 条件分岐の詳細情報を含むsteps
       nodes: flowData.nodes || [], // ReactFlowエディタ用のノード情報を保持
       edges: flowData.edges || [], // ReactFlowエディタ用のエッジ情報を保持
       updatedAt: new Date().toISOString(),
       savedAt: new Date().toISOString(),
+      savedTimestamp: flowData.savedTimestamp || Date.now(),
+      // 条件分岐の情報を明示的に保存
+      conditionBranches: flowData.conditionBranches || [],
       // 既存の他のメタデータも保持
       ...(existingData.createdAt && { createdAt: existingData.createdAt })
     };
+
+    // 条件分岐情報の保存確認ログ
+    const conditionStepsCount = saveData.steps.filter(step => 
+      step.yesCondition || step.noCondition || step.otherCondition
+    ).length;
+    
+    console.log(`🔀 保存される条件分岐情報:`, {
+      totalSteps: saveData.steps.length,
+      conditionSteps: conditionStepsCount,
+      conditionBranches: saveData.conditionBranches.length,
+      savedTimestamp: saveData.savedTimestamp
+    });
 
     // JSONファイルとして保存
     try {
@@ -275,7 +290,7 @@ router.get('/list', async (req, res) => {
   }
 });
 
-// 特定のフロー詳細取得エンドポイント
+// 特定のフロー詳細取得エンドポイント（条件分岐情報を含む完全なデータ取得）
 router.get('/detail/:id', async (req, res) => {
   try {
     // 最強のキャッシュ無効化ヘッダーを設定
@@ -289,7 +304,8 @@ router.get('/detail/:id', async (req, res) => {
       'Last-Modified': new Date().toUTCString(),
       'ETag': `"${timestamp}-${randomId}"`,
       'X-Accel-Expires': '0',
-      'Vary': '*'
+      'Vary': '*',
+      'X-Fresh-Data': 'true'
     });
     
     const { id } = req.params;
@@ -314,31 +330,58 @@ router.get('/detail/:id', async (req, res) => {
       requestTimestamp: timestamp
     });
 
-    // ファイル内容を強制的に再読み込み
+    // ファイル内容を強制的に再読み込み（条件分岐情報を含む）
     const content = fs.readFileSync(filePath, 'utf8');
     console.log(`📄 ファイル内容のサイズ: ${content.length}文字`);
     
-    const data = JSON.parse(content);
+    const rawData = JSON.parse(content);
     
-    // データの完全性をチェック
+    // 条件分岐情報の確認とログ出力
+    const conditionSteps = rawData.steps?.filter(step => 
+      step.yesCondition || step.noCondition || step.otherCondition
+    ) || [];
+    
+    console.log(`🔀 条件分岐ステップの確認:`, {
+      totalSteps: rawData.steps?.length || 0,
+      conditionSteps: conditionSteps.length,
+      conditions: conditionSteps.map(step => ({
+        id: step.id,
+        yesCondition: !!step.yesCondition,
+        noCondition: !!step.noCondition,
+        otherCondition: !!step.otherCondition
+      }))
+    });
+    
+    // データの完全性をチェック（条件分岐情報を確実に含む）
     const responseData = {
-      ...data,
+      ...rawData,
       loadedAt: new Date().toISOString(),
       fileModified: stats.mtime.toISOString(),
-      requestId: `${timestamp}-${randomId}`
+      requestId: `${timestamp}-${randomId}`,
+      // 条件分岐情報を明示的に保持
+      conditionBranchesCount: conditionSteps.length,
+      hasConditionBranches: conditionSteps.length > 0
     };
     
-    console.log(`✅ データ解析成功:`, {
+    console.log(`✅ 完全データ解析成功:`, {
       id: responseData.id,
       title: responseData.title,
       stepsCount: responseData.steps?.length || 0,
       nodesCount: responseData.nodes?.length || 0,
       edgesCount: responseData.edges?.length || 0,
+      conditionBranches: responseData.conditionBranchesCount,
       updatedAt: responseData.updatedAt,
       loadedAt: responseData.loadedAt
     });
 
-    res.json({ data: responseData });
+    res.json({ 
+      data: responseData,
+      meta: {
+        freshLoad: true,
+        timestamp: timestamp,
+        conditionsPreserved: true
+      }
+    });
   } catch (error) {
     console.error('❌ フロー詳細取得エラー:', error);
     res.status(500).json({ error: 'フローの取得に失敗しました' });
