@@ -211,6 +211,7 @@ function updateIndexFile(metadata: any) {
 router.get('/list', async (req, res) => {
   try {
     console.log('📋 フロー一覧取得リクエスト受信 - troubleshootingディレクトリのみ');
+    console.log('🚫 古いデータ（engine_restart_issue, parking_brake_release_issue）は完全に除外');
 
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
     console.log(`🔍 対象ディレクトリ: ${troubleshootingDir}`);
@@ -221,13 +222,14 @@ router.get('/list', async (req, res) => {
       return res.json([]);
     }
 
-    // engine_stop_no_start.jsonのみを明示的に処理
-    const targetFile = 'engine_stop_no_start.json';
-    const targetPath = path.join(troubleshootingDir, targetFile);
+    // 明示的にengine_stop_no_start.jsonのみを処理
+    const allowedFile = 'engine_stop_no_start.json';
+    const targetPath = path.join(troubleshootingDir, allowedFile);
 
-    console.log(`🎯 対象ファイル: ${targetFile}`);
+    console.log(`🎯 許可ファイル: ${allowedFile}`);
     console.log(`📁 ファイル存在: ${fs.existsSync(targetPath)}`);
 
+    // 他のファイルは完全に無視
     const flows = [];
 
     if (fs.existsSync(targetPath)) {
@@ -235,7 +237,13 @@ router.get('/list', async (req, res) => {
         const content = fs.readFileSync(targetPath, 'utf-8');
         const data = JSON.parse(content);
 
-        console.log(`✅ ファイル処理: ${targetFile} (ID: ${data.id}, ステップ数: ${data.steps?.length || 0})`);
+        // IDも厳格にチェック
+        if (data.id !== 'engine_stop_no_start') {
+          console.log(`❌ 不正なID発見: ${data.id} - 処理をスキップ`);
+          return res.json([]);
+        }
+
+        console.log(`✅ 正規ファイル処理: ${allowedFile} (ID: ${data.id}, ステップ数: ${data.steps?.length || 0})`);
 
         const flowData = {
           id: data.id,
@@ -244,16 +252,21 @@ router.get('/list', async (req, res) => {
           trigger: data.triggerKeywords || [],
           slides: [], // 互換性のため
           createdAt: data.updatedAt || new Date().toISOString(),
-          fileName: targetFile
+          fileName: allowedFile
         };
 
         flows.push(flowData);
+        console.log('✅ フロー追加完了:', flowData);
       } catch (error) {
-        console.error(`❌ ファイル読み込みエラー ${targetFile}:`, error);
+        console.error(`❌ ファイル読み込みエラー ${allowedFile}:`, error);
+        return res.json([]);
       }
+    } else {
+      console.log(`⚠️ 許可ファイルが見つかりません: ${allowedFile}`);
     }
 
-    console.log(`✅ 処理完了: ${flows.length}個のフローを返却（${targetFile}のみ）`);
+    console.log(`✅ 最終返却データ: ${flows.length}個のフロー（engine_stop_no_startのみ）`);
+    console.log('🔍 返却データ詳細:', JSON.stringify(flows, null, 2));
 
     // 強力なキャッシュ無効化ヘッダー
     res.set({
@@ -263,7 +276,9 @@ router.get('/list', async (req, res) => {
       'X-Fresh-Data': 'true',
       'X-Timestamp': Date.now().toString(),
       'X-Source-Directory': 'knowledge-base/troubleshooting',
-      'X-Target-File': targetFile
+      'X-Target-File': allowedFile,
+      'X-Allowed-IDs': 'engine_stop_no_start',
+      'X-Response-Count': flows.length.toString()
     });
 
     res.json(flows);
