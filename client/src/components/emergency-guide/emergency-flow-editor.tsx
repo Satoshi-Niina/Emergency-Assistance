@@ -205,31 +205,31 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
 
       console.log(`💾 ファイルパス指定保存: ${targetFilePath}`, requestData);
 
-      // 🎯 troubleshooting専用エンドポイントを使用（ファイルパスを明示）
-    const savePayload = {
-      ...saveData,
-      targetFilePath: selectedFilePath || `knowledge-base/troubleshooting/${editedFlow.id}.json`,
-      forceOverwrite: true,
-      timestamp: Date.now()
-    };
+      // 🎯 統一されたsave-flowエンドポイントを使用（ファイルパスを明示）
+      const savePayload = {
+        ...saveData,
+        filePath: selectedFilePath || `knowledge-base/troubleshooting/${editedFlow.id}.json`,
+        forceOverwrite: true,
+        timestamp: Date.now()
+      };
 
-    console.log(`💾 保存実行:`, {
-      id: editedFlow.id,
-      targetFilePath: savePayload.targetFilePath,
-      stepsCount: savePayload.steps?.length || 0,
-      timestamp: savePayload.timestamp
-    });
+      console.log(`💾 保存実行:`, {
+        id: editedFlow.id,
+        filePath: savePayload.filePath,
+        stepsCount: savePayload.steps?.length || 0,
+        timestamp: savePayload.timestamp
+      });
 
-    const response = await fetch(`/api/emergency-flow/save/${editedFlow.id}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'X-Force-Save': 'true',
-        'X-Target-Path': savePayload.targetFilePath
-      },
-      body: JSON.stringify(savePayload)
-    });
+      const response = await fetch(`/api/emergency-flow/save-flow`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'X-Force-Save': 'true',
+          'X-Target-Path': savePayload.filePath
+        },
+        body: JSON.stringify(savePayload)
+      });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
