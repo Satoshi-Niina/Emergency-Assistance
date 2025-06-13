@@ -127,6 +127,91 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// 特定のトラブルシューティングデータ保存
+router.post('/save/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const saveData = req.body;
+
+    console.log(`💾 トラブルシューティングデータ保存開始: ID=${id}`, {
+      title: saveData.title,
+      stepsCount: saveData.steps?.length || 0,
+      timestamp: saveData.savedTimestamp || 'N/A'
+    });
+
+    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const filePath = path.join(troubleshootingDir, `${id}.json`);
+
+    // ディレクトリが存在しない場合は作成
+    if (!fs.existsSync(troubleshootingDir)) {
+      fs.mkdirSync(troubleshootingDir, { recursive: true });
+    }
+
+    // 既存ファイルのバックアップを作成
+    if (fs.existsSync(filePath)) {
+      const backupPath = `${filePath}.backup.${Date.now()}`;
+      fs.copyFileSync(filePath, backupPath);
+      console.log(`📋 バックアップ作成: ${backupPath}`);
+    }
+
+    // 保存データに確実にタイムスタンプを追加
+    const finalSaveData = {
+      ...saveData,
+      updatedAt: new Date().toISOString(),
+      savedTimestamp: saveData.savedTimestamp || Date.now()
+    };
+
+    // 原子的書き込み（一時ファイル経由）
+    const tempFilePath = `${filePath}.tmp.${Date.now()}`;
+    const saveDataString = JSON.stringify(finalSaveData, null, 2);
+
+    fs.writeFileSync(tempFilePath, saveDataString, 'utf8');
+
+    // 一時ファイルが正常に書き込まれた場合のみ、元ファイルを置き換え
+    if (fs.existsSync(tempFilePath)) {
+      fs.renameSync(tempFilePath, filePath);
+      console.log(`✅ 原子的ファイル保存完了: ${filePath}`);
+    } else {
+      throw new Error('一時ファイルの作成に失敗しました');
+    }
+
+    // 保存後の検証
+    const savedContent = fs.readFileSync(filePath, 'utf8');
+    const parsedContent = JSON.parse(savedContent);
+    console.log(`🔍 保存後検証:`, {
+      id: parsedContent.id,
+      title: parsedContent.title,
+      stepsCount: parsedContent.steps?.length || 0,
+      fileSize: savedContent.length,
+      savedTimestamp: parsedContent.savedTimestamp
+    });
+
+    // 強力なキャッシュ無効化ヘッダーを設定
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+      'Pragma': 'no-cache',
+      'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
+      'Last-Modified': new Date().toUTCString(),
+      'ETag': `"${finalSaveData.savedTimestamp}-${Date.now()}"`,
+      'X-Fresh-Data': 'true'
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'データが保存されました',
+      savedAt: finalSaveData.updatedAt,
+      savedTimestamp: finalSaveData.savedTimestamp,
+      verification: {
+        stepsCount: parsedContent.steps?.length || 0,
+        fileSize: savedContent.length
+      }
+    });
+  } catch (error) {
+    console.error('❌ トラブルシューティングデータ保存エラー:', error);
+    res.status(500).json({ error: 'データの保存に失敗しました' });
+  }
+});
+
 // チャット画面からのフロー検索
 router.post('/search', (req, res) => {
   try {
