@@ -244,14 +244,26 @@ const EmergencyFlowCreator: React.FC = () => {
       setSelectedFilePath(filePath);
       console.log(`📁 編集対象ファイルパス設定: ${filePath}`);
 
-      // 🎯 troubleshooting APIを使用してデータ取得（確実にtroubleしootingディレクトリから読み込み）
+      // 🚫 ブラウザキャッシュを強制クリア
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+        console.log('🧹 ブラウザキャッシュクリア完了');
+      }
+
+      // 🎯 最強のキャッシュ無効化でデータ取得
       const timestamp = Date.now();
-      const response = await fetch(`/api/troubleshooting/${flowId}?t=${timestamp}`, {
+      const randomId = Math.random().toString(36).substring(2, 15);
+      const cacheBuster = `${timestamp}_${randomId}`;
+      
+      const response = await fetch(`/api/troubleshooting/${flowId}?t=${cacheBuster}&force=true&_cb=${Date.now()}`, {
         method: 'GET',
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
           'Pragma': 'no-cache',
-          'Expires': '0'
+          'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
+          'X-Force-Fresh': 'true',
+          'X-Request-ID': cacheBuster
         }
       });
 
@@ -261,6 +273,7 @@ const EmergencyFlowCreator: React.FC = () => {
 
       const data = await response.json();
 
+      // 🔍 データ整合性の厳密チェック
       console.log(`✅ 取得したフローデータ:`, {
         requestedId: flowId,
         retrievedId: data.id,
@@ -270,16 +283,33 @@ const EmergencyFlowCreator: React.FC = () => {
         filePath: filePath,
         actualFilePath: data.filePath,
         allStepIds: data.steps?.map(s => s.id) || [],
-        loadedAt: data.loadedAt
+        loadedAt: data.loadedAt,
+        timestamp: cacheBuster,
+        responseHeaders: {
+          cacheControl: response.headers.get('Cache-Control'),
+          lastModified: response.headers.get('Last-Modified'),
+          etag: response.headers.get('ETag')
+        }
       });
 
-      // 🔍 重要: ステップ数の詳細確認
-      console.log(`🔍 ステップ詳細確認:`, {
-        totalSteps: data.steps?.length || 0,
-        stepTypes: data.steps?.map(s => ({ id: s.id, type: s.type, title: s.title })) || [],
-        originalFile: `knowledge-base/troubleshooting/${flowId}.json`,
-        requestedFile: filePath
-      });
+      // ⚠️ ステップ数不一致の警告
+      if (data.steps?.length !== 15) {
+        console.warn(`⚠️ 期待されるステップ数と異なります: 実際=${data.steps?.length}, 期待=15`);
+        
+        // 🔍 不足しているステップを特定
+        const expectedStepIds = ['start', 'step1', 'decision1', 'step2a', 'step2b', 'step3a', 'step3b', 'step3c', 'step3d', 'step3e', 'step3f', 'step3g', 'decision2', 'step_success', 'step_failure'];
+        const actualStepIds = data.steps?.map(s => s.id) || [];
+        const missingSteps = expectedStepIds.filter(id => !actualStepIds.includes(id));
+        
+        if (missingSteps.length > 0) {
+          console.error(`❌ 不足しているステップ:`, missingSteps);
+          toast({
+            title: "データ不整合警告",
+            description: `ファイルに${missingSteps.length}個のステップが不足しています。`,
+            variant: "destructive"
+          });
+        }
+      }
 
       setCurrentFlowData(data);
       setSelectedFlowForEdit(flowId);
@@ -288,7 +318,8 @@ const EmergencyFlowCreator: React.FC = () => {
         flowId: flowId,
         filePath: filePath,
         dataLoaded: !!data,
-        stepsCount: data.steps?.length || 0
+        stepsCount: data.steps?.length || 0,
+        cacheBuster: cacheBuster
       });
 
     } catch (error) {
