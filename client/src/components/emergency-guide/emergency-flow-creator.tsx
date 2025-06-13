@@ -891,19 +891,27 @@ const EmergencyFlowCreator: React.FC = () => {
   // 特定のフローを読み込む
   const loadFlow = async (id: string) => {
     try {
-      console.log(`フローデータの取得開始: ID=${id}`);
+      console.log(`🔄 フローデータの取得開始: ID=${id}`);
       
-      // 現在の状態をクリア（古いデータの表示を防ぐ）
+      // 現在の状態を完全にクリア（古いデータの表示を防ぐ）
       setFlowData(null);
+      setUploadedFileName('');
 
-      // キャッシュを防止するためにタイムスタンプパラメータを追加
+      // 強力なキャッシュ無効化パラメータを生成
       const timestamp = new Date().getTime();
-      const response = await fetch(`/api/emergency-flow/detail/${id}?t=${timestamp}&nocache=${Math.random()}`, {
+      const randomId = Math.random().toString(36).substring(2);
+      const nonce = Math.floor(Math.random() * 1000000);
+      
+      console.log(`🚫 キャッシュ無効化パラメータ: t=${timestamp}, r=${randomId}, n=${nonce}`);
+      
+      const response = await fetch(`/api/emergency-flow/detail/${id}?t=${timestamp}&r=${randomId}&n=${nonce}&nocache=true&_=${Date.now()}`, {
         method: 'GET',
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
           'Pragma': 'no-cache',
-          'Expires': '0'
+          'Expires': '0',
+          'If-None-Match': '*',
+          'If-Modified-Since': 'Thu, 01 Jan 1970 00:00:00 GMT'
         }
       });
 

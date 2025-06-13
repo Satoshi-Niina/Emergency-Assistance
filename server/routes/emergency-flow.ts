@@ -195,27 +195,51 @@ router.get('/list', async (req, res) => {
 // 特定のフロー詳細取得エンドポイント
 router.get('/detail/:id', async (req, res) => {
   try {
-    // キャッシュ無効化ヘッダーを設定
+    // 強力なキャッシュ無効化ヘッダーを設定
     res.set({
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
       'Pragma': 'no-cache',
-      'Expires': '0'
+      'Expires': '0',
+      'Last-Modified': new Date().toUTCString(),
+      'ETag': `"${Date.now()}-${Math.random()}"`
     });
     
     const { id } = req.params;
+    console.log(`📖 フロー詳細取得開始: ID=${id}`);
+    
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
     const filePath = path.join(troubleshootingDir, `${id}.json`);
+    
+    console.log(`📁 ファイルパス: ${filePath}`);
 
     if (!fs.existsSync(filePath)) {
+      console.log(`❌ ファイルが存在しません: ${filePath}`);
       return res.status(404).json({ error: 'フローが見つかりません' });
     }
 
+    // ファイルの統計情報を取得（最新の更新時刻を確認）
+    const stats = fs.statSync(filePath);
+    console.log(`📊 ファイル情報:`, {
+      size: stats.size,
+      mtime: stats.mtime,
+      path: filePath
+    });
+
+    // ファイル内容を読み取り
     const content = fs.readFileSync(filePath, 'utf8');
+    console.log(`📄 ファイル内容のサイズ: ${content.length}文字`);
+    
     const data = JSON.parse(content);
+    console.log(`✅ データ解析成功:`, {
+      id: data.id,
+      title: data.title,
+      stepsCount: data.steps?.length || 0,
+      updatedAt: data.updatedAt
+    });
 
     res.json({ data });
   } catch (error) {
-    console.error('フロー詳細取得エラー:', error);
+    console.error('❌ フロー詳細取得エラー:', error);
     res.status(500).json({ error: 'フローの取得に失敗しました' });
   }
 });
