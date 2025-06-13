@@ -470,7 +470,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
     // 既存データの構造を保持しつつ、新しいデータをマージ
     const baseData = initialData || {};
 
-    // nodesからstepsに変換（条件分岐の詳細情報を保持）
+    // nodesからstepsに変換（条件分岐の詳細情報を確実に保持）
     const steps = nodes.map(node => {
       const step = {
         id: node.id,
@@ -481,23 +481,30 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
         message: node.data.message || node.data.description || node.data.content || ''
       };
 
-      // 条件分岐ノードの場合、詳細なoptions情報を保持
+      // 条件分岐ノードの場合、詳細なoptions情報と条件テキストを確実に保持
       if (node.type === 'decision') {
         const connectedEdges = edges.filter(edge => edge.source === node.id);
         step.options = connectedEdges.map(edge => ({
-          text: edge.sourceHandle === 'yes' ? node.data.yesCondition || 'はい' :
-                edge.sourceHandle === 'no' ? node.data.noCondition || 'いいえ' :
-                edge.sourceHandle === 'other' ? node.data.otherCondition || 'その他' : '選択肢',
+          text: edge.sourceHandle === 'yes' ? (node.data.yesCondition || 'はい') :
+                edge.sourceHandle === 'no' ? (node.data.noCondition || 'いいえ') :
+                edge.sourceHandle === 'other' ? (node.data.otherCondition || 'その他') : '選択肢',
           nextStepId: edge.target,
           isTerminal: false,
           conditionType: edge.sourceHandle === 'yes' ? 'yes' : 
                         edge.sourceHandle === 'no' ? 'no' : 'other'
         }));
 
-        // 条件分岐の条件テキストを保存
-        if (node.data.yesCondition) step.yesCondition = node.data.yesCondition;
-        if (node.data.noCondition) step.noCondition = node.data.noCondition;
-        if (node.data.otherCondition) step.otherCondition = node.data.otherCondition;
+        // 条件分岐の条件テキストを必ず保存
+        step.yesCondition = node.data.yesCondition || '';
+        step.noCondition = node.data.noCondition || '';
+        step.otherCondition = node.data.otherCondition || '';
+        
+        console.log(`🔀 条件分岐ノード ${node.id} の条件を保存:`, {
+          yesCondition: step.yesCondition,
+          noCondition: step.noCondition,
+          otherCondition: step.otherCondition,
+          optionsCount: step.options?.length || 0
+        });
       } else {
         // その他のノードの場合
         const connectedEdges = edges.filter(edge => edge.source === node.id);
@@ -512,61 +519,81 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
       return step;
     });
 
-    // フローデータを正しい形式に変換（既存構造を保持）
-    const flowData = {
+    // フローデータを正しい形式に変換（確実にデータを保持）
+    const finalFlowData = {
       ...baseData, // 既存のメタデータを保持
       id: baseData.id || flowId || flowTitle.replace(/\s+/g, '_').toLowerCase(),
       title: flowTitle,
-      description: flowDescription, // フロー説明を正しく設定
+      description: flowDescription,
       triggerKeywords: baseData.triggerKeywords || [],
-      steps: steps,
-      nodes: nodes, // エディタ用のnode情報を確実に保持
-      edges: edges, // エディタ用のedge情報を確実に保持
+      steps: steps, // 条件分岐の情報を含む完全なsteps
+      nodes: [...nodes], // エディタ用のnode情報を完全にコピー
+      edges: [...edges], // エディタ用のedge情報を完全にコピー
       updatedAt: new Date().toISOString(),
-      savedTimestamp: Date.now() // 保存タイムスタンプを追加
+      savedTimestamp: Date.now(),
+      // 保存された条件分岐データをメタデータとしても記録
+      conditionBranches: nodes
+        .filter(node => node.type === 'decision')
+        .map(node => ({
+          nodeId: node.id,
+          yesCondition: node.data.yesCondition || '',
+          noCondition: node.data.noCondition || '',
+          otherCondition: node.data.otherCondition || ''
+        }))
     };
 
-    console.log('💾 保存するフローデータ:', {
-      id: flowData.id,
-      title: flowData.title,
-      nodeCount: flowData.nodes?.length || 0,
-      edgeCount: flowData.edges?.length || 0,
-      stepCount: flowData.steps?.length || 0,
+    console.log('💾 保存するフローデータ (完全版):', {
+      id: finalFlowData.id,
+      title: finalFlowData.title,
+      nodeCount: finalFlowData.nodes?.length || 0,
+      edgeCount: finalFlowData.edges?.length || 0,
+      stepCount: finalFlowData.steps?.length || 0,
+      conditionNodes: finalFlowData.conditionBranches?.length || 0,
       hasConditions: steps.filter(s => s.yesCondition || s.noCondition || s.otherCondition).length,
-      timestamp: flowData.savedTimestamp
+      timestamp: finalFlowData.savedTimestamp
     });
 
     try {
       // 親コンポーネントに渡してサーバー保存
-      await onSave(flowData);
+      await onSave(finalFlowData);
 
-      // 保存成功後、強制的にキャッシュクリアイベントを発火
+      // 保存成功後、強制的にキャッシュクリアと更新イベントを発火
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('flowDataUpdated', {
-          detail: { 
-            id: flowData.id, 
-            data: flowData,
-            forceReload: true,
-            timestamp: flowData.savedTimestamp,
-            action: 'save'
-          }
-        }));
-        
-        // 追加で troubleshootingDataUpdated イベントも発火
-        window.dispatchEvent(new CustomEvent('troubleshootingDataUpdated', {
-          detail: { 
-            id: flowData.id, 
-            forceReload: true 
-          }
-        }));
+        const updateEvents = [
+          new CustomEvent('flowDataUpdated', {
+            detail: { 
+              id: finalFlowData.id, 
+              data: finalFlowData,
+              forceReload: true,
+              timestamp: finalFlowData.savedTimestamp,
+              action: 'save_with_conditions'
+            }
+          }),
+          new CustomEvent('troubleshootingDataUpdated', {
+            detail: { 
+              id: finalFlowData.id, 
+              forceReload: true,
+              action: 'save_complete'
+            }
+          }),
+          new CustomEvent('emergencyFlowSaved', {
+            detail: {
+              id: finalFlowData.id,
+              timestamp: finalFlowData.savedTimestamp,
+              conditionsCount: finalFlowData.conditionBranches?.length || 0
+            }
+          })
+        ];
+
+        updateEvents.forEach(event => window.dispatchEvent(event));
       }
 
       toast({
-        title: "保存しました",
-        description: "フローデータを保存しました",
+        title: "保存完了",
+        description: `フローデータを保存しました（条件分岐: ${finalFlowData.conditionBranches?.length || 0}個）`,
       });
     } catch (error) {
-      console.error('保存エラー:', error);
+      console.error('💥 保存エラー:', error);
       toast({
         title: "保存エラー",
         description: "フローデータの保存に失敗しました",
