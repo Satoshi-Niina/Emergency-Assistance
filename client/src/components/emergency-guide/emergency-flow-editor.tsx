@@ -205,30 +205,20 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
 
       console.log(`💾 ファイルパス指定保存: ${targetFilePath}`, requestData);
 
-      // 🎯 統一されたsave-flowエンドポイントを使用（ファイルパスを明示）
-      const savePayload = {
-        ...saveData,
-        filePath: selectedFilePath || `knowledge-base/troubleshooting/${editedFlow.id}.json`,
-        forceOverwrite: true,
-        timestamp: Date.now()
-      };
-
+      // 🎯 統一されたAPIエンドポイントで保存
       console.log(`💾 保存実行:`, {
         id: editedFlow.id,
-        filePath: savePayload.filePath,
-        stepsCount: savePayload.steps?.length || 0,
-        timestamp: savePayload.timestamp
+        stepsCount: saveData.steps?.length || 0,
+        timestamp: saveData.savedTimestamp
       });
 
-      const response = await fetch(`/api/emergency-flow/save-flow`, {
+      const response = await fetch(`/api/emergency-flow-router/save/${editedFlow.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'X-Force-Save': 'true',
-          'X-Target-Path': savePayload.filePath
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
         },
-        body: JSON.stringify(savePayload)
+        body: JSON.stringify(saveData)
       });
 
       if (!response.ok) {
