@@ -897,15 +897,15 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
                                 <div className="space-y-1">
                                   <div className="flex items-center gap-1">
                                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                    <span>はい: {yesConnection ? `${nodes.find(n => n.id === yesConnection.target)?.data.label || '不明'}` : '未接続'}</span>
+                                    <span>はい: {yesConnection ? (nodes.find(n => n.id === yesConnection.target)?.data.label || '不明') : '未接続'}</span>
                                   </div>
                                   <div className="flex items-center gap-1">
                                     <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                                    <span>いいえ: {noConnection ? `${nodes.find(n => n.id === noConnection.target)?.data.label || '不明'}` : '未接続'}</span>
+                                    <span>いいえ: {noConnection ? (nodes.find(n => n.id === noConnection.target)?.data.label || '不明') : '未接続'}</span>
                                   </div>
                                   <div className="flex items-center gap-1">
                                     <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                                    <span>その他: {otherConnection ? `${nodes.find(n => n.id === otherConnection.target)?.data.label || '不明'}` : '未接続'}</span>
+                                    <span>その他: {otherConnection ? (nodes.find(n => n.id === otherConnection.target)?.data.label || '不明') : '未接続'}</span>
                                   </div>
                                 </div>
                               );
