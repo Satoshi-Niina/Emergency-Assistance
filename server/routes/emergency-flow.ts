@@ -291,7 +291,7 @@ router.get('/list', async (req, res) => {
 });
 
 // 特定のフロー詳細取得エンドポイント（条件分岐情報を含む完全なデータ取得）
-router.get('/:id', async (req, res) => {
+router.get('/detail/:id', async (req, res) => {
   try {
     // 最強のキャッシュ無効化ヘッダーを設定
     const timestamp = Date.now();
@@ -384,6 +384,79 @@ router.get('/:id', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ フロー詳細取得エラー:', error);
+    res.status(500).json({ error: 'フローの取得に失敗しました' });
+  }
+});
+
+// 直接IDアクセス用エンドポイント（troubleshootingディレクトリからの読み込み専用）
+router.get('/:id', async (req, res) => {
+  try {
+    const timestamp = Date.now();
+    const randomId = Math.random().toString(36).substring(2);
+    
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0, s-maxage=0',
+      'Pragma': 'no-cache',
+      'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
+      'Last-Modified': new Date().toUTCString(),
+      'ETag': `"${timestamp}-${randomId}"`,
+      'X-Accel-Expires': '0',
+      'Vary': '*',
+      'X-Fresh-Data': 'true'
+    });
+    
+    const { id } = req.params;
+    console.log(`🔄 [${timestamp}] フロー直接取得: ID=${id}`);
+    
+    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const filePath = path.join(troubleshootingDir, `${id}.json`);
+    
+    console.log(`📁 ファイルパス: ${filePath}`);
+
+    if (!fs.existsSync(filePath)) {
+      console.log(`❌ ファイルが存在しません: ${filePath}`);
+      return res.status(404).json({ error: 'フローが見つかりません' });
+    }
+
+    const stats = fs.statSync(filePath);
+    console.log(`📊 ファイル情報:`, {
+      size: stats.size,
+      mtime: stats.mtime.toISOString(),
+      path: filePath,
+      requestTimestamp: timestamp
+    });
+
+    const content = fs.readFileSync(filePath, 'utf8');
+    const rawData = JSON.parse(content);
+    
+    const conditionSteps = rawData.steps?.filter(step => 
+      step.yesCondition || step.noCondition || step.otherCondition
+    ) || [];
+    
+    console.log(`🔀 条件分岐ステップの確認:`, {
+      totalSteps: rawData.steps?.length || 0,
+      conditionSteps: conditionSteps.length
+    });
+    
+    const responseData = {
+      ...rawData,
+      loadedAt: new Date().toISOString(),
+      fileModified: stats.mtime.toISOString(),
+      requestId: `${timestamp}-${randomId}`,
+      conditionBranchesCount: conditionSteps.length,
+      hasConditionBranches: conditionSteps.length > 0
+    };
+    
+    console.log(`✅ 直接データ取得成功:`, {
+      id: responseData.id,
+      title: responseData.title,
+      stepsCount: responseData.steps?.length || 0,
+      conditionBranches: responseData.conditionBranchesCount
+    });
+
+    res.json(responseData);
+  } catch (error) {
+    console.error('❌ フロー直接取得エラー:', error);
     res.status(500).json({ error: 'フローの取得に失敗しました' });
   }
 });
