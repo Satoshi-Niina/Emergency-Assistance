@@ -205,18 +205,31 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
 
       console.log(`💾 ファイルパス指定保存: ${targetFilePath}`, requestData);
 
-      // 保存API呼び出し（knowledge-base/troubleshootingディレクトリに確実に保存）
-      const response = await fetch(`/api/troubleshooting/save/${saveData.id}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache'
-        },
-        body: JSON.stringify({
-          ...saveData,
-          savedTimestamp: Date.now()
-        })
-      });
+      // 🎯 troubleshooting専用エンドポイントを使用（ファイルパスを明示）
+    const savePayload = {
+      ...saveData,
+      targetFilePath: selectedFilePath || `knowledge-base/troubleshooting/${editedFlow.id}.json`,
+      forceOverwrite: true,
+      timestamp: Date.now()
+    };
+
+    console.log(`💾 保存実行:`, {
+      id: editedFlow.id,
+      targetFilePath: savePayload.targetFilePath,
+      stepsCount: savePayload.steps?.length || 0,
+      timestamp: savePayload.timestamp
+    });
+
+    const response = await fetch(`/api/troubleshooting/save/${editedFlow.id}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'X-Force-Save': 'true',
+        'X-Target-Path': savePayload.targetFilePath
+      },
+      body: JSON.stringify(savePayload)
+    });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -224,17 +237,46 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
       }
 
       const result = await response.json();
-      console.log('✅ 保存成功:', result);
+
+      if (result.success) {
+      console.log(`✅ 保存成功:`, result);
+
+      // 🧹 保存後にキャッシュを強制クリア
+      if ('caches' in window) {
+        try {
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map(name => caches.delete(name)));
+          console.log('🧹 保存後キャッシュクリア完了');
+        } catch (cacheError) {
+          console.warn('⚠️ キャッシュクリアエラー:', cacheError);
+        }
+      }
 
       toast({
         title: "保存完了",
-        description: "フローが正常に保存されました",
+        description: `フロー「${editedFlow.title}」が保存されました (${saveData.steps?.length || 0}ステップ)`,
       });
 
-      // 親コンポーネントに保存完了を通知
+      // 保存されたデータでローカル状態を更新
       if (onSave) {
         onSave(saveData);
       }
+
+      // 他のコンポーネントに保存完了を通知
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flowSaved', { 
+          detail: { 
+            savedData: saveData, 
+            filePath: selectedFilePath,
+            timestamp: Date.now(),
+            stepsCount: saveData.steps?.length || 0
+          }
+        }));
+
+        // フロー一覧の強制更新を要求
+        window.dispatchEvent(new CustomEvent('forceRefreshFlowList'));
+      }
+    }
 
       // 保存されたデータで現在の編集データを更新
       setEditedFlow(saveData);
