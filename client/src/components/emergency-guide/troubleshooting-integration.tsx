@@ -37,7 +37,12 @@ const TroubleshootingIntegration: React.FC<TroubleshootingIntegrationProps> = ({
       try {
         setIsLoading(true);
         
-        const response = await fetch(`/api/troubleshooting/${id}`);
+        const response = await fetch(`/api/troubleshooting/${id}`, {
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
         
         if (!response.ok) {
           throw new Error(`データの取得に失敗しました (${response.status})`);

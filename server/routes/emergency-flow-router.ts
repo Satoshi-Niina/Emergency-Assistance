@@ -239,43 +239,39 @@ router.get('/list', async (req, res) => {
 
     // troubleshootingディレクトリのファイルを処理
     for (const file of troubleshootingFlowFiles) {
-      try {
-        const filePath = path.join(troubleshootingDir, file);
+      const filePath = path.join(troubleshootingDir, file);
+      console.log(`📁 troubleshootingファイル処理: ${filePath}`);
 
-        // ファイルの存在を再確認
-        if (!fs.existsSync(filePath)) {
-          console.log(`❌ ファイル ${file} が存在しません: ${filePath}`);
+      try {
+        // engine_stop_no_start.json以外は処理しない
+        if (file !== 'engine_stop_no_start.json') {
+          console.log(`⏭️ スキップ: ${file} (engine_stop_no_start.json以外)`);
           continue;
         }
 
         const stats = fs.statSync(filePath);
-        if (stats.size === 0) {
-          console.log(`❌ ファイル ${file} は空です`);
-          continue;
-        }
-
-        const content = fs.readFileSync(filePath, 'utf8');
+        const content = fs.readFileSync(filePath, 'utf-8');
         const data = JSON.parse(content);
 
-        // 基本的なプロパティを確認
-        if (data.id && data.title) {
-          const flowItem = {
-            id: data.id,
-            title: data.title,
-            description: data.description || '',
-            trigger: data.triggerKeywords || data.trigger || [],
-            slides: data.steps || data.slides || [],
-            createdAt: data.updatedAt || data.createdAt || new Date().toISOString(),
-            fileName: file
-          };
+        console.log(`✅ troubleshootingファイル読み込み成功:`, {
+          id: data.id,
+          title: data.title,
+          stepsCount: data.steps?.length || 0,
+          triggerCount: data.triggerKeywords?.length || 0
+        });
 
-          flows.push(flowItem);
-          console.log(`✅ ファイル ${file} を読み込み: { id: '${data.id}', title: '${data.title}', stepsCount: ${(data.steps || data.slides || []).length} }`);
-        } else {
-          console.log(`❌ ファイル ${file} に必要なプロパティがありません: id=${data.id}, title=${data.title}`);
-        }
+        flows.push({
+          id: data.id || file.replace('.json', ''),
+          title: data.title || 'タイトルなし',
+          description: data.description || '',
+          trigger: data.triggerKeywords || data.trigger || [],
+          slides: data.steps || [],
+          createdAt: data.updatedAt || data.createdAt || stats.mtime.toISOString(),
+          fileName: file,
+          source: 'troubleshooting'
+        });
       } catch (error) {
-        console.log(`❌ ファイル ${file} の読み込みに失敗: ${error}`);
+        console.error(`❌ troubleshootingファイル処理エラー ${file}:`, error);
       }
     }
 
