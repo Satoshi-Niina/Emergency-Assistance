@@ -172,9 +172,22 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         onSave(saveData);
       }
 
-      // 強制的にページをリロードして最新データを取得
-      console.log('🔄 強制リロードを実行します');
-      window.location.reload();
+      // 保存されたデータで現在の編集データを更新
+      setEditedFlow(saveData);
+
+      // データ更新イベントを発行
+      window.dispatchEvent(new CustomEvent('flowDataUpdated', {
+        detail: { 
+          flowId: editedFlow.id, 
+          data: saveData,
+          timestamp: Date.now()
+        }
+      }));
+
+      // フロー一覧の更新イベントも発行
+      window.dispatchEvent(new CustomEvent('forceRefreshFlowList', {
+        detail: { forceRefresh: true }
+      }));
 
       
 
@@ -448,32 +461,11 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
               {/* ステップタイトル編集 */}
               <div>
                 <Label>タイトル</Label>
-                {editingStepTitle === step.id ? (
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={step.title}
-                      onChange={(e) => updateStepTitle(step.id, e.target.value)}
-                      placeholder="ステップのタイトル"
-                    />
-                    <Button size="sm" onClick={() => setEditingStepTitle(null)}>
-                      <Check className="w-4 h-4" />
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => setEditingStepTitle(null)}>
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={step.title}
-                      onChange={(e) => updateStepTitle(step.id, e.target.value)}
-                      placeholder="ステップのタイトル"
-                    />
-                    <Button size="sm" variant="ghost" onClick={() => setEditingStepTitle(step.id)}>
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                  </div>
-                )}
+                <Input
+                  value={step.title}
+                  onChange={(e) => updateStepTitle(step.id, e.target.value)}
+                  placeholder="ステップのタイトル"
+                />
               </div>
             </CardHeader>
             <CardContent>
@@ -538,11 +530,11 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                         {/* 条件分岐の場合の条件入力 */}
                         {step.type === 'decision' && (
                           <div>
-                            <Label>条件</Label>
+                            <Label>条件（詳細）</Label>
                             <Input
                               value={option.condition || ''}
                               onChange={(e) => updateOption(step.id, optionIndex, { condition: e.target.value })}
-                              placeholder="例: 温度 > 90℃"
+                              placeholder="例: エンジン温度 > 90℃, 燃料残量 < 10%"
                             />
                           </div>
                         )}

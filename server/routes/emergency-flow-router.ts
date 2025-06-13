@@ -3,7 +3,6 @@ import fs from 'fs';
 import path from 'path';
 import { log } from '../vite';
 import fsPromises from 'fs/promises';
-import { pathExists, readdir, stat, readFile } from 'fs-extra';
 
 const router = express.Router();
 
@@ -304,8 +303,7 @@ router.get('/list', async (req, res) => {
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
 
     // ディレクトリが存在するか確認
-    const dirExists = await pathExists(troubleshootingDir);
-    if (!dirExists) {
+    if (!fs.existsSync(troubleshootingDir)) {
       console.log('⚠️ troubleshootingディレクトリが存在しません');
       return res.json([]);
     }
@@ -313,8 +311,10 @@ router.get('/list', async (req, res) => {
     const flows = [];
 
     // troubleshootingディレクトリから直接JSONファイルを取得
-    const troubleshootingFiles = await readdir(troubleshootingDir);
-    const troubleshootingFlowFiles = troubleshootingFiles.filter(file => file.endsWith('.json'));
+    const troubleshootingFiles = fs.readdirSync(troubleshootingDir);
+    const troubleshootingFlowFiles = troubleshootingFiles.filter(file => 
+      file.endsWith('.json') && !file.includes('.backup')
+    );
     console.log(`📁 troubleshootingDirから${troubleshootingFlowFiles.length}個のJSONファイルを検出:`, troubleshootingFlowFiles);
 
     // troubleshootingディレクトリのファイルを処理
@@ -323,16 +323,15 @@ router.get('/list', async (req, res) => {
         const filePath = path.join(troubleshootingDir, file);
 
         // ファイルの存在確認
-        const fileExists = await pathExists(filePath);
-        if (!fileExists) {
+        if (!fs.existsSync(filePath)) {
           console.log(`⚠️ ファイルが存在しません: ${filePath}`);
           continue;
         }
 
         // ファイル統計情報を取得
-        const stats = await stat(filePath);
+        const stats = fs.statSync(filePath);
 
-        const content = await readFile(filePath, 'utf8');
+        const content = fs.readFileSync(filePath, 'utf8');
         const flowData = JSON.parse(content);
 
         const flowItem = {
