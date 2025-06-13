@@ -18,8 +18,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // 初期化処理を簡素化
-(async () => {
+const initializeServer = async () => {
   try {
+    console.log('[INFO] Server initialization starting...');
+    
     // ストレージ設定
     app.locals.storage = storage;
     console.log('[INFO] Storage configured');
@@ -33,24 +35,20 @@ app.use(express.urlencoded({ extended: false }));
     ];
 
     for (const dir of dirs) {
-      const dirPath = path.join(process.cwd(), dir);
-      if (!fs.existsSync(dirPath)) {
-        fs.mkdirSync(dirPath, { recursive: true });
+      try {
+        const dirPath = path.join(process.cwd(), dir);
+        if (!fs.existsSync(dirPath)) {
+          fs.mkdirSync(dirPath, { recursive: true });
+          console.log(`[INFO] Created directory: ${dir}`);
+        }
+      } catch (err) {
+        console.warn(`[WARN] Failed to create directory ${dir}:`, err);
       }
     }
 
-    // 知識ベースを遅延初期化（サーバー起動後に実行）
-    setTimeout(async () => {
-      try {
-        const { initializeKnowledgeBase } = await import("./lib/knowledge-base.js");
-        await initializeKnowledgeBase();
-        console.log('[INFO] Knowledge base initialized');
-      } catch (err) {
-        console.warn('[WARN] Knowledge base initialization failed:', err instanceof Error ? err.message : 'Unknown error');
-      }
-    }, 2000);
-
-    const server = await registerRoutes(app);
+    // ルートを登録
+    console.log('[INFO] Registering routes...');
+    await registerRoutes(app);
 
     // 静的ファイルの配信設定
     app.use('/static', express.static(path.join(process.cwd(), 'public')));
@@ -88,14 +86,35 @@ app.use(express.urlencoded({ extended: false }));
       res.status(200).send('OK');
     });
 
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`サーバーが起動しました: http://0.0.0.0:${PORT}`);
+    console.log('[INFO] Starting server...');
+    const server = app.listen(PORT, '0.0.0.0', () => {
+      console.log(`✅ サーバーが起動しました: http://0.0.0.0:${PORT}`);
       if (process.env.NODE_ENV === 'development') {
-        console.log(`外部アクセス可能: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
+        console.log(`🌐 外部アクセス可能: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
       }
     });
 
+    server.on('error', (err) => {
+      console.error('❌ サーバー起動エラー:', err);
+      process.exit(1);
+    });
+
+    // 知識ベースを遅延初期化（サーバー起動後に実行）
+    setTimeout(async () => {
+      try {
+        const { initializeKnowledgeBase } = await import("./lib/knowledge-base.js");
+        await initializeKnowledgeBase();
+        console.log('✅ Knowledge base initialized');
+      } catch (err) {
+        console.warn('⚠️ Knowledge base initialization failed:', err instanceof Error ? err.message : 'Unknown error');
+      }
+    }, 3000);
+
   } catch (err) {
-    console.error('初期化エラー:', err);
+    console.error('❌ サーバー初期化エラー:', err);
+    process.exit(1);
   }
-})();
+};
+
+// サーバーを起動
+initializeServer();
