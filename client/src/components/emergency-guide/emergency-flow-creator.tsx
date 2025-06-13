@@ -1147,21 +1147,22 @@ const EmergencyFlowCreator: React.FC = () => {
 
                                     // まずAPI呼び出し関数を直接呼ぶ
                                     if (flow.id) {
-                                      // troubeshooting IDがある場合はロードする
-                                      console.log(`トラブルシューティングID: ${flow.id}を読み込み中...`);
+                                      // 応急処置フローIDがある場合は直接ロードする
+                                      console.log(`応急処置フローID: ${flow.id}を読み込み中...`);
 
                                       // 既存ロード関数を実行しつつ、タブ変更を先にトリガー
                                       setCharacterDesignTab('new');
 
-                                      // トラブルシューティングデータをロード
-                                      fetch(`/api/troubleshooting/detail/${flow.id.replace('ts_', '')}`)
+                                      // 応急処置フローデータを直接ロード
+                                      fetch(`/api/emergency-flow/detail/${flow.id}`)
                                         .then(response => {
                                           if (!response.ok) {
                                             throw new Error(`APIエラー: ${response.status}`);
                                           }
                                           return response.json();
                                         })
-                                        .then(troubleshootingData => {
+                                        .then(result => {
+                                          const troubleshootingData = result.data;
                                           console.log("★★★ トラブルシューティングデータを取得:", troubleshootingData);
 
                                           // ノードとエッジデータを構築
@@ -1240,7 +1241,7 @@ const EmergencyFlowCreator: React.FC = () => {
                                           });
                                         })
                                         .catch(error => {
-                                          console.error("トラブルシューティングデータの取得エラー:", error);
+                                          console.error("応急処置データの取得エラー:", error);
 
                                           // エラー時は最小限のデータを生成
                                           const fallbackData = {
@@ -1294,7 +1295,7 @@ const EmergencyFlowCreator: React.FC = () => {
 
                                           toast({
                                             title: "データ取得エラー",
-                                            description: "APIからデータを取得できませんでした。空のフローを初期化します。",
+                                            description: "応急処置データの取得に失敗しました。空のフローを初期化します。",
                                             variant: "destructive"
                                           });
                                         });
