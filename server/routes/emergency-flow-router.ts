@@ -101,7 +101,7 @@ router.post('/save-flow', async (req: Request, res: Response) => {
     const targetFilePath = path.isAbsolute(filePath) 
       ? filePath 
       : path.join(process.cwd(), filePath);
-    
+
     console.log(`🎯 保存先: ${targetFilePath}`);
     console.log(`🔍 既存ファイル: ${fs.existsSync(targetFilePath)}`);
 
@@ -140,7 +140,7 @@ router.post('/save-flow', async (req: Request, res: Response) => {
       const savedContent = fs.readFileSync(targetFilePath, 'utf-8');
       const savedData = JSON.parse(savedContent);
       const newStepsCount = savedData.steps?.length || 0;
-      
+
       console.log(`✅ 保存完了: ${targetFilePath}`);
       console.log(`🔍 保存内容検証:`, {
         savedId: savedData.id,
@@ -229,7 +229,7 @@ router.get('/list', async (req, res) => {
       file.endsWith('.json') && !file.includes('.backup')
     );
     console.log(`📁 troubleshootingDirから${troubleshootingFlowFiles.length}個のJSONファイルを検出:`, troubleshootingFlowFiles);
-    
+
     // ファイルの詳細確認
     troubleshootingFlowFiles.forEach(file => {
       const fullPath = path.join(troubleshootingDir, file);
@@ -242,34 +242,40 @@ router.get('/list', async (req, res) => {
       try {
         const filePath = path.join(troubleshootingDir, file);
 
-        // ファイルの存在確認
+        // ファイルの存在を再確認
         if (!fs.existsSync(filePath)) {
-          console.log(`⚠️ ファイルが存在しません: ${filePath}`);
+          console.log(`❌ ファイル ${file} が存在しません: ${filePath}`);
           continue;
         }
 
-        // ファイル統計情報を取得
         const stats = fs.statSync(filePath);
+        if (stats.size === 0) {
+          console.log(`❌ ファイル ${file} は空です`);
+          continue;
+        }
 
         const content = fs.readFileSync(filePath, 'utf8');
-        const flowData = JSON.parse(content);
+        const data = JSON.parse(content);
 
-        const flowItem = {
-          id: flowData.id || path.basename(file, '.json'),
-          title: flowData.title || 'タイトルなし',
-          description: flowData.description || '',
-          fileName: file,
-          trigger: flowData.triggerKeywords || [],
-          slides: flowData.steps || [],
-          createdAt: flowData.updatedAt || stats.mtime.toISOString(),
-          fileSize: stats.size,
-          lastModified: stats.mtime.toISOString()
-        };
+        // 基本的なプロパティを確認
+        if (data.id && data.title) {
+          const flowItem = {
+            id: data.id,
+            title: data.title,
+            description: data.description || '',
+            trigger: data.triggerKeywords || data.trigger || [],
+            slides: data.steps || data.slides || [],
+            createdAt: data.updatedAt || data.createdAt || new Date().toISOString(),
+            fileName: file
+          };
 
-        flows.push(flowItem);
-        console.log(`✅ フロー追加: ${flowItem.id} (${flowItem.title})`);
+          flows.push(flowItem);
+          console.log(`✅ ファイル ${file} を読み込み: { id: '${data.id}', title: '${data.title}', stepsCount: ${(data.steps || data.slides || []).length} }`);
+        } else {
+          console.log(`❌ ファイル ${file} に必要なプロパティがありません: id=${data.id}, title=${data.title}`);
+        }
       } catch (error) {
-        console.error(`❌ ファイル ${file} の処理エラー:`, error);
+        console.log(`❌ ファイル ${file} の読み込みに失敗: ${error}`);
       }
     }
 
@@ -315,7 +321,7 @@ router.get('/:id', async (req: Request, res: Response) => {
       const specifiedPath = path.join(troubleshootingDir, fileName);
       console.log(`🎯 指定ファイル優先読み込み: ${fileName} -> ${specifiedPath}`);
       console.log(`🔍 ファイル存在確認: ${fs.existsSync(specifiedPath)}`);
-      
+
       if (fs.existsSync(specifiedPath)) {
         try {
           const content = fs.readFileSync(specifiedPath, 'utf-8');
@@ -323,7 +329,7 @@ router.get('/:id', async (req: Request, res: Response) => {
           targetFilePath = specifiedPath;
           targetFlowData = data;
           console.log(`✅ 指定ファイルで発見: ${fileName} (ID: ${data.id}, ステップ数: ${data.steps?.length || 0})`);
-          
+
           // 強制的にリターンして他の検索をスキップ
           console.log(`🎯 指定ファイル読み込み完了 - 他の検索をスキップ`);
         } catch (error) {
@@ -337,7 +343,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     // 🚀 指定ファイルで見つかった場合は早期リターン
     if (targetFlowData && fileName) {
       console.log(`🎯 指定ファイル処理完了 - 早期リターン`);
-      
+
       // データの整合性チェック
       if (targetFlowData.id !== id) {
         console.warn(`⚠️ ID不一致を修正: 要求=${id}, 実際=${targetFlowData.id}`);
@@ -371,9 +377,9 @@ router.get('/:id', async (req: Request, res: Response) => {
           const filePath = path.join(troubleshootingDir, file);
           const content = fs.readFileSync(filePath, 'utf-8');
           const data = JSON.parse(content);
-          
+
           console.log(`🔍 ファイル確認: ${file} (ID: ${data.id})`);
-          
+
           // IDが一致するファイルを探す
           if (data.id === id) {
             targetFilePath = filePath;
@@ -391,7 +397,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     if (!targetFlowData) {
       const directPath = path.join(troubleshootingDir, `${id}.json`);
       console.log(`🔍 直接パス確認: ${directPath}`);
-      
+
       if (fs.existsSync(directPath)) {
         try {
           const content = fs.readFileSync(directPath, 'utf-8');
