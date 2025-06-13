@@ -102,8 +102,10 @@ router.get('/:id', async (req, res) => {
       });
     }
 
-    // ファイルサイズチェック
+    // ファイル統計情報を先に取得
     const stats = fs.statSync(filePath);
+    console.log(`📊 ファイル情報: size=${stats.size}, modified=${stats.mtime.toISOString()}`);
+
     if (stats.size === 0) {
       console.log(`❌ ファイルが空です: ${filePath}`);
       return res.status(404).json({ 
@@ -113,43 +115,80 @@ router.get('/:id', async (req, res) => {
       });
     }
 
-    let data = null;
-
     console.log(`📁 ファイル発見: ${filePath}`);
 
-    // ファイル統計情報
-    console.log(`📊 ファイル情報: size=${stats.size}, modified=${stats.mtime.toISOString()}`);
+    // ⭐ 強化されたファイル読み込み処理
+    let content: string;
+    let data: any;
+    
+    try {
+      // ファイル内容を複数回読み込んで検証
+      content = fs.readFileSync(filePath, 'utf8');
+      console.log(`📄 ファイル読み込み完了: ${content.length}文字`);
+      
+      // JSON解析前にファイル内容の一部を確認
+      const contentPreview = content.substring(0, 200) + (content.length > 200 ? '...' : '');
+      console.log(`📝 ファイル内容プレビュー: ${contentPreview}`);
+      
+      // 厳密なJSON検証
+      data = JSON.parse(content);
+      console.log(`✅ JSON解析成功`);
+      
+    } catch (parseError) {
+      console.error(`❌ JSON解析エラー:`, parseError);
+      return res.status(500).json({ 
+        error: 'ファイルのJSON解析に失敗しました',
+        parseError: parseError instanceof Error ? parseError.message : String(parseError)
+      });
+    }
 
-    // ファイル読み込み
-    const content = fs.readFileSync(filePath, 'utf8');
-    data = JSON.parse(content);
-
-    // データの完全性チェック
-    if (!data.steps) data.steps = [];
-    if (!data.triggerKeywords) data.triggerKeywords = [];
-
-    console.log(`✅ データ読み込み成功:`, {
-      id: data.id,
-      title: data.title,
-      stepsCount: data.steps.length,
-      filePath: filePath,
-      fileSize: content.length,
-      allStepIds: data.steps.map(s => s.id),
-      stepTypes: data.steps.map(s => ({ id: s.id, type: s.type, title: s.title }))
-    });
-
-    // 🔍 ファイル内容の詳細確認
-    console.log(`🔍 ファイル内容詳細:`, {
-      rawFileSize: content.length,
-      parsedStepsCount: data.steps?.length || 0,
-      hasAllExpectedSteps: data.steps?.length >= 10,
-      firstFewSteps: data.steps?.slice(0, 3).map(s => ({ id: s.id, title: s.title })),
-      lastFewSteps: data.steps?.slice(-3).map(s => ({ id: s.id, title: s.title }))
-    });
-
+    // データの完全性チェックと修復
     if (!data) {
-      console.log(`❌ ファイルが見つかりません: ${id}`);
+      console.log(`❌ データが空です: ${id}`);
       return res.status(404).json({ error: 'データが見つかりません' });
+    }
+    
+    if (!data.steps) {
+      console.log(`⚠️ stepsプロパティが存在しません。空配列で初期化します。`);
+      data.steps = [];
+    }
+    
+    if (!data.triggerKeywords) {
+      console.log(`⚠️ triggerKeywordsプロパティが存在しません。空配列で初期化します。`);
+      data.triggerKeywords = [];
+    }
+
+    // ⭐ ステップデータの詳細検証
+    const stepsCount = data.steps.length;
+    const allStepIds = data.steps.map(s => s.id);
+    const stepTypes = data.steps.map(s => ({ id: s.id, type: s.type, title: s.title }));
+
+    console.log(`🔍 詳細データ検証:`, {
+      originalFileSize: stats.size,
+      readContentLength: content.length,
+      parsedStepsCount: stepsCount,
+      expectedMinSteps: 10,
+      dataIntegrityCheck: stepsCount >= 9,
+      allStepIds,
+      stepTypes,
+      hasRequiredFields: !!(data.id && data.title),
+      dataStructure: {
+        id: data.id,
+        title: data.title,
+        description: data.description?.substring(0, 50) + '...'
+      }
+    });
+
+    // ⚠️ 重要：ステップ数が期待値より少ない場合の警告
+    if (stepsCount < 10) {
+      console.warn(`⚠️ ステップ数が期待値より少ない: 実際=${stepsCount}, 期待値=10以上`);
+      console.warn(`🔍 missing steps検証のため、ファイル内容再確認...`);
+      
+      // ファイル内容に不足しているステップIDを探索
+      const expectedStepIds = ['start', 'step1', 'decision1', 'step2a', 'step2b', 'step3a', 'step3b', 'step3c', 'step3d', 'step3e', 'step3f', 'step3g', 'decision2', 'step_success', 'step_failure'];
+      const missingSteps = expectedStepIds.filter(expectedId => !allStepIds.includes(expectedId));
+      
+      console.warn(`❌ 不足しているステップID:`, missingSteps);
     }
 
     // 最強のキャッシュ無効化ヘッダー
