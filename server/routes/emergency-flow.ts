@@ -291,7 +291,7 @@ router.get('/list', async (req, res) => {
 });
 
 // 特定のフロー詳細取得エンドポイント（条件分岐情報を含む完全なデータ取得）
-router.get('/detail/:id', async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     // 最強のキャッシュ無効化ヘッダーを設定
     const timestamp = Date.now();

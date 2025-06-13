@@ -71,15 +71,13 @@ const EmergencyFlowCreator: React.FC = () => {
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 15);
 
-      const response = await fetch(`/api/emergency-flow/list?_t=${timestamp}&_r=${randomId}&source=troubleshooting-only`, {
+      const response = await fetch(`/api/emergency-flow/list?_t=${timestamp}&_r=${randomId}`, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
           'Pragma': 'no-cache',
           'Expires': '0',
-          'X-Source-Only': 'knowledge-base/troubleshooting',
-          'X-Exclude-Other-Paths': 'true',
-          'X-Force-Troubleshooting-Only': 'true'
+          'X-Target-Directory': 'knowledge-base/troubleshooting'
         }
       });
 
@@ -90,12 +88,8 @@ const EmergencyFlowCreator: React.FC = () => {
       const data = await response.json();
       console.log('✅ 取得したフローデータ (troubleshootingのみ):', data);
 
-      // troubleshootingディレクトリからのファイルのみをフィルタリング
-      const flowArray = Array.isArray(data) ? data.filter(flow => 
-        flow.fileName && flow.fileName.includes('.json') && 
-        !flow.fileName.includes('engine_restart_issue') &&
-        !flow.fileName.includes('parking_brake_release_issue')
-      ) : [];
+      // 配列形式に統一
+      const flowArray = Array.isArray(data) ? data : [];
       
       setFlowList(flowArray);
 
@@ -230,24 +224,16 @@ const EmergencyFlowCreator: React.FC = () => {
       const filePath = `knowledge-base/troubleshooting/${targetFlow.fileName}`;
       setSelectedFilePath(filePath);
       console.log(`📁 編集対象ファイルパス設定: ${filePath}`);
-      console.log(`📋 対象フロー詳細:`, {
-        id: targetFlow.id,
-        title: targetFlow.title,
-        fileName: targetFlow.fileName,
-        filePath: filePath
-      });
 
-      // 🎯 ファイルパスを使用してAPIリクエスト
+      // 🎯 emergency-flow APIを使用してデータ取得
       const timestamp = Date.now();
-      const response = await fetch(`/api/emergency-flow/${flowId}?t=${timestamp}&fresh=true&fileName=${encodeURIComponent(targetFlow.fileName)}`, {
+      const response = await fetch(`/api/emergency-flow/detail/${flowId}?t=${timestamp}`, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
           'Expires': '0',
-          'X-Target-File': targetFlow.fileName,
-          'X-Target-Path': filePath,
-          'X-Force-File': targetFlow.fileName
+          'X-Target-Directory': 'knowledge-base/troubleshooting'
         }
       });
 
@@ -255,7 +241,8 @@ const EmergencyFlowCreator: React.FC = () => {
         throw new Error(`フローデータの取得に失敗しました (${response.status})`);
       }
 
-      const data = await response.json();
+      const result = await response.json();
+      const data = result.data || result;
 
       console.log(`✅ 取得したフローデータ:`, {
         requestedId: flowId,
@@ -265,19 +252,6 @@ const EmergencyFlowCreator: React.FC = () => {
         fileName: targetFlow.fileName,
         filePath: filePath
       });
-
-      // データの整合性チェック
-      if (data.id !== flowId) {
-        console.warn(`⚠️ ID不一致検出:`, {
-          要求: flowId,
-          取得: data.id,
-          ファイル名: targetFlow.fileName
-        });
-
-        // IDを修正
-        data.id = flowId;
-        console.log(`🔧 IDを修正しました: ${flowId}`);
-      }
 
       setCurrentFlowData(data);
       setSelectedFlowForEdit(flowId);
@@ -305,11 +279,11 @@ const EmergencyFlowCreator: React.FC = () => {
     try {
       console.log(`🗑️ フロー削除開始: ${flowId}`);
 
-      const response = await fetch(`/api/emergency-flow/${flowId}`, {
+      const response = await fetch(`/api/emergency-flow/delete/${flowId}`, {
         method: 'DELETE',
         headers: {
           'Cache-Control': 'no-cache',
-          'X-Force-Delete': 'true'
+          'X-Target-Directory': 'knowledge-base/troubleshooting'
         }
       });
 
