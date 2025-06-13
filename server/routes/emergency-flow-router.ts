@@ -572,10 +572,13 @@ router.post('/save/:id', async (req: Request, res: Response) => {
   }
 });
 
-// フロー削除エンドポイント
+// フロー削除エンドポイント（統一版）
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const { fileName } = req.body;
+
+    console.log(`🗑️ フロー削除要求: ID=${id}, ファイル名=${fileName}`);
 
     if (!id) {
       return res.status(400).json({
@@ -584,65 +587,45 @@ router.delete('/:id', async (req: Request, res: Response) => {
       });
     }
 
-    // トラブルシューティングIDの場合
-    if (id.startsWith('ts_')) {
-      const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-      const filename = id.replace('ts_', '') + '.json';
-      const filePath = path.join(troubleshootingDir, filename);
+    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const targetFileName = fileName || `${id}.json`;
+    const filePath = path.join(troubleshootingDir, targetFileName);
 
-      if (!fs.existsSync(filePath)) {
-        return res.status(404).json({
-          success: false,
-          error: '指定されたトラブルシューティングファイルが見つかりません'
-        });
-      }
+    console.log(`🎯 削除対象ファイル: ${filePath}`);
+    console.log(`📁 ファイル存在確認: ${fs.existsSync(filePath)}`);
 
-      // ファイルの削除
-      fs.unlinkSync(filePath);
-
-      log(`トラブルシューティングフローを削除しました: ${filename}`);
-
-      return res.status(200).json({
-        success: true,
-        message: 'トラブルシューティングファイルが削除されました'
-      });
-    } else {
-      // 通常のフローファイルの場合
-      const jsonDir = path.join(process.cwd(), 'knowledge-base', 'json');
-      const metadataPath = path.join(jsonDir, `${id}_metadata.json`);
-
-      if (!fs.existsSync(metadataPath)) {
-        return res.status(404).json({
-          success: false,
-          error: '指定されたフローが見つかりません'
-        });
-      }
-
-      // メタデータからファイル名を取得
-      const metadataContent = fs.readFileSync(metadataPath, 'utf-8');
-      const metadata = JSON.parse(metadataContent);
-      const flowPath = path.join(jsonDir, metadata.fileName);
-
-      // ファイルの削除
-      if (fs.existsSync(flowPath)) {
-        fs.unlinkSync(flowPath);
-      }
-
-      // メタデータファイルの削除
-      fs.unlinkSync(metadataPath);
-
-      // インデックスファイルを更新
-      updateIndexFileAfterDelete(id);
-
-      log(`フローを削除しました: ${id}`);
-
-      return res.status(200).json({
-        success: true,
-        message: 'フローが削除されました'
+    if (!fs.existsSync(filePath)) {
+      console.log(`❌ ファイルが見つかりません: ${filePath}`);
+      return res.status(404).json({
+        success: false,
+        error: '指定されたフローファイルが見つかりません',
+        filePath: filePath,
+        availableFiles: fs.existsSync(troubleshootingDir) ? fs.readdirSync(troubleshootingDir) : []
       });
     }
+
+    // バックアップを作成
+    const backupPath = `${filePath}.deleted.${Date.now()}`;
+    fs.copyFileSync(filePath, backupPath);
+    console.log(`📋 削除前バックアップ作成: ${backupPath}`);
+
+    // ファイルを削除
+    fs.unlinkSync(filePath);
+    console.log(`✅ ファイル削除完了: ${filePath}`);
+
+    // 削除後の確認
+    const deletedConfirm = !fs.existsSync(filePath);
+    console.log(`🔍 削除確認: ${deletedConfirm ? '成功' : '失敗'}`);
+
+    return res.status(200).json({
+      success: true,
+      message: 'フローが正常に削除されました',
+      deletedFile: targetFileName,
+      backupFile: path.basename(backupPath),
+      confirmed: deletedConfirm
+    });
   } catch (error) {
-    console.error('フロー削除エラー:', error);
+    console.error('❌ フロー削除エラー:', error);
     return res.status(500).json({
       success: false,
       error: 'フローの削除中にエラーが発生しました'
