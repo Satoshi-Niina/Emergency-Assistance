@@ -164,7 +164,7 @@ const EmergencyGuidePage: React.FC = () => {
           localStorage.removeItem(key);
           sessionStorage.removeItem(key);
         });
-        
+
         // IndexedDBのクリアも実行
         if ('caches' in window) {
           caches.keys().then(names => {
@@ -175,7 +175,7 @@ const EmergencyGuidePage: React.FC = () => {
             });
           });
         }
-        
+
         console.log('🧹 全キャッシュ（古いデータ含む）クリア完了');
       }
 
@@ -214,7 +214,7 @@ const EmergencyGuidePage: React.FC = () => {
           console.log(`🚫 古いデータを強制除外: ${item.id} (ファイル: ${item.fileName})`);
           return false;
         }
-        
+
         const isValid = item && 
                        item.id === 'engine_stop_no_start' && 
                        item.fileName === 'engine_stop_no_start.json';
