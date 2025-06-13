@@ -13,39 +13,25 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // 環境変数の確認
-console.log("[INFO] Server initialization starting");
-console.log("[INFO] NODE_ENV:", process.env.NODE_ENV || 'development');
-console.log("[INFO] DATABASE_URL exists:", !!process.env.DATABASE_URL);
+console.log("[INFO] Server starting...");
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// ここでAPIルートを先に登録
+// 初期化処理を簡素化
 (async () => {
   try {
-    app.locals.storage = storage;
     // ストレージ設定
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[INFO] Storage configured');
-    }
+    app.locals.storage = storage;
+    console.log('[INFO] Storage configured');
 
-    // サーバー起動時に知識ベースを初期化（非同期で実行）
-    initializeKnowledgeBase().then(() => {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[INFO] Knowledge base initialized');
-      }
-    }).catch(err => {
-      console.error('[ERROR] Knowledge base initialization failed:', err);
-    });
-
-    // ディレクトリの確認と作成
+    // 必要なディレクトリを作成
     const dirs = [
       'knowledge-base/images',
-      'knowledge-base/json',
+      'knowledge-base/json', 
       'knowledge-base/data',
-      'knowledge-base/media',
-      'knowledge-base/ppt'
+      'knowledge-base/troubleshooting'
     ];
 
     for (const dir of dirs) {
@@ -55,17 +41,10 @@ app.use(express.urlencoded({ extended: false }));
       }
     }
 
-    // サーバー起動時の同期処理（開発環境のみ）
-    if (process.env.NODE_ENV === 'development') {
-      setTimeout(async () => {
-        try {
-          await axios.post('http://localhost:5000/api/tech-support/sync-knowledge-base?direction=uploads-to-kb');
-          console.log('[INFO] Data synchronization completed');
-        } catch (syncErr: any) {
-          console.error('[ERROR] Sync failed');
-        }
-      }, 1000); // 待機時間を短縮
-    }
+    // 知識ベースを非同期で初期化（エラーが発生してもサーバー起動を停止しない）
+    initializeKnowledgeBase().catch(err => {
+      console.warn('[WARN] Knowledge base initialization failed:', err.message);
+    });
 
     const server = await registerRoutes(app);
 
