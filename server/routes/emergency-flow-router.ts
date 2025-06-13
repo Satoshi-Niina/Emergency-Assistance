@@ -222,57 +222,45 @@ router.get('/list', async (req, res) => {
 
     const flows = [];
 
-    // troubleshootingディレクトリから直接JSONファイルを取得
-    console.log(`📁 troubleshootingディレクトリスキャン: ${troubleshootingDir}`);
-    const troubleshootingFiles = fs.readdirSync(troubleshootingDir);
-    const troubleshootingFlowFiles = troubleshootingFiles.filter(file => 
-      file.endsWith('.json') && !file.includes('.backup')
-    );
-    console.log(`📁 troubleshootingDirから${troubleshootingFlowFiles.length}個のJSONファイルを検出:`, troubleshootingFlowFiles);
+    // トラブルシューティングディレクトリのフローを追加（engine_stop_no_start.jsonのみ）
+    try {
+      const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+      console.log(`🔍 トラブルシューティングディレクトリ: ${troubleshootingDir}`);
 
-    // ファイルの詳細確認
-    troubleshootingFlowFiles.forEach(file => {
-      const fullPath = path.join(troubleshootingDir, file);
-      const stats = fs.statSync(fullPath);
-      console.log(`📄 ファイル詳細: ${file} (サイズ: ${stats.size}バイト, 更新: ${stats.mtime.toISOString()})`);
-    });
+      if (fs.existsSync(troubleshootingDir)) {
+        const allowedFiles = ['engine_stop_no_start.json']; // 許可するファイルのみ
 
-    // troubleshootingディレクトリのファイルを処理
-    for (const file of troubleshootingFlowFiles) {
-      const filePath = path.join(troubleshootingDir, file);
-      console.log(`📁 troubleshootingファイル処理: ${filePath}`);
+        const troubleshootingFiles = fs.readdirSync(troubleshootingDir)
+          .filter(file => file.endsWith('.json') && allowedFiles.includes(file))
+          .map(file => {
+            try {
+              const filePath = path.join(troubleshootingDir, file);
+              const content = fs.readFileSync(filePath, 'utf-8');
+              const data = JSON.parse(content);
 
-      try {
-        // engine_stop_no_start.json以外は処理しない
-        if (file !== 'engine_stop_no_start.json') {
-          console.log(`⏭️ スキップ: ${file} (engine_stop_no_start.json以外)`);
-          continue;
-        }
+              console.log(`📁 で発見: ${file} (ID: ${data.id}, ステップ数: ${data.steps?.length || 0})`);
 
-        const stats = fs.statSync(filePath);
-        const content = fs.readFileSync(filePath, 'utf-8');
-        const data = JSON.parse(content);
+              return {
+                id: data.id,
+                title: data.title,
+                description: data.description,
+                trigger: data.triggerKeywords || [],
+                slides: [], // 互換性のため
+                createdAt: data.updatedAt || new Date().toISOString(),
+                fileName: file
+              };
+            } catch (error) {
+              console.error(`❌ ファイル読み込みエラー ${file}:`, error);
+              return null;
+            }
+          })
+          .filter(flow => flow !== null);
 
-        console.log(`✅ troubleshootingファイル読み込み成功:`, {
-          id: data.id,
-          title: data.title,
-          stepsCount: data.steps?.length || 0,
-          triggerCount: data.triggerKeywords?.length || 0
-        });
-
-        flows.push({
-          id: data.id || file.replace('.json', ''),
-          title: data.title || 'タイトルなし',
-          description: data.description || '',
-          trigger: data.triggerKeywords || data.trigger || [],
-          slides: data.steps || [],
-          createdAt: data.updatedAt || data.createdAt || stats.mtime.toISOString(),
-          fileName: file,
-          source: 'troubleshooting'
-        });
-      } catch (error) {
-        console.error(`❌ troubleshootingファイル処理エラー ${file}:`, error);
+        flows.push(...troubleshootingFiles);
+        console.log(`✅ トラブルシューティングフロー追加: ${troubleshootingFiles.length}件（許可ファイルのみ）`);
       }
+    } catch (error) {
+      console.error('❌ トラブルシューティングディレクトリ読み込みエラー:', error);
     }
 
     // 緊急時ガイドディレクトリ - 一時的に無効化（troubleshootingに一元化中）
