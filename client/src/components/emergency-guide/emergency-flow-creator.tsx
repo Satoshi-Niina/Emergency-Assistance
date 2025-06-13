@@ -87,6 +87,17 @@ const EmergencyFlowCreator: React.FC = () => {
 
       const data = await response.json();
       console.log('✅ 取得したフローデータ (troubleshootingのみ):', data);
+      
+      // 🔍 詳細デバッグ: ステップ数を確認
+      if (Array.isArray(data)) {
+        data.forEach(flow => {
+          console.log(`📊 フロー詳細: ID=${flow.id}, ファイル=${flow.fileName}, ステップ数=${flow.steps?.length || flow.slides?.length || 0}`, {
+            stepsArray: flow.steps || flow.slides,
+            originalStepsCount: flow.steps?.length,
+            slidesCount: flow.slides?.length
+          });
+        });
+      }
 
       // 配列形式に統一し、必要なプロパティを追加
       const flowArray = Array.isArray(data) ? data.map(flow => ({
@@ -256,7 +267,18 @@ const EmergencyFlowCreator: React.FC = () => {
         title: data.title,
         stepsCount: data.steps?.length || 0,
         fileName: targetFlow.fileName,
-        filePath: filePath
+        filePath: filePath,
+        actualFilePath: data.filePath,
+        allStepIds: data.steps?.map(s => s.id) || [],
+        loadedAt: data.loadedAt
+      });
+
+      // 🔍 重要: ステップ数の詳細確認
+      console.log(`🔍 ステップ詳細確認:`, {
+        totalSteps: data.steps?.length || 0,
+        stepTypes: data.steps?.map(s => ({ id: s.id, type: s.type, title: s.title })) || [],
+        originalFile: `knowledge-base/troubleshooting/${flowId}.json`,
+        requestedFile: filePath
       });
 
       setCurrentFlowData(data);
