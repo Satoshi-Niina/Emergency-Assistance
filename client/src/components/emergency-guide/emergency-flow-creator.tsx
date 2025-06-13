@@ -99,10 +99,10 @@ const EmergencyFlowCreator: React.FC = () => {
   const [flowList, setFlowList] = useState<any[]>([]);
   const [isLoadingFlowList, setIsLoadingFlowList] = useState(false);
 
-  // フロー一覧を取得
+  // データを読み込む関数
   const fetchFlowList = async () => {
+    setIsLoadingFlowList(true);
     try {
-      setIsLoadingFlowList(true);
       console.log('応急処置データ一覧の取得を開始します');
 
       // 強力なキャッシュ無効化
@@ -152,6 +152,20 @@ const EmergencyFlowCreator: React.FC = () => {
   // コンポーネントマウント時にフローリストを取得
   useEffect(() => {
     fetchFlowList();
+
+    // データ更新イベントリスナーを追加
+    const handleDataUpdate = () => {
+      console.log('データ更新イベントを受信、一覧を再読み込みします');
+      fetchFlowList();
+    };
+
+    window.addEventListener('troubleshootingDataUpdated', handleDataUpdate);
+    window.addEventListener('flowDataUpdated', handleDataUpdate);
+
+    return () => {
+      window.removeEventListener('troubleshootingDataUpdated', handleDataUpdate);
+      window.removeEventListener('flowDataUpdated', handleDataUpdate);
+    };
   }, []);
 
   // ファイル選択のハンドラー
@@ -385,7 +399,7 @@ const EmergencyFlowCreator: React.FC = () => {
     try {
       console.log("🔄 保存処理を開始します");
       console.log("📝 保存するフローデータ:", data);
-      
+
       // IDが存在しない場合は生成
       const saveData = {
         ...data,
@@ -393,9 +407,9 @@ const EmergencyFlowCreator: React.FC = () => {
         title: data.title || '無題のフロー',
         description: data.description || ''
       };
-      
+
       console.log("📤 APIに送信するデータ:", saveData);
-      
+
       // ここで実際のデータをJSONに変換して保存APIを呼び出す
       const response = await fetch('/api/emergency-flow/save', {
         method: 'POST',
@@ -446,7 +460,7 @@ const EmergencyFlowCreator: React.FC = () => {
 
         // ファイル編集タブに戻る
         setCharacterDesignTab('file');
-        
+
         // 少し遅れてもう一度リフレッシュ（確実にデータが更新されるように）
         setTimeout(() => {
           fetchFlowList();
@@ -892,7 +906,7 @@ const EmergencyFlowCreator: React.FC = () => {
   const loadFlow = async (id: string) => {
     try {
       console.log(`🔄 フローデータの取得開始: ID=${id}`);
-      
+
       // 現在の状態を完全にクリア（古いデータの表示を防ぐ）
       setFlowData(null);
       setUploadedFileName('');
@@ -901,9 +915,9 @@ const EmergencyFlowCreator: React.FC = () => {
       const timestamp = new Date().getTime();
       const randomId = Math.random().toString(36).substring(2);
       const nonce = Math.floor(Math.random() * 1000000);
-      
+
       console.log(`🚫 キャッシュ無効化パラメータ: t=${timestamp}, r=${randomId}, n=${nonce}`);
-      
+
       const response = await fetch(`/api/emergency-flow/detail/${id}?t=${timestamp}&r=${randomId}&n=${nonce}&nocache=true&_=${Date.now()}`, {
         method: 'GET',
         headers: {
