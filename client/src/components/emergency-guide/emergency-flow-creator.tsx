@@ -61,68 +61,85 @@ const EmergencyFlowCreator: React.FC = () => {
   const [flowToDelete, setFlowToDelete] = useState<FlowFile | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // フロー一覧取得（knowledge-base/troubleshootingからのみ）
-  const fetchFlowList = async (forceRefresh = false) => {
+  // フロー一覧を取得する関数
+  const fetchFlowList = useCallback(async (forceRefresh = false) => {
     try {
       setIsLoadingFlowList(true);
-      console.log(`📋 フロー一覧取得開始 (troubleshootingディレクトリのみ)`);
 
-      // キャッシュを防止するためにタイムスタンプパラメータを追加
+      // 🧹 強制リフレッシュ時は全キャッシュをクリア
+      if (forceRefresh && 'caches' in window) {
+        try {
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map(name => caches.delete(name)));
+          console.log('🧹 フロー一覧取得前キャッシュクリア完了');
+        } catch (cacheError) {
+          console.warn('⚠️ キャッシュクリアエラー:', cacheError);
+        }
+      }
+
+      // キャッシュバスターパラメータを追加
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 15);
+      const url = `/api/emergency-flow-router/list?ts=${timestamp}&_r=${randomId}${forceRefresh ? '&force=true' : ''}`;
 
-      // emergency-flow-routerエンドポイントに統一
-      const response = await fetch(`/api/emergency-flow-router/list?_t=${timestamp}&_r=${randomId}`, {
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
           'Pragma': 'no-cache',
-          'Expires': '0'
+          'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
+          'X-Force-Refresh': forceRefresh.toString(),
+          'X-Timestamp': timestamp.toString()
         }
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error('フロー一覧の取得に失敗しました');
       }
 
       const data = await response.json();
-      console.log('✅ 取得したフローデータ (troubleshootingのみ):', data);
-      
-      // 🔍 詳細デバッグ: ステップ数を確認
+
       if (Array.isArray(data)) {
-        data.forEach(flow => {
-          console.log(`📊 フロー詳細: ID=${flow.id}, ファイル=${flow.fileName}, ステップ数=${flow.steps?.length || flow.slides?.length || 0}`, {
-            stepsArray: flow.steps || flow.slides,
-            originalStepsCount: flow.steps?.length,
-            slidesCount: flow.slides?.length
+        console.log(`✅ フロー一覧取得成功: ${data.length}件`);
+
+        // 🔍 各フローの詳細情報をログ出力
+        data.forEach((flow, index) => {
+          console.log(`📋 フロー${index + 1}:`, {
+            id: flow.id,
+            title: flow.title,
+            fileName: flow.fileName,
+            stepCount: flow.steps?.length || flow.slides?.length || 0,
+            createdAt: flow.createdAt
           });
         });
+
+        setFlowList(data);
+
+        // 🔄 現在編集中のフローがある場合、一覧データで更新
+        if (selectedFlowForEdit && data.length > 0) {
+          const updatedFlow = data.find(f => f.id === selectedFlowForEdit);
+          if (updatedFlow) {
+            console.log(`🔄 編集中フローを一覧データで更新: ${updatedFlow.id}`);
+            // エディターに最新データを反映するイベントを発行
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('flowDataRefreshed', {
+                detail: { 
+                  data: updatedFlow, 
+                  flowId: updatedFlow.id,
+                  timestamp: Date.now()
+                }
+              }));
+            }, 100);
+          }
+        }
+      } else {
+        console.warn('⚠️ 予期しないデータ形式:', data);
+        setFlowList([]);
       }
-
-      // 配列形式に統一し、必要なプロパティを追加
-      const flowArray = Array.isArray(data) ? data.map(flow => ({
-        id: flow.id,
-        title: flow.title,
-        description: flow.description,
-        fileName: flow.fileName || `${flow.id}.json`,
-        createdAt: flow.createdAt || flow.updatedAt || new Date().toISOString(),
-        trigger: flow.trigger || flow.triggerKeywords || [],
-        slides: flow.steps || flow.slides || []
-      })) : [];
-      
-      setFlowList(flowArray);
-
-      if (forceRefresh) {
-        toast({
-          title: "データ更新完了",
-          description: `最新のフロー一覧を取得しました (${flowArray.length}件)`,
-        });
-      }
-
     } catch (error) {
       console.error('❌ フロー一覧取得エラー:', error);
       toast({
-        title: "エラー",
+        title: "取得エラー",
         description: "フロー一覧の取得に失敗しました",
         variant: "destructive"
       });
@@ -130,7 +147,7 @@ const EmergencyFlowCreator: React.FC = () => {
     } finally {
       setIsLoadingFlowList(false);
     }
-  };
+  }, [toast, selectedFlowForEdit]);
 
   // 初期データ読み込み
   useEffect(() => {
@@ -254,7 +271,7 @@ const EmergencyFlowCreator: React.FC = () => {
       // 🎯 統一されたAPIエンドポイントで直接取得
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 15);
-      
+
       const response = await fetch(`/api/emergency-flow-router/${flowId}?ts=${timestamp}&_r=${randomId}`, {
         method: 'GET',
         headers: {
@@ -297,12 +314,12 @@ const EmergencyFlowCreator: React.FC = () => {
       // ⚠️ ステップ数不一致の警告
       if (editorData.steps?.length !== 15) {
         console.warn(`⚠️ 期待されるステップ数と異なります: 実際=${editorData.steps?.length}, 期待=15`);
-        
+
         // 🔍 不足しているステップを特定
         const expectedStepIds = ['start', 'step1', 'decision1', 'step2a', 'step2b', 'step3a', 'step3b', 'step3c', 'step3d', 'step3e', 'step3f', 'step3g', 'decision2', 'step_success', 'step_failure'];
         const actualStepIds = editorData.steps?.map(s => s.id) || [];
         const missingSteps = expectedStepIds.filter(id => !actualStepIds.includes(id));
-        
+
         if (missingSteps.length > 0) {
           console.error(`❌ 不足しているステップ:`, missingSteps);
           toast({

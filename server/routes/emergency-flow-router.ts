@@ -524,37 +524,96 @@ router.post('/save/:id', async (req: Request, res: Response) => {
     const finalSaveData = {
       ...saveData,
       updatedAt: new Date().toISOString(),
-      savedTimestamp: saveData.savedTimestamp || Date.now()
+      savedTimestamp: Date.now(), // 常に新しいタイムスタンプを設定
+      saveCount: (saveData.saveCount || 0) + 1 // 保存回数をカウント
     };
 
-    // 原子的書き込み
-    const tempFilePath = `${filePath}.tmp.${Date.now()}`;
-    const saveDataString = JSON.stringify(finalSaveData, null, 2);
+    // 🔄 複数回の書き込み試行で確実性を向上
+    let writeSuccess = false;
+    let attempts = 0;
+    const maxAttempts = 3;
 
-    fs.writeFileSync(tempFilePath, saveDataString, 'utf8');
+    while (!writeSuccess && attempts < maxAttempts) {
+      attempts++;
+      try {
+        // 原子的書き込み
+        const tempFilePath = `${filePath}.tmp.${Date.now()}.${attempts}`;
+        const saveDataString = JSON.stringify(finalSaveData, null, 2);
 
-    if (fs.existsSync(tempFilePath)) {
-      fs.renameSync(tempFilePath, filePath);
-      console.log(`✅ 原子的ファイル保存完了: ${filePath}`);
-    } else {
-      throw new Error('一時ファイルの作成に失敗しました');
+        fs.writeFileSync(tempFilePath, saveDataString, 'utf8');
+
+        if (fs.existsSync(tempFilePath)) {
+          // ファイルサイズが適切かチェック
+          const tempStats = fs.statSync(tempFilePath);
+          if (tempStats.size > 100) { // 最小サイズチェック
+            fs.renameSync(tempFilePath, filePath);
+            console.log(`✅ 原子的ファイル保存完了 (試行${attempts}): ${filePath}`);
+            writeSuccess = true;
+          } else {
+            fs.unlinkSync(tempFilePath);
+            throw new Error(`書き込みファイルサイズが不正: ${tempStats.size}バイト`);
+          }
+        } else {
+          throw new Error('一時ファイルの作成に失敗しました');
+        }
+      } catch (attemptError) {
+        console.warn(`⚠️ 書き込み試行${attempts}でエラー:`, attemptError);
+        if (attempts === maxAttempts) {
+          throw attemptError;
+        }
+        // 少し待ってリトライ
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
     }
 
-    // 保存後の検証
-    const savedContent = fs.readFileSync(filePath, 'utf8');
-    const parsedContent = JSON.parse(savedContent);
-    console.log(`🔍 保存後検証:`, {
-      id: parsedContent.id,
-      title: parsedContent.title,
-      stepsCount: parsedContent.steps?.length || 0,
-      fileSize: savedContent.length
-    });
+    if (!writeSuccess) {
+      throw new Error('全ての書き込み試行が失敗しました');
+    }
+
+    // 🔍 厳密な保存後検証
+    let verificationSuccess = false;
+    let verifyAttempts = 0;
+
+    while (!verificationSuccess && verifyAttempts < 3) {
+      verifyAttempts++;
+      try {
+        // ファイル読み込み待ち
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        const savedContent = fs.readFileSync(filePath, 'utf8');
+        const parsedContent = JSON.parse(savedContent);
+        
+        // データ整合性チェック
+        const expectedSteps = finalSaveData.steps?.length || 0;
+        const actualSteps = parsedContent.steps?.length || 0;
+        
+        if (actualSteps === expectedSteps && parsedContent.id === finalSaveData.id) {
+          console.log(`🔍 保存後検証成功 (試行${verifyAttempts}):`, {
+            id: parsedContent.id,
+            title: parsedContent.title,
+            stepsCount: actualSteps,
+            fileSize: savedContent.length,
+            saveCount: parsedContent.saveCount
+          });
+          verificationSuccess = true;
+        } else {
+          throw new Error(`データ不整合: 期待ステップ数=${expectedSteps}, 実際=${actualSteps}`);
+        }
+      } catch (verifyError) {
+        console.warn(`⚠️ 検証試行${verifyAttempts}でエラー:`, verifyError);
+        if (verifyAttempts === 3) {
+          console.error('❌ 検証が失敗しましたが、保存は完了しています');
+        }
+      }
+    }
 
     res.set({
       'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
       'Pragma': 'no-cache',
       'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
-      'Last-Modified': new Date().toUTCString()
+      'Last-Modified': new Date().toUTCString(),
+      'X-Save-Count': finalSaveData.saveCount.toString(),
+      'X-Save-Timestamp': finalSaveData.savedTimestamp.toString()
     });
 
     res.json({ 
@@ -562,9 +621,11 @@ router.post('/save/:id', async (req: Request, res: Response) => {
       message: 'データが保存されました',
       savedAt: finalSaveData.updatedAt,
       savedTimestamp: finalSaveData.savedTimestamp,
+      saveCount: finalSaveData.saveCount,
       verification: {
-        stepsCount: parsedContent.steps?.length || 0,
-        fileSize: savedContent.length
+        stepsCount: finalSaveData.steps?.length || 0,
+        verified: verificationSuccess,
+        attempts: attempts
       }
     });
   } catch (error) {
