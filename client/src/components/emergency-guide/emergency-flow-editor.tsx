@@ -413,7 +413,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
   }, [selectedNode, setNodes, setEdges, toast]);
 
   // フローデータの保存処理
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     // バリデーション
     if (!flowTitle.trim()) {
       toast({
@@ -454,17 +454,19 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
       const step = {
         id: node.id,
         title: node.data.label || '',
-        description: node.data.description || node.data.content || '',
+        description: node.data.message || node.data.description || node.data.content || '',
         imageUrl: node.data.imageUrl || '',
         type: node.type,
-        message: node.data.description || node.data.content || ''
+        message: node.data.message || node.data.description || node.data.content || ''
       };
 
       // 条件分岐ノードの場合、詳細なoptions情報を保持
       if (node.type === 'decision') {
         const connectedEdges = edges.filter(edge => edge.source === node.id);
         step.options = connectedEdges.map(edge => ({
-          text: edge.data?.label || edge.sourceHandle || '選択肢',
+          text: edge.sourceHandle === 'yes' ? node.data.yesCondition || 'はい' :
+                edge.sourceHandle === 'no' ? node.data.noCondition || 'いいえ' :
+                edge.sourceHandle === 'other' ? node.data.otherCondition || 'その他' : '選択肢',
           nextStepId: edge.target,
           isTerminal: false,
           conditionType: edge.sourceHandle === 'yes' ? 'yes' : 
@@ -494,7 +496,8 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
       steps: steps,
       nodes: nodes, // エディタ用のnode情報を確実に保持
       edges: edges, // エディタ用のedge情報を確実に保持
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      savedTimestamp: Date.now() // 保存タイムスタンプを追加
     };
 
     console.log('💾 保存するフローデータ:', {
@@ -502,16 +505,38 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
       title: flowData.title,
       nodeCount: flowData.nodes?.length || 0,
       edgeCount: flowData.edges?.length || 0,
-      stepCount: flowData.steps?.length || 0
+      stepCount: flowData.steps?.length || 0,
+      timestamp: flowData.savedTimestamp
     });
 
-    // 親コンポーネントに渡す
-    onSave(flowData);
+    try {
+      // 親コンポーネントに渡してサーバー保存
+      await onSave(flowData);
 
-    toast({
-      title: "保存しました",
-      description: "フローデータを保存しました",
-    });
+      // 保存成功後、キャッシュクリアイベントを発火
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flowDataUpdated', {
+          detail: { 
+            id: flowData.id, 
+            data: flowData,
+            forceReload: true,
+            timestamp: flowData.savedTimestamp
+          }
+        }));
+      }
+
+      toast({
+        title: "保存しました",
+        description: "フローデータを保存しました",
+      });
+    } catch (error) {
+      console.error('保存エラー:', error);
+      toast({
+        title: "保存エラー",
+        description: "フローデータの保存に失敗しました",
+        variant: "destructive",
+      });
+    }
   }, [flowTitle, flowDescription, nodes, edges, flowId, onSave, toast, initialData]);
 
   return (
