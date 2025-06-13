@@ -433,43 +433,22 @@ const EmergencyFlowCreator: React.FC = () => {
       console.log("✅ API応答結果:", result);
 
       if (result.success) {
-        console.log("💾 保存成功:", result.filePath);
         toast({
           title: "保存成功",
           description: `応急処置フローが保存されました: ${result.fileName}`,
         });
 
-        // 保存成功のイベントを発火
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('flowDataUpdated', {
-            detail: { 
-              id: saveData.id, 
-              data: saveData,
-              forceReload: true,
-              timestamp: saveData.savedTimestamp,
-              action: 'save'
-            }
-          }));
-          // 追加の更新イベント
-          window.dispatchEvent(new CustomEvent('troubleshootingDataUpdated', {
-            detail: { 
-              forceReload: true,
-              timestamp: saveData.savedTimestamp
-            }
-          }));
-        }
-
-        // 即座にフローリストを更新（キャッシュをクリア）
+        // フロー一覧を更新
         await fetchFlowList();
 
-        // 保存後はデータを保持し、継続編集可能にする（setFlowDataは削除しない）
-        // 保存が完了したら「ファイル編集」タブに戻る
+        // 保存したデータを維持（初期化しない）
+        setFlowData(saveData);
         setCharacterDesignTab('file');
 
-        // 少し遅れてもう一度リフレッシュ（確実にデータが更新されるように）
-        setTimeout(async () => {
-          await fetchFlowList();
-        }, 1500);
+        // 他のコンポーネントに更新通知を送る
+        window.dispatchEvent(new CustomEvent('flowDataUpdated', { 
+          detail: { timestamp: Date.now() }
+        }));
       } else {
         throw new Error(result.error || 'フローの保存に失敗しました');
       }
@@ -643,7 +622,7 @@ const EmergencyFlowCreator: React.FC = () => {
           nodeData.yesCondition = step.yesCondition || '';
           nodeData.noCondition = step.noCondition || '';
           nodeData.otherCondition = step.otherCondition || '';
-          
+
           console.log(`🔀 生成時に条件分岐情報を設定 ${step.id}:`, {
             yesCondition: nodeData.yesCondition,
             noCondition: nodeData.noCondition,
@@ -1033,7 +1012,7 @@ const EmergencyFlowCreator: React.FC = () => {
                   otherCondition: node.data?.otherCondition
                 }
               });
-              
+
               return {
                 ...node,
                 data: {
@@ -1049,7 +1028,7 @@ const EmergencyFlowCreator: React.FC = () => {
           }
           return node;
         });
-        
+
         console.log('✅ 条件分岐ノード復元完了:', finalNodes.filter(n => n.type === 'decision').map(n => ({
           id: n.id,
           yesCondition: n.data.yesCondition,
@@ -1139,7 +1118,7 @@ const EmergencyFlowCreator: React.FC = () => {
               noCondition: correspondingStep.noCondition,
               otherCondition: correspondingStep.otherCondition
             });
-            
+
             return {
               ...node,
               data: {
@@ -1171,7 +1150,7 @@ const EmergencyFlowCreator: React.FC = () => {
             noCondition: node.data.noCondition,
             otherCondition: node.data.otherCondition
           });
-          
+
           return {
             ...node,
             data: {
