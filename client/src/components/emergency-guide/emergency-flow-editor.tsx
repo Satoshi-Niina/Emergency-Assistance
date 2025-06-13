@@ -122,7 +122,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
           const timestamp = Date.now();
           const randomId = Math.random().toString(36).substring(2, 15);
 
-          const response = await fetch(`/api/emergency-flow/${editedFlow.id}?_bust=${timestamp}&_r=${randomId}&_force=true`, {
+          const response = await fetch(`/api/emergency-flow/get/${editedFlow.id}?ts=${timestamp}&_r=${randomId}&_force=true`, {
             method: 'GET',
             headers: {
               'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
@@ -220,7 +220,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
       timestamp: savePayload.timestamp
     });
 
-    const response = await fetch(`/api/troubleshooting/save/${editedFlow.id}`, {
+    const response = await fetch(`/api/emergency-flow/save/${editedFlow.id}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

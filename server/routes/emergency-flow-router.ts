@@ -437,7 +437,142 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// フローの削除
+// 特定フローデータ取得エンドポイント
+router.get('/get/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const timestamp = Date.now();
+
+    console.log(`🔄 [${timestamp}] フローデータ取得: ID=${id}`);
+
+    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const filePath = path.join(troubleshootingDir, `${id}.json`);
+
+    console.log(`📁 ファイルパス確認: ${filePath}`);
+    console.log(`📁 ファイル存在確認: ${fs.existsSync(filePath)}`);
+
+    if (!fs.existsSync(filePath)) {
+      console.log(`❌ ファイルが見つかりません: ${filePath}`);
+      return res.status(404).json({ 
+        error: 'ファイルが見つかりません',
+        id,
+        filePath,
+        availableFiles: fs.existsSync(troubleshootingDir) ? fs.readdirSync(troubleshootingDir) : []
+      });
+    }
+
+    const stats = fs.statSync(filePath);
+    console.log(`📊 ファイル情報: size=${stats.size}, modified=${stats.mtime.toISOString()}`);
+
+    const content = fs.readFileSync(filePath, 'utf8');
+    const data = JSON.parse(content);
+
+    console.log(`✅ データ読み込み完了:`, {
+      id: data.id,
+      title: data.title,
+      stepsCount: data.steps?.length || 0
+    });
+
+    // 最強のキャッシュ無効化ヘッダー
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+      'Pragma': 'no-cache',
+      'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
+      'Last-Modified': new Date().toUTCString(),
+      'ETag': `"${timestamp}-${Math.random().toString(36)}"`,
+    });
+
+    res.json({
+      ...data,
+      loadedAt: new Date().toISOString(),
+      requestTimestamp: timestamp,
+      filePath: filePath
+    });
+  } catch (error) {
+    console.error('❌ フローデータ取得エラー:', error);
+    res.status(500).json({ error: 'データの取得に失敗しました' });
+  }
+});
+
+// フロー保存エンドポイント  
+router.post('/save/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const saveData = req.body;
+
+    console.log(`💾 フローデータ保存開始: ID=${id}`, {
+      title: saveData.title,
+      stepsCount: saveData.steps?.length || 0,
+      timestamp: saveData.savedTimestamp || 'N/A'
+    });
+
+    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const filePath = path.join(troubleshootingDir, `${id}.json`);
+
+    if (!fs.existsSync(troubleshootingDir)) {
+      fs.mkdirSync(troubleshootingDir, { recursive: true });
+    }
+
+    // 既存ファイルのバックアップを作成
+    if (fs.existsSync(filePath)) {
+      const backupPath = `${filePath}.backup.${Date.now()}`;
+      fs.copyFileSync(filePath, backupPath);
+      console.log(`📋 バックアップ作成: ${backupPath}`);
+    }
+
+    const finalSaveData = {
+      ...saveData,
+      updatedAt: new Date().toISOString(),
+      savedTimestamp: saveData.savedTimestamp || Date.now()
+    };
+
+    // 原子的書き込み
+    const tempFilePath = `${filePath}.tmp.${Date.now()}`;
+    const saveDataString = JSON.stringify(finalSaveData, null, 2);
+
+    fs.writeFileSync(tempFilePath, saveDataString, 'utf8');
+
+    if (fs.existsSync(tempFilePath)) {
+      fs.renameSync(tempFilePath, filePath);
+      console.log(`✅ 原子的ファイル保存完了: ${filePath}`);
+    } else {
+      throw new Error('一時ファイルの作成に失敗しました');
+    }
+
+    // 保存後の検証
+    const savedContent = fs.readFileSync(filePath, 'utf8');
+    const parsedContent = JSON.parse(savedContent);
+    console.log(`🔍 保存後検証:`, {
+      id: parsedContent.id,
+      title: parsedContent.title,
+      stepsCount: parsedContent.steps?.length || 0,
+      fileSize: savedContent.length
+    });
+
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+      'Pragma': 'no-cache',
+      'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
+      'Last-Modified': new Date().toUTCString()
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'データが保存されました',
+      savedAt: finalSaveData.updatedAt,
+      savedTimestamp: finalSaveData.savedTimestamp,
+      verification: {
+        stepsCount: parsedContent.steps?.length || 0,
+        fileSize: savedContent.length
+      }
+    });
+  } catch (error) {
+    console.error('❌ フロー保存エラー:', error);
+    res.status(500).json({ error: 'データの保存に失敗しました' });
+  }
+});
+
+// フロー削除エンドポイント
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
