@@ -12,6 +12,9 @@ router.put('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const flowData = req.body;
 
+    console.log(`🔧 保存リクエスト受信: ID=${id}`);
+    console.log(`📄 受信データ: タイトル="${flowData?.title}", ステップ数=${flowData?.steps?.length || 0}`);
+
     if (!flowData || !flowData.title) {
       return res.status(400).json({
         success: false,
@@ -24,12 +27,28 @@ router.put('/:id', async (req: Request, res: Response) => {
     const fileName = `${id}.json`;
     const filePath = path.join(troubleshootingDir, fileName);
 
+    console.log(`📁 保存先パス: ${filePath}`);
+    console.log(`📂 ディレクトリ存在確認: ${fs.existsSync(troubleshootingDir)}`);
+    console.log(`📄 ファイル存在確認: ${fs.existsSync(filePath)}`);
+
     if (!fs.existsSync(filePath)) {
+      console.log(`❌ ファイルが見つかりません: ${filePath}`);
       return res.status(404).json({
         success: false,
         error: '指定されたフローが見つかりません'
       });
     }
+
+    // 保存前のファイル状態を確認
+    const beforeStats = fs.statSync(filePath);
+    const beforeContent = fs.readFileSync(filePath, 'utf-8');
+    const beforeData = JSON.parse(beforeContent);
+    
+    console.log(`📊 保存前の状態:`);
+    console.log(`  - ファイルサイズ: ${beforeStats.size} bytes`);
+    console.log(`  - 最終更新: ${beforeStats.mtime.toISOString()}`);
+    console.log(`  - ステップ数: ${beforeData.steps?.length || 0}`);
+    console.log(`  - タイトル: "${beforeData.title}"`);
 
     // 保存データを準備
     const saveData = {
@@ -39,46 +58,96 @@ router.put('/:id', async (req: Request, res: Response) => {
       savedTimestamp: Date.now()
     };
 
+    console.log(`💾 保存データ準備完了:`);
+    console.log(`  - ID: ${saveData.id}`);
+    console.log(`  - タイトル: "${saveData.title}"`);
+    console.log(`  - ステップ数: ${saveData.steps?.length || 0}`);
+    console.log(`  - 保存タイムスタンプ: ${saveData.savedTimestamp}`);
+
     // バックアップを作成
     const backupPath = `${filePath}.backup.${Date.now()}`;
     fs.copyFileSync(filePath, backupPath);
+    console.log(`📦 バックアップ作成: ${backupPath}`);
 
     // ファイルを更新
-    fs.writeFileSync(filePath, JSON.stringify(saveData, null, 2));
+    const saveContent = JSON.stringify(saveData, null, 2);
+    console.log(`📝 保存するJSONサイズ: ${saveContent.length} characters`);
+    
+    fs.writeFileSync(filePath, saveContent);
+    console.log(`✅ ファイル書き込み完了`);
 
-    // 書き込み確認
-    const verifyContent = fs.readFileSync(filePath, 'utf-8');
-    const parsedContent = JSON.parse(verifyContent);
+    // 保存後のファイル状態を確認
+    const afterStats = fs.statSync(filePath);
+    const afterContent = fs.readFileSync(filePath, 'utf-8');
+    const afterData = JSON.parse(afterContent);
+    
+    console.log(`📊 保存後の状態:`);
+    console.log(`  - ファイルサイズ: ${afterStats.size} bytes (変更: ${afterStats.size - beforeStats.size})`);
+    console.log(`  - 最終更新: ${afterStats.mtime.toISOString()}`);
+    console.log(`  - ステップ数: ${afterData.steps?.length || 0}`);
+    console.log(`  - タイトル: "${afterData.title}"`);
+    console.log(`  - 保存タイムスタンプ: ${afterData.savedTimestamp}`);
+
+    // 内容が実際に変更されたか確認
+    const contentChanged = beforeContent !== afterContent;
+    const fileTimeChanged = afterStats.mtime.getTime() !== beforeStats.mtime.getTime();
+    
+    console.log(`🔍 変更確認:`);
+    console.log(`  - 内容変更: ${contentChanged}`);
+    console.log(`  - ファイル時刻変更: ${fileTimeChanged}`);
+
+    if (!contentChanged) {
+      console.log(`⚠️ 警告: ファイル内容が変更されていません！`);
+    }
+
+    if (!fileTimeChanged) {
+      console.log(`⚠️ 警告: ファイルのタイムスタンプが変更されていません！`);
+    }
+
+    // ディレクトリ内の全ファイルを確認
+    const dirFiles = fs.readdirSync(troubleshootingDir);
+    console.log(`📂 ディレクトリ内のファイル一覧:`, dirFiles);
 
     log(`フローを更新しました: ${fileName}`);
-    log(`保存されたデータ確認: ID=${parsedContent.id}, ステップ数=${parsedContent.steps?.length || 0}`);
+    log(`保存されたデータ確認: ID=${afterData.id}, ステップ数=${afterData.steps?.length || 0}`);
 
     // キャッシュを無効化するヘッダーを設定
     res.set({
       'Cache-Control': 'no-cache, no-store, must-revalidate',
       'Pragma': 'no-cache',
       'Expires': '0',
-      'Last-Modified': new Date().toUTCString(),
-      'ETag': `"${Date.now()}-${Math.random()}"`
+      'Last-Modified': afterStats.mtime.toUTCString(),
+      'ETag': `"${afterStats.mtime.getTime()}-${afterStats.size}"`
     });
 
     return res.status(200).json({
       success: true,
       id: id,
       message: 'フローが正常に更新されました',
-      savedData: {
-        id: parsedContent.id,
-        title: parsedContent.title,
-        stepCount: parsedContent.steps?.length || 0,
-        savedTimestamp: parsedContent.savedTimestamp
+      debug: {
+        filePath,
+        beforeSize: beforeStats.size,
+        afterSize: afterStats.size,
+        beforeSteps: beforeData.steps?.length || 0,
+        afterSteps: afterData.steps?.length || 0,
+        contentChanged,
+        fileTimeChanged,
+        savedTimestamp: afterData.savedTimestamp
       },
-      updatedData: parsedContent // 完全なデータも返す
+      savedData: {
+        id: afterData.id,
+        title: afterData.title,
+        stepCount: afterData.steps?.length || 0,
+        savedTimestamp: afterData.savedTimestamp
+      },
+      updatedData: afterData // 完全なデータも返す
     });
   } catch (error) {
-    console.error('フロー更新エラー:', error);
+    console.error('❌ フロー更新エラー:', error);
     return res.status(500).json({
       success: false,
-      error: 'フローの更新中にエラーが発生しました'
+      error: 'フローの更新中にエラーが発生しました',
+      errorDetails: error.message
     });
   }
 });
