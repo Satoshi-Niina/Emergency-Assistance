@@ -22,25 +22,37 @@ import path from 'path';
 router.post('/save', async (req, res) => {
   try {
     const flowData = req.body;
+    console.log('🔄 フロー保存リクエストを受信:', {
+      id: flowData?.id,
+      title: flowData?.title,
+      hasNodes: !!flowData?.nodes,
+      hasSteps: !!flowData?.steps
+    });
     
     if (!flowData || !flowData.id || !flowData.title) {
+      console.error('❌ 無効なフローデータ:', flowData);
       return res.status(400).json({ 
         success: false, 
-        error: 'フローデータが不正です' 
+        error: 'フローデータが不正です（id、titleが必要）' 
       });
     }
 
     // knowledge-base/troubleshootingディレクトリのパス
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    console.log('📁 保存先ディレクトリ:', troubleshootingDir);
     
     // ディレクトリが存在しない場合は作成
     if (!fs.existsSync(troubleshootingDir)) {
+      console.log('📁 ディレクトリを作成します:', troubleshootingDir);
       fs.mkdirSync(troubleshootingDir, { recursive: true });
+    } else {
+      console.log('✅ ディレクトリは既に存在します');
     }
 
     // ファイル名を生成（IDベース）
     const fileName = `${flowData.id}.json`;
     const filePath = path.join(troubleshootingDir, fileName);
+    console.log('💾 保存ファイルパス:', filePath);
 
     // フローデータにメタデータを追加
     const saveData = {
@@ -50,7 +62,24 @@ router.post('/save', async (req, res) => {
     };
 
     // JSONファイルとして保存
-    fs.writeFileSync(filePath, JSON.stringify(saveData, null, 2), 'utf8');
+    try {
+      fs.writeFileSync(filePath, JSON.stringify(saveData, null, 2), 'utf8');
+      console.log('✅ ファイル保存成功:', filePath);
+      
+      // ファイルが実際に存在することを確認
+      if (fs.existsSync(filePath)) {
+        const fileStats = fs.statSync(filePath);
+        console.log('📊 保存されたファイル情報:', {
+          size: fileStats.size,
+          modified: fileStats.mtime
+        });
+      } else {
+        throw new Error('ファイルが保存されませんでした');
+      }
+    } catch (fileError) {
+      console.error('❌ ファイル保存エラー:', fileError);
+      throw fileError;
+    }
 
     // データベースにも保存
     try {
@@ -60,11 +89,12 @@ router.post('/save', async (req, res) => {
         keyword: flowData.description || '',
         createdAt: new Date(),
       });
+      console.log('✅ データベース保存成功');
     } catch (dbError) {
-      console.warn('データベース保存でエラーが発生しましたが、ファイル保存は成功しました:', dbError);
+      console.warn('⚠️ データベース保存でエラーが発生しましたが、ファイル保存は成功しました:', dbError);
     }
 
-    console.log(`応急処置フローを保存しました: ${filePath}`);
+    console.log(`🎉 応急処置フローを保存しました: ${filePath}`);
     
     res.json({ 
       success: true, 
@@ -73,10 +103,10 @@ router.post('/save', async (req, res) => {
       fileName: fileName
     });
   } catch (error) {
-    console.error('応急処置フロー保存エラー:', error);
+    console.error('❌ 応急処置フロー保存エラー:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'フローの保存に失敗しました' 
+      error: `フローの保存に失敗しました: ${error.message}` 
     });
   }
 });
