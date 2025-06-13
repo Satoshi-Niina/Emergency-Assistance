@@ -122,6 +122,7 @@ router.post('/save-flow', async (req: Request, res: Response) => {
 
     console.log(`💾 ファイルパス指定保存: ${filePath}`);
     console.log(`📊 フローデータ: ID=${flowData.id}, タイトル="${flowData.title}"`);
+    console.log(`📋 リクエストボディ全体:`, JSON.stringify(req.body, null, 2));
 
     if (!flowData || !flowData.id || !flowData.title) {
       return res.status(400).json({
@@ -139,6 +140,7 @@ router.post('/save-flow', async (req: Request, res: Response) => {
         : path.join(process.cwd(), filePath);
       
       console.log(`🎯 指定されたパスに保存: ${targetFilePath}`);
+      console.log(`🔍 ファイル存在確認: ${fs.existsSync(targetFilePath)}`);
     } else {
       // フォールバック: troubleshootingディレクトリに保存
       const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
@@ -167,7 +169,18 @@ router.post('/save-flow', async (req: Request, res: Response) => {
     // 🎯 指定されたパスに直接上書き保存
     fs.writeFileSync(targetFilePath, JSON.stringify(saveData, null, 2));
 
-    console.log(`✅ 保存完了: ${targetFilePath}`);
+    // 💡 保存後の検証
+    if (fs.existsSync(targetFilePath)) {
+      const savedContent = fs.readFileSync(targetFilePath, 'utf-8');
+      const savedData = JSON.parse(savedContent);
+      console.log(`✅ 保存完了: ${targetFilePath}`);
+      console.log(`🔍 保存内容検証:`, {
+        savedId: savedData.id,
+        savedTitle: savedData.title,
+        savedStepsCount: savedData.steps?.length || 0,
+        savedUpdatedAt: savedData.updatedAt
+      });
+    }
 
     return res.status(200).json({
       success: true,
