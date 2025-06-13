@@ -269,17 +269,22 @@ router.get('/list', async (req, res) => {
 // 特定のフロー詳細取得エンドポイント
 router.get('/detail/:id', async (req, res) => {
   try {
-    // 強力なキャッシュ無効化ヘッダーを設定
+    // 最強のキャッシュ無効化ヘッダーを設定
+    const timestamp = Date.now();
+    const randomId = Math.random().toString(36).substring(2);
+    
     res.set({
-      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0, s-maxage=0',
       'Pragma': 'no-cache',
-      'Expires': '0',
+      'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
       'Last-Modified': new Date().toUTCString(),
-      'ETag': `"${Date.now()}-${Math.random()}"`
+      'ETag': `"${timestamp}-${randomId}"`,
+      'X-Accel-Expires': '0',
+      'Vary': '*'
     });
     
     const { id } = req.params;
-    console.log(`📖 フロー詳細取得開始: ID=${id}`);
+    console.log(`🔄 [${timestamp}] フロー詳細取得開始: ID=${id}`);
     
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
     const filePath = path.join(troubleshootingDir, `${id}.json`);
@@ -291,27 +296,40 @@ router.get('/detail/:id', async (req, res) => {
       return res.status(404).json({ error: 'フローが見つかりません' });
     }
 
-    // ファイルの統計情報を取得（最新の更新時刻を確認）
+    // ファイルの最新統計情報を取得
     const stats = fs.statSync(filePath);
     console.log(`📊 ファイル情報:`, {
       size: stats.size,
-      mtime: stats.mtime,
-      path: filePath
+      mtime: stats.mtime.toISOString(),
+      path: filePath,
+      requestTimestamp: timestamp
     });
 
-    // ファイル内容を読み取り
+    // ファイル内容を強制的に再読み込み
     const content = fs.readFileSync(filePath, 'utf8');
     console.log(`📄 ファイル内容のサイズ: ${content.length}文字`);
     
     const data = JSON.parse(content);
+    
+    // データの完全性をチェック
+    const responseData = {
+      ...data,
+      loadedAt: new Date().toISOString(),
+      fileModified: stats.mtime.toISOString(),
+      requestId: `${timestamp}-${randomId}`
+    };
+    
     console.log(`✅ データ解析成功:`, {
-      id: data.id,
-      title: data.title,
-      stepsCount: data.steps?.length || 0,
-      updatedAt: data.updatedAt
+      id: responseData.id,
+      title: responseData.title,
+      stepsCount: responseData.steps?.length || 0,
+      nodesCount: responseData.nodes?.length || 0,
+      edgesCount: responseData.edges?.length || 0,
+      updatedAt: responseData.updatedAt,
+      loadedAt: responseData.loadedAt
     });
 
-    res.json({ data });
+    res.json({ data: responseData });
   } catch (error) {
     console.error('❌ フロー詳細取得エラー:', error);
     res.status(500).json({ error: 'フローの取得に失敗しました' });

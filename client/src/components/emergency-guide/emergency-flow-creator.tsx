@@ -910,19 +910,35 @@ const EmergencyFlowCreator: React.FC = () => {
       // 現在の状態を完全にクリア（古いデータの表示を防ぐ）
       setFlowData(null);
       setUploadedFileName('');
+      setFlowEditorData(null);
 
-      // 強力なキャッシュ無効化パラメータを生成
-      const timestamp = new Date().getTime();
+      // 複数の強力なキャッシュバスター
+      const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2);
-      const nonce = Math.floor(Math.random() * 1000000);
+      const sessionId = Math.random().toString(36).substring(2, 15);
+      const nonce = Math.floor(Math.random() * 10000000);
 
-      console.log(`🚫 キャッシュ無効化パラメータ: t=${timestamp}, r=${randomId}, n=${nonce}`);
+      console.log(`🚫 最強キャッシュ無効化: t=${timestamp}, r=${randomId}, s=${sessionId}, n=${nonce}`);
 
-      const response = await fetch(`/api/emergency-flow/detail/${id}?t=${timestamp}&r=${randomId}&n=${nonce}&nocache=true&_=${Date.now()}`, {
+      const cacheBusterUrl = `/api/emergency-flow/detail/${id}?` + 
+        `timestamp=${timestamp}&` +
+        `random=${randomId}&` +
+        `session=${sessionId}&` +
+        `nonce=${nonce}&` +
+        `nocache=true&` +
+        `force=${Date.now()}&` +
+        `v=${Math.random()}`;
+
+      console.log(`📡 リクエストURL: ${cacheBusterUrl}`);
+
+      const response = await fetch(cacheBusterUrl, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
           'Pragma': 'no-cache',
+          'Expires': '0',
+          'If-None-Match': '*',
+          'X-Requested-With': 'XMLHttpRequest'
           'Expires': '0',
           'If-None-Match': '*',
           'If-Modified-Since': 'Thu, 01 Jan 1970 00:00:00 GMT'
