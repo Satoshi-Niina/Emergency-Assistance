@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,7 +61,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
   // flowDataが変更されたら編集用データを更新
   useEffect(() => {
     console.log('🔄 flowData変更検知:', flowData);
-    
+
     if (flowData) {
       console.log('📊 flowDataをsetEditedFlowに設定:', {
         id: flowData.id,
@@ -103,7 +102,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
     const handleDataRefresh = (event: any) => {
       const { data, flowId } = event.detail;
       console.log('🔄 flowDataRefreshedイベント受信:', { flowId, dataId: data?.id });
-      
+
       if (data && editedFlow && data.id === editedFlow.id) {
         console.log('✅ 編集中フローのデータを更新');
         setEditedFlow({ ...data });
@@ -114,14 +113,14 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
     const handleForceRefresh = async (event: any) => {
       const { flowId } = event.detail;
       console.log('🔄 強制データ再取得要求:', flowId);
-      
+
       if (editedFlow && (flowId === editedFlow.id || !flowId)) {
         console.log('💾 保存後のデータを再取得します...');
         try {
           // 強力なキャッシュバスティング
           const timestamp = Date.now();
           const randomId = Math.random().toString(36).substring(2, 15);
-          
+
           const response = await fetch(`/api/emergency-flow/${editedFlow.id}?_bust=${timestamp}&_r=${randomId}&_force=true`, {
             method: 'GET',
             headers: {
@@ -136,7 +135,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
           if (response.ok) {
             const result = await response.json();
             const freshData = result.data || result;
-            
+
             console.log('🔄 再取得したデータ:', {
               id: freshData.id,
               title: freshData.title,
@@ -144,11 +143,11 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
               updatedAt: freshData.updatedAt,
               savedTimestamp: freshData.savedTimestamp
             });
-            
+
             // 取得したデータが実際に新しいかチェック
             const isNewer = freshData.savedTimestamp > (editedFlow.savedTimestamp || 0);
             console.log(`📊 データの新しさチェック: ${isNewer ? '新しいデータ' : '古いデータ'}`);
-            
+
             if (isNewer || !editedFlow.savedTimestamp) {
               setEditedFlow({ ...freshData });
               console.log('✅ エディターのデータを更新しました');
@@ -166,7 +165,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
 
     window.addEventListener('flowDataRefreshed', handleDataRefresh);
     window.addEventListener('forceRefreshFlowData', handleForceRefresh);
-    
+
     return () => {
       window.removeEventListener('flowDataRefreshed', handleDataRefresh);
       window.removeEventListener('forceRefreshFlowData', handleForceRefresh);
@@ -234,7 +233,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
       // 保存成功後は強制的にエディターデータを更新
       console.log('💾 保存成功 - エディターデータを直接更新');
       setEditedFlow({ ...saveData });
-      
+
       // 即座にフロー一覧も更新
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent('forceRefreshFlowList', {
@@ -267,7 +266,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         detail: { forceRefresh: true }
       }));
 
-      
+
 
     } catch (error) {
       console.error('❌ 保存エラー:', error);
@@ -535,7 +534,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
-              
+
               {/* ステップタイトル編集 */}
               <div>
                 <Label>タイトル</Label>
@@ -604,7 +603,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                             </Button>
                           )}
                         </div>
-                        
+
                         {/* 条件分岐の場合の条件入力 */}
                         {step.type === 'decision' && (
                           <div>
@@ -616,7 +615,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                             />
                           </div>
                         )}
-                        
+
                         <div className="grid grid-cols-2 gap-2">
                           <div>
                             <Label>次のステップID</Label>
@@ -639,7 +638,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                             </select>
                           </div>
                         </div>
-                        
+
                         <div className="flex items-center space-x-2">
                           <input
                             type="checkbox"
