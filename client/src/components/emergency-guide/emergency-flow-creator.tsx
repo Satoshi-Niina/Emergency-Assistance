@@ -371,26 +371,44 @@ const EmergencyFlowCreator: React.FC = () => {
   // フロー保存ハンドラー
   const handleSaveFlow = async (data: any) => {
     try {
-      console.log("保存するフローデータ:", data);
+      console.log("🔄 保存処理を開始します");
+      console.log("📝 保存するフローデータ:", data);
+      
+      // IDが存在しない場合は生成
+      const saveData = {
+        ...data,
+        id: data.id || `flow_${Date.now()}`,
+        title: data.title || '無題のフロー',
+        description: data.description || ''
+      };
+      
+      console.log("📤 APIに送信するデータ:", saveData);
+      
       // ここで実際のデータをJSONに変換して保存APIを呼び出す
       const response = await fetch('/api/emergency-flow/save', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(saveData),
       });
 
+      console.log("📡 API応答ステータス:", response.status);
+
       if (!response.ok) {
-        throw new Error('フローの保存に失敗しました');
+        const errorText = await response.text();
+        console.error("❌ API応答エラー:", errorText);
+        throw new Error(`フローの保存に失敗しました (${response.status}): ${errorText}`);
       }
 
       const result = await response.json();
+      console.log("✅ API応答結果:", result);
 
       if (result.success) {
+        console.log("💾 保存成功:", result.filePath);
         toast({
           title: "保存成功",
-          description: "応急処置フローが保存されました",
+          description: `応急処置フローが保存されました: ${result.fileName}`,
         });
 
         // フローリストを更新
@@ -420,7 +438,7 @@ const EmergencyFlowCreator: React.FC = () => {
         throw new Error(result.error || 'フローの保存に失敗しました');
       }
     } catch (error) {
-      console.error('保存エラー:', error);
+      console.error('❌ 保存エラー:', error);
       toast({
         title: "エラー",
         description: error instanceof Error ? error.message : "フローの保存に失敗しました",
