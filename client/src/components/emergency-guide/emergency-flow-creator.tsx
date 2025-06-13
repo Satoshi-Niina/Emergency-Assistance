@@ -455,25 +455,8 @@ const EmergencyFlowCreator: React.FC = () => {
         // 即座にフローリストを更新（キャッシュをクリア）
         await fetchFlowList();
 
-        // 保存後にデータをリセット
-        setFlowData({
-          title: '',
-          description: '',
-          fileName: '',
-          nodes: [
-            {
-              id: 'start',
-              type: 'start',
-              position: { x: 250, y: 50 },
-              data: { label: '開始' }
-            }
-          ],
-          edges: []
-        });
-        // ファイル名も必ずリセット
-        setUploadedFileName('');
-
-        // ファイル編集タブに戻る
+        // 保存後はファイル編集タブに戻るだけで、データはリセットしない
+        // （ユーザーが継続編集できるように）
         setCharacterDesignTab('file');
 
         // 少し遅れてもう一度リフレッシュ（確実にデータが更新されるように）
@@ -642,15 +625,31 @@ const EmergencyFlowCreator: React.FC = () => {
           nodeType = 'decision';
         }
 
+        // ノードデータを作成（条件分岐情報を含む）
+        const nodeData = { 
+          label: step.title || `ステップ ${index + 1}`, 
+          message: step.message || step.description || ''
+        };
+
+        // 条件分岐ノードの場合、条件情報を追加
+        if (nodeType === 'decision') {
+          nodeData.yesCondition = step.yesCondition || '';
+          nodeData.noCondition = step.noCondition || '';
+          nodeData.otherCondition = step.otherCondition || '';
+          
+          console.log(`🔀 生成時に条件分岐情報を設定 ${step.id}:`, {
+            yesCondition: nodeData.yesCondition,
+            noCondition: nodeData.noCondition,
+            otherCondition: nodeData.otherCondition
+          });
+        }
+
         // ノードの作成
         const node = {
           id: step.id,
           type: nodeType,
           position: { x: nodeXPosition, y: nodeYPosition },
-          data: { 
-            label: step.title || `ステップ ${index + 1}`, 
-            message: step.message || ''
-          }
+          data: nodeData
         };
 
         // ノードの追加
@@ -1083,6 +1082,12 @@ const EmergencyFlowCreator: React.FC = () => {
           // 対応するstepデータを検索
           const correspondingStep = rawData.steps.find(step => step.id === node.id);
           if (correspondingStep) {
+            console.log(`🔀 条件分岐ノード ${node.id} の復元:`, {
+              yesCondition: correspondingStep.yesCondition,
+              noCondition: correspondingStep.noCondition,
+              otherCondition: correspondingStep.otherCondition
+            });
+            
             return {
               ...node,
               data: {
@@ -1098,6 +1103,35 @@ const EmergencyFlowCreator: React.FC = () => {
       }) || [];
 
       console.log("🎯 条件分岐情報を復元したノード:", enhancedNodes.filter(n => n.type === 'decision'));
+
+      return {
+        ...baseData,
+        nodes: enhancedNodes
+      };
+    }
+
+    // nodesデータに既に条件分岐情報がある場合はそれを使用
+    if (rawData.nodes && Array.isArray(rawData.nodes)) {
+      const enhancedNodes = rawData.nodes.map(node => {
+        if (node.type === 'decision' && node.data) {
+          console.log(`🔀 既存ノードデータから条件分岐復元 ${node.id}:`, {
+            yesCondition: node.data.yesCondition,
+            noCondition: node.data.noCondition,
+            otherCondition: node.data.otherCondition
+          });
+          
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              yesCondition: node.data.yesCondition || '',
+              noCondition: node.data.noCondition || '',
+              otherCondition: node.data.otherCondition || ''
+            }
+          };
+        }
+        return node;
+      });
 
       return {
         ...baseData,
