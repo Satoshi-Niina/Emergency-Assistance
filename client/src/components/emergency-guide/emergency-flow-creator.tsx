@@ -225,9 +225,9 @@ const EmergencyFlowCreator: React.FC = () => {
       setSelectedFilePath(filePath);
       console.log(`📁 編集対象ファイルパス設定: ${filePath}`);
 
-      // 🎯 emergency-flow APIを使用してデータ取得
+      // 🎯 emergency-flow APIを使用してデータ取得（troubleshootingディレクトリから確実に読み込み）
       const timestamp = Date.now();
-      const response = await fetch(`/api/emergency-flow/detail/${flowId}?t=${timestamp}`, {
+      const response = await fetch(`/api/emergency-flow/${flowId}?t=${timestamp}`, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -241,8 +241,7 @@ const EmergencyFlowCreator: React.FC = () => {
         throw new Error(`フローデータの取得に失敗しました (${response.status})`);
       }
 
-      const result = await response.json();
-      const data = result.data || result;
+      const data = await response.json();
 
       console.log(`✅ 取得したフローデータ:`, {
         requestedId: flowId,
