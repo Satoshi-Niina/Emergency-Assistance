@@ -31,12 +31,11 @@ router.put('/:id', async (req: Request, res: Response) => {
     console.log(`📂 ディレクトリ存在確認: ${fs.existsSync(troubleshootingDir)}`);
     console.log(`📄 ファイル存在確認: ${fs.existsSync(filePath)}`);
 
+    // ファイルが存在しない場合は新規作成として処理
     if (!fs.existsSync(filePath)) {
-      console.log(`❌ ファイルが見つかりません: ${filePath}`);
-      return res.status(404).json({
-        success: false,
-        error: '指定されたフローが見つかりません'
-      });
+      console.log(`📝 新規ファイル作成: ${filePath}`);
+    } else {
+      console.log(`📝 既存ファイル更新: ${filePath}`);
     }
 
     // 保存前のファイル状態を確認
@@ -358,54 +357,7 @@ function updateIndexFile(metadata: any) {
   }
 }
 
-// フロー保存エンドポイント
-router.post('/save', async (req: Request, res: Response) => {
-  try {
-    const flowData = req.body;
-
-    if (!flowData || !flowData.id || !flowData.title) {
-      return res.status(400).json({
-        success: false,
-        error: '無効なフローデータです'
-      });
-    }
-
-    // トラブルシューティングディレクトリを使用
-    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    if (!fs.existsSync(troubleshootingDir)) {
-      fs.mkdirSync(troubleshootingDir, { recursive: true });
-    }
-
-    // ファイル名を生成
-    const fileName = `${flowData.id}.json`;
-    const filePath = path.join(troubleshootingDir, fileName);
-
-    // 保存データを準備
-    const saveData = {
-      ...flowData,
-      updatedAt: new Date().toISOString(),
-      savedTimestamp: Date.now()
-    };
-
-    // ファイルに保存
-    fs.writeFileSync(filePath, JSON.stringify(saveData, null, 2));
-
-    log(`新しいフローを保存しました: ${fileName}`);
-
-    return res.status(200).json({
-      success: true,
-      id: flowData.id,
-      message: 'フローが正常に保存されました',
-      filePath: filePath
-    });
-  } catch (error) {
-    console.error('フロー保存エラー:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'フローの保存中にエラーが発生しました'
-    });
-  }
-});
+// 削除: POST /saveエンドポイントは不要（PUTに統一）
 
 // フロー一覧取得
 router.get('/list', async (req, res) => {
