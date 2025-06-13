@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useRef, memo, useEffect } from 'react';
 import ReactFlow, {
   Node,
@@ -292,7 +291,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
       // フローデータの更新
       if (Array.isArray(initialData.nodes) && initialData.nodes.length > 0) {
         console.log("★★★ ノードデータを更新:", initialData.nodes);
-        
+
         // 条件分岐ノードの条件データを復元
         const enhancedNodes = initialData.nodes.map(node => {
           if (node.type === 'decision' && initialData.steps) {
@@ -311,7 +310,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
           }
           return node;
         });
-        
+
         setNodes(enhancedNodes);
         console.log("★★★ 条件分岐データを含むノードを設定:", enhancedNodes);
       }
@@ -495,12 +494,12 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
       // 条件分岐ノードの場合、詳細なoptions情報と条件テキストを確実に保持
       if (node.type === 'decision') {
         const connectedEdges = edges.filter(edge => edge.source === node.id);
-        
+
         // 条件分岐の条件テキストを確実に保存（空文字列でも保存）
         step.yesCondition = node.data.yesCondition || '';
         step.noCondition = node.data.noCondition || '';
         step.otherCondition = node.data.otherCondition || '';
-        
+
         // 接続されたエッジから選択肢を生成
         step.options = connectedEdges.map(edge => ({
           text: edge.sourceHandle === 'yes' ? (step.yesCondition || 'はい') :
@@ -511,7 +510,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
           conditionType: edge.sourceHandle === 'yes' ? 'yes' : 
                         edge.sourceHandle === 'no' ? 'no' : 'other'
         }));
-        
+
         console.log(`🔀 条件分岐ノード ${node.id} の保存詳細:`, {
           title: step.title,
           yesCondition: step.yesCondition,
@@ -736,7 +735,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
                         const newValue = e.target.value;
                         // updateNodeDataを呼び出してselectedNodeを更新
                         updateNodeData('label', newValue);
-                        
+
                         // リアルタイムでノードのラベルを更新
                         setNodes((nds) =>
                           nds.map((node) => {
@@ -752,7 +751,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
                             return node;
                           })
                         );
-                        
+
                         // selectedNodeも同期して更新
                         setSelectedNode(prev => prev ? {
                           ...prev,
@@ -874,7 +873,8 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
                                             },
                                           };
                                         }
-                                        return node;
+                                        return```text
+ node;
                                       })
                                     );
                                   }}

@@ -45,24 +45,30 @@ const EmergencyGuidePage: React.FC = () => {
 
   // フローデータ更新イベントのリスナー
   useEffect(() => {
-    const refreshList = async () => {
-      console.log('フローリスト更新イベントを受信、再読み込みします');
-      // フローリストを強制的に再取得
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('forceRefreshFlowList', {
-          detail: { timestamp: Date.now() }
-        }));
+    const refreshFlowList = async () => {
+      try {
+        const response = await fetch(`/api/emergency-flow/list?ts=${Date.now()}`);
+        if (!response.ok) throw new Error("読み込み失敗");
+        const data = await response.json();
+        // フロー一覧を直接更新
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('forceRefreshFlowList', {
+            detail: { flowList: Array.isArray(data) ? data : [] }
+          }));
+        }
+      } catch (err) {
+        console.error("フロー一覧取得エラー", err);
       }
     };
 
-    window.addEventListener("flowDataUpdated", refreshList);
-    window.addEventListener("troubleshootingDataUpdated", refreshList);
-    window.addEventListener("emergencyFlowSaved", refreshList);
+    window.addEventListener("flowDataUpdated", refreshFlowList);
+    window.addEventListener("troubleshootingDataUpdated", refreshFlowList);
+    window.addEventListener("emergencyFlowSaved", refreshFlowList);
     
     return () => {
-      window.removeEventListener("flowDataUpdated", refreshList);
-      window.removeEventListener("troubleshootingDataUpdated", refreshList);
-      window.removeEventListener("emergencyFlowSaved", refreshList);
+      window.removeEventListener("flowDataUpdated", refreshFlowList);
+      window.removeEventListener("troubleshootingDataUpdated", refreshFlowList);
+      window.removeEventListener("emergencyFlowSaved", refreshFlowList);
     };
   }, []);
 
