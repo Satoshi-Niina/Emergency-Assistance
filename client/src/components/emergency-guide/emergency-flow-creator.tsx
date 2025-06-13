@@ -213,11 +213,9 @@ const EmergencyFlowCreator: React.FC = () => {
     try {
       console.log(`🔍 フロー編集データ取得開始: ID=${flowId}`);
       
-      const response = await fetch(`/api/emergency-flow/${flowId}?_t=${Date.now()}&_force=true`, {
+      const response = await fetch(`/api/emergency-flow/${flowId}`, {
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
+          'Cache-Control': 'no-cache'
         }
       });
 
@@ -231,8 +229,7 @@ const EmergencyFlowCreator: React.FC = () => {
       console.log(`✅ 取得したフローデータ:`, {
         id: data.id,
         title: data.title,
-        stepsCount: data.steps?.length || 0,
-        updatedAt: data.updatedAt
+        stepsCount: data.steps?.length || 0
       });
       
       setCurrentFlowData(data);
