@@ -213,9 +213,14 @@ const EmergencyFlowCreator: React.FC = () => {
     try {
       console.log(`🔍 フロー編集データ取得開始: ID=${flowId}`);
       
-      const response = await fetch(`/api/emergency-flow/${flowId}`, {
+      // 確実にキャッシュを回避
+      const timestamp = Date.now();
+      const response = await fetch(`/api/emergency-flow/${flowId}?t=${timestamp}&fresh=true`, {
+        method: 'GET',
         headers: {
-          'Cache-Control': 'no-cache'
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         }
       });
 
@@ -223,14 +228,19 @@ const EmergencyFlowCreator: React.FC = () => {
         throw new Error('フローデータの取得に失敗しました');
       }
 
-      const result = await response.json();
-      const data = result.data || result;
+      const data = await response.json();
       
       console.log(`✅ 取得したフローデータ:`, {
         id: data.id,
         title: data.title,
-        stepsCount: data.steps?.length || 0
+        stepsCount: data.steps?.length || 0,
+        requestedId: flowId
       });
+
+      // IDが一致することを確認
+      if (data.id !== flowId) {
+        console.warn(`⚠️ ID不一致: 要求=${flowId}, 取得=${data.id}`);
+      }
       
       setCurrentFlowData(data);
       setSelectedFlowForEdit(flowId);

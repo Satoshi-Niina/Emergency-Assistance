@@ -305,19 +305,30 @@ router.get('/:id', async (req: Request, res: Response) => {
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
     const filePath = path.join(troubleshootingDir, `${id}.json`);
 
+    console.log(`📁 ファイルパス: ${filePath}`);
+    console.log(`📄 ファイル存在: ${fs.existsSync(filePath)}`);
+
     if (!fs.existsSync(filePath)) {
+      console.log(`❌ ファイルが見つかりません: ${filePath}`);
       return res.status(404).json({ success: false, error: 'フローが見つかりません' });
     }
 
+    // ファイルを毎回新しく読み込み（キャッシュ無し）
     const content = fs.readFileSync(filePath, 'utf-8');
     const flowData = JSON.parse(content);
 
-    console.log(`✅ フロー読み込み完了: ${flowData.title}`);
+    console.log(`✅ フロー読み込み完了: ID=${flowData.id}, タイトル=${flowData.title}`);
 
-    return res.status(200).json({
-      id: id,
-      data: flowData
+    // 強力なキャッシュ無効化ヘッダー
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'X-Fresh-Load': 'true',
+      'X-Timestamp': Date.now().toString()
     });
+
+    return res.status(200).json(flowData);
   } catch (error) {
     console.error('❌ フロー詳細取得エラー:', error);
     return res.status(500).json({
