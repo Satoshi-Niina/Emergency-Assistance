@@ -71,8 +71,8 @@ const EmergencyFlowCreator: React.FC = () => {
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 15);
 
-      // troubleshootingエンドポイントを直接使用
-      const response = await fetch(`/api/troubleshooting?_t=${timestamp}&_r=${randomId}`, {
+      // emergency-flowエンドポイントに統一
+      const response = await fetch(`/api/emergency-flow/list?_t=${timestamp}&_r=${randomId}`, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
@@ -256,7 +256,7 @@ const EmergencyFlowCreator: React.FC = () => {
       const randomId = Math.random().toString(36).substring(2, 15);
       const cacheBuster = `${timestamp}_${randomId}`;
       
-      const response = await fetch(`/api/troubleshooting/${flowId}?t=${cacheBuster}&force=true&_cb=${Date.now()}`, {
+      const response = await fetch(`/api/emergency-flow/get/${flowId}?t=${cacheBuster}&force=true&_cb=${Date.now()}`, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
@@ -342,7 +342,7 @@ const EmergencyFlowCreator: React.FC = () => {
       const targetFlow = flowList.find(flow => flow.id === flowId);
       if (targetFlow) {
         const fileName = targetFlow.fileName || `${flowId}.json`;
-        const response = await fetch(`/api/troubleshooting/delete/${flowId}`, {
+        const response = await fetch(`/api/emergency-flow/${flowId}`, {
           method: 'DELETE',
           headers: {
             'Cache-Control': 'no-cache',
