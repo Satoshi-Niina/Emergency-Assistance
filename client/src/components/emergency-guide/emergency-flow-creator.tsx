@@ -934,15 +934,13 @@ const EmergencyFlowCreator: React.FC = () => {
       const response = await fetch(cacheBusterUrl, {
         method: 'GET',
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-          'If-None-Match': '*',
-          'X-Requested-With': 'XMLHttpRequest'
-          'Expires': '0',
-          'If-None-Match': '*',
-          'If-Modified-Since': 'Thu, 01 Jan 1970 00:00:00 GMT'
-        }
+            'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'If-None-Match': '*',
+            'X-Requested-With': 'XMLHttpRequest',
+            'If-Modified-Since': 'Thu, 01 Jan 1970 00:00:00 GMT'
+          }
       });
 
       if (!response.ok) {
@@ -979,9 +977,7 @@ const EmergencyFlowCreator: React.FC = () => {
           variant: "destructive",
         });
         return;
-      }
-
-      // 読み込んだデータを各キャラクターのノードとエッジに適用
+      }      // 読み込んだデータを各キャラクターのノードとエッジに適用
       // 開始ノード、ステップノード、判断ノード、終了ノードに適用
       const startNode = enhancedData.nodes?.find((node: any) => node.type === 'start') || null;
       const stepNodes = enhancedData.nodes?.filter((node: any) => node.type === 'step') || [];
