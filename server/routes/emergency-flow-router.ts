@@ -157,7 +157,113 @@ function updateIndexFile(metadata: any) {
   }
 }
 
-// フロー一覧の取得
+// フロー保存エンドポイント
+router.post('/save', async (req: Request, res: Response) => {
+  try {
+    const flowData = req.body;
+    
+    if (!flowData || !flowData.id || !flowData.title) {
+      return res.status(400).json({
+        success: false,
+        error: '無効なフローデータです'
+      });
+    }
+    
+    // トラブルシューティングディレクトリを使用
+    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    if (!fs.existsSync(troubleshootingDir)) {
+      fs.mkdirSync(troubleshootingDir, { recursive: true });
+    }
+    
+    // ファイル名を生成
+    const fileName = `${flowData.id}.json`;
+    const filePath = path.join(troubleshootingDir, fileName);
+    
+    // 保存データを準備
+    const saveData = {
+      ...flowData,
+      updatedAt: new Date().toISOString(),
+      savedTimestamp: Date.now()
+    };
+    
+    // ファイルに保存
+    fs.writeFileSync(filePath, JSON.stringify(saveData, null, 2));
+    
+    log(`新しいフローを保存しました: ${fileName}`);
+    
+    return res.status(200).json({
+      success: true,
+      id: flowData.id,
+      message: 'フローが正常に保存されました',
+      filePath: filePath
+    });
+  } catch (error) {
+    console.error('フロー保存エラー:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'フローの保存中にエラーが発生しました'
+    });
+  }
+});
+
+// フロー更新エンドポイント
+router.put('/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const flowData = req.body;
+    
+    if (!flowData || !flowData.title) {
+      return res.status(400).json({
+        success: false,
+        error: '無効なフローデータです'
+      });
+    }
+    
+    // トラブルシューティングディレクトリから検索
+    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const fileName = `${id}.json`;
+    const filePath = path.join(troubleshootingDir, fileName);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        error: '指定されたフローが見つかりません'
+      });
+    }
+    
+    // 保存データを準備
+    const saveData = {
+      ...flowData,
+      id: id,
+      updatedAt: new Date().toISOString(),
+      savedTimestamp: Date.now()
+    };
+    
+    // バックアップを作成
+    const backupPath = `${filePath}.backup.${Date.now()}`;
+    fs.copyFileSync(filePath, backupPath);
+    
+    // ファイルを更新
+    fs.writeFileSync(filePath, JSON.stringify(saveData, null, 2));
+    
+    log(`フローを更新しました: ${fileName}`);
+    
+    return res.status(200).json({
+      success: true,
+      id: id,
+      message: 'フローが正常に更新されました',
+      filePath: filePath
+    });
+  } catch (error) {
+    console.error('フロー更新エラー:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'フローの更新中にエラーが発生しました'
+    });
+  }
+});
+
+// フロー一覧の取得（エラーハンドリング改善）
 router.get('/list', async (req: Request, res: Response) => {
   try {
     const jsonDir = path.join(process.cwd(), 'knowledge-base', 'json');
@@ -165,6 +271,10 @@ router.get('/list', async (req: Request, res: Response) => {
     
     if (!fs.existsSync(jsonDir)) {
       fs.mkdirSync(jsonDir, { recursive: true });
+    }
+    
+    if (!fs.existsSync(troubleshootingDir)) {
+      fs.mkdirSync(troubleshootingDir, { recursive: true });
     }
     
     const flowList = [];
@@ -196,24 +306,33 @@ router.get('/list', async (req: Request, res: Response) => {
     // トラブルシューティングディレクトリからJSONを読み込む
     if (fs.existsSync(troubleshootingDir)) {
       const tsFiles = fs.readdirSync(troubleshootingDir)
-        .filter(file => file.endsWith('.json'));
+        .filter(file => file.endsWith('.json') && !file.includes('.backup.'));
       
       let tsCount = 0;
       for (const file of tsFiles) {
         try {
           const filePath = path.join(troubleshootingDir, file);
           const content = fs.readFileSync(filePath, 'utf-8');
-          const tsData = JSON.parse(content);
+          
+          // JSON構文チェック
+          let tsData;
+          try {
+            tsData = JSON.parse(content);
+          } catch (parseError) {
+            console.error(`トラブルシューティングファイル読み込みエラー (${file}):`, parseError);
+            continue; // 破損ファイルをスキップ
+          }
           
           // IDとタイトルがある場合のみ追加
           if (tsData.id && tsData.title) {
             flowList.push({
-              id: `ts_${file.replace('.json', '')}`,
+              id: tsData.id,
               filePath: filePath,
               fileName: file,
               title: tsData.title,
-              createdAt: new Date().toISOString(),
-              slideCount: tsData.slides ? tsData.slides.length : 0,
+              description: tsData.description || '',
+              createdAt: tsData.createdAt || new Date().toISOString(),
+              slideCount: tsData.steps ? tsData.steps.length : 0,
               source: 'troubleshooting'
             });
             tsCount++;
@@ -238,7 +357,7 @@ router.get('/list', async (req: Request, res: Response) => {
 });
 
 // フロー詳細の取得
-router.get('/detail/:id', async (req: Request, res: Response) => {
+router.get('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     
@@ -331,7 +450,7 @@ router.get('/detail/:id', async (req: Request, res: Response) => {
 });
 
 // フローの削除
-router.delete('/delete/:id', async (req: Request, res: Response) => {
+router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     
