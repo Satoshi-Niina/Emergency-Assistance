@@ -207,87 +207,93 @@ function updateIndexFile(metadata: any) {
 
 // 削除: POST /saveエンドポイントは不要（PUTに統一）
 
-// フロー一覧取得 - knowledge-base/troubleshootingのみ
+// 🎯 フロー一覧取得
 router.get('/list', async (req, res) => {
   try {
-    console.log('📋 フロー一覧取得リクエスト受信 - troubleshootingディレクトリのみ');
-    console.log('🚫 古いデータ（engine_restart_issue, parking_brake_release_issue）は完全に除外');
+    console.log('🔍 トラブルシューティングディレクトリ:', TROUBLESHOOTING_DIR);
 
-    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    console.log(`🔍 対象ディレクトリ: ${troubleshootingDir}`);
+    // ディレクトリ内のJSONファイルを取得
+    const files = fs.readdirSync(TROUBLESHOOTING_DIR)
+      .filter(file => file.endsWith('.json'));
 
-    // ディレクトリが存在するか確認
-    if (!fs.existsSync(troubleshootingDir)) {
-      console.log('⚠️ troubleshootingディレクトリが存在しません');
-      return res.json([]);
-    }
+    console.log('📁 見つかったファイル:', files);
 
-    // 明示的にengine_stop_no_start.jsonのみを処理
-    const allowedFile = 'engine_stop_no_start.json';
-    const targetPath = path.join(troubleshootingDir, allowedFile);
+    // 🚫 古いデータを厳格にブロック - engine_stop_no_start.json のみ許可
+    const allowedFiles = files.filter(file => {
+      if (file === 'engine_stop_no_start.json') {
+        return true;
+      }
 
-    console.log(`🎯 許可ファイル: ${allowedFile}`);
-    console.log(`📁 ファイル存在: ${fs.existsSync(targetPath)}`);
+      // 古いファイルを明示的に拒否
+      if (file.includes('engine_restart_issue') || 
+          file.includes('parking_brake_release_issue')) {
+        console.log(`🚫 古いファイルをブロック: ${file}`);
+        return false;
+      }
 
-    // 他のファイルは完全に無視
-    const flows = [];
+      console.log(`❌ 許可されていないファイル: ${file}`);
+      return false;
+    });
 
-    if (fs.existsSync(targetPath)) {
+    console.log('📋 処理対象JSONファイル:', allowedFiles);
+
+    const flowList = [];
+
+    for (const file of allowedFiles) {
       try {
-        const content = fs.readFileSync(targetPath, 'utf-8');
+        const filePath = path.join(TROUBLESHOOTING_DIR, file);
+        const content = fs.readFileSync(filePath, 'utf-8');
         const data = JSON.parse(content);
 
-        // IDも厳格にチェック
-        if (data.id !== 'engine_stop_no_start') {
-          console.log(`❌ 不正なID発見: ${data.id} - 処理をスキップ`);
-          return res.json([]);
+        // IDレベルでも再度チェック
+        if (data?.id === 'engine_restart_issue' || data?.id === 'parking_brake_release_issue') {
+          console.log(`🚫 古いIDを検出してブロック: ${data.id} (ファイル: ${file})`);
+          continue;
         }
 
-        console.log(`✅ 正規ファイル処理: ${allowedFile} (ID: ${data.id}, ステップ数: ${data.steps?.length || 0})`);
+        // engine_stop_no_startのみ許可
+        if (data && data.id === 'engine_stop_no_start' && data.title) {
+          console.log(`✅ ファイル ${file} を読み込み:`, {
+            id: data.id,
+            title: data.title,
+            stepsCount: data.steps?.length || 0
+          });
 
-        const flowData = {
-          id: data.id,
-          title: data.title,
-          description: data.description,
-          trigger: data.triggerKeywords || [],
-          slides: [], // 互換性のため
-          createdAt: data.updatedAt || new Date().toISOString(),
-          fileName: allowedFile
-        };
-
-        flows.push(flowData);
-        console.log('✅ フロー追加完了:', flowData);
+          flowList.push({
+            id: data.id,
+            title: data.title,
+            description: data.description || '',
+            fileName: file,
+            createdAt: data.createdAt || data.updatedAt || new Date().toISOString(),
+            trigger: data.triggerKeywords || [],
+            slides: []
+          });
+        } else {
+          console.log(`❌ 許可されていないデータ: ${data?.id || 'unknown'} (ファイル: ${file})`);
+        }
       } catch (error) {
-        console.error(`❌ ファイル読み込みエラー ${allowedFile}:`, error);
-        return res.json([]);
+        console.error(`❌ ファイル ${file} の読み込みエラー:`, error);
       }
-    } else {
-      console.log(`⚠️ 許可ファイルが見つかりません: ${allowedFile}`);
     }
 
-    console.log(`✅ 最終返却データ: ${flows.length}個のフロー（engine_stop_no_startのみ）`);
-    console.log('🔍 返却データ詳細:', JSON.stringify(flows, null, 2));
+    console.log('📤 返すデータ:', flowList.length + '件（engine_stop_no_startのみ）');
 
     // 強力なキャッシュ無効化ヘッダー
     res.set({
       'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
       'Pragma': 'no-cache',
-      'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
-      'X-Fresh-Data': 'true',
+      'Expires': '0',
+      'X-Fresh-Load': 'true',
       'X-Timestamp': Date.now().toString(),
-      'X-Source-Directory': 'knowledge-base/troubleshooting',
-      'X-Target-File': allowedFile,
-      'X-Allowed-IDs': 'engine_stop_no_start',
-      'X-Response-Count': flows.length.toString()
+      'X-Only-Valid-Data': 'engine_stop_no_start'
     });
 
-    res.json(flows);
-
+    return res.status(200).json(flowList);
   } catch (error) {
     console.error('❌ フロー一覧取得エラー:', error);
-    res.status(500).json({ 
-      error: 'フロー一覧の取得に失敗しました',
-      details: error.message 
+    return res.status(500).json({
+      success: false,
+      error: 'フロー一覧の取得に失敗しました'
     });
   }
 });
