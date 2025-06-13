@@ -1,4 +1,3 @@
-
 import { Router } from 'express';
 import path from 'path';
 import fs from 'fs';
@@ -10,7 +9,7 @@ router.get('/', (req, res) => {
   try {
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
     console.log('トラブルシューティングディレクトリ:', troubleshootingDir);
-    
+
     if (!fs.existsSync(troubleshootingDir)) {
       console.log('トラブルシューティングディレクトリが存在しません');
       return res.json([]);
@@ -18,7 +17,7 @@ router.get('/', (req, res) => {
 
     const files = fs.readdirSync(troubleshootingDir);
     console.log('見つかったファイル:', files);
-    
+
     const troubleshootingFlows = files
       .filter(file => file.endsWith('.json'))
       .map(file => {
@@ -27,7 +26,7 @@ router.get('/', (req, res) => {
           const content = fs.readFileSync(filePath, 'utf-8');
           const data = JSON.parse(content);
           console.log(`ファイル ${file} を読み込み:`, data);
-          
+
           // データ構造を統一化
           return {
             id: data.id || file.replace('.json', ''),
@@ -54,49 +53,40 @@ router.get('/', (req, res) => {
 });
 
 // 個別のトラブルシューティングフローを取得
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    console.log(`トラブルシューティングID ${id} を検索中...`);
-    
-    if (!fs.existsSync(troubleshootingDir)) {
-      console.log('トラブルシューティングディレクトリが存在しません');
-      return res.status(404).json({ error: 'Troubleshooting directory not found' });
+    console.log(`Fetching troubleshooting data for ID: ${id}`);
+
+    const filePath = path.join(process.cwd(), 'knowledge-base', 'troubleshooting', `${id}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      console.log(`File not found: ${filePath}`);
+      return res.status(404).json({ error: 'Troubleshooting data not found' });
     }
 
-    const files = fs.readdirSync(troubleshootingDir);
-    const jsonFiles = files.filter(file => file.endsWith('.json'));
-    
-    // IDに基づいてファイルを検索
-    let foundData = null;
-    
-    for (const file of jsonFiles) {
-      try {
-        const filePath = path.join(troubleshootingDir, file);
-        const content = fs.readFileSync(filePath, 'utf-8');
-        const data = JSON.parse(content);
-        
-        // IDが一致するかチェック
-        if (data.id === id || file.replace('.json', '') === id) {
-          foundData = data;
-          console.log(`マッチしたファイル: ${file}`, data);
-          break;
-        }
-      } catch (error) {
-        console.error(`ファイル ${file} の読み込みエラー:`, error);
-      }
+    // ファイルの内容を毎回新しく読み込み（キャッシュ無効化）
+    const fileContent = fs.readFileSync(filePath, 'utf8');
+    const data = JSON.parse(fileContent);
+
+    // updatedAtフィールドがある場合はログ出力
+    if (data.updatedAt) {
+      console.log(`Data was last updated at: ${data.updatedAt}`);
     }
 
-    if (!foundData) {
-      console.log(`ID ${id} に対応するデータが見つかりません`);
-      return res.status(404).json({ error: 'Troubleshooting flow not found' });
-    }
+    console.log(`Successfully loaded troubleshooting data:`, data);
 
-    res.json(foundData);
+    // レスポンスヘッダーでキャッシュを無効化
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+
+    res.json(data);
   } catch (error) {
-    console.error('個別トラブルシューティングフロー取得エラー:', error);
-    res.status(500).json({ error: 'Failed to fetch troubleshooting flow' });
+    console.error('Error fetching troubleshooting data:', error);
+    res.status(500).json({ error: 'Failed to fetch troubleshooting data' });
   }
 });
 
@@ -105,14 +95,14 @@ router.post('/search', (req, res) => {
   try {
     const { query } = req.body;
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    
+
     if (!fs.existsSync(troubleshootingDir)) {
       return res.json([]);
     }
 
     const files = fs.readdirSync(troubleshootingDir);
     const searchTerm = query.toLowerCase();
-    
+
     const matchingFlows = files
       .filter(file => file.endsWith('.json'))
       .map(file => {
@@ -120,12 +110,12 @@ router.post('/search', (req, res) => {
           const filePath = path.join(troubleshootingDir, file);
           const content = fs.readFileSync(filePath, 'utf-8');
           const data = JSON.parse(content);
-          
+
           // 検索条件との一致をチェック
           const titleMatch = (data.title || '').toLowerCase().includes(searchTerm);
           const descriptionMatch = (data.description || '').toLowerCase().includes(searchTerm);
           const triggerMatch = (data.trigger || []).some((t: string) => t.toLowerCase().includes(searchTerm));
-          
+
           if (titleMatch || descriptionMatch || triggerMatch) {
             return {
               id: data.id || file.replace('.json', ''),
