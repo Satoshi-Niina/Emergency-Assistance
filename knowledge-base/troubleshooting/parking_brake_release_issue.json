@@ -1,0 +1,202 @@
+{
+  "id": "parking_brake_release_issue",
+  "title": "駐車用バネブレーキ解放不具合対応フロー",
+  "description": "駐車用バネブレーキが解放できない場合",
+  "triggerKeywords": [
+    "駐車用バネブレーキ",
+    "ブレーキ解放"
+  ],
+  "steps": [
+    {
+      "id": "start",
+      "title": "開始",
+      "description": "この応急処置ガイドでは、駐車用バネブレーキが解放できない問題に対処する手順を説明します。安全を確保しながら、原因を特定し解決するための手順に従ってください。",
+      "imageUrl": "",
+      "type": "start",
+      "options": [
+        {
+          "text": "状況を確認する",
+          "nextStepId": "step1",
+          "isTerminal": false,
+          "conditionType": "other"
+        }
+      ],
+      "message": "この応急処置ガイドでは、駐車用バネブレーキが解放できない問題に対処する手順を説明します。安全を確保しながら、原因を特定し解決するための手順に従ってください。"
+    },
+    {
+      "id": "step1",
+      "title": "安全確保",
+      "description": "1. 二次災害を防ぐため、車両が安全な場所に停止していることを確認します。\n2. 接近する列車や障害物がないか周囲を確認します。\n3. 必要に応じて停止表示器や防護無線を使用します。",
+      "imageUrl": "",
+      "type": "step",
+      "options": [
+        {
+          "text": "安全確認完了",
+          "nextStepId": "decision1",
+          "isTerminal": false,
+          "conditionType": "other"
+        }
+      ],
+      "message": "1. 二次災害を防ぐため、車両が安全な場所に停止していることを確認します。\n2. 接近する列車や障害物がないか周囲を確認します。\n3. 必要に応じて停止表示器や防護無線を使用します。"
+    },
+    {
+      "id": "decision1",
+      "title": "空気圧の確認",
+      "description": "ブレーキシステムの空気圧は正常ですか？",
+      "imageUrl": "",
+      "type": "decision",
+      "options": [
+        {
+          "text": "正常",
+          "nextStepId": "step2a",
+          "isTerminal": false,
+          "conditionType": "yes"
+        },
+        {
+          "text": "低下している",
+          "nextStepId": "step2b",
+          "isTerminal": false,
+          "conditionType": "no"
+        }
+      ],
+      "message": "ブレーキシステムの空気圧は正常ですか？"
+    },
+    {
+      "id": "step2a",
+      "title": "制御装置の確認",
+      "description": "1. ブレーキ制御装置の状態を確認します。\n2. 制御装置の電源が入っていることを確認します。\n3. 制御装置のエラーメッセージや警告灯を確認します。",
+      "imageUrl": "",
+      "type": "step",
+      "options": [
+        {
+          "text": "異常なし",
+          "nextStepId": "step3a",
+          "isTerminal": false,
+          "conditionType": "other"
+        },
+        {
+          "text": "異常あり",
+          "nextStepId": "step3b",
+          "isTerminal": false,
+          "conditionType": "other"
+        }
+      ],
+      "message": "1. ブレーキ制御装置の状態を確認します。\n2. 制御装置の電源が入っていることを確認します。\n3. 制御装置のエラーメッセージや警告灯を確認します。"
+    },
+    {
+      "id": "step2b",
+      "title": "空気圧補充",
+      "description": "1. 空気圧供給システムを確認し、漏れや異常がないか点検します。\n2. 必要に応じて空気圧を補充します。\n3. 空気圧が正常に戻ったか確認します。",
+      "imageUrl": "",
+      "type": "step",
+      "options": [
+        {
+          "text": "空気圧正常化",
+          "nextStepId": "decision2",
+          "isTerminal": false,
+          "conditionType": "other"
+        }
+      ],
+      "message": "1. 空気圧供給システムを確認し、漏れや異常がないか点検します。\n2. 必要に応じて空気圧を補充します。\n3. 空気圧が正常に戻ったか確認します。"
+    },
+    {
+      "id": "step3a",
+      "title": "機械的な問題の確認",
+      "description": "1. ブレーキシステムの機械的な部分を点検します。\n2. ブレーキキャリパーやパッドの動作を確認します。\n3. 異常な摩耗や破損がないか確認します。",
+      "imageUrl": "",
+      "type": "step",
+      "options": [
+        {
+          "text": "異常なし",
+          "nextStepId": "step_success",
+          "isTerminal": false,
+          "conditionType": "other"
+        },
+        {
+          "text": "異常あり",
+          "nextStepId": "step_failure",
+          "isTerminal": false,
+          "conditionType": "other"
+        }
+      ],
+      "message": "1. ブレーキシステムの機械的な部分を点検します。\n2. ブレーキキャリパーやパッドの動作を確認します。\n3. 異常な摩耗や破損がないか確認します。"
+    },
+    {
+      "id": "step3b",
+      "title": "制御装置のリセット",
+      "description": "1. 制御装置のリセットを試みます。\n2. リセット後、再度ブレーキの解放を試みます。\n3. リセットが成功しない場合は、専門家に連絡します。",
+      "imageUrl": "",
+      "type": "step",
+      "options": [
+        {
+          "text": "リセット成功",
+          "nextStepId": "step_success",
+          "isTerminal": false,
+          "conditionType": "yes"
+        },
+        {
+          "text": "リセット失敗",
+          "nextStepId": "step_failure",
+          "isTerminal": false,
+          "conditionType": "no"
+        }
+      ],
+      "message": "1. 制御装置のリセットを試みます。\n2. リセット後、再度ブレーキの解放を試みます。\n3. リセットが成功しない場合は、専門家に連絡します。"
+    },
+    {
+      "id": "decision2",
+      "title": "ブレーキ解放確認",
+      "description": "空気圧補充後、ブレーキは解放されましたか？",
+      "imageUrl": "",
+      "type": "decision",
+      "options": [
+        {
+          "text": "はい、解放された",
+          "nextStepId": "step_success",
+          "isTerminal": false,
+          "conditionType": "yes"
+        },
+        {
+          "text": "いいえ、解放されない",
+          "nextStepId": "step_failure",
+          "isTerminal": false,
+          "conditionType": "no"
+        }
+      ],
+      "message": "空気圧補充後、ブレーキは解放されましたか？"
+    },
+    {
+      "id": "step_success",
+      "title": "運転再開手順",
+      "description": "1. ブレーキが正常に解放されたことを確認します。\n2. 各計器の値が正常範囲内にあることを確認します。\n3. 異常な音、振動、臭いがないか確認します。\n4. 全て正常であれば、運転を再開します。\n5. しばらくの間、ブレーキの状態に注意を払いながら走行してください。",
+      "imageUrl": "",
+      "type": "step",
+      "options": [
+        {
+          "text": "完了",
+          "nextStepId": "end",
+          "isTerminal": true,
+          "conditionType": "other"
+        }
+      ],
+      "message": "1. ブレーキが正常に解放されたことを確認します。\n2. 各計器の値が正常範囲内にあることを確認します。\n3. 異常な音、振動、臭いがないか確認します。\n4. 全て正常であれば、運転を再開します。\n5. しばらくの間、ブレーキの状態に注意を払いながら走行してください。"
+    },
+    {
+      "id": "step_failure",
+      "title": "専門的な支援要請",
+      "description": "1. 指令所または保守担当に連絡し、現在の状況と位置を報告します。\n2. これまでに実施した確認事項と対処内容を伝えます。\n3. 軌道モータカーの牽引または修理のための支援を要請します。\n4. 安全な場所で支援の到着を待ちます。",
+      "imageUrl": "",
+      "type": "step",
+      "options": [
+        {
+          "text": "完了",
+          "nextStepId": "end",
+          "isTerminal": true,
+          "conditionType": "other"
+        }
+      ],
+      "message": "1. 指令所または保守担当に連絡し、現在の状況と位置を報告します。\n2. これまでに実施した確認事項と対処内容を伝えます。\n3. 軌道モータカーの牽引または修理のための支援を要請します。\n4. 安全な場所で支援の到着を待ちます。"
+    }
+  ],
+  "updatedAt": "2025-06-13T00:54:46.646Z"
+}
