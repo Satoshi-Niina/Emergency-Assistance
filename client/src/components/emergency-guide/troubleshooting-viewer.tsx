@@ -7,6 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import TroubleshootingEditor from './troubleshooting-editor';
 import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
 
 interface Step {
   id: string;
@@ -116,7 +117,7 @@ const TroubleshootingViewer: React.FC<TroubleshootingViewerProps> = ({ data, onS
 
     try {
       setIsSaving(true);
-      
+
       // ローカルデータを即座に更新
       const updatedData = { ...localData };
       updatedData.steps[currentStep].title = editingTitleValue.trim();
@@ -132,7 +133,7 @@ const TroubleshootingViewer: React.FC<TroubleshootingViewerProps> = ({ data, onS
 
       // UI即座更新
       setLocalData(updatedData);
-      
+
       // サーバーに保存
       await onSave(updatedData);
 
@@ -413,7 +414,7 @@ const TroubleshootingViewer: React.FC<TroubleshootingViewerProps> = ({ data, onS
               {isEditingTitle ? (
                 <div className="flex items-center gap-2 w-full">
                   <div className="flex-1">
-                    <input
+                    <Input
                       type="text"
                       value={editingTitleValue}
                       onChange={(e) => setEditingTitleValue(e.target.value)}

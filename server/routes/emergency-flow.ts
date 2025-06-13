@@ -187,11 +187,20 @@ router.post('/save', async (req, res) => {
 
     console.log(`🎉 応急処置フローを保存しました: ${filePath}`);
     
+    // キャッシュ無効化のためのヘッダーを設定
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'Last-Modified': new Date().toUTCString()
+    });
+    
     res.json({ 
       success: true, 
       message: '応急処置フローが保存されました',
       filePath: filePath,
-      fileName: fileName
+      fileName: fileName,
+      savedAt: new Date().toISOString()
     });
   } catch (error) {
     console.error('❌ 応急処置フロー保存エラー:', error);
