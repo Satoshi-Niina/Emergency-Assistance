@@ -275,6 +275,9 @@ router.get('/list', async (req, res) => {
       }
     }
 
+    // 緊急時ガイドディレクトリ - 一時的に無効化（troubleshootingに一元化中）
+    console.log('ℹ️ emergency guidesディレクトリは一時的に無効化されています（troubleshootingディレクトリに一元化中）');
+
     console.log(`✅ 合計${flows.length}個のフローを返却します`);
 
     // キャッシュ回避のためのヘッダーを設定
