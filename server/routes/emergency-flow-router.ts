@@ -52,6 +52,15 @@ router.put('/:id', async (req: Request, res: Response) => {
     log(`フローを更新しました: ${fileName}`);
     log(`保存されたデータ確認: ID=${parsedContent.id}, ステップ数=${parsedContent.steps?.length || 0}`);
     
+    // キャッシュを無効化するヘッダーを設定
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'Last-Modified': new Date().toUTCString(),
+      'ETag': `"${Date.now()}-${Math.random()}"`
+    });
+
     return res.status(200).json({
       success: true,
       id: id,
@@ -61,7 +70,8 @@ router.put('/:id', async (req: Request, res: Response) => {
         title: parsedContent.title,
         stepCount: parsedContent.steps?.length || 0,
         savedTimestamp: parsedContent.savedTimestamp
-      }
+      },
+      updatedData: parsedContent // 完全なデータも返す
     });
   } catch (error) {
     console.error('フロー更新エラー:', error);
@@ -463,9 +473,19 @@ router.get('/:id', async (req: Request, res: Response) => {
       const content = fs.readFileSync(filePath, 'utf-8');
       const flowData = JSON.parse(content);
       
+      // キャッシュを無効化するヘッダーを設定
+      res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Last-Modified': new Date().toUTCString(),
+        'ETag': `"${Date.now()}-${Math.random()}"`
+      });
+
       return res.status(200).json({
         id: id,
-        data: flowData
+        data: flowData,
+        timestamp: Date.now()
       });
     } else if (id === 'example_flow') {
       // サンプルフローの場合
