@@ -263,7 +263,7 @@ router.get('/list', async (req, res) => {
     const files = fs.readdirSync("knowledge-base/troubleshooting");
     const jsonFiles = files.filter(file => file.endsWith(".json"));
     const flowList = jsonFiles.map(file => {
-      const content = fs.readFileSync(`knowledge-base/troubleshooting/${file}`, "utf-8");
+      const content = fs.readFileSync(path.join(TROUBLESHOOTING_DIR, file), "utf-8");
       const data = JSON.parse(content);
       return {
         id: data.id,
