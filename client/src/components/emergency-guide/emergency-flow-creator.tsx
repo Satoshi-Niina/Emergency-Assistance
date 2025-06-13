@@ -450,13 +450,20 @@ const EmergencyFlowCreator: React.FC = () => {
               action: 'save'
             }
           }));
+          // 追加の更新イベント
+          window.dispatchEvent(new CustomEvent('troubleshootingDataUpdated', {
+            detail: { 
+              forceReload: true,
+              timestamp: saveData.savedTimestamp
+            }
+          }));
         }
 
         // 即座にフローリストを更新（キャッシュをクリア）
         await fetchFlowList();
 
-        // 保存後はファイル編集タブに戻るだけで、データはリセットしない
-        // （ユーザーが継続編集できるように）
+        // 保存後はデータを保持し、継続編集可能にする
+        // setFlowData({}) を削除して継続編集を可能にする
         setCharacterDesignTab('file');
 
         // 少し遅れてもう一度リフレッシュ（確実にデータが更新されるように）
@@ -1006,11 +1013,38 @@ const EmergencyFlowCreator: React.FC = () => {
         fileName: enhancedData.fileName || flow?.fileName || `${enhancedData.title || 'flow'}.json`
       };
 
+      // 条件分岐ノードの条件情報を確実に復元
+      let finalNodes = enhancedData.nodes || [];
+      if (enhancedData.steps && Array.isArray(enhancedData.steps)) {
+        finalNodes = finalNodes.map(node => {
+          if (node.type === 'decision') {
+            const correspondingStep = enhancedData.steps.find(step => step.id === node.id);
+            if (correspondingStep) {
+              console.log(`🔀 条件分岐ノード ${node.id} の条件復元:`, {
+                yesCondition: correspondingStep.yesCondition,
+                noCondition: correspondingStep.noCondition,
+                otherCondition: correspondingStep.otherCondition
+              });
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  yesCondition: correspondingStep.yesCondition || '',
+                  noCondition: correspondingStep.noCondition || '',
+                  otherCondition: correspondingStep.otherCondition || ''
+                }
+              };
+            }
+          }
+          return node;
+        });
+      }
+
       // 最終的なフローデータを構築（条件分岐情報を確実に含む）
       const finalFlowData = {
         ...enhancedData,
         ...flowMetadata,
-        nodes: enhancedData.nodes || [],
+        nodes: finalNodes,
         edges: enhancedData.edges || [],
         steps: enhancedData.steps || [],
         loadedAt: new Date().toISOString(),

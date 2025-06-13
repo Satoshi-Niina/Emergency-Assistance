@@ -732,7 +732,24 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
                       id="node-label"
                       className="w-full"
                       value={selectedNode.data.label || ''}
-                      onChange={(e) => updateNodeData('label', e.target.value)}
+                      onChange={(e) => {
+                        updateNodeData('label', e.target.value);
+                        // リアルタイムでノードのラベルを更新
+                        setNodes((nds) =>
+                          nds.map((node) => {
+                            if (node.id === selectedNode.id) {
+                              return {
+                                ...node,
+                                data: {
+                                  ...node.data,
+                                  label: e.target.value,
+                                },
+                              };
+                            }
+                            return node;
+                          })
+                        );
+                      }}
                       placeholder={
                         selectedNode.type === 'decision' ? "例：エンジン停止の状況確認" :
                         selectedNode.type === 'step' ? "例：安全確保手順" : "ノードラベル"
@@ -779,7 +796,24 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
                                 <Input
                                   placeholder="「はい」の場合の条件（例：エンジンが急に停止）"
                                   value={selectedNode.data.yesCondition || ''}
-                                  onChange={(e) => updateNodeData('yesCondition', e.target.value)}
+                                  onChange={(e) => {
+                                    updateNodeData('yesCondition', e.target.value);
+                                    // リアルタイムでノードデータを更新
+                                    setNodes((nds) =>
+                                      nds.map((node) => {
+                                        if (node.id === selectedNode.id) {
+                                          return {
+                                            ...node,
+                                            data: {
+                                              ...node.data,
+                                              yesCondition: e.target.value,
+                                            },
+                                          };
+                                        }
+                                        return node;
+                                      })
+                                    );
+                                  }}
                                   className="text-sm"
                                 />
                               </div>
@@ -788,7 +822,24 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
                                 <Input
                                   placeholder="「いいえ」の場合の条件（例：エンジンがゆっくり停止）"
                                   value={selectedNode.data.noCondition || ''}
-                                  onChange={(e) => updateNodeData('noCondition', e.target.value)}
+                                  onChange={(e) => {
+                                    updateNodeData('noCondition', e.target.value);
+                                    // リアルタイムでノードデータを更新
+                                    setNodes((nds) =>
+                                      nds.map((node) => {
+                                        if (node.id === selectedNode.id) {
+                                          return {
+                                            ...node,
+                                            data: {
+                                              ...node.data,
+                                              noCondition: e.target.value,
+                                            },
+                                          };
+                                        }
+                                        return node;
+                                      })
+                                    );
+                                  }}
                                   className="text-sm"
                                 />
                               </div>
@@ -797,7 +848,24 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
                                 <Input
                                   placeholder="「その他」の場合の条件（例：原因不明）"
                                   value={selectedNode.data.otherCondition || ''}
-                                  onChange={(e) => updateNodeData('otherCondition', e.target.value)}
+                                  onChange={(e) => {
+                                    updateNodeData('otherCondition', e.target.value);
+                                    // リアルタイムでノードデータを更新
+                                    setNodes((nds) =>
+                                      nds.map((node) => {
+                                        if (node.id === selectedNode.id) {
+                                          return {
+                                            ...node,
+                                            data: {
+                                              ...node.data,
+                                              otherCondition: e.target.value,
+                                            },
+                                          };
+                                        }
+                                        return node;
+                                      })
+                                    );
+                                  }}
                                   className="text-sm"
                                 />
                               </div>
