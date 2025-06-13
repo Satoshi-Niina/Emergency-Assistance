@@ -98,10 +98,22 @@ router.post('/save-flow', async (req: Request, res: Response) => {
       });
     }
 
-    // 🎯 指定されたパスに確実に保存
+    // 🎯 指定されたパスに確実に保存（セキュリティチェック付き）
     const targetFilePath = path.isAbsolute(filePath) 
       ? filePath 
       : path.join(process.cwd(), filePath);
+
+    // セキュリティチェック：troubleshootingディレクトリ内のみ許可
+    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const normalizedTargetPath = path.normalize(targetFilePath);
+    const normalizedTroubleshootingDir = path.normalize(troubleshootingDir);
+    
+    if (!normalizedTargetPath.startsWith(normalizedTroubleshootingDir)) {
+      return res.status(400).json({
+        success: false,
+        error: '保存先はknowledge-base/troubleshootingディレクトリ内のみ許可されています'
+      });
+    }
 
     console.log(`🎯 保存先: ${targetFilePath}`);
     console.log(`🔍 既存ファイル: ${fs.existsSync(targetFilePath)}`);

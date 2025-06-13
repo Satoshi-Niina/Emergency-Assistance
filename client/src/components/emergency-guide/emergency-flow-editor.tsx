@@ -195,25 +195,20 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         savedTimestamp: Date.now()
       };
 
-      // 🎯 保存先パスを確実に指定（troubleshootingディレクトリ限定）
-      const targetFilePath = selectedFilePath && selectedFilePath.includes('knowledge-base/troubleshooting')
-        ? selectedFilePath 
-        : `knowledge-base/troubleshooting/${editedFlow.id}.json`;
-
-      // パスの正規化とバリデーション
-      const normalizedPath = targetFilePath.replace(/\\/g, '/');
-      if (!normalizedPath.startsWith('knowledge-base/troubleshooting/')) {
-        throw new Error('保存先はknowledge-base/troubleshootingディレクトリ内のみ許可されています');
-      }
-
-      console.log(`💾 確実なファイルパス指定保存: ${normalizedPath}`);
-
+      // 🎯 保存時にファイルパスを明示的に指定
       const requestBody = {
-        filePath: normalizedPath, // 必須：保存先パスを明示
-        ...saveData
+        ...saveData,
+        filePath: selectedFilePath || `knowledge-base/troubleshooting/${editedFlow.id}.json`
       };
 
-      const response = await fetch(`/api/emergency-flow-router/save/${editedFlow.id}`, {
+      console.log('💾 保存リクエスト:', {
+        id: saveData.id,
+        title: saveData.title,
+        filePath: requestBody.filePath,
+        stepsCount: saveData.steps?.length || 0
+      });
+
+      const response = await fetch(`/api/emergency-flow/save`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -309,7 +304,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
               },
               body: JSON.stringify(saveData)
             });
-            
+
             if (retryResponse.ok) {
               console.log('✅ 再保存完了');
             }
