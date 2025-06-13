@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Save, Plus, Trash2, Edit, Check, X, GitBranch } from 'lucide-react';
+import { Save, Plus, Trash2, Edit, Check, X, GitBranch, Settings } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +31,7 @@ interface FlowStep {
     nextStepId: string;
     isTerminal: boolean;
     conditionType: 'yes' | 'no' | 'other';
+    condition?: string; // 条件分岐の条件
   }>;
 }
 
@@ -55,38 +57,86 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
   const [editingTitle, setEditingTitle] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [stepToDelete, setStepToDelete] = useState<string | null>(null);
+  const [editingStepTitle, setEditingStepTitle] = useState<string | null>(null);
 
   // flowDataが変更されたら編集用データを更新
   useEffect(() => {
     if (flowData) {
       setEditedFlow({ ...flowData });
     } else {
-      setEditedFlow(null);
+      // 新規作成の場合
+      const newFlow: FlowData = {
+        id: `flow_${Date.now()}`,
+        title: '新しい応急処置フロー',
+        description: '',
+        triggerKeywords: [],
+        steps: [{
+          id: 'start',
+          title: '開始',
+          description: '',
+          message: 'フローを開始します',
+          type: 'start',
+          options: [{
+            text: '次へ',
+            nextStepId: '',
+            isTerminal: false,
+            conditionType: 'other'
+          }]
+        }],
+        updatedAt: new Date().toISOString()
+      };
+      setEditedFlow(newFlow);
     }
   }, [flowData]);
 
-  // 保存処理
+  // 保存処理の改善
   const handleSave = useCallback(async () => {
     if (!editedFlow) return;
 
     setIsSaving(true);
     try {
-      const response = await fetch(`/api/emergency-flow/${editedFlow.id}`, {
-        method: 'PUT',
+      // 保存データの検証
+      if (!editedFlow.title.trim()) {
+        throw new Error('タイトルを入力してください');
+      }
+
+      if (editedFlow.steps.length === 0) {
+        throw new Error('少なくとも1つのステップが必要です');
+      }
+
+      // 更新日時を設定
+      const saveData = {
+        ...editedFlow,
+        updatedAt: new Date().toISOString(),
+        savedTimestamp: Date.now()
+      };
+
+      console.log('💾 保存データ:', saveData);
+
+      // APIエンドポイントを修正
+      const isNewFlow = !flowData;
+      const endpoint = isNewFlow 
+        ? '/api/emergency-flow/save'
+        : `/api/emergency-flow/${editedFlow.id}`;
+      
+      const method = isNewFlow ? 'POST' : 'PUT';
+
+      const response = await fetch(endpoint, {
+        method,
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
         },
-        body: JSON.stringify({
-          ...editedFlow,
-          updatedAt: new Date().toISOString()
-        })
+        body: JSON.stringify(saveData)
       });
 
       if (!response.ok) {
-        throw new Error('保存に失敗しました');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `保存に失敗しました (${response.status})`);
       }
 
-      const savedData = await response.json();
+      const result = await response.json();
+      console.log('✅ 保存成功:', result);
 
       toast({
         title: "保存完了",
@@ -95,25 +145,46 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
 
       // 親コンポーネントに保存完了を通知
       if (onSave) {
-        onSave(savedData);
+        onSave(saveData);
       }
 
-      // データ更新イベントを発行
-      window.dispatchEvent(new CustomEvent('flowDataUpdated', {
-        detail: { flowId: editedFlow.id, data: savedData }
-      }));
+      // データ更新イベントを発行（複数のイベントタイプで確実に通知）
+      const eventTypes = [
+        'flowDataUpdated',
+        'troubleshootingDataUpdated',
+        'emergencyFlowSaved',
+        'fileSystemUpdated',
+        'forceRefreshFlowList'
+      ];
+
+      eventTypes.forEach(eventType => {
+        window.dispatchEvent(new CustomEvent(eventType, {
+          detail: { 
+            flowId: editedFlow.id, 
+            data: saveData,
+            timestamp: Date.now()
+          }
+        }));
+      });
+
+      // フロー一覧の強制更新
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('forceRefreshFlowList', {
+          detail: { forceRefresh: true }
+        }));
+      }, 500);
 
     } catch (error) {
-      console.error('保存エラー:', error);
+      console.error('❌ 保存エラー:', error);
       toast({
         title: "保存エラー",
-        description: "フローの保存に失敗しました",
+        description: error instanceof Error ? error.message : "フローの保存に失敗しました",
         variant: "destructive"
       });
     } finally {
       setIsSaving(false);
     }
-  }, [editedFlow, onSave, toast]);
+  }, [editedFlow, onSave, toast, flowData]);
 
   // タイトル更新
   const updateTitle = (newTitle: string) => {
@@ -147,6 +218,11 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
     });
   };
 
+  // ステップタイトル更新
+  const updateStepTitle = (stepId: string, newTitle: string) => {
+    updateStep(stepId, { title: newTitle });
+  };
+
   // 新しいステップ追加
   const addStep = (type: FlowStep['type']) => {
     if (!editedFlow) return;
@@ -159,10 +235,28 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
       message: '',
       type,
       options: type === 'decision' ? [
-        { text: 'はい', nextStepId: '', isTerminal: false, conditionType: 'yes' },
-        { text: 'いいえ', nextStepId: '', isTerminal: false, conditionType: 'no' }
+        { 
+          text: 'はい', 
+          nextStepId: '', 
+          isTerminal: false, 
+          conditionType: 'yes',
+          condition: ''
+        },
+        { 
+          text: 'いいえ', 
+          nextStepId: '', 
+          isTerminal: false, 
+          conditionType: 'no',
+          condition: ''
+        }
       ] : [
-        { text: '次へ', nextStepId: '', isTerminal: false, conditionType: 'other' }
+        { 
+          text: '次へ', 
+          nextStepId: '', 
+          isTerminal: false, 
+          conditionType: 'other',
+          condition: ''
+        }
       ]
     };
 
@@ -185,7 +279,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
     setStepToDelete(null);
   };
 
-  // オプション更新
+  // オプション更新（条件分岐対応）
   const updateOption = (stepId: string, optionIndex: number, updates: Partial<FlowStep['options'][0]>) => {
     if (!editedFlow) return;
 
@@ -202,10 +296,53 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
     });
   };
 
+  // オプション追加
+  const addOption = (stepId: string) => {
+    if (!editedFlow) return;
+
+    const step = editedFlow.steps.find(s => s.id === stepId);
+    if (!step) return;
+
+    const newOption = {
+      text: '新しい選択肢',
+      nextStepId: '',
+      isTerminal: false,
+      conditionType: 'other' as const,
+      condition: ''
+    };
+
+    updateStep(stepId, {
+      options: [...step.options, newOption]
+    });
+  };
+
+  // オプション削除
+  const removeOption = (stepId: string, optionIndex: number) => {
+    if (!editedFlow) return;
+
+    const step = editedFlow.steps.find(s => s.id === stepId);
+    if (!step || step.options.length <= 1) return;
+
+    updateStep(stepId, {
+      options: step.options.filter((_, index) => index !== optionIndex)
+    });
+  };
+
+  // キーワード更新
+  const updateKeywords = (keywords: string) => {
+    if (!editedFlow) return;
+
+    const keywordArray = keywords.split(',').map(k => k.trim()).filter(k => k);
+    setEditedFlow({
+      ...editedFlow,
+      triggerKeywords: keywordArray
+    });
+  };
+
   if (!editedFlow) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500">編集するフローを選択してください</p>
+        <p className="text-gray-500">読み込み中...</p>
       </div>
     );
   }
@@ -221,6 +358,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                 value={editedFlow.title}
                 onChange={(e) => updateTitle(e.target.value)}
                 className="text-xl font-bold"
+                placeholder="フロータイトルを入力"
               />
               <Button size="sm" onClick={() => setEditingTitle(false)}>
                 <Check className="w-4 h-4" />
@@ -251,6 +389,16 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
           value={editedFlow.description}
           onChange={(e) => updateDescription(e.target.value)}
           placeholder="フローの説明を入力してください"
+        />
+      </div>
+
+      {/* トリガーキーワード */}
+      <div>
+        <Label>トリガーキーワード（カンマ区切り）</Label>
+        <Input
+          value={editedFlow.triggerKeywords.join(', ')}
+          onChange={(e) => updateKeywords(e.target.value)}
+          placeholder="エンジン停止, 再始動不可"
         />
       </div>
 
@@ -292,13 +440,36 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
+              
+              {/* ステップタイトル編集 */}
               <div>
                 <Label>タイトル</Label>
-                <Input
-                  value={step.title}
-                  onChange={(e) => updateStep(step.id, { title: e.target.value })}
-                  placeholder="ステップのタイトル"
-                />
+                {editingStepTitle === step.id ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={step.title}
+                      onChange={(e) => updateStepTitle(step.id, e.target.value)}
+                      placeholder="ステップのタイトル"
+                    />
+                    <Button size="sm" onClick={() => setEditingStepTitle(null)}>
+                      <Check className="w-4 h-4" />
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setEditingStepTitle(null)}>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={step.title}
+                      onChange={(e) => updateStepTitle(step.id, e.target.value)}
+                      placeholder="ステップのタイトル"
+                    />
+                    <Button size="sm" variant="ghost" onClick={() => setEditingStepTitle(step.id)}>
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </CardHeader>
             <CardContent>
@@ -320,33 +491,89 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                   />
                 </div>
 
+                {/* 画像URL */}
+                <div>
+                  <Label>画像URL（オプション）</Label>
+                  <Input
+                    value={step.imageUrl || ''}
+                    onChange={(e) => updateStep(step.id, { imageUrl: e.target.value })}
+                    placeholder="画像のURL"
+                  />
+                </div>
+
                 {/* オプション */}
                 <div>
-                  <Label>選択肢</Label>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label>選択肢</Label>
+                    <Button size="sm" variant="outline" onClick={() => addOption(step.id)}>
+                      <Plus className="w-4 h-4 mr-1" />
+                      選択肢追加
+                    </Button>
+                  </div>
                   <div className="space-y-2">
                     {step.options.map((option, optionIndex) => (
-                      <div key={optionIndex} className="flex gap-2 items-center">
-                        <Input
-                          value={option.text}
-                          onChange={(e) => updateOption(step.id, optionIndex, { text: e.target.value })}
-                          placeholder="選択肢のテキスト"
-                          className="flex-1"
-                        />
-                        <Input
-                          value={option.nextStepId}
-                          onChange={(e) => updateOption(step.id, optionIndex, { nextStepId: e.target.value })}
-                          placeholder="次のステップID"
-                          className="flex-1"
-                        />
-                        <select
-                          value={option.conditionType}
-                          onChange={(e) => updateOption(step.id, optionIndex, { conditionType: e.target.value as any })}
-                          className="border rounded px-2 py-1"
-                        >
-                          <option value="yes">はい</option>
-                          <option value="no">いいえ</option>
-                          <option value="other">その他</option>
-                        </select>
+                      <div key={optionIndex} className="border rounded p-3 space-y-2">
+                        <div className="flex gap-2 items-center">
+                          <Input
+                            value={option.text}
+                            onChange={(e) => updateOption(step.id, optionIndex, { text: e.target.value })}
+                            placeholder="選択肢のテキスト"
+                            className="flex-1"
+                          />
+                          {step.options.length > 1 && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => removeOption(step.id, optionIndex)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                        
+                        {/* 条件分岐の場合の条件入力 */}
+                        {step.type === 'decision' && (
+                          <div>
+                            <Label>条件</Label>
+                            <Input
+                              value={option.condition || ''}
+                              onChange={(e) => updateOption(step.id, optionIndex, { condition: e.target.value })}
+                              placeholder="例: 温度 > 90℃"
+                            />
+                          </div>
+                        )}
+                        
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label>次のステップID</Label>
+                            <Input
+                              value={option.nextStepId}
+                              onChange={(e) => updateOption(step.id, optionIndex, { nextStepId: e.target.value })}
+                              placeholder="次のステップID"
+                            />
+                          </div>
+                          <div>
+                            <Label>条件タイプ</Label>
+                            <select
+                              value={option.conditionType}
+                              onChange={(e) => updateOption(step.id, optionIndex, { conditionType: e.target.value as any })}
+                              className="w-full border rounded px-2 py-1"
+                            >
+                              <option value="yes">はい</option>
+                              <option value="no">いいえ</option>
+                              <option value="other">その他</option>
+                            </select>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={option.isTerminal}
+                            onChange={(e) => updateOption(step.id, optionIndex, { isTerminal: e.target.checked })}
+                          />
+                          <Label>終了フラグ</Label>
+                        </div>
                       </div>
                     ))}
                   </div>
