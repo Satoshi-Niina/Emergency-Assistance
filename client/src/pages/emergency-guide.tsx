@@ -165,7 +165,7 @@ const EmergencyGuidePage: React.FC = () => {
 
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2);
-      const cacheParams = `?_t=${timestamp}&_r=${randomId}&no_cache=true`;
+      const cacheParams = `?_t=${timestamp}&_r=${randomId}&no_cache=true&source=troubleshooting`;
 
       const response = await fetch(`/api/emergency-flow/list${cacheParams}`, {
         method: 'GET',
@@ -175,7 +175,8 @@ const EmergencyGuidePage: React.FC = () => {
           'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
           'X-Requested-With': 'XMLHttpRequest',
           'X-Force-Fresh': 'true',
-          'X-Clear-Cache': 'true'
+          'X-Clear-Cache': 'true',
+          'X-Source-Only': 'knowledge-base/troubleshooting'
         }
       });
 
@@ -186,18 +187,18 @@ const EmergencyGuidePage: React.FC = () => {
       const data = await response.json();
       console.log(`✅ 取得したフローデータ: ${data.length}件`, data);
 
-      // データの検証とフィルタリング
+      // 有効なデータのみを許可（engine_stop_no_startのみ）
       const validData = data.filter((item: any) => {
-        // 削除済みファイルを除外
-        const isValid = item && item.id && item.title && 
-                       !['engine_restart_issue', 'parking_brake_release_issue'].includes(item.id);
+        const isValid = item && 
+                       item.id === 'engine_stop_no_start' && 
+                       item.fileName === 'engine_stop_no_start.json';
         if (!isValid) {
-          console.log(`❌ 無効なデータを除外: ${item?.id || 'unknown'}`);
+          console.log(`❌ 許可されていないデータを除外: ${item?.id || 'unknown'} (ファイル: ${item?.fileName})`);
         }
         return isValid;
       });
 
-      console.log(`🎯 有効データ: ${validData.length}件`);
+      console.log(`🎯 許可されたデータ: ${validData.length}件（engine_stop_no_startのみ）`);
 
       setFlowList(validData);
 
@@ -206,7 +207,8 @@ const EmergencyGuidePage: React.FC = () => {
         localStorage.setItem('emergencyFlowList', JSON.stringify({
           data: validData,
           timestamp: timestamp,
-          version: '2.0'
+          version: '3.0',
+          source: 'knowledge-base/troubleshooting'
         }));
       }
 

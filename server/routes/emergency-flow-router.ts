@@ -207,13 +207,13 @@ function updateIndexFile(metadata: any) {
 
 // 削除: POST /saveエンドポイントは不要（PUTに統一）
 
-// フロー一覧取得
+// フロー一覧取得 - knowledge-base/troubleshootingのみ
 router.get('/list', async (req, res) => {
   try {
-    console.log('📋 フロー一覧取得リクエスト受信');
+    console.log('📋 フロー一覧取得リクエスト受信 - troubleshootingディレクトリのみ');
 
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    console.log(`🔍 トラブルシューティングディレクトリ: ${troubleshootingDir}`);
+    console.log(`🔍 対象ディレクトリ: ${troubleshootingDir}`);
 
     // ディレクトリが存在するか確認
     if (!fs.existsSync(troubleshootingDir)) {
@@ -221,22 +221,21 @@ router.get('/list', async (req, res) => {
       return res.json([]);
     }
 
-    // 実際に存在するファイルのみをチェック
-    const actualFiles = fs.readdirSync(troubleshootingDir)
-      .filter(file => file.endsWith('.json') && !file.includes('.backup'));
-    
-    console.log(`📁 実際に存在するファイル: ${actualFiles.join(', ')}`);
+    // engine_stop_no_start.jsonのみを明示的に処理
+    const targetFile = 'engine_stop_no_start.json';
+    const targetPath = path.join(troubleshootingDir, targetFile);
+
+    console.log(`🎯 対象ファイル: ${targetFile}`);
+    console.log(`📁 ファイル存在: ${fs.existsSync(targetPath)}`);
 
     const flows = [];
 
-    // 存在するファイルのみ処理
-    for (const file of actualFiles) {
+    if (fs.existsSync(targetPath)) {
       try {
-        const filePath = path.join(troubleshootingDir, file);
-        const content = fs.readFileSync(filePath, 'utf-8');
+        const content = fs.readFileSync(targetPath, 'utf-8');
         const data = JSON.parse(content);
 
-        console.log(`✅ ファイル処理: ${file} (ID: ${data.id}, ステップ数: ${data.steps?.length || 0})`);
+        console.log(`✅ ファイル処理: ${targetFile} (ID: ${data.id}, ステップ数: ${data.steps?.length || 0})`);
 
         const flowData = {
           id: data.id,
@@ -245,16 +244,16 @@ router.get('/list', async (req, res) => {
           trigger: data.triggerKeywords || [],
           slides: [], // 互換性のため
           createdAt: data.updatedAt || new Date().toISOString(),
-          fileName: file
+          fileName: targetFile
         };
 
         flows.push(flowData);
       } catch (error) {
-        console.error(`❌ ファイル読み込みエラー ${file}:`, error);
+        console.error(`❌ ファイル読み込みエラー ${targetFile}:`, error);
       }
     }
 
-    console.log(`✅ 処理完了: ${flows.length}個のフローを返却`);
+    console.log(`✅ 処理完了: ${flows.length}個のフローを返却（${targetFile}のみ）`);
 
     // 強力なキャッシュ無効化ヘッダー
     res.set({
@@ -262,7 +261,9 @@ router.get('/list', async (req, res) => {
       'Pragma': 'no-cache',
       'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
       'X-Fresh-Data': 'true',
-      'X-Timestamp': Date.now().toString()
+      'X-Timestamp': Date.now().toString(),
+      'X-Source-Directory': 'knowledge-base/troubleshooting',
+      'X-Target-File': targetFile
     });
 
     res.json(flows);
