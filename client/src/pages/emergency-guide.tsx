@@ -66,20 +66,6 @@ const EmergencyGuidePage: React.FC = () => {
     };
   }, []);
 
-  // 他のコンポーネントに更新通知を送る
-      window.dispatchEvent(new CustomEvent('emergency-guide-refresh', { 
-        detail: { timestamp: Date.now() }
-      }));
-    };
-
-    window.addEventListener("flowDataUpdated", refreshList);
-    window.addEventListener("troubleshootingDataUpdated", refreshList);
-    return () => {
-      window.removeEventListener("flowDataUpdated", refreshList);
-      window.removeEventListener("troubleshootingDataUpdated", refreshList);
-    };
-  }, []);
-
   // アップロード成功時のハンドラー
   const handleUploadSuccess = (guideId: string) => {
     setLastUploadedGuideId(guideId);
