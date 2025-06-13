@@ -231,65 +231,19 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
       // 保存されたデータで現在の編集データを更新
       setEditedFlow(saveData);
 
-      // 保存後に強制的にデータを再取得
-      console.log('💾 保存成功 - 最新データを再取得します...');
+      // 保存成功後は強制的にエディターデータを更新
+      console.log('💾 保存成功 - エディターデータを直接更新');
+      setEditedFlow({ ...saveData });
       
-      setTimeout(async () => {
-        try {
-          // さらに強力なキャッシュバスティング
-          const timestamp = Date.now();
-          const randomId = Math.random().toString(36).substring(2, 15);
-          const sessionId = Math.floor(Math.random() * 1000000);
-          
-          const response = await fetch(`/api/emergency-flow/${editedFlow.id}?_t=${timestamp}&_r=${randomId}&_s=${sessionId}&_verify=true`, {
-            method: 'GET',
-            headers: {
-              'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
-              'Pragma': 'no-cache',
-              'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
-              'X-Timestamp': timestamp.toString(),
-              'X-Force-Refresh': 'true',
-              'X-Verify-Save': 'true'
-            }
-          });
-
-          if (response.ok) {
-            const result = await response.json();
-            const verifyData = result.data || result;
-            
-            console.log('🔍 保存検証データ:', {
-              id: verifyData.id,
-              title: verifyData.title,
-              stepsCount: verifyData.steps?.length || 0,
-              savedTimestamp: verifyData.savedTimestamp,
-              updatedAt: verifyData.updatedAt
-            });
-
-            // 保存したタイムスタンプと一致するかチェック
-            const timestampMatch = verifyData.savedTimestamp === saveData.savedTimestamp;
-            console.log(`🔍 タイムスタンプ照合: ${timestampMatch ? '一致' : '不一致'}`);
-            
-            if (timestampMatch || verifyData.savedTimestamp > (editedFlow.savedTimestamp || 0)) {
-              setEditedFlow({ ...verifyData });
-              console.log('✅ 最新データでエディターを更新しました');
-              
-              toast({
-                title: "データ更新確認",
-                description: "最新の保存データが読み込まれました",
-              });
-            } else {
-              console.log('⚠️ 警告: 保存したデータが反映されていない可能性があります');
-              toast({
-                title: "データ同期警告",
-                description: "保存データの反映に時間がかかっています",
-                variant: "destructive"
-              });
-            }
+      // 即座にフロー一覧も更新
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('forceRefreshFlowList', {
+          detail: { 
+            forceRefresh: true,
+            timestamp: Date.now()
           }
-        } catch (error) {
-          console.error('❌ 保存検証エラー:', error);
-        }
-      }, 500); // 500ms後に検証
+        }));
+      }, 100);
 
       // データ更新イベントを発行
       window.dispatchEvent(new CustomEvent('flowDataUpdated', {
