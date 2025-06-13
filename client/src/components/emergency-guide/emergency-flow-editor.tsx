@@ -489,13 +489,21 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
       ...baseData, // 既存のメタデータを保持
       id: baseData.id || flowTitle.replace(/\s+/g, '_').toLowerCase(),
       title: flowTitle,
-      description: baseData.description || '',
+      description: flowDescription, // フロー説明を正しく設定
       triggerKeywords: baseData.triggerKeywords || [],
       steps: steps,
-      nodes: nodes, // エディタ用のnode情報も保持
-      edges: edges, // エディタ用のedge情報も保持
+      nodes: nodes, // エディタ用のnode情報を確実に保持
+      edges: edges, // エディタ用のedge情報を確実に保持
       updatedAt: new Date().toISOString()
     };
+
+    console.log('💾 保存するフローデータ:', {
+      id: flowData.id,
+      title: flowData.title,
+      nodeCount: flowData.nodes?.length || 0,
+      edgeCount: flowData.edges?.length || 0,
+      stepCount: flowData.steps?.length || 0
+    });
 
     // 親コンポーネントに渡す
     onSave(flowData);

@@ -189,6 +189,103 @@ const TroubleshootingViewer: React.FC<TroubleshootingViewerProps> = ({ data, onS
     setEditingMainTitleValue('');
   };
 
+  const convertToReactFlowData = (jsonData: any) => {
+    if (!jsonData) {
+      return {
+        nodes: [
+          {
+            id: 'start',
+            type: 'start',
+            position: { x: 250, y: 50 },
+            data: { label: '開始' }
+          }
+        ],
+        edges: []
+      };
+    }
+
+    // 既にnodes/edgesが存在する場合（ReactFlowエディタで作成済み）はそれを使用
+    if (jsonData.nodes && jsonData.edges) {
+      console.log('✅ 既存のReactFlowデータを使用:', {
+        nodeCount: jsonData.nodes.length,
+        edgeCount: jsonData.edges.length
+      });
+
+      // ノードデータの完全性をチェックして修復
+      const validatedNodes = jsonData.nodes.map((node: any) => ({
+        ...node,
+        data: {
+          ...node.data,
+          label: node.data?.label || '未設定',
+          message: node.data?.message || node.data?.description || '',
+          description: node.data?.description || node.data?.message || ''
+        }
+      }));
+
+      return { 
+        nodes: validatedNodes, 
+        edges: jsonData.edges || [] 
+      };
+    }
+
+    // stepsのみの場合は従来通りの変換処理
+    if (jsonData.steps && jsonData.steps.length > 0) {
+      console.log('🔄 stepsからReactFlowデータに変換');
+
+      const nodes: any[] = [];
+      const edges: any[] = [];
+
+      jsonData.steps.forEach((step: any, index: number) => {
+        const node = {
+          id: step.id,
+          type: step.type || 'step',
+          position: { x: 250 + (index % 3) * 200, y: 100 + Math.floor(index / 3) * 150 },
+          data: {
+            label: step.title || step.description?.substring(0, 20) || `ステップ${index + 1}`,
+            message: step.message || step.description,
+            description: step.description
+          }
+        };
+
+        nodes.push(node);
+
+        // optionsからedgesを生成
+        if (step.options && step.options.length > 0) {
+          step.options.forEach((option: any) => {
+            if (option.nextStepId || option.nextStep) {
+              const targetId = option.nextStepId || option.nextStep;
+              edges.push({
+                id: `${step.id}-${targetId}`,
+                source: step.id,
+                target: targetId,
+                animated: true,
+                type: 'smoothstep',
+                sourceHandle: option.conditionType === 'yes' ? 'yes' : 
+                             option.conditionType === 'no' ? 'no' : 
+                             option.conditionType === 'other' ? 'other' : undefined
+              });
+            }
+          });
+        }
+      });
+
+      return { nodes, edges };
+    }
+
+    // デフォルトの空データ
+    return {
+      nodes: [
+        {
+          id: 'start',
+          type: 'start',
+          position: { x: 250, y: 50 },
+          data: { label: '開始' }
+        }
+      ],
+      edges: []
+    };
+  };
+
   // 編集モードの場合
   if (isEditMode) {
     return (
