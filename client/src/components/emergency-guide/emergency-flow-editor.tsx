@@ -292,7 +292,28 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
       // フローデータの更新
       if (Array.isArray(initialData.nodes) && initialData.nodes.length > 0) {
         console.log("★★★ ノードデータを更新:", initialData.nodes);
-        setNodes(initialData.nodes);
+        
+        // 条件分岐ノードの条件データを復元
+        const enhancedNodes = initialData.nodes.map(node => {
+          if (node.type === 'decision' && initialData.steps) {
+            const correspondingStep = initialData.steps.find(step => step.id === node.id);
+            if (correspondingStep) {
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  yesCondition: correspondingStep.yesCondition || node.data.yesCondition || '',
+                  noCondition: correspondingStep.noCondition || node.data.noCondition || '',
+                  otherCondition: correspondingStep.otherCondition || node.data.otherCondition || ''
+                }
+              };
+            }
+          }
+          return node;
+        });
+        
+        setNodes(enhancedNodes);
+        console.log("★★★ 条件分岐データを含むノードを設定:", enhancedNodes);
       }
 
       if (Array.isArray(initialData.edges) && initialData.edges.length > 0) {
@@ -472,6 +493,11 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
           conditionType: edge.sourceHandle === 'yes' ? 'yes' : 
                         edge.sourceHandle === 'no' ? 'no' : 'other'
         }));
+
+        // 条件分岐の条件テキストを保存
+        if (node.data.yesCondition) step.yesCondition = node.data.yesCondition;
+        if (node.data.noCondition) step.noCondition = node.data.noCondition;
+        if (node.data.otherCondition) step.otherCondition = node.data.otherCondition;
       } else {
         // その他のノードの場合
         const connectedEdges = edges.filter(edge => edge.source === node.id);
@@ -489,7 +515,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
     // フローデータを正しい形式に変換（既存構造を保持）
     const flowData = {
       ...baseData, // 既存のメタデータを保持
-      id: baseData.id || flowTitle.replace(/\s+/g, '_').toLowerCase(),
+      id: baseData.id || flowId || flowTitle.replace(/\s+/g, '_').toLowerCase(),
       title: flowTitle,
       description: flowDescription, // フロー説明を正しく設定
       triggerKeywords: baseData.triggerKeywords || [],
@@ -506,6 +532,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
       nodeCount: flowData.nodes?.length || 0,
       edgeCount: flowData.edges?.length || 0,
       stepCount: flowData.steps?.length || 0,
+      hasConditions: steps.filter(s => s.yesCondition || s.noCondition || s.otherCondition).length,
       timestamp: flowData.savedTimestamp
     });
 
@@ -513,14 +540,23 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
       // 親コンポーネントに渡してサーバー保存
       await onSave(flowData);
 
-      // 保存成功後、キャッシュクリアイベントを発火
+      // 保存成功後、強制的にキャッシュクリアイベントを発火
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('flowDataUpdated', {
           detail: { 
             id: flowData.id, 
             data: flowData,
             forceReload: true,
-            timestamp: flowData.savedTimestamp
+            timestamp: flowData.savedTimestamp,
+            action: 'save'
+          }
+        }));
+        
+        // 追加で troubleshootingDataUpdated イベントも発火
+        window.dispatchEvent(new CustomEvent('troubleshootingDataUpdated', {
+          detail: { 
+            id: flowData.id, 
+            forceReload: true 
           }
         }));
       }

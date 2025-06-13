@@ -405,7 +405,8 @@ const EmergencyFlowCreator: React.FC = () => {
         ...data,
         id: data.id || `flow_${Date.now()}`,
         title: data.title || '無題のフロー',
-        description: data.description || ''
+        description: data.description || '',
+        savedTimestamp: Date.now()
       };
 
       console.log("📤 APIに送信するデータ:", saveData);
@@ -415,6 +416,7 @@ const EmergencyFlowCreator: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
         },
         body: JSON.stringify(saveData),
       });
@@ -436,6 +438,19 @@ const EmergencyFlowCreator: React.FC = () => {
           title: "保存成功",
           description: `応急処置フローが保存されました: ${result.fileName}`,
         });
+
+        // 保存成功のイベントを発火
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('flowDataUpdated', {
+            detail: { 
+              id: saveData.id, 
+              data: saveData,
+              forceReload: true,
+              timestamp: saveData.savedTimestamp,
+              action: 'save'
+            }
+          }));
+        }
 
         // 即座にフローリストを更新（キャッシュをクリア）
         await fetchFlowList();
@@ -462,9 +477,9 @@ const EmergencyFlowCreator: React.FC = () => {
         setCharacterDesignTab('file');
 
         // 少し遅れてもう一度リフレッシュ（確実にデータが更新されるように）
-        setTimeout(() => {
-          fetchFlowList();
-        }, 1000);
+        setTimeout(async () => {
+          await fetchFlowList();
+        }, 1500);
       } else {
         throw new Error(result.error || 'フローの保存に失敗しました');
       }
