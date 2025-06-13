@@ -131,6 +131,13 @@ router.post('/save', async (req, res) => {
 // 応急処置フロー一覧取得エンドポイント
 router.get('/list', async (req, res) => {
   try {
+    // キャッシュ無効化ヘッダーを設定
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+    
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
     console.log('🔍 一覧取得: troubleshootingDir =', troubleshootingDir);
     
@@ -188,6 +195,13 @@ router.get('/list', async (req, res) => {
 // 特定のフロー詳細取得エンドポイント
 router.get('/detail/:id', async (req, res) => {
   try {
+    // キャッシュ無効化ヘッダーを設定
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+    
     const { id } = req.params;
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
     const filePath = path.join(troubleshootingDir, `${id}.json`);

@@ -105,9 +105,17 @@ const EmergencyFlowCreator: React.FC = () => {
       setIsLoadingFlowList(true);
       console.log('応急処置データ一覧の取得を開始します');
 
-      // キャッシュを防止するためにタイムスタンプパラメータを追加
+      // 強力なキャッシュ無効化
       const timestamp = new Date().getTime();
-      const response = await fetch(`/api/emergency-flow/list?t=${timestamp}`);
+      const randomId = Math.random().toString(36).substring(2);
+      const response = await fetch(`/api/emergency-flow/list?t=${timestamp}&r=${randomId}&nocache=true`, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
 
       if (!response.ok) {
         console.error(`応急処置データ一覧の取得に失敗: ${response.status} ${response.statusText}`);
@@ -124,7 +132,11 @@ const EmergencyFlowCreator: React.FC = () => {
         return;
       }
 
-      setFlowList(data);
+      // 古いリストをクリアしてから新しいデータを設定
+      setFlowList([]);
+      setTimeout(() => {
+        setFlowList(data);
+      }, 100);
     } catch (error) {
       console.error('フロー一覧取得エラー:', error);
       toast({
@@ -411,8 +423,8 @@ const EmergencyFlowCreator: React.FC = () => {
           description: `応急処置フローが保存されました: ${result.fileName}`,
         });
 
-        // フローリストを更新
-        fetchFlowList();
+        // 即座にフローリストを更新（キャッシュをクリア）
+        await fetchFlowList();
 
         // 保存後にデータをリセット
         setFlowData({
@@ -434,6 +446,11 @@ const EmergencyFlowCreator: React.FC = () => {
 
         // ファイル編集タブに戻る
         setCharacterDesignTab('file');
+        
+        // 少し遅れてもう一度リフレッシュ（確実にデータが更新されるように）
+        setTimeout(() => {
+          fetchFlowList();
+        }, 1000);
       } else {
         throw new Error(result.error || 'フローの保存に失敗しました');
       }
@@ -875,10 +892,20 @@ const EmergencyFlowCreator: React.FC = () => {
   const loadFlow = async (id: string) => {
     try {
       console.log(`フローデータの取得開始: ID=${id}`);
+      
+      // 現在の状態をクリア（古いデータの表示を防ぐ）
+      setFlowData(null);
 
       // キャッシュを防止するためにタイムスタンプパラメータを追加
       const timestamp = new Date().getTime();
-      const response = await fetch(`/api/emergency-flow/detail/${id}?t=${timestamp}`);
+      const response = await fetch(`/api/emergency-flow/detail/${id}?t=${timestamp}&nocache=${Math.random()}`, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
 
       if (!response.ok) {
         console.error(`API応答エラー: ${response.status} ${response.statusText}`);
