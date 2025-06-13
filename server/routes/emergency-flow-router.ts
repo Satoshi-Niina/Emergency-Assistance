@@ -300,24 +300,72 @@ router.get('/:id', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'フローIDが指定されていません' });
     }
 
-    console.log(`🔍 フロー詳細取得: ID=${id}`);
+    console.log(`🔍 フロー詳細取得: 要求ID=${id}`);
 
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    const filePath = path.join(troubleshootingDir, `${id}.json`);
+    
+    // まず、全てのJSONファイルをチェックして正しいファイルを見つける
+    let targetFilePath = null;
+    let targetFlowData = null;
 
-    console.log(`📁 ファイルパス: ${filePath}`);
-    console.log(`📄 ファイル存在: ${fs.existsSync(filePath)}`);
+    if (fs.existsSync(troubleshootingDir)) {
+      const files = fs.readdirSync(troubleshootingDir).filter(f => f.endsWith('.json'));
+      console.log(`📁 利用可能なファイル: ${files.join(', ')}`);
 
-    if (!fs.existsSync(filePath)) {
-      console.log(`❌ ファイルが見つかりません: ${filePath}`);
+      for (const file of files) {
+        try {
+          const filePath = path.join(troubleshootingDir, file);
+          const content = fs.readFileSync(filePath, 'utf-8');
+          const data = JSON.parse(content);
+          
+          // IDが一致するファイルを探す
+          if (data.id === id) {
+            targetFilePath = filePath;
+            targetFlowData = data;
+            console.log(`✅ ID一致ファイル発見: ${file} (ID: ${data.id})`);
+            break;
+          }
+        } catch (error) {
+          console.warn(`⚠️ ファイル ${file} の読み込みエラー:`, error);
+        }
+      }
+    }
+
+    // 直接ファイル名でも試す（フォールバック）
+    if (!targetFlowData) {
+      const directPath = path.join(troubleshootingDir, `${id}.json`);
+      if (fs.existsSync(directPath)) {
+        try {
+          const content = fs.readFileSync(directPath, 'utf-8');
+          const data = JSON.parse(content);
+          targetFlowData = data;
+          targetFilePath = directPath;
+          console.log(`✅ 直接パスで発見: ${id}.json`);
+        } catch (error) {
+          console.warn(`⚠️ 直接パス読み込みエラー:`, error);
+        }
+      }
+    }
+
+    if (!targetFlowData) {
+      console.log(`❌ フローが見つかりません: ID=${id}`);
       return res.status(404).json({ success: false, error: 'フローが見つかりません' });
     }
 
-    // ファイルを毎回新しく読み込み（キャッシュ無し）
-    const content = fs.readFileSync(filePath, 'utf-8');
-    const flowData = JSON.parse(content);
+    console.log(`✅ フロー読み込み完了:`, {
+      requestedId: id,
+      foundId: targetFlowData.id,
+      title: targetFlowData.title,
+      filePath: targetFilePath,
+      stepsCount: targetFlowData.steps?.length || 0
+    });
 
-    console.log(`✅ フロー読み込み完了: ID=${flowData.id}, タイトル=${flowData.title}`);
+    // データの整合性チェック
+    if (targetFlowData.id !== id) {
+      console.warn(`⚠️ ID不一致: 要求=${id}, 実際=${targetFlowData.id}`);
+      // IDを要求されたものに修正
+      targetFlowData.id = id;
+    }
 
     // 強力なキャッシュ無効化ヘッダー
     res.set({
@@ -325,10 +373,12 @@ router.get('/:id', async (req: Request, res: Response) => {
       'Pragma': 'no-cache',
       'Expires': '0',
       'X-Fresh-Load': 'true',
-      'X-Timestamp': Date.now().toString()
+      'X-Timestamp': Date.now().toString(),
+      'X-Request-ID': id,
+      'X-Found-ID': targetFlowData.id
     });
 
-    return res.status(200).json(flowData);
+    return res.status(200).json(targetFlowData);
   } catch (error) {
     console.error('❌ フロー詳細取得エラー:', error);
     return res.status(500).json({
