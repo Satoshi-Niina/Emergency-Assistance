@@ -30,7 +30,11 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm run dev:all"
+args = "npm run build:client"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run start"
 
 [[ports]]
 localPort = 3000
