@@ -6,6 +6,7 @@ import EmergencyFlowCreator from "@/components/emergency-guide/emergency-flow-cr
 import KeywordSuggestions from "@/components/emergency-guide/keyword-suggestions";
 import { Helmet } from "react-helmet";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 const EmergencyGuidePage: React.FC = () => {
   // URLからクエリパラメータを取得
