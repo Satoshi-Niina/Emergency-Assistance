@@ -415,6 +415,63 @@ const TroubleshootingViewer: React.FC<TroubleshootingViewerProps> = ({ data, onS
     }
   };
 
+  const fetchTroubleshootingData = async (flowId: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      console.log(`トラブルシューティングデータ取得開始: ${flowId}`);
+
+      // engine_stop_no_start以外は拒否
+      if (flowId !== 'engine_stop_no_start') {
+        console.log(`❌ 許可されていないフローID: ${flowId}`);
+        setError('このフローは利用できません');
+        return;
+      }
+
+      const response = await fetch(`/api/troubleshooting/${flowId}`, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      throw new Error(`Received non-JSON response: ${contentType}`);
+    }
+
+    const jsonData = await response.json();
+    console.log('✅ APIレスポンス:', jsonData);
+
+    if (!jsonData) {
+      console.warn('⚠️  APIから無効なJSONデータが返されました');
+      setError('無効なデータを受信しました');
+      return;
+    }
+
+    // React Flowに変換
+    const reactFlowData = convertToReactFlowData(jsonData);
+    setReactFlow({ nodes: reactFlowData.nodes, edges: reactFlowData.edges });
+
+    // 成功
+    setLoading(false);
+    return jsonData;
+
+  } catch (apiError: any) {
+    console.error('❌ APIリクエストエラー:', apiError);
+    setError(apiError.message || 'APIリクエストに失敗しました');
+  } finally {
+    setLoading(false);
+  }
+};
+
   // 編集モードの場合
   if (isEditMode) {
     return (
