@@ -34,7 +34,7 @@ args = "npm run build:client"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "tsx server/index.ts"
+args = "node --loader tsx/esm server/index.ts"
 
 [[ports]]
 localPort = 3000
