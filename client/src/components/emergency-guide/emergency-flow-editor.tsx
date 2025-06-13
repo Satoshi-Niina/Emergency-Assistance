@@ -275,37 +275,81 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
       console.log('💾 保存成功 - エディターデータを直接更新');
       setEditedFlow({ ...saveData });
 
-      // 即座にフロー一覧も更新
+      // 🔄 完全なファイル検証を実行
+      try {
+        const verifyResponse = await fetch(`/api/emergency-flow-router/get/${editedFlow.id}?ts=${Date.now()}&verify=true`, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        });
+
+        if (verifyResponse.ok) {
+          const verifyData = await verifyResponse.json();
+          console.log('🔍 保存後検証データ:', {
+            id: verifyData.id,
+            stepsCount: verifyData.steps?.length || 0,
+            updatedAt: verifyData.updatedAt
+          });
+
+          // 検証データと保存データが一致するかチェック
+          const stepsMatch = (verifyData.steps?.length || 0) === (saveData.steps?.length || 0);
+          console.log(`📊 データ整合性チェック: ${stepsMatch ? '一致' : '不一致'}`);
+
+          if (!stepsMatch) {
+            console.warn('⚠️ 保存データと検証データが不一致 - 再保存を試行');
+            // 再保存を試行
+            const retryResponse = await fetch(`/api/emergency-flow-router/save/${editedFlow.id}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-cache'
+              },
+              body: JSON.stringify(saveData)
+            });
+            
+            if (retryResponse.ok) {
+              console.log('✅ 再保存完了');
+            }
+          }
+        }
+      } catch (verifyError) {
+        console.warn('⚠️ 保存後検証エラー:', verifyError);
+      }
+
+      // 🧹 ブラウザキャッシュを完全クリア
+      if ('caches' in window) {
+        try {
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map(name => caches.delete(name)));
+          console.log('🧹 ブラウザキャッシュ完全クリア完了');
+        } catch (cacheError) {
+          console.warn('⚠️ キャッシュクリアエラー:', cacheError);
+        }
+      }
+
+      // データ更新イベントを発行（遅延実行で確実に反映）
       setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('flowDataUpdated', {
+          detail: { 
+            flowId: editedFlow.id, 
+            data: saveData,
+            timestamp: Date.now(),
+            forceRefresh: true
+          }
+        }));
+
         window.dispatchEvent(new CustomEvent('forceRefreshFlowList', {
           detail: { 
             forceRefresh: true,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            updatedFlowId: editedFlow.id
           }
         }));
-      }, 100);
 
-      // データ更新イベントを発行
-      window.dispatchEvent(new CustomEvent('flowDataUpdated', {
-        detail: { 
-          flowId: editedFlow.id, 
-          data: saveData,
-          timestamp: Date.now()
-        }
-      }));
-
-      // 強制再取得イベントも発行
-      window.dispatchEvent(new CustomEvent('forceRefreshFlowData', {
-        detail: { 
-          flowId: editedFlow.id,
-          timestamp: Date.now()
-        }
-      }));
-
-      // フロー一覧の更新イベントも発行
-      window.dispatchEvent(new CustomEvent('forceRefreshFlowList', {
-        detail: { forceRefresh: true }
-      }));
+        console.log('🔄 保存後イベント発行完了');
+      }, 200);
 
 
 
