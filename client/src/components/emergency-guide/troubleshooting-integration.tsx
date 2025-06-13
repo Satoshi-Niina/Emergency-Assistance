@@ -37,7 +37,7 @@ const TroubleshootingIntegration: React.FC<TroubleshootingIntegrationProps> = ({
       try {
         setIsLoading(true);
         
-        const response = await fetch(`/api/emergency-flow/detail/${id}`);
+        const response = await fetch(`/api/troubleshooting/${id}`);
         
         if (!response.ok) {
           throw new Error(`データの取得に失敗しました (${response.status})`);

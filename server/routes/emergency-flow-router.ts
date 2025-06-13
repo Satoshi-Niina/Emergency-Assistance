@@ -223,11 +223,19 @@ router.get('/list', async (req, res) => {
     const flows = [];
 
     // troubleshootingディレクトリから直接JSONファイルを取得
+    console.log(`📁 troubleshootingディレクトリスキャン: ${troubleshootingDir}`);
     const troubleshootingFiles = fs.readdirSync(troubleshootingDir);
     const troubleshootingFlowFiles = troubleshootingFiles.filter(file => 
       file.endsWith('.json') && !file.includes('.backup')
     );
     console.log(`📁 troubleshootingDirから${troubleshootingFlowFiles.length}個のJSONファイルを検出:`, troubleshootingFlowFiles);
+    
+    // ファイルの詳細確認
+    troubleshootingFlowFiles.forEach(file => {
+      const fullPath = path.join(troubleshootingDir, file);
+      const stats = fs.statSync(fullPath);
+      console.log(`📄 ファイル詳細: ${file} (サイズ: ${stats.size}バイト, 更新: ${stats.mtime.toISOString()})`);
+    });
 
     // troubleshootingディレクトリのファイルを処理
     for (const file of troubleshootingFlowFiles) {
@@ -298,6 +306,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     console.log(`🔍 フロー詳細取得: 要求ID=${id}, ファイル名=${fileName}`);
 
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    console.log(`📁 troubleshootingディレクトリ: ${troubleshootingDir}`);
     let targetFilePath = null;
     let targetFlowData = null;
 
