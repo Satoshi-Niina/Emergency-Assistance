@@ -722,54 +722,62 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
             <CardContent>
               {selectedNode ? (
                 <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="node-label" className="block text-sm font-medium mb-2">
-                      {selectedNode.type === 'decision' ? 'スライドタイトル（判断）' : 
-                       selectedNode.type === 'step' ? 'スライドタイトル（ステップ）' : 'ラベル'}
-                    </Label>
-                    <Input
-                      id="node-label"
-                      className="w-full border-2 border-blue-300 focus:border-blue-500"
-                      value={selectedNode.data.label || ''}
-                      onChange={(e) => {
-                        const newValue = e.target.value;
-                        // updateNodeDataを呼び出してselectedNodeを更新
-                        updateNodeData('label', newValue);
+                  
+                      <Label htmlFor="node-label" className="block text-sm font-medium mb-2">
+                        {selectedNode.type === 'decision' ? 'スライドタイトル（判断）' : 
+                         selectedNode.type === 'step' ? 'スライドタイトル（ステップ）' : 'ラベル'}
+                      </Label>
+                      <Input
+                        id="node-label"
+                        className="w-full border-2 border-blue-300 focus:border-blue-500"
+                        value={selectedNode.data.label || ''}
+                        onChange={(e) => {
+                          const newValue = e.target.value;
+                          console.log(`🏷️ ノードラベル更新: ${selectedNode.id} -> "${newValue}"`);
 
-                        // リアルタイムでノードのラベルを更新
-                        setNodes((nds) =>
-                          nds.map((node) => {
-                            if (node.id === selectedNode.id) {
-                              return {
-                                ...node,
-                                data: {
-                                  ...node.data,
-                                  label: newValue,
-                                },
-                              };
-                            }
-                            return node;
-                          })
-                        );
+                          // リアルタイムでノードのラベルを更新
+                          setNodes((prevNodes) => {
+                            const updatedNodes = prevNodes.map((node) => {
+                              if (node.id === selectedNode.id) {
+                                const updatedNode = {
+                                  ...node,
+                                  data: {
+                                    ...node.data,
+                                    label: newValue,
+                                  },
+                                };
+                                console.log(`🔄 ノード更新完了: ${node.id}`, updatedNode);
+                                return updatedNode;
+                              }
+                              return node;
+                            });
+                            return updatedNodes;
+                          });
 
-                        // selectedNodeも同期して更新
-                        setSelectedNode(prev => prev ? {
-                          ...prev,
-                          data: {
-                            ...prev.data,
-                            label: newValue
-                          }
-                        } : null);
-                      }}
-                      placeholder={
-                        selectedNode.type === 'decision' ? "例：エンジン停止の状況確認" :
-                        selectedNode.type === 'step' ? "例：安全確保手順" : "ノードラベル"
-                      }
-                    />
+                          // selectedNodeも同期して更新
+                          setSelectedNode(prev => {
+                            if (!prev) return null;
+                            const updated = {
+                              ...prev,
+                              data: {
+                                ...prev.data,
+                                label: newValue
+                              }
+                            };
+                            console.log(`✅ selectedNode更新完了:`, updated);
+                            return updated;
+                          });
+                        }}
+                        placeholder={
+                          selectedNode.type === 'decision' ? "例：エンジン停止の状況確認" :
+                          selectedNode.type === 'step' ? "例：安全確保手順" : "ノードラベル"
+                        }
+                      />
+                    
                     <div className="text-xs text-green-600 mt-1 font-medium">
                       ✅ スライドタイトル編集機能：入力すると即座にノードに反映され、保存時に確実に保存されます
                     </div>
-                  </div>
+                  
 
                   {selectedNode.type !== 'start' && selectedNode.type !== 'end' && (
                     <div>
@@ -862,8 +870,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
                                   onChange={(e) => {
                                     updateNodeData('otherCondition', e.target.value);
                                     // リアルタイムでノードデータを更新
-                                    setNodes((nds) =>
-                                      nds.map((node) => {
+                                    setNodes((nds) =>nds.map((node) => {
                                         if (node.id === selectedNode.id) {
                                           return {
                                             ...node,
