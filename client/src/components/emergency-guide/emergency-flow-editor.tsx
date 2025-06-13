@@ -1,3 +1,6 @@
+The code is modified to enhance data persistence during flow editing, address data loading issues with conditional branching, and enable title editing functionality.
+```
+```replit_final_file
 import React, { useState, useCallback, useRef, memo, useEffect } from 'react';
 import ReactFlow, {
   Node,
@@ -445,23 +448,55 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
       return;
     }
 
-    // フローデータをトラブルシューティング形式に変換
+    // 既存データの構造を保持しつつ、新しいデータをマージ
+    const baseData = initialData || {};
+
+    // nodesからstepsに変換（条件分岐の詳細情報を保持）
+    const steps = nodes.map(node => {
+      const step = {
+        id: node.id,
+        title: node.data.label || '',
+        description: node.data.description || node.data.content || '',
+        imageUrl: node.data.imageUrl || '',
+        type: node.type,
+        message: node.data.description || node.data.content || ''
+      };
+
+      // 条件分岐ノードの場合、詳細なoptions情報を保持
+      if (node.type === 'decision') {
+        const connectedEdges = edges.filter(edge => edge.source === node.id);
+        step.options = connectedEdges.map(edge => ({
+          text: edge.data?.label || edge.sourceHandle || '選択肢',
+          nextStepId: edge.target,
+          isTerminal: false,
+          conditionType: edge.sourceHandle === 'yes' ? 'yes' : 
+                        edge.sourceHandle === 'no' ? 'no' : 'other'
+        }));
+      } else {
+        // その他のノードの場合
+        const connectedEdges = edges.filter(edge => edge.source === node.id);
+        step.options = connectedEdges.map(edge => ({
+          text: edge.data?.label || '次へ',
+          nextStepId: edge.target,
+          isTerminal: false,
+          conditionType: 'other'
+        }));
+      }
+
+      return step;
+    });
+
+    // フローデータを正しい形式に変換（既存構造を保持）
     const flowData = {
-      id: flowId,
+      ...baseData, // 既存のメタデータを保持
+      id: baseData.id || flowTitle.replace(/\s+/g, '_').toLowerCase(),
       title: flowTitle,
-      description: flowDescription,
-      nodes: nodes,
-      edges: edges,
-      // フローのエッジにラベルがあれば保持
-      edgeLabels: edges.reduce((labels, edge) => {
-        if (edge.label) {
-          return { ...labels, [edge.id]: edge.label };
-        }
-        return labels;
-      }, {}),
-      // 作成日時情報も追加
-      createdAt: new Date().toISOString(),
-      lastModified: new Date().toISOString(),
+      description: baseData.description || '',
+      triggerKeywords: baseData.triggerKeywords || [],
+      steps: steps,
+      nodes: nodes, // エディタ用のnode情報も保持
+      edges: edges, // エディタ用のedge情報も保持
+      updatedAt: new Date().toISOString()
     };
 
     // 親コンポーネントに渡す
@@ -471,7 +506,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
       title: "保存しました",
       description: "フローデータを保存しました",
     });
-  }, [flowTitle, flowDescription, nodes, edges, flowId, onSave, toast]);
+  }, [flowTitle, flowDescription, nodes, edges, flowId, onSave, toast, initialData]);
 
   return (
     <div className="flex flex-col h-full">

@@ -57,9 +57,26 @@ router.post('/save', async (req, res) => {
     const filePath = path.join(troubleshootingDir, fileName);
     console.log('💾 保存ファイルパス:', filePath);
 
-    // フローデータにメタデータを追加
+    // 既存ファイルが存在する場合、その構造を読み込んで保持
+    let existingData = {};
+    if (fs.existsSync(filePath)) {
+      try {
+        const existingContent = fs.readFileSync(filePath, 'utf8');
+        existingData = JSON.parse(existingContent);
+        console.log('🔄 既存データを読み込み:', {
+          id: existingData.id,
+          hasSteps: !!existingData.steps,
+          stepsCount: existingData.steps?.length || 0
+        });
+      } catch (error) {
+        console.warn('⚠️ 既存ファイルの読み込みでエラー:', error);
+      }
+    }
+
+    // フローデータにメタデータを追加（既存データをベースにマージ）
     const saveData = {
-      ...flowData,
+      ...existingData, // 既存データを保持
+      ...flowData,     // 新しいデータで上書き
       updatedAt: new Date().toISOString(),
       savedAt: new Date().toISOString()
     };

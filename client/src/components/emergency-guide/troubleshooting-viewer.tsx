@@ -38,6 +38,8 @@ const TroubleshootingViewer: React.FC<TroubleshootingViewerProps> = ({ data, onS
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editingTitleValue, setEditingTitleValue] = useState('');
   const [localData, setLocalData] = useState(data);
+  const [isEditingMainTitle, setIsEditingMainTitle] = useState(false);
+  const [editingMainTitleValue, setEditingMainTitleValue] = useState('');
 
   // 前のスライドに移動
   const goToPrevious = () => {
@@ -72,6 +74,13 @@ const TroubleshootingViewer: React.FC<TroubleshootingViewerProps> = ({ data, onS
         title: "保存成功",
         description: "トラブルシューティングデータが更新されました",
       });
+
+      // 親コンポーネントに変更を通知（一覧更新のため）
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('troubleshootingDataUpdated', {
+          detail: { id: editedData.id, data: editedData }
+        }));
+      }
     } catch (error) {
       toast({
         title: "保存エラー",
@@ -133,6 +142,53 @@ const TroubleshootingViewer: React.FC<TroubleshootingViewerProps> = ({ data, onS
     setEditingTitleValue('');
   };
 
+  // メインタイトル編集開始
+  const handleStartMainTitleEdit = () => {
+    setEditingMainTitleValue(localData.title);
+    setIsEditingMainTitle(true);
+  };
+
+  // メインタイトル編集保存
+  const handleSaveMainTitle = async () => {
+    if (!editingMainTitleValue.trim()) {
+      toast({
+        title: "エラー",
+        description: "タイトルを入力してください",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const updatedData = { 
+        ...localData, 
+        title: editingMainTitleValue.trim(),
+        updatedAt: new Date().toISOString()
+      };
+
+      setLocalData(updatedData);
+      await onSave(updatedData);
+
+      setIsEditingMainTitle(false);
+      toast({
+        title: "保存完了",
+        description: "フロータイトルを更新しました",
+      });
+    } catch (error) {
+      toast({
+        title: "保存エラー",
+        description: "タイトルの保存中にエラーが発生しました",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // メインタイトル編集キャンセル
+  const handleCancelMainTitleEdit = () => {
+    setIsEditingMainTitle(false);
+    setEditingMainTitleValue('');
+  };
+
   // 編集モードの場合
   if (isEditMode) {
     return (
@@ -162,7 +218,35 @@ const TroubleshootingViewer: React.FC<TroubleshootingViewerProps> = ({ data, onS
           <ArrowLeft className="mr-2 h-4 w-4" />
           戻る
         </Button>
-        <h2 className="text-xl font-bold">{localData.title}</h2>
+        {isEditingMainTitle ? (
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={editingMainTitleValue}
+              onChange={(e) => setEditingMainTitleValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSaveMainTitle();
+                if (e.key === 'Escape') handleCancelMainTitleEdit();
+              }}
+              className="flex-1 px-3 py-1 border rounded text-xl font-bold"
+              autoFocus
+            />
+            <Button size="sm" onClick={handleSaveMainTitle}>
+              <Save className="h-4 w-4" />
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleCancelMainTitleEdit}>
+              ×
+            </Button>
+          </div>
+        ) : (
+          <h2 
+            className="text-xl font-bold cursor-pointer hover:bg-gray-100 px-2 py-1 rounded flex items-center"
+            onClick={handleStartMainTitleEdit}
+          >
+            {localData.title}
+            <Edit className="ml-2 h-4 w-4 opacity-50" />
+          </h2>
+        )}
         <Button onClick={toggleEditMode}>
           <Edit className="mr-2 h-4 w-4" />
           編集
