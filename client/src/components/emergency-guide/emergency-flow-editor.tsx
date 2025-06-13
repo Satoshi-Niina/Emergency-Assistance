@@ -110,10 +110,66 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
       }
     };
 
+    // 強制的なデータ再取得処理
+    const handleForceRefresh = async (event: any) => {
+      const { flowId } = event.detail;
+      console.log('🔄 強制データ再取得要求:', flowId);
+      
+      if (editedFlow && (flowId === editedFlow.id || !flowId)) {
+        console.log('💾 保存後のデータを再取得します...');
+        try {
+          // 強力なキャッシュバスティング
+          const timestamp = Date.now();
+          const randomId = Math.random().toString(36).substring(2, 15);
+          
+          const response = await fetch(`/api/emergency-flow/${editedFlow.id}?_bust=${timestamp}&_r=${randomId}&_force=true`, {
+            method: 'GET',
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+              'Pragma': 'no-cache',
+              'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
+              'X-Timestamp': timestamp.toString(),
+              'X-Force-Refresh': 'true'
+            }
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            const freshData = result.data || result;
+            
+            console.log('🔄 再取得したデータ:', {
+              id: freshData.id,
+              title: freshData.title,
+              stepsCount: freshData.steps?.length || 0,
+              updatedAt: freshData.updatedAt,
+              savedTimestamp: freshData.savedTimestamp
+            });
+            
+            // 取得したデータが実際に新しいかチェック
+            const isNewer = freshData.savedTimestamp > (editedFlow.savedTimestamp || 0);
+            console.log(`📊 データの新しさチェック: ${isNewer ? '新しいデータ' : '古いデータ'}`);
+            
+            if (isNewer || !editedFlow.savedTimestamp) {
+              setEditedFlow({ ...freshData });
+              console.log('✅ エディターのデータを更新しました');
+            } else {
+              console.log('⚠️ 取得したデータが古いため、更新をスキップします');
+            }
+          } else {
+            console.error('❌ データ再取得に失敗:', response.status);
+          }
+        } catch (error) {
+          console.error('❌ データ再取得エラー:', error);
+        }
+      }
+    };
+
     window.addEventListener('flowDataRefreshed', handleDataRefresh);
+    window.addEventListener('forceRefreshFlowData', handleForceRefresh);
     
     return () => {
       window.removeEventListener('flowDataRefreshed', handleDataRefresh);
+      window.removeEventListener('forceRefreshFlowData', handleForceRefresh);
     };
   }, [editedFlow]);
 
@@ -175,11 +231,79 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
       // 保存されたデータで現在の編集データを更新
       setEditedFlow(saveData);
 
+      // 保存後に強制的にデータを再取得
+      console.log('💾 保存成功 - 最新データを再取得します...');
+      
+      setTimeout(async () => {
+        try {
+          // さらに強力なキャッシュバスティング
+          const timestamp = Date.now();
+          const randomId = Math.random().toString(36).substring(2, 15);
+          const sessionId = Math.floor(Math.random() * 1000000);
+          
+          const response = await fetch(`/api/emergency-flow/${editedFlow.id}?_t=${timestamp}&_r=${randomId}&_s=${sessionId}&_verify=true`, {
+            method: 'GET',
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+              'Pragma': 'no-cache',
+              'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
+              'X-Timestamp': timestamp.toString(),
+              'X-Force-Refresh': 'true',
+              'X-Verify-Save': 'true'
+            }
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            const verifyData = result.data || result;
+            
+            console.log('🔍 保存検証データ:', {
+              id: verifyData.id,
+              title: verifyData.title,
+              stepsCount: verifyData.steps?.length || 0,
+              savedTimestamp: verifyData.savedTimestamp,
+              updatedAt: verifyData.updatedAt
+            });
+
+            // 保存したタイムスタンプと一致するかチェック
+            const timestampMatch = verifyData.savedTimestamp === saveData.savedTimestamp;
+            console.log(`🔍 タイムスタンプ照合: ${timestampMatch ? '一致' : '不一致'}`);
+            
+            if (timestampMatch || verifyData.savedTimestamp > (editedFlow.savedTimestamp || 0)) {
+              setEditedFlow({ ...verifyData });
+              console.log('✅ 最新データでエディターを更新しました');
+              
+              toast({
+                title: "データ更新確認",
+                description: "最新の保存データが読み込まれました",
+              });
+            } else {
+              console.log('⚠️ 警告: 保存したデータが反映されていない可能性があります');
+              toast({
+                title: "データ同期警告",
+                description: "保存データの反映に時間がかかっています",
+                variant: "destructive"
+              });
+            }
+          }
+        } catch (error) {
+          console.error('❌ 保存検証エラー:', error);
+        }
+      }, 500); // 500ms後に検証
+
       // データ更新イベントを発行
       window.dispatchEvent(new CustomEvent('flowDataUpdated', {
         detail: { 
           flowId: editedFlow.id, 
           data: saveData,
+          timestamp: Date.now()
+        }
+      }));
+
+      // 強制再取得イベントも発行
+      window.dispatchEvent(new CustomEvent('forceRefreshFlowData', {
+        detail: { 
+          flowId: editedFlow.id,
           timestamp: Date.now()
         }
       }));

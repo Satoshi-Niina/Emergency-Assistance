@@ -471,19 +471,79 @@ router.get('/:id', async (req: Request, res: Response) => {
     if (fs.existsSync(directFilePath)) {
       console.log(`🎯 直接ファイル発見: ${directFilePath}`);
 
-      const stats = fs.statSync(directFilePath);
-      const content = fs.readFileSync(directFilePath, 'utf-8');
-      const flowData = JSON.parse(content);
+      // ファイルシステムのキャッシュをクリア
+      delete require.cache[directFilePath];
 
-      console.log(`📄 ファイル最終更新: ${stats.mtime.toISOString()}`);
-      console.log(`📊 読み込んだデータ: ID=${flowData.id}, ステップ数=${flowData.steps?.length || 0}`);
+      const stats = fs.statSync(directFilePath);
+      
+      // ファイルを強制的に再読み込み
+      let content;
+      try {
+        // 複数回読み込みを試行（ファイルシステムの遅延対策）
+        content = fs.readFileSync(directFilePath, 'utf-8');
+        
+        // 空ファイルまたは不正なJSONの場合は再試行
+        if (!content.trim() || content.trim().length < 10) {
+          console.log('⚠️ ファイル内容が空またはが疑われます - 再試行...');
+          await new Promise(resolve => setTimeout(resolve, 100));
+          content = fs.readFileSync(directFilePath, 'utf-8');
+        }
+      } catch (readError) {
+        console.error('❌ ファイル読み込みエラー:', readError);
+        throw readError;
+      }
+
+      let flowData;
+      try {
+        flowData = JSON.parse(content);
+      } catch (parseError) {
+        console.error('❌ JSON解析エラー:', parseError);
+        console.error('📄 ファイル内容の先頭100文字:', content.substring(0, 100));
+        throw new Error('ファイルのJSON形式が不正です');
+      }
+
+      console.log(`📄 ファイル詳細情報:`);
+      console.log(`  - パス: ${directFilePath}`);
+      console.log(`  - サイズ: ${stats.size} bytes`);
+      console.log(`  - 最終更新: ${stats.mtime.toISOString()}`);
+      console.log(`  - アクセス時刻: ${stats.atime.toISOString()}`);
+      console.log(`📊 読み込んだデータ詳細:`);
+      console.log(`  - ID: ${flowData.id}`);
+      console.log(`  - タイトル: "${flowData.title}"`);
+      console.log(`  - ステップ数: ${flowData.steps?.length || 0}`);
+      console.log(`  - updatedAt: ${flowData.updatedAt}`);
+      console.log(`  - savedTimestamp: ${flowData.savedTimestamp}`);
+
+      // レスポンスヘッダーでキャッシュ無効化を強化
+      res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+        'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
+        'Last-Modified': stats.mtime.toUTCString(),
+        'ETag': `"${stats.mtime.getTime()}-${stats.size}-${Date.now()}"`,
+        'X-Content-Type-Options': 'nosniff',
+        'X-File-Modified': stats.mtime.toISOString(),
+        'X-File-Size': stats.size.toString(),
+        'X-Read-Timestamp': new Date().toISOString()
+      });
 
       return res.status(200).json({
         id: id,
         data: flowData,
         timestamp: Date.now(),
         fileModified: stats.mtime.toISOString(),
-        source: 'direct'
+        fileSize: stats.size,
+        contentLength: content.length,
+        source: 'direct',
+        debug: {
+          filePath: directFilePath,
+          readTimestamp: new Date().toISOString(),
+          fileStats: {
+            size: stats.size,
+            mtime: stats.mtime.toISOString(),
+            atime: stats.atime.toISOString()
+          }
+        }
       });
     }
 
