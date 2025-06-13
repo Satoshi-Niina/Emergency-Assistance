@@ -5,6 +5,73 @@ import { log } from '../vite';
 
 const router = express.Router();
 
+// トラブルシューティングデータを更新（新しいエンドポイント）
+router.put('/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const flowData = req.body;
+    
+    if (!flowData || !flowData.title) {
+      return res.status(400).json({
+        success: false,
+        error: '無効なフローデータです'
+      });
+    }
+    
+    // トラブルシューティングディレクトリから検索
+    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const fileName = `${id}.json`;
+    const filePath = path.join(troubleshootingDir, fileName);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        error: '指定されたフローが見つかりません'
+      });
+    }
+    
+    // 保存データを準備
+    const saveData = {
+      ...flowData,
+      id: id,
+      updatedAt: new Date().toISOString(),
+      savedTimestamp: Date.now()
+    };
+    
+    // バックアップを作成
+    const backupPath = `${filePath}.backup.${Date.now()}`;
+    fs.copyFileSync(filePath, backupPath);
+    
+    // ファイルを更新
+    fs.writeFileSync(filePath, JSON.stringify(saveData, null, 2));
+    
+    // 書き込み確認
+    const verifyContent = fs.readFileSync(filePath, 'utf-8');
+    const parsedContent = JSON.parse(verifyContent);
+    
+    log(`フローを更新しました: ${fileName}`);
+    log(`保存されたデータ確認: ID=${parsedContent.id}, ステップ数=${parsedContent.steps?.length || 0}`);
+    
+    return res.status(200).json({
+      success: true,
+      id: id,
+      message: 'フローが正常に更新されました',
+      savedData: {
+        id: parsedContent.id,
+        title: parsedContent.title,
+        stepCount: parsedContent.steps?.length || 0,
+        savedTimestamp: parsedContent.savedTimestamp
+      }
+    });
+  } catch (error) {
+    console.error('フロー更新エラー:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'フローの更新中にエラーが発生しました'
+    });
+  }
+});
+
 // トラブルシューティングデータを更新
 router.put('/update-troubleshooting/:id', async (req: Request, res: Response) => {
   try {

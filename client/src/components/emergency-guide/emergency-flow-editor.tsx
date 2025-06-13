@@ -113,8 +113,8 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
 
       console.log('💾 保存データ:', saveData);
 
-      // APIエンドポイントを統一（トラブルシューティング用）
-      const endpoint = `/api/troubleshooting/${editedFlow.id}`;
+      // APIエンドポイントを修正（emergency-flowルーターを使用）
+      const endpoint = `/api/emergency-flow/${editedFlow.id}`;
       const method = 'PUT';
 
       const response = await fetch(endpoint, {
