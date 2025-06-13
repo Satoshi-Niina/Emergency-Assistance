@@ -366,32 +366,49 @@ const TroubleshootingViewer: React.FC<TroubleshootingViewerProps> = ({ data, onS
         `v=${Math.random()}&` +
         `refresh=true`;
 
-      const response = await fetch(cacheBusterUrl, {
-        method: 'GET',
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-          'If-None-Match': '*',
-          'X-Requested-With': 'XMLHttpRequest',
-          'If-Modified-Since': 'Thu, 01 Jan 1970 00:00:00 GMT',
-          'X-Force-Fresh': 'true'
-        }
-      });
+      console.log('🔄 Fetching flow list with cache buster:', cacheBusterUrl);
+
+        const response = await fetch(cacheBusterUrl, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'X-Force-Refresh': 'true',
+            'X-Session-ID': sessionId,
+            'X-Request-Nonce': nonce.toString(),
+            'X-Block-Old-Data': 'true',
+            'X-Only-Valid-IDS': 'engine_stop_no_start'
+          }
+        });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
       const data = await response.json();
-      console.log('📋 取得したフローデータ:', data);
+      console.log('✅ Flow list response:', data);
 
-      // 古いリストをクリアしてから新しいデータを設定
-      setFlowList([]);
-      setTimeout(() => {
-        setFlowList(Array.isArray(data) ? data : []);
-      }, 100);
+      if (Array.isArray(data)) {
+        // 古いデータを厳格にフィルタリング
+        const filteredData = data.filter(flow => {
+          if (flow.id === 'engine_restart_issue' || flow.id === 'parking_brake_release_issue') {
+            console.log(`🚫 古いデータをブロック: ${flow.id}`);
+            return false;
+          }
+          if (flow.id !== 'engine_stop_no_start') {
+            console.log(`❌ 許可されていないID: ${flow.id}`);
+            return false;
+          }
+          return true;
+        });
+
+        setFlowList(filteredData);
+        console.log(`📋 フローリスト更新完了: ${filteredData.length}件（フィルタ後）`);
+      } else {
+        console.error('❌ フローリストが配列ではありません:', data);
+        setFlowList([]);
+      }
     } catch (error) {
       console.error('❌ フローリスト取得エラー:', error);
       setFlowList([]);

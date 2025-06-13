@@ -153,14 +153,30 @@ const EmergencyGuidePage: React.FC = () => {
       setIsLoadingFlowList(true);
       console.log(`🔄 応急処置データ一覧の取得を開始します (forceRefresh: ${forceRefresh})`);
 
-      // 全てのキャッシュを強制的にクリア
+      // 全てのキャッシュを強制的にクリア（古いデータ完全除去）
       if (typeof window !== 'undefined') {
-        const cacheKeys = ['emergencyFlowList', 'troubleshootingCache', 'flowCache', 'flowListCache'];
+        const cacheKeys = [
+          'emergencyFlowList', 'troubleshootingCache', 'flowCache', 'flowListCache',
+          'engine_restart_issue', 'parking_brake_release_issue', 'emergency-flow-data',
+          'troubleshooting-data', 'flow-list-cache', 'emergency-guide-cache'
+        ];
         cacheKeys.forEach(key => {
           localStorage.removeItem(key);
           sessionStorage.removeItem(key);
         });
-        console.log('🧹 全キャッシュクリア完了');
+        
+        // IndexedDBのクリアも実行
+        if ('caches' in window) {
+          caches.keys().then(names => {
+            names.forEach(name => {
+              if (name.includes('emergency') || name.includes('troubleshooting')) {
+                caches.delete(name);
+              }
+            });
+          });
+        }
+        
+        console.log('🧹 全キャッシュ（古いデータ含む）クリア完了');
       }
 
       const timestamp = Date.now();
@@ -176,7 +192,11 @@ const EmergencyGuidePage: React.FC = () => {
           'X-Requested-With': 'XMLHttpRequest',
           'X-Force-Fresh': 'true',
           'X-Clear-Cache': 'true',
-          'X-Source-Only': 'knowledge-base/troubleshooting'
+          'X-Source-Only': 'knowledge-base/troubleshooting',
+          'X-Exclude-Old-Data': 'true',
+          'X-Block-Engine-Restart': 'true',
+          'X-Block-Parking-Brake': 'true',
+          'X-Only-Engine-Stop-No-Start': 'true'
         }
       });
 
@@ -187,8 +207,14 @@ const EmergencyGuidePage: React.FC = () => {
       const data = await response.json();
       console.log(`✅ 取得したフローデータ: ${data.length}件`, data);
 
-      // 有効なデータのみを許可（engine_stop_no_startのみ）
+      // 古いデータを完全に除去し、engine_stop_no_startのみ許可
       const validData = data.filter((item: any) => {
+        // 明示的に古いIDを除外
+        if (item?.id === 'engine_restart_issue' || item?.id === 'parking_brake_release_issue') {
+          console.log(`🚫 古いデータを強制除外: ${item.id} (ファイル: ${item.fileName})`);
+          return false;
+        }
+        
         const isValid = item && 
                        item.id === 'engine_stop_no_start' && 
                        item.fileName === 'engine_stop_no_start.json';
