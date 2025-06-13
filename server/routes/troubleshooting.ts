@@ -111,7 +111,6 @@ router.get('/:id', async (req, res) => {
     console.log(`📁 ファイル発見: ${filePath}`);
 
     // ファイル統計情報
-    const stats = fs.statSync(filePath);
     console.log(`📊 ファイル情報: size=${stats.size}, modified=${stats.mtime.toISOString()}`);
 
     // ファイル読み込み
