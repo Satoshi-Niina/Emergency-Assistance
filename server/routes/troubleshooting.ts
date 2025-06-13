@@ -22,9 +22,16 @@ router.get('/', (req, res) => {
     console.log('📋 処理対象JSONファイル:', jsonFiles);
 
     const troubleshootingFlows = jsonFiles
+      .filter(file => file === 'engine_stop_no_start.json') // 明示的にこのファイルのみ
       .map(file => {
         try {
           const filePath = path.join(troubleshootingDir, file);
+          
+          if (!fs.existsSync(filePath)) {
+            console.error(`❌ ファイルが存在しません: ${filePath}`);
+            return null;
+          }
+
           const content = fs.readFileSync(filePath, 'utf-8');
           const data = JSON.parse(content);
 
