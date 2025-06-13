@@ -252,6 +252,35 @@ router.post('/save/:id', async (req, res) => {
   }
 });
 
+// フロー削除エンドポイント
+router.delete('/delete/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`🗑️ フロー削除: ID=${id}`);
+    
+    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const filePath = path.join(troubleshootingDir, `${id}.json`);
+    
+    if (!fs.existsSync(filePath)) {
+      console.log(`❌ 削除対象ファイルが存在しません: ${filePath}`);
+      return res.status(404).json({ error: 'ファイルが見つかりません' });
+    }
+    
+    // ファイルを削除
+    fs.unlinkSync(filePath);
+    console.log(`✅ ファイル削除完了: ${filePath}`);
+    
+    res.json({ 
+      success: true, 
+      message: 'ファイルが削除されました',
+      deletedFile: `${id}.json`
+    });
+  } catch (error) {
+    console.error('❌ ファイル削除エラー:', error);
+    res.status(500).json({ error: 'ファイルの削除に失敗しました' });
+  }
+});
+
 // チャット画面からのフロー検索
 router.post('/search', (req, res) => {
   try {

@@ -71,13 +71,13 @@ const EmergencyFlowCreator: React.FC = () => {
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 15);
 
-      const response = await fetch(`/api/emergency-flow/list?_t=${timestamp}&_r=${randomId}`, {
+      // troubleshootingエンドポイントを直接使用
+      const response = await fetch(`/api/troubleshooting?_t=${timestamp}&_r=${randomId}`, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
           'Pragma': 'no-cache',
-          'Expires': '0',
-          'X-Target-Directory': 'knowledge-base/troubleshooting'
+          'Expires': '0'
         }
       });
 
@@ -88,8 +88,16 @@ const EmergencyFlowCreator: React.FC = () => {
       const data = await response.json();
       console.log('✅ 取得したフローデータ (troubleshootingのみ):', data);
 
-      // 配列形式に統一
-      const flowArray = Array.isArray(data) ? data : [];
+      // 配列形式に統一し、必要なプロパティを追加
+      const flowArray = Array.isArray(data) ? data.map(flow => ({
+        id: flow.id,
+        title: flow.title,
+        description: flow.description,
+        fileName: flow.fileName || `${flow.id}.json`,
+        createdAt: flow.createdAt || flow.updatedAt || new Date().toISOString(),
+        trigger: flow.trigger || flow.triggerKeywords || [],
+        slides: flow.steps || flow.slides || []
+      })) : [];
       
       setFlowList(flowArray);
 
@@ -225,15 +233,14 @@ const EmergencyFlowCreator: React.FC = () => {
       setSelectedFilePath(filePath);
       console.log(`📁 編集対象ファイルパス設定: ${filePath}`);
 
-      // 🎯 emergency-flow APIを使用してデータ取得（troubleshootingディレクトリから確実に読み込み）
+      // 🎯 troubleshooting APIを使用してデータ取得（確実にtroubleしootingディレクトリから読み込み）
       const timestamp = Date.now();
-      const response = await fetch(`/api/emergency-flow/${flowId}?t=${timestamp}`, {
+      const response = await fetch(`/api/troubleshooting/${flowId}?t=${timestamp}`, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
-          'Expires': '0',
-          'X-Target-Directory': 'knowledge-base/troubleshooting'
+          'Expires': '0'
         }
       });
 
@@ -278,20 +285,26 @@ const EmergencyFlowCreator: React.FC = () => {
     try {
       console.log(`🗑️ フロー削除開始: ${flowId}`);
 
-      const response = await fetch(`/api/emergency-flow/delete/${flowId}`, {
-        method: 'DELETE',
-        headers: {
-          'Cache-Control': 'no-cache',
-          'X-Target-Directory': 'knowledge-base/troubleshooting'
+      // troubleshootingディレクトリから物理ファイルを削除
+      const targetFlow = flowList.find(flow => flow.id === flowId);
+      if (targetFlow) {
+        const fileName = targetFlow.fileName || `${flowId}.json`;
+        const response = await fetch(`/api/troubleshooting/delete/${flowId}`, {
+          method: 'DELETE',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ fileName })
+        });
+
+        if (!response.ok) {
+          throw new Error('削除に失敗しました');
         }
-      });
 
-      if (!response.ok) {
-        throw new Error('削除に失敗しました');
+        const result = await response.json();
+        console.log(`✅ 削除レスポンス:`, result);
       }
-
-      const result = await response.json();
-      console.log(`✅ 削除レスポンス:`, result);
 
       toast({
         title: "削除完了",

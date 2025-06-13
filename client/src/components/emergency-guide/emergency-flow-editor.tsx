@@ -205,13 +205,17 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
 
       console.log(`💾 ファイルパス指定保存: ${targetFilePath}`, requestData);
 
-      const response = await fetch('/api/emergency-flow/save-flow', {
+      // 保存API呼び出し（knowledge-base/troubleshootingディレクトリに確実に保存）
+      const response = await fetch(`/api/troubleshooting/save/${saveData.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Cache-Control': 'no-cache'
         },
-        body: JSON.stringify(requestData)
+        body: JSON.stringify({
+          ...saveData,
+          savedTimestamp: Date.now()
+        })
       });
 
       if (!response.ok) {
