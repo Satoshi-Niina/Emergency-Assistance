@@ -12,9 +12,6 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// .envファイルの読み込み
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
-
 // 環境変数の確認
 console.log("[INFO] Server initialization starting");
 console.log("[INFO] NODE_ENV:", process.env.NODE_ENV || 'development');
