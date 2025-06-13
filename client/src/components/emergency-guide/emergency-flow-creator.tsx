@@ -61,24 +61,25 @@ const EmergencyFlowCreator: React.FC = () => {
   const [flowToDelete, setFlowToDelete] = useState<FlowFile | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // フロー一覧取得（強制更新対応）
+  // フロー一覧取得（knowledge-base/troubleshootingからのみ）
   const fetchFlowList = async (forceRefresh = false) => {
     try {
       setIsLoadingFlowList(true);
-      console.log(`📋 フロー一覧取得開始 (強制更新: ${forceRefresh})`);
+      console.log(`📋 フロー一覧取得開始 (troubleshootingディレクトリのみ)`);
 
       // キャッシュを防止するためにタイムスタンプパラメータを追加
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 15);
 
-      const response = await fetch(`/api/emergency-flow/list?_t=${timestamp}&_r=${randomId}&_force=${forceRefresh}`, {
+      const response = await fetch(`/api/emergency-flow/list?_t=${timestamp}&_r=${randomId}&source=troubleshooting-only`, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
           'Pragma': 'no-cache',
           'Expires': '0',
-          'X-Force-Refresh': forceRefresh ? 'true' : 'false',
-          'X-Timestamp': timestamp.toString()
+          'X-Source-Only': 'knowledge-base/troubleshooting',
+          'X-Exclude-Other-Paths': 'true',
+          'X-Force-Troubleshooting-Only': 'true'
         }
       });
 
@@ -87,9 +88,15 @@ const EmergencyFlowCreator: React.FC = () => {
       }
 
       const data = await response.json();
-      console.log('✅ 取得したフローデータ:', data);
+      console.log('✅ 取得したフローデータ (troubleshootingのみ):', data);
 
-      const flowArray = Array.isArray(data) ? data : [];
+      // troubleshootingディレクトリからのファイルのみをフィルタリング
+      const flowArray = Array.isArray(data) ? data.filter(flow => 
+        flow.fileName && flow.fileName.includes('.json') && 
+        !flow.fileName.includes('engine_restart_issue') &&
+        !flow.fileName.includes('parking_brake_release_issue')
+      ) : [];
+      
       setFlowList(flowArray);
 
       if (forceRefresh) {
