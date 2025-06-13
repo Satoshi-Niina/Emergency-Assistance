@@ -257,9 +257,11 @@ const EmergencyFlowCreator: React.FC = () => {
         throw new Error(`フローが見つかりません: ${flowId}`);
       }
 
-      const filePath = `knowledge-base/troubleshooting/${targetFlow.fileName}`;
+      // 🎯 ファイルパスを確実に設定（troubleshootingディレクトリ限定）
+      const fileName = targetFlow.fileName.endsWith('.json') ? targetFlow.fileName : `${targetFlow.fileName}.json`;
+      const filePath = `knowledge-base/troubleshooting/${fileName}`;
       setSelectedFilePath(filePath);
-      console.log(`📁 編集対象ファイルパス設定: ${filePath}`);
+      console.log(`📁 編集対象ファイルパス確実設定: ${filePath}`);
 
       // 🚫 ブラウザキャッシュを強制クリア
       if ('caches' in window) {
