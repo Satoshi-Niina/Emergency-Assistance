@@ -1,12 +1,11 @@
-import 'dotenv/config' 
+import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
+import { registerRoutes } from "./routes.js";
 import path from "path";
-import { initializeKnowledgeBase } from "./lib/knowledge-base";
+import { initializeKnowledgeBase } from "./lib/knowledge-base.js";
 import fs from "fs";
 import axios from "axios";
-import { storage } from "./storage";
-import dotenv from 'dotenv';
+import { storage } from "./storage.js";
 import { fileURLToPath } from 'url';
 
 // __dirnameの代替
