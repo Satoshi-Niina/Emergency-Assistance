@@ -23,7 +23,7 @@ const EmergencyGuidePage: React.FC = () => {
   const [lastUploadedGuideId, setLastUploadedGuideId] = useState<string | null>(
     null,
   );
-  
+
   // 検索機能の状態
   const [searchQuery, setSearchQuery] = useState<string>("");
 
@@ -64,11 +64,50 @@ const EmergencyGuidePage: React.FC = () => {
     window.addEventListener("flowDataUpdated", refreshFlowList);
     window.addEventListener("troubleshootingDataUpdated", refreshFlowList);
     window.addEventListener("emergencyFlowSaved", refreshFlowList);
-    
+
     return () => {
       window.removeEventListener("flowDataUpdated", refreshFlowList);
       window.removeEventListener("troubleshootingDataUpdated", refreshFlowList);
       window.removeEventListener("emergencyFlowSaved", refreshFlowList);
+    };
+  }, []);
+
+  // データ更新を監視（削除されたファイルの再表示問題も修正）
+  useEffect(() => {
+    const handleFlowDataUpdated = (event) => {
+      console.log('🔄 フローデータ更新イベントを受信:', event.detail);
+      // 強制的にキャッシュをクリアして再取得
+      fetchFlowList(true);
+    };
+
+    const handleTroubleshootingUpdated = (event) => {
+      console.log('🔄 トラブルシューティングデータ更新イベントを受信:', event.detail);
+      // 強制的にキャッシュをクリアして再取得
+      fetchFlowList(true);
+    };
+
+    // 複数のイベントタイプに対応
+    const eventTypes = [
+      'flowDataUpdated',
+      'troubleshootingDataUpdated', 
+      'emergencyFlowSaved',
+      'fileSystemUpdated'
+    ];
+
+    eventTypes.forEach(eventType => {
+      window.addEventListener(eventType, handleFlowDataUpdated);
+    });
+
+    // 定期的な更新チェック（削除されたファイルの検出用）
+    const intervalId = setInterval(() => {
+      fetchFlowList(true);
+    }, 30000); // 30秒ごと
+
+    return () => {
+      eventTypes.forEach(eventType => {
+        window.removeEventListener(eventType, handleFlowDataUpdated);
+      });
+      clearInterval(intervalId);
     };
   }, []);
 
@@ -78,30 +117,92 @@ const EmergencyGuidePage: React.FC = () => {
     // アップロード成功後に編集タブに切り替え
     setActiveTab("edit");
   };
-  
+
   // 検索キーワードがクリックされたときのハンドラー
   const handleKeywordClick = (keyword: string) => {
     setSearchQuery(keyword);
     // ここで実際に検索を実行する処理を呼び出す
     console.log(`検索キーワード「${keyword}」がクリックされました`);
-    
+
     // 検索を実行
     executeSearch(keyword);
   };
-  
+
   // 検索を実行する関数
   const executeSearch = (keyword: string) => {
     if (!keyword.trim()) return;
-    
+
     console.log(`検索実行: 「${keyword}」`);
-    
+
     // 編集タブに切り替え（検索結果表示のため）
     setActiveTab("edit");
-    
+
     // キーワードをカスタムイベントで通知
     window.dispatchEvent(new CustomEvent('search-emergency-guide', { 
       detail: { keyword }
     }));
+  };
+
+  const [isLoadingFlowList, setIsLoadingFlowList] = useState(false);
+  const [flowList, setFlowList] = useState([]);
+  const { toast } = useToast()
+
+  const fetchFlowList = async (forceRefresh = false) => {
+    try {
+      setIsLoadingFlowList(true);
+      console.log(`🔄 応急処置データ一覧の取得を開始します (forceRefresh: ${forceRefresh})`);
+
+      // 強制的なキャッシュクリア
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2);
+      const cacheParams = forceRefresh ? 
+        `?_t=${timestamp}&_r=${randomId}&force_refresh=true` : 
+        `?_t=${timestamp}`;
+
+      const response = await fetch(`/api/emergency-flow/list${cacheParams}`, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-Force-Refresh': forceRefresh ? 'true' : 'false'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`応急処置データの取得に失敗しました: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log(`✅ 取得したフローデータ: ${data.length}件`, data);
+
+      // 重複除去と状態更新
+      const uniqueData = data.filter((item, index, arr) => 
+        arr.findIndex(t => t.id === item.id) === index
+      );
+
+      setFlowList(uniqueData || []);
+
+      // ローカルストレージにもキャッシュ（削除チェック用）
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('emergencyFlowList', JSON.stringify({
+          data: uniqueData,
+          timestamp: timestamp
+        }));
+      }
+
+    } catch (error) {
+      console.error('❌ 応急処置データ取得エラー:', error);
+      toast({
+        title: "エラー",
+        description: "応急処置データの取得に失敗しました",
+        variant: "destructive",
+      });
+      setFlowList([]);
+    } finally {
+      setIsLoadingFlowList(false);
+    }
   };
 
   return (
@@ -114,7 +215,7 @@ const EmergencyGuidePage: React.FC = () => {
         <h1 className="text-2xl font-bold text-blue-800 mb-2">
           応急処置フロー生成
         </h1>
-        
+
         {/* キーワード検索のみ表示 */}
         <div className="mt-4 space-y-2">
           <KeywordSuggestions onKeywordClick={handleKeywordClick} />
@@ -135,7 +236,7 @@ const EmergencyGuidePage: React.FC = () => {
         <TabsContent value="upload" className="space-y-4 h-full overflow-auto">
           <EmergencyGuideUploader onUploadSuccess={handleUploadSuccess} />
         </TabsContent>
-        
+
         <TabsContent value="edit" className="space-y-4 h-full overflow-auto">
           <EmergencyGuideEdit />
         </TabsContent>
