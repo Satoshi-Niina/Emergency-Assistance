@@ -69,12 +69,19 @@ router.put('/:id', async (req: Request, res: Response) => {
     fs.copyFileSync(filePath, backupPath);
     console.log(`📦 バックアップ作成: ${backupPath}`);
 
-    // ファイルを更新
+    // ファイルを更新（同期書き込みと検証）
     const saveContent = JSON.stringify(saveData, null, 2);
     console.log(`📝 保存するJSONサイズ: ${saveContent.length} characters`);
     
-    fs.writeFileSync(filePath, saveContent);
+    // 同期書き込み
+    fs.writeFileSync(filePath, saveContent, { encoding: 'utf-8', flag: 'w' });
     console.log(`✅ ファイル書き込み完了`);
+
+    // ファイルシステムの同期を強制
+    const fd = fs.openSync(filePath, 'r+');
+    fs.fsyncSync(fd);
+    fs.closeSync(fd);
+    console.log(`🔄 ファイルシステム同期完了`);
 
     // 保存後のファイル状態を確認
     const afterStats = fs.statSync(filePath);
@@ -454,6 +461,8 @@ router.get('/:id', async (req: Request, res: Response) => {
       });
     }
 
+    console.log(`🔍 フロー詳細取得要求: ID=${id}`);
+
     // 強制的なキャッシュ無効化ヘッダーを先に設定
     res.set({
       'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -464,68 +473,79 @@ router.get('/:id', async (req: Request, res: Response) => {
       'X-Content-Type-Options': 'nosniff'
     });
 
-    // まずトラブルシューティングディレクトリから直接IDで検索
+    // トラブルシューティングディレクトリを統一
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
     const directFilePath = path.join(troubleshootingDir, `${id}.json`);
 
+    console.log(`📁 検索パス: ${directFilePath}`);
+    console.log(`📂 ディレクトリ存在: ${fs.existsSync(troubleshootingDir)}`);
+    console.log(`📄 ファイル存在: ${fs.existsSync(directFilePath)}`);
+
     if (fs.existsSync(directFilePath)) {
-      console.log(`🎯 直接ファイル発見: ${directFilePath}`);
+      console.log(`✅ ファイル発見: ${directFilePath}`);
 
       // ファイルシステムのキャッシュをクリア
       delete require.cache[directFilePath];
 
+      // ディレクトリ内の全ファイルを表示
+      const dirFiles = fs.readdirSync(troubleshootingDir);
+      console.log(`📂 ディレクトリ内容:`, dirFiles);
+
       const stats = fs.statSync(directFilePath);
+      console.log(`📊 ファイル統計:`, {
+        size: stats.size,
+        mtime: stats.mtime.toISOString(),
+        atime: stats.atime.toISOString(),
+        ctime: stats.ctime.toISOString()
+      });
       
-      // ファイルを強制的に再読み込み
-      let content;
-      try {
-        // 複数回読み込みを試行（ファイルシステムの遅延対策）
-        content = fs.readFileSync(directFilePath, 'utf-8');
-        
-        // 空ファイルまたは不正なJSONの場合は再試行
-        if (!content.trim() || content.trim().length < 10) {
-          console.log('⚠️ ファイル内容が空またはが疑われます - 再試行...');
-          await new Promise(resolve => setTimeout(resolve, 100));
+      // ファイルを強制的に再読み込み（複数回試行）
+      let content = '';
+      let attempt = 0;
+      const maxAttempts = 3;
+      
+      while (attempt < maxAttempts) {
+        try {
+          attempt++;
+          console.log(`📖 ファイル読み込み試行 ${attempt}/${maxAttempts}`);
+          
           content = fs.readFileSync(directFilePath, 'utf-8');
+          console.log(`📏 読み込んだ内容サイズ: ${content.length} characters`);
+          
+          if (content.trim().length > 10) {
+            break; // 正常に読み込めた
+          } else {
+            console.log(`⚠️ 内容が短すぎます (${content.length}文字) - 再試行...`);
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
+        } catch (readError) {
+          console.error(`❌ 読み込み試行 ${attempt} 失敗:`, readError);
+          if (attempt === maxAttempts) {
+            throw readError;
+          }
+          await new Promise(resolve => setTimeout(resolve, 300));
         }
-      } catch (readError) {
-        console.error('❌ ファイル読み込みエラー:', readError);
-        throw readError;
       }
+
+      // 内容の先頭を確認
+      console.log(`📄 ファイル内容の先頭200文字:`, content.substring(0, 200));
 
       let flowData;
       try {
         flowData = JSON.parse(content);
+        console.log(`✅ JSON解析成功`);
       } catch (parseError) {
         console.error('❌ JSON解析エラー:', parseError);
-        console.error('📄 ファイル内容の先頭100文字:', content.substring(0, 100));
+        console.error('📄 問題のある内容:', content.substring(0, 500));
         throw new Error('ファイルのJSON形式が不正です');
       }
 
-      console.log(`📄 ファイル詳細情報:`);
-      console.log(`  - パス: ${directFilePath}`);
-      console.log(`  - サイズ: ${stats.size} bytes`);
-      console.log(`  - 最終更新: ${stats.mtime.toISOString()}`);
-      console.log(`  - アクセス時刻: ${stats.atime.toISOString()}`);
       console.log(`📊 読み込んだデータ詳細:`);
       console.log(`  - ID: ${flowData.id}`);
       console.log(`  - タイトル: "${flowData.title}"`);
       console.log(`  - ステップ数: ${flowData.steps?.length || 0}`);
       console.log(`  - updatedAt: ${flowData.updatedAt}`);
       console.log(`  - savedTimestamp: ${flowData.savedTimestamp}`);
-
-      // レスポンスヘッダーでキャッシュ無効化を強化
-      res.set({
-        'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
-        'Pragma': 'no-cache',
-        'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
-        'Last-Modified': stats.mtime.toUTCString(),
-        'ETag': `"${stats.mtime.getTime()}-${stats.size}-${Date.now()}"`,
-        'X-Content-Type-Options': 'nosniff',
-        'X-File-Modified': stats.mtime.toISOString(),
-        'X-File-Size': stats.size.toString(),
-        'X-Read-Timestamp': new Date().toISOString()
-      });
 
       return res.status(200).json({
         id: id,
@@ -534,10 +554,11 @@ router.get('/:id', async (req: Request, res: Response) => {
         fileModified: stats.mtime.toISOString(),
         fileSize: stats.size,
         contentLength: content.length,
-        source: 'direct',
+        source: 'troubleshooting',
         debug: {
           filePath: directFilePath,
           readTimestamp: new Date().toISOString(),
+          attempts: attempt,
           fileStats: {
             size: stats.size,
             mtime: stats.mtime.toISOString(),
