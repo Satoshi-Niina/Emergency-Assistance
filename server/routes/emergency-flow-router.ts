@@ -499,16 +499,39 @@ router.get('/get/:id', async (req: Request, res: Response) => {
 router.post('/save/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const saveData = req.body;
+    const { filePath: requestFilePath, ...saveData } = req.body;
 
     console.log(`💾 フローデータ保存開始: ID=${id}`, {
       title: saveData.title,
       stepsCount: saveData.steps?.length || 0,
-      timestamp: saveData.savedTimestamp || 'N/A'
+      timestamp: saveData.savedTimestamp || 'N/A',
+      requestFilePath: requestFilePath
     });
 
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    const filePath = path.join(troubleshootingDir, `${id}.json`);
+    
+    // ファイルパスが指定されている場合はそれを使用、そうでなければデフォルト
+    let filePath;
+    if (requestFilePath) {
+      // 絶対パスか相対パスかを判定
+      filePath = path.isAbsolute(requestFilePath) 
+        ? requestFilePath 
+        : path.join(process.cwd(), requestFilePath);
+      console.log(`🎯 指定されたファイルパスを使用: ${filePath}`);
+    } else {
+      filePath = path.join(troubleshootingDir, `${id}.json`);
+      console.log(`📁 デフォルトファイルパスを使用: ${filePath}`);
+    }
+
+    // ファイルがknowledge-base/troubleshootingディレクトリ内にあることを確認
+    const normalizedFilePath = path.normalize(filePath);
+    const normalizedTroubleshootingDir = path.normalize(troubleshootingDir);
+    
+    if (!normalizedFilePath.startsWith(normalizedTroubleshootingDir)) {
+      console.warn(`⚠️ ファイルパスがtroubleshootingディレクトリ外: ${normalizedFilePath}`);
+      filePath = path.join(troubleshootingDir, `${id}.json`);
+      console.log(`🔄 安全のためデフォルトパスに変更: ${filePath}`);
+    }
 
     if (!fs.existsSync(troubleshootingDir)) {
       fs.mkdirSync(troubleshootingDir, { recursive: true });
@@ -622,6 +645,8 @@ router.post('/save/:id', async (req: Request, res: Response) => {
       savedAt: finalSaveData.updatedAt,
       savedTimestamp: finalSaveData.savedTimestamp,
       saveCount: finalSaveData.saveCount,
+      filePath: filePath,
+      fileName: path.basename(filePath),
       verification: {
         stepsCount: finalSaveData.steps?.length || 0,
         verified: verificationSuccess,
