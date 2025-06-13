@@ -300,20 +300,36 @@ router.get('/list', async (req, res) => {
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const { fileName } = req.query;
 
     if (!id) {
       return res.status(400).json({ success: false, error: 'フローIDが指定されていません' });
     }
 
-    console.log(`🔍 フロー詳細取得: 要求ID=${id}`);
+    console.log(`🔍 フロー詳細取得: 要求ID=${id}, ファイル名=${fileName}`);
 
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    
-    // まず、全てのJSONファイルをチェックして正しいファイルを見つける
     let targetFilePath = null;
     let targetFlowData = null;
 
-    if (fs.existsSync(troubleshootingDir)) {
+    // 🎯 ファイル名が指定されている場合は優先して使用
+    if (fileName && typeof fileName === 'string') {
+      const specifiedPath = path.join(troubleshootingDir, fileName);
+      if (fs.existsSync(specifiedPath)) {
+        try {
+          const content = fs.readFileSync(specifiedPath, 'utf-8');
+          const data = JSON.parse(content);
+          targetFilePath = specifiedPath;
+          targetFlowData = data;
+          console.log(`✅ 指定ファイルで発見: ${fileName} (ID: ${data.id})`);
+        } catch (error) {
+          console.warn(`⚠️ 指定ファイル ${fileName} の読み込みエラー:`, error);
+        }
+      }
+    }
+
+    // ファイル名指定で見つからない場合は全ファイル検索
+    if (!targetFlowData && fs.existsSync(troubleshootingDir)) {
       const files = fs.readdirSync(troubleshootingDir).filter(f => f.endsWith('.json'));
       console.log(`📁 利用可能なファイル: ${files.join(', ')}`);
 
@@ -353,16 +369,18 @@ router.get('/:id', async (req: Request, res: Response) => {
     }
 
     if (!targetFlowData) {
-      console.log(`❌ フローが見つかりません: ID=${id}`);
+      console.log(`❌ フローが見つかりません: ID=${id}, ファイル名=${fileName}`);
       return res.status(404).json({ success: false, error: 'フローが見つかりません' });
     }
 
     console.log(`✅ フロー読み込み完了:`, {
       requestedId: id,
+      requestedFileName: fileName,
       foundId: targetFlowData.id,
       title: targetFlowData.title,
       filePath: targetFilePath,
-      stepsCount: targetFlowData.steps?.length || 0
+      stepsCount: targetFlowData.steps?.length || 0,
+      fileName: path.basename(targetFilePath)
     });
 
     // データの整合性チェック
@@ -380,7 +398,9 @@ router.get('/:id', async (req: Request, res: Response) => {
       'X-Fresh-Load': 'true',
       'X-Timestamp': Date.now().toString(),
       'X-Request-ID': id,
-      'X-Found-ID': targetFlowData.id
+      'X-Found-ID': targetFlowData.id,
+      'X-Target-File': path.basename(targetFilePath),
+      'X-File-Path': targetFilePath
     });
 
     return res.status(200).json(targetFlowData);
