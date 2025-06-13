@@ -58,16 +58,27 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params;
     console.log(`Fetching troubleshooting data for ID: ${id}`);
 
-    const filePath = path.join(process.cwd(), 'knowledge-base', 'troubleshooting', `${id}.json`);
+    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const filePath = path.join(troubleshootingDir, `${id}.json`);
 
     if (!fs.existsSync(filePath)) {
-      console.log(`File not found: ${filePath}`);
-      return res.status(404).json({ error: 'Troubleshooting data not found' });
+      return res.status(404).json({ 
+        error: 'ファイルが見つかりません',
+        id: id,
+        path: filePath
+      });
     }
 
-    // ファイルの内容を毎回新しく読み込み（キャッシュ無効化）
+    // ファイルの統計情報を取得してキャッシュを無効化
+    const stats = fs.statSync(filePath);
     const fileContent = fs.readFileSync(filePath, 'utf8');
     const data = JSON.parse(fileContent);
+
+    // タイムスタンプを追加してキャッシュを無効化
+    data._fileStats = {
+      mtime: stats.mtime,
+      size: stats.size
+    };
 
     // updatedAtフィールドがある場合はログ出力
     if (data.updatedAt) {
