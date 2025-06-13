@@ -73,15 +73,49 @@ router.put('/:id', async (req: Request, res: Response) => {
     const saveContent = JSON.stringify(saveData, null, 2);
     console.log(`📝 保存するJSONサイズ: ${saveContent.length} characters`);
     
-    // 同期書き込み
-    fs.writeFileSync(filePath, saveContent, { encoding: 'utf-8', flag: 'w' });
-    console.log(`✅ ファイル書き込み完了`);
-
-    // ファイルシステムの同期を強制
-    const fd = fs.openSync(filePath, 'r+');
-    fs.fsyncSync(fd);
-    fs.closeSync(fd);
-    console.log(`🔄 ファイルシステム同期完了`);
+    // 複数回の書き込み試行（確実な保存のため）
+    let writeSuccess = false;
+    let attempts = 0;
+    const maxAttempts = 3;
+    
+    while (!writeSuccess && attempts < maxAttempts) {
+      attempts++;
+      try {
+        console.log(`📝 書き込み試行 ${attempts}/${maxAttempts}`);
+        
+        // 同期書き込み
+        fs.writeFileSync(filePath, saveContent, { encoding: 'utf-8', flag: 'w' });
+        
+        // ファイルシステムの同期を強制
+        const fd = fs.openSync(filePath, 'r+');
+        fs.fsyncSync(fd);
+        fs.closeSync(fd);
+        
+        // 書き込み確認
+        const verifyContent = fs.readFileSync(filePath, 'utf-8');
+        const verifyData = JSON.parse(verifyContent);
+        
+        if (verifyData.savedTimestamp === saveData.savedTimestamp) {
+          writeSuccess = true;
+          console.log(`✅ 書き込み成功 (試行${attempts})`);
+        } else {
+          console.log(`⚠️ 書き込み検証失敗 - 再試行...`);
+          // 100ms待機
+          require('child_process').execSync('sleep 0.1');
+        }
+      } catch (error) {
+        console.error(`❌ 書き込み試行${attempts}でエラー:`, error);
+        if (attempts === maxAttempts) {
+          throw error;
+        }
+        // 200ms待機して再試行
+        require('child_process').execSync('sleep 0.2');
+      }
+    }
+    
+    if (!writeSuccess) {
+      throw new Error('ファイルの書き込みに失敗しました');
+    }
 
     // 保存後のファイル状態を確認
     const afterStats = fs.statSync(filePath);

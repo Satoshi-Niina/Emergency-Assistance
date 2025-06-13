@@ -48,7 +48,7 @@ const EmergencyFlowCreator: React.FC = () => {
   const [flowList, setFlowList] = useState<FlowFile[]>([]);
   const [isLoadingFlowList, setIsLoadingFlowList] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const [isUploading, setIsUploading] = useState(isUploading);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState('');
@@ -60,122 +60,73 @@ const EmergencyFlowCreator: React.FC = () => {
   const [flowToDelete, setFlowToDelete] = useState<FlowFile | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // フロー一覧取得（削除されたファイルの検出機能付き）
-  const fetchFlowList = useCallback(async (forceRefresh = false) => {
+  // フロー一覧取得（強制更新対応）
+  const fetchFlowList = async (forceRefresh = false) => {
     try {
       setIsLoadingFlowList(true);
-      console.log(`📋 フロー一覧取得開始 (forceRefresh: ${forceRefresh})`);
+      console.log(`📋 フロー一覧取得開始 (強制更新: ${forceRefresh})`);
 
-      // 強力なキャッシュバスティング
+      // キャッシュを防止するためにタイムスタンプパラメータを追加
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 15);
-      const sessionId = Math.floor(Math.random() * 1000000);
 
-      const cacheParams = `?_t=${timestamp}&_r=${randomId}&_s=${sessionId}&force=${forceRefresh ? '1' : '0'}`;
-
-      const response = await fetch(`/api/emergency-flow/list${cacheParams}`, {
+      const response = await fetch(`/api/emergency-flow/list?_t=${timestamp}&_r=${randomId}&_force=${forceRefresh}`, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
           'Pragma': 'no-cache',
-          'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
-          'X-Requested-With': 'XMLHttpRequest',
+          'Expires': '0',
           'X-Force-Refresh': forceRefresh ? 'true' : 'false',
           'X-Timestamp': timestamp.toString()
         }
       });
 
       if (!response.ok) {
-        throw new Error(`フロー一覧の取得に失敗: ${response.status} ${response.statusText}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log(`📊 サーバーから取得したデータ:`, {
-        count: data.length,
-        items: data.map(item => ({ id: item.id, title: item.title, fileName: item.fileName }))
-      });
+      console.log('✅ 取得したフローデータ:', data);
 
-      // データの整合性チェック
-      const validData = Array.isArray(data) ? data : [];
+      const flowArray = Array.isArray(data) ? data : [];
+      setFlowList(flowArray);
 
-      // 重複除去
-      const uniqueData = validData.filter((item, index, arr) => 
-        arr.findIndex(t => t.id === item.id) === index
-      );
-
-      // 既存のリストと比較して変更を検出
-      const currentIds = new Set(uniqueData.map(item => item.id));
-      const previousIds = new Set(flowList.map(item => item.id));
-
-      const removedItems = flowList.filter(item => !currentIds.has(item.id));
-      const addedItems = uniqueData.filter(item => !previousIds.has(item.id));
-
-      if (removedItems.length > 0) {
-        console.log(`🗑️ 削除されたファイル:`, removedItems.map(item => item.fileName));
-        removedItems.forEach(item => {
-          toast({
-            title: "ファイル削除を検出",
-            description: `"${item.title}" が削除されました`,
-            variant: "destructive"
-          });
+      if (forceRefresh) {
+        toast({
+          title: "データ更新完了",
+          description: `最新のフロー一覧を取得しました (${flowArray.length}件)`,
         });
       }
-
-      if (addedItems.length > 0) {
-        console.log(`➕ 追加されたファイル:`, addedItems.map(item => item.fileName));
-      }
-
-      // 確実に状態を更新
-      setFlowList([...uniqueData]);
-
-      console.log(`✅ フロー一覧を更新: ${uniqueData.length}件`);
 
     } catch (error) {
       console.error('❌ フロー一覧取得エラー:', error);
       toast({
         title: "エラー",
-        description: `フロー一覧の取得に失敗しました: ${error.message}`,
+        description: "フロー一覧の取得に失敗しました",
         variant: "destructive"
       });
-      // エラー時は空の配列を設定
       setFlowList([]);
     } finally {
       setIsLoadingFlowList(false);
     }
-  }, [flowList, toast]);
+  };
 
-  // 初期化時とイベント監視
+  // 初期データ読み込み
   useEffect(() => {
-    fetchFlowList(true);
+    fetchFlowList();
+  }, []);
 
-    // データ更新イベントのリスナー
-    const handleDataUpdate = () => {
-      console.log('🔄 データ更新イベントを受信 - フロー一覧を更新');
+  // 強制更新イベントリスナー
+  useEffect(() => {
+    const handleForceRefresh = (event: any) => {
+      console.log('🔄 強制フロー一覧更新イベント受信');
       fetchFlowList(true);
     };
 
-    const eventTypes = [
-      'flowDataUpdated',
-      'troubleshootingDataUpdated',
-      'emergencyFlowSaved',
-      'fileSystemUpdated',
-      'forceRefreshFlowList'
-    ];
-
-    eventTypes.forEach(eventType => {
-      window.addEventListener(eventType, handleDataUpdate);
-    });
-
-    // 定期的なチェック（削除ファイル検出用）
-    const intervalId = setInterval(() => {
-      fetchFlowList(true);
-    }, 30000); // 30秒ごと
+    window.addEventListener('forceRefreshFlowList', handleForceRefresh);
 
     return () => {
-      eventTypes.forEach(eventType => {
-        window.removeEventListener(eventType, handleDataUpdate);
-      });
-      clearInterval(intervalId);
+      window.removeEventListener('forceRefreshFlowList', handleForceRefresh);
     };
   }, []);
 
