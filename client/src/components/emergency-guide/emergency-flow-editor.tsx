@@ -724,12 +724,13 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
               {selectedNode ? (
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="node-label">
+                    <Label htmlFor="node-label" className="block text-sm font-medium mb-2">
                       {selectedNode.type === 'decision' ? 'スライドタイトル（判断）' : 
                        selectedNode.type === 'step' ? 'スライドタイトル（ステップ）' : 'ラベル'}
                     </Label>
                     <Input
                       id="node-label"
+                      className="w-full"
                       value={selectedNode.data.label || ''}
                       onChange={(e) => updateNodeData('label', e.target.value)}
                       placeholder={
@@ -738,7 +739,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
                       }
                     />
                     <div className="text-xs text-gray-500 mt-1">
-                      このタイトルが応急処置ガイドのスライドタイトルとして表示されます
+                      このタイトルが応急処置ガイドのスライドタイトルとして表示されます（リアルタイム反映）
                     </div>
                   </div>
 
