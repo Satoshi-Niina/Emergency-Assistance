@@ -294,62 +294,7 @@ router.post('/save', async (req: Request, res: Response) => {
   }
 });
 
-// フロー更新エンドポイント
-router.put('/:id', async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const flowData = req.body;
-    
-    if (!flowData || !flowData.title) {
-      return res.status(400).json({
-        success: false,
-        error: '無効なフローデータです'
-      });
-    }
-    
-    // トラブルシューティングディレクトリから検索
-    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    const fileName = `${id}.json`;
-    const filePath = path.join(troubleshootingDir, fileName);
-    
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({
-        success: false,
-        error: '指定されたフローが見つかりません'
-      });
-    }
-    
-    // 保存データを準備
-    const saveData = {
-      ...flowData,
-      id: id,
-      updatedAt: new Date().toISOString(),
-      savedTimestamp: Date.now()
-    };
-    
-    // バックアップを作成
-    const backupPath = `${filePath}.backup.${Date.now()}`;
-    fs.copyFileSync(filePath, backupPath);
-    
-    // ファイルを更新
-    fs.writeFileSync(filePath, JSON.stringify(saveData, null, 2));
-    
-    log(`フローを更新しました: ${fileName}`);
-    
-    return res.status(200).json({
-      success: true,
-      id: id,
-      message: 'フローが正常に更新されました',
-      filePath: filePath
-    });
-  } catch (error) {
-    console.error('フロー更新エラー:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'フローの更新中にエラーが発生しました'
-    });
-  }
-});
+
 
 // フロー一覧の取得（エラーハンドリング改善）
 router.get('/list', async (req: Request, res: Response) => {
@@ -455,11 +400,43 @@ router.get('/:id', async (req: Request, res: Response) => {
         error: 'フローIDが指定されていません'
       });
     }
+
+    // 強制的なキャッシュ無効化ヘッダーを先に設定
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'Last-Modified': new Date().toISOString(),
+      'ETag': `"${Date.now()}-${Math.random()}"`,
+      'X-Content-Type-Options': 'nosniff'
+    });
+    
+    // まずトラブルシューティングディレクトリから直接IDで検索
+    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const directFilePath = path.join(troubleshootingDir, `${id}.json`);
+    
+    if (fs.existsSync(directFilePath)) {
+      console.log(`🎯 直接ファイル発見: ${directFilePath}`);
+      
+      const stats = fs.statSync(directFilePath);
+      const content = fs.readFileSync(directFilePath, 'utf-8');
+      const flowData = JSON.parse(content);
+      
+      console.log(`📄 ファイル最終更新: ${stats.mtime.toISOString()}`);
+      console.log(`📊 読み込んだデータ: ID=${flowData.id}, ステップ数=${flowData.steps?.length || 0}`);
+      
+      return res.status(200).json({
+        id: id,
+        data: flowData,
+        timestamp: Date.now(),
+        fileModified: stats.mtime.toISOString(),
+        source: 'direct'
+      });
+    }
     
     // トラブルシューティングのIDか通常フローのIDかを判断
     if (id.startsWith('ts_')) {
       // トラブルシューティングファイルの場合
-      const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
       const filename = id.replace('ts_', '') + '.json';
       const filePath = path.join(troubleshootingDir, filename);
       
@@ -473,19 +450,11 @@ router.get('/:id', async (req: Request, res: Response) => {
       const content = fs.readFileSync(filePath, 'utf-8');
       const flowData = JSON.parse(content);
       
-      // キャッシュを無効化するヘッダーを設定
-      res.set({
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
-        'Last-Modified': new Date().toUTCString(),
-        'ETag': `"${Date.now()}-${Math.random()}"`
-      });
-
       return res.status(200).json({
         id: id,
         data: flowData,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        source: 'ts_prefix'
       });
     } else if (id === 'example_flow') {
       // サンプルフローの場合

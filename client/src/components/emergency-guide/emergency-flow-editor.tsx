@@ -61,7 +61,15 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
 
   // flowDataが変更されたら編集用データを更新
   useEffect(() => {
+    console.log('🔄 flowData変更検知:', flowData);
+    
     if (flowData) {
+      console.log('📊 flowDataをsetEditedFlowに設定:', {
+        id: flowData.id,
+        title: flowData.title,
+        stepsCount: flowData.steps?.length || 0,
+        updatedAt: flowData.updatedAt
+      });
       setEditedFlow({ ...flowData });
     } else {
       // 新規作成の場合
@@ -85,9 +93,29 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         }],
         updatedAt: new Date().toISOString()
       };
+      console.log('🆕 新規フロー作成:', newFlow);
       setEditedFlow(newFlow);
     }
   }, [flowData]);
+
+  // データ更新イベントリスナーを追加
+  useEffect(() => {
+    const handleDataRefresh = (event: any) => {
+      const { data, flowId } = event.detail;
+      console.log('🔄 flowDataRefreshedイベント受信:', { flowId, dataId: data?.id });
+      
+      if (data && editedFlow && data.id === editedFlow.id) {
+        console.log('✅ 編集中フローのデータを更新');
+        setEditedFlow({ ...data });
+      }
+    };
+
+    window.addEventListener('flowDataRefreshed', handleDataRefresh);
+    
+    return () => {
+      window.removeEventListener('flowDataRefreshed', handleDataRefresh);
+    };
+  }, [editedFlow]);
 
   // 保存処理の改善
   const handleSave = useCallback(async () => {
@@ -167,41 +195,71 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         }));
       });
 
-      // 保存後にサーバーから最新データを再取得
-      setTimeout(async () => {
-        try {
-          const refreshResponse = await fetch(`/api/emergency-flow/${editedFlow.id}?ts=${Date.now()}`, {
-            headers: {
-              'Cache-Control': 'no-cache',
-              'Pragma': 'no-cache'
+      // 保存後の強制データ再読み込み（複数回試行）
+      const forceRefreshData = async () => {
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            console.log(`🔄 データ再取得試行 ${attempt}/3`);
+            
+            const timestamp = Date.now();
+            const randomParam = Math.random().toString(36).substring(2);
+            const refreshResponse = await fetch(`/api/emergency-flow/${editedFlow.id}?ts=${timestamp}&r=${randomParam}&attempt=${attempt}`, {
+              method: 'GET',
+              headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+              }
+            });
+            
+            if (refreshResponse.ok) {
+              const refreshData = await refreshResponse.json();
+              if (refreshData.data && refreshData.data.steps) {
+                console.log(`✅ 再取得成功 (試行${attempt}):`, {
+                  id: refreshData.data.id,
+                  stepsCount: refreshData.data.steps.length,
+                  fileModified: refreshData.fileModified,
+                  source: refreshData.source
+                });
+                
+                // 確実にコンポーネントのステートを更新
+                setEditedFlow(refreshData.data);
+                
+                // 再取得したデータでイベント発行
+                window.dispatchEvent(new CustomEvent('flowDataRefreshed', {
+                  detail: { 
+                    flowId: editedFlow.id, 
+                    data: refreshData.data,
+                    timestamp: Date.now(),
+                    attempt: attempt
+                  }
+                }));
+                
+                break; // 成功したら終了
+              }
             }
-          });
-          
-          if (refreshResponse.ok) {
-            const refreshData = await refreshResponse.json();
-            if (refreshData.data) {
-              console.log('🔄 保存後のデータ再取得成功:', refreshData.data);
-              setEditedFlow(refreshData.data);
-              
-              // 再取得したデータでさらにイベント発行
-              window.dispatchEvent(new CustomEvent('flowDataRefreshed', {
-                detail: { 
-                  flowId: editedFlow.id, 
-                  data: refreshData.data,
-                  timestamp: Date.now()
-                }
-              }));
+            
+            // 失敗時は少し待ってから次の試行
+            if (attempt < 3) {
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
+          } catch (error) {
+            console.error(`再取得エラー (試行${attempt}):`, error);
+            if (attempt === 3) {
+              console.error('❌ 全ての再取得試行が失敗しました');
             }
           }
-        } catch (error) {
-          console.error('保存後のデータ再取得エラー:', error);
         }
         
         // フロー一覧の強制更新
         window.dispatchEvent(new CustomEvent('forceRefreshFlowList', {
           detail: { forceRefresh: true }
         }));
-      }, 1000);
+      };
+      
+      // 即座に実行 + 1秒後にも実行
+      forceRefreshData();
+      setTimeout(forceRefreshData, 1000);
 
     } catch (error) {
       console.error('❌ 保存エラー:', error);
