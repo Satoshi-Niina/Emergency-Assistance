@@ -2,11 +2,9 @@ import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes.js";
 import path from "path";
-import { initializeKnowledgeBase } from "./lib/knowledge-base.js";
-import fs from "fs";
-import axios from "axios";
-import { storage } from "./storage.js";
 import { fileURLToPath } from 'url';
+import fs from "fs";
+import { storage } from "./storage.js";
 
 // __dirnameの代替
 const __filename = fileURLToPath(import.meta.url);
@@ -41,10 +39,16 @@ app.use(express.urlencoded({ extended: false }));
       }
     }
 
-    // 知識ベースを非同期で初期化（エラーが発生してもサーバー起動を停止しない）
-    initializeKnowledgeBase().catch(err => {
-      console.warn('[WARN] Knowledge base initialization failed:', err.message);
-    });
+    // 知識ベースを遅延初期化（サーバー起動後に実行）
+    setTimeout(async () => {
+      try {
+        const { initializeKnowledgeBase } = await import("./lib/knowledge-base.js");
+        await initializeKnowledgeBase();
+        console.log('[INFO] Knowledge base initialized');
+      } catch (err) {
+        console.warn('[WARN] Knowledge base initialization failed:', err instanceof Error ? err.message : 'Unknown error');
+      }
+    }, 2000);
 
     const server = await registerRoutes(app);
 
