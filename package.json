@@ -7,9 +7,9 @@
     "build": "npm run build:client && npm run build:server",
     "build:client": "cd client && npm run build",
     "build:server": "tsc -p server",
-    "dev": "node --loader tsx/esm server/index.ts",
+    "dev": "tsx server/index.ts",
     "dev:all": "npm run build:client && npm run dev",
-    "start": "node --loader tsx/esm server/index.ts"
+    "start": "tsx server/index.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

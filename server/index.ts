@@ -15,10 +15,10 @@ const __dirname = path.dirname(__filename);
 // .envファイルの読み込み
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-// 環境変数の確認（本番環境では非表示）
-if (process.env.NODE_ENV === 'development') {
-  console.log("[INFO] Development mode - Environment check completed");
-}
+// 環境変数の確認
+console.log("[INFO] Server initialization starting");
+console.log("[INFO] NODE_ENV:", process.env.NODE_ENV || 'development');
+console.log("[INFO] DATABASE_URL exists:", !!process.env.DATABASE_URL);
 
 const app = express();
 app.use(express.json());
