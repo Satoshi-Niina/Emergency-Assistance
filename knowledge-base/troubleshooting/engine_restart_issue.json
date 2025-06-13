@@ -42,7 +42,7 @@
     {
       "id": "decision1",
       "title": "新しい条件分岐",
-      "description": "エンジン化停止した時の状況は？",
+      "description": "エンジンが停止した時の状況は？",
       "imageUrl": "",
       "type": "decision",
       "options": [
