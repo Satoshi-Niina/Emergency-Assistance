@@ -153,12 +153,19 @@ const EmergencyGuidePage: React.FC = () => {
       setIsLoadingFlowList(true);
       console.log(`🔄 応急処置データ一覧の取得を開始します (forceRefresh: ${forceRefresh})`);
 
-      // 強制的なキャッシュクリア
+      // 全てのキャッシュを強制的にクリア
+      if (typeof window !== 'undefined') {
+        const cacheKeys = ['emergencyFlowList', 'troubleshootingCache', 'flowCache', 'flowListCache'];
+        cacheKeys.forEach(key => {
+          localStorage.removeItem(key);
+          sessionStorage.removeItem(key);
+        });
+        console.log('🧹 全キャッシュクリア完了');
+      }
+
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2);
-      const cacheParams = forceRefresh ? 
-        `?_t=${timestamp}&_r=${randomId}&force_refresh=true` : 
-        `?_t=${timestamp}`;
+      const cacheParams = `?_t=${timestamp}&_r=${randomId}&no_cache=true`;
 
       const response = await fetch(`/api/emergency-flow/list${cacheParams}`, {
         method: 'GET',
@@ -167,7 +174,8 @@ const EmergencyGuidePage: React.FC = () => {
           'Pragma': 'no-cache',
           'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
           'X-Requested-With': 'XMLHttpRequest',
-          'X-Force-Refresh': forceRefresh ? 'true' : 'false'
+          'X-Force-Fresh': 'true',
+          'X-Clear-Cache': 'true'
         }
       });
 
@@ -178,23 +186,27 @@ const EmergencyGuidePage: React.FC = () => {
       const data = await response.json();
       console.log(`✅ 取得したフローデータ: ${data.length}件`, data);
 
-      // 重複除去と状態更新
-      const uniqueData = data.filter((item, index, arr) => 
-        arr.findIndex(t => t.id === item.id) === index
-      );
+      // データの検証とフィルタリング
+      const validData = data.filter((item: any) => {
+        // 削除済みファイルを除外
+        const isValid = item && item.id && item.title && 
+                       !['engine_restart_issue', 'parking_brake_release_issue'].includes(item.id);
+        if (!isValid) {
+          console.log(`❌ 無効なデータを除外: ${item?.id || 'unknown'}`);
+        }
+        return isValid;
+      });
 
-      setFlowList(uniqueData || []);
+      console.log(`🎯 有効データ: ${validData.length}件`);
 
-      // 古いキャッシュを完全にクリア
+      setFlowList(validData);
+
+      // 新しいデータのみキャッシュ
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('emergencyFlowList');
-        localStorage.removeItem('troubleshootingCache'); 
-        localStorage.removeItem('flowCache');
-        
-        // 新しいデータのみをキャッシュ
         localStorage.setItem('emergencyFlowList', JSON.stringify({
-          data: uniqueData,
-          timestamp: timestamp
+          data: validData,
+          timestamp: timestamp,
+          version: '2.0'
         }));
       }
 
