@@ -6,7 +6,6 @@ import fsPromises from 'fs/promises';
 
 const router = express.Router();
 
-const TROUBLESHOOTING_DIR = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
 
 
 // トラブルシューティングデータを更新
@@ -219,61 +218,77 @@ router.get('/list', async (req, res) => {
 
     console.log('📁 見つかったファイル:', files);
 
-    // const flowList = [];
-    // for (const file of files) {
-    //   try {
-    //     const filePath = path.join(TROUBLESHOOTING_DIR, file);
-    //     const content = fs.readFileSync(filePath, 'utf-8');
-    //     const data = JSON.parse(content);
+    // 🚫 古いデータを厳格にブロック - engine_stop_no_start.json のみ許可
+    const allowedFiles = files.filter(file => {
+      if (file === 'engine_stop_no_start.json') {
+        return true;
+      }
 
-    //     if (data && data.id && data.title) {
-    //       console.log(`✅ ファイル ${file} を読み込み:`, {
-    //         id: data.id,
-    //         title: data.title,
-    //         stepsCount: data.steps?.length || 0
-    //       });
+      // 古いファイルを明示的に拒否
+      if (file.includes('engine_restart_issue') || 
+          file.includes('parking_brake_release_issue')) {
+        console.log(`🚫 古いファイルをブロック: ${file}`);
+        return false;
+      }
 
-    //       flowList.push({
-    //         id: data.id,
-    //         title: data.title,
-    //         description: data.description || '',
-    //         fileName: file,
-    //         createdAt: data.createdAt || data.updatedAt || new Date().toISOString(),
-    //         trigger: data.triggerKeywords || [],
-    //         slides: []
-    //       });
-    //     } else {
-    //       console.log(`❌ 無効なデータ: ${file}`);
-    //     }
-    //   } catch (error) {
-    //     console.error(`❌ ファイル ${file} の読み込みエラー:`, error);
-    //   }
-    // }
-
-    // res.set({
-    //   'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
-    //   'Pragma': 'no-cache',
-    //   'Expires': '0',
-    //   'X-Fresh-Load': 'true',
-    //   'X-Timestamp': Date.now().toString()
-    // });
-
-    // return res.status(200).json(flowList);
-
-    const files = fs.readdirSync("knowledge-base/troubleshooting");
-    const jsonFiles = files.filter(file => file.endsWith(".json"));
-    const flowList = jsonFiles.map(file => {
-      const content = fs.readFileSync(`knowledge-base/troubleshooting/${file}`, "utf-8");
-      const data = JSON.parse(content);
-      return {
-        id: data.id,
-        title: data.title,
-        description: data.description || "",
-        fileName: file,
-        createdAt: data.updatedAt || new Date().toISOString(),
-      };
+      console.log(`❌ 許可されていないファイル: ${file}`);
+      return false;
     });
-    res.json(flowList);
+
+    console.log('📋 処理対象JSONファイル:', allowedFiles);
+
+    const flowList = [];
+
+    for (const file of allowedFiles) {
+      try {
+        const filePath = path.join(TROUBLESHOOTING_DIR, file);
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const data = JSON.parse(content);
+
+        // IDレベルでも再度チェック
+        if (data?.id === 'engine_restart_issue' || data?.id === 'parking_brake_release_issue') {
+          console.log(`🚫 古いIDを検出してブロック: ${data.id} (ファイル: ${file})`);
+          continue;
+        }
+
+        // engine_stop_no_startのみ許可
+        if (data && data.id === 'engine_stop_no_start' && data.title) {
+          console.log(`✅ ファイル ${file} を読み込み:`, {
+            id: data.id,
+            title: data.title,
+            stepsCount: data.steps?.length || 0
+          });
+
+          flowList.push({
+            id: data.id,
+            title: data.title,
+            description: data.description || '',
+            fileName: file,
+            createdAt: data.createdAt || data.updatedAt || new Date().toISOString(),
+            trigger: data.triggerKeywords || [],
+            slides: []
+          });
+        } else {
+          console.log(`❌ 許可されていないデータ: ${data?.id || 'unknown'} (ファイル: ${file})`);
+        }
+      } catch (error) {
+        console.error(`❌ ファイル ${file} の読み込みエラー:`, error);
+      }
+    }
+
+    console.log('📤 返すデータ:', flowList.length + '件（engine_stop_no_startのみ）');
+
+    // 強力なキャッシュ無効化ヘッダー
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'X-Fresh-Load': 'true',
+      'X-Timestamp': Date.now().toString(),
+      'X-Only-Valid-Data': 'engine_stop_no_start'
+    });
+
+    return res.status(200).json(flowList);
   } catch (error) {
     console.error('❌ フロー一覧取得エラー:', error);
     return res.status(500).json({
