@@ -195,20 +195,18 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         savedTimestamp: Date.now()
       };
 
-      console.log('💾 保存データ:', saveData);
-      console.log('📁 保存先ファイルパス:', selectedFilePath);
-
-      // 🎯 POST /api/save-flow でファイルパスを指定して保存
-      const endpoint = `/api/emergency-flow/save-flow`;
-      const method = 'POST';
+      // 🎯 常にファイルパス指定で保存
+      const targetFilePath = selectedFilePath || `knowledge-base/troubleshooting/${editedFlow.id}.json`;
 
       const requestData = {
-        ...saveData,
-        filePath: selectedFilePath // 🎯 ファイルパスを追加
+        filePath: targetFilePath,
+        ...saveData
       };
 
-      const response = await fetch(endpoint, {
-        method,
+      console.log(`💾 ファイルパス指定保存: ${targetFilePath}`, requestData);
+
+      const response = await fetch('/api/emergency-flow/save-flow', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Cache-Control': 'no-cache'
@@ -285,7 +283,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
     } finally {
       setIsSaving(false);
     }
-  }, [editedFlow, onSave, toast, flowData]);
+  }, [editedFlow, onSave, toast, selectedFilePath]);
 
   // タイトル更新
   const updateTitle = (newTitle: string) => {

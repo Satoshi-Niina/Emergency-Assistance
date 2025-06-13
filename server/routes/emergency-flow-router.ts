@@ -6,47 +6,7 @@ import fsPromises from 'fs/promises';
 
 const router = express.Router();
 
-// トラブルシューティングデータを更新（新しいエンドポイント）
-router.put('/:id', async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const flowData = req.body;
 
-    console.log(`💾 フロー保存: ID=${id}, タイトル="${flowData?.title}"`);
-
-    if (!flowData || !flowData.title) {
-      return res.status(400).json({ success: false, error: '無効なフローデータです' });
-    }
-
-    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    const filePath = path.join(troubleshootingDir, `${id}.json`);
-
-    // 保存データを準備
-    const saveData = {
-      ...flowData,
-      id: id,
-      updatedAt: new Date().toISOString()
-    };
-
-    // ファイルに書き込み
-    fs.writeFileSync(filePath, JSON.stringify(saveData, null, 2));
-
-    console.log(`✅ 保存完了: ${filePath}`);
-
-    return res.status(200).json({
-      success: true,
-      id: id,
-      message: 'フローが正常に更新されました',
-      data: saveData
-    });
-  } catch (error) {
-    console.error('❌ フロー更新エラー:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'フローの更新中にエラーが発生しました'
-    });
-  }
-});
 
 // トラブルシューティングデータを更新
 router.put('/update-troubleshooting/:id', async (req: Request, res: Response) => {
@@ -122,7 +82,6 @@ router.post('/save-flow', async (req: Request, res: Response) => {
 
     console.log(`💾 ファイルパス指定保存: ${filePath}`);
     console.log(`📊 フローデータ: ID=${flowData.id}, タイトル="${flowData.title}"`);
-    console.log(`📋 リクエストボディ全体:`, JSON.stringify(req.body, null, 2));
 
     if (!flowData || !flowData.id || !flowData.title) {
       return res.status(400).json({
@@ -131,25 +90,32 @@ router.post('/save-flow', async (req: Request, res: Response) => {
       });
     }
 
-    let targetFilePath;
+    if (!filePath) {
+      return res.status(400).json({
+        success: false,
+        error: 'ファイルパスが指定されていません'
+      });
+    }
 
-    if (filePath) {
-      // 🎯 指定されたパスに保存（相対パスを絶対パスに変換）
-      targetFilePath = path.isAbsolute(filePath) 
-        ? filePath 
-        : path.join(process.cwd(), filePath);
-      
-      console.log(`🎯 指定されたパスに保存: ${targetFilePath}`);
-      console.log(`🔍 ファイル存在確認: ${fs.existsSync(targetFilePath)}`);
-    } else {
-      // フォールバック: troubleshootingディレクトリに保存
-      const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-      if (!fs.existsSync(troubleshootingDir)) {
-        fs.mkdirSync(troubleshootingDir, { recursive: true });
+    // 🎯 指定されたパスに確実に保存
+    const targetFilePath = path.isAbsolute(filePath) 
+      ? filePath 
+      : path.join(process.cwd(), filePath);
+    
+    console.log(`🎯 保存先: ${targetFilePath}`);
+    console.log(`🔍 既存ファイル: ${fs.existsSync(targetFilePath)}`);
+
+    // 元のファイル情報を取得（編集前のステップ数を記録）
+    let originalStepsCount = 0;
+    if (fs.existsSync(targetFilePath)) {
+      try {
+        const originalContent = fs.readFileSync(targetFilePath, 'utf-8');
+        const originalData = JSON.parse(originalContent);
+        originalStepsCount = originalData.steps?.length || 0;
+        console.log(`📊 編集前のステップ数: ${originalStepsCount}`);
+      } catch (error) {
+        console.warn(`⚠️ 元ファイル読み込みエラー:`, error);
       }
-      targetFilePath = path.join(troubleshootingDir, `${flowData.id}.json`);
-      
-      console.log(`📁 デフォルトパスに保存: ${targetFilePath}`);
     }
 
     // ディレクトリが存在することを確認
@@ -169,17 +135,27 @@ router.post('/save-flow', async (req: Request, res: Response) => {
     // 🎯 指定されたパスに直接上書き保存
     fs.writeFileSync(targetFilePath, JSON.stringify(saveData, null, 2));
 
-    // 💡 保存後の検証
+    // 💡 保存後の確実な検証
     if (fs.existsSync(targetFilePath)) {
       const savedContent = fs.readFileSync(targetFilePath, 'utf-8');
       const savedData = JSON.parse(savedContent);
+      const newStepsCount = savedData.steps?.length || 0;
+      
       console.log(`✅ 保存完了: ${targetFilePath}`);
       console.log(`🔍 保存内容検証:`, {
         savedId: savedData.id,
         savedTitle: savedData.title,
-        savedStepsCount: savedData.steps?.length || 0,
-        savedUpdatedAt: savedData.updatedAt
+        originalStepsCount: originalStepsCount,
+        newStepsCount: newStepsCount,
+        stepsChanged: originalStepsCount !== newStepsCount,
+        savedUpdatedAt: savedData.updatedAt,
+        fileSize: savedContent.length
       });
+
+      // ファイル一覧の強制更新イベントを発生
+      console.log(`🔄 ファイル更新完了 - 一覧更新イベント発生予定`);
+    } else {
+      throw new Error('ファイルの保存に失敗しました');
     }
 
     return res.status(200).json({
