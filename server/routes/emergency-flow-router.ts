@@ -115,10 +115,13 @@ router.put('/update-troubleshooting/:id', async (req: Request, res: Response) =>
   }
 });
 
-// 応急処置フローの保存
+// 応急処置フローの保存（指定されたパスに上書き保存）
 router.post('/save-flow', async (req: Request, res: Response) => {
   try {
-    const flowData = req.body;
+    const { filePath, ...flowData } = req.body;
+
+    console.log(`💾 ファイルパス指定保存: ${filePath}`);
+    console.log(`📊 フローデータ: ID=${flowData.id}, タイトル="${flowData.title}"`);
 
     if (!flowData || !flowData.id || !flowData.title) {
       return res.status(400).json({
@@ -127,52 +130,54 @@ router.post('/save-flow', async (req: Request, res: Response) => {
       });
     }
 
-    // ディレクトリ存在確認
-    const jsonDir = path.join(process.cwd(), 'knowledge-base', 'json');
-    if (!fs.existsSync(jsonDir)) {
-      fs.mkdirSync(jsonDir, { recursive: true });
+    let targetFilePath;
+
+    if (filePath) {
+      // 🎯 指定されたパスに保存（相対パスを絶対パスに変換）
+      targetFilePath = path.isAbsolute(filePath) 
+        ? filePath 
+        : path.join(process.cwd(), filePath);
+      
+      console.log(`🎯 指定されたパスに保存: ${targetFilePath}`);
+    } else {
+      // フォールバック: troubleshootingディレクトリに保存
+      const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+      if (!fs.existsSync(troubleshootingDir)) {
+        fs.mkdirSync(troubleshootingDir, { recursive: true });
+      }
+      targetFilePath = path.join(troubleshootingDir, `${flowData.id}.json`);
+      
+      console.log(`📁 デフォルトパスに保存: ${targetFilePath}`);
     }
 
-    // フローIDとタイムスタンプでファイル名を生成
-    const timestamp = Date.now();
-    const fileName = `flow_${timestamp}.json`;
-    const filePath = path.join(jsonDir, fileName);
+    // ディレクトリが存在することを確認
+    const targetDir = path.dirname(targetFilePath);
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+      console.log(`📁 ディレクトリ作成: ${targetDir}`);
+    }
 
-    // メタデータファイル名
-    const metadataFileName = `flow_${timestamp}_metadata.json`;
-    const metadataFilePath = path.join(jsonDir, metadataFileName);
-
-    // フローデータをJSON形式で保存
-    fs.writeFileSync(filePath, JSON.stringify(flowData, null, 2));
-
-    // メタデータを作成
-    const metadata = {
-      id: `flow_${timestamp}`,
-      filePath: filePath,
-      fileName: fileName,
-      title: flowData.title,
-      description: flowData.description || '',
-      createdAt: new Date().toISOString(),
-      type: 'flow',
-      nodeCount: flowData.nodes ? flowData.nodes.length : 0,
-      edgeCount: flowData.edges ? flowData.edges.length : 0
+    // 保存データを準備
+    const saveData = {
+      ...flowData,
+      updatedAt: new Date().toISOString(),
+      savedTimestamp: Date.now()
     };
 
-    // メタデータをJSON形式で保存
-    fs.writeFileSync(metadataFilePath, JSON.stringify(metadata, null, 2));
+    // 🎯 指定されたパスに直接上書き保存
+    fs.writeFileSync(targetFilePath, JSON.stringify(saveData, null, 2));
 
-    // インデックスファイルを更新
-    updateIndexFile(metadata);
-
-    log(`フローデータを保存しました: ${fileName}`);
+    console.log(`✅ 保存完了: ${targetFilePath}`);
 
     return res.status(200).json({
       success: true,
-      id: metadata.id,
-      message: 'フローデータが保存されました'
+      id: flowData.id,
+      message: 'フローデータが正常に保存されました',
+      filePath: targetFilePath,
+      data: saveData
     });
   } catch (error) {
-    console.error('フロー保存エラー:', error);
+    console.error('❌ フロー保存エラー:', error);
     return res.status(500).json({
       success: false,
       error: 'フローデータの保存中にエラーが発生しました'

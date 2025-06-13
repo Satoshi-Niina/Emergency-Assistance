@@ -54,6 +54,7 @@ const EmergencyFlowCreator: React.FC = () => {
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [selectedFlowForEdit, setSelectedFlowForEdit] = useState<string | null>(null);
   const [currentFlowData, setCurrentFlowData] = useState<FlowData | null>(null);
+  const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
 
   // 削除関連
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -208,12 +209,19 @@ const EmergencyFlowCreator: React.FC = () => {
     }
   };
 
-  // フロー編集用データ取得
+  // フロー編集用のデータ読み込み
   const loadFlowForEdit = async (flowId: string) => {
     try {
-      console.log(`🔍 フロー編集データ取得開始: ID=${flowId}`);
-      
-      // 確実にキャッシュを回避
+      console.log(`🔄 フロー編集データ読み込み: ${flowId}`);
+
+      // 🎯 フロー一覧からファイルパスを取得
+      const targetFlow = flowList.find(flow => flow.id === flowId);
+      if (targetFlow) {
+        const filePath = `knowledge-base/troubleshooting/${targetFlow.fileName}`;
+        setSelectedFilePath(filePath);
+        console.log(`📁 編集対象ファイルパス設定: ${filePath}`);
+      }
+
       const timestamp = Date.now();
       const response = await fetch(`/api/emergency-flow/${flowId}?t=${timestamp}&fresh=true`, {
         method: 'GET',
@@ -229,7 +237,7 @@ const EmergencyFlowCreator: React.FC = () => {
       }
 
       const data = await response.json();
-      
+
       console.log(`✅ 取得したフローデータ:`, {
         id: data.id,
         title: data.title,
@@ -241,7 +249,7 @@ const EmergencyFlowCreator: React.FC = () => {
       if (data.id !== flowId) {
         console.warn(`⚠️ ID不一致: 要求=${flowId}, 取得=${data.id}`);
       }
-      
+
       setCurrentFlowData(data);
       setSelectedFlowForEdit(flowId);
 
@@ -486,6 +494,7 @@ const EmergencyFlowCreator: React.FC = () => {
                   <EmergencyFlowEditor
                     flowData={currentFlowData}
                     onSave={handleFlowSave}
+                    selectedFilePath={selectedFilePath}
                   />
                 ) : (
                   <div className="text-center py-8">

@@ -46,9 +46,10 @@ interface FlowData {
 interface EmergencyFlowEditorProps {
   flowData: FlowData | null;
   onSave?: (data: FlowData) => void;
+  selectedFilePath?: string | null; // 🎯 編集対象のファイルパス
 }
 
-const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onSave }) => {
+const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onSave, selectedFilePath }) => {
   const { toast } = useToast();
   const [editedFlow, setEditedFlow] = useState<FlowData | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -195,10 +196,16 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
       };
 
       console.log('💾 保存データ:', saveData);
+      console.log('📁 保存先ファイルパス:', selectedFilePath);
 
-      // APIエンドポイントを修正（emergency-flowルーターを使用）
-      const endpoint = `/api/emergency-flow/${editedFlow.id}`;
-      const method = 'PUT';
+      // 🎯 POST /api/save-flow でファイルパスを指定して保存
+      const endpoint = `/api/emergency-flow/save-flow`;
+      const method = 'POST';
+
+      const requestData = {
+        ...saveData,
+        filePath: selectedFilePath // 🎯 ファイルパスを追加
+      };
 
       const response = await fetch(endpoint, {
         method,
@@ -206,7 +213,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
           'Content-Type': 'application/json',
           'Cache-Control': 'no-cache'
         },
-        body: JSON.stringify(saveData)
+        body: JSON.stringify(requestData)
       });
 
       if (!response.ok) {
