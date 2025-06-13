@@ -27,7 +27,7 @@ router.get('/', (req, res) => {
           const filePath = path.join(troubleshootingDir, file);
           const content = fs.readFileSync(filePath, 'utf-8');
           const data = JSON.parse(content);
-          
+
           console.log(`✅ ファイル ${file} を読み込み:`, {
             id: data.id,
             title: data.title,
@@ -53,14 +53,14 @@ router.get('/', (req, res) => {
       .filter(data => data !== null);
 
     console.log(`📤 返すデータ: ${troubleshootingFlows.length}件`);
-    
+
     // 強力なキャッシュ無効化
     res.set({
       'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
       'Pragma': 'no-cache',
       'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT'
     });
-    
+
     res.json(troubleshootingFlows);
   } catch (error) {
     console.error('❌ トラブルシューティングフロー取得エラー:', error);
@@ -76,37 +76,58 @@ router.get('/:id', async (req, res) => {
 
     console.log(`🔄 [${timestamp}] トラブルシューティングデータ取得: ID=${id}`);
 
-    // knowledge-base/troubleshootingディレクトリのみから読み込み
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
     const filePath = path.join(troubleshootingDir, `${id}.json`);
 
-    let data = null;
-    
     console.log(`📁 ファイルパス確認: ${filePath}`);
     console.log(`📁 ファイル存在確認: ${fs.existsSync(filePath)}`);
 
-    if (fs.existsSync(filePath)) {
-      console.log(`📁 ファイル発見: ${filePath}`);
-
-      // ファイル統計情報
-      const stats = fs.statSync(filePath);
-      console.log(`📊 ファイル情報: size=${stats.size}, modified=${stats.mtime.toISOString()}`);
-
-      // ファイル読み込み
-      const content = fs.readFileSync(filePath, 'utf8');
-      data = JSON.parse(content);
-
-      // データの完全性チェック
-      if (!data.steps) data.steps = [];
-      if (!data.triggerKeywords) data.triggerKeywords = [];
-
-      console.log(`✅ データ読み込み成功:`, {
-        id: data.id,
-        title: data.title,
-        stepsCount: data.steps.length,
-        filePath: filePath
+    // ファイル存在確認
+    if (!fs.existsSync(filePath)) {
+      console.log(`❌ ファイルが見つかりません: ${filePath}`);
+      // troubleshootingディレクトリの全ファイルを確認
+      console.log(`📁 troubleshootingディレクトリの内容:`, fs.readdirSync(troubleshootingDir));
+      return res.status(404).json({ 
+        error: 'ファイルが見つかりません',
+        id,
+        filePath,
+        availableFiles: fs.readdirSync(troubleshootingDir)
       });
     }
+
+    // ファイルサイズチェック
+    const stats = fs.statSync(filePath);
+    if (stats.size === 0) {
+      console.log(`❌ ファイルが空です: ${filePath}`);
+      return res.status(404).json({ 
+        error: 'ファイルが空です',
+        id,
+        filePath
+      });
+    }
+
+    let data = null;
+
+    console.log(`📁 ファイル発見: ${filePath}`);
+
+    // ファイル統計情報
+    const stats = fs.statSync(filePath);
+    console.log(`📊 ファイル情報: size=${stats.size}, modified=${stats.mtime.toISOString()}`);
+
+    // ファイル読み込み
+    const content = fs.readFileSync(filePath, 'utf8');
+    data = JSON.parse(content);
+
+    // データの完全性チェック
+    if (!data.steps) data.steps = [];
+    if (!data.triggerKeywords) data.triggerKeywords = [];
+
+    console.log(`✅ データ読み込み成功:`, {
+      id: data.id,
+      title: data.title,
+      stepsCount: data.steps.length,
+      filePath: filePath
+    });
 
     if (!data) {
       console.log(`❌ ファイルが見つかりません: ${id}`);
