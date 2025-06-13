@@ -66,19 +66,28 @@ router.post('/save', async (req, res) => {
         console.log('🔄 既存データを読み込み:', {
           id: existingData.id,
           hasSteps: !!existingData.steps,
-          stepsCount: existingData.steps?.length || 0
+          stepsCount: existingData.steps?.length || 0,
+          hasNodes: !!existingData.nodes,
+          nodeCount: existingData.nodes?.length || 0
         });
       } catch (error) {
         console.warn('⚠️ 既存ファイルの読み込みでエラー:', error);
       }
     }
 
-    // フローデータにメタデータを追加（既存データをベースにマージ）
+    // フローデータを正しい形式で保存（既存の基本情報を保持しつつ、フロー情報を完全に更新）
     const saveData = {
-      ...existingData, // 既存データを保持
-      ...flowData,     // 新しいデータで上書き
+      id: flowData.id || existingData.id,
+      title: flowData.title,
+      description: flowData.description || existingData.description || '',
+      triggerKeywords: flowData.triggerKeywords || existingData.triggerKeywords || [],
+      steps: flowData.steps || [],
+      nodes: flowData.nodes || [], // ReactFlowエディタ用のノード情報を保持
+      edges: flowData.edges || [], // ReactFlowエディタ用のエッジ情報を保持
       updatedAt: new Date().toISOString(),
-      savedAt: new Date().toISOString()
+      savedAt: new Date().toISOString(),
+      // 既存の他のメタデータも保持
+      ...(existingData.createdAt && { createdAt: existingData.createdAt })
     };
 
     // JSONファイルとして保存
