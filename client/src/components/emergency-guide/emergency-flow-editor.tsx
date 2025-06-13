@@ -34,7 +34,7 @@ const StartNode = memo(({ data }: NodeProps) => {
   return (
     <div className="px-4 py-2 shadow-md rounded-full bg-green-500 text-white min-w-[100px] text-center">
       <div className="font-bold">{data.label || '開始'}</div>
-      
+
       {/* 出力ハンドルのみ */}
       <Handle
         type="source"
@@ -53,7 +53,7 @@ const StepNode = memo(({ data }: NodeProps) => {
       {data.message && (
         <div className="mt-2 text-sm text-gray-700">{data.message}</div>
       )}
-      
+
       {/* 入力と出力のハンドル */}
       <Handle
         type="target"
@@ -87,7 +87,7 @@ const DecisionNode = memo(({ data }: NodeProps) => {
         boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
         zIndex: 1
       }}></div>
-      
+
       {/* コンテンツコンテナ */}
       <div className="relative z-10" style={{
         width: '140px',
@@ -108,7 +108,7 @@ const DecisionNode = memo(({ data }: NodeProps) => {
               {data.message}
             </div>
           )}
-          
+
           {/* 条件表示（簡略版） */}
           {(data.yesCondition || data.noCondition || data.otherCondition) && (
             <div className="mt-1 text-xs" style={{ maxHeight: '40px', overflow: 'hidden' }}>
@@ -119,7 +119,7 @@ const DecisionNode = memo(({ data }: NodeProps) => {
           )}
         </div>
       </div>
-      
+
       {/* 頂点に配置したハンドル（回転なし） */}
       {/* 上頂点（入力用） */}
       <div className="absolute w-4 h-4" style={{ top: '-84px', left: '68px' }}>
@@ -137,7 +137,7 @@ const DecisionNode = memo(({ data }: NodeProps) => {
           isConnectable={true}
         />
       </div>
-      
+
       {/* 右頂点（出力1） */}
       <div className="absolute w-4 h-4" style={{ top: '68px', left: '140px' }}>
         <Handle
@@ -155,7 +155,7 @@ const DecisionNode = memo(({ data }: NodeProps) => {
           isConnectable={true}
         />
       </div>
-      
+
       {/* 下頂点（出力2） */}
       <div className="absolute w-4 h-4" style={{ top: '140px', left: '68px' }}>
         <Handle
@@ -173,7 +173,7 @@ const DecisionNode = memo(({ data }: NodeProps) => {
           isConnectable={true}
         />
       </div>
-      
+
       {/* 左頂点（出力3） */}
       <div className="absolute w-4 h-4" style={{ top: '68px', left: '-4px' }}>
         <Handle
@@ -199,7 +199,7 @@ const EndNode = memo(({ data }: NodeProps) => {
   return (
     <div className="px-4 py-2 shadow-md rounded-full bg-red-500 text-white min-w-[100px] text-center">
       <div className="font-bold">{data.label || '終了'}</div>
-      
+
       {/* 入力ハンドルのみ */}
       <Handle
         type="target"
@@ -240,10 +240,10 @@ interface EmergencyFlowEditorProps {
 
 const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCancel, initialData }) => {
   const { toast } = useToast();
-  
+
   // デバッグ: 初期データをコンソールに表示
   console.log("EmergencyFlowEditor - 受け取った初期データ:", initialData);
-  
+
   console.log("EmergencyFlowEditor - 受け取ったinitialData構造:", {
     type: typeof initialData,
     isNull: initialData === null,
@@ -253,26 +253,26 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
     nodeCount: Array.isArray(initialData?.nodes) ? initialData.nodes.length : 0,
     edgeCount: Array.isArray(initialData?.edges) ? initialData.edges.length : 0,
   });
-  
+
   // 初期値としてデフォルトを使用
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
-  
+
   // フロータイトルと説明の初期値
   // 新規作成の場合はデフォルト値、読み込みの場合は既存データを使用
   const defaultTitle = initialData?.title === '' ? '新規応急処置フロー' : (initialData?.title || '新規応急処置フロー');
   const defaultDescription = initialData?.description || '';
   const defaultFileName = initialData?.fileName || '';
-  
+
   const [flowTitle, setFlowTitle] = useState<string>(defaultTitle);
   const [flowDescription, setFlowDescription] = useState<string>(defaultDescription);
   const [fileName, setFileName] = useState<string>(defaultFileName);
-  
+
   // initialDataの変更を監視して状態を更新
   useEffect(() => {
     console.log("★★★ initialData変更を検出:", initialData);
-    
+
     if (initialData) {
       // メタデータの更新
       if (initialData.title) {
@@ -287,24 +287,24 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
       if (initialData.id) {
         setFlowId(initialData.id);
       }
-      
+
       // フローデータの更新
       if (Array.isArray(initialData.nodes) && initialData.nodes.length > 0) {
         console.log("★★★ ノードデータを更新:", initialData.nodes);
         setNodes(initialData.nodes);
       }
-      
+
       if (Array.isArray(initialData.edges) && initialData.edges.length > 0) {
         console.log("★★★ エッジデータを更新:", initialData.edges);
         setEdges(initialData.edges);
       }
     }
   }, [initialData, setNodes, setEdges]);
-  
+
   // ノードドラッグ参照
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
-  
+
   // フローID
   const [flowId, setFlowId] = useState<string>(() => {
     if (initialData?.id) {
@@ -328,7 +328,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
   const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     setSelectedNode(node);
   }, []);
-  
+
   // 背景クリック時の処理
   const onPaneClick = useCallback(() => {
     setSelectedNode(null);
@@ -337,7 +337,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
   // 新しいノードの追加
   const addNode = useCallback((type: string) => {
     if (!reactFlowInstance) return;
-    
+
     const newNode: Node = {
       id: `${type}_${Date.now()}`,
       type,
@@ -351,15 +351,15 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
                type === 'decision' ? '判断' : 'ステップ'
       },
     };
-    
+
     setNodes((nds) => nds.concat(newNode));
     setSelectedNode(newNode);
   }, [reactFlowInstance, setNodes]);
-  
+
   // ノードプロパティの更新
   const updateNodeData = useCallback((key: string, value: any) => {
     if (!selectedNode) return;
-    
+
     setNodes((nds) =>
       nds.map((node) => {
         if (node.id === selectedNode.id) {
@@ -374,7 +374,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
         return node;
       })
     );
-    
+
     // 選択中のノード情報も更新
     setSelectedNode({
       ...selectedNode,
@@ -384,11 +384,11 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
       },
     });
   }, [selectedNode, setNodes]);
-  
+
   // 選択中のノードを削除する関数
   const deleteSelectedNode = useCallback(() => {
     if (!selectedNode) return;
-    
+
     // スタートノードは削除できないようにする
     if (selectedNode.id === 'start') {
       toast({
@@ -398,19 +398,19 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
       });
       return;
     }
-    
+
     setNodes((nds) => nds.filter((node) => node.id !== selectedNode.id));
-    
+
     // 関連するエッジも削除
     setEdges((eds) => 
       eds.filter(
         (edge) => edge.source !== selectedNode.id && edge.target !== selectedNode.id
       )
     );
-    
+
     setSelectedNode(null);
   }, [selectedNode, setNodes, setEdges, toast]);
-  
+
   // フローデータの保存処理
   const handleSave = useCallback(() => {
     // バリデーション
@@ -422,7 +422,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
       });
       return;
     }
-    
+
     // スタートノードがあるか確認
     const startNode = nodes.find(node => node.id === 'start');
     if (!startNode) {
@@ -433,7 +433,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
       });
       return;
     }
-    
+
     // 終了ノードがあるか確認
     const endNode = nodes.find(node => node.type === 'end');
     if (!endNode) {
@@ -444,7 +444,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
       });
       return;
     }
-    
+
     // フローデータをトラブルシューティング形式に変換
     const flowData = {
       id: flowId,
@@ -463,16 +463,16 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
       createdAt: new Date().toISOString(),
       lastModified: new Date().toISOString(),
     };
-    
+
     // 親コンポーネントに渡す
     onSave(flowData);
-    
+
     toast({
       title: "保存しました",
       description: "フローデータを保存しました",
     });
   }, [flowTitle, flowDescription, nodes, edges, flowId, onSave, toast]);
-  
+
   return (
     <div className="flex flex-col h-full">
       <Card className="flex-1">
@@ -493,23 +493,23 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
                   return labels;
                 }, {}),
               };
-              
+
               // Blobを作成してダウンロード
               const jsonStr = JSON.stringify(flowData, null, 2);
               const blob = new Blob([jsonStr], { type: 'application/json' });
               const url = URL.createObjectURL(blob);
-              
+
               // ダウンロードリンクを作成して自動クリック
               const a = document.createElement('a');
               a.href = url;
               a.download = `${flowTitle.replace(/\s+/g, '_')}_${Date.now()}.json`;
               document.body.appendChild(a);
               a.click();
-              
+
               // クリーンアップ
               URL.revokeObjectURL(url);
               document.body.removeChild(a);
-              
+
               toast({
                 title: "JSONファイルをダウンロードしました",
                 description: "フローデータをJSONファイルとして保存しました",
@@ -556,7 +556,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
               </div>
             </ReactFlowProvider>
           </div>
-          
+
           {/* 右側のプロパティパネル */}
           <Card className="w-full lg:w-96 mt-4 lg:mt-0 lg:ml-4 overflow-auto">
             <CardHeader>
@@ -584,7 +584,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
                       placeholder="ノードラベル"
                     />
                   </div>
-                  
+
                   {selectedNode.type !== 'start' && selectedNode.type !== 'end' && (
                     <div>
                       <Label htmlFor="node-message">
@@ -611,7 +611,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
                               <div>• <span className="font-medium text-orange-600">左側（オレンジ）</span>：「その他」の場合の次のノード</div>
                             </div>
                           </div>
-                          
+
                           {/* 条件分岐の選択肢設定 */}
                           <div className="space-y-2">
                             <Label className="text-sm font-medium">分岐選択肢の設定</Label>
@@ -654,7 +654,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
                               const yesConnection = connectedEdges.find(edge => edge.sourceHandle === 'yes');
                               const noConnection = connectedEdges.find(edge => edge.sourceHandle === 'no');
                               const otherConnection = connectedEdges.find(edge => edge.sourceHandle === 'other');
-                              
+
                               return (
                                 <div className="space-y-1">
                                   <div className="flex items-center gap-1">
@@ -677,7 +677,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
                       )}
                     </div>
                   )}
-                  
+
                   {/* プレビュー表示 - リアルタイム更新 */}
                   {selectedNode.type !== 'start' && selectedNode.type !== 'end' && selectedNode.data.message && (
                     <div className="mt-4 border rounded-lg p-3 bg-slate-50">
@@ -687,7 +687,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
                       </div>
                     </div>
                   )}
-                  
+
                   {selectedNode.id !== 'start' && (
                     <Button 
                       variant="destructive" 
@@ -719,14 +719,14 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ onSave, onCan
                       rows={4}
                     />
                   </div>
-                  
+
                   <div className="my-4">
                     <h3 className="text-sm font-medium mb-2">フロー情報</h3>
                     <div className="bg-gray-100 p-2 rounded text-sm">
                       <p><span className="font-medium">ID:</span> {flowId}</p>
                     </div>
                   </div>
-                  
+
                   {/* フロー情報プレビュー - 常に表示 */}
                   <div className="mt-4 border rounded-lg p-3 bg-slate-50">
                     <div className="text-xs text-blue-600 mb-2">プレビュー（リアルタイム更新）</div>
