@@ -146,7 +146,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
       if (editedFlow && (flowId === editedFlow.id || !flowId)) {
         isRefreshing = true; // 再取得開始
         console.log('💾 保存後のデータを再取得します...');
-        
+
         try {
           // タイムアウト付きでリクエスト実行
           const controller = new AbortController();
@@ -888,7 +888,8 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                   )}
 
                   <div className="space-y-3">
-                    {step.options.length > 0 ? step.options.map((option, optionIndex) => (
+                    {step.options.length > 0 ? (
+                      step.options.map((option, optionIndex) => (
                       <div key={optionIndex} className={`border-2 rounded-lg p-4 space-y-3 ${
                         step.type === 'decision' 
                           ? option.conditionType === 'yes' 
@@ -944,7 +945,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                               step.type === 'decision' 
                                 ? option.conditionType === 'yes' 
                                   ? "はい（例: エンジンが完全に停止している）"
-                                  : option.conditionType === 'no'
+                                                                 : option.conditionType === 'no'
                                   ? "いいえ（例: まだ不安定に動作している）"
                                   : "その他の状況（例: 判断できない）"
                                 : "選択肢のテキスト"
@@ -1030,10 +1031,8 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                           )}
                         </div>
                       </div>
-                    ))}
-                  </div>
-
-                  )) : (
+                    ))
+                    ) : (
                       /* 条件分岐で選択肢がない場合のヒント */
                       step.type === 'decision' && (
                         <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
@@ -1054,12 +1053,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                         </div>
                       )
                     )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                  </div>
 
       {/* 削除確認ダイアログ */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
