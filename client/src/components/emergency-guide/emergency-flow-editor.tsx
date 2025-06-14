@@ -1249,3 +1249,5 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
     </div>
   );
 };
+
+export default EmergencyFlowEditor;
