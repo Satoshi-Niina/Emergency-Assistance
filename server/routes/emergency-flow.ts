@@ -111,13 +111,16 @@ router.post('/save', async (req, res) => {
 
         if (step.options && step.options.length > 0) {
           // 新しいスキーマ：options配列が存在する場合
-          unifiedOptions = step.options.map((option, index) => ({
-            text: option.text || `条件項目 ${index + 1}`,
-            nextStepId: option.nextStepId || '',
-            condition: option.condition || option.text || '',
-            isTerminal: Boolean(option.isTerminal),
-            conditionType: option.conditionType || 'other'
-          }));
+          unifiedOptions = step.options.map((option, index) => {
+            console.log(`🔧 条件項目 ${index + 1} 詳細処理:`, option);
+            return {
+              text: option.text || `条件項目 ${index + 1}`,
+              nextStepId: option.nextStepId || '',
+              condition: option.condition || option.text || '',
+              isTerminal: Boolean(option.isTerminal),
+              conditionType: option.conditionType || 'other'
+            };
+          });
         } else {
           // 旧スキーマからの変換：個別条件フィールドをoptions配列に変換
           if (step.yesCondition) {
