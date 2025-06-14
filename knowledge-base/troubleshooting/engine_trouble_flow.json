@@ -71,31 +71,19 @@
     },
     {
       "id": "step4",
-      "title": "エンジン状態の確認",
-      "description": "エンジンは完全に停止していますか、それとも不安定な動作をしていますか？",
+      "type": "condition",
+      "title": "エンジン状態分岐",
       "message": "エンジンは完全に停止していますか、それとも不安定な動作をしていますか？",
-      "imageUrl": "",
-      "type": "decision",
-      "options": [
+      "conditions": [
         {
-          "text": "完全に停止している",
-          "nextStepId": "step5",
-          "condition": "エンジンが完全に停止している",
-          "isTerminal": false,
-          "conditionType": "yes"
+          "label": "完全に停止している",
+          "nextId": "step5"
         },
         {
-          "text": "不安定に動作している",
-          "nextStepId": "step6",
-          "condition": "エンジンが不安定に動作している",
-          "isTerminal": false,
-          "conditionType": "no"
+          "label": "不安定に動作している",
+          "nextId": "step6"
         }
-      ],
-      "yesCondition": "エンジンが完全に停止している",
-      "yesNextStepId": "step5",
-      "noCondition": "エンジンが不安定に動作している",
-      "noNextStepId": "step6"
+      ]
     },
     {
       "id": "step5",
@@ -157,31 +145,19 @@
     },
     {
       "id": "step8",
+      "type": "condition",
       "title": "エンジン再始動確認",
-      "description": "対処後、エンジンは正常に始動しましたか？",
       "message": "対処後、エンジンは正常に始動しましたか？",
-      "imageUrl": "",
-      "type": "decision",
-      "options": [
+      "conditions": [
         {
-          "text": "正常に始動した",
-          "nextStepId": "step9",
-          "condition": "エンジンが正常に始動した場合",
-          "isTerminal": false,
-          "conditionType": "yes"
+          "label": "正常に始動した",
+          "nextId": "step9"
         },
         {
-          "text": "始動しない",
-          "nextStepId": "step10",
-          "condition": "エンジンが始動しない場合",
-          "isTerminal": false,
-          "conditionType": "no"
+          "label": "始動しない",
+          "nextId": "step10"
         }
-      ],
-      "yesCondition": "エンジンが正常に始動した場合",
-      "yesNextStepId": "step9",
-      "noCondition": "エンジンが始動しない場合",
-      "noNextStepId": "step10"
+      ]
     },
     {
       "id": "step9",
