@@ -47,8 +47,13 @@ router.put('/update-troubleshooting/:id', async (req: Request, res: Response) =>
     troubleshootingData.updatedAt = new Date().toISOString();
     troubleshootingData.savedTimestamp = Date.now();
 
-    // ファイルに書き込み
-    fs.writeFileSync(filePath, JSON.stringify(troubleshootingData, null, 2));
+    // 既存ファイルを完全に削除してから新しいデータで置き換え
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    // 新しいデータで完全に上書き保存
+    fs.writeFileSync(filePath, JSON.stringify(troubleshootingData, null, 2), 'utf8');
 
     // 書き込み確認
     const verifyContent = fs.readFileSync(filePath, 'utf-8');

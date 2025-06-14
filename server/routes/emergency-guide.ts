@@ -796,51 +796,51 @@ router.post('/update/:id', (req, res) => {
       const content = fs.readFileSync(filePath, 'utf8');
       const originalData = JSON.parse(content);
 
-      // トラブルシューティング形式を保持したまま、必要なフィールドを更新
-      let updatedTsData = originalData;
+      // 元データを完全に置き換える新しいデータを構築
+      const updatedTsData = {
+        id: originalData.id || tsId,
+        title: data.metadata?.タイトル || originalData.title || tsId,
+        description: data.metadata?.説明 || originalData.description || '',
+        triggerKeywords: originalData.triggerKeywords || [],
+        steps: [],
+        updatedAt: new Date().toISOString()
+      };
 
-      // メタデータを更新
-      if (data.metadata) {
-        updatedTsData.title = data.metadata.タイトル || originalData.title;
-        updatedTsData.description = data.metadata.説明 || originalData.description;
-      }
-
-      // スライドからステップに変換（必要な場合）
-      if (data.slides && Array.isArray(data.slides) && data.slides.length > 0) {
-        // ステップがない場合は作成
-        if (!updatedTsData.steps || !Array.isArray(updatedTsData.steps)) {
-          updatedTsData.steps = [];
-        }
-
-        // スライドデータをステップに変換
-        data.slides.forEach((slide: any, index: number) => {
-          if (index < updatedTsData.steps.length) {
-            // 既存のステップを更新
-            updatedTsData.steps[index].title = slide.タイトル || updatedTsData.steps[index].title;
-            updatedTsData.steps[index].message = Array.isArray(slide.本文) ? slide.本文[0] : slide.本文 || updatedTsData.steps[index].message;
-            updatedTsData.steps[index].description = Array.isArray(slide.本文) ? slide.本文[0] : slide.本文 || updatedTsData.steps[index].description;
-          } else {
-            // 新しいステップを追加
-            updatedTsData.steps.push({
-              id: `step${index + 1}`,
-              title: slide.タイトル || `ステップ ${index + 1}`,
-              message: Array.isArray(slide.本文) ? slide.本文[0] : slide.本文 || '',
-              description: Array.isArray(slide.本文) ? slide.本文[0] : slide.本文 || '',
-              options: []
-            });
-          }
-        });
+      // スライドからステップに完全変換
+      if (data.slides && Array.isArray(data.slides)) {
+        updatedTsData.steps = data.slides.map((slide: any, index: number) => ({
+          id: slide.id || `step${index + 1}`,
+          title: slide.タイトル || `ステップ ${index + 1}`,
+          description: Array.isArray(slide.本文) ? slide.本文.join('\n') : (slide.本文 || ''),
+          message: Array.isArray(slide.本文) ? slide.本文.join('\n') : (slide.本文 || ''),
+          imageUrl: slide.imageUrl || '',
+          type: slide.type || 'step',
+          options: slide.options || []
+        }));
+      } else {
+        // 既存のステップ構造を保持
+        updatedTsData.steps = originalData.steps || [];
       }
 
       // 更新日時を設定
       updatedTsData.updatedAt = new Date().toISOString();
 
-      // ファイルに書き込み
-      fs.writeFileSync(filePath, JSON.stringify(updatedTsData, null, 2));
+      // 既存ファイルを削除してから完全に新しいデータで置き換え
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      
+      // 新しいデータで完全上書き
+      fs.writeFileSync(filePath, JSON.stringify(updatedTsData, null, 2), 'utf8');
 
       // 通常のJSONとしても保存（バックアップ）
       if (data.metadata) {
         data.metadata.修正日 = new Date().toISOString();
+      }
+
+      // メモリキャッシュがあれば削除
+      if (typeof global !== 'undefined' && global.fileCache) {
+        delete global.fileCache[filePath];
       }
 
       // トラブルシューティングファイルの対応するメタデータファイルを取得
