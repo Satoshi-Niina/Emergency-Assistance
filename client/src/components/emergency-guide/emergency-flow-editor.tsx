@@ -84,7 +84,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
 
               // 旧スキーマから新スキーマへの変換も含む
               let processedOptions = [];
-              
+
               if (existingOptions.length > 0) {
                 // 新スキーマの場合
                 processedOptions = existingOptions.map((option, index) => {
@@ -335,12 +335,12 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                 isTerminal: Boolean(option.isTerminal),
                 conditionType: option.conditionType || 'other'
               };
-              
+
               console.log(`🔧 条件項目 ${index + 1} 処理:`, {
                 original: option,
                 processed: processedOption
               });
-              
+
               return processedOption;
             });
 

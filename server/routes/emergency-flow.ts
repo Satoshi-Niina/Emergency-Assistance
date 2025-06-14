@@ -18,6 +18,24 @@ const generateFlowSchema = z.object({
 import fs from 'fs';
 import path from 'path';
 
+// テンプレートスキーマを適用する関数（仮実装）
+function applyTemplateSchema(data: any): any {
+  // TODO: 実際のスキーマ適用ロジックを実装
+  // 例：dataに必要なフィールドが存在しない場合にデフォルト値を追加する
+  if (data && data.steps) {
+    data.steps = data.steps.map((step: any) => {
+      if (step.type === 'decision' && !step.options) {
+        step.options = [
+          { text: 'はい', nextStepId: '', condition: '', isTerminal: false, conditionType: 'yes' },
+          { text: 'いいえ', nextStepId: '', condition: '', isTerminal: false, conditionType: 'no' }
+        ];
+      }
+      return step;
+    });
+  }
+  return data;
+}
+
 // フロー保存エンドポイント
 router.post('/save', async (req, res) => {
   try {
@@ -150,7 +168,7 @@ router.post('/save', async (req, res) => {
               conditionType: 'other'
             });
           }
-          
+
           // デフォルトの条件項目を追加（何もない場合）
           if (unifiedOptions.length === 0) {
             unifiedOptions = [
@@ -499,15 +517,23 @@ router.get('/detail/:id', async (req, res) => {
     const content = fs.readFileSync(filePath, 'utf8');
     console.log(`📄 ファイル内容のサイズ: ${content.length}文字`);
 
-    const rawData = JSON.parse(content);
+    let data = JSON.parse(content);
+    console.log(`✅ ファイル詳細読み込み成功: ${id}.json`, {
+      id: data.id,
+      title: data.title,
+      stepsCount: data.steps?.length || 0
+    });
+
+    // テンプレートスキーマを適用
+    data = applyTemplateSchema(data);
 
     // 条件分岐情報の確認とログ出力
-    const conditionSteps = rawData.steps?.filter(step => 
+    const conditionSteps = data.steps?.filter(step => 
       step.yesCondition || step.noCondition || step.otherCondition
     ) || [];
 
     console.log(`🔀 条件分岐ステップの確認:`, {
-      totalSteps: rawData.steps?.length || 0,
+      totalSteps: data.steps?.length || 0,
       conditionSteps: conditionSteps.length,
       conditions: conditionSteps.map(step => ({
         id: step.id,
@@ -519,7 +545,7 @@ router.get('/detail/:id', async (req, res) => {
 
     // データの完全性をチェック（条件分岐情報を確実に含む）
     const responseData = {
-      ...rawData,
+      ...data,
       loadedAt: new Date().toISOString(),
       fileModified: stats.mtime.toISOString(),
       requestId: `${timestamp}-${randomId}`,
