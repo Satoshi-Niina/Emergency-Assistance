@@ -207,7 +207,7 @@ const EmergencyGuidePage: React.FC = () => {
       // 新しいデータのみキャッシュ
       if (typeof window !== 'undefined') {
         localStorage.setItem('emergencyFlowList', JSON.stringify({
-          data: validData,
+          data: Array.isArray(data) ? data : [],
           timestamp: timestamp,
           version: '3.0',
           source: 'knowledge-base/troubleshooting'
