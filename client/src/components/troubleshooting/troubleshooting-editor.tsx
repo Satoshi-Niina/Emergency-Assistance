@@ -586,14 +586,19 @@ const TroubleshootingEditor: React.FC<TroubleshootingEditorProps> = ({
       // 保存API呼び出し
       const saveUrl = `/api/troubleshooting/save/${normalizedSaveData.id}`;
       const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2, 8);
 
-      const response = await fetch(`${saveUrl}?_t=${timestamp}&_replace=true`, {
+      const response = await fetch(`${saveUrl}?_t=${timestamp}&_r=${randomId}&_replace=true&_force=true`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
           'X-Complete-Replace': 'true',
-          'X-Timestamp': timestamp.toString()
+          'X-Force-Overwrite': 'true',
+          'X-Timestamp': timestamp.toString(),
+          'X-Random-Id': randomId
         },
         body: JSON.stringify(normalizedSaveData)
       });
@@ -607,10 +612,36 @@ const TroubleshootingEditor: React.FC<TroubleshootingEditorProps> = ({
       const result = await response.json();
       console.log('✅ 完全置換保存成功:', result);
 
-      // 保存したデータで内部状態を更新
-      const savedData = JSON.parse(JSON.stringify(normalizedSaveData));
-      setOriginalData(savedData);
-      setEditedData(savedData);
+      // 少し待ってからサーバーから最新データを取得
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      try {
+        const verifyResponse = await fetch(`/api/troubleshooting/${normalizedSaveData.id}?_t=${Date.now()}&_verify=true`, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        });
+        
+        if (verifyResponse.ok) {
+          const verifiedData = await verifyResponse.json();
+          console.log('🔍 保存確認データ:', verifiedData);
+          
+          setOriginalData(verifiedData);
+          setEditedData(JSON.parse(JSON.stringify(verifiedData)));
+        } else {
+          // サーバーからの取得に失敗した場合は保存したデータを使用
+          const savedData = JSON.parse(JSON.stringify(normalizedSaveData));
+          setOriginalData(savedData);
+          setEditedData(savedData);
+        }
+      } catch (verifyError) {
+        console.error('保存確認エラー:', verifyError);
+        // エラーが発生した場合も保存したデータを使用
+        const savedData = JSON.parse(JSON.stringify(normalizedSaveData));
+        setOriginalData(savedData);
+        setEditedData(savedData);
+      }
 
       toast({
         title: '保存完了',
