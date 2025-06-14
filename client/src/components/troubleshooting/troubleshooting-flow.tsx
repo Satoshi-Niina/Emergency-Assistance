@@ -3,11 +3,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { useChat } from '@/context/chat-context';
 import { useAuth } from '@/context/auth-context';
 import { searchByText } from '@/lib/image-search';
+import { Edit } from 'lucide-react';
 
 // 画像パスを修正するヘルパー関数
 function handleImagePath(imagePath: string): string {
@@ -536,16 +538,30 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
   // タイトル編集開始
   const startEditingTitle = useCallback(() => {
     if (currentStep) {
-      setTempTitle(currentStep.title);
+      setTempTitle(currentStep.title || '');
       setEditingTitle(true);
+      console.log('タイトル編集開始:', currentStep.title);
     }
   }, [currentStep]);
 
   // タイトル編集保存
   const saveTitle = useCallback(async () => {
-    if (!currentStep || !tempTitle.trim()) return;
+    if (!currentStep || !tempTitle.trim()) {
+      toast({
+        title: 'エラー',
+        description: 'タイトルを入力してください',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     try {
+      console.log('タイトル保存開始:', {
+        flowId: flowData?.id,
+        stepId: currentStep.id,
+        newTitle: tempTitle.trim()
+      });
+
       // APIを呼び出してタイトルを保存
       const response = await fetch(`/api/emergency-flow/update-step-title`, {
         method: 'POST',
@@ -553,34 +569,61 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          flowId: flowData.id,
+          flowId: flowData?.id,
           stepId: currentStep.id,
           title: tempTitle.trim()
         })
       });
 
       if (response.ok) {
+        const result = await response.json();
+        console.log('タイトル保存成功:', result);
+        
         // ローカル状態を更新
-        if (flowData.steps) {
-          const updatedSteps = flowData.steps.map(step =>
-            step.id === currentStep.id ? { ...step, title: tempTitle.trim() } : step
-          );
-          // データを更新（親コンポーネントに通知が必要な場合）
-          console.log('タイトルが更新されました:', tempTitle);
+        if (flowData && flowData.steps) {
+          const updatedFlowData = {
+            ...flowData,
+            steps: flowData.steps.map(step =>
+              step.id === currentStep.id ? { ...step, title: tempTitle.trim() } : step
+            )
+          };
+          setFlowData(updatedFlowData);
+          
+          // 現在のステップも更新
+          setCurrentStep({ ...currentStep, title: tempTitle.trim() });
         }
+        
         setEditingTitle(false);
+        setTempTitle('');
+        
+        toast({
+          title: '保存完了',
+          description: 'タイトルが更新されました',
+        });
       } else {
-        console.error('タイトルの保存に失敗しました');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('タイトルの保存に失敗しました:', errorData);
+        toast({
+          title: 'エラー',
+          description: 'タイトルの保存に失敗しました',
+          variant: 'destructive',
+        });
       }
     } catch (error) {
       console.error('タイトル保存エラー:', error);
+      toast({
+        title: 'エラー',
+        description: 'タイトルの保存中にエラーが発生しました',
+        variant: 'destructive',
+      });
     }
-  }, [currentStep, tempTitle, flowData]);
+  }, [currentStep, tempTitle, flowData, setFlowData, toast]);
 
   // タイトル編集キャンセル
   const cancelEditingTitle = useCallback(() => {
     setEditingTitle(false);
     setTempTitle('');
+    console.log('タイトル編集をキャンセルしました');
   }, []);
 
   return (
@@ -595,25 +638,50 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
         </div>
         {/* ステップのタイトルがあれば表示 */}
         {/* ステップのタイトルがあれば表示 */}
-        {editingTitle ? (
-          <Input
-            type="text"
-            value={tempTitle}
-            onChange={(e) => setTempTitle(e.target.value)}
-            onBlur={cancelEditingTitle}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                saveTitle();
-              }
-            }}
-          />
-        ) : (
-          <div onClick={startEditingTitle}>
-            {currentStep.title && (
-              <div className="mt-2">
-                <span className="text-sm font-medium text-gray-500">手順: </span>
-                <span className="font-semibold">{currentStep.title}</span>
+        {currentStep.title && (
+          <div className="mt-2">
+            <span className="text-sm font-medium text-gray-500">手順: </span>
+            {editingTitle ? (
+              <div className="inline-flex items-center gap-2 w-full">
+                <Input
+                  type="text"
+                  value={tempTitle}
+                  onChange={(e) => setTempTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      saveTitle();
+                    } else if (e.key === 'Escape') {
+                      cancelEditingTitle();
+                    }
+                  }}
+                  className="flex-1"
+                  autoFocus
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={saveTitle}
+                  disabled={!tempTitle.trim()}
+                >
+                  保存
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={cancelEditingTitle}
+                >
+                  キャンセル
+                </Button>
               </div>
+            ) : (
+              <span 
+                className="font-semibold cursor-pointer hover:bg-blue-50 px-2 py-1 rounded border-2 border-transparent hover:border-blue-200 transition-all"
+                onClick={startEditingTitle}
+                title="クリックして編集"
+              >
+                {currentStep.title}
+                <Edit className="w-3 h-3 ml-1 inline opacity-50" />
+              </span>
             )}
           </div>
         )}
