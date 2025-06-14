@@ -18,7 +18,7 @@ const generateFlowSchema = z.object({
 import fs from 'fs';
 import path from 'path';
 
-// 応急処置フロー保存エンドポイントを追加
+// フロー保存エンドポイント
 router.post('/save', async (req, res) => {
   try {
     const { filePath: requestFilePath, ...flowData } = req.body;
@@ -29,7 +29,7 @@ router.post('/save', async (req, res) => {
       hasNodes: !!flowData?.nodes,
       hasSteps: !!flowData?.steps
     });
-    
+
     if (!flowData || !flowData.id || !flowData.title) {
       console.error('❌ 無効なフローデータ:', flowData);
       return res.status(400).json({ 
@@ -45,12 +45,12 @@ router.post('/save', async (req, res) => {
       filePath = path.isAbsolute(requestFilePath) 
         ? requestFilePath 
         : path.join(process.cwd(), requestFilePath);
-      
+
       // セキュリティチェック：troubleshootingディレクトリ内のみ許可
       const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
       const normalizedFilePath = path.normalize(filePath);
       const normalizedTroubleshootingDir = path.normalize(troubleshootingDir);
-      
+
       if (!normalizedFilePath.startsWith(normalizedTroubleshootingDir)) {
         console.warn(`⚠️ 保存先がtroubleshootingディレクトリ外: ${normalizedFilePath}`);
         return res.status(400).json({
@@ -58,7 +58,7 @@ router.post('/save', async (req, res) => {
           error: '保存先はknowledge-base/troubleshootingディレクトリ内のみ許可されています'
         });
       }
-      
+
       console.log('🎯 指定されたファイルパスを使用:', filePath);
     } else {
       // fallback: troubleshootingディレクトリにIDベースで保存
@@ -95,60 +95,85 @@ router.post('/save', async (req, res) => {
       }
     }
 
-    // フローデータを正しい形式で保存（条件分岐情報を確実に保持）
+    // 条件分岐ノードの完全保存処理
+    const processedSteps = (flowData.steps || []).map(step => {
+      if (step.type === 'decision') {
+        console.log(`🔀 条件分岐ノード ${step.id} 保存処理:`, {
+          stepId: step.id,
+          title: step.title,
+          optionsCount: step.options?.length || 0,
+          optionsData: step.options
+        });
+
+        // 条件項目の完全保存
+        const processedOptions = (step.options || []).map((option, index) => {
+          const processedOption = {
+            text: option.text || `条件項目 ${index + 1}`,
+            nextStepId: option.nextStepId || '',
+            condition: option.condition || '',
+            isTerminal: Boolean(option.isTerminal),
+            conditionType: option.conditionType || 'other'
+          };
+
+          console.log(`🔧 条件項目 ${index + 1} 保存:`, processedOption);
+          return processedOption;
+        });
+
+        return {
+          ...step,
+          id: step.id,
+          title: step.title || '新しい条件分岐',
+          description: step.description || step.message || '',
+          message: step.message || step.description || '',
+          imageUrl: step.imageUrl || '',
+          type: 'decision',
+          options: processedOptions
+        };
+      } else {
+        // 通常のステップ
+        return {
+          ...step,
+          description: step.description || step.message || '',
+          message: step.message || step.description || '',
+          imageUrl: step.imageUrl || '',
+          options: (step.options || []).map(option => ({
+            text: option.text || '',
+            nextStepId: option.nextStepId || '',
+            condition: option.condition || '',
+            isTerminal: Boolean(option.isTerminal),
+            conditionType: option.conditionType || 'other'
+          }))
+        };
+      }
+    });
+
+    // 保存データを準備
     const saveData = {
       id: flowData.id || existingData.id,
       title: flowData.title,
       description: flowData.description || existingData.description || '',
       triggerKeywords: flowData.triggerKeywords || existingData.triggerKeywords || [],
-      steps: (flowData.steps || []).map(step => {
-        // 条件分岐ノードの場合は特別な保存処理
-        if (step.type === 'decision') {
-          console.log(`🔀 サーバー側条件分岐ノード ${step.id} 保存:`, {
-            optionsCount: step.options?.length || 0,
-            options: step.options
-          });
-          
-          return {
-            ...step,
-            type: 'decision',
-            options: step.options || [],
-            // 条件分岐の詳細情報を確実に保存
-            decisionType: 'condition_branch',
-            branches: step.options || []
-          };
-        }
-        return step;
-      }),
-      // slides フィールドも同期（後方互換性）
-      slides: (flowData.steps || []).map(step => ({
-        ...step,
-        // 条件分岐ノードの場合はslides形式にも対応
-        ...(step.type === 'decision' && {
-          branches: step.options || []
-        })
-      })),
+      steps: processedSteps,
+      slides: processedSteps, // slides フィールドもstepsと同じデータを保存
       nodes: flowData.nodes || [], // ReactFlowエディタ用のノード情報を保持
       edges: flowData.edges || [], // ReactFlowエディタ用のエッジ情報を保持
       updatedAt: new Date().toISOString(),
       savedAt: new Date().toISOString(),
       savedTimestamp: flowData.savedTimestamp || Date.now(),
-      // 条件分岐の情報を明示的に保存
-      conditionBranches: flowData.conditionBranches || [],
       // 既存の他のメタデータも保持
       ...(existingData.createdAt && { createdAt: existingData.createdAt })
     };
 
-    // 条件分岐情報の保存確認ログ
-    const conditionStepsCount = saveData.steps.filter(step => 
-      step.yesCondition || step.noCondition || step.otherCondition
-    ).length;
-    
-    console.log(`🔀 保存される条件分岐情報:`, {
-      totalSteps: saveData.steps.length,
-      conditionSteps: conditionStepsCount,
-      conditionBranches: saveData.conditionBranches.length,
-      savedTimestamp: saveData.savedTimestamp
+    // 条件分岐ノードの保存確認ログ
+    const decisionSteps = processedSteps.filter(step => step.type === 'decision');
+    console.log(`🔀 保存される条件分岐ノード:`, {
+      decisionCount: decisionSteps.length,
+      decisionDetails: decisionSteps.map(step => ({
+        id: step.id,
+        title: step.title,
+        optionsCount: step.options?.length || 0,
+        options: step.options
+      }))
     });
 
     // JSONファイルとして保存
@@ -163,9 +188,9 @@ router.post('/save', async (req, res) => {
       // 原子的書き込み（一時ファイル経由）
       const tempFilePath = `${filePath}.tmp.${Date.now()}`;
       const saveDataString = JSON.stringify(saveData, null, 2);
-      
+
       fs.writeFileSync(tempFilePath, saveDataString, 'utf8');
-      
+
       // 一時ファイルが正常に書き込まれた場合のみ、元ファイルを置き換え
       if (fs.existsSync(tempFilePath)) {
         fs.renameSync(tempFilePath, filePath);
@@ -173,7 +198,7 @@ router.post('/save', async (req, res) => {
       } else {
         throw new Error('一時ファイルの作成に失敗しました');
       }
-      
+
       // ファイルが実際に存在することを確認
       if (fs.existsSync(filePath)) {
         const fileStats = fs.statSync(filePath);
@@ -181,13 +206,13 @@ router.post('/save', async (req, res) => {
           path: filePath,
           size: fileStats.size,
           modified: fileStats.mtime,
-          saveTimestamp: saveData.savedTimestamp || 'N/A'
+          savedTimestamp: saveData.savedTimestamp || 'N/A'
         });
-        
+
         // 保存後のディレクトリ一覧を表示
         const updatedFiles = fs.readdirSync(troubleshootingDir);
         console.log('📂 保存後のディレクトリ内容:', updatedFiles);
-        
+
         // 保存されたファイルの内容を読み返して確認
         const savedContent = fs.readFileSync(filePath, 'utf8');
         const parsedContent = JSON.parse(savedContent);
@@ -247,7 +272,21 @@ router.post('/save', async (req, res) => {
     }
 
     console.log(`🎉 応急処置フローを保存しました: ${filePath}`);
-    
+
+    // 保存後の検証
+    const savedContent = fs.readFileSync(filePath, 'utf8');
+    const savedData = JSON.parse(savedContent);
+    const savedDecisionSteps = savedData.steps?.filter(step => step.type === 'decision') || [];
+
+    console.log(`🔍 保存後検証:`, {
+      totalSteps: savedData.steps?.length || 0,
+      decisionSteps: savedDecisionSteps.length,
+      decisionOptions: savedDecisionSteps.map(step => ({
+        id: step.id,
+        optionsCount: step.options?.length || 0
+      }))
+    });
+
     // キャッシュ無効化のためのヘッダーを設定
     res.set({
       'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -255,19 +294,21 @@ router.post('/save', async (req, res) => {
       'Expires': '0',
       'Last-Modified': new Date().toUTCString()
     });
-    
-    res.json({ 
-      success: true, 
-      message: '応急処置フローが保存されました',
+
+    res.json({
+      success: true,
+      message: 'フローが保存されました',
+      data: saveData,
       filePath: filePath,
       fileName: fileName,
       savedAt: new Date().toISOString()
     });
+
   } catch (error) {
-    console.error('❌ 応急処置フロー保存エラー:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: `フローの保存に失敗しました: ${error.message}` 
+    console.error('❌ フロー保存エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'フローの保存に失敗しました'
     });
   }
 });
@@ -281,10 +322,10 @@ router.get('/list', async (req, res) => {
       'Pragma': 'no-cache',
       'Expires': '0'
     });
-    
+
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
     console.log('🔍 一覧取得: troubleshootingDir =', troubleshootingDir);
-    
+
     if (!fs.existsSync(troubleshootingDir)) {
       console.log('📁 ディレクトリが存在しません:', troubleshootingDir);
       // ディレクトリが存在しない場合は作成
@@ -303,7 +344,7 @@ router.get('/list', async (req, res) => {
         try {
           const filePath = path.join(troubleshootingDir, file);
           console.log(`📖 ファイル読み込み中: ${filePath}`);
-          
+
           const content = fs.readFileSync(filePath, 'utf8');
           const data = JSON.parse(content);
           console.log(`✅ ファイル読み込み成功: ${file}`, {
@@ -312,7 +353,7 @@ router.get('/list', async (req, res) => {
             hasSteps: !!data.steps,
             hasNodes: !!data.nodes
           });
-          
+
           return {
             id: data.id || file.replace('.json', ''),
             title: data.title || 'タイトル不明',
@@ -342,7 +383,7 @@ router.get('/detail/:id', async (req, res) => {
     // 最強のキャッシュ無効化ヘッダーを設定
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2);
-    
+
     res.set({
       'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0, s-maxage=0',
       'Pragma': 'no-cache',
@@ -353,13 +394,13 @@ router.get('/detail/:id', async (req, res) => {
       'Vary': '*',
       'X-Fresh-Data': 'true'
     });
-    
+
     const { id } = req.params;
     console.log(`🔄 [${timestamp}] フロー詳細取得開始: ID=${id}`);
-    
+
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
     const filePath = path.join(troubleshootingDir, `${id}.json`);
-    
+
     console.log(`📁 ファイルパス: ${filePath}`);
 
     if (!fs.existsSync(filePath)) {
@@ -379,14 +420,14 @@ router.get('/detail/:id', async (req, res) => {
     // ファイル内容を強制的に再読み込み（条件分岐情報を含む）
     const content = fs.readFileSync(filePath, 'utf8');
     console.log(`📄 ファイル内容のサイズ: ${content.length}文字`);
-    
+
     const rawData = JSON.parse(content);
-    
+
     // 条件分岐情報の確認とログ出力
     const conditionSteps = rawData.steps?.filter(step => 
       step.yesCondition || step.noCondition || step.otherCondition
     ) || [];
-    
+
     console.log(`🔀 条件分岐ステップの確認:`, {
       totalSteps: rawData.steps?.length || 0,
       conditionSteps: conditionSteps.length,
@@ -397,7 +438,7 @@ router.get('/detail/:id', async (req, res) => {
         otherCondition: !!step.otherCondition
       }))
     });
-    
+
     // データの完全性をチェック（条件分岐情報を確実に含む）
     const responseData = {
       ...rawData,
@@ -408,7 +449,7 @@ router.get('/detail/:id', async (req, res) => {
       conditionBranchesCount: conditionSteps.length,
       hasConditionBranches: conditionSteps.length > 0
     };
-    
+
     console.log(`✅ 完全データ解析成功:`, {
       id: responseData.id,
       title: responseData.title,
@@ -439,7 +480,7 @@ router.get('/:id', async (req, res) => {
   try {
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2);
-    
+
     res.set({
       'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0, s-maxage=0',
       'Pragma': 'no-cache',
@@ -450,13 +491,13 @@ router.get('/:id', async (req, res) => {
       'Vary': '*',
       'X-Fresh-Data': 'true'
     });
-    
+
     const { id } = req.params;
     console.log(`🔄 [${timestamp}] フロー直接取得: ID=${id}`);
-    
+
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
     const filePath = path.join(troubleshootingDir, `${id}.json`);
-    
+
     console.log(`📁 ファイルパス: ${filePath}`);
 
     if (!fs.existsSync(filePath)) {
@@ -474,16 +515,16 @@ router.get('/:id', async (req, res) => {
 
     const content = fs.readFileSync(filePath, 'utf8');
     const rawData = JSON.parse(content);
-    
+
     const conditionSteps = rawData.steps?.filter(step => 
       step.yesCondition || step.noCondition || step.otherCondition
     ) || [];
-    
+
     console.log(`🔀 条件分岐ステップの確認:`, {
       totalSteps: rawData.steps?.length || 0,
       conditionSteps: conditionSteps.length
     });
-    
+
     const responseData = {
       ...rawData,
       loadedAt: new Date().toISOString(),
@@ -492,7 +533,7 @@ router.get('/:id', async (req, res) => {
       conditionBranchesCount: conditionSteps.length,
       hasConditionBranches: conditionSteps.length > 0
     };
-    
+
     console.log(`✅ 直接データ取得成功:`, {
       id: responseData.id,
       title: responseData.title,
@@ -522,7 +563,7 @@ router.delete('/delete/:id', async (req, res) => {
     }
 
     fs.unlinkSync(filePath);
-    
+
     res.json({ 
       success: true, 
       message: 'フローが削除されました' 
@@ -593,4 +634,4 @@ router.post('/generate-emergency-flow', async (req, res) => {
   }
 });
 
-export default router; 
+export default router;

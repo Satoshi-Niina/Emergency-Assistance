@@ -340,12 +340,32 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
           }
         }),
         // slidesフィールドも同期（後方互換性）
-        slides: editedFlow.steps.map(step => ({
-          ...step,
-          description: step.description || step.message || '',
-          message: step.message || step.description || '',
-          imageUrl: step.imageUrl || ''
-        })),
+        slides: editedFlow.steps.map(step => {
+          if (step.type === 'decision') {
+            // 条件分岐ノードのslidesフィールド同期
+            return {
+              ...step,
+              description: step.description || step.message || '',
+              message: step.message || step.description || '',
+              imageUrl: step.imageUrl || '',
+              type: 'decision',
+              options: (step.options || []).map(option => ({
+                text: option.text || '',
+                nextStepId: option.nextStepId || '',
+                condition: option.condition || '',
+                isTerminal: Boolean(option.isTerminal),
+                conditionType: option.conditionType || 'other'
+              }))
+            };
+          } else {
+            return {
+              ...step,
+              description: step.description || step.message || '',
+              message: step.message || step.description || '',
+              imageUrl: step.imageUrl || ''
+            };
+          }
+        }),
         updatedAt: new Date().toISOString(),
         savedTimestamp: Date.now()
       };
