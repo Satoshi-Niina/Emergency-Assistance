@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Save, Plus, Trash2, Edit, Check, X, GitBranch, Settings } from 'lucide-react';
+import { Save, Plus, Trash2, Edit, Check, X, GitBranch, Settings, Info, FileText } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1207,18 +1207,46 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
 
       {/* スライド一覧 */}
       <div className="space-y-4">
-        <div className="bg-indigo-50 border-2 border-indigo-200 rounded-lg p-4 mb-4">
-          <h3 className="text-lg font-semibold text-indigo-800 mb-2">スライド編集エリア</h3>
-          <p className="text-sm text-indigo-600">
-            各スライドのタイトル、内容、条件分岐を編集できます。スライド番号順に表示されます。
+        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border-2 border-indigo-300 rounded-xl p-6 mb-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <FileText className="w-6 h-6 text-indigo-600" />
+            <h3 className="text-xl font-bold text-indigo-800">スライド編集エリア</h3>
+          </div>
+          
+          <p className="text-indigo-700 mb-4 leading-relaxed">
+            各スライドのタイトル、内容、条件分岐を編集できます。スライド番号順に表示され、リアルタイムで保存されます。
           </p>
-          <div className="mt-2 flex items-center gap-4 text-sm">
-            <span className="text-indigo-700">
-              📊 総スライド数: <strong>{editedFlow.steps.length}</strong>
-            </span>
-            <span className="text-indigo-700">
-              🔀 条件分岐: <strong>{editedFlow.steps.filter(s => s.type === 'decision' || s.type === 'condition').length}</strong>
-            </span>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div className="bg-white rounded-lg p-3 border border-indigo-200">
+              <div className="flex items-center gap-2 text-indigo-700 font-medium">
+                <span className="text-lg">📊</span>
+                総スライド数
+              </div>
+              <div className="text-2xl font-bold text-indigo-800 mt-1">
+                {editedFlow.steps.length}
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-lg p-3 border border-indigo-200">
+              <div className="flex items-center gap-2 text-indigo-700 font-medium">
+                <span className="text-lg">🔀</span>
+                条件分岐
+              </div>
+              <div className="text-2xl font-bold text-indigo-800 mt-1">
+                {editedFlow.steps.filter(s => s.type === 'decision' || s.type === 'condition').length}
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-lg p-3 border border-indigo-200">
+              <div className="flex items-center gap-2 text-indigo-700 font-medium">
+                <span className="text-lg">📝</span>
+                通常スライド
+              </div>
+              <div className="text-2xl font-bold text-indigo-800 mt-1">
+                {editedFlow.steps.filter(s => s.type === 'step' || s.type === 'start' || s.type === 'end').length}
+              </div>
+            </div>
           </div>
         </div>
         
@@ -1252,20 +1280,40 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
               </div>
 
               {/* スライド/ステップタイトル編集 */}
-              <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Edit className="w-4 h-4 text-blue-600" />
-                  <Label className="text-blue-800 font-semibold">スライドタイトル編集</Label>
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl p-5 mb-4 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Edit className="w-5 h-5 text-blue-600" />
+                    <Label className="text-blue-800 font-bold text-lg">スライド #{index + 1} タイトル編集</Label>
+                  </div>
+                  <Badge variant="outline" className="bg-white text-blue-700 border-blue-300 px-3 py-1">
+                    ID: {step.id}
+                  </Badge>
                 </div>
-                <Input
-                  value={step.title}
-                  onChange={(e) => updateStepTitle(step.id, e.target.value)}
-                  placeholder="スライドのタイトルを入力してください"
-                  className="border-blue-300 focus:border-blue-500 bg-white"
-                />
-                <p className="text-xs text-blue-600 mt-1">
-                  このタイトルはフロー表示時およびナビゲーションで使用されます
-                </p>
+                
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-blue-700 font-medium mb-2 block">スライドタイトル</Label>
+                    <Input
+                      value={step.title}
+                      onChange={(e) => updateStepTitle(step.id, e.target.value)}
+                      placeholder="スライドのタイトルを入力してください"
+                      className="border-blue-300 focus:border-blue-500 bg-white text-lg font-medium h-12"
+                    />
+                  </div>
+                  
+                  <div className="flex items-start gap-2 p-3 bg-blue-100 rounded-lg">
+                    <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm text-blue-700">
+                      <p className="font-medium">タイトルの用途:</p>
+                      <ul className="mt-1 space-y-1 text-xs">
+                        <li>• フロー表示時のスライドヘッダー</li>
+                        <li>• ナビゲーション表示</li>
+                        <li>• 検索時のキーワード</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
