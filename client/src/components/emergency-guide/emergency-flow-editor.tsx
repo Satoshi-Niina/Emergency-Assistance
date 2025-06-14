@@ -23,7 +23,7 @@ interface FlowStep {
   title: string;
   description: string;
   message: string;
-  type: 'start' | 'step' | 'decision' | 'end';
+  type: 'start' | 'step' | 'decision' | 'condition' | 'end';
   imageUrl?: string;
   options: Array<{
     text: string;
@@ -718,37 +718,66 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
     if (!editedFlow) return;
 
     const newStepId = `step_${Date.now()}`;
-    const newStep: FlowStep = {
-      id: newStepId,
-      title: type === 'decision' ? '新しい条件分岐' : '新しいステップ',
-      description: '',
-      message: '',
-      type,
-      options: type === 'decision' ? [
-        { 
-          text: 'はい', 
-          nextStepId: '', 
-          isTerminal: false, 
-          conditionType: 'yes',
-          condition: ''
-        },
-        { 
-          text: 'いいえ', 
-          nextStepId: '', 
-          isTerminal: false, 
-          conditionType: 'no',
-          condition: ''
-        }
-      ] : [
-        { 
-          text: '次へ', 
-          nextStepId: '', 
-          isTerminal: false, 
-          conditionType: 'other',
-          condition: ''
-        }
-      ]
-    };
+    let newStep: FlowStep;
+
+    if (type === 'condition') {
+      // type: "condition"の場合はconditions配列を持つ
+      newStep = {
+        id: newStepId,
+        title: '新しい条件分岐',
+        description: '',
+        message: '',
+        type: 'condition',
+        options: [],
+        conditions: [
+          { label: '条件A', nextId: '' },
+          { label: '条件B', nextId: '' }
+        ]
+      };
+    } else if (type === 'decision') {
+      // type: "decision"の場合は従来通りoptions配列
+      newStep = {
+        id: newStepId,
+        title: '新しい条件分岐',
+        description: '',
+        message: '',
+        type: 'decision',
+        options: [
+          { 
+            text: 'はい', 
+            nextStepId: '', 
+            isTerminal: false, 
+            conditionType: 'yes',
+            condition: ''
+          },
+          { 
+            text: 'いいえ', 
+            nextStepId: '', 
+            isTerminal: false, 
+            conditionType: 'no',
+            condition: ''
+          }
+        ]
+      };
+    } else {
+      // 通常のステップ
+      newStep = {
+        id: newStepId,
+        title: '新しいステップ',
+        description: '',
+        message: '',
+        type,
+        options: [
+          { 
+            text: '次へ', 
+            nextStepId: '', 
+            isTerminal: false, 
+            conditionType: 'other',
+            condition: ''
+          }
+        ]
+      };
+    }
 
     setEditedFlow({
       ...editedFlow,
@@ -935,6 +964,82 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
     });
   };
 
+  // conditions配列の操作（type: "condition"専用）
+  const addCondition = (stepId: string) => {
+    if (!editedFlow) return;
+
+    const step = editedFlow.steps.find(s => s.id === stepId);
+    if (!step || step.type !== 'condition') return;
+
+    // 最大5つまでの制限
+    if ((step.conditions?.length || 0) >= 5) {
+      toast({
+        title: "追加できません",
+        description: "条件分岐では最大5つまでの条件が設定できます",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const newCondition = {
+      label: '新しい条件',
+      nextId: ''
+    };
+
+    const updatedConditions = [...(step.conditions || []), newCondition];
+
+    updateStep(stepId, {
+      conditions: updatedConditions
+    });
+
+    toast({
+      title: "条件を追加しました",
+      description: `新しい条件を追加しました。編集して詳細を設定してください。`
+    });
+  };
+
+  const updateCondition = (stepId: string, conditionIndex: number, updates: Partial<{ label: string; nextId: string }>) => {
+    if (!editedFlow) return;
+
+    setEditedFlow({
+      ...editedFlow,
+      steps: editedFlow.steps.map(step =>
+        step.id === stepId ? {
+          ...step,
+          conditions: (step.conditions || []).map((condition, index) =>
+            index === conditionIndex ? { ...condition, ...updates } : condition
+          )
+        } : step
+      )
+    });
+  };
+
+  const removeCondition = (stepId: string, conditionIndex: number) => {
+    if (!editedFlow) return;
+
+    const step = editedFlow.steps.find(s => s.id === stepId);
+    if (!step || step.type !== 'condition') return;
+
+    // 最低2つの条件が必要
+    if ((step.conditions?.length || 0) <= 2) {
+      toast({
+        title: "削除できません",
+        description: "条件分岐では最低2つの条件が必要です",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    updateStep(stepId, {
+      conditions: (step.conditions || []).filter((_, index) => index !== conditionIndex)
+    });
+
+    toast({
+      title: "条件を削除しました",
+      description: `条件 ${conditionIndex + 1} を削除しました`
+    });
+  };
+
   // キーワード更新
   const updateKeywords = (keywords: string) => {
     if (!editedFlow) return;
@@ -1015,9 +1120,13 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
           <Plus className="w-4 h-4 mr-2" />
           ステップ追加
         </Button>
+        <Button variant="outline" onClick={() => addStep('condition')}>
+          <Settings className="w-4 h-4 mr-2" />
+          条件分岐追加（conditions配列）
+        </Button>
         <Button variant="outline" onClick={() => addStep('decision')}>
           <GitBranch className="w-4 h-4 mr-2" />
-          条件分岐追加
+          条件分岐追加（options配列）
         </Button>
       </div>
 
@@ -1028,10 +1137,11 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Badge variant={step.type === 'decision' ? 'secondary' : 'default'}>
+                  <Badge variant={step.type === 'decision' || step.type === 'condition' ? 'secondary' : 'default'}>
                     {step.type === 'start' && '開始'}
                     {step.type === 'step' && 'ステップ'}
-                    {step.type === 'decision' && '条件分岐'}
+                    {step.type === 'condition' && '条件分岐(conditions)'}
+                    {step.type === 'decision' && '条件分岐(options)'}
                     {step.type === 'end' && '終了'}
                   </Badge>
                   <span className="text-sm text-gray-500">#{index + 1}</span>
@@ -1159,7 +1269,92 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                   )}
 
                   <div className="space-y-3">
-                    {/* 🎯 条件分岐ノードは常に編集UIを表示 */}
+                    {/* 🎯 条件分岐ノード（type: "condition"）専用UI */}
+                    {step.type === 'condition' && (
+                      <div className="bg-blue-50 border-4 border-blue-400 rounded-xl p-6 mb-6">
+                        <div className="text-center mb-4">
+                          <h4 className="text-xl font-bold text-blue-800 flex items-center justify-center gap-2">
+                            <Settings className="w-6 h-6" />
+                            条件分岐ノード編集（conditions配列）
+                          </h4>
+                          <p className="text-sm text-blue-700 mt-2">
+                            conditions配列を直接編集できます
+                          </p>
+                        </div>
+
+                        {/* 条件項目追加ボタン */}
+                        <div className="text-center mb-6">
+                          <Button 
+                            variant="outline" 
+                            onClick={() => addCondition(step.id)}
+                            disabled={(step.conditions?.length || 0) >= 5}
+                            className="text-green-600 border-green-400 bg-green-50 hover:bg-green-100"
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            条件を追加 ({step.conditions?.length || 0}/5)
+                          </Button>
+                        </div>
+
+                        {/* 既存の条件一覧 */}
+                        <div className="space-y-4">
+                          {step.conditions && step.conditions.length > 0 ? (
+                            step.conditions.map((condition, conditionIndex) => (
+                              <div key={`condition-${step.id}-${conditionIndex}`} 
+                                   className="bg-white border-2 border-blue-300 rounded-lg p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                  <Badge variant="secondary" className="text-base bg-blue-200 text-blue-800">
+                                    条件 {conditionIndex + 1}
+                                  </Badge>
+                                  {(step.conditions?.length || 0) > 2 && (
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() => removeCondition(step.id, conditionIndex)}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                </div>
+
+                                <div className="space-y-3">
+                                  <div>
+                                    <Label>条件ラベル (label)</Label>
+                                    <Input
+                                      value={condition.label || ''}
+                                      onChange={(e) => updateCondition(step.id, conditionIndex, { label: e.target.value })}
+                                      placeholder="条件のラベルを入力"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <Label>遷移先ID (nextId)</Label>
+                                    <select
+                                      value={condition.nextId || ''}
+                                      onChange={(e) => updateCondition(step.id, conditionIndex, { nextId: e.target.value })}
+                                      className="w-full border rounded px-3 py-2 bg-white"
+                                    >
+                                      <option value="">遷移先を選択</option>
+                                      {editedFlow?.steps?.filter(s => s.id !== step.id).map(targetStep => (
+                                        <option key={targetStep.id} value={targetStep.id}>
+                                          {targetStep.title} ({targetStep.id})
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-center py-6 text-gray-500">
+                              <p>まだ条件がありません</p>
+                              <p className="text-sm">上のボタンから条件を追加してください</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 🎯 条件分岐ノード（type: "decision"）は従来のUI */}
                     {step.type === 'decision' && (
                       <div className="bg-yellow-50 border-4 border-yellow-400 rounded-xl p-6 mb-6">
                         <div className="text-center mb-4">
