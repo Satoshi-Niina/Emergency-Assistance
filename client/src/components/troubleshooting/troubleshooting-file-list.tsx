@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -26,25 +27,29 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
   onNew
 }) => {
   const { toast } = useToast();
-  const [flowList, setFlowList] = useState<any[]>([]);
+  const [flowList, setFlowList] = useState<Array<{
+    id: string;
+    title: string;
+    description: string;
+    fileName: string;
+    createdAt: string;
+  }>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [flowToDelete, setFlowToDelete] = useState<string | null>(null);
 
-  // フローリストの取得
   const fetchFlowList = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/tech-support/flows');
-      if (!response.ok) throw new Error('フローリストの取得に失敗しました');
-      
+      const response = await fetch('/api/troubleshooting/list');
+      if (!response.ok) throw new Error('ファイル一覧の取得に失敗しました');
       const data = await response.json();
-      setFlowList(data.flows || []);
+      setFlowList(data);
     } catch (error) {
-      console.error('フローリスト取得エラー:', error);
+      console.error('ファイル一覧取得エラー:', error);
       toast({
         title: "エラー",
-        description: "フローリストの取得に失敗しました",
+        description: "ファイル一覧の取得に失敗しました",
         variant: "destructive",
       });
     } finally {
@@ -56,39 +61,25 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
     fetchFlowList();
   }, []);
 
-  // 削除確認ダイアログを表示
-  const handleDeleteClick = (flowId: string) => {
-    setFlowToDelete(flowId);
-    setShowDeleteConfirm(true);
-  };
-
-  // 削除の実行
-  const handleDelete = async () => {
-    if (!flowToDelete) return;
-
+  const handleDeleteClick = async (id: string) => {
+    if (!confirm('このファイルを削除してもよろしいですか？')) return;
+    
     try {
-      const response = await fetch(`/api/tech-support/flows/${flowToDelete}`, {
-        method: 'DELETE',
+      const response = await fetch(`/api/troubleshooting/delete/${id}`, {
+        method: 'DELETE'
       });
-
-      if (!response.ok) throw new Error('フローの削除に失敗しました');
-
-      toast({
-        title: "削除成功",
-        description: "フローを削除しました",
-      });
-
+      
+      if (!response.ok) throw new Error('ファイルの削除に失敗しました');
+      
+      // 一覧を更新
       fetchFlowList();
     } catch (error) {
-      console.error('削除エラー:', error);
+      console.error('ファイル削除エラー:', error);
       toast({
         title: "エラー",
-        description: "フローの削除に失敗しました",
+        description: "ファイルの削除に失敗しました",
         variant: "destructive",
       });
-    } finally {
-      setShowDeleteConfirm(false);
-      setFlowToDelete(null);
     }
   };
 
@@ -184,7 +175,7 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setShowDeleteConfirm(false)}>キャンセル</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+            <AlertDialogAction onClick={() => handleDeleteClick(flowToDelete || '')} className="bg-red-600 hover:bg-red-700">
               <Trash2 className="mr-2 h-4 w-4" />
               削除する
             </AlertDialogAction>
@@ -195,4 +186,4 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
   );
 };
 
-export default TroubleshootingFileList; 
+export default TroubleshootingFileList;
