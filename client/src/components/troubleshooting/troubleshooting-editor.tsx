@@ -520,24 +520,50 @@ const TroubleshootingEditor: React.FC<TroubleshootingEditorProps> = ({
     try {
       setSaving(true);
 
-      const response = await fetch(`/api/troubleshooting/save/${id}`, {
+      // 保存データにタイムスタンプを追加
+      const saveData = {
+        ...editedData,
+        updatedAt: new Date().toISOString(),
+        savedTimestamp: Date.now()
+      };
+
+      console.log('💾 保存開始:', { id: editedData.id, title: editedData.title });
+
+      const saveUrl = id && id !== '' 
+        ? `/api/troubleshooting/save/${id}`
+        : `/api/troubleshooting/save/${editedData.id}`;
+
+      const response = await fetch(saveUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
         },
-        body: JSON.stringify(editedData)
+        body: JSON.stringify(saveData)
       });
 
       if (!response.ok) {
-        throw new Error('データの保存に失敗しました');
+        const errorData = await response.text();
+        console.error('保存失敗:', errorData);
+        throw new Error(`データの保存に失敗しました: ${response.status}`);
       }
+
+      const result = await response.json();
+      console.log('✅ 保存成功:', result);
+
+      // 元データを更新して変更検知をリセット
+      setOriginalData(JSON.parse(JSON.stringify(saveData)));
 
       toast({
         title: '保存完了',
         description: 'トラブルシューティングデータを保存しました',
       });
 
-      onSaved();
+      // 少し待ってからコールバック実行
+      setTimeout(() => {
+        onSaved();
+      }, 500);
+
     } catch (error) {
       console.error('保存エラー:', error);
       toast({

@@ -41,9 +41,21 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
   const fetchFlowList = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/troubleshooting/list');
+      console.log('🔄 ファイル一覧を取得中...');
+      
+      // キャッシュ無効化のためにタイムスタンプを追加
+      const timestamp = Date.now();
+      const response = await fetch(`/api/troubleshooting/list?t=${timestamp}`, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+      
       if (!response.ok) throw new Error('ファイル一覧の取得に失敗しました');
       const data = await response.json();
+      
+      console.log('✅ ファイル一覧取得完了:', data.length + '件');
       setFlowList(data);
     } catch (error) {
       console.error('ファイル一覧取得エラー:', error);
