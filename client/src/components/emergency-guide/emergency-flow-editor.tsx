@@ -64,10 +64,10 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
     console.log('🔄 flowData変更検知:', flowData);
 
     if (flowData) {
-      // データの整合性を確認・修正
+      // slidesからstepsへの変換も含めたデータの整合性を確認・修正
       const processedData = {
         ...flowData,
-        steps: flowData.steps?.map(step => {
+        steps: (flowData.steps || flowData.slides || [])?.map(step => {
           console.log(`🔍 ステップ ${step.id} (${step.type}) のオプション:`, step.options);
           
           // 条件分岐ノードの場合、既存のoptionsを保持し、不足があれば補完
@@ -75,14 +75,21 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
             const existingOptions = step.options || [];
             console.log(`📊 条件分岐 ${step.id} の既存オプション数:`, existingOptions.length);
             
-            // 既存のオプションがある場合はそのまま使用、ない場合は初期値を設定
-            const options = existingOptions.length > 0 ? existingOptions.map(option => ({
-              text: option.text || '',
-              nextStepId: option.nextStepId || '',
-              isTerminal: Boolean(option.isTerminal),
-              conditionType: option.conditionType || 'other' as const,
-              condition: option.condition || ''
-            })) : [
+            // 既存のオプションデータを詳細に検証・修正
+            const validatedOptions = existingOptions.length > 0 ? existingOptions.map((option, index) => {
+              console.log(`🔧 オプション ${index + 1} 修正前:`, option);
+              
+              const validatedOption = {
+                text: option.text || (option.conditionType === 'yes' ? 'はい' : option.conditionType === 'no' ? 'いいえ' : 'その他'),
+                nextStepId: option.nextStepId || '',
+                isTerminal: Boolean(option.isTerminal),
+                conditionType: (option.conditionType as 'yes' | 'no' | 'other') || 'other',
+                condition: option.condition || ''
+              };
+              
+              console.log(`✅ オプション ${index + 1} 修正後:`, validatedOption);
+              return validatedOption;
+            }) : [
               { 
                 text: 'はい', 
                 nextStepId: '', 
@@ -99,14 +106,21 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
               }
             ];
             
+            console.log(`🎯 条件分岐 ${step.id} の最終オプション:`, validatedOptions);
+            
             return {
               ...step,
-              options
+              // description と message の統一
+              description: step.description || step.message || '',
+              message: step.message || step.description || '',
+              options: validatedOptions
             };
           } else {
             // 通常のステップの場合
             return {
               ...step,
+              description: step.description || step.message || '',
+              message: step.message || step.description || '',
               options: step.options || [{
                 text: '次へ', 
                 nextStepId: '', 
@@ -124,8 +138,14 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         title: processedData.title,
         stepsCount: processedData.steps?.length || 0,
         updatedAt: processedData.updatedAt,
-        decisionSteps: processedData.steps?.filter(s => s.type === 'decision').length || 0
+        decisionSteps: processedData.steps?.filter(s => s.type === 'decision').length || 0,
+        decisionStepsDetail: processedData.steps?.filter(s => s.type === 'decision').map(s => ({
+          id: s.id,
+          title: s.title,
+          optionsCount: s.options?.length || 0
+        }))
       });
+      
       setEditedFlow(processedData);
     } else {
       // 新規作成の場合
@@ -929,20 +949,27 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                       console.log(`🎯 ステップ ${step.id} の選択肢表示:`, {
                         stepType: step.type,
                         optionsCount: step.options?.length || 0,
-                        options: step.options
+                        options: step.options?.map(opt => ({
+                          text: opt.text,
+                          conditionType: opt.conditionType,
+                          nextStepId: opt.nextStepId,
+                          condition: opt.condition
+                        }))
                       });
                       return null;
                     })()}
                     {step.options && step.options.length > 0 ? (
                       step.options.map((option, optionIndex) => {
-                        console.log(`📝 選択肢 ${optionIndex + 1}:`, {
+                        console.log(`📝 選択肢 ${optionIndex + 1} レンダリング:`, {
                           text: option.text,
                           conditionType: option.conditionType,
-                          nextStepId: option.nextStepId
+                          nextStepId: option.nextStepId,
+                          condition: option.condition,
+                          isTerminal: option.isTerminal
                         });
                         
                         return (
-                      <div key={optionIndex} className={`border-2 rounded-lg p-4 space-y-3 ${
+                      <div key={`${step.id}-option-${optionIndex}`} className={`border-2 rounded-lg p-4 space-y-3 ${
                         step.type === 'decision' 
                           ? option.conditionType === 'yes' 
                             ? 'border-green-200 bg-green-50' 
@@ -1018,14 +1045,18 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                               </Badge>
                             </Label>
                             <Textarea
+                              key={`${step.id}-condition-${optionIndex}-${option.conditionType}`}
                               value={option.condition || ''}
-                              onChange={(e) => updateOption(step.id, optionIndex, { condition: e.target.value })}
+                              onChange={(e) => {
+                                console.log(`🔧 条件更新: ${step.id} オプション ${optionIndex + 1}:`, e.target.value);
+                                updateOption(step.id, optionIndex, { condition: e.target.value });
+                              }}
                               placeholder={
                                 option.conditionType === 'yes' 
-                                  ? "「はい」の場合の詳細条件:\n• エンジンが完全に停止している\n• 再始動を試みても反応がない\n• 異音や異臭がない\n• 計器類に異常表示がない"
+                                  ? "「はい」の場合の詳細条件を記述してください:\n• エンジンが完全に停止している\n• 再始動を試みても反応がない\n• 異音や異臭がない\n• 計器類に異常表示がない"
                                   : option.conditionType === 'no'
-                                  ? "「いいえ」の場合の詳細条件:\n• エンジンが不安定に動作している\n• 回転数が不安定\n• 異音がする\n• 煙や異臭がある"
-                                  : "その他の状況:\n• 上記の条件に当てはまらない\n• 状況が判断できない\n• 専門家の判断が必要\n• 緊急事態の可能性"
+                                  ? "「いいえ」の場合の詳細条件を記述してください:\n• エンジンが不安定に動作している\n• 回転数が不安定\n• 異音がする\n• 煙や異臭がある"
+                                  : "その他の状況の詳細を記述してください:\n• 上記の条件に当てはまらない\n• 状況が判断できない\n• 専門家の判断が必要\n• 緊急事態の可能性"
                               }
                               rows={4}
                               className="mt-1 border-2 border-yellow-200 focus:border-yellow-400"
