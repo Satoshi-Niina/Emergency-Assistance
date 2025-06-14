@@ -22,7 +22,6 @@ router.get('/', (req, res) => {
     console.log('📋 処理対象JSONファイル:', jsonFiles);
 
     const troubleshootingFlows = jsonFiles
-      .filter(file => file === 'engine_stop_no_start.json') // 明示的にこのファイルのみ
       .map(file => {
         try {
           const filePath = path.join(troubleshootingDir, file);
@@ -268,8 +267,23 @@ router.post('/save/:id', async (req, res) => {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
         console.log(`🗑️ 既存ファイル削除: ${filePath}`);
+        
+        // ファイルが完全に削除されるまで少し待つ
+        let attempts = 0;
+        while (fs.existsSync(filePath) && attempts < 10) {
+          await new Promise(resolve => setTimeout(resolve, 10));
+          attempts++;
+        }
       }
+      
       fs.renameSync(tempFilePath, filePath);
+      
+      // ファイルが正常に作成されるまで待つ
+      let createAttempts = 0;
+      while (!fs.existsSync(filePath) && createAttempts < 10) {
+        await new Promise(resolve => setTimeout(resolve, 10));
+        createAttempts++;
+      }
       
       // 最終保存確認
       const finalStats = fs.statSync(filePath);
