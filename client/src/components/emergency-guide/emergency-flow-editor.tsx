@@ -70,51 +70,52 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         steps: (flowData.steps || flowData.slides || [])?.map(step => {
           console.log(`🔍 ステップ ${step.id} (${step.type}) のオプション:`, step.options);
 
-          // 条件分岐ノードの場合、既存のoptionsを保持し、不足があれば補完
-          if (step.type === 'decision') {
-            const existingOptions = step.options || [];
-            console.log(`📊 条件分岐 ${step.id} の既存オプション数:`, existingOptions.length);
+          // 条件分岐ノードの場合、既存のoptionsを保持し、不足があれば補完（強化版）
+            if (step.type === 'decision') {
+              const existingOptions = step.options || [];
+              console.log(`📊 条件分岐 ${step.id} の既存オプション数:`, existingOptions.length);
 
-            // 既存のオプションデータを詳細に検証・修正
-            const validatedOptions = existingOptions.length > 0 ? existingOptions.map((option, index) => {
-              console.log(`🔧 オプション ${index + 1} 修正前:`, option);
+              // 既存のオプションデータを詳細に検証・修正（強化版）
+              const validatedOptions = existingOptions.length > 0 ? existingOptions.map((option, index) => {
+                console.log(`🔧 オプション ${index + 1} 修正前:`, option);
 
-              const validatedOption = {
-                text: option.text || (option.conditionType === 'yes' ? 'はい' : option.conditionType === 'no' ? 'いいえ' : 'その他'),
-                nextStepId: option.nextStepId || '',
-                isTerminal: Boolean(option.isTerminal),
-                conditionType: (option.conditionType as 'yes' | 'no' | 'other') || 'other',
-                condition: option.condition || ''
+                // より厳密な整形処理
+                const validatedOption = {
+                  text: option.text || option.label || (option.conditionType === 'yes' ? 'はい（肯定的回答）' : option.conditionType === 'no' ? 'いいえ（否定的回答）' : 'その他の状況'),
+                  nextStepId: option.nextStepId || option.targetStepId || '',
+                  isTerminal: Boolean(option.isTerminal || option.terminal),
+                  conditionType: (option.conditionType as 'yes' | 'no' | 'other') || (index === 0 ? 'yes' : index === 1 ? 'no' : 'other'),
+                  condition: option.condition || option.description || option.detail || ''
+                };
+
+                console.log(`✅ オプション ${index + 1} 修正後:`, validatedOption);
+                return validatedOption;
+              }) : [
+                { 
+                  text: 'はい（肯定的回答）', 
+                  nextStepId: '', 
+                  isTerminal: false, 
+                  conditionType: 'yes' as const,
+                  condition: '条件が満たされている場合'
+                },
+                { 
+                  text: 'いいえ（否定的回答）', 
+                  nextStepId: '', 
+                  isTerminal: false, 
+                  conditionType: 'no' as const,
+                  condition: '条件が満たされていない場合'
+                }
+              ];
+
+              console.log(`🎯 条件分岐 ${step.id} の最終オプション（強化版）:`, validatedOptions);
+
+              return {
+                ...step,
+                // description と message の統一
+                description: step.description || step.message || '',
+                message: step.message || step.description || '',
+                options: validatedOptions
               };
-
-              console.log(`✅ オプション ${index + 1} 修正後:`, validatedOption);
-              return validatedOption;
-            }) : [
-              { 
-                text: 'はい', 
-                nextStepId: '', 
-                isTerminal: false, 
-                conditionType: 'yes' as const,
-                condition: ''
-              },
-              { 
-                text: 'いいえ', 
-                nextStepId: '', 
-                isTerminal: false, 
-                conditionType: 'no' as const,
-                condition: ''
-              }
-            ];
-
-            console.log(`🎯 条件分岐 ${step.id} の最終オプション:`, validatedOptions);
-
-            return {
-              ...step,
-              // description と message の統一
-              description: step.description || step.message || '',
-              message: step.message || step.description || '',
-              options: validatedOptions
-            };
           } else {
             // 通常のステップの場合
             return {
@@ -1174,7 +1175,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                                      option.conditionType === 'no' ? 'bg-red-50 border-red-300' :
                                      'bg-blue-50 border-blue-300'
                                    }`}>
-                                
+
                                 {/* ヘッダー部分を大幅改善 */}
                                 <div className="flex items-center justify-between mb-6 p-4 bg-white rounded-lg border-2 border-gray-200">
                                   <div className="flex items-center gap-4">
@@ -1205,7 +1206,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                                       </div>
                                     </div>
                                   </div>
-                                  
+
                                   {/* 削除ボタンを右上に配置 */}
                                   {((step.options?.length || 0) > 2) && (
                                     <Button
