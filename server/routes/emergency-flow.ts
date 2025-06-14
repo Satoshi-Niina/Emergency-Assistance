@@ -121,27 +121,42 @@ router.post('/save', async (req, res) => {
           stepId: step.id,
           title: step.title,
           conditionsCount: step.conditions?.length || 0,
-          conditionsData: step.conditions
+          conditionsData: step.conditions,
+          stepDescription: step.description,
+          stepMessage: step.message
         });
 
-        // conditions配列の検証と確保
+        // conditions配列の詳細検証と確保
         const validateConditions = (conditions: any[]) => {
           if (!Array.isArray(conditions) || conditions.length === 0) {
+            console.log(`⚠️ 条件配列が空またはnull - デフォルト条件を設定: ${step.id}`);
             return [
               { label: '条件A', nextId: '' },
               { label: '条件B', nextId: '' }
             ];
           }
           
-          return conditions.map(condition => ({
-            label: condition.label || '新しい条件',
-            nextId: condition.nextId || ''
-          }));
+          console.log(`🔍 条件配列の詳細検証: ${step.id}`, conditions);
+          
+          return conditions.map((condition, index) => {
+            const validatedCondition = {
+              label: condition.label || `条件${index + 1}`,
+              nextId: condition.nextId || ''
+            };
+            
+            console.log(`✅ 条件項目 ${index + 1} 検証完了:`, {
+              original: condition,
+              validated: validatedCondition
+            });
+            
+            return validatedCondition;
+          });
         };
 
         const ensuredConditions = validateConditions(step.conditions);
 
-        return {
+        // 保存データの詳細ログ
+        const savedConditionStep = {
           ...step,
           id: step.id,
           title: step.title || '新しい条件分岐',
@@ -154,6 +169,17 @@ router.post('/save', async (req, res) => {
           // optionsは空配列
           options: []
         };
+
+        console.log(`💾 条件分岐ノード保存データ最終確認: ${step.id}`, {
+          id: savedConditionStep.id,
+          type: savedConditionStep.type,
+          title: savedConditionStep.title,
+          description: savedConditionStep.description,
+          conditionsCount: savedConditionStep.conditions.length,
+          conditionsDetail: savedConditionStep.conditions
+        });
+
+        return savedConditionStep;
       }
 
       // 🔀 条件分岐ノード（type: "decision"）の処理
