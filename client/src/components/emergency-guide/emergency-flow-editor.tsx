@@ -1183,37 +1183,61 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         />
       </div>
 
-      {/* ステップ追加ボタン */}
-      <div className="flex gap-2">
-        <Button variant="outline" onClick={() => addStep('step')}>
-          <Plus className="w-4 h-4 mr-2" />
-          ステップ追加
-        </Button>
-        <Button variant="outline" onClick={() => addStep('condition')}>
-          <Settings className="w-4 h-4 mr-2" />
-          条件分岐追加（conditions配列）
-        </Button>
-        <Button variant="outline" onClick={() => addStep('decision')}>
-          <GitBranch className="w-4 h-4 mr-2" />
-          条件分岐追加（options配列）
-        </Button>
+      {/* スライド追加ボタン */}
+      <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4 mb-6">
+        <h3 className="text-lg font-semibold text-green-800 mb-3">新しいスライドを追加</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <Button variant="outline" onClick={() => addStep('step')} className="border-green-300 bg-white hover:bg-green-50">
+            <Plus className="w-4 h-4 mr-2" />
+            通常スライド追加
+          </Button>
+          <Button variant="outline" onClick={() => addStep('condition')} className="border-green-300 bg-white hover:bg-green-50">
+            <Settings className="w-4 h-4 mr-2" />
+            条件分岐スライド（conditions配列）
+          </Button>
+          <Button variant="outline" onClick={() => addStep('decision')} className="border-green-300 bg-white hover:bg-green-50">
+            <GitBranch className="w-4 h-4 mr-2" />
+            条件分岐スライド（options配列）
+          </Button>
+        </div>
+        <p className="text-xs text-green-600 mt-2">
+          💡 各スライドには固有のタイトルと内容を設定できます
+        </p>
       </div>
 
-      {/* ステップ一覧 */}
+      {/* スライド一覧 */}
       <div className="space-y-4">
+        <div className="bg-indigo-50 border-2 border-indigo-200 rounded-lg p-4 mb-4">
+          <h3 className="text-lg font-semibold text-indigo-800 mb-2">スライド編集エリア</h3>
+          <p className="text-sm text-indigo-600">
+            各スライドのタイトル、内容、条件分岐を編集できます。スライド番号順に表示されます。
+          </p>
+          <div className="mt-2 flex items-center gap-4 text-sm">
+            <span className="text-indigo-700">
+              📊 総スライド数: <strong>{editedFlow.steps.length}</strong>
+            </span>
+            <span className="text-indigo-700">
+              🔀 条件分岐: <strong>{editedFlow.steps.filter(s => s.type === 'decision' || s.type === 'condition').length}</strong>
+            </span>
+          </div>
+        </div>
+        
         {editedFlow.steps.map((step, index) => (
           <Card key={step.id} className="relative">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Badge variant={step.type === 'decision' || step.type === 'condition' ? 'secondary' : 'default'}>
-                    {step.type === 'start' && '開始'}
-                    {step.type === 'step' && 'ステップ'}
-                    {step.type === 'condition' && '条件分岐(conditions)'}
-                    {step.type === 'decision' && '条件分岐(options)'}
-                    {step.type === 'end' && '終了'}
+                    {step.type === 'start' && '開始スライド'}
+                    {step.type === 'step' && 'ステップスライド'}
+                    {step.type === 'condition' && '条件分岐スライド(conditions)'}
+                    {step.type === 'decision' && '条件分岐スライド(options)'}
+                    {step.type === 'end' && '終了スライド'}
                   </Badge>
-                  <span className="text-sm text-gray-500">#{index + 1}</span>
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
+                    スライド #{index + 1}
+                  </Badge>
+                  <span className="text-xs text-gray-500">ID: {step.id}</span>
                 </div>
                 <Button
                   size="sm"
@@ -1227,33 +1251,57 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                 </Button>
               </div>
 
-              {/* ステップタイトル編集 */}
-              <div>
-                <Label>タイトル</Label>
+              {/* スライド/ステップタイトル編集 */}
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Edit className="w-4 h-4 text-blue-600" />
+                  <Label className="text-blue-800 font-semibold">スライドタイトル編集</Label>
+                </div>
                 <Input
                   value={step.title}
                   onChange={(e) => updateStepTitle(step.id, e.target.value)}
-                  placeholder="ステップのタイトル"
+                  placeholder="スライドのタイトルを入力してください"
+                  className="border-blue-300 focus:border-blue-500 bg-white"
                 />
+                <p className="text-xs text-blue-600 mt-1">
+                  このタイトルはフロー表示時およびナビゲーションで使用されます
+                </p>
               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div>
-                  <Label>説明</Label>
-                  <Textarea
-                    value={step.description}
-                    onChange={(e) => updateStep(step.id, { description: e.target.value })}
-                    placeholder="ステップの詳細な説明"
-                  />
-                </div>
-                <div>
-                  <Label>メッセージ</Label>
-                  <Textarea
-                    value={step.message}
-                    onChange={(e) => updateStep(step.id, { message: e.target.value })}
-                    placeholder="ユーザーに表示するメッセージ"
-                  />
+                {/* スライド詳細編集セクション */}
+                <div className="bg-gray-50 border-2 border-gray-200 rounded-lg p-4 space-y-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <FileText className="w-4 h-4 text-gray-600" />
+                    <h4 className="font-semibold text-gray-800">スライド内容編集</h4>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-gray-700 font-medium">詳細説明</Label>
+                    <Textarea
+                      value={step.description}
+                      onChange={(e) => updateStep(step.id, { description: e.target.value })}
+                      placeholder="このスライドの詳細な説明を入力してください"
+                      className="border-gray-300 focus:border-blue-500 min-h-[80px]"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      技術的な詳細や背景情報を記載
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-gray-700 font-medium">表示メッセージ</Label>
+                    <Textarea
+                      value={step.message}
+                      onChange={(e) => updateStep(step.id, { message: e.target.value })}
+                      placeholder="ユーザーに直接表示するメッセージを入力してください"
+                      className="border-gray-300 focus:border-blue-500 min-h-[80px]"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      ユーザーが見るメインのメッセージ
+                    </p>
+                  </div>
                 </div>
 
                 {/* 画像URL */}
