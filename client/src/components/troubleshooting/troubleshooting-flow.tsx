@@ -637,31 +637,34 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
           {/* ファイル名（ID）を非表示にする */}
         </div>
         {/* ステップのタイトルがあれば表示 */}
-        {/* ステップのタイトルがあれば表示 */}
         {currentStep.title && (
           <div className="mt-2">
             <span className="text-sm font-medium text-gray-500">手順: </span>
             {editingTitle ? (
-              <div className="inline-flex items-center gap-2 w-full">
+              <div className="flex items-center gap-2 w-full mt-1">
                 <Input
                   type="text"
                   value={tempTitle}
                   onChange={(e) => setTempTitle(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
+                      e.preventDefault();
                       saveTitle();
                     } else if (e.key === 'Escape') {
+                      e.preventDefault();
                       cancelEditingTitle();
                     }
                   }}
-                  className="flex-1"
+                  className="flex-1 text-sm"
                   autoFocus
+                  placeholder="タイトルを入力してください"
                 />
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={saveTitle}
                   disabled={!tempTitle.trim()}
+                  className="text-xs px-2 py-1"
                 >
                   保存
                 </Button>
@@ -669,19 +672,21 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
                   size="sm"
                   variant="ghost"
                   onClick={cancelEditingTitle}
+                  className="text-xs px-2 py-1"
                 >
                   キャンセル
                 </Button>
               </div>
             ) : (
-              <span 
-                className="font-semibold cursor-pointer hover:bg-blue-50 px-2 py-1 rounded border-2 border-transparent hover:border-blue-200 transition-all"
+              <div
+                className="inline-block font-semibold cursor-pointer hover:bg-blue-50 px-3 py-2 rounded-md border-2 border-dashed border-blue-200 hover:border-blue-400 transition-all duration-200 mt-1 bg-white"
                 onClick={startEditingTitle}
-                title="クリックして編集"
+                title="クリックしてタイトルを編集"
               >
-                {currentStep.title}
-                <Edit className="w-3 h-3 ml-1 inline opacity-50" />
-              </span>
+                <span className="text-blue-700">{currentStep.title}</span>
+                <Edit className="w-4 h-4 ml-2 inline-block text-blue-500" />
+                <span className="text-xs text-blue-500 ml-1">(編集)</span>
+              </div>
             )}
           </div>
         )}
