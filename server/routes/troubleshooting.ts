@@ -71,7 +71,11 @@ router.get('/', (req, res) => {
     res.json(troubleshootingFlows);
   } catch (error) {
     console.error('❌ トラブルシューティングフロー取得エラー:', error);
-    res.status(500).json({ error: 'Failed to fetch troubleshooting flows' });
+    res.status(500).json({ 
+      error: 'トラブルシューティングフローの取得に失敗しました',
+      details: error.message || 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
@@ -113,8 +117,12 @@ router.get('/list', (req, res) => {
 
     res.json(fileList);
   } catch (error) {
-    console.error('ファイル一覧取得エラー:', error);
-    res.status(500).json({ error: 'ファイル一覧の取得に失敗しました' });
+    console.error('❌ ファイル一覧取得エラー:', error);
+    res.status(500).json({ 
+      error: 'ファイル一覧の取得に失敗しました',
+      details: error.message || 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
@@ -161,8 +169,13 @@ router.get('/:id', async (req, res) => {
 
     res.json(data);
   } catch (error) {
-    console.error('データ取得エラー:', error);
-    res.status(500).json({ error: 'データの取得に失敗しました', details: error.message });
+    console.error('❌ データ取得エラー:', error);
+    res.status(500).json({ 
+      error: 'データの取得に失敗しました', 
+      details: error.message || 'Unknown error',
+      timestamp: new Date().toISOString(),
+      id: req.params.id
+    });
   }
 });
 
@@ -408,6 +421,30 @@ router.post('/save/:id', async (req, res) => {
     // 保存ロックを解除
     if (global.saveLocks) {
       delete global.saveLocks[lockKey];
+    }
+
+    // 一時ファイルのクリーンアップ
+    try {
+      const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+      const tempFiles = fs.readdirSync(troubleshootingDir)
+        .filter(file => file.includes('.tmp.') || file.includes('.backup.'))
+        .filter(file => {
+          const filePath = path.join(troubleshootingDir, file);
+          const stats = fs.statSync(filePath);
+          // 1時間以上古い一時ファイルを削除
+          return Date.now() - stats.mtime.getTime() > 3600000;
+        });
+      
+      tempFiles.forEach(file => {
+        try {
+          fs.unlinkSync(path.join(troubleshootingDir, file));
+          console.log(`🧹 古い一時ファイルを削除: ${file}`);
+        } catch (cleanupError) {
+          console.warn(`⚠️ 一時ファイル削除失敗: ${file}`, cleanupError);
+        }
+      });
+    } catch (cleanupError) {
+      console.warn('⚠️ 一時ファイルクリーンアップ中にエラー:', cleanupError);
     }
   }
 });
