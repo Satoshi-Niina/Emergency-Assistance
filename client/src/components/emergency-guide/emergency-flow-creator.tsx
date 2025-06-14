@@ -297,18 +297,18 @@ const EmergencyFlowCreator: React.FC = () => {
         updatedAt: data.createdAt || data.updatedAt || new Date().toISOString()
       };
 
-      // 🔍 データ整合性の厳密チェック
-      console.log(`✅ 取得したフローデータ:`, {
-        requestedId: flowId,
-        retrievedId: editorData.id,
-        title: editorData.title,
-        stepsCount: editorData.steps?.length || 0,
-        fileName: targetFlow.fileName,
-        filePath: filePath,
-        allStepIds: editorData.steps?.map(s => s.id) || [],
-        timestamp: cacheBuster,
-        dataSource: 'emergency-flow-list-api'
-      });
+      // データ整合性の厳密チェック
+        console.log('取得したフローデータ:', {
+          requestedId: flowId,
+          retrievedId: editorData.id,
+          title: editorData.title,
+          stepsCount: editorData.steps?.length || 0,
+          fileName: targetFlow.fileName,
+          filePath: filePath,
+          allStepIds: editorData.steps?.map(s => s.id) || [],
+          timestamp: Date.now(),
+          dataSource: 'emergency-flow-list-api'
+        });
 
       // ⚠️ ステップ数不一致の警告
       if (editorData.steps?.length !== 15) {
