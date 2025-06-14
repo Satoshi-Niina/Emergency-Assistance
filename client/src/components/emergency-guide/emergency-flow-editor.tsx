@@ -78,25 +78,63 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                 stepType: step.type,
                 title: step.title,
                 existingOptionsCount: existingOptions.length,
-                existingOptionsData: existingOptions
+                existingOptionsData: existingOptions,
+                hasLegacyFields: !!(step.yesCondition || step.noCondition || step.otherCondition)
               });
 
-              // 既存の条件項目を完全に保持（追加・編集可能）
-              const processedOptions = existingOptions.length > 0 ? existingOptions.map((option, index) => {
-                const processedOption = {
-                  text: option.text || `条件項目 ${index + 1}`,
-                  nextStepId: option.nextStepId || '',
-                  isTerminal: Boolean(option.isTerminal),
-                  conditionType: (option.conditionType as 'yes' | 'no' | 'other') || 'other',
-                  condition: option.condition || ''
-                };
-
-                console.log(`🔧 既存条件項目 ${index + 1} 処理:`, processedOption);
-                return processedOption;
-              }) : [
-                { text: 'はい', nextStepId: '', isTerminal: false, conditionType: 'yes' as const, condition: '' },
-                { text: 'いいえ', nextStepId: '', isTerminal: false, conditionType: 'no' as const, condition: '' }
-              ];
+              // 旧スキーマから新スキーマへの変換も含む
+              let processedOptions = [];
+              
+              if (existingOptions.length > 0) {
+                // 新スキーマの場合
+                processedOptions = existingOptions.map((option, index) => {
+                  const processedOption = {
+                    text: option.text || `条件項目 ${index + 1}`,
+                    nextStepId: option.nextStepId || '',
+                    isTerminal: Boolean(option.isTerminal),
+                    conditionType: (option.conditionType as 'yes' | 'no' | 'other') || 'other',
+                    condition: option.condition || option.text || ''
+                  };
+                  console.log(`🔧 既存条件項目 ${index + 1} 処理:`, processedOption);
+                  return processedOption;
+                });
+              } else if (step.yesCondition || step.noCondition || step.otherCondition) {
+                // 旧スキーマからの変換
+                if (step.yesCondition) {
+                  processedOptions.push({
+                    text: 'はい',
+                    nextStepId: step.yesNextStepId || '',
+                    isTerminal: false,
+                    conditionType: 'yes' as const,
+                    condition: step.yesCondition
+                  });
+                }
+                if (step.noCondition) {
+                  processedOptions.push({
+                    text: 'いいえ',
+                    nextStepId: step.noNextStepId || '',
+                    isTerminal: false,
+                    conditionType: 'no' as const,
+                    condition: step.noCondition
+                  });
+                }
+                if (step.otherCondition) {
+                  processedOptions.push({
+                    text: 'その他',
+                    nextStepId: step.otherNextStepId || '',
+                    isTerminal: false,
+                    conditionType: 'other' as const,
+                    condition: step.otherCondition
+                  });
+                }
+                console.log(`🔄 旧スキーマから変換:`, processedOptions);
+              } else {
+                // デフォルトの条件項目
+                processedOptions = [
+                  { text: 'はい', nextStepId: '', isTerminal: false, conditionType: 'yes' as const, condition: '' },
+                  { text: 'いいえ', nextStepId: '', isTerminal: false, conditionType: 'no' as const, condition: '' }
+                ];
+              }
 
               console.log(`✅ 条件分岐ノード ${step.id} 編集UI準備完了:`, {
                 finalOptionsCount: processedOptions.length,
