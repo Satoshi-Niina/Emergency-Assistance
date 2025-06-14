@@ -231,9 +231,9 @@ router.get('/list', (req, res) => {
       return res.json([]);
     }
 
-    // JSONファイルのみを取得（古いファイルを除外）
+    // JSONファイルのみを取得（バックアップファイルを除外）
     const files = fs.readdirSync(TROUBLESHOOTING_DIR)
-      .filter(file => file.endsWith('.json'))
+      .filter(file => file.endsWith('.json') && !file.includes('.backup') && !file.includes('.tmp'))
       .sort();
 
     console.log(`📁 発見されたファイル数: ${files.length}`, files);

@@ -18,7 +18,7 @@ router.get('/', (req, res) => {
     const files = fs.readdirSync(troubleshootingDir);
     console.log('📁 見つかったファイル:', files);
 
-    const jsonFiles = files.filter(file => file.endsWith('.json') && !file.includes('.backup'));
+    const jsonFiles = files.filter(file => file.endsWith('.json') && !file.includes('.backup') && !file.includes('.tmp'));
     console.log('📋 処理対象JSONファイル:', jsonFiles);
 
     const troubleshootingFlows = jsonFiles
@@ -89,7 +89,7 @@ router.get('/list', (req, res) => {
     const files = fs.readdirSync(troubleshootingDir);
     console.log('📁 見つかったファイル:', files);
 
-    const jsonFiles = files.filter(file => file.endsWith('.json') && !file.includes('.backup'));
+    const jsonFiles = files.filter(file => file.endsWith('.json') && !file.includes('.backup') && !file.includes('.tmp'));
     console.log('📋 処理対象JSONファイル:', jsonFiles);
 
     const fileList = jsonFiles.map(file => {
@@ -169,7 +169,7 @@ router.get('/:id', async (req, res) => {
 // トラブルシューティングデータ保存
 router.post('/save/:id', async (req, res) => {
   const lockKey = `save_${req.params.id}`;
-  
+
   // 簡単な保存ロック機能（同時保存防止）
   if (global.saveLocks && global.saveLocks[lockKey]) {
     return res.status(429).json({ 
@@ -267,7 +267,7 @@ router.post('/save/:id', async (req, res) => {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
         console.log(`🗑️ 既存ファイル削除: ${filePath}`);
-        
+
         // ファイルが完全に削除されるまで少し待つ
         let attempts = 0;
         while (fs.existsSync(filePath) && attempts < 10) {
@@ -275,20 +275,20 @@ router.post('/save/:id', async (req, res) => {
           attempts++;
         }
       }
-      
+
       fs.renameSync(tempFilePath, filePath);
-      
+
       // ファイルが正常に作成されるまで待つ
       let createAttempts = 0;
       while (!fs.existsSync(filePath) && createAttempts < 10) {
         await new Promise(resolve => setTimeout(resolve, 10));
         createAttempts++;
       }
-      
+
       // 最終保存確認
       const finalStats = fs.statSync(filePath);
       console.log(`✅ ファイル完全置換完了: ${filePath} (${finalStats.size} bytes)`);
-      
+
       // 最終的に保存されたファイル内容を検証
       const savedContent = fs.readFileSync(filePath, 'utf8');
       const savedData = JSON.parse(savedContent);
