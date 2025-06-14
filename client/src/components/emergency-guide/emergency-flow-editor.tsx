@@ -1090,56 +1090,144 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                     )}
                   </div>
 
-                  {/* 🎯 条件分岐ノード専用編集フォーム - ステップレベルで表示（強制表示） */}
+                  {/* 🎯 条件分岐ノード統合編集エリア - 常時表示で編集フォームとして活用 */}
                   {step.type === 'decision' && (
-                    <div className="mt-8 bg-gradient-to-r from-yellow-50 to-orange-50 border-4 border-yellow-400 rounded-xl p-8 shadow-2xl">
+                    <div className="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 border-4 border-blue-400 rounded-xl p-8 shadow-2xl">
                       <div className="text-center mb-8">
                         <div className="flex items-center justify-center gap-4 mb-4">
-                          <GitBranch className="w-10 h-10 text-yellow-600" />
-                          <Badge variant="secondary" className="text-lg px-6 py-2 bg-yellow-200 text-yellow-800 font-bold">
-                            🔥 条件分岐ノード統合編集エリア
+                          <GitBranch className="w-12 h-12 text-blue-600 animate-pulse" />
+                          <Badge variant="secondary" className="text-xl px-8 py-3 bg-blue-200 text-blue-800 font-bold shadow-lg">
+                            🎛️ 条件分岐統合編集フォーム（常時表示）
                           </Badge>
                         </div>
-                        <h3 className="text-3xl font-bold text-yellow-800 mb-2">
-                          📝 ステップ「{step.title}」の条件分岐設定
+                        <h3 className="text-4xl font-bold text-blue-800 mb-3">
+                          🏗️ 「{step.title}」の条件分岐設定
                         </h3>
-                        <p className="text-xl text-yellow-700 font-medium">
-                          ✅ 全選択肢の統合管理・新規作成時と再編集時で同じ編集機能が利用可能
+                        <p className="text-xl text-blue-700 font-medium mb-4">
+                          🔧 統合編集エリアとして常時表示 - 新規作成・再編集両対応
                         </p>
-                        <div className="mt-4 inline-flex items-center gap-2 px-6 py-3 bg-yellow-100 rounded-lg border-2 border-yellow-300">
-                          <span className="font-bold text-yellow-800 text-lg">
-                            🎯 {step.options?.length || 0}個の分岐条件を編集中
-                          </span>
+                        <div className="flex justify-center gap-4 mb-6">
+                          <div className="inline-flex items-center gap-2 px-6 py-3 bg-blue-100 rounded-lg border-2 border-blue-300">
+                            <span className="font-bold text-blue-800 text-lg">
+                              📊 {step.options?.length || 0}個の分岐条件
+                            </span>
+                          </div>
+                          <div className="inline-flex items-center gap-2 px-6 py-3 bg-green-100 rounded-lg border-2 border-green-300">
+                            <span className="font-bold text-green-800 text-lg">
+                              ✅ 編集モード: アクティブ
+                            </span>
+                          </div>
                         </div>
                       </div>
 
-                      <div className="bg-white rounded-xl p-6 border-4 border-yellow-300 shadow-lg">
-                        <h4 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
-                          <span className="bg-yellow-200 px-4 py-2 rounded-lg text-yellow-800">🔧</span>
-                          条件分岐オプション一覧管理
-                        </h4>
+                      {/* 🎯 編集フォームとしての機能を強化 */}
+                      <div className="bg-white rounded-xl p-8 border-4 border-blue-300 shadow-2xl">
+                        <div className="flex items-center justify-between mb-8">
+                          <h4 className="text-3xl font-bold text-gray-800 flex items-center gap-4">
+                            <span className="bg-blue-200 px-6 py-3 rounded-xl text-blue-800 shadow-md">🎛️</span>
+                            統合編集フォーム
+                          </h4>
+                          <div className="flex gap-3">
+                            <Button 
+                              size="lg" 
+                              variant="outline" 
+                              className="text-green-600 border-green-300 bg-green-50 hover:bg-green-100"
+                              onClick={() => addDecisionOption(step.id)}
+                              disabled={step.options?.length >= 5}
+                            >
+                              <Plus className="w-5 h-5 mr-2" />
+                              条件追加 ({step.options?.length || 0}/5)
+                            </Button>
+                            <Button size="lg" variant="outline" className="text-blue-600 border-blue-300">
+                              <Settings className="w-5 h-5 mr-2" />
+                              設定
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* 📊 統計情報表示 */}
+                        <div className="grid grid-cols-3 gap-4 mb-8 p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-blue-600">{step.options?.length || 0}</div>
+                            <div className="text-sm text-gray-600">分岐条件数</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-green-600">
+                              {step.options?.filter(opt => opt.nextStepId && opt.nextStepId !== '').length || 0}
+                            </div>
+                            <div className="text-sm text-gray-600">接続済み</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-orange-600">
+                              {step.options?.filter(opt => opt.isTerminal).length || 0}
+                            </div>
+                            <div className="text-sm text-gray-600">終了条件</div>
+                          </div>
+                        </div>
 
                         {step.options && step.options.length > 0 ? (
-                          <div className="space-y-6">
+                          <div className="space-y-8">
                             {step.options.map((option, optionIndex) => (
                               <div key={`decision-unified-${step.id}-${optionIndex}`} 
-                                   className="bg-gray-50 border-2 border-gray-300 rounded-lg p-6">
-                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                  {/* 選択肢基本情報 */}
-                                  <div className="space-y-4">
-                                    <div className="flex items-center gap-2 mb-3">
+                                   className={`border-4 rounded-xl p-8 shadow-lg transition-all duration-300 hover:shadow-xl ${
+                                     option.conditionType === 'yes' ? 'bg-green-50 border-green-300' :
+                                     option.conditionType === 'no' ? 'bg-red-50 border-red-300' :
+                                     'bg-blue-50 border-blue-300'
+                                   }`}>
+                                
+                                {/* ヘッダー部分を大幅改善 */}
+                                <div className="flex items-center justify-between mb-6 p-4 bg-white rounded-lg border-2 border-gray-200">
+                                  <div className="flex items-center gap-4">
+                                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl font-bold text-white ${
+                                      option.conditionType === 'yes' ? 'bg-green-500' :
+                                      option.conditionType === 'no' ? 'bg-red-500' : 'bg-blue-500'
+                                    }`}>
+                                      {optionIndex + 1}
+                                    </div>
+                                    <div>
                                       <Badge variant={
                                         option.conditionType === 'yes' ? 'default' :
                                         option.conditionType === 'no' ? 'destructive' : 'secondary'
-                                      } className="text-lg px-4 py-2">
-                                        選択肢 {optionIndex + 1}
+                                      } className="text-lg px-6 py-2 mb-2">
+                                        分岐条件 {optionIndex + 1}
                                       </Badge>
-                                      <Badge variant="outline" className="text-base">
-                                        {option.conditionType === 'yes' && '✅ はい'}
-                                        {option.conditionType === 'no' && '❌ いいえ'}
-                                        {option.conditionType === 'other' && '🔸 その他'}
-                                      </Badge>
+                                      <div className="flex gap-2">
+                                        <Badge variant="outline" className="text-base">
+                                          {option.conditionType === 'yes' && '✅ はい（肯定）'}
+                                          {option.conditionType === 'no' && '❌ いいえ（否定）'}
+                                          {option.conditionType === 'other' && '🔸 その他（中立）'}
+                                        </Badge>
+                                        {option.isTerminal && (
+                                          <Badge variant="destructive" className="text-base">
+                                            🏁 フロー終了
+                                          </Badge>
+                                        )}
+                                      </div>
                                     </div>
+                                  </div>
+                                  
+                                  {/* 削除ボタンを右上に配置 */}
+                                  {((step.options?.length || 0) > 2) && (
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() => removeOption(step.id, optionIndex)}
+                                      className="hover:scale-110 transition-transform"
+                                    >
+                                      <Trash2 className="w-4 h-4 mr-1" />
+                                      削除
+                                    </Button>
+                                  )}
+                                </div>
+
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                  {/* 基本設定セクション */}
+                                  <div className="space-y-6">
+                                    <div className="bg-white p-4 rounded-lg border-2 border-gray-200">
+                                      <h5 className="text-lg font-bold text-gray-700 mb-4 flex items-center gap-2">
+                                        <span className="bg-blue-100 p-2 rounded">📝</span>
+                                        基本設定
+                                      </h5>
 
                                     <div>
                                       <Label className="text-base font-bold text-gray-700">📝 条件テキスト</Label>
