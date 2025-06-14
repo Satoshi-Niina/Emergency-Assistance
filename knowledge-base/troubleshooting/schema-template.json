@@ -1,7 +1,6 @@
-
 {
   "id": "template_flow",
-  "title": "応急処置フローテンプレート",
+  "title": "フローテンプレート",
   "description": "条件分岐ノードを含む応急処置フローのテンプレート",
   "triggerKeywords": [
     "キーワード1",
@@ -9,127 +8,59 @@
   ],
   "steps": [
     {
-      "id": "start",
+      "id": "step1",
       "title": "開始",
       "description": "この応急処置ガイドでは、問題に対処する手順を説明します。",
       "message": "この応急処置ガイドでは、問題に対処する手順を説明します。",
       "imageUrl": "",
-      "type": "start",
-      "options": [
-        {
-          "text": "状況を確認する",
-          "nextStepId": "step1",
-          "condition": "状況確認開始",
-          "isTerminal": false,
-          "conditionType": "other"
-        }
-      ]
+      "type": "step",
+      "options": []
     },
     {
-      "id": "step1",
+      "id": "step2",
       "title": "通常ステップ",
       "description": "通常の手順ステップの例です。",
       "message": "通常の手順ステップの例です。",
       "imageUrl": "",
       "type": "step",
-      "options": [
-        {
-          "text": "次へ",
-          "nextStepId": "decision1",
-          "condition": "次のステップへ進む",
-          "isTerminal": false,
-          "conditionType": "other"
-        }
-      ]
+      "options": []
     },
     {
-      "id": "decision1",
+      "id": "step3",
       "title": "条件分岐ノード",
       "description": "状況に応じて異なる選択肢を選んでください。",
       "message": "状況に応じて異なる選択肢を選んでください。",
       "imageUrl": "",
-      "type": "decision",
-      "options": [
-        {
-          "text": "はい",
-          "nextStepId": "step2a",
-          "condition": "条件がYESの場合",
-          "isTerminal": false,
-          "conditionType": "yes"
-        },
-        {
-          "text": "いいえ",
-          "nextStepId": "step2b",
-          "condition": "条件がNOの場合",
-          "isTerminal": false,
-          "conditionType": "no"
-        },
-        {
-          "text": "その他の状況",
-          "nextStepId": "step2c",
-          "condition": "その他の特殊な状況",
-          "isTerminal": false,
-          "conditionType": "other"
-        }
-      ],
-      "yesCondition": "条件がYESの場合",
-      "yesNextStepId": "step2a",
-      "noCondition": "条件がNOの場合",
-      "noNextStepId": "step2b",
-      "otherCondition": "その他の特殊な状況",
-      "otherNextStepId": "step2c"
+      "type": "step",
+      "options": []
     },
     {
-      "id": "step2a",
+      "id": "step4",
       "title": "YES分岐後のステップ",
       "description": "YESを選んだ場合の対処方法です。",
       "message": "YESを選んだ場合の対処方法です。",
       "imageUrl": "",
       "type": "step",
-      "options": [
-        {
-          "text": "完了",
-          "nextStepId": "",
-          "condition": "処理完了",
-          "isTerminal": true,
-          "conditionType": "other"
-        }
-      ]
+      "options": []
     },
     {
-      "id": "step2b",
+      "id": "step5",
       "title": "NO分岐後のステップ",
       "description": "NOを選んだ場合の対処方法です。",
       "message": "NOを選んだ場合の対処方法です。",
       "imageUrl": "",
       "type": "step",
-      "options": [
-        {
-          "text": "完了",
-          "nextStepId": "",
-          "condition": "処理完了",
-          "isTerminal": true,
-          "conditionType": "other"
-        }
-      ]
+      "options": []
     },
     {
-      "id": "step2c",
+      "id": "step6",
       "title": "その他分岐後のステップ",
       "description": "その他を選んだ場合の対処方法です。",
       "message": "その他を選んだ場合の対処方法です。",
       "imageUrl": "",
       "type": "step",
-      "options": [
-        {
-          "text": "専門家に相談",
-          "nextStepId": "",
-          "condition": "専門的支援が必要",
-          "isTerminal": true,
-          "conditionType": "other"
-        }
-      ]
+      "options": []
     }
   ],
-  "updatedAt": "2025-01-24T00:00:00.000Z"
+  "updatedAt": "2025-06-14T09:28:05.650Z"
 }
