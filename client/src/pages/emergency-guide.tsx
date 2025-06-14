@@ -200,10 +200,15 @@ const EmergencyGuidePage: React.FC = () => {
       }
 
       const data = await response.json();
-      
-      console.log(`✅ 全データを表示: ${data.length}件`);
-      
-      setFlowList(Array.isArray(data) ? data : []);
+
+      // レスポンスデータのバリデーションと処理
+      let processedData = [];
+      if (Array.isArray(data)) {
+        console.log(`✅ 取得したフローデータ: ${data.length}件を全て表示`);
+        processedData = data;
+      }
+
+      setFlowList(processedData);
 
       // データをキャッシュ
       if (typeof window !== 'undefined') {

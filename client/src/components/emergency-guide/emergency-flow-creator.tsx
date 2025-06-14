@@ -113,11 +113,14 @@ const EmergencyFlowCreator: React.FC = () => {
           });
         });
 
-        setFlowList(Array.isArray(data) ? data : []);
+        // 取得したデータを全て表示（フィルタリングなし）
+        const allFlowData = Array.isArray(data) ? data : [];
+        console.log(`🔄 フロー一覧更新: ${allFlowData.length}件のデータを表示`);
+        setFlowList(allFlowData);
 
         // 🔄 現在編集中のフローがある場合、一覧データで更新
-        if (selectedFlowForEdit && data.length > 0) {
-          const updatedFlow = data.find(f => f.id === selectedFlowForEdit);
+        if (selectedFlowForEdit && allFlowData.length > 0) {
+          const updatedFlow = allFlowData.find(f => f.id === selectedFlowForEdit);
           if (updatedFlow) {
             console.log(`🔄 編集中フローを一覧データで更新: ${updatedFlow.id}`);
             // エディターに最新データを反映するイベントを発行
@@ -136,6 +139,17 @@ const EmergencyFlowCreator: React.FC = () => {
         console.warn('⚠️ 予期しないデータ形式:', data);
         setFlowList([]);
       }
+
+      // 他のコンポーネントにフロー一覧更新を通知
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('flowListUpdated', {
+          detail: { 
+            flowList: allFlowData,
+            timestamp: Date.now(),
+            source: 'flow-creator'
+          }
+        }));
+      }, 100);
     } catch (error) {
       console.error('❌ フロー一覧取得エラー:', error);
       toast({
