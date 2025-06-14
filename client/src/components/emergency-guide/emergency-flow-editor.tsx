@@ -67,19 +67,56 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
       // データの整合性を確認・修正
       const processedData = {
         ...flowData,
-        steps: flowData.steps?.map(step => ({
-          ...step,
-          // 条件分岐ノードの場合、optionsが空でないことを確認
-          options: step.options || (step.type === 'decision' ? [] : [
-            { 
-              text: '次へ', 
-              nextStepId: '', 
-              isTerminal: false, 
-              conditionType: 'other' as const,
-              condition: ''
-            }
-          ])
-        })) || []
+        steps: flowData.steps?.map(step => {
+          console.log(`🔍 ステップ ${step.id} (${step.type}) のオプション:`, step.options);
+          
+          // 条件分岐ノードの場合、既存のoptionsを保持し、不足があれば補完
+          if (step.type === 'decision') {
+            const existingOptions = step.options || [];
+            console.log(`📊 条件分岐 ${step.id} の既存オプション数:`, existingOptions.length);
+            
+            // 既存のオプションがある場合はそのまま使用、ない場合は初期値を設定
+            const options = existingOptions.length > 0 ? existingOptions.map(option => ({
+              text: option.text || '',
+              nextStepId: option.nextStepId || '',
+              isTerminal: Boolean(option.isTerminal),
+              conditionType: option.conditionType || 'other' as const,
+              condition: option.condition || ''
+            })) : [
+              { 
+                text: 'はい', 
+                nextStepId: '', 
+                isTerminal: false, 
+                conditionType: 'yes' as const,
+                condition: ''
+              },
+              { 
+                text: 'いいえ', 
+                nextStepId: '', 
+                isTerminal: false, 
+                conditionType: 'no' as const,
+                condition: ''
+              }
+            ];
+            
+            return {
+              ...step,
+              options
+            };
+          } else {
+            // 通常のステップの場合
+            return {
+              ...step,
+              options: step.options || [{
+                text: '次へ', 
+                nextStepId: '', 
+                isTerminal: false, 
+                conditionType: 'other' as const,
+                condition: ''
+              }]
+            };
+          }
+        }) || []
       };
 
       console.log('📊 flowDataをsetEditedFlowに設定:', {
@@ -888,8 +925,23 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                   )}
 
                   <div className="space-y-3">
-                    {step.options.length > 0 ? (
-                      step.options.map((option, optionIndex) => (
+                    {(() => {
+                      console.log(`🎯 ステップ ${step.id} の選択肢表示:`, {
+                        stepType: step.type,
+                        optionsCount: step.options?.length || 0,
+                        options: step.options
+                      });
+                      return null;
+                    })()}
+                    {step.options && step.options.length > 0 ? (
+                      step.options.map((option, optionIndex) => {
+                        console.log(`📝 選択肢 ${optionIndex + 1}:`, {
+                          text: option.text,
+                          conditionType: option.conditionType,
+                          nextStepId: option.nextStepId
+                        });
+                        
+                        return (
                       <div key={optionIndex} className={`border-2 rounded-lg p-4 space-y-3 ${
                         step.type === 'decision' 
                           ? option.conditionType === 'yes' 
@@ -898,7 +950,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                             ? 'border-red-200 bg-red-50'
                             : 'border-blue-200 bg-blue-50'
                           : 'border-gray-200 bg-gray-50'
-                      }`}>
+                      }`}>)
                         {/* ヘッダー部分 */}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -939,13 +991,13 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                             {step.type === 'decision' ? '分岐条件の表示テキスト' : '選択肢のテキスト'}
                           </Label>
                           <Input
-                            value={option.text}
+                            value={option.text || ''}
                             onChange={(e) => updateOption(step.id, optionIndex, { text: e.target.value })}
                             placeholder={
                               step.type === 'decision' 
                                 ? option.conditionType === 'yes' 
                                   ? "はい（例: エンジンが完全に停止している）"
-                                                                 : option.conditionType === 'no'
+                                  : option.conditionType === 'no'
                                   ? "いいえ（例: まだ不安定に動作している）"
                                   : "その他の状況（例: 判断できない）"
                                 : "選択肢のテキスト"
@@ -1031,7 +1083,8 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                           )}
                         </div>
                       </div>
-                    ))
+                        );
+                      })
                     ) : (
                       /* 条件分岐で選択肢がない場合のヒント */
                       step.type === 'decision' && (
