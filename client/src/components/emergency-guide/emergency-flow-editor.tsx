@@ -896,6 +896,11 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                       <span className="text-sm text-gray-500 ml-1">
                         ({step.options.length}個)
                       </span>
+                      {step.type === 'decision' && (
+                        <Badge variant="secondary" className="ml-2 bg-yellow-200 text-yellow-800">
+                          🎯 条件分岐モード
+                        </Badge>
+                      )}
                     </Label>
                     <div className="flex gap-2">
                       <Button size="sm" variant="outline" onClick={() => addOption(step.id)}>
@@ -946,7 +951,9 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
 
                   <div className="space-y-3">
                     {step.options && step.options.length > 0 ? (
-                      step.options.map((option, optionIndex) => (
+                      step.options.map((option, optionIndex) => {
+                        console.log(`🔍 レンダリング中 - ステップ ${step.id} (${step.type}), オプション ${optionIndex + 1}:`, option);
+                        return (
                       <div key={`${step.id}-option-${optionIndex}`} className={`border-2 rounded-lg p-4 space-y-3 ${
                         step.type === 'decision' 
                           ? option.conditionType === 'yes' 
@@ -1012,8 +1019,9 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                         </div>
 
                         {/* 🎯 条件分岐ノード専用編集フォーム（新規と再編集で共通） - 常に表示 */}
-                        {step.type === 'decision' && (
-                          <div className="mt-6 bg-gradient-to-r from-yellow-50 to-orange-50 border-4 border-yellow-400 rounded-xl p-8 shadow-2xl">
+                        {step.type === 'decision' && step.id && option && (
+                          <div className="mt-6 bg-gradient-to-r from-yellow-50 to-orange-50 border-4 border-yellow-400 rounded-xl p-8 shadow-2xl"
+                               key={`decision-editor-${step.id}-${optionIndex}`}>
                             {/* ヘッダー部分 */}
                             <div className="text-center mb-8">
                               <div className="flex items-center justify-center gap-4 mb-4">
@@ -1332,7 +1340,8 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                           )}
                         </div>
                       </div>
-                        ))
+                        );
+                      })
                     ) : (
                       /* 条件分岐で選択肢がない場合のヒント */
                       step.type === 'decision' && (
