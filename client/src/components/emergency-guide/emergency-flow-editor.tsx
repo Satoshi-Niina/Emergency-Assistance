@@ -521,6 +521,16 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
     const step = editedFlow.steps.find(s => s.id === stepId);
     if (!step || step.type !== 'decision') return;
 
+    // 最大5つまでの制限
+    if (step.options.length >= 5) {
+      toast({
+        title: "追加できません",
+        description: "条件分岐では最大5つまでの選択肢が設定できます",
+        variant: "destructive"
+      });
+      return;
+    }
+
     // 既存の条件タイプを確認
     const existingTypes = step.options.map(opt => opt.conditionType);
     let newConditionType: 'yes' | 'no' | 'other' = 'other';
@@ -534,8 +544,10 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
       newConditionType = 'no';
       newText = 'いいえ';
     } else {
+      // "その他"タイプを連番で追加
+      const otherCount = existingTypes.filter(type => type === 'other').length;
       newConditionType = 'other';
-      newText = 'その他の状況';
+      newText = `その他の状況${otherCount > 0 ? ` ${otherCount + 1}` : ''}`;
     }
 
     const newOption = {
@@ -548,6 +560,11 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
 
     updateStep(stepId, {
       options: [...step.options, newOption]
+    });
+
+    toast({
+      title: "選択肢を追加しました",
+      description: `新しい条件「${newText}」を追加しました`
     });
   };
 
@@ -594,10 +611,35 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
     if (!editedFlow) return;
 
     const step = editedFlow.steps.find(s => s.id === stepId);
-    if (!step || step.options.length <= 1) return;
+    if (!step) return;
+
+    // 条件分岐の場合は最低2つの選択肢が必要
+    if (step.type === 'decision' && step.options.length <= 2) {
+      toast({
+        title: "削除できません",
+        description: "条件分岐では最低2つの選択肢が必要です",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // 通常のステップの場合は最低1つの選択肢が必要
+    if (step.type !== 'decision' && step.options.length <= 1) {
+      toast({
+        title: "削除できません",
+        description: "最低1つの選択肢が必要です",
+        variant: "destructive"
+      });
+      return;
+    }
 
     updateStep(stepId, {
       options: step.options.filter((_, index) => index !== optionIndex)
+    });
+
+    toast({
+      title: "選択肢を削除しました",
+      description: `選択肢 ${optionIndex + 1} を削除しました`
     });
   };
 
@@ -767,15 +809,16 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                         <Plus className="w-4 h-4 mr-1" />
                         選択肢追加
                       </Button>
-                      {step.type === 'decision' && step.options.length < 3 && (
+                      {step.type === 'decision' && step.options.length < 5 && (
                         <Button 
                           size="sm" 
                           variant="outline" 
                           className="text-blue-600 border-blue-300"
                           onClick={() => addDecisionOption(step.id)}
+                          title={`条件分岐を追加 (${step.options.length}/5)`}
                         >
                           <GitBranch className="w-4 h-4 mr-1" />
-                          分岐追加
+                          分岐追加 ({step.options.length}/5)
                         </Button>
                       )}
                     </div>
@@ -786,6 +829,9 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                       <p className="text-sm text-yellow-800">
                         <strong>条件分岐ノード:</strong> ユーザーの状況に応じて異なるステップに進む分岐点です。
                         各選択肢に具体的な条件を設定してください。
+                      </p>
+                      <p className="text-xs text-yellow-700 mt-1">
+                        💡 保存後に再編集する場合も、条件項目の追加・変更・削除が可能です
                       </p>
                     </div>
                   )}
@@ -821,12 +867,14 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                               </Badge>
                             )}
                           </div>
-                          {step.options.length > 1 && (
+                          {((step.type === 'decision' && step.options.length > 2) || 
+                            (step.type !== 'decision' && step.options.length > 1)) && (
                             <Button
                               size="sm"
                               variant="ghost"
                               className="text-red-600 hover:text-red-700 hover:bg-red-100"
                               onClick={() => removeOption(step.id, optionIndex)}
+                              title="この選択肢を削除"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
