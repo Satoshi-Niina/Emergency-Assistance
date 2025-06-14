@@ -15,7 +15,16 @@
       "imageUrl": "",
       "type": "step",
       "options": []
+    },
+    {
+      "id": "step2",
+      "title": "新しい条件分岐",
+      "description": "エンジン回転を上げた時？",
+      "message": "エンジン回転を上げた時？",
+      "imageUrl": "",
+      "type": "step",
+      "options": []
     }
   ],
-  "updatedAt": "2025-06-14T02:29:05.027Z"
+  "updatedAt": "2025-06-14T06:50:50.577Z"
 }
