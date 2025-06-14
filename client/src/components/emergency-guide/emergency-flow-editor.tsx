@@ -64,13 +64,32 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
     console.log('🔄 flowData変更検知:', flowData);
 
     if (flowData) {
+      // データの整合性を確認・修正
+      const processedData = {
+        ...flowData,
+        steps: flowData.steps?.map(step => ({
+          ...step,
+          // 条件分岐ノードの場合、optionsが空でないことを確認
+          options: step.options || (step.type === 'decision' ? [] : [
+            { 
+              text: '次へ', 
+              nextStepId: '', 
+              isTerminal: false, 
+              conditionType: 'other' as const,
+              condition: ''
+            }
+          ])
+        })) || []
+      };
+
       console.log('📊 flowDataをsetEditedFlowに設定:', {
-        id: flowData.id,
-        title: flowData.title,
-        stepsCount: flowData.steps?.length || 0,
-        updatedAt: flowData.updatedAt
+        id: processedData.id,
+        title: processedData.title,
+        stepsCount: processedData.steps?.length || 0,
+        updatedAt: processedData.updatedAt,
+        decisionSteps: processedData.steps?.filter(s => s.type === 'decision').length || 0
       });
-      setEditedFlow({ ...flowData });
+      setEditedFlow(processedData);
     } else {
       // 新規作成の場合
       const newFlow: FlowData = {
@@ -848,7 +867,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                         各選択肢に具体的な条件を設定してください。
                       </p>
                       <p className="text-xs text-yellow-700 mt-1">
-                        💡 保存後に再編集する場合も、条件項目の追加・変更・削除が可能です
+                        💡 新規作成時も再編集時も同じように条件項目の追加・変更・削除が可能です
                       </p>
                       <div className="mt-2 flex gap-2">
                         <Button 
@@ -869,7 +888,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                   )}
 
                   <div className="space-y-3">
-                    {step.options.map((option, optionIndex) => (
+                    {step.options.length > 0 ? step.options.map((option, optionIndex) => (
                       <div key={optionIndex} className={`border-2 rounded-lg p-4 space-y-3 ${
                         step.type === 'decision' 
                           ? option.conditionType === 'yes' 
@@ -1014,16 +1033,27 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                     ))}
                   </div>
 
-                  {/* 条件分岐のヒント */}
-                  {step.type === 'decision' && step.options.length === 0 && (
-                    <div className="text-center py-8 text-gray-500">
-                      <GitBranch className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                      <p className="text-sm">条件分岐の選択肢を追加してください</p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        「はい」「いいえ」「その他」の分岐を作成できます
-                      </p>
-                    </div>
-                  )}
+                  )) : (
+                      /* 条件分岐で選択肢がない場合のヒント */
+                      step.type === 'decision' && (
+                        <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
+                          <GitBranch className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                          <p className="text-sm">条件分岐の選択肢を追加してください</p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            「はい」「いいえ」「その他」の分岐を作成できます
+                          </p>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="mt-3 text-blue-600 border-blue-300"
+                            onClick={() => addDecisionOption(step.id)}
+                          >
+                            <Plus className="w-4 h-4 mr-1" />
+                            最初の条件項目を追加
+                          </Button>
+                        </div>
+                      )
+                    )}
                 </div>
               </div>
             </CardContent>
