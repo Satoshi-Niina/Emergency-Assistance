@@ -1090,7 +1090,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                     )}
                   </div>
 
-                  {/* 🎯 条件分岐ノード専用編集フォーム - ステップレベルで表示（常に表示） */}
+                  {/* 🎯 条件分岐ノード専用編集フォーム - ステップレベルで表示（強制表示） */}
                   {step.type === 'decision' && (
                     <div className="mt-8 bg-gradient-to-r from-yellow-50 to-orange-50 border-4 border-yellow-400 rounded-xl p-8 shadow-2xl">
                       <div className="text-center mb-8">
