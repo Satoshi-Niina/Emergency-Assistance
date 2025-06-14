@@ -798,10 +798,10 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
 
                 // 送信成功後は応急処置ガイド画面を閉じる
                 console.log('応急処置ガイド送信完了 - 応急処置ガイド画面を閉じます');
-                
+
                 // 応急処置ガイド画面を閉じるイベントを発火
                 window.dispatchEvent(new CustomEvent('close-emergency-guide'));
-                
+
                 // フロー画面も閉じる
                 if (onExit) {
                   onExit();

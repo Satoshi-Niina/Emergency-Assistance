@@ -564,7 +564,7 @@ router.post('/clear-cache', async (req, res) => {
       };
 
       // ブラックリストファイル（無視するファイル）
-      const blacklistFiles = ['guide_1744876404679_metadata.json', 'guide_metadata.json'];
+      const blacklistFiles = ['guide_1744876440009_metadata.json']; // 例として完全なファイル名を指定04679_metadata.json', 'guide_metadata.json'];
 
       // 有効なメタデータファイルのみを追加
       const validFiles = jsonFiles.filter(file => 

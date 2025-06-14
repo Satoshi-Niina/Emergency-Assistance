@@ -208,23 +208,10 @@ const EmergencyGuidePage: React.FC = () => {
       console.log(`✅ 取得したフローデータ: ${data.length}件`, data);
 
       // 古いデータを完全に除去し、engine_stop_no_startのみ許可
-      const validData = data.filter((item: any) => {
-        // 明示的に古いIDを除外
-        if (item?.id === 'engine_restart_issue' || item?.id === 'parking_brake_release_issue') {
-          console.log(`🚫 古いデータを強制除外: ${item.id} (ファイル: ${item.fileName})`);
-          return false;
-        }
+      // すべてのファイルを表示
+      const validData = data;
 
-        const isValid = item && 
-                       item.id === 'engine_stop_no_start' && 
-                       item.fileName === 'engine_stop_no_start.json';
-        if (!isValid) {
-          console.log(`❌ 許可されていないデータを除外: ${item?.id || 'unknown'} (ファイル: ${item?.fileName})`);
-        }
-        return isValid;
-      });
-
-      console.log(`🎯 許可されたデータ: ${validData.length}件（engine_stop_no_startのみ）`);
+      console.log(`🎯 許可されたデータ: ${validData.length}件（全データ）`);
 
       setFlowList(validData);
 

@@ -107,7 +107,7 @@ router.post('/save-flow', async (req: Request, res: Response) => {
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
     const normalizedTargetPath = path.normalize(targetFilePath);
     const normalizedTroubleshootingDir = path.normalize(troubleshootingDir);
-    
+
     if (!normalizedTargetPath.startsWith(normalizedTroubleshootingDir)) {
       return res.status(400).json({
         success: false,
@@ -332,14 +332,14 @@ router.get('/:id', async (req: Request, res: Response) => {
       }
     }
 
-    // 🚀 指定ファイルで見つかった場合は早期リターン
+    // 🎯 指定ファイルで見つかった場合は早期リターン
     if (targetFlowData && fileName) {
       console.log(`🎯 指定ファイル処理完了 - 早期リターン`);
 
       // データの整合性チェック
       if (targetFlowData.id !== id) {
         console.warn(`⚠️ ID不一致を修正: 要求=${id}, 実際=${targetFlowData.id}`);
-        targetFlowData.id = id;
+        targetFlowData.id = id; // IDを修正
       }
 
       res.set({
@@ -529,10 +529,10 @@ router.post('/save/:id', async (req: Request, res: Response) => {
     });
 
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    
+
     // 🎯 パスの正規化とバリデーション強化
     const normalizedRequestPath = requestFilePath.replace(/\\/g, '/');
-    
+
     // troubleshootingディレクトリ内であることを厳密チェック
     if (!normalizedRequestPath.startsWith('knowledge-base/troubleshooting/')) {
       return res.status(400).json({
@@ -551,7 +551,7 @@ router.post('/save/:id', async (req: Request, res: Response) => {
     // 最終的なディレクトリチェック
     const normalizedFilePath = path.normalize(filePath);
     const normalizedTroubleshootingDir = path.normalize(troubleshootingDir);
-    
+
     if (!normalizedFilePath.startsWith(normalizedTroubleshootingDir)) {
       return res.status(400).json({
         success: false,
@@ -628,14 +628,14 @@ router.post('/save/:id', async (req: Request, res: Response) => {
       try {
         // ファイル読み込み待ち
         await new Promise(resolve => setTimeout(resolve, 50));
-        
+
         const savedContent = fs.readFileSync(filePath, 'utf8');
         const parsedContent = JSON.parse(savedContent);
-        
+
         // データ整合性チェック
         const expectedSteps = finalSaveData.steps?.length || 0;
         const actualSteps = parsedContent.steps?.length || 0;
-        
+
         if (actualSteps === expectedSteps && parsedContent.id === finalSaveData.id) {
           console.log(`🔍 保存後検証成功 (試行${verifyAttempts}):`, {
             id: parsedContent.id,

@@ -145,7 +145,7 @@ const TroubleshootingEditor: React.FC<TroubleshootingEditorProps> = ({
       }
 
       const data = await response.json();
-      
+
       // データ構造の正規化
       const normalizedData = {
         ...data,
@@ -166,7 +166,7 @@ const TroubleshootingEditor: React.FC<TroubleshootingEditorProps> = ({
           }))
         }))
       };
-      
+
       setOriginalData(normalizedData);
       setEditedData(JSON.parse(JSON.stringify(normalizedData))); // ディープコピー
 
@@ -612,32 +612,29 @@ const TroubleshootingEditor: React.FC<TroubleshootingEditorProps> = ({
       const result = await response.json();
       console.log('✅ 完全置換保存成功:', result);
 
-      // 少し待ってからサーバーから最新データを取得
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      // 少し待ってからサーバーから最新データを再取得
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       try {
-        const verifyResponse = await fetch(`/api/troubleshooting/${normalizedSaveData.id}?_t=${Date.now()}&_verify=true`, {
+        const verifyResponse = await fetch(`/api/troubleshooting/${normalizedSaveData.id}?_t=${Date.now()}`, {
           headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
+            'Cache-Control': 'no-cache, no-store, must-revalidate'
           }
         });
-        
+
         if (verifyResponse.ok) {
           const verifiedData = await verifyResponse.json();
-          console.log('🔍 保存確認データ:', verifiedData);
-          
           setOriginalData(verifiedData);
           setEditedData(JSON.parse(JSON.stringify(verifiedData)));
+          console.log('🔍 保存後の検証完了:', verifiedData.id);
         } else {
-          // サーバーからの取得に失敗した場合は保存したデータを使用
+          // 検証に失敗した場合は保存したデータを使用
           const savedData = JSON.parse(JSON.stringify(normalizedSaveData));
           setOriginalData(savedData);
           setEditedData(savedData);
         }
       } catch (verifyError) {
-        console.error('保存確認エラー:', verifyError);
-        // エラーが発生した場合も保存したデータを使用
+        console.error('保存後の検証エラー:', verifyError);
         const savedData = JSON.parse(JSON.stringify(normalizedSaveData));
         setOriginalData(savedData);
         setEditedData(savedData);
