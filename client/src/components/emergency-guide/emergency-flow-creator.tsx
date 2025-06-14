@@ -113,11 +113,12 @@ const EmergencyFlowCreator: React.FC = () => {
           });
         });
 
-        // 🎯 フィルタリング処理を完全削除 - 全てのデータを表示
-        const allFlowData = Array.isArray(data) ? data : [];
-        console.log(`✅ フロー一覧更新: ${allFlowData.length}件のデータを表示（フィルタリング完全無効化）`);
-
-        setFlowList(allFlowData);
+        // 🎯 全てのフローデータを無条件で表示（フィルタリング完全廃止）
+        console.log(`✅ 取得したフローデータ: ${data.length}件`, data);
+        
+        setFlowList(data);
+        
+        console.log(`🎯 フロー一覧更新完了: ${data.length}件のデータを表示（新規作成時と同等のUI提供）`);
       } else {
         console.warn('⚠️ 予期しないデータ形式:', data);
         setFlowList([]);
