@@ -930,450 +930,262 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                   )}
 
                   <div className="space-y-3">
-                    {step.options && step.options.length > 0 ? (
-                      step.options.map((option, optionIndex) => {
-                        console.log(`🔍 オプション表示 - ${step.id}[${optionIndex}]:`, option.text, option.conditionType);
-                        return (
-                      <div key={`${step.id}-option-${optionIndex}`} className={`border-2 rounded-lg p-4 space-y-3 ${
-                        step.type === 'decision' 
-                          ? option.conditionType === 'yes' 
-                            ? 'border-green-200 bg-green-50' 
-                            : option.conditionType === 'no'
-                            ? 'border-red-200 bg-red-50'
-                            : 'border-blue-200 bg-blue-50'
-                          : 'border-gray-200 bg-gray-50'
-                      }`}>
-                        {/* ヘッダー部分 */}
+                    {/* 🎯 条件分岐ノードは常に編集UIを表示 */}
+                    {step.type === 'decision' && (
+                      <div className="bg-yellow-50 border-4 border-yellow-400 rounded-xl p-6 mb-6">
+                        <div className="text-center mb-4">
+                          <h4 className="text-xl font-bold text-yellow-800 flex items-center justify-center gap-2">
+                            <GitBranch className="w-6 h-6" />
+                            条件分岐ノード編集エリア
+                          </h4>
+                          <p className="text-sm text-yellow-700 mt-2">
+                            このエリアで条件項目を追加・編集できます
+                          </p>
+                        </div>
+
+                        {/* 条件項目追加ボタン */}
+                        <div className="text-center mb-6">
+                          <Button 
+                            variant="outline" 
+                            onClick={() => addDecisionOption(step.id)}
+                            disabled={(step.options?.length || 0) >= 5}
+                            className="text-green-600 border-green-400 bg-green-50 hover:bg-green-100"
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            条件項目を追加 ({step.options?.length || 0}/5)
+                          </Button>
+                        </div>
+
+                        {/* 既存の条件項目一覧 */}
+                        <div className="space-y-4">
+                          {step.options && step.options.length > 0 ? (
+                            step.options.map((option, optionIndex) => (
+                              <div key={`decision-${step.id}-${optionIndex}`} 
+                                   className="bg-white border-2 border-blue-300 rounded-lg p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                  <Badge variant="secondary" className="text-base">
+                                    条件項目 {optionIndex + 1}
+                                  </Badge>
+                                  {(step.options?.length || 0) > 2 && (
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() => removeOption(step.id, optionIndex)}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                </div>
+
+                                <div className="space-y-3">
+                                  <div>
+                                    <Label>条件テキスト</Label>
+                                    <Input
+                                      value={option.text || ''}
+                                      onChange={(e) => updateOption(step.id, optionIndex, { text: e.target.value })}
+                                      placeholder="条件の説明を入力"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <Label>条件タイプ</Label>
+                                    <select
+                                      value={option.conditionType || 'other'}
+                                      onChange={(e) => updateOption(step.id, optionIndex, { conditionType: e.target.value as any })}
+                                      className="w-full border rounded px-3 py-2 bg-white"
+                                    >
+                                      <option value="yes">はい（肯定）</option>
+                                      <option value="no">いいえ（否定）</option>
+                                      <option value="other">その他</option>
+                                    </select>
+                                  </div>
+
+                                  <div>
+                                    <Label>遷移先</Label>
+                                    <select
+                                      value={option.nextStepId || ''}
+                                      onChange={(e) => updateOption(step.id, optionIndex, { nextStepId: e.target.value })}
+                                      className="w-full border rounded px-3 py-2 bg-white"
+                                    >
+                                      <option value="">遷移先を選択</option>
+                                      {editedFlow?.steps?.filter(s => s.id !== step.id).map(targetStep => (
+                                        <option key={targetStep.id} value={targetStep.id}>
+                                          {targetStep.title}
+                                        </option>
+                                      ))}
+                                      <option value="end">フロー終了</option>
+                                    </select>
+                                  </div>
+
+                                  <div className="flex items-center space-x-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={Boolean(option.isTerminal)}
+                                      onChange={(e) => updateOption(step.id, optionIndex, { isTerminal: e.target.checked })}
+                                    />
+                                    <Label>この選択肢でフローを終了</Label>
+                                  </div>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-center py-6 text-gray-500">
+                              <p>まだ条件項目がありません</p>
+                              <p className="text-sm">上のボタンから条件項目を追加してください</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 通常のステップの選択肢表示 */}
+                    {step.type !== 'decision' && step.options && step.options.map((option, optionIndex) => (
+                      <div key={`${step.id}-option-${optionIndex}`} className="border-2 rounded-lg p-4 space-y-3 border-gray-200 bg-gray-50">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Badge variant={
-                              option.conditionType === 'yes' ? 'default' :
-                              option.conditionType === 'no' ? 'destructive' : 'secondary'
-                            }>
-                              {step.type === 'decision' 
-                                ? `条件分岐 ${optionIndex + 1}` 
-                                : `選択肢 ${optionIndex + 1}`
-                              }
-                            </Badge>
-                            {step.type === 'decision' && (
-                              <Badge variant="outline" className="text-xs">
-                                {option.conditionType === 'yes' && '✓ はい'}
-                                {option.conditionType === 'no' && '✗ いいえ'}
-                                {option.conditionType === 'other' && '→ その他'}
-                              </Badge>
-                            )}
-                          </div>
-                          {((step.type === 'decision' && step.options.length > 2) || 
-                            (step.type !== 'decision' && step.options.length > 1)) && (
+                          <Badge variant="secondary">選択肢 {optionIndex + 1}</Badge>
+                          {step.options.length > 1 && (
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="text-red-600 hover:text-red-700 hover:bg-red-100"
                               onClick={() => removeOption(step.id, optionIndex)}
-                              title="この選択肢を削除"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           )}
                         </div>
 
-                        {/* 選択肢テキスト */}
                         <div>
-                          <Label className="text-sm font-medium">
-                            {step.type === 'decision' ? '分岐条件の表示テキスト' : '選択肢のテキスト'}
-                          </Label>
+                          <Label>選択肢のテキスト</Label>
                           <Input
                             value={option.text || ''}
                             onChange={(e) => updateOption(step.id, optionIndex, { text: e.target.value })}
-                            placeholder={
-                              step.type === 'decision' 
-                                ? option.conditionType === 'yes' 
-                                  ? "はい（例: エンジンが完全に停止している）"
-                                  : option.conditionType === 'no'
-                                  ? "いいえ（例: まだ不安定に動作している）"
-                                  : "その他の状況（例: 判断できない）"
-                                : "選択肢のテキスト"
-                            }
-                            className="mt-1"
+                            placeholder="選択肢のテキスト"
                           />
                         </div>
 
-                        {/* 設定項目 */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div>
-                            <Label className="text-sm font-medium">次のステップID</Label>
-                            <Input
-                              value={option.nextStepId}
-                              onChange={(e) => updateOption(step.id, optionIndex, { nextStepId: e.target.value })}
-                              placeholder="step_xxx または end"
-                              className="mt-1"
-                            />
-                          </div>
-
-                          {step.type === 'decision' && (
-                            <div>
-                              <Label className="text-sm font-medium">条件タイプ</Label>
-                              <select
-                                value={option.conditionType}
-                                onChange={(e) => changeConditionType(step.id, optionIndex, e.target.value as any)}
-                                className="w-full border rounded px-3 py-2 mt-1 bg-white"
-                              >
-                                <option value="yes">✓ はい（肯定的な回答）</option>
-                                <option value="no">✗ いいえ（否定的な回答）</option>
-                                <option value="other">→ その他（中立・不明）</option>
-                              </select>
-                            </div>
-                          )}
+                        <div>
+                          <Label>次のステップID</Label>
+                          <Input
+                            value={option.nextStepId}
+                            onChange={(e) => updateOption(step.id, optionIndex, { nextStepId: e.target.value })}
+                            placeholder="step_xxx または end"
+                          />
                         </div>
 
-                        {/* 終了フラグ */}
-                        <div className="flex items-center space-x-2 pt-2 border-t border-gray-200">
+                        <div className="flex items-center space-x-2">
                           <input
                             type="checkbox"
-                            id={`terminal-${step.id}-${optionIndex}`}
                             checked={option.isTerminal}
                             onChange={(e) => updateOption(step.id, optionIndex, { isTerminal: e.target.checked })}
-                            className="rounded border-gray-300"
                           />
-                          <Label htmlFor={`terminal-${step.id}-${optionIndex}`} className="text-sm">
-                            この選択肢でフローを終了する
-                          </Label>
-                          {option.isTerminal && (
-                            <Badge variant="outline" className="text-xs text-red-600">
-                              終了
-                            </Badge>
-                          )}
+                          <Label>この選択肢でフローを終了する</Label>
                         </div>
                       </div>
-                        );
-                      })
-                    ) : (
-                      /* 条件分岐で選択肢がない場合のヒント */
-                      step.type === 'decision' && (
-                        <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
-                          <GitBranch className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                          <p className="text-sm">条件分岐の選択肢を追加してください</p>
-                          <p className="text-xs text-gray-400 mt-1">
-                            「はい」「いいえ」「その他」の分岐を作成できます
-                          </p>
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="mt-3 text-blue-600 border-blue-300"
-                            onClick={() => addDecisionOption(step.id)}
-                          >
-                            <Plus className="w-4 h-4 mr-1" />
-                            最初の条件項目を追加
-                          </Button>
-                        </div>
-                      )
-                    )}
+                    ))}
                   </div>
 
-                  {/* 🎯 条件分岐ノード統合編集フォーム - 新規作成時と同等の編集UI常時表示 */}
+                  {/* 🎯 条件分岐ノード統合編集フォーム（常時表示・簡素化版） */}
                   {step.type === 'decision' && (
-                    <div className="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 border-4 border-blue-400 rounded-xl p-8 shadow-2xl">
-                      <div className="text-center mb-8">
-                        <div className="flex items-center justify-center gap-4 mb-4">
-                          <GitBranch className="w-12 h-12 text-blue-600 animate-pulse" />
-                          <Badge variant="secondary" className="text-xl px-8 py-3 bg-blue-200 text-blue-800 font-bold shadow-lg">
-                            🎛️ 条件分岐統合編集フォーム（常時表示）
-                          </Badge>
-                        </div>
-                        <h3 className="text-4xl font-bold text-blue-800 mb-3">
-                          🏗️ 「{step.title}」の条件分岐設定
-                        </h3>
-                        <p className="text-xl text-blue-700 font-medium mb-4">
-                          🔧 統合編集エリアとして常時表示 - 新規作成・再編集両対応
+                    <div className="mt-6 bg-blue-50 border-2 border-blue-300 rounded-lg p-6">
+                      <div className="text-center mb-4">
+                        <h4 className="text-lg font-bold text-blue-800">
+                          🎛️ 条件分岐設定エリア（{step.options?.length || 0}個の条件）
+                        </h4>
+                        <p className="text-sm text-blue-600">
+                          ここで条件項目の追加・編集ができます
                         </p>
-                        <div className="flex justify-center gap-4 mb-6">
-                          <div className="inline-flex items-center gap-2 px-6 py-3 bg-blue-100 rounded-lg border-2 border-blue-300">
-                            <span className="font-bold text-blue-800 text-lg">
-                              📊 {step.options?.length || 0}個の分岐条件
-                            </span>
-                          </div>
-                          <div className="inline-flex items-center gap-2 px-6 py-3 bg-green-100 rounded-lg border-2 border-green-300">
-                            <span className="font-bold text-green-800 text-lg">
-                              ✅ 編集モード: アクティブ
-                            </span>
-                          </div>
-                        </div>
                       </div>
 
-                      {/* 🎯 編集フォームとしての機能を強化 */}
-                      <div className="bg-white rounded-xl p-8 border-4 border-blue-300 shadow-2xl">
-                        <div className="flex items-center justify-between mb-8">
-                          <h4 className="text-3xl font-bold text-gray-800 flex items-center gap-4">
-                            <span className="bg-blue-200 px-6 py-3 rounded-xl text-blue-800 shadow-md">🎛️</span>
-                            統合編集フォーム
-                          </h4>
-                          <div className="flex gap-3">
-                            <Button 
-                              size="lg" 
-                              variant="outline" 
-                              className="text-green-600 border-green-300 bg-green-50 hover:bg-green-100"
-                              onClick={() => addDecisionOption(step.id)}
-                              disabled={step.options?.length >= 5}
-                            >
-                              <Plus className="w-5 h-5 mr-2" />
-                              条件追加 ({step.options?.length || 0}/5)
-                            </Button>
-                            <Button size="lg" variant="outline" className="text-blue-600 border-blue-300">
-                              <Settings className="w-5 h-5 mr-2" />
-                              設定
-                            </Button>
-                          </div>
-                        </div>
+                      <div className="text-center mb-4">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => addDecisionOption(step.id)}
+                          disabled={(step.options?.length || 0) >= 5}
+                          className="text-green-600 border-green-300"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          新しい条件を追加
+                        </Button>
+                      </div>
 
-                        {/* 📊 統計情報表示 */}
-                        <div className="grid grid-cols-3 gap-4 mb-8 p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
-                          <div className="text-center">
-                            <div className="text-2xl font-bold text-blue-600">{step.options?.length || 0}</div>
-                            <div className="text-sm text-gray-600">分岐条件数</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-2xl font-bold text-green-600">
-                              {step.options?.filter(opt => opt.nextStepId && opt.nextStepId !== '').length || 0}
-                            </div>
-                            <div className="text-sm text-gray-600">接続済み</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-2xl font-bold text-orange-600">
-                              {step.options?.filter(opt => opt.isTerminal).length || 0}
-                            </div>
-                            <div className="text-sm text-gray-600">終了条件</div>
-                          </div>
-                        </div>
+                      {step.options && step.options.length > 0 ? (
+                        <div className="space-y-4">
+                          {step.options.map((option, optionIndex) => (
+                            <div key={`simple-${step.id}-${optionIndex}`} 
+                                 className="bg-white border border-gray-300 rounded p-4">
+                              <div className="flex items-center justify-between mb-3">
+                                <span className="font-bold">条件 {optionIndex + 1}</span>
+                                {(step.options?.length || 0) > 2 && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => removeOption(step.id, optionIndex)}
+                                  >
+                                    削除
+                                  </Button>
+                                )}
+                              </div>
 
-                        {step.options && step.options.length > 0 ? (
-                          <div className="space-y-6">
-                            <div className="text-center p-4 bg-blue-100 rounded-lg">
-                              <p className="font-bold text-blue-800">✅ 条件項目が正常に読み込まれました</p>
-                              <p className="text-sm text-blue-600">合計: {step.options.length}個の条件項目を編集可能</p>
-                            </div>
-                            {step.options.map((option, optionIndex) => (
-                              <div key={`unified-edit-${step.id}-${optionIndex}`} 
-                                   className={`border-4 rounded-xl p-6 shadow-lg ${
-                                     option.conditionType === 'yes' ? 'bg-green-50 border-green-300' :
-                                     option.conditionType === 'no' ? 'bg-red-50 border-red-300' :
-                                     'bg-blue-50 border-blue-300'
-                                   }`}>
-
-                                {/* ヘッダー部分を大幅改善 */}
-                                <div className="flex items-center justify-between mb-6 p-4 bg-white rounded-lg border-2 border-gray-200">
-                                  <div className="flex items-center gap-4">
-                                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl font-bold text-white ${
-                                      option.conditionType === 'yes' ? 'bg-green-500' :
-                                      option.conditionType === 'no' ? 'bg-red-500' : 'bg-blue-500'
-                                    }`}>
-                                      {optionIndex + 1}
-                                    </div>
-                                    <div>
-                                      <Badge variant={
-                                        option.conditionType === 'yes' ? 'default' :
-                                        option.conditionType === 'no' ? 'destructive' : 'secondary'
-                                      } className="text-lg px-6 py-2 mb-2">
-                                        分岐条件 {optionIndex + 1}
-                                      </Badge>
-                                      <div className="flex gap-2">
-                                        <Badge variant="outline" className="text-base">
-                                          {option.conditionType === 'yes' && '✅ はい（肯定）'}
-                                          {option.conditionType === 'no' && '❌ いいえ（否定）'}
-                                          {option.conditionType === 'other' && '🔸 その他（中立）'}
-                                        </Badge>
-                                        {option.isTerminal && (
-                                          <Badge variant="destructive" className="text-base">
-                                            🏁 フロー終了
-                                          </Badge>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* 削除ボタンを右上に配置 */}
-                                  {((step.options?.length || 0) > 2) && (
-                                    <Button
-                                      size="sm"
-                                      variant="destructive"
-                                      onClick={() => removeOption(step.id, optionIndex)}
-                                      className="hover:scale-110 transition-transform"
-                                    >
-                                      <Trash2 className="w-4 h-4 mr-1" />
-                                      削除
-                                    </Button>
-                                  )}
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                  <Label className="text-sm">条件テキスト</Label>
+                                  <Input
+                                    value={option.text || ''}
+                                    onChange={(e) => updateOption(step.id, optionIndex, { text: e.target.value })}
+                                    placeholder="条件の説明"
+                                    className="mt-1"
+                                  />
                                 </div>
 
-                                <div className="space-y-6">
-                                  {/* 🎯 完全修正：条件項目編集UIを確実に表示 */}
-                                  <div className="bg-white p-6 rounded-lg border-4 border-blue-400 shadow-xl">
-                                    <h5 className="text-2xl font-bold text-blue-800 mb-6 text-center">
-                                      🎛️ 条件項目 {optionIndex + 1} の編集
-                                    </h5>
-                                    
-                                    <div className="bg-green-100 border-2 border-green-400 rounded p-4 mb-6">
-                                      <p className="text-green-800 font-bold">✅ データ確認完了</p>
-                                      <p className="text-sm text-green-700">
-                                        テキスト: &quot;{option.text || '未設定'}&quot; | 
-                                        タイプ: {option.conditionType || 'other'} | 
-                                        遷移先: {option.nextStepId || '未設定'}
-                                      </p>
-                                    </div>
+                                <div>
+                                  <Label className="text-sm">条件タイプ</Label>
+                                  <select
+                                    value={option.conditionType || 'other'}
+                                    onChange={(e) => updateOption(step.id, optionIndex, { conditionType: e.target.value as any })}
+                                    className="w-full border rounded px-3 py-2 mt-1"
+                                  >
+                                    <option value="yes">はい</option>
+                                    <option value="no">いいえ</option>
+                                    <option value="other">その他</option>
+                                  </select>
+                                </div>
 
-                                    <div className="space-y-6">
-                                      <div className="bg-gray-50 p-4 rounded-lg border-2 border-gray-300">
-                                        <Label className="text-lg font-bold text-gray-800 block mb-3">
-                                          📝 条件テキスト
-                                        </Label>
-                                        <Input
-                                          value={option.text || ''}
-                                          onChange={(e) => updateOption(step.id, optionIndex, { text: e.target.value })}
-                                          placeholder="条件の表示テキストを入力してください"
-                                          className="text-base p-3 border-2 border-gray-400"
-                                        />
-                                        <p className="text-sm text-gray-600 mt-2">
-                                          💡 現在の値: &quot;{option.text || '未入力'}&quot;
-                                        </p>
-                                      </div>
+                                <div>
+                                  <Label className="text-sm">遷移先</Label>
+                                  <select
+                                    value={option.nextStepId || ''}
+                                    onChange={(e) => updateOption(step.id, optionIndex, { nextStepId: e.target.value })}
+                                    className="w-full border rounded px-3 py-2 mt-1"
+                                  >
+                                    <option value="">選択してください</option>
+                                    {editedFlow?.steps?.filter(s => s.id !== step.id).map(targetStep => (
+                                      <option key={targetStep.id} value={targetStep.id}>
+                                        {targetStep.title}
+                                      </option>
+                                    ))}
+                                    <option value="end">フロー終了</option>
+                                  </select>
+                                </div>
 
-                                      <div className="bg-gray-50 p-4 rounded-lg border-2 border-gray-300">
-                                        <Label className="text-lg font-bold text-gray-800 block mb-3">
-                                          🔘 条件タイプ
-                                        </Label>
-                                        <select
-                                          value={option.conditionType || 'other'}
-                                          onChange={(e) => changeConditionType(step.id, optionIndex, e.target.value as any)}
-                                          className="w-full p-3 text-base border-2 border-gray-400 rounded bg-white"
-                                        >
-                                          <option value="yes">✅ はい（肯定的な回答）</option>
-                                          <option value="no">❌ いいえ（否定的な回答）</option>
-                                          <option value="other">🔸 その他（中立・不明）</option>
-                                        </select>
-                                        <p className="text-sm text-gray-600 mt-2">
-                                          💡 現在選択: {option.conditionType || 'other'}
-                                        </p>
-                                      </div>
-
-                                      <div className="bg-gray-50 p-4 rounded-lg border-2 border-gray-300">
-                                        <Label className="text-lg font-bold text-gray-800 block mb-3">
-                                          📋 詳細条件説明
-                                        </Label>
-                                        <Textarea
-                                          value={option.condition || ''}
-                                          onChange={(e) => updateOption(step.id, optionIndex, { condition: e.target.value })}
-                                          placeholder="この条件についての詳細説明を入力してください"
-                                          rows={4}
-                                          className="text-base p-3 border-2 border-gray-400"
-                                        />
-                                        <p className="text-sm text-gray-600 mt-2">
-                                          💡 現在の値: &quot;{option.condition || '未入力'}&quot;
-                                        </p>
-                                      </div>
-
-                                      <div className="bg-gray-50 p-4 rounded-lg border-2 border-gray-300">
-                                        <Label className="text-lg font-bold text-gray-800 block mb-3">
-                                          🔗 遷移先スライド
-                                        </Label>
-                                        <select
-                                          value={option.nextStepId || ''}
-                                          onChange={(e) => updateOption(step.id, optionIndex, { nextStepId: e.target.value })}
-                                          className="w-full p-3 text-base border-2 border-gray-400 rounded bg-white"
-                                        >
-                                          <option value="">📋 遷移先を選択してください</option>
-                                          {editedFlow?.steps
-                                            .filter(s => s.id !== step.id)
-                                            .map((targetStep) => (
-                                            <option key={targetStep.id} value={targetStep.id}>
-                                              📄 {targetStep.title}
-                                            </option>
-                                          ))}
-                                          <option value="end">🏁 フロー終了</option>
-                                        </select>
-                                        <p className="text-sm text-gray-600 mt-2">
-                                          💡 現在選択: {option.nextStepId || '未選択'}
-                                        </p>
-                                      </div>
-
-                                      <div className="bg-yellow-50 p-4 rounded-lg border-2 border-yellow-300">
-                                        <div className="flex items-center space-x-3">
-                                          <input
-                                            type="checkbox"
-                                            id={`unified-terminal-${step.id}-${optionIndex}`}
-                                            checked={Boolean(option.isTerminal)}
-                                            onChange={(e) => updateOption(step.id, optionIndex, { isTerminal: e.target.checked })}
-                                            className="h-5 w-5"
-                                          />
-                                          <Label htmlFor={`unified-terminal-${step.id}-${optionIndex}`} className="text-lg font-bold text-gray-800">
-                                            🏁 この選択肢でフローを終了する
-                                          </Label>
-                                        </div>
-                                        <p className="text-sm text-gray-600 mt-2">
-                                          💡 現在: {option.isTerminal ? '終了設定あり' : '終了設定なし'}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* 遷移設定 */}
-                                  <div className="space-y-4">
-                                    <div>
-                                      <Label className="text-base font-bold text-gray-700">🔗 遷移先スライド</Label>
-                                      <select
-                                        value={option.nextStepId || ''}
-                                        onChange={(e) => updateOption(step.id, optionIndex, { nextStepId: e.target.value })}
-                                        className="w-full mt-2 p-3 border-2 border-gray-300 rounded-lg text-base bg-white focus:border-blue-500"
-                                      >
-                                        <option value="">遷移先を選択</option>
-                                        {editedFlow?.steps
-                                          .filter(s => s.id !== step.id)
-                                          .map((targetStep, targetIndex) => (
-                                          <option key={`unified-target-${targetStep.id}`} value={targetStep.id}>
-                                            スライド{targetIndex + 1}: {targetStep.title}
-                                          </option>
-                                        ))}
-                                        <option value="end">🏁 フロー終了</option>
-                                      </select>
-                                    </div>
-
-                                    <div className="flex items-center p-4 bg-gray-100 border-2 border-gray-300 rounded-lg">
-                                      <input
-                                        type="checkbox"
-                                        id={`unified-terminal-${step.id}-${optionIndex}`}
-                                        checked={Boolean(option.isTerminal)}
-                                        onChange={(e) => updateOption(step.id, optionIndex, { isTerminal: e.target.checked })}
-                                        className="mr-4 h-5 w-5"
-                                      />
-                                      <Label htmlFor={`unified-terminal-${step.id}-${optionIndex}`} className="text-base text-gray-700 font-bold">
-                                        🏁 この選択肢でフローを終了する
-                                      </Label>
-                                    </div>
-
-                                    {((step.options?.length || 0) > 2) && (
-                                      <Button
-                                        size="sm"
-                                        variant="destructive"
-                                        onClick={() => removeOption(step.id, optionIndex)}
-                                        className="w-full"
-                                      >
-                                        <Trash2 className="w-4 h-4 mr-2" />
-                                        この選択肢を削除
-                                      </Button>
-                                    )}
-                                  </div>
+                                <div className="flex items-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={Boolean(option.isTerminal)}
+                                    onChange={(e) => updateOption(step.id, optionIndex, { isTerminal: e.target.checked })}
+                                    className="mr-2"
+                                  />
+                                  <Label className="text-sm">フロー終了</Label>
                                 </div>
                               </div>
-                              
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-center py-8 text-gray-500">
-                            <p className="text-lg">まだ条件分岐が設定されていません</p>
-                            <p className="text-base text-gray-400 mt-2">
-                              「分岐追加」ボタンから条件を追加してください
-                            </p>
-                          </div>
-                        )}
-                      </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-4 text-gray-500">
+                          <p>条件項目がありません</p>
+                          <p className="text-sm">上のボタンから追加してください</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
