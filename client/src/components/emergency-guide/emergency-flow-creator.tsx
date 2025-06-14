@@ -304,13 +304,19 @@ const EmergencyFlowCreator: React.FC = () => {
 
       const data = await response.json();
 
-      // 🎯 フロー一覧のデータ構造をエディター用に変換
+      // 🎯 フロー一覧のデータ構造をエディター用に変換（slides/steps統一）
+      const sourceSteps = data.slides || data.steps || [];
       const editorData = {
         id: data.id,
         title: data.title,
         description: data.description || '',
         triggerKeywords: data.trigger || data.triggerKeywords || [],
-        steps: data.slides || data.steps || [],
+        steps: sourceSteps.map(step => ({
+          ...step,
+          // description と message の同期
+          description: step.description || step.message || '',
+          message: step.message || step.description || ''
+        })),
         updatedAt: data.createdAt || data.updatedAt || new Date().toISOString()
       };
 

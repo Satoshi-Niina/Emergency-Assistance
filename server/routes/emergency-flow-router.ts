@@ -143,9 +143,12 @@ router.post('/save-flow', async (req: Request, res: Response) => {
       console.log(`📁 ディレクトリ作成: ${targetDir}`);
     }
 
-    // 保存データを準備
+    // 保存データを準備（steps/slides同期）
     const saveData = {
       ...flowData,
+      // stepsとslidesを同期（後方互換性確保）
+      steps: flowData.steps || flowData.slides || [],
+      slides: flowData.steps || flowData.slides || [],
       updatedAt: new Date().toISOString(),
       savedTimestamp: Date.now()
     };

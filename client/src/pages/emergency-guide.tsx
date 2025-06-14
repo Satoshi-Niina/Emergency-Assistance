@@ -201,14 +201,9 @@ const EmergencyGuidePage: React.FC = () => {
 
       const data = await response.json();
 
-      // レスポンスデータのバリデーションと処理
-      let processedData = [];
-      if (Array.isArray(data)) {
-        console.log(`✅ 取得したフローデータ: ${data.length}件を全て表示`);
-        processedData = data;
-      }
-
-      setFlowList(processedData);
+      // 全データを処理（フィルタリングなし）
+      console.log(`✅ 取得したフローデータ: ${data.length}件`);
+      setFlowList(Array.isArray(data) ? data : []);
 
       // データをキャッシュ
       if (typeof window !== 'undefined') {
