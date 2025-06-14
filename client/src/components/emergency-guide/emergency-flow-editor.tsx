@@ -932,7 +932,8 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                   <div className="space-y-3">
                     {step.options && step.options.length > 0 ? (
                       step.options.map((option, optionIndex) => {
-                        console.log(`🔍 レンダリング中 - ステップ ${step.id} (${step.type}), オプション ${optionIndex + 1}:`, option);
+                        console.log(`🔍 強制レンダリング - ステップ ${step.id} (${step.type}), オプション ${optionIndex + 1}:`, option);
+                        // 🎯 条件分岐ノードのオプションを確実に表示
                         return (
                       <div key={`${step.id}-option-${optionIndex}`} className={`border-2 rounded-lg p-4 space-y-3 ${
                         step.type === 'decision' 
