@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -390,7 +389,35 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
     const saveData = {
       ...editedFlow,
       steps: stepsToProcess.map(step => {
-          // 🔀 条件分岐ノード：統一スキーマで完全保存
+          // 🔀 条件分岐ノード（type: "condition"）の保存処理
+          if (step.type === 'condition') {
+            console.log(`🔀 条件分岐ノード（conditions配列）${step.id} 保存:`, {
+              stepId: step.id,
+              stepType: step.type,
+              title: step.title,
+              conditionsCount: step.conditions?.length || 0,
+              conditionsDetail: step.conditions
+            });
+
+            return {
+              ...step,
+              id: step.id,
+              title: step.title || '新しい条件分岐',
+              description: step.description || step.message || '',
+              message: step.message || step.description || '',
+              imageUrl: step.imageUrl || '',
+              type: 'condition',
+              // conditions配列を確実に保持
+              conditions: step.conditions || [
+                { label: '条件A', nextId: '' },
+                { label: '条件B', nextId: '' }
+              ],
+              // optionsは空配列にする
+              options: []
+            };
+          }
+
+          // 🔀 条件分岐ノード（type: "decision"）の保存処理
           if (step.type === 'decision') {
             console.log(`🔀 条件分岐ノード ${step.id} 統一スキーマ保存:`, {
               stepId: step.id,
