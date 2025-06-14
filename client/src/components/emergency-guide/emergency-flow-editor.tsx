@@ -57,6 +57,7 @@ interface EmergencyFlowEditorProps {
 const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onSave, selectedFilePath }) => {
   const { toast } = useToast();
   const [editedFlow, setEditedFlow] = useState<FlowData | null>(null);
+  const [originalFlow, setOriginalFlow] = useState<FlowData | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [editingStepId, setEditingStepId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -64,7 +65,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
   const [stepToDelete, setStepToDelete] = useState<string | null>(null);
   const [editingStepTitle, setEditingStepTitle] = useState<string | null>(null);
 
-  // flowDataが変更されたら編集用データを更新
+  // flowDataが変更されたら編集用データとオリジナルデータを更新
   useEffect(() => {
     console.log('🔄 flowData変更検知:', flowData);
 
@@ -187,6 +188,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
       });
 
       setEditedFlow(processedData);
+      setOriginalFlow(flowData); // 元データを保持
     } else {
       // 新規作成の場合
       const newFlow: FlowData = {
@@ -211,6 +213,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
       };
       console.log('🆕 新規フロー作成:', newFlow);
       setEditedFlow(newFlow);
+      setOriginalFlow(null);
     }
   }, [flowData]);
 
@@ -317,10 +320,75 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         throw new Error('少なくとも1つのステップが必要です');
       }
 
-      // 統一スキーマによる保存データを準備
-      const saveData = {
-        ...editedFlow,
-        steps: editedFlow.steps.map(step => {
+      // 差分マージ処理を実装
+    const mergeSteps = (editedSteps: FlowStep[], originalSteps: FlowStep[]) => {
+      return editedSteps.map(editedStep => {
+        // 元データから同じIDのステップを見つける
+        const originalStep = originalSteps.find(orig => orig.id === editedStep.id);
+
+        if (!originalStep) {
+          // 新規追加されたステップはそのまま返す
+          console.log(`🆕 新規ステップ: ${editedStep.id}`);
+          return editedStep;
+        }
+
+        // マージ処理: 元データをベースに編集データを上書き
+        const mergedStep = {
+          ...originalStep,
+          ...editedStep,
+          // 条件分岐ノード（type: "condition"）の場合、conditions プロパティを保持
+          ...(originalStep.type === "condition" && !editedStep.conditions
+            ? { conditions: originalStep.conditions }
+            : {}),
+          // 旧スキーマのフィールドも保持
+          ...(originalStep.yesCondition && !editedStep.yesCondition
+            ? { yesCondition: originalStep.yesCondition }
+            : {}),
+          ...(originalStep.noCondition && !editedStep.noCondition
+            ? { noCondition: originalStep.noCondition }
+            : {}),
+          ...(originalStep.otherCondition && !editedStep.otherCondition
+            ? { otherCondition: originalStep.otherCondition }
+            : {}),
+          ...(originalStep.yesNextStepId && !editedStep.yesNextStepId
+            ? { yesNextStepId: originalStep.yesNextStepId }
+            : {}),
+          ...(originalStep.noNextStepId && !editedStep.noNextStepId
+            ? { noNextStepId: originalStep.noNextStepId }
+            : {}),
+          ...(originalStep.otherNextStepId && !editedStep.otherNextStepId
+            ? { otherNextStepId: originalStep.otherNextStepId }
+            : {})
+        };
+
+        console.log(`🔄 マージ処理: ${editedStep.id}`, {
+          originalType: originalStep.type,
+          editedType: editedStep.type,
+          hasOriginalConditions: !!originalStep.conditions,
+          hasEditedConditions: !!editedStep.conditions,
+          preservedConditions: !!mergedStep.conditions
+        });
+
+        return mergedStep;
+      });
+    };
+
+    // 元データがある場合はマージ処理を実行
+    const stepsToProcess = originalFlow 
+      ? mergeSteps(editedFlow.steps, originalFlow.steps)
+      : editedFlow.steps;
+
+    console.log('🔀 マージ処理結果:', {
+      originalStepsCount: originalFlow?.steps?.length || 0,
+      editedStepsCount: editedFlow.steps.length,
+      mergedStepsCount: stepsToProcess.length,
+      hasOriginalData: !!originalFlow
+    });
+
+    // 統一スキーマによる保存データを準備
+    const saveData = {
+      ...editedFlow,
+      steps: stepsToProcess.map(step => {
           // 🔀 条件分岐ノード：統一スキーマで完全保存
           if (step.type === 'decision') {
             console.log(`🔀 条件分岐ノード ${step.id} 統一スキーマ保存:`, {
@@ -606,7 +674,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
     } finally {
       setIsSaving(false);
     }
-  }, [editedFlow, onSave, toast, selectedFilePath]);
+  }, [editedFlow, onSave, toast, selectedFilePath, originalFlow]);
 
   // タイトル更新
   const updateTitle = (newTitle: string) => {
