@@ -492,6 +492,11 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         // フロー一覧の強制更新を要求
         window.dispatchEvent(new CustomEvent('forceRefreshFlowList'));
       }
+
+      // 編集状態をリセット
+      setEditingStepId(null);
+      setEditingTitle(false);
+      setEditingStepTitle(null);
     }
 
       // 保存されたデータで現在の編集データを更新
