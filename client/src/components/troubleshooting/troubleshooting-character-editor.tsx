@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,26 +19,22 @@ const TroubleshootingCharacterEditor: React.FC<TroubleshootingCharacterEditorPro
   const [activeTab, setActiveTab] = useState<string>('file-list');
   const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
 
-  // 編集モードへの切り替え
   const handleEdit = (flowId: string) => {
     setSelectedFlowId(flowId);
     setActiveTab('edit');
   };
 
-  // 新規作成モードへの切り替え
   const handleNew = () => {
     setSelectedFlowId(null);
     setActiveTab('edit');
   };
 
-  // 編集のキャンセル
   const handleCancel = () => {
     setSelectedFlowId(null);
     setActiveTab('file-list');
     if (onCancel) onCancel();
   };
 
-  // 保存完了時の処理
   const handleSaved = () => {
     setSelectedFlowId(null);
     setActiveTab('file-list');
@@ -48,9 +45,9 @@ const TroubleshootingCharacterEditor: React.FC<TroubleshootingCharacterEditorPro
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl">キャラクター編集</CardTitle>
+          <CardTitle className="text-xl">フロー編集</CardTitle>
           <CardDescription>
-            フローのキャラクターデータを編集します
+            トラブルシューティングフローを編集します
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -83,4 +80,4 @@ const TroubleshootingCharacterEditor: React.FC<TroubleshootingCharacterEditorPro
   );
 };
 
-export default TroubleshootingCharacterEditor; 
+export default TroubleshootingCharacterEditor;
