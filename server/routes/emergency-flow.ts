@@ -124,6 +124,23 @@ router.post('/save', async (req, res) => {
           conditionsData: step.conditions
         });
 
+        // conditions配列の検証と確保
+        const validateConditions = (conditions: any[]) => {
+          if (!Array.isArray(conditions) || conditions.length === 0) {
+            return [
+              { label: '条件A', nextId: '' },
+              { label: '条件B', nextId: '' }
+            ];
+          }
+          
+          return conditions.map(condition => ({
+            label: condition.label || '新しい条件',
+            nextId: condition.nextId || ''
+          }));
+        };
+
+        const ensuredConditions = validateConditions(step.conditions);
+
         return {
           ...step,
           id: step.id,
@@ -132,11 +149,8 @@ router.post('/save', async (req, res) => {
           message: step.message || step.description || '',
           imageUrl: step.imageUrl || '',
           type: 'condition',
-          // conditions配列を確実に保持
-          conditions: step.conditions || [
-            { label: '条件A', nextId: '' },
-            { label: '条件B', nextId: '' }
-          ],
+          // conditions配列を確実に保持（必須フィールド）
+          conditions: ensuredConditions,
           // optionsは空配列
           options: []
         };

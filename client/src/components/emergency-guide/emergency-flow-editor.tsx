@@ -399,6 +399,17 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
               conditionsDetail: step.conditions
             });
 
+            // conditions配列を必ず確保
+            const ensuredConditions = step.conditions && step.conditions.length > 0 
+              ? step.conditions.map(condition => ({
+                  label: condition.label || '新しい条件',
+                  nextId: condition.nextId || ''
+                }))
+              : [
+                  { label: '条件A', nextId: '' },
+                  { label: '条件B', nextId: '' }
+                ];
+
             return {
               ...step,
               id: step.id,
@@ -407,11 +418,8 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
               message: step.message || step.description || '',
               imageUrl: step.imageUrl || '',
               type: 'condition',
-              // conditions配列を確実に保持
-              conditions: step.conditions || [
-                { label: '条件A', nextId: '' },
-                { label: '条件B', nextId: '' }
-              ],
+              // conditions配列を確実に保持（必須フィールド）
+              conditions: ensuredConditions,
               // optionsは空配列にする
               options: []
             };
@@ -747,15 +755,16 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
     let newStep: FlowStep;
 
     if (type === 'condition') {
-      // type: "condition"の場合はconditions配列を持つ
+      // type: "condition"の場合はconditions配列を持つ（必須スキーマ）
       newStep = {
         id: newStepId,
         title: '新しい条件分岐',
-        description: '',
-        message: '',
+        description: '状況に応じて異なる選択肢を選んでください。',
+        message: '状況に応じて異なる選択肢を選んでください。',
         type: 'condition',
-        options: [],
-        conditions: [
+        imageUrl: '',
+        options: [], // 空配列
+        conditions: [ // 必須のconditions配列
           { label: '条件A', nextId: '' },
           { label: '条件B', nextId: '' }
         ]
