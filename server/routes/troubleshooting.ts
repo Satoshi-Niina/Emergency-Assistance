@@ -168,14 +168,31 @@ router.get('/:id', async (req, res) => {
 
 // トラブルシューティングデータ保存
 router.post('/save/:id', async (req, res) => {
+  const lockKey = `save_${req.params.id}`;
+  
+  // 簡単な保存ロック機能（同時保存防止）
+  if (global.saveLocks && global.saveLocks[lockKey]) {
+    return res.status(429).json({ 
+      error: '別の保存処理が進行中です。しばらく待ってから再試行してください。' 
+    });
+  }
+
   try {
+    // 保存ロックを設定
+    if (!global.saveLocks) global.saveLocks = {};
+    global.saveLocks[lockKey] = true;
+
     const { id } = req.params;
     const saveData = req.body;
 
     console.log(`💾 トラブルシューティングデータ保存開始: ID=${id}`, {
       title: saveData.title,
       stepsCount: saveData.steps?.length || 0,
-      timestamp: saveData.savedTimestamp || 'N/A'
+      timestamp: saveData.savedTimestamp || 'N/A',
+      requestHeaders: {
+        timestamp: req.headers['x-timestamp'],
+        forceUpdate: req.headers['x-force-update']
+      }
     });
 
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
@@ -194,72 +211,117 @@ router.post('/save/:id', async (req, res) => {
       console.log(`📋 バックアップ作成: ${backupPath}`);
     }
 
-    // 保存データに確実にタイムスタンプを追加
-    const finalSaveData = {
-      ...saveData,
-      id: id, // IDを確実に設定
+    // データ構造の正規化
+    const normalizedSaveData = {
+      id: id,
+      title: saveData.title || '',
+      description: saveData.description || '',
+      triggerKeywords: saveData.triggerKeywords || saveData.trigger || [],
+      steps: (saveData.steps || []).map(step => ({
+        id: step.id,
+        title: step.title || '',
+        description: step.description || step.message || '',
+        imageUrl: step.imageUrl || '',
+        type: step.type || 'step',
+        options: (step.options || []).map(option => ({
+          text: option.text,
+          nextStepId: option.nextStepId,
+          isTerminal: option.isTerminal || false,
+          conditionType: option.conditionType || 'other'
+        })),
+        message: step.message || step.description || ''
+      })),
       updatedAt: new Date().toISOString(),
       savedTimestamp: Date.now(),
       lastModified: Date.now()
     };
 
-    console.log(`💾 最終保存データ:`, {
-      id: finalSaveData.id,
-      title: finalSaveData.title,
-      updatedAt: finalSaveData.updatedAt,
-      stepsCount: finalSaveData.steps?.length || 0
+    console.log(`💾 正規化された保存データ:`, {
+      id: normalizedSaveData.id,
+      title: normalizedSaveData.title,
+      triggerCount: normalizedSaveData.triggerKeywords.length,
+      stepsCount: normalizedSaveData.steps.length,
+      updatedAt: normalizedSaveData.updatedAt
     });
 
     // 原子的書き込み（一時ファイル経由）
-    const tempFilePath = `${filePath}.tmp.${Date.now()}`;
-    const saveDataString = JSON.stringify(finalSaveData, null, 2);
+    const tempFilePath = `${filePath}.tmp.${Date.now()}.${Math.random().toString(36).substring(2, 8)}`;
+    const saveDataString = JSON.stringify(normalizedSaveData, null, 2);
 
     // 一時ファイルに書き込み
     fs.writeFileSync(tempFilePath, saveDataString, 'utf8');
     console.log(`📝 一時ファイル作成: ${tempFilePath}`);
 
-    // ファイルサイズ確認
+    // ファイルサイズと内容の確認
     const tempStats = fs.statSync(tempFilePath);
     console.log(`📊 一時ファイルサイズ: ${tempStats.size} bytes`);
 
+    // 一時ファイルの内容を検証
+    const tempContent = fs.readFileSync(tempFilePath, 'utf8');
+    const tempData = JSON.parse(tempContent);
+    console.log(`🔍 一時ファイル検証: ID=${tempData.id}, Title=${tempData.title}, Steps=${tempData.steps.length}`);
+
     // 一時ファイルが正常に書き込まれた場合のみ、元ファイルを置き換え
-    if (fs.existsSync(tempFilePath) && tempStats.size > 0) {
-      // Windows互換のため、既存ファイルを削除してからリネーム
+    if (fs.existsSync(tempFilePath) && tempStats.size > 0 && tempData.id === id) {
+      // 既存ファイルを削除してからリネーム
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
       fs.renameSync(tempFilePath, filePath);
       
-      // 保存確認
+      // 最終保存確認
       const finalStats = fs.statSync(filePath);
       console.log(`✅ 最終ファイル保存完了: ${filePath} (${finalStats.size} bytes)`);
       
-      // ファイル内容を検証
+      // 最終的に保存されたファイル内容を検証
       const savedContent = fs.readFileSync(filePath, 'utf8');
       const savedData = JSON.parse(savedContent);
-      console.log(`🔍 保存検証: ID=${savedData.id}, Title=${savedData.title}`);
+      console.log(`🔍 最終保存検証:`, {
+        id: savedData.id,
+        title: savedData.title,
+        steps: savedData.steps.length,
+        updatedAt: savedData.updatedAt,
+        savedTimestamp: savedData.savedTimestamp
+      });
+
+      // 強力なキャッシュ無効化ヘッダーを設定
+      res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+        'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
+        'Last-Modified': new Date().toUTCString(),
+        'ETag': `"${savedData.savedTimestamp}"`
+      });
+
+      res.json({ 
+        success: true, 
+        message: 'データを保存しました',
+        data: savedData,
+        savedAt: savedData.updatedAt,
+        fileSize: finalStats.size,
+        verification: {
+          saved: true,
+          id: savedData.id,
+          title: savedData.title,
+          stepsCount: savedData.steps.length
+        }
+      });
     } else {
-      throw new Error('一時ファイルの作成に失敗しました');
+      throw new Error('一時ファイルの作成または検証に失敗しました');
     }
 
-    // 強力なキャッシュ無効化ヘッダーを設定
-    res.set({
-      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
-      'Pragma': 'no-cache',
-      'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
-      'Last-Modified': new Date().toUTCString(),
-      'ETag': `"${Date.now()}"`
-    });
-
-    res.json({ 
-      success: true, 
-      message: 'データを保存しました',
-      savedAt: finalSaveData.updatedAt,
-      fileSize: fs.statSync(filePath).size
-    });
   } catch (error) {
     console.error('保存エラー:', error);
-    res.status(500).json({ error: 'データの保存に失敗しました', details: error.message });
+    res.status(500).json({ 
+      error: 'データの保存に失敗しました', 
+      details: error.message,
+      id: req.params.id
+    });
+  } finally {
+    // 保存ロックを解除
+    if (global.saveLocks) {
+      delete global.saveLocks[lockKey];
+    }
   }
 });
 
