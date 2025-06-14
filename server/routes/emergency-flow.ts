@@ -117,49 +117,47 @@ router.post('/save', async (req, res) => {
     const processedSteps = (flowData.steps || []).map(step => {
       // 🔀 条件分岐ノード（type: "condition"）の処理
       if (step.type === 'condition') {
-        console.log(`🔀 条件分岐ノード（conditions配列）${step.id} サーバー保存:`, {
+        console.log(`🔀 条件分岐ノード（conditions配列）${step.id} サーバー保存開始:`, {
           stepId: step.id,
           stepType: step.type,
           title: step.title,
+          description: step.description,
+          message: step.message,
           conditionsCount: step.conditions?.length || 0,
           conditionsData: step.conditions,
-          stepDescription: step.description,
-          stepMessage: step.message,
-          originalType: step.type
+          originalStep: step
         });
 
-        // conditions配列の詳細検証と確保
-        const validateConditions = (conditions: any[]) => {
-          if (!Array.isArray(conditions) || conditions.length === 0) {
-            console.log(`⚠️ 条件配列が空またはnull - デフォルト条件を設定: ${step.id}`);
+        // conditions配列の厳密な検証と確保
+        const ensureConditions = (conditions: any) => {
+          if (!conditions || !Array.isArray(conditions) || conditions.length === 0) {
+            console.log(`⚠️ 条件配列が無効 - デフォルト値を設定: ${step.id}`);
             return [
               { label: '条件A', nextId: '' },
               { label: '条件B', nextId: '' }
             ];
           }
-          
+
           console.log(`🔍 条件配列の詳細検証: ${step.id}`, conditions);
-          
+
           return conditions.map((condition, index) => {
             const validatedCondition = {
               label: condition.label || `条件${index + 1}`,
               nextId: condition.nextId || ''
             };
-            
+
             console.log(`✅ 条件項目 ${index + 1} 検証完了:`, {
               original: condition,
               validated: validatedCondition
             });
-            
+
             return validatedCondition;
           });
         };
 
-        const ensuredConditions = validateConditions(step.conditions);
+        const finalConditions = ensureConditions(step.conditions);
 
-        // 保存データの詳細ログ
         const savedConditionStep = {
-          ...step,
           id: step.id,
           title: step.title || '新しい条件分岐',
           description: step.description || step.message || '',
@@ -167,12 +165,12 @@ router.post('/save', async (req, res) => {
           imageUrl: step.imageUrl || '',
           type: 'condition',
           // conditions配列を確実に保持（必須フィールド）
-          conditions: ensuredConditions,
+          conditions: finalConditions,
           // optionsは空配列
           options: []
         };
 
-        console.log(`💾 条件分岐ノード保存データ最終確認: ${step.id}`, {
+        console.log(`💾 条件分岐ノード最終保存データ: ${step.id}`, {
           id: savedConditionStep.id,
           type: savedConditionStep.type,
           title: savedConditionStep.title,

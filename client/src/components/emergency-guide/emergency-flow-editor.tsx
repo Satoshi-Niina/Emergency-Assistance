@@ -395,14 +395,16 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
               stepId: step.id,
               stepType: step.type,
               title: step.title,
+              description: step.description,
+              message: step.message,
               conditionsCount: step.conditions?.length || 0,
               conditionsDetail: step.conditions
             });
 
-            // conditions配列を必ず確保
-            const ensuredConditions = step.conditions && step.conditions.length > 0 
-              ? step.conditions.map(condition => ({
-                  label: condition.label || '新しい条件',
+            // conditions配列の検証と確保
+            const validConditions = step.conditions && Array.isArray(step.conditions) && step.conditions.length > 0
+              ? step.conditions.map((condition, index) => ({
+                  label: condition.label || `条件${index + 1}`,
                   nextId: condition.nextId || ''
                 }))
               : [
@@ -410,8 +412,9 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                   { label: '条件B', nextId: '' }
                 ];
 
-            return {
-              ...step,
+            console.log(`✅ 条件配列確保: ${step.id}`, validConditions);
+
+            const savedStep = {
               id: step.id,
               title: step.title || '新しい条件分岐',
               description: step.description || step.message || '',
@@ -419,10 +422,19 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
               imageUrl: step.imageUrl || '',
               type: 'condition',
               // conditions配列を確実に保持（必須フィールド）
-              conditions: ensuredConditions,
+              conditions: validConditions,
               // optionsは空配列にする
               options: []
             };
+
+            console.log(`🎯 条件分岐ノード保存最終データ:`, {
+              id: savedStep.id,
+              type: savedStep.type,
+              conditionsCount: savedStep.conditions.length,
+              conditions: savedStep.conditions
+            });
+
+            return savedStep;
           }
 
           // 🔀 条件分岐ノード（type: "decision"）の保存処理
@@ -1344,7 +1356,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                         </div>
                       )}
                     </div>
-                    
+
                     {/* デバッグ表示 */}
                     <div className="mt-4 p-3 bg-gray-100 rounded text-sm">
                       <strong>現在の条件データ（デバッグ用）:</strong>
