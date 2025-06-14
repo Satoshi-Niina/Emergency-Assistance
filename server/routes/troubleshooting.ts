@@ -46,7 +46,8 @@ router.get('/', (req, res) => {
             id: data.id || file.replace('.json', ''),
             title: data.title || 'タイトルなし',
             description: data.description || '',
-            trigger: data.triggerKeywords || data.trigger || [],
+            triggerKeywords: data.triggerKeywords || data.trigger || [],
+            trigger: data.triggerKeywords || data.trigger || [], // 互換性のため
             steps: data.steps || [],
             createdAt: data.updatedAt || data.createdAt || new Date().toISOString(),
             fileName: file,
@@ -221,11 +222,11 @@ router.post('/save/:id', async (req, res) => {
         id: step.id,
         title: step.title || '',
         description: step.description || step.message || '',
-        imageUrl: step.imageUrl || '',
+        imageUrl: step.imageUrl || step.image || '',
         type: step.type || 'step',
         options: (step.options || []).map(option => ({
-          text: option.text,
-          nextStepId: option.nextStepId,
+          text: option.text || option.label,
+          nextStepId: option.nextStepId || option.next,
           isTerminal: option.isTerminal || false,
           conditionType: option.conditionType || 'other'
         })),
