@@ -100,11 +100,9 @@ const EmergencyFlowCreator: React.FC = () => {
       const data = await response.json();
 
       if (Array.isArray(data)) {
-        console.log(`✅ フロー一覧取得成功: ${data.length}件 - フィルタリング無効`);
-        
-        // 🎯 フィルタリング処理を完全に削除し、全データを表示
+        // 🎯 フィルタリング処理を完全削除 - 全データを表示
+        console.log(`✅ 全フローデータを表示: ${data.length}件（フィルタリング無効）`);
         setFlowList(data);
-        console.log(`✅ 全フローデータ表示: ${data.length}件 - フィルタリング無効化`);
       } else {
         console.warn('⚠️ 予期しないデータ形式:', data);
         setFlowList([]);
@@ -270,6 +268,7 @@ const EmergencyFlowCreator: React.FC = () => {
 
       if (!response.ok) {
         throw new Error(`フローデータの取得に失敗しました (${response.status})`);
+      }```python
       }
 
       const data = await response.json();
