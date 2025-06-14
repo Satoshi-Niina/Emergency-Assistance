@@ -679,7 +679,7 @@ router.post('/update-step-title', async (req, res) => {
 
     // タイトルを更新
     flowData.steps[stepIndex].title = title.trim();
-    
+
     // 更新日時を設定
     flowData.updatedAt = new Date().toISOString();
 
@@ -935,6 +935,92 @@ router.post('/generate-emergency-flow', async (req, res) => {
   } catch (error) {
     console.error('Error generating emergency flow:', error);
     res.status(500).json({ error: 'フローの生成に失敗しました' });
+  }
+});
+
+// ステップタイトル更新エンドポイント
+router.post('/api/emergency-flow/update-step-title', async (req, res) => {
+  try {
+    const { flowId, stepId, title } = req.body;
+
+    console.log('タイトル更新リクエスト:', { flowId, stepId, title });
+
+    if (!flowId || !stepId || title === undefined) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'flowId、stepId、titleが必要です' 
+      });
+    }
+
+    // flowIdからファイル名を正しく構築
+    let fileName = flowId;
+    if (flowId.startsWith('ts_')) {
+      fileName = flowId.substring(3); // 'ts_'プレフィックスを削除
+    }
+
+    // JSONファイルのパスを構築
+    const flowFilePath = path.join(process.cwd(), 'knowledge-base', 'troubleshooting', `${fileName}.json`);
+
+    console.log('フローファイルパス:', flowFilePath);
+
+    // ファイルが存在するか確認
+    if (!fs.existsSync(flowFilePath)) {
+      console.error('フローファイルが見つかりません:', flowFilePath);
+      return res.status(404).json({ 
+        success: false, 
+        error: 'フローファイルが見つかりません' 
+      });
+    }
+
+    // ファイルを読み込み
+    const fileContent = fs.readFileSync(flowFilePath, 'utf8');
+    const flowData = JSON.parse(fileContent);
+
+    console.log('読み込んだフローデータ:', {
+      id: flowData.id,
+      stepsCount: flowData.steps?.length,
+      targetStepId: stepId
+    });
+
+    // 対象のステップを検索して更新
+    const stepIndex = flowData.steps.findIndex((step: any) => step.id === stepId);
+
+    if (stepIndex === -1) {
+      console.error('ステップが見つかりません:', stepId);
+      return res.status(404).json({ 
+        success: false, 
+        error: 'ステップが見つかりません' 
+      });
+    }
+
+    // タイトルを更新
+    const oldTitle = flowData.steps[stepIndex].title;
+    flowData.steps[stepIndex].title = title;
+    flowData.updatedAt = new Date().toISOString();
+
+    console.log('ステップタイトル更新:', {
+      stepId,
+      oldTitle,
+      newTitle: title
+    });
+
+    // ファイルに書き戻し
+    fs.writeFileSync(flowFilePath, JSON.stringify(flowData, null, 2));
+
+    console.log('ファイル更新完了');
+
+    res.json({ 
+      success: true, 
+      message: 'タイトルが更新されました',
+      updatedStep: flowData.steps[stepIndex]
+    });
+
+  } catch (error) {
+    console.error('タイトル更新エラー:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'タイトルの更新に失敗しました: ' + (error as Error).message 
+    });
   }
 });
 
