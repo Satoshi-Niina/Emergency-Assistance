@@ -1035,34 +1035,122 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
 
                         {/* 条件分岐の詳細条件 */}
                         {step.type === 'decision' && (
-                          <div>
-                            <Label className="text-sm font-medium flex items-center gap-1">
-                              詳細条件・説明
-                              <Badge variant="outline" className="text-xs">
-                                {option.conditionType === 'yes' && '✓ はい条件'}
-                                {option.conditionType === 'no' && '✗ いいえ条件'}  
-                                {option.conditionType === 'other' && '→ その他条件'}
-                              </Badge>
-                            </Label>
-                            <Textarea
-                              key={`${step.id}-condition-${optionIndex}-${option.conditionType}`}
-                              value={option.condition || ''}
-                              onChange={(e) => {
-                                console.log(`🔧 条件更新: ${step.id} オプション ${optionIndex + 1}:`, e.target.value);
-                                updateOption(step.id, optionIndex, { condition: e.target.value });
-                              }}
-                              placeholder={
-                                option.conditionType === 'yes' 
-                                  ? "「はい」の場合の詳細条件を記述してください:\n• エンジンが完全に停止している\n• 再始動を試みても反応がない\n• 異音や異臭がない\n• 計器類に異常表示がない"
-                                  : option.conditionType === 'no'
-                                  ? "「いいえ」の場合の詳細条件を記述してください:\n• エンジンが不安定に動作している\n• 回転数が不安定\n• 異音がする\n• 煙や異臭がある"
-                                  : "その他の状況の詳細を記述してください:\n• 上記の条件に当てはまらない\n• 状況が判断できない\n• 専門家の判断が必要\n• 緊急事態の可能性"
-                              }
-                              rows={4}
-                              className="mt-1 border-2 border-yellow-200 focus:border-yellow-400"
-                            />
-                            <div className="text-xs text-gray-500 mt-1">
-                              💡 具体的な条件を箇条書きで記述すると、ユーザーが判断しやすくなります
+                          <div className="space-y-3">
+                            <div>
+                              <Label className="text-sm font-medium flex items-center gap-1">
+                                詳細条件・説明
+                                <Badge variant="outline" className="text-xs">
+                                  {option.conditionType === 'yes' && '✓ はい条件'}
+                                  {option.conditionType === 'no' && '✗ いいえ条件'}  
+                                  {option.conditionType === 'other' && '→ その他条件'}
+                                </Badge>
+                              </Label>
+                              <Textarea
+                                key={`${step.id}-condition-${optionIndex}-${option.conditionType}`}
+                                value={option.condition || ''}
+                                onChange={(e) => {
+                                  console.log(`🔧 条件更新: ${step.id} オプション ${optionIndex + 1}:`, e.target.value);
+                                  updateOption(step.id, optionIndex, { condition: e.target.value });
+                                }}
+                                placeholder={
+                                  option.conditionType === 'yes' 
+                                    ? "「はい」の場合の詳細条件を記述してください:\n• エンジンが完全に停止している\n• 再始動を試みても反応がない\n• 異音や異臭がない\n• 計器類に異常表示がない"
+                                    : option.conditionType === 'no'
+                                    ? "「いいえ」の場合の詳細条件を記述してください:\n• エンジンが不安定に動作している\n• 回転数が不安定\n• 異音がする\n• 煙や異臭がある"
+                                    : "その他の状況の詳細を記述してください:\n• 上記の条件に当てはまらない\n• 状況が判断できない\n• 専門家の判断が必要\n• 緊急事態の可能性"
+                                }
+                                rows={4}
+                                className="mt-1 border-2 border-yellow-200 focus:border-yellow-400"
+                              />
+                              <div className="text-xs text-gray-500 mt-1">
+                                💡 具体的な条件を箇条書きで記述すると、ユーザーが判断しやすくなります
+                              </div>
+                            </div>
+
+                            {/* 条件項目編集（新規作成時と同じ機能） */}
+                            <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                              <Label className="text-sm font-medium text-blue-800 mb-2 block">
+                                条件項目の詳細設定
+                              </Label>
+                              
+                              {/* 現在のデータ表示 */}
+                              <div className="mb-3">
+                                <Label className="text-xs text-blue-700">現在の条件テキスト</Label>
+                                <div className="bg-white border rounded p-2 text-sm">
+                                  {option.text || '未設定'}
+                                </div>
+                              </div>
+
+                              {/* 条件テキスト編集 */}
+                              <div className="mb-3">
+                                <Label className="text-xs text-blue-700">条件テキストを編集</Label>
+                                <Input
+                                  value={option.text || ''}
+                                  onChange={(e) => updateOption(step.id, optionIndex, { text: e.target.value })}
+                                  placeholder={
+                                    option.conditionType === 'yes' 
+                                      ? "はい（例: エンジンが完全に停止している）"
+                                      : option.conditionType === 'no'
+                                      ? "いいえ（例: まだ不安定に動作している）"
+                                      : "その他の状況（例: 判断できない）"
+                                  }
+                                  className="mt-1 text-sm"
+                                />
+                              </div>
+
+                              {/* 関係スライド選択 */}
+                              <div className="mb-3">
+                                <Label className="text-xs text-blue-700">関係スライド（遷移先）</Label>
+                                <select
+                                  value={option.nextStepId || ''}
+                                  onChange={(e) => updateOption(step.id, optionIndex, { nextStepId: e.target.value })}
+                                  className="w-full mt-1 p-2 border rounded text-sm bg-white"
+                                >
+                                  <option value="">遷移先を選択してください</option>
+                                  {editedFlow?.steps
+                                    .filter(s => s.id !== step.id) // 自分自身を除外
+                                    .map((targetStep, targetIndex) => (
+                                    <option key={targetStep.id} value={targetStep.id}>
+                                      スライド{targetIndex + 1}: {targetStep.title}
+                                    </option>
+                                  ))}
+                                  <option value="end">終了</option>
+                                </select>
+                                {option.nextStepId && (
+                                  <div className="text-xs text-blue-600 mt-1">
+                                    選択中: {option.nextStepId === 'end' ? '終了' : 
+                                      editedFlow?.steps.find(s => s.id === option.nextStepId)?.title || 'スライドが見つかりません'}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* 追加設定 */}
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <Label className="text-xs text-blue-700">条件タイプ</Label>
+                                  <select
+                                    value={option.conditionType}
+                                    onChange={(e) => changeConditionType(step.id, optionIndex, e.target.value as any)}
+                                    className="w-full mt-1 p-1 border rounded text-xs bg-white"
+                                  >
+                                    <option value="yes">✓ はい（肯定的な回答）</option>
+                                    <option value="no">✗ いいえ（否定的な回答）</option>
+                                    <option value="other">→ その他（中立・不明）</option>
+                                  </select>
+                                </div>
+                                <div className="flex items-center">
+                                  <input
+                                    type="checkbox"
+                                    id={`terminal-edit-${step.id}-${optionIndex}`}
+                                    checked={option.isTerminal}
+                                    onChange={(e) => updateOption(step.id, optionIndex, { isTerminal: e.target.checked })}
+                                    className="mr-2"
+                                  />
+                                  <Label htmlFor={`terminal-edit-${step.id}-${optionIndex}`} className="text-xs text-blue-700">
+                                    フロー終了
+                                  </Label>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         )}
