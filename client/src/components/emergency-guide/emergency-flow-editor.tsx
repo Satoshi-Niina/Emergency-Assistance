@@ -1281,7 +1281,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
 
               {/* スライド/ステップタイトル編集 */}
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl p-5 mb-4 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <Edit className="w-5 h-5 text-blue-600" />
                     <Label className="text-blue-800 font-bold text-lg">スライド #{index + 1} タイトル編集</Label>
@@ -1291,26 +1291,63 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                   </Badge>
                 </div>
                 
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div>
                     <Label className="text-blue-700 font-medium mb-2 block">スライドタイトル</Label>
-                    <Input
-                      value={step.title}
-                      onChange={(e) => updateStepTitle(step.id, e.target.value)}
-                      placeholder="スライドのタイトルを入力してください"
-                      className="border-blue-300 focus:border-blue-500 bg-white text-lg font-medium h-12"
-                    />
+                    <div className="relative">
+                      <Input
+                        value={step.title}
+                        onChange={(e) => updateStepTitle(step.id, e.target.value)}
+                        placeholder="スライドのタイトルを入力してください"
+                        className="border-blue-300 focus:border-blue-500 bg-white text-lg font-medium h-14 pl-4 pr-12 transition-all duration-200 focus:shadow-lg"
+                        autoComplete="off"
+                      />
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500">
+                        <Edit className="w-5 h-5" />
+                      </div>
+                    </div>
+                    <p className="text-xs text-blue-600 mt-2">
+                      リアルタイムで保存されます。Enterキーで次のフィールドに移動できます。
+                    </p>
                   </div>
                   
-                  <div className="flex items-start gap-2 p-3 bg-blue-100 rounded-lg">
-                    <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <div className="text-sm text-blue-700">
-                      <p className="font-medium">タイトルの用途:</p>
-                      <ul className="mt-1 space-y-1 text-xs">
-                        <li>• フロー表示時のスライドヘッダー</li>
-                        <li>• ナビゲーション表示</li>
-                        <li>• 検索時のキーワード</li>
-                      </ul>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-blue-100 rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Info className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm font-medium text-blue-800">表示プレビュー</span>
+                      </div>
+                      <div className="bg-white rounded border p-2 text-sm text-gray-700">
+                        {step.title || "（タイトル未設定）"}
+                      </div>
+                    </div>
+                    
+                    <div className="bg-blue-100 rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileText className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm font-medium text-blue-800">文字数</span>
+                      </div>
+                      <div className="text-lg font-bold text-blue-800">
+                        {step.title?.length || 0} / 50文字
+                        {(step.title?.length || 0) > 50 && (
+                          <span className="text-red-500 text-sm ml-2">（推奨文字数を超過）</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <div className="flex items-start gap-2">
+                      <Info className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm text-green-700">
+                        <p className="font-medium mb-1">タイトルの効果的な使い方:</p>
+                        <ul className="space-y-1 text-xs">
+                          <li>• 簡潔で分かりやすい表現を心がける</li>
+                          <li>• フロー表示時のナビゲーションで使用される</li>
+                          <li>• 検索時のキーワードとして機能する</li>
+                          <li>• 50文字以内を推奨（表示の最適化）</li>
+                        </ul>
+                      </div>
                     </div>
                   </div>
                 </div>
