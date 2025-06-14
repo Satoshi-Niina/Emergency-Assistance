@@ -145,12 +145,34 @@ const TroubleshootingEditor: React.FC<TroubleshootingEditorProps> = ({
       }
 
       const data = await response.json();
-      setOriginalData(data);
-      setEditedData(JSON.parse(JSON.stringify(data))); // ディープコピー
+      
+      // データ構造の正規化
+      const normalizedData = {
+        ...data,
+        triggerKeywords: data.triggerKeywords || data.trigger || [],
+        trigger: data.triggerKeywords || data.trigger || [], // 互換性のため
+        steps: (data.steps || []).map((step: any) => ({
+          ...step,
+          title: step.title || '',
+          description: step.description || step.message || '',
+          message: step.message || step.description || '',
+          imageUrl: step.imageUrl || step.image || '',
+          type: step.type || 'step',
+          options: (step.options || []).map((option: any) => ({
+            text: option.text || option.label,
+            nextStepId: option.nextStepId || option.next,
+            isTerminal: option.isTerminal || false,
+            conditionType: option.conditionType || 'other'
+          }))
+        }))
+      };
+      
+      setOriginalData(normalizedData);
+      setEditedData(JSON.parse(JSON.stringify(normalizedData))); // ディープコピー
 
       // 最初のステップをアクティブに
-      if (data.steps && data.steps.length > 0) {
-        setActiveStep(data.steps[0].id);
+      if (normalizedData.steps && normalizedData.steps.length > 0) {
+        setActiveStep(normalizedData.steps[0].id);
       }
     } catch (error) {
       console.error('データ取得エラー:', error);
@@ -173,9 +195,16 @@ const TroubleshootingEditor: React.FC<TroubleshootingEditorProps> = ({
   const handleBasicInfoChange = (field: string, value: any) => {
     if (!editedData) return;
 
+    // フィールド名のマッピング
+    const fieldMapping: { [key: string]: string } = {
+      'trigger': 'triggerKeywords'
+    };
+
+    const actualField = fieldMapping[field] || field;
+
     setEditedData({
       ...editedData,
-      [field]: value
+      [actualField]: value
     });
   };
 
@@ -183,9 +212,11 @@ const TroubleshootingEditor: React.FC<TroubleshootingEditorProps> = ({
   const handleAddTrigger = () => {
     if (!newTrigger.trim() || !editedData) return;
 
+    const currentTriggers = editedData.triggerKeywords || editedData.trigger || [];
     setEditedData({
       ...editedData,
-      trigger: [...editedData.trigger, newTrigger.trim()]
+      triggerKeywords: [...currentTriggers, newTrigger.trim()],
+      trigger: [...currentTriggers, newTrigger.trim()] // 互換性のため両方設定
     });
     setNewTrigger('');
   };
@@ -194,12 +225,14 @@ const TroubleshootingEditor: React.FC<TroubleshootingEditorProps> = ({
   const handleRemoveTrigger = (index: number) => {
     if (!editedData) return;
 
-    const newTriggers = [...editedData.trigger];
+    const currentTriggers = editedData.triggerKeywords || editedData.trigger || [];
+    const newTriggers = [...currentTriggers];
     newTriggers.splice(index, 1);
 
     setEditedData({
       ...editedData,
-      trigger: newTriggers
+      triggerKeywords: newTriggers,
+      trigger: newTriggers // 互換性のため両方設定
     });
   };
 
@@ -848,10 +881,10 @@ const TroubleshootingEditor: React.FC<TroubleshootingEditorProps> = ({
                 </div>
 
                 <div className="flex flex-wrap gap-2 mt-4">
-                  {editedData.trigger.length === 0 ? (
+                  {(editedData.triggerKeywords || editedData.trigger || []).length === 0 ? (
                     <p className="text-sm text-gray-500">トリガーがありません</p>
                   ) : (
-                    editedData.trigger.map((trigger, index) => (
+                    (editedData.triggerKeywords || editedData.trigger || []).map((trigger, index) => (
                       <Badge 
                         key={index} 
                         variant="secondary"
