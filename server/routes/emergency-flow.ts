@@ -115,7 +115,8 @@ router.post('/save', async (req, res) => {
 
     // 統一スキーマによる条件分岐ノードの完全保存処理
     const processedSteps = (flowData.steps || []).map(step => {
-      if (step.type === 'decision') {
+      // 🔀 条件分岐ノード：統一スキーマで完全保存（type: "condition"も対応）
+        if (step.type === 'decision' || step.type === 'condition') {
         console.log(`🔀 条件分岐ノード ${step.id} 統一スキーマ保存:`, {
           stepId: step.id,
           title: step.title,
@@ -183,22 +184,21 @@ router.post('/save', async (req, res) => {
           console.warn(`⚠️ ステップ ${step.id} の型を ${step.type} から decision に修正`);
         }
 
-        // 後方互換性のための個別フィールド生成
-        const yesOption = unifiedOptions.find(opt => opt.conditionType === 'yes');
-        const noOption = unifiedOptions.find(opt => opt.conditionType === 'no');
-        const otherOptions = unifiedOptions.filter(opt => opt.conditionType === 'other');
-
         const savedDecisionStep = {
-          ...step,
-          id: step.id,
-          title: step.title || '新しい条件分岐',
-          description: step.description || step.message || '',
-          message: step.message || step.description || '',
-          imageUrl: step.imageUrl || '',
-          type: 'decision',
-          // 統一スキーマ：options配列
-          options: unifiedOptions,
-          // 後方互換性：個別条件フィールド
+              ...step,
+              id: step.id,
+              title: step.title || '新しい条件分岐',
+              description: step.description || step.message || '',
+              message: step.message || step.description || '',
+              imageUrl: step.imageUrl || '',
+              type: step.type, // 元のtype（"condition"または"decision"）を保持
+              // 統一スキーマ：options配列（必須）
+              options: unifiedOptions,
+              // type: "condition"の場合、conditionsプロパティを保持
+              ...(step.type === 'condition' && step.conditions 
+                ? { conditions: step.conditions }
+                : {}),
+              // 後方互換性：個別条件フィールド
           yesCondition: yesOption?.condition || '',
           yesNextStepId: yesOption?.nextStepId || '',
           noCondition: noOption?.condition || '',
