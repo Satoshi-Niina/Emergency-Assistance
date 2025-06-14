@@ -545,10 +545,12 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
 
   // タイトル編集開始
   const startEditingTitle = useCallback(() => {
-    if (currentStep && currentStep.title) {
-      setTempTitle(currentStep.title);
+    if (currentStep) {
+      // 既存のタイトルがあればそれを使用、なければデフォルトタイトルを設定
+      const currentTitle = currentStep.title || `ステップ ${currentStep.id || '未設定'}`;
+      setTempTitle(currentTitle);
       setEditingTitle(true);
-      console.log('タイトル編集開始:', currentStep.title);
+      console.log('タイトル編集開始:', currentTitle);
     }
   }, [currentStep]);
 
@@ -643,59 +645,59 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
           </CardTitle>
           {/* ファイル名（ID）を非表示にする */}
         </div>
-        {/* ステップのタイトル表示と編集 */}
-        {currentStep.title && (
-          <div className="mt-2">
-            <span className="text-sm font-medium text-gray-500">スライド: </span>
-            {editingTitle ? (
-              <div className="flex items-center gap-2 mt-1">
-                <Input
-                  type="text"
-                  value={tempTitle}
-                  onChange={(e) => setTempTitle(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      saveTitle();
-                    } else if (e.key === 'Escape') {
-                      e.preventDefault();
-                      cancelEditingTitle();
-                    }
-                  }}
-                  className="text-sm flex-1"
-                  autoFocus
-                  placeholder="タイトルを入力してください"
-                />
-                <Button
-                  size="sm"
-                  variant="default"
-                  onClick={saveTitle}
-                  disabled={!tempTitle.trim()}
-                  className="text-xs px-2 py-1"
-                >
-                  保存
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={cancelEditingTitle}
-                  className="text-xs px-2 py-1"
-                >
-                  キャンセル
-                </Button>
-              </div>
-            ) : (
-              <div 
-                className="mt-1 inline-block cursor-pointer bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-md border border-blue-200 transition-colors"
-                onClick={startEditingTitle}
-                title="クリックしてタイトルを編集"
+        {/* ステップのタイトル表示と編集 - すべてのスライドで表示 */}
+        <div className="mt-2">
+          <span className="text-sm font-medium text-gray-500">スライド: </span>
+          {editingTitle ? (
+            <div className="flex items-center gap-2 mt-1">
+              <Input
+                type="text"
+                value={tempTitle}
+                onChange={(e) => setTempTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveTitle();
+                  } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cancelEditingTitle();
+                  }
+                }}
+                className="text-sm flex-1"
+                autoFocus
+                placeholder="タイトルを入力してください"
+              />
+              <Button
+                size="sm"
+                variant="default"
+                onClick={saveTitle}
+                disabled={!tempTitle.trim()}
+                className="text-xs px-2 py-1"
               >
-                <span className="text-blue-700 font-medium">{currentStep.title}</span>
-                <Edit className="w-4 h-4 text-blue-500 inline ml-2" />
-              </div>
-            )}
-          </div>
-        )}
+                保存
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={cancelEditingTitle}
+                className="text-xs px-2 py-1"
+              >
+                キャンセル
+              </Button>
+            </div>
+          ) : (
+            <div 
+              className="mt-1 inline-block cursor-pointer bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-md border border-blue-200 transition-colors"
+              onClick={startEditingTitle}
+              title="クリックしてタイトルを編集"
+            >
+              <span className="text-blue-700 font-medium">
+                {currentStep.title || `ステップ ${currentStep.id || '未設定'}`}
+              </span>
+              <Edit className="w-4 h-4 text-blue-500 inline ml-2" />
+            </div>
+          )}
+        </div>
       </CardHeader>
 
       <CardContent>

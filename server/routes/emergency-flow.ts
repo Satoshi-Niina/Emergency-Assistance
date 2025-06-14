@@ -649,6 +649,60 @@ router.get('/detail/:id', async (req, res) => {
   }
 });
 
+// ステップタイトル更新エンドポイント
+router.post('/update-step-title', async (req, res) => {
+  try {
+    const { flowId, stepId, title } = req.body;
+
+    console.log('ステップタイトル更新リクエスト:', { flowId, stepId, title });
+
+    if (!flowId || !stepId || !title) {
+      return res.status(400).json({ error: '必要なパラメータが不足しています' });
+    }
+
+    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const filePath = path.join(troubleshootingDir, `${flowId}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'フローファイルが見つかりません' });
+    }
+
+    // ファイルを読み込み
+    const content = fs.readFileSync(filePath, 'utf8');
+    const flowData = JSON.parse(content);
+
+    // ステップを検索して更新
+    const stepIndex = flowData.steps.findIndex(step => step.id === stepId);
+    if (stepIndex === -1) {
+      return res.status(404).json({ error: 'ステップが見つかりません' });
+    }
+
+    // タイトルを更新
+    flowData.steps[stepIndex].title = title.trim();
+    
+    // 更新日時を設定
+    flowData.updatedAt = new Date().toISOString();
+
+    // ファイルに書き戻し
+    fs.writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf8');
+
+    console.log('ステップタイトル更新完了:', { flowId, stepId, newTitle: title });
+
+    res.json({ 
+      success: true, 
+      message: 'タイトルが更新されました',
+      updatedStep: {
+        id: stepId,
+        title: title.trim()
+      }
+    });
+
+  } catch (error) {
+    console.error('ステップタイトル更新エラー:', error);
+    res.status(500).json({ error: 'タイトルの更新に失敗しました' });
+  }
+});
+
 // 直接IDアクセス用エンドポイント（troubleshootingディレクトリからの読み込み専用）
 router.get('/:id', async (req, res) => {
   try {
