@@ -837,7 +837,9 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
         {/* 選択肢（ある場合） */}
         {currentStep.options && currentStep.options.length > 0 && (
           <div className="mb-4 space-y-2">
-            <p className="font-medium mb-2">状態を選択してください：</p>
+            <p className="font-medium mb-2">
+              {currentStep.type === 'decision' ? '条件を選択してください：' : '状態を選択してください：'}
+            </p>
             {currentStep.options.map((option, index) => (
               <Button
                 key={index}
@@ -847,6 +849,44 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
               >
                 {option.label || option.text}
               </Button>
+            ))}
+          </div>
+        )}
+
+        {/* 条件分岐ノード専用の条件項目表示 */}
+        {currentStep.type === 'decision' && currentStep.conditions && currentStep.conditions.length > 0 && (
+          <div className="mb-4 space-y-3">
+            <p className="font-medium mb-2 text-yellow-700">判断条件：</p>
+            {currentStep.conditions.map((condition, index) => (
+              <div key={index} className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium text-yellow-800">
+                    {condition.label || `条件 ${index + 1}`}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs"
+                    onClick={() => {
+                      const nextStepId = condition.nextId || condition.nextStepId;
+                      if (nextStepId) {
+                        goToNextStep(nextStepId);
+                      } else {
+                        toast({
+                          title: '注意',
+                          description: 'この条件の次のステップが設定されていません',
+                          variant: 'default',
+                        });
+                      }
+                    }}
+                  >
+                    この条件を選択
+                  </Button>
+                </div>
+                {condition.condition && (
+                  <p className="text-sm text-yellow-700 mt-1">{condition.condition}</p>
+                )}
+              </div>
             ))}
           </div>
         )}
