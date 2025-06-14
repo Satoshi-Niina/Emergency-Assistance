@@ -480,4 +480,4 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
   );
 };
 
-export default TroubleshootingTextEditor; 
+export default TroubleshootingTextEditor;
