@@ -933,7 +933,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                     {step.options && step.options.length > 0 ? (
                       step.options.map((option, optionIndex) => {
                         console.log(`🔍 レンダリング中 - ステップ ${step.id} (${step.type}), オプション ${optionIndex + 1}:`, option);
-                        return (```jsx
+                        return (
                       <div key={`${step.id}-option-${optionIndex}`} className={`border-2 rounded-lg p-4 space-y-3 ${
                         step.type === 'decision' 
                           ? option.conditionType === 'yes' 
