@@ -80,6 +80,8 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
   const [checklistItems, setChecklistItems] = useState<Record<string, boolean>>({});
   const [imageLoading, setImageLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [tempTitle, setTempTitle] = useState('');
 
   // フローデータを取得
   const fetchFlowData = useCallback(async () => {
@@ -531,6 +533,56 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
     );
   }
 
+  // タイトル編集開始
+  const startEditingTitle = useCallback(() => {
+    if (currentStep) {
+      setTempTitle(currentStep.title);
+      setEditingTitle(true);
+    }
+  }, [currentStep]);
+
+  // タイトル編集保存
+  const saveTitle = useCallback(async () => {
+    if (!currentStep || !tempTitle.trim()) return;
+
+    try {
+      // APIを呼び出してタイトルを保存
+      const response = await fetch(`/api/emergency-flow/update-step-title`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          flowId: flowData.id,
+          stepId: currentStep.id,
+          title: tempTitle.trim()
+        })
+      });
+
+      if (response.ok) {
+        // ローカル状態を更新
+        if (flowData.steps) {
+          const updatedSteps = flowData.steps.map(step =>
+            step.id === currentStep.id ? { ...step, title: tempTitle.trim() } : step
+          );
+          // データを更新（親コンポーネントに通知が必要な場合）
+          console.log('タイトルが更新されました:', tempTitle);
+        }
+        setEditingTitle(false);
+      } else {
+        console.error('タイトルの保存に失敗しました');
+      }
+    } catch (error) {
+      console.error('タイトル保存エラー:', error);
+    }
+  }, [currentStep, tempTitle, flowData]);
+
+  // タイトル編集キャンセル
+  const cancelEditingTitle = useCallback(() => {
+    setEditingTitle(false);
+    setTempTitle('');
+  }, []);
+
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
@@ -542,10 +594,27 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
           {/* ファイル名（ID）を非表示にする */}
         </div>
         {/* ステップのタイトルがあれば表示 */}
-        {currentStep.title && (
-          <div className="mt-2">
-            <span className="text-sm font-medium text-gray-500">手順: </span>
-            <span className="font-semibold">{currentStep.title}</span>
+        {/* ステップのタイトルがあれば表示 */}
+        {editingTitle ? (
+          <Input
+            type="text"
+            value={tempTitle}
+            onChange={(e) => setTempTitle(e.target.value)}
+            onBlur={cancelEditingTitle}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                saveTitle();
+              }
+            }}
+          />
+        ) : (
+          <div onClick={startEditingTitle}>
+            {currentStep.title && (
+              <div className="mt-2">
+                <span className="text-sm font-medium text-gray-500">手順: </span>
+                <span className="font-semibold">{currentStep.title}</span>
+              </div>
+            )}
           </div>
         )}
       </CardHeader>
