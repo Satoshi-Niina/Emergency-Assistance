@@ -70,14 +70,18 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         steps: (flowData.steps || flowData.slides || [])?.map(step => {
           console.log(`🔍 ステップ ${step.id} (${step.type}) のオプション:`, step.options);
 
-          // 🎯 条件分岐ノード：新規作成時と完全同等の処理
+          // 🎯 条件分岐ノード：データ保証処理
             if (step.type === 'decision') {
               const existingOptions = step.options || [];
-              console.log(`🔧 条件分岐ノード ${step.id} 処理開始:`, existingOptions);
+              console.log(`🔧 条件分岐ノード ${step.id} データ処理:`, {
+                stepType: step.type,
+                optionsCount: existingOptions.length,
+                optionsData: existingOptions
+              });
 
-              // 新規作成時と全く同じ条件項目処理
+              // 条件項目の確実な設定（デフォルト値保証）
               const processedOptions = existingOptions.length > 0 ? existingOptions.map((option, index) => ({
-                text: option.text || `条件 ${index + 1}`,
+                text: option.text || `条件項目 ${index + 1}`,
                 nextStepId: option.nextStepId || '',
                 isTerminal: Boolean(option.isTerminal),
                 conditionType: (option.conditionType as 'yes' | 'no' | 'other') || 'other',
@@ -87,7 +91,10 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                 { text: 'いいえ', nextStepId: '', isTerminal: false, conditionType: 'no' as const, condition: '' }
               ];
 
-              console.log(`✅ 条件分岐ノード ${step.id} 処理完了:`, processedOptions);
+              console.log(`✅ 条件分岐ノード ${step.id} 処理完了:`, {
+                processedCount: processedOptions.length,
+                processedData: processedOptions
+              });
 
               return {
                 ...step,
@@ -1084,16 +1091,19 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                     ))}
                   </div>
 
-                  {/* 🎯 条件分岐ノード統合編集フォーム（常時表示・簡素化版） */}
+                  {/* 🎯 条件分岐ノード：強制表示エリア */}
                   {step.type === 'decision' && (
-                    <div className="mt-6 bg-blue-50 border-2 border-blue-300 rounded-lg p-6">
-                      <div className="text-center mb-4">
-                        <h4 className="text-lg font-bold text-blue-800">
-                          🎛️ 条件分岐設定エリア（{step.options?.length || 0}個の条件）
-                        </h4>
-                        <p className="text-sm text-blue-600">
-                          ここで条件項目の追加・編集ができます
+                    <div className="mt-6 bg-gradient-to-r from-yellow-100 to-blue-100 border-4 border-yellow-500 rounded-xl p-8 shadow-lg">
+                      <div className="text-center mb-6">
+                        <h3 className="text-2xl font-bold text-blue-900 mb-2">
+                          🔀 条件分岐ノード編集
+                        </h3>
+                        <p className="text-lg text-blue-700">
+                          条件項目: {step.options?.length || 0}個
                         </p>
+                        <div className="mt-2 text-sm text-green-800 bg-green-100 rounded px-3 py-1 inline-block">
+                          ✅ 編集UI正常表示中
+                        </div>
                       </div>
 
                       <div className="text-center mb-4">
