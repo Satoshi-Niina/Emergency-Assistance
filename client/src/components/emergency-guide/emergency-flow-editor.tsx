@@ -1053,6 +1053,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                         </div>
                       )
                     )}
+                  </div>
                 </div>
               </div>
             </CardContent>
