@@ -200,14 +200,18 @@ const EmergencyGuidePage: React.FC = () => {
       }
 
       const data = await response.json();
-      console.log(`✅ 取得したフローデータ: ${data.length}件`, data);
 
-      setFlowList(Array.isArray(data) ? data : []);
+      // フィルタリングを完全に削除
+      const filteredData = data;
+
+      console.log(`✅ 取得したデータ: ${filteredData.length}件`);
+
+      setFlowList(Array.isArray(filteredData) ? filteredData : []);
 
       // 新しいデータのみキャッシュ
       if (typeof window !== 'undefined') {
         localStorage.setItem('emergencyFlowList', JSON.stringify({
-          data: Array.isArray(data) ? data : [],
+          data: Array.isArray(filteredData) ? filteredData : [],
           timestamp: timestamp,
           version: '3.0',
           source: 'knowledge-base/troubleshooting'
