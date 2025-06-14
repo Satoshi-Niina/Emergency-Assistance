@@ -1019,7 +1019,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                         </div>
 
                         {/* 🎯 条件分岐ノード専用編集フォーム（新規と再編集で共通） - 常に表示 */}
-                        {step.type === 'decision' && step.id && option && (
+                        {step.type === 'decision' && (
                           <div className="mt-6 bg-gradient-to-r from-yellow-50 to-orange-50 border-4 border-yellow-400 rounded-xl p-8 shadow-2xl"
                                key={`decision-editor-${step.id}-${optionIndex}`}>
                             {/* ヘッダー部分 */}
