@@ -70,36 +70,46 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         steps: (flowData.steps || flowData.slides || [])?.map(step => {
           console.log(`🔍 ステップ ${step.id} (${step.type}) のオプション:`, step.options);
 
-          // 🎯 条件分岐ノード：データ保証処理
+          // 🔀 条件分岐ノード：完全データ処理（編集UI用）
             if (step.type === 'decision') {
               const existingOptions = step.options || [];
-              console.log(`🔧 条件分岐ノード ${step.id} データ処理:`, {
+              console.log(`🔀 条件分岐ノード ${step.id} 編集UI準備:`, {
+                stepId: step.id,
                 stepType: step.type,
-                optionsCount: existingOptions.length,
-                optionsData: existingOptions
+                title: step.title,
+                existingOptionsCount: existingOptions.length,
+                existingOptionsData: existingOptions
               });
 
-              // 条件項目の確実な設定（デフォルト値保証）
-              const processedOptions = existingOptions.length > 0 ? existingOptions.map((option, index) => ({
-                text: option.text || `条件項目 ${index + 1}`,
-                nextStepId: option.nextStepId || '',
-                isTerminal: Boolean(option.isTerminal),
-                conditionType: (option.conditionType as 'yes' | 'no' | 'other') || 'other',
-                condition: option.condition || ''
-              })) : [
+              // 既存の条件項目を完全に保持（追加・編集可能）
+              const processedOptions = existingOptions.length > 0 ? existingOptions.map((option, index) => {
+                const processedOption = {
+                  text: option.text || `条件項目 ${index + 1}`,
+                  nextStepId: option.nextStepId || '',
+                  isTerminal: Boolean(option.isTerminal),
+                  conditionType: (option.conditionType as 'yes' | 'no' | 'other') || 'other',
+                  condition: option.condition || ''
+                };
+                
+                console.log(`🔧 既存条件項目 ${index + 1} 処理:`, processedOption);
+                return processedOption;
+              }) : [
                 { text: 'はい', nextStepId: '', isTerminal: false, conditionType: 'yes' as const, condition: '' },
                 { text: 'いいえ', nextStepId: '', isTerminal: false, conditionType: 'no' as const, condition: '' }
               ];
 
-              console.log(`✅ 条件分岐ノード ${step.id} 処理完了:`, {
-                processedCount: processedOptions.length,
-                processedData: processedOptions
+              console.log(`✅ 条件分岐ノード ${step.id} 編集UI準備完了:`, {
+                finalOptionsCount: processedOptions.length,
+                finalOptionsData: processedOptions
               });
 
               return {
                 ...step,
+                id: step.id,
+                title: step.title || '新しい条件分岐',
                 description: step.description || step.message || '',
                 message: step.message || step.description || '',
+                type: 'decision',
                 options: processedOptions
               };
           } else {
@@ -268,27 +278,49 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
       const saveData = {
         ...editedFlow,
         steps: editedFlow.steps.map(step => {
-          // 条件分岐ノードの場合は特別な処理
+          // 🔀 条件分岐ノード：完全保存処理
           if (step.type === 'decision') {
-            console.log(`🔀 条件分岐ノード ${step.id} の保存準備:`, {
+            console.log(`🔀 条件分岐ノード ${step.id} 完全保存準備:`, {
+              stepId: step.id,
+              stepType: step.type,
+              title: step.title,
               optionsCount: step.options?.length || 0,
-              options: step.options
+              optionsDetail: step.options
             });
 
-            return {
-              ...step,
-              description: step.description || step.message || '',
-              message: step.message || step.description || '',
-              imageUrl: step.imageUrl || '',
-              type: 'decision', // 確実に設定
-              options: (step.options || []).map(option => ({
-                text: option.text || '',
+            // 条件項目の完全保存（空の項目も含めて保存）
+            const completeOptions = (step.options || []).map((option, index) => {
+              const processedOption = {
+                text: option.text || `条件項目 ${index + 1}`,
                 nextStepId: option.nextStepId || '',
                 condition: option.condition || '',
                 isTerminal: Boolean(option.isTerminal),
                 conditionType: option.conditionType || 'other'
-              }))
+              };
+              
+              console.log(`🔧 条件項目 ${index + 1} 保存データ:`, processedOption);
+              return processedOption;
+            });
+
+            const savedDecisionStep = {
+              ...step,
+              id: step.id,
+              title: step.title || '新しい条件分岐',
+              description: step.description || step.message || '',
+              message: step.message || step.description || '',
+              imageUrl: step.imageUrl || '',
+              type: 'decision', // 確実に設定
+              options: completeOptions
             };
+
+            console.log(`✅ 条件分岐ノード ${step.id} 保存データ完成:`, {
+              stepId: savedDecisionStep.id,
+              type: savedDecisionStep.type,
+              optionsCount: savedDecisionStep.options.length,
+              savedOptions: savedDecisionStep.options
+            });
+
+            return savedDecisionStep;
           } else {
             // 通常のステップ
             return {
