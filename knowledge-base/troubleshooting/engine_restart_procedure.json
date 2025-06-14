@@ -19,12 +19,12 @@
     {
       "id": "step2",
       "title": "新しい条件分岐",
-      "description": "エンジン回転を上げた時？",
-      "message": "エンジン回転を上げた時？",
+      "description": "エンジンが停止した時の状況は",
+      "message": "エンジンが停止した時の状況は",
       "imageUrl": "",
       "type": "step",
       "options": []
     }
   ],
-  "updatedAt": "2025-06-14T06:50:50.577Z"
+  "updatedAt": "2025-06-14T07:37:18.740Z"
 }
