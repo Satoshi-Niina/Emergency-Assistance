@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import TroubleshootingFileList from '@/components/troubleshooting/troubleshooting-file-list';
@@ -31,13 +32,13 @@ export default function TroubleshootingPage() {
     <div className="container mx-auto p-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">トラブルシューティング</h1>
-        <p className="text-gray-600">応急処置フローの管理</p>
+        <p className="text-gray-600">テキスト編集によるフローデータ管理</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="file-list">ファイル一覧</TabsTrigger>
-          <TabsTrigger value="edit" disabled={!selectedFlowId}>編集</TabsTrigger>
+          <TabsTrigger value="edit">テキスト編集</TabsTrigger>
         </TabsList>
 
         <TabsContent value="file-list">
@@ -48,13 +49,11 @@ export default function TroubleshootingPage() {
         </TabsContent>
 
         <TabsContent value="edit">
-          {selectedFlowId && (
-            <TroubleshootingTextEditor
-              flowId={selectedFlowId}
-              onSave={handleSaved}
-              onCancel={handleCancel}
-            />
-          )}
+          <TroubleshootingTextEditor
+            flowId={selectedFlowId || ''}
+            onSave={handleSaved}
+            onCancel={handleCancel}
+          />
         </TabsContent>
       </Tabs>
     </div>
