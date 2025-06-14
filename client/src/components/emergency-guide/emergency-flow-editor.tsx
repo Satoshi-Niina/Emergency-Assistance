@@ -1358,6 +1358,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                     )}
 
                     {/* 🎯 条件分岐ノード（type: "decision"）は従来のUI */}
+                    {/* 🎯 条件分岐ノード（type: "decision"）は従来のUI */}
                     {step.type === 'decision' && (
                       <div className="bg-yellow-50 border-4 border-yellow-400 rounded-xl p-6 mb-6">
                         <div className="text-center mb-4">
@@ -1466,13 +1467,13 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                     )}
 
                     {/* 通常のステップの選択肢表示 */}
-                    {step.type !== 'decision' && step.options && step.options.map((option, optionIndex) => (
+                    {step.type !== 'decision' && step.type !== 'condition' && step.options && step.options.map((option, optionIndex) => (
                       <div key={`${step.id}-option-${optionIndex}`} className="border-2 rounded-lg p-4 space-y-3 border-gray-200 bg-gray-50">
                         <div className="flex items-center justify-between">
                           <Badge variant="secondary">
-                            {step.type === 'decision' ? '条件項目' : '選択肢'} {optionIndex + 1}
+                            選択肢 {optionIndex + 1}
                           </Badge>
-                          {((step.type === 'decision' && step.options.length > 2) || (step.type !== 'decision' && step.options.length > 1)) && (
+                          {step.options.length > 1 && (
                             <Button
                               size="sm"
                               variant="ghost"
@@ -1484,28 +1485,13 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                         </div>
 
                         <div>
-                          <Label>{step.type === 'decision' ? '条件テキスト' : '選択肢のテキスト'}</Label>
+                          <Label>選択肢のテキスト</Label>
                           <Input
                             value={option.text || ''}
                             onChange={(e) => updateOption(step.id, optionIndex, { text: e.target.value })}
-                            placeholder={step.type === 'decision' ? '条件の説明を入力' : '選択肢のテキスト'}
+                            placeholder="選択肢のテキスト"
                           />
                         </div>
-
-                        {step.type === 'decision' && (
-                          <div>
-                            <Label>条件タイプ</Label>
-                            <select
-                              value={option.conditionType || 'other'}
-                              onChange={(e) => updateOption(step.id, optionIndex, { conditionType: e.target.value as any })}
-                              className="w-full border rounded px-3 py-2 bg-white"
-                            >
-                              <option value="yes">はい（肯定）</option>
-                              <option value="no">いいえ（否定）</option>
-                              <option value="other">その他</option>
-                            </select>
-                          </div>
-                        )}
 
                         <div>
                           <Label>遷移先</Label>
@@ -1536,7 +1522,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                     ))}
                   </div>
                 </div>
-              </div>
+              </CardContent>
             </CardContent>
           </Card>
         ))}
