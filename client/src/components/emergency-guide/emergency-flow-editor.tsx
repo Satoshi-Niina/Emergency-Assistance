@@ -945,30 +945,8 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                   )}
 
                   <div className="space-y-3">
-                    {(() => {
-                      console.log(`🎯 ステップ ${step.id} の選択肢表示:`, {
-                        stepType: step.type,
-                        optionsCount: step.options?.length || 0,
-                        options: step.options?.map(opt => ({
-                          text: opt.text,
-                          conditionType: opt.conditionType,
-                          nextStepId: opt.nextStepId,
-                          condition: opt.condition
-                        }))
-                      });
-                      return null;
-                    })()}
                     {step.options && step.options.length > 0 ? (
-                      step.options.map((option, optionIndex) => {
-                        console.log(`📝 選択肢 ${optionIndex + 1} レンダリング:`, {
-                          text: option.text,
-                          conditionType: option.conditionType,
-                          nextStepId: option.nextStepId,
-                          condition: option.condition,
-                          isTerminal: option.isTerminal
-                        });
-                        
-                        return (
+                      step.options.map((option, optionIndex) => (
                       <div key={`${step.id}-option-${optionIndex}`} className={`border-2 rounded-lg p-4 space-y-3 ${
                         step.type === 'decision' 
                           ? option.conditionType === 'yes' 
@@ -977,7 +955,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                             ? 'border-red-200 bg-red-50'
                             : 'border-blue-200 bg-blue-50'
                           : 'border-gray-200 bg-gray-50'
-                      }`}>)
+                      }`}>
                         {/* ヘッダー部分 */}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -1033,7 +1011,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                           />
                         </div>
 
-                        {/* 🎯 条件分岐ノード専用編集フォーム（新規と再編集で共通） */}
+                        {/* 🎯 条件分岐ノード専用編集フォーム（新規と再編集で共通） - 常に表示 */}
                         {step.type === 'decision' && (
                           <div className="mt-6 bg-gradient-to-r from-yellow-50 to-orange-50 border-4 border-yellow-400 rounded-xl p-8 shadow-2xl">
                             {/* ヘッダー部分 */}
