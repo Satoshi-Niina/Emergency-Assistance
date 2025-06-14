@@ -1033,7 +1033,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                           />
                         </div>
 
-                        {/* 条件分岐ノードの詳細編集フォーム - 新規作成時と再編集時で同じ機能 */}
+                        {/* 条件分岐ノードの詳細編集フォーム - 再編集時も新規作成時と全く同じ表示 */}
                         {step.type === 'decision' && (
                           <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-lg p-6 mt-4">
                             <div className="flex items-center gap-3 mb-6">
@@ -1043,7 +1043,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                                   条件分岐の詳細設定 - 選択肢 {optionIndex + 1}
                                 </Label>
                                 <p className="text-sm text-yellow-700 mt-1">
-                                  📝 新規作成時と同じ編集機能で、既存データを表示・編集できます
+                                  📝 項目編集と関係スライド選択：再編集時も新規作成時と同じフォームで編集可能
                                 </p>
                               </div>
                               <Badge variant="outline" className="text-sm px-3 py-1">
@@ -1053,7 +1053,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                               </Badge>
                             </div>
 
-                            {/* メイン編集エリア - 新規作成時と同じレイアウト */}
+                            {/* メイン編集エリア - 新規作成時と完全に同じレイアウト */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                               {/* 左側：条件項目（項目テキストと詳細説明） */}
                               <div className="space-y-6">
@@ -1064,7 +1064,10 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                                   </Label>
                                   <Input
                                     value={option.text || ''}
-                                    onChange={(e) => updateOption(step.id, optionIndex, { text: e.target.value })}
+                                    onChange={(e) => {
+                                      console.log(`📝 条件テキスト更新: ${step.id} オプション ${optionIndex + 1}:`, e.target.value);
+                                      updateOption(step.id, optionIndex, { text: e.target.value });
+                                    }}
                                     placeholder={
                                       option.conditionType === 'yes' 
                                         ? "はい（例: エンジンが完全に停止している）"
@@ -1075,7 +1078,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                                     className="border-2 border-yellow-200 focus:border-yellow-400 text-base p-3"
                                   />
                                   <div className="text-xs text-gray-600 mt-2 p-2 bg-yellow-50 rounded border">
-                                    💡 現在のデータ: "{option.text || '未設定'}"
+                                    💡 現在のデータ: "{option.text || '未設定'}" | 編集中: ✅
                                   </div>
                                 </div>
 
@@ -1085,13 +1088,19 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                                   </Label>
                                   <select
                                     value={option.conditionType || 'other'}
-                                    onChange={(e) => changeConditionType(step.id, optionIndex, e.target.value as any)}
+                                    onChange={(e) => {
+                                      console.log(`🔄 条件タイプ変更: ${step.id} オプション ${optionIndex + 1}:`, e.target.value);
+                                      changeConditionType(step.id, optionIndex, e.target.value as any);
+                                    }}
                                     className="w-full p-4 border-2 border-yellow-200 rounded-lg text-base bg-white focus:border-yellow-400"
                                   >
                                     <option value="yes">✓ はい（肯定的な回答）</option>
                                     <option value="no">✗ いいえ（否定的な回答）</option>
                                     <option value="other">→ その他（中立・不明）</option>
                                   </select>
+                                  <div className="text-xs text-gray-600 mt-2 p-2 bg-yellow-50 rounded border">
+                                    🎯 現在選択中: {option.conditionType === 'yes' ? '✓ はい' : option.conditionType === 'no' ? '✗ いいえ' : '→ その他'}
+                                  </div>
                                 </div>
 
                                 <div className="bg-white rounded-lg p-4 border-2 border-yellow-200">
@@ -1099,10 +1108,10 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                                     詳細条件・説明（追加用のテキストボックス）
                                   </Label>
                                   <Textarea
-                                    key={`${step.id}-condition-${optionIndex}-${option.conditionType}-edit`}
+                                    key={`${step.id}-condition-${optionIndex}-${option.conditionType}-edit-rerender`}
                                     value={option.condition || ''}
                                     onChange={(e) => {
-                                      console.log(`🔧 条件更新: ${step.id} オプション ${optionIndex + 1}:`, e.target.value);
+                                      console.log(`🔧 詳細条件更新: ${step.id} オプション ${optionIndex + 1}:`, e.target.value);
                                       updateOption(step.id, optionIndex, { condition: e.target.value });
                                     }}
                                     placeholder={
@@ -1116,7 +1125,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                                     className="border-2 border-yellow-200 focus:border-yellow-400 text-base"
                                   />
                                   <div className="text-xs text-gray-600 mt-3 p-3 bg-yellow-100 rounded border">
-                                    📋 現在保存されている詳細条件: {option.condition ? `"${option.condition}"` : '未設定'}
+                                    📋 保存されている詳細条件: {option.condition ? `"${option.condition}"` : '未設定'} | 文字数: {(option.condition || '').length}
                                   </div>
                                 </div>
                               </div>
@@ -1130,7 +1139,10 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                                   </Label>
                                   <select
                                     value={option.nextStepId || ''}
-                                    onChange={(e) => updateOption(step.id, optionIndex, { nextStepId: e.target.value })}
+                                    onChange={(e) => {
+                                      console.log(`🔗 遷移先変更: ${step.id} オプション ${optionIndex + 1}:`, e.target.value);
+                                      updateOption(step.id, optionIndex, { nextStepId: e.target.value });
+                                    }}
                                     className="w-full p-4 border-2 border-green-200 rounded-lg text-base bg-white focus:border-green-400"
                                   >
                                     <option value="">⚡ 遷移先スライドを選択してください</option>
@@ -1155,7 +1167,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                                   )}
 
                                   <div className="text-xs text-gray-600 mt-3 p-3 bg-green-50 rounded border">
-                                    🔗 現在設定されている遷移先: {option.nextStepId || '未設定'}
+                                    🔗 設定されている遷移先: {option.nextStepId || '未設定'} | 編集可能: ✅
                                   </div>
                                 </div>
 
@@ -1168,7 +1180,10 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                                       type="checkbox"
                                       id={`terminal-edit-${step.id}-${optionIndex}`}
                                       checked={Boolean(option.isTerminal)}
-                                      onChange={(e) => updateOption(step.id, optionIndex, { isTerminal: e.target.checked })}
+                                      onChange={(e) => {
+                                        console.log(`⏹️ 終了設定変更: ${step.id} オプション ${optionIndex + 1}:`, e.target.checked);
+                                        updateOption(step.id, optionIndex, { isTerminal: e.target.checked });
+                                      }}
                                       className="mr-4 h-5 w-5"
                                     />
                                     <Label htmlFor={`terminal-edit-${step.id}-${optionIndex}`} className="text-base text-gray-700 font-medium">
@@ -1176,7 +1191,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                                     </Label>
                                   </div>
                                   <div className="text-xs text-gray-600 mt-3 p-3 bg-purple-50 rounded border">
-                                    ⏹️ 現在の終了設定: {option.isTerminal ? '✅ フロー終了あり' : '❌ フロー終了なし'}
+                                    ⏹️ 現在の終了設定: {option.isTerminal ? '✅ フロー終了あり' : '❌ フロー終了なし'} | 変更可能: ✅
                                   </div>
                                 </div>
 
@@ -1189,7 +1204,9 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                                   <div className="space-y-3 text-sm">
                                     <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
                                       <span className="text-gray-600 font-medium">🏷️ 条件テキスト:</span>
-                                      <span className="font-semibold text-gray-800">{option.text || '未設定'}</span>
+                                      <span className="font-semibold text-gray-800 text-right max-w-[200px] truncate" title={option.text || '未設定'}>
+                                        {option.text || '未設定'}
+                                      </span>
                                     </div>
                                     <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
                                       <span className="text-gray-600 font-medium">🎯 条件タイプ:</span>
@@ -1200,7 +1217,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                                     </div>
                                     <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
                                       <span className="text-gray-600 font-medium">🔗 遷移先:</span>
-                                      <span className="font-semibold text-gray-800">
+                                      <span className="font-semibold text-gray-800 text-right max-w-[200px] truncate">
                                         {option.nextStepId === 'end' ? '🏁 終了' : 
                                          editedFlow?.steps.find(s => s.id === option.nextStepId)?.title || '未設定'}
                                       </span>
@@ -1211,6 +1228,10 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                                         {option.isTerminal ? '✅ あり' : '❌ なし'}
                                       </span>
                                     </div>
+                                    <div className="flex justify-between items-center p-2 bg-blue-50 rounded border border-blue-200">
+                                      <span className="text-blue-600 font-medium">📝 編集状態:</span>
+                                      <span className="font-semibold text-blue-800">再編集モード（新規と同機能）</span>
+                                    </div>
                                   </div>
                                 </div>
 
@@ -1218,11 +1239,12 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                                 <div className="text-sm text-blue-700 bg-blue-50 border-2 border-blue-200 p-4 rounded-lg">
                                   <div className="font-semibold mb-2 flex items-center gap-2">
                                     <span>💡</span>
-                                    編集機能について
+                                    再編集モード：新規作成時と同じ編集機能
                                   </div>
                                   <ul className="space-y-2 list-disc list-inside">
                                     <li><strong>既存データ表示:</strong> 保存されているデータがフォームに読み込まれます</li>
-                                    <li><strong>新規と同じ機能:</strong> 項目追加・条件設定・遷移先選択が可能です</li>
+                                    <li><strong>項目編集:</strong> 条件テキスト・詳細説明・条件タイプを自由に編集可能</li>
+                                    <li><strong>関係スライド:</strong> 遷移先スライドをドロップダウンから選択可能</li>
                                     <li><strong>リアルタイム更新:</strong> 変更は即座に反映され、保存で確定されます</li>
                                   </ul>
                                 </div>
