@@ -81,12 +81,6 @@ const EmergencyGuidePage: React.FC = () => {
       fetchFlowList(true);
     };
 
-    const handleTroubleshootingUpdated = (event) => {
-      console.log('🔄 トラブルシューティングデータ更新イベントを受信:', event.detail);
-      // 強制的にキャッシュをクリアして再取得
-      fetchFlowList(true);
-    };
-
     // 複数のイベントタイプに対応
     const eventTypes = [
       'flowDataUpdated',
@@ -99,16 +93,16 @@ const EmergencyGuidePage: React.FC = () => {
       window.addEventListener(eventType, handleFlowDataUpdated);
     });
 
-    // 定期的な更新チェック（削除されたファイルの検出用）
-    const intervalId = setInterval(() => {
-      fetchFlowList(true);
-    }, 30000); // 30秒ごと
+    // 定期的な更新チェックを無効化（イベントベースで十分）
+    // const intervalId = setInterval(() => {
+    //   fetchFlowList(true);
+    // }, 30000); // 30秒ごと
 
     return () => {
       eventTypes.forEach(eventType => {
         window.removeEventListener(eventType, handleFlowDataUpdated);
       });
-      clearInterval(intervalId);
+      // clearInterval(intervalId);
     };
   }, []);
 
