@@ -90,7 +90,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                   conditionType: (option.conditionType as 'yes' | 'no' | 'other') || 'other',
                   condition: option.condition || ''
                 };
-                
+
                 console.log(`🔧 既存条件項目 ${index + 1} 処理:`, processedOption);
                 return processedOption;
               }) : [
@@ -1046,31 +1046,41 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                   </div>
 
                   {step.type === 'decision' && (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mb-3">
-                      <p className="text-sm text-yellow-800">
-                        <strong>条件分岐ノード:</strong> ユーザーの状況に応じて異なるステップに進む分岐点です。
-                        各選択肢に具体的な条件を設定してください。
-                      </p>
-                      <p className="text-xs text-yellow-700 mt-1">
-                        💡 新規作成時も再編集時も同じように条件項目の追加・変更・削除が可能です
-                      </p>
-                      <div className="mt-2 flex gap-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="text-green-600 border-green-300 hover:bg-green-50"
-                          onClick={() => addDecisionOption(step.id)}
-                          disabled={step.options.length >= 5}
-                        >
-                          <Plus className="w-3 h-3 mr-1" />
-                          条件項目追加
-                        </Button>
-                        <span className="text-xs text-gray-500 self-center">
-                          ({step.options.length}/5 項目)
-                        </span>
+                      <div className="bg-gradient-to-r from-yellow-100 to-orange-100 border-2 border-yellow-400 rounded-lg p-4 mb-4 shadow-sm">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="p-1 bg-yellow-500 rounded-full">
+                            <GitBranch className="w-4 h-4 text-white" />
+                          </div>
+                          <h4 className="text-lg font-bold text-yellow-800">🔀 条件分岐ノード設定</h4>
+                        </div>
+                        <div className="bg-white border border-yellow-300 rounded p-3 mb-3">
+                          <p className="text-sm text-yellow-800 mb-2">
+                            <strong>📋 機能説明:</strong> ユーザーの状況に応じて異なるステップに進む分岐点です。
+                          </p>
+                          <p className="text-xs text-yellow-700">
+                            💡 各選択肢に具体的な条件を設定し、適切な遷移先を指定してください
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-between bg-white rounded p-2 border border-yellow-300">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-yellow-800">現在の分岐数:</span>
+                            <Badge variant="secondary" className="bg-yellow-200 text-yellow-800">
+                              {step.options.length} / 5 項目
+                            </Badge>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="text-green-600 border-green-400 bg-green-50 hover:bg-green-100"
+                            onClick={() => addDecisionOption(step.id)}
+                            disabled={step.options.length >= 5}
+                          >
+                            <Plus className="w-3 h-3 mr-1" />
+                            条件項目追加
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
                   <div className="space-y-3">
                     {/* 🎯 条件分岐ノードは常に編集UIを表示 */}
