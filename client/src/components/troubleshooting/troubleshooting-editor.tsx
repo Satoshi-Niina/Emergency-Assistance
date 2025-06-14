@@ -553,111 +553,71 @@ const TroubleshootingEditor: React.FC<TroubleshootingEditorProps> = ({
     try {
       setSaving(true);
 
-      // データ構造を正規化（サーバーが期待する形式に変換）
-      const normalizedSteps = editedData.steps.map(step => ({
-        id: step.id,
-        title: step.title || '',
-        description: step.message || step.description || '',
-        imageUrl: step.image || step.imageUrl || '',
-        type: step.type || 'step',
-        options: (step.options || []).map(option => ({
-          text: option.label || option.text,
-          nextStepId: option.next || option.nextStepId,
-          isTerminal: option.isTerminal || false,
-          conditionType: option.conditionType || 'other'
-        })),
-        message: step.message || step.description || ''
-      }));
-
-      // 保存データにタイムスタンプを追加
-      const saveData = {
+      // 完全に一致したデータ構造を作成（元のファイルを完全に置き換える）
+      const normalizedSaveData = {
         id: editedData.id,
         title: editedData.title,
         description: editedData.description,
-        triggerKeywords: editedData.trigger, // サーバーが期待するフィールド名
-        steps: normalizedSteps,
-        updatedAt: new Date().toISOString(),
-        savedTimestamp: Date.now(),
-        lastModified: Date.now()
+        triggerKeywords: editedData.triggerKeywords || editedData.trigger || [],
+        steps: editedData.steps.map(step => ({
+          id: step.id,
+          title: step.title || '',
+          description: step.description || step.message || '',
+          imageUrl: step.imageUrl || step.image || '',
+          type: step.type || 'step',
+          options: (step.options || []).map(option => ({
+            text: option.text || option.label,
+            nextStepId: option.nextStepId || option.next,
+            isTerminal: Boolean(option.isTerminal),
+            conditionType: option.conditionType || 'other'
+          })),
+          message: step.message || step.description || ''
+        })),
+        updatedAt: new Date().toISOString()
       };
 
-      console.log('💾 保存開始:', { 
-        id: saveData.id, 
-        title: saveData.title,
-        stepsCount: saveData.steps.length,
-        timestamp: saveData.savedTimestamp
+      console.log('💾 完全置換保存開始:', { 
+        id: normalizedSaveData.id, 
+        title: normalizedSaveData.title,
+        stepsCount: normalizedSaveData.steps.length,
+        triggerCount: normalizedSaveData.triggerKeywords.length
       });
 
-      const saveUrl = id && id !== '' 
-        ? `/api/troubleshooting/save/${id}`
-        : `/api/troubleshooting/save/${saveData.id}`;
-
-      // 強力なキャッシュバスティング
+      // 保存API呼び出し
+      const saveUrl = `/api/troubleshooting/save/${normalizedSaveData.id}`;
       const timestamp = Date.now();
-      const randomId = Math.random().toString(36).substring(2, 15);
 
-      const response = await fetch(`${saveUrl}?_t=${timestamp}&_r=${randomId}`, {
+      const response = await fetch(`${saveUrl}?_t=${timestamp}&_replace=true`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
-          'Pragma': 'no-cache',
-          'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
-          'X-Timestamp': timestamp.toString(),
-          'X-Force-Update': 'true'
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'X-Complete-Replace': 'true',
+          'X-Timestamp': timestamp.toString()
         },
-        body: JSON.stringify(saveData)
+        body: JSON.stringify(normalizedSaveData)
       });
 
       if (!response.ok) {
-        const errorData = await response.text();
-        console.error('保存失敗:', errorData);
-        throw new Error(`データの保存に失敗しました: ${response.status}`);
+        const errorText = await response.text();
+        console.error('保存失敗:', errorText);
+        throw new Error(`保存に失敗しました: ${response.status} - ${errorText}`);
       }
 
       const result = await response.json();
-      console.log('✅ 保存成功:', result);
+      console.log('✅ 完全置換保存成功:', result);
 
-      // 保存確認のため少し待ってからデータを再取得
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // データを再取得して保存が反映されているか確認
-      const verifyResponse = await fetch(`/api/troubleshooting/${saveData.id}?_t=${Date.now()}&_verify=true`, {
-        method: 'GET',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
-          'Pragma': 'no-cache'
-        }
-      });
-
-      if (verifyResponse.ok) {
-        const verifiedData = await verifyResponse.json();
-        console.log('🔍 保存確認:', {
-          savedId: saveData.id,
-          verifiedId: verifiedData.id,
-          savedTitle: saveData.title,
-          verifiedTitle: verifiedData.title,
-          savedSteps: saveData.steps.length,
-          verifiedSteps: verifiedData.steps?.length || 0
-        });
-
-        // 確認できたデータで元データを更新
-        setOriginalData(JSON.parse(JSON.stringify(verifiedData)));
-        setEditedData(JSON.parse(JSON.stringify(verifiedData)));
-      } else {
-        // 確認に失敗した場合は保存データで更新
-        setOriginalData(JSON.parse(JSON.stringify(saveData)));
-      }
+      // 保存したデータで内部状態を更新
+      const savedData = JSON.parse(JSON.stringify(normalizedSaveData));
+      setOriginalData(savedData);
+      setEditedData(savedData);
 
       toast({
         title: '保存完了',
-        description: 'トラブルシューティングデータを保存しました',
+        description: 'ファイルを完全に上書きしました',
       });
 
-      // 少し待ってからコールバック実行
-      setTimeout(() => {
-        onSaved();
-      }, 500);
+      onSaved();
 
     } catch (error) {
       console.error('保存エラー:', error);

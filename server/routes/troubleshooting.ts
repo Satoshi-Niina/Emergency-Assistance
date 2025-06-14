@@ -185,15 +185,13 @@ router.post('/save/:id', async (req, res) => {
 
     const { id } = req.params;
     const saveData = req.body;
+    const isCompleteReplace = req.headers['x-complete-replace'] === 'true';
 
-    console.log(`💾 トラブルシューティングデータ保存開始: ID=${id}`, {
+    console.log(`💾 トラブルシューティングデータ${isCompleteReplace ? '完全置換' : '保存'}開始: ID=${id}`, {
       title: saveData.title,
       stepsCount: saveData.steps?.length || 0,
-      timestamp: saveData.savedTimestamp || 'N/A',
-      requestHeaders: {
-        timestamp: req.headers['x-timestamp'],
-        forceUpdate: req.headers['x-force-update']
-      }
+      triggerCount: saveData.triggerKeywords?.length || 0,
+      isCompleteReplace
     });
 
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
@@ -212,8 +210,11 @@ router.post('/save/:id', async (req, res) => {
       console.log(`📋 バックアップ作成: ${backupPath}`);
     }
 
-    // データ構造の正規化
-    const normalizedSaveData = {
+    // 完全置換の場合、受信したデータをそのまま保存（マージせずに置換）
+    const finalSaveData = isCompleteReplace ? {
+      ...saveData,
+      updatedAt: new Date().toISOString()
+    } : {
       id: id,
       title: saveData.title || '',
       description: saveData.description || '',
@@ -227,27 +228,26 @@ router.post('/save/:id', async (req, res) => {
         options: (step.options || []).map(option => ({
           text: option.text || option.label,
           nextStepId: option.nextStepId || option.next,
-          isTerminal: option.isTerminal || false,
+          isTerminal: Boolean(option.isTerminal),
           conditionType: option.conditionType || 'other'
         })),
         message: step.message || step.description || ''
       })),
-      updatedAt: new Date().toISOString(),
-      savedTimestamp: Date.now(),
-      lastModified: Date.now()
+      updatedAt: new Date().toISOString()
     };
 
-    console.log(`💾 正規化された保存データ:`, {
-      id: normalizedSaveData.id,
-      title: normalizedSaveData.title,
-      triggerCount: normalizedSaveData.triggerKeywords.length,
-      stepsCount: normalizedSaveData.steps.length,
-      updatedAt: normalizedSaveData.updatedAt
+    console.log(`💾 最終保存データ:`, {
+      id: finalSaveData.id,
+      title: finalSaveData.title,
+      triggerCount: finalSaveData.triggerKeywords?.length || 0,
+      stepsCount: finalSaveData.steps?.length || 0,
+      updatedAt: finalSaveData.updatedAt,
+      mode: isCompleteReplace ? '完全置換' : '通常保存'
     });
 
     // 原子的書き込み（一時ファイル経由）
     const tempFilePath = `${filePath}.tmp.${Date.now()}.${Math.random().toString(36).substring(2, 8)}`;
-    const saveDataString = JSON.stringify(normalizedSaveData, null, 2);
+    const saveDataString = JSON.stringify(finalSaveData, null, 2);
 
     // 一時ファイルに書き込み
     fs.writeFileSync(tempFilePath, saveDataString, 'utf8');
@@ -260,19 +260,20 @@ router.post('/save/:id', async (req, res) => {
     // 一時ファイルの内容を検証
     const tempContent = fs.readFileSync(tempFilePath, 'utf8');
     const tempData = JSON.parse(tempContent);
-    console.log(`🔍 一時ファイル検証: ID=${tempData.id}, Title=${tempData.title}, Steps=${tempData.steps.length}`);
+    console.log(`🔍 一時ファイル検証: ID=${tempData.id}, Title=${tempData.title}, Steps=${tempData.steps?.length || 0}`);
 
     // 一時ファイルが正常に書き込まれた場合のみ、元ファイルを置き換え
     if (fs.existsSync(tempFilePath) && tempStats.size > 0 && tempData.id === id) {
-      // 既存ファイルを削除してからリネーム
+      // 既存ファイルを削除してからリネーム（完全置換）
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
+        console.log(`🗑️ 既存ファイル削除: ${filePath}`);
       }
       fs.renameSync(tempFilePath, filePath);
       
       // 最終保存確認
       const finalStats = fs.statSync(filePath);
-      console.log(`✅ 最終ファイル保存完了: ${filePath} (${finalStats.size} bytes)`);
+      console.log(`✅ ファイル完全置換完了: ${filePath} (${finalStats.size} bytes)`);
       
       // 最終的に保存されたファイル内容を検証
       const savedContent = fs.readFileSync(filePath, 'utf8');
@@ -280,9 +281,9 @@ router.post('/save/:id', async (req, res) => {
       console.log(`🔍 最終保存検証:`, {
         id: savedData.id,
         title: savedData.title,
-        steps: savedData.steps.length,
-        updatedAt: savedData.updatedAt,
-        savedTimestamp: savedData.savedTimestamp
+        steps: savedData.steps?.length || 0,
+        triggers: savedData.triggerKeywords?.length || 0,
+        updatedAt: savedData.updatedAt
       });
 
       // 強力なキャッシュ無効化ヘッダーを設定
@@ -291,20 +292,22 @@ router.post('/save/:id', async (req, res) => {
         'Pragma': 'no-cache',
         'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
         'Last-Modified': new Date().toUTCString(),
-        'ETag': `"${savedData.savedTimestamp}"`
+        'ETag': `"${Date.now()}"`
       });
 
       res.json({ 
         success: true, 
-        message: 'データを保存しました',
+        message: isCompleteReplace ? 'ファイルを完全に置き換えました' : 'データを保存しました',
         data: savedData,
         savedAt: savedData.updatedAt,
         fileSize: finalStats.size,
+        mode: isCompleteReplace ? 'complete_replace' : 'normal_save',
         verification: {
           saved: true,
           id: savedData.id,
           title: savedData.title,
-          stepsCount: savedData.steps.length
+          stepsCount: savedData.steps?.length || 0,
+          triggerCount: savedData.triggerKeywords?.length || 0
         }
       });
     } else {
