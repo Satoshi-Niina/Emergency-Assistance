@@ -191,12 +191,7 @@ const EmergencyGuidePage: React.FC = () => {
           'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
           'X-Requested-With': 'XMLHttpRequest',
           'X-Force-Fresh': 'true',
-          'X-Clear-Cache': 'true',
-          'X-Source-Only': 'knowledge-base/troubleshooting',
-          'X-Exclude-Old-Data': 'true',
-          'X-Block-Engine-Restart': 'true',
-          'X-Block-Parking-Brake': 'true',
-          'X-Only-Engine-Stop-No-Start': 'true'
+          'X-Clear-Cache': 'true'
         }
       });
 
@@ -207,7 +202,7 @@ const EmergencyGuidePage: React.FC = () => {
       const data = await response.json();
       console.log(`✅ 取得したフローデータ: ${data.length}件`, data);
 
-      // 全てのデータを表示対象とする
+      // サーバーから取得した全データをそのまま使用（フィルタリングなし）
       const validData = Array.isArray(data) ? data : [];
 
       console.log(`🎯 表示対象データ: ${validData.length}件`);
