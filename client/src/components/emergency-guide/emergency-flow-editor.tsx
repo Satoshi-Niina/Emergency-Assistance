@@ -288,14 +288,29 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
               optionsDetail: step.options
             });
 
-            // 条件項目の完全保存（統一スキーマ）
-            const unifiedOptions = (step.options || []).map((option, index) => ({
-              text: option.text || `条件項目 ${index + 1}`,
-              nextStepId: option.nextStepId || '',
-              condition: option.condition || option.text || '',
-              isTerminal: Boolean(option.isTerminal),
-              conditionType: option.conditionType || 'other'
-            }));
+            // 条件項目の完全保存（統一スキーマ）- より厳密な検証
+            const processedOptions = (step.options || []).map((option, index) => {
+              const processedOption = {
+                text: option.text || `条件項目 ${index + 1}`,
+                nextStepId: option.nextStepId || '',
+                condition: option.condition || option.text || '',
+                isTerminal: Boolean(option.isTerminal),
+                conditionType: option.conditionType || 'other'
+              };
+              
+              console.log(`🔧 条件項目 ${index + 1} 処理:`, {
+                original: option,
+                processed: processedOption
+              });
+              
+              return processedOption;
+            });
+
+            // デフォルト条件項目が空の場合は基本的な条件を追加
+            const unifiedOptions = processedOptions.length > 0 ? processedOptions : [
+              { text: 'はい', nextStepId: '', condition: 'はい', isTerminal: false, conditionType: 'yes' },
+              { text: 'いいえ', nextStepId: '', condition: 'いいえ', isTerminal: false, conditionType: 'no' }
+            ];
 
             // 旧形式の条件フィールドも生成（後方互換性）
             const yesOption = unifiedOptions.find(opt => opt.conditionType === 'yes');
@@ -310,14 +325,14 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
               message: step.message || step.description || '',
               imageUrl: step.imageUrl || '',
               type: 'decision',
-              // 統一スキーマ：options配列
+              // 統一スキーマ：options配列（必須）
               options: unifiedOptions,
               // 後方互換性：個別条件フィールド
-              yesCondition: yesOption?.condition || '',
+              yesCondition: yesOption?.condition || yesOption?.text || '',
               yesNextStepId: yesOption?.nextStepId || '',
-              noCondition: noOption?.condition || '',
+              noCondition: noOption?.condition || noOption?.text || '',
               noNextStepId: noOption?.nextStepId || '',
-              otherCondition: otherOptions.map(opt => opt.condition).join(', ') || '',
+              otherCondition: otherOptions.map(opt => opt.condition || opt.text).join(', ') || '',
               otherNextStepId: otherOptions[0]?.nextStepId || ''
             };
 
@@ -325,6 +340,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
               stepId: savedDecisionStep.id,
               type: savedDecisionStep.type,
               optionsCount: savedDecisionStep.options.length,
+              optionsDetail: savedDecisionStep.options,
               yesCondition: savedDecisionStep.yesCondition,
               noCondition: savedDecisionStep.noCondition,
               otherCondition: savedDecisionStep.otherCondition
@@ -356,59 +372,8 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
             };
           }
         }),
-        // slidesフィールドも統一スキーマで同期
-        slides: editedFlow.steps.map(step => {
-          if (step.type === 'decision') {
-            const unifiedOptions = (step.options || []).map((option, index) => ({
-              text: option.text || `条件項目 ${index + 1}`,
-              nextStepId: option.nextStepId || '',
-              condition: option.condition || option.text || '',
-              isTerminal: Boolean(option.isTerminal),
-              conditionType: option.conditionType || 'other'
-            }));
-
-            const yesOption = unifiedOptions.find(opt => opt.conditionType === 'yes');
-            const noOption = unifiedOptions.find(opt => opt.conditionType === 'no');
-            const otherOptions = unifiedOptions.filter(opt => opt.conditionType === 'other');
-
-            return {
-              ...step,
-              description: step.description || step.message || '',
-              message: step.message || step.description || '',
-              imageUrl: step.imageUrl || '',
-              type: 'decision',
-              options: unifiedOptions,
-              yesCondition: yesOption?.condition || '',
-              yesNextStepId: yesOption?.nextStepId || '',
-              noCondition: noOption?.condition || '',
-              noNextStepId: noOption?.nextStepId || '',
-              otherCondition: otherOptions.map(opt => opt.condition).join(', ') || '',
-              otherNextStepId: otherOptions[0]?.nextStepId || ''
-            };
-          } else {
-            const defaultOptions = step.options?.length > 0 ? step.options : [{
-              text: '次へ',
-              nextStepId: '',
-              isTerminal: false,
-              conditionType: 'other',
-              condition: ''
-            }];
-
-            return {
-              ...step,
-              description: step.description || step.message || '',
-              message: step.message || step.description || '',
-              imageUrl: step.imageUrl || '',
-              options: defaultOptions.map(option => ({
-                text: option.text || '次へ',
-                nextStepId: option.nextStepId || '',
-                condition: option.condition || '',
-                isTerminal: Boolean(option.isTerminal),
-                conditionType: option.conditionType || 'other'
-              }))
-            };
-          }
-        }),
+        // slidesフィールドも統一スキーマで同期（stepsと完全同期）
+        slides: saveData.steps.map(step => ({ ...step })),
         updatedAt: new Date().toISOString(),
         savedTimestamp: Date.now()
       };
