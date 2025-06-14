@@ -98,9 +98,13 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
     }
   }, [flowData]);
 
-  // データ更新イベントリスナーを追加
+  // データ更新イベントリスナーを追加（無限ループ防止）
   useEffect(() => {
+    let isRefreshing = false; // 再取得中フラグ
+
     const handleDataRefresh = (event: any) => {
+      if (isRefreshing) return; // 再取得中は無視
+
       const { data, flowId } = event.detail;
       console.log('🔄 flowDataRefreshedイベント受信:', { flowId, dataId: data?.id });
 
@@ -110,28 +114,36 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
       }
     };
 
-    // 強制的なデータ再取得処理
+    // 強制的なデータ再取得処理（防御的プログラミング）
     const handleForceRefresh = async (event: any) => {
+      if (isRefreshing) {
+        console.log('⚠️ 既に再取得中のため、リクエストをスキップします');
+        return;
+      }
+
       const { flowId } = event.detail;
       console.log('🔄 強制データ再取得要求:', flowId);
 
       if (editedFlow && (flowId === editedFlow.id || !flowId)) {
+        isRefreshing = true; // 再取得開始
         console.log('💾 保存後のデータを再取得します...');
+        
         try {
-          // 強力なキャッシュバスティング
-          const timestamp = Date.now();
-          const randomId = Math.random().toString(36).substring(2, 15);
+          // タイムアウト付きでリクエスト実行
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒タイムアウト
 
-          const response = await fetch(`/api/emergency-flow/get/${editedFlow.id}?ts=${timestamp}&_r=${randomId}&_force=true`, {
+          const timestamp = Date.now();
+          const response = await fetch(`/api/emergency-flow/get/${editedFlow.id}?ts=${timestamp}&_force=true`, {
             method: 'GET',
             headers: {
-              'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
-              'Pragma': 'no-cache',
-              'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
-              'X-Timestamp': timestamp.toString(),
-              'X-Force-Refresh': 'true'
-            }
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache'
+            },
+            signal: controller.signal
           });
+
+          clearTimeout(timeoutId);
 
           if (response.ok) {
             const result = await response.json();
@@ -141,25 +153,25 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
               id: freshData.id,
               title: freshData.title,
               stepsCount: freshData.steps?.length || 0,
-              updatedAt: freshData.updatedAt,
-              savedTimestamp: freshData.savedTimestamp
+              updatedAt: freshData.updatedAt
             });
 
-            // 取得したデータが実際に新しいかチェック
-            const isNewer = freshData.savedTimestamp > (editedFlow.savedTimestamp || 0);
-            console.log(`📊 データの新しさチェック: ${isNewer ? '新しいデータ' : '古いデータ'}`);
-
-            if (isNewer || !editedFlow.savedTimestamp) {
+            // データの整合性チェック
+            if (freshData.id === editedFlow.id) {
               setEditedFlow({ ...freshData });
               console.log('✅ エディターのデータを更新しました');
-            } else {
-              console.log('⚠️ 取得したデータが古いため、更新をスキップします');
             }
           } else {
             console.error('❌ データ再取得に失敗:', response.status);
           }
         } catch (error) {
-          console.error('❌ データ再取得エラー:', error);
+          if (error.name === 'AbortError') {
+            console.warn('⚠️ データ再取得がタイムアウトしました');
+          } else {
+            console.error('❌ データ再取得エラー:', error);
+          }
+        } finally {
+          isRefreshing = false; // 再取得終了
         }
       }
     };
@@ -170,8 +182,9 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
     return () => {
       window.removeEventListener('flowDataRefreshed', handleDataRefresh);
       window.removeEventListener('forceRefreshFlowData', handleForceRefresh);
+      isRefreshing = false; // クリーンアップ
     };
-  }, [editedFlow]);
+  }, [editedFlow?.id]); // editedFlow.idのみに依存
 
   // 保存処理の改善
   const handleSave = useCallback(async () => {
@@ -348,27 +361,31 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         }
       }
 
-      // データ更新イベントを発行（遅延実行で確実に反映）
+      // データ更新イベントを発行（重複防止で確実に反映）
       setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('flowDataUpdated', {
-          detail: { 
-            flowId: editedFlow.id, 
-            data: saveData,
-            timestamp: Date.now(),
-            forceRefresh: true
-          }
-        }));
+        // イベント発行の重複を防ぐ
+        const eventDetail = { 
+          flowId: editedFlow.id, 
+          data: saveData,
+          timestamp: Date.now(),
+          forceRefresh: true,
+          source: 'emergency-flow-editor'
+        };
 
+        window.dispatchEvent(new CustomEvent('flowDataUpdated', { detail: eventDetail }));
+
+        // フロー一覧の更新は1回だけ実行
         window.dispatchEvent(new CustomEvent('forceRefreshFlowList', {
           detail: { 
             forceRefresh: true,
             timestamp: Date.now(),
-            updatedFlowId: editedFlow.id
+            updatedFlowId: editedFlow.id,
+            preventLoop: true
           }
         }));
 
-        console.log('🔄 保存後イベント発行完了');
-      }, 200);
+        console.log('🔄 保存後イベント発行完了（重複防止）');
+      }, 500);
 
 
 
@@ -563,8 +580,8 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
     });
 
     toast({
-      title: "選択肢を追加しました",
-      description: `新しい条件「${newText}」を追加しました`
+      title: "条件項目を追加しました",
+      description: `新しい条件「${newText}」を追加しました。編集して詳細を設定してください。`
     });
   };
 
@@ -833,6 +850,21 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                       <p className="text-xs text-yellow-700 mt-1">
                         💡 保存後に再編集する場合も、条件項目の追加・変更・削除が可能です
                       </p>
+                      <div className="mt-2 flex gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="text-green-600 border-green-300 hover:bg-green-50"
+                          onClick={() => addDecisionOption(step.id)}
+                          disabled={step.options.length >= 5}
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          条件項目追加
+                        </Button>
+                        <span className="text-xs text-gray-500 self-center">
+                          ({step.options.length}/5 項目)
+                        </span>
+                      </div>
                     </div>
                   )}
 
@@ -905,20 +937,30 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                         {/* 条件分岐の詳細条件 */}
                         {step.type === 'decision' && (
                           <div>
-                            <Label className="text-sm font-medium">詳細条件・説明</Label>
+                            <Label className="text-sm font-medium flex items-center gap-1">
+                              詳細条件・説明
+                              <Badge variant="outline" className="text-xs">
+                                {option.conditionType === 'yes' && '✓ はい条件'}
+                                {option.conditionType === 'no' && '✗ いいえ条件'}  
+                                {option.conditionType === 'other' && '→ その他条件'}
+                              </Badge>
+                            </Label>
                             <Textarea
                               value={option.condition || ''}
                               onChange={(e) => updateOption(step.id, optionIndex, { condition: e.target.value })}
                               placeholder={
                                 option.conditionType === 'yes' 
-                                  ? "詳細条件例:\n• エンジンが完全に停止している\n• 再始動を試みても反応がない\n• 異音や異臭がない"
+                                  ? "「はい」の場合の詳細条件:\n• エンジンが完全に停止している\n• 再始動を試みても反応がない\n• 異音や異臭がない\n• 計器類に異常表示がない"
                                   : option.conditionType === 'no'
-                                  ? "詳細条件例:\n• エンジンが不安定に動作している\n• 回転数が不安定\n• 異音がする"
-                                  : "その他の状況例:\n• 状況が判断できない\n• 上記に当てはまらない\n• 専門家の判断が必要"
+                                  ? "「いいえ」の場合の詳細条件:\n• エンジンが不安定に動作している\n• 回転数が不安定\n• 異音がする\n• 煙や異臭がある"
+                                  : "その他の状況:\n• 上記の条件に当てはまらない\n• 状況が判断できない\n• 専門家の判断が必要\n• 緊急事態の可能性"
                               }
-                              rows={3}
-                              className="mt-1"
+                              rows={4}
+                              className="mt-1 border-2 border-yellow-200 focus:border-yellow-400"
                             />
+                            <div className="text-xs text-gray-500 mt-1">
+                              💡 具体的な条件を箇条書きで記述すると、ユーザーが判断しやすくなります
+                            </div>
                           </div>
                         )}
 
