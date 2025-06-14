@@ -310,11 +310,11 @@ const EmergencyFlowCreator: React.FC = () => {
           dataSource: 'emergency-flow-list-api'
         });
 
-      // ⚠️ ステップ数不一致の警告
-      if (editorData.steps?.length !== 15) {
-        console.warn(`⚠️ 期待されるステップ数と異なります: 実際=${editorData.steps?.length}, 期待=15`);
+      // ステップ数不一致の警告
+        if (editorData.steps?.length !== 15) {
+          console.warn(`期待されるステップ数と異なります: 実際=${editorData.steps?.length}, 期待=15`);
 
-        // 🔍 不足しているステップを特定
+          // 不足しているステップを特定
         const expectedStepIds = ['start', 'step1', 'decision1', 'step2a', 'step2b', 'step3a', 'step3b', 'step3c', 'step3d', 'step3e', 'step3f', 'step3g', 'decision2', 'step_success', 'step_failure'];
         const actualStepIds = editorData.steps?.map(s => s.id) || [];
         const missingSteps = expectedStepIds.filter(id => !actualStepIds.includes(id));
