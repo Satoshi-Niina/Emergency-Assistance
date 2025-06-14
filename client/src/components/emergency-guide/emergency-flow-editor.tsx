@@ -551,6 +551,44 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
     });
   };
 
+  // 条件分岐の条件タイプを変更
+  const changeConditionType = (stepId: string, optionIndex: number, newType: 'yes' | 'no' | 'other') => {
+    if (!editedFlow) return;
+
+    const step = editedFlow.steps.find(s => s.id === stepId);
+    if (!step || step.type !== 'decision') return;
+
+    // 他のオプションで同じ条件タイプが使われていないかチェック
+    const existingTypes = step.options.map((opt, idx) => idx !== optionIndex ? opt.conditionType : null);
+    if (existingTypes.includes(newType)) {
+      toast({
+        title: "警告",
+        description: "この条件タイプは既に使用されています",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // デフォルトテキストを設定
+    let defaultText = '';
+    switch (newType) {
+      case 'yes':
+        defaultText = 'はい';
+        break;
+      case 'no':
+        defaultText = 'いいえ';
+        break;
+      case 'other':
+        defaultText = 'その他の状況';
+        break;
+    }
+
+    updateOption(stepId, optionIndex, { 
+      conditionType: newType,
+      text: defaultText
+    });
+  };
+
   // オプション削除
   const removeOption = (stepId: string, optionIndex: number) => {
     if (!editedFlow) return;
@@ -847,13 +885,13 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                               className="mt-1"
                             />
                           </div>
-                          
+
                           {step.type === 'decision' && (
                             <div>
                               <Label className="text-sm font-medium">条件タイプ</Label>
                               <select
                                 value={option.conditionType}
-                                onChange={(e) => updateOption(step.id, optionIndex, { conditionType: e.target.value as any })}
+                                onChange={(e) => changeConditionType(step.id, optionIndex, e.target.value as any)}
                                 className="w-full border rounded px-3 py-2 mt-1 bg-white"
                               >
                                 <option value="yes">✓ はい（肯定的な回答）</option>
