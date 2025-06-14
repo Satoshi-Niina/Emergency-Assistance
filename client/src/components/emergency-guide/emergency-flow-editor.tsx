@@ -188,9 +188,32 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         throw new Error('少なくとも1つのステップが必要です');
       }
 
-      // 更新日時を設定
+      // 保存データを準備（steps/slides統一とデータ整合性確保）
       const saveData = {
         ...editedFlow,
+        steps: editedFlow.steps.map(step => ({
+          ...step,
+          // description と message を同期
+          description: step.description || step.message || '',
+          message: step.message || step.description || '',
+          // 空の値をクリーンアップ
+          imageUrl: step.imageUrl || '',
+          options: step.options.map(option => ({
+            ...option,
+            text: option.text || '',
+            nextStepId: option.nextStepId || '',
+            condition: option.condition || '',
+            isTerminal: Boolean(option.isTerminal),
+            conditionType: option.conditionType || 'other'
+          }))
+        })),
+        // slidesフィールドも同期（後方互換性）
+        slides: editedFlow.steps.map(step => ({
+          ...step,
+          description: step.description || step.message || '',
+          message: step.message || step.description || '',
+          imageUrl: step.imageUrl || ''
+        })),
         updatedAt: new Date().toISOString(),
         savedTimestamp: Date.now()
       };
