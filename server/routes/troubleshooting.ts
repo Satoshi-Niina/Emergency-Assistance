@@ -141,13 +141,28 @@ router.get('/:id', async (req, res) => {
       });
     }
 
+    // ファイル統計情報を取得
+    const stats = fs.statSync(filePath);
+    console.log(`📊 ファイル情報: サイズ=${stats.size} bytes, 更新=${stats.mtime}`);
+
     const content = fs.readFileSync(filePath, 'utf8');
     const data = JSON.parse(content);
+
+    console.log(`📖 読み込みデータ: ID=${data.id}, Title=${data.title}, Steps=${data.steps?.length || 0}`);
+
+    // 強力なキャッシュ無効化ヘッダーを設定
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+      'Pragma': 'no-cache',
+      'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
+      'Last-Modified': stats.mtime.toUTCString(),
+      'ETag': `"${stats.mtime.getTime()}-${stats.size}"`
+    });
 
     res.json(data);
   } catch (error) {
     console.error('データ取得エラー:', error);
-    res.status(500).json({ error: 'データの取得に失敗しました' });
+    res.status(500).json({ error: 'データの取得に失敗しました', details: error.message });
   }
 });
 
@@ -169,6 +184,7 @@ router.post('/save/:id', async (req, res) => {
     // ディレクトリが存在しない場合は作成
     if (!fs.existsSync(troubleshootingDir)) {
       fs.mkdirSync(troubleshootingDir, { recursive: true });
+      console.log(`📁 ディレクトリ作成: ${troubleshootingDir}`);
     }
 
     // 既存ファイルのバックアップを作成
@@ -181,28 +197,69 @@ router.post('/save/:id', async (req, res) => {
     // 保存データに確実にタイムスタンプを追加
     const finalSaveData = {
       ...saveData,
+      id: id, // IDを確実に設定
       updatedAt: new Date().toISOString(),
-      savedTimestamp: saveData.savedTimestamp || Date.now()
+      savedTimestamp: Date.now(),
+      lastModified: Date.now()
     };
+
+    console.log(`💾 最終保存データ:`, {
+      id: finalSaveData.id,
+      title: finalSaveData.title,
+      updatedAt: finalSaveData.updatedAt,
+      stepsCount: finalSaveData.steps?.length || 0
+    });
 
     // 原子的書き込み（一時ファイル経由）
     const tempFilePath = `${filePath}.tmp.${Date.now()}`;
     const saveDataString = JSON.stringify(finalSaveData, null, 2);
 
+    // 一時ファイルに書き込み
     fs.writeFileSync(tempFilePath, saveDataString, 'utf8');
+    console.log(`📝 一時ファイル作成: ${tempFilePath}`);
+
+    // ファイルサイズ確認
+    const tempStats = fs.statSync(tempFilePath);
+    console.log(`📊 一時ファイルサイズ: ${tempStats.size} bytes`);
 
     // 一時ファイルが正常に書き込まれた場合のみ、元ファイルを置き換え
-    if (fs.existsSync(tempFilePath)) {
+    if (fs.existsSync(tempFilePath) && tempStats.size > 0) {
+      // Windows互換のため、既存ファイルを削除してからリネーム
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
       fs.renameSync(tempFilePath, filePath);
-      console.log(`✅ 原子的ファイル保存完了: ${filePath}`);
+      
+      // 保存確認
+      const finalStats = fs.statSync(filePath);
+      console.log(`✅ 最終ファイル保存完了: ${filePath} (${finalStats.size} bytes)`);
+      
+      // ファイル内容を検証
+      const savedContent = fs.readFileSync(filePath, 'utf8');
+      const savedData = JSON.parse(savedContent);
+      console.log(`🔍 保存検証: ID=${savedData.id}, Title=${savedData.title}`);
     } else {
       throw new Error('一時ファイルの作成に失敗しました');
     }
 
-    res.json({ success: true, message: 'データを保存しました' });
+    // 強力なキャッシュ無効化ヘッダーを設定
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+      'Pragma': 'no-cache',
+      'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
+      'Last-Modified': new Date().toUTCString(),
+      'ETag': `"${Date.now()}"`
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'データを保存しました',
+      savedAt: finalSaveData.updatedAt,
+      fileSize: fs.statSync(filePath).size
+    });
   } catch (error) {
     console.error('保存エラー:', error);
-    res.status(500).json({ error: 'データの保存に失敗しました' });
+    res.status(500).json({ error: 'データの保存に失敗しました', details: error.message });
   }
 });
 
