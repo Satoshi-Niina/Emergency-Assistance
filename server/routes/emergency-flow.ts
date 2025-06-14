@@ -746,7 +746,86 @@ router.delete('/delete/:id', async (req, res) => {
     console.error('フロー削除エラー:', error);
     res.status(500).json({ 
       success: false, 
-      error: 'フローの削除に失敗しました' 
+      error: 'フローの削除に失敗しました',
+      details: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+// ステップタイトル更新エンドポイント
+router.post('/update-step-title', async (req, res) => {
+  try {
+    const { flowId, stepId, title } = req.body;
+
+    if (!flowId || !stepId || !title) {
+      return res.status(400).json({
+        success: false,
+        error: '必要なパラメータが不足しています'
+      });
+    }
+
+    // フローファイルのパスを構築
+    const filePath = path.join(process.cwd(), 'knowledge-base', 'troubleshooting', `${flowId}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        error: 'フローが見つかりません'
+      });
+    }
+
+    // 既存のフローデータを読み込み
+    const fileContent = fs.readFileSync(filePath, 'utf-8');
+    const flowData = JSON.parse(fileContent);
+
+    // 指定されたステップのタイトルを更新
+    if (flowData.steps) {
+      const stepIndex = flowData.steps.findIndex((step: any) => step.id === stepId);
+      if (stepIndex !== -1) {
+        flowData.steps[stepIndex].title = title;
+
+        // slidesフィールドがある場合も同期
+        if (flowData.slides) {
+          const slideIndex = flowData.slides.findIndex((slide: any) => slide.id === stepId);
+          if (slideIndex !== -1) {
+            flowData.slides[slideIndex].title = title;
+          }
+        }
+
+        // 更新日時を記録
+        flowData.updatedAt = new Date().toISOString();
+
+        // ファイルに保存
+        fs.writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf-8');
+
+        console.log(`✅ ステップタイトル更新: ${flowId} > ${stepId} > "${title}"`);
+
+        res.json({
+          success: true,
+          message: 'ステップタイトルが更新されました',
+          updatedStep: {
+            id: stepId,
+            title: title
+          }
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          error: '指定されたステップが見つかりません'
+        });
+      }
+    } else {
+      res.status(400).json({
+        success: false,
+        error: 'フローデータの形式が正しくありません'
+      });
+    }
+  } catch (error) {
+    console.error('❌ ステップタイトル更新エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'ステップタイトルの更新に失敗しました',
+      details: error instanceof Error ? error.message : String(error)
     });
   }
 });
@@ -784,8 +863,7 @@ router.post('/generate-emergency-flow', async (req, res) => {
         return {
           ...step,
           imageUrl: relevantImages[0]?.url || null,
-        };
-      })
+        };The code integrates the step title update endpoint and GPT flow generation seamlessly.      })
     );
 
     const flow = {
