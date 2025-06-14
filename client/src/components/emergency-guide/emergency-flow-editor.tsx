@@ -264,25 +264,49 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         throw new Error('少なくとも1つのステップが必要です');
       }
 
-      // 保存データを準備（steps/slides統一とデータ整合性確保）
+      // 保存データを準備（条件分岐ノードの完全保存を確実に）
       const saveData = {
         ...editedFlow,
-        steps: editedFlow.steps.map(step => ({
-          ...step,
-          // description と message を同期
-          description: step.description || step.message || '',
-          message: step.message || step.description || '',
-          // 空の値をクリーンアップ
-          imageUrl: step.imageUrl || '',
-          options: step.options.map(option => ({
-            ...option,
-            text: option.text || '',
-            nextStepId: option.nextStepId || '',
-            condition: option.condition || '',
-            isTerminal: Boolean(option.isTerminal),
-            conditionType: option.conditionType || 'other'
-          }))
-        })),
+        steps: editedFlow.steps.map(step => {
+          // 条件分岐ノードの場合は特別な処理
+          if (step.type === 'decision') {
+            console.log(`🔀 条件分岐ノード ${step.id} の保存準備:`, {
+              optionsCount: step.options?.length || 0,
+              options: step.options
+            });
+
+            return {
+              ...step,
+              description: step.description || step.message || '',
+              message: step.message || step.description || '',
+              imageUrl: step.imageUrl || '',
+              type: 'decision', // 確実に設定
+              options: (step.options || []).map(option => ({
+                text: option.text || '',
+                nextStepId: option.nextStepId || '',
+                condition: option.condition || '',
+                isTerminal: Boolean(option.isTerminal),
+                conditionType: option.conditionType || 'other'
+              }))
+            };
+          } else {
+            // 通常のステップ
+            return {
+              ...step,
+              description: step.description || step.message || '',
+              message: step.message || step.description || '',
+              imageUrl: step.imageUrl || '',
+              options: step.options.map(option => ({
+                ...option,
+                text: option.text || '',
+                nextStepId: option.nextStepId || '',
+                condition: option.condition || '',
+                isTerminal: Boolean(option.isTerminal),
+                conditionType: option.conditionType || 'other'
+              }))
+            };
+          }
+        }),
         // slidesフィールドも同期（後方互換性）
         slides: editedFlow.steps.map(step => ({
           ...step,
@@ -325,6 +349,18 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
 
       if (result.success) {
       console.log(`✅ 保存成功:`, result);
+
+      // 🔀 条件分岐ノードの保存確認
+      const decisionSteps = saveData.steps.filter(step => step.type === 'decision');
+      console.log(`🔀 保存された条件分岐ノード:`, {
+        decisionCount: decisionSteps.length,
+        decisionDetails: decisionSteps.map(step => ({
+          id: step.id,
+          title: step.title,
+          optionsCount: step.options?.length || 0,
+          options: step.options
+        }))
+      });
 
       // 🧹 保存後にキャッシュを強制クリア
       if ('caches' in window) {
