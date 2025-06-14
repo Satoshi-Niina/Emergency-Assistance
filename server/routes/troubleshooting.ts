@@ -166,30 +166,43 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// トラブルシューティングデータ保存
+// Save troubleshooting flow
 router.post('/save/:id', async (req, res) => {
-  const lockKey = `save_${req.params.id}`;
-
-  // 簡単な保存ロック機能（同時保存防止）
-  if (global.saveLocks && global.saveLocks[lockKey]) {
-    return res.status(429).json({ 
-      error: '別の保存処理が進行中です。しばらく待ってから再試行してください。' 
-    });
-  }
-
   try {
-    // 保存ロックを設定
-    if (!global.saveLocks) global.saveLocks = {};
-    global.saveLocks[lockKey] = true;
-
     const { id } = req.params;
-    const saveData = req.body;
+    const flowData = req.body;
+
+    // タイトル更新の場合の特別処理
+    if (flowData.action === 'updateStepTitle') {
+      const { stepId, title } = flowData;
+
+      const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+      const filePath = path.join(troubleshootingDir, `${id}.json`);
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'ファイルが見つかりません' });
+      }
+
+      const existingData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const updatedSteps = existingData.steps.map((step: any) => 
+        step.id === stepId ? { ...step, title } : step
+      );
+
+      const updatedData = {
+        ...existingData,
+        steps: updatedSteps,
+        updatedAt: new Date().toISOString()
+      };
+
+      fs.writeFileSync(filePath, JSON.stringify(updatedData, null, 2), 'utf8');
+      return res.json({ success: true, message: 'タイトルが更新されました' });
+    }
+
     const isCompleteReplace = req.headers['x-complete-replace'] === 'true';
 
     console.log(`💾 トラブルシューティングデータ${isCompleteReplace ? '完全置換' : '保存'}開始: ID=${id}`, {
-      title: saveData.title,
-      stepsCount: saveData.steps?.length || 0,
-      triggerCount: saveData.triggerKeywords?.length || 0,
+      title: flowData.title,
+      stepsCount: flowData.steps?.length || 0,
+      triggerCount: flowData.triggerKeywords?.length || 0,
       isCompleteReplace
     });
 
@@ -211,14 +224,14 @@ router.post('/save/:id', async (req, res) => {
 
     // 完全置換の場合、受信したデータをそのまま保存（マージせずに置換）
     const finalSaveData = isCompleteReplace ? {
-      ...saveData,
+      ...flowData,
       updatedAt: new Date().toISOString()
     } : {
       id: id,
-      title: saveData.title || '',
-      description: saveData.description || '',
-      triggerKeywords: saveData.triggerKeywords || saveData.trigger || [],
-      steps: (saveData.steps || []).map(step => ({
+      title: flowData.title || '',
+      description: flowData.description || '',
+      triggerKeywords: flowData.triggerKeywords || flowData.trigger || [],
+      steps: (flowData.steps || []).map(step => ({
         id: step.id,
         title: step.title || '',
         description: step.description || step.message || '',
