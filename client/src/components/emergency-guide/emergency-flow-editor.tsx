@@ -274,13 +274,13 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         throw new Error('少なくとも1つのステップが必要です');
       }
 
-      // 保存データを準備（条件分岐ノードの完全保存を確実に）
+      // 統一スキーマによる保存データを準備
       const saveData = {
         ...editedFlow,
         steps: editedFlow.steps.map(step => {
-          // 🔀 条件分岐ノード：完全保存処理
+          // 🔀 条件分岐ノード：統一スキーマで完全保存
           if (step.type === 'decision') {
-            console.log(`🔀 条件分岐ノード ${step.id} 完全保存準備:`, {
+            console.log(`🔀 条件分岐ノード ${step.id} 統一スキーマ保存:`, {
               stepId: step.id,
               stepType: step.type,
               title: step.title,
@@ -288,19 +288,19 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
               optionsDetail: step.options
             });
 
-            // 条件項目の完全保存（空の項目も含めて保存）
-            const completeOptions = (step.options || []).map((option, index) => {
-              const processedOption = {
-                text: option.text || `条件項目 ${index + 1}`,
-                nextStepId: option.nextStepId || '',
-                condition: option.condition || '',
-                isTerminal: Boolean(option.isTerminal),
-                conditionType: option.conditionType || 'other'
-              };
-              
-              console.log(`🔧 条件項目 ${index + 1} 保存データ:`, processedOption);
-              return processedOption;
-            });
+            // 条件項目の完全保存（統一スキーマ）
+            const unifiedOptions = (step.options || []).map((option, index) => ({
+              text: option.text || `条件項目 ${index + 1}`,
+              nextStepId: option.nextStepId || '',
+              condition: option.condition || option.text || '',
+              isTerminal: Boolean(option.isTerminal),
+              conditionType: option.conditionType || 'other'
+            }));
+
+            // 旧形式の条件フィールドも生成（後方互換性）
+            const yesOption = unifiedOptions.find(opt => opt.conditionType === 'yes');
+            const noOption = unifiedOptions.find(opt => opt.conditionType === 'no');
+            const otherOptions = unifiedOptions.filter(opt => opt.conditionType === 'other');
 
             const savedDecisionStep = {
               ...step,
@@ -309,28 +309,45 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
               description: step.description || step.message || '',
               message: step.message || step.description || '',
               imageUrl: step.imageUrl || '',
-              type: 'decision', // 確実に設定
-              options: completeOptions
+              type: 'decision',
+              // 統一スキーマ：options配列
+              options: unifiedOptions,
+              // 後方互換性：個別条件フィールド
+              yesCondition: yesOption?.condition || '',
+              yesNextStepId: yesOption?.nextStepId || '',
+              noCondition: noOption?.condition || '',
+              noNextStepId: noOption?.nextStepId || '',
+              otherCondition: otherOptions.map(opt => opt.condition).join(', ') || '',
+              otherNextStepId: otherOptions[0]?.nextStepId || ''
             };
 
-            console.log(`✅ 条件分岐ノード ${step.id} 保存データ完成:`, {
+            console.log(`✅ 条件分岐ノード ${step.id} 統一スキーマ保存完了:`, {
               stepId: savedDecisionStep.id,
               type: savedDecisionStep.type,
               optionsCount: savedDecisionStep.options.length,
-              savedOptions: savedDecisionStep.options
+              yesCondition: savedDecisionStep.yesCondition,
+              noCondition: savedDecisionStep.noCondition,
+              otherCondition: savedDecisionStep.otherCondition
             });
 
             return savedDecisionStep;
           } else {
-            // 通常のステップ
+            // 通常のステップ：デフォルトで"次へ"オプションを確保
+            const defaultOptions = step.options?.length > 0 ? step.options : [{
+              text: '次へ',
+              nextStepId: '',
+              isTerminal: false,
+              conditionType: 'other',
+              condition: ''
+            }];
+
             return {
               ...step,
               description: step.description || step.message || '',
               message: step.message || step.description || '',
               imageUrl: step.imageUrl || '',
-              options: step.options.map(option => ({
-                ...option,
-                text: option.text || '',
+              options: defaultOptions.map(option => ({
+                text: option.text || '次へ',
                 nextStepId: option.nextStepId || '',
                 condition: option.condition || '',
                 isTerminal: Boolean(option.isTerminal),
@@ -339,30 +356,56 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
             };
           }
         }),
-        // slidesフィールドも同期（後方互換性）
+        // slidesフィールドも統一スキーマで同期
         slides: editedFlow.steps.map(step => {
           if (step.type === 'decision') {
-            // 条件分岐ノードのslidesフィールド同期
+            const unifiedOptions = (step.options || []).map((option, index) => ({
+              text: option.text || `条件項目 ${index + 1}`,
+              nextStepId: option.nextStepId || '',
+              condition: option.condition || option.text || '',
+              isTerminal: Boolean(option.isTerminal),
+              conditionType: option.conditionType || 'other'
+            }));
+
+            const yesOption = unifiedOptions.find(opt => opt.conditionType === 'yes');
+            const noOption = unifiedOptions.find(opt => opt.conditionType === 'no');
+            const otherOptions = unifiedOptions.filter(opt => opt.conditionType === 'other');
+
             return {
               ...step,
               description: step.description || step.message || '',
               message: step.message || step.description || '',
               imageUrl: step.imageUrl || '',
               type: 'decision',
-              options: (step.options || []).map(option => ({
-                text: option.text || '',
+              options: unifiedOptions,
+              yesCondition: yesOption?.condition || '',
+              yesNextStepId: yesOption?.nextStepId || '',
+              noCondition: noOption?.condition || '',
+              noNextStepId: noOption?.nextStepId || '',
+              otherCondition: otherOptions.map(opt => opt.condition).join(', ') || '',
+              otherNextStepId: otherOptions[0]?.nextStepId || ''
+            };
+          } else {
+            const defaultOptions = step.options?.length > 0 ? step.options : [{
+              text: '次へ',
+              nextStepId: '',
+              isTerminal: false,
+              conditionType: 'other',
+              condition: ''
+            }];
+
+            return {
+              ...step,
+              description: step.description || step.message || '',
+              message: step.message || step.description || '',
+              imageUrl: step.imageUrl || '',
+              options: defaultOptions.map(option => ({
+                text: option.text || '次へ',
                 nextStepId: option.nextStepId || '',
                 condition: option.condition || '',
                 isTerminal: Boolean(option.isTerminal),
                 conditionType: option.conditionType || 'other'
               }))
-            };
-          } else {
-            return {
-              ...step,
-              description: step.description || step.message || '',
-              message: step.message || step.description || '',
-              imageUrl: step.imageUrl || ''
             };
           }
         }),

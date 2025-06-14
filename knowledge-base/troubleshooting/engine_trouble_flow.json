@@ -1,3 +1,4 @@
+
 {
   "id": "engine_trouble_flow",
   "title": "エンジン不調応急処置フロー",
@@ -13,16 +14,45 @@
       "message": "この応急処置ガイドでは、エンジン不調に対処する手順を説明します。安全を確保しながら、原因を特定し解決するための手順に従ってください。",
       "imageUrl": "",
       "type": "step",
-      "options": []
+      "options": [
+        {
+          "text": "次へ",
+          "nextStepId": "step2",
+          "isTerminal": false,
+          "conditionType": "other",
+          "condition": ""
+        }
+      ]
     },
     {
       "id": "step2",
-      "title": "新しい条件分岐",
+      "title": "エンジン停止時の状況判断",
       "description": "エンジンが停止した時の状況は？",
       "message": "エンジンが停止した時の状況は？",
       "imageUrl": "",
-      "type": "step",
-      "options": []
+      "type": "decision",
+      "options": [
+        {
+          "text": "完全に停止している",
+          "nextStepId": "step3",
+          "isTerminal": false,
+          "conditionType": "yes",
+          "condition": "エンジンが完全に停止している"
+        },
+        {
+          "text": "不安定に動作している",
+          "nextStepId": "step4",
+          "isTerminal": false,
+          "conditionType": "no",
+          "condition": "エンジンが不安定に動作している"
+        }
+      ],
+      "yesCondition": "エンジンが完全に停止している",
+      "yesNextStepId": "step3",
+      "noCondition": "エンジンが不安定に動作している",
+      "noNextStepId": "step4",
+      "otherCondition": "",
+      "otherNextStepId": ""
     },
     {
       "id": "step3",
@@ -31,7 +61,15 @@
       "message": "エンジンは完全に停止していますか、それとも不安定な動作をしていますか？",
       "imageUrl": "",
       "type": "step",
-      "options": []
+      "options": [
+        {
+          "text": "次へ",
+          "nextStepId": "step4",
+          "isTerminal": false,
+          "conditionType": "other",
+          "condition": ""
+        }
+      ]
     },
     {
       "id": "step4",
@@ -40,7 +78,98 @@
       "message": "1. 可能であれば予備燃料を補給します。\n2. 燃料フィルターの詰まりを点検します。\n3. 補給後もエンジンが始動しない場合は、燃料ポンプまたは噴射系統の問題の可能性があります。",
       "imageUrl": "",
       "type": "step",
-      "options": []
+      "options": [
+        {
+          "text": "完了",
+          "nextStepId": "end",
+          "isTerminal": true,
+          "conditionType": "other",
+          "condition": ""
+        }
+      ]
+    }
+  ],
+  "slides": [
+    {
+      "id": "step1",
+      "title": "開始",
+      "description": "この応急処置ガイドでは、エンジン不調に対処する手順を説明します。安全を確保しながら、原因を特定し解決するための手順に従ってください。",
+      "message": "この応急処置ガイドでは、エンジン不調に対処する手順を説明します。安全を確保しながら、原因を特定し解決するための手順に従ってください。",
+      "imageUrl": "",
+      "type": "step",
+      "options": [
+        {
+          "text": "次へ",
+          "nextStepId": "step2",
+          "isTerminal": false,
+          "conditionType": "other",
+          "condition": ""
+        }
+      ]
+    },
+    {
+      "id": "step2",
+      "title": "エンジン停止時の状況判断",
+      "description": "エンジンが停止した時の状況は？",
+      "message": "エンジンが停止した時の状況は？",
+      "imageUrl": "",
+      "type": "decision",
+      "options": [
+        {
+          "text": "完全に停止している",
+          "nextStepId": "step3",
+          "isTerminal": false,
+          "conditionType": "yes",
+          "condition": "エンジンが完全に停止している"
+        },
+        {
+          "text": "不安定に動作している",
+          "nextStepId": "step4",
+          "isTerminal": false,
+          "conditionType": "no",
+          "condition": "エンジンが不安定に動作している"
+        }
+      ],
+      "yesCondition": "エンジンが完全に停止している",
+      "yesNextStepId": "step3",
+      "noCondition": "エンジンが不安定に動作している",
+      "noNextStepId": "step4",
+      "otherCondition": "",
+      "otherNextStepId": ""
+    },
+    {
+      "id": "step3",
+      "title": "エンジン状態の確認",
+      "description": "エンジンは完全に停止していますか、それとも不安定な動作をしていますか？",
+      "message": "エンジンは完全に停止していますか、それとも不安定な動作をしていますか？",
+      "imageUrl": "",
+      "type": "step",
+      "options": [
+        {
+          "text": "次へ",
+          "nextStepId": "step4",
+          "isTerminal": false,
+          "conditionType": "other",
+          "condition": ""
+        }
+      ]
+    },
+    {
+      "id": "step4",
+      "title": "燃料切れ対応",
+      "description": "1. 可能であれば予備燃料を補給します。\n2. 燃料フィルターの詰まりを点検します。\n3. 補給後もエンジンが始動しない場合は、燃料ポンプまたは噴射系統の問題の可能性があります。",
+      "message": "1. 可能であれば予備燃料を補給します。\n2. 燃料フィルターの詰まりを点検します。\n3. 補給後もエンジンが始動しない場合は、燃料ポンプまたは噴射系統の問題の可能性があります。",
+      "imageUrl": "",
+      "type": "step",
+      "options": [
+        {
+          "text": "完了",
+          "nextStepId": "end",
+          "isTerminal": true,
+          "conditionType": "other",
+          "condition": ""
+        }
+      ]
     }
   ],
   "updatedAt": "2025-06-14T08:15:53.720Z"
