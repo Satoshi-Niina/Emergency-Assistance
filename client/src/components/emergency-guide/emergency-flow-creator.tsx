@@ -55,6 +55,7 @@ const EmergencyFlowCreator: React.FC = () => {
   const [selectedFlowForEdit, setSelectedFlowForEdit] = useState<string | null>(null);
   const [currentFlowData, setCurrentFlowData] = useState<FlowData | null>(null);
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
+  const [isFetching, setIsFetching] = useState(false);
 
   // 削除関連
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -64,14 +65,16 @@ const EmergencyFlowCreator: React.FC = () => {
   // フロー一覧を取得する関数
   const fetchFlowList = useCallback(async (forceRefresh = false) => {
     try {
+      setIsFetching(true);
       setIsLoadingFlowList(true);
+      console.log('🔄 応急処置データ一覧の取得を開始します (forceRefresh: ' + forceRefresh + ')');
 
-      // 🧹 強制リフレッシュ時は全キャッシュをクリア
+      // 🧹 キャッシュクリア（古いデータの完全削除）
       if (forceRefresh && 'caches' in window) {
         try {
           const cacheNames = await caches.keys();
           await Promise.all(cacheNames.map(name => caches.delete(name)));
-          console.log('🧹 フロー一覧取得前キャッシュクリア完了');
+          console.log('🧹 全キャッシュ（古いデータ含む）クリア完了');
         } catch (cacheError) {
           console.warn('⚠️ キャッシュクリアエラー:', cacheError);
         }
@@ -125,16 +128,16 @@ const EmergencyFlowCreator: React.FC = () => {
         description: "フロー一覧の取得に失敗しました",
         variant: "destructive"
       });
-      setFlowList([]);
     } finally {
       setIsLoadingFlowList(false);
+      setIsFetching(false);
     }
-  }, [toast]);
+  }, [toast, isFetching]);
 
-  // 初期データ読み込み
+  // 初期化時にフロー一覧を取得（一度だけ）
   useEffect(() => {
     fetchFlowList();
-  }, []);
+  }, []); // 依存配列を空にして一度だけ実行
 
   // 強制更新イベントリスナー
   useEffect(() => {
