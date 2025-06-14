@@ -153,31 +153,12 @@ const EmergencyGuidePage: React.FC = () => {
       setIsLoadingFlowList(true);
       console.log(`🔄 応急処置データ一覧の取得を開始します (forceRefresh: ${forceRefresh})`);
 
-      // 全てのキャッシュを強制的にクリア（古いデータ完全除去）
-      if (typeof window !== 'undefined') {
-        const cacheKeys = [
-          'emergencyFlowList', 'troubleshootingCache', 'flowCache', 'flowListCache',
-          'engine_restart_issue', 'parking_brake_release_issue', 'emergency-flow-data',
-          'troubleshooting-data', 'flow-list-cache', 'emergency-guide-cache'
-        ];
-        cacheKeys.forEach(key => {
-          localStorage.removeItem(key);
-          sessionStorage.removeItem(key);
-        });
-
-        // IndexedDBのクリアも実行
-        if ('caches' in window) {
-          caches.keys().then(names => {
-            names.forEach(name => {
-              if (name.includes('emergency') || name.includes('troubleshooting')) {
-                caches.delete(name);
-              }
-            });
-          });
+      // キャッシュクリア処理を簡素化
+        if (forceRefresh && typeof window !== 'undefined') {
+          localStorage.clear();
+          sessionStorage.clear();
+          console.log('🧹 キャッシュクリア完了');
         }
-
-        console.log('🧹 全キャッシュ（古いデータ含む）クリア完了');
-      }
 
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2);
