@@ -315,7 +315,15 @@ const EmergencyFlowCreator: React.FC = () => {
           ...step,
           // description と message の同期
           description: step.description || step.message || '',
-          message: step.message || step.description || ''
+          message: step.message || step.description || '',
+          // オプションの整合性確保
+          options: (step.options || []).map(option => ({
+            text: option.text || '',
+            nextStepId: option.nextStepId || '',
+            isTerminal: Boolean(option.isTerminal),
+            conditionType: option.conditionType || 'other',
+            condition: option.condition || ''
+          }))
         })),
         updatedAt: data.createdAt || data.updatedAt || new Date().toISOString()
       };
