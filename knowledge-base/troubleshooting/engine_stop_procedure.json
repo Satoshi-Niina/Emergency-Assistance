@@ -19,8 +19,8 @@
     {
       "id": "step2",
       "title": "新しい条件分岐",
-      "description": "エンジン不調",
-      "message": "エンジン不調",
+      "description": "エンジンが停止した時の状況は？",
+      "message": "エンジンが停止した時の状況は？",
       "imageUrl": "",
       "type": "step",
       "options": []
@@ -71,5 +71,5 @@
       "options": []
     }
   ],
-  "updatedAt": "2025-06-14T10:58:59.382Z"
+  "updatedAt": "2025-06-14T11:07:05.336Z"
 }
