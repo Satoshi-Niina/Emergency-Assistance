@@ -1241,7 +1241,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                         条件分岐ノード編集（conditions配列）
                       </h4>
                       <p className="text-sm text-blue-700 mt-2">
-                        conditions配列を直接編集できます
+                        conditions配列を直接編集できます。各条件項目の詳細が保存されます。
                       </p>
                     </div>
 
@@ -1281,28 +1281,36 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
 
                             <div className="space-y-3">
                               <div>
-                                <Label>条件ラベル (label)</Label>
+                                <Label>条件ラベル (label) - 例: "急に停止"</Label>
                                 <Input
                                   value={condition.label || ''}
                                   onChange={(e) => updateCondition(step.id, conditionIndex, { label: e.target.value })}
-                                  placeholder="条件のラベルを入力"
+                                  placeholder="例: 急に停止"
                                 />
                               </div>
 
                               <div>
-                                <Label>遷移先ID (nextId)</Label>
-                                <select
+                                <Label>遷移先ID (nextId) - 例: "step6"</Label>
+                                <Input
                                   value={condition.nextId || ''}
                                   onChange={(e) => updateCondition(step.id, conditionIndex, { nextId: e.target.value })}
-                                  className="w-full border rounded px-3 py-2 bg-white"
-                                >
-                                  <option value="">遷移先を選択</option>
-                                  {editedFlow?.steps?.filter(s => s.id !== step.id).map(targetStep => (
-                                    <option key={targetStep.id} value={targetStep.id}>
-                                      {targetStep.title} ({targetStep.id})
-                                    </option>
-                                  ))}
-                                </select>
+                                  placeholder="例: step6 (遷移先のステップID)"
+                                />
+                                <div className="mt-2">
+                                  <Label className="text-xs text-gray-600">または既存ステップから選択:</Label>
+                                  <select
+                                    value={condition.nextId || ''}
+                                    onChange={(e) => updateCondition(step.id, conditionIndex, { nextId: e.target.value })}
+                                    className="w-full border rounded px-3 py-2 bg-white text-sm mt-1"
+                                  >
+                                    <option value="">遷移先を選択</option>
+                                    {editedFlow?.steps?.filter(s => s.id !== step.id).map(targetStep => (
+                                      <option key={targetStep.id} value={targetStep.id}>
+                                        {targetStep.title} ({targetStep.id})
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -1313,6 +1321,14 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                           <p className="text-sm">上のボタンから条件を追加してください</p>
                         </div>
                       )}
+                    </div>
+                    
+                    {/* デバッグ表示 */}
+                    <div className="mt-4 p-3 bg-gray-100 rounded text-sm">
+                      <strong>現在の条件データ（デバッグ用）:</strong>
+                      <pre className="mt-2 text-xs overflow-auto">
+                        {JSON.stringify(step.conditions, null, 2)}
+                      </pre>
                     </div>
                   </div>
                 )}
