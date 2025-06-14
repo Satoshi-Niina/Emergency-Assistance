@@ -157,6 +157,11 @@ router.post('/save', async (req, res) => {
           }
         }
 
+        // 条件分岐ノードの型を強制的に'decision'に設定
+        if (step.type !== 'decision') {
+          console.warn(`⚠️ ステップ ${step.id} の型を ${step.type} から decision に修正`);
+        }
+
         // 後方互換性のための個別フィールド生成
         const yesOption = unifiedOptions.find(opt => opt.conditionType === 'yes');
         const noOption = unifiedOptions.find(opt => opt.conditionType === 'no');

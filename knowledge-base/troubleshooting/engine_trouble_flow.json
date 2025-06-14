@@ -1,3 +1,4 @@
+
 {
   "id": "engine_trouble_flow",
   "title": "エンジン不調対応",
@@ -13,7 +14,15 @@
       "message": "この応急処置ガイドでは、エンジン不調に対処する手順を説明します。安全を確保しながら、原因を特定し解決するための手順に従ってください。",
       "imageUrl": "",
       "type": "step",
-      "options": []
+      "options": [
+        {
+          "text": "次へ",
+          "nextStepId": "step2",
+          "isTerminal": false,
+          "conditionType": "other",
+          "condition": ""
+        }
+      ]
     },
     {
       "id": "step2",
@@ -22,16 +31,45 @@
       "message": "1. 二次災害を防ぐため、車両が安全な場所に停止していることを確認します。\n2. 接近する列車や障害物がないか周囲を確認します。\n3. 必要に応じて停止表示器や防護無線を使用します。",
       "imageUrl": "",
       "type": "step",
-      "options": []
+      "options": [
+        {
+          "text": "次へ",
+          "nextStepId": "step3",
+          "isTerminal": false,
+          "conditionType": "other",
+          "condition": ""
+        }
+      ]
     },
     {
       "id": "step3",
-      "title": "新しい条件分岐",
+      "title": "エンジン停止状況の確認",
       "description": "エンジンが停止した時の状況は？",
       "message": "エンジンが停止した時の状況は？",
       "imageUrl": "",
-      "type": "step",
-      "options": []
+      "type": "decision",
+      "options": [
+        {
+          "text": "完全に停止している",
+          "nextStepId": "step5",
+          "isTerminal": false,
+          "conditionType": "yes",
+          "condition": "エンジンが完全に停止して再始動しない"
+        },
+        {
+          "text": "不安定に動作している",
+          "nextStepId": "step6",
+          "isTerminal": false,
+          "conditionType": "no",
+          "condition": "エンジンは動作しているが不安定"
+        }
+      ],
+      "yesCondition": "エンジンが完全に停止して再始動しない",
+      "yesNextStepId": "step5",
+      "noCondition": "エンジンは動作しているが不安定",
+      "noNextStepId": "step6",
+      "otherCondition": "",
+      "otherNextStepId": ""
     },
     {
       "id": "step4",
@@ -40,7 +78,15 @@
       "message": "エンジンは完全に停止していますか、それとも不安定な動作をしていますか？",
       "imageUrl": "",
       "type": "step",
-      "options": []
+      "options": [
+        {
+          "text": "次へ",
+          "nextStepId": "step5",
+          "isTerminal": false,
+          "conditionType": "other",
+          "condition": ""
+        }
+      ]
     },
     {
       "id": "step5",
@@ -49,7 +95,15 @@
       "message": "1. 燃料計を確認し、燃料切れの可能性を確認します。\n2. エンジン冷却水の温度計を確認し、オーバーヒートの兆候がないか確認します。\n3. バッテリー電圧計を確認し、電気系統の問題がないか確認します。",
       "imageUrl": "",
       "type": "step",
-      "options": []
+      "options": [
+        {
+          "text": "次へ",
+          "nextStepId": "step7",
+          "isTerminal": false,
+          "conditionType": "other",
+          "condition": ""
+        }
+      ]
     },
     {
       "id": "step6",
@@ -58,7 +112,15 @@
       "message": "1. エンジン回転数の変動を観察します。\n2. 異音や振動がないか確認します。\n3. 警告灯やエラーコードを確認します。",
       "imageUrl": "",
       "type": "step",
-      "options": []
+      "options": [
+        {
+          "text": "次へ",
+          "nextStepId": "step8",
+          "isTerminal": false,
+          "conditionType": "other",
+          "condition": ""
+        }
+      ]
     },
     {
       "id": "step7",
@@ -67,7 +129,15 @@
       "message": "1. 可能であれば予備燃料を補給します。\n2. 燃料フィルターの詰まりを点検します。\n3. 補給後もエンジンが始動しない場合は、燃料ポンプまたは噴射系統の問題の可能性があります。",
       "imageUrl": "",
       "type": "step",
-      "options": []
+      "options": [
+        {
+          "text": "次へ",
+          "nextStepId": "step8",
+          "isTerminal": false,
+          "conditionType": "other",
+          "condition": ""
+        }
+      ]
     },
     {
       "id": "step8",
@@ -75,8 +145,29 @@
       "description": "対処後、エンジンは正常に始動しましたか？",
       "message": "対処後、エンジンは正常に始動しましたか？",
       "imageUrl": "",
-      "type": "step",
-      "options": []
+      "type": "decision",
+      "options": [
+        {
+          "text": "はい、正常に始動した",
+          "nextStepId": "step9",
+          "isTerminal": false,
+          "conditionType": "yes",
+          "condition": "エンジンが正常に始動した"
+        },
+        {
+          "text": "いいえ、まだ問題がある",
+          "nextStepId": "step10",
+          "isTerminal": false,
+          "conditionType": "no",
+          "condition": "エンジンの問題が解決していない"
+        }
+      ],
+      "yesCondition": "エンジンが正常に始動した",
+      "yesNextStepId": "step9",
+      "noCondition": "エンジンの問題が解決していない",
+      "noNextStepId": "step10",
+      "otherCondition": "",
+      "otherNextStepId": ""
     },
     {
       "id": "step9",
@@ -85,7 +176,15 @@
       "message": "1. エンジンを数分間アイドリング状態で運転し、安定性を確認します。\n2. 各計器の値が正常範囲内にあることを確認します。\n3. 異常な音、振動、臭いがないか確認します。\n4. 全て正常であれば、運転を再開します。\n5. しばらくの間、エンジンの状態に注意を払いながら走行してください。",
       "imageUrl": "",
       "type": "step",
-      "options": []
+      "options": [
+        {
+          "text": "完了",
+          "nextStepId": "end",
+          "isTerminal": true,
+          "conditionType": "other",
+          "condition": ""
+        }
+      ]
     },
     {
       "id": "step10",
@@ -94,7 +193,15 @@
       "message": "1. 指令所または保守担当に連絡し、現在の状況と位置を報告します。\n2. これまでに実施した確認事項と対処内容を伝えます。\n3. 軌道モータカーの牽引または修理のための支援を要請します。\n4. 安全な場所で支援の到着を待ちます。",
       "imageUrl": "",
       "type": "step",
-      "options": []
+      "options": [
+        {
+          "text": "完了",
+          "nextStepId": "end",
+          "isTerminal": true,
+          "conditionType": "other",
+          "condition": ""
+        }
+      ]
     }
   ],
   "updatedAt": "2025-06-14T08:24:42.505Z"
