@@ -1229,89 +1229,90 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                                         基本設定
                                       </h5>
 
-                                    <div>
-                                      <Label className="text-base font-bold text-gray-700">📝 条件テキスト</Label>
-                                      <Input
-                                        value={option.text || ''}
-                                        onChange={(e) => updateOption(step.id, optionIndex, { text: e.target.value })}
-                                        placeholder="条件の表示テキスト"
-                                        className="mt-2 border-2 border-gray-300 focus:border-blue-500 text-base"
-                                      />
+                                      <div>
+                                        <Label className="text-base font-bold text-gray-700">📝 条件テキスト</Label>
+                                        <Input
+                                          value={option.text || ''}
+                                          onChange={(e) => updateOption(step.id, optionIndex, { text: e.target.value })}
+                                          placeholder="条件の表示テキスト"
+                                          className="mt-2 border-2 border-gray-300 focus:border-blue-500 text-base"
+                                        />
+                                      </div>
+
+                                      <div>
+                                        <Label className="text-base font-bold text-gray-700">🎯 条件タイプ</Label>
+                                        <select
+                                          value={option.conditionType || 'other'}
+                                          onChange={(e) => changeConditionType(step.id, optionIndex, e.target.value as any)}
+                                          className="w-full mt-2 p-3 border-2 border-gray-300 rounded-lg text-base bg-white focus:border-blue-500"
+                                        >
+                                          <option value="yes">✅ はい（肯定的な回答）</option>
+                                          <option value="no">❌ いいえ（否定的な回答）</option>
+                                          <option value="other">🔸 その他（中立・不明）</option>
+                                        </select>
+                                      </div>
                                     </div>
 
-                                    <div>
-                                      <Label className="text-base font-bold text-gray-700">🎯 条件タイプ</Label>
-                                      <select
-                                        value={option.conditionType || 'other'}
-                                        onChange={(e) => changeConditionType(step.id, optionIndex, e.target.value as any)}
-                                        className="w-full mt-2 p-3 border-2 border-gray-300 rounded-lg text-base bg-white focus:border-blue-500"
-                                      >
-                                        <option value="yes">✅ はい（肯定的な回答）</option>
-                                        <option value="no">❌ いいえ（否定的な回答）</option>
-                                        <option value="other">🔸 その他（中立・不明）</option>
-                                      </select>
-                                    </div>
-                                  </div>
-
-                                  {/* 詳細条件 */}
-                                  <div className="space-y-4">
-                                    <div>
-                                      <Label className="text-base font-bold text-gray-700">📋 詳細条件・説明</Label>
-                                      <Textarea
-                                        value={option.condition || ''}
-                                        onChange={(e) => updateOption(step.id, optionIndex, { condition: e.target.value })}
-                                        placeholder="この条件に該当する場合の詳細説明を記述してください"
-                                        rows={8}
-                                        className="mt-2 border-2 border-gray-300 focus:border-blue-500 text-base"
-                                      />
-                                    </div>
-                                  </div>
-
-                                  {/* 遷移設定 */}
-                                  <div className="space-y-4">
-                                    <div>
-                                      <Label className="text-base font-bold text-gray-700">🔗 遷移先スライド</Label>
-                                      <select
-                                        value={option.nextStepId || ''}
-                                        onChange={(e) => updateOption(step.id, optionIndex, { nextStepId: e.target.value })}
-                                        className="w-full mt-2 p-3 border-2 border-gray-300 rounded-lg text-base bg-white focus:border-blue-500"
-                                      >
-                                        <option value="">遷移先を選択</option>
-                                        {editedFlow?.steps
-                                          .filter(s => s.id !== step.id)
-                                          .map((targetStep, targetIndex) => (
-                                          <option key={`unified-target-${targetStep.id}`} value={targetStep.id}>
-                                            スライド{targetIndex + 1}: {targetStep.title}
-                                          </option>
-                                        ))}
-                                        <option value="end">🏁 フロー終了</option>
-                                      </select>
+                                    {/* 詳細条件 */}
+                                    <div className="space-y-4">
+                                      <div>
+                                        <Label className="text-base font-bold text-gray-700">📋 詳細条件・説明</Label>
+                                        <Textarea
+                                          value={option.condition || ''}
+                                          onChange={(e) => updateOption(step.id, optionIndex, { condition: e.target.value })}
+                                          placeholder="この条件に該当する場合の詳細説明を記述してください"
+                                          rows={8}
+                                          className="mt-2 border-2 border-gray-300 focus:border-blue-500 text-base"
+                                        />
+                                      </div>
                                     </div>
 
-                                    <div className="flex items-center p-4 bg-gray-100 border-2 border-gray-300 rounded-lg">
-                                      <input
-                                        type="checkbox"
-                                        id={`unified-terminal-${step.id}-${optionIndex}`}
-                                        checked={Boolean(option.isTerminal)}
-                                        onChange={(e) => updateOption(step.id, optionIndex, { isTerminal: e.target.checked })}
-                                        className="mr-4 h-5 w-5"
-                                      />
-                                      <Label htmlFor={`unified-terminal-${step.id}-${optionIndex}`} className="text-base text-gray-700 font-bold">
-                                        🏁 この選択肢でフローを終了する
-                                      </Label>
-                                    </div>
+                                    {/* 遷移設定 */}
+                                    <div className="space-y-4">
+                                      <div>
+                                        <Label className="text-base font-bold text-gray-700">🔗 遷移先スライド</Label>
+                                        <select
+                                          value={option.nextStepId || ''}
+                                          onChange={(e) => updateOption(step.id, optionIndex, { nextStepId: e.target.value })}
+                                          className="w-full mt-2 p-3 border-2 border-gray-300 rounded-lg text-base bg-white focus:border-blue-500"
+                                        >
+                                          <option value="">遷移先を選択</option>
+                                          {editedFlow?.steps
+                                            .filter(s => s.id !== step.id)
+                                            .map((targetStep, targetIndex) => (
+                                            <option key={`unified-target-${targetStep.id}`} value={targetStep.id}>
+                                              スライド{targetIndex + 1}: {targetStep.title}
+                                            </option>
+                                          ))}
+                                          <option value="end">🏁 フロー終了</option>
+                                        </select>
+                                      </div>
 
-                                    {((step.options?.length || 0) > 2) && (
-                                      <Button
-                                        size="sm"
-                                        variant="destructive"
-                                        onClick={() => removeOption(step.id, optionIndex)}
-                                        className="w-full"
-                                      >
-                                        <Trash2 className="w-4 h-4 mr-2" />
-                                        この選択肢を削除
-                                      </Button>
-                                    )}
+                                      <div className="flex items-center p-4 bg-gray-100 border-2 border-gray-300 rounded-lg">
+                                        <input
+                                          type="checkbox"
+                                          id={`unified-terminal-${step.id}-${optionIndex}`}
+                                          checked={Boolean(option.isTerminal)}
+                                          onChange={(e) => updateOption(step.id, optionIndex, { isTerminal: e.target.checked })}
+                                          className="mr-4 h-5 w-5"
+                                        />
+                                        <Label htmlFor={`unified-terminal-${step.id}-${optionIndex}`} className="text-base text-gray-700 font-bold">
+                                          🏁 この選択肢でフローを終了する
+                                        </Label>
+                                      </div>
+
+                                      {((step.options?.length || 0) > 2) && (
+                                        <Button
+                                          size="sm"
+                                          variant="destructive"
+                                          onClick={() => removeOption(step.id, optionIndex)}
+                                          className="w-full"
+                                        >
+                                          <Trash2 className="w-4 h-4 mr-2" />
+                                          この選択肢を削除
+                                        </Button>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
