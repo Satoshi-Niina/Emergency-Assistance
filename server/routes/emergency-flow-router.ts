@@ -233,23 +233,7 @@ router.get('/list', (req, res) => {
 
     // JSONファイルのみを取得（古いファイルを除外）
     const files = fs.readdirSync(TROUBLESHOOTING_DIR)
-      .filter(file => {
-        // JSONファイルのみ
-        if (!file.endsWith('.json')) return false;
-
-        // 古いファイルを明示的に除外
-        const excludeFiles = [
-          'engine_restart_issue.json',
-          'parking_brake_release_issue.json'
-        ];
-
-        if (excludeFiles.includes(file)) {
-          console.log(`🚫 古いファイルを除外: ${file}`);
-          return false;
-        }
-
-        return true;
-      })
+      .filter(file => file.endsWith('.json'))
       .sort();
 
     console.log(`📁 発見されたファイル数: ${files.length}`, files);
