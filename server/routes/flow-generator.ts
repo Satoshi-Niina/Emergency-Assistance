@@ -56,7 +56,7 @@ router.post('/generate-from-keywords', async (req, res) => {
 生成するJSONは完全な有効なJSONである必要があり、途中で切れたり不完全な構造であってはなりません。
 特に、各配列やオブジェクトが適切に閉じられていることを確認してください。
 
-以下の形式に厳密に従ってください:
+以下の形式に厳密に従ってください。条件分岐ノード（"type": "condition"）では必ず"conditions"配列と"message"フィールドを含めてください:
 
 {
   "id": "機械的なID（英数字とアンダースコアのみ）",
@@ -65,151 +65,93 @@ router.post('/generate-from-keywords', async (req, res) => {
   "triggerKeywords": ["キーワード1", "キーワード2"],
   "steps": [
     {
-      "id": "start",
+      "id": "step1",
       "title": "開始",
       "description": "この応急処置ガイドでは、[主な症状や問題]に対処する手順を説明します。安全を確保しながら、原因を特定し解決するための手順に従ってください。",
+      "message": "この応急処置ガイドでは、[主な症状や問題]に対処する手順を説明します。安全を確保しながら、原因を特定し解決するための手順に従ってください。",
       "imageUrl": "",
-      "type": "start",
-      "conditions": [
-        {
-          "label": "状況を確認する",
-          "nextId": "step1"
-        }
-      ]
+      "type": "step",
+      "options": []
     },
     {
-      "id": "step1",
+      "id": "step2",
       "title": "安全確保",
       "description": "1. 二次災害を防ぐため、車両が安全な場所に停止していることを確認します。\n2. 接近する列車や障害物がないか周囲を確認します。\n3. 必要に応じて停止表示器や防護無線を使用します。",
+      "message": "1. 二次災害を防ぐため、車両が安全な場所に停止していることを確認します。\n2. 接近する列車や障害物がないか周囲を確認します。\n3. 必要に応じて停止表示器や防護無線を使用します。",
       "imageUrl": "",
       "type": "step",
-      "conditions": [
-        {
-          "label": "安全確認完了",
-          "nextId": "decision1"
-        }
-      ]
+      "options": []
     },
     {
-      "id": "decision1",
-      "title": "エンジン状態の確認",
-      "description": "エンジンは完全に停止していますか、それとも不安定な動作をしていますか？",
-      "imageUrl": "",
+      "id": "step3",
       "type": "condition",
+      "title": "状態確認分岐",
+      "message": "現在の状況を確認してください。該当する状況を選択してください。",
       "conditions": [
         {
-          "label": "完全に停止している",
-          "nextId": "step2a"
+          "label": "状況A",
+          "nextId": "step4"
         },
         {
-          "label": "不安定に動作している",
-          "nextId": "step2b"
+          "label": "状況B",
+          "nextId": "step5"
         }
       ]
     },
     {
-      "id": "step2a",
-      "title": "完全停止の原因確認",
-      "description": "1. 燃料計を確認し、燃料切れの可能性を確認します。\n2. エンジン冷却水の温度計を確認し、オーバーヒートの兆候がないか確認します。\n3. バッテリー電圧計を確認し、電気系統の問題がないか確認します。",
+      "id": "step4",
+      "title": "状況Aの対処",
+      "description": "状況Aに対する具体的な対処手順を説明します。",
+      "message": "状況Aに対する具体的な対処手順を説明します。",
       "imageUrl": "",
       "type": "step",
-      "conditions": [
-        {
-          "label": "燃料が少ない/空",
-          "nextId": "step3a"
-        },
-        {
-          "label": "オーバーヒートの兆候あり",
-          "nextId": "step3b"
-        },
-        {
-          "label": "バッテリー電圧が低い",
-          "nextId": "step3c"
-        },
-        {
-          "label": "上記以外の原因",
-          "nextId": "step3d"
-        }
-      ]
+      "options": []
     },
     {
-      "id": "step2b",
-      "title": "不安定動作の原因確認",
-      "description": "1. エンジン回転数の変動を観察します。\n2. 異音や振動がないか確認します。\n3. 警告灯やエラーコードを確認します。",
+      "id": "step5",
+      "title": "状況Bの対処",
+      "description": "状況Bに対する具体的な対処手順を説明します。",
+      "message": "状況Bに対する具体的な対処手順を説明します。",
       "imageUrl": "",
       "type": "step",
-      "conditions": [
-        {
-          "label": "燃料系統の問題の疑い",
-          "nextId": "step3e"
-        },
-        {
-          "label": "電気系統の問題の疑い",
-          "nextId": "step3f"
-        },
-        {
-          "label": "冷却系統の問題の疑い",
-          "nextId": "step3g"
-        }
-      ]
+      "options": []
     },
     {
-      "id": "step3a",
-      "title": "燃料切れ対応",
-      "description": "1. 可能であれば予備燃料を補給します。\n2. 燃料フィルターの詰まりを点検します。\n3. 補給後もエンジンが始動しない場合は、燃料ポンプまたは噴射系統の問題の可能性があります。",
-      "imageUrl": "",
-      "type": "step",
-      "conditions": [
-        {
-          "label": "燃料補給後に再試行",
-          "nextId": "decision2"
-        }
-      ]
-    },
-    {
-      "id": "decision2",
-      "title": "エンジン再始動確認",
-      "description": "対処後、エンジンは正常に始動しましたか？",
-      "imageUrl": "",
+      "id": "step6",
       "type": "condition",
+      "title": "最終確認",
+      "message": "対処後の状況を確認してください。",
       "conditions": [
         {
-          "label": "はい、正常に始動した",
-          "nextId": "step_success"
+          "label": "問題解決",
+          "nextId": "step7"
         },
         {
-          "label": "いいえ、始動しない",
-          "nextId": "step_failure"
+          "label": "問題継続",
+          "nextId": "step8"
         }
       ]
     },
     {
-      "id": "step_success",
+      "id": "step7",
       "title": "運転再開手順",
-      "description": "1. エンジンを数分間アイドリング状態で運転し、安定性を確認します。\n2. 各計器の値が正常範囲内にあることを確認します。\n3. 異常な音、振動、臭いがないか確認します。\n4. 全て正常であれば、運転を再開します。\n5. しばらくの間、エンジンの状態に注意を払いながら走行してください。",
+      "description": "1. 各計器の値が正常範囲内にあることを確認します。\n2. 異常な音、振動、臭いがないか確認します。\n3. 全て正常であれば、運転を再開します。",
+      "message": "1. 各計器の値が正常範囲内にあることを確認します。\n2. 異常な音、振動、臭いがないか確認します。\n3. 全て正常であれば、運転を再開します。",
       "imageUrl": "",
       "type": "step",
-      "conditions": [
-        {
-          "label": "完了",
-          "nextId": "end"
-        }
-      ]
+      "options": []
     },
     {
-      "id": "step_failure",
+      "id": "step8",
       "title": "専門的な支援要請",
-      "description": "1. 指令所または保守担当に連絡し、現在の状況と位置を報告します。\n2. これまでに実施した確認事項と対処内容を伝えます。\n3. 軌道モータカーの牽引または修理のための支援を要請します。\n4. 安全な場所で支援の到着を待ちます。",
+      "description": "1. 指令所または保守担当に連絡し、現在の状況と位置を報告します。\n2. これまでに実施した確認事項と対処内容を伝えます。\n3. 支援を要請し、安全な場所で待機します。",
+      "message": "1. 指令所または保守担当に連絡し、現在の状況と位置を報告します。\n2. これまでに実施した確認事項と対処内容を伝えます。\n3. 支援を要請し、安全な場所で待機します。",
       "imageUrl": "",
       "type": "step",
-      "conditions": [
-        {
-          "label": "完了",
-          "nextId": "end"
-        }
-      ]
+      "options": []
     }
-  ]
+  ],
+  "updatedAt": "2025-06-14T09:28:05.650Z"
 }
 
 【キーワード】: ${keywords}
