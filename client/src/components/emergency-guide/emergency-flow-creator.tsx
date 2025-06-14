@@ -101,7 +101,7 @@ const EmergencyFlowCreator: React.FC = () => {
 
       if (Array.isArray(data)) {
         // 🎯 フィルタリング処理を完全削除 - 全データを表示
-        console.log(`✅ 全フローデータを表示: ${data.length}件（フィルタリング無効）`);
+        console.log('全フローデータを表示: ' + data.length + '件（フィルタリング無効）');
         setFlowList(data);
       } else {
         console.warn('⚠️ 予期しないデータ形式:', data);
@@ -231,7 +231,7 @@ const EmergencyFlowCreator: React.FC = () => {
   // フロー編集用のデータ読み込み
   const loadFlowForEdit = async (flowId: string) => {
     try {
-      console.log(`🔄 フロー編集データ読み込み: ${flowId}`);
+      console.log('フロー編集データ読み込み: ' + flowId);
 
       // 🎯 フロー一覧からファイル情報を取得
       const targetFlow = flowList.find(flow => flow.id === flowId);
@@ -243,7 +243,7 @@ const EmergencyFlowCreator: React.FC = () => {
       const fileName = targetFlow.fileName.endsWith('.json') ? targetFlow.fileName : `${targetFlow.fileName}.json`;
       const filePath = `knowledge-base/troubleshooting/${fileName}`;
       setSelectedFilePath(filePath);
-      console.log(`📁 編集対象ファイルパス確実設定: ${filePath}`);
+      console.log('編集対象ファイルパス確実設定: ' + filePath);
 
       // 🚫 ブラウザキャッシュを強制クリア
       if ('caches' in window) {
@@ -312,7 +312,7 @@ const EmergencyFlowCreator: React.FC = () => {
 
       // ステップ数不一致の警告
         if (editorData.steps?.length !== 15) {
-          console.warn(`期待されるステップ数と異なります: 実際=${editorData.steps?.length}, 期待=15`);
+          console.warn('期待されるステップ数と異なります: 実際=' + editorData.steps?.length + ', 期待=15');
 
           // 不足しているステップを特定
         const expectedStepIds = ['start', 'step1', 'decision1', 'step2a', 'step2b', 'step3a', 'step3b', 'step3c', 'step3d', 'step3e', 'step3f', 'step3g', 'decision2', 'step_success', 'step_failure'];
@@ -320,10 +320,10 @@ const EmergencyFlowCreator: React.FC = () => {
         const missingSteps = expectedStepIds.filter(id => !actualStepIds.includes(id));
 
         if (missingSteps.length > 0) {
-          console.error(`❌ 不足しているステップ:`, missingSteps);
+          console.error('不足しているステップ:', missingSteps);
           toast({
             title: "データ不整合警告",
-            description: `ファイルに${missingSteps.length}個のステップが不足しています。`,
+            description: 'ファイルに' + missingSteps.length + '個のステップが不足しています。',
             variant: "destructive"
           });
         }
@@ -332,12 +332,11 @@ const EmergencyFlowCreator: React.FC = () => {
       setCurrentFlowData(editorData);
       setSelectedFlowForEdit(flowId);
 
-      console.log(`🎯 フロー編集準備完了:`, {
+      console.log('フロー編集準備完了:', {
         flowId: flowId,
         filePath: filePath,
         dataLoaded: !!data,
-        stepsCount: data.steps?.length || 0,
-        cacheBuster: cacheBuster
+        stepsCount: data.steps?.length || 0
       });
 
     } catch (error) {
@@ -354,7 +353,7 @@ const EmergencyFlowCreator: React.FC = () => {
   const deleteFlow = async (flowId: string) => {
     setIsDeleting(true);
     try {
-      console.log(`🗑️ フロー削除開始: ${flowId}`);
+      console.log('フロー削除開始: ' + flowId);
 
       // troubleshootingディレクトリから物理ファイルを削除
       const targetFlow = flowList.find(flow => flow.id === flowId);
@@ -392,7 +391,7 @@ const EmergencyFlowCreator: React.FC = () => {
       // フロー一覧から削除されたアイテムを即座に除去
       setFlowList(prevList => {
         const filteredList = prevList.filter(flow => flow.id !== flowId);
-        console.log(`🔄 フロー一覧から除去: ${flowId} (残り: ${filteredList.length}件)`);
+        console.log('フロー一覧から除去: ' + flowId + ' (残り: ' + filteredList.length + '件)');
         return filteredList;
       });
 
