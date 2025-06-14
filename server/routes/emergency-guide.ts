@@ -863,7 +863,7 @@ router.post('/update/:id', (req, res) => {
         .filter(file => file.startsWith(id) && file.endsWith('_metadata.json'));
 
       if (files.length === 0) {
-        Remove the file filtering in the guide route to process all JSON files.return res.status(404).json({ error: 'ガイドが見つかりません' });
+        return res.status(404).json({ error: 'ガイドが見つかりません' });
       }
 
       const filePath = path.join(jsonDir, files[0]);
