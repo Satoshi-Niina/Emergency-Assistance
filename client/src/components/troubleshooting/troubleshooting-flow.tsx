@@ -573,13 +573,12 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
       });
 
       // APIを呼び出してタイトルを保存
-      const response = await fetch(`/api/emergency-flow/update-step-title`, {
+      const response = await fetch(`/api/troubleshooting/update-step-title/${flowData?.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          flowId: flowData?.id,
           stepId: currentStep.id,
           title: tempTitle.trim()
         })
@@ -848,7 +847,7 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
                 onClick={() => handleOptionSelect(option)}
               >
                 {option.label || option.text}
-              </Button>The code has been modified to implement direct editing of slide titles in the troubleshooting flow component, including the necessary UI elements and API calls.
+              </Button>
             ))}
           </div>
         )}
