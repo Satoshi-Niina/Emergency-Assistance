@@ -115,8 +115,35 @@ router.post('/save', async (req, res) => {
 
     // 統一スキーマによる条件分岐ノードの完全保存処理
     const processedSteps = (flowData.steps || []).map(step => {
-      // 🔀 条件分岐ノード：統一スキーマで完全保存（type: "condition"も対応）
-        if (step.type === 'decision' || step.type === 'condition') {
+      // 🔀 条件分岐ノード（type: "condition"）の処理
+      if (step.type === 'condition') {
+        console.log(`🔀 条件分岐ノード（conditions配列）${step.id} サーバー保存:`, {
+          stepId: step.id,
+          title: step.title,
+          conditionsCount: step.conditions?.length || 0,
+          conditionsData: step.conditions
+        });
+
+        return {
+          ...step,
+          id: step.id,
+          title: step.title || '新しい条件分岐',
+          description: step.description || step.message || '',
+          message: step.message || step.description || '',
+          imageUrl: step.imageUrl || '',
+          type: 'condition',
+          // conditions配列を確実に保持
+          conditions: step.conditions || [
+            { label: '条件A', nextId: '' },
+            { label: '条件B', nextId: '' }
+          ],
+          // optionsは空配列
+          options: []
+        };
+      }
+
+      // 🔀 条件分岐ノード（type: "decision"）の処理
+        if (step.type === 'decision') {
         console.log(`🔀 条件分岐ノード ${step.id} 統一スキーマ保存:`, {
           stepId: step.id,
           title: step.title,
