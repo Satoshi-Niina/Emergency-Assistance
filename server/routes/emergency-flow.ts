@@ -115,6 +115,13 @@ router.post('/save', async (req, res) => {
 
     // 統一スキーマによる条件分岐ノードの完全保存処理
     const processedSteps = (flowData.steps || []).map(step => {
+      console.log(`🔍 ステップ処理開始: ${step.id} (type: ${step.type})`, {
+        hasConditions: !!step.conditions,
+        conditionsLength: step.conditions?.length || 0,
+        hasOptions: !!step.options,
+        optionsLength: step.options?.length || 0
+      });
+
       // 🔀 条件分岐ノード（type: "condition"）の処理
       if (step.type === 'condition') {
         console.log(`🔀 条件分岐ノード（conditions配列）${step.id} サーバー保存開始:`, {
@@ -256,13 +263,9 @@ router.post('/save', async (req, res) => {
               description: step.description || step.message || '',
               message: step.message || step.description || '',
               imageUrl: step.imageUrl || '',
-              type: step.type, // 元のtype（"condition"または"decision"）を確実に保持
+              type: 'decision', // 決定ノードのtype固定
               // 統一スキーマ：options配列（必須）
               options: unifiedOptions,
-              // type: "condition"の場合、conditionsプロパティを保持
-              ...(step.type === 'condition' && step.conditions 
-                ? { conditions: step.conditions }
-                : {}),
               // 後方互換性：個別条件フィールド（options配列がある場合のみ）
           ...(unifiedOptions.length > 0 ? {
             yesCondition: unifiedOptions.find(opt => opt.conditionType === 'yes')?.condition || '',
