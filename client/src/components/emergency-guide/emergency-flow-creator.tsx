@@ -113,7 +113,7 @@ const EmergencyFlowCreator: React.FC = () => {
           });
         });
 
-        setFlowList(data);
+        setFlowList(Array.isArray(data) ? data : []);
 
         // 🔄 現在編集中のフローがある場合、一覧データで更新
         if (selectedFlowForEdit && data.length > 0) {
