@@ -545,12 +545,10 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
 
   // タイトル編集開始
   const startEditingTitle = useCallback(() => {
-    if (currentStep) {
-      const currentTitle = currentStep.title || '';
-      setTempTitle(currentTitle);
+    if (currentStep && currentStep.title) {
+      setTempTitle(currentStep.title);
       setEditingTitle(true);
-      console.log('タイトル編集開始:', currentTitle);
-      console.log('編集状態設定:', { editingTitle: true, tempTitle: currentTitle });
+      console.log('タイトル編集開始:', currentStep.title);
     }
   }, [currentStep]);
 
@@ -631,11 +629,9 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
 
   // タイトル編集キャンセル
   const cancelEditingTitle = useCallback(() => {
-    console.log('タイトル編集をキャンセル中...', { editingTitle, tempTitle });
     setEditingTitle(false);
     setTempTitle('');
-    console.log('タイトル編集をキャンセルしました');
-  }, [editingTitle, tempTitle]);
+  }, []);
 
   return (
     <Card className="w-full max-w-md mx-auto">
@@ -647,12 +643,12 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
           </CardTitle>
           {/* ファイル名（ID）を非表示にする */}
         </div>
-        {/* ステップのタイトルがあれば表示 */}
+        {/* ステップのタイトル表示と編集 */}
         {currentStep.title && (
           <div className="mt-2">
             <span className="text-sm font-medium text-gray-500">スライド: </span>
             {editingTitle ? (
-              <div className="flex flex-col gap-2 w-full mt-1">
+              <div className="flex items-center gap-2 mt-1">
                 <Input
                   type="text"
                   value={tempTitle}
@@ -666,41 +662,36 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
                       cancelEditingTitle();
                     }
                   }}
-                  className="text-sm"
+                  className="text-sm flex-1"
                   autoFocus
                   placeholder="タイトルを入力してください"
                 />
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="default"
-                    onClick={saveTitle}
-                    disabled={!tempTitle.trim()}
-                    className="text-xs px-3 py-1"
-                  >
-                    保存
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={cancelEditingTitle}
-                    className="text-xs px-3 py-1"
-                  >
-                    キャンセル
-                  </Button>
-                </div>
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={saveTitle}
+                  disabled={!tempTitle.trim()}
+                  className="text-xs px-2 py-1"
+                >
+                  保存
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={cancelEditingTitle}
+                  className="text-xs px-2 py-1"
+                >
+                  キャンセル
+                </Button>
               </div>
             ) : (
-              <div className="mt-1">
-                <div
-                  className="inline-flex items-center gap-2 font-semibold cursor-pointer hover:bg-blue-50 px-3 py-2 rounded-md border-2 border-dashed border-blue-200 hover:border-blue-400 transition-all duration-200 bg-white"
-                  onClick={startEditingTitle}
-                  title="クリックしてタイトルを編集"
-                >
-                  <span className="text-blue-700">{currentStep.title}</span>
-                  <Edit className="w-4 h-4 text-blue-500" />
-                  <span className="text-xs text-blue-500">(編集可能)</span>
-                </div>
+              <div 
+                className="mt-1 inline-block cursor-pointer bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-md border border-blue-200 transition-colors"
+                onClick={startEditingTitle}
+                title="クリックしてタイトルを編集"
+              >
+                <span className="text-blue-700 font-medium">{currentStep.title}</span>
+                <Edit className="w-4 h-4 text-blue-500 inline ml-2" />
               </div>
             )}
           </div>
