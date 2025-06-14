@@ -754,6 +754,8 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
     const newStepId = `step_${Date.now()}`;
     let newStep: FlowStep;
 
+    console.log(`🆕 新しいステップを追加: type=${type}, id=${newStepId}`);
+
     if (type === 'condition') {
       // type: "condition"の場合はconditions配列を持つ（必須スキーマ）
       newStep = {
@@ -761,7 +763,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         title: '新しい条件分岐',
         description: '状況に応じて異なる選択肢を選んでください。',
         message: '状況に応じて異なる選択肢を選んでください。',
-        type: 'condition',
+        type: 'condition', // 明示的にconditionを設定
         imageUrl: '',
         options: [], // 空配列
         conditions: [ // 必須のconditions配列
@@ -769,14 +771,16 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
           { label: '条件B', nextId: '' }
         ]
       };
+      console.log(`✅ type: "condition"ノード作成完了:`, newStep);
     } else if (type === 'decision') {
       // type: "decision"の場合は従来通りoptions配列
       newStep = {
         id: newStepId,
         title: '新しい条件分岐',
-        description: '',
-        message: '',
-        type: 'decision',
+        description: '状況に応じて異なる選択肢を選んでください。',
+        message: '状況に応じて異なる選択肢を選んでください。',
+        type: 'decision', // 明示的にdecisionを設定
+        imageUrl: '',
         options: [
           { 
             text: 'はい', 
@@ -794,6 +798,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
           }
         ]
       };
+      console.log(`✅ type: "decision"ノード作成完了:`, newStep);
     } else {
       // 通常のステップ
       newStep = {
@@ -801,7 +806,8 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         title: '新しいステップ',
         description: '',
         message: '',
-        type,
+        type, // 指定されたtypeをそのまま使用
+        imageUrl: '',
         options: [
           { 
             text: '次へ', 
@@ -812,11 +818,27 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
           }
         ]
       };
+      console.log(`✅ 通常ステップ作成完了:`, newStep);
     }
+
+    console.log(`📊 新しいステップの詳細:`, {
+      id: newStep.id,
+      type: newStep.type,
+      title: newStep.title,
+      hasConditions: !!newStep.conditions,
+      conditionsLength: newStep.conditions?.length || 0,
+      hasOptions: !!newStep.options,
+      optionsLength: newStep.options?.length || 0
+    });
 
     setEditedFlow({
       ...editedFlow,
       steps: [...editedFlow.steps, newStep]
+    });
+
+    toast({
+      title: "ステップを追加しました",
+      description: `新しい${type === 'condition' ? '条件分岐(conditions配列)' : type === 'decision' ? '条件分岐(options配列)' : 'ステップ'}を追加しました`,
     });
   };
 

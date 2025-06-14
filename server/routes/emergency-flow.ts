@@ -119,11 +119,13 @@ router.post('/save', async (req, res) => {
       if (step.type === 'condition') {
         console.log(`🔀 条件分岐ノード（conditions配列）${step.id} サーバー保存:`, {
           stepId: step.id,
+          stepType: step.type,
           title: step.title,
           conditionsCount: step.conditions?.length || 0,
           conditionsData: step.conditions,
           stepDescription: step.description,
-          stepMessage: step.message
+          stepMessage: step.message,
+          originalType: step.type
         });
 
         // conditions配列の詳細検証と確保
@@ -246,10 +248,8 @@ router.post('/save', async (req, res) => {
           }
         }
 
-        // 条件分岐ノードの型を強制的に'decision'に設定
-        if (step.type !== 'decision') {
-          console.warn(`⚠️ ステップ ${step.id} の型を ${step.type} から decision に修正`);
-        }
+        // 元のtypeを保持（条件分岐ノードの型を変更しない）
+        console.log(`🔧 条件分岐ノード ${step.id} の型を保持: ${step.type}`);
 
         const savedDecisionStep = {
               ...step,
@@ -258,20 +258,22 @@ router.post('/save', async (req, res) => {
               description: step.description || step.message || '',
               message: step.message || step.description || '',
               imageUrl: step.imageUrl || '',
-              type: step.type, // 元のtype（"condition"または"decision"）を保持
+              type: step.type, // 元のtype（"condition"または"decision"）を確実に保持
               // 統一スキーマ：options配列（必須）
               options: unifiedOptions,
               // type: "condition"の場合、conditionsプロパティを保持
               ...(step.type === 'condition' && step.conditions 
                 ? { conditions: step.conditions }
                 : {}),
-              // 後方互換性：個別条件フィールド
-          yesCondition: yesOption?.condition || '',
-          yesNextStepId: yesOption?.nextStepId || '',
-          noCondition: noOption?.condition || '',
-          noNextStepId: noOption?.nextStepId || '',
-          otherCondition: otherOptions.map(opt => opt.condition).join(', ') || '',
-          otherNextStepId: otherOptions[0]?.nextStepId || ''
+              // 後方互換性：個別条件フィールド（options配列がある場合のみ）
+          ...(unifiedOptions.length > 0 ? {
+            yesCondition: unifiedOptions.find(opt => opt.conditionType === 'yes')?.condition || '',
+            yesNextStepId: unifiedOptions.find(opt => opt.conditionType === 'yes')?.nextStepId || '',
+            noCondition: unifiedOptions.find(opt => opt.conditionType === 'no')?.condition || '',
+            noNextStepId: unifiedOptions.find(opt => opt.conditionType === 'no')?.nextStepId || '',
+            otherCondition: unifiedOptions.filter(opt => opt.conditionType === 'other').map(opt => opt.condition).join(', ') || '',
+            otherNextStepId: unifiedOptions.find(opt => opt.conditionType === 'other')?.nextStepId || ''
+          } : {})
         };
 
         console.log(`✅ 条件分岐ノード ${step.id} 統一保存完了:`, {
