@@ -101,7 +101,33 @@ router.post('/save', async (req, res) => {
       title: flowData.title,
       description: flowData.description || existingData.description || '',
       triggerKeywords: flowData.triggerKeywords || existingData.triggerKeywords || [],
-      steps: flowData.steps || [], // 条件分岐の詳細情報を含むsteps
+      steps: (flowData.steps || []).map(step => {
+        // 条件分岐ノードの場合は特別な保存処理
+        if (step.type === 'decision') {
+          console.log(`🔀 サーバー側条件分岐ノード ${step.id} 保存:`, {
+            optionsCount: step.options?.length || 0,
+            options: step.options
+          });
+          
+          return {
+            ...step,
+            type: 'decision',
+            options: step.options || [],
+            // 条件分岐の詳細情報を確実に保存
+            decisionType: 'condition_branch',
+            branches: step.options || []
+          };
+        }
+        return step;
+      }),
+      // slides フィールドも同期（後方互換性）
+      slides: (flowData.steps || []).map(step => ({
+        ...step,
+        // 条件分岐ノードの場合はslides形式にも対応
+        ...(step.type === 'decision' && {
+          branches: step.options || []
+        })
+      })),
       nodes: flowData.nodes || [], // ReactFlowエディタ用のノード情報を保持
       edges: flowData.edges || [], // ReactFlowエディタ用のエッジ情報を保持
       updatedAt: new Date().toISOString(),
