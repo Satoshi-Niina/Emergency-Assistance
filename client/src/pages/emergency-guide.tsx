@@ -207,11 +207,10 @@ const EmergencyGuidePage: React.FC = () => {
       const data = await response.json();
       console.log(`✅ 取得したフローデータ: ${data.length}件`, data);
 
-      // 古いデータを完全に除去し、engine_stop_no_startのみ許可
-      // すべてのファイルを表示
-      const validData = data;
+      // 全てのデータを表示対象とする
+      const validData = Array.isArray(data) ? data : [];
 
-      console.log(`🎯 許可されたデータ: ${validData.length}件（全データ）`);
+      console.log(`🎯 表示対象データ: ${validData.length}件`);
 
       setFlowList(validData);
 

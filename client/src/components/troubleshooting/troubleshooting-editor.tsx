@@ -613,7 +613,7 @@ const TroubleshootingEditor: React.FC<TroubleshootingEditorProps> = ({
       console.log('✅ 完全置換保存成功:', result);
 
       // 少し待ってからサーバーから最新データを再取得
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       try {
         const verifyResponse = await fetch(`/api/troubleshooting/${normalizedSaveData.id}?_t=${Date.now()}`, {
