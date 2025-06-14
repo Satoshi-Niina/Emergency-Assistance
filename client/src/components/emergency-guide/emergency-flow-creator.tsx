@@ -48,7 +48,7 @@ const EmergencyFlowCreator: React.FC = () => {
   const [flowList, setFlowList] = useState<FlowFile[]>([]);
   const [isLoadingFlowList, setIsLoadingFlowList] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(isUploading);
+  const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState('');
@@ -112,7 +112,7 @@ const EmergencyFlowCreator: React.FC = () => {
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent('flowListUpdated', {
           detail: { 
-            flowList: allFlowData,
+            flowList: data,
             timestamp: Date.now(),
             source: 'flow-creator'
           }
@@ -129,7 +129,7 @@ const EmergencyFlowCreator: React.FC = () => {
     } finally {
       setIsLoadingFlowList(false);
     }
-  }, [toast, selectedFlowForEdit]);
+  }, [toast]);
 
   // 初期データ読み込み
   useEffect(() => {
@@ -148,7 +148,7 @@ const EmergencyFlowCreator: React.FC = () => {
     return () => {
       window.removeEventListener('forceRefreshFlowList', handleForceRefresh);
     };
-  }, []);
+  }, [fetchFlowList]);
 
   // ファイル選択
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -236,12 +236,12 @@ const EmergencyFlowCreator: React.FC = () => {
       // 🎯 フロー一覧からファイル情報を取得
       const targetFlow = flowList.find(flow => flow.id === flowId);
       if (!targetFlow) {
-        throw new Error(`フローが見つかりません: ${flowId}`);
+        throw new Error('フローが見つかりません: ' + flowId);
       }
 
       // 🎯 ファイルパスを確実に設定（troubleshootingディレクトリ限定）
-      const fileName = targetFlow.fileName.endsWith('.json') ? targetFlow.fileName : `${targetFlow.fileName}.json`;
-      const filePath = `knowledge-base/troubleshooting/${fileName}`;
+      const fileName = targetFlow.fileName.endsWith('.json') ? targetFlow.fileName : flowId + '.json';
+      const filePath = 'knowledge-base/troubleshooting/' + fileName;
       setSelectedFilePath(filePath);
       console.log('編集対象ファイルパス確実設定: ' + filePath);
 
@@ -267,8 +267,7 @@ const EmergencyFlowCreator: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`フローデータの取得に失敗しました (${response.status})`);
-      }```python
+        throw new Error('フローデータの取得に失敗しました (' + response.status + ')');
       }
 
       const data = await response.json();
@@ -358,14 +357,14 @@ const EmergencyFlowCreator: React.FC = () => {
       // troubleshootingディレクトリから物理ファイルを削除
       const targetFlow = flowList.find(flow => flow.id === flowId);
       if (targetFlow) {
-        const fileName = targetFlow.fileName || `${flowId}.json`;
+        const fileName = targetFlow.fileName || flowId + '.json';
         const response = await fetch(`/api/emergency-flow/${flowId}`, {
           method: 'DELETE',
           headers: {
             'Cache-Control': 'no-cache',
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ fileName })
+          body: JSON.stringify({ fileName: fileName })
         });
 
         if (!response.ok) {
@@ -373,7 +372,7 @@ const EmergencyFlowCreator: React.FC = () => {
         }
 
         const result = await response.json();
-        console.log(`✅ 削除レスポンス:`, result);
+        console.log('✅ 削除レスポンス:', result);
       }
 
       toast({
@@ -630,7 +629,7 @@ const EmergencyFlowCreator: React.FC = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>フローを削除しますか？</AlertDialogTitle>
             <AlertDialogDescription>
-              「{flowToDelete?.title}」を削除します。この操作は取り消せません。
+              {'「' + flowToDelete?.title + '」を削除します。この操作は取り消せません。'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
