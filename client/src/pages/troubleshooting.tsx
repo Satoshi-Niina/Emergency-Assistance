@@ -32,11 +32,11 @@ const TroubleshootingPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [troubleshootingList, setTroubleshootingList] = useState<TroubleshootingData[]>([]);
   const [filteredList, setFilteredList] = useState<TroubleshootingData[]>([]);
-  
+
   // ガイドID (URL パラメータから取得)
   const [guideId, setGuideId] = useState<string | null>(null);
   const [isFromEmergencyGuide, setIsFromEmergencyGuide] = useState(false);
-  
+
   // 編集モード関連
   const [editMode, setEditMode] = useState(false);
   const [currentId, setCurrentId] = useState<string | null>(null);
@@ -53,7 +53,7 @@ const TroubleshootingPage: React.FC = () => {
       if (!response.ok) {
         throw new Error('データの取得に失敗しました');
       }
-      
+
       const data = await response.json();
       setTroubleshootingList(data);
       setFilteredList(data);
@@ -74,16 +74,16 @@ const TroubleshootingPage: React.FC = () => {
     // URLからguideIdを取得
     const urlParams = new URLSearchParams(window.location.search);
     const guideIdParam = urlParams.get('guideId');
-    
+
     if (guideIdParam) {
       setGuideId(guideIdParam);
       setIsFromEmergencyGuide(true);
-      
+
       // ガイドIDがある場合は新規トラブルシューティング作成モードを開始
       setCurrentId(null);
       setEditMode(true);
     }
-    
+
     fetchData();
   }, []);
 
@@ -93,7 +93,7 @@ const TroubleshootingPage: React.FC = () => {
       setFilteredList(troubleshootingList);
       return;
     }
-    
+
     const term = searchTerm.toLowerCase();
     const filtered = troubleshootingList.filter(item => 
       item.id.toLowerCase().includes(term) || 
@@ -101,7 +101,7 @@ const TroubleshootingPage: React.FC = () => {
       item.description.toLowerCase().includes(term) ||
       (item.trigger && item.trigger.some(t => t.toLowerCase().includes(term)))
     );
-    
+
     setFilteredList(filtered);
   }, [searchTerm, troubleshootingList]);
 
@@ -245,7 +245,7 @@ const TroubleshootingPage: React.FC = () => {
             </div>
           </CardHeader>
         </Card>
-        
+
         <TroubleshootingFlow 
           id={previewId} 
           onExit={handlePreviewExit} 
@@ -259,14 +259,14 @@ const TroubleshootingPage: React.FC = () => {
       <Helmet>
         <title>トラブルシューティング管理 | 保守用車支援システム</title>
       </Helmet>
-      
+
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-blue-800 mb-2">トラブルシューティング管理</h1>
         <p className="text-gray-600">
           トラブルシューティングフローの作成・編集・プレビューを行います
         </p>
       </div>
-      
+
       <div className="flex items-center justify-between mb-6">
         <div className="relative w-full max-w-md">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
@@ -278,13 +278,13 @@ const TroubleshootingPage: React.FC = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        
+
         <Button onClick={handleCreate}>
           <Plus className="mr-2 h-4 w-4" />
           新規作成
         </Button>
       </div>
-      
+
       {loading ? (
         <div className="flex justify-center items-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
@@ -319,7 +319,7 @@ const TroubleshootingPage: React.FC = () => {
                   {item.description}
                 </CardDescription>
               </CardHeader>
-              
+
               <CardContent>
                 <div className="flex flex-wrap gap-2 mb-4">
                   {item.trigger && item.trigger.map((tag, idx) => (
@@ -334,7 +334,7 @@ const TroubleshootingPage: React.FC = () => {
                     <span className="text-gray-400 text-sm">トリガーなし</span>
                   )}
                 </div>
-                
+
                 <div className="flex justify-between">
                   <Button
                     variant="outline"
@@ -343,7 +343,7 @@ const TroubleshootingPage: React.FC = () => {
                   >
                     プレビュー
                   </Button>
-                  
+
                   <div className="space-x-2">
                     <Button
                       variant="outline"
@@ -368,7 +368,7 @@ const TroubleshootingPage: React.FC = () => {
           ))}
         </div>
       )}
-      
+
       {/* 削除確認ダイアログ */}
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <DialogContent>
