@@ -69,16 +69,16 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         ...flowData,
         steps: (flowData.steps || flowData.slides || [])?.map(step => {
           console.log(`🔍 ステップ ${step.id} (${step.type}) のオプション:`, step.options);
-          
+
           // 条件分岐ノードの場合、既存のoptionsを保持し、不足があれば補完
           if (step.type === 'decision') {
             const existingOptions = step.options || [];
             console.log(`📊 条件分岐 ${step.id} の既存オプション数:`, existingOptions.length);
-            
+
             // 既存のオプションデータを詳細に検証・修正
             const validatedOptions = existingOptions.length > 0 ? existingOptions.map((option, index) => {
               console.log(`🔧 オプション ${index + 1} 修正前:`, option);
-              
+
               const validatedOption = {
                 text: option.text || (option.conditionType === 'yes' ? 'はい' : option.conditionType === 'no' ? 'いいえ' : 'その他'),
                 nextStepId: option.nextStepId || '',
@@ -86,7 +86,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                 conditionType: (option.conditionType as 'yes' | 'no' | 'other') || 'other',
                 condition: option.condition || ''
               };
-              
+
               console.log(`✅ オプション ${index + 1} 修正後:`, validatedOption);
               return validatedOption;
             }) : [
@@ -105,9 +105,9 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                 condition: ''
               }
             ];
-            
+
             console.log(`🎯 条件分岐 ${step.id} の最終オプション:`, validatedOptions);
-            
+
             return {
               ...step,
               // description と message の統一
@@ -145,7 +145,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
           optionsCount: s.options?.length || 0
         }))
       });
-      
+
       setEditedFlow(processedData);
     } else {
       // 新規作成の場合
@@ -1157,7 +1157,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                                       ))}
                                       <option value="end">🏁 フロー終了</option>
                                     </select>
-                                    
+
                                     {option.nextStepId && (
                                       <div className="bg-green-100 border-l-4 border-green-500 rounded-lg p-4 shadow-sm">
                                         <div className="text-lg font-bold text-green-800 mb-2">✅ 現在選択中の遷移先</div>
@@ -1332,8 +1332,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                           )}
                         </div>
                       </div>
-                        );
-                      })
+                        ))
                     ) : (
                       /* 条件分岐で選択肢がない場合のヒント */
                       step.type === 'decision' && (
