@@ -75,11 +75,11 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
               const existingOptions = step.options || [];
               console.log(`📊 条件分岐 ${step.id} の既存オプション数:`, existingOptions.length);
 
-              // 既存のオプションデータを詳細に検証・修正（強化版）
+              // 🎯 条件分岐の選択肢を確実に設定（新規作成時と同等）
               const validatedOptions = existingOptions.length > 0 ? existingOptions.map((option, index) => {
                 console.log(`🔧 オプション ${index + 1} 修正前:`, option);
 
-                // より厳密な整形処理
+                // 新規作成時と同じレベルの整形処理を適用
                 const validatedOption = {
                   text: option.text || option.label || (option.conditionType === 'yes' ? 'はい（肯定的回答）' : option.conditionType === 'no' ? 'いいえ（否定的回答）' : 'その他の状況'),
                   nextStepId: option.nextStepId || option.targetStepId || '',
@@ -88,7 +88,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                   condition: option.condition || option.description || option.detail || ''
                 };
 
-                console.log(`✅ オプション ${index + 1} 修正後:`, validatedOption);
+                console.log(`✅ オプション ${index + 1} 修正後（新規作成時同等）:`, validatedOption);
                 return validatedOption;
               }) : [
                 { 
@@ -1091,7 +1091,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                     )}
                   </div>
 
-                  {/* 🎯 条件分岐ノード統合編集エリア - 常時表示で編集フォームとして活用 */}
+                  {/* 🎯 条件分岐ノード統合編集フォーム - 新規作成時と同等の編集UI常時表示 */}
                   {step.type === 'decision' && (
                     <div className="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 border-4 border-blue-400 rounded-xl p-8 shadow-2xl">
                       <div className="text-center mb-8">
