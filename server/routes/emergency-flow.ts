@@ -95,31 +95,74 @@ router.post('/save', async (req, res) => {
       }
     }
 
-    // 条件分岐ノードの完全保存処理
+    // 統一スキーマによる条件分岐ノードの完全保存処理
     const processedSteps = (flowData.steps || []).map(step => {
       if (step.type === 'decision') {
-        console.log(`🔀 条件分岐ノード ${step.id} 保存処理:`, {
+        console.log(`🔀 条件分岐ノード ${step.id} 統一スキーマ保存:`, {
           stepId: step.id,
           title: step.title,
           optionsCount: step.options?.length || 0,
+          hasLegacyFields: !!(step.yesCondition || step.noCondition || step.otherCondition),
           optionsData: step.options
         });
 
-        // 条件項目の完全保存
-        const processedOptions = (step.options || []).map((option, index) => {
-          const processedOption = {
+        // 統一スキーマ：options配列の処理
+        let unifiedOptions = [];
+
+        if (step.options && step.options.length > 0) {
+          // 新しいスキーマ：options配列が存在する場合
+          unifiedOptions = step.options.map((option, index) => ({
             text: option.text || `条件項目 ${index + 1}`,
             nextStepId: option.nextStepId || '',
-            condition: option.condition || '',
+            condition: option.condition || option.text || '',
             isTerminal: Boolean(option.isTerminal),
             conditionType: option.conditionType || 'other'
-          };
+          }));
+        } else {
+          // 旧スキーマからの変換：個別条件フィールドをoptions配列に変換
+          if (step.yesCondition) {
+            unifiedOptions.push({
+              text: 'はい',
+              nextStepId: step.yesNextStepId || '',
+              condition: step.yesCondition,
+              isTerminal: false,
+              conditionType: 'yes'
+            });
+          }
+          if (step.noCondition) {
+            unifiedOptions.push({
+              text: 'いいえ',
+              nextStepId: step.noNextStepId || '',
+              condition: step.noCondition,
+              isTerminal: false,
+              conditionType: 'no'
+            });
+          }
+          if (step.otherCondition) {
+            unifiedOptions.push({
+              text: 'その他',
+              nextStepId: step.otherNextStepId || '',
+              condition: step.otherCondition,
+              isTerminal: false,
+              conditionType: 'other'
+            });
+          }
+          
+          // デフォルトの条件項目を追加（何もない場合）
+          if (unifiedOptions.length === 0) {
+            unifiedOptions = [
+              { text: 'はい', nextStepId: '', condition: '', isTerminal: false, conditionType: 'yes' },
+              { text: 'いいえ', nextStepId: '', condition: '', isTerminal: false, conditionType: 'no' }
+            ];
+          }
+        }
 
-          console.log(`🔧 条件項目 ${index + 1} 保存:`, processedOption);
-          return processedOption;
-        });
+        // 後方互換性のための個別フィールド生成
+        const yesOption = unifiedOptions.find(opt => opt.conditionType === 'yes');
+        const noOption = unifiedOptions.find(opt => opt.conditionType === 'no');
+        const otherOptions = unifiedOptions.filter(opt => opt.conditionType === 'other');
 
-        return {
+        const savedDecisionStep = {
           ...step,
           id: step.id,
           title: step.title || '新しい条件分岐',
@@ -127,17 +170,44 @@ router.post('/save', async (req, res) => {
           message: step.message || step.description || '',
           imageUrl: step.imageUrl || '',
           type: 'decision',
-          options: processedOptions
+          // 統一スキーマ：options配列
+          options: unifiedOptions,
+          // 後方互換性：個別条件フィールド
+          yesCondition: yesOption?.condition || '',
+          yesNextStepId: yesOption?.nextStepId || '',
+          noCondition: noOption?.condition || '',
+          noNextStepId: noOption?.nextStepId || '',
+          otherCondition: otherOptions.map(opt => opt.condition).join(', ') || '',
+          otherNextStepId: otherOptions[0]?.nextStepId || ''
         };
+
+        console.log(`✅ 条件分岐ノード ${step.id} 統一保存完了:`, {
+          stepId: savedDecisionStep.id,
+          optionsCount: savedDecisionStep.options.length,
+          yesCondition: savedDecisionStep.yesCondition,
+          noCondition: savedDecisionStep.noCondition,
+          otherCondition: savedDecisionStep.otherCondition
+        });
+
+        return savedDecisionStep;
       } else {
-        // 通常のステップ
+        // 通常のステップ：デフォルトで"次へ"オプションを確保
+        const defaultOptions = (step.options && step.options.length > 0) ? step.options : [{
+          text: '次へ',
+          nextStepId: '',
+          condition: '',
+          isTerminal: false,
+          conditionType: 'other'
+        }];
+
         return {
           ...step,
           description: step.description || step.message || '',
           message: step.message || step.description || '',
           imageUrl: step.imageUrl || '',
-          options: (step.options || []).map(option => ({
-            text: option.text || '',
+          type: step.type || 'step',
+          options: defaultOptions.map(option => ({
+            text: option.text || '次へ',
             nextStepId: option.nextStepId || '',
             condition: option.condition || '',
             isTerminal: Boolean(option.isTerminal),
