@@ -588,7 +588,7 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
       if (response.ok) {
         const result = await response.json();
         console.log('タイトル保存成功:', result);
-        
+
         // ローカル状態を更新
         if (flowData && flowData.steps) {
           const updatedFlowData = {
@@ -598,14 +598,14 @@ export default function TroubleshootingFlow({ id, onComplete, onExit }: Troubles
             )
           };
           setFlowData(updatedFlowData);
-          
+
           // 現在のステップも更新
           setCurrentStep({ ...currentStep, title: tempTitle.trim() });
         }
-        
+
         setEditingTitle(false);
         setTempTitle('');
-        
+
         toast({
           title: '保存完了',
           description: 'タイトルが更新されました',
