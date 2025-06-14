@@ -202,7 +202,7 @@ const EmergencyGuidePage: React.FC = () => {
       const data = await response.json();
       console.log(`✅ 取得したフローデータ: ${data.length}件`, data);
 
-      // サーバーから取得した全データをそのまま使用（フィルタリングなし）
+      // 全てのデータをそのまま表示（フィルタリングなし）
       const validData = Array.isArray(data) ? data : [];
 
       console.log(`🎯 表示対象データ: ${validData.length}件`);
