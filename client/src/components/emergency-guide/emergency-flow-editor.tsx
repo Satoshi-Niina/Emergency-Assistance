@@ -942,7 +942,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
           <Plus className="w-4 h-4 mr-2" />
           ステップ追加
         </Button>
-        <Button variant="outline" onClick={() => addStep('decision')}>
+        <Button variant="outline" onClick(() => addStep('decision')}>
           <GitBranch className="w-4 h-4 mr-2" />
           条件分岐追加
         </Button>

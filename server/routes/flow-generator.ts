@@ -22,33 +22,33 @@ if (!fs.existsSync(troubleshootingDir)) {
 router.post('/generate-from-keywords', async (req, res) => {
   try {
     const { keywords } = req.body;
-    
+
     if (!keywords || typeof keywords !== 'string' || !keywords.trim()) {
       return res.status(400).json({
         success: false,
         error: 'キーワードが指定されていません'
       });
     }
-    
+
     console.log(`キーワード "${keywords}" からフローを生成します`);
-    
+
     // ナレッジベースから関連情報を検索
     console.log('ナレッジベースから関連情報を検索中...');
     const relevantChunks = await searchKnowledgeBase(keywords);
     console.log(`関連チャンク数: ${relevantChunks.length}`);
-    
+
     // 関連情報をプロンプトに追加するための文字列を構築
     let relatedKnowledgeText = '';
     if (relevantChunks.length > 0) {
       relatedKnowledgeText = '\n\n【関連する知識ベース情報】:\n';
       // 最大5チャンクまで追加(多すぎるとトークン数制限に達する可能性がある)
       const chunksToInclude = relevantChunks.slice(0, 5);
-      
+
       for (const chunk of chunksToInclude) {
         relatedKnowledgeText += `---\n出典: ${chunk.metadata.source || '不明'}\n\n${chunk.text}\n---\n\n`;
       }
     }
-    
+
     // GPTに渡す強化されたプロンプト
     const prompt = `以下のキーワードに関連する応急処置フローを生成してください。
 必ず完全なJSONオブジェクトのみを返してください。追加の説明やテキストは一切含めないでください。
@@ -70,12 +70,10 @@ router.post('/generate-from-keywords', async (req, res) => {
       "description": "この応急処置ガイドでは、[主な症状や問題]に対処する手順を説明します。安全を確保しながら、原因を特定し解決するための手順に従ってください。",
       "imageUrl": "",
       "type": "start",
-      "options": [
+      "conditions": [
         {
-          "text": "状況を確認する",
-          "nextStepId": "step1",
-          "isTerminal": false,
-          "conditionType": "other"
+          "label": "状況を確認する",
+          "nextId": "step1"
         }
       ]
     },
@@ -85,12 +83,10 @@ router.post('/generate-from-keywords', async (req, res) => {
       "description": "1. 二次災害を防ぐため、車両が安全な場所に停止していることを確認します。\n2. 接近する列車や障害物がないか周囲を確認します。\n3. 必要に応じて停止表示器や防護無線を使用します。",
       "imageUrl": "",
       "type": "step",
-      "options": [
+      "conditions": [
         {
-          "text": "安全確認完了",
-          "nextStepId": "decision1",
-          "isTerminal": false,
-          "conditionType": "other"
+          "label": "安全確認完了",
+          "nextId": "decision1"
         }
       ]
     },
@@ -99,19 +95,15 @@ router.post('/generate-from-keywords', async (req, res) => {
       "title": "エンジン状態の確認",
       "description": "エンジンは完全に停止していますか、それとも不安定な動作をしていますか？",
       "imageUrl": "",
-      "type": "decision",
-      "options": [
+      "type": "condition",
+      "conditions": [
         {
-          "text": "完全に停止している",
-          "nextStepId": "step2a",
-          "isTerminal": false,
-          "conditionType": "yes"
+          "label": "完全に停止している",
+          "nextId": "step2a"
         },
         {
-          "text": "不安定に動作している",
-          "nextStepId": "step2b",
-          "isTerminal": false,
-          "conditionType": "no"
+          "label": "不安定に動作している",
+          "nextId": "step2b"
         }
       ]
     },
@@ -121,30 +113,22 @@ router.post('/generate-from-keywords', async (req, res) => {
       "description": "1. 燃料計を確認し、燃料切れの可能性を確認します。\n2. エンジン冷却水の温度計を確認し、オーバーヒートの兆候がないか確認します。\n3. バッテリー電圧計を確認し、電気系統の問題がないか確認します。",
       "imageUrl": "",
       "type": "step",
-      "options": [
+      "conditions": [
         {
-          "text": "燃料が少ない/空",
-          "nextStepId": "step3a",
-          "isTerminal": false,
-          "conditionType": "other"
+          "label": "燃料が少ない/空",
+          "nextId": "step3a"
         },
         {
-          "text": "オーバーヒートの兆候あり",
-          "nextStepId": "step3b",
-          "isTerminal": false,
-          "conditionType": "other"
+          "label": "オーバーヒートの兆候あり",
+          "nextId": "step3b"
         },
         {
-          "text": "バッテリー電圧が低い",
-          "nextStepId": "step3c",
-          "isTerminal": false,
-          "conditionType": "other"
+          "label": "バッテリー電圧が低い",
+          "nextId": "step3c"
         },
         {
-          "text": "上記以外の原因",
-          "nextStepId": "step3d",
-          "isTerminal": false,
-          "conditionType": "other"
+          "label": "上記以外の原因",
+          "nextId": "step3d"
         }
       ]
     },
@@ -154,24 +138,18 @@ router.post('/generate-from-keywords', async (req, res) => {
       "description": "1. エンジン回転数の変動を観察します。\n2. 異音や振動がないか確認します。\n3. 警告灯やエラーコードを確認します。",
       "imageUrl": "",
       "type": "step",
-      "options": [
+      "conditions": [
         {
-          "text": "燃料系統の問題の疑い",
-          "nextStepId": "step3e",
-          "isTerminal": false,
-          "conditionType": "other"
+          "label": "燃料系統の問題の疑い",
+          "nextId": "step3e"
         },
         {
-          "text": "電気系統の問題の疑い",
-          "nextStepId": "step3f",
-          "isTerminal": false,
-          "conditionType": "other"
+          "label": "電気系統の問題の疑い",
+          "nextId": "step3f"
         },
         {
-          "text": "冷却系統の問題の疑い",
-          "nextStepId": "step3g",
-          "isTerminal": false,
-          "conditionType": "other"
+          "label": "冷却系統の問題の疑い",
+          "nextId": "step3g"
         }
       ]
     },
@@ -181,12 +159,10 @@ router.post('/generate-from-keywords', async (req, res) => {
       "description": "1. 可能であれば予備燃料を補給します。\n2. 燃料フィルターの詰まりを点検します。\n3. 補給後もエンジンが始動しない場合は、燃料ポンプまたは噴射系統の問題の可能性があります。",
       "imageUrl": "",
       "type": "step",
-      "options": [
+      "conditions": [
         {
-          "text": "燃料補給後に再試行",
-          "nextStepId": "decision2",
-          "isTerminal": false,
-          "conditionType": "other"
+          "label": "燃料補給後に再試行",
+          "nextId": "decision2"
         }
       ]
     },
@@ -195,19 +171,15 @@ router.post('/generate-from-keywords', async (req, res) => {
       "title": "エンジン再始動確認",
       "description": "対処後、エンジンは正常に始動しましたか？",
       "imageUrl": "",
-      "type": "decision",
-      "options": [
+      "type": "condition",
+      "conditions": [
         {
-          "text": "はい、正常に始動した",
-          "nextStepId": "step_success",
-          "isTerminal": false,
-          "conditionType": "yes"
+          "label": "はい、正常に始動した",
+          "nextId": "step_success"
         },
         {
-          "text": "いいえ、始動しない",
-          "nextStepId": "step_failure",
-          "isTerminal": false,
-          "conditionType": "no"
+          "label": "いいえ、始動しない",
+          "nextId": "step_failure"
         }
       ]
     },
@@ -217,12 +189,10 @@ router.post('/generate-from-keywords', async (req, res) => {
       "description": "1. エンジンを数分間アイドリング状態で運転し、安定性を確認します。\n2. 各計器の値が正常範囲内にあることを確認します。\n3. 異常な音、振動、臭いがないか確認します。\n4. 全て正常であれば、運転を再開します。\n5. しばらくの間、エンジンの状態に注意を払いながら走行してください。",
       "imageUrl": "",
       "type": "step",
-      "options": [
+      "conditions": [
         {
-          "text": "完了",
-          "nextStepId": "end",
-          "isTerminal": true,
-          "conditionType": "other"
+          "label": "完了",
+          "nextId": "end"
         }
       ]
     },
@@ -232,12 +202,10 @@ router.post('/generate-from-keywords', async (req, res) => {
       "description": "1. 指令所または保守担当に連絡し、現在の状況と位置を報告します。\n2. これまでに実施した確認事項と対処内容を伝えます。\n3. 軌道モータカーの牽引または修理のための支援を要請します。\n4. 安全な場所で支援の到着を待ちます。",
       "imageUrl": "",
       "type": "step",
-      "options": [
+      "conditions": [
         {
-          "text": "完了",
-          "nextStepId": "end",
-          "isTerminal": true,
-          "conditionType": "other"
+          "label": "完了",
+          "nextId": "end"
         }
       ]
     }
@@ -258,18 +226,18 @@ ${relatedKnowledgeText}
 8. title（タイトル）フィールドには短く明確な見出しを、description（説明）フィールドには詳細な指示や状況説明を入れてください。
 9. 軌道モータカー特有の機器やシステム（例：制御装置、ブレーキシステム、パンタグラフ等）に関する具体的な言及を含めてください。
 10. 最終ステップでは必ず具体的な対応結果や次のステップを明示し、利用者が次にとるべき行動を明確にしてください。`;
-    
+
     // OpenAIでフローを生成
     console.log('OpenAIにフロー生成をリクエスト中...');
     const generatedFlow = await processOpenAIRequest(prompt);
-    
+
     try {
       // 共通のJSON処理ヘルパーを使用してレスポンスをクリーニング
       const cleanedResponse = cleanJsonResponse(generatedFlow);
-      
+
       // JSONとして解析
       const flowData = JSON.parse(cleanedResponse);
-      
+
       // IDが設定されていない場合はキーワードから生成
       if (!flowData.id) {
         // キーワードからIDを生成(小文字化してスペースをアンダースコアに置換)
@@ -277,45 +245,45 @@ ${relatedKnowledgeText}
           .replace(/[^a-z0-9_]/g, '_')
           .replace(/_+/g, '_')
           .substring(0, 50); // 長すぎる場合は切り詰め
-        
+
         flowData.id = `flow_${generatedId}_${Date.now()}`;
       }
-      
+
       // フローのファイルパス
       const flowFilePath = path.join(troubleshootingDir, `${flowData.id}.json`);
-      
+
       // 既存のファイル名と競合しないように確認
       let finalId = flowData.id;
       let counter = 1;
-      
+
       while (fs.existsSync(path.join(troubleshootingDir, `${finalId}.json`))) {
         finalId = `${flowData.id}_${counter}`;
         counter++;
       }
-      
+
       flowData.id = finalId;
-      
+
       // フローをファイルに保存
       fs.writeFileSync(
         path.join(troubleshootingDir, `${flowData.id}.json`),
         JSON.stringify(flowData, null, 2)
       );
-      
+
       // 生成日時を記録
       flowData.createdAt = new Date().toISOString();
-      
+
       // 成功レスポンス
       res.json({
         success: true,
         message: `フローが正常に生成されました: ${flowData.title}`,
         flowData
       });
-      
+
     } catch (parseError: unknown) {
       const error = parseError as Error;
       console.error('生成されたフローの解析エラー:', error);
       console.error('生成されたテキスト:', generatedFlow);
-      
+
       // JSON解析エラーの詳細を確認
       const errorPosition = error.message?.match(/position\s+(\d+)/i);
       if (errorPosition && errorPosition[1]) {
@@ -324,7 +292,7 @@ ${relatedKnowledgeText}
         const contextEnd = Math.min(generatedFlow.length, position + 20);
         console.error(`エラー位置: ${position}`);
         console.error(`問題箇所の周辺: "${generatedFlow.substring(contextStart, position)}<<<ERROR HERE>>>${generatedFlow.substring(position, contextEnd)}"`);
-        
+
         // 末尾のJSONを切り取る試み
         if (position > generatedFlow.length * 0.9) {
           const lastBraceIndex = generatedFlow.lastIndexOf('}');
@@ -333,43 +301,43 @@ ${relatedKnowledgeText}
             console.log('末尾を切り詰めたJSONを試行...');
             try {
               const truncatedData = JSON.parse(truncated);
-              
+
               // 成功した場合は切り詰めたデータを使用
               console.log('切り詰めたJSONの解析に成功しました');
-              
+
               // 以下、IDの生成などの処理を続行...
               // この部分は上記のコードと同様
-              
+
               const generatedId = keywords.toLowerCase()
                 .replace(/[^a-z0-9_]/g, '_')
                 .replace(/_+/g, '_')
                 .substring(0, 50);
-              
+
               truncatedData.id = `flow_${generatedId}_${Date.now()}`;
-              
+
               // フローのファイルパス
               const flowFilePath = path.join(troubleshootingDir, `${truncatedData.id}.json`);
-              
+
               // 既存のファイル名と競合しないように確認
               let finalId = truncatedData.id;
               let counter = 1;
-              
+
               while (fs.existsSync(path.join(troubleshootingDir, `${finalId}.json`))) {
                 finalId = `${truncatedData.id}_${counter}`;
                 counter++;
               }
-              
+
               truncatedData.id = finalId;
-              
+
               // フローをファイルに保存
               fs.writeFileSync(
                 path.join(troubleshootingDir, `${truncatedData.id}.json`),
                 JSON.stringify(truncatedData, null, 2)
               );
-              
+
               // 生成日時を記録
               truncatedData.createdAt = new Date().toISOString();
-              
+
               // 成功レスポンス
               return res.json({
                 success: true,
@@ -382,7 +350,7 @@ ${relatedKnowledgeText}
           }
         }
       }
-      
+
       res.status(500).json({
         success: false,
         error: 'フローデータの解析に失敗しました',
@@ -404,12 +372,12 @@ router.get('/list', (req, res) => {
     // トラブルシューティングディレクトリからJSONファイルを取得
     const files = fs.readdirSync(troubleshootingDir)
       .filter(file => file.endsWith('.json'));
-    
+
     const flowList = files.map(file => {
       try {
         const fileContent = fs.readFileSync(path.join(troubleshootingDir, file), 'utf-8');
         const flowData = JSON.parse(fileContent);
-        
+
         return {
           id: flowData.id || file.replace('.json', ''),
           title: flowData.title || 'タイトルなし',
@@ -422,7 +390,7 @@ router.get('/list', (req, res) => {
         return null;
       }
     }).filter(Boolean);
-    
+
     res.json({
       success: true,
       flowList
@@ -441,17 +409,17 @@ router.get('/detail/:id', (req, res) => {
   try {
     const flowId = req.params.id;
     const filePath = path.join(troubleshootingDir, `${flowId}.json`);
-    
+
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({
         success: false,
         error: '指定されたフローが見つかりません'
       });
     }
-    
+
     const fileContent = fs.readFileSync(filePath, 'utf-8');
     const flowData = JSON.parse(fileContent);
-    
+
     res.json({
       success: true,
       flowData
@@ -470,16 +438,16 @@ router.delete('/:id', (req, res) => {
   try {
     const flowId = req.params.id;
     const filePath = path.join(troubleshootingDir, `${flowId}.json`);
-    
+
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({
         success: false,
         error: '指定されたフローが見つかりません'
       });
     }
-    
+
     fs.unlinkSync(filePath);
-    
+
     res.json({
       success: true,
       message: 'フローが正常に削除されました'
