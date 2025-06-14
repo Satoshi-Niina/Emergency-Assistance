@@ -1,9 +1,31 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import TroubleshootingCharacterEditor from '@/components/troubleshooting/troubleshooting-character-editor';
+import TroubleshootingFileList from '@/components/troubleshooting/troubleshooting-file-list';
+import TroubleshootingTextEditor from '@/components/troubleshooting/troubleshooting-text-editor';
 
 export default function TroubleshootingPage() {
-  const [activeTab, setActiveTab] = useState('editor');
+  const [activeTab, setActiveTab] = useState('file-list');
+  const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
+
+  const handleEdit = (flowId: string) => {
+    setSelectedFlowId(flowId);
+    setActiveTab('edit');
+  };
+
+  const handleNew = () => {
+    setSelectedFlowId(null);
+    setActiveTab('edit');
+  };
+
+  const handleCancel = () => {
+    setSelectedFlowId(null);
+    setActiveTab('file-list');
+  };
+
+  const handleSaved = () => {
+    setSelectedFlowId(null);
+    setActiveTab('file-list');
+  };
 
   return (
     <div className="container mx-auto p-6">
@@ -13,12 +35,26 @@ export default function TroubleshootingPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="editor">フロー編集</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="file-list">ファイル一覧</TabsTrigger>
+          <TabsTrigger value="edit" disabled={!selectedFlowId}>編集</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="editor">
-          <TroubleshootingCharacterEditor />
+        <TabsContent value="file-list">
+          <TroubleshootingFileList
+            onEdit={handleEdit}
+            onNew={handleNew}
+          />
+        </TabsContent>
+
+        <TabsContent value="edit">
+          {selectedFlowId && (
+            <TroubleshootingTextEditor
+              flowId={selectedFlowId}
+              onSave={handleSaved}
+              onCancel={handleCancel}
+            />
+          )}
         </TabsContent>
       </Tabs>
     </div>
