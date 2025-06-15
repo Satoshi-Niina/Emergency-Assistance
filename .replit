@@ -32,6 +32,15 @@ mode = "sequential"
 task = "shell.exec"
 args = "npm run build:client"
 
+[[workflows.workflow]]
+name = "Backend Only"
+author = 39467490
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "tsx server/index.ts"
+
 [[ports]]
 localPort = 3000
 externalPort = 3000
