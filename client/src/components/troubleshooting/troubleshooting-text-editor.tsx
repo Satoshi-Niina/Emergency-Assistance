@@ -468,25 +468,15 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
                         {index === currentEditingStep && (
                           <CardContent className="space-y-4">
                             <div className="grid gap-2">
-                              <Label htmlFor={`step-title-${index}`} className="flex items-center gap-2">
+                              <Label htmlFor={`step-title-${index}`}>
                                 スライドタイトル
-                                <span className="text-xs text-gray-500">※自動保存</span>
                               </Label>
-                              <div className="relative">
-                                <Input
-                                  id={`step-title-${index}`}
-                                  value={step.title || ''}
-                                  onChange={(e) => handleStepTitleChange(index, e.target.value)}
-                                  placeholder="スライドのタイトルを入力"
-                                  className="pr-8"
-                                />
-                                <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                                  <Edit2 className="h-4 w-4 text-gray-400" />
-                                </div>
-                              </div>
-                              <p className="text-xs text-gray-500">
-                                タイトルを変更すると自動的に保存されます
-                              </p>
+                              <Input
+                                id={`step-title-${index}`}
+                                value={step.title || ''}
+                                onChange={(e) => handleStepTitleChange(index, e.target.value)}
+                                placeholder="スライドのタイトルを入力"
+                              />
                             </div>
                             
                             <div className="grid gap-2">
