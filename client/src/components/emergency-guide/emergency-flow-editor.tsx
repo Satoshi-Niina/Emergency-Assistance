@@ -375,6 +375,20 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         throw new Error('少なくとも1つのステップが必要です');
       }
 
+    // 🔍 保存前のデータ検証
+    console.log('🔍 保存前データ検証:', {
+      totalSteps: editedFlow.steps.length,
+      conditionalSteps: editedFlow.steps.filter(s => s.type === 'decision' || s.type === 'condition').length,
+      conditionalStepsDetail: editedFlow.steps
+        .filter(s => s.type === 'decision' || s.type === 'condition')
+        .map(s => ({
+          id: s.id,
+          type: s.type,
+          optionsCount: s.options?.length || 0,
+          optionsPreview: s.options?.map(opt => ({ text: opt.text, nextStepId: opt.nextStepId })) || []
+        }))
+    });
+
       // 差分マージ処理を実装
     const mergeSteps = (editedSteps: FlowStep[], originalSteps: FlowStep[]) => {
       return editedSteps.map(editedStep => {
@@ -440,7 +454,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
       hasOriginalData: !!originalFlow
     });
 
-    // 統一スキーマによる保存データを準備
+    // 保存データを準備
     const saveData = {
       ...editedFlow,
       steps: stepsToProcess.map(step => {
@@ -492,8 +506,21 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
             return savedStep;
           }
 
-          // 🔀 条件分岐ノード（type: "decision"）の保存処理
-          if (step.type === 'decision') {
+      // 🔀 条件分岐ノード（type: "decision"）の保存処理
+      if (step.type === 'decision') {
+        console.log(`🔀 条件分岐ノード ${step.id} 統一スキーマ保存:`, {
+          stepId: step.id,
+          stepType: step.type,
+          title: step.title,
+          optionsCount: step.options?.length || 0,
+          optionsDetail: step.options
+        });
+
+        // 条件分岐ノードのoptions配列が空でないことを確認
+        if (!step.options || step.options.length === 0) {
+          console.warn(`⚠️ 条件分岐ノード ${step.id} のoptions配列が空です - デフォルト値を設定`);
+        }
+
             console.log(`🔀 条件分岐ノード ${step.id} 統一スキーマ保存:`, {
               stepId: step.id,
               stepType: step.type,
@@ -501,6 +528,11 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
               optionsCount: step.options?.length || 0,
               optionsDetail: step.options
             });
+
+            // 条件分岐ノードのoptions配列が空でないことを確認
+            if (!step.options || step.options.length === 0) {
+              console.warn(`⚠️ 条件分岐ノード ${step.id} のoptions配列が空です - デフォルト値を設定`);
+            }
 
             // 条件項目の完全保存（統一スキーマ）- より厳密な検証
             const processedOptions = (step.options || []).map((option, index) => {
@@ -848,7 +880,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         description: '状況に応じて異なる選択肢を選んでください。',
         message: '状況に応じて異なる選択肢を選んでください。',
         type: 'condition', // 明示的にconditionを設定
-        imageUrl: '',
+imageUrl: '',
         options: [], // 空配列
         conditions: [ // 必須のconditions配列
           { label: '条件A', nextId: '' },
