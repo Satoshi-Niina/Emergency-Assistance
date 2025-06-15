@@ -199,8 +199,9 @@ const StepEditor: React.FC<StepEditorProps> = ({
             </div>
           </div>
 
-          {/* 条件分岐編集（options配列）*/}
-          {step.type === 'decision' && (
+          {/* 条件分岐編集（options配列）- デバッグ情報追加 */}
+          {console.log(`🔍 条件分岐UI表示チェック: stepId=${step.id}, type=${step.type}, hasOptions=${!!step.options}, optionsLength=${step.options?.length || 0}`)}
+          {(step.type === 'decision' || (step.type === 'step' && step.options && step.options.length > 1)) && (
             <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="font-medium text-yellow-800">条件分岐設定（options配列）</h4>
@@ -306,7 +307,8 @@ const StepEditor: React.FC<StepEditorProps> = ({
           )}
 
           {/* 条件分岐編集（conditions配列）- type: "condition"用 */}
-          {step.type === 'condition' && (
+          {console.log(`🔍 条件分岐(conditions)UI表示チェック: stepId=${step.id}, type=${step.type}, hasConditions=${!!step.conditions}, conditionsLength=${step.conditions?.length || 0}`)}
+          {(step.type === 'condition' || (step.conditions && step.conditions.length > 0)) && (
             <div className="bg-green-50 border-2 border-green-400 rounded-lg p-4 space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="font-medium text-green-800">条件分岐設定（conditions配列）</h4>
