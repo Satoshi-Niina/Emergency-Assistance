@@ -84,41 +84,58 @@ const initializeServer = async () => {
       throw err;
     });
 
-    const PORT = process.env.PORT || 8000;
+    const PORT = process.env.PORT || 5000;
 
     // ✅ Replitのヘルスチェック用エンドポイント（最初に設定）
     app.get('/api/health', (req, res) => {
       res.status(200).json({ 
         status: 'ok', 
-        message: 'Server is running',
+        message: 'Backend Server is running',
         timestamp: new Date().toISOString(),
         port: PORT,
         env: process.env.NODE_ENV || 'development'
       });
     });
 
-    app.get('/', (req, res) => {
+    app.get('/api/status', (req, res) => {
       res.status(200).json({ 
-        status: 'ok', 
+        status: 'Backend API Ready', 
         timestamp: new Date().toISOString(),
         port: PORT,
         env: process.env.NODE_ENV || 'development'
       });
     });
 
-    console.log('[INFO] Starting server...');
+    console.log('[INFO] ===== BACKEND SERVER STARTING =====');
     console.log(`[INFO] Node.js version: ${process.version}`);
     console.log(`[INFO] Working directory: ${process.cwd()}`);
+    console.log(`[INFO] Target PORT: ${PORT}`);
     
     const server = app.listen(PORT, '0.0.0.0', () => {
-      console.log(`✅ サーバーが起動しました: http://0.0.0.0:${PORT}`);
+      console.log(`🚀 ===== BACKEND SERVER STARTED =====`);
+      console.log(`✅ バックエンドサーバーが起動しました: http://0.0.0.0:${PORT}`);
       console.log(`🌐 Local access: http://localhost:${PORT}`);
       console.log(`🔗 External access: https://${process.env.REPL_SLUG || 'unknown'}-${process.env.REPL_OWNER || 'unknown'}.repl.co`);
+      console.log(`📡 API endpoints: /api/health, /api/status`);
+      console.log(`🚀 ===== BACKEND SERVER READY =====`);
     });
 
-    server.on('error', (err) => {
-      console.error('❌ サーバー起動エラー:', err);
+    server.on('error', (err: any) => {
+      console.error('❌ バックエンドサーバー起動エラー:', err);
+      if (err.code === 'EADDRINUSE') {
+        console.error(`🔥 ポート ${PORT} は既に使用されています`);
+        console.error('💡 別のプロセスがポートを使用している可能性があります');
+      }
       process.exit(1);
+    });
+
+    // プロセス終了時のクリーンアップ
+    process.on('SIGTERM', () => {
+      console.log('🛑 SIGTERM received, shutting down gracefully');
+      server.close(() => {
+        console.log('✅ Server closed');
+        process.exit(0);
+      });
     });
 
     // 知識ベースを遅延初期化（サーバー起動後に実行）
