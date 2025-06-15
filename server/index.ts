@@ -61,8 +61,13 @@ const initializeServer = async () => {
     const clientDistPath = path.join(process.cwd(), 'client', 'dist');
     app.use(express.static(clientDistPath));
 
-    // SPAのためのフォールバック
+    // SPAのためのフォールバック（APIルート以外）
     app.get('*', (req, res) => {
+      // APIルートは除外
+      if (req.path.startsWith('/api/') || req.path.startsWith('/knowledge-base/')) {
+        return res.status(404).json({ message: 'API endpoint not found' });
+      }
+      
       const indexPath = path.join(clientDistPath, 'index.html');
       if (fs.existsSync(indexPath)) {
         res.sendFile(indexPath);
