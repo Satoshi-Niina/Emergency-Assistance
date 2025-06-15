@@ -1378,6 +1378,19 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                   </div>
 
                   <div>
+                    <Label className="text-gray-700 font-medium">スライドタイトル</Label>
+                    <Input
+                      value={step.title}
+                      onChange={(e) => updateStep(step.id, { title: e.target.value })}
+                      placeholder="スライドのタイトルを入力してください"
+                      className="border-gray-300 focus:border-blue-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      スライドの見出しとして表示されます
+                    </p>
+                  </div>
+
+                  <div>
                     <Label className="text-gray-700 font-medium">詳細説明</Label>
                     <Textarea
                       value={step.description}
