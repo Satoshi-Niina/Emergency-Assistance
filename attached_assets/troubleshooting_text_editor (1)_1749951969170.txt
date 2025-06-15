@@ -1,0 +1,154 @@
+import React, { useState, useEffect } from 'react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+
+interface StepOption {
+  text: string;
+  condition: string;
+  nextStepId: string;
+}
+
+interface Step {
+  id: string;
+  type: 'step' | 'decision';
+  title: string;
+  description?: string;
+  message: string;
+  imageUrl?: string;
+  options: StepOption[];
+}
+
+interface FlowData {
+  id: string;
+  title: string;
+  steps: Step[];
+}
+
+interface Props {
+  flowData: FlowData;
+  onUpdate: (updatedFlow: FlowData) => void;
+}
+
+const TroubleshootingTextEditor: React.FC<Props> = ({ flowData, onUpdate }) => {
+  const [localFlow, setLocalFlow] = useState<FlowData>(flowData);
+
+  useEffect(() => {
+    setLocalFlow(flowData);
+  }, [flowData]);
+
+  const handleStepFieldChange = async (
+    stepId: string,
+    field: 'title' | 'description',
+    value: string
+  ) => {
+    const updatedSteps = localFlow.steps.map((step) =>
+      step.id === stepId ? { ...step, [field]: value } : step
+    );
+    const updatedFlow = { ...localFlow, steps: updatedSteps };
+    setLocalFlow(updatedFlow);
+    onUpdate(updatedFlow);
+
+    await fetch(`/api/troubleshooting/save/${flowData.id}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Complete-Replace': 'false'
+      },
+      body: JSON.stringify({
+        action: 'updateStepField',
+        stepId,
+        field,
+        value
+      })
+    });
+  };
+
+  const handleOptionChange = async (
+    stepId: string,
+    optionIndex: number,
+    field: 'text' | 'condition',
+    value: string
+  ) => {
+    const updatedSteps = localFlow.steps.map((step) => {
+      if (step.id !== stepId || step.type !== 'decision') return step;
+      const updatedOptions = [...step.options];
+      updatedOptions[optionIndex] = {
+        ...updatedOptions[optionIndex],
+        [field]: value
+      };
+      return { ...step, options: updatedOptions };
+    });
+
+    const updatedFlow = { ...localFlow, steps: updatedSteps };
+    setLocalFlow(updatedFlow);
+    onUpdate(updatedFlow);
+
+    await fetch(`/api/troubleshooting/save/${flowData.id}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Complete-Replace': 'false'
+      },
+      body: JSON.stringify({
+        action: 'updateStepOption',
+        stepId,
+        options: updatedFlow.steps.find((s) => s.id === stepId)?.options || []
+      })
+    });
+  };
+
+  return (
+    <div className="p-4 space-y-6">
+      {localFlow.steps.map((step) => (
+        <div key={step.id} className="border p-4 rounded shadow">
+          <div className="mb-2">
+            <label className="block text-sm font-bold">タイトル:</label>
+            <Input
+              value={step.title}
+              onChange={(e) => handleStepFieldChange(step.id, 'title', e.target.value)}
+              placeholder="スライドタイトルを入力"
+            />
+          </div>
+
+          <div className="mb-2">
+            <label className="block text-sm font-bold">説明（description）:</label>
+            <Input
+              value={step.description || ''}
+              onChange={(e) => handleStepFieldChange(step.id, 'description', e.target.value)}
+              placeholder="条件要約や補足説明を入力"
+            />
+          </div>
+
+          {step.type === 'decision' && (
+            <div>
+              <label className="block text-sm font-bold mb-1">条件分岐の選択肢:</label>
+              {step.options.length === 0 && (
+                <div className="mb-2 text-sm text-gray-500">条件が設定されていません。</div>
+              )}
+              {step.options.map((option, index) => (
+                <div key={index} className="mb-2 space-y-1">
+                  <Input
+                    placeholder="選択肢テキスト"
+                    value={option.text}
+                    onChange={(e) =>
+                      handleOptionChange(step.id, index, 'text', e.target.value)
+                    }
+                  />
+                  <Input
+                    placeholder="条件"
+                    value={option.condition}
+                    onChange={(e) =>
+                      handleOptionChange(step.id, index, 'condition', e.target.value)
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export default TroubleshootingTextEditor;
