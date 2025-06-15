@@ -93,13 +93,58 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
   }, [flowId]);
 
   // スライド編集関数
-  const handleStepTitleChange = (stepIndex: number, newTitle: string) => {
+  const handleStepTitleChange = async (stepIndex: number, newTitle: string) => {
     const updatedFlowData = { ...flowData };
     if (updatedFlowData.steps && updatedFlowData.steps[stepIndex]) {
-      updatedFlowData.steps[stepIndex].title = newTitle;
+      const step = updatedFlowData.steps[stepIndex];
+      const oldTitle = step.title;
+      
+      // タイトルを更新
+      step.title = newTitle;
+      updatedFlowData.updatedAt = new Date().toISOString();
+      
       setFlowData(updatedFlowData);
       // JSONテキストも同期更新
       setEditedContent(JSON.stringify(updatedFlowData, null, 2));
+
+      // タイトル変更の差分保存（個別保存）
+      try {
+        const response = await fetch(`/api/troubleshooting/save/${flowData.id}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Complete-Replace': 'false' // 差分保存モード
+          },
+          body: JSON.stringify({
+            action: 'updateStepTitle',
+            stepId: step.id,
+            title: newTitle
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('タイトル保存に失敗しました');
+        }
+
+        console.log(`✅ ステップタイトル保存完了: ${step.id} = "${newTitle}"`);
+        
+        toast({
+          title: "タイトル更新",
+          description: `"${oldTitle}" → "${newTitle}"`,
+        });
+      } catch (error) {
+        console.error('タイトル保存エラー:', error);
+        // エラー時は元に戻す
+        step.title = oldTitle;
+        setFlowData({ ...updatedFlowData });
+        setEditedContent(JSON.stringify(updatedFlowData, null, 2));
+        
+        toast({
+          title: "エラー",
+          description: "タイトルの保存に失敗しました",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -297,7 +342,7 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
                   ビジュアル編集モード
                 </h3>
                 <p className="text-sm text-green-700">
-                  スライドのタイトルや内容を直接編集できます。各スライドの詳細を個別に編集可能です。
+                  スライドのタイトルや内容を直接編集できます。タイトル変更は自動保存され、他の要素には影響しません。
                 </p>
               </div>
 
@@ -378,13 +423,25 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
                         {index === currentEditingStep && (
                           <CardContent className="space-y-4">
                             <div className="grid gap-2">
-                              <Label htmlFor={`step-title-${index}`}>スライドタイトル</Label>
-                              <Input
-                                id={`step-title-${index}`}
-                                value={step.title || ''}
-                                onChange={(e) => handleStepTitleChange(index, e.target.value)}
-                                placeholder="スライドのタイトルを入力"
-                              />
+                              <Label htmlFor={`step-title-${index}`} className="flex items-center gap-2">
+                                スライドタイトル
+                                <span className="text-xs text-gray-500">※自動保存</span>
+                              </Label>
+                              <div className="relative">
+                                <Input
+                                  id={`step-title-${index}`}
+                                  value={step.title || ''}
+                                  onChange={(e) => handleStepTitleChange(index, e.target.value)}
+                                  placeholder="スライドのタイトルを入力"
+                                  className="pr-8"
+                                />
+                                <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                                  <Edit2 className="h-4 w-4 text-gray-400" />
+                                </div>
+                              </div>
+                              <p className="text-xs text-gray-500">
+                                タイトルを変更すると自動的に保存されます
+                              </p>
                             </div>
                             
                             <div className="grid gap-2">
