@@ -85,36 +85,69 @@ const StepEditor: React.FC<StepEditorProps> = ({
 
       <CardContent>
         <div className="space-y-6">
-          {/* タイトル編集セクション */}
-          <div className="bg-gradient-to-r from-blue-100 to-indigo-100 border-4 border-blue-400 rounded-xl p-6 mb-6 shadow-lg">
+          {/* タイトル編集セクション - 強化版 */}
+          <div className="bg-gradient-to-r from-red-100 to-pink-100 border-4 border-red-500 rounded-xl p-6 mb-6 shadow-lg">
             <div className="flex items-center gap-3 mb-4">
-              <Edit className="w-6 h-6 text-blue-600" />
-              <h3 className="text-xl font-bold text-blue-800">📝 スライドタイトル編集</h3>
+              <Edit className="w-6 h-6 text-red-600" />
+              <h3 className="text-xl font-bold text-red-800">🔥 スライドタイトル編集（強化版）</h3>
             </div>
             
-            <div className="space-y-3">
-              <Label className="text-blue-800 font-bold text-lg block">
-                スライド #{index + 1} のタイトル
+            <div className="space-y-4">
+              <Label className="text-red-800 font-bold text-lg block">
+                スライド #{index + 1} のタイトル（ID: {step.id}）
               </Label>
+              
+              {/* デバッグ情報表示 */}
+              <div className="bg-yellow-50 border border-yellow-300 rounded p-3 text-sm">
+                <strong>デバッグ情報:</strong>
+                <br />現在のタイトル: "{step.title}"
+                <br />ステップID: {step.id}
+                <br />ステップタイプ: {step.type}
+              </div>
+              
               <Input
-                value={step.title}
-                onChange={(e) => onUpdateStep(step.id, { title: e.target.value })}
+                value={step.title || ''}
+                onChange={(e) => {
+                  console.log(`🔥 タイトル変更: ${step.id} -> "${e.target.value}"`);
+                  onUpdateStep(step.id, { title: e.target.value });
+                }}
+                onBlur={(e) => {
+                  console.log(`💾 タイトル確定: ${step.id} -> "${e.target.value}"`);
+                  onUpdateStep(step.id, { title: e.target.value });
+                }}
                 placeholder="スライドのタイトルを入力してください"
-                className="text-xl font-semibold h-14 border-3 border-blue-300 focus:border-blue-600 bg-white shadow-inner"
+                className="text-xl font-semibold h-16 border-4 border-red-400 focus:border-red-600 bg-white shadow-inner"
               />
-              <div className="flex items-center gap-2 text-blue-700">
+              
+              {/* 強制更新ボタン */}
+              <Button 
+                type="button"
+                onClick={() => {
+                  const newTitle = `更新されたタイトル ${Date.now()}`;
+                  console.log(`🔄 強制タイトル更新: ${step.id} -> "${newTitle}"`);
+                  onUpdateStep(step.id, { title: newTitle });
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                🔄 テストタイトル更新
+              </Button>
+              
+              <div className="flex items-center gap-2 text-red-700">
                 <Info className="w-4 h-4" />
-                <span className="text-sm">
-                  このタイトルがプレビューとフロー内で表示されます
+                <span className="text-sm font-semibold">
+                  このタイトルがプレビューとフロー内で表示されます（リアルタイム更新）
                 </span>
               </div>
             </div>
             
-            {/* リアルタイムプレビュー */}
-            <div className="mt-4 p-3 bg-white rounded-lg border-2 border-blue-200">
-              <div className="text-sm text-blue-600 mb-1">プレビュー:</div>
-              <div className="text-lg font-bold text-gray-800">
+            {/* リアルタイムプレビュー - 強化版 */}
+            <div className="mt-4 p-4 bg-white rounded-lg border-4 border-red-300 shadow-md">
+              <div className="text-sm text-red-600 mb-2 font-semibold">プレビュー（リアルタイム）:</div>
+              <div className="text-xl font-bold text-gray-800 min-h-[2rem] p-2 bg-gray-50 rounded border">
                 {step.title || '（タイトル未設定）'}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                最終更新: {new Date().toLocaleTimeString()}
               </div>
             </div>
           </div>
