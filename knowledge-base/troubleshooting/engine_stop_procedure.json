@@ -1,3 +1,4 @@
+
 {
   "id": "engine_stop_procedure",
   "title": "エンジン停止時の応急処置フロー",
@@ -13,17 +14,47 @@
       "description": "この応急処置ガイドでは、エンジン停止時に対処する手順を説明します。安全を確保しながら、原因を特定し解決するための手順に従ってください。",
       "message": "この応急処置ガイドでは、エンジン停止時に対処する手順を説明します。安全を確保しながら、原因を特定し解決するための手順に従ってください。",
       "imageUrl": "",
-      "type": "step",
-      "options": []
+      "type": "start",
+      "options": [
+        {
+          "text": "次へ",
+          "nextStepId": "step2",
+          "isTerminal": false,
+          "conditionType": "other",
+          "condition": ""
+        }
+      ]
     },
     {
       "id": "step2",
       "title": "エンジン停止状況の確認",
-      "description": "ここに判断条件を記述してください（例：エンジンオイルが漏れていますか？）",
-      "message": "ここに判断条件を記述してください（例：エンジンオイルが漏れていますか？）",
+      "description": "エンジンが停止した時の状況は？",
+      "message": "エンジンが停止した時の状況は？",
       "imageUrl": "",
-      "type": "step",
-      "options": []
+      "type": "decision",
+      "options": [
+        {
+          "text": "突然停止した",
+          "nextStepId": "step3",
+          "isTerminal": false,
+          "conditionType": "yes",
+          "condition": "エンジンが警告なしに突然停止した場合"
+        },
+        {
+          "text": "異音後に停止した",
+          "nextStepId": "step4",
+          "isTerminal": false,
+          "conditionType": "no",
+          "condition": "異音や振動の後にエンジンが停止した場合"
+        },
+        {
+          "text": "オーバーヒート後に停止した",
+          "nextStepId": "step5",
+          "isTerminal": false,
+          "conditionType": "other",
+          "condition": "温度計が高温を示した後に停止した場合"
+        }
+      ]
     },
     {
       "id": "step3",
@@ -32,7 +63,15 @@
       "message": "1. 各計器の値が正常範囲内にあることを確認します。\n2. 異常な音、振動、臭いがないか確認します。\n3. 全て正常であれば、運転を再開します。",
       "imageUrl": "",
       "type": "step",
-      "options": []
+      "options": [
+        {
+          "text": "完了",
+          "nextStepId": "",
+          "isTerminal": true,
+          "conditionType": "other",
+          "condition": ""
+        }
+      ]
     },
     {
       "id": "step4",
@@ -41,7 +80,15 @@
       "message": "1. エンジンルームを目視点検し、明らかな損傷がないか確認します。\n2. オイル漏れや冷却水漏れがないか確認します。\n3. 異常が見つかった場合は専門家に連絡してください。",
       "imageUrl": "",
       "type": "step",
-      "options": []
+      "options": [
+        {
+          "text": "完了",
+          "nextStepId": "",
+          "isTerminal": true,
+          "conditionType": "other",
+          "condition": ""
+        }
+      ]
     },
     {
       "id": "step5",
@@ -50,7 +97,15 @@
       "message": "1. エンジンを十分に冷却させます（最低30分）。\n2. 冷却水レベルを確認し、不足している場合は補給します。\n3. ラジエーターキャップや冷却ホースに損傷がないか確認します。\n4. 問題が解決しない場合は専門家に連絡してください。",
       "imageUrl": "",
       "type": "step",
-      "options": []
+      "options": [
+        {
+          "text": "完了",
+          "nextStepId": "",
+          "isTerminal": true,
+          "conditionType": "other",
+          "condition": ""
+        }
+      ]
     }
   ],
   "updatedAt": "2025-06-15T08:05:45.944Z"
