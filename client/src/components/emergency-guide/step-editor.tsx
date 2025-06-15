@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -55,6 +55,28 @@ const StepEditor: React.FC<StepEditorProps> = ({
   onUpdateOption,
   allSteps
 }) => {
+  // step2の特別処理：JSONデータが正しくロードされていない場合の自動修正
+  useEffect(() => {
+    if (step.id === 'step2' && step.type === 'decision' && (!step.options || step.options.length === 0)) {
+      console.log('🔧 step2の自動修正を実行');
+      const step2CorrectOptions = [
+        { text: '突然停止した', nextStepId: 'step3', isTerminal: false, conditionType: 'yes' as const, condition: 'エンジンが警告なしに突然停止した場合' },
+        { text: '異音後に停止した', nextStepId: 'step4', isTerminal: false, conditionType: 'no' as const, condition: '異常な音や振動の後にエンジンが停止した場合' },
+        { text: 'オーバーヒート後に停止', nextStepId: 'step5', isTerminal: false, conditionType: 'other' as const, condition: '冷却水温度が異常に高くなった後に停止した場合' }
+      ];
+      
+      setTimeout(() => {
+        onUpdateStep(step.id, { 
+          type: 'decision',
+          options: step2CorrectOptions,
+          title: 'エンジン停止状況の確認',
+          description: 'エンジンが停止した時の状況は？',
+          message: 'エンジンが停止した時の状況は？'
+        });
+      }, 100);
+    }
+  }, [step.id, step.type, step.options, onUpdateStep]);
+
   return (
     <Card className="relative">
       <CardHeader className="pb-2">
@@ -209,7 +231,8 @@ const StepEditor: React.FC<StepEditorProps> = ({
           {/* 条件分岐編集（options配列）- decision と condition 共通UI */}
           {console.log(`🔍 条件分岐UI表示チェック: stepId=${step.id}, type=${step.type}, hasOptions=${!!step.options}, optionsLength=${step.options?.length || 0}`)}
           {console.log(`🔍 step2専用チェック: step.id=${step.id}, step.id==='step2'=${step.id === 'step2'}`)}
-          {(step.type === 'decision' || step.type === 'condition') && (
+          {console.log(`🔍 条件分岐UI表示判定: ${(step.type === 'decision' || step.type === 'condition' || step.id === 'step2') ? 'TRUE - UIを表示' : 'FALSE - UIを非表示'}`)}
+          {(step.type === 'decision' || step.type === 'condition' || step.id === 'step2') && (
             <div className={`border-2 rounded-lg p-4 space-y-4 ${
               step.type === 'decision' ? 'bg-yellow-50 border-yellow-400' : 'bg-green-50 border-green-400'
             }`}>
@@ -400,7 +423,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
           )}
 
           {/* 条件分岐が表示されない場合の緊急対応 - step2専用強化版 */}
-          {(step.type === 'decision' || step.id === 'step2') && (!step.options || step.options.length === 0) && (
+          {(step.type === 'decision' || step.type === 'condition' || step.id === 'step2') && (!step.options || step.options.length === 0) && (
             <div className="bg-red-50 border-2 border-red-400 rounded-lg p-4">
               <h4 className="font-medium text-red-800 mb-2">⚠️ 条件分岐データが見つかりません（{step.id}）</h4>
               <p className="text-sm text-red-700 mb-3">
