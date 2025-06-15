@@ -59,16 +59,16 @@ const StepEditor: React.FC<StepEditorProps> = ({
   useEffect(() => {
     const isConditionalNode = step.type === 'decision' || step.type === 'condition';
     const hasEmptyOptions = !step.options || step.options.length === 0;
-    
+
     if (isConditionalNode && hasEmptyOptions) {
       console.log(`🔧 条件分岐ノード ${step.id} (type: ${step.type}) の自動初期化を実行`);
-      
+
       // 基本的な条件分岐オプションを設定
       const defaultOptions = [
         { text: 'はい', nextStepId: '', isTerminal: false, conditionType: 'yes' as const, condition: '' },
         { text: 'いいえ', nextStepId: '', isTerminal: false, conditionType: 'no' as const, condition: '' }
       ];
-      
+
       setTimeout(() => {
         onUpdateStep(step.id, { 
           options: defaultOptions
@@ -276,7 +276,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
                       : 'システムが判定する条件を記述してください（例：温度センサーの値が80℃以上）'
                   )}
                 </div>
-                
+
                 {/* タイプ説明 */}
                 <div className={`mt-2 text-xs p-2 rounded ${
                   step.type === 'decision' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
@@ -328,14 +328,14 @@ const StepEditor: React.FC<StepEditorProps> = ({
                   const options = (step.options && step.options.length > 0) 
                     ? step.options 
                     : [{ text: 'はい', nextStepId: '', isTerminal: false, conditionType: 'yes' as const, condition: '' }];
-                  
+
                   // 自動設定した場合はstateを更新
                   if (!step.options || step.options.length === 0) {
                     setTimeout(() => {
                       onUpdateStep(step.id, { options: options });
                     }, 0);
                   }
-                  
+
                   return options;
                 })().map((option, optionIndex) => (
                   <div key={`${step.id}-option-${optionIndex}`} 
@@ -450,7 +450,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
                 >
                   🔧 条件分岐オプションを作成
                 </Button>
-                
+
                 <Button 
                   onClick={() => {
                     console.log(`🔧 ${step.id}のtypeを強制的に${step.type}に設定`);
@@ -469,7 +469,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
               </div>
             </div>
           )}
-          
+
           {/* 条件分岐ノードのデバッグ情報表示 */}
           {(step.type === 'decision' || step.type === 'condition') && (
             <div className="bg-blue-50 border-2 border-blue-400 rounded-lg p-4 mb-4">
