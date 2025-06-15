@@ -24,18 +24,11 @@ const startServer = async () => {
   try {
     // 基本設定
     app.locals.storage = storage;
-    
-    // 必要なディレクトリを作成
-    const dirs = ['knowledge-base/images', 'knowledge-base/data', 'knowledge-base/troubleshooting'];
-    dirs.forEach(dir => {
-      const dirPath = path.join(process.cwd(), dir);
-      if (!fs.existsSync(dirPath)) {
-        fs.mkdirSync(dirPath, { recursive: true });
-      }
-    });
 
-    // ルート登録
+    // ルート登録を先に実行
+    console.log('📡 ルート登録開始...');
     await registerRoutes(app);
+    console.log('✅ ルート登録完了');
 
     // 静的ファイル設定
     app.use(express.static(path.join(process.cwd(), 'client', 'dist')));
@@ -57,41 +50,18 @@ const startServer = async () => {
       console.log('🚀 ===== BACKEND SERVER READY =====');
     });
 
-    // プロセス終了時の処理
-    process.on('SIGTERM', () => {
-      console.log('SIGTERM受信、サーバーを終了します');
-      server.close(() => {
-        console.log('サーバーが正常に終了しました');
-        process.exit(0);
-      });
-    });
-
-    process.on('SIGINT', () => {
-      console.log('SIGINT受信、サーバーを終了します');
-      server.close(() => {
-        console.log('サーバーが正常に終了しました');
-        process.exit(0);
-      });
-    });
-
     server.on('error', (err: any) => {
       console.error('❌ サーバーエラー:', err);
+      if (err.code === 'EADDRINUSE') {
+        console.error(`ポート ${PORT} は既に使用されています`);
+        process.exit(1);
+      }
       process.exit(1);
     });
 
-    // 知識ベース初期化（非同期）
-    setTimeout(async () => {
-      try {
-        const { initializeKnowledgeBase } = await import('./lib/knowledge-base.js');
-        await initializeKnowledgeBase();
-        console.log('✅ ナレッジベース初期化完了');
-      } catch (err) {
-        console.warn('⚠️ ナレッジベース初期化失敗:', err);
-      }
-    }, 2000);
-
   } catch (err) {
     console.error('❌ サーバー起動失敗:', err);
+    console.error('スタックトレース:', err instanceof Error ? err.stack : err);
     process.exit(1);
   }
 };
