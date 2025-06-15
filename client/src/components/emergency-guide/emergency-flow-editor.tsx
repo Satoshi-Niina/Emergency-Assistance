@@ -747,12 +747,29 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
   const updateStep = (stepId: string, updates: Partial<FlowStep>) => {
     if (!editedFlow) return;
 
-    setEditedFlow({
-      ...editedFlow,
-      steps: editedFlow.steps.map(step =>
-        step.id === stepId ? { ...step, ...updates } : step
-      )
+    console.log(`🔄 ステップ更新: ${stepId}`, updates);
+
+    const updatedSteps = editedFlow.steps.map(step => {
+      if (step.id === stepId) {
+        const updatedStep = { ...step, ...updates };
+        console.log(`✅ ステップ ${stepId} 更新完了:`, updatedStep);
+        return updatedStep;
+      }
+      return step;
     });
+
+    const newEditedFlow = {
+      ...editedFlow,
+      steps: updatedSteps
+    };
+
+    console.log(`📊 フロー全体更新:`, {
+      flowId: newEditedFlow.id,
+      stepsCount: newEditedFlow.steps.length,
+      updatedStepId: stepId
+    });
+
+    setEditedFlow(newEditedFlow);
   };
 
   // ステップタイトル更新

@@ -108,12 +108,22 @@ const StepEditor: React.FC<StepEditorProps> = ({
               <Input
                 value={step.title || ''}
                 onChange={(e) => {
-                  console.log(`🔥 タイトル変更: ${step.id} -> "${e.target.value}"`);
-                  onUpdateStep(step.id, { title: e.target.value });
+                  const newTitle = e.target.value;
+                  console.log(`🔥 タイトル変更リアルタイム: ${step.id} -> "${newTitle}"`);
+                  onUpdateStep(step.id, { title: newTitle });
                 }}
                 onBlur={(e) => {
-                  console.log(`💾 タイトル確定: ${step.id} -> "${e.target.value}"`);
-                  onUpdateStep(step.id, { title: e.target.value });
+                  const newTitle = e.target.value;
+                  console.log(`💾 タイトル確定: ${step.id} -> "${newTitle}"`);
+                  onUpdateStep(step.id, { title: newTitle });
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const newTitle = e.currentTarget.value;
+                    console.log(`⏎ Enterキーでタイトル確定: ${step.id} -> "${newTitle}"`);
+                    onUpdateStep(step.id, { title: newTitle });
+                    e.currentTarget.blur();
+                  }
                 }}
                 placeholder="スライドのタイトルを入力してください"
                 className="text-xl font-semibold h-16 border-4 border-red-400 focus:border-red-600 bg-white shadow-inner"
@@ -144,10 +154,15 @@ const StepEditor: React.FC<StepEditorProps> = ({
             <div className="mt-4 p-4 bg-white rounded-lg border-4 border-red-300 shadow-md">
               <div className="text-sm text-red-600 mb-2 font-semibold">プレビュー（リアルタイム）:</div>
               <div className="text-xl font-bold text-gray-800 min-h-[2rem] p-2 bg-gray-50 rounded border">
-                {step.title || '（タイトル未設定）'}
+                <span key={`${step.id}-${step.title}-${Date.now()}`}>
+                  {step.title || '（タイトル未設定）'}
+                </span>
               </div>
               <div className="text-xs text-gray-500 mt-1">
-                最終更新: {new Date().toLocaleTimeString()}
+                ステップID: {step.id} | 最終更新: {new Date().toLocaleTimeString()}
+              </div>
+              <div className="text-xs text-blue-600 mt-1">
+                現在の値: "{step.title}" (長さ: {(step.title || '').length}文字)
               </div>
             </div>
           </div>
