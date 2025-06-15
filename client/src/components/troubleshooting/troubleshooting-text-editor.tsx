@@ -195,6 +195,51 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
     }
   };
 
+  // 条件分岐ノードの選択肢操作関数
+  const handleDecisionOptionChange = (stepIndex: number, optionIndex: number, field: string, value: any) => {
+    const updatedFlowData = { ...flowData };
+    if (updatedFlowData.steps && updatedFlowData.steps[stepIndex] && updatedFlowData.steps[stepIndex].options) {
+      updatedFlowData.steps[stepIndex].options[optionIndex] = {
+        ...updatedFlowData.steps[stepIndex].options[optionIndex],
+        [field]: value
+      };
+      updatedFlowData.updatedAt = new Date().toISOString();
+      setFlowData(updatedFlowData);
+      setEditedContent(JSON.stringify(updatedFlowData, null, 2));
+    }
+  };
+
+  const handleAddDecisionOption = (stepIndex: number) => {
+    const updatedFlowData = { ...flowData };
+    if (updatedFlowData.steps && updatedFlowData.steps[stepIndex]) {
+      if (!updatedFlowData.steps[stepIndex].options) {
+        updatedFlowData.steps[stepIndex].options = [];
+      }
+      
+      updatedFlowData.steps[stepIndex].options.push({
+        text: '',
+        condition: '',
+        nextStepId: '',
+        isTerminal: false,
+        conditionType: 'other'
+      });
+      
+      updatedFlowData.updatedAt = new Date().toISOString();
+      setFlowData(updatedFlowData);
+      setEditedContent(JSON.stringify(updatedFlowData, null, 2));
+    }
+  };
+
+  const handleRemoveDecisionOption = (stepIndex: number, optionIndex: number) => {
+    const updatedFlowData = { ...flowData };
+    if (updatedFlowData.steps && updatedFlowData.steps[stepIndex] && updatedFlowData.steps[stepIndex].options) {
+      updatedFlowData.steps[stepIndex].options.splice(optionIndex, 1);
+      updatedFlowData.updatedAt = new Date().toISOString();
+      setFlowData(updatedFlowData);
+      setEditedContent(JSON.stringify(updatedFlowData, null, 2));
+    }
+  };
+
   // データ比較関数
   const hasChanges = () => {
     if (!originalData || !flowData) return false;
@@ -478,6 +523,20 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
                                 onChange={(e) => {
                                   const updated = { ...flowData };
                                   updated.steps[index].type = e.target.value;
+                                  
+                                  // 条件分岐ノードに切り替える際、optionsが空なら初期オプションを追加
+                                  if (e.target.value === 'decision' && (!updated.steps[index].options || updated.steps[index].options.length === 0)) {
+                                    updated.steps[index].options = [
+                                      {
+                                        text: '',
+                                        condition: '',
+                                        nextStepId: '',
+                                        isTerminal: false,
+                                        conditionType: 'other'
+                                      }
+                                    ];
+                                  }
+                                  
                                   setFlowData(updated);
                                   setEditedContent(JSON.stringify(updated, null, 2));
                                 }}
@@ -489,6 +548,115 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
                                 <option value="end">終了</option>
                               </select>
                             </div>
+
+                            {/* 🔀 条件分岐ノード専用UI */}
+                            {step.type === 'decision' && (
+                              <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 mt-4">
+                                <div className="flex items-center justify-between mb-3">
+                                  <h5 className="font-semibold text-yellow-800 flex items-center gap-2">
+                                    <div className="w-4 h-4 bg-yellow-400 rotate-45"></div>
+                                    条件分岐設定
+                                  </h5>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() => handleAddDecisionOption(index)}
+                                    className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                                  >
+                                    <Plus className="h-4 w-4 mr-1" />
+                                    選択肢追加
+                                  </Button>
+                                </div>
+                                
+                                <div className="space-y-3">
+                                  {(step.options || []).map((option: any, optionIndex: number) => (
+                                    <div key={optionIndex} className="bg-white border border-yellow-300 rounded-md p-3">
+                                      <div className="flex items-center justify-between mb-2">
+                                        <span className="text-sm font-medium text-yellow-700">
+                                          選択肢 {optionIndex + 1}
+                                        </span>
+                                        {(step.options || []).length > 1 && (
+                                          <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => handleRemoveDecisionOption(index, optionIndex)}
+                                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                          </Button>
+                                        )}
+                                      </div>
+                                      
+                                      <div className="grid gap-3">
+                                        <div>
+                                          <Label className="text-sm">表示テキスト</Label>
+                                          <Input
+                                            value={option.text || ''}
+                                            onChange={(e) => handleDecisionOptionChange(index, optionIndex, 'text', e.target.value)}
+                                            placeholder="選択肢のテキスト（例：はい、いいえ、その他）"
+                                            className="mt-1"
+                                          />
+                                        </div>
+                                        
+                                        <div>
+                                          <Label className="text-sm">条件・説明</Label>
+                                          <Textarea
+                                            value={option.condition || ''}
+                                            onChange={(e) => handleDecisionOptionChange(index, optionIndex, 'condition', e.target.value)}
+                                            placeholder="この選択肢が選ばれる条件や詳細説明"
+                                            rows={2}
+                                            className="mt-1"
+                                          />
+                                        </div>
+                                        
+                                        <div>
+                                          <Label className="text-sm">次のステップID</Label>
+                                          <Input
+                                            value={option.nextStepId || ''}
+                                            onChange={(e) => handleDecisionOptionChange(index, optionIndex, 'nextStepId', e.target.value)}
+                                            placeholder="次に進むステップのID"
+                                            className="mt-1"
+                                          />
+                                        </div>
+                                        
+                                        <div className="flex items-center gap-4">
+                                          <div className="flex items-center space-x-2">
+                                            <input
+                                              type="checkbox"
+                                              id={`terminal-${index}-${optionIndex}`}
+                                              checked={option.isTerminal || false}
+                                              onChange={(e) => handleDecisionOptionChange(index, optionIndex, 'isTerminal', e.target.checked)}
+                                              className="rounded border-gray-300"
+                                            />
+                                            <Label htmlFor={`terminal-${index}-${optionIndex}`} className="text-sm">
+                                              終了選択肢
+                                            </Label>
+                                          </div>
+                                          
+                                          <div>
+                                            <Label className="text-sm mr-2">条件タイプ</Label>
+                                            <select
+                                              value={option.conditionType || 'other'}
+                                              onChange={(e) => handleDecisionOptionChange(index, optionIndex, 'conditionType', e.target.value)}
+                                              className="text-sm border rounded px-2 py-1"
+                                            >
+                                              <option value="yes">はい</option>
+                                              <option value="no">いいえ</option>
+                                              <option value="other">その他</option>
+                                            </select>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                                
+                                <p className="text-xs text-yellow-700 mt-3">
+                                  ※ 条件分岐ノードでは、ユーザーが選択できる複数の選択肢を設定できます
+                                </p>
+                              </div>
+                            )}
                           </CardContent>
                         )}
                       </Card>

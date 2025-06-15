@@ -361,8 +361,9 @@ router.post('/save/:id', async (req, res) => {
         imageUrl: step.imageUrl || step.image || '',
         type: step.type || 'step',
         options: (step.options || []).map(option => ({
-          text: option.text || option.label,
-          nextStepId: option.nextStepId || option.next,
+          text: option.text || option.label || '',
+          condition: option.condition || '',
+          nextStepId: option.nextStepId || option.next || '',
           isTerminal: Boolean(option.isTerminal),
           conditionType: option.conditionType || 'other'
         })),
