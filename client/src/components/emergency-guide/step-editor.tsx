@@ -60,12 +60,20 @@ const StepEditor: React.FC<StepEditorProps> = ({
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Badge variant={step.type === 'decision' || step.type === 'condition' ? 'secondary' : 'default'}>
-              {step.type === 'start' && '開始スライド'}
-              {step.type === 'step' && 'ステップスライド'}
-              {step.type === 'condition' && '条件分岐スライド(conditions)'}
-              {step.type === 'decision' && '条件分岐スライド(options)'}
-              {step.type === 'end' && '終了スライド'}
+            <Badge variant={
+              step.type === 'decision' ? 'default' : 
+              step.type === 'condition' ? 'secondary' : 
+              'outline'
+            } className={
+              step.type === 'decision' ? 'bg-yellow-100 text-yellow-800 border-yellow-400' :
+              step.type === 'condition' ? 'bg-green-100 text-green-800 border-green-400' :
+              ''
+            }>
+              {step.type === 'start' && '🚀 開始スライド'}
+              {step.type === 'step' && '📋 ステップスライド'}
+              {step.type === 'condition' && '🔀 条件判定スライド [CONDITION]'}
+              {step.type === 'decision' && '⚡ 選択分岐スライド [DECISION]'}
+              {step.type === 'end' && '🏁 終了スライド'}
             </Badge>
             <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
               スライド #{index + 1}
@@ -206,10 +214,13 @@ const StepEditor: React.FC<StepEditorProps> = ({
               step.type === 'decision' ? 'bg-yellow-50 border-yellow-400' : 'bg-green-50 border-green-400'
             }`}>
               <div className="flex items-center justify-between">
-                <h4 className={`font-medium ${
+                <h4 className={`font-bold text-lg ${
                   step.type === 'decision' ? 'text-yellow-800' : 'text-green-800'
                 }`}>
-                  条件分岐設定（options配列）{step.type === 'condition' ? ' - condition型' : ' - decision型'}
+                  {step.type === 'decision' ? '⚡ 選択分岐設定 [DECISION]' : '🔀 条件判定設定 [CONDITION]'}
+                  <span className="text-sm font-normal ml-2">
+                    {step.type === 'decision' ? '(ユーザーが選択肢から選ぶ)' : '(システムが条件を判定)'}
+                  </span>
                 </h4>
                 <Button 
                   size="sm"
@@ -222,22 +233,68 @@ const StepEditor: React.FC<StepEditorProps> = ({
                 </Button>
               </div>
 
-              {/* 条件分岐の説明テキスト表示 */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <div className="text-sm text-blue-800 font-medium mb-2">判断条件の説明:</div>
-                <div className="text-sm text-blue-700">
-                  {step.description || step.message || 'ここに判断条件を記述してください（例：エンジンオイルが漏れていますか？）'}
+              {/* タイプ別の説明テキスト表示 */}
+              <div className={`border rounded-lg p-3 ${
+                step.type === 'decision' ? 'bg-yellow-50 border-yellow-200' : 'bg-green-50 border-green-200'
+              }`}>
+                <div className={`text-sm font-medium mb-2 ${
+                  step.type === 'decision' ? 'text-yellow-800' : 'text-green-800'
+                }`}>
+                  {step.type === 'decision' ? '⚡ 選択分岐の質問内容:' : '🔀 条件判定の基準:'}
+                </div>
+                <div className={`text-sm ${
+                  step.type === 'decision' ? 'text-yellow-700' : 'text-green-700'
+                }`}>
+                  {step.description || step.message || (
+                    step.type === 'decision' 
+                      ? 'ユーザーに提示する質問を記述してください（例：エンジンが停止した時の状況は？）'
+                      : 'システムが判定する条件を記述してください（例：温度センサーの値が80℃以上）'
+                  )}
+                </div>
+                
+                {/* タイプ説明 */}
+                <div className={`mt-2 text-xs p-2 rounded ${
+                  step.type === 'decision' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
+                }`}>
+                  <strong>
+                    {step.type === 'decision' ? '[DECISION型]' : '[CONDITION型]'}
+                  </strong>
+                  {step.type === 'decision' 
+                    ? ' ユーザーが画面上の選択肢から選ぶタイプです。「はい/いいえ」「A/B/C」などの選択肢を提示します。'
+                    : ' システムが自動的に条件を判定するタイプです。センサー値やデータベースの状態などを基に分岐します。'
+                  }
                 </div>
               </div>
 
-              {/* JSONデータ確認 */}
-              <div className="mb-3 p-2 bg-gray-100 border rounded text-xs">
-                <strong>JSON確認:</strong> type="{step.type}", options数={step.options?.length || 0}
+              {/* JSONデータ確認とタイプキーワード表示 */}
+              <div className={`mb-3 p-3 border rounded text-xs ${
+                step.type === 'decision' ? 'bg-yellow-50 border-yellow-300' : 'bg-green-50 border-green-300'
+              }`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <strong className={step.type === 'decision' ? 'text-yellow-800' : 'text-green-800'}>
+                    JSON確認:
+                  </strong>
+                  <Badge variant="outline" className={`text-xs ${
+                    step.type === 'decision' ? 'border-yellow-400 text-yellow-800' : 'border-green-400 text-green-800'
+                  }`}>
+                    {step.type === 'decision' ? 'DECISION型' : 'CONDITION型'}
+                  </Badge>
+                </div>
+                <div>
+                  <strong>タイプ:</strong> "{step.type}" | 
+                  <strong>選択肢数:</strong> {step.options?.length || 0} | 
+                  <strong>ステップID:</strong> {step.id}
+                </div>
                 {step.options && step.options.length > 0 && (
                   <div className="mt-1">
-                    選択肢: {step.options.map(opt => opt.text).join(', ')}
+                    <strong>選択肢:</strong> {step.options.map(opt => opt.text).join(', ')}
                   </div>
                 )}
+                <div className={`mt-2 text-xs p-1 rounded ${
+                  step.type === 'decision' ? 'bg-yellow-100' : 'bg-green-100'
+                }`}>
+                  💡 <strong>キーワード:</strong> {step.type === 'decision' ? '"DECISION", "選択分岐", "ユーザー選択"' : '"CONDITION", "条件判定", "自動判定"'}
+                </div>
               </div>
 
               <div className="space-y-3">
@@ -262,9 +319,13 @@ const StepEditor: React.FC<StepEditorProps> = ({
                        }`}>
                     <div className="flex items-center justify-between mb-3">
                       <Badge variant="secondary" className={`${
-                        step.type === 'decision' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
+                        step.type === 'decision' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' : 'bg-green-100 text-green-800 border-green-300'
                       }`}>
-                        選択肢 {optionIndex + 1}: {option.conditionType === 'yes' ? 'はい' : option.conditionType === 'no' ? 'いいえ' : 'その他'}
+                        {step.type === 'decision' ? '⚡ 選択肢' : '🔀 条件'} {optionIndex + 1}: 
+                        {option.conditionType === 'yes' ? 'はい' : option.conditionType === 'no' ? 'いいえ' : 'その他'}
+                        <span className="ml-1 text-xs">
+                          {step.type === 'decision' ? '[DECISION]' : '[CONDITION]'}
+                        </span>
                       </Badge>
                       {(step.options?.length || 0) > 1 && (
                         <Button
