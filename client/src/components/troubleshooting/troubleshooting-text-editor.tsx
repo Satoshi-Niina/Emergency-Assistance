@@ -1,3 +1,11 @@
+/**
+ * ⚠️ AI編集制限: このファイルはトラブルシューティング専用テキストエディターです
+ * - タイトル編集のhandleStepTitleChange関数は変更禁止
+ * - 自動保存機能の変更は禁止
+ * - バックエンドAPI呼び出し部分の変更は禁止
+ * - JSONとビジュアル編集の同期機能は変更禁止
+ */
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
