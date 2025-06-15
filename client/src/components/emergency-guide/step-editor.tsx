@@ -479,8 +479,8 @@ const StepEditor: React.FC<StepEditorProps> = ({
                       </select>
                     </div>
                   </div>
-                ))
-              // </div>
+                ))}
+              </div>
             </div>
           )}
 
