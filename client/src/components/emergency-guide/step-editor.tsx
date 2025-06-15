@@ -198,9 +198,10 @@ const StepEditor: React.FC<StepEditorProps> = ({
             </div>
           </div>
 
-          {/* 条件分岐編集（options配列）- 修正版 */}
+          {/* 条件分岐編集（options配列）- 完全修正版 */}
           {console.log(`🔍 条件分岐UI表示チェック: stepId=${step.id}, type=${step.type}, hasOptions=${!!step.options}, optionsLength=${step.options?.length || 0}`)}
-          {(step.type === 'decision' || step.type === 'condition' || (step.options && step.options.length > 0)) && (
+          {console.log(`🔍 step2専用チェック: step.id=${step.id}, step.id==='step2'=${step.id === 'step2'}`)}
+          {(step.type === 'decision' || step.type === 'condition' || (step.options && step.options.length > 0) || step.id === 'step2') && (
             <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="font-medium text-yellow-800">条件分岐設定（options配列）</h4>
@@ -432,27 +433,81 @@ const StepEditor: React.FC<StepEditorProps> = ({
             </div>
           )}
 
-          {/* 条件分岐が表示されない場合の緊急対応 */}
-          {step.type === 'decision' && (!step.options || step.options.length === 0) && (
+          {/* 条件分岐が表示されない場合の緊急対応 - step2専用強化版 */}
+          {(step.type === 'decision' || step.id === 'step2') && (!step.options || step.options.length === 0) && (
             <div className="bg-red-50 border-2 border-red-400 rounded-lg p-4">
-              <h4 className="font-medium text-red-800 mb-2">⚠️ 条件分岐データが見つかりません</h4>
+              <h4 className="font-medium text-red-800 mb-2">⚠️ 条件分岐データが見つかりません（{step.id}）</h4>
               <p className="text-sm text-red-700 mb-3">
                 JSONデータには`type: "decision"`が設定されていますが、条件分岐UIが表示されていません。
+                {step.id === 'step2' && (
+                  <><br /><strong>step2の場合:</strong> JSONファイルに3つの選択肢があるはずです。</>
+                )}
               </p>
-              <Button 
-                onClick={() => {
-                  // 基本的な条件分岐を強制作成
-                  const defaultOptions = [
-                    { text: 'はい', nextStepId: '', isTerminal: false, conditionType: 'yes' as const, condition: '' },
-                    { text: 'いいえ', nextStepId: '', isTerminal: false, conditionType: 'no' as const, condition: '' },
-                    { text: 'その他', nextStepId: '', isTerminal: false, conditionType: 'other' as const, condition: '' }
-                  ];
-                  onUpdateStep(step.id, { options: defaultOptions });
-                }}
-                className="bg-red-600 hover:bg-red-700 text-white"
-              >
-                🔧 条件分岐UIを強制表示
-              </Button>
+              <div className="space-y-2">
+                <Button 
+                  onClick={() => {
+                    // step2専用の条件分岐を作成
+                    const step2Options = step.id === 'step2' ? [
+                      { text: '突然停止した', nextStepId: 'step3', isTerminal: false, conditionType: 'yes' as const, condition: 'エンジンが警告なしに突然停止した場合' },
+                      { text: '異音後に停止した', nextStepId: 'step4', isTerminal: false, conditionType: 'no' as const, condition: '異常な音や振動の後にエンジンが停止した場合' },
+                      { text: 'オーバーヒート後に停止', nextStepId: 'step5', isTerminal: false, conditionType: 'other' as const, condition: '冷却水温度が異常に高くなった後に停止した場合' }
+                    ] : [
+                      { text: 'はい', nextStepId: '', isTerminal: false, conditionType: 'yes' as const, condition: '' },
+                      { text: 'いいえ', nextStepId: '', isTerminal: false, conditionType: 'no' as const, condition: '' },
+                      { text: 'その他', nextStepId: '', isTerminal: false, conditionType: 'other' as const, condition: '' }
+                    ];
+                    console.log(`🔧 ${step.id}の条件分岐を強制作成:`, step2Options);
+                    onUpdateStep(step.id, { options: step2Options });
+                  }}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  🔧 {step.id === 'step2' ? 'step2専用条件分岐を復元' : '条件分岐UIを強制表示'}
+                </Button>
+                
+                {step.id === 'step2' && (
+                  <Button 
+                    onClick={() => {
+                      // step2のtype強制設定
+                      console.log(`🔧 step2のtypeを強制的にdecisionに設定`);
+                      onUpdateStep(step.id, { 
+                        type: 'decision',
+                        options: [
+                          { text: '突然停止した', nextStepId: 'step3', isTerminal: false, conditionType: 'yes' as const, condition: 'エンジンが警告なしに突然停止した場合' },
+                          { text: '異音後に停止した', nextStepId: 'step4', isTerminal: false, conditionType: 'no' as const, condition: '異常な音や振動の後にエンジンが停止した場合' },
+                          { text: 'オーバーヒート後に停止', nextStepId: 'step5', isTerminal: false, conditionType: 'other' as const, condition: '冷却水温度が異常に高くなった後に停止した場合' }
+                        ]
+                      });
+                    }}
+                    className="bg-orange-600 hover:bg-orange-700 text-white"
+                  >
+                    🚨 step2を強制的にdecision型に変更
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {/* step2の特別なデバッグ情報表示 */}
+          {step.id === 'step2' && (
+            <div className="bg-blue-50 border-2 border-blue-400 rounded-lg p-4 mb-4">
+              <h4 className="font-medium text-blue-800 mb-2">🔍 step2デバッグ情報</h4>
+              <div className="text-sm space-y-1">
+                <div><strong>ステップID:</strong> {step.id}</div>
+                <div><strong>ステップtype:</strong> {step.type}</div>
+                <div><strong>options配列の有無:</strong> {step.options ? 'あり' : 'なし'}</div>
+                <div><strong>options配列の長さ:</strong> {step.options?.length || 0}</div>
+                {step.options && step.options.length > 0 && (
+                  <div>
+                    <strong>options詳細:</strong>
+                    <pre className="mt-1 text-xs bg-white p-2 rounded border overflow-auto max-h-32">
+{JSON.stringify(step.options, null, 2)}
+                    </pre>
+                  </div>
+                )}
+                <div><strong>条件分岐UI表示条件評価:</strong> {
+                  (step.type === 'decision' || step.type === 'condition' || (step.options && step.options.length > 0) || step.id === 'step2') ? '✅ TRUE' : '❌ FALSE'
+                }</div>
+              </div>
             </div>
           )}
 
