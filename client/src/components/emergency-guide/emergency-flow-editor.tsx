@@ -785,7 +785,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
       };
       console.log(`✅ type: "condition"ノード作成完了:`, newStep);
     } else if (type === 'decision') {
-      // type: "decision"の場合は従来通りoptions配列、空配列で開始
+      // type: "decision"の場合は従来通りoptions配列、初期状態で2つの選択肢を用意
       newStep = {
         id: newStepId,
         title: '新しい条件分岐',
@@ -793,7 +793,10 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         message: '状況に応じて異なる選択肢を選んでください。',
         type: 'decision', // 明示的にdecisionを設定
         imageUrl: '',
-        options: [] // 空配列で開始、UIで初期表示される
+        options: [ // 初期状態で2つの基本選択肢を用意
+          { text: 'はい', condition: '', nextStepId: '', isTerminal: false, conditionType: 'yes' },
+          { text: 'いいえ', condition: '', nextStepId: '', isTerminal: false, conditionType: 'no' }
+        ]
       };
       console.log(`✅ type: "decision"ノード作成完了:`, newStep);
     } else {
@@ -1564,13 +1567,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                                 <Label className="block text-sm font-bold">条件テキスト (text)</Label>
                                 <Input
                                   value={option.text || ''}
-                                  onChange={(e) => {
-                                    if (!step.options) {
-                                      updateStep(step.id, { options: [{ text: e.target.value, condition: '', nextStepId: '', isTerminal: false, conditionType: 'other' }] });
-                                    } else {
-                                      updateOption(step.id, 0, { text: e.target.value });
-                                    }
-                                  }}
+                                  onChange={(e) => updateOption(step.id, optionIndex, { text: e.target.value })}
                                   placeholder="選択肢テキストを入力（例：はい、いいえ）"
                                   className="mb-1"
                                 />
@@ -1583,13 +1580,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                                 <Label className="block text-sm font-bold">詳細条件 (condition)</Label>
                                 <Input
                                   value={option.condition || ''}
-                                  onChange={(e) => {
-                                    if (!step.options) {
-                                      updateStep(step.id, { options: [{ text: '', condition: e.target.value, nextStepId: '', isTerminal: false, conditionType: 'other' }] });
-                                    } else {
-                                      updateOption(step.id, 0, { condition: e.target.value });
-                                    }
-                                  }}
+                                  onChange={(e) => updateOption(step.id, optionIndex, { condition: e.target.value })}
                                   placeholder="条件の詳細説明を入力（例：エンジンから異音がする場合）"
                                   className="mb-1"
                                 />
@@ -1640,109 +1631,9 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                           </div>
                         ))
                       ) : (
-                        <div className="bg-white border-2 border-blue-300 rounded-lg p-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <Badge variant="secondary" className="text-base">
-                              条件項目 1
-                            </Badge>
-                          </div>
-
-                          <div className="space-y-3">
-                              <div>
-                                <Label className="block text-sm font-bold">条件テキスト (text)</Label>
-                                <Input
-                                  value=""
-                                  onChange={(e) => {
-                                    if (!step.options) {
-                                      updateStep(step.id, { options: [{ text: e.target.value, condition: '', nextStepId: '', isTerminal: false, conditionType: 'other' }] });
-                                    } else {
-                                      updateOption(step.id, 0, { text: e.target.value });
-                                    }
-                                  }}
-                                  placeholder="選択肢テキストを入力（例：はい、いいえ）"
-                                  className="mb-1"
-                                />
-                                <p className="text-xs text-gray-500 mb-2">
-                                  ユーザーに表示される選択肢のラベルテキスト
-                                </p>
-                              </div>
-
-                              <div>
-                                <Label className="block text-sm font-bold">詳細条件 (condition)</Label>
-                                <Input
-                                  value=""
-                                  onChange={(e) => {
-                                    if (!step.options) {
-                                      updateStep(step.id, { options: [{ text: '', condition: e.target.value, nextStepId: '', isTerminal: false, conditionType: 'other' }] });
-                                    } else {
-                                      updateOption(step.id, 0, { condition: e.target.value });
-                                    }
-                                  }}
-                                  placeholder="条件の詳細説明を入力（例：エンジンから異音がする場合）"
-                                  className="mb-1"
-                                />
-                                <p className="text-xs text-gray-500 mb-2">
-                                  条件の詳細や判断基準を記載
-                                </p>
-                              </div>
-
-                            <div>
-                              <Label>条件タイプ</Label>
-                              <select
-                                value="other"
-                                onChange={(e) => {
-                                  if (!step.options) {
-                                    updateStep(step.id, { options: [{ text: '', condition: '', nextStepId: '', isTerminal: false, conditionType: e.target.value as any }] });
-                                  } else {
-                                    updateOption(step.id, 0, { conditionType: e.target.value as any });
-                                  }
-                                }}
-                                className="w-full border rounded px-3 py-2 bg-white"
-                              >
-                                <option value="yes">はい（肯定）</option>
-                                <option value="no">いいえ（否定）</option>
-                                <option value="other">その他</option>
-                              </select>
-                            </div>
-
-                            <div>
-                              <Label>遷移先</Label>
-                              <select
-                                value=""
-                                onChange={(e) => {
-                                  if (!step.options) {
-                                    updateStep(step.id, { options: [{ text: '', condition: '', nextStepId: e.target.value, isTerminal: false, conditionType: 'other' }] });
-                                  } else {
-                                    updateOption(step.id, 0, { nextStepId: e.target.value });
-                                  }
-                                }}
-                                className="w-full border rounded px-3 py-2 bg-white"
-                              >
-                                <option value="">遷移先を選択</option>
-                                {editedFlow?.steps?.filter(s => s.id !== step.id).map(targetStep => (
-                                  <option key={targetStep.id} value={targetStep.id}>
-                                    {targetStep.title}
-                                  </option>
-                                ))}
-                                <option value="end">フロー終了</option>
-                              </select>
-                            </div>
-
-                            <div className="flex items-center space-x-2">
-                              <input
-                                type="checkbox"
-                                checked={false}
-                                onChange={(e) => {
-                                  if (!step.options) {
-                                    updateStep(step.id, { options: [{ text: '', condition: '', nextStepId: '', isTerminal: e.target.checked, conditionType: 'other' }] });
-                                  } else {
-                                    updateOption(step.id, 0, { isTerminal: e.target.checked });
-                                  }
-                                }}
-                              />
-                              <Label>この選択肢でフローを終了</Label>
-                            </div>
-                          </div>
+                        <div className="text-center py-6 text-gray-500">
+                          <p>まだ条件項目がありません</p>
+                          <p className="text-sm">上のボタンから条件項目を追加してください</p>
                         </div>
                       )}
                     </div>
