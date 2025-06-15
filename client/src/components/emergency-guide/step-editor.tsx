@@ -380,8 +380,19 @@ const StepEditor: React.FC<StepEditorProps> = ({
                         <Input
                           value={option.text || ''}
                           onChange={(e) => {
-                            console.log(`📝 選択肢テキスト変更: ${step.id} -> 選択肢${optionIndex + 1} -> "${e.target.value}"`);
-                            onUpdateOption(step.id, optionIndex, { text: e.target.value });
+                            const newText = e.target.value;
+                            console.log(`📝 選択肢テキスト変更: ${step.id} -> 選択肢${optionIndex + 1} -> "${newText}"`);
+                            onUpdateOption(step.id, optionIndex, { text: newText });
+                            // 即座にデータ保存を促す
+                            console.log(`💾 選択肢更新後の状態:`, {
+                              stepId: step.id,
+                              optionIndex,
+                              newText,
+                              currentOptions: step.options
+                            });
+                          }}
+                          onBlur={() => {
+                            console.log(`💾 選択肢テキスト確定 - 保存推奨: ${step.id}`);
                           }}
                           placeholder="選択肢のテキスト（例：はい、いいえ）"
                           className="h-9 text-sm mt-1"
@@ -393,8 +404,17 @@ const StepEditor: React.FC<StepEditorProps> = ({
                         <select
                           value={option.nextStepId || ''}
                           onChange={(e) => {
-                            console.log(`🔄 遷移先変更: ${step.id} -> 選択肢${optionIndex + 1} -> ${e.target.value}`);
-                            onUpdateOption(step.id, optionIndex, { nextStepId: e.target.value });
+                            const newNextStepId = e.target.value;
+                            console.log(`🔄 遷移先変更: ${step.id} -> 選択肢${optionIndex + 1} -> ${newNextStepId}`);
+                            onUpdateOption(step.id, optionIndex, { nextStepId: newNextStepId });
+                            // 遷移先変更後の状態を詳細ログ
+                            console.log(`💾 遷移先更新後の状態:`, {
+                              stepId: step.id,
+                              optionIndex,
+                              newNextStepId,
+                              optionData: { ...option, nextStepId: newNextStepId },
+                              allStepsCount: allSteps?.length || 0
+                            });
                           }}
                           className="w-full border border-gray-300 rounded px-3 py-2 bg-white h-9 text-sm mt-1 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                         >
@@ -508,6 +528,51 @@ const StepEditor: React.FC<StepEditorProps> = ({
                 <div><strong>条件分岐UI表示条件評価:</strong> {
                   (step.type === 'decision' || step.type === 'condition') ? '✅ TRUE' : '❌ FALSE'
                 }</div>
+              </div>
+            </div>
+          )}
+
+          {/* ステップ型変換ボタン（通常ステップから条件分岐への変換） */}
+          {(step.type === 'step' || step.type === 'start') && (
+            <div className="bg-orange-50 border-2 border-orange-300 rounded-lg p-4 mb-4">
+              <h4 className="font-medium text-orange-800 mb-2">🔄 ステップ型変換</h4>
+              <p className="text-sm text-orange-700 mb-3">
+                このステップを条件分岐ノードに変換できます。変換後は複数の選択肢を設定可能になります。
+              </p>
+              <div className="space-x-2">
+                <Button 
+                  onClick={() => {
+                    console.log(`🔄 ${step.id}をdecision型に変換`);
+                    onUpdateStep(step.id, { 
+                      type: 'decision',
+                      options: [
+                        { text: 'はい', nextStepId: '', isTerminal: false, conditionType: 'yes' as const, condition: '' },
+                        { text: 'いいえ', nextStepId: '', isTerminal: false, conditionType: 'no' as const, condition: '' }
+                      ]
+                    });
+                  }}
+                  className="bg-orange-600 hover:bg-orange-700 text-white"
+                  size="sm"
+                >
+                  ⚡ 選択分岐に変換
+                </Button>
+                <Button 
+                  onClick={() => {
+                    console.log(`🔄 ${step.id}をcondition型に変換`);
+                    onUpdateStep(step.id, { 
+                      type: 'condition',
+                      conditions: [
+                        { label: '条件A', nextId: '' },
+                        { label: '条件B', nextId: '' }
+                      ],
+                      options: []
+                    });
+                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  size="sm"
+                >
+                  🔀 条件判定に変換
+                </Button>
               </div>
             </div>
           )}
