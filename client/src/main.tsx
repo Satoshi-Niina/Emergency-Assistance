@@ -10,11 +10,14 @@ const REACT_INITIALIZED = '__REACT_APP_INITIALIZED__';
 const REACT_ROOT_EXISTS = '__REACT_ROOT_EXISTS__';
 
 // Check multiple conditions to prevent duplicate initialization
+const rootElement = document.getElementById('root');
 if ((window as any)[REACT_INITIALIZED] || 
     (window as any)[REACT_ROOT_EXISTS] ||
-    document.getElementById('root')?.hasAttribute('data-react-initialized')) {
+    rootElement?.hasAttribute('data-react-initialized') ||
+    rootElement?.hasChildNodes()) {
   console.log('⛔ React already initialized, aborting');
-  throw new Error('React already initialized');
+  process.exit?.(0);
+  return;
 }
 
 // Set multiple flags immediately

@@ -88,15 +88,17 @@ const initializeServer = async () => {
 
     // ✅ Replitのヘルスチェック用エンドポイント（追加）
     app.get('/', (req, res) => {
-      res.status(200).send('OK');
+      res.status(200).json({ 
+        status: 'ok', 
+        timestamp: new Date().toISOString(),
+        port: PORT
+      });
     });
 
     console.log('[INFO] Starting server...');
     const server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`✅ サーバーが起動しました: http://0.0.0.0:${PORT}`);
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`🌐 外部アクセス可能: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
-      }
+      console.log(`🌐 プレビューURL: https://${process.env.REPL_SLUG || 'unknown'}.${process.env.REPL_OWNER || 'unknown'}.repl.co`);
     });
 
     server.on('error', (err) => {
