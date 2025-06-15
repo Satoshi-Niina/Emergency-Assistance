@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import TroubleshootingFileList from '@/components/troubleshooting/troubleshooting-file-list';
-// import TroubleshootingTextEditor from '../components/troubleshooting/troubleshooting-text-editor';
 
 export default function TroubleshootingPage() {
   const [activeTab, setActiveTab] = useState('file-list');
@@ -48,7 +47,9 @@ export default function TroubleshootingPage() {
         </TabsContent>
 
         <TabsContent value="edit">
-          
+          <div className="p-4 text-center text-gray-500">
+            <p>テキスト編集機能は開発中です</p>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
