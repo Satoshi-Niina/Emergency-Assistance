@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { FileText, Edit, Plus, RefreshCw } from 'lucide-react';
 import EmergencyFlowEditor from './emergency-flow-editor';
@@ -161,6 +163,67 @@ const EmergencyGuideEdit: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
+              {selectedFlow && (
+                <div className="mb-4 space-y-4">
+                  {selectedFlow.steps?.map((step: any, index: number) => (
+                    <div key={step.id} className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm text-gray-600">Step {index + 1}</span>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor={`step-title-${step.id}`}>タイトル</Label>
+                        <Input
+                          id={`step-title-${step.id}`}
+                          value={step.title || ''}
+                          onChange={(e) => {
+                            const updatedSteps = selectedFlow.steps.map((s: any) =>
+                              s.id === step.id ? { ...s, title: e.target.value } : s
+                            );
+                            setSelectedFlow({ ...selectedFlow, steps: updatedSteps });
+                          }}
+                          placeholder="ステップのタイトルを入力"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor={`step-description-${step.id}`}>説明</Label>
+                        <textarea
+                          id={`step-description-${step.id}`}
+                          value={step.description || ''}
+                          onChange={(e) => {
+                            const updatedSteps = selectedFlow.steps.map((s: any) =>
+                              s.id === step.id ? { ...s, description: e.target.value } : s
+                            );
+                            setSelectedFlow({ ...selectedFlow, steps: updatedSteps });
+                          }}
+                          className="w-full p-2 border rounded-md"
+                          rows={3}
+                          placeholder="ステップの説明を入力"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor={`step-message-${step.id}`}>メッセージ</Label>
+                        <textarea
+                          id={`step-message-${step.id}`}
+                          value={step.message || ''}
+                          onChange={(e) => {
+                            const updatedSteps = selectedFlow.steps.map((s: any) =>
+                              s.id === step.id ? { ...s, message: e.target.value } : s
+                            );
+                            setSelectedFlow({ ...selectedFlow, steps: updatedSteps });
+                          }}
+                          className="w-full p-2 border rounded-md"
+                          rows={3}
+                          placeholder="ステップのメッセージを入力"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
               <EmergencyFlowEditor
                 flowData={selectedFlow}
                 onSave={handleSaveComplete}
