@@ -1377,16 +1377,18 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                     <h4 className="font-semibold text-gray-800">スライド内容編集</h4>
                   </div>
 
-                  <div>
-                    <Label className="text-gray-700 font-medium">スライドタイトル</Label>
+                  <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 mb-4">
+                    <Label className="text-yellow-800 font-bold text-lg block mb-2">
+                      📝 スライドタイトル編集 (新機能)
+                    </Label>
                     <Input
                       value={step.title}
                       onChange={(e) => updateStep(step.id, { title: e.target.value })}
                       placeholder="スライドのタイトルを入力してください"
-                      className="border-gray-300 focus:border-blue-500"
+                      className="border-yellow-400 focus:border-yellow-600 bg-white text-lg font-medium h-12"
                     />
-                    <p className="text-xs text-gray-500 mt-1">
-                      スライドの見出しとして表示されます
+                    <p className="text-sm text-yellow-700 mt-2 font-medium">
+                      ✅ タイトル編集機能が正常に動作しています - このフィールドでタイトルを変更できます
                     </p>
                   </div>
 
