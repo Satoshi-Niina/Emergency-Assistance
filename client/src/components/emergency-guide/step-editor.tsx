@@ -199,7 +199,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
             </div>
           </div>
 
-          {/* 条件分岐編集（options配列） */}
+          {/* 条件分岐編集（options配列）*/}
           {step.type === 'decision' && (
             <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 space-y-4">
               <div className="flex items-center justify-between">
@@ -215,12 +215,22 @@ const StepEditor: React.FC<StepEditorProps> = ({
                 </Button>
               </div>
 
+              {/* 条件分岐の説明テキスト表示 */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="text-sm text-blue-800 font-medium mb-2">判断条件の説明:</div>
+                <div className="text-sm text-blue-700">
+                  {step.description || step.message || 'ここに判断条件を記述してください（例：エンジンオイルが漏れていますか？）'}
+                </div>
+              </div>
+
               <div className="space-y-3">
-                {step.options && step.options.map((option, optionIndex) => (
+                {step.options && step.options.length > 0 ? step.options.map((option, optionIndex) => (
                   <div key={`${step.id}-option-${optionIndex}`} 
-                       className="bg-white border border-gray-200 rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">条件 {optionIndex + 1}</span>
+                       className="bg-white border-2 border-yellow-300 rounded-lg p-4 shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                      <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                        選択肢 {optionIndex + 1}: {option.conditionType === 'yes' ? 'はい' : option.conditionType === 'no' ? 'いいえ' : 'その他'}
+                      </Badge>
                       {(step.options?.length || 0) > 1 && (
                         <Button
                           size="sm"
@@ -232,25 +242,149 @@ const StepEditor: React.FC<StepEditorProps> = ({
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
-                        <Label className="text-xs">条件テキスト</Label>
+                        <Label className="text-sm font-medium text-gray-700">選択肢のテキスト</Label>
                         <Input
                           value={option.text || ''}
                           onChange={(e) => onUpdateOption(step.id, optionIndex, { text: e.target.value })}
-                          placeholder="はい、いいえ等"
-                          className="h-8 text-sm"
+                          placeholder="選択肢のテキスト（例：はい、いいえ）"
+                          className="h-9 text-sm mt-1"
                         />
                       </div>
 
                       <div>
-                        <Label className="text-xs">遷移先</Label>
+                        <Label className="text-sm font-medium text-gray-700">遷移先を選択</Label>
                         <select
                           value={option.nextStepId || ''}
                           onChange={(e) => onUpdateOption(step.id, optionIndex, { nextStepId: e.target.value })}
-                          className="w-full border rounded px-2 py-1 bg-white h-8 text-sm"
+                          className="w-full border border-gray-300 rounded px-3 py-2 bg-white h-9 text-sm mt-1 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                         >
-                          <option value="">選択</option>
+                          <option value="">遷移先を選択</option>
+                          {allSteps?.filter(s => s.id !== step.id).map(targetStep => (
+                            <option key={targetStep.id} value={targetStep.id}>
+                              {targetStep.title}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* 条件の詳細説明（オプション） */}
+                    <div className="mt-3">
+                      <Label className="text-sm font-medium text-gray-700">条件の詳細説明（オプション）</Label>
+                      <Input
+                        value={option.condition || ''}
+                        onChange={(e) => onUpdateOption(step.id, optionIndex, { condition: e.target.value })}
+                        placeholder="この選択肢の詳細説明"
+                        className="h-9 text-sm mt-1"
+                      />
+                    </div>
+
+                    {/* 条件タイプ設定 */}
+                    <div className="mt-3">
+                      <Label className="text-sm font-medium text-gray-700">条件タイプ</Label>
+                      <select
+                        value={option.conditionType || 'other'}
+                        onChange={(e) => onUpdateOption(step.id, optionIndex, { conditionType: e.target.value as 'yes' | 'no' | 'other' })}
+                        className="w-full border border-gray-300 rounded px-3 py-2 bg-white h-9 text-sm mt-1"
+                      >
+                        <option value="yes">はい（肯定的な回答）</option>
+                        <option value="no">いいえ（否定的な回答）</option>
+                        <option value="other">その他</option>
+                      </select>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="text-center py-6 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                    <p className="text-sm">条件項目がまだ追加されていません</p>
+                    <p className="text-xs mt-1">「条件追加」ボタンをクリックして選択肢を追加してください</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 条件分岐編集（conditions配列）- type: "condition"用 */}
+          {step.type === 'condition' && (
+            <div className="bg-green-50 border-2 border-green-400 rounded-lg p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium text-green-800">条件分岐設定（conditions配列）</h4>
+                <Button 
+                  size="sm"
+                  variant="outline" 
+                  onClick={() => {
+                    // conditions配列への追加処理
+                    const newCondition = { label: '新しい条件', nextId: '' };
+                    const updatedConditions = [...(step.conditions || []), newCondition];
+                    onUpdateStep(step.id, { conditions: updatedConditions });
+                  }}
+                  disabled={(step.conditions?.length || 0) >= 5}
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  条件追加
+                </Button>
+              </div>
+
+              {/* 条件分岐の説明テキスト表示 */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="text-sm text-blue-800 font-medium mb-2">判断条件の説明:</div>
+                <div className="text-sm text-blue-700">
+                  {step.description || step.message || 'ここに判断条件を記述してください（例：エンジンオイルが漏れていますか？）'}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {step.conditions && step.conditions.length > 0 ? step.conditions.map((condition, conditionIndex) => (
+                  <div key={`${step.id}-condition-${conditionIndex}`} 
+                       className="bg-white border-2 border-green-300 rounded-lg p-4 shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                      <Badge variant="secondary" className="bg-green-100 text-green-800">
+                        条件 {conditionIndex + 1}
+                      </Badge>
+                      {(step.conditions?.length || 0) > 2 && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            const updatedConditions = step.conditions?.filter((_, index) => index !== conditionIndex) || [];
+                            onUpdateStep(step.id, { conditions: updatedConditions });
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">条件ラベル</Label>
+                        <Input
+                          value={condition.label || ''}
+                          onChange={(e) => {
+                            const updatedConditions = step.conditions?.map((c, index) => 
+                              index === conditionIndex ? { ...c, label: e.target.value } : c
+                            ) || [];
+                            onUpdateStep(step.id, { conditions: updatedConditions });
+                          }}
+                          placeholder="条件の名前（例：条件A、はい、いいえ）"
+                          className="h-9 text-sm mt-1"
+                        />
+                      </div>
+
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">遷移先を選択</Label>
+                        <select
+                          value={condition.nextId || ''}
+                          onChange={(e) => {
+                            const updatedConditions = step.conditions?.map((c, index) => 
+                              index === conditionIndex ? { ...c, nextId: e.target.value } : c
+                            ) || [];
+                            onUpdateStep(step.id, { conditions: updatedConditions });
+                          }}
+                          className="w-full border border-gray-300 rounded px-3 py-2 bg-white h-9 text-sm mt-1 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        >
+                          <option value="">遷移先を選択</option>
                           {allSteps?.filter(s => s.id !== step.id).map(targetStep => (
                             <option key={targetStep.id} value={targetStep.id}>
                               {targetStep.title}
@@ -260,7 +394,12 @@ const StepEditor: React.FC<StepEditorProps> = ({
                       </div>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="text-center py-6 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                    <p className="text-sm">条件項目がまだ追加されていません</p>
+                    <p className="text-xs mt-1">「条件追加」ボタンをクリックして選択肢を追加してください</p>
+                  </div>
+                )}
               </div>
             </div>
           )}

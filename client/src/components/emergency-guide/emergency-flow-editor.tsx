@@ -77,7 +77,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         steps: (flowData.steps || flowData.slides || [])?.map(step => {
           console.log(`🔍 ステップ ${step.id} (${step.type}) のオプション:`, step.options);
 
-          // 🔀 条件分岐ノード：完全データ処理（編集UI用）
+          // 🔀 条件分岐ノード（type: "decision"）：完全データ処理（編集UI用）
             if (step.type === 'decision') {
               const existingOptions = step.options || [];
               console.log(`🔀 条件分岐ノード ${step.id} 編集UI準備:`, {
@@ -156,6 +156,48 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                 message: step.message || step.description || '',
                 type: 'decision',
                 options: processedOptions
+              };
+          } 
+          // 🔀 条件分岐ノード（type: "condition"）：conditions配列処理
+          else if (step.type === 'condition') {
+              const existingConditions = step.conditions || [];
+              console.log(`🔀 条件分岐ノード (conditions配列) ${step.id} 編集UI準備:`, {
+                stepId: step.id,
+                stepType: step.type,
+                title: step.title,
+                existingConditionsCount: existingConditions.length,
+                existingConditionsData: existingConditions
+              });
+
+              // conditions配列の検証と初期化
+              let processedConditions = [];
+              if (existingConditions.length > 0) {
+                processedConditions = existingConditions.map((condition, index) => ({
+                  label: condition.label || `条件${index + 1}`,
+                  nextId: condition.nextId || ''
+                }));
+              } else {
+                // デフォルトの条件配列
+                processedConditions = [
+                  { label: '条件A', nextId: '' },
+                  { label: '条件B', nextId: '' }
+                ];
+              }
+
+              console.log(`✅ 条件分岐ノード (conditions配列) ${step.id} 編集UI準備完了:`, {
+                finalConditionsCount: processedConditions.length,
+                finalConditionsData: processedConditions
+              });
+
+              return {
+                ...step,
+                id: step.id,
+                title: step.title || '新しい条件分岐',
+                description: step.description || step.message || '',
+                message: step.message || step.description || '',
+                type: 'condition',
+                conditions: processedConditions,
+                options: [] // options配列は空にする
               };
           } else {
             // 通常のステップの場合
