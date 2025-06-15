@@ -271,15 +271,18 @@ const StepEditor: React.FC<StepEditorProps> = ({
                       </div>
                     </div>
 
-                    {/* 条件の詳細説明（オプション） */}
+                    {/* 条件の詳細説明（強化版） */}
                     <div className="mt-3">
-                      <Label className="text-sm font-medium text-gray-700">条件の詳細説明（オプション）</Label>
+                      <Label className="text-sm font-medium text-gray-700">条件の説明（内部用）</Label>
                       <Input
                         value={option.condition || ''}
                         onChange={(e) => onUpdateOption(step.id, optionIndex, { condition: e.target.value })}
-                        placeholder="この選択肢の詳細説明"
-                        className="h-9 text-sm mt-1"
+                        placeholder="例: エンジンが警告なしに突然停止した場合"
+                        className="h-8 text-sm mt-1"
                       />
+                      <div className="text-xs text-gray-500 mt-1">
+                        この説明は内部的な条件判定の参考として使用されます
+                      </div>
                     </div>
 
                     {/* 条件タイプ設定 */}
