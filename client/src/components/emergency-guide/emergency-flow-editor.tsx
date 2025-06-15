@@ -1267,105 +1267,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                 </Button>
               </div>
 
-              {/* スライド/ステップタイトル編集 */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl p-5 mb-4 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <Edit className="w-5 h-5 text-blue-600" />
-                    <Label className="text-blue-800 font-bold text-lg">スライド #{index + 1} タイトル編集</Label>
-                  </div>
-                  <Badge variant="outline" className="bg-white text-blue-700 border-blue-300 px-3 py-1">
-                    ID: {step.id}
-                  </Badge>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-blue-700 font-medium mb-2 block">スライドタイトル</Label>
-                    {editingStepTitle === step.id ? (
-                      <div className="flex items-center gap-2">
-                        <Input
-                          value={step.title}
-                          onChange={(e) => updateStepTitle(step.id, e.target.value)}
-                          placeholder="スライドのタイトルを入力してください"
-                          className="border-blue-300 focus:border-blue-500 bg-white text-lg font-medium h-14 pl-4 transition-all duration-200 focus:shadow-lg flex-1"
-                          autoComplete="off"
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              setEditingStepTitle(null);
-                            }
-                            if (e.key === 'Escape') {
-                              setEditingStepTitle(null);
-                            }
-                          }}
-                        />
-                        <Button size="sm" onClick={() => setEditingStepTitle(null)} className="bg-green-600 hover:bg-green-700">
-                          <Check className="w-4 h-4" />
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => setEditingStepTitle(null)}>
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="relative">
-                        <div 
-                          className="border-2 border-blue-300 rounded-lg bg-white p-4 cursor-pointer hover:bg-blue-50 transition-colors duration-200 min-h-[56px] flex items-center"
-                          onClick={() => setEditingStepTitle(step.id)}
-                        >
-                          <span className="text-lg font-medium flex-1">
-                            {step.title || "（タイトル未設定 - クリックして編集）"}
-                          </span>
-                          <Edit className="w-5 h-5 text-blue-500" />
-                        </div>
-                      </div>
-                    )}
-                    <p className="text-xs text-blue-600 mt-2">
-                      タイトルをクリックして編集。Enterキーで確定、Escapeキーでキャンセル。
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-blue-100 rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Info className="w-4 h-4 text-blue-600" />
-                        <span className="text-sm font-medium text-blue-800">表示プレビュー</span>
-                      </div>
-                      <div className="bg-white rounded border p-2 text-sm text-gray-700">
-                        {step.title || "（タイトル未設定）"}
-                      </div>
-                    </div>
-
-                    <div className="bg-blue-100 rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <FileText className="w-4 h-4 text-blue-600" />
-                        <span className="text-sm font-medium text-blue-800">文字数</span>
-                      </div>
-                      <div className="text-lg font-bold text-blue-800">
-                        {step.title?.length || 0} / 50文字
-                        {(step.title?.length || 0) > 50 && (
-                          <span className="text-red-500 text-sm ml-2">（推奨文字数を超過）</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                    <div className="flex items-start gap-2">
-                      <Info className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                      <div className="text-sm text-green-700">
-                        <p className="font-medium mb-1">タイトルの効果的な使い方:</p>
-                        <ul className="space-y-1 text-xs">
-                          <li>• 簡潔で分かりやすい表現を心がける</li>
-                          <li>• フロー表示時のナビゲーションで使用される</li>
-                          <li>• 検索時のキーワードとして機能する</li>
-                          <li>• 50文字以内を推奨（表示の最適化）</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              
             </CardHeader>
 
 スライドタイトルを常に編集可能にするため、条件式を削除しました。            <CardContent>
@@ -1377,19 +1279,14 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                     <h4 className="font-semibold text-gray-800">スライド内容編集</h4>
                   </div>
 
-                  <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 mb-4">
-                    <Label className="text-yellow-800 font-bold text-lg block mb-2">
-                      📝 スライドタイトル編集 (新機能)
-                    </Label>
+                  <div>
+                    <Label className="text-gray-700 font-medium">タイトル</Label>
                     <Input
                       value={step.title}
                       onChange={(e) => updateStep(step.id, { title: e.target.value })}
                       placeholder="スライドのタイトルを入力してください"
-                      className="border-yellow-400 focus:border-yellow-600 bg-white text-lg font-medium h-12"
+                      className="border-gray-300 focus:border-blue-500"
                     />
-                    <p className="text-sm text-yellow-700 mt-2 font-medium">
-                      ✅ タイトル編集機能が正常に動作しています - このフィールドでタイトルを変更できます
-                    </p>
                   </div>
 
                   <div>
@@ -1530,46 +1427,37 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                   </div>
                 )}
 
-                {/* 🎯 条件分岐ノード（type: "decision"）のUI */}
+                {/* 条件分岐ノード編集 */}
                 {step.type === 'decision' && (
-                  <div className="bg-yellow-50 border-4 border-yellow-400 rounded-xl p-6 mb-6">
-                    <div className="text-center mb-4">
-                      <h4 className="text-xl font-bold text-yellow-800 flex items-center justify-center gap-2">
-                        <GitBranch className="w-6 h-6" />
-                        条件分岐ノード編集エリア
+                  <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium text-yellow-800 flex items-center gap-2">
+                        <GitBranch className="w-4 h-4" />
+                        条件分岐設定
                       </h4>
-                      <p className="text-sm text-yellow-700 mt-2">
-                        このエリアで条件項目を追加・編集できます
-                      </p>
-                    </div>
-
-                    {/* 条件項目追加ボタン */}
-                    <div className="text-center mb-6">
                       <Button 
+                        size="sm"
                         variant="outline" 
                         onClick={() => addDecisionOption(step.id)}
                         disabled={(step.options?.length || 0) >= 5}
-                        className="text-green-600 border-green-400 bg-green-50 hover:bg-green-100"
+                        className="text-green-600 border-green-400"
                       >
-                        <Plus className="w-4 h-4 mr-2" />
-                        条件項目を追加 ({step.options?.length || 0}/5)
+                        <Plus className="w-4 h-4 mr-1" />
+                        条件追加
                       </Button>
                     </div>
 
-                    {/* 既存の条件項目一覧 */}
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       {step.options && step.options.length > 0 ? (
                         step.options.map((option, optionIndex) => (
                           <div key={`decision-${step.id}-${optionIndex}`} 
-                               className="bg-white border-2 border-blue-300 rounded-lg p-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <Badge variant="secondary" className="text-base">
-                                条件項目 {optionIndex + 1}
-                              </Badge>
+                               className="bg-white border border-gray-200 rounded-lg p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium">条件 {optionIndex + 1}</span>
                               {(step.options?.length || 0) > 1 && (
                                 <Button
                                   size="sm"
-                                  variant="destructive"
+                                  variant="ghost"
                                   onClick={() => removeOption(step.id, optionIndex)}
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -1577,78 +1465,38 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                               )}
                             </div>
 
-                            <div className="space-y-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                               <div>
-                                <Label className="block text-sm font-bold">条件テキスト (text)</Label>
+                                <Label className="text-xs">条件テキスト</Label>
                                 <Input
                                   value={option.text || ''}
                                   onChange={(e) => updateOption(step.id, optionIndex, { text: e.target.value })}
-                                  placeholder="選択肢テキストを入力（例：はい、いいえ）"
-                                  className="mb-1"
+                                  placeholder="はい、いいえ等"
+                                  className="h-8 text-sm"
                                 />
-                                <p className="text-xs text-gray-500 mb-2">
-                                  ユーザーに表示される選択肢のラベルテキスト
-                                </p>
                               </div>
 
                               <div>
-                                <Label className="block text-sm font-bold">詳細条件 (condition)</Label>
-                                <Input
-                                  value={option.condition || ''}
-                                  onChange={(e) => updateOption(step.id, optionIndex, { condition: e.target.value })}
-                                  placeholder="条件の詳細説明を入力（例：エンジンから異音がする場合）"
-                                  className="mb-1"
-                                />
-                                <p className="text-xs text-gray-500 mb-2">
-                                  条件の詳細や判断基準を記載
-                                </p>
-                              </div>
-
-                              <div>
-                                <Label>条件タイプ</Label>
-                                <select
-                                  value={option.conditionType || 'other'}
-                                  onChange={(e) => updateOption(step.id, optionIndex, { conditionType: e.target.value as any })}
-                                  className="w-full border rounded px-3 py-2 bg-white"
-                                >
-                                  <option value="yes">はい（肯定）</option>
-                                  <option value="no">いいえ（否定）</option>
-                                  <option value="other">その他</option>
-                                </select>
-                              </div>
-
-                              <div>
-                                <Label>遷移先</Label>
+                                <Label className="text-xs">遷移先</Label>
                                 <select
                                   value={option.nextStepId || ''}
                                   onChange={(e) => updateOption(step.id, optionIndex, { nextStepId: e.target.value })}
-                                  className="w-full border rounded px-3 py-2 bg-white"
+                                  className="w-full border rounded px-2 py-1 bg-white h-8 text-sm"
                                 >
-                                  <option value="">遷移先を選択</option>
+                                  <option value="">選択</option>
                                   {editedFlow?.steps?.filter(s => s.id !== step.id).map(targetStep => (
                                     <option key={targetStep.id} value={targetStep.id}>
                                       {targetStep.title}
                                     </option>
                                   ))}
-                                  <option value="end">フロー終了</option>
                                 </select>
-                              </div>
-
-                              <div className="flex items-center space-x-2">
-                                <input
-                                  type="checkbox"
-                                  checked={Boolean(option.isTerminal)}
-                                  onChange={(e) => updateOption(step.id, optionIndex, { isTerminal: e.target.checked })}
-                                />
-                                <Label>この選択肢でフローを終了</Label>
                               </div>
                             </div>
                           </div>
                         ))
                       ) : (
-                        <div className="text-center py-6 text-gray-500">
-                          <p>まだ条件項目がありません</p>
-                          <p className="text-sm">上のボタンから条件項目を追加してください</p>
+                        <div className="text-center py-4 text-gray-500 text-sm">
+                          条件項目を追加してください
                         </div>
                       )}
                     </div>
