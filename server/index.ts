@@ -17,146 +17,64 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// 初期化処理を簡素化
-const initializeServer = async () => {
+// シンプルな初期化処理
+const startServer = async () => {
+  console.log('🚀 ===== STARTING BACKEND SERVER =====');
+  
   try {
-    console.log('[INFO] Server initialization starting...');
-    
-    // ストレージ設定
+    // 基本設定
     app.locals.storage = storage;
-    console.log('[INFO] Storage configured');
-
+    
     // 必要なディレクトリを作成
-    const dirs = [
-      'knowledge-base/images',
-      'knowledge-base/json', 
-      'knowledge-base/data',
-      'knowledge-base/troubleshooting'
-    ];
-
-    for (const dir of dirs) {
-      try {
-        const dirPath = path.join(process.cwd(), dir);
-        if (!fs.existsSync(dirPath)) {
-          fs.mkdirSync(dirPath, { recursive: true });
-          console.log(`[INFO] Created directory: ${dir}`);
-        }
-      } catch (err) {
-        console.warn(`[WARN] Failed to create directory ${dir}:`, err);
+    const dirs = ['knowledge-base/images', 'knowledge-base/data', 'knowledge-base/troubleshooting'];
+    dirs.forEach(dir => {
+      const dirPath = path.join(process.cwd(), dir);
+      if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true });
       }
-    }
+    });
 
-    // ルートを登録
-    console.log('[INFO] Registering routes...');
+    // ルート登録
     await registerRoutes(app);
 
-    // 静的ファイルの配信設定
-    app.use('/static', express.static(path.join(process.cwd(), 'public')));
+    // 静的ファイル設定
+    app.use(express.static(path.join(process.cwd(), 'client', 'dist')));
     app.use('/knowledge-base/images', express.static(path.join(process.cwd(), 'knowledge-base', 'images')));
-    app.use('/knowledge-base/data', express.static(path.join(process.cwd(), 'knowledge-base', 'data')));
-    app.use('/knowledge-base/json', express.static(path.join(process.cwd(), 'knowledge-base', 'json')));
-    app.use('/knowledge-base/media', express.static(path.join(process.cwd(), 'knowledge-base', 'media')));
 
-    // クライアントのビルドファイルを配信（最後に配置）
-    const clientDistPath = path.join(process.cwd(), 'client', 'dist');
-    app.use(express.static(clientDistPath));
-
-    // SPAのためのフォールバック（APIルート以外）
-    app.get('*', (req, res) => {
-      // APIルートは除外
-      if (req.path.startsWith('/api/') || req.path.startsWith('/knowledge-base/')) {
-        return res.status(404).json({ message: 'API endpoint not found' });
-      }
-      
-      const indexPath = path.join(clientDistPath, 'index.html');
-      if (fs.existsSync(indexPath)) {
-        res.sendFile(indexPath);
-      } else {
-        res.status(503).send('<h1>Application not built</h1><p>Run: npm run build:client</p>');
-      }
-    });
-
-    // エラーハンドリング
+    // エラーハンドラー
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
-      res.status(status).json({ message });
-      throw err;
+      console.error('Server error:', err);
+      res.status(500).json({ message: err.message || 'Internal Server Error' });
     });
 
-    const PORT = process.env.PORT || 5000;
+    const PORT = process.env.PORT || 8000;
 
-    // ✅ Replitのヘルスチェック用エンドポイント（最初に設定）
-    app.get('/api/health', (req, res) => {
-      res.status(200).json({ 
-        status: 'ok', 
-        message: 'Backend Server is running',
-        timestamp: new Date().toISOString(),
-        port: PORT,
-        env: process.env.NODE_ENV || 'development'
-      });
-    });
-
-    app.get('/api/status', (req, res) => {
-      res.status(200).json({ 
-        status: 'Backend API Ready', 
-        timestamp: new Date().toISOString(),
-        port: PORT,
-        env: process.env.NODE_ENV || 'development'
-      });
-    });
-
-    console.log('[INFO] ===== BACKEND SERVER STARTING =====');
-    console.log(`[INFO] Node.js version: ${process.version}`);
-    console.log(`[INFO] Working directory: ${process.cwd()}`);
-    console.log(`[INFO] Target PORT: ${PORT}`);
-    
     const server = app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 ===== BACKEND SERVER STARTED =====`);
-      console.log(`✅ バックエンドサーバーが起動しました: http://0.0.0.0:${PORT}`);
-      console.log(`🌐 Local access: http://localhost:${PORT}`);
-      console.log(`🔗 External access: https://${process.env.REPL_SLUG || 'unknown'}-${process.env.REPL_OWNER || 'unknown'}.repl.co`);
-      console.log(`📡 API endpoints: /api/health, /api/status`);
-      console.log(`🚀 ===== BACKEND SERVER READY =====`);
+      console.log('🚀 ===== BACKEND SERVER READY =====');
+      console.log(`✅ サーバー起動: http://0.0.0.0:${PORT}`);
+      console.log(`📡 API: /api/health, /api/status`);
     });
 
     server.on('error', (err: any) => {
-      console.error('❌ バックエンドサーバー起動エラー:', err);
-      if (err.code === 'EADDRINUSE') {
-        console.error(`🔥 ポート ${PORT} は既に使用されています`);
-        console.error('💡 別のプロセスがポートを使用している可能性があります');
-      }
+      console.error('❌ サーバーエラー:', err);
       process.exit(1);
     });
 
-    // プロセス終了時のクリーンアップ
-    process.on('SIGTERM', () => {
-      console.log('🛑 SIGTERM received, shutting down gracefully');
-      server.close(() => {
-        console.log('✅ Server closed');
-        process.exit(0);
-      });
-    });
-
-    // 知識ベースを遅延初期化（サーバー起動後に実行）
+    // 知識ベース初期化（非同期）
     setTimeout(async () => {
       try {
-        const { initializeKnowledgeBase } = await import("./lib/knowledge-base.js");
+        const { initializeKnowledgeBase } = await import('./lib/knowledge-base.js');
         await initializeKnowledgeBase();
-        console.log('✅ Knowledge base initialized');
+        console.log('✅ ナレッジベース初期化完了');
       } catch (err) {
-        console.warn('⚠️ Knowledge base initialization failed:', err instanceof Error ? err.message : 'Unknown error');
+        console.warn('⚠️ ナレッジベース初期化失敗:', err);
       }
-    }, 3000);
+    }, 2000);
 
   } catch (err) {
-    console.error('❌ サーバー初期化エラー:', err);
+    console.error('❌ サーバー起動失敗:', err);
     process.exit(1);
   }
 };
 
-// サーバーを起動
-initializeServer().catch((err) => {
-  console.error('❌ Fatal server error:', err);
-  process.exit(1);
-});
+startServer();
