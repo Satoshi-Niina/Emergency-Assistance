@@ -480,7 +480,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
                     </div>
                   </div>
                 ))
-              </div>
+              // </div>
             </div>
           )}
 
