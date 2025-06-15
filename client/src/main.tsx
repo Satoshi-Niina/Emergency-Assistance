@@ -1,3 +1,4 @@
+
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
@@ -11,15 +12,14 @@ const REACT_ROOT_EXISTS = '__REACT_ROOT_EXISTS__';
 
 // Check multiple conditions to prevent duplicate initialization
 const rootElement = document.getElementById('root');
-if ((window as any)[REACT_INITIALIZED] || 
-    (window as any)[REACT_ROOT_EXISTS] ||
-    rootElement?.hasAttribute('data-react-initialized') ||
-    rootElement?.hasChildNodes()) {
-  console.log('⛔ React already initialized, aborting');
-  // ESModuleでは単純に処理を停止
-} else {
 
-// Set multiple flags immediately
+// Initialize only if not already initialized
+if (!(window as any)[REACT_INITIALIZED] && 
+    !(window as any)[REACT_ROOT_EXISTS] &&
+    !rootElement?.hasAttribute('data-react-initialized') &&
+    !rootElement?.hasChildNodes()) {
+
+  // Set multiple flags immediately
   (window as any)[REACT_INITIALIZED] = true;
   (window as any)[REACT_ROOT_EXISTS] = true;
 
@@ -63,23 +63,25 @@ if ((window as any)[REACT_INITIALIZED] ||
 
   // Initialize React
   const container = document.getElementById('root');
-  if (!container) {
-    throw new Error('Root container not found');
+  if (container) {
+    // Mark container as initialized
+    container.setAttribute('data-react-initialized', 'true');
+
+    console.log('🚀 Initializing React application');
+    const root = createRoot(container);
+
+    root.render(
+      <QueryClientProvider client={queryClient}>
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
+      </QueryClientProvider>
+    );
+
+    console.log('✅ React application initialized');
+  } else {
+    console.error('Root container not found');
   }
-
-  // Mark container as initialized
-  container.setAttribute('data-react-initialized', 'true');
-
-  console.log('🚀 Initializing React application');
-  const root = createRoot(container);
-
-  root.render(
-    <QueryClientProvider client={queryClient}>
-      <ErrorBoundary>
-        <App />
-      </ErrorBoundary>
-    </QueryClientProvider>
-  );
-
-  console.log('✅ React application initialized');
+} else {
+  console.log('⛔ React already initialized, aborting');
 }
