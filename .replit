@@ -12,7 +12,7 @@ npm_config_prefix = "${REPLIT_NIX_CACHE}"
 run = "npm run dev:all"
 
 [workflows]
-runButton = "Dev Server"
+runButton = "Full Dev"
 
 [[workflows.workflow]]
 name = "Development Server"
@@ -34,6 +34,19 @@ args = "npm run build:client"
 
 [[workflows.workflow]]
 name = "Dev Server"
+author = 39467490
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm run dev"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+
+[[workflows.workflow]]
+name = "Full Dev"
 author = 39467490
 mode = "parallel"
 
