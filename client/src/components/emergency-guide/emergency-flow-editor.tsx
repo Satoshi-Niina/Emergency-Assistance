@@ -78,7 +78,12 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
           console.log(`🔍 ステップ ${step.id} (${step.type}) のオプション:`, step.options);
 
           // 🔀 条件分岐ノード（type: "decision"）：完全データ処理（編集UI用）
-            if (step.type === 'decision') {
+          // 条件分岐の判定を強化：type="decision"または複数のoptionsがある場合
+          const isDecisionStep = step.type === 'decision' || 
+                                 (step.options && step.options.length > 1) ||
+                                 (step.yesCondition || step.noCondition || step.otherCondition);
+
+          if (isDecisionStep) {
               const existingOptions = step.options || [];
               console.log(`🔀 条件分岐ノード ${step.id} 編集UI準備:`, {
                 stepId: step.id,
@@ -154,8 +159,15 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                 title: step.title || '新しい条件分岐',
                 description: step.description || step.message || '',
                 message: step.message || step.description || '',
-                type: 'decision',
-                options: processedOptions
+                type: 'decision', // 明示的に条件分岐タイプに設定
+                options: processedOptions,
+                // 旧スキーマフィールドも保持
+                yesCondition: step.yesCondition,
+                noCondition: step.noCondition,
+                otherCondition: step.otherCondition,
+                yesNextStepId: step.yesNextStepId,
+                noNextStepId: step.noNextStepId,
+                otherNextStepId: step.otherNextStepId
               };
           } 
           // 🔀 条件分岐ノード（type: "condition"）：conditions配列処理
