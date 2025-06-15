@@ -12,7 +12,7 @@ npm_config_prefix = "${REPLIT_NIX_CACHE}"
 run = "npm run dev:all"
 
 [workflows]
-runButton = "Full Stack App"
+runButton = "Integrated App"
 
 [[workflows.workflow]]
 name = "Development Server"
@@ -38,6 +38,19 @@ args = "tsx server/index.ts"
 
 [[workflows.workflow]]
 name = "Full Stack App"
+author = 39467490
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run build:client"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "tsx server/index.ts"
+
+[[workflows.workflow]]
+name = "Integrated App"
 author = 39467490
 mode = "sequential"
 
