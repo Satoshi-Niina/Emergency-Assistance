@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -91,12 +90,12 @@ const StepEditor: React.FC<StepEditorProps> = ({
               <Edit className="w-6 h-6 text-red-600" />
               <h3 className="text-xl font-bold text-red-800">🔥 スライドタイトル編集（強化版）</h3>
             </div>
-            
+
             <div className="space-y-4">
               <Label className="text-red-800 font-bold text-lg block">
                 スライド #{index + 1} のタイトル（ID: {step.id}）
               </Label>
-              
+
               {/* デバッグ情報表示 */}
               <div className="bg-yellow-50 border border-yellow-300 rounded p-3 text-sm">
                 <strong>デバッグ情報:</strong>
@@ -104,7 +103,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
                 <br />ステップID: {step.id}
                 <br />ステップタイプ: {step.type}
               </div>
-              
+
               <Input
                 value={step.title || ''}
                 onChange={(e) => {
@@ -128,7 +127,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
                 placeholder="スライドのタイトルを入力してください"
                 className="text-xl font-semibold h-16 border-4 border-red-400 focus:border-red-600 bg-white shadow-inner"
               />
-              
+
               {/* 強制更新ボタン */}
               <Button 
                 type="button"
@@ -141,7 +140,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
               >
                 🔄 テストタイトル更新
               </Button>
-              
+
               <div className="flex items-center gap-2 text-red-700">
                 <Info className="w-4 h-4" />
                 <span className="text-sm font-semibold">
@@ -149,7 +148,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
                 </span>
               </div>
             </div>
-            
+
             {/* リアルタイムプレビュー - 強化版 */}
             <div className="mt-4 p-4 bg-white rounded-lg border-4 border-red-300 shadow-md">
               <div className="text-sm text-red-600 mb-2 font-semibold">プレビュー（リアルタイム）:</div>
@@ -403,6 +402,20 @@ const StepEditor: React.FC<StepEditorProps> = ({
                   <div className="text-center py-6 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                     <p className="text-sm">条件項目がまだ追加されていません</p>
                     <p className="text-xs mt-1">「条件追加」ボタンをクリックして選択肢を追加してください</p>
+                    <Button 
+                      size="sm" 
+                      onClick={() => {
+                        // conditions配列を初期化
+                        const defaultConditions = [
+                          { label: '条件A', nextId: '' },
+                          { label: '条件B', nextId: '' }
+                        ];
+                        onUpdateStep(step.id, { conditions: defaultConditions });
+                      }}
+                      className="mt-3"
+                    >
+                      基本条件を設定
+                    </Button>
                   </div>
                 )}
               </div>
