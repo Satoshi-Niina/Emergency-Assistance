@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import TroubleshootingFileList from '@/components/troubleshooting/troubleshooting-file-list';
-import TroubleshootingTextEditor from '@/components/troubleshooting/troubleshooting-text-editor';
+// import TroubleshootingTextEditor from '../components/troubleshooting/troubleshooting-text-editor';
 
 export default function TroubleshootingPage() {
   const [activeTab, setActiveTab] = useState('file-list');
@@ -49,11 +48,7 @@ export default function TroubleshootingPage() {
         </TabsContent>
 
         <TabsContent value="edit">
-          <TroubleshootingTextEditor
-            flowId={selectedFlowId || ''}
-            onSave={handleSaved}
-            onCancel={handleCancel}
-          />
+          
         </TabsContent>
       </Tabs>
     </div>
