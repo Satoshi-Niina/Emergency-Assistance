@@ -1355,6 +1355,18 @@ const EmergencyGuideEdit: React.FC = () => {
                                 </div>
                               </CardHeader>
                               <CardContent className="pt-4 space-y-4">
+                                {/* タイトル編集フィールド */}
+                                <div className="grid gap-2">
+                                  <Label htmlFor={'slide-' + slideIndex + '-title'}>タイトル</Label>
+                                  <Input
+                                    id={'slide-' + slideIndex + '-title'}
+                                    value={slide.タイトル || ''}
+                                    onChange={(e) => handleSlideChange(slideIndex, 'タイトル', e.target.value)}
+                                    disabled={!isEditing}
+                                    placeholder="スライドのタイトルを入力してください"
+                                  />
+                                </div>
+
                                 <div className="grid gap-2">
                                   <Label htmlFor={'slide-' + slideIndex + '-text'}>本文</Label>
                                   {Array.isArray(slide.本文) ? slide.本文.map((text: string, textIndex: number) => (
