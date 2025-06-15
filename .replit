@@ -27,6 +27,10 @@ args = "cd client && npm run dev"
 task = "shell.exec"
 args = "tsx server/index.ts"
 
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "tsx server/index.ts"
+
 [[workflows.workflow]]
 name = "Run"
 author = 39467490
