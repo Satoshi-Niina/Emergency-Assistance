@@ -1272,18 +1272,15 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
 
 スライドタイトルを常に編集可能にするため、条件式を削除しました。            <CardContent>
               <div className="space-y-4">
-                {/* スライドタイトル編集 - 常に表示 */}
-                <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4">
-                  <Label className="text-blue-800 font-bold text-lg block mb-2">スライドタイトル</Label>
+                {/* スライドタイトル編集 */}
+                <div>
+                  <Label className="text-gray-700 font-medium">スライドタイトル</Label>
                   <Input
                     value={step.title}
                     onChange={(e) => updateStep(step.id, { title: e.target.value })}
                     placeholder="スライドのタイトルを入力してください"
-                    className="border-blue-400 focus:border-blue-600 bg-white text-lg font-medium h-12"
+                    className="mt-1"
                   />
-                  <p className="text-sm text-blue-700 mt-2">
-                    このタイトルがプレビューに表示されます
-                  </p>
                 </div>
 
                 {/* スライド詳細編集セクション */}
