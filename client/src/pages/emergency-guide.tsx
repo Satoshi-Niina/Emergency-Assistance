@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import EmergencyGuideUploader from "@/components/emergency-guide/emergency-guide-uploader";
 import EmergencyGuideEdit from "@/components/emergency-guide/emergency-guide-edit";
-import EmergencyFlowCreator from "@/components/emergency-guide/emergency-flow-creator";
+
 import KeywordSuggestions from "@/components/emergency-guide/keyword-suggestions";
 import { Helmet } from "react-helmet";
 import { Button } from "@/components/ui/button";
@@ -225,10 +225,9 @@ const EmergencyGuidePage: React.FC = () => {
         onValueChange={setActiveTab}
         className="w-full h-[calc(100vh-120px)]"
       >
-        <TabsList className="grid w-full grid-cols-3 mb-8">
+        <TabsList className="grid w-full grid-cols-2 mb-8">
           <TabsTrigger value="upload">新規作成（アップロード）</TabsTrigger>
           <TabsTrigger value="edit">テキスト編集</TabsTrigger>
-          <TabsTrigger value="flow">キャラクター編集</TabsTrigger>
         </TabsList>
 
         <TabsContent value="upload" className="space-y-4 h-full overflow-auto">
@@ -239,9 +238,7 @@ const EmergencyGuidePage: React.FC = () => {
           <EmergencyGuideEdit />
         </TabsContent>
 
-        <TabsContent value="flow" className="space-y-4 h-full overflow-auto">
-          <EmergencyFlowCreator />
-        </TabsContent>
+        
       </Tabs>
     </div>
   );
