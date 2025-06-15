@@ -129,4 +129,7 @@ const initializeServer = async () => {
 };
 
 // サーバーを起動
-initializeServer();
+initializeServer().catch((err) => {
+  console.error('❌ Fatal server error:', err);
+  process.exit(1);
+});
