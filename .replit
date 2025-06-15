@@ -12,7 +12,7 @@ npm_config_prefix = "${REPLIT_NIX_CACHE}"
 run = "npm run dev:all"
 
 [workflows]
-runButton = "Full Development"
+runButton = "Setup and Run"
 
 [[workflows.workflow]]
 name = "Development Server"
@@ -57,6 +57,23 @@ args = "cd client && npm run dev"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "tsx server/index.ts"
+
+[[workflows.workflow]]
+name = "Setup and Run"
+author = 39467490
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm install"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm install"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd .. && npm run dev:all"
 
 [[ports]]
 localPort = 3000

@@ -91,14 +91,19 @@ const initializeServer = async () => {
       res.status(200).json({ 
         status: 'ok', 
         timestamp: new Date().toISOString(),
-        port: PORT
+        port: PORT,
+        env: process.env.NODE_ENV || 'development'
       });
     });
 
     console.log('[INFO] Starting server...');
+    console.log(`[INFO] Node.js version: ${process.version}`);
+    console.log(`[INFO] Working directory: ${process.cwd()}`);
+    
     const server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`✅ サーバーが起動しました: http://0.0.0.0:${PORT}`);
-      console.log(`🌐 プレビューURL: https://${process.env.REPL_SLUG || 'unknown'}.${process.env.REPL_OWNER || 'unknown'}.repl.co`);
+      console.log(`🌐 Local access: http://localhost:${PORT}`);
+      console.log(`🔗 External access: https://${process.env.REPL_SLUG || 'unknown'}-${process.env.REPL_OWNER || 'unknown'}.repl.co`);
     });
 
     server.on('error', (err) => {
