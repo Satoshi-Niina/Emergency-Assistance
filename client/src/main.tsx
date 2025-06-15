@@ -16,8 +16,7 @@ if ((window as any)[REACT_INITIALIZED] ||
     rootElement?.hasAttribute('data-react-initialized') ||
     rootElement?.hasChildNodes()) {
   console.log('⛔ React already initialized, aborting');
-  process.exit?.(0);
-  return;
+  throw new Error('React already initialized');
 }
 
 // Set multiple flags immediately
