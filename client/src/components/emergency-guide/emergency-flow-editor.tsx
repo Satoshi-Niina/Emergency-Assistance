@@ -75,13 +75,15 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
       const processedData = {
         ...flowData,
         steps: (flowData.steps || flowData.slides || [])?.map(step => {
-          console.log(`🔍 ステップ ${step.id} (${step.type}) のオプション:`, step.options);
+          console.log(`🔍 ステップ ${step.id} 元データ確認:`, {
+            rawType: step.type,
+            hasOptions: !!step.options,
+            optionsLength: step.options?.length || 0,
+            optionsData: step.options
+          });
 
-          // 🔀 条件分岐ノード（type: "decision"）：完全データ処理（編集UI用）
-          // 条件分岐の判定を強化：type="decision"を最優先で判定
-          const isDecisionStep = step.type === 'decision' || step.type === 'condition' || 
-                                 (step.options && step.options.length > 0) ||
-                                 (step.yesCondition || step.noCondition || step.otherCondition);
+          // 🔀 条件分岐ノード（type: "decision"）：強制的にJSONの元typeを保持
+          const isDecisionStep = step.type === 'decision' || step.type === 'condition';
 
           if (isDecisionStep) {
               // JSONから読み込んだoptionsを保持
@@ -164,13 +166,18 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                 finalOptionsData: processedOptions
               });
 
+              console.log(`✅ decision型ステップ処理: ${step.id}`, {
+                originalType: step.type,
+                finalOptionsCount: processedOptions.length
+              });
+
               return {
                 ...step,
                 id: step.id,
                 title: step.title || '新しい条件分岐',
                 description: step.description || step.message || '',
                 message: step.message || step.description || '',
-                type: step.type, // 元のtypeを保持（decision/condition）
+                type: 'decision', // JSONから読み込んだdecision型を強制保持
                 options: processedOptions,
                 // 旧スキーマフィールドも保持
                 yesCondition: step.yesCondition,
