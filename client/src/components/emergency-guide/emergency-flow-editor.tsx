@@ -1271,16 +1271,39 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
             </CardHeader>
 
 スライドタイトルを常に編集可能にするため、条件式を削除しました。            <CardContent>
-              <div className="space-y-4">
-                {/* スライドタイトル編集 */}
-                <div>
-                  <Label className="text-gray-700 font-medium">スライドタイトル</Label>
-                  <Input
-                    value={step.title}
-                    onChange={(e) => updateStep(step.id, { title: e.target.value })}
-                    placeholder="スライドのタイトルを入力してください"
-                    className="mt-1"
-                  />
+              <div className="space-y-6">
+                {/* 🎯 専用タイトル編集セクション - 最上部に配置 */}
+                <div className="bg-gradient-to-r from-blue-100 to-indigo-100 border-4 border-blue-400 rounded-xl p-6 mb-6 shadow-lg">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Edit className="w-6 h-6 text-blue-600" />
+                    <h3 className="text-xl font-bold text-blue-800">📝 スライドタイトル編集</h3>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <Label className="text-blue-800 font-bold text-lg block">
+                      スライド #{index + 1} のタイトル
+                    </Label>
+                    <Input
+                      value={step.title}
+                      onChange={(e) => updateStep(step.id, { title: e.target.value })}
+                      placeholder="スライドのタイトルを入力してください"
+                      className="text-xl font-semibold h-14 border-3 border-blue-300 focus:border-blue-600 bg-white shadow-inner"
+                    />
+                    <div className="flex items-center gap-2 text-blue-700">
+                      <Info className="w-4 h-4" />
+                      <span className="text-sm">
+                        このタイトルがプレビューとフロー内で表示されます
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* リアルタイムプレビュー */}
+                  <div className="mt-4 p-3 bg-white rounded-lg border-2 border-blue-200">
+                    <div className="text-sm text-blue-600 mb-1">プレビュー:</div>
+                    <div className="text-lg font-bold text-gray-800">
+                      {step.title || '（タイトル未設定）'}
+                    </div>
+                  </div>
                 </div>
 
                 {/* スライド詳細編集セクション */}
