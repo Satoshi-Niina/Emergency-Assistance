@@ -393,8 +393,14 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
     }
   }, [selectedFlowId, availableFlows, newFlowData]);
 
-  // 🚨 強制保存イベントリスナーを追加
+  // 強制保存イベントリスナー（編集モードでは無効化）
   useEffect(() => {
+    // 編集モードでは自動保存を無効化
+    if (window.location.pathname.includes('/emergency-guide')) {
+      console.log('📝 編集モード - 自動保存を無効化');
+      return;
+    }
+
     const handleForceSave = (event: CustomEvent) => {
       console.log(`🔥 強制保存イベント受信:`, event.detail);
       if (editedFlow) {

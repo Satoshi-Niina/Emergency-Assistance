@@ -55,8 +55,13 @@ const StepEditor: React.FC<StepEditorProps> = ({
   onUpdateOption,
   allSteps
 }) => {
-  // 条件分岐ノードの自動初期化処理
+  // 条件分岐ノードの自動初期化処理（編集時は無効化）
   useEffect(() => {
+    // 編集モードでは自動初期化を無効化
+    if (window.location.pathname.includes('/emergency-guide')) {
+      return; // 編集画面では自動初期化をスキップ
+    }
+
     const isConditionalNode = step.type === 'decision' || step.type === 'condition';
     const hasEmptyOptions = !step.options || step.options.length === 0;
 
@@ -385,22 +390,9 @@ const StepEditor: React.FC<StepEditorProps> = ({
                             const newText = e.target.value;
                             console.log(`📝 選択肢テキスト変更: ${step.id} -> 選択肢${optionIndex + 1} -> "${newText}"`);
                             onUpdateOption(step.id, optionIndex, { text: newText });
-                            
-                            // 🚨 即座にJSON保存を実行
-                            console.log(`🔥 条件項目変更 - 即座保存実行: ${step.id}`);
-                            setTimeout(() => {
-                              // 保存イベントを発火
-                              window.dispatchEvent(new CustomEvent('forceFlowSave', {
-                                detail: { reason: 'option_text_changed', stepId: step.id, optionIndex }
-                              }));
-                            }, 500);
                           }}
                           onBlur={() => {
-                            console.log(`💾 選択肢テキスト確定 - 強制保存: ${step.id}`);
-                            // 保存イベントを発火
-                            window.dispatchEvent(new CustomEvent('forceFlowSave', {
-                              detail: { reason: 'option_text_blur', stepId: step.id }
-                            }));
+                            console.log(`💾 選択肢テキスト確定: ${step.id}`);
                           }}
                           placeholder="選択肢のテキスト（例：はい、いいえ）"
                           className="h-9 text-sm mt-1"
@@ -415,14 +407,6 @@ const StepEditor: React.FC<StepEditorProps> = ({
                             const newNextStepId = e.target.value;
                             console.log(`🔄 遷移先変更: ${step.id} -> 選択肢${optionIndex + 1} -> ${newNextStepId}`);
                             onUpdateOption(step.id, optionIndex, { nextStepId: newNextStepId });
-                            
-                            // 🚨 即座にJSON保存を実行
-                            console.log(`🔥 遷移先変更 - 即座保存実行: ${step.id}`);
-                            setTimeout(() => {
-                              window.dispatchEvent(new CustomEvent('forceFlowSave', {
-                                detail: { reason: 'next_step_changed', stepId: step.id, optionIndex, newNextStepId }
-                              }));
-                            }, 300);
                           }}
                           className="w-full border border-gray-300 rounded px-3 py-2 bg-white h-9 text-sm mt-1 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                         >
