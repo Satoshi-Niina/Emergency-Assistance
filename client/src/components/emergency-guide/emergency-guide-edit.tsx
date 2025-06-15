@@ -50,14 +50,23 @@ const EmergencyGuideEdit: React.FC = () => {
   // フロー選択時の詳細データ取得
   const handleFlowSelect = async (flowItem: any) => {
     try {
+      console.log('🔄 フロー選択:', flowItem);
+      
       const response = await fetch(`/api/emergency-flow/detail/${flowItem.id}`);
       if (!response.ok) throw new Error('フロー詳細の取得に失敗しました');
       
       const result = await response.json();
       const flowData = result.data || result;
       
+      console.log('✅ 取得したフローデータ:', flowData);
+      
       setSelectedFlow(flowData);
       setSelectedFilePath(flowItem.filePath || `knowledge-base/troubleshooting/${flowItem.id}.json`);
+      
+      console.log('📝 エディターに設定完了:', {
+        selectedFlow: !!flowData,
+        filePath: flowItem.filePath || `knowledge-base/troubleshooting/${flowItem.id}.json`
+      });
     } catch (error) {
       console.error('フロー詳細取得エラー:', error);
       toast({
@@ -159,9 +168,28 @@ const EmergencyGuideEdit: React.FC = () => {
                 <Edit className="w-5 h-5" />
                 {selectedFlow ? `編集: ${selectedFlow.title}` : '新規フロー作成'}
               </CardTitle>
+              {selectedFlow && (
+                <div className="text-sm text-gray-600">
+                  ID: {selectedFlow.id} | ステップ数: {selectedFlow.steps?.length || 0}
+                </div>
+              )}
             </CardHeader>
             <CardContent>
+              {/* デバッグ情報 */}
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="text-sm text-blue-800">
+                  <strong>エディター状態:</strong>
+                  <br />
+                  選択フロー: {selectedFlow ? '✅ 設定済み' : '❌ 未選択'}
+                  <br />
+                  ファイルパス: {selectedFilePath || '未設定'}
+                  <br />
+                  ステップ数: {selectedFlow?.steps?.length || 0}
+                </div>
+              </div>
+              
               <EmergencyFlowEditor
+                key={selectedFlow?.id || 'new-flow'}
                 flowData={selectedFlow}
                 onSave={handleSaveComplete}
                 selectedFilePath={selectedFilePath}
