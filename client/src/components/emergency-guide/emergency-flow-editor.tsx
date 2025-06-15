@@ -571,83 +571,65 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
           optionsDetail: step.options
         });
 
-        // 条件分岐ノードのoptions配列が空でないことを確認
-        if (!step.options || step.options.length === 0) {
-          console.warn(`⚠️ 条件分岐ノード ${step.id} のoptions配列が空です - デフォルト値を設定`);
-        }
+        // 条件項目の完全保存（統一スキーマ）- より厳密な検証
+        const processedOptions = (step.options || []).map((option, index) => {
+          const processedOption = {
+            text: option.text || `条件項目 ${index + 1}`,
+            nextStepId: option.nextStepId || '',
+            condition: option.condition || option.text || '',
+            isTerminal: Boolean(option.isTerminal),
+            conditionType: option.conditionType || 'other'
+          };
 
-            console.log(`🔀 条件分岐ノード ${step.id} 統一スキーマ保存:`, {
-              stepId: step.id,
-              stepType: step.type,
-              title: step.title,
-              optionsCount: step.options?.length || 0,
-              optionsDetail: step.options
-            });
+          console.log(`🔧 条件項目 ${index + 1} 処理:`, {
+            original: option,
+            processed: processedOption
+          });
 
-            // 条件分岐ノードのoptions配列が空でないことを確認
-            if (!step.options || step.options.length === 0) {
-              console.warn(`⚠️ 条件分岐ノード ${step.id} のoptions配列が空です - デフォルト値を設定`);
-            }
+          return processedOption;
+        });
 
-            // 条件項目の完全保存（統一スキーマ）- より厳密な検証
-            const processedOptions = (step.options || []).map((option, index) => {
-              const processedOption = {
-                text: option.text || `条件項目 ${index + 1}`,
-                nextStepId: option.nextStepId || '',
-                condition: option.condition || option.text || '',
-                isTerminal: Boolean(option.isTerminal),
-                conditionType: option.conditionType || 'other'
-              };
+        // デフォルト条件項目が空の場合は基本的な条件を追加
+        const unifiedOptions = processedOptions.length > 0 ? processedOptions : [
+          { text: 'はい', nextStepId: '', condition: 'はい', isTerminal: false, conditionType: 'yes' },
+          { text: 'いいえ', nextStepId: '', condition: 'いいえ', isTerminal: false, conditionType: 'no' }
+        ];
 
-              console.log(`🔧 条件項目 ${index + 1} 処理:`, {
-                original: option,
-                processed: processedOption
-              });
+        // 旧形式の条件フィールドも生成（後方互換性）
+        const yesOption = unifiedOptions.find(opt => opt.conditionType === 'yes');
+        const noOption = unifiedOptions.find(opt => opt.conditionType === 'no');
+        const otherOptions = unifiedOptions.filter(opt => opt.conditionType === 'other');
 
-              return processedOption;
-            });
+        const savedDecisionStep = {
+          ...step,
+          id: step.id,
+          title: step.title || '新しい条件分岐',
+          description: step.description || step.message || '',
+          message: step.message || step.description || '',
+          imageUrl: step.imageUrl || '',
+          type: 'decision', // typeを強制的に'decision'に設定
+          // 統一スキーマ：options配列（必須）
+          options: unifiedOptions,
+          // 後方互換性：個別条件フィールド
+          yesCondition: yesOption?.condition || yesOption?.text || '',
+          yesNextStepId: yesOption?.nextStepId || '',
+          noCondition: noOption?.condition || noOption?.text || '',
+          noNextStepId: noOption?.nextStepId || '',
+          otherCondition: otherOptions.map(opt => opt.condition || opt.text).join(', ') || '',
+          otherNextStepId: otherOptions[0]?.nextStepId || ''
+        };
 
-            // デフォルト条件項目が空の場合は基本的な条件を追加
-            const unifiedOptions = processedOptions.length > 0 ? processedOptions : [
-              { text: 'はい', nextStepId: '', condition: 'はい', isTerminal: false, conditionType: 'yes' },
-              { text: 'いいえ', nextStepId: '', condition: 'いいえ', isTerminal: false, conditionType: 'no' }
-            ];
+        console.log(`✅ 条件分岐ノード ${step.id} 統一スキーマ保存完了:`, {
+          stepId: savedDecisionStep.id,
+          type: savedDecisionStep.type,
+          optionsCount: savedDecisionStep.options.length,
+          optionsDetail: savedDecisionStep.options,
+          yesCondition: savedDecisionStep.yesCondition,
+          noCondition: savedDecisionStep.noCondition,
+          otherCondition: savedDecisionStep.otherCondition
+        });
 
-            // 旧形式の条件フィールドも生成（後方互換性）
-            const yesOption = unifiedOptions.find(opt => opt.conditionType === 'yes');
-            const noOption = unifiedOptions.find(opt => opt.conditionType === 'no');
-            const otherOptions = unifiedOptions.filter(opt => opt.conditionType === 'other');
-
-            const savedDecisionStep = {
-              ...step,
-              id: step.id,
-              title: step.title || '新しい条件分岐',
-              description: step.description || step.message || '',
-              message: step.message || step.description || '',
-              imageUrl: step.imageUrl || '',
-              type: 'decision',
-              // 統一スキーマ：options配列（必須）
-              options: unifiedOptions,
-              // 後方互換性：個別条件フィールド
-              yesCondition: yesOption?.condition || yesOption?.text || '',
-              yesNextStepId: yesOption?.nextStepId || '',
-              noCondition: noOption?.condition || noOption?.text || '',
-              noNextStepId: noOption?.nextStepId || '',
-              otherCondition: otherOptions.map(opt => opt.condition || opt.text).join(', ') || '',
-              otherNextStepId: otherOptions[0]?.nextStepId || ''
-            };
-
-            console.log(`✅ 条件分岐ノード ${step.id} 統一スキーマ保存完了:`, {
-              stepId: savedDecisionStep.id,
-              type: savedDecisionStep.type,
-              optionsCount: savedDecisionStep.options.length,
-              optionsDetail: savedDecisionStep.options,
-              yesCondition: savedDecisionStep.yesCondition,
-              noCondition: savedDecisionStep.noCondition,
-              otherCondition: savedDecisionStep.otherCondition
-            });
-
-            return savedDecisionStep;
+        return savedDecisionStep;
           } else {
             // 通常のステップ：デフォルトで"次へ"オプションを確保
             const defaultOptions = step.options?.length > 0 ? step.options : [{
@@ -935,7 +917,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
         description: '状況に応じて異なる選択肢を選んでください。',
         message: '状況に応じて異なる選択肢を選んでください。',
         type: 'condition', // 明示的にconditionを設定
-imageUrl: '',
+        imageUrl: '',
         options: [], // 空配列
         conditions: [ // 必須のconditions配列
           { label: '条件A', nextId: '' },

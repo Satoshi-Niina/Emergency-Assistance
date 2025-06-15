@@ -55,18 +55,13 @@ const StepEditor: React.FC<StepEditorProps> = ({
   onUpdateOption,
   allSteps
 }) => {
-  // 条件分岐ノードの自動初期化処理（編集時は無効化）
+  // 条件分岐ノードの自動初期化処理（編集時も有効）
   useEffect(() => {
-    // 編集モードでは自動初期化を無効化
-    if (window.location.pathname.includes('/emergency-guide')) {
-      return; // 編集画面では自動初期化をスキップ
-    }
-
     const isConditionalNode = step.type === 'decision' || step.type === 'condition';
     const hasEmptyOptions = !step.options || step.options.length === 0;
 
     if (isConditionalNode && hasEmptyOptions) {
-      console.log(`🔧 条件分岐ノード ${step.id} (type: ${step.type}) の自動初期化を実行`);
+      console.log(`🔧 条件分岐ノード ${step.id} (type: ${step.type}) の自動初期化を実行（編集モード対応）`);
 
       // 基本的な条件分岐オプションを設定
       const defaultOptions = [
@@ -74,11 +69,11 @@ const StepEditor: React.FC<StepEditorProps> = ({
         { text: 'いいえ', nextStepId: '', isTerminal: false, conditionType: 'no' as const, condition: '' }
       ];
 
-      setTimeout(() => {
-        onUpdateStep(step.id, { 
-          options: defaultOptions
-        });
-      }, 100);
+      // 即座に初期化（遅延なし）
+      onUpdateStep(step.id, { 
+        type: step.type, // typeを明示的に保持
+        options: defaultOptions
+      });
     }
   }, [step.id, step.type, step.options, onUpdateStep]);
 
