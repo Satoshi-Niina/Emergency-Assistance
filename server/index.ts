@@ -86,7 +86,17 @@ const initializeServer = async () => {
 
     const PORT = process.env.PORT || 5000;
 
-    // ✅ Replitのヘルスチェック用エンドポイント（追加）
+    // ✅ Replitのヘルスチェック用エンドポイント（最初に設定）
+    app.get('/api/health', (req, res) => {
+      res.status(200).json({ 
+        status: 'ok', 
+        message: 'Server is running',
+        timestamp: new Date().toISOString(),
+        port: PORT,
+        env: process.env.NODE_ENV || 'development'
+      });
+    });
+
     app.get('/', (req, res) => {
       res.status(200).json({ 
         status: 'ok', 
