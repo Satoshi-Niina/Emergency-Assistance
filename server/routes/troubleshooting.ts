@@ -4,6 +4,27 @@ import fs from 'fs';
 
 const router = Router();
 
+// Get individual troubleshooting flow by ID
+router.get('/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const filePath = path.join(troubleshootingDir, `${id}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'Troubleshooting flow not found' });
+    }
+
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const data = JSON.parse(content);
+    
+    res.json(data);
+  } catch (error) {
+    console.error('Error fetching troubleshooting flow:', error);
+    res.status(500).json({ error: 'Failed to fetch troubleshooting flow' });
+  }
+});
+
 // Troubleshooting flow routes
 router.get('/', (req, res) => {
   try {
