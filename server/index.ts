@@ -1,10 +1,8 @@
 
 import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes.js";
 import path from "path";
 import { fileURLToPath } from 'url';
-import { storage } from "./storage.js";
 
 // __dirnameの代替
 const __filename = fileURLToPath(import.meta.url);
@@ -21,14 +19,7 @@ const startServer = async () => {
   console.log('🚀 ===== STARTING BACKEND SERVER =====');
   
   try {
-    // 基本設定
-    app.locals.storage = storage;
-
-    // 静的ファイル設定
-    app.use(express.static(path.join(process.cwd(), 'client', 'dist')));
-    app.use('/knowledge-base/images', express.static(path.join(process.cwd(), 'knowledge-base', 'images')));
-
-    // ヘルスチェックエンドポイント
+    // 基本的なヘルスチェックエンドポイントを最初に設定
     app.get('/api/health', (req, res) => {
       res.json({ 
         status: 'ok', 
@@ -37,12 +28,19 @@ const startServer = async () => {
       });
     });
 
-    console.log('📡 ルート登録開始...');
-    
-    // ルート登録
-    const server = await registerRoutes(app);
-    
-    console.log('✅ ルート登録完了');
+    console.log('✅ 基本設定完了');
+
+    // 静的ファイル設定
+    try {
+      app.use(express.static(path.join(process.cwd(), 'client', 'dist')));
+      app.use('/knowledge-base/images', express.static(path.join(process.cwd(), 'knowledge-base', 'images')));
+      console.log('✅ 静的ファイル設定完了');
+    } catch (staticError) {
+      console.error('❌ 静的ファイル設定エラー:', staticError);
+    }
+
+    // データベースとストレージの初期化を後回しにして、まずサーバーを起動
+    console.log('📡 ルート登録をスキップしてサーバー起動...');
 
     // エラーハンドラー
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -52,8 +50,8 @@ const startServer = async () => {
 
     const PORT = process.env.PORT || 3001;
 
-    // サーバーを起動
-    server.listen(PORT, '0.0.0.0', () => {
+    // HTTPサーバーを直接作成
+    const server = app.listen(PORT, '0.0.0.0', () => {
       console.log('🚀 ===== BACKEND SERVER READY =====');
       console.log(`✅ バックエンドサーバー起動: http://0.0.0.0:${PORT}`);
       console.log(`🌐 フロントエンド: http://localhost:5000`);
@@ -69,6 +67,21 @@ const startServer = async () => {
       }
       process.exit(1);
     });
+
+    // 遅延ルート登録（サーバー起動後）
+    setTimeout(async () => {
+      try {
+        console.log('📡 遅延ルート登録開始...');
+        const { registerRoutes } = await import('./routes.js');
+        const { storage } = await import('./storage.js');
+        
+        app.locals.storage = storage;
+        await registerRoutes(app);
+        console.log('✅ 遅延ルート登録完了');
+      } catch (routeError) {
+        console.error('❌ ルート登録エラー:', routeError);
+      }
+    }, 1000);
 
   } catch (err) {
     console.error('❌ サーバー起動失敗:', err);
