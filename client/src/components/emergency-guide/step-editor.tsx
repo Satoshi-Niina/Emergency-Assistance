@@ -230,6 +230,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
 
           {/* 条件分岐編集（options配列）- decision と condition 共通UI */}
           {(() => {
+            // type: "decision"または"condition"の場合は必ず条件分岐UIを表示
             const isConditionalNode = step.type === 'decision' || step.type === 'condition';
             const hasValidOptions = step.options && Array.isArray(step.options) && step.options.length > 0;
             
@@ -240,16 +241,18 @@ const StepEditor: React.FC<StepEditorProps> = ({
               hasValidOptions,
               optionsLength: step.options?.length || 0,
               optionsData: step.options,
-              shouldShowUI: isConditionalNode
+              shouldShowUI: isConditionalNode,
+              jsonRawType: typeof step.type,
+              jsonStepData: step
             });
             
             // decision/condition型なら、optionsの有無に関わらずUIを表示
             if (isConditionalNode) {
               console.log(`✅ 条件分岐UI表示決定: ${step.id} (type: ${step.type})`);
               
-              // optionsが空の場合のみ初期化（JSONから読み込まれた既存データは保持）
-              if (!hasValidOptions) {
-                console.log(`🔧 条件分岐ノード ${step.id} のoptionsを初期化（空だったため）`);
+              // JSONから読み込まれたdecision型でoptionsが空の場合は初期化
+              if (step.type === 'decision' && !hasValidOptions) {
+                console.log(`🔧 decision型ノード ${step.id} のoptionsを初期化（JSONから空で読み込まれた）`);
                 setTimeout(() => {
                   const defaultOptions = [
                     { text: 'はい', nextStepId: '', isTerminal: false, conditionType: 'yes' as const, condition: '' },
@@ -257,9 +260,11 @@ const StepEditor: React.FC<StepEditorProps> = ({
                   ];
                   onUpdateStep(step.id, { options: defaultOptions });
                 }, 100);
-              } else {
+              } else if (hasValidOptions) {
                 console.log(`✅ 既存のoptions配列を使用: ${step.id}`, step.options);
               }
+            } else {
+              console.log(`❌ 条件分岐ではないステップ: ${step.id} (type: ${step.type})`);
             }
             
             return isConditionalNode;
