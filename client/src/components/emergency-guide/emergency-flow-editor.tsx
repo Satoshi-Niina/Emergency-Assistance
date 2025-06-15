@@ -1212,11 +1212,11 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
             <FileText className="w-6 h-6 text-indigo-600" />
             <h3 className="text-xl font-bold text-indigo-800">スライド編集エリア</h3>
           </div>
-          
+
           <p className="text-indigo-700 mb-4 leading-relaxed">
             各スライドのタイトル、内容、条件分岐を編集できます。スライド番号順に表示され、リアルタイムで保存されます。
           </p>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div className="bg-white rounded-lg p-3 border border-indigo-200">
               <div className="flex items-center gap-2 text-indigo-700 font-medium">
@@ -1227,7 +1227,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                 {editedFlow.steps.length}
               </div>
             </div>
-            
+
             <div className="bg-white rounded-lg p-3 border border-indigo-200">
               <div className="flex items-center gap-2 text-indigo-700 font-medium">
                 <span className="text-lg">🔀</span>
@@ -1237,7 +1237,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                 {editedFlow.steps.filter(s => s.type === 'decision' || s.type === 'condition').length}
               </div>
             </div>
-            
+
             <div className="bg-white rounded-lg p-3 border border-indigo-200">
               <div className="flex items-center gap-2 text-indigo-700 font-medium">
                 <span className="text-lg">📝</span>
@@ -1249,7 +1249,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
             </div>
           </div>
         </div>
-        
+
         {editedFlow.steps.map((step, index) => (
           <Card key={step.id} className="relative">
             <CardHeader className="pb-2">
@@ -1290,7 +1290,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                     ID: {step.id}
                   </Badge>
                 </div>
-                
+
                 <div className="space-y-4">
                   <div>
                     <Label className="text-blue-700 font-medium mb-2 block">スライドタイトル</Label>
@@ -1336,7 +1336,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                       タイトルをクリックして編集。Enterキーで確定、Escapeキーでキャンセル。
                     </p>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-blue-100 rounded-lg p-3">
                       <div className="flex items-center gap-2 mb-2">
@@ -1347,7 +1347,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                         {step.title || "（タイトル未設定）"}
                       </div>
                     </div>
-                    
+
                     <div className="bg-blue-100 rounded-lg p-3">
                       <div className="flex items-center gap-2 mb-2">
                         <FileText className="w-4 h-4 text-blue-600" />
@@ -1361,7 +1361,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                     <div className="flex items-start gap-2">
                       <Info className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
@@ -1379,7 +1379,8 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            
+スライドタイトルを常に編集可能にするため、条件式を削除しました。            <CardContent>
               <div className="space-y-4">
                 {/* スライド詳細編集セクション */}
                 <div className="bg-gray-50 border-2 border-gray-200 rounded-lg p-4 space-y-4">
@@ -1387,7 +1388,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                     <FileText className="w-4 h-4 text-gray-600" />
                     <h4 className="font-semibold text-gray-800">スライド内容編集</h4>
                   </div>
-                  
+
                   <div>
                     <Label className="text-gray-700 font-medium">詳細説明</Label>
                     <Textarea
@@ -1400,7 +1401,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                       技術的な詳細や背景情報を記載
                     </p>
                   </div>
-                  
+
                   <div>
                     <Label className="text-gray-700 font-medium">表示メッセージ</Label>
                     <Textarea
