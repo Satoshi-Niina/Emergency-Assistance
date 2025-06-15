@@ -78,7 +78,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
           console.log(`🔍 ステップ ${step.id} (${step.type}) のオプション:`, step.options);
 
           // 🔀 条件分岐ノード（type: "decision"）：完全データ処理（編集UI用）
-          // 条件分岐の判定を強化：type="decision"または複数のoptionsがある場合
+          // 条件分岐の判定を強化：type="decision"を最優先で判定
           const isDecisionStep = step.type === 'decision' || step.type === 'condition' || 
                                  (step.options && step.options.length > 0) ||
                                  (step.yesCondition || step.noCondition || step.otherCondition);
@@ -95,11 +95,14 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                 rawStepData: step
               });
 
-              // decision/conditionタイプなのにoptionsが空の場合は警告
-              if ((step.type === 'decision' || step.type === 'condition') && (!step.options || step.options.length === 0)) {
-                console.warn(`⚠️ 条件分岐ノード ${step.id} (type: ${step.type}) のoptions配列が空です`);
-                // JSONから読み込んだ場合でもoptionsが空なら、強制的にtypeを変更しない
-                console.log(`🔍 JSONファイル確認が必要: ${step.id} のtype="${step.type}"だがoptions配列が空`);
+              // type: "decision"の場合は、optionsが空でも条件分岐として処理
+              if (step.type === 'decision') {
+                console.log(`✅ type: "decision"を検出 - 条件分岐ノードとして処理: ${step.id}`);
+                
+                // optionsが空の場合は警告だけして、後でUIで初期化
+                if (!step.options || step.options.length === 0) {
+                  console.warn(`⚠️ type: "decision"ノード ${step.id} のoptions配列が空 - UIで初期化します`);
+                }
               }
 
               // 旧スキーマから新スキーマへの変換も含む
@@ -167,7 +170,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                 title: step.title || '新しい条件分岐',
                 description: step.description || step.message || '',
                 message: step.message || step.description || '',
-                type: 'decision', // 明示的に条件分岐タイプに設定
+                type: step.type, // 元のtypeを保持（decision/condition）
                 options: processedOptions,
                 // 旧スキーマフィールドも保持
                 yesCondition: step.yesCondition,
