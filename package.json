@@ -8,7 +8,7 @@
     "build:client": "cd client && npm run build",
     "build:server": "tsc -p server",
     "dev": "tsx server/index.ts",
-    "dev:all": "npm run build:client && npm run dev", 
+    "dev:all": "concurrently \"cd client && npm run dev\" \"npm run dev\"", 
     "start": "tsx server/index.ts"
   },
   "dependencies": {
