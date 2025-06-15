@@ -231,17 +231,35 @@ const StepEditor: React.FC<StepEditorProps> = ({
           {/* 条件分岐編集（options配列）- decision と condition 共通UI */}
           {(() => {
             const isConditionalNode = step.type === 'decision' || step.type === 'condition';
-            console.log(`🔍 条件分岐UI表示チェック: stepId=${step.id}, type=${step.type}, isConditional=${isConditionalNode}, hasOptions=${!!step.options}, optionsLength=${step.options?.length || 0}`);
-            console.log(`🔍 条件分岐UI表示判定: ${isConditionalNode ? 'TRUE - UIを表示' : 'FALSE - UIを非表示'}`);
+            const hasValidOptions = step.options && Array.isArray(step.options) && step.options.length > 0;
             
-            // 条件分岐ノードの場合、optionsが空なら初期化
-            if (isConditionalNode && (!step.options || step.options.length === 0)) {
-              console.log(`🔧 条件分岐ノード ${step.id} のoptionsを初期化`);
-              const defaultOptions = [
-                { text: 'はい', nextStepId: '', isTerminal: false, conditionType: 'yes' as const, condition: '' },
-                { text: 'いいえ', nextStepId: '', isTerminal: false, conditionType: 'no' as const, condition: '' }
-              ];
-              onUpdateStep(step.id, { options: defaultOptions });
+            console.log(`🔍 条件分岐UI表示チェック詳細:`, {
+              stepId: step.id,
+              stepType: step.type,
+              isConditionalNode,
+              hasValidOptions,
+              optionsLength: step.options?.length || 0,
+              optionsData: step.options,
+              shouldShowUI: isConditionalNode
+            });
+            
+            // decision/condition型なら、optionsの有無に関わらずUIを表示
+            if (isConditionalNode) {
+              console.log(`✅ 条件分岐UI表示決定: ${step.id} (type: ${step.type})`);
+              
+              // optionsが空の場合のみ初期化（JSONから読み込まれた既存データは保持）
+              if (!hasValidOptions) {
+                console.log(`🔧 条件分岐ノード ${step.id} のoptionsを初期化（空だったため）`);
+                setTimeout(() => {
+                  const defaultOptions = [
+                    { text: 'はい', nextStepId: '', isTerminal: false, conditionType: 'yes' as const, condition: '' },
+                    { text: 'いいえ', nextStepId: '', isTerminal: false, conditionType: 'no' as const, condition: '' }
+                  ];
+                  onUpdateStep(step.id, { options: defaultOptions });
+                }, 100);
+              } else {
+                console.log(`✅ 既存のoptions配列を使用: ${step.id}`, step.options);
+              }
             }
             
             return isConditionalNode;
