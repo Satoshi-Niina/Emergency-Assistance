@@ -18,12 +18,34 @@
     },
     {
       "id": "step2",
-      "title": "エンジン異常",
-      "description": "ここに判断条件を記述してください（例：エンジンオイルが漏れていますか？）",
-      "message": "ここに判断条件を記述してください（例：エンジンオイルが漏れていますか？）",
+      "title": "エンジン停止時の状況確認",
+      "description": "エンジンが停止した時の状況は？",
+      "message": "エンジンが停止した時の状況は？",
       "imageUrl": "",
-      "type": "step",
-      "options": []
+      "type": "decision",
+      "options": [
+        {
+          "text": "突然停止した",
+          "nextStepId": "step3",
+          "isTerminal": false,
+          "conditionType": "yes",
+          "condition": "エンジンが警告なしに突然停止した場合"
+        },
+        {
+          "text": "異音後に停止した",
+          "nextStepId": "step4",
+          "isTerminal": false,
+          "conditionType": "no",
+          "condition": "異常な音の後にエンジンが停止した場合"
+        },
+        {
+          "text": "オーバーヒート後に停止した",
+          "nextStepId": "step5",
+          "isTerminal": false,
+          "conditionType": "other",
+          "condition": "温度警告後にエンジンが停止した場合"
+        }
+      ]
     },
     {
       "id": "step3",
