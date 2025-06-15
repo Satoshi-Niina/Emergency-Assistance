@@ -198,9 +198,9 @@ const StepEditor: React.FC<StepEditorProps> = ({
             </div>
           </div>
 
-          {/* 条件分岐編集（options配列）- デバッグ情報追加 */}
+          {/* 条件分岐編集（options配列）- 修正版 */}
           {console.log(`🔍 条件分岐UI表示チェック: stepId=${step.id}, type=${step.type}, hasOptions=${!!step.options}, optionsLength=${step.options?.length || 0}`)}
-          {(step.type === 'decision' || (step.type === 'step' && step.options && step.options.length > 1)) && (
+          {(step.type === 'decision' || step.type === 'condition' || (step.options && step.options.length > 0)) && (
             <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="font-medium text-yellow-800">条件分岐設定（options配列）</h4>
@@ -221,6 +221,16 @@ const StepEditor: React.FC<StepEditorProps> = ({
                 <div className="text-sm text-blue-700">
                   {step.description || step.message || 'ここに判断条件を記述してください（例：エンジンオイルが漏れていますか？）'}
                 </div>
+              </div>
+
+              {/* JSONデータ確認 */}
+              <div className="mb-3 p-2 bg-gray-100 border rounded text-xs">
+                <strong>JSON確認:</strong> type="{step.type}", options数={step.options?.length || 0}
+                {step.options && step.options.length > 0 && (
+                  <div className="mt-1">
+                    選択肢: {step.options.map(opt => opt.text).join(', ')}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3">
@@ -419,6 +429,30 @@ const StepEditor: React.FC<StepEditorProps> = ({
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* 条件分岐が表示されない場合の緊急対応 */}
+          {step.type === 'decision' && (!step.options || step.options.length === 0) && (
+            <div className="bg-red-50 border-2 border-red-400 rounded-lg p-4">
+              <h4 className="font-medium text-red-800 mb-2">⚠️ 条件分岐データが見つかりません</h4>
+              <p className="text-sm text-red-700 mb-3">
+                JSONデータには`type: "decision"`が設定されていますが、条件分岐UIが表示されていません。
+              </p>
+              <Button 
+                onClick={() => {
+                  // 基本的な条件分岐を強制作成
+                  const defaultOptions = [
+                    { text: 'はい', nextStepId: '', isTerminal: false, conditionType: 'yes' as const, condition: '' },
+                    { text: 'いいえ', nextStepId: '', isTerminal: false, conditionType: 'no' as const, condition: '' },
+                    { text: 'その他', nextStepId: '', isTerminal: false, conditionType: 'other' as const, condition: '' }
+                  ];
+                  onUpdateStep(step.id, { options: defaultOptions });
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                🔧 条件分岐UIを強制表示
+              </Button>
             </div>
           )}
 
