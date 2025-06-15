@@ -14,16 +14,16 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0',
-    port: 3000,
+    port: 5000,
     strictPort: true,
     allowedHosts: 'all',
     hmr: {
-      port: 3001,
-      clientPort: 3001
+      port: 5001,
+      clientPort: 5001
     },
     ws: {
       host: '0.0.0.0',
-      port: 3001
+      port: 5001
     },
     origin: '*',
     disableHostCheck: true

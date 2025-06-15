@@ -84,7 +84,7 @@ const initializeServer = async () => {
       throw err;
     });
 
-    const PORT = process.env.PORT || 5000;
+    const PORT = process.env.PORT || 8000;
 
     // ✅ Replitのヘルスチェック用エンドポイント（最初に設定）
     app.get('/api/health', (req, res) => {
