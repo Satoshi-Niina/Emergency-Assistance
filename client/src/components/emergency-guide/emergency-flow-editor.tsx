@@ -1294,20 +1294,46 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
                 <div className="space-y-4">
                   <div>
                     <Label className="text-blue-700 font-medium mb-2 block">スライドタイトル</Label>
-                    <div className="relative">
-                      <Input
-                        value={step.title}
-                        onChange={(e) => updateStepTitle(step.id, e.target.value)}
-                        placeholder="スライドのタイトルを入力してください"
-                        className="border-blue-300 focus:border-blue-500 bg-white text-lg font-medium h-14 pl-4 pr-12 transition-all duration-200 focus:shadow-lg"
-                        autoComplete="off"
-                      />
-                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500">
-                        <Edit className="w-5 h-5" />
+                    {editingStepTitle === step.id ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={step.title}
+                          onChange={(e) => updateStepTitle(step.id, e.target.value)}
+                          placeholder="スライドのタイトルを入力してください"
+                          className="border-blue-300 focus:border-blue-500 bg-white text-lg font-medium h-14 pl-4 transition-all duration-200 focus:shadow-lg flex-1"
+                          autoComplete="off"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              setEditingStepTitle(null);
+                            }
+                            if (e.key === 'Escape') {
+                              setEditingStepTitle(null);
+                            }
+                          }}
+                        />
+                        <Button size="sm" onClick={() => setEditingStepTitle(null)} className="bg-green-600 hover:bg-green-700">
+                          <Check className="w-4 h-4" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditingStepTitle(null)}>
+                          <X className="w-4 h-4" />
+                        </Button>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="relative">
+                        <div 
+                          className="border-2 border-blue-300 rounded-lg bg-white p-4 cursor-pointer hover:bg-blue-50 transition-colors duration-200 min-h-[56px] flex items-center"
+                          onClick={() => setEditingStepTitle(step.id)}
+                        >
+                          <span className="text-lg font-medium flex-1">
+                            {step.title || "（タイトル未設定 - クリックして編集）"}
+                          </span>
+                          <Edit className="w-5 h-5 text-blue-500" />
+                        </div>
+                      </div>
+                    )}
                     <p className="text-xs text-blue-600 mt-2">
-                      リアルタイムで保存されます。Enterキーで次のフィールドに移動できます。
+                      タイトルをクリックして編集。Enterキーで確定、Escapeキーでキャンセル。
                     </p>
                   </div>
                   
