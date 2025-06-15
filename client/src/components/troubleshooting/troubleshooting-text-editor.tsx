@@ -14,6 +14,14 @@ interface TroubleshootingTextEditorProps {
   onCancel: () => void;
 }
 
+const DEFAULT_OPTION_TEMPLATE = {
+  text: '',
+  condition: '',
+  nextStepId: '',
+  isTerminal: false,
+  conditionType: 'other'
+};
+
 const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
   flowId,
   onSave,
@@ -35,7 +43,7 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
         // メインのフローファイルを読み込む
         const response = await fetch(`/api/tech-support/flows/${flowId}`);
         if (!response.ok) throw new Error('フローデータの読み込みに失敗しました');
-        
+
         const data = await response.json();
 
         // データを統合
@@ -98,11 +106,11 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
     if (updatedFlowData.steps && updatedFlowData.steps[stepIndex]) {
       const step = updatedFlowData.steps[stepIndex];
       const oldTitle = step.title;
-      
+
       // タイトルを更新
       step.title = newTitle;
       updatedFlowData.updatedAt = new Date().toISOString();
-      
+
       setFlowData(updatedFlowData);
       // JSONテキストも同期更新
       setEditedContent(JSON.stringify(updatedFlowData, null, 2));
@@ -125,7 +133,7 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
         }
 
         console.log(`✅ ステップタイトル保存完了: ${step.id} = "${newTitle}"`);
-        
+
         toast({
           title: "タイトル更新",
           description: `"${oldTitle}" → "${newTitle}"`,
@@ -136,7 +144,7 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
         step.title = oldTitle;
         setFlowData({ ...updatedFlowData });
         setEditedContent(JSON.stringify(updatedFlowData, null, 2));
-        
+
         toast({
           title: "エラー",
           description: "タイトルの保存に失敗しました",
@@ -168,11 +176,11 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
       type: 'step',
       options: []
     };
-    
+
     if (!updatedFlowData.steps) {
       updatedFlowData.steps = [];
     }
-    
+
     updatedFlowData.steps.push(newStep);
     setFlowData(updatedFlowData);
     setEditedContent(JSON.stringify(updatedFlowData, null, 2));
@@ -185,7 +193,7 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
       updatedFlowData.steps.splice(stepIndex, 1);
       setFlowData(updatedFlowData);
       setEditedContent(JSON.stringify(updatedFlowData, null, 2));
-      
+
       // 削除後のステップインデックス調整
       if (currentEditingStep >= updatedFlowData.steps.length) {
         setCurrentEditingStep(Math.max(0, updatedFlowData.steps.length - 1));
@@ -199,7 +207,7 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
     if (updatedFlowData.steps && updatedFlowData.steps[stepIndex] && updatedFlowData.steps[stepIndex].options) {
       const step = updatedFlowData.steps[stepIndex];
       const oldValue = step.options[optionIndex][field];
-      
+
       step.options[optionIndex] = {
         ...step.options[optionIndex],
         [field]: value
@@ -235,7 +243,7 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
         step.options[optionIndex][field] = oldValue;
         setFlowData({ ...updatedFlowData });
         setEditedContent(JSON.stringify(updatedFlowData, null, 2));
-        
+
         toast({
           title: "エラー",
           description: "選択肢の保存に失敗しました",
@@ -251,15 +259,9 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
       if (!updatedFlowData.steps[stepIndex].options) {
         updatedFlowData.steps[stepIndex].options = [];
       }
-      
-      updatedFlowData.steps[stepIndex].options.push({
-        text: '',
-        condition: '',
-        nextStepId: '',
-        isTerminal: false,
-        conditionType: 'other'
-      });
-      
+
+      updatedFlowData.steps[stepIndex].options.push({ ...DEFAULT_OPTION_TEMPLATE });
+
       updatedFlowData.updatedAt = new Date().toISOString();
       setFlowData(updatedFlowData);
       setEditedContent(JSON.stringify(updatedFlowData, null, 2));
@@ -303,7 +305,7 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
   const handleSave = async () => {
     try {
       setSaving(true);
-      
+
       // 現在のモードに応じてデータを準備
       let dataToSave;
       if (editMode === 'json') {
@@ -415,7 +417,7 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
               <TabsTrigger value="visual">ビジュアル編集</TabsTrigger>
               <TabsTrigger value="json">JSON編集</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="visual" className="space-y-4">
               <div className="bg-green-50 p-4 rounded-lg">
                 <h3 className="font-medium mb-2 text-green-700">
@@ -442,7 +444,7 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
                     placeholder="フローのタイトルを入力"
                   />
                 </div>
-                
+
                 <div className="grid gap-2">
                   <Label htmlFor="flow-description">フローの説明</Label>
                   <Textarea
@@ -500,7 +502,7 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
                             </div>
                           </div>
                         </CardHeader>
-                        
+
                         {index === currentEditingStep && (
                           <CardContent className="space-y-4">
                             <div className="mb-2">
@@ -511,7 +513,7 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
                                 placeholder="スライドタイトルを入力"
                               />
                             </div>
-                            
+
                             <div className="grid gap-2">
                               <Label htmlFor={`step-desc-${index}`}>スライド内容</Label>
                               <Textarea
@@ -546,20 +548,12 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
                                 onChange={(e) => {
                                   const updated = { ...flowData };
                                   updated.steps[index].type = e.target.value;
-                                  
+
                                   // 条件分岐ノードに切り替える際、optionsが空なら初期オプションを追加
                                   if (e.target.value === 'decision' && (!updated.steps[index].options || updated.steps[index].options.length === 0)) {
-                                    updated.steps[index].options = [
-                                      {
-                                        text: '',
-                                        condition: '',
-                                        nextStepId: '',
-                                        isTerminal: false,
-                                        conditionType: 'other'
-                                      }
-                                    ];
+                                    updated.steps[index].options = [{ ...DEFAULT_OPTION_TEMPLATE }];
                                   }
-                                  
+
                                   setFlowData(updated);
                                   setEditedContent(JSON.stringify(updated, null, 2));
                                 }}
@@ -599,7 +593,7 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
                                     <p className="text-xs mt-1">「選択肢追加」ボタンで選択肢を追加してください。</p>
                                   </div>
                                 )}
-                                
+
                                 <div className="space-y-3">
                                   {(step.options || []).map((option: any, optionIndex: number) => (
                                     <div key={optionIndex} className="bg-white border border-yellow-300 rounded-md p-3 shadow-sm">
@@ -624,7 +618,7 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
                                           </Button>
                                         )}
                                       </div>
-                                      
+
                                       <div className="grid gap-3">
                                         <div className="grid grid-cols-2 gap-3">
                                           <div>
@@ -636,7 +630,7 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
                                               className="mt-1"
                                             />
                                           </div>
-                                          
+
                                           <div>
                                             <Label className="text-sm font-medium">条件タイプ</Label>
                                             <select
@@ -650,7 +644,7 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
                                             </select>
                                           </div>
                                         </div>
-                                        
+
                                         <div>
                                           <Label className="text-sm font-medium">条件・説明</Label>
                                           <Textarea
@@ -661,7 +655,7 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
                                             className="mt-1"
                                           />
                                         </div>
-                                        
+
                                         <div className="grid grid-cols-2 gap-3">
                                           <div>
                                             <Label className="text-sm font-medium">次のステップID</Label>
@@ -672,7 +666,7 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
                                               className="mt-1"
                                             />
                                           </div>
-                                          
+
                                           <div className="flex items-center justify-center">
                                             <div className="flex items-center space-x-2">
                                               <input
@@ -689,7 +683,7 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
                                           </div>
                                         </div>
                                       </div>
-                                      
+
                                       {/* プレビュー表示 */}
                                       <div className="mt-3 p-2 bg-gray-50 rounded text-xs">
                                         <strong>プレビュー:</strong> 
@@ -700,7 +694,7 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
                                     </div>
                                   ))}
                                 </div>
-                                
+
                                 <div className="mt-4 p-3 bg-yellow-100 rounded-md">
                                   <p className="text-xs text-yellow-700 font-medium">
                                     💡 使い方のヒント:
@@ -723,7 +717,7 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
                 )}
               </div>
             </TabsContent>
-            
+
             <TabsContent value="json" className="space-y-4">
               <div className="bg-blue-50 p-4 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
@@ -744,7 +738,7 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
                   編集後は「ビジュアルに同期」ボタンでビジュアル編集にも反映されます。
                 </p>
               </div>
-              
+
               <div className="grid gap-2">
                 <Label htmlFor="flow-content">フローデータ (JSON)</Label>
                 <Textarea
