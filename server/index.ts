@@ -57,6 +57,23 @@ const startServer = async () => {
       console.log('🚀 ===== BACKEND SERVER READY =====');
     });
 
+    // プロセス終了時の処理
+    process.on('SIGTERM', () => {
+      console.log('SIGTERM受信、サーバーを終了します');
+      server.close(() => {
+        console.log('サーバーが正常に終了しました');
+        process.exit(0);
+      });
+    });
+
+    process.on('SIGINT', () => {
+      console.log('SIGINT受信、サーバーを終了します');
+      server.close(() => {
+        console.log('サーバーが正常に終了しました');
+        process.exit(0);
+      });
+    });
+
     server.on('error', (err: any) => {
       console.error('❌ サーバーエラー:', err);
       process.exit(1);
