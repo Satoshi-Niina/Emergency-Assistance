@@ -262,62 +262,86 @@ router.post('/save/:id', async (req, res) => {
     if (saveData.action === 'updateStepTitle') {
       const { stepId, title } = saveData;
 
-      console.log(`📝 タイトル個別更新: flowId=${id}, stepId=${stepId}, title="${title}"`);
+      console.log(`📝 差分保存: タイトル個別更新 - flowId=${id}, stepId=${stepId}, title="${title}"`);
 
       const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
       const filePath = path.join(troubleshootingDir, `${id}.json`);
       
       if (!fs.existsSync(filePath)) {
         delete global.saveLocks[lockKey];
+        console.error(`❌ 差分保存失敗: ファイルが存在しません - ${filePath}`);
         return res.status(404).json({ error: 'ファイルが見つかりません' });
       }
 
-      // 既存データを読み込み
-      const existingData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-      
-      // 対象ステップを検索
-      const stepIndex = existingData.steps?.findIndex((step: any) => step.id === stepId);
-      if (stepIndex === -1 || stepIndex === undefined) {
-        delete global.saveLocks[lockKey];
-        return res.status(404).json({ error: 'ステップが見つかりません' });
-      }
-
-      const oldTitle = existingData.steps[stepIndex].title;
-      
-      // タイトルのみを更新（他のフィールドは保持）
-      existingData.steps[stepIndex].title = title.trim();
-      existingData.updatedAt = new Date().toISOString();
-
-      // 原子的ファイル書き込み
-      const tempFilePath = `${filePath}.tmp.${Date.now()}`;
-      fs.writeFileSync(tempFilePath, JSON.stringify(existingData, null, 2), 'utf8');
-      
-      // 書き込み成功確認後にリネーム
-      if (fs.existsSync(tempFilePath)) {
-        fs.renameSync(tempFilePath, filePath);
-        console.log(`✅ タイトル更新完了: "${oldTitle}" → "${title}"`);
-      }
-      
-      // ロックを解除
-      delete global.saveLocks[lockKey];
-      
-      // キャッシュ無効化ヘッダー
-      res.set({
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      });
-      
-      return res.json({ 
-        success: true, 
-        message: 'タイトルが更新されました',
-        updatedStep: {
-          id: stepId,
-          title: title.trim(),
-          oldTitle,
-          updatedAt: existingData.updatedAt
+      try {
+        // 既存データを読み込み
+        const existingData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        
+        // 対象ステップを検索
+        const stepIndex = existingData.steps?.findIndex((step: any) => step.id === stepId);
+        if (stepIndex === -1 || stepIndex === undefined) {
+          delete global.saveLocks[lockKey];
+          console.error(`❌ 差分保存失敗: ステップが見つかりません - stepId=${stepId}`);
+          return res.status(404).json({ error: 'ステップが見つかりません' });
         }
-      });
+
+        const oldTitle = existingData.steps[stepIndex].title;
+        
+        // タイトルのみを更新（他のフィールドは保持）
+        existingData.steps[stepIndex].title = title.trim();
+        existingData.updatedAt = new Date().toISOString();
+
+        // バックアップを作成
+        const backupPath = `${filePath}.backup.${Date.now()}`;
+        fs.copyFileSync(filePath, backupPath);
+
+        // 原子的ファイル書き込み
+        const tempFilePath = `${filePath}.tmp.${Date.now()}`;
+        fs.writeFileSync(tempFilePath, JSON.stringify(existingData, null, 2), 'utf8');
+        
+        // 書き込み成功確認後にリネーム
+        if (fs.existsSync(tempFilePath)) {
+          fs.renameSync(tempFilePath, filePath);
+          console.log(`✅ 差分保存成功: タイトル更新完了 - "${oldTitle}" → "${title}"`);
+          
+          // バックアップファイルを削除（1時間後）
+          setTimeout(() => {
+            try {
+              if (fs.existsSync(backupPath)) {
+                fs.unlinkSync(backupPath);
+              }
+            } catch (cleanupError) {
+              console.warn(`⚠️ バックアップファイル削除失敗: ${backupPath}`);
+            }
+          }, 3600000);
+        }
+        
+        // ロックを解除
+        delete global.saveLocks[lockKey];
+        
+        // キャッシュ無効化ヘッダー
+        res.set({
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        });
+        
+        return res.json({ 
+          success: true, 
+          message: '差分保存: タイトルが更新されました',
+          updatedStep: {
+            id: stepId,
+            title: title.trim(),
+            oldTitle,
+            updatedAt: existingData.updatedAt
+          },
+          saveType: 'partial_update'
+        });
+      } catch (parseError) {
+        delete global.saveLocks[lockKey];
+        console.error(`❌ 差分保存失敗: JSONパースエラー - ${parseError}`);
+        return res.status(500).json({ error: 'ファイルの読み込みに失敗しました' });
+      }
     }
 
     const isCompleteReplace = req.headers['x-complete-replace'] === 'true';
