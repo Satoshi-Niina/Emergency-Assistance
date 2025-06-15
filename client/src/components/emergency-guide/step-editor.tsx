@@ -230,42 +230,21 @@ const StepEditor: React.FC<StepEditorProps> = ({
 
           {/* 条件分岐編集（options配列）- decision と condition 共通UI */}
           {(() => {
-            // type: "decision"または"condition"の場合は必ず条件分岐UIを表示
-            const isConditionalNode = step.type === 'decision' || step.type === 'condition';
-            const hasValidOptions = step.options && Array.isArray(step.options) && step.options.length > 0;
+            // 🚨 強制的に条件分岐UIを表示する判定ロジック
+            const isDecisionType = step.type === 'decision';
+            const isConditionType = step.type === 'condition';
+            const isConditionalNode = isDecisionType || isConditionType;
             
-            console.log(`🔍 条件分岐UI表示チェック詳細:`, {
+            console.log(`🔥 条件分岐UI表示判定 (強制版):`, {
               stepId: step.id,
               stepType: step.type,
+              isDecisionType,
+              isConditionType,
               isConditionalNode,
-              hasValidOptions,
-              optionsLength: step.options?.length || 0,
+              rawStepData: step,
               optionsData: step.options,
-              shouldShowUI: isConditionalNode,
-              jsonRawType: typeof step.type,
-              jsonStepData: step
+              willShowUI: isConditionalNode
             });
-            
-            // decision/condition型なら、optionsの有無に関わらずUIを表示
-            if (isConditionalNode) {
-              console.log(`✅ 条件分岐UI表示決定: ${step.id} (type: ${step.type})`);
-              
-              // JSONから読み込まれたdecision型でoptionsが空の場合は初期化
-              if (step.type === 'decision' && !hasValidOptions) {
-                console.log(`🔧 decision型ノード ${step.id} のoptionsを初期化（JSONから空で読み込まれた）`);
-                setTimeout(() => {
-                  const defaultOptions = [
-                    { text: 'はい', nextStepId: '', isTerminal: false, conditionType: 'yes' as const, condition: '' },
-                    { text: 'いいえ', nextStepId: '', isTerminal: false, conditionType: 'no' as const, condition: '' }
-                  ];
-                  onUpdateStep(step.id, { options: defaultOptions });
-                }, 100);
-              } else if (hasValidOptions) {
-                console.log(`✅ 既存のoptions配列を使用: ${step.id}`, step.options);
-              }
-            } else {
-              console.log(`❌ 条件分岐ではないステップ: ${step.id} (type: ${step.type})`);
-            }
             
             return isConditionalNode;
           })() && (
@@ -406,16 +385,22 @@ const StepEditor: React.FC<StepEditorProps> = ({
                             const newText = e.target.value;
                             console.log(`📝 選択肢テキスト変更: ${step.id} -> 選択肢${optionIndex + 1} -> "${newText}"`);
                             onUpdateOption(step.id, optionIndex, { text: newText });
-                            // 即座にデータ保存を促す
-                            console.log(`💾 選択肢更新後の状態:`, {
-                              stepId: step.id,
-                              optionIndex,
-                              newText,
-                              currentOptions: step.options
-                            });
+                            
+                            // 🚨 即座にJSON保存を実行
+                            console.log(`🔥 条件項目変更 - 即座保存実行: ${step.id}`);
+                            setTimeout(() => {
+                              // 保存イベントを発火
+                              window.dispatchEvent(new CustomEvent('forceFlowSave', {
+                                detail: { reason: 'option_text_changed', stepId: step.id, optionIndex }
+                              }));
+                            }, 500);
                           }}
                           onBlur={() => {
-                            console.log(`💾 選択肢テキスト確定 - 保存推奨: ${step.id}`);
+                            console.log(`💾 選択肢テキスト確定 - 強制保存: ${step.id}`);
+                            // 保存イベントを発火
+                            window.dispatchEvent(new CustomEvent('forceFlowSave', {
+                              detail: { reason: 'option_text_blur', stepId: step.id }
+                            }));
                           }}
                           placeholder="選択肢のテキスト（例：はい、いいえ）"
                           className="h-9 text-sm mt-1"
@@ -430,14 +415,14 @@ const StepEditor: React.FC<StepEditorProps> = ({
                             const newNextStepId = e.target.value;
                             console.log(`🔄 遷移先変更: ${step.id} -> 選択肢${optionIndex + 1} -> ${newNextStepId}`);
                             onUpdateOption(step.id, optionIndex, { nextStepId: newNextStepId });
-                            // 遷移先変更後の状態を詳細ログ
-                            console.log(`💾 遷移先更新後の状態:`, {
-                              stepId: step.id,
-                              optionIndex,
-                              newNextStepId,
-                              optionData: { ...option, nextStepId: newNextStepId },
-                              allStepsCount: allSteps?.length || 0
-                            });
+                            
+                            // 🚨 即座にJSON保存を実行
+                            console.log(`🔥 遷移先変更 - 即座保存実行: ${step.id}`);
+                            setTimeout(() => {
+                              window.dispatchEvent(new CustomEvent('forceFlowSave', {
+                                detail: { reason: 'next_step_changed', stepId: step.id, optionIndex, newNextStepId }
+                              }));
+                            }, 300);
                           }}
                           className="w-full border border-gray-300 rounded px-3 py-2 bg-white h-9 text-sm mt-1 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                         >

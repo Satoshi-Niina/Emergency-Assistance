@@ -100,7 +100,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
               // type: "decision"の場合は、optionsが空でも条件分岐として処理
               if (step.type === 'decision') {
                 console.log(`✅ type: "decision"を検出 - 条件分岐ノードとして処理: ${step.id}`);
-                
+
                 // optionsが空の場合は警告だけして、後でUIで初期化
                 if (!step.options || step.options.length === 0) {
                   console.warn(`⚠️ type: "decision"ノード ${step.id} のoptions配列が空 - UIで初期化します`);
@@ -377,6 +377,37 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
       isRefreshing = false; // クリーンアップ
     };
   }, [editedFlow?.id]); // editedFlow.idのみに依存
+
+  // 選択されたフローが変更された時にエディターを更新
+  useEffect(() => {
+    if (selectedFlowId && availableFlows.length > 0) {
+      const selectedFlow = availableFlows.find(flow => flow.id === selectedFlowId);
+      if (selectedFlow) {
+        console.log(`🔄 選択フロー変更: ${selectedFlowId}`, selectedFlow);
+        loadFlowData(selectedFlowId, selectedFlow.fileName);
+      }
+    } else {
+      console.log(`🆕 新規フロー作成:`, newFlowData);
+      setEditedFlow(newFlowData);
+      setOriginalFlow(newFlowData);
+    }
+  }, [selectedFlowId, availableFlows, newFlowData]);
+
+  // 🚨 強制保存イベントリスナーを追加
+  useEffect(() => {
+    const handleForceSave = (event: CustomEvent) => {
+      console.log(`🔥 強制保存イベント受信:`, event.detail);
+      if (editedFlow) {
+        console.log(`🔥 強制保存実行開始: ${editedFlow.id}`);
+        handleSave();
+      }
+    };
+
+    window.addEventListener('forceFlowSave', handleForceSave as EventListener);
+    return () => {
+      window.removeEventListener('forceFlowSave', handleForceSave as EventListener);
+    };
+  }, [editedFlow, handleSave]);
 
   // 保存処理の改善
   const handleSave = useCallback(async () => {
