@@ -4,14 +4,12 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes.js";
 import path from "path";
 import { fileURLToPath } from 'url';
-import fs from "fs";
 import { storage } from "./storage.js";
 
 // __dirnameの代替
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 環境変数の確認
 console.log("[INFO] Server starting...");
 
 const app = express();
@@ -26,11 +24,11 @@ const startServer = async () => {
     // 基本設定
     app.locals.storage = storage;
 
-    // 静的ファイル設定を先に追加
+    // 静的ファイル設定
     app.use(express.static(path.join(process.cwd(), 'client', 'dist')));
     app.use('/knowledge-base/images', express.static(path.join(process.cwd(), 'knowledge-base', 'images')));
 
-    // ヘルスチェックエンドポイントを最初に追加
+    // ヘルスチェックエンドポイント
     app.get('/api/health', (req, res) => {
       res.json({ 
         status: 'ok', 
@@ -41,7 +39,7 @@ const startServer = async () => {
 
     console.log('📡 ルート登録開始...');
     
-    // registerRoutesは直接実行（awaitしない）
+    // ルート登録
     const server = await registerRoutes(app);
     
     console.log('✅ ルート登録完了');
@@ -59,7 +57,7 @@ const startServer = async () => {
       console.log('🚀 ===== BACKEND SERVER READY =====');
       console.log(`✅ バックエンドサーバー起動: http://0.0.0.0:${PORT}`);
       console.log(`🌐 フロントエンド: http://localhost:5000`);
-      console.log(`📡 API endpoints: /api/health, /api/status`);
+      console.log(`📡 API endpoints: /api/health`);
       console.log('🚀 ===== BACKEND SERVER READY =====');
     });
 
