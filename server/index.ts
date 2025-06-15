@@ -47,12 +47,14 @@ const startServer = async () => {
       res.status(500).json({ message: err.message || 'Internal Server Error' });
     });
 
-    const PORT = process.env.PORT || 8000;
+    const PORT = process.env.PORT || 3001;
 
     const server = app.listen(PORT, '0.0.0.0', () => {
       console.log('🚀 ===== BACKEND SERVER READY =====');
-      console.log(`✅ サーバー起動: http://0.0.0.0:${PORT}`);
-      console.log(`📡 API: /api/health, /api/status`);
+      console.log(`✅ バックエンドサーバー起動: http://0.0.0.0:${PORT}`);
+      console.log(`🌐 フロントエンド: http://localhost:5000`);
+      console.log(`📡 API endpoints: /api/health, /api/status`);
+      console.log('🚀 ===== BACKEND SERVER READY =====');
     });
 
     server.on('error', (err: any) => {
