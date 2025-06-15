@@ -201,7 +201,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
           {/* 条件分岐編集（options配列）- 完全修正版 */}
           {console.log(`🔍 条件分岐UI表示チェック: stepId=${step.id}, type=${step.type}, hasOptions=${!!step.options}, optionsLength=${step.options?.length || 0}`)}
           {console.log(`🔍 step2専用チェック: step.id=${step.id}, step.id==='step2'=${step.id === 'step2'}`)}
-          {(step.type === 'decision' || step.type === 'condition' || (step.options && step.options.length > 0) || step.id === 'step2') && (
+          {step.type === 'decision' && (
             <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="font-medium text-yellow-800">条件分岐設定（options配列）</h4>
@@ -235,7 +235,21 @@ const StepEditor: React.FC<StepEditorProps> = ({
               </div>
 
               <div className="space-y-3">
-                {step.options && step.options.length > 0 ? step.options.map((option, optionIndex) => (
+                {(() => {
+                  // optionsが空の場合は基本条件を自動設定
+                  const options = (step.options && step.options.length > 0) 
+                    ? step.options 
+                    : [{ text: 'はい', nextStepId: '', isTerminal: false, conditionType: 'yes' as const, condition: '' }];
+                  
+                  // 自動設定した場合はstateを更新
+                  if (!step.options || step.options.length === 0) {
+                    setTimeout(() => {
+                      onUpdateStep(step.id, { options: options });
+                    }, 0);
+                  }
+                  
+                  return options;
+                })().map((option, optionIndex) => (
                   <div key={`${step.id}-option-${optionIndex}`} 
                        className="bg-white border-2 border-yellow-300 rounded-lg p-4 shadow-sm">
                     <div className="flex items-center justify-between mb-3">
@@ -309,19 +323,14 @@ const StepEditor: React.FC<StepEditorProps> = ({
                       </select>
                     </div>
                   </div>
-                )) : (
-                  <div className="text-center py-6 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                    <p className="text-sm">条件項目がまだ追加されていません</p>
-                    <p className="text-xs mt-1">「条件追加」ボタンをクリックして選択肢を追加してください</p>
-                  </div>
-                )}
+                ))
               </div>
             </div>
           )}
 
           {/* 条件分岐編集（conditions配列）- type: "condition"用 */}
           {console.log(`🔍 条件分岐(conditions)UI表示チェック: stepId=${step.id}, type=${step.type}, hasConditions=${!!step.conditions}, conditionsLength=${step.conditions?.length || 0}`)}
-          {(step.type === 'condition' || (step.conditions && step.conditions.length > 0)) && (
+          {step.type === 'condition' && (
             <div className="bg-green-50 border-2 border-green-400 rounded-lg p-4 space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="font-medium text-green-800">条件分岐設定（conditions配列）</h4>
@@ -350,14 +359,28 @@ const StepEditor: React.FC<StepEditorProps> = ({
               </div>
 
               <div className="space-y-3">
-                {step.conditions && step.conditions.length > 0 ? step.conditions.map((condition, conditionIndex) => (
+                {(() => {
+                  // conditionsが空の場合は基本条件を自動設定
+                  const conditions = (step.conditions && step.conditions.length > 0) 
+                    ? step.conditions 
+                    : [{ label: '条件1', nextId: '' }];
+                  
+                  // 自動設定した場合はstateを更新
+                  if (!step.conditions || step.conditions.length === 0) {
+                    setTimeout(() => {
+                      onUpdateStep(step.id, { conditions: conditions });
+                    }, 0);
+                  }
+                  
+                  return conditions;
+                })().map((condition, conditionIndex) => (
                   <div key={`${step.id}-condition-${conditionIndex}`} 
                        className="bg-white border-2 border-green-300 rounded-lg p-4 shadow-sm">
                     <div className="flex items-center justify-between mb-3">
                       <Badge variant="secondary" className="bg-green-100 text-green-800">
                         条件 {conditionIndex + 1}
                       </Badge>
-                      {(step.conditions?.length || 0) > 2 && (
+                      {(step.conditions?.length || 0) > 1 && (
                         <Button
                           size="sm"
                           variant="ghost"
@@ -409,26 +432,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
                       </div>
                     </div>
                   </div>
-                )) : (
-                  <div className="text-center py-6 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                    <p className="text-sm">条件項目がまだ追加されていません</p>
-                    <p className="text-xs mt-1">「条件追加」ボタンをクリックして選択肢を追加してください</p>
-                    <Button 
-                      size="sm" 
-                      onClick={() => {
-                        // conditions配列を初期化
-                        const defaultConditions = [
-                          { label: '条件A', nextId: '' },
-                          { label: '条件B', nextId: '' }
-                        ];
-                        onUpdateStep(step.id, { conditions: defaultConditions });
-                      }}
-                      className="mt-3"
-                    >
-                      基本条件を設定
-                    </Button>
-                  </div>
-                )}
+                ))
               </div>
             </div>
           )}
