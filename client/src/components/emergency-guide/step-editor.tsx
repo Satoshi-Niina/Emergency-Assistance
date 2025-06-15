@@ -233,6 +233,17 @@ const StepEditor: React.FC<StepEditorProps> = ({
             const isConditionalNode = step.type === 'decision' || step.type === 'condition';
             console.log(`🔍 条件分岐UI表示チェック: stepId=${step.id}, type=${step.type}, isConditional=${isConditionalNode}, hasOptions=${!!step.options}, optionsLength=${step.options?.length || 0}`);
             console.log(`🔍 条件分岐UI表示判定: ${isConditionalNode ? 'TRUE - UIを表示' : 'FALSE - UIを非表示'}`);
+            
+            // 条件分岐ノードの場合、optionsが空なら初期化
+            if (isConditionalNode && (!step.options || step.options.length === 0)) {
+              console.log(`🔧 条件分岐ノード ${step.id} のoptionsを初期化`);
+              const defaultOptions = [
+                { text: 'はい', nextStepId: '', isTerminal: false, conditionType: 'yes' as const, condition: '' },
+                { text: 'いいえ', nextStepId: '', isTerminal: false, conditionType: 'no' as const, condition: '' }
+              ];
+              onUpdateStep(step.id, { options: defaultOptions });
+            }
+            
             return isConditionalNode;
           })() && (
             <div className={`border-2 rounded-lg p-4 space-y-4 ${
@@ -368,7 +379,10 @@ const StepEditor: React.FC<StepEditorProps> = ({
                         <Label className="text-sm font-medium text-gray-700">選択肢のテキスト</Label>
                         <Input
                           value={option.text || ''}
-                          onChange={(e) => onUpdateOption(step.id, optionIndex, { text: e.target.value })}
+                          onChange={(e) => {
+                            console.log(`📝 選択肢テキスト変更: ${step.id} -> 選択肢${optionIndex + 1} -> "${e.target.value}"`);
+                            onUpdateOption(step.id, optionIndex, { text: e.target.value });
+                          }}
                           placeholder="選択肢のテキスト（例：はい、いいえ）"
                           className="h-9 text-sm mt-1"
                         />
@@ -378,13 +392,16 @@ const StepEditor: React.FC<StepEditorProps> = ({
                         <Label className="text-sm font-medium text-gray-700">遷移先を選択</Label>
                         <select
                           value={option.nextStepId || ''}
-                          onChange={(e) => onUpdateOption(step.id, optionIndex, { nextStepId: e.target.value })}
+                          onChange={(e) => {
+                            console.log(`🔄 遷移先変更: ${step.id} -> 選択肢${optionIndex + 1} -> ${e.target.value}`);
+                            onUpdateOption(step.id, optionIndex, { nextStepId: e.target.value });
+                          }}
                           className="w-full border border-gray-300 rounded px-3 py-2 bg-white h-9 text-sm mt-1 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                         >
                           <option value="">遷移先を選択</option>
                           {allSteps?.filter(s => s.id !== step.id).map(targetStep => (
                             <option key={targetStep.id} value={targetStep.id}>
-                              {targetStep.title}
+                              {targetStep.title} (ID: {targetStep.id})
                             </option>
                           ))}
                         </select>
