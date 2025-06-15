@@ -109,14 +109,12 @@ const TroubleshootingTextEditor: React.FC<TroubleshootingTextEditorProps> = ({
 
       // タイトル変更の差分保存（個別保存）
       try {
-        const response = await fetch(`/api/troubleshooting/save/${flowData.id}`, {
+        const response = await fetch(`/api/troubleshooting/update-step-title/${flowData.id}`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'X-Complete-Replace': 'false' // 差分保存モード
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            action: 'updateStepTitle',
             stepId: step.id,
             title: newTitle
           })
