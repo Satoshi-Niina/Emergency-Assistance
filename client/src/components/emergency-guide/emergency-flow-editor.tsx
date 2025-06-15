@@ -79,20 +79,28 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({ flowData, onS
 
           // 🔀 条件分岐ノード（type: "decision"）：完全データ処理（編集UI用）
           // 条件分岐の判定を強化：type="decision"または複数のoptionsがある場合
-          const isDecisionStep = step.type === 'decision' || 
-                                 (step.options && step.options.length > 1) ||
+          const isDecisionStep = step.type === 'decision' || step.type === 'condition' || 
+                                 (step.options && step.options.length > 0) ||
                                  (step.yesCondition || step.noCondition || step.otherCondition);
 
           if (isDecisionStep) {
+              // JSONから読み込んだoptionsを保持
               const existingOptions = step.options || [];
-              console.log(`🔀 条件分岐ノード ${step.id} 編集UI準備:`, {
+              console.log(`🔀 条件分岐ノード ${step.id} 読み込み確認:`, {
                 stepId: step.id,
                 stepType: step.type,
                 title: step.title,
                 existingOptionsCount: existingOptions.length,
-                existingOptionsData: existingOptions,
-                hasLegacyFields: !!(step.yesCondition || step.noCondition || step.otherCondition)
+                optionsDetail: existingOptions,
+                rawStepData: step
               });
+
+              // decision/conditionタイプなのにoptionsが空の場合は警告
+              if ((step.type === 'decision' || step.type === 'condition') && (!step.options || step.options.length === 0)) {
+                console.warn(`⚠️ 条件分岐ノード ${step.id} (type: ${step.type}) のoptions配列が空です`);
+                // JSONから読み込んだ場合でもoptionsが空なら、強制的にtypeを変更しない
+                console.log(`🔍 JSONファイル確認が必要: ${step.id} のtype="${step.type}"だがoptions配列が空`);
+              }
 
               // 旧スキーマから新スキーマへの変換も含む
               let processedOptions = [];
