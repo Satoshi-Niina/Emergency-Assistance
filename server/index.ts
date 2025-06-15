@@ -1,3 +1,4 @@
+
 import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes.js";
@@ -25,14 +26,25 @@ const startServer = async () => {
     // 基本設定
     app.locals.storage = storage;
 
-    // ルート登録を先に実行
-    console.log('📡 ルート登録開始...');
-    await registerRoutes(app);
-    console.log('✅ ルート登録完了');
-
-    // 静的ファイル設定
+    // 静的ファイル設定を先に追加
     app.use(express.static(path.join(process.cwd(), 'client', 'dist')));
     app.use('/knowledge-base/images', express.static(path.join(process.cwd(), 'knowledge-base', 'images')));
+
+    // ヘルスチェックエンドポイントを最初に追加
+    app.get('/api/health', (req, res) => {
+      res.json({ 
+        status: 'ok', 
+        timestamp: new Date().toISOString(),
+        port: process.env.PORT || 3001
+      });
+    });
+
+    console.log('📡 ルート登録開始...');
+    
+    // registerRoutesは直接実行（awaitしない）
+    const server = await registerRoutes(app);
+    
+    console.log('✅ ルート登録完了');
 
     // エラーハンドラー
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -42,7 +54,8 @@ const startServer = async () => {
 
     const PORT = process.env.PORT || 3001;
 
-    const server = app.listen(PORT, '0.0.0.0', () => {
+    // サーバーを起動
+    server.listen(PORT, '0.0.0.0', () => {
       console.log('🚀 ===== BACKEND SERVER READY =====');
       console.log(`✅ バックエンドサーバー起動: http://0.0.0.0:${PORT}`);
       console.log(`🌐 フロントエンド: http://localhost:5000`);
