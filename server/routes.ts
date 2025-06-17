@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { loginSchema, insertUserSchema, insertChatSchema, insertMessageSchema, insertMediaSchema, users, chatExports, documents, insertDocumentSchema, messages } from "@shared/schema";
 import { z } from "zod";
 import session from "express-session";
+import MemoryStore from 'memorystore';
 import { WebSocket, WebSocketServer } from "ws";
 import { processOpenAIRequest, generateSearchQuery, analyzeVehicleImage } from "./lib/openai";
 import { processPerplexityRequest } from "./lib/perplexity";
@@ -29,6 +30,8 @@ import express from 'express';
 import { NextFunction } from "connect";
 import bcrypt from 'bcrypt';
 import { authRouter } from './routes/auth';
+
+const MemoryStoreSession = MemoryStore(session);
 
 // Extend the express-session types
 declare module 'express-session' {
@@ -112,20 +115,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Setup session middleware
+  const sessionSecret = process.env.SESSION_SECRET || "emergency-recovery-secret";
   app.use(
-    session({
-      secret: process.env.SESSION_SECRET || "emergency-recovery-secret",
-      resave: false,
-      saveUninitialized: false,
-      cookie: { 
-        secure: false,
-        httpOnly: true,
-        maxAge: 86400000, // 24 hours
-        sameSite: 'lax'
-      },
-      store: storage.sessionStore,
-    })
-  );
+      session({
+        secret: sessionSecret,
+        resave: false,
+        saveUninitialized: false,
+        cookie: { 
+          secure: false,
+          httpOnly: true,
+          maxAge: 86400000, // 24 hours
+          sameSite: 'lax'
+        },
+        store: new MemoryStoreSession({
+          checkPeriod: 86400000 // prune expired entries every 24h
+        }),
+      })
+    );
 
   // Auth middleware
   const requireAuth = async (req: Request, res: Response, next: Function) => {
@@ -863,7 +869,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         docId: newDocId, 
         message: 'Document reprocessed successfully'
       });
-    } catch (error) {
+    }```text
+ catch (error) {
       logError('Error processing document:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       res.status(500).json({ error: 'Failed to reprocess document: ' + errorMessage });

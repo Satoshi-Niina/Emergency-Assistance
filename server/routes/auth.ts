@@ -11,6 +11,7 @@ const router = Router();
 // ログイン
 router.post('/login', async (req, res) => {
   try {
+    console.log('🔐 ログインリクエスト受信:', req.body);
     const { username, password } = req.body;
     
     logInfo(`ログイン試行: ${username}`);
@@ -51,15 +52,24 @@ router.post('/login', async (req, res) => {
     req.session.username = user.username;
     req.session.userRole = user.role;
 
+    console.log('✅ セッション設定完了:', {
+      userId: req.session.userId,
+      username: req.session.username,
+      role: req.session.userRole
+    });
+
     logInfo(`ログイン成功: ${username} (${user.role})`);
 
-    res.json({
+    const responseData = {
       id: user.id,
       username: user.username,
-      display_name: user.display_name,
+      display_name: user.display_name || user.username,
       role: user.role,
       department: user.department
-    });
+    };
+
+    console.log('📤 ログインレスポンス:', responseData);
+    res.json(responseData);
 
   } catch (error) {
     logError('ログインエラー:', error);
@@ -101,24 +111,37 @@ router.post('/logout', (req, res) => {
 // 現在のユーザー情報取得
 router.get('/me', (req, res) => {
   try {
+    console.log('🔍 認証チェック - セッション状態:', {
+      hasSession: !!req.session,
+      userId: req.session?.userId,
+      username: req.session?.username,
+      role: req.session?.userRole
+    });
+
     if (!req.session || !req.session.userId) {
+      console.log('❌ 認証失敗 - セッションまたはユーザーIDなし');
       return res.status(401).json({
         success: false,
         message: '認証されていません'
       });
     }
 
-    res.json({
+    const userData = {
       id: req.session.userId,
       username: req.session.username,
       display_name: req.session.username, // display_nameがない場合はusernameを使用
       role: req.session.userRole
-    });
+    };
+
+    console.log('📤 認証成功 - ユーザー情報:', userData);
+    res.json(userData);
   } catch (error) {
+    console.error('❌ ユーザー情報取得エラー:', error);
     logError('ユーザー情報取得エラー:', error);
     res.status(500).json({
       success: false,
-      message: 'サーバーエラーが発生しました'
+      message: 'サーバーエラーが発生しました',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
