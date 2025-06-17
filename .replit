@@ -28,11 +28,11 @@ mode = "parallel"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "tsx server/index.ts"
+args = "cd client && npm run dev -- --host 0.0.0.0 --port 5000"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd client && npm run dev -- --host 0.0.0.0 --port 5000"
+args = "tsx server/index.ts"
 
 [[ports]]
 localPort = 3000
