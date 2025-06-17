@@ -37,6 +37,19 @@ args = "cd client && npm run dev -- --host 0.0.0.0 --port 5000"
 task = "shell.exec"
 args = "tsx server/index.ts"
 
+[[workflows.workflow]]
+name = "Full Stack App"
+author = 39467490
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm run dev -- --host 0.0.0.0 --port 5000"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "tsx server/index.ts"
+
 [[ports]]
 localPort = 3000
 externalPort = 3000
