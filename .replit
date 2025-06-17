@@ -1,3 +1,6 @@
+blocks) and incorporating the updated workflows, ports, and deployment configurations. I will ensure that the indentation and structure of the original file are preserved while applying the changes from the edited snippet.
+
+```
 entrypoint = "server/index.ts"
 modules = ["nodejs-20", "postgresql-16"]
 ```
@@ -20,14 +23,33 @@ run = "npm run dev:clean"
 
 ```
 [workflows]
-runButton = "Full Stack App"
+runButton = "Clean Development"
 ```
 
 ```
 [[workflows.workflow]]
-name = "Full Stack App"
+name = "Run"
+author = 39467490
+mode = "sequential"
+```
+
+```
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run build:client"
+```
+
+```
+[[workflows.workflow]]
+name = "Clean Development"
 author = 39467490
 mode = "parallel"
+```
+
+```
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm run dev -- --host 0.0.0.0 --port 5000"
 ```
 
 ```
@@ -37,9 +59,16 @@ args = "tsx server/index.ts"
 ```
 
 ```
+[[workflows.workflow]]
+name = "Configure Run Command"
+author = 39467490
+mode = "sequential"
+```
+
+```
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd client && npm run dev -- --host 0.0.0.0 --port 5000"
+args = "printf 'Please use the [1;93mConfiguration[0m pane to configure your run command. For more info, see: https://docs.replit.com/replit-workspace/configuring-repl#run'"
 ```
 
 ```
@@ -81,8 +110,3 @@ externalPort = 3002
 [deployment]
 deploymentTarget = "cloudrun"
 run = ["sh", "-c", "npm run dev:all"]
-```
-
-```
-
-```
