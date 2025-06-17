@@ -1,3 +1,4 @@
+
 entrypoint = "server/index.ts"
 modules = ["nodejs-20", "postgresql-16"]
 
@@ -9,7 +10,7 @@ PATH = "${REPLIT_NIX_CACHE}/bin"
 XDG_CONFIG_HOME = "${REPLIT_NIX_CACHE}/.config"
 npm_config_prefix = "${REPLIT_NIX_CACHE}"
 
-run = "npm run dev:all"
+run = "npm run dev:clean"
 
 [workflows]
 runButton = "Development Server"
