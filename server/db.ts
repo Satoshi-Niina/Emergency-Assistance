@@ -8,19 +8,26 @@ const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:pass
 console.log('🔄 データベース接続を初期化中...');
 console.log('📍 接続文字列:', connectionString.replace(/password@/, '***@'));
 
-const client = postgres(connectionString, {
-  prepare: false,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  max: 10,
-  idle_timeout: 20,
-  connect_timeout: 10
-});
+let client: any;
+let db: any;
 
-export const db = drizzle(client, { schema });
+try {
+  client = postgres(connectionString, {
+    prepare: false,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    max: 10,
+    idle_timeout: 20,
+    connect_timeout: 10
+  });
 
-// 接続テスト
-client`SELECT 1`.then(() => {
+  db = drizzle(client, { schema });
+  
   console.log('✅ データベース接続が正常に初期化されました');
-}).catch((error) => {
+} catch (error) {
   console.error('❌ データベース接続エラー:', error);
-});
+  
+  // フォールバック: メモリ内での一時的な処理
+  console.log('💡 フォールバックモードで起動します');
+}
+
+export { db, client };

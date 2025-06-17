@@ -65,15 +65,18 @@ router.post('/login', async (req, res) => {
     logInfo(`ログイン成功: ${username} (${user.role})`);
 
     const responseData = {
-      id: user.id,
-      username: user.username,
-      display_name: user.display_name || user.username,
-      role: user.role,
-      department: user.department
+      success: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        display_name: user.display_name || user.username,
+        role: user.role,
+        department: user.department
+      }
     };
 
     console.log('📤 ログインレスポンス:', responseData);
-    res.json(responseData);
+    res.json(responseData.user);
 
   } catch (error) {
     logError('ログインエラー:', error);
@@ -133,8 +136,9 @@ router.get('/me', (req, res) => {
     const userData = {
       id: req.session.userId,
       username: req.session.username,
-      display_name: req.session.username, // display_nameがない場合はusernameを使用
-      role: req.session.userRole
+      display_name: req.session.username,
+      role: req.session.userRole,
+      department: req.session.userDepartment || null
     };
 
     console.log('📤 認証成功 - ユーザー情報:', userData);
