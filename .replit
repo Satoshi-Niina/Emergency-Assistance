@@ -32,7 +32,7 @@ args = "cd client && VITE_PORT=5001 npm run dev -- --host 0.0.0.0 --port 5001"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "tsx server/index.ts"
+args = "NODE_ENV=development DEBUG=* tsx server/index.ts"
 
 [[ports]]
 localPort = 3000
