@@ -18,24 +18,75 @@ runButton = "Clean Development"
 name = "Run"
 author = 39467490
 mode = "sequential"
-command = "npm run build:client"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run build:client"
 
 [[workflows.workflow]]
 name = "Clean Development"
 author = 39467490
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "tsx server/index.ts"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm run dev -- --host 0.0.0.0 --port 5000"
+
+[[workflows.workflow]]
+name = "Deploy"
+author = 39467490
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run build:client"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "tsx server/index.ts"
+
+[[workflows.workflow]]
+name = "Development"
+author = 39467490
 mode = "parallel"
 
 [[workflows.workflow.tasks]]
-command = "cd client && npm run dev -- --host 0.0.0.0 --port 5000"
+task = "shell.exec"
+args = "cd client && npm run dev -- --host 0.0.0.0 --port 5000"
 
 [[workflows.workflow.tasks]]
-command = "tsx server/index.ts"
+task = "shell.exec"
+args = "tsx server/index.ts"
 
 [[workflows.workflow]]
-name = "Configure Run Command"
+name = "Development (New)"
 author = 39467490
-mode = "sequential"
-command = "printf 'Please use the [1;93mConfiguration[0m pane to configure your run command. For more info, see: https://docs.replit.com/replit-workspace/configuring-repl#run'"
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm run dev -- --host 0.0.0.0 --port 5000"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "tsx server/index.ts"
+
+[[workflows.workflow]]
+name = "Full Stack Development"
+author = 39467490
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm run dev -- --host 0.0.0.0 --port 5000"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "tsx server/index.ts"
 
 [[ports]]
 localPort = 3000
