@@ -36,19 +36,6 @@ mode = "sequential"
 task = "shell.exec"
 args = "npm run build:client"
 
-[[workflows.workflow]]
-name = "Full Stack Dev"
-author = 39467490
-mode = "parallel"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && npm run dev"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "tsx server/index.ts"
-
 [[ports]]
 localPort = 3000
 externalPort = 3000
