@@ -100,7 +100,7 @@ app.use(session({
   } catch (routeError) {
     console.error('❌ ルート登録エラー:', routeError);
   }
-})()();
+})();
 
 // グレースフルシャットダウン
 const gracefulShutdown = () => {
