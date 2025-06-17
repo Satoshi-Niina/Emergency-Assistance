@@ -48,7 +48,7 @@ const startServer = async () => {
       res.status(500).json({ message: err.message || 'Internal Server Error' });
     });
 
-    const PORT = 3001; // ポートを3001に固定
+    const PORT = process.env.PORT || 3001;
 
     // HTTPサーバーを直接作成
     const server = app.listen(PORT, '0.0.0.0', () => {
