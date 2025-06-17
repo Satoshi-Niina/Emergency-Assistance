@@ -23,7 +23,7 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0',
-    port: 5000,
+    port: parseInt(process.env.VITE_PORT || '5173'),
     strictPort: false,
     allowedHosts: 'all',
     hmr: {
