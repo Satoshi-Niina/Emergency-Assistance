@@ -4,7 +4,10 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "tsx server/index.ts",
+    "dev:clean": "kill-port 3001 5000 && npm run dev",
+    "dev": "concurrently \"npm:dev-client\" \"npm:dev-server\"",
+    "dev-client": "cd client && vite",
+    "dev-server": "cd server && tsx index.ts",
     "dev:client": "cd client && npm run dev",
     "dev:all": "concurrently --kill-others-on-fail \"npm run dev:backend-dynamic\" \"npm run dev:client-dynamic\"",
     "dev:backend-dynamic": "tsx server/index.ts",
@@ -16,8 +19,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "clean:ports": "pkill -f 'vite|tsx|node' || true",
-    "dev:clean": "npm run clean:ports && sleep 2 && npm run dev:all"
+    "clean:ports": "pkill -f 'vite|tsx|node' || true"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -82,6 +84,7 @@
     "fuse.js": "^7.1.0",
     "idb": "^8.0.2",
     "input-otp": "^1.2.4",
+    "kill-port": "^2.0.1",
     "localforage": "^1.10.0",
     "lucide-react": "^0.453.0",
     "mammoth": "^1.9.0",
