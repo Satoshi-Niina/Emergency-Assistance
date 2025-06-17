@@ -28,6 +28,7 @@ import { usersRouter } from './routes/users';
 import express from 'express';
 import { NextFunction } from "connect";
 import bcrypt from 'bcrypt';
+import { authRouter } from './routes/auth';
 
 // Extend the express-session types
 declare module 'express-session' {
@@ -158,82 +159,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Auth routes
-  app.post("/api/auth/login", async (req, res) => {
-    try {
-      const credentials = loginSchema.parse(req.body);
-      const user = await storage.getUserByUsername(credentials.username);
-
-      if (!user || user.password !== credentials.password) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-
-      req.session.userId = user.id;
-      req.session.userRole = user.role;
-
-      return res.json({ 
-        id: user.id, 
-        username: user.username, 
-        displayName: user.displayName, 
-        role: user.role 
-      });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: error.errors });
-      }
-      return res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.post("/api/auth/logout", (req, res) => {
-    req.session.destroy((err) => {
-      if (err) {
-        return res.status(500).json({ message: "Failed to logout" });
-      }
-      res.clearCookie("connect.sid");
-      return res.json({ message: "Logged out successfully" });
-    });
-  });
-
-  app.get("/api/auth/me", async (req, res) => {
-    if (!req.session.userId) {
-      // 開発環境では自動的にデフォルトユーザーでログイン
-      try {
-        const adminUser = await storage.getUserByUsername('admin');
-        if (adminUser) {
-          req.session.userId = adminUser.id;
-          req.session.userRole = 'admin';
-        }
-      } catch (error) {
-        console.error('管理者ユーザー取得エラー:', error);
-      }
-    }
-
-    let user = await storage.getUser(req.session.userId);
-    if (!user) {
-      // デフォルトユーザーが存在しない場合は作成
-      try {
-        user = await storage.createUser({
-          username: 'admin',
-          password: 'admin',
-          displayName: '管理者',
-          role: 'admin',
-          department: '保守部'
-        });
-        console.log('デフォルトユーザーを作成しました');
-      } catch (error) {
-        // ユーザーが既に存在する場合は取得
-        user = await storage.getUserByUsername('admin');
-      }
-    }
-
-    return res.json({ 
-      id: user.id, 
-      username: user.username, 
-      displayName: user.displayName, 
-      role: user.role,
-      department: user.department
-    });
-  });
+  app.use("/api/auth", authRouter);
 
   // User management routes (admin only)
   app.get("/api/users", requireAuth, requireAdmin, async (req, res) => {
