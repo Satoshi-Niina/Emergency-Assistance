@@ -14,7 +14,7 @@ let db: any;
 try {
   client = postgres(connectionString, {
     prepare: false,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    ssl: connectionString.includes('sslmode=require') ? { rejectUnauthorized: false } : false,
     max: 10,
     idle_timeout: 20,
     connect_timeout: 10
