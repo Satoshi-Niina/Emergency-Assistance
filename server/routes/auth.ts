@@ -27,6 +27,17 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    // データベース接続確認
+    console.log('🔍 データベース接続状況を確認中...');
+    try {
+      // 簡単な接続テスト
+      await db.select().from(users).limit(1);
+      console.log('✅ データベース接続正常');
+    } catch (dbError) {
+      console.error('❌ データベース接続エラー:', dbError);
+      throw new Error('データベースに接続できません');
+    }
+
     // ユーザー検索
     console.log('🔍 データベースからユーザー検索中:', username);
     const user = await db.query.users.findFirst({
