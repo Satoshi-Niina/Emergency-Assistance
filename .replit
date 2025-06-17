@@ -9,7 +9,30 @@ PATH = "${REPLIT_NIX_CACHE}/bin"
 XDG_CONFIG_HOME = "${REPLIT_NIX_CACHE}/.config"
 npm_config_prefix = "${REPLIT_NIX_CACHE}"
 
-run = "npm run dev:clean"
+[workflows]
+runButton = "Clean Development"
+
+[[workflows.workflow]]
+name = "Run"
+author = 39467490
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run build:client"
+
+[[workflows.workflow]]
+name = "Clean Development"
+author = 39467490
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "tsx server/index.ts"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm run dev -- --host 0.0.0.0 --port 5000"
 
 [[ports]]
 localPort = 3000
@@ -37,28 +60,3 @@ externalPort = 3002
 [deployment]
 deploymentTarget = "cloudrun"
 run = ["sh", "-c", "npm run dev:all"]
-
-[workflows]
-runButton = "Clean Development"
-
-[[workflows.workflow]]
-name = "Run"
-author = 39467490
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run build:client"
-
-[[workflows.workflow]]
-name = "Clean Development"
-author = 39467490
-mode = "parallel"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "tsx server/index.ts"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && npm run dev -- --host 0.0.0.0 --port 5000"
