@@ -27,7 +27,7 @@ args = "npm run build:client"
 [[workflows.workflow]]
 name = "Clean Development"
 author = 39467490
-mode = "sequential"
+mode = "parallel"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
