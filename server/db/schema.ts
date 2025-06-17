@@ -85,7 +85,7 @@ export const chatExports = pgTable('chat_exports', {
   timestamp: timestamp('timestamp').defaultNow().notNull()
 });
 
-// スキーマエクスポート
+// スキーマエクスポート - 重複を排除
 export const schema = {
   users,
   chats,
