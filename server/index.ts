@@ -65,20 +65,42 @@ server.on('error', (err: any) => {
   }
 });
 
+// セッション設定
+import session from 'express-session';
+import MemoryStore from 'memorystore';
+
+const MemoryStoreSession = MemoryStore(session);
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'emergency-recovery-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  store: new MemoryStoreSession({
+    checkPeriod: 86400000 // 24時間でクリーンアップ
+  }),
+  cookie: {
+    secure: false, // 開発環境ではfalse
+    httpOnly: true,
+    maxAge: 86400000 // 24時間
+  }
+}));
+
 // ルート登録を即座に実行
 (async () => {
   try {
     console.log('📡 ルート登録開始...');
     const { registerRoutes } = await import('./routes.js');
-    const { storage } = await import('./storage.js');
-
-    app.locals.storage = storage;
+    
+    // authルートを登録
+    const { authRouter } = await import('./routes/auth.js');
+    app.use('/api/auth', authRouter);
+    
     await registerRoutes(app);
     console.log('✅ ルート登録完了');
   } catch (routeError) {
     console.error('❌ ルート登録エラー:', routeError);
   }
-})();
+})()();
 
 // グレースフルシャットダウン
 const gracefulShutdown = () => {

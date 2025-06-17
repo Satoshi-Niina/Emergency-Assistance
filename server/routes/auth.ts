@@ -28,9 +28,11 @@ router.post('/login', async (req, res) => {
     }
 
     // ユーザー検索
+    console.log('🔍 データベースからユーザー検索中:', username);
     const user = await db.query.users.findFirst({
       where: eq(users.username, username)
     });
+    console.log('📊 ユーザー検索結果:', user ? 'ユーザー見つかりました' : 'ユーザーが見つかりません');
 
     if (!user) {
       logError(`ユーザーが見つかりません: ${username}`);
