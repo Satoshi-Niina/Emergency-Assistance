@@ -14,8 +14,10 @@ const PORT = process.env.PORT || 3001;
 
 // CORS設定
 app.use(cors({
-  origin: ['http://localhost:5000', 'https://*.replit.dev'],
-  credentials: true
+  origin: ['http://localhost:5000', 'http://localhost:5173', 'https://*.replit.dev'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
 app.use(express.json());
