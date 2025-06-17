@@ -10,7 +10,7 @@ XDG_CONFIG_HOME = "${REPLIT_NIX_CACHE}/.config"
 npm_config_prefix = "${REPLIT_NIX_CACHE}"
 
 [workflows]
-runButton = "Full Stack App"
+runButton = "Clean Development"
 
 [[workflows.workflow]]
 name = "Run"
@@ -29,19 +29,6 @@ mode = "parallel"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd client && npm run dev -- --host 0.0.0.0 --port 5001"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "tsx server/index.ts"
-
-[[workflows.workflow]]
-name = "Full Stack App"
-author = 39467490
-mode = "parallel"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && npm run dev -- --host 0.0.0.0 --port 5000"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
