@@ -54,15 +54,11 @@ router.post('/login', async (req, res) => {
     logInfo(`ログイン成功: ${username} (${user.role})`);
 
     res.json({
-      success: true,
-      user: {
-        id: user.id,
-        username: user.username,
-        display_name: user.display_name,
-        role: user.role,
-        department: user.department
-      },
-      message: 'ログインに成功しました'
+      id: user.id,
+      username: user.username,
+      display_name: user.display_name,
+      role: user.role,
+      department: user.department
     });
 
   } catch (error) {
@@ -113,12 +109,10 @@ router.get('/me', (req, res) => {
     }
 
     res.json({
-      success: true,
-      user: {
-        id: req.session.userId,
-        username: req.session.username,
-        role: req.session.userRole
-      }
+      id: req.session.userId,
+      username: req.session.username,
+      display_name: req.session.username, // display_nameがない場合はusernameを使用
+      role: req.session.userRole
     });
   } catch (error) {
     logError('ユーザー情報取得エラー:', error);

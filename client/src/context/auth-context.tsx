@@ -34,11 +34,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const getCurrentUser = async () => {
     try {
-      const response = await apiRequest("GET", "/api/auth/me");
+      const response = await fetch('/api/auth/me', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
       if (response.ok) {
         const userData = await response.json();
+        console.log('✅ 認証ユーザー取得:', userData);
         return userData;
       } else {
+        console.log('❌ 認証なし:', response.status);
         return null;
       }
     } catch (error) {

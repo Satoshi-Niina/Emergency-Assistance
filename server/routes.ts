@@ -118,8 +118,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       resave: false,
       saveUninitialized: false,
       cookie: { 
-        secure: false, // Set to false for development in Replit
-        maxAge: 86400000 // 24 hours
+        secure: false,
+        httpOnly: true,
+        maxAge: 86400000, // 24 hours
+        sameSite: 'lax'
       },
       store: storage.sessionStore,
     })
