@@ -12,7 +12,7 @@ npm_config_prefix = "${REPLIT_NIX_CACHE}"
 run = "npm run dev:all"
 
 [workflows]
-runButton = "Backend Only"
+runButton = "Full Stack Dev"
 
 [[workflows.workflow]]
 name = "Development Server"
@@ -49,6 +49,19 @@ args = "tsx server/index.ts"
 name = "Backend Only"
 author = 39467490
 mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "tsx server/index.ts"
+
+[[workflows.workflow]]
+name = "Full Stack Dev"
+author = 39467490
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm run dev"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
