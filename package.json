@@ -4,12 +4,20 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "build": "npm run build:client && npm run build:server",
-    "build:client": "cd client && npm run build",
-    "build:server": "tsc -p server",
     "dev": "tsx server/index.ts",
-    "dev:all": "concurrently \"cd client && npm run dev\" \"tsx server/index.ts\"",
-    "start": "tsx server/index.ts"
+    "dev:client": "cd client && npm run dev",
+    "dev:all": "concurrently --kill-others-on-fail \"npm run dev:backend-dynamic\" \"npm run dev:client-dynamic\"",
+    "dev:backend-dynamic": "tsx server/index.ts",
+    "dev:client-dynamic": "cd client && npm run dev -- --host 0.0.0.0",
+    "build:client": "cd client && npm run build",
+    "build": "npm run build:client && tsc --project server/tsconfig.json",
+    "start": "node dist/server/index.js",
+    "test": "jest",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
+    "clean:ports": "pkill -f 'vite|tsx|node' || true",
+    "dev:clean": "npm run clean:ports && sleep 2 && npm run dev:all"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
