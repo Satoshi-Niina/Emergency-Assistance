@@ -13,7 +13,7 @@ npm_config_prefix = "${REPLIT_NIX_CACHE}"
 run = "npm run dev:clean"
 
 [workflows]
-runButton = "Clean Development"
+runButton = "Full Stack App"
 
 [[workflows.workflow]]
 name = "Run"

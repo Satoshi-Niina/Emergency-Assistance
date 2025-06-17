@@ -49,29 +49,12 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 // サーバー起動
-const server = app.listen(PORT, '0.0.0.0', async () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log('🚀 ===== BACKEND SERVER READY =====');
   console.log(`✅ バックエンドサーバー起動: http://0.0.0.0:${PORT}`);
   console.log(`🌐 公開URL想定: Replitの外部URL経由でアクセス`);
   console.log(`📡 ヘルスチェック: /api/health`);
   console.log('🚀 ===== BACKEND SERVER READY =====');
-
-  try {
-    // データベース接続テスト
-    // Assuming 'db' and 'schema' are available in the scope
-    // and properly initialized for database interaction.
-    // The following lines are a placeholder and may need adjustment
-    // based on your actual database setup and schema definition.
-    // For example, you might need to import 'db' and 'schema'
-    // or adjust the query based on your database library.
-    //
-    // Example using a hypothetical 'db' and 'schema':
-    // await db.select().from(schema.users).limit(1);
-    console.log('✅ データベース接続確認完了');
-  } catch (error) {
-    console.error('❌ データベース接続エラー:', error);
-    console.log('💡 DATABASE_URLの設定を確認してください');
-  }
 });
 
 server.on('error', (err: any) => {
@@ -82,8 +65,8 @@ server.on('error', (err: any) => {
   }
 });
 
-// ルート登録（遅延実行）
-setTimeout(async () => {
+// ルート登録を即座に実行
+(async () => {
   try {
     console.log('📡 ルート登録開始...');
     const { registerRoutes } = await import('./routes.js');
@@ -95,7 +78,7 @@ setTimeout(async () => {
   } catch (routeError) {
     console.error('❌ ルート登録エラー:', routeError);
   }
-}, 1000);
+})();
 
 // グレースフルシャットダウン
 const gracefulShutdown = () => {
