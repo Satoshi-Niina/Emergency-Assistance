@@ -54,7 +54,9 @@ router.post('/login', async (req, res) => {
     }
 
     // パスワード検証
+    console.log('🔐 パスワード検証中...');
     const isValidPassword = await bcrypt.compare(password, user.password);
+    console.log('📊 パスワード検証結果:', isValidPassword ? '✅ 正しい' : '❌ 間違い');
     
     if (!isValidPassword) {
       logError(`パスワードが正しくありません: ${username}`);
@@ -89,6 +91,14 @@ router.post('/login', async (req, res) => {
     };
 
     console.log('📤 ログインレスポンス:', responseData);
+    
+    // レスポンス送信前にセッション状態を確認
+    console.log('🔍 セッション最終確認:', {
+      sessionExists: !!req.session,
+      userId: req.session?.userId,
+      username: req.session?.username
+    });
+    
     res.json(responseData.user);
 
   } catch (error) {

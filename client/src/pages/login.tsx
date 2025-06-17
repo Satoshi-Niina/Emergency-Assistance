@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const { login, user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   
@@ -35,10 +36,15 @@ export default function Login() {
   const onSubmit = async (values: { username: string; password: string }) => {
     try {
       setIsLoading(true);
+      setErrorMessage("");
+      console.log("🔐 ログイン試行開始:", values.username);
       await login(values.username, values.password);
+      console.log("✅ ログイン成功 - チャット画面に遷移");
       setLocation("/chat");
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("❌ ログインエラー:", error);
+      const errorMsg = error instanceof Error ? error.message : "ログインに失敗しました";
+      setErrorMessage(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -84,6 +90,11 @@ export default function Login() {
                     </FormItem>
                   )}
                 />
+                {errorMessage && (
+                  <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+                    {errorMessage}
+                  </div>
+                )}
                 <Button type="submit" className="w-full bg-primary" disabled={isLoading}>
                   {isLoading ? "ログイン中..." : "ログイン"}
                 </Button>
