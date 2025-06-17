@@ -13,7 +13,7 @@ npm_config_prefix = "${REPLIT_NIX_CACHE}"
 run = "npm run dev:clean"
 
 [workflows]
-runButton = "Production Deploy"
+runButton = "Clean Development"
 
 [[workflows.workflow]]
 name = "Run"
@@ -44,42 +44,6 @@ args = "sleep 2"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd client && npm run dev &"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "tsx server/index.ts"
-
-[[workflows.workflow]]
-name = "Backend Only"
-author = 39467490
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "tsx server/index.ts"
-
-[[workflows.workflow]]
-name = "Frontend Only"
-author = 39467490
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && npm run dev -- --host 0.0.0.0 --port 5173"
-
-[[workflows.workflow]]
-name = "Frontend Only (Fixed)"
-author = 39467490
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && vite --host 0.0.0.0 --port 5173"
-
-[[workflows.workflow]]
-name = "Backend Only (Fixed)"
-author = 39467490
-mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
