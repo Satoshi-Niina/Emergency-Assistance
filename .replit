@@ -13,20 +13,7 @@ npm_config_prefix = "${REPLIT_NIX_CACHE}"
 run = "npm run dev:clean"
 
 [workflows]
-runButton = "Development Server"
-
-[[workflows.workflow]]
-name = "Development Server"
-author = 39467490
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && npm run dev"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "tsx server/index.ts"
+runButton = "Clean Development"
 
 [[workflows.workflow]]
 name = "Run"
@@ -36,27 +23,6 @@ mode = "sequential"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run build:client"
-
-[[workflows.workflow]]
-name = "Clean Start"
-author = 39467490
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "pkill -f \"tsx.*server\" || true"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "pkill -f \"vite\" || true"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "sleep 2"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "tsx server/index.ts"
 
 [[workflows.workflow]]
 name = "Clean Development"
