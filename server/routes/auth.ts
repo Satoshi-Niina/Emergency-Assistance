@@ -11,7 +11,11 @@ const router = Router();
 // ログイン
 router.post('/login', async (req, res) => {
   try {
-    console.log('🔐 ログインリクエスト受信:', req.body);
+    console.log('🔐 ログインリクエスト受信:', { 
+      body: req.body, 
+      hasSession: !!req.session,
+      headers: req.headers['content-type']
+    });
     const { username, password } = req.body;
     
     logInfo(`ログイン試行: ${username}`);

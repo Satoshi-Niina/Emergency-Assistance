@@ -8,6 +8,8 @@ import { LoginCredentials } from '@shared/schema';
  */
 export const login = async (credentials: LoginCredentials) => {
   try {
+    console.log('🔐 ログイン試行:', { username: credentials.username });
+    
     const response = await fetch('/api/auth/login', {
       method: 'POST',
       headers: {
@@ -17,13 +19,22 @@ export const login = async (credentials: LoginCredentials) => {
       body: JSON.stringify(credentials)
     });
     
+    console.log('📡 レスポンス受信:', { status: response.status, ok: response.ok });
+    
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ message: '認証エラー' }));
+      console.error('❌ ログインエラー:', errorData);
       throw new Error(errorData.message || '認証サーバーからのレスポンスエラー');
     }
-    return await response.json();
+    
+    const userData = await response.json();
+    console.log('✅ ログイン成功:', userData);
+    return userData;
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('❌ Login error:', error);
+    if (error instanceof Error) {
+      throw error;
+    }
     throw new Error('ログインに失敗しました');
   }
 };
