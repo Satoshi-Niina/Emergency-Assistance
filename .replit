@@ -16,8 +16,8 @@ runButton = "Development Server"
 
 [[workflows.workflow]]
 name = "Development Server"
-author = 39467490
-mode = "parallel"
+author = "replit"
+runMode = "parallel"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
