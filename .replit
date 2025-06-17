@@ -36,6 +36,15 @@ args = "tsx server/index.ts"
 task = "shell.exec"
 args = "cd client && npm run dev -- --host 0.0.0.0 --port 5000"
 
+[[workflows.workflow]]
+name = "Configure Run Command"
+author = 39467490
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "printf 'Please use the [1;93mConfiguration[0m pane to configure your run command. For more info, see: https://docs.replit.com/replit-workspace/configuring-repl#run'"
+
 [[ports]]
 localPort = 3000
 externalPort = 3000
