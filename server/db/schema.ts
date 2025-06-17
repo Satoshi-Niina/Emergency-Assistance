@@ -97,5 +97,3 @@ export const schema = {
   keywords,
   chatExports
 };
-
-export { users, chats, messages, media, emergencyFlows, images, documents, keywords, chatExports };
