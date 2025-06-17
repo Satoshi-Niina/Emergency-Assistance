@@ -1,112 +1,73 @@
-blocks) and incorporating the updated workflows, ports, and deployment configurations. I will ensure that the indentation and structure of the original file are preserved while applying the changes from the edited snippet.
-
-```
 entrypoint = "server/index.ts"
 modules = ["nodejs-20", "postgresql-16"]
-```
 
-```
 [nix]
 channel = "stable-24_05"
-```
 
-```
 [env]
 PATH = "${REPLIT_NIX_CACHE}/bin"
 XDG_CONFIG_HOME = "${REPLIT_NIX_CACHE}/.config"
 npm_config_prefix = "${REPLIT_NIX_CACHE}"
-```
 
-```
 run = "npm run dev:clean"
-```
 
-```
 [workflows]
 runButton = "Clean Development"
-```
 
-```
 [[workflows.workflow]]
 name = "Run"
 author = 39467490
 mode = "sequential"
-```
 
-```
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run build:client"
-```
 
-```
 [[workflows.workflow]]
 name = "Clean Development"
 author = 39467490
 mode = "parallel"
-```
 
-```
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd client && npm run dev -- --host 0.0.0.0 --port 5000"
-```
 
-```
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "tsx server/index.ts"
-```
 
-```
 [[workflows.workflow]]
 name = "Configure Run Command"
 author = 39467490
 mode = "sequential"
-```
 
-```
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "printf 'Please use the [1;93mConfiguration[0m pane to configure your run command. For more info, see: https://docs.replit.com/replit-workspace/configuring-repl#run'"
-```
 
-```
 [[ports]]
 localPort = 3000
 externalPort = 3000
-```
 
-```
 [[ports]]
 localPort = 3001
-```
 
-```
 [[ports]]
 localPort = 5000
 externalPort = 80
-```
 
-```
 [[ports]]
 localPort = 5001
 externalPort = 3001
-```
 
-```
 [[ports]]
 localPort = 5173
 externalPort = 5173
-```
 
-```
 [[ports]]
 localPort = 5174
 externalPort = 3002
-```
 
-```
 [deployment]
 deploymentTarget = "cloudrun"
 run = ["sh", "-c", "npm run dev:all"]
