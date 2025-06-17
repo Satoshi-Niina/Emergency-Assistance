@@ -13,7 +13,7 @@ npm_config_prefix = "${REPLIT_NIX_CACHE}"
 run = "npm run dev:clean"
 
 [workflows]
-runButton = "Full Stack Development"
+runButton = "Full Stack App"
 
 [[workflows.workflow]]
 name = "Run"
@@ -78,6 +78,19 @@ args = "tsx server/index.ts"
 
 [[workflows.workflow]]
 name = "Full Stack Development"
+author = 39467490
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm run dev -- --host 0.0.0.0 --port 5000"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "tsx server/index.ts"
+
+[[workflows.workflow]]
+name = "Full Stack App"
 author = 39467490
 mode = "parallel"
 
