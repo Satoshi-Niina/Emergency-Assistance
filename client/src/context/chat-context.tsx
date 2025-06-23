@@ -90,7 +90,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [lastExportTimestamp, setLastExportTimestamp] = useState<Date | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [hasUnexportedMessages, setHasUnexportedMessages] = useState(false);
-  const [chatId, setChatId] = useState<number | null>(null);
+  const [chatId, setChatId] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [tempMedia, setTempMedia] = useState<{ type: string, url: string, thumbnail?: string }[]>([]);
@@ -132,18 +132,32 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       setIsInitializing(true);
 
-      // 認証をスキップして直接チャットIDを設定
-      // 認証が必要な場合は後で個別に処理
-      const defaultChatId = 1;
-      setChatId(defaultChatId);
-      console.log('チャットIDを設定しました:', defaultChatId);
-      return defaultChatId;
+      // UUIDを生成してチャットIDを設定
+      const generateUUID = () => {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          const r = Math.random() * 16 | 0;
+          const v = c === 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+      };
+      
+      const chatId = generateUUID();
+      setChatId(chatId);
+      console.log('チャットIDを設定しました:', chatId);
+      return chatId;
     } catch (error) {
       console.error('Failed to initialize chat:', error);
-      // デフォルトのチャットIDを設定
-      const defaultChatId = 1;
-      setChatId(defaultChatId);
-      return defaultChatId;
+      // エラーが発生した場合もUUIDを生成
+      const generateUUID = () => {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          const r = Math.random() * 16 | 0;
+          const v = c === 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+      };
+      const chatId = generateUUID();
+      setChatId(chatId);
+      return chatId;
     } finally {
       setIsInitializing(false);
     }
@@ -505,6 +519,13 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const sendMessage = useCallback(async (content: string, mediaUrls?: { type: string, url: string, thumbnail?: string }[]) => {
     if (isLoading || !content.trim()) return;
 
+    // チャットIDが設定されているかチェック
+    if (!chatId) {
+      console.log('チャットIDが設定されていません。初期化を待機します...');
+      await initializeChat();
+      return;
+    }
+
     setIsLoading(true);
 
     // ユーザーメッセージを即座に表示
@@ -521,13 +542,36 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     try {
       // AIレスポンスを取得
-      const response = await apiRequest('POST', '/api/chats/1/messages', {
+      console.log('📤 メッセージ送信リクエスト:', {
+        url: `/api/chats/${chatId}/messages`,
+        content: content.substring(0, 100) + '...',
+        contentLength: content.length,
+        media: mediaUrls
+      });
+      
+      const response = await apiRequest('POST', `/api/chats/${chatId}/messages`, {
         content,
         media: mediaUrls
       });
 
+      console.log('📥 メッセージ送信レスポンス:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+
       if (response.ok) {
         const aiResponse = await response.json();
+        
+        console.log('📥 AIレスポンス解析:', {
+          responseType: typeof aiResponse,
+          responseKeys: Object.keys(aiResponse || {}),
+          content: aiResponse?.content?.substring(0, 100) + '...',
+          text: aiResponse?.text?.substring(0, 100) + '...',
+          hasContent: !!aiResponse?.content,
+          hasText: !!aiResponse?.text
+        });
 
         // AIメッセージを追加
         const aiMessage: Message = {
@@ -541,13 +585,16 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         // 新規メッセージに対して画像検索を実行
         try {
+          console.log('✅ AI応答受信完了、画像検索を開始します...');
           const { searchByText, reloadImageSearchData } = await import('@/lib/image-search');
 
           // まず画像検索データの初期化を確認
+          console.log('🔄 画像検索データをリロードします...');
           await reloadImageSearchData();
 
+          console.log(`🔍 検索を実行します... クエリ: "${content}"`);
           const searchResults = await searchByText(content, true);
-          console.log('🔍 画像検索実行結果:', searchResults?.length || 0, '件');
+          console.log('📊 検索結果（生データ）:', searchResults);
 
           if (searchResults && searchResults.length > 0) {
             // 検索結果を処理して画像パスを修正（Fuse.js結果構造に対応）
@@ -565,29 +612,44 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 category: actualResult.category || ''
               };
             });
-
-            console.log('🖼️ 関係画像エリアに表示:', processedResults.length, '件');
+            console.log('🎨 表示用に加工した検索結果:', processedResults);
+            console.log(`🖼️ 関係画像エリアに ${processedResults.length} 件の画像を設定します`);
             setSearchResults(processedResults);
           } else {
-            console.log('🔍 画像検索結果なし');
+            console.log('❌ 画像検索結果は0件でした。');
             setSearchResults([]);
           }
         } catch (searchError) {
-          console.warn('画像検索エラー:', searchError);
+          console.error('❌ 画像検索処理中にエラーが発生しました:', searchError);
           setSearchResults([]);
         }
       }
     } catch (error) {
       console.error('メッセージ送信エラー:', error);
+      
+      // エラーの詳細情報を取得
+      let errorMessage = "メッセージの送信に失敗しました";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        // APIレスポンスエラーの場合
+        if ('status' in error && 'statusText' in error) {
+          errorMessage = `HTTP ${error.status}: ${error.statusText}`;
+        } else if ('message' in error) {
+          errorMessage = String(error.message);
+        }
+      }
+      
       toast({
-        title: "エラー",
-        description: "メッセージの送信に失敗しました",
+        title: "送信エラー",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, toast]);
+  }, [isLoading, toast, chatId, initializeChat]);
 
   // 音声認識の初期化を最適化
   const initializeSpeechRecognition = useCallback(() => {
@@ -836,7 +898,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(true);
 
       // 現在のチャットIDを取得
-      const currentChatId = chatId || 1;
+      const currentChatId = chatId || "1";
       console.log('応急処置ガイド: チャットID', currentChatId, 'にデータを送信します');
 
       // ChatMessage形式でメッセージを作成
@@ -998,7 +1060,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(true);
 
       // 現在のチャットIDを取得
-      const currentChatId = chatId || 1;
+      const currentChatId = chatId || "1";
       console.log('フロー実行結果: チャットID', currentChatId, 'にデータを送信します');
 
       const timestamp = Date.now();

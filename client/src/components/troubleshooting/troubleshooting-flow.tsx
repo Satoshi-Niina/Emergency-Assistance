@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, CheckCircle, Send, ArrowRight } from "lucide-react";
+import { ArrowLeft, CheckCircle, Send, ArrowRight, X } from "lucide-react";
 
 interface FlowStep {
   id: string;
@@ -304,24 +304,26 @@ export default function TroubleshootingFlow({
             </div>
           )}
 
-          {/* 画像表示エリア */}
+          {/* 画像表示エリア - 横並び表示 */}
           {(currentStep.images && currentStep.images.length > 0) ? (
-            <div className="mt-4 space-y-4">
-              {currentStep.images.map((image, index) => (
-                <div key={index} className="relative">
-                  <img
-                    src={convertImageUrl(image.url)}
-                    alt={`${currentStep.title} - ${image.fileName || '画像'}`}
-                    className="max-w-full h-auto rounded-lg shadow-md"
-                    onError={(e) => handleImageError(e, image.url)}
-                  />
-                  {image.fileName && (
-                    <div className="text-sm text-gray-600 mt-1">
-                      {image.fileName}
-                    </div>
-                  )}
-                </div>
-              ))}
+            <div className="mt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {currentStep.images.map((image, index) => (
+                  <div key={index} className="relative">
+                    <img
+                      src={convertImageUrl(image.url)}
+                      alt={`${currentStep.title} - ${image.fileName || '画像'}`}
+                      className="w-full h-auto rounded-lg shadow-md"
+                      onError={(e) => handleImageError(e, image.url)}
+                    />
+                    {image.fileName && (
+                      <div className="text-sm text-gray-600 mt-1">
+                        {image.fileName}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           ) : currentStep.imageUrl ? (
             // 古い形式の imageUrl のみのフォールバック
@@ -329,7 +331,7 @@ export default function TroubleshootingFlow({
               <img
                 src={convertImageUrl(currentStep.imageUrl)}
                 alt={currentStep.title}
-                className="max-w-full h-auto rounded-lg shadow-md"
+                className="w-full h-auto rounded-lg shadow-md"
                 onError={(e) => handleImageError(e, currentStep.imageUrl)}
               />
             </div>

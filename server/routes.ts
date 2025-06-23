@@ -76,8 +76,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ 
       status: 'ok', 
       timestamp: new Date().toISOString(),
-      openaiKeyExists: !!process.env.OPENAI_API_KEY,
-      perplexityKeyExists: !!process.env.PERPLEXITY_API_KEY
+      environment: process.env.NODE_ENV || 'development'
+    });
+  });
+
+  // OpenAI APIキーの設定状況を確認するエンドポイント
+  app.get('/api/debug/openai', (req, res) => {
+    const apiKey = process.env.OPENAI_API_KEY || process.env.REPLIT_SECRET_OPENAI_API_KEY;
+    res.json({
+      openaiApiKey: apiKey ? "SET" : "NOT SET",
+      apiKeyPrefix: apiKey ? apiKey.substring(0, 10) + "..." : "NOT FOUND",
+      environment: process.env.NODE_ENV || 'development',
+      timestamp: new Date().toISOString()
     });
   });
 
@@ -519,6 +529,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const chatId = req.params.id;
       const { content, useOnlyKnowledgeBase = true, usePerplexity = false } = req.body;
       const userId = String(req.session.userId ?? '');
+      
+      // チャットIDのバリデーション
+      if (!chatId || chatId === '1') {
+        return res.status(400).json({ 
+          message: "Invalid chat ID. Please use a valid UUID format." 
+        });
+      }
+      
+      // UUID形式の簡易チェック
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(chatId)) {
+        return res.status(400).json({ 
+          message: "Invalid chat ID format. Expected UUID format." 
+        });
+      }
+      
+      // デバッグログを追加
+      logDebug('📥 メッセージ送信リクエスト受信:', {
+        chatId,
+        content: content?.substring(0, 100) + '...',
+        contentLength: content?.length,
+        useOnlyKnowledgeBase,
+        usePerplexity,
+        userId,
+        headers: req.headers['content-type'],
+        bodyType: typeof req.body,
+        bodyKeys: Object.keys(req.body || {})
+      });
+      
       let chat = await storage.getChat(chatId);
       if (!chat) {
         logDebug(`メッセージ送信時: チャットID ${chatId} が存在しないため、新規作成します`);
@@ -604,10 +643,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
         hasValidContent: !!responseMessage.content && responseMessage.content.trim().length > 0
       });
 
-      return res.json({ message, citations });
+      // レスポンス送信前の最終確認ログ
+      logDebug('📤 レスポンス送信:', {
+        statusCode: 200,
+        responseType: typeof responseMessage,
+        responseKeys: Object.keys(responseMessage),
+        contentLength: responseMessage.content?.length
+      });
+
+      return res.json(responseMessage);
     } catch (error) {
       console.error("Error sending message:", error);
-      return res.status(500).json({ message: "Failed to send message" });
+      
+      // エラーの詳細情報をログに出力
+      if (error instanceof Error) {
+        console.error("Error details:", {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        });
+      } else {
+        console.error("Unknown error type:", typeof error, error);
+      }
+      
+      // エラーの詳細情報を返す
+      let errorMessage = "Failed to send message";
+      let statusCode = 500;
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        if ('message' in error) {
+          errorMessage = String(error.message);
+        }
+      }
+      
+      // 特定のエラーに応じてステータスコードを調整
+      if (errorMessage.includes('認証') || errorMessage.includes('auth')) {
+        statusCode = 401;
+      } else if (errorMessage.includes('権限') || errorMessage.includes('permission')) {
+        statusCode = 403;
+      } else if (errorMessage.includes('見つかりません') || errorMessage.includes('not found')) {
+        statusCode = 404;
+      }
+      
+      return res.status(statusCode).json({ 
+        message: errorMessage,
+        error: error instanceof Error ? error.stack : undefined
+      });
     }
   });
 

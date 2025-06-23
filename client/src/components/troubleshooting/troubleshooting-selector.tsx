@@ -192,6 +192,12 @@ export default function TroubleshootingSelector({
               </div>
             </div>
           </div>
+          
+          {/* フロー一覧タイトル */}
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">フロー一覧</h3>
+          </div>
+          
           {loading ? (
             <div className="flex justify-center items-center py-12">
               <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
@@ -204,7 +210,7 @@ export default function TroubleshootingSelector({
                   className="p-6 flex items-center justify-start cursor-pointer hover:bg-gray-100 min-h-[80px]"
                   onClick={() => handleSelectFlow(flow.id)}
                 >
-                  <p className="font-medium text-lg text-left">{flow.description || flow.title || 'タイトルなし'}</p>
+                  <p className="font-medium text-lg text-left">{flow.title || flow.description || 'タイトルなし'}</p>
                 </Card>
               ))}
             </div>

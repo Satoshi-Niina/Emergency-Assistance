@@ -323,19 +323,8 @@ export default function EmergencyGuideDisplay({
               {guideData.title}{isPreview && ' (プレビュー)'}
             </CardTitle>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="text-sm text-gray-500 flex-shrink-0 ml-4">
-              ステップ {currentStepIndex + 1} / {guideData.steps.length}
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={onExit} 
-              className="h-8 px-3 border-gray-300 hover:bg-gray-100"
-            >
-              <X className="h-4 w-4 mr-1" />
-              閉じる
-            </Button>
+          <div className="text-sm text-gray-500 flex-shrink-0 ml-4">
+            ステップ {currentStepIndex + 1} / {guideData.steps.length}
           </div>
         </div>
       </CardHeader>
@@ -404,24 +393,26 @@ export default function EmergencyGuideDisplay({
             </div>
           )}
 
-          {/* 画像表示エリア */}
+          {/* 画像表示エリア - 横並び表示 */}
           {(currentStep.images && currentStep.images.length > 0) ? (
-            <div className="mt-4 space-y-4">
-              {currentStep.images.map((image, index) => (
-                <div key={index} className="relative">
-                  <img
-                    src={convertImageUrl(image.url)}
-                    alt={`${currentStep.title} - ${image.fileName || '画像'}`}
-                    className="max-w-full h-auto rounded-lg shadow-md"
-                    onError={(e) => handleImageError(e, image.url)}
-                  />
-                  {image.fileName && (
-                    <div className="text-sm text-gray-600 mt-1">
-                      {image.fileName}
-                    </div>
-                  )}
-                </div>
-              ))}
+            <div className="mt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {currentStep.images.map((image, index) => (
+                  <div key={index} className="relative">
+                    <img
+                      src={convertImageUrl(image.url)}
+                      alt={`${currentStep.title} - ${image.fileName || '画像'}`}
+                      className="w-full h-auto rounded-lg shadow-md"
+                      onError={(e) => handleImageError(e, image.url)}
+                    />
+                    {image.fileName && (
+                      <div className="text-sm text-gray-600 mt-1">
+                        {image.fileName}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           ) : currentStep.imageUrl ? (
             // 古い形式の imageUrl のみのフォールバック
@@ -429,7 +420,7 @@ export default function EmergencyGuideDisplay({
               <img
                 src={convertImageUrl(currentStep.imageUrl)}
                 alt={currentStep.title}
-                className="max-w-full h-auto rounded-lg shadow-md"
+                className="w-full h-auto rounded-lg shadow-md"
                 onError={(e) => handleImageError(e, currentStep.imageUrl)}
               />
             </div>

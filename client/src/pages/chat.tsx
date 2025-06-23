@@ -443,15 +443,23 @@ export default function Chat() {
 
       {/* 応急処置ガイドモーダル */}
       <Dialog open={emergencyGuideOpen} onOpenChange={setEmergencyGuideOpen}>
-        <DialogContent className={`bg-blue-50 border-none flex flex-col w-screen h-screen max-w-full max-h-full p-0`}>
-          <DialogHeader className="border-b border-blue-200 p-4">
-            <DialogTitle className="text-blue-800 text-lg font-bold flex items-center gap-2">
-              <Heart className="h-5 w-5 text-red-500" />
-              <span>応急処置ガイド</span>
-            </DialogTitle>
-            <DialogDescription className="text-blue-700">
-              症状を選択するか、キーワードで検索してください
-            </DialogDescription>
+        <DialogContent showCloseButton={false} className={`bg-blue-50 border-none flex flex-col w-screen h-screen max-w-full max-h-full p-0`}>
+          <DialogHeader className="border-b border-blue-200 p-4 flex flex-row items-center justify-between">
+            <div>
+              <DialogTitle className="text-blue-800 text-lg font-bold flex items-center gap-2">
+                <Heart className="h-5 w-5 text-red-500" />
+                <span>応急処置ガイド</span>
+              </DialogTitle>
+              <DialogDescription className="text-blue-700">
+                症状を選択するか、キーワードで検索してください
+              </DialogDescription>
+            </div>
+            <Button 
+              variant="default" 
+              onClick={() => setEmergencyGuideOpen(false)}
+            >
+              閉じる
+            </Button>
           </DialogHeader>
           <div className={`overflow-y-auto flex-grow p-4`}>
             <TroubleshootingSelector 
@@ -471,13 +479,6 @@ export default function Chat() {
                 現在の内容をチャットに送信
               </Button>
             )}
-            <Button 
-              variant="outline" 
-              onClick={() => setEmergencyGuideOpen(false)}
-              className="w-full sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-100"
-            >
-              閉じる
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

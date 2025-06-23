@@ -1,9 +1,29 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import express from 'express'
+
+// カスタムミドルウェア関数
+function serveKnowledgeBase() {
+  const router = express.Router()
+  // プロジェクトルートのknowledge-baseディレクトリを指定
+  const knowledgeBasePath = path.resolve(__dirname, '../knowledge-base')
+  console.log(`📚 Serving static files for /knowledge-base from: ${knowledgeBasePath}`)
+  router.use('/knowledge-base', express.static(knowledgeBasePath))
+
+  return {
+    name: 'serve-knowledge-base-middleware',
+    configureServer(server) {
+      server.middlewares.use(router)
+    }
+  }
+}
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    serveKnowledgeBase() // カスタムミドルウェアをプラグインとして追加
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -34,6 +54,11 @@ export default defineConfig({
         ws: true,
         changeOrigin: true,
       },
+    },
+    fs: {
+      allow: [
+        path.resolve(__dirname, '..'),
+      ],
     },
   },
   build: {
