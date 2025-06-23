@@ -2,7 +2,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Server, Brain } from "lucide-react";
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link } from "react-router-dom";
 
 export default function NotFound() {
   const [apiResponse, setApiResponse] = useState<string | null>(null);
@@ -66,7 +66,7 @@ export default function NotFound() {
           </p>
           
           <div className="mt-4">
-            <Link href="/" className="text-blue-600 hover:underline text-sm">
+            <Link to="/" className="text-blue-600 hover:underline text-sm">
               Return to Home
             </Link>
           </div>

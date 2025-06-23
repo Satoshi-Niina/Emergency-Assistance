@@ -40,7 +40,7 @@ export const messages = pgTable('messages', {
 // 画像や動画などのメディアファイルを管理
 export const media = pgTable('media', {
   id: text('id').primaryKey().default(sql`gen_random_uuid()`), // UUIDを自動生成
-  messageId: integer('message_id').notNull(), // 関連するメッセージのID
+  messageId: text('message_id').notNull(), // 関連するメッセージのID
   type: text('type').notNull(), // メディアの種類（画像、動画など）
   url: text('url').notNull(), // メディアファイルのURL
   description: text('description'), // メディアの説明（オプション）
@@ -52,8 +52,10 @@ export const media = pgTable('media', {
 export const emergencyFlows = pgTable('emergency_flows', {
   id: text('id').primaryKey().default(sql`gen_random_uuid()`), // UUIDを自動生成
   title: text('title').notNull(), // フローのタイトル
+  description: text('description'), // フローの説明
   steps: jsonb('steps').notNull(), // 手順のステップ（JSON形式）
   keyword: text('keyword').notNull(), // 検索用キーワード
+  category: text('category').notNull().default(''), // カテゴリ
   createdAt: timestamp('created_at').defaultNow().notNull() // 作成日時
 });
 
@@ -144,7 +146,7 @@ export interface ChatMessage {
 export interface Message extends ChatMessage {}
 
 export const insertMediaSchema = z.object({
-  messageId: z.number(),
+  messageId: z.string(),
   type: z.string(),
   url: z.string(),
   description: z.string().optional()

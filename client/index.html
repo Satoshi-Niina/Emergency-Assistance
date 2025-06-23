@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -10,9 +9,9 @@
       script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:;
       script-src-elem 'self' 'unsafe-inline' blob:;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-      img-src 'self' data: blob: https:;
+      img-src 'self' data: blob: https: http://localhost:* http://127.0.0.1:*;
       media-src 'self' data: blob:;
-      connect-src 'self' https: wss: ws:;
+      connect-src 'self' https: wss: ws: http://localhost:* http://127.0.0.1:*;
       font-src 'self' data: https://fonts.gstatic.com;
       worker-src 'self' blob:;
       frame-src 'self';

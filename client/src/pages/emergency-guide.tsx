@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import EmergencyGuideUploader from "@/components/emergency-guide/emergency-guide-uploader";
 import EmergencyGuideEdit from "@/components/emergency-guide/emergency-guide-edit";
+import EmergencyGuideDisplay from "@/components/emergency-guide/emergency-guide-display";
 
-import KeywordSuggestions from "@/components/emergency-guide/keyword-suggestions";
 import { Helmet } from "react-helmet";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +20,9 @@ const EmergencyGuidePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [targetGuideId, setTargetGuideId] = useState<string | null>(
     getQueryParam('guideId')
+  );
+  const [displayingGuideId, setDisplayingGuideId] = useState<string | null>(
+    getQueryParam('display')
   );
   const [lastUploadedGuideId, setLastUploadedGuideId] = useState<string | null>(
     null,
@@ -38,9 +41,20 @@ const EmergencyGuidePage: React.FC = () => {
       }
     };
 
+    const handleDisplayGuide = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail && customEvent.detail.guideId) {
+        setDisplayingGuideId(customEvent.detail.guideId);
+        setActiveTab("display");
+      }
+    };
+
     window.addEventListener('switch-to-flow-tab', handleSwitchToFlowTab as EventListener);
+    window.addEventListener('display-emergency-guide', handleDisplayGuide as EventListener);
+    
     return () => {
       window.removeEventListener('switch-to-flow-tab', handleSwitchToFlowTab as EventListener);
+      window.removeEventListener('display-emergency-guide', handleDisplayGuide as EventListener);
     };
   }, []);
 
@@ -113,31 +127,6 @@ const EmergencyGuidePage: React.FC = () => {
     setActiveTab("edit");
   };
 
-  // 検索キーワードがクリックされたときのハンドラー
-  const handleKeywordClick = (keyword: string) => {
-    setSearchQuery(keyword);
-    // ここで実際に検索を実行する処理を呼び出す
-    console.log(`検索キーワード「${keyword}」がクリックされました`);
-
-    // 検索を実行
-    executeSearch(keyword);
-  };
-
-  // 検索を実行する関数
-  const executeSearch = (keyword: string) => {
-    if (!keyword.trim()) return;
-
-    console.log(`検索実行: 「${keyword}」`);
-
-    // 編集タブに切り替え（検索結果表示のため）
-    setActiveTab("edit");
-
-    // キーワードをカスタムイベントで通知
-    window.dispatchEvent(new CustomEvent('search-emergency-guide', { 
-      detail: { keyword }
-    }));
-  };
-
   const [isLoadingFlowList, setIsLoadingFlowList] = useState(false);
   const [flowList, setFlowList] = useState([]);
   const { toast } = useToast()
@@ -203,42 +192,44 @@ const EmergencyGuidePage: React.FC = () => {
     }
   };
 
+  // ガイド表示を終了する関数
+  const handleExitDisplay = () => {
+    setDisplayingGuideId(null);
+    setActiveTab("edit");
+  };
+
+  // ガイド表示中の場合
+  if (displayingGuideId && activeTab === "display") {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <EmergencyGuideDisplay
+          guideId={displayingGuideId}
+          onExit={handleExitDisplay}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full h-screen overflow-hidden p-4">
+    <div className="container mx-auto px-4 py-8">
       <Helmet>
-        <title>応急処置フロー生成 | 保守用車支援システム</title>
+        <title>応急処置ガイド - Emergency Assistance</title>
+        <meta name="description" content="応急処置ガイドの管理と表示" />
       </Helmet>
 
-      <div className="mb-4">
-        <h1 className="text-2xl font-bold text-blue-800 mb-2">
-          応急処置フロー生成
-        </h1>
-
-        {/* キーワード検索のみ表示 */}
-        <div className="mt-4 space-y-2">
-          <KeywordSuggestions onKeywordClick={handleKeywordClick} />
-        </div>
-      </div>
-
-      <Tabs
-        defaultValue={activeTab}
-        onValueChange={setActiveTab}
-        className="w-full h-[calc(100vh-120px)]"
-      >
-        <TabsList className="grid w-full grid-cols-2 mb-8">
-          <TabsTrigger value="upload">新規作成（アップロード）</TabsTrigger>
-          <TabsTrigger value="edit">テキスト編集</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="upload">アップロード</TabsTrigger>
+          <TabsTrigger value="edit">編集・管理</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="upload" className="space-y-4 h-full overflow-auto">
+        <TabsContent value="upload" className="space-y-6">
           <EmergencyGuideUploader onUploadSuccess={handleUploadSuccess} />
         </TabsContent>
 
-        <TabsContent value="edit" className="space-y-4 h-full overflow-auto">
+        <TabsContent value="edit" className="space-y-6">
           <EmergencyGuideEdit />
         </TabsContent>
-
-        
       </Tabs>
     </div>
   );

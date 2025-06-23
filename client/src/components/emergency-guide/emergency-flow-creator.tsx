@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, Save, X, Edit, Edit3, File, FileText, Plus, Download, FolderOpen, Trash2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Upload, Save, X, Edit, Edit3, File, FileText, Plus, Download, FolderOpen, Trash2, RefreshCw, AlertTriangle, Eye } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import {
   AlertDialog,
@@ -19,6 +19,20 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import EmergencyFlowEditor from './emergency-flow-editor';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { v4 as uuidv4 } from 'uuid';
 
 interface FlowFile {
   id: string;
@@ -39,7 +53,60 @@ interface FlowData {
   updatedAt?: string;
 }
 
-const EmergencyFlowCreator: React.FC = () => {
+interface DecisionCondition {
+  id: string;
+  text: string;
+  nextSlideId?: string;
+}
+
+interface Slide {
+  id: string;
+  type: 'normal' | 'decision';
+  content: string;
+  conditions?: DecisionCondition[];
+  imageUrl?: string;
+}
+
+interface EmergencyFlowCreatorProps {
+  initialData?: any;
+  onSave: (data: any) => void;
+}
+
+// 画像URL変換の改善
+function convertImageUrl(url: string): string {
+  if (!url) return '';
+  
+  // 既にAPIエンドポイントの形式の場合はそのまま返す
+  if (url.startsWith('/api/emergency-flow/image/')) {
+    return url;
+  }
+  
+  // 外部URLの場合はそのまま返す
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  
+  // ファイル名を抽出（パスセパレータを考慮）
+  let fileName = url;
+  if (url.includes('/')) {
+    fileName = url.split('/').pop() || url;
+  } else if (url.includes('\\')) {
+    fileName = url.split('\\').pop() || url;
+  }
+  
+  // ファイル名が空の場合は元のURLを返す
+  if (!fileName || fileName === url) {
+    return url;
+  }
+  
+  // APIエンドポイントに変換
+  return `/api/emergency-flow/image/${fileName}`;
+}
+
+const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
+  initialData,
+  onSave,
+}) => {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -62,6 +129,10 @@ const EmergencyFlowCreator: React.FC = () => {
   const [flowToDelete, setFlowToDelete] = useState<FlowFile | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const [title, setTitle] = useState(initialData?.title || '');
+  const [description, setDescription] = useState(initialData?.description || '');
+  const [slides, setSlides] = useState<Slide[]>(initialData?.slides || []);
+
   // フロー一覧を取得する関数
   const fetchFlowList = useCallback(async (forceRefresh = false) => {
     try {
@@ -83,7 +154,7 @@ const EmergencyFlowCreator: React.FC = () => {
       // キャッシュバスターパラメータを追加
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 15);
-      const url = `/api/emergency-flow-router/list?ts=${timestamp}&_r=${randomId}${forceRefresh ? '&force=true' : ''}`;
+      const url = `/api/emergency-flow/list?ts=${timestamp}&_r=${randomId}${forceRefresh ? '&force=true' : ''}`;
 
       const response = await fetch(url, {
         method: 'GET',
@@ -259,7 +330,7 @@ const EmergencyFlowCreator: React.FC = () => {
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 15);
 
-      const response = await fetch(`/api/emergency-flow-router/${flowId}?ts=${timestamp}&_r=${randomId}`, {
+      const response = await fetch(`/api/emergency-flow/${flowId}?ts=${timestamp}&_r=${randomId}`, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
@@ -282,53 +353,85 @@ const EmergencyFlowCreator: React.FC = () => {
         title: data.title,
         description: data.description || '',
         triggerKeywords: data.trigger || data.triggerKeywords || [],
-        steps: sourceSteps.map(step => ({
-          ...step,
-          // description と message の同期
-          description: step.description || step.message || '',
-          message: step.message || step.description || '',
-          // オプションの整合性確保
-          options: (step.options || []).map(option => ({
-            text: option.text || '',
-            nextStepId: option.nextStepId || '',
-            isTerminal: Boolean(option.isTerminal),
-            conditionType: option.conditionType || 'other',
-            condition: option.condition || ''
-          }))
-        })),
+        steps: sourceSteps.map(step => {
+          // 画像情報の処理を改善
+          let processedImages = [];
+          
+          // 新しい 'images' 配列が存在する場合
+          if (step.images && Array.isArray(step.images)) {
+            processedImages = step.images.map(img => ({
+              url: convertImageUrl(img.url),
+              fileName: img.fileName
+            }));
+          }
+          // 古い形式の画像情報がある場合、新しい形式に変換
+          else if (step.imageUrl && step.imageFileName) {
+            processedImages = [{
+              url: convertImageUrl(step.imageUrl),
+              fileName: step.imageFileName
+            }];
+          }
+          // 古い形式のimageUrlのみの場合
+          else if (step.imageUrl) {
+            const fileName = step.imageUrl.split('/').pop() || 'unknown.jpg';
+            processedImages = [{
+              url: convertImageUrl(step.imageUrl),
+              fileName: fileName
+            }];
+          }
+
+          console.log(`ステップ[${step.id}]の画像処理:`, {
+            originalImages: step.images,
+            originalImageUrl: step.imageUrl,
+            originalImageFileName: step.imageFileName,
+            processedImages: processedImages
+          });
+
+          return {
+            ...step,
+            // description と message の同期
+            description: step.description || step.message || '',
+            message: step.message || step.description || '',
+            // 画像情報を確実に設定
+            images: processedImages,
+            // 古いプロパティを削除
+            imageUrl: undefined,
+            imageFileName: undefined,
+            // オプションの整合性確保
+            options: (step.options || []).map(option => ({
+              text: option.text || '',
+              nextStepId: option.nextStepId || '',
+              isTerminal: Boolean(option.isTerminal),
+              conditionType: option.conditionType || 'other',
+              condition: option.condition || ''
+            }))
+          };
+        }),
         updatedAt: data.createdAt || data.updatedAt || new Date().toISOString()
       };
 
       // データ整合性の厳密チェック
-        console.log('取得したフローデータ:', {
-          requestedId: flowId,
-          retrievedId: editorData.id,
-          title: editorData.title,
-          stepsCount: editorData.steps?.length || 0,
-          fileName: targetFlow.fileName,
-          filePath: filePath,
-          allStepIds: editorData.steps?.map(s => s.id) || [],
-          timestamp: Date.now(),
-          dataSource: 'emergency-flow-list-api'
+      console.log('取得したフローデータ:', {
+        requestedId: flowId,
+        retrievedId: editorData.id,
+        title: editorData.title,
+        stepsCount: editorData.steps?.length || 0,
+        fileName: targetFlow.fileName,
+        filePath: filePath,
+        allStepIds: editorData.steps?.map(s => s.id) || [],
+        stepsWithImages: editorData.steps?.filter(s => s.images && s.images.length > 0).length || 0,
+        timestamp: Date.now(),
+        dataSource: 'emergency-flow-api'
+      });
+
+      // ステップ数不一致の警告（任意のステップ数を許可）
+      if (editorData.steps?.length === 0) {
+        console.warn('ステップデータが存在しません');
+        toast({
+          title: "データ警告",
+          description: 'フローデータにステップが含まれていません',
+          variant: "destructive"
         });
-
-      // ステップ数不一致の警告
-        if (editorData.steps?.length !== 15) {
-          console.warn('期待されるステップ数と異なります: 実際=' + editorData.steps?.length + ', 期待=15');
-
-          // 不足しているステップを特定
-        const expectedStepIds = ['start', 'step1', 'decision1', 'step2a', 'step2b', 'step3a', 'step3b', 'step3c', 'step3d', 'step3e', 'step3f', 'step3g', 'decision2', 'step_success', 'step_failure'];
-        const actualStepIds = editorData.steps?.map(s => s.id) || [];
-        const missingSteps = expectedStepIds.filter(id => !actualStepIds.includes(id));
-
-        if (missingSteps.length > 0) {
-          console.error('不足しているステップ:', missingSteps);
-          toast({
-            title: "データ不整合警告",
-            description: 'ファイルに' + missingSteps.length + '個のステップが不足しています。',
-            variant: "destructive"
-          });
-        }
       }
 
       setCurrentFlowData(editorData);
@@ -338,7 +441,8 @@ const EmergencyFlowCreator: React.FC = () => {
         flowId: flowId,
         filePath: filePath,
         dataLoaded: !!data,
-        stepsCount: data.steps?.length || 0
+        stepsCount: data.steps?.length || 0,
+        imagesLoaded: editorData.steps?.filter(s => s.images && s.images.length > 0).length || 0
       });
 
     } catch (error) {
@@ -355,32 +459,58 @@ const EmergencyFlowCreator: React.FC = () => {
   const deleteFlow = async (flowId: string) => {
     setIsDeleting(true);
     try {
-      console.log('フロー削除開始: ' + flowId);
+      console.log('🗑️ フロー削除開始: ' + flowId);
 
-      // troubleshootingディレクトリから物理ファイルを削除
+      // 削除対象のフロー情報を取得
       const targetFlow = flowList.find(flow => flow.id === flowId);
-      if (targetFlow) {
-        const fileName = targetFlow.fileName || flowId + '.json';
-        const response = await fetch(`/api/emergency-flow/${flowId}`, {
-          method: 'DELETE',
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ fileName: fileName })
-        });
-
-        if (!response.ok) {
-          throw new Error('削除に失敗しました');
-        }
-
-        const result = await response.json();
-        console.log('✅ 削除レスポンス:', result);
+      if (!targetFlow) {
+        throw new Error('削除対象のフローが見つかりません');
       }
 
+      console.log('🎯 削除対象:', {
+        id: targetFlow.id,
+        title: targetFlow.title,
+        fileName: targetFlow.fileName
+      });
+
+      // 削除APIを呼び出し
+      const fileName = targetFlow.fileName || flowId + '.json';
+      const url = `/api/emergency-flow/${flowId}?fileName=${encodeURIComponent(fileName)}`;
+      console.log('🌐 削除API呼び出し:', url);
+      
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('📡 削除レスポンス:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      });
+
+      if (!response.ok) {
+        let errorMessage = `削除に失敗しました: ${response.status} - ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          console.log('❌ 削除エラーデータ:', errorData);
+          errorMessage = errorData.error || errorData.details || errorMessage;
+        } catch (parseError) {
+          console.warn('⚠️ エラーレスポンスの解析に失敗:', parseError);
+        }
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      console.log('✅ 削除レスポンス:', result);
+
+      // 成功メッセージを表示
       toast({
         title: "削除完了",
-        description: "フローが完全に削除されました",
+        description: `「${targetFlow.title}」が正常に削除されました`,
       });
 
       // 削除されたアイテムが現在編集中の場合はクリア
@@ -393,26 +523,28 @@ const EmergencyFlowCreator: React.FC = () => {
       // フロー一覧から削除されたアイテムを即座に除去
       setFlowList(prevList => {
         const filteredList = prevList.filter(flow => flow.id !== flowId);
-        console.log('フロー一覧から除去: ' + flowId + ' (残り: ' + filteredList.length + '件)');
+        console.log('📋 フロー一覧から除去: ' + flowId + ' (残り: ' + filteredList.length + '件)');
         return filteredList;
       });
 
       // サーバーから最新のフロー一覧を強制取得
+      console.log('🔄 フロー一覧を再取得中...');
       await fetchFlowList(true);
 
       // 他のコンポーネントに削除完了を通知
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('flowDeleted', {
-          detail: { deletedId: flowId }
+          detail: { deletedId: flowId, deletedTitle: targetFlow.title }
         }));
         window.dispatchEvent(new CustomEvent('forceRefreshFlowList'));
       }
 
     } catch (error) {
       console.error('❌ 削除エラー:', error);
+      const errorMessage = error instanceof Error ? error.message : "フローの削除に失敗しました";
       toast({
         title: "削除エラー",
-        description: "フローの削除に失敗しました",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -423,9 +555,463 @@ const EmergencyFlowCreator: React.FC = () => {
   };
 
   // フロー保存コールバック
-  const handleFlowSave = (savedData: FlowData) => {
-    setCurrentFlowData(savedData);
-    fetchFlowList(true);
+  const handleFlowSave = async (savedData: FlowData) => {
+    try {
+      console.log('💾 フロー保存開始:', {
+        id: savedData.id,
+        title: savedData.title,
+        stepsCount: savedData.steps?.length
+      });
+
+      // 画像URLの存在確認
+      const stepsWithImages = savedData.steps.map(step => {
+        // 新しい images 配列を優先的に使用する
+        const images = step.images?.map(img => ({
+          url: img.url && img.url.trim() !== '' ? img.url : undefined,
+          fileName: img.fileName && img.fileName.trim() !== '' ? img.fileName : undefined
+        })).filter(img => img.url && img.fileName);
+
+        if (images && images.length > 0) {
+          console.log('🖼️ 画像情報確認:', {
+            stepId: step.id,
+            images: images
+          });
+        }
+        
+        // 古いプロパティを削除し、新しい `images` プロパティのみにする
+        const { imageUrl, imageFileName, ...restOfStep } = step;
+        return {
+          ...restOfStep,
+          images: images && images.length > 0 ? images : undefined,
+        };
+      });
+
+      // フローデータを更新
+      const updatedFlowData = {
+        ...savedData,
+        steps: stepsWithImages,
+        updatedAt: new Date().toISOString()
+      };
+
+      // 保存先のファイルパスを確認
+      if (!selectedFilePath) {
+        throw new Error('保存先ファイルパスが指定されていません');
+      }
+
+      // APIにデータを送信
+      const response = await fetch('/api/emergency-flow/save-flow', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          filePath: selectedFilePath,
+          ...updatedFlowData
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || '保存に失敗しました');
+      }
+
+      const result = await response.json();
+      console.log('✅ フロー保存完了:', {
+        success: result.success,
+        filePath: selectedFilePath,
+        stepsCount: updatedFlowData.steps.length,
+        stepsWithImages: updatedFlowData.steps.filter(s => s.images && s.images.length > 0).length
+      });
+
+      // 成功メッセージを表示
+      toast({
+        title: "保存完了",
+        description: "フローが正常に保存されました",
+      });
+
+      // フロー一覧を更新
+      await fetchFlowList(true);
+
+    } catch (error) {
+      console.error('❌ フロー保存エラー:', error);
+      toast({
+        title: "保存エラー",
+        description: error instanceof Error ? error.message : "フローの保存に失敗しました",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleAddSlide = (type: 'normal' | 'decision') => {
+    const newSlide: Slide = {
+      id: `slide_${Date.now()}`,
+      type,
+      content: '',
+      conditions: type === 'decision' ? [] : undefined,
+    };
+    setSlides([...slides, newSlide]);
+  };
+
+  const handleSlideDelete = (slideId: string) => {
+    setSlides(slides.filter(slide => slide.id !== slideId));
+  };
+
+  const handleConditionAdd = (slideId: string) => {
+    const slide = slides.find(s => s.id === slideId);
+    if (slide && slide.type === 'decision' && (!slide.conditions || slide.conditions.length < 4)) {
+      const newCondition: DecisionCondition = {
+        id: `condition_${Date.now()}`,
+        text: '',
+      };
+      
+      const updatedSlides = slides.map(s => {
+        if (s.id === slideId) {
+          return {
+            ...s,
+            conditions: [...(s.conditions || []), newCondition],
+          };
+        }
+        return s;
+      });
+      
+      setSlides(updatedSlides);
+    }
+  };
+
+  const handleConditionEdit = (slideId: string, conditionId: string, text: string, nextSlideId?: string) => {
+    const updatedSlides = slides.map(slide => {
+      if (slide.id === slideId && slide.type === 'decision') {
+        return {
+          ...slide,
+          conditions: (slide.conditions || []).map(condition => {
+            if (condition.id === conditionId) {
+              return {
+                ...condition,
+                text,
+                nextSlideId,
+              };
+            }
+            return condition;
+          }),
+        };
+      }
+      return slide;
+    });
+    
+    setSlides(updatedSlides);
+  };
+
+  const handleConditionDelete = (slideId: string, conditionId: string) => {
+    const updatedSlides = slides.map(slide => {
+      if (slide.id === slideId && slide.type === 'decision') {
+        return {
+          ...slide,
+          conditions: (slide.conditions || []).filter(c => c.id !== conditionId),
+        };
+      }
+      return slide;
+    });
+    
+    setSlides(updatedSlides);
+  };
+
+  const handleSave = () => {
+    // idがUUID形式でなければ新規発行
+    let validId = initialData?.id || '';
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(validId)) {
+      validId = uuidv4();
+    }
+    // triggerKeywordsがundefinedなら空配列
+    const triggerKeywords = Array.isArray(initialData?.triggerKeywords) ? initialData.triggerKeywords : [];
+    onSave({
+      id: validId,
+      title,
+      description,
+      triggerKeywords,
+      steps: slides,
+      updatedAt: new Date().toISOString(),
+    });
+  };
+
+  const handleImageUpload = async (stepId: string, file: File) => {
+    try {
+      // 重複チェック: 同じファイル名の画像が既に存在するかチェック
+      if (currentFlowData) {
+        const stepToUpdate = currentFlowData.steps.find(step => step.id === stepId);
+        if (stepToUpdate && stepToUpdate.images) {
+          const existingImage = stepToUpdate.images.find(img => 
+            img.fileName === file.name || 
+            img.fileName === file.name.replace(/\.[^/.]+$/, '') // 拡張子を除いた比較
+          );
+          
+          if (existingImage) {
+            const confirmReplace = window.confirm(
+              `同じファイル名の画像 "${file.name}" が既に存在します。\n` +
+              `既存の画像を置き換えますか？`
+            );
+            
+            if (!confirmReplace) {
+              return;
+            }
+            
+            // 既存の画像を削除
+            const updatedSteps = currentFlowData.steps.map(step => {
+              if (step.id === stepId) {
+                const updatedImages = step.images?.filter(img => img.fileName !== existingImage.fileName) || [];
+                return { ...step, images: updatedImages };
+              }
+              return step;
+            });
+            
+            setCurrentFlowData({
+              ...currentFlowData,
+              steps: updatedSteps
+            });
+          }
+        }
+      }
+
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('stepId', stepId);
+
+      const response = await fetch('/api/emergency-flow/upload-image', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error('画像のアップロードに失敗しました');
+      }
+
+      const result = await response.json();
+
+      if (result.success && currentFlowData) {
+        // imageFileNameが返されていない場合はfileNameを使用
+        const imageFileName = result.imageFileName || result.fileName;
+
+        const newImage = {
+          url: result.imageUrl,
+          fileName: imageFileName
+        };
+
+        // 重複画像の場合は通知
+        if (result.isDuplicate) {
+          console.log('🔄 重複画像を検出、既存ファイルを使用:', result.fileName);
+        }
+
+        // 該当するステップのimages配列を更新
+        const updatedSteps = currentFlowData.steps.map(step => {
+          if (step.id === stepId) {
+            const currentImages = step.images || [];
+            if (currentImages.length < 3) {
+              return {
+                ...step,
+                images: [...currentImages, newImage]
+              };
+            }
+          }
+          return step;
+        });
+
+        // フローデータを更新
+        setCurrentFlowData({
+          ...currentFlowData,
+          steps: updatedSteps
+        });
+
+        // 自動保存を実行
+        handleSave();
+
+        const message = result.isDuplicate 
+          ? `重複画像を検出しました。既存の画像 "${result.fileName}" を使用します。`
+          : "画像が正常にアップロードされました";
+
+        toast({
+          title: "画像アップロード完了",
+          description: message,
+        });
+      }
+    } catch (error) {
+      console.error('画像アップロードエラー:', error);
+      toast({
+        title: "エラー",
+        description: "画像のアップロードに失敗しました",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleImageRemove = async (slideId: string, imageIndex: number) => {
+    if (!currentFlowData) return;
+
+    const step = currentFlowData.steps.find(s => s.id === slideId);
+    if (!step || !step.images || imageIndex < 0 || imageIndex >= step.images.length) {
+      return;
+    }
+
+    const imageToRemove = step.images[imageIndex];
+
+    const confirmDelete = window.confirm(
+      `画像 "${imageToRemove.fileName}" を削除しますか？\nサーバーからファイルが削除され、この操作は元に戻せません。`
+    );
+
+    if (confirmDelete) {
+      try {
+        // APIを呼び出してサーバーから画像を削除
+        const response = await fetch(`/api/emergency-flow/image/${imageToRemove.fileName}`, {
+          method: 'DELETE',
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'サーバー上の画像ファイル削除に失敗しました。');
+        }
+
+        // フロントエンドの状態を更新
+        const updatedSteps = currentFlowData.steps.map(s => {
+          if (s.id === slideId) {
+            const updatedImages = s.images?.filter((_, i) => i !== imageIndex) || [];
+            return { ...s, images: updatedImages };
+          }
+          return s;
+        });
+        setCurrentFlowData({
+          ...currentFlowData,
+          steps: updatedSteps
+        });
+
+        // 変更を保存
+        handleSave();
+        
+        toast({
+          title: "画像削除完了",
+          description: `画像 "${imageToRemove.fileName}" を削除しました。`
+        });
+
+      } catch (error) {
+        console.error('画像削除エラー:', error);
+        toast({
+          title: "エラー",
+          description: `画像の削除に失敗しました: ${error instanceof Error ? error.message : "未知のエラー"}`,
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
+  const renderSlideContent = (slide: Slide) => {
+      return (
+        <div className="space-y-4">
+        <div className="flex items-center gap-6">
+          <Input
+            value={slide.content}
+            onChange={(e) => {
+              const updatedSlides = slides.map(s =>
+                s.id === slide.id ? { ...s, content: e.target.value } : s
+              );
+              setSlides(updatedSlides);
+            }}
+            placeholder="スライドの内容を入力"
+            className="text-base-2x h-12"
+          />
+          <div className="flex items-center gap-3">
+            <input
+              type="file"
+              id={`image-upload-${slide.id}`}
+              className="hidden"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  handleImageUpload(slide.id, file);
+                }
+              }}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => document.getElementById(`image-upload-${slide.id}`)?.click()}
+              className="text-base-2x h-12 px-4"
+            >
+              <Upload className="w-6 h-6 mr-2" />
+              画像アップロード
+            </Button>
+          </div>
+        </div>
+        
+        {/* 画像表示部分を改善 */}
+        {currentFlowData && (() => {
+          const step = currentFlowData.steps.find(s => s.id === slide.id);
+          if (step && step.images && step.images.length > 0) {
+            return (
+              <div className="mt-6">
+                <Label className="text-base-2x font-medium">アップロード済み画像:</Label>
+                <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {step.images.map((image, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={convertImageUrl(image.url)}
+                        alt={image.fileName}
+                        className="w-full h-32 object-cover rounded border"
+                        onError={(e) => {
+                          console.error('画像読み込みエラー:', image.url);
+                          e.currentTarget.style.display = 'none';
+                          // エラー表示を追加
+                          const errorDiv = document.createElement('div');
+                          errorDiv.className = 'w-full h-32 bg-red-100 border border-red-300 text-red-700 flex items-center justify-center text-base-2x rounded';
+                          errorDiv.textContent = '画像読み込み失敗';
+                          e.currentTarget.parentNode?.appendChild(errorDiv);
+                        }}
+                        onLoad={() => {
+                          console.log('画像読み込み成功:', image.fileName);
+                        }}
+                      />
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2 h-8 w-8 p-0 rounded-full opacity-80 group-hover:opacity-100"
+                        onClick={() => handleImageRemove(slide.id, index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                      <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-base-2x p-2 truncate rounded-b">
+                        {image.fileName}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          }
+          return null;
+        })()}
+        
+        {slide.type === 'decision' && (
+          <div className="space-y-3">
+            {slide.conditions?.map((condition) => (
+              <div key={condition.id} className="flex items-center gap-3">
+                      <Input
+                        value={condition.text}
+                        onChange={(e) => handleConditionEdit(slide.id, condition.id, e.target.value, condition.nextSlideId)}
+                        placeholder="条件を入力..."
+                        className="text-base-2x h-12"
+                      />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-500 hover:text-red-700 h-12 w-12"
+                      onClick={() => handleConditionDelete(slide.id, condition.id)}
+                    >
+                      <Trash2 className="w-6 h-6" />
+                    </Button>
+                  </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (

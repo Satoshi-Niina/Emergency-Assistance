@@ -1,9 +1,9 @@
-import { pgTable, text, timestamp, jsonb, integer, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, jsonb, integer, boolean, uuid } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 // ユーザーテーブル - 暗号化対応
 export const users = pgTable('users', {
-  id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+  id: uuid('id').primaryKey().defaultRandom(),
   username: text('username').notNull().unique(),
   password: text('password').notNull(), // bcryptで暗号化
   display_name: text('display_name').notNull(),
@@ -43,11 +43,32 @@ export const media = pgTable('media', {
 
 // 緊急フローテーブル
 export const emergencyFlows = pgTable('emergency_flows', {
-  id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+  id: uuid('id').primaryKey().defaultRandom(),
   title: text('title').notNull(),
-  steps: jsonb('steps').notNull(), // JSON暗号化対応
-  keyword: text('keyword').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull()
+  description: text('description'),
+  keyword: text('keyword'),
+  category: text('category'),
+  steps: jsonb('steps').$type<Array<{
+    id: string;
+    title: string;
+    description?: string;
+    message?: string;
+    type: 'start' | 'step' | 'decision' | 'condition' | 'end';
+    images?: Array<{ url: string; fileName: string; }>;
+    options?: Array<{
+      text: string;
+      nextStepId: string;
+      isTerminal: boolean;
+      conditionType: 'yes' | 'no' | 'other';
+      condition?: string;
+    }>;
+    conditions?: Array<{
+      label: string;
+      nextId: string;
+    }>;
+  }>>().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
 
 // 画像テーブル - 埋め込みベクトルの暗号化

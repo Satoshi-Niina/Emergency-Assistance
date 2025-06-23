@@ -4,6 +4,14 @@ import { z } from 'zod';
 import { db } from '../db';
 import { emergencyFlows } from '../db/schema';
 import { findRelevantImages } from '../utils/image-matcher';
+import * as fs from 'fs';
+import * as path from 'path';
+import { eq } from 'drizzle-orm';
+import { validate as validateUUID } from 'uuid';
+import { promises as fsPromises } from 'fs';
+import { upload } from '../utils/image-uploader';
+import { validateFlowData, autoFixFlowData } from '../lib/flow-validator';
+import crypto from 'crypto';
 
 const router = Router();
 
@@ -14,9 +22,6 @@ const openai = new OpenAI({
 const generateFlowSchema = z.object({
   keyword: z.string().min(1),
 });
-
-import fs from 'fs';
-import path from 'path';
 
 // テンプレートスキーマを適用する関数（仮実装）
 function applyTemplateSchema(data: any): any {
@@ -74,529 +79,212 @@ router.post('/update-step-title', async (req, res) => {
   }
 });
 
-// フロー保存エンドポイント
-router.post('/save', async (req, res) => {
+// フローデータのスキーマ定義
+const flowDataSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string(),
+  description: z.string(),
+  steps: z.array(z.object({
+    id: z.string(),
+    title: z.string(),
+    description: z.string(),
+    message: z.string(),
+    type: z.enum(['start', 'step', 'decision', 'condition', 'end']),
+    imageUrl: z.string().optional(),
+    options: z.array(z.object({
+      text: z.string(),
+      nextStepId: z.string(),
+      isTerminal: z.boolean(),
+      conditionType: z.enum(['yes', 'no', 'other']),
+      condition: z.string().optional()
+    })).optional()
+  })),
+  triggerKeywords: z.array(z.string())
+});
+
+// フロー保存エンドポイント（新規作成・更新）
+router.post('/', async (req, res) => {
   try {
-    const { filePath: requestFilePath, ...flowData } = req.body;
-    console.log('🔄 フロー保存リクエストを受信:', {
-      id: flowData?.id,
-      title: flowData?.title,
-      requestFilePath: requestFilePath,
-      hasNodes: !!flowData?.nodes,
-      hasSteps: !!flowData?.steps
-    });
+    const flowData = req.body;
+    console.log('🔄 フロー保存開始:', { id: flowData.id, title: flowData.title });
 
-    if (!flowData || !flowData.id || !flowData.title) {
-      console.error('❌ 無効なフローデータ:', flowData);
-      return res.status(400).json({ 
-        success: false, 
-        error: 'フローデータが不正です（id、titleが必要）' 
+    // 必須フィールドの検証
+    if (!flowData.title) {
+      return res.status(400).json({
+        success: false,
+        error: 'タイトルは必須です'
       });
     }
 
-    // 🎯 保存先パスを決定：リクエストのfilePathを優先、fallbackはtroubleshootingディレクトリ
-    let filePath;
-    if (requestFilePath) {
-      // リクエストでパスが指定されている場合はそれを使用
-      filePath = path.isAbsolute(requestFilePath) 
-        ? requestFilePath 
-        : path.join(process.cwd(), requestFilePath);
-
-      // セキュリティチェック：troubleshootingディレクトリ内のみ許可
-      const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-      const normalizedFilePath = path.normalize(filePath);
-      const normalizedTroubleshootingDir = path.normalize(troubleshootingDir);
-
-      if (!normalizedFilePath.startsWith(normalizedTroubleshootingDir)) {
-        console.warn(`⚠️ 保存先がtroubleshootingディレクトリ外: ${normalizedFilePath}`);
-        return res.status(400).json({
-          success: false,
-          error: '保存先はknowledge-base/troubleshootingディレクトリ内のみ許可されています'
-        });
-      }
-
-      console.log('🎯 指定されたファイルパスを使用:', filePath);
-    } else {
-      // fallback: troubleshootingディレクトリにIDベースで保存
-      const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-      const fileName = `${flowData.id}.json`;
-      filePath = path.join(troubleshootingDir, fileName);
-      console.log('📁 デフォルトファイルパスを使用:', filePath);
+    // IDが指定されていない場合は生成
+    if (!flowData.id) {
+      flowData.id = `flow_${Date.now()}`;
     }
 
-    // 保存先ディレクトリが存在することを確認
-    const targetDir = path.dirname(filePath);
-    if (!fs.existsSync(targetDir)) {
-      console.log('📁 ディレクトリを作成します:', targetDir);
-      fs.mkdirSync(targetDir, { recursive: true });
+    // タイムスタンプを設定
+    flowData.createdAt = flowData.createdAt || new Date().toISOString();
+    flowData.updatedAt = new Date().toISOString();
+
+    // ファイルパスを設定
+    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    if (!fs.existsSync(troubleshootingDir)) {
+      fs.mkdirSync(troubleshootingDir, { recursive: true });
     }
 
-    console.log('💾 最終保存ファイルパス:', filePath);
+    const filePath = path.join(troubleshootingDir, `${flowData.id}.json`);
 
-    // 既存ファイルが存在する場合、その構造を読み込んで保持
-    let existingData = {};
-    if (fs.existsSync(filePath)) {
-      try {
-        const existingContent = fs.readFileSync(filePath, 'utf8');
-        existingData = JSON.parse(existingContent);
-        console.log('🔄 既存データを読み込み:', {
-          id: existingData.id,
-          hasSteps: !!existingData.steps,
-          stepsCount: existingData.steps?.length || 0,
-          hasNodes: !!existingData.nodes,
-          nodeCount: existingData.nodes?.length || 0
-        });
-      } catch (error) {
-        console.warn('⚠️ 既存ファイルの読み込みでエラー:', error);
-      }
-    }
+    // ファイルに保存
+    fs.writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf8');
 
-    // 統一スキーマによる条件分岐ノードの完全保存処理
-    const processedSteps = (flowData.steps || []).map(step => {
-      console.log(`🔍 ステップ処理開始: ${step.id} (type: ${step.type})`, {
-        hasConditions: !!step.conditions,
-        conditionsLength: step.conditions?.length || 0,
-        hasOptions: !!step.options,
-        optionsLength: step.options?.length || 0
-      });
-
-      // 🔀 条件分岐ノード（type: "condition"）の処理
-      if (step.type === 'condition') {
-        console.log(`🔀 条件分岐ノード（conditions配列）${step.id} サーバー保存開始:`, {
-          stepId: step.id,
-          stepType: step.type,
-          title: step.title,
-          description: step.description,
-          message: step.message,
-          conditionsCount: step.conditions?.length || 0,
-          conditionsData: step.conditions,
-          originalStep: step
-        });
-
-        // conditions配列の厳密な検証と確保
-        const ensureConditions = (conditions: any) => {
-          if (!conditions || !Array.isArray(conditions) || conditions.length === 0) {
-            console.log(`⚠️ 条件配列が無効 - デフォルト値を設定: ${step.id}`);
-            return [
-              { label: '条件A', nextId: '' },
-              { label: '条件B', nextId: '' }
-            ];
-          }
-
-          console.log(`🔍 条件配列の詳細検証: ${step.id}`, conditions);
-
-          return conditions.map((condition, index) => {
-            const validatedCondition = {
-              label: condition.label || `条件${index + 1}`,
-              nextId: condition.nextId || ''
-            };
-
-            console.log(`✅ 条件項目 ${index + 1} 検証完了:`, {
-              original: condition,
-              validated: validatedCondition
-            });
-
-            return validatedCondition;
-          });
-        };
-
-        const finalConditions = ensureConditions(step.conditions);
-
-        const savedConditionStep = {
-          id: step.id,
-          title: step.title || '新しい条件分岐',
-          description: step.description || step.message || '',
-          message: step.message || step.description || '',
-          imageUrl: step.imageUrl || '',
-          type: 'condition',
-          // conditions配列を確実に保持（必須フィールド）
-          conditions: finalConditions,
-          // optionsは空配列
-          options: []
-        };
-
-        console.log(`💾 条件分岐ノード最終保存データ: ${step.id}`, {
-          id: savedConditionStep.id,
-          type: savedConditionStep.type,
-          title: savedConditionStep.title,
-          description: savedConditionStep.description,
-          conditionsCount: savedConditionStep.conditions.length,
-          conditionsDetail: savedConditionStep.conditions
-        });
-
-        return savedConditionStep;
-      }
-
-      // 🔀 条件分岐ノード（type: "decision"）の処理
-        if (step.type === 'decision') {
-        console.log(`🔀 条件分岐ノード ${step.id} 統一スキーマ保存:`, {
-          stepId: step.id,
-          title: step.title,
-          optionsCount: step.options?.length || 0,
-          hasLegacyFields: !!(step.yesCondition || step.noCondition || step.otherCondition),
-          optionsData: step.options
-        });
-
-        // 統一スキーマ：options配列の処理
-        let unifiedOptions = [];
-
-        if (step.options && step.options.length > 0) {
-          // 新しいスキーマ：options配列が存在する場合
-          unifiedOptions = step.options.map((option, index) => {
-            console.log(`🔧 条件項目 ${index + 1} 詳細処理:`, option);
-            return {
-              text: option.text || `条件項目 ${index + 1}`,
-              nextStepId: option.nextStepId || '',
-              condition: option.condition || option.text || '',
-              isTerminal: Boolean(option.isTerminal),
-              conditionType: option.conditionType || 'other'
-            };
-          });
-        } else {
-          // 旧スキーマからの変換：個別条件フィールドをoptions配列に変換
-          if (step.yesCondition) {
-            unifiedOptions.push({
-              text: 'はい',
-              nextStepId: step.yesNextStepId || '',
-              condition: step.yesCondition,
-              isTerminal: false,
-              conditionType: 'yes'
-            });
-          }
-          if (step.noCondition) {
-            unifiedOptions.push({
-              text: 'いいえ',
-              nextStepId: step.noNextStepId || '',
-              condition: step.noCondition,
-              isTerminal: false,
-              conditionType: 'no'
-            });
-          }
-          if (step.otherCondition) {
-            unifiedOptions.push({
-              text: 'その他',
-              nextStepId: step.otherNextStepId || '',
-              condition: step.otherCondition,
-              isTerminal: false,
-              conditionType: 'other'
-            });
-          }
-
-          // デフォルトの条件項目を追加（何もない場合）
-          if (unifiedOptions.length === 0) {
-            unifiedOptions = [
-              { text: 'はい', nextStepId: '', condition: '', isTerminal: false, conditionType: 'yes' },
-              { text: 'いいえ', nextStepId: '', condition: '', isTerminal: false, conditionType: 'no' }
-            ];
-          }
-        }
-
-        // 元のtypeを保持（条件分岐ノードの型を変更しない）
-        console.log(`🔧 条件分岐ノード ${step.id} の型を保持: ${step.type}`);
-
-        const savedDecisionStep = {
-              ...step,
-              id: step.id,
-              title: step.title || '新しい条件分岐',
-              description: step.description || step.message || '',
-              message: step.message || step.description || '',
-              imageUrl: step.imageUrl || '',
-              type: 'decision', // 決定ノードのtype固定
-              // 統一スキーマ：options配列（必須）
-              options: unifiedOptions,
-              // 後方互換性：個別条件フィールド（options配列がある場合のみ）
-          ...(unifiedOptions.length > 0 ? {
-            yesCondition: unifiedOptions.find(opt => opt.conditionType === 'yes')?.condition || '',
-            yesNextStepId: unifiedOptions.find(opt => opt.conditionType === 'yes')?.nextStepId || '',
-            noCondition: unifiedOptions.find(opt => opt.conditionType === 'no')?.condition || '',
-            noNextStepId: unifiedOptions.find(opt => opt.conditionType === 'no')?.nextStepId || '',
-            otherCondition: unifiedOptions.filter(opt => opt.conditionType === 'other').map(opt => opt.condition).join(', ') || '',
-            otherNextStepId: unifiedOptions.find(opt => opt.conditionType === 'other')?.nextStepId || ''
-          } : {})
-        };
-
-        console.log(`✅ 条件分岐ノード ${step.id} 統一保存完了:`, {
-          stepId: savedDecisionStep.id,
-          optionsCount: savedDecisionStep.options.length,
-          yesCondition: savedDecisionStep.yesCondition,
-          noCondition: savedDecisionStep.noCondition,
-          otherCondition: savedDecisionStep.otherCondition
-        });
-
-        return savedDecisionStep;
-      } else {
-        // 通常のステップ：デフォルトで"次へ"オプションを確保
-        const defaultOptions = (step.options && step.options.length > 0) ? step.options : [{
-          text: '次へ',
-          nextStepId: '',
-          condition: '',
-          isTerminal: false,
-          conditionType: 'other'
-        }];
-
-        return {
-          ...step,
-          description: step.description || step.message || '',
-          message: step.message || step.description || '',
-          imageUrl: step.imageUrl || '',
-          type: step.type || 'step',
-          options: defaultOptions.map(option => ({
-            text: option.text || '次へ',
-            nextStepId: option.nextStepId || '',
-            condition: option.condition || '',
-            isTerminal: Boolean(option.isTerminal),
-            conditionType: option.conditionType || 'other'
-          }))
-        };
-      }
-    });
-
-    // 保存データを準備
-    const saveData = {
-      id: flowData.id || existingData.id,
+    console.log('✅ フロー保存成功:', {
+      id: flowData.id,
       title: flowData.title,
-      description: flowData.description || existingData.description || '',
-      triggerKeywords: flowData.triggerKeywords || existingData.triggerKeywords || [],
-      steps: processedSteps,
-      slides: processedSteps, // slides フィールドもstepsと同じデータを保存
-      nodes: flowData.nodes || [], // ReactFlowエディタ用のノード情報を保持
-      edges: flowData.edges || [], // ReactFlowエディタ用のエッジ情報を保持
-      updatedAt: new Date().toISOString(),
-      savedAt: new Date().toISOString(),
-      savedTimestamp: flowData.savedTimestamp || Date.now(),
-      // 既存の他のメタデータも保持
-      ...(existingData.createdAt && { createdAt: existingData.createdAt })
-    };
-
-    // 条件分岐ノードの保存確認ログ
-    const decisionSteps = processedSteps.filter(step => step.type === 'decision');
-    console.log(`🔀 保存される条件分岐ノード:`, {
-      decisionCount: decisionSteps.length,
-      decisionDetails: decisionSteps.map(step => ({
-        id: step.id,
-        title: step.title,
-        optionsCount: step.options?.length || 0,
-        options: step.options
-      }))
-    });
-
-    // JSONファイルとして保存
-    try {
-      // 保存前にバックアップを作成
-      if (fs.existsSync(filePath)) {
-        const backupPath = `${filePath}.backup.${Date.now()}`;
-        fs.copyFileSync(filePath, backupPath);
-        console.log('💾 バックアップ作成:', backupPath);
-      }
-
-      // 原子的書き込み（一時ファイル経由）
-      const tempFilePath = `${filePath}.tmp.${Date.now()}`;
-      const saveDataString = JSON.stringify(saveData, null, 2);
-
-      fs.writeFileSync(tempFilePath, saveDataString, 'utf8');
-
-      // 一時ファイルが正常に書き込まれた場合のみ、元ファイルを置き換え
-      if (fs.existsSync(tempFilePath)) {
-        fs.renameSync(tempFilePath, filePath);
-        console.log('✅ 原子的ファイル保存成功:', filePath);
-      } else {
-        throw new Error('一時ファイルの作成に失敗しました');
-      }
-
-      // ファイルが実際に存在することを確認
-      if (fs.existsSync(filePath)) {
-        const fileStats = fs.statSync(filePath);
-        console.log('📊 保存されたファイル情報:', {
-          path: filePath,
-          size: fileStats.size,
-          modified: fileStats.mtime,
-          savedTimestamp: saveData.savedTimestamp || 'N/A'
-        });
-
-        // 保存後のディレクトリ一覧を表示
-        const updatedFiles = fs.readdirSync(troubleshootingDir);
-        console.log('📂 保存後のディレクトリ内容:', updatedFiles);
-
-        // 保存されたファイルの内容を読み返して確認
-        const savedContent = fs.readFileSync(filePath, 'utf8');
-        const parsedContent = JSON.parse(savedContent);
-        console.log('✅ 保存されたデータの確認:', {
-          id: parsedContent.id,
-          title: parsedContent.title,
-          fileSize: savedContent.length,
-          stepCount: parsedContent.steps?.length || 0,
-          nodeCount: parsedContent.nodes?.length || 0,
-          edgeCount: parsedContent.edges?.length || 0,
-          savedTimestamp: parsedContent.savedTimestamp
-        });
-      } else {
-        throw new Error('ファイルが保存されませんでした');
-      }
-
-      // 古いバックアップファイルのクリーンアップ（最新5つまで保持）
-      try {
-        const backupFiles = fs.readdirSync(troubleshootingDir)
-          .filter(file => file.startsWith(`${flowData.id}.json.backup.`))
-          .sort((a, b) => {
-            const timeA = parseInt(a.split('.backup.')[1] || '0');
-            const timeB = parseInt(b.split('.backup.')[1] || '0');
-            return timeB - timeA; // 新しい順
-          });
-
-        if (backupFiles.length > 5) {
-          const filesToDelete = backupFiles.slice(5);
-          filesToDelete.forEach(file => {
-            try {
-              fs.unlinkSync(path.join(troubleshootingDir, file));
-              console.log('🗑️ 古いバックアップを削除:', file);
-            } catch (err) {
-              console.warn('⚠️ バックアップ削除エラー:', err);
-            }
-          });
-        }
-      } catch (cleanupError) {
-        console.warn('⚠️ バックアップクリーンアップエラー:', cleanupError);
-      }
-    } catch (fileError) {
-      console.error('❌ ファイル保存エラー:', fileError);
-      throw fileError;
-    }
-
-    // データベースにも保存
-    try {
-      await db.insert(emergencyFlows).values({
-        title: flowData.title,
-        steps: flowData.nodes || flowData.steps || [],
-        keyword: flowData.description || '',
-        createdAt: new Date(),
-      });
-      console.log('✅ データベース保存成功');
-    } catch (dbError) {
-      console.warn('⚠️ データベース保存でエラーが発生しましたが、ファイル保存は成功しました:', dbError);
-    }
-
-    console.log(`🎉 応急処置フローを保存しました: ${filePath}`);
-
-    // 保存後の検証
-    const savedContent = fs.readFileSync(filePath, 'utf8');
-    const savedData = JSON.parse(savedContent);
-    const savedDecisionSteps = savedData.steps?.filter(step => step.type === 'decision') || [];
-
-    console.log(`🔍 保存後検証:`, {
-      totalSteps: savedData.steps?.length || 0,
-      decisionSteps: savedDecisionSteps.length,
-      decisionOptions: savedDecisionSteps.map(step => ({
-        id: step.id,
-        optionsCount: step.options?.length || 0
-      }))
-    });
-
-    // キャッシュ無効化のためのヘッダーを設定
-    res.set({
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0',
-      'Last-Modified': new Date().toUTCString()
+      filePath: filePath,
+      stepsCount: flowData.steps?.length || 0
     });
 
     res.json({
       success: true,
-      message: 'フローが保存されました',
-      data: saveData,
-      filePath: filePath,
-      fileName: fileName,
-      savedAt: new Date().toISOString()
+      data: flowData,
+      message: 'フローが正常に保存されました'
     });
 
   } catch (error) {
     console.error('❌ フロー保存エラー:', error);
     res.status(500).json({
       success: false,
-      error: 'フローの保存に失敗しました'
+      error: 'フローの保存に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
 
-// 応急処置フロー一覧取得エンドポイント
-router.get('/list', async (req, res) => {
+// フロー更新エンドポイント
+router.put('/:id', async (req, res) => {
   try {
-    // キャッシュ無効化ヘッダーを設定
-    res.set({
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
+    const { id } = req.params;
+    const flowData = req.body;
+    console.log('🔄 フロー更新開始:', { id, title: flowData.title });
+
+    // IDの一致確認
+    if (id !== flowData.id) {
+      return res.status(400).json({
+        success: false,
+        error: 'URLのIDとデータのIDが一致しません'
+      });
+    }
+
+    // 必須フィールドの検証
+    if (!flowData.title) {
+      return res.status(400).json({
+        success: false,
+        error: 'タイトルは必須です'
+      });
+    }
+
+    // タイムスタンプを更新
+    flowData.updatedAt = new Date().toISOString();
+
+    // ファイルパスを設定
+    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const filePath = path.join(troubleshootingDir, `${id}.json`);
+
+    // 既存ファイルの確認
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        error: '更新対象のフローファイルが見つかりません'
+      });
+    }
+
+    // ファイルに保存
+    fs.writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf8');
+
+    console.log('✅ フロー更新成功:', {
+      id: flowData.id,
+      title: flowData.title,
+      filePath: filePath,
+      stepsCount: flowData.steps?.length || 0
     });
 
-    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    console.log('🔍 一覧取得: troubleshootingDir =', troubleshootingDir);
+    res.json({
+      success: true,
+      data: flowData,
+      message: 'フローが正常に更新されました'
+    });
 
+  } catch (error) {
+    console.error('❌ フロー更新エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'フローの更新に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// フロー一覧取得エンドポイント
+router.get('/list', (req, res) => {
+  try {
+    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    
     if (!fs.existsSync(troubleshootingDir)) {
-      console.log('📁 ディレクトリが存在しません:', troubleshootingDir);
-      // ディレクトリが存在しない場合は作成
-      fs.mkdirSync(troubleshootingDir, { recursive: true });
+      console.log('📁 troubleshootingディレクトリが存在しません。');
       return res.json([]);
     }
 
-    const allFiles = fs.readdirSync(troubleshootingDir);
-    console.log('📂 ディレクトリ内の全ファイル:', allFiles);
+    const files = fs.readdirSync(troubleshootingDir);
+    const jsonFiles = files.filter(file => file.endsWith('.json') && !file.includes('.backup') && !file.includes('.tmp'));
 
-    const jsonFiles = allFiles.filter(file => file.endsWith('.json'));
-    console.log('📋 JSONファイル一覧:', jsonFiles);
-
-    const files = jsonFiles
-      .map(file => {
-        try {
-          const filePath = path.join(troubleshootingDir, file);
-          console.log(`📖 ファイル読み込み中: ${filePath}`);
-
-          const content = fs.readFileSync(filePath, 'utf8');
-          const data = JSON.parse(content);
-          console.log(`✅ ファイル読み込み成功: ${file}`, {
-            id: data.id,
-            title: data.title,
-            hasSteps: !!data.steps,
-            hasNodes: !!data.nodes
-          });
-
-          return {
-            id: data.id || file.replace('.json', ''),
-            title: data.title || 'タイトル不明',
-            description: data.description || '',
-            fileName: file,
-            createdAt: data.createdAt || data.savedAt || data.updatedAt || new Date().toISOString(),
-            source: 'troubleshooting'
-          };
-        } catch (error) {
-          console.error(`❌ ファイル読み込みエラー: ${file}`, error);
-          return null;
+    const fileList = jsonFiles.map(file => {
+      try {
+        const filePath = path.join(troubleshootingDir, file);
+        const content = fs.readFileSync(filePath, 'utf8');
+        const data = JSON.parse(content);
+        
+        let description = data.description || '';
+        if (!description && data.steps && data.steps.length > 0) {
+            description = data.steps[0].description || data.steps[0].message || '';
         }
-      })
-      .filter(item => item !== null);
 
-    console.log(`📊 最終結果: ${files.length}個のフローを取得`);
-    res.json(files);
+        return {
+          id: data.id || file.replace('.json', ''),
+          title: data.title || 'タイトルなし',
+          description: description,
+          fileName: file,
+          createdAt: data.createdAt || data.savedAt || data.updatedAt || new Date().toISOString()
+        };
+      } catch (error) {
+        console.error(`ファイル ${file} の解析中にエラーが発生しました:`, error);
+        return null;
+      }
+    }).filter(Boolean);
+
+    res.json(fileList);
   } catch (error) {
-    console.error('❌ フロー一覧取得エラー:', error);
-    res.status(500).json({ error: 'フロー一覧の取得に失敗しました' });
+    console.error('❌ ファイル一覧取得エラー:', error);
+    res.status(500).json({ 
+      error: 'ファイル一覧の取得に失敗しました',
+      details: (error as Error).message
+    });
   }
 });
 
-// 特定のフロー詳細取得エンドポイント（条件分岐情報を含む完全なデータ取得）
+// フロー詳細取得エンドポイント
 router.get('/detail/:id', async (req, res) => {
   try {
-    // 最強のキャッシュ無効化ヘッダーを設定
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2);
-
+    
+    // キャッシュ制御ヘッダーを設定
     res.set({
-      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0, s-maxage=0',
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
       'Pragma': 'no-cache',
       'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
       'Last-Modified': new Date().toUTCString(),
       'ETag': `"${timestamp}-${randomId}"`,
       'X-Accel-Expires': '0',
-      'Vary': '*',
-      'X-Fresh-Data': 'true'
+      'X-Requested-With': 'XMLHttpRequest'
     });
 
     const { id } = req.params;
@@ -609,1009 +297,115 @@ router.get('/detail/:id', async (req, res) => {
 
     if (!fs.existsSync(filePath)) {
       console.log(`❌ ファイルが存在しません: ${filePath}`);
-      return res.status(404).json({ error: 'フローが見つかりません' });
+      return res.status(404).json({ error: 'フローファイルが見つかりません' });
     }
 
-    // ファイルの最新統計情報を取得
+    const content = fs.readFileSync(filePath, 'utf8');
     const stats = fs.statSync(filePath);
+
     console.log(`📊 ファイル情報:`, {
       size: stats.size,
-      mtime: stats.mtime.toISOString(),
-      path: filePath,
-      requestTimestamp: timestamp
+      modified: stats.mtime,
+      exists: true
     });
 
-    // ファイル内容を強制的に再読み込み（条件分岐情報を含む）
-    const content = fs.readFileSync(filePath, 'utf8');
     console.log(`📄 ファイル内容のサイズ: ${content.length}文字`);
 
     let data = JSON.parse(content);
     console.log(`✅ ファイル詳細読み込み成功: ${id}.json`, {
       id: data.id,
       title: data.title,
-      stepsCount: data.steps?.length || 0
+      hasSteps: !!data.steps,
+      stepsCount: data.steps?.length || 0,
+      hasNodes: !!data.nodes,
+      nodesCount: data.nodes?.length || 0,
+      updatedAt: data.updatedAt,
+      createdAt: data.createdAt
     });
 
-    // テンプレートスキーマを適用
-    data = applyTemplateSchema(data);
-
-    // 条件分岐情報の確認とログ出力
-    const conditionSteps = data.steps?.filter(step => 
-      step.yesCondition || step.noCondition || step.otherCondition
-    ) || [];
+    // 条件分岐ステップの確認
+    const decisionSteps = data.steps?.filter((step: any) => step.type === 'decision') || [];
+    const conditionSteps = data.steps?.filter((step: any) => step.type === 'condition') || [];
 
     console.log(`🔀 条件分岐ステップの確認:`, {
       totalSteps: data.steps?.length || 0,
+      decisionSteps: decisionSteps.length,
       conditionSteps: conditionSteps.length,
-      conditions: conditionSteps.map(step => ({
-        id: step.id,
-        yesCondition: !!step.yesCondition,
-        noCondition: !!step.noCondition,
-        otherCondition: !!step.otherCondition
-      }))
-    });
-
-    // データの完全性をチェック（条件分岐情報を確実に含む）
-    const responseData = {
-      ...data,
-      loadedAt: new Date().toISOString(),
-      fileModified: stats.mtime.toISOString(),
-      requestId: `${timestamp}-${randomId}`,
-      // 条件分岐情報を明示的に保持
-      conditionBranchesCount: conditionSteps.length,
-      hasConditionBranches: conditionSteps.length > 0
-    };
-
-    console.log(`✅ 完全データ解析成功:`, {
-      id: responseData.id,
-      title: responseData.title,
-      stepsCount: responseData.steps?.length || 0,
-      nodesCount: responseData.nodes?.length || 0,
-      edgesCount: responseData.edges?.length || 0,
-      conditionBranches: responseData.conditionBranchesCount,
-      updatedAt: responseData.updatedAt,
-      loadedAt: responseData.loadedAt
-    });
-
-    res.json({ 
-      data: responseData,
-      meta: {
-        freshLoad: true,
-        timestamp: timestamp,
-        conditionsPreserved: true
-      }
-    });
-  } catch (error) {
-    console.error('❌ フロー詳細取得エラー:', error);
-    res.status(500).json({ error: 'フローの取得に失敗しました' });
-  }
-});
-
-// ステップタイトル更新エンドポイント
-router.post('/update-step-title', async (req, res) => {
-  try {
-    const { flowId, stepId, title } = req.body;
-
-    console.log('ステップタイトル更新リクエスト:', { flowId, stepId, title });
-
-    if (!flowId || !stepId || !title) {
-      return res.status(400).json({ error: '必要なパラメータが不足しています' });
-    }
-
-    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    const filePath = path.join(troubleshootingDir, `${flowId}.json`);
-
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: 'フローファイルが見つかりません' });
-    }
-
-    // ファイルを読み込み
-    const content = fs.readFileSync(filePath, 'utf8');
-    const flowData = JSON.parse(content);
-
-    // ステップを検索して更新
-    const stepIndex = flowData.steps.findIndex(step => step.id === stepId);
-    if (stepIndex === -1) {
-      return res.status(404).json({ error: 'ステップが見つかりません' });
-    }
-
-    // タイトルを更新
-    flowData.steps[stepIndex].title = title.trim();
-
-    // 更新日時を設定
-    flowData.updatedAt = new Date().toISOString();
-
-    // ファイルに書き戻し
-    fs.writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf8');
-
-    console.log('ステップタイトル更新完了:', { flowId, stepId, newTitle: title });
-
-    res.json({ 
-      success: true, 
-      message: 'タイトルが更新されました',
-      updatedStep: {
-        id: stepId,
-        title: title.trim()
-      }
-    });
-
-  } catch (error) {
-    console.error('ステップタイトル更新エラー:', error);
-    res.status(500).json({ error: 'タイトルの更新に失敗しました' });
-  }
-});
-
-// 直接IDアクセス用エンドポイント（troubleshootingディレクトリからの読み込み専用）
-router.get('/:id', async (req, res) => {
-  try {
-    const timestamp = Date.now();
-    const randomId = Math.random().toString(36).substring(2);
-
-    res.set({
-      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0, s-maxage=0',
-      'Pragma': 'no-cache',
-      'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
-      'Last-Modified': new Date().toUTCString(),
-      'ETag': `"${timestamp}-${randomId}"`,
-      'X-Accel-Expires': '0',
-      'Vary': '*',
-      'X-Fresh-Data': 'true'
-    });
-
-    const { id } = req.params;
-    console.log(`🔄 [${timestamp}] フロー直接取得: ID=${id}`);
-
-    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    const filePath = path.join(troubleshootingDir, `${id}.json`);
-
-    console.log(`📁 ファイルパス: ${filePath}`);
-
-    if (!fs.existsSync(filePath)) {
-      console.log(`❌ ファイルが存在しません: ${filePath}`);
-      return res.status(404).json({ error: 'フローが見つかりません' });
-    }
-
-    const stats = fs.statSync(filePath);
-    console.log(`📊 ファイル情報:`, {
-      size: stats.size,
-      mtime: stats.mtime.toISOString(),
-      path: filePath,
-      requestTimestamp: timestamp
-    });
-
-    const content = fs.readFileSync(filePath, 'utf8');
-    const rawData = JSON.parse(content);
-
-    const conditionSteps = rawData.steps?.filter(step => 
-      step.yesCondition || step.noCondition || step.otherCondition
-    ) || [];
-
-    console.log(`🔀 条件分岐ステップの確認:`, {
-      totalSteps: rawData.steps?.length || 0,
-      conditionSteps: conditionSteps.length
-    });
-
-    const responseData = {
-      ...rawData,
-      loadedAt: new Date().toISOString(),
-      fileModified: stats.mtime.toISOString(),
-      requestId: `${timestamp}-${randomId}`,
-      conditionBranchesCount: conditionSteps.length,
-      hasConditionBranches: conditionSteps.length > 0
-    };
-
-    console.log(`✅ 直接データ取得成功:`, {
-      id: responseData.id,
-      title: responseData.title,
-      stepsCount: responseData.steps?.length || 0,
-      conditionBranches: responseData.conditionBranchesCount
-    });
-
-    res.json(responseData);
-  } catch (error) {
-    console.error('❌ フロー直接取得エラー:', error);
-    res.status(500).json({ error: 'フローの取得に失敗しました' });
-  }
-});
-
-// フロー削除エンドポイント
-router.delete('/delete/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    const filePath = path.join(troubleshootingDir, `${id}.json`);
-
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'ファイルが見つかりません' 
-      });
-    }
-
-    fs.unlinkSync(filePath);
-
-    res.json({ 
-      success: true, 
-      message: 'フローが削除されました' 
-    });
-  } catch (error) {
-    console.error('フロー削除エラー:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'フローの削除に失敗しました',
-      details: error instanceof Error ? error.message : String(error)
-    });
-  }
-});
-
-// POST /api/emergency-flow/update-step-title - ステップのタイトルを更新
-router.post('/update-step-title', async (req, res) => {
-  try {
-    const { flowId, stepId, title } = req.body;
-
-    console.log('タイトル更新リクエスト:', { flowId, stepId, title });
-
-    if```tool_code
-// Adding the title update API endpoint before the save endpoint.
-<replit_final_file>
-import { Router } from 'express';
-import OpenAI from 'openai';
-import { z } from 'zod';
-import { db } from '../db';
-import { emergencyFlows } from '../db/schema';
-import { findRelevantImages } from '../utils/image-matcher';
-
-const router = Router();
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-const generateFlowSchema = z.object({
-  keyword: z.string().min(1),
-});
-
-import fs from 'fs';
-import path from 'path';
-
-// テンプレートスキーマを適用する関数（仮実装）
-function applyTemplateSchema(data: any): any {
-  // TODO: 実際のスキーマ適用ロジックを実装
-  // 例：dataに必要なフィールドが存在しない場合にデフォルト値を追加する
-  if (data && data.steps) {
-    data.steps = data.steps.map((step: any) => {
-      if (step.type === 'decision' && !step.options) {
-        step.options = [
-          { text: 'はい', nextStepId: '', condition: '', isTerminal: false, conditionType: 'yes' },
-          { text: 'いいえ', nextStepId: '', condition: '', isTerminal: false, conditionType: 'no' }
-        ];
-      }
-      return step;
-    });
-  }
-  return data;
-}
-
-// POST /api/emergency-flow/update-step-title
-router.post('/update-step-title', async (req, res) => {
-  try {
-    const { flowId, stepId, title } = req.body;
-
-    if (!flowId || !stepId || !title) {
-      return res.status(400).json({ error: 'flowId, stepId, title are required' });
-    }
-
-    // knowledge-base/troubleshooting/ ディレクトリから該当ファイルを読み込み
-    const filePath = path.join(process.cwd(), 'knowledge-base', 'troubleshooting', `${flowId}.json`);
-
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: 'フローファイルが見つかりません' });
-    }
-
-    const fileContent = fs.readFileSync(filePath, 'utf8');
-    const flowData = JSON.parse(fileContent);
-
-    // 指定されたステップのタイトルを更新
-    const stepIndex = flowData.steps.findIndex((step: any) => step.id === stepId);
-    if (stepIndex === -1) {
-      return res.status(404).json({ error: 'ステップが見つかりません' });
-    }
-
-    flowData.steps[stepIndex].title = title;
-    flowData.updatedAt = new Date().toISOString();
-
-    // ファイルに書き込み
-    fs.writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf8');
-
-    res.json({ success: true, message: 'タイトルが更新されました' });
-  } catch (error) {
-    console.error('タイトル更新エラー:', error);
-    res.status(500).json({ error: 'タイトル更新に失敗しました' });
-  }
-});
-
-// フロー保存エンドポイント
-router.post('/save', async (req, res) => {
-  try {
-    const { filePath: requestFilePath, ...flowData } = req.body;
-    console.log('🔄 フロー保存リクエストを受信:', {
-      id: flowData?.id,
-      title: flowData?.title,
-      requestFilePath: requestFilePath,
-      hasNodes: !!flowData?.nodes,
-      hasSteps: !!flowData?.steps
-    });
-
-    if (!flowData || !flowData.id || !flowData.title) {
-      console.error('❌ 無効なフローデータ:', flowData);
-      return res.status(400).json({ 
-        success: false, 
-        error: 'フローデータが不正です（id、titleが必要）' 
-      });
-    }
-
-    // 🎯 保存先パスを決定：リクエストのfilePathを優先、fallbackはtroubleshootingディレクトリ
-    let filePath;
-    if (requestFilePath) {
-      // リクエストでパスが指定されている場合はそれを使用
-      filePath = path.isAbsolute(requestFilePath) 
-        ? requestFilePath 
-        : path.join(process.cwd(), requestFilePath);
-
-      // セキュリティチェック：troubleshootingディレクトリ内のみ許可
-      const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-      const normalizedFilePath = path.normalize(filePath);
-      const normalizedTroubleshootingDir = path.normalize(troubleshootingDir);
-
-      if (!normalizedFilePath.startsWith(normalizedTroubleshootingDir)) {
-        console.warn(`⚠️ 保存先がtroubleshootingディレクトリ外: ${normalizedFilePath}`);
-        return res.status(400).json({
-          success: false,
-          error: '保存先はknowledge-base/troubleshootingディレクトリ内のみ許可されています'
-        });
-      }
-
-      console.log('🎯 指定されたファイルパスを使用:', filePath);
-    } else {
-      // fallback: troubleshootingディレクトリにIDベースで保存
-      const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-      const fileName = `${flowData.id}.json`;
-      filePath = path.join(troubleshootingDir, fileName);
-      console.log('📁 デフォルトファイルパスを使用:', filePath);
-    }
-
-    // 保存先ディレクトリが存在することを確認
-    const targetDir = path.dirname(filePath);
-    if (!fs.existsSync(targetDir)) {
-      console.log('📁 ディレクトリを作成します:', targetDir);
-      fs.mkdirSync(targetDir, { recursive: true });
-    }
-
-    console.log('💾 最終保存ファイルパス:', filePath);
-
-    // 既存ファイルが存在する場合、その構造を読み込んで保持
-    let existingData = {};
-    if (fs.existsSync(filePath)) {
-      try {
-        const existingContent = fs.readFileSync(filePath, 'utf8');
-        existingData = JSON.parse(existingContent);
-        console.log('🔄 既存データを読み込み:', {
-          id: existingData.id,
-          hasSteps: !!existingData.steps,
-          stepsCount: existingData.steps?.length || 0,
-          hasNodes: !!existingData.nodes,
-          nodeCount: existingData.nodes?.length || 0
-        });
-      } catch (error) {
-        console.warn('⚠️ 既存ファイルの読み込みでエラー:', error);
-      }
-    }
-
-    // 統一スキーマによる条件分岐ノードの完全保存処理
-    const processedSteps = (flowData.steps || []).map(step => {
-      console.log(`🔍 ステップ処理開始: ${step.id} (type: ${step.type})`, {
-        hasConditions: !!step.conditions,
-        conditionsLength: step.conditions?.length || 0,
-        hasOptions: !!step.options,
-        optionsLength: step.options?.length || 0
-      });
-
-      // 🔀 条件分岐ノード（type: "condition"）の処理
-      if (step.type === 'condition') {
-        console.log(`🔀 条件分岐ノード（conditions配列）${step.id} サーバー保存開始:`, {
-          stepId: step.id,
-          stepType: step.type,
-          title: step.title,
-          description: step.description,
-          message: step.message,
-          conditionsCount: step.conditions?.length || 0,
-          conditionsData: step.conditions,
-          originalStep: step
-        });
-
-        // conditions配列の厳密な検証と確保
-        const ensureConditions = (conditions: any) => {
-          if (!conditions || !Array.isArray(conditions) || conditions.length === 0) {
-            console.log(`⚠️ 条件配列が無効 - デフォルト値を設定: ${step.id}`);
-            return [
-              { label: '条件A', nextId: '' },
-              { label: '条件B', nextId: '' }
-            ];
-          }
-
-          console.log(`🔍 条件配列の詳細検証: ${step.id}`, conditions);
-
-          return conditions.map((condition, index) => {
-            const validatedCondition = {
-              label: condition.label || `条件${index + 1}`,
-              nextId: condition.nextId || ''
-            };
-
-            console.log(`✅ 条件項目 ${index + 1} 検証完了:`, {
-              original: condition,
-              validated: validatedCondition
-            });
-
-            return validatedCondition;
-          });
-        };
-
-        const finalConditions = ensureConditions(step.conditions);
-
-        const savedConditionStep = {
-          id: step.id,
-          title: step.title || '新しい条件分岐',
-          description: step.description || step.message || '',
-          message: step.message || step.description || '',
-          imageUrl: step.imageUrl || '',
-          type: 'condition',
-          // conditions配列を確実に保持（必須フィールド）
-          conditions: finalConditions,
-          // optionsは空配列
-          options: []
-        };
-
-        console.log(`💾 条件分岐ノード最終保存データ: ${step.id}`, {
-          id: savedConditionStep.id,
-          type: savedConditionStep.type,
-          title: savedConditionStep.title,
-          description: savedConditionStep.description,
-          conditionsCount: savedConditionStep.conditions.length,
-          conditionsDetail: savedConditionStep.conditions
-        });
-
-        return savedConditionStep;
-      }
-
-      // 🔀 条件分岐ノード（type: "decision"）の処理
-        if (step.type === 'decision') {
-        console.log(`🔀 条件分岐ノード ${step.id} 統一スキーマ保存:`, {
-          stepId: step.id,
-          title: step.title,
-          optionsCount: step.options?.length || 0,
-          hasLegacyFields: !!(step.yesCondition || step.noCondition || step.otherCondition),
-          optionsData: step.options
-        });
-
-        // 統一スキーマ：options配列の処理
-        let unifiedOptions = [];
-
-        if (step.options && step.options.length > 0) {
-          // 新しいスキーマ：options配列が存在する場合
-          unifiedOptions = step.options.map((option, index) => {
-            console.log(`🔧 条件項目 ${index + 1} 詳細処理:`, option);
-            return {
-              text: option.text || `条件項目 ${index + 1}`,
-              nextStepId: option.nextStepId || '',
-              condition: option.condition || option.text || '',
-              isTerminal: Boolean(option.isTerminal),
-              conditionType: option.conditionType || 'other'
-            };
-          });
-        } else {
-          // 旧スキーマからの変換：個別条件フィールドをoptions配列に変換
-          if (step.yesCondition) {
-            unifiedOptions.push({
-              text: 'はい',
-              nextStepId: step.yesNextStepId || '',
-              condition: step.yesCondition,
-              isTerminal: false,
-              conditionType: 'yes'
-            });
-          }
-          if (step.noCondition) {
-            unifiedOptions.push({
-              text: 'いいえ',
-              nextStepId: step.noNextStepId || '',
-              condition: step.noCondition,
-              isTerminal: false,
-              conditionType: 'no'
-            });
-          }
-          if (step.otherCondition) {
-            unifiedOptions.push({
-              text: 'その他',
-              nextStepId: step.otherNextStepId || '',
-              condition: step.otherCondition,
-              isTerminal: false,
-              conditionType: 'other'
-            });
-          }
-
-          // デフォルトの条件項目を追加（何もない場合）
-          if (unifiedOptions.length === 0) {
-            unifiedOptions = [
-              { text: 'はい', nextStepId: '', condition: '', isTerminal: false, conditionType: 'yes' },
-              { text: 'いいえ', nextStepId: '', condition: '', isTerminal: false, conditionType: 'no' }
-            ];
-          }
-        }
-
-        // 元のtypeを保持（条件分岐ノードの型を変更しない）
-        console.log(`🔧 条件分岐ノード ${step.id} の型を保持: ${step.type}`);
-
-        const savedDecisionStep = {
-              ...step,
-              id: step.id,
-              title: step.title || '新しい条件分岐',
-              description: step.description || step.message || '',
-              message: step.message || step.description || '',
-              imageUrl: step.imageUrl || '',
-              type: 'decision', // 決定ノードのtype固定
-              // 統一スキーマ：options配列（必須）
-              options: unifiedOptions,
-              // 後方互換性：個別条件フィールド（options配列がある場合のみ）
-          ...(unifiedOptions.length > 0 ? {
-            yesCondition: unifiedOptions.find(opt => opt.conditionType === 'yes')?.condition || '',
-            yesNextStepId: unifiedOptions.find(opt => opt.conditionType === 'yes')?.nextStepId || '',
-            noCondition: unifiedOptions.find(opt => opt.conditionType === 'no')?.condition || '',
-            noNextStepId: unifiedOptions.find(opt => opt.conditionType === 'no')?.nextStepId || '',
-            otherCondition: unifiedOptions.filter(opt => opt.conditionType === 'other').map(opt => opt.condition).join(', ') || '',
-            otherNextStepId: unifiedOptions.find(opt => opt.conditionType === 'other')?.nextStepId || ''
-          } : {})
-        };
-
-        console.log(`✅ 条件分岐ノード ${step.id} 統一保存完了:`, {
-          stepId: savedDecisionStep.id,
-          optionsCount: savedDecisionStep.options.length,
-          yesCondition: savedDecisionStep.yesCondition,
-          noCondition: savedDecisionStep.noCondition,
-          otherCondition: savedDecisionStep.otherCondition
-        });
-
-        return savedDecisionStep;
-      } else {
-        // 通常のステップ：デフォルトで"次へ"オプションを確保
-        const defaultOptions = (step.options && step.options.length > 0) ? step.options : [{
-          text: '次へ',
-          nextStepId: '',
-          condition: '',
-          isTerminal: false,
-          conditionType: 'other'
-        }];
-
-        return {
-          ...step,
-          description: step.description || step.message || '',
-          message: step.message || step.description || '',
-          imageUrl: step.imageUrl || '',
-          type: step.type || 'step',
-          options: defaultOptions.map(option => ({
-            text: option.text || '次へ',
-            nextStepId: option.nextStepId || '',
-            condition: option.condition || '',
-            isTerminal: Boolean(option.isTerminal),
-            conditionType: option.conditionType || 'other'
-          }))
-        };
-      }
-    });
-
-    // 保存データを準備
-    const saveData = {
-      id: flowData.id || existingData.id,
-      title: flowData.title,
-      description: flowData.description || existingData.description || '',
-      triggerKeywords: flowData.triggerKeywords || existingData.triggerKeywords || [],
-      steps: processedSteps,
-      slides: processedSteps, // slides フィールドもstepsと同じデータを保存
-      nodes: flowData.nodes || [], // ReactFlowエディタ用のノード情報を保持
-      edges: flowData.edges || [], // ReactFlowエディタ用のエッジ情報を保持
-      updatedAt: new Date().toISOString(),
-      savedAt: new Date().toISOString(),
-      savedTimestamp: flowData.savedTimestamp || Date.now(),
-      // 既存の他のメタデータも保持
-      ...(existingData.createdAt && { createdAt: existingData.createdAt })
-    };
-
-    // 条件分岐ノードの保存確認ログ
-    const decisionSteps = processedSteps.filter(step => step.type === 'decision');
-    console.log(`🔀 保存される条件分岐ノード:`, {
-      decisionCount: decisionSteps.length,
-      decisionDetails: decisionSteps.map(step => ({
+      decisionStepsDetail: decisionSteps.map((step: any) => ({
         id: step.id,
         title: step.title,
-        optionsCount: step.options?.length || 0,
-        options: step.options
-      }))
-    });
-
-    // JSONファイルとして保存
-    try {
-      // 保存前にバックアップを作成
-      if (fs.existsSync(filePath)) {
-        const backupPath = `${filePath}.backup.${Date.now()}`;
-        fs.copyFileSync(filePath, backupPath);
-        console.log('💾 バックアップ作成:', backupPath);
-      }
-
-      // 原子的書き込み（一時ファイル経由）
-      const tempFilePath = `${filePath}.tmp.${Date.now()}`;
-      const saveDataString = JSON.stringify(saveData, null, 2);
-
-      fs.writeFileSync(tempFilePath, saveDataString, 'utf8');
-
-      // 一時ファイルが正常に書き込まれた場合のみ、元ファイルを置き換え
-      if (fs.existsSync(tempFilePath)) {
-        fs.renameSync(tempFilePath, filePath);
-        console.log('✅ 原子的ファイル保存成功:', filePath);
-      } else {
-        throw new Error('一時ファイルの作成に失敗しました');
-      }
-
-      // ファイルが実際に存在することを確認
-      if (fs.existsSync(filePath)) {
-        const fileStats = fs.statSync(filePath);
-        console.log('📊 保存されたファイル情報:', {
-          path: filePath,
-          size: fileStats.size,
-          modified: fileStats.mtime,
-          savedTimestamp: saveData.savedTimestamp || 'N/A'
-        });
-
-        // 保存後のディレクトリ一覧を表示
-        const updatedFiles = fs.readdirSync(troubleshootingDir);
-        console.log('📂 保存後のディレクトリ内容:', updatedFiles);
-
-        // 保存されたファイルの内容を読み返して確認
-        const savedContent = fs.readFileSync(filePath, 'utf8');
-        const parsedContent = JSON.parse(savedContent);
-        console.log('✅ 保存されたデータの確認:', {
-          id: parsedContent.id,
-          title: parsedContent.title,
-          fileSize: savedContent.length,
-          stepCount: parsedContent.steps?.length || 0,
-          nodeCount: parsedContent.nodes?.length || 0,
-          edgeCount: parsedContent.edges?.length || 0,
-          savedTimestamp: parsedContent.savedTimestamp
-        });
-      } else {
-        throw new Error('ファイルが保存されませんでした');
-      }
-
-      // 古いバックアップファイルのクリーンアップ（最新5つまで保持）
-      try {
-        const backupFiles = fs.readdirSync(troubleshootingDir)
-          .filter(file => file.startsWith(`${flowData.id}.json.backup.`))
-          .sort((a, b) => {
-            const timeA = parseInt(a.split('.backup.')[1] || '0');
-            const timeB = parseInt(b.split('.backup.')[1] || '0');
-            return timeB - timeA; // 新しい順
-          });
-
-        if (backupFiles.length > 5) {
-          const filesToDelete = backupFiles.slice(5);
-          filesToDelete.forEach(file => {
-            try {
-              fs.unlinkSync(path.join(troubleshootingDir, file));
-              console.log('🗑️ 古いバックアップを削除:', file);
-            } catch (err) {
-              console.warn('⚠️ バックアップ削除エラー:', err);
-            }
-          });
-        }
-      } catch (cleanupError) {
-        console.warn('⚠️ バックアップクリーンアップエラー:', cleanupError);
-      }
-    } catch (fileError) {
-      console.error('❌ ファイル保存エラー:', fileError);
-      throw fileError;
-    }
-
-    // データベースにも保存
-    try {
-      await db.insert(emergencyFlows).values({
-        title: flowData.title,
-        steps: flowData.nodes || flowData.steps || [],
-        keyword: flowData.description || '',
-        createdAt: new Date(),
-      });
-      console.log('✅ データベース保存成功');
-    } catch (dbError) {
-      console.warn('⚠️ データベース保存でエラーが発生しましたが、ファイル保存は成功しました:', dbError);
-    }
-
-    console.log(`🎉 応急処置フローを保存しました: ${filePath}`);
-
-    // 保存後の検証
-    const savedContent = fs.readFileSync(filePath, 'utf8');
-    const savedData = JSON.parse(savedContent);
-    const savedDecisionSteps = savedData.steps?.filter(step => step.type === 'decision') || [];
-
-    console.log(`🔍 保存後検証:`, {
-      totalSteps: savedData.steps?.length || 0,
-      decisionSteps: savedDecisionSteps.length,
-      decisionOptions: savedDecisionSteps.map(step => ({
-        id: step.id,
         optionsCount: step.options?.length || 0
+      })),
+      conditionStepsDetail: conditionSteps.map((step: any) => ({
+        id: step.id,
+        title: step.title,
+        conditionsCount: step.conditions?.length || 0
       }))
-    });
-
-    // キャッシュ無効化のためのヘッダーを設定
-    res.set({
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0',
-      'Last-Modified': new Date().toUTCString()
     });
 
     res.json({
       success: true,
-      message: 'フローが保存されました',
-      data: saveData,
-      filePath: filePath,
-      fileName: fileName,
-      savedAt: new Date().toISOString()
-    });
-
-  } catch (error) {
-    console.error('❌ フロー保存エラー:', error);
-    res.status(500).json({
-      success: false,
-      error: 'フローの保存に失敗しました'
-    });
-  }
-});
-
-// 応急処置フロー一覧取得エンドポイント
-router.get('/list', async (req, res) => {
-  try {
-    // キャッシュ無効化ヘッダーを設定
-    res.set({
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
-    });
-
-    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    console.log('🔍 一覧取得: troubleshootingDir =', troubleshootingDir);
-
-    if (!fs.existsSync(troubleshootingDir)) {
-      console.log('📁 ディレクトリが存在しません:', troubleshootingDir);
-      // ディレクトリが存在しない場合は作成
-      fs.mkdirSync(troubleshootingDir, { recursive: true });
-      return res.json([]);
-    }
-
-    const allFiles = fs.readdirSync(troubleshootingDir);
-    console.log('📂 ディレクトリ内の全ファイル:', allFiles);
-
-    const jsonFiles = allFiles.filter(file => file.endsWith('.json'));
-    console.log('📋 JSONファイル一覧:', jsonFiles);
-
-    const files = jsonFiles
-      .map(file => {
-        try {
-          const filePath = path.join(troubleshootingDir, file);
-          console.log(`📖 ファイル読み込み中: ${filePath}`);
-
-          const content = fs.readFileSync(filePath, 'utf8');
-          const data = JSON.parse(content);
-          console.log(`✅ ファイル読み込み成功: ${file}`, {
-            id: data.id,
-            title: data.title,
-            hasSteps: !!data.steps,
-            hasNodes: !!data.nodes
-          });
-
-          return {
-            id: data.id || file.replace('.json', ''),
-            title: data.title || 'タイトル不明',
-            description: data.description || '',
-            fileName: file,
-            createdAt: data.createdAt || data.savedAt || data.updatedAt || new Date().toISOString(),
-            source: 'troubleshooting'
-          };
-        } catch (error) {
-          console.error(`❌ ファイル読み込みエラー: ${file}`, error);
-          return null;
-        }
-      })
-      .filter(item => item !== null);
-
-    console.log(`📊 最終結果: ${files.length}個のフローを取得`);
-    res.json(files);
-  } catch (error) {
-    console.error('❌ フロー一覧取得エラー:', error);
-    res.status(500).json({ error: 'フロー一覧の取得に失敗しました' });
-  }
-});
-
-// 特定のフロー詳細取得エンドポイント（条件分岐情報を含む完全なデータ取得）
-router.get('/detail/:id', async (req, res) => {
-  try {
-    // 最強のキャッシュ無効化ヘッダーを設定
-    const timestamp = Date.now();
-    const randomId = Math.random().toString(36).substring(2);
-
-    res.set({
-      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0, s-maxage=0',
-      'Pragma': 'no-cache',
-      'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
-      'Last-Modified': new Date().toUTCString(),
-      'ETag': `"${timestamp}-${randomId}"`,
-      'X-Accel-Expires': '0',
-      'Vary': '*',
-      'X-Fresh-Data': 'true'
-    });
-
-    const { id } = req.params;
-    console.log(`🔄 [${timestamp}] フロー詳細取得開始: ID=${id}`);
-
-    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    const filePath = path.join(troubleshootingDir, `${id}.json`);
-
-    console.log(`📁 ファイルパス: ${filePath}`);
-
-    if (!fs.existsSync(filePath)) {
-      console.log(`❌ ファイルが存在しません: ${filePath}`);
-      return res.status(404).json({ error: 'フローが見つかりません' });
-    }
-
-    // ファイルの最新統計情報を取得
-    const stats = fs.statSync(filePath);
-    console.log(`📊 ファイル情報:`, {
-      size: stats.size,
-      mtime: stats.mtime.toISOString(),
-      path: filePath,
-      requestTimestamp: timestamp
-    });
-
-    // ファイル内容を強制的に再読み込み（条件分岐情報を含む）
-    const content = fs.readFileSync(filePath, 'utf8');
-    console.log(`📄 ファイル内容のサイズ: ${content.length}文字`);
-
-    let data = JSON.parse(content);
-    console.log(`✅ ファイル詳細読み込み成功: ${id}.json`, {
-      id: data.id,
-      title: data.title,
-      stepsCount: data.steps?.length || 0
-    });
-
-    // テンプレートスキーマを適用
-    data = applyTemplateSchema(data);
-
-    // 条件分岐情報の確認とログ出力
-    const conditionSteps = data.steps?.filter(step => 
-      step.yesCondition || step.noCondition || step.otherCondition
-    ) || [];
-
-    console.log(`🔀 条件分岐ステップの確認:`, {
-      totalSteps: data.steps?.length || 0,
-      conditionSteps: conditionSteps.length,
-      conditions: conditionSteps.map(step => ({
-        id: step.id,
-        yesCondition: !!step.yesCondition,
-        noCondition: !!step.noCondition,
-        otherCondition: !!step.otherCondition
-      }))
-    });
-
-    // データの完全性をチェック（条件分岐情報を確実に含む）
-    const responseData = {
-      ...data,
-      loadedAt: new Date().toISOString(),
-      fileModified: stats.mtime.toISOString(),
-      requestId: `${timestamp}-${randomId}`,
-      // 条件分岐情報を明示的に保持
-      conditionBranchesCount: conditionSteps.length,
-      hasConditionBranches: conditionSteps.length > 0
-    };
-
-    console.log(`✅ 完全データ解析成功:`, {
-      id: responseData.id,
-      title: responseData.title,
-      stepsCount: responseData.steps?.length || 0,
-      nodesCount: responseData.nodes?.length || 0,
-      edgesCount: responseData.edges?.length || 0,
-      conditionBranches: responseData.conditionBranchesCount,
-      updatedAt: responseData.updatedAt,
-      loadedAt: responseData.loadedAt
-    });
-
-    res.json({ 
-      data: responseData,
-      meta: {
-        freshLoad: true,
-        timestamp: timestamp,
-        conditionsPreserved: true
+      data: data,
+      metadata: {
+        filePath: filePath,
+        fileSize: stats.size,
+        lastModified: stats.mtime,
+        requestId: `${timestamp}-${randomId}`,
+        processedAt: new Date().toISOString()
       }
     });
+
+    console.log(`✅ 完全データ解析成功:`, {
+      id: data.id,
+      title: data.title,
+      stepsCount: data.steps?.length || 0,
+      decisionStepsCount: decisionSteps.length,
+      conditionStepsCount: conditionSteps.length,
+      responseSize: JSON.stringify(data).length
+    });
+
   } catch (error) {
     console.error('❌ フロー詳細取得エラー:', error);
-    res.status(500).json({ error: 'フローの取得に失敗しました' });
+    res.status(500).json({ error: 'フロー詳細の取得に失敗しました' });
   }
 });
 
-// ステップタイトル更新エンドポイント
-router.post('/update-step-title', async (req, res) => {
+// フロー削除エンドポイント
+router.delete('/:id', async (req, res) => {
   try {
-    const { flowId, stepId, title } = req.body;
-
-    console.log('ステップタイトル更新リクエスト:', { flowId, stepId, title });
-
-    if (!flowId || !stepId || !title) {
-      return res.status(400).json({ error: '必要なパラメータが不足しています' });
-    }
-
+    const { id } = req.params;
     const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    const filePath = path.join(troubleshootingDir, `${flowId}.json`);
+    const filePath = path.join(troubleshootingDir, `${id}.json`);
 
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: 'フローファイルが見つかりません' });
     }
 
-    // ファイルを読み込み
-    const content = fs.readFileSync(filePath, 'utf8');
-    const flowData = JSON.parse(content);
+    fs.unlinkSync(filePath);
+    console.log(`🗑️ フローファイルを削除しました: ${filePath}`);
 
-    // ステップを検索して更新
-    const stepIndex = flowData.steps.findIndex(step => step.id === stepId);
-    if (stepIndex === -1) {
-      return res.status(404).json({ error: 'ステップが見つかりません' });
-    }
-
-    // タイトルを更新
-    flowData.steps[stepIndex].title = title.trim();
-
-    // 更新日時を設定
-    flowData.updatedAt = new Date().toISOString();
-
-    // ファイルに書き戻し
-    fs.writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf8');
-
-    console.log('ステップタイトル更新完了:', { flowId, stepId, newTitle: title });
-
-    res.json({ 
-      success: true, 
-      message: 'タイトルが更新されました',
-      updatedStep: {
-        id: stepId,
-        title: title.trim()
-      }
-    });
-
+    res.json({ success: true, message: 'フローが削除されました' });
   } catch (error) {
-    console.error('ステップタイトル更新エラー:', error);
-    res.status(500).json({ error: 'タイトルの更新に失敗しました' });
+    console.error('❌ フロー削除エラー:', error);
+    res.status(500).json({ error: 'フローの削除に失敗しました' });
   }
 });
 
-// 直接IDアクセス用エンドポイント（troubleshootingディレクトリからの読み込み専用）
-router.get('/:id', async (req, res) => {
+// フロー直接取得エンドポイント（キャッシュ制御付き）
+router.get('/get/:id', async (req, res) => {
   try {
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2);
-
+    
+    // キャッシュ制御ヘッダーを設定
     res.set({
-      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0, s-maxage=0',
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
       'Pragma': 'no-cache',
       'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
       'Last-Modified': new Date().toUTCString(),
       'ETag': `"${timestamp}-${randomId}"`,
       'X-Accel-Expires': '0',
-      'Vary': '*',
-      'X-Fresh-Data': 'true'
+      'X-Requested-With': 'XMLHttpRequest'
     });
 
     const { id } = req.params;
@@ -1624,164 +418,70 @@ router.get('/:id', async (req, res) => {
 
     if (!fs.existsSync(filePath)) {
       console.log(`❌ ファイルが存在しません: ${filePath}`);
-      return res.status(404).json({ error: 'フローが見つかりません' });
-    }
-
-    const stats = fs.statSync(filePath);
-    console.log(`📊 ファイル情報:`, {
-      size: stats.size,
-      mtime: stats.mtime.toISOString(),
-      path: filePath,
-      requestTimestamp: timestamp
-    });
-
-    const content = fs.readFileSync(filePath, 'utf8');
-    const rawData = JSON.parse(content);
-
-    const conditionSteps = rawData.steps?.filter(step => 
-      step.yesCondition || step.noCondition || step.otherCondition
-    ) || [];
-
-    console.log(`🔀 条件分岐ステップの確認:`, {
-      totalSteps: rawData.steps?.length || 0,
-      conditionSteps: conditionSteps.length
-    });
-
-    const responseData = {
-      ...rawData,
-      loadedAt: new Date().toISOString(),
-      fileModified: stats.mtime.toISOString(),
-      requestId: `${timestamp}-${randomId}`,
-      conditionBranchesCount: conditionSteps.length,
-      hasConditionBranches: conditionSteps.length > 0
-    };
-
-    console.log(`✅ 直接データ取得成功:`, {
-      id: responseData.id,
-      title: responseData.title,
-      stepsCount: responseData.steps?.length || 0,
-      conditionBranches: responseData.conditionBranchesCount
-    });
-
-    res.json(responseData);
-  } catch (error) {
-    console.error('❌ フロー直接取得エラー:', error);
-    res.status(500).json({ error: 'フローの取得に失敗しました' });
-  }
-});
-
-// フロー削除エンドポイント
-router.delete('/delete/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-    const filePath = path.join(troubleshootingDir, `${id}.json`);
-
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'ファイルが見つかりません' 
-      });
-    }
-
-    fs.unlinkSync(filePath);
-
-    res.json({ 
-      success: true, 
-      message: 'フローが削除されました' 
-    });
-  } catch (error) {
-    console.error('フロー削除エラー:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'フローの削除に失敗しました',
-      details: error instanceof Error ? error.message : String(error)
-    });
-  }
-});
-
-// POST /api/emergency-flow/update-step-title - ステップのタイトルを更新
-router.post('/update-step-title', async (req, res) => {
-  try {
-    const { flowId, stepId, title } = req.body;
-
-    console.log('タイトル更新リクエスト:', { flowId, stepId, title });
-
-    if (!flowId || !stepId || title === undefined || title === null) {
-      return res.status(400).json({ 
-        error: 'flowId, stepId, titleが必要です',
-        received: { flowId, stepId, title }
-      });
-    }
-
-    // JSONファイルのパスを構築（ts_プレフィックスを除去）
-    const cleanFlowId = flowId.startsWith('ts_') ? flowId.substring(3) : flowId;
-    const filePath = path.join(process.cwd(), 'knowledge-base/troubleshooting', `${cleanFlowId}.json`);
-
-    console.log('ファイルパス:', filePath);
-
-    // ファイルが存在するかチェック
-    if (!fs.existsSync(filePath)) {
-      console.log('ファイルが見つかりません:', filePath);
       return res.status(404).json({ error: 'フローファイルが見つかりません' });
     }
 
-    // JSONファイルを読み込み
-    const fileContent = fs.readFileSync(filePath, 'utf-8');
-    const flowData = JSON.parse(fileContent);
+    const content = fs.readFileSync(filePath, 'utf8');
+    const stats = fs.statSync(filePath);
 
-    console.log('読み込んだフローデータのステップ数:', flowData.steps?.length || 0);
-
-    // 指定されたステップを検索して更新
-    const stepIndex = flowData.steps.findIndex((step: any) => step.id === stepId);
-
-    if (stepIndex === -1) {
-      console.log('ステップが見つかりません:', stepId, '利用可能なステップ:', flowData.steps.map((s: any) => s.id));
-      return res.status(404).json({ error: 'ステップが見つかりません' });
-    }
-
-    // 元のタイトルを保存
-    const originalTitle = flowData.steps[stepIndex].title;
-
-    // タイトルを更新
-    flowData.steps[stepIndex].title = title.trim();
-    flowData.updatedAt = new Date().toISOString();
-
-    console.log('タイトル更新:', { 
-      stepId, 
-      originalTitle, 
-      newTitle: title.trim() 
+    console.log(`📊 ファイル情報:`, {
+      size: stats.size,
+      modified: stats.mtime,
+      exists: true,
+      contentLength: content.length
     });
 
-    // ファイルに書き戻し
-    fs.writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf-8');
+    let data = JSON.parse(content);
 
-    console.log('ファイル保存完了');
+    // 条件分岐ステップの確認
+    const decisionSteps = data.steps?.filter((step: any) => step.type === 'decision') || [];
+    const conditionSteps = data.steps?.filter((step: any) => step.type === 'condition') || [];
 
-    res.json({ 
-      success: true, 
-      message: 'タイトルが更新されました',
-      updatedStep: {
-        id: flowData.steps[stepIndex].id,
-        title: flowData.steps[stepIndex].title,
-        originalTitle,
-        newTitle: title.trim()
+    console.log(`🔀 条件分岐ステップの確認:`, {
+      totalSteps: data.steps?.length || 0,
+      decisionSteps: decisionSteps.length,
+      conditionSteps: conditionSteps.length
+    });
+
+    res.json({
+      ...data,
+      metadata: {
+        filePath: filePath,
+        fileSize: stats.size,
+        lastModified: stats.mtime,
+        requestId: `${timestamp}-${randomId}`,
+        processedAt: new Date().toISOString()
       }
     });
 
+    console.log(`✅ 直接データ取得成功:`, {
+      id: data.id,
+      title: data.title,
+      stepsCount: data.steps?.length || 0,
+      decisionStepsCount: decisionSteps.length,
+      conditionStepsCount: conditionSteps.length
+    });
+
   } catch (error) {
-    console.error('タイトル更新エラー:', error);
-    res.status(500).json({ error: 'タイトルの更新に失敗しました', details: error.message });
+    console.error('❌ フロー直接取得エラー:', error);
+    res.status(500).json({ error: 'フロー直接取得に失敗しました' });
   }
 });
 
-router.post('/generate-emergency-flow', async (req, res) => {
+// フロー生成エンドポイント
+router.post('/generate', async (req, res) => {
   try {
     const { keyword } = generateFlowSchema.parse(req.body);
+    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const cleanFlowId = ((req.params as any).id || '').startsWith('ts_') ? ((req.params as any).id || '').substring(3) : ((req.params as any).id || '');
+    const filePath = path.join(process.cwd(), 'knowledge-base/troubleshooting', `${cleanFlowId}.json`);
 
-    // Generate flow using GPT
+    if (!fs.existsSync(troubleshootingDir)) {
+      fs.mkdirSync(troubleshootingDir, { recursive: true });
+    }
+
     const completion = await openai.chat.completions.create({
-      model: "gpt-4-turbo-preview",
+      model: "gpt-4",
       messages: [
         {
           role: "system",
@@ -1796,125 +496,320 @@ router.post('/generate-emergency-flow', async (req, res) => {
           content: `以下の故障状況に対する応急処置フローを生成してください：${keyword}`
         }
       ],
-      response_format: { type: "json_object" },
+      temperature: 0.7,
+      max_tokens: 2000
     });
 
-    const flowData = JSON.parse(completion.choices[0].message.content);
+    const generatedContent = completion.choices[0]?.message?.content;
+    if (!generatedContent) {
+      throw new Error('フロー生成に失敗しました');
+    }
 
-    // Find relevant images for each step
-    const stepsWithImages = await Promise.all(
-      flowData.steps.map(async (step: { description: string }) => {
-        const relevantImages = await findRelevantImages(step.description);
-        return {
-          ...step,
-          imageUrl: relevantImages[0]?.url || null,
+    // 生成されたコンテンツをパースしてフロー構造に変換
+    const lines = generatedContent.split('\n').filter(line => line.trim());
+    const title = lines.find(line => line.includes('タイトル：'))?.replace('タイトル：', '').trim() || keyword;
+    
+    const steps = [];
+    let currentStep = null;
+    
+    for (const line of lines) {
+      if (line.includes('手順：') || line.match(/^\d+\./)) {
+        if (currentStep) {
+          steps.push(currentStep);
+        }
+        const stepTitle = line.replace(/^手順：|^\d+\.\s*/, '').trim();
+        currentStep = {
+          id: `step_${steps.length + 1}`,
+          title: stepTitle,
+          description: stepTitle,
+          message: stepTitle,
+          type: 'step',
+          imageUrl: '',
+          options: []
         };
-      })
-    );
+      } else if (currentStep && line.trim()) {
+        currentStep.description += '\n' + line.trim();
+        currentStep.message += '\n' + line.trim();
+      }
+    }
+    
+    if (currentStep) {
+      steps.push(currentStep);
+    }
 
-    const flow = {
-      title: flowData.title,
-      steps: stepsWithImages,
+    const flowData = {
+      id: `flow_${Date.now()}`,
+      title: title,
+      description: `自動生成された${keyword}の応急処置フロー`,
+      triggerKeywords: [keyword],
+      steps: steps,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
 
-    // Save to database
-    await db.insert(emergencyFlows).values({
-      title: flow.title,
-      steps: flow.steps,
-      keyword,
-      createdAt: new Date(),
+    const fileName = `${flowData.id}.json`;
+    const flowFilePath = path.join(process.cwd(), 'knowledge-base', 'troubleshooting', `${fileName}.json`);
+    
+    fs.writeFileSync(flowFilePath, JSON.stringify(flowData, null, 2), 'utf8');
+
+    res.json({
+      success: true,
+      data: flowData,
+      message: 'フローが正常に生成されました'
     });
 
-    res.json(flow);
   } catch (error) {
-    console.error('Error generating emergency flow:', error);
-    res.status(500).json({ error: 'フローの生成に失敗しました' });
+    console.error('❌ フロー生成エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'フローの生成に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 
-// ステップタイトル更新エンドポイント
-router.post('/api/emergency-flow/update-step-title', async (req, res) => {
+router.delete('/delete/:id', async (req, res) => {
   try {
-    const { flowId, stepId, title } = req.body;
+    const { id } = req.params;
+    
+    // ここでデータベースからフローを削除する処理を追加
+    // 例: await db.delete(flows).where(eq(flows.id, id));
+    
+    res.status(200).json({ message: 'フローを削除しました' });
+  } catch (error) {
+    console.error('フロー削除エラー:', error);
+    res.status(500).json({ error: 'フローの削除に失敗しました' });
+  }
+});
 
-    console.log('タイトル更新リクエスト:', { flowId, stepId, title });
-
-    if (!flowId || !stepId || title === undefined) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'flowId、stepId、titleが必要です' 
+// 画像アップロードエンドポイント
+router.post('/upload-image', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: '画像ファイルが提供されていません'
       });
     }
 
-    // flowIdからファイル名を正しく構築
-    let fileName = flowId;
-    if (flowId.startsWith('ts_')) {
-      fileName = flowId.substring(3); // 'ts_'プレフィックスを削除
-    }
-
-    // JSONファイルのパスを構築
-    const flowFilePath = path.join(process.cwd(), 'knowledge-base', 'troubleshooting', `${fileName}.json`);
-
-    console.log('フローファイルパス:', flowFilePath);
-
-    // ファイルが存在するか確認
-    if (!fs.existsSync(flowFilePath)) {
-      console.error('フローファイルが見つかりません:', flowFilePath);
-      return res.status(404).json({ 
-        success: false, 
-        error: 'フローファイルが見つかりません' 
+    // ファイル形式チェック
+    const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedMimes.includes(req.file.mimetype)) {
+      return res.status(400).json({
+        success: false,
+        error: '対応していないファイル形式です'
       });
     }
 
-    // ファイルを読み込み
-    const fileContent = fs.readFileSync(flowFilePath, 'utf8');
-    const flowData = JSON.parse(fileContent);
+    // ファイルサイズチェック（5MB）
+    if (req.file.size > 5 * 1024 * 1024) {
+      return res.status(400).json({
+        success: false,
+        error: 'ファイルサイズは5MB以下にしてください'
+      });
+    }
 
-    console.log('読み込んだフローデータ:', {
-      id: flowData.id,
-      stepsCount: flowData.steps?.length,
-      targetStepId: stepId
+    // ファイル名を生成（タイムスタンプ + オリジナル名）
+    const timestamp = Date.now();
+    const originalName = req.file.originalname;
+    const extension = originalName.split('.').pop();
+    const fileName = `emergency-flow-step${timestamp}.${extension}`;
+
+    // 保存先ディレクトリを作成
+    const uploadDir = path.join(__dirname, '../../knowledge-base/images/emergency-flows');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    // ファイルの重複チェック
+    const fileHash = calculateFileHash(req.file.buffer);
+    console.log('🔍 ファイルハッシュ計算:', { fileHash });
+    
+    const existingFile = findExistingImageByHash(uploadDir, fileHash);
+    let finalFileName = fileName;
+    let isDuplicate = false;
+
+    if (existingFile) {
+      console.log('🔄 重複画像を検出、既存ファイルを使用:', existingFile);
+      finalFileName = existingFile;
+      isDuplicate = true;
+    } else {
+      // 新しいファイルを保存
+      const filePath = path.join(uploadDir, fileName);
+      fs.writeFileSync(filePath, req.file.buffer);
+    }
+
+    // APIエンドポイントのURLを生成
+    const imageUrl = `/api/emergency-flow/image/${finalFileName}`;
+
+    console.log('✅ 画像アップロード成功:', {
+      fileName: finalFileName,
+      imageUrl,
+      fileSize: req.file.size,
+      isDuplicate,
+      details: {
+        originalFileName: fileName,
+        finalFileName: finalFileName,
+        finalImageUrl: imageUrl
+      }
     });
 
-    // 対象のステップを検索して更新
-    const stepIndex = flowData.steps.findIndex((step: any) => step.id === stepId);
-
-    if (stepIndex === -1) {
-      console.error('ステップが見つかりません:', stepId);
-      return res.status(404).json({ 
-        success: false, 
-        error: 'ステップが見つかりません' 
-      });
-    }
-
-    // タイトルを更新
-    const oldTitle = flowData.steps[stepIndex].title;
-    flowData.steps[stepIndex].title = title;
-    flowData.updatedAt = new Date().toISOString();
-
-    console.log('ステップタイトル更新:', {
-      stepId,
-      oldTitle,
-      newTitle: title
-    });
-
-    // ファイルに書き戻し
-    fs.writeFileSync(flowFilePath, JSON.stringify(flowData, null, 2));
-
-    console.log('ファイル更新完了');
-
-    res.json({ 
-      success: true, 
-      message: 'タイトルが更新されました',
-      updatedStep: flowData.steps[stepIndex]
+    res.json({
+      success: true,
+      imageUrl,
+      fileName: finalFileName,
+      isDuplicate
     });
 
   } catch (error) {
-    console.error('タイトル更新エラー:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'タイトルの更新に失敗しました: ' + (error as Error).message 
+    console.error('❌ 画像アップロードエラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '画像のアップロードに失敗しました'
     });
+  }
+});
+
+// URI暗号化関数
+function encryptUri(fileName: string): string {
+  console.log('🔐 暗号化開始:', { fileName });
+  const secret = process.env.ENCRYPTION_SECRET || 'default-secret-key';
+  console.log('🔐 暗号化キー:', { secretLength: secret.length, secretPrefix: secret.substring(0, 10) + '...' });
+  
+  const cipher = crypto.createCipher('aes-256-cbc', secret);
+  let encrypted = cipher.update(fileName, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  
+  console.log('🔐 暗号化完了:', { 
+    originalFileName: fileName, 
+    encryptedFileName: encrypted,
+    encryptedLength: encrypted.length 
+  });
+  
+  return encrypted;
+}
+
+// URI復号化関数
+function decryptUri(encryptedFileName: string): string {
+  const secret = process.env.ENCRYPTION_SECRET || 'default-secret-key';
+  const decipher = crypto.createDecipher('aes-256-cbc', secret);
+  let decrypted = decipher.update(encryptedFileName, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
+}
+
+// 画像配信エンドポイント（knowledge-baseから直接配信）
+router.get('/image/:fileName', async (req, res) => {
+  try {
+    const { fileName } = req.params;
+    
+    if (!fileName) {
+      return res.status(400).json({
+        success: false,
+        error: 'ファイル名が必要です'
+      });
+    }
+
+    // ファイルパスを構築
+    const uploadDir = path.join(__dirname, '../../knowledge-base/images/emergency-flows');
+    const filePath = path.join(uploadDir, fileName);
+
+    // ファイルの存在確認
+    if (!fs.existsSync(filePath)) {
+      console.error('❌ 画像ファイルが見つかりません:', filePath);
+      return res.status(404).json({
+        success: false,
+        error: '画像ファイルが見つかりません'
+      });
+    }
+
+    // ファイルのMIMEタイプを判定
+    const ext = path.extname(fileName).toLowerCase();
+    const mimeTypes: { [key: string]: string } = {
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.gif': 'image/gif',
+      '.webp': 'image/webp'
+    };
+    const contentType = mimeTypes[ext] || 'application/octet-stream';
+
+    // ファイルを読み込んでレスポンス
+    const fileBuffer = fs.readFileSync(filePath);
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1年間キャッシュ
+    res.send(fileBuffer);
+
+    console.log('✅ 画像配信成功:', {
+      fileName,
+      contentType,
+      fileSize: fileBuffer.length
+    });
+
+  } catch (error) {
+    console.error('❌ 画像配信エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '画像の配信に失敗しました'
+    });
+  }
+});
+
+// ファイルのハッシュを計算する関数
+function calculateFileHash(buffer: Buffer): string {
+  return crypto.createHash('md5').update(buffer).digest('hex');
+}
+
+// 既存の画像ファイルから同じハッシュのファイルを探す関数
+function findExistingImageByHash(uploadDir: string, fileHash: string): string | null {
+  try {
+    const files = fs.readdirSync(uploadDir);
+    for (const file of files) {
+      if (file.endsWith('.jpg') || file.endsWith('.jpeg') || file.endsWith('.png') || file.endsWith('.gif') || file.endsWith('.webp')) {
+        const filePath = path.join(uploadDir, file);
+        const fileBuffer = fs.readFileSync(filePath);
+        const existingHash = calculateFileHash(fileBuffer);
+        
+        if (existingHash === fileHash) {
+          console.log(`🔄 同じハッシュの画像を発見: ${file}`);
+          return file;
+        }
+      }
+    }
+  } catch (error) {
+    console.error('既存ファイル検索エラー:', error);
+  }
+  return null;
+}
+
+// フロー取得エンドポイント（/:id）
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`🔄 フロー取得開始: ID=${id}`);
+
+    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const filePath = path.join(troubleshootingDir, `${id}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      console.log(`❌ ファイルが存在しません: ${filePath}`);
+      return res.status(404).json({ error: 'フローファイルが見つかりません' });
+    }
+
+    const content = fs.readFileSync(filePath, 'utf8');
+    const data = JSON.parse(content);
+
+    console.log(`✅ フロー取得成功:`, {
+      id: data.id,
+      title: data.title,
+      stepsCount: data.steps?.length || 0
+    });
+
+    res.json(data);
+
+  } catch (error) {
+    console.error('❌ フロー取得エラー:', error);
+    res.status(500).json({ error: 'フローの取得に失敗しました' });
   }
 });
 

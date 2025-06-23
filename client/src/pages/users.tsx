@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Shield, UserPlus, ArrowLeft, User, Edit, Trash2, AlertCircle } from "lucide-react";
-import { useLocation, Link } from "wouter";
+import { useLocation, Link, useNavigate } from "react-router-dom";
 
 // ユーザーインターフェース
 interface UserData {
@@ -56,19 +56,16 @@ interface NewUserData {
 export default function UsersPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
-  const [, navigate] = useLocation();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [error, setError] = useState<Error | null>(null);
 
-  // ローディング中は早期リターン
-  if (authLoading) {
-    return <div>Loading...</div>;
-  }
-
   // ユーザーが未認証またはadmin以外の場合はリダイレクト
-  if (!user || user.role !== "admin") {
-    navigate("/");
-    return null;
-  }
+  useEffect(() => {
+    if (!authLoading && (!user || user.role !== "admin")) {
+      navigate("/chat");
+    }
+  }, [user, authLoading, navigate]);
 
   // ユーザーデータの取得
   const { data: users, isLoading } = useQuery<UserData[]>({
@@ -343,7 +340,7 @@ export default function UsersPage() {
         </div>
 
         <div className="flex space-x-2">
-          <Link href="/settings">
+          <Link to="/settings">
             <Button variant="outline" size="sm">
               <ArrowLeft className="mr-2 h-4 w-4" />
               設定に戻る

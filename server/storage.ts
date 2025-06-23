@@ -29,7 +29,7 @@ export const storage = {
   sessionStore: new DatabaseStorage().sessionStore,
 
   // User methods
-  getUser: async (id: number): Promise<User | undefined> => {
+  getUser: async (id: string): Promise<User | undefined> => {
     return new DatabaseStorage().getUser(id);
   },
   getUserByUsername: async (username: string): Promise<User | undefined> => {
@@ -38,18 +38,18 @@ export const storage = {
   createUser: async (user: InsertUser): Promise<User> => {
     return new DatabaseStorage().createUser(user);
   },
-  updateUser: async (id: number, user: Partial<User>): Promise<User> => {
+  updateUser: async (id: string, user: Partial<User>): Promise<User> => {
     return new DatabaseStorage().updateUser(id, user);
   },
-  deleteUser: async (id: number): Promise<void> => {
+  deleteUser: async (id: string): Promise<void> => {
     return new DatabaseStorage().deleteUser(id);
   },
 
   // Chat methods
-  getChat: async (id: number): Promise<Chat | undefined> => {
+  getChat: async (id: string): Promise<Chat | undefined> => {
     return new DatabaseStorage().getChat(id);
   },
-  getChatsForUser: async (userId: number): Promise<Chat[]> => {
+  getChatsForUser: async (userId: string): Promise<Chat[]> => {
     return new DatabaseStorage().getChatsForUser(userId);
   },
   createChat: async (chat: InsertChat): Promise<Chat> => {
@@ -57,35 +57,27 @@ export const storage = {
   },
 
   // Message methods
-  getMessage: async (id: number): Promise<Message | undefined> => {
+  getMessage: async (id: string): Promise<Message | undefined> => {
     return new DatabaseStorage().getMessage(id);
   },
-  getMessagesForChat: async (chatId: number): Promise<Message[]> => {
+  getMessagesForChat: async (chatId: string): Promise<Message[]> => {
     return new DatabaseStorage().getMessagesForChat(chatId);
   },
-  getMessagesForChatAfterTimestamp: async (chatId: number, timestamp: Date): Promise<Message[]> => {
+  getMessagesForChatAfterTimestamp: async (chatId: string, timestamp: Date): Promise<Message[]> => {
     return new DatabaseStorage().getMessagesForChatAfterTimestamp(chatId, timestamp);
   },
   createMessage: async (message: InsertMessage): Promise<Message> => {
     return new DatabaseStorage().createMessage(message);
   },
-  clearChatMessages: async (chatId: number): Promise<void> => {
+  clearChatMessages: async (chatId: string): Promise<void> => {
     return new DatabaseStorage().clearChatMessages(chatId);
   },
 
-  deleteMessage: async (messageId: number) => {
-    return new DatabaseStorage().deleteMessage(messageId);
-  },
-
-  deleteMedia: async (mediaId: number) => {
-    return new DatabaseStorage().deleteMedia(mediaId);
-  },
-
   // Media methods
-  getMedia: async (id: number): Promise<Media | undefined> => {
+  getMedia: async (id: string): Promise<Media | undefined> => {
     return new DatabaseStorage().getMedia(id);
   },
-  getMediaForMessage: async (messageId: number): Promise<Media[]> => {
+  getMediaForMessage: async (messageId: string): Promise<Media[]> => {
     return new DatabaseStorage().getMediaForMessage(messageId);
   },
   createMedia: async (media: InsertMedia): Promise<Media> => {
@@ -93,21 +85,27 @@ export const storage = {
   },
 
   // Document methods
-  getDocument: async (id: number): Promise<Document | undefined> => {
-    return new DatabaseStorage().getDocument(id);
-  },
-  getDocumentsForUser: async (userId: number): Promise<Document[]> => {
-    return new DatabaseStorage().getDocumentsForUser(userId);
-  },
-  createDocument: async (document: InsertDocument): Promise<Document> => {
-    return new DatabaseStorage().createDocument(document);
-  },
-  updateDocument: async (id: number, updates: Partial<Document>): Promise<Document | undefined> => {
-    return new DatabaseStorage().updateDocument(id, updates);
-  },
+  // getDocument: async (id: string): Promise<Document | undefined> => {
+  //   return new DatabaseStorage().getDocument(id);
+  // },
+  // getDocumentsForUser: async (userId: string): Promise<Document[]> => {
+  //   return new DatabaseStorage().getDocumentsForUser(userId);
+  // },
+  // createDocument: async (document: InsertDocument): Promise<Document> => {
+  //   return new DatabaseStorage().createDocument(document);
+  // },
+  // updateDocument: async (id: string, updates: Partial<Document>): Promise<Document | undefined> => {
+  //   return new DatabaseStorage().updateDocument(id, updates);
+  // },
+  // deleteMessage: async (messageId: string) => {
+  //   return new DatabaseStorage().deleteMessage(messageId);
+  // },
+  // deleteMedia: async (mediaId: string) => {
+  //   return new DatabaseStorage().deleteMedia(mediaId);
+  // },
 
   // Keyword methods
-  getKeywordsForDocument: async (documentId: number): Promise<Keyword[]> => {
+  getKeywordsForDocument: async (documentId: string): Promise<Keyword[]> => {
     return new DatabaseStorage().getKeywordsForDocument(documentId);
   },
   createKeyword: async (keyword: InsertKeyword): Promise<Keyword> => {
@@ -118,10 +116,10 @@ export const storage = {
   },
 
   // Chat export methods
-  saveChatExport: async (chatId: number, userId: number, timestamp: Date): Promise<void> => {
+  saveChatExport: async (chatId: string, userId: string, timestamp: Date): Promise<void> => {
     return new DatabaseStorage().saveChatExport(chatId, userId, timestamp);
   },
-  getLastChatExport: async (chatId: number): Promise<ChatExport | null> => {
+  getLastChatExport: async (chatId: string): Promise<ChatExport | null> => {
     return new DatabaseStorage().getLastChatExport(chatId);
   }
 };

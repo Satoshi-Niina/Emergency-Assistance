@@ -1,0 +1,1 @@
+ALTER TABLE emergency_flows ADD COLUMN keyword text NOT NULL DEFAULT ''; 

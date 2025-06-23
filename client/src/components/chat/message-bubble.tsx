@@ -161,7 +161,9 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
           type: m.type,
           urlPrefix: m.url.substring(0, 50) + '...',
           urlLength: m.url.length,
-          isBase64: m.url.startsWith('data:')
+          isBase64: m.url.startsWith('data:'),
+          title: m.title,
+          fileName: (m as any).fileName
         }))
       });
     }
@@ -170,104 +172,179 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
       <>
         {message.media && message.media.length > 0 && (
           <div className="mt-3">
-            {message.media.map((media, index) => (
-              <div key={`${message.id}-media-${index}`} className="mt-2">
-                {media.type === 'image' && (
-                  <div className="relative">
-                    <img
-                      src={media.url}
-                      alt="添付画像"
-                      className="rounded-lg w-full max-w-xs cursor-pointer border border-blue-200 shadow-md"
-                      style={{ maxHeight: '300px', objectFit: 'contain' }}
-                      onClick={() => handleImagePreview(media.url)}
-                      onLoad={(e) => {
-                        console.log('画像読み込み成功:', {
-                          messageId: message.id,
-                          mediaIndex: index,
-                          width: (e.target as HTMLImageElement).naturalWidth,
-                          height: (e.target as HTMLImageElement).naturalHeight,
-                          urlType: media.url.startsWith('data:') ? 'base64' : 'url'
-                        });
-                      }}
-                      onError={(e) => {
-                        console.error('画像読み込みエラー:', {
-                          messageId: message.id,
-                          mediaIndex: index,
-                          url: media.url.substring(0, 100) + '...',
-                          isBase64: media.url.startsWith('data:')
-                        });
+            {/* 応急処置ガイドメッセージの場合は特別な表示 */}
+            {isEmergencyGuideMessage && message.media.length > 0 && (
+              <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="text-sm text-blue-700 font-medium mb-2">
+                  📋 応急処置ガイド画像 ({message.media.length}件)
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {message.media.map((media, index) => (
+                    <div key={`${message.id}-guide-media-${index}`} className="relative">
+                      {media.type === 'image' && (
+                        <div className="group cursor-pointer">
+                          <img
+                            src={media.url}
+                            alt={(media as any).title || `ガイド画像${index + 1}`}
+                            className="w-full h-20 object-cover rounded border border-blue-300 shadow-sm group-hover:shadow-md transition-shadow"
+                            onClick={() => handleImagePreview(media.url)}
+                            onLoad={(e) => {
+                              console.log('応急処置ガイド画像読み込み成功:', {
+                                messageId: message.id,
+                                mediaIndex: index,
+                                title: (media as any).title,
+                                fileName: (media as any).fileName
+                              });
+                            }}
+                            onError={(e) => {
+                              console.error('応急処置ガイド画像読み込みエラー:', {
+                                messageId: message.id,
+                                mediaIndex: index,
+                                url: media.url.substring(0, 100) + '...',
+                                title: (media as any).title
+                              });
 
-                        const img = e.target as HTMLImageElement;
-                        img.onerror = null; // Prevent infinite loop
-
-                        // Base64画像の場合はエラー表示を出す
-                        if (media.url.startsWith('data:image/')) {
-                          img.style.display = 'none';
-                          // エラーメッセージを表示するための要素を作成
-                          const errorDiv = document.createElement('div');
-                          errorDiv.className = 'flex items-center justify-center bg-gray-100 border border-gray-300 rounded-lg p-4 max-w-xs';
-                          errorDiv.innerHTML = '<span class="text-gray-500 text-sm">画像の表示に失敗しました</span>';
-                          img.parentNode?.insertBefore(errorDiv, img);
-                        } else if (!img.src.includes('/placeholder-image.png')) {
-                          img.src = '/placeholder-image.png';
-                        }
-                      }}
-                    />
-                    <div
-                      className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
-                      onClick={() => handleImagePreview(media.url)}
-                    >
-                      <div className="bg-blue-600 bg-opacity-70 p-2 rounded-full">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                      </div>
+                              const img = e.target as HTMLImageElement;
+                              img.onerror = null; // Prevent infinite loop
+                              img.style.display = 'none';
+                              
+                              // エラー表示用の要素を作成
+                              const errorDiv = document.createElement('div');
+                              errorDiv.className = 'w-full h-20 bg-gray-100 border border-gray-300 rounded flex items-center justify-center';
+                              errorDiv.innerHTML = `
+                                <div class="text-center text-gray-500 text-xs">
+                                  <div class="mb-1">⚠️</div>
+                                  <div>${(media as any).fileName || '画像'}</div>
+                                </div>
+                              `;
+                              img.parentNode?.insertBefore(errorDiv, img);
+                            }}
+                          />
+                          {/* ホバー時のプレビューアイコン */}
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-20 rounded">
+                            <div className="bg-white bg-opacity-80 p-1 rounded">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                              </svg>
+                            </div>
+                          </div>
+                          {/* ファイル名表示 */}
+                          {(media as any).fileName && (
+                            <div className="text-xs text-gray-600 mt-1 truncate">
+                              {(media as any).fileName}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
-                {media.type === 'video' && (
-                  <div className="relative">
-                    <video
-                      src={media.url}
-                      controls
-                      className="rounded-lg w-full max-w-xs border border-blue-200 shadow-md"
-                      style={{ maxHeight: '300px' }}
-                      onClick={(e) => {
-                        // Stop propagation to prevent both video control and preview
-                        e.stopPropagation();
-                      }}
-                      onLoadedMetadata={(e) => {
-                        console.log('動画メタデータ読み込み成功:', {
-                          messageId: message.id,
-                          mediaIndex: index,
-                          duration: (e.target as HTMLVideoElement).duration,
-                          urlType: media.url.startsWith('blob:') ? 'blob' : 'url'
-                        });
-                      }}
-                      onError={(e) => {
-                        console.error('動画読み込みエラー:', {
-                          messageId: message.id,
-                                                    mediaIndex: index,
-                          url: media.url.substring(0, 100) + '...',
-                          isBlob: media.url.startsWith('blob:')
-                        });
-                      }}
-                    />
-                    <div
-                      className="absolute top-2 right-2 flex items-center justify-center opacity-50 hover:opacity-100 transition-opacity"
-                      onClick={() => handleImagePreview(media.url)}
-                    >
-                      <div className="bg-blue-600 bg-opacity-70 p-2 rounded-full">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                  ))}
+                </div>
               </div>
-            ))}
+            )}
+
+            {/* 通常のメディア表示 */}
+            {(!isEmergencyGuideMessage || message.media.length === 0) && message.media && message.media.length > 0 && (
+              <>
+                {message.media.map((media, index) => (
+                  <div key={`${message.id}-media-${index}`} className="mt-2">
+                    {media.type === 'image' && (
+                      <div className="relative">
+                        <img
+                          src={media.url}
+                          alt="添付画像"
+                          className="rounded-lg w-full max-w-xs cursor-pointer border border-blue-200 shadow-md"
+                          style={{ maxHeight: '300px', objectFit: 'contain' }}
+                          onClick={() => handleImagePreview(media.url)}
+                          onLoad={(e) => {
+                            console.log('画像読み込み成功:', {
+                              messageId: message.id,
+                              mediaIndex: index,
+                              width: (e.target as HTMLImageElement).naturalWidth,
+                              height: (e.target as HTMLImageElement).naturalHeight,
+                              urlType: media.url.startsWith('data:') ? 'base64' : 'url'
+                            });
+                          }}
+                          onError={(e) => {
+                            console.error('画像読み込みエラー:', {
+                              messageId: message.id,
+                              mediaIndex: index,
+                              url: media.url.substring(0, 100) + '...',
+                              isBase64: media.url.startsWith('data:')
+                            });
+
+                            const img = e.target as HTMLImageElement;
+                            img.onerror = null; // Prevent infinite loop
+
+                            // Base64画像の場合はエラー表示を出す
+                            if (media.url.startsWith('data:image/')) {
+                              img.style.display = 'none';
+                              // エラーメッセージを表示するための要素を作成
+                              const errorDiv = document.createElement('div');
+                              errorDiv.className = 'flex items-center justify-center bg-gray-100 border border-gray-300 rounded-lg p-4 max-w-xs';
+                              errorDiv.innerHTML = '<span class="text-gray-500 text-sm">画像の表示に失敗しました</span>';
+                              img.parentNode?.insertBefore(errorDiv, img);
+                            } else if (!img.src.includes('/placeholder-image.png')) {
+                              img.src = '/placeholder-image.png';
+                            }
+                          }}
+                        />
+                        <div
+                          className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
+                          onClick={() => handleImagePreview(media.url)}
+                        >
+                          <div className="bg-blue-600 bg-opacity-70 p-2 rounded-full">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {media.type === 'video' && (
+                      <div className="relative">
+                        <video
+                          src={media.url}
+                          controls
+                          className="rounded-lg w-full max-w-xs border border-blue-200 shadow-md"
+                          style={{ maxHeight: '300px' }}
+                          onClick={(e) => {
+                            // Stop propagation to prevent both video control and preview
+                            e.stopPropagation();
+                          }}
+                          onLoadedMetadata={(e) => {
+                            console.log('動画メタデータ読み込み成功:', {
+                              messageId: message.id,
+                              mediaIndex: index,
+                              duration: (e.target as HTMLVideoElement).duration,
+                              urlType: media.url.startsWith('blob:') ? 'blob' : 'url'
+                            });
+                          }}
+                          onError={(e) => {
+                            console.error('動画読み込みエラー:', {
+                              messageId: message.id,
+                              mediaIndex: index,
+                              url: media.url.substring(0, 100) + '...',
+                              isBlob: media.url.startsWith('blob:')
+                            });
+                          }}
+                        />
+                        <div
+                          className="absolute top-2 right-2 flex items-center justify-center opacity-50 hover:opacity-100 transition-opacity"
+                          onClick={() => handleImagePreview(media.url)}
+                        >
+                          <div className="bg-blue-600 bg-opacity-70 p-2 rounded-full">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         )}
       </>

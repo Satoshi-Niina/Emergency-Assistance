@@ -34,6 +34,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const getCurrentUser = async () => {
     try {
+      console.log('🔍 現在のユーザー情報を取得中...');
       const response = await fetch('/api/auth/me', {
         method: 'GET',
         credentials: 'include',
@@ -42,65 +43,105 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       });
       
-      if (response.ok) {
+      console.log('📡 ユーザー情報レスポンス:', {
+        status: response.status,
+        ok: response.ok
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          console.log('❌ 未認証ユーザー');
+          return null;
+        }
+        throw new Error('ユーザー情報の取得に失敗しました');
+      }
+
         const userData = await response.json();
-        console.log('✅ 認証ユーザー取得:', userData);
-        return userData;
-      } else {
-        console.log('❌ 認証なし:', response.status);
+      console.log('✅ ユーザー情報取得成功:', userData);
+
+      if (!userData || !userData.id) {
+        console.warn('⚠️ 無効なユーザーデータ:', userData);
         return null;
       }
+
+      return userData;
     } catch (error) {
-      console.error("Error fetching user:", error);
+      console.error('❌ ユーザー情報取得エラー:', error);
       return null;
     }
   };
 
   useEffect(() => {
     const checkAuth = async () => {
-      if (!isLoading) {
-        setIsLoading(true);
-        try {
-          const userData = await getCurrentUser();
-          if (userData && userData.username) {
-            setUser(userData);
-            console.log('✅ 認証成功:', userData);
-          } else {
-            setUser(null);
-            console.log('❌ 認証失敗 - ユーザー情報なし');
-          }
-        } catch (error) {
-          console.error('❌ 認証チェックエラー:', error);
+      try {
+        const userData = await getCurrentUser();
+        if (userData && userData.id) {
+          console.log('✅ 認証済みユーザー:', userData);
+          setUser(userData);
+        } else {
+          console.log('❌ 未認証状態');
           setUser(null);
-        } finally {
-          setIsLoading(false);
         }
+      } catch (error) {
+        console.error('❌ 認証チェックエラー:', error);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
       }
     };
 
     checkAuth();
-  }, []); // 空の依存配列で初回のみ実行
+  }, []);
 
   const login = async (username: string, password: string) => {
     try {
       setIsLoading(true);
-      const response = await apiRequest("POST", "/api/auth/login", { username, password });
-      const userData = await response.json();
+      console.log('🔐 ログイン試行開始:', { username });
 
-      if (!userData || !userData.id || !userData.username) {
-        throw new Error("Invalid response data");
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ username, password })
+      });
+
+      console.log('📡 ログインレスポンス:', {
+        status: response.status,
+        ok: response.ok
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          message: 'サーバーからのレスポンスエラー'
+        }));
+        console.error('❌ ログインエラー:', errorData);
+        throw new Error(errorData.message || 'ログインに失敗しました');
+      }
+
+      const userData = await response.json();
+      console.log('✅ ログイン成功:', userData);
+
+      if (!userData || !userData.id) {
+        console.error('❌ 無効なユーザーデータ:', userData);
+        throw new Error('無効なユーザーデータを受信しました');
       }
 
       setUser(userData);
       toast({
-        title: "ログイン成功",
+        title: 'ログイン成功',
         description: `ようこそ、${userData.display_name || userData.username}さん`,
+        variant: 'default'
       });
+
+      return userData;
     } catch (error) {
+      console.error('❌ ログインエラー:', error);
       toast({
-        title: "ログイン失敗",
-        description: "ユーザー名またはパスワードが間違っています",
-        variant: "destructive",
+        title: 'ログイン失敗',
+        description: error instanceof Error ? error.message : 'ログインに失敗しました',
+        variant: 'destructive'
       });
       throw error;
     } finally {
@@ -111,17 +152,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       setIsLoading(true);
-      await apiRequest("POST", "/api/auth/logout");
+      console.log('🔒 ログアウト処理開始');
+
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('ログアウトに失敗しました');
+      }
+
       setUser(null);
       toast({
-        title: "ログアウト成功",
-        description: "ログアウトしました",
+        title: 'ログアウト成功',
+        description: 'ログアウトしました',
+        variant: 'default'
       });
     } catch (error) {
+      console.error('❌ ログアウトエラー:', error);
       toast({
-        title: "ログアウト失敗",
-        description: "ログアウトに失敗しました",
-        variant: "destructive",
+        title: 'ログアウト失敗',
+        description: 'ログアウトに失敗しました',
+        variant: 'destructive'
       });
     } finally {
       setIsLoading(false);

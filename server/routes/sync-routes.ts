@@ -98,7 +98,7 @@ export function registerSyncRoutes(app: Express): void {
       const { messages } = req.body;
       
       // チャットの存在確認
-      const chat = await storage.getChat(chatId);
+      const chat = await storage.getChat(String(chatId));
       if (!chat) {
         return res.status(404).json({ error: 'チャットが見つかりません' });
       }
@@ -114,8 +114,9 @@ export function registerSyncRoutes(app: Express): void {
         try {
           // メッセージを保存（timestampはサーバー側で設定される）
           const savedMessage = await storage.createMessage({
-            chatId,
+            chatId: String(chatId),
             content: message.content,
+            senderId: String(userId),
             isAiResponse: message.role === 'assistant'
           });
           
@@ -130,7 +131,7 @@ export function registerSyncRoutes(app: Express): void {
                 messageId: savedMessage.id,
                 type: mediaItem.type || 'image',
                 url: mediaUrl,
-                thumbnail: mediaItem.thumbnail
+                // thumbnail: mediaItem.thumbnail
               });
             }
           }
@@ -143,7 +144,7 @@ export function registerSyncRoutes(app: Express): void {
       }
       
       // チャットエクスポートレコードを更新
-      await storage.saveChatExport(chatId, userId, new Date());
+      await storage.saveChatExport(String(chatId), String(userId), new Date());
       
       res.json({
         success: true,
@@ -153,6 +154,34 @@ export function registerSyncRoutes(app: Express): void {
     } catch (error) {
       console.error('メッセージ同期エラー:', error);
       res.status(500).json({ error: 'メッセージの同期に失敗しました' });
+    }
+  });
+
+  // チャットの最終エクスポート情報を取得するAPI
+  app.get('/api/chats/:id/last-exp', async (req: Request, res: Response) => {
+    try {
+      const chatId = req.params.id;
+      
+      // 最終エクスポート情報を取得
+      const lastExport = await storage.getLastChatExport(String(chatId));
+      
+      if (!lastExport) {
+        return res.json({
+          success: true,
+          lastExport: null
+        });
+      }
+      
+      res.json({
+        success: true,
+        lastExport: {
+          timestamp: lastExport.timestamp,
+          userId: lastExport.userId
+        }
+      });
+    } catch (error) {
+      console.error('最終エクスポート情報取得エラー:', error);
+      res.status(500).json({ error: '最終エクスポート情報の取得に失敗しました' });
     }
   });
 }

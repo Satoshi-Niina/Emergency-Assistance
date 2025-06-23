@@ -57,12 +57,11 @@ export async function setupVite(app: Express, server: Server) {
     middlewareMode: true,
     hmr: false, // HMR完全無効化
     host: '0.0.0.0',
-    allowedHosts: 'all',
+    allowedHosts: undefined,
     watch: null, // ファイル監視も無効化
     fs: {
       strict: false
     },
-    ws: false, // WebSocket完全無効化
     cors: false
   };
 
