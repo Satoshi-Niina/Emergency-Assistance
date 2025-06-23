@@ -616,7 +616,7 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
     const fileName = `emergency-flow-step${timestamp}.${extension}`;
 
     // 保存先ディレクトリを作成
-    const uploadDir = path.join(__dirname, '../../knowledge-base/images/emergency-flows');
+    const uploadDir = path.join(process.cwd(), 'knowledge-base', 'images', 'emergency-flows');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -671,6 +671,7 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
 });
 
 // URI暗号化関数
+/*
 function encryptUri(fileName: string): string {
   console.log('🔐 暗号化開始:', { fileName });
   const secret = process.env.ENCRYPTION_SECRET || 'default-secret-key';
@@ -688,8 +689,10 @@ function encryptUri(fileName: string): string {
   
   return encrypted;
 }
+*/
 
 // URI復号化関数
+/*
 function decryptUri(encryptedFileName: string): string {
   const secret = process.env.ENCRYPTION_SECRET || 'default-secret-key';
   const decipher = crypto.createDecipher('aes-256-cbc', secret);
@@ -697,13 +700,22 @@ function decryptUri(encryptedFileName: string): string {
   decrypted += decipher.final('utf8');
   return decrypted;
 }
+*/
 
 // 画像配信エンドポイント（knowledge-baseから直接配信）
 router.get('/image/:fileName', async (req, res) => {
   try {
     const { fileName } = req.params;
     
+    console.log('🖼️ 画像配信リクエスト:', {
+      fileName,
+      userAgent: req.get('User-Agent'),
+      referer: req.get('Referer'),
+      timestamp: new Date().toISOString()
+    });
+    
     if (!fileName) {
+      console.log('❌ ファイル名が指定されていません');
       return res.status(400).json({
         success: false,
         error: 'ファイル名が必要です'
@@ -711,12 +723,26 @@ router.get('/image/:fileName', async (req, res) => {
     }
 
     // ファイルパスを構築
-    const uploadDir = path.join(__dirname, '../../knowledge-base/images/emergency-flows');
+    const uploadDir = path.join(process.cwd(), 'knowledge-base', 'images', 'emergency-flows');
     const filePath = path.join(uploadDir, fileName);
+
+    console.log('🔍 ファイルパス確認:', {
+      fileName,
+      uploadDir,
+      filePath,
+      dirExists: fs.existsSync(uploadDir),
+      fileExists: fs.existsSync(filePath),
+      dirContents: fs.existsSync(uploadDir) ? fs.readdirSync(uploadDir) : 'ディレクトリが存在しません'
+    });
 
     // ファイルの存在確認
     if (!fs.existsSync(filePath)) {
-      console.error('❌ 画像ファイルが見つかりません:', filePath);
+      console.error('❌ 画像ファイルが見つかりません:', {
+        fileName,
+        filePath,
+        uploadDir,
+        dirContents: fs.existsSync(uploadDir) ? fs.readdirSync(uploadDir) : 'ディレクトリが存在しません'
+      });
       return res.status(404).json({
         success: false,
         error: '画像ファイルが見つかりません'
@@ -743,11 +769,16 @@ router.get('/image/:fileName', async (req, res) => {
     console.log('✅ 画像配信成功:', {
       fileName,
       contentType,
-      fileSize: fileBuffer.length
+      fileSize: fileBuffer.length,
+      filePath
     });
 
   } catch (error) {
-    console.error('❌ 画像配信エラー:', error);
+    console.error('❌ 画像配信エラー:', {
+      error: error.message,
+      stack: error.stack,
+      fileName: req.params.fileName
+    });
     res.status(500).json({
       success: false,
       error: '画像の配信に失敗しました'
