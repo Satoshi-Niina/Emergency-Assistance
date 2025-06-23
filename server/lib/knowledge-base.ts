@@ -382,7 +382,7 @@ export function listKnowledgeBaseDocuments(): { success: boolean; documents: any
     
     // 新しい順に並べ替え
     documents.sort((a, b) => {
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      return new Date(b.createdAt || new Date()).getTime() - new Date(a.createdAt || new Date()).getTime();
     });
     
     return {

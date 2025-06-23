@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema } from "@shared/schema";
@@ -13,17 +13,18 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const { login, user, isLoading: authLoading } = useAuth();
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate();
+  const location = useLocation();
   
   // Redirect if already logged in (but only after proper authentication)
   useEffect(() => {
     if (!authLoading && user && user.username) {
       console.log('ログイン済みユーザーを検出 - チャット画面に遷移');
-      setLocation("/chat");
+      navigate("/chat");
     } else if (!authLoading && !user) {
       console.log('未ログインユーザー - ログイン画面を表示');
     }
-  }, [user, authLoading, setLocation]);
+  }, [user, authLoading, navigate]);
 
   const form = useForm({
     resolver: zodResolver(loginSchema),
@@ -40,7 +41,7 @@ export default function Login() {
       console.log("🔐 ログイン試行開始:", values.username);
       await login(values.username, values.password);
       console.log("✅ ログイン成功 - チャット画面に遷移");
-      setLocation("/chat");
+      navigate("/chat");
     } catch (error) {
       console.error("❌ ログインエラー:", error);
       const errorMsg = error instanceof Error ? error.message : "ログインに失敗しました";

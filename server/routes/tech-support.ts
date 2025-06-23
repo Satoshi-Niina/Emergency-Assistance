@@ -448,7 +448,7 @@ router.post('/image-search', async (req, res) => {
 
     // デバッグ: 最初の数件のデータ内容を確認
     console.log('検索データサンプル (最初の3件):');
-    searchData.slice(0, 3).forEach((item, index) => {
+    searchData.slice(0, 3).forEach((item: any, index: number) => {
       console.log(`  ${index + 1}. title: "${item.title}", keywords: [${item.keywords?.join(', ')}], searchText: "${item.searchText || ''}"`);
     });
 
@@ -476,7 +476,7 @@ router.post('/image-search', async (req, res) => {
     // 結果が少ない場合は部分一致も試行
     if (results.length === 0) {
       console.log('Fuse.jsで結果が見つからないため、部分一致検索を実行します');
-      const partialMatches = searchData.filter(item => {
+      const partialMatches = searchData.filter((item: any) => {
         const searchableText = [
           item.title || '',
           item.description || '',
@@ -489,7 +489,7 @@ router.post('/image-search', async (req, res) => {
 
       console.log('部分一致検索結果:', `${partialMatches.length}件見つかりました`);
 
-      const images = partialMatches.slice(0, count).map((item, index) => ({
+      const images = partialMatches.slice(0, count).map((item: any, index: number) => ({
         id: item.id,
         url: item.file,
         file: item.file,
@@ -502,10 +502,10 @@ router.post('/image-search', async (req, res) => {
     }
 
     const images = results.slice(0, count).map(result => ({
-      id: result.item.id,
-      url: result.item.file,
-      file: result.item.file,
-      title: result.item.title,
+      id: (result.item as any).id,
+      url: (result.item as any).file,
+      file: (result.item as any).file,
+      title: (result.item as any).title,
       type: 'image',
       relevance: 1 - (result.score || 0)
     }));
@@ -1273,7 +1273,10 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
       // ナレッジベースへの追加を試みる
       try {
-        await addDocumentToKnowledgeBase(filePath);
+        await addDocumentToKnowledgeBase(
+          { originalname: path.basename(filePath), path: filePath, mimetype: 'text/plain' },
+          fs.readFileSync(filePath, 'utf-8')
+        );
       } catch (kbError) {
         console.error("ナレッジベースへの追加エラー:", kbError);
         // ナレッジベースへの追加に失敗しても処理は続行
@@ -1326,8 +1329,8 @@ router.post('/upload', upload.single('file'), async (req, res) => {
  */
 router.post('/cleanup-logs', async (req, res) => {
   try {
-    const { cleanupLogFiles } = await import('../../scripts/cleanup-logs.js');
-    const result = cleanupLogFiles();
+    const { cleanupLogFiles } = await import('../../scripts/cleanup-logs.js') as any;
+    const result = await cleanupLogFiles();
 
     return res.json({
       success: true,

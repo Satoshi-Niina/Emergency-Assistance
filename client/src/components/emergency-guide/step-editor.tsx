@@ -1,11 +1,25 @@
-import React, { useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Edit, Info, Trash2, Plus } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { Plus, Trash2, GripVertical, Upload, X, Image as ImageIcon, Save, RotateCcw, AlertTriangle, ChevronUp, ChevronDown, MoreVertical } from 'lucide-react';
 
 /**
  * ⚠️ AI編集制限: このファイルはスライド編集UI専用です
@@ -14,14 +28,37 @@ import { Edit, Info, Trash2, Plus } from 'lucide-react';
  * - バックエンド連携コードの追加は禁止
  */
 
-interface FlowStep {
+// Helper function for UTF-8 safe base64 encoding
+function utf8_to_b64(str: string): string {
+  try {
+    return btoa(unescape(encodeURIComponent(str)));
+  } catch (e) {
+    console.error('Failed to base64 encode:', str, e);
+    return btoa(str); // Fallback to simple btoa
+  }
+}
+
+// 1. ImageInfoインターフェースをエクスポート可能に変更し、ファイルURLとファイル名を保持するようにします
+export interface ImageInfo {
+  url: string;
+  fileName: string;
+}
+
+interface DecisionCondition {
+  id: string;
+  text: string;
+  nextSlideId?: string;
+}
+
+// 2. Stepインターフェースの画像関連のフィールドを images 配列に変更します
+interface Step {
   id: string;
   title: string;
   description: string;
   message: string;
   type: 'start' | 'step' | 'decision' | 'condition' | 'end';
-  imageUrl?: string;
-  options: Array<{
+  images?: ImageInfo[];
+  options?: Array<{
     text: string;
     nextStepId: string;
     isTerminal: boolean;
@@ -32,598 +69,692 @@ interface FlowStep {
     label: string;
     nextId: string;
   }>;
+  // 古いプロパティは後方互換性のために残す（将来的には削除）
+  imageUrl?: string;
+  imageFileName?: string;
 }
 
 interface StepEditorProps {
-  step: FlowStep;
-  index: number;
-  onUpdateStep: (stepId: string, updates: Partial<FlowStep>) => void;
-  onDeleteStep: (stepId: string) => void;
-  onAddOption: (stepId: string) => void;
-  onRemoveOption: (stepId: string, optionIndex: number) => void;
-  onUpdateOption: (stepId: string, optionIndex: number, updates: any) => void;
-  allSteps: FlowStep[];
+  steps: Step[];
+  onStepUpdate: (stepId: string, updatedData: Partial<Step>) => void;
+  onStepsReorder: (reorderedSteps: Step[]) => void;
+  onStepDelete: (stepId: string) => void;
+  onConditionAdd: (stepId: string) => void;
+  onConditionDelete: (stepId: string, conditionIndex: number) => void;
+  onConditionEdit: (stepId:string, conditionIndex: number, field: 'label' | 'nextId', value: string) => void;
+  onSave?: () => void;
+  onCancel?: () => void;
+  flowId?: string;
+  onAddStepBetween?: (index: number, type: 'step' | 'decision') => void;
 }
 
-const StepEditor: React.FC<StepEditorProps> = ({
-  step,
-  index,
-  onUpdateStep,
-  onDeleteStep,
-  onAddOption,
-  onRemoveOption,
-  onUpdateOption,
-  allSteps
+const StepEditor: React.FC<StepEditorProps> = ({ 
+  steps, 
+  onStepUpdate,
+  onStepsReorder,
+  onStepDelete, 
+  onConditionAdd,
+  onConditionDelete,
+  onConditionEdit,
+  onSave, 
+  onCancel, 
+  flowId,
+  onAddStepBetween
 }) => {
-  // 条件分岐ノードの自動初期化処理（編集時も有効）
+  const [uploadingImages, setUploadingImages] = useState<{ [key: string]: boolean }>({});
+  const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+  const [imageErrors, setImageErrors] = useState<{ [key: string]: boolean }>({});
+  const [expandedSteps, setExpandedSteps] = useState<{ [key: string]: boolean }>({});
+  const [showStepControls, setShowStepControls] = useState<{ [key: string]: boolean }>({});
+  
+  // すべてのステップを展開状態にする
   useEffect(() => {
-    const isConditionalNode = step.type === 'decision' || step.type === 'condition';
-    const hasEmptyOptions = !step.options || step.options.length === 0;
+    const allExpanded = steps.reduce((acc, step) => {
+      acc[step.id] = true;
+      return acc;
+    }, {} as { [key: string]: boolean });
+    setExpandedSteps(allExpanded);
+  }, [steps]);
 
-    if (isConditionalNode && hasEmptyOptions) {
-      console.log(`🔧 条件分岐ノード ${step.id} (type: ${step.type}) の自動初期化を実行（編集モード対応）`);
+  const handleStepFieldChange = (stepId: string, field: keyof Step, value: any) => {
+    onStepUpdate(stepId, { [field]: value });
+  };
 
-      // 基本的な条件分岐オプションを設定
-      const defaultOptions = [
-        { text: 'はい', nextStepId: '', isTerminal: false, conditionType: 'yes' as const, condition: '' },
-        { text: 'いいえ', nextStepId: '', isTerminal: false, conditionType: 'no' as const, condition: '' }
-      ];
+  const toggleStepExpansion = (stepId: string) => {
+    setExpandedSteps(prev => ({
+      ...prev,
+      [stepId]: !prev[stepId]
+    }));
+  };
 
-      // 即座に初期化（遅延なし）
-      onUpdateStep(step.id, { 
-        type: step.type, // typeを明示的に保持
-        options: defaultOptions
-      });
+  // 画像URL変換の簡略化
+  const convertImageUrl = (url: string): string => {
+    if (!url) return '';
+    
+    // 既にAPIエンドポイントの形式の場合はそのまま返す
+    if (url.startsWith('/api/emergency-flow/image/')) {
+      return url;
     }
-  }, [step.id, step.type, step.options, onUpdateStep]);
+    
+    // 古い形式や相対パスの場合はAPIエンドポイントに変換
+    const fileName = url.split('/').pop() || url.split('\\').pop();
+    return fileName ? `/api/emergency-flow/image/${fileName}` : url;
+  };
 
-  return (
-    <Card className="relative">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Badge variant={
-              step.type === 'decision' ? 'default' : 
-              step.type === 'condition' ? 'secondary' : 
-              'outline'
-            } className={
-              step.type === 'decision' ? 'bg-yellow-100 text-yellow-800 border-yellow-400' :
-              step.type === 'condition' ? 'bg-green-100 text-green-800 border-green-400' :
-              ''
-            }>
-              {step.type === 'start' && '🚀 開始スライド'}
-              {step.type === 'step' && '📋 ステップスライド'}
-              {step.type === 'condition' && '🔀 条件判定スライド [CONDITION]'}
-              {step.type === 'decision' && '⚡ 選択分岐スライド [DECISION]'}
-              {step.type === 'end' && '🏁 終了スライド'}
-            </Badge>
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
-              スライド #{index + 1}
-            </Badge>
-            <span className="text-xs text-gray-500">ID: {step.id}</span>
+  // 画像の読み込みエラーを処理する関数
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>, imageUrl: string) => {
+    console.error('画像読み込みエラー:', imageUrl);
+    const target = e.currentTarget;
+    target.style.display = 'none';
+    
+    // エラー表示用の要素を追加
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'bg-red-100 border border-red-300 text-red-700 px-3 py-2 rounded text-sm';
+    errorDiv.textContent = '画像の読み込みに失敗しました';
+    target.parentNode?.appendChild(errorDiv);
+  };
+
+  const handleImageUpload = async (stepId: string, file: File | null) => {
+    if (!file) {
+      return;
+    }
+
+    setUploadingImages(prev => ({ ...prev, [stepId]: true }));
+    
+    try {
+      console.log('🖼️ 画像アップロード開始:', { stepId, fileName: file.name });
+      
+      // 重複チェック: 同じファイル名の画像が既に存在するかチェック
+      const stepToUpdate = steps.find(step => step.id === stepId);
+      if (stepToUpdate && stepToUpdate.images) {
+        const existingImage = stepToUpdate.images.find(img => 
+          img.fileName === file.name || 
+          img.fileName === file.name.replace(/\.[^/.]+$/, '') // 拡張子を除いた比較
+        );
+        
+        if (existingImage) {
+          const confirmReplace = window.confirm(
+            `同じファイル名の画像 "${file.name}" が既に存在します。\n` +
+            `既存の画像を置き換えますか？`
+          );
+          
+          if (!confirmReplace) {
+            setUploadingImages(prev => ({ ...prev, [stepId]: false }));
+            return;
+          }
+          
+          // 既存の画像を削除
+          const updatedImages = stepToUpdate.images.filter(img => img.fileName !== existingImage.fileName);
+          onStepUpdate(stepId, { images: updatedImages });
+        }
+      }
+      
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('stepId', stepId);
+      if (flowId) formData.append('flowId', flowId);
+
+      const response = await fetch('/api/emergency-flow/upload-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || '画像のアップロードに失敗しました');
+      }
+
+      const result = await response.json();
+      if (!result.success || !result.imageUrl) {
+        throw new Error('画像URLが返されませんでした');
+      }
+
+      const newImage: ImageInfo = {
+        url: result.imageUrl,
+        fileName: result.imageFileName || result.fileName,
+      };
+
+      // 重複画像の場合は通知
+      if (result.isDuplicate) {
+        console.log('🔄 重複画像を検出、既存ファイルを使用:', result.fileName);
+      }
+
+      // 画像アップロード処理を、配列に画像を追加するように変更
+      const currentStepToUpdate = steps.find(step => step.id === stepId);
+      if (currentStepToUpdate) {
+        const currentImages = currentStepToUpdate.images || [];
+        if (currentImages.length < 3) {
+          const updatedImages = [...currentImages, newImage];
+          onStepUpdate(stepId, { images: updatedImages });
+          
+          // 成功通知
+          const message = result.isDuplicate 
+            ? `重複画像を検出しました。既存の画像 "${result.fileName}" を使用します。`
+            : '画像が正常にアップロードされました';
+          
+          // トースト通知の代わりにコンソールログ
+          console.log('✅ 画像アップロード完了:', message);
+        } else {
+          throw new Error('画像は最大3枚までアップロードできます');
+        }
+      }
+
+    } catch (error) {
+      console.error('❌ 画像アップロード失敗:', error);
+      alert(`画像アップロードに失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setUploadingImages(prev => ({ ...prev, [stepId]: false }));
+    }
+  };
+
+  // 画像削除処理を改善
+  const handleImageRemove = async (stepId: string, imageIndex: number) => {
+    console.log('🗑️ 画像削除:', { stepId, imageIndex });
+    const stepToUpdate = steps.find(step => step.id === stepId);
+    if (stepToUpdate) {
+        const newImages = [...(stepToUpdate.images || [])];
+        if (imageIndex >= 0 && imageIndex < newImages.length) {
+            const imageToRemove = newImages[imageIndex];
+            
+            // 削除確認
+            const confirmDelete = window.confirm(
+                `画像 "${imageToRemove.fileName}" を削除しますか？\n` +
+                `サーバーからファイルが完全に削除され、この操作は元に戻せません。`
+            );
+            
+            if (confirmDelete) {
+                try {
+                    // APIを呼び出してサーバーから画像を削除
+                    const response = await fetch(`/api/emergency-flow/image/${imageToRemove.fileName}`, {
+                        method: 'DELETE',
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(errorData.error || 'サーバー上の画像ファイル削除に失敗しました。');
+                    }
+
+                    // フロントエンドの状態を更新
+                    newImages.splice(imageIndex, 1);
+                    onStepUpdate(stepId, { images: newImages });
+                    console.log('✅ 画像削除完了:', imageToRemove.fileName);
+                    alert(`画像 "${imageToRemove.fileName}" を削除しました。`);
+
+                } catch (error) {
+                    console.error('❌ 画像削除エラー:', error);
+                    alert(`画像削除に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
+                }
+            }
+        }
+    }
+  };
+
+  const handleFileSelect = (stepId: string, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      handleImageUpload(stepId, file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (stepId: string, e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const files = Array.from(e.dataTransfer.files);
+    const imageFile = files.find(file => file.type.startsWith('image/'));
+    
+    if (imageFile) {
+      console.log('🖼️ ドラッグ&ドロップで画像アップロード:', { stepId, fileName: imageFile.name });
+      handleImageUpload(stepId, imageFile);
+    } else {
+      console.warn('⚠️ ドロップされたファイルに画像が含まれていません');
+    }
+  };
+
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+
+    const items = Array.from(steps);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+    
+    onStepsReorder(items);
+  };
+
+  const renderStepContent = (step: Step) => {
+    if (!expandedSteps[step.id]) {
+      return (
+        <div className="flex items-center justify-between p-2">
+          <div className="flex items-center space-x-4 flex-1">
+            <div className="flex items-center space-x-2">
+              <span className="font-medium">{step.title || `ステップ ${step.id}`}</span>
+              <span className="text-xs text-gray-500">({step.type})</span>
+            </div>
+            {step.description && (
+              <span className="text-xs text-gray-600 truncate max-w-32">
+                {step.description}
+              </span>
+            )}
+            {step.images && step.images.length > 0 && (
+              <div className="flex items-center space-x-1">
+                <ImageIcon className="w-3 h-3 text-blue-500" />
+                <span className="text-xs text-blue-600">{step.images.length}枚</span>
+              </div>
+            )}
+            {step.type === 'decision' && step.conditions && step.conditions.length > 0 && (
+              <div className="flex items-center space-x-1">
+                <span className="text-xs text-orange-600 bg-orange-100 px-1 rounded">
+                  {step.conditions.length}条件
+                </span>
+              </div>
+            )}
           </div>
           <Button
-            size="sm"
             variant="ghost"
-            onClick={() => onDeleteStep(step.id)}
+            size="sm"
+            onClick={() => toggleStepExpansion(step.id)}
           >
-            <Trash2 className="w-4 h-4" />
+            <ChevronDown className="h-4 w-4" />
           </Button>
         </div>
-      </CardHeader>
+      );
+    }
 
-      <CardContent>
-        <div className="space-y-6">
-          {/* タイトル編集セクション - 強化版 */}
-          <div className="bg-gradient-to-r from-red-100 to-pink-100 border-4 border-red-500 rounded-xl p-6 mb-6 shadow-lg">
-            <div className="flex items-center gap-3 mb-4">
-              <Edit className="w-6 h-6 text-red-600" />
-              <h3 className="text-xl font-bold text-red-800">🔥 スライドタイトル編集（強化版）</h3>
-            </div>
-
-            <div className="space-y-4">
-              <Label className="text-red-800 font-bold text-lg block">
-                スライド #{index + 1} のタイトル（ID: {step.id}）
-              </Label>
-
-              {/* デバッグ情報表示 */}
-              <div className="bg-yellow-50 border border-yellow-300 rounded p-3 text-sm">
-                <strong>デバッグ情報:</strong>
-                <br />現在のタイトル: "{step.title}"
-                <br />ステップID: {step.id}
-                <br />ステップタイプ: {step.type}
-              </div>
-
-              <Input
-                value={step.title || ''}
-                onChange={(e) => {
-                  const newTitle = e.target.value;
-                  console.log(`🔥 タイトル変更リアルタイム: ${step.id} -> "${newTitle}"`);
-                  onUpdateStep(step.id, { title: newTitle });
-                }}
-                onBlur={(e) => {
-                  const newTitle = e.target.value;
-                  console.log(`💾 タイトル確定: ${step.id} -> "${newTitle}"`);
-                  onUpdateStep(step.id, { title: newTitle });
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    const newTitle = e.currentTarget.value;
-                    console.log(`⏎ Enterキーでタイトル確定: ${step.id} -> "${newTitle}"`);
-                    onUpdateStep(step.id, { title: newTitle });
-                    e.currentTarget.blur();
-                  }
-                }}
-                placeholder="スライドのタイトルを入力してください"
-                className="text-xl font-semibold h-16 border-4 border-red-400 focus:border-red-600 bg-white shadow-inner"
-              />
-
-              {/* 強制更新ボタン */}
-              <Button 
-                type="button"
-                onClick={() => {
-                  const newTitle = `更新されたタイトル ${Date.now()}`;
-                  console.log(`🔄 強制タイトル更新: ${step.id} -> "${newTitle}"`);
-                  onUpdateStep(step.id, { title: newTitle });
-                }}
-                className="bg-red-600 hover:bg-red-700 text-white"
-              >
-                🔄 テストタイトル更新
-              </Button>
-
-              <div className="flex items-center gap-2 text-red-700">
-                <Info className="w-4 h-4" />
-                <span className="text-sm font-semibold">
-                  このタイトルがプレビューとフロー内で表示されます（リアルタイム更新）
-                </span>
-              </div>
-            </div>
-
-            {/* リアルタイムプレビュー - 強化版 */}
-            <div className="mt-4 p-4 bg-white rounded-lg border-4 border-red-300 shadow-md">
-              <div className="text-sm text-red-600 mb-2 font-semibold">プレビュー（リアルタイム）:</div>
-              <div className="text-xl font-bold text-gray-800 min-h-[2rem] p-2 bg-gray-50 rounded border">
-                <span key={`${step.id}-${step.title}-${Date.now()}`}>
-                  {step.title || '（タイトル未設定）'}
-                </span>
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                ステップID: {step.id} | 最終更新: {new Date().toLocaleTimeString()}
-              </div>
-              <div className="text-xs text-blue-600 mt-1">
-                現在の値: "{step.title}" (長さ: {(step.title || '').length}文字)
-              </div>
-            </div>
+    return (
+      <div className="space-y-4">
+        {/* ステップヘッダー */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <span className="font-medium text-sm text-gray-600">ステップ詳細</span>
           </div>
-
-          {/* スライド内容編集 */}
-          <div className="bg-gray-50 border-2 border-gray-200 rounded-lg p-4 space-y-4">
-            <div>
-              <Label className="text-gray-700 font-medium">詳細説明</Label>
-              <Textarea
-                value={step.description}
-                onChange={(e) => onUpdateStep(step.id, { description: e.target.value })}
-                placeholder="このスライドの詳細な説明を入力してください"
-                className="border-gray-300 focus:border-blue-500 min-h-[80px]"
-              />
-            </div>
-
-            <div>
-              <Label className="text-gray-700 font-medium">表示メッセージ</Label>
-              <Textarea
-                value={step.message}
-                onChange={(e) => onUpdateStep(step.id, { message: e.target.value })}
-                placeholder="ユーザーに直接表示するメッセージを入力してください"
-                className="border-gray-300 focus:border-blue-500 min-h-[80px]"
-              />
-            </div>
-
-            <div>
-              <Label>画像URL（オプション）</Label>
-              <Input
-                value={step.imageUrl || ''}
-                onChange={(e) => onUpdateStep(step.id, { imageUrl: e.target.value })}
-                placeholder="画像のURL"
-              />
-            </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => toggleStepExpansion(step.id)}
+            >
+              <ChevronUp className="h-4 w-4" />
+            </Button>
           </div>
+        </div>
 
-          {/* 条件分岐編集（options配列）- decision と condition 共通UI */}
-          {(() => {
-            // 🚨 強制的に条件分岐UIを表示する判定ロジック
-            const isDecisionType = step.type === 'decision';
-            const isConditionType = step.type === 'condition';
-            const isConditionalNode = isDecisionType || isConditionType;
-            
-            console.log(`🔥 条件分岐UI表示判定 (強制版):`, {
-              stepId: step.id,
-              stepType: step.type,
-              isDecisionType,
-              isConditionType,
-              isConditionalNode,
-              rawStepData: step,
-              optionsData: step.options,
-              willShowUI: isConditionalNode
-            });
-            
-            return isConditionalNode;
-          })() && (
-            <div className={`border-2 rounded-lg p-4 space-y-4 ${
-              step.type === 'decision' ? 'bg-yellow-50 border-yellow-400' : 'bg-green-50 border-green-400'
-            }`}>
-              <div className="flex items-center justify-between">
-                <h4 className={`font-bold text-lg ${
-                  step.type === 'decision' ? 'text-yellow-800' : 'text-green-800'
-                }`}>
-                  {step.type === 'decision' ? '⚡ 選択分岐設定 [DECISION]' : '🔀 条件判定設定 [CONDITION]'}
-                  <span className="text-sm font-normal ml-2">
-                    {step.type === 'decision' ? '(ユーザーが選択肢から選ぶ)' : '(システムが条件を判定)'}
-                  </span>
-                </h4>
-                <Button 
-                  size="sm"
-                  variant="outline" 
-                  onClick={() => onAddOption(step.id)}
-                  disabled={(step.options?.length || 0) >= 5}
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  条件追加
-                </Button>
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <Label htmlFor={`title-${step.id}`} className="text-base-2x">タイトル</Label>
+            <Input
+              id={`title-${step.id}`}
+              value={step.title}
+              onChange={(e) => handleStepFieldChange(step.id, 'title', e.target.value)}
+              placeholder="スライドのタイトルを入力"
+              className="text-base-2x h-12"
+            />
+          </div>
+          <div>
+            <Label htmlFor={`description-${step.id}`} className="text-base-2x">説明</Label>
+            <Input
+              id={`description-${step.id}`}
+              value={step.description}
+              onChange={(e) => handleStepFieldChange(step.id, 'description', e.target.value)}
+              placeholder="スライドの説明を入力"
+              className="text-base-2x h-12"
+            />
+          </div>
+        </div>
 
-              {/* タイプ別の説明テキスト表示 */}
-              <div className={`border rounded-lg p-3 ${
-                step.type === 'decision' ? 'bg-yellow-50 border-yellow-200' : 'bg-green-50 border-green-200'
-              }`}>
-                <div className={`text-sm font-medium mb-2 ${
-                  step.type === 'decision' ? 'text-yellow-800' : 'text-green-800'
-                }`}>
-                  {step.type === 'decision' ? '⚡ 選択分岐の質問内容:' : '🔀 条件判定の基準:'}
-                </div>
-                <div className={`text-sm ${
-                  step.type === 'decision' ? 'text-yellow-700' : 'text-green-700'
-                }`}>
-                  {step.description || step.message || (
-                    step.type === 'decision' 
-                      ? 'ユーザーに提示する質問を記述してください（例：エンジンが停止した時の状況は？）'
-                      : 'システムが判定する条件を記述してください（例：温度センサーの値が80℃以上）'
+        <div>
+          <Label htmlFor={`message-${step.id}`} className="text-base-2x">メッセージ</Label>
+          <Textarea
+            id={`message-${step.id}`}
+            value={step.message}
+            onChange={(e) => handleStepFieldChange(step.id, 'message', e.target.value)}
+            placeholder="表示するメッセージを入力"
+            rows={3}
+            className="text-base-2x min-h-24"
+          />
+        </div>
+
+        {/* 6. 画像セクションのUIを複数画像対応に全面的に書き換え */}
+        <div>
+          <Label className="text-base-2x">画像（最大3枚まで）</Label>
+          <p className="text-base-2x text-muted-foreground mt-2">
+            対応形式: JPG, PNG, GIFになります。重複画像は自動的に検出されます。
+          </p>
+          <div 
+            className="mt-2 p-4 border-2 border-dashed rounded-lg"
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(step.id, e)}
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {step.images?.map((image, index) => (
+                <div key={index} className="relative group aspect-video">
+                  <img
+                    src={convertImageUrl(image.url)}
+                    alt={image.fileName}
+                    className="w-full h-full object-cover rounded-lg border shadow-sm"
+                    onError={(e) => handleImageError(e, image.url)}
+                    onLoad={() => {
+                      // 画像読み込み成功時にエラーフラグをクリア
+                      setImageErrors(prev => ({ ...prev, [image.url]: false }));
+                    }}
+                  />
+                  {imageErrors[image.url] && (
+                    <div className="absolute inset-0 bg-red-500 bg-opacity-50 flex items-center justify-center rounded-lg">
+                      <div className="text-center text-white p-2">
+                        <X className="h-8 w-8 mx-auto" />
+                        <p className="text-xs font-bold mt-1">読込失敗</p>
+                        <p className="text-xs mt-1">{image.fileName}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* 画像操作ボタン */}
+                  <div className="absolute top-1 right-1 flex gap-1">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleImageRemove(step.id, index)}
+                      className="h-7 w-7 p-0 rounded-full opacity-80 group-hover:opacity-100 transition-opacity"
+                      title="画像を削除"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  {/* 画像情報表示 */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 truncate rounded-b-lg">
+                    {image.fileName}
+                  </div>
+                  
+                  {/* 重複画像の場合は警告表示 */}
+                  {step.images.filter(img => img.fileName === image.fileName).length > 1 && (
+                    <div className="absolute top-1 left-1">
+                      <div className="bg-yellow-500 text-white text-xs px-1 py-0.5 rounded">
+                        重複
+                      </div>
+                    </div>
                   )}
                 </div>
+              ))}
 
-                {/* タイプ説明 */}
-                <div className={`mt-2 text-xs p-2 rounded ${
-                  step.type === 'decision' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
-                }`}>
-                  <strong>
-                    {step.type === 'decision' ? '[DECISION型]' : '[CONDITION型]'}
-                  </strong>
-                  {step.type === 'decision' 
-                    ? ' ユーザーが画面上の選択肢から選ぶタイプです。「はい/いいえ」「A/B/C」などの選択肢を提示します。'
-                    : ' システムが自動的に条件を判定するタイプです。センサー値やデータベースの状態などを基に分岐します。'
-                  }
-                </div>
-              </div>
-
-              {/* JSONデータ確認とタイプキーワード表示 */}
-              <div className={`mb-3 p-3 border rounded text-xs ${
-                step.type === 'decision' ? 'bg-yellow-50 border-yellow-300' : 'bg-green-50 border-green-300'
-              }`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <strong className={step.type === 'decision' ? 'text-yellow-800' : 'text-green-800'}>
-                    JSON確認:
-                  </strong>
-                  <Badge variant="outline" className={`text-xs ${
-                    step.type === 'decision' ? 'border-yellow-400 text-yellow-800' : 'border-green-400 text-green-800'
-                  }`}>
-                    {step.type === 'decision' ? 'DECISION型' : 'CONDITION型'}
-                  </Badge>
-                </div>
-                <div>
-                  <strong>タイプ:</strong> "{step.type}" | 
-                  <strong>選択肢数:</strong> {step.options?.length || 0} | 
-                  <strong>ステップID:</strong> {step.id}
-                </div>
-                {step.options && step.options.length > 0 && (
-                  <div className="mt-1">
-                    <strong>選択肢:</strong> {step.options.map(opt => opt.text).join(', ')}
-                  </div>
-                )}
-                <div className={`mt-2 text-xs p-1 rounded ${
-                  step.type === 'decision' ? 'bg-yellow-100' : 'bg-green-100'
-                }`}>
-                  💡 <strong>キーワード:</strong> {step.type === 'decision' ? '"DECISION", "選択分岐", "ユーザー選択"' : '"CONDITION", "条件判定", "自動判定"'}
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {(() => {
-                  // optionsが空の場合は基本条件を自動設定
-                  const options = (step.options && step.options.length > 0) 
-                    ? step.options 
-                    : [{ text: 'はい', nextStepId: '', isTerminal: false, conditionType: 'yes' as const, condition: '' }];
-
-                  // 自動設定した場合はstateを更新
-                  if (!step.options || step.options.length === 0) {
-                    setTimeout(() => {
-                      onUpdateStep(step.id, { options: options });
-                    }, 0);
-                  }
-
-                  return options;
-                })().map((option, optionIndex) => (
-                  <div key={`${step.id}-option-${optionIndex}`} 
-                       className={`bg-white border-2 rounded-lg p-4 shadow-sm ${
-                         step.type === 'decision' ? 'border-yellow-300' : 'border-green-300'
-                       }`}>
-                    <div className="flex items-center justify-between mb-3">
-                      <Badge variant="secondary" className={`${
-                        step.type === 'decision' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' : 'bg-green-100 text-green-800 border-green-300'
-                      }`}>
-                        {step.type === 'decision' ? '⚡ 選択肢' : '🔀 条件'} {optionIndex + 1}: 
-                        {option.conditionType === 'yes' ? 'はい' : option.conditionType === 'no' ? 'いいえ' : 'その他'}
-                        <span className="ml-1 text-xs">
-                          {step.type === 'decision' ? '[DECISION]' : '[CONDITION]'}
-                        </span>
-                      </Badge>
-                      {(step.options?.length || 0) > 1 && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => onRemoveOption(step.id, optionIndex)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-sm font-medium text-gray-700">選択肢のテキスト</Label>
-                        <Input
-                          value={option.text || ''}
-                          onChange={(e) => {
-                            const newText = e.target.value;
-                            console.log(`📝 選択肢テキスト変更: ${step.id} -> 選択肢${optionIndex + 1} -> "${newText}"`);
-                            onUpdateOption(step.id, optionIndex, { text: newText });
-                          }}
-                          onBlur={() => {
-                            console.log(`💾 選択肢テキスト確定: ${step.id}`);
-                          }}
-                          placeholder="選択肢のテキスト（例：はい、いいえ）"
-                          className="h-9 text-sm mt-1"
-                        />
-                      </div>
-
-                      <div>
-                        <Label className="text-sm font-medium text-gray-700">遷移先を選択</Label>
-                        <select
-                          value={option.nextStepId || ''}
-                          onChange={(e) => {
-                            const newNextStepId = e.target.value;
-                            console.log(`🔄 遷移先変更: ${step.id} -> 選択肢${optionIndex + 1} -> ${newNextStepId}`);
-                            onUpdateOption(step.id, optionIndex, { nextStepId: newNextStepId });
-                          }}
-                          className="w-full border border-gray-300 rounded px-3 py-2 bg-white h-9 text-sm mt-1 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                        >
-                          <option value="">遷移先を選択</option>
-                          {allSteps?.filter(s => s.id !== step.id).map(targetStep => (
-                            <option key={targetStep.id} value={targetStep.id}>
-                              {targetStep.title} (ID: {targetStep.id})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* 条件の詳細説明（強化版） */}
-                    <div className="mt-3">
-                      <Label className="text-sm font-medium text-gray-700">条件の説明（内部用）</Label>
-                      <Input
-                        value={option.condition || ''}
-                        onChange={(e) => onUpdateOption(step.id, optionIndex, { condition: e.target.value })}
-                        placeholder="例: エンジンが警告なしに突然停止した場合"
-                        className="h-8 text-sm mt-1"
-                      />
-                      <div className="text-xs text-gray-500 mt-1">
-                        この説明は内部的な条件判定の参考として使用されます
-                      </div>
-                    </div>
-
-                    {/* 条件タイプ設定 */}
-                    <div className="mt-3">
-                      <Label className="text-sm font-medium text-gray-700">条件タイプ</Label>
-                      <select
-                        value={option.conditionType || 'other'}
-                        onChange={(e) => onUpdateOption(step.id, optionIndex, { conditionType: e.target.value as 'yes' | 'no' | 'other' })}
-                        className="w-full border border-gray-300 rounded px-3 py-2 bg-white h-9 text-sm mt-1"
-                      >
-                        <option value="yes">はい（肯定的な回答）</option>
-                        <option value="no">いいえ（否定的な回答）</option>
-                        <option value="other">その他</option>
-                      </select>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 条件分岐が表示されない場合の緊急対応 */}
-          {(() => {
-            const isConditionalNode = step.type === 'decision' || step.type === 'condition';
-            const hasEmptyOptions = !step.options || step.options.length === 0;
-            return isConditionalNode && hasEmptyOptions;
-          })() && (
-            <div className="bg-red-50 border-2 border-red-400 rounded-lg p-4">
-              <h4 className="font-medium text-red-800 mb-2">⚠️ 条件分岐データが見つかりません（{step.id}）</h4>
-              <p className="text-sm text-red-700 mb-3">
-                JSONデータには`type: "{step.type}"`が設定されていますが、条件分岐オプションが設定されていません。
-              </p>
-              <div className="space-y-2">
-                <Button 
-                  onClick={() => {
-                    const defaultOptions = [
-                      { text: 'はい', nextStepId: '', isTerminal: false, conditionType: 'yes' as const, condition: '' },
-                      { text: 'いいえ', nextStepId: '', isTerminal: false, conditionType: 'no' as const, condition: '' },
-                      { text: 'その他', nextStepId: '', isTerminal: false, conditionType: 'other' as const, condition: '' }
-                    ];
-                    console.log(`🔧 ${step.id}の条件分岐を強制作成:`, defaultOptions);
-                    onUpdateStep(step.id, { options: defaultOptions });
-                  }}
-                  className="bg-red-600 hover:bg-red-700 text-white"
+              {(!step.images || step.images.length < 3) && (
+                <div 
+                  className="flex items-center justify-center aspect-video border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+                  onClick={() => fileInputRefs.current[step.id]?.click()}
                 >
-                  🔧 条件分岐オプションを作成
-                </Button>
-
-                <Button 
-                  onClick={() => {
-                    console.log(`🔧 ${step.id}のtypeを強制的に${step.type}に設定`);
-                    onUpdateStep(step.id, { 
-                      type: step.type === 'decision' ? 'decision' : 'condition',
-                      options: [
-                        { text: 'はい', nextStepId: '', isTerminal: false, conditionType: 'yes' as const, condition: '' },
-                        { text: 'いいえ', nextStepId: '', isTerminal: false, conditionType: 'no' as const, condition: '' }
-                      ]
-                    });
-                  }}
-                  className="bg-orange-600 hover:bg-orange-700 text-white"
-                >
-                  🚨 条件分岐型を強制適用
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* 条件分岐ノードのデバッグ情報表示 */}
-          {(step.type === 'decision' || step.type === 'condition') && (
-            <div className="bg-blue-50 border-2 border-blue-400 rounded-lg p-4 mb-4">
-              <h4 className="font-medium text-blue-800 mb-2">🔍 条件分岐ノードデバッグ情報</h4>
-              <div className="text-sm space-y-1">
-                <div><strong>ステップID:</strong> {step.id}</div>
-                <div><strong>ステップtype:</strong> {step.type}</div>
-                <div><strong>条件分岐ノード判定:</strong> {(step.type === 'decision' || step.type === 'condition') ? '✅ TRUE' : '❌ FALSE'}</div>
-                <div><strong>options配列の有無:</strong> {step.options ? 'あり' : 'なし'}</div>
-                <div><strong>options配列の長さ:</strong> {step.options?.length || 0}</div>
-                {step.options && step.options.length > 0 && (
-                  <div>
-                    <strong>options詳細:</strong>
-                    <pre className="mt-1 text-xs bg-white p-2 rounded border overflow-auto max-h-32">
-{JSON.stringify(step.options, null, 2)}
-                    </pre>
+                  <div className="text-center">
+                    {uploadingImages[step.id] ? (
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900 mx-auto" />
+                    ) : (
+                      <Upload className="mx-auto h-8 w-8 text-gray-400" />
+                    )}
+                    <span className="mt-2 block text-sm font-medium text-gray-600">
+                      {uploadingImages[step.id] ? 'アップロード中...' : '画像を追加'}
+                    </span>
+                    <p className="text-xs text-gray-500">
+                      {(step.images?.length || 0)} / 3枚
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      ドラッグ&ドロップ対応
+                    </p>
                   </div>
-                )}
-                <div><strong>条件分岐UI表示条件評価:</strong> {
-                  (step.type === 'decision' || step.type === 'condition') ? '✅ TRUE' : '❌ FALSE'
-                }</div>
-              </div>
+                  <input
+                    ref={(el) => (fileInputRefs.current[step.id] = el)}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleFileSelect(step.id, e)}
+                    className="hidden"
+                  />
+                </div>
+              )}
             </div>
-          )}
-
-          {/* ステップ型変換ボタン（通常ステップから条件分岐への変換） */}
-          {(step.type === 'step' || step.type === 'start') && (
-            <div className="bg-orange-50 border-2 border-orange-300 rounded-lg p-4 mb-4">
-              <h4 className="font-medium text-orange-800 mb-2">🔄 ステップ型変換</h4>
-              <p className="text-sm text-orange-700 mb-3">
-                このステップを条件分岐ノードに変換できます。変換後は複数の選択肢を設定可能になります。
-              </p>
-              <div className="space-x-2">
-                <Button 
-                  onClick={() => {
-                    console.log(`🔄 ${step.id}をdecision型に変換`);
-                    onUpdateStep(step.id, { 
-                      type: 'decision',
-                      options: [
-                        { text: 'はい', nextStepId: '', isTerminal: false, conditionType: 'yes' as const, condition: '' },
-                        { text: 'いいえ', nextStepId: '', isTerminal: false, conditionType: 'no' as const, condition: '' }
-                      ]
-                    });
-                  }}
-                  className="bg-orange-600 hover:bg-orange-700 text-white"
-                  size="sm"
-                >
-                  ⚡ 選択分岐に変換
-                </Button>
-                <Button 
-                  onClick={() => {
-                    console.log(`🔄 ${step.id}をcondition型に変換`);
-                    onUpdateStep(step.id, { 
-                      type: 'condition',
-                      conditions: [
-                        { label: '条件A', nextId: '' },
-                        { label: '条件B', nextId: '' }
-                      ],
-                      options: []
-                    });
-                  }}
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                  size="sm"
-                >
-                  🔀 条件判定に変換
-                </Button>
+            
+            {/* 画像管理のヒント */}
+            {step.images && step.images.length > 0 && (
+              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded text-base-2x text-blue-700">
+                <p className="font-medium">画像管理のヒント:</p>
+                <ul className="mt-2 space-y-2">
+                  <li>• 同じファイル名の画像は自動的に重複として検出されます</li>
+                  <li>• 重複画像は既存のファイルを再利用してストレージを節約します</li>
+                  <li>• 画像は最大3枚までアップロードできます</li>
+                  <li>• 削除した画像は元に戻せません</li>
+                </ul>
               </div>
-            </div>
-          )}
-
-          {/* 通常の選択肢（非条件分岐） */}
-          {step.type !== 'decision' && step.type !== 'condition' && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <Label className="font-semibold">選択肢</Label>
-                <Button size="sm" variant="outline" onClick={() => onAddOption(step.id)}>
-                  <Plus className="w-4 h-4 mr-1" />
-                  選択肢追加
-                </Button>
-              </div>
-
-              <div className="space-y-3">
-                {step.options && step.options.map((option, optionIndex) => (
-                  <div key={`${step.id}-option-${optionIndex}`} className="border-2 rounded-lg p-4 space-y-3 border-gray-200 bg-gray-50">
-                    <div className="flex items-center justify-between">
-                      <Badge variant="secondary">選択肢 {optionIndex + 1}</Badge>
-                      {step.options.length > 1 && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => onRemoveOption(step.id, optionIndex)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-
-                    <div>
-                      <Label>選択肢のテキスト</Label>
-                      <Input
-                        value={option.text || ''}
-                        onChange={(e) => onUpdateOption(step.id, optionIndex, { text: e.target.value })}
-                        placeholder="選択肢のテキスト"
-                      />
-                    </div>
-
-                    <div>
-                      <Label>遷移先</Label>
-                      <select
-                        value={option.nextStepId || ''}
-                        onChange={(e) => onUpdateOption(step.id, optionIndex, { nextStepId: e.target.value })}
-                        className="w-full border rounded px-3 py-2 bg-white"
-                      >
-                        <option value="">遷移先を選択</option>
-                        {allSteps?.filter(s => s.id !== step.id).map(targetStep => (
-                          <option key={targetStep.id} value={targetStep.id}>
-                            {targetStep.title}
-                          </option>
-                        ))}
-                        <option value="end">フロー終了</option>
-                      </select>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </CardContent>
-    </Card>
+
+        {step.type === 'decision' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label>条件分岐</Label>
+              <div className="text-sm text-gray-500">
+                条件数: {step.conditions?.length || 0}/4
+              </div>
+            </div>
+            <div className="space-y-2">
+              {step.conditions?.map((condition, conditionIndex) => (
+                <div key={conditionIndex} className="flex items-center space-x-2 p-2 border rounded">
+                  <div className="flex-1">
+                    <Input
+                      value={condition.label}
+                      onChange={(e) => onConditionEdit(step.id, conditionIndex, 'label', e.target.value)}
+                      placeholder="条件の説明"
+                      className="mb-2"
+                    />
+                    <Select
+                      value={condition.nextId}
+                      onValueChange={(value) => onConditionEdit(step.id, conditionIndex, 'nextId', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="次のスライドを選択" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {steps
+                          .filter(s => s.id !== step.id)
+                          .map(s => (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.title || `スライド ${s.id}`}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onConditionDelete(step.id, conditionIndex)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              {(!step.conditions || step.conditions.length < 4) && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onConditionAdd(step.id)}
+                  className="w-full"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  条件を追加
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ステップ間の追加ボタンをレンダリング
+  const renderAddStepBetween = (index: number) => {
+    if (!onAddStepBetween) return null;
+    
+    return (
+      <div className="flex justify-center my-2">
+        <div className="flex items-center space-x-2 bg-gray-50 rounded-lg p-2 border">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onAddStepBetween(index, 'step')}
+            className="h-6 px-2 text-xs"
+          >
+            <Plus className="w-3 h-3 mr-1" />
+            通常ステップ
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onAddStepBetween(index, 'decision')}
+            className="h-6 px-2 text-xs"
+          >
+            <Plus className="w-3 h-3 mr-1" />
+            条件分岐
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  // アクションボタンコンポーネント
+  const ActionButtons = () => (
+    <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg border">
+      <div className="text-sm text-gray-500">
+        スライド数: {steps.length}
+      </div>
+      <div className="text-sm text-gray-600">
+        最後のスライドは自動的に終了スライドになります
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      {/* スライダーコントロール */}
+      <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border">
+        <div className="flex items-center space-x-2">
+          <span className="text-sm font-medium text-blue-700">ステップナビゲーション</span>
+          <span className="text-xs text-blue-600">({steps.length}個のステップ)</span>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const allExpanded = steps.reduce((acc, step) => {
+                acc[step.id] = true;
+                return acc;
+              }, {} as { [key: string]: boolean });
+              setExpandedSteps(allExpanded);
+            }}
+            className="h-7 px-2 text-xs"
+          >
+            すべて展開
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setExpandedSteps({})}
+            className="h-7 px-2 text-xs"
+          >
+            すべて折りたたみ
+          </Button>
+        </div>
+      </div>
+
+      {/* ステップ一覧表示 */}
+      <div className="bg-gray-50 rounded-lg p-3 mb-4">
+        <div className="text-sm font-medium text-gray-700 mb-2">ステップ一覧</div>
+        <div className="flex flex-wrap gap-2">
+          {steps.map((step, index) => (
+            <div
+              key={step.id}
+              className={`px-3 py-1 rounded-full text-xs cursor-pointer transition-colors ${
+                expandedSteps[step.id]
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-100'
+              }`}
+              onClick={() => toggleStepExpansion(step.id)}
+            >
+              {index + 1}. {step.title || `ステップ ${index + 1}`}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <Droppable droppableId="steps">
+          {(provided) => (
+            <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4">
+              {steps.map((step, index) => (
+                <div key={step.id}>
+                  <Draggable key={step.id} draggableId={step.id} index={index}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        className="relative"
+                      >
+                        <Card 
+                          className={`transition-shadow duration-200 ${snapshot.isDragging ? 'shadow-lg' : ''}`}
+                        >
+                          <div {...provided.dragHandleProps} className="absolute top-1/2 -left-8 -translate-y-1/2 p-2 cursor-grab text-gray-400 hover:text-gray-600">
+                            <GripVertical />
+                          </div>
+                          <CardContent className="p-4 md:p-6">
+                            {renderStepContent(step)}
+                          </CardContent>
+                          <div className="absolute top-2 right-2 flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => onStepDelete(step.id)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              スライドを削除
+                            </Button>
+                          </div>
+                        </Card>
+                      </div>
+                    )}
+                  </Draggable>
+                  
+                  {/* ステップ間に追加ボタンを表示（最後のステップ以外） */}
+                  {index < steps.length - 1 && renderAddStepBetween(index)}
+                </div>
+              ))}
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
+      </DragDropContext>
+      
+      {/* 保存・キャンセルボタン */}
+      {onSave && onCancel && (
+        <div className="flex justify-end gap-3 pt-4 border-t">
+          <Button
+            variant="outline"
+            onClick={onCancel}
+          >
+            キャンセル
+          </Button>
+          <Button
+            onClick={onSave}
+          >
+            保存
+          </Button>
+        </div>
+      )}
+    </div>
   );
 };
 

@@ -1,36 +1,27 @@
-import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/router';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function SignIn() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    try {
-      const result = await signIn('credentials', {
-        username,
-        password,
-        redirect: false,
-      });
-
-      if (result?.error) {
-        setError('ログインに失敗しました');
-      } else {
-        // クエリパラメータのcallbackUrlがあればそこに、なければホームに遷移
-        const callbackUrl = router.query.callbackUrl as string || '/';
-        router.push(callbackUrl);
-      }
-    } catch (error) {
-      setError('ログイン処理中にエラーが発生しました');
+    // ここで実際の認証ロジックを呼び出す
+    // 例: await signIn('credentials', { username, password, redirect: false });
+    // ダミーの認証ロジック
+    if (username === 'test' && password === 'test') {
+      // ログイン成功時にチャットページに遷移
+      navigate('/chat');
+    } else {
+      setError('ユーザー名またはパスワードが無効です');
     }
   };
 
@@ -41,7 +32,10 @@ export default function SignIn() {
           <CardTitle className="text-2xl text-center">ログイン</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSignIn} className="space-y-4">
+            {error && (
+              <div className="text-red-500 text-sm text-center">{error}</div>
+            )}
             <div>
               <Input
                 type="text"
@@ -60,9 +54,6 @@ export default function SignIn() {
                 required
               />
             </div>
-            {error && (
-              <div className="text-red-500 text-sm text-center">{error}</div>
-            )}
             <Button type="submit" className="w-full">
               ログイン
             </Button>

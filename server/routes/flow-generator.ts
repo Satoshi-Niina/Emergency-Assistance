@@ -349,8 +349,8 @@ router.get('/list', (req, res) => {
 // トラブルシューティングフローの詳細を取得するエンドポイント
 router.get('/detail/:id', (req, res) => {
   try {
-    const flowId = req.params.id;
-    const filePath = path.join(troubleshootingDir, `${flowId}.json`);
+    const cleanFlowId = req.params.id.startsWith('ts_') ? req.params.id.substring(3) : req.params.id;
+    const filePath = path.join(troubleshootingDir, `${cleanFlowId}.json`);
 
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({
@@ -362,9 +362,32 @@ router.get('/detail/:id', (req, res) => {
     const fileContent = fs.readFileSync(filePath, 'utf-8');
     const flowData = JSON.parse(fileContent);
 
+    const decisionSteps = flowData.steps?.filter((step: any) => step.type === 'decision') || [];
+    const conditionSteps = flowData.steps?.filter((step: any) => step.type === 'condition') || [];
+
+    const decisionStepsDetail = decisionSteps.map((step: any) => ({
+      id: step.id,
+      title: step.title,
+      description: step.description,
+      message: step.message,
+      conditions: step.conditions
+    }));
+
+    const conditionStepsDetail = conditionSteps.map((step: any) => ({
+      id: step.id,
+      title: step.title,
+      description: step.description,
+      message: step.message,
+      conditions: step.conditions
+    }));
+
     res.json({
       success: true,
-      flowData
+      flowData: {
+        ...flowData,
+        decisionSteps: decisionStepsDetail,
+        conditionSteps: conditionStepsDetail
+      }
     });
   } catch (error) {
     console.error('フロー詳細取得エラー:', error);

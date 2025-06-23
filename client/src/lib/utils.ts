@@ -24,3 +24,36 @@ export function orderSelectedFields(fields: Record<string, any> | undefined | nu
     return acc;
   }, {} as Record<string, any>);
 }
+
+/**
+ * 画像URLを正しいAPIエンドポイントに変換する関数
+ */
+export function convertImageUrl(url: string | undefined | null): string {
+  if (!url) return '';
+  
+  // 既に正しいAPIエンドポイント形式の場合はそのまま返す
+  if (url.startsWith('/api/emergency-flow/image/')) {
+    return url;
+  }
+  
+  // 外部URLの場合はそのまま返す
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  
+  // ファイル名を抽出（パスセパレータを考慮）
+  let fileName = url;
+  if (url.includes('/')) {
+    fileName = url.split('/').pop() || url;
+  } else if (url.includes('\\')) {
+    fileName = url.split('\\').pop() || url;
+  }
+  
+  // ファイル名が空の場合は元のURLを返す
+  if (!fileName || fileName === url) {
+    return url;
+  }
+  
+  // 新しいAPIエンドポイント形式に変換して返す
+  return `/api/emergency-flow/image/${fileName}`;
+}

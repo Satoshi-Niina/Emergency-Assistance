@@ -13,7 +13,7 @@ import { queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Send, Loader2, Trash2, Heart, FileText, Menu, Settings, LifeBuoy } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function Chat() {
@@ -33,11 +33,16 @@ export default function Chat() {
     setDraftMessage,
     clearChatHistory,
     isClearing,
-    isRecording
+    isRecording,
+    sendMessage,
+    startRecording,
+    stopRecording,
+    captureImage
   } = useChat();
 
   const { user } = useAuth();
   const [isEndChatDialogOpen, setIsEndChatDialogOpen] = useState(false);
+  const location = useLocation();
 
   // 新しいチャットとして開始するため、メッセージ読み込みは無効化
   const { data, isLoading: messagesLoading } = useQuery({
@@ -101,8 +106,6 @@ export default function Chat() {
     }
   }, [displayMessages]);
 
-  const [, setLocation] = useLocation();
-
   const handleEndChat = () => {
     if (hasUnexportedMessages) {
       setIsEndChatDialogOpen(true);
@@ -145,6 +148,7 @@ export default function Chat() {
   // 応急処置ガイドの状態
   const [emergencyGuideOpen, setEmergencyGuideOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [selectedFlow, setSelectedFlow] = useState<string | null>(null);
 
   // 応急処置ガイド関連のイベントリスナー
   useEffect(() => {
@@ -170,14 +174,40 @@ export default function Chat() {
       }, 500);
     };
 
+    const handleEmergencyGuideCompleted = (event: any) => {
+      console.log('🏥 応急処置ガイド完了イベントを受信:', event.detail);
+
+      // フロー実行結果がチャットに送信された後の処理
+      setTimeout(() => {
+        const chatContainer = document.getElementById('chatMessages');
+        if (chatContainer) {
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+          console.log('📜 フロー実行結果送信後にチャットを最下部にスクロールしました');
+        }
+      }, 500);
+    };
+
     window.addEventListener('close-emergency-guide', handleCloseEmergencyGuide);
     window.addEventListener('emergency-guide-sent', handleEmergencyGuideSent);
+    window.addEventListener('emergency-guide-completed', handleEmergencyGuideCompleted);
 
     return () => {
       window.removeEventListener('close-emergency-guide', handleCloseEmergencyGuide);
       window.removeEventListener('emergency-guide-sent', handleEmergencyGuideSent);
+      window.removeEventListener('emergency-guide-completed', handleEmergencyGuideCompleted);
     };
   }, []);
+
+  useEffect(() => {
+    if (emergencyGuideOpen === false) {
+      setSelectedFlow(null);
+      setSearchKeyword("");
+    }
+  }, [emergencyGuideOpen]);
+
+  const handleRequestSendToChat = () => {
+    window.dispatchEvent(new CustomEvent('request-send-to-chat'));
+  };
 
   return (
     <div className="flex flex-col w-full h-full overflow-auto bg-blue-900 chat-layout-container overflow-scroll-container" style={{ maxWidth: '100vw', overflowX: 'hidden' }}>
@@ -411,10 +441,10 @@ export default function Chat() {
       <CameraModal />
       <ImagePreviewModal />
 
-      {/* 応急処置ガイドモーダル（モバイル・デスクトップ共通） */}
+      {/* 応急処置ガイドモーダル */}
       <Dialog open={emergencyGuideOpen} onOpenChange={setEmergencyGuideOpen}>
-        <DialogContent className={`bg-blue-50 border border-blue-200 ${isMobile ? 'w-[95%] max-w-md' : 'max-w-3xl'}`}>
-          <DialogHeader className="border-b border-blue-200 pb-3">
+        <DialogContent className={`bg-blue-50 border-none flex flex-col w-screen h-screen max-w-full max-h-full p-0`}>
+          <DialogHeader className="border-b border-blue-200 p-4">
             <DialogTitle className="text-blue-800 text-lg font-bold flex items-center gap-2">
               <Heart className="h-5 w-5 text-red-500" />
               <span>応急処置ガイド</span>
@@ -423,14 +453,28 @@ export default function Chat() {
               症状を選択するか、キーワードで検索してください
             </DialogDescription>
           </DialogHeader>
-          <div className={`overflow-y-auto py-2 ${isMobile ? 'max-h-[70vh]' : 'max-h-[75vh]'}`}>
-            <TroubleshootingSelector initialSearchKeyword={searchKeyword} />
+          <div className={`overflow-y-auto flex-grow p-4`}>
+            <TroubleshootingSelector 
+              initialSearchKeyword={searchKeyword}
+              selectedFlow={selectedFlow}
+              setSelectedFlow={setSelectedFlow}
+            />
           </div>
-          <DialogFooter>
+          <DialogFooter className="mt-auto p-4 border-t border-blue-200">
+            {selectedFlow && (
+              <Button 
+                variant="outline" 
+                onClick={handleRequestSendToChat}
+                className="w-full sm:w-auto bg-blue-100 hover:bg-blue-200 border-blue-300 text-blue-800"
+              >
+                <Send className="h-4 w-4 mr-2" />
+                現在の内容をチャットに送信
+              </Button>
+            )}
             <Button 
               variant="outline" 
               onClick={() => setEmergencyGuideOpen(false)}
-              className="w-full border-blue-300 text-blue-700 hover:bg-blue-100"
+              className="w-full sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-100"
             >
               閉じる
             </Button>

@@ -11,7 +11,7 @@ interface Image {
   id: string;
   url: string;
   description: string;
-  embedding: number[];
+  embedding: unknown;
 }
 
 export async function findRelevantImages(text: string): Promise<Image[]> {
@@ -44,9 +44,13 @@ export async function findRelevantImages(text: string): Promise<Image[]> {
   }
 }
 
-function cosineSimilarity(vecA: number[], vecB: number[]): number {
-  const dotProduct = vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
+function cosineSimilarity(vecA: number[], vecB: unknown): number {
+  if (!Array.isArray(vecB) || vecB.length !== vecA.length) {
+    return 0;
+  }
+  
+  const dotProduct = vecA.reduce((sum, a, i) => sum + a * (vecB[i] as number), 0);
   const magnitudeA = Math.sqrt(vecA.reduce((sum, a) => sum + a * a, 0));
-  const magnitudeB = Math.sqrt(vecB.reduce((sum, b) => sum + b * b, 0));
+  const magnitudeB = Math.sqrt((vecB as number[]).reduce((sum, b) => sum + b * b, 0));
   return dotProduct / (magnitudeA * magnitudeB);
 } 

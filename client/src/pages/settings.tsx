@@ -1,13 +1,19 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { Settings, Info, User, Bell, Shield, Database, Volume2, UserPlus, FileType, Book, LogOut, Save, FileX, Trash2 } from "lucide-react";
 import { WarningDialog } from "@/components/shared/warning-dialog";
-import { Link } from "wouter";
+import { Link } from "react-router-dom";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+} from "@/components/ui/select";
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
@@ -355,7 +361,7 @@ export default function SettingsPage() {
                     <p className="font-medium text-blue-800">ユーザー管理</p>
                     <p className="text-sm text-blue-400">ユーザーアカウントを管理する</p>
                   </div>
-                  <Link href="/users">
+                  <Link to="/users">
                     <Button variant="outline" size="sm" className="border-blue-300 text-blue-700 hover:bg-blue-50">
                       <UserPlus className="mr-2 h-4 w-4 text-blue-500" />
                       管理
@@ -368,7 +374,7 @@ export default function SettingsPage() {
                     <p className="font-medium text-blue-800">ドキュメント管理</p>
                     <p className="text-sm text-blue-400">検索対象の資料を管理する</p>
                   </div>
-                  <Link href="/documents">
+                  <Link to="/documents">
                     <Button variant="outline" size="sm" className="border-blue-300 text-blue-700 hover:bg-blue-50">
                       <FileType className="mr-2 h-4 w-4 text-blue-500" />
                       管理

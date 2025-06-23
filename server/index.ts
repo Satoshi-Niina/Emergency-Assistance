@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 console.log("[INFO] Backend server starting...");
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = Number(process.env.PORT) || 3001;
 
 // CORS設定
 app.use(cors({
@@ -33,14 +33,6 @@ app.get('/api/health', (req, res) => {
     processId: process.pid
   });
 });
-
-// 静的ファイル設定
-try {
-  app.use('/knowledge-base/images', express.static(path.join(process.cwd(), 'knowledge-base', 'images')));
-  console.log('✅ 静的ファイル設定完了');
-} catch (staticError) {
-  console.error('❌ 静的ファイル設定エラー:', staticError);
-}
 
 // エラーハンドラー
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -89,14 +81,24 @@ app.use(session({
 (async () => {
   try {
     console.log('📡 ルート登録開始...');
-    const { registerRoutes } = await import('./routes.js');
+    const { registerRoutes } = await import('./routes.ts');
     
-    // authルートを登録
-    const { authRouter } = await import('./routes/auth.js');
-    app.use('/api/auth', authRouter);
-    
+    // 認証セットアップ
+    const { setupAuth } = await import('./auth.ts');
+    setupAuth(app);
+
     await registerRoutes(app);
     console.log('✅ ルート登録完了');
+    
+    // 静的ファイル設定（ルート登録後に設定）
+    try {
+      app.use('/images', express.static(path.join(process.cwd(), 'public', 'images')));
+      app.use('/knowledge-base/images', express.static(path.join(process.cwd(), 'knowledge-base', 'images')));
+      app.use('/knowledge-base/data', express.static(path.join(process.cwd(), 'knowledge-base', 'data')));
+      console.log('✅ 静的ファイル設定完了');
+    } catch (staticError) {
+      console.error('❌ 静的ファイル設定エラー:', staticError);
+    }
   } catch (routeError) {
     console.error('❌ ルート登録エラー:', routeError);
   }

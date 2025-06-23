@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>画像テスト</title>
+</head>
+<body>
+    <h1>画像配信テスト</h1>
+    <img src="/api/emergency-flow/image/emergency-flow-step1-1750508919137.jpg" 
+         alt="テスト画像" 
+         style="max-width: 500px; border: 1px solid #ccc;"
+         onerror="console.error('画像読み込みエラー')"
+         onload="console.log('画像読み込み成功')" />
+    
+    <script>
+        // 画像の読み込み状況を確認
+        const img = document.querySelector('img');
+        img.addEventListener('load', () => {
+            console.log('✅ 画像が正常に読み込まれました');
+        });
+        img.addEventListener('error', (e) => {
+            console.error('❌ 画像の読み込みに失敗しました:', e);
+        });
+    </script>
+</body>
+</html> 

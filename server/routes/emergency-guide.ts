@@ -574,6 +574,11 @@ router.post('/process', upload.single('file'), async (req, res) => {
       cleanupTempDirectory(tempDir);
     }
 
+    // メモリキャッシュがあれば削除
+    if (typeof global !== 'undefined' && (global as any).fileCache) {
+      delete (global as any).fileCache[filePath];
+    }
+
     return res.json({
       success: true,
       message: 'ファイルが正常に処理されました',
@@ -839,8 +844,8 @@ router.post('/update/:id', (req, res) => {
       }
 
       // メモリキャッシュがあれば削除
-      if (typeof global !== 'undefined' && global.fileCache) {
-        delete global.fileCache[filePath];
+      if (typeof global !== 'undefined' && (global as any).fileCache) {
+        delete (global as any).fileCache[filePath];
       }
 
       // トラブルシューティングファイルの対応するメタデータファイルを取得

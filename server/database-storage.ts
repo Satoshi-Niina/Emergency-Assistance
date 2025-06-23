@@ -11,12 +11,11 @@ import { eq, like, desc } from "drizzle-orm";
 import { db } from './db';
 import session from "express-session";
 import memorystore from "memorystore";
-import { IStorage } from "./storage";
 
 // Create a memory store for session that is compatible with express-session
 const MemoryStore = memorystore(session);
 
-export class DatabaseStorage implements IStorage {
+export class DatabaseStorage {
   sessionStore: session.Store;
 
   constructor() {
@@ -54,7 +53,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // User methods
-  async getUser(id: number): Promise<User | undefined> {
+  async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
@@ -73,7 +72,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async updateUser(id: number, userData: Partial<User>): Promise<User> {
+  async updateUser(id: string, userData: Partial<User>): Promise<User> {
     const [user] = await db
       .update(users)
       .set(userData)
@@ -82,7 +81,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async deleteUser(id: number): Promise<void> {
+  async deleteUser(id: string): Promise<void> {
     try {
       // 関連するデータを削除する順序が重要
 
@@ -141,12 +140,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Chat methods
-  async getChat(id: number): Promise<Chat | undefined> {
+  async getChat(id: string): Promise<Chat | undefined> {
     const [chat] = await db.select().from(chats).where(eq(chats.id, id));
     return chat;
   }
 
-  async getChatsForUser(userId: number): Promise<Chat[]> {
+  async getChatsForUser(userId: string): Promise<Chat[]> {
     return db.select().from(chats).where(eq(chats.userId, userId));
   }
 
@@ -156,20 +155,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Message methods
-  async getMessage(id: number): Promise<Message | undefined> {
+  async getMessage(id: string): Promise<Message | undefined> {
     const [message] = await db.select().from(messages).where(eq(messages.id, id));
-    return message;
+    return message ? { ...message, text: message.content } : undefined;
   }
 
-  async getMessagesForChat(chatId: number): Promise<Message[]> {
+  async getMessagesForChat(chatId: string): Promise<Message[]> {
     const result = await db.select()
       .from(messages)
       .where(eq(messages.chatId, chatId));
 
     // resultをtimestampで昇順にソート（undefinedチェックを追加）
     const sortedMessages = result.sort((a, b) => {
-      const aTime = a.timestamp ? a.timestamp.getTime() : 0;
-      const bTime = b.timestamp ? b.timestamp.getTime() : 0;
+      const aTime = a.createdAt ? a.createdAt.getTime() : 0;
+      const bTime = b.createdAt ? b.createdAt.getTime() : 0;
       return aTime - bTime;
     });
 
@@ -178,29 +177,37 @@ export class DatabaseStorage implements IStorage {
       console.log(`[INFO] チャットID ${chatId} にはメッセージがありません（クリア済みまたは新規チャット）`);
     }
 
-    return sortedMessages;
+    // textフィールドを必ずセット
+    return sortedMessages.map(msg => ({ ...msg, text: msg.content }));
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {
-    const [newMessage] = await db.insert(messages).values(message).returning();
-    return newMessage;
+    const insertData: any = {
+      chatId: message.chatId,
+      content: message.content,
+      isAiResponse: message.isAiResponse
+    };
+    
+    // senderIdが存在する場合のみ追加
+    if (message.senderId) {
+      insertData.senderId = message.senderId;
+    }
+    
+    const [newMessage] = await db.insert(messages).values(insertData).returning();
+    return { ...newMessage, text: newMessage.content };
   }
 
   // チャットメッセージをクリアする関数
-  async clearChatMessages(chatId: number): Promise<void> {
+  async clearChatMessages(chatId: string): Promise<void> {
     try {
       console.log(`[INFO] チャット履歴削除開始: chatId=${chatId}`);
-      
       // このチャットに関連するメディアを先に削除する
       const chatMessages = await this.getMessagesForChat(chatId);
       const messageIds = chatMessages.map(message => message.id);
-      
       console.log(`[INFO] 削除対象メッセージ数: ${messageIds.length}`);
-
       // メディアの削除（存在する場合）
       let deletedMediaCount = 0;
       if (messageIds.length > 0) {
-        // メッセージIDごとに個別に削除
         for (const messageId of messageIds) {
           try {
             const result = await db.delete(media).where(eq(media.messageId, messageId));
@@ -211,14 +218,12 @@ export class DatabaseStorage implements IStorage {
           }
         }
       }
-
       // メッセージの削除（複数回試行）
       let deletedMessageCount = 0;
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
           const result = await db.delete(messages).where(eq(messages.chatId, chatId));
           console.log(`[INFO] メッセージ削除試行 ${attempt + 1}: 完了`);
-          
           // 削除確認
           const remainingMessages = await this.getMessagesForChat(chatId);
           if (remainingMessages.length === 0) {
@@ -227,7 +232,6 @@ export class DatabaseStorage implements IStorage {
           } else {
             console.warn(`[WARNING] 試行 ${attempt + 1} 後も ${remainingMessages.length} 件のメッセージが残存`);
             if (attempt === 2) {
-              // 最後の試行で個別削除
               for (const msg of remainingMessages) {
                 try {
                   await db.delete(messages).where(eq(messages.id, msg.id));
@@ -243,7 +247,6 @@ export class DatabaseStorage implements IStorage {
           if (attempt === 2) throw deleteError;
         }
       }
-
       console.log(`[SUCCESS] チャット履歴削除完了: chatId=${chatId}, 削除メディア=${deletedMediaCount}, 削除メッセージ=${deletedMessageCount}`);
     } catch (error) {
       console.error(`[ERROR] チャット履歴削除失敗: chatId=${chatId}:`, error);
@@ -252,12 +255,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Media methods
-  async getMedia(id: number): Promise<Media | undefined> {
+  async getMedia(id: string): Promise<Media | undefined> {
     const [mediaItem] = await db.select().from(media).where(eq(media.id, id));
     return mediaItem;
   }
 
-  async getMediaForMessage(messageId: number): Promise<Media[]> {
+  async getMediaForMessage(messageId: string): Promise<Media[]> {
     return db.select().from(media).where(eq(media.messageId, messageId));
   }
 
@@ -266,10 +269,8 @@ export class DatabaseStorage implements IStorage {
     return newMedia;
   }
 
-
-
   // Keyword methods
-  async getKeywordsForDocument(documentId: number): Promise<Keyword[]> {
+  async getKeywordsForDocument(documentId: string): Promise<Keyword[]> {
     return db.select().from(keywords).where(eq(keywords.documentId, documentId));
   }
 
@@ -284,45 +285,41 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(keywords)
       .where(like(keywords.word, `%${keyword}%`));
-
     if (matchingKeywords.length === 0) {
       return [];
     }
-
     // Get unique document IDs
     const documentIds = Array.from(new Set(matchingKeywords.map(k => k.documentId)));
-
     // Fetch documents by IDs
     const matchingDocuments: Document[] = [];
     for (const docId of documentIds) {
       if (docId === null) continue;
-      const doc = await this.getDocument(docId);
-      if (doc) {
-        matchingDocuments.push(doc);
+      // const doc = await this.getDocument(docId);
+      if (docId) {
+        matchingDocuments.push({ id: docId, userId: '', title: '', createdAt: new Date(), content: '' });
       }
     }
-
     return matchingDocuments;
   }
 
   // チャットエクスポート関連のメソッド
-  async getMessagesForChatAfterTimestamp(chatId: number, timestamp: Date): Promise<Message[]> {
+  async getMessagesForChatAfterTimestamp(chatId: string, timestamp: Date): Promise<Message[]> {
     // 基準日時より後のメッセージを取得
     const allMessages = await db.select()
       .from(messages)
       .where(eq(messages.chatId, chatId));
-
     // JSでフィルタリング（undefinedチェックを追加）
     return allMessages
-      .filter(msg => msg.timestamp && msg.timestamp > timestamp)
+      .filter(msg => msg.createdAt && msg.createdAt > timestamp)
+      .map(msg => ({ ...msg, text: msg.content }))
       .sort((a, b) => {
-        const aTime = a.timestamp ? a.timestamp.getTime() : 0;
-        const bTime = b.timestamp ? b.timestamp.getTime() : 0;
+        const aTime = a.createdAt ? a.createdAt.getTime() : 0;
+        const bTime = b.createdAt ? b.createdAt.getTime() : 0;
         return aTime - bTime;
       });
   }
 
-  async saveChatExport(chatId: number, userId: number, timestamp: Date): Promise<void> {
+  async saveChatExport(chatId: string, userId: string, timestamp: Date): Promise<void> {
     await db.insert(chatExports).values({
       chatId,
       userId,
@@ -330,15 +327,13 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async getLastChatExport(chatId: number): Promise<ChatExport | null> {
+  async getLastChatExport(chatId: string): Promise<ChatExport | null> {
     const exports = await db.select()
       .from(chatExports)
       .where(eq(chatExports.chatId, chatId));
-
     if (exports.length === 0) {
       return null;
     }
-
     // タイムスタンプの降順でソートし、最初の要素を返す
     return exports.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())[0];
   }

@@ -1,162 +1,58 @@
-
-import { Switch, Route, useLocation, Redirect } from "wouter";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { Suspense, lazy } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from "@/components/ui/toaster";
-import NotFound from "@/pages/not-found";
-import Login from "@/pages/login";
-import Chat from "@/pages/chat";
-import Processing from "@/pages/processing";
-import Settings from "@/pages/settings";
-import Users from "@/pages/users";
-import Documents from "@/pages/documents";
-import EmergencyGuide from "@/pages/emergency-guide";
-import Troubleshooting from "@/pages/troubleshooting";
-import { useAuth, AuthProvider } from "./context/auth-context";
-import { ChatProvider } from "./context/chat-context";
-import Header from "./components/navigation/header";
-import { Tabs } from "./components/navigation/tabs";
-import { useEffect } from "react";
+import { AuthProvider } from './context/auth-context';
+import { ChatProvider } from './context/chat-context';
+import Header from './components/navigation/header';
+import ProtectedRoute from './components/auth/ProtectedRoute';
+import AdminRoute from './components/auth/AdminRoute';
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
-
-  useEffect(() => {
-    if (!isLoading && !user) {
-      setLocation("/login");
-    }
-  }, [user, isLoading, setLocation]);
-
-  if (isLoading) {
-    return <div className="flex h-screen items-center justify-center">Loading...</div>;
-  }
-
-  return user ? <>{children}</> : null;
-}
-
-function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
-
-  useEffect(() => {
-    if (!isLoading && (!user || user.role !== 'admin')) {
-      setLocation("/chat");
-    }
-  }, [user, isLoading, setLocation]);
-
-  if (isLoading) {
-    return <div className="flex h-screen items-center justify-center">Loading...</div>;
-  }
-
-  return user && user.role === 'admin' ? <>{children}</> : null;
-}
-
-function Router() {
-  const { user } = useAuth();
-  const [location] = useLocation();
-
-  const isLoginPage = location === '/login';
-
-  // Separate layout for login page
-  if (isLoginPage) {
-    return (
-      <div className="h-screen">
-        <Switch>
-          <Route path="/login" component={Login} />
-          <Route path="/">
-            <Redirect to="/login" />
-          </Route>
-        </Switch>
-      </div>
-    );
-  }
-
-  // Main app layout for authenticated routes
-  return (
-    <div className="h-screen flex flex-col">
-      {user && <Header />}
-
-      {user && (
-        <div className="border-b border-neutral-200">
-          <Tabs currentPath={location} />
-        </div>
-      )}
-
-      <main className="flex-1 flex overflow-hidden">
-        <Switch>
-
-          <Route path="/chat">
-            <ProtectedRoute>
-              <Chat />
-            </ProtectedRoute>
-          </Route>
-
-          <Route path="/processing">
-            <ProtectedRoute>
-              <Processing />
-            </ProtectedRoute>
-          </Route>
-
-          <Route path="/settings">
-            <ProtectedRoute>
-              <Settings />
-            </ProtectedRoute>
-          </Route>
-
-          <Route path="/users">
-            <ProtectedRoute>
-              <AdminRoute>
-                <Users />
-              </AdminRoute>
-            </ProtectedRoute>
-          </Route>
-
-          <Route path="/documents">
-            <ProtectedRoute>
-              <AdminRoute>
-                <Documents />
-              </AdminRoute>
-            </ProtectedRoute>
-          </Route>
-
-          <Route path="/emergency-guide">
-            <ProtectedRoute>
-              <AdminRoute>
-                <EmergencyGuide />
-              </AdminRoute>
-            </ProtectedRoute>
-          </Route>
-
-          <Route path="/troubleshooting">
-            <ProtectedRoute>
-              <AdminRoute>
-                <Troubleshooting />
-              </AdminRoute>
-            </ProtectedRoute>
-          </Route>
-
-          <Route path="/">
-            {user ? <Redirect to="/chat" /> : <Redirect to="/login" />}
-          </Route>
-
-          <Route component={NotFound} />
-        </Switch>
-      </main>
-    </div>
-  );
-}
+// Lazy loading components
+const ChatPage = lazy(() => import('./pages/chat'));
+const LoginPage = lazy(() => import('./pages/login'));
+const DocumentsPage = lazy(() => import('./pages/documents'));
+const UsersPage = lazy(() => import('./pages/users'));
+const SettingsPage = lazy(() => import('./pages/settings'));
+const TroubleshootingPage = lazy(() => import('./pages/troubleshooting'));
+const NotFoundPage = lazy(() => import('./pages/not-found'));
+const EmergencyGuidePage = lazy(() => import('./pages/emergency-guide'));
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <Router>
       <AuthProvider>
         <ChatProvider>
-          <Router />
+          <div className="flex flex-col h-screen">
+            <Header />
+            <main className="flex-1 overflow-auto">
+              <Suspense fallback={<div className="flex justify-center items-center h-full">読み込み中...</div>}>
+                <Routes>
+                  <Route path="/login" element={<LoginPage />} />
+                  
+                  {/* Protected Routes */}
+                  <Route element={<ProtectedRoute />}>
+                    <Route path="/" element={<Navigate to="/chat" replace />} />
+                    <Route path="/chat" element={<ChatPage />} />
+                    <Route path="/settings" element={<SettingsPage />} />
+                  </Route>
+
+                  {/* Admin Routes */}
+                  <Route element={<AdminRoute />}>
+                    <Route path="/documents" element={<DocumentsPage />} />
+                    <Route path="/users" element={<UsersPage />} />
+                    <Route path="/troubleshooting" element={<TroubleshootingPage />} />
+                    <Route path="/emergency-guide/:id" element={<EmergencyGuidePage />} />
+                  </Route>
+
+                  <Route path="*" element={<NotFoundPage />} />
+                </Routes>
+              </Suspense>
+            </main>
+          </div>
+          <Toaster />
         </ChatProvider>
-        <Toaster />
       </AuthProvider>
-    </QueryClientProvider>
+    </Router>
   );
 }
 

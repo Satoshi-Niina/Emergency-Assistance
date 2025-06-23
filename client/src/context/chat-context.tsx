@@ -33,6 +33,7 @@ interface ChatContextValue {
   isExporting: boolean;
   hasUnexportedMessages: boolean;
   sendEmergencyGuide: (guideData: any) => Promise<any>; // 戻り値の型を変更
+  sendFlowExecutionResult: (flowData: any) => Promise<void>; // フロー実行結果送信関数を追加
   draftMessage: { content: string, media?: { type: string, url: string, thumbnail?: string }[] } | null;
   setDraftMessage: (message: { content: string, media?: { type: string, url: string, thumbnail?: string }[] } | null) => void;
   clearChatHistory: () => Promise<void>;
@@ -68,6 +69,7 @@ export const useChat = () => {
       isExporting: false,
       hasUnexportedMessages: false,
       sendEmergencyGuide: async () => {},
+      sendFlowExecutionResult: async () => {},
       draftMessage: null,
       setDraftMessage: () => {},
       clearChatHistory: async () => {},
@@ -852,7 +854,20 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         timestamp: new Date()
       };
 
-      // AI応答メッセージ（右側）- 構造統一
+      // 応急処置ガイドの画像を収集
+      const guideImages = guideData.steps?.filter((step: any) => step.imageUrl && step.imageUrl.trim())
+        .map((step: any, index: number) => ({
+          id: `guide_img_${index}`,
+          type: 'image',
+          url: step.imageUrl,
+          thumbnail: step.imageUrl,
+          title: step.title || `ステップ${index + 1}`,
+          fileName: step.imageFileName
+        })) || [];
+
+      console.log('🖼️ 応急処置ガイド画像収集:', guideImages.length, '件');
+
+      // AI応答メッセージ（右側）- 構造統一（画像情報を含む）
       const aiMessageContent = `■ 応急処置ガイド実施記録\n\n**${guideData.title}**\n\n${guideData.content}\n\n---\n**AI分析**: 応急処置手順が正常に記録されました。実施状況に関して追加のご質問がございましたらお聞かせください。`;
       const aiMessage = {
         id: timestamp + 1,
@@ -861,12 +876,14 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         text: aiMessageContent,
         isAiResponse: true,
         senderId: 'ai',
-        timestamp: new Date()
+        timestamp: new Date(),
+        media: guideImages // 画像情報を追加
       };
 
       console.log('🏥 ChatMessage形式でメッセージを作成しました:');
       console.log('- ユーザーメッセージ:', userMessage);
       console.log('- AIメッセージ:', aiMessage);
+      console.log('- 含まれる画像数:', guideImages.length);
 
       // メッセージを即座にローカル状態に追加
       setMessages(prevMessages => {
@@ -880,9 +897,12 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         const response = await apiRequest('POST', `/api/emergency-guide/send`, {
           chatId: currentChatId,
-          guideData,
-          userMessage,
-          aiMessage
+          guideData: {
+            title: guideData.title,
+            content: guideData.content,
+            steps: guideData.steps || [],
+            images: guideImages // 画像情報も送信
+          }
         });
 
         if (response.ok) {
@@ -952,44 +972,191 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       }));
 
-      // ChatMessage形式で結果を返す
-      return {
-        success: true,
-        userMessage,
-        aiMessage,
-        guideData
-      };
-
     } catch (error) {
-      console.error('緊急ガイド送信エラー:', error);
-
-      // エラーの種類に応じてメッセージを分岐
-      if (error instanceof Error && error.message.includes('API')) {
-        toast({
-          title: 'API通信エラー',
-          description: 'サーバーとの通信中にエラーが発生しました',
-          variant: 'destructive',
-        });
-      } else {
-        toast({
-          title: '緊急ガイド送信エラー',
-          description: '応急処置ガイドの送信に失敗しました。',
-          variant: 'destructive',
-        });
-      }
-
-      // エラーが発生してもチャット機能は継続
-      return {
-        success: false,
-        error: error,
-        userMessage: null,
-        aiMessage: null,
-        guideData
-      };
+      console.error('応急処置ガイド送信エラー:', error);
+      toast({
+        title: 'エラー',
+        description: '応急処置ガイドの送信に失敗しました',
+        variant: 'destructive',
+      });
     } finally {
       setIsLoading(false);
     }
-  }, [chatId, toast]);
+  }, [chatId, initializeChat, setMessages, setSearchResults, toast, apiRequest]);
+
+  // フロー実行結果をチャットに送信する関数（新規追加）
+  const sendFlowExecutionResult = useCallback(async (flowData: any) => {
+    try {
+      // チャットIDがない場合は初期化を試みる
+      if (!chatId) {
+        const newChatId = await initializeChat();
+        if (!newChatId) {
+          throw new Error('チャットの初期化に失敗しました');
+        }
+      }
+
+      setIsLoading(true);
+
+      // 現在のチャットIDを取得
+      const currentChatId = chatId || 1;
+      console.log('フロー実行結果: チャットID', currentChatId, 'にデータを送信します');
+
+      const timestamp = Date.now();
+
+      // ユーザーメッセージ（左側）
+      const userMessageContent = flowData.isPartial 
+        ? `応急処置ガイド「${flowData.title}」の途中経過を送信しました`
+        : `応急処置ガイド「${flowData.title}」のフローを実行しました`;
+      const userMessage = {
+        id: timestamp,
+        chatId: currentChatId,
+        content: userMessageContent,
+        text: userMessageContent,
+        isAiResponse: false,
+        senderId: 'user',
+        timestamp: new Date()
+      };
+
+      // 実行したステップから画像を収集
+      const executedImages = flowData.executedSteps
+        ?.flatMap((step: any) => {
+          const images: any[] = [];
+          
+          // imageUrlがある場合
+          if (step.imageUrl && step.imageUrl.trim()) {
+            images.push({
+              id: `flow_img_${step.stepId}_url`,
+              type: 'image',
+              url: step.imageUrl,
+              thumbnail: step.imageUrl,
+              title: step.title || `ステップ画像`,
+              fileName: `step_${step.stepId}.jpg`
+            });
+          }
+          
+          // images配列がある場合
+          if (step.images && Array.isArray(step.images)) {
+            step.images.forEach((image: any, index: number) => {
+              if (image.url && image.url.trim()) {
+                images.push({
+                  id: `flow_img_${step.stepId}_${index}`,
+                  type: 'image',
+                  url: image.url,
+                  thumbnail: image.url,
+                  title: step.title || `ステップ${index + 1}`,
+                  fileName: image.fileName || `step_${step.stepId}_${index}.jpg`
+                });
+              }
+            });
+          }
+          
+          return images;
+        }) || [];
+
+      console.log('🖼️ フロー実行画像収集:', executedImages.length, '件');
+
+      // 実行したステップの詳細をフォーマット
+      const stepDetails = flowData.executedSteps
+        ?.map((step: any, index: number) => {
+          let stepText = `${index + 1}. **${step.title}**\n${step.message}`;
+          if (step.selectedCondition) {
+            stepText += `\n選択: ${step.selectedCondition}`;
+          }
+          return stepText;
+        })
+        .join('\n\n') || '';
+
+      // AI応答メッセージ（右側）- フロー実行結果
+      const aiMessageContent = flowData.isPartial
+        ? `■ 応急処置フロー途中経過\n\n**${flowData.title}**\n\n**実行済みステップ:**\n${stepDetails}\n\n**送信時刻:** ${flowData.completedAt.toLocaleString('ja-JP')}\n\n---\n**AI分析**: 応急処置フローの途中経過が記録されました。続行する場合はガイドを継続してください。`
+        : `■ 応急処置フロー実行記録\n\n**${flowData.title}**\n\n**実行したステップ:**\n${stepDetails}\n\n**実行完了時刻:** ${flowData.completedAt.toLocaleString('ja-JP')}\n\n---\n**AI分析**: 応急処置フローが正常に実行されました。各ステップの実施状況を確認し、必要に応じて追加の対応を行ってください。`;
+      
+      const aiMessage = {
+        id: timestamp + 1,
+        chatId: currentChatId,
+        content: aiMessageContent,
+        text: aiMessageContent,
+        isAiResponse: true,
+        senderId: 'ai',
+        timestamp: new Date(),
+        media: executedImages // 実行したステップの画像を追加
+      };
+
+      console.log('🏥 フロー実行結果メッセージを作成しました:');
+      console.log('- ユーザーメッセージ:', userMessage);
+      console.log('- AIメッセージ:', aiMessage);
+      console.log('- 含まれる画像数:', executedImages.length);
+
+      // メッセージを即座にローカル状態に追加
+      setMessages(prevMessages => {
+        console.log('✅ フロー実行結果メッセージをローカル状態に追加 - 現在のメッセージ数:', prevMessages.length);
+        const newMessages = [...prevMessages, userMessage, aiMessage];
+        console.log('✅ フロー実行結果メッセージ追加完了:', newMessages.length, '件');
+        return newMessages;
+      });
+
+      // 成功トーストを表示
+      toast({
+        title: flowData.isPartial ? '途中経過送信完了' : 'フロー実行記録完了',
+        description: flowData.isPartial 
+          ? 'チャット履歴に応急処置フローの途中経過が追加されました'
+          : 'チャット履歴に応急処置フローの実行記録が追加されました',
+      });
+
+      // スクロール処理
+      setTimeout(() => {
+        const chatContainer = document.getElementById('chatMessages');
+        if (chatContainer) {
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+          console.log('チャットエリアを最下部にスクロールしました');
+        }
+      }, 100);
+
+      // イベント送信
+      window.dispatchEvent(new CustomEvent('flow-execution-sent', {
+        detail: { 
+          flowData, 
+          timestamp: new Date(), 
+          success: true,
+          userMessage,
+          aiMessage
+        }
+      }));
+
+    } catch (error) {
+      console.error('フロー実行結果送信エラー:', error);
+      toast({
+        title: 'エラー',
+        description: 'フロー実行結果の送信に失敗しました',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [chatId, initializeChat, setMessages, toast]);
+
+  // イベントリスナーの設定
+  useEffect(() => {
+    // 既存のイベントリスナー
+    const handleEmergencyGuideSent = (event: CustomEvent) => {
+      console.log('🏥 応急処置ガイド送信イベントを受信:', event.detail);
+      // 既存の処理はそのまま
+    };
+
+    // 新しいフロー実行完了イベントリスナー
+    const handleEmergencyGuideCompleted = (event: CustomEvent) => {
+      console.log('🏥 応急処置ガイド完了イベントを受信:', event.detail);
+      sendFlowExecutionResult(event.detail);
+    };
+
+    window.addEventListener('emergency-guide-sent', handleEmergencyGuideSent as EventListener);
+    window.addEventListener('emergency-guide-completed', handleEmergencyGuideCompleted as EventListener);
+
+    return () => {
+      window.removeEventListener('emergency-guide-sent', handleEmergencyGuideSent as EventListener);
+      window.removeEventListener('emergency-guide-completed', handleEmergencyGuideCompleted as EventListener);
+    };
+  }, [sendFlowExecutionResult]);
 
   // チャット履歴をクリアする関数（表面的にクリア→新しいチャット開始）
   const clearChatHistory = useCallback(async () => {
@@ -1060,6 +1227,13 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // 最後のエクスポート履歴を取得
   const fetchLastExport = useCallback(async () => {
     if (!chatId) return;
+    
+    // UUIDの形式チェック
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(chatId)) {
+      console.log('Invalid chat ID format - skipping last export fetch');
+      return;
+    }
 
     try {
       const response = await apiRequest('GET', `/api/chats/${chatId}/last-export`);
@@ -1116,6 +1290,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isExporting,
     hasUnexportedMessages,
     sendEmergencyGuide,
+    sendFlowExecutionResult,
     draftMessage,
     setDraftMessage,
     clearChatHistory,

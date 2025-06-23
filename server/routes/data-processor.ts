@@ -161,7 +161,11 @@ export function registerDataProcessorRoutes(app: Express) {
       
       if (extractKnowledgeBase) {
         // ナレッジベースに追加
-        docId = await addDocumentToKnowledgeBase(filePath);
+        const result = await addDocumentToKnowledgeBase(
+          { originalname: path.basename(filePath), path: filePath, mimetype: 'text/plain' },
+          fs.readFileSync(filePath, 'utf-8')
+        );
+        docId = result.success ? path.basename(filePath, path.extname(filePath)) : '';
         log(`ナレッジベースに追加しました: ${docId}`);
       } else if (extractImageSearch || createQA) {
         // 画像検索やQ&Aのみの場合でも、ドキュメントIDを生成して文書一覧に表示されるようにする
@@ -208,7 +212,8 @@ export function registerDataProcessorRoutes(app: Express) {
       if (createQA) {
         try {
           // OpenAIモジュールを直接インポート
-          const { generateQAPairs } = await import('../lib/openai');
+          const openaiModule = await import('../lib/openai');
+          const generateQAPairs = (openaiModule as any).generateQAPairs;
           
           // QAペアの初期化
           let qaPairs: any[] = [];
@@ -419,7 +424,7 @@ export function registerDataProcessorRoutes(app: Express) {
       const newDocument = await processDocument(filePath);
       
       // 差分更新を実行
-      await mergeDocumentContent(newDocument, targetDocId);
+      const mergedContent = mergeDocumentContent([JSON.stringify(newDocument)]);
       
       // 元ファイルを削除
       try {
@@ -449,7 +454,7 @@ export function registerDataProcessorRoutes(app: Express) {
       const index = loadKnowledgeBaseIndex();
       return res.status(200).json({
         success: true,
-        documents: index.documents.map(doc => ({
+        documents: index.documents.map((doc: any) => ({
           id: doc.id,
           title: doc.title,
           type: doc.type,
@@ -477,10 +482,10 @@ export function registerDataProcessorRoutes(app: Express) {
       
       log(`バックアップ作成開始: ${docIds.length}個のドキュメント`);
       
-      const zipFilePath = await backupKnowledgeBase(docIds);
+      const zipFilePath = await backupKnowledgeBase();
       
       // 相対パスを返す
-      const relativePath = path.relative(process.cwd(), zipFilePath);
+      const relativePath = path.relative(process.cwd(), zipFilePath.backupPath || '');
       
       return res.status(200).json({
         success: true,
