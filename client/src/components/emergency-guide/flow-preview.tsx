@@ -142,7 +142,6 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
               onClick={onClose} 
               className="h-8 px-3 border-gray-300 hover:bg-gray-100"
             >
-              <X className="h-4 w-4 mr-1" />
               閉じる
             </Button>
           </div>

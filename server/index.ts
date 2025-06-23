@@ -1,27 +1,57 @@
 import 'dotenv/config';
-import express, { type Request, Response, NextFunction } from "express";
-import path from "path";
+import * as path from 'path';
 import { fileURLToPath } from 'url';
+import express, { type Request, Response, NextFunction } from "express";
 import cors from 'cors';
+import dotenv from 'dotenv';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// 複数の場所から.envファイルを読み込み
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: path.resolve(process.cwd(), 'server/.env') });
+dotenv.config({ path: path.resolve(__dirname, '.env') });
+
+// 環境変数の読み込み確認
+console.log("[DEBUG] Environment variables loaded:", {
+  NODE_ENV: process.env.NODE_ENV,
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY ? "SET" : "NOT SET",
+  PWD: process.cwd(),
+  __dirname: __dirname
+});
 
 console.log("[INFO] Backend server starting...");
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
+const isProduction = process.env.NODE_ENV === 'production';
 
 // CORS設定
-app.use(cors({
-  origin: ['http://localhost:5000', 'http://localhost:5173', 'https://*.replit.dev'],
+const corsOptions = {
+  origin: isProduction 
+    ? [process.env.FRONTEND_URL || 'http://localhost:5000']
+    : ['http://localhost:5000', 'http://localhost:5173', 'https://*.replit.dev'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
+};
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(cors(corsOptions));
+
+// セキュリティヘッダー
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  if (isProduction) {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
+
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
 // ヘルスチェックエンドポイント
 app.get('/api/health', (req, res) => {
@@ -30,22 +60,42 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     port: PORT,
     environment: process.env.NODE_ENV || 'development',
-    processId: process.pid
+    processId: process.pid,
+    version: process.env.npm_package_version || '1.0.0'
   });
 });
+
+// 本番環境での静的ファイル配信
+if (isProduction) {
+  // クライアントのビルドファイルを配信
+  app.use(express.static(path.join(__dirname, '../client/dist')));
+  
+  // SPAのルーティング対応
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api/')) {
+      res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+    }
+  });
+}
 
 // エラーハンドラー
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   console.error('Server error:', err);
-  res.status(500).json({ message: err.message || 'Internal Server Error' });
+  res.status(500).json({ 
+    message: isProduction ? 'Internal Server Error' : err.message,
+    ...(isProduction ? {} : { stack: err.stack })
+  });
 });
 
 // サーバー起動
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log('🚀 ===== BACKEND SERVER READY =====');
   console.log(`✅ バックエンドサーバー起動: http://0.0.0.0:${PORT}`);
-  console.log(`🌐 公開URL想定: Replitの外部URL経由でアクセス`);
+  console.log(`🌐 環境: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📡 ヘルスチェック: /api/health`);
+  if (isProduction) {
+    console.log(`🎯 本番モード: 静的ファイル配信有効`);
+  }
   console.log('🚀 ===== BACKEND SERVER READY =====');
 });
 
@@ -71,9 +121,10 @@ app.use(session({
     checkPeriod: 86400000 // 24時間でクリーンアップ
   }),
   cookie: {
-    secure: false, // 開発環境ではfalse
+    secure: isProduction, // 本番環境ではHTTPS必須
     httpOnly: true,
-    maxAge: 86400000 // 24時間
+    maxAge: 86400000, // 24時間
+    sameSite: isProduction ? 'strict' : 'lax'
   }
 }));
 
@@ -115,4 +166,5 @@ const gracefulShutdown = () => {
 
 process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
+process.on('SIGUSR2', gracefulShutdown);
 process.on('SIGUSR2', gracefulShutdown);
