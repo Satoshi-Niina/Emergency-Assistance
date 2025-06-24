@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - feature/ver2.10  # 実行対象ブランチを指定
-
+ 　　workflow_dispatch: 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
