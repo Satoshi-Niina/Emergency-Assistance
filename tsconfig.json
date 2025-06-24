@@ -4,6 +4,8 @@
     "useDefineForClassFields": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "CommonJS",
+    "outDir": "./dist",
+    "rootDir": "./",
     "skipLibCheck": true,
     "moduleResolution": "node",
     "allowImportingTsExtensions": true,
@@ -22,5 +24,6 @@
       "@shared/*": ["shared/*"]
     }
   },
-  "include": ["src", "scripts", "server"]
+  "include": ["./**/*.ts"],
+  "exclude": ["node_modules", "scripts"]
 }
