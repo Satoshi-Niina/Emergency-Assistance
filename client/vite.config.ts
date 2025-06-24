@@ -29,6 +29,14 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
       "@shared": path.resolve(__dirname, "../shared"),
     },
+    extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json']
+  },
+  optimizeDeps: {
+    include: ['../shared/schema.ts'],
+    exclude: ['../shared/schema.js']
+  },
+  esbuild: {
+    target: 'es2020'
   },
   server: {
     host: '0.0.0.0',

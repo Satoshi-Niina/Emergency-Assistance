@@ -11,18 +11,18 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": false,
-    "outDir": "../dist",
-    "rootDir": ".",
-    "baseUrl": ".",
+    "noEmit": false,                     // ← 開発用では emit しない（ts-node/tsx 用）
+    "outDir": "./dist",                  // ← build時には tsconfig.build.json で上書き
+    "rootDir": "./",
+    "baseUrl": "./",
     "paths": {
       "@/*": ["./*"],
       "@shared/*": ["../shared/*"]
     }
   },
   "include": [
-    "**/*.ts",
-    "**/*.tsx"
+    "./**/*.ts",
+    "./**/*.tsx"
   ],
   "exclude": [
     "node_modules",

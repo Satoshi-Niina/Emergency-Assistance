@@ -35,7 +35,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const getCurrentUser = async () => {
     try {
       console.log('🔍 現在のユーザー情報を取得中...');
-      const response = await fetch('/api/auth/me', {
+      const response = await fetch('/api/user', {
         method: 'GET',
         credentials: 'include',
         headers: {

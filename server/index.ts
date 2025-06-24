@@ -107,40 +107,39 @@ server.on('error', (err: any) => {
   }
 });
 
-// セッション設定
-import session from 'express-session';
-import MemoryStore from 'memorystore';
-
-const MemoryStoreSession = MemoryStore(session);
-
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'emergency-recovery-secret-key',
-  resave: false,
-  saveUninitialized: false,
-  store: new MemoryStoreSession({
-    checkPeriod: 86400000 // 24時間でクリーンアップ
-  }),
-  cookie: {
-    secure: isProduction, // 本番環境ではHTTPS必須
-    httpOnly: true,
-    maxAge: 86400000, // 24時間
-    sameSite: isProduction ? 'strict' : 'lax'
-  }
-}));
-
 // ルート登録を即座に実行
 (async () => {
   try {
     console.log('📡 ルート登録開始...');
-    const { registerRoutes } = await import('./routes.ts');
     
-    // 認証セットアップ
-    const { setupAuth } = await import('./auth.ts');
-    setupAuth(app);
+    // Azure Storage統合の初期化
+    if (process.env.NODE_ENV === 'production' && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+      try {
+        console.log('🚀 Azure Storage統合を初期化中...');
+        const { knowledgeBaseAzure } = await import('./lib/knowledge-base-azure.js');
+        await knowledgeBaseAzure.initialize();
+        console.log('✅ Azure Storage統合初期化完了');
+      } catch (azureError) {
+        console.error('❌ Azure Storage統合初期化エラー:', azureError);
+        console.log('⚠️ Azure Storage統合なしで続行します');
+      }
+    }
+    
+    const isDev = process.env.NODE_ENV !== "production";
 
-    await registerRoutes(app);
-    console.log('✅ ルート登録完了');
+    const { registerRoutes } = isDev
+      ? await import('./routes')
+      : await import('./routes');
+
+    const { setupAuth } = isDev
+      ? await import('./auth')
+      : await import('./auth');
     
+    // 認証とルートを登録
+    setupAuth(app);
+    registerRoutes(app);
+    console.log('✅ 認証とルートの登録完了');
+        
     // 静的ファイル設定（ルート登録後に設定）
     try {
       app.use('/images', express.static(path.join(process.cwd(), 'public', 'images')));
