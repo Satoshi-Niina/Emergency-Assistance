@@ -3,7 +3,7 @@ name: Deploy to Azure Web App
 on:
   push:
     branches:
-      - main
+      - feature/ver2.10
 
 permissions:
   id-token: write
