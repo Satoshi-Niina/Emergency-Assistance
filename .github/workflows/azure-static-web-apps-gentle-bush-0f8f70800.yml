@@ -17,6 +17,7 @@ jobs:
     permissions:
        id-token: write
        contents: read
+
     steps:
       - uses: actions/checkout@v3
         with:
@@ -27,6 +28,15 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '20'
+
+      - name: Get Id Token
+        uses: actions/github-script@v6
+        id: idtoken
+        with:
+          script: |
+            const core = require('@actions/core');
+            return await core.getIDToken();
+          result-encoding: string
 
       - name: Install dependencies
         run: |
@@ -46,8 +56,7 @@ jobs:
           action: "upload"
           app_location: "client"
           api_location: ""
-          output_location: "dist"
-          ###### If OIDC is required (only for enterprise configurations):
+          output_location: "client/dist"
           github_id_token: ${{ steps.idtoken.outputs.result }}
 
   close_pull_request_job:
