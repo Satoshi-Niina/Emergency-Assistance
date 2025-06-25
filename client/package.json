@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-    "build:server": "tsc -p server"
+  "dev": "vite",
+  "build": "vite build",
+  "preview": "vite preview",
+  "build:server": "tsc"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.0",
