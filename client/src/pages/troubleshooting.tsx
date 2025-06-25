@@ -1,395 +1,248 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation } from 'wouter';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useState } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2, Search, Plus, FileText, Edit, Trash2, ArrowLeft } from 'lucide-react';
-import TroubleshootingEditor from '@/components/troubleshooting/troubleshooting-editor';
-import TroubleshootingFlow from '@/components/troubleshooting/troubleshooting-flow';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Helmet } from 'react-helmet';
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FilePlus, Edit, Trash2, Eye, Workflow, List, BrainCircuit, ListChecks } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
-// トラブルシューティングデータ型
-interface TroubleshootingData {
+// The two main components for the tabs
+import EmergencyFlowEditor from '@/components/emergency-guide/emergency-flow-editor';
+import EmergencyFlowGenerator from '@/components/emergency-guide/emergency-flow-generator';
+import EmergencyGuideDisplay from '@/components/emergency-guide/emergency-guide-display';
+import { WarningDialog } from '@/components/shared/warning-dialog';
+import FlowListManager from '@/components/emergency-guide/flow-list-manager';
+import FlowEditorAdvanced from '@/components/emergency-guide/flow-editor-advanced';
+import FlowPreview from '@/components/emergency-guide/flow-preview';
+
+interface Flow {
   id: string;
   title: string;
   description: string;
-  trigger: string[];
+  category: string;
+  keywords: string[];
+  steps: any[];
+  createdAt: string;
+  updatedAt: string;
 }
 
-const TroubleshootingPage: React.FC = () => {
+const newFlowTemplate: Omit<Flow, 'id' | 'createdAt' | 'updatedAt'> = {
+  title: '新しいフロー',
+  description: '',
+  category: 'general',
+  keywords: [],
+  steps: [
+    {
+      id: 'start_node', type: 'start', title: '開始', description: 'このフローを開始します', nextId: 'step_1'
+    },
+    {
+      id: 'step_1', type: 'step', title: '最初のステップ', description: 'ここに最初の指示を入力します。', images: [], nextId: 'end_node'
+    },
+    {
+      id: 'end_node', type: 'end', title: '終了', description: 'フローが完了しました。'
+    },
+  ],
+};
+
+type ViewState = 
+  | { view: 'list' }
+  | { view: 'edit'; flowId: string | null };
+
+export default function TroubleshootingPage() {
+  const [activeTab, setActiveTab] = useState('generator');
+  const [flowState, setFlowState] = useState<ViewState>({ view: 'list' });
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [isWarningOpen, setIsWarningOpen] = useState(false);
+  const [selectedFlow, setSelectedFlow] = useState<Flow | null>(null);
+  const [flowToDelete, setFlowToDelete] = useState<string | null>(null);
+  const [previewFlowId, setPreviewFlowId] = useState<string | null>(null);
+
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [troubleshootingList, setTroubleshootingList] = useState<TroubleshootingData[]>([]);
-  const [filteredList, setFilteredList] = useState<TroubleshootingData[]>([]);
+
+  const { data: flows, isLoading } = useQuery<Flow[]>({
+    queryKey: ['/api/emergency-flow'],
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: (flowData: Partial<Flow>) => {
+      const url = flowData.id ? `/api/emergency-flow/${flowData.id}` : '/api/emergency-flow';
+      const method = flowData.id ? 'PUT' : 'POST';
+      return apiRequest(method, url, flowData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/emergency-flow'] });
+      toast({ title: '成功', description: 'フローが正常に保存されました。' });
+      setIsEditorOpen(false);
+      setSelectedFlow(null);
+      setFlowState({ view: 'list' });
+    },
+    onError: (error) => toast({ title: 'エラー', description: `フローの保存中にエラーが発生しました: ${error.message}`, variant: 'destructive' }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (flowId: string) => apiRequest('DELETE', `/api/emergency-flow/${flowId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/emergency-flow'] });
+      toast({ title: '成功', description: 'フローが削除されました。' });
+      setFlowToDelete(null);
+      setIsWarningOpen(false);
+    },
+    onError: (error) => toast({ title: 'エラー', description: `フローの削除中にエラーが発生しました: ${error.message}`, variant: 'destructive' }),
+  });
   
-  // ガイドID (URL パラメータから取得)
-  const [guideId, setGuideId] = useState<string | null>(null);
-  const [isFromEmergencyGuide, setIsFromEmergencyGuide] = useState(false);
+  const handleEdit = (flowId: string) => {
+    setFlowState({ view: 'edit', flowId });
+  };
   
-  // 編集モード関連
-  const [editMode, setEditMode] = useState(false);
-  const [currentId, setCurrentId] = useState<string | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
-  const [previewMode, setPreviewMode] = useState(false);
-  const [previewId, setPreviewId] = useState<string | null>(null);
-
-  // トラブルシューティングデータの取得
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/troubleshooting');
-      if (!response.ok) {
-        throw new Error('データの取得に失敗しました');
-      }
-      
-      const data = await response.json();
-      setTroubleshootingList(data);
-      setFilteredList(data);
-    } catch (error) {
-      console.error('トラブルシューティングデータの取得エラー:', error);
-      toast({
-        title: 'エラー',
-        description: 'トラブルシューティングデータの取得に失敗しました',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
+  const handleNew = () => {
+    setFlowState({ view: 'edit', flowId: null });
   };
 
-  // URLクエリパラメータの処理
-  useEffect(() => {
-    // URLからguideIdを取得
-    const urlParams = new URLSearchParams(window.location.search);
-    const guideIdParam = urlParams.get('guideId');
-    
-    if (guideIdParam) {
-      setGuideId(guideIdParam);
-      setIsFromEmergencyGuide(true);
-      
-      // ガイドIDがある場合は新規トラブルシューティング作成モードを開始
-      setCurrentId(null);
-      setEditMode(true);
-    }
-    
-    fetchData();
-  }, []);
-
-  // 検索フィルタリング
-  useEffect(() => {
-    if (!searchTerm.trim()) {
-      setFilteredList(troubleshootingList);
-      return;
-    }
-    
-    const term = searchTerm.toLowerCase();
-    const filtered = troubleshootingList.filter(item => 
-      item.id.toLowerCase().includes(term) || 
-      item.title.toLowerCase().includes(term) || 
-      item.description.toLowerCase().includes(term) ||
-      (item.trigger && item.trigger.some(t => t.toLowerCase().includes(term)))
-    );
-    
-    setFilteredList(filtered);
-  }, [searchTerm, troubleshootingList]);
-
-  // 編集モードの開始
-  const handleEdit = (id: string) => {
-    setCurrentId(id);
-    setEditMode(true);
+  const handlePreview = (flowId: string) => {
+    setPreviewFlowId(flowId);
   };
 
-  // 新規作成モードの開始
-  const handleCreate = () => {
-    setCurrentId(null);
-    setEditMode(true);
+  const handleBackToList = () => {
+    setFlowState({ view: 'list' });
   };
 
-  // 編集/作成のキャンセル
-  const handleCancelEdit = () => {
-    // 応急復旧フローから来た場合は元のページに戻る
-    if (isFromEmergencyGuide && guideId) {
-      window.location.href = '/emergency-guide';
-    } else {
-      setEditMode(false);
-      setCurrentId(null);
-    }
+  const handleFlowGenerated = (generatedFlow: any) => {
+    setActiveTab('editor');
+    handleNew(); 
+    console.log("Generated Flow, ready for editing:", generatedFlow);
   };
 
-  // 編集/作成の保存完了
-  const handleSaved = () => {
-    // 応急復旧フローから来た場合は元のページに戻る
-    if (isFromEmergencyGuide && guideId) {
-      toast({
-        title: '保存完了',
-        description: 'トラブルシューティングデータを保存しました。応急復旧データ作成ページに戻ります。',
-      });
-      // 少し遅延させて通知を見せてから遷移
-      setTimeout(() => {
-        window.location.href = '/emergency-guide';
-      }, 1500);
-    } else {
-      setEditMode(false);
-      setCurrentId(null);
-      // データを再取得
-      fetchData();
-    }
+  const handleOpenEditor = (flowId: string) => {
+    apiRequest('GET', `/api/emergency-flow/${flowId}`).then(res => res.json()).then(fullFlowData => {
+      setSelectedFlow(fullFlowData);
+      setIsEditorOpen(true);
+    }).catch(err => toast({ title: 'エラー', description: `フローデータの取得に失敗しました: ${err.message}`, variant: 'destructive' }));
   };
 
-  // プレビューモードの開始
-  const handlePreview = (id: string) => {
-    setPreviewId(id);
-    setPreviewMode(true);
+  const handleOpenViewer = (flow: Flow) => {
+    setSelectedFlow(flow);
+    setIsViewerOpen(true);
   };
 
-  // プレビューの終了
-  const handlePreviewExit = () => {
-    setPreviewMode(false);
-    setPreviewId(null);
+  const handleDeleteClick = (flowId: string) => {
+    setFlowToDelete(flowId);
+    setIsWarningOpen(true);
   };
-
-  // 削除確認ダイアログの表示
-  const handleDeleteConfirm = (id: string) => {
-    setDeleteTargetId(id);
-    setShowDeleteConfirm(true);
-  };
-
-  // 削除の実行
-  const handleDelete = async () => {
-    if (!deleteTargetId) return;
-
-    try {
-      const response = await fetch(`/api/troubleshooting/${deleteTargetId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('削除に失敗しました');
-      }
-
-      toast({
-        title: '削除完了',
-        description: 'トラブルシューティングデータを削除しました',
-      });
-
-      // リストを更新
-      fetchData();
-    } catch (error) {
-      console.error('削除エラー:', error);
-      toast({
-        title: 'エラー',
-        description: '削除に失敗しました',
-        variant: 'destructive',
-      });
-    } finally {
-      setShowDeleteConfirm(false);
-      setDeleteTargetId(null);
-    }
-  };
-
-  // 編集モード時のレンダリング
-  if (editMode) {
-    return (
-      <div className="container mx-auto p-6">
-        {isFromEmergencyGuide && guideId && (
-          <Card className="mb-4">
-            <CardHeader className="pb-3">
-              <div className="flex justify-between items-center">
-                <div>
-                  <CardTitle>応急復旧データに関連付けられたトラブルシューティング</CardTitle>
-                  <CardDescription>
-                    ガイドID: {guideId}
-                  </CardDescription>
-                </div>
-                <Button variant="outline" onClick={() => window.location.href = '/emergency-guide'}>
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  応急復旧データ作成に戻る
-                </Button>
-              </div>
-            </CardHeader>
-          </Card>
-        )}
-        <TroubleshootingEditor 
-          id={currentId || undefined} 
-          onCancel={handleCancelEdit} 
-          onSaved={handleSaved}
-          guideId={guideId || undefined}
-        />
-      </div>
-    );
+  
+  const confirmDelete = () => {
+      if(flowToDelete) deleteMutation.mutate(flowToDelete);
   }
 
-  // プレビューモード時のレンダリング
-  if (previewMode && previewId) {
+  const handleSaveFlow = (flowData: any) => {
+    saveMutation.mutate(flowData);
+  };
+
+  const handleCancelFlow = () => {
+    setFlowState({ view: 'list' });
+  };
+
+  const handleClosePreview = () => {
+    setPreviewFlowId(null);
+  };
+
+  // プレビューが開いている場合
+  if (previewFlowId) {
     return (
-      <div className="container mx-auto p-6">
-        <Card className="mb-4">
-          <CardHeader className="pb-3">
-            <div className="flex justify-between items-center">
-              <CardTitle>トラブルシューティングプレビュー</CardTitle>
-              <Button variant="outline" onClick={handlePreviewExit}>
-                一覧に戻る
-              </Button>
-            </div>
-          </CardHeader>
-        </Card>
-        
-        <TroubleshootingFlow 
-          id={previewId} 
-          onExit={handlePreviewExit} 
-        />
+      <div className="container mx-auto p-4 sm:p-6 bg-gray-50 min-h-screen">
+        <FlowPreview flowId={previewFlowId} onClose={handleClosePreview} />
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <Helmet>
-        <title>トラブルシューティング管理 | 保守用車支援システム</title>
-      </Helmet>
-      
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-blue-800 mb-2">トラブルシューティング管理</h1>
-        <p className="text-gray-600">
-          トラブルシューティングフローの作成・編集・プレビューを行います
-        </p>
-      </div>
-      
-      <div className="flex items-center justify-between mb-6">
-        <div className="relative w-full max-w-md">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-          <Input
-            type="search"
-            placeholder="トラブルシューティングを検索..."
-            className="pl-8"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+    <div className="container mx-auto p-4 sm:p-6 bg-gray-50 min-h-screen">
+      <div className="flex justify-between items-start mb-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 flex items-center gap-3">
+            <Workflow className="w-8 h-8 text-blue-600" />
+            応急処置データ管理
+          </h1>
+          <p className="text-gray-500 mt-1">フローの新規作成、および既存フローの編集を行います。</p>
         </div>
-        
-        <Button onClick={handleCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          新規作成
-        </Button>
       </div>
-      
-      {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-          <span className="ml-2">データを読み込み中...</span>
-        </div>
-      ) : filteredList.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center">
-            <div className="flex flex-col items-center justify-center">
-              <FileText className="h-12 w-12 text-gray-400 mb-4" />
-              {searchTerm ? (
-                <p className="text-gray-500">検索条件に一致するトラブルシューティングが見つかりません</p>
-              ) : (
-                <>
-                  <p className="text-gray-500 mb-2">トラブルシューティングがまだ登録されていません</p>
-                  <Button variant="outline" onClick={handleCreate}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    新規作成
-                  </Button>
-                </>
-              )}
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 bg-gray-200 p-1 rounded-lg">
+          <TabsTrigger value="generator" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md">
+            <BrainCircuit className="h-5 w-5" />
+            新規フロー生成
+          </TabsTrigger>
+          <TabsTrigger value="editor" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md">
+            <ListChecks className="h-5 w-5" />
+            フローの管理・編集
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="generator" className="mt-4">
+            <div className="bg-white p-6 rounded-lg shadow-md">
+                <EmergencyFlowGenerator onFlowGenerated={handleFlowGenerated} />
             </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredList.map((item) => (
-            <Card key={item.id} className="overflow-hidden">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg">{item.title}</CardTitle>
-                <CardDescription className="line-clamp-2">
-                  {item.description}
-                </CardDescription>
-              </CardHeader>
-              
-              <CardContent>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {item.trigger && item.trigger.map((tag, idx) => (
-                    <span
-                      key={idx}
-                      className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                  {(!item.trigger || item.trigger.length === 0) && (
-                    <span className="text-gray-400 text-sm">トリガーなし</span>
-                  )}
-                </div>
-                
-                <div className="flex justify-between">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePreview(item.id)}
-                  >
-                    プレビュー
-                  </Button>
-                  
-                  <div className="space-x-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => handleEdit(item.id)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8 text-red-500 hover:text-red-600"
-                      onClick={() => handleDeleteConfirm(item.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+        </TabsContent>
+
+        <TabsContent value="editor" className="mt-4">
+           {flowState.view === 'list' && (
+             <FlowListManager 
+               onEdit={handleEdit} 
+               onPreview={handlePreview}
+               onNew={handleNew} 
+             />
+           )}
+           {flowState.view === 'edit' && (
+             <FlowEditorAdvanced 
+               flowId={flowState.flowId || undefined}
+               onSave={handleSaveFlow}
+               onCancel={handleCancelFlow}
+             />
+           )}
+        </TabsContent>
+      </Tabs>
       
-      {/* 削除確認ダイアログ */}
-      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>トラブルシューティングの削除</DialogTitle>
-            <DialogDescription>
-              このトラブルシューティングを削除してもよろしいですか？この操作は元に戻せません。
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
-              キャンセル
-            </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              削除
-            </Button>
-          </DialogFooter>
+      {/* --- Dialogs --- */}
+      <Dialog open={isEditorOpen} onOpenChange={setIsEditorOpen}>
+        <DialogContent className="max-w-full w-full h-full flex flex-col p-0">
+            {selectedFlow && (
+                 <EmergencyFlowEditor
+                    key={selectedFlow.id}
+                    flowData={selectedFlow}
+                    onSave={(data) => saveMutation.mutate(data)}
+                    onClose={() => setIsEditorOpen(false)}
+                 />
+            )}
         </DialogContent>
       </Dialog>
+      
+       <Dialog open={isViewerOpen} onOpenChange={setIsViewerOpen}>
+        <DialogContent className="max-w-4xl w-full">
+            <DialogHeader>
+                <DialogTitle>{selectedFlow?.title}</DialogTitle>
+                <DialogDescription>{selectedFlow?.description}</DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[80vh] overflow-y-auto p-4">
+              {selectedFlow && <EmergencyGuideDisplay flowId={selectedFlow.id} />}
+            </div>
+        </DialogContent>
+      </Dialog>
+      
+      <WarningDialog
+        isOpen={isWarningOpen}
+        onOpenChange={setIsWarningOpen}
+        onConfirm={confirmDelete}
+        title="フローの削除"
+        description="本当にこのフローを削除しますか？この操作は元に戻せません。"
+      />
     </div>
   );
-};
-
-export default TroubleshootingPage;
+}

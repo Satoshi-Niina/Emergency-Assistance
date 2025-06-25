@@ -51,6 +51,47 @@ export const japaneseGuideTitles: { [key: string]: string } = {
 };
 
 /**
+ * 指定されたIDのトラブルシューティングフローを取得
+ * @param id フローID
+ * @returns フロー情報またはundefined
+ */
+export const getTroubleshootingFlowById = async (id: string): Promise<SearchResult | undefined> => {
+  try {
+    // キャッシュ無効化のためのタイムスタンプを追加
+    const timestamp = Date.now();
+    const response = await fetch(`/api/troubleshooting/${id}?_t=${timestamp}`, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      }
+    });
+
+    if (response.ok) {
+      const flow = await response.json();
+      console.log(`🔍 取得したフローデータ:`, {
+        id: flow.id,
+        title: flow.title,
+        stepsCount: flow.steps?.length || 0,
+        source: 'troubleshooting-api'
+      });
+
+      return {
+        id: flow.id,
+        title: flow.title || japaneseGuideTitles[flow.id] || flow.id,
+        description: flow.description || '',
+        content: flow.content || JSON.stringify(flow.steps || [])
+      };
+    }
+
+    console.warn(`⚠️ フローが見つかりません: ${id}`);
+    return undefined;
+  } catch (error) {
+    console.error('❌ トラブルシューティングフロー検索エラー:', error);
+    return undefined;
+  }
+};
+
+/**
  * 特定のトラブルシューティングフローを検索
  * @param id フローID
  * @returns 検索結果または未定義
@@ -105,11 +146,11 @@ export const searchTroubleshootingFlows = async (query: string): Promise<SearchR
     const response = await apiRequest('GET', '/api/troubleshooting');
     if (response.ok) {
       const flows = await response.json();
-      
+
       // Fuse.jsを使用してクライアントサイド検索
       const fuse = new Fuse(flows, fuseOptions);
       const results = fuse.search(query);
-      
+
       return results.map(result => {
         const item = result.item as any;
         return {
@@ -121,13 +162,13 @@ export const searchTroubleshootingFlows = async (query: string): Promise<SearchR
         };
       });
     }
-    
+
     // サーバーサイドで検索を行う場合
     /*
     const searchResponse = await apiRequest('POST', '/api/troubleshooting/search', {
       query
     });
-    
+
     if (searchResponse.ok) {
       const results = await searchResponse.json();
       return results.map((result: any) => ({
@@ -139,7 +180,7 @@ export const searchTroubleshootingFlows = async (query: string): Promise<SearchR
       }));
     }
     */
-    
+
     return [];
   } catch (error) {
     console.error('トラブルシューティング検索エラー:', error);

@@ -1,0 +1,11 @@
+"include": [
+  "index.build.ts", // これだけを対象
+  "**/*.ts"
+],
+"exclude": [
+  "../scripts",
+  "**/*.test.ts",
+  "**/*.spec.ts",
+  "../node_modules",
+  "../dist"
+]

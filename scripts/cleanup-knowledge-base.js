@@ -1,4 +1,3 @@
-
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -96,49 +95,6 @@ export async function cleanupKnowledgeBase() {
               removedCount++;
               processedDirs.add(dirToRemove);
             }
-          }
-        }
-      }
-          const current = files[i];
-          console.log(`Checking ${current.dir} (${current.timestamp})`);
-          
-          // ソースとチャンク内容を確認
-          const currentSource = current.content[0]?.metadata?.source;
-          const newestSource = newest.content[0]?.metadata?.source;
-          
-          // チャンクの内容を比較（先頭3チャンクまで）
-          const chunksToCompare = Math.min(3, current.content.length, newest.content.length);
-          let contentMatches = 0;
-          
-          for (let i = 0; i < chunksToCompare; i++) {
-            const currentChunk = JSON.stringify(current.content[i]?.text || '');
-            const newestChunk = JSON.stringify(newest.content[i]?.text || '');
-            if (currentChunk === newestChunk && currentChunk !== '""') {
-              contentMatches++;
-            }
-          }
-          
-          console.log(`Comparing directory ${current.dir}:`);
-          console.log(`- Source: ${currentSource} vs ${newestSource}`);
-          console.log(`- Content matches: ${contentMatches}/${chunksToCompare} chunks`);
-          
-          // ソースが一致するか、50%以上のチャンクが一致する場合に削除
-          if ((currentSource && newestSource && currentSource === newestSource) ||
-              (contentMatches >= Math.ceil(chunksToCompare / 2))) {
-            const dirToRemove = path.join(DOCUMENTS_DIR, current.dir);
-            try {
-              if (fs.existsSync(dirToRemove)) {
-                fs.rmSync(dirToRemove, { recursive: true, force: true });
-                console.log(`Removed duplicate directory: ${current.dir}`);
-                removedCount++;
-              } else {
-                console.log(`Directory does not exist: ${dirToRemove}`);
-              }
-            } catch (error) {
-              console.error(`Error removing ${dirToRemove}:`, error);
-            }
-          } else {
-            console.log(`Keeping ${current.dir} (different source: ${currentSource})`);
           }
         }
       }

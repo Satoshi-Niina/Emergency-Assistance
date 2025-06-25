@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { loginSchema } from "@shared/schema";
+import { loginSchema } from "@/lib/schema";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -11,15 +11,20 @@ import { Input } from "@/components/ui/input";
 
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const { login, user, isLoading: authLoading } = useAuth();
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate();
+  const location = useLocation();
   
-  // Redirect if already logged in
+  // Redirect if already logged in (but only after proper authentication)
   useEffect(() => {
-    if (!authLoading && user) {
-      setLocation("/chat");
+    if (!authLoading && user && user.username) {
+      console.log('ログイン済みユーザーを検出 - チャット画面に遷移');
+      navigate("/chat");
+    } else if (!authLoading && !user) {
+      console.log('未ログインユーザー - ログイン画面を表示');
     }
-  }, [user, authLoading, setLocation]);
+  }, [user, authLoading, navigate]);
 
   const form = useForm({
     resolver: zodResolver(loginSchema),
@@ -32,10 +37,15 @@ export default function Login() {
   const onSubmit = async (values: { username: string; password: string }) => {
     try {
       setIsLoading(true);
+      setErrorMessage("");
+      console.log("🔐 ログイン試行開始:", values.username);
       await login(values.username, values.password);
-      setLocation("/chat");
+      console.log("✅ ログイン成功 - チャット画面に遷移");
+      navigate("/chat");
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("❌ ログインエラー:", error);
+      const errorMsg = error instanceof Error ? error.message : "ログインに失敗しました";
+      setErrorMessage(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -62,7 +72,7 @@ export default function Login() {
                     <FormItem>
                       <FormLabel>ユーザー名</FormLabel>
                       <FormControl>
-                        <Input placeholder="ユーザー名を入力" {...field} />
+                        <Input placeholder="ユーザー名を入力" autoComplete="off" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -75,12 +85,17 @@ export default function Login() {
                     <FormItem>
                       <FormLabel>パスワード</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="パスワードを入力" {...field} />
+                        <Input type="password" placeholder="パスワードを入力" autoComplete="new-password" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+                {errorMessage && (
+                  <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+                    {errorMessage}
+                  </div>
+                )}
                 <Button type="submit" className="w-full bg-primary" disabled={isLoading}>
                   {isLoading ? "ログイン中..." : "ログイン"}
                 </Button>

@@ -1,21 +1,40 @@
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import * as schema from "@shared/schema";
 
-// Set DATABASE_URL
-const DATABASE_URL = process.env.DATABASE_URL || "postgresql://postgres:takabeni@0.0.0.0:5432/maintenance";
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
+import { schema } from './db/schema';
 
-// Initialize postgres client with Replit-optimized config
-const sql = postgres(DATABASE_URL, {
-  max: 3, // Replitの無料枠に合わせて調整
-  idle_timeout: 30,
-  connect_timeout: 15,
-  max_lifetime: 60 * 10,
-  connection_timeout: 10,
-  keepalive: true,
-  debug: process.env.NODE_ENV === 'development',
-  onnotice: () => {}, // Replitのログを抑制
+// データベース接続設定
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  console.error('❌ DATABASE_URL環境変数が設定されていません');
+  process.exit(1);
+}
+
+console.log('🔗 データベース接続中...');
+console.log('📍 接続先:', connectionString.replace(/password@/, '***@'));
+
+// PostgreSQL接続設定
+const client = postgres(connectionString, {
+  max: 10,
+  idle_timeout: 20,
+  connect_timeout: 10,
+  ssl: connectionString.includes('sslmode=require') ? { rejectUnauthorized: false } : false,
+  onnotice: () => {}, // 接続通知を無効化
+  prepare: false // プリペアドステートメントを無効化
 });
 
-// Create drizzle database instance
-export const db = drizzle(sql, { schema });
+export const db = drizzle(client, { schema });
+
+// 接続テスト
+(async () => {
+  try {
+    console.log('🔍 データベース接続テスト実行中...');
+    await client`SELECT 1 as test`;
+    console.log('✅ データベース接続テスト成功');
+  } catch (error) {
+    console.error('❌ データベース接続テストエラー:', error);
+  }
+})();
+
+console.log('✅ データベース接続設定完了');

@@ -1,7 +1,7 @@
-import { useLocation } from "wouter";
+import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Database, Settings, FileText, LifeBuoy } from "lucide-react";
+import { MessageSquare, Database, Settings, FileText } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 
 interface TabItem {
@@ -12,22 +12,10 @@ interface TabItem {
   className?: string;
 }
 
-interface TabsProps {
-  currentPath: string;
-  vertical?: boolean;
-  onNavigate?: () => void;
-}
-
-export function Tabs({ currentPath, vertical = false, onNavigate }: TabsProps) {
-  const [, setLocation] = useLocation();
+export function Tabs() {
+  const location = useLocation();
+  const currentPath = location.pathname;
   const { user } = useAuth();
-
-  const handleNavigation = (path: string) => {
-    setLocation(path);
-    if (onNavigate) {
-      onNavigate();
-    }
-  };
 
   const isAdmin = user?.role === "admin";
 
@@ -36,17 +24,17 @@ export function Tabs({ currentPath, vertical = false, onNavigate }: TabsProps) {
       title: "応急処置サポート",
       path: "/chat",
       icon: <MessageSquare className="mr-2 h-5 w-5 text-blue-600" />,
-      className: "text-blue-600 font-bold text-[120%] border border-blue-300 rounded-md bg-blue-50", // 青文字・太字・1.2倍サイズ・囲み
+      className: "text-blue-600 font-bold text-lg border border-blue-300 rounded-md bg-blue-50",
     },
     {
       title: "基礎データ管理",
-      path: "/processing",
+      path: "/documents",
       icon: <Database className="mr-2 h-4 w-4" />,
       adminOnly: true,
     },
     {
       title: "応急処置データ管理",
-      path: "/emergency-guide",
+      path: "/troubleshooting",
       icon: <FileText className="mr-2 h-4 w-4" />,
       adminOnly: true,
     },
@@ -60,31 +48,23 @@ export function Tabs({ currentPath, vertical = false, onNavigate }: TabsProps) {
   const filteredTabs = tabs.filter(tab => !tab.adminOnly || isAdmin);
 
   return (
-    <div className={cn(
-      "bg-white",
-      vertical ? "flex flex-col space-y-1" : "flex"
-    )}>
+    <div className="flex items-center space-x-2">
       {filteredTabs.map((tab) => (
-        <Button
-          key={tab.path}
-          variant="ghost"
-          className={cn(
-            vertical
-              ? "justify-start px-3 py-2 w-full"
-              : "px-4 py-3 rounded-none",
-            currentPath === tab.path
-              ? "text-primary border-primary font-medium " + 
-                (vertical ? "" : "border-b-2")
-              : tab.path === "/chat" 
-                ? tab.className 
-                : "text-neutral-300",
-            tab.className // Always apply the custom class if available
-          )}
-          onClick={() => handleNavigation(tab.path)}
-        >
-          {tab.icon}
-          {tab.title}
-        </Button>
+        <Link key={tab.path} to={tab.path}>
+          <Button
+            variant="ghost"
+            className={cn(
+              "px-4 py-3 rounded-md",
+              currentPath === tab.path
+                ? "text-primary font-semibold bg-blue-100"
+                : "text-gray-600 hover:bg-gray-100",
+              tab.className
+            )}
+          >
+            {tab.icon}
+            {tab.title}
+          </Button>
+        </Link>
       ))}
     </div>
   );

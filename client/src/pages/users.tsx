@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Shield, UserPlus, ArrowLeft, User, Edit, Trash2, AlertCircle } from "lucide-react";
-import { useLocation, Link } from "wouter";
+import { useLocation, Link, useNavigate } from "react-router-dom";
 
 // ユーザーインターフェース
 interface UserData {
@@ -56,19 +56,16 @@ interface NewUserData {
 export default function UsersPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
-  const [, navigate] = useLocation();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [error, setError] = useState<Error | null>(null);
 
-  // ローディング中は早期リターン
-  if (authLoading) {
-    return <div>Loading...</div>;
-  }
-
   // ユーザーが未認証またはadmin以外の場合はリダイレクト
-  if (!user || user.role !== "admin") {
-    navigate("/");
-    return null;
-  }
+  useEffect(() => {
+    if (!authLoading && (!user || user.role !== "admin")) {
+      navigate("/chat");
+    }
+  }, [user, authLoading, navigate]);
 
   // ユーザーデータの取得
   const { data: users, isLoading } = useQuery<UserData[]>({
@@ -96,17 +93,18 @@ export default function UsersPage() {
   const [showNewUserDialog, setShowNewUserDialog] = useState(false);
   const [showEditUserDialog, setShowEditUserDialog] = useState(false);
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [newUser, setNewUser] = useState<Partial<NewUserData>>({
     username: "",
     password: "",
     display_name: "",
     role: "employee",
   });
-  const [editUser, setEditUser] = useState<Partial<UserData>>({
+  const [editUser, setEditUser] = useState<Partial<UserData & { password?: string }>>({
     username: "",
-    display_nameName: "",
+    display_name: "",
     role: "employee",
+    password: "",
   });
 
   // フォームの値をリセット
@@ -114,7 +112,7 @@ export default function UsersPage() {
     setNewUser({
       username: "",
       password: "",
-      display_Name: "",
+      display_name: "",
       role: "employee",
       department: "",
     });
@@ -192,15 +190,16 @@ export default function UsersPage() {
     setSelectedUserId(userData.id);
     setEditUser({
       username: userData.username,
-      display_nameName: userData.display_nameName,
+      display_name: userData.display_name,
       role: userData.role,
-      department: userData.department
+      department: userData.department,
+      password: "" // パスワードフィールドを空で初期化
     });
     setShowEditUserDialog(true);
   };
 
   // ユーザー削除準備
-  const handleDeleteUser = (userId: number) => {
+  const handleDeleteUser = (userId: string) => {
     setSelectedUserId(userId);
     setShowDeleteConfirmDialog(true);
   };
@@ -209,7 +208,25 @@ export default function UsersPage() {
   const updateUserMutation = useMutation({
     mutationFn: async (userData: Partial<UserData>) => {
       if (!selectedUserId) throw new Error("ユーザーIDが選択されていません");
+      
+      console.log(`[DEBUG] ユーザー更新リクエスト送信: ID="${selectedUserId}"`, userData);
+      console.log(`[DEBUG] selectedUserId type: ${typeof selectedUserId}, length: ${selectedUserId.length}`);
+      console.log(`[DEBUG] selectedUserId bytes:`, selectedUserId ? Array.from(selectedUserId).map(c => c.charCodeAt(0)) : 'null');
+      console.log(`[DEBUG] API URL:`, `/api/users/${selectedUserId}`);
+      console.log(`[DEBUG] 送信データ:`, JSON.stringify(userData, null, 2));
+      
       const res = await apiRequest("PATCH", `/api/users/${selectedUserId}`, userData);
+      
+      console.log(`[DEBUG] レスポンスステータス: ${res.status}`);
+      console.log(`[DEBUG] レスポンスヘッダー:`, Object.fromEntries(res.headers.entries()));
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error(`[ERROR] ユーザー更新失敗: ${res.status}`, errorData);
+        console.error(`[ERROR] 完全なエラーレスポンス:`, JSON.stringify(errorData, null, 2));
+        throw new Error(errorData.message || `HTTP ${res.status}: ユーザー更新に失敗しました`);
+      }
+      
       return await res.json();
     },
     onSuccess: () => {
@@ -276,7 +293,7 @@ export default function UsersPage() {
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // バリデーション
-    if (!editUser.username || !editUser.display_nameName) {
+    if (!editUser.username || !editUser.display_name) {
       toast({
         title: "入力エラー",
         description: "必須項目を入力してください",
@@ -285,7 +302,25 @@ export default function UsersPage() {
       return;
     }
 
-    updateUserMutation.mutate(editUser);
+    // 空のパスワードフィールドを除去して送信
+    const sanitizedEditUser = { ...editUser };
+    
+    // パスワードが空、undefined、null、空白文字の場合は完全に除去
+    if (!sanitizedEditUser.password || 
+        typeof sanitizedEditUser.password !== 'string' || 
+        sanitizedEditUser.password.trim().length === 0) {
+      delete sanitizedEditUser.password;
+      console.log('空のパスワードフィールドを除去しました');
+    } else {
+      console.log('パスワードフィールドを送信します');
+    }
+    
+    console.log('送信するユーザーデータ:', { 
+      ...sanitizedEditUser, 
+      password: sanitizedEditUser.password ? '[SET]' : '[NOT_SET]' 
+    });
+    
+    updateUserMutation.mutate(sanitizedEditUser);
   };
 
   // 管理者でない場合のローディング表示
@@ -305,7 +340,7 @@ export default function UsersPage() {
         </div>
 
         <div className="flex space-x-2">
-          <Link href="/settings">
+          <Link to="/settings">
             <Button variant="outline" size="sm">
               <ArrowLeft className="mr-2 h-4 w-4" />
               設定に戻る
@@ -352,7 +387,7 @@ export default function UsersPage() {
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="display_Name">表示名</Label>
+                    <Label htmlFor="display_name">表示名</Label>
                     <Input
                       id="display_name"
                       name="display_name"
@@ -424,7 +459,6 @@ export default function UsersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
                   <TableHead>ユーザー名</TableHead>
                   <TableHead>表示名</TableHead>
                   <TableHead>権限</TableHead>
@@ -436,7 +470,6 @@ export default function UsersPage() {
                 {users && users.length > 0 ? (
                   users.map((user) => (
                     <TableRow key={user.id}>
-                      <TableCell>{user.id}</TableCell>
                       <TableCell>{user.username}</TableCell>
                       <TableCell>{user.display_name}</TableCell>
                       <TableCell>
@@ -470,7 +503,7 @@ export default function UsersPage() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center">
+                    <TableCell colSpan={5} className="text-center">
                       ユーザーが見つかりません
                     </TableCell>
                   </TableRow>
@@ -513,6 +546,21 @@ export default function UsersPage() {
                   onChange={handleEditInputChange}
                   required
                 />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="edit-password">新しいパスワード（変更する場合のみ）</Label>
+                <Input
+                  id="edit-password"
+                  name="password"
+                  type="password"
+                  value={editUser.password || ""}
+                  onChange={handleEditInputChange}
+                  placeholder="パスワードを変更しない場合は空欄のまま"
+                />
+                 <p className="text-sm text-gray-500 mt-1">
+                    ※パスワードを変更しない場合は空のままにしてください
+                  </p>
               </div>
 
               <div className="grid gap-2">

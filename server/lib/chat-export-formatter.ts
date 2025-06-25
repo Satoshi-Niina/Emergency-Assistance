@@ -283,7 +283,7 @@ ${messages.slice(0, 10).map(m => m.content).join('\n')}
     }
     
     // メディア情報も画像をBase64エンコード
-    const encodedMedia = (messageMedia[message.id] || []).map(media => {
+    const encodedMedia = ((messageMedia as any)[message.id] || []).map((media: any) => {
       // mediaが画像パスを含む場合、Base64エンコード
       if (media.type === 'image' && media.url) {
         try {

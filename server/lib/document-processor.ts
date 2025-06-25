@@ -1,33 +1,34 @@
-import { createCanvas } from 'canvas';
-import * as pdfjs from 'pdfjs-dist';
 import { fileURLToPath } from 'url';
 import path from 'path';
+import fs from 'fs';
+import { createCanvas } from 'canvas';
+// import { Document, Packer, Paragraph, TextRun } from 'docx';
+import * as mammoth from 'mammoth';
+import * as XLSX from 'xlsx';
+import * as pptxgen from 'pptxgenjs';
+// import { extractTextFromPdf } from 'pdf-parse';
+// import { Configuration, OpenAIApi } from 'openai';
+import { parse } from 'node-html-parser';
+import { pipeline } from 'stream/promises';
+import { promisify } from 'util';
+import sharp from 'sharp';
+import AdmZip from 'adm-zip';
+
+// adm-zipモジュールの型定義
+declare module 'adm-zip';
+
+// Canvas setup for server-side rendering
+const canvas = createCanvas(1, 1);
 
 // Node環境での設定
 if (typeof window === 'undefined') {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
   const canvas = createCanvas(800, 600);
-  global.DOMMatrix = canvas.createDOMMatrix;
+  (global as any).DOMMatrix = (canvas as any).createDOMMatrix;
 }
 
 // PDF.jsワーカーの設定はextractPdfText関数内で行う
-
-import * as mammoth from 'mammoth';
-import * as XLSX from 'xlsx';
-import { parse } from 'node-html-parser';
-import fs from 'fs';
-import path from 'path';
-import { pipeline } from 'stream/promises';
-import { promisify } from 'util';
-import sharp from 'sharp';
-import AdmZip from 'adm-zip';
-import { fileURLToPath } from 'url';
-
-// adm-zipモジュールの型定義
-declare module 'adm-zip';
-
-// We'll handle PDF worker in the extractPdfText function instead of at the module level
 
 // Constants
 const CHUNK_SIZE = 500; // 小さめのチャンクサイズに設定（以前は1000）
@@ -89,6 +90,9 @@ export interface DocumentChunk {
  */
 export async function extractPdfText(filePath: string): Promise<{ text: string, pageCount: number }> {
   try {
+    // PDF.jsを動的インポート
+    const pdfjs = await import('pdfjs-dist');
+    
     // PDF.js workerを設定
     const pdfjsWorker = path.join(process.cwd(), 'node_modules', 'pdfjs-dist', 'build', 'pdf.worker.js');
     const worker = new pdfjs.PDFWorker();

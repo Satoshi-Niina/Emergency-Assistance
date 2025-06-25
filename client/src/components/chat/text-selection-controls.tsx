@@ -20,7 +20,7 @@ export default function TextSelectionControls({ text, onSearch }: TextSelectionC
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
         const rect = range.getBoundingClientRect();
-        
+
         setPosition({
           top: rect.top - 40,
           left: rect.left
@@ -38,7 +38,7 @@ export default function TextSelectionControls({ text, onSearch }: TextSelectionC
         setIsVisible(false);
       }
     };
-    
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);

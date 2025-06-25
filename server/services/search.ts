@@ -16,8 +16,8 @@ interface SearchResult {
 }
 
 export class SearchService {
-  private fuse: Fuse<any>;
-  private emergencyFuse: Fuse<any>;
+  private fuse!: Fuse<any>;
+  private emergencyFuse!: Fuse<any>;
   private openai: OpenAI;
   private metadataPath: string;
   private emergencyGuidePath: string;

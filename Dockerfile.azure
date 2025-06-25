@@ -1,0 +1,50 @@
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# 各package.jsonを分けてインストール
+COPY package*.json ./             # サーバー用
+COPY client/package*.json ./client/  # クライアント用
+
+# サーバー依存関係インストール（不要なら削除可）
+RUN npm ci --ignore-scripts && npm cache clean --force
+
+# クライアント依存関係インストール
+WORKDIR /app/client
+RUN npm ci && npm cache clean --force
+
+# 戻ってすべてコピー
+WORKDIR /app
+COPY . .
+
+# クライアントビルド
+WORKDIR /app/client
+RUN npm run build
+
+# サーバービルド
+WORKDIR /app
+RUN npm run build:server
+
+# 本番環境ステージ
+FROM node:20-alpine AS production
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --only=production && npm cache clean --force
+
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/client/dist ./client/dist
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/knowledge-base ./knowledge-base
+COPY --from=builder /app/uploads ./uploads
+
+ENV NODE_ENV=production
+ENV PORT=8080
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:8080/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+
+EXPOSE 8080
+
+CMD ["node", "dist/index.js"]

@@ -8,14 +8,33 @@ import { LoginCredentials } from '@shared/schema';
  */
 export const login = async (credentials: LoginCredentials) => {
   try {
-    // サーバーに送信（ハードコードされたチェックを削除）
-    const response = await apiRequest('POST', '/api/auth/login', credentials);
+    console.log('🔐 ログイン試行:', { username: credentials.username });
+    
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify(credentials)
+    });
+    
+    console.log('📡 レスポンス受信:', { status: response.status, ok: response.ok });
+    
     if (!response.ok) {
-      throw new Error('認証サーバーからのレスポンスエラー');
+      const errorData = await response.json().catch(() => ({ message: '認証エラー' }));
+      console.error('❌ ログインエラー:', errorData);
+      throw new Error(errorData.message || '認証サーバーからのレスポンスエラー');
     }
-    return await response.json();
+    
+    const userData = await response.json();
+    console.log('✅ ログイン成功:', userData);
+    return userData;
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('❌ Login error:', error);
+    if (error instanceof Error) {
+      throw error;
+    }
     throw new Error('ログインに失敗しました');
   }
 };
@@ -25,7 +44,10 @@ export const login = async (credentials: LoginCredentials) => {
  */
 export const logout = async () => {
   try {
-    await apiRequest('POST', '/api/auth/logout');
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include'
+    });
   } catch (error) {
     console.error('Logout error:', error);
     throw new Error('ログアウトに失敗しました');

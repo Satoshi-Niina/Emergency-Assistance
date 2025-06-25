@@ -13,13 +13,35 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 const OPENAI_MODEL = "gpt-4o";
 
-// OpenAI クライアントの初期化
+// 複数の場所から.envファイルを読み込み
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: path.resolve(process.cwd(), 'server/.env') });
+
+// APIキーの取得（Replitシークレットも考慮）
+const apiKey = process.env.OPENAI_API_KEY || process.env.REPLIT_SECRET_OPENAI_API_KEY;
+
+// デバッグ用ログを有効化
+console.log("[DEBUG] OpenAI initialization - API KEY exists:", apiKey ? "YES" : "NO");
+console.log("[DEBUG] OpenAI API KEY prefix:", apiKey ? apiKey.substring(0, 10) + "..." : "NOT FOUND");
+console.log("[DEBUG] Environment variables:", {
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY ? "SET" : "NOT SET",
+  REPLIT_SECRET_OPENAI_API_KEY: process.env.REPLIT_SECRET_OPENAI_API_KEY ? "SET" : "NOT SET",
+  NODE_ENV: process.env.NODE_ENV,
+  PWD: process.cwd()
+});
+
+if (!apiKey) {
+  console.error("[ERROR] OpenAI API Key not found in environment variables");
+  throw new Error("OpenAI API Key not configured");
+}
+
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: apiKey,
 });
 
 // APIキーが存在するか確認
-console.log("[DEBUG] OpenAI API KEY exists:", process.env.OPENAI_API_KEY ? "YES" : "NO");
+// Remove detailed API key existence logging
+// console.log("[DEBUG] OpenAI API KEY exists:", process.env.OPENAI_API_KEY ? "YES" : "NO");
 
 /**
  * OpenAI APIにリクエストを送信して応答を取得する関数
@@ -29,16 +51,42 @@ console.log("[DEBUG] OpenAI API KEY exists:", process.env.OPENAI_API_KEY ? "YES"
  */
 export async function processOpenAIRequest(prompt: string, useKnowledgeBase: boolean = true): Promise<string> {
   try {
+    // 環境変数を再確認
+    const apiKey = process.env.OPENAI_API_KEY || process.env.REPLIT_SECRET_OPENAI_API_KEY;
+    
+    console.log('[DEBUG] processOpenAIRequest - Environment check:', {
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY ? "SET" : "NOT SET",
+      REPLIT_SECRET_OPENAI_API_KEY: process.env.REPLIT_SECRET_OPENAI_API_KEY ? "SET" : "NOT SET",
+      finalApiKey: apiKey ? "SET" : "NOT SET",
+      apiKeyPrefix: apiKey ? apiKey.substring(0, 10) + "..." : "NOT FOUND"
+    });
+    
+    if (!apiKey) {
+      console.error('OpenAI API key not found');
+      return 'OpenAI APIキーが設定されていません。環境変数OPENAI_API_KEYを確認してください。';
+    }
+
+    // Remove detailed API call start logging
+    // console.log(`OpenAI API呼び出し開始: useKnowledgeBase=${useKnowledgeBase}, message="${prompt}"`);
+
     // システムプロンプトを設定
     let systemPrompt = "あなたは保守用車支援システムの一部として機能するAIアシスタントです。ユーザーの質問に対して、正確で実用的な回答を提供してください。";
-    
+
     // ナレッジベースから関連情報を取得して含める
     if (useKnowledgeBase) {
-      const { generateSystemPromptWithKnowledge } = await import('./knowledge-base');
-      systemPrompt = await generateSystemPromptWithKnowledge(prompt);
+      try {
+        const { generateSystemPromptWithKnowledge } = await import('./knowledge-base');
+        systemPrompt = await generateSystemPromptWithKnowledge(prompt);
+      } catch (error) {
+        console.error('ナレッジベース初期化エラー:', error);
+        // エラーが発生した場合は基本的なシステムプロンプトを使用
+        systemPrompt = "あなたは保守用車支援システムの一部として機能するAIアシスタントです。ユーザーの質問に対して、正確で実用的な回答を提供してください。";
+      }
     }
-    
+
     // OpenAI API呼び出し
+    // Remove API request sending logging
+    // console.log('OpenAI APIリクエストを送信中...');
     const response = await openai.chat.completions.create({
       model: OPENAI_MODEL,
       messages: [
@@ -49,16 +97,46 @@ export async function processOpenAIRequest(prompt: string, useKnowledgeBase: boo
       // JSON形式の強制は解除
     });
 
+    // Remove detailed API response receiving logging
+    // console.log('OpenAI APIレスポンス受信:', {
+    //   id: response.id,
+    //   model: response.model,
+    //   usage: response.usage,
+    //   choicesLength: response.choices?.length
+    // });
+
     // レスポンスからテキストを抽出
     const responseText = response.choices[0].message.content || '';
+    // Remove OpenAI response logging
+    // console.log('OpenAI応答を受信しました:', responseText.substring(0, 100) + '...');
     return responseText;
   } catch (error: any) {
-    console.error('OpenAI API エラー:', error.message);
-    if (error.response) {
-      console.error('レスポンスステータス:', error.response.status);
-      console.error('レスポンスデータ:', error.response.data);
+    console.error('OpenAI API Error Details:', {
+      message: error.message,
+      code: error.code,
+      type: error.type,
+      status: error.status,
+      stack: error.stack
+    });
+
+    // 特定のエラータイプに応じたメッセージを返す
+    if (error.code === 'insufficient_quota') {
+      return 'OpenAI APIのクォータが不足しています。';
+    } else if (error.code === 'invalid_api_key') {
+      return 'OpenAI APIキーが無効です。';
+    } else if (error.code === 'rate_limit_exceeded') {
+      return 'OpenAI APIのリクエスト制限に達しました。しばらく待ってから再試行してください。';
+    } else if (error.message?.includes('timeout')) {
+      return 'OpenAI APIのリクエストがタイムアウトしました。';
+    } else if (error.status === 401) {
+      return 'OpenAI APIキーの認証に失敗しました。';
+    } else if (error.status === 429) {
+      return 'OpenAI APIのレート制限に達しました。';
+    } else if (error.status >= 500) {
+      return 'OpenAI APIサーバーでエラーが発生しました。';
+    } else {
+      return `OpenAI APIエラー: ${error.message || 'Unknown error'}`;
     }
-    throw new Error(`OpenAI APIリクエスト中にエラーが発生しました: ${error.message}`);
   }
 }
 
@@ -71,7 +149,7 @@ export async function summarizeText(text: string): Promise<string> {
   try {
     // 長すぎるテキストを切り詰める
     const truncatedText = text.length > 4000 ? text.substring(0, 4000) + "..." : text;
-    
+
     const response = await openai.chat.completions.create({
       model: OPENAI_MODEL,
       messages: [
@@ -103,7 +181,7 @@ export async function generateKeywords(text: string): Promise<string[]> {
   try {
     // 長すぎるテキストを切り詰める
     const truncatedText = text.length > 4000 ? text.substring(0, 4000) + "..." : text;
-    
+
     const response = await openai.chat.completions.create({
       model: OPENAI_MODEL,
       messages: [
@@ -187,17 +265,17 @@ export async function generateSearchQuery(text: string): Promise<string> {
   try {
     // 長すぎるテキストを切り詰める
     const truncatedText = text.length > 200 ? text.substring(0, 200) + "..." : text;
-    
+
     const response = await openai.chat.completions.create({
       model: OPENAI_MODEL,
       messages: [
         { 
           role: "system", 
-          content: "あなたは検索クエリの最適化専門家です。ユーザーの質問や文章から、検索エンジンで使用するのに最適な検索クエリを生成してください。" 
+          content: "You are a search query optimization expert. Generate optimal search queries for search engines from user questions or text." 
         },
         { 
           role: "user", 
-          content: `以下のテキストから、関連する技術文書を検索するための最適な検索キーワードを5～10語で抽出してください。専門用語を優先し、余分な接続詞や前置詞は除外してください:\n\n${truncatedText}` 
+          content: `Extract optimal search keywords (5-10 words) from the following text for searching related technical documents. Prioritize technical terms and exclude unnecessary conjunctions and prepositions:\n\n${truncatedText}` 
         }
       ],
       temperature: 0.3,
@@ -207,7 +285,7 @@ export async function generateSearchQuery(text: string): Promise<string> {
     const query = response.choices[0].message.content?.trim() || truncatedText;
     return query;
   } catch (error: any) {
-    console.error('検索クエリ生成エラー:', error.message);
+    console.error('Search query generation error:', error.message);
     // エラーが発生した場合は元のテキストを返す
     return text;
   }

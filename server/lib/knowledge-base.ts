@@ -15,18 +15,28 @@ const BACKUP_DIR = path.join(KNOWLEDGE_BASE_DIR, 'backups');
 const INDEX_FILE = path.join(DATA_DIR, 'knowledge_index.json');
 
 // 知識ベースの初期化
-export function initializeKnowledgeBase() {
-  console.log('知識ベースの初期化を開始...');
-  
-  // 必要なディレクトリを作成
-  [KNOWLEDGE_BASE_DIR, DATA_DIR, TEXT_DIR, TROUBLESHOOTING_DIR, BACKUP_DIR].forEach(dir => {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+export async function initializeKnowledgeBase() {
+  try {
+    // 必要なディレクトリを作成（非同期で実行）
+    const directories = [KNOWLEDGE_BASE_DIR, DATA_DIR, TEXT_DIR, TROUBLESHOOTING_DIR, BACKUP_DIR];
+    
+    for (const dir of directories) {
+      try {
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+      } catch (error) {
+        console.warn(`ディレクトリ作成警告 ${dir}:`, error);
+        // 致命的でないエラーは継続
+      }
     }
-  });
-  
-  console.log('Knowledge base directories initialized');
-  console.log('知識ベースの初期化が完了しました');
+    
+    // Knowledge base directories initialized
+    return true;
+  } catch (error) {
+    console.error('知識ベース初期化エラー:', error);
+    throw error;
+  }
 }
 
 /**
@@ -71,82 +81,94 @@ export async function searchKnowledgeBase(query: string): Promise<TextChunk[]> {
     const chunks: TextChunk[] = [];
     
     // テキストファイルを読み込む
-    const textFiles = fs.readdirSync(TEXT_DIR).filter(file => file.endsWith('.txt'));
-    
-    for (const file of textFiles) {
-      try {
-        const content = fs.readFileSync(path.join(TEXT_DIR, file), 'utf-8');
+    try {
+      if (fs.existsSync(TEXT_DIR)) {
+        const textFiles = fs.readdirSync(TEXT_DIR).filter(file => file.endsWith('.txt'));
         
-        // テキストをチャンクに分割（単純な段落分割）
-        const paragraphs = content.split(/\n\s*\n/);
-        
-        paragraphs.forEach((paragraph, index) => {
-          // 空の段落はスキップ
-          if (paragraph.trim().length === 0) return;
-          
-          chunks.push({
-            text: paragraph,
-            metadata: {
-              source: file,
-              index
-            }
-          });
-        });
-      } catch (error) {
-        console.error(`ファイル ${file} の読み込み中にエラーが発生しました:`, error);
+        for (const file of textFiles) {
+          try {
+            const content = fs.readFileSync(path.join(TEXT_DIR, file), 'utf-8');
+            
+            // テキストをチャンクに分割（単純な段落分割）
+            const paragraphs = content.split(/\n\s*\n/);
+            
+            paragraphs.forEach((paragraph, index) => {
+              // 空の段落はスキップ
+              if (paragraph.trim().length === 0) return;
+              
+              chunks.push({
+                text: paragraph,
+                metadata: {
+                  source: file,
+                  index
+                }
+              });
+            });
+          } catch (error) {
+            console.error(`ファイル ${file} の読み込み中にエラーが発生しました:`, error);
+          }
+        }
+      } else {
+        console.log('TEXT_DIRが存在しません:', TEXT_DIR);
       }
+    } catch (error) {
+      console.error('テキストファイル検索エラー:', error);
     }
     
     // トラブルシューティングフローも検索対象に含める
     try {
-      const flowFiles = fs.readdirSync(TROUBLESHOOTING_DIR).filter(file => file.endsWith('.json'));
-      
-      for (const file of flowFiles) {
-        try {
-          const content = fs.readFileSync(path.join(TROUBLESHOOTING_DIR, file), 'utf-8');
-          const flowData = JSON.parse(content);
-          
-          // フローのタイトルと説明を検索対象に含める
-          const flowText = `${flowData.title || ''} ${flowData.description || ''}`;
-          
-          // キーワードがあれば追加
-          if (flowData.triggerKeywords && Array.isArray(flowData.triggerKeywords)) {
-            const keywords = flowData.triggerKeywords.join(' ');
-            chunks.push({
-              text: `${flowText} ${keywords}`,
-              metadata: {
-                source: `フロー: ${file}`,
-                index: 0
-              }
-            });
-          } else {
-            chunks.push({
-              text: flowText,
-              metadata: {
-                source: `フロー: ${file}`,
-                index: 0
-              }
-            });
+      if (fs.existsSync(TROUBLESHOOTING_DIR)) {
+        const flowFiles = fs.readdirSync(TROUBLESHOOTING_DIR).filter(file => file.endsWith('.json'));
+        
+        for (const file of flowFiles) {
+          try {
+            const content = fs.readFileSync(path.join(TROUBLESHOOTING_DIR, file), 'utf-8');
+            const flowData = JSON.parse(content);
+            
+            // フローのタイトルと説明を検索対象に含める
+            const flowText = `${flowData.title || ''} ${flowData.description || ''}`;
+            
+            // キーワードがあれば追加
+            if (flowData.triggerKeywords && Array.isArray(flowData.triggerKeywords)) {
+              const keywords = flowData.triggerKeywords.join(' ');
+              chunks.push({
+                text: `${flowText} ${keywords}`,
+                metadata: {
+                  source: `フロー: ${file}`,
+                  index: 0
+                }
+              });
+            } else {
+              chunks.push({
+                text: flowText,
+                metadata: {
+                  source: `フロー: ${file}`,
+                  index: 0
+                }
+              });
+            }
+            
+            // 各ステップの説明も検索対象に含める
+            if (flowData.steps && Array.isArray(flowData.steps)) {
+              flowData.steps.forEach((step: any, index: number) => {
+                const stepText = `${step.title || ''} ${step.description || ''}`;
+                if (stepText.trim()) {
+                  chunks.push({
+                    text: stepText,
+                    metadata: {
+                      source: `フローステップ: ${file}`,
+                      index: index + 1
+                    }
+                  });
+                }
+              });
+            }
+          } catch (error) {
+            console.error(`フローファイル ${file} の読み込み中にエラーが発生しました:`, error);
           }
-          
-          // 各ステップの説明も検索対象に含める
-          if (flowData.steps && Array.isArray(flowData.steps)) {
-            flowData.steps.forEach((step: any, index: number) => {
-              const stepText = `${step.title || ''} ${step.description || ''}`;
-              if (stepText.trim()) {
-                chunks.push({
-                  text: stepText,
-                  metadata: {
-                    source: `フローステップ: ${file}`,
-                    index: index + 1
-                  }
-                });
-              }
-            });
-          }
-        } catch (error) {
-          console.error(`フローファイル ${file} の読み込み中にエラーが発生しました:`, error);
         }
+      } else {
+        console.log('TROUBLESHOOTING_DIRが存在しません:', TROUBLESHOOTING_DIR);
       }
     } catch (error) {
       console.error('トラブルシューティングフロー検索エラー:', error);
@@ -372,7 +394,7 @@ export function listKnowledgeBaseDocuments(): { success: boolean; documents: any
     
     // 新しい順に並べ替え
     documents.sort((a, b) => {
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      return new Date(b.createdAt || new Date()).getTime() - new Date(a.createdAt || new Date()).getTime();
     });
     
     return {
