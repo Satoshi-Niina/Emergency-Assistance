@@ -1,42 +1,38 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import path from 'path'
-import express from 'express'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
 
-// カスタムミドルウェア関数
+// ★ express を開発モードでのみ使用する
 function serveKnowledgeBase() {
-  const router = express.Router()
-  // プロジェクトルートのknowledge-baseディレクトリを指定
-  const knowledgeBasePath = path.resolve(__dirname, '../knowledge-base')
-  console.log(`📚 Serving static files for /knowledge-base from: ${knowledgeBasePath}`)
-  router.use('/knowledge-base', express.static(knowledgeBasePath))
+  const express = require('express'); // ← require にすることで本番ビルド時に無視される
+  const router = express.Router();
+  const knowledgeBasePath = path.resolve(__dirname, '../knowledge-base');
+  console.log(`📚 Serving static files for /knowledge-base from: ${knowledgeBasePath}`);
+  router.use('/knowledge-base', express.static(knowledgeBasePath));
 
   return {
     name: 'serve-knowledge-base-middleware',
     configureServer(server) {
-      server.middlewares.use(router)
+      server.middlewares.use(router);
     }
-  }
+  };
 }
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [
     react(),
-    serveKnowledgeBase() // カスタムミドルウェアをプラグインとして追加
+    ...(command === 'serve' ? [serveKnowledgeBase()] : [])
   ],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
-      "@shared": path.resolve(__dirname, "../shared"),
+      '@': path.resolve(__dirname, './src'),
+      '@shared': path.resolve(__dirname, '../shared'),
     },
-    extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json']
+    extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json'],
   },
   optimizeDeps: {
-    include: ['../shared/schema.ts'],
-    exclude: ['../shared/schema.js']
-  },
-  esbuild: {
-    target: 'es2020'
+    include: [],
+    exclude: [],
   },
   server: {
     host: '0.0.0.0',
@@ -48,11 +44,11 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
-        configure: (proxy, options) => {
-          proxy.on('proxyReq', (proxyReq, req, res) => {
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
             console.log(`🔄 API Proxy: ${req.method} ${req.url} -> http://localhost:3001`);
           });
-          proxy.on('error', (err, req, res) => {
+          proxy.on('error', (err, req) => {
             console.error(`❌ Proxy Error: ${err.message}`);
           });
         }
@@ -60,16 +56,19 @@ export default defineConfig({
       '/ws': {
         target: 'ws://localhost:3001',
         ws: true,
-        changeOrigin: true,
-      },
+        changeOrigin: true
+      }
     },
     fs: {
-      allow: [
-        path.resolve(__dirname, '..'),
-      ],
-    },
+      allow: [path.resolve(__dirname, '..')],
+    }
   },
   build: {
     outDir: 'dist',
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      input: './index.html'
+    }
   },
-})
+  logLevel: 'warn'
+}));
