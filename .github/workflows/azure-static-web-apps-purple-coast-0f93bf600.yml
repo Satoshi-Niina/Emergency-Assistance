@@ -12,6 +12,7 @@ permissions:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -19,14 +20,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18.x'
+          node-version: '20.x'  # React-router v7系対応のため
 
       - name: Install dependencies and build
         run: |
+          cd client
           npm install
           npm run build
 
-      # 🔐 Azure にログインするステップ（OIDC認証）
       - name: Azure Login
         uses: azure/login@v1
         with:
@@ -34,10 +35,9 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # 🚀 Azure Web App にデプロイするステップ
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           slot-name: 'production'
-          package: ./build
+          package: ./client/dist
