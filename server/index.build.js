@@ -42,19 +42,49 @@ var routes_1 = require("./routes");
 var auth_1 = require("./auth");
 function main() {
     return __awaiter(this, void 0, void 0, function () {
-        var app, server, PORT;
+        var app, knowledgeBaseAzure, azureError_1, server, PORT, gracefulShutdown;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0: return [4 /*yield*/, (0, app_1.createApp)()];
                 case 1:
                     app = _a.sent();
+                    if (!(process.env.NODE_ENV === 'production' && process.env.AZURE_STORAGE_CONNECTION_STRING)) return [3 /*break*/, 6];
+                    _a.label = 2;
+                case 2:
+                    _a.trys.push([2, 5, , 6]);
+                    console.log('🚀 Azure Storage統合を初期化中...');
+                    return [4 /*yield*/, Promise.resolve().then(function () { return require('./lib/knowledge-base-azure.js'); })];
+                case 3:
+                    knowledgeBaseAzure = (_a.sent()).knowledgeBaseAzure;
+                    return [4 /*yield*/, knowledgeBaseAzure.initialize()];
+                case 4:
+                    _a.sent();
+                    console.log('✅ Azure Storage統合初期化完了');
+                    return [3 /*break*/, 6];
+                case 5:
+                    azureError_1 = _a.sent();
+                    console.error('❌ Azure Storage統合初期化エラー:', azureError_1);
+                    console.log('⚠️ Azure Storage統合なしで続行します');
+                    return [3 /*break*/, 6];
+                case 6:
                     (0, routes_1.registerRoutes)(app);
                     (0, auth_1.setupAuth)(app);
                     server = (0, node_http_1.createServer)(app);
                     PORT = process.env.PORT || 8080;
                     server.listen(PORT, function () {
                         console.log("\uD83D\uDE80 [BUILD] Server running at http://localhost:".concat(PORT));
+                        console.log("\uD83C\uDF10 Environment: ".concat(process.env.NODE_ENV || 'development'));
+                        console.log("\uD83D\uDCE1 Health check: /api/health");
                     });
+                    gracefulShutdown = function () {
+                        console.log('🔄 Graceful shutdown initiated...');
+                        server.close(function () {
+                            console.log('✅ Server closed successfully');
+                            process.exit(0);
+                        });
+                    };
+                    process.on('SIGTERM', gracefulShutdown);
+                    process.on('SIGINT', gracefulShutdown);
                     return [2 /*return*/];
             }
         });

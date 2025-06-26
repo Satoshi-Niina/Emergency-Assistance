@@ -79,6 +79,7 @@ var emergency_flow_1 = require("./routes/emergency-flow");
 var sync_routes_1 = require("./routes/sync-routes");
 var flow_generator_1 = require("./routes/flow-generator");
 var users_1 = require("./routes/users");
+var troubleshooting_1 = require("./routes/troubleshooting");
 var express_1 = require("express");
 var auth_1 = require("./routes/auth");
 var export_file_manager_1 = require("./lib/export-file-manager");
@@ -1237,7 +1238,7 @@ function registerRoutes(app) {
                     content: 'Connected to Emergency Recovery Chat WebSocket server'
                 }));
             });
-            app.use('/api/troubleshooting', troubleshootingRouter);
+            app.use('/api/troubleshooting', troubleshooting_1.troubleshootingRouter);
             routeDebugger = function (req, res, next) {
                 if (req.path.includes('/users/')) {
                     console.log("[ROUTER DEBUG] ".concat(req.method, " ").concat(req.originalUrl));
@@ -1248,38 +1249,6 @@ function registerRoutes(app) {
             };
             // ユーザー管理ルート
             app.use('/api/users', routeDebugger, users_1.usersRouter);
-            // トラブルシューティングAPI
-            app.get('/api/troubleshooting/list', function (req, res) { return __awaiter(_this, void 0, void 0, function () {
-                var troubleshootingDir, files, troubleshootingList, _i, files_1, file, filePath, content, data;
-                return __generator(this, function (_a) {
-                    try {
-                        troubleshootingDir = path_1.default.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-                        if (!fs_1.default.existsSync(troubleshootingDir)) {
-                            return [2 /*return*/, res.json([])];
-                        }
-                        files = fs_1.default.readdirSync(troubleshootingDir).filter(function (file) { return file.endsWith('.json'); });
-                        troubleshootingList = [];
-                        for (_i = 0, files_1 = files; _i < files_1.length; _i++) {
-                            file = files_1[_i];
-                            try {
-                                filePath = path_1.default.join(troubleshootingDir, file);
-                                content = fs_1.default.readFileSync(filePath, 'utf8');
-                                data = JSON.parse(content);
-                                troubleshootingList.push(data);
-                            }
-                            catch (error) {
-                                logError("Error reading file ".concat(file, ":"), error);
-                            }
-                        }
-                        res.json(troubleshootingList);
-                    }
-                    catch (error) {
-                        logError('Error in troubleshooting list:', error);
-                        res.status(500).json({ error: 'Failed to load troubleshooting data' });
-                    }
-                    return [2 /*return*/];
-                });
-            }); });
             app.get('/api/chat/:chatId/export', function (req, res) { return __awaiter(_this, void 0, void 0, function () {
                 var chatId, chatUserId, sessionUserId;
                 var _a;
