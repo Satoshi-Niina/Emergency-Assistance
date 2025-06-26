@@ -3,14 +3,22 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-  "dev": "vite",
-  "build": "vite build",
-  "preview": "vite preview",
-  "build:server": "tsc"
+// <<<<<<< HEAD
+//   "dev": "vite",
+//   "build": "vite build",
+//   "preview": "vite preview",
+//   "build:server": "tsc"
+// =======
+//     "dev": "vite",
+//     "build": "vite build",
+//     "preview": "vite preview",
+//     "build:server": "tsc -p server"
+// >>>>>>> a844521 (Add @tanstack/react-query for build)
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.0",
     "@tailwindcss/line-clamp": "^0.4.4",
+    "@tanstack/react-query": "^5.81.2",
     "@types/react-beautiful-dnd": "^13.1.8",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
