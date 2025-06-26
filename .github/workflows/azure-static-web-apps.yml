@@ -3,14 +3,20 @@ name: Azure Static Web Apps CI/CD
 on:
   push:
     branches:
-      - feature/ver2.10  # ← 必要に応じて main に変更
+      - feature/ver2.10
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches:
+      - feature/ver2.10
 
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
     name: Build and Deploy Static Web App
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -21,7 +27,7 @@ jobs:
         run: npm install
         working-directory: ./client
 
-      - name: Build frontend
+      - name: Build Vite project
         run: npm run build
         working-directory: ./client
 
@@ -33,3 +39,4 @@ jobs:
           action: "upload"
           app_location: "/client"
           output_location: "dist"
+
