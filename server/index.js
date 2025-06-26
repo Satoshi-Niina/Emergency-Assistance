@@ -137,24 +137,6 @@ server.on('error', function (err) {
         process.exit(1);
     }
 });
-// セッション設定
-var express_session_1 = require("express-session");
-var memorystore_1 = require("memorystore");
-var MemoryStoreSession = (0, memorystore_1.default)(express_session_1.default);
-app.use((0, express_session_1.default)({
-    secret: process.env.SESSION_SECRET || 'emergency-recovery-secret-key',
-    resave: false,
-    saveUninitialized: false,
-    store: new MemoryStoreSession({
-        checkPeriod: 86400000 // 24時間でクリーンアップ
-    }),
-    cookie: {
-        secure: isProduction, // 本番環境ではHTTPS必須
-        httpOnly: true,
-        maxAge: 86400000, // 24時間
-        sameSite: isProduction ? 'strict' : 'lax'
-    }
-}));
 // ルート登録を即座に実行
 (function () { return __awaiter(void 0, void 0, void 0, function () {
     var knowledgeBaseAzure, azureError_1, isDev, registerRoutes, _a, setupAuth, _b, routeError_1;
@@ -184,7 +166,7 @@ app.use((0, express_session_1.default)({
             case 5:
                 isDev = process.env.NODE_ENV !== "production";
                 if (!isDev) return [3 /*break*/, 7];
-                return [4 /*yield*/, Promise.resolve().then(function () { return require('./routes.ts'); })];
+                return [4 /*yield*/, Promise.resolve().then(function () { return require('./routes'); })];
             case 6:
                 _a = _c.sent();
                 return [3 /*break*/, 9];
@@ -195,7 +177,7 @@ app.use((0, express_session_1.default)({
             case 9:
                 registerRoutes = (_a).registerRoutes;
                 if (!isDev) return [3 /*break*/, 11];
-                return [4 /*yield*/, Promise.resolve().then(function () { return require('./auth.ts'); })];
+                return [4 /*yield*/, Promise.resolve().then(function () { return require('./auth'); })];
             case 10:
                 _b = _c.sent();
                 return [3 /*break*/, 13];
@@ -205,6 +187,10 @@ app.use((0, express_session_1.default)({
                 _c.label = 13;
             case 13:
                 setupAuth = (_b).setupAuth;
+                // 認証とルートを登録
+                setupAuth(app);
+                registerRoutes(app);
+                console.log('✅ 認証とルートの登録完了');
                 // 静的ファイル設定（ルート登録後に設定）
                 try {
                     app.use('/images', express_1.default.static(path.join(process.cwd(), 'public', 'images')));
