@@ -20,6 +20,7 @@
     "react-beautiful-dnd": "^13.1.1",
     "react-dom": "^18.3.1",
     "react-dropzone": "^14.3.8",
+    "react-helmet": "^6.1.0",
     "react-router-dom": "^7.6.2",
     "tailwind-merge": "^2.6.0"
   },
