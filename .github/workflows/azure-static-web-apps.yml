@@ -1,19 +1,14 @@
 name: Azure Static Web Apps CI/CD
 
 on:
-  workflow_dispatch:
   push:
     branches:
-      - feature/ver2.10
-  pull_request:
-    types: [opened, synchronize, reopened, closed]
-    branches:
-      - feature/ver2.10
+      - feature/ver2.10  # ← 必要に応じて main に変更
 
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
-    name: Build and Deploy
+    name: Build and Deploy Static Web App
     steps:
       - uses: actions/checkout@v4
 
@@ -30,19 +25,11 @@ jobs:
         run: npm run build
         working-directory: ./client
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: ./client/dist
-
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }} # これは自動で提供される
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
-          #### 注意: 以下はあなたの構成に応じて変更する必要があります ####
           app_location: "/client"
           output_location: "dist"
-  
