@@ -6,6 +6,7 @@ on:
       - feature/ver2.10  # リモートのブランチ名
     paths:
       - 'server/**'       # サーバーフォルダ内の変更のみデプロイ対象
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
