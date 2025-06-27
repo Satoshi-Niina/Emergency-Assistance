@@ -1,169 +1,29 @@
-import 'dotenv/config';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
-import express, { type Request, Response, NextFunction } from "express";
-import cors from 'cors';
+// ① 環境変数読み込み
 import dotenv from 'dotenv';
+dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import app from './app.js'; // Express app の本体（中でCORSやルート設定がされている想定）
 
-// 複数の場所から.envファイルを読み込み
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-dotenv.config({ path: path.resolve(process.cwd(), 'server/.env') });
-dotenv.config({ path: path.resolve(__dirname, '.env') });
+// ② ポート設定：Azureは環境変数PORTを渡す（ローカルでは3001）
+const port = process.env.PORT || 3001;
 
-// 環境変数の読み込み確認
-console.log("[DEBUG] Environment variables loaded:", {
-  NODE_ENV: process.env.NODE_ENV,
-  OPENAI_API_KEY: process.env.OPENAI_API_KEY ? "SET" : "NOT SET",
-  PWD: process.cwd(),
-  __dirname: __dirname
-});
-
-console.log("[INFO] Backend server starting...");
-
-const app = express();
-const PORT = Number(process.env.PORT) || 3001;
-const isProduction = process.env.NODE_ENV === 'production';
-
-// CORS設定
-const corsOptions = {
-  origin: isProduction 
-    ? [process.env.FRONTEND_URL || 'http://localhost:5000']
-    : ['http://localhost:5000', 'http://localhost:5173', 'https://*.replit.dev'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-};
-
-app.use(cors(corsOptions));
-
-// セキュリティヘッダー
-app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  if (isProduction) {
-    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-  }
-  next();
-});
-
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: false, limit: '10mb' }));
-
-// ヘルスチェックエンドポイント
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    port: PORT,
-    environment: process.env.NODE_ENV || 'development',
-    processId: process.pid,
-    version: process.env.npm_package_version || '1.0.0'
+// ③ サーバー起動
+try {
+  app.listen(port, () => {
+    console.log('✅ SERVER IS RUNNING');
+    console.log(`🌐 URL: http://localhost:${port}`);
+    console.log(`🔧 MODE: ${process.env.NODE_ENV || 'development'}`);
   });
-});
-
-// 本番環境での静的ファイル配信
-if (isProduction) {
-  // クライアントのビルドファイルを配信
-  app.use(express.static(path.join(__dirname, '../client/dist')));
-  
-  // SPAのルーティング対応
-  app.get('*', (req, res) => {
-    if (!req.path.startsWith('/api/')) {
-      res.sendFile(path.join(__dirname, '../client/dist/index.html'));
-    }
-  });
+} catch (err) {
+  console.error('❌ SERVER START FAILED:', err);
 }
 
-// エラーハンドラー
-app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-  console.error('Server error:', err);
-  res.status(500).json({ 
-    message: isProduction ? 'Internal Server Error' : err.message,
-    ...(isProduction ? {} : { stack: err.stack })
-  });
-});
-
-// サーバー起動
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log('🚀 ===== BACKEND SERVER READY =====');
-  console.log(`✅ バックエンドサーバー起動: http://0.0.0.0:${PORT}`);
-  console.log(`🌐 環境: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`📡 ヘルスチェック: /api/health`);
-  if (isProduction) {
-    console.log(`🎯 本番モード: 静的ファイル配信有効`);
-  }
-  console.log('🚀 ===== BACKEND SERVER READY =====');
-});
-
-server.on('error', (err: any) => {
-  console.error('❌ サーバーエラー:', err);
-  if (err.code === 'EADDRINUSE') {
-    console.log('🔄 ポート競合発生、プロセスを終了します');
-    process.exit(1);
-  }
-});
-
-// ルート登録を即座に実行
-(async () => {
-  try {
-    console.log('📡 ルート登録開始...');
-    
-    // Azure Storage統合の初期化
-    if (process.env.NODE_ENV === 'production' && process.env.AZURE_STORAGE_CONNECTION_STRING) {
-      try {
-        console.log('🚀 Azure Storage統合を初期化中...');
-        const { knowledgeBaseAzure } = await import('./lib/knowledge-base-azure.js');
-        await knowledgeBaseAzure.initialize();
-        console.log('✅ Azure Storage統合初期化完了');
-      } catch (azureError) {
-        console.error('❌ Azure Storage統合初期化エラー:', azureError);
-        console.log('⚠️ Azure Storage統合なしで続行します');
-      }
-    }
-    
-    const isDev = process.env.NODE_ENV !== "production";
-
-    const { registerRoutes } = isDev
-      ? await import('./routes')
-      : await import('./routes');
-
-    const { setupAuth } = isDev
-      ? await import('./auth')
-      : await import('./auth');
-    
-    // 認証とルートを登録
-    setupAuth(app);
-    registerRoutes(app);
-    console.log('✅ 認証とルートの登録完了');
-        
-    // 静的ファイル設定（ルート登録後に設定）
-    try {
-      app.use('/images', express.static(path.join(process.cwd(), 'public', 'images')));
-      app.use('/knowledge-base/images', express.static(path.join(process.cwd(), 'knowledge-base', 'images')));
-      app.use('/knowledge-base/data', express.static(path.join(process.cwd(), 'knowledge-base', 'data')));
-      console.log('✅ 静的ファイル設定完了');
-    } catch (staticError) {
-      console.error('❌ 静的ファイル設定エラー:', staticError);
-    }
-  } catch (routeError) {
-    console.error('❌ ルート登録エラー:', routeError);
-  }
-})();
-
-// グレースフルシャットダウン
-const gracefulShutdown = () => {
-  console.log('🔄 Graceful shutdown initiated...');
-  server.close(() => {
-    console.log('✅ Server closed successfully');
-    process.exit(0);
-  });
-};
+// ④ 安全なシャットダウン処理（SIGTERMなどに対応）
+function gracefulShutdown() {
+  console.log('🛑 Server is shutting down...');
+  process.exit(0);
+}
 
 process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
-process.on('SIGUSR2', gracefulShutdown);
 process.on('SIGUSR2', gracefulShutdown);
