@@ -3,9 +3,10 @@ name: Deploy Frontend to Azure Static Web Apps
 on:
   push:
     branches:
-      - feature/ver2.10  # 必要なブランチだけを設定
+      - feature/ver2.10
     paths:
-      - 'client/**'  # クライアント側の変更に対してだけビルドをトリガー
+      - 'client/**'
+  workflow_dispatch:  # 手動実行を許可するために追加
 
 jobs:
   build-and-deploy:

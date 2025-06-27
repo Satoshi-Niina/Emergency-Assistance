@@ -5,7 +5,8 @@ on:
     branches:
       - feature/ver2.10
     paths:
-      - 'server/**'  # サーバー側の変更に対してのみビルドをトリガー
+      - 'server/**'
+  workflow_dispatch:  # 手動実行を許可するために追加
 
 jobs:
   build-and-deploy:
