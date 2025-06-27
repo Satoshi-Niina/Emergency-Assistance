@@ -6,25 +6,32 @@ on:
       - feature/ver2.10
     paths:
       - 'server/**'
-  # workflow_dispatch: 
+  workflow_dispatch:  # ← このインデントと位置が重要
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
+
       - name: Install dependencies
         run: |
+          cd server
           npm install
-      - name: Build project
+
+      - name: Build TypeScript
         run: |
-          npm run build
-      - name: Deploy to Azure App Service
+          cd server
+          npx tsc
+
+      - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
           app-name: emergency-backend-api
