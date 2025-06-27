@@ -1,4 +1,4 @@
-name: Deploy Backend
+name: Deploy Express Backend to Azure App Service
 
 on:
   push:
@@ -6,27 +6,26 @@ on:
       - feature/ver2.10
     paths:
       - 'server/**'
-  workflow_dispatch:
+  workflow_dispatch:  # ← 必ず push と同じ階層にすること
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repo
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Setup Node
+      - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      - name: Install backend dependencies
+      - name: Install dependencies
         run: |
           cd server
           npm install
 
-      - name: Build backend (optional if TS)
+      - name: Build backend
         run: |
           cd server
           npm run build || echo "skip build"
