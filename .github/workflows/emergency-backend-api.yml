@@ -6,11 +6,12 @@ on:
       - feature/ver2.10
     paths:
       - 'server/**'
-  workflow_dispatch:  # ← 必ず push と同じ階層にすること
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
