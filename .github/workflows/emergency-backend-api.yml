@@ -3,7 +3,7 @@ name: Deploy Express Backend to Azure App Service
 on:
   push:
     branches:
-      - feature/ver2.10  # リモートのブランチ名
+      - feature/2.10  # リモートのブランチ名
     paths:
       - 'server/**'       # サーバーフォルダ内の変更のみデプロイ対象
 
