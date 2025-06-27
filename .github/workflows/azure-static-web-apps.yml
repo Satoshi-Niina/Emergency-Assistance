@@ -1,42 +1,34 @@
-name: Azure Static Web Apps CI/CD
+name: Deploy Frontend to Azure Static Web Apps
 
 on:
   push:
     branches:
-      - feature/ver2.10
-  pull_request:
-    types: [opened, synchronize, reopened, closed]
-    branches:
-      - feature/ver2.10
+      - feature/ver2.10  # 必要なブランチだけを設定
+    paths:
+      - 'client/**'  # クライアント側の変更に対してだけビルドをトリガー
 
 jobs:
-  build_and_deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    name: Build and Deploy Static Web App
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
         with:
-          node-version: '20'
-
+          node-version: '18'
       - name: Install dependencies
-        run: npm install
-        working-directory: ./client
-
-      - name: Build Vite project
-        run: npm run build
-        working-directory: ./client
-
+        run: |
+          cd client
+          npm install
+      - name: Build project
+        run: |
+          cd client
+          npm run build
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          action: "upload"
-          app_location: "/client"
-          output_location: "dist"
-
+          app-name: emergency-assistance-client
+          slot-name: production
+          publish-profile: ${{ secrets.AZURE_FRONTEND_PUBLISH_PROFILE }}
+          package: ./client/build

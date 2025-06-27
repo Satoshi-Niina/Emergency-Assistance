@@ -1,39 +1,32 @@
-name: Deploy Express Backend to Azure App Service
+name: Deploy Backend to Azure App Service
 
 on:
   push:
     branches:
-      - feature/ver2.10  # リモートのブランチ名
+      - feature/ver2.10
     paths:
-      - 'server/**'       # サーバーフォルダ内の変更のみデプロイ対象
-  workflow_dispatch:
+      - 'server/**'  # サーバー側の変更に対してのみビルドをトリガー
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
-
+        uses: actions/checkout@v3
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v3
         with:
-          node-version: '20'  # Node.js 20 LTS（Express対応）
-
+          node-version: '18'
       - name: Install dependencies
-        run: npm install
-        working-directory: ./server
-
-      - name: Zip backend files
-        run: zip -r backend.zip .
-        working-directory: ./server
-
-      - name: Deploy to Azure Web App
+        run: |
+          npm install
+      - name: Build project
+        run: |
+          npm run build
+      - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v2
         with:
-          app-name: emergency-backend-api     # AzureのApp Service 名
-          slot-name: 'production'            # 本番環境を指定
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ./server/backend.zip      # バックエンドのアーカイブファイル
-
+          app-name: emergency-backend-api
+          slot-name: production
+          publish-profile: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
+          package: ./server
