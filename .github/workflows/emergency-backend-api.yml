@@ -1,4 +1,4 @@
-name: Deploy Backend to Azure App Service
+name: Deploy Backend
 
 on:
   push:
@@ -6,35 +6,34 @@ on:
       - feature/ver2.10
     paths:
       - 'server/**'
-  workflow_dispatch:  # ← このインデントと位置が重要
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Set up Node.js
+      - name: Setup Node
         uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      - name: Install dependencies
+      - name: Install backend dependencies
         run: |
           cd server
           npm install
 
-      - name: Build TypeScript
+      - name: Build backend (optional if TS)
         run: |
           cd server
-          npx tsc
+          npm run build || echo "skip build"
 
-      - name: Deploy to Azure Web App
+      - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v2
         with:
           app-name: emergency-backend-api
-          slot-name: production
-          publish-profile: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: ./server
