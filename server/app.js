@@ -46,8 +46,10 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createApp = createApp;
+
 require("dotenv/config");
 var path = require("path");
 var url_1 = require("url");
@@ -56,12 +58,14 @@ var cors_1 = require("cors");
 var dotenv_1 = require("dotenv");
 var express_session_1 = require("express-session");
 var memorystore_1 = require("memorystore");
+
 var __filename = (0, url_1.fileURLToPath)(import.meta.url);
 var __dirname = path.dirname(__filename);
-// 複数の場所から.envファイルを読み込み
+
 dotenv_1.default.config({ path: path.resolve(process.cwd(), '.env') });
 dotenv_1.default.config({ path: path.resolve(process.cwd(), 'server/.env') });
 dotenv_1.default.config({ path: path.resolve(__dirname, '.env') });
+
 function createApp() {
     return __awaiter(this, void 0, void 0, function () {
         var app, isProduction, corsOptions, MemoryStoreSession;
@@ -69,6 +73,7 @@ function createApp() {
             console.log("[INFO] Creating Express application...");
             app = (0, express_1.default)();
             isProduction = process.env.NODE_ENV === 'production';
+
             corsOptions = {
                 origin: isProduction
                     ? [process.env.FRONTEND_URL || 'http://localhost:5000']
@@ -78,7 +83,7 @@ function createApp() {
                 allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
             };
             app.use((0, cors_1.default)(corsOptions));
-            // セキュリティヘッダー
+
             app.use(function (req, res, next) {
                 res.setHeader('X-Content-Type-Options', 'nosniff');
                 res.setHeader('X-Frame-Options', 'DENY');
@@ -88,24 +93,24 @@ function createApp() {
                 }
                 next();
             });
+
             app.use(express_1.default.json({ limit: '10mb' }));
             app.use(express_1.default.urlencoded({ extended: false, limit: '10mb' }));
+
             MemoryStoreSession = (0, memorystore_1.default)(express_session_1.default);
             app.use((0, express_session_1.default)({
                 secret: process.env.SESSION_SECRET || 'emergency-recovery-secret-key',
                 resave: false,
                 saveUninitialized: false,
-                store: new MemoryStoreSession({
-                    checkPeriod: 86400000 // 24時間でクリーンアップ
-                }),
+                store: new MemoryStoreSession({ checkPeriod: 86400000 }),
                 cookie: {
-                    secure: isProduction, // 本番環境ではHTTPS必須
+                    secure: isProduction,
                     httpOnly: true,
-                    maxAge: 86400000, // 24時間
+                    maxAge: 86400000,
                     sameSite: isProduction ? 'strict' : 'lax'
                 }
             }));
-            // ヘルスチェックエンドポイント
+
             app.get('/api/health', function (req, res) {
                 res.json({
                     status: 'ok',
@@ -115,33 +120,44 @@ function createApp() {
                     version: process.env.npm_package_version || '1.0.0'
                 });
             });
-            // 本番環境での静的ファイル配信
+
             if (isProduction) {
-                // クライアントのビルドファイルを配信
                 app.use(express_1.default.static(path.join(__dirname, '../client/dist')));
-                // SPAのルーティング対応
                 app.get('*', function (req, res) {
                     if (!req.path.startsWith('/api/')) {
                         res.sendFile(path.join(__dirname, '../client/dist/index.html'));
                     }
                 });
             }
-            // 静的ファイル設定
+
             try {
                 app.use('/images', express_1.default.static(path.join(process.cwd(), 'public', 'images')));
                 app.use('/knowledge-base/images', express_1.default.static(path.join(process.cwd(), 'knowledge-base', 'images')));
                 app.use('/knowledge-base/data', express_1.default.static(path.join(process.cwd(), 'knowledge-base', 'data')));
                 console.log('✅ 静的ファイル設定完了');
-            }
-            catch (staticError) {
+            } catch (staticError) {
                 console.error('❌ 静的ファイル設定エラー:', staticError);
             }
-            // エラーハンドラー
+
             app.use(function (err, _req, res, _next) {
                 console.error('Server error:', err);
-                res.status(500).json(__assign({ message: isProduction ? 'Internal Server Error' : err.message }, (isProduction ? {} : { stack: err.stack })));
+                res.status(500).json(__assign(
+                    { message: isProduction ? 'Internal Server Error' : err.message },
+                    (isProduction ? {} : { stack: err.stack })
+                ));
             });
+
             return [2 /*return*/, app];
         });
     });
 }
+
+// ✅ 起動処理
+const port = process.env.PORT || 3000;
+createApp().then(app => {
+    app.listen(port, () => {
+        console.log(`🚀 Server is running on port ${port}`);
+    });
+}).catch(err => {
+    console.error('❌ Failed to start server:', err);
+});
