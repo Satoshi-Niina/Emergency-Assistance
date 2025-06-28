@@ -1,0 +1,72 @@
+import { Express } from 'express';
+import { registerSyncRoutes } from './sync-routes';
+import { registerEmergencyFlowRoutes } from './emergency-flow';
+import { registerEmergencyGuideRoutes } from './emergency-guide';
+import { registerTechSupportRoutes } from './tech-support';
+import { registerDataProcessorRoutes } from './data-processor';
+import { registerTroubleshootingRoutes } from './troubleshooting';
+import { registerUsersRoutes } from './users';
+import { registerKnowledgeBaseRoutes } from './knowledge-base';
+import { registerSearchRoutes } from './search';
+import { registerFileRoutes } from './file';
+import { registerFlowGeneratorRoutes } from './flow-generator';
+import { registerChatRoutes } from './chat';
+
+export function registerRoutes(app: Express): void {
+  console.log('📡 各ルートモジュールを登録中...');
+  
+  try {
+    // チャット関連ルート（重要：最初に登録）
+    registerChatRoutes(app);
+    console.log('✅ チャットルート登録完了');
+    
+    // 同期関連ルート
+    registerSyncRoutes(app);
+    console.log('✅ 同期ルート登録完了');
+    
+    // 緊急フロー関連ルート
+    registerEmergencyFlowRoutes(app);
+    console.log('✅ 緊急フールート登録完了');
+    
+    // 緊急ガイド関連ルート
+    registerEmergencyGuideRoutes(app);
+    console.log('✅ 緊急ガイドルート登録完了');
+    
+    // テックサポート関連ルート
+    registerTechSupportRoutes(app);
+    console.log('✅ テックサポートルート登録完了');
+    
+    // データ処理関連ルート
+    registerDataProcessorRoutes(app);
+    console.log('✅ データ処理ルート登録完了');
+    
+    // トラブルシューティング関連ルート
+    registerTroubleshootingRoutes(app);
+    console.log('✅ トラブルシューティングルート登録完了');
+    
+    // ユーザー関連ルート
+    registerUsersRoutes(app);
+    console.log('✅ ユーザールート登録完了');
+    
+    // ナレッジベース関連ルート
+    registerKnowledgeBaseRoutes(app);
+    console.log('✅ ナレッジベースルート登録完了');
+    
+    // 検索関連ルート
+    registerSearchRoutes(app);
+    console.log('✅ 検索ルート登録完了');
+    
+    // ファイル関連ルート
+    registerFileRoutes(app);
+    console.log('✅ ファイルルート登録完了');
+    
+    // フロー生成関連ルート
+    registerFlowGeneratorRoutes(app);
+    console.log('✅ フロー生成ルート登録完了');
+    
+    console.log('🎉 すべてのルート登録完了');
+  } catch (error) {
+    console.error('❌ ルート登録エラー:', error);
+    throw error;
+  }
+} 
