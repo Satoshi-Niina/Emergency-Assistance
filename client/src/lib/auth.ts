@@ -10,6 +10,15 @@ import { AUTH_API } from './api/config';
 export const login = async (credentials: LoginCredentials) => {
   try {
     console.log('🔐 ログイン試行:', { username: credentials.username });
+    console.log('📡 リクエストURL:', AUTH_API.LOGIN);
+    console.log('📡 リクエスト設定:', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify(credentials)
+    });
     
     const response = await fetch(AUTH_API.LOGIN, {
       method: 'POST',
@@ -20,7 +29,12 @@ export const login = async (credentials: LoginCredentials) => {
       body: JSON.stringify(credentials)
     });
     
-    console.log('📡 レスポンス受信:', { status: response.status, ok: response.ok });
+    console.log('📡 レスポンス受信:', { 
+      status: response.status, 
+      ok: response.ok,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries())
+    });
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ message: '認証エラー' }));

@@ -7,11 +7,21 @@ export const API_BASE_URL = isProduction
   ? (import.meta.env.VITE_API_BASE_URL || 'https://emergency-backend-api.azurewebsites.net')
   : '';
 
+console.log('🔧 API設定:', {
+  isProduction,
+  isDevelopment,
+  API_BASE_URL,
+  VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL
+});
+
 // APIエンドポイントの構築
 export const buildApiUrl = (endpoint: string): string => {
   if (isProduction) {
-    return `${API_BASE_URL}${endpoint}`;
+    const fullUrl = `${API_BASE_URL}${endpoint}`;
+    console.log(`🔗 API URL構築: ${endpoint} -> ${fullUrl}`);
+    return fullUrl;
   }
+  console.log(`🔗 API URL構築: ${endpoint} -> ${endpoint} (開発環境)`);
   return endpoint; // 開発環境では相対パスを使用
 };
 

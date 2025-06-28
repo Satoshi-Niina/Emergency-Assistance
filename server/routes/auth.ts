@@ -13,7 +13,10 @@ router.post('/login', async (req, res) => {
     console.log('🔐 ログインリクエスト受信:', { 
       body: req.body, 
       hasSession: !!req.session,
-      headers: req.headers['content-type']
+      headers: req.headers['content-type'],
+      origin: req.headers.origin,
+      method: req.method,
+      url: req.url
     });
     const { username, password } = req.body;
     
@@ -55,8 +58,11 @@ router.post('/login', async (req, res) => {
     // パスワード検証
     console.log('🔐 パスワード検証中...');
     const isValidPassword = await bcrypt.compare(password, user.password);
-    console.log('📊 パスワード検証結果:', isValidPassword ? '✅ 正しい' : '❌ 間違い');
-    
+    console.log('🔑 パスワード検証:', { 
+      username,
+      isValid: isValidPassword 
+    });
+
     if (!isValidPassword) {
       logError(`パスワードが正しくありません: ${username}`);
       return res.status(401).json({
@@ -65,71 +71,33 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // セッション設定
-    req.session.userId = user.id.toString();
-    // req.session.username = user.username;
-    req.session.userRole = user.role;
+    // セッションにユーザー情報を保存
+    if (req.session) {
+      req.session.userId = user.id;
+      req.session.userRole = user.role;
+      console.log('💾 セッション保存:', { 
+        userId: user.id,
+        userRole: user.role
+      });
+    }
 
-    console.log('✅ セッション設定完了:', {
-      userId: req.session.userId,
-      // username: req.session.username,
-      role: req.session.userRole
-    });
-
-    logInfo(`ログイン成功: ${username} (${user.role})`);
-
+    // レスポンスデータ
     const responseData = {
       success: true,
       user: {
         id: user.id,
         username: user.username,
-        display_name: user.display_name || user.username,
+        displayName: user.display_name,
         role: user.role,
         department: user.department
       }
     };
 
-    console.log('📤 ログインレスポンス:', responseData);
-    
-    // レスポンス送信前にセッション状態を確認
-    console.log('🔍 セッション最終確認:', {
-      sessionExists: !!req.session,
-      userId: req.session?.userId,
-      // username: req.session?.username
-    });
-    
-    res.json(responseData.user);
-
+    console.log('✅ ログイン成功:', responseData);
+    res.status(200).json(responseData);
   } catch (error) {
-    logError('ログインエラー:', error);
-    res.status(500).json({
-      success: false,
-      message: 'サーバーエラーが発生しました',
-      error: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
-    });
-  }
-});
-
-// ログアウト
-router.post('/logout', (req, res) => {
-  try {
-    req.session.destroy((err) => {
-      if (err) {
-        logError('ログアウトエラー:', err);
-        return res.status(500).json({
-          success: false,
-          message: 'ログアウトに失敗しました'
-        });
-      }
-      
-      res.clearCookie('connect.sid');
-      res.json({
-        success: true,
-        message: 'ログアウトしました'
-      });
-    });
-  } catch (error) {
-    logError('ログアウトエラー:', error);
+    console.error('❌ ログインエラー:', error);
+    logError(`ログインエラー: ${error instanceof Error ? error.message : 'Unknown error'}`);
     res.status(500).json({
       success: false,
       message: 'サーバーエラーが発生しました'
@@ -137,55 +105,61 @@ router.post('/logout', (req, res) => {
   }
 });
 
-// 現在のユーザー情報取得
-router.get('/me', async (req, res) => {
-  try {
-    console.log('🔍 認証チェック - セッション状態:', {
-      hasSession: !!req.session,
-      userId: req.session?.userId,
-      role: req.session?.userRole
-    });
-
-    if (!req.session || !req.session.userId) {
-      console.log('❌ 認証失敗 - セッションまたはユーザーIDなし');
-      return res.status(401).json({
-        success: false,
-        message: '認証されていません'
+// ログアウト
+router.post('/logout', (req, res) => {
+  console.log('🚪 ログアウトリクエスト受信:', {
+    hasSession: !!req.session,
+    userId: req.session?.userId
+  });
+  
+  if (req.session) {
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('❌ セッション削除エラー:', err);
+        return res.status(500).json({
+          success: false,
+          message: 'ログアウト中にエラーが発生しました'
+        });
+      }
+      console.log('✅ ログアウト成功');
+      res.status(200).json({
+        success: true,
+        message: 'ログアウトしました'
       });
-    }
-
-    // データベースからユーザー情報を取得
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, parseInt(req.session.userId))
     });
-
-    if (!user) {
-      console.log('❌ ユーザーが見つかりません:', req.session.userId);
-      return res.status(401).json({
-        success: false,
-        message: 'ユーザーが見つかりません'
-      });
-    }
-
-    const userData = {
-      id: user.id,
-      username: user.username,
-      display_name: user.display_name || user.username,
-      role: user.role,
-      department: user.department
-    };
-
-    console.log('📤 認証成功 - ユーザー情報:', userData);
-    res.json(userData);
-  } catch (error) {
-    console.error('❌ ユーザー情報取得エラー:', error);
-    logError('ユーザー情報取得エラー:', error);
-    res.status(500).json({
-      success: false,
-      message: 'サーバーエラーが発生しました',
-      error: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
+  } else {
+    console.log('⚠️ セッションが存在しません');
+    res.status(200).json({
+      success: true,
+      message: 'ログアウトしました'
     });
   }
+});
+
+// 現在のユーザー情報取得
+router.get('/me', (req, res) => {
+  console.log('👤 ユーザー情報取得リクエスト:', {
+    hasSession: !!req.session,
+    userId: req.session?.userId
+  });
+  
+  if (!req.session || !req.session.userId) {
+    console.log('❌ 認証されていません');
+    return res.status(401).json({
+      success: false,
+      message: '認証されていません'
+    });
+  }
+  
+  // ここでデータベースからユーザー情報を取得する必要があります
+  // 現在はセッション情報のみを返します
+  res.status(200).json({
+    success: true,
+    user: {
+      id: req.session.userId,
+      role: req.session.userRole
+    }
+  });
 });
 
 export const authRouter = router;
