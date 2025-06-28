@@ -1,4 +1,4 @@
-// API設定
+/// API設定
 const isProduction = import.meta.env.PROD;
 const isDevelopment = import.meta.env.DEV;
 
@@ -45,4 +45,4 @@ export const API_CONFIG = {
   baseUrl: API_BASE_URL,
   timeout: 30000, // 30秒
   retryAttempts: 3,
-}; 
+};
