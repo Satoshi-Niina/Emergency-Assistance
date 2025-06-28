@@ -30,12 +30,25 @@ const isProduction = process.env.NODE_ENV === 'production';
 // CORS設定
 const corsOptions = {
   origin: isProduction 
-    ? [process.env.FRONTEND_URL || 'http://localhost:5000']
+    ? [
+        process.env.FRONTEND_URL || 'https://emergency-assistance-app.azurestaticapps.net',
+        'https://*.azurestaticapps.net', // Azure Static Web Appsのワイルドカード
+        'https://*.azurewebsites.net', // Azure Web Appsのワイルドカード
+        'https://emergency-assistance-app.azurestaticapps.net', // 具体的なドメイン
+      ]
     : ['http://localhost:5000', 'http://localhost:5173', 'https://*.replit.dev'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept'],
+  exposedHeaders: ['Set-Cookie']
 };
+
+console.log('🔧 CORS設定:', {
+  isProduction,
+  origin: corsOptions.origin,
+  credentials: corsOptions.credentials,
+  methods: corsOptions.methods
+});
 
 app.use(cors(corsOptions));
 
@@ -135,8 +148,16 @@ server.on('error', (err: any) => {
       ? await import('./auth')
       : await import('./auth');
     
+    const { authRouter } = isDev
+      ? await import('./routes/auth')
+      : await import('./routes/auth');
+    
     // 認証とルートを登録
     setupAuth(app);
+    
+    // 認証ルートを明示的に登録
+    app.use('/api/auth', authRouter);
+    
     registerRoutes(app);
     console.log('✅ 認証とルートの登録完了');
         
