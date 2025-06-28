@@ -1,6 +1,5 @@
 import axios from 'axios';
-
-const API_BASE_URL = '/api/knowledge';
+import { KNOWLEDGE_API } from './config';
 
 export interface ImageMetadata {
   id: string;
@@ -27,42 +26,42 @@ export interface Flow {
 export const knowledgeBaseApi = {
   // GPTデータの取得
   getGptData: async () => {
-    const response = await axios.get(`${API_BASE_URL}/gpt/data`);
+    const response = await axios.get(KNOWLEDGE_API.GPT_DATA);
     return response.data;
   },
 
   // Fuse画像メタデータの取得
   getFuseImages: async () => {
-    const response = await axios.get(`${API_BASE_URL}/fuse/images`);
+    const response = await axios.get(KNOWLEDGE_API.FUSE_IMAGES);
     return response.data as ImageMetadata[];
   },
 
   // トラブルシューティングフローの取得
   getTroubleshootingFlows: async () => {
-    const response = await axios.get(`${API_BASE_URL}/troubleshooting/flows`);
+    const response = await axios.get(KNOWLEDGE_API.TROUBLESHOOTING_FLOWS);
     return response.data as Flow[];
   },
 
   // 共有データの取得
   getSharedData: async (type: string) => {
-    const response = await axios.get(`${API_BASE_URL}/shared/${type}`);
+    const response = await axios.get(KNOWLEDGE_API.SHARED_DATA(type));
     return response.data;
   },
 
   // 画像ファイルの取得
   getImage: (category: string, filename: string) => {
-    return `${API_BASE_URL}/images/${category}/${filename}`;
+    return KNOWLEDGE_API.IMAGES(category, filename);
   },
 
   // 新しいフローの作成
   createFlow: async (flow: Flow) => {
-    const response = await axios.post(`${API_BASE_URL}/troubleshooting/flows`, flow);
+    const response = await axios.post(KNOWLEDGE_API.TROUBLESHOOTING_FLOWS, flow);
     return response.data;
   },
 
   // 画像メタデータの更新
   updateImageMetadata: async (metadata: ImageMetadata) => {
-    const response = await axios.post(`${API_BASE_URL}/fuse/metadata`, metadata);
+    const response = await axios.post(`${KNOWLEDGE_API.BASE}/fuse/metadata`, metadata);
     return response.data;
   }
 }; 

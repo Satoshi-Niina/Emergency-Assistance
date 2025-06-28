@@ -24,11 +24,16 @@ export async function createApp() {
   // CORS設定
   const corsOptions = {
     origin: isProduction 
-      ? [process.env.FRONTEND_URL || 'http://localhost:5000']
+      ? [
+          process.env.FRONTEND_URL || 'https://emergency-assistance-app.azurestaticapps.net',
+          'https://*.azurestaticapps.net', // Azure Static Web Appsのワイルドカード
+          'https://emergency-assistance-app.azurestaticapps.net'
+        ]
       : ['http://localhost:5000', 'http://localhost:5173', 'https://*.replit.dev'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept'],
+    exposedHeaders: ['Set-Cookie']
   };
 
   app.use(cors(corsOptions));
@@ -60,7 +65,8 @@ export async function createApp() {
       secure: isProduction, // 本番環境ではHTTPS必須
       httpOnly: true,
       maxAge: 86400000, // 24時間
-      sameSite: isProduction ? 'strict' : 'lax'
+      sameSite: isProduction ? 'none' : 'lax', // 本番環境ではcross-site cookieを許可
+      domain: isProduction ? undefined : undefined // 本番環境ではドメイン制限なし
     }
   }));
 
@@ -71,7 +77,11 @@ export async function createApp() {
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV || 'development',
       processId: process.pid,
-      version: process.env.npm_package_version || '1.0.0'
+      version: process.env.npm_package_version || '1.0.0',
+      cors: {
+        origin: corsOptions.origin,
+        credentials: corsOptions.credentials
+      }
     });
   });
 
