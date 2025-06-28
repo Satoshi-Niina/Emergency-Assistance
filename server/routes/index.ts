@@ -1,8 +1,8 @@
 import { Express } from 'express';
 import { registerSyncRoutes } from './sync-routes';
-import { registerEmergencyFlowRoutes } from './emergency-flow';
-import { registerEmergencyGuideRoutes } from './emergency-guide';
-import { registerTechSupportRoutes } from './tech-support';
+import emergencyFlowRouter from './emergency-flow';
+import emergencyGuideRouter from './emergency-guide';
+import techSupportRouter from './tech-support';
 import { registerDataProcessorRoutes } from './data-processor';
 import { registerTroubleshootingRoutes } from './troubleshooting';
 import { registerUsersRoutes } from './users';
@@ -25,15 +25,15 @@ export function registerRoutes(app: Express): void {
     console.log('✅ 同期ルート登録完了');
     
     // 緊急フロー関連ルート
-    registerEmergencyFlowRoutes(app);
+    app.use('/api/emergency-flow', emergencyFlowRouter);
     console.log('✅ 緊急フールート登録完了');
     
     // 緊急ガイド関連ルート
-    registerEmergencyGuideRoutes(app);
+    app.use('/api/emergency-guide', emergencyGuideRouter);
     console.log('✅ 緊急ガイドルート登録完了');
     
     // テックサポート関連ルート
-    registerTechSupportRoutes(app);
+    app.use('/api/tech-support', techSupportRouter);
     console.log('✅ テックサポートルート登録完了');
     
     // データ処理関連ルート

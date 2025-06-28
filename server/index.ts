@@ -140,9 +140,8 @@ server.on('error', (err: any) => {
     
     const isDev = process.env.NODE_ENV !== "production";
 
-    const { registerRoutes } = isDev
-      ? await import('./routes')
-      : await import('./routes');
+    // 新しいルート構造を使用
+    const { registerRoutes } = await import('./routes/index.js');
 
     const { setupAuth } = isDev
       ? await import('./auth')
