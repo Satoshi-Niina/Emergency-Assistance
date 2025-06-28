@@ -1,4 +1,4 @@
-ame: Deploy to Azure Container Registry
+name: Deploy to Azure Container Registry
 
 on:
   push:
@@ -7,6 +7,9 @@ on:
 
 env:
   NODE_ENV: production
+  REGISTRY_NAME: ${{ secrets.REGISTRY_NAME }}
+  IMAGE_NAME: emergency-assistance
+  AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
   FRONTEND_URL: ${{ secrets.FRONTEND_URL }}

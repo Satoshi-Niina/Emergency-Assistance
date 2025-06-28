@@ -138,12 +138,11 @@ router.post('/logout', (req, res) => {
 });
 
 // 現在のユーザー情報取得
-router.get('/me', (req, res) => {
+router.get('/me', async (req, res) => {
   try {
     console.log('🔍 認証チェック - セッション状態:', {
       hasSession: !!req.session,
       userId: req.session?.userId,
-      // username: req.session?.username,
       role: req.session?.userRole
     });
 
@@ -155,12 +154,25 @@ router.get('/me', (req, res) => {
       });
     }
 
+    // データベースからユーザー情報を取得
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, parseInt(req.session.userId))
+    });
+
+    if (!user) {
+      console.log('❌ ユーザーが見つかりません:', req.session.userId);
+      return res.status(401).json({
+        success: false,
+        message: 'ユーザーが見つかりません'
+      });
+    }
+
     const userData = {
-      id: req.session.userId,
-      // username: req.session.username,
-      // display_name: req.session.username,
-      role: req.session.userRole,
-      // department: req.session.userDepartment || null
+      id: user.id,
+      username: user.username,
+      display_name: user.display_name || user.username,
+      role: user.role,
+      department: user.department
     };
 
     console.log('📤 認証成功 - ユーザー情報:', userData);

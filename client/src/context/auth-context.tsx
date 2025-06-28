@@ -35,7 +35,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const getCurrentUser = async () => {
     try {
       console.log('🔍 現在のユーザー情報を取得中...');
-      const response = await fetch('/api/user', {
+      const response = await fetch('/api/auth/me', {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -56,7 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('ユーザー情報の取得に失敗しました');
       }
 
-        const userData = await response.json();
+      const userData = await response.json();
       console.log('✅ ユーザー情報取得成功:', userData);
 
       if (!userData || !userData.id) {
@@ -74,6 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        console.log('🔍 認証状態チェック開始...');
         const userData = await getCurrentUser();
         if (userData && userData.id) {
           console.log('✅ 認証済みユーザー:', userData);
@@ -128,7 +129,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('無効なユーザーデータを受信しました');
       }
 
+      // ユーザーデータを設定
       setUser(userData);
+      console.log('✅ ユーザー状態更新完了:', userData);
+      
       toast({
         title: 'ログイン成功',
         description: `ようこそ、${userData.display_name || userData.username}さん`,

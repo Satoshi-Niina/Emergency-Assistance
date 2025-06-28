@@ -25,8 +25,10 @@ jobs:
         working-directory: ./server
 
       - name: Zip backend files
-        run: zip -r backend.zip .
-        working-directory: ./server
+        run: |
+          cd server
+          zip -r ../backend.zip .
+        working-directory: ./
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
@@ -34,5 +36,5 @@ jobs:
           app-name: emergency-backend-api     # AzureのApp Service 名
           slot-name: 'production'            # 本番環境を指定
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ./server/backend.zip      # バックエンドのアーカイブファイル
+          package: ./backend.zip      # バックエンドのアーカイブファイル
 

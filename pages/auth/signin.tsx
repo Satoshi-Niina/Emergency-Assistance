@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/context/auth-context';
 
 export default function SignIn() {
   const navigate = useNavigate();
+  const { login, isLoading } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -14,14 +16,14 @@ export default function SignIn() {
     e.preventDefault();
     setError('');
 
-    // ここで実際の認証ロジックを呼び出す
-    // 例: await signIn('credentials', { username, password, redirect: false });
-    // ダミーの認証ロジック
-    if (username === 'test' && password === 'test') {
-      // ログイン成功時にチャットページに遷移
+    try {
+      console.log('🔐 サインインページ: ログイン処理開始');
+      await login(username, password);
+      console.log('✅ サインインページ: ログイン成功、チャットページに遷移');
       navigate('/chat');
-    } else {
-      setError('ユーザー名またはパスワードが無効です');
+    } catch (error) {
+      console.error('❌ サインインページ: ログインエラー:', error);
+      setError(error instanceof Error ? error.message : 'ログインに失敗しました');
     }
   };
 
@@ -43,6 +45,7 @@ export default function SignIn() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
+                disabled={isLoading}
               />
             </div>
             <div>
@@ -52,10 +55,11 @@ export default function SignIn() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                disabled={isLoading}
               />
             </div>
-            <Button type="submit" className="w-full">
-              ログイン
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? 'ログイン中...' : 'ログイン'}
             </Button>
           </form>
         </CardContent>

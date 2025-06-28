@@ -18,11 +18,17 @@ export default function Login() {
   
   // Redirect if already logged in (but only after proper authentication)
   useEffect(() => {
+    console.log('🔍 ログインページ - 認証状態確認:', {
+      authLoading,
+      hasUser: !!user,
+      username: user?.username
+    });
+    
     if (!authLoading && user && user.username) {
-      console.log('ログイン済みユーザーを検出 - チャット画面に遷移');
-      navigate("/chat");
+      console.log('✅ ログイン済みユーザーを検出 - チャット画面に遷移');
+      navigate("/chat", { replace: true });
     } else if (!authLoading && !user) {
-      console.log('未ログインユーザー - ログイン画面を表示');
+      console.log('❌ 未ログインユーザー - ログイン画面を表示');
     }
   }, [user, authLoading, navigate]);
 
@@ -39,9 +45,15 @@ export default function Login() {
       setIsLoading(true);
       setErrorMessage("");
       console.log("🔐 ログイン試行開始:", values.username);
+      console.log("📝 フォーム値:", values);
+      
+      // ログイン処理を実行
       await login(values.username, values.password);
-      console.log("✅ ログイン成功 - チャット画面に遷移");
-      navigate("/chat");
+      
+      console.log("✅ ログイン成功 - 認証状態の更新を待機中");
+      
+      // 認証コンテキストの状態更新を待つ（useEffectで自動的に遷移する）
+      
     } catch (error) {
       console.error("❌ ログインエラー:", error);
       const errorMsg = error instanceof Error ? error.message : "ログインに失敗しました";
@@ -50,6 +62,14 @@ export default function Login() {
       setIsLoading(false);
     }
   };
+
+  // フォームの状態を監視
+  useEffect(() => {
+    const subscription = form.watch((value) => {
+      console.log("📝 フォーム値変更:", value);
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-b from-primary/10 to-primary/5 p-4">
@@ -64,7 +84,13 @@ export default function Login() {
           </CardHeader>
           <CardContent className="pt-6">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form 
+                onSubmit={(e) => {
+                  console.log("📤 フォーム送信開始");
+                  form.handleSubmit(onSubmit)(e);
+                }} 
+                className="space-y-4"
+              >
                 <FormField
                   control={form.control}
                   name="username"
@@ -96,7 +122,12 @@ export default function Login() {
                     {errorMessage}
                   </div>
                 )}
-                <Button type="submit" className="w-full bg-primary" disabled={isLoading}>
+                <Button 
+                  type="submit" 
+                  className="w-full bg-primary" 
+                  disabled={isLoading}
+                  onClick={() => console.log("🔘 ログインボタンクリック")}
+                >
                   {isLoading ? "ログイン中..." : "ログイン"}
                 </Button>
               </form>

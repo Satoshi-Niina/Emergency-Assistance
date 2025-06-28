@@ -5,9 +5,14 @@ WORKDIR /app
 # 各package.jsonを分けてインストール
 COPY package*.json ./             # サーバー用
 COPY client/package*.json ./client/  # クライアント用
+COPY shared/package*.json ./shared/  # 共有ライブラリ用
 
-# サーバー依存関係インストール（不要なら削除可）
+# サーバー依存関係インストール
 RUN npm ci --ignore-scripts && npm cache clean --force
+
+# 共有ライブラリ依存関係インストール
+WORKDIR /app/shared
+RUN npm ci && npm cache clean --force
 
 # クライアント依存関係インストール
 WORKDIR /app/client
@@ -16,6 +21,10 @@ RUN npm ci && npm cache clean --force
 # 戻ってすべてコピー
 WORKDIR /app
 COPY . .
+
+# 共有ライブラリビルド
+WORKDIR /app/shared
+RUN npm run build
 
 # クライアントビルド
 WORKDIR /app/client
@@ -35,9 +44,11 @@ RUN npm ci --only=production && npm cache clean --force
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/client/dist ./client/dist
+COPY --from=builder /app/shared/dist ./shared/dist
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/knowledge-base ./knowledge-base
 COPY --from=builder /app/uploads ./uploads
+COPY --from=builder /app/web.config ./web.config
 
 ENV NODE_ENV=production
 ENV PORT=8080
