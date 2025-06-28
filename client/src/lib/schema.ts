@@ -2,6 +2,6 @@
 import { z } from "zod";
 
 export const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
+  username: z.string().min(1, "ユーザー名は必須です"),
+  password: z.string().min(1, "パスワードは必須です"),
 });
