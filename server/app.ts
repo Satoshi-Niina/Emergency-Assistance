@@ -27,9 +27,8 @@ export async function createApp() {
       ? [
           process.env.FRONTEND_URL || 'https://emergency-assistance-app.azurestaticapps.net',
           'https://*.azurestaticapps.net', // Azure Static Web Appsのワイルドカード
-          'https://emergency-assistance-app.azurestaticapps.net'
         ]
-      : ['http://localhost:5000', 'http://localhost:5173', 'https://*.replit.dev'],
+      : ['http://localhost:5000', 'http://localhost:5173', ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept'],
