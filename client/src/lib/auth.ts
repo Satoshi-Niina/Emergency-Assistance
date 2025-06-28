@@ -1,5 +1,6 @@
 import { apiRequest } from './queryClient';
 import { LoginCredentials } from '@shared/schema';
+import { AUTH_API } from './api/config';
 
 /**
  * Login a user with the provided credentials
@@ -10,7 +11,7 @@ export const login = async (credentials: LoginCredentials) => {
   try {
     console.log('🔐 ログイン試行:', { username: credentials.username });
     
-    const response = await fetch('/api/auth/login', {
+    const response = await fetch(AUTH_API.LOGIN, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -44,7 +45,7 @@ export const login = async (credentials: LoginCredentials) => {
  */
 export const logout = async () => {
   try {
-    await fetch('/api/auth/logout', {
+    await fetch(AUTH_API.LOGOUT, {
       method: 'POST',
       credentials: 'include'
     });
@@ -60,7 +61,7 @@ export const logout = async () => {
  */
 export const getCurrentUser = async () => {
   try {
-    const response = await fetch('/api/auth/me', {
+    const response = await fetch(AUTH_API.ME, {
       credentials: 'include'
     });
     

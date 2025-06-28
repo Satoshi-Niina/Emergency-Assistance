@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle, Server, Brain } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { CHAT_API } from "@/lib/api/config";
 
 export default function NotFound() {
   const [apiResponse, setApiResponse] = useState<string | null>(null);
@@ -13,7 +14,7 @@ export default function NotFound() {
     setIsLoading(true);
     setApiStatus('idle');
     try {
-      const response = await fetch('/api/health');
+      const response = await fetch(CHAT_API.HEALTH);
       const data = await response.json();
       setApiResponse(JSON.stringify(data, null, 2));
       setApiStatus('success');
@@ -30,7 +31,7 @@ export default function NotFound() {
     setIsLoading(true);
     setApiStatus('idle');
     try {
-      const response = await fetch('/api/chatgpt', {
+      const response = await fetch(CHAT_API.CHATGPT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: 'Hello, this is a test of the OpenAI API connection.' })

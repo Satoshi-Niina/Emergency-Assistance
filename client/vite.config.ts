@@ -2,7 +2,6 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import express from 'express';
 
 // __dirnameの代替定義
 const __filename = fileURLToPath(import.meta.url);
@@ -10,6 +9,7 @@ const __dirname = path.dirname(__filename);
 
 // ★ express を開発モードでのみ使用する
 function serveKnowledgeBase() {
+  const express = require('express'); // ← require にすることで本番ビルド時に無視される
   const router = express.Router();
   const knowledgeBasePath = path.resolve(__dirname, '../knowledge-base');
   console.log(`📚 Serving static files for /knowledge-base from: ${knowledgeBasePath}`);
@@ -23,7 +23,7 @@ function serveKnowledgeBase() {
   };
 }
 
-export default defineConfig(({ command }) => ({
+export default defineConfig(({ command, mode }) => ({
   plugins: [
     react(),
     ...(command === 'serve' ? [serveKnowledgeBase()] : [])
@@ -74,6 +74,15 @@ export default defineConfig(({ command }) => ({
     rollupOptions: {
       input: './index.html'
     }
+  },
+  define: {
+    // 本番環境での環境変数定義
+    'import.meta.env.VITE_API_BASE_URL': JSON.stringify(
+      mode === 'production' 
+        ? (process.env.VITE_API_BASE_URL || 'https://emergency-backend-api.azurewebsites.net')
+        : undefined
+    ),
+    'import.meta.env.VITE_APP_ENV': JSON.stringify(mode)
   },
   logLevel: 'warn'
 }));
