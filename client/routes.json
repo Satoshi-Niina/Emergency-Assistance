@@ -1,0 +1,15 @@
+{
+    "routes": [
+      {
+        "route": "/login",
+        "serve": "/index.html",
+        "statusCode": 200
+      },
+      {
+        "route": "/{*any}",
+        "serve": "/index.html",
+        "statusCode": 200
+      }
+    ]
+  }
+  
