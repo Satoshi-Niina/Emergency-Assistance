@@ -64,4 +64,5 @@ export function registerRoutes(app: Express): void {
     console.error('❌ ルート登録エラー:', error);
     throw error;
   }
-} 
+} import { authRouter } from "./auth";
+    app.use("/api/auth", authRouter);
