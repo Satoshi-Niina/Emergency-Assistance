@@ -3,9 +3,9 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
 interface User {
-  id: number;
+  id: string;
   username: string;
-  display_name: string;
+  displayName: string;
   role: "employee" | "admin";
   department?: string;
 }
@@ -59,12 +59,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const userData = await response.json();
       console.log('✅ ユーザー情報取得成功:', userData);
 
-      if (!userData || !userData.id) {
+      if (!userData || !userData.user || !userData.user.id) {
         console.warn('⚠️ 無効なユーザーデータ:', userData);
         return null;
       }
 
-      return userData;
+      return userData.user;
     } catch (error) {
       console.error('❌ ユーザー情報取得エラー:', error);
       return null;
@@ -123,23 +123,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const userData = await response.json();
       console.log('✅ ログイン成功:', userData);
+      console.log('🔍 レスポンスデータ詳細:', {
+        hasUserData: !!userData,
+        hasUser: !!userData?.user,
+        userDataKeys: userData ? Object.keys(userData) : [],
+        userKeys: userData?.user ? Object.keys(userData.user) : [],
+        userData: userData,
+        user: userData?.user
+      });
 
-      if (!userData || !userData.id) {
+      if (!userData || !userData.user || !userData.user.id) {
         console.error('❌ 無効なユーザーデータ:', userData);
         throw new Error('無効なユーザーデータを受信しました');
       }
 
       // ユーザーデータを設定
-      setUser(userData);
-      console.log('✅ ユーザー状態更新完了:', userData);
+      setUser(userData.user);
+      console.log('✅ ユーザー状態更新完了:', userData.user);
       
       toast({
         title: 'ログイン成功',
-        description: `ようこそ、${userData.display_name || userData.username}さん`,
+        description: `ようこそ、${userData.user.displayName || userData.user.username}さん`,
         variant: 'default'
       });
 
-      return userData;
+      return userData.user;
     } catch (error) {
       console.error('❌ ログインエラー:', error);
       toast({
