@@ -37,9 +37,26 @@ export const login = async (credentials: LoginCredentials) => {
     });
     
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: '認証エラー' }));
-      console.error('❌ ログインエラー:', errorData);
-      throw new Error(errorData.message || '認証サーバーからのレスポンスエラー');
+      let errorMessage = '認証エラー';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || `HTTP ${response.status}: ${response.statusText}`;
+      } catch (parseError) {
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+      
+      console.error('❌ ログインエラー:', {
+        status: response.status,
+        statusText: response.statusText,
+        message: errorMessage
+      });
+      
+      // 503エラーの場合は特別なメッセージ
+      if (response.status === 503) {
+        throw new Error('バックエンドサーバーが利用できません。しばらく待ってから再試行してください。');
+      }
+      
+      throw new Error(errorMessage);
     }
     
     const userData = await response.json();
@@ -47,6 +64,12 @@ export const login = async (credentials: LoginCredentials) => {
     return userData;
   } catch (error) {
     console.error('❌ Login error:', error);
+    
+    // ネットワークエラーの場合
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('バックエンドサーバーに接続できません。ネットワーク接続を確認してください。');
+    }
+    
     if (error instanceof Error) {
       throw error;
     }

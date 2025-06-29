@@ -103,13 +103,19 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 // サーバー起動
 const server = app.listen(PORT, () => {
   console.log('🚀 ===== BACKEND SERVER READY =====');
-  console.log(`✅ バックエンドサーバー起動: http://0.0.0.0:${PORT}`);
-  console.log(`🌐 環境: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`📡 ヘルスチェック: /api/health`);
+  console.log('✅ バックエンドサーバー起動:', `http://0.0.0.0:${PORT}`);
+  console.log('🌐 環境:', process.env.NODE_ENV || 'development');
+  console.log('📡 ヘルスチェック:', '/api/health');
+  console.log('🔧 環境変数確認:', {
+    NODE_ENV: process.env.NODE_ENV,
+    FRONTEND_URL: process.env.FRONTEND_URL,
+    DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
+    SESSION_SECRET: process.env.SESSION_SECRET ? 'SET' : 'NOT SET'
+  });
+  console.log('🚀 ===== BACKEND SERVER READY =====');
   if (isProduction) {
     console.log(`🎯 本番モード: 静的ファイル配信有効`);
   }
-  console.log('🚀 ===== BACKEND SERVER READY =====');
 });
 
 server.on('error', (err: any) => {
