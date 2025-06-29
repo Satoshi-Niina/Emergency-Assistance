@@ -17,6 +17,10 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 console.log("[DEBUG] Environment variables loaded:", {
   NODE_ENV: process.env.NODE_ENV,
   OPENAI_API_KEY: process.env.OPENAI_API_KEY ? "SET" : "NOT SET",
+  FRONTEND_URL: process.env.FRONTEND_URL || "NOT SET",
+  DATABASE_URL: process.env.DATABASE_URL ? "SET" : "NOT SET",
+  SESSION_SECRET: process.env.SESSION_SECRET ? "SET" : "NOT SET",
+  AZURE_STORAGE_CONNECTION_STRING: process.env.AZURE_STORAGE_CONNECTION_STRING ? "SET" : "NOT SET",
   PWD: process.cwd(),
   __dirname: __dirname
 });
@@ -28,15 +32,27 @@ const PORT = Number(process.env.PORT) || 3001;
 const isProduction = process.env.NODE_ENV === 'production';
 
 // CORS設定
+const allowedOrigins = [
+  'https://emergency-assistance-app.azurestaticapps.net',
+  'https://emergency-assistance-app.azurewebsites.net',
+  'http://localhost:5000',
+  'http://localhost:5001',
+  'http://localhost:5173'
+];
 const corsOptions = {
-  origin: isProduction 
-    ? [
-        process.env.FRONTEND_URL || 'https://emergency-assistance-app.azurestaticapps.net',
-        'https://*.azurestaticapps.net', // Azure Static Web Appsのワイルドカード
-        'https://*.azurewebsites.net', // Azure Web Appsのワイルドカード
-        'https://emergency-assistance-app.azurestaticapps.net', // 具体的なドメイン
-      ]
-    : ['http://localhost:5000', 'http://localhost:5173', 'https://*.replit.dev'],
+  origin: (origin, callback) => {
+    // 開発環境ではすべてのオリジンを許可
+    if (process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+      return;
+    }
+    
+    if (!origin || allowedOrigins.some(o => origin === o || origin.endsWith('.azurestaticapps.net') || origin.endsWith('.azurewebsites.net'))) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept'],
@@ -154,8 +170,8 @@ server.on('error', (err: any) => {
       : await import('./auth');
     
     const { authRouter } = isDev
-      ? await import('./routes/auth')
-      : await import('./routes/auth');
+      ? await import('./routes/auth.js')
+      : await import('./routes/auth.js');
     
     // 認証とルートを登録
     setupAuth(app);

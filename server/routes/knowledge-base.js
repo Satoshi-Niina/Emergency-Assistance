@@ -1,46 +1,34 @@
-"use strict";
-var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
-    if (pack || arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
-        if (ar || !(i in from)) {
-            if (!ar) ar = Array.prototype.slice.call(from, 0, i);
-            ar[i] = from[i];
-        }
-    }
-    return to.concat(ar || Array.prototype.slice.call(from));
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.registerKnowledgeBaseRoutes = registerKnowledgeBaseRoutes;
-var path_1 = require("path");
-var fs_1 = require("fs");
-var zod_1 = require("zod");
-var knowledgeBasePath = path_1.default.join(process.cwd(), 'knowledge-base');
+import path from 'path';
+import fs from 'fs';
+import { z } from 'zod';
+const knowledgeBasePath = path.join(process.cwd(), 'knowledge-base');
 // スキーマ定義
-var imageMetadataSchema = zod_1.z.object({
-    id: zod_1.z.string(),
-    filename: zod_1.z.string(),
-    description: zod_1.z.string(),
-    tags: zod_1.z.array(zod_1.z.string()),
-    category: zod_1.z.string()
+const imageMetadataSchema = z.object({
+    id: z.string(),
+    filename: z.string(),
+    description: z.string(),
+    tags: z.array(z.string()),
+    category: z.string()
 });
-var flowSchema = zod_1.z.object({
-    id: zod_1.z.string(),
-    title: zod_1.z.string(),
-    steps: zod_1.z.array(zod_1.z.object({
-        id: zod_1.z.string(),
-        title: zod_1.z.string(),
-        description: zod_1.z.string(),
-        imageId: zod_1.z.string().optional()
+const flowSchema = z.object({
+    id: z.string(),
+    title: z.string(),
+    steps: z.array(z.object({
+        id: z.string(),
+        title: z.string(),
+        description: z.string(),
+        imageId: z.string().optional()
     }))
 });
 // ルート登録関数
-function registerKnowledgeBaseRoutes(app) {
+export function registerKnowledgeBaseRoutes(app) {
     // GPTデータの取得
-    app.get('/api/knowledge/gpt/data', function (req, res) {
+    app.get('/api/knowledge/gpt/data', (req, res) => {
         try {
-            var dataPath_1 = path_1.default.join(knowledgeBasePath, 'gpt', 'data');
-            var files = fs_1.default.readdirSync(dataPath_1);
-            var data = files.map(function (file) {
-                var content = fs_1.default.readFileSync(path_1.default.join(dataPath_1, file), 'utf-8');
+            const dataPath = path.join(knowledgeBasePath, 'gpt', 'data');
+            const files = fs.readdirSync(dataPath);
+            const data = files.map(file => {
+                const content = fs.readFileSync(path.join(dataPath, file), 'utf-8');
                 return JSON.parse(content);
             });
             res.json(data);
@@ -51,11 +39,11 @@ function registerKnowledgeBaseRoutes(app) {
         }
     });
     // 画像メタデータの取得
-    app.get('/api/knowledge/fuse/images', function (req, res) {
+    app.get('/api/knowledge/fuse/images', (req, res) => {
         try {
-            var metadataPath = path_1.default.join(knowledgeBasePath, 'fuse', 'data', 'image_search_data.json');
-            if (fs_1.default.existsSync(metadataPath)) {
-                var data = JSON.parse(fs_1.default.readFileSync(metadataPath, 'utf-8'));
+            const metadataPath = path.join(knowledgeBasePath, 'fuse', 'data', 'image_search_data.json');
+            if (fs.existsSync(metadataPath)) {
+                const data = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
                 res.json(data);
             }
             else {
@@ -68,12 +56,12 @@ function registerKnowledgeBaseRoutes(app) {
         }
     });
     // トラブルシューティングフローの取得
-    app.get('/api/knowledge/troubleshooting/flows', function (req, res) {
+    app.get('/api/knowledge/troubleshooting/flows', (req, res) => {
         try {
-            var flowsPath_1 = path_1.default.join(knowledgeBasePath, 'troubleshooting', 'flows');
-            var files = fs_1.default.readdirSync(flowsPath_1);
-            var flows = files.map(function (file) {
-                var content = fs_1.default.readFileSync(path_1.default.join(flowsPath_1, file), 'utf-8');
+            const flowsPath = path.join(knowledgeBasePath, 'troubleshooting', 'flows');
+            const files = fs.readdirSync(flowsPath);
+            const flows = files.map(file => {
+                const content = fs.readFileSync(path.join(flowsPath, file), 'utf-8');
                 return JSON.parse(content);
             });
             res.json(flows);
@@ -84,14 +72,14 @@ function registerKnowledgeBaseRoutes(app) {
         }
     });
     // 共有データの取得
-    app.get('/api/knowledge/shared/:type', function (req, res) {
+    app.get('/api/knowledge/shared/:type', (req, res) => {
         try {
-            var type = req.params.type;
-            var dataPath_2 = path_1.default.join(knowledgeBasePath, 'shared', type);
-            if (fs_1.default.existsSync(dataPath_2)) {
-                var files = fs_1.default.readdirSync(dataPath_2);
-                var data = files.map(function (file) {
-                    var content = fs_1.default.readFileSync(path_1.default.join(dataPath_2, file), 'utf-8');
+            const { type } = req.params;
+            const dataPath = path.join(knowledgeBasePath, 'shared', type);
+            if (fs.existsSync(dataPath)) {
+                const files = fs.readdirSync(dataPath);
+                const data = files.map(file => {
+                    const content = fs.readFileSync(path.join(dataPath, file), 'utf-8');
                     return JSON.parse(content);
                 });
                 res.json(data);
@@ -101,16 +89,16 @@ function registerKnowledgeBaseRoutes(app) {
             }
         }
         catch (error) {
-            console.error("Error reading shared ".concat(req.params.type, " data:"), error);
-            res.status(500).json({ error: "Failed to read shared ".concat(req.params.type, " data") });
+            console.error(`Error reading shared ${req.params.type} data:`, error);
+            res.status(500).json({ error: `Failed to read shared ${req.params.type} data` });
         }
     });
     // 画像ファイルの提供
-    app.get('/api/knowledge/images/:category/:filename', function (req, res) {
+    app.get('/api/knowledge/images/:category/:filename', (req, res) => {
         try {
-            var _a = req.params, category = _a.category, filename = _a.filename;
-            var imagePath = path_1.default.join(knowledgeBasePath, category, 'images', filename);
-            if (fs_1.default.existsSync(imagePath)) {
+            const { category, filename } = req.params;
+            const imagePath = path.join(knowledgeBasePath, category, 'images', filename);
+            if (fs.existsSync(imagePath)) {
                 res.sendFile(imagePath);
             }
             else {
@@ -123,12 +111,12 @@ function registerKnowledgeBaseRoutes(app) {
         }
     });
     // 新しいトラブルシューティングフローの作成
-    app.post('/api/knowledge/troubleshooting/flows', function (req, res) {
+    app.post('/api/knowledge/troubleshooting/flows', (req, res) => {
         try {
-            var flow = flowSchema.parse(req.body);
-            var flowsPath = path_1.default.join(knowledgeBasePath, 'troubleshooting', 'flows');
-            var filePath = path_1.default.join(flowsPath, "".concat(flow.id, ".json"));
-            fs_1.default.writeFileSync(filePath, JSON.stringify(flow, null, 2));
+            const flow = flowSchema.parse(req.body);
+            const flowsPath = path.join(knowledgeBasePath, 'troubleshooting', 'flows');
+            const filePath = path.join(flowsPath, `${flow.id}.json`);
+            fs.writeFileSync(filePath, JSON.stringify(flow, null, 2));
             res.status(201).json(flow);
         }
         catch (error) {
@@ -137,16 +125,16 @@ function registerKnowledgeBaseRoutes(app) {
         }
     });
     // 画像メタデータの更新
-    app.post('/api/knowledge/fuse/metadata', function (req, res) {
+    app.post('/api/knowledge/fuse/metadata', (req, res) => {
         try {
-            var metadata = imageMetadataSchema.parse(req.body);
-            var metadataPath = path_1.default.join(knowledgeBasePath, 'fuse', 'data', 'image_search_data.json');
-            var existingData = [];
-            if (fs_1.default.existsSync(metadataPath)) {
-                existingData = JSON.parse(fs_1.default.readFileSync(metadataPath, 'utf-8'));
+            const metadata = imageMetadataSchema.parse(req.body);
+            const metadataPath = path.join(knowledgeBasePath, 'fuse', 'data', 'image_search_data.json');
+            let existingData = [];
+            if (fs.existsSync(metadataPath)) {
+                existingData = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
             }
-            var updatedData = __spreadArray(__spreadArray([], existingData, true), [metadata], false);
-            fs_1.default.writeFileSync(metadataPath, JSON.stringify(updatedData, null, 2));
+            const updatedData = [...existingData, metadata];
+            fs.writeFileSync(metadataPath, JSON.stringify(updatedData, null, 2));
             res.status(201).json(metadata);
         }
         catch (error) {
