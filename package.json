@@ -16,7 +16,7 @@
     "build": "npm run build:shared && npm run build:client && npm run build:server",
     "build:shared": "cd shared && npm run build",
     "build:client": "cd client && vite build",
-    "build:server": "tsc --project server/tsconfig.build.json",
+    "build:server": "tsc --project tsconfig.build.json",
     "start": "node server/dist/index.js",
     "start:prod": "NODE_ENV=production node dist/index.js",
     "test": "jest",

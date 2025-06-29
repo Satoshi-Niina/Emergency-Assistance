@@ -775,8 +775,8 @@ router.get('/image/:fileName', async (req, res) => {
 
   } catch (error) {
     console.error('❌ 画像配信エラー:', {
-      error: error.message,
-      stack: error.stack,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
       fileName: req.params.fileName
     });
     res.status(500).json({

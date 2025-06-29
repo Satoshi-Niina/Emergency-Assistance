@@ -1,4 +1,4 @@
-import { BlobServiceClient, ContainerClient, BlobClient } from '@azure/storage-blob';
+import { BlobServiceClient, ContainerClient, StorageSharedKeyCredential } from '@azure/storage-blob';
 import { DefaultAzureCredential } from '@azure/identity';
 import * as fs from 'fs-extra';
 import * as path from 'path';
@@ -17,9 +17,10 @@ export class AzureStorageService {
     if (connectionString) {
       this.blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
     } else if (accountName && accountKey) {
+      const credential = new StorageSharedKeyCredential(accountName, accountKey);
       this.blobServiceClient = new BlobServiceClient(
         `https://${accountName}.blob.core.windows.net`,
-        { accountName, accountKey }
+        credential
       );
     } else {
       // Managed Identityを使用（Azure App Service上で動作）

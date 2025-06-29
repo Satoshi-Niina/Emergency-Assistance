@@ -101,7 +101,7 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 // サーバー起動
-const server = app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, () => {
   console.log('🚀 ===== BACKEND SERVER READY =====');
   console.log(`✅ バックエンドサーバー起動: http://0.0.0.0:${PORT}`);
   console.log(`🌐 環境: ${process.env.NODE_ENV || 'development'}`);
@@ -185,5 +185,4 @@ const gracefulShutdown = () => {
 
 process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
-process.on('SIGUSR2', gracefulShutdown);
 process.on('SIGUSR2', gracefulShutdown);
