@@ -19,4 +19,8 @@ router.post('/search', async (req, res) => {
   }
 });
 
+export function registerSearchRoutes(app: express.Express): void {
+  app.use('/api/search', router);
+}
+
 export default router; 

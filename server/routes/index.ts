@@ -4,12 +4,11 @@ import emergencyFlowRouter from './emergency-flow';
 import emergencyGuideRouter from './emergency-guide';
 import techSupportRouter from './tech-support';
 import { registerDataProcessorRoutes } from './data-processor';
-import { registerTroubleshootingRoutes } from './troubleshooting';
-import { registerUsersRoutes } from './users';
+import { troubleshootingRouter } from './troubleshooting';
 import { registerKnowledgeBaseRoutes } from './knowledge-base';
 import { registerSearchRoutes } from './search';
-import { registerFileRoutes } from './file';
-import { registerFlowGeneratorRoutes } from './flow-generator';
+import fileRouter from './file';
+import { flowGeneratorRouter } from './flow-generator';
 import { registerChatRoutes } from './chat';
 
 export function registerRoutes(app: Express): void {
@@ -41,12 +40,8 @@ export function registerRoutes(app: Express): void {
     console.log('✅ データ処理ルート登録完了');
     
     // トラブルシューティング関連ルート
-    registerTroubleshootingRoutes(app);
+    app.use('/api/troubleshooting', troubleshootingRouter);
     console.log('✅ トラブルシューティングルート登録完了');
-    
-    // ユーザー関連ルート
-    registerUsersRoutes(app);
-    console.log('✅ ユーザールート登録完了');
     
     // ナレッジベース関連ルート
     registerKnowledgeBaseRoutes(app);
@@ -57,11 +52,11 @@ export function registerRoutes(app: Express): void {
     console.log('✅ 検索ルート登録完了');
     
     // ファイル関連ルート
-    registerFileRoutes(app);
+    app.use('/api/file', fileRouter);
     console.log('✅ ファイルルート登録完了');
     
     // フロー生成関連ルート
-    registerFlowGeneratorRoutes(app);
+    app.use('/api/flow-generator', flowGeneratorRouter);
     console.log('✅ フロー生成ルート登録完了');
     
     console.log('🎉 すべてのルート登録完了');
