@@ -5,6 +5,10 @@ import express, { type Request, Response, NextFunction } from "express";
 import cors from 'cors';
 import dotenv from 'dotenv';
 
+// Emergency Assistance Backend Server
+// Version: 1.0.0
+// Last Updated: 2024-12-19
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -41,7 +45,7 @@ const allowedOrigins = [
 ];
 
 const corsOptions = {
-  origin: (origin, callback) => {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
     console.log('🌐 CORS リクエスト:', { 
       origin, 
       isProduction: process.env.NODE_ENV === 'production',
