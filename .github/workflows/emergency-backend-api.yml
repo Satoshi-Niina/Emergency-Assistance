@@ -1,40 +1,40 @@
-name: Deploy Express Backend to Azure App Service
+name: Deploy backend to Azure App Service
 
 on:
   push:
     branches:
-      - feature/2.10  # リモートのブランチ名
-    paths:
-      - 'server/**'       # サーバーフォルダ内の変更のみデプロイ対象
+      - main
+      - feature/ver2.10  # ← 必要に応じてブランチを追加
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      # 1. リポジトリをチェックアウト
+      - name: Checkout source code
         uses: actions/checkout@v4
 
+      # 2. Node.js をセットアップ（必要に応じてバージョン調整）
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'  # Node.js 20 LTS（Express対応）
+          node-version: 18
 
+      # 3. 依存関係をインストール
       - name: Install dependencies
         run: npm install
-        working-directory: ./server
 
-      - name: Zip backend files
-        run: |
-          cd server
-          zip -r ../backend.zip .
-        working-directory: ./
+      # 4. 必要なビルドを実行（←ここが重要）
+      - name: Build backend (shared, client, server)
+        run: npm run build
 
+      # 5. Azure App Service へデプロイ
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
-          app-name: emergency-backend-api     # AzureのApp Service 名
-          slot-name: 'production'            # 本番環境を指定
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ./backend.zip      # バックエンドのアーカイブファイル
-
+          app-name: emergency-backend-api  # App Service 名
+          slot-name: production            # スロット名（通常は production）
+          publish-profile: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }} # Azure のパブリッシュプロファイルをGitHub Secretsに登録しておく
+          package: .
