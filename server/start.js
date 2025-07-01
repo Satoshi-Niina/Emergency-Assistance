@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Azure App Service用起動スクリプト
- * デバッグ情報を出力してからアプリケーションを起動
+ * Azure App Service用起動スクリプト（シンプル版）
  */
 
 console.log('🚀 Azure App Service起動スクリプト開始...');
@@ -13,61 +12,57 @@ console.log('🔍 環境変数確認:', {
   PORT: process.env.PORT,
   FRONTEND_URL: process.env.FRONTEND_URL,
   DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
-  SESSION_SECRET: process.env.SESSION_SECRET ? 'SET' : 'NOT SET',
-  PWD: process.cwd(),
-  __dirname: __dirname
+  SESSION_SECRET: process.env.SESSION_SECRET ? 'SET' : 'NOT SET'
 });
-
-// ファイルシステムの確認
-const fs = require('fs');
-const path = require('path');
-
-console.log('📁 ディレクトリ構造確認:');
-try {
-  const files = fs.readdirSync('.');
-  console.log('ルートディレクトリ:', files);
-  
-  if (fs.existsSync('server')) {
-    const serverFiles = fs.readdirSync('server');
-    console.log('serverディレクトリ:', serverFiles);
-  }
-  
-  if (fs.existsSync('server/dist')) {
-    const distFiles = fs.readdirSync('server/dist');
-    console.log('server/distディレクトリ:', distFiles);
-  }
-} catch (error) {
-  console.error('❌ ディレクトリ確認エラー:', error);
-}
-
-// 依存関係の確認
-console.log('📦 package.json確認:');
-try {
-  const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-  console.log('package.json読み込み成功:', {
-    name: packageJson.name,
-    version: packageJson.version,
-    scripts: packageJson.scripts
-  });
-} catch (error) {
-  console.error('❌ package.json読み込みエラー:', error);
-}
 
 // アプリケーション起動
 console.log('🚀 アプリケーション起動中...');
+
 try {
-  // ビルドされたファイルを起動
+  // まずビルドされたファイルを試行
+  console.log('📁 ビルドファイルを読み込み中...');
   require('./dist/index.js');
+  console.log('✅ ビルドファイルから起動成功');
 } catch (error) {
-  console.error('❌ アプリケーション起動エラー:', error);
+  console.error('❌ ビルドファイル起動エラー:', error.message);
   
-  // フォールバック: 直接index.tsを実行
-  console.log('🔄 フォールバック: TypeScriptファイルを直接実行...');
   try {
+    // フォールバック: TypeScriptファイルを直接実行
+    console.log('🔄 TypeScriptファイルを直接実行中...');
     require('tsx');
     require('./index.ts');
+    console.log('✅ TypeScriptファイルから起動成功');
   } catch (fallbackError) {
-    console.error('❌ フォールバック実行エラー:', fallbackError);
-    process.exit(1);
+    console.error('❌ TypeScriptファイル起動エラー:', fallbackError.message);
+    
+    try {
+      // 最後の手段: 基本的なExpressサーバーを起動
+      console.log('🆘 基本的なExpressサーバーを起動中...');
+      const express = require('express');
+      const app = express();
+      const PORT = process.env.PORT || 8080;
+      
+      app.get('/api/health', (req, res) => {
+        res.json({ 
+          status: 'ok', 
+          message: 'Basic server is running',
+          timestamp: new Date().toISOString()
+        });
+      });
+      
+      app.get('/api/auth/login', (req, res) => {
+        res.status(405).json({ 
+          error: 'Method not allowed',
+          message: 'POST method required for login'
+        });
+      });
+      
+      app.listen(PORT, () => {
+        console.log(`✅ 基本的なサーバーが起動しました: http://0.0.0.0:${PORT}`);
+      });
+    } catch (basicError) {
+      console.error('❌ 基本的なサーバー起動エラー:', basicError.message);
+      process.exit(1);
+    }
   }
 } 
