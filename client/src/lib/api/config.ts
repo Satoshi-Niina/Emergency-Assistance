@@ -13,7 +13,10 @@ console.log('🔧 API設定:', {
   API_BASE_URL,
   VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
   // デバッグ用：実際のリクエストURLを確認
-  sampleAuthUrl: isProduction ? `${API_BASE_URL}/api/auth/login` : '/api/auth/login'
+  sampleAuthUrl: isProduction ? `${API_BASE_URL}/api/auth/login` : '/api/auth/login',
+  // 追加のデバッグ情報
+  location: window.location.href,
+  origin: window.location.origin
 });
 
 // APIエンドポイントの構築

@@ -16,7 +16,10 @@ router.post('/login', async (req, res) => {
       headers: req.headers['content-type'],
       origin: req.headers.origin,
       method: req.method,
-      url: req.url
+      url: req.url,
+      userAgent: req.headers['user-agent'],
+      host: req.headers.host,
+      referer: req.headers.referer
     });
     const { username, password } = req.body;
     

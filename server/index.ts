@@ -39,17 +39,28 @@ const allowedOrigins = [
   'http://localhost:5001',
   'http://localhost:5173'
 ];
+
 const corsOptions = {
   origin: (origin, callback) => {
+    console.log('🌐 CORS リクエスト:', { 
+      origin, 
+      isProduction: process.env.NODE_ENV === 'production',
+      allowedOrigins 
+    });
+    
     // 開発環境ではすべてのオリジンを許可
     if (process.env.NODE_ENV !== 'production') {
+      console.log('✅ 開発環境: CORS許可');
       callback(null, true);
       return;
     }
     
+    // 本番環境でのオリジンチェック
     if (!origin || allowedOrigins.some(o => origin === o || origin.endsWith('.azurestaticapps.net') || origin.endsWith('.azurewebsites.net'))) {
+      console.log('✅ 本番環境: CORS許可', { origin });
       callback(null, true);
     } else {
+      console.log('❌ 本番環境: CORS拒否', { origin });
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -175,9 +186,6 @@ server.on('error', (err: any) => {
     
     // 認証とルートを登録
     setupAuth(app);
-    
-    // 認証ルートを明示的に登録
-    app.use('/api/auth', authRouter);
     
     registerRoutes(app);
     console.log('✅ 認証とルートの登録完了');
