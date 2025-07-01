@@ -157,6 +157,12 @@ server.on('error', (err: any) => {
 (async () => {
   try {
     console.log('📡 ルート登録開始...');
+    console.log('🔍 現在の環境変数:', {
+      NODE_ENV: process.env.NODE_ENV,
+      FRONTEND_URL: process.env.FRONTEND_URL,
+      DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
+      SESSION_SECRET: process.env.SESSION_SECRET ? 'SET' : 'NOT SET'
+    });
     
     // Azure Storage統合の初期化
     if (process.env.NODE_ENV === 'production' && process.env.AZURE_STORAGE_CONNECTION_STRING) {
@@ -177,8 +183,8 @@ server.on('error', (err: any) => {
     const { registerRoutes } = await import('./routes/index.js');
 
     const { setupAuth } = isDev
-      ? await import('./auth')
-      : await import('./auth');
+      ? await import('./auth.js')
+      : await import('./auth.js');
     
     const { authRouter } = isDev
       ? await import('./routes/auth.js')
