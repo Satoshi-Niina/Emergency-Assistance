@@ -1,10 +1,11 @@
+# バックエンド用ワークフロー
 name: Deploy backend to Azure App Service
 
 on:
   push:
     branches:
       - main
-      - feature/ver2.10  # ← 必要に応じてブランチを追加
+      - feature/2.10  # ← 必要に応じてブランチを追加
   workflow_dispatch:
 
 jobs:
