@@ -17,28 +17,34 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      # 2. Node.js をセットアップ（必要に応じてバージョン調整）
+      # 2. Azure にログイン
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # 3. Node.js をセットアップ（必要に応じてバージョン調整）
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      # 3. 依存関係をインストール
+      # 4. 依存関係をインストール
       - name: Install dependencies
         run: npm install
 
-      # 4. フロントエンドの依存関係をインストール
+      # 5. フロントエンドの依存関係をインストール
       - name: Install client dependencies
         run: |
           cd client
           npm install
           cd ..
 
-      # 5. 必要なビルドを実行（←ここが重要）
+      # 6. 必要なビルドを実行（←ここが重要）
       - name: Build backend (shared, client, server)
         run: npm run build
 
-      # 5. Azure App Service へデプロイ
+      # 7. Azure App Service へデプロイ
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
