@@ -1,47 +1,46 @@
-name: Deploy Backend to Azure App Service
+name: Build and Deploy Backend to Azure
 
 on:
   push:
     branches:
-      - main  # mainブランチへのpushでトリガー
-
-permissions:
-  id-token: write
-  contents: read
+      - main  # ← 対象ブランチを指定
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    defaults:
+      run:
+        working-directory: server  # ← サブディレクトリにある場合に必要
 
-      - name: Login to Azure using clientSecret
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Install dependencies (clean install)
+        run: npm ci
+        env:
+          NODE_ENV: production
+
+      # - name: Run build step (if needed)
+      #   run: npm run build
+
+      - name: Login to Azure with OIDC
         uses: azure/login@v1
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
-          auth-type: SERVICE_PRINCIPAL
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-
-      - name: Install dependencies
-        run: npm ci
-        working-directory: ./server
-
-      - name: Build server
-        run: npm run build
-        working-directory: ./server
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
-          app-name: 'emergency-backend-api'  # AzureのApp Service名に合わせて変更
+          app-name: 'emergency-backend-api'  # ← Azure App Service 名を正確に
           slot-name: 'production'
-          package: './server'
+          package: './server'                # ← Express API があるフォルダを指定
