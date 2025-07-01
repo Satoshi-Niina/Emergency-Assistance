@@ -1,16 +1,28 @@
 # バックエンド用ワークフロー - CI/CDトリガー用
-name: Deploy backend to Azure App Service
+name: Emergency Backend API CI/CD
 
 on:
   push:
     branches:
-      - main
-      - feature/2.10  # ← 必要に応じてブランチを追加
-  workflow_dispatch:
+      - feature/2.10
+    paths:
+      - 'server/**'
+      - 'shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - 'drizzle.config.ts'
+      - 'middleware.ts'
+      - '.github/workflows/emergency-backend-api.yml'
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches:
+      - feature/2.10
 
 jobs:
-  build-and-deploy:
+  build_and_deploy:
     runs-on: ubuntu-latest
+    name: Build and Deploy Backend API
 
     steps:
       # 1. リポジトリをチェックアウト
@@ -23,7 +35,7 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # 3. Node.js をセットアップ（必要に応じてバージョン調整）
+      # 3. Node.js をセットアップ
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -40,7 +52,7 @@ jobs:
           npm install
           cd ..
 
-      # 6. 必要なビルドを実行（←ここが重要）
+      # 6. 必要なビルドを実行
       - name: Build backend (shared, client, server)
         run: npm run build
 
@@ -48,7 +60,7 @@ jobs:
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
-          app-name: emergency-backend-api  # App Service 名
-          slot-name: production            # スロット名（通常は production）
-          publish-profile: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }} # Azure のパブリッシュプロファイルをGitHub Secretsに登録しておく
+          app-name: emergency-backend-api
+          slot-name: production
+          publish-profile: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
           package: .
