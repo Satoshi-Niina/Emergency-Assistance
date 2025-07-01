@@ -49,7 +49,9 @@
     "azure:list-backups": "tsx scripts/azure-list-backups.ts",
     "db:migrate:azure": "tsx scripts/migrate-db.ts",
     "db:test": "tsx scripts/test-db-connection.ts",
-    "db:seed": "tsx scripts/seed-data.ts"
+    "db:seed": "tsx scripts/seed-data.ts",
+    "verify": "node scripts/verify-deployment.js",
+    "verify:deploy": "npm run verify && echo \"✅ デプロイ前確認完了\""
   },
   "dependencies": {
     "@azure/identity": "^4.0.1",

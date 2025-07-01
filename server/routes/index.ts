@@ -25,4 +25,15 @@ export function registerRoutes(app: Express): void {
   app.use("/api/files", fileRouter);
   app.use("/api/flow-generator", flowGeneratorRouter);
   registerChatRoutes(app);
+
+  // ヘルスチェックエンドポイント
+  app.get('/api/health', (req, res) => {
+    res.status(200).json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development',
+      version: process.env.npm_package_version || '1.0.0'
+    });
+  });
 } 
