@@ -5,7 +5,7 @@ const isDevelopment = import.meta.env.DEV;
 // 本番環境では環境変数から取得、開発環境では相対パス
 export const API_BASE_URL = isProduction 
   ? (import.meta.env.VITE_API_BASE_URL || 'https://emergency-backend-api.azurewebsites.net')
-  : '';
+  : 'http://localhost:3001';
 
 console.log('🔧 API設定:', {
   isProduction,
