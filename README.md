@@ -1,4 +1,5 @@
 # Emergency Assistance System
+# ビルドに影響のないファイル - CI/CDトリガー用コメント追加
 
 機械故障発生時のトラブルシューティングシステム
 
