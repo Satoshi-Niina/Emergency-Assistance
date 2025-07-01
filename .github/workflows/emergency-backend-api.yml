@@ -6,6 +6,10 @@ on:
       - main  # ← 対象ブランチを指定
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
