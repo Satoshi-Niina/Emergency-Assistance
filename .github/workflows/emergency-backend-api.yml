@@ -1,4 +1,4 @@
-# バックエンド用ワークフロー
+# バックエンド用ワークフロー - CI/CDトリガー用
 name: Deploy backend to Azure App Service
 
 on:
