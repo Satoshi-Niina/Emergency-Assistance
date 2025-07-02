@@ -1,61 +1,6 @@
 {
   "routes": [
     {
-      "route": "/api/auth/*",
-      "allowedRoles": ["anonymous"],
-      "rewrite": "https://emergency-backend-api.azurewebsites.net/api/auth/*"
-    },
-    {
-      "route": "/api/chatgpt/*",
-      "allowedRoles": ["anonymous"],
-      "rewrite": "https://emergency-backend-api.azurewebsites.net/api/chatgpt/*"
-    },
-    {
-      "route": "/api/chats/*",
-      "allowedRoles": ["anonymous"],
-      "rewrite": "https://emergency-backend-api.azurewebsites.net/api/chats/*"
-    },
-    {
-      "route": "/api/knowledge/*",
-      "allowedRoles": ["anonymous"],
-      "rewrite": "https://emergency-backend-api.azurewebsites.net/api/knowledge/*"
-    },
-    {
-      "route": "/api/emergency-flow/*",
-      "allowedRoles": ["anonymous"],
-      "rewrite": "https://emergency-backend-api.azurewebsites.net/api/emergency-flow/*"
-    },
-    {
-      "route": "/api/emergency-guide/*",
-      "allowedRoles": ["anonymous"],
-      "rewrite": "https://emergency-backend-api.azurewebsites.net/api/emergency-guide/*"
-    },
-    {
-      "route": "/api/tech-support/*",
-      "allowedRoles": ["anonymous"],
-      "rewrite": "https://emergency-backend-api.azurewebsites.net/api/tech-support/*"
-    },
-    {
-      "route": "/api/troubleshooting/*",
-      "allowedRoles": ["anonymous"],
-      "rewrite": "https://emergency-backend-api.azurewebsites.net/api/troubleshooting/*"
-    },
-    {
-      "route": "/api/files/*",
-      "allowedRoles": ["anonymous"],
-      "rewrite": "https://emergency-backend-api.azurewebsites.net/api/files/*"
-    },
-    {
-      "route": "/api/flow-generator/*",
-      "allowedRoles": ["anonymous"],
-      "rewrite": "https://emergency-backend-api.azurewebsites.net/api/flow-generator/*"
-    },
-    {
-      "route": "/api/health",
-      "allowedRoles": ["anonymous"],
-      "rewrite": "https://emergency-backend-api.azurewebsites.net/api/health"
-    },
-    {
       "route": "/api/*",
       "allowedRoles": ["anonymous"],
       "rewrite": "https://emergency-backend-api.azurewebsites.net/api/*"
