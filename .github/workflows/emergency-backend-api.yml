@@ -1,50 +1,41 @@
-name: Deploy Node App to Azure Web App using OIDC
+name: build-and-deploy
 
 on:
   push:
     branches:
-      - main
-
-permissions:
-  id-token: write
-  contents: read
+      - main  # ← あなたの本番用ブランチ名に変更可
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout source
         uses: actions/checkout@v4
-
-      - name: Login to Azure using OIDC
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 18  # 使用しているNodeバージョンに合わせて調整可
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build project
         run: npm run build
 
-      - name: Debug Azure Web App Name
+      - name: Create .env.production
         run: |
-          echo "AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}"
-          echo "Checking if Web App exists..."
-          az webapp list --query "[?name=='${{ secrets.AZURE_WEBAPP_NAME }}'].name" --output table
+          echo "NODE_ENV=production" >> .env.production
+          echo "PORT=3001" >> .env.production
+          echo "SESSION_SECRET=${{ secrets.SESSION_SECRET }}" >> .env.production
+          echo "FRONTEND_URL=${{ secrets.FRONTEND_URL }}" >> .env.production
+          echo "CORS_ORIGIN=${{ secrets.CORS_ORIGIN }}" >> .env.production
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env.production
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
-          slot-name: production
+          app-name: emergency-backend-api
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: .
-          startup-command: 'npm start'
