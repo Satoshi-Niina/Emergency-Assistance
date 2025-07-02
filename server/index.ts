@@ -41,6 +41,8 @@ const allowedOrigins = [
   'https://emergency-assistance-app.azurewebsites.net',
   'https://emergency-assistance-app.azurewebsites.net',
   'https://emergency-assistance-app.azurestaticapps.net',
+  'https://emergency-assistance-app.azurewebsites.net',
+  'https://emergency-assistance-app.azurestaticapps.net',
   'http://localhost:5000',
   'http://localhost:5001',
   'http://localhost:5173'
@@ -137,8 +139,15 @@ app.use((req, res, next) => {
     'user-agent': req.headers['user-agent'],
     'content-type': req.headers['content-type'],
     'x-forwarded-proto': req.headers['x-forwarded-proto'],
-    'x-forwarded-for': req.headers['x-forwarded-for']
+    'x-forwarded-for': req.headers['x-forwarded-for'],
+    'referer': req.headers.referer
   });
+  
+  // APIルートへのリクエストかどうかを確認
+  if (req.path.startsWith('/api/')) {
+    console.log('🔍 APIルートリクエスト:', req.path);
+  }
+  
   next();
 });
 

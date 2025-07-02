@@ -2,9 +2,9 @@
 const isProduction = import.meta.env.PROD;
 const isDevelopment = import.meta.env.DEV;
 
-// 本番環境では環境変数から取得、開発環境では相対パス
+// 本番環境ではAzure Web AppのURLを使用
 export const API_BASE_URL = isProduction 
-  ? (import.meta.env.VITE_API_BASE_URL || 'https://emergency-backend-api.azurewebsites.net')
+  ? 'https://emergency-backend-api.azurewebsites.net'  // Azure Web AppのURL
   : 'http://localhost:3001';
 
 console.log('🔧 API設定:', {
@@ -21,13 +21,9 @@ console.log('🔧 API設定:', {
 
 // APIエンドポイントの構築
 export const buildApiUrl = (endpoint: string): string => {
-  if (isProduction) {
-    const fullUrl = `${API_BASE_URL}${endpoint}`;
-    console.log(`🔗 API URL構築: ${endpoint} -> ${fullUrl}`);
-    return fullUrl;
-  }
-  console.log(`🔗 API URL構築: ${endpoint} -> ${endpoint} (開発環境)`);
-  return endpoint; // 開発環境では相対パスを使用
+  const fullUrl = `${API_BASE_URL}${endpoint}`;
+  console.log(`🔗 API URL構築: ${endpoint} -> ${fullUrl}`);
+  return fullUrl;
 };
 
 // 認証APIエンドポイント
