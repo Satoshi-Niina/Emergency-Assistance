@@ -39,6 +39,8 @@ const isProduction = process.env.NODE_ENV === 'production';
 const allowedOrigins = [
   'https://emergency-assistance-app.azurestaticapps.net',
   'https://emergency-assistance-app.azurewebsites.net',
+  'https://emergency-assistance-app.azurewebsites.net',
+  'https://emergency-assistance-app.azurestaticapps.net',
   'http://localhost:5000',
   'http://localhost:5001',
   'http://localhost:5173'
@@ -115,12 +117,30 @@ const sessionSettings: session.SessionOptions = {
   name: 'emergency-session'
 };
 
-// 開発環境の場合はtrust proxyを設定
-if (process.env.NODE_ENV !== 'production') {
+// Azure App Service環境での設定
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+} else {
   app.set('trust proxy', 1);
 }
 
 app.use(session(sessionSettings));
+
+// リクエストログ（Azure環境でのデバッグ用）
+app.use((req, res, next) => {
+  console.log('📡 リクエスト受信:', {
+    method: req.method,
+    url: req.url,
+    path: req.path,
+    origin: req.headers.origin,
+    host: req.headers.host,
+    'user-agent': req.headers['user-agent'],
+    'content-type': req.headers['content-type'],
+    'x-forwarded-proto': req.headers['x-forwarded-proto'],
+    'x-forwarded-for': req.headers['x-forwarded-for']
+  });
+  next();
+});
 
 // ヘルスチェックエンドポイント
 app.get('/api/health', (req, res) => {
@@ -183,13 +203,20 @@ app.get('/api/health', (req, res) => {
 
 // 本番環境での静的ファイル配信（APIルートの後に配置）
 if (isProduction) {
+  console.log('🎯 本番環境: 静的ファイル配信設定');
+  
   // クライアントのビルドファイルを配信
   app.use(express.static(path.join(__dirname, '../client/dist')));
   
-  // SPAのルーティング対応
+  // SPAのルーティング対応（APIルート以外）
   app.get('*', (req, res) => {
+    console.log('🎯 SPAルーティング:', { path: req.path });
     if (!req.path.startsWith('/api/')) {
       res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+    } else {
+      // APIルートが見つからない場合
+      console.log('❌ APIルートが見つかりません:', req.path);
+      res.status(404).json({ error: 'API endpoint not found' });
     }
   });
 }
