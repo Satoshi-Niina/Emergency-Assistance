@@ -2,9 +2,9 @@
 const isProduction = import.meta.env.PROD;
 const isDevelopment = import.meta.env.DEV;
 
-// 本番環境ではAzure Web AppのURLを使用
+// 本番環境では相対パスを使用（Azure Static Web Appsでプロキシされる）
 export const API_BASE_URL = isProduction 
-  ? 'https://emergency-backend-api.azurewebsites.net'  // Azure Web AppのURL
+  ? ''  // Azure Static Web Appsでプロキシされるため相対パスを使用
   : 'http://localhost:3001';
 
 console.log('🔧 API設定:', {
@@ -16,7 +16,9 @@ console.log('🔧 API設定:', {
   sampleAuthUrl: isProduction ? `${API_BASE_URL}/api/auth/login` : '/api/auth/login',
   // 追加のデバッグ情報
   location: window.location.href,
-  origin: window.location.origin
+  origin: window.location.origin,
+  hostname: window.location.hostname,
+  protocol: window.location.protocol
 });
 
 // APIエンドポイントの構築
