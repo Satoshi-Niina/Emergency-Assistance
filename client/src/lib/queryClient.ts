@@ -62,6 +62,13 @@ export async function apiRequest(
     ? `${url}&_t=${Date.now()}` 
     : `${url}?_t=${Date.now()}`;
 
+  console.log('🔍 APIリクエスト実行:', { 
+    method, 
+    url: urlWithCache, 
+    hasData: !!data,
+    headers 
+  });
+  
   const res = await fetch(urlWithCache, {
     method,
     headers,
@@ -69,6 +76,13 @@ export async function apiRequest(
     credentials: "include",
     // キャッシュ制御を追加
     cache: method === 'GET' ? 'no-cache' : 'default'
+  });
+  
+  console.log('📡 APIレスポンス受信:', { 
+    url: urlWithCache,
+    status: res.status, 
+    statusText: res.statusText,
+    contentType: res.headers.get('content-type')
   });
 
   // キャッシュクリアヘッダーをチェック
@@ -115,6 +129,8 @@ export const getQueryFn: <T>(options: {
     const timestamp = Date.now();
     url = url.includes('?') ? `${url}&_t=${timestamp}` : `${url}?_t=${timestamp}`;
 
+    console.log('🔍 クエリ実行:', { url, timestamp });
+    
     const res = await fetch(url, {
       credentials: "include",
       cache: "no-cache", // ブラウザキャッシュを使用しない
@@ -123,6 +139,13 @@ export const getQueryFn: <T>(options: {
         'Pragma': 'no-cache',
         'Expires': '0'
       }
+    });
+    
+    console.log('📡 レスポンス受信:', { 
+      url, 
+      status: res.status, 
+      statusText: res.statusText,
+      contentType: res.headers.get('content-type')
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

@@ -2,7 +2,8 @@
   "routes": [
     {
       "route": "/api/*",
-      "allowedRoles": ["anonymous"]
+      "allowedRoles": ["anonymous"],
+      "rewrite": "https://emergency-backend-api.azurewebsites.net/api/*"
     },
     {
       "route": "/*",
