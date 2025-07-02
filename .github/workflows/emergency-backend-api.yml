@@ -35,6 +35,12 @@ jobs:
       - name: Build project
         run: npm run build
 
+      - name: Debug Azure Web App Name
+        run: |
+          echo "AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}"
+          echo "Checking if Web App exists..."
+          az webapp list --query "[?name=='${{ secrets.AZURE_WEBAPP_NAME }}'].name" --output table
+
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
