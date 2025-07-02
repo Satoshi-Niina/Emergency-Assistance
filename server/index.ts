@@ -97,6 +97,31 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
+// セッション設定
+import session from 'express-session';
+import { storage } from './storage.js';
+
+const sessionSettings: session.SessionOptions = {
+  secret: process.env.SESSION_SECRET || "emergency-recovery-secret",
+  resave: true,
+  saveUninitialized: true,
+  store: storage.sessionStore,
+  cookie: { 
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: 'lax'
+  },
+  name: 'emergency-session'
+};
+
+// 開発環境の場合はtrust proxyを設定
+if (process.env.NODE_ENV !== 'production') {
+  app.set('trust proxy', 1);
+}
+
+app.use(session(sessionSettings));
+
 // ヘルスチェックエンドポイント
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -109,7 +134,54 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// 本番環境での静的ファイル配信
+// APIルートの登録（静的ファイル配信より前に配置）
+(async () => {
+  try {
+    console.log('📡 ルート登録開始...');
+    console.log('🔍 現在の環境変数:', {
+      NODE_ENV: process.env.NODE_ENV,
+      FRONTEND_URL: process.env.FRONTEND_URL,
+      DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
+      SESSION_SECRET: process.env.SESSION_SECRET ? 'SET' : 'NOT SET'
+    });
+    
+    // Azure Storage統合の初期化
+    if (process.env.NODE_ENV === 'production' && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+      try {
+        console.log('🚀 Azure Storage統合を初期化中...');
+        const { knowledgeBaseAzure } = await import('./lib/knowledge-base-azure.js');
+        await knowledgeBaseAzure.initialize();
+        console.log('✅ Azure Storage統合初期化完了');
+      } catch (azureError) {
+        console.error('❌ Azure Storage統合初期化エラー:', azureError);
+        console.log('⚠️ Azure Storage統合なしで続行します');
+      }
+    }
+    
+    const isDev = process.env.NODE_ENV !== "production";
+
+    // 新しいルート構造を使用
+    const { registerRoutes } = await import('./routes/index.js');
+
+    // ルートを登録（認証ルートは routes/auth.ts で処理）
+    registerRoutes(app);
+    console.log('✅ 認証とルートの登録完了');
+        
+    // 静的ファイル設定（ルート登録後に設定）
+    try {
+      app.use('/images', express.static(path.join(process.cwd(), 'public', 'images')));
+      app.use('/knowledge-base/images', express.static(path.join(process.cwd(), 'knowledge-base', 'images')));
+      app.use('/knowledge-base/data', express.static(path.join(process.cwd(), 'knowledge-base', 'data')));
+      console.log('✅ 静的ファイル設定完了');
+    } catch (staticError) {
+      console.error('❌ 静的ファイル設定エラー:', staticError);
+    }
+  } catch (routeError) {
+    console.error('❌ ルート登録エラー:', routeError);
+  }
+})();
+
+// 本番環境での静的ファイル配信（APIルートの後に配置）
 if (isProduction) {
   // クライアントのビルドファイルを配信
   app.use(express.static(path.join(__dirname, '../client/dist')));
@@ -157,62 +229,7 @@ server.on('error', (err: any) => {
   }
 });
 
-// ルート登録を即座に実行
-(async () => {
-  try {
-    console.log('📡 ルート登録開始...');
-    console.log('🔍 現在の環境変数:', {
-      NODE_ENV: process.env.NODE_ENV,
-      FRONTEND_URL: process.env.FRONTEND_URL,
-      DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
-      SESSION_SECRET: process.env.SESSION_SECRET ? 'SET' : 'NOT SET'
-    });
-    
-    // Azure Storage統合の初期化
-    if (process.env.NODE_ENV === 'production' && process.env.AZURE_STORAGE_CONNECTION_STRING) {
-      try {
-        console.log('🚀 Azure Storage統合を初期化中...');
-        const { knowledgeBaseAzure } = await import('./lib/knowledge-base-azure.js');
-        await knowledgeBaseAzure.initialize();
-        console.log('✅ Azure Storage統合初期化完了');
-      } catch (azureError) {
-        console.error('❌ Azure Storage統合初期化エラー:', azureError);
-        console.log('⚠️ Azure Storage統合なしで続行します');
-      }
-    }
-    
-    const isDev = process.env.NODE_ENV !== "production";
 
-    // 新しいルート構造を使用
-    const { registerRoutes } = await import('./routes/index.js');
-
-    const { setupAuth } = isDev
-      ? await import('./auth.js')
-      : await import('./auth.js');
-    
-    const { authRouter } = isDev
-      ? await import('./routes/auth.js')
-      : await import('./routes/auth.js');
-    
-    // 認証とルートを登録
-    setupAuth(app);
-    
-    registerRoutes(app);
-    console.log('✅ 認証とルートの登録完了');
-        
-    // 静的ファイル設定（ルート登録後に設定）
-    try {
-      app.use('/images', express.static(path.join(process.cwd(), 'public', 'images')));
-      app.use('/knowledge-base/images', express.static(path.join(process.cwd(), 'knowledge-base', 'images')));
-      app.use('/knowledge-base/data', express.static(path.join(process.cwd(), 'knowledge-base', 'data')));
-      console.log('✅ 静的ファイル設定完了');
-    } catch (staticError) {
-      console.error('❌ 静的ファイル設定エラー:', staticError);
-    }
-  } catch (routeError) {
-    console.error('❌ ルート登録エラー:', routeError);
-  }
-})();
 
 // グレースフルシャットダウン
 const gracefulShutdown = () => {

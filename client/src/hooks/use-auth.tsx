@@ -30,13 +30,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     error,
     isLoading,
   } = useQuery<User | undefined, Error>({
-    queryKey: ["/api/user"],
+    queryKey: ["/api/auth/me"],
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
-      const res = await apiRequest("POST", "/api/login", credentials);
+      const res = await apiRequest("POST", "/api/auth/login", credentials);
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.message || "ログインに失敗しました");
@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (userData: User) => {
-      queryClient.setQueryData(["/api/user"], userData);
+      queryClient.setQueryData(["/api/auth/me"], userData);
       toast({
         title: "ログイン成功",
         description: `ようこそ、${userData.displayName}さん`,
@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const registerMutation = useMutation({
     mutationFn: async (userData: RegisterData) => {
-      const res = await apiRequest("POST", "/api/register", userData);
+      const res = await apiRequest("POST", "/api/auth/register", userData);
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.message || "ユーザー登録に失敗しました");
@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (userData: User) => {
-      queryClient.setQueryData(["/api/user"], userData);
+      queryClient.setQueryData(["/api/auth/me"], userData);
       toast({
         title: "登録成功",
         description: `ようこそ、${userData.displayName}さん`,
@@ -86,10 +86,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/logout");
+      await apiRequest("POST", "/api/auth/logout");
     },
     onSuccess: () => {
-      queryClient.setQueryData(["/api/user"], null);
+      queryClient.setQueryData(["/api/auth/me"], null);
       toast({
         title: "ログアウト成功",
         description: "ログアウトしました",

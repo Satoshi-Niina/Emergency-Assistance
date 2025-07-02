@@ -86,14 +86,11 @@ router.post('/login', async (req, res) => {
 
     // レスポンスデータ
     const responseData = {
-      success: true,
-      user: {
-        id: user.id,
-        username: user.username,
-        displayName: user.display_name,
-        role: user.role,
-        department: user.department
-      }
+      id: user.id,
+      username: user.username,
+      displayName: user.display_name,
+      role: user.role,
+      department: user.department
     };
 
     console.log('✅ ログイン成功:', responseData);
@@ -101,6 +98,75 @@ router.post('/login', async (req, res) => {
   } catch (error) {
     console.error('❌ ログインエラー:', error);
     logError(`ログインエラー: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    res.status(500).json({
+      success: false,
+      message: 'サーバーエラーが発生しました'
+    });
+  }
+});
+
+// ユーザー登録
+router.post('/register', async (req, res) => {
+  try {
+    console.log('📝 ユーザー登録リクエスト受信:', { 
+      body: req.body,
+      hasSession: !!req.session
+    });
+    
+    const { username, password, displayName, role = 'employee' } = req.body;
+    
+    if (!username || !password || !displayName) {
+      return res.status(400).json({
+        success: false,
+        message: 'ユーザー名、パスワード、表示名が必要です'
+      });
+    }
+
+    // 既存ユーザーの確認
+    const existingUser = await db.query.users.findFirst({
+      where: eq(users.username, username)
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'このユーザー名は既に使用されています'
+      });
+    }
+
+    // パスワードのハッシュ化
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // ユーザーの作成
+    const newUser = await db.insert(users).values({
+      username,
+      password: hashedPassword,
+      display_name: displayName,
+      role,
+      department: req.body.department || null
+    }).returning();
+
+    const user = newUser[0];
+
+    // セッションにユーザー情報を保存
+    if (req.session) {
+      req.session.userId = user.id;
+      req.session.userRole = user.role;
+    }
+
+    const responseData = {
+      id: user.id,
+      username: user.username,
+      displayName: user.display_name,
+      role: user.role,
+      department: user.department
+    };
+
+    console.log('✅ ユーザー登録成功:', responseData);
+    res.status(201).json(responseData);
+  } catch (error) {
+    console.error('❌ ユーザー登録エラー:', error);
+    logError(`ユーザー登録エラー: ${error instanceof Error ? error.message : 'Unknown error'}`);
     res.status(500).json({
       success: false,
       message: 'サーバーエラーが発生しました'
@@ -140,7 +206,7 @@ router.post('/logout', (req, res) => {
 });
 
 // 現在のユーザー情報取得
-router.get('/me', (req, res) => {
+router.get('/me', async (req, res) => {
   console.log('👤 ユーザー情報取得リクエスト:', {
     hasSession: !!req.session,
     userId: req.session?.userId
@@ -154,15 +220,27 @@ router.get('/me', (req, res) => {
     });
   }
   
-  // ここでデータベースからユーザー情報を取得する必要があります
-  // 現在はセッション情報のみを返します
-  res.status(200).json({
-    success: true,
-    user: {
-      id: req.session.userId,
-      role: req.session.userRole
-    }
+  // データベースからユーザー情報を取得
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, req.session.userId)
   });
+  
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      message: 'ユーザーが見つかりません'
+    });
+  }
+  
+  const responseData = {
+    id: user.id,
+    username: user.username,
+    displayName: user.display_name,
+    role: user.role,
+    department: user.department
+  };
+  
+  res.status(200).json(responseData);
 });
 
 export const authRouter = router;
