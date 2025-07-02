@@ -2,9 +2,9 @@
 const isProduction = import.meta.env.PROD;
 const isDevelopment = import.meta.env.DEV;
 
-// 本番環境では相対パスを使用（Azure Static Web Appsのプロキシ機能を活用）
+// 一時的に本番環境でも直接バックエンドにアクセス（プロキシ問題をバイパス）
 export const API_BASE_URL = isProduction 
-  ? ''  // 相対パスを使用してプロキシ経由でアクセス
+  ? 'https://emergency-backend-api.azurewebsites.net'  // 直接バックエンドにアクセス
   : 'http://localhost:3001';
 
 console.log('🔧 API設定:', {
@@ -13,7 +13,7 @@ console.log('🔧 API設定:', {
   API_BASE_URL,
   VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
   // デバッグ用：実際のリクエストURLを確認
-  sampleAuthUrl: isProduction ? '/api/auth/login' : '/api/auth/login',
+  sampleAuthUrl: isProduction ? `${API_BASE_URL}/api/auth/login` : '/api/auth/login',
   // 追加のデバッグ情報
   location: window.location.href,
   origin: window.location.origin,

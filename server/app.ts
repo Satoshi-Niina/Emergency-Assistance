@@ -32,7 +32,12 @@ export async function createApp() {
           'https://emergency-backend-api.azurewebsites.net', // バックエンド自身
           'http://localhost:5001',
           'http://localhost:5000', 
-          'http://localhost:5173'
+          'http://localhost:5173',
+          // 追加のオリジン
+          'https://emergency-assistance-app.azurestaticapps.net',
+          'https://emergency-assistance-app.azurewebsites.net',
+          'https://emergency-assistance-app.azurestaticapps.net',
+          'https://emergency-assistance-app.azurewebsites.net'
         ]
       : [
           process.env.FRONTEND_URL || 'http://localhost:5001',
