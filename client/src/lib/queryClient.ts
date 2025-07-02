@@ -66,7 +66,12 @@ export async function apiRequest(
     method, 
     url: urlWithCache, 
     hasData: !!data,
-    headers 
+    headers,
+    // 追加のデバッグ情報
+    fullUrl: urlWithCache,
+    baseUrl: window.location.origin,
+    isRelative: url.startsWith('/'),
+    isAbsolute: url.startsWith('http')
   });
   
   const res = await fetch(urlWithCache, {
@@ -82,8 +87,34 @@ export async function apiRequest(
     url: urlWithCache,
     status: res.status, 
     statusText: res.statusText,
-    contentType: res.headers.get('content-type')
+    contentType: res.headers.get('content-type'),
+    // 追加のデバッグ情報
+    responseUrl: res.url,
+    responseHeaders: Object.fromEntries(res.headers.entries()),
+    redirected: res.redirected,
+    type: res.type
   });
+
+  // レスポンスの内容を確認（デバッグ用）
+  if (res.status >= 400) {
+    try {
+      const errorText = await res.text();
+      console.error('❌ APIエラーレスポンス:', {
+        url: urlWithCache,
+        status: res.status,
+        statusText: res.statusText,
+        contentType: res.headers.get('content-type'),
+        errorText: errorText.substring(0, 500) // 最初の500文字のみ表示
+      });
+    } catch (textError) {
+      console.error('❌ APIエラーレスポンス（テキスト取得失敗）:', {
+        url: urlWithCache,
+        status: res.status,
+        statusText: res.statusText,
+        textError
+      });
+    }
+  }
 
   // キャッシュクリアヘッダーをチェック
   if (res.headers.get('X-Chat-Cleared') === 'true') {

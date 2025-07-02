@@ -1298,14 +1298,40 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     try {
+      console.log('🔄 最後のエクスポート履歴を取得中:', {
+        chatId,
+        url: `/api/chats/${chatId}/last-export`,
+        location: window.location.href,
+        origin: window.location.origin
+      });
+
       const response = await apiRequest('GET', `/api/chats/${chatId}/last-export`);
-      const data = await response.json();
+      
+      console.log('📡 最後のエクスポート履歴レスポンス:', {
+        status: response.status,
+        statusText: response.statusText,
+        contentType: response.headers.get('content-type'),
+        url: response.url
+      });
+
+      // レスポンスの内容を確認
+      const responseText = await response.text();
+      console.log('📄 レスポンス内容:', responseText);
+
+      // JSONとして解析
+      const data = JSON.parse(responseText);
 
       if (data.timestamp) {
         setLastExportTimestamp(new Date(data.timestamp));
+        console.log('✅ 最後のエクスポート履歴を設定:', data.timestamp);
       }
     } catch (error) {
-      console.error('Failed to fetch last export:', error);
+      console.error('❌ Failed to fetch last export:', error);
+      console.error('詳細エラー情報:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
     }
   }, [chatId]);
 
