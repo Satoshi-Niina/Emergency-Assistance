@@ -21,7 +21,13 @@ console.log('🔧 API設定:', {
   protocol: window.location.protocol,
   // 実際のAPI URLを構築して確認
   actualAuthUrl: buildApiUrl('/api/auth/login'),
-  actualMeUrl: buildApiUrl('/api/auth/me')
+  actualMeUrl: buildApiUrl('/api/auth/me'),
+  // 環境変数の詳細確認
+  envVars: {
+    VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+    NODE_ENV: import.meta.env.NODE_ENV,
+    MODE: import.meta.env.MODE
+  }
 });
 
 // APIエンドポイントの構築
