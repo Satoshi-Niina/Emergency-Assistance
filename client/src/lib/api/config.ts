@@ -2,10 +2,10 @@
 const isProduction = import.meta.env.PROD;
 const isDevelopment = import.meta.env.DEV;
 
-// 一時的に本番環境でも直接バックエンドにアクセス（プロキシ問題をバイパス）
-export const API_BASE_URL = isProduction 
+// 環境変数VITE_API_BASE_URLを優先的に使用
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (isProduction 
   ? 'https://emergency-backend-api.azurewebsites.net'  // 直接バックエンドにアクセス
-  : 'http://localhost:3001';
+  : 'http://localhost:3001');
 
 console.log('🔧 API設定:', {
   isProduction,
