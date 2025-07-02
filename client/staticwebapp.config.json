@@ -1,34 +1,15 @@
 {
   "routes": [
     {
-      "route": "/api/auth/login",
-      "allowedRoles": ["anonymous"],
-      "rewrite": "https://emergency-backend-api.azurewebsites.net/api/auth/login"
-    },
-    {
-      "route": "/api/auth/logout",
-      "allowedRoles": ["anonymous"],
-      "rewrite": "https://emergency-backend-api.azurewebsites.net/api/auth/logout"
-    },
-    {
-      "route": "/api/auth/me",
-      "allowedRoles": ["anonymous"],
-      "rewrite": "https://emergency-backend-api.azurewebsites.net/api/auth/me"
-    },
-    {
-      "route": "/api/auth/*",
-      "allowedRoles": ["anonymous"],
-      "rewrite": "https://emergency-backend-api.azurewebsites.net/api/auth/*"
-    },
-    {
-      "route": "/api/health",
-      "allowedRoles": ["anonymous"],
-      "rewrite": "https://emergency-backend-api.azurewebsites.net/api/health"
-    },
-    {
       "route": "/api/*",
       "allowedRoles": ["anonymous"],
-      "rewrite": "https://emergency-backend-api.azurewebsites.net/api/*"
+      "rewrite": "https://emergency-backend-api.azurewebsites.net/api/*",
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Origin, Accept",
+        "Access-Control-Allow-Credentials": "true"
+      }
     },
     {
       "route": "/*",
