@@ -1,10 +1,9 @@
-name: Build and Deploy Backend to Azure
+name: Deploy Node App to Azure Web App using OIDC
 
 on:
   push:
     branches:
-      - main  # ← 対象ブランチ
-  workflow_dispatch:
+      - main
 
 permissions:
   id-token: write
@@ -14,39 +13,34 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: server  # ← バックエンドが server/ 配下の場合
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20.x'
-
-      - name: Install dependencies (clean install)
-        run: npm ci
-        env:
-          NODE_ENV: production
-
-      # 必要に応じてビルドステップを有効化
-      # - name: Run build step
-      #   run: npm run build
-
-      - name: Login to Azure
+      - name: Login to Azure using OIDC
         uses: azure/login@v1
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          auth-type: IDENTITY
+          allow-no-subscriptions: false
+          enable-AzPSSession: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
-          app-name: 'emergency-backend-api'  # Azureポータル上のApp Service名に合わせる
-          slot-name: 'production'
-          package: '.'
-
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          slot-name: production
+          package: .

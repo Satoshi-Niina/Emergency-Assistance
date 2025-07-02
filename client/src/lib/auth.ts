@@ -20,7 +20,7 @@ export const login = async (credentials: LoginCredentials) => {
       body: JSON.stringify(credentials)
     });
     
-    const response = await fetch(AUTH_API.LOGIN, {
+    const response = await fetch('/api/auth/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -82,7 +82,7 @@ export const login = async (credentials: LoginCredentials) => {
  */
 export const logout = async () => {
   try {
-    await fetch(AUTH_API.LOGOUT, {
+    await fetch('/api/auth/logout', {
       method: 'POST',
       credentials: 'include'
     });
@@ -98,7 +98,7 @@ export const logout = async () => {
  */
 export const getCurrentUser = async () => {
   try {
-    const response = await fetch(AUTH_API.ME, {
+    const response = await fetch('/api/auth/me', {
       credentials: 'include'
     });
     
