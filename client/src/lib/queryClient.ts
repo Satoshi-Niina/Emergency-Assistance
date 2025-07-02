@@ -113,6 +113,16 @@ export async function apiRequest(
           isHtml: errorText.includes('<!DOCTYPE') || errorText.includes('<html'),
           timestamp: new Date().toISOString()
         });
+        
+        // HTMLレスポンスの場合は特別な処理
+        if (errorText.includes('<!DOCTYPE') || errorText.includes('<html')) {
+          console.error('🚨 HTMLレスポンスが返されました。バックエンドが正しく動作していない可能性があります。');
+          console.error('考えられる原因:');
+          console.error('1. バックエンドのAzure App Serviceが停止している');
+          console.error('2. バックエンドのURLが間違っている');
+          console.error('3. Azure Static Web Appsの設定が正しくない');
+          console.error('4. バックエンドでエラーが発生している');
+        }
       } catch (textError) {
         console.error('❌ APIエラーレスポンス（テキスト取得失敗）:', {
           url: urlWithCache,
@@ -134,6 +144,12 @@ export async function apiRequest(
           isHtml: responseText.includes('<!DOCTYPE') || responseText.includes('<html'),
           timestamp: new Date().toISOString()
         });
+        
+        // HTMLレスポンスの場合は特別な処理
+        if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
+          console.error('🚨 成功ステータスでもHTMLレスポンスが返されました。');
+          console.error('これは通常、Azure Static Web Appsの設定に問題があることを示します。');
+        }
         
         // レスポンスを再度パース可能にするために新しいResponseオブジェクトを作成
         const newResponse = new Response(responseText, {
@@ -183,6 +199,17 @@ export async function apiRequest(
       name: fetchError.name,
       timestamp: new Date().toISOString()
     });
+    
+    // ネットワークエラーの場合は特別な処理
+    if (fetchError.name === 'TypeError' && fetchError.message.includes('fetch')) {
+      console.error('🚨 ネットワークエラーが発生しました。');
+      console.error('考えられる原因:');
+      console.error('1. バックエンドのAzure App Serviceが存在しない');
+      console.error('2. バックエンドのURLが間違っている');
+      console.error('3. ネットワーク接続の問題');
+      console.error('4. CORSエラー');
+    }
+    
     throw fetchError;
   }
 }
