@@ -29,6 +29,10 @@ export async function createApp() {
           'https://*.azurestaticapps.net', // Azure Static Web Appsのワイルドカード
           'https://*.azurewebsites.net', // Azure Web Appsのワイルドカード
           'https://emergency-assistance-app.azurestaticapps.net', // 具体的なドメイン
+          'https://emergency-backend-api.azurewebsites.net', // バックエンド自身
+          'http://localhost:5001',
+          'http://localhost:5000', 
+          'http://localhost:5173'
         ]
       : [
           process.env.FRONTEND_URL || 'http://localhost:5001',
