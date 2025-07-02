@@ -3,7 +3,7 @@ name: Build and Deploy Backend to Azure
 on:
   push:
     branches:
-      - main  # ← 対象ブランチを指定
+      - main  # ← 対象ブランチ
   workflow_dispatch:
 
 permissions:
@@ -16,7 +16,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: server  # ← サブディレクトリにある場合に必要
+        working-directory: server  # ← バックエンドが server/ 配下の場合
 
     steps:
       - name: Checkout repository
@@ -32,17 +32,21 @@ jobs:
         env:
           NODE_ENV: production
 
-      # - name: Run build step (if needed)
+      # 必要に応じてビルドステップを有効化
+      # - name: Run build step
       #   run: npm run build
 
       - name: Login to Azure
         uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
-          app-name: 'emergency-backend-api'  # ← Azure App Service 名を正確に
+          app-name: 'emergency-backend-api'  # Azureポータル上のApp Service名に合わせる
           slot-name: 'production'
-          package: './server'                # ← Express API があるフォルダを指定
+          package: '.'
+
