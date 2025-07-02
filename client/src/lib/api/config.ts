@@ -18,7 +18,10 @@ console.log('🔧 API設定:', {
   location: window.location.href,
   origin: window.location.origin,
   hostname: window.location.hostname,
-  protocol: window.location.protocol
+  protocol: window.location.protocol,
+  // 実際のAPI URLを構築して確認
+  actualAuthUrl: buildApiUrl('/api/auth/login'),
+  actualMeUrl: buildApiUrl('/api/auth/me')
 });
 
 // APIエンドポイントの構築
