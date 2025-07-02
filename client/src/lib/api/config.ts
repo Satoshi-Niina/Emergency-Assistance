@@ -2,9 +2,9 @@
 const isProduction = import.meta.env.PROD;
 const isDevelopment = import.meta.env.DEV;
 
-// 本番環境では相対パスを使用（Azure Static Web Appsでプロキシされる）
+// 本番環境では直接バックエンドにアクセス
 export const API_BASE_URL = isProduction 
-  ? ''  // Azure Static Web Appsでプロキシされるため相対パスを使用
+  ? 'https://emergency-backend-api.azurewebsites.net'  // 直接バックエンドにアクセス
   : 'http://localhost:3001';
 
 console.log('🔧 API設定:', {
