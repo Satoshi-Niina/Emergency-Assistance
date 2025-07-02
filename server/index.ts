@@ -159,7 +159,54 @@ app.get('/api/health', (req, res) => {
     port: PORT,
     environment: process.env.NODE_ENV || 'development',
     processId: process.pid,
-    version: process.env.npm_package_version || '1.0.0'
+    version: process.env.npm_package_version || '1.0.0',
+    // 本番環境でも基本的なデバッグ情報を提供
+    debug: {
+      nodeEnv: process.env.NODE_ENV,
+      databaseUrl: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
+      sessionSecret: process.env.SESSION_SECRET ? 'SET' : 'NOT SET',
+      frontendUrl: process.env.FRONTEND_URL,
+      openaiKey: process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET',
+      azureStorage: process.env.AZURE_STORAGE_CONNECTION_STRING ? 'SET' : 'NOT SET',
+      requestOrigin: req.headers.origin,
+      requestHost: req.headers.host,
+      requestPath: req.path,
+      allowedOrigins: allowedOrigins
+    }
+  });
+});
+
+// デバッグエンドポイント（本番環境では無効化）
+app.get('/api/debug', (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ message: 'Debug endpoint not available in production' });
+  }
+  
+  res.json({
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    env: {
+      NODE_ENV: process.env.NODE_ENV,
+      PORT: process.env.PORT,
+      DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
+      SESSION_SECRET: process.env.SESSION_SECRET ? 'SET' : 'NOT SET',
+      FRONTEND_URL: process.env.FRONTEND_URL,
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET',
+      AZURE_STORAGE_CONNECTION_STRING: process.env.AZURE_STORAGE_CONNECTION_STRING ? 'SET' : 'NOT SET'
+    },
+    request: {
+      method: req.method,
+      url: req.url,
+      path: req.path,
+      headers: req.headers,
+      origin: req.headers.origin,
+      host: req.headers.host,
+      'user-agent': req.headers['user-agent']
+    },
+    cors: {
+      allowedOrigins: allowedOrigins,
+      corsOptions: corsOptions
+    }
   });
 });
 

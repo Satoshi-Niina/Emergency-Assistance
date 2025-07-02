@@ -121,3 +121,7 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
+
+# client/.env.production を除外
+/client/.env.production
+/server/.env.production

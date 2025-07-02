@@ -71,65 +71,120 @@ export async function apiRequest(
     fullUrl: urlWithCache,
     baseUrl: window.location.origin,
     isRelative: url.startsWith('/'),
-    isAbsolute: url.startsWith('http')
+    isAbsolute: url.startsWith('http'),
+    // リクエストの詳細
+    requestBody: data ? JSON.stringify(data).substring(0, 200) : 'none',
+    timestamp: new Date().toISOString()
   });
   
-  const res = await fetch(urlWithCache, {
-    method,
-    headers,
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
-    // キャッシュ制御を追加
-    cache: method === 'GET' ? 'no-cache' : 'default'
-  });
-  
-  console.log('📡 APIレスポンス受信:', { 
-    url: urlWithCache,
-    status: res.status, 
-    statusText: res.statusText,
-    contentType: res.headers.get('content-type'),
-    // 追加のデバッグ情報
-    responseUrl: res.url,
-    responseHeaders: Object.fromEntries(res.headers.entries()),
-    redirected: res.redirected,
-    type: res.type
-  });
+  try {
+    const res = await fetch(urlWithCache, {
+      method,
+      headers,
+      body: data ? JSON.stringify(data) : undefined,
+      credentials: "include",
+      // キャッシュ制御を追加
+      cache: method === 'GET' ? 'no-cache' : 'default'
+    });
+    
+    console.log('📡 APIレスポンス受信:', { 
+      url: urlWithCache,
+      status: res.status, 
+      statusText: res.statusText,
+      contentType: res.headers.get('content-type'),
+      // 追加のデバッグ情報
+      responseUrl: res.url,
+      responseHeaders: Object.fromEntries(res.headers.entries()),
+      redirected: res.redirected,
+      type: res.type,
+      timestamp: new Date().toISOString()
+    });
 
-  // レスポンスの内容を確認（デバッグ用）
-  if (res.status >= 400) {
-    try {
-      const errorText = await res.text();
-      console.error('❌ APIエラーレスポンス:', {
-        url: urlWithCache,
-        status: res.status,
-        statusText: res.statusText,
-        contentType: res.headers.get('content-type'),
-        errorText: errorText.substring(0, 500) // 最初の500文字のみ表示
-      });
-    } catch (textError) {
-      console.error('❌ APIエラーレスポンス（テキスト取得失敗）:', {
-        url: urlWithCache,
-        status: res.status,
-        statusText: res.statusText,
-        textError
-      });
-    }
-  }
-
-  // キャッシュクリアヘッダーをチェック
-  if (res.headers.get('X-Chat-Cleared') === 'true') {
-    console.log('サーバーからキャッシュクリア指示を受信');
-    // ローカルストレージの関連キーをクリア
-    const keyPrefix = 'rq-' + url.split('?')[0];
-    for (const key of Object.keys(localStorage)) {
-      if (key.startsWith(keyPrefix)) {
-        localStorage.removeItem(key);
+    // レスポンスの内容を確認（デバッグ用）
+    if (res.status >= 400) {
+      try {
+        const errorText = await res.text();
+        console.error('❌ APIエラーレスポンス:', {
+          url: urlWithCache,
+          status: res.status,
+          statusText: res.statusText,
+          contentType: res.headers.get('content-type'),
+          errorText: errorText.substring(0, 1000), // 最初の1000文字を表示
+          isHtml: errorText.includes('<!DOCTYPE') || errorText.includes('<html'),
+          timestamp: new Date().toISOString()
+        });
+      } catch (textError) {
+        console.error('❌ APIエラーレスポンス（テキスト取得失敗）:', {
+          url: urlWithCache,
+          status: res.status,
+          statusText: res.statusText,
+          textError,
+          timestamp: new Date().toISOString()
+        });
+      }
+    } else {
+      // 成功レスポンスでも内容を確認
+      try {
+        const responseText = await res.text();
+        console.log('✅ API成功レスポンス:', {
+          url: urlWithCache,
+          status: res.status,
+          contentType: res.headers.get('content-type'),
+          responseText: responseText.substring(0, 500), // 最初の500文字を表示
+          isHtml: responseText.includes('<!DOCTYPE') || responseText.includes('<html'),
+          timestamp: new Date().toISOString()
+        });
+        
+        // レスポンスを再度パース可能にするために新しいResponseオブジェクトを作成
+        const newResponse = new Response(responseText, {
+          status: res.status,
+          statusText: res.statusText,
+          headers: res.headers
+        });
+        
+        // キャッシュクリアヘッダーをチェック
+        if (res.headers.get('X-Chat-Cleared') === 'true') {
+          console.log('サーバーからキャッシュクリア指示を受信');
+          // ローカルストレージの関連キーをクリア
+          const keyPrefix = 'rq-' + url.split('?')[0];
+          for (const key of Object.keys(localStorage)) {
+            if (key.startsWith(keyPrefix)) {
+              localStorage.removeItem(key);
+            }
+          }
+        }
+        
+        await throwIfResNotOk(newResponse);
+        return newResponse;
+      } catch (textError) {
+        console.error('❌ レスポンステキスト取得失敗:', textError);
       }
     }
-  }
+    
+    // キャッシュクリアヘッダーをチェック
+    if (res.headers.get('X-Chat-Cleared') === 'true') {
+      console.log('サーバーからキャッシュクリア指示を受信');
+      // ローカルストレージの関連キーをクリア
+      const keyPrefix = 'rq-' + url.split('?')[0];
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith(keyPrefix)) {
+          localStorage.removeItem(key);
+        }
+      }
+    }
 
-  await throwIfResNotOk(res);
-  return res;
+    await throwIfResNotOk(res);
+    return res;
+  } catch (fetchError) {
+    console.error('❌ フェッチエラー:', {
+      url: urlWithCache,
+      error: fetchError,
+      message: fetchError.message,
+      name: fetchError.name,
+      timestamp: new Date().toISOString()
+    });
+    throw fetchError;
+  }
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
