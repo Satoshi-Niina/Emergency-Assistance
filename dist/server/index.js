@@ -99,7 +99,8 @@ const sessionSettings = {
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        sameSite: 'lax'
+        sameSite: 'lax',
+        domain: process.env.NODE_ENV === 'production' ? '.azurewebsites.net' : undefined
     },
     name: 'emergency-session'
 };
@@ -155,14 +156,17 @@ app.get('/api/health', (req, res) => {
         }
     });
 });
-// デバッグエンドポイント（本番環境では無効化）
+// デバッグエンドポイント（本番環境でも利用可能）
 app.get('/api/debug', (req, res) => {
-    if (process.env.NODE_ENV === 'production') {
-        return res.status(404).json({ message: 'Debug endpoint not available in production' });
-    }
     res.json({
         timestamp: new Date().toISOString(),
         environment: process.env.NODE_ENV || 'development',
+        session: {
+            exists: !!req.session,
+            userId: req.session?.userId,
+            userRole: req.session?.userRole,
+            sessionId: req.sessionID
+        },
         env: {
             NODE_ENV: process.env.NODE_ENV,
             PORT: process.env.PORT,
@@ -176,10 +180,12 @@ app.get('/api/debug', (req, res) => {
             method: req.method,
             url: req.url,
             path: req.path,
-            headers: req.headers,
-            origin: req.headers.origin,
-            host: req.headers.host,
-            'user-agent': req.headers['user-agent']
+            headers: {
+                origin: req.headers.origin,
+                host: req.headers.host,
+                'user-agent': req.headers['user-agent'],
+                cookie: req.headers.cookie ? 'SET' : 'NOT SET'
+            }
         },
         cors: {
             allowedOrigins: allowedOrigins,
@@ -187,50 +193,21 @@ app.get('/api/debug', (req, res) => {
         }
     });
 });
-// APIルートの登録（静的ファイル配信より前に配置）
-(async () => {
-    try {
-        console.log('📡 ルート登録開始...');
-        console.log('🔍 現在の環境変数:', {
-            NODE_ENV: process.env.NODE_ENV,
-            FRONTEND_URL: process.env.FRONTEND_URL,
-            DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
-            SESSION_SECRET: process.env.SESSION_SECRET ? 'SET' : 'NOT SET'
-        });
-        // Azure Storage統合の初期化
-        if (process.env.NODE_ENV === 'production' && process.env.AZURE_STORAGE_CONNECTION_STRING) {
-            try {
-                console.log('🚀 Azure Storage統合を初期化中...');
-                const { knowledgeBaseAzure } = await import('./lib/knowledge-base-azure.js');
-                await knowledgeBaseAzure.initialize();
-                console.log('✅ Azure Storage統合初期化完了');
-            }
-            catch (azureError) {
-                console.error('❌ Azure Storage統合初期化エラー:', azureError);
-                console.log('⚠️ Azure Storage統合なしで続行します');
-            }
-        }
-        const isDev = process.env.NODE_ENV !== "production";
-        // 新しいルート構造を使用
-        const { registerRoutes } = await import('./routes/index.js');
-        // ルートを登録（認証ルートは routes/auth.ts で処理）
-        registerRoutes(app);
-        console.log('✅ 認証とルートの登録完了');
-        // 静的ファイル設定（ルート登録後に設定）
-        try {
-            app.use('/images', express.static(path.join(process.cwd(), 'public', 'images')));
-            app.use('/knowledge-base/images', express.static(path.join(process.cwd(), 'knowledge-base', 'images')));
-            app.use('/knowledge-base/data', express.static(path.join(process.cwd(), 'knowledge-base', 'data')));
-            console.log('✅ 静的ファイル設定完了');
-        }
-        catch (staticError) {
-            console.error('❌ 静的ファイル設定エラー:', staticError);
-        }
-    }
-    catch (routeError) {
-        console.error('❌ ルート登録エラー:', routeError);
-    }
-})();
+// Step 1: APIルートを最初に登録（静的ファイル配信より前に配置）
+console.log('📡 APIルート登録開始...');
+// 認証ルートを最初に登録
+import { authRouter } from './routes/auth.js';
+app.use('/api/auth', authRouter);
+console.log('✅ 認証ルート登録完了');
+// その他のAPIルートを登録
+import { registerRoutes } from './routes/index.js';
+registerRoutes(app);
+console.log('✅ 全APIルート登録完了');
+// Step 2: 静的ファイル設定（APIルートの後に配置）
+app.use('/images', express.static(path.join(process.cwd(), 'public', 'images')));
+app.use('/knowledge-base/images', express.static(path.join(process.cwd(), 'knowledge-base', 'images')));
+app.use('/knowledge-base/data', express.static(path.join(process.cwd(), 'knowledge-base', 'data')));
+console.log('✅ 静的ファイル設定完了');
 // 本番環境での静的ファイル配信（APIルートの後に配置）
 if (isProduction) {
     console.log('🎯 本番環境: 静的ファイル配信設定');
