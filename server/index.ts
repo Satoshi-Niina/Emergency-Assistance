@@ -326,3 +326,8 @@ const gracefulShutdown = () => {
 process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
 process.on('SIGUSR2', gracefulShutdown);
+
+// ✅ 正常性チェック用エンドポイントを追加
+app.get("/api/health", (_req, res) => {
+  res.status(200).json({ status: "ok" });
+});
