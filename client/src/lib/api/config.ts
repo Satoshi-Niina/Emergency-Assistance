@@ -2,8 +2,12 @@
 const isProduction = import.meta.env.PROD;
 const isDevelopment = import.meta.env.DEV;
 
-// 開発環境でも相対パスを使用してViteのプロキシを活用
-export const API_BASE_URL = '';  // 常に相対パスを使用
+// 本番環境用設定
+// 本番環境では相対パスを使用（Azure Static Web Appsのリライトルールを活用）
+// 開発環境ではViteのプロキシを使用
+export const API_BASE_URL = isProduction 
+  ? ''  // 本番環境では相対パスを使用
+  : ''; // 開発環境でも相対パスを使用（Viteのプロキシを活用）
 
 // デバッグ用：環境変数の状態を詳細にログ出力
 console.log('🔍 環境変数詳細確認:', {
