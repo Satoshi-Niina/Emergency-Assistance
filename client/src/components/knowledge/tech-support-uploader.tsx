@@ -166,7 +166,7 @@ const TechSupportUploader: React.FC = () => {
 
       console.log(`ファイルをアップロード: ${selectedFile.name}, 処理タイプ: ${processingType}`);
 
-      const response = await fetch("/api/tech-support/upload", {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/tech-support/upload`, {
         method: "POST",
         body: formData,
       });

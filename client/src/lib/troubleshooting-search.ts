@@ -59,7 +59,7 @@ export const getTroubleshootingFlowById = async (id: string): Promise<SearchResu
   try {
     // キャッシュ無効化のためのタイムスタンプを追加
     const timestamp = Date.now();
-    const response = await fetch(`/api/troubleshooting/${id}?_t=${timestamp}`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${id}?_t=${timestamp}`, {
       headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache'

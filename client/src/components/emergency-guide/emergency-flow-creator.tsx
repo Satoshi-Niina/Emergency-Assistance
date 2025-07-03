@@ -257,7 +257,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         setUploadProgress(prev => Math.min(prev + 10, 90));
       }, 100);
 
-      const response = await fetch('/api/emergency-flow/upload', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/upload`, {
         method: 'POST',
         body: formData
       });
@@ -330,7 +330,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 15);
 
-      const response = await fetch(`/api/emergency-flow/${flowId}?ts=${timestamp}&_r=${randomId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/${flowId}?ts=${timestamp}&_r=${randomId}`, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
@@ -599,7 +599,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
       }
 
       // APIにデータを送信
-      const response = await fetch('/api/emergency-flow/save-flow', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/save-flow`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -776,7 +776,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
       formData.append('image', file);
       formData.append('stepId', stepId);
 
-      const response = await fetch('/api/emergency-flow/upload-image', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/upload-image`, {
         method: 'POST',
         body: formData
       });
@@ -860,7 +860,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
     if (confirmDelete) {
       try {
         // APIを呼び出してサーバーから画像を削除
-        const response = await fetch(`/api/emergency-flow/image/${imageToRemove.fileName}`, {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/image/${imageToRemove.fileName}`, {
           method: 'DELETE',
         });
 

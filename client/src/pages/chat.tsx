@@ -110,7 +110,7 @@ export default function Chat() {
     if (hasUnexportedMessages) {
       setIsEndChatDialogOpen(true);
     } else {
-      fetch("/api/auth/logout", {
+      fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/logout`, {
         method: "POST",
         credentials: "include"
       })

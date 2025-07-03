@@ -131,7 +131,7 @@ export default function EmergencyGuideDisplay({
     const fetchGuideData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/emergency-flow/${guideId}`);
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/${guideId}`);
         
         if (!response.ok) {
           throw new Error(`Failed to fetch guide data: ${response.status}`);

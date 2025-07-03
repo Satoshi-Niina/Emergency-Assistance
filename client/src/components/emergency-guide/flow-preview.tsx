@@ -42,7 +42,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
     const fetchFlowData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/emergency-flow/${flowId}`);
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/${flowId}`);
         
         if (!response.ok) {
           throw new Error(`Failed to fetch flow data: ${response.status}`);

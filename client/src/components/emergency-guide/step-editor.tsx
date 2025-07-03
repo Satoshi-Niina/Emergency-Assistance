@@ -194,7 +194,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
       formData.append('stepId', stepId);
       if (flowId) formData.append('flowId', flowId);
 
-      const response = await fetch('/api/emergency-flow/upload-image', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/upload-image`, {
         method: 'POST',
         body: formData,
       });
@@ -265,9 +265,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
             if (confirmDelete) {
                 try {
                     // APIを呼び出してサーバーから画像を削除
-                    const response = await fetch(`/api/emergency-flow/image/${imageToRemove.fileName}`, {
-                        method: 'DELETE',
-                    });
+                    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/image/${imageToRemove.fileName}`);
 
                     if (!response.ok) {
                         const errorData = await response.json().catch(() => ({}));
