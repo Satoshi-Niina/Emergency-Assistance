@@ -58,7 +58,7 @@ export async function apiRequest(
   headers['credentials'] = 'include';
   headers['Cache-Control'] = 'no-cache';
 
-  // 相対パスの場合は絶対URLに変換
+  // 相対パスの場合はAPI_BASE_URLと結合
   const fullUrl = url.startsWith('/') ? buildApiUrl(url) : url;
   
   // ブラウザキャッシュ対策用のタイムスタンプパラメータを追加
