@@ -210,52 +210,24 @@ app.get('/api/debug', (req, res) => {
   });
 });
 
-// APIルートの登録（静的ファイル配信より前に配置）
-(async () => {
-  try {
-    console.log('📡 ルート登録開始...');
-    console.log('🔍 現在の環境変数:', {
-      NODE_ENV: process.env.NODE_ENV,
-      FRONTEND_URL: process.env.FRONTEND_URL,
-      DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
-      SESSION_SECRET: process.env.SESSION_SECRET ? 'SET' : 'NOT SET'
-    });
-    
-    // Azure Storage統合の初期化
-    if (process.env.NODE_ENV === 'production' && process.env.AZURE_STORAGE_CONNECTION_STRING) {
-      try {
-        console.log('🚀 Azure Storage統合を初期化中...');
-        const { knowledgeBaseAzure } = await import('./lib/knowledge-base-azure.js');
-        await knowledgeBaseAzure.initialize();
-        console.log('✅ Azure Storage統合初期化完了');
-      } catch (azureError) {
-        console.error('❌ Azure Storage統合初期化エラー:', azureError);
-        console.log('⚠️ Azure Storage統合なしで続行します');
-      }
-    }
-    
-    const isDev = process.env.NODE_ENV !== "production";
+// Step 1: APIルートを最初に登録（静的ファイル配信より前に配置）
+console.log('📡 APIルート登録開始...');
 
-    // 新しいルート構造を使用
-    const { registerRoutes } = await import('./routes/index.js');
+// 認証ルートを最初に登録
+import { authRouter } from './routes/auth.js';
+app.use('/api/auth', authRouter);
+console.log('✅ 認証ルート登録完了');
 
-    // ルートを登録（認証ルートは routes/auth.ts で処理）
-    registerRoutes(app);
-    console.log('✅ 認証とルートの登録完了');
-        
-    // 静的ファイル設定（ルート登録後に設定）
-    try {
-      app.use('/images', express.static(path.join(process.cwd(), 'public', 'images')));
-      app.use('/knowledge-base/images', express.static(path.join(process.cwd(), 'knowledge-base', 'images')));
-      app.use('/knowledge-base/data', express.static(path.join(process.cwd(), 'knowledge-base', 'data')));
-      console.log('✅ 静的ファイル設定完了');
-    } catch (staticError) {
-      console.error('❌ 静的ファイル設定エラー:', staticError);
-    }
-  } catch (routeError) {
-    console.error('❌ ルート登録エラー:', routeError);
-  }
-})();
+// その他のAPIルートを登録
+import { registerRoutes } from './routes/index.js';
+registerRoutes(app);
+console.log('✅ 全APIルート登録完了');
+
+// Step 2: 静的ファイル設定（APIルートの後に配置）
+app.use('/images', express.static(path.join(process.cwd(), 'public', 'images')));
+app.use('/knowledge-base/images', express.static(path.join(process.cwd(), 'knowledge-base', 'images')));
+app.use('/knowledge-base/data', express.static(path.join(process.cwd(), 'knowledge-base', 'data')));
+console.log('✅ 静的ファイル設定完了');
 
 // 本番環境での静的ファイル配信（APIルートの後に配置）
 if (isProduction) {
