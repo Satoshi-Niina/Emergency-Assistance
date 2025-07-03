@@ -9,9 +9,7 @@ import { registerSearchRoutes } from "./search.js";
 import fileRouter from "./file.js";
 import { flowGeneratorRouter } from "./flow-generator.js";
 import { registerChatRoutes } from "./chat.js";
-import { authRouter } from "./auth.js";
 export function registerRoutes(app) {
-    app.use("/api/auth", authRouter);
     registerSyncRoutes(app);
     app.use("/api/emergency-flow", emergencyFlowRouter);
     app.use("/api/emergency-guide", emergencyGuideRouter);
