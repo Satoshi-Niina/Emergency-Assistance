@@ -114,7 +114,8 @@ const sessionSettings: session.SessionOptions = {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    sameSite: 'lax'
+    sameSite: 'lax',
+    domain: process.env.NODE_ENV === 'production' ? '.azurewebsites.net' : undefined
   },
   name: 'emergency-session'
 };
@@ -176,15 +177,17 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// デバッグエンドポイント（本番環境では無効化）
+// デバッグエンドポイント（本番環境でも利用可能）
 app.get('/api/debug', (req, res) => {
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(404).json({ message: 'Debug endpoint not available in production' });
-  }
-  
   res.json({
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
+    session: {
+      exists: !!req.session,
+      userId: req.session?.userId,
+      userRole: req.session?.userRole,
+      sessionId: req.sessionID
+    },
     env: {
       NODE_ENV: process.env.NODE_ENV,
       PORT: process.env.PORT,
@@ -198,10 +201,12 @@ app.get('/api/debug', (req, res) => {
       method: req.method,
       url: req.url,
       path: req.path,
-      headers: req.headers,
-      origin: req.headers.origin,
-      host: req.headers.host,
-      'user-agent': req.headers['user-agent']
+      headers: {
+        origin: req.headers.origin,
+        host: req.headers.host,
+        'user-agent': req.headers['user-agent'],
+        cookie: req.headers.cookie ? 'SET' : 'NOT SET'
+      }
     },
     cors: {
       allowedOrigins: allowedOrigins,
