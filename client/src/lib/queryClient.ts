@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { buildApiUrl } from "./api/config";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -57,10 +58,13 @@ export async function apiRequest(
   headers['credentials'] = 'include';
   headers['Cache-Control'] = 'no-cache';
 
+  // 相対パスの場合は絶対URLに変換
+  const fullUrl = url.startsWith('/') ? buildApiUrl(url) : url;
+  
   // ブラウザキャッシュ対策用のタイムスタンプパラメータを追加
-  const urlWithCache = url.includes('?') 
-    ? `${url}&_t=${Date.now()}` 
-    : `${url}?_t=${Date.now()}`;
+  const urlWithCache = fullUrl.includes('?') 
+    ? `${fullUrl}&_t=${Date.now()}` 
+    : `${fullUrl}?_t=${Date.now()}`;
 
   console.log('🔍 APIリクエスト実行:', { 
     method, 
