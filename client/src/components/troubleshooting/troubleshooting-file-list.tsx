@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -45,7 +44,7 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
       
       // キャッシュ無効化のためにタイムスタンプを追加
       const timestamp = Date.now();
-      const response = await fetch(`/api/troubleshooting/list?t=${timestamp}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list?t=${timestamp}`, {
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache'
@@ -77,7 +76,7 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
     if (!confirm('このファイルを削除してもよろしいですか？')) return;
     
     try {
-      const response = await fetch(`/api/troubleshooting/delete/${id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/delete/${id}`, {
         method: 'DELETE'
       });
       

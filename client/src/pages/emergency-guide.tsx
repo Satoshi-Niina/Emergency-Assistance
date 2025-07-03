@@ -62,7 +62,7 @@ const EmergencyGuidePage: React.FC = () => {
   useEffect(() => {
     const refreshFlowList = async () => {
       try {
-        const response = await fetch(`/api/emergency-flow/list?ts=${Date.now()}`);
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/list?ts=${Date.now()}`);
         if (!response.ok) throw new Error("読み込み失敗");
         const data = await response.json();
         // フロー一覧を直接更新
@@ -147,17 +147,7 @@ const EmergencyGuidePage: React.FC = () => {
       const randomId = Math.random().toString(36).substring(2);
       const cacheParams = `?_t=${timestamp}&_r=${randomId}&no_cache=true&source=troubleshooting`;
 
-      const response = await fetch(`/api/emergency-flow/list${cacheParams}`, {
-        method: 'GET',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
-          'Pragma': 'no-cache',
-          'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
-          'X-Requested-With': 'XMLHttpRequest',
-          'X-Force-Fresh': 'true',
-          'X-Clear-Cache': 'true'
-        }
-      });
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/list${cacheParams}`);
 
       if (!response.ok) {
         throw new Error(`応急処置データの取得に失敗しました: ${response.status}`);

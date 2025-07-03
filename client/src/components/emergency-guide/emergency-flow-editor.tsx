@@ -375,7 +375,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
     console.log('🔄 [AutoSave] 送信ペイロード:', JSON.stringify(payload, null, 2));
 
     try {
-      const response = await fetch('/api/emergency-flow/save-flow', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/save-flow`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -453,7 +453,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
         }))
       });
 
-      const response = await fetch('/api/emergency-flow/save-flow', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/save-flow`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -495,7 +495,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
       
       if (!confirmCleanup) return;
 
-      const response = await fetch('/api/emergency-flow/cleanup-unused-images', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/cleanup-unused-images`, {
         method: 'POST'
       });
 

@@ -34,7 +34,7 @@ export default function TroubleshootingSelector({
   const fetchFlows = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/emergency-flow/list");
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/list`);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
       const normalizedFlows = data.map((flow: any) => ({

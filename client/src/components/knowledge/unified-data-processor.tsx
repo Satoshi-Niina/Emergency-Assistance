@@ -136,7 +136,7 @@ const UnifiedDataProcessor: React.FC = () => {
       formData.append("createQA", options.createQA.toString());
 
       // 統合データ処理APIを呼び出す
-      const response = await fetch("/api/data-processor/process", {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/data-processor/process`, {
         method: "POST",
         body: formData,
       });
@@ -174,7 +174,7 @@ const UnifiedDataProcessor: React.FC = () => {
   // 文書の削除
   const handleDeleteDocument = async (docId: string, title: string) => {
     try {
-      const response = await fetch(`/api/knowledge/${docId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/knowledge/${docId}`, {
         method: "DELETE",
       });
 
@@ -207,7 +207,7 @@ const UnifiedDataProcessor: React.FC = () => {
   const fetchDocuments = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/knowledge");
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/knowledge`);
       if (!response.ok) {
         throw new Error("文書の取得に失敗しました");
       }

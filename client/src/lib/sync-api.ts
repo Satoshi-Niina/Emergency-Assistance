@@ -111,7 +111,7 @@ export async function syncChat(chatId: number) {
               formData.append('thumbnail', media.thumbnail);
             }
             
-            const mediaResponse = await fetch(`/api/messages/${data.id}/media`, {
+            const mediaResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/messages/${data.id}/media`, {
               method: 'POST',
               body: formData,
               credentials: 'include'

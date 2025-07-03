@@ -83,7 +83,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
   const loadFlowData = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/emergency-flow/${flowId}`);
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/${flowId}`);
       if (!response.ok) throw new Error('フローデータの取得に失敗しました');
       
       const data = await response.json();
@@ -273,7 +273,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
             const formData = new FormData();
             formData.append('image', image.file);
             
-            const uploadResponse = await fetch('/api/emergency-flow/upload-image', {
+            const uploadResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/upload-image`, {
               method: 'POST',
               body: formData
             });

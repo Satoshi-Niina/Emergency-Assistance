@@ -47,7 +47,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       setIsLoading(true);
       console.log('🔄 フロー一覧を取得中...');
       
-      const response = await fetch('/api/emergency-flow/list', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/list`, {
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache'
@@ -84,7 +84,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
     if (!flowToDelete) return;
     
     try {
-      const response = await fetch(`/api/troubleshooting/delete/${flowToDelete}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/delete/${flowToDelete}`, {
         method: 'DELETE'
       });
       

@@ -4,35 +4,33 @@ on:
   push:
     branches:
       - main
-
   pull_request:
     types: [opened, synchronize, reopened, closed]
     branches:
       - main
 
 jobs:
-  build_and_deploy:
+  build_and_deploy_job:
     runs-on: ubuntu-latest
-    name: Build and Deploy Static Web App
+    name: Build and Deploy Job
+    environment: production
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm install
         working-directory: ./client
 
-      - name: Build Vite project
-        run: npm run build:azure
+      - name: Build (with .env.production)
+        run: npm run build
         working-directory: ./client
-        env:
-          VITE_API_BASE_URL: https://emergency-backend-api.azurewebsites.net
 
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1

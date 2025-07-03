@@ -133,7 +133,7 @@ const EmergencyGuideEdit: React.FC = () => {
   const fetchFlowList = useCallback(async (force = false) => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/emergency-flow/list');
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/list`);
       if (!response.ok) throw new Error('フロー一覧の取得に失敗しました');
       
       const data = await response.json();
@@ -196,7 +196,7 @@ const EmergencyGuideEdit: React.FC = () => {
         filePath: updatedFlowData.filePath
       });
 
-      const response = await fetch('/api/emergency-flow/save-flow', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/save-flow`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedFlowData),
@@ -237,7 +237,7 @@ const EmergencyGuideEdit: React.FC = () => {
         filePath: filePath
       });
 
-      const response = await fetch('/api/emergency-flow/delete-flow', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/delete-flow`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: flowId, filePath: filePath }),

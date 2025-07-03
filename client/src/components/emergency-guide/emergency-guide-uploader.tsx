@@ -48,7 +48,7 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({ onUploa
         description: `キーワード「${keywordsInput}」からフローを生成しています...`,
       });
       
-      const response = await fetch('/api/flow-generator/generate-from-keywords', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/flow-generator/generate-from-keywords`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -150,7 +150,7 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({ onUploa
         });
       }, 500);
       
-      const response = await fetch('/api/emergency-guide/process', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-guide/process`, {
         method: 'POST',
         body: formData,
       });
