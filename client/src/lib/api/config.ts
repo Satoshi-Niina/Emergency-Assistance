@@ -2,18 +2,31 @@
 const isProduction = import.meta.env.PROD;
 const isDevelopment = import.meta.env.DEV;
 
-// 環境変数VITE_API_BASE_URLを優先的に使用
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (isProduction 
-  ? 'https://emergency-backend-api.azurewebsites.net'  // 直接バックエンドにアクセス
-  : 'http://localhost:3001');
+// Azure Static Web Appsでは相対パスを使用してリライトルールを活用
+export const API_BASE_URL = isProduction 
+  ? ''  // 本番環境では相対パスを使用（Azure Static Web Appsのリライトルールを活用）
+  : 'http://localhost:3001';  // 開発環境ではローカルサーバーを使用
+
+// デバッグ用：環境変数の状態を詳細にログ出力
+console.log('🔍 環境変数詳細確認:', {
+  VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+  VITE_API_BASE_URL_TYPE: typeof import.meta.env.VITE_API_BASE_URL,
+  VITE_API_BASE_URL_LENGTH: import.meta.env.VITE_API_BASE_URL?.length,
+  isProduction,
+  isDevelopment,
+  NODE_ENV: import.meta.env.NODE_ENV,
+  MODE: import.meta.env.MODE,
+  BASE_URL: import.meta.env.BASE_URL,
+  // 実際に使用されるURL
+  finalApiBaseUrl: API_BASE_URL
+});
 
 console.log('🔧 API設定:', {
   isProduction,
   isDevelopment,
   API_BASE_URL,
-  VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
   // デバッグ用：実際のリクエストURLを確認
-  sampleAuthUrl: isProduction ? `${API_BASE_URL}/api/auth/login` : '/api/auth/login',
+  sampleAuthUrl: buildApiUrl('/api/auth/login'),
   // 追加のデバッグ情報
   location: window.location.href,
   origin: window.location.origin,
