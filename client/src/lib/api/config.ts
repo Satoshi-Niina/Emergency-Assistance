@@ -2,10 +2,8 @@
 const isProduction = import.meta.env.PROD;
 const isDevelopment = import.meta.env.DEV;
 
-// Azure Static Web Appsでは相対パスを使用してリライトルールを活用
-export const API_BASE_URL = isProduction 
-  ? ''  // 本番環境では相対パスを使用（Azure Static Web Appsのリライトルールを活用）
-  : 'http://localhost:3001';  // 開発環境ではローカルサーバーを使用
+// 開発環境でも相対パスを使用してViteのプロキシを活用
+export const API_BASE_URL = '';  // 常に相対パスを使用
 
 // デバッグ用：環境変数の状態を詳細にログ出力
 console.log('🔍 環境変数詳細確認:', {
