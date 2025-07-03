@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { AUTH_API } from "@/lib/api/config";
 
 interface User {
   id: string;
@@ -35,7 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const getCurrentUser = async () => {
     try {
       console.log('🔍 現在のユーザー情報を取得中...');
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/me`, {
+      const response = await fetch(AUTH_API.ME, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -99,7 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(true);
       console.log('🔐 ログイン試行開始:', { username });
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/login`, {
+      const response = await fetch(AUTH_API.LOGIN, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -166,7 +167,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(true);
       console.log('🔒 ログアウト処理開始');
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/logout`, {
+      const response = await fetch(AUTH_API.LOGOUT, {
         method: 'POST',
         credentials: 'include'
       });
