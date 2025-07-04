@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<deployment>
+  <id>54c2e1b6-6152-4859-a603-4d5c78fa5d4d</id>
+  <author>N/A</author>
+  <deployer>GITHUB_ZIP_DEPLOY</deployer>
+  <authorEmail>N/A</authorEmail>
+  <message>{"type":"deployment","sha":"833c54fb91537b5f948ec1b4617dc816026a7452","repoName":"Satoshi-Niina/Emergency-Assistance","actor":"Satoshi-Niina","slotName":"production","commitMessage":"Build dist manually for Azure"}</message>
+  <progress></progress>
+  <status>Success</status>
+  <statusText></statusText>
+  <lastSuccessEndTime>2025-07-04T01:23:18.450895Z</lastSuccessEndTime>
+  <receivedTime>2025-07-04T01:20:11.5395211Z</receivedTime>
+  <startTime>2025-07-04T01:20:12.7550504Z</startTime>
+  <endTime>2025-07-04T01:23:18.450895Z</endTime>
+  <complete>True</complete>
+  <is_temp>False</is_temp>
+  <is_readonly>True</is_readonly>
+  <buildSummary />
+</deployment>

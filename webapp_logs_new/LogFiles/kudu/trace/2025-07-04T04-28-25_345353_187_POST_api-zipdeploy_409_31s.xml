@@ -1,0 +1,18 @@
+<step title="Incoming Request" date="2025-07-04T04:28:25.825" instance="345353" url="/api/zipdeploy?isAsync=true&amp;deployer=GITHUB_ZIP_DEPLOY&amp;message=%7B%22type%22%3A%22deployment%22%2C%22sha%22%3A%226edd07b4d41b7834de1d03a8ee84d2a9cf2d0ee0%22%2C%22repoName%22%3A%22Satoshi-Niina%2FEmergency-Assistance%22%2C%22actor%22%3A%22Satoshi-Niina%22%2C%22slotName%22%3A%22production%22%2C%22commitMessage%22%3A%22%22%7D" method="POST" type="request" pid="820,1,36" Host="emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" User-Agent="GITHUBACTIONS_DeployWebAppToAzure_6afaea893f47a147fa5dac857d1041ffd4a8f022e29971635168cd4dcb90f2c0" Authorization="Bas..." Content-Type="application/octet-stream" Cookie="ARRAffinity=345353a6e2e5ca1cb44ba615462d7ac6ac166df501ae2807c92c9581cdccacea;Path=/;HttpOnly;Secure;Domain=emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net; ARRAffinitySameSite=345353a6e2e5ca1cb44ba615462d7ac6ac166df501ae2807c92c9581cdccacea;Path=/;HttpOnly;SameSite=None;Secure;Domain=emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" Transfer-Encoding="chunked" X-ARR-LOG-ID="870e8ecb-9f15-48c0-9518-6c2043f3cff1" CLIENT-IP="20.51.139.83:46208" X-SITE-DEPLOYMENT-ID="emergency-backend-api" WAS-DEFAULT-HOSTNAME="emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/api/zipdeploy?isAsync=true&amp;deployer=GITHUB_ZIP_DEPLOY&amp;message=%7B%22type%22%3A%22deployment%22%2C%22sha%22%3A%226edd07b4d41b7834de1d03a8ee84d2a9cf2d0ee0%22%2C%22repoName%22%3A%22Satoshi-Niina%2FEmergency-Assistance%22%2C%22actor%22%3A%22Satoshi-Niina%22%2C%22slotName%22%3A%22production%22%2C%22commitMessage%22%3A%22%22%7D" X-Client-IP="20.51.139.83" X-Client-Port="46208" >
+  <step title="Cleanup Xml Logs" date="2025-07-04T04:28:25.833" >
+    <step title="Cleanup Infos" date="2025-07-04T04:28:25.886" totalFiles="1649" totalCleanup="1489" /><!-- duration: 9ms -->
+  </step><!-- duration: 63ms -->
+  <step title="ZipPushDeploy" date="2025-07-04T04:28:25.923" >
+    <step title="ZipDeploy. Extract zip." date="2025-07-04T04:28:25.926" /><!-- duration: 8ms -->
+    <step title="Starting PushDeployAsync" date="2025-07-04T04:28:25.944" /><!-- duration: 1ms -->
+    <step title="Writing artifact to /tmp/zipdeploy/38621d91-9f0d-4d56-b70e-50ae22f2c18b.zip" date="2025-07-04T04:28:25.995" >
+      <step title="Writing multipart request body to /tmp/zipdeploy/38621d91-9f0d-4d56-b70e-50ae22f2c18b.zip" date="2025-07-04T04:28:26.004" /><!-- duration: 10ms -->
+    </step><!-- duration: 30939ms -->
+    <step title="Start deployment in the background" date="2025-07-04T04:28:56.954" >
+      <step title="Acquiring Deployment Lock" date="2025-07-04T04:28:56.985" /><!-- duration: 8ms -->
+      <step title="Cannot Acquire Deployment Lock already held" date="2025-07-04T04:28:57.003" /><!-- duration: 11ms -->
+    </step><!-- duration: 181ms -->
+    <step title="There is a deployment currently in progress. Please try again when it completes." date="2025-07-04T04:28:57.213" /><!-- duration: 2ms -->
+  </step><!-- duration: 31302ms -->
+  <step title="Outgoing response" date="2025-07-04T04:28:57.313" type="response" statusCode="409" statusText="Conflict" /><!-- duration: 1ms -->
+</step><!-- duration: 31499ms -->

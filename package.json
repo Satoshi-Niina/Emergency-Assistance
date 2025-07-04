@@ -35,6 +35,7 @@
     "start:prod": "NODE_ENV=production node dist/server/index.js",
     "start:development": "copy env.development .env && npm start",
     "start:production": "copy env.production .env && npm start",
+    "start:azure": "node startup.js",
     "test": "jest",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

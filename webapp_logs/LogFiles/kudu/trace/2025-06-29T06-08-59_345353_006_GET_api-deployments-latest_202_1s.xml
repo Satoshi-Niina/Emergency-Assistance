@@ -1,0 +1,9 @@
+<step title="Incoming Request" date="2025-06-29T06:08:59.280" instance="345353" url="/api/deployments/latest?deployer=GITHUB_ZIP_DEPLOY&amp;time=2025-06-29_06-08-52Z" method="GET" type="request" pid="822,1,24" Host="emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" User-Agent="GITHUBACTIONS_DeployWebAppToAzure_6afaea893f47a147fa5dac857d1041ffd4a8f022e29971635168cd4dcb90f2c0" Authorization="Bas..." Content-Type="application/json; charset=utf-8" Cookie="ARRAffinity=345353a6e2e5ca1cb44ba615462d7ac6ac166df501ae2807c92c9581cdccacea;Path=/;HttpOnly;Secure;Domain=emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net; ARRAffinitySameSite=345353a6e2e5ca1cb44ba615462d7ac6ac166df501ae2807c92c9581cdccacea;Path=/;HttpOnly;SameSite=None;Secure;Domain=emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" Content-Length="0" X-ARR-LOG-ID="9af97891-0fa4-4604-970a-7b13573b2652" CLIENT-IP="20.172.233.105:25537" X-SITE-DEPLOYMENT-ID="emergency-backend-api" WAS-DEFAULT-HOSTNAME="emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/api/deployments/latest?deployer=GITHUB_ZIP_DEPLOY&amp;time=2025-06-29_06-08-52Z" X-Client-IP="20.172.233.105" X-Client-Port="25537" >
+  <step title="Cleanup Xml Logs" date="2025-06-29T06:08:59.304" /><!-- duration: 21ms -->
+  <step title="DeploymentService.GetResult" date="2025-06-29T06:08:59.364" >
+    <step title="DeploymentService.GetLatestDeployment" date="2025-06-29T06:08:59.382" >
+      <step title="DeploymentManager.GetResults" date="2025-06-29T06:08:59.384" /><!-- duration: 965ms -->
+    </step><!-- duration: 987ms -->
+  </step><!-- duration: 1008ms -->
+  <step title="Outgoing response" date="2025-06-29T06:09:00.390" type="response" statusCode="202" statusText="Accepted" /><!-- duration: 2ms -->
+</step><!-- duration: 1130ms -->

@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<deployment>
+  <id>36a05e13-dc55-4864-9d1d-6069e0e0c258</id>
+  <author>N/A</author>
+  <deployer>GITHUB_ZIP_DEPLOY</deployer>
+  <authorEmail>N/A</authorEmail>
+  <message>{"type":"deployment","sha":"d033ded4649ca0cb08b36ccc7b4b1e3c1476d7eb","repoName":"Satoshi-Niina/Emergency-Assistance","actor":"Satoshi-Niina","slotName":"production","commitMessage":"Fix: Update GitHub Actions to trigger on main branch pushes"}</message>
+  <progress></progress>
+  <status>Success</status>
+  <statusText></statusText>
+  <lastSuccessEndTime>2025-07-04T04:42:45.1014941Z</lastSuccessEndTime>
+  <receivedTime>2025-07-04T04:38:38.3042121Z</receivedTime>
+  <startTime>2025-07-04T04:38:39.5005311Z</startTime>
+  <endTime>2025-07-04T04:42:45.1014941Z</endTime>
+  <complete>True</complete>
+  <is_temp>False</is_temp>
+  <is_readonly>True</is_readonly>
+  <buildSummary />
+</deployment>

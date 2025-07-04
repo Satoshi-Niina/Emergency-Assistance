@@ -1,0 +1,6 @@
+<step title="Incoming Request" date="2025-07-03T11:00:45.057" instance="345353" url="/api/settings" method="GET" type="request" pid="820,1,16" Host="emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" User-Agent="GITHUBACTIONS_DeployWebAppToAzure_6afaea893f47a147fa5dac857d1041ffd4a8f022e29971635168cd4dcb90f2c0" Authorization="Bas..." Content-Type="application/json; charset=utf-8" Content-Length="0" X-ARR-LOG-ID="dfc7dec4-5d86-48f0-b875-d464f7c0036f" CLIENT-IP="4.227.233.107:41856" X-SITE-DEPLOYMENT-ID="emergency-backend-api" WAS-DEFAULT-HOSTNAME="emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/api/settings" X-Client-IP="4.227.233.107" X-Client-Port="41856" >
+  <step title="Cleanup Xml Logs" date="2025-07-03T11:00:45.058" >
+    <step title="Cleanup Infos" date="2025-07-03T11:00:45.068" totalFiles="1200" totalCleanup="1040" /><!-- duration: 4ms -->
+  </step><!-- duration: 17ms -->
+  <step title="Outgoing response" date="2025-07-03T11:00:45.078" type="response" statusCode="200" statusText="OK" /><!-- duration: 2ms -->
+</step><!-- duration: 24ms -->

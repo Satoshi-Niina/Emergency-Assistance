@@ -232,4 +232,110 @@ Azure Portal → Static Web Apps → emergency-frontend → Monitoring → Logs
 ### 3. 設定の反映確認
 1. アプリケーションのヘルスチェックエンドポイントにアクセス
 2. ログでエラーがないか確認
-3. 主要機能が正常に動作するか確認 
+3. 主要機能が正常に動作するか確認
+
+# Azure App Service 設定手順
+
+## 1. Azure App Service の作成
+
+1. Azure Portal で新しい App Service を作成
+2. 名前: `emergency-backend`
+3. ランタイム: Node.js 20 LTS
+4. プラン: Basic 以上（WebSocket対応のため）
+
+## 2. アプリケーション設定
+
+Azure App Service の「設定」→「アプリケーション設定」で以下を設定：
+
+### 必須環境変数
+```
+NODE_ENV=production
+PORT=8080
+```
+
+### データベース設定
+```
+DATABASE_URL=<your-database-connection-string>
+```
+
+### 認証設定
+```
+SESSION_SECRET=<your-session-secret>
+```
+
+### OpenAI設定
+```
+OPENAI_API_KEY=<your-openai-api-key>
+```
+
+### Azure Storage設定
+```
+AZURE_STORAGE_CONNECTION_STRING=<your-azure-storage-connection-string>
+AZURE_STORAGE_ACCOUNT_NAME=<your-storage-account-name>
+AZURE_STORAGE_ACCOUNT_KEY=<your-storage-account-key>
+STORAGE_CONTAINER_NAME=<your-container-name>
+```
+
+### フロントエンドURL
+```
+FRONTEND_URL=https://your-frontend-url.azurestaticapps.net
+```
+
+## 3. GitHub Secrets 設定
+
+GitHub リポジトリの「Settings」→「Secrets and variables」→「Actions」で以下を設定：
+
+### 必須シークレット
+- `AZURE_WEBAPP_NAME`: `emergency-backend`
+- `AZURE_CREDENTIALS`: Azure Service Principal の認証情報
+
+### 環境変数シークレット
+- `OPENAI_API_KEY`
+- `AZURE_STORAGE_CONNECTION_STRING`
+- `FRONTEND_URL`
+- `DATABASE_URL`
+- `SESSION_SECRET`
+- `STORAGE_CONTAINER_NAME`
+- `AZURE_STORAGE_ACCOUNT_NAME`
+- `AZURE_STORAGE_ACCOUNT_KEY`
+
+## 4. Azure Service Principal の作成
+
+```bash
+# Azure CLI でログイン
+az login
+
+# Service Principal を作成
+az ad sp create-for-rbac --name "emergency-backend-deploy" --role contributor \
+    --scopes /subscriptions/<subscription-id>/resourceGroups/<resource-group-name>/providers/Microsoft.Web/sites/emergency-backend \
+    --sdk-auth
+
+# 出力されたJSONをGitHub SecretsのAZURE_CREDENTIALSに設定
+```
+
+## 5. デプロイ確認
+
+1. mainブランチにプッシュ
+2. GitHub Actions でデプロイが実行される
+3. Azure App Service のログで起動状況を確認
+4. `/api/health` エンドポイントで動作確認
+
+## 6. トラブルシューティング
+
+### よくある問題
+- 環境変数が設定されていない
+- データベース接続エラー
+- ポート設定の問題
+- ファイルパスの問題
+
+### ログ確認方法
+1. Azure Portal → App Service → ログストリーム
+2. GitHub Actions の実行ログ
+3. アプリケーションログ
+
+## 7. カスタムドメイン設定（オプション）
+
+必要に応じてカスタムドメインを設定：
+1. App Service → カスタムドメイン
+2. ドメインの追加
+3. SSL証明書の設定 

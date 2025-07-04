@@ -1,0 +1,16 @@
+<step title="Incoming Request" date="2025-07-02T06:59:33.968" instance="345353" url="/api/publish?async=true&amp;deployer=GITHUB_ONE_DEPLOY&amp;type=zip&amp;message=%7B%22type%22%3A%22deployment%22%2C%22sha%22%3A%225dc900ecb4f1420ab1707d39f9815afe97facb59%22%2C%22repoName%22%3A%22Satoshi-Niina%2FEmergency-Assistance%22%2C%22actor%22%3A%22Satoshi-Niina%22%2C%22slotName%22%3A%22production%22%2C%22commitMessage%22%3A%22%E3%83%87%E3%83%90%E3%83%83%E3%82%B0%3A%20Azure%20Web%20App%E5%90%8D%E3%81%AE%E7%A2%BA%E8%AA%8D%E3%82%92%E8%BF%BD%E5%8A%A0%22%7D" method="POST" type="request" pid="820,1,15" Host="emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" User-Agent="GITHUBACTIONS_DeployWebAppToAzure_6afaea893f47a147fa5dac857d1041ffd4a8f022e29971635168cd4dcb90f2c0" Authorization="Bea..." Content-Type="application/octet-stream" Cookie="ARRAffinity=345353a6e2e5ca1cb44ba615462d7ac6ac166df501ae2807c92c9581cdccacea;Path=/;HttpOnly;Secure;Domain=emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net; ARRAffinitySameSite=345353a6e2e5ca1cb44ba615462d7ac6ac166df501ae2807c92c9581cdccacea;Path=/;HttpOnly;SameSite=None;Secure;Domain=emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" Transfer-Encoding="chunked" X-ARR-LOG-ID="3052fc46-3239-4dc3-b5b5-9e20488a030f" CLIENT-IP="20.230.67.101:1024" X-SITE-DEPLOYMENT-ID="emergency-backend-api" WAS-DEFAULT-HOSTNAME="emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/api/publish?async=true&amp;deployer=GITHUB_ONE_DEPLOY&amp;type=zip&amp;message=%7B%22type%22%3A%22deployment%22%2C%22sha%22%3A%225dc900ecb4f1420ab1707d39f9815afe97facb59%22%2C%22repoName%22%3A%22Satoshi-Niina%2FEmergency-Assistance%22%2C%22actor%22%3A%22Satoshi-Niina%22%2C%22slotName%22%3A%22production%22%2C%22commitMessage%22%3A%22%E3%83%87%E3%83%90%E3%83%83%E3%82%B0%3A%20Azure%20Web%20App%E5%90%8D%E3%81%AE%E7%A2%BA%E8%AA%8D%E3%82%92%E8%BF%BD%E5%8A%A0%22%7D" X-Client-IP="20.230.67.101" X-Client-Port="1024" >
+  <step title="Cleanup Xml Logs" date="2025-07-02T06:59:33.969" >
+    <step title="Cleanup Infos" date="2025-07-02T06:59:33.974" totalFiles="226" totalCleanup="66" /><!-- duration: 1ms -->
+  </step><!-- duration: 7ms -->
+  <step title="OneDeploy" date="2025-07-02T06:59:34.056" >
+    <step title="Starting PushDeployAsync" date="2025-07-02T06:59:34.063" /><!-- duration: 1ms -->
+    <step title="Writing artifact to /tmp/zipdeploy/20473abb-024c-4147-b865-f9a1eecb785e.zip" date="2025-07-02T06:59:34.073" >
+      <step title="Writing multipart request body to /tmp/zipdeploy/20473abb-024c-4147-b865-f9a1eecb785e.zip" date="2025-07-02T06:59:34.074" /><!-- duration: 8ms -->
+    </step><!-- duration: 23477ms -->
+    <step title="Start deployment in the background" date="2025-07-02T06:59:57.602" >
+      <step title="Acquiring Deployment Lock" date="2025-07-02T06:59:57.629" /><!-- duration: 1ms -->
+      <step title="Acquired Deployment Lock" date="2025-07-02T06:59:57.644" /><!-- duration: 1ms -->
+    </step><!-- duration: 122ms -->
+  </step><!-- duration: 23676ms -->
+  <step title="Outgoing response" date="2025-07-02T06:59:57.734" type="response" statusCode="202" statusText="Accepted" /><!-- duration: 1ms -->
+</step><!-- duration: 23768ms -->

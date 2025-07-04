@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<deployment>
+  <id>6b59f7fc-6a2f-42a4-870e-be02ec861d8d</id>
+  <author>N/A</author>
+  <deployer>GITHUB_ZIP_DEPLOY</deployer>
+  <authorEmail>N/A</authorEmail>
+  <message>{"type":"deployment","sha":"4fb02d9af92da2518f14e74a2c5982f7675dfdfc","repoName":"Satoshi-Niina/Emergency-Assistance","actor":"Satoshi-Niina","slotName":"production","commitMessage":" build:sharedスクリプトをLinux環境対応に修正 (xcopy  cp)"}</message>
+  <progress></progress>
+  <status>Success</status>
+  <statusText></statusText>
+  <lastSuccessEndTime>2025-07-04T02:30:29.2133909Z</lastSuccessEndTime>
+  <receivedTime>2025-07-04T02:27:37.0016914Z</receivedTime>
+  <startTime>2025-07-04T02:27:38.2669938Z</startTime>
+  <endTime>2025-07-04T02:30:29.2133909Z</endTime>
+  <complete>True</complete>
+  <is_temp>False</is_temp>
+  <is_readonly>True</is_readonly>
+  <buildSummary />
+</deployment>

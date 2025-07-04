@@ -1,0 +1,11 @@
+<step title="Incoming Request" date="2025-07-04T01:22:11.961" instance="345353" url="/api/deployments/latest?deployer=GITHUB_ZIP_DEPLOY&amp;time=2025-07-04_01-19-24Z" method="GET" type="request" pid="820,1,52" Host="emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" User-Agent="GITHUBACTIONS_DeployWebAppToAzure_6afaea893f47a147fa5dac857d1041ffd4a8f022e29971635168cd4dcb90f2c0" Authorization="Bas..." Content-Type="application/json; charset=utf-8" Cookie="ARRAffinity=345353a6e2e5ca1cb44ba615462d7ac6ac166df501ae2807c92c9581cdccacea;Path=/;HttpOnly;Secure;Domain=emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net; ARRAffinitySameSite=345353a6e2e5ca1cb44ba615462d7ac6ac166df501ae2807c92c9581cdccacea;Path=/;HttpOnly;SameSite=None;Secure;Domain=emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" Content-Length="0" X-ARR-LOG-ID="1612553d-c439-4110-be46-8acde6c37ca9" CLIENT-IP="20.7.176.61:1984" X-SITE-DEPLOYMENT-ID="emergency-backend-api" WAS-DEFAULT-HOSTNAME="emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/api/deployments/latest?deployer=GITHUB_ZIP_DEPLOY&amp;time=2025-07-04_01-19-24Z" X-Client-IP="20.7.176.61" X-Client-Port="1984" >
+  <step title="Cleanup Xml Logs" date="2025-07-04T01:22:11.962" >
+    <step title="Cleanup Infos" date="2025-07-04T01:22:12.011" totalFiles="1453" totalCleanup="1293" /><!-- duration: 29ms -->
+  </step><!-- duration: 80ms -->
+  <step title="DeploymentService.GetResult" date="2025-07-04T01:22:12.062" >
+    <step title="DeploymentService.GetLatestDeployment" date="2025-07-04T01:22:12.063" >
+      <step title="DeploymentManager.GetResults" date="2025-07-04T01:22:12.072" /><!-- duration: 618ms -->
+    </step><!-- duration: 635ms -->
+  </step><!-- duration: 638ms -->
+  <step title="Outgoing response" date="2025-07-04T01:22:12.708" type="response" statusCode="202" statusText="Accepted" /><!-- duration: 1ms -->
+</step><!-- duration: 749ms -->

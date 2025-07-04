@@ -1,0 +1,11 @@
+<step title="Incoming Request" date="2025-07-04T04:42:23.216" instance="345353" url="/api/deployments/latest?deployer=GITHUB_ZIP_DEPLOY&amp;time=2025-07-04_04-37-56Z" method="GET" type="request" pid="820,1,18" Host="emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" User-Agent="GITHUBACTIONS_DeployWebAppToAzure_6afaea893f47a147fa5dac857d1041ffd4a8f022e29971635168cd4dcb90f2c0" Authorization="Bas..." Content-Type="application/json; charset=utf-8" Cookie="ARRAffinity=345353a6e2e5ca1cb44ba615462d7ac6ac166df501ae2807c92c9581cdccacea;Path=/;HttpOnly;Secure;Domain=emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net; ARRAffinitySameSite=345353a6e2e5ca1cb44ba615462d7ac6ac166df501ae2807c92c9581cdccacea;Path=/;HttpOnly;SameSite=None;Secure;Domain=emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" Content-Length="0" X-ARR-LOG-ID="68a77bbf-d329-49ad-8cdf-5b6eb0dd5d48" CLIENT-IP="52.167.143.78:1024" X-SITE-DEPLOYMENT-ID="emergency-backend-api" WAS-DEFAULT-HOSTNAME="emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/api/deployments/latest?deployer=GITHUB_ZIP_DEPLOY&amp;time=2025-07-04_04-37-56Z" X-Client-IP="52.167.143.78" X-Client-Port="1024" >
+  <step title="Cleanup Xml Logs" date="2025-07-04T04:42:23.217" >
+    <step title="Cleanup Infos" date="2025-07-04T04:42:23.377" totalFiles="1763" totalCleanup="1603" /><!-- duration: 79ms -->
+  </step><!-- duration: 240ms -->
+  <step title="DeploymentService.GetResult" date="2025-07-04T04:42:23.585" >
+    <step title="DeploymentService.GetLatestDeployment" date="2025-07-04T04:42:23.587" >
+      <step title="DeploymentManager.GetResults" date="2025-07-04T04:42:23.616" /><!-- duration: 881ms -->
+    </step><!-- duration: 919ms -->
+  </step><!-- duration: 922ms -->
+  <step title="Outgoing response" date="2025-07-04T04:42:24.515" type="response" statusCode="202" statusText="Accepted" /><!-- duration: 2ms -->
+</step><!-- duration: 1302ms -->
