@@ -2,7 +2,7 @@ name: Deploy to Azure Container Registry
 
 on:
   push:
-    branches: [ feature/ver2.10 ]
+    branches: [ main, feature/ver2.10 ]
   workflow_dispatch:
 
 env:
