@@ -8,6 +8,7 @@ on:
 env:
   NODE_ENV: production
   AZURE_WEBAPP_NAME: emergency-backend
+  AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
   FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
@@ -89,7 +90,7 @@ jobs:
     - name: Verify deployment
       run: |
         echo "🔍 デプロイ確認中..."
-        az webapp show --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_WEBAPP_NAME }} --query "state" -o tsv
+        az webapp show --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query "state" -o tsv
         echo "✅ デプロイ確認完了"
 
     - name: Azure logout
