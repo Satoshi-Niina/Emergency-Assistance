@@ -87,10 +87,16 @@ jobs:
         app-name: ${{ env.AZURE_WEBAPP_NAME }}
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
         package: deployment
+      # フォールバック: Service Principal認証
+      # with:
+      #   app-name: ${{ env.AZURE_WEBAPP_NAME }}
+      #   package: deployment
 
     - name: Verify deployment
       run: |
         echo "🔍 デプロイ確認中..."
+        echo "App Service Name: ${{ env.AZURE_WEBAPP_NAME }}"
+        echo "Resource Group: ${{ env.AZURE_RESOURCE_GROUP }}"
         az webapp show --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query "state" -o tsv
         echo "✅ デプロイ確認完了"
 
