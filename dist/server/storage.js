@@ -1,6 +1,6 @@
-import { users } from '../shared/schema';
-import { DatabaseStorage } from "./database-storage";
-import { db } from './db';
+import { users } from '../shared/schema.js';
+import { DatabaseStorage } from "./database-storage.js";
+import { db } from './db.js';
 // データベース接続テスト
 const testDatabaseConnection = async () => {
     try {

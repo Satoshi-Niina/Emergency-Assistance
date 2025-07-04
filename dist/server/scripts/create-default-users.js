@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
-import { db } from '../db';
-import { users } from '../db/schema';
+import { db } from '../db.js';
+import { users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 export async function createDefaultUsers() {
     try {

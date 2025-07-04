@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import multer from 'multer';
-import { storage } from '../storage';
+import { storage } from '../storage.js';
 // 知識ベースディレクトリを使用
 const mediaDir = path.join(process.cwd(), 'knowledge-base', 'media');
 if (!fs.existsSync(mediaDir)) {

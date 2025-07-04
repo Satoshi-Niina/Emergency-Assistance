@@ -3,7 +3,7 @@ import OpenAI from 'openai';
 import { z } from 'zod';
 import * as fs from 'fs';
 import * as path from 'path';
-import { upload } from '../utils/image-uploader';
+import { upload } from '../utils/image-uploader.js';
 import crypto from 'crypto';
 const router = Router();
 // 開発環境ではOpenAI APIキーがなくても動作するように条件付き初期化

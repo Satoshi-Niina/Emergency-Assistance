@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import multer from 'multer';
 import AdmZip from 'adm-zip';
-import { log } from '../vite';
+import { log } from '../vite.js';
 // 一時ファイルクリーンアップユーティリティ
 function cleanupTempDirectory(dirPath) {
     if (!fs.existsSync(dirPath))

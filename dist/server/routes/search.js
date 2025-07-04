@@ -1,5 +1,5 @@
 import express from 'express';
-import { SearchService } from '../services/search';
+import { SearchService } from '../services/search.js';
 const router = express.Router();
 const searchService = new SearchService();
 router.post('/search', async (req, res) => {

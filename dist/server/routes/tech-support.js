@@ -8,8 +8,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import Fuse from 'fuse.js';
-import { extractPdfText, extractWordText, extractExcelText, extractPptxText } from '../lib/document-processor';
-import { addDocumentToKnowledgeBase } from '../lib/knowledge-base';
+import { extractPdfText, extractWordText, extractExcelText, extractPptxText } from '../lib/document-processor.js';
+import { addDocumentToKnowledgeBase } from '../lib/knowledge-base.js';
 // Logging function to control debug output
 function logDebug(message, ...args) {
     // セキュリティのためデバッグ情報を非表示

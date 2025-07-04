@@ -1,9 +1,9 @@
-import { storage } from '../storage';
-import { formatChatHistoryForExternalSystem } from '../lib/chat-export-formatter';
-import { exportFileManager } from '../lib/export-file-manager';
-import { processOpenAIRequest } from '../lib/openai';
-import { insertMessageSchema, insertMediaSchema, insertChatSchema, messages } from '../shared/schema';
-import { db } from '../db';
+import { storage } from '../storage.js';
+import { formatChatHistoryForExternalSystem } from '../lib/chat-export-formatter.js';
+import { exportFileManager } from '../lib/export-file-manager.js';
+import { processOpenAIRequest } from '../lib/openai.js';
+import { insertMessageSchema, insertMediaSchema, insertChatSchema, messages } from '../../shared/schema.js';
+import { db } from '../db.js';
 import { z } from 'zod';
 export function registerChatRoutes(app) {
     console.log('📡 チャットルートを登録中...');
