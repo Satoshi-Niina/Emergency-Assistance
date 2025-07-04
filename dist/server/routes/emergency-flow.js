@@ -6,9 +6,16 @@ import * as path from 'path';
 import { upload } from '../utils/image-uploader';
 import crypto from 'crypto';
 const router = Router();
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
+// 開発環境ではOpenAI APIキーがなくても動作するように条件付き初期化
+let openai = null;
+if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'dev-mock-key') {
+    openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+    });
+}
+else {
+    console.log('[DEV] OpenAI client not initialized - API key not available');
+}
 const generateFlowSchema = z.object({
     keyword: z.string().min(1),
 });
@@ -403,6 +410,14 @@ router.post('/generate', async (req, res) => {
         const filePath = path.join(process.cwd(), 'knowledge-base/troubleshooting', `${cleanFlowId}.json`);
         if (!fs.existsSync(troubleshootingDir)) {
             fs.mkdirSync(troubleshootingDir, { recursive: true });
+        }
+        // OpenAIクライアントが利用可能かチェック
+        if (!openai) {
+            return res.status(503).json({
+                success: false,
+                error: 'OpenAI APIが利用できません。開発環境ではAPIキーを設定してください。',
+                details: 'OpenAI client not available'
+            });
         }
         const completion = await openai.chat.completions.create({
             model: "gpt-4",

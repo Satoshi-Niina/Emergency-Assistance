@@ -1,50 +1,42 @@
-name: build-and-deploy
+name: Deploy backend to Azure Web App
 
 on:
   push:
     branches:
-      - main  # ← あなたの本番用ブランチ名に変更可
+      - main  # ← デプロイ対象ブランチを必要に応じて変更
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: emergency-backend-api  # App Service 名称
+  AZURE_WEBAPP_PACKAGE_PATH: .              # アプリ全体をデプロイ
+  NODE_VERSION: '20'                        # 必要な Node.js バージョン
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
+      - name: ⬇️ Checkout repo
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: ⚙️ Set up Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
-          node-version: 18  # 使用しているNodeバージョンに合わせて調整可
+          node-version: ${{ env.NODE_VERSION }}
 
-      - name: Install dependencies
+      - name: 📦 Install dependencies
         run: npm install
 
-      - name: Build backend
-        run: npm run build:server
+      - name: 🛠️ Build backend
+        run: npm run build
 
-      - name: List build output
-        run: |
-          echo "=== Build output directory structure ==="
-          ls -la dist/
-          echo "=== Server files ==="
-          ls -la dist/server/
-          echo "=== Shared files ==="
-          ls -la dist/shared/
+      - name: 📁 List output (debug)
+        run: ls -R dist
 
-      - name: Create .env.production
-        run: |
-          echo "NODE_ENV=production" >> .env.production
-          echo "PORT=3001" >> .env.production
-          echo "SESSION_SECRET=${{ secrets.SESSION_SECRET }}" >> .env.production
-          echo "FRONTEND_URL=${{ secrets.FRONTEND_URL }}" >> .env.production
-          echo "CORS_ORIGIN=${{ secrets.CORS_ORIGIN }}" >> .env.production
-          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env.production
-
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
+      - name: 🚀 Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
         with:
-          app-name: emergency-backend-api
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: .
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          slot-name: 'production'
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
+          package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}

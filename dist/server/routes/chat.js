@@ -2,7 +2,7 @@ import { storage } from '../storage';
 import { formatChatHistoryForExternalSystem } from '../lib/chat-export-formatter';
 import { exportFileManager } from '../lib/export-file-manager';
 import { processOpenAIRequest } from '../lib/openai';
-import { insertMessageSchema, insertMediaSchema, insertChatSchema, messages } from '@shared/schema';
+import { insertMessageSchema, insertMediaSchema, insertChatSchema, messages } from '../shared/schema';
 import { db } from '../db';
 import { z } from 'zod';
 export function registerChatRoutes(app) {
