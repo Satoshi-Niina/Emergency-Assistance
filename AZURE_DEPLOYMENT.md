@@ -129,6 +129,32 @@ deployment/
    - `web.config`のルーティング設定を確認
    - CORS設定を確認
 
+5. **JSONパースエラー（"Unexpected token '<'"）**
+   - APIエンドポイントがHTMLページを返している可能性
+   - `/api/health`エンドポイントでAPIの動作確認
+   - `/api/debug`エンドポイントで詳細なデバッグ情報を確認
+
+### デバッグ手順
+
+1. **ヘルスチェック**
+   ```bash
+   curl https://your-app-name.azurewebsites.net/api/health
+   ```
+
+2. **デバッグ情報確認**
+   ```bash
+   curl https://your-app-name.azurewebsites.net/api/debug
+   ```
+
+3. **認証エンドポイント確認**
+   ```bash
+   curl https://your-app-name.azurewebsites.net/api/auth/me
+   ```
+
+4. **Azure App Serviceログ確認**
+   - Azure Portal → App Service → ログストリーム
+   - リアルタイムでログを確認
+
 ### ログ確認方法
 
 1. **GitHub Actions ログ**
@@ -139,6 +165,7 @@ deployment/
 
 3. **アプリケーションログ**
    - `/api/health` エンドポイントで確認
+   - `/api/debug` エンドポイントで詳細確認
 
 ## パフォーマンス最適化
 

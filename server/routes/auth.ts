@@ -86,11 +86,14 @@ router.post('/login', async (req, res) => {
 
     // レスポンスデータ
     const responseData = {
-      id: user.id,
-      username: user.username,
-      displayName: user.display_name,
-      role: user.role,
-      department: user.department
+      success: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        displayName: user.display_name,
+        role: user.role,
+        department: user.department
+      }
     };
 
     console.log('✅ ログイン成功:', responseData);
@@ -155,11 +158,14 @@ router.post('/register', async (req, res) => {
     }
 
     const responseData = {
-      id: user.id,
-      username: user.username,
-      displayName: user.display_name,
-      role: user.role,
-      department: user.department
+      success: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        displayName: user.display_name,
+        role: user.role,
+        department: user.department
+      }
     };
 
     console.log('✅ ユーザー登録成功:', responseData);
@@ -232,7 +238,7 @@ router.get('/me', async (req, res) => {
     });
   }
   
-  const responseData = {
+  const userData = {
     id: user.id,
     username: user.username,
     displayName: user.display_name,
@@ -240,7 +246,11 @@ router.get('/me', async (req, res) => {
     department: user.department
   };
   
-  res.status(200).json(responseData);
+  console.log('✅ ユーザー情報取得成功:', userData);
+  res.status(200).json({
+    success: true,
+    user: userData
+  });
 });
 
 export const authRouter = router;

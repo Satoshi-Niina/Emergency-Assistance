@@ -271,14 +271,14 @@ OPENAI_API_KEY=<your-openai-api-key>
 ### Azure Storage設定
 ```
 AZURE_STORAGE_CONNECTION_STRING=<your-azure-storage-connection-string>
+STORAGE_CONTAINER_NAME=<your-container-name>
 AZURE_STORAGE_ACCOUNT_NAME=<your-storage-account-name>
 AZURE_STORAGE_ACCOUNT_KEY=<your-storage-account-key>
-STORAGE_CONTAINER_NAME=<your-container-name>
 ```
 
 ### フロントエンドURL
 ```
-FRONTEND_URL=https://your-frontend-url.azurestaticapps.net
+FRONTEND_URL=<your-frontend-url>
 ```
 
 ## 3. GitHub Secrets 設定
