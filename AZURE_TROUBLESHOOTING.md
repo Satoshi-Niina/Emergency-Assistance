@@ -133,3 +133,132 @@ curl -X OPTIONS https://your-backend-api.azurewebsites.net/api/auth/login \
 2. クライアント側のネットワークタブ
 3. 環境変数の設定状況
 4. Azure Web Appの設定 
+
+## よくあるエラーと解決方法
+
+### 1. "Publish profile is invalid" エラー
+
+**エラーメッセージ:**
+```
+Error: Deployment Failed, Error: Publish profile is invalid for app-name and slot-name provided. Provide correct publish profile credentials for app.
+```
+
+**原因:**
+- Azure Service Principalの認証情報が無効
+- 認証情報の期限切れ
+- 権限不足
+
+**解決方法:**
+
+#### A. 新しいService Principalを作成
+
+1. **Azure CLIでログイン**
+   ```bash
+   az login
+   ```
+
+2. **Service Principal作成**
+   ```bash
+   az ad sp create-for-rbac \
+     --name "emergency-backend-deploy" \
+     --role contributor \
+     --scopes /subscriptions/$(az account show --query id -o tsv)/resourceGroups/your-resource-group/providers/Microsoft.Web/sites/emergency-backend \
+     --sdk-auth
+   ```
+
+3. **出力されたJSONをGitHub Secretsに設定**
+   - GitHubリポジトリ → Settings → Secrets and variables → Actions
+   - `AZURE_CREDENTIALS` を更新
+
+#### B. 権限の確認
+
+Service Principalに以下の権限があることを確認：
+- **Contributor** ロール（App Service用）
+- **Azure Service Management** APIアクセス許可
+
+### 2. "Resource not found" エラー
+
+**原因:**
+- App Service名が間違っている
+- リソースグループ名が間違っている
+
+**解決方法:**
+1. Azure Portalで正しいApp Service名を確認
+2. GitHub Secretsの `AZURE_WEBAPP_NAME` を更新
+
+### 3. "Build failed" エラー
+
+**原因:**
+- 依存関係のインストールエラー
+- TypeScriptコンパイルエラー
+- 環境変数が不足
+
+**解決方法:**
+1. ローカルで `npm run build` を実行してエラーを確認
+2. 必要な環境変数がGitHub Secretsに設定されているか確認
+
+## デバッグ手順
+
+### 1. Azure接続の確認
+
+GitHub Actionsのログで以下を確認：
+```
+🔍 Azure接続を確認中...
+✅ Azure接続確認完了
+```
+
+### 2. App Serviceの状態確認
+
+```bash
+az webapp show --name emergency-backend --resource-group your-resource-group
+```
+
+### 3. ログの確認
+
+- **GitHub Actionsログ**: リポジトリ → Actions → 最新の実行
+- **Azure App Serviceログ**: Azure Portal → App Service → ログストリーム
+
+## 予防策
+
+### 1. 定期的な認証情報の更新
+
+Service Principalの認証情報は定期的に更新することを推奨：
+- 90日ごとに新しいクライアントシークレットを作成
+- 古い認証情報を削除
+
+### 2. 最小権限の原則
+
+Service Principalには必要最小限の権限のみを付与：
+- 特定のApp Serviceのみにアクセス
+- 読み取り専用権限の使用を検討
+
+### 3. 環境変数の管理
+
+機密情報はGitHub Secretsで管理：
+- データベース接続文字列
+- APIキー
+- ストレージ接続文字列
+
+## 緊急時の対応
+
+### 1. 手動デプロイ
+
+GitHub Actionsが失敗した場合の手動デプロイ：
+
+```bash
+# ローカルでビルド
+npm run build
+
+# Azure CLIでデプロイ
+az webapp deployment source config-zip \
+  --resource-group your-resource-group \
+  --name emergency-backend \
+  --src deployment.zip
+```
+
+### 2. ロールバック
+
+前のバージョンに戻す：
+1. Azure Portal → App Service → デプロイメントセンター
+2. 前のデプロイメントを選択
+3. 再デプロイを実行 

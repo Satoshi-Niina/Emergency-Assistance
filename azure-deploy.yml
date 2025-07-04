@@ -36,6 +36,12 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+    - name: Verify Azure connection
+      run: |
+        echo "🔍 Azure接続を確認中..."
+        az account show
+        echo "✅ Azure接続確認完了"
+
     - name: Install dependencies
       run: |
         npm ci
@@ -79,6 +85,12 @@ jobs:
       with:
         app-name: ${{ env.AZURE_WEBAPP_NAME }}
         package: deployment
+
+    - name: Verify deployment
+      run: |
+        echo "🔍 デプロイ確認中..."
+        az webapp show --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_WEBAPP_NAME }} --query "state" -o tsv
+        echo "✅ デプロイ確認完了"
 
     - name: Azure logout
       run: |
