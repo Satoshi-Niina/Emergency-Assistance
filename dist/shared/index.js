@@ -8,3 +8,4 @@ export * from './validation';
 export * from './utils';
 // 後方互換性のためのエクスポート（既存のコードに影響を与えないため）
 export { schema as exampleSchema } from './schema';
+//# sourceMappingURL=index.js.map
