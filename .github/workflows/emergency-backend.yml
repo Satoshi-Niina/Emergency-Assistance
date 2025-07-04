@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_WEBAPP_NAME: emergency-backend-api  # App Service 名称
+  AZURE_WEBAPP_NAME: emergency-backend  # App Service 名称
   AZURE_WEBAPP_PACKAGE_PATH: .              # アプリ全体をデプロイ
   NODE_VERSION: '20'                        # 必要な Node.js バージョン
 

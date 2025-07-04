@@ -3,11 +3,10 @@ const isProduction = import.meta.env.PROD;
 const isDevelopment = import.meta.env.DEV;
 
 // 本番環境用設定
-// 本番環境では相対パスを使用（Azure Static Web Appsのリライトルールを活用）
-// 開発環境ではViteのプロキシを使用
+// 環境変数からAPI URLを取得、なければ相対パスを使用
 export const API_BASE_URL = isProduction 
-  ? ''  // 本番環境では相対パスを使用
-  : ''; // 開発環境でも相対パスを使用（Viteのプロキシを活用）
+  ? (import.meta.env.VITE_API_BASE_URL || '')  // 本番環境では環境変数または相対パス
+  : ''; // 開発環境では相対パスを使用（Viteのプロキシを活用）
 
 // デバッグ用：環境変数の状態を詳細にログ出力
 console.log('🔍 環境変数詳細確認:', {
@@ -28,14 +27,14 @@ console.log('🔧 API設定:', {
   isDevelopment,
   API_BASE_URL,
   // デバッグ用：実際のリクエストURLを確認
-  sampleAuthUrl: buildApiUrl('/api/auth/login'),
+sampleAuthUrl: buildApiUrl('/api/login'),
   // 追加のデバッグ情報
   location: window.location.href,
   origin: window.location.origin,
   hostname: window.location.hostname,
   protocol: window.location.protocol,
   // 実際のAPI URLを構築して確認
-  actualAuthUrl: buildApiUrl('/api/auth/login'),
+actualAuthUrl: buildApiUrl('/api/login'),
   actualMeUrl: buildApiUrl('/api/auth/me'),
   // 環境変数の詳細確認
   envVars: {
@@ -54,7 +53,7 @@ export const buildApiUrl = (endpoint: string): string => {
 
 // 認証APIエンドポイント
 export const AUTH_API = {
-  LOGIN: buildApiUrl('/api/auth/login'),
+LOGIN: buildApiUrl('/api/login'),
   LOGOUT: buildApiUrl('/api/auth/logout'),
   ME: buildApiUrl('/api/auth/me'),
 };

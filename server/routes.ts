@@ -186,6 +186,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.use("/api/auth", authRouter);
 
+  // ヘルスチェックエンドポイント（デバッグ用）
+  app.get("/api/health", (req, res) => {
+    console.log('🏥 ヘルスチェックリクエスト受信');
+    res.status(200).json({
+      success: true,
+      message: 'Emergency Assistance Backend is running',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development',
+      session: {
+        hasSession: !!req.session,
+        userId: req.session?.userId || null
+      }
+    });
+  });
+
+  // デバッグ用エンドポイント
+  app.get("/api/debug", (req, res) => {
+    console.log('🔍 デバッグリクエスト受信');
+    res.status(200).json({
+      success: true,
+      message: 'Debug endpoint working',
+      headers: req.headers,
+      session: req.session,
+      environment: process.env.NODE_ENV
+    });
+  });
+
   // User management routes (admin only)
   app.get("/api/users", requireAuth, requireAdmin, async (req, res) => {
     try {

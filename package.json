@@ -36,6 +36,7 @@
     "start:development": "copy env.development .env && npm start",
     "start:production": "copy env.production .env && npm start",
     "start:azure": "node startup.js",
+    "start:azure-debug": "node startup.js --debug",
     "test": "jest",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
