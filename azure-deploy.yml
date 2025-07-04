@@ -85,11 +85,11 @@ jobs:
       uses: azure/webapps-deploy@v3
       with:
         app-name: ${{ env.AZURE_WEBAPP_NAME }}
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
         package: deployment
-      # フォールバック: Service Principal認証
+      # Publish Profile認証（問題がある場合はコメントアウト）
       # with:
       #   app-name: ${{ env.AZURE_WEBAPP_NAME }}
+      #   publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
       #   package: deployment
 
     - name: Verify deployment
