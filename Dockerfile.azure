@@ -26,13 +26,21 @@ COPY . .
 WORKDIR /app/shared
 RUN npm run build
 
+# 共有ライブラリをdistディレクトリにコピー
+WORKDIR /app
+RUN mkdir -p dist && cp -r shared/dist dist/shared
+
 # クライアントビルド
 WORKDIR /app/client
 RUN npm run build
 
-# サーバービルド
+# サーバービルドとパス修正
 WORKDIR /app
 RUN npm run build:server
+RUN npm run fix:paths
+
+# vite.configファイルをdistディレクトリにコピー
+RUN cp vite.config.js dist/
 
 # 本番環境ステージ
 FROM node:20-alpine AS production
@@ -49,6 +57,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/knowledge-base ./knowledge-base
 COPY --from=builder /app/uploads ./uploads
 COPY --from=builder /app/web.config ./web.config
+COPY --from=builder /app/vite.config.js ./vite.config.js
+COPY --from=builder /app/dist/vite.config.js ./dist/vite.config.js
 
 ENV NODE_ENV=production
 ENV PORT=8080
