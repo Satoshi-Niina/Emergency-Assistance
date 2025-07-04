@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { users } from '../shared/schema';
-import { db } from '../db';
+import { users } from '../../shared/schema.js';
+import { db } from '../db.js';
 import { eq, sql } from 'drizzle-orm';
 const router = Router();
 // ✅ ユーザー一覧取得

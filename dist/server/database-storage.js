@@ -1,6 +1,6 @@
-import { users, messages, media, chats, documents, keywords, chatExports } from '../shared/schema';
+import { users, messages, media, chats, documents, keywords, chatExports } from '../shared/schema.js';
 import { eq, like } from "drizzle-orm";
-import { db } from './db';
+import { db } from './db.js';
 import session from "express-session";
 import memorystore from "memorystore";
 // Create a memory store for session that is compatible with express-session

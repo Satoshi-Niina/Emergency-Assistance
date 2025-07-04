@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import bcrypt from 'bcrypt';
-import { users } from '../db/schema';
-import { db } from '../db';
+import { users } from '../db/schema.js';
+import { db } from '../db.js';
 import { eq } from 'drizzle-orm';
-import { logInfo, logError } from '../lib/logger';
+import { logInfo, logError } from '../lib/logger.js';
 const router = Router();
 // ログイン
 router.post('/login', async (req, res) => {

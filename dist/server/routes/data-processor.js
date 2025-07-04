@@ -1,9 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import multer from 'multer';
-import { addDocumentToKnowledgeBase, mergeDocumentContent, backupKnowledgeBase, loadKnowledgeBaseIndex } from '../lib/knowledge-base';
-import { processDocument } from '../lib/document-processor';
-import { log } from '../vite';
+import { addDocumentToKnowledgeBase, mergeDocumentContent, backupKnowledgeBase, loadKnowledgeBaseIndex } from '../lib/knowledge-base.js';
+import { processDocument } from '../lib/document-processor.js';
+import { log } from '../vite.js';
 // ファイル拡張子からドキュメントタイプを取得するヘルパー関数
 function getFileTypeFromExtension(ext) {
     const extMap = {

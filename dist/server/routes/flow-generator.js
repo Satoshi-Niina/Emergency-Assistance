@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
-import { processOpenAIRequest } from '../lib/openai';
-import { searchKnowledgeBase } from '../lib/knowledge-base';
-import { cleanJsonResponse } from '../lib/json-helper';
+import { processOpenAIRequest } from '../lib/openai.js';
+import { searchKnowledgeBase } from '../lib/knowledge-base.js';
+import { cleanJsonResponse } from '../lib/json-helper.js';
 const router = Router();
 // 知識ベースディレクトリ
 const knowledgeBaseDir = './knowledge-base';

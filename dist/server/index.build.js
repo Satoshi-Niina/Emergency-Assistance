@@ -1,7 +1,7 @@
-import { createApp } from "./app";
+import { createApp } from "./app.js";
 import { createServer } from "node:http";
-import { registerRoutes } from "./routes";
-import { setupAuth } from "./auth";
+import { registerRoutes } from "./routes.js";
+import { setupAuth } from "./auth.js";
 async function main() {
     const app = await createApp();
     // Azure Storage統合の初期化

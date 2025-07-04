@@ -1,6 +1,6 @@
 import axios from 'axios';
-import { generateSystemPromptWithKnowledge } from './knowledge-base';
-import { log } from '../vite';
+import { generateSystemPromptWithKnowledge } from './knowledge-base.js';
+import { log } from '../vite.js';
 // Perplexity API キーが設定されているかチェック
 function validateApiKey() {
     const apiKey = process.env.PERPLEXITY_API_KEY;

@@ -4,7 +4,7 @@ import * as path from 'path';
 import multer from 'multer';
 import AdmZip from 'adm-zip';
 import fetch from 'node-fetch';
-import { log } from '../vite';
+import { log } from '../vite.js';
 const router = Router();
 // 知識ベースディレクトリの設定 - uploadsフォルダの使用を廃止
 const knowledgeBaseDir = path.resolve('./knowledge-base');
