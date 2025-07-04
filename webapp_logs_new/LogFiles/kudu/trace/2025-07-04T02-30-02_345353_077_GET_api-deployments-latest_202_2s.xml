@@ -1,0 +1,11 @@
+<step title="Incoming Request" date="2025-07-04T02:30:02.325" instance="345353" url="/api/deployments/latest?deployer=GITHUB_ZIP_DEPLOY&amp;time=2025-07-04_02-26-43Z" method="GET" type="request" pid="820,1,7" Host="emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" User-Agent="GITHUBACTIONS_DeployWebAppToAzure_6afaea893f47a147fa5dac857d1041ffd4a8f022e29971635168cd4dcb90f2c0" Authorization="Bas..." Content-Type="application/json; charset=utf-8" Cookie="ARRAffinity=345353a6e2e5ca1cb44ba615462d7ac6ac166df501ae2807c92c9581cdccacea;Path=/;HttpOnly;Secure;Domain=emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net; ARRAffinitySameSite=345353a6e2e5ca1cb44ba615462d7ac6ac166df501ae2807c92c9581cdccacea;Path=/;HttpOnly;SameSite=None;Secure;Domain=emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" Content-Length="0" X-ARR-LOG-ID="bb665b83-4dd4-43b1-977b-ea744f03fae4" CLIENT-IP="20.241.108.228:1986" X-SITE-DEPLOYMENT-ID="emergency-backend-api" WAS-DEFAULT-HOSTNAME="emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/api/deployments/latest?deployer=GITHUB_ZIP_DEPLOY&amp;time=2025-07-04_02-26-43Z" X-Client-IP="20.241.108.228" X-Client-Port="1986" >
+  <step title="Cleanup Xml Logs" date="2025-07-04T02:30:02.393" >
+    <step title="Cleanup Infos" date="2025-07-04T02:30:02.563" totalFiles="1544" totalCleanup="1384" /><!-- duration: 31ms -->
+  </step><!-- duration: 220ms -->
+  <step title="DeploymentService.GetResult" date="2025-07-04T02:30:02.633" >
+    <step title="DeploymentService.GetLatestDeployment" date="2025-07-04T02:30:02.671" >
+      <step title="DeploymentManager.GetResults" date="2025-07-04T02:30:02.674" /><!-- duration: 1705ms -->
+    </step><!-- duration: 1726ms -->
+  </step><!-- duration: 1783ms -->
+  <step title="Outgoing response" date="2025-07-04T02:30:04.457" type="response" statusCode="202" statusText="Accepted" /><!-- duration: 100ms -->
+</step><!-- duration: 2251ms -->

@@ -1,0 +1,11 @@
+<step title="Incoming Request" date="2025-07-02T07:50:39.848" instance="345353" url="/api/deployments/latest?deployer=OneDeploy&amp;time=2025-07-02_07-49-42Z" method="GET" type="request" pid="820,1,27" Host="emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" User-Agent="GITHUBACTIONS_DeployWebAppToAzure_6afaea893f47a147fa5dac857d1041ffd4a8f022e29971635168cd4dcb90f2c0" Authorization="Bea..." Content-Type="application/json; charset=utf-8" Cookie="ARRAffinity=345353a6e2e5ca1cb44ba615462d7ac6ac166df501ae2807c92c9581cdccacea;Path=/;HttpOnly;Secure;Domain=emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net; ARRAffinitySameSite=345353a6e2e5ca1cb44ba615462d7ac6ac166df501ae2807c92c9581cdccacea;Path=/;HttpOnly;SameSite=None;Secure;Domain=emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" Content-Length="0" X-ARR-LOG-ID="54d3e0a2-705d-4373-ab8b-5d0a6f12d275" CLIENT-IP="40.71.56.15:1025" X-SITE-DEPLOYMENT-ID="emergency-backend-api" WAS-DEFAULT-HOSTNAME="emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/api/deployments/latest?deployer=OneDeploy&amp;time=2025-07-02_07-49-42Z" X-Client-IP="40.71.56.15" X-Client-Port="1025" >
+  <step title="Cleanup Xml Logs" date="2025-07-02T07:50:39.856" >
+    <step title="Cleanup Infos" date="2025-07-02T07:50:39.867" totalFiles="381" totalCleanup="221" /><!-- duration: 1ms -->
+  </step><!-- duration: 20ms -->
+  <step title="DeploymentService.GetResult" date="2025-07-02T07:50:39.886" >
+    <step title="DeploymentService.GetLatestDeployment" date="2025-07-02T07:50:39.887" >
+      <step title="DeploymentManager.GetResults" date="2025-07-02T07:50:39.897" /><!-- duration: 411ms -->
+    </step><!-- duration: 431ms -->
+  </step><!-- duration: 440ms -->
+  <step title="Outgoing response" date="2025-07-02T07:50:40.328" type="response" statusCode="202" statusText="Accepted" /><!-- duration: 1ms -->
+</step><!-- duration: 482ms -->

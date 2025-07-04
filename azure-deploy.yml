@@ -1,4 +1,4 @@
-name: Deploy to Azure Container Registry
+name: Deploy to Azure App Service
 
 on:
   push:
@@ -7,9 +7,7 @@ on:
 
 env:
   NODE_ENV: production
-  REGISTRY_NAME: emergencybackendapi
-  IMAGE_NAME: emergency-assistance
-  AZURE_WEBAPP_NAME: emergency-backend-api
+  AZURE_WEBAPP_NAME: emergency-backend
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
   FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
@@ -19,7 +17,6 @@ env:
   AZURE_STORAGE_ACCOUNT_NAME: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
   AZURE_STORAGE_ACCOUNT_KEY: ${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}
 
-
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -28,31 +25,59 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Log in to Azure Container Registry
-      uses: azure/docker-login@v1
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
       with:
-        login-server: emergencybackendapi.azurecr.io
-        username: emergencybackendapi
-        password: ${{ secrets.ACR_PASSWORD }}
+        node-version: '20'
+        cache: 'npm'
 
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v5
+    - name: Azure login
+      uses: azure/login@v1
       with:
-        context: .
-        file: ./Dockerfile.azure
-        push: true
-        tags: emergencybackendapi.azurecr.io/emergency-assistance:${{ github.sha }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Install dependencies
+      run: |
+        npm ci
+        cd shared && npm ci && cd ..
+        cd client && npm ci && cd ..
+
+    - name: Build application
+      run: npm run build
+      env:
+        NODE_ENV: production
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+        FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+        STORAGE_CONTAINER_NAME: ${{ secrets.STORAGE_CONTAINER_NAME }}
+        AZURE_STORAGE_ACCOUNT_NAME: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
+        AZURE_STORAGE_ACCOUNT_KEY: ${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}
+
+    - name: Create deployment package
+      run: |
+        mkdir -p deployment
+        cp -r dist deployment/
+        cp -r shared/dist deployment/shared/
+        cp -r client/dist deployment/client/
+        cp -r public deployment/
+        cp -r knowledge-base deployment/
+        cp package.json deployment/
+        cp package-lock.json deployment/
+        cp web.config deployment/
+        cp startup.js deployment/
+        cp -r node_modules deployment/
+        cp -r shared/node_modules deployment/shared/
+        cp -r client/node_modules deployment/client/
+        cp .env.production deployment/.env || echo "No .env.production file found"
+        echo "✅ Deployment package created successfully"
 
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v3
       with:
         app-name: ${{ env.AZURE_WEBAPP_NAME }}
-        images: emergencybackendapi.azurecr.io/emergency-assistance:${{ github.sha }}
+        package: deployment
 
     - name: Azure logout
       run: |

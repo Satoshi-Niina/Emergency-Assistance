@@ -1,0 +1,17 @@
+<step title="Incoming Request" date="2025-06-29T07:03:08.523" instance="345353" url="/api/zipdeploy?isAsync=true&amp;deployer=GITHUB_ZIP_DEPLOY&amp;message=%7B%22type%22%3A%22deployment%22%2C%22sha%22%3A%221ca7b77c5906ac23c00feee131f310250b2444e1%22%2C%22repoName%22%3A%22Satoshi-Niina%2FEmergency-Assistance%22%2C%22actor%22%3A%22Satoshi-Niina%22%2C%22slotName%22%3A%22production%22%2C%22commitMessage%22%3A%22azure%E3%83%95%E3%83%AD%E3%83%B3%E3%83%88%2F%E3%82%B5%E3%83%BC%E3%83%90%E3%83%BC%E3%81%AE%E6%8E%A5%E7%B6%9A%E8%A8%AD%E5%AE%9A%22%7D" method="POST" type="request" pid="820,1,25" Host="emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" User-Agent="GITHUBACTIONS_DeployWebAppToAzure_6afaea893f47a147fa5dac857d1041ffd4a8f022e29971635168cd4dcb90f2c0" Authorization="Bas..." Content-Type="application/octet-stream" Cookie="ARRAffinity=345353a6e2e5ca1cb44ba615462d7ac6ac166df501ae2807c92c9581cdccacea;Path=/;HttpOnly;Secure;Domain=emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net; ARRAffinitySameSite=345353a6e2e5ca1cb44ba615462d7ac6ac166df501ae2807c92c9581cdccacea;Path=/;HttpOnly;SameSite=None;Secure;Domain=emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" Transfer-Encoding="chunked" X-ARR-LOG-ID="049e2a5f-376c-4a8b-b0fc-a0839fd4ab91" CLIENT-IP="13.88.170.198:1984" X-SITE-DEPLOYMENT-ID="emergency-backend-api" WAS-DEFAULT-HOSTNAME="emergency-backend-api-efg6gaawcjdmaggy.scm.japanwest-01.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/api/zipdeploy?isAsync=true&amp;deployer=GITHUB_ZIP_DEPLOY&amp;message=%7B%22type%22%3A%22deployment%22%2C%22sha%22%3A%221ca7b77c5906ac23c00feee131f310250b2444e1%22%2C%22repoName%22%3A%22Satoshi-Niina%2FEmergency-Assistance%22%2C%22actor%22%3A%22Satoshi-Niina%22%2C%22slotName%22%3A%22production%22%2C%22commitMessage%22%3A%22azure%E3%83%95%E3%83%AD%E3%83%B3%E3%83%88%2F%E3%82%B5%E3%83%BC%E3%83%90%E3%83%BC%E3%81%AE%E6%8E%A5%E7%B6%9A%E8%A8%AD%E5%AE%9A%22%7D" X-Client-IP="13.88.170.198" X-Client-Port="1984" >
+  <step title="ZipPushDeploy" date="2025-06-29T07:03:08.583" >
+    <step title="ZipDeploy. Extract zip." date="2025-06-29T07:03:08.592" /><!-- duration: 1ms -->
+    <step title="None repository commit" date="2025-06-29T07:03:08.596" >
+      <step title="Commit id: 9c0e3bf8-582c-430d-be4d-5fbe136b2bb4" date="2025-06-29T07:03:08.597" Message="N/A" AuthorName="N/A" AuthorEmail="N/A" /><!-- duration: 1ms -->
+    </step><!-- duration: 2ms -->
+    <step title="Starting PushDeployAsync" date="2025-06-29T07:03:08.599" /><!-- duration: 1ms -->
+    <step title="Writing artifact to /tmp/zipdeploy/6c1b7832-a6b0-4a76-928e-82ae9e2956c8.zip" date="2025-06-29T07:03:08.613" >
+      <step title="Writing multipart request body to /tmp/zipdeploy/6c1b7832-a6b0-4a76-928e-82ae9e2956c8.zip" date="2025-06-29T07:03:08.615" /><!-- duration: 8ms -->
+    </step><!-- duration: 271ms -->
+    <step title="Start deployment in the background" date="2025-06-29T07:03:08.890" >
+      <step title="Acquiring Deployment Lock" date="2025-06-29T07:03:08.926" /><!-- duration: 1ms -->
+      <step title="Acquired Deployment Lock" date="2025-06-29T07:03:08.947" /><!-- duration: 1ms -->
+    </step><!-- duration: 111ms -->
+  </step><!-- duration: 423ms -->
+  <step title="Outgoing response" date="2025-06-29T07:03:09.016" type="response" statusCode="202" statusText="Accepted" /><!-- duration: 1ms -->
+</step><!-- duration: 495ms -->
