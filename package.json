@@ -27,7 +27,7 @@
     "dev:ports": "kill-port 3001 3002 5000 5001 5002 5003",
     "dev:setup": "npm run dev:ports && npm run dev:local",
     "build": "npm run build:shared && npm run build:client && npm run build:server && npm run fix:paths",
-    "build:shared": "cd shared && npm run build && cd .. && xcopy /E /I /Y shared\\dist dist\\shared",
+    "build:shared": "cd shared && npm run build && cd .. && node scripts/copy-shared.js",
     "build:client": "cd client && vite build",
     "build:server": "tsc --project tsconfig.build.json",
     "fix:paths": "node scripts/fix-shared-paths.js",
