@@ -1,4 +1,4 @@
-import { users, messages, media, chats, documents, keywords, chatExports } from "@shared/schema";
+import { users, messages, media, chats, documents, keywords, chatExports } from '../shared/schema';
 import { eq, like } from "drizzle-orm";
 import { db } from './db';
 import session from "express-session";

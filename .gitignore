@@ -5,6 +5,7 @@ node_modules/
 # Build outputs
 #dist/
 client/dist/
+client/dist-dev/
 build/
 .next/
 .nuxt/
@@ -15,6 +16,7 @@ build/
 .env.development
 .env.test
 .env.production
+.env.development.local
 
 # Logs
 *.log
@@ -88,6 +90,9 @@ jspm_packages/
 temp/
 uploads/temp/
 knowledge-base/temp/
+temp/dev/
+uploads/dev/
+logs/dev/
 *.tmp
 *.temp
 

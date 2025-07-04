@@ -23,13 +23,17 @@ console.log("[DEBUG] Environment variables:", {
     NODE_ENV: process.env.NODE_ENV,
     PWD: process.cwd()
 });
-if (!apiKey) {
-    console.error("[ERROR] OpenAI API Key not found in environment variables");
-    throw new Error("OpenAI API Key not configured");
+// 開発環境ではAPIキーがなくても動作するように条件付き初期化
+let openai = null;
+if (apiKey && apiKey !== 'dev-mock-key') {
+    openai = new OpenAI({
+        apiKey: apiKey,
+    });
+    console.log("[DEBUG] OpenAI client initialized successfully");
 }
-const openai = new OpenAI({
-    apiKey: apiKey,
-});
+else {
+    console.log("[DEV] OpenAI client not initialized - API key not available or is mock key");
+}
 // APIキーが存在するか確認
 // Remove detailed API key existence logging
 // console.log("[DEBUG] OpenAI API KEY exists:", process.env.OPENAI_API_KEY ? "YES" : "NO");
@@ -41,17 +45,10 @@ const openai = new OpenAI({
  */
 export async function processOpenAIRequest(prompt, useKnowledgeBase = true) {
     try {
-        // 環境変数を再確認
-        const apiKey = process.env.OPENAI_API_KEY || process.env.REPLIT_SECRET_OPENAI_API_KEY;
-        console.log('[DEBUG] processOpenAIRequest - Environment check:', {
-            OPENAI_API_KEY: process.env.OPENAI_API_KEY ? "SET" : "NOT SET",
-            REPLIT_SECRET_OPENAI_API_KEY: process.env.REPLIT_SECRET_OPENAI_API_KEY ? "SET" : "NOT SET",
-            finalApiKey: apiKey ? "SET" : "NOT SET",
-            apiKeyPrefix: apiKey ? apiKey.substring(0, 10) + "..." : "NOT FOUND"
-        });
-        if (!apiKey) {
-            console.error('OpenAI API key not found');
-            return 'OpenAI APIキーが設定されていません。環境変数OPENAI_API_KEYを確認してください。';
+        // OpenAIクライアントが利用可能かチェック
+        if (!openai) {
+            console.log('[DEV] OpenAI client not available, returning development message');
+            return '開発環境ではOpenAI APIが利用できません。本番環境でAPIキーを設定してください。';
         }
         // Remove detailed API call start logging
         // console.log(`OpenAI API呼び出し開始: useKnowledgeBase=${useKnowledgeBase}, message="${prompt}"`);
@@ -136,6 +133,11 @@ export async function processOpenAIRequest(prompt, useKnowledgeBase = true) {
  */
 export async function summarizeText(text) {
     try {
+        // OpenAIクライアントが利用可能かチェック
+        if (!openai) {
+            console.log('[DEV] OpenAI client not available for text summarization');
+            return '開発環境ではテキスト要約機能が利用できません。';
+        }
         // 長すぎるテキストを切り詰める
         const truncatedText = text.length > 4000 ? text.substring(0, 4000) + "..." : text;
         const response = await openai.chat.completions.create({
@@ -166,8 +168,13 @@ export async function summarizeText(text) {
  */
 export async function generateKeywords(text) {
     try {
+        // OpenAIクライアントが利用可能かチェック
+        if (!openai) {
+            console.log('[DEV] OpenAI client not available for keyword generation');
+            return ['開発環境', 'キーワード生成', '利用不可'];
+        }
         // 長すぎるテキストを切り詰める
-        const truncatedText = text.length > 4000 ? text.substring(0, 4000) + "..." : text;
+        const truncatedText = text.length > 4000 ? text.substring(0, 4004) + "..." : text;
         const response = await openai.chat.completions.create({
             model: OPENAI_MODEL,
             messages: [
@@ -214,6 +221,14 @@ export async function generateKeywords(text) {
  */
 export async function generateStepResponse(keyword) {
     try {
+        // OpenAIクライアントが利用可能かチェック
+        if (!openai) {
+            console.log('[DEV] OpenAI client not available for step response generation');
+            return {
+                title: keyword,
+                steps: [{ description: "開発環境ではステップ生成機能が利用できません。" }]
+            };
+        }
         const response = await openai.chat.completions.create({
             model: OPENAI_MODEL,
             messages: [
@@ -246,6 +261,11 @@ export async function generateStepResponse(keyword) {
 }
 export async function generateSearchQuery(text) {
     try {
+        // OpenAIクライアントが利用可能かチェック
+        if (!openai) {
+            console.log('[DEV] OpenAI client not available for search query generation');
+            return text.substring(0, 50); // 開発環境では元のテキストの一部を返す
+        }
         // 長すぎるテキストを切り詰める
         const truncatedText = text.length > 200 ? text.substring(0, 200) + "..." : text;
         const response = await openai.chat.completions.create({
@@ -279,6 +299,15 @@ export async function generateSearchQuery(text) {
  */
 export async function analyzeVehicleImage(base64Image) {
     try {
+        // OpenAIクライアントが利用可能かチェック
+        if (!openai) {
+            console.log('[DEV] OpenAI client not available for vehicle image analysis');
+            return {
+                analysis: '開発環境では画像分析機能が利用できません。',
+                success: false,
+                error: 'OpenAI client not available'
+            };
+        }
         const response = await openai.chat.completions.create({
             model: "gpt-4o", // ビジョン機能を持つモデルを使用
             messages: [

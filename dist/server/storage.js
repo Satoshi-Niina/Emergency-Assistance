@@ -1,4 +1,4 @@
-import { users } from "@shared/schema";
+import { users } from '../shared/schema';
 import { DatabaseStorage } from "./database-storage";
 import { db } from './db';
 // データベース接続テスト
