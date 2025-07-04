@@ -13,47 +13,42 @@ function fixSharedPaths(filePath) {
     let content = fs.readFileSync(filePath, 'utf8');
     let modified = false;
 
-    // ../shared/xxx のimportを dist/shared/xxx への相対パスに変換
+    // ../shared/xxx のimportを ../../shared/src/xxx.js に変換
     const sharedImportReplaced = content.replace(/from ['"]\.\.\/shared\/([\w\-\/]+?)(\.js)?['"]/g, (match, importPath, ext) => {
-      const fileDir = path.dirname(filePath);
-      const sharedPath = path.join(__dirname, '..', 'dist', 'shared');
-      let relPath = path.relative(fileDir, sharedPath).replace(/\\/g, '/');
-      if (!relPath.startsWith('.')) relPath = './' + relPath;
-      if (!relPath.endsWith('/')) relPath += '/';
-      return `from '${relPath}${importPath}.js'`;
+      return `from '../../shared/src/${importPath}.js'`;
     });
     if (sharedImportReplaced !== content) {
       content = sharedImportReplaced;
       modified = true;
     }
 
-    // @shared/schema を ../shared/schema に変換
+    // @shared/schema を ../../shared/src/schema.js に変換
     if (content.includes('@shared/schema')) {
-      content = content.replace(/from ["']@shared\/schema["']/g, "from '../shared/schema'");
+      content = content.replace(/from ["']@shared\/schema["']/g, "from '../../shared/src/schema.js'");
       modified = true;
     }
 
-    // @shared/types を ../shared/types に変換
+    // @shared/types を ../../shared/src/types.js に変換
     if (content.includes('@shared/types')) {
-      content = content.replace(/from ["']@shared\/types["']/g, "from '../shared/types'");
+      content = content.replace(/from ["']@shared\/types["']/g, "from '../../shared/src/types.js'");
       modified = true;
     }
 
-    // @shared/validation を ../shared/validation に変換
+    // @shared/validation を ../../shared/src/validation.js に変換
     if (content.includes('@shared/validation')) {
-      content = content.replace(/from ["']@shared\/validation["']/g, "from '../shared/validation'");
+      content = content.replace(/from ["']@shared\/validation["']/g, "from '../../shared/src/validation.js'");
       modified = true;
     }
 
-    // @shared/utils を ../shared/utils に変換
+    // @shared/utils を ../../shared/src/utils.js に変換
     if (content.includes('@shared/utils')) {
-      content = content.replace(/from ["']@shared\/utils["']/g, "from '../shared/utils'");
+      content = content.replace(/from ["']@shared\/utils["']/g, "from '../../shared/src/utils.js'");
       modified = true;
     }
 
-    // @shared/ で始まるその他のインポートを ../shared/ に変換
+    // @shared/ で始まるその他のインポートを ../../shared/src/ に変換
     if (content.includes('@shared/')) {
-      content = content.replace(/from ["']@shared\/([^"']+)["']/g, "from '../shared/$1'");
+      content = content.replace(/from ["']@shared\/([^"']+)["']/g, "from '../../shared/src/$1.js'");
       modified = true;
     }
 
