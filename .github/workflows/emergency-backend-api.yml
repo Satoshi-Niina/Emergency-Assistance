@@ -16,24 +16,40 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: ⬇️ Checkout repo
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: ⚙️ Set up Node.js ${{ env.NODE_VERSION }}
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: 📦 Install dependencies
+      - name: Debug - Check Node.js and npm versions
+        run: |
+          echo "Node.js version:"
+          node --version
+          echo "npm version:"
+          npm --version
+          echo "Current directory:"
+          pwd
+          echo "Directory contents:"
+          ls -la
+
+      - name: Install dependencies
         run: npm install
 
-      - name: 🛠️ Build backend
+      - name: Debug - Check package.json scripts
+        run: |
+          echo "Available scripts:"
+          npm run
+
+      - name: Build backend
         run: npm run build
 
-      - name: 📁 List output (debug)
+      - name: List output (debug)
         run: ls -R dist
 
-      - name: 🚀 Deploy to Azure Web App
+      - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
