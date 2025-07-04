@@ -1,4 +1,4 @@
-import { users } from '../shared/schema.js';
+import { users } from '../../shared/src/schema.js';
 import { DatabaseStorage } from "./database-storage.js";
 import { db } from './db.js';
 // データベース接続テスト

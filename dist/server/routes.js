@@ -1,6 +1,6 @@
 import { createServer } from "http";
 import { storage } from "./storage.js";
-import { users } from '../shared/schema.js';
+import { users } from '../../shared/src/schema.js';
 import session from "express-session";
 import MemoryStore from 'memorystore';
 import { WebSocket, WebSocketServer } from "ws";
