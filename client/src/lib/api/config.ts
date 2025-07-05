@@ -53,7 +53,7 @@ export const buildApiUrl = (endpoint: string): string => {
 
 // 認証APIエンドポイント
 export const AUTH_API = {
-LOGIN: buildApiUrl('/api/login'),
+  LOGIN: buildApiUrl('/api/auth/login'),
   LOGOUT: buildApiUrl('/api/auth/logout'),
   ME: buildApiUrl('/api/auth/me'),
 };
