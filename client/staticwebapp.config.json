@@ -3,7 +3,7 @@
     {
       "route": "/api/*",
       "allowedRoles": ["anonymous"],
-      "rewrite": "https://emergency-backend-api-efg6gaawcjdmaggy.japanwest-01.azurewebsites.net/api/*",
+      "rewrite": "https://emergency-backend-efg6gaawcjdmaggy.japanwest-01.azurewebsites.net/api/{*path}",
       "headers": {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
@@ -33,4 +33,4 @@
     "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Origin, Accept",
     "Access-Control-Allow-Credentials": "true"
   }
-} 
+}
