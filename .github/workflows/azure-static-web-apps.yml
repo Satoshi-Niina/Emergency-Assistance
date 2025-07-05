@@ -25,6 +25,6 @@ jobs:
           action: "upload"
           app_location: "client" # フロントエンドのルート
           output_location: "dist" # ビルド出力先（clientディレクトリからの相対パス）
-          config_file_location: "staticwebapp.config.json"
+          config_file_location: "."
           app_build_command: "npm run build"
 
