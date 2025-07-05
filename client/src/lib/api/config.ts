@@ -5,7 +5,7 @@ const isDevelopment = import.meta.env.DEV;
 // 本番環境用設定
 // 環境変数からAPI URLを取得、なければ相対パスを使用
 export const API_BASE_URL = isProduction 
-  ? (import.meta.env.VITE_API_BASE_URL || 'https://emergency-backend-api.azurewebsites.net')  // 本番環境では直接バックエンドURLを使用
+  ? (import.meta.env.VITE_API_BASE_URL || 'https://emergency-backend.azurewebsites.net')  // 本番環境では直接バックエンドURLを使用
   : ''; // 開発環境では相対パスを使用（Viteのプロキシを活用）
 
 // デバッグ用：環境変数の状態を詳細にログ出力

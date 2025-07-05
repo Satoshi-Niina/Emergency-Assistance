@@ -3,7 +3,7 @@
     {
       "route": "/api/auth/*",
       "allowedRoles": ["anonymous"],
-      "rewrite": "https://emergency-backend-api.azurewebsites.net/api/auth/{*path}",
+      "rewrite": "https://emergency-backend.azurewebsites.net/api/auth/{*path}",
       "headers": {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
@@ -14,7 +14,7 @@
     {
       "route": "/api/*",
       "allowedRoles": ["anonymous"],
-      "rewrite": "https://emergency-backend-api.azurewebsites.net/api/{*path}",
+      "rewrite": "https://emergency-backend.azurewebsites.net/api/{*path}",
       "headers": {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
