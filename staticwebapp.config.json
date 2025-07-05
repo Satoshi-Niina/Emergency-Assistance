@@ -4,37 +4,19 @@
       "route": "/api/health",
       "allowedRoles": ["anonymous"],
       "methods": ["GET"],
-      "rewrite": "https://emergency-backend-e7enc2e8dhdabucv.japanwest-01.azurewebsites.net/api/health",
-      "headers": {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Origin, Accept",
-        "Access-Control-Allow-Credentials": "true"
-      }
+      "rewrite": "https://emergency-backend-e7enc2e8dhdabucv.japanwest-01.azurewebsites.net/api/health"
     },
     {
       "route": "/api/auth/*",
       "allowedRoles": ["anonymous"],
       "methods": ["GET", "POST", "OPTIONS"],
-      "rewrite": "https://emergency-backend-e7enc2e8dhdabucv.japanwest-01.azurewebsites.net/api/auth/{*path}",
-      "headers": {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Origin, Accept",
-        "Access-Control-Allow-Credentials": "true"
-      }
+      "rewrite": "https://emergency-backend-e7enc2e8dhdabucv.japanwest-01.azurewebsites.net/api/auth/{*path}"
     },
     {
       "route": "/api/*",
       "allowedRoles": ["anonymous"],
       "methods": ["GET", "POST", "OPTIONS"],
-      "rewrite": "https://emergency-backend-e7enc2e8dhdabucv.japanwest-01.azurewebsites.net/api/{*path}",
-      "headers": {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Origin, Accept",
-        "Access-Control-Allow-Credentials": "true"
-      }
+      "rewrite": "https://emergency-backend-e7enc2e8dhdabucv.japanwest-01.azurewebsites.net/api/{*path}"
     },
     {
       "route": "/*",
@@ -58,4 +40,4 @@
     "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Origin, Accept",
     "Access-Control-Allow-Credentials": "true"
   }
-}
+} 
