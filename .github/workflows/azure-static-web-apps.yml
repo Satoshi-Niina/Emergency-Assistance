@@ -40,4 +40,5 @@ jobs:
           app_location: "client" # フロントエンドのルート
           output_location: "client/dist" # ビルド出力先
           config_file_location: "client"
+          app_build_command: "npm run build:azure"
 
