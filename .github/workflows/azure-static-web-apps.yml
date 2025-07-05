@@ -17,20 +17,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20' # React Router v7 などに対応
-
-      - name: Install dependencies
-        run: npm install
-        working-directory: client
-
-      - name: Build frontend (with VITE_API_BASE_URL from GitHub Secrets)
-        run: |
-          VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }} npm run build:azure
-        working-directory: client
-
       - name: Deploy to Azure Static Web App
         uses: Azure/static-web-apps-deploy@v1
         with:
@@ -38,7 +24,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }} # Used for GitHub integrations (auto-deploy PRs, etc.)
           action: "upload"
           app_location: "client" # フロントエンドのルート
-          output_location: "client/dist" # ビルド出力先
-          config_file_location: "client"
-          app_build_command: "npm run build:azure"
+          output_location: "dist" # ビルド出力先（clientディレクトリからの相対パス）
+          config_file_location: "staticwebapp.config.json"
+          app_build_command: "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }} npm run build:azure"
 
