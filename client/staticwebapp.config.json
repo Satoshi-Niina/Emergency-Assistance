@@ -1,9 +1,20 @@
 {
   "routes": [
     {
+      "route": "/auth/*",
+      "allowedRoles": ["anonymous"],
+      "rewrite": "https://emergency-backend.azurewebsites.net/api/auth/{*path}",
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Origin, Accept",
+        "Access-Control-Allow-Credentials": "true"
+      }
+    },
+    {
       "route": "/api/*",
       "allowedRoles": ["anonymous"],
-      "rewrite": "https://emergency-backend-efg6gaawcjdmaggy.japanwest-01.azurewebsites.net/api/{*path}",
+      "rewrite": "https://emergency-backend.azurewebsites.net/api/{*path}",
       "headers": {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
@@ -19,7 +30,7 @@
   ],
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/images/*", "/css/*", "/js/*", "/api/*"]
+    "exclude": ["/images/*", "/css/*", "/js/*", "/api/*", "/auth/*"]
   },
   "responseOverrides": {
     "404": {
