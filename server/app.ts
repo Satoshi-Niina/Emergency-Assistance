@@ -1,67 +1,62 @@
-import 'dotenv/config';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
-import express, { type Request, Response, NextFunction } from "express";
+import express, { Request, Response } from 'express';
+import session from 'express-session';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import session from 'express-session';
-import MemoryStore from 'memorystore';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+dotenv.config(); // .env 読み込み（省略していた部分）
 
-// .envファイル複数箇所から読み込み
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-dotenv.config({ path: path.resolve(process.cwd(), 'server/.env') });
-dotenv.config({ path: path.resolve(__dirname, '.env') });
+const app = express();
 
-export async function createApp() {
-  console.log("[INFO] Creating Express application...");
+// CORS設定（フロントエンドからのリクエストを許可）
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true
+}));
 
-  const app = express();
-  const isProduction = process.env.NODE_ENV === 'production';
+// JSONパース
+app.use(express.json());
 
-  // ✅ CORS対応（Azure Static Web Apps からのアクセスを許可）
-  const corsOptions = {
-    origin: [
-      'https://jolly-smoke-0f2bcb800.2.azurestaticapps.net',
-      process.env.FRONTEND_URL || 'https://emergency-assistance-app.azurestaticapps.net'
-    ],
-    credentials: true,
+// セッション設定（セッションでログイン情報を保持）
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'default-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: false, // 本番では true に（HTTPSのみで送信されるようになる）
+    maxAge: 1000 * 60 * 60 // 1時間
+  }
+}));
+
+// ✅ ヘルスチェックAPI
+app.get('/api/health', (req: Request, res: Response) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// ✅ ダミーログインAPI（セッションに保存）
+app.post('/api/auth/login', (req: Request, res: Response) => {
+  req.session.user = {
+    id: '123',
+    name: 'テストユーザー'
   };
-  app.use(cors(corsOptions));
+  res.json({ message: 'ログイン成功', user: req.session.user });
+});
 
-  // JSON・URLエンコード
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
+// ✅ ログイン中ユーザー取得API
+app.get('/api/auth/user', (req: Request, res: Response) => {
+  if (!req.session?.user) {
+    return res.status(401).json({ error: '未ログイン' });
+  }
+  res.json(req.session.user);
+});
 
-  // ✅ セッション設定
-  app.use(session({
-    secret: process.env.SESSION_SECRET || 'default-secret',
-    resave: false,
-    saveUninitialized: false,
-    store: new (MemoryStore(session))({ checkPeriod: 86400000 }), // 1日
-    cookie: {
-      secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',
-      httpOnly: true,
-    }
-  }));
-
-  // ✅ 簡易ログ
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    console.log(`[INFO] Request: ${req.method} ${req.url}`);
-    next();
+// ✅ ログアウトAPI
+app.post('/api/auth/logout', (req: Request, res: Response) => {
+  req.session.destroy(err => {
+    if (err) return res.status(500).json({ error: 'ログアウト失敗' });
+    res.json({ message: 'ログアウトしました' });
   });
+});
 
-  // ✅ ルーティング
-  const router = (await import('./routes.js')).default;
-  app.use('/api', router);
+// 👇 サーバーを外部ファイルで起動する場合に備えて export
+export default app;
 
-  // ✅ ヘルスチェック
-  app.get('/api/health', (req: Request, res: Response) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
-  });
-
-  return app;
-}
