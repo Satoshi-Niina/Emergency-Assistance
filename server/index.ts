@@ -281,7 +281,7 @@ const server = app.listen(PORT, () => {
   }
 });
 
-server.on('error', (err: any) => {
+server.on('error', (err) => {
   console.error('❌ サーバーエラー:', err);
   if (err.code === 'EADDRINUSE') {
     console.log('🔄 ポート競合発生、プロセスを終了します');

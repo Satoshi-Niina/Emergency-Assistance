@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "license": "MIT",
   "type": "module",
- "scripts": {
+  "scripts": {
     "dev:clean": "kill-port 3001 3002 5000 5001 5002 5003 && npm install && npm run dev:local",
     "dev": "concurrently \"npm:dev-client\" \"npm:dev-server\"",
     "dev-client": "cd client && vite --host 0.0.0.0 --port 5001",
@@ -34,8 +34,8 @@
     "start:prod": "NODE_ENV=production node startup.js",
     "start:development": "copy env.development .env && npm start",
     "verify:deploy": "npm run verify && echo \"✅ デプロイ前確認完了\""
-},
-"dependencies": {
+  },
+  "dependencies": {
     "@azure/identity": "^4.0.1",
     "@azure/storage-blob": "^12.20.0",
     "@hookform/resolvers": "^3.9.1",
@@ -91,6 +91,7 @@
     "cross-env": "^7.0.3",
     "date-fns": "^3.6.0",
     "detect-port": "^2.1.0",
+    "dotenv": "^16.6.1",
     "drizzle-orm": "^0.39.1",
     "drizzle-zod": "^0.7.0",
     "embla-carousel-react": "^8.3.0",
@@ -141,8 +142,7 @@
     "ws": "^8.18.2",
     "xlsx": "^0.18.5",
     "zod": "^3.23.8",
-    "zod-validation-error": "^3.4.0",
-    "dotenv": "^16.6.1"
+    "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
     "@replit/vite-plugin-cartographer": "^0.0.11",

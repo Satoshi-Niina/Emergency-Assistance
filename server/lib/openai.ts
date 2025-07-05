@@ -103,7 +103,7 @@ export async function processOpenAIRequest(prompt: string, useKnowledgeBase: boo
     // Remove OpenAI response logging
     // console.log('OpenAI応答を受信しました:', responseText.substring(0, 100) + '...');
     return responseText;
-  } catch (error: any) {
+  } catch (error) {
     console.error('OpenAI API Error Details:', {
       message: error.message,
       code: error.code,
@@ -165,7 +165,7 @@ export async function summarizeText(text: string): Promise<string> {
     });
 
     return response.choices[0].message.content || '';
-  } catch (error: any) {
+  } catch (error) {
     console.error('テキスト要約エラー:', error.message);
     return '要約の生成中にエラーが発生しました。';
   }
@@ -216,7 +216,7 @@ export async function generateKeywords(text: string): Promise<string[]> {
       console.error('キーワード解析エラー:', e);
       return [];
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('キーワード生成エラー:', error.message);
     return [];
   }
@@ -304,7 +304,7 @@ export async function generateSearchQuery(text: string): Promise<string> {
 
     const query = response.choices[0].message.content?.trim() || truncatedText;
     return query;
-  } catch (error: any) {
+  } catch (error) {
     console.error('Search query generation error:', error.message);
     // エラーが発生した場合は元のテキストを返す
     return text;
@@ -358,7 +358,7 @@ export async function analyzeVehicleImage(base64Image: string): Promise<any> {
       analysis: response.choices[0].message.content || '',
       success: true
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error('車両画像分析エラー:', error.message);
     return {
       analysis: '画像の分析中にエラーが発生しました。',

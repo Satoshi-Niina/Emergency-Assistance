@@ -30,11 +30,11 @@ const generateFlowSchema = z.object({
 });
 
 // テンプレートスキーマを適用する関数（仮実装）
-function applyTemplateSchema(data: any): any {
+function applyTemplateSchema(data): any {
   // TODO: 実際のスキーマ適用ロジックを実装
   // 例：dataに必要なフィールドが存在しない場合にデフォルト値を追加する
   if (data && data.steps) {
-    data.steps = data.steps.map((step: any) => {
+    data.steps = data.steps.map((step) => {
       if (step.type === 'decision' && !step.options) {
         step.options = [
           { text: 'はい', nextStepId: '', condition: '', isTerminal: false, conditionType: 'yes' },
@@ -67,7 +67,7 @@ router.post('/update-step-title', async (req, res) => {
     const flowData = JSON.parse(fileContent);
 
     // 指定されたステップのタイトルを更新
-    const stepIndex = flowData.steps.findIndex((step: any) => step.id === stepId);
+    const stepIndex = flowData.steps.findIndex((step) => step.id === stepId);
     if (stepIndex === -1) {
       return res.status(404).json({ error: 'ステップが見つかりません' });
     }
@@ -330,19 +330,16 @@ router.get('/detail/:id', async (req, res) => {
     });
 
     // 条件分岐ステップの確認
-    const decisionSteps = data.steps?.filter((step: any) => step.type === 'decision') || [];
-    const conditionSteps = data.steps?.filter((step: any) => step.type === 'condition') || [];
+    const decisionSteps = data.steps?.filter((step) => step.type === 'decision') || [];
+    const conditionSteps = data.steps?.filter((step) => step.type === 'condition') || [];
 
     console.log(`🔀 条件分岐ステップの確認:`, {
-      totalSteps: data.steps?.length || 0,
-      decisionSteps: decisionSteps.length,
-      conditionSteps: conditionSteps.length,
-      decisionStepsDetail: decisionSteps.map((step: any) => ({
+      totalSteps: data.steps?.length || 0, decisionSteps: decisionSteps.length, conditionSteps: conditionSteps.length, decisionStepsDetail: decisionSteps.map((step) => ({
         id: step.id,
         title: step.title,
         optionsCount: step.options?.length || 0
       })),
-      conditionStepsDetail: conditionSteps.map((step: any) => ({
+      conditionStepsDetail: conditionSteps.map((step) => ({
         id: step.id,
         title: step.title,
         conditionsCount: step.conditions?.length || 0
@@ -440,8 +437,8 @@ router.get('/get/:id', async (req, res) => {
     let data = JSON.parse(content);
 
     // 条件分岐ステップの確認
-    const decisionSteps = data.steps?.filter((step: any) => step.type === 'decision') || [];
-    const conditionSteps = data.steps?.filter((step: any) => step.type === 'condition') || [];
+    const decisionSteps = data.steps?.filter((step) => step.type === 'decision') || [];
+    const conditionSteps = data.steps?.filter((step) => step.type === 'condition') || [];
 
     console.log(`🔀 条件分岐ステップの確認:`, {
       totalSteps: data.steps?.length || 0,
