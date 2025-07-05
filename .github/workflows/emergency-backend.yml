@@ -3,100 +3,37 @@ name: Deploy backend to Azure Web App
 on:
   push:
     branches:
-      - main  # ← デプロイ対象ブランチを必要に応じて変更
+      - main  # デプロイ対象のブランチ
   workflow_dispatch:
 
 env:
-  AZURE_WEBAPP_NAME: emergency-backend  # App Service 名称
-  AZURE_WEBAPP_PACKAGE_PATH: dist              # ビルド後のディレクトリを指定
-  NODE_VERSION: '20'                        # 必要な Node.js バージョン
+  AZURE_WEBAPP_NAME: emergency-backend              # AzureのApp Service名と一致
+  AZURE_WEBAPP_PACKAGE_PATH: dist                     # ビルド出力フォルダ（React/Viteなら dist）
+  NODE_VERSION: '20'                                  # 使用する Node.js のバージョン
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: ✅ Checkout repo
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: 🔧 Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: Debug - Check Node.js and npm versions
-        run: |
-          echo "Node.js version:"
-          node --version
-          echo "npm version:"
-          npm --version
-          echo "Current directory:"
-          pwd
-          echo "Directory contents:"
-          ls -la
-
-      - name: Install dependencies
+      - name: 📦 Install dependencies
         run: npm install
 
-      - name: Debug - Check package.json scripts
-        run: |
-          echo "Available scripts:"
-          npm run
-
-      - name: Build backend
+      - name: 🏗️ Build the project
         run: npm run build
 
-      - name: Debug - Check build output structure
-        run: |
-          echo "=== Build output structure ==="
-          ls -la dist/
-          echo "=== Server build output ==="
-          ls -la dist/server/ || echo "No server directory"
-          echo "=== Shared build output ==="
-          ls -la dist/shared/ || echo "No shared directory"
-          echo "=== Client build output ==="
-          ls -la client/dist/ || echo "No client dist directory"
-
-      - name: Debug - Check package.json in dist
-        run: |
-          echo "=== Checking if package.json exists in dist ==="
-          if [ -f "dist/package.json" ]; then
-            echo "✅ package.json found in dist"
-            cat dist/package.json
-          else
-            echo "❌ package.json not found in dist"
-            echo "Creating package.json for deployment..."
-            echo '{"name":"emergency-assistance-backend","version":"1.0.0","type":"module","scripts":{"start":"node server/index.js"},"dependencies":{"express":"^4.18.2","cors":"^2.8.5","dotenv":"^16.6.1"}}' > dist/package.json
-            echo "✅ Created package.json in dist"
-          fi
-
-      - name: Copy startup files to dist
-        run: |
-          echo "=== Copying startup files to dist ==="
-          cp startup.js dist/
-          cp web.config dist/
-          echo "✅ Copied startup.js and web.config to dist"
-
-      - name: Install production dependencies in dist
-        run: |
-          echo "=== Installing production dependencies in dist ==="
-          cd dist
-          npm install --production
-          echo "✅ Installed production dependencies"
-
-      - name: Deploy to Azure Web App
+      - name: 🚀 Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}  # Secretsで設定済みの発行プロファイルを参照
           package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
-          slot-name: ""   # 👈 空にしてslot指定を無効化（暫定対処）
 
-      - name: Verify deployment
-        run: |
-          echo "=== Deployment verification ==="
-          echo "✅ Backend deployment completed successfully"
-          echo "📋 Deployment summary:"
-          echo "  - App Service: ${{ env.AZURE_WEBAPP_NAME }}"
-          echo "  - Package path: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}"
-          echo "  - Node version: ${{ env.NODE_VERSION }}"

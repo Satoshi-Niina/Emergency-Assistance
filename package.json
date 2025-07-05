@@ -8,7 +8,6 @@
     "dev": "concurrently \"npm:dev-client\" \"npm:dev-server\"",
     "dev-client": "cd client && vite --host 0.0.0.0 --port 5001",
     "dev-server": "tsx server/index.ts",
-    "dev:server": "tsx server/index.ts",
     "dev:client": "cd client && vite --host 0.0.0.0 --port 5000",
     "dev:all": "concurrently --kill-others-on-fail \"npm run dev:server\" \"npm run dev:client\"",
     "dev:backend-dynamic": "tsx server/index.ts",
