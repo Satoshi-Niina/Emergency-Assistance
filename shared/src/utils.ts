@@ -1,13 +1,13 @@
 /**
  * バリデーションエラーをユーザーフレンドリーなメッセージに変換
  */
-export function formatValidationError(error) {
-    return error.errors.map(err => err.message).join(', ');
+export function formatValidationError(error: any): string {
+    return error.errors.map((err: any) => err.message).join(', ');
 }
 /**
  * APIレスポンスの成功レスポンスを作成
  */
-export function createSuccessResponse(data: any, message) {
+export function createSuccessResponse(data: any, message: any): any {
     return {
         success: true,
         data,
@@ -17,7 +17,7 @@ export function createSuccessResponse(data: any, message) {
 /**
  * APIレスポンスのエラーレスポンスを作成
  */
-export function createErrorResponse(error: any, data) {
+export function createErrorResponse(error: any, data: any): any {
     return {
         success: false,
         error,
@@ -27,7 +27,7 @@ export function createErrorResponse(error: any, data) {
 /**
  * 検索結果を作成
  */
-export function createSearchResult(items: any, total: any, page: any, limit) {
+export function createSearchResult(items: any, total: any, page: any, limit: any): any {
     return {
         items,
         total,
@@ -39,13 +39,11 @@ export function createSearchResult(items: any, total: any, page: any, limit) {
 /**
  * ファイルサイズを人間が読みやすい形式に変換
  */
-export function formatFileSize(bytes) {
-    if (bytes === 0)
-        return '0 Bytes';
-    const k: any = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i: any = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+export function formatFileSize(bytes: number): string {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
 }
 /**
  * 日付をフォーマット
@@ -94,13 +92,13 @@ export function generateUUID() {
 /**
  * ファイル拡張子を取得
  */
-export function getFileExtension(filename) {
+export function getFileExtension(filename: string): string {
     return filename.slice((filename.lastIndexOf('.') - 1 >>> 0) + 2);
 }
 /**
  * MIMEタイプからファイルタイプを判定
  */
-export function getFileTypeFromMime(mimeType) {
+export function getFileTypeFromMime(mimeType: string): string {
     if (mimeType.startsWith('image/'))
         return 'image';
     if (mimeType.startsWith('video/'))
@@ -112,16 +110,16 @@ export function getFileTypeFromMime(mimeType) {
 /**
  * ファイルが画像かどうかを判定
  */
-export function isImageFile(filename) {
+export function isImageFile(filename: string): boolean {
     const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
-    const ext: any = getFileExtension(filename).toLowerCase();
+    const ext: string = getFileExtension(filename).toLowerCase();
     return imageExtensions.includes(ext);
 }
 /**
  * パスワードの強度をチェック
  */
-export function validatePasswordStrength(password) {
-    const feedback = [];
+export function validatePasswordStrength(password: string): { isValid: boolean, score: number, feedback: string[] } {
+    const feedback: string[] = [];
     let score = 0;
     if (password.length >= 8)
         score += 1;
@@ -173,9 +171,9 @@ export function getSystemConfig() {
 /**
  * デバウンス関数
  */
-export function debounce(func: any, wait) {
-    let timeout;
-    return (...args) => {
+export function debounce(func: (...args: any[]) => void, wait: number): (...args: any[]) => void {
+    let timeout: any;
+    return (...args: any[]) => {
         clearTimeout(timeout);
         timeout = setTimeout(() => func(...args), wait);
     };
@@ -183,9 +181,9 @@ export function debounce(func: any, wait) {
 /**
  * スロットル関数
  */
-export function throttle(func: any, limit) {
-    let inThrottle;
-    return (...args) => {
+export function throttle(func: (...args: any[]) => void, limit: number): (...args: any[]) => void {
+    let inThrottle: any;
+    return (...args: any[]) => {
         if (!inThrottle) {
             func(...args);
             inThrottle = true;
@@ -196,7 +194,7 @@ export function throttle(func: any, limit) {
 /**
  * 深いオブジェクトの比較
  */
-export function deepEqual(obj1: any, obj2) {
+export function deepEqual(obj1: any, obj2: any): boolean {
     if (obj1 === obj2)
         return true;
     if (obj1 == null || obj2 == null)
@@ -205,8 +203,8 @@ export function deepEqual(obj1: any, obj2) {
         return false;
     if (typeof obj1 !== 'object')
         return false;
-    const keys1: any = Object.keys(obj1);
-    const keys2: any = Object.keys(obj2);
+    const keys1: string[] = Object.keys(obj1);
+    const keys2: string[] = Object.keys(obj2);
     if (keys1.length !== keys2.length)
         return false;
     for (const key of keys1) {
@@ -220,15 +218,15 @@ export function deepEqual(obj1: any, obj2) {
 /**
  * オブジェクトの深いコピー
  */
-export function deepClone(obj) {
+export function deepClone(obj: any): any {
     if (obj === null || typeof obj !== 'object')
         return obj;
     if (obj instanceof Date)
         return new Date(obj.getTime());
     if (obj instanceof Array)
-        return obj.map(item => deepClone(item));
+        return obj.map((item: any) => deepClone(item));
     if (typeof obj === 'object') {
-        const clonedObj = {};
+        const clonedObj: { [key: string]: any } = {};
         for (const key in obj) {
             if (obj.hasOwnProperty(key)) {
                 clonedObj[key] = deepClone(obj[key]);
@@ -241,8 +239,8 @@ export function deepClone(obj) {
 /**
  * 配列を指定されたサイズのチャンクに分割
  */
-export function chunkArray(array: any, size) {
-    const chunks = [];
+export function chunkArray(array: any[], size: number): any[][] {
+    const chunks: any[][] = [];
     for (let i = 0; i < array.length; i += size) {
         chunks.push(array.slice(i, i + size));
     }
@@ -251,10 +249,10 @@ export function chunkArray(array: any, size) {
 /**
  * 配列から重複を除去
  */
-export function removeDuplicates(array: any, key) {
+export function removeDuplicates(array: any[], key?: string): any[] {
     if (key) {
-        const seen: any = new Set();
-        return array.filter(item => {
+        const seen: Set<any> = new Set();
+        return array.filter((item: any) => {
             const value: any = item[key];
             if (seen.has(value))
                 return false;
