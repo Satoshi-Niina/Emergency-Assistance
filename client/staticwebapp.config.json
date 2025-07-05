@@ -20,17 +20,17 @@
     },
     {
       "route": "/*",
-      "serve": "/client/dist/index.html",
+      "serve": "/index.html",
       "statusCode": 200
     }
   ],
   "navigationFallback": {
-    "rewrite": "/client/dist/index.html",
+    "rewrite": "/index.html",
     "exclude": ["/images/*", "/css/*", "/js/*", "/api/*", "/auth/*"]
   },
   "responseOverrides": {
     "404": {
-      "rewrite": "/client/dist/index.html",
+      "rewrite": "/index.html",
       "statusCode": 200
     }
   },
