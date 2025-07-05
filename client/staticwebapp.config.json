@@ -1,6 +1,17 @@
 {
   "routes": [
     {
+      "route": "/api/health",
+      "allowedRoles": ["anonymous"],
+      "rewrite": "https://emergency-backend-e7enc2e8dhdabucv.japanwest-01.azurewebsites.net/api/health",
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Origin, Accept",
+        "Access-Control-Allow-Credentials": "true"
+      }
+    },
+    {
       "route": "/api/auth/*",
       "allowedRoles": ["anonymous"],
       "rewrite": "https://emergency-backend-e7enc2e8dhdabucv.japanwest-01.azurewebsites.net/api/auth/{*path}",
