@@ -26,5 +26,5 @@ jobs:
           app_location: "client" # フロントエンドのルート
           output_location: "dist" # ビルド出力先（clientディレクトリからの相対パス）
           config_file_location: "staticwebapp.config.json"
-          app_build_command: "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }} npm run build:azure"
+          app_build_command: "npm run build"
 
