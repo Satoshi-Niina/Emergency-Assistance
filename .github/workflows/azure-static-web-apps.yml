@@ -38,7 +38,6 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }} # Used for GitHub integrations (auto-deploy PRs, etc.)
           action: "upload"
           app_location: "client" # フロントエンドのルート
-          output_location: "dist" # ビルド出力先
-          config_file_location: "client/staticwebapp.config.json" # configファイルのパス
-
+          output_location: "" # ビルド出力先
+          config_file_location: "client"
 
