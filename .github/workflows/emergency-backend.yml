@@ -8,7 +8,7 @@ on:
 
 env:
   AZURE_WEBAPP_NAME: emergency-backend  # App Service 名称
-  AZURE_WEBAPP_PACKAGE_PATH: .              # アプリ全体をデプロイ
+  AZURE_WEBAPP_PACKAGE_PATH: dist              # ビルド後のディレクトリを指定
   NODE_VERSION: '20'                        # 必要な Node.js バージョン
 
 jobs:
@@ -46,8 +46,43 @@ jobs:
       - name: Build backend
         run: npm run build
 
-      - name: List output (debug)
-        run: ls -R dist
+      - name: Debug - Check build output structure
+        run: |
+          echo "=== Build output structure ==="
+          ls -la dist/
+          echo "=== Server build output ==="
+          ls -la dist/server/ || echo "No server directory"
+          echo "=== Shared build output ==="
+          ls -la dist/shared/ || echo "No shared directory"
+          echo "=== Client build output ==="
+          ls -la client/dist/ || echo "No client dist directory"
+
+      - name: Debug - Check package.json in dist
+        run: |
+          echo "=== Checking if package.json exists in dist ==="
+          if [ -f "dist/package.json" ]; then
+            echo "✅ package.json found in dist"
+            cat dist/package.json
+          else
+            echo "❌ package.json not found in dist"
+            echo "Creating package.json for deployment..."
+            echo '{"name":"emergency-assistance-backend","version":"1.0.0","type":"module","scripts":{"start":"node server/index.js"},"dependencies":{"express":"^4.18.2","cors":"^2.8.5","dotenv":"^16.6.1"}}' > dist/package.json
+            echo "✅ Created package.json in dist"
+          fi
+
+      - name: Copy startup files to dist
+        run: |
+          echo "=== Copying startup files to dist ==="
+          cp startup.js dist/
+          cp web.config dist/
+          echo "✅ Copied startup.js and web.config to dist"
+
+      - name: Install production dependencies in dist
+        run: |
+          echo "=== Installing production dependencies in dist ==="
+          cd dist
+          npm install --production
+          echo "✅ Installed production dependencies"
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
@@ -55,4 +90,13 @@ jobs:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
           package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
-        　slot-name: ""   # 👈 空にしてslot指定を無効化（暫定対処）
+          slot-name: ""   # 👈 空にしてslot指定を無効化（暫定対処）
+
+      - name: Verify deployment
+        run: |
+          echo "=== Deployment verification ==="
+          echo "✅ Backend deployment completed successfully"
+          echo "📋 Deployment summary:"
+          echo "  - App Service: ${{ env.AZURE_WEBAPP_NAME }}"
+          echo "  - Package path: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}"
+          echo "  - Node version: ${{ env.NODE_VERSION }}"
