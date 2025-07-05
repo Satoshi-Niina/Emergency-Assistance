@@ -269,7 +269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const documents = listKnowledgeBaseDocuments();
       if (documents.success && documents.documents) {
-        const document = documents.documents.find((doc: any) => doc.id === req.params.id);
+        const document = documents.documents.find((doc) => doc.id === req.params.id);
         console.log('ナレッジベース一覧結果:', documents);
         res.json(documents);
       } else {
@@ -358,7 +358,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // ナレッジベースからドキュメント情報を取得
       const documents = listKnowledgeBaseDocuments();
       if (documents.success && documents.documents) {
-        const document = documents.documents.find((doc: any) => doc.id === docId);
+        const document = documents.documents.find((doc) => doc.id === docId);
 
         if (!document) {
           return res.status(404).json({ error: 'Document not found' });
