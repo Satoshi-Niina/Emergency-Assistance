@@ -3,7 +3,7 @@ name: Azure Static Web Apps CI/CD
 on:
   push:
     branches:
-      - main
+      - main  # またはデプロイ対象のブランチ名
   pull_request:
     types: [opened, synchronize, reopened, closed]
     branches:
@@ -13,33 +13,32 @@ jobs:
   build_and_deploy_job:
     runs-on: ubuntu-latest
     name: Build and Deploy Job
-    environment: production
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: '20' # React Router v7 などに対応
 
       - name: Install dependencies
         run: npm install
-        working-directory: ./client
+        working-directory: client
 
-      - name: Build (with .env.production)
-        run: npm run build
-        working-directory: ./client
+      - name: Build frontend (with VITE_API_BASE_URL from GitHub Secrets)
+        run: |
+          VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }} npm run build:azure
+        working-directory: client
 
-      - name: Deploy to Azure Static Web Apps
+      - name: Deploy to Azure Static Web App
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }} # Used for GitHub integrations (auto-deploy PRs, etc.)
           action: "upload"
-          app_location: "/client"
-          output_location: "dist"
-          skip_app_build: false
-          deployment_environment: production
+          app_location: "client" # フロントエンドのルート
+          output_location: "dist" # ビルド出力先
+          config_file_location: "client/staticwebapp.config.json" # configファイルのパス
+
 
