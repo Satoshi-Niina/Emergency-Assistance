@@ -10,7 +10,7 @@ import MemoryStore from 'memorystore';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 複数の場所から.envファイルを読み込み
+// .envファイル複数箇所から読み込み
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 dotenv.config({ path: path.resolve(process.cwd(), 'server/.env') });
 dotenv.config({ path: path.resolve(__dirname, '.env') });
@@ -21,123 +21,47 @@ export async function createApp() {
   const app = express();
   const isProduction = process.env.NODE_ENV === 'production';
 
-  // CORS設定
+  // ✅ CORS対応（Azure Static Web Apps からのアクセスを許可）
   const corsOptions = {
-    origin: isProduction 
-      ? [
-          process.env.FRONTEND_URL || 'https://emergency-assistance-app.azurestaticapps.net',
-          'https://*.azurestaticapps.net', // Azure Static Web Appsのワイルドカード
-          'https://*.azurewebsites.net', // Azure Web Appsのワイルドカード
-          'https://emergency-assistance-app.azurestaticapps.net', // 具体的なドメイン
-          'https://emergency-backend-api.azurewebsites.net', // バックエンド自身
-          'http://localhost:5001',
-          'http://localhost:5000', 
-          'http://localhost:5173',
-          // 追加のオリジン
-          'https://emergency-assistance-app.azurestaticapps.net',
-          'https://emergency-assistance-app.azurewebsites.net',
-          'https://emergency-assistance-app.azurestaticapps.net',
-          'https://emergency-assistance-app.azurewebsites.net'
-        ]
-      : [
-          process.env.FRONTEND_URL || 'http://localhost:5001',
-          'http://localhost:5000', 
-          'http://localhost:5173', 
-          'https://*.replit.dev'
-        ],
+    origin: [
+      'https://jolly-smoke-0f2bcb800.2.azurestaticapps.net',
+      process.env.FRONTEND_URL || 'https://emergency-assistance-app.azurestaticapps.net'
+    ],
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept'],
-    exposedHeaders: ['Set-Cookie']
   };
-
-  console.log('🔧 CORS設定:', {
-    isProduction,
-    origin: corsOptions.origin,
-    credentials: corsOptions.credentials,
-    methods: corsOptions.methods
-  });
-
   app.use(cors(corsOptions));
 
-  // セキュリティヘッダー
-  app.use((req, res, next) => {
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
-    if (isProduction) {
-      res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-    }
-    next();
-  });
+  // JSON・URLエンコード
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
 
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: false, limit: '10mb' }));
-
-  // セッション設定
-  const MemoryStoreSession = MemoryStore(session);
+  // ✅ セッション設定
   app.use(session({
-    secret: process.env.SESSION_SECRET || 'emergency-recovery-secret-key',
+    secret: process.env.SESSION_SECRET || 'default-secret',
     resave: false,
     saveUninitialized: false,
-    store: new MemoryStoreSession({
-      checkPeriod: 86400000 // 24時間でクリーンアップ
-    }),
+    store: new (MemoryStore(session))({ checkPeriod: 86400000 }), // 1日
     cookie: {
-      secure: isProduction, // 本番環境ではHTTPS必須
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
       httpOnly: true,
-      maxAge: 86400000, // 24時間
-      sameSite: isProduction ? 'none' : 'lax', // 本番環境ではcross-site cookieを許可
-      domain: isProduction ? undefined : undefined // 本番環境ではドメイン制限なし
     }
   }));
 
-  // ヘルスチェックエンドポイント
-  app.get('/api/health', (req, res) => {
-    res.json({ 
-      status: 'ok', 
-      timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV || 'development',
-      processId: process.pid,
-      version: process.env.npm_package_version || '1.0.0',
-      cors: {
-        origin: corsOptions.origin,
-        credentials: corsOptions.credentials
-      }
-    });
+  // ✅ 簡易ログ
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    console.log(`[INFO] Request: ${req.method} ${req.url}`);
+    next();
   });
 
-  // 本番環境での静的ファイル配信
-  if (isProduction) {
-    // クライアントのビルドファイルを配信
-    app.use(express.static(path.join(__dirname, '../client/dist')));
-    
-    // SPAのルーティング対応
-    app.get('*', (req, res) => {
-      if (!req.path.startsWith('/api/')) {
-        res.sendFile(path.join(__dirname, '../client/dist/index.html'));
-      }
-    });
-  }
+  // ✅ ルーティング
+  const router = (await import('./routes.js')).default;
+  app.use('/api', router);
 
-  // 静的ファイル設定
-  try {
-    app.use('/images', express.static(path.join(process.cwd(), 'public', 'images')));
-    app.use('/knowledge-base/images', express.static(path.join(process.cwd(), 'knowledge-base', 'images')));
-    app.use('/knowledge-base/data', express.static(path.join(process.cwd(), 'knowledge-base', 'data')));
-    console.log('✅ 静的ファイル設定完了');
-  } catch (staticError) {
-    console.error('❌ 静的ファイル設定エラー:', staticError);
-  }
-
-  // エラーハンドラー
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    console.error('Server error:', err);
-    res.status(500).json({ 
-      message: isProduction ? 'Internal Server Error' : err.message,
-      ...(isProduction ? {} : { stack: err.stack })
-    });
+  // ✅ ヘルスチェック
+  app.get('/api/health', (req: Request, res: Response) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
   return app;
-} 
+}
