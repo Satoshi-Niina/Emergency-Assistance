@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.production' });
+
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -51,6 +54,9 @@ export default defineConfig({
   },
   esbuild: {
     keepNames: true
+  },
+  define: {
+    'import.meta.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL)
   },
   logLevel: 'warn'
 }); 
