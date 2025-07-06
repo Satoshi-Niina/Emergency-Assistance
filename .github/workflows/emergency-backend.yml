@@ -7,9 +7,11 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_WEBAPP_NAME: emergency-backend              # AzureのApp Service名と一致
-  AZURE_WEBAPP_PACKAGE_PATH: dist                     # ビルド出力フォルダ（React/Viteなら dist）
-  NODE_VERSION: '20'                                  # 使用する Node.js のバージョン
+  AZURE_WEBAPP_NAME: emergency-backend
+  AZURE_WEBAPP_PACKAGE_PATH: dist
+  NODE_VERSION: '20'
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  NODE_ENV: production
 
 jobs:
   build-and-deploy:
