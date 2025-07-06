@@ -10,7 +10,7 @@ env:
   AZURE_WEBAPP_NAME: emergency-backend
   AZURE_WEBAPP_PACKAGE_PATH: dist
   NODE_VERSION: '20'
-  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  DATABASE_URL: ${{ secrets.AZURE_SQL_DATABASE }}
   NODE_ENV: production
 
 jobs:
