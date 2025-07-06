@@ -47,7 +47,7 @@ export default defineConfig({
       }
     },
     sourcemap: false,
-    minify: 'terser'
+    minify: 'esbuild'
   },
   logLevel: 'warn'
 }); 
