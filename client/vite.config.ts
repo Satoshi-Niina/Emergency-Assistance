@@ -49,5 +49,8 @@ export default defineConfig({
     sourcemap: false,
     minify: 'esbuild'
   },
+  esbuild: {
+    keepNames: true
+  },
   logLevel: 'warn'
 }); 
