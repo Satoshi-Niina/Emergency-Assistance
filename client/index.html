@@ -16,6 +16,20 @@
       worker-src 'self' blob:;
       frame-src 'self';
     ">
+    <script>
+      // Global error handler
+      window.addEventListener('error', function(e) {
+        console.error('Global error:', e.error);
+        if (e.error && e.error.message && e.error.message.includes('Cannot access')) {
+          console.error('Variable initialization error detected');
+        }
+      });
+      
+      // Unhandled promise rejection handler
+      window.addEventListener('unhandledrejection', function(e) {
+        console.error('Unhandled promise rejection:', e.reason);
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>
