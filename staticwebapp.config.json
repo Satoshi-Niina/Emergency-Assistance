@@ -1,0 +1,43 @@
+{
+  "routes": [
+    {
+      "route": "/api/health",
+      "allowedRoles": ["anonymous"],
+      "methods": ["GET"],
+      "rewrite": "https://emergency-backend-e7enc2e8dhdabucv.japanwest-01.azurewebsites.net/api/health"
+    },
+    {
+      "route": "/api/auth/*",
+      "allowedRoles": ["anonymous"],
+      "methods": ["GET", "POST", "OPTIONS"],
+      "rewrite": "https://emergency-backend-e7enc2e8dhdabucv.japanwest-01.azurewebsites.net/api/auth/{*path}"
+    },
+    {
+      "route": "/api/*",
+      "allowedRoles": ["anonymous"],
+      "methods": ["GET", "POST", "OPTIONS"],
+      "rewrite": "https://emergency-backend-e7enc2e8dhdabucv.japanwest-01.azurewebsites.net/api/{*path}"
+    },
+    {
+      "route": "/*",
+      "serve": "/index.html",
+      "statusCode": 200
+    }
+  ],
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/images/*", "/css/*", "/js/*", "/api/*", "/auth/*"]
+  },
+  "responseOverrides": {
+    "404": {
+      "rewrite": "/index.html",
+      "statusCode": 200
+    }
+  },
+  "globalHeaders": {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Origin, Accept",
+    "Access-Control-Allow-Credentials": "true"
+  }
+} 
