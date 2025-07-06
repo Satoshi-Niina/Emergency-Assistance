@@ -29,8 +29,11 @@ jobs:
       - name: 📦 Install dependencies
         run: npm install
 
+      - name: 📦 Install shared dependencies
+        run: cd shared && npm install
+
       - name: 🏗️ Build the project
-        run: npm run build
+        run: npm run build:server-only
 
       - name: 🚀 Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
