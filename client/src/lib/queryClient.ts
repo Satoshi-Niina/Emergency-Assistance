@@ -280,21 +280,32 @@ export const getQueryFn: <T>(options: {
     return await res.json();
   };
 
-export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      queryFn: getQueryFn({ on401: "throw" }),
-      refetchInterval: false,
-      refetchOnWindowFocus: false,
-      staleTime: 60000, // 1分間はキャッシュを使用
-      retry: false,
-      refetchOnMount: true, // コンポーネントがマウントされるたびに再取得
-    },
-    mutations: {
-      retry: false,
-    },
-  },
-});
+// Lazy initialization of queryClient
+let _queryClient: QueryClient | null = null;
+
+export function getQueryClient(): QueryClient {
+  if (!_queryClient) {
+    _queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          queryFn: getQueryFn({ on401: "throw" }),
+          refetchInterval: false,
+          refetchOnWindowFocus: false,
+          staleTime: 60000, // 1分間はキャッシュを使用
+          retry: false,
+          refetchOnMount: true, // コンポーネントがマウントされるたびに再取得
+        },
+        mutations: {
+          retry: false,
+        },
+      },
+    });
+  }
+  return _queryClient;
+}
+
+// For backward compatibility
+export const queryClient = getQueryClient();
 
 const setupWebSocket = (token: string) => {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';

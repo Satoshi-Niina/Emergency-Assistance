@@ -4,7 +4,7 @@ const loadApp = async () => {
     const { createRoot } = await import("react-dom/client");
     const { default: App } = await import("./App");
     const { QueryClientProvider } = await import("@tanstack/react-query");
-    const { queryClient } = await import("./lib/queryClient");
+    const { getQueryClient } = await import("./lib/queryClient");
     const React = await import("react");
 
     // Robust singleton protection
@@ -73,6 +73,9 @@ const loadApp = async () => {
 
             console.log('🚀 Initializing React application');
             const root = createRoot(container);
+
+            // Get queryClient safely
+            const queryClient = getQueryClient();
 
             root.render(
               <QueryClientProvider client={queryClient}>
