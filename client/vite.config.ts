@@ -50,13 +50,19 @@ export default defineConfig({
       }
     },
     sourcemap: false,
-    minify: 'esbuild'
+    minify: 'esbuild',
+    target: 'es2015'
   },
   esbuild: {
-    keepNames: true
+    keepNames: true,
+    legalComments: 'none'
   },
   define: {
-    'import.meta.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL)
+    'import.meta.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || 'https://emergency-backend-api.azurewebsites.net'),
+    'import.meta.env.VITE_API_BASE_URL_TYPE': JSON.stringify('string'),
+    'import.meta.env.VITE_API_BASE_URL_LENGTH': JSON.stringify(process.env.VITE_API_BASE_URL?.length || 47),
+    'import.meta.env.isProduction': JSON.stringify(true),
+    'import.meta.env.isDevelopment': JSON.stringify(false)
   },
   logLevel: 'warn'
 }); 
