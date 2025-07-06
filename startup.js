@@ -25,20 +25,38 @@ if (isDebug) {
 // サーバーファイルのパス
 const serverPath = path.join(__dirname, 'dist', 'server', 'index.js');
 
+// Azure App Service用の代替パス
+const azureServerPath = path.join(__dirname, 'server', 'index.ts');
+
 console.log('📁 Server path:', serverPath);
 console.log('🌐 Environment:', process.env.NODE_ENV);
 console.log('🔌 Port:', process.env.PORT);
 
 // ファイルの存在確認
 const fs = require('fs');
+let finalServerPath = serverPath;
+
 if (!fs.existsSync(serverPath)) {
-  console.error('❌ Server file not found:', serverPath);
-  console.log('📂 Available files in dist/server/:', fs.readdirSync(path.join(__dirname, 'dist', 'server')).join(', '));
-  process.exit(1);
+  console.log('⚠️ Compiled server file not found, trying TypeScript source...');
+  if (fs.existsSync(azureServerPath)) {
+    finalServerPath = azureServerPath;
+    console.log('✅ Using TypeScript source file');
+  } else {
+    console.error('❌ Server file not found:', serverPath);
+    console.error('❌ TypeScript source not found:', azureServerPath);
+    console.log('📂 Available files in dist/server/:', fs.existsSync(path.join(__dirname, 'dist', 'server')) ? fs.readdirSync(path.join(__dirname, 'dist', 'server')).join(', ') : 'Directory not found');
+    process.exit(1);
+  }
 }
 
 // サーバープロセスを起動
-const server = spawn('node', [serverPath], {
+const isTypeScript = finalServerPath.endsWith('.ts');
+const command = isTypeScript ? 'npx' : 'node';
+const args = isTypeScript ? ['tsx', finalServerPath] : [finalServerPath];
+
+console.log('🚀 Starting server with:', command, args.join(' '));
+
+const server = spawn(command, args, {
   stdio: 'inherit',
   env: process.env
 });

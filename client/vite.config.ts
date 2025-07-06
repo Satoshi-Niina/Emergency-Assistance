@@ -38,8 +38,16 @@ export default defineConfig({
     outDir: 'dist',
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
-      input: './index.html'
-    }
+      input: './index.html',
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-tabs']
+        }
+      }
+    },
+    sourcemap: false,
+    minify: 'terser'
   },
   logLevel: 'warn'
 }); 
