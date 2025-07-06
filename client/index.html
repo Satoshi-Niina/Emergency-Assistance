@@ -20,8 +20,11 @@
       // Global error handler
       window.addEventListener('error', function(e) {
         console.error('Global error:', e.error);
-        if (e.error && e.error.message && e.error.message.includes('Cannot access')) {
-          console.error('Variable initialization error detected');
+        if (e.error && e.error.message) {
+          if (e.error.message.includes('Cannot access')) {
+            console.error('Variable initialization error detected:', e.error.message);
+            console.error('Error location:', e.filename, 'line:', e.lineno, 'column:', e.colno);
+          }
         }
       });
       
@@ -29,6 +32,16 @@
       window.addEventListener('unhandledrejection', function(e) {
         console.error('Unhandled promise rejection:', e.reason);
       });
+
+      // Module loading error handler
+      window.addEventListener('error', function(e) {
+        if (e.target && e.target.tagName === 'SCRIPT') {
+          console.error('Script loading error:', e.target.src, e.error);
+        }
+      }, true);
+
+      // Console log for debugging
+      console.log('🚀 Application starting...');
     </script>
   </head>
   <body>

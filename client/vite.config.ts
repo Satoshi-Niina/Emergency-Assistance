@@ -45,17 +45,20 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
-          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-tabs']
+          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-tabs'],
+          utils: ['axios', 'clsx', 'tailwind-merge']
         }
       }
     },
     sourcemap: false,
     minify: 'esbuild',
-    target: 'es2015'
+    target: 'es2015',
+    modulePreload: false
   },
   esbuild: {
     keepNames: true,
-    legalComments: 'none'
+    legalComments: 'none',
+    target: 'es2015'
   },
   define: {
     'import.meta.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || 'https://emergency-backend-api.azurewebsites.net'),
