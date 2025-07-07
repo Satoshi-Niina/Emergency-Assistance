@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
@@ -16,33 +16,6 @@
       worker-src 'self' blob:;
       frame-src 'self';
     ">
-    <script>
-      // Global error handler
-      window.addEventListener('error', function(e) {
-        console.error('Global error:', e.error);
-        if (e.error && e.error.message) {
-          if (e.error.message.includes('Cannot access')) {
-            console.error('Variable initialization error detected:', e.error.message);
-            console.error('Error location:', e.filename, 'line:', e.lineno, 'column:', e.colno);
-          }
-        }
-      });
-      
-      // Unhandled promise rejection handler
-      window.addEventListener('unhandledrejection', function(e) {
-        console.error('Unhandled promise rejection:', e.reason);
-      });
-
-      // Module loading error handler
-      window.addEventListener('error', function(e) {
-        if (e.target && e.target.tagName === 'SCRIPT') {
-          console.error('Script loading error:', e.target.src, e.error);
-        }
-      }, true);
-
-      // Console log for debugging
-      console.log('🚀 Application starting...');
-    </script>
   </head>
   <body>
     <div id="root"></div>

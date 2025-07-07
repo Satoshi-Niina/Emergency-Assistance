@@ -39,20 +39,15 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 2000,
     rollupOptions: {
       input: './index.html',
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-tabs'],
-          utils: ['axios', 'clsx', 'tailwind-merge'],
-          query: ['@tanstack/react-query']
-        }
+        manualChunks: undefined
       }
     },
     sourcemap: false,
-    minify: 'esbuild',
+    minify: false,
     target: 'es2015',
     modulePreload: false
   },
@@ -68,5 +63,5 @@ export default defineConfig({
     'import.meta.env.isProduction': JSON.stringify(true),
     'import.meta.env.isDevelopment': JSON.stringify(false)
   },
-  logLevel: 'warn'
+  logLevel: 'info'
 }); 
