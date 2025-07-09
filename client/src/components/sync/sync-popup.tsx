@@ -7,10 +7,10 @@ import {
   Upload,
   AlertTriangle
 } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
+import { Progress } from "../../components/ui/progress";
+import { Card, CardContent, CardFooter } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { useToast } from "../../hooks/use-toast.ts";
 import { AnimatePresence, motion } from 'framer-motion';
 
 interface SyncPopupProps {

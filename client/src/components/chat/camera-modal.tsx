@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { useChat } from "@/context/chat-context";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useChat } from "../../context/chat-context";
+import { Button } from "../../components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { 
   Camera, 
   VideoIcon, 
@@ -12,10 +12,10 @@ import {
   TabletSmartphone,
   RotateCcw
 } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
-import { useOrientation } from "@/hooks/use-orientation";
+import { Switch } from "../../components/ui/switch";
+import { Label } from "../../components/ui/label";
+import { useToast } from "../../hooks/use-toast.ts";
+import { useOrientation } from "../../hooks/use-orientation";
 
 export default function CameraModal() {
   const [isOpen, setIsOpen] = useState(false);

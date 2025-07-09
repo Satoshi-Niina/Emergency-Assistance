@@ -1,26 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { apiRequest, queryClient } from '@/lib/queryClient';
-import { Button } from '@/components/ui/button';
+import { apiRequest, queryClient } from '../lib/queryClient.ts';
+import { Button } from '../components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+} from '../components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { FilePlus, Edit, Trash2, Eye, Workflow, List, BrainCircuit, ListChecks } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '../hooks/use-toast.ts';
 
 // The two main components for the tabs
-import EmergencyFlowEditor from '@/components/emergency-guide/emergency-flow-editor';
-import EmergencyFlowGenerator from '@/components/emergency-guide/emergency-flow-generator';
-import EmergencyGuideDisplay from '@/components/emergency-guide/emergency-guide-display';
-import { WarningDialog } from '@/components/shared/warning-dialog';
-import FlowListManager from '@/components/emergency-guide/flow-list-manager';
-import FlowEditorAdvanced from '@/components/emergency-guide/flow-editor-advanced';
-import FlowPreview from '@/components/emergency-guide/flow-preview';
+import EmergencyFlowEditor from '../components/emergency-guide/emergency-flow-editor';
+import EmergencyFlowGenerator from '../components/emergency-guide/emergency-flow-generator';
+import EmergencyGuideDisplay from '../components/emergency-guide/emergency-guide-display';
+import { WarningDialog } from '../components/shared/warning-dialog';
+import FlowListManager from '../components/emergency-guide/flow-list-manager';
+import FlowEditorAdvanced from '../components/emergency-guide/flow-editor-advanced';
+import FlowPreview from '../components/emergency-guide/flow-preview';
 
 interface Flow {
   id: string;
@@ -69,6 +69,11 @@ export default function TroubleshootingPage() {
 
   const { data: flows, isLoading } = useQuery<Flow[]>({
     queryKey: ['/api/emergency-flow'],
+    queryFn: async () => {
+      const res = await apiRequest('GET', '/api/emergency-flow');
+      if (!res.ok) throw new Error('フロー一覧の取得に失敗しました');
+      return await res.json();
+    },
   });
 
   const saveMutation = useMutation({

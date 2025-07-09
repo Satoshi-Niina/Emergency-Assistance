@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import EmergencyGuideUploader from "@/components/emergency-guide/emergency-guide-uploader";
-import EmergencyGuideEdit from "@/components/emergency-guide/emergency-guide-edit";
-import EmergencyGuideDisplay from "@/components/emergency-guide/emergency-guide-display";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import EmergencyGuideUploader from "../components/emergency-guide/emergency-guide-uploader";
+import EmergencyGuideEdit from "../components/emergency-guide/emergency-guide-edit";
+import EmergencyGuideDisplay from "../components/emergency-guide/emergency-guide-display";
 
 import { Helmet } from "react-helmet";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+import { Button } from "../components/ui/button";
+import { useToast } from "../hooks/use-toast.ts";
 
 const EmergencyGuidePage: React.FC = () => {
   // URLからクエリパラメータを取得

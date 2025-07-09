@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "@/context/auth-context";
-import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "../context/auth-context";
+import { useToast } from "../hooks/use-toast.ts";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Textarea } from "../components/ui/textarea";
 import { 
   Table, 
   TableBody, 
@@ -14,7 +14,7 @@ import {
   TableHead, 
   TableHeader, 
   TableRow 
-} from "@/components/ui/table";
+} from "../components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -23,20 +23,20 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "../components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { FileUp, FileText, Plus, Search, Trash2, Edit, Save, X, BrainCircuit, Bot, Tags, Info } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+} from "../components/ui/select";
+import { Upload, FileText, Trash2, Download, Eye, Edit, Plus, AlertCircle, BrainCircuit, Info } from "lucide-react";
+import { useLocation, Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 
 // Component for Unified Data Processing
-import UnifiedDataProcessor from "@/components/knowledge/unified-data-processor";
+import UnifiedDataProcessor from "../components/knowledge/unified-data-processor";
 
 export default function DocumentsPage() {
   const { user, isLoading: authLoading } = useAuth();

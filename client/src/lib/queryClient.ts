@@ -1,5 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
-import { buildApiUrl } from "./api/config";
+import { buildApiUrl } from "./api/config.ts";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -66,6 +66,11 @@ export async function apiRequest(
     ? `${fullUrl}&_t=${Date.now()}` 
     : `${fullUrl}?_t=${Date.now()}`;
 
+  // 修正: URLのパースエラーを防ぐため、ポート番号とパスを確認
+  if (!fullUrl.startsWith('http')) {
+    console.error('不正なURL:', fullUrl);
+  }
+
   console.log('🔍 APIリクエスト実行:', { 
     method, 
     url: urlWithCache, 
@@ -105,21 +110,23 @@ export async function apiRequest(
     });
 
     // レスポンスの内容を確認（デバッグ用）
+    let responseText: string | null = null;
+    
     if (res.status >= 400) {
       try {
-        const errorText = await res.text();
+        responseText = await res.text();
         console.error('❌ APIエラーレスポンス:', {
           url: urlWithCache,
           status: res.status,
           statusText: res.statusText,
           contentType: res.headers.get('content-type'),
-          errorText: errorText.substring(0, 1000), // 最初の1000文字を表示
-          isHtml: errorText.includes('<!DOCTYPE') || errorText.includes('<html'),
+          errorText: responseText.substring(0, 1000), // 最初の1000文字を表示
+          isHtml: responseText.includes('<!DOCTYPE') || responseText.includes('<html'),
           timestamp: new Date().toISOString()
         });
         
         // HTMLレスポンスの場合は特別な処理
-        if (errorText.includes('<!DOCTYPE') || errorText.includes('<html')) {
+        if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
           console.error('🚨 HTMLレスポンスが返されました。バックエンドが正しく動作していない可能性があります。');
           console.error('考えられる原因:');
           console.error('1. バックエンドのAzure App Serviceが停止している');
@@ -139,7 +146,7 @@ export async function apiRequest(
     } else {
       // 成功レスポンスでも内容を確認
       try {
-        const responseText = await res.text();
+        responseText = await res.text();
         console.log('✅ API成功レスポンス:', {
           url: urlWithCache,
           status: res.status,
@@ -154,28 +161,6 @@ export async function apiRequest(
           console.error('🚨 成功ステータスでもHTMLレスポンスが返されました。');
           console.error('これは通常、Azure Static Web Appsの設定に問題があることを示します。');
         }
-        
-        // レスポンスを再度パース可能にするために新しいResponseオブジェクトを作成
-        const newResponse = new Response(responseText, {
-          status: res.status,
-          statusText: res.statusText,
-          headers: res.headers
-        });
-        
-        // キャッシュクリアヘッダーをチェック
-        if (res.headers.get('X-Chat-Cleared') === 'true') {
-          console.log('サーバーからキャッシュクリア指示を受信');
-          // ローカルストレージの関連キーをクリア
-          const keyPrefix = 'rq-' + url.split('?')[0];
-          for (const key of Object.keys(localStorage)) {
-            if (key.startsWith(keyPrefix)) {
-              localStorage.removeItem(key);
-            }
-          }
-        }
-        
-        await throwIfResNotOk(newResponse);
-        return newResponse;
       } catch (textError) {
         console.error('❌ レスポンステキスト取得失敗:', textError);
       }
@@ -193,8 +178,19 @@ export async function apiRequest(
       }
     }
 
-    await throwIfResNotOk(res);
-    return res;
+    // レスポンスボディを既に読み込んだ場合は、新しいResponseオブジェクトを作成
+    if (responseText !== null) {
+      const newResponse = new Response(responseText, {
+        status: res.status,
+        statusText: res.statusText,
+        headers: res.headers
+      });
+      await throwIfResNotOk(newResponse);
+      return newResponse;
+    } else {
+      await throwIfResNotOk(res);
+      return res;
+    }
   } catch (fetchError) {
     console.error('❌ フェッチエラー:', {
       url: urlWithCache,

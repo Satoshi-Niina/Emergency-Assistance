@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { AUTH_API } from "@/lib/api/config";
+import { useToast } from "../hooks/use-toast.ts";
+import { apiRequest } from "../lib/queryClient.ts";
+import { AUTH_API } from "../lib/api/config.ts";
 
 interface User {
   id: string;
@@ -73,15 +73,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuthStatus = async () => {
       try {
-        console.log('🔍 認証状態チェック開始...');
-        const userData = await getCurrentUser();
-        if (userData && userData.id) {
-          console.log('✅ 認証済みユーザー:', userData);
-          setUser(userData);
+        console.log('🔐 認証状態チェック開始');
+        const response = await fetch(AUTH_API.ME, {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        console.log('🔐 認証チェックレスポンス:', {
+          status: response.status,
+          statusText: response.statusText,
+          ok: response.ok
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          console.log('✅ 認証成功:', userData);
+          setUser(userData.user || userData);
         } else {
-          console.log('❌ 未認証状態');
+          console.log('❌ 認証失敗:', response.status, response.statusText);
           setUser(null);
         }
       } catch (error) {
@@ -92,7 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
-    checkAuth();
+    checkAuthStatus();
   }, []);
 
   const login = async (username: string, password: string) => {

@@ -1,20 +1,20 @@
 import { useEffect, useState } from "react";
-import { useChat } from "@/context/chat-context";
-import { useAuth } from "@/context/auth-context";
-import MessageBubble from "@/components/chat/message-bubble";
-import MessageInput from "@/components/chat/message-input";
-import TextSelectionControls from "@/components/chat/text-selection-controls";
-import SearchResults from "@/components/chat/search-results";
-import CameraModal from "@/components/chat/camera-modal";
-import ImagePreviewModal from "@/components/chat/image-preview-modal";
-import TroubleshootingSelector from "@/components/troubleshooting/troubleshooting-selector";
+import { useChat } from "../context/chat-context";
+import { useAuth } from "../context/auth-context";
+import MessageBubble from "../components/chat/message-bubble";
+import MessageInput from "../components/chat/message-input";
+import TextSelectionControls from "../components/chat/text-selection-controls";
+import SearchResults from "../components/chat/search-results";
+import CameraModal from "../components/chat/camera-modal";
+import ImagePreviewModal from "../components/chat/image-preview-modal";
+import TroubleshootingSelector from "../components/troubleshooting/troubleshooting-selector";
 import { useQuery } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
-import { Button } from "@/components/ui/button";
+import { queryClient } from "../lib/queryClient.ts";
+import { Button } from "../components/ui/button";
 import { Send, Loader2, Trash2, Heart, FileText, Menu, Settings, LifeBuoy } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
 import { useLocation, Link } from "react-router-dom";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "../hooks/use-mobile";
 
 export default function Chat() {
   const {
@@ -47,6 +47,15 @@ export default function Chat() {
   // 新しいチャットとして開始するため、メッセージ読み込みは無効化
   const { data, isLoading: messagesLoading } = useQuery({
     queryKey: ['/api/chats/1/messages'],
+    queryFn: async () => {
+      const response = await fetch('/api/chats/1/messages', {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch messages');
+      }
+      return response.json();
+    },
     staleTime: 1000 * 60 * 5, // 5 minutes
     enabled: false, // 新しいチャットとして開始するため常に無効
   });

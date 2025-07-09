@@ -1,6 +1,6 @@
-import { useAuth } from "@/context/auth-context";
-import { Database } from "lucide-react";
-import UnifiedDataProcessor from "@/components/knowledge/unified-data-processor";
+import { useAuth } from "../context/auth-context";
+import { useState } from "react";
+import UnifiedDataProcessor from "../components/knowledge/unified-data-processor";
 
 export default function Processing() {
   const { user } = useAuth();

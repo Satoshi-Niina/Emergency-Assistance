@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "../../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { ArrowLeft, CheckCircle, Send, ArrowRight, X } from "lucide-react";
+import { convertImageUrl } from '../../lib/utils.ts';
 
 interface FlowStep {
   id: string;
@@ -34,35 +35,6 @@ interface TroubleshootingFlowProps {
 }
 
 // 画像URL変換の改善
-function convertImageUrl(url: string): string {
-  if (!url) return '';
-  
-  // 既にAPIエンドポイントの形式の場合はそのまま返す
-  if (url.startsWith('/api/emergency-flow/image/')) {
-    return url;
-  }
-  
-  // 外部URLの場合はそのまま返す
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return url;
-  }
-  
-  // ファイル名を抽出（パスセパレータを考慮）
-  let fileName = url;
-  if (url.includes('/')) {
-    fileName = url.split('/').pop() || url;
-  } else if (url.includes('\\')) {
-    fileName = url.split('\\').pop() || url;
-  }
-  
-  // ファイル名が空の場合は元のURLを返す
-  if (!fileName || fileName === url) {
-    return url;
-  }
-  
-  // APIエンドポイントに変換
-  return `/api/emergency-flow/image/${fileName}`;
-}
 
 // 画像の読み込みエラーを処理する関数
 function handleImageError(e: React.SyntheticEvent<HTMLImageElement, Event>, imageUrl: string) {

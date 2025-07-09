@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
 import { ArrowLeft, ArrowRight, CheckCircle, Image as ImageIcon, Send, X } from 'lucide-react';
+import { convertImageUrl } from '../../lib/utils.ts';
 
 interface Step {
   id: string;
@@ -51,35 +52,6 @@ interface FlowExecutionStep {
 }
 
 // 画像URL変換の改善
-function convertImageUrl(url: string): string {
-  if (!url) return '';
-  
-  // 既にAPIエンドポイントの形式の場合はそのまま返す
-  if (url.startsWith('/api/emergency-flow/image/')) {
-    return url;
-  }
-  
-  // 外部URLの場合はそのまま返す
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return url;
-  }
-  
-  // ファイル名を抽出（パスセパレータを考慮）
-  let fileName = url;
-  if (url.includes('/')) {
-    fileName = url.split('/').pop() || url;
-  } else if (url.includes('\\')) {
-    fileName = url.split('\\').pop() || url;
-  }
-  
-  // ファイル名が空の場合は元のURLを返す
-  if (!fileName || fileName === url) {
-    return url;
-  }
-  
-  // APIエンドポイントに変換
-  return `/api/emergency-flow/image/${fileName}`;
-}
 
 // 画像エラーハンドリングの改善
 function handleImageError(e: React.SyntheticEvent<HTMLImageElement, Event>, imageUrl: string) {
@@ -92,11 +64,14 @@ function handleImageError(e: React.SyntheticEvent<HTMLImageElement, Event>, imag
   
   // エラー時のフォールバック処理
   try {
+    // APIベースURLを取得（フォールバック付き）
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+    
     // 1. ファイル名のみで再試行
     const fileName = imageUrl.split('/').pop()?.split('\\').pop();
     if (fileName && fileName !== imageUrl) {
       console.log('ファイル名のみで再試行:', fileName);
-      imgElement.src = `/api/emergency-flow/image/${fileName}`;
+      imgElement.src = `${apiBaseUrl}/api/emergency-flow/image/${fileName}`;
       return;
     }
     
@@ -109,6 +84,32 @@ function handleImageError(e: React.SyntheticEvent<HTMLImageElement, Event>, imag
     // エラー画像を表示
     imgElement.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMDAgNzBDMTE2LjU2OSA3MCAxMzAgODMuNDMxIDEzMCAxMDBDMTMwIDExNi41NjkgMTE2LjU2OSAxMzAgMTAwIDEzMEM4My40MzEgMTMwIDcwIDExNi41NjkgNzAgMTAwQzcwIDgzLjQzMSA4My40MzEgNzAgMTAwIDcwWiIgZmlsbD0iIzlDQTBBNiIvPgo8cGF0aCBkPSJNMTAwIDE0MEMxMTYuNTY5IDE0MCAxMzAgMTUzLjQzMSAxMzAgMTcwQzEzMCAxODYuNTY5IDExNi41NjkgMjAwIDEwMCAyMDBDODMuNDMxIDIwMCA3MCAxODYuNTY5IDcwIDE3MEM3MCAxNTMuNDMxIDgzLjQzMSAxNDAgMTAwIDE0MFoiIGZpbGw9IiM5Q0EwQTYiLz4KPHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDIwQzIwIDE3LjIzOSAyMi4yMzkgMTUgMjUgMTVIMzVDMzcuNzYxIDE1IDQwIDE3LjIzOSA0MCAyMFYzMEM0MCAzMi43NjEgMzcuNzYxIDM1IDM1IDM1SDI1QzIyLjIzOSAzNSAyMCAzMi43NjEgMjAgMzBWMjBaIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yNSAxN0MyNSAxNi40NDc3IDI1LjQ0NzcgMTYgMjYgMTZIMzRDMzQuNTUyMyAxNiAzNSAxNi40NDc3IDM1IDE3VjI5QzM1IDI5LjU1MjMgMzQuNTUyMyAzMCAzNCAzMEgyNkMyNS40NDc3IDMwIDI1IDI5LjU1MjMgMjUgMjlWMTdaIiBmaWxsPSIjOTlBM0Y2Ii8+Cjwvc3ZnPgo8L3N2Zz4K';
   }
+}
+
+// 画像URLを正しく構築する関数
+function buildImageUrl(imageUrl: string): string {
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+  
+  // 既に完全なURLの場合はそのまま返す
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl;
+  }
+  
+  // 既にAPIエンドポイント形式の場合はベースURLを追加
+  if (imageUrl.startsWith('/api/emergency-flow/image/')) {
+    return `${apiBaseUrl}${imageUrl}`;
+  }
+  
+  // ファイル名を抽出
+  let fileName = imageUrl;
+  if (imageUrl.includes('/')) {
+    fileName = imageUrl.split('/').pop() || imageUrl;
+  } else if (imageUrl.includes('\\')) {
+    fileName = imageUrl.split('\\').pop() || imageUrl;
+  }
+  
+  // 新しいAPIエンドポイント形式に変換
+  return `${apiBaseUrl}/api/emergency-flow/image/${fileName}`;
 }
 
 export default function EmergencyGuideDisplay({
@@ -400,7 +401,7 @@ export default function EmergencyGuideDisplay({
                 {currentStep.images.map((image, index) => (
                   <div key={index} className="relative">
                     <img
-                      src={convertImageUrl(image.url)}
+                      src={buildImageUrl(image.url)}
                       alt={`${currentStep.title} - ${image.fileName || '画像'}`}
                       className="w-full h-auto rounded-lg shadow-md"
                       onError={(e) => handleImageError(e, image.url)}
@@ -418,7 +419,7 @@ export default function EmergencyGuideDisplay({
             // 古い形式の imageUrl のみのフォールバック
             <div className="mt-4">
               <img
-                src={convertImageUrl(currentStep.imageUrl)}
+                src={buildImageUrl(currentStep.imageUrl)}
                 alt={currentStep.title}
                 className="w-full h-auto rounded-lg shadow-md"
                 onError={(e) => handleImageError(e, currentStep.imageUrl)}

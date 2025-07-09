@@ -26,48 +26,6 @@
       "conditions": []
     },
     {
-      "id": "step2",
-      "type": "decision",
-      "title": "エンジン停止時の状況確認",
-      "message": "エンジンが停止した時の状況は？",
-      "options": [
-        {
-          "text": "突然停止した",
-          "condition": "エンジンが警告なしに突然停止した場合",
-          "isTerminal": false,
-          "nextStepId": "step4",
-          "conditionType": "yes"
-        },
-        {
-          "text": "異音後に停止した",
-          "condition": "異常な音の後にエンジンが停止した場合",
-          "isTerminal": false,
-          "nextStepId": "step5",
-          "conditionType": "no"
-        },
-        {
-          "text": "オーバーヒート後に停止した",
-          "condition": "温度警告後にエンジンが停止した場合",
-          "isTerminal": false,
-          "nextStepId": "step6",
-          "conditionType": "other"
-        }
-      ],
-      "conditions": [
-        {
-          "label": "急に止まった",
-          "nextId": "step4"
-        }
-      ],
-      "description": "",
-      "images": [
-        {
-          "url": "/api/emergency-flow/image/emergency-flow-step1-1750509570463.jpg",
-          "fileName": "emergency-flow-step1-1750509570463.jpg"
-        }
-      ]
-    },
-    {
       "id": "step3",
       "type": "step",
       "title": "エンジン異常",
@@ -110,5 +68,5 @@
   ],
   "category": "",
   "dataSource": "database",
-  "updatedAt": "2025-06-22T11:20:03.956Z"
+  "updatedAt": "2025-07-09T01:02:40.055Z"
 }

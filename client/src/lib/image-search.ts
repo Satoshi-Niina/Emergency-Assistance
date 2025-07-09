@@ -48,8 +48,12 @@ async function loadImageSearchData(): Promise<void> {
   console.log('📊 画像検索データの読み込みを開始します');
 
   try {
-    // まずknowledge-baseからJSONを読み込み
-    let response = await fetch('/knowledge-base/data/image_search_data.json?t=' + Date.now(), {
+    // APIベースURLを取得
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+    
+    // まずAPIからJSONを読み込み（認証付き）
+    let response = await fetch(`${apiBaseUrl}/knowledge-base/data/image_search_data.json?t=${Date.now()}`, {
+      credentials: 'include',
       cache: 'no-store',
       headers: {
         'pragma': 'no-cache',
@@ -57,17 +61,19 @@ async function loadImageSearchData(): Promise<void> {
       }
     });
 
-    // knowledge-baseから読み込めない場合は、APIから初期化
+    // APIから読み込めない場合は、初期化APIを呼び出し
     if (!response.ok) {
-      console.log('knowledge-baseから読み込めないため、APIから初期化します');
-      const initResponse = await fetch('/api/tech-support/init-image-search-data', {
-        method: 'POST'
+      console.log('APIから読み込めないため、初期化APIを呼び出します');
+      const initResponse = await fetch(`${apiBaseUrl}/api/tech-support/init-image-search-data`, {
+        method: 'POST',
+        credentials: 'include'
       });
       
       if (initResponse.ok) {
         console.log('APIからの初期化が成功しました');
-        // 再度knowledge-baseから読み込み
-        response = await fetch('/knowledge-base/data/image_search_data.json?t=' + Date.now(), {
+        // 再度APIから読み込み
+        response = await fetch(`${apiBaseUrl}/knowledge-base/data/image_search_data.json?t=${Date.now()}`, {
+          credentials: 'include',
           cache: 'no-store'
         });
       }

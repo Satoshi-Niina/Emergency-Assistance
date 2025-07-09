@@ -1,10 +1,11 @@
-import { Router } from 'express';
+import * as express from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
-import { processOpenAIRequest } from '../lib/openai';
-import { searchKnowledgeBase } from '../lib/knowledge-base';
-import { cleanJsonResponse } from '../lib/json-helper';
-const router: any = Router();
+import { processOpenAIRequest } from '../lib/openai.js';
+import { searchKnowledgeBase } from '../lib/knowledge-base.js';
+import { cleanJsonResponse } from '../lib/json-helper.js';
+
+const router = express.Router();
 // 知識ベースディレクトリ
 const knowledgeBaseDir = './knowledge-base';
 const jsonDir: any = path.join(knowledgeBaseDir, 'json');
@@ -13,7 +14,90 @@ const troubleshootingDir: any = path.join(knowledgeBaseDir, 'troubleshooting');
 if (!fs.existsSync(troubleshootingDir)) {
     fs.mkdirSync(troubleshootingDir, { recursive: true });
 }
-// キーワードからフローを生成するエンドポイント
+// キーワードからフローを生成するエンドポイント（互換性のため）
+router.post('/keywords', async (req, res) => {
+  try {
+    const { keywords } = req.body;
+    if (!keywords || typeof keywords !== 'string' || !keywords.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'キーワードが指定されていません'
+      });
+    }
+    console.log(`キーワード "${keywords}" からフローを生成します`);
+    
+    // 簡単なフローを生成（ダミー実装）
+    const flowData = {
+      id: `flow_${Date.now()}`,
+      title: `キーワード生成フロー: ${keywords}`,
+      description: `キーワード「${keywords}」から自動生成されたフロー`,
+      triggerKeywords: keywords.split(',').map(k => k.trim()),
+      steps: [
+        {
+          id: 'step1',
+          title: '開始',
+          description: `キーワード「${keywords}」に関する応急処置を開始します`,
+          message: `キーワード「${keywords}」に関する応急処置を開始します`,
+          type: 'step',
+          options: []
+        },
+        {
+          id: 'step2',
+          title: '状況確認',
+          description: '現在の状況を確認してください',
+          message: '現在の状況を確認してください',
+          type: 'condition',
+          conditions: [
+            {
+              label: '問題解決',
+              nextId: 'step3'
+            },
+            {
+              label: '問題継続',
+              nextId: 'step4'
+            }
+          ]
+        },
+        {
+          id: 'step3',
+          title: '完了',
+          description: '応急処置が完了しました',
+          message: '応急処置が完了しました',
+          type: 'step',
+          options: []
+        },
+        {
+          id: 'step4',
+          title: '専門家連絡',
+          description: '専門家に連絡してください',
+          message: '専門家に連絡してください',
+          type: 'step',
+          options: []
+        }
+      ],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    // フローをファイルに保存
+    const flowFilePath = path.join(troubleshootingDir, `${flowData.id}.json`);
+    fs.writeFileSync(flowFilePath, JSON.stringify(flowData, null, 2));
+    
+    res.json({
+      success: true,
+      message: `フローが正常に生成されました: ${flowData.title}`,
+      flowData
+    });
+  } catch (error) {
+    console.error('フロー生成エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'フローの生成に失敗しました'
+    });
+  }
+});
+
+// キーワードからフローを生成するエンドポイント（元の実装）
 router.post('/generate-from-keywords', async (req, res) => {
     try {
         const { keywords } = req.body;
@@ -373,4 +457,4 @@ router.delete('/:id', (req, res) => {
         });
     }
 });
-export const flowGeneratorRouter: any = router;
+export default router;

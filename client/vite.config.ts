@@ -16,7 +16,7 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
       '@shared': path.resolve(__dirname, '../shared'),
     },
-    extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json'],
+    extensions: ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.json'],
   },
   server: {
     host: '0.0.0.0',
@@ -46,10 +46,10 @@ export default defineConfig({
         manualChunks: undefined
       }
     },
-    sourcemap: false,
-    minify: false,
-    target: 'es2015',
-    modulePreload: false
+    sourcemap: true, // Enable sourcemaps for easier debugging
+    minify: true, // Enable minification for production
+    target: 'esnext', // Use esnext for better ESM support
+    modulePreload: true // Enable module preload
   },
   esbuild: {
     keepNames: true,

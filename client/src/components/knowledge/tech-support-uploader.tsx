@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "../../hooks/use-toast.ts";
 import {
   Card,
   CardContent,
@@ -7,10 +7,10 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
 import {
   Table,
   TableBody,
@@ -19,17 +19,17 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "../../components/ui/table";
 import { FileText, Upload, Trash2, FileType, File, Presentation, FileBox, RefreshCw, Database, Eraser } from "lucide-react";
 import { Loader2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { reloadImageSearchData } from "@/lib/image-search";
+import { Badge } from "../../components/ui/badge";
+import { reloadImageSearchData } from "../../lib/image-search.ts";
 import { 
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "../../components/ui/tooltip";
 
 interface TechDocument {
   id: string;

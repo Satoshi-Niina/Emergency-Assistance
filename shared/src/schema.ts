@@ -1,6 +1,8 @@
 // データベースに必要なdrizzle-ormの型とヘルパーをインポート
 import { pgTable, text, timestamp, jsonb, boolean } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
+import { z } from 'zod';
+
 // ユーザーテーブルの定義
 // システムのユーザー情報を管理
 export const users: any = pgTable('users', {
@@ -13,6 +15,7 @@ export const users: any = pgTable('users', {
     description: text('description'),
     created_at: timestamp('created_at').defaultNow().notNull()
 });
+
 // チャットテーブルの定義
 // チャットセッション情報を管理
 export const chats: any = pgTable('chats', {
@@ -21,6 +24,7 @@ export const chats: any = pgTable('chats', {
     title: text('title'), // チャットのタイトル（オプション）
     createdAt: timestamp('created_at').defaultNow().notNull() // 作成日時
 });
+
 // メッセージテーブルの定義
 // チャット内のメッセージを管理
 export const messages: any = pgTable('messages', {
@@ -31,6 +35,7 @@ export const messages: any = pgTable('messages', {
     isAiResponse: boolean('is_ai_response').notNull().default(false), // AIの応答かどうか
     createdAt: timestamp('created_at').defaultNow().notNull() // 送信日時
 });
+
 // メディアテーブルの定義
 // 画像や動画などのメディアファイルを管理
 export const media: any = pgTable('media', {
@@ -41,6 +46,7 @@ export const media: any = pgTable('media', {
     description: text('description'), // メディアの説明（オプション）
     createdAt: timestamp('created_at').defaultNow().notNull() // 作成日時
 });
+
 // 緊急フローテーブルの定義
 // 緊急時の対応手順を管理
 export const emergencyFlows: any = pgTable('emergency_flows', {
@@ -52,6 +58,7 @@ export const emergencyFlows: any = pgTable('emergency_flows', {
     category: text('category').notNull().default(''), // カテゴリ
     createdAt: timestamp('created_at').defaultNow().notNull() // 作成日時
 });
+
 // 画像テーブルの定義
 // システムで使用する画像とその説明を管理
 export const images: any = pgTable('images', {
@@ -61,6 +68,7 @@ export const images: any = pgTable('images', {
     embedding: jsonb('embedding').notNull(), // 画像の特徴ベクトル（AI検索用）
     createdAt: timestamp('created_at').defaultNow().notNull() // 作成日時
 });
+
 // ドキュメントテーブルの定義
 // システムで管理する文書を管理
 export const documents: any = pgTable('documents', {
@@ -70,6 +78,7 @@ export const documents: any = pgTable('documents', {
     userId: text('user_id').notNull(), // 作成者のユーザーID
     createdAt: timestamp('created_at').defaultNow().notNull() // 作成日時
 });
+
 // キーワードテーブルの定義
 // ドキュメント検索用のキーワードを管理
 export const keywords: any = pgTable('keywords', {
@@ -78,6 +87,7 @@ export const keywords: any = pgTable('keywords', {
     word: text('word').notNull(), // キーワード
     createdAt: timestamp('created_at').defaultNow().notNull() // 作成日時
 });
+
 // チャットエクスポートテーブルの定義
 // チャット履歴のエクスポート記録を管理
 export const chatExports: any = pgTable('chat_exports', {
@@ -86,6 +96,42 @@ export const chatExports: any = pgTable('chat_exports', {
     userId: text('user_id').notNull(), // エクスポートを実行したユーザーのID
     timestamp: timestamp('timestamp').defaultNow().notNull() // エクスポート実行日時
 });
+
+// Zodスキーマの定義
+export const insertUserSchema = z.object({
+    username: z.string(),
+    password: z.string(),
+    display_name: z.string(),
+    role: z.string().default('employee'),
+    department: z.string().optional(),
+    description: z.string().optional()
+});
+
+export const insertChatSchema = z.object({
+    userId: z.string(),
+    title: z.string().optional()
+});
+
+export const insertMessageSchema = z.object({
+    chatId: z.string(),
+    senderId: z.string(),
+    content: z.string(),
+    isAiResponse: z.boolean().default(false)
+});
+
+export const insertMediaSchema = z.object({
+    messageId: z.string(),
+    type: z.string(),
+    url: z.string(),
+    description: z.string().optional()
+});
+
+export const insertDocumentSchema = z.object({
+    title: z.string(),
+    content: z.string(),
+    userId: z.string()
+});
+
 // スキーマの統合エクスポート
 export const schema = {
     users,

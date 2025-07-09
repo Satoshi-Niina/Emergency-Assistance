@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { Textarea } from "../../components/ui/textarea";
 import { Plus, Trash2, X } from 'lucide-react';
 import StepEditor from './step-editor';
 import { v4 as uuidv4 } from 'uuid';
+import { convertImageUrl } from '../../lib/utils.ts';
 
 interface EmergencyFlowEditorProps {
   flowData: any;
@@ -29,42 +30,11 @@ function utf8_to_b64(str: string): string {
 function createEncryptedUrl(fileName: string): string {
   try {
     const encryptedFileName = encryptUri(fileName);
-    return `http://localhost:3001/api/emergency-flow/image/${encryptedFileName}`;
+    return `http://localhost:3001/api/emergency-flow/image/emergency-guide/${encryptedFileName}`;
   } catch (e) {
     console.error('❌ URLの暗号化に失敗:', e);
     return ''; // Return empty string on failure
   }
-}
-
-// 画像URL変換の改善
-function convertImageUrl(url: string): string {
-  if (!url) return '';
-  
-  // 既にAPIエンドポイントの形式の場合はそのまま返す
-  if (url.startsWith('/api/emergency-flow/image/')) {
-    return url;
-  }
-  
-  // 外部URLの場合はそのまま返す
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return url;
-  }
-  
-  // ファイル名を抽出（パスセパレータを考慮）
-  let fileName = url;
-  if (url.includes('/')) {
-    fileName = url.split('/').pop() || url;
-  } else if (url.includes('\\')) {
-    fileName = url.split('\\').pop() || url;
-  }
-  
-  // ファイル名が空の場合は元のURLを返す
-  if (!fileName || fileName === url) {
-    return url;
-  }
-  
-  // APIエンドポイントに変換
-  return `/api/emergency-flow/image/${fileName}`;
 }
 
 const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
@@ -235,14 +205,52 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
         images: newStep.images 
       }
     });
+    
+    // stepsRefを更新
+    stepsRef.current = updatedSteps;
     setSteps(updatedSteps);
+    setHasChanges(true);
   }, []);
 
   // ステップ間に新規ステップを追加する関数
   const handleAddStepBetween = useCallback((index: number, type: 'step' | 'decision') => {
     console.log('➕ ステップ間追加:', { index, type });
-    handleAddStep(type, index);
-  }, [handleAddStep]);
+    const currentSteps = stepsRef.current;
+    
+    const newStep = {
+      id: `step_${Date.now()}`,
+      title: '',
+      description: '',
+      message: '',
+      type,
+      images: [],
+      options: type === 'decision' ? [] : undefined,
+      conditions: type === 'decision' ? [
+        {
+          label: '',
+          nextId: '',
+        }
+      ] : undefined,
+    };
+
+    // 指定された位置にステップを挿入
+    const updatedSteps = [...currentSteps.slice(0, index + 1), newStep, ...currentSteps.slice(index + 1)];
+    
+    console.log('➕ ステップ間追加完了:', { 
+      index, 
+      type, 
+      newLength: updatedSteps.length, 
+      newStep: { 
+        id: newStep.id, 
+        type: newStep.type 
+      }
+    });
+    
+    // stepsRefを更新
+    stepsRef.current = updatedSteps;
+    setSteps(updatedSteps);
+    setHasChanges(true);
+  }, []);
 
   const handleStepUpdate = useCallback((stepId: string, updatedData: Partial<Step>) => {
     setSteps(currentSteps =>
@@ -413,10 +421,21 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
       }
       
       const cleanedSteps = updatedSteps.map(step => {
-        const images = step.images?.map(img => ({
-          url: img.url && img.url.trim() !== '' ? img.url : undefined,
-          fileName: img.fileName && img.fileName.trim() !== '' ? img.fileName : undefined,
-        })).filter(img => img.url && img.fileName);
+        // 画像URLを正しく変換
+        const images = step.images?.map(img => {
+          const convertedUrl = convertImageUrl(img.url);
+          console.log(`💾 保存時画像URL変換 [${step.id}]:`, {
+            originalUrl: img.url,
+            convertedUrl: convertedUrl,
+            fileName: img.fileName
+          });
+          return {
+            url: img.url && img.url.trim() !== '' ? convertedUrl : undefined,
+            fileName: img.fileName && img.fileName.trim() !== '' ? img.fileName : undefined,
+          };
+        }).filter(img => img.url && img.fileName);
+        
+        // 古いプロパティを削除
         const { imageUrl, imageFileName, ...restOfStep } = step;
         return {
           ...restOfStep,
@@ -445,11 +464,10 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
         flowId: saveData.id,
         title: saveData.title,
         stepsCount: saveData.steps.length,
-        stepsWithImages: saveData.steps.filter(s => s.imageUrl).length,
+        stepsWithImages: saveData.steps.filter(s => s.images && s.images.length > 0).length,
         imageUrls: saveData.steps.map(s => ({
           stepId: s.id,
-          imageUrl: s.imageUrl,
-          fileName: s.imageFileName
+          images: s.images?.map(img => ({ url: img.url, fileName: img.fileName }))
         }))
       });
 

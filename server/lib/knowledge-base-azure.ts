@@ -1,13 +1,18 @@
 import { azureStorage } from './azure-storage.js';
 import * as fs from 'fs-extra';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+// ESM用__dirname定義
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export class KnowledgeBaseAzureService {
   private localKnowledgeBasePath: string;
   private remotePrefix: string;
 
   constructor() {
-    this.localKnowledgeBasePath = path.join(process.cwd(), 'knowledge-base');
+    this.localKnowledgeBasePath = path.join(__dirname, '../../knowledge-base');
     this.remotePrefix = 'knowledge-base';
   }
 

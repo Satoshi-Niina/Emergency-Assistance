@@ -1,9 +1,9 @@
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter } from "../components/ui/card";
+import { Button } from "../components/ui/button";
 import { AlertCircle, Server, Brain } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { CHAT_API } from "@/lib/api/config";
+import { CHAT_API } from "../lib/api/config.ts";
 
 export default function NotFound() {
   const [apiResponse, setApiResponse] = useState<string | null>(null);

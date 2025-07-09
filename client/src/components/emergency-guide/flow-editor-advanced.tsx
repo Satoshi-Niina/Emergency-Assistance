@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { Textarea } from "../../components/ui/textarea";
+import { ScrollArea } from "../../components/ui/scroll-area";
+import { useToast } from "../../hooks/use-toast.ts";
 import { 
   Plus, 
   Trash2, 
@@ -23,8 +23,9 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
-} from '@/components/ui/context-menu';
-import { convertImageUrl } from '@/lib/utils';
+} from "../../components/ui/context-menu";
+import { convertImageUrl } from '../../lib/utils.ts';
+import { buildApiUrl } from '../../lib/api/config.ts';
 
 interface Step {
   id: string;
@@ -83,7 +84,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
   const loadFlowData = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/${flowId}`);
+      const response = await fetch(buildApiUrl(`/api/emergency-flow/${flowId}`));
       if (!response.ok) throw new Error('フローデータの取得に失敗しました');
       
       const data = await response.json();

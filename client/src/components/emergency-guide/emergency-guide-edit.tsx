@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { useToast } from "../../hooks/use-toast.ts";
 import { FileText, Edit, Trash2, Save, X, Eye } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import EmergencyFlowEditor from './emergency-flow-editor';
 import EmergencyGuideDisplay from './emergency-guide-display';
 
@@ -108,7 +108,7 @@ const FlowList: React.FC<FlowListProps> = ({ flows, onSelectFlow, onDeleteFlow, 
                 variant="ghost"
                 size="sm"
                 className="text-red-500 hover:text-red-600"
-                onClick={() => onDeleteFlow(flow.id, flow.fileName)}
+                onClick={() => onDeleteFlow(flow.id, flow.filePath)}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>

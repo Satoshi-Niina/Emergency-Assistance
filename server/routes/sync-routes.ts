@@ -1,52 +1,47 @@
-import fs from 'fs';
+import express from 'express';
 import path from 'path';
 import multer from 'multer';
-import { storage } from '../storage';
-// 知識ベースディレクトリを使用
-const mediaDir: any = path.join(process.cwd(), 'knowledge-base', 'media');
-if (!fs.existsSync(mediaDir)) {
-    fs.mkdirSync(mediaDir, { recursive: true });
-}
-// multerストレージ設定
-const mediaStorage: any = multer.diskStorage({
+import fs from 'fs';
+import { db } from '../db/schema.js';
+import { chats, messages, media } from '../db/schema.js';
+import { eq } from 'drizzle-orm';
+import { storage } from '../storage.js';
+
+const router = express.Router();
+
+// Multer configuration
+const multerStorage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, mediaDir);
+        const uploadDir = path.join(process.cwd(), 'uploads', 'images');
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
-        const timestamp: any = Date.now();
-        const originalName: any = Buffer.from(file.originalname, 'latin1').toString('utf8');
-        const ext: any = path.extname(originalName) || '.jpg';
-        const filename = `media_${timestamp}${ext}`;
-        cb(null, filename);
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
     }
 });
-// アップロードハンドラ
-const upload: any = multer({
-    storage: mediaStorage,
+
+const upload = multer({
+    storage: multerStorage,
     limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB制限
+        fileSize: 10 * 1024 * 1024 // 10MB limit
     },
     fileFilter: (req, file, cb) => {
-        // 許可するMIMEタイプ
-        const allowedMimes = [
-            'image/jpeg',
-            'image/png',
-            'image/gif',
-            'image/svg+xml',
-            'video/mp4',
-            'video/webm',
-            'audio/mpeg',
-            'audio/ogg',
-            'audio/wav'
-        ];
-        if (allowedMimes.includes(file.mimetype)) {
-            cb(null, true);
-        }
-        else {
-            cb(new Error(`サポートされていないファイル形式です: ${file.mimetype}`));
+        const allowedTypes = /jpeg|jpg|png|gif|webp/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+        
+        if (mimetype && extname) {
+            return cb(null, true);
+        } else {
+            cb(new Error('Only image files are allowed!'));
         }
     }
 });
+
 export function registerSyncRoutes(app) {
     // メディアアップロードAPI
     app.post('/api/media/upload', upload.single('file'), async (req, res) => {
@@ -128,7 +123,7 @@ export function registerSyncRoutes(app) {
                 }
             }
             // チャットエクスポートレコードを更新
-            await storage.saveChatExport(String(chatId), String(userId), new Date());
+            await storage.saveChatExport(String(chatId), String(userId), new Date().getTime());
             res.json({
                 success: true,
                 syncedCount: processedMessages.length,
@@ -166,3 +161,6 @@ export function registerSyncRoutes(app) {
         }
     });
 }
+
+// Routerは使っていないが、importエラー回避のためダミーエクスポート
+export const syncRoutesRouter = undefined;

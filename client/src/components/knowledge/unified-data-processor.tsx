@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+import { Button } from "../../components/ui/button";
+import { useToast } from "../../hooks/use-toast.ts";
 import { Loader2, Upload, Trash2, FileText, RefreshCw, Database, Image } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import { Checkbox } from "../../components/ui/checkbox";
+import { Label } from "../../components/ui/label";
 import {
   Table,
   TableBody,
@@ -12,7 +12,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "../../components/ui/table";
+import { buildApiUrl } from "../../lib/api/config.ts";
 
 // タイプ定義
 interface ProcessedDocument {
@@ -207,7 +208,7 @@ const UnifiedDataProcessor: React.FC = () => {
   const fetchDocuments = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/knowledge`);
+      const response = await fetch(buildApiUrl('/api/knowledge'));
       if (!response.ok) {
         throw new Error("文書の取得に失敗しました");
       }
