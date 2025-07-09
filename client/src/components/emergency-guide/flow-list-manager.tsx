@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
+import { ScrollArea } from "../../components/ui/scroll-area";
+import { useToast } from "../../hooks/use-toast.ts";
 import { Edit, Eye, Trash2, RefreshCw, Plus } from 'lucide-react';
+import { buildApiUrl } from "../../lib/api/config.ts";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,7 +15,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "../../components/ui/alert-dialog";
 
 interface FlowData {
   id: string;
@@ -47,7 +48,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       setIsLoading(true);
       console.log('🔄 フロー一覧を取得中...');
       
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/list`, {
+      const response = await fetch(buildApiUrl('/api/emergency-flow'), {
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache'
@@ -84,7 +85,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
     if (!flowToDelete) return;
     
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/delete/${flowToDelete}`, {
+      const response = await fetch(buildApiUrl(`/api/emergency-flow/${flowToDelete}`), {
         method: 'DELETE'
       });
       

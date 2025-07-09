@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
 import { ArrowLeft, ArrowRight, X } from 'lucide-react';
-import { convertImageUrl } from '@/lib/utils';
+import { convertImageUrl } from '../../lib/utils.ts';
+import { buildApiUrl } from '../../lib/api/config.ts';
 
 interface Step {
   id: string;
@@ -42,7 +43,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
     const fetchFlowData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/${flowId}`);
+        const response = await fetch(buildApiUrl(`/api/emergency-flow/${flowId}`));
         
         if (!response.ok) {
           throw new Error(`Failed to fetch flow data: ${response.status}`);
@@ -196,29 +197,34 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
             <div className="space-y-3">
               <h4 className="font-medium text-gray-900">画像:</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {currentStep.images.map((image, index) => (
-                  <div key={index} className="relative">
-                    <img
-                      key={convertImageUrl(image.url)}
-                      src={convertImageUrl(image.url)}
-                      alt={image.fileName}
-                      className="w-full h-48 object-cover rounded-lg border"
-                      onError={(e) => {
-                        console.error('画像読み込みエラー:', image.url);
-                        const target = e.currentTarget;
-                        target.style.display = 'none';
-                        
-                        const errorDiv = document.createElement('div');
-                        errorDiv.className = 'w-full h-48 bg-red-100 border border-red-300 text-red-700 px-3 py-2 rounded-lg text-sm flex items-center justify-center';
-                        errorDiv.textContent = '画像の読み込みに失敗しました';
-                        target.parentNode?.appendChild(errorDiv);
-                      }}
-                    />
-                    <div className="mt-2 text-xs text-gray-500 text-center">
-                      {image.fileName}
+                {currentStep.images.map((image, index) => {
+                  const imageUrl = convertImageUrl(image.url);
+                  console.log('画像URL変換:', { original: image.url, converted: imageUrl });
+                  
+                  return (
+                    <div key={index} className="relative">
+                      <img
+                        src={imageUrl}
+                        alt={image.fileName}
+                        className="w-full h-48 object-cover rounded-lg border"
+                        onError={(e) => {
+                          console.error('画像読み込みエラー:', image.url);
+                          console.error('変換後のURL:', imageUrl);
+                          const target = e.currentTarget;
+                          target.style.display = 'none';
+                          
+                          const errorDiv = document.createElement('div');
+                          errorDiv.className = 'w-full h-48 bg-red-100 border border-red-300 text-red-700 px-3 py-2 rounded-lg text-sm flex items-center justify-center';
+                          errorDiv.textContent = '画像の読み込みに失敗しました';
+                          target.parentNode?.appendChild(errorDiv);
+                        }}
+                      />
+                      <div className="mt-2 text-xs text-gray-500 text-center">
+                        {image.fileName}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

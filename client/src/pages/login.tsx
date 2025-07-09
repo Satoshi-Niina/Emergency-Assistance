@@ -2,12 +2,12 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { loginSchema } from "@/lib/schema";
-import { useAuth } from "@/context/auth-context";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { loginSchema } from "../lib/schema.ts";
+import { useAuth } from "../context/auth-context";
+import { Button } from "../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../components/ui/form";
+import { Input } from "../components/ui/input";
 
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);

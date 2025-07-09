@@ -1,7 +1,14 @@
 import { Router } from 'express';
-import { promises as fs } from 'fs';
-import path from 'path';
-const router: any = Router();
+import * as fs from 'fs';
+import { promises as fsPromises } from 'fs';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+// ESM用__dirname定義
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const router = Router();
 router.post('/delete', async (req, res) => {
     try {
         const { filePath } = req.body;
@@ -10,15 +17,15 @@ router.post('/delete', async (req, res) => {
         }
         // 安全のため、パスが指定されたディレクトリ内にあることを確認
         const normalizedPath: any = path.normalize(filePath);
-        const baseDir: any = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-        const absolutePath: any = path.join(process.cwd(), normalizedPath);
+        const baseDir: any = path.join(__dirname, '../../knowledge-base/troubleshooting');
+        const absolutePath: any = path.join(__dirname, '../../', normalizedPath);
         if (!absolutePath.startsWith(baseDir)) {
             return res.status(403).json({ error: '許可されていないディレクトリへのアクセスです' });
         }
         // ファイルの存在確認
-        await fs.access(absolutePath);
+        await fsPromises.access(absolutePath);
         // ファイルの削除
-        await fs.unlink(absolutePath);
+        await fsPromises.unlink(absolutePath);
         res.status(200).json({ message: 'ファイルを削除しました' });
     }
     catch (error) {

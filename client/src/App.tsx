@@ -1,6 +1,6 @@
 import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "./components/ui/toaster";
 import { AuthProvider } from './context/auth-context';
 import { ChatProvider } from './context/chat-context';
 import Header from './components/navigation/header';

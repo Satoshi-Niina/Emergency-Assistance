@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "@/context/auth-context";
-import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "../context/auth-context";
+import { useToast } from "../hooks/use-toast.ts";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { apiRequest, queryClient } from "../lib/queryClient.ts";
+import { Button } from "../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
 import { 
   Table, 
   TableBody, 
@@ -14,7 +14,7 @@ import {
   TableHead, 
   TableHeader, 
   TableRow 
-} from "@/components/ui/table";
+} from "../components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -23,14 +23,14 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "../components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "../components/ui/select";
 import { Shield, UserPlus, ArrowLeft, User, Edit, Trash2, AlertCircle } from "lucide-react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 
@@ -125,7 +125,9 @@ export default function UsersPage() {
       return await res.json();
     },
     onSuccess: () => {
+      // より確実にクエリを無効化して再取得
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.refetchQueries({ queryKey: ["/api/users"] });
       toast({
         title: "ユーザー作成完了",
         description: "新しいユーザーが作成されました",
@@ -230,7 +232,9 @@ export default function UsersPage() {
       return await res.json();
     },
     onSuccess: () => {
+      // より確実にクエリを無効化して再取得
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.refetchQueries({ queryKey: ["/api/users"] });
       toast({
         title: "ユーザー更新完了",
         description: "ユーザー情報が更新されました",
@@ -272,7 +276,9 @@ export default function UsersPage() {
       return await res.json();
     },
     onSuccess: () => {
+      // より確実にクエリを無効化して再取得
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.refetchQueries({ queryKey: ["/api/users"] });
       toast({
         title: "ユーザー削除完了",
         description: "ユーザーが削除されました",

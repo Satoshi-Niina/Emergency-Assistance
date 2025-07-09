@@ -1,21 +1,21 @@
 import OpenAI from "openai";
 import dotenv from 'dotenv';
-import path from 'path';
+import * as path from 'path';
 import { fileURLToPath } from 'url';
 
-// __dirnameの代替
+// ESM用__dirname定義
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// .envファイルの読み込み
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+// .envファイルの読み込み（相対パスで指定）
+dotenv.config({ path: path.resolve(__dirname, '../../server/.env') });
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 const OPENAI_MODEL = "gpt-4o";
 
 // 複数の場所から.envファイルを読み込み
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-dotenv.config({ path: path.resolve(process.cwd(), 'server/.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../server/.env') });
 
 // APIキーの取得（Replitシークレットも考慮）
 const apiKey = process.env.OPENAI_API_KEY || process.env.REPLIT_SECRET_OPENAI_API_KEY;
@@ -27,12 +27,12 @@ console.log("[DEBUG] Environment variables:", {
   OPENAI_API_KEY: process.env.OPENAI_API_KEY ? "SET" : "NOT SET",
   REPLIT_SECRET_OPENAI_API_KEY: process.env.REPLIT_SECRET_OPENAI_API_KEY ? "SET" : "NOT SET",
   NODE_ENV: process.env.NODE_ENV,
-  PWD: process.cwd()
+  PWD: __dirname
 });
 
 // 開発環境ではAPIキーがなくても動作するように条件付き初期化
 let openai: OpenAI | null = null;
-if (apiKey && apiKey !== 'dev-mock-key') {
+if (apiKey && apiKey !== 'dev-mock-key' && apiKey !== 'your-openai-api-key-here') {
   openai = new OpenAI({
     apiKey: apiKey,
   });
@@ -41,9 +41,47 @@ if (apiKey && apiKey !== 'dev-mock-key') {
   console.log("[DEV] OpenAI client not initialized - API key not available or is mock key");
 }
 
-// APIキーが存在するか確認
-// Remove detailed API key existence logging
-// console.log("[DEBUG] OpenAI API KEY exists:", process.env.OPENAI_API_KEY ? "YES" : "NO");
+// 開発環境用のモックレスポンス
+const getMockResponse = (prompt: string): string => {
+  const lowerPrompt = prompt.toLowerCase();
+  
+  // 応急処置関連の質問に対するモックレスポンス
+  if (lowerPrompt.includes('応急処置') || lowerPrompt.includes('緊急') || lowerPrompt.includes('故障')) {
+    return `応急処置についてのご質問ですね。
+
+現在は開発環境のため、実際のAI応答の代わりにモックレスポンスを返しています。
+
+実際の運用では、以下のような応急処置手順を提供します：
+1. 安全確認 - 作業環境の安全性を確認
+2. 症状診断 - 故障の症状を詳しく確認
+3. 応急対応 - 即座に実行可能な対応手順
+4. 専門家連絡 - 必要に応じて専門家への連絡
+
+本番環境では、OpenAI APIキーを設定することで、より詳細で正確な応急処置ガイダンスを提供できます。
+
+何か他にご質問がございましたら、お気軽にお聞かせください。`;
+  }
+  
+  // 一般的な質問に対するモックレスポンス
+  if (lowerPrompt.includes('こんにちは') || lowerPrompt.includes('hello')) {
+    return `こんにちは！応急処置チャットシステムです。
+
+現在は開発環境で動作しており、実際のAI応答の代わりにモックレスポンスを返しています。
+
+本番環境では、OpenAI APIキーを設定することで、より詳細で正確な応答を提供できます。
+
+何かお手伝いできることがございましたら、お気軽にお聞かせください。`;
+  }
+  
+  // デフォルトのモックレスポンス
+  return `ご質問ありがとうございます。
+
+現在は開発環境のため、実際のAI応答の代わりにモックレスポンスを返しています。
+
+本番環境では、OpenAI APIキーを設定することで、より詳細で正確な応答を提供できます。
+
+応急処置や技術的な質問について、より具体的にお聞かせいただければ、適切なガイダンスを提供いたします。`;
+};
 
 /**
  * OpenAI APIにリクエストを送信して応答を取得する関数
@@ -56,7 +94,7 @@ export async function processOpenAIRequest(prompt: string, useKnowledgeBase: boo
     // OpenAIクライアントが利用可能かチェック
     if (!openai) {
       console.log('[DEV] OpenAI client not available, returning development message');
-      return '開発環境ではOpenAI APIが利用できません。本番環境でAPIキーを設定してください。';
+      return getMockResponse(prompt);
     }
 
     // Remove detailed API call start logging
@@ -68,7 +106,7 @@ export async function processOpenAIRequest(prompt: string, useKnowledgeBase: boo
     // ナレッジベースから関連情報を取得して含める
     if (useKnowledgeBase) {
       try {
-        const { generateSystemPromptWithKnowledge } = await import('./knowledge-base');
+        const { generateSystemPromptWithKnowledge } = await import('./knowledge-base.js');
         systemPrompt = await generateSystemPromptWithKnowledge(prompt);
       } catch (error) {
         console.error('ナレッジベース初期化エラー:', error);

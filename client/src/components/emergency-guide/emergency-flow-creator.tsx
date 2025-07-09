@@ -1,13 +1,13 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
+import { Button } from "../../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "../../components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { Badge } from "../../components/ui/badge";
+import { useToast } from "../../hooks/use-toast.ts";
 import { Upload, Save, X, Edit, Edit3, File, FileText, Plus, Download, FolderOpen, Trash2, RefreshCw, AlertTriangle, Eye } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
+import { Progress } from "../../components/ui/progress";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,22 +17,23 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "../../components/ui/alert-dialog";
 import EmergencyFlowEditor from './emergency-flow-editor';
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
-} from '@/components/ui/context-menu';
+} from "../../components/ui/context-menu";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "../../components/ui/select";
 import { v4 as uuidv4 } from 'uuid';
+import { convertImageUrl } from '../../lib/utils.ts';
 
 interface FlowFile {
   id: string;
@@ -70,37 +71,6 @@ interface Slide {
 interface EmergencyFlowCreatorProps {
   initialData?: any;
   onSave: (data: any) => void;
-}
-
-// 画像URL変換の改善
-function convertImageUrl(url: string): string {
-  if (!url) return '';
-  
-  // 既にAPIエンドポイントの形式の場合はそのまま返す
-  if (url.startsWith('/api/emergency-flow/image/')) {
-    return url;
-  }
-  
-  // 外部URLの場合はそのまま返す
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return url;
-  }
-  
-  // ファイル名を抽出（パスセパレータを考慮）
-  let fileName = url;
-  if (url.includes('/')) {
-    fileName = url.split('/').pop() || url;
-  } else if (url.includes('\\')) {
-    fileName = url.split('\\').pop() || url;
-  }
-  
-  // ファイル名が空の場合は元のURLを返す
-  if (!fileName || fileName === url) {
-    return url;
-  }
-  
-  // APIエンドポイントに変換
-  return `/api/emergency-flow/image/${fileName}`;
 }
 
 const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({

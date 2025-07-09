@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { useAuth } from "@/context/auth-context";
-import { useChat } from "@/context/chat-context";
+import { useAuth } from "../../context/auth-context";
+import { useChat } from "../../context/chat-context";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { Copy, Volume2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { speakText, stopSpeaking } from "@/lib/text-to-speech";
+import { useToast } from "../../hooks/use-toast.ts";
+import { speakText, stopSpeaking } from "../../lib/text-to-speech.ts";
 
 interface MessageBubbleProps {
   message: {

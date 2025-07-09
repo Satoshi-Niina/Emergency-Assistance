@@ -1,21 +1,20 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-export const upload: any = void 0;
-import multer_1 from "multer";
+import multer from "multer";
+
 // メモリストレージを使用してファイルをバッファとして保存
-var storage = multer_1.default.memoryStorage();
+const storage = multer.memoryStorage();
+
 // ファイルフィルター
-var fileFilter = function (req, file, cb) {
+const fileFilter = (req: any, file: any, cb: any) => {
     // 画像ファイルのみ許可
     if (file.mimetype.startsWith('image/')) {
         cb(null, true);
-    }
-    else {
+    } else {
         cb(new Error('画像ファイルのみアップロード可能です'), false);
     }
 };
+
 // multer設定
-export const upload = (0, multer_1.default)({
+export const upload = multer({
     storage: storage,
     fileFilter: fileFilter,
     limits: {

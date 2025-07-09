@@ -1,19 +1,24 @@
-import { Router } from 'express';
+import * as express from 'express';
 import OpenAI from 'openai';
 import { z } from 'zod';
-import { db } from '../db';
-import { emergencyFlows } from '../db/schema';
-import { findRelevantImages } from '../utils/image-matcher';
+import { db } from '../db.js';
+import { emergencyFlows } from '../db/schema.js';
+import { findRelevantImages } from '../utils/image-matcher.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import { eq } from 'drizzle-orm';
 import { validate as validateUUID } from 'uuid';
 import { promises as fsPromises } from 'fs';
-import { upload } from '../utils/image-uploader';
-import { validateFlowData, autoFixFlowData } from '../lib/flow-validator';
-import crypto from 'crypto';
+import { upload } from '../utils/image-uploader.js';
+import { validateFlowData, autoFixFlowData } from '../lib/flow-validator.js';
+import * as crypto from 'crypto';
+import { fileURLToPath } from 'url';
 
-const router = Router();
+// ESM用__dirname定義
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const router = express.Router();
 
 // 開発環境ではOpenAI APIキーがなくても動作するように条件付き初期化
 let openai: OpenAI | null = null;
@@ -30,11 +35,11 @@ const generateFlowSchema = z.object({
 });
 
 // テンプレートスキーマを適用する関数（仮実装）
-function applyTemplateSchema(data): any {
+function applyTemplateSchema(data: any): any {
   // TODO: 実際のスキーマ適用ロジックを実装
   // 例：dataに必要なフィールドが存在しない場合にデフォルト値を追加する
   if (data && data.steps) {
-    data.steps = data.steps.map((step) => {
+    data.steps = data.steps.map((step: any) => {
       if (step.type === 'decision' && !step.options) {
         step.options = [
           { text: 'はい', nextStepId: '', condition: '', isTerminal: false, conditionType: 'yes' },
@@ -57,7 +62,7 @@ router.post('/update-step-title', async (req, res) => {
     }
 
     // knowledge-base/troubleshooting/ ディレクトリから該当ファイルを読み込み
-    const filePath = path.join(process.cwd(), 'knowledge-base', 'troubleshooting', `${flowId}.json`);
+    const filePath = path.join(__dirname, '../../knowledge-base/troubleshooting', `${flowId}.json`);
 
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: 'フローファイルが見つかりません' });
@@ -132,7 +137,7 @@ router.post('/', async (req, res) => {
     flowData.updatedAt = new Date().toISOString();
 
     // ファイルパスを設定
-    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const troubleshootingDir = path.join(__dirname, '../../knowledge-base/troubleshooting');
     if (!fs.existsSync(troubleshootingDir)) {
       fs.mkdirSync(troubleshootingDir, { recursive: true });
     }
@@ -192,7 +197,7 @@ router.put('/:id', async (req, res) => {
     flowData.updatedAt = new Date().toISOString();
 
     // ファイルパスを設定
-    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const troubleshootingDir = path.join(__dirname, '../../knowledge-base/troubleshooting');
     const filePath = path.join(troubleshootingDir, `${id}.json`);
 
     // 既存ファイルの確認
@@ -229,10 +234,57 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// フロー一覧取得エンドポイント
+// フロー一覧取得エンドポイント（ルートパス）
+router.get('/', (req, res) => {
+  try {
+    const troubleshootingDir = path.join(__dirname, '../../knowledge-base/troubleshooting');
+    
+    if (!fs.existsSync(troubleshootingDir)) {
+      console.log('📁 troubleshootingディレクトリが存在しません。');
+      return res.json([]);
+    }
+
+    const files = fs.readdirSync(troubleshootingDir);
+    const jsonFiles = files.filter(file => file.endsWith('.json') && !file.includes('.backup') && !file.includes('.tmp'));
+
+    const fileList = jsonFiles.map((file: any) => {
+      try {
+        const filePath = path.join(troubleshootingDir, file);
+        const content = fs.readFileSync(filePath, 'utf8');
+        const data = JSON.parse(content);
+        
+        let description = data.description || '';
+        if (!description && data.steps && data.steps.length > 0) {
+            description = data.steps[0].description || data.steps[0].message || '';
+        }
+
+        return {
+          id: data.id || file.replace('.json', ''),
+          title: data.title || 'タイトルなし',
+          description: description,
+          fileName: file,
+          createdAt: data.createdAt || data.savedAt || data.updatedAt || new Date().toISOString()
+        };
+      } catch (error) {
+        console.error(`ファイル ${file} の解析中にエラーが発生しました:`, error);
+        return null;
+      }
+    }).filter(Boolean);
+
+    res.json(fileList);
+  } catch (error) {
+    console.error('❌ ファイル一覧取得エラー:', error);
+    res.status(500).json({ 
+      error: 'ファイル一覧の取得に失敗しました',
+      details: (error as Error).message
+    });
+  }
+});
+
+// フロー一覧取得エンドポイント（互換性のため残す）
 router.get('/list', (req, res) => {
   try {
-    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const troubleshootingDir = path.join(__dirname, '../../knowledge-base/troubleshooting');
     
     if (!fs.existsSync(troubleshootingDir)) {
       console.log('📁 troubleshootingディレクトリが存在しません。');
@@ -258,6 +310,7 @@ router.get('/list', (req, res) => {
           title: data.title || 'タイトルなし',
           description: description,
           fileName: file,
+          filePath: `knowledge-base/troubleshooting/${file}`,
           createdAt: data.createdAt || data.savedAt || data.updatedAt || new Date().toISOString()
         };
       } catch (error) {
@@ -296,7 +349,7 @@ router.get('/detail/:id', async (req, res) => {
     const { id } = req.params;
     console.log(`🔄 [${timestamp}] フロー詳細取得開始: ID=${id}`);
 
-    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const troubleshootingDir = path.join(__dirname, '../../knowledge-base/troubleshooting');
     const filePath = path.join(troubleshootingDir, `${id}.json`);
 
     console.log(`📁 ファイルパス: ${filePath}`);
@@ -330,8 +383,8 @@ router.get('/detail/:id', async (req, res) => {
     });
 
     // 条件分岐ステップの確認
-    const decisionSteps = data.steps?.filter((step) => step.type === 'decision') || [];
-    const conditionSteps = data.steps?.filter((step) => step.type === 'condition') || [];
+    const decisionSteps = data.steps?.filter((step: any) => (step as any).type === 'decision') || [];
+    const conditionSteps = data.steps?.filter((step: any) => (step as any).type === 'condition') || [];
 
     console.log(`🔀 条件分岐ステップの確認:`, {
       totalSteps: data.steps?.length || 0, decisionSteps: decisionSteps.length, conditionSteps: conditionSteps.length, decisionStepsDetail: decisionSteps.map((step) => ({
@@ -377,7 +430,7 @@ router.get('/detail/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const troubleshootingDir = path.join(__dirname, '../../knowledge-base/troubleshooting');
     const filePath = path.join(troubleshootingDir, `${id}.json`);
 
     if (!fs.existsSync(filePath)) {
@@ -414,7 +467,7 @@ router.get('/get/:id', async (req, res) => {
     const { id } = req.params;
     console.log(`🔄 [${timestamp}] フロー直接取得: ID=${id}`);
 
-    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const troubleshootingDir = path.join(__dirname, '../../knowledge-base/troubleshooting');
     const filePath = path.join(troubleshootingDir, `${id}.json`);
 
     console.log(`📁 ファイルパス: ${filePath}`);
@@ -437,8 +490,8 @@ router.get('/get/:id', async (req, res) => {
     let data = JSON.parse(content);
 
     // 条件分岐ステップの確認
-    const decisionSteps = data.steps?.filter((step) => step.type === 'decision') || [];
-    const conditionSteps = data.steps?.filter((step) => step.type === 'condition') || [];
+    const decisionSteps = data.steps?.filter((step: any) => step.type === 'decision') || [];
+    const conditionSteps = data.steps?.filter((step: any) => step.type === 'condition') || [];
 
     console.log(`🔀 条件分岐ステップの確認:`, {
       totalSteps: data.steps?.length || 0,
@@ -475,9 +528,9 @@ router.get('/get/:id', async (req, res) => {
 router.post('/generate', async (req, res) => {
   try {
     const { keyword } = generateFlowSchema.parse(req.body);
-    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const troubleshootingDir = path.join(__dirname, '../../knowledge-base/troubleshooting');
     const cleanFlowId = ((req.params as any).id || '').startsWith('ts_') ? ((req.params as any).id || '').substring(3) : ((req.params as any).id || '');
-    const filePath = path.join(process.cwd(), 'knowledge-base/troubleshooting', `${cleanFlowId}.json`);
+    const filePath = path.join(__dirname, '../../knowledge-base/troubleshooting', `${cleanFlowId}.json`);
 
     if (!fs.existsSync(troubleshootingDir)) {
       fs.mkdirSync(troubleshootingDir, { recursive: true });
@@ -560,7 +613,7 @@ router.post('/generate', async (req, res) => {
     };
 
     const fileName = `${flowData.id}.json`;
-    const flowFilePath = path.join(process.cwd(), 'knowledge-base', 'troubleshooting', `${fileName}.json`);
+    const flowFilePath = path.join(__dirname, '../../knowledge-base/troubleshooting', `${fileName}.json`);
     
     fs.writeFileSync(flowFilePath, JSON.stringify(flowData, null, 2), 'utf8');
 
@@ -628,7 +681,7 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
     const fileName = `emergency-flow-step${timestamp}.${extension}`;
 
     // 保存先ディレクトリを作成
-    const uploadDir = path.join(process.cwd(), 'knowledge-base', 'images', 'emergency-flows');
+    const uploadDir = path.join(__dirname, '../../knowledge-base/images/emergency-flows');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -718,46 +771,24 @@ function decryptUri(encryptedFileName: string): string {
 router.get('/image/:fileName', async (req, res) => {
   try {
     const { fileName } = req.params;
-    
-    console.log('🖼️ 画像配信リクエスト:', {
-      fileName,
-      userAgent: req.get('User-Agent'),
-      referer: req.get('Referer'),
-      timestamp: new Date().toISOString()
-    });
-    
-    if (!fileName) {
-      console.log('❌ ファイル名が指定されていません');
-      return res.status(400).json({
-        success: false,
-        error: 'ファイル名が必要です'
-      });
-    }
-
-    // ファイルパスを構築
-    const uploadDir = path.join(process.cwd(), 'knowledge-base', 'images', 'emergency-flows');
+    const uploadDir = path.join(__dirname, '../../knowledge-base/images/emergency-flows');
     const filePath = path.join(uploadDir, fileName);
 
-    console.log('🔍 ファイルパス確認:', {
+    // デバッグログ強化
+    console.log('🖼️ 画像リクエスト:', {
       fileName,
       uploadDir,
       filePath,
-      dirExists: fs.existsSync(uploadDir),
-      fileExists: fs.existsSync(filePath),
-      dirContents: fs.existsSync(uploadDir) ? fs.readdirSync(uploadDir) : 'ディレクトリが存在しません'
+      exists: fs.existsSync(filePath),
+      filesInDir: fs.readdirSync(uploadDir)
     });
 
-    // ファイルの存在確認
     if (!fs.existsSync(filePath)) {
-      console.error('❌ 画像ファイルが見つかりません:', {
+      return res.status(404).json({
+        error: 'ファイルが存在しません',
         fileName,
         filePath,
-        uploadDir,
-        dirContents: fs.existsSync(uploadDir) ? fs.readdirSync(uploadDir) : 'ディレクトリが存在しません'
-      });
-      return res.status(404).json({
-        success: false,
-        error: '画像ファイルが見つかりません'
+        filesInDir: fs.readdirSync(uploadDir)
       });
     }
 
@@ -831,7 +862,7 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params;
     console.log(`🔄 フロー取得開始: ID=${id}`);
 
-    const troubleshootingDir = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+    const troubleshootingDir = path.join(__dirname, '../../knowledge-base/troubleshooting');
     const filePath = path.join(troubleshootingDir, `${id}.json`);
 
     if (!fs.existsSync(filePath)) {

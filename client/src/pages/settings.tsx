@@ -1,19 +1,23 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "@/context/auth-context";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
-import { Slider } from "@/components/ui/slider";
-import { useToast } from "@/hooks/use-toast";
-import { Settings, Info, User, Bell, Shield, Database, Volume2, UserPlus, FileType, Book, LogOut, Save, FileX, Trash2 } from "lucide-react";
-import { WarningDialog } from "@/components/shared/warning-dialog";
+import { useAuth } from "../context/auth-context";
+import { Button } from "../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
+import { Switch } from "../components/ui/switch";
+import { Slider } from "../components/ui/slider";
+import { useToast } from "../hooks/use-toast.ts";
+import { Settings, Volume2, Mic, Monitor, Smartphone, LogOut, User, Shield, Save, Trash2, FileX, UserPlus, FileType, Info } from "lucide-react";
+import { WarningDialog } from "../components/shared/warning-dialog";
+import { Separator } from "../components/ui/separator";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "../components/ui/select";
 import { Link } from "react-router-dom";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-} from "@/components/ui/select";
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
@@ -217,7 +221,7 @@ export default function SettingsPage() {
         <Card className="border border-blue-200 shadow-md overflow-hidden">
           <CardHeader className="pb-2 bg-gradient-to-r from-blue-400 to-sky-500 text-white">
             <CardTitle className="text-lg flex items-center">
-              <Bell className="mr-2 h-5 w-5" />
+              <Mic className="mr-2 h-5 w-5" />
               通知設定
             </CardTitle>
           </CardHeader>

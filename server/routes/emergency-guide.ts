@@ -3,7 +3,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import multer from 'multer';
 import AdmZip from 'adm-zip';
-import { log } from '../vite';
+import { log } from '../vite.js';
+import { fileURLToPath } from 'url';
 // 一時ファイルクリーンアップユーティリティ
 function cleanupTempDirectory(dirPath) {
     if (!fs.existsSync(dirPath))
@@ -223,7 +224,7 @@ async function processFile(filePath) {
             const slides = [];
             try {
                 // XLSXライブラリを使用してExcelファイルを処理
-                import XLSX from "xlsx";
+                const XLSX = await import("xlsx");
                 const workbook: any = XLSX.readFile(filePath);
                 // シート名の一覧を取得
                 const sheetNames: any = workbook.SheetNames;
@@ -416,7 +417,7 @@ async function processFile(filePath) {
                     }
                 }
                 // 元のJSON形式を保存するためのトラブルシューティングディレクトリ
-                const troubleshootingDir: any = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+                const troubleshootingDir: any = path.join(__dirname, '../../knowledge-base/troubleshooting');
                 // トラブルシューティングディレクトリが存在しない場合は作成
                 if (!fs.existsSync(troubleshootingDir)) {
                     fs.mkdirSync(troubleshootingDir, { recursive: true });
@@ -534,7 +535,7 @@ router.get('/list', (_req, res) => {
             : [];
         console.log(`jsonDirから${jsonFiles.length}個のメタデータファイルを取得しました`);
         // トラブルシューティングディレクトリをチェック
-        const troubleshootingDir: any = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+        const troubleshootingDir: any = path.join(__dirname, '../../knowledge-base/troubleshooting');
         if (!fs.existsSync(troubleshootingDir)) {
             fs.mkdirSync(troubleshootingDir, { recursive: true });
             console.log(`troubleshootingDirが存在しなかったため作成しました: ${troubleshootingDir}`);
@@ -608,7 +609,7 @@ router.get('/detail/:id', (req, res) => {
         // トラブルシューティングファイルかどうかをチェック
         if (id.startsWith('ts_')) {
             // トラブルシューティングファイルの場合
-            const troubleshootingDir: any = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+            const troubleshootingDir: any = path.join(__dirname, '../../knowledge-base/troubleshooting');
             const tsId: any = id.replace('ts_', ''); // プレフィックスを削除
             const filePath: any = path.join(troubleshootingDir, `${tsId}.json`);
             if (!fs.existsSync(filePath)) {
@@ -683,7 +684,7 @@ router.post('/update/:id', (req, res) => {
         // トラブルシューティングファイルかどうかをチェック
         if (id.startsWith('ts_')) {
             // トラブルシューティングファイルの場合
-            const troubleshootingDir: any = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+            const troubleshootingDir: any = path.join(__dirname, '../../knowledge-base/troubleshooting');
             const tsId: any = id.replace('ts_', ''); // プレフィックスを削除
             const filePath: any = path.join(troubleshootingDir, `${tsId}.json`);
             if (!fs.existsSync(filePath)) {
@@ -779,7 +780,7 @@ router.delete('/delete/:id', (req, res) => {
         // トラブルシューティングファイルかどうかをチェック
         if (id.startsWith('ts_')) {
             // トラブルシューティングファイルの場合
-            const troubleshootingDir: any = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+            const troubleshootingDir: any = path.join(__dirname, '../../knowledge-base/troubleshooting');
             const tsId: any = id.replace('ts_', ''); // プレフィックスを削除
             const filePath: any = path.join(troubleshootingDir, `${tsId}.json`);
             if (fs.existsSync(filePath)) {
@@ -859,4 +860,4 @@ router.post('/send-to-chat/:guideId/:chatId', async (req, res) => {
         res.status(500).json({ error: '応急処置フローのチャットへの送信に失敗しました' });
     }
 });
-export default router;
+export { router as emergencyGuideRouter };

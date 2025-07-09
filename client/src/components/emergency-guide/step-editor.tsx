@@ -1,25 +1,27 @@
+// @ts-ignore
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { Textarea } from "../../components/ui/textarea";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
-} from '@/components/ui/context-menu';
+} from "../../components/ui/context-menu";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "../../components/ui/select";
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { Plus, Trash2, GripVertical, Upload, X, Image as ImageIcon, Save, RotateCcw, AlertTriangle, ChevronUp, ChevronDown, MoreVertical } from 'lucide-react';
+import { convertImageUrl } from '../../lib/utils.ts';
 
 /**
  * ⚠️ AI編集制限: このファイルはスライド編集UI専用です
@@ -128,18 +130,6 @@ const StepEditor: React.FC<StepEditorProps> = ({
   };
 
   // 画像URL変換の簡略化
-  const convertImageUrl = (url: string): string => {
-    if (!url) return '';
-    
-    // 既にAPIエンドポイントの形式の場合はそのまま返す
-    if (url.startsWith('/api/emergency-flow/image/')) {
-      return url;
-    }
-    
-    // 古い形式や相対パスの場合はAPIエンドポイントに変換
-    const fileName = url.split('/').pop() || url.split('\\').pop();
-    return fileName ? `/api/emergency-flow/image/${fileName}` : url;
-  };
 
   // 画像の読み込みエラーを処理する関数
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>, imageUrl: string) => {
@@ -167,7 +157,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
       // 重複チェック: 同じファイル名の画像が既に存在するかチェック
       const stepToUpdate = steps.find(step => step.id === stepId);
       if (stepToUpdate && stepToUpdate.images) {
-        const existingImage = stepToUpdate.images.find(img => 
+        const existingImage = (stepToUpdate.images ?? []).find(img => 
           img.fileName === file.name || 
           img.fileName === file.name.replace(/\.[^/.]+$/, '') // 拡張子を除いた比較
         );
@@ -222,7 +212,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
       // 画像アップロード処理を、配列に画像を追加するように変更
       const currentStepToUpdate = steps.find(step => step.id === stepId);
       if (currentStepToUpdate) {
-        const currentImages = currentStepToUpdate.images || [];
+        const currentImages = currentStepToUpdate.images ?? [];
         if (currentImages.length < 3) {
           const updatedImages = [...currentImages, newImage];
           onStepUpdate(stepId, { images: updatedImages });
@@ -428,18 +418,41 @@ const StepEditor: React.FC<StepEditorProps> = ({
             onDrop={(e) => handleDrop(step.id, e)}
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {step.images?.map((image, index) => (
+              {(step.images ?? []).map((image, index) => (
                 <div key={index} className="relative group aspect-video">
-                  <img
-                    src={convertImageUrl(image.url)}
-                    alt={image.fileName}
-                    className="w-full h-full object-cover rounded-lg border shadow-sm"
-                    onError={(e) => handleImageError(e, image.url)}
-                    onLoad={() => {
-                      // 画像読み込み成功時にエラーフラグをクリア
-                      setImageErrors(prev => ({ ...prev, [image.url]: false }));
-                    }}
-                  />
+                  {(() => {
+                    const convertedUrl = convertImageUrl(image.url);
+                    console.log(`🖼️ 画像表示デバッグ [${step.id}][${index}]:`, {
+                      originalUrl: image.url,
+                      convertedUrl: convertedUrl,
+                      fileName: image.fileName
+                    });
+                    return (
+                      <img
+                        src={convertedUrl}
+                        alt={image.fileName}
+                        className="w-full h-full object-cover rounded-lg border shadow-sm"
+                        onError={(e) => {
+                          console.error('❌ 画像読み込みエラー:', {
+                            originalUrl: image.url,
+                            convertedUrl: convertedUrl,
+                            fileName: image.fileName,
+                            error: e
+                          });
+                          handleImageError(e, image.url);
+                        }}
+                        onLoad={() => {
+                          console.log('✅ 画像読み込み成功:', {
+                            originalUrl: image.url,
+                            convertedUrl: convertedUrl,
+                            fileName: image.fileName
+                          });
+                          // 画像読み込み成功時にエラーフラグをクリア
+                          setImageErrors(prev => ({ ...prev, [image.url]: false }));
+                        }}
+                      />
+                    );
+                  })()}
                   {imageErrors[image.url] && (
                     <div className="absolute inset-0 bg-red-500 bg-opacity-50 flex items-center justify-center rounded-lg">
                       <div className="text-center text-white p-2">
@@ -470,7 +483,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
                   </div>
                   
                   {/* 重複画像の場合は警告表示 */}
-                  {step.images.filter(img => img.fileName === image.fileName).length > 1 && (
+                  {(step.images ?? []).filter(img => img.fileName === image.fileName).length > 1 && (
                     <div className="absolute top-1 left-1">
                       <div className="bg-yellow-500 text-white text-xs px-1 py-0.5 rounded">
                         重複
@@ -480,7 +493,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
                 </div>
               ))}
 
-              {(!step.images || step.images.length < 3) && (
+              {(!step.images || (step.images ?? []).length < 3) && (
                 <div 
                   className="flex items-center justify-center aspect-video border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
                   onClick={() => fileInputRefs.current[step.id]?.click()}
@@ -573,7 +586,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
                   </Button>
                 </div>
               ))}
-              {(!step.conditions || step.conditions.length < 4) && (
+              {(!step.conditions || (step.conditions ?? []).length < 4) && (
                 <Button
                   type="button"
                   variant="outline"

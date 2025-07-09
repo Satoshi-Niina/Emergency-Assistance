@@ -1,8 +1,8 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
-import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '../hooks/use-toast.ts';
+import { apiRequest } from '../lib/queryClient.ts';
 import { useQueryClient } from '@tanstack/react-query';
-import { startSpeechRecognition, stopSpeechRecognition, startBrowserSpeechRecognition, stopBrowserSpeechRecognition } from '../lib/azure-speech';
+import { startSpeechRecognition, stopSpeechRecognition, startBrowserSpeechRecognition, stopBrowserSpeechRecognition } from '../lib/azure-speech.ts';
 import { Message } from '@shared/schema';
 
 // 十分な文とみなす最小文字数
@@ -586,7 +586,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // 新規メッセージに対して画像検索を実行
         try {
           console.log('✅ AI応答受信完了、画像検索を開始します...');
-          const { searchByText, reloadImageSearchData } = await import('@/lib/image-search');
+          const { searchByText, reloadImageSearchData } = await import('../lib/image-search.ts');
 
           // まず画像検索データの初期化を確認
           console.log('🔄 画像検索データをリロードします...');
@@ -983,7 +983,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // 新規メッセージに対して画像検索を実行
       try {
-        const { searchImages } = await import('@/lib/image-search');
+        const { searchImages } = await import('../lib/image-search.ts');
         const searchResults = await searchImages(userMessageContent);
         console.log('🔍 緊急ガイド用画像検索結果:', searchResults?.length || 0, '件');
 

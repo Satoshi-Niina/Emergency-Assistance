@@ -20,12 +20,12 @@ export default defineConfig({
     port: 5002, // 開発専用ポート
     proxy: {
       '/api': {
-        target: 'http://localhost:3002', // 開発サーバーのポート
+        target: 'http://localhost:3001', // 開発サーバーのポート
         changeOrigin: true,
         secure: false,
       },
       '/ws': {
-        target: 'ws://localhost:3002', // 開発サーバーのポート
+        target: 'ws://localhost:3001', // 開発サーバーのポート
         ws: true,
         changeOrigin: true
       }
@@ -52,5 +52,8 @@ export default defineConfig({
   logLevel: 'info', // 開発時は詳細ログ
   define: {
     __DEV__: true,
+    'import.meta.env.VITE_API_BASE_URL': JSON.stringify('http://localhost:3001'),
+    'import.meta.env.isProduction': JSON.stringify(false),
+    'import.meta.env.isDevelopment': JSON.stringify(true)
   }
 }); 

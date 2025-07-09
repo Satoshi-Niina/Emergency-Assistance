@@ -51,14 +51,20 @@ if (!fs.existsSync(serverPath)) {
 
 // サーバープロセスを起動
 const isTypeScript = finalServerPath.endsWith('.ts');
-const command = isTypeScript ? 'npx' : 'node';
-const args = isTypeScript ? ['tsx', finalServerPath] : [finalServerPath];
+const quote = s => `"${s}"`;
+const command = isTypeScript
+  ? (process.platform === 'win32'
+      ? quote(path.join(__dirname, 'node_modules', '.bin', 'tsx.cmd'))
+      : 'tsx')
+  : 'node';
+const args = [quote(finalServerPath)];
 
 console.log('🚀 Starting server with:', command, args.join(' '));
 
 const server = spawn(command, args, {
   stdio: 'inherit',
-  env: process.env
+  env: process.env,
+  shell: process.platform === 'win32'
 });
 
 server.on('error', (err) => {

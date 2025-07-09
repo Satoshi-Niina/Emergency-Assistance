@@ -1,7 +1,7 @@
-import { Router } from 'express';
+import * as express from 'express';
 import * as path from 'path';
 import * as fs from 'fs';
-const router: any = Router();
+const router = express.Router();
 // 汎用ロギング関数
 function logDebug(message: any, ...args) {
     if (process.env.NODE_ENV !== 'production') {

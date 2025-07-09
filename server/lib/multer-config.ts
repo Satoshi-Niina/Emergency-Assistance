@@ -1,20 +1,20 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-export const upload: any = void 0;
-import multer_1 from "multer";
+import multer from "multer";
+
 // メモリストレージを使用してファイルをバッファとして保存
-var storage = multer_1.default.memoryStorage();
+const storage = multer.memoryStorage();
+
 // ファイルフィルター
-var fileFilter = function (req, file, cb) {
-    var _a;
+const fileFilter = (req: any, file: any, cb: any) => {
     // 許可するMIMEタイプ
-    var allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif'];
-    var allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif'];
+    const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif'];
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif'];
+    
     // MIMEタイプが空の場合、ファイル拡張子でチェック
-    var originalName = file.originalname;
-    var extension = ((_a = originalName.split('.').pop()) === null || _a === void 0 ? void 0 : _a.toLowerCase()) || '';
-    var hasValidMimeType = allowedMimes.includes(file.mimetype);
-    var hasValidExtension = allowedExtensions.includes(".".concat(extension));
+    const originalName = file.originalname;
+    const extension = originalName.split('.').pop()?.toLowerCase() || '';
+    const hasValidMimeType = allowedMimes.includes(file.mimetype);
+    const hasValidExtension = allowedExtensions.includes(`.${extension}`);
+    
     console.log('🔍 Multer ファイル形式チェック:', {
         originalname: file.originalname,
         mimetype: file.mimetype,
@@ -22,10 +22,10 @@ var fileFilter = function (req, file, cb) {
         hasValidMimeType: hasValidMimeType,
         hasValidExtension: hasValidExtension
     });
+    
     if (hasValidMimeType || hasValidExtension) {
         cb(null, true);
-    }
-    else {
+    } else {
         console.error('❌ Multer: 対応していないファイル形式:', {
             originalname: file.originalname,
             mimetype: file.mimetype,
@@ -34,13 +34,15 @@ var fileFilter = function (req, file, cb) {
         cb(new Error('対応していないファイル形式です。JPEG、PNG、GIF、WebP、HEICファイルをサポートしています。'), false);
     }
 };
+
 // multerの設定
-export const upload = (0, multer_1.default)({
+export const upload = multer({
     storage: storage,
     fileFilter: fileFilter,
     limits: {
         fileSize: 5 * 1024 * 1024 // 5MB
     }
 });
+
 // デフォルトエクスポートも残す（後方互換性のため）
-export default exports.upload;
+export default upload;

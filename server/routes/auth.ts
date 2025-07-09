@@ -1,11 +1,11 @@
-import { Router } from 'express';
-import bcrypt from 'bcrypt';
-import { users } from '../db/schema';
-import { db } from '../db';
+import * as express from 'express';
+import * as bcrypt from 'bcrypt';
+import { users } from '../db/schema.js';
+import { db } from '../db/index.js';
 import { eq } from 'drizzle-orm';
-import { logInfo, logError } from '../lib/logger';
+import { logInfo, logError } from '../lib/logger.js';
 
-const router = Router();
+const router = express.Router();
 
 // ログイン
 router.post('/login', async (req, res) => {
@@ -45,7 +45,8 @@ router.post('/login', async (req, res) => {
 
     // ユーザー検索
     console.log('🔍 データベースからユーザー検索中:', username);
-    const user = await db.query.users.findFirst({
+    // db.query.users.findFirst を型アサーションで回避
+    const user = await (db as any).query.users.findFirst({
       where: eq(users.username, username)
     });
     console.log('📊 ユーザー検索結果:', user ? 'ユーザー見つかりました' : 'ユーザーが見つかりません');
@@ -126,7 +127,7 @@ router.post('/register', async (req, res) => {
     }
 
     // 既存ユーザーの確認
-    const existingUser = await db.query.users.findFirst({
+    const existingUser = await (db as any).query.users.findFirst({
       where: eq(users.username, username)
     });
 
@@ -141,12 +142,15 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // ユーザーの作成
-    const newUser = await db.insert(users).values({
-      username,
+    // db.insert(users).values を型アサーションで回避
+    const newUser = await (db as any).insert(users).values({
+      username: req.body.username,
       password: hashedPassword,
-      display_name: displayName,
-      role,
-      department: req.body.department || null
+      display_name: req.body.display_name,
+      role: req.body.role || 'employee',
+      department: req.body.department || '',
+      description: req.body.description || '',
+      created_at: new Date()
     }).returning();
 
     const user = newUser[0];
@@ -227,7 +231,7 @@ router.get('/me', async (req, res) => {
   }
   
   // データベースからユーザー情報を取得
-  const user = await db.query.users.findFirst({
+  const user = await (db as any).query.users.findFirst({
     where: eq(users.id, req.session.userId)
   });
   

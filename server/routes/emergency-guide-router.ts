@@ -1,11 +1,12 @@
-import { Router } from 'express';
+import * as express from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
 import multer from 'multer';
 import AdmZip from 'adm-zip';
 import fetch from 'node-fetch';
-import { log } from '../vite';
-const router: any = Router();
+import { log } from '../vite.js';
+
+const router = express.Router();
 // 知識ベースディレクトリの設定 - uploadsフォルダの使用を廃止
 const knowledgeBaseDir: any = path.resolve('./knowledge-base');
 const kbPptDir: any = path.join(knowledgeBaseDir, 'ppt');
@@ -803,7 +804,7 @@ router.post('/system-message', async (req, res) => {
         const senderId: any = req.session?.userId || 1;
         // DBストレージが直接使用可能か確認
         try {
-            import { storage  } from "../storage";
+            const { storage } = await import("../storage.js");
             // メッセージを作成
             const message: any = await storage.createMessage({
                 chatId: Number(chatId),

@@ -1,41 +1,37 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import { loginSchema, insertUserSchema, insertChatSchema, insertMessageSchema, insertMediaSchema, users, chatExports, documents, insertDocumentSchema, messages } from "@shared/schema";
-import { z } from "zod";
+import { storage } from "./storage.js";
+import { users } from "../shared/schema.js";
 import session from "express-session";
 import MemoryStore from 'memorystore';
 import { WebSocket, WebSocketServer } from "ws";
-import { processOpenAIRequest, generateSearchQuery, analyzeVehicleImage } from "./lib/openai";
-import { processPerplexityRequest } from "./lib/perplexity";
+import { processOpenAIRequest } from "./lib/openai.js";
+import { processPerplexityRequest } from "./lib/perplexity.js";
 import fs from "fs";
 import path from "path";
-import { db } from "./db";
-import { upload } from './lib/multer-config';
+import { db } from "./db/index.js";
+import { upload } from './lib/multer-config.js';
 import { 
   addDocumentToKnowledgeBase, 
   listKnowledgeBaseDocuments, 
   removeDocumentFromKnowledgeBase 
-} from './lib/knowledge-base';
-import { formatChatHistoryForExternalSystem } from './lib/chat-export-formatter';
-import techSupportRouter from './routes/tech-support';
-import { registerDataProcessorRoutes } from './routes/data-processor';
-import emergencyGuideRouter from './routes/emergency-guide';
-import emergencyFlowRouter from './routes/emergency-flow';
-import { registerSyncRoutes } from './routes/sync-routes';
-import { flowGeneratorRouter } from './routes/flow-generator';
-import { usersRouter } from './routes/users';
-import { troubleshootingRouter } from './routes/troubleshooting';
+} from './lib/knowledge-base.js';
+import { techSupportRouter } from './routes/tech-support.js';
+import { registerDataProcessorRoutes } from './routes/data-processor.js';
+import { emergencyGuideRouter } from './routes/emergency-guide.js';
+import emergencyFlowRoutes from './routes/emergency-flow.js';
+import flowGeneratorRoutes from './routes/flow-generator.js';
+import { registerSyncRoutes } from './routes/sync-routes.js';
+import { usersRouter } from './routes/users.js';
+import { troubleshootingRouter } from './routes/troubleshooting.js';
 import express from 'express';
 import { NextFunction } from "connect";
-import bcrypt from 'bcrypt';
-import { authRouter } from './routes/auth';
-import { exportFileManager } from "./lib/export-file-manager";
-import { processDocument } from "./lib/document-processor";
-import { mergeDocumentContent } from "./lib/knowledge-base";
-import { backupKnowledgeBase } from "./lib/knowledge-base";
-import { Router } from 'express';
-import fileRouter from './routes/file';
+import { authRouter } from './routes/auth.js';
+import { fileURLToPath } from 'url';
+
+// ESM用__dirname定義
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const MemoryStoreSession = MemoryStore(session);
 
@@ -51,8 +47,8 @@ declare module 'express-session' {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // 静的ファイル配信の設定（最優先で登録）
-  app.use('/images', express.static(path.join(process.cwd(), 'public', 'images')));
-  app.use('/public', express.static(path.join(process.cwd(), 'public')));
+  app.use('/images', express.static(path.join(__dirname, '../../public/images')));
+  app.use('/public', express.static(path.join(__dirname, '../../public')));
 
   // Register tech support router
   app.use('/api/tech-support', techSupportRouter);
@@ -64,10 +60,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/emergency-guide', emergencyGuideRouter);
 
   // Register emergency flow routes
-  app.use('/api/emergency-flow', emergencyFlowRouter);
+  app.use('/api/emergency-flow', emergencyFlowRoutes);
 
   // Register flow generator routes
-  app.use('/api/flow-generator', flowGeneratorRouter);
+  app.use('/api/flow-generator', flowGeneratorRoutes);
 
   // Register sync routes for offline capabilities
   registerSyncRoutes(app);
@@ -119,7 +115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`Perplexity API request: query=${query}, useKnowledgeBaseOnly=${useKnowledgeBaseOnly}`);
-      const { content, citations } = await processPerplexityRequest(query, systemPrompt, useKnowledgeBaseOnly);
+      const { content, citations } = await processPerplexityRequest(query);
 
       return res.json({ content, citations });
     } catch (error) {
@@ -365,7 +361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // ドキュメントのパスを取得
-        const docPath = path.join(process.cwd(), 'knowledge-base', document.title);
+        const docPath = path.join(__dirname, '../../knowledge-base', document.title);
 
         if (!fs.existsSync(docPath)) {
           return res.status(404).json({ error: 'Document file not found: ' + docPath });

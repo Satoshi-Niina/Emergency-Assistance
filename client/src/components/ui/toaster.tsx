@@ -1,5 +1,5 @@
 import React from 'react';
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "../../hooks/use-toast.ts"
 import {
   Toast,
   ToastClose,
@@ -7,7 +7,7 @@ import {
   ToastProvider,
   ToastTitle,
   ToastViewport,
-} from "@/components/ui/toast"
+} from "./toast"
 
 export const Toaster: React.FC = () => {
   const { toasts } = useToast()

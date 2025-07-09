@@ -1,106 +1,148 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-/**
- * エクスポートデータをファイルシステムに保存するための管理クラス
- * 将来的にAzureなどのクラウドストレージに切り替える際の抽象化レイヤー
- */
-var ExportFileManager = /** @class */ (function () {
-    function ExportFileManager(baseDir) {
-        if (baseDir === void 0) { baseDir = 'knowledge-base/exports'; }
+import * as fs from 'fs';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+// ESM用__dirname定義
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export class ExportFileManager {
+    private baseDir: string;
+
+    constructor(baseDir: string = path.join(__dirname, '../../knowledge-base/exports')) {
         this.baseDir = baseDir;
-        this.ensureDirectoryExists();
+        
+        // ディレクトリが存在しない場合は作成
+        if (!fs.existsSync(this.baseDir)) {
+            fs.mkdirSync(this.baseDir, { recursive: true });
+        }
     }
+
     /**
-     * エクスポートディレクトリが存在することを確認
+     * チャットエクスポートデータをファイルに保存
      */
-    ExportFileManager.prototype.ensureDirectoryExists = function () {
-        if (!fs_1.default.existsSync(this.baseDir)) {
-            fs_1.default.mkdirSync(this.baseDir, { recursive: true });
-            console.log("\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8\u30C7\u30A3\u30EC\u30AF\u30C8\u30EA\u3092\u4F5C\u6210\u3057\u307E\u3057\u305F: ".concat(this.baseDir));
+    saveChatExport(chatId: string, data: any, timestamp: number): string {
+        const chatDir = path.join(this.baseDir, `chat_${chatId}`);
+        
+        if (!fs.existsSync(chatDir)) {
+            fs.mkdirSync(chatDir, { recursive: true });
         }
-    };
-    /**
-     * チャットIDに基づくサブディレクトリを作成
-     * @param chatId チャットID
-     */
-    ExportFileManager.prototype.ensureChatDirectoryExists = function (chatId) {
-        var chatDir = path_1.default.join(this.baseDir, "chat_".concat(chatId));
-        if (!fs_1.default.existsSync(chatDir)) {
-            fs_1.default.mkdirSync(chatDir, { recursive: true });
-        }
-        return chatDir;
-    };
-    /**
-     * フォーマット済みデータをJSONファイルとして保存
-     * @param chatId チャットID
-     * @param data 保存するデータ
-     * @returns 保存したファイルのパス
-     */
-    ExportFileManager.prototype.saveFormattedExport = function (chatId, data) {
-        var chatDir = this.ensureChatDirectoryExists(chatId);
-        var timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        var fileName = "export_".concat(timestamp, ".json");
-        var filePath = path_1.default.join(chatDir, fileName);
+
+        const fileName = `export_${new Date(timestamp).toISOString().replace(/[:.]/g, '-')}.json`;
+        const filePath = path.join(chatDir, fileName);
+
         try {
-            fs_1.default.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
-            console.log("\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8\u30C7\u30FC\u30BF\u3092\u4FDD\u5B58\u3057\u307E\u3057\u305F: ".concat(filePath));
+            fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+            console.log(`チャットエクスポート保存: ${filePath}`);
             return filePath;
-        }
-        catch (error) {
-            console.error("\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8\u30C7\u30FC\u30BF\u306E\u4FDD\u5B58\u306B\u5931\u6557\u3057\u307E\u3057\u305F: ".concat(error));
+        } catch (error) {
+            console.error('エクスポートファイル保存エラー:', error);
             throw error;
         }
-    };
+    }
+
     /**
-     * 指定したチャットIDの最新のエクスポートデータを取得
-     * @param chatId チャットID
-     * @returns 最新のエクスポートデータ、存在しない場合はnull
+     * 最新のチャットエクスポートファイルを読み込み
      */
-    ExportFileManager.prototype.getLatestExport = function (chatId) {
-        var chatDir = path_1.default.join(this.baseDir, "chat_".concat(chatId));
-        if (!fs_1.default.existsSync(chatDir)) {
+    loadLatestChatExport(chatId: string): any {
+        const chatDir = path.join(this.baseDir, `chat_${chatId}`);
+        
+        if (!fs.existsSync(chatDir)) {
             return null;
         }
+
         try {
-            // エクスポートファイルを日付順にソート
-            var files = fs_1.default.readdirSync(chatDir)
-                .filter(function (file) { return file.startsWith('export_') && file.endsWith('.json'); })
+            const files = fs.readdirSync(chatDir)
+                .filter(file => file.endsWith('.json'))
                 .sort()
                 .reverse();
+
             if (files.length === 0) {
                 return null;
             }
-            var latestFile = path_1.default.join(chatDir, files[0]);
-            var data = fs_1.default.readFileSync(latestFile, 'utf8');
+
+            const latestFile = path.join(chatDir, files[0]);
+            const data = fs.readFileSync(latestFile, 'utf8');
             return JSON.parse(data);
-        }
-        catch (error) {
-            console.error("\u6700\u65B0\u306E\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8\u30C7\u30FC\u30BF\u306E\u8AAD\u307F\u8FBC\u307F\u306B\u5931\u6557\u3057\u307E\u3057\u305F: ".concat(error));
+        } catch (error) {
+            console.error('エクスポートファイル読み込みエラー:', error);
             return null;
         }
-    };
+    }
+
     /**
-     * 指定したチャットIDのすべてのエクスポートファイルを一覧表示
-     * @param chatId チャットID
-     * @returns ファイルパスの配列
+     * チャットの全エクスポートファイル一覧を取得
      */
-    ExportFileManager.prototype.listExportFiles = function (chatId) {
-        var chatDir = path_1.default.join(this.baseDir, "chat_".concat(chatId));
-        if (!fs_1.default.existsSync(chatDir)) {
+    getChatExportFiles(chatId: string): string[] {
+        const chatDir = path.join(this.baseDir, `chat_${chatId}`);
+        
+        if (!fs.existsSync(chatDir)) {
             return [];
         }
+
         try {
-            return fs_1.default.readdirSync(chatDir)
-                .filter(function (file) { return file.startsWith('export_') && file.endsWith('.json'); })
-                .map(function (file) { return path_1.default.join(chatDir, file); });
-        }
-        catch (error) {
-            console.error("\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8\u30D5\u30A1\u30A4\u30EB\u306E\u4E00\u89A7\u53D6\u5F97\u306B\u5931\u6557\u3057\u307E\u3057\u305F: ".concat(error));
+            return fs.readdirSync(chatDir)
+                .filter(file => file.endsWith('.json'))
+                .map(file => path.join(chatDir, file));
+        } catch (error) {
+            console.error('エクスポートファイル一覧取得エラー:', error);
             return [];
         }
-    };
-    return ExportFileManager;
-}());
-export const ExportFileManager: any = ExportFileManager;
-// シングルトンインスタンスをエクスポート
-export const exportFileManager: any = new ExportFileManager();
+    }
+
+    /**
+     * 古いエクスポートファイルを削除
+     */
+    cleanupOldExports(chatId: string, keepCount: number = 5): void {
+        const chatDir = path.join(this.baseDir, `chat_${chatId}`);
+        
+        if (!fs.existsSync(chatDir)) {
+            return;
+        }
+
+        try {
+            const files = fs.readdirSync(chatDir)
+                .filter(file => file.endsWith('.json'))
+                .sort()
+                .reverse();
+
+            // 指定数より多い場合は古いファイルを削除
+            if (files.length > keepCount) {
+                const filesToDelete = files.slice(keepCount);
+                for (const file of filesToDelete) {
+                    const filePath = path.join(chatDir, file);
+                    fs.unlinkSync(filePath);
+                    console.log(`古いエクスポートファイル削除: ${filePath}`);
+                }
+            }
+        } catch (error) {
+            console.error('古いエクスポートファイル削除エラー:', error);
+        }
+    }
+
+    /**
+     * フォーマット済みエクスポートデータを保存
+     */
+    saveFormattedExport(chatId: number, formattedData: any): string {
+        const chatDir = path.join(this.baseDir, `chat_${chatId}`);
+        
+        if (!fs.existsSync(chatDir)) {
+            fs.mkdirSync(chatDir, { recursive: true });
+        }
+
+        const fileName = `formatted_export_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+        const filePath = path.join(chatDir, fileName);
+
+        try {
+            fs.writeFileSync(filePath, JSON.stringify(formattedData, null, 2), 'utf8');
+            console.log(`フォーマット済みエクスポート保存: ${filePath}`);
+            return filePath;
+        } catch (error) {
+            console.error('フォーマット済みエクスポートファイル保存エラー:', error);
+            throw error;
+        }
+    }
+}
+
+// デフォルトインスタンス
+export const exportFileManager = new ExportFileManager(); 
