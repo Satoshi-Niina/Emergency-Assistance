@@ -4,8 +4,13 @@
 import * as path from 'path';
 import * as fs from 'fs';
 
-// 知識ベースディレクトリのパス
-const KNOWLEDGE_BASE_DIR = './knowledge-base';
+// 知識ベースディレクトリのパス（絶対パスで指定）
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const KNOWLEDGE_BASE_DIR = path.join(__dirname, '../../knowledge-base');
 const DATA_DIR = path.join(KNOWLEDGE_BASE_DIR, 'data');
 const TEXT_DIR = path.join(KNOWLEDGE_BASE_DIR, 'text');
 const TROUBLESHOOTING_DIR = path.join(KNOWLEDGE_BASE_DIR, 'troubleshooting');
