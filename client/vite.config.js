@@ -9,6 +9,7 @@ export default defineConfig({
   server: {
     port: 5001,
     host: '0.0.0.0',
+    allowedHosts: ['all'],
   },
   preview: {
     port: 5002,
