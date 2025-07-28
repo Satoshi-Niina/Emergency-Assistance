@@ -1,8 +1,8 @@
-entrypoint = "server/index.ts"
-modules = ["nodejs-20", "postgresql-16"]
+modules = ["nodejs-20", "web", "bash"]
+run = "npm run dev"
 
 [nix]
-channel = "stable-24_05"
+channel = "stable-25_05"
 
 [env]
 PATH = "${REPLIT_NIX_CACHE}/bin"
@@ -10,7 +10,7 @@ XDG_CONFIG_HOME = "${REPLIT_NIX_CACHE}/.config"
 npm_config_prefix = "${REPLIT_NIX_CACHE}"
 
 [workflows]
-runButton = "Clean Development"
+runButton = "Run"
 
 [[workflows.workflow]]
 name = "Run"
@@ -50,6 +50,10 @@ localPort = 5001
 externalPort = 3001
 
 [[ports]]
+localPort = 5002
+externalPort = 3003
+
+[[ports]]
 localPort = 5173
 externalPort = 5173
 
@@ -59,4 +63,4 @@ externalPort = 3002
 
 [deployment]
 deploymentTarget = "cloudrun"
-run = ["sh", "-c", "npm run dev:all"]
+run = ["sh", "-c", "npm run dev"]
