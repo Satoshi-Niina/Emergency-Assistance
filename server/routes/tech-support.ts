@@ -357,7 +357,7 @@ console.log('📁 ディレクトリパス確認:', {
   knowledgeBaseImagesDir,
   KNOWLEDGE_BASE_PATH: process.env.KNOWLEDGE_BASE_PATH
 });
-const publicImagesDir: any = path.join(__dirname, '../../knowledge-base/images');
+const publicImagesDir: any = knowledgeBaseImagesDir;
 // 知識ベース一時ディレクトリのパス
 const knowledgeBaseTempDir: any = path.join(knowledgeBaseDir, 'temp');
 // ディレクトリが存在することを確認
@@ -365,7 +365,6 @@ ensureDirectoryExists(knowledgeBaseDir);
 ensureDirectoryExists(knowledgeBaseDataDir);
 ensureDirectoryExists(knowledgeBaseImagesDir);
 ensureDirectoryExists(knowledgeBaseTempDir);
-ensureDirectoryExists(publicImagesDir);
 // Multerストレージ設定
 const storage: any = multer.diskStorage({
     destination: function (req, file, cb) {
