@@ -10,7 +10,7 @@ XDG_CONFIG_HOME = "${REPLIT_NIX_CACHE}/.config"
 npm_config_prefix = "${REPLIT_NIX_CACHE}"
 
 [workflows]
-runButton = "Run"
+runButton = "Development Server"
 
 [[workflows.workflow]]
 name = "Run"
@@ -69,6 +69,10 @@ externalPort = 3003
 [[ports]]
 localPort = 5003
 externalPort = 4200
+
+[[ports]]
+localPort = 5004
+externalPort = 5000
 
 [[ports]]
 localPort = 5173
