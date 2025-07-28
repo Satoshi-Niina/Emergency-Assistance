@@ -57,9 +57,15 @@ console.log(`📡 使用ポート: ${port}`);
 
 // Middleware
 console.log('ミドルウェア設定');
-app.use(cors({ origin: true, credentials: true }));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(cors({ 
+  origin: ['http://localhost:5000', 'http://172.31.73.194:5000', 'http://0.0.0.0:5000', '*'], 
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  optionsSuccessStatus: 200
+}));
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
 app.use(
   session({
@@ -77,14 +83,27 @@ app.use(
 app.use('/public', express.static(path.join(__dirname, 'public')));
 
 // Routes
-console.log('ルーティング設定');
+console.log('🛣️ ルーティング設定開始');
+
+// デバッグ用: 全リクエストのログ
+app.use((req, res, next) => {
+  console.log(`📨 [${new Date().toISOString()}] ${req.method} ${req.path} - Origin: ${req.headers.origin}`);
+  next();
+});
+
 // 画像配信は認証なしでOK
 app.use('/api/emergency-flow/image', express.static(path.join(__dirname, '../knowledge-base/images/emergency-flows')));
+console.log('✅ 画像配信ルート設定完了');
 
 // 認証が必要なAPIルートはこの下に書く
 app.use("/api/auth", authRouter);
+console.log('✅ 認証ルート設定完了');
+
 app.use("/api/emergency-guides", emergencyGuideRouter);
+console.log('✅ 緊急ガイドルート設定完了');
+
 registerRoutes(app);
+console.log('✅ 全ルート設定完了');
 
 
 // Start the server with error handling
