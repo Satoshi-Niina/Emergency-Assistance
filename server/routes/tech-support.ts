@@ -41,7 +41,13 @@ function logPath(message: any, path) {
 // ディレクトリ作成用ヘルパー関数
 function ensureDirectoryExists(directory) {
     if (!fs.existsSync(directory)) {
-        fs.mkdirSync(directory, { recursive: true });
+        try {
+            fs.mkdirSync(directory, { recursive: true });
+            console.log(`ディレクトリを作成しました: ${directory}`);
+        } catch (error) {
+            console.error(`ディレクトリ作成エラー: ${directory}`, error);
+            throw error;
+        }
     }
 }
 // ファイルクリーンアップユーティリティ
@@ -340,7 +346,7 @@ async function verifyAndCleanupDirectory(dirPath) {
     }
 }
 // ディレクトリ構造の整理：知識ベース用、画像検索用、一時アップロード用に分離
-const knowledgeBaseDir: any = path.join(__dirname, '../../knowledge-base');
+const knowledgeBaseDir: any = process.env.KNOWLEDGE_BASE_PATH || path.join(__dirname, '../../knowledge-base');
 const knowledgeBaseDataDir: any = path.join(knowledgeBaseDir, 'data');
 const knowledgeBaseImagesDir: any = path.join(knowledgeBaseDir, 'images');
 // knowledge-base/imagesディレクトリを画像用に使用 (一元化)
