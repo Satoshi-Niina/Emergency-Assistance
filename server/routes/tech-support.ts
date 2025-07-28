@@ -350,6 +350,13 @@ const knowledgeBaseDir: any = process.env.KNOWLEDGE_BASE_PATH || path.join(__dir
 const knowledgeBaseDataDir: any = path.join(knowledgeBaseDir, 'data');
 const knowledgeBaseImagesDir: any = path.join(knowledgeBaseDir, 'images');
 // knowledge-base/imagesディレクトリを画像用に使用 (一元化)
+
+console.log('📁 ディレクトリパス確認:', {
+  knowledgeBaseDir,
+  knowledgeBaseDataDir,
+  knowledgeBaseImagesDir,
+  KNOWLEDGE_BASE_PATH: process.env.KNOWLEDGE_BASE_PATH
+});
 const publicImagesDir: any = path.join(__dirname, '../../knowledge-base/images');
 // 知識ベース一時ディレクトリのパス
 const knowledgeBaseTempDir: any = path.join(knowledgeBaseDir, 'temp');

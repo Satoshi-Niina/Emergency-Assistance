@@ -52,6 +52,7 @@ try {
 console.log('🔧 Expressインスタンス作成');
 const app = express();
 const port = process.env.PORT || 3001;
+console.log(`🚀 サーバーをポート ${port} で起動中...`);
 
 console.log(`📡 使用ポート: ${port}`);
 
@@ -114,11 +115,11 @@ app.use((error: any, req: any, res: any, next: any) => {
     method: req.method,
     timestamp: new Date().toISOString()
   });
-  
+
   if (res.headersSent) {
     return next(error);
   }
-  
+
   res.status(500).json({
     success: false,
     error: 'サーバーエラーが発生しました',
@@ -183,7 +184,7 @@ const server = app.listen(port, '0.0.0.0', async () => {
   console.log(`🌐 Local access: http://localhost:${port}`);
   console.log(`📂 Working directory: ${process.cwd()}`);
   console.log(`🔧 Node environment: ${process.env.NODE_ENV || 'development'}`);
-  
+
   // データベース接続テスト
   try {
     console.log('🔄 データベース接続テスト開始...');
@@ -193,7 +194,7 @@ const server = app.listen(port, '0.0.0.0', async () => {
     console.error('❌ データベース接続エラー:', error);
     // データベース接続失敗でもサーバーは継続（フォールバック動作）
   }
-  
+
   // デフォルトユーザー作成
   try {
     console.log('🔄 デフォルトユーザー作成開始...');
