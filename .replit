@@ -47,6 +47,15 @@ args = "cd client && npm run dev -- --host 0.0.0.0 --port 5000"
 task = "shell.exec"
 args = "node --loader tsx/esm server/index.ts"
 
+[[workflows.workflow]]
+name = "Minimal Test Server"
+author = 39467490
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node --loader tsx/esm server/index-minimal.ts"
+
 [[ports]]
 localPort = 3000
 externalPort = 3000
