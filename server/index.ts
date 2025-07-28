@@ -105,27 +105,104 @@ console.log('✅ 緊急ガイドルート設定完了');
 registerRoutes(app);
 console.log('✅ 全ルート設定完了');
 
+// グローバルエラーハンドリングミドルウェア
+app.use((error: any, req: any, res: any, next: any) => {
+  console.error('🚨 [グローバルエラー]:', {
+    message: error.message,
+    stack: error.stack,
+    url: req.url,
+    method: req.method,
+    timestamp: new Date().toISOString()
+  });
+  
+  if (res.headersSent) {
+    return next(error);
+  }
+  
+  res.status(500).json({
+    success: false,
+    error: 'サーバーエラーが発生しました',
+    message: process.env.NODE_ENV === 'development' ? error.message : 'Internal Server Error',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// 404ハンドリング
+app.use('*', (req: any, res: any) => {
+  console.log('🔍 [404] 未定義ルート:', req.originalUrl);
+  res.status(404).json({
+    success: false,
+    error: 'ルートが見つかりません',
+    path: req.originalUrl,
+    timestamp: new Date().toISOString()
+  });
+});
 
 // Start the server with error handling
 console.log('🔄 サーバーlisten開始');
 
 // プロセスエラーハンドリング
 process.on('uncaughtException', (error) => {
-  console.error('❌ [未処理例外]:', error);
-  process.exit(1);
+  console.error('❌ [未処理例外]:', {
+    message: error.message,
+    stack: error.stack,
+    timestamp: new Date().toISOString(),
+    pid: process.pid
+  });
+  // すぐに終了せず、ログを出力してから終了
+  setTimeout(() => process.exit(1), 1000);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ [未処理Promise拒否]:', reason);
-  console.error('Promise:', promise);
-  process.exit(1);
+  console.error('❌ [未処理Promise拒否]:', {
+    reason: reason,
+    promise: promise,
+    timestamp: new Date().toISOString(),
+    pid: process.pid
+  });
+  // Promise拒否では終了しない（開発環境では継続）
+  if (process.env.NODE_ENV === 'production') {
+    setTimeout(() => process.exit(1), 1000);
+  }
 });
 
-const server = app.listen(port, '0.0.0.0', () => {
+// メモリ使用量の監視
+setInterval(() => {
+  const memUsage = process.memoryUsage();
+  console.log('📊 [メモリ使用量]:', {
+    rss: Math.round(memUsage.rss / 1024 / 1024) + 'MB',
+    heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024) + 'MB',
+    heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024) + 'MB',
+    external: Math.round(memUsage.external / 1024 / 1024) + 'MB',
+    timestamp: new Date().toISOString()
+  });
+}, 30000); // 30秒毎にメモリ使用量をログ出力
+
+const server = app.listen(port, '0.0.0.0', async () => {
   console.log(`🚀 Server successfully started on http://0.0.0.0:${port}`);
   console.log(`🌐 Local access: http://localhost:${port}`);
   console.log(`📂 Working directory: ${process.cwd()}`);
   console.log(`🔧 Node environment: ${process.env.NODE_ENV || 'development'}`);
+  
+  // データベース接続テスト
+  try {
+    console.log('🔄 データベース接続テスト開始...');
+    await connectDB();
+    console.log('✅ データベース接続成功');
+  } catch (error) {
+    console.error('❌ データベース接続エラー:', error);
+    // データベース接続失敗でもサーバーは継続（フォールバック動作）
+  }
+  
+  // デフォルトユーザー作成
+  try {
+    console.log('🔄 デフォルトユーザー作成開始...');
+    await createDefaultUsers();
+    console.log('✅ デフォルトユーザー作成完了');
+  } catch (error) {
+    console.error('❌ デフォルトユーザー作成エラー:', error);
+    // ユーザー作成失敗でもサーバーは継続
+  }
 });
 
 server.on('error', (error: any) => {
