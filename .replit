@@ -56,6 +56,15 @@ mode = "sequential"
 task = "shell.exec"
 args = "node --loader tsx/esm server/index-minimal.ts"
 
+[[workflows.workflow]]
+name = "Debug Server Only"
+author = 39467490
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node --loader tsx/esm server/index-minimal.ts"
+
 [[ports]]
 localPort = 3000
 externalPort = 3000
