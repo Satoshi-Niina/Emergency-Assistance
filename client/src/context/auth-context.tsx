@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { login as authLogin, logout as authLogout, getCurrentUser } from '../lib/auth';
 
@@ -30,7 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         setIsLoading(true);
         const userData = await getCurrentUser();
-        
+
         if (userData && userData.success && userData.user) {
           console.log('✅ 認証済みユーザーを検出:', userData.user);
           setUser({
@@ -57,11 +56,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (username: string, password: string): Promise<void> => {
     console.log('🔐 ログイン試行開始:', { username });
-    
+
     try {
       setIsLoading(true);
       const userData = await authLogin({ username, password });
-      
+
       if (userData && userData.success && userData.user) {
         console.log('✅ ログイン成功:', userData.user);
         setUser({
@@ -85,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     console.log('🔐 ログアウト処理開始');
-    
+
     try {
       await authLogout();
       console.log('✅ ログアウト成功');
