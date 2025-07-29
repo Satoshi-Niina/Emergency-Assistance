@@ -12,6 +12,15 @@ export const API_BASE_URL = isReplitEnvironment
     ? 'https://emergency-backend-e7enc2e8dhdabucv.japanwest-01.azurewebsites.net'
     : 'http://localhost:3001';
 
+console.log('🔧 API設定詳細:', {
+  isReplitEnvironment,
+  isProduction,
+  isDevelopment,
+  currentHostname: window.location.hostname,
+  currentProtocol: window.location.protocol,
+  finalApiBaseUrl: API_BASE_URL
+});
+
 // APIエンドポイントの構築（先に定義）
 export const buildApiUrl = (endpoint: string): string => {
   const fullUrl = `${API_BASE_URL}${endpoint}`;

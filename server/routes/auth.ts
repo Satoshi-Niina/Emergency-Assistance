@@ -7,6 +7,14 @@ import { logInfo, logError } from '../lib/logger.js';
 
 const router = express.Router();
 
+// デバッグ用：全ての認証ルートをログに出力
+console.log('🔧 認証ルーターを初期化中...');
+console.log('📍 利用可能な認証エンドポイント:');
+console.log('  - POST /api/auth/login');
+console.log('  - POST /api/auth/register'); 
+console.log('  - POST /api/auth/logout');
+console.log('  - GET /api/auth/me');
+
 // ログイン
 router.post('/login', async (req, res) => {
   try {
