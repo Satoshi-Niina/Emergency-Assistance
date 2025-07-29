@@ -10,7 +10,8 @@ import KeywordButtons from "../components/troubleshooting/keyword-buttons";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { RotateCcw, Download, Upload, FileText, BookOpen, Activity, ArrowLeft, X, Search, Send, Camera } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../components/ui/alert-dialog";
+import { RotateCcw, Download, Upload, FileText, BookOpen, Activity, ArrowLeft, X, Search, Send, Camera, Trash2 } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { searchTroubleshootingFlows, japaneseGuideTitles } from "../lib/troubleshooting-search";
 
@@ -19,9 +20,8 @@ export default function ChatPage() {
     messages,
     sendMessage,
     isLoading,
-    clearChat,
-    exportChat,
-    importChat,
+    clearChatHistory,
+    isClearing,
     chatId
   } = useChat();
 
@@ -112,6 +112,14 @@ export default function ChatPage() {
           description: `チャット内容をサーバーに送信しました。(${messages.length}件のメッセージ)`,
         });
         console.log('サーバー送信結果:', result);
+
+        // 送信完了後にチャットをクリア
+        await clearChatHistory();
+        
+        toast({
+          title: "チャットクリア完了",
+          description: "送信後にチャット履歴をクリアしました。",
+        });
       } else {
         throw new Error(`送信失敗: ${response.status}`);
       }
@@ -278,22 +286,69 @@ export default function ChatPage() {
               size="lg"
             >
               <Camera className="h-6 w-6" />
-              📷 カメラ
+              カメラ
             </Button>
           </div>
 
-          {/* サーバー送信ボタン - 右端配置 */}
-          <div className="flex-1 flex justify-end">
-            <Button 
-              onClick={handleSendToServer} 
-              variant="outline" 
-              size="sm"
-              className="flex items-center gap-1 text-xs px-2 py-1 bg-blue-50 hover:bg-blue-100 border-blue-300"
-              disabled={messages.length === 0}
-            >
-              <Send className="h-3 w-3" />
-              サーバーへ送信
-            </Button>
+          {/* 右側のボタングループ */}
+          <div className="flex-1 flex justify-end gap-2">
+            {/* クリアボタン */}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="flex items-center gap-1 text-xs px-2 py-1 bg-red-50 hover:bg-red-100 border-red-300"
+                  disabled={messages.length === 0 || isClearing}
+                >
+                  <Trash2 className="h-3 w-3" />
+                  {isClearing ? "クリア中..." : "クリア"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>チャット履歴をクリア</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    現在表示されているチャット内容をすべて削除します。この操作は元に戻すことができません。
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>戻る</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => clearChatHistory()}>
+                    OK
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* サーバー送信ボタン */}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="flex items-center gap-1 text-xs px-2 py-1 bg-blue-50 hover:bg-blue-100 border-blue-300"
+                  disabled={messages.length === 0}
+                >
+                  <Send className="h-3 w-3" />
+                  サーバーへ送信
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>サーバーへ送信</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    現在のチャット内容（{messages.length}件のメッセージ）をサーバーに送信します。送信完了後、チャット履歴はクリアされます。
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleSendToServer}>
+                    OK
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </div>
