@@ -164,9 +164,19 @@ router.post('/register', async (req, res) => {
     }
 
     // パスワードのハッシュ化
+    console.log('🔐 パスワードハッシュ化開始:', { username, hasPassword: !!password });
     const hashedPassword = await bcrypt.hash(password, 10);
+    console.log('✅ パスワードハッシュ化完了');
 
     // ユーザーの作成
+    console.log('📝 ユーザー作成データ:', {
+      username,
+      displayName,
+      role,
+      department: req.body.department || '',
+      hasHashedPassword: !!hashedPassword
+    });
+    
     // db.insert(users).values を型アサーションで回避
     const newUser = await (db as any).insert(users).values({
       username: username,
