@@ -2,11 +2,15 @@
 const isProduction = import.meta.env.PROD && !window.location.hostname.includes('localhost');
 const isDevelopment = import.meta.env.DEV || window.location.hostname.includes('localhost');
 
-// 本番環境用設定
-// 環境変数からAPI URLを取得、なければ相対パスを使用
-export const API_BASE_URL = isProduction 
-  ? 'https://emergency-backend-e7enc2e8dhdabucv.japanwest-01.azurewebsites.net'  // 本番環境では直接バックエンドURLを使用
-  : 'http://localhost:3001'; // 開発環境ではローカルバックエンドを使用
+// Replit環境の検出
+const isReplitEnvironment = window.location.hostname.includes('replit.dev') || window.location.hostname.includes('replit.app');
+
+// API Base URLの設定
+export const API_BASE_URL = isReplitEnvironment
+  ? `${window.location.protocol}//${window.location.hostname}:3001` // Replit環境では現在のホスト名を使用
+  : isProduction 
+    ? 'https://emergency-backend-e7enc2e8dhdabucv.japanwest-01.azurewebsites.net'
+    : 'http://localhost:3001';
 
 // APIエンドポイントの構築（先に定義）
 export const buildApiUrl = (endpoint: string): string => {
