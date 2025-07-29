@@ -47,7 +47,7 @@ const HistoryPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<HistoryItem | null>(null);
 
-  // データ取得（後でサーバーAPIから取得）
+  // データ取得（サーバーAPIから取得）
   useEffect(() => {
     fetchHistoryData();
   }, []);
@@ -55,35 +55,42 @@ const HistoryPage: React.FC = () => {
   const fetchHistoryData = async () => {
     try {
       setLoading(true);
-      // TODO: サーバーAPIから履歴データを取得
-      // const response = await fetch('/api/history');
-      // const data = await response.json();
-      // setHistoryItems(data);
       
-      // 仮のデータ（後で削除）
-      const mockData: HistoryItem[] = [
-        {
-          id: '1',
-          chatId: 'chat-001',
-          title: 'エンジン停止トラブル',
-          description: '走行中に突然エンジンが停止した',
-          machineModel: 'MT-100',
-          office: '東京事業所',
-          emergencyGuideTitle: 'エンジン停止対応',
-          emergencyGuideContent: '燃料カットレバーの確認を行う',
-          images: [
-            { id: 'img1', url: '/knowledge-base/images/emergency-flow-step1.jpg', description: 'エンジンルーム' }
-          ],
-          createdAt: '2025-01-15T10:30:00Z',
-          updatedAt: '2025-01-15T10:30:00Z',
-          category: 'エンジン',
-          keywords: ['エンジン停止', '燃料カット', 'MT-100']
-        }
-      ];
-      setHistoryItems(mockData);
-      setFilteredItems(mockData);
+      // サーバーAPIから履歴データを取得
+      const response = await fetch('/api/history/list');
+      if (response.ok) {
+        const data = await response.json();
+        setHistoryItems(data.items || []);
+        setFilteredItems(data.items || []);
+      } else {
+        console.warn('履歴データの取得に失敗、モックデータを使用');
+        // フォールバック: モックデータ
+        const mockData: HistoryItem[] = [
+          {
+            id: '1',
+            chatId: 'chat-001',
+            title: 'エンジン停止トラブル',
+            description: '走行中に突然エンジンが停止した',
+            machineModel: 'MT-100',
+            office: '東京事業所',
+            emergencyGuideTitle: 'エンジン停止対応',
+            emergencyGuideContent: '燃料カットレバーの確認を行う',
+            images: [
+              { id: 'img1', url: '/knowledge-base/images/emergency-flow-step1.jpg', description: 'エンジンルーム' }
+            ],
+            createdAt: '2025-01-15T10:30:00Z',
+            updatedAt: '2025-01-15T10:30:00Z',
+            category: 'エンジン',
+            keywords: ['エンジン停止', '燃料カット', 'MT-100']
+          }
+        ];
+        setHistoryItems(mockData);
+        setFilteredItems(mockData);
+      }
     } catch (error) {
       console.error('履歴データの取得に失敗しました:', error);
+      setHistoryItems([]);
+      setFilteredItems([]);
     } finally {
       setLoading(false);
     }

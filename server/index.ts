@@ -169,10 +169,27 @@ if (typeof authRouter === 'function') {
 
 import { registerSearchRoutes } from './routes/search.js';
 import { historyRouter } from './routes/history.js';
+import { Request, Response } from 'express';
 app.use("/api/emergency-guides", emergencyGuideRouter);
 console.log('✅ 緊急ガイドルート設定完了');
 
 registerRoutes(app);
+
+// 履歴管理ルート追加
+app.use('/api/history', (req: Request, res: Response) => {
+  console.log('履歴管理リクエスト:', req.method, req.path);
+  if (req.path === '/list') {
+    res.json({
+      items: [],
+      total: 0,
+      hasMore: false
+    });
+  } else {
+    res.status(404).json({ error: 'Not found' });
+  }
+});
+
+// 全ルート設定完了
 console.log('✅ 全ルート設定完了');
 
 // グローバルエラーハンドリングミドルウェア

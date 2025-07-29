@@ -18,7 +18,8 @@ export function Tabs() {
   const currentPath = location.pathname;
   const { user } = useAuth();
 
-  const isAdmin = user?.role === "admin";
+  // 管理者判定を緩和（開発環境では全タブ表示）
+  const isAdmin = user?.role === "admin" || process.env.NODE_ENV === 'development';
 
   const tabs: TabItem[] = [
     {
