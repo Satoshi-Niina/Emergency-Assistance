@@ -54,11 +54,12 @@ export default defineConfig({
     target: 'es2015'
   },
   define: {
-    'import.meta.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || 'https://emergency-backend-api.azurewebsites.net'),
-    'import.meta.env.VITE_API_BASE_URL_TYPE': JSON.stringify('string'),
-    'import.meta.env.VITE_API_BASE_URL_LENGTH': JSON.stringify(process.env.VITE_API_BASE_URL?.length || 47),
-    'import.meta.env.isProduction': JSON.stringify(true),
-    'import.meta.env.isDevelopment': JSON.stringify(false)
+    // 環境変数をクライアントサイドで利用可能にする
+    __VITE_API_BASE_URL__: JSON.stringify(
+      process.env.NODE_ENV === 'production' 
+        ? process.env.VITE_API_BASE_URL || 'https://ceb3a872-0092-4e86-a990-adc5b271598b-00-tlthbuz5ebfd.sisko.replit.dev'
+        : 'https://ceb3a872-0092-4e86-a990-adc5b271598b-00-tlthbuz5ebfd.sisko.replit.dev'
+    ),
   },
   logLevel: 'info'
 });

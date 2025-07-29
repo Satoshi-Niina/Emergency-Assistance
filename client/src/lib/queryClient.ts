@@ -386,3 +386,21 @@ function buildApiUrl(path: string): string {
   const baseUrl = window.location.origin;
   return path.startsWith('http') ? path : `${baseUrl}${path}`;
 }
+// 環境変数の確認とAPIベースURLの決定
+const VITE_API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const isProduction = import.meta.env.PROD;
+const isDevelopment = import.meta.env.DEV;
+
+console.log('🔍 環境変数詳細確認:', {
+  VITE_API_BASE_URL,
+  VITE_API_BASE_URL_TYPE: typeof VITE_API_BASE_URL,
+  VITE_API_BASE_URL_LENGTH: VITE_API_BASE_URL?.length,
+  isProduction,
+  isDevelopment,
+  MODE: import.meta.env.MODE,
+  BASE_URL: import.meta.env.BASE_URL,
+  finalApiBaseUrl: VITE_API_BASE_URL || 'https://ceb3a872-0092-4e86-a990-adc5b271598b-00-tlthbuz5ebfd.sisko.replit.dev'
+});
+
+// APIベースURLの決定（Replit環境用）
+const API_BASE_URL = VITE_API_BASE_URL || 'https://ceb3a872-0092-4e86-a990-adc5b271598b-00-tlthbuz5ebfd.sisko.replit.dev';
