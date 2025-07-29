@@ -261,6 +261,11 @@ export default function EmergencyGuideDisplay({
       detail: chatData
     }));
 
+    // onSendToChat関数が提供されている場合は呼び出す
+    if (onSendToChat) {
+      onSendToChat();
+    }
+
     // 途中送信の場合はガイド画面を閉じない
     if (isCompleted) {
       onExit();
