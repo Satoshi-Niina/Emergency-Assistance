@@ -6,14 +6,19 @@ import { Textarea } from "../../components/ui/textarea";
 import { Send, Camera, Mic, X } from "lucide-react";
 import { useIsMobile } from "../../hooks/use-mobile";
 
-export default function MessageInput() {
+interface MessageInputProps {
+  onSendMessage: (message: string) => void;
+  isLoading: boolean;
+}
+
+export default function MessageInput({ 
+  sendMessage, 
+  isLoading
+}: MessageInputProps) {
   const [message, setMessage] = useState("");
   const { 
-    sendMessage, 
-    isLoading, 
     recordedText, 
     selectedText, 
-    searchBySelectedText,
     startRecording,
     stopRecording,
     isRecording,
@@ -86,7 +91,7 @@ export default function MessageInput() {
 
     // 自動画像検索は完全無効化（安定性のため）
     console.log('💬 チャット入力から送信:', textToSend, '（画像検索完全無効）');
-    
+
     // 検索関連の処理をすべてキャンセル・無効化
     try {
       if (typeof window !== 'undefined') {
@@ -94,7 +99,7 @@ export default function MessageInput() {
         window.dispatchEvent(new CustomEvent('cancel-image-search'));
         window.dispatchEvent(new CustomEvent('clear-search-results'));
         window.dispatchEvent(new CustomEvent('disable-auto-search'));
-        
+
         // Fuse検索のデバウンス処理もクリア
         clearTimeout((window as any)._fuseSearchTimeout);
         (window as any)._fuseSearchDisabled = true;

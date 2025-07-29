@@ -15,6 +15,7 @@ import { Send, Loader2, Trash2, Heart, FileText, Menu, Settings, LifeBuoy } from
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
 import { useLocation, Link } from "react-router-dom";
 import { useIsMobile } from "../hooks/use-mobile";
+import { searchByText } from '../lib/troubleshooting-search';
 
 export default function Chat() {
   const {
@@ -380,18 +381,6 @@ export default function Chat() {
 
           {/* Message Input */}
           <MessageInput />
-        </div>
-
-        {/* 関係画像エリア - 右側に1/3のスペースを確保して常に表示 */}
-        <div className="hidden md:block md:w-1/3 border-l border-blue-200 bg-blue-50 overflow-y-auto search-results-panel" style={{ minHeight: '75vh' }}>
-          <div className="w-full h-full">
-            <div className="sticky top-0 bg-blue-600 text-white py-2 px-4 font-medium z-10">
-              <h2 className="text-lg">関係画像</h2>
-            </div>
-            <div className="p-2">
-              <SearchResults results={searchResults || []} onClear={clearSearchResults} />
-            </div>
-          </div>
         </div>
 
         {/* モバイル用検索結果スライダー - 縦向き表示の時のみフローティングボタンを表示 */}

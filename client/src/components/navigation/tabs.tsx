@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { cn } from "../../lib/utils.ts";
 import { Button } from "../../components/ui/button";
 import { Tabs as TabsPrimitive, TabsList, TabsTrigger } from "../../components/ui/tabs";
-import { MessageSquare, Database, Settings, FileText } from "lucide-react";
+import { MessageSquare, Database, Settings, FileText, History } from "lucide-react";
 import { useAuth } from "../../context/auth-context";
 
 interface TabItem {
@@ -26,6 +26,11 @@ export function Tabs() {
       path: "/chat",
       icon: <MessageSquare className="mr-2 h-5 w-5 text-blue-600" />,
       className: "text-blue-600 font-bold text-lg border border-blue-300 rounded-md bg-blue-50",
+    },
+    {
+      title: "履歴管理",
+      path: "/history",
+      icon: <History className="mr-2 h-4 w-4" />,
     },
     {
       title: "基礎データ管理",

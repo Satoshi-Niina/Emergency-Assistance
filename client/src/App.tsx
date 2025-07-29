@@ -16,6 +16,7 @@ const SettingsPage = lazy(() => import('./pages/settings'));
 const TroubleshootingPage = lazy(() => import('./pages/troubleshooting'));
 const NotFoundPage = lazy(() => import('./pages/not-found'));
 const EmergencyGuidePage = lazy(() => import('./pages/emergency-guide'));
+const HistoryPage = lazy(() => import('./pages/history'));
 
 function App() {
   return (
@@ -28,7 +29,7 @@ function App() {
               <Suspense fallback={<div className="flex justify-center items-center h-full">読み込み中...</div>}>
                 <Routes>
                   <Route path="/login" element={<LoginPage />} />
-                  
+
                   {/* Protected Routes */}
                   <Route element={<ProtectedRoute />}>
                     <Route path="/" element={<Navigate to="/chat" replace />} />
@@ -42,6 +43,7 @@ function App() {
                     <Route path="/users" element={<UsersPage />} />
                     <Route path="/troubleshooting" element={<TroubleshootingPage />} />
                     <Route path="/emergency-guide/:id" element={<EmergencyGuidePage />} />
+                    <Route path="/history" element={<HistoryPage />} />
                   </Route>
 
                   <Route path="*" element={<NotFoundPage />} />
