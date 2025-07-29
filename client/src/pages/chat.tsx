@@ -85,46 +85,46 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col h-full bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* ヘッダーエリア */}
-      <div className="bg-white shadow-sm border-b p-4">
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex items-center gap-3">
-            <Activity className="h-8 w-8 text-red-500" />
-            <h1 className="text-2xl font-bold text-gray-800">応急処置サポート</h1>
+      <div className="bg-white shadow-sm border-b p-3">
+        <div className="flex justify-between items-center mb-2">
+          <div className="flex items-center gap-2">
+            <Activity className="h-6 w-6 text-red-500" />
+            <h1 className="text-xl font-bold text-gray-800">応急処置支援システム</h1>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-1">
             <Button 
               onClick={handleEmergencyGuide}
-              className="bg-red-500 hover:bg-red-600 text-white flex items-center gap-2"
+              className="bg-red-500 hover:bg-red-600 text-white flex items-center gap-1 text-xs px-2 py-1"
               size="sm"
             >
-              <BookOpen className="h-4 w-4" />
+              <BookOpen className="h-3 w-3" />
               応急処置ガイド
             </Button>
             <Button 
               onClick={clearChat} 
               variant="outline" 
               size="sm"
-              className="flex items-center gap-2"
+              className="flex items-center gap-1 text-xs px-2 py-1"
             >
-              <RotateCcw className="h-4 w-4" />
+              <RotateCcw className="h-3 w-3" />
               クリア
             </Button>
             <Button 
               onClick={handleExport} 
               variant="outline" 
               size="sm"
-              className="flex items-center gap-2"
+              className="flex items-center gap-1 text-xs px-2 py-1"
             >
-              <Download className="h-4 w-4" />
+              <Download className="h-3 w-3" />
               エクスポート
             </Button>
             <Button 
               onClick={handleImport} 
               variant="outline" 
               size="sm"
-              className="flex items-center gap-2"
+              className="flex items-center gap-1 text-xs px-2 py-1"
             >
-              <Upload className="h-4 w-4" />
+              <Upload className="h-3 w-3" />
               インポート
             </Button>
           </div>
@@ -132,19 +132,19 @@ export default function ChatPage() {
       </div>
 
       {/* チャットエリア */}
-      <div className="flex-1 overflow-auto p-4 space-y-4">
+      <div className="flex-1 overflow-auto p-3 space-y-3 max-h-[calc(100vh-200px)]">
         {messages.length === 0 ? (
-          <div className="text-center py-8">
-            <div className="bg-white rounded-lg p-8 shadow-md max-w-md mx-auto">
-              <Activity className="h-16 w-16 text-red-500 mx-auto mb-4" />
-              <div className="text-gray-700 mb-4 text-lg font-semibold">
-                応急処置サポートシステム
+          <div className="text-center py-4">
+            <div className="bg-white rounded-lg p-4 shadow-md max-w-lg mx-auto">
+              <Activity className="h-12 w-12 text-red-500 mx-auto mb-3" />
+              <div className="text-gray-700 mb-3 text-base font-semibold">
+                応急処置支援システム
               </div>
-              <div className="text-sm text-gray-600 mb-6">
+              <div className="text-sm text-gray-600 mb-4">
                 緊急時の応急処置をサポートします。<br />
                 テキスト入力、音声入力、画像撮影で状況をお知らせください。
               </div>
-              <div className="space-y-2 text-xs text-gray-500">
+              <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
                 <div>📝 テキストで症状を入力</div>
                 <div>🎤 音声で状況を説明</div>
                 <div>📷 患部の写真を撮影</div>
