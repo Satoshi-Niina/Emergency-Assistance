@@ -7,12 +7,8 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, isLoading } = useAuth();
-  const navigate = useNavigate();
+  // 認証チェックを完全に無効化 - 常に全画面にアクセス可能
+  console.log('🔍 ProtectedRoute - 認証チェック完全無効化モード');
 
-  // 認証チェックを無効化 - 常にメイン画面にアクセス可能
-  console.log('🔍 ProtectedRoute - 認証チェック無効化モード');
-
-  // ローディング表示も無効化
   return <>{children}</>;
 }

@@ -37,15 +37,15 @@ function App() {
                   {/* Protected Routes */}
                   <Route element={<ProtectedRoute />}>
                     <Route path="/settings" element={<SettingsPage />} />
+                    <Route path="/history" element={<HistoryPage />} />
+                    <Route path="/documents" element={<DocumentsPage />} />
+                    <Route path="/troubleshooting" element={<TroubleshootingPage />} />
+                    <Route path="/emergency-guide/:id" element={<EmergencyGuidePage />} />
                   </Route>
 
                   {/* Admin Routes */}
                   <Route element={<AdminRoute />}>
-                    <Route path="/documents" element={<DocumentsPage />} />
                     <Route path="/users" element={<UsersPage />} />
-                    <Route path="/troubleshooting" element={<TroubleshootingPage />} />
-                    <Route path="/emergency-guide/:id" element={<EmergencyGuidePage />} />
-                    <Route path="/history" element={<HistoryPage />} />
                   </Route>
 
                   <Route path="*" element={<NotFoundPage />} />
