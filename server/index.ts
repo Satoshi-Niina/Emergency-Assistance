@@ -3,7 +3,14 @@ import cors from "cors";
 import dotenv from "dotenv";
 import session from "express-session";
 import bodyParser from "body-parser";
-import { authRouter } from "./routes/auth.js";
+// 認証ルート
+import { authRouter } from './routes/auth.js';
+
+// デバッグ用：認証ルーターが正しくインポートされているか確認
+console.log('🔍 認証ルーターインポート状況:', {
+  authRouterExists: !!authRouter,
+  authRouterType: typeof authRouter
+});
 import { emergencyGuideRouter } from "./routes/emergency-guide-router.js";
 import { registerRoutes } from "./routes/index.js";
 import { createDefaultUsers } from "./scripts/create-default-users.js";
@@ -56,8 +63,7 @@ console.log(`🚀 サーバーをポート ${port} で起動中...`);
 
 console.log(`📡 使用ポート: ${port}`);
 
-// Middleware
-console.log('ミドルウェア設定');
+// ミドルウェア設定
 app.use(cors({ 
   origin: ['http://localhost:5000', 'http://172.31.73.194:5000', 'http://0.0.0.0:5000', '*'], 
   credentials: true,
