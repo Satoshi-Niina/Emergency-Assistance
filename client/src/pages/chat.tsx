@@ -106,7 +106,7 @@ export default function ChatPage() {
       if (response.ok) {
         const troubleshootingData = await response.json();
         console.log('✅ トラブルシューティングデータ取得:', troubleshootingData.length + '件');
-        
+
         // データを整形して表示用にフォーマット
         const formattedGuides = troubleshootingData.map((item: any) => ({
           id: item.id,
@@ -157,7 +157,7 @@ export default function ChatPage() {
   // 検索処理
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
-    
+
     if (!query.trim()) {
       setFilteredGuides(availableGuides);
       return;
@@ -183,7 +183,7 @@ export default function ChatPage() {
     handleSearch(keyword);
   };
 
-  
+
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -201,7 +201,7 @@ export default function ChatPage() {
               🚨 応急処置ガイド 🚨
             </Button>
           </div>
-          
+
           {/* 操作ボタン群 - 右寄せ */}
           <div className="flex justify-end w-full gap-1">
             <Button 
@@ -292,7 +292,7 @@ export default function ChatPage() {
                       閉じる
                     </Button>
                   </div>
-                  
+
                   {/* 検索エリア */}
                   <div className="space-y-3">
                     <div className="relative">
@@ -305,12 +305,12 @@ export default function ChatPage() {
                         className="pl-10"
                       />
                     </div>
-                    
+
                     {/* キーワードボタン */}
                     <KeywordButtons onKeywordClick={handleKeywordClick} />
                   </div>
                 </div>
-                
+
                 <div className="flex-1 overflow-auto p-4">
                   {isLoadingGuides ? (
                     <div className="flex items-center justify-center h-64">
@@ -325,7 +325,7 @@ export default function ChatPage() {
                           <span>利用可能なガイド: {filteredGuides.length}件</span>
                         )}
                       </div>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {filteredGuides.map((guide) => (
                           <Card
@@ -357,7 +357,7 @@ export default function ChatPage() {
                           </Card>
                         ))}
                       </div>
-                      
+
                       {filteredGuides.length === 0 && !isLoadingGuides && (
                         <div className="text-center py-8">
                           {searchQuery ? (
