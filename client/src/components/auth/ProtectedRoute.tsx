@@ -1,30 +1,18 @@
-import { useAuth } from '../../context/auth-context';
-import { Navigate, Outlet } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect } from "react";
+import { useAuth } from "../../context/auth-context";
+import { useNavigate } from "react-router-dom";
 
-const ProtectedRoute = () => {
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+}
+
+export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, isLoading } = useAuth();
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    console.log('🔍 ProtectedRoute - 認証状態確認:', {
-      isLoading,
-      hasUser: !!user,
-      username: user?.username
-    });
-  }, [user, isLoading]);
+  // 認証チェックを無効化 - 常にメイン画面にアクセス可能
+  console.log('🔍 ProtectedRoute - 認証チェック無効化モード');
 
-  if (isLoading) {
-    console.log('⏳ ProtectedRoute - 認証状態読み込み中...');
-    return <div className="flex justify-center items-center h-full">読み込み中...</div>;
-  }
-
-  if (!user) {
-    console.log('🚫 ProtectedRoute - 未認証、ログインページにリダイレクト');
-    return <Navigate to="/login" replace />;
-  }
-
-  console.log('✅ ProtectedRoute - 認証済み、コンテンツを表示');
-  return <Outlet />;
-};
-
-export default ProtectedRoute; 
+  // ローディング表示も無効化
+  return <>{children}</>;
+}
