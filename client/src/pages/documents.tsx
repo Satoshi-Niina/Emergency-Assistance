@@ -45,20 +45,8 @@ export default function DocumentsPage() {
 
   const [activeTab, setActiveTab] = useState("processor");
 
-  // Redirect if not admin
-  useEffect(() => {
-    if (!authLoading && (!user || user.role !== "admin")) {
-      navigate("/chat");
-    }
-  }, [user, authLoading, navigate]);
-
-  if (authLoading || !user || user.role !== "admin") {
-    return (
-      <div className="flex justify-center items-center h-full">
-        <p>読み込み中...</p>
-      </div>
-    );
-  }
+  // 管理者チェックを無効化 - 常に表示
+  console.log('📄 基礎データ管理ページ - 認証チェック無効化モード');
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-gray-50">
