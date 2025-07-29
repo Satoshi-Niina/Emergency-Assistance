@@ -292,5 +292,7 @@ if (router.stack) {
   });
 }
 
-export const authRouter = router;
+// default exportとnamed exportの両方を提供
+export { router as authRouter };
+export default router;
 console.log('✅ [AUTH ROUTER] エクスポート完了');

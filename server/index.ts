@@ -131,7 +131,31 @@ app.use('/api', (req: any, res: any, next: any) => {
   next();
 });
 
-// 画像配信は認証なしでOK
+// 認証ルート（最優先で登録）
+console.log('🔧 認証ルート登録中...');
+console.log('📍 authRouter type:', typeof authRouter);
+console.log('📍 authRouter is function:', typeof authRouter === 'function');
+
+// authRouterが正しいかチェック
+if (authRouter) {
+  console.log('✅ authRouter is valid Express router');
+  app.use('/api/auth', authRouter);
+  console.log('✅ 認証ルート登録完了: /api/auth');
+
+  // ルート確認のためのデバッグ情報
+  if (authRouter.stack) {
+    console.log('📍 登録された認証ルート:');
+    authRouter.stack.forEach((layer: any, index: number) => {
+      const path = layer.route?.path || 'middleware';
+      const methods = layer.route?.methods ? Object.keys(layer.route.methods) : [];
+      console.log(`  [${index}] ${methods.join(',')} ${path}`);
+    });
+  }
+} else {
+  console.error('❌ authRouter is not valid:', authRouter);
+}
+
+// 画像配信用の静的ファイルルート
 app.use('/api/emergency-flow/image', express.static(path.join(__dirname, '../knowledge-base/images/emergency-flows')));
 console.log('✅ 画像配信ルート設定完了');
 
@@ -140,31 +164,23 @@ console.log('🔧 認証ルート登録中...');
 console.log('📍 authRouter type:', typeof authRouter);
 console.log('📍 authRouter is function:', typeof authRouter === 'function');
 
-// 認証ルーターが正しく登録されているかテスト
-if (typeof authRouter === 'function') {
+// authRouterが正しいかチェック
+if (authRouter) {
   console.log('✅ authRouter is valid Express router');
-
-  // 認証ルートを登録
-  app.use("/api/auth", authRouter);
+  app.use('/api/auth', authRouter);
   console.log('✅ 認証ルート登録完了: /api/auth');
 
-  // 登録直後にルートの存在を確認
-  console.log('🔍 ルート登録確認中...');
-
-  // 手動でルートテスト（デバッグ用）
-  app.use('/api/auth/test', (req: any, res: any) => {
-    console.log('🧪 認証ルートテスト: リクエスト受信');
-    res.json({
-      success: true,
-      message: 'Auth router is working',
-      timestamp: new Date().toISOString()
+  // ルート確認のためのデバッグ情報
+  if (authRouter.stack) {
+    console.log('📍 登録された認証ルート:');
+    authRouter.stack.forEach((layer: any, index: number) => {
+      const path = layer.route?.path || 'middleware';
+      const methods = layer.route?.methods ? Object.keys(layer.route.methods) : [];
+      console.log(`  [${index}] ${methods.join(',')} ${path}`);
     });
-  });
-
-  console.log('✅ 認証ルート設定完了: POST /api/auth/login, GET /api/auth/me, POST /api/auth/logout, POST /api/auth/register');
+  }
 } else {
-  console.error('❌ authRouter is not a valid Express router!');
-  console.error('📍 authRouter value:', authRouter);
+  console.error('❌ authRouter is not valid:', authRouter);
 }
 
 import { registerSearchRoutes } from './routes/search.js';
