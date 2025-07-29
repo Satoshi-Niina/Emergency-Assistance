@@ -22,17 +22,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 初期認証状態チェック（一時的に無効化）
+  // 初期認証状態チェック
   useEffect(() => {
     const checkAuthStatus = async () => {
-      console.log('🔐 認証チェック無効化モード - ダミーユーザーを使用');
+      console.log('🔐 認証状態チェック開始');
       try {
         setIsLoading(true);
-        
-        // 一時的に認証チェックを無効化し、ダミーユーザーを設定
-        console.log('⚠️ 認証チェックを無効化中 - ログイン機能のテスト用');
-        setUser(null);  // ログイン画面を表示するためnullに設定
-        
+        const userData = await getCurrentUser();
+
+        if (userData && userData.success && userData.user) {
+          console.log('✅ 認証済みユーザーを検出:', userData.user);
+          setUser({
+            id: userData.user.id,
+            username: userData.user.username,
+            displayName: userData.user.displayName,
+            role: userData.user.role,
+            department: userData.user.department
+          });
+        } else {
+          console.log('❌ 未認証状態');
+          setUser(null);
+        }
       } catch (error) {
         console.error('❌ 認証状態チェックエラー:', error);
         setUser(null);
