@@ -34,7 +34,7 @@ export default function ChatPage() {
   const [filteredGuides, setFilteredGuides] = useState<any[]>([]);
   const [selectedGuideId, setSelectedGuideId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isLoadingGuides, setIsLoadingGuides = useState(false);
+  const [isLoadingGuides, setIsLoadingGuides] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
