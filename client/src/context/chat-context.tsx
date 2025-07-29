@@ -1106,6 +1106,19 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('- AIメッセージ:', aiMessage);
       console.log('- 含まれる画像数:', executedImages.length);
 
+      // 履歴に保存する処理を追加
+      await saveToHistory({
+        chatId: currentChatId,
+        title: `緊急フロー実行: ${flowResult.title}`,
+        description: message,
+        emergencyGuideTitle: flowResult.title,
+        emergencyGuideContent: aiMessageContent,
+        images: executedImages.map(img => ({
+          url: img.url,
+          description: img.description || img.fileName
+        }))
+      });
+
       // メッセージを即座にローカル状態に追加
       setMessages(prevMessages => {
         console.log('✅ フロー実行結果メッセージをローカル状態に追加 - 現在のメッセージ数:', prevMessages.length);

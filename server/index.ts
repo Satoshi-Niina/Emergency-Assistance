@@ -143,14 +143,14 @@ console.log('📍 authRouter is function:', typeof authRouter === 'function');
 // 認証ルーターが正しく登録されているかテスト
 if (typeof authRouter === 'function') {
   console.log('✅ authRouter is valid Express router');
-  
+
   // 認証ルートを登録
   app.use("/api/auth", authRouter);
   console.log('✅ 認証ルート登録完了: /api/auth');
-  
+
   // 登録直後にルートの存在を確認
   console.log('🔍 ルート登録確認中...');
-  
+
   // 手動でルートテスト（デバッグ用）
   app.use('/api/auth/test', (req: any, res: any) => {
     console.log('🧪 認証ルートテスト: リクエスト受信');
@@ -160,13 +160,15 @@ if (typeof authRouter === 'function') {
       timestamp: new Date().toISOString()
     });
   });
-  
+
   console.log('✅ 認証ルート設定完了: POST /api/auth/login, GET /api/auth/me, POST /api/auth/logout, POST /api/auth/register');
 } else {
   console.error('❌ authRouter is not a valid Express router!');
   console.error('📍 authRouter value:', authRouter);
 }
 
+import { registerSearchRoutes } from './routes/search.js';
+import { historyRouter } from './routes/history.js';
 app.use("/api/emergency-guides", emergencyGuideRouter);
 console.log('✅ 緊急ガイドルート設定完了');
 
@@ -217,7 +219,7 @@ app.use('*', (req: any, res: any) => {
     app._router.stack.forEach((layer: any, index: number) => {
       console.log(`  [${index}] regexp: ${layer.regexp}, methods: ${JSON.stringify(layer.route?.methods || 'N/A')}`);
       console.log(`       path: ${layer.route?.path || 'middleware'}, name: ${layer.name || 'anonymous'}`);
-      
+
       // サブルーターの場合は詳細を調査
       if (layer.name === 'router' && layer.handle && layer.handle.stack) {
         console.log(`       🔧 Sub-router found with ${layer.handle.stack.length} routes:`);
@@ -329,3 +331,8 @@ server.on('error', (error: any) => {
 });
 
 console.log('✅ サーバーindex.tsファイルの終端');
+// 検索ルート
+    registerSearchRoutes(app);
+
+    // 履歴管理ルート
+    app.use('/api/history', historyRouter);
