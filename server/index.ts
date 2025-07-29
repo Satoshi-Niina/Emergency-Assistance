@@ -177,39 +177,26 @@ console.log('✅ 画像配信ルート設定完了');
 import { historyRouter } from './routes/history.js';
 import { Request, Response } from 'express';
 
-// 緊急ガイドルート
+// 緊急ガイドルート（一時的にコメントアウト - 修正後に有効化）
 console.log('🔧 緊急ガイドルート登録中...');
-app.use('/api/emergency-guide', require('./routes/emergency-guide.js'));
-console.log('✅ 緊急ガイドルート設定完了');
+// app.use('/api/emergency-guide', require('./routes/emergency-guide.js'));
+console.log('⚠️ 緊急ガイドルート一時無効化（ES Module対応作業中）');
 
-// チャットルート
+// チャットルート（一時的にコメントアウト - 修正後に有効化）
 console.log('📡 チャットルートを登録中...');
-app.use('/api/chats', require('./routes/chat.js'));
-console.log('✅ チャットルート登録Complete');
+// app.use('/api/chats', require('./routes/chat.js'));
+console.log('⚠️ チャットルート一時無効化（ES Module対応作業中）');
 
-// ナレッジベースルート
-app.use('/api/knowledge', require('./routes/knowledge-base.js'));
-
-// テックサポートルート
-app.use('/api/tech-support', require('./routes/tech-support.js'));
-
-// 緊急フローAPI
-app.use('/api/emergency-flow', require('./routes/emergency-flow.js'));
-
-// フロー生成API
-app.use('/api/flow-generator', require('./routes/flow-generator.js'));
-
-// 検索API
-app.use('/api/search', require('./routes/search.js'));
-
-// ファイルアップロード
-app.use('/api/file', require('./routes/file.js'));
-
-// データプロセッサーAPI
-app.use('/api/data-processor', require('./routes/data-processor.js'));
-
-// ユーザー管理API
-app.use('/api/users', require('./routes/users.js'));
+// 他のルートも一時的にコメントアウト
+console.log('⚠️ 他のAPIルートも一時的に無効化（ES Module対応作業中）');
+// app.use('/api/knowledge', require('./routes/knowledge-base.js'));
+// app.use('/api/tech-support', require('./routes/tech-support.js'));
+// app.use('/api/emergency-flow', require('./routes/emergency-flow.js'));
+// app.use('/api/flow-generator', require('./routes/flow-generator.js'));
+// app.use('/api/search', require('./routes/search.js'));
+// app.use('/api/file', require('./routes/file.js'));
+// app.use('/api/data-processor', require('./routes/data-processor.js'));
+// app.use('/api/users', require('./routes/users.js'));
 
 // 履歴管理API
 app.use('/api', historyRouter);
