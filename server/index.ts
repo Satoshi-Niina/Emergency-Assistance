@@ -192,6 +192,34 @@ app.get('/api/health', (req: any, res: any) => {
   });
 });
 
+// 基本的なAPIルートハンドラー（404エラー対策）
+app.use('/api/chats/:chatId/last-export', (req: any, res: any) => {
+  console.log('📡 最後のエクスポート履歴リクエスト:', {
+    chatId: req.params.chatId,
+    method: req.method
+  });
+  res.status(200).json({
+    success: true,
+    hasExport: false,
+    message: 'エクスポート履歴がありません'
+  });
+});
+
+// キャッチオール - 認証以外のAPIリクエストに対する一時的な応答
+app.use('/api/*', (req: any, res: any) => {
+  console.log('⚠️ 未実装APIエンドポイント:', {
+    method: req.method,
+    path: req.path,
+    originalUrl: req.originalUrl
+  });
+  res.status(501).json({
+    success: false,
+    message: 'このAPIエンドポイントは現在実装中です',
+    endpoint: req.originalUrl,
+    method: req.method
+  });
+});
+
 console.log('⚠️ 認証関連以外のAPIルートは一時的に無効化（デバッグ中）');
 
 // 全ルート設定完了

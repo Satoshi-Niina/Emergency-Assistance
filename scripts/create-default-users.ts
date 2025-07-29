@@ -1,85 +1,60 @@
-#!/usr/bin/env tsx
+import { db } from '../server/db/index.js';
+import { users } from '../server/db/schema.js';
+import * as bcrypt from 'bcrypt';
+import { eq } from 'drizzle-orm';
 
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
-import * as dotenv from 'dotenv';
-import { users } from '../shared/schema.js';
-import bcrypt from 'bcrypt';
-
-// 環境変数の読み込み
-dotenv.config();
-
-async function main() {
-  const databaseUrl = process.env.DATABASE_URL;
-  
-  if (!databaseUrl) {
-    console.error('❌ DATABASE_URL environment variable is required');
-    process.exit(1);
-  }
-
-  console.log('🚀 Creating default users...');
+async function createDefaultUsers() {
+  console.log('👥 デフォルトユーザー作成開始...');
 
   try {
-    // PostgreSQL接続の作成
-    const sql = postgres(databaseUrl, { max: 1 });
-    const db = drizzle(sql);
+    // 管理者ユーザー
+    const adminExists = await (db as any).query.users.findFirst({
+      where: eq(users.username, 'niina')
+    });
 
-    // 既存ユーザーの確認
-    const existingUsers = await db.select().from(users);
-    console.log(`📊 Found ${existingUsers.length} existing users`);
-
-    // デフォルトユーザーの作成
-    const hashedPassword = await bcrypt.hash('admin123', 10);
-    
-    const defaultUsers = [
-      {
-        username: 'admin',
-        password: hashedPassword,
-        display_name: 'システム管理者',
+    if (!adminExists) {
+      const hashedAdminPassword = await bcrypt.hash('0077', 10);
+      await (db as any).insert(users).values({
+        username: 'niina',
+        password: hashedAdminPassword,
+        display_name: '管理者',
         role: 'admin',
-        department: 'IT',
-        description: 'システム全体の管理権限を持つ管理者'
-      },
-      {
-        username: 'operator',
-        password: hashedPassword,
-        display_name: 'オペレーター',
-        role: 'employee',
-        department: '運営',
-        description: '日常的な運営業務を担当'
-      },
-      {
-        username: 'user',
-        password: hashedPassword,
-        display_name: '一般ユーザー',
-        role: 'employee',
-        department: '一般',
-        description: '基本的な機能を使用する一般ユーザー'
-      }
-    ];
-
-    for (const user of defaultUsers) {
-      // 既存ユーザーの確認
-      const existingUser = existingUsers.find(u => u.username === user.username);
-      
-      if (existingUser) {
-        console.log(`⚠️ User already exists: ${user.username}`);
-      } else {
-        await db.insert(users).values(user);
-        console.log(`✅ Created user: ${user.username} (${user.display_name})`);
-      }
+        department: '管理部',
+        description: 'システム管理者',
+        created_at: new Date()
+      });
+      console.log('✅ 管理者ユーザー (niina) を作成しました');
+    } else {
+      console.log('⚠️ 管理者ユーザー (niina) は既に存在します');
     }
 
-    console.log('✅ Default users creation completed');
-    console.log('📝 Default password for all users: admin123');
-    console.log('⚠️ Please change passwords after first login');
-    
-    // 接続を閉じる
-    await sql.end();
+    // 一般ユーザー
+    const employeeExists = await (db as any).query.users.findFirst({
+      where: eq(users.username, 'employee')
+    });
+
+    if (!employeeExists) {
+      const hashedEmployeePassword = await bcrypt.hash('employee123', 10);
+      await (db as any).insert(users).values({
+        username: 'employee',
+        password: hashedEmployeePassword,
+        display_name: '一般ユーザー',
+        role: 'employee',
+        department: '技術部',
+        description: '一般社員',
+        created_at: new Date()
+      });
+      console.log('✅ 一般ユーザー (employee) を作成しました');
+    } else {
+      console.log('⚠️ 一般ユーザー (employee) は既に存在します');
+    }
+
+    console.log('✅ デフォルトユーザー作成完了');
   } catch (error) {
-    console.error('❌ Default users creation failed:', error);
-    process.exit(1);
+    console.error('❌ デフォルトユーザー作成エラー:', error);
   }
+
+  process.exit(0);
 }
 
-main(); 
+createDefaultUsers();
