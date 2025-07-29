@@ -183,13 +183,19 @@ if (authRouter) {
   console.error('❌ authRouter is not valid:', authRouter);
 }
 
-import { registerSearchRoutes } from './routes/search.js';
 import { historyRouter } from './routes/history.js';
 import { Request, Response } from 'express';
 app.use("/api/emergency-guides", emergencyGuideRouter);
 console.log('✅ 緊急ガイドルート設定完了');
 
+// Import route registration function
+import { registerRoutes } from './routes/index.js';
+
+// Register all routes (認証以外のAPIルート)
 registerRoutes(app);
+
+import { registerSearchRoutes } from './routes/search.js';
+registerSearchRoutes(app);
 
 // 履歴管理ルート追加
 app.use('/api/history', (req: Request, res: Response) => {
@@ -365,7 +371,5 @@ server.on('error', (error: any) => {
 
 console.log('✅ サーバーindex.tsファイルの終端');
 // 検索ルート
-    registerSearchRoutes(app);
-
     // 履歴管理ルート
     app.use('/api/history', historyRouter);

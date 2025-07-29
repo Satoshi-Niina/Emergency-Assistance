@@ -169,10 +169,10 @@ router.post('/register', async (req, res) => {
     // ユーザーの作成
     // db.insert(users).values を型アサーションで回避
     const newUser = await (db as any).insert(users).values({
-      username: req.body.username,
+      username: username,
       password: hashedPassword,
-      display_name: req.body.display_name,
-      role: req.body.role || 'employee',
+      display_name: displayName,
+      role: role,
       department: req.body.department || '',
       description: req.body.description || '',
       created_at: new Date()
