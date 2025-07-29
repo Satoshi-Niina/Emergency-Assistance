@@ -10,7 +10,7 @@ import KeywordButtons from "../components/troubleshooting/keyword-buttons";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { RotateCcw, Download, Upload, FileText, BookOpen, Activity, ArrowLeft, X, Search, Send } from "lucide-react";
+import { RotateCcw, Download, Upload, FileText, BookOpen, Activity, ArrowLeft, X, Search, Send, Camera } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { searchTroubleshootingFlows, japaneseGuideTitles } from "../lib/troubleshooting-search";
 
@@ -254,8 +254,11 @@ export default function ChatPage() {
       {/* ヘッダーエリア - 固定表示 */}
       <div className="bg-white shadow-sm border-b p-3 flex-shrink-0 sticky top-0 z-10">
         <div className="flex justify-between items-center w-full">
-          {/* 応急処置ガイドボタン - 中央配置 */}
-          <div className="flex-1 flex justify-center">
+          {/* 左側のスペース */}
+          <div className="flex-1"></div>
+
+          {/* 中央のボタングループ */}
+          <div className="flex items-center gap-4">
             <Button 
               onClick={handleEmergencyGuide}
               className="bg-red-500 hover:bg-red-600 text-white flex items-center gap-2 px-6 py-3 font-bold text-lg shadow-lg"
@@ -264,10 +267,23 @@ export default function ChatPage() {
               <BookOpen className="h-6 w-6" />
               🚨 応急処置ガイド 🚨
             </Button>
+            
+            <Button 
+              onClick={() => {
+                const event = new CustomEvent('open-camera-modal');
+                window.dispatchEvent(event);
+              }}
+              variant="outline"
+              className="border-2 border-black hover:bg-gray-100 flex items-center gap-2 px-6 py-3 font-bold text-lg"
+              size="lg"
+            >
+              <Camera className="h-6 w-6" />
+              📷 カメラ
+            </Button>
           </div>
 
           {/* サーバー送信ボタン - 右端配置 */}
-          <div className="flex-shrink-0">
+          <div className="flex-1 flex justify-end">
             <Button 
               onClick={handleSendToServer} 
               variant="outline" 
@@ -321,6 +337,7 @@ export default function ChatPage() {
                 <EmergencyGuideDisplay
                   guideId={selectedGuideId}
                   onExit={handleExitGuide}
+                  onSendToChat={() => console.log('チャットに送信されました')}
                 />
               </div>
             ) : (
