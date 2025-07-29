@@ -3,7 +3,7 @@ import { useChat } from "../../context/chat-context";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Textarea } from "../../components/ui/textarea";
-import { Send, Camera, Mic, X } from "lucide-react";
+import { Send, Camera, X } from "lucide-react";
 import { useIsMobile } from "../../hooks/use-mobile";
 
 interface MessageInputProps {
@@ -19,9 +19,6 @@ export default function MessageInput({
   const { 
     recordedText, 
     selectedText, 
-    startRecording,
-    stopRecording,
-    isRecording,
     draftMessage,
     setDraftMessage
   } = useChat();
@@ -29,14 +26,12 @@ export default function MessageInput({
   // ドラフトメッセージを更新する（ユーザー入力用）
   const updateDraftMessage = (content: string) => {
     // 手動入力の場合のみコンテキスト直接更新（音声認識との重複防止）
-    if (setDraftMessage && !isRecording) {
+    if (setDraftMessage) {
       console.log('手動入力からドラフトメッセージを更新:', content);
       setDraftMessage({
         content,
         media: draftMessage?.media || []
       });
-    } else if (isRecording) {
-      console.log('録音中のため手動ドラフト更新をスキップ:', content);
     }
   };
   const isMobile = useIsMobile();
@@ -54,23 +49,6 @@ export default function MessageInput({
       }
     }
   }, [selectedText, isMobile]);
-
-  // 録音テキストをリアルタイムでチャットエリア（左側）のみに反映する
-  useEffect(() => {
-    if (isRecording && recordedText) {
-      // 入力欄には反映せず、チャット側（左側）にのみドラフトメッセージとして表示
-      if (recordedText.trim()) {
-        // 新しい関数を使用してドラフトメッセージを更新（イベント発火とコンテキスト更新を両方行う）
-        console.log('関数から直接ドラフトメッセージを設定:', recordedText);
-        updateDraftMessage(recordedText);
-
-        // デバッグログ
-        if (isRecording) {
-          console.log('録音中のテキストをチャット側のみに表示:', recordedText);
-        }
-      }
-    }
-  }, [recordedText, isRecording, draftMessage, setDraftMessage, updateDraftMessage]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setMessage(e.target.value);
@@ -128,36 +106,6 @@ export default function MessageInput({
     window.dispatchEvent(new CustomEvent('open-camera'));
   };
 
-  const handleMicClick = async () => {
-    try {
-      // マイク権限の確認
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach(track => track.stop()); // 確認後すぐに停止
-
-      // マイク録音機能の切り替え
-      if (!isRecording) {
-        console.log('録音開始');
-        startRecording();
-      } else {
-        console.log('録音停止');
-        stopRecording();
-
-        if (recordedText.trim()) {
-          console.log('録音停止：ドラフトメッセージを設定:', recordedText.trim());
-          updateDraftMessage(recordedText.trim());
-        }
-      }
-    } catch (error) {
-      console.error('マイクアクセスエラー:', error);
-      // エラーメッセージをユーザーに表示
-      if (error instanceof DOMException && error.name === 'NotAllowedError') {
-        alert('マイクの使用が許可されていません。ブラウザの設定でマイクの使用を許可してください。');
-      } else {
-        alert('マイクの初期化中にエラーが発生しました。');
-      }
-    }
-  };
-
   // テキスト入力欄をクリアする
   const handleClearText = () => {
     setMessage("");
@@ -171,37 +119,6 @@ export default function MessageInput({
   return (
     <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-t border-blue-200 p-2 message-input-container">
       <form onSubmit={handleSubmit} className="flex items-center">
-        {/* モバイル向けマイクボタン - 左配置 - コンパクト化 */}
-        <div className="md:hidden flex flex-col items-center mr-2">
-          <span className="text-xs font-medium text-orange-700 mb-0.5">マイク</span>
-          <Button 
-            type="button" 
-            onClick={handleMicClick}
-            size="icon"
-            variant={isRecording ? "default" : "ghost"}
-            className={`p-2 h-10 w-10 rounded-full ${isRecording 
-              ? "bg-gradient-to-r from-red-500 to-pink-500" 
-              : "bg-gradient-to-r from-amber-100 to-orange-100 hover:from-amber-200 hover:to-orange-200 border border-orange-300"}`}
-          >
-            <Mic className={`h-5 w-5 ${isRecording ? "text-white" : "text-orange-600"}`} />
-          </Button>
-        </div>
-
-        {/* デスクトップ向けマイクボタン - 左配置 - コンパクト化 */}
-        <div className="hidden md:flex md:flex-col md:items-center md:mr-2">
-          <span className="text-xs font-medium text-orange-700 mb-0.5">マイク</span>
-          <Button 
-            type="button" 
-            onClick={handleMicClick}
-            size="icon"
-            variant={isRecording ? "default" : "ghost"}
-            className={`p-2 h-10 w-10 rounded-full ${isRecording 
-              ? "bg-gradient-to-r from-red-500 to-pink-500" 
-              : "bg-gradient-to-r from-amber-100 to-orange-100 hover:from-amber-200 hover:to-orange-200 border border-orange-300"}`}
-          >
-            <Mic className={`h-5 w-5 ${isRecording ? "text-white" : "text-orange-600"}`} />
-          </Button>
-        </div>
 
         {/* 入力エリア - 小さめ固定高さでオーバーフロー時はスクロール */}
         <div className="flex-1 flex items-center bg-white border border-blue-200 rounded-full px-3 py-1 shadow-inner">
@@ -211,7 +128,7 @@ export default function MessageInput({
               <Textarea
                 ref={textareaRef}
                 className="absolute inset-0 bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none py-1 overflow-y-auto text-sm"
-                placeholder={isRecording ? "話しかけてください..." : "メッセージを入力..."}
+                placeholder={"メッセージを入力..."}
                 value={message}
                 onChange={handleInputChange}
                 disabled={isLoading}
@@ -242,7 +159,7 @@ export default function MessageInput({
                 ref={inputRef}
                 type="text"
                 className="w-full h-full bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
-                placeholder={isRecording ? "話しかけてください..." : "メッセージを入力..."}
+                placeholder={"メッセージを入力..."}
                 value={message}
                 onChange={handleInputChange}
                 disabled={isLoading}
@@ -261,7 +178,7 @@ export default function MessageInput({
           )}
           <Button 
             type="submit" 
-            disabled={isLoading || (!message.trim() && !recordedText.trim())}
+            disabled={isLoading || !message.trim()}
             size="icon"
             variant="ghost"
             className="ml-1 p-1 min-w-[28px] min-h-[28px] h-7 w-7 bg-gradient-to-r from-sky-100 to-blue-100 hover:from-sky-200 hover:to-blue-200 rounded-full border border-blue-300"
