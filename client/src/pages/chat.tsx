@@ -267,10 +267,10 @@ export default function ChatPage() {
       {/* 応急処置ガイドポップアップ */}
       {showEmergencyGuide && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-hidden shadow-xl">
+          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[75vh] overflow-hidden shadow-xl">
             {selectedGuideId ? (
               // フロー実行画面
-              <div className="h-full">
+              <div className="h-full max-h-[75vh] overflow-auto">
                 <EmergencyGuideDisplay
                   guideId={selectedGuideId}
                   onExit={handleExitGuide}
@@ -278,7 +278,7 @@ export default function ChatPage() {
               </div>
             ) : (
               // ガイド一覧表示
-              <div className="flex flex-col h-full max-h-[90vh]">
+              <div className="flex flex-col h-full max-h-[75vh]">
                 <div className="bg-white shadow-sm border-b p-4 flex-shrink-0">
                   <div className="flex justify-between items-center mb-4">
                     <h1 className="text-xl font-bold text-gray-800">応急処置ガイド選択</h1>
