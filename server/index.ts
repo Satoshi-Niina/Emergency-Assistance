@@ -92,9 +92,22 @@ app.use('/public', express.static(path.join(__dirname, 'public')));
 // Routes
 console.log('🛣️ ルーティング設定開始');
 
-// デバッグ用: 全リクエストのログ
+// デバッグ用: 全リクエストのログ（詳細版）
 app.use((req, res, next) => {
-  console.log(`📨 [${new Date().toISOString()}] ${req.method} ${req.path} - Origin: ${req.headers.origin}`);
+  console.log(`📨 [${new Date().toISOString()}] ${req.method} ${req.path}`);
+  console.log(`🔍 Headers: Origin=${req.headers.origin}, Host=${req.headers.host}, Referer=${req.headers.referer}`);
+  console.log(`🔍 Full URL: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
+  next();
+});
+
+// API routes のデバッグ用ハンドラー（ルート登録前に配置）
+app.use('/api', (req: any, res: any, next: any) => {
+  console.log('🔍 [API Route Handler] 受信:', {
+    method: req.method,
+    path: req.path,  
+    originalUrl: req.originalUrl,
+    baseUrl: req.baseUrl
+  });
   next();
 });
 

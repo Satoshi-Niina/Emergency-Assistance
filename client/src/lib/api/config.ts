@@ -5,9 +5,9 @@ const isDevelopment = import.meta.env.DEV || window.location.hostname.includes('
 // Replit環境の検出
 const isReplitEnvironment = window.location.hostname.includes('replit.dev') || window.location.hostname.includes('replit.app');
 
-// API Base URLの設定
+// API Base URLの設定  
 export const API_BASE_URL = isReplitEnvironment
-  ? `${window.location.protocol}//${window.location.hostname}:3001` // Replit環境では現在のホスト名を使用
+  ? `${window.location.protocol}//${window.location.hostname.split(':')[0]}:3001` // Replit環境: ポート番号を除去してから3001を付与
   : isProduction 
     ? 'https://emergency-backend-e7enc2e8dhdabucv.japanwest-01.azurewebsites.net'
     : 'http://localhost:3001';
