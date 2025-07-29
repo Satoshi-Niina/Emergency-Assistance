@@ -270,10 +270,10 @@ export default function ChatPage() {
   const handleCameraClick = () => {
     console.log('📸 カメラボタンがクリックされました');
     // カメラモーダルを開くイベントを発火
-    window.dispatchEvent(new CustomEvent('open-camera-modal'));
+    window.dispatchEvent(new CustomEvent('open-camera'));
 
     // デバッグ用: イベントが正しく発火されたかを確認
-    console.log('📸 open-camera-modal イベントを発火しました');
+    console.log('📸 open-camera イベントを発火しました');
   };
 
 
