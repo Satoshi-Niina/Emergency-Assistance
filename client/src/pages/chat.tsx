@@ -213,6 +213,15 @@ export default function ChatPage() {
 
   const handleEmergencyGuide = async () => {
     await fetchAvailableGuides();
+    
+    // 最後に送信されたテキストを検索キーワードとして設定
+    const lastKeyword = localStorage.getItem('lastSearchKeyword');
+    if (lastKeyword) {
+      setSearchQuery(lastKeyword);
+      handleSearch(lastKeyword);
+      console.log('🔍 保存された検索キーワードを使用:', lastKeyword);
+    }
+    
     setShowEmergencyGuide(true);
   };
 
@@ -224,6 +233,8 @@ export default function ChatPage() {
     setShowEmergencyGuide(false);
     setSelectedGuideId(null);
     setSearchQuery("");
+    // 検索キーワードもクリア
+    localStorage.removeItem('lastSearchKeyword');
   };
 
   // 検索処理
