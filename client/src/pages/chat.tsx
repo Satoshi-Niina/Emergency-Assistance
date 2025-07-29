@@ -7,7 +7,7 @@ import CameraModal from "../components/chat/camera-modal";
 import ImagePreviewModal from "../components/chat/image-preview-modal";
 import EmergencyGuideDisplay from "../components/emergency-guide/emergency-guide-display";
 import { Button } from "../components/ui/button";
-import { RotateCcw, Download, Upload, FileText, BookOpen, Activity, ArrowLeft } from "lucide-react";
+import { RotateCcw, Download, Upload, FileText, BookOpen, Activity, ArrowLeft, X } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 
 export default function ChatPage() {
@@ -108,70 +108,7 @@ export default function ChatPage() {
     setSelectedGuideId(null);
   };
 
-  // 応急処置ガイド表示中の場合
-  if (showEmergencyGuide) {
-    if (selectedGuideId) {
-      return (
-        <div className="flex flex-col h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-          <div className="container mx-auto px-4 py-8">
-            <EmergencyGuideDisplay
-              guideId={selectedGuideId}
-              onExit={handleExitGuide}
-            />
-          </div>
-        </div>
-      );
-    } else {
-      // ガイド一覧表示
-      return (
-        <div className="flex flex-col h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-          <div className="bg-white shadow-sm border-b p-2 flex-shrink-0">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <Button 
-                  onClick={handleExitGuide}
-                  variant="outline"
-                  className="flex items-center gap-1 text-sm px-3 py-2"
-                  size="sm"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  チャットに戻る
-                </Button>
-                <h1 className="text-lg font-bold text-gray-800">応急処置ガイド選択</h1>
-              </div>
-            </div>
-          </div>
-          <div className="flex-1 overflow-auto p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {availableGuides.map((guide) => (
-                <div
-                  key={guide.id}
-                  className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg cursor-pointer transition-shadow"
-                  onClick={() => handleSelectGuide(guide.id)}
-                >
-                  <h3 className="font-semibold text-lg mb-2">{guide.title}</h3>
-                  {guide.description && (
-                    <p className="text-gray-600 text-sm mb-3">{guide.description}</p>
-                  )}
-                  <div className="flex justify-between items-center text-sm text-gray-500">
-                    <span>{guide.steps?.length || 0} ステップ</span>
-                    <Button size="sm" className="text-xs">
-                      ガイドを開く
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {availableGuides.length === 0 && (
-              <div className="text-center py-8">
-                <p className="text-gray-500">利用可能な応急処置ガイドがありません</p>
-              </div>
-            )}
-          </div>
-        </div>
-      );
-    }
-  }
+  
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -251,6 +188,68 @@ export default function ChatPage() {
         onChange={handleFileChange}
         style={{ display: 'none' }}
       />
+
+      {/* 応急処置ガイドポップアップ */}
+      {showEmergencyGuide && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-hidden shadow-xl">
+            {selectedGuideId ? (
+              // フロー実行画面
+              <div className="h-full">
+                <EmergencyGuideDisplay
+                  guideId={selectedGuideId}
+                  onExit={handleExitGuide}
+                />
+              </div>
+            ) : (
+              // ガイド一覧表示
+              <div className="flex flex-col h-full max-h-[90vh]">
+                <div className="bg-white shadow-sm border-b p-4 flex-shrink-0">
+                  <div className="flex justify-between items-center">
+                    <h1 className="text-xl font-bold text-gray-800">応急処置ガイド選択</h1>
+                    <Button 
+                      onClick={handleExitGuide}
+                      variant="outline"
+                      className="flex items-center gap-1"
+                      size="sm"
+                    >
+                      <X className="h-4 w-4" />
+                      閉じる
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex-1 overflow-auto p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {availableGuides.map((guide) => (
+                      <div
+                        key={guide.id}
+                        className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg cursor-pointer transition-shadow border border-gray-200"
+                        onClick={() => handleSelectGuide(guide.id)}
+                      >
+                        <h3 className="font-semibold text-lg mb-2">{guide.title}</h3>
+                        {guide.description && (
+                          <p className="text-gray-600 text-sm mb-3">{guide.description}</p>
+                        )}
+                        <div className="flex justify-between items-center text-sm text-gray-500">
+                          <span>{guide.steps?.length || 0} ステップ</span>
+                          <Button size="sm" className="text-xs">
+                            ガイドを開く
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {availableGuides.length === 0 && (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">利用可能な応急処置ガイドがありません</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
