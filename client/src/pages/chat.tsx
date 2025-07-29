@@ -176,20 +176,22 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* ヘッダーエリア */}
-      <div className="bg-white shadow-sm border-b p-2 flex-shrink-0">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
+      <div className="bg-white shadow-sm border-b p-3 flex-shrink-0">
+        <div className="flex flex-col items-center gap-3">
+          {/* 応急処置ガイドボタン - 中央配置 */}
+          <div className="flex justify-center w-full">
             <Button 
               onClick={handleEmergencyGuide}
-              className="bg-yellow-500 hover:bg-yellow-600 text-black flex items-center gap-1 text-sm px-3 py-2 font-bold"
-              size="sm"
-              style={{ fontSize: '1.5em', fontWeight: 'bold' }}
+              className="bg-red-500 hover:bg-red-600 text-white flex items-center gap-2 px-6 py-3 font-bold text-lg shadow-lg"
+              size="lg"
             >
-              <BookOpen className="h-4 w-4" />
-              応急処置ガイド
+              <BookOpen className="h-6 w-6" />
+              🚨 応急処置ガイド 🚨
             </Button>
           </div>
-          <div className="flex gap-1">
+          
+          {/* 操作ボタン群 - 右寄せ */}
+          <div className="flex justify-end w-full gap-1">
             <Button 
               onClick={clearChat} 
               variant="outline" 
