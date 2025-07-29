@@ -7,6 +7,14 @@ import { logInfo, logError } from '../lib/logger.js';
 
 const router = express.Router();
 
+// デバッグ: ルーターが正しく作成されたことを確認
+console.log('🔧 [AUTH ROUTER] Express.Router() 作成:');
+console.log('📍 router type:', typeof router);
+console.log('📍 router constructor:', router.constructor.name);
+console.log('📍 router.use function exists:', typeof router.use === 'function');
+console.log('📍 router.post function exists:', typeof router.post === 'function');
+console.log('📍 router.get function exists:', typeof router.get === 'function');
+
 // デバッグ用：全ての認証ルートをログに出力
 console.log('🔧 認証ルーターを初期化中...');
 console.log('📍 利用可能な認証エンドポイント:');
@@ -274,4 +282,15 @@ router.get('/me', async (req, res) => {
   });
 });
 
+// デバッグ: ルーターの状態を確認
+console.log('🔧 [AUTH ROUTER] エクスポート前の確認:');
+console.log('📍 router type:', typeof router);
+console.log('📍 router.stack length:', router.stack ? router.stack.length : 'no stack');
+if (router.stack) {
+  router.stack.forEach((layer: any, index: number) => {
+    console.log(`  [${index}] ${layer.route?.path || 'middleware'} - ${JSON.stringify(layer.route?.methods || 'N/A')}`);
+  });
+}
+
 export const authRouter = router;
+console.log('✅ [AUTH ROUTER] エクスポート完了');
