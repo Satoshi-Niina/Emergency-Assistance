@@ -30,10 +30,12 @@ function App() {
                 <Routes>
                   <Route path="/login" element={<LoginPage />} />
 
+                  {/* Direct Routes - No Authentication Required */}
+                  <Route path="/" element={<Navigate to="/chat" replace />} />
+                  <Route path="/chat" element={<ChatPage />} />
+                  
                   {/* Protected Routes */}
                   <Route element={<ProtectedRoute />}>
-                    <Route path="/" element={<Navigate to="/chat" replace />} />
-                    <Route path="/chat" element={<ChatPage />} />
                     <Route path="/settings" element={<SettingsPage />} />
                   </Route>
 
