@@ -97,6 +97,35 @@ export const chatExports = pgTable('chat_exports', {
     timestamp: timestamp('timestamp').defaultNow().notNull()
 });
 
+// 履歴管理テーブル
+export const historyItems = pgTable('history_items', {
+    id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+    chatId: text('chat_id').notNull(),
+    title: text('title').notNull(),
+    description: text('description').notNull(),
+    machineModel: text('machine_model'),
+    office: text('office'),
+    category: text('category'),
+    emergencyGuideTitle: text('emergency_guide_title'),
+    emergencyGuideContent: text('emergency_guide_content'),
+    keywords: jsonb('keywords'), // string[]
+    metadata: jsonb('metadata'), // 追加のメタデータ用
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+// 履歴に関連する画像テーブル
+export const historyImages = pgTable('history_images', {
+    id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+    historyItemId: text('history_item_id').notNull(),
+    url: text('url').notNull(),
+    description: text('description'),
+    originalFileName: text('original_file_name'),
+    fileSize: text('file_size'),
+    mimeType: text('mime_type'),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
 // スキーマエクスポート
 export const schema = {
     users,
@@ -108,6 +137,8 @@ export const schema = {
     emergencyFlows,
     images,
     chatExports,
+    historyItems,
+    historyImages,
 };
 
 // データベース接続
