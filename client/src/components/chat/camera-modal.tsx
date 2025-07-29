@@ -36,10 +36,16 @@ export default function CameraModal() {
 
   useEffect(() => {
     // Listen for open-camera event
-    const handleOpenCamera = () => setIsOpen(true);
+    const handleOpenCamera = (event) => {
+      console.log('📸 CameraModal: open-camera イベントを受信しました', event);
+      setIsOpen(true);
+    };
+    
+    console.log('📸 CameraModal: open-camera イベントリスナーを登録しました');
     window.addEventListener('open-camera', handleOpenCamera);
 
     return () => {
+      console.log('📸 CameraModal: open-camera イベントリスナーを削除しました');
       window.removeEventListener('open-camera', handleOpenCamera);
     };
   }, []);

@@ -83,10 +83,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const checkAuth = async () => {
-    console.log('🔐 認証チェック無効化モード - ダミーユーザーを使用');
-    // 認証チェックを無効化 - 常にダミーユーザーでログイン済み状態
-    setUser(dummyUser);
-    setIsLoading(false);
+    // 開発環境では認証チェックを無効化してダミーユーザーを使用
+    if (import.meta.env.DEV) {
+      console.log('🔐 認証チェック無効化モード - ダミーユーザーを使用');
+      const dummyUser = {
+        id: 'dummy-user-id',
+        username: 'testuser',
+        display_name: 'テストユーザー',
+        role: 'user',
+        email: 'test@example.com'
+      };
+      setUser(dummyUser);
+      setIsLoading(false);
+      return dummyUser;
+    }
+
+    console.log('🔐 認証状態チェック開始');
+    const authUrl = buildApiUrl('/api/auth/me');
+    console.log('🔗 認証チェックURL:', authUrl);
+
+    try {
+      const response = await fetch(authUrl, {
+        credentials: 'include',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
+
+      console.log('🔐 認証チェックレスポンス:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        console.log('✅ 認証成功:', userData);
+        setUser(userData);
+        setIsLoading(false);
+        return userData;
+      } else {
+        console.log('❌ 認証失敗: ステータス', response.status);
+        setUser(null);
+        setIsLoading(false);
+        return null;
+      }
+    } catch (error) {
+      console.error('🔥 認証チェックエラー:', error);
+      setUser(null);
+      setIsLoading(false);
+      return null;
+    }
   };
 
   useEffect(() => {

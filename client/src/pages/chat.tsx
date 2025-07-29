@@ -115,7 +115,7 @@ export default function ChatPage() {
 
         // 送信完了後にチャットをクリア
         await clearChatHistory();
-        
+
         toast({
           title: "チャットクリア完了",
           description: "送信後にチャット履歴をクリアしました。",
@@ -213,7 +213,7 @@ export default function ChatPage() {
 
   const handleEmergencyGuide = async () => {
     await fetchAvailableGuides();
-    
+
     // 最後に送信されたテキストを検索キーワードとして設定
     const lastKeyword = localStorage.getItem('lastSearchKeyword');
     if (lastKeyword) {
@@ -221,7 +221,7 @@ export default function ChatPage() {
       handleSearch(lastKeyword);
       console.log('🔍 保存された検索キーワードを使用:', lastKeyword);
     }
-    
+
     setShowEmergencyGuide(true);
   };
 
@@ -266,6 +266,16 @@ export default function ChatPage() {
     handleSearch(keyword);
   };
 
+  // カメラボタンのクリック処理
+  const handleCameraClick = () => {
+    console.log('📸 カメラボタンがクリックされました');
+    // カメラモーダルを開くイベントを発火
+    window.dispatchEvent(new CustomEvent('open-camera-modal'));
+
+    // デバッグ用: イベントが正しく発火されたかを確認
+    console.log('📸 open-camera-modal イベントを発火しました');
+  };
+
 
 
   return (
@@ -286,12 +296,9 @@ export default function ChatPage() {
               <BookOpen className="h-6 w-6" />
               🚨 応急処置ガイド 🚨
             </Button>
-            
+
             <Button 
-              onClick={() => {
-                const event = new CustomEvent('open-camera-modal');
-                window.dispatchEvent(event);
-              }}
+              onClick={handleCameraClick}
               variant="outline"
               className="border-2 border-black hover:bg-gray-100 flex items-center gap-2 px-6 py-3 font-bold text-lg"
               size="lg"
@@ -377,10 +384,10 @@ export default function ChatPage() {
                `,
                background: 'linear-gradient(145deg, #f8fafc, #e2e8f0)'
              }}>
-          
+
           {/* 内側の装飾的な境界線 */}
           <div className="absolute inset-2 border border-blue-200 rounded-lg pointer-events-none opacity-50"></div>
-          
+
           {/* メッセージ表示エリア */}
           <div className="relative z-10">
             {messages.map((message) => (
