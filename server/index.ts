@@ -63,6 +63,26 @@ console.log(`🚀 サーバーをポート ${port} で起動中...`);
 
 console.log(`📡 使用ポート: ${port}`);
 
+// 全リクエストログミドルウェア（最優先）
+app.use('*', (req: any, res: any, next: any) => {
+  console.log(`\n🔍 [${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  console.log('📍 詳細:', {
+    url: req.url,
+    path: req.path,
+    originalUrl: req.originalUrl,
+    baseUrl: req.baseUrl,
+    method: req.method,
+    headers: {
+      host: req.headers.host,
+      origin: req.headers.origin,
+      'content-type': req.headers['content-type'],
+      'user-agent': req.headers['user-agent']?.substring(0, 50) + '...'
+    },
+    body: req.method === 'POST' ? req.body : 'N/A'
+  });
+  next();
+});
+
 // ミドルウェア設定
 app.use(cors({ 
   origin: ['http://localhost:5000', 'http://172.31.73.194:5000', 'http://0.0.0.0:5000', '*'], 
