@@ -139,8 +139,33 @@ console.log('✅ 画像配信ルート設定完了');
 console.log('🔧 認証ルート登録中...');
 console.log('📍 authRouter type:', typeof authRouter);
 console.log('📍 authRouter is function:', typeof authRouter === 'function');
-app.use("/api/auth", authRouter);
-console.log('✅ 認証ルート設定完了: POST /api/auth/login, GET /api/auth/me, POST /api/auth/logout, POST /api/auth/register');
+
+// 認証ルーターが正しく登録されているかテスト
+if (typeof authRouter === 'function') {
+  console.log('✅ authRouter is valid Express router');
+  
+  // 認証ルートを登録
+  app.use("/api/auth", authRouter);
+  console.log('✅ 認証ルート登録完了: /api/auth');
+  
+  // 登録直後にルートの存在を確認
+  console.log('🔍 ルート登録確認中...');
+  
+  // 手動でルートテスト（デバッグ用）
+  app.use('/api/auth/test', (req: any, res: any) => {
+    console.log('🧪 認証ルートテスト: リクエスト受信');
+    res.json({
+      success: true,
+      message: 'Auth router is working',
+      timestamp: new Date().toISOString()
+    });
+  });
+  
+  console.log('✅ 認証ルート設定完了: POST /api/auth/login, GET /api/auth/me, POST /api/auth/logout, POST /api/auth/register');
+} else {
+  console.error('❌ authRouter is not a valid Express router!');
+  console.error('📍 authRouter value:', authRouter);
+}
 
 app.use("/api/emergency-guides", emergencyGuideRouter);
 console.log('✅ 緊急ガイドルート設定完了');
@@ -185,8 +210,28 @@ app.use('*', (req: any, res: any) => {
     }
   });
 
+  // Expressアプリケーションのルートスタックを詳細に調査
+  console.log('\n🔍 [EXPRESS ROUTER STACK 詳細調査]');
+  console.log('🛣️ Express app._router.stack:');
+  if (app._router && app._router.stack) {
+    app._router.stack.forEach((layer: any, index: number) => {
+      console.log(`  [${index}] regexp: ${layer.regexp}, methods: ${JSON.stringify(layer.route?.methods || 'N/A')}`);
+      console.log(`       path: ${layer.route?.path || 'middleware'}, name: ${layer.name || 'anonymous'}`);
+      
+      // サブルーターの場合は詳細を調査
+      if (layer.name === 'router' && layer.handle && layer.handle.stack) {
+        console.log(`       🔧 Sub-router found with ${layer.handle.stack.length} routes:`);
+        layer.handle.stack.forEach((subLayer: any, subIndex: number) => {
+          console.log(`         [${subIndex}] ${subLayer.route?.path || 'middleware'} - ${JSON.stringify(subLayer.route?.methods || 'N/A')}`);
+        });
+      }
+    });
+  } else {
+    console.log('  ❌ No router stack found!');
+  }
+
   // 登録されているルートを表示
-  console.log('🛣️ 登録されているAPIルート:');
+  console.log('🛣️ 想定されているAPIルート:');
   console.log('  ✅ POST /api/auth/login');
   console.log('  ✅ GET /api/auth/me'); 
   console.log('  ✅ POST /api/auth/logout');
