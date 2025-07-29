@@ -45,7 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           'Content-Type': 'application/json'
         }
       });
-      
+
       console.log('📡 ユーザー情報レスポンス:', {
         status: response.status,
         ok: response.ok
@@ -74,42 +74,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const dummyUser: User = {
+    id: 'dummy-user-id',
+    username: 'dummyUser',
+    displayName: 'Dummy User',
+    role: 'admin',
+    department: '開発部',
+  };
+
+  const checkAuth = async () => {
+    console.log('🔐 認証チェック無効化モード - ダミーユーザーを使用');
+    // 認証チェックを無効化 - 常にダミーユーザーでログイン済み状態
+    setUser(dummyUser);
+    setIsLoading(false);
+  };
+
   useEffect(() => {
-    const checkAuthStatus = async () => {
-      try {
-        console.log('🔐 認証状態チェック開始');
-        const meUrl = buildApiUrl('/api/auth/me');
-        console.log('🔗 認証チェックURL:', meUrl);
-        const response = await fetch(meUrl, {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        console.log('🔐 認証チェックレスポンス:', {
-          status: response.status,
-          statusText: response.statusText,
-          ok: response.ok
-        });
-
-        if (response.ok) {
-          const userData = await response.json();
-          console.log('✅ 認証成功:', userData);
-          setUser(userData.user || userData);
-        } else {
-          console.log('❌ 認証失敗:', response.status, response.statusText);
-          setUser(null);
-        }
-      } catch (error) {
-        console.error('❌ 認証チェックエラー:', error);
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkAuthStatus();
+    checkAuth();
   }, []);
 
   const login = async (username: string, password: string) => {
@@ -160,7 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // ユーザーデータを設定
       setUser(userData.user);
       console.log('✅ ユーザー状態更新完了:', userData.user);
-      
+
       toast({
         title: 'ログイン成功',
         description: `ようこそ、${userData.user.displayName || userData.user.username}さん`,
