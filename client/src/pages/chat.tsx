@@ -1,485 +1,180 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useChat } from "../context/chat-context";
-import { useAuth } from "../context/auth-context";
 import MessageBubble from "../components/chat/message-bubble";
 import MessageInput from "../components/chat/message-input";
-import TextSelectionControls from "../components/chat/text-selection-controls";
-import SearchResults from "../components/chat/search-results";
 import CameraModal from "../components/chat/camera-modal";
 import ImagePreviewModal from "../components/chat/image-preview-modal";
-import TroubleshootingSelector from "../components/troubleshooting/troubleshooting-selector";
-import { useQuery } from "@tanstack/react-query";
-import { queryClient } from "../lib/queryClient.ts";
 import { Button } from "../components/ui/button";
-import { Send, Loader2, Trash2, Heart, FileText, Menu, Settings, LifeBuoy } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
-import { useLocation, Link } from "react-router-dom";
-import { useIsMobile } from "../hooks/use-mobile";
-import { searchByText } from '../lib/troubleshooting-search';
+import { RotateCcw, Download, Upload, FileText, BookOpen, Activity } from "lucide-react";
+import { useToast } from "../hooks/use-toast";
 
-export default function Chat() {
+export default function ChatPage() {
   const {
     messages,
-    setMessages,
-    isLoading,
-    selectedText,
-    setSelectedText,
-    searchBySelectedText,
-    searchResults,
-    clearSearchResults,
-    exportChatHistory,
-    isExporting,
-    hasUnexportedMessages,
-    draftMessage,
-    setDraftMessage,
-    clearChatHistory,
-    isClearing,
-    isRecording,
     sendMessage,
-    startRecording,
-    stopRecording,
-    captureImage
+    isLoading,
+    clearChat,
+    exportChat,
+    importChat,
+    chatId
   } = useChat();
 
-  const { user } = useAuth();
-  const [isEndChatDialogOpen, setIsEndChatDialogOpen] = useState(false);
-  const location = useLocation();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 新しいチャットとして開始するため、メッセージ読み込みは無効化
-  const { data, isLoading: messagesLoading } = useQuery({
-    queryKey: ['/api/chats/1/messages'],
-    queryFn: async () => {
-      const response = await fetch('/api/chats/1/messages', {
-        credentials: 'include'
-      });
-      if (!response.ok) {
-        throw new Error('Failed to fetch messages');
-      }
-      return response.json();
-    },
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    enabled: false, // 新しいチャットとして開始するため常に無効
-  });
-
-  useEffect(() => {
-    // Handle text selection
-    const handleSelection = () => {
-      const selection = window.getSelection();
-      if (selection && selection.toString().trim().length > 0) {
-        setSelectedText(selection.toString().trim());
-      } else {
-        setSelectedText("");
-      }
-    };
-
-    document.addEventListener("mouseup", handleSelection);
-    return () => {
-      document.removeEventListener("mouseup", handleSelection);
-    };
-  }, [setSelectedText]);
-
-  // 新しいチャットとして開始 - 常にcontextのメッセージのみ表示
-  const displayMessages = isClearing ? [] : (messages || []);
-
-  // デバッグ用：表示メッセージの確認と応急処置ガイドメッセージの監視
-  useEffect(() => {
-    console.log('📊 Chat.tsx - 表示メッセージ数:', displayMessages.length);
-
-    if (displayMessages.length > 0) {
-      const emergencyMessages = displayMessages.filter(msg => 
-        msg.content && (
-          msg.content.includes('応急処置ガイド実施記録') ||
-          msg.content.includes('応急処置ガイド「') ||
-          msg.content.includes('を実施しました')
-        )
-      );
-
-      console.log('🏥 Chat.tsx - 応急処置関連メッセージ数:', emergencyMessages.length);
-
-      if (emergencyMessages.length > 0) {
-        console.log('✅ Chat.tsx - 応急処置ガイドメッセージが表示されています:');
-        emergencyMessages.forEach((msg, index) => {
-          console.log(`  ${index + 1}. ID: ${msg.id}, AI応答: ${msg.isAiResponse}, 内容: ${msg.content.substring(0, 50)}...`);
-        });
-      }
-
-      // 最新のメッセージが応急処置関連かチェック
-      const latestMessage = displayMessages[displayMessages.length - 1];
-      if (latestMessage && latestMessage.content && latestMessage.content.includes('応急処置ガイド')) {
-        console.log('🔔 Chat.tsx - 最新メッセージが応急処置ガイド関連です:', {
-          id: latestMessage.id,
-          isAiResponse: latestMessage.isAiResponse,
-          timestamp: latestMessage.timestamp,
-          contentPreview: latestMessage.content.substring(0, 100) + '...'
-        });
-      }
-    }
-  }, [displayMessages]);
-
-  const handleEndChat = () => {
-    if (hasUnexportedMessages) {
-      setIsEndChatDialogOpen(true);
-    } else {
-      fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/logout`, {
-        method: "POST",
-        credentials: "include"
-      })
-      .then(() => {
-        console.log("ログアウト成功 - ログイン画面に遷移します");
-        queryClient.clear();
-        for (const key of Object.keys(localStorage)) {
-          if (key.startsWith('rq-')) {
-            localStorage.removeItem(key);
-          }
-        }
-        window.location.href = "/login";
-      })
-      .catch(error => {
-        console.error("ログアウトエラー:", error);
-        window.location.href = "/login";
-      });
-    }
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleSendAndEnd = async () => {
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleExport = async () => {
     try {
-      await exportChatHistory();
-      setIsEndChatDialogOpen(false);
-
-      console.log("チャットエクスポート完了。チャット画面を維持します。");
+      await exportChat();
+      toast({
+        title: "エクスポート成功",
+        description: "チャット履歴をエクスポートしました。",
+      });
     } catch (error) {
-      console.error("チャットエクスポートエラー:", error);
-      setIsEndChatDialogOpen(false);
-      console.log("エラーが発生しましたが、チャット画面を維持します。");
+      console.error('Export error:', error);
+      toast({
+        title: "エクスポートエラー",
+        description: "チャット履歴のエクスポートに失敗しました。",
+        variant: "destructive",
+      });
     }
   };
 
-  const isMobile = useIsMobile();
-  // 応急処置ガイドの状態
-  const [emergencyGuideOpen, setEmergencyGuideOpen] = useState(false);
-  const [searchKeyword, setSearchKeyword] = useState("");
-  const [selectedFlow, setSelectedFlow] = useState<string | null>(null);
+  const handleImport = () => {
+    fileInputRef.current?.click();
+  };
 
-  // 応急処置ガイド関連のイベントリスナー
-  useEffect(() => {
-    const handleCloseEmergencyGuide = () => {
-      console.log('応急処置ガイド画面を閉じるイベントを受信');
-      setEmergencyGuideOpen(false);
-    };
-
-    const handleEmergencyGuideSent = (event: any) => {
-      console.log('🏥 応急処置ガイド送信イベントを受信:', event.detail);
-
-      // 送信後に画面を自動的にスクロール
-      setTimeout(() => {
-        const chatContainer = document.getElementById('chatMessages');
-        if (chatContainer) {
-          chatContainer.scrollTop = chatContainer.scrollHeight;
-          console.log('📜 応急処置ガイド送信後にチャットを最下部にスクロールしました');
-        }
-
-        // 応急処置ガイド画面を閉じる
-        setEmergencyGuideOpen(false);
-        console.log('🏥 応急処置ガイド送信後に画面を閉じました');
-      }, 500);
-    };
-
-    const handleEmergencyGuideCompleted = (event: any) => {
-      console.log('🏥 応急処置ガイド完了イベントを受信:', event.detail);
-
-      // フロー実行結果がチャットに送信された後の処理
-      setTimeout(() => {
-        const chatContainer = document.getElementById('chatMessages');
-        if (chatContainer) {
-          chatContainer.scrollTop = chatContainer.scrollHeight;
-          console.log('📜 フロー実行結果送信後にチャットを最下部にスクロールしました');
-        }
-      }, 500);
-    };
-
-    window.addEventListener('close-emergency-guide', handleCloseEmergencyGuide);
-    window.addEventListener('emergency-guide-sent', handleEmergencyGuideSent);
-    window.addEventListener('emergency-guide-completed', handleEmergencyGuideCompleted);
-
-    return () => {
-      window.removeEventListener('close-emergency-guide', handleCloseEmergencyGuide);
-      window.removeEventListener('emergency-guide-sent', handleEmergencyGuideSent);
-      window.removeEventListener('emergency-guide-completed', handleEmergencyGuideCompleted);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (emergencyGuideOpen === false) {
-      setSelectedFlow(null);
-      setSearchKeyword("");
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      try {
+        await importChat(file);
+        toast({
+          title: "インポート成功",
+          description: "チャット履歴をインポートしました。",
+        });
+      } catch (error) {
+        console.error('Import error:', error);
+        toast({
+          title: "インポートエラー",
+          description: "チャット履歴のインポートに失敗しました。",
+          variant: "destructive",
+        });
+      }
     }
-  }, [emergencyGuideOpen]);
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
-  const handleRequestSendToChat = () => {
-    window.dispatchEvent(new CustomEvent('request-send-to-chat'));
+  const handleEmergencyGuide = () => {
+    navigate('/troubleshooting');
   };
 
   return (
-    <div className="flex flex-col w-full h-full overflow-auto bg-blue-900 chat-layout-container overflow-scroll-container" style={{ maxWidth: '100vw', overflowX: 'hidden' }}>
-      {/* ボタン行 - 左に履歴クリア、右に履歴送信とチャット終了 */}
-      <div className="bg-gray-100 border-b border-gray-200 px-4 py-2">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            {/* 履歴クリアボタン - 紫色で重要性を示す */}
-            <Button 
-              variant="outline"
-              size="sm"
-              onClick={async () => {
-                // チャット履歴をクリア（表面的にクリア→新しいチャット開始）
-                await clearChatHistory();
-              }}
-              disabled={isClearing || !displayMessages.length}
-              className="flex items-center gap-1 bg-purple-600 text-white border-white hover:bg-purple-700 text-sm h-8 py-0 px-3"
-            >
-              {isClearing ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">クリア中</span>
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-4 w-4" />
-                  <span className="text-sm">新しいチャット</span>
-                </>
-              )}
-            </Button>
+    <div className="flex flex-col h-full bg-gradient-to-br from-blue-50 to-indigo-100">
+      {/* ヘッダーエリア */}
+      <div className="bg-white shadow-sm border-b p-4">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center gap-3">
+            <Activity className="h-8 w-8 text-red-500" />
+            <h1 className="text-2xl font-bold text-gray-800">応急処置サポート</h1>
           </div>
-
-          <div className="flex items-center gap-2">
-            {/* 履歴送信ボタン - 緑色 */}
+          <div className="flex gap-2">
             <Button 
-              variant="outline"
+              onClick={handleEmergencyGuide}
+              className="bg-red-500 hover:bg-red-600 text-white flex items-center gap-2"
               size="sm"
-              onClick={exportChatHistory}
-              disabled={isExporting || !hasUnexportedMessages}
-              className="flex items-center gap-2 border-green-400 bg-green-50 hover:bg-green-100 text-green-700 h-8 py-0 px-3"
             >
-              {isExporting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin text-green-600" />
-                  <span className="text-sm">送信中</span>
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4 text-green-600" />
-                  <span className="text-sm">履歴送信</span>
-                </>
-              )}
+              <BookOpen className="h-4 w-4" />
+              応急処置ガイド
             </Button>
-
-            {/* チャット終了ボタン - オレンジ色 */}
             <Button 
-              variant="destructive"
-              size="sm"
-              onClick={handleEndChat}
-              className="flex items-center gap-1 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white border-0 h-8 py-0 px-3"
-            >
-              <span className="text-sm">チャット終了</span>
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* 応急処置ガイドボタン - 中央に配置 */}
-      <div className="w-full flex justify-center items-center p-4 bg-gradient-to-r from-blue-100 to-blue-50 border-b border-blue-200">
-        <Button
-          variant="default"
-          size="lg"
-          onClick={() => {
-            // 現在のテキストボックスの内容を取得
-            const messageInput = document.querySelector('textarea, input[type="text"]') as HTMLInputElement | HTMLTextAreaElement;
-            if (messageInput) {
-              const inputText = messageInput.value.trim();
-              setSearchKeyword(inputText);
-            } else {
-              setSearchKeyword("");
-            }
-            setEmergencyGuideOpen(true);
-          }}
-          className="flex items-center gap-2 border-2 border-white bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 shadow-md rounded-lg"
-        >
-          <Heart className="h-6 w-6 text-white" />
-          <span className="text-lg font-bold">応急処置ガイド</span>
-        </Button>
-      </div>
-
-      <div className="flex-1 flex flex-col md:flex-row overflow-auto chat-layout-container" style={{ minHeight: '75vh' }}>
-        {/* Chat Messages Area - 領域を2/3に縮小し、縦を元に戻す */}
-        <div className="flex-1 flex flex-col h-full min-h-[75vh] overflow-auto md:w-2/3 bg-white chat-messages-container" style={{ maxWidth: '100%', overflowX: 'hidden' }}>
-
-          {/* Chat Messages - 高さを1.5倍に */}
-          <div id="chatMessages" className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 md:px-6 space-y-4 min-w-[300px]" style={{ minHeight: '60vh' }}>
-            {isLoading ? (
-              <div className="flex items-center justify-center h-full">
-                <p className="text-blue-700">メッセージを送信中...</p>
-              </div>
-            ) : !displayMessages || displayMessages.length === 0 ? (
-              <div className={`flex items-center justify-center h-full text-center ${isRecording ? 'hidden' : ''}`}>
-                <div>
-                  <p className="text-xl font-semibold mb-2 text-blue-800">会話を始めましょう</p>
-                  <p className="text-sm text-blue-500">保守用車に関する質問を入力するか、マイクボタンをタップして話しかけてください。</p>
-                </div>
-              </div>
-            ) : (
-              <>
-                {/* 通常のメッセージリスト */}
-                {displayMessages.map((message: any, index: number) => {
-                  // メッセージ構造の安全性チェック
-                  const safeMessage = {
-                    ...message,
-                    content: message.content || message.text || '',
-                    text: message.text || message.content || '',
-                    id: message.id || `temp_${index}`,
-                    timestamp: message.timestamp || message.createdAt || new Date()
-                  };
-
-                  return (
-                    <div key={safeMessage.id || index} className="w-full md:max-w-2xl mx-auto">
-                      <MessageBubble message={safeMessage} />
-                    </div>
-                  );
-                })}
-              </>
-            )}
-
-            {/* プレビュー用の一時メッセージ (録音中テキストと撮影した画像のプレビュー) */}
-            {draftMessage && draftMessage.content && (
-              <div className="w-full md:max-w-2xl mx-auto">
-                <MessageBubble
-                  message={{
-                    id: -1, // 一時的なID
-                    content: draftMessage.content,
-                    senderId: 1, // 現在のユーザーID
-                    isAiResponse: false,
-                    timestamp: new Date(),
-                    media: draftMessage.media?.map((m, idx) => ({
-                      id: idx,
-                      messageId: -1,
-                      ...m
-                    }))
-                  }}
-                  isDraft={true}
-                />
-              </div>
-            )}
-
-            {/* デバッグ表示 - ドラフトメッセージの状態を確認 */}
-            <div className="hidden">
-              <p>draftMessage: {draftMessage ? JSON.stringify(draftMessage) : 'null'}</p>
-            </div>
-
-          </div>
-
-          {/* エクスポート状態表示 */}
-          {/* Text Selection Controls - Only show when text is selected */}
-          {selectedText && <TextSelectionControls text={selectedText} onSearch={(text) => searchBySelectedText(text, true)} />}
-
-          {/* Message Input */}
-          <MessageInput />
-        </div>
-
-        {/* モバイル用検索結果スライダー - 縦向き表示の時のみフローティングボタンを表示 */}
-
-      </div>
-
-      {/* 未送信のチャット履歴がある場合の警告ダイアログ */}
-      <Dialog open={isEndChatDialogOpen} onOpenChange={setIsEndChatDialogOpen}>
-        <DialogContent className="bg-blue-50 border border-blue-200">
-          <DialogHeader className="border-b border-blue-200 pb-3">
-            <DialogTitle className="text-blue-800 text-lg font-bold">チャット履歴が未送信です</DialogTitle>
-            <DialogDescription className="text-blue-700">
-              まだ送信されていないチャット履歴があります。このまま終了すると、履歴が保存されません。
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-between mt-4">
-            <Button 
+              onClick={clearChat} 
               variant="outline" 
-              onClick={() => setIsEndChatDialogOpen(false)}
-              className="border-blue-300 text-blue-700 hover:bg-blue-100"
+              size="sm"
+              className="flex items-center gap-2"
             >
-              キャンセル
+              <RotateCcw className="h-4 w-4" />
+              クリア
             </Button>
-            <div className="flex gap-2">
-              <Button 
-                variant="destructive" 
-                onClick={() => {
-                  setIsEndChatDialogOpen(false);
-                  console.log("送信せずに終了が選択されました - ダイアログを閉じてチャット画面を維持します");
-                }}
-                className="bg-red-500 hover:bg-red-600"
-              >
-                送信せずに終了
-              </Button>
-              <Button 
-                variant="default" 
-                onClick={handleSendAndEnd}
-                disabled={isExporting}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                {isExporting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    <span>送信中...</span>
-                  </>
-                ) : (
-                  <span>送信して終了</span>
-                )}
-              </Button>
+            <Button 
+              onClick={handleExport} 
+              variant="outline" 
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              エクスポート
+            </Button>
+            <Button 
+              onClick={handleImport} 
+              variant="outline" 
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <Upload className="h-4 w-4" />
+              インポート
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* チャットエリア */}
+      <div className="flex-1 overflow-auto p-4 space-y-4">
+        {messages.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="bg-white rounded-lg p-8 shadow-md max-w-md mx-auto">
+              <Activity className="h-16 w-16 text-red-500 mx-auto mb-4" />
+              <div className="text-gray-700 mb-4 text-lg font-semibold">
+                応急処置サポートシステム
+              </div>
+              <div className="text-sm text-gray-600 mb-6">
+                緊急時の応急処置をサポートします。<br />
+                テキスト入力、音声入力、画像撮影で状況をお知らせください。
+              </div>
+              <div className="space-y-2 text-xs text-gray-500">
+                <div>📝 テキストで症状を入力</div>
+                <div>🎤 音声で状況を説明</div>
+                <div>📷 患部の写真を撮影</div>
+                <div>📖 応急処置ガイドを参照</div>
+              </div>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        ) : (
+          messages.map((message) => (
+            <MessageBubble key={message.id} message={message} />
+          ))
+        )}
+        <div ref={messagesEndRef} />
+      </div>
 
-      {/* Modals */}
+      {/* 入力エリア */}
+      <MessageInput sendMessage={sendMessage} isLoading={isLoading} />
+
+      {/* カメラモーダル */}
       <CameraModal />
       <ImagePreviewModal />
 
-      {/* 応急処置ガイドモーダル */}
-      <Dialog open={emergencyGuideOpen} onOpenChange={setEmergencyGuideOpen}>
-        <DialogContent showCloseButton={false} className={`bg-blue-50 border-none flex flex-col w-screen h-screen max-w-full max-h-full p-0`}>
-          <DialogHeader className="border-b border-blue-200 p-4 flex flex-row items-center justify-between">
-            <div>
-              <DialogTitle className="text-blue-800 text-lg font-bold flex items-center gap-2">
-                <Heart className="h-5 w-5 text-red-500" />
-                <span>応急処置ガイド</span>
-              </DialogTitle>
-              <DialogDescription className="text-blue-700">
-                症状を選択するか、キーワードで検索してください
-              </DialogDescription>
-            </div>
-            <Button 
-              variant="default" 
-              onClick={() => setEmergencyGuideOpen(false)}
-            >
-              閉じる
-            </Button>
-          </DialogHeader>
-          <div className={`overflow-y-auto flex-grow p-4`}>
-            <TroubleshootingSelector 
-              initialSearchKeyword={searchKeyword}
-              selectedFlow={selectedFlow}
-              setSelectedFlow={setSelectedFlow}
-            />
-          </div>
-          <DialogFooter className="mt-auto p-4 border-t border-blue-200">
-            {selectedFlow && (
-              <Button 
-                variant="outline" 
-                onClick={handleRequestSendToChat}
-                className="w-full sm:w-auto bg-blue-100 hover:bg-blue-200 border-blue-300 text-blue-800"
-              >
-                <Send className="h-4 w-4 mr-2" />
-                現在の内容をチャットに送信
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* ファイル入力（隠し要素） */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        onChange={handleFileChange}
+        style={{ display: 'none' }}
+      />
     </div>
   );
 }
