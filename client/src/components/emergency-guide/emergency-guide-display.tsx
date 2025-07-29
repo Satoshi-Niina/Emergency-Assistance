@@ -34,6 +34,7 @@ interface EmergencyGuideDisplayProps {
   guideId: string;
   onExit: () => void;
   isPreview?: boolean; // プレビューモードかどうかのフラグ
+  onSendToChat: () => void;
 }
 
 // フロー実行履歴の型定義
@@ -57,16 +58,16 @@ interface FlowExecutionStep {
 function handleImageError(e: React.SyntheticEvent<HTMLImageElement, Event>, imageUrl: string) {
   const imgElement = e.currentTarget;
   console.error('画像表示エラー:', imageUrl);
-  
+
   // 元のURLをログ出力
   console.log('元の画像URL:', imageUrl);
   console.log('変換後のURL:', imgElement.src);
-  
+
   // エラー時のフォールバック処理
   try {
     // APIベースURLを取得（フォールバック付き）
     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-    
+
     // 1. ファイル名のみで再試行
     const fileName = imageUrl.split('/').pop()?.split('\\').pop();
     if (fileName && fileName !== imageUrl) {
@@ -74,11 +75,11 @@ function handleImageError(e: React.SyntheticEvent<HTMLImageElement, Event>, imag
       imgElement.src = `${apiBaseUrl}/api/emergency-flow/image/${fileName}`;
       return;
     }
-    
+
     // 2. 元のURLをそのまま使用
     console.log('元のURLをそのまま使用');
     imgElement.src = imageUrl;
-    
+
   } catch (error) {
     console.error('画像エラーハンドリング失敗:', error);
     // エラー画像を表示
@@ -89,17 +90,17 @@ function handleImageError(e: React.SyntheticEvent<HTMLImageElement, Event>, imag
 // 画像URLを正しく構築する関数
 function buildImageUrl(imageUrl: string): string {
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-  
+
   // 既に完全なURLの場合はそのまま返す
   if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
     return imageUrl;
   }
-  
+
   // 既にAPIエンドポイント形式の場合はベースURLを追加
   if (imageUrl.startsWith('/api/emergency-flow/image/')) {
     return `${apiBaseUrl}${imageUrl}`;
   }
-  
+
   // ファイル名を抽出
   let fileName = imageUrl;
   if (imageUrl.includes('/')) {
@@ -107,22 +108,23 @@ function buildImageUrl(imageUrl: string): string {
   } else if (imageUrl.includes('\\')) {
     fileName = imageUrl.split('\\').pop() || imageUrl;
   }
-  
+
   // 新しいAPIエンドポイント形式に変換
   return `${apiBaseUrl}/api/emergency-flow/image/${fileName}`;
 }
 
-export default function EmergencyGuideDisplay({
-  guideId,
-  onExit,
-  isPreview,
+export default function EmergencyGuideDisplay({ 
+  guideId, 
+  onExit, 
+  isPreview = false,
+  onSendToChat 
 }: EmergencyGuideDisplayProps) {
   const [guideData, setGuideData] = useState<EmergencyGuideData | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [selectedCondition, setSelectedCondition] = useState<string | null>(null);
-  
+
   // フロー実行履歴を追跡
   const [executionHistory, setExecutionHistory] = useState<FlowExecutionStep[]>([]);
   const [isCompleted, setIsCompleted] = useState(false);
@@ -133,14 +135,14 @@ export default function EmergencyGuideDisplay({
       try {
         setLoading(true);
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/${guideId}`);
-        
+
         if (!response.ok) {
           throw new Error(`Failed to fetch guide data: ${response.status}`);
         }
 
         const data = await response.json();
         setGuideData(data);
-        
+
         // 初期ステップを履歴に追加
         if (data.steps && data.steps.length > 0) {
           const initialStep = data.steps[0];
@@ -181,7 +183,7 @@ export default function EmergencyGuideDisplay({
       if (nextIndex !== -1) {
         setCurrentStepIndex(nextIndex);
         setSelectedCondition(null);
-        
+
         // 次のステップを履歴に追加
         const nextStep = guideData.steps[nextIndex];
         const newHistoryStep: FlowExecutionStep = {
@@ -202,7 +204,7 @@ export default function EmergencyGuideDisplay({
         const nextIndex = currentStepIndex + 1;
         setCurrentStepIndex(nextIndex);
         setSelectedCondition(null);
-        
+
         // 次のステップを履歴に追加
         const nextStep = guideData.steps[nextIndex];
         const newHistoryStep: FlowExecutionStep = {
@@ -223,7 +225,7 @@ export default function EmergencyGuideDisplay({
     if (currentStepIndex > 0) {
       setCurrentStepIndex(currentStepIndex - 1);
       setSelectedCondition(null);
-      
+
       // 履歴から最後のステップを削除
       setExecutionHistory(prev => prev.slice(0, -1));
     }
@@ -529,4 +531,4 @@ export default function EmergencyGuideDisplay({
       </CardContent>
     </Card>
   );
-} 
+}
