@@ -238,14 +238,18 @@ router.put('/:id', async (req, res) => {
 router.get('/', (req, res) => {
   try {
     const troubleshootingDir = path.join(__dirname, '../../knowledge-base/troubleshooting');
+    console.log('🔍 troubleshootingディレクトリパス:', troubleshootingDir);
     
     if (!fs.existsSync(troubleshootingDir)) {
-      console.log('📁 troubleshootingディレクトリが存在しません。');
+      console.log('📁 troubleshootingディレクトリが存在しません:', troubleshootingDir);
       return res.json([]);
     }
 
     const files = fs.readdirSync(troubleshootingDir);
+    console.log('📂 見つかったファイル:', files);
+    
     const jsonFiles = files.filter(file => file.endsWith('.json') && !file.includes('.backup') && !file.includes('.tmp'));
+    console.log('📄 JSONファイル:', jsonFiles);
 
     const fileList = jsonFiles.map((file: any) => {
       try {
@@ -258,19 +262,23 @@ router.get('/', (req, res) => {
             description = data.steps[0].description || data.steps[0].message || '';
         }
 
-        return {
+        const result = {
           id: data.id || file.replace('.json', ''),
           title: data.title || 'タイトルなし',
           description: description,
           fileName: file,
           createdAt: data.createdAt || data.savedAt || data.updatedAt || new Date().toISOString()
         };
+        
+        console.log(`✅ ファイル ${file} 処理完了:`, result);
+        return result;
       } catch (error) {
-        console.error(`ファイル ${file} の解析中にエラーが発生しました:`, error);
+        console.error(`❌ ファイル ${file} の解析中にエラーが発生しました:`, error);
         return null;
       }
     }).filter(Boolean);
 
+    console.log('📋 最終的なファイル一覧:', fileList);
     res.json(fileList);
   } catch (error) {
     console.error('❌ ファイル一覧取得エラー:', error);
