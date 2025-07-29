@@ -174,6 +174,29 @@ if (authRouter) {
 app.use('/api/emergency-flow/image', express.static(path.join(__dirname, '../knowledge-base/images/emergency-flows')));
 console.log('✅ 画像配信ルート設定完了');
 
+// 認証ルート登録（重複を防ぐため、ここで一度だけ登録）
+console.log('🔧 認証ルート登録中...');
+console.log('📍 authRouter type:', typeof authRouter);
+console.log('📍 authRouter is function:', typeof authRouter === 'function');
+
+if (authRouter && typeof authRouter === 'function') {
+  console.log('✅ authRouter is valid Express router');
+  app.use('/api/auth', authRouter);
+  console.log('✅ 認証ルート登録完了: /api/auth');
+
+  // ルート確認のためのデバッグ情報
+  if (authRouter.stack) {
+    console.log('📍 登録された認証ルート:');
+    authRouter.stack.forEach((layer: any, index: number) => {
+      const path = layer.route?.path || 'middleware';
+      const methods = layer.route?.methods ? Object.keys(layer.route.methods) : [];
+      console.log(`  [${index}] ${methods.join(',')} ${path}`);
+    });
+  }
+} else {
+  console.error('❌ authRouter is not valid:', authRouter);
+}
+
 import { historyRouter } from './routes/history.js';
 import { Request, Response } from 'express';
 app.use("/api/emergency-guides", emergencyGuideRouter);
