@@ -61,7 +61,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       setIsLoading(true);
-      const userData = await authLogin({ username, password });
+      
+      // API URLを環境変数から構築
+      const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/api/auth/login`;
+      console.log('🔗 ログインURL:', apiUrl);
+
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json"
+        },
+        credentials: "include",
+        body: JSON.stringify({ username, password })
+      });
+
+      console.log('📡 ログインレスポンス:', {
+        status: response.status,
+        ok: response.ok
+      });
+
+      // レスポンスが200以外の場合はエラーをthrow
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ ログインAPIエラー:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorText
+        });
+        throw new Error(`ログインに失敗しました: ${response.status} ${response.statusText}`);
+      }
+
+      const userData = await response.json();
+      console.log('📦 ログインレスポンスデータ:', userData);
 
       if (userData && userData.success && userData.user) {
         console.log('✅ ログイン成功:', userData.user);
@@ -76,7 +107,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('ログインレスポンスが無効です');
       }
     } catch (error) {
-      console.error('❌ ログインエラー:', error);
+      console.error('❌ ログインエラー:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
       setUser(null);
       throw error;
     } finally {
