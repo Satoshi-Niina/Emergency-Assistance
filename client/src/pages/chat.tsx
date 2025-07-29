@@ -88,17 +88,17 @@ export default function ChatPage() {
       <div className="bg-white shadow-sm border-b p-2 flex-shrink-0">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-red-500" />
-          </div>
-          <div className="flex gap-1">
             <Button 
               onClick={handleEmergencyGuide}
-              className="bg-red-500 hover:bg-red-600 text-white flex items-center gap-1 text-xs px-2 py-1"
+              className="bg-yellow-500 hover:bg-yellow-600 text-black flex items-center gap-1 text-sm px-3 py-2 font-bold"
               size="sm"
+              style={{ fontSize: '1.5em', fontWeight: 'bold' }}
             >
-              <BookOpen className="h-3 w-3" />
+              <BookOpen className="h-4 w-4" />
               応急処置ガイド
             </Button>
+          </div>
+          <div className="flex gap-1">
             <Button 
               onClick={clearChat} 
               variant="outline" 
