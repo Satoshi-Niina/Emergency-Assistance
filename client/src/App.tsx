@@ -4,8 +4,6 @@ import { Toaster } from "./components/ui/toaster";
 import { AuthProvider } from './context/auth-context';
 import { ChatProvider } from './context/chat-context';
 import Header from './components/navigation/header';
-import ProtectedRoute from './components/auth/ProtectedRoute';
-import AdminRoute from './components/auth/AdminRoute';
 
 // Lazy loading components
 const ChatPage = lazy(() => import('./pages/chat'));
@@ -28,26 +26,16 @@ function App() {
             <main className="flex-1 overflow-auto">
               <Suspense fallback={<div className="flex justify-center items-center h-full">読み込み中...</div>}>
                 <Routes>
-                  <Route path="/login" element={<LoginPage />} />
-
-                  {/* Direct Routes - No Authentication Required */}
+                  {/* 全ルートを認証なしで直接アクセス可能 */}
                   <Route path="/" element={<Navigate to="/chat" replace />} />
+                  <Route path="/login" element={<LoginPage />} />
                   <Route path="/chat" element={<ChatPage />} />
-                  
-                  {/* Protected Routes */}
-                  <Route element={<ProtectedRoute />}>
-                    <Route path="/settings" element={<SettingsPage />} />
-                    <Route path="/history" element={<HistoryPage />} />
-                    <Route path="/documents" element={<DocumentsPage />} />
-                    <Route path="/troubleshooting" element={<TroubleshootingPage />} />
-                    <Route path="/emergency-guide/:id" element={<EmergencyGuidePage />} />
-                  </Route>
-
-                  {/* Admin Routes */}
-                  <Route element={<AdminRoute />}>
-                    <Route path="/users" element={<UsersPage />} />
-                  </Route>
-
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/history" element={<HistoryPage />} />
+                  <Route path="/documents" element={<DocumentsPage />} />
+                  <Route path="/troubleshooting" element={<TroubleshootingPage />} />
+                  <Route path="/emergency-guide/:id" element={<EmergencyGuidePage />} />
+                  <Route path="/users" element={<UsersPage />} />
                   <Route path="*" element={<NotFoundPage />} />
                 </Routes>
               </Suspense>
