@@ -18,6 +18,7 @@ import { connectDB } from "./db.js";
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import { Request, Response } from 'express';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -165,9 +166,9 @@ if (authRouter) {
       const methods = layer.route?.methods ? Object.keys(layer.route.methods) : [];
       console.log(`  [${index}] ${methods.join(',')} ${path}`);
     });
+  } else {
+    console.error('❌ authRouter is not valid:', authRouter);
   }
-} else {
-  console.error('❌ authRouter is not valid:', authRouter);
 }
 
 // 画像配信用の静的ファイルルート
@@ -383,4 +384,5 @@ server.on('error', (error: any) => {
 console.log('✅ サーバーindex.tsファイルの終端');
 // 検索ルート
     // 履歴管理ルート
-    app.use('/api/history', historyRouter);
+    // 履歴管理API（一時的に無効化）
+    // app.use('/api', historyRouter);
