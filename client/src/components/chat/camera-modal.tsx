@@ -52,11 +52,32 @@ export default function CameraModal() {
 
   useEffect(() => {
     if (isOpen) {
-      // モーダルが開いたらカメラを起動
-      // 少し遅延させることでステートの適用を確実にする
-      setTimeout(() => {
-        startCamera();
-      }, 300);
+      // カメラ権限を事前にチェック
+      const checkCameraPermission = async () => {
+        try {
+          const permission = await navigator.permissions.query({ name: 'camera' as PermissionName });
+          console.log('📸 カメラ権限状態:', permission.state);
+          
+          if (permission.state === 'denied') {
+            toast({
+              title: "カメラ権限が拒否されています",
+              description: "ブラウザの設定でカメラアクセスを許可してください。",
+              variant: "destructive",
+            });
+            return;
+          }
+        } catch (err) {
+          console.log('📸 権限APIが利用できません:', err);
+        }
+        
+        // モーダルが開いたらカメラを起動
+        // 少し遅延させることでステートの適用を確実にする
+        setTimeout(() => {
+          startCamera();
+        }, 300);
+      };
+      
+      checkCameraPermission();
     } else {
       // モーダルが閉じたらカメラを停止
       stopCamera();
@@ -65,12 +86,39 @@ export default function CameraModal() {
 
   const startCamera = async () => {
     try {
+      console.log('📸 カメラアクセス開始');
+      
+      // ブラウザの対応状況を確認
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('このブラウザはカメラ機能をサポートしていません');
+      }
+
+      // HTTPSの確認
+      const isSecure = location.protocol === 'https:' || location.hostname === 'localhost';
+      console.log('🔒 セキュアコンテキスト:', isSecure, 'プロトコル:', location.protocol, 'ホスト:', location.hostname);
+      
+      if (!isSecure) {
+        throw new Error('カメラアクセスにはHTTPS接続が必要です');
+      }
+
       // ストリームが既に存在する場合は停止
       if (stream) {
+        console.log('🛑 既存のストリームを停止');
         stream.getTracks().forEach(track => track.stop());
       }
 
-      console.log('カメラ開始: facingMode =', useBackCamera ? "environment" : "user");
+      console.log('📸 カメラ制約設定:', {
+        facingMode: useBackCamera ? "environment" : "user",
+        videoMode: isVideoMode,
+        constraints: {
+          video: { 
+            facingMode: useBackCamera ? "environment" : "user",
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: isVideoMode 
+        }
+      });
 
       // カメラ制約を明示的に設定
       const constraints = { 
@@ -82,18 +130,52 @@ export default function CameraModal() {
         audio: isVideoMode 
       };
 
+      console.log('📸 getUserMedia呼び出し開始');
       const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log('✅ getUserMedia成功:', {
+        streamActive: mediaStream.active,
+        videoTracks: mediaStream.getVideoTracks().length,
+        audioTracks: mediaStream.getAudioTracks().length
+      });
 
       setStream(mediaStream);
 
       if (videoRef.current) {
+        console.log('📺 ビデオ要素にストリーム設定');
         videoRef.current.srcObject = mediaStream;
+        
+        // ビデオが再生開始されるのを待つ
+        videoRef.current.onloadedmetadata = () => {
+          console.log('✅ ビデオメタデータ読み込み完了');
+          videoRef.current?.play().catch(err => {
+            console.error('❌ ビデオ再生エラー:', err);
+          });
+        };
       }
     } catch (error) {
-      console.error('Error accessing camera:', error);
+      console.error('❌ カメラアクセスエラー:', error);
+      
+      let errorMessage = 'カメラにアクセスできませんでした';
+      
+      if (error instanceof Error) {
+        if (error.name === 'NotAllowedError') {
+          errorMessage = 'カメラの使用が許可されていません。ブラウザの設定でカメラアクセスを許可してください。';
+        } else if (error.name === 'NotFoundError') {
+          errorMessage = 'カメラが見つかりません。デバイスにカメラが接続されているか確認してください。';
+        } else if (error.name === 'NotReadableError') {
+          errorMessage = 'カメラが他のアプリケーションによって使用されています。';
+        } else if (error.name === 'OverconstrainedError') {
+          errorMessage = 'カメラの設定に問題があります。別のカメラを試してください。';
+        } else if (error.name === 'SecurityError') {
+          errorMessage = 'セキュリティ上の理由でカメラにアクセスできません。HTTPSで接続してください。';
+        } else {
+          errorMessage = `カメラエラー: ${error.message}`;
+        }
+      }
+
       toast({
         title: "カメラエラー",
-        description: "カメラにアクセスできませんでした: " + (error instanceof Error ? error.message : String(error)),
+        description: errorMessage,
         variant: "destructive",
       });
     }
