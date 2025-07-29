@@ -1,3 +1,6 @@
+Removing the authentication check disable mode to ensure proper authentication.
+```
+```replit_final_file
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { login as authLogin, logout as authLogout, getCurrentUser } from '../lib/auth';
 
