@@ -381,10 +381,19 @@ export async function processMessage(text: string): Promise<string> {
 }
 // The change request does not directly modify buildApiUrl but it relies on it, keep the original implementation of buildApiUrl function
 
-// 本番環境と開発環境の両方で相対パスを使用（Viteプロキシ経由）
+// Replit環境を考慮したAPI URL構築
 function buildApiUrl(path: string): string {
-  const baseUrl = window.location.origin;
-  return path.startsWith('http') ? path : `${baseUrl}${path}`;
+  if (path.startsWith('http')) return path;
+  
+  // Replit環境では専用ポートを使用
+  const isReplitEnvironment = window.location.hostname.includes('replit.dev') || window.location.hostname.includes('replit.app');
+  
+  if (isReplitEnvironment) {
+    return `${window.location.protocol}//${window.location.hostname}:3001${path}`;
+  }
+  
+  // その他の環境では相対パス
+  return `${window.location.origin}${path}`;
 }
 // 環境変数の確認とAPIベースURLの決定
 const VITE_API_BASE_URL = import.meta.env.VITE_API_BASE_URL;

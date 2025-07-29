@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useToast } from "../hooks/use-toast.ts";
 import { apiRequest } from "../lib/queryClient.ts";
-import { AUTH_API } from "../lib/api/config.ts";
+import { AUTH_API, buildApiUrl } from "../lib/api/config.ts";
 
 interface User {
   id: string;
@@ -36,7 +36,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const getCurrentUser = async () => {
     try {
       console.log('🔍 現在のユーザー情報を取得中...');
-      const response = await fetch(AUTH_API.ME, {
+      const meUrl = buildApiUrl('/api/auth/me');
+      console.log('🔗 認証チェックURL:', meUrl);
+      const response = await fetch(meUrl, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -76,7 +78,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const checkAuthStatus = async () => {
       try {
         console.log('🔐 認証状態チェック開始');
-        const response = await fetch(AUTH_API.ME, {
+        const meUrl = buildApiUrl('/api/auth/me');
+        console.log('🔗 認証チェックURL:', meUrl);
+        const response = await fetch(meUrl, {
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
@@ -113,7 +117,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(true);
       console.log('🔐 ログイン試行開始:', { username });
 
-      const response = await fetch(AUTH_API.LOGIN, {
+      const loginUrl = buildApiUrl('/api/auth/login');
+      console.log('🔗 ログインURL:', loginUrl);
+      const response = await fetch(loginUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -180,7 +186,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(true);
       console.log('🔒 ログアウト処理開始');
 
-      const response = await fetch(AUTH_API.LOGOUT, {
+      const logoutUrl = buildApiUrl('/api/auth/logout');
+      console.log('🔗 ログアウトURL:', logoutUrl);
+      const response = await fetch(logoutUrl, {
         method: 'POST',
         credentials: 'include'
       });
