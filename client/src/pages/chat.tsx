@@ -10,7 +10,7 @@ import KeywordButtons from "../components/troubleshooting/keyword-buttons";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { RotateCcw, Download, Upload, FileText, BookOpen, Activity, ArrowLeft, X, Search } from "lucide-react";
+import { RotateCcw, Download, Upload, FileText, BookOpen, Activity, ArrowLeft, X, Search, Send } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { searchTroubleshootingFlows, japaneseGuideTitles } from "../lib/troubleshooting-search";
 
@@ -56,6 +56,70 @@ export default function ChatPage() {
       toast({
         title: "エクスポートエラー",
         description: "チャット履歴のエクスポートに失敗しました。",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // サーバーへ送信する機能
+  const handleSendToServer = async () => {
+    try {
+      if (!chatId || messages.length === 0) {
+        toast({
+          title: "送信エラー",
+          description: "送信するチャット内容がありません。",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // チャット内容をJSON形式で整形
+      const chatData = {
+        chatId: chatId,
+        timestamp: new Date().toISOString(),
+        messages: messages.map(msg => ({
+          id: msg.id,
+          content: msg.content,
+          isAiResponse: msg.isAiResponse,
+          timestamp: msg.timestamp,
+          media: msg.media?.map(media => ({
+            id: media.id,
+            type: media.type,
+            url: media.url,
+            title: media.title,
+            fileName: media.fileName || ''
+          })) || []
+        }))
+      };
+
+      // サーバーに送信
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/chats/${chatId}/export`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          chatData: chatData,
+          exportType: 'manual_send'
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast({
+          title: "送信成功",
+          description: `チャット内容をサーバーに送信しました。(${messages.length}件のメッセージ)`,
+        });
+        console.log('サーバー送信結果:', result);
+      } else {
+        throw new Error(`送信失敗: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('サーバー送信エラー:', error);
+      toast({
+        title: "送信エラー",
+        description: "サーバーへの送信に失敗しました。",
         variant: "destructive",
       });
     }
@@ -202,16 +266,17 @@ export default function ChatPage() {
             </Button>
           </div>
 
-          {/* クリアボタン - 右端配置 */}
+          {/* サーバー送信ボタン - 右端配置 */}
           <div className="flex-shrink-0">
             <Button 
-              onClick={clearChat} 
+              onClick={handleSendToServer} 
               variant="outline" 
               size="sm"
-              className="flex items-center gap-1 text-xs px-2 py-1"
+              className="flex items-center gap-1 text-xs px-2 py-1 bg-blue-50 hover:bg-blue-100 border-blue-300"
+              disabled={messages.length === 0}
             >
-              <RotateCcw className="h-3 w-3" />
-              クリア
+              <Send className="h-3 w-3" />
+              サーバーへ送信
             </Button>
           </div>
         </div>
