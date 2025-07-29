@@ -33,7 +33,7 @@ export default function Header() {
   return (
     <header className="bg-primary text-white py-3 px-4 flex items-center justify-between shadow-md">
       <div className="flex items-center">
-        <h1 className="text-xl font-semibold mr-6">応急処置チャットシステム</h1>
+        <h1 className="text-xl font-semibold mr-6">応急処置支援システム</h1>
         <div className="hidden md:flex items-center space-x-1">
           <Tabs />
         </div>
@@ -43,7 +43,7 @@ export default function Header() {
           ログインユーザー：{user?.display_name || user?.username || 'ゲスト'} 
           {user?.role && ` (${user?.role === 'admin' ? '管理者' : '一般ユーザー'})`}
         </div>
-        
+
         {/* 設定ボタン - 直接リンク */}
         <Link to="/settings" className="text-white hover:bg-white/20 p-2 rounded">
           <Settings className="h-5 w-5" />
