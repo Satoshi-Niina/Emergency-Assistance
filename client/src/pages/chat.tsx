@@ -34,7 +34,7 @@ export default function ChatPage() {
   const [filteredGuides, setFilteredGuides] = useState<any[]>([]);
   const [selectedGuideId, setSelectedGuideId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isLoadingGuides, setIsLoadingGuides] = useState(false);
+  const [isLoadingGuides, setIsLoadingGuides = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -189,9 +189,9 @@ export default function ChatPage() {
     <div className="flex flex-col h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* ヘッダーエリア */}
       <div className="bg-white shadow-sm border-b p-3 flex-shrink-0">
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex justify-between items-center w-full">
           {/* 応急処置ガイドボタン - 中央配置 */}
-          <div className="flex justify-center w-full">
+          <div className="flex-1 flex justify-center">
             <Button 
               onClick={handleEmergencyGuide}
               className="bg-red-500 hover:bg-red-600 text-white flex items-center gap-2 px-6 py-3 font-bold text-lg shadow-lg"
@@ -202,8 +202,8 @@ export default function ChatPage() {
             </Button>
           </div>
 
-          {/* 操作ボタン群 - 右寄せ */}
-          <div className="flex justify-end w-full gap-1">
+          {/* クリアボタン - 右端配置 */}
+          <div className="flex-shrink-0">
             <Button 
               onClick={clearChat} 
               variant="outline" 
@@ -212,24 +212,6 @@ export default function ChatPage() {
             >
               <RotateCcw className="h-3 w-3" />
               クリア
-            </Button>
-            <Button 
-              onClick={handleExport} 
-              variant="outline" 
-              size="sm"
-              className="flex items-center gap-1 text-xs px-2 py-1"
-            >
-              <Download className="h-3 w-3" />
-              エクスポート
-            </Button>
-            <Button 
-              onClick={handleImport} 
-              variant="outline" 
-              size="sm"
-              className="flex items-center gap-1 text-xs px-2 py-1"
-            >
-              <Upload className="h-3 w-3" />
-              インポート
             </Button>
           </div>
         </div>
