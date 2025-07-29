@@ -126,8 +126,23 @@ app.use('/api', (req: any, res: any, next: any) => {
     method: req.method,
     path: req.path,  
     originalUrl: req.originalUrl,
-    baseUrl: req.baseUrl
+    baseUrl: req.baseUrl,
+    headers: {
+      'content-type': req.headers['content-type'],
+      'user-agent': req.headers['user-agent']?.substring(0, 50)
+    }
   });
+  
+  // 認証関連のリクエストは特別にログ出力
+  if (req.path.startsWith('/auth')) {
+    console.log('🔐 [認証API] 詳細:', {
+      method: req.method,
+      path: req.path,
+      body: req.method === 'POST' ? req.body : 'N/A',
+      hasSession: !!req.session
+    });
+  }
+  
   next();
 });
 
@@ -158,30 +173,6 @@ if (authRouter) {
 // 画像配信用の静的ファイルルート
 app.use('/api/emergency-flow/image', express.static(path.join(__dirname, '../knowledge-base/images/emergency-flows')));
 console.log('✅ 画像配信ルート設定完了');
-
-// 認証ルート
-console.log('🔧 認証ルート登録中...');
-console.log('📍 authRouter type:', typeof authRouter);
-console.log('📍 authRouter is function:', typeof authRouter === 'function');
-
-// authRouterが正しいかチェック
-if (authRouter) {
-  console.log('✅ authRouter is valid Express router');
-  app.use('/api/auth', authRouter);
-  console.log('✅ 認証ルート登録完了: /api/auth');
-
-  // ルート確認のためのデバッグ情報
-  if (authRouter.stack) {
-    console.log('📍 登録された認証ルート:');
-    authRouter.stack.forEach((layer: any, index: number) => {
-      const path = layer.route?.path || 'middleware';
-      const methods = layer.route?.methods ? Object.keys(layer.route.methods) : [];
-      console.log(`  [${index}] ${methods.join(',')} ${path}`);
-    });
-  }
-} else {
-  console.error('❌ authRouter is not valid:', authRouter);
-}
 
 import { historyRouter } from './routes/history.js';
 import { Request, Response } from 'express';
