@@ -174,32 +174,25 @@ if (authRouter) {
 app.use('/api/emergency-flow/image', express.static(path.join(__dirname, '../knowledge-base/images/emergency-flows')));
 console.log('✅ 画像配信ルート設定完了');
 
-import { historyRouter } from './routes/history.js';
-import { Request, Response } from 'express';
+// ヘルスチェックエンドポイント（認証テスト用）
+app.get('/api/health', (req: any, res: any) => {
+  console.log('🏥 ヘルスチェックリクエスト受信');
+  res.status(200).json({
+    success: true,
+    message: 'サーバーは正常に動作しています',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      auth: [
+        'POST /api/auth/login',
+        'POST /api/auth/register', 
+        'POST /api/auth/logout',
+        'GET /api/auth/me'
+      ]
+    }
+  });
+});
 
-// 緊急ガイドルート（一時的にコメントアウト - 修正後に有効化）
-console.log('🔧 緊急ガイドルート登録中...');
-// app.use('/api/emergency-guide', require('./routes/emergency-guide.js'));
-console.log('⚠️ 緊急ガイドルート一時無効化（ES Module対応作業中）');
-
-// チャットルート（一時的にコメントアウト - 修正後に有効化）
-console.log('📡 チャットルートを登録中...');
-// app.use('/api/chats', require('./routes/chat.js'));
-console.log('⚠️ チャットルート一時無効化（ES Module対応作業中）');
-
-// 他のルートも一時的にコメントアウト
-console.log('⚠️ 他のAPIルートも一時的に無効化（ES Module対応作業中）');
-// app.use('/api/knowledge', require('./routes/knowledge-base.js'));
-// app.use('/api/tech-support', require('./routes/tech-support.js'));
-// app.use('/api/emergency-flow', require('./routes/emergency-flow.js'));
-// app.use('/api/flow-generator', require('./routes/flow-generator.js'));
-// app.use('/api/search', require('./routes/search.js'));
-// app.use('/api/file', require('./routes/file.js'));
-// app.use('/api/data-processor', require('./routes/data-processor.js'));
-// app.use('/api/users', require('./routes/users.js'));
-
-// 履歴管理API
-app.use('/api', historyRouter);
+console.log('⚠️ 認証関連以外のAPIルートは一時的に無効化（デバッグ中）');
 
 // 全ルート設定完了
 console.log('✅ 全ルート設定完了');
