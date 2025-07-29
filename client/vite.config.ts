@@ -27,12 +27,8 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
-      },
-      '/ws': {
-        target: 'ws://localhost:3001',
         ws: true,
-        changeOrigin: true
-      }
+      },
     },
     fs: {
       allow: [path.resolve(__dirname, '..')],
@@ -65,4 +61,4 @@ export default defineConfig({
     'import.meta.env.isDevelopment': JSON.stringify(false)
   },
   logLevel: 'info'
-}); 
+});

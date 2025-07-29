@@ -60,7 +60,7 @@ export async function apiRequest(
 
   // 相対パスの場合はAPI_BASE_URLと結合
   const fullUrl = url.startsWith('/') ? buildApiUrl(url) : url;
-  
+
   // ブラウザキャッシュ対策用のタイムスタンプパラメータを追加
   const urlWithCache = fullUrl.includes('?') 
     ? `${fullUrl}&_t=${Date.now()}` 
@@ -85,7 +85,7 @@ export async function apiRequest(
     requestBody: data ? JSON.stringify(data).substring(0, 200) : 'none',
     timestamp: new Date().toISOString()
   });
-  
+
   try {
     const res = await fetch(urlWithCache, {
       method,
@@ -95,7 +95,7 @@ export async function apiRequest(
       // キャッシュ制御を追加
       cache: method === 'GET' ? 'no-cache' : 'default'
     });
-    
+
     console.log('📡 APIレスポンス受信:', { 
       url: urlWithCache,
       status: res.status, 
@@ -111,7 +111,7 @@ export async function apiRequest(
 
     // レスポンスの内容を確認（デバッグ用）
     let responseText: string | null = null;
-    
+
     if (res.status >= 400) {
       try {
         responseText = await res.text();
@@ -124,7 +124,7 @@ export async function apiRequest(
           isHtml: responseText.includes('<!DOCTYPE') || responseText.includes('<html'),
           timestamp: new Date().toISOString()
         });
-        
+
         // HTMLレスポンスの場合は特別な処理
         if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
           console.error('🚨 HTMLレスポンスが返されました。バックエンドが正しく動作していない可能性があります。');
@@ -155,7 +155,7 @@ export async function apiRequest(
           isHtml: responseText.includes('<!DOCTYPE') || responseText.includes('<html'),
           timestamp: new Date().toISOString()
         });
-        
+
         // HTMLレスポンスの場合は特別な処理
         if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
           console.error('🚨 成功ステータスでもHTMLレスポンスが返されました。');
@@ -165,7 +165,7 @@ export async function apiRequest(
         console.error('❌ レスポンステキスト取得失敗:', textError);
       }
     }
-    
+
     // キャッシュクリアヘッダーをチェック
     if (res.headers.get('X-Chat-Cleared') === 'true') {
       console.log('サーバーからキャッシュクリア指示を受信');
@@ -199,7 +199,7 @@ export async function apiRequest(
       name: fetchError.name,
       timestamp: new Date().toISOString()
     });
-    
+
     // ネットワークエラーの場合は特別な処理
     if (fetchError.name === 'TypeError' && fetchError.message.includes('fetch')) {
       console.error('🚨 ネットワークエラーが発生しました。');
@@ -209,7 +209,7 @@ export async function apiRequest(
       console.error('3. ネットワーク接続の問題');
       console.error('4. CORSエラー');
     }
-    
+
     throw fetchError;
   }
 }
@@ -243,7 +243,7 @@ export const getQueryFn: <T>(options: {
     url = url.includes('?') ? `${url}&_t=${timestamp}` : `${url}?_t=${timestamp}`;
 
     console.log('🔍 クエリ実行:', { url, timestamp });
-    
+
     const res = await fetch(url, {
       credentials: "include",
       cache: "no-cache", // ブラウザキャッシュを使用しない
@@ -253,7 +253,7 @@ export const getQueryFn: <T>(options: {
         'Expires': '0'
       }
     });
-    
+
     console.log('📡 レスポンス受信:', { 
       url, 
       status: res.status, 
@@ -378,4 +378,11 @@ export async function processMessage(text: string): Promise<string> {
     console.error('メッセージ処理エラー:', error);
     return 'メッセージの処理中にエラーが発生しました。';
   }
+}
+// The change request does not directly modify buildApiUrl but it relies on it, keep the original implementation of buildApiUrl function
+
+// 本番環境と開発環境の両方で相対パスを使用（Viteプロキシ経由）
+function buildApiUrl(path: string): string {
+  const baseUrl = window.location.origin;
+  return path.startsWith('http') ? path : `${baseUrl}${path}`;
 }

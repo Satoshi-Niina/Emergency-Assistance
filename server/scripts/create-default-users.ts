@@ -23,6 +23,25 @@ export async function createDefaultUsers() {
             console.log('管理者ユーザーは既に存在します');
         }
 
+        // niina ユーザーの確認
+        const niinaUser = await db.select().from(users).where(eq(users.username, 'niina'));
+        
+        if (niinaUser.length === 0) {
+            const hashedPassword = await bcrypt.hash('0077', 10);
+            await (db as any).insert(users).values({
+                username: 'niina',
+                password: hashedPassword,
+                display_name: 'Niina',
+                role: 'employee',
+                department: '一般',
+                description: '',
+                created_at: new Date()
+            });
+            console.log('niinaユーザーを作成しました');
+        } else {
+            console.log('niinaユーザーは既に存在します');
+        }
+
         // 一般ユーザーの確認
         const employeeUser = await db.select().from(users).where(eq(users.username, 'employee'));
         
