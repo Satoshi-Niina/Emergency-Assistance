@@ -135,45 +135,10 @@ export default function ChatPage() {
       <div className="flex-1 flex flex-col min-h-0">
         {/* チャットエリア */}
         <div className="flex-1 overflow-auto p-3 space-y-3">
-          {messages.length === 0 ? (
-            <div className="flex items-center justify-center h-full min-h-[300px]">
-              <div className="bg-white rounded-lg p-6 shadow-md max-w-lg w-full mx-auto">
-                <Activity className="h-16 w-16 text-red-500 mx-auto mb-4" />
-                <div className="text-gray-700 mb-3 text-lg font-semibold text-center">
-                  応急処置支援システム
-                </div>
-                <div className="text-sm text-gray-600 mb-4 text-center">
-                  緊急時の応急処置をサポートします。<br />
-                  テキスト入力、音声入力、画像撮影で状況をお知らせください。
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-sm text-gray-600">
-                  <div className="flex items-center gap-2">
-                    <span>📝</span>
-                    <span>テキストで症状を入力</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span>🎤</span>
-                    <span>音声で状況を説明</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span>📷</span>
-                    <span>患部の写真を撮影</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span>📖</span>
-                    <span>応急処置ガイドを参照</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <>
-              {messages.map((message) => (
-                <MessageBubble key={message.id} message={message} />
-              ))}
-              <div ref={messagesEndRef} />
-            </>
-          )}
+          {messages.map((message) => (
+            <MessageBubble key={message.id} message={message} />
+          ))}
+          <div ref={messagesEndRef} />
         </div>
 
         {/* 入力エリア */}
