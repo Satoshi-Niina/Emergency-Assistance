@@ -1,143 +1,108 @@
-
 import * as express from 'express';
 import * as bcrypt from 'bcrypt';
 import { users } from '../db/schema.js';
 import { db } from '../db/index.js';
 import { eq } from 'drizzle-orm';
 import { logInfo, logError } from '../lib/logger.js';
+import { Request, Response } from 'express';
 
 const router = express.Router();
 
 console.log('🔧 [AUTH ROUTER] 認証ルーター初期化開始');
 
 // ログイン
-router.post('/login', async (req, res) => {
-  console.log('\n🚀 ===== ログイン処理開始 =====');
-  console.log('📍 リクエスト詳細:', {
-    method: req.method,
-    url: req.url,
-    path: req.path,
-    originalUrl: req.originalUrl,
-    baseUrl: req.baseUrl,
-    body: req.body,
-    headers: {
-      'content-type': req.headers['content-type'],
-      'user-agent': req.headers['user-agent'],
-      'origin': req.headers.origin
+router.post('/login', async (req: Request, res: Response) => {
+    console.log('🔐 [AUTH] ログインリクエスト受信:', { 
+      body: req.body,
+      hasUsername: !!req.body?.username,
+      hasPassword: !!req.body?.password 
+    });
+
+    try {
+      const { username, password } = req.body;
+
+      if (!username || !password) {
+        console.log('❌ [AUTH] ユーザー名またはパスワードが未入力');
+        return res.status(400).json({ 
+          success: false, 
+          message: 'ユーザー名とパスワードが必要です' 
+        });
+      }
+
+      console.log('🔍 [AUTH] データベースでユーザー検索:', username);
+
+      const user = await db
+        .select()
+        .from(users)
+        .where(eq(users.username, username))
+        .limit(1);
+
+      console.log('🔍 [AUTH] ユーザー検索結果:', { 
+        found: user.length > 0,
+        userId: user[0]?.id,
+        userRole: user[0]?.role 
+      });
+
+      if (user.length === 0) {
+        console.log('❌ [AUTH] ユーザーが見つかりません:', username);
+        return res.status(401).json({ 
+          success: false, 
+          message: 'ユーザー名またはパスワードが正しくありません' 
+        });
+      }
+
+      const foundUser = user[0];
+      console.log('🔍 [AUTH] パスワード照合開始');
+
+      const isValidPassword = await bcrypt.compare(password, foundUser.password);
+      console.log('🔍 [AUTH] パスワード照合結果:', isValidPassword);
+
+      if (!isValidPassword) {
+        console.log('❌ [AUTH] パスワードが正しくありません');
+        return res.status(401).json({ 
+          success: false, 
+          message: 'ユーザー名またはパスワードが正しくありません' 
+        });
+      }
+
+      // セッション作成
+      console.log('✅ [AUTH] 認証成功 - セッション作成開始');
+      req.session.userId = foundUser.id;
+      req.session.user = {
+        id: foundUser.id,
+        username: foundUser.username,
+        displayName: foundUser.displayName,
+        role: foundUser.role,
+        department: foundUser.department || ''
+      };
+
+      console.log('✅ [AUTH] セッション作成完了:', { 
+        sessionId: req.sessionID,
+        userId: foundUser.id 
+      });
+
+      const response = {
+        success: true,
+        user: {
+          id: foundUser.id,
+          username: foundUser.username,
+          displayName: foundUser.displayName,
+          role: foundUser.role,
+          department: foundUser.department || ''
+        }
+      };
+
+      console.log('📤 [AUTH] レスポンス送信:', response);
+      res.json(response);
+
+    } catch (error) {
+      console.error('❌ [AUTH] ログインエラー:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'サーバーエラーが発生しました' 
+      });
     }
   });
-  
-  try {
-    const { username, password } = req.body;
-    
-    // 入力検証
-    if (!username || !password) {
-      console.log('❌ 入力検証失敗:', { username: !!username, password: !!password });
-      return res.status(400).json({
-        success: false,
-        message: 'ユーザー名とパスワードが必要です'
-      });
-    }
-
-    console.log('🔍 ログイン試行:', { username });
-
-    // データベース接続テスト
-    console.log('🔍 データベース接続テスト中...');
-    try {
-      const testQuery = await db.select().from(users).limit(1);
-      console.log('✅ データベース接続成功, レコード数:', testQuery.length);
-    } catch (dbError) {
-      console.error('❌ データベース接続エラー:', dbError);
-      return res.status(500).json({
-        success: false,
-        message: 'データベース接続エラー'
-      });
-    }
-
-    // ユーザー検索（型エラー回避のためany使用）
-    console.log('🔍 ユーザー検索開始:', username);
-    let user;
-    try {
-      user = await (db as any).query.users.findFirst({
-        where: eq(users.username, username)
-      });
-      console.log('📊 ユーザー検索結果:', user ? '見つかりました' : '見つかりません');
-    } catch (queryError) {
-      console.error('❌ ユーザー検索エラー:', queryError);
-      return res.status(500).json({
-        success: false,
-        message: 'ユーザー検索エラー'
-      });
-    }
-
-    if (!user) {
-      console.log('❌ ユーザーが存在しません:', username);
-      return res.status(401).json({
-        success: false,
-        message: 'ユーザー名またはパスワードが正しくありません'
-      });
-    }
-
-    // パスワード検証
-    console.log('🔐 パスワード検証中...');
-    let isValidPassword;
-    try {
-      isValidPassword = await bcrypt.compare(password, user.password);
-      console.log('🔑 パスワード検証結果:', isValidPassword);
-    } catch (bcryptError) {
-      console.error('❌ パスワード検証エラー:', bcryptError);
-      return res.status(500).json({
-        success: false,
-        message: 'パスワード検証エラー'
-      });
-    }
-
-    if (!isValidPassword) {
-      console.log('❌ パスワードが正しくありません:', username);
-      return res.status(401).json({
-        success: false,
-        message: 'ユーザー名またはパスワードが正しくありません'
-      });
-    }
-
-    // セッション設定
-    if (req.session) {
-      req.session.userId = user.id;
-      req.session.userRole = user.role;
-      console.log('💾 セッション保存完了:', { 
-        userId: user.id,
-        userRole: user.role
-      });
-    } else {
-      console.log('⚠️ セッションが利用できません');
-    }
-
-    // 成功レスポンス
-    const responseData = {
-      success: true,
-      user: {
-        id: user.id,
-        username: user.username,
-        displayName: user.display_name,
-        role: user.role,
-        department: user.department
-      }
-    };
-
-    console.log('✅ ログイン成功:', responseData);
-    logInfo(`ログイン成功: ${username}`);
-    
-    res.status(200).json(responseData);
-    
-  } catch (error) {
-    console.error('❌ ログイン処理例外:', error);
-    logError(`ログイン処理例外: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    res.status(500).json({
-      success: false,
-      message: 'サーバーエラーが発生しました'
-    });
-  }
-});
 
 // ユーザー登録
 router.post('/register', async (req, res) => {
@@ -145,10 +110,10 @@ router.post('/register', async (req, res) => {
     body: req.body,
     hasSession: !!req.session
   });
-  
+
   try {
     const { username, password, displayName, role = 'employee' } = req.body;
-    
+
     if (!username || !password || !displayName) {
       return res.status(400).json({
         success: false,
@@ -215,7 +180,7 @@ router.post('/register', async (req, res) => {
 // ログアウト
 router.post('/logout', (req, res) => {
   console.log('🚪 ログアウトリクエスト受信');
-  
+
   if (req.session) {
     req.session.destroy((err) => {
       if (err) {
@@ -245,7 +210,7 @@ router.get('/me', async (req, res) => {
     hasSession: !!req.session,
     userId: req.session?.userId
   });
-  
+
   if (!req.session || !req.session.userId) {
     console.log('❌ 認証されていません');
     return res.status(401).json({
@@ -253,19 +218,19 @@ router.get('/me', async (req, res) => {
       message: '認証されていません'
     });
   }
-  
+
   try {
     const user = await (db as any).query.users.findFirst({
       where: eq(users.id, req.session.userId)
     });
-    
+
     if (!user) {
       return res.status(401).json({
         success: false,
         message: 'ユーザーが見つかりません'
       });
     }
-    
+
     const userData = {
       id: user.id,
       username: user.username,
@@ -273,7 +238,7 @@ router.get('/me', async (req, res) => {
       role: user.role,
       department: user.department
     };
-    
+
     console.log('✅ ユーザー情報取得成功:', userData);
     res.status(200).json({
       success: true,
