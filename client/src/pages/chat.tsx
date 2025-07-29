@@ -187,8 +187,8 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* ヘッダーエリア */}
-      <div className="bg-white shadow-sm border-b p-3 flex-shrink-0">
+      {/* ヘッダーエリア - 固定表示 */}
+      <div className="bg-white shadow-sm border-b p-3 flex-shrink-0 sticky top-0 z-10">
         <div className="flex justify-between items-center w-full">
           {/* 応急処置ガイドボタン - 中央配置 */}
           <div className="flex-1 flex justify-center">
@@ -218,7 +218,7 @@ export default function ChatPage() {
       </div>
 
       {/* メインコンテンツエリア */}
-      <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* チャットエリア */}
         <div className="flex-1 overflow-auto p-3 space-y-3">
           {messages.map((message) => (
