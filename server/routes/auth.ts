@@ -17,6 +17,15 @@ console.log('  - GET /api/auth/me');
 
 // ログイン
 router.post('/login', async (req, res) => {
+  console.log('\n🚀 ===== ログイン処理開始 =====');
+  console.log('📍 リクエスト詳細:', {
+    method: req.method,
+    url: req.url,
+    path: req.path,
+    originalUrl: req.originalUrl,
+    baseUrl: req.baseUrl
+  });
+  
   try {
     console.log('🔐 ログインリクエスト受信:', { 
       body: req.body, 

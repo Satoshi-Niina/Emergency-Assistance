@@ -115,9 +115,12 @@ app.use('/api', (req: any, res: any, next: any) => {
 app.use('/api/emergency-flow/image', express.static(path.join(__dirname, '../knowledge-base/images/emergency-flows')));
 console.log('✅ 画像配信ルート設定完了');
 
-// 認証が必要なAPIルートはこの下に書く
+// 認証ルート
+console.log('🔧 認証ルート登録中...');
+console.log('📍 authRouter type:', typeof authRouter);
+console.log('📍 authRouter is function:', typeof authRouter === 'function');
 app.use("/api/auth", authRouter);
-console.log('✅ 認証ルート設定完了');
+console.log('✅ 認証ルート設定完了: POST /api/auth/login, GET /api/auth/me, POST /api/auth/logout, POST /api/auth/register');
 
 app.use("/api/emergency-guides", emergencyGuideRouter);
 console.log('✅ 緊急ガイドルート設定完了');
@@ -149,12 +152,39 @@ app.use((error: any, req: any, res: any, next: any) => {
 
 // 404ハンドリング
 app.use('*', (req: any, res: any) => {
-  console.log('🔍 [404] 未定義ルート:', req.originalUrl);
+  console.log(`\n❌ [404 NOT FOUND] ${req.method} ${req.originalUrl}`);
+  console.log('📍 詳細情報:', {
+    path: req.path,
+    originalUrl: req.originalUrl,
+    baseUrl: req.baseUrl,
+    method: req.method,
+    headers: {
+      host: req.headers.host,
+      origin: req.headers.origin,
+      'content-type': req.headers['content-type']
+    }
+  });
+
+  // 登録されているルートを表示
+  console.log('🛣️ 登録されているAPIルート:');
+  console.log('  ✅ POST /api/auth/login');
+  console.log('  ✅ GET /api/auth/me'); 
+  console.log('  ✅ POST /api/auth/logout');
+  console.log('  ✅ POST /api/auth/register');
+
   res.status(404).json({
     success: false,
-    error: 'ルートが見つかりません',
-    path: req.originalUrl,
-    timestamp: new Date().toISOString()
+    error: 'Not Found',
+    message: 'リクエストされたエンドポイントが見つかりません',
+    path: req.path,
+    originalUrl: req.originalUrl,
+    method: req.method,
+    availableRoutes: [
+      'POST /api/auth/login',
+      'GET /api/auth/me',
+      'POST /api/auth/logout',
+      'POST /api/auth/register'
+    ]
   });
 });
 
