@@ -4,26 +4,7 @@ import { eq } from 'drizzle-orm';
 
 export async function createDefaultUsers() {
     try {
-        // 管理者ユーザーの確認
-        const adminUser = await db.select().from(users).where(eq(users.username, 'admin'));
-        
-        if (adminUser.length === 0) {
-            const hashedPassword = await bcrypt.hash('admin123', 10);
-            await (db as any).insert(users).values({
-                username: 'admin',
-                password: hashedPassword,
-                display_name: '管理者',
-                role: 'admin',
-                department: 'IT',
-                description: '',
-                created_at: new Date()
-            });
-            console.log('管理者ユーザーを作成しました');
-        } else {
-            console.log('管理者ユーザーは既に存在します');
-        }
-
-        // niina ユーザーの確認
+        // niina ユーザーの確認（システム管理者）
         const niinaUser = await db.select().from(users).where(eq(users.username, 'niina'));
         
         if (niinaUser.length === 0) {
@@ -31,34 +12,34 @@ export async function createDefaultUsers() {
             await (db as any).insert(users).values({
                 username: 'niina',
                 password: hashedPassword,
-                display_name: 'Niina',
-                role: 'employee',
-                department: '一般',
-                description: '',
+                display_name: 'システム管理者',
+                role: 'admin',
+                department: 'システム管理',
+                description: 'すべてのメニューからコードの編集まで可能',
                 created_at: new Date()
             });
-            console.log('niinaユーザーを作成しました');
+            console.log('niinaユーザー（システム管理者）を作成しました');
         } else {
             console.log('niinaユーザーは既に存在します');
         }
 
-        // 一般ユーザーの確認
-        const employeeUser = await db.select().from(users).where(eq(users.username, 'employee'));
+        // takabeni1 ユーザーの確認（一般ユーザー）
+        const takabeniUser = await db.select().from(users).where(eq(users.username, 'takabeni1'));
         
-        if (employeeUser.length === 0) {
-            const hashedPassword = await bcrypt.hash('employee123', 10);
+        if (takabeniUser.length === 0) {
+            const hashedPassword = await bcrypt.hash('takabeni1', 10);
             await (db as any).insert(users).values({
-                username: 'employee',
+                username: 'takabeni1',
                 password: hashedPassword,
                 display_name: '一般ユーザー',
                 role: 'employee',
                 department: '一般',
-                description: '',
+                description: 'トップのチャット画面のみ表示',
                 created_at: new Date()
             });
-            console.log('一般ユーザーを作成しました');
+            console.log('takabeni1ユーザー（一般ユーザー）を作成しました');
         } else {
-            console.log('一般ユーザーは既に存在します');
+            console.log('takabeni1ユーザーは既に存在します');
         }
 
         console.log('デフォルトユーザーの作成が完了しました');

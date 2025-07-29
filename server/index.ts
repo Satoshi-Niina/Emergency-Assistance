@@ -132,7 +132,7 @@ app.use('/api', (req: any, res: any, next: any) => {
       'user-agent': req.headers['user-agent']?.substring(0, 50)
     }
   });
-  
+
   // 認証関連のリクエストは特別にログ出力
   if (req.path.startsWith('/auth')) {
     console.log('🔐 [認証API] 詳細:', {
@@ -142,7 +142,7 @@ app.use('/api', (req: any, res: any, next: any) => {
       hasSession: !!req.session
     });
   }
-  
+
   next();
 });
 
@@ -174,56 +174,45 @@ if (authRouter) {
 app.use('/api/emergency-flow/image', express.static(path.join(__dirname, '../knowledge-base/images/emergency-flows')));
 console.log('✅ 画像配信ルート設定完了');
 
-// 認証ルート登録（重複を防ぐため、ここで一度だけ登録）
-console.log('🔧 認証ルート登録中...');
-console.log('📍 authRouter type:', typeof authRouter);
-console.log('📍 authRouter is function:', typeof authRouter === 'function');
-
-if (authRouter && typeof authRouter === 'function') {
-  console.log('✅ authRouter is valid Express router');
-  app.use('/api/auth', authRouter);
-  console.log('✅ 認証ルート登録完了: /api/auth');
-
-  // ルート確認のためのデバッグ情報
-  if (authRouter.stack) {
-    console.log('📍 登録された認証ルート:');
-    authRouter.stack.forEach((layer: any, index: number) => {
-      const path = layer.route?.path || 'middleware';
-      const methods = layer.route?.methods ? Object.keys(layer.route.methods) : [];
-      console.log(`  [${index}] ${methods.join(',')} ${path}`);
-    });
-  }
-} else {
-  console.error('❌ authRouter is not valid:', authRouter);
-}
-
 import { historyRouter } from './routes/history.js';
 import { Request, Response } from 'express';
-app.use("/api/emergency-guides", emergencyGuideRouter);
+
+// 緊急ガイドルート
+console.log('🔧 緊急ガイドルート登録中...');
+app.use('/api/emergency-guide', require('./routes/emergency-guide.js'));
 console.log('✅ 緊急ガイドルート設定完了');
 
-// Import route registration function
-import { registerRoutes } from './routes/index.js';
+// チャットルート
+console.log('📡 チャットルートを登録中...');
+app.use('/api/chats', require('./routes/chat.js'));
+console.log('✅ チャットルート登録Complete');
 
-// Register all routes (認証以外のAPIルート)
-registerRoutes(app);
+// ナレッジベースルート
+app.use('/api/knowledge', require('./routes/knowledge-base.js'));
 
-import { registerSearchRoutes } from './routes/search.js';
-registerSearchRoutes(app);
+// テックサポートルート
+app.use('/api/tech-support', require('./routes/tech-support.js'));
 
-// 履歴管理ルート追加
-app.use('/api/history', (req: Request, res: Response) => {
-  console.log('履歴管理リクエスト:', req.method, req.path);
-  if (req.path === '/list') {
-    res.json({
-      items: [],
-      total: 0,
-      hasMore: false
-    });
-  } else {
-    res.status(404).json({ error: 'Not found' });
-  }
-});
+// 緊急フローAPI
+app.use('/api/emergency-flow', require('./routes/emergency-flow.js'));
+
+// フロー生成API
+app.use('/api/flow-generator', require('./routes/flow-generator.js'));
+
+// 検索API
+app.use('/api/search', require('./routes/search.js'));
+
+// ファイルアップロード
+app.use('/api/file', require('./routes/file.js'));
+
+// データプロセッサーAPI
+app.use('/api/data-processor', require('./routes/data-processor.js'));
+
+// ユーザー管理API
+app.use('/api/users', require('./routes/users.js'));
+
+// 履歴管理API
+app.use('/api', historyRouter);
 
 // 全ルート設定完了
 console.log('✅ 全ルート設定完了');
