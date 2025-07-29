@@ -83,13 +83,13 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="flex flex-col h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* ヘッダーエリア */}
-      <div className="bg-white shadow-sm border-b p-3">
-        <div className="flex justify-between items-center mb-2">
+      <div className="bg-white shadow-sm border-b p-2 flex-shrink-0">
+        <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <Activity className="h-6 w-6 text-red-500" />
-            <h1 className="text-xl font-bold text-gray-800">応急処置支援システム</h1>
+            <Activity className="h-5 w-5 text-red-500" />
+            <h1 className="text-lg font-bold text-gray-800">応急処置支援システム</h1>
           </div>
           <div className="flex gap-1">
             <Button 
@@ -131,39 +131,58 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* チャットエリア */}
-      <div className="flex-1 overflow-auto p-3 space-y-3 max-h-[calc(100vh-200px)]">
-        {messages.length === 0 ? (
-          <div className="text-center py-4">
-            <div className="bg-white rounded-lg p-4 shadow-md max-w-lg mx-auto">
-              <Activity className="h-12 w-12 text-red-500 mx-auto mb-3" />
-              <div className="text-gray-700 mb-3 text-base font-semibold">
-                応急処置支援システム
-              </div>
-              <div className="text-sm text-gray-600 mb-4">
-                緊急時の応急処置をサポートします。<br />
-                テキスト入力、音声入力、画像撮影で状況をお知らせください。
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
-                <div>📝 テキストで症状を入力</div>
-                <div>🎤 音声で状況を説明</div>
-                <div>📷 患部の写真を撮影</div>
-                <div>📖 応急処置ガイドを参照</div>
+      {/* メインコンテンツエリア */}
+      <div className="flex-1 flex flex-col min-h-0">
+        {/* チャットエリア */}
+        <div className="flex-1 overflow-auto p-3 space-y-3">
+          {messages.length === 0 ? (
+            <div className="flex items-center justify-center h-full min-h-[300px]">
+              <div className="bg-white rounded-lg p-6 shadow-md max-w-lg w-full mx-auto">
+                <Activity className="h-16 w-16 text-red-500 mx-auto mb-4" />
+                <div className="text-gray-700 mb-3 text-lg font-semibold text-center">
+                  応急処置支援システム
+                </div>
+                <div className="text-sm text-gray-600 mb-4 text-center">
+                  緊急時の応急処置をサポートします。<br />
+                  テキスト入力、音声入力、画像撮影で状況をお知らせください。
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm text-gray-600">
+                  <div className="flex items-center gap-2">
+                    <span>📝</span>
+                    <span>テキストで症状を入力</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span>🎤</span>
+                    <span>音声で状況を説明</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span>📷</span>
+                    <span>患部の写真を撮影</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span>📖</span>
+                    <span>応急処置ガイドを参照</span>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        ) : (
-          messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
-          ))
-        )}
-        <div ref={messagesEndRef} />
+          ) : (
+            <>
+              {messages.map((message) => (
+                <MessageBubble key={message.id} message={message} />
+              ))}
+              <div ref={messagesEndRef} />
+            </>
+          )}
+        </div>
+
+        {/* 入力エリア */}
+        <div className="flex-shrink-0">
+          <MessageInput sendMessage={sendMessage} isLoading={isLoading} />
+        </div>
       </div>
 
-      {/* 入力エリア */}
-      <MessageInput sendMessage={sendMessage} isLoading={isLoading} />
-
-      {/* カメラモーダル */}
+      {/* モーダル類 */}
       <CameraModal />
       <ImagePreviewModal />
 

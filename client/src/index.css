@@ -59,30 +59,30 @@
     font-size: 2rem;
     line-height: 1.5;
   }
-  
+
   /* フォーム要素のサイズ調整 */
   input, textarea, select, button {
     font-size: 1.5rem !important;
     padding: 0.75rem 1rem !important;
     border-radius: 0.5rem !important;
   }
-  
+
   /* ボタンの高さ調整 */
   button {
     min-height: 3rem !important;
   }
-  
+
   /* ラベルのサイズ調整 */
   label {
     font-size: 1.5rem !important;
     font-weight: 500 !important;
   }
-  
+
   /* カードのパディング調整 */
   .card, [class*="card"] {
     padding: 1.5rem !important;
   }
-  
+
   /* テキストサイズの調整 */
   h1 { font-size: 3rem !important; }
   h2 { font-size: 2.5rem !important; }
@@ -90,7 +90,7 @@
   h4 { font-size: 1.75rem !important; }
   h5 { font-size: 1.5rem !important; }
   h6 { font-size: 1.25rem !important; }
-  
+
   /* 小さいテキストの調整 */
   .text-xs { font-size: 1rem !important; }
   .text-sm { font-size: 1.25rem !important; }
@@ -102,10 +102,12 @@
 
 /* body全体のスタイル */
 body {
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  overflow-x: hidden;
-  background-color: #f8fafc;
-  color: #0f172a;
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+  overflow: hidden;
 }
 
 /* スクロールバーのカスタマイズ */
@@ -296,21 +298,21 @@ button:disabled {
     margin: 0;
     box-shadow: none;
   }
-  
+
   .chat-header {
     border-radius: 0;
   }
-  
+
   .ai-message, .user-message {
     max-width: 90%;
   }
-  
+
   input[type="text"], 
   input[type="password"], 
   textarea {
     font-size: 1rem; /* モバイルで読みやすいサイズに */
   }
-  
+
   .icon-button {
     width: 3rem;
     height: 3rem;
@@ -323,11 +325,11 @@ button:disabled {
     height: 90vh;
     margin-bottom: 10px;
   }
-  
+
   .chat-message-list {
     max-height: calc(100vh - 160px);
   }
-  
+
   .message-input-container {
     padding-bottom: env(safe-area-inset-bottom, 20px);
   }
@@ -343,15 +345,15 @@ button:disabled {
   .chat-container {
     height: 84vh;
   }
-  
+
   .chat-message-list {
     max-height: calc(100vh - 120px);
   }
-  
+
   .message-input-container {
     padding-bottom: env(safe-area-inset-bottom, 10px);
   }
-  
+
   .chat-controls-container {
     z-index: 1000;
     background-color: white;
@@ -363,7 +365,7 @@ button:disabled {
     padding: 10px;
     overflow-y: auto;
   }
-  
+
   /* モバイル横向き時のレイアウト調整 */
   @media (orientation: landscape) and (max-height: 500px) {
     /* 横向き時の検索結果パネル */
@@ -383,11 +385,11 @@ button:disabled {
       max-height: 100vh !important;
       z-index: 1000 !important;
     }
-    
+
     #mobile-search-slider[style*="transform: none"] {
       box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
     }
-    
+
     /* モバイル横向き時のヘッダー調整 */
     .mobile-landscape-header {
       position: sticky;
@@ -397,20 +399,20 @@ button:disabled {
       z-index: 50;
       background-color: rgba(255, 255, 255, 0.95);
     }
-    
+
     /* 検索結果の横スクロール対応 */
     .search-results-container {
       overflow-x: auto !important; 
       white-space: nowrap;
       min-width: 320px;
     }
-    
+
     /* カメラモーダルのサイズ調整 */
     .camera-modal {
       max-width: 90vw !important;
       max-height: 80vh !important;
     }
-    
+
     /* メッセージ入力エリアの調整 */
     .message-input-container {
       position: sticky;
@@ -418,7 +420,7 @@ button:disabled {
       width: 100%;
     }
   }
-  
+
   /* スライダーのための特別なスタイル */
   .search-panel-visible {
     transform: none !important;
@@ -441,7 +443,7 @@ button:disabled {
     padding-bottom: 10px;
     -webkit-overflow-scrolling: touch;
   }
-  
+
   .fuse-result-item {
     min-width: 80vw;
     scroll-snap-align: start;
@@ -456,23 +458,23 @@ button:disabled {
     flex-wrap: wrap;
     justify-content: space-between;
   }
-  
+
   .fuse-result-item {
     margin-right: 10px;
     width: calc(50% - 10px);
     min-width: 300px;
   }
-  
+
   .fuse-landscape {
     display: flex;
     flex-direction: row;
     height: 100%;
   }
-  
+
   .fuse-image-landscape {
     flex: 0 0 50%;
   }
-  
+
   .fuse-content-landscape {
     flex: 0 0 50%;
     max-height: 300px;
@@ -520,4 +522,13 @@ button:disabled {
   opacity: 0.9;
   cursor: pointer;
   transition: all 0.2s ease;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  overflow: hidden;
 }
