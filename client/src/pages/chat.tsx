@@ -365,18 +365,43 @@ export default function ChatPage() {
       </div>
 
       {/* メインコンテンツエリア */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* チャットエリア */}
-        <div className="flex-1 overflow-auto p-3 space-y-3">
-          {messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
-          ))}
-          <div ref={messagesEndRef} />
+      <div className="flex-1 flex flex-col overflow-hidden p-4">
+        {/* チャットエリア - 3D効果のある外枠 */}
+        <div className="flex-1 overflow-auto p-4 space-y-3 bg-white rounded-xl shadow-2xl border-4 border-gray-300 relative"
+             style={{
+               boxShadow: `
+                 inset 3px 3px 8px rgba(0, 0, 0, 0.15),
+                 inset -3px -3px 8px rgba(255, 255, 255, 0.9),
+                 6px 6px 16px rgba(0, 0, 0, 0.2),
+                 -2px -2px 8px rgba(255, 255, 255, 0.8)
+               `,
+               background: 'linear-gradient(145deg, #f8fafc, #e2e8f0)'
+             }}>
+          
+          {/* 内側の装飾的な境界線 */}
+          <div className="absolute inset-2 border border-blue-200 rounded-lg pointer-events-none opacity-50"></div>
+          
+          {/* メッセージ表示エリア */}
+          <div className="relative z-10">
+            {messages.map((message) => (
+              <MessageBubble key={message.id} message={message} />
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
         </div>
 
-        {/* 入力エリア */}
-        <div className="flex-shrink-0">
-          <MessageInput sendMessage={sendMessage} isLoading={isLoading} />
+        {/* 入力エリア - 3D効果のある外枠 */}
+        <div className="flex-shrink-0 p-4 pt-2">
+          <div className="bg-white rounded-lg shadow-lg border-2 border-gray-300"
+               style={{
+                 boxShadow: `
+                   inset 2px 2px 6px rgba(0, 0, 0, 0.1),
+                   inset -2px -2px 6px rgba(255, 255, 255, 0.9),
+                   4px 4px 12px rgba(0, 0, 0, 0.15)
+                 `
+               }}>
+            <MessageInput sendMessage={sendMessage} isLoading={isLoading} />
+          </div>
         </div>
       </div>
 
