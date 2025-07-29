@@ -578,38 +578,14 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setSearching(false);
         }
       }
-      // ChatGPT APIの呼び出し
-      try {
-        const apiResponse = await apiRequest('POST', '/api/chatgpt', {
-          message: content,
-          images: processedMedia?.filter(m => m.type === 'image')?.map(m => m.url) || [],
-          searchResults: searchResults
-        });
+      // ChatGPT APIリクエストは無効化 - チャット表示のみ
+      console.log('💬 ChatGPT APIリクエストを無効化 - チャット表示のみ');
 
-        if (apiResponse && apiResponse.choices && apiResponse.choices[0]) {
-          aiResponseContent = apiResponse.choices[0].message.content;
-        } else {
-          console.warn('ChatGPT APIレスポンスが無効:', apiResponse);
-          aiResponseContent = 'AI応答の取得に失敗しました。';
-        }
-      } catch (apiError) {
-        console.error('ChatGPT API呼び出しエラー:', apiError);
-        aiResponseContent = 'AI応答の取得中にエラーが発生しました。';
+      // 送信されたテキストを応急処置ガイドの検索キーワードとして保存
+      if (content.trim()) {
+        localStorage.setItem('lastSearchKeyword', content.trim());
+        console.log('🔑 検索キーワードを保存:', content.trim());
       }
-
-      // AI応答メッセージを作成して追加
-      const aiMessage: Message = {
-        id: timestamp + 1,
-        chatId: currentChatId,
-        content: aiResponseContent,
-        text: aiResponseContent,
-        isAiResponse: true,
-        senderId: 'ai',
-        timestamp: new Date(),
-        media: [] // AIレスポンスにはメディアなし
-      };
-
-      setMessages(prev => [...prev, aiMessage]);
 
       // スクロール処理
       setTimeout(() => {
