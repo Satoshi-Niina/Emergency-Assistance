@@ -89,7 +89,6 @@ export default function ChatPage() {
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Activity className="h-5 w-5 text-red-500" />
-            <h1 className="text-lg font-bold text-gray-800">応急処置支援システム</h1>
           </div>
           <div className="flex gap-1">
             <Button 
