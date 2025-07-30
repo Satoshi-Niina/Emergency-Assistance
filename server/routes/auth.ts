@@ -1,3 +1,4 @@
+
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import fs from 'fs/promises';
@@ -36,10 +37,10 @@ router.post('/login', async (req, res) => {
 
     // ユーザーデータを読み込み
     const users = await loadUsers();
-
+    
     // ユーザー認証
     const user = users.find(u => u.username === username && u.password === password);
-
+    
     if (!user) {
       return res.status(401).json({
         error: 'Invalid credentials'
