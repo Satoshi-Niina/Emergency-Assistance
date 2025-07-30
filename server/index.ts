@@ -273,8 +273,8 @@ app.use('/api/*', (req: any, res: any) => {
   });
 });
 
-console.log('// Troubleshootingルート追加
-app.use('/api/troubleshooting', troubleshootingRouter);');
+// Troubleshootingルート追加
+app.use('/api/troubleshooting', troubleshootingRouter);
 
 // 全ルート設定完了
 console.log('✅ 全ルート設定完了');
