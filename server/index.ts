@@ -84,13 +84,64 @@ app.use('*', (req: any, res: any, next: any) => {
   next();
 });
 
-// ミドルウェア設定
-app.use(cors({ 
-  origin: ['http://localhost:5000', 'http://172.31.73.194:5000', 'http://0.0.0.0:5000', '*'], 
+// CORS設定（フロントエンドからのリクエストを許可）
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:4173', // Vite preview port
+  'http://localhost:5001', // Vite dev port
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:4173',
+  'http://127.0.0.1:5001'
+];
+
+// 環境変数で追加のオリジンが指定されている場合は追加
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.push(process.env.FRONTEND_URL);
+}
+
+// Replit環境の場合、自動的に3001ポートのオリジンを追加
+if (process.env.REPLIT || process.env.REPL_SLUG) {
+  const replitHost = process.env.REPL_URL || `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+  if (replitHost) {
+    allowedOrigins.push(replitHost);
+    allowedOrigins.push(`${replitHost}:3001`);
+    // 現在のReplitドメインも追加
+    const currentDomain = 'https://ceb3a872-0092-4e86-a990-adc5b271598b-00-tlthbuz5ebfd.sisko.replit.dev';
+    allowedOrigins.push(currentDomain);
+    allowedOrigins.push(`${currentDomain}:3001`);
+  }
+}
+app.use(cors({
+  origin: function (origin, callback) {
+    console.log('🔍 CORS チェック:', { origin, allowedOrigins });
+
+    // 開発環境では origin が null の場合も許可（Postman等からのリクエスト）
+    if (!origin) {
+      console.log('✅ CORS許可: origin is null (local requests)');
+      callback(null, true);
+      return;
+    }
+
+    // Replit環境の特別処理
+    if (origin.includes('replit.dev') || origin.includes('replit.com')) {
+      console.log('✅ CORS許可: Replit環境');
+      callback(null, true);
+      return;
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      console.log('✅ CORS許可: 許可されたオリジン');
+      callback(null, true);
+    } else {
+      console.log('❌ CORS blocked origin:', origin);
+      console.log('📝 許可されたオリジン:', allowedOrigins);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-  optionsSuccessStatus: 200
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept'],
+  exposedHeaders: ['Set-Cookie']
 }));
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
