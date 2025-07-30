@@ -1,7 +1,7 @@
 import emergencyFlowRoutes from "./emergency-flow.js";
 import { registerChatRoutes } from "./chat.js";
 import { techSupportRouter } from "./tech-support.js";
-import { troubleshootingRouter } from "./troubleshooting.js";
+import troubleshootingRouter from "./troubleshooting.js";
 import { usersRouter } from "./users.js";
 import { registerKnowledgeBaseRoutes } from "./knowledge-base.js";
 import { registerSyncRoutes } from "./sync-routes.js";
