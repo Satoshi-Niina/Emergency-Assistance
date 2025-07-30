@@ -33,21 +33,15 @@ export default function Header() {
   return (
     <header className="bg-primary text-white py-3 px-4 flex items-center justify-between shadow-md">
       <div className="flex items-center">
-        <h1 className="text-xl font-semibold mr-6">応急処置支援システム</h1>
+        <h1 className="text-sm font-semibold mr-6" style={{ fontSize: '70%' }}>応急処置支援システム</h1>
         <div className="hidden md:flex items-center space-x-1">
           <Tabs />
         </div>
       </div>
       <div className="flex items-center space-x-4">
-        <div className="text-sm">
-          ログインユーザー：{user?.display_name || user?.username || 'ゲスト'} 
-          {user?.role && ` (${user?.role === 'admin' ? '管理者' : '一般ユーザー'})`}
+        <div className="text-xs" style={{ fontSize: '80%' }}>
+          ログインユーザー：{user?.display_name || user?.username || 'ゲスト'}
         </div>
-
-        {/* 設定ボタン - 直接リンク */}
-        <Link to="/settings" className="text-white hover:bg-white/20 p-2 rounded">
-          <Settings className="h-5 w-5" />
-        </Link>
 
         {/* ログアウトボタン */}
         <Button 
@@ -57,7 +51,7 @@ export default function Header() {
           onClick={handleLogout}
           title="ログアウト"
         >
-          <LogOut className="h-5 w-5" />
+          <LogOut className="h-6 w-6" />
         </Button>
 
         {/* モバイルメニュー */}
@@ -75,14 +69,6 @@ export default function Header() {
               <nav className="p-4">
                 <Tabs />
                 <div className="mt-4 pt-4 border-t">
-                  <Link 
-                    to="/settings"
-                    className="flex items-center w-full px-3 py-2 text-sm rounded-md hover:bg-gray-100"
-                    onClick={() => setSidebarOpen(false)}
-                  >
-                    <Settings className="mr-2 h-4 w-4" />
-                    設定
-                  </Link>
                   <button 
                     onClick={() => {
                       handleLogout();
