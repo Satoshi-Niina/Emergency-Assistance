@@ -233,7 +233,7 @@ export default function TroubleshootingPage() {
         <DialogContent className="max-w-4xl w-full">
             <DialogHeader>
                 <DialogTitle>{selectedFlow?.title}</DialogTitle>
-                <DialogDescription>{selectedFlow?.description}</DialogHeader>
+                <DialogDescription>{selectedFlow?.description}</DialogDescription>
             </DialogHeader>
             <div className="max-h-[80vh] overflow-y-auto p-4">
               {selectedFlow && <EmergencyGuideDisplay flowId={selectedFlow.id} />}
