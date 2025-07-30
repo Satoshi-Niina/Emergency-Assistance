@@ -65,12 +65,15 @@ router.get('/list', async (req, res) => {
     try {
         // JSONレスポンスヘッダーを明示的に設定
         res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Cache-Control', 'no-cache');
 
         const troubleshootingDir: any = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
         logInfo(`🔍 troubleshootingディレクトリを確認: ${troubleshootingDir}`);
 
+        // ディレクトリが存在しない場合は作成
         if (!fs.existsSync(troubleshootingDir)) {
-            logInfo('📁 troubleshootingディレクトリが存在しません');
+            logInfo('📁 troubleshootingディレクトリが存在しないため作成');
+            fs.mkdirSync(troubleshootingDir, { recursive: true });
             return res.json([]);
         }
 
@@ -110,12 +113,18 @@ router.get('/list', async (req, res) => {
 // トラブルシューティング詳細取得
 router.get('/detail/:id', async (req, res) => {
     try {
+        // JSONレスポンスヘッダーを明示的に設定
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Cache-Control', 'no-cache');
+        
         const { id } = req.params;
         const troubleshootingDir: any = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
         const filePath: any = path.join(troubleshootingDir, `${id}.json`);
+        
         if (!fs.existsSync(filePath)) {
             return res.status(404).json({ error: 'Troubleshooting flow not found' });
         }
+        
         const content: any = fs.readFileSync(filePath, 'utf8');
         const data: any = JSON.parse(content);
 
@@ -125,6 +134,7 @@ router.get('/detail/:id', async (req, res) => {
     }
     catch (error) {
         logError('Error in troubleshooting detail:', error);
+        res.setHeader('Content-Type', 'application/json');
         res.status(500).json({ error: 'Failed to load troubleshooting detail' });
     }
 });
@@ -168,11 +178,16 @@ function normalizeImageUrlsForStorage(data: any): any {
 // トラブルシューティング作成
 router.post('/', async (req, res) => {
     try {
+        // JSONレスポンスヘッダーを明示的に設定
+        res.setHeader('Content-Type', 'application/json');
+        
         const troubleshootingData: any = req.body;
         const troubleshootingDir: any = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+        
         if (!fs.existsSync(troubleshootingDir)) {
             fs.mkdirSync(troubleshootingDir, { recursive: true });
         }
+        
         const id: any = troubleshootingData.id || `ts_${Date.now()}`;
         const filePath: any = path.join(troubleshootingDir, `${id}.json`);
 
@@ -190,16 +205,21 @@ router.post('/', async (req, res) => {
     }
     catch (error) {
         logError('Error in troubleshooting create:', error);
+        res.setHeader('Content-Type', 'application/json');
         res.status(500).json({ error: 'Failed to create troubleshooting flow' });
     }
 });
 // トラブルシューティング更新
 router.put('/:id', async (req, res) => {
     try {
+        // JSONレスポンスヘッダーを明示的に設定
+        res.setHeader('Content-Type', 'application/json');
+        
         const { id } = req.params;
         const troubleshootingData: any = req.body;
         const troubleshootingDir: any = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
         const filePath: any = path.join(troubleshootingDir, `${id}.json`);
+        
         if (!fs.existsSync(filePath)) {
             return res.status(404).json({ error: 'Troubleshooting flow not found' });
         }
@@ -216,18 +236,25 @@ router.put('/:id', async (req, res) => {
     }
     catch (error) {
         logError('Error in troubleshooting update:', error);
+        res.setHeader('Content-Type', 'application/json');
         res.status(500).json({ error: 'Failed to update troubleshooting flow' });
     }
 });
+
 // トラブルシューティング削除
 router.delete('/:id', async (req, res) => {
     try {
+        // JSONレスポンスヘッダーを明示的に設定
+        res.setHeader('Content-Type', 'application/json');
+        
         const { id } = req.params;
         const troubleshootingDir: any = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
         const filePath: any = path.join(troubleshootingDir, `${id}.json`);
+        
         if (!fs.existsSync(filePath)) {
             return res.status(404).json({ error: 'Troubleshooting flow not found' });
         }
+        
         fs.unlinkSync(filePath);
         res.json({
             success: true,
@@ -236,24 +263,32 @@ router.delete('/:id', async (req, res) => {
     }
     catch (error) {
         logError('Error in troubleshooting delete:', error);
+        res.setHeader('Content-Type', 'application/json');
         res.status(500).json({ error: 'Failed to delete troubleshooting flow' });
     }
 });
 // トラブルシューティング検索
 router.post('/search', async (req, res) => {
     try {
+        // JSONレスポンスヘッダーを明示的に設定
+        res.setHeader('Content-Type', 'application/json');
+        
         const { query } = req.body;
         const troubleshootingDir: any = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+        
         if (!fs.existsSync(troubleshootingDir)) {
             return res.json([]);
         }
+        
         const files: any = fs.readdirSync(troubleshootingDir).filter(file => file.endsWith('.json'));
         const searchResults = [];
+        
         for (const file of files) {
             try {
                 const filePath: any = path.join(troubleshootingDir, file);
                 const content: any = fs.readFileSync(filePath, 'utf8');
                 const data: any = JSON.parse(content);
+                
                 // タイトル、説明、キーワードで検索
                 const searchText = `${data.title || ''} ${data.description || ''} ${data.keyword || ''}`.toLowerCase();
                 if (searchText.includes(query.toLowerCase())) {
@@ -268,6 +303,7 @@ router.post('/search', async (req, res) => {
     }
     catch (error) {
         logError('Error in troubleshooting search:', error);
+        res.setHeader('Content-Type', 'application/json');
         res.status(500).json({ error: 'Failed to search troubleshooting flows' });
     }
 });

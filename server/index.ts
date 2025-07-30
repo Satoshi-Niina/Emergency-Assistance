@@ -260,16 +260,6 @@ app.get('/api/health', (req: any, res: any) => {
   });
 });
 
-// APIテストエンドポイント
-app.get('/api/test', (req: any, res: any) => {
-  console.log('🧪 APIテストエンドポイント受信');
-  res.setHeader('Content-Type', 'application/json');
-  res.status(200).json({
-    message: 'API is working correctly',
-    timestamp: new Date().toISOString()
-  });
-});
-
 // 基本的なAPIルートハンドラー（404エラー対策）
 app.use('/api/chats/:chatId/last-export', (req: any, res: any) => {
   console.log('📡 最後のエクスポート履歴リクエスト:', {
@@ -304,8 +294,57 @@ app.use('/api/troubleshooting', troubleshootingRouter);
 // 全ルート設定完了
 console.log('✅ 全ルート設定完了');
 
-// 静的ファイル配信（APIルートの後に配置）
-app.use('/public', express.static(path.join(__dirname, 'public')));
+// APIルート登録（静的ファイル配信より前に配置）
+console.log('🔧 APIルート登録中...');
+registerRoutes(app);
+
+// テストエンドポイント追加
+app.get('/api/test', (req: any, res: any) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.json({ message: 'API is working correctly' });
+});
+
+// 画像配信ルート（emergency-flow関連）
+app.use('/api/emergency-flow/image', express.static(path.join(__dirname, '../knowledge-base/images')));
+
+// API関連のエラーハンドリング（静的ファイル配信より前）
+app.use('/api/*', (req: any, res: any) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.status(404).json({ 
+    error: 'API endpoint not found',
+    path: req.path,
+    method: req.method,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// 静的ファイル配信の設定（APIルートより後に配置）
+console.log('🔧 静的ファイル配信設定中...');
+app.use(express.static(path.join(__dirname, '../client/dist')));
+
+// SPA support - すべてのAPIでないルートをindex.htmlにフォールバック
+app.get('*', (req: any, res: any) => {
+  // その他のパスはSPAのindex.htmlを返す
+  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+});
+
+// グローバルエラーハンドラー
+app.use((err: any, req: any, res: any, next: any) => {
+  console.error('🚨 Unhandled error:', err);
+
+  // APIリクエストの場合はJSONで応答
+  if (req.path.startsWith('/api/')) {
+    res.setHeader('Content-Type', 'application/json');
+    res.status(500).json({ 
+      error: 'Internal Server Error',
+      message: err.message,
+      timestamp: new Date().toISOString()
+    });
+  } else {
+    // その他の場合は通常のエラーページ
+    res.status(500).send('Internal Server Error');
+  }
+});
 
 // APIエラー専用ハンドラー（HTMLを返さないように）
 app.use('/api/*', (error: any, req: any, res: any, next: any) => {
