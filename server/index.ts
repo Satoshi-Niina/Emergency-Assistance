@@ -1,3 +1,4 @@
+
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -114,6 +115,7 @@ if (process.env.REPLIT || process.env.REPL_SLUG) {
     allowedOrigins.push(`${currentDomain}:5000`);
   }
 }
+
 // CORS設定を環境に応じて動的に設定
 const corsOptions = {
   credentials: true,
@@ -161,6 +163,7 @@ const corsOptions = {
     }
   }
 };
+
 app.use(cors(corsOptions));
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
@@ -177,7 +180,7 @@ app.use(
   })
 );
 
-// Routes
+// ===== API ルート設定開始 (静的ファイル配信より前に配置) =====
 console.log('🛣️ ルーティング設定開始');
 
 // デバッグ用: 全リクエストのログ（詳細版）
@@ -214,7 +217,7 @@ app.use('/api', (req: any, res: any, next: any) => {
   next();
 });
 
-// 認証ルート（最優先で登録）
+// ===== 認証ルート（最優先で登録） =====
 console.log('🔧 認証ルート登録中...');
 console.log('📍 authRouter type:', typeof authRouter);
 console.log('📍 authRouter is function:', typeof authRouter === 'function');
@@ -238,13 +241,17 @@ if (authRouter) {
   }
 }
 
-// 画像配信用の静的ファイルルート
-app.use('/api/emergency-flow/image', express.static(path.join(__dirname, '../knowledge-base/images/emergency-flows')));
-console.log('✅ 画像配信ルート設定完了');
+// ===== テストエンドポイント（API動作確認用） =====
+app.get('/api/test', (req: any, res: any) => {
+  console.log('🧪 テストエンドポイント呼び出し');
+  res.setHeader('Content-Type', 'application/json');
+  res.json({ message: 'API is working correctly' });
+});
 
-// ヘルスチェックエンドポイント（認証テスト用）
+// ===== ヘルスチェックエンドポイント（認証テスト用） =====
 app.get('/api/health', (req: any, res: any) => {
   console.log('🏥 ヘルスチェックリクエスト受信');
+  res.setHeader('Content-Type', 'application/json');
   res.status(200).json({
     success: true,
     message: 'サーバーは正常に動作しています',
@@ -260,12 +267,18 @@ app.get('/api/health', (req: any, res: any) => {
   });
 });
 
-// 基本的なAPIルートハンドラー（404エラー対策）
+// ===== Troubleshootingルート =====
+console.log('🔧 Troubleshootingルート登録中...');
+app.use('/api/troubleshooting', troubleshootingRouter);
+console.log('✅ Troubleshootingルート登録完了: /api/troubleshooting');
+
+// ===== 基本的なAPIルートハンドラー（404エラー対策） =====
 app.use('/api/chats/:chatId/last-export', (req: any, res: any) => {
   console.log('📡 最後のエクスポート履歴リクエスト:', {
     chatId: req.params.chatId,
     method: req.method
   });
+  res.setHeader('Content-Type', 'application/json');
   res.status(200).json({
     success: true,
     hasExport: false,
@@ -273,13 +286,24 @@ app.use('/api/chats/:chatId/last-export', (req: any, res: any) => {
   });
 });
 
-// キャッチオール - 認証以外のAPIリクエストに対する一時的な応答
-app.use('/api/*', (req: any, res: any) => {
+// ===== APIルート登録（静的ファイル配信より前に配置） =====
+console.log('🔧 APIルート登録中...');
+registerRoutes(app);
+
+// ===== 全API未実装エンドポイントの統一レスポンス =====
+app.use('/api/*', (req: any, res: any, next: any) => {
+  // 既に処理されたリクエストはスキップ
+  if (res.headersSent) {
+    return next();
+  }
+
   console.log('⚠️ 未実装APIエンドポイント:', {
     method: req.method,
     path: req.path,
     originalUrl: req.originalUrl
   });
+  
+  res.setHeader('Content-Type', 'application/json');
   res.status(501).json({
     success: false,
     message: 'このAPIエンドポイントは現在実装中です',
@@ -288,27 +312,13 @@ app.use('/api/*', (req: any, res: any) => {
   });
 });
 
-// Troubleshootingルート追加
-app.use('/api/troubleshooting', troubleshootingRouter);
+// ===== API関連のエラーハンドリング（静的ファイル配信より前） =====
+app.use('/api/*', (req: any, res: any, next: any) => {
+  // 既に処理されたリクエストはスキップ
+  if (res.headersSent) {
+    return next();
+  }
 
-// 全ルート設定完了
-console.log('✅ 全ルート設定完了');
-
-// APIルート登録（静的ファイル配信より前に配置）
-console.log('🔧 APIルート登録中...');
-registerRoutes(app);
-
-// テストエンドポイント追加
-app.get('/api/test', (req: any, res: any) => {
-  res.setHeader('Content-Type', 'application/json');
-  res.json({ message: 'API is working correctly' });
-});
-
-// 画像配信ルート（emergency-flow関連）
-app.use('/api/emergency-flow/image', express.static(path.join(__dirname, '../knowledge-base/images')));
-
-// API関連のエラーハンドリング（静的ファイル配信より前）
-app.use('/api/*', (req: any, res: any) => {
   res.setHeader('Content-Type', 'application/json');
   res.status(404).json({ 
     error: 'API endpoint not found',
@@ -318,33 +328,32 @@ app.use('/api/*', (req: any, res: any) => {
   });
 });
 
-// 静的ファイル配信の設定（APIルートより後に配置）
+// ===== 静的ファイル配信の設定（APIルートより後に配置） =====
 console.log('🔧 静的ファイル配信設定中...');
+
+// 画像配信用の静的ファイルルート（API処理後に配置）
+app.use('/api/emergency-flow/image', express.static(path.join(__dirname, '../knowledge-base/images/emergency-flows')));
+console.log('✅ 画像配信ルート設定完了');
+
+// 一般的な静的ファイル配信
 app.use(express.static(path.join(__dirname, '../client/dist')));
 
-// SPA support - すべてのAPIでないルートをindex.htmlにフォールバック
+// ===== SPA support - すべてのAPIでないルートをindex.htmlにフォールバック =====
 app.get('*', (req: any, res: any) => {
+  // APIリクエストは除外
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({
+      error: 'API endpoint not found',
+      path: req.path,
+      method: req.method
+    });
+  }
+  
   // その他のパスはSPAのindex.htmlを返す
   res.sendFile(path.join(__dirname, '../client/dist/index.html'));
 });
 
-// グローバルエラーハンドラー
-app.use((err: any, req: any, res: any, next: any) => {
-  console.error('🚨 Unhandled error:', err);
-
-  // APIリクエストの場合はJSONで応答
-  if (req.path.startsWith('/api/')) {
-    res.setHeader('Content-Type', 'application/json');
-    res.status(500).json({ 
-      error: 'Internal Server Error',
-      message: err.message,
-      timestamp: new Date().toISOString()
-    });
-  } else {
-    // その他の場合は通常のエラーページ
-    res.status(500).send('Internal Server Error');
-  }
-});
+// ===== エラーハンドリング =====
 
 // APIエラー専用ハンドラー（HTMLを返さないように）
 app.use('/api/*', (error: any, req: any, res: any, next: any) => {
@@ -380,12 +389,18 @@ app.use((error: any, req: any, res: any, next: any) => {
     return next(error);
   }
 
-  res.status(500).json({
-    success: false,
-    error: 'サーバーエラーが発生しました',
-    message: process.env.NODE_ENV === 'development' ? error.message : 'Internal Server Error',
-    timestamp: new Date().toISOString()
-  });
+  // APIリクエストの場合はJSONで応答
+  if (req.path.startsWith('/api/')) {
+    res.setHeader('Content-Type', 'application/json');
+    res.status(500).json({
+      success: false,
+      error: 'サーバーエラーが発生しました',
+      message: process.env.NODE_ENV === 'development' ? error.message : 'Internal Server Error',
+      timestamp: new Date().toISOString()
+    });
+  } else {
+    res.status(500).send('Internal Server Error');
+  }
 });
 
 // 404ハンドリング
@@ -403,47 +418,29 @@ app.use('*', (req: any, res: any) => {
     }
   });
 
-  // Expressアプリケーションのルートスタックを詳細に調査
-  console.log('\n🔍 [EXPRESS ROUTER STACK 詳細調査]');
-  console.log('🛣️ Express app._router.stack:');
-  if (app._router && app._router.stack) {
-    app._router.stack.forEach((layer: any, index: number) => {
-      console.log(`  [${index}] regexp: ${layer.regexp}, methods: ${JSON.stringify(layer.route?.methods || 'N/A')}`);
-      console.log(`       path: ${layer.route?.path || 'middleware'}, name: ${layer.name || 'anonymous'}`);
-
-      // サブルーターの場合は詳細を調査
-      if (layer.name === 'router' && layer.handle && layer.handle.stack) {
-        console.log(`       🔧 Sub-router found with ${layer.handle.stack.length} routes:`);
-        layer.handle.stack.forEach((subLayer: any, subIndex: number) => {
-          console.log(`         [${subIndex}] ${subLayer.route?.path || 'middleware'} - ${JSON.stringify(subLayer.route?.methods || 'N/A')}`);
-        });
-      }
+  // APIリクエストの場合はJSONで応答
+  if (req.path.startsWith('/api/')) {
+    res.setHeader('Content-Type', 'application/json');
+    res.status(404).json({
+      success: false,
+      error: 'Not Found',
+      message: 'リクエストされたAPIエンドポイントが見つかりません',
+      path: req.path,
+      originalUrl: req.originalUrl,
+      method: req.method,
+      availableRoutes: [
+        'POST /api/auth/login',
+        'GET /api/auth/me',
+        'POST /api/auth/logout',
+        'POST /api/auth/register',
+        'GET /api/test',
+        'GET /api/health'
+      ]
     });
   } else {
-    console.log('  ❌ No router stack found!');
+    // 非APIリクエストの場合はSPAにフォールバック
+    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
   }
-
-  // 登録されているルートを表示
-  console.log('🛣️ 想定されているAPIルート:');
-  console.log('  ✅ POST /api/auth/login');
-  console.log('  ✅ GET /api/auth/me'); 
-  console.log('  ✅ POST /api/auth/logout');
-  console.log('  ✅ POST /api/auth/register');
-
-  res.status(404).json({
-    success: false,
-    error: 'Not Found',
-    message: 'リクエストされたエンドポイントが見つかりません',
-    path: req.path,
-    originalUrl: req.originalUrl,
-    method: req.method,
-    availableRoutes: [
-      'POST /api/auth/login',
-      'GET /api/auth/me',
-      'POST /api/auth/logout',
-      'POST /api/auth/register'
-    ]
-  });
 });
 
 // Start the server with error handling
@@ -522,7 +519,3 @@ server.on('error', (error: any) => {
 });
 
 console.log('✅ サーバーindex.tsファイルの終端');
-// 検索ルート
-    // 履歴管理ルート
-    // 履歴管理API（一時的に無効化）
-    // app.use('/api', historyRouter);
