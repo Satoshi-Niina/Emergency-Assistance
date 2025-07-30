@@ -76,7 +76,7 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
     if (!confirm('このファイルを削除してもよろしいですか？')) return;
     
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/delete/${id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${id}`, {
         method: 'DELETE'
       });
       
