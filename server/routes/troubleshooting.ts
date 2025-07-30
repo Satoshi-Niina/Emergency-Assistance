@@ -6,31 +6,12 @@ import { existsSync } from 'fs';
 
 const router = express.Router();
 
-// 汎用ロギング関数
-function logDebug(message: any, ...args: any[]) {
-    if (process.env.NODE_ENV !== 'production') {
-        console.debug(message, ...args);
-    }
-}
-
-function logInfo(message: any, ...args: any[]) {
-    console.info(message, ...args);
-}
-
-function logWarn(message: any, ...args: any[]) {
-    console.warn(message, ...args);
-}
-
-function logError(message: any, ...args: any[]) {
-    console.error(message, ...args);
-}
-
 // データモード判定関数
 function isDbMode(): boolean {
     return process.env.DATA_MODE === 'db';
 }
 
-// DB操作用のプレースホルダー関数
+// DB操作用のプレースホルダー関数（将来実装予定）
 async function dbGetTroubleshootingList(): Promise<any[]> {
     // ここにDB処理を追加予定
     // const result = await db.select().from(troubleshooting);
@@ -82,25 +63,17 @@ function convertImageUrlsForDeployment(data: any): any {
 
     const convertUrl = (url: string): string => {
         if (!url) return url;
-
-        // 既に完全なURLの場合はそのまま返す
         if (url.startsWith('http://') || url.startsWith('https://')) {
             return url;
         }
-
-        // ローカルの相対パスをAPI経由のURLに変換
         if (url.startsWith('/api/emergency-flow/image/') || url.startsWith('api/emergency-flow/image/')) {
             return url.startsWith('/') ? url : `/${url}`;
         }
-
-        // その他の相対パスの場合
         return `/api/emergency-flow/image/${url.replace(/^\/+/, '')}`;
     };
 
-    // データのコピーを作成
     const result = JSON.parse(JSON.stringify(data));
 
-    // stepsの画像URLを変換
     if (result.steps && Array.isArray(result.steps)) {
         result.steps.forEach((step: any) => {
             if (step.imageUrl) {
@@ -125,19 +98,14 @@ function normalizeImageUrlsForStorage(data: any): any {
 
     const normalizeUrl = (url: string): string => {
         if (!url) return url;
-
-        // API経由のURLを相対パスに変換
         if (url.includes('/api/emergency-flow/image/')) {
             return url.replace(/.*\/api\/emergency-flow\/image\//, '');
         }
-
         return url;
     };
 
-    // データのコピーを作成
     const result = JSON.parse(JSON.stringify(data));
 
-    // stepsの画像URLを正規化
     if (result.steps && Array.isArray(result.steps)) {
         result.steps.forEach((step: any) => {
             if (step.imageUrl) {
@@ -178,9 +146,8 @@ async function fileGetTroubleshootingList(): Promise<any[]> {
             const data = JSON.parse(content);
             const convertedData = convertImageUrlsForDeployment(data);
             troubleshootingList.push(convertedData);
-            logInfo(`✅ ファイル処理完了: ${file}`);
         } catch (error) {
-            logError(`❌ Error reading file ${file}:`, error);
+            console.error(`❌ Error reading file ${file}:`, error);
         }
     }
     
@@ -249,13 +216,12 @@ async function fileSearchTroubleshooting(query: string): Promise<any[]> {
             const content = await fs.readFile(filePath, 'utf8');
             const data = JSON.parse(content);
             
-            // タイトル、説明、キーワードで検索
             const searchText = `${data.title || ''} ${data.description || ''} ${data.keyword || ''}`.toLowerCase();
             if (searchText.includes(query.toLowerCase())) {
                 searchResults.push(data);
             }
         } catch (error) {
-            logError(`❌ Error reading file ${file}:`, error);
+            console.error(`❌ Error reading file ${file}:`, error);
         }
     }
     
@@ -264,21 +230,18 @@ async function fileSearchTroubleshooting(query: string): Promise<any[]> {
 
 // ===== すべてのルートでJSONレスポンスヘッダーを強制設定 =====
 router.use((req, res, next) => {
-    // すべてのトラブルシューティングAPIでJSONヘッダーを強制設定
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'no-cache');
     
-    logInfo(`🔍 [Troubleshooting API] ${req.method} ${req.path}`);
-    logInfo('🔧 [Header確認] Content-Type設定:', res.getHeader('Content-Type'));
+    console.log(`🔍 [Troubleshooting API] ${req.method} ${req.path}`);
     next();
 });
 
 // トラブルシューティングリスト取得
-// 確認方法: GET /api/troubleshooting/list → JSON配列
 router.get('/list', async (req, res) => {
     try {
-        logInfo('🔄 [/list] リクエスト処理開始');
-        logInfo(`💾 [データモード] ${isDbMode() ? 'DB' : 'FILE'}`);
+        console.log('🔄 [/list] リクエスト処理開始');
+        console.log(`💾 [データモード] ${isDbMode() ? 'DB' : 'FILE'}`);
         
         let troubleshootingList: any[];
         
@@ -288,11 +251,11 @@ router.get('/list', async (req, res) => {
             troubleshootingList = await fileGetTroubleshootingList();
         }
 
-        logInfo(`📋 最終リスト: ${troubleshootingList.length}件`);
-        logInfo('✅ [/list] JSONリストを返却');
+        console.log(`📋 最終リスト: ${troubleshootingList.length}件`);
+        console.log('✅ [/list] JSONリストを返却');
         res.json(troubleshootingList);
     } catch (error) {
-        logError('❌ [/list] トラブルシューティングリスト取得エラー:', error);
+        console.error('❌ [/list] トラブルシューティングリスト取得エラー:', error);
         res.status(500).json({
             success: false,
             error: 'トラブルシューティングリストの取得に失敗しました',
@@ -304,9 +267,9 @@ router.get('/list', async (req, res) => {
 // トラブルシューティング詳細取得
 router.get('/detail/:id', async (req, res) => {
     try {
-        logInfo('🔄 [/detail/:id] リクエスト処理開始');
+        console.log('🔄 [/detail/:id] リクエスト処理開始');
         const { id } = req.params;
-        logInfo(`💾 [データモード] ${isDbMode() ? 'DB' : 'FILE'}`);
+        console.log(`💾 [データモード] ${isDbMode() ? 'DB' : 'FILE'}`);
         
         let data: any | null;
         
@@ -317,17 +280,17 @@ router.get('/detail/:id', async (req, res) => {
         }
         
         if (!data) {
-            logInfo(`❌ [/detail/:id] データが見つかりません: ${id}`);
+            console.log(`❌ [/detail/:id] データが見つかりません: ${id}`);
             return res.status(404).json({ 
                 success: false,
                 error: 'Troubleshooting flow not found' 
             });
         }
         
-        logInfo('✅ [/detail/:id] JSONデータを返却');
+        console.log('✅ [/detail/:id] JSONデータを返却');
         res.json(data);
     } catch (error) {
-        logError('❌ [/detail/:id] Error in troubleshooting detail:', error);
+        console.error('❌ [/detail/:id] Error in troubleshooting detail:', error);
         res.status(500).json({ 
             success: false,
             error: 'Failed to load troubleshooting detail' 
@@ -338,9 +301,9 @@ router.get('/detail/:id', async (req, res) => {
 // トラブルシューティング作成
 router.post('/', async (req, res) => {
     try {
-        logInfo('🔄 [POST /] トラブルシューティング作成開始');
+        console.log('🔄 [POST /] トラブルシューティング作成開始');
         const troubleshootingData = req.body;
-        logInfo(`💾 [データモード] ${isDbMode() ? 'DB' : 'FILE'}`);
+        console.log(`💾 [データモード] ${isDbMode() ? 'DB' : 'FILE'}`);
         
         let id: string;
         
@@ -350,14 +313,14 @@ router.post('/', async (req, res) => {
             id = await fileCreateTroubleshooting(troubleshootingData);
         }
 
-        logInfo('✅ [POST /] 作成成功JSONレスポンス');
+        console.log('✅ [POST /] 作成成功JSONレスポンス');
         res.status(201).json({
             success: true,
             id: id,
             message: 'Troubleshooting flow created successfully'
         });
     } catch (error) {
-        logError('❌ [POST /] Error in troubleshooting create:', error);
+        console.error('❌ [POST /] Error in troubleshooting create:', error);
         res.status(500).json({ 
             success: false,
             error: 'Failed to create troubleshooting flow' 
@@ -368,10 +331,10 @@ router.post('/', async (req, res) => {
 // トラブルシューティング更新
 router.put('/:id', async (req, res) => {
     try {
-        logInfo('🔄 [PUT /:id] トラブルシューティング更新開始');
+        console.log('🔄 [PUT /:id] トラブルシューティング更新開始');
         const { id } = req.params;
         const troubleshootingData = req.body;
-        logInfo(`💾 [データモード] ${isDbMode() ? 'DB' : 'FILE'}`);
+        console.log(`💾 [データモード] ${isDbMode() ? 'DB' : 'FILE'}`);
         
         if (isDbMode()) {
             await dbUpdateTroubleshooting(id, troubleshootingData);
@@ -379,13 +342,13 @@ router.put('/:id', async (req, res) => {
             await fileUpdateTroubleshooting(id, troubleshootingData);
         }
 
-        logInfo('✅ [PUT /:id] 更新成功JSONレスポンス');
+        console.log('✅ [PUT /:id] 更新成功JSONレスポンス');
         res.json({
             success: true,
             message: 'Troubleshooting flow updated successfully'
         });
     } catch (error) {
-        logError('❌ [PUT /:id] Error in troubleshooting update:', error);
+        console.error('❌ [PUT /:id] Error in troubleshooting update:', error);
         
         if (error instanceof Error && error.message === 'Troubleshooting flow not found') {
             res.status(404).json({ 
@@ -404,9 +367,9 @@ router.put('/:id', async (req, res) => {
 // トラブルシューティング削除
 router.delete('/:id', async (req, res) => {
     try {
-        logInfo('🔄 [DELETE /:id] トラブルシューティング削除開始');
+        console.log('🔄 [DELETE /:id] トラブルシューティング削除開始');
         const { id } = req.params;
-        logInfo(`💾 [データモード] ${isDbMode() ? 'DB' : 'FILE'}`);
+        console.log(`💾 [データモード] ${isDbMode() ? 'DB' : 'FILE'}`);
         
         if (isDbMode()) {
             await dbDeleteTroubleshooting(id);
@@ -414,13 +377,13 @@ router.delete('/:id', async (req, res) => {
             await fileDeleteTroubleshooting(id);
         }
         
-        logInfo('✅ [DELETE /:id] 削除成功JSONレスポンス');
+        console.log('✅ [DELETE /:id] 削除成功JSONレスポンス');
         res.json({
             success: true,
             message: 'Troubleshooting flow deleted successfully'
         });
     } catch (error) {
-        logError('❌ [DELETE /:id] Error in troubleshooting delete:', error);
+        console.error('❌ [DELETE /:id] Error in troubleshooting delete:', error);
         
         if (error instanceof Error && error.message === 'Troubleshooting flow not found') {
             res.status(404).json({ 
@@ -439,9 +402,9 @@ router.delete('/:id', async (req, res) => {
 // トラブルシューティング検索
 router.post('/search', async (req, res) => {
     try {
-        logInfo('🔄 [POST /search] トラブルシューティング検索開始');
+        console.log('🔄 [POST /search] トラブルシューティング検索開始');
         const { query } = req.body;
-        logInfo(`💾 [データモード] ${isDbMode() ? 'DB' : 'FILE'}`);
+        console.log(`💾 [データモード] ${isDbMode() ? 'DB' : 'FILE'}`);
         
         let searchResults: any[];
         
@@ -451,10 +414,10 @@ router.post('/search', async (req, res) => {
             searchResults = await fileSearchTroubleshooting(query);
         }
         
-        logInfo(`✅ [POST /search] 検索結果${searchResults.length}件をJSONで返却`);
+        console.log(`✅ [POST /search] 検索結果${searchResults.length}件をJSONで返却`);
         res.json(searchResults);
     } catch (error) {
-        logError('❌ [POST /search] Error in troubleshooting search:', error);
+        console.error('❌ [POST /search] Error in troubleshooting search:', error);
         res.status(500).json({ 
             success: false,
             error: 'Failed to search troubleshooting flows' 
