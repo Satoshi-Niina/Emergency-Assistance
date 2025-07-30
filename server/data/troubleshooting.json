@@ -1,0 +1,26 @@
+
+[
+  {
+    "id": "sample-001",
+    "title": "サンプルトラブルシューティング",
+    "description": "サンプルの問題解決フロー",
+    "category": "general",
+    "keywords": ["サンプル", "テスト"],
+    "steps": [
+      {
+        "id": "step1",
+        "title": "問題の確認",
+        "description": "まず問題を確認してください",
+        "type": "action"
+      },
+      {
+        "id": "step2", 
+        "title": "解決策の実行",
+        "description": "適切な解決策を実行してください",
+        "type": "action"
+      }
+    ],
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  }
+]
