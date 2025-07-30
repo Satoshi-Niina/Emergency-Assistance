@@ -179,12 +179,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   };
 
-  // Auth routes
-  app.use("/api/auth", authRouter);
+  // Auth routes - JSON Content-Typeを設定
+  app.use("/api/auth", (req, res, next) => {
+    res.setHeader('Content-Type', 'application/json');
+    next();
+  }, authRouter);
 
   // ヘルスチェックエンドポイント（デバッグ用）
   app.get("/api/health", (req, res) => {
     console.log('🏥 ヘルスチェックリクエスト受信');
+    res.setHeader('Content-Type', 'application/json');
     res.status(200).json({
       success: true,
       message: 'Emergency Assistance Backend is running',
@@ -192,7 +196,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       environment: process.env.NODE_ENV || 'development',
       session: {
         hasSession: !!req.session,
-        userId: req.session?.userId || null
+        userId: req.session?.userId || nullssion?.userId || null
       }
     });
   });
