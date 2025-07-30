@@ -106,10 +106,12 @@ if (process.env.REPLIT || process.env.REPL_SLUG) {
   if (replitHost) {
     allowedOrigins.push(replitHost);
     allowedOrigins.push(`${replitHost}:3001`);
+    allowedOrigins.push(`${replitHost}:5000`);
     // 現在のReplitドメインも追加
     const currentDomain = 'https://ceb3a872-0092-4e86-a990-adc5b271598b-00-tlthbuz5ebfd.sisko.replit.dev';
     allowedOrigins.push(currentDomain);
     allowedOrigins.push(`${currentDomain}:3001`);
+    allowedOrigins.push(`${currentDomain}:5000`);
   }
 }
 // CORS設定を環境に応じて動的に設定
