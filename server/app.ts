@@ -10,6 +10,7 @@ import { fileURLToPath } from 'url';
 import { authRouter } from './routes/auth.js';
 import { techSupportRouter } from './routes/tech-support.js';
 import { registerChatRoutes } from './routes/chat.js';
+import { troubleshootingRouter } from './routes/troubleshooting';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -94,9 +95,11 @@ registerChatRoutes(app);
 app.use('/api/emergency-flow', emergencyFlowRoutes);
 app.use('/api/flow-generator', flowGeneratorRoutes);
 
+// API ルーター設定
+app.use('/api/troubleshooting', troubleshootingRouter);
+
 // 👇 サーバーを外部ファイルで起動する場合に備えて export
 export default app;
 
 // Named export for createApp function
 export const createApp = () => app;
-
