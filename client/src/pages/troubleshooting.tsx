@@ -168,7 +168,7 @@ export default function TroubleshootingPage() {
   }
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 bg-gray-50 min-h-screen" style={{ maxWidth: '150%', width: '150%' }}>
+    <div className="container mx-auto p-4 sm:p-6 bg-gray-50 min-h-screen max-w-7xl">
       <div className="flex justify-between items-start mb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 flex items-center gap-3">
