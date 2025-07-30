@@ -5,6 +5,7 @@ import session from "express-session";
 import bodyParser from "body-parser";
 // 認証ルート
 import { authRouter } from './routes/auth.js';
+import { troubleshootingRouter } from './routes/troubleshooting.js';
 
 // デバッグ用：認証ルーターが正しくインポートされているか確認
 console.log('🔍 認証ルーターインポート状況:', {
@@ -272,7 +273,8 @@ app.use('/api/*', (req: any, res: any) => {
   });
 });
 
-console.log('⚠️ 認証関連以外のAPIルートは一時的に無効化（デバッグ中）');
+console.log('// Troubleshootingルート追加
+app.use('/api/troubleshooting', troubleshootingRouter);');
 
 // 全ルート設定完了
 console.log('✅ 全ルート設定完了');
