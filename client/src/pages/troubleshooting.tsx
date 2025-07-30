@@ -102,11 +102,11 @@ export default function TroubleshootingPage() {
     },
     onError: (error) => toast({ title: 'エラー', description: `フローの削除中にエラーが発生しました: ${error.message}`, variant: 'destructive' }),
   });
-  
+
   const handleEdit = (flowId: string) => {
     setFlowState({ view: 'edit', flowId });
   };
-  
+
   const handleNew = () => {
     setFlowState({ view: 'edit', flowId: null });
   };
@@ -141,7 +141,7 @@ export default function TroubleshootingPage() {
     setFlowToDelete(flowId);
     setIsWarningOpen(true);
   };
-  
+
   const confirmDelete = () => {
       if(flowToDelete) deleteMutation.mutate(flowToDelete);
   }
@@ -214,7 +214,7 @@ export default function TroubleshootingPage() {
            )}
         </TabsContent>
       </Tabs>
-      
+
       {/* --- Dialogs --- */}
       <Dialog open={isEditorOpen} onOpenChange={setIsEditorOpen}>
         <DialogContent className="max-w-full w-full h-full flex flex-col p-0">
@@ -228,19 +228,19 @@ export default function TroubleshootingPage() {
             )}
         </DialogContent>
       </Dialog>
-      
+
        <Dialog open={isViewerOpen} onOpenChange={setIsViewerOpen}>
         <DialogContent className="max-w-4xl w-full">
             <DialogHeader>
                 <DialogTitle>{selectedFlow?.title}</DialogTitle>
-                <DialogDescription>{selectedFlow?.description}</DialogDescription>
+                <DialogDescription>{selectedFlow?.description}</DialogHeader>
             </DialogHeader>
             <div className="max-h-[80vh] overflow-y-auto p-4">
               {selectedFlow && <EmergencyGuideDisplay flowId={selectedFlow.id} />}
             </div>
         </DialogContent>
       </Dialog>
-      
+
       <WarningDialog
         isOpen={isWarningOpen}
         onOpenChange={setIsWarningOpen}
