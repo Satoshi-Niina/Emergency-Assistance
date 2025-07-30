@@ -47,24 +47,24 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
     try {
       setIsLoading(true);
       console.log('🔄 フロー一覧を取得中...');
-      
-      const response = await fetch(buildApiUrl('/api/emergency-flow'), {
+
+      const response = await fetch(buildApiUrl('/api/troubleshooting/list'), {
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache'
         }
       });
-      
-      if (!response.ok) throw new Error('フロー一覧の取得に失敗しました');
+
+      if (!response.ok) throw new Error('ファイル一覧の取得に失敗しました');
       const data = await response.json();
-      
+
       console.log('✅ フロー一覧取得完了:', data.length + '件');
       setFlowList(data);
     } catch (error) {
       console.error('フロー一覧取得エラー:', error);
       toast({
         title: "エラー",
-        description: "フロー一覧の取得に失敗しました",
+        description: "ファイル一覧の取得に失敗しました",
         variant: "destructive",
       });
     } finally {
@@ -83,19 +83,19 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
 
   const handleDeleteConfirm = async () => {
     if (!flowToDelete) return;
-    
+
     try {
-      const response = await fetch(buildApiUrl(`/api/emergency-flow/${flowToDelete}`), {
+      const response = await fetch(buildApiUrl(`/api/troubleshooting/${flowToDelete}`), {
         method: 'DELETE'
       });
-      
+
       if (!response.ok) throw new Error('フローの削除に失敗しました');
-      
+
       toast({
         title: "成功",
         description: "フローが削除されました",
       });
-      
+
       // 一覧を更新
       fetchFlowList();
     } catch (error) {
@@ -124,7 +124,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div>
-            <CardTitle className="text-xl">フロー一覧</CardTitle>
+            <CardTitle className="text-xl">ファイル一覧</CardTitle>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -226,4 +226,4 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
   );
 };
 
-export default FlowListManager; 
+export default FlowListManager;
