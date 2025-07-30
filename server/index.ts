@@ -180,10 +180,10 @@ app.use(
   })
 );
 
-// ===== APIルートの専用ミドルウェア（HTMLレスポンス防止） =====
-// 修正: すべてのAPIリクエストに対してJSONヘッダーを強制設定
+// ===== 修正: APIルート専用ミドルウェア（HTMLレスポンス完全防止） =====
+// すべてのAPIリクエストに対してJSONヘッダーを強制設定し、静的ファイル配信より前に処理
 app.use('/api', (req: any, res: any, next: any) => {
-  // APIリクエストには必ずJSONヘッダーを設定
+  // 修正: APIリクエストには必ずJSONヘッダーを設定
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Cache-Control', 'no-cache');
   
@@ -211,11 +211,10 @@ app.use('/api', (req: any, res: any, next: any) => {
   next();
 });
 
-// ===== API ROUTE DEFINITIONS START (静的ファイル配信より前に配置) =====
+// ===== 修正: API ROUTE DEFINITIONS START（静的ファイル配信より前に完全に配置） =====
 console.log('🛣️ ルーティング設定開始');
 
-// ===== テストエンドポイント（API動作確認用） =====
-// 修正: テストエンドポイントを追加してAPI動作確認
+// ===== 修正: テストエンドポイント（API動作確認用） =====
 app.get('/api/test', (req: any, res: any) => {
   console.log('🧪 テストエンドポイント呼び出し');
   res.json({ message: 'API is working correctly' });
@@ -258,13 +257,12 @@ if (authRouter) {
       const methods = layer.route?.methods ? Object.keys(layer.route.methods) : [];
       console.log(`  [${index}] ${methods.join(',')} ${path}`);
     });
-  } else {
-    console.error('❌ authRouter is not valid:', authRouter);
   }
+} else {
+  console.error('❌ authRouter is not valid:', authRouter);
 }
 
-// ===== Troubleshootingルート =====
-// 修正: トラブルシューティングルートを認証の次に配置
+// ===== 修正: Troubleshootingルート（認証の次に配置） =====
 console.log('🔧 Troubleshootingルート登録中...');
 app.use('/api/troubleshooting', troubleshootingRouter);
 console.log('✅ Troubleshootingルート登録完了: /api/troubleshooting');
@@ -286,8 +284,7 @@ app.use('/api/chats/:chatId/last-export', (req: any, res: any) => {
 console.log('🔧 APIルート登録中...');
 registerRoutes(app);
 
-// ===== 全API未実装エンドポイントの統一レスポンス =====
-// 修正: 未実装APIも必ずJSONで応答
+// ===== 修正: 未実装APIエンドポイントの統一レスポンス =====
 app.use('/api/*', (req: any, res: any, next: any) => {
   // 既に処理されたリクエストはスキップ
   if (res.headersSent) {
@@ -308,13 +305,18 @@ app.use('/api/*', (req: any, res: any, next: any) => {
   });
 });
 
-// ===== API関連のエラーハンドリング（静的ファイル配信より前） =====
-// 修正: API用404エラーハンドラーを追加
+// ===== 修正: API専用404エラーハンドラー（静的ファイル配信より前） =====
 app.use('/api/*', (req: any, res: any, next: any) => {
   // 既に処理されたリクエストはスキップ
   if (res.headersSent) {
     return next();
   }
+
+  console.log('❌ API 404エラー:', {
+    method: req.method,
+    path: req.path,
+    originalUrl: req.originalUrl
+  });
 
   res.status(404).json({ 
     error: 'API endpoint not found',
@@ -326,8 +328,7 @@ app.use('/api/*', (req: any, res: any, next: any) => {
 
 // ===== API ROUTE DEFINITIONS END =====
 
-// ===== 静的ファイル配信の設定（APIルートより後に配置） =====
-// 修正: 静的ファイル配信をAPIルートの後に移動
+// ===== 修正: 静的ファイル配信の設定（APIルートより後に配置） =====
 console.log('🔧 静的ファイル配信設定中...');
 
 // 画像配信用の静的ファイルルート（API処理後に配置）
@@ -337,8 +338,7 @@ console.log('✅ 画像配信ルート設定完了');
 // 一般的な静的ファイル配信
 app.use(express.static(path.join(__dirname, '../client/dist')));
 
-// ===== SPA support - すべてのAPIでないルートをindex.htmlにフォールバック =====
-// 修正: SPAフォールバックでAPIリクエストは除外
+// ===== 修正: SPA support - すべてのAPIでないルートをindex.htmlにフォールバック =====
 app.get('*', (req: any, res: any) => {
   // APIリクエストは除外（404 JSONを返す）
   if (req.path.startsWith('/api/')) {
@@ -353,10 +353,9 @@ app.get('*', (req: any, res: any) => {
   res.sendFile(path.join(__dirname, '../client/dist/index.html'));
 });
 
-// ===== エラーハンドリング =====
+// ===== 修正: エラーハンドリング =====
 
-// APIエラー専用ハンドラー（HTMLを返さないように）
-// 修正: APIエラーは必ずJSONで応答
+// API専用エラーハンドラー（HTMLを返さないように）
 app.use('/api/*', (error: any, req: any, res: any, next: any) => {
   console.error('🚨 [APIエラー]:', {
     message: error.message,
@@ -369,14 +368,13 @@ app.use('/api/*', (error: any, req: any, res: any, next: any) => {
   // 必ずJSONで応答
   res.status(500).json({
     success: false,
-    error: 'API Error',
+    error: 'Internal Server Error',
     message: process.env.NODE_ENV === 'development' ? error.message : 'Internal Server Error',
     timestamp: new Date().toISOString()
   });
 });
 
 // グローバルエラーハンドリングミドルウェア
-// 修正: グローバルエラーハンドラーでもAPIはJSONで応答
 app.use((error: any, req: any, res: any, next: any) => {
   console.error('🚨 [グローバルエラー]:', {
     message: error.message,
@@ -394,7 +392,7 @@ app.use((error: any, req: any, res: any, next: any) => {
   if (req.path.startsWith('/api/')) {
     res.status(500).json({
       success: false,
-      error: 'サーバーエラーが発生しました',
+      error: 'Internal Server Error',
       message: process.env.NODE_ENV === 'development' ? error.message : 'Internal Server Error',
       timestamp: new Date().toISOString()
     });
@@ -403,7 +401,6 @@ app.use((error: any, req: any, res: any, next: any) => {
   }
 });
 
-// 404ハンドリング
 // 修正: 404ハンドラーでもAPIリクエストはJSONで応答
 app.use('*', (req: any, res: any) => {
   console.log(`\n❌ [404 NOT FOUND] ${req.method} ${req.originalUrl}`);
@@ -423,7 +420,7 @@ app.use('*', (req: any, res: any) => {
   if (req.path.startsWith('/api/')) {
     res.status(404).json({
       success: false,
-      error: 'Not Found',
+      error: 'API endpoint not found',
       message: 'リクエストされたAPIエンドポイントが見つかりません',
       path: req.path,
       originalUrl: req.originalUrl,
