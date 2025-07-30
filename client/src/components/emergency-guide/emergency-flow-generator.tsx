@@ -99,7 +99,7 @@ export default function EmergencyFlowGenerator({ onFlowGenerated }: FlowGenerato
                 onChange={(e) => setKeywords(e.target.value)}
                 disabled={!!file}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-base resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border-2 border-blue-800 rounded-md text-base resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-800"
                 style={{ fontSize: '120%' }}
             />
             <div className="flex justify-center mt-3">
