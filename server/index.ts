@@ -177,9 +177,6 @@ app.use(
   })
 );
 
-// Serve static files
-app.use('/public', express.static(path.join(__dirname, 'public')));
-
 // Routes
 console.log('🛣️ ルーティング設定開始');
 
@@ -263,6 +260,16 @@ app.get('/api/health', (req: any, res: any) => {
   });
 });
 
+// APIテストエンドポイント
+app.get('/api/test', (req: any, res: any) => {
+  console.log('🧪 APIテストエンドポイント受信');
+  res.setHeader('Content-Type', 'application/json');
+  res.status(200).json({
+    message: 'API is working correctly',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // 基本的なAPIルートハンドラー（404エラー対策）
 app.use('/api/chats/:chatId/last-export', (req: any, res: any) => {
   console.log('📡 最後のエクスポート履歴リクエスト:', {
@@ -296,6 +303,29 @@ app.use('/api/troubleshooting', troubleshootingRouter);
 
 // 全ルート設定完了
 console.log('✅ 全ルート設定完了');
+
+// 静的ファイル配信（APIルートの後に配置）
+app.use('/public', express.static(path.join(__dirname, 'public')));
+
+// APIエラー専用ハンドラー（HTMLを返さないように）
+app.use('/api/*', (error: any, req: any, res: any, next: any) => {
+  console.error('🚨 [APIエラー]:', {
+    message: error.message,
+    stack: error.stack,
+    url: req.url,
+    method: req.method,
+    timestamp: new Date().toISOString()
+  });
+
+  // 必ずJSONで応答
+  res.setHeader('Content-Type', 'application/json');
+  res.status(500).json({
+    success: false,
+    error: 'API Error',
+    message: process.env.NODE_ENV === 'development' ? error.message : 'Internal Server Error',
+    timestamp: new Date().toISOString()
+  });
+});
 
 // グローバルエラーハンドリングミドルウェア
 app.use((error: any, req: any, res: any, next: any) => {
