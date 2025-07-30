@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import cors from 'cors';
 import troubleshootingRouter from './routes/troubleshooting.js';
+import authRouter from './routes/auth.js';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 
@@ -36,6 +37,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // APIルート登録
+app.use('/api/auth', authRouter);
 app.use('/api/troubleshooting', troubleshootingRouter);
 
 // API専用404ハンドラー
