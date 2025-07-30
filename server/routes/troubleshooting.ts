@@ -68,16 +68,19 @@ function convertImageUrlsForDeployment(data: any): any {
 
 // ===== 修正: すべてのルートでJSONレスポンスヘッダーを強制設定 =====
 router.use((req, res, next) => {
-    // 修正: すべてのトラブルシューティングAPIでJSONヘッダーを設定
+    // 修正: すべてのトラブルシューティングAPIでJSONヘッダーを強制設定
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'no-cache');
+    
     logInfo(`🔍 [Troubleshooting API] ${req.method} ${req.path}`);
+    logInfo('🔧 [Header確認] Content-Type設定:', res.getHeader('Content-Type'));
     next();
 });
 
 // トラブルシューティングリスト取得
 router.get('/list', async (req, res) => {
     try {
+        logInfo('🔄 [/list] リクエスト処理開始');
         const troubleshootingDir: string = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
         logInfo(`🔍 troubleshootingディレクトリを確認: ${troubleshootingDir}`);
 
@@ -86,6 +89,7 @@ router.get('/list', async (req, res) => {
             logInfo('📁 troubleshootingディレクトリが存在しないため作成');
             fs.mkdirSync(troubleshootingDir, { recursive: true });
             // 修正: 必ずJSONで応答（空配列）
+            logInfo('✅ [/list] 空配列をJSONで返却');
             return res.json([]);
         }
 
@@ -110,11 +114,12 @@ router.get('/list', async (req, res) => {
         }
 
         logInfo(`📋 最終リスト: ${troubleshootingList.length}件`);
+        logInfo('✅ [/list] JSONリストを返却');
         // 修正: 必ずJSONで応答
         res.json(troubleshootingList);
     }
     catch (error) {
-        logError('トラブルシューティングリスト取得エラー:', error);
+        logError('❌ [/list] トラブルシューティングリスト取得エラー:', error);
         // 修正: エラー時も必ずJSONで応答
         res.status(500).json({
             success: false,
@@ -127,11 +132,13 @@ router.get('/list', async (req, res) => {
 // トラブルシューティング詳細取得
 router.get('/detail/:id', async (req, res) => {
     try {
+        logInfo('🔄 [/detail/:id] リクエスト処理開始');
         const { id } = req.params;
         const troubleshootingDir: string = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
         const filePath: string = path.join(troubleshootingDir, `${id}.json`);
         
         if (!fs.existsSync(filePath)) {
+            logInfo(`❌ [/detail/:id] ファイルが見つかりません: ${filePath}`);
             // 修正: エラー時も必ずJSONで応答
             return res.status(404).json({ 
                 success: false,
@@ -144,11 +151,12 @@ router.get('/detail/:id', async (req, res) => {
 
         // 画像URLを変換してから返す
         const convertedData = convertImageUrlsForDeployment(data);
+        logInfo('✅ [/detail/:id] JSONデータを返却');
         // 修正: 必ずJSONで応答
         res.json(convertedData);
     }
     catch (error) {
-        logError('Error in troubleshooting detail:', error);
+        logError('❌ [/detail/:id] Error in troubleshooting detail:', error);
         // 修正: エラー時も必ずJSONで応答
         res.status(500).json({ 
             success: false,
@@ -197,6 +205,7 @@ function normalizeImageUrlsForStorage(data: any): any {
 // トラブルシューティング作成
 router.post('/', async (req, res) => {
     try {
+        logInfo('🔄 [POST /] トラブルシューティング作成開始');
         const troubleshootingData: any = req.body;
         const troubleshootingDir: string = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
         
@@ -213,6 +222,7 @@ router.post('/', async (req, res) => {
 
         // ファイルが既に存在する場合は上書き
         fs.writeFileSync(filePath, JSON.stringify(normalizedData, null, 2));
+        logInfo('✅ [POST /] 作成成功JSONレスポンス');
         // 修正: 必ずJSONで応答
         res.status(201).json({
             success: true,
@@ -221,7 +231,7 @@ router.post('/', async (req, res) => {
         });
     }
     catch (error) {
-        logError('Error in troubleshooting create:', error);
+        logError('❌ [POST /] Error in troubleshooting create:', error);
         // 修正: エラー時も必ずJSONで応答
         res.status(500).json({ 
             success: false,
@@ -233,12 +243,14 @@ router.post('/', async (req, res) => {
 // トラブルシューティング更新
 router.put('/:id', async (req, res) => {
     try {
+        logInfo('🔄 [PUT /:id] トラブルシューティング更新開始');
         const { id } = req.params;
         const troubleshootingData: any = req.body;
         const troubleshootingDir: string = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
         const filePath: string = path.join(troubleshootingDir, `${id}.json`);
         
         if (!fs.existsSync(filePath)) {
+            logInfo(`❌ [PUT /:id] ファイルが見つかりません: ${filePath}`);
             // 修正: エラー時も必ずJSONで応答
             return res.status(404).json({ 
                 success: false,
@@ -251,6 +263,7 @@ router.put('/:id', async (req, res) => {
         normalizedData.id = id; // IDを確実に設定
 
         fs.writeFileSync(filePath, JSON.stringify(normalizedData, null, 2));
+        logInfo('✅ [PUT /:id] 更新成功JSONレスポンス');
         // 修正: 必ずJSONで応答
         res.json({
             success: true,
@@ -258,7 +271,7 @@ router.put('/:id', async (req, res) => {
         });
     }
     catch (error) {
-        logError('Error in troubleshooting update:', error);
+        logError('❌ [PUT /:id] Error in troubleshooting update:', error);
         // 修正: エラー時も必ずJSONで応答
         res.status(500).json({ 
             success: false,
@@ -270,11 +283,13 @@ router.put('/:id', async (req, res) => {
 // トラブルシューティング削除
 router.delete('/:id', async (req, res) => {
     try {
+        logInfo('🔄 [DELETE /:id] トラブルシューティング削除開始');
         const { id } = req.params;
         const troubleshootingDir: string = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
         const filePath: string = path.join(troubleshootingDir, `${id}.json`);
         
         if (!fs.existsSync(filePath)) {
+            logInfo(`❌ [DELETE /:id] ファイルが見つかりません: ${filePath}`);
             // 修正: エラー時も必ずJSONで応答
             return res.status(404).json({ 
                 success: false,
@@ -283,6 +298,7 @@ router.delete('/:id', async (req, res) => {
         }
         
         fs.unlinkSync(filePath);
+        logInfo('✅ [DELETE /:id] 削除成功JSONレスポンス');
         // 修正: 必ずJSONで応答
         res.json({
             success: true,
@@ -290,7 +306,7 @@ router.delete('/:id', async (req, res) => {
         });
     }
     catch (error) {
-        logError('Error in troubleshooting delete:', error);
+        logError('❌ [DELETE /:id] Error in troubleshooting delete:', error);
         // 修正: エラー時も必ずJSONで応答
         res.status(500).json({ 
             success: false,
@@ -302,10 +318,12 @@ router.delete('/:id', async (req, res) => {
 // トラブルシューティング検索
 router.post('/search', async (req, res) => {
     try {
+        logInfo('🔄 [POST /search] トラブルシューティング検索開始');
         const { query } = req.body;
         const troubleshootingDir: string = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
         
         if (!fs.existsSync(troubleshootingDir)) {
+            logInfo('✅ [POST /search] ディレクトリなし、空配列をJSONで返却');
             // 修正: 必ずJSONで応答（空配列）
             return res.json([]);
         }
@@ -326,14 +344,15 @@ router.post('/search', async (req, res) => {
                 }
             }
             catch (error) {
-                logError(`Error reading file ${file}:`, error);
+                logError(`❌ Error reading file ${file}:`, error);
             }
         }
+        logInfo(`✅ [POST /search] 検索結果${searchResults.length}件をJSONで返却`);
         // 修正: 必ずJSONで応答
         res.json(searchResults);
     }
     catch (error) {
-        logError('Error in troubleshooting search:', error);
+        logError('❌ [POST /search] Error in troubleshooting search:', error);
         // 修正: エラー時も必ずJSONで応答
         res.status(500).json({ 
             success: false,
