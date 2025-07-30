@@ -67,8 +67,8 @@ router.post('/login', async (req: Request, res: Response) => {
 
       // セッション作成
       console.log('✅ [AUTH] 認証成功 - セッション作成開始');
-      req.session.userId = foundUser.id;
-      req.session.user = {
+      (req.session as any).userId = foundUser.id;
+      (req.session as any).user = {
         id: foundUser.id,
         username: foundUser.username,
         displayName: foundUser.displayName,
@@ -211,7 +211,7 @@ router.get('/me', async (req, res) => {
     userId: req.session?.userId
   });
 
-  if (!req.session || !req.session.userId) {
+  if (!req.session || !(req.session as any).userId) {
     console.log('❌ 認証されていません');
     return res.status(401).json({
       success: false,
@@ -221,7 +221,7 @@ router.get('/me', async (req, res) => {
 
   try {
     const user = await (db as any).query.users.findFirst({
-      where: eq(users.id, req.session.userId)
+      where: eq(users.id, (req.session as any).userId)
     });
 
     if (!user) {
