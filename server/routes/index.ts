@@ -28,4 +28,4 @@ export function registerRoutes(app: any) {
   registerDataProcessorRoutes(app);
   app.use('/api/flow-generator', flowGeneratorRoutes);
   registerSearchRoutes(app);
-} 
+}
