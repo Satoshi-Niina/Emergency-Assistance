@@ -9,7 +9,7 @@ const isReplitEnvironment = window.location.hostname.includes('replit.dev') || w
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL 
   ? import.meta.env.VITE_API_BASE_URL // 環境変数が設定されている場合は優先使用
   : isReplitEnvironment
-    ? `${window.location.protocol}//${window.location.hostname.split(':')[0]}:5000` // Replit環境: サーバーポート5000を明示的に指定
+    ? `${window.location.protocol}//${window.location.hostname.split(':')[0]}:3001` // Replit環境: サーバーポート3001を明示的に指定
     : isProduction 
       ? 'https://emergency-backend-e7enc2e8dhdabucv.japanwest-01.azurewebsites.net'
       : 'http://localhost:3001';
