@@ -88,7 +88,26 @@ export default function EmergencyFlowGenerator({ onFlowGenerated }: FlowGenerato
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* File Upload Section */}
+        {/* Keyword Input Section - 上段に移動 */}
+        <div className="space-y-2">
+            <Label htmlFor="keywords" className="text-lg font-semibold">キーワードで生成</Label>
+            <p className="text-sm text-gray-500">フローの核となるキーワードや症状をカンマ区切りで入力してください。</p>
+            <Input
+                id="keywords"
+                placeholder="例: エンジン停止, 警告灯点灯, 異音"
+                value={keywords}
+                onChange={(e) => setKeywords(e.target.value)}
+                disabled={!!file}
+            />
+        </div>
+
+        <div className="relative flex items-center justify-center">
+            <div className="flex-grow border-t border-gray-300"></div>
+            <span className="flex-shrink mx-4 text-gray-500 font-semibold">または</span>
+            <div className="flex-grow border-t border-gray-300"></div>
+        </div>
+
+        {/* File Upload Section - 下段に移動 */}
         <div {...getRootProps()} className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}`}>
           <input {...getInputProps()} />
           <div className="flex flex-col items-center justify-center gap-2 text-gray-500">
@@ -110,28 +129,14 @@ export default function EmergencyFlowGenerator({ onFlowGenerated }: FlowGenerato
           </div>
         )}
 
-        <div className="relative flex items-center justify-center">
-            <div className="flex-grow border-t border-gray-300"></div>
-            <span className="flex-shrink mx-4 text-gray-500 font-semibold">または</span>
-            <div className="flex-grow border-t border-gray-300"></div>
-        </div>
-
-        {/* Keyword Input Section */}
-        <div className="space-y-2">
-            <Label htmlFor="keywords" className="text-lg font-semibold">キーワードで生成</Label>
-            <p className="text-sm text-gray-500">フローの核となるキーワードや症状をカンマ区切りで入力してください。</p>
-            <Input
-                id="keywords"
-                placeholder="例: エンジン停止, 警告灯点灯, 異音"
-                value={keywords}
-                onChange={(e) => setKeywords(e.target.value)}
-                disabled={!!file}
-            />
-        </div>
-
-        {/* Generate Button */}
+        {/* Generate Button - サイズを150%に変更 */}
         <div className="flex justify-end">
-          <Button onClick={handleGenerate} disabled={isLoading} size="lg">
+          <Button 
+            onClick={handleGenerate} 
+            disabled={isLoading} 
+            size="lg"
+            className="transform scale-150 px-8 py-4 text-lg font-bold"
+          >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
