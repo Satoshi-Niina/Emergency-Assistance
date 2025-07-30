@@ -19,7 +19,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 // 開発環境用のデフォルト環境変数設定
 if (!process.env.JWT_SECRET) {
-  process.env.JWT_SECRET = 'dev-jwt-secret-key-for-development-only';
+  process.env.JWT_SECRET = 'dev-secret';
   console.log('[DEV] JWT_SECRET not set, using development default');
 }
 
@@ -46,7 +46,7 @@ const isDevelopment = process.env.NODE_ENV !== 'production';
 
 // 開発環境用のCORS設定
 const corsOptions = {
-  origin: '*',
+  origin: isDevelopment ? '*' : ['https://your-production-domain.com'], // 本番では実際のドメインに変更
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept'],
@@ -65,6 +65,7 @@ app.use((req, res, next) => {
   next();
 });
 
+// JSON解析ミドルウェア（必須）
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
@@ -86,12 +87,6 @@ const sessionSettings: session.SessionOptions = {
 
 app.use(session(sessionSettings));
 
-// APIルート用のJSON Content-Type強制設定
-app.use('/api', (req, res, next) => {
-  res.setHeader('Content-Type', 'application/json');
-  next();
-});
-
 // 開発環境用のリクエストログ
 app.use((req, res, next) => {
   console.log('📡 [DEV] Request:', {
@@ -106,6 +101,10 @@ app.use((req, res, next) => {
   next();
 });
 
+// 認証ルートを最初に設定
+import authRoutes from './routes/auth.js';
+app.use('/api/auth', authRoutes);
+
 // 開発環境用のヘルスチェック
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -118,24 +117,35 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// ルートの読み込み
+// その他のルートの読み込み
 import { registerRoutes } from './routes/index.js';
 registerRoutes(app);
+
+// 全てのAPIエンドポイントにJSON Content-Typeを強制
+app.use('/api/*', (req, res, next) => {
+  // HTMLレスポンスを防ぐために、明示的にJSONを設定
+  if (!res.headersSent) {
+    res.setHeader('Content-Type', 'application/json');
+  }
+  next();
+});
 
 // 開発環境用のエラーハンドリング
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error('[DEV] Error:', err);
-  res.status(500).json({
-    error: 'Internal Server Error',
-    message: err.message,
-    stack: isDevelopment ? err.stack : undefined,
-    timestamp: new Date().toISOString()
-  });
+  if (!res.headersSent) {
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: err.message,
+      stack: isDevelopment ? err.stack : undefined,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
-// 開発環境用の404ハンドリング
-app.use('*', (req: Request, res: Response) => {
-  console.log('[DEV] 404 Not Found:', req.originalUrl);
+// 開発環境用の404ハンドリング（JSON形式）
+app.use('/api/*', (req: Request, res: Response) => {
+  console.log('[DEV] API 404 Not Found:', req.originalUrl);
   res.status(404).json({
     error: 'Not Found',
     path: req.originalUrl,
@@ -157,4 +167,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 [DEV] Development server running on http://0.0.0.0:${PORT}`);
   console.log(`🔧 [DEV] Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📊 [DEV] Health check: http://localhost:${PORT}/api/health`);
+  console.log(`🔐 [DEV] Auth endpoint: http://localhost:${PORT}/api/auth/login`);
+  console.log(`👤 [DEV] Demo login: niina / 0077`);
 });
