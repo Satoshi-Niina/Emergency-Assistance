@@ -63,11 +63,20 @@ function convertImageUrlsForDeployment(data: any): any {
 // トラブルシューティングリスト取得
 router.get('/list', async (req, res) => {
     try {
+        // JSONレスポンスヘッダーを明示的に設定
+        res.setHeader('Content-Type', 'application/json');
+        
         const troubleshootingDir: any = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
+        logInfo(`🔍 troubleshootingディレクトリを確認: ${troubleshootingDir}`);
+        
         if (!fs.existsSync(troubleshootingDir)) {
+            logInfo('📁 troubleshootingディレクトリが存在しません');
             return res.json([]);
         }
+        
         const files: any = fs.readdirSync(troubleshootingDir).filter(file => file.endsWith('.json'));
+        logInfo(`📄 見つかったJSONファイル: ${files.length}件`, files);
+        
         const troubleshootingList = [];
         for (const file of files) {
             try {
@@ -78,15 +87,18 @@ router.get('/list', async (req, res) => {
                 // 画像URLを変換してからリストに追加
                 const convertedData = convertImageUrlsForDeployment(data);
                 troubleshootingList.push(convertedData);
+                logInfo(`✅ ファイル処理完了: ${file}`);
             }
             catch (error) {
-                logError(`Error reading file ${file}:`, error);
+                logError(`❌ Error reading file ${file}:`, error);
             }
         }
+        
+        logInfo(`📋 最終リスト: ${troubleshootingList.length}件`);
         res.json(troubleshootingList);
     }
     catch (error) {
-        logError('Error in troubleshooting list:', error);
+        logError('❌ Error in troubleshooting list:', error);
         res.status(500).json({ error: 'Failed to load troubleshooting data' });
     }
 });
