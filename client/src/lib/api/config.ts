@@ -68,9 +68,9 @@ console.log('🔧 API設定:', {
 
 // 認証APIエンドポイント
 export const AUTH_API = {
-  LOGIN: buildApiUrl('/api/auth/login'),
-  LOGOUT: buildApiUrl('/api/auth/logout'),
-  ME: buildApiUrl('/api/auth/me'),
+  LOGIN: `${API_BASE_URL}/api/auth/login`,
+  LOGOUT: `${API_BASE_URL}/api/auth/logout`,
+  ME: `${API_BASE_URL}/api/auth/me`,
   // デバッグ用テストエンドポイント
   TEST: buildApiUrl('/api/health'),
 };
