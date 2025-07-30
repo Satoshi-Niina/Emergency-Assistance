@@ -112,38 +112,54 @@ if (process.env.REPLIT || process.env.REPL_SLUG) {
     allowedOrigins.push(`${currentDomain}:3001`);
   }
 }
-app.use(cors({
-  origin: function (origin, callback) {
-    console.log('🔍 CORS チェック:', { origin, allowedOrigins });
+// CORS設定を環境に応じて動的に設定
+const corsOptions = {
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  origin: function (origin: string | undefined, callback: Function) {
+    console.log('🔍 CORS チェック:', {
+      origin: origin,
+      allowedOrigins: allowedOrigins
+    });
 
-    // 開発環境では origin が null の場合も許可（Postman等からのリクエスト）
+    // リクエストにoriginがない場合（同一オリジンリクエストなど）は許可
     if (!origin) {
-      console.log('✅ CORS許可: origin is null (local requests)');
-      callback(null, true);
-      return;
+      console.log('✅ CORS許可: オリジンなし（同一オリジン）');
+      return callback(null, true);
     }
 
-    // Replit環境の特別処理
-    if (origin.includes('replit.dev') || origin.includes('replit.com')) {
+    // Replit環境を特別に処理
+    if (origin.includes('replit.dev') || origin.includes('replit.app') || origin.includes('repl.co')) {
       console.log('✅ CORS許可: Replit環境');
-      callback(null, true);
-      return;
+      return callback(null, true);
     }
 
-    if (allowedOrigins.includes(origin)) {
+    // 許可されたオリジンをチェック
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      // 正確な一致をチェック
+      if (origin === allowedOrigin) return true;
+
+      // ワイルドカードパターンをチェック（例: *.replit.dev）
+      if (allowedOrigin.includes('*')) {
+        const pattern = allowedOrigin.replace(/\*/g, '.*');
+        const regex = new RegExp(`^${pattern}$`);
+        return regex.test(origin);
+      }
+
+      return false;
+    });
+
+    if (isAllowed) {
       console.log('✅ CORS許可: 許可されたオリジン');
       callback(null, true);
     } else {
-      console.log('❌ CORS blocked origin:', origin);
-      console.log('📝 許可されたオリジン:', allowedOrigins);
+      console.log('❌ CORS拒否: 許可されていないオリジン');
       callback(new Error('Not allowed by CORS'));
     }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept'],
-  exposedHeaders: ['Set-Cookie']
-}));
+  }
+};
+app.use(cors(corsOptions));
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
