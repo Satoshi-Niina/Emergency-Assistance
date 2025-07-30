@@ -1,7 +1,12 @@
 import { Router } from 'express';
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
+
+// ESM用__dirname定義
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const router = Router();
 

@@ -3,6 +3,11 @@ import path from 'path';
 import cors from 'cors';
 import troubleshootingRouter from './routes/troubleshooting.js';
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+
+// ESM用__dirname定義
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
@@ -59,4 +64,6 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Server is running on http://0.0.0.0:${PORT}`);
+  console.log(`📁 Client dist path: ${clientDistPath}`);
+  console.log(`🔧 Data mode: ${process.env.DATA_MODE || 'file'}`);
 });
