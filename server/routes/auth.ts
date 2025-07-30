@@ -26,6 +26,8 @@ async function loadUsers() {
 
 // ログインエンドポイント
 router.post('/login', async (req, res) => {
+  // Content-Typeヘッダーを設定
+  res.setHeader('Content-Type', 'application/json');
   try {
     const { username, password } = req.body;
 
@@ -69,12 +71,15 @@ router.post('/login', async (req, res) => {
 
     // 成功レスポンス
     res.json({
+      success: true,
       message: 'Login successful',
       token,
       user: {
         id: user.id,
         username: user.username,
-        role: user.role
+        displayName: user.displayName || user.username,
+        role: user.role,
+        department: user.department || 'General'
       }
     });
 

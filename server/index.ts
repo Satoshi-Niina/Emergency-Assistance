@@ -46,14 +46,7 @@ const isDevelopment = process.env.NODE_ENV !== 'production';
 
 // 開発環境用のCORS設定
 const corsOptions = {
-  origin: [
-    'http://localhost:5001',
-    'http://localhost:3001', 
-    'http://127.0.0.1:5001',
-    'http://127.0.0.1:3001',
-    /^https:\/\/.*\.replit\.dev$/,
-    /^https:\/\/.*\.replit\.dev:3001$/
-  ],
+  origin: '*',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept'],
@@ -92,6 +85,12 @@ const sessionSettings: session.SessionOptions = {
 };
 
 app.use(session(sessionSettings));
+
+// APIルート用のJSON Content-Type強制設定
+app.use('/api', (req, res, next) => {
+  res.setHeader('Content-Type', 'application/json');
+  next();
+});
 
 // 開発環境用のリクエストログ
 app.use((req, res, next) => {
