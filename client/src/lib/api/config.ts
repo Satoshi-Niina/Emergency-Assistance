@@ -99,3 +99,13 @@ export const API_CONFIG = {
   timeout: 30000, // 30秒
   retryAttempts: 3,
 };
+
+// API リクエスト用のベースオプション
+export const API_REQUEST_OPTIONS = {
+  credentials: 'include' as RequestCredentials,
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'Cache-Control': 'no-cache'
+  }
+};
