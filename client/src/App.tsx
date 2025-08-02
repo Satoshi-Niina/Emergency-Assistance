@@ -1,7 +1,7 @@
 
 import { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/auth-context';
+import { AuthProvider, useAuth } from './context/auth-context';
 import { ChatProvider } from './context/chat-context';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { AdminRoute } from './components/auth/AdminRoute';
@@ -24,6 +24,32 @@ const EmergencyGuidePage = lazy(() => import('./pages/emergency-guide'));
 const UsersPage = lazy(() => import('./pages/users'));
 const NotFoundPage = lazy(() => import('./pages/not-found'));
 
+// 認証状態に基づいてルートパスを制御するコンポーネント
+function RootRedirect() {
+  console.log('🔍 RootRedirect - コンポーネント実行開始');
+  const { user, isLoading } = useAuth();
+  
+  console.log('🔍 RootRedirect - 認証状態確認:', {
+    isLoading,
+    hasUser: !!user,
+    username: user?.username
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">認証状態を確認中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 認証済みの場合はチャット画面に、未認証の場合はログイン画面にリダイレクト
+  return <Navigate to={user ? "/chat" : "/login"} replace />;
+}
+
 function App() {
   console.log('🔧 App.tsx: アプリケーション初期化開始');
   console.log('🔧 App.tsx: 環境変数確認:', {
@@ -31,6 +57,8 @@ function App() {
     NODE_ENV: import.meta.env.NODE_ENV,
     timestamp: new Date().toISOString()
   });
+  
+  console.log('🔧 App.tsx: コンポーネントレンダリング開始');
   
   return (
     <ErrorBoundary>
@@ -50,7 +78,7 @@ function App() {
                   </div>
                 }>
                   <Routes>
-                    <Route path="/" element={<Navigate to="/chat" replace />} />
+                    <Route path="/" element={<RootRedirect />} />
                     <Route path="/login" element={<LoginPage />} />
                     
                     {/* 認証が必要なルート */}
