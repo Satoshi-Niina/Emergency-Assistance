@@ -65,7 +65,7 @@ function handleImageError(e: React.SyntheticEvent<HTMLImageElement, Event>, imag
 
   // エラー時のフォールバック処理
   try {
-    // APIベースURLを取得（フォールバック付き）
+    // API設定 - VITE_API_BASE_URLのみを使用
     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
     // 1. ファイル名のみで再試行
@@ -89,6 +89,7 @@ function handleImageError(e: React.SyntheticEvent<HTMLImageElement, Event>, imag
 
 // 画像URLを正しく構築する関数
 function buildImageUrl(imageUrl: string): string {
+  // API設定 - VITE_API_BASE_URLのみを使用
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
   // 既に完全なURLの場合はそのまま返す

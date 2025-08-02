@@ -10,6 +10,7 @@ import KeywordButtons from "../components/troubleshooting/keyword-buttons";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../components/ui/alert-dialog";
 import { RotateCcw, Download, Upload, FileText, BookOpen, Activity, ArrowLeft, X, Search, Send, Camera, Trash2 } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
@@ -36,13 +37,201 @@ export default function ChatPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoadingGuides, setIsLoadingGuides] = useState(false);
 
+  // 追加: Q&A形式のチャット状態管理
+  const [qaMode, setQaMode] = useState(false);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [qaAnswers, setQaAnswers] = useState<string[]>([]);
+  const [qaCompleted, setQaCompleted] = useState(false);
+  
+  // 追加: 機種と機械番号のオートコンプリート状態管理
+  const [machineTypes, setMachineTypes] = useState<Array<{id: string, machine_type_name: string}>>([]);
+  const [machines, setMachines] = useState<Array<{id: string, machine_number: string}>>([]);
+  const [selectedMachineType, setSelectedMachineType] = useState<string>('');
+  const [selectedMachineNumber, setSelectedMachineNumber] = useState<string>('');
+  const [isLoadingMachineTypes, setIsLoadingMachineTypes] = useState(false);
+  const [isLoadingMachines, setIsLoadingMachines] = useState(false);
+  
+  // オートコンプリート用の状態
+  const [machineTypeInput, setMachineTypeInput] = useState('');
+  const [machineNumberInput, setMachineNumberInput] = useState('');
+  const [showMachineTypeSuggestions, setShowMachineTypeSuggestions] = useState(false);
+  const [showMachineNumberSuggestions, setShowMachineNumberSuggestions] = useState(false);
+  const [filteredMachineTypes, setFilteredMachineTypes] = useState<Array<{id: string, machine_type_name: string}>>([]);
+  const [filteredMachines, setFilteredMachines] = useState<Array<{id: string, machine_number: string}>>([]);
+  
+  const qaQuestions = [
+    "発生した状況は？",
+    "どこか想定される？",
+    "どのような処置しましたか？"
+  ];
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // 追加: 機種一覧を取得する関数
+  const fetchMachineTypes = async () => {
+    try {
+      setIsLoadingMachineTypes(true);
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/machine-types`);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setMachineTypes(result.data);
+        }
+      } else {
+        console.warn('機種一覧取得失敗:', response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error('機種一覧取得エラー:', error);
+      // エラーが発生してもチャット画面は表示されるようにする
+    } finally {
+      setIsLoadingMachineTypes(false);
+    }
+  };
+
+  // 機種入力のフィルタリング
+  const filterMachineTypes = (input: string) => {
+    if (!input.trim()) {
+      setFilteredMachineTypes([]);
+      return;
+    }
+    
+    const filtered = machineTypes.filter(type => 
+      type.machine_type_name.toLowerCase().includes(input.toLowerCase())
+    );
+    setFilteredMachineTypes(filtered);
+  };
+
+  // 機械番号入力のフィルタリング
+  const filterMachines = (input: string) => {
+    if (!input.trim()) {
+      setFilteredMachines([]);
+      return;
+    }
+    
+    const filtered = machines.filter(machine => 
+      machine.machine_number.toLowerCase().includes(input.toLowerCase())
+    );
+    setFilteredMachines(filtered);
+  };
+
+  // 機種選択処理
+  const handleMachineTypeSelect = (type: {id: string, machine_type_name: string}) => {
+    setSelectedMachineType(type.id);
+    setMachineTypeInput(type.machine_type_name);
+    setShowMachineTypeSuggestions(false);
+    setFilteredMachineTypes([]);
+    
+    // 機種変更時は機械番号をリセット
+    setSelectedMachineNumber('');
+    setMachineNumberInput('');
+    setFilteredMachines([]);
+    
+    // 対応する機械番号を取得
+    fetchMachines(type.id);
+  };
+
+  // 機械番号選択処理
+  const handleMachineNumberSelect = (machine: {id: string, machine_number: string}) => {
+    setSelectedMachineNumber(machine.id);
+    setMachineNumberInput(machine.machine_number);
+    setShowMachineNumberSuggestions(false);
+    setFilteredMachines([]);
+  };
+
+  // 追加: 指定機種に紐づく機械番号一覧を取得する関数
+  const fetchMachines = async (typeId: string) => {
+    try {
+      setIsLoadingMachines(true);
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/machines?type_id=${typeId}`);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setMachines(result.data);
+        }
+      } else {
+        console.warn('機械番号一覧取得失敗:', response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error('機械番号一覧取得エラー:', error);
+      // エラーが発生してもチャット画面は表示されるようにする
+    } finally {
+      setIsLoadingMachines(false);
+    }
+  };
+
+  // 追加: 機種選択時の処理（オートコンプリート用）
+  const handleMachineTypeChange = (typeId: string) => {
+    setSelectedMachineType(typeId);
+    setSelectedMachineNumber(''); // 機種変更時は機械番号をリセット
+    setMachineNumberInput(''); // 機械番号入力もリセット
+    
+    if (typeId) {
+      fetchMachines(typeId);
+    } else {
+      setMachines([]);
+    }
   };
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // 追加: コンポーネントマウント時に機種一覧を取得
+  useEffect(() => {
+    // 機種一覧の取得に失敗してもチャット画面は表示されるようにする
+    fetchMachineTypes().catch(error => {
+      console.error('機種一覧取得でエラーが発生しましたが、チャット画面は表示されます:', error);
+    });
+  }, []);
+
+  // 追加: Q&Aモードの初期化
+  useEffect(() => {
+    if (qaMode && currentQuestionIndex === 0 && qaAnswers.length === 0) {
+      // 最初の質問を表示（右側に表示するためisAiResponse=false）
+      sendMessage(qaQuestions[0], false);
+    }
+  }, [qaMode, currentQuestionIndex, qaAnswers.length]);
+
+  // 追加: Q&A回答処理
+  const handleQaAnswer = (answer: string) => {
+    const newAnswers = [...qaAnswers, answer];
+    setQaAnswers(newAnswers);
+    
+    // 回答をチャットに追加（左側に表示）
+    sendMessage(answer, true);
+    
+    // 次の質問があるかチェック
+    if (currentQuestionIndex < qaQuestions.length - 1) {
+      const nextIndex = currentQuestionIndex + 1;
+      setCurrentQuestionIndex(nextIndex);
+      
+      // 次の質問を表示（右側に表示するためisAiResponse=false）
+      setTimeout(() => {
+        sendMessage(qaQuestions[nextIndex], false);
+      }, 500);
+    } else {
+      // 質問終了
+      setQaCompleted(true);
+      setTimeout(() => {
+        sendMessage("入力ありがとうございました。応急処置情報を記録しました。", false);
+        setQaMode(false);
+        setCurrentQuestionIndex(0);
+        setQaAnswers([]);
+        setQaCompleted(false);
+      }, 1000);
+    }
+  };
+
+  // 追加: Q&Aモード開始
+  const startQaMode = () => {
+    setQaMode(true);
+    setCurrentQuestionIndex(0);
+    setQaAnswers([]);
+    setQaCompleted(false);
+    // clearChatHistory(); // Q&Aモード開始時にチャット履歴をクリアしない
+  };
 
   const handleExport = async () => {
     try {
@@ -115,6 +304,12 @@ export default function ChatPage() {
 
         // 送信完了後にチャットをクリア
         await clearChatHistory();
+        
+        // Q&Aモードの状態もリセット
+        setQaMode(false);
+        setCurrentQuestionIndex(0);
+        setQaAnswers([]);
+        setQaCompleted(false);
 
         toast({
           title: "チャットクリア完了",
@@ -283,8 +478,112 @@ export default function ChatPage() {
       {/* ヘッダーエリア - 固定表示 */}
       <div className="bg-white shadow-sm border-b p-3 flex-shrink-0 sticky top-0 z-10">
         <div className="flex justify-between items-center w-full">
-          {/* 左側のスペース */}
-          <div className="flex-1"></div>
+          {/* 左側: 機種と機械番号のオートコンプリート */}
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 relative">
+              <label className="text-xs text-gray-600 font-medium">機種:</label>
+              {isLoadingMachineTypes ? (
+                <div className="w-48 h-10 text-sm border border-gray-300 rounded-md flex items-center justify-center bg-gray-50">
+                  読み込み中...
+                </div>
+              ) : (
+                <div className="relative">
+                  <Input
+                    type="text"
+                    placeholder="機種を入力"
+                    value={machineTypeInput}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setMachineTypeInput(value);
+                      filterMachineTypes(value);
+                      setShowMachineTypeSuggestions(true);
+                      if (!value.trim()) {
+                        setSelectedMachineType('');
+                        setShowMachineTypeSuggestions(false);
+                      }
+                    }}
+                    onFocus={() => {
+                      if (machineTypeInput.trim()) {
+                        setShowMachineTypeSuggestions(true);
+                      }
+                    }}
+                    onBlur={() => {
+                      // 少し遅延させてクリックイベントを処理
+                      setTimeout(() => setShowMachineTypeSuggestions(false), 200);
+                    }}
+                    className="w-48 h-10 text-sm border-gray-300"
+                  />
+                  {showMachineTypeSuggestions && filteredMachineTypes.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-40 overflow-y-auto">
+                      {filteredMachineTypes.map((type) => (
+                        <div
+                          key={type.id}
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                          onClick={() => handleMachineTypeSelect(type)}
+                        >
+                          {type.machine_type_name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            <div className="flex items-center space-x-2 relative">
+              <label className="text-xs text-gray-600 font-medium">機械番号:</label>
+              {!selectedMachineType ? (
+                <div className="w-48 h-10 text-sm border border-gray-300 rounded-md flex items-center justify-center bg-gray-50">
+                  機種を先に選択
+                </div>
+              ) : isLoadingMachines ? (
+                <div className="w-48 h-10 text-sm border border-gray-300 rounded-md flex items-center justify-center bg-gray-50">
+                  読み込み中...
+                </div>
+              ) : (
+                <div className="relative">
+                  <Input
+                    type="text"
+                    placeholder="機械番号を入力"
+                    value={machineNumberInput}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setMachineNumberInput(value);
+                      filterMachines(value);
+                      setShowMachineNumberSuggestions(true);
+                      if (!value.trim()) {
+                        setSelectedMachineNumber('');
+                        setShowMachineNumberSuggestions(false);
+                      }
+                    }}
+                    onFocus={() => {
+                      if (machineNumberInput.trim()) {
+                        setShowMachineNumberSuggestions(true);
+                      }
+                    }}
+                    onBlur={() => {
+                      // 少し遅延させてクリックイベントを処理
+                      setTimeout(() => setShowMachineNumberSuggestions(false), 200);
+                    }}
+                    className="w-48 h-10 text-sm border-gray-300"
+                  />
+                  {showMachineNumberSuggestions && filteredMachines.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-40 overflow-y-auto">
+                      {filteredMachines.map((machine) => (
+                        <div
+                          key={machine.id}
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                          onClick={() => handleMachineNumberSelect(machine)}
+                        >
+                          {machine.machine_number}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* 中央のボタングループ */}
           <div className="flex items-center gap-4">
@@ -306,10 +605,21 @@ export default function ChatPage() {
               <Camera className="h-6 w-6" />
               カメラ
             </Button>
+
+            {/* 追加: Q&Aモード開始ボタン */}
+            <Button 
+              onClick={startQaMode}
+              className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-2 px-6 py-3 font-bold text-lg shadow-lg"
+              size="lg"
+              disabled={qaMode}
+            >
+              <FileText className="h-6 w-6" />
+              Q&A 開始
+            </Button>
           </div>
 
           {/* 右側のボタングループ */}
-          <div className="flex-1 flex justify-end gap-2">
+          <div className="flex justify-end gap-2">
             {/* クリアボタン */}
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -332,7 +642,14 @@ export default function ChatPage() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>戻る</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => clearChatHistory()}>
+                  <AlertDialogAction onClick={() => {
+                    clearChatHistory();
+                    // Q&Aモードの状態もリセット
+                    setQaMode(false);
+                    setCurrentQuestionIndex(0);
+                    setQaAnswers([]);
+                    setQaCompleted(false);
+                  }}>
                     OK
                   </AlertDialogAction>
                 </AlertDialogFooter>
@@ -407,7 +724,42 @@ export default function ChatPage() {
                    4px 4px 12px rgba(0, 0, 0, 0.15)
                  `
                }}>
-            <MessageInput sendMessage={sendMessage} isLoading={isLoading} />
+            {qaMode && !qaCompleted ? (
+              // 追加: Q&Aモード用の入力エリア
+              <div className="p-4">
+                <div className="mb-2 text-sm text-gray-600">
+                  質問 {currentQuestionIndex + 1}/{qaQuestions.length}: {qaQuestions[currentQuestionIndex]}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    placeholder="回答を入力してください..."
+                    className="flex-1"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                        handleQaAnswer(e.currentTarget.value.trim());
+                        e.currentTarget.value = '';
+                      }
+                    }}
+                  />
+                  <Button
+                    onClick={(e) => {
+                      const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                      if (input.value.trim()) {
+                        handleQaAnswer(input.value.trim());
+                        input.value = '';
+                      }
+                    }}
+                    disabled={isLoading}
+                    className="bg-blue-500 hover:bg-blue-600"
+                  >
+                    回答
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <MessageInput sendMessage={sendMessage} isLoading={isLoading} />
+            )}
           </div>
         </div>
       </div>

@@ -1,318 +1,385 @@
 
 import express from 'express';
-import { db } from '../db/schema.js';
-import { historyItems, historyImages } from '../db/schema.js';
-import { eq, like, and, gte, desc } from 'drizzle-orm';
+import { createObjectCsvWriter } from 'csv-writer';
+import { HistoryService } from '../services/historyService';
 import { z } from 'zod';
+import { db } from '../db/index.js';
+import { historyItems } from '../db/schema.js';
 
 const router = express.Router();
 
-// 履歴検索用スキーマ
-const historyQuerySchema = z.object({
-  query: z.string().optional(),
-  machineModel: z.string().optional(),
-  office: z.string().optional(),
-  category: z.string().optional(),
-  dateFrom: z.string().optional(),
-  dateTo: z.string().optional(),
-  limit: z.coerce.number().min(1).max(100).default(50),
-  offset: z.coerce.number().min(0).default(0)
+// バリデーションスキーマ
+const saveHistorySchema = z.object({
+  sessionId: z.string().uuid('セッションIDはUUID形式である必要があります'),
+  question: z.string().min(1, '質問は必須です'),
+  answer: z.string().optional(),
+  imageBase64: z.string().optional(),
+  machineType: z.string().optional(),
+  machineNumber: z.string().optional(),
+  metadata: z.any().optional()
 });
 
-// 履歴一覧取得
-router.get('/list', async (req, res) => {
+const createSessionSchema = z.object({
+  title: z.string().optional(),
+  machineType: z.string().optional(),
+  machineNumber: z.string().optional(),
+  metadata: z.any().optional()
+});
+
+/**
+ * GET /api/history
+ * 最新10件の履歴を取得
+ */
+router.get('/', async (req, res) => {
   try {
-    const query = historyQuerySchema.parse(req.query);
-    
-    // 基本クエリ構築
-    let whereConditions = [];
-    
-    // テキスト検索
-    if (query.query) {
-      whereConditions.push(
-        // TODO: 実際のデータベースに応じて検索条件を調整
-        // or(
-        //   like(historyItems.title, `%${query.query}%`),
-        //   like(historyItems.description, `%${query.query}%`),
-        //   like(historyItems.machineModel, `%${query.query}%`),
-        //   like(historyItems.office, `%${query.query}%`),
-        //   like(historyItems.emergencyGuideContent, `%${query.query}%`)
-        // )
-      );
-    }
-    
-    // 機種フィルタ
-    if (query.machineModel) {
-      whereConditions.push(eq(historyItems.machineModel, query.machineModel));
-    }
-    
-    // 事業所フィルタ
-    if (query.office) {
-      whereConditions.push(eq(historyItems.office, query.office));
-    }
-    
-    // カテゴリフィルタ
-    if (query.category) {
-      whereConditions.push(eq(historyItems.category, query.category));
-    }
-    
-    // 日付範囲フィルタ
-    if (query.dateFrom) {
-      whereConditions.push(gte(historyItems.createdAt, new Date(query.dateFrom)));
-    }
-    
-    if (query.dateTo) {
-      whereConditions.push(gte(new Date(query.dateTo), historyItems.createdAt));
-    }
-    
-    // TODO: 実際のデータベース操作
-    // const results = await db
-    //   .select({
-    //     id: historyItems.id,
-    //     chatId: historyItems.chatId,
-    //     title: historyItems.title,
-    //     description: historyItems.description,
-    //     machineModel: historyItems.machineModel,
-    //     office: historyItems.office,
-    //     category: historyItems.category,
-    //     emergencyGuideTitle: historyItems.emergencyGuideTitle,
-    //     emergencyGuideContent: historyItems.emergencyGuideContent,
-    //     keywords: historyItems.keywords,
-    //     createdAt: historyItems.createdAt,
-    //     updatedAt: historyItems.updatedAt
-    //   })
-    //   .from(historyItems)
-    //   .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
-    //   .orderBy(desc(historyItems.createdAt))
-    //   .limit(query.limit)
-    //   .offset(query.offset);
+    console.log('📋 履歴一覧取得リクエスト');
 
-    // 仮のレスポンス（後で実際のデータベース操作に置き換え）
-    const mockResults = [
-      {
-        id: '1',
-        chatId: 'chat-001',
-        title: 'エンジン停止トラブル',
-        description: '走行中に突然エンジンが停止した',
-        machineModel: 'MT-100',
-        office: '東京事業所',
-        category: 'エンジン',
-        emergencyGuideTitle: 'エンジン停止対応',
-        emergencyGuideContent: '燃料カットレバーの確認を行う',
-        keywords: ['エンジン停止', '燃料カット', 'MT-100'],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }
-    ];
+    // Content-Typeを明示的に設定
+    res.setHeader('Content-Type', 'application/json');
 
-    // 各履歴項目に関連する画像を取得
-    // TODO: 実際の画像取得処理
-    const resultsWithImages = await Promise.all(
-      mockResults.map(async (item) => {
-        // const images = await db
-        //   .select()
-        //   .from(historyImages)
-        //   .where(eq(historyImages.historyItemId, item.id));
-        
-        const mockImages = [
-          {
-            id: 'img1',
-            url: '/knowledge-base/images/emergency-flow-step1.jpg',
-            description: 'エンジンルーム'
-          }
-        ];
-        
-        return {
-          ...item,
-          images: mockImages
-        };
-      })
-    );
+    // Drizzle ORMを使用して最新10件の履歴を取得
+    const result = await db.select({
+      id: historyItems.id,
+      chat_id: historyItems.chatId,
+      title: historyItems.title,
+      description: historyItems.description,
+      machine_model: historyItems.machineModel,
+      office: historyItems.office,
+      category: historyItems.category,
+      emergency_guide_title: historyItems.emergencyGuideTitle,
+      emergency_guide_content: historyItems.emergencyGuideContent,
+      keywords: historyItems.keywords,
+      metadata: historyItems.metadata,
+      created_at: historyItems.createdAt,
+      updated_at: historyItems.updatedAt
+    }).from(historyItems)
+    .orderBy(historyItems.createdAt)
+    .limit(10);
+
+    console.log(`✅ 履歴一覧取得完了: ${result.length}件`);
 
     res.json({
-      items: resultsWithImages,
-      total: resultsWithImages.length,
-      hasMore: false
+      success: true,
+      data: result,
+      total: result.length,
+      timestamp: new Date().toISOString()
     });
 
   } catch (error) {
-    console.error('履歴取得エラー:', error);
-    res.status(500).json({ error: '履歴の取得に失敗しました' });
+    console.error('❌ 履歴一覧取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '履歴一覧の取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
-// 履歴詳細取得
-router.get('/item/:id', async (req, res) => {
+/**
+ * POST /api/history/save
+ * チャット履歴を保存
+ */
+router.post('/save', async (req, res) => {
   try {
-    const { id } = req.params;
-    
-    // TODO: 実際のデータベース操作
-    // const historyItem = await db
-    //   .select()
-    //   .from(historyItems)
-    //   .where(eq(historyItems.id, id))
-    //   .limit(1);
-    
-    // if (historyItem.length === 0) {
-    //   return res.status(404).json({ error: '履歴が見つかりません' });
-    // }
-    
-    // const images = await db
-    //   .select()
-    //   .from(historyImages)
-    //   .where(eq(historyImages.historyItemId, id));
+    console.log('📋 履歴保存リクエスト:', req.body);
 
-    // 仮のレスポンス
-    const mockItem = {
-      id: id,
-      chatId: 'chat-001',
-      title: 'エンジン停止トラブル',
-      description: '走行中に突然エンジンが停止した',
-      machineModel: 'MT-100',
-      office: '東京事業所',
-      category: 'エンジン',
-      emergencyGuideTitle: 'エンジン停止対応',
-      emergencyGuideContent: '燃料カットレバーの確認を行う',
-      keywords: ['エンジン停止', '燃料カット', 'MT-100'],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      images: [
-        {
-          id: 'img1',
-          url: '/knowledge-base/images/emergency-flow-step1.jpg',
-          description: 'エンジンルーム'
-        }
-      ]
-    };
+    // バリデーション
+    const validationResult = saveHistorySchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({
+        error: 'バリデーションエラー',
+        details: validationResult.error.errors
+      });
+    }
 
-    res.json(mockItem);
+    const data = validationResult.data;
 
-  } catch (error) {
-    console.error('履歴詳細取得エラー:', error);
-    res.status(500).json({ error: '履歴詳細の取得に失敗しました' });
-  }
-});
+    // 履歴を保存
+    const history = await HistoryService.createHistory(data);
 
-// 履歴項目の作成（チャットから呼び出される）
-router.post('/create', async (req, res) => {
-  try {
-    const createSchema = z.object({
-      chatId: z.string(),
-      title: z.string(),
-      description: z.string(),
-      machineModel: z.string().optional(),
-      office: z.string().optional(),
-      category: z.string().optional(),
-      emergencyGuideTitle: z.string().optional(),
-      emergencyGuideContent: z.string().optional(),
-      keywords: z.array(z.string()).optional(),
-      images: z.array(z.object({
-        url: z.string(),
-        description: z.string().optional()
-      })).optional()
+    res.json({
+      success: true,
+      message: '履歴を保存しました',
+      data: history
     });
 
-    const data = createSchema.parse(req.body);
-
-    // TODO: 実際のデータベース操作
-    // const newHistoryItem = await db
-    //   .insert(historyItems)
-    //   .values({
-    //     chatId: data.chatId,
-    //     title: data.title,
-    //     description: data.description,
-    //     machineModel: data.machineModel,
-    //     office: data.office,
-    //     category: data.category,
-    //     emergencyGuideTitle: data.emergencyGuideTitle,
-    //     emergencyGuideContent: data.emergencyGuideContent,
-    //     keywords: data.keywords,
-    //   })
-    //   .returning();
-
-    // if (data.images && data.images.length > 0) {
-    //   await db
-    //     .insert(historyImages)
-    //     .values(
-    //       data.images.map(image => ({
-    //         historyItemId: newHistoryItem[0].id,
-    //         url: image.url,
-    //         description: image.description
-    //       }))
-    //     );
-    // }
-
-    // 仮のレスポンス
-    const mockResponse = {
-      id: 'new-history-id',
-      ...data,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    res.status(201).json(mockResponse);
-
   } catch (error) {
-    console.error('履歴作成エラー:', error);
-    res.status(500).json({ error: '履歴の作成に失敗しました' });
+    console.error('❌ 履歴保存エラー:', error);
+    res.status(500).json({
+      error: '履歴保存に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 
-// 統計情報取得
-router.get('/stats', async (req, res) => {
+/**
+ * POST /api/history/session
+ * 新しいセッションを作成
+ */
+router.post('/session', async (req, res) => {
   try {
-    // TODO: 実際の統計情報取得
-    // const totalCount = await db
-    //   .select({ count: count() })
-    //   .from(historyItems);
+    console.log('📋 セッション作成リクエスト:', req.body);
     
-    // const categoryStats = await db
-    //   .select({
-    //     category: historyItems.category,
-    //     count: count()
-    //   })
-    //   .from(historyItems)
-    //   .groupBy(historyItems.category);
-    
-    // const machineModelStats = await db
-    //   .select({
-    //     machineModel: historyItems.machineModel,
-    //     count: count()
-    //   })
-    //   .from(historyItems)
-    //   .groupBy(historyItems.machineModel);
+    // バリデーション
+    const validationResult = createSessionSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({
+        error: 'バリデーションエラー',
+        details: validationResult.error.errors
+      });
+    }
 
-    // 仮の統計情報
-    const mockStats = {
-      total: 150,
-      categories: [
-        { category: 'エンジン', count: 45 },
-        { category: 'ブレーキ', count: 32 },
-        { category: '電気系統', count: 28 },
-        { category: '油圧系統', count: 25 },
-        { category: 'その他', count: 20 }
-      ],
-      machineModels: [
-        { machineModel: 'MT-100', count: 40 },
-        { machineModel: 'MR-400', count: 35 },
-        { machineModel: 'TC-250', count: 30 },
-        { machineModel: 'SS-750', count: 25 },
-        { machineModel: 'その他', count: 20 }
-      ],
-      offices: [
-        { office: '東京事業所', count: 45 },
-        { office: '大阪事業所', count: 35 },
-        { office: '名古屋事業所', count: 30 },
-        { office: '福岡事業所', count: 25 },
-        { office: 'その他', count: 15 }
-      ]
-    };
+    const data = validationResult.data;
 
-    res.json(mockStats);
+    // セッションを作成
+    const session = await HistoryService.createSession(data);
+
+    res.json({
+      success: true,
+      message: 'セッションを作成しました',
+      data: session
+    });
 
   } catch (error) {
-    console.error('統計情報取得エラー:', error);
-    res.status(500).json({ error: '統計情報の取得に失敗しました' });
+    console.error('❌ セッション作成エラー:', error);
+    res.status(500).json({
+      error: 'セッション作成に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/history/list
+ * セッション一覧を取得
+ */
+router.get('/list', async (req, res) => {
+  try {
+    console.log('📋 セッション一覧取得リクエスト');
+
+    const { machineType, machineNumber, status, limit, offset } = req.query;
+
+    const params = {
+      machineType: machineType as string,
+      machineNumber: machineNumber as string,
+      status: status as 'active' | 'completed' | 'archived',
+      limit: limit ? parseInt(limit as string) : 20,
+      offset: offset ? parseInt(offset as string) : 0
+    };
+
+    const result = await HistoryService.getSessionList(params);
+
+    res.json({
+      success: true,
+      data: result
+    });
+
+  } catch (error) {
+    console.error('❌ セッション一覧取得エラー:', error);
+    res.status(500).json({
+      error: 'セッション一覧取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/history/view/:sessionId
+ * セッション詳細と履歴を取得
+ */
+router.get('/view/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    console.log(`📋 セッション詳細取得リクエスト: ${sessionId}`);
+
+    // セッション詳細を取得
+    const session = await HistoryService.getSessionById(sessionId);
+    if (!session) {
+      return res.status(404).json({
+        error: 'セッションが見つかりません'
+      });
+    }
+
+    // セッション履歴を取得
+    const history = await HistoryService.getSessionHistory(sessionId);
+
+    res.json({
+      success: true,
+      data: {
+        session,
+        history
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ セッション詳細取得エラー:', error);
+    res.status(500).json({
+      error: 'セッション詳細取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/history/export/:sessionId
+ * セッション履歴をCSVでエクスポート
+ */
+router.get('/export/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    console.log(`📋 CSVエクスポートリクエスト: ${sessionId}`);
+
+    // エクスポートデータを取得
+    const exportData = await HistoryService.getExportData(sessionId);
+    if (!exportData) {
+      return res.status(404).json({
+        error: 'セッションが見つかりません'
+      });
+    }
+
+    const { session, history } = exportData;
+
+    // CSVデータを生成
+    const csvData = history.map((item, index) => ({
+      'No.': index + 1,
+      '質問': item.question,
+      '回答': item.answer || '',
+      '画像URL': item.imageUrl || '',
+      '機種': item.machineType || session.machineType || '',
+      '機械番号': item.machineNumber || session.machineNumber || '',
+      '作成日時': new Date(item.createdAt).toLocaleString('ja-JP')
+    }));
+
+    // CSVヘッダーを追加
+    const csvContent = [
+      // セッション情報
+      `セッションID,${session.id}`,
+      `タイトル,${session.title || ''}`,
+      `機種,${session.machineType || ''}`,
+      `機械番号,${session.machineNumber || ''}`,
+      `ステータス,${session.status}`,
+      `作成日時,${new Date(session.createdAt).toLocaleString('ja-JP')}`,
+      `更新日時,${new Date(session.updatedAt).toLocaleString('ja-JP')}`,
+      '', // 空行
+      // 履歴データ
+      'No.,質問,回答,画像URL,機種,機械番号,作成日時',
+      ...csvData.map(row => 
+        `${row['No.']},"${row['質問']}","${row['回答']}","${row['画像URL']}","${row['機種']}","${row['機械番号']}","${row['作成日時']}"`
+      )
+    ].join('\n');
+
+    // レスポンスヘッダーを設定
+    const filename = `emergency_assistance_${sessionId}_${new Date().toISOString().slice(0, 10)}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    // CSVデータを送信
+    res.send(csvContent);
+
+  } catch (error) {
+    console.error('❌ CSVエクスポートエラー:', error);
+    res.status(500).json({
+      error: 'CSVエクスポートに失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * DELETE /api/history/:sessionId
+ * セッションを削除
+ */
+router.delete('/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    console.log(`📋 セッション削除リクエスト: ${sessionId}`);
+
+    const success = await HistoryService.deleteSession(sessionId);
+    if (!success) {
+      return res.status(404).json({
+        error: 'セッションが見つかりません'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'セッションを削除しました'
+    });
+
+  } catch (error) {
+    console.error('❌ セッション削除エラー:', error);
+    res.status(500).json({
+      error: 'セッション削除に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * PUT /api/history/:sessionId
+ * セッションを更新
+ */
+router.put('/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    console.log(`📋 セッション更新リクエスト: ${sessionId}`, req.body);
+
+    // バリデーション
+    const validationResult = createSessionSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({
+        error: 'バリデーションエラー',
+        details: validationResult.error.errors
+      });
+    }
+
+    const data = validationResult.data;
+
+    // セッションを更新
+    const session = await HistoryService.updateSession(sessionId, data);
+    if (!session) {
+      return res.status(404).json({
+        error: 'セッションが見つかりません'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'セッションを更新しました',
+      data: session
+    });
+
+  } catch (error) {
+    console.error('❌ セッション更新エラー:', error);
+    res.status(500).json({
+      error: 'セッション更新に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/history/statistics
+ * 統計情報を取得
+ */
+router.get('/statistics', async (req, res) => {
+  try {
+    console.log('📋 統計情報取得リクエスト');
+
+    const statistics = await HistoryService.getStatistics();
+
+    res.json({
+      success: true,
+      data: statistics
+    });
+
+  } catch (error) {
+    console.error('❌ 統計情報取得エラー:', error);
+    res.status(500).json({
+      error: '統計情報取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 

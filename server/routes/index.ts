@@ -1,13 +1,19 @@
-import emergencyFlowRoutes from "./emergency-flow.js";
-import { registerChatRoutes } from "./chat.js";
-import { techSupportRouter } from "./tech-support.js";
-import troubleshootingRouter from "./troubleshooting.js";
-import { usersRouter } from "./users.js";
-import { registerKnowledgeBaseRoutes } from "./knowledge-base.js";
-import { registerSyncRoutes } from "./sync-routes.js";
-import { registerDataProcessorRoutes } from "./data-processor.js";
-import flowGeneratorRoutes from "./flow-generator.js";
-import { registerSearchRoutes } from "./search.js";
+import emergencyFlowRoutes from "./emergency-flow";
+import { registerChatRoutes } from "./chat";
+import { techSupportRouter } from "./tech-support";
+import troubleshootingRouter from "./troubleshooting";
+import { usersRouter } from "./users";
+import { registerKnowledgeBaseRoutes } from "./knowledge-base";
+import { registerSyncRoutes } from "./sync-routes";
+import { registerDataProcessorRoutes } from "./data-processor";
+import flowGeneratorRoutes from "./flow-generator";
+import { registerSearchRoutes } from "./search";
+import authRouter from "./auth";
+import machinesRouter from "./machines";
+import imageStorageRouter from "./image-storage";
+import systemCheckRouter from "./system-check";
+import { flowsRouter } from "./flows";
+import filesRouter from "./files";
 
 export function registerRoutes(app: any) {
   // Health check
@@ -16,6 +22,7 @@ export function registerRoutes(app: any) {
   });
 
   // API routes
+  app.use('/api/auth', authRouter);
   registerChatRoutes(app);
   app.use('/api/emergency-flow', emergencyFlowRoutes);
   app.use('/api/tech-support', techSupportRouter);
@@ -28,4 +35,9 @@ export function registerRoutes(app: any) {
   registerDataProcessorRoutes(app);
   app.use('/api/flow-generator', flowGeneratorRoutes);
   registerSearchRoutes(app);
+  app.use('/api', machinesRouter);
+  app.use('/api/images', imageStorageRouter);
+  app.use('/api', systemCheckRouter);
+  app.use('/api/flows', flowsRouter);
+  app.use('/api/files', filesRouter);
 }

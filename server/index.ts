@@ -13,9 +13,46 @@ import dotenv from 'dotenv';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 開発環境用の.envファイルを優先的に読み込み
-dotenv.config({ path: path.resolve(process.cwd(), '.env.development.local') });
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+// 環境変数の読み込み設定
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const isProduction = NODE_ENV === 'production';
+
+console.log('🔧 環境変数読み込み開始:', {
+  NODE_ENV,
+  isProduction,
+  cwd: process.cwd(),
+  __dirname
+});
+
+// 環境変数ファイルの読み込み（優先順位順）
+const envPaths = [
+  // 1. ルートディレクトリの環境別ファイル
+  path.resolve(process.cwd(), `.env.${NODE_ENV}.local`),
+  path.resolve(process.cwd(), `.env.${NODE_ENV}`),
+  // 2. ルートディレクトリの.env
+  path.resolve(process.cwd(), '.env'),
+  // 3. サーバーディレクトリの環境別ファイル
+  path.resolve(__dirname, `.env.${NODE_ENV}.local`),
+  path.resolve(__dirname, `.env.${NODE_ENV}`),
+  // 4. サーバーディレクトリの.env
+  path.resolve(__dirname, '.env'),
+];
+
+// 各パスで.envファイルを読み込み
+let loadedEnvFile = null;
+for (const envPath of envPaths) {
+  const result = dotenv.config({ path: envPath });
+  if (result.parsed && Object.keys(result.parsed).length > 0) {
+    loadedEnvFile = envPath;
+    console.log('✅ 環境変数ファイル読み込み成功:', envPath);
+    break;
+  }
+}
+
+if (!loadedEnvFile) {
+  console.log('⚠️ 環境変数ファイルが見つかりません。デフォルト値を使用します。');
+  console.log('🔍 試行したパス:', envPaths);
+}
 
 // 開発環境用のデフォルト環境変数設定
 if (!process.env.JWT_SECRET) {
@@ -28,15 +65,25 @@ if (!process.env.SESSION_SECRET) {
   console.log('[DEV] SESSION_SECRET not set, using development default');
 }
 
-// 環境変数の読み込み確認
+// 重要な環境変数の確認
 console.log("[DEV] Development environment variables loaded:", {
   NODE_ENV: process.env.NODE_ENV,
   PORT: process.env.PORT,
+  DATABASE_URL: process.env.DATABASE_URL ? "SET" : "NOT SET",
   JWT_SECRET: process.env.JWT_SECRET ? "SET" : "NOT SET",
   SESSION_SECRET: process.env.SESSION_SECRET ? "SET" : "NOT SET",
+  loadedEnvFile,
   PWD: process.cwd(),
   __dirname: __dirname
 });
+
+// DATABASE_URLが設定されていない場合はエラーで停止
+if (!process.env.DATABASE_URL) {
+  console.error('❌ 致命的エラー: DATABASE_URLが設定されていません');
+  console.error('🔧 解決方法: .envファイルを作成し、DATABASE_URLを設定してください');
+  console.error('📝 例: DATABASE_URL=postgresql://postgres:password@localhost:5432/emergency_assistance');
+  process.exit(1);
+}
 
 console.log("[DEV] Development server starting...");
 
@@ -75,7 +122,7 @@ import session from 'express-session';
 const sessionSettings: session.SessionOptions = {
   secret: process.env.SESSION_SECRET || "dev-local-secret",
   resave: true,
-  saveUninitialized: true,
+  saveUninitialized: false, // 認証済みユーザーのみセッションを保存
   cookie: { 
     secure: false, // 開発環境ではHTTPS不要
     httpOnly: true,
@@ -84,6 +131,13 @@ const sessionSettings: session.SessionOptions = {
   },
   name: 'emergency-dev-session'
 };
+
+console.log('🔧 セッション設定:', {
+  secret: sessionSettings.secret ? '[SET]' : '[NOT SET]',
+  resave: sessionSettings.resave,
+  saveUninitialized: sessionSettings.saveUninitialized,
+  cookie: sessionSettings.cookie
+});
 
 app.use(session(sessionSettings));
 
@@ -105,24 +159,8 @@ app.use((req, res, next) => {
 import authRoutes from './routes/auth.js';
 app.use('/api/auth', authRoutes);
 
-// 開発環境用のヘルスチェック
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    environment: 'development',
-    timestamp: new Date().toISOString(),
-    port: PORT,
-    processId: process.pid,
-    version: '1.0.0-dev'
-  });
-});
-
-// その他のルートの読み込み
-import { registerRoutes } from './routes/index.js';
-registerRoutes(app);
-
-// 全てのAPIエンドポイントにJSON Content-Typeを強制
-app.use('/api/*', (req, res, next) => {
+// 全てのAPIエンドポイントにJSON Content-Typeを強制（ルート登録前に設定）
+app.use('/api', (req, res, next) => {
   // HTMLレスポンスを防ぐために、明示的にJSONを設定
   if (!res.headersSent) {
     res.setHeader('Content-Type', 'application/json');
@@ -130,27 +168,88 @@ app.use('/api/*', (req, res, next) => {
   next();
 });
 
+// デバッグ用エンドポイント
+app.get('/api/debug/env', (req, res) => {
+  console.log('🔍 デバッグエンドポイント呼び出し: /api/debug/env');
+  res.json({
+    success: true,
+    data: {
+      NODE_ENV: process.env.NODE_ENV,
+      PORT: process.env.PORT,
+      DATABASE_URL: process.env.DATABASE_URL ? '[SET]' : '[NOT SET]',
+      SESSION_SECRET: process.env.SESSION_SECRET ? '[SET]' : '[NOT SET]',
+      JWT_SECRET: process.env.JWT_SECRET ? '[SET]' : '[NOT SET]',
+      loadedEnvFile,
+      timestamp: new Date().toISOString()
+    }
+  });
+});
+
+// ヘルスチェックエンドポイント
+app.get('/api/health', (req, res) => {
+  console.log('🔍 ヘルスチェック呼び出し: /api/health');
+  res.json({
+    success: true,
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    database: process.env.DATABASE_URL ? 'configured' : 'not configured'
+  });
+});
+
+// その他のルートの読み込み
+import { registerRoutes } from './routes/index.js';
+registerRoutes(app);
+
 // 開発環境用のエラーハンドリング
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error('[DEV] Error:', err);
-  if (!res.headersSent) {
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: err.message,
-      stack: isDevelopment ? err.stack : undefined,
-      timestamp: new Date().toISOString()
-    });
+  
+  // APIエンドポイントの場合はJSONレスポンスを返す
+  if (req.path.startsWith('/api/')) {
+    if (!res.headersSent) {
+      res.setHeader('Content-Type', 'application/json');
+      res.status(500).json({
+        error: 'Internal Server Error',
+        message: err.message,
+        stack: isDevelopment ? err.stack : undefined,
+        timestamp: new Date().toISOString(),
+        path: req.path
+      });
+    }
+  } else {
+    // 非APIエンドポイントの場合は通常のエラーハンドリング
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: 'Internal Server Error',
+        message: err.message,
+        stack: isDevelopment ? err.stack : undefined,
+        timestamp: new Date().toISOString()
+      });
+    }
   }
 });
 
 // 開発環境用の404ハンドリング（JSON形式）
 app.use('/api/*', (req: Request, res: Response) => {
   console.log('[DEV] API 404 Not Found:', req.originalUrl);
+  res.setHeader('Content-Type', 'application/json');
   res.status(404).json({
     error: 'Not Found',
     path: req.originalUrl,
     timestamp: new Date().toISOString()
   });
+});
+
+// 非APIエンドポイントの404ハンドリング
+app.use('*', (req: Request, res: Response) => {
+  if (!req.path.startsWith('/api/')) {
+    console.log('[DEV] Non-API 404 Not Found:', req.originalUrl);
+    res.status(404).json({
+      error: 'Not Found',
+      path: req.originalUrl,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // 開発環境用のグレースフルシャットダウン

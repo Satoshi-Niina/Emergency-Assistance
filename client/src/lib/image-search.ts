@@ -48,7 +48,7 @@ async function loadImageSearchData(): Promise<void> {
   console.log('📊 画像検索データの読み込みを開始します');
 
   try {
-    // APIベースURLを取得
+    // API設定 - VITE_API_BASE_URLのみを使用
     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
     
     // まずAPIからJSONを読み込み（認証付き）

@@ -8,8 +8,9 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSpeechTimeRef = useRef<number>(0);
 
-  const azureKey = process.env.REACT_APP_AZURE_SPEECH_KEY!;
-  const azureRegion = process.env.REACT_APP_AZURE_SPEECH_REGION!;
+  // Azure Speech設定 - デフォルト値を使用（REACT_APP_AZURE_SPEECH_*の参照を削除）
+  const azureKey = ''; // デフォルト値
+  const azureRegion = 'japaneast'; // デフォルト値
 
   // 設定
   const SILENCE_TIMEOUT = 3000; // 3秒の無音で終了

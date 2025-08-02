@@ -1,1 +1,0 @@
-ALTER TABLE emergency_flows ADD COLUMN steps jsonb NOT NULL DEFAULT '[]'; 

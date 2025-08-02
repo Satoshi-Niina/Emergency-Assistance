@@ -524,37 +524,31 @@ router.post('/process', upload.single('file'), async (req, res) => {
 // ガイドファイル一覧を取得するエンドポイント
 router.get('/list', (_req, res) => {
     try {
-        // メインのJSONディレクトリをチェック
+        console.log('ガイド一覧を取得します...');
+        
+        // Content-Typeを明示的に設定
+        res.setHeader('Content-Type', 'application/json');
+        
+        // 知識ベースディレクトリからファイルを読み取る
         if (!fs.existsSync(jsonDir)) {
-            fs.mkdirSync(jsonDir, { recursive: true });
-            console.log(`jsonDirが存在しなかったため作成しました: ${jsonDir}`);
+            return res.status(404).json({ error: 'ディレクトリが見つかりません' });
         }
-        // メインのJSONディレクトリからファイルを取得
-        const jsonFiles: any = fs.existsSync(jsonDir)
-            ? fs.readdirSync(jsonDir).filter(file => file.endsWith('_metadata.json'))
-            : [];
-        console.log(`jsonDirから${jsonFiles.length}個のメタデータファイルを取得しました`);
-        // トラブルシューティングディレクトリをチェック
-        const troubleshootingDir: any = path.join(__dirname, '../../knowledge-base/troubleshooting');
-        if (!fs.existsSync(troubleshootingDir)) {
-            fs.mkdirSync(troubleshootingDir, { recursive: true });
-            console.log(`troubleshootingDirが存在しなかったため作成しました: ${troubleshootingDir}`);
-        }
-        // トラブルシューティングディレクトリからファイルを取得
-        const troubleshootingFiles: any = fs.existsSync(troubleshootingDir)
-            ? fs.readdirSync(troubleshootingDir).filter(file => file.endsWith('.json'))
-            : [];
-        console.log(`troubleshootingDirから${troubleshootingFiles.length}個のJSONファイルを取得しました`);
-        // ガイドリストの構築
-        const guides = [];
-        // メインJSONディレクトリからのガイド
-        jsonFiles.forEach(file => {
+        // キャッシュバスティングのためにファイル一覧を再スキャン
+        const allFiles: any = fs.readdirSync(jsonDir);
+        console.log('全ファイル一覧:', allFiles);
+        // 特定のファイルを除外するためのブラックリスト
+        const blacklist = ['guide_1744876404679_metadata.json'];
+        // メタデータファイルのみをフィルタリング（かつブラックリストを除外）
+        const files: any = allFiles
+            .filter(file => file.endsWith('_metadata.json') && !blacklist.includes(file));
+        console.log('フィルタリング後のメタデータファイル一覧:', files);
+        const guides: any = files.map(file => {
             try {
                 const filePath: any = path.join(jsonDir, file);
                 const content: any = fs.readFileSync(filePath, 'utf8');
                 const data: any = JSON.parse(content);
                 const id: any = file.split('_')[0] + '_' + file.split('_')[1];
-                guides.push({
+                return {
                     id,
                     filePath,
                     fileName: file,
@@ -562,39 +556,33 @@ router.get('/list', (_req, res) => {
                     createdAt: data.metadata?.作成日 || new Date().toISOString(),
                     slideCount: Array.isArray(data.slides) ? data.slides.length : 0,
                     source: 'regular'
-                });
+                };
             }
             catch (err) {
-                console.error(`ファイル ${file} の処理中にエラーが発生しました:`, err);
+                console.error(`ファイル処理エラー: ${file}`, err);
+                // エラーの場合は最低限の情報を返す
+                const id: any = file.split('_')[0] + '_' + file.split('_')[1];
+                return {
+                    id,
+                    filePath: path.join(jsonDir, file),
+                    fileName: `エラーファイル_${id}`,
+                    title: `エラーファイル_${id}`,
+                    createdAt: new Date().toISOString(),
+                    slideCount: 0
+                };
             }
         });
-        // トラブルシューティングディレクトリからのガイド
-        troubleshootingFiles.forEach(file => {
-            try {
-                const filePath: any = path.join(troubleshootingDir, file);
-                const content: any = fs.readFileSync(filePath, 'utf8');
-                const data: any = JSON.parse(content);
-                // ファイル名からIDを取得（拡張子を除く）
-                const id: any = path.basename(file, '.json');
-                guides.push({
-                    id: `ts_${id}`, // トラブルシューティングの識別子をつける
-                    filePath,
-                    fileName: file,
-                    title: data.metadata?.タイトル || data.title || id,
-                    createdAt: data.metadata?.作成日 || data.createdAt || new Date().toISOString(),
-                    slideCount: Array.isArray(data.slides) ? data.slides.length : (Array.isArray(data.steps) ? data.steps.length : 0),
-                    source: 'troubleshooting'
-                });
-            }
-            catch (err) {
-                console.error(`トラブルシューティングファイル ${file} の処理中にエラーが発生しました:`, err);
-            }
-        });
-        // 作成日の新しい順にソート
-        guides.sort((a, b) => {
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        });
-        console.log(`合計${guides.length}個のガイドを取得しました`);
+        // リスト取得前の最終状態チェック（完全にファイルシステムと同期するため）
+        console.log('応急ガイド一覧をレスポンス送信前に最終検証:');
+        console.log('- JSONディレクトリの内容:', fs.readdirSync(jsonDir));
+        console.log('- 返却するガイド数:', guides.length);
+        console.log('- ガイドID一覧:', guides.map(g => g.id).join(', '));
+        // ヘッダーの追加でキャッシュを無効化
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        res.setHeader('Surrogate-Control', 'no-store');
+        // レスポンスを返す
         res.json(guides);
     }
     catch (error) {
@@ -860,4 +848,31 @@ router.post('/send-to-chat/:guideId/:chatId', async (req, res) => {
         res.status(500).json({ error: '応急処置フローのチャットへの送信に失敗しました' });
     }
 });
-export { router as emergencyGuideRouter };
+
+// エラーハンドリングミドルウェアを追加
+router.use((err: any, req: any, res: any, next: any) => {
+  console.error('応急処置ガイドエラー:', err);
+  
+  // Content-Typeを明示的に設定
+  res.setHeader('Content-Type', 'application/json');
+  
+  res.status(500).json({
+    success: false,
+    error: '応急処置ガイドの処理中にエラーが発生しました',
+    details: err.message || 'Unknown error',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// 404ハンドリング
+router.use('*', (req: any, res: any) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.status(404).json({
+    success: false,
+    error: '応急処置ガイドのエンドポイントが見つかりません',
+    path: req.originalUrl,
+    timestamp: new Date().toISOString()
+  });
+});
+
+export default router;

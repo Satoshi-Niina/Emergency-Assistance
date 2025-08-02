@@ -1,92 +1,54 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, FileText, Image, Calendar, MapPin, Settings, Filter } from 'lucide-react';
+import { Search, FileText, Image, Calendar, MapPin, Settings, Filter, Download, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Badge } from "../components/ui/badge";
-
-interface HistoryItem {
-  id: string;
-  chatId: string;
-  title: string;
-  description: string;
-  machineModel?: string;
-  office?: string;
-  emergencyGuideTitle?: string;
-  emergencyGuideContent?: string;
-  images: Array<{
-    id: string;
-    url: string;
-    description?: string;
-  }>;
-  createdAt: string;
-  updatedAt: string;
-  category?: string;
-  keywords?: string[];
-}
+import { SupportHistoryItem, HistorySearchFilters } from '../types/history';
+import { fetchHistoryList, deleteHistory } from '../lib/api/history-api';
 
 interface SearchFilters {
-  machineModel: string;
-  office: string;
-  category: string;
-  dateRange: string;
+  machineType: string;
+  machineNumber: string;
 }
 
 const HistoryPage: React.FC = () => {
-  const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
-  const [filteredItems, setFilteredItems] = useState<HistoryItem[]>([]);
+  const [historyItems, setHistoryItems] = useState<SupportHistoryItem[]>([]);
+  const [filteredItems, setFilteredItems] = useState<SupportHistoryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<SearchFilters>({
-    machineModel: '',
-    office: '',
-    category: '',
-    dateRange: ''
+    machineType: '',
+    machineNumber: ''
   });
   const [loading, setLoading] = useState(true);
-  const [selectedItem, setSelectedItem] = useState<HistoryItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<SupportHistoryItem | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   // データ取得（サーバーAPIから取得）
   useEffect(() => {
     fetchHistoryData();
   }, []);
 
-  const fetchHistoryData = async () => {
+  const fetchHistoryData = async (page: number = 1) => {
     try {
       setLoading(true);
       
-      // サーバーAPIから履歴データを取得
-      const response = await fetch('/api/history/list');
-      if (response.ok) {
-        const data = await response.json();
-        setHistoryItems(data.items || []);
-        setFilteredItems(data.items || []);
-      } else {
-        console.warn('履歴データの取得に失敗、モックデータを使用');
-        // フォールバック: モックデータ
-        const mockData: HistoryItem[] = [
-          {
-            id: '1',
-            chatId: 'chat-001',
-            title: 'エンジン停止トラブル',
-            description: '走行中に突然エンジンが停止した',
-            machineModel: 'MT-100',
-            office: '東京事業所',
-            emergencyGuideTitle: 'エンジン停止対応',
-            emergencyGuideContent: '燃料カットレバーの確認を行う',
-            images: [
-              { id: 'img1', url: '/knowledge-base/images/emergency-flow-step1.jpg', description: 'エンジンルーム' }
-            ],
-            createdAt: '2025-01-15T10:30:00Z',
-            updatedAt: '2025-01-15T10:30:00Z',
-            category: 'エンジン',
-            keywords: ['エンジン停止', '燃料カット', 'MT-100']
-          }
-        ];
-        setHistoryItems(mockData);
-        setFilteredItems(mockData);
-      }
+      const searchFilters: HistorySearchFilters = {
+        limit: 20,
+        offset: (page - 1) * 20
+      };
+      
+      if (filters.machineType) searchFilters.machineType = filters.machineType;
+      if (filters.machineNumber) searchFilters.machineNumber = filters.machineNumber;
+      
+      const data = await fetchHistoryList(searchFilters);
+      setHistoryItems(data.items);
+      setFilteredItems(data.items);
+      setTotalPages(Math.ceil(data.total / 20));
+      setCurrentPage(page);
     } catch (error) {
       console.error('履歴データの取得に失敗しました:', error);
       setHistoryItems([]);
@@ -98,73 +60,59 @@ const HistoryPage: React.FC = () => {
 
   // 検索とフィルタリング
   useEffect(() => {
-    let filtered = historyItems;
+    fetchHistoryData(1);
+  }, [filters]);
 
-    // テキスト検索
-    if (searchQuery) {
-      filtered = filtered.filter(item =>
-        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.machineModel?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.office?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.emergencyGuideTitle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.emergencyGuideContent?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.keywords?.some(keyword => keyword.toLowerCase().includes(searchQuery.toLowerCase()))
-      );
-    }
+  // フィルター変更時の処理
+  // 検索実行
+  const handleSearch = () => {
+    fetchHistoryData(1);
+  };
 
-    // 機種フィルタ
-    if (filters.machineModel) {
-      filtered = filtered.filter(item => item.machineModel === filters.machineModel);
-    }
+  // ページネーション
+  const handlePageChange = (page: number) => {
+    fetchHistoryData(page);
+  };
 
-    // 事業所フィルタ
-    if (filters.office) {
-      filtered = filtered.filter(item => item.office === filters.office);
-    }
-
-    // カテゴリフィルタ
-    if (filters.category) {
-      filtered = filtered.filter(item => item.category === filters.category);
-    }
-
-    // 日付範囲フィルタ
-    if (filters.dateRange) {
-      const now = new Date();
-      let startDate = new Date();
-      
-      switch (filters.dateRange) {
-        case '1day':
-          startDate.setDate(now.getDate() - 1);
-          break;
-        case '1week':
-          startDate.setDate(now.getDate() - 7);
-          break;
-        case '1month':
-          startDate.setMonth(now.getMonth() - 1);
-          break;
-        case '3months':
-          startDate.setMonth(now.getMonth() - 3);
-          break;
+  // 履歴削除
+  const handleDeleteHistory = async (id: string) => {
+    if (window.confirm('この履歴を削除しますか？')) {
+      try {
+        await deleteHistory(id);
+        fetchHistoryData(currentPage);
+      } catch (error) {
+        console.error('履歴削除に失敗しました:', error);
+        alert('履歴の削除に失敗しました');
       }
-      
-      filtered = filtered.filter(item => new Date(item.createdAt) >= startDate);
     }
+  };
 
-    setFilteredItems(filtered);
-  }, [searchQuery, filters, historyItems]);
-
-  const handleFilterChange = (key: keyof SearchFilters, value: string) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+  // PDFエクスポート
+  const handleExportPDF = async (item: SupportHistoryItem) => {
+    try {
+      const response = await fetch(`/api/history/${item.id}/export-pdf`);
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `support_history_${item.machineType}_${item.machineNumber}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }
+    } catch (error) {
+      console.error('PDFエクスポートに失敗しました:', error);
+      alert('PDFエクスポートに失敗しました');
+    }
   };
 
   const clearFilters = () => {
     setSearchQuery('');
     setFilters({
-      machineModel: '',
-      office: '',
-      category: '',
-      dateRange: ''
+      machineType: '',
+      machineNumber: ''
     });
   };
 
@@ -213,60 +161,24 @@ const HistoryPage: React.FC = () => {
             </div>
 
             {/* 機種フィルタ */}
-            <Select value={filters.machineModel} onValueChange={(value) => handleFilterChange('machineModel', value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="機種を選択" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">すべての機種</SelectItem>
-                <SelectItem value="MT-100">MT-100</SelectItem>
-                <SelectItem value="MR-400">MR-400</SelectItem>
-                <SelectItem value="TC-250">TC-250</SelectItem>
-                <SelectItem value="SS-750">SS-750</SelectItem>
-              </SelectContent>
-            </Select>
+            <Input
+              placeholder="機種を入力"
+              value={filters.machineType}
+              onChange={(e) => handleFilterChange('machineType', e.target.value)}
+            />
 
-            {/* 事業所フィルタ */}
-            <Select value={filters.office} onValueChange={(value) => handleFilterChange('office', value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="事業所を選択" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">すべての事業所</SelectItem>
-                <SelectItem value="東京事業所">東京事業所</SelectItem>
-                <SelectItem value="大阪事業所">大阪事業所</SelectItem>
-                <SelectItem value="名古屋事業所">名古屋事業所</SelectItem>
-                <SelectItem value="福岡事業所">福岡事業所</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* 機械番号フィルタ */}
+            <Input
+              placeholder="機械番号を入力"
+              value={filters.machineNumber}
+              onChange={(e) => handleFilterChange('machineNumber', e.target.value)}
+            />
 
-            {/* カテゴリフィルタ */}
-            <Select value={filters.category} onValueChange={(value) => handleFilterChange('category', value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="カテゴリを選択" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">すべてのカテゴリ</SelectItem>
-                <SelectItem value="エンジン">エンジン</SelectItem>
-                <SelectItem value="ブレーキ">ブレーキ</SelectItem>
-                <SelectItem value="電気系統">電気系統</SelectItem>
-                <SelectItem value="油圧系統">油圧系統</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* 日付範囲フィルタ */}
-            <Select value={filters.dateRange} onValueChange={(value) => handleFilterChange('dateRange', value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="期間を選択" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">すべての期間</SelectItem>
-                <SelectItem value="1day">過去1日</SelectItem>
-                <SelectItem value="1week">過去1週間</SelectItem>
-                <SelectItem value="1month">過去1ヶ月</SelectItem>
-                <SelectItem value="3months">過去3ヶ月</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* 検索ボタン */}
+            <Button onClick={handleSearch} className="flex items-center gap-2">
+              <Search className="h-4 w-4" />
+              検索
+            </Button>
 
             {/* フィルタクリア */}
             <Button variant="outline" onClick={clearFilters} className="flex items-center gap-2">
@@ -276,7 +188,7 @@ const HistoryPage: React.FC = () => {
           </div>
 
           <div className="text-sm text-gray-600">
-            {filteredItems.length}件の履歴が見つかりました
+            {filteredItems.length}件の履歴が見つかりました (全{totalPages}ページ)
           </div>
         </CardContent>
       </Card>
@@ -298,20 +210,37 @@ const HistoryPage: React.FC = () => {
                   {/* 基本情報 */}
                   <div className="flex-1">
                     <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-lg font-semibold">{item.title}</h3>
-                      <Badge variant="secondary">{item.category}</Badge>
+                      <h3 className="text-lg font-semibold">応急処置サポート履歴</h3>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleExportPDF(item)}
+                          className="flex items-center gap-1"
+                        >
+                          <Download className="h-3 w-3" />
+                          PDF
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDeleteHistory(item.id)}
+                          className="flex items-center gap-1 text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          削除
+                        </Button>
+                      </div>
                     </div>
-                    
-                    <p className="text-gray-600 mb-4">{item.description}</p>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                       <div className="flex items-center gap-2">
                         <Settings className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm">機種: {item.machineModel}</span>
+                        <span className="text-sm">機種: {item.machineType}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <MapPin className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm">事業所: {item.office}</span>
+                        <span className="text-sm">機械番号: {item.machineNumber}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-gray-500" />
@@ -319,69 +248,33 @@ const HistoryPage: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <Image className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm">画像: {item.images.length}枚</span>
+                        <span className="text-sm">画像: {item.imagePath ? 'あり' : 'なし'}</span>
                       </div>
                     </div>
 
-                    {/* 応急処置ガイド情報 */}
-                    {item.emergencyGuideTitle && (
-                      <div className="bg-blue-50 p-3 rounded-md mb-4">
-                        <h4 className="font-medium text-blue-900 mb-1">応急処置ガイド</h4>
-                        <p className="text-sm text-blue-800">{item.emergencyGuideTitle}</p>
-                        {item.emergencyGuideContent && (
-                          <p className="text-sm text-blue-700 mt-1">{item.emergencyGuideContent}</p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* キーワード */}
-                    {item.keywords && item.keywords.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {item.keywords.map((keyword, index) => (
-                          <Badge key={index} variant="outline" className="text-xs">
-                            {keyword}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
+                    {/* JSONデータの表示 */}
+                    <div className="bg-gray-50 p-3 rounded-md mb-4">
+                      <h4 className="font-medium text-gray-900 mb-1">データ内容</h4>
+                      <pre className="text-xs text-gray-700 overflow-auto max-h-32">
+                        {JSON.stringify(item.jsonData, null, 2)}
+                      </pre>
+                    </div>
                   </div>
 
                   {/* 画像プレビュー */}
-                  {item.images.length > 0 && (
+                  {item.imagePath && (
                     <div className="lg:w-64">
                       <h4 className="font-medium mb-2">関連画像</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        {item.images.slice(0, 4).map((image) => (
-                          <div key={image.id} className="relative">
-                            <img
-                              src={image.url}
-                              alt={image.description || '履歴画像'}
-                              className="w-full h-20 object-cover rounded-md cursor-pointer hover:opacity-80"
-                              onClick={() => setSelectedItem(item)}
-                            />
-                          </div>
-                        ))}
-                        {item.images.length > 4 && (
-                          <div className="bg-gray-200 rounded-md flex items-center justify-center h-20 text-sm text-gray-600">
-                            +{item.images.length - 4}枚
-                          </div>
-                        )}
+                      <div className="relative">
+                        <img
+                          src={item.imagePath}
+                          alt="履歴画像"
+                          className="w-full h-32 object-cover rounded-md cursor-pointer hover:opacity-80"
+                          onClick={() => setSelectedItem(item)}
+                        />
                       </div>
                     </div>
                   )}
-                </div>
-
-                <div className="flex justify-between items-center mt-4 pt-4 border-t">
-                  <div className="text-sm text-gray-500">
-                    チャットID: {item.chatId}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedItem(item)}
-                  >
-                    詳細を見る
-                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -389,34 +282,79 @@ const HistoryPage: React.FC = () => {
         )}
       </div>
 
+      {/* ページネーション */}
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-6">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              前へ
+            </Button>
+            
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              const page = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+              return (
+                <Button
+                  key={page}
+                  variant={currentPage === page ? "default" : "outline"}
+                  onClick={() => handlePageChange(page)}
+                >
+                  {page}
+                </Button>
+              );
+            })}
+            
+            <Button
+              variant="outline"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              次へ
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* 詳細モーダル（簡易実装） */}
       {selectedItem && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">{selectedItem.title}</h2>
+                <h2 className="text-xl font-bold">応急処置サポート履歴詳細</h2>
                 <Button variant="ghost" onClick={() => setSelectedItem(null)}>×</Button>
               </div>
               
               <div className="space-y-4">
-                <p>{selectedItem.description}</p>
-                
-                {selectedItem.images.length > 0 && (
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <h3 className="font-medium mb-2">画像一覧</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      {selectedItem.images.map((image) => (
-                        <img
-                          key={image.id}
-                          src={image.url}
-                          alt={image.description || '履歴画像'}
-                          className="w-full h-32 object-cover rounded-md"
-                        />
-                      ))}
-                    </div>
+                    <h3 className="font-medium mb-2">基本情報</h3>
+                    <p><strong>機種:</strong> {selectedItem.machineType}</p>
+                    <p><strong>機械番号:</strong> {selectedItem.machineNumber}</p>
+                    <p><strong>作成日時:</strong> {formatDate(selectedItem.createdAt)}</p>
                   </div>
-                )}
+                  
+                  {selectedItem.imagePath && (
+                    <div>
+                      <h3 className="font-medium mb-2">関連画像</h3>
+                      <img
+                        src={selectedItem.imagePath}
+                        alt="履歴画像"
+                        className="w-full h-48 object-cover rounded-md"
+                      />
+                    </div>
+                  )}
+                </div>
+                
+                <div>
+                  <h3 className="font-medium mb-2">データ内容</h3>
+                  <pre className="bg-gray-100 p-4 rounded-md text-sm overflow-auto max-h-64">
+                    {JSON.stringify(selectedItem.jsonData, null, 2)}
+                  </pre>
+                </div>
               </div>
             </div>
           </div>
@@ -427,3 +365,4 @@ const HistoryPage: React.FC = () => {
 };
 
 export default HistoryPage;
+

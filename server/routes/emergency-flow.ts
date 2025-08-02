@@ -1,7 +1,7 @@
 import * as express from 'express';
 import OpenAI from 'openai';
 import { z } from 'zod';
-import { db } from '../db.js';
+import { db } from '../db/index.js';
 import { emergencyFlows } from '../db/schema.js';
 import { findRelevantImages } from '../utils/image-matcher.js';
 import * as fs from 'fs';
@@ -61,29 +61,39 @@ router.post('/update-step-title', async (req, res) => {
       return res.status(400).json({ error: 'flowId, stepId, title are required' });
     }
 
-    // knowledge-base/troubleshooting/ ディレクトリから該当ファイルを読み込み
-    const filePath = path.join(__dirname, '../../knowledge-base/troubleshooting', `${flowId}.json`);
+    // PostgreSQLデータベースからフローを取得
+    try {
+      const flows = await db.select().from(emergencyFlows).where(eq(emergencyFlows.id, flowId));
+      
+      if (flows.length === 0) {
+        return res.status(404).json({ error: 'フローが見つかりません' });
+      }
 
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: 'フローファイルが見つかりません' });
+      const flow = flows[0];
+      const steps = flow.steps || [];
+
+      // 指定されたステップのタイトルを更新
+      const stepIndex = steps.findIndex((step) => step.id === stepId);
+      if (stepIndex === -1) {
+        return res.status(404).json({ error: 'ステップが見つかりません' });
+      }
+
+      steps[stepIndex].title = title;
+
+      // データベースを更新
+      await db.update(emergencyFlows)
+        .set({ steps: steps })
+        .where(eq(emergencyFlows.id, flowId));
+
+      res.json({ success: true, message: 'タイトルが更新されました' });
+    } catch (dbError) {
+      console.error('❌ データベース更新エラー:', dbError);
+      return res.status(500).json({
+        success: false,
+        error: 'データベースの更新に失敗しました',
+        details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+      });
     }
-
-    const fileContent = fs.readFileSync(filePath, 'utf8');
-    const flowData = JSON.parse(fileContent);
-
-    // 指定されたステップのタイトルを更新
-    const stepIndex = flowData.steps.findIndex((step) => step.id === stepId);
-    if (stepIndex === -1) {
-      return res.status(404).json({ error: 'ステップが見つかりません' });
-    }
-
-    flowData.steps[stepIndex].title = title;
-    flowData.updatedAt = new Date().toISOString();
-
-    // ファイルに書き込み
-    fs.writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf8');
-
-    res.json({ success: true, message: 'タイトルが更新されました' });
   } catch (error) {
     console.error('タイトル更新エラー:', error);
     res.status(500).json({ error: 'タイトル更新に失敗しました' });
@@ -136,21 +146,55 @@ router.post('/', async (req, res) => {
     flowData.createdAt = flowData.createdAt || new Date().toISOString();
     flowData.updatedAt = new Date().toISOString();
 
-    // ファイルパスを設定
-    const troubleshootingDir = path.join(__dirname, '../../knowledge-base/troubleshooting');
-    if (!fs.existsSync(troubleshootingDir)) {
-      fs.mkdirSync(troubleshootingDir, { recursive: true });
+    // PostgreSQLデータベースに保存
+    try {
+      // 既存のフローをチェック
+      const existingFlow = await db.select().from(emergencyFlows).where(eq(emergencyFlows.id, flowData.id));
+      
+      if (existingFlow.length > 0) {
+        // 既存フローを更新
+        await db.update(emergencyFlows)
+          .set({
+            title: flowData.title,
+            description: flowData.description || '',
+            steps: flowData.steps || [],
+            keyword: flowData.triggerKeywords?.join(',') || '',
+            category: flowData.category || ''
+          })
+          .where(eq(emergencyFlows.id, flowData.id));
+        
+        console.log('✅ 既存フロー更新成功:', {
+          id: flowData.id,
+          title: flowData.title
+        });
+      } else {
+        // 新規フローを作成
+        await db.insert(emergencyFlows).values({
+          id: flowData.id,
+          title: flowData.title,
+          description: flowData.description || '',
+          steps: flowData.steps || [],
+          keyword: flowData.triggerKeywords?.join(',') || '',
+          category: flowData.category || ''
+        });
+        
+        console.log('✅ 新規フロー作成成功:', {
+          id: flowData.id,
+          title: flowData.title
+        });
+      }
+    } catch (dbError) {
+      console.error('❌ データベース保存エラー:', dbError);
+      return res.status(500).json({
+        success: false,
+        error: 'データベースへの保存に失敗しました',
+        details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+      });
     }
-
-    const filePath = path.join(troubleshootingDir, `${flowData.id}.json`);
-
-    // ファイルに保存
-    fs.writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf8');
 
     console.log('✅ フロー保存成功:', {
       id: flowData.id,
       title: flowData.title,
-      filePath: filePath,
       stepsCount: flowData.steps?.length || 0
     });
 
@@ -196,27 +240,42 @@ router.put('/:id', async (req, res) => {
     // タイムスタンプを更新
     flowData.updatedAt = new Date().toISOString();
 
-    // ファイルパスを設定
-    const troubleshootingDir = path.join(__dirname, '../../knowledge-base/troubleshooting');
-    const filePath = path.join(troubleshootingDir, `${id}.json`);
+    // PostgreSQLデータベースに更新
+    try {
+      // 既存のフローをチェック
+      const existingFlow = await db.select().from(emergencyFlows).where(eq(emergencyFlows.id, id));
+      
+      if (existingFlow.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: '更新対象のフローが見つかりません'
+        });
+      }
 
-    // 既存ファイルの確認
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({
+      // フローを更新
+      await db.update(emergencyFlows)
+        .set({
+          title: flowData.title,
+          description: flowData.description || '',
+          steps: flowData.steps || [],
+          keyword: flowData.triggerKeywords?.join(',') || '',
+          category: flowData.category || ''
+        })
+        .where(eq(emergencyFlows.id, id));
+      
+      console.log('✅ フロー更新成功:', {
+        id: flowData.id,
+        title: flowData.title,
+        stepsCount: flowData.steps?.length || 0
+      });
+    } catch (dbError) {
+      console.error('❌ データベース更新エラー:', dbError);
+      return res.status(500).json({
         success: false,
-        error: '更新対象のフローファイルが見つかりません'
+        error: 'データベースの更新に失敗しました',
+        details: dbError instanceof Error ? dbError.message : 'Unknown database error'
       });
     }
-
-    // ファイルに保存
-    fs.writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf8');
-
-    console.log('✅ フロー更新成功:', {
-      id: flowData.id,
-      title: flowData.title,
-      filePath: filePath,
-      stepsCount: flowData.steps?.length || 0
-    });
 
     res.json({
       success: true,
@@ -235,104 +294,125 @@ router.put('/:id', async (req, res) => {
 });
 
 // フロー一覧取得エンドポイント（ルートパス）
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const troubleshootingDir = path.join(__dirname, '../../knowledge-base/troubleshooting');
-    console.log('🔍 troubleshootingディレクトリパス:', troubleshootingDir);
+    // Content-Typeを明示的に設定
+    res.setHeader('Content-Type', 'application/json');
     
-    if (!fs.existsSync(troubleshootingDir)) {
-      console.log('📁 troubleshootingディレクトリが存在しません:', troubleshootingDir);
-      return res.json([]);
-    }
-
-    const files = fs.readdirSync(troubleshootingDir);
-    console.log('📂 見つかったファイル:', files);
+    console.log('🔍 データベースからフロー一覧を取得中...');
     
-    const jsonFiles = files.filter(file => file.endsWith('.json') && !file.includes('.backup') && !file.includes('.tmp'));
-    console.log('📄 JSONファイル:', jsonFiles);
+    // PostgreSQLデータベースからフロー一覧を取得
+    try {
+      const flows = await db.select().from(emergencyFlows);
+      
+      const fileList = flows.map((flow) => {
+        try {
+          let description = flow.description || '';
+          if (!description && flow.steps && flow.steps.length > 0) {
+            const firstStep = flow.steps[0];
+            description = firstStep.description || firstStep.message || '';
+          }
 
-    const fileList = jsonFiles.map((file: any) => {
-      try {
-        const filePath = path.join(troubleshootingDir, file);
-        const content = fs.readFileSync(filePath, 'utf8');
-        const data = JSON.parse(content);
-        
-        let description = data.description || '';
-        if (!description && data.steps && data.steps.length > 0) {
-            description = data.steps[0].description || data.steps[0].message || '';
+          const result = {
+            id: flow.id,
+            title: flow.title || 'タイトルなし',
+            description: description,
+            fileName: `${flow.id}.json`, // 互換性のため
+            createdAt: flow.createdAt?.toISOString() || new Date().toISOString(),
+            triggerKeywords: flow.keyword ? flow.keyword.split(',') : [],
+            category: flow.category || ''
+          };
+          
+          console.log(`✅ フロー ${flow.id} 処理完了:`, result);
+          return result;
+        } catch (error) {
+          console.error(`❌ フロー ${flow.id} の解析中にエラーが発生しました:`, error);
+          return null;
         }
+      }).filter(Boolean);
 
-        const result = {
-          id: data.id || file.replace('.json', ''),
-          title: data.title || 'タイトルなし',
-          description: description,
-          fileName: file,
-          createdAt: data.createdAt || data.savedAt || data.updatedAt || new Date().toISOString()
-        };
-        
-        console.log(`✅ ファイル ${file} 処理完了:`, result);
-        return result;
-      } catch (error) {
-        console.error(`❌ ファイル ${file} の解析中にエラーが発生しました:`, error);
-        return null;
-      }
-    }).filter(Boolean);
-
-    console.log('📋 最終的なファイル一覧:', fileList);
-    res.json(fileList);
+      console.log('📋 最終的なフロー一覧:', fileList);
+      res.json({
+        success: true,
+        data: fileList,
+        total: fileList.length,
+        timestamp: new Date().toISOString()
+      });
+    } catch (dbError) {
+      console.error('❌ データベース取得エラー:', dbError);
+      return res.status(500).json({
+        success: false,
+        error: 'データベースからの取得に失敗しました',
+        details: dbError instanceof Error ? dbError.message : 'Unknown database error',
+        timestamp: new Date().toISOString()
+      });
+    }
   } catch (error) {
-    console.error('❌ ファイル一覧取得エラー:', error);
-    res.status(500).json({ 
-      error: 'ファイル一覧の取得に失敗しました',
-      details: (error as Error).message
+    console.error('❌ フロー一覧取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'フロー一覧の取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
     });
   }
 });
 
 // フロー一覧取得エンドポイント（互換性のため残す）
-router.get('/list', (req, res) => {
+router.get('/list', async (req, res) => {
   try {
-    const troubleshootingDir = path.join(__dirname, '../../knowledge-base/troubleshooting');
+    console.log('🔍 データベースからフロー一覧を取得中（/list）...');
     
-    if (!fs.existsSync(troubleshootingDir)) {
-      console.log('📁 troubleshootingディレクトリが存在しません。');
-      return res.json([]);
-    }
+    // PostgreSQLデータベースからフロー一覧を取得
+    try {
+      const flows = await db.select().from(emergencyFlows);
+      
+      const fileList = flows.map((flow) => {
+        try {
+          let description = flow.description || '';
+          if (!description && flow.steps && flow.steps.length > 0) {
+            const firstStep = flow.steps[0];
+            description = firstStep.description || firstStep.message || '';
+          }
 
-    const files = fs.readdirSync(troubleshootingDir);
-    const jsonFiles = files.filter(file => file.endsWith('.json') && !file.includes('.backup') && !file.includes('.tmp'));
-
-    const fileList = jsonFiles.map(file => {
-      try {
-        const filePath = path.join(troubleshootingDir, file);
-        const content = fs.readFileSync(filePath, 'utf8');
-        const data = JSON.parse(content);
-        
-        let description = data.description || '';
-        if (!description && data.steps && data.steps.length > 0) {
-            description = data.steps[0].description || data.steps[0].message || '';
+          return {
+            id: flow.id,
+            title: flow.title || 'タイトルなし',
+            description: description,
+            fileName: `${flow.id}.json`,
+            filePath: `knowledge-base/troubleshooting/${flow.id}.json`, // 互換性のため
+            createdAt: flow.createdAt?.toISOString() || new Date().toISOString(),
+            triggerKeywords: flow.keyword ? flow.keyword.split(',') : [],
+            category: flow.category || ''
+          };
+        } catch (error) {
+          console.error(`フロー ${flow.id} の解析中にエラーが発生しました:`, error);
+          return null;
         }
+      }).filter(Boolean);
 
-        return {
-          id: data.id || file.replace('.json', ''),
-          title: data.title || 'タイトルなし',
-          description: description,
-          fileName: file,
-          filePath: `knowledge-base/troubleshooting/${file}`,
-          createdAt: data.createdAt || data.savedAt || data.updatedAt || new Date().toISOString()
-        };
-      } catch (error) {
-        console.error(`ファイル ${file} の解析中にエラーが発生しました:`, error);
-        return null;
-      }
-    }).filter(Boolean);
-
-    res.json(fileList);
+      res.json({
+        success: true,
+        data: fileList,
+        total: fileList.length,
+        timestamp: new Date().toISOString()
+      });
+    } catch (dbError) {
+      console.error('❌ データベース取得エラー:', dbError);
+      return res.status(500).json({
+        success: false,
+        error: 'データベースからの取得に失敗しました',
+        details: dbError instanceof Error ? dbError.message : 'Unknown database error',
+        timestamp: new Date().toISOString()
+      });
+    }
   } catch (error) {
-    console.error('❌ ファイル一覧取得エラー:', error);
+    console.error('❌ フロー一覧取得エラー:', error);
     res.status(500).json({ 
-      error: 'ファイル一覧の取得に失敗しました',
-      details: (error as Error).message
+      success: false,
+      error: 'フロー一覧の取得に失敗しました',
+      details: (error as Error).message,
+      timestamp: new Date().toISOString()
     });
   }
 });
@@ -357,76 +437,82 @@ router.get('/detail/:id', async (req, res) => {
     const { id } = req.params;
     console.log(`🔄 [${timestamp}] フロー詳細取得開始: ID=${id}`);
 
-    const troubleshootingDir = path.join(__dirname, '../../knowledge-base/troubleshooting');
-    const filePath = path.join(troubleshootingDir, `${id}.json`);
-
-    console.log(`📁 ファイルパス: ${filePath}`);
-
-    if (!fs.existsSync(filePath)) {
-      console.log(`❌ ファイルが存在しません: ${filePath}`);
-      return res.status(404).json({ error: 'フローファイルが見つかりません' });
-    }
-
-    const content = fs.readFileSync(filePath, 'utf8');
-    const stats = fs.statSync(filePath);
-
-    console.log(`📊 ファイル情報:`, {
-      size: stats.size,
-      modified: stats.mtime,
-      exists: true
-    });
-
-    console.log(`📄 ファイル内容のサイズ: ${content.length}文字`);
-
-    let data = JSON.parse(content);
-    console.log(`✅ ファイル詳細読み込み成功: ${id}.json`, {
-      id: data.id,
-      title: data.title,
-      hasSteps: !!data.steps,
-      stepsCount: data.steps?.length || 0,
-      hasNodes: !!data.nodes,
-      nodesCount: data.nodes?.length || 0,
-      updatedAt: data.updatedAt,
-      createdAt: data.createdAt
-    });
-
-    // 条件分岐ステップの確認
-    const decisionSteps = data.steps?.filter((step: any) => (step as any).type === 'decision') || [];
-    const conditionSteps = data.steps?.filter((step: any) => (step as any).type === 'condition') || [];
-
-    console.log(`🔀 条件分岐ステップの確認:`, {
-      totalSteps: data.steps?.length || 0, decisionSteps: decisionSteps.length, conditionSteps: conditionSteps.length, decisionStepsDetail: decisionSteps.map((step) => ({
-        id: step.id,
-        title: step.title,
-        optionsCount: step.options?.length || 0
-      })),
-      conditionStepsDetail: conditionSteps.map((step) => ({
-        id: step.id,
-        title: step.title,
-        conditionsCount: step.conditions?.length || 0
-      }))
-    });
-
-    res.json({
-      success: true,
-      data: data,
-      metadata: {
-        filePath: filePath,
-        fileSize: stats.size,
-        lastModified: stats.mtime,
-        requestId: `${timestamp}-${randomId}`,
-        processedAt: new Date().toISOString()
+    // PostgreSQLデータベースからフロー詳細を取得
+    try {
+      const flows = await db.select().from(emergencyFlows).where(eq(emergencyFlows.id, id));
+      
+      if (flows.length === 0) {
+        console.log(`❌ フローが見つかりません: ${id}`);
+        return res.status(404).json({ error: 'フローが見つかりません' });
       }
-    });
 
-    console.log(`✅ 完全データ解析成功:`, {
-      id: data.id,
-      title: data.title,
-      stepsCount: data.steps?.length || 0,
-      decisionStepsCount: decisionSteps.length,
-      conditionStepsCount: conditionSteps.length,
-      responseSize: JSON.stringify(data).length
-    });
+      const flow = flows[0];
+      console.log(`✅ フロー詳細読み込み成功: ${id}`, {
+        id: flow.id,
+        title: flow.title,
+        hasSteps: !!flow.steps,
+        stepsCount: flow.steps?.length || 0,
+        updatedAt: flow.createdAt
+      });
+
+      // 条件分岐ステップの確認
+      const decisionSteps = flow.steps?.filter((step: any) => (step as any).type === 'decision') || [];
+      const conditionSteps = flow.steps?.filter((step: any) => (step as any).type === 'condition') || [];
+
+      console.log(`🔀 条件分岐ステップの確認:`, {
+        totalSteps: flow.steps?.length || 0, 
+        decisionSteps: decisionSteps.length, 
+        conditionSteps: conditionSteps.length, 
+        decisionStepsDetail: decisionSteps.map((step) => ({
+          id: step.id,
+          title: step.title,
+          optionsCount: step.options?.length || 0
+        })),
+        conditionStepsDetail: conditionSteps.map((step) => ({
+          id: step.id,
+          title: step.title,
+          conditionsCount: step.conditions?.length || 0
+        }))
+      });
+
+      // フローデータを整形
+      const data = {
+        id: flow.id,
+        title: flow.title,
+        description: flow.description,
+        steps: flow.steps || [],
+        triggerKeywords: flow.keyword ? flow.keyword.split(',') : [],
+        category: flow.category,
+        createdAt: flow.createdAt?.toISOString(),
+        updatedAt: flow.createdAt?.toISOString() // 互換性のため
+      };
+
+      res.json({
+        success: true,
+        data: data,
+        metadata: {
+          requestId: `${timestamp}-${randomId}`,
+          processedAt: new Date().toISOString()
+        }
+      });
+
+      console.log(`✅ 完全データ解析成功:`, {
+        id: data.id,
+        title: data.title,
+        stepsCount: data.steps?.length || 0,
+        decisionStepsCount: decisionSteps.length,
+        conditionStepsCount: conditionSteps.length,
+        responseSize: JSON.stringify(data).length
+      });
+
+    } catch (dbError) {
+      console.error('❌ データベース取得エラー:', dbError);
+      return res.status(500).json({
+        success: false,
+        error: 'データベースからの取得に失敗しました',
+        details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+      });
+    }
 
   } catch (error) {
     console.error('❌ フロー詳細取得エラー:', error);
@@ -438,17 +524,22 @@ router.get('/detail/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const troubleshootingDir = path.join(__dirname, '../../knowledge-base/troubleshooting');
-    const filePath = path.join(troubleshootingDir, `${id}.json`);
+    console.log(`🗑️ フロー削除開始: ID=${id}`);
 
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: 'フローファイルが見つかりません' });
+    // PostgreSQLデータベースからフローを削除
+    try {
+      const result = await db.delete(emergencyFlows).where(eq(emergencyFlows.id, id));
+      
+      console.log(`🗑️ フロー削除完了: ${id}`);
+      res.json({ success: true, message: 'フローが削除されました' });
+    } catch (dbError) {
+      console.error('❌ データベース削除エラー:', dbError);
+      return res.status(500).json({
+        success: false,
+        error: 'データベースからの削除に失敗しました',
+        details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+      });
     }
-
-    fs.unlinkSync(filePath);
-    console.log(`🗑️ フローファイルを削除しました: ${filePath}`);
-
-    res.json({ success: true, message: 'フローが削除されました' });
   } catch (error) {
     console.error('❌ フロー削除エラー:', error);
     res.status(500).json({ error: 'フローの削除に失敗しました' });
@@ -475,56 +566,69 @@ router.get('/get/:id', async (req, res) => {
     const { id } = req.params;
     console.log(`🔄 [${timestamp}] フロー直接取得: ID=${id}`);
 
-    const troubleshootingDir = path.join(__dirname, '../../knowledge-base/troubleshooting');
-    const filePath = path.join(troubleshootingDir, `${id}.json`);
-
-    console.log(`📁 ファイルパス: ${filePath}`);
-
-    if (!fs.existsSync(filePath)) {
-      console.log(`❌ ファイルが存在しません: ${filePath}`);
-      return res.status(404).json({ error: 'フローファイルが見つかりません' });
-    }
-
-    const content = fs.readFileSync(filePath, 'utf8');
-    const stats = fs.statSync(filePath);
-
-    console.log(`📊 ファイル情報:`, {
-      size: stats.size,
-      modified: stats.mtime,
-      exists: true,
-      contentLength: content.length
-    });
-
-    let data = JSON.parse(content);
-
-    // 条件分岐ステップの確認
-    const decisionSteps = data.steps?.filter((step: any) => step.type === 'decision') || [];
-    const conditionSteps = data.steps?.filter((step: any) => step.type === 'condition') || [];
-
-    console.log(`🔀 条件分岐ステップの確認:`, {
-      totalSteps: data.steps?.length || 0,
-      decisionSteps: decisionSteps.length,
-      conditionSteps: conditionSteps.length
-    });
-
-    res.json({
-      ...data,
-      metadata: {
-        filePath: filePath,
-        fileSize: stats.size,
-        lastModified: stats.mtime,
-        requestId: `${timestamp}-${randomId}`,
-        processedAt: new Date().toISOString()
+    // PostgreSQLデータベースからフロー詳細を取得
+    try {
+      const flows = await db.select().from(emergencyFlows).where(eq(emergencyFlows.id, id));
+      
+      if (flows.length === 0) {
+        console.log(`❌ フローが見つかりません: ${id}`);
+        return res.status(404).json({ error: 'フローが見つかりません' });
       }
-    });
 
-    console.log(`✅ 直接データ取得成功:`, {
-      id: data.id,
-      title: data.title,
-      stepsCount: data.steps?.length || 0,
-      decisionStepsCount: decisionSteps.length,
-      conditionStepsCount: conditionSteps.length
-    });
+      const flow = flows[0];
+      console.log(`📊 フロー情報:`, {
+        id: flow.id,
+        title: flow.title,
+        hasSteps: !!flow.steps,
+        stepsCount: flow.steps?.length || 0
+      });
+
+      // フローデータを整形
+      const data = {
+        id: flow.id,
+        title: flow.title,
+        description: flow.description,
+        steps: flow.steps || [],
+        triggerKeywords: flow.keyword ? flow.keyword.split(',') : [],
+        category: flow.category,
+        createdAt: flow.createdAt?.toISOString(),
+        updatedAt: flow.createdAt?.toISOString() // 互換性のため
+      };
+
+      // 条件分岐ステップの確認
+      const decisionSteps = data.steps?.filter((step: any) => step.type === 'decision') || [];
+      const conditionSteps = data.steps?.filter((step: any) => step.type === 'condition') || [];
+
+      console.log(`🔀 条件分岐ステップの確認:`, {
+        totalSteps: data.steps?.length || 0,
+        decisionSteps: decisionSteps.length,
+        conditionSteps: conditionSteps.length
+      });
+
+      res.json({
+        ...data,
+        metadata: {
+          requestId: `${timestamp}-${randomId}`,
+          processedAt: new Date().toISOString()
+        }
+      });
+
+      console.log(`✅ 直接データ取得成功:`, {
+        id: data.id,
+        title: data.title,
+        stepsCount: data.steps?.length || 0,
+        decisionStepsCount: decisionSteps.length,
+        conditionStepsCount: conditionSteps.length
+      });
+
+    } catch (dbError) {
+      console.error('❌ データベース取得エラー:', dbError);
+      return res.status(500).json({
+        success: false,
+        error: 'データベースからの取得に失敗しました',
+        details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+      });
+    }
 
   } catch (error) {
     console.error('❌ フロー直接取得エラー:', error);
@@ -536,13 +640,7 @@ router.get('/get/:id', async (req, res) => {
 router.post('/generate', async (req, res) => {
   try {
     const { keyword } = generateFlowSchema.parse(req.body);
-    const troubleshootingDir = path.join(__dirname, '../../knowledge-base/troubleshooting');
-    const cleanFlowId = ((req.params as any).id || '').startsWith('ts_') ? ((req.params as any).id || '').substring(3) : ((req.params as any).id || '');
-    const filePath = path.join(__dirname, '../../knowledge-base/troubleshooting', `${cleanFlowId}.json`);
-
-    if (!fs.existsSync(troubleshootingDir)) {
-      fs.mkdirSync(troubleshootingDir, { recursive: true });
-    }
+    console.log(`🔄 フロー生成開始: キーワード=${keyword}`);
 
     // OpenAIクライアントが利用可能かチェック
     if (!openai) {
@@ -620,10 +718,30 @@ router.post('/generate', async (req, res) => {
       updatedAt: new Date().toISOString()
     };
 
-    const fileName = `${flowData.id}.json`;
-    const flowFilePath = path.join(__dirname, '../../knowledge-base/troubleshooting', `${fileName}.json`);
-    
-    fs.writeFileSync(flowFilePath, JSON.stringify(flowData, null, 2), 'utf8');
+    // PostgreSQLデータベースに保存
+    try {
+      await db.insert(emergencyFlows).values({
+        id: flowData.id,
+        title: flowData.title,
+        description: flowData.description,
+        steps: flowData.steps,
+        keyword: flowData.triggerKeywords.join(','),
+        category: ''
+      });
+      
+      console.log('✅ 生成フロー保存成功:', {
+        id: flowData.id,
+        title: flowData.title,
+        stepsCount: flowData.steps.length
+      });
+    } catch (dbError) {
+      console.error('❌ データベース保存エラー:', dbError);
+      return res.status(500).json({
+        success: false,
+        error: 'データベースへの保存に失敗しました',
+        details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+      });
+    }
 
     res.json({
       success: true,
@@ -638,20 +756,6 @@ router.post('/generate', async (req, res) => {
       error: 'フローの生成に失敗しました',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
-  }
-});
-
-router.delete('/delete/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    // ここでデータベースからフローを削除する処理を追加
-    // 例: await db.delete(flows).where(eq(flows.id, id));
-    
-    res.status(200).json({ message: 'フローを削除しました' });
-  } catch (error) {
-    console.error('フロー削除エラー:', error);
-    res.status(500).json({ error: 'フローの削除に失敗しました' });
   }
 });
 
@@ -893,6 +997,32 @@ router.get('/:id', async (req, res) => {
     console.error('❌ フロー取得エラー:', error);
     res.status(500).json({ error: 'フローの取得に失敗しました' });
   }
+});
+
+// エラーハンドリングミドルウェア
+router.use((err: any, req: any, res: any, next: any) => {
+  console.error('応急処置フローエラー:', err);
+  
+  // Content-Typeを明示的に設定
+  res.setHeader('Content-Type', 'application/json');
+  
+  res.status(500).json({
+    success: false,
+    error: '応急処置フローの処理中にエラーが発生しました',
+    details: err.message || 'Unknown error',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// 404ハンドリング
+router.use('*', (req: any, res: any) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.status(404).json({
+    success: false,
+    error: '応急処置フローのエンドポイントが見つかりません',
+    path: req.originalUrl,
+    timestamp: new Date().toISOString()
+  });
 });
 
 export default router;
