@@ -11,6 +11,7 @@ export const login = async (credentials: LoginCredentials) => {
   try {
     console.log('🔐 ログイン試行:', { username: credentials.username });
     console.log('📡 リクエストURL:', AUTH_API.LOGIN);
+    console.log('🔗 ログインURL:', AUTH_API.LOGIN);
     console.log('📡 リクエスト設定:', {
       method: 'POST',
       headers: {
@@ -20,6 +21,14 @@ export const login = async (credentials: LoginCredentials) => {
       body: JSON.stringify(credentials)
     });
     
+    // リクエスト前のデバッグ情報
+    console.log('🌐 現在のlocation:', {
+      origin: window.location.origin,
+      hostname: window.location.hostname,
+      protocol: window.location.protocol,
+      port: window.location.port
+    });
+    
     const response = await fetch(AUTH_API.LOGIN, {
       method: 'POST',
       headers: {
@@ -27,6 +36,11 @@ export const login = async (credentials: LoginCredentials) => {
       },
       credentials: 'include',
       body: JSON.stringify(credentials)
+    });
+    
+    console.log('📡 ログインレスポンス:', { 
+      status: response.status, 
+      ok: response.ok 
     });
     
     console.log('📡 レスポンス受信:', { 

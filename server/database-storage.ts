@@ -1,6 +1,7 @@
 import { schema } from "../shared/schema.js";
 import { eq, like } from "drizzle-orm";
-import { db } from "./db.js";
+import { storage } from "./storage.js";
+import { db } from "./db/index.js";
 import session from "express-session";
 import memorystore from "memorystore";
 
@@ -21,19 +22,19 @@ export class DatabaseStorage {
         const adminUser = await this.getUserByUsername("niina");
         if (!adminUser) {
             await this.createUser({
-                                username: "niina",
-                                password: "0077", // In a real app, this would be hashed
-                display_name: "新名 管理者",
-                                role: "admin"
+                username: "niina",
+                password: "0077", // In a real app, this would be hashed
+                displayName: "新納",
+                role: "システム管理者"
             });
         }
         const employeeUser = await this.getUserByUsername("employee");
         if (!employeeUser) {
             await this.createUser({
-                                username: "employee",
-                                password: "employee123", // In a real app, this would be hashed
-                display_name: "山田太郎",
-                                role: "employee"
+                username: "employee",
+                password: "employee123", // In a real app, this would be hashed
+                displayName: "山田太郎",
+                role: "employee"
             });
         }
     };
@@ -50,7 +51,15 @@ export class DatabaseStorage {
         return await db.select().from(schema.users);
     };
     createUser = async (insertUser: any): Promise<any> => {
-        const user = (await db.insert(schema.users).values(insertUser).returning())[0];
+        const userData = {
+            username: insertUser.username,
+            password: insertUser.password,
+            displayName: insertUser.displayName || insertUser.username, // デフォルト値を設定
+            role: insertUser.role || 'employee',
+            department: insertUser.department,
+            description: insertUser.description
+        };
+        const user = (await db.insert(schema.users).values(userData).returning())[0];
         return user;
     };
     updateUser = async (id: string, userData: any): Promise<any> => {

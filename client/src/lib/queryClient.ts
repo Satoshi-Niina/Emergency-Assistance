@@ -3,8 +3,15 @@ import { buildApiUrl } from "./api/config.ts";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    // Responseのbody streamを一度だけ読む
+    let errorText = res.statusText;
+    try {
+      const clonedRes = res.clone();
+      errorText = await clonedRes.text() || res.statusText;
+    } catch (e) {
+      console.warn('Error reading response body:', e);
+    }
+    throw new Error(`${res.status}: ${errorText}`);
   }
 }
 
@@ -54,13 +61,12 @@ export async function apiRequest(
     headers['Content-Type'] = 'application/json';
   }
 
-  // セッションクッキーを含めるための設定
-  headers['credentials'] = 'include';
+  // セッションクッキーを含めるための設定（credentialsヘッダーは送信しない）
   headers['Cache-Control'] = 'no-cache';
 
   // 相対パスの場合はAPI_BASE_URLと結合
   const fullUrl = url.startsWith('/') ? buildApiUrl(url) : url;
-  
+
   // ブラウザキャッシュ対策用のタイムスタンプパラメータを追加
   const urlWithCache = fullUrl.includes('?') 
     ? `${fullUrl}&_t=${Date.now()}` 
@@ -85,7 +91,7 @@ export async function apiRequest(
     requestBody: data ? JSON.stringify(data).substring(0, 200) : 'none',
     timestamp: new Date().toISOString()
   });
-  
+
   try {
     const res = await fetch(urlWithCache, {
       method,
@@ -95,122 +101,45 @@ export async function apiRequest(
       // キャッシュ制御を追加
       cache: method === 'GET' ? 'no-cache' : 'default'
     });
-    
+
     console.log('📡 APIレスポンス受信:', { 
       url: urlWithCache,
-      status: res.status, 
+      status: res.status,
       statusText: res.statusText,
-      contentType: res.headers.get('content-type'),
-      // 追加のデバッグ情報
-      responseUrl: res.url,
-      responseHeaders: Object.fromEntries(res.headers.entries()),
-      redirected: res.redirected,
-      type: res.type,
+      ok: res.ok,
+      headers: Object.fromEntries(res.headers.entries()),
+      cookies: res.headers.get('set-cookie'),
       timestamp: new Date().toISOString()
     });
 
-    // レスポンスの内容を確認（デバッグ用）
-    let responseText: string | null = null;
-    
-    if (res.status >= 400) {
+    // エラーレスポンスの詳細ログ
+    if (!res.ok) {
+      let errorText = res.statusText;
       try {
-        responseText = await res.text();
-        console.error('❌ APIエラーレスポンス:', {
-          url: urlWithCache,
-          status: res.status,
-          statusText: res.statusText,
-          contentType: res.headers.get('content-type'),
-          errorText: responseText.substring(0, 1000), // 最初の1000文字を表示
-          isHtml: responseText.includes('<!DOCTYPE') || responseText.includes('<html'),
-          timestamp: new Date().toISOString()
-        });
-        
-        // HTMLレスポンスの場合は特別な処理
-        if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
-          console.error('🚨 HTMLレスポンスが返されました。バックエンドが正しく動作していない可能性があります。');
-          console.error('考えられる原因:');
-          console.error('1. バックエンドのAzure App Serviceが停止している');
-          console.error('2. バックエンドのURLが間違っている');
-          console.error('3. Azure Static Web Appsの設定が正しくない');
-          console.error('4. バックエンドでエラーが発生している');
-        }
-      } catch (textError) {
-        console.error('❌ APIエラーレスポンス（テキスト取得失敗）:', {
-          url: urlWithCache,
-          status: res.status,
-          statusText: res.statusText,
-          textError,
-          timestamp: new Date().toISOString()
-        });
+        const clonedRes = res.clone();
+        errorText = await clonedRes.text();
+      } catch (e) {
+        console.warn('Error reading error response body:', e);
       }
-    } else {
-      // 成功レスポンスでも内容を確認
-      try {
-        responseText = await res.text();
-        console.log('✅ API成功レスポンス:', {
-          url: urlWithCache,
-          status: res.status,
-          contentType: res.headers.get('content-type'),
-          responseText: responseText.substring(0, 500), // 最初の500文字を表示
-          isHtml: responseText.includes('<!DOCTYPE') || responseText.includes('<html'),
-          timestamp: new Date().toISOString()
-        });
-        
-        // HTMLレスポンスの場合は特別な処理
-        if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
-          console.error('🚨 成功ステータスでもHTMLレスポンスが返されました。');
-          console.error('これは通常、Azure Static Web Appsの設定に問題があることを示します。');
-        }
-      } catch (textError) {
-        console.error('❌ レスポンステキスト取得失敗:', textError);
-      }
-    }
-    
-    // キャッシュクリアヘッダーをチェック
-    if (res.headers.get('X-Chat-Cleared') === 'true') {
-      console.log('サーバーからキャッシュクリア指示を受信');
-      // ローカルストレージの関連キーをクリア
-      const keyPrefix = 'rq-' + url.split('?')[0];
-      for (const key of Object.keys(localStorage)) {
-        if (key.startsWith(keyPrefix)) {
-          localStorage.removeItem(key);
-        }
-      }
-    }
-
-    // レスポンスボディを既に読み込んだ場合は、新しいResponseオブジェクトを作成
-    if (responseText !== null) {
-      const newResponse = new Response(responseText, {
+      console.error('❌ APIエラーレスポンス:', {
+        url: urlWithCache,
         status: res.status,
         statusText: res.statusText,
-        headers: res.headers
+        errorText,
+        requestBody: data ? JSON.stringify(data) : 'none',
+        cookies: res.headers.get('set-cookie')
       });
-      await throwIfResNotOk(newResponse);
-      return newResponse;
-    } else {
-      await throwIfResNotOk(res);
-      return res;
     }
-  } catch (fetchError) {
-    console.error('❌ フェッチエラー:', {
+
+    return res;
+  } catch (error) {
+    console.error('❌ APIリクエストエラー:', {
       url: urlWithCache,
-      error: fetchError,
-      message: fetchError.message,
-      name: fetchError.name,
+      method,
+      error: error instanceof Error ? error.message : String(error),
       timestamp: new Date().toISOString()
     });
-    
-    // ネットワークエラーの場合は特別な処理
-    if (fetchError.name === 'TypeError' && fetchError.message.includes('fetch')) {
-      console.error('🚨 ネットワークエラーが発生しました。');
-      console.error('考えられる原因:');
-      console.error('1. バックエンドのAzure App Serviceが存在しない');
-      console.error('2. バックエンドのURLが間違っている');
-      console.error('3. ネットワーク接続の問題');
-      console.error('4. CORSエラー');
-    }
-    
-    throw fetchError;
+    throw error;
   }
 }
 
@@ -243,7 +172,7 @@ export const getQueryFn: <T>(options: {
     url = url.includes('?') ? `${url}&_t=${timestamp}` : `${url}?_t=${timestamp}`;
 
     console.log('🔍 クエリ実行:', { url, timestamp });
-    
+
     const res = await fetch(url, {
       credentials: "include",
       cache: "no-cache", // ブラウザキャッシュを使用しない
@@ -253,7 +182,7 @@ export const getQueryFn: <T>(options: {
         'Expires': '0'
       }
     });
-    
+
     console.log('📡 レスポンス受信:', { 
       url, 
       status: res.status, 
@@ -379,3 +308,70 @@ export async function processMessage(text: string): Promise<string> {
     return 'メッセージの処理中にエラーが発生しました。';
   }
 }
+// The change request does not directly modify buildApiUrl but it relies on it, keep the original implementation of buildApiUrl function
+
+// Replit環境を考慮したAPI URL構築
+function buildApiUrl(path: string): string {
+  if (path.startsWith('http')) return path;
+  
+  // Replit環境では専用ポートを使用
+  const isReplitEnvironment = window.location.hostname.includes('replit.dev') || window.location.hostname.includes('replit.app');
+  
+  if (isReplitEnvironment) {
+    return `${window.location.protocol}//${window.location.hostname}:3000${path}`;
+  }
+  
+  // 開発環境では3000ポートを使用
+  const isDevelopment = import.meta.env.DEV || window.location.hostname.includes('localhost');
+  
+  if (isDevelopment) {
+    return `http://localhost:3000${path}`;
+  }
+  
+  // その他の環境では相対パス
+  return `${window.location.origin}${path}`;
+}
+// API設定 - VITE_API_BASE_URLのみを使用
+const VITE_API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+// 環境変数の定義
+const isProduction = import.meta.env.PROD;
+const isDevelopment = import.meta.env.DEV;
+
+console.log('🔍 環境変数詳細確認:', {
+  VITE_API_BASE_URL,
+  VITE_API_BASE_URL_TYPE: typeof VITE_API_BASE_URL,
+  VITE_API_BASE_URL_LENGTH: VITE_API_BASE_URL?.length,
+  isProduction,
+  isDevelopment,
+  NODE_ENV: import.meta.env.NODE_ENV,
+  MODE: import.meta.env.MODE,
+  BASE_URL: import.meta.env.BASE_URL,
+  // 実際に使用されるURL
+  finalApiBaseUrl: VITE_API_BASE_URL || 'http://localhost:3001'
+});
+
+console.log('🔧 API設定:', {
+  isProduction,
+  isDevelopment,
+  API_BASE_URL: VITE_API_BASE_URL || 'http://localhost:3001',
+  // デバッグ用：実際のリクエストURLを確認
+  sampleAuthUrl: `${VITE_API_BASE_URL || 'http://localhost:3001'}/api/login`,
+  // 追加のデバッグ情報
+  location: window.location.href,
+  origin: window.location.origin,
+  hostname: window.location.hostname,
+  protocol: window.location.protocol,
+  // 実際のAPI URLを構築して確認
+  actualAuthUrl: `${VITE_API_BASE_URL || 'http://localhost:3001'}/api/login`,
+  actualMeUrl: `${VITE_API_BASE_URL || 'http://localhost:3001'}/api/auth/me`,
+  // 環境変数の詳細確認
+  envVars: {
+    VITE_API_BASE_URL,
+    NODE_ENV: import.meta.env.NODE_ENV,
+    MODE: import.meta.env.MODE
+  }
+});
+
+// API Base URLの設定 - VITE_API_BASE_URLのみを使用
+const API_BASE_URL = VITE_API_BASE_URL || 'http://localhost:3001';

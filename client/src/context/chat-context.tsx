@@ -140,7 +140,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           return v.toString(16);
         });
       };
-      
+
       const chatId = generateUUID();
       setChatId(chatId);
       console.log('チャットIDを設定しました:', chatId);
@@ -517,139 +517,96 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // メッセージ送信関数（シンプル化）
   const sendMessage = useCallback(async (content: string, mediaUrls?: { type: string, url: string, thumbnail?: string }[]) => {
-    if (isLoading || !content.trim()) return;
-
-    // チャットIDが設定されているかチェック
-    if (!chatId) {
-      console.log('チャットIDが設定されていません。初期化を待機します...');
-      await initializeChat();
-      return;
-    }
+    if (!content.trim() && (!mediaUrls || mediaUrls.length === 0)) return;
 
     setIsLoading(true);
 
-    // ユーザーメッセージを即座に表示
-    const userMessage: Message = {
-      id: Date.now(),
-      content: content,
-      isAiResponse: false,
-      timestamp: new Date(),
-      media: mediaUrls || []
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setDraftMessage(null);
-
     try {
-      // AIレスポンスを取得
-      console.log('📤 メッセージ送信リクエスト:', {
-        url: `/api/chats/${chatId}/messages`,
-        content: content.substring(0, 100) + '...',
-        contentLength: content.length,
-        media: mediaUrls
-      });
-      
-      const response = await apiRequest('POST', `/api/chats/${chatId}/messages`, {
-        content,
-        media: mediaUrls
-      });
+      // チャットIDが未設定の場合は初期化
+      let currentChatId = chatId;
+      if (!currentChatId) {
+        console.log('チャットIDが未設定のため、初期化を実行');
+        currentChatId = await initializeChat();
+      }
 
-      console.log('📥 メッセージ送信レスポンス:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        headers: Object.fromEntries(response.headers.entries())
-      });
+      const timestamp = Date.now();
 
-      if (response.ok) {
-        const aiResponse = await response.json();
-        
-        console.log('📥 AIレスポンス解析:', {
-          responseType: typeof aiResponse,
-          responseKeys: Object.keys(aiResponse || {}),
-          content: aiResponse?.content?.substring(0, 100) + '...',
-          text: aiResponse?.text?.substring(0, 100) + '...',
-          hasContent: !!aiResponse?.content,
-          hasText: !!aiResponse?.text
-        });
+      // メディアファイルの処理
+      let processedMedia: any[] = [];
+      if (mediaUrls && mediaUrls.length > 0) {
+        processedMedia = mediaUrls.map((media, index) => ({
+          id: `media_${timestamp}_${index}`,
+          type: media.type,
+          url: media.url,
+          thumbnail: media.thumbnail || media.url,
+          fileName: `${media.type}_${timestamp}_${index}`,
+          title: content.substring(0, MAX_TEXT_LENGTH) || `${media.type}ファイル`
+        }));
+      }
 
-        // AIメッセージを追加
-        const aiMessage: Message = {
-          id: Date.now() + 1,
-          content: aiResponse.content || aiResponse.text || 'レスポンスエラー',
-          isAiResponse: true,
-          timestamp: new Date()
-        };
+      // ユーザーメッセージを作成
+      const userMessage: Message = {
+        id: timestamp,
+        chatId: currentChatId,
+        content: content,
+        text: content,
+        isAiResponse: false,
+        senderId: 'user',
+        timestamp: new Date(),
+        media: processedMedia
+      };
 
-        setMessages(prev => [...prev, aiMessage]);
+      // UIを即座に更新
+      setMessages(prev => [...prev, userMessage]);
 
-        // 新規メッセージに対して画像検索を実行
+      // AIレスポンスの準備
+      let aiResponseContent = '';
+      let searchResults: any[] = [];
+
+      // 画像検索の実行
+      if (content.trim()) {
         try {
-          console.log('✅ AI応答受信完了、画像検索を開始します...');
-          const { searchByText, reloadImageSearchData } = await import('../lib/image-search.ts');
-
-          // まず画像検索データの初期化を確認
-          console.log('🔄 画像検索データをリロードします...');
-          await reloadImageSearchData();
-
-          console.log(`🔍 検索を実行します... クエリ: "${content}"`);
-          const searchResults = await searchByText(content, true);
-          console.log('📊 検索結果（生データ）:', searchResults);
-
-          if (searchResults && searchResults.length > 0) {
-            // 検索結果を処理して画像パスを修正（Fuse.js結果構造に対応）
-            const processedResults = searchResults.map((result: any) => {
-              // Fuse.jsの検索結果の場合、itemプロパティに実データが格納される
-              const actualResult = result.item || result;
-              
-              return {
-                ...actualResult,
-                id: actualResult.id || Math.random(),
-                url: actualResult.file || actualResult.url,
-                file: actualResult.file || actualResult.url,
-                title: actualResult.title || '関連画像',
-                description: actualResult.description || '',
-                category: actualResult.category || ''
-              };
-            });
-            console.log('🎨 表示用に加工した検索結果:', processedResults);
-            console.log(`🖼️ 関係画像エリアに ${processedResults.length} 件の画像を設定します`);
-            setSearchResults(processedResults);
-          } else {
-            console.log('❌ 画像検索結果は0件でした。');
-            setSearchResults([]);
-          }
+          setSearching(true);
+          const results = await searchBySelectedText(content);
+          searchResults = results || [];
+          setSearchResults(searchResults);
+          console.log('画像検索結果:', searchResults.length + '件');
         } catch (searchError) {
-          console.error('❌ 画像検索処理中にエラーが発生しました:', searchError);
-          setSearchResults([]);
+          console.warn('画像検索エラー:', searchError);
+          searchResults = [];
+        } finally {
+          setSearching(false);
         }
       }
+      // ChatGPT APIリクエストは無効化 - チャット表示のみ
+      console.log('💬 ChatGPT APIリクエストを無効化 - チャット表示のみ');
+
+      // 送信されたテキストを応急処置ガイドの検索キーワードとして保存
+      if (content.trim()) {
+        localStorage.setItem('lastSearchKeyword', content.trim());
+        console.log('🔑 検索キーワードを保存:', content.trim());
+      }
+
+      // スクロール処理
+      setTimeout(() => {
+        const chatContainer = document.getElementById('chatMessages');
+        if (chatContainer) {
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+          console.log('チャットエリアを最下部にスクロールしました');
+        }
+      }, 100);
+
     } catch (error) {
       console.error('メッセージ送信エラー:', error);
-      
-      // エラーの詳細情報を取得
-      let errorMessage = "メッセージの送信に失敗しました";
-      
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'object' && error !== null) {
-        // APIレスポンスエラーの場合
-        if ('status' in error && 'statusText' in error) {
-          errorMessage = `HTTP ${error.status}: ${error.statusText}`;
-        } else if ('message' in error) {
-          errorMessage = String(error.message);
-        }
-      }
-      
       toast({
-        title: "送信エラー",
-        description: errorMessage,
-        variant: "destructive",
+        title: 'エラー',
+        description: 'メッセージの送信に失敗しました',
+        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, toast, chatId, initializeChat]);
+  }, [chatId, initializeChat, searchBySelectedText, setSearchResults, toast, apiRequest]);
 
   // 音声認識の初期化を最適化
   const initializeSpeechRecognition = useCallback(() => {
@@ -1083,7 +1040,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const executedImages = flowData.executedSteps
         ?.flatMap((step: any) => {
           const images: any[] = [];
-          
+
           // imageUrlがある場合
           if (step.imageUrl && step.imageUrl.trim()) {
             images.push({
@@ -1095,7 +1052,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               fileName: `step_${step.stepId}.jpg`
             });
           }
-          
+
           // images配列がある場合
           if (step.images && Array.isArray(step.images)) {
             step.images.forEach((image: any, index: number) => {
@@ -1111,7 +1068,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               }
             });
           }
-          
+
           return images;
         }) || [];
 
@@ -1132,7 +1089,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const aiMessageContent = flowData.isPartial
         ? `■ 応急処置フロー途中経過\n\n**${flowData.title}**\n\n**実行済みステップ:**\n${stepDetails}\n\n**送信時刻:** ${flowData.completedAt.toLocaleString('ja-JP')}\n\n---\n**AI分析**: 応急処置フローの途中経過が記録されました。続行する場合はガイドを継続してください。`
         : `■ 応急処置フロー実行記録\n\n**${flowData.title}**\n\n**実行したステップ:**\n${stepDetails}\n\n**実行完了時刻:** ${flowData.completedAt.toLocaleString('ja-JP')}\n\n---\n**AI分析**: 応急処置フローが正常に実行されました。各ステップの実施状況を確認し、必要に応じて追加の対応を行ってください。`;
-      
+
       const aiMessage = {
         id: timestamp + 1,
         chatId: currentChatId,
@@ -1148,6 +1105,19 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('- ユーザーメッセージ:', userMessage);
       console.log('- AIメッセージ:', aiMessage);
       console.log('- 含まれる画像数:', executedImages.length);
+
+      // 履歴に保存する処理を追加
+      await saveToHistory({
+        chatId: currentChatId,
+        title: `緊急フロー実行: ${flowResult.title}`,
+        description: message,
+        emergencyGuideTitle: flowResult.title,
+        emergencyGuideContent: aiMessageContent,
+        images: executedImages.map(img => ({
+          url: img.url,
+          description: img.description || img.fileName
+        }))
+      });
 
       // メッセージを即座にローカル状態に追加
       setMessages(prevMessages => {
@@ -1289,7 +1259,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // 最後のエクスポート履歴を取得
   const fetchLastExport = useCallback(async () => {
     if (!chatId) return;
-    
+
     // UUIDの形式チェック
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(chatId)) {
@@ -1306,7 +1276,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
 
       const response = await apiRequest('GET', `/api/chats/${chatId}/last-export`);
-      
+
       console.log('📡 最後のエクスポート履歴レスポンス:', {
         status: response.status,
         statusText: response.statusText,

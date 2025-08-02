@@ -1,13 +1,13 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { useToast } from "../hooks/use-toast.ts";
-import { apiRequest } from "../lib/queryClient.ts";
-import { AUTH_API } from "../lib/api/config.ts";
+
+
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { login as authLogin, logout as authLogout, getCurrentUser } from '../lib/auth';
 
 interface User {
   id: string;
   username: string;
   displayName: string;
-  role: "employee" | "admin";
+  role: 'admin' | 'employee';
   department?: string;
 }
 
@@ -15,110 +15,100 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
+  logout: () => void;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === null) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-};
-
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast();
+  const [authChecked, setAuthChecked] = useState(false);
 
-  const getCurrentUser = async () => {
-    try {
-      console.log('🔍 現在のユーザー情報を取得中...');
-      const response = await fetch(AUTH_API.ME, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      console.log('📡 ユーザー情報レスポンス:', {
-        status: response.status,
-        ok: response.ok
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          console.log('❌ 未認証ユーザー');
-          return null;
-        }
-        throw new Error('ユーザー情報の取得に失敗しました');
-      }
-
-      const userData = await response.json();
-      console.log('✅ ユーザー情報取得成功:', userData);
-
-      if (!userData || !userData.user || !userData.user.id) {
-        console.warn('⚠️ 無効なユーザーデータ:', userData);
-        return null;
-      }
-
-      return userData.user;
-    } catch (error) {
-      console.error('❌ ユーザー情報取得エラー:', error);
-      return null;
-    }
-  };
-
+  // 初期認証状態チェック
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        console.log('🔐 認証状態チェック開始');
-        const response = await fetch(AUTH_API.ME, {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
+        console.log('🔍 認証状態確認開始');
+        setIsLoading(true);
+        
+        // API URLを環境変数から構築（デフォルト値付き）
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+        const apiUrl = `${apiBaseUrl}/api/auth/me`;
+        console.log('🔗 認証確認URL:', apiUrl);
+
+        const response = await fetch(apiUrl, {
+          method: "GET",
+          headers: { 
+            "Content-Type": "application/json"
           },
+          credentials: "include"
         });
 
-        console.log('🔐 認証チェックレスポンス:', {
+        console.log('📡 認証確認レスポンス:', {
           status: response.status,
-          statusText: response.statusText,
           ok: response.ok
         });
 
         if (response.ok) {
           const userData = await response.json();
-          console.log('✅ 認証成功:', userData);
-          setUser(userData.user || userData);
+          console.log('📦 認証確認データ:', userData);
+          
+          if (userData && userData.success && userData.user) {
+            console.log('✅ 認証済みユーザー:', userData.user);
+            setUser({
+              id: userData.user.id,
+              username: userData.user.username,
+              displayName: userData.user.displayName,
+              role: userData.user.role,
+              department: userData.user.department
+            });
+          } else {
+            console.log('❌ 無効な認証データ:', userData);
+            setUser(null);
+          }
+        } else if (response.status === 401) {
+          console.log('❌ 未認証状態:', response.status);
+          setUser(null);
         } else {
-          console.log('❌ 認証失敗:', response.status, response.statusText);
+          console.log('❌ 認証確認失敗:', response.status);
           setUser(null);
         }
       } catch (error) {
-        console.error('❌ 認証チェックエラー:', error);
+        console.error('❌ 認証確認エラー:', error);
+        console.error('❌ 認証確認エラー詳細:', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+          timestamp: new Date().toISOString()
+        });
         setUser(null);
       } finally {
         setIsLoading(false);
+        setAuthChecked(true);
+        console.log('✅ 認証状態確認完了 - authChecked:', true);
       }
     };
 
     checkAuthStatus();
   }, []);
 
-  const login = async (username: string, password: string) => {
+  const login = async (username: string, password: string): Promise<void> => {
+    console.log('🔐 ログイン試行開始:', { username });
+
     try {
       setIsLoading(true);
-      console.log('🔐 ログイン試行開始:', { username });
+      
+      // API URLを環境変数から構築（デフォルト値付き）
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const apiUrl = `${apiBaseUrl}/api/auth/login`;
+      console.log('🔗 ログインURL:', apiUrl);
 
-      const response = await fetch(AUTH_API.LOGIN, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json"
         },
-        credentials: 'include',
+        credentials: "include",
         body: JSON.stringify({ username, password })
       });
 
@@ -127,48 +117,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ok: response.ok
       });
 
+      // レスポンスが200以外の場合はエラーをthrow
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({
-          message: 'サーバーからのレスポンスエラー'
-        }));
-        console.error('❌ ログインエラー:', errorData);
-        throw new Error(errorData.message || 'ログインに失敗しました');
+        const errorText = await response.text();
+        console.error('❌ ログインAPIエラー:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorText
+        });
+        
+        let errorMessage = 'ログインに失敗しました';
+        if (response.status === 401) {
+          errorMessage = 'ユーザー名またはパスワードが違います';
+        } else if (response.status === 500) {
+          errorMessage = 'サーバーエラーが発生しました';
+        } else if (response.status === 0 || response.statusText === 'Failed to fetch') {
+          errorMessage = 'サーバーに接続できません';
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const userData = await response.json();
-      console.log('✅ ログイン成功:', userData);
-      console.log('🔍 レスポンスデータ詳細:', {
-        hasUserData: !!userData,
-        hasUser: !!userData?.user,
-        userDataKeys: userData ? Object.keys(userData) : [],
-        userKeys: userData?.user ? Object.keys(userData.user) : [],
-        userData: userData,
-        user: userData?.user
-      });
+      console.log('📦 ログインレスポンスデータ:', userData);
 
-      if (!userData || !userData.user || !userData.user.id) {
-        console.error('❌ 無効なユーザーデータ:', userData);
-        throw new Error('無効なユーザーデータを受信しました');
+      if (userData && userData.success && userData.user) {
+        console.log('✅ ログイン成功:', userData.user);
+        setUser({
+          id: userData.user.id,
+          username: userData.user.username,
+          displayName: userData.user.displayName,
+          role: userData.user.role,
+          department: userData.user.department
+        });
+      } else {
+        throw new Error('ログインレスポンスが無効です');
       }
-
-      // ユーザーデータを設定
-      setUser(userData.user);
-      console.log('✅ ユーザー状態更新完了:', userData.user);
-      
-      toast({
-        title: 'ログイン成功',
-        description: `ようこそ、${userData.user.displayName || userData.user.username}さん`,
-        variant: 'default'
-      });
-
-      return userData.user;
     } catch (error) {
-      console.error('❌ ログインエラー:', error);
-      toast({
-        title: 'ログイン失敗',
-        description: error instanceof Error ? error.message : 'ログインに失敗しました',
-        variant: 'destructive'
+      console.error('❌ ログインエラー:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
       });
+      setUser(null);
       throw error;
     } finally {
       setIsLoading(false);
@@ -176,40 +167,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    console.log('🔐 ログアウト処理開始');
+
     try {
-      setIsLoading(true);
-      console.log('🔒 ログアウト処理開始');
-
-      const response = await fetch(AUTH_API.LOGOUT, {
-        method: 'POST',
-        credentials: 'include'
-      });
-
-      if (!response.ok) {
-        throw new Error('ログアウトに失敗しました');
-      }
-
-      setUser(null);
-      toast({
-        title: 'ログアウト成功',
-        description: 'ログアウトしました',
-        variant: 'default'
-      });
+      await authLogout();
+      console.log('✅ ログアウト成功');
     } catch (error) {
       console.error('❌ ログアウトエラー:', error);
-      toast({
-        title: 'ログアウト失敗',
-        description: 'ログアウトに失敗しました',
-        variant: 'destructive'
-      });
     } finally {
-      setIsLoading(false);
+      setUser(null);
     }
   };
 
+  console.log('🔧 AuthProvider レンダリング:', {
+    user: user ? user.username : null,
+    isLoading,
+    authChecked,
+    timestamp: new Date().toISOString()
+  });
+
+  // 認証状態確認中は常にローディング画面を表示（nullレンダリング禁止）
+  if (isLoading) {
+    console.log('⏳ AuthProvider: 認証状態確認中、ローディング画面を表示');
+    return (
+      <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+        <div className="flex justify-center items-center h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-gray-600">認証状態を確認中...</p>
+          </div>
+        </div>
+      </AuthContext.Provider>
+    );
+  }
+
+  console.log('✅ AuthProvider: 認証状態確認完了、子コンポーネントを表示');
   return (
     <AuthContext.Provider value={{ user, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
-};
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}

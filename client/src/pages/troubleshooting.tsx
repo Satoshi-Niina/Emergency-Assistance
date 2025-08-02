@@ -68,45 +68,45 @@ export default function TroubleshootingPage() {
   const { toast } = useToast();
 
   const { data: flows, isLoading } = useQuery<Flow[]>({
-    queryKey: ['/api/emergency-flow'],
+    queryKey: ['/api/troubleshooting/list'],
     queryFn: async () => {
-      const res = await apiRequest('GET', '/api/emergency-flow');
-      if (!res.ok) throw new Error('フロー一覧の取得に失敗しました');
+      const res = await apiRequest('GET', '/api/troubleshooting/list');
+      if (!res.ok) throw new Error('ファイル一覧の取得に失敗しました');
       return await res.json();
     },
   });
 
   const saveMutation = useMutation({
     mutationFn: (flowData: Partial<Flow>) => {
-      const url = flowData.id ? `/api/emergency-flow/${flowData.id}` : '/api/emergency-flow';
+      const url = flowData.id ? `/api/troubleshooting/${flowData.id}` : '/api/troubleshooting';
       const method = flowData.id ? 'PUT' : 'POST';
       return apiRequest(method, url, flowData);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/emergency-flow'] });
-      toast({ title: '成功', description: 'フローが正常に保存されました。' });
+      queryClient.invalidateQueries({ queryKey: ['/api/troubleshooting/list'] });
+      toast({ title: '成功', description: 'ファイルが正常に保存されました。' });
       setIsEditorOpen(false);
       setSelectedFlow(null);
       setFlowState({ view: 'list' });
     },
-    onError: (error) => toast({ title: 'エラー', description: `フローの保存中にエラーが発生しました: ${error.message}`, variant: 'destructive' }),
+    onError: (error) => toast({ title: 'エラー', description: `ファイルの保存中にエラーが発生しました: ${error.message}`, variant: 'destructive' }),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (flowId: string) => apiRequest('DELETE', `/api/emergency-flow/${flowId}`),
+    mutationFn: (flowId: string) => apiRequest('DELETE', `/api/troubleshooting/${flowId}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/emergency-flow'] });
-      toast({ title: '成功', description: 'フローが削除されました。' });
+      queryClient.invalidateQueries({ queryKey: ['/api/troubleshooting/list'] });
+      toast({ title: '成功', description: 'ファイルが削除されました。' });
       setFlowToDelete(null);
       setIsWarningOpen(false);
     },
-    onError: (error) => toast({ title: 'エラー', description: `フローの削除中にエラーが発生しました: ${error.message}`, variant: 'destructive' }),
+    onError: (error) => toast({ title: 'エラー', description: `ファイルの削除中にエラーが発生しました: ${error.message}`, variant: 'destructive' }),
   });
-  
+
   const handleEdit = (flowId: string) => {
     setFlowState({ view: 'edit', flowId });
   };
-  
+
   const handleNew = () => {
     setFlowState({ view: 'edit', flowId: null });
   };
@@ -126,10 +126,10 @@ export default function TroubleshootingPage() {
   };
 
   const handleOpenEditor = (flowId: string) => {
-    apiRequest('GET', `/api/emergency-flow/${flowId}`).then(res => res.json()).then(fullFlowData => {
+    apiRequest('GET', `/api/troubleshooting/detail/${flowId}`).then(res => res.json()).then(fullFlowData => {
       setSelectedFlow(fullFlowData);
       setIsEditorOpen(true);
-    }).catch(err => toast({ title: 'エラー', description: `フローデータの取得に失敗しました: ${err.message}`, variant: 'destructive' }));
+    }).catch(err => toast({ title: 'エラー', description: `ファイルデータの取得に失敗しました: ${err.message}`, variant: 'destructive' }));
   };
 
   const handleOpenViewer = (flow: Flow) => {
@@ -141,7 +141,7 @@ export default function TroubleshootingPage() {
     setFlowToDelete(flowId);
     setIsWarningOpen(true);
   };
-  
+
   const confirmDelete = () => {
       if(flowToDelete) deleteMutation.mutate(flowToDelete);
   }
@@ -168,7 +168,7 @@ export default function TroubleshootingPage() {
   }
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 bg-gray-50 min-h-screen">
+    <div className="container mx-auto p-4 sm:p-6 bg-gray-50 min-h-screen max-w-7xl">
       <div className="flex justify-between items-start mb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 flex items-center gap-3">
@@ -214,7 +214,7 @@ export default function TroubleshootingPage() {
            )}
         </TabsContent>
       </Tabs>
-      
+
       {/* --- Dialogs --- */}
       <Dialog open={isEditorOpen} onOpenChange={setIsEditorOpen}>
         <DialogContent className="max-w-full w-full h-full flex flex-col p-0">
@@ -228,7 +228,7 @@ export default function TroubleshootingPage() {
             )}
         </DialogContent>
       </Dialog>
-      
+
        <Dialog open={isViewerOpen} onOpenChange={setIsViewerOpen}>
         <DialogContent className="max-w-4xl w-full">
             <DialogHeader>
@@ -240,7 +240,7 @@ export default function TroubleshootingPage() {
             </div>
         </DialogContent>
       </Dialog>
-      
+
       <WarningDialog
         isOpen={isWarningOpen}
         onOpenChange={setIsWarningOpen}

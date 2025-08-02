@@ -3,9 +3,11 @@ node_modules/
 */node_modules/
 
 # Build outputs
-#dist/
+dist/
 client/dist/
 client/dist-dev/
+server/dist/
+shared/dist/
 build/
 .next/
 .nuxt/
@@ -23,6 +25,8 @@ build/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+logs/
+webapp_logs/
 
 # Runtime data
 pids
@@ -98,35 +102,38 @@ logs/dev/
 
 # Backup files
 *.backup
-backup-*
-test-*
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Database
-*.db
-*.sqlite
 
 # Docker
 .dockerignore
 
-# TypeScript
-*.tsbuildinfo
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
 
-# client/.env.production を除外
-/client/.env.production
-/server/.env.production
+# OS
+.DS_Store
+Thumbs.db
+
+# Azure
+.azure/
+
+# Local development
+*.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploads (keep structure but ignore content)
+uploads/*
+!uploads/.gitkeep
+
+# Knowledge base temp files
+knowledge-base/temp/*
+!knowledge-base/temp/.gitkeep
+
+# Build artifacts
+*.tsbuildinfo

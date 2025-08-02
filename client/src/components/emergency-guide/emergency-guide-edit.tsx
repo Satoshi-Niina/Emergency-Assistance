@@ -35,6 +35,25 @@ interface FlowData {
   filePath: string;
 }
 
+// 日付フォーマット関数
+function formatDate(dateString: string): string {
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return '日付不明';
+    }
+    return date.toLocaleString('ja-JP', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (error) {
+    return '日付不明';
+  }
+}
+
 // 差分を計算するユーティリティ関数
 function getObjectDiff(original: any, fixed: any, path = ''): string[] {
   const diffs: string[] = [];
@@ -70,18 +89,37 @@ interface FlowListProps {
 const FlowList: React.FC<FlowListProps> = ({ flows, onSelectFlow, onDeleteFlow, onPreviewFlow, isLoading }) => {
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="flex justify-center items-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <p className="ml-3 text-gray-600">フロー一覧を読み込み中...</p>
       </div>
     );
   }
 
   if (flows.length === 0) {
     return (
-      <div className="text-center py-16 text-gray-500">
-        <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-        <h3 className="text-lg font-semibold">フローが見つかりません</h3>
-        <p className="text-sm">アップロードタブから新しいフローを追加してください。</p>
+      <div className="text-center p-8">
+        <div className="bg-gray-50 rounded-lg p-6">
+          <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">フローがありません</h3>
+          <p className="text-gray-600 mb-4">
+            まだフローが作成されていません。新規フロー生成タブでフローを作成してください。
+          </p>
+          <div className="flex justify-center space-x-2">
+            <Button 
+              variant="outline" 
+              onClick={() => window.dispatchEvent(new CustomEvent('switchToGenerator'))}
+            >
+              新規フロー生成へ
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => window.location.reload()}
+            >
+              再読み込み
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -92,10 +130,14 @@ const FlowList: React.FC<FlowListProps> = ({ flows, onSelectFlow, onDeleteFlow, 
         <Card key={flow.id} className="hover:shadow-md transition-shadow">
           <CardContent className="p-4 flex justify-between items-center">
             <div className="flex-grow cursor-pointer" onClick={() => onSelectFlow(flow)}>
-              <p className="font-semibold">{flow.title}</p>
-              <p className="text-sm text-gray-500">
-                ステップ数: {flow.steps?.length || 0}
+              <p className="font-semibold text-lg">{flow.title}</p>
+              <p className="text-sm text-gray-600 mb-1">
+                {flow.description || '説明なし'}
               </p>
+              <div className="flex items-center space-x-4 text-xs text-gray-500">
+                <span>ステップ数: {flow.steps?.length || 0}</span>
+                <span>作成日時: {formatDate(flow.updatedAt)}</span>
+              </div>
             </div>
             <div className="flex items-center space-x-2">
               <Button variant="ghost" size="sm" onClick={() => onSelectFlow(flow)}>
@@ -133,18 +175,52 @@ const EmergencyGuideEdit: React.FC = () => {
   const fetchFlowList = useCallback(async (force = false) => {
     try {
       setIsLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/list`);
-      if (!response.ok) throw new Error('フロー一覧の取得に失敗しました');
+      console.log('🔄 フロー一覧取得開始');
+      
+      const timestamp = Date.now();
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow?ts=${timestamp}`, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+      
+      console.log('📡 レスポンス状態:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ API エラー:', errorText);
+        throw new Error(`HTTP ${response.status}: フロー一覧の取得に失敗しました - ${errorText}`);
+      }
       
       const data = await response.json();
-      setFlowList(Array.isArray(data) ? data : []);
+      console.log('📊 取得したデータ:', data);
+      
+      // APIレスポンスの構造に合わせてデータをマッピング
+      const flows = data.success && data.data ? data.data : (Array.isArray(data) ? data : []);
+      console.log('🔄 処理対象フロー数:', flows.length);
+      
+      const mappedFlows = flows.map((flow: any) => ({
+        id: flow.id || flow.fileName?.replace('.json', '') || '',
+        title: flow.title || 'タイトルなし',
+        description: flow.description || '',
+        triggerKeywords: flow.triggerKeywords || [],
+        steps: flow.steps || [],
+        updatedAt: flow.createdAt || flow.updatedAt || flow.savedAt || new Date().toISOString(),
+        filePath: flow.filePath || `knowledge-base/troubleshooting/${flow.fileName || ''}`,
+        fileName: flow.fileName || ''
+      }));
+      
+      console.log('✅ マッピング完了:', mappedFlows.length + '件');
+      setFlowList(mappedFlows);
     } catch (error) {
-      console.error('フロー取得エラー:', error);
+      console.error('❌ フロー取得エラー:', error);
       toast({
         title: "エラー",
-        description: "フロー一覧の取得に失敗しました",
+        description: error instanceof Error ? error.message : "フロー一覧の取得に失敗しました",
         variant: "destructive",
       });
+      setFlowList([]); // エラー時は空配列を設定
     } finally {
       setIsLoading(false);
     }

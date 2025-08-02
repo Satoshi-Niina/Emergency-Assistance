@@ -38,12 +38,29 @@ function logPath(message: any, path) {
         console.log(message, path ? '***' : '');
     }
 }
-// ディレクトリ作成用ヘルパー関数
-function ensureDirectoryExists(directory) {
-    if (!fs.existsSync(directory)) {
-        fs.mkdirSync(directory, { recursive: true });
+// ディレクトリ作成関数
+const ensureDirectoryExists = (dirPath: string) => {
+  console.log(`📁 ディレクトリ確認中: ${dirPath}`);
+  try {
+    // 絶対パスの場合は相対パスに変換
+    const relativePath = path.isAbsolute(dirPath) ? 
+      path.join(process.cwd(), path.basename(dirPath)) : 
+      dirPath;
+
+    if (!fs.existsSync(relativePath)) {
+      console.log(`📁 ディレクトリが存在しません。作成します: ${relativePath}`);
+      // { recursive: true } を指定して再帰的にディレクトリを作成
+      fs.mkdirSync(relativePath, { recursive: true });
+      console.log(`✅ ディレクトリを作成しました: ${relativePath}`);
+    } else {
+      console.log(`✅ ディレクトリは既に存在します: ${relativePath}`);
     }
-}
+  } catch (error) {
+    console.error(`ディレクトリ作成エラー: ${dirPath}`, error);
+    // エラーが発生してもサーバーを停止させないようにする
+    console.warn(`⚠️  ディレクトリ作成に失敗しましたが、処理を続行します`);
+  }
+};
 // ファイルクリーンアップユーティリティ
 function cleanupTempDirectory(dirPath) {
     if (!fs.existsSync(dirPath))
@@ -339,12 +356,19 @@ async function verifyAndCleanupDirectory(dirPath) {
         console.error(`ディレクトリの検証・クリーンアップに失敗しました: ${dirPath}`, error);
     }
 }
-// ディレクトリ構造の整理：知識ベース用、画像検索用、一時アップロード用に分離
-const knowledgeBaseDir: any = path.join(__dirname, '../../knowledge-base');
-const knowledgeBaseDataDir: any = path.join(knowledgeBaseDir, 'data');
-const knowledgeBaseImagesDir: any = path.join(knowledgeBaseDir, 'images');
+// ナレッジベースのディレクトリパス設定（プロジェクトルートからの相対パス）
+const knowledgeBaseDir = process.env.KNOWLEDGE_BASE_PATH || path.join(process.cwd(), 'knowledge-base');
+const knowledgeBaseDataDir = path.join(knowledgeBaseDir, 'data');
+const knowledgeBaseImagesDir = path.join(knowledgeBaseDir, 'images');
 // knowledge-base/imagesディレクトリを画像用に使用 (一元化)
-const publicImagesDir: any = path.join(__dirname, '../../knowledge-base/images');
+
+console.log('📁 ディレクトリパス確認:', {
+  knowledgeBaseDir,
+  knowledgeBaseDataDir,
+  knowledgeBaseImagesDir,
+  KNOWLEDGE_BASE_PATH: process.env.KNOWLEDGE_BASE_PATH
+});
+const publicImagesDir: any = knowledgeBaseImagesDir;
 // 知識ベース一時ディレクトリのパス
 const knowledgeBaseTempDir: any = path.join(knowledgeBaseDir, 'temp');
 // ディレクトリが存在することを確認
@@ -352,7 +376,6 @@ ensureDirectoryExists(knowledgeBaseDir);
 ensureDirectoryExists(knowledgeBaseDataDir);
 ensureDirectoryExists(knowledgeBaseImagesDir);
 ensureDirectoryExists(knowledgeBaseTempDir);
-ensureDirectoryExists(publicImagesDir);
 // Multerストレージ設定
 const storage: any = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -1193,7 +1216,7 @@ router.post('/cleanup-logs', async (req, res) => {
         const cleanupLogFiles = async () => {
             console.log('Log cleanup completed');
         };
-        
+
         await cleanupLogFiles();
         res.json({ success: true, message: 'Log cleanup completed' });
     } catch (error) {

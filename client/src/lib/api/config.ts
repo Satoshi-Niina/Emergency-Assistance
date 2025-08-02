@@ -2,13 +2,52 @@
 const isProduction = import.meta.env.PROD && !window.location.hostname.includes('localhost');
 const isDevelopment = import.meta.env.DEV || window.location.hostname.includes('localhost');
 
-// 本番環境用設定
-// 環境変数からAPI URLを取得、なければ相対パスを使用
-export const API_BASE_URL = isProduction 
-  ? 'https://emergency-backend-e7enc2e8dhdabucv.japanwest-01.azurewebsites.net'  // 本番環境では直接バックエンドURLを使用
-  : 'http://localhost:3001'; // 開発環境ではローカルバックエンドを使用
+// Replit環境の検出
+const isReplitEnvironment = window.location.hostname.includes('replit.dev') || window.location.hostname.includes('replit.app');
 
-// APIエンドポイントの構築（先に定義）
+// Azure環境の検出
+const isAzureEnvironment = window.location.hostname.includes('azurewebsites.net') || window.location.hostname.includes('azure.com');
+
+// API Base URLの設定
+// 優先順位: 環境変数 > 本番環境 > 開発環境
+export const API_BASE_URL = (() => {
+  // 環境変数が設定されている場合は優先使用（VITE_API_BASE_URLのみ使用）
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  
+  // 本番環境の場合
+  if (isProduction) {
+    if (isAzureEnvironment) {
+      return 'https://emergency-backend-e7enc2e8dhdabucv.japanwest-01.azurewebsites.net';
+    }
+    if (isReplitEnvironment) {
+      return `${window.location.protocol}//${window.location.hostname.split(':')[0]}:3000`;
+    }
+    // その他の本番環境
+    return window.location.origin;
+  }
+  
+  // 開発環境の場合
+  return 'http://localhost:3001';
+})();
+
+console.log('🔧 API設定詳細:', {
+  isReplitEnvironment,
+  isAzureEnvironment,
+  isProduction,
+  isDevelopment,
+  currentHostname: window.location.hostname,
+  currentProtocol: window.location.protocol,
+  finalApiBaseUrl: API_BASE_URL,
+  envVars: {
+    VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL, // 使用中: APIのベースURL
+    NODE_ENV: import.meta.env.NODE_ENV, // 使用中: 環境判別
+    MODE: import.meta.env.MODE // 使用中: ビルドモード
+  }
+});
+
+// APIエンドポイントの構築
 export const buildApiUrl = (endpoint: string): string => {
   const fullUrl = `${API_BASE_URL}${endpoint}`;
   console.log(`🔗 API URL構築: ${endpoint} -> ${fullUrl}`);
@@ -53,9 +92,9 @@ console.log('🔧 API設定:', {
 
 // 認証APIエンドポイント
 export const AUTH_API = {
-  LOGIN: buildApiUrl('/api/auth/login'),
-  LOGOUT: buildApiUrl('/api/auth/logout'),
-  ME: buildApiUrl('/api/auth/me'),
+  LOGIN: `${API_BASE_URL}/api/auth/login`,
+  LOGOUT: `${API_BASE_URL}/api/auth/logout`,
+  ME: `${API_BASE_URL}/api/auth/me`,
   // デバッグ用テストエンドポイント
   TEST: buildApiUrl('/api/health'),
 };
@@ -83,4 +122,14 @@ export const API_CONFIG = {
   baseUrl: API_BASE_URL,
   timeout: 30000, // 30秒
   retryAttempts: 3,
+};
+
+// API リクエスト用のベースオプション
+export const API_REQUEST_OPTIONS = {
+  credentials: 'include' as RequestCredentials,
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'Cache-Control': 'no-cache'
+  }
 };

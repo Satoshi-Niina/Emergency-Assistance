@@ -1,7 +1,5 @@
 import dotenv from 'dotenv';
-dotenv.config({ path: '.env.production' });
-
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -9,59 +7,91 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@shared': path.resolve(__dirname, '../shared'),
-    },
-    extensions: ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.json'],
-  },
-  server: {
-    host: '0.0.0.0',
-    port: 5001,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-        secure: false,
-      },
-      '/ws': {
-        target: 'ws://localhost:3001',
-        ws: true,
-        changeOrigin: true
-      }
-    },
-    fs: {
-      allow: [path.resolve(__dirname, '..')],
+// https://vitejs.dev/config/
+export default defineConfig(({ command, mode }) => {
+  // 環境変数を読み込み
+  const env = loadEnv(mode, process.cwd(), '');
+  
+  // APIのベースURLを環境変数から取得（VITE_API_BASE_URLのみ使用）
+  const apiBaseUrl = env.VITE_API_BASE_URL || 'http://localhost:3001';
+  const serverPort = parseInt(env.PORT || '3001');
+  const clientPort = parseInt(env.CLIENT_PORT || '5002');
+  
+  console.log('🔧 Vite設定:', {
+    command,
+    mode,
+    apiBaseUrl,
+    serverPort,
+    clientPort,
+    env: {
+      VITE_API_BASE_URL: env.VITE_API_BASE_URL, // 使用中: APIのベースURL
+      PORT: env.PORT, // 使用中: サーバーポート
+      NODE_ENV: env.NODE_ENV // 使用中: 環境判別
     }
-  },
-  build: {
-    outDir: 'dist',
-    chunkSizeWarningLimit: 2000,
-    rollupOptions: {
-      input: './index.html',
-      output: {
-        manualChunks: undefined
+  });
+
+  return {
+    plugins: [react()],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+        '@shared': path.resolve(__dirname, '../shared'),
+      },
+      extensions: ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.json'],
+    },
+    server: {
+      host: '0.0.0.0',
+      port: clientPort,
+      allowedHosts: true,
+      proxy: {
+        '/api': {
+          target: apiBaseUrl,
+          changeOrigin: true,
+          secure: false,
+          ws: true,
+          rewrite: (path) => path,
+          configure: (proxy, options) => {
+            proxy.on('error', (err, req, res) => {
+              console.log('🔴 Proxy error:', err);
+            });
+            proxy.on('proxyReq', (proxyReq, req, res) => {
+              console.log('📤 Sending Request to the Target:', req.method, req.url);
+            });
+            proxy.on('proxyRes', (proxyRes, req, res) => {
+              console.log('📥 Received Response from the Target:', proxyRes.statusCode, req.url);
+            });
+          },
+        },
+      },
+      fs: {
+        allow: [path.resolve(__dirname, '..')],
       }
     },
-    sourcemap: true, // Enable sourcemaps for easier debugging
-    minify: true, // Enable minification for production
-    target: 'esnext', // Use esnext for better ESM support
-    modulePreload: true // Enable module preload
-  },
-  esbuild: {
-    keepNames: true,
-    legalComments: 'none',
-    target: 'es2015'
-  },
-  define: {
-    'import.meta.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || 'https://emergency-backend-api.azurewebsites.net'),
-    'import.meta.env.VITE_API_BASE_URL_TYPE': JSON.stringify('string'),
-    'import.meta.env.VITE_API_BASE_URL_LENGTH': JSON.stringify(process.env.VITE_API_BASE_URL?.length || 47),
-    'import.meta.env.isProduction': JSON.stringify(true),
-    'import.meta.env.isDevelopment': JSON.stringify(false)
-  },
-  logLevel: 'info'
-}); 
+    build: {
+      outDir: 'dist',
+      chunkSizeWarningLimit: 2000,
+      rollupOptions: {
+        input: './index.html',
+        output: {
+          manualChunks: undefined
+        }
+      },
+      sourcemap: true,
+      minify: true,
+      target: 'esnext',
+      modulePreload: true
+    },
+    esbuild: {
+      keepNames: true,
+      legalComments: 'none',
+      target: 'es2015'
+    },
+    define: {
+      // 環境変数をクライアントサイドで利用可能にする
+      __VITE_API_BASE_URL__: JSON.stringify(apiBaseUrl),
+      __VITE_MODE__: JSON.stringify(mode),
+      __VITE_COMMAND__: JSON.stringify(command),
+    },
+    logLevel: 'info'
+  };
+});

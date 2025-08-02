@@ -1,11 +1,33 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/auth-context";
+import { useToast } from "../hooks/use-toast.ts";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
 import { Switch } from "../components/ui/switch";
 import { Slider } from "../components/ui/slider";
-import { useToast } from "../hooks/use-toast.ts";
-import { Settings, Volume2, Mic, Monitor, Smartphone, LogOut, User, Shield, Save, Trash2, FileX, UserPlus, FileType, Info } from "lucide-react";
+import { Badge } from "../components/ui/badge";
+import { 
+  Settings, 
+  Volume2, 
+  Mic, 
+  Monitor, 
+  Smartphone, 
+  LogOut, 
+  User, 
+  Shield, 
+  Save, 
+  Trash2, 
+  FileX, 
+  UserPlus, 
+  FileType, 
+  Info, 
+  Plus, 
+  Database, 
+  X,
+  CheckCircle,
+  RefreshCw,
+  AlertCircle
+} from "lucide-react";
 import { WarningDialog } from "../components/shared/warning-dialog";
 import { Separator } from "../components/ui/separator";
 import { Input } from "../components/ui/input";
@@ -19,6 +41,18 @@ import {
 } from "../components/ui/select";
 import { Link } from "react-router-dom";
 
+interface SystemHealth {
+  database: {
+    status: 'connected' | 'error';
+    message: string;
+  };
+  openai: {
+    status: 'set' | 'not_set';
+    message: string;
+  };
+  timestamp: string;
+}
+
 export default function SettingsPage() {
   const { user, logout } = useAuth();
   const { toast } = useToast();
@@ -31,7 +65,18 @@ export default function SettingsPage() {
   const [darkMode, setDarkMode] = useState(false);
   const [autoSave, setAutoSave] = useState(true);
   const [useOnlyKnowledgeBase, setUseOnlyKnowledgeBase] = useState(true);
-  const [usePerplexity, setUsePerplexity] = useState(false);
+
+  // システム健全性チェック
+  const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
+  const [isCheckingHealth, setIsCheckingHealth] = useState(false);
+
+  // 機種と機械番号管理用の状態
+  const [machineTypes, setMachineTypes] = useState<Array<{id: string, machine_type_name: string}>>([]);
+  const [machines, setMachines] = useState<Array<{id: string, machine_number: string, machine_type_id: string}>>([]);
+  const [newMachineType, setNewMachineType] = useState('');
+  const [newMachineNumber, setNewMachineNumber] = useState('');
+  const [selectedMachineType, setSelectedMachineType] = useState('');
+  const [isLoadingMachineData, setIsLoadingMachineData] = useState(false);
 
   // LocalStorageからの設定読み込み
   useEffect(() => {
@@ -47,7 +92,6 @@ export default function SettingsPage() {
           if (settings.darkMode !== undefined) setDarkMode(settings.darkMode);
           if (settings.autoSave !== undefined) setAutoSave(settings.autoSave);
           if (settings.useOnlyKnowledgeBase !== undefined) setUseOnlyKnowledgeBase(settings.useOnlyKnowledgeBase);
-          if (settings.usePerplexity !== undefined) setUsePerplexity(settings.usePerplexity);
         }
       } catch (error) {
         console.error('設定の読み込みに失敗しました:', error);
@@ -67,22 +111,292 @@ export default function SettingsPage() {
           speechVolume,
           darkMode,
           autoSave,
-          useOnlyKnowledgeBase,
-          usePerplexity
+          useOnlyKnowledgeBase
         };
 
         localStorage.setItem('emergencyRecoverySettings', JSON.stringify(settings));
 
         // ナレッジベース使用設定を別途保存 (チャットコンテキストで参照するため)
         localStorage.setItem('useOnlyKnowledgeBase', useOnlyKnowledgeBase.toString());
-        localStorage.setItem('usePerplexity', usePerplexity.toString());
       } catch (error) {
         console.error('設定の保存に失敗しました:', error);
       }
     };
 
     saveSettings();
-  }, [notifications, textToSpeech, speechVolume, darkMode, autoSave, useOnlyKnowledgeBase, usePerplexity]);
+  }, [notifications, textToSpeech, speechVolume, darkMode, autoSave, useOnlyKnowledgeBase]);
+
+  // 機種データを初期読み込み
+  useEffect(() => {
+    fetchMachineData();
+  }, []);
+
+  // システム健全性チェック
+  const checkSystemHealth = async () => {
+    try {
+      setIsCheckingHealth(true);
+      
+      const [dbResponse, openaiResponse] = await Promise.all([
+        fetch('/api/debug/database'),
+        fetch('/api/debug/openai')
+      ]);
+
+      const dbData = await dbResponse.json();
+      const openaiData = await openaiResponse.json();
+
+      setSystemHealth({
+        database: {
+          status: dbData.status === 'connected' ? 'connected' : 'error',
+          message: dbData.status === 'connected' ? 'データベース接続正常' : dbData.error || 'データベース接続エラー'
+        },
+        openai: {
+          status: openaiData.openaiApiKey === 'SET' ? 'set' : 'not_set',
+          message: openaiData.openaiApiKey === 'SET' ? 'OpenAI API設定済み' : 'OpenAI API未設定'
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      toast({
+        title: "健全性チェック完了",
+        description: "システムの状態を確認しました",
+      });
+    } catch (error) {
+      console.error('システム健全性チェックエラー:', error);
+      toast({
+        title: "エラー",
+        description: "システム健全性チェックに失敗しました",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCheckingHealth(false);
+    }
+  };
+
+  // 機種と機械番号のデータを取得
+  const fetchMachineData = async () => {
+    try {
+      setIsLoadingMachineData(true);
+      console.log('機種・機械番号データ取得開始');
+      
+      // 機種一覧を取得
+      console.log('機種一覧取得URL:', `${import.meta.env.VITE_API_BASE_URL}/api/machine-types`);
+      const typesResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/machine-types`);
+      console.log('機種一覧レスポンスステータス:', typesResponse.status);
+      
+      if (typesResponse.ok) {
+        const typesResult = await typesResponse.json();
+        console.log('機種一覧結果:', typesResult);
+        if (typesResult.success) {
+          setMachineTypes(typesResult.data);
+        } else {
+          console.error('機種一覧取得成功だがsuccess=false:', typesResult);
+        }
+      } else {
+        const errorText = await typesResponse.text();
+        console.error('機種一覧取得エラー:', typesResponse.status, errorText);
+      }
+
+      // 機械番号一覧を取得（全機種）
+      console.log('機械番号一覧取得URL:', `${import.meta.env.VITE_API_BASE_URL}/api/all-machines`);
+      const machinesResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/all-machines`);
+      console.log('機械番号一覧レスポンスステータス:', machinesResponse.status);
+      
+      if (machinesResponse.ok) {
+        const machinesResult = await machinesResponse.json();
+        console.log('機械番号一覧結果:', machinesResult);
+        if (machinesResult.success) {
+          // フラットな配列に変換
+          const flatMachines: Array<{id: string, machine_number: string, machine_type_id: string}> = [];
+          machinesResult.data.forEach((typeGroup: any) => {
+            if (typeGroup.machines && Array.isArray(typeGroup.machines)) {
+              typeGroup.machines.forEach((machine: any) => {
+                flatMachines.push({
+                  id: machine.id,
+                  machine_number: machine.machine_number,
+                  machine_type_id: typeGroup.type_id
+                });
+              });
+            }
+          });
+          setMachines(flatMachines);
+        } else {
+          console.error('機械番号一覧取得成功だがsuccess=false:', machinesResult);
+        }
+      } else {
+        const errorText = await machinesResponse.text();
+        console.error('機械番号一覧取得エラー:', machinesResponse.status, errorText);
+      }
+    } catch (error) {
+      console.error('機種・機械番号データ取得エラー:', error);
+      toast({
+        title: "エラー",
+        description: `機種・機械番号データの取得に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingMachineData(false);
+    }
+  };
+
+  // 機種を追加
+  const addMachineType = async () => {
+    if (!newMachineType.trim()) {
+      toast({
+        title: "エラー",
+        description: "機種名を入力してください",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      console.log('機種追加開始:', newMachineType.trim());
+      console.log('API URL:', `${import.meta.env.VITE_API_BASE_URL}/api/machine-types`);
+      
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/machine-types`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ machine_type_name: newMachineType.trim() })
+      });
+
+      console.log('レスポンスステータス:', response.status);
+      console.log('レスポンスヘッダー:', response.headers);
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('成功レスポンス:', result);
+        toast({
+          title: "成功",
+          description: "機種を追加しました",
+        });
+        setNewMachineType('');
+        fetchMachineData(); // データを再取得
+      } else {
+        const errorText = await response.text();
+        console.error('エラーレスポンス:', errorText);
+        throw new Error(`機種の追加に失敗しました: ${response.status} ${errorText}`);
+      }
+    } catch (error) {
+      console.error('機種追加エラー:', error);
+      toast({
+        title: "エラー",
+        description: `機種の追加に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // 機械番号を追加
+  const addMachineNumber = async () => {
+    if (!selectedMachineType || !newMachineNumber.trim()) {
+      toast({
+        title: "エラー",
+        description: "機種と機械番号を入力してください",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      console.log('機械番号追加開始:', newMachineNumber.trim(), '機種ID:', selectedMachineType);
+      console.log('API URL:', `${import.meta.env.VITE_API_BASE_URL}/api/machines`);
+      
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/machines`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          machine_number: newMachineNumber.trim(),
+          machine_type_id: selectedMachineType
+        })
+      });
+
+      console.log('レスポンスステータス:', response.status);
+      console.log('レスポンスヘッダー:', response.headers);
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('成功レスポンス:', result);
+        toast({
+          title: "成功",
+          description: "機械番号を追加しました",
+        });
+        setNewMachineNumber('');
+        setSelectedMachineType('');
+        fetchMachineData(); // データを再取得
+      } else {
+        const errorText = await response.text();
+        console.error('エラーレスポンス:', errorText);
+        throw new Error(`機械番号の追加に失敗しました: ${response.status} ${errorText}`);
+      }
+    } catch (error) {
+      console.error('機械番号追加エラー:', error);
+      toast({
+        title: "エラー",
+        description: `機械番号の追加に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // 機種を削除
+  const deleteMachineType = async (typeId: string, typeName: string) => {
+    if (!confirm(`機種「${typeName}」を削除しますか？\n関連する機械番号も削除されます。`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/machine-types/${typeId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        toast({
+          title: "成功",
+          description: "機種を削除しました",
+        });
+        fetchMachineData(); // データを再取得
+      } else {
+        throw new Error('機種の削除に失敗しました');
+      }
+    } catch (error) {
+      console.error('機種削除エラー:', error);
+      toast({
+        title: "エラー",
+        description: "機種の削除に失敗しました",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // 機械番号を削除
+  const deleteMachineNumber = async (machineId: string, machineNumber: string) => {
+    if (!confirm(`機械番号「${machineNumber}」を削除しますか？`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/machines/${machineId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        toast({
+          title: "成功",
+          description: "機械番号を削除しました",
+        });
+        fetchMachineData(); // データを再取得
+      } else {
+        throw new Error('機械番号の削除に失敗しました');
+      }
+    } catch (error) {
+      console.error('機械番号削除エラー:', error);
+      toast({
+        title: "エラー",
+        description: "機械番号の削除に失敗しました",
+        variant: "destructive",
+      });
+    }
+  };
 
   // 設定の保存
   const saveSettings = () => {
@@ -93,15 +407,13 @@ export default function SettingsPage() {
         speechVolume,
         darkMode,
         autoSave,
-        useOnlyKnowledgeBase,
-        usePerplexity
+        useOnlyKnowledgeBase
       };
 
       localStorage.setItem('emergencyRecoverySettings', JSON.stringify(settings));
 
       // 設定を別途保存 (チャットコンテキストで参照するため)
       localStorage.setItem('useOnlyKnowledgeBase', useOnlyKnowledgeBase.toString());
-      localStorage.setItem('usePerplexity', usePerplexity.toString());
 
       toast({
         title: "設定を保存しました",
@@ -317,25 +629,6 @@ export default function SettingsPage() {
                 />
               </div>
 
-              <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
-                <div>
-                  <p className="font-medium text-indigo-700">Perplexity AIを使用</p>
-                  <p className="text-sm text-indigo-400">代替AIエンジンを使用する（APIキー設定後に有効化）</p>
-                </div>
-                <Switch 
-                  checked={false}
-                  onCheckedChange={() => {
-                    toast({
-                      title: "準備中",
-                      description: "Perplexity APIキーの設定が必要です。この機能は現在利用できません。",
-                      variant: "default"
-                    });
-                  }}
-                  disabled={true}
-                  className="data-[state=checked]:bg-purple-500 opacity-60"
-                />
-              </div>
-
               <div className="py-2 border-t border-blue-100 pt-3 flex justify-end">
                 <Button
                   onClick={saveSettings}
@@ -360,7 +653,45 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="bg-white">
               <div className="space-y-4">
+                {/* システム健全性チェック */}
                 <div className="flex items-center justify-between py-2">
+                  <div>
+                    <p className="font-medium text-blue-800">システム健全性</p>
+                    <p className="text-sm text-blue-400">データベース接続とAPI設定を確認</p>
+                  </div>
+                  <Button 
+                    onClick={checkSystemHealth}
+                    disabled={isCheckingHealth}
+                    variant="outline" 
+                    size="sm" 
+                    className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                  >
+                    <RefreshCw className={`mr-2 h-4 w-4 ${isCheckingHealth ? 'animate-spin' : ''}`} />
+                    チェック
+                  </Button>
+                </div>
+
+                {systemHealth && (
+                  <div className="border-t border-blue-100 pt-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-blue-600">データベース接続</span>
+                      <Badge variant={systemHealth.database.status === 'connected' ? 'default' : 'destructive'}>
+                        {systemHealth.database.status === 'connected' ? '正常' : 'エラー'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-blue-600">OpenAI API</span>
+                      <Badge variant={systemHealth.openai.status === 'set' ? 'default' : 'secondary'}>
+                        {systemHealth.openai.status === 'set' ? '設定済み' : '未設定'}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      最終更新: {new Date(systemHealth.timestamp).toLocaleString('ja-JP')}
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
                   <div>
                     <p className="font-medium text-blue-800">ユーザー管理</p>
                     <p className="text-sm text-blue-400">ユーザーアカウントを管理する</p>
@@ -387,6 +718,19 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
+                  <div>
+                    <p className="font-medium text-blue-800">システム診断</p>
+                    <p className="text-sm text-blue-400">DB接続とGPT接続の状態を確認</p>
+                  </div>
+                  <Link to="/system-diagnostic">
+                    <Button variant="outline" size="sm" className="border-blue-300 text-blue-700 hover:bg-blue-50">
+                      <CheckCircle className="mr-2 h-4 w-4 text-blue-500" />
+                      診断
+                    </Button>
+                  </Link>
+                </div>
+
+                <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
                   <Button
                     onClick={handleCleanupUploads}
                     variant="destructive"
@@ -404,6 +748,129 @@ export default function SettingsPage() {
                     <FileX className="mr-2 h-4 w-4" />
                     ログファイルを削除
                   </Button>
+                </div>
+
+                <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
+                  <div>
+                    <p className="font-medium text-blue-800">機種・機械番号管理</p>
+                    <p className="text-sm text-blue-400">機種と機械番号を登録・管理する</p>
+                  </div>
+                  <Button 
+                    onClick={fetchMachineData} 
+                    variant="outline" 
+                    size="sm" 
+                    className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                  >
+                    <Database className="mr-2 h-4 w-4 text-blue-500" />
+                    更新
+                  </Button>
+                </div>
+
+                {/* 機種・機械番号管理UI */}
+                <div className="border-t border-blue-100 pt-4 space-y-4">
+                  {/* 機種追加 */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-blue-700">新規機種追加</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="機種名を入力"
+                        value={newMachineType}
+                        onChange={(e) => setNewMachineType(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button 
+                        onClick={addMachineType}
+                        size="sm"
+                        className="bg-blue-500 hover:bg-blue-600"
+                      >
+                        <Plus className="mr-1 h-3 w-3" />
+                        追加
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* 機械番号追加 */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-blue-700">新規機械番号追加</Label>
+                    <div className="flex gap-2">
+                      <Select value={selectedMachineType} onValueChange={setSelectedMachineType}>
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="機種を選択" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {machineTypes.map((type) => (
+                            <SelectItem key={type.id} value={type.id}>
+                              {type.machine_type_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        placeholder="機械番号を入力"
+                        value={newMachineNumber}
+                        onChange={(e) => setNewMachineNumber(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button 
+                        onClick={addMachineNumber}
+                        size="sm"
+                        className="bg-blue-500 hover:bg-blue-600"
+                      >
+                        <Plus className="mr-1 h-3 w-3" />
+                        追加
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* 現在の機種・機械番号一覧 */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-blue-700">現在の登録状況</Label>
+                    {isLoadingMachineData ? (
+                      <div className="text-sm text-blue-400">読み込み中...</div>
+                    ) : (
+                      <div className="space-y-2 max-h-40 overflow-y-auto">
+                        {machineTypes.map((type) => {
+                          const typeMachines = machines.filter(m => m.machine_type_id === type.id);
+                          return (
+                            <div key={type.id} className="text-sm border border-blue-200 rounded p-2">
+                              <div className="flex items-center justify-between">
+                                <div className="font-medium text-blue-700">{type.machine_type_name}</div>
+                                <Button
+                                  onClick={() => deleteMachineType(type.id, type.machine_type_name)}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                              <div className="text-blue-500 mt-1">
+                                {typeMachines.length > 0 ? (
+                                  <div className="space-y-1">
+                                    {typeMachines.map((machine) => (
+                                      <div key={machine.id} className="flex items-center justify-between bg-blue-50 rounded px-2 py-1">
+                                        <span>{machine.machine_number}</span>
+                                        <Button
+                                          onClick={() => deleteMachineNumber(machine.id, machine.machine_number)}
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-5 w-5 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                        >
+                                          <X className="h-2 w-2" />
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400">機械番号未登録</span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">

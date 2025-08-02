@@ -31,11 +31,12 @@ export function orderSelectedFields(fields: Record<string, any> | undefined | nu
 export function convertImageUrl(url: string | undefined | null): string {
   if (!url) return '';
   
-  // APIベースURLを取得
+  // API設定 - VITE_API_BASE_URLのみを使用
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-  console.log('環境変数確認:', { 
+
+  console.log('🔧 API設定:', {
     VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
-    apiBaseUrl: apiBaseUrl 
+    apiBaseUrl
   });
   
   // 既に完全なURLの場合はそのまま返す

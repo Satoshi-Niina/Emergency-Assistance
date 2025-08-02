@@ -1,1 +1,0 @@
-ALTER TABLE emergency_flows ADD COLUMN category text NOT NULL DEFAULT ''; 

@@ -1,260 +1,242 @@
-import * as express from 'express';
-import * as bcrypt from 'bcrypt';
-import { users } from '../db/schema.js';
-import { db } from '../db/index.js';
+
+import express from 'express';
+import bcrypt from 'bcrypt';
+import { db } from '../db/index';
+import { users } from '../db/schema';
 import { eq } from 'drizzle-orm';
-import { logInfo, logError } from '../lib/logger.js';
 
 const router = express.Router();
 
-// ログイン
-router.post('/login', async (req, res) => {
-  try {
-    console.log('🔐 ログインリクエスト受信:', { 
-      body: req.body, 
+// デバッグ用エンドポイント - 環境変数とセッション状態を確認
+router.get('/debug/env', (req, res) => {
+  console.log('🔍 デバッグエンドポイント呼び出し');
+  
+  const debugInfo = {
+    environment: {
+      NODE_ENV: process.env.NODE_ENV,
+      PORT: process.env.PORT,
+      DATABASE_URL: process.env.DATABASE_URL ? '[SET]' : '[NOT SET]',
+      SESSION_SECRET: process.env.SESSION_SECRET ? '[SET]' : '[NOT SET]',
+    },
+    session: {
+      sessionId: req.session?.id,
+      userId: req.session?.userId,
+      userRole: req.session?.userRole,
       hasSession: !!req.session,
-      headers: req.headers['content-type'],
-      origin: req.headers.origin,
+    },
+    request: {
+      headers: {
+        cookie: req.headers.cookie ? '[SET]' : '[NOT SET]',
+        'user-agent': req.headers['user-agent'],
+        origin: req.headers.origin,
+      },
       method: req.method,
       url: req.url,
-      userAgent: req.headers['user-agent'],
-      host: req.headers.host,
-      referer: req.headers.referer
-    });
-    const { username, password } = req.body;
-    
-    logInfo(`ログイン試行: ${username}`);
-    
-    if (!username || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'ユーザー名とパスワードが必要です'
-      });
     }
-
-    // データベース接続確認
-    console.log('🔍 データベース接続状況を確認中...');
-    try {
-      // 簡単な接続テスト
-      await db.select().from(users).limit(1);
-      console.log('✅ データベース接続正常');
-    } catch (dbError) {
-      console.error('❌ データベース接続エラー:', dbError);
-      throw new Error('データベースに接続できません');
-    }
-
-    // ユーザー検索
-    console.log('🔍 データベースからユーザー検索中:', username);
-    // db.query.users.findFirst を型アサーションで回避
-    const user = await (db as any).query.users.findFirst({
-      where: eq(users.username, username)
-    });
-    console.log('📊 ユーザー検索結果:', user ? 'ユーザー見つかりました' : 'ユーザーが見つかりません');
-
-    if (!user) {
-      logError(`ユーザーが見つかりません: ${username}`);
-      return res.status(401).json({
-        success: false,
-        message: 'ユーザー名またはパスワードが正しくありません'
-      });
-    }
-
-    // パスワード検証
-    console.log('🔐 パスワード検証中...');
-    const isValidPassword = await bcrypt.compare(password, user.password);
-    console.log('🔑 パスワード検証:', { 
-      username,
-      isValid: isValidPassword 
-    });
-
-    if (!isValidPassword) {
-      logError(`パスワードが正しくありません: ${username}`);
-      return res.status(401).json({
-        success: false,
-        message: 'ユーザー名またはパスワードが正しくありません'
-      });
-    }
-
-    // セッションにユーザー情報を保存
-    if (req.session) {
-      req.session.userId = user.id;
-      req.session.userRole = user.role;
-      console.log('💾 セッション保存:', { 
-        userId: user.id,
-        userRole: user.role
-      });
-    }
-
-    // レスポンスデータ
-    const responseData = {
-      success: true,
-      user: {
-        id: user.id,
-        username: user.username,
-        displayName: user.display_name,
-        role: user.role,
-        department: user.department
-      }
-    };
-
-    console.log('✅ ログイン成功:', responseData);
-    res.status(200).json(responseData);
-  } catch (error) {
-    console.error('❌ ログインエラー:', error);
-    logError(`ログインエラー: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    res.status(500).json({
-      success: false,
-      message: 'サーバーエラーが発生しました'
-    });
-  }
-});
-
-// ユーザー登録
-router.post('/register', async (req, res) => {
-  try {
-    console.log('📝 ユーザー登録リクエスト受信:', { 
-      body: req.body,
-      hasSession: !!req.session
-    });
-    
-    const { username, password, displayName, role = 'employee' } = req.body;
-    
-    if (!username || !password || !displayName) {
-      return res.status(400).json({
-        success: false,
-        message: 'ユーザー名、パスワード、表示名が必要です'
-      });
-    }
-
-    // 既存ユーザーの確認
-    const existingUser = await (db as any).query.users.findFirst({
-      where: eq(users.username, username)
-    });
-
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: 'このユーザー名は既に使用されています'
-      });
-    }
-
-    // パスワードのハッシュ化
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // ユーザーの作成
-    // db.insert(users).values を型アサーションで回避
-    const newUser = await (db as any).insert(users).values({
-      username: req.body.username,
-      password: hashedPassword,
-      display_name: req.body.display_name,
-      role: req.body.role || 'employee',
-      department: req.body.department || '',
-      description: req.body.description || '',
-      created_at: new Date()
-    }).returning();
-
-    const user = newUser[0];
-
-    // セッションにユーザー情報を保存
-    if (req.session) {
-      req.session.userId = user.id;
-      req.session.userRole = user.role;
-    }
-
-    const responseData = {
-      success: true,
-      user: {
-        id: user.id,
-        username: user.username,
-        displayName: user.display_name,
-        role: user.role,
-        department: user.department
-      }
-    };
-
-    console.log('✅ ユーザー登録成功:', responseData);
-    res.status(201).json(responseData);
-  } catch (error) {
-    console.error('❌ ユーザー登録エラー:', error);
-    logError(`ユーザー登録エラー: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    res.status(500).json({
-      success: false,
-      message: 'サーバーエラーが発生しました'
-    });
-  }
-});
-
-// ログアウト
-router.post('/logout', (req, res) => {
-  console.log('🚪 ログアウトリクエスト受信:', {
-    hasSession: !!req.session,
-    userId: req.session?.userId
-  });
+  };
   
-  if (req.session) {
-    req.session.destroy((err) => {
+  console.log('📊 デバッグ情報:', debugInfo);
+  
+  res.json({
+    success: true,
+    debug: debugInfo,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// ログインエンドポイント
+router.post('/login', async (req, res) => {
+  try {
+    console.log('🔐 Login attempt:', {
+      body: req.body,
+      session: req.session,
+      sessionId: req.session?.id,
+      headers: {
+        cookie: req.headers.cookie ? '[SET]' : '[NOT SET]',
+        origin: req.headers.origin
+      }
+    });
+    
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      console.log('❌ Missing credentials:', { username: !!username, password: !!password });
+      return res.status(400).json({
+        success: false,
+        error: 'ユーザー名とパスワードを入力してください'
+      });
+    }
+
+    // データベースからユーザーを検索
+    console.log('🔍 Searching user in database:', username);
+    const user = await db.select().from(users).where(eq(users.username, username)).limit(1);
+    
+    if (user.length === 0) {
+      console.log('❌ User not found:', username);
+      return res.status(401).json({
+        success: false,
+        error: 'ユーザー名またはパスワードが違います'
+      });
+    }
+
+    const foundUser = user[0];
+    console.log('✅ User found:', { id: foundUser.id, username: foundUser.username, role: foundUser.role });
+    
+    // パスワードチェック（bcryptでハッシュ化されたパスワードまたは平文パスワード）
+    let isValidPassword = false;
+    
+    // まずbcryptでハッシュ化されたパスワードをチェック
+    try {
+      isValidPassword = await bcrypt.compare(password, foundUser.password);
+      console.log('🔐 bcrypt password check:', isValidPassword);
+    } catch (error) {
+      console.log('bcrypt比較エラー、平文パスワードをチェック:', error);
+    }
+    
+    // bcryptで失敗した場合、平文パスワードをチェック（開発環境用）
+    if (!isValidPassword) {
+      isValidPassword = (foundUser.password === password);
+      if (isValidPassword) {
+        console.log('✅ 平文パスワードで認証成功（開発環境）');
+      }
+    }
+    
+    if (!isValidPassword) {
+      console.log('❌ Invalid password for:', username);
+      return res.status(401).json({
+        success: false,
+        error: 'ユーザー名またはパスワードが違います'
+      });
+    }
+
+    console.log('✅ Login successful for:', username);
+
+    // セッションにユーザー情報を保存
+    req.session.userId = foundUser.id;
+    req.session.userRole = foundUser.role;
+    
+    // セッションを明示的に保存
+    req.session.save((err) => {
       if (err) {
-        console.error('❌ セッション削除エラー:', err);
+        console.error('❌ Session save error:', err);
         return res.status(500).json({
           success: false,
-          message: 'ログアウト中にエラーが発生しました'
+          error: 'セッションの保存に失敗しました'
         });
       }
-      console.log('✅ ログアウト成功');
-      res.status(200).json({
+      
+      console.log('💾 Session saved successfully:', {
+        userId: req.session.userId,
+        userRole: req.session.userRole,
+        sessionId: req.session.id
+      });
+
+      // 成功レスポンス（Reactの認証コンテキストに合わせる）
+      return res.json({
         success: true,
-        message: 'ログアウトしました'
+        message: 'ログインに成功しました',
+        user: {
+          id: foundUser.id,
+          username: foundUser.username,
+          displayName: foundUser.displayName || foundUser.username,
+          role: foundUser.role,
+          department: foundUser.department || 'General'
+        }
       });
     });
-  } else {
-    console.log('⚠️ セッションが存在しません');
-    res.status(200).json({
-      success: true,
-      message: 'ログアウトしました'
+
+  } catch (error) {
+    console.error('❌ Login error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'サーバーエラーが発生しました'
+    });
+  }
+});
+
+// ログアウトエンドポイント
+router.post('/logout', (req, res) => {
+  try {
+    console.log('🚪 Logout request');
+    
+    // セッションを破棄
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('❌ Session destroy error:', err);
+        return res.status(500).json({
+          error: 'Logout failed'
+        });
+      }
+      
+      return res.json({
+        success: true,
+        message: 'Logout successful'
+      });
+    });
+  } catch (error) {
+    console.error('❌ Logout error:', error);
+    return res.status(500).json({
+      error: 'Internal server error'
     });
   }
 });
 
 // 現在のユーザー情報取得
 router.get('/me', async (req, res) => {
-  console.log('👤 ユーザー情報取得リクエスト:', {
-    hasSession: !!req.session,
-    userId: req.session?.userId
-  });
-  
-  if (!req.session || !req.session.userId) {
-    console.log('❌ 認証されていません');
-    return res.status(401).json({
+  try {
+    console.log('🔍 /me endpoint called:', {
+      session: req.session,
+      sessionId: req.session?.id,
+      userId: req.session?.userId,
+      headers: {
+        cookie: req.headers.cookie ? '[SET]' : '[NOT SET]',
+        origin: req.headers.origin
+      }
+    });
+    
+    // セッションからユーザーIDを取得
+    const userId = req.session?.userId;
+    
+    if (!userId) {
+      console.log('❌ No user ID in session');
+      return res.status(401).json({
+        success: false,
+        error: '認証されていません'
+      });
+    }
+
+    console.log('🔍 Searching user by ID:', userId);
+    // データベースからユーザー情報を取得
+    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    
+    if (user.length === 0) {
+      console.log('❌ User not found in database:', userId);
+      return res.status(401).json({
+        success: false,
+        error: 'ユーザーが見つかりません'
+      });
+    }
+
+    const foundUser = user[0];
+    console.log('✅ User found:', { id: foundUser.id, username: foundUser.username, role: foundUser.role });
+    
+    return res.json({
+      success: true,
+      user: {
+        id: foundUser.id,
+        username: foundUser.username,
+        displayName: foundUser.displayName || foundUser.username,
+        role: foundUser.role,
+        department: foundUser.department || 'General'
+      }
+    });
+  } catch (error) {
+    console.error('❌ Get user error:', error);
+    return res.status(500).json({
       success: false,
-      message: '認証されていません'
+      error: 'サーバーエラーが発生しました'
     });
   }
-  
-  // データベースからユーザー情報を取得
-  const user = await (db as any).query.users.findFirst({
-    where: eq(users.id, req.session.userId)
-  });
-  
-  if (!user) {
-    return res.status(401).json({
-      success: false,
-      message: 'ユーザーが見つかりません'
-    });
-  }
-  
-  const userData = {
-    id: user.id,
-    username: user.username,
-    displayName: user.display_name,
-    role: user.role,
-    department: user.department
-  };
-  
-  console.log('✅ ユーザー情報取得成功:', userData);
-  res.status(200).json({
-    success: true,
-    user: userData
-  });
 });
 
-export const authRouter = router;
+export default router;

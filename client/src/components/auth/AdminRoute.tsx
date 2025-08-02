@@ -1,18 +1,43 @@
-import { useAuth } from '../../context/auth-context';
-import { Navigate, Outlet } from 'react-router-dom';
 
-const AdminRoute = () => {
+import { ReactNode } from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../../context/auth-context';
+
+interface AdminRouteProps {
+  children: ReactNode;
+}
+
+export function AdminRoute({ children }: AdminRouteProps) {
   const { user, isLoading } = useAuth();
 
+  console.log('🔍 AdminRoute - 管理者権限確認:', {
+    isLoading,
+    hasUser: !!user,
+    role: user?.role,
+    isAdmin: user?.role === 'admin'
+  });
+
+  // 認証状態読み込み中
   if (isLoading) {
-    return <div>読み込み中...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
+  // 未認証の場合はログインページにリダイレクト
   if (!user) {
-    return <Navigate to="/login" />;
+    console.log('🚫 AdminRoute - 未認証、ログインページにリダイレクト');
+    return <Navigate to="/login" replace />;
   }
-  
-  return user.role === 'admin' ? <Outlet /> : <Navigate to="/chat" />;
-};
 
-export default AdminRoute; 
+  // 管理者でない場合はチャットページにリダイレクト
+  if (user.role !== 'admin') {
+    console.log('🚫 AdminRoute - 管理者権限がありません、チャットページにリダイレクト');
+    return <Navigate to="/chat" replace />;
+  }
+
+  console.log('✅ AdminRoute - 管理者権限OK、コンテンツを表示');
+  return <>{children}</>;
+}

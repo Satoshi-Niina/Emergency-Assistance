@@ -563,32 +563,33 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         updatedAt: new Date().toISOString()
       };
 
-      // 保存先のファイルパスを確認
-      if (!selectedFilePath) {
-        throw new Error('保存先ファイルパスが指定されていません');
-      }
+      console.log('📤 送信データ:', {
+        id: updatedFlowData.id,
+        title: updatedFlowData.title,
+        stepsCount: updatedFlowData.steps.length
+      });
 
       // APIにデータを送信
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/save-flow`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          filePath: selectedFilePath,
-          ...updatedFlowData
-        }),
+        body: JSON.stringify(updatedFlowData),
       });
 
+      console.log('📡 レスポンス状態:', response.status, response.statusText);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || '保存に失敗しました');
+        const errorText = await response.text();
+        console.error('❌ API エラー:', errorText);
+        throw new Error(`保存に失敗しました: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
       const result = await response.json();
       console.log('✅ フロー保存完了:', {
         success: result.success,
-        filePath: selectedFilePath,
+        data: result.data,
         stepsCount: updatedFlowData.steps.length,
         stepsWithImages: updatedFlowData.steps.filter(s => s.images && s.images.length > 0).length
       });

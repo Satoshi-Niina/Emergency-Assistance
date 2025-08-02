@@ -1,8 +1,8 @@
 {
-  "schema": "../shared/schema.ts",
-  "out": "../migrations",
+  "out": "./migrations",
+  "schema": "./db/schema.ts",
   "dialect": "postgresql",
   "dbCredentials": {
-    "url": "postgresql://postgres:takabeni@localhost:5432/maintenance"
+    "url": "postgresql://postgres:postgres@localhost:5432/emergency_assistance"
   }
 } 

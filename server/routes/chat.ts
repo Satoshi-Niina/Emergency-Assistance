@@ -1,11 +1,14 @@
-import express from 'express';
+import * as express from 'express';
+import OpenAI from 'openai';
+import { z } from 'zod';
+import { db } from '../db/index.js';
+import { findRelevantImages } from '../utils/image-matcher.js';
+import { upload } from '../utils/image-uploader.js';
 import { storage } from '../storage.js';
 import { formatChatHistoryForExternalSystem } from '../lib/chat-export-formatter.js';
 import { exportFileManager } from '../lib/export-file-manager.js';
 import { processOpenAIRequest } from '../lib/openai.js';
 import { insertMessageSchema, insertMediaSchema, insertChatSchema, messages } from '../../shared/schema.js';
-import { db } from '../db.js';
-import { z } from 'zod';
 
 // セッション型の拡張
 interface SessionData {

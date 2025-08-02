@@ -3,7 +3,7 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import OpenAI from 'openai';
 import Fuse from 'fuse.js';
-import { db } from '../db/schema.js';
+import { db } from '../db/index.js';
 import { messages, chats } from '../db/schema.js';
 import { like } from 'drizzle-orm';
 

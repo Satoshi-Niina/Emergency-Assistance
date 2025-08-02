@@ -1,161 +1,145 @@
-import * as express from 'express';
-import * as path from 'path';
-import * as fs from 'fs';
-const router = express.Router();
-// 汎用ロギング関数
-function logDebug(message: any, ...args) {
-    if (process.env.NODE_ENV !== 'production') {
-        console.debug(message, ...args);
+
+import { Router } from 'express';
+import fs from 'fs/promises';
+import path from 'path';
+import { existsSync, readdirSync } from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const router = Router();
+
+// トラブルシューティングディレクトリのパス
+const troubleshootingDir = path.join(__dirname, '../../knowledge-base/troubleshooting');
+
+// トラブルシューティングデータを読み込む関数
+async function loadTroubleshootingData() {
+  try {
+    if (!existsSync(troubleshootingDir)) {
+      console.warn(`トラブルシューティングディレクトリが見つかりません: ${troubleshootingDir}`);
+      return [];
     }
+
+    const files = readdirSync(troubleshootingDir);
+    const jsonFiles = files.filter(file => file.endsWith('.json') && !file.includes('.backup') && !file.includes('.tmp'));
+
+    const fileList = await Promise.all(jsonFiles.map(async (file) => {
+      try {
+        const filePath = path.join(troubleshootingDir, file);
+        const content = await fs.readFile(filePath, 'utf8');
+        const data = JSON.parse(content);
+        
+        let description = data.description || '';
+        if (!description && data.steps && data.steps.length > 0) {
+          description = data.steps[0].description || data.steps[0].message || '';
+        }
+
+        return {
+          id: data.id || file.replace('.json', ''),
+          title: data.title || 'タイトルなし',
+          description: description,
+          fileName: file,
+          filePath: `knowledge-base/troubleshooting/${file}`,
+          createdAt: data.createdAt || data.savedAt || data.updatedAt || new Date().toISOString(),
+          category: data.category || '',
+          triggerKeywords: data.triggerKeywords || [],
+          steps: data.steps || []
+        };
+      } catch (error) {
+        console.error(`ファイル ${file} の解析中にエラーが発生しました:`, error);
+        return null;
+      }
+    }));
+
+    return fileList.filter(Boolean);
+  } catch (error) {
+    console.error('トラブルシューティングデータの読み込みエラー:', error);
+    return [];
+  }
 }
-function logInfo(message: any, ...args) {
-    console.info(message, ...args);
-}
-function logWarn(message: any, ...args) {
-    console.warn(message, ...args);
-}
-function logError(message: any, ...args) {
-    console.error(message, ...args);
-}
-// トラブルシューティングリスト取得
+
+// トラブルシューティング一覧取得
 router.get('/list', async (req, res) => {
-    try {
-        const troubleshootingDir: any = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-        if (!fs.existsSync(troubleshootingDir)) {
-            return res.json([]);
-        }
-        const files: any = fs.readdirSync(troubleshootingDir).filter(file => file.endsWith('.json'));
-        const troubleshootingList = [];
-        for (const file of files) {
-            try {
-                const filePath: any = path.join(troubleshootingDir, file);
-                const content: any = fs.readFileSync(filePath, 'utf8');
-                const data: any = JSON.parse(content);
-                troubleshootingList.push(data);
-            }
-            catch (error) {
-                logError(`Error reading file ${file}:`, error);
-            }
-        }
-        res.json(troubleshootingList);
-    }
-    catch (error) {
-        logError('Error in troubleshooting list:', error);
-        res.status(500).json({ error: 'Failed to load troubleshooting data' });
-    }
+  console.log('📋 トラブルシューティング一覧リクエスト受信');
+  try {
+    const data = await loadTroubleshootingData();
+    res.setHeader('Content-Type', 'application/json');
+    res.json({
+      success: true,
+      data: data,
+      total: data.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ トラブルシューティング一覧取得エラー:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'データの取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
 });
-// トラブルシューティング詳細取得
-router.get('/detail/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const troubleshootingDir: any = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-        const filePath: any = path.join(troubleshootingDir, `${id}.json`);
-        if (!fs.existsSync(filePath)) {
-            return res.status(404).json({ error: 'Troubleshooting flow not found' });
-        }
-        const content: any = fs.readFileSync(filePath, 'utf8');
-        const data: any = JSON.parse(content);
-        res.json(data);
+
+// 特定のトラブルシューティング取得
+router.get('/:id', async (req, res) => {
+  console.log('📋 特定のトラブルシューティング取得:', req.params.id);
+  try {
+    const { id } = req.params;
+    const data = await loadTroubleshootingData();
+    const item = data.find((item: any) => item.id === id);
+    
+    if (!item) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'アイテムが見つかりません',
+        id,
+        timestamp: new Date().toISOString()
+      });
     }
-    catch (error) {
-        logError('Error in troubleshooting detail:', error);
-        res.status(500).json({ error: 'Failed to load troubleshooting detail' });
-    }
+    
+    res.setHeader('Content-Type', 'application/json');
+    res.json({
+      success: true,
+      data: item,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ トラブルシューティング取得エラー:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'データの取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
 });
-// トラブルシューティング作成
-router.post('/', async (req, res) => {
-    try {
-        const troubleshootingData: any = req.body;
-        const troubleshootingDir: any = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-        if (!fs.existsSync(troubleshootingDir)) {
-            fs.mkdirSync(troubleshootingDir, { recursive: true });
-        }
-        const id: any = troubleshootingData.id || `ts_${Date.now()}`;
-        const filePath: any = path.join(troubleshootingDir, `${id}.json`);
-        // ファイルが既に存在する場合は上書き
-        fs.writeFileSync(filePath, JSON.stringify(troubleshootingData, null, 2));
-        res.status(201).json({
-            success: true,
-            id: id,
-            message: 'Troubleshooting flow created successfully'
-        });
-    }
-    catch (error) {
-        logError('Error in troubleshooting create:', error);
-        res.status(500).json({ error: 'Failed to create troubleshooting flow' });
-    }
+
+// エラーハンドリングミドルウェア
+router.use((err: any, req: any, res: any, next: any) => {
+  console.error('トラブルシューティングエラー:', err);
+  
+  // Content-Typeを明示的に設定
+  res.setHeader('Content-Type', 'application/json');
+  
+  res.status(500).json({
+    success: false,
+    error: 'トラブルシューティングの処理中にエラーが発生しました',
+    details: err.message || 'Unknown error',
+    timestamp: new Date().toISOString()
+  });
 });
-// トラブルシューティング更新
-router.put('/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const troubleshootingData: any = req.body;
-        const troubleshootingDir: any = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-        const filePath: any = path.join(troubleshootingDir, `${id}.json`);
-        if (!fs.existsSync(filePath)) {
-            return res.status(404).json({ error: 'Troubleshooting flow not found' });
-        }
-        fs.writeFileSync(filePath, JSON.stringify(troubleshootingData, null, 2));
-        res.json({
-            success: true,
-            message: 'Troubleshooting flow updated successfully'
-        });
-    }
-    catch (error) {
-        logError('Error in troubleshooting update:', error);
-        res.status(500).json({ error: 'Failed to update troubleshooting flow' });
-    }
+
+// 404ハンドリング
+router.use('*', (req: any, res: any) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.status(404).json({
+    success: false,
+    error: 'トラブルシューティングのエンドポイントが見つかりません',
+    path: req.originalUrl,
+    timestamp: new Date().toISOString()
+  });
 });
-// トラブルシューティング削除
-router.delete('/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const troubleshootingDir: any = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-        const filePath: any = path.join(troubleshootingDir, `${id}.json`);
-        if (!fs.existsSync(filePath)) {
-            return res.status(404).json({ error: 'Troubleshooting flow not found' });
-        }
-        fs.unlinkSync(filePath);
-        res.json({
-            success: true,
-            message: 'Troubleshooting flow deleted successfully'
-        });
-    }
-    catch (error) {
-        logError('Error in troubleshooting delete:', error);
-        res.status(500).json({ error: 'Failed to delete troubleshooting flow' });
-    }
-});
-// トラブルシューティング検索
-router.post('/search', async (req, res) => {
-    try {
-        const { query } = req.body;
-        const troubleshootingDir: any = path.join(process.cwd(), 'knowledge-base', 'troubleshooting');
-        if (!fs.existsSync(troubleshootingDir)) {
-            return res.json([]);
-        }
-        const files: any = fs.readdirSync(troubleshootingDir).filter(file => file.endsWith('.json'));
-        const searchResults = [];
-        for (const file of files) {
-            try {
-                const filePath: any = path.join(troubleshootingDir, file);
-                const content: any = fs.readFileSync(filePath, 'utf8');
-                const data: any = JSON.parse(content);
-                // タイトル、説明、キーワードで検索
-                const searchText = `${data.title || ''} ${data.description || ''} ${data.keyword || ''}`.toLowerCase();
-                if (searchText.includes(query.toLowerCase())) {
-                    searchResults.push(data);
-                }
-            }
-            catch (error) {
-                logError(`Error reading file ${file}:`, error);
-            }
-        }
-        res.json(searchResults);
-    }
-    catch (error) {
-        logError('Error in troubleshooting search:', error);
-        res.status(500).json({ error: 'Failed to search troubleshooting flows' });
-    }
-});
-export const troubleshootingRouter: any = router;
+
+export default router;

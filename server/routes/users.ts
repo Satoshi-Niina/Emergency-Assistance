@@ -1,21 +1,302 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
-import { db, users } from '../db/schema.js';
+import { db } from '../db/index.js';
+import { users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 
 const router = express.Router();
 
-router.get('/', async (_req: any, res: any) => {
+// 認証ミドルウェア
+const requireAuth = async (req: any, res: any, next: any) => {
+  try {
+    console.log('[DEBUG] 認証チェック開始:', {
+      hasSession: !!req.session,
+      sessionId: req.session?.id,
+      userId: req.session?.userId,
+      userRole: req.session?.userRole,
+      cookies: req.headers.cookie,
+      path: req.path,
+      method: req.method
+    });
+    
+    if (!req.session?.userId) {
+      console.log('[DEBUG] 認証失敗: セッションにユーザーIDがありません');
+      return res.status(401).json({ 
+        error: 'Authentication required',
+        message: 'ログインが必要です'
+      });
+    }
+
+    // データベースからユーザー情報を確認
+    const user = await db.select().from(users).where(eq(users.id, req.session.userId)).limit(1);
+    if (user.length === 0) {
+      console.log('[DEBUG] 認証失敗: データベースにユーザーが見つかりません:', req.session.userId);
+      return res.status(401).json({ 
+        error: 'User not found',
+        message: 'ユーザーが見つかりません'
+      });
+    }
+
+    console.log('[DEBUG] 認証成功:', {
+      userId: user[0].id,
+      username: user[0].username,
+      role: user[0].role
+    });
+
+    // ユーザー情報をリクエストに追加
+    req.user = user[0];
+    next();
+  } catch (error) {
+    console.error('[DEBUG] 認証ミドルウェアエラー:', error);
+    return res.status(500).json({ 
+      error: 'Authentication error',
+      message: '認証エラーが発生しました'
+    });
+  }
+};
+
+// 管理者権限ミドルウェア
+const requireAdmin = async (req: any, res: any, next: any) => {
+  try {
+    console.log('[DEBUG] 管理者権限チェック開始:', {
+      hasSession: !!req.session,
+      userId: req.session?.userId,
+      userRole: req.session?.userRole,
+      user: req.user,
+      cookies: req.headers.cookie,
+      path: req.path,
+      method: req.method
+    });
+    
+    if (!req.session?.userId) {
+      console.log('[DEBUG] 管理者権限チェック失敗: セッションにユーザーIDがありません');
+      return res.status(401).json({ 
+        error: 'Authentication required',
+        message: 'ログインが必要です'
+      });
+    }
+
+    // データベースからユーザー情報を確認
+    const user = await db.select().from(users).where(eq(users.id, req.session.userId)).limit(1);
+    if (user.length === 0) {
+      console.log('[DEBUG] 管理者権限チェック失敗: データベースにユーザーが見つかりません:', req.session.userId);
+      return res.status(401).json({ 
+        error: 'User not found',
+        message: 'ユーザーが見つかりません'
+      });
+    }
+
+    // 管理者権限チェック
+    if (user[0].role !== 'admin') {
+      console.log('[DEBUG] 管理者権限チェック失敗: 管理者権限がありません:', {
+        userId: user[0].id,
+        username: user[0].username,
+        role: user[0].role,
+        requiredRole: 'admin'
+      });
+      return res.status(403).json({ 
+        error: 'Admin access required',
+        message: '管理者権限が必要です'
+      });
+    }
+
+    console.log('[DEBUG] 管理者権限チェック成功:', {
+      userId: user[0].id,
+      username: user[0].username,
+      role: user[0].role
+    });
+
+    // ユーザー情報をリクエストに追加
+    req.user = user[0];
+    next();
+  } catch (error) {
+    console.error('[DEBUG] 管理者権限ミドルウェアエラー:', error);
+    return res.status(500).json({ 
+      error: 'Authentication error',
+      message: '認証エラーが発生しました'
+    });
+  }
+};
+
+// 全ユーザー取得（管理者のみ）
+router.get('/', requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
-        const allUsers: any = await db.select().from(users);
-        res.json(allUsers);
+        // Content-Typeを明示的に設定
+        res.setHeader('Content-Type', 'application/json');
+        
+        console.log('[DEBUG] ユーザー一覧取得リクエスト受信:', {
+            session: req.session,
+            userId: req.session?.userId,
+            userRole: req.session?.userRole,
+            cookies: req.headers.cookie,
+            method: req.method,
+            url: req.url
+        });
+        
+        // Drizzle ORMを使用して全ユーザーを取得
+        const allUsers: any = await db.select({
+            id: users.id,
+            username: users.username,
+            display_name: users.displayName,
+            role: users.role,
+            department: users.department,
+            description: users.description,
+            created_at: users.created_at
+        }).from(users);
+        
+        console.log('[DEBUG] ユーザー一覧取得完了:', {
+            count: allUsers.length,
+            users: allUsers.map(u => ({ id: u.id, username: u.username, role: u.role }))
+        });
+        
+        res.json({
+            success: true,
+            data: allUsers,
+            total: allUsers.length,
+            timestamp: new Date().toISOString()
+        });
     } catch (error) {
-        console.error('Error fetching users:', error);
-        res.status(500).json({ error: 'Failed to fetch users' });
+        console.error('[DEBUG] ユーザー一覧取得エラー:', error);
+        res.status(500).json({ 
+            success: false,
+            error: 'ユーザー一覧の取得に失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString()
+        });
     }
 });
 
-router.get('/:id', async (req: any, res: any) => {
+// 新規ユーザー作成（管理者のみ）
+router.post('/', requireAuth, requireAdmin, async (req: any, res: any) => {
+    try {
+        // Content-Typeを明示的に設定
+        res.setHeader('Content-Type', 'application/json');
+        
+        console.log('[DEBUG] ユーザー作成リクエスト受信:', {
+            session: req.session,
+            userId: req.session?.userId,
+            userRole: req.session?.userRole,
+            cookies: req.headers.cookie,
+            body: req.body
+        });
+        
+        const { username, password, display_name, role, department, description } = req.body;
+
+        console.log('[DEBUG] 新規ユーザー作成リクエスト:', {
+            username,
+            display_name,
+            role,
+            department,
+            hasPassword: !!password,
+            body: req.body
+        });
+
+        // バリデーション
+        if (!username || !password || !display_name || !role) {
+            console.log('[DEBUG] バリデーションエラー:', { username, password: !!password, display_name, role });
+            return res.status(400).json({ 
+                success: false,
+                error: 'Missing required fields',
+                required: ['username', 'password', 'display_name', 'role'],
+                received: { username: !!username, password: !!password, display_name: !!display_name, role: !!role },
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        // ユーザー名の形式チェック
+        if (username.length < 3 || username.length > 50) {
+            return res.status(400).json({
+                success: false,
+                error: 'Username must be between 3 and 50 characters',
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        // パスワードの強度チェック
+        if (password.length < 6) {
+            return res.status(400).json({
+                success: false,
+                error: 'Password must be at least 6 characters long',
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        // 権限の値チェック
+        if (!['employee', 'admin'].includes(role)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Role must be either "employee" or "admin"',
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        // 既存ユーザーの確認
+        const existingUser = await db.select().from(users).where(eq(users.username, username));
+        if (existingUser.length > 0) {
+            console.log('[DEBUG] 既存ユーザーが存在:', username);
+            return res.status(409).json({ 
+                success: false,
+                error: 'Username already exists',
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        // パスワードのハッシュ化
+        const hashedPassword = await bcrypt.hash(password, 10);
+        console.log('[DEBUG] パスワードハッシュ化完了');
+
+        // ユーザーの作成
+        console.log('[DEBUG] データベース挿入開始:', {
+            username,
+            display_name,
+            role,
+            department,
+            description,
+            hashedPasswordLength: hashedPassword.length
+        });
+
+        const newUser = await db.insert(users).values({
+            username,
+            password: hashedPassword,
+            displayName: display_name,
+            role,
+            department: department || null,
+            description: description || null
+        }).returning();
+
+        console.log('[DEBUG] ユーザー作成完了:', newUser[0].id);
+
+        // パスワードを除いたユーザー情報を返す
+        const userWithoutPassword = {
+            id: newUser[0].id,
+            username: newUser[0].username,
+            display_name: newUser[0].displayName,
+            role: newUser[0].role,
+            department: newUser[0].department,
+            description: newUser[0].description,
+            created_at: newUser[0].created_at
+        };
+
+        res.status(201).json({
+            success: true,
+            message: 'ユーザーが正常に作成されました',
+            data: userWithoutPassword,
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error('[DEBUG] ユーザー作成エラー:', error);
+        res.status(500).json({ 
+            success: false,
+            error: 'ユーザーの作成に失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// 個別ユーザー取得（管理者のみ）
+router.get('/:id', requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
         const { id } = req.params;
         
@@ -35,7 +316,7 @@ router.get('/:id', async (req: any, res: any) => {
             console.log(`[DEBUG] 全ユーザー一覧 (${allUsers.length}件):`, allUsers.map(u => ({
                 id: u.id,
                 username: u.username,
-                display_name: u.display_name,
+                display_name: u.displayName,
                 role: u.role,
                 department: u.department
             })));
@@ -86,13 +367,27 @@ router.get('/:id', async (req: any, res: any) => {
         if (existingUser) {
             // パスワードを除外してレスポンス
             const { password, ...userWithoutPassword } = existingUser;
-            res.json(userWithoutPassword);
+            res.json({
+                success: true,
+                data: userWithoutPassword,
+                timestamp: new Date().toISOString()
+            });
         } else {
-            res.status(404).json({ error: 'User not found' });
+            res.status(404).json({ 
+                success: false,
+                error: 'User not found',
+                id,
+                timestamp: new Date().toISOString()
+            });
         }
     } catch (error) {
         console.error('Error fetching user:', error);
-        res.status(500).json({ error: 'Failed to fetch user' });
+        res.status(500).json({ 
+            success: false,
+            error: 'Failed to fetch user',
+            details: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString()
+        });
     }
 });
 
@@ -100,21 +395,23 @@ router.get('/:id', async (req: any, res: any) => {
 const updateUserHandler = async (req: any, res: any) => {
     try {
         const { id } = req.params;
-        const { username, display_name, role, department, password } = req.body;
+        const { username, display_name, role, department, description, password } = req.body;
 
         console.log(`[DEBUG] ユーザー更新リクエスト: ID="${id}"`, {
             username,
             display_name,
             role,
             department,
+            description,
             hasPassword: !!password
         });
 
         const updateData: any = {
             username,
-            display_name,
+            displayName: display_name,
             role,
-            department
+            department,
+            description
         };
 
         if (password) {
@@ -133,17 +430,90 @@ const updateUserHandler = async (req: any, res: any) => {
         await db.update(users).set(updateData).where(eq(users.id, id));
         
         console.log(`[DEBUG] ユーザー更新完了: ID="${id}"`);
-        res.json({ message: 'User updated successfully' });
+        res.json({ 
+            success: true,
+            message: 'User updated successfully',
+            timestamp: new Date().toISOString()
+        });
     } catch (error) {
         console.error('Error updating user:', error);
-        res.status(500).json({ error: 'Failed to update user' });
+        res.status(500).json({ 
+            success: false,
+            error: 'Failed to update user',
+            details: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString()
+        });
     }
 };
 
 // PUTメソッド（既存）
-router.put('/:id', updateUserHandler);
+router.put('/:id', requireAuth, requireAdmin, updateUserHandler);
 
 // PATCHメソッド（新規追加）
-router.patch('/:id', updateUserHandler);
+router.patch('/:id', requireAuth, requireAdmin, updateUserHandler);
+
+// ユーザー削除（管理者のみ）
+router.delete('/:id', requireAuth, requireAdmin, async (req: any, res: any) => {
+    try {
+        const { id } = req.params;
+
+        console.log(`[DEBUG] ユーザー削除リクエスト: ID="${id}"`);
+
+        // 既存ユーザーの確認
+        const existingUser = await db.select().from(users).where(eq(users.id, id));
+        
+        if (existingUser.length === 0) {
+            console.log(`[ERROR] 削除対象ユーザーが見つかりません: ID="${id}"`);
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        console.log(`[DEBUG] 削除対象ユーザー:`, existingUser[0]);
+
+        // ユーザーの削除
+        await db.delete(users).where(eq(users.id, id));
+        
+        console.log(`[DEBUG] ユーザー削除完了: ID="${id}"`);
+        res.json({ 
+            success: true,
+            message: 'User deleted successfully',
+            id,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        res.status(500).json({ 
+            success: false,
+            error: 'Failed to delete user',
+            details: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// エラーハンドリングミドルウェア
+router.use((err: any, req: any, res: any, next: any) => {
+  console.error('ユーザー管理エラー:', err);
+  
+  // Content-Typeを明示的に設定
+  res.setHeader('Content-Type', 'application/json');
+  
+  res.status(500).json({
+    success: false,
+    error: 'ユーザー管理の処理中にエラーが発生しました',
+    details: err.message || 'Unknown error',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// 404ハンドリング
+router.use('*', (req: any, res: any) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.status(404).json({
+    success: false,
+    error: 'ユーザー管理のエンドポイントが見つかりません',
+    path: req.originalUrl,
+    timestamp: new Date().toISOString()
+  });
+});
 
 export { router as usersRouter }; 

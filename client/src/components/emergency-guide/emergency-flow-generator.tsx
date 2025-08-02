@@ -88,7 +88,49 @@ export default function EmergencyFlowGenerator({ onFlowGenerated }: FlowGenerato
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* File Upload Section */}
+        {/* Keyword Input Section - 上段に移動 */}
+        <div className="space-y-2">
+            <Label htmlFor="keywords" className="text-lg font-semibold">キーワードから生成</Label>
+            <p className="text-sm text-gray-500">フローの核となるキーワードや症状をカンマ区切りで入力してください。</p>
+            <textarea
+                id="keywords"
+                placeholder="例: エンジン停止, 警告灯点灯, 異音"
+                value={keywords}
+                onChange={(e) => setKeywords(e.target.value)}
+                disabled={!!file}
+                rows={3}
+                className="w-full px-3 py-2 border-2 border-blue-800 rounded-md text-base resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-800"
+                style={{ fontSize: '120%' }}
+            />
+            <div className="flex justify-center mt-3">
+              <Button 
+                onClick={handleGenerate} 
+                disabled={isLoading || !keywords.trim() || !!file} 
+                size="lg"
+                className="px-6 py-3 text-base font-medium"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    生成中...
+                  </>
+                ) : (
+                  <>
+                    <Send className="mr-2 h-4 w-4" />
+                    フローを生成
+                  </>
+                )}
+              </Button>
+            </div>
+        </div>
+
+        <div className="relative flex items-center justify-center">
+            <div className="flex-grow border-t border-gray-300"></div>
+            <span className="flex-shrink mx-4 text-gray-500 font-semibold">または</span>
+            <div className="flex-grow border-t border-gray-300"></div>
+        </div>
+
+        {/* File Upload Section - 下段に移動 */}
         <div {...getRootProps()} className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}`}>
           <input {...getInputProps()} />
           <div className="flex flex-col items-center justify-center gap-2 text-gray-500">
@@ -110,36 +152,23 @@ export default function EmergencyFlowGenerator({ onFlowGenerated }: FlowGenerato
           </div>
         )}
 
-        <div className="relative flex items-center justify-center">
-            <div className="flex-grow border-t border-gray-300"></div>
-            <span className="flex-shrink mx-4 text-gray-500 font-semibold">または</span>
-            <div className="flex-grow border-t border-gray-300"></div>
-        </div>
-
-        {/* Keyword Input Section */}
-        <div className="space-y-2">
-            <Label htmlFor="keywords" className="text-lg font-semibold">キーワードで生成</Label>
-            <p className="text-sm text-gray-500">フローの核となるキーワードや症状をカンマ区切りで入力してください。</p>
-            <Input
-                id="keywords"
-                placeholder="例: エンジン停止, 警告灯点灯, 異音"
-                value={keywords}
-                onChange={(e) => setKeywords(e.target.value)}
-                disabled={!!file}
-            />
-        </div>
-
-        {/* Generate Button */}
-        <div className="flex justify-end">
-          <Button onClick={handleGenerate} disabled={isLoading} size="lg">
+        {/* Generate Button - サイズを80%に変更、中央配置 */}
+        <div className="flex justify-center">
+          <Button 
+            onClick={handleGenerate} 
+            disabled={isLoading || !!keywords.trim()} 
+            size="sm"
+            className="px-4 py-2 text-sm font-medium"
+            style={{ fontSize: '80%' }}
+          >
             {isLoading ? (
               <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
                 生成中...
               </>
             ) : (
               <>
-                <Send className="mr-2 h-5 w-5" />
+                <Send className="mr-2 h-3 w-3" />
                 フローを生成
               </>
             )}

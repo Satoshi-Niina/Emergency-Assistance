@@ -48,23 +48,47 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       setIsLoading(true);
       console.log('🔄 フロー一覧を取得中...');
       
-      const response = await fetch(buildApiUrl('/api/emergency-flow'), {
+      const apiUrl = buildApiUrl('/api/flows');
+      console.log('🔗 API URL:', apiUrl);
+
+      const response = await fetch(apiUrl, {
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache'
         }
       });
+
+      console.log('📡 レスポンス状態:', response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ API エラー:', errorText);
+        throw new Error(`ファイル一覧の取得に失敗しました: ${response.status} ${response.statusText}`);
+      }
       
-      if (!response.ok) throw new Error('フロー一覧の取得に失敗しました');
       const data = await response.json();
-      
-      console.log('✅ フロー一覧取得完了:', data.length + '件');
-      setFlowList(data);
+      console.log('📊 取得したデータ:', data);
+
+      // APIレスポンスの構造に合わせてデータを取得
+      let flows = [];
+      if (data.success && data.flows) {
+        flows = data.flows;
+      } else if (data.success && data.data) {
+        flows = data.data;
+      } else if (Array.isArray(data)) {
+        flows = data;
+      } else {
+        console.error('❌ 予期しないフローデータ形式:', data);
+        throw new Error("フローデータの形式が不正です");
+      }
+
+      console.log('✅ フロー一覧取得完了:', flows.length + '件');
+      setFlowList(flows);
     } catch (error) {
       console.error('フロー一覧取得エラー:', error);
       toast({
         title: "エラー",
-        description: "フロー一覧の取得に失敗しました",
+        description: "ファイル一覧の取得に失敗しました",
         variant: "destructive",
       });
     } finally {
@@ -83,19 +107,19 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
 
   const handleDeleteConfirm = async () => {
     if (!flowToDelete) return;
-    
+
     try {
-      const response = await fetch(buildApiUrl(`/api/emergency-flow/${flowToDelete}`), {
+      const response = await fetch(buildApiUrl(`/api/troubleshooting/${flowToDelete}`), {
         method: 'DELETE'
       });
-      
+
       if (!response.ok) throw new Error('フローの削除に失敗しました');
-      
+
       toast({
         title: "成功",
         description: "フローが削除されました",
       });
-      
+
       // 一覧を更新
       fetchFlowList();
     } catch (error) {
@@ -124,7 +148,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div>
-            <CardTitle className="text-xl">フロー一覧</CardTitle>
+            <CardTitle className="text-xl">ファイル一覧</CardTitle>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -226,4 +250,4 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
   );
 };
 
-export default FlowListManager; 
+export default FlowListManager;

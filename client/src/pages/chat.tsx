@@ -1,496 +1,897 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useChat } from "../context/chat-context";
-import { useAuth } from "../context/auth-context";
 import MessageBubble from "../components/chat/message-bubble";
 import MessageInput from "../components/chat/message-input";
-import TextSelectionControls from "../components/chat/text-selection-controls";
-import SearchResults from "../components/chat/search-results";
 import CameraModal from "../components/chat/camera-modal";
 import ImagePreviewModal from "../components/chat/image-preview-modal";
-import TroubleshootingSelector from "../components/troubleshooting/troubleshooting-selector";
-import { useQuery } from "@tanstack/react-query";
-import { queryClient } from "../lib/queryClient.ts";
+import EmergencyGuideDisplay from "../components/emergency-guide/emergency-guide-display";
+import KeywordButtons from "../components/troubleshooting/keyword-buttons";
 import { Button } from "../components/ui/button";
-import { Send, Loader2, Trash2, Heart, FileText, Menu, Settings, LifeBuoy } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
-import { useLocation, Link } from "react-router-dom";
-import { useIsMobile } from "../hooks/use-mobile";
+import { Input } from "../components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../components/ui/alert-dialog";
+import { RotateCcw, Download, Upload, FileText, BookOpen, Activity, ArrowLeft, X, Search, Send, Camera, Trash2 } from "lucide-react";
+import { useToast } from "../hooks/use-toast";
+import { searchTroubleshootingFlows, japaneseGuideTitles } from "../lib/troubleshooting-search";
 
-export default function Chat() {
+export default function ChatPage() {
   const {
     messages,
-    setMessages,
+    sendMessage,
     isLoading,
-    selectedText,
-    setSelectedText,
-    searchBySelectedText,
-    searchResults,
-    clearSearchResults,
-    exportChatHistory,
-    isExporting,
-    hasUnexportedMessages,
-    draftMessage,
-    setDraftMessage,
     clearChatHistory,
     isClearing,
-    isRecording,
-    sendMessage,
-    startRecording,
-    stopRecording,
-    captureImage
+    chatId
   } = useChat();
 
-  const { user } = useAuth();
-  const [isEndChatDialogOpen, setIsEndChatDialogOpen] = useState(false);
-  const location = useLocation();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showEmergencyGuide, setShowEmergencyGuide] = useState(false);
+  const [availableGuides, setAvailableGuides] = useState<any[]>([]);
+  const [filteredGuides, setFilteredGuides] = useState<any[]>([]);
+  const [selectedGuideId, setSelectedGuideId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isLoadingGuides, setIsLoadingGuides] = useState(false);
 
-  // 新しいチャットとして開始するため、メッセージ読み込みは無効化
-  const { data, isLoading: messagesLoading } = useQuery({
-    queryKey: ['/api/chats/1/messages'],
-    queryFn: async () => {
-      const response = await fetch('/api/chats/1/messages', {
-        credentials: 'include'
-      });
-      if (!response.ok) {
-        throw new Error('Failed to fetch messages');
-      }
-      return response.json();
-    },
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    enabled: false, // 新しいチャットとして開始するため常に無効
-  });
+  // 追加: Q&A形式のチャット状態管理
+  const [qaMode, setQaMode] = useState(false);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [qaAnswers, setQaAnswers] = useState<string[]>([]);
+  const [qaCompleted, setQaCompleted] = useState(false);
+  
+  // 追加: 機種と機械番号のオートコンプリート状態管理
+  const [machineTypes, setMachineTypes] = useState<Array<{id: string, machine_type_name: string}>>([]);
+  const [machines, setMachines] = useState<Array<{id: string, machine_number: string}>>([]);
+  const [selectedMachineType, setSelectedMachineType] = useState<string>('');
+  const [selectedMachineNumber, setSelectedMachineNumber] = useState<string>('');
+  const [isLoadingMachineTypes, setIsLoadingMachineTypes] = useState(false);
+  const [isLoadingMachines, setIsLoadingMachines] = useState(false);
+  
+  // オートコンプリート用の状態
+  const [machineTypeInput, setMachineTypeInput] = useState('');
+  const [machineNumberInput, setMachineNumberInput] = useState('');
+  const [showMachineTypeSuggestions, setShowMachineTypeSuggestions] = useState(false);
+  const [showMachineNumberSuggestions, setShowMachineNumberSuggestions] = useState(false);
+  const [filteredMachineTypes, setFilteredMachineTypes] = useState<Array<{id: string, machine_type_name: string}>>([]);
+  const [filteredMachines, setFilteredMachines] = useState<Array<{id: string, machine_number: string}>>([]);
+  
+  const qaQuestions = [
+    "発生した状況は？",
+    "どこか想定される？",
+    "どのような処置しましたか？"
+  ];
 
-  useEffect(() => {
-    // Handle text selection
-    const handleSelection = () => {
-      const selection = window.getSelection();
-      if (selection && selection.toString().trim().length > 0) {
-        setSelectedText(selection.toString().trim());
-      } else {
-        setSelectedText("");
-      }
-    };
-
-    document.addEventListener("mouseup", handleSelection);
-    return () => {
-      document.removeEventListener("mouseup", handleSelection);
-    };
-  }, [setSelectedText]);
-
-  // 新しいチャットとして開始 - 常にcontextのメッセージのみ表示
-  const displayMessages = isClearing ? [] : (messages || []);
-
-  // デバッグ用：表示メッセージの確認と応急処置ガイドメッセージの監視
-  useEffect(() => {
-    console.log('📊 Chat.tsx - 表示メッセージ数:', displayMessages.length);
-
-    if (displayMessages.length > 0) {
-      const emergencyMessages = displayMessages.filter(msg => 
-        msg.content && (
-          msg.content.includes('応急処置ガイド実施記録') ||
-          msg.content.includes('応急処置ガイド「') ||
-          msg.content.includes('を実施しました')
-        )
-      );
-
-      console.log('🏥 Chat.tsx - 応急処置関連メッセージ数:', emergencyMessages.length);
-
-      if (emergencyMessages.length > 0) {
-        console.log('✅ Chat.tsx - 応急処置ガイドメッセージが表示されています:');
-        emergencyMessages.forEach((msg, index) => {
-          console.log(`  ${index + 1}. ID: ${msg.id}, AI応答: ${msg.isAiResponse}, 内容: ${msg.content.substring(0, 50)}...`);
-        });
-      }
-
-      // 最新のメッセージが応急処置関連かチェック
-      const latestMessage = displayMessages[displayMessages.length - 1];
-      if (latestMessage && latestMessage.content && latestMessage.content.includes('応急処置ガイド')) {
-        console.log('🔔 Chat.tsx - 最新メッセージが応急処置ガイド関連です:', {
-          id: latestMessage.id,
-          isAiResponse: latestMessage.isAiResponse,
-          timestamp: latestMessage.timestamp,
-          contentPreview: latestMessage.content.substring(0, 100) + '...'
-        });
-      }
-    }
-  }, [displayMessages]);
-
-  const handleEndChat = () => {
-    if (hasUnexportedMessages) {
-      setIsEndChatDialogOpen(true);
-    } else {
-      fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/logout`, {
-        method: "POST",
-        credentials: "include"
-      })
-      .then(() => {
-        console.log("ログアウト成功 - ログイン画面に遷移します");
-        queryClient.clear();
-        for (const key of Object.keys(localStorage)) {
-          if (key.startsWith('rq-')) {
-            localStorage.removeItem(key);
-          }
-        }
-        window.location.href = "/login";
-      })
-      .catch(error => {
-        console.error("ログアウトエラー:", error);
-        window.location.href = "/login";
-      });
-    }
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleSendAndEnd = async () => {
+  // 追加: 機種一覧を取得する関数
+  const fetchMachineTypes = async () => {
     try {
-      await exportChatHistory();
-      setIsEndChatDialogOpen(false);
-
-      console.log("チャットエクスポート完了。チャット画面を維持します。");
+      setIsLoadingMachineTypes(true);
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/machine-types`);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setMachineTypes(result.data);
+        }
+      } else {
+        console.warn('機種一覧取得失敗:', response.status, response.statusText);
+      }
     } catch (error) {
-      console.error("チャットエクスポートエラー:", error);
-      setIsEndChatDialogOpen(false);
-      console.log("エラーが発生しましたが、チャット画面を維持します。");
+      console.error('機種一覧取得エラー:', error);
+      // エラーが発生してもチャット画面は表示されるようにする
+    } finally {
+      setIsLoadingMachineTypes(false);
     }
   };
 
-  const isMobile = useIsMobile();
-  // 応急処置ガイドの状態
-  const [emergencyGuideOpen, setEmergencyGuideOpen] = useState(false);
-  const [searchKeyword, setSearchKeyword] = useState("");
-  const [selectedFlow, setSelectedFlow] = useState<string | null>(null);
+  // 機種入力のフィルタリング
+  const filterMachineTypes = (input: string) => {
+    if (!input.trim()) {
+      setFilteredMachineTypes([]);
+      return;
+    }
+    
+    const filtered = machineTypes.filter(type => 
+      type.machine_type_name.toLowerCase().includes(input.toLowerCase())
+    );
+    setFilteredMachineTypes(filtered);
+  };
 
-  // 応急処置ガイド関連のイベントリスナー
+  // 機械番号入力のフィルタリング
+  const filterMachines = (input: string) => {
+    if (!input.trim()) {
+      setFilteredMachines([]);
+      return;
+    }
+    
+    const filtered = machines.filter(machine => 
+      machine.machine_number.toLowerCase().includes(input.toLowerCase())
+    );
+    setFilteredMachines(filtered);
+  };
+
+  // 機種選択処理
+  const handleMachineTypeSelect = (type: {id: string, machine_type_name: string}) => {
+    setSelectedMachineType(type.id);
+    setMachineTypeInput(type.machine_type_name);
+    setShowMachineTypeSuggestions(false);
+    setFilteredMachineTypes([]);
+    
+    // 機種変更時は機械番号をリセット
+    setSelectedMachineNumber('');
+    setMachineNumberInput('');
+    setFilteredMachines([]);
+    
+    // 対応する機械番号を取得
+    fetchMachines(type.id);
+  };
+
+  // 機械番号選択処理
+  const handleMachineNumberSelect = (machine: {id: string, machine_number: string}) => {
+    setSelectedMachineNumber(machine.id);
+    setMachineNumberInput(machine.machine_number);
+    setShowMachineNumberSuggestions(false);
+    setFilteredMachines([]);
+  };
+
+  // 追加: 指定機種に紐づく機械番号一覧を取得する関数
+  const fetchMachines = async (typeId: string) => {
+    try {
+      setIsLoadingMachines(true);
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/machines?type_id=${typeId}`);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setMachines(result.data);
+        }
+      } else {
+        console.warn('機械番号一覧取得失敗:', response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error('機械番号一覧取得エラー:', error);
+      // エラーが発生してもチャット画面は表示されるようにする
+    } finally {
+      setIsLoadingMachines(false);
+    }
+  };
+
+  // 追加: 機種選択時の処理（オートコンプリート用）
+  const handleMachineTypeChange = (typeId: string) => {
+    setSelectedMachineType(typeId);
+    setSelectedMachineNumber(''); // 機種変更時は機械番号をリセット
+    setMachineNumberInput(''); // 機械番号入力もリセット
+    
+    if (typeId) {
+      fetchMachines(typeId);
+    } else {
+      setMachines([]);
+    }
+  };
+
   useEffect(() => {
-    const handleCloseEmergencyGuide = () => {
-      console.log('応急処置ガイド画面を閉じるイベントを受信');
-      setEmergencyGuideOpen(false);
-    };
+    scrollToBottom();
+  }, [messages]);
 
-    const handleEmergencyGuideSent = (event: any) => {
-      console.log('🏥 応急処置ガイド送信イベントを受信:', event.detail);
-
-      // 送信後に画面を自動的にスクロール
-      setTimeout(() => {
-        const chatContainer = document.getElementById('chatMessages');
-        if (chatContainer) {
-          chatContainer.scrollTop = chatContainer.scrollHeight;
-          console.log('📜 応急処置ガイド送信後にチャットを最下部にスクロールしました');
-        }
-
-        // 応急処置ガイド画面を閉じる
-        setEmergencyGuideOpen(false);
-        console.log('🏥 応急処置ガイド送信後に画面を閉じました');
-      }, 500);
-    };
-
-    const handleEmergencyGuideCompleted = (event: any) => {
-      console.log('🏥 応急処置ガイド完了イベントを受信:', event.detail);
-
-      // フロー実行結果がチャットに送信された後の処理
-      setTimeout(() => {
-        const chatContainer = document.getElementById('chatMessages');
-        if (chatContainer) {
-          chatContainer.scrollTop = chatContainer.scrollHeight;
-          console.log('📜 フロー実行結果送信後にチャットを最下部にスクロールしました');
-        }
-      }, 500);
-    };
-
-    window.addEventListener('close-emergency-guide', handleCloseEmergencyGuide);
-    window.addEventListener('emergency-guide-sent', handleEmergencyGuideSent);
-    window.addEventListener('emergency-guide-completed', handleEmergencyGuideCompleted);
-
-    return () => {
-      window.removeEventListener('close-emergency-guide', handleCloseEmergencyGuide);
-      window.removeEventListener('emergency-guide-sent', handleEmergencyGuideSent);
-      window.removeEventListener('emergency-guide-completed', handleEmergencyGuideCompleted);
-    };
+  // 追加: コンポーネントマウント時に機種一覧を取得
+  useEffect(() => {
+    // 機種一覧の取得に失敗してもチャット画面は表示されるようにする
+    fetchMachineTypes().catch(error => {
+      console.error('機種一覧取得でエラーが発生しましたが、チャット画面は表示されます:', error);
+    });
   }, []);
 
+  // 追加: Q&Aモードの初期化
   useEffect(() => {
-    if (emergencyGuideOpen === false) {
-      setSelectedFlow(null);
-      setSearchKeyword("");
+    if (qaMode && currentQuestionIndex === 0 && qaAnswers.length === 0) {
+      // 最初の質問を表示（右側に表示するためisAiResponse=false）
+      sendMessage(qaQuestions[0], false);
     }
-  }, [emergencyGuideOpen]);
+  }, [qaMode, currentQuestionIndex, qaAnswers.length]);
 
-  const handleRequestSendToChat = () => {
-    window.dispatchEvent(new CustomEvent('request-send-to-chat'));
+  // 追加: Q&A回答処理
+  const handleQaAnswer = (answer: string) => {
+    const newAnswers = [...qaAnswers, answer];
+    setQaAnswers(newAnswers);
+    
+    // 回答をチャットに追加（左側に表示）
+    sendMessage(answer, true);
+    
+    // 次の質問があるかチェック
+    if (currentQuestionIndex < qaQuestions.length - 1) {
+      const nextIndex = currentQuestionIndex + 1;
+      setCurrentQuestionIndex(nextIndex);
+      
+      // 次の質問を表示（右側に表示するためisAiResponse=false）
+      setTimeout(() => {
+        sendMessage(qaQuestions[nextIndex], false);
+      }, 500);
+    } else {
+      // 質問終了
+      setQaCompleted(true);
+      setTimeout(() => {
+        sendMessage("入力ありがとうございました。応急処置情報を記録しました。", false);
+        setQaMode(false);
+        setCurrentQuestionIndex(0);
+        setQaAnswers([]);
+        setQaCompleted(false);
+      }, 1000);
+    }
   };
 
+  // 追加: Q&Aモード開始
+  const startQaMode = () => {
+    setQaMode(true);
+    setCurrentQuestionIndex(0);
+    setQaAnswers([]);
+    setQaCompleted(false);
+    // clearChatHistory(); // Q&Aモード開始時にチャット履歴をクリアしない
+  };
+
+  const handleExport = async () => {
+    try {
+      await exportChat();
+      toast({
+        title: "エクスポート成功",
+        description: "チャット履歴をエクスポートしました。",
+      });
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: "エクスポートエラー",
+        description: "チャット履歴のエクスポートに失敗しました。",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // サーバーへ送信する機能
+  const handleSendToServer = async () => {
+    try {
+      if (!chatId || messages.length === 0) {
+        toast({
+          title: "送信エラー",
+          description: "送信するチャット内容がありません。",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // チャット内容をJSON形式で整形
+      const chatData = {
+        chatId: chatId,
+        timestamp: new Date().toISOString(),
+        messages: messages.map(msg => ({
+          id: msg.id,
+          content: msg.content,
+          isAiResponse: msg.isAiResponse,
+          timestamp: msg.timestamp,
+          media: msg.media?.map(media => ({
+            id: media.id,
+            type: media.type,
+            url: media.url,
+            title: media.title,
+            fileName: media.fileName || ''
+          })) || []
+        }))
+      };
+
+      // サーバーに送信
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/chats/${chatId}/export`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          chatData: chatData,
+          exportType: 'manual_send'
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast({
+          title: "送信成功",
+          description: `チャット内容をサーバーに送信しました。(${messages.length}件のメッセージ)`,
+        });
+        console.log('サーバー送信結果:', result);
+
+        // 送信完了後にチャットをクリア
+        await clearChatHistory();
+        
+        // Q&Aモードの状態もリセット
+        setQaMode(false);
+        setCurrentQuestionIndex(0);
+        setQaAnswers([]);
+        setQaCompleted(false);
+
+        toast({
+          title: "チャットクリア完了",
+          description: "送信後にチャット履歴をクリアしました。",
+        });
+      } else {
+        throw new Error(`送信失敗: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('サーバー送信エラー:', error);
+      toast({
+        title: "送信エラー",
+        description: "サーバーへの送信に失敗しました。",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleImport = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      try {
+        await importChat(file);
+        toast({
+          title: "インポート成功",
+          description: "チャット履歴をインポートしました。",
+        });
+      } catch (error) {
+        console.error('Import error:', error);
+        toast({
+          title: "インポートエラー",
+          description: "チャット履歴のインポートに失敗しました。",
+          variant: "destructive",
+        });
+      }
+    }
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const fetchAvailableGuides = async () => {
+    try {
+      setIsLoadingGuides(true);
+      console.log('🔄 応急処置データ一覧の取得を開始');
+
+      // トラブルシューティングデータの取得
+      const timestamp = Date.now();
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list?_t=${timestamp}`, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+
+      if (response.ok) {
+        const troubleshootingData = await response.json();
+        console.log('✅ トラブルシューティングデータ取得:', troubleshootingData.length + '件');
+
+        // データを整形して表示用にフォーマット
+        const formattedGuides = troubleshootingData.map((item: any) => ({
+          id: item.id,
+          title: item.title || japaneseGuideTitles[item.id] || item.id,
+          description: item.description || '',
+          keyword: item.keyword || '',
+          steps: item.steps || [],
+          fileName: item.fileName || '',
+          createdAt: item.createdAt || ''
+        }));
+
+        setAvailableGuides(formattedGuides);
+        setFilteredGuides(formattedGuides);
+      } else {
+        console.error('応急処置データの取得に失敗:', response.status);
+        setAvailableGuides([]);
+        setFilteredGuides([]);
+      }
+    } catch (error) {
+      console.error('ガイド一覧の取得に失敗:', error);
+      toast({
+        title: "エラー",
+        description: "応急処置データの取得に失敗しました",
+        variant: "destructive",
+      });
+      setAvailableGuides([]);
+      setFilteredGuides([]);
+    } finally {
+      setIsLoadingGuides(false);
+    }
+  };
+
+  const handleEmergencyGuide = async () => {
+    await fetchAvailableGuides();
+
+    // 最後に送信されたテキストを検索キーワードとして設定
+    const lastKeyword = localStorage.getItem('lastSearchKeyword');
+    if (lastKeyword) {
+      setSearchQuery(lastKeyword);
+      handleSearch(lastKeyword);
+      console.log('🔍 保存された検索キーワードを使用:', lastKeyword);
+    }
+
+    setShowEmergencyGuide(true);
+  };
+
+  const handleSelectGuide = (guideId: string) => {
+    setSelectedGuideId(guideId);
+  };
+
+  const handleExitGuide = () => {
+    setShowEmergencyGuide(false);
+    setSelectedGuideId(null);
+    setSearchQuery("");
+    // 検索キーワードもクリア
+    localStorage.removeItem('lastSearchKeyword');
+  };
+
+  // 検索処理
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+
+    if (!query.trim()) {
+      setFilteredGuides(availableGuides);
+      return;
+    }
+
+    try {
+      // クライアントサイド検索を実行
+      const searchResults = availableGuides.filter((guide) => {
+        const searchText = `${guide.title} ${guide.description} ${guide.keyword || ''}`.toLowerCase();
+        return searchText.includes(query.toLowerCase());
+      });
+
+      setFilteredGuides(searchResults);
+      console.log(`🔍 検索結果: "${query}" -> ${searchResults.length}件`);
+    } catch (error) {
+      console.error('検索処理エラー:', error);
+      setFilteredGuides(availableGuides);
+    }
+  };
+
+  // キーワードボタンクリック時の処理
+  const handleKeywordClick = (keyword: string) => {
+    handleSearch(keyword);
+  };
+
+  // カメラボタンのクリック処理
+  const handleCameraClick = () => {
+    console.log('📸 カメラボタンがクリックされました');
+    // カメラモーダルを開くイベントを発火
+    window.dispatchEvent(new CustomEvent('open-camera'));
+
+    // デバッグ用: イベントが正しく発火されたかを確認
+    console.log('📸 open-camera イベントを発火しました');
+  };
+
+
+
   return (
-    <div className="flex flex-col w-full h-full overflow-auto bg-blue-900 chat-layout-container overflow-scroll-container" style={{ maxWidth: '100vw', overflowX: 'hidden' }}>
-      {/* ボタン行 - 左に履歴クリア、右に履歴送信とチャット終了 */}
-      <div className="bg-gray-100 border-b border-gray-200 px-4 py-2">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            {/* 履歴クリアボタン - 紫色で重要性を示す */}
-            <Button 
-              variant="outline"
-              size="sm"
-              onClick={async () => {
-                // チャット履歴をクリア（表面的にクリア→新しいチャット開始）
-                await clearChatHistory();
-              }}
-              disabled={isClearing || !displayMessages.length}
-              className="flex items-center gap-1 bg-purple-600 text-white border-white hover:bg-purple-700 text-sm h-8 py-0 px-3"
-            >
-              {isClearing ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">クリア中</span>
-                </>
+    <div className="flex flex-col h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      {/* ヘッダーエリア - 固定表示 */}
+      <div className="bg-white shadow-sm border-b p-3 flex-shrink-0 sticky top-0 z-10">
+        <div className="flex justify-between items-center w-full">
+          {/* 左側: 機種と機械番号のオートコンプリート */}
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 relative">
+              <label className="text-xs text-gray-600 font-medium">機種:</label>
+              {isLoadingMachineTypes ? (
+                <div className="w-48 h-10 text-sm border border-gray-300 rounded-md flex items-center justify-center bg-gray-50">
+                  読み込み中...
+                </div>
               ) : (
-                <>
-                  <Trash2 className="h-4 w-4" />
-                  <span className="text-sm">新しいチャット</span>
-                </>
+                <div className="relative">
+                  <Input
+                    type="text"
+                    placeholder="機種を入力"
+                    value={machineTypeInput}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setMachineTypeInput(value);
+                      filterMachineTypes(value);
+                      setShowMachineTypeSuggestions(true);
+                      if (!value.trim()) {
+                        setSelectedMachineType('');
+                        setShowMachineTypeSuggestions(false);
+                      }
+                    }}
+                    onFocus={() => {
+                      if (machineTypeInput.trim()) {
+                        setShowMachineTypeSuggestions(true);
+                      }
+                    }}
+                    onBlur={() => {
+                      // 少し遅延させてクリックイベントを処理
+                      setTimeout(() => setShowMachineTypeSuggestions(false), 200);
+                    }}
+                    className="w-48 h-10 text-sm border-gray-300"
+                  />
+                  {showMachineTypeSuggestions && filteredMachineTypes.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-40 overflow-y-auto">
+                      {filteredMachineTypes.map((type) => (
+                        <div
+                          key={type.id}
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                          onClick={() => handleMachineTypeSelect(type)}
+                        >
+                          {type.machine_type_name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
+            </div>
+            
+            <div className="flex items-center space-x-2 relative">
+              <label className="text-xs text-gray-600 font-medium">機械番号:</label>
+              {!selectedMachineType ? (
+                <div className="w-48 h-10 text-sm border border-gray-300 rounded-md flex items-center justify-center bg-gray-50">
+                  機種を先に選択
+                </div>
+              ) : isLoadingMachines ? (
+                <div className="w-48 h-10 text-sm border border-gray-300 rounded-md flex items-center justify-center bg-gray-50">
+                  読み込み中...
+                </div>
+              ) : (
+                <div className="relative">
+                  <Input
+                    type="text"
+                    placeholder="機械番号を入力"
+                    value={machineNumberInput}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setMachineNumberInput(value);
+                      filterMachines(value);
+                      setShowMachineNumberSuggestions(true);
+                      if (!value.trim()) {
+                        setSelectedMachineNumber('');
+                        setShowMachineNumberSuggestions(false);
+                      }
+                    }}
+                    onFocus={() => {
+                      if (machineNumberInput.trim()) {
+                        setShowMachineNumberSuggestions(true);
+                      }
+                    }}
+                    onBlur={() => {
+                      // 少し遅延させてクリックイベントを処理
+                      setTimeout(() => setShowMachineNumberSuggestions(false), 200);
+                    }}
+                    className="w-48 h-10 text-sm border-gray-300"
+                  />
+                  {showMachineNumberSuggestions && filteredMachines.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-40 overflow-y-auto">
+                      {filteredMachines.map((machine) => (
+                        <div
+                          key={machine.id}
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                          onClick={() => handleMachineNumberSelect(machine)}
+                        >
+                          {machine.machine_number}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 中央のボタングループ */}
+          <div className="flex items-center gap-4">
+            <Button 
+              onClick={handleEmergencyGuide}
+              className="bg-red-500 hover:bg-red-600 text-white flex items-center gap-2 px-6 py-3 font-bold text-lg shadow-lg"
+              size="lg"
+            >
+              <BookOpen className="h-6 w-6" />
+              🚨 応急処置ガイド 🚨
+            </Button>
+
+            <Button 
+              onClick={handleCameraClick}
+              variant="outline"
+              className="border-2 border-black hover:bg-gray-100 flex items-center gap-2 px-6 py-3 font-bold text-lg"
+              size="lg"
+            >
+              <Camera className="h-6 w-6" />
+              カメラ
+            </Button>
+
+            {/* 追加: Q&Aモード開始ボタン */}
+            <Button 
+              onClick={startQaMode}
+              className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-2 px-6 py-3 font-bold text-lg shadow-lg"
+              size="lg"
+              disabled={qaMode}
+            >
+              <FileText className="h-6 w-6" />
+              Q&A 開始
             </Button>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* 履歴送信ボタン - 緑色 */}
-            <Button 
-              variant="outline"
-              size="sm"
-              onClick={exportChatHistory}
-              disabled={isExporting || !hasUnexportedMessages}
-              className="flex items-center gap-2 border-green-400 bg-green-50 hover:bg-green-100 text-green-700 h-8 py-0 px-3"
-            >
-              {isExporting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin text-green-600" />
-                  <span className="text-sm">送信中</span>
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4 text-green-600" />
-                  <span className="text-sm">履歴送信</span>
-                </>
-              )}
-            </Button>
+          {/* 右側のボタングループ */}
+          <div className="flex justify-end gap-2">
+            {/* クリアボタン */}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="flex items-center gap-1 text-xs px-2 py-1 bg-red-50 hover:bg-red-100 border-red-300"
+                  disabled={messages.length === 0 || isClearing}
+                >
+                  <Trash2 className="h-3 w-3" />
+                  {isClearing ? "クリア中..." : "クリア"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>チャット履歴をクリア</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    現在表示されているチャット内容をすべて削除します。この操作は元に戻すことができません。
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>戻る</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => {
+                    clearChatHistory();
+                    // Q&Aモードの状態もリセット
+                    setQaMode(false);
+                    setCurrentQuestionIndex(0);
+                    setQaAnswers([]);
+                    setQaCompleted(false);
+                  }}>
+                    OK
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
-            {/* チャット終了ボタン - オレンジ色 */}
-            <Button 
-              variant="destructive"
-              size="sm"
-              onClick={handleEndChat}
-              className="flex items-center gap-1 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white border-0 h-8 py-0 px-3"
-            >
-              <span className="text-sm">チャット終了</span>
-            </Button>
+            {/* サーバー送信ボタン */}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="flex items-center gap-1 text-xs px-2 py-1 bg-blue-50 hover:bg-blue-100 border-blue-300"
+                  disabled={messages.length === 0}
+                >
+                  <Send className="h-3 w-3" />
+                  サーバーへ送信
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>サーバーへ送信</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    現在のチャット内容（{messages.length}件のメッセージ）をサーバーに送信します。送信完了後、チャット履歴はクリアされます。
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleSendToServer}>
+                    OK
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </div>
 
-      {/* 応急処置ガイドボタン - 中央に配置 */}
-      <div className="w-full flex justify-center items-center p-4 bg-gradient-to-r from-blue-100 to-blue-50 border-b border-blue-200">
-        <Button
-          variant="default"
-          size="lg"
-          onClick={() => {
-            // 現在のテキストボックスの内容を取得
-            const messageInput = document.querySelector('textarea, input[type="text"]') as HTMLInputElement | HTMLTextAreaElement;
-            if (messageInput) {
-              const inputText = messageInput.value.trim();
-              setSearchKeyword(inputText);
-            } else {
-              setSearchKeyword("");
-            }
-            setEmergencyGuideOpen(true);
-          }}
-          className="flex items-center gap-2 border-2 border-white bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 shadow-md rounded-lg"
-        >
-          <Heart className="h-6 w-6 text-white" />
-          <span className="text-lg font-bold">応急処置ガイド</span>
-        </Button>
-      </div>
+      {/* メインコンテンツエリア */}
+      <div className="flex-1 flex flex-col overflow-hidden p-4">
+        {/* チャットエリア - 3D効果のある外枠 */}
+        <div className="flex-1 overflow-auto p-4 space-y-3 bg-white rounded-xl shadow-2xl border-4 border-gray-300 relative"
+             style={{
+               boxShadow: `
+                 inset 3px 3px 8px rgba(0, 0, 0, 0.15),
+                 inset -3px -3px 8px rgba(255, 255, 255, 0.9),
+                 6px 6px 16px rgba(0, 0, 0, 0.2),
+                 -2px -2px 8px rgba(255, 255, 255, 0.8)
+               `,
+               background: 'linear-gradient(145deg, #f8fafc, #e2e8f0)'
+             }}>
 
-      <div className="flex-1 flex flex-col md:flex-row overflow-auto chat-layout-container" style={{ minHeight: '75vh' }}>
-        {/* Chat Messages Area - 領域を2/3に縮小し、縦を元に戻す */}
-        <div className="flex-1 flex flex-col h-full min-h-[75vh] overflow-auto md:w-2/3 bg-white chat-messages-container" style={{ maxWidth: '100%', overflowX: 'hidden' }}>
+          {/* 内側の装飾的な境界線 */}
+          <div className="absolute inset-2 border border-blue-200 rounded-lg pointer-events-none opacity-50"></div>
 
-          {/* Chat Messages - 高さを1.5倍に */}
-          <div id="chatMessages" className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 md:px-6 space-y-4 min-w-[300px]" style={{ minHeight: '60vh' }}>
-            {isLoading ? (
-              <div className="flex items-center justify-center h-full">
-                <p className="text-blue-700">メッセージを送信中...</p>
-              </div>
-            ) : !displayMessages || displayMessages.length === 0 ? (
-              <div className={`flex items-center justify-center h-full text-center ${isRecording ? 'hidden' : ''}`}>
-                <div>
-                  <p className="text-xl font-semibold mb-2 text-blue-800">会話を始めましょう</p>
-                  <p className="text-sm text-blue-500">保守用車に関する質問を入力するか、マイクボタンをタップして話しかけてください。</p>
+          {/* メッセージ表示エリア */}
+          <div className="relative z-10">
+            {messages.map((message) => (
+              <MessageBubble key={message.id} message={message} />
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+        </div>
+
+        {/* 入力エリア - 3D効果のある外枠 */}
+        <div className="flex-shrink-0 p-4 pt-2">
+          <div className="bg-white rounded-lg shadow-lg border-2 border-gray-300"
+               style={{
+                 boxShadow: `
+                   inset 2px 2px 6px rgba(0, 0, 0, 0.1),
+                   inset -2px -2px 6px rgba(255, 255, 255, 0.9),
+                   4px 4px 12px rgba(0, 0, 0, 0.15)
+                 `
+               }}>
+            {qaMode && !qaCompleted ? (
+              // 追加: Q&Aモード用の入力エリア
+              <div className="p-4">
+                <div className="mb-2 text-sm text-gray-600">
+                  質問 {currentQuestionIndex + 1}/{qaQuestions.length}: {qaQuestions[currentQuestionIndex]}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    placeholder="回答を入力してください..."
+                    className="flex-1"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                        handleQaAnswer(e.currentTarget.value.trim());
+                        e.currentTarget.value = '';
+                      }
+                    }}
+                  />
+                  <Button
+                    onClick={(e) => {
+                      const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                      if (input.value.trim()) {
+                        handleQaAnswer(input.value.trim());
+                        input.value = '';
+                      }
+                    }}
+                    disabled={isLoading}
+                    className="bg-blue-500 hover:bg-blue-600"
+                  >
+                    回答
+                  </Button>
                 </div>
               </div>
             ) : (
-              <>
-                {/* 通常のメッセージリスト */}
-                {displayMessages.map((message: any, index: number) => {
-                  // メッセージ構造の安全性チェック
-                  const safeMessage = {
-                    ...message,
-                    content: message.content || message.text || '',
-                    text: message.text || message.content || '',
-                    id: message.id || `temp_${index}`,
-                    timestamp: message.timestamp || message.createdAt || new Date()
-                  };
-
-                  return (
-                    <div key={safeMessage.id || index} className="w-full md:max-w-2xl mx-auto">
-                      <MessageBubble message={safeMessage} />
-                    </div>
-                  );
-                })}
-              </>
+              <MessageInput sendMessage={sendMessage} isLoading={isLoading} />
             )}
-
-            {/* プレビュー用の一時メッセージ (録音中テキストと撮影した画像のプレビュー) */}
-            {draftMessage && draftMessage.content && (
-              <div className="w-full md:max-w-2xl mx-auto">
-                <MessageBubble
-                  message={{
-                    id: -1, // 一時的なID
-                    content: draftMessage.content,
-                    senderId: 1, // 現在のユーザーID
-                    isAiResponse: false,
-                    timestamp: new Date(),
-                    media: draftMessage.media?.map((m, idx) => ({
-                      id: idx,
-                      messageId: -1,
-                      ...m
-                    }))
-                  }}
-                  isDraft={true}
-                />
-              </div>
-            )}
-
-            {/* デバッグ表示 - ドラフトメッセージの状態を確認 */}
-            <div className="hidden">
-              <p>draftMessage: {draftMessage ? JSON.stringify(draftMessage) : 'null'}</p>
-            </div>
-
-          </div>
-
-          {/* エクスポート状態表示 */}
-          {/* Text Selection Controls - Only show when text is selected */}
-          {selectedText && <TextSelectionControls text={selectedText} onSearch={(text) => searchBySelectedText(text, true)} />}
-
-          {/* Message Input */}
-          <MessageInput />
-        </div>
-
-        {/* 関係画像エリア - 右側に1/3のスペースを確保して常に表示 */}
-        <div className="hidden md:block md:w-1/3 border-l border-blue-200 bg-blue-50 overflow-y-auto search-results-panel" style={{ minHeight: '75vh' }}>
-          <div className="w-full h-full">
-            <div className="sticky top-0 bg-blue-600 text-white py-2 px-4 font-medium z-10">
-              <h2 className="text-lg">関係画像</h2>
-            </div>
-            <div className="p-2">
-              <SearchResults results={searchResults || []} onClear={clearSearchResults} />
-            </div>
           </div>
         </div>
-
-        {/* モバイル用検索結果スライダー - 縦向き表示の時のみフローティングボタンを表示 */}
-
       </div>
 
-      {/* 未送信のチャット履歴がある場合の警告ダイアログ */}
-      <Dialog open={isEndChatDialogOpen} onOpenChange={setIsEndChatDialogOpen}>
-        <DialogContent className="bg-blue-50 border border-blue-200">
-          <DialogHeader className="border-b border-blue-200 pb-3">
-            <DialogTitle className="text-blue-800 text-lg font-bold">チャット履歴が未送信です</DialogTitle>
-            <DialogDescription className="text-blue-700">
-              まだ送信されていないチャット履歴があります。このまま終了すると、履歴が保存されません。
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-between mt-4">
-            <Button 
-              variant="outline" 
-              onClick={() => setIsEndChatDialogOpen(false)}
-              className="border-blue-300 text-blue-700 hover:bg-blue-100"
-            >
-              キャンセル
-            </Button>
-            <div className="flex gap-2">
-              <Button 
-                variant="destructive" 
-                onClick={() => {
-                  setIsEndChatDialogOpen(false);
-                  console.log("送信せずに終了が選択されました - ダイアログを閉じてチャット画面を維持します");
-                }}
-                className="bg-red-500 hover:bg-red-600"
-              >
-                送信せずに終了
-              </Button>
-              <Button 
-                variant="default" 
-                onClick={handleSendAndEnd}
-                disabled={isExporting}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                {isExporting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    <span>送信中...</span>
-                  </>
-                ) : (
-                  <span>送信して終了</span>
-                )}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Modals */}
+      {/* モーダル類 */}
       <CameraModal />
       <ImagePreviewModal />
 
-      {/* 応急処置ガイドモーダル */}
-      <Dialog open={emergencyGuideOpen} onOpenChange={setEmergencyGuideOpen}>
-        <DialogContent showCloseButton={false} className={`bg-blue-50 border-none flex flex-col w-screen h-screen max-w-full max-h-full p-0`}>
-          <DialogHeader className="border-b border-blue-200 p-4 flex flex-row items-center justify-between">
-            <div>
-              <DialogTitle className="text-blue-800 text-lg font-bold flex items-center gap-2">
-                <Heart className="h-5 w-5 text-red-500" />
-                <span>応急処置ガイド</span>
-              </DialogTitle>
-              <DialogDescription className="text-blue-700">
-                症状を選択するか、キーワードで検索してください
-              </DialogDescription>
-            </div>
-            <Button 
-              variant="default" 
-              onClick={() => setEmergencyGuideOpen(false)}
-            >
-              閉じる
-            </Button>
-          </DialogHeader>
-          <div className={`overflow-y-auto flex-grow p-4`}>
-            <TroubleshootingSelector 
-              initialSearchKeyword={searchKeyword}
-              selectedFlow={selectedFlow}
-              setSelectedFlow={setSelectedFlow}
-            />
-          </div>
-          <DialogFooter className="mt-auto p-4 border-t border-blue-200">
-            {selectedFlow && (
-              <Button 
-                variant="outline" 
-                onClick={handleRequestSendToChat}
-                className="w-full sm:w-auto bg-blue-100 hover:bg-blue-200 border-blue-300 text-blue-800"
-              >
-                <Send className="h-4 w-4 mr-2" />
-                現在の内容をチャットに送信
-              </Button>
+      {/* ファイル入力（隠し要素） */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        onChange={handleFileChange}
+        style={{ display: 'none' }}
+      />
+
+      {/* 応急処置ガイドポップアップ */}
+      {showEmergencyGuide && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[75vh] overflow-hidden shadow-xl">
+            {selectedGuideId ? (
+              // フロー実行画面
+              <div className="h-full max-h-[75vh] overflow-auto">
+                <EmergencyGuideDisplay
+                  guideId={selectedGuideId}
+                  onExit={handleExitGuide}
+                  onSendToChat={() => console.log('チャットに送信されました')}
+                />
+              </div>
+            ) : (
+              // ガイド一覧表示
+              <div className="flex flex-col h-full max-h-[75vh]">
+                <div className="bg-white shadow-sm border-b p-4 flex-shrink-0">
+                  <div className="flex justify-between items-center mb-4">
+                    <h1 className="text-xl font-bold text-gray-800">応急処置ガイド選択</h1>
+                    <Button 
+                      onClick={handleExitGuide}
+                      variant="outline"
+                      className="flex items-center gap-1"
+                      size="sm"
+                    >
+                      <X className="h-4 w-4" />
+                      閉じる
+                    </Button>
+                  </div>
+
+                  {/* 検索エリア */}
+                  <div className="space-y-3">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                      <Input
+                        type="text"
+                        placeholder="応急処置を検索..."
+                        value={searchQuery}
+                        onChange={(e) => handleSearch(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+
+                    {/* キーワードボタン */}
+                    <KeywordButtons onKeywordClick={handleKeywordClick} />
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-auto p-4">
+                  {isLoadingGuides ? (
+                    <div className="flex items-center justify-center h-64">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="mb-4 text-sm text-gray-600">
+                        {searchQuery ? (
+                          <span>検索結果: {filteredGuides.length}件 (検索語: "{searchQuery}")</span>
+                        ) : (
+                          <span>利用可能なガイド: {filteredGuides.length}件</span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {filteredGuides.map((guide) => (
+                          <Card
+                            key={guide.id}
+                            className="hover:shadow-lg cursor-pointer transition-shadow"
+                            onClick={() => handleSelectGuide(guide.id)}
+                          >
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-lg font-semibold">{guide.title}</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              {guide.description && (
+                                <p className="text-gray-600 text-sm mb-3 line-clamp-3">{guide.description}</p>
+                              )}
+                              {guide.keyword && (
+                                <div className="mb-3">
+                                  <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                                    {guide.keyword}
+                                  </span>
+                                </div>
+                              )}
+                              <div className="flex justify-between items-center text-sm text-gray-500">
+                                <span>{guide.steps?.length || 0} ステップ</span>
+                                <Button size="sm" className="text-xs">
+                                  ガイドを開く
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+
+                      {filteredGuides.length === 0 && !isLoadingGuides && (
+                        <div className="text-center py-8">
+                          {searchQuery ? (
+                            <div>
+                              <p className="text-gray-500 mb-2">検索結果が見つかりませんでした</p>
+                              <p className="text-sm text-gray-400">別のキーワードで検索してみてください</p>
+                            </div>
+                          ) : (
+                            <p className="text-gray-500">利用可能な応急処置ガイドがありません</p>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
             )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

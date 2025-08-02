@@ -2,16 +2,37 @@ import { useState } from "react";
 import { useAuth } from "../../context/auth-context";
 import { useChat } from "../../context/chat-context";
 import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
 import { Menu, Settings, LogOut, User, LifeBuoy, FileText, ChevronDown } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetTrigger } from "../../components/ui/sheet";
 import { Tabs } from "./tabs";
 
-export default function Header() {
+interface HeaderProps {
+  onModelChange?: (model: string) => void;
+  onMachineNumberChange?: (machineNumber: string) => void;
+}
+
+export default function Header({ onModelChange, onMachineNumberChange }: HeaderProps) {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  // 追加: 機種と機械番号の状態管理
+  const [model, setModel] = useState("");
+  const [machineNumber, setMachineNumber] = useState("");
+
+  // 追加: 値が変更されたときに親コンポーネントに通知
+  const handleModelChange = (value: string) => {
+    setModel(value);
+    onModelChange?.(value);
+  };
+
+  const handleMachineNumberChange = (value: string) => {
+    setMachineNumber(value);
+    onMachineNumberChange?.(value);
+  };
 
   if (!user) {
     return null;
@@ -33,21 +54,27 @@ export default function Header() {
   return (
     <header className="bg-primary text-white py-3 px-4 flex items-center justify-between shadow-md">
       <div className="flex items-center">
-        <h1 className="text-xl font-semibold mr-6">応急処置チャットシステム</h1>
+        <h1 className="text-sm font-semibold mr-6" style={{ fontSize: '70%' }}>応急処置支援システム</h1>
         <div className="hidden md:flex items-center space-x-1">
           <Tabs />
         </div>
       </div>
+      
       <div className="flex items-center space-x-4">
-        <div className="text-sm">
-          ログインユーザー：{user?.display_name || user?.username || 'ゲスト'} 
-          {user?.role && ` (${user?.role === 'admin' ? '管理者' : '一般ユーザー'})`}
+        <div className="text-xs" style={{ fontSize: '80%' }}>
+          ログインユーザー：{user?.display_name || user?.username || 'ゲスト'}
         </div>
-        
-        {/* 設定ボタン - 直接リンク */}
-        <Link to="/settings" className="text-white hover:bg-white/20 p-2 rounded">
-          <Settings className="h-5 w-5" />
-        </Link>
+
+        {/* 設定ボタン */}
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="text-white hover:bg-white/20"
+          onClick={handleSettingsClick}
+          title="設定"
+        >
+          <Settings className="h-6 w-6" />
+        </Button>
 
         {/* ログアウトボタン */}
         <Button 
@@ -57,7 +84,7 @@ export default function Header() {
           onClick={handleLogout}
           title="ログアウト"
         >
-          <LogOut className="h-5 w-5" />
+          <LogOut className="h-6 w-6" />
         </Button>
 
         {/* モバイルメニュー */}
@@ -75,14 +102,16 @@ export default function Header() {
               <nav className="p-4">
                 <Tabs />
                 <div className="mt-4 pt-4 border-t">
-                  <Link 
-                    to="/settings"
-                    className="flex items-center w-full px-3 py-2 text-sm rounded-md hover:bg-gray-100"
-                    onClick={() => setSidebarOpen(false)}
+                  <button 
+                    onClick={() => {
+                      handleSettingsClick();
+                      setSidebarOpen(false);
+                    }}
+                    className="flex items-center w-full px-3 py-2 text-sm rounded-md hover:bg-gray-100 text-blue-600"
                   >
                     <Settings className="mr-2 h-4 w-4" />
                     設定
-                  </Link>
+                  </button>
                   <button 
                     onClick={() => {
                       handleLogout();
