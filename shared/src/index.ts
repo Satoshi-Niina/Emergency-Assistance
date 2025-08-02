@@ -1,8 +1,5 @@
-// スキーマのエクスポート
-export * from './schema.js';
-// 型定義のエクスポート
-export * from './types.js';
-// ユーティリティ関数のエクスポート
-export * from './utils.js';
-// 後方互換性のためのエクスポート（既存のコードに影響を与えないため）
-export { schema as exampleSchema } from './schema.js';
+// Export all shared types and utilities
+export * from './schema';
+export * from './types';
+export * from './utils';
+// Note: validation schemas are already exported from schema.ts

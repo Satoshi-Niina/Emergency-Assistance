@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import multer from 'multer';
 import fs from 'fs';
-import { db } from '../db/schema.js';
+import { db } from '../db/index.js';
 import { chats, messages, media } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { storage } from '../storage.js';

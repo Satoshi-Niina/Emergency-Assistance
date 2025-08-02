@@ -85,10 +85,15 @@ export const searchQuerySchema: any = z.object({
     category: z.string().optional(),
     type: z.enum(['all', 'documents', 'emergency-flows', 'images']).default('all')
 });
-// ファイルアップロード関連のバリデーションスキーマ
+// ファイルアップロード関連のバリデーションスキーマ（ブラウザ環境でのみ使用）
 export const fileUploadSchema: any = z.object({
-    file: z.instanceof(File).refine((file) => file.size <= 10 * 1024 * 1024, // 10MB制限
-    'ファイルサイズは10MB以下にしてください'),
+    file: z.any().refine((file: any) => {
+        // ブラウザ環境でのみFile型をチェック
+        if (typeof window !== 'undefined' && file instanceof File) {
+            return file.size <= 10 * 1024 * 1024; // 10MB制限
+        }
+        return true;
+    }, 'ファイルサイズは10MB以下にしてください'),
     type: z.enum(['image', 'document', 'video', 'audio']),
     description: z.string().max(500, '説明は500文字以内で入力してください').optional()
 });
@@ -104,8 +109,8 @@ export const systemConfigSchema: any = z.object({
         voiceAssistant: z.boolean()
     }),
     limits: z.object({
-        maxFileSize: z.number().positive(),
-        maxUploadFiles: z.number().int().positive(),
-        maxChatHistory: z.number().int().positive()
+        maxFileSize: z.number(),
+        maxUploadFiles: z.number(),
+        maxChatHistory: z.number()
     })
 });

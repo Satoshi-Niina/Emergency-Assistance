@@ -91,8 +91,9 @@ export const startSpeechRecognition = (
 ) => {
   try {
     // 環境変数からAzureの認証情報を取得
-    const azureKey = import.meta.env.VITE_AZURE_SPEECH_KEY || '';
-    const azureRegion = import.meta.env.VITE_AZURE_SPEECH_REGION || 'japaneast';
+    // Azure Speech設定 - デフォルト値を使用（VITE_AZURE_SPEECH_*の参照を削除）
+    const azureKey = ''; // デフォルト値
+    const azureRegion = 'japaneast'; // デフォルト値
     
     if (!azureKey) {
       throw new Error('Azure Speech APIキーが設定されていません');

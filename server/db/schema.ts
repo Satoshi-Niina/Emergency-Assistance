@@ -1,23 +1,16 @@
+
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import { pgTable, text, timestamp, jsonb, boolean } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
-import * as dotenv from "dotenv";
-import { fileURLToPath } from 'url';
-import path from 'path';
-
-// Load environment variables
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 // ユーザーテーブル
 export const users = pgTable('users', {
     id: text('id').primaryKey().default(sql`gen_random_uuid()`),
     username: text('username').notNull().unique(),
     password: text('password').notNull(),
-    display_name: text('display_name').notNull(),
+    displayName: text('display_name').notNull(),
     role: text('role').notNull().default('employee'),
     department: text('department'),
     description: text('description'),
@@ -58,7 +51,7 @@ export const emergencyFlows = pgTable('emergency_flows', {
     title: text('title').notNull(),
     description: text('description'),
     steps: jsonb('steps').notNull(),
-    keyword: text('keyword').notNull(),
+    keyword: text('keyword'), // オプショナルに変更
     category: text('category').notNull().default(''),
     createdAt: timestamp('created_at').defaultNow().notNull()
 });
@@ -69,6 +62,19 @@ export const images = pgTable('images', {
     url: text('url').notNull(),
     description: text('description').notNull(),
     embedding: jsonb('embedding').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+// 画像データテーブル（PostgreSQLに保存）
+export const imageData = pgTable('image_data', {
+    id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+    fileName: text('file_name').notNull(),
+    originalFileName: text('original_file_name').notNull(),
+    mimeType: text('mime_type').notNull(),
+    fileSize: text('file_size').notNull(),
+    data: text('data').notNull(), // Base64エンコードされた画像データ
+    category: text('category'), // emergency-flows, knowledge-base, etc.
+    description: text('description'),
     createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
@@ -126,6 +132,47 @@ export const historyImages = pgTable('history_images', {
     createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
+// 応急処置サポート履歴テーブル
+export const supportHistory = pgTable('support_history', {
+    id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+    machineType: text('machine_type').notNull(),
+    machineNumber: text('machine_number').notNull(),
+    jsonData: jsonb('json_data').notNull(),
+    imagePath: text('image_path'),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+// 基礎データ（文書）テーブル
+export const baseDocuments = pgTable('base_documents', {
+    id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+    title: text('title').notNull(),
+    filePath: text('file_path').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+// 応急処置フローテーブル
+export const supportFlows = pgTable('support_flows', {
+    id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+    title: text('title').notNull(),
+    jsonData: jsonb('json_data').notNull().default('{}'),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+// 機種テーブル
+export const machineTypes = pgTable('machine_types', {
+    id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+    machineTypeName: text('machine_type_name').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+// 機械テーブル
+export const machines = pgTable('machines', {
+    id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+    machineNumber: text('machine_number').notNull(),
+    machineTypeId: text('machine_type_id').notNull().references(() => machineTypes.id),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
 // スキーマエクスポート
 export const schema = {
     users,
@@ -136,27 +183,13 @@ export const schema = {
     keywords,
     emergencyFlows,
     images,
+    imageData,
     chatExports,
     historyItems,
     historyImages,
+    supportHistory,
+    baseDocuments,
+    supportFlows,
+    machineTypes,
+    machines,
 };
-
-// データベース接続
-const connectionString = process.env.DATABASE_URL || 'postgresql://localhost:5432/emergency_assistance';
-
-console.log("🔍 DEBUG server/db/schema.ts: DATABASE_URL =", process.env.DATABASE_URL);
-console.log("🔍 DEBUG server/db/schema.ts: connectionString =", connectionString);
-
-const client = postgres(connectionString);
-export const db = drizzle<typeof schema>(client, { schema });
-
-// マイグレーション実行
-export async function runMigrations() {
-    try {
-        await migrate(db, { migrationsFolder: './migrations' });
-        console.log('Migrations completed successfully');
-    } catch (error) {
-        console.error('Migration error:', error);
-        throw error;
-    }
-}

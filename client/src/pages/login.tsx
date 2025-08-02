@@ -16,6 +16,14 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   
+  console.log('🔧 Login コンポーネント レンダリング:', {
+    authLoading,
+    hasUser: !!user,
+    username: user?.username,
+    isLoading,
+    errorMessage
+  });
+  
   // Redirect if already logged in (but only after proper authentication)
   useEffect(() => {
     console.log('🔍 ログインページ - 認証状態確認:', {
@@ -56,7 +64,20 @@ export default function Login() {
       
     } catch (error) {
       console.error("❌ ログインエラー:", error);
-      const errorMsg = error instanceof Error ? error.message : "ログインに失敗しました";
+      let errorMsg = "ログインに失敗しました";
+      
+      if (error instanceof Error) {
+        if (error.message.includes('ユーザー名またはパスワードが違います')) {
+          errorMsg = "ユーザー名またはパスワードが違います";
+        } else if (error.message.includes('サーバーエラーが発生しました')) {
+          errorMsg = "サーバーエラーが発生しました。しばらく時間をおいて再度お試しください。";
+        } else if (error.message.includes('サーバーに接続できません')) {
+          errorMsg = "サーバーに接続できません。サーバーが起動しているか確認してください。";
+        } else {
+          errorMsg = error.message;
+        }
+      }
+      
       setErrorMessage(errorMsg);
     } finally {
       setIsLoading(false);
@@ -71,12 +92,27 @@ export default function Login() {
     return () => subscription.unsubscribe();
   }, [form]);
 
+  // 認証状態読み込み中の表示
+  if (authLoading) {
+    console.log('⏳ Login: 認証状態読み込み中、ローディング画面を表示');
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-b from-primary/10 to-primary/5 p-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">認証状態を確認中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  console.log('✅ Login: 認証状態確認完了、ログインフォームを表示');
+
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-b from-primary/10 to-primary/5 p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-primary">応急処置チャットシステム</h1>
-          <p className="text-neutral-600 mt-2">Emergency Recovery Chat System</p>
+          <h1 className="text-2xl font-bold text-primary">応急処置サポートシステム</h1>
+          <p className="text-neutral-600 mt-2">Emergency Support System</p>
         </div>
         <Card className="w-full shadow-lg">
           <CardHeader className="text-center bg-primary text-white rounded-t-lg">
@@ -134,9 +170,7 @@ export default function Login() {
             </Form>
           </CardContent>
           <CardFooter className="flex flex-col space-y-2 text-center text-sm text-neutral-500 border-t pt-4 mt-2">
-            <p>デモ用ログイン情報:</p>
-            <p>管理者: niina / 0077</p>
-            <p>一般ユーザー: employee / employee123</p>
+            <p>システムにログインしてください</p>
           </CardFooter>
         </Card>
       </div>

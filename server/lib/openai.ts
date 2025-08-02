@@ -17,15 +17,14 @@ const OPENAI_MODEL = "gpt-4o";
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 dotenv.config({ path: path.resolve(__dirname, '../../server/.env') });
 
-// APIキーの取得（Replitシークレットも考慮）
-const apiKey = process.env.OPENAI_API_KEY || process.env.REPLIT_SECRET_OPENAI_API_KEY;
+// APIキーの取得
+const apiKey = process.env.OPENAI_API_KEY;
 
 // デバッグ用ログを有効化
 console.log("[DEBUG] OpenAI initialization - API KEY exists:", apiKey ? "YES" : "NO");
 console.log("[DEBUG] OpenAI API KEY prefix:", apiKey ? apiKey.substring(0, 10) + "..." : "NOT FOUND");
 console.log("[DEBUG] Environment variables:", {
   OPENAI_API_KEY: process.env.OPENAI_API_KEY ? "SET" : "NOT SET",
-  REPLIT_SECRET_OPENAI_API_KEY: process.env.REPLIT_SECRET_OPENAI_API_KEY ? "SET" : "NOT SET",
   NODE_ENV: process.env.NODE_ENV,
   PWD: __dirname
 });

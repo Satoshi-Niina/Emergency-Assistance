@@ -151,20 +151,23 @@ export function validatePasswordStrength(password: string): { isValid: boolean, 
  * 環境変数からシステム設定を取得
  */
 export function getSystemConfig() {
+    // Node.js環境でのみprocess.envにアクセス
+    const isNode = typeof process !== 'undefined' && process.env;
+    
     return {
-        version: process.env.VERSION || '1.0.0',
-        environment: process.env.NODE_ENV || 'development',
+        version: isNode ? (process.env.VERSION || '1.0.0') : '1.0.0',
+        environment: isNode ? (process.env.NODE_ENV || 'development') : 'development',
         features: {
             chat: true,
             emergencyGuide: true,
             troubleshooting: true,
             knowledgeBase: true,
-            voiceAssistant: process.env.ENABLE_VOICE_ASSISTANT === 'true'
+            voiceAssistant: isNode ? (process.env.ENABLE_VOICE_ASSISTANT === 'true') : false
         },
         limits: {
-            maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '10485760'), // 10MB
-            maxUploadFiles: parseInt(process.env.MAX_UPLOAD_FILES || '5'),
-            maxChatHistory: parseInt(process.env.MAX_CHAT_HISTORY || '100')
+            maxFileSize: isNode ? parseInt(process.env.MAX_FILE_SIZE || '10485760') : 10485760, // 10MB
+            maxUploadFiles: isNode ? parseInt(process.env.MAX_UPLOAD_FILES || '5') : 5,
+            maxChatHistory: isNode ? parseInt(process.env.MAX_CHAT_HISTORY || '100') : 100
         }
     };
 }

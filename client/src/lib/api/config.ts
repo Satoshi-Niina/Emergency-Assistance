@@ -5,25 +5,49 @@ const isDevelopment = import.meta.env.DEV || window.location.hostname.includes('
 // Replit環境の検出
 const isReplitEnvironment = window.location.hostname.includes('replit.dev') || window.location.hostname.includes('replit.app');
 
-// API Base URLの設定  
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL 
-  ? import.meta.env.VITE_API_BASE_URL // 環境変数が設定されている場合は優先使用
-  : isReplitEnvironment
-    ? `${window.location.protocol}//${window.location.hostname.split(':')[0]}:3001` // Replit環境: サーバーポート3001を明示的に指定
-    : isProduction 
-      ? 'https://emergency-backend-e7enc2e8dhdabucv.japanwest-01.azurewebsites.net'
-      : 'http://localhost:3001';
+// Azure環境の検出
+const isAzureEnvironment = window.location.hostname.includes('azurewebsites.net') || window.location.hostname.includes('azure.com');
+
+// API Base URLの設定
+// 優先順位: 環境変数 > 本番環境 > 開発環境
+export const API_BASE_URL = (() => {
+  // 環境変数が設定されている場合は優先使用（VITE_API_BASE_URLのみ使用）
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  
+  // 本番環境の場合
+  if (isProduction) {
+    if (isAzureEnvironment) {
+      return 'https://emergency-backend-e7enc2e8dhdabucv.japanwest-01.azurewebsites.net';
+    }
+    if (isReplitEnvironment) {
+      return `${window.location.protocol}//${window.location.hostname.split(':')[0]}:3000`;
+    }
+    // その他の本番環境
+    return window.location.origin;
+  }
+  
+  // 開発環境の場合
+  return 'http://localhost:3001';
+})();
 
 console.log('🔧 API設定詳細:', {
   isReplitEnvironment,
+  isAzureEnvironment,
   isProduction,
   isDevelopment,
   currentHostname: window.location.hostname,
   currentProtocol: window.location.protocol,
-  finalApiBaseUrl: API_BASE_URL
+  finalApiBaseUrl: API_BASE_URL,
+  envVars: {
+    VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL, // 使用中: APIのベースURL
+    NODE_ENV: import.meta.env.NODE_ENV, // 使用中: 環境判別
+    MODE: import.meta.env.MODE // 使用中: ビルドモード
+  }
 });
 
-// APIエンドポイントの構築（先に定義）
+// APIエンドポイントの構築
 export const buildApiUrl = (endpoint: string): string => {
   const fullUrl = `${API_BASE_URL}${endpoint}`;
   console.log(`🔗 API URL構築: ${endpoint} -> ${fullUrl}`);

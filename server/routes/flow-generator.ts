@@ -4,6 +4,8 @@ import * as path from 'path';
 import { processOpenAIRequest } from '../lib/openai.js';
 import { searchKnowledgeBase } from '../lib/knowledge-base.js';
 import { cleanJsonResponse } from '../lib/json-helper.js';
+import { db } from '../db/index.js';
+import { emergencyFlows } from '../db/schema.js';
 
 const router = express.Router();
 // 知識ベースディレクトリ
@@ -79,9 +81,29 @@ router.post('/keywords', async (req, res) => {
       updatedAt: new Date().toISOString()
     };
     
-    // フローをファイルに保存
-    const flowFilePath = path.join(troubleshootingDir, `${flowData.id}.json`);
-    fs.writeFileSync(flowFilePath, JSON.stringify(flowData, null, 2));
+    // PostgreSQLデータベースに保存
+    try {
+      await db.insert(emergencyFlows).values({
+        id: flowData.id,
+        title: flowData.title,
+        description: flowData.description,
+        steps: flowData.steps,
+        keyword: flowData.triggerKeywords.join(','),
+        category: ''
+      });
+      
+      console.log('✅ キーワードフロー保存成功:', {
+        id: flowData.id,
+        title: flowData.title
+      });
+    } catch (dbError) {
+      console.error('❌ データベース保存エラー:', dbError);
+      return res.status(500).json({
+        success: false,
+        error: 'データベースへの保存に失敗しました',
+        details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+      });
+    }
     
     res.json({
       success: true,

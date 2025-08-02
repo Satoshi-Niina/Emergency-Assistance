@@ -47,19 +47,43 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
     try {
       setIsLoading(true);
       console.log('🔄 フロー一覧を取得中...');
+      
+      const apiUrl = buildApiUrl('/api/flows');
+      console.log('🔗 API URL:', apiUrl);
 
-      const response = await fetch(buildApiUrl('/api/troubleshooting/list'), {
+      const response = await fetch(apiUrl, {
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache'
         }
       });
 
-      if (!response.ok) throw new Error('ファイル一覧の取得に失敗しました');
-      const data = await response.json();
+      console.log('📡 レスポンス状態:', response.status, response.statusText);
 
-      console.log('✅ フロー一覧取得完了:', data.length + '件');
-      setFlowList(data);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ API エラー:', errorText);
+        throw new Error(`ファイル一覧の取得に失敗しました: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('📊 取得したデータ:', data);
+
+      // APIレスポンスの構造に合わせてデータを取得
+      let flows = [];
+      if (data.success && data.flows) {
+        flows = data.flows;
+      } else if (data.success && data.data) {
+        flows = data.data;
+      } else if (Array.isArray(data)) {
+        flows = data;
+      } else {
+        console.error('❌ 予期しないフローデータ形式:', data);
+        throw new Error("フローデータの形式が不正です");
+      }
+
+      console.log('✅ フロー一覧取得完了:', flows.length + '件');
+      setFlowList(flows);
     } catch (error) {
       console.error('フロー一覧取得エラー:', error);
       toast({

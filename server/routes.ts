@@ -1,15 +1,14 @@
 import type { Express, Request, Response } from "express";
-import { createServer, type Server } from "http";
 import { storage } from "./storage.js";
 import { users } from "../shared/schema.js";
 import session from "express-session";
 import MemoryStore from 'memorystore';
-import { WebSocket, WebSocketServer } from "ws";
 import { processOpenAIRequest } from "./lib/openai.js";
 import { processPerplexityRequest } from "./lib/perplexity.js";
 import fs from "fs";
 import path from "path";
 import { db } from "./db/index.js";
+import { emergencyFlows } from "./db/schema.js";
 import { upload } from './lib/multer-config.js';
 import { 
   addDocumentToKnowledgeBase, 
@@ -18,16 +17,21 @@ import {
 } from './lib/knowledge-base.js';
 import { techSupportRouter } from './routes/tech-support.js';
 import { registerDataProcessorRoutes } from './routes/data-processor.js';
-import { emergencyGuideRouter } from './routes/emergency-guide.js';
+import emergencyGuideRouter from './routes/emergency-guide.js';
 import emergencyFlowRoutes from './routes/emergency-flow.js';
 import flowGeneratorRoutes from './routes/flow-generator.js';
 import { registerSyncRoutes } from './routes/sync-routes.js';
 import { usersRouter } from './routes/users.js';
-import { troubleshootingRouter } from './routes/troubleshooting.js';
+import troubleshootingRouter from './routes/troubleshooting.js';
+import { supportHistoryRouter } from './routes/support-history.js';
 import express from 'express';
 import { NextFunction } from "connect";
-import { authRouter } from './routes/auth.js';
+import authRouter from './routes/auth.js';
 import { fileURLToPath } from 'url';
+import { eq } from 'drizzle-orm';
+import machinesRouter from './routes/machines.js';
+import { historyRouter } from './routes/history.js';
+import { baseDataRouter } from './routes/base-data.js';
 
 // ESM用__dirname定義
 const __filename = fileURLToPath(import.meta.url);
@@ -45,7 +49,7 @@ declare module 'express-session' {
 
 // Session will now use Postgres via storage.sessionStore
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export function registerRoutes(app: Express): void {
   // 静的ファイル配信の設定（最優先で登録）
   app.use('/images', express.static(path.join(__dirname, '../../public/images')));
   app.use('/public', express.static(path.join(__dirname, '../../public')));
@@ -68,6 +72,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register sync routes for offline capabilities
   registerSyncRoutes(app);
 
+  // Register API routers
+  app.use('/api/users', usersRouter);
+  app.use('/api/machines', machinesRouter);
+  app.use('/api/history', historyRouter);
+  app.use('/api/base-data', baseDataRouter);
+
   // Add a health check endpoint for testing
   app.get('/api/health', (req, res) => {
     res.json({ 
@@ -77,14 +87,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // データベース接続確認エンドポイント
+  app.get('/api/debug/database', async (req, res) => {
+    try {
+      // データベース接続テスト
+      const testQuery = await db.select().from(users).limit(1);
+      
+      res.json({
+        status: 'connected',
+        database: 'PostgreSQL',
+        connectionTest: 'success',
+        userCount: testQuery.length,
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
+      });
+    } catch (error) {
+      console.error('データベース接続エラー:', error);
+      res.status(500).json({
+        status: 'error',
+        database: 'PostgreSQL',
+        connectionTest: 'failed',
+        error: error instanceof Error ? error.message : 'Unknown database error',
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development',
+        recommendations: [
+          "DATABASE_URL環境変数を確認してください",
+          "PostgreSQLサーバーが起動しているか確認してください",
+          "データベースの接続情報を確認してください"
+        ]
+      });
+    }
+  });
+
   // OpenAI APIキーの設定状況を確認するエンドポイント
   app.get('/api/debug/openai', (req, res) => {
-    const apiKey = process.env.OPENAI_API_KEY || process.env.REPLIT_SECRET_OPENAI_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY;
+    const hasApiKey = !!apiKey && apiKey !== 'dev-mock-key';
+    
     res.json({
-      openaiApiKey: apiKey ? "SET" : "NOT SET",
-      apiKeyPrefix: apiKey ? apiKey.substring(0, 10) + "..." : "NOT FOUND",
+      openaiApiKey: hasApiKey ? "SET" : "NOT SET",
+      apiKeyPrefix: hasApiKey ? apiKey.substring(0, 10) + "..." : "NOT FOUND",
       environment: process.env.NODE_ENV || 'development',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      recommendations: hasApiKey ? [] : [
+        "OPENAI_API_KEY環境変数を設定してください",
+        "env.exampleファイルを参考に.envファイルを作成してください",
+        "開発環境では'dev-mock-key'を使用できます"
+      ]
     });
   });
 
@@ -122,7 +171,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error in /api/perplexity:", error);
       return res.status(500).json({ 
         message: "Error processing Perplexity request", 
-        error: error instanceof Error ? error.message : String(error) 
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString()
       });
     }
   });
@@ -148,35 +198,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Auth middleware
   const requireAuth = async (req: Request, res: Response, next: Function) => {
-    if (!req.session.userId) {
-      // 開発環境では自動的にデフォルトユーザーでログイン
-      const adminUser = await storage.getUserByUsername('admin');
-      if (adminUser) {
-        req.session.userId = adminUser.id;
-        req.session.userRole = 'admin';
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ 
+          error: 'Authentication required',
+          message: 'ログインが必要です'
+        });
       }
+
+      // データベースからユーザー情報を確認
+      const user = await db.select().from(users).where(eq(users.id, req.session.userId)).limit(1);
+      if (user.length === 0) {
+        return res.status(401).json({ 
+          error: 'User not found',
+          message: 'ユーザーが見つかりません'
+        });
+      }
+
+      // ユーザー情報をリクエストに追加
+      req.user = user[0];
+      next();
+    } catch (error) {
+      console.error('Auth middleware error:', error);
+      return res.status(500).json({ 
+        error: 'Authentication error',
+        message: '認証エラーが発生しました'
+      });
     }
-    next();
   };
 
   // Admin middleware
   const requireAdmin = async (req: Request, res: Response, next: Function) => {
-    if (!req.session.userId) {
-      // 開発環境では自動的にデフォルトユーザーでログイン
-      const adminUser = await storage.getUserByUsername('admin');
-      if (adminUser) {
-        req.session.userId = adminUser.id;
-        req.session.userRole = 'admin';
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ 
+          error: 'Authentication required',
+          message: 'ログインが必要です'
+        });
       }
-    }
 
-    const user = await storage.getUser(String(req.session.userId ?? ''));
-    if (!user || user.role !== 'admin') {
-      console.log('管理者権限が必要ですが、開発環境のため許可します');
-      // 開発環境では管理者権限チェックを緩和
-    }
+      // データベースからユーザー情報を確認
+      const user = await db.select().from(users).where(eq(users.id, req.session.userId)).limit(1);
+      if (user.length === 0) {
+        return res.status(401).json({ 
+          error: 'User not found',
+          message: 'ユーザーが見つかりません'
+        });
+      }
 
-    next();
+      // 管理者権限チェック
+      if (user[0].role !== 'admin') {
+        return res.status(403).json({ 
+          error: 'Admin access required',
+          message: '管理者権限が必要です'
+        });
+      }
+
+      // ユーザー情報をリクエストに追加
+      req.user = user[0];
+      next();
+    } catch (error) {
+      console.error('Admin middleware error:', error);
+      return res.status(500).json({ 
+        error: 'Authentication error',
+        message: '認証エラーが発生しました'
+      });
+    }
   };
 
   // Auth routes - JSON Content-Typeを設定
@@ -196,7 +283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       environment: process.env.NODE_ENV || 'development',
       session: {
         hasSession: !!req.session,
-        userId: req.session?.userId || nullssion?.userId || null
+        userId: req.session?.userId || null
       }
     });
   });
@@ -211,23 +298,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       session: req.session,
       environment: process.env.NODE_ENV
     });
-  });
-
-  // User management routes (admin only)
-  app.get("/api/users", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const result = await db.select({
-        id: users.id,
-        username: users.username,
-        display_name: users.display_name,
-        role: users.role,
-        department: users.department
-      }).from(users);
-      return res.json(result);
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      return res.status(500).json({ message: "Internal server error" });
-    }
   });
 
   // Document routes (admin only)
@@ -264,22 +334,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Knowledge Base API routes
-  // ドキュメント一覧取得 (一般ユーザーも閲覧可能)
-  app.get('/api/knowledge', requireAuth, (req, res) => {
-    try {
-      const documents = listKnowledgeBaseDocuments();
-      if (documents.success && documents.documents) {
-        const document = documents.documents.find((doc) => doc.id === req.params.id);
-        console.log('ナレッジベース一覧結果:', documents);
-        res.json(documents);
-      } else {
-        res.status(500).json({ error: 'Failed to list documents' });
-      }
-    } catch (error) {
-      console.error('Error listing knowledge base documents:', error);
-      res.status(500).json({ error: 'Failed to list documents' });
-    }
-  });
 
   // ドキュメントアップロード
   app.post('/api/knowledge/upload', requireAuth, requireAdmin, upload.single('file'), async (req, res) => {
@@ -418,76 +472,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.json({ response });
     } catch (error) {
       console.error("Error in /api/chatgpt:", error);
-      return res.status(500).json({ message: "Error processing request", error: String(error) });
-    }
-  });
-
-  // Create HTTP server
-  const httpServer = createServer(app);
-
-  // Set up WebSocket server for real-time chat
-  const wss = new WebSocketServer({ 
-    noServer: true,
-    path: '/ws'
-  });
-
-  // Handle upgrade requests with better error handling
-  httpServer.on('upgrade', (request, socket, head) => {
-    try {
-      if (request.url?.startsWith('/ws')) {
-        wss.handleUpgrade(request, socket, head, (ws) => {
-          wss.emit('connection', ws, request);
-        });
-      } else {
-        socket.destroy();
-      }
-    } catch (error) {
-      console.error('WebSocket upgrade error:', error);
-      socket.destroy();
-    }
-  });
-
-  // Make sure to properly import WebSocket type
-  wss.on('connection', (ws: WebSocket) => {
-    console.log("WebSocket client connected");
-
-    ws.on('message', (message: string) => {
-      console.log("Received message:", message);
-      // Broadcast message to all clients
-      wss.clients.forEach((client) => {
-        if (client !== ws && client.readyState === WebSocket.OPEN) {
-          client.send(message);
-        }
+      return res.status(500).json({ 
+        message: "Error processing request", 
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString()
       });
-    });
-
-    ws.on('close', () => {
-      console.log("WebSocket client disconnected");
-    });
-
-    ws.on('error', (error) => {
-      console.error("WebSocket error:", error);
-    });
-
-    // Send a welcome message
-    ws.send(JSON.stringify({
-      type: 'system',
-      content: 'Connected to Emergency Recovery Chat WebSocket server'
-    }));
-  });
-
-  // ルーター設定のデバッグ用ミドルウェア
-  const routeDebugger = (req: Request, res: Response, next: NextFunction) => {
-    if (req.path.includes('/users/')) {
-      console.log(`[ROUTER DEBUG] ${req.method} ${req.originalUrl}`);
-      console.log(`[ROUTER DEBUG] Path: ${req.path}`);
-      console.log(`[ROUTER DEBUG] Params:`, req.params);
     }
-    next();
-  };
-
-  // ユーザー管理ルート
-  app.use('/api/users', routeDebugger, usersRouter);
-
-  return httpServer;
+  });
 }

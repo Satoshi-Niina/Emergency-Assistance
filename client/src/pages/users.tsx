@@ -41,6 +41,7 @@ interface UserData {
   display_name: string;
   role: "employee" | "admin";
   department?: string;
+  description?: string;
 }
 
 // 新規ユーザー作成用インターフェース
@@ -68,26 +69,128 @@ export default function UsersPage() {
   }, [user, authLoading, navigate]);
 
   // ユーザーデータの取得
-  const { data: users, isLoading } = useQuery<UserData[]>({
+  const { data: users, isLoading, error: queryError } = useQuery<UserData[]>({
     queryKey: ["/api/users"],
     queryFn: async () => {
+      console.log('🔍 ユーザー一覧取得開始');
+      console.log('🔍 現在のユーザー:', user);
+      console.log('🔍 セッション状態:', document.cookie);
+      
       const res = await apiRequest("GET", "/api/users");
-      if (!res.ok) throw new Error("ユーザー取得失敗");
-      return await res.json();
+      
+      console.log('🔍 ユーザー一覧取得レスポンス:', {
+        status: res.status,
+        ok: res.ok,
+        headers: Object.fromEntries(res.headers.entries())
+      });
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('❌ ユーザー一覧取得エラー:', errorText);
+        
+        // 認証エラーの場合
+        if (res.status === 401) {
+          throw new Error("認証が必要です。ログインしてください。");
+        }
+        
+        // 権限エラーの場合
+        if (res.status === 403) {
+          throw new Error("管理者権限が必要です。");
+        }
+        
+        // その他のエラー
+        throw new Error("ユーザー取得失敗: " + errorText);
+      }
+      
+      const userData = await res.json();
+      console.log('🔍 ユーザー一覧データ:', userData);
+      
+      // APIレスポンスの構造に合わせてデータを取得
+      if (userData.success && userData.data) {
+        return userData.data;
+      } else if (userData.success && userData.flows) {
+        // flowsプロパティがある場合（他のAPIとの互換性）
+        return userData.flows;
+      } else if (Array.isArray(userData)) {
+        return userData;
+      } else {
+        console.error('❌ 予期しないユーザーデータ形式:', userData);
+        throw new Error("ユーザーデータの形式が不正です");
+      }
     },
     refetchOnWindowFocus: false,
+    retry: (failureCount, error) => {
+      // 認証エラーや権限エラーの場合は再試行しない
+      if (error instanceof Error) {
+        if (error.message.includes('認証が必要') || error.message.includes('管理者権限')) {
+          return false;
+        }
+      }
+      return failureCount < 2; // 最大2回まで再試行
+    },
   });
 
   // エラー表示の追加
   useEffect(() => {
-    if (error) {
+    if (queryError) {
+      console.error('ユーザー一覧取得エラー詳細:', queryError);
+      
+      let errorMessage = "ユーザー一覧の取得に失敗しました";
+      if (queryError instanceof Error) {
+        errorMessage = queryError.message;
+      }
+      
       toast({
         title: "エラー",
-        description: "ユーザー一覧の取得に失敗しました",
+        description: errorMessage,
         variant: "destructive"
       });
     }
-  }, [error, toast]);
+  }, [queryError, toast]);
+
+  // 認証エラーや権限エラーの場合の表示
+  if (queryError instanceof Error) {
+    if (queryError.message.includes('認証が必要') || queryError.message.includes('管理者権限')) {
+      return (
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 max-w-5xl mx-auto w-full">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-2xl font-bold flex items-center">
+                <Shield className="mr-2 h-6 w-6" />
+                ユーザー管理
+              </h1>
+              <p className="text-neutral-300">システムの全ユーザーを管理します</p>
+            </div>
+            <Link to="/settings">
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                設定に戻る
+              </Button>
+            </Link>
+          </div>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="text-center">
+                <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">アクセス権限がありません</h3>
+                <p className="text-gray-600 mb-4">
+                  {queryError.message.includes('認証が必要') 
+                    ? "ログインが必要です。再度ログインしてください。" 
+                    : "このページにアクセスするには管理者権限が必要です。"}
+                </p>
+                <Link to="/chat">
+                  <Button>
+                    チャットに戻る
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+  }
 
   // 新規ユーザーフォーム
   const [showNewUserDialog, setShowNewUserDialog] = useState(false);
@@ -99,12 +202,15 @@ export default function UsersPage() {
     password: "",
     display_name: "",
     role: "employee",
+    department: "",
+    description: "",
   });
-  const [editUser, setEditUser] = useState<Partial<UserData & { password?: string }>>({
+  const [editUser, setEditUser] = useState<Partial<UserData & { password?: string; description?: string }>>({
     username: "",
     display_name: "",
     role: "employee",
     password: "",
+    description: "",
   });
 
   // フォームの値をリセット
@@ -115,13 +221,45 @@ export default function UsersPage() {
       display_name: "",
       role: "employee",
       department: "",
+      description: "",
     });
   };
 
   // ユーザー作成のミューテーション
   const createUserMutation = useMutation({
     mutationFn: async (userData: NewUserData) => {
+      console.log('🔍 ユーザー作成リクエスト開始:', userData);
+      console.log('🔍 現在のユーザー:', user);
+      console.log('🔍 セッション状態:', document.cookie);
+      
       const res = await apiRequest("POST", "/api/users", userData);
+      
+      console.log('🔍 ユーザー作成レスポンス:', {
+        status: res.status,
+        ok: res.ok,
+        headers: Object.fromEntries(res.headers.entries())
+      });
+      
+      if (!res.ok) {
+        let errorMessage = "ユーザー作成に失敗しました";
+        
+        try {
+          const errorData = await res.json();
+          if (errorData.error) {
+            errorMessage = errorData.error;
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          }
+        } catch (e) {
+          // JSONパースに失敗した場合はテキストとして読み取り
+          const errorText = await res.text();
+          errorMessage = errorText || errorMessage;
+        }
+        
+        console.error('❌ ユーザー作成エラー:', errorMessage);
+        throw new Error(errorMessage);
+      }
+      
       return await res.json();
     },
     onSuccess: () => {
@@ -136,6 +274,7 @@ export default function UsersPage() {
       resetNewUserForm();
     },
     onError: (error: any) => {
+      console.error('❌ ユーザー作成ミューテーションエラー:', error);
       toast({
         title: "ユーザー作成失敗",
         description: error.message || "ユーザー作成中にエラーが発生しました",
@@ -147,6 +286,7 @@ export default function UsersPage() {
   // フォーム送信処理
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
     // バリデーション
     if (!newUser.username || !newUser.password || !newUser.display_name || !newUser.role) {
       toast({
@@ -156,12 +296,54 @@ export default function UsersPage() {
       });
       return;
     }
+
+    // ユーザー名の形式チェック
+    if (newUser.username.length < 3 || newUser.username.length > 50) {
+      toast({
+        title: "入力エラー",
+        description: "ユーザー名は3文字以上50文字以下で入力してください",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // パスワードの強度チェック
+    if (newUser.password.length < 6) {
+      toast({
+        title: "入力エラー",
+        description: "パスワードは6文字以上で入力してください",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // 表示名の形式チェック
+    if (newUser.display_name.length < 1 || newUser.display_name.length > 100) {
+      toast({
+        title: "入力エラー",
+        description: "表示名は1文字以上100文字以下で入力してください",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // 権限の値チェック
+    if (!['employee', 'admin'].includes(newUser.role || '')) {
+      toast({
+        title: "入力エラー",
+        description: "権限は「一般ユーザー」または「管理者」を選択してください",
+        variant: "destructive",
+      });
+      return;
+    }
+
     createUserMutation.mutate({
       username: newUser.username,
       password: newUser.password,
       display_name: newUser.display_name,
       role: newUser.role || 'employee',
-      department: newUser.department || undefined
+      department: newUser.department || undefined,
+      description: newUser.description || undefined
     } as NewUserData);
   };
 
@@ -195,6 +377,7 @@ export default function UsersPage() {
       display_name: userData.display_name,
       role: userData.role,
       department: userData.department,
+      description: userData.description,
       password: "" // パスワードフィールドを空で初期化
     });
     setShowEditUserDialog(true);
@@ -414,6 +597,17 @@ export default function UsersPage() {
                   </div>
 
                   <div className="grid gap-2">
+                    <Label htmlFor="description">説明</Label>
+                    <Input
+                      id="description"
+                      name="description"
+                      value={newUser.description || ""}
+                      onChange={handleInputChange}
+                      placeholder="ユーザーの説明（任意）"
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
                     <Label htmlFor="role">権限</Label>
                     <Select
                       value={newUser.role}
@@ -469,6 +663,7 @@ export default function UsersPage() {
                   <TableHead>表示名</TableHead>
                   <TableHead>権限</TableHead>
                   <TableHead>部署</TableHead>
+                  <TableHead>説明</TableHead>
                   <TableHead className="text-right">アクション</TableHead>
                 </TableRow>
               </TableHeader>
@@ -486,6 +681,7 @@ export default function UsersPage() {
                         </span>
                       </TableCell>
                       <TableCell>{user.department || "-"}</TableCell>
+                      <TableCell>{user.description || "-"}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button 
@@ -509,7 +705,7 @@ export default function UsersPage() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center">
+                    <TableCell colSpan={6} className="text-center">
                       ユーザーが見つかりません
                     </TableCell>
                   </TableRow>
@@ -576,6 +772,17 @@ export default function UsersPage() {
                   name="department"
                   value={editUser.department || ""}
                   onChange={handleEditInputChange}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="edit-description">説明</Label>
+                <Input
+                  id="edit-description"
+                  name="description"
+                  value={editUser.description || ""}
+                  onChange={handleEditInputChange}
+                  placeholder="ユーザーの説明（任意）"
                 />
               </div>
 
