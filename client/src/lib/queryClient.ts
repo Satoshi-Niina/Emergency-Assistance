@@ -334,6 +334,10 @@ function buildApiUrl(path: string): string {
 // API設定 - VITE_API_BASE_URLのみを使用
 const VITE_API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+// 環境変数の定義
+const isProduction = import.meta.env.PROD;
+const isDevelopment = import.meta.env.DEV;
+
 console.log('🔍 環境変数詳細確認:', {
   VITE_API_BASE_URL,
   VITE_API_BASE_URL_TYPE: typeof VITE_API_BASE_URL,
