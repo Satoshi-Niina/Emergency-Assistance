@@ -32,9 +32,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('🔍 認証状態確認開始');
         setIsLoading(true);
         
-        // API URLを環境変数から構築（デフォルト値付き）
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-        const apiUrl = `${apiBaseUrl}/api/auth/me`;
+        // プロキシ経由でAPIにアクセス
+        const apiUrl = '/api/auth/me';
         console.log('🔗 認証確認URL:', apiUrl);
 
         const response = await fetch(apiUrl, {
@@ -98,8 +97,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       
-      // API URLを環境変数から構築（デフォルト値付き）
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      // API URLを直接指定（開発環境用）
+      const apiBaseUrl = 'http://localhost:3001';
       const apiUrl = `${apiBaseUrl}/api/auth/login`;
       console.log('🔗 ログインURL:', apiUrl);
 

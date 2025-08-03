@@ -98,6 +98,7 @@ export async function apiRequest(
       headers,
       body: data ? JSON.stringify(data) : undefined,
       credentials: "include",
+      mode: 'cors',
       // キャッシュ制御を追加
       cache: method === 'GET' ? 'no-cache' : 'default'
     });

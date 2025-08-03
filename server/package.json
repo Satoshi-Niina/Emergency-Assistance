@@ -12,7 +12,8 @@
     "studio": "drizzle-kit studio",
     "reset-db": "tsx scripts/reset-db.ts",
     "fix-db": "tsx scripts/fix-db.ts",
-    "update-niina-admin": "tsx scripts/update-niina-admin.ts"
+    "update-niina-admin": "tsx scripts/update-niina-admin.ts",
+    "apply-migration": "tsx scripts/apply-migration.ts"
   },
   "dependencies": {
     "@azure/identity": "^4.0.1",

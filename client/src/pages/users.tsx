@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/auth-context";
-import { useToast } from "../hooks/use-toast.ts";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "../lib/queryClient.ts";
+import { useToast } from "../hooks/use-toast";
+
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Input } from "../components/ui/input";
@@ -31,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { Shield, UserPlus, ArrowLeft, User, Edit, Trash2, AlertCircle } from "lucide-react";
+import { Shield, UserPlus, ArrowLeft, User, Edit, Trash2, AlertCircle, Search } from "lucide-react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 
 // ユーザーインターフェース
@@ -68,67 +67,101 @@ export default function UsersPage() {
     }
   }, [user, authLoading, navigate]);
 
-  // ユーザーデータの取得
-  const { data: users, isLoading, error: queryError } = useQuery<UserData[]>({
-    queryKey: ["/api/users"],
-    queryFn: async () => {
-      console.log('🔍 ユーザー一覧取得開始');
-      console.log('🔍 現在のユーザー:', user);
-      console.log('🔍 セッション状態:', document.cookie);
-      
-      const res = await apiRequest("GET", "/api/users");
-      
-      console.log('🔍 ユーザー一覧取得レスポンス:', {
-        status: res.status,
-        ok: res.ok,
-        headers: Object.fromEntries(res.headers.entries())
-      });
-      
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error('❌ ユーザー一覧取得エラー:', errorText);
+  // ユーザーデータの取得（簡素化版）
+  const [users, setUsers] = useState<UserData[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<UserData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [queryError, setQueryError] = useState<Error | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        console.log('🔍 ユーザー一覧取得開始');
+        console.log('🔍 現在のユーザー:', user);
+        console.log('🔍 セッション状態:', document.cookie);
+        console.log('🔍 現在のURL:', window.location.href);
         
-        // 認証エラーの場合
-        if (res.status === 401) {
-          throw new Error("認証が必要です。ログインしてください。");
+        setIsLoading(true);
+        setQueryError(null);
+        
+        const res = await fetch('/api/users', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        console.log('🔍 ユーザー一覧取得レスポンス:', {
+          status: res.status,
+          ok: res.ok,
+          headers: Object.fromEntries(res.headers.entries())
+        });
+        
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error('❌ ユーザー一覧取得エラー:', errorText);
+          throw new Error(`HTTP ${res.status}: ${errorText}`);
         }
         
-        // 権限エラーの場合
-        if (res.status === 403) {
-          throw new Error("管理者権限が必要です。");
-        }
+        const userData = await res.json();
+        console.log('🔍 ユーザー一覧データ:', userData);
         
-        // その他のエラー
-        throw new Error("ユーザー取得失敗: " + errorText);
-      }
-      
-      const userData = await res.json();
-      console.log('🔍 ユーザー一覧データ:', userData);
-      
-      // APIレスポンスの構造に合わせてデータを取得
-      if (userData.success && userData.data) {
-        return userData.data;
-      } else if (userData.success && userData.flows) {
-        // flowsプロパティがある場合（他のAPIとの互換性）
-        return userData.flows;
-      } else if (Array.isArray(userData)) {
-        return userData;
-      } else {
-        console.error('❌ 予期しないユーザーデータ形式:', userData);
-        throw new Error("ユーザーデータの形式が不正です");
-      }
-    },
-    refetchOnWindowFocus: false,
-    retry: (failureCount, error) => {
-      // 認証エラーや権限エラーの場合は再試行しない
-      if (error instanceof Error) {
-        if (error.message.includes('認証が必要') || error.message.includes('管理者権限')) {
-          return false;
+        if (userData.success && userData.data) {
+          setUsers(userData.data);
+          setFilteredUsers(userData.data);
+        } else {
+          console.error('❌ 予期しないユーザーデータ形式:', userData);
+          throw new Error("ユーザーデータの形式が不正です");
         }
+      } catch (error) {
+        console.error('❌ ユーザー一覧取得エラー:', error);
+        setQueryError(error instanceof Error ? error : new Error('Unknown error'));
+      } finally {
+        setIsLoading(false);
       }
-      return failureCount < 2; // 最大2回まで再試行
-    },
-  });
+    };
+
+    fetchUsers();
+  }, [user]);
+
+  // 検索機能
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredUsers(users);
+      return;
+    }
+
+    const filtered = users.filter(user => {
+      const query = searchQuery.toLowerCase();
+      
+      // ワイルドカード検索の処理
+      if (query.includes('*')) {
+        const pattern = query.replace(/\*/g, '.*');
+        const regex = new RegExp(pattern, 'i');
+        
+        return (
+          regex.test(user.username) ||
+          regex.test(user.display_name) ||
+          regex.test(user.role) ||
+          (user.department && regex.test(user.department)) ||
+          (user.description && regex.test(user.description))
+        );
+      }
+      
+      // 通常の部分一致検索
+      return (
+        user.username.toLowerCase().includes(query) ||
+        user.display_name.toLowerCase().includes(query) ||
+        user.role.toLowerCase().includes(query) ||
+        (user.department && user.department.toLowerCase().includes(query)) ||
+        (user.description && user.description.toLowerCase().includes(query))
+      );
+    });
+    
+    setFilteredUsers(filtered);
+  }, [searchQuery, users]);
 
   // エラー表示の追加
   useEffect(() => {
@@ -206,6 +239,7 @@ export default function UsersPage() {
     description: "",
   });
   const [editUser, setEditUser] = useState<Partial<UserData & { password?: string; description?: string }>>({
+    id: "",
     username: "",
     display_name: "",
     role: "employee",
@@ -225,66 +259,10 @@ export default function UsersPage() {
     });
   };
 
-  // ユーザー作成のミューテーション
-  const createUserMutation = useMutation({
-    mutationFn: async (userData: NewUserData) => {
-      console.log('🔍 ユーザー作成リクエスト開始:', userData);
-      console.log('🔍 現在のユーザー:', user);
-      console.log('🔍 セッション状態:', document.cookie);
-      
-      const res = await apiRequest("POST", "/api/users", userData);
-      
-      console.log('🔍 ユーザー作成レスポンス:', {
-        status: res.status,
-        ok: res.ok,
-        headers: Object.fromEntries(res.headers.entries())
-      });
-      
-      if (!res.ok) {
-        let errorMessage = "ユーザー作成に失敗しました";
-        
-        try {
-          const errorData = await res.json();
-          if (errorData.error) {
-            errorMessage = errorData.error;
-          } else if (errorData.message) {
-            errorMessage = errorData.message;
-          }
-        } catch (e) {
-          // JSONパースに失敗した場合はテキストとして読み取り
-          const errorText = await res.text();
-          errorMessage = errorText || errorMessage;
-        }
-        
-        console.error('❌ ユーザー作成エラー:', errorMessage);
-        throw new Error(errorMessage);
-      }
-      
-      return await res.json();
-    },
-    onSuccess: () => {
-      // より確実にクエリを無効化して再取得
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      queryClient.refetchQueries({ queryKey: ["/api/users"] });
-      toast({
-        title: "ユーザー作成完了",
-        description: "新しいユーザーが作成されました",
-      });
-      setShowNewUserDialog(false);
-      resetNewUserForm();
-    },
-    onError: (error: any) => {
-      console.error('❌ ユーザー作成ミューテーションエラー:', error);
-      toast({
-        title: "ユーザー作成失敗",
-        description: error.message || "ユーザー作成中にエラーが発生しました",
-        variant: "destructive",
-      });
-    },
-  });
+
 
   // フォーム送信処理
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // バリデーション
@@ -308,10 +286,51 @@ export default function UsersPage() {
     }
 
     // パスワードの強度チェック
-    if (newUser.password.length < 6) {
+    if (newUser.password.length < 8) {
       toast({
-        title: "入力エラー",
-        description: "パスワードは6文字以上で入力してください",
+        title: "パスワードエラー",
+        description: "パスワードは8文字以上で設定してください",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const hasUpperCase = /[A-Z]/.test(newUser.password);
+    const hasLowerCase = /[a-z]/.test(newUser.password);
+    const hasNumbers = /\d/.test(newUser.password);
+    const hasSymbols = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newUser.password);
+    
+    if (!hasUpperCase) {
+      toast({
+        title: "パスワードエラー",
+        description: "パスワードには大文字を1文字以上含めてください",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!hasLowerCase) {
+      toast({
+        title: "パスワードエラー",
+        description: "パスワードには小文字を1文字以上含めてください",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!hasNumbers) {
+      toast({
+        title: "パスワードエラー",
+        description: "パスワードには数字を1文字以上含めてください",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!hasSymbols) {
+      toast({
+        title: "パスワードエラー",
+        description: "パスワードには記号を1文字以上含めてください",
         variant: "destructive",
       });
       return;
@@ -337,14 +356,77 @@ export default function UsersPage() {
       return;
     }
 
-    createUserMutation.mutate({
-      username: newUser.username,
-      password: newUser.password,
-      display_name: newUser.display_name,
-      role: newUser.role || 'employee',
-      department: newUser.department || undefined,
-      description: newUser.description || undefined
-    } as NewUserData);
+    try {
+      console.log('🔍 新規ユーザー作成開始:', newUser);
+      
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          username: newUser.username,
+          password: newUser.password,
+          display_name: newUser.display_name,
+          role: newUser.role || 'employee',
+          department: newUser.department || undefined,
+          description: newUser.description || undefined
+        })
+      });
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`ユーザー作成失敗: ${errorText}`);
+      }
+      
+      const result = await res.json();
+      console.log('🔍 ユーザー作成結果:', result);
+      
+      if (result.success) {
+        console.log('✅ ユーザー作成成功:', result.data);
+        toast({
+          title: "成功",
+          description: "ユーザーが正常に作成されました",
+        });
+        setShowNewUserDialog(false);
+        resetNewUserForm();
+        
+        // ユーザー一覧を再取得
+        const fetchUsers = async () => {
+          try {
+            const res = await fetch('/api/users', {
+              method: 'GET',
+              credentials: 'include',
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (res.ok) {
+              const userData = await res.json();
+              if (userData.success && userData.data) {
+                setUsers(userData.data);
+                setFilteredUsers(userData.data); // 検索結果も更新
+              }
+            }
+          } catch (error) {
+            console.error('ユーザー一覧再取得エラー:', error);
+          }
+        };
+        
+        fetchUsers();
+      } else {
+        throw new Error(result.error || 'ユーザーの作成に失敗しました');
+      }
+    } catch (error) {
+      console.error('❌ ユーザー作成エラー:', error);
+      toast({
+        title: "エラー",
+        description: error instanceof Error ? error.message : "ユーザーの作成に失敗しました",
+        variant: "destructive",
+      });
+    }
   };
 
   // 入力フィールド更新処理
@@ -373,6 +455,7 @@ export default function UsersPage() {
   const handleEditUser = (userData: UserData) => {
     setSelectedUserId(userData.id);
     setEditUser({
+      id: userData.id, // IDを追加
       username: userData.username,
       display_name: userData.display_name,
       role: userData.role,
@@ -389,97 +472,83 @@ export default function UsersPage() {
     setShowDeleteConfirmDialog(true);
   };
 
-  // ユーザー編集のミューテーション
-  const updateUserMutation = useMutation({
-    mutationFn: async (userData: Partial<UserData>) => {
-      if (!selectedUserId) throw new Error("ユーザーIDが選択されていません");
-      
-      console.log(`[DEBUG] ユーザー更新リクエスト送信: ID="${selectedUserId}"`, userData);
-      console.log(`[DEBUG] selectedUserId type: ${typeof selectedUserId}, length: ${selectedUserId.length}`);
-      console.log(`[DEBUG] selectedUserId bytes:`, selectedUserId ? Array.from(selectedUserId).map(c => c.charCodeAt(0)) : 'null');
-      console.log(`[DEBUG] API URL:`, `/api/users/${selectedUserId}`);
-      console.log(`[DEBUG] 送信データ:`, JSON.stringify(userData, null, 2));
-      
-      const res = await apiRequest("PATCH", `/api/users/${selectedUserId}`, userData);
-      
-      console.log(`[DEBUG] レスポンスステータス: ${res.status}`);
-      console.log(`[DEBUG] レスポンスヘッダー:`, Object.fromEntries(res.headers.entries()));
-      
-      if (!res.ok) {
-        const errorData = await res.json();
-        console.error(`[ERROR] ユーザー更新失敗: ${res.status}`, errorData);
-        console.error(`[ERROR] 完全なエラーレスポンス:`, JSON.stringify(errorData, null, 2));
-        throw new Error(errorData.message || `HTTP ${res.status}: ユーザー更新に失敗しました`);
-      }
-      
-      return await res.json();
-    },
-    onSuccess: () => {
-      // より確実にクエリを無効化して再取得
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      queryClient.refetchQueries({ queryKey: ["/api/users"] });
-      toast({
-        title: "ユーザー更新完了",
-        description: "ユーザー情報が更新されました",
-      });
-      setShowEditUserDialog(false);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "ユーザー更新失敗",
-        description: error.message || "ユーザー更新中にエラーが発生しました",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // ユーザー削除のミューテーション
-  const deleteUserMutation = useMutation({
-    mutationFn: async () => {
-      if (!selectedUserId) throw new Error("ユーザーIDが選択されていません");
-      // 自分自身のアカウントは削除できないチェックを追加
+  // ユーザー削除実行
+  const handleDeleteConfirm = async () => {
+    if (!selectedUserId) return;
+    
+    try {
+      // 自分自身のアカウントは削除できないチェック
       if (user && selectedUserId === user.id) {
-        throw new Error("自分自身のアカウントは削除できません");
+        toast({
+          title: "削除エラー",
+          description: "自分自身のアカウントは削除できません",
+          variant: "destructive",
+        });
+        setShowDeleteConfirmDialog(false);
+        return;
       }
 
-      const res = await apiRequest("DELETE", `/api/users/${selectedUserId}`);
+      const res = await fetch(`/api/users/${selectedUserId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
 
-      // エラーレスポンスをハンドリング
       if (!res.ok) {
         const errorData = await res.json();
-
-        // サーバーエラーのチェック
-        if (res.status === 500) {
-          throw new Error("ユーザーに関連するデータが存在するため削除できません。関連データをすべて削除してから再度お試しください。");
-        }
-
-        throw new Error(errorData.message || "ユーザー削除中にエラーが発生しました");
+        throw new Error(errorData.message || `HTTP ${res.status}: ユーザー削除に失敗しました`);
       }
 
-      return await res.json();
-    },
-    onSuccess: () => {
-      // より確実にクエリを無効化して再取得
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      queryClient.refetchQueries({ queryKey: ["/api/users"] });
+      const result = await res.json();
+      console.log('ユーザー削除結果:', result);
+      
       toast({
-        title: "ユーザー削除完了",
+        title: "削除完了",
         description: "ユーザーが削除されました",
       });
+      
       setShowDeleteConfirmDialog(false);
-    },
-    onError: (error: any) => {
+      
+      // ユーザー一覧を再取得
+      const fetchUsers = async () => {
+        try {
+          const res = await fetch('/api/users', {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (res.ok) {
+            const userData = await res.json();
+            if (userData.success && userData.data) {
+              setUsers(userData.data);
+              setFilteredUsers(userData.data); // 検索結果も更新
+            }
+          }
+        } catch (error) {
+          console.error('ユーザー一覧再取得エラー:', error);
+        }
+      };
+      
+      fetchUsers();
+      
+    } catch (error) {
+      console.error('ユーザー削除エラー:', error);
       toast({
-        title: "ユーザー削除失敗",
-        description: error.message || "ユーザー削除中にエラーが発生しました",
+        title: "削除失敗",
+        description: error instanceof Error ? error.message : "ユーザー削除中にエラーが発生しました",
         variant: "destructive",
       });
       setShowDeleteConfirmDialog(false);
-    },
-  });
+    }
+  };
 
   // 編集フォーム送信処理
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // バリデーション
     if (!editUser.username || !editUser.display_name) {
@@ -491,25 +560,105 @@ export default function UsersPage() {
       return;
     }
 
-    // 空のパスワードフィールドを除去して送信
-    const sanitizedEditUser = { ...editUser };
-    
-    // パスワードが空、undefined、null、空白文字の場合は完全に除去
-    if (!sanitizedEditUser.password || 
-        typeof sanitizedEditUser.password !== 'string' || 
-        sanitizedEditUser.password.trim().length === 0) {
-      delete sanitizedEditUser.password;
-      console.log('空のパスワードフィールドを除去しました');
-    } else {
-      console.log('パスワードフィールドを送信します');
+    try {
+      // 空のパスワードフィールドを除去して送信
+      const sanitizedEditUser = { ...editUser };
+      
+      // パスワードが空、undefined、null、空白文字の場合は完全に除去
+      if (!sanitizedEditUser.password || 
+          typeof sanitizedEditUser.password !== 'string' || 
+          sanitizedEditUser.password.trim().length === 0) {
+        delete sanitizedEditUser.password;
+        console.log('空のパスワードフィールドを除去しました');
+      } else {
+        console.log('パスワードフィールドを送信します');
+      }
+      
+      console.log('送信するユーザーデータ:', { 
+        ...sanitizedEditUser, 
+        password: sanitizedEditUser.password ? '[SET]' : '[NOT_SET]' 
+      });
+      
+      console.log('API URL:', `/api/users/${editUser.id}`);
+      console.log('リクエストボディ:', JSON.stringify(sanitizedEditUser, null, 2));
+      
+      const res = await fetch(`/api/users/${editUser.id}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(sanitizedEditUser)
+      });
+      
+      console.log('レスポンスステータス:', res.status);
+      console.log('レスポンスヘッダー:', Object.fromEntries(res.headers.entries()));
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('エラーレスポンス:', errorText);
+        console.error('エラーレスポンスの詳細:', {
+          status: res.status,
+          statusText: res.statusText,
+          headers: Object.fromEntries(res.headers.entries()),
+          body: errorText
+        });
+        throw new Error(`HTTP ${res.status}: ${errorText}`);
+      }
+      
+      const result = await res.json();
+      console.log('ユーザー更新結果:', result);
+      
+      toast({
+        title: "成功",
+        description: "ユーザー情報を更新しました",
+      });
+      
+      // ダイアログを閉じてユーザー一覧を再取得
+      setShowEditUserDialog(false);
+      setEditUser({
+        id: '',
+        username: '',
+        display_name: '',
+        role: 'employee',
+        department: '',
+        description: '',
+        password: ''
+      });
+      
+      // ユーザー一覧を再取得
+      const fetchUsers = async () => {
+        try {
+          const res = await fetch('/api/users', {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (res.ok) {
+            const userData = await res.json();
+            if (userData.success && userData.data) {
+              setUsers(userData.data);
+              setFilteredUsers(userData.data); // 検索結果も更新
+            }
+          }
+        } catch (error) {
+          console.error('ユーザー一覧再取得エラー:', error);
+        }
+      };
+      
+      fetchUsers();
+      
+    } catch (error) {
+      console.error('ユーザー更新エラー:', error);
+      toast({
+        title: "エラー",
+        description: error instanceof Error ? error.message : "ユーザー更新中にエラーが発生しました",
+        variant: "destructive",
+      });
     }
-    
-    console.log('送信するユーザーデータ:', { 
-      ...sanitizedEditUser, 
-      password: sanitizedEditUser.password ? '[SET]' : '[NOT_SET]' 
-    });
-    
-    updateUserMutation.mutate(sanitizedEditUser);
   };
 
   // 管理者でない場合のローディング表示
@@ -573,6 +722,9 @@ export default function UsersPage() {
                       onChange={handleInputChange}
                       required
                     />
+                    <p className="text-sm text-gray-500">
+                      パスワードは8文字以上で、大文字・小文字・数字・記号をそれぞれ1文字以上含めてください
+                    </p>
                   </div>
 
                   <div className="grid gap-2">
@@ -634,9 +786,8 @@ export default function UsersPage() {
                   </Button>
                   <Button 
                     type="submit"
-                    disabled={createUserMutation.isPending}
                   >
-                    {createUserMutation.isPending ? "作成中..." : "作成"}
+                    作成
                   </Button>
                 </DialogFooter>
               </form>
@@ -647,71 +798,102 @@ export default function UsersPage() {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-lg flex items-center">
-            <User className="mr-2 h-5 w-5" />
-            ユーザー一覧
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg flex items-center">
+              <User className="mr-2 h-5 w-5" />
+              ユーザー一覧
+            </CardTitle>
+            <div className="flex items-center space-x-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="ユーザー検索（*でワイルドカード）"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 w-64"
+                />
+              </div>
+              {searchQuery && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSearchQuery("")}
+                >
+                  クリア
+                </Button>
+              )}
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="flex justify-center p-4">読み込み中...</div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ユーザー名</TableHead>
-                  <TableHead>表示名</TableHead>
-                  <TableHead>権限</TableHead>
-                  <TableHead>部署</TableHead>
-                  <TableHead>説明</TableHead>
-                  <TableHead className="text-right">アクション</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users && users.length > 0 ? (
-                  users.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell>{user.username}</TableCell>
-                      <TableCell>{user.display_name}</TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          user.role === "admin" ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"
-                        }`}>
-                          {user.role === "admin" ? "管理者" : "一般ユーザー"}
-                        </span>
-                      </TableCell>
-                      <TableCell>{user.department || "-"}</TableCell>
-                      <TableCell>{user.description || "-"}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleEditUser(user)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleDeleteUser(user.id)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ユーザー名</TableHead>
+                    <TableHead>表示名</TableHead>
+                    <TableHead>権限</TableHead>
+                    <TableHead>部署</TableHead>
+                    <TableHead>説明</TableHead>
+                    <TableHead className="text-right">アクション</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsers && filteredUsers.length > 0 ? (
+                    filteredUsers.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell>{user.username}</TableCell>
+                        <TableCell>{user.display_name}</TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            user.role === "admin" ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"
+                          }`}>
+                            {user.role === "admin" ? "管理者" : "一般ユーザー"}
+                          </span>
+                        </TableCell>
+                        <TableCell>{user.department || "-"}</TableCell>
+                        <TableCell>{user.description || "-"}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleEditUser(user)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleDeleteUser(user.id)}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center">
+                        {searchQuery ? "検索条件に一致するユーザーが見つかりません" : "ユーザーが見つかりません"}
                       </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center">
-                      ユーザーが見つかりません
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                  )}
+                </TableBody>
+              </Table>
+              
+              {searchQuery && (
+                <div className="mt-4 text-sm text-gray-500">
+                  検索結果: {filteredUsers.length}件 / 全{users.length}件
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
@@ -813,9 +995,8 @@ export default function UsersPage() {
               </Button>
               <Button 
                 type="submit"
-                disabled={updateUserMutation.isPending}
               >
-                {updateUserMutation.isPending ? "更新中..." : "更新"}
+                更新
               </Button>
             </DialogFooter>
           </form>
@@ -859,10 +1040,9 @@ export default function UsersPage() {
             <Button 
               type="button"
               variant="destructive"
-              onClick={() => deleteUserMutation.mutate()}
-              disabled={deleteUserMutation.isPending}
+              onClick={handleDeleteConfirm}
             >
-              {deleteUserMutation.isPending ? "削除中..." : "削除"}
+              削除
             </Button>
           </DialogFooter>
         </DialogContent>

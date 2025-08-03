@@ -16,6 +16,20 @@ const troubleshootingDir: any = path.join(knowledgeBaseDir, 'troubleshooting');
 if (!fs.existsSync(troubleshootingDir)) {
     fs.mkdirSync(troubleshootingDir, { recursive: true });
 }
+// デバッグ用エンドポイント
+router.get('/debug', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET',
+      OPENAI_API_KEY_PREFIX: process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.substring(0, 10) + '...' : 'NOT FOUND',
+      OPENAI_API_KEY_LENGTH: process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.length : 0,
+      NODE_ENV: process.env.NODE_ENV,
+      timestamp: new Date().toISOString()
+    }
+  });
+});
+
 // キーワードからフローを生成するエンドポイント（互換性のため）
 router.post('/keywords', async (req, res) => {
   try {
@@ -122,6 +136,8 @@ router.post('/keywords', async (req, res) => {
 // キーワードからフローを生成するエンドポイント（元の実装）
 router.post('/generate-from-keywords', async (req, res) => {
     try {
+        console.log('[DEBUG] generate-from-keywords endpoint called');
+        
         const { keywords } = req.body;
         if (!keywords || typeof keywords !== 'string' || !keywords.trim()) {
             return res.status(400).json({
@@ -130,10 +146,60 @@ router.post('/generate-from-keywords', async (req, res) => {
             });
         }
         console.log(`キーワード "${keywords}" からフローを生成します`);
+        
+        // OpenAI APIキーの確認
+        console.log('[DEBUG] Checking OpenAI API key...');
+        console.log('[DEBUG] process.env.OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'EXISTS' : 'NOT EXISTS');
+        
+        if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === 'your-openai-api-key-here') {
+            console.log('[DEBUG] OpenAI API key validation failed - missing or default value');
+            return res.status(400).json({
+                success: false,
+                error: 'OpenAI APIキーが設定されていません。環境変数OPENAI_API_KEYを設定してください。',
+                details: '開発環境では.envファイルにOPENAI_API_KEYを設定してください。'
+            });
+        }
+        
+        // APIキーの形式確認
+        if (!process.env.OPENAI_API_KEY.startsWith('sk-')) {
+            console.log('[DEBUG] OpenAI API key validation failed - invalid format');
+            return res.status(400).json({
+                success: false,
+                error: 'OpenAI APIキーの形式が無効です。',
+                details: 'APIキーは「sk-」で始まる必要があります。'
+            });
+        }
+        
+        console.log('[DEBUG] OpenAI API Key validation passed');
+        console.log('[DEBUG] OpenAI API Key validation:', {
+            exists: !!process.env.OPENAI_API_KEY,
+            startsWithSk: process.env.OPENAI_API_KEY.startsWith('sk-'),
+            keyLength: process.env.OPENAI_API_KEY.length,
+            prefix: process.env.OPENAI_API_KEY.substring(0, 10) + '...'
+        });
+        
+        // OpenAIクライアントの状態を確認
+        console.log('[DEBUG] Importing OpenAI modules...');
+        const { processOpenAIRequest, getOpenAIClientStatus } = await import('../lib/openai.js');
+        console.log('[DEBUG] processOpenAIRequest function imported successfully');
+        
+        // OpenAIクライアントの詳細な状態を確認
+        const clientStatus = getOpenAIClientStatus();
+        console.log('[DEBUG] OpenAI Client Status:', clientStatus);
+        
+        if (!clientStatus.clientExists) {
+            return res.status(400).json({
+                success: false,
+                error: 'OpenAIクライアントが初期化されていません',
+                details: clientStatus
+            });
+        }
+        
         // ナレッジベースから関連情報を検索
         console.log('ナレッジベースから関連情報を検索中...');
         const relevantChunks: any = await searchKnowledgeBase(keywords);
         console.log(`関連チャンク数: ${relevantChunks.length}`);
+        
         // 関連情報をプロンプトに追加するための文字列を構築
         let relatedKnowledgeText = '';
         if (relevantChunks.length > 0) {
@@ -144,6 +210,7 @@ router.post('/generate-from-keywords', async (req, res) => {
                 relatedKnowledgeText += `---\n出典: ${chunk.metadata.source || '不明'}\n\n${chunk.text}\n---\n\n`;
             }
         }
+        
         // GPTに渡す強化されたプロンプト
         const prompt = `以下のキーワードに関連する応急処置フローを生成してください。
 必ず完全なJSONオブジェクトのみを返してください。追加の説明やテキストは一切含めないでください。
@@ -263,9 +330,20 @@ ${relatedKnowledgeText}
 8. title（タイトル）フィールドには短く明確な見出しを、description（説明）フィールドには詳細な指示や状況説明を入れてください。
 9. 軌道モータカー特有の機器やシステム（例：制御装置、ブレーキシステム、パンタグラフ等）に関する具体的な言及を含めてください。
 10. 最終ステップでは必ず具体的な対応結果や次のステップを明示し、利用者が次にとるべき行動を明確にしてください。`;
+        
         // OpenAIでフローを生成
         console.log('OpenAIにフロー生成をリクエスト中...');
         const generatedFlow: any = await processOpenAIRequest(prompt);
+        
+        // OpenAI APIエラーの確認
+        if (typeof generatedFlow === 'string' && generatedFlow.includes('OpenAI APIキーが無効です')) {
+            return res.status(400).json({
+                success: false,
+                error: 'OpenAI APIキーが無効です。有効なAPIキーを設定してください。',
+                details: '環境変数OPENAI_API_KEYに有効なAPIキーを設定してください。'
+            });
+        }
+        
         try {
             // 共通のJSON処理ヘルパーを使用してレスポンスをクリーニング
             const cleanedResponse: any = cleanJsonResponse(generatedFlow);

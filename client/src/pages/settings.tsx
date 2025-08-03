@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/auth-context";
 import { useToast } from "../hooks/use-toast.ts";
+import { API_BASE_URL } from "../lib/api/config";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
 import { Switch } from "../components/ui/switch";
@@ -41,17 +42,7 @@ import {
 } from "../components/ui/select";
 import { Link } from "react-router-dom";
 
-interface SystemHealth {
-  database: {
-    status: 'connected' | 'error';
-    message: string;
-  };
-  openai: {
-    status: 'set' | 'not_set';
-    message: string;
-  };
-  timestamp: string;
-}
+// SystemHealth interface is removed - integrated into system diagnostic page
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
@@ -67,8 +58,7 @@ export default function SettingsPage() {
   const [useOnlyKnowledgeBase, setUseOnlyKnowledgeBase] = useState(true);
 
   // システム健全性チェック
-  const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
-  const [isCheckingHealth, setIsCheckingHealth] = useState(false);
+  // System health state removed - integrated into system diagnostic page
 
   // 機種と機械番号管理用の状態
   const [machineTypes, setMachineTypes] = useState<Array<{id: string, machine_type_name: string}>>([]);
@@ -131,46 +121,7 @@ export default function SettingsPage() {
     fetchMachineData();
   }, []);
 
-  // システム健全性チェック
-  const checkSystemHealth = async () => {
-    try {
-      setIsCheckingHealth(true);
-      
-      const [dbResponse, openaiResponse] = await Promise.all([
-        fetch('/api/debug/database'),
-        fetch('/api/debug/openai')
-      ]);
-
-      const dbData = await dbResponse.json();
-      const openaiData = await openaiResponse.json();
-
-      setSystemHealth({
-        database: {
-          status: dbData.status === 'connected' ? 'connected' : 'error',
-          message: dbData.status === 'connected' ? 'データベース接続正常' : dbData.error || 'データベース接続エラー'
-        },
-        openai: {
-          status: openaiData.openaiApiKey === 'SET' ? 'set' : 'not_set',
-          message: openaiData.openaiApiKey === 'SET' ? 'OpenAI API設定済み' : 'OpenAI API未設定'
-        },
-        timestamp: new Date().toISOString()
-      });
-
-      toast({
-        title: "健全性チェック完了",
-        description: "システムの状態を確認しました",
-      });
-    } catch (error) {
-      console.error('システム健全性チェックエラー:', error);
-      toast({
-        title: "エラー",
-        description: "システム健全性チェックに失敗しました",
-        variant: "destructive"
-      });
-    } finally {
-      setIsCheckingHealth(false);
-    }
-  };
+  // システム健全性チェックは削除 - システム診断ページに統合
 
   // 機種と機械番号のデータを取得
   const fetchMachineData = async () => {
@@ -179,8 +130,8 @@ export default function SettingsPage() {
       console.log('機種・機械番号データ取得開始');
       
       // 機種一覧を取得
-      console.log('機種一覧取得URL:', `${import.meta.env.VITE_API_BASE_URL}/api/machine-types`);
-      const typesResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/machine-types`);
+      console.log('機種一覧取得URL:', `${API_BASE_URL}/api/machine-types`);
+      const typesResponse = await fetch(`${API_BASE_URL}/api/machine-types`);
       console.log('機種一覧レスポンスステータス:', typesResponse.status);
       
       if (typesResponse.ok) {
@@ -197,8 +148,8 @@ export default function SettingsPage() {
       }
 
       // 機械番号一覧を取得（全機種）
-      console.log('機械番号一覧取得URL:', `${import.meta.env.VITE_API_BASE_URL}/api/all-machines`);
-      const machinesResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/all-machines`);
+      console.log('機械番号一覧取得URL:', `${API_BASE_URL}/api/all-machines`);
+      const machinesResponse = await fetch(`${API_BASE_URL}/api/all-machines`);
       console.log('機械番号一覧レスポンスステータス:', machinesResponse.status);
       
       if (machinesResponse.ok) {
@@ -251,9 +202,9 @@ export default function SettingsPage() {
 
     try {
       console.log('機種追加開始:', newMachineType.trim());
-      console.log('API URL:', `${import.meta.env.VITE_API_BASE_URL}/api/machine-types`);
+      console.log('API URL:', `${API_BASE_URL}/api/machine-types`);
       
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/machine-types`, {
+      const response = await fetch(`${API_BASE_URL}/api/machine-types`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ machine_type_name: newMachineType.trim() })
@@ -653,43 +604,7 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="bg-white">
               <div className="space-y-4">
-                {/* システム健全性チェック */}
-                <div className="flex items-center justify-between py-2">
-                  <div>
-                    <p className="font-medium text-blue-800">システム健全性</p>
-                    <p className="text-sm text-blue-400">データベース接続とAPI設定を確認</p>
-                  </div>
-                  <Button 
-                    onClick={checkSystemHealth}
-                    disabled={isCheckingHealth}
-                    variant="outline" 
-                    size="sm" 
-                    className="border-blue-300 text-blue-700 hover:bg-blue-50"
-                  >
-                    <RefreshCw className={`mr-2 h-4 w-4 ${isCheckingHealth ? 'animate-spin' : ''}`} />
-                    チェック
-                  </Button>
-                </div>
-
-                {systemHealth && (
-                  <div className="border-t border-blue-100 pt-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-blue-600">データベース接続</span>
-                      <Badge variant={systemHealth.database.status === 'connected' ? 'default' : 'destructive'}>
-                        {systemHealth.database.status === 'connected' ? '正常' : 'エラー'}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-blue-600">OpenAI API</span>
-                      <Badge variant={systemHealth.openai.status === 'set' ? 'default' : 'secondary'}>
-                        {systemHealth.openai.status === 'set' ? '設定済み' : '未設定'}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      最終更新: {new Date(systemHealth.timestamp).toLocaleString('ja-JP')}
-                    </p>
-                  </div>
-                )}
+                {/* システム健全性チェックは削除 - システム診断ページに統合 */}
 
                 <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
                   <div>

@@ -48,21 +48,91 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({ onUploa
         description: `キーワード「${keywordsInput}」からフローを生成しています...`,
       });
       
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/flow-generator/generate-from-keywords`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ keywords: keywordsInput }),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || '生成に失敗しました');
+      // まず高度なフロー生成を試行（OpenAI APIキーが必要）
+      let response;
+      try {
+        response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/flow-generator/generate-from-keywords`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ keywords: keywordsInput }),
+        });
+      } catch (error) {
+        // 高度なフロー生成が失敗した場合、基本的なフロー生成にフォールバック
+        console.log('高度なフロー生成が失敗、基本的なフロー生成にフォールバック');
+        response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/flow-generator/keywords`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ keywords: keywordsInput }),
+        });
       }
       
       const data = await response.json();
       console.log("APIからの応答データ:", data);
+      
+      if (!response.ok) {
+        // エラーレスポンスの場合
+        const errorMessage = data.error || '生成に失敗しました';
+        const errorDetails = data.details || '';
+        
+        // OpenAI APIキーエラーの場合の特別な処理
+        if (errorMessage.includes('OpenAI APIキー') || errorMessage.includes('APIキーが無効')) {
+          toast({
+            title: "OpenAI APIキーエラー",
+            description: "高度なフロー生成が利用できません。基本的なフロー生成を使用します。",
+            variant: "destructive",
+          });
+          
+          // 基本的なフロー生成にフォールバック
+          try {
+            const fallbackResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/flow-generator/keywords`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ keywords: keywordsInput }),
+            });
+            
+            const fallbackData = await fallbackResponse.json();
+            
+            if (fallbackData.success && fallbackData.flowData) {
+              toast({
+                title: "基本的なフロー生成完了",
+                description: `「${fallbackData.flowData.title || 'タイトルなし'}」が生成されました。`,
+              });
+              
+              // 生成されたフローの詳細ページに移動するためのイベントを発火
+              if (onUploadSuccess) {
+                onUploadSuccess(fallbackData.flowData.id);
+              }
+              
+              // キーワード入力をクリア
+              setKeywordsInput('');
+              return;
+            }
+          } catch (fallbackError) {
+            console.error('基本的なフロー生成も失敗:', fallbackError);
+          }
+        }
+        
+        // その他のエラーメッセージの表示
+        toast({
+          title: "生成エラー",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        
+        // 詳細情報をコンソールに出力
+        console.error('フロー生成エラー詳細:', {
+          error: errorMessage,
+          details: errorDetails,
+          status: response.status
+        });
+        return;
+      }
       
       if (data.success && data.flowData) {
         toast({

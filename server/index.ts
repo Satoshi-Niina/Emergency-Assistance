@@ -41,11 +41,16 @@ const envPaths = [
 // 各パスで.envファイルを読み込み
 let loadedEnvFile = null;
 for (const envPath of envPaths) {
-  const result = dotenv.config({ path: envPath });
-  if (result.parsed && Object.keys(result.parsed).length > 0) {
-    loadedEnvFile = envPath;
-    console.log('✅ 環境変数ファイル読み込み成功:', envPath);
-    break;
+  try {
+    const result = dotenv.config({ path: envPath });
+    if (result.parsed && Object.keys(result.parsed).length > 0) {
+      loadedEnvFile = envPath;
+      console.log('✅ 環境変数ファイル読み込み成功:', envPath);
+      console.log('📝 読み込まれた環境変数:', Object.keys(result.parsed));
+      break;
+    }
+  } catch (error) {
+    console.log('⚠️ 環境変数ファイル読み込みエラー:', envPath, error);
   }
 }
 
@@ -65,6 +70,16 @@ if (!process.env.SESSION_SECRET) {
   console.log('[DEV] SESSION_SECRET not set, using development default');
 }
 
+if (!process.env.VITE_API_BASE_URL) {
+  process.env.VITE_API_BASE_URL = 'http://localhost:3001';
+  console.log('[DEV] VITE_API_BASE_URL not set, using development default');
+}
+
+if (!process.env.FRONTEND_URL) {
+  process.env.FRONTEND_URL = 'http://localhost:5002';
+  console.log('[DEV] FRONTEND_URL not set, using development default');
+}
+
 // 重要な環境変数の確認
 console.log("[DEV] Development environment variables loaded:", {
   NODE_ENV: process.env.NODE_ENV,
@@ -72,10 +87,22 @@ console.log("[DEV] Development environment variables loaded:", {
   DATABASE_URL: process.env.DATABASE_URL ? "SET" : "NOT SET",
   JWT_SECRET: process.env.JWT_SECRET ? "SET" : "NOT SET",
   SESSION_SECRET: process.env.SESSION_SECRET ? "SET" : "NOT SET",
+  VITE_API_BASE_URL: process.env.VITE_API_BASE_URL ? "SET" : "NOT SET",
+  FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:5002",
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY ? "SET" : "NOT SET",
   loadedEnvFile,
   PWD: process.cwd(),
   __dirname: __dirname
 });
+
+// OpenAI APIキーの確認
+if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === 'your-openai-api-key-here') {
+  console.warn('⚠️ OpenAI APIキーが設定されていません。フロー生成機能は使用できません。');
+  console.warn('🔧 解決方法: .envファイルにOPENAI_API_KEYを設定してください');
+  console.warn('📝 例: OPENAI_API_KEY=sk-your-actual-api-key-here');
+} else {
+  console.log('✅ OpenAI APIキーが設定されています');
+}
 
 // DATABASE_URLが設定されていない場合はエラーで停止
 if (!process.env.DATABASE_URL) {
@@ -87,61 +114,18 @@ if (!process.env.DATABASE_URL) {
 
 console.log("[DEV] Development server starting...");
 
-const app = express();
+// app.tsから設定済みのExpressアプリケーションをインポート
+import app from './app.js';
 const PORT = Number(process.env.PORT) || 3001;
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
-// 開発環境用のCORS設定
-const corsOptions = {
-  origin: isDevelopment ? '*' : ['https://your-production-domain.com'], // 本番では実際のドメインに変更
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept'],
-  exposedHeaders: ['Set-Cookie']
-};
+// CORS設定はapp.tsで管理するため、ここでは設定しない
+console.log('🔧 CORS設定はapp.tsで管理されます');
 
-console.log('🔧 Development CORS settings:', corsOptions);
+// app.tsで設定済みのため、ここでは追加設定のみ行う
+console.log('🔧 app.tsの設定を使用します');
 
-app.use(cors(corsOptions));
-
-// 開発環境用のセキュリティヘッダー（緩めの設定）
-app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  next();
-});
-
-// JSON解析ミドルウェア（必須）
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: false, limit: '10mb' }));
-
-// 開発環境用のセッション設定
-import session from 'express-session';
-
-const sessionSettings: session.SessionOptions = {
-  secret: process.env.SESSION_SECRET || "dev-local-secret",
-  resave: true,
-  saveUninitialized: false, // 認証済みユーザーのみセッションを保存
-  cookie: { 
-    secure: false, // 開発環境ではHTTPS不要
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    sameSite: 'lax'
-  },
-  name: 'emergency-dev-session'
-};
-
-console.log('🔧 セッション設定:', {
-  secret: sessionSettings.secret ? '[SET]' : '[NOT SET]',
-  resave: sessionSettings.resave,
-  saveUninitialized: sessionSettings.saveUninitialized,
-  cookie: sessionSettings.cookie
-});
-
-app.use(session(sessionSettings));
-
-// 開発環境用のリクエストログ
+// 開発環境用のリクエストログ（追加）
 app.use((req, res, next) => {
   console.log('📡 [DEV] Request:', {
     method: req.method,
@@ -152,19 +136,6 @@ app.use((req, res, next) => {
     timestamp: new Date().toISOString()
   });
   
-  next();
-});
-
-// 認証ルートを最初に設定
-import authRoutes from './routes/auth.js';
-app.use('/api/auth', authRoutes);
-
-// 全てのAPIエンドポイントにJSON Content-Typeを強制（ルート登録前に設定）
-app.use('/api', (req, res, next) => {
-  // HTMLレスポンスを防ぐために、明示的にJSONを設定
-  if (!res.headersSent) {
-    res.setHeader('Content-Type', 'application/json');
-  }
   next();
 });
 
@@ -179,6 +150,7 @@ app.get('/api/debug/env', (req, res) => {
       DATABASE_URL: process.env.DATABASE_URL ? '[SET]' : '[NOT SET]',
       SESSION_SECRET: process.env.SESSION_SECRET ? '[SET]' : '[NOT SET]',
       JWT_SECRET: process.env.JWT_SECRET ? '[SET]' : '[NOT SET]',
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY ? '[SET]' : '[NOT SET]',
       loadedEnvFile,
       timestamp: new Date().toISOString()
     }
