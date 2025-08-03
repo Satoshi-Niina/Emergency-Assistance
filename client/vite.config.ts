@@ -17,6 +17,15 @@ export default defineConfig(({ command, mode }) => {
   const serverPort = parseInt(env.PORT || '3001');
   const clientPort = parseInt(env.CLIENT_PORT || '5002');
   
+  console.log('🔧 Vite環境変数確認:', {
+    VITE_API_BASE_URL: env.VITE_API_BASE_URL,
+    VITE_API_BASE_URL_TYPE: typeof env.VITE_API_BASE_URL,
+    VITE_API_BASE_URL_LENGTH: env.VITE_API_BASE_URL?.length,
+    apiBaseUrl,
+    serverPort,
+    clientPort
+  });
+  
   console.log('🔧 Vite設定:', {
     command,
     mode,
@@ -43,26 +52,27 @@ export default defineConfig(({ command, mode }) => {
       host: '0.0.0.0',
       port: clientPort,
       allowedHosts: true,
-      proxy: {
-        '/api': {
-          target: apiBaseUrl,
-          changeOrigin: true,
-          secure: false,
-          ws: true,
-          rewrite: (path) => path,
-          configure: (proxy, options) => {
-            proxy.on('error', (err, req, res) => {
-              console.log('🔴 Proxy error:', err);
-            });
-            proxy.on('proxyReq', (proxyReq, req, res) => {
-              console.log('📤 Sending Request to the Target:', req.method, req.url);
-            });
-            proxy.on('proxyRes', (proxyRes, req, res) => {
-              console.log('📥 Received Response from the Target:', proxyRes.statusCode, req.url);
-            });
-          },
-        },
-      },
+      // プロキシ設定を無効化 - 直接APIサーバーに接続
+      // proxy: {
+      //   '/api': {
+      //     target: apiBaseUrl,
+      //     changeOrigin: true,
+      //     secure: false,
+      //     ws: true,
+      //     rewrite: (path) => path,
+      //     configure: (proxy, options) => {
+      //       proxy.on('error', (err, req, res) => {
+      //         console.log('🔴 Proxy error:', err);
+      //       });
+      //       proxy.on('proxyReq', (proxyReq, req, res) => {
+      //         console.log('📤 Sending Request to the Target:', req.method, req.url);
+      //       });
+      //       proxy.on('proxyRes', (proxyRes, req, res) => {
+      //         console.log('📥 Received Response from the Target:', proxyRes.statusCode, req.url);
+      //       });
+      //     },
+      //   },
+      // },
       fs: {
         allow: [path.resolve(__dirname, '..')],
       }
@@ -91,6 +101,10 @@ export default defineConfig(({ command, mode }) => {
       __VITE_API_BASE_URL__: JSON.stringify(apiBaseUrl),
       __VITE_MODE__: JSON.stringify(mode),
       __VITE_COMMAND__: JSON.stringify(command),
+      // 環境変数を直接定義
+      'import.meta.env.VITE_API_BASE_URL': JSON.stringify(env.VITE_API_BASE_URL),
+      'import.meta.env.NODE_ENV': JSON.stringify(env.NODE_ENV),
+      'import.meta.env.MODE': JSON.stringify(mode),
     },
     logLevel: 'info'
   };

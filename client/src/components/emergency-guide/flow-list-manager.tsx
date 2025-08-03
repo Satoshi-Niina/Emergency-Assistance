@@ -59,10 +59,19 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       });
 
       console.log('📡 レスポンス状態:', response.status, response.statusText);
+      console.log('📡 レスポンスヘッダー:', Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ API エラー:', errorText);
+        
+        // Content-Typeをチェック
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('text/html')) {
+          console.error('❌ HTMLレスポンスが返されました。APIエンドポイントが正しく設定されているか確認してください。');
+          throw new Error(`APIエンドポイントエラー: HTMLレスポンスが返されました (${response.status})`);
+        }
+        
         throw new Error(`ファイル一覧の取得に失敗しました: ${response.status} ${response.statusText}`);
       }
       
@@ -83,14 +92,16 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       }
 
       console.log('✅ フロー一覧取得完了:', flows.length + '件');
+      console.log('📋 フロー詳細:', flows.map(f => ({ id: f.id, title: f.title, createdAt: f.createdAt })));
       setFlowList(flows);
     } catch (error) {
       console.error('フロー一覧取得エラー:', error);
       toast({
         title: "エラー",
-        description: "ファイル一覧の取得に失敗しました",
+        description: error instanceof Error ? error.message : "ファイル一覧の取得に失敗しました",
         variant: "destructive",
       });
+      setFlowList([]); // エラー時は空配列を設定
     } finally {
       setIsLoading(false);
     }

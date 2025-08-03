@@ -1,16 +1,25 @@
 import OpenAI from 'openai';
 
 export class PerplexityService {
-    private openai: OpenAI;
+    private openai: OpenAI | null = null;
 
     constructor() {
-        this.openai = new OpenAI({
-            apiKey: process.env.PERPLEXITY_API_KEY,
-            baseURL: 'https://api.perplexity.ai'
-        });
+        const apiKey = process.env.PERPLEXITY_API_KEY;
+        if (apiKey && apiKey !== 'pplx-your-perplexity-api-key-here') {
+            this.openai = new OpenAI({
+                apiKey: apiKey,
+                baseURL: 'https://api.perplexity.ai'
+            });
+        } else {
+            console.log('[DEV] Perplexity client not initialized - API key not available');
+        }
     }
 
     async search(query: string): Promise<any> {
+        if (!this.openai) {
+            throw new Error('Perplexity API key not configured');
+        }
+        
         try {
             const response = await this.openai.chat.completions.create({
                 model: 'llama-3.1-sonar-small-128k-online',
@@ -40,6 +49,10 @@ export class PerplexityService {
     }
 
     async searchWithSources(query: string): Promise<any> {
+        if (!this.openai) {
+            throw new Error('Perplexity API key not configured');
+        }
+        
         try {
             const response = await this.openai.chat.completions.create({
                 model: 'llama-3.1-sonar-small-128k-online',

@@ -10,7 +10,7 @@ router.get('/db-check', async (req, res) => {
     const result = await query('SELECT NOW() as db_time');
     res.json({
       status: "OK",
-      db_time: result.rows[0].db_time
+      db_time: result[0].db_time
     });
   } catch (error) {
     console.error('DB接続確認エラー:', error);

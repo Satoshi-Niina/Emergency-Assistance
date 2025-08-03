@@ -18,6 +18,9 @@ import emergencyGuideRouter from './routes/emergency-guide.js';
 import { usersRouter } from './routes/users.js';
 import machinesRouter from './routes/machines.js';
 import { registerDataProcessorRoutes } from './routes/data-processor.js';
+import { usersDebugRouter } from './routes/users-debug.js';
+import { debugRouter } from './routes/debug.js';
+import systemCheckRouter from './routes/system-check.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,29 +30,131 @@ function logPathStatus(label: string, relPath: string) {
   const absPath = path.resolve(__dirname, relPath);
   const exists = fs.existsSync(absPath);
   console.log(`🔎 [起動時パス確認] ${label}: ${absPath} (exists: ${exists})`);
+  return { absPath, exists };
 }
 
-logPathStatus('knowledge-base/images', '../../knowledge-base/images');
-logPathStatus('knowledge-base/data', '../../knowledge-base/data');
-logPathStatus('knowledge-base/troubleshooting', '../../knowledge-base/troubleshooting');
+// 必要なディレクトリを自動作成
+function ensureDirectoryExists(dirPath: string, label: string) {
+  if (!fs.existsSync(dirPath)) {
+    try {
+      fs.mkdirSync(dirPath, { recursive: true });
+      console.log(`✅ ディレクトリを作成しました: ${label} (${dirPath})`);
+    } catch (error) {
+      console.error(`❌ ディレクトリ作成エラー: ${label}`, error);
+    }
+  } else {
+    console.log(`✅ ディレクトリが存在します: ${label} (${dirPath})`);
+  }
+}
+
+// 必要なディレクトリを確認・作成
+const knowledgeBasePath = path.resolve(__dirname, '../../knowledge-base');
+const imagesPath = path.join(knowledgeBasePath, 'images');
+const dataPath = path.join(knowledgeBasePath, 'data');
+const troubleshootingPath = path.join(knowledgeBasePath, 'troubleshooting');
+const tempPath = path.join(knowledgeBasePath, 'temp');
+const qaPath = path.join(knowledgeBasePath, 'qa');
+const jsonPath = path.join(knowledgeBasePath, 'json');
+const backupsPath = path.join(knowledgeBasePath, 'backups');
+
+ensureDirectoryExists(knowledgeBasePath, 'knowledge-base');
+ensureDirectoryExists(imagesPath, 'knowledge-base/images');
+ensureDirectoryExists(dataPath, 'knowledge-base/data');
+ensureDirectoryExists(troubleshootingPath, 'knowledge-base/troubleshooting');
+ensureDirectoryExists(tempPath, 'knowledge-base/temp');
+ensureDirectoryExists(qaPath, 'knowledge-base/qa');
+ensureDirectoryExists(jsonPath, 'knowledge-base/json');
+ensureDirectoryExists(backupsPath, 'knowledge-base/backups');
+
 logPathStatus('.env', '../../.env');
 logPathStatus('OpenAI API KEY', process.env.OPENAI_API_KEY ? '[SET]' : '[NOT SET]');
 logPathStatus('DATABASE_URL', process.env.DATABASE_URL ? '[SET]' : '[NOT SET]');
 
-// 環境変数はindex.tsで読み込まれるため、ここでは読み込み不要
+// 環境変数の確認
 console.log('🔧 app.ts: 環境変数確認:', {
   NODE_ENV: process.env.NODE_ENV,
   PORT: process.env.PORT,
   DATABASE_URL: process.env.DATABASE_URL ? '[SET]' : '[NOT SET]',
-  SESSION_SECRET: process.env.SESSION_SECRET ? '[SET]' : '[NOT SET]'
+  SESSION_SECRET: process.env.SESSION_SECRET ? '[SET]' : '[NOT SET]',
+  VITE_API_BASE_URL: process.env.VITE_API_BASE_URL ? '[SET]' : '[NOT SET]',
+  FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5002'
 });
 
 const app = express();
 
-// CORS設定 - 必要なヘッダーを追加
+// CORS設定 - セッション維持のため改善
+const isProduction = process.env.NODE_ENV === 'production';
+const isReplitEnvironment = process.env.REPLIT_ENVIRONMENT === 'true' || process.env.REPLIT_ID;
+const isAzureEnvironment = process.env.WEBSITE_SITE_NAME || process.env.AZURE_ENVIRONMENT;
+
+// フロントエンドURLの取得（環境変数から優先、デフォルトはlocalhost:5002）
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5002';
+
+// 許可するオリジンのリスト（環境別）
+const getAllowedOrigins = () => {
+  const baseOrigins = [
+    FRONTEND_URL, // 環境変数から取得したフロントエンドURLを優先
+    'http://localhost:5002', 
+    'http://127.0.0.1:5002',
+    'http://localhost:5003',
+    'http://127.0.0.1:5003',
+    'http://localhost:5004',
+    'http://127.0.0.1:5004',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:5173', // Vite開発サーバー
+    'http://127.0.0.1:5173',
+    'http://localhost:3001',
+    'http://127.0.0.1:3001'
+  ];
+
+  // Replit環境の場合
+  if (isReplitEnvironment) {
+    baseOrigins.push(
+      'https://*.replit.app',
+      'https://*.replit.dev'
+    );
+  }
+
+  // Azure環境の場合
+  if (isAzureEnvironment) {
+    baseOrigins.push(
+      'https://*.azurewebsites.net',
+      'https://*.azure.com'
+    );
+  }
+
+  return baseOrigins;
+};
+
 app.use(cors({
-  origin: 'http://localhost:5002',
-  credentials: true,
+  origin: function(origin, callback) {
+    const allowedOrigins = getAllowedOrigins();
+    
+    // originがnullの場合（同一オリジンリクエスト）も許可
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    // ワイルドカードドメインのチェック
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      if (allowedOrigin.includes('*')) {
+        const pattern = allowedOrigin.replace('*', '.*');
+        return new RegExp(pattern).test(origin);
+      }
+      return allowedOrigin === origin;
+    });
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.log('🚫 CORS blocked origin:', origin);
+      console.log('🔍 Allowed origins:', allowedOrigins);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true, // 必須設定 - セッション維持のため
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: [
     'Content-Type', 
@@ -57,7 +162,7 @@ app.use(cors({
     'X-Requested-With', 
     'Origin', 
     'Accept', 
-    'Cookie', 
+    'Cookie',
     'credentials',
     'cache-control',
     'Cache-Control',
@@ -71,10 +176,24 @@ app.use(cors({
 
 // OPTIONSリクエストの明示的処理
 app.options('*', (req, res) => {
-  res.header('Access-Control-Allow-Origin', 'http://localhost:5002');
+  const origin = req.headers.origin;
+  const allowedOrigins = getAllowedOrigins();
+  
+  // ワイルドカードドメインのチェック
+  const isAllowed = !origin || allowedOrigins.some(allowedOrigin => {
+    if (allowedOrigin.includes('*')) {
+      const pattern = allowedOrigin.replace('*', '.*');
+      return new RegExp(pattern).test(origin);
+    }
+    return allowedOrigin === origin;
+  });
+  
+  if (isAllowed) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+  }
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept, Cookie, credentials, cache-control, Cache-Control, pragma, Pragma');
-  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Credentials', 'true'); // 必須設定 - セッション維持のため
   res.header('Access-Control-Expose-Headers', 'Set-Cookie');
   res.status(204).end();
 });
@@ -85,20 +204,57 @@ app.use(cookieParser());
 // JSONパース
 app.use(express.json());
 
+// CORSヘッダーを確実に設定するミドルウェア
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = getAllowedOrigins();
+  
+  // ワイルドカードドメインのチェック
+  const isAllowed = !origin || allowedOrigins.some(allowedOrigin => {
+    if (allowedOrigin.includes('*')) {
+      const pattern = allowedOrigin.replace('*', '.*');
+      return new RegExp(pattern).test(origin);
+    }
+    return allowedOrigin === origin;
+  });
+  
+  if (isAllowed && origin) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept, Cookie, credentials, cache-control, Cache-Control, pragma, Pragma');
+  res.header('Access-Control-Expose-Headers', 'Set-Cookie');
+  
+  next();
+});
+
 // セッション設定 - 認証維持のため改善
-app.use(session({
+const sessionConfig = {
   secret: process.env.SESSION_SECRET || 'dev-session-secret-for-development-only',
   resave: true, // セッションを常に保存
   saveUninitialized: false,
   cookie: {
-    secure: false, // 開発環境ではfalse
+    secure: isProduction || isReplitEnvironment || isAzureEnvironment, // 本番環境ではtrue
     httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 1000 * 60 * 60 * 24, // 24時間
-    path: '/'
+    sameSite: isProduction || isReplitEnvironment || isAzureEnvironment ? 'none' : 'lax', // 本番環境ではnone
+    maxAge: 1000 * 60 * 60 * 24 * 7, // 7日間
+    path: '/',
+    domain: undefined // 明示的にundefinedに設定
   },
-  name: 'emergency-assistance-session' // セッション名を明示的に設定
-}));
+  name: 'emergency-assistance-session', // セッション名を統一
+  rolling: true // セッションを更新するたびに期限を延長
+};
+
+console.log('🔧 セッション設定:', {
+  secure: sessionConfig.cookie.secure,
+  sameSite: sessionConfig.cookie.sameSite,
+  isProduction,
+  isReplitEnvironment,
+  isAzureEnvironment
+});
+
+app.use(session(sessionConfig));
 
 // セッションデバッグミドルウェア
 app.use((req, res, next) => {
@@ -108,7 +264,10 @@ app.use((req, res, next) => {
     userRole: req.session?.userRole,
     cookies: req.headers.cookie,
     path: req.path,
-    method: req.method
+    method: req.method,
+    origin: req.headers.origin,
+    host: req.headers.host,
+    referer: req.headers.referer
   });
   next();
 });
@@ -139,6 +298,58 @@ app.use('/api/emergency-guide', emergencyGuideRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/machines', machinesRouter);
 
+// デバッグ用ルートを追加
+app.use('/api/debug/users', usersDebugRouter);
+app.use('/api/debug', debugRouter);
+
+// システムチェックAPIエンドポイント
+app.get('/api/db-check', async (req, res) => {
+  try {
+    const { db } = await import('./db/index.js');
+    const { sql } = await import('drizzle-orm');
+    
+    const result = await db.execute(sql`SELECT NOW() as db_time`);
+    
+    res.json({
+      status: "OK",
+      db_time: result[0].db_time
+    });
+  } catch (error) {
+    console.error('DB接続確認エラー:', error);
+    res.status(500).json({
+      status: "ERROR",
+      message: error instanceof Error ? error.message : "データベース接続エラー"
+    });
+  }
+});
+
+app.post('/api/gpt-check', async (req, res) => {
+  try {
+    const { message } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({
+        status: "ERROR",
+        message: "メッセージが指定されていません"
+      });
+    }
+
+    const { processOpenAIRequest } = await import('./lib/openai.js');
+    const reply = await processOpenAIRequest(message, false);
+    
+    res.json({
+      status: "OK",
+      reply: reply
+    });
+  } catch (error) {
+    console.error('GPT接続確認エラー:', error);
+    res.status(500).json({
+      status: "ERROR",
+      message: error instanceof Error ? error.message : "GPT接続エラー"
+    });
+  }
+});
+
 // 機械管理APIの直接ルート（/api/machine-types, /api/all-machines）
 app.get('/api/machine-types', async (req, res) => {
   try {
@@ -148,11 +359,13 @@ app.get('/api/machine-types', async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     
     const { db } = await import('./db/index.js');
-    const { sql } = await import('drizzle-orm');
+    const { machineTypes } = await import('./db/schema.js');
     
-    const result = await db.execute(
-      sql`SELECT id, machine_type_name FROM machine_types ORDER BY machine_type_name`
-    );
+    const result = await db.select({
+      id: machineTypes.id,
+      type_name: machineTypes.machineTypeName
+    }).from(machineTypes)
+    .orderBy(machineTypes.machineTypeName);
     
     console.log(`✅ 機種一覧取得完了: ${result.length}件`);
     
@@ -181,18 +394,17 @@ app.get('/api/all-machines', async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     
     const { db } = await import('./db/index.js');
-    const { sql } = await import('drizzle-orm');
+    const { machineTypes, machines } = await import('./db/schema.js');
+    const { eq } = await import('drizzle-orm');
     
-    const result = await db.execute(sql`
-      SELECT 
-        mt.id as type_id,
-        mt.machine_type_name,
-        m.id as machine_id,
-        m.machine_number
-      FROM machine_types mt
-      LEFT JOIN machines m ON mt.id = m.machine_type_id
-      ORDER BY mt.machine_type_name, m.machine_number
-    `);
+    const result = await db.select({
+      type_id: machineTypes.id,
+      machine_type_name: machineTypes.machineTypeName,
+      machine_id: machines.id,
+      machine_number: machines.machineNumber
+    }).from(machineTypes)
+    .leftJoin(machines, eq(machineTypes.id, machines.machineTypeId))
+    .orderBy(machineTypes.machineTypeName, machines.machineNumber);
     
     // 機種ごとにグループ化
     const groupedData = result.reduce((acc: any, row: any) => {
@@ -243,12 +455,7 @@ try {
   console.error('❌ ルート登録エラー:', error);
 }
 
-// サーバー起動処理
-const PORT = Number(process.env.PORT) || 3001;
-
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
-});
+// サーバー起動処理はindex.tsで管理するため、ここでは設定のみ
+console.log('✅ Expressアプリケーションの設定が完了しました');
 
 export default app;

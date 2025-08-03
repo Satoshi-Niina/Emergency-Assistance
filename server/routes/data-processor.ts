@@ -5,8 +5,13 @@ import multer from 'multer';
 import AdmZip from 'adm-zip';
 import { log } from '../vite.js';
 import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 import { addDocumentToKnowledgeBase, mergeDocumentContent, backupKnowledgeBase, loadKnowledgeBaseIndex } from '../lib/knowledge-base.js';
 import { processDocument } from '../lib/document-processor.js';
+
+// ESM対応の __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 // ファイル拡張子からドキュメントタイプを取得するヘルパー関数
 function getFileTypeFromExtension(ext) {
     const extMap = {

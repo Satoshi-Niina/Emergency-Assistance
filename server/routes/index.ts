@@ -37,7 +37,7 @@ export function registerRoutes(app: any) {
   registerSearchRoutes(app);
   app.use('/api', machinesRouter);
   app.use('/api/images', imageStorageRouter);
-  app.use('/api', systemCheckRouter);
+  app.use('/api/system-check', systemCheckRouter);
   app.use('/api/flows', flowsRouter);
   app.use('/api/files', filesRouter);
 }

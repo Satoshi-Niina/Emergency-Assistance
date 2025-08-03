@@ -31,13 +31,43 @@ console.log("[DEBUG] Environment variables:", {
 
 // 開発環境ではAPIキーがなくても動作するように条件付き初期化
 let openai: OpenAI | null = null;
-if (apiKey && apiKey !== 'dev-mock-key' && apiKey !== 'your-openai-api-key-here') {
-  openai = new OpenAI({
-    apiKey: apiKey,
-  });
-  console.log("[DEBUG] OpenAI client initialized successfully");
+if (apiKey && apiKey !== 'dev-mock-key' && apiKey !== 'your-openai-api-key-here' && apiKey.startsWith('sk-')) {
+  try {
+    openai = new OpenAI({
+      apiKey: apiKey,
+    });
+    console.log("[DEBUG] OpenAI client initialized successfully");
+  } catch (error) {
+    console.error("[DEBUG] OpenAI client initialization failed:", error);
+    openai = null;
+  }
 } else {
   console.log("[DEV] OpenAI client not initialized - API key not available or is mock key");
+  console.log("[DEBUG] API Key validation:", {
+    exists: !!apiKey,
+    isMockKey: apiKey === 'dev-mock-key' || apiKey === 'your-openai-api-key-here',
+    startsWithSk: apiKey ? apiKey.startsWith('sk-') : false,
+    keyLength: apiKey ? apiKey.length : 0
+  });
+}
+
+// デバッグ用：OpenAIクライアントの状態を確認
+console.log("[DEBUG] Final OpenAI client status:", {
+  clientExists: !!openai,
+  apiKeyExists: !!apiKey,
+  apiKeyPrefix: apiKey ? apiKey.substring(0, 10) + '...' : 'NOT FOUND'
+});
+
+// OpenAIクライアントの状態を外部から確認する関数
+export function getOpenAIClientStatus() {
+  return {
+    clientExists: !!openai,
+    apiKeyExists: !!apiKey,
+    apiKeyPrefix: apiKey ? apiKey.substring(0, 10) + '...' : 'NOT FOUND',
+    apiKeyLength: apiKey ? apiKey.length : 0,
+    isMockKey: apiKey === 'dev-mock-key' || apiKey === 'your-openai-api-key-here',
+    startsWithSk: apiKey ? apiKey.startsWith('sk-') : false
+  };
 }
 
 // 開発環境用のモックレスポンス
@@ -93,8 +123,20 @@ export async function processOpenAIRequest(prompt: string, useKnowledgeBase: boo
     // OpenAIクライアントが利用可能かチェック
     if (!openai) {
       console.log('[DEV] OpenAI client not available, returning development message');
+      console.log('[DEBUG] OpenAI client status:', {
+        clientExists: !!openai,
+        apiKeyExists: !!process.env.OPENAI_API_KEY,
+        apiKeyPrefix: process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.substring(0, 10) + '...' : 'NOT FOUND'
+      });
       return getMockResponse(prompt);
     }
+
+    console.log('[DEBUG] OpenAI client is available, proceeding with API call');
+    console.log('[DEBUG] API Key validation in processOpenAIRequest:', {
+      apiKeyExists: !!process.env.OPENAI_API_KEY,
+      apiKeyPrefix: process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.substring(0, 10) + '...' : 'NOT FOUND',
+      apiKeyLength: process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.length : 0
+    });
 
     // Remove detailed API call start logging
     // console.log(`OpenAI API呼び出し開始: useKnowledgeBase=${useKnowledgeBase}, message="${prompt}"`);

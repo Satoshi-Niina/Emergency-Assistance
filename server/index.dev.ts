@@ -54,4 +54,34 @@ if (!process.env.DATABASE_URL) {
 }
 
 // アプリケーションを起動
-import './app.js';
+import app from './app.js';
+
+const PORT = Number(process.env.PORT) || 3001;
+const isDevelopment = process.env.NODE_ENV !== 'production';
+
+console.log('🚀 開発サーバー起動中...');
+console.log('🔧 環境設定:', {
+  NODE_ENV: process.env.NODE_ENV,
+  PORT: PORT,
+  isDevelopment: isDevelopment
+});
+
+// サーバーを起動
+app.listen(PORT, '0.0.0.0', () => {
+  console.log('✅ 開発サーバーが正常に起動しました');
+  console.log('🌐 サーバーURL:', `http://localhost:${PORT}`);
+  console.log('🔧 開発環境:', isDevelopment ? '有効' : '無効');
+  console.log('📊 ヘルスチェック:', `http://localhost:${PORT}/api/health`);
+  console.log('🔐 認証デバッグ:', `http://localhost:${PORT}/api/auth/debug/env`);
+});
+
+// グレースフルシャットダウン
+process.on('SIGTERM', () => {
+  console.log('🛑 SIGTERM受信 - サーバーをシャットダウン中...');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('🛑 SIGINT受信 - サーバーをシャットダウン中...');
+  process.exit(0);
+});

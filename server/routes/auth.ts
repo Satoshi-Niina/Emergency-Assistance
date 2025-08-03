@@ -53,7 +53,9 @@ router.post('/login', async (req, res) => {
       sessionId: req.session?.id,
       headers: {
         cookie: req.headers.cookie ? '[SET]' : '[NOT SET]',
-        origin: req.headers.origin
+        origin: req.headers.origin,
+        host: req.headers.host,
+        referer: req.headers.referer
       }
     });
     
@@ -85,6 +87,12 @@ router.post('/login', async (req, res) => {
     // パスワードチェック（bcryptでハッシュ化されたパスワードまたは平文パスワード）
     let isValidPassword = false;
     
+    console.log('🔐 Password check details:', {
+      inputPassword: password,
+      storedPassword: foundUser.password,
+      passwordLength: foundUser.password.length
+    });
+    
     // まずbcryptでハッシュ化されたパスワードをチェック
     try {
       isValidPassword = await bcrypt.compare(password, foundUser.password);
@@ -95,7 +103,9 @@ router.post('/login', async (req, res) => {
     
     // bcryptで失敗した場合、平文パスワードをチェック（開発環境用）
     if (!isValidPassword) {
-      isValidPassword = (foundUser.password === password);
+      const plainTextMatch = (foundUser.password === password);
+      console.log('🔐 Plain text password check:', plainTextMatch);
+      isValidPassword = plainTextMatch;
       if (isValidPassword) {
         console.log('✅ 平文パスワードで認証成功（開発環境）');
       }
@@ -103,6 +113,13 @@ router.post('/login', async (req, res) => {
     
     if (!isValidPassword) {
       console.log('❌ Invalid password for:', username);
+      console.log('❌ Password validation failed:', {
+        username: username,
+        inputPassword: password,
+        storedPassword: foundUser.password,
+        bcryptFailed: true,
+        plainTextFailed: true
+      });
       return res.status(401).json({
         success: false,
         error: 'ユーザー名またはパスワードが違います'
@@ -114,6 +131,13 @@ router.post('/login', async (req, res) => {
     // セッションにユーザー情報を保存
     req.session.userId = foundUser.id;
     req.session.userRole = foundUser.role;
+    
+    console.log('💾 Session data before save:', {
+      userId: req.session.userId,
+      userRole: req.session.userRole,
+      sessionId: req.session.id,
+      sessionData: req.session
+    });
     
     // セッションを明示的に保存
     req.session.save((err) => {
@@ -128,7 +152,8 @@ router.post('/login', async (req, res) => {
       console.log('💾 Session saved successfully:', {
         userId: req.session.userId,
         userRole: req.session.userRole,
-        sessionId: req.session.id
+        sessionId: req.session.id,
+        sessionData: req.session
       });
 
       // 成功レスポンス（Reactの認証コンテキストに合わせる）
@@ -188,9 +213,12 @@ router.get('/me', async (req, res) => {
       session: req.session,
       sessionId: req.session?.id,
       userId: req.session?.userId,
+      userRole: req.session?.userRole,
       headers: {
         cookie: req.headers.cookie ? '[SET]' : '[NOT SET]',
-        origin: req.headers.origin
+        origin: req.headers.origin,
+        host: req.headers.host,
+        referer: req.headers.referer
       }
     });
     

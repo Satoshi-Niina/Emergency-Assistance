@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { storage } from "./storage.js";
-import { users } from "../shared/schema.js";
+import { users } from "./db/schema.js";
 import session from "express-session";
 import MemoryStore from 'memorystore';
 import { processOpenAIRequest } from "./lib/openai.js";
