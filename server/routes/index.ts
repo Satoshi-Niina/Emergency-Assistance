@@ -9,7 +9,7 @@ import { registerDataProcessorRoutes } from "./data-processor";
 import flowGeneratorRoutes from "./flow-generator";
 import { registerSearchRoutes } from "./search";
 import authRouter from "./auth";
-import machinesRouter from "./machines";
+// machinesRouterはapp.tsで直接マウントされているため、ここでは除外
 import imageStorageRouter from "./image-storage";
 import systemCheckRouter from "./system-check";
 import { flowsRouter } from "./flows";
@@ -35,7 +35,7 @@ export function registerRoutes(app: any) {
   registerDataProcessorRoutes(app);
   app.use('/api/flow-generator', flowGeneratorRoutes);
   registerSearchRoutes(app);
-  app.use('/api', machinesRouter);
+  // machinesRouterはapp.tsで直接マウントされているため、ここでは除外
   app.use('/api/images', imageStorageRouter);
   app.use('/api/system-check', systemCheckRouter);
   app.use('/api/flows', flowsRouter);

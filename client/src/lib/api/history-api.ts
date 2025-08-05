@@ -5,8 +5,23 @@ import {
   BaseDataResponse,
   FlowListResponse,
   User,
-  CreateUserRequest
+  CreateUserRequest,
+  ExportHistoryItem
 } from '../../types/history';
+
+// 履歴データから機種・機械番号一覧取得
+export const fetchMachineData = async (): Promise<{
+  machineTypes: Array<{ id: string; machineTypeName: string }>;
+  machines: Array<{ id: string; machineNumber: string; machineTypeName: string }>;
+}> => {
+  const response = await fetch('/api/history/machine-data');
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch machine data: ${response.statusText}`);
+  }
+  
+  return response.json();
+};
 
 // 履歴一覧取得
 export const fetchHistoryList = async (filters: HistorySearchFilters = {}): Promise<HistoryListResponse> => {
@@ -132,6 +147,64 @@ export const createUser = async (userData: CreateUserRequest): Promise<User> => 
   
   if (!response.ok) {
     throw new Error(`Failed to create user: ${response.statusText}`);
+  }
+  
+  return response.json();
+};
+
+// 履歴エクスポート機能
+
+// 個別履歴エクスポート
+export const exportHistoryItem = async (id: string, format: 'json' | 'csv' = 'json'): Promise<Blob> => {
+  const response = await fetch(`/api/history/${id}/export?format=${format}`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to export history: ${response.statusText}`);
+  }
+  
+  return response.blob();
+};
+
+// 選択履歴一括エクスポート
+export const exportSelectedHistory = async (ids: string[], format: 'json' | 'csv' = 'json'): Promise<Blob> => {
+  const response = await fetch('/api/history/export-selected', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ ids, format })
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to export selected history: ${response.statusText}`);
+  }
+  
+  return response.blob();
+};
+
+// 全履歴エクスポート
+export const exportAllHistory = async (filters: HistorySearchFilters = {}, format: 'json' | 'csv' = 'json'): Promise<Blob> => {
+  const params = new URLSearchParams();
+  params.append('format', format);
+  
+  if (filters.machineType) params.append('machineType', filters.machineType);
+  if (filters.machineNumber) params.append('machineNumber', filters.machineNumber);
+  
+  const response = await fetch(`/api/history/export-all?${params.toString()}`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to export all history: ${response.statusText}`);
+  }
+  
+  return response.blob();
+};
+
+// エクスポート履歴取得
+export const fetchExportHistory = async (): Promise<ExportHistoryItem[]> => {
+  const response = await fetch('/api/history/export-history');
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch export history: ${response.statusText}`);
   }
   
   return response.json();

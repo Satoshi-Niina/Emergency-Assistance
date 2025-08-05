@@ -27,7 +27,9 @@ import {
   X,
   CheckCircle,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  MessageSquare,
+  Edit3
 } from "lucide-react";
 import { WarningDialog } from "../components/shared/warning-dialog";
 import { Separator } from "../components/ui/separator";
@@ -41,6 +43,7 @@ import {
   SelectValue 
 } from "../components/ui/select";
 import { Link } from "react-router-dom";
+import MachineList from "../components/machine-list";
 
 // SystemHealth interface is removed - integrated into system diagnostic page
 
@@ -60,6 +63,18 @@ export default function SettingsPage() {
   // システム健全性チェック
   // System health state removed - integrated into system diagnostic page
 
+
+
+  // Q&A質問管理用の状態
+  const [qaQuestions, setQaQuestions] = useState<string[]>([
+    "発生した状況は？",
+    "どこか想定される？",
+    "どのような処置しましたか？"
+  ]);
+  const [editingQuestionIndex, setEditingQuestionIndex] = useState<number | null>(null);
+  const [editingQuestionText, setEditingQuestionText] = useState('');
+  const [newQuestionText, setNewQuestionText] = useState('');
+
   // 機種と機械番号管理用の状態
   const [machineTypes, setMachineTypes] = useState<Array<{id: string, machine_type_name: string}>>([]);
   const [machines, setMachines] = useState<Array<{id: string, machine_number: string, machine_type_id: string}>>([]);
@@ -68,95 +83,26 @@ export default function SettingsPage() {
   const [selectedMachineType, setSelectedMachineType] = useState('');
   const [isLoadingMachineData, setIsLoadingMachineData] = useState(false);
 
-  // LocalStorageからの設定読み込み
-  useEffect(() => {
-    const loadSettings = () => {
-      try {
-        const savedSettings = localStorage.getItem('emergencyRecoverySettings');
-        if (savedSettings) {
-          const settings = JSON.parse(savedSettings);
-
-          if (settings.notifications !== undefined) setNotifications(settings.notifications);
-          if (settings.textToSpeech !== undefined) setTextToSpeech(settings.textToSpeech);
-          if (settings.speechVolume !== undefined) setSpeechVolume(settings.speechVolume);
-          if (settings.darkMode !== undefined) setDarkMode(settings.darkMode);
-          if (settings.autoSave !== undefined) setAutoSave(settings.autoSave);
-          if (settings.useOnlyKnowledgeBase !== undefined) setUseOnlyKnowledgeBase(settings.useOnlyKnowledgeBase);
-        }
-      } catch (error) {
-        console.error('設定の読み込みに失敗しました:', error);
-      }
-    };
-
-    loadSettings();
-  }, []);
-
-  // 設定変更時の保存
-  useEffect(() => {
-    const saveSettings = () => {
-      try {
-        const settings = {
-          notifications,
-          textToSpeech,
-          speechVolume,
-          darkMode,
-          autoSave,
-          useOnlyKnowledgeBase
-        };
-
-        localStorage.setItem('emergencyRecoverySettings', JSON.stringify(settings));
-
-        // ナレッジベース使用設定を別途保存 (チャットコンテキストで参照するため)
-        localStorage.setItem('useOnlyKnowledgeBase', useOnlyKnowledgeBase.toString());
-      } catch (error) {
-        console.error('設定の保存に失敗しました:', error);
-      }
-    };
-
-    saveSettings();
-  }, [notifications, textToSpeech, speechVolume, darkMode, autoSave, useOnlyKnowledgeBase]);
-
   // 機種データを初期読み込み
   useEffect(() => {
     fetchMachineData();
   }, []);
 
-  // システム健全性チェックは削除 - システム診断ページに統合
-
   // 機種と機械番号のデータを取得
   const fetchMachineData = async () => {
     try {
       setIsLoadingMachineData(true);
-      console.log('機種・機械番号データ取得開始');
-      
-      // 機種一覧を取得
-      console.log('機種一覧取得URL:', `${API_BASE_URL}/api/machine-types`);
-      const typesResponse = await fetch(`${API_BASE_URL}/api/machine-types`);
-      console.log('機種一覧レスポンスステータス:', typesResponse.status);
-      
+      const typesResponse = await fetch(`/api/machines/machine-types`);
       if (typesResponse.ok) {
         const typesResult = await typesResponse.json();
-        console.log('機種一覧結果:', typesResult);
         if (typesResult.success) {
           setMachineTypes(typesResult.data);
-        } else {
-          console.error('機種一覧取得成功だがsuccess=false:', typesResult);
         }
-      } else {
-        const errorText = await typesResponse.text();
-        console.error('機種一覧取得エラー:', typesResponse.status, errorText);
       }
-
-      // 機械番号一覧を取得（全機種）
-      console.log('機械番号一覧取得URL:', `${API_BASE_URL}/api/all-machines`);
-      const machinesResponse = await fetch(`${API_BASE_URL}/api/all-machines`);
-      console.log('機械番号一覧レスポンスステータス:', machinesResponse.status);
-      
+      const machinesResponse = await fetch(`/api/machines/all-machines`);
       if (machinesResponse.ok) {
         const machinesResult = await machinesResponse.json();
-        console.log('機械番号一覧結果:', machinesResult);
         if (machinesResult.success) {
-          // フラットな配列に変換
           const flatMachines: Array<{id: string, machine_number: string, machine_type_id: string}> = [];
           machinesResult.data.forEach((typeGroup: any) => {
             if (typeGroup.machines && Array.isArray(typeGroup.machines)) {
@@ -170,186 +116,77 @@ export default function SettingsPage() {
             }
           });
           setMachines(flatMachines);
-        } else {
-          console.error('機械番号一覧取得成功だがsuccess=false:', machinesResult);
         }
-      } else {
-        const errorText = await machinesResponse.text();
-        console.error('機械番号一覧取得エラー:', machinesResponse.status, errorText);
       }
-    } catch (error) {
-      console.error('機種・機械番号データ取得エラー:', error);
-      toast({
-        title: "エラー",
-        description: `機種・機械番号データの取得に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        variant: "destructive",
-      });
     } finally {
       setIsLoadingMachineData(false);
     }
   };
 
-  // 機種を追加
   const addMachineType = async () => {
-    if (!newMachineType.trim()) {
-      toast({
-        title: "エラー",
-        description: "機種名を入力してください",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      console.log('機種追加開始:', newMachineType.trim());
-      console.log('API URL:', `${API_BASE_URL}/api/machine-types`);
-      
-      const response = await fetch(`${API_BASE_URL}/api/machine-types`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ machine_type_name: newMachineType.trim() })
-      });
-
-      console.log('レスポンスステータス:', response.status);
-      console.log('レスポンスヘッダー:', response.headers);
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('成功レスポンス:', result);
-        toast({
-          title: "成功",
-          description: "機種を追加しました",
-        });
-        setNewMachineType('');
-        fetchMachineData(); // データを再取得
-      } else {
-        const errorText = await response.text();
-        console.error('エラーレスポンス:', errorText);
-        throw new Error(`機種の追加に失敗しました: ${response.status} ${errorText}`);
-      }
-    } catch (error) {
-      console.error('機種追加エラー:', error);
-      toast({
-        title: "エラー",
-        description: `機種の追加に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        variant: "destructive",
-      });
+    if (!newMachineType.trim()) return;
+    const response = await fetch(`/api/machines/machine-types`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ machine_type_name: newMachineType.trim() })
+    });
+    if (response.ok) {
+      setNewMachineType('');
+      fetchMachineData();
     }
   };
 
-  // 機械番号を追加
   const addMachineNumber = async () => {
-    if (!selectedMachineType || !newMachineNumber.trim()) {
-      toast({
-        title: "エラー",
-        description: "機種と機械番号を入力してください",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      console.log('機械番号追加開始:', newMachineNumber.trim(), '機種ID:', selectedMachineType);
-      console.log('API URL:', `${import.meta.env.VITE_API_BASE_URL}/api/machines`);
-      
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/machines`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          machine_number: newMachineNumber.trim(),
-          machine_type_id: selectedMachineType
-        })
-      });
-
-      console.log('レスポンスステータス:', response.status);
-      console.log('レスポンスヘッダー:', response.headers);
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('成功レスポンス:', result);
-        toast({
-          title: "成功",
-          description: "機械番号を追加しました",
-        });
-        setNewMachineNumber('');
-        setSelectedMachineType('');
-        fetchMachineData(); // データを再取得
-      } else {
-        const errorText = await response.text();
-        console.error('エラーレスポンス:', errorText);
-        throw new Error(`機械番号の追加に失敗しました: ${response.status} ${errorText}`);
-      }
-    } catch (error) {
-      console.error('機械番号追加エラー:', error);
-      toast({
-        title: "エラー",
-        description: `機械番号の追加に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        variant: "destructive",
-      });
+    if (!selectedMachineType || !newMachineNumber.trim()) return;
+    const response = await fetch(`/api/machines/machines`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ machine_number: newMachineNumber.trim(), machine_type_id: selectedMachineType })
+    });
+    if (response.ok) {
+      setNewMachineNumber('');
+      setSelectedMachineType('');
+      fetchMachineData();
     }
   };
 
-  // 機種を削除
   const deleteMachineType = async (typeId: string, typeName: string) => {
-    if (!confirm(`機種「${typeName}」を削除しますか？\n関連する機械番号も削除されます。`)) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/machine-types/${typeId}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        toast({
-          title: "成功",
-          description: "機種を削除しました",
-        });
-        fetchMachineData(); // データを再取得
-      } else {
-        throw new Error('機種の削除に失敗しました');
-      }
-    } catch (error) {
-      console.error('機種削除エラー:', error);
-      toast({
-        title: "エラー",
-        description: "機種の削除に失敗しました",
-        variant: "destructive",
-      });
-    }
+    if (!confirm(`機種「${typeName}」を削除してもよろしいですか？\n関連する機械番号も削除されます。`)) return;
+    const response = await fetch(`/api/machines/machine-types/${typeId}`, { method: 'DELETE' });
+    if (response.ok) fetchMachineData();
   };
 
-  // 機械番号を削除
   const deleteMachineNumber = async (machineId: string, machineNumber: string) => {
-    if (!confirm(`機械番号「${machineNumber}」を削除しますか？`)) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/machines/${machineId}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        toast({
-          title: "成功",
-          description: "機械番号を削除しました",
-        });
-        fetchMachineData(); // データを再取得
-      } else {
-        throw new Error('機械番号の削除に失敗しました');
-      }
-    } catch (error) {
-      console.error('機械番号削除エラー:', error);
-      toast({
-        title: "エラー",
-        description: "機械番号の削除に失敗しました",
-        variant: "destructive",
-      });
-    }
+    if (!confirm(`機械番号「${machineNumber}」を削除してもよろしいですか？`)) return;
+    const response = await fetch(`/api/machines/machines/${machineId}`, { method: 'DELETE' });
+    if (response.ok) fetchMachineData();
   };
 
-  // 設定の保存
+  // LocalStorageからの設定読み込み
+  useEffect(() => {
+    const loadSettings = () => {
+      try {
+        const savedSettings = localStorage.getItem('emergencyRecoverySettings');
+        if (savedSettings) {
+          const settings = JSON.parse(savedSettings);
+
+                  if (settings.notifications !== undefined) setNotifications(settings.notifications);
+        if (settings.textToSpeech !== undefined) setTextToSpeech(settings.textToSpeech);
+        if (settings.speechVolume !== undefined) setSpeechVolume(settings.speechVolume);
+        if (settings.darkMode !== undefined) setDarkMode(settings.darkMode);
+        if (settings.autoSave !== undefined) setAutoSave(settings.autoSave);
+        if (settings.useOnlyKnowledgeBase !== undefined) setUseOnlyKnowledgeBase(settings.useOnlyKnowledgeBase);
+        if (settings.qaQuestions !== undefined) setQaQuestions(settings.qaQuestions);
+        }
+      } catch (error) {
+        console.error('設定の読み込みに失敗しました:', error);
+      }
+    };
+
+    loadSettings();
+  }, []);
+
+  // 設定保存関数（トップレベルに移動）
   const saveSettings = () => {
     try {
       const settings = {
@@ -358,26 +195,22 @@ export default function SettingsPage() {
         speechVolume,
         darkMode,
         autoSave,
-        useOnlyKnowledgeBase
+        useOnlyKnowledgeBase,
+        qaQuestions
       };
-
       localStorage.setItem('emergencyRecoverySettings', JSON.stringify(settings));
-
-      // 設定を別途保存 (チャットコンテキストで参照するため)
       localStorage.setItem('useOnlyKnowledgeBase', useOnlyKnowledgeBase.toString());
-
-      toast({
-        title: "設定を保存しました",
-        description: `設定が正常に保存されました。`,
-      });
+      window.dispatchEvent(new CustomEvent('settingsChanged', { detail: settings }));
     } catch (error) {
-      toast({
-        title: "設定の保存に失敗しました",
-        description: "設定の保存中にエラーが発生しました。",
-        variant: "destructive",
-      });
+      console.error('設定の保存に失敗しました:', error);
     }
   };
+
+  // 設定変更時の自動保存
+  useEffect(() => {
+    saveSettings();
+  }, [notifications, textToSpeech, speechVolume, darkMode, autoSave, useOnlyKnowledgeBase, qaQuestions]);
+
 
   const handleLogout = async () => {
     setShowWarningDialog(true);
@@ -445,6 +278,69 @@ export default function SettingsPage() {
     }
   };
 
+  // Q&A質問管理の関数
+  const handleEditQuestion = (index: number) => {
+    setEditingQuestionIndex(index);
+    setEditingQuestionText(qaQuestions[index]);
+  };
+
+  const handleSaveQuestion = () => {
+    if (editingQuestionIndex !== null && editingQuestionText.trim()) {
+      const newQuestions = [...qaQuestions];
+      newQuestions[editingQuestionIndex] = editingQuestionText.trim();
+      setQaQuestions(newQuestions);
+      setEditingQuestionIndex(null);
+      setEditingQuestionText('');
+      toast({
+        title: "質問を更新しました",
+        description: "Q&A質問が正常に更新されました"
+      });
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingQuestionIndex(null);
+    setEditingQuestionText('');
+  };
+
+  const handleAddQuestion = () => {
+    if (newQuestionText.trim()) {
+      setQaQuestions([...qaQuestions, newQuestionText.trim()]);
+      setNewQuestionText('');
+      toast({
+        title: "質問を追加しました",
+        description: "新しいQ&A質問が追加されました"
+      });
+    }
+  };
+
+  const handleDeleteQuestion = (index: number) => {
+    if (qaQuestions.length > 1) {
+      const newQuestions = qaQuestions.filter((_, i) => i !== index);
+      setQaQuestions(newQuestions);
+      toast({
+        title: "質問を削除しました",
+        description: "Q&A質問が削除されました"
+      });
+    } else {
+      toast({
+        title: "エラー",
+        description: "最低1つの質問が必要です",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleMoveQuestion = (fromIndex: number, direction: 'up' | 'down') => {
+    const newQuestions = [...qaQuestions];
+    if (direction === 'up' && fromIndex > 0) {
+      [newQuestions[fromIndex], newQuestions[fromIndex - 1]] = [newQuestions[fromIndex - 1], newQuestions[fromIndex]];
+    } else if (direction === 'down' && fromIndex < newQuestions.length - 1) {
+      [newQuestions[fromIndex], newQuestions[fromIndex + 1]] = [newQuestions[fromIndex + 1], newQuestions[fromIndex]];
+    }
+    setQaQuestions(newQuestions);
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 max-w-5xl mx-auto w-full bg-gradient-to-br from-blue-50 to-indigo-50">
       <div className="mb-6">
@@ -475,6 +371,306 @@ export default function SettingsPage() {
                 <div className={`text-white text-xs px-3 py-1 rounded-full ${user?.role === 'admin' ? 'bg-gradient-to-r from-purple-500 to-indigo-500' : 'bg-gradient-to-r from-blue-500 to-green-500'}`}>
                   {user?.role === 'admin' ? '管理者' : '一般ユーザー'}
                 </div>
+              </div>
+              
+              {/* このアプリについての説明 */}
+              <div className="border-t border-blue-100 pt-3">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-blue-700">Emergency Recovery Chat</p>
+                  <p className="text-sm text-blue-500">バージョン 1.0.0</p>
+                  <p className="text-sm text-blue-500">© 2024 All Rights Reserved</p>
+                  <p className="text-xs text-blue-400">
+                    応急復旧サポートのための対話型アシスタントシステム
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Admin Settings (only shown for admins) */}
+        {user?.role === 'admin' && (
+          <Card className="border border-blue-200 shadow-md overflow-hidden">
+            <CardHeader className="pb-2 bg-gradient-to-r from-blue-700 to-indigo-700 text-white">
+              <CardTitle className="text-lg flex items-center">
+                <Shield className="mr-2 h-5 w-5" />
+                管理者設定
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="bg-white">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
+                  <div>
+                    <p className="font-medium text-blue-800">ユーザー管理</p>
+                    <p className="text-sm text-blue-400">ユーザーアカウントを管理する</p>
+                  </div>
+                  <Link to="/users">
+                    <Button variant="outline" size="sm" className="border-blue-300 text-blue-700 hover:bg-blue-50">
+                      <UserPlus className="mr-2 h-4 w-4 text-blue-500" />
+                      管理
+                    </Button>
+                  </Link>
+                </div>
+
+                <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
+                  <div>
+                    <p className="font-medium text-blue-800">システム診断</p>
+                    <p className="text-sm text-blue-400">DB接続とGPT接続の状態を確認</p>
+                  </div>
+                  <Link to="/system-diagnostic">
+                    <Button variant="outline" size="sm" className="border-blue-300 text-blue-700 hover:bg-blue-50">
+                      <CheckCircle className="mr-2 h-4 w-4 text-blue-500" />
+                      診断
+                    </Button>
+                  </Link>
+                </div>
+
+                <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
+                  <Button
+                    onClick={handleCleanupUploads}
+                    variant="destructive"
+                    className="w-full"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    一時ファイルを削除
+                  </Button>
+
+                  <Button
+                    onClick={handleCleanupLogs}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <FileX className="mr-2 h-4 w-4" />
+                    ログファイルを削除
+                  </Button>
+                </div>
+
+                {/* 機種・機械番号管理UI */}
+                <div className="border-t border-blue-100 pt-4 space-y-4">
+                  {/* 機種追加 */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-blue-700">新規機種追加</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="機種名を入力"
+                        value={newMachineType}
+                        onChange={(e) => setNewMachineType(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button 
+                        onClick={addMachineType}
+                        size="sm"
+                        className="bg-blue-500 hover:bg-blue-600"
+                      >
+                        <Plus className="mr-1 h-3 w-3" />
+                        追加
+                      </Button>
+                    </div>
+                  </div>
+                  {/* 機械番号追加 */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-blue-700">新規機械番号追加</Label>
+                    <div className="flex gap-2">
+                      <Select value={selectedMachineType} onValueChange={setSelectedMachineType}>
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="機種を選択" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {machineTypes.map((type) => (
+                            <SelectItem key={type.id} value={type.id}>
+                              {type.machine_type_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        placeholder="機械番号を入力"
+                        value={newMachineNumber}
+                        onChange={(e) => setNewMachineNumber(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button 
+                        onClick={addMachineNumber}
+                        size="sm"
+                        className="bg-blue-500 hover:bg-blue-600"
+                      >
+                        <Plus className="mr-1 h-3 w-3" />
+                        追加
+                      </Button>
+                    </div>
+                  </div>
+                  {/* 現在の機種・機械番号一覧 */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-blue-700">現在の登録状況</Label>
+                    {isLoadingMachineData ? (
+                      <div className="text-sm text-blue-400">読み込み中...</div>
+                    ) : (
+                      <div className="space-y-2 max-h-40 overflow-y-auto">
+                        {machineTypes.map((type) => {
+                          const typeMachines = machines.filter(m => m.machine_type_id === type.id);
+                          return (
+                            <div key={type.id} className="text-sm border border-blue-200 rounded p-2">
+                              <div className="flex items-center justify-between">
+                                <div className="font-medium text-blue-700">{type.machine_type_name}</div>
+                                <Button
+                                  onClick={() => deleteMachineType(type.id, type.machine_type_name)}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                              <div className="text-blue-500 mt-1">
+                                {typeMachines.length > 0 ? (
+                                  <div className="space-y-1">
+                                    {typeMachines.map((machine) => (
+                                      <div key={machine.id} className="flex items-center justify-between bg-blue-50 rounded px-2 py-1">
+                                        <span>{machine.machine_number}</span>
+                                        <Button
+                                          onClick={() => deleteMachineNumber(machine.id, machine.machine_number)}
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-5 w-5 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                        >
+                                          <X className="h-2 w-2" />
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400">機械番号未登録</span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Q&A質問管理 */}
+        <Card className="border border-blue-200 shadow-md overflow-hidden col-span-2">
+          <CardHeader className="pb-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+            <CardTitle className="text-lg flex items-center">
+              <MessageSquare className="mr-2 h-5 w-5" />
+              Q&A質問管理
+            </CardTitle>
+            <CardDescription className="text-purple-100">
+              チャット画面のQ&Aモードで使用される質問を編集できます
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="bg-white">
+            <div className="space-y-4">
+              {/* 現在の質問一覧 */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-blue-700">現在の質問一覧</Label>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {qaQuestions.map((question, index) => (
+                    <div key={index} className="flex items-center gap-2 p-2 border border-blue-200 rounded">
+                      {editingQuestionIndex === index ? (
+                        <div className="flex-1 flex gap-2">
+                          <Input
+                            value={editingQuestionText}
+                            onChange={(e) => setEditingQuestionText(e.target.value)}
+                            className="flex-1"
+                            placeholder="質問を入力"
+                          />
+                          <Button
+                            onClick={handleSaveQuestion}
+                            size="sm"
+                            className="bg-green-500 hover:bg-green-600"
+                          >
+                            <CheckCircle className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            onClick={handleCancelEdit}
+                            size="sm"
+                            variant="outline"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex-1">
+                            <span className="text-sm font-medium text-blue-700">Q{index + 1}:</span>
+                            <span className="text-sm text-blue-600 ml-2">{question}</span>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              onClick={() => handleMoveQuestion(index, 'up')}
+                              size="sm"
+                              variant="ghost"
+                              disabled={index === 0}
+                              className="h-6 w-6 p-0"
+                            >
+                              ↑
+                            </Button>
+                            <Button
+                              onClick={() => handleMoveQuestion(index, 'down')}
+                              size="sm"
+                              variant="ghost"
+                              disabled={index === qaQuestions.length - 1}
+                              className="h-6 w-6 p-0"
+                            >
+                              ↓
+                            </Button>
+                            <Button
+                              onClick={() => handleEditQuestion(index)}
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0 text-blue-500 hover:text-blue-700"
+                            >
+                              <Edit3 className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              onClick={() => handleDeleteQuestion(index)}
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 新しい質問追加 */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-blue-700">新しい質問を追加</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="新しい質問を入力"
+                    value={newQuestionText}
+                    onChange={(e) => setNewQuestionText(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button 
+                    onClick={handleAddQuestion}
+                    size="sm"
+                    className="bg-purple-500 hover:bg-purple-600"
+                  >
+                    <Plus className="mr-1 h-3 w-3" />
+                    追加
+                  </Button>
+                </div>
+              </div>
+
+              {/* 説明 */}
+              <div className="text-xs text-blue-400 bg-blue-50 p-2 rounded">
+                <p>• 質問の順序は上下矢印ボタンで変更できます</p>
+                <p>• 最低1つの質問が必要です</p>
+                <p>• 変更は自動的に保存されます</p>
               </div>
             </div>
           </CardContent>
@@ -588,243 +784,6 @@ export default function SettingsPage() {
                   <Save className="mr-2 h-4 w-4" />
                   設定を保存
                 </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Admin Settings (only shown for admins) */}
-        {user?.role === 'admin' && (
-          <Card className="border border-blue-200 shadow-md overflow-hidden">
-            <CardHeader className="pb-2 bg-gradient-to-r from-blue-700 to-indigo-700 text-white">
-              <CardTitle className="text-lg flex items-center">
-                <Shield className="mr-2 h-5 w-5" />
-                管理者設定
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="bg-white">
-              <div className="space-y-4">
-                {/* システム健全性チェックは削除 - システム診断ページに統合 */}
-
-                <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
-                  <div>
-                    <p className="font-medium text-blue-800">ユーザー管理</p>
-                    <p className="text-sm text-blue-400">ユーザーアカウントを管理する</p>
-                  </div>
-                  <Link to="/users">
-                    <Button variant="outline" size="sm" className="border-blue-300 text-blue-700 hover:bg-blue-50">
-                      <UserPlus className="mr-2 h-4 w-4 text-blue-500" />
-                      管理
-                    </Button>
-                  </Link>
-                </div>
-
-                <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
-                  <div>
-                    <p className="font-medium text-blue-800">ドキュメント管理</p>
-                    <p className="text-sm text-blue-400">検索対象の資料を管理する</p>
-                  </div>
-                  <Link to="/documents">
-                    <Button variant="outline" size="sm" className="border-blue-300 text-blue-700 hover:bg-blue-50">
-                      <FileType className="mr-2 h-4 w-4 text-blue-500" />
-                      管理
-                    </Button>
-                  </Link>
-                </div>
-
-                <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
-                  <div>
-                    <p className="font-medium text-blue-800">システム診断</p>
-                    <p className="text-sm text-blue-400">DB接続とGPT接続の状態を確認</p>
-                  </div>
-                  <Link to="/system-diagnostic">
-                    <Button variant="outline" size="sm" className="border-blue-300 text-blue-700 hover:bg-blue-50">
-                      <CheckCircle className="mr-2 h-4 w-4 text-blue-500" />
-                      診断
-                    </Button>
-                  </Link>
-                </div>
-
-                <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
-                  <Button
-                    onClick={handleCleanupUploads}
-                    variant="destructive"
-                    className="w-full"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    一時ファイルを削除
-                  </Button>
-
-                  <Button
-                    onClick={handleCleanupLogs}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    <FileX className="mr-2 h-4 w-4" />
-                    ログファイルを削除
-                  </Button>
-                </div>
-
-                <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
-                  <div>
-                    <p className="font-medium text-blue-800">機種・機械番号管理</p>
-                    <p className="text-sm text-blue-400">機種と機械番号を登録・管理する</p>
-                  </div>
-                  <Button 
-                    onClick={fetchMachineData} 
-                    variant="outline" 
-                    size="sm" 
-                    className="border-blue-300 text-blue-700 hover:bg-blue-50"
-                  >
-                    <Database className="mr-2 h-4 w-4 text-blue-500" />
-                    更新
-                  </Button>
-                </div>
-
-                {/* 機種・機械番号管理UI */}
-                <div className="border-t border-blue-100 pt-4 space-y-4">
-                  {/* 機種追加 */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-blue-700">新規機種追加</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="機種名を入力"
-                        value={newMachineType}
-                        onChange={(e) => setNewMachineType(e.target.value)}
-                        className="flex-1"
-                      />
-                      <Button 
-                        onClick={addMachineType}
-                        size="sm"
-                        className="bg-blue-500 hover:bg-blue-600"
-                      >
-                        <Plus className="mr-1 h-3 w-3" />
-                        追加
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* 機械番号追加 */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-blue-700">新規機械番号追加</Label>
-                    <div className="flex gap-2">
-                      <Select value={selectedMachineType} onValueChange={setSelectedMachineType}>
-                        <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="機種を選択" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {machineTypes.map((type) => (
-                            <SelectItem key={type.id} value={type.id}>
-                              {type.machine_type_name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        placeholder="機械番号を入力"
-                        value={newMachineNumber}
-                        onChange={(e) => setNewMachineNumber(e.target.value)}
-                        className="flex-1"
-                      />
-                      <Button 
-                        onClick={addMachineNumber}
-                        size="sm"
-                        className="bg-blue-500 hover:bg-blue-600"
-                      >
-                        <Plus className="mr-1 h-3 w-3" />
-                        追加
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* 現在の機種・機械番号一覧 */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-blue-700">現在の登録状況</Label>
-                    {isLoadingMachineData ? (
-                      <div className="text-sm text-blue-400">読み込み中...</div>
-                    ) : (
-                      <div className="space-y-2 max-h-40 overflow-y-auto">
-                        {machineTypes.map((type) => {
-                          const typeMachines = machines.filter(m => m.machine_type_id === type.id);
-                          return (
-                            <div key={type.id} className="text-sm border border-blue-200 rounded p-2">
-                              <div className="flex items-center justify-between">
-                                <div className="font-medium text-blue-700">{type.machine_type_name}</div>
-                                <Button
-                                  onClick={() => deleteMachineType(type.id, type.machine_type_name)}
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              </div>
-                              <div className="text-blue-500 mt-1">
-                                {typeMachines.length > 0 ? (
-                                  <div className="space-y-1">
-                                    {typeMachines.map((machine) => (
-                                      <div key={machine.id} className="flex items-center justify-between bg-blue-50 rounded px-2 py-1">
-                                        <span>{machine.machine_number}</span>
-                                        <Button
-                                          onClick={() => deleteMachineNumber(machine.id, machine.machine_number)}
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-5 w-5 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                        >
-                                          <X className="h-2 w-2" />
-                                        </Button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <span className="text-gray-400">機械番号未登録</span>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
-                  <div>
-                    <p className="font-medium text-blue-800">ログアウト</p>
-                    <p className="text-sm text-blue-400">システムからログアウトする</p>
-                  </div>
-                  <Button 
-                    onClick={handleLogout} 
-                    variant="outline" 
-                    size="sm" 
-                    className="border-red-300 text-red-700 hover:bg-red-50"
-                  >
-                    <LogOut className="mr-2 h-4 w-4 text-red-500" />
-                    ログアウト
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* About */}
-        <Card className="border border-blue-200 shadow-md overflow-hidden">
-          <CardHeader className="pb-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white">
-            <CardTitle className="text-lg flex items-center">
-              <Info className="mr-2 h-5 w-5" />
-              このアプリについて
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="bg-white">
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-blue-700">Emergency Recovery Chat</p>
-              <p className="text-sm text-cyan-500">バージョン 1.0.0</p>
-              <p className="text-sm text-cyan-500">© 2024 All Rights Reserved</p>
-              <div className="pt-2 mt-2 border-t border-blue-100">
-                <p className="text-xs text-blue-400">
-                  応急復旧サポートのための対話型アシスタントシステム
-                </p>
               </div>
             </div>
           </CardContent>

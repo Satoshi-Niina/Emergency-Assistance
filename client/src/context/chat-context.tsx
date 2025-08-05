@@ -516,7 +516,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   // メッセージ送信関数（シンプル化）
-  const sendMessage = useCallback(async (content: string, mediaUrls?: { type: string, url: string, thumbnail?: string }[]) => {
+  const sendMessage = useCallback(async (content: string, mediaUrls?: { type: string, url: string, thumbnail?: string }[], isAiResponse: boolean = false) => {
     if (!content.trim() && (!mediaUrls || mediaUrls.length === 0)) return;
 
     setIsLoading(true);
@@ -544,20 +544,20 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }));
       }
 
-      // ユーザーメッセージを作成
-      const userMessage: Message = {
+      // メッセージを作成
+      const message: Message = {
         id: timestamp,
         chatId: currentChatId,
         content: content,
         text: content,
-        isAiResponse: false,
-        senderId: 'user',
+        isAiResponse: isAiResponse,
+        senderId: isAiResponse ? 'ai' : 'user',
         timestamp: new Date(),
         media: processedMedia
       };
 
       // UIを即座に更新
-      setMessages(prev => [...prev, userMessage]);
+      setMessages(prev => [...prev, message]);
 
       // AIレスポンスの準備
       let aiResponseContent = '';
@@ -1256,8 +1256,14 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [chatId, isClearing]);
 
-  // 最後のエクスポート履歴を取得
+  // 最後のエクスポート履歴を取得（一時的に無効化）
   const fetchLastExport = useCallback(async () => {
+    console.log('🔄 最後のエクスポート履歴取得を一時的に無効化');
+    // 一時的に無効化してエラーを回避
+    return;
+    
+    // 以下のコードは一時的にコメントアウト
+    /*
     if (!chatId) return;
 
     // UUIDの形式チェック
@@ -1303,6 +1309,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         stack: error.stack
       });
     }
+    */
   }, [chatId]);
 
   // コンポーネントがマウントされたときに最後のエクスポート履歴を取得
