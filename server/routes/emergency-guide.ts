@@ -32,7 +32,7 @@ function cleanupTempDirectory(dirPath) {
 }
 const router: any = Router();
 // ディレクトリ構造の設定
-const knowledgeBaseDir: any = path.resolve('./knowledge-base');
+const knowledgeBaseDir: any = path.join(process.cwd(), 'knowledge-base');
 const pptDir: any = path.join(knowledgeBaseDir, 'ppt');
 const jsonDir: any = path.join(knowledgeBaseDir, 'json');
 const imageDir: any = path.join(knowledgeBaseDir, 'images');
@@ -417,7 +417,7 @@ async function processFile(filePath) {
                     }
                 }
                 // 元のJSON形式を保存するためのトラブルシューティングディレクトリ
-                const troubleshootingDir: any = path.join(__dirname, '../../knowledge-base/troubleshooting');
+                const troubleshootingDir: any = path.join(process.cwd(), 'knowledge-base/troubleshooting');
                 // トラブルシューティングディレクトリが存在しない場合は作成
                 if (!fs.existsSync(troubleshootingDir)) {
                     fs.mkdirSync(troubleshootingDir, { recursive: true });
@@ -597,7 +597,7 @@ router.get('/detail/:id', (req, res) => {
         // トラブルシューティングファイルかどうかをチェック
         if (id.startsWith('ts_')) {
             // トラブルシューティングファイルの場合
-            const troubleshootingDir: any = path.join(__dirname, '../../knowledge-base/troubleshooting');
+            const troubleshootingDir: any = path.join(process.cwd(), 'knowledge-base/troubleshooting');
             const tsId: any = id.replace('ts_', ''); // プレフィックスを削除
             const filePath: any = path.join(troubleshootingDir, `${tsId}.json`);
             if (!fs.existsSync(filePath)) {
@@ -672,7 +672,7 @@ router.post('/update/:id', (req, res) => {
         // トラブルシューティングファイルかどうかをチェック
         if (id.startsWith('ts_')) {
             // トラブルシューティングファイルの場合
-            const troubleshootingDir: any = path.join(__dirname, '../../knowledge-base/troubleshooting');
+            const troubleshootingDir: any = path.join(process.cwd(), 'knowledge-base/troubleshooting');
             const tsId: any = id.replace('ts_', ''); // プレフィックスを削除
             const filePath: any = path.join(troubleshootingDir, `${tsId}.json`);
             if (!fs.existsSync(filePath)) {

@@ -47,7 +47,10 @@ const HistoryPage: React.FC = () => {
   const [showExportHistory, setShowExportHistory] = useState(false);
 
   // 機種・機械番号マスターデータ
-  const [machineData, setMachineData] = useState<MachineData>({ machineTypes: [], machines: [] });
+  const [machineData, setMachineData] = useState<MachineData>({ 
+    machineTypes: [], 
+    machines: [] 
+  });
   const [machineDataLoading, setMachineDataLoading] = useState(false);
 
   // データ取得（サーバーAPIから取得）
@@ -61,9 +64,10 @@ const HistoryPage: React.FC = () => {
     try {
       setMachineDataLoading(true);
       const data = await fetchMachineData();
-      setMachineData(data);
+      setMachineData(data || { machineTypes: [], machines: [] });
     } catch (error) {
       console.error('機種・機械番号データの取得に失敗しました:', error);
+      setMachineData({ machineTypes: [], machines: [] });
     } finally {
       setMachineDataLoading(false);
     }
@@ -82,14 +86,15 @@ const HistoryPage: React.FC = () => {
       if (filters.machineNumber) searchFilters.machineNumber = filters.machineNumber;
       
       const data = await fetchHistoryList(searchFilters);
-      setHistoryItems(data.items);
-      setFilteredItems(data.items);
-      setTotalPages(Math.ceil(data.total / 20));
+      setHistoryItems(data?.items || []);
+      setFilteredItems(data?.items || []);
+      setTotalPages(Math.ceil((data?.total || 0) / 20));
       setCurrentPage(page);
     } catch (error) {
       console.error('履歴データの取得に失敗しました:', error);
       setHistoryItems([]);
       setFilteredItems([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
@@ -160,9 +165,10 @@ const HistoryPage: React.FC = () => {
   const fetchExportHistoryData = async () => {
     try {
       const data = await fetchExportHistory();
-      setExportHistory(data);
+      setExportHistory(data || []);
     } catch (error) {
       console.error('エクスポート履歴の取得に失敗しました:', error);
+      setExportHistory([]);
     }
   };
 
@@ -312,7 +318,7 @@ const HistoryPage: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">すべての機種</SelectItem>
-                {machineData.machineTypes.map((type) => (
+                {machineData.machineTypes && machineData.machineTypes.length > 0 && machineData.machineTypes.map((type) => (
                   <SelectItem key={type.id} value={type.machineTypeName}>
                     {type.machineTypeName}
                   </SelectItem>
@@ -330,7 +336,7 @@ const HistoryPage: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">すべての機械番号</SelectItem>
-                {machineData.machines.map((machine) => (
+                {machineData.machines && machineData.machines.length > 0 && machineData.machines.map((machine) => (
                   <SelectItem key={machine.id} value={machine.machineNumber}>
                     {machine.machineNumber} ({machine.machineTypeName})
                   </SelectItem>

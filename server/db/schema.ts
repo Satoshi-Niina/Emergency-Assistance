@@ -45,16 +45,16 @@ export const media = pgTable('media', {
     createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
-// 緊急フローテーブル
-export const emergencyFlows = pgTable('emergency_flows', {
-    id: text('id').primaryKey().default(sql`gen_random_uuid()`),
-    title: text('title').notNull(),
-    description: text('description'),
-    steps: jsonb('steps').notNull(),
-    keyword: text('keyword'), // オプショナルに変更
-    category: text('category').notNull().default(''),
-    createdAt: timestamp('created_at').defaultNow().notNull()
-});
+// 緊急フローテーブル（削除予定 - JSONファイルに移行）
+// export const emergencyFlows = pgTable('emergency_flows', {
+//     id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+//     title: text('title').notNull(),
+//     description: text('description'),
+//     steps: jsonb('steps').notNull(),
+//     keyword: text('keyword'), // オプショナルに変更
+//     category: text('category').notNull().default(''),
+//     createdAt: timestamp('created_at').defaultNow().notNull()
+// });
 
 // 画像テーブル
 export const images = pgTable('images', {
@@ -152,13 +152,13 @@ export const baseDocuments = pgTable('base_documents', {
     createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
-// 応急処置フローテーブル
-export const supportFlows = pgTable('support_flows', {
-    id: text('id').primaryKey().default(sql`gen_random_uuid()`),
-    title: text('title').notNull(),
-    jsonData: jsonb('json_data').notNull().default('{}'),
-    createdAt: timestamp('created_at').defaultNow().notNull()
-});
+// 応急処置フローテーブル（削除予定 - JSONファイルに移行）
+// export const supportFlows = pgTable('support_flows', {
+//     id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+//     title: text('title').notNull(),
+//     jsonData: jsonb('json_data').notNull().default('{}'),
+//     createdAt: timestamp('created_at').defaultNow().notNull()
+// });
 
 // 機種テーブル
 export const machineTypes = pgTable('machine_types', {
@@ -183,7 +183,7 @@ export const schema = {
     media,
     documents,
     keywords,
-    emergencyFlows,
+    // emergencyFlows, // 削除 - JSONファイルに移行
     images,
     imageData,
     chatExports,
@@ -191,7 +191,7 @@ export const schema = {
     historyImages,
     supportHistory,
     baseDocuments,
-    supportFlows,
+    // supportFlows, // 削除 - JSONファイルに移行
     machineTypes,
     machines,
 };

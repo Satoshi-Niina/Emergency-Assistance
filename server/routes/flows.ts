@@ -1,16 +1,14 @@
 import express from 'express';
-import { db } from '../db/index.js';
-import { supportFlows } from '../db/schema.js';
-import { eq } from 'drizzle-orm';
-import { z } from 'zod';
+import fs from 'fs';
+import path from 'path';
 
 const router = express.Router();
 
 // バリデーションスキーマ
-const createFlowSchema = z.object({
-  title: z.string().min(1, 'タイトルは必須です'),
-  jsonData: z.any().optional() // JSONBデータ
-});
+const createFlowSchema = {
+  title: (value: string) => value && value.length > 0 ? null : 'タイトルは必須です',
+  jsonData: (value: any) => null // オプショナル
+};
 
 /**
  * GET /api/flows
@@ -20,14 +18,56 @@ router.get('/', async (req, res) => {
   try {
     console.log('🔄 応急処置フロー取得リクエスト');
     
-    // support_flowsテーブルから全データを取得
-    const flows = await db.select({
-      id: supportFlows.id,
-      title: supportFlows.title,
-      jsonData: supportFlows.jsonData,
-      createdAt: supportFlows.createdAt
-    }).from(supportFlows)
-    .orderBy(supportFlows.createdAt);
+    // トラブルシューティングディレクトリからJSONファイルを読み込み
+    const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+    console.log('🔍 トラブルシューティングディレクトリ:', troubleshootingDir);
+    
+    if (!fs.existsSync(troubleshootingDir)) {
+      console.log('❌ トラブルシューティングディレクトリが存在しません');
+      return res.json({
+        success: true,
+        flows: [],
+        total: 0,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    const files = fs.readdirSync(troubleshootingDir);
+    const jsonFiles = files.filter(file => file.endsWith('.json'));
+    
+    console.log('📄 JSONファイル:', jsonFiles);
+    
+    const flows = [];
+    
+    for (const file of jsonFiles) {
+      try {
+        const filePath = path.join(troubleshootingDir, file);
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const flowData = JSON.parse(fileContent);
+        
+        // フローデータを整形
+        const flow = {
+          id: flowData.id || file.replace('.json', ''),
+          title: flowData.title || 'タイトルなし',
+          description: flowData.description || '',
+          fileName: file,
+          filePath: `knowledge-base/troubleshooting/${file}`,
+          createdAt: flowData.createdAt || new Date().toISOString(),
+          updatedAt: flowData.updatedAt || new Date().toISOString(),
+          triggerKeywords: flowData.triggerKeywords || flowData.trigger || [],
+          category: flowData.category || '',
+          steps: flowData.steps || [],
+          dataSource: 'file'
+        };
+        
+        flows.push(flow);
+      } catch (error) {
+        console.error(`❌ ファイル ${file} の読み込みエラー:`, error);
+      }
+    }
+    
+    // 作成日時でソート
+    flows.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
     console.log(`✅ 応急処置フロー取得完了: ${flows.length}件`);
 
@@ -56,29 +96,40 @@ router.post('/', async (req, res) => {
   try {
     console.log('🔄 新規応急処置フロー作成リクエスト');
     
-    // バリデーション
-    const validationResult = createFlowSchema.safeParse(req.body);
-    if (!validationResult.success) {
-      return res.status(400).json({
-        success: false,
-        error: 'バリデーションエラー',
-        details: validationResult.error.errors
-      });
+    // トラブルシューティングディレクトリのパスを取得
+    const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+    
+    if (!fs.existsSync(troubleshootingDir)) {
+      fs.mkdirSync(troubleshootingDir, { recursive: true });
     }
+    
+    // 新しいIDを生成
+    const newId = `flow_${Date.now()}`;
+    const fileName = `${newId}.json`;
+    const filePath = path.join(troubleshootingDir, fileName);
+    
+    // 新規フローデータを作成
+    const newFlowData = {
+      id: newId,
+      title: req.body.title || '新規フロー',
+      description: req.body.description || '',
+      steps: req.body.steps || [],
+      triggerKeywords: req.body.triggerKeywords || [],
+      category: req.body.category || '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      dataSource: 'file',
+      ...req.body
+    };
+    
+    // JSONファイルを作成
+    fs.writeFileSync(filePath, JSON.stringify(newFlowData, null, 2), 'utf-8');
 
-    const { title, jsonData } = validationResult.data;
-
-    // 新規フローを作成
-    const newFlow = await db.insert(supportFlows).values({
-      title,
-      jsonData: jsonData || {}
-    }).returning();
-
-    console.log('✅ 新規応急処置フロー作成完了:', newFlow[0].id);
+    console.log('✅ 新規応急処置フロー作成完了:', newId);
 
     res.status(201).json({
       success: true,
-      data: newFlow[0],
+      data: newFlowData,
       message: '応急処置フローが正常に作成されました'
     });
 
@@ -101,16 +152,40 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params;
     console.log(`🔄 応急処置フロー詳細取得: ${id}`);
 
-    const flow = await db.select({
-      id: supportFlows.id,
-      title: supportFlows.title,
-      jsonData: supportFlows.jsonData,
-      createdAt: supportFlows.createdAt
-    }).from(supportFlows)
-    .where(eq(supportFlows.id, id))
-    .limit(1);
-
-    if (flow.length === 0) {
+    // トラブルシューティングディレクトリから該当するJSONファイルを検索
+    const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+    
+    if (!fs.existsSync(troubleshootingDir)) {
+      return res.status(404).json({
+        success: false,
+        error: 'トラブルシューティングディレクトリが見つかりません'
+      });
+    }
+    
+    const files = fs.readdirSync(troubleshootingDir);
+    const jsonFiles = files.filter(file => file.endsWith('.json'));
+    
+    let flowData = null;
+    let fileName = null;
+    
+    // IDに一致するファイルを検索
+    for (const file of jsonFiles) {
+      try {
+        const filePath = path.join(troubleshootingDir, file);
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const data = JSON.parse(fileContent);
+        
+        if (data.id === id || file.replace('.json', '') === id) {
+          flowData = data;
+          fileName = file;
+          break;
+        }
+      } catch (error) {
+        console.error(`❌ ファイル ${file} の読み込みエラー:`, error);
+      }
+    }
+    
+    if (!flowData) {
       return res.status(404).json({
         success: false,
         error: '応急処置フローが見つかりません'
@@ -121,7 +196,20 @@ router.get('/:id', async (req, res) => {
 
     res.json({
       success: true,
-      data: flow[0]
+      data: {
+        id: flowData.id,
+        title: flowData.title || 'タイトルなし',
+        description: flowData.description || '',
+        fileName: fileName,
+        filePath: `knowledge-base/troubleshooting/${fileName}`,
+        createdAt: flowData.createdAt || new Date().toISOString(),
+        updatedAt: flowData.updatedAt || new Date().toISOString(),
+        triggerKeywords: flowData.triggerKeywords || flowData.trigger || [],
+        category: flowData.category || '',
+        steps: flowData.steps || [],
+        dataSource: 'file',
+        ...flowData // 元のデータも含める
+      }
     });
 
   } catch (error) {
@@ -143,39 +231,62 @@ router.put('/:id', async (req, res) => {
     const { id } = req.params;
     console.log(`🔄 応急処置フロー更新: ${id}`);
     
-    // バリデーション
-    const validationResult = createFlowSchema.safeParse(req.body);
-    if (!validationResult.success) {
-      return res.status(400).json({
+    // トラブルシューティングディレクトリから該当するJSONファイルを検索
+    const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+    
+    if (!fs.existsSync(troubleshootingDir)) {
+      return res.status(404).json({
         success: false,
-        error: 'バリデーションエラー',
-        details: validationResult.error.errors
+        error: 'トラブルシューティングディレクトリが見つかりません'
       });
     }
-
-    const { title, jsonData } = validationResult.data;
-
-    // フローを更新
-    const updatedFlow = await db.update(supportFlows)
-      .set({
-        title,
-        jsonData: jsonData || {}
-      })
-      .where(eq(supportFlows.id, id))
-      .returning();
-
-    if (updatedFlow.length === 0) {
+    
+    const files = fs.readdirSync(troubleshootingDir);
+    const jsonFiles = files.filter(file => file.endsWith('.json'));
+    
+    let flowData = null;
+    let fileName = null;
+    
+    // IDに一致するファイルを検索
+    for (const file of jsonFiles) {
+      try {
+        const filePath = path.join(troubleshootingDir, file);
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const data = JSON.parse(fileContent);
+        
+        if (data.id === id || file.replace('.json', '') === id) {
+          flowData = data;
+          fileName = file;
+          break;
+        }
+      } catch (error) {
+        console.error(`❌ ファイル ${file} の読み込みエラー:`, error);
+      }
+    }
+    
+    if (!flowData) {
       return res.status(404).json({
         success: false,
         error: '応急処置フローが見つかりません'
       });
     }
 
+    // 更新データを準備
+    const updatedData = {
+      ...flowData,
+      ...req.body,
+      updatedAt: new Date().toISOString()
+    };
+
+    // JSONファイルを更新
+    const filePath = path.join(troubleshootingDir, fileName);
+    fs.writeFileSync(filePath, JSON.stringify(updatedData, null, 2), 'utf-8');
+
     console.log('✅ 応急処置フロー更新完了');
 
     res.json({
       success: true,
-      data: updatedFlow[0],
+      data: updatedData,
       message: '応急処置フローが正常に更新されました'
     });
 
@@ -198,23 +309,55 @@ router.delete('/:id', async (req, res) => {
     const { id } = req.params;
     console.log(`🔄 応急処置フロー削除: ${id}`);
 
-    const deletedFlow = await db.delete(supportFlows)
-      .where(eq(supportFlows.id, id))
-      .returning();
-
-    if (deletedFlow.length === 0) {
+    // トラブルシューティングディレクトリから該当するJSONファイルを検索
+    const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+    
+    if (!fs.existsSync(troubleshootingDir)) {
+      return res.status(404).json({
+        success: false,
+        error: 'トラブルシューティングディレクトリが見つかりません'
+      });
+    }
+    
+    const files = fs.readdirSync(troubleshootingDir);
+    const jsonFiles = files.filter(file => file.endsWith('.json'));
+    
+    let fileName = null;
+    
+    // IDに一致するファイルを検索
+    for (const file of jsonFiles) {
+      try {
+        const filePath = path.join(troubleshootingDir, file);
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const data = JSON.parse(fileContent);
+        
+        if (data.id === id || file.replace('.json', '') === id) {
+          fileName = file;
+          break;
+        }
+      } catch (error) {
+        console.error(`❌ ファイル ${file} の読み込みエラー:`, error);
+      }
+    }
+    
+    if (!fileName) {
       return res.status(404).json({
         success: false,
         error: '応急処置フローが見つかりません'
       });
     }
 
+    // JSONファイルを削除
+    const filePath = path.join(troubleshootingDir, fileName);
+    fs.unlinkSync(filePath);
+
     console.log('✅ 応急処置フロー削除完了');
 
     res.json({
       success: true,
       message: '応急処置フローが正常に削除されました',
-      deletedId: id
+      deletedId: id,
+      deletedFile: fileName
     });
 
   } catch (error) {

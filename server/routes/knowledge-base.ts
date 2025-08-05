@@ -1,145 +1,230 @@
-import path from 'path';
+import express from 'express';
+import { upload } from '../lib/multer-config.js';
+import { 
+  saveKnowledgeData, 
+  listKnowledgeData, 
+  getKnowledgeData, 
+  deleteKnowledgeData,
+  KnowledgeType 
+} from '../lib/knowledge-base.js';
 import fs from 'fs';
-import { z } from 'zod';
-const knowledgeBasePath: any = path.join(process.cwd(), 'knowledge-base');
-// スキーマ定義
-const imageMetadataSchema: any = z.object({
-    id: z.string(),
-    filename: z.string(),
-    description: z.string(),
-    tags: z.array(z.string()),
-    category: z.string()
+import path from 'path';
+
+const router = express.Router();
+
+/**
+ * GET /api/knowledge-base
+ * ナレッジデータ一覧を取得
+ */
+router.get('/', async (req, res) => {
+  try {
+    const { type } = req.query;
+    const knowledgeType = type ? (type as KnowledgeType) : undefined;
+    
+    console.log('📚 ナレッジデータ一覧取得リクエスト:', { type: knowledgeType });
+    
+    const result = listKnowledgeData(knowledgeType);
+    
+    res.json({
+      success: result.success,
+      data: result.data,
+      message: result.message,
+      total: result.data.length,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ ナレッジデータ一覧取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'ナレッジデータ一覧の取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
 });
-const flowSchema: any = z.object({
-    id: z.string(),
-    title: z.string(),
-    steps: z.array(z.object({
-        id: z.string(),
-        title: z.string(),
-        description: z.string(),
-        imageId: z.string().optional()
-    }))
+
+/**
+ * GET /api/knowledge-base/:id
+ * 特定のナレッジデータを取得
+ */
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log('📚 ナレッジデータ取得リクエスト:', { id });
+    
+    const result = getKnowledgeData(id);
+    
+    if (!result.success) {
+      return res.status(404).json({
+        success: false,
+        error: result.message || 'ナレッジデータが見つかりません'
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: result.data,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ ナレッジデータ取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'ナレッジデータの取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
 });
-// ルート登録関数
-export function registerKnowledgeBaseRoutes(app) {
-    // GPTデータの取得
-    app.get('/api/knowledge/gpt/data', (req, res) => {
-        try {
-            const dataPath: any = path.join(knowledgeBasePath, 'gpt', 'data');
-            const files: any = fs.readdirSync(dataPath);
-            const data: any = files.map(file => {
-                const content: any = fs.readFileSync(path.join(dataPath, file), 'utf-8');
-                return JSON.parse(content);
-            });
-            res.json(data);
-        }
-        catch (error) {
-            console.error('Error reading GPT data:', error);
-            res.status(500).json({ error: 'Failed to read GPT data' });
-        }
+
+/**
+ * POST /api/knowledge-base/upload
+ * ナレッジデータをアップロード
+ */
+router.post('/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'ファイルがアップロードされていません'
+      });
+    }
+    
+    const { title, category, tags, description } = req.body;
+    const filePath = req.file.path;
+    const filename = req.file.originalname;
+    
+    console.log('📚 ナレッジデータアップロードリクエスト:', { 
+      filename, 
+      title, 
+      category, 
+      tags: tags ? tags.split(',') : undefined 
     });
-    // 画像メタデータの取得
-    app.get('/api/knowledge/fuse/images', (req, res) => {
-        try {
-            const metadataPath: any = path.join(knowledgeBasePath, 'fuse', 'data', 'image_search_data.json');
-            if (fs.existsSync(metadataPath)) {
-                const data: any = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
-                res.json(data);
-            }
-            else {
-                res.json([]);
-            }
-        }
-        catch (error) {
-            console.error('Error reading image metadata:', error);
-            res.status(500).json({ error: 'Failed to read image metadata' });
-        }
+    
+    // ファイル内容を読み込み
+    const content = fs.readFileSync(filePath, 'utf-8');
+    
+    // メタデータを準備
+    const metadata = {
+      title: title || filename,
+      category: category || 'general',
+      tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
+      description: description || `アップロードされた${filename}`
+    };
+    
+    // ナレッジデータとして保存
+    const result = saveKnowledgeData(filename, content, metadata);
+    
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        error: result.message || 'ナレッジデータの保存に失敗しました'
+      });
+    }
+    
+    // アップロードされた一時ファイルを削除
+    try {
+      fs.unlinkSync(filePath);
+    } catch (deleteError) {
+      console.warn('一時ファイル削除警告:', deleteError);
+    }
+    
+    res.json({
+      success: true,
+      data: result.metadata,
+      message: result.message,
+      timestamp: new Date().toISOString()
     });
-    // トラブルシューティングフローの取得
-    app.get('/api/knowledge/troubleshooting/flows', (req, res) => {
-        try {
-            const flowsPath: any = path.join(knowledgeBasePath, 'troubleshooting', 'flows');
-            const files: any = fs.readdirSync(flowsPath);
-            const flows: any = files.map(file => {
-                const content: any = fs.readFileSync(path.join(flowsPath, file), 'utf-8');
-                return JSON.parse(content);
-            });
-            res.json(flows);
-        }
-        catch (error) {
-            console.error('Error reading flows:', error);
-            res.status(500).json({ error: 'Failed to read flows' });
-        }
+    
+  } catch (error) {
+    console.error('❌ ナレッジデータアップロードエラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'ナレッジデータのアップロードに失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
-    // 共有データの取得
-    app.get('/api/knowledge/shared/:type', (req, res) => {
-        try {
-            const { type } = req.params;
-            const dataPath: any = path.join(knowledgeBasePath, 'shared', type);
-            if (fs.existsSync(dataPath)) {
-                const files: any = fs.readdirSync(dataPath);
-                const data: any = files.map(file => {
-                    const content: any = fs.readFileSync(path.join(dataPath, file), 'utf-8');
-                    return JSON.parse(content);
-                });
-                res.json(data);
-            }
-            else {
-                res.json([]);
-            }
-        }
-        catch (error) {
-            console.error(`Error reading shared ${req.params.type} data:`, error);
-            res.status(500).json({ error: `Failed to read shared ${req.params.type} data` });
-        }
+  }
+});
+
+/**
+ * DELETE /api/knowledge-base/:id
+ * ナレッジデータを削除
+ */
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log('📚 ナレッジデータ削除リクエスト:', { id });
+    
+    const result = deleteKnowledgeData(id);
+    
+    if (!result.success) {
+      return res.status(404).json({
+        success: false,
+        error: result.message || 'ナレッジデータの削除に失敗しました'
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: result.message,
+      timestamp: new Date().toISOString()
     });
-    // 画像ファイルの提供
-    app.get('/api/knowledge/images/:category/:filename', (req, res) => {
-        try {
-            const { category, filename } = req.params;
-            const imagePath: any = path.join(knowledgeBasePath, category, 'images', filename);
-            if (fs.existsSync(imagePath)) {
-                res.sendFile(imagePath);
-            }
-            else {
-                res.status(404).json({ error: 'Image not found' });
-            }
-        }
-        catch (error) {
-            console.error('Error serving image:', error);
-            res.status(500).json({ error: 'Failed to serve image' });
-        }
+    
+  } catch (error) {
+    console.error('❌ ナレッジデータ削除エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'ナレッジデータの削除に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
-    // 新しいトラブルシューティングフローの作成
-    app.post('/api/knowledge/troubleshooting/flows', (req, res) => {
-        try {
-            const flow: any = flowSchema.parse(req.body);
-            const flowsPath: any = path.join(knowledgeBasePath, 'troubleshooting', 'flows');
-            const filePath: any = path.join(flowsPath, `${flow.id}.json`);
-            fs.writeFileSync(filePath, JSON.stringify(flow, null, 2));
-            res.status(201).json(flow);
-        }
-        catch (error) {
-            console.error('Error creating flow:', error);
-            res.status(500).json({ error: 'Failed to create flow' });
-        }
+  }
+});
+
+/**
+ * GET /api/knowledge-base/types
+ * ナレッジデータの種類一覧を取得
+ */
+router.get('/types/list', async (req, res) => {
+  try {
+    console.log('📚 ナレッジデータ種類一覧取得リクエスト');
+    
+    const types = Object.values(KnowledgeType).map(type => ({
+      value: type,
+      label: getTypeLabel(type)
+    }));
+    
+    res.json({
+      success: true,
+      data: types,
+      timestamp: new Date().toISOString()
     });
-    // 画像メタデータの更新
-    app.post('/api/knowledge/fuse/metadata', (req, res) => {
-        try {
-            const metadata: any = imageMetadataSchema.parse(req.body);
-            const metadataPath: any = path.join(knowledgeBasePath, 'fuse', 'data', 'image_search_data.json');
-            let existingData = [];
-            if (fs.existsSync(metadataPath)) {
-                existingData = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
-            }
-            const updatedData = [...existingData, metadata];
-            fs.writeFileSync(metadataPath, JSON.stringify(updatedData, null, 2));
-            res.status(201).json(metadata);
-        }
-        catch (error) {
-            console.error('Error updating image metadata:', error);
-            res.status(500).json({ error: 'Failed to update image metadata' });
-        }
+    
+  } catch (error) {
+    console.error('❌ ナレッジデータ種類一覧取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'ナレッジデータ種類一覧の取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
+  }
+});
+
+/**
+ * ナレッジデータの種類ラベルを取得
+ */
+function getTypeLabel(type: KnowledgeType): string {
+  const labels: { [key in KnowledgeType]: string } = {
+    [KnowledgeType.TROUBLESHOOTING]: 'トラブルシューティング',
+    [KnowledgeType.DOCUMENT]: 'ドキュメント',
+    [KnowledgeType.QA]: 'Q&A',
+    [KnowledgeType.JSON]: 'JSONデータ',
+    [KnowledgeType.PPT]: 'プレゼンテーション',
+    [KnowledgeType.TEXT]: 'テキスト'
+  };
+  
+  return labels[type] || type;
 }
+
+export default router;

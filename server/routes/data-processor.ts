@@ -76,7 +76,7 @@ function determineOptimalProcessingTypes(ext: any, filename) {
 const storage: any = multer.diskStorage({
     destination: (req, file, cb) => {
         // 一時保存ディレクトリはknowledge-base内に配置
-        const tempDir: any = path.join(__dirname, '../../knowledge-base/temp');
+const tempDir: any = path.join(process.cwd(), 'knowledge-base/temp');
         // ディレクトリの存在を確認し、ない場合は作成
         if (!fs.existsSync(tempDir)) {
             fs.mkdirSync(tempDir, { recursive: true });
@@ -133,7 +133,7 @@ export function registerDataProcessorRoutes(app) {
             if (extractKnowledgeBase) {
                 // ナレッジベースに追加
                 const result: any = await addDocumentToKnowledgeBase({ originalname: path.basename(filePath), path: filePath, mimetype: 'text/plain' }, fs.readFileSync(filePath, 'utf-8'));
-                docId = result.success ? path.basename(filePath, path.extname(filePath)) : '';
+                docId = result.success ? result.docId : '';
                 log(`ナレッジベースに追加しました: ${docId}`);
             }
             else if (extractImageSearch || createQA) {
@@ -146,6 +146,10 @@ export function registerDataProcessorRoutes(app) {
                 docId = `doc_${timestamp}_${Math.floor(Math.random() * 1000)}`;
                 // ナレッジベースインデックスに追加
                 const index: any = loadKnowledgeBaseIndex();
+                // documents配列が存在しない場合は初期化
+                if (!index.documents) {
+                    index.documents = [];
+                }
                 index.documents.push({
                     id: docId,
                     title: filename,
@@ -155,7 +159,7 @@ export function registerDataProcessorRoutes(app) {
                     addedAt: new Date().toISOString()
                 });
                 // インデックスを保存
-                const indexPath: any = path.join(__dirname, '../../knowledge-base/index.json');
+                const indexPath: any = path.join(process.cwd(), 'knowledge-base/index.json');
                 fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
                 log(`画像検索/Q&A専用ドキュメントとして追加: ${docId}`);
             }
@@ -185,7 +189,7 @@ export function registerDataProcessorRoutes(app) {
                         qaPairs = await generateQAPairs(fullText, 10);
                         log(`${qaPairs.length}個のQ&Aペアを生成しました`);
                         // 結果を保存
-                        const qaDir: any = path.join(__dirname, '../../knowledge-base/qa');
+                        const qaDir: any = path.join(process.cwd(), 'knowledge-base/qa');
                         if (!fs.existsSync(qaDir)) {
                             fs.mkdirSync(qaDir, { recursive: true });
                         }
@@ -220,7 +224,7 @@ export function registerDataProcessorRoutes(app) {
                         // ドキュメントから抽出された画像がある場合
                         if (processedDocument.images && processedDocument.images.length > 0) {
                             // 応急処置ガイド用のディレクトリ設定
-                            const guidesDir: any = path.join(__dirname, '../../knowledge-base/troubleshooting');
+                            const guidesDir: any = path.join(process.cwd(), 'knowledge-base/troubleshooting');
                             if (!fs.existsSync(guidesDir)) {
                                 fs.mkdirSync(guidesDir, { recursive: true });
                             }
@@ -251,7 +255,7 @@ export function registerDataProcessorRoutes(app) {
                             fs.writeFileSync(guideFilePath, JSON.stringify(guideData, null, 2));
                             log(`応急処置ガイドを作成しました: ${guideFilePath} (${guideData.steps.length}ステップ)`);
                             // メタデータファイルも保存
-                            const jsonDir: any = path.join(__dirname, '../../knowledge-base/json');
+                            const jsonDir: any = path.join(process.cwd(), 'knowledge-base/json');
                             if (!fs.existsSync(jsonDir)) {
                                 fs.mkdirSync(jsonDir, { recursive: true });
                             }
@@ -431,7 +435,7 @@ export function registerDataProcessorRoutes(app) {
     app.get('/api/data-processor/download-backup/:filename', (req, res) => {
         try {
             const { filename } = req.params;
-            const backupDir: any = path.join(__dirname, '../../knowledge-base/backups');
+            const backupDir: any = path.join(process.cwd(), 'knowledge-base/backups');
             const filePath: any = path.join(backupDir, filename);
             // パスのバリデーション（ディレクトリトラバーサル対策）
             if (!filePath.startsWith(backupDir) || filePath.includes('..')) {
