@@ -178,7 +178,7 @@ const EmergencyGuideEdit: React.FC = () => {
       console.log('🔄 フロー一覧取得開始');
       
       const timestamp = Date.now();
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow?ts=${timestamp}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list?ts=${timestamp}`, {
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache'
@@ -204,11 +204,11 @@ const EmergencyGuideEdit: React.FC = () => {
         id: flow.id || flow.fileName?.replace('.json', '') || '',
         title: flow.title || 'タイトルなし',
         description: flow.description || '',
-        triggerKeywords: flow.triggerKeywords || [],
+        triggerKeywords: flow.triggerKeywords || flow.trigger || [],
         steps: flow.steps || [],
         updatedAt: flow.createdAt || flow.updatedAt || flow.savedAt || new Date().toISOString(),
-        filePath: flow.filePath || `knowledge-base/troubleshooting/${flow.fileName || ''}`,
-        fileName: flow.fileName || ''
+        filePath: flow.filePath || `knowledge-base/troubleshooting/${flow.fileName || flow.id + '.json'}`,
+        fileName: flow.fileName || flow.id + '.json'
       }));
       
       console.log('✅ マッピング完了:', mappedFlows.length + '件');
@@ -272,8 +272,8 @@ const EmergencyGuideEdit: React.FC = () => {
         filePath: updatedFlowData.filePath
       });
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/save-flow`, {
-        method: 'POST',
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${updatedFlowData.id}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedFlowData),
       });
@@ -313,10 +313,9 @@ const EmergencyGuideEdit: React.FC = () => {
         filePath: filePath
       });
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/delete-flow`, {
-        method: 'POST',
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${flowId}`, {
+        method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: flowId, filePath: filePath }),
       });
 
       if (!response.ok) {

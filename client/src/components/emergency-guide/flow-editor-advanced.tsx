@@ -84,7 +84,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
   const loadFlowData = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(buildApiUrl(`/api/emergency-flow/${flowId}`));
+      const response = await fetch(buildApiUrl(`/api/troubleshooting/${flowId}`));
       if (!response.ok) throw new Error('フローデータの取得に失敗しました');
       
       const data = await response.json();

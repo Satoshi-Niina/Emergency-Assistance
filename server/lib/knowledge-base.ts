@@ -10,20 +10,60 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const KNOWLEDGE_BASE_DIR = process.env.KNOWLEDGE_BASE_PATH || path.join(__dirname, '../../knowledge-base');
+const KNOWLEDGE_BASE_DIR = process.env.KNOWLEDGE_BASE_PATH || path.join(process.cwd(), 'knowledge-base');
 const DATA_DIR = path.join(KNOWLEDGE_BASE_DIR, 'data');
 const TEXT_DIR = path.join(KNOWLEDGE_BASE_DIR, 'text');
 const TROUBLESHOOTING_DIR = path.join(KNOWLEDGE_BASE_DIR, 'troubleshooting');
 const BACKUP_DIR = path.join(KNOWLEDGE_BASE_DIR, 'backups');
+const DOCUMENTS_DIR = path.join(KNOWLEDGE_BASE_DIR, 'documents');
+const QA_DIR = path.join(KNOWLEDGE_BASE_DIR, 'qa');
+const JSON_DIR = path.join(KNOWLEDGE_BASE_DIR, 'json');
+const PPT_DIR = path.join(KNOWLEDGE_BASE_DIR, 'ppt');
 
 // 知識ベースインデックスファイル
-const INDEX_FILE = path.join(DATA_DIR, 'knowledge_index.json');
+const INDEX_FILE = path.join(KNOWLEDGE_BASE_DIR, 'index.json');
+
+// ナレッジデータの種類
+export enum KnowledgeType {
+  TROUBLESHOOTING = 'troubleshooting',
+  DOCUMENT = 'document',
+  QA = 'qa',
+  JSON = 'json',
+  PPT = 'ppt',
+  TEXT = 'text'
+}
+
+// ナレッジデータのメタデータ
+export interface KnowledgeMetadata {
+  id: string;
+  title: string;
+  type: KnowledgeType;
+  category?: string;
+  tags?: string[];
+  path: string;
+  size?: number;
+  createdAt: string;
+  updatedAt?: string;
+  description?: string;
+  chunkCount?: number;
+  processedAt?: string;
+}
 
 // 知識ベースの初期化
 export async function initializeKnowledgeBase() {
   try {
     // 必要なディレクトリを作成（非同期で実行）
-    const directories = [KNOWLEDGE_BASE_DIR, DATA_DIR, TEXT_DIR, TROUBLESHOOTING_DIR, BACKUP_DIR];
+    const directories = [
+      KNOWLEDGE_BASE_DIR, 
+      DATA_DIR, 
+      TEXT_DIR, 
+      TROUBLESHOOTING_DIR, 
+      BACKUP_DIR,
+      DOCUMENTS_DIR,
+      QA_DIR,
+      JSON_DIR,
+      PPT_DIR
+    ];
     
     for (const dir of directories) {
       try {
@@ -237,7 +277,7 @@ export async function generateSystemPromptWithKnowledge(query: string): Promise<
 export function addDocumentToKnowledgeBase(
   fileInfo: { originalname: string; path: string; mimetype: string },
   content: string
-): { success: boolean; message: string } {
+): { success: boolean; message: string; docId?: string } {
   try {
     // ファイル名から拡張子を除いた部分を取得
     const baseName = path.basename(fileInfo.originalname, path.extname(fileInfo.originalname));
@@ -246,18 +286,345 @@ export function addDocumentToKnowledgeBase(
     // タイムスタンプを含むファイル名を作成
     const timestamp = Date.now();
     const textFileName = `${safeBaseName}_${timestamp}.txt`;
+    const docId = `doc_${timestamp}_${Math.floor(Math.random() * 1000)}`;
     
     // テキストファイルを知識ベースに保存
     fs.writeFileSync(path.join(TEXT_DIR, textFileName), content, 'utf-8');
     
-    console.log(`ドキュメントを知識ベースに追加しました: ${textFileName}`);
+    // ナレッジベースインデックスに追加
+    const index = loadKnowledgeBaseIndex();
+    if (!index.documents) {
+      index.documents = [];
+    }
+    
+    // ファイルタイプを判定
+    const fileExt = path.extname(fileInfo.originalname).toLowerCase();
+    const fileType = getFileTypeFromExtension(fileExt);
+    
+    index.documents.push({
+      id: docId,
+      title: fileInfo.originalname,
+      path: path.join(TEXT_DIR, textFileName),
+      type: fileType,
+      chunkCount: Math.ceil(content.length / 1000), // 概算のチャンク数
+      addedAt: new Date().toISOString()
+    });
+    
+    // インデックスを保存
+    const indexPath = path.join(KNOWLEDGE_BASE_DIR, 'index.json');
+    fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
+    
+    console.log(`ドキュメントを知識ベースに追加しました: ${textFileName} (ID: ${docId})`);
     
     return {
       success: true,
-      message: `ドキュメント ${fileInfo.originalname} を知識ベースに追加しました`
+      message: `ドキュメント ${fileInfo.originalname} を知識ベースに追加しました`,
+      docId: docId
     };
   } catch (error) {
     console.error('ドキュメントの知識ベース追加エラー:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : '不明なエラーが発生しました'
+    };
+  }
+}
+
+// ファイルタイプ判定関数
+function getFileTypeFromExtension(ext: string): string {
+  const typeMap: { [key: string]: string } = {
+    '.txt': 'テキスト',
+    '.pdf': 'PDF',
+    '.doc': 'Word',
+    '.docx': 'Word',
+    '.xls': 'Excel',
+    '.xlsx': 'Excel',
+    '.ppt': 'PowerPoint',
+    '.pptx': 'PowerPoint',
+    '.jpg': '画像',
+    '.jpeg': '画像',
+    '.png': '画像',
+    '.gif': '画像',
+    '.bmp': '画像'
+  };
+  return typeMap[ext] || 'その他';
+}
+
+/**
+ * ファイルタイプを判定して適切なディレクトリに振り分ける
+ */
+export function determineKnowledgeType(filename: string, content?: string): KnowledgeType {
+  const ext = path.extname(filename).toLowerCase();
+  
+  // トラブルシューティング関連のファイル
+  if (filename.toLowerCase().includes('troubleshooting') || 
+      filename.toLowerCase().includes('flow') ||
+      filename.toLowerCase().includes('guide') ||
+      ext === '.json' && (content?.includes('steps') || content?.includes('flow'))) {
+    return KnowledgeType.TROUBLESHOOTING;
+  }
+  
+  // プレゼンテーション関連
+  if (ext === '.ppt' || ext === '.pptx') {
+    return KnowledgeType.PPT;
+  }
+  
+  // JSONデータ
+  if (ext === '.json') {
+    return KnowledgeType.JSON;
+  }
+  
+  // Q&A関連
+  if (filename.toLowerCase().includes('qa') || 
+      filename.toLowerCase().includes('question') ||
+      filename.toLowerCase().includes('answer')) {
+    return KnowledgeType.QA;
+  }
+  
+  // テキストファイル
+  if (ext === '.txt' || ext === '.md') {
+    return KnowledgeType.TEXT;
+  }
+  
+  // その他のドキュメント
+  return KnowledgeType.DOCUMENT;
+}
+
+/**
+ * ナレッジデータを適切なディレクトリに保存
+ */
+export function saveKnowledgeData(
+  filename: string, 
+  content: string, 
+  metadata?: Partial<KnowledgeMetadata>
+): { success: boolean; metadata: KnowledgeMetadata; message: string } {
+  try {
+    const timestamp = Date.now();
+    const baseName = path.basename(filename, path.extname(filename));
+    const safeBaseName = baseName.replace(/[^a-zA-Z0-9_]/g, '_');
+    const ext = path.extname(filename).toLowerCase();
+    
+    // ファイルタイプを判定
+    const knowledgeType = determineKnowledgeType(filename, content);
+    
+    // 適切なディレクトリを選択
+    let targetDir: string;
+    let fileExtension: string;
+    
+    switch (knowledgeType) {
+      case KnowledgeType.TROUBLESHOOTING:
+        targetDir = TROUBLESHOOTING_DIR;
+        fileExtension = '.json';
+        break;
+      case KnowledgeType.QA:
+        targetDir = QA_DIR;
+        fileExtension = '.json';
+        break;
+      case KnowledgeType.JSON:
+        targetDir = JSON_DIR;
+        fileExtension = '.json';
+        break;
+      case KnowledgeType.PPT:
+        targetDir = PPT_DIR;
+        fileExtension = ext;
+        break;
+      case KnowledgeType.TEXT:
+        targetDir = TEXT_DIR;
+        fileExtension = '.txt';
+        break;
+      case KnowledgeType.DOCUMENT:
+      default:
+        targetDir = DOCUMENTS_DIR;
+        fileExtension = ext;
+        break;
+    }
+    
+    // ファイル名を生成
+    const uniqueId = `${timestamp}_${Math.floor(Math.random() * 1000)}`;
+    const fileName = `${safeBaseName}_${uniqueId}${fileExtension}`;
+    const filePath = path.join(targetDir, fileName);
+    
+    // ファイルを保存
+    if (knowledgeType === KnowledgeType.TROUBLESHOOTING || 
+        knowledgeType === KnowledgeType.QA || 
+        knowledgeType === KnowledgeType.JSON) {
+      // JSONファイルとして保存
+      const jsonContent = typeof content === 'string' ? JSON.parse(content) : content;
+      fs.writeFileSync(filePath, JSON.stringify(jsonContent, null, 2), 'utf-8');
+    } else {
+      // テキストファイルとして保存
+      fs.writeFileSync(filePath, content, 'utf-8');
+    }
+    
+    // メタデータを作成
+    const knowledgeMetadata: KnowledgeMetadata = {
+      id: uniqueId,
+      title: metadata?.title || baseName,
+      type: knowledgeType,
+      category: metadata?.category || 'general',
+      tags: metadata?.tags || [],
+      path: filePath,
+      size: fs.statSync(filePath).size,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      description: metadata?.description || `保存された${knowledgeType}データ`,
+      chunkCount: metadata?.chunkCount || Math.ceil(content.length / 1000),
+      processedAt: new Date().toISOString()
+    };
+    
+    // インデックスに追加
+    const index = loadKnowledgeBaseIndex();
+    if (!index.knowledge) {
+      index.knowledge = [];
+    }
+    index.knowledge.push(knowledgeMetadata);
+    
+    // インデックスを保存
+    fs.writeFileSync(INDEX_FILE, JSON.stringify(index, null, 2));
+    
+    console.log(`✅ ナレッジデータを保存しました: ${fileName} (${knowledgeType})`);
+    
+    return {
+      success: true,
+      metadata: knowledgeMetadata,
+      message: `ナレッジデータ ${filename} を${knowledgeType}として保存しました`
+    };
+    
+  } catch (error) {
+    console.error('ナレッジデータ保存エラー:', error);
+    return {
+      success: false,
+      metadata: {} as KnowledgeMetadata,
+      message: error instanceof Error ? error.message : '不明なエラーが発生しました'
+    };
+  }
+}
+
+/**
+ * ナレッジデータの一覧を取得
+ */
+export function listKnowledgeData(type?: KnowledgeType): { success: boolean; data: KnowledgeMetadata[]; message?: string } {
+  try {
+    const index = loadKnowledgeBaseIndex();
+    
+    if (!index.knowledge) {
+      return {
+        success: true,
+        data: [],
+        message: 'ナレッジデータがありません'
+      };
+    }
+    
+    let knowledgeData = index.knowledge;
+    
+    // 特定のタイプでフィルタリング
+    if (type) {
+      knowledgeData = knowledgeData.filter(item => item.type === type);
+    }
+    
+    // 作成日時でソート（新しい順）
+    knowledgeData.sort((a, b) => {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+    
+    return {
+      success: true,
+      data: knowledgeData,
+      message: `${knowledgeData.length}件のナレッジデータを取得しました`
+    };
+    
+  } catch (error) {
+    console.error('ナレッジデータ一覧取得エラー:', error);
+    return {
+      success: false,
+      data: [],
+      message: error instanceof Error ? error.message : '不明なエラーが発生しました'
+    };
+  }
+}
+
+/**
+ * 特定のナレッジデータを取得
+ */
+export function getKnowledgeData(id: string): { success: boolean; data?: KnowledgeMetadata; message?: string } {
+  try {
+    const index = loadKnowledgeBaseIndex();
+    
+    if (!index.knowledge) {
+      return {
+        success: false,
+        message: 'ナレッジデータが見つかりません'
+      };
+    }
+    
+    const knowledgeData = index.knowledge.find(item => item.id === id);
+    
+    if (!knowledgeData) {
+      return {
+        success: false,
+        message: '指定されたIDのナレッジデータが見つかりません'
+      };
+    }
+    
+    return {
+      success: true,
+      data: knowledgeData
+    };
+    
+  } catch (error) {
+    console.error('ナレッジデータ取得エラー:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : '不明なエラーが発生しました'
+    };
+  }
+}
+
+/**
+ * ナレッジデータを削除
+ */
+export function deleteKnowledgeData(id: string): { success: boolean; message: string } {
+  try {
+    const index = loadKnowledgeBaseIndex();
+    
+    if (!index.knowledge) {
+      return {
+        success: false,
+        message: 'ナレッジデータが見つかりません'
+      };
+    }
+    
+    const knowledgeIndex = index.knowledge.findIndex(item => item.id === id);
+    
+    if (knowledgeIndex === -1) {
+      return {
+        success: false,
+        message: '指定されたIDのナレッジデータが見つかりません'
+      };
+    }
+    
+    const knowledgeData = index.knowledge[knowledgeIndex];
+    
+    // ファイルを削除
+    if (fs.existsSync(knowledgeData.path)) {
+      fs.unlinkSync(knowledgeData.path);
+    }
+    
+    // インデックスから削除
+    index.knowledge.splice(knowledgeIndex, 1);
+    
+    // インデックスを保存
+    fs.writeFileSync(INDEX_FILE, JSON.stringify(index, null, 2));
+    
+    console.log(`✅ ナレッジデータを削除しました: ${knowledgeData.title}`);
+    
+    return {
+      success: true,
+      message: `ナレッジデータ ${knowledgeData.title} を削除しました`
+    };
+    
+  } catch (error) {
+    console.error('ナレッジデータ削除エラー:', error);
     return {
       success: false,
       message: error instanceof Error ? error.message : '不明なエラーが発生しました'

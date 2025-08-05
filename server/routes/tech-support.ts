@@ -91,7 +91,7 @@ function cleanupTempDirectory(dirPath) {
 async function cleanupTempDirectories() {
     // 知識ベースディレクトリ
     const rootDir: any = path.join(__dirname, '../../');
-    const knowledgeBaseDir: any = path.join(rootDir, 'knowledge-base');
+    const knowledgeBaseDir: any = path.join(process.cwd(), 'knowledge-base');
     // 一時ファイル配置用ディレクトリ
     const publicImagesDir: any = path.join(rootDir, 'public/images');
     const publicUploadsDir: any = path.join(rootDir, 'public/uploads');
@@ -149,7 +149,7 @@ async function calculateImageHash(filePath) {
 }
 // 知識ベース内の画像ファイルの重複を検出して削除する
 async function detectAndRemoveDuplicateImages() {
-    const knowledgeImagesDir: any = path.join(__dirname, '../../knowledge-base/images');
+    const knowledgeImagesDir: any = path.join(process.cwd(), 'knowledge-base/images');
     let removedCount = 0;
     let errorCount = 0;
     if (!fs.existsSync(knowledgeImagesDir)) {
@@ -238,7 +238,7 @@ async function detectAndRemoveDuplicateImages() {
 // knowledge-baseに存在するファイルと重複するファイルを一時ディレクトリから削除
 async function cleanupRedundantFiles() {
     const rootDir: any = path.join(__dirname, '../../');
-    const knowledgeImagesDir: any = path.join(rootDir, 'knowledge-base/images');
+    const knowledgeImagesDir: any = path.join(process.cwd(), 'knowledge-base/images');
     const uploadsDirs = [
         path.join(rootDir, 'uploads/images'),
         path.join(rootDir, 'public/uploads/images'),
@@ -297,13 +297,13 @@ async function verifyAndCleanupFile(filePath: any, subDir) {
         // knowledge-baseの対応するディレクトリパス
         let kbTargetDir = '';
         if (subDir === 'images') {
-            kbTargetDir = path.join(__dirname, '../../knowledge-base/images');
+            kbTargetDir = path.join(process.cwd(), 'knowledge-base/images');
         }
         else if (subDir === 'json') {
-            kbTargetDir = path.join(__dirname, '../../knowledge-base/json');
+            kbTargetDir = path.join(process.cwd(), 'knowledge-base/json');
         }
         else if (subDir === 'data') {
-            kbTargetDir = path.join(__dirname, '../../knowledge-base/data');
+            kbTargetDir = path.join(process.cwd(), 'knowledge-base/data');
         }
         else {
             // pptやtempなどはknowledge-baseに対応しないので直接削除
@@ -429,7 +429,7 @@ router.post('/image-search', async (req, res) => {
     try {
         console.log('画像検索APIリクエスト:', `query="${query}", count=${count}`);
         // 画像検索データを読み込み
-        const searchDataPath: any = path.join(__dirname, '../../knowledge-base/data/image_search_data.json');
+        const searchDataPath: any = path.join(process.cwd(), 'knowledge-base/data/image_search_data.json');
         const rawData: any = fs.readFileSync(searchDataPath, 'utf-8');
         const searchData: any = JSON.parse(rawData);
         console.log('画像検索データを読み込み:', `${searchData.length}件`);
@@ -503,7 +503,7 @@ router.post('/clear-cache', async (req, res) => {
     try {
         console.log('サーバーキャッシュクリア要求を受信しました');
         // 知識ベースJSONディレクトリの再検証
-        const jsonDir: any = path.join(__dirname, '../../knowledge-base/json');
+        const jsonDir: any = path.join(process.cwd(), 'knowledge-base/json');
         if (fs.existsSync(jsonDir)) {
             try {
                 // 実際のファイル一覧を取得
@@ -527,7 +527,7 @@ router.post('/clear-cache', async (req, res) => {
             }
         }
         // index.json ファイルの再構築の（トラッキングファイル）
-        const indexJsonPath: any = path.join(__dirname, '../../knowledge-base/index.json');
+        const indexJsonPath: any = path.join(process.cwd(), 'knowledge-base/index.json');
         try {
             // 実際のファイルリストを取得
             const jsonFiles: any = fs.existsSync(jsonDir) ? fs.readdirSync(jsonDir) : [];
@@ -696,7 +696,7 @@ router.post('/init-image-search-data', async (req, res) => {
     try {
         logInfo('Image search data initialization started');
         const imagesDir: any = path.join(knowledgeBaseDir, 'images');
-        const jsonDir: any = path.join(__dirname, '../../knowledge-base/json');
+        const jsonDir: any = path.join(process.cwd(), 'knowledge-base/json');
         logPath('Images directory:', imagesDir);
         logPath('JSON directory:', jsonDir);
         let existingImageFiles = [];
@@ -1116,7 +1116,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             const prefix: any = path.basename(filePath, path.extname(filePath)).substring(0, 2).toLowerCase().replace(/[^a-zA-Z0-9]/g, '');
             const metadataFileName = `${prefix}_${timestamp}_metadata.json`;
             // 2. knowledge-baseディレクトリ内のJSONフォルダ確保
-            const jsonDir: any = path.join(__dirname, '../../knowledge-base/json');
+            const jsonDir: any = path.join(process.cwd(), 'knowledge-base/json');
             if (!fs.existsSync(jsonDir)) {
                 fs.mkdirSync(jsonDir, { recursive: true });
             }
@@ -1448,7 +1448,7 @@ router.get('/knowledge-base-files', async (req, res) => {
  * ドキュメント削除後に実行することで、残存しているJSONデータを完全に削除する
  */
 async function cleanupOrphanedJsonFiles() {
-    const jsonDir: any = path.join(__dirname, '../../knowledge-base/json');
+    const jsonDir: any = path.join(process.cwd(), 'knowledge-base/json');
     let removedCount = 0;
     let errorCount = 0;
     try {
@@ -1464,7 +1464,7 @@ async function cleanupOrphanedJsonFiles() {
             !blacklistFiles.includes(file));
         console.log(`JSONディレクトリ内のメタデータファイル: ${metadataFiles.length}件`);
         // knowledge-base内のドキュメントディレクトリ一覧を取得
-        const knowledgeBaseDir: any = path.join(__dirname, '../../knowledge-base');
+        const knowledgeBaseDir: any = path.join(process.cwd(), 'knowledge-base');
         const docDirs: any = fs.readdirSync(knowledgeBaseDir)
             .filter(dir => dir.startsWith('doc_'))
             .map(dir => {

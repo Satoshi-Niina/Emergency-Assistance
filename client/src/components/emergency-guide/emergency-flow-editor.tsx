@@ -62,9 +62,27 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
   useEffect(() => {
     if (flowData) {
       console.log('✨ フローデータを初期化/更新します:', flowData.id || 'IDなし');
+      console.log('🔍 flowData詳細:', {
+        id: flowData.id,
+        title: flowData.title,
+        description: flowData.description,
+        hasSteps: !!flowData.steps,
+        stepsType: typeof flowData.steps,
+        stepsLength: flowData.steps?.length || 0,
+        stepsIsArray: Array.isArray(flowData.steps),
+        stepsContent: flowData.steps
+      });
       
       setTitle(flowData.title || '無題のフロー');
       setDescription(flowData.description || '');
+
+      // stepsが存在しない場合の処理
+      if (!flowData.steps || !Array.isArray(flowData.steps) || flowData.steps.length === 0) {
+        console.warn('⚠️ flowData.stepsが空または無効です:', flowData.steps);
+        setSteps([]);
+        setOriginalSteps([]);
+        return;
+      }
 
       const initialSteps = flowData.steps.map((step: any) => {
         console.log(`ステップ[${step.id}]の初期化開始:`, {
@@ -383,8 +401,8 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
     console.log('🔄 [AutoSave] 送信ペイロード:', JSON.stringify(payload, null, 2));
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/save-flow`, {
-        method: 'POST',
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${flowData.id}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
@@ -471,8 +489,8 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
         }))
       });
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/save-flow`, {
-        method: 'POST',
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${saveData.id}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });

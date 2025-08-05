@@ -99,7 +99,7 @@ export default function TroubleshootingFlow({
         console.log(`🔄 フローデータ取得開始: ${id}`);
         
         // 正しいAPIエンドポイントを使用
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/${id}`);
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${id}`);
         
         if (!response.ok) {
           throw new Error(`Failed to fetch flow data: ${response.status}`);

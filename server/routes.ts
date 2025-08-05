@@ -32,6 +32,8 @@ import { eq } from 'drizzle-orm';
 import machinesRouter from './routes/machines.js';
 import { historyRouter } from './routes/history.js';
 import { baseDataRouter } from './routes/base-data.js';
+import filesRouter from './routes/files.js';
+import knowledgeBaseRouter from './routes/knowledge-base.js';
 
 // ESM用__dirname定義
 const __filename = fileURLToPath(import.meta.url);
@@ -77,6 +79,8 @@ export function registerRoutes(app: Express): void {
   app.use('/api/machines', machinesRouter);
   app.use('/api/history', historyRouter);
   app.use('/api/base-data', baseDataRouter);
+  app.use('/api/files', filesRouter);
+  app.use('/api/knowledge-base', knowledgeBaseRouter);
 
   // Add a health check endpoint for testing
   app.get('/api/health', (req, res) => {

@@ -1,20 +1,20 @@
 import * as express from 'express';
-import * as fs from 'fs';
 import * as path from 'path';
+import { existsSync, writeFileSync, mkdirSync, readdirSync, readFileSync, unlinkSync } from 'fs';
 import { processOpenAIRequest } from '../lib/openai.js';
 import { searchKnowledgeBase } from '../lib/knowledge-base.js';
 import { cleanJsonResponse } from '../lib/json-helper.js';
-import { db } from '../db/index.js';
-import { emergencyFlows } from '../db/schema.js';
+// import { db } from '../db/index.js';
+// import { emergencyFlows } from '../db/schema.js';
 
 const router = express.Router();
 // 知識ベースディレクトリ
-const knowledgeBaseDir = './knowledge-base';
+const knowledgeBaseDir = path.join(process.cwd(), '..', 'knowledge-base');
 const jsonDir: any = path.join(knowledgeBaseDir, 'json');
 const troubleshootingDir: any = path.join(knowledgeBaseDir, 'troubleshooting');
 // ディレクトリが存在しない場合は作成
-if (!fs.existsSync(troubleshootingDir)) {
-    fs.mkdirSync(troubleshootingDir, { recursive: true });
+if (!existsSync(troubleshootingDir)) {
+    mkdirSync(troubleshootingDir, { recursive: true });
 }
 // デバッグ用エンドポイント
 router.get('/debug', (req, res) => {
@@ -95,27 +95,30 @@ router.post('/keywords', async (req, res) => {
       updatedAt: new Date().toISOString()
     };
     
-    // PostgreSQLデータベースに保存
+    // knowledge-base/troubleshootingフォルダに保存
     try {
-      await db.insert(emergencyFlows).values({
-        id: flowData.id,
-        title: flowData.title,
-        description: flowData.description,
-        steps: flowData.steps,
-        keyword: flowData.triggerKeywords.join(','),
-        category: ''
-      });
+      const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+      const filePath = path.join(troubleshootingDir, `${flowData.id}.json`);
+      
+      // ディレクトリが存在しない場合は作成
+      if (!existsSync(troubleshootingDir)) {
+        mkdirSync(troubleshootingDir, { recursive: true });
+      }
+      
+      // ファイルに保存
+      writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf8');
       
       console.log('✅ キーワードフロー保存成功:', {
         id: flowData.id,
-        title: flowData.title
+        title: flowData.title,
+        filePath: filePath
       });
-    } catch (dbError) {
-      console.error('❌ データベース保存エラー:', dbError);
+    } catch (fileError) {
+      console.error('❌ ファイル保存エラー:', fileError);
       return res.status(500).json({
         success: false,
-        error: 'データベースへの保存に失敗しました',
-        details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+        error: 'ファイルへの保存に失敗しました',
+        details: fileError instanceof Error ? fileError.message : 'Unknown file error'
       });
     }
     
@@ -413,13 +416,13 @@ ${relatedKnowledgeText}
                             // 既存のファイル名と競合しないように確認
                             let finalId = truncatedData.id;
                             let counter = 1;
-                            while (fs.existsSync(path.join(troubleshootingDir, `${finalId}.json`))) {
+                            while (existsSync(path.join(troubleshootingDir, `${finalId}.json`))) {
                                 finalId = `${truncatedData.id}_${counter}`;
                                 counter++;
                             }
                             truncatedData.id = finalId;
                             // フローをファイルに保存
-                            fs.writeFileSync(path.join(troubleshootingDir, `${truncatedData.id}.json`), JSON.stringify(truncatedData, null, 2));
+                            writeFileSync(path.join(troubleshootingDir, `${truncatedData.id}.json`), JSON.stringify(truncatedData, null, 2));
                             // 生成日時を記録
                             truncatedData.createdAt = new Date().toISOString();
                             // 成功レスポンス
@@ -454,11 +457,11 @@ ${relatedKnowledgeText}
 router.get('/list', (req, res) => {
     try {
         // トラブルシューティングディレクトリからJSONファイルを取得
-        const files: any = fs.readdirSync(troubleshootingDir)
+        const files: any = readdirSync(troubleshootingDir)
             .filter(file => file.endsWith('.json'));
         const flowList: any = files.map(file => {
             try {
-                const fileContent: any = fs.readFileSync(path.join(troubleshootingDir, file), 'utf-8');
+                const fileContent: any = readFileSync(path.join(troubleshootingDir, file), 'utf-8');
                 const flowData: any = JSON.parse(fileContent);
                 return {
                     id: flowData.id || file.replace('.json', ''),
@@ -491,13 +494,13 @@ router.get('/detail/:id', (req, res) => {
     try {
         const cleanFlowId: any = req.params.id.startsWith('ts_') ? req.params.id.substring(3) : req.params.id;
         const filePath: any = path.join(troubleshootingDir, `${cleanFlowId}.json`);
-        if (!fs.existsSync(filePath)) {
+        if (!existsSync(filePath)) {
             return res.status(404).json({
                 success: false,
                 error: '指定されたフローが見つかりません'
             });
         }
-        const fileContent: any = fs.readFileSync(filePath, 'utf-8');
+        const fileContent: any = readFileSync(filePath, 'utf-8');
         const flowData: any = JSON.parse(fileContent);
         const decisionSteps: any = flowData.steps?.filter((step) => step.type === 'decision') || [];
         const conditionSteps: any = flowData.steps?.filter((step) => step.type === 'condition') || [];
@@ -537,13 +540,13 @@ router.delete('/:id', (req, res) => {
     try {
         const flowId: any = req.params.id;
         const filePath: any = path.join(troubleshootingDir, `${flowId}.json`);
-        if (!fs.existsSync(filePath)) {
+        if (!existsSync(filePath)) {
             return res.status(404).json({
                 success: false,
                 error: '指定されたフローが見つかりません'
             });
         }
-        fs.unlinkSync(filePath);
+        unlinkSync(filePath);
         res.json({
             success: true,
             message: 'フローが正常に削除されました'

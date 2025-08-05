@@ -124,7 +124,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
       // キャッシュバスターパラメータを追加
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 15);
-      const url = `/api/emergency-flow/list?ts=${timestamp}&_r=${randomId}${forceRefresh ? '&force=true' : ''}`;
+      const url = `${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list?ts=${timestamp}&_r=${randomId}${forceRefresh ? '&force=true' : ''}`;
 
       const response = await fetch(url, {
         method: 'GET',
@@ -143,14 +143,10 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
 
       const data = await response.json();
 
-      if (Array.isArray(data)) {
-        // 🎯 フィルタリング処理を完全削除 - 全データを表示
-        console.log('全フローデータを表示: ' + data.length + '件（フィルタリング無効）');
-        setFlowList(data);
-      } else {
-        console.warn('⚠️ 予期しないデータ形式:', data);
-        setFlowList([]);
-      }
+      // APIレスポンスの構造に合わせてデータを処理
+      const flows = data.success && data.data ? data.data : (Array.isArray(data) ? data : []);
+      console.log('全フローデータを表示: ' + flows.length + '件（フィルタリング無効）');
+      setFlowList(flows);
 
       // 他のコンポーネントにフロー一覧更新を通知
       setTimeout(() => {
@@ -300,7 +296,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 15);
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/${flowId}?ts=${timestamp}&_r=${randomId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${flowId}?ts=${timestamp}&_r=${randomId}`, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
@@ -314,10 +310,23 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         throw new Error('フローデータの取得に失敗しました (' + response.status + ')');
       }
 
-      const data = await response.json();
+      const responseData = await response.json();
+      const data = responseData.success && responseData.data ? responseData.data : responseData;
+
+      // 🎯 デバッグ: APIレスポンスの詳細確認
+      console.log('🔍 APIレスポンス詳細:', {
+        responseData: responseData,
+        data: data,
+        hasSlides: !!data.slides,
+        hasSteps: !!data.steps,
+        slidesLength: data.slides?.length || 0,
+        stepsLength: data.steps?.length || 0,
+        slidesType: typeof data.slides,
+        stepsType: typeof data.steps
+      });
 
       // 🎯 フロー一覧のデータ構造をエディター用に変換（slides/steps統一）
-      const sourceSteps = data.slides || data.steps || [];
+      const sourceSteps = data.steps || data.slides || [];
       const editorData = {
         id: data.id,
         title: data.title,
@@ -404,15 +413,24 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         });
       }
 
+      // 🎯 編集画面の状態を更新
       setCurrentFlowData(editorData);
       setSelectedFlowForEdit(flowId);
+      
+      // 🎯 タイトルと説明を編集画面に設定
+      setTitle(editorData.title || '');
+      setDescription(editorData.description || '');
+      setSlides(editorData.steps || []);
 
       console.log('フロー編集準備完了:', {
         flowId: flowId,
         filePath: filePath,
         dataLoaded: !!data,
         stepsCount: data.steps?.length || 0,
-        imagesLoaded: editorData.steps?.filter(s => s.images && s.images.length > 0).length || 0
+        imagesLoaded: editorData.steps?.filter(s => s.images && s.images.length > 0).length || 0,
+        titleSet: editorData.title,
+        descriptionSet: editorData.description,
+        slidesSet: editorData.steps?.length || 0
       });
 
     } catch (error) {
@@ -570,8 +588,8 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
       });
 
       // APIにデータを送信
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow`, {
-        method: 'POST',
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${updatedFlowData.id}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -1169,7 +1187,9 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
                 {selectedFlowForEdit && currentFlowData ? (
                   <EmergencyFlowEditor
                     flowData={currentFlowData}
+                    currentTab="slides"
                     onSave={handleFlowSave}
+                    onTabChange={() => {}}
                     selectedFilePath={selectedFilePath}
                   />
                 ) : (

@@ -242,50 +242,6 @@ export default function DocumentsPage() {
                 )}
               </CardContent>
             </Card>
-
-            {/* 応急処置履歴一覧 */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <History className="h-5 w-5" />
-                  応急処置サポート履歴
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">データを読み込み中...</p>
-                  </div>
-                ) : historyData.length > 0 ? (
-                  <div className="space-y-3">
-                    {historyData.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div>
-                          <h4 className="font-medium">
-                            {item.machineType} - {item.machineNumber}
-                          </h4>
-                          <p className="text-sm text-gray-600">
-                            作成日時: {formatDate(item.createdAt)}
-                          </p>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => navigate('/history')}
-                          >
-                            詳細
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-center text-gray-600 py-8">履歴データがありません</p>
-                )}
-              </CardContent>
-            </Card>
           </div>
         )}
 

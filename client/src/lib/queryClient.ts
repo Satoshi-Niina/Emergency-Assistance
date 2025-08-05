@@ -322,11 +322,11 @@ function buildApiUrl(path: string): string {
     return `${window.location.protocol}//${window.location.hostname}:3000${path}`;
   }
   
-  // 開発環境では3000ポートを使用
+  // 開発環境では3001ポートを使用
   const isDevelopment = import.meta.env.DEV || window.location.hostname.includes('localhost');
   
   if (isDevelopment) {
-    return `http://localhost:3000${path}`;
+    return `http://localhost:3001${path}`;
   }
   
   // その他の環境では相対パス
