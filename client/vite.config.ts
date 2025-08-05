@@ -52,27 +52,27 @@ export default defineConfig(({ command, mode }) => {
       host: '0.0.0.0',
       port: clientPort,
       allowedHosts: true,
-      // プロキシ設定を無効化 - 直接APIサーバーに接続
-      // proxy: {
-      //   '/api': {
-      //     target: apiBaseUrl,
-      //     changeOrigin: true,
-      //     secure: false,
-      //     ws: true,
-      //     rewrite: (path) => path,
-      //     configure: (proxy, options) => {
-      //       proxy.on('error', (err, req, res) => {
-      //         console.log('🔴 Proxy error:', err);
-      //       });
-      //       proxy.on('proxyReq', (proxyReq, req, res) => {
-      //         console.log('📤 Sending Request to the Target:', req.method, req.url);
-      //       });
-      //       proxy.on('proxyRes', (proxyRes, req, res) => {
-      //         console.log('📥 Received Response from the Target:', proxyRes.statusCode, req.url);
-      //       });
-      //     },
-      //   },
-      // },
+      // プロキシ設定を有効化 - APIサーバーへの接続
+      proxy: {
+        '/api': {
+          target: apiBaseUrl,
+          changeOrigin: true,
+          secure: false,
+          ws: true,
+          rewrite: (path) => path,
+          configure: (proxy, options) => {
+            proxy.on('error', (err, req, res) => {
+              console.log('🔴 Proxy error:', err);
+            });
+            proxy.on('proxyReq', (proxyReq, req, res) => {
+              console.log('📤 Sending Request to the Target:', req.method, req.url);
+            });
+            proxy.on('proxyRes', (proxyRes, req, res) => {
+              console.log('📥 Received Response from the Target:', proxyRes.statusCode, req.url);
+            });
+          },
+        },
+      },
       fs: {
         allow: [path.resolve(__dirname, '..')],
       }

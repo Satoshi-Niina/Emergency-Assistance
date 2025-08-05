@@ -137,6 +137,8 @@ export const supportHistory = pgTable('support_history', {
     id: text('id').primaryKey().default(sql`gen_random_uuid()`),
     machineType: text('machine_type').notNull(),
     machineNumber: text('machine_number').notNull(),
+    machineTypeId: text('machine_type_id').references(() => machineTypes.id),
+    machineId: text('machine_id').references(() => machines.id),
     jsonData: jsonb('json_data').notNull(),
     imagePath: text('image_path'),
     createdAt: timestamp('created_at').defaultNow().notNull()

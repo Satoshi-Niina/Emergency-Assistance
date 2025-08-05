@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: emergency_assistance_db
+    environment:
+      POSTGRES_DB: emergency_assistance
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API Server
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    container_name: emergency_assistance_server
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/emergency_assistance
+      - SESSION_SECRET=emergency-assistance-session-secret-2024
+      - PORT=3001
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./server:/app/server
+      - ./shared:/app/shared
+      - ./migrations:/app/migrations
+    command: npm run dev:server
+
+  # Frontend Client
+  client:
+    build:
+      context: ./client
+      dockerfile: ../Dockerfile.client
+    container_name: emergency_assistance_client
+    environment:
+      - VITE_API_BASE_URL=http://localhost:3001
+    ports:
+      - "5002:5002"
+    depends_on:
+      - server
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    command: npm run dev
+
+volumes:
+  postgres_data: 

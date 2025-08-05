@@ -1,27 +1,21 @@
 # Emergency Assistance System
 
-AI-powered emergency assistance system with PostgreSQL database storage.
+AI-powered emergency assistance system with chat support, knowledge base management, and troubleshooting flows.
 
-## 🚀 Features
+## 🚀 Quick Start
 
-- **AI Chat Support**: Intelligent chat interface for emergency assistance
-- **Emergency Flow Management**: Create and manage emergency response flows
-- **Knowledge Base**: Document management and search capabilities
-- **Image Storage**: PostgreSQL-based image storage system
-- **User Management**: Role-based access control
-- **History Tracking**: Comprehensive support history management
+### Prerequisites
 
-## 📋 Prerequisites
+- Node.js 18.0.0 or higher
+- npm 8.0.0 or higher
+- PostgreSQL 12 or higher
+- Git
 
-- Node.js >= 18.0.0
-- npm >= 8.0.0
-- PostgreSQL database
-
-## 🛠️ Installation
+### Environment Setup
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone <your-repository-url>
    cd Emergency-Assistance
    ```
 
@@ -30,130 +24,119 @@ AI-powered emergency assistance system with PostgreSQL database storage.
    npm run install:all
    ```
 
-3. **Environment Setup**
+3. **Environment Configuration**
    ```bash
+   # Copy environment template
    cp env.example .env
-   ```
    
-   Edit `.env` file with your database and API configurations:
-   ```env
-   DATABASE_URL=postgresql://username:password@localhost:5432/emergency_assistance
-   OPENAI_API_KEY=your_openai_api_key
-   VITE_API_URL=http://localhost:3001
+   # Edit .env with your configuration
+   # Required variables:
+   # - DATABASE_URL: PostgreSQL connection string
+   # - SESSION_SECRET: Random secret for sessions
+   # - OPENAI_API_KEY: Your OpenAI API key
    ```
 
 4. **Database Setup**
    ```bash
+   # Run database migrations
    npm run db:migrate
+   
+   # (Optional) Seed initial data
    npm run db:seed
    ```
 
-## 🚀 Development
+5. **Start Development Server**
+   ```bash
+   # Start both frontend and backend
+   npm run dev
+   
+   # Or start separately
+   npm run dev:server  # Backend on port 3001
+   npm run dev:client  # Frontend on port 5002
+   ```
 
-### Start Development Server
-```bash
-npm run dev
+## 📁 Project Structure
+
+```
+Emergency-Assistance/
+├── client/                 # React frontend (Vite)
+├── server/                 # Express.js backend
+├── shared/                 # Shared TypeScript types
+├── knowledge-base/         # Knowledge base data
+├── migrations/             # Database migrations
+└── docs/                   # Documentation
 ```
 
-This will start both client (port 3000) and server (port 3001) in development mode.
+## 🔧 Development
+
+### Available Scripts
+
+- `npm run dev` - Start development servers
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run db:migrate` - Run database migrations
+- `npm run db:studio` - Open Drizzle Studio
+- `npm run lint` - Run linting
+- `npm run test` - Run tests
 
 ### Database Management
+
 ```bash
-# Generate new migrations
+# Generate new migration
 npm run db:generate
 
 # Apply migrations
 npm run db:migrate
 
-# Open database studio
+# Open Drizzle Studio
 npm run db:studio
-
-# Seed sample data
-npm run db:seed
 ```
 
-### Image Migration
-```bash
-# Migrate existing images to PostgreSQL
-npm run migrate:images
+## 🌐 Deployment
+
+### Environment Variables
+
+Required environment variables for production:
+
+```env
+# Database
+DATABASE_URL=postgresql://user:password@host:port/database
+
+# Session
+SESSION_SECRET=your-secret-key
+
+# API Keys
+OPENAI_API_KEY=your-openai-key
+
+# URLs
+FRONTEND_URL=https://your-frontend-domain.com
+VITE_API_BASE_URL=https://your-backend-domain.com
+
+# Optional
+NODE_ENV=production
+PORT=3001
+LOG_LEVEL=info
 ```
 
-## 🏗️ Project Structure
+### Deployment Options
 
-```
-Emergency-Assistance/
-├── client/                 # React frontend
-│   ├── src/
-│   │   ├── components/     # React components
-│   │   ├── pages/         # Page components
-│   │   ├── lib/           # Utilities and API clients
-│   │   └── types/         # TypeScript type definitions
-│   └── package.json
-├── server/                # Express backend
-│   ├── routes/            # API routes
-│   ├── db/               # Database schema and connection
-│   ├── lib/              # Backend utilities
-│   └── package.json
-├── shared/               # Shared types and utilities
-├── scripts/              # Utility scripts
-├── migrations/           # Database migrations
-└── package.json          # Root package.json
-```
+1. **Separate Frontend/Backend Deployment**
+   - Frontend: Vercel, Netlify, or static hosting
+   - Backend: Railway, Heroku, or VPS
+   - Database: Managed PostgreSQL (Supabase, Railway, etc.)
 
-## 🗄️ Database Schema
+2. **Monolithic Deployment**
+   - Single server with both frontend and backend
+   - Use reverse proxy (nginx) to serve static files
 
-The system uses PostgreSQL with the following main tables:
+## 🔒 Security
 
-- **users**: User management and authentication
-- **chats**: Chat sessions
-- **messages**: Chat messages
-- **emergency_flows**: Emergency response flows
-- **image_data**: Image storage (Base64 encoded)
-- **history_items**: Support history tracking
-- **documents**: Knowledge base documents
+- All API keys should be stored as environment variables
+- Database credentials should never be committed to version control
+- Use HTTPS in production
+- Implement proper CORS configuration
 
-## 📸 Image Storage
-
-Images are stored in PostgreSQL as Base64 encoded data in the `image_data` table:
-
-- **Categories**: emergency-flows, knowledge-base, etc.
-- **API Endpoints**: `/api/images/*`
-- **Client Utilities**: `client/src/lib/image-api.ts`
-
-## 🚀 Deployment
-
-### Production Build
-```bash
-npm run build
-npm run start:prod
-```
-
-### Environment Variables for Production
-- `DATABASE_URL`: PostgreSQL connection string
-- `OPENAI_API_KEY`: OpenAI API key
-- `VITE_API_URL`: API server URL
-- `NODE_ENV`: Set to 'production'
-
-## 🔧 Configuration
-
-### Client Configuration
-- `vite.config.ts`: Vite build configuration
-- `tailwind.config.ts`: Tailwind CSS configuration
-
-### Server Configuration
-- `drizzle.config.ts`: Database ORM configuration
-- `server/app.ts`: Express server setup
-
-## 📝 Scripts
-
-- `npm run dev`: Start development servers
-- `npm run build`: Build for production
-- `npm run db:migrate`: Apply database migrations
-- `npm run migrate:images`: Migrate images to database
-- `npm run clean`: Clean node_modules
-- `npm run clean:build`: Clean build artifacts
-
-## 🤝 Contributing
+## 📝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -163,8 +146,4 @@ npm run start:prod
 
 ## 📄 License
 
-MIT License - see LICENSE file for details.
-
-## 🆘 Support
-
-For support and questions, please contact the development team.
+MIT License - see LICENSE file for details

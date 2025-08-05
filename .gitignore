@@ -137,3 +137,109 @@ knowledge-base/temp/*
 
 # Build artifacts
 *.tsbuildinfo
+
+# ========================================
+# Deployment and CI/CD
+# ========================================
+
+# Deployment artifacts
+.vercel/
+.railway/
+.netlify/
+
+# CI/CD logs
+.github/workflows/logs/
+
+# Deployment configs (if containing secrets)
+deploy-config.json
+deploy-secrets.json
+
+# ========================================
+# Cloud Platform Specific
+# ========================================
+
+# Vercel
+.vercel
+
+# Railway
+.railway
+
+# Netlify
+.netlify
+
+# Heroku
+.heroku/
+
+# ========================================
+# Security and Secrets
+# ========================================
+
+# API keys and secrets
+secrets.json
+*.key
+*.pem
+*.p12
+
+# SSL certificates
+*.crt
+*.cert
+*.pem
+
+# ========================================
+# Monitoring and Analytics
+# ========================================
+
+# Sentry
+.sentryclirc
+
+# Analytics
+analytics.json
+metrics.json
+
+# ========================================
+# Development Tools
+# ========================================
+
+# Local development databases
+*.sqlite
+*.db
+
+# Local cache
+.cache/
+.parcel-cache/
+
+# Local logs
+logs/
+*.log
+
+# ========================================
+# OS and Editor Specific
+# ========================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# VSCode
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+
+# IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace

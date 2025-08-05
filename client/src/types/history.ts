@@ -71,4 +71,27 @@ export interface CreateUserRequest {
   role: string;
   department?: string;
   description?: string;
+}
+
+// エクスポート機能の型定義
+export interface ExportHistoryItem {
+  id: string;
+  filename: string;
+  format: 'json' | 'csv' | 'pdf';
+  exportedAt: string;
+  fileSize?: number;
+  recordCount?: number;
+}
+
+export interface ExportRequest {
+  ids?: string[];
+  format: 'json' | 'csv' | 'pdf';
+  filters?: HistorySearchFilters;
+}
+
+export interface ExportResponse {
+  success: boolean;
+  filename: string;
+  downloadUrl?: string;
+  message?: string;
 } 

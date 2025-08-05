@@ -1,7 +1,7 @@
 import express from 'express';
 import { db } from '../db/index.js';
-import { supportHistory } from '../db/schema.js';
-import { eq, like, and, gte, desc } from 'drizzle-orm';
+import { supportHistory, machineTypes, machines } from '../db/schema.js';
+import { eq, like, and, gte, desc, ilike } from 'drizzle-orm';
 import { z } from 'zod';
 import { upload } from '../lib/multer-config.js';
 import path from 'path';
@@ -9,6 +9,51 @@ import fs from 'fs';
 import PDFDocument from 'pdfkit';
 
 const router = express.Router();
+
+// 履歴データから機種・機械番号一覧取得
+router.get('/machine-data', async (req, res) => {
+  try {
+    // 履歴データから機種一覧を取得
+    const machineTypesResult = await db
+      .select({
+        machineType: supportHistory.machineType
+      })
+      .from(supportHistory)
+      .groupBy(supportHistory.machineType)
+      .orderBy(supportHistory.machineType);
+
+    // 履歴データから機械番号一覧を取得
+    const machinesResult = await db
+      .select({
+        machineNumber: supportHistory.machineNumber,
+        machineType: supportHistory.machineType
+      })
+      .from(supportHistory)
+      .groupBy(supportHistory.machineNumber, supportHistory.machineType)
+      .orderBy(supportHistory.machineNumber);
+
+    // データ形式を統一
+    const machineTypes = machineTypesResult.map((item, index) => ({
+      id: `type_${index}`,
+      machineTypeName: item.machineType
+    }));
+
+    const machines = machinesResult.map((item, index) => ({
+      id: `machine_${index}`,
+      machineNumber: item.machineNumber,
+      machineTypeName: item.machineType
+    }));
+
+    res.json({
+      machineTypes,
+      machines
+    });
+
+  } catch (error) {
+    console.error('履歴データからの機種・機械番号データ取得エラー:', error);
+    res.status(500).json({ error: '機種・機械番号データの取得に失敗しました' });
+  }
+});
 
 // 履歴検索用スキーマ
 const historyQuerySchema = z.object({
@@ -26,14 +71,14 @@ router.get('/', async (req, res) => {
     // 基本クエリ構築
     let whereConditions = [];
     
-    // 機種フィルタ
+    // 機種フィルタ（JSONデータ内の部分一致検索）
     if (query.machineType) {
-      whereConditions.push(eq(supportHistory.machineType, query.machineType));
+      whereConditions.push(ilike(supportHistory.jsonData, `%${query.machineType}%`));
     }
     
-    // 機械番号フィルタ
+    // 機械番号フィルタ（JSONデータ内の部分一致検索）
     if (query.machineNumber) {
-      whereConditions.push(eq(supportHistory.machineNumber, query.machineNumber));
+      whereConditions.push(ilike(supportHistory.jsonData, `%${query.machineNumber}%`));
     }
     
     // データベースから履歴を取得
