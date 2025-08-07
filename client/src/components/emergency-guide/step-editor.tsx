@@ -103,6 +103,11 @@ const StepEditor: React.FC<StepEditorProps> = ({
   flowId,
   onAddStepBetween
 }) => {
+  console.log('🔄 StepEditor レンダリング開始:', { 
+    stepsLength: steps.length, 
+    flowId,
+    steps: steps.map(s => ({ id: s.id, title: s.title, type: s.type }))
+  });
   const [uploadingImages, setUploadingImages] = useState<{ [key: string]: boolean }>({});
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   const [imageErrors, setImageErrors] = useState<{ [key: string]: boolean }>({});
@@ -649,6 +654,14 @@ const StepEditor: React.FC<StepEditorProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* デバッグ情報 */}
+      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded">
+        <p className="text-yellow-800 font-medium">StepEditor デバッグ情報:</p>
+        <p className="text-yellow-700 text-sm">受け取ったsteps.length: {steps.length}</p>
+        <p className="text-yellow-700 text-sm">steps内容: {steps.map(s => `${s.id}:${s.title}`).join(', ')}</p>
+        <p className="text-yellow-700 text-sm">expandedSteps: {Object.keys(expandedSteps).length}個</p>
+      </div>
+      
       {/* スライダーコントロール */}
       <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border">
         <div className="flex items-center space-x-2">
@@ -705,7 +718,13 @@ const StepEditor: React.FC<StepEditorProps> = ({
         <Droppable droppableId="steps">
           {(provided) => (
             <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4">
-              {steps.map((step, index) => (
+              {steps.length === 0 ? (
+                <div className="p-8 text-center bg-red-50 border border-red-200 rounded">
+                  <p className="text-red-800 font-medium">⚠️ ステップが空です</p>
+                  <p className="text-red-700 text-sm">steps配列にデータが含まれていません</p>
+                </div>
+              ) : (
+                steps.map((step, index) => (
                 <div key={step.id}>
                   <Draggable key={step.id} draggableId={step.id} index={index}>
                     {(provided, snapshot) => (
@@ -742,7 +761,8 @@ const StepEditor: React.FC<StepEditorProps> = ({
                   {/* ステップ間に追加ボタンを表示（最後のステップ以外） */}
                   {index < steps.length - 1 && renderAddStepBetween(index)}
                 </div>
-              ))}
+              ))
+              )}
               {provided.placeholder}
             </div>
           )}

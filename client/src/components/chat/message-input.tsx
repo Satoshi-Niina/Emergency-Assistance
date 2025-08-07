@@ -7,7 +7,7 @@ import { Send, Camera, X } from "lucide-react";
 import { useIsMobile } from "../../hooks/use-mobile";
 
 interface MessageInputProps {
-  onSendMessage: (message: string) => void;
+  sendMessage: (message: string) => void;
   isLoading: boolean;
 }
 
@@ -57,47 +57,43 @@ export default function MessageInput({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 録音テキストか入力テキストのいずれかを使用
-    // 入力欄にテキストがある場合は優先的に使用し、なければ録音テキストを使用
-    const textToSend = message.trim() || recordedText.trim();
-    if (!textToSend || isLoading) return;
-
-    console.log('送信するテキスト:', textToSend);
-
-    // メッセージを送信
-    await sendMessage(textToSend);
-
-    // 自動画像検索は完全無効化（安定性のため）
-    console.log('💬 チャット入力から送信:', textToSend, '（画像検索完全無効）');
-
-    // 検索関連の処理をすべてキャンセル・無効化
     try {
-      if (typeof window !== 'undefined') {
-        // 検索処理の強制停止
-        window.dispatchEvent(new CustomEvent('cancel-image-search'));
-        window.dispatchEvent(new CustomEvent('clear-search-results'));
-        window.dispatchEvent(new CustomEvent('disable-auto-search'));
-
-        // Fuse検索のデバウンス処理もクリア
-        clearTimeout((window as any)._fuseSearchTimeout);
-        (window as any)._fuseSearchDisabled = true;
+      // 入力値の検証
+      const textToSend = message.trim() || recordedText.trim();
+      if (!textToSend) {
+        console.log('送信するテキストが空のため送信をスキップ');
+        return;
       }
+
+      if (isLoading) {
+        console.log('送信中のため送信をスキップ');
+        return;
+      }
+
+      console.log('💬 メッセージ送信開始:', textToSend);
+
+      // メッセージを送信
+      await sendMessage(textToSend);
+
+      console.log('✅ メッセージ送信完了');
+
+      // 入力欄をクリア
+      setMessage("");
+
+      // フォーカス処理
+      if (isMobile && textareaRef.current) {
+        textareaRef.current.focus();
+        // モバイルでキーボードが消えないように少し遅延
+        setTimeout(() => {
+          textareaRef.current?.blur();
+        }, 100);
+      } else if (inputRef.current) {
+        inputRef.current.focus();
+      }
+
     } catch (error) {
-      console.warn('検索キャンセル処理でエラー:', error);
-    }
-
-    // 入力欄をクリア
-    setMessage("");
-
-    // フォーカス処理
-    if (isMobile && textareaRef.current) {
-      textareaRef.current.focus();
-      // モバイルでキーボードが消えないように少し遅延
-      setTimeout(() => {
-        textareaRef.current?.blur();
-      }, 100);
-    } else if (inputRef.current) {
-      inputRef.current.focus();
+      console.error('メッセージ送信エラー:', error);
+      // エラーはsendMessage関数内でトースト表示されるため、ここではログのみ
     }
   };
 

@@ -16,7 +16,6 @@
     "dev:client": "cd client && vite --config vite.config.dev.ts",
     "dev:local-server": "tsx server/index.dev.ts",
     "dev:local-client": "cd client && vite --config vite.config.dev.ts",
-
     "build": "npm run build:shared && npm run build:client && npm run build:server",
     "build:shared": "cd shared && npm run build",
     "build:client": "cd client && npm run build",
@@ -32,7 +31,6 @@
     "db:seed": "tsx scripts/seed-history-data.ts",
     "db:test": "tsx server/scripts/test-db-connection.ts",
     "migrate:images": "tsx scripts/migrate-images-to-db.ts",
-
     "test": "npm run test:client && npm run test:server",
     "test:client": "cd client && npm test",
     "test:server": "cd server && npm test",
@@ -42,10 +40,11 @@
   },
   "dependencies": {
     "concurrently": "^9.2.0",
-    "tsx": "^4.20.3",
+    "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
-    "cors": "^2.8.5"
+    "fuse.js": "^7.1.0",
+    "tsx": "^4.20.3"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

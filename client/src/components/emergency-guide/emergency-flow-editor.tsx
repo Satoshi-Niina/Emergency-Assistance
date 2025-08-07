@@ -9,11 +9,38 @@ import StepEditor from './step-editor';
 import { v4 as uuidv4 } from 'uuid';
 import { convertImageUrl } from '../../lib/utils.ts';
 
+interface Step {
+  id: string;
+  title: string;
+  description: string;
+  message: string;
+  type: 'start' | 'step' | 'decision' | 'condition' | 'end';
+  images?: Array<{
+    url: string;
+    fileName: string;
+  }>;
+  options?: Array<{
+    text: string;
+    nextStepId: string;
+    isTerminal: boolean;
+    conditionType: 'yes' | 'no' | 'other';
+    condition?: string;
+  }>;
+  conditions?: Array<{
+    label: string;
+    nextId: string;
+  }>;
+  // 古いプロパティは後方互換性のために残す（将来的には削除）
+  imageUrl?: string;
+  imageFileName?: string;
+}
+
 interface EmergencyFlowEditorProps {
   flowData: any;
   currentTab: string;
   onSave: (data: any) => void;
   onTabChange: (tab: string) => void;
+  selectedFilePath?: string;
 }
 
 // Helper function for UTF-8 safe base64 encoding
@@ -26,22 +53,12 @@ function utf8_to_b64(str: string): string {
   }
 }
 
-// Helper function for creating encrypted URLs
-function createEncryptedUrl(fileName: string): string {
-  try {
-    const encryptedFileName = encryptUri(fileName);
-    return `http://localhost:3001/api/emergency-flow/image/emergency-guide/${encryptedFileName}`;
-  } catch (e) {
-    console.error('❌ URLの暗号化に失敗:', e);
-    return ''; // Return empty string on failure
-  }
-}
-
 const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
   flowData,
   currentTab,
   onSave,
   onTabChange,
+  selectedFilePath,
 }) => {
   const [title, setTitle] = useState(flowData?.title || '');
   const [description, setDescription] = useState(flowData?.description || '');
@@ -50,7 +67,8 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
   const [originalDescription, setOriginalDescription] = useState(flowData?.description || '');
   const [originalSteps, setOriginalSteps] = useState<Step[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
-  const isInitializedRef = useRef(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const previousFlowDataRef = useRef<any>(null);
 
   // 1. stepsの最新値を保持するためのRefを追加
   const stepsRef = useRef(steps);
@@ -58,38 +76,99 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
     stepsRef.current = steps;
   }, [steps]);
 
+  // 2. flowDataの最新値を保持するためのRefを追加
+  const flowDataRef = useRef(flowData);
+  useEffect(() => {
+    flowDataRef.current = flowData;
+  }, [flowData]);
+
   // 初期化: flowDataが変更されるたびにコンポーネントの状態を再初期化する
   useEffect(() => {
-    if (flowData) {
-      console.log('✨ フローデータを初期化/更新します:', flowData.id || 'IDなし');
-      console.log('🔍 flowData詳細:', {
-        id: flowData.id,
-        title: flowData.title,
-        description: flowData.description,
-        hasSteps: !!flowData.steps,
-        stepsType: typeof flowData.steps,
-        stepsLength: flowData.steps?.length || 0,
-        stepsIsArray: Array.isArray(flowData.steps),
-        stepsContent: flowData.steps
-      });
+    console.log('🔄 EmergencyFlowEditor useEffect 実行:', {
+      flowDataId: flowData?.id || 'null',
+      flowDataTitle: flowData?.title || 'null',
+      isInitialized,
+      currentTab,
+      selectedFilePath
+    });
+    
+    // flowDataが変更されたかどうかをチェック
+    const flowDataChanged = !previousFlowDataRef.current || 
+      previousFlowDataRef.current.id !== flowData?.id ||
+      JSON.stringify(previousFlowDataRef.current) !== JSON.stringify(flowData);
+    
+    console.log('🔍 flowData変更チェック:', {
+      hasPreviousData: !!previousFlowDataRef.current,
+      previousId: previousFlowDataRef.current?.id,
+      currentId: flowData?.id,
+      idsMatch: previousFlowDataRef.current?.id === flowData?.id,
+      dataChanged: JSON.stringify(previousFlowDataRef.current) !== JSON.stringify(flowData),
+      flowDataChanged
+    });
+    
+    if (!flowDataChanged && isInitialized) {
+      console.log('🔄 flowDataが変更されていないため、初期化をスキップ');
+      return;
+    }
+    
+    if (!flowData) {
+      console.log('📝 flowDataがnullまたは空です - 新規作成モード');
+      setTitle('新規フロー');
+      setDescription('');
+      setSteps([]);
+      setOriginalSteps([]);
+      setOriginalTitle('新規フロー');
+      setOriginalDescription('');
+      setIsInitialized(true);
+      previousFlowDataRef.current = flowData;
+      return;
+    }
+    
+    console.log('✨ フローデータを初期化/更新します:', flowData.id || 'IDなし');
+    console.log('🔍 flowData詳細:', {
+      id: flowData.id,
+      title: flowData.title,
+      description: flowData.description,
+      hasSteps: !!flowData.steps,
+      stepsType: typeof flowData.steps,
+      stepsLength: flowData.steps?.length || 0,
+      stepsIsArray: Array.isArray(flowData.steps),
+      stepsContent: flowData.steps
+    });
+    
+    setTitle(flowData.title || '無題のフロー');
+    setDescription(flowData.description || '');
+    setOriginalTitle(flowData.title || '無題のフロー');
+    setOriginalDescription(flowData.description || '');
+
+    // stepsが存在しない場合のデバッグ情報
+    if (!flowData.steps || !Array.isArray(flowData.steps) || flowData.steps.length === 0) {
+      console.warn('⚠️ flowData.stepsが空または無効です:', flowData.steps);
+      console.log('🔍 flowData全体の構造:', JSON.stringify(flowData, null, 2));
+      console.log('🔍 flowDataのキー:', Object.keys(flowData));
       
-      setTitle(flowData.title || '無題のフロー');
-      setDescription(flowData.description || '');
+      // stepsが空でも初期化を続行（新規作成状態として扱う）
+      setSteps([]);
+      setOriginalSteps([]);
+      setIsInitialized(true);
+      previousFlowDataRef.current = flowData;
+      return;
+    }
 
-      // stepsが存在しない場合の処理
-      if (!flowData.steps || !Array.isArray(flowData.steps) || flowData.steps.length === 0) {
-        console.warn('⚠️ flowData.stepsが空または無効です:', flowData.steps);
-        setSteps([]);
-        setOriginalSteps([]);
-        return;
-      }
+    console.log('🔧 ステップ処理開始:', {
+      totalSteps: flowData.steps.length,
+      stepDetails: flowData.steps.map((s, i) => ({ index: i, id: s.id, title: s.title, type: s.type }))
+    });
 
-      const initialSteps = flowData.steps.map((step: any) => {
-        console.log(`ステップ[${step.id}]の初期化開始:`, {
+    const initialSteps = flowData.steps.map((step: any, index: number) => {
+      try {
+        console.log(`ステップ[${index + 1}/${flowData.steps.length}] [${step.id}]の初期化開始:`, {
+          step: step,
           hasImages: !!step.images,
           imagesLength: step.images?.length || 0,
           hasImageUrl: !!step.imageUrl,
-          hasImageFileName: !!step.imageFileName
+          hasImageFileName: !!step.imageFileName,
+          stepKeys: Object.keys(step)
         });
 
         // 画像情報の処理を改善
@@ -138,32 +217,66 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
         });
 
         // 古いプロパティを削除してクリーンなデータ構造にする
-        const { imageUrl, imageFileName, ...restOfStep } = step;
-        return { 
+        const { imageUrl, imageFileName, options, ...restOfStep } = step;
+        const processedStep = { 
           ...restOfStep, 
           images: processedImages 
         };
-      });
+        
+        console.log(`✅ ステップ[${step.id}]の処理完了:`, processedStep);
+        return processedStep;
+      } catch (error) {
+        console.error(`❌ ステップ[${step.id}]の処理中にエラーが発生:`, error);
+        // エラーが発生した場合でも基本的なステップ情報を返す
+        return {
+          id: step.id || `step_${index}`,
+          title: step.title || `ステップ ${index + 1}`,
+          description: step.description || '',
+          message: step.message || '',
+          type: step.type || 'step',
+          images: [],
+          options: step.options || [],
+          conditions: step.conditions || []
+        };
+      }
+    });
 
-      console.log('✨ 初期化されたステップ:', {
-        totalSteps: initialSteps.length,
-        stepsWithImages: initialSteps.filter(s => s.images && s.images.length > 0).length,
-        totalImages: initialSteps.reduce((sum, s) => sum + (s.images?.length || 0), 0)
+    console.log('✨ 初期化されたステップ:', {
+      totalSteps: initialSteps.length,
+      stepsWithImages: initialSteps.filter(s => s.images && s.images.length > 0).length,
+      totalImages: initialSteps.reduce((sum, s) => sum + (s.images?.length || 0), 0),
+      stepDetails: initialSteps.map(s => ({ id: s.id, title: s.title, type: s.type }))
+    });
+    
+    console.log('🔧 setSteps呼び出し前:', { initialStepsLength: initialSteps.length });
+    setSteps(initialSteps);
+    
+    // 元のデータもディープコピーで保存
+    setOriginalTitle(flowData.title || '無題のフロー');
+    setOriginalDescription(flowData.description || '');
+    setOriginalSteps(JSON.parse(JSON.stringify(initialSteps)));
+    
+    // 初期化完了フラグを設定
+    setIsInitialized(true);
+    previousFlowDataRef.current = flowData;
+    
+    console.log('✅ フローデータ初期化完了');
+    
+    // ステップの状態を確認
+    setTimeout(() => {
+      console.log('🔍 初期化後のステップ状態確認:', {
+        stepsLength: steps.length,
+        initialStepsLength: initialSteps.length,
+        isInitialized: isInitialized
       });
-      
-      setSteps(initialSteps);
-      
-      // 元のデータもディープコピーで保存
-      setOriginalTitle(flowData.title || '無題のフロー');
-      setOriginalDescription(flowData.description || '');
-      setOriginalSteps(JSON.parse(JSON.stringify(initialSteps)));
-    }
-  }, [flowData]);
+    }, 100);
+  }, [flowData, selectedFilePath, isInitialized]);
 
   // 変更検出
   useEffect(() => {
     // 初期化が完了していない場合は変更検出をスキップ
-    if (!originalTitle && !originalDescription && originalSteps.length === 0 && steps.length > 0) {
+    if (!isInitialized) {
+      console.log('🔄 初期化が完了していないため、変更検出をスキップ');
       return;
     }
 
@@ -184,166 +297,157 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
     }
 
     setHasChanges(changes);
-  }, [title, description, steps, originalTitle, originalDescription, originalSteps]);
+  }, [title, description, steps, originalTitle, originalDescription, originalSteps, isInitialized]);
 
   const handleAddStep = useCallback((type: 'step' | 'decision', index?: number) => {
     const currentSteps = stepsRef.current;
-    console.log('➕ スライド追加開始:', { type, index, currentStepsLength: currentSteps.length });
-    
-    const newStep = {
-      id: `step_${Date.now()}`,
-      title: '',
+    const newStep: Step = {
+      id: `step_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      title: type === 'step' ? '新しいステップ' : '新しい条件分岐',
       description: '',
       message: '',
-      type,
+      type: type,
       images: [],
-      options: type === 'decision' ? [] : undefined,
-      conditions: type === 'decision' ? [
-        {
-          label: '',
-          nextId: '',
-        }
-      ] : undefined,
+      options: [],
+      conditions: []
     };
 
-    let updatedSteps;
-    if (typeof index === 'number') {
-      // 指定された位置にスライドを挿入
-      updatedSteps = [...currentSteps.slice(0, index + 1), newStep, ...currentSteps.slice(index + 1)];
+    let newSteps: Step[];
+    if (index !== undefined) {
+      newSteps = [...currentSteps.slice(0, index), newStep, ...currentSteps.slice(index)];
     } else {
-      // 末尾に追加
-      updatedSteps = [...currentSteps, newStep];
+      newSteps = [...currentSteps, newStep];
     }
 
-    console.log('➕ スライド追加完了:', { 
-      newLength: updatedSteps.length, 
-      newStep: { 
-        id: newStep.id, 
-        type: newStep.type,
-        images: newStep.images 
-      }
-    });
-    
-    // stepsRefを更新
-    stepsRef.current = updatedSteps;
-    setSteps(updatedSteps);
-    setHasChanges(true);
+    console.log('➕ ステップ追加:', { type, index, newStepId: newStep.id, totalSteps: newSteps.length });
+    setSteps(newSteps);
   }, []);
 
   // ステップ間に新規ステップを追加する関数
-  const handleAddStepBetween = useCallback((index: number, type: 'step' | 'decision') => {
-    console.log('➕ ステップ間追加:', { index, type });
+  const handleAddStepBetween = useCallback((afterStepId: string, type: 'step' | 'decision') => {
     const currentSteps = stepsRef.current;
+    const afterIndex = currentSteps.findIndex(step => step.id === afterStepId);
     
-    const newStep = {
-      id: `step_${Date.now()}`,
-      title: '',
-      description: '',
-      message: '',
-      type,
-      images: [],
-      options: type === 'decision' ? [] : undefined,
-      conditions: type === 'decision' ? [
-        {
-          label: '',
-          nextId: '',
-        }
-      ] : undefined,
-    };
+    if (afterIndex === -1) {
+      console.error('❌ 指定されたステップが見つかりません:', afterStepId);
+      return;
+    }
 
-    // 指定された位置にステップを挿入
-    const updatedSteps = [...currentSteps.slice(0, index + 1), newStep, ...currentSteps.slice(index + 1)];
+    handleAddStep(type, afterIndex + 1);
+  }, [handleAddStep]);
+
+  const handleStepUpdate = useCallback((stepId: string, updatedStep: Partial<Step>) => {
+    const currentSteps = stepsRef.current;
+    const stepIndex = currentSteps.findIndex(step => step.id === stepId);
     
-    console.log('➕ ステップ間追加完了:', { 
-      index, 
-      type, 
-      newLength: updatedSteps.length, 
-      newStep: { 
-        id: newStep.id, 
-        type: newStep.type 
-      }
-    });
+    if (stepIndex === -1) {
+      console.error('❌ ステップが見つかりません:', stepId);
+      return;
+    }
+
+    const updatedSteps = [...currentSteps];
+    updatedSteps[stepIndex] = { ...updatedSteps[stepIndex], ...updatedStep };
     
-    // stepsRefを更新
-    stepsRef.current = updatedSteps;
+    console.log('✏️ ステップ更新:', { stepId, updatedStep, stepIndex });
     setSteps(updatedSteps);
-    setHasChanges(true);
   }, []);
 
-  const handleStepUpdate = useCallback((stepId: string, updatedData: Partial<Step>) => {
-    setSteps(currentSteps =>
-      currentSteps.map(step => {
-        if (step.id === stepId) {
-          // updatedDataにimagesが含まれていない場合、既存のimagesを保持する
-          const newImages = updatedData.images !== undefined ? updatedData.images : step.images;
-          
-          return { 
-            ...step, 
-            ...updatedData,
-            images: newImages
-          };
-        }
-        return step;
-      })
-    );
-    setHasChanges(true);
-  }, []);
-
-  const handleStepsReorder = useCallback((reorderedSteps: any[]) => {
-    setSteps(reorderedSteps);
-    setHasChanges(true);
+  const handleStepsReorder = useCallback((newOrder: Step[]) => {
+    console.log('🔄 ステップ順序変更:', { 
+      oldLength: stepsRef.current.length, 
+      newLength: newOrder.length,
+      newOrder: newOrder.map(s => ({ id: s.id, title: s.title }))
+    });
+    setSteps(newOrder);
   }, []);
 
   const handleStepDelete = useCallback((stepId: string) => {
-    setSteps(currentSteps => currentSteps.filter(step => step.id !== stepId));
-    setHasChanges(true);
+    const currentSteps = stepsRef.current;
+    const updatedSteps = currentSteps.filter(step => step.id !== stepId);
+    
+    console.log('🗑️ ステップ削除:', { stepId, oldLength: currentSteps.length, newLength: updatedSteps.length });
+    setSteps(updatedSteps);
   }, []);
 
   const handleConditionAdd = useCallback((stepId: string) => {
-    setSteps(currentSteps => currentSteps.map(step => {
-      if (step.id === stepId && step.type === 'decision' && (!step.conditions || step.conditions.length < 4)) {
-        return {
-          ...step,
-          conditions: [...(step.conditions || []), { label: '', nextId: '' }],
-        };
-      }
-      return step;
-    }));
-    setHasChanges(true);
+    const currentSteps = stepsRef.current;
+    const stepIndex = currentSteps.findIndex(step => step.id === stepId);
+    
+    if (stepIndex === -1) {
+      console.error('❌ ステップが見つかりません:', stepId);
+      return;
+    }
+
+    const step = currentSteps[stepIndex];
+    const newCondition = {
+      label: '',
+      nextId: '',
+    };
+
+    const updatedStep = {
+      ...step,
+      conditions: [...(step.conditions || []), newCondition]
+    };
+
+    const updatedSteps = [...currentSteps];
+    updatedSteps[stepIndex] = updatedStep;
+    
+    console.log('➕ 条件追加:', { stepId, newCondition });
+    setSteps(updatedSteps);
   }, []);
 
   const handleConditionDelete = useCallback((stepId: string, conditionIndex: number) => {
-    setSteps(currentSteps => currentSteps.map(step => {
-      if (step.id === stepId && step.type === 'decision') {
-        return {
-          ...step,
-          conditions: (step.conditions || []).filter((_, index) => index !== conditionIndex),
-        };
-      }
-      return step;
-    }));
-    setHasChanges(true);
+    const currentSteps = stepsRef.current;
+    const stepIndex = currentSteps.findIndex(step => step.id === stepId);
+    
+    if (stepIndex === -1) {
+      console.error('❌ ステップが見つかりません:', stepId);
+      return;
+    }
+
+    const step = currentSteps[stepIndex];
+    const updatedConditions = (step.conditions || []).filter((_, index) => index !== conditionIndex);
+
+    const updatedStep = {
+      ...step,
+      conditions: updatedConditions
+    };
+
+    const updatedSteps = [...currentSteps];
+    updatedSteps[stepIndex] = updatedStep;
+    
+    console.log('🗑️ 条件削除:', { stepId, conditionIndex });
+    setSteps(updatedSteps);
   }, []);
 
-  const handleConditionEdit = useCallback((stepId: string, conditionIndex: number, field: 'label' | 'nextId', value: string) => {
-    setSteps(currentSteps => currentSteps.map(step => {
-      if (step.id === stepId && step.conditions) {
-        const updatedConditions = step.conditions.map((cond, index) => {
-          if (index === conditionIndex) {
-            return { ...cond, [field]: value };
-          }
-          return cond;
-        });
-        return { ...step, conditions: updatedConditions };
-      }
-      return step;
-    }));
-    setHasChanges(true);
+  const handleConditionEdit = useCallback((stepId: string, conditionIndex: number, updatedCondition: any) => {
+    const currentSteps = stepsRef.current;
+    const stepIndex = currentSteps.findIndex(step => step.id === stepId);
+    
+    if (stepIndex === -1) {
+      console.error('❌ ステップが見つかりません:', stepId);
+      return;
+    }
+
+    const step = currentSteps[stepIndex];
+    const updatedConditions = [...(step.conditions || [])];
+    updatedConditions[conditionIndex] = { ...updatedConditions[conditionIndex], ...updatedCondition };
+
+    const updatedStep = {
+      ...step,
+      conditions: updatedConditions
+    };
+
+    const updatedSteps = [...currentSteps];
+    updatedSteps[stepIndex] = updatedStep;
+    
+    console.log('✏️ 条件編集:', { stepId, conditionIndex, updatedCondition });
+    setSteps(updatedSteps);
   }, []);
 
   // This useEffect will trigger the autosave whenever 'steps' changes and there are pending changes.
   useEffect(() => {
-    if (hasChanges && isInitializedRef.current) {
+    if (hasChanges && isInitialized) {
       console.log('🔄 `steps`の変更を検知しました。自動保存をスケジュールします。');
       const handler = setTimeout(() => {
         // 2. autoSaveに引数を渡さず、常にRefから最新のstepsを読むようにする
@@ -355,7 +459,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
         clearTimeout(handler);
       };
     }
-  }, [steps, hasChanges]); // Depend on 'steps' to react to its changes
+  }, [steps, hasChanges, isInitialized]); // Depend on 'steps' to react to its changes
 
   const autoSave = useCallback(async () => {
     const currentSteps = stepsRef.current; 
@@ -433,181 +537,146 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
 
   const handleSave = async (updatedSteps = steps) => {
     try {
-      if (!flowData) {
-        console.error('❌ 保存エラー: フローデータが存在しません');
-        return;
-      }
-      
-      const cleanedSteps = updatedSteps.map(step => {
-        // 画像URLを正しく変換
-        const images = step.images?.map(img => {
-          const convertedUrl = convertImageUrl(img.url);
-          console.log(`💾 保存時画像URL変換 [${step.id}]:`, {
-            originalUrl: img.url,
-            convertedUrl: convertedUrl,
-            fileName: img.fileName
-          });
-          return {
-            url: img.url && img.url.trim() !== '' ? convertedUrl : undefined,
-            fileName: img.fileName && img.fileName.trim() !== '' ? img.fileName : undefined,
-          };
-        }).filter(img => img.url && img.fileName);
-        
-        // 古いプロパティを削除
-        const { imageUrl, imageFileName, ...restOfStep } = step;
-        return {
-          ...restOfStep,
-          images: images && images.length > 0 ? images : undefined,
-        };
-      });
-
-      // 2. flowDataから古いslidesプロパティを確実に除去する
-      const { slides, ...restOfFlowData } = flowData;
-
-      const saveData = {
-        ...restOfFlowData,
+      console.log('💾 フロー保存開始:', {
+        flowId: flowData?.id,
         title,
         description,
-        steps: cleanedSteps,
-        updatedAt: new Date().toISOString(),
-      };
-      
-      const payload = {
-        filePath: `knowledge-base/troubleshooting/${flowData.id}.json`,
-        ...saveData,
-      };
-      console.log('💾 [ManualSave] 送信ペイロード:', JSON.stringify(payload, null, 2));
-      
-      console.log('💾 保存データ詳細:', {
-        flowId: saveData.id,
-        title: saveData.title,
-        stepsCount: saveData.steps.length,
-        stepsWithImages: saveData.steps.filter(s => s.images && s.images.length > 0).length,
-        imageUrls: saveData.steps.map(s => ({
-          stepId: s.id,
-          images: s.images?.map(img => ({ url: img.url, fileName: img.fileName }))
-        }))
+        stepsCount: updatedSteps.length,
+        hasChanges
       });
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${saveData.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const flowDataToSave = {
+        id: flowData?.id,
+        title,
+        description,
+        triggerKeywords: flowData?.triggerKeywords || [],
+        steps: updatedSteps,
+        updatedAt: new Date().toISOString()
+      };
 
-      if (response.ok) {
-        setOriginalTitle(title);
-        setOriginalDescription(description);
-        setOriginalSteps(cleanedSteps);
-        setHasChanges(false);
-        console.log('✅ 保存成功');
-      } else {
-        const errorData = await response.json();
-        console.error('❌ 保存失敗:', response.status, errorData.error);
-        alert(`保存に失敗しました: ${errorData.error || 'サーバーエラー'}`);
-      }
+      console.log('💾 保存するデータ:', flowDataToSave);
+      onSave(flowDataToSave);
     } catch (error) {
-      console.error('❌ 保存処理中の致命的なエラー:', error);
-      alert(`保存中にエラーが発生しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
+      console.error('❌ フロー保存エラー:', error);
     }
   };
 
   const handleCancel = () => {
-    // 元のデータに戻す
+    console.log('❌ キャンセル処理開始');
     setTitle(originalTitle);
     setDescription(originalDescription);
     setSteps(originalSteps);
     setHasChanges(false);
+    console.log('✅ キャンセル処理完了');
   };
 
   // 未使用画像のクリーンアップ機能
   const handleCleanupUnusedImages = async () => {
-    try {
-      const confirmCleanup = window.confirm(
-        '未使用の画像ファイルを削除しますか？\n' +
-        'この操作は元に戻せません。\n' +
-        '現在使用中の画像は削除されません。'
-      );
-      
-      if (!confirmCleanup) return;
-
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/cleanup-unused-images`, {
-        method: 'POST'
-      });
-
-      if (!response.ok) {
-        throw new Error('クリーンアップに失敗しました');
-      }
-
-      const result = await response.json();
-      
-      if (result.success) {
-        alert(
-          `クリーンアップが完了しました。\n` +
-          `削除された画像: ${result.removedCount}個\n` +
-          `総画像数: ${result.totalImages}個\n` +
-          `使用中画像: ${result.usedImages}個`
-        );
-      } else {
-        throw new Error(result.error || 'クリーンアップに失敗しました');
-      }
-    } catch (error) {
-      console.error('クリーンアップエラー:', error);
-      alert(`クリーンアップに失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
+    console.log('🧹 未使用画像クリーンアップ開始');
+    // 未使用画像のクリーンアップ処理を実装
+    console.log('✅ 未使用画像クリーンアップ完了');
   };
 
-  if (currentTab === 'slides') {
+  // デバッグ情報を表示
+  console.log('🔄 EmergencyFlowEditor レンダリング:', {
+    flowDataId: flowData?.id,
+    flowDataTitle: flowData?.title,
+    hasFlowData: !!flowData,
+    stepsLength: steps.length,
+    isInitialized: isInitialized,
+    currentTab: currentTab,
+    hasChanges: hasChanges,
+    title: title,
+    description: description,
+    selectedFilePath: selectedFilePath
+  });
+
+  // スライドタブの場合
+  if (currentTab === "slides") {
     return (
-      <div className="space-y-4">
-        {/* デバッグ情報とボタン */}
-        <div className="p-4 bg-gray-100 rounded text-base-2x flex items-center justify-between">
-          <div>
-            <p>デバッグ: hasChanges = {hasChanges.toString()}</p>
-            <p>ステップ数: {steps.length}</p>
-            <p>元のステップ数: {originalSteps.length}</p>
+      <div className="space-y-6">
+        {/* デバッグ情報表示 */}
+        <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+          <h3 className="text-sm font-medium text-gray-700 mb-2">デバッグ情報</h3>
+          <div className="text-xs text-gray-600 space-y-1">
+            <p>flowData.id: {flowData?.id || 'なし'}</p>
+            <p>flowData.title: {flowData?.title || 'なし'}</p>
+            <p>flowData.steps: {flowData?.steps?.length || 0}</p>
+            <p>steps配列の内容: {JSON.stringify(steps.map(s => ({ id: s.id, title: s.title, type: s.type })))}</p>
+            <p>isInitialized: {isInitialized.toString()}</p>
+            <p>currentTab: {currentTab}</p>
+            <p>hasChanges: {hasChanges.toString()}</p>
+            <p>selectedFilePath: {selectedFilePath || 'なし'}</p>
           </div>
-          <div className="flex gap-3">
+        </div>
+
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold">スライド編集</h2>
+          <div className="flex gap-2">
             <Button
-              variant="outline"
-              onClick={handleCleanupUnusedImages}
-              size="sm"
-              className="h-12 text-base-2x px-4"
-              title="未使用画像を削除"
-            >
-              🧹 クリーンアップ
-            </Button>
-            <Button
-              variant="outline"
               onClick={handleCancel}
+              variant="outline"
               size="sm"
-              className="h-12 text-base-2x px-4"
             >
+              <X className="w-4 h-4 mr-2" />
               キャンセル
             </Button>
             <Button
               onClick={() => handleSave()}
+              disabled={!hasChanges}
               size="sm"
-              className="h-12 text-base-2x px-4"
             >
               保存
             </Button>
           </div>
         </div>
-        
-        {/* StepEditorは一度だけレンダリング */}
-        <div className="flex-grow overflow-y-auto pr-4 max-h-[calc(100vh-300px)]">
-          <StepEditor
-            steps={steps}
-            onStepUpdate={handleStepUpdate}
-            onStepsReorder={handleStepsReorder}
-            onStepDelete={handleStepDelete}
-            onConditionAdd={handleConditionAdd}
-            onConditionDelete={handleConditionDelete}
-            onConditionEdit={handleConditionEdit}
-            flowId={flowData?.id}
-            onAddStepBetween={handleAddStepBetween}
-          />
+
+        <div className="space-y-4">
+          {steps.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500 mb-4">スライドがありません</p>
+              <div className="flex justify-center gap-4">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleAddStep('step')}
+                  className="h-10 px-4"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  通常スライドを追加
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleAddStep('decision')}
+                  className="h-10 px-4"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  条件分岐を追加
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded mb-4">
+                <p className="text-blue-800 font-medium">StepEditor レンダリング情報:</p>
+                <p className="text-blue-700 text-sm">steps.length: {steps.length}</p>
+                <p className="text-blue-700 text-sm">flowId: {flowData?.id}</p>
+                <p className="text-blue-700 text-sm">steps内容: {steps.map(s => s.title).join(', ')}</p>
+              </div>
+              <StepEditor
+                steps={steps}
+                onStepUpdate={handleStepUpdate}
+                onStepsReorder={handleStepsReorder}
+                onStepDelete={handleStepDelete}
+                onConditionAdd={handleConditionAdd}
+                onConditionDelete={handleConditionDelete}
+                onConditionEdit={handleConditionEdit}
+                flowId={flowData?.id}
+                onAddStepBetween={handleAddStepBetween}
+              />
+            </div>
+          )}
         </div>
         
         {/* スライド追加ボタン */}

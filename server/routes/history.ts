@@ -5,6 +5,8 @@ import { HistoryService } from '../services/historyService';
 import { z } from 'zod';
 import { db } from '../db/index.js';
 import { historyItems } from '../db/schema.js';
+import fs from 'fs';
+import path from 'path';
 
 const router = express.Router();
 
@@ -28,22 +30,116 @@ const createSessionSchema = z.object({
 
 /**
  * GET /api/history
- * 最新10件の履歴を取得
+ * 履歴一覧を取得
  */
 router.get('/', async (req, res) => {
   try {
-    console.log('📋 履歴一覧取得リクエスト');
+    console.log('📋 履歴一覧取得リクエスト:', req.query);
 
     // Content-Typeを明示的に設定
     res.setHeader('Content-Type', 'application/json');
 
-    // データベースエラーを回避するため、空の配列を返す
-    console.log('⚠️ 履歴一覧取得を一時的に無効化 - 空の配列を返します');
+    // フィルターパラメータを取得
+    const { machineType, machineNumber, searchText, searchDate, limit = 20, offset = 0 } = req.query;
+
+    // チャットエクスポートファイルのみを取得（データベースは使用しない）
+    const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+    
+    let chatExports: any[] = [];
+    if (fs.existsSync(exportsDir)) {
+      // 再帰的にJSONファイルを検索する関数
+      const findJsonFiles = (dir: string, baseDir: string = exportsDir): any[] => {
+        const files: any[] = [];
+        const items = fs.readdirSync(dir);
+        
+        for (const item of items) {
+          const itemPath = path.join(dir, item);
+          const stats = fs.statSync(itemPath);
+          
+          if (stats.isDirectory()) {
+            // サブディレクトリを再帰的に検索
+            files.push(...findJsonFiles(itemPath, baseDir));
+          } else if (item.endsWith('.json')) {
+            try {
+              const content = fs.readFileSync(itemPath, 'utf8');
+              const data = JSON.parse(content);
+              
+              // 相対パスを計算
+              const relativePath = path.relative(baseDir, itemPath);
+              
+              files.push({
+                id: `export_${relativePath.replace(/[\\/]/g, '_')}`,
+                type: 'chat_export',
+                fileName: relativePath,
+                chatId: data.chatId,
+                userId: data.userId,
+                exportType: data.exportType,
+                exportTimestamp: data.exportTimestamp,
+                messageCount: data.chatData?.messages?.length || 0,
+                machineInfo: data.chatData?.machineInfo || {
+                  selectedMachineType: '',
+                  selectedMachineNumber: '',
+                  machineTypeName: '',
+                  machineNumber: ''
+                },
+                savedImages: data.savedImages || [],
+                fileSize: stats.size,
+                lastModified: stats.mtime,
+                createdAt: stats.mtime
+              });
+            } catch (error) {
+              console.warn(`JSONファイルの読み込みエラー: ${itemPath}`, error);
+            }
+          }
+        }
+        
+        return files;
+      };
+      
+      chatExports = findJsonFiles(exportsDir)
+        .sort((a, b) => new Date(b.exportTimestamp).getTime() - new Date(a.exportTimestamp).getTime());
+    }
+
+    // フィルタリングを適用
+    let filteredExports = chatExports;
+    
+    if (machineType) {
+      filteredExports = filteredExports.filter(item => 
+        item.machineInfo?.machineTypeName?.toLowerCase().includes(machineType.toLowerCase())
+      );
+    }
+    
+    if (machineNumber) {
+      filteredExports = filteredExports.filter(item => 
+        item.machineInfo?.machineNumber?.toLowerCase().includes(machineNumber.toLowerCase())
+      );
+    }
+    
+    if (searchText) {
+      filteredExports = filteredExports.filter(item => 
+        item.fileName.toLowerCase().includes(searchText.toLowerCase()) ||
+        item.exportType.toLowerCase().includes(searchText.toLowerCase()) ||
+        item.machineInfo?.machineTypeName?.toLowerCase().includes(searchText.toLowerCase()) ||
+        item.machineInfo?.machineNumber?.toLowerCase().includes(searchText.toLowerCase())
+      );
+    }
+
+    // ページネーションを適用
+    const limitNum = parseInt(limit as string);
+    const offsetNum = parseInt(offset as string);
+    const paginatedExports = filteredExports.slice(offsetNum, offsetNum + limitNum);
+
+    console.log('📋 チャットエクスポート一覧:', {
+      total: filteredExports.length,
+      filtered: paginatedExports.length,
+      limit: limitNum,
+      offset: offsetNum
+    });
 
     res.json({
       success: true,
-      data: [],
-      total: 0,
+      items: paginatedExports,
+      total: filteredExports.length,
       timestamp: new Date().toISOString()
     });
 
@@ -54,6 +150,34 @@ router.get('/', async (req, res) => {
       error: '履歴一覧の取得に失敗しました',
       details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
+    });
+  }
+});
+
+/**
+ * GET /api/history/machine-data
+ * 機種・機械番号マスターデータを取得
+ */
+router.get('/machine-data', async (req, res) => {
+  try {
+    console.log('📋 機種・機械番号データ取得リクエスト');
+
+    // Content-Typeを明示的に設定
+    res.setHeader('Content-Type', 'application/json');
+
+    // 一時的に空のデータを返す
+    console.log('⚠️ 機種・機械番号データ取得を一時的に無効化 - 空のデータを返します');
+
+    res.json({
+      machineTypes: [],
+      machines: []
+    });
+
+  } catch (error) {
+    console.error('❌ 機種・機械番号データ取得エラー:', error);
+    res.status(500).json({
+      error: '機種・機械番号データの取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });

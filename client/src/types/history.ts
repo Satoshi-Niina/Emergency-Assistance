@@ -12,6 +12,8 @@ export interface SupportHistoryItem {
 export interface HistorySearchFilters {
   machineType?: string;
   machineNumber?: string;
+  searchText?: string; // テキスト検索用
+  searchDate?: string; // 日付検索用
   limit?: number;
   offset?: number;
 }

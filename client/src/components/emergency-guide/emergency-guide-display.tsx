@@ -101,6 +101,9 @@ function buildImageUrl(imageUrl: string): string {
   if (imageUrl.startsWith('/api/emergency-flow/image/')) {
     return `${apiBaseUrl}${imageUrl}`;
   }
+  if (imageUrl.startsWith('/api/troubleshooting/image/')) {
+    return `${apiBaseUrl}${imageUrl}`;
+  }
 
   // ファイル名を抽出
   let fileName = imageUrl;
@@ -111,7 +114,7 @@ function buildImageUrl(imageUrl: string): string {
   }
 
   // 新しいAPIエンドポイント形式に変換
-  return `${apiBaseUrl}/api/emergency-flow/image/${fileName}`;
+  return `${apiBaseUrl}/api/troubleshooting/image/${fileName}`;
 }
 
 export default function EmergencyGuideDisplay({ 
@@ -135,13 +138,14 @@ export default function EmergencyGuideDisplay({
     const fetchGuideData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/${guideId}`);
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${guideId}`);
 
         if (!response.ok) {
           throw new Error(`Failed to fetch guide data: ${response.status}`);
         }
 
-        const data = await response.json();
+        const responseData = await response.json();
+        const data = responseData.success && responseData.data ? responseData.data : responseData;
         setGuideData(data);
 
         // 初期ステップを履歴に追加

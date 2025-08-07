@@ -62,13 +62,20 @@ const EmergencyGuidePage: React.FC = () => {
   useEffect(() => {
     const refreshFlowList = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/list?ts=${Date.now()}`);
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list?ts=${Date.now()}`, {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
         if (!response.ok) throw new Error("読み込み失敗");
         const data = await response.json();
+        // APIレスポンスの構造に合わせてデータをマッピング
+        const flows = data.success && data.data ? data.data : (Array.isArray(data) ? data : []);
         // フロー一覧を直接更新
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('forceRefreshFlowList', {
-            detail: { flowList: Array.isArray(data) ? data : [] }
+            detail: { flowList: flows }
           }));
         }
       } catch (err) {
@@ -147,7 +154,12 @@ const EmergencyGuidePage: React.FC = () => {
       const randomId = Math.random().toString(36).substring(2);
       const cacheParams = `?_t=${timestamp}&_r=${randomId}&no_cache=true&source=troubleshooting`;
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/list${cacheParams}`);
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list${cacheParams}`, {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
 
       if (!response.ok) {
         throw new Error(`応急処置データの取得に失敗しました: ${response.status}`);
@@ -155,14 +167,15 @@ const EmergencyGuidePage: React.FC = () => {
 
       const data = await response.json();
 
-      // 全データを処理（フィルタリングなし）
-      console.log(`✅ 取得したフローデータ: ${data.length}件`);
-      setFlowList(Array.isArray(data) ? data : []);
+      // APIレスポンスの構造に合わせてデータをマッピング
+      const flows = data.success && data.data ? data.data : (Array.isArray(data) ? data : []);
+      console.log(`✅ 取得したフローデータ: ${flows.length}件`);
+      setFlowList(flows);
 
       // データをキャッシュ
       if (typeof window !== 'undefined') {
         localStorage.setItem('emergencyFlowList', JSON.stringify({
-          data: Array.isArray(data) ? data : [],
+          data: flows,
           timestamp: timestamp,
           version: '3.0',
           source: 'knowledge-base/troubleshooting'

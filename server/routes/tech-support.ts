@@ -4,8 +4,9 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
-import Fuse from 'fuse.js';
+// Fuse.jsのインポートを削除（画像検索機能を削除したため）
 import sharp from 'sharp';
+import AdmZip from 'adm-zip';
 import { addDocumentToKnowledgeBase } from '../lib/knowledge-base.js';
 
 const router = express.Router();
@@ -17,7 +18,117 @@ const __dirname = path.dirname(__filename);
 const extractPdfText = async (filePath: string) => '';
 const extractWordText = async (filePath: string) => '';
 const extractExcelText = async (filePath: string) => '';
-const extractPptxText = async (filePath: string) => '';
+
+// PPTXファイルからテキストを抽出する関数
+const extractPptxText = async (filePath: string): Promise<{ text: string; slideImages: string[] }> => {
+    try {
+        console.log(`📄 PPTXファイル処理開始: ${filePath}`);
+        
+        const zip = new AdmZip(filePath);
+        const tempDir = path.join(__dirname, '../../temp');
+        const extractDir = path.join(tempDir, `pptx_${Date.now()}`);
+        
+        // 一時ディレクトリを作成
+        if (!fs.existsSync(tempDir)) {
+            fs.mkdirSync(tempDir, { recursive: true });
+        }
+        if (!fs.existsSync(extractDir)) {
+            fs.mkdirSync(extractDir, { recursive: true });
+        }
+        
+        // ZIPとして展開
+        zip.extractAllTo(extractDir, true);
+        
+        // スライドXMLファイルを探す
+        const slidesDir = path.join(extractDir, 'ppt', 'slides');
+        const slideFiles = fs.existsSync(slidesDir)
+            ? fs.readdirSync(slidesDir).filter(file => file.startsWith('slide') && file.endsWith('.xml'))
+            : [];
+        
+        let extractedText = '';
+        const slideImages: string[] = [];
+        
+        // 知識ベース画像ディレクトリを確保
+        const knowledgeBaseImagesDir = path.join(process.cwd(), 'knowledge-base/images');
+        if (!fs.existsSync(knowledgeBaseImagesDir)) {
+            fs.mkdirSync(knowledgeBaseImagesDir, { recursive: true });
+        }
+        
+        // 各スライドのテキストを抽出
+        for (let i = 0; i < slideFiles.length; i++) {
+            const slideNumber = i + 1;
+            const slideFilePath = path.join(slidesDir, slideFiles[i]);
+            const slideContent = fs.readFileSync(slideFilePath, 'utf8');
+            
+            // テキスト内容の抽出
+            const textRegex = /<a:t>(.*?)<\/a:t>/g;
+            let match;
+            while ((match = textRegex.exec(slideContent)) !== null) {
+                if (match[1].trim()) {
+                    extractedText += match[1].trim() + '\n';
+                }
+            }
+            
+            // ノート（スピーカーノート）の内容を取得
+            const noteFilePath = path.join(extractDir, 'ppt', 'notesSlides', `notesSlide${slideNumber}.xml`);
+            if (fs.existsSync(noteFilePath)) {
+                const noteXml = fs.readFileSync(noteFilePath, 'utf8');
+                while ((match = textRegex.exec(noteXml)) !== null) {
+                    if (match[1].trim()) {
+                        extractedText += match[1].trim() + '\n';
+                    }
+                }
+            }
+            
+            // スライド画像を生成（プレースホルダー画像）
+            const baseFileName = path.basename(filePath, path.extname(filePath));
+            const imageFileName = `${baseFileName}_${slideNumber.toString().padStart(3, '0')}.png`;
+            const imagePath = path.join(knowledgeBaseImagesDir, imageFileName);
+            
+            // プレースホルダー画像を生成
+            try {
+                const svgContent = `
+                    <svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="100%" height="100%" fill="#f0f0f0"/>
+                        <text x="400" y="250" text-anchor="middle" font-family="Arial" font-size="24" fill="#666">
+                            スライド ${slideNumber}
+                        </text>
+                        <text x="400" y="280" text-anchor="middle" font-family="Arial" font-size="16" fill="#999">
+                            ${path.basename(filePath)}
+                        </text>
+                    </svg>
+                `;
+                
+                await sharp(Buffer.from(svgContent))
+                    .png()
+                    .toFile(imagePath);
+                
+                slideImages.push(`/knowledge-base/images/${imageFileName}`);
+                console.log(`📸 スライド画像生成: ${imageFileName}`);
+            } catch (imageError) {
+                console.warn(`スライド画像生成に失敗: ${imageError}`);
+                // 画像生成に失敗しても処理は続行
+            }
+        }
+        
+        // 一時ディレクトリを削除
+        try {
+            fs.rmSync(extractDir, { recursive: true, force: true });
+        } catch (cleanupError) {
+            console.warn('一時ディレクトリの削除に失敗しました:', cleanupError);
+        }
+        
+        console.log(`✅ PPTXファイル処理完了: ${extractedText.length}文字を抽出、${slideImages.length}枚の画像を生成`);
+        return {
+            text: extractedText.trim(),
+            slideImages: slideImages
+        };
+        
+    } catch (error) {
+        console.error('❌ PPTXファイル処理エラー:', error);
+        throw new Error(`PPTXファイルの処理に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+};
 
 // Logging function to control debug output
 function logDebug(message: any, ...args) {
@@ -60,6 +171,19 @@ const ensureDirectoryExists = (dirPath: string) => {
     // エラーが発生してもサーバーを停止させないようにする
     console.warn(`⚠️  ディレクトリ作成に失敗しましたが、処理を続行します`);
   }
+};
+
+// 必要なディレクトリを一括で作成する関数
+const ensureRequiredDirectories = () => {
+  const requiredDirs = [
+    path.join(process.cwd(), 'knowledge-base'),
+    path.join(process.cwd(), 'knowledge-base/images'),
+    path.join(process.cwd(), 'knowledge-base/json'),
+    path.join(process.cwd(), 'knowledge-base/data'),
+    path.join(__dirname, '../../temp')
+  ];
+  
+  requiredDirs.forEach(dir => ensureDirectoryExists(dir));
 };
 // ファイルクリーンアップユーティリティ
 function cleanupTempDirectory(dirPath) {
@@ -420,81 +544,7 @@ const upload: any = multer({
         }
     }
 });
-/**
- * 画像検索APIエンドポイント
- * クライアントからのFuse.js検索リクエストを処理
- */
-router.post('/image-search', async (req, res) => {
-    const { query, count = 10 } = req.body;
-    try {
-        console.log('画像検索APIリクエスト:', `query="${query}", count=${count}`);
-        // 画像検索データを読み込み
-        const searchDataPath: any = path.join(process.cwd(), 'knowledge-base/data/image_search_data.json');
-        const rawData: any = fs.readFileSync(searchDataPath, 'utf-8');
-        const searchData: any = JSON.parse(rawData);
-        console.log('画像検索データを読み込み:', `${searchData.length}件`);
-        // デバッグ: 最初の数件のデータ内容を確認
-        console.log('検索データサンプル (最初の3件):');
-        searchData.slice(0, 3).forEach((item, index) => {
-            console.log(`  ${index + 1}. title: "${item.title}", keywords: [${item.keywords?.join(', ')}], searchText: "${item.searchText || ''}"`);
-        });
-        // Fuse.jsで検索 - バランスの取れた検索設定
-        const fuse: any = new Fuse(searchData, {
-            keys: [
-                { name: 'title', weight: 1.0 },
-                { name: 'description', weight: 0.8 },
-                { name: 'keywords', weight: 1.2 }, // キーワードの重みを増加
-                { name: 'searchText', weight: 0.6 }
-            ],
-            threshold: 0.6, // より柔軟な検索（0.4から0.6に変更）
-            includeScore: true,
-            ignoreLocation: true,
-            useExtendedSearch: true,
-            minMatchCharLength: 1, // 最小マッチ文字数を1に変更（短い検索語にも対応）
-            distance: 100, // 検索距離を制限
-            shouldSort: true,
-            findAllMatches: false // すべてではなく、より良いマッチのみ
-        });
-        const results: any = fuse.search(query);
-        console.log('Fuse.js検索結果:', `${results.length}件見つかりました`);
-        // 結果が少ない場合は部分一致も試行
-        if (results.length === 0) {
-            console.log('Fuse.jsで結果が見つからないため、部分一致検索を実行します');
-            const partialMatches: any = searchData.filter((item) => {
-                const searchableText = [
-                    item.title || '',
-                    item.description || '',
-                    ...(item.keywords || []),
-                    item.searchText || ''
-                ].join(' ').toLowerCase();
-                return searchableText.includes(query.toLowerCase());
-            });
-            console.log('部分一致検索結果:', `${partialMatches.length}件見つかりました`);
-            const images: any = partialMatches.slice(0, count).map((item, index) => ({
-                id: item.id,
-                url: item.file,
-                file: item.file,
-                title: item.title,
-                type: 'image',
-                relevance: 0.5 // 部分一致は中程度のrelevance
-            }));
-            return res.json({ images });
-        }
-        const images: any = results.slice(0, count).map(result => ({
-            id: result.item.id,
-            url: result.item.file,
-            file: result.item.file,
-            title: result.item.title,
-            type: 'image',
-            relevance: 1 - (result.score || 0)
-        }));
-        res.json({ images });
-    }
-    catch (err) {
-        console.error('Image search error:', err);
-        res.status(500).json({ error: 'Image search failed' });
-    }
-});
+// 画像検索APIエンドポイントを削除（Fuse.jsを使用しているため）
 /**
  * キャッシュをクリアするエンドポイント
  * 削除操作後にクライアントがこれを呼び出すことで、最新情報を確実に取得
@@ -855,6 +905,8 @@ router.post('/init-image-search-data', async (req, res) => {
 // 技術文書アップロードエンドポイント
 router.post('/upload', upload.single('file'), async (req, res) => {
     try {
+        // 必要なディレクトリを事前に作成
+        ensureRequiredDirectories();
         const file: any = req.file;
         if (!file)
             return res.status(400).json({ error: "ファイルがアップロードされていません" });
@@ -1082,12 +1134,12 @@ router.post('/upload', upload.single('file'), async (req, res) => {
                     metadata = { type: 'xlsx' };
                     break;
                 case '.pptx':
-                    extractedText = await extractPptxText(filePath);
+                    const pptxResult = await extractPptxText(filePath);
+                    extractedText = pptxResult.text;
                     // PPTXの場合は画像も抽出済み
                     metadata = {
                         type: 'pptx',
-                        // スライド画像へのパスをメタデータに追加（knowledge-baseディレクトリに一元化）
-                        slideImages: Array.from({ length: 4 }, (_, i) => `/knowledge-base/images/${path.basename(filePath, path.extname(filePath))}_${(i + 1).toString().padStart(3, '0')}.png`)
+                        slideImages: pptxResult.slideImages
                     };
                     break;
             }
@@ -1193,9 +1245,27 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         }
         catch (processingError) {
             console.error("ファイル処理エラー:", processingError);
+            
+            // PPTXファイルの場合はより詳細なエラー情報を提供
+            let errorMessage = "ファイル処理中にエラーが発生しました";
+            let errorDetails = processingError instanceof Error ? processingError.message : String(processingError);
+            
+            if (fileExt === '.pptx') {
+                errorMessage = "PowerPointファイルの処理中にエラーが発生しました";
+                if (errorDetails.includes('adm-zip') || errorDetails.includes('AdmZip')) {
+                    errorDetails = "PowerPointファイルの解凍に失敗しました。ファイルが破損している可能性があります。";
+                } else if (errorDetails.includes('sharp') || errorDetails.includes('Sharp')) {
+                    errorDetails = "スライド画像の生成に失敗しました。";
+                } else if (errorDetails.includes('ENOENT') || errorDetails.includes('no such file')) {
+                    errorDetails = "PowerPointファイルの内部構造を読み取れませんでした。";
+                }
+            }
+            
             return res.status(500).json({
-                error: "ファイル処理中にエラーが発生しました",
-                details: processingError instanceof Error ? processingError.message : String(processingError)
+                error: errorMessage,
+                details: errorDetails,
+                fileType: fileExt,
+                fileName: file.originalname
             });
         }
     }

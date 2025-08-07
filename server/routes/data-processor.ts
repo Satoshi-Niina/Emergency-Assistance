@@ -130,6 +130,16 @@ export function registerDataProcessorRoutes(app) {
             let processedDocument = null;
             // 必ずドキュメントの処理は行う（後の処理で必要）
             processedDocument = await processDocument(filePath);
+            
+            // processedDocumentの構造を標準化
+            const standardizedDocument = {
+                ...processedDocument,
+                chunks: processedDocument.chunks || [],
+                images: processedDocument.images || [],
+                text: processedDocument.content || processedDocument.text || '',
+                fileName: processedDocument.fileName || path.basename(filePath)
+            };
+            
             if (extractKnowledgeBase) {
                 // ナレッジベースに追加
                 const result: any = await addDocumentToKnowledgeBase({ originalname: path.basename(filePath), path: filePath, mimetype: 'text/plain' }, fs.readFileSync(filePath, 'utf-8'));
@@ -155,7 +165,7 @@ export function registerDataProcessorRoutes(app) {
                     title: filename,
                     path: filePath,
                     type: fileType,
-                    chunkCount: 0, // 実際のチャンクはないが、表示用に追加
+                    chunkCount: standardizedDocument.chunks.length, // 標準化されたドキュメントを使用
                     addedAt: new Date().toISOString()
                 });
                 // インデックスを保存
@@ -165,11 +175,11 @@ export function registerDataProcessorRoutes(app) {
             }
             // 2. 画像検索用データの生成（画像の抽出とメタデータ生成）
             if (extractImageSearch) {
-                // 既に処理されたドキュメントを使用
-                if (processedDocument) {
+                // 標準化されたドキュメントを使用
+                if (standardizedDocument) {
                     // 必要に応じて画像検索データにアイテムを追加
                     // 成功メッセージにはこの処理結果を含める
-                    log(`画像検索用データを生成しました: ${processedDocument.chunks.length}チャンク`);
+                    log(`画像検索用データを生成しました: ${standardizedDocument.chunks.length}チャンク`);
                 }
             }
             // 3. Q&A用の処理
@@ -180,10 +190,12 @@ export function registerDataProcessorRoutes(app) {
                     const generateQAPairs: any = openaiModule.generateQAPairs;
                     // QAペアの初期化
                     let qaPairs = [];
-                    // 既に処理されたドキュメントを使用
-                    if (processedDocument) {
+                    // 標準化されたドキュメントを使用
+                    if (standardizedDocument) {
                         // 本文テキストを取得
-                        const fullText: any = processedDocument.chunks.map(chunk => chunk.text).join("\n");
+                        const fullText: any = standardizedDocument.chunks.length > 0 
+                            ? standardizedDocument.chunks.map(chunk => chunk.text).join("\n")
+                            : standardizedDocument.text;
                         log(`Q&A生成用のテキスト準備完了: ${fullText.length}文字`);
                         // Q&Aペアを生成
                         qaPairs = await generateQAPairs(fullText, 10);
@@ -219,10 +231,10 @@ export function registerDataProcessorRoutes(app) {
             if (createEmergencyGuide) {
                 try {
                     log(`応急処置ガイド用に処理を開始します: ${originalName}`);
-                    // 既に処理されたドキュメントを使用
-                    if (processedDocument) {
+                    // 標準化されたドキュメントを使用
+                    if (standardizedDocument) {
                         // ドキュメントから抽出された画像がある場合
-                        if (processedDocument.images && processedDocument.images.length > 0) {
+                        if (standardizedDocument.images && standardizedDocument.images.length > 0) {
                             // 応急処置ガイド用のディレクトリ設定
                             const guidesDir: any = path.join(process.cwd(), 'knowledge-base/troubleshooting');
                             if (!fs.existsSync(guidesDir)) {
@@ -239,7 +251,7 @@ export function registerDataProcessorRoutes(app) {
                                 id: guideId,
                                 title: originalName.split('.')[0] || 'ガイド',
                                 createdAt: new Date().toISOString(),
-                                steps: processedDocument.images.map((image, index) => {
+                                steps: standardizedDocument.images.map((image, index) => {
                                     // 各画像をステップとして登録
                                     return {
                                         id: `${guideId}_step${index + 1}`,
@@ -318,9 +330,27 @@ export function registerDataProcessorRoutes(app) {
         }
         catch (error) {
             console.error('データ処理エラー:', error);
+            
+            // より詳細なエラー情報を提供
+            let errorMessage = '処理中にエラーが発生しました';
+            let errorDetails = error instanceof Error ? error.message : '不明なエラーです';
+            
+            // 特定のエラーパターンを検出
+            if (errorDetails.includes('Cannot read properties of undefined')) {
+                errorMessage = 'ファイル処理中にデータ構造エラーが発生しました';
+                errorDetails = 'ファイルの内容を正しく解析できませんでした。ファイルが破損している可能性があります。';
+            } else if (errorDetails.includes('ENOENT') || errorDetails.includes('no such file')) {
+                errorMessage = 'ファイルが見つかりません';
+                errorDetails = 'アップロードされたファイルにアクセスできませんでした。';
+            } else if (errorDetails.includes('adm-zip') || errorDetails.includes('AdmZip')) {
+                errorMessage = 'ファイルの解凍に失敗しました';
+                errorDetails = 'ファイルが破損しているか、サポートされていない形式です。';
+            }
+            
             return res.status(500).json({
-                error: '処理中にエラーが発生しました',
-                message: error instanceof Error ? error.message : '不明なエラーです'
+                error: errorMessage,
+                message: errorDetails,
+                timestamp: new Date().toISOString()
             });
         }
     });

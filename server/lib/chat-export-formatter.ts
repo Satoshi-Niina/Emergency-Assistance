@@ -205,13 +205,26 @@ ${messages.slice(0, 10).map((m: any) => m.content).join('\n')}
         }
         
         // メディア情報を追加
-        const messageMediaItems = messageMedia.filter((media: any) => media.messageId === message.id);
-        const mediaInfo = messageMediaItems.map((media: any) => ({
-            id: media.id,
-            type: media.type,
-            filename: media.filename,
-            path: media.path
-        }));
+        let mediaInfo = [];
+        if (messageMedia && typeof messageMedia === 'object') {
+            // messageMediaがオブジェクトの場合（メッセージIDをキーとする）
+            const messageMediaItems = messageMedia[message.id] || [];
+            mediaInfo = messageMediaItems.map((media: any) => ({
+                id: media.id,
+                type: media.type,
+                filename: media.filename,
+                path: media.path
+            }));
+        } else if (Array.isArray(messageMedia)) {
+            // messageMediaが配列の場合（従来の形式）
+            const messageMediaItems = messageMedia.filter((media: any) => media.messageId === message.id);
+            mediaInfo = messageMediaItems.map((media: any) => ({
+                id: media.id,
+                type: media.type,
+                filename: media.filename,
+                path: media.path
+            }));
+        }
         
         return {
             id: message.id,
@@ -240,7 +253,9 @@ ${messages.slice(0, 10).map((m: any) => m.content).join('\n')}
             total_messages: messages.length,
             user_messages: messages.filter((m: any) => !m.isAiResponse).length,
             ai_messages: messages.filter((m: any) => m.isAiResponse).length,
-            total_media: messageMedia.length,
+            total_media: typeof messageMedia === 'object' ? 
+                Object.values(messageMedia).flat().length : 
+                (Array.isArray(messageMedia) ? messageMedia.length : 0),
             export_format_version: "1.0"
         }
     };

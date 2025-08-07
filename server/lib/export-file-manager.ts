@@ -123,7 +123,7 @@ export class ExportFileManager {
     /**
      * フォーマット済みエクスポートデータを保存
      */
-    saveFormattedExport(chatId: number, formattedData: any): string {
+    saveFormattedExport(chatId: number | string, formattedData: any): string {
         const chatDir = path.join(this.baseDir, `chat_${chatId}`);
         
         if (!fs.existsSync(chatDir)) {

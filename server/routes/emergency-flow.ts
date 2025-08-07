@@ -406,9 +406,70 @@ router.get('/', async (req, res) => {
 // フロー一覧取得エンドポイント（互換性のため残す）
 router.get('/list', async (req, res) => {
   try {
-    console.log('🔍 データベースからフロー一覧を取得中（/list）...');
+    console.log('🔍 トラブルシューティングディレクトリからフロー一覧を取得中（/list）...');
     
-    // この部分は既に上記でJSONファイル操作に変更済み
+    // トラブルシューティングディレクトリからJSONファイルを読み込み
+    const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+    
+    if (!fs.existsSync(troubleshootingDir)) {
+      console.log('❌ トラブルシューティングディレクトリが存在しません');
+      return res.json({
+        success: true,
+        data: [],
+        total: 0,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    const files = fs.readdirSync(troubleshootingDir);
+    const jsonFiles = files.filter(file => file.endsWith('.json'));
+    
+    console.log('📄 JSONファイル:', jsonFiles);
+    
+    const fileList = [];
+    
+    for (const file of jsonFiles) {
+      try {
+        const filePath = path.join(troubleshootingDir, file);
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const flowData = JSON.parse(fileContent);
+        
+        let description = flowData.description || '';
+        if (!description && flowData.steps && flowData.steps.length > 0) {
+          const firstStep = flowData.steps[0];
+          description = firstStep.description || firstStep.message || '';
+        }
+
+        const result = {
+          id: flowData.id || file.replace('.json', ''),
+          title: flowData.title || 'タイトルなし',
+          description: description,
+          fileName: file,
+          filePath: `knowledge-base/troubleshooting/${file}`,
+          createdAt: flowData.createdAt || new Date().toISOString(),
+          updatedAt: flowData.updatedAt || new Date().toISOString(),
+          triggerKeywords: flowData.triggerKeywords || flowData.trigger || [],
+          category: flowData.category || '',
+          dataSource: 'file'
+        };
+        
+        fileList.push(result);
+        console.log(`✅ フロー ${result.id} 処理完了:`, result);
+      } catch (error) {
+        console.error(`❌ ファイル ${file} の解析中にエラーが発生しました:`, error);
+      }
+    }
+    
+    // 作成日時でソート
+    fileList.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    console.log('📋 最終的なフロー一覧:', fileList);
+    res.json({
+      success: true,
+      data: fileList,
+      total: fileList.length,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
     console.error('❌ フロー一覧取得エラー:', error);
     res.status(500).json({ 

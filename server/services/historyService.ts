@@ -167,12 +167,12 @@ export class HistoryService {
   /**
    * セッション一覧を取得
    */
-  static async getSessionList(params: HistorySearchParams): Promise<HistorySearchResult> {
+  static async getSessionList(searchParams: HistorySearchParams): Promise<HistorySearchResult> {
     try {
-      console.log('📋 セッション一覧取得:', params);
+      console.log('📋 セッション一覧取得:', searchParams);
       
       // バリデーション
-      const validationResult = searchHistorySchema.safeParse(params);
+      const validationResult = searchHistorySchema.safeParse(searchParams);
       if (!validationResult.success) {
         throw new Error(`バリデーションエラー: ${validationResult.error.errors.map(e => e.message).join(', ')}`);
       }
@@ -181,24 +181,24 @@ export class HistoryService {
 
       // 検索条件を構築
       const conditions: string[] = [];
-      const params: any[] = [];
+      const queryParams: any[] = [];
       let paramIndex = 1;
 
       if (machineType) {
         conditions.push(`machine_type ILIKE $${paramIndex}`);
-        params.push(`%${machineType}%`);
+        queryParams.push(`%${machineType}%`);
         paramIndex++;
       }
 
       if (machineNumber) {
         conditions.push(`machine_number ILIKE $${paramIndex}`);
-        params.push(`%${machineNumber}%`);
+        queryParams.push(`%${machineNumber}%`);
         paramIndex++;
       }
 
       if (status) {
         conditions.push(`status = $${paramIndex}`);
-        params.push(status);
+        queryParams.push(status);
         paramIndex++;
       }
 
@@ -209,13 +209,13 @@ export class HistoryService {
         `SELECT * FROM chat_session_summary ${whereClause}
          ORDER BY created_at DESC
          LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
-        [...params, limit, offset]
+        [...queryParams, limit, offset]
       );
 
       // 総件数を取得
       const countResult = await query(
         `SELECT COUNT(*) as total FROM chat_sessions ${whereClause}`,
-        params
+        queryParams
       );
 
       const total = parseInt(countResult.rows[0].total);
