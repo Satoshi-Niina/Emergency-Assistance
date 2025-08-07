@@ -17,15 +17,17 @@ import { useToast } from "../hooks/use-toast";
 import { searchTroubleshootingFlows, japaneseGuideTitles } from "../lib/troubleshooting-search";
 
 export default function ChatPage() {
-  try {
-    const {
-      messages,
-      sendMessage,
-      isLoading,
-      clearChatHistory,
-      isClearing,
-      chatId
-    } = useChat();
+  const {
+    messages,
+    setMessages,
+    sendMessage,
+    isLoading,
+    clearChatHistory,
+    isClearing,
+    chatId,
+    initializeChat,
+    exportChatHistory
+  } = useChat();
 
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -282,14 +284,23 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages]);
 
-  // コンポーネントマウント時に機種データを取得
+  // コンポーネントマウント時の初期化
   useEffect(() => {
-    console.log('🚀 チャットページマウント - 機種データ取得開始');
-    // エラーハンドリングを追加
+    console.log('🚀 チャットページマウント - 初期化開始');
+    
+    // チャットIDの初期化を確実に行う
+    if (!chatId) {
+      console.log('🔄 チャットIDが未設定のため初期化を実行');
+      initializeChat().catch(error => {
+        console.error('❌ チャットID初期化エラー:', error);
+      });
+    }
+    
+    // 機種データの取得
     fetchMachineTypes().catch(error => {
       console.error('❌ 機種データ取得でエラーが発生しましたが、チャット画面は表示されます:', error);
     });
-  }, [fetchMachineTypes]);
+  }, [chatId, initializeChat, fetchMachineTypes]);
 
   // 機種データの状態変更を監視（デバッグ用）- 一時的に無効化
   // useEffect(() => {
@@ -322,12 +333,37 @@ export default function ChatPage() {
   // }, [qaMode, currentQuestionIndex, qaAnswers.length, sendMessage]);
 
   // 追加: Q&A回答処理
-  const handleQaAnswer = (answer: string) => {
+  const handleQaAnswer = async (answer: string) => {
     const newAnswers = [...qaAnswers, answer];
     setQaAnswers(newAnswers);
     
     // 回答をチャットに追加（左側に表示）
-    sendMessage(answer, undefined, false);
+    sendMessage(answer, [], false);
+    
+    // Q&A回答をサーバーに送信
+    try {
+      if (chatId) {
+        const response = await fetch(`/api/chats/${chatId}/messages`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            content: answer,
+            useOnlyKnowledgeBase: true
+          })
+        });
+        
+        if (!response.ok) {
+          console.error('Q&A回答のサーバー送信に失敗:', response.status);
+        } else {
+          console.log('Q&A回答をサーバーに送信しました:', answer);
+        }
+      }
+    } catch (error) {
+      console.error('Q&A回答のサーバー送信エラー:', error);
+    }
     
     // 次の質問があるかチェック
     if (currentQuestionIndex < qaQuestions.length - 1) {
@@ -335,14 +371,65 @@ export default function ChatPage() {
       setCurrentQuestionIndex(nextIndex);
       
       // 次の質問を表示（右側に表示するためisAiResponse=true）
-      setTimeout(() => {
-        sendMessage(qaQuestions[nextIndex], undefined, true);
+      setTimeout(async () => {
+        sendMessage(qaQuestions[nextIndex], [], true);
+        
+        // 次のQ&A質問をサーバーにシステムメッセージとして送信
+        try {
+          if (chatId) {
+            const response = await fetch(`/api/chats/${chatId}/messages/system`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              credentials: 'include',
+              body: JSON.stringify({
+                content: qaQuestions[nextIndex],
+                isUserMessage: false
+              })
+            });
+            
+            if (!response.ok) {
+              console.error('次のQ&A質問のサーバー送信に失敗:', response.status);
+            } else {
+              console.log('次のQ&A質問をサーバーに送信しました:', qaQuestions[nextIndex]);
+            }
+          }
+        } catch (error) {
+          console.error('次のQ&A質問のサーバー送信エラー:', error);
+        }
       }, 500);
     } else {
       // 質問終了
       setQaCompleted(true);
-      setTimeout(() => {
-        sendMessage("入力ありがとうございました。応急処置情報を記録しました。", undefined, true);
+      setTimeout(async () => {
+        sendMessage("入力ありがとうございました。応急処置情報を記録しました。", [], true);
+        
+        // Q&A完了メッセージをサーバーにシステムメッセージとして送信
+        try {
+          if (chatId) {
+            const response = await fetch(`/api/chats/${chatId}/messages/system`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              credentials: 'include',
+              body: JSON.stringify({
+                content: "入力ありがとうございました。応急処置情報を記録しました。",
+                isUserMessage: false
+              })
+            });
+            
+            if (!response.ok) {
+              console.error('Q&A完了メッセージのサーバー送信に失敗:', response.status);
+            } else {
+              console.log('Q&A完了メッセージをサーバーに送信しました');
+            }
+          }
+        } catch (error) {
+          console.error('Q&A完了メッセージのサーバー送信エラー:', error);
+        }
+        
         setQaMode(false);
         setCurrentQuestionIndex(0);
         setQaAnswers([]);
@@ -352,21 +439,46 @@ export default function ChatPage() {
   };
 
   // 追加: Q&Aモード開始
-  const startQaMode = () => {
+  const startQaMode = async () => {
     setQaMode(true);
     setCurrentQuestionIndex(0);
     setQaAnswers([]);
     setQaCompleted(false);
     
     // 最初の質問を表示（右側に表示するためisAiResponse=true）
-    setTimeout(() => {
-      sendMessage(qaQuestions[0], undefined, true);
+    setTimeout(async () => {
+      sendMessage(qaQuestions[0], [], true);
+      
+      // Q&A質問をサーバーにシステムメッセージとして送信
+      try {
+        if (chatId) {
+          const response = await fetch(`/api/chats/${chatId}/messages/system`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              content: qaQuestions[0],
+              isUserMessage: false
+            })
+          });
+          
+          if (!response.ok) {
+            console.error('Q&A質問のサーバー送信に失敗:', response.status);
+          } else {
+            console.log('Q&A質問をサーバーに送信しました:', qaQuestions[0]);
+          }
+        }
+      } catch (error) {
+        console.error('Q&A質問のサーバー送信エラー:', error);
+      }
     }, 100);
   };
 
   const handleExport = async () => {
     try {
-      await exportChat();
+      await exportChatHistory();
       toast({
         title: "エクスポート成功",
         description: "チャット履歴をエクスポートしました。",
@@ -384,7 +496,61 @@ export default function ChatPage() {
   // サーバーへ送信する機能
   const handleSendToServer = async () => {
     try {
-      if (!chatId || messages.length === 0) {
+      // デバッグ情報を追加
+      console.log('送信前の状態確認:', {
+        chatId: chatId,
+        messagesLength: messages.length,
+        hasChatId: !!chatId,
+        hasMessages: messages.length > 0
+      });
+
+      // より詳細な条件チェック
+      const hasValidChatId = !!chatId;
+      const hasMessages = messages.length > 0;
+      const hasValidMessages = messages.some(msg => msg.content && msg.content.trim());
+      
+      console.log('送信条件チェック:', {
+        hasValidChatId,
+        hasMessages,
+        hasValidMessages,
+        messagesCount: messages.length,
+        messagesWithContent: messages.filter(msg => msg.content && msg.content.trim()).length
+      });
+
+      if (!hasValidChatId) {
+        console.log('送信エラー: チャットIDが無効 - 初期化を試行');
+        try {
+          // チャットIDが無効な場合は初期化を試行
+          const newChatId = await initializeChat();
+          if (newChatId) {
+            console.log('チャットID初期化成功:', newChatId);
+            // 初期化成功後、再度送信処理を実行
+            setTimeout(() => {
+              handleSendToServer();
+            }, 100);
+            return;
+          } else {
+            console.log('チャットID初期化失敗');
+            toast({
+              title: "送信エラー",
+              description: "チャットIDの初期化に失敗しました。",
+              variant: "destructive",
+            });
+            return;
+          }
+        } catch (initError) {
+          console.error('チャットID初期化エラー:', initError);
+          toast({
+            title: "送信エラー",
+            description: "チャットIDの初期化に失敗しました。",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      if (!hasValidMessages) {
+        console.log('送信エラー: 有効なメッセージがありません');
         toast({
           title: "送信エラー",
           description: "送信するチャット内容がありません。",
@@ -393,34 +559,49 @@ export default function ChatPage() {
         return;
       }
 
-          // チャット内容をJSON形式で整形
-    const chatData = {
-      chatId: chatId,
-      timestamp: new Date().toISOString(),
-      // 機種と機械番号の情報を追加
-      machineInfo: {
-        selectedMachineType: selectedMachineType,
-        selectedMachineNumber: selectedMachineNumber,
-        machineTypeName: machineTypeInput,
-        machineNumber: machineNumberInput
-      },
-      messages: messages.map(msg => ({
-        id: msg.id,
-        content: msg.content,
-        isAiResponse: msg.isAiResponse,
-        timestamp: msg.timestamp,
-        media: msg.media?.map(media => ({
-          id: media.id,
-          type: media.type,
-          url: media.url,
-          title: media.title,
-          fileName: media.fileName || ''
-        })) || []
-      }))
-    };
+      // チャット内容をJSON形式で整形
+      const chatData = {
+        chatId: chatId,
+        timestamp: new Date().toISOString(),
+        // 機種と機械番号の情報を追加
+        machineInfo: {
+          selectedMachineType: selectedMachineType,
+          selectedMachineNumber: selectedMachineNumber,
+          machineTypeName: machineTypeInput,
+          machineNumber: machineNumberInput
+        },
+        messages: messages.map(msg => ({
+          id: msg.id,
+          content: msg.content,
+          isAiResponse: msg.isAiResponse,
+          timestamp: msg.timestamp,
+          media: msg.media?.map(media => ({
+            id: media.id,
+            type: media.type,
+            url: media.url,
+            title: media.title,
+            fileName: media.fileName || ''
+          })) || []
+        }))
+      };
 
-      // サーバーに送信
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/chats/${chatId}/export`, {
+      console.log('送信データ:', {
+        chatId: chatData.chatId,
+        messageCount: chatData.messages.length,
+        machineInfo: chatData.machineInfo
+      });
+
+      // サーバーに送信（開発環境ではテスト用エンドポイントを使用）
+      const isDevelopment = import.meta.env.NODE_ENV === 'development';
+      const apiUrl = isDevelopment 
+        ? `${import.meta.env.VITE_API_BASE_URL}/api/chats/${chatId}/send-test`
+        : `${import.meta.env.VITE_API_BASE_URL}/api/chats/${chatId}/send`;
+      
+      console.log('送信URL:', apiUrl);
+      console.log('開発環境:', isDevelopment);
+      console.log('送信データ詳細:', JSON.stringify(chatData, null, 2));
+
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -430,6 +611,13 @@ export default function ChatPage() {
           chatData: chatData,
           exportType: 'manual_send'
         })
+      });
+
+      console.log('送信レスポンス:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
       });
 
       if (response.ok) {
@@ -442,15 +630,9 @@ export default function ChatPage() {
         
         toast({
           title: "送信成功",
-          description: `チャット内容をサーバーに送信しました。(${messages.length}件のメッセージ)${machineInfoText}`,
+          description: `チャット内容をサーバーに送信しました。(${messages.filter(msg => msg.content && msg.content.trim()).length}件のメッセージ)${machineInfoText}`,
         });
         console.log('サーバー送信結果:', result);
-        console.log('送信された機種情報:', {
-          selectedMachineType,
-          selectedMachineNumber,
-          machineTypeName: machineTypeInput,
-          machineNumber: machineNumberInput
-        });
 
         // 送信完了後にチャットをクリア
         await clearChatHistory();
@@ -474,13 +656,22 @@ export default function ChatPage() {
           description: "送信後にチャット履歴をクリアしました。",
         });
       } else {
-        throw new Error(`送信失敗: ${response.status}`);
+        // エラーレスポンスの詳細を取得
+        let errorMessage = `送信失敗: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (parseError) {
+          console.warn('エラーレスポンスの解析に失敗:', parseError);
+        }
+        
+        throw new Error(errorMessage);
       }
     } catch (error) {
       console.error('サーバー送信エラー:', error);
       toast({
         title: "送信エラー",
-        description: "サーバーへの送信に失敗しました。",
+        description: error instanceof Error ? error.message : "サーバーへの送信に失敗しました。",
         variant: "destructive",
       });
     }
@@ -494,11 +685,20 @@ export default function ChatPage() {
     const file = event.target.files?.[0];
     if (file) {
       try {
-        await importChat(file);
-        toast({
-          title: "インポート成功",
-          description: "チャット履歴をインポートしました。",
-        });
+        // importChat関数は現在実装されていないため、簡易的な実装
+        const text = await file.text();
+        const importedData = JSON.parse(text);
+        
+        if (importedData.messages && Array.isArray(importedData.messages)) {
+          // メッセージを設定（既存のメッセージに追加）
+          setMessages(prev => [...prev, ...importedData.messages]);
+          toast({
+            title: "インポート成功",
+            description: "チャット履歴をインポートしました。",
+          });
+        } else {
+          throw new Error('無効なファイル形式です');
+        }
       } catch (error) {
         console.error('Import error:', error);
         toast({
@@ -522,18 +722,24 @@ export default function ChatPage() {
       // トラブルシューティングデータの取得
       const timestamp = Date.now();
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list?_t=${timestamp}`, {
+        credentials: 'include',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
+          'Pragma': 'no-cache',
+          'Content-Type': 'application/json'
         }
       });
 
       if (response.ok) {
         const troubleshootingData = await response.json();
-        console.log('✅ トラブルシューティングデータ取得:', troubleshootingData.length + '件');
+        console.log('✅ トラブルシューティングデータ取得:', troubleshootingData);
+        
+        // APIレスポンスの構造に合わせてデータをマッピング
+        const flows = troubleshootingData.success && troubleshootingData.data ? troubleshootingData.data : (Array.isArray(troubleshootingData) ? troubleshootingData : []);
+        console.log('✅ 処理対象フロー数:', flows.length + '件');
 
         // データを整形して表示用にフォーマット
-        const formattedGuides = troubleshootingData.map((item: any) => ({
+        const formattedGuides = flows.map((item: any) => ({
           id: item.id,
           title: item.title || japaneseGuideTitles[item.id] || item.id,
           description: item.description || '',
@@ -728,14 +934,15 @@ export default function ChatPage() {
           </div>
 
           {/* 中央のボタングループ */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center" style={{ gap: '126px', marginLeft: '-58px' }}>
             <Button 
-              onClick={handleEmergencyGuide}
-              className="bg-red-500 hover:bg-red-600 text-white flex items-center gap-2 px-6 py-3 font-bold text-lg shadow-lg"
+              onClick={startQaMode}
+              className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-2 px-6 py-3 font-bold text-lg shadow-lg"
               size="lg"
+              disabled={qaMode}
             >
-              <BookOpen className="h-6 w-6" />
-              🚨 応急処置ガイド 🚨
+              <FileText className="h-6 w-6" />
+              Q&A 開始
             </Button>
 
             <Button 
@@ -748,15 +955,13 @@ export default function ChatPage() {
               カメラ
             </Button>
 
-            {/* 追加: Q&Aモード開始ボタン */}
             <Button 
-              onClick={startQaMode}
-              className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-2 px-6 py-3 font-bold text-lg shadow-lg"
+              onClick={handleEmergencyGuide}
+              className="bg-red-500 hover:bg-red-600 text-white flex items-center gap-2 px-6 py-3 font-bold text-lg shadow-lg"
               size="lg"
-              disabled={qaMode}
             >
-              <FileText className="h-6 w-6" />
-              Q&A 開始
+              <BookOpen className="h-6 w-6" />
+              🚨 応急処置ガイド 🚨
             </Button>
           </div>
 
@@ -827,7 +1032,14 @@ export default function ChatPage() {
                   variant="outline" 
                   size="sm"
                   className="flex items-center gap-1 text-xs px-2 py-1 bg-blue-50 hover:bg-blue-100 border-blue-300"
-                  disabled={messages.length === 0}
+                  disabled={!messages.some(msg => msg.content && msg.content.trim())}
+                  onClick={() => {
+                    console.log('送信ボタンクリック時の状態:', {
+                      messagesLength: messages.length,
+                      messages: messages,
+                      chatId: chatId
+                    });
+                  }}
                 >
                   <Send className="h-3 w-3" />
                   サーバーへ送信
@@ -837,7 +1049,7 @@ export default function ChatPage() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>サーバーへ送信</AlertDialogTitle>
                   <AlertDialogDescription>
-                    現在のチャット内容（{messages.length}件のメッセージ）をサーバーに送信します。送信完了後、チャット履歴はクリアされます。
+                    現在のチャット内容（{messages.filter(msg => msg.content && msg.content.trim()).length}件のメッセージ）をサーバーに送信します。送信完了後、チャット履歴はクリアされます。
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -1058,23 +1270,4 @@ export default function ChatPage() {
       )}
     </div>
   );
-  } catch (error) {
-    console.error('❌ ChatPage エラー:', error);
-    return (
-      <div className="flex flex-col h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="flex-1 flex items-center justify-center">
-          <div className="bg-white p-8 rounded-lg shadow-lg">
-            <h1 className="text-2xl font-bold text-red-600 mb-4">エラーが発生しました</h1>
-            <p className="text-gray-600 mb-4">チャットページの読み込み中にエラーが発生しました。</p>
-            <button 
-              onClick={() => window.location.reload()} 
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-            >
-              ページを再読み込み
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 }

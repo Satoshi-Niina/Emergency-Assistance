@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/auth-context";
 import { useToast } from "../hooks/use-toast";
+import * as XLSX from 'xlsx';
 
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -30,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { Shield, UserPlus, ArrowLeft, User, Edit, Trash2, AlertCircle, Search } from "lucide-react";
+import { Shield, UserPlus, ArrowLeft, User, Edit, Trash2, AlertCircle, Search, Upload, Download } from "lucide-react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 
 // ユーザーインターフェース
@@ -229,7 +230,11 @@ export default function UsersPage() {
   const [showNewUserDialog, setShowNewUserDialog] = useState(false);
   const [showEditUserDialog, setShowEditUserDialog] = useState(false);
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importResults, setImportResults] = useState<any>(null);
+  const [isImporting, setIsImporting] = useState(false);
   const [newUser, setNewUser] = useState<Partial<NewUserData>>({
     username: "",
     password: "",
@@ -443,6 +448,122 @@ export default function UsersPage() {
   // 編集用セレクト更新処理
   const handleEditSelectChange = (name: string, value: string) => {
     setEditUser((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // エクセルファイル選択処理
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // ファイル形式チェック
+      const validTypes = [
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-excel'
+      ];
+      const validExtensions = ['.xlsx', '.xls'];
+      
+      const isValidType = validTypes.includes(file.type) || 
+                         validExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+      
+      if (!isValidType) {
+        toast({
+          title: "ファイル形式エラー",
+          description: "エクセルファイル（.xlsx, .xls）のみアップロード可能です",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setImportFile(file);
+    }
+  };
+
+  // エクセルインポート処理
+  const handleImportSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!importFile) {
+      toast({
+        title: "ファイルエラー",
+        description: "エクセルファイルを選択してください",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsImporting(true);
+    setImportResults(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+
+      const res = await fetch('/api/users/import-excel', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      });
+
+      const result = await res.json();
+
+      if (result.success) {
+        setImportResults(result.results);
+        toast({
+          title: "インポート完了",
+          description: `成功: ${result.results.success}件, 失敗: ${result.results.failed}件`,
+        });
+        
+        // ユーザー一覧を再取得
+        const fetchUsers = async () => {
+          try {
+            const res = await fetch('/api/users', {
+              method: 'GET',
+              credentials: 'include',
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (res.ok) {
+              const userData = await res.json();
+              if (userData.success && userData.data) {
+                setUsers(userData.data);
+                setFilteredUsers(userData.data);
+              }
+            }
+          } catch (error) {
+            console.error('ユーザー一覧再取得エラー:', error);
+          }
+        };
+        
+        fetchUsers();
+      } else {
+        throw new Error(result.error || 'インポートに失敗しました');
+      }
+    } catch (error) {
+      console.error('エクセルインポートエラー:', error);
+      toast({
+        title: "インポートエラー",
+        description: error instanceof Error ? error.message : "インポート中にエラーが発生しました",
+        variant: "destructive",
+      });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  // エクセルテンプレートダウンロード
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      ['username', 'password', 'display_name', 'role', 'department', 'description'],
+      ['user1', 'Password123!', 'ユーザー1', 'employee', '営業部', '一般ユーザー'],
+      ['admin1', 'Admin123!', '管理者1', 'admin', '管理部', 'システム管理者'],
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(templateData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Users');
+    
+    XLSX.writeFile(wb, 'user_import_template.xlsx');
   };
 
   // 編集用入力フィールド更新処理
@@ -684,6 +805,14 @@ export default function UsersPage() {
               設定に戻る
             </Button>
           </Link>
+          <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Upload className="mr-2 h-4 w-4" />
+                エクセルインポート
+              </Button>
+            </DialogTrigger>
+          </Dialog>
           <Dialog open={showNewUserDialog} onOpenChange={setShowNewUserDialog}>
             <DialogTrigger asChild>
               <Button>
@@ -1045,6 +1174,115 @@ export default function UsersPage() {
               削除
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* エクセルインポートダイアログ */}
+      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Upload className="mr-2 h-5 w-5" />
+              エクセルファイルからユーザー一括インポート
+            </DialogTitle>
+            <DialogDescription>
+              エクセルファイルからユーザーを一括でインポートします。
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* テンプレートダウンロード */}
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+              <h4 className="font-medium text-blue-900 mb-2">テンプレートファイル</h4>
+              <p className="text-sm text-blue-700 mb-3">
+                エクセルファイルの形式に合わせてテンプレートをダウンロードしてください。
+              </p>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleDownloadTemplate}
+                className="text-blue-700 border-blue-300 hover:bg-blue-100"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                テンプレートをダウンロード
+              </Button>
+            </div>
+
+            {/* ファイルアップロード */}
+            <form onSubmit={handleImportSubmit}>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="excel-file">エクセルファイルを選択</Label>
+                  <Input
+                    id="excel-file"
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleFileSelect}
+                    className="mt-1"
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    対応形式: .xlsx, .xls（最大5MB）
+                  </p>
+                </div>
+
+                {importFile && (
+                  <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                    <p className="text-sm text-green-700">
+                      選択されたファイル: {importFile.name} ({(importFile.size / 1024 / 1024).toFixed(2)}MB)
+                    </p>
+                  </div>
+                )}
+
+                {/* インポート結果表示 */}
+                {importResults && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
+                    <h4 className="font-medium mb-2">インポート結果</h4>
+                    <div className="space-y-2">
+                      <p className="text-sm">
+                        <span className="text-green-600 font-medium">成功: {importResults.success}件</span>
+                        {importResults.failed > 0 && (
+                          <span className="text-red-600 font-medium ml-4">失敗: {importResults.failed}件</span>
+                        )}
+                      </p>
+                      
+                      {importResults.errors && importResults.errors.length > 0 && (
+                        <div>
+                          <p className="text-sm font-medium text-red-600 mb-2">エラー詳細:</p>
+                          <div className="max-h-40 overflow-y-auto space-y-1">
+                            {importResults.errors.map((error: string, index: number) => (
+                              <p key={index} className="text-xs text-red-600 bg-red-50 p-2 rounded">
+                                {error}
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setShowImportDialog(false);
+                      setImportFile(null);
+                      setImportResults(null);
+                    }}
+                  >
+                    キャンセル
+                  </Button>
+                  <Button 
+                    type="submit"
+                    disabled={!importFile || isImporting}
+                  >
+                    {isImporting ? "インポート中..." : "インポート実行"}
+                  </Button>
+                </DialogFooter>
+              </div>
+            </form>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -20,12 +20,29 @@ export default defineConfig({
     port: 5002, // 開発専用ポート
     proxy: {
       '/api': {
-        target: 'http://localhost:3001', // 開発サーバーのポート
+        target: 'http://localhost:3001', // サーバーの実際のポートに修正
         changeOrigin: true,
         secure: false,
+        configure: (proxy, options) => {
+          proxy.on('error', (err, req, res) => {
+            console.log('🔴 Proxy error:', err.message);
+            if (res.writeHead) {
+              res.writeHead(500, {
+                'Content-Type': 'application/json',
+              });
+              res.end(JSON.stringify({ error: 'Proxy error', message: err.message }));
+            }
+          });
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            console.log('📤 Sending Request to the Target:', req.method, req.url);
+          });
+          proxy.on('proxyRes', (proxyRes, req, res) => {
+            console.log('📥 Received Response from the Target:', proxyRes.statusCode, req.url);
+          });
+        },
       },
       '/ws': {
-        target: 'ws://localhost:3001', // 開発サーバーのポート
+        target: 'ws://localhost:3001', // サーバーの実際のポートに修正
         ws: true,
         changeOrigin: true
       }

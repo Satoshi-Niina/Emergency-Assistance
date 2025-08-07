@@ -265,25 +265,34 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
                             });
                           }}
                           onError={(e) => {
-                            console.error('画像読み込みエラー:', {
+                            console.warn('画像読み込みエラー:', {
                               messageId: message.id,
                               mediaIndex: index,
                               url: media.url.substring(0, 100) + '...',
-                              isBase64: media.url.startsWith('data:')
+                              isBase64: media.url.startsWith('data:'),
+                              error: e
                             });
 
                             const img = e.target as HTMLImageElement;
                             img.onerror = null; // Prevent infinite loop
 
-                            // Base64画像の場合はエラー表示を出す
+                            // エラー時の処理を改善
                             if (media.url.startsWith('data:image/')) {
+                              // Base64画像の場合はエラー表示
                               img.style.display = 'none';
-                              // エラーメッセージを表示するための要素を作成
                               const errorDiv = document.createElement('div');
                               errorDiv.className = 'flex items-center justify-center bg-gray-100 border border-gray-300 rounded-lg p-4 max-w-xs';
                               errorDiv.innerHTML = '<span class="text-gray-500 text-sm">画像の表示に失敗しました</span>';
                               img.parentNode?.insertBefore(errorDiv, img);
+                            } else if (media.url.includes('/api/')) {
+                              // API経由の画像の場合はプレースホルダーを表示
+                              img.style.display = 'none';
+                              const placeholderDiv = document.createElement('div');
+                              placeholderDiv.className = 'flex items-center justify-center bg-gray-100 border border-gray-300 rounded-lg p-4 max-w-xs';
+                              placeholderDiv.innerHTML = '<span class="text-gray-500 text-sm">画像が見つかりません</span>';
+                              img.parentNode?.insertBefore(placeholderDiv, img);
                             } else if (!img.src.includes('/placeholder-image.png')) {
+                              // その他の場合はプレースホルダー画像を試行
                               img.src = '/placeholder-image.png';
                             }
                           }}

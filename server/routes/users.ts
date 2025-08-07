@@ -1,10 +1,32 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
+import multer from 'multer';
+import * as XLSX from 'xlsx';
 import { db } from '../db/index.js';
 import { users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 
 const router = express.Router();
+
+// Multer設定（エクセルファイルアップロード用）
+const storage = multer.memoryStorage();
+const upload = multer({ 
+  storage: storage,
+  fileFilter: (req: any, file: any, cb: any) => {
+    // エクセルファイルのみ許可
+    if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+        file.mimetype === 'application/vnd.ms-excel' ||
+        file.originalname.endsWith('.xlsx') ||
+        file.originalname.endsWith('.xls')) {
+      cb(null, true);
+    } else {
+      cb(new Error('エクセルファイル（.xlsx, .xls）のみアップロード可能です'));
+    }
+  },
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB制限
+  }
+});
 
 // 認証ミドルウェア（一時的に無効化）
 const requireAuth = async (req: any, res: any, next: any) => {
@@ -419,6 +441,134 @@ router.delete('/:id', requireAuth, requireAdmin, async (req: any, res: any) => {
         res.status(500).json({ 
             success: false,
             error: 'Failed to delete user',
+            details: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// エクセルファイルからユーザー一括インポート（管理者のみ）
+router.post('/import-excel', requireAuth, requireAdmin, upload.single('file'), async (req: any, res: any) => {
+    try {
+        console.log('[DEBUG] エクセルインポートリクエスト受信');
+        
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                error: 'エクセルファイルがアップロードされていません'
+            });
+        }
+
+        console.log('[DEBUG] アップロードされたファイル:', {
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype,
+            size: req.file.size
+        });
+
+        // エクセルファイルを読み込み
+        const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        
+        // シートをJSONに変換
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        console.log('[DEBUG] エクセルデータ読み込み完了:', {
+            sheetName,
+            rowCount: jsonData.length
+        });
+
+        // ヘッダー行をスキップしてデータ行を処理
+        const dataRows = jsonData.slice(1);
+        const results = {
+            success: 0,
+            failed: 0,
+            errors: [] as string[]
+        };
+
+        for (let i = 0; i < dataRows.length; i++) {
+            const row = dataRows[i] as any[];
+            const rowNumber = i + 2; // ヘッダー行を除いて1から開始、さらにヘッダー行分+1
+
+            try {
+                // 必須フィールドのチェック
+                if (!row[0] || !row[1] || !row[2] || !row[3]) {
+                    results.errors.push(`行${rowNumber}: 必須フィールド（ユーザー名、パスワード、表示名、権限）が不足しています`);
+                    results.failed++;
+                    continue;
+                }
+
+                const username = String(row[0]).trim();
+                const password = String(row[1]).trim();
+                const displayName = String(row[2]).trim();
+                const role = String(row[3]).trim().toLowerCase();
+                const department = row[4] ? String(row[4]).trim() : null;
+                const description = row[5] ? String(row[5]).trim() : null;
+
+                // バリデーション
+                if (username.length < 3 || username.length > 50) {
+                    results.errors.push(`行${rowNumber}: ユーザー名は3文字以上50文字以下で入力してください`);
+                    results.failed++;
+                    continue;
+                }
+
+                if (password.length < 6) {
+                    results.errors.push(`行${rowNumber}: パスワードは6文字以上で入力してください`);
+                    results.failed++;
+                    continue;
+                }
+
+                if (!['employee', 'admin'].includes(role)) {
+                    results.errors.push(`行${rowNumber}: 権限は「employee」または「admin」を入力してください`);
+                    results.failed++;
+                    continue;
+                }
+
+                // 既存ユーザーの確認
+                const existingUser = await db.select().from(users).where(eq(users.username, username));
+                if (existingUser.length > 0) {
+                    results.errors.push(`行${rowNumber}: ユーザー名「${username}」は既に存在します`);
+                    results.failed++;
+                    continue;
+                }
+
+                // パスワードのハッシュ化
+                const hashedPassword = await bcrypt.hash(password, 10);
+
+                // ユーザーの作成
+                await db.insert(users).values({
+                    username,
+                    password: hashedPassword,
+                    displayName,
+                    role,
+                    department,
+                    description
+                });
+
+                results.success++;
+                console.log(`[DEBUG] ユーザー作成成功: ${username}`);
+
+            } catch (error) {
+                console.error(`[ERROR] 行${rowNumber}の処理エラー:`, error);
+                results.errors.push(`行${rowNumber}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                results.failed++;
+            }
+        }
+
+        console.log('[DEBUG] エクセルインポート完了:', results);
+
+        res.json({
+            success: true,
+            message: 'エクセルインポートが完了しました',
+            results,
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error('[ERROR] エクセルインポートエラー:', error);
+        res.status(500).json({
+            success: false,
+            error: 'エクセルインポート中にエラーが発生しました',
             details: error instanceof Error ? error.message : 'Unknown error',
             timestamp: new Date().toISOString()
         });

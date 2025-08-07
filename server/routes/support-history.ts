@@ -7,6 +7,7 @@ import { upload } from '../lib/multer-config.js';
 import path from 'path';
 import fs from 'fs';
 import PDFDocument from 'pdfkit';
+import Fuse from 'fuse.js';
 
 const router = express.Router();
 
@@ -59,6 +60,8 @@ router.get('/machine-data', async (req, res) => {
 const historyQuerySchema = z.object({
   machineType: z.string().optional(),
   machineNumber: z.string().optional(),
+  searchText: z.string().optional(), // テキスト検索用
+  searchDate: z.string().optional(), // 日付検索用
   limit: z.coerce.number().min(1).max(100).default(50),
   offset: z.coerce.number().min(0).default(0)
 });
@@ -79,6 +82,25 @@ router.get('/', async (req, res) => {
     // 機械番号フィルタ（JSONデータ内の部分一致検索）
     if (query.machineNumber) {
       whereConditions.push(ilike(supportHistory.jsonData, `%${query.machineNumber}%`));
+    }
+    
+    // テキスト検索（JSONデータ内の任意のテキスト検索）
+    if (query.searchText) {
+      whereConditions.push(ilike(supportHistory.jsonData, `%${query.searchText}%`));
+    }
+    
+    // 日付検索
+    if (query.searchDate) {
+      const searchDate = new Date(query.searchDate);
+      const nextDay = new Date(searchDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      
+      whereConditions.push(
+        and(
+          gte(supportHistory.createdAt, searchDate),
+          gte(nextDay, supportHistory.createdAt)
+        )
+      );
     }
     
     // データベースから履歴を取得
@@ -291,6 +313,168 @@ router.get('/:id/export-pdf', async (req, res) => {
   } catch (error) {
     console.error('PDFエクスポートエラー:', error);
     res.status(500).json({ error: 'PDFエクスポートに失敗しました' });
+  }
+});
+
+// レポート生成機能
+router.post('/generate-report', async (req, res) => {
+  try {
+    const { searchFilters, reportTitle, reportDescription } = req.body;
+    
+    // 検索条件に基づいて履歴を取得
+    let whereConditions = [];
+    
+    if (searchFilters.machineType) {
+      whereConditions.push(ilike(supportHistory.jsonData, `%${searchFilters.machineType}%`));
+    }
+    
+    if (searchFilters.machineNumber) {
+      whereConditions.push(ilike(supportHistory.jsonData, `%${searchFilters.machineNumber}%`));
+    }
+    
+    if (searchFilters.searchText) {
+      whereConditions.push(ilike(supportHistory.jsonData, `%${searchFilters.searchText}%`));
+    }
+    
+    const results = await db
+      .select({
+        id: supportHistory.id,
+        machineType: supportHistory.machineType,
+        machineNumber: supportHistory.machineNumber,
+        jsonData: supportHistory.jsonData,
+        imagePath: supportHistory.imagePath,
+        createdAt: supportHistory.createdAt
+      })
+      .from(supportHistory)
+      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+      .orderBy(desc(supportHistory.createdAt));
+
+    // レポートデータを構築
+    const reportData = {
+      title: reportTitle || '履歴検索レポート',
+      description: reportDescription || '',
+      generatedAt: new Date().toISOString(),
+      searchFilters,
+      totalCount: results.length,
+      items: results.map(item => ({
+        id: item.id,
+        machineType: item.machineType,
+        machineNumber: item.machineNumber,
+        createdAt: item.createdAt,
+        jsonData: item.jsonData,
+        imagePath: item.imagePath
+      }))
+    };
+
+    // PDFレポートを生成
+    const doc = new PDFDocument();
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="history_report_${new Date().toISOString().split('T')[0]}.pdf"`);
+    
+    doc.pipe(res);
+    
+    // レポートヘッダー
+    doc.fontSize(24).text(reportData.title, { align: 'center' });
+    doc.moveDown();
+    
+    if (reportData.description) {
+      doc.fontSize(12).text(reportData.description, { align: 'center' });
+      doc.moveDown();
+    }
+    
+    doc.fontSize(10).text(`生成日時: ${new Date(reportData.generatedAt).toLocaleString('ja-JP')}`);
+    doc.fontSize(10).text(`検索結果: ${reportData.totalCount}件`);
+    doc.moveDown();
+    
+    // 検索条件
+    doc.fontSize(14).text('検索条件:', { underline: true });
+    doc.moveDown();
+    if (searchFilters.machineType) doc.fontSize(10).text(`機種: ${searchFilters.machineType}`);
+    if (searchFilters.machineNumber) doc.fontSize(10).text(`機械番号: ${searchFilters.machineNumber}`);
+    if (searchFilters.searchText) doc.fontSize(10).text(`検索テキスト: ${searchFilters.searchText}`);
+    doc.moveDown();
+    
+    // 検索結果一覧
+    doc.fontSize(14).text('検索結果一覧:', { underline: true });
+    doc.moveDown();
+    
+    reportData.items.forEach((item, index) => {
+      doc.fontSize(12).text(`${index + 1}. ${item.machineType} - ${item.machineNumber}`, { underline: true });
+      doc.fontSize(10).text(`作成日時: ${new Date(item.createdAt).toLocaleString('ja-JP')}`);
+      
+      // JSONデータの主要な情報を抽出
+      try {
+        const jsonData = typeof item.jsonData === 'string' ? JSON.parse(item.jsonData) : item.jsonData;
+        if (jsonData.title) doc.fontSize(10).text(`タイトル: ${jsonData.title}`);
+        if (jsonData.description) doc.fontSize(10).text(`説明: ${jsonData.description}`);
+        if (jsonData.emergencyMeasures) doc.fontSize(10).text(`応急処置: ${jsonData.emergencyMeasures}`);
+      } catch (error) {
+        doc.fontSize(10).text('データ形式エラー');
+      }
+      
+      doc.moveDown();
+    });
+    
+    doc.end();
+
+  } catch (error) {
+    console.error('レポート生成エラー:', error);
+    res.status(500).json({ error: 'レポート生成に失敗しました' });
+  }
+});
+
+// 高度なテキスト検索機能
+router.post('/advanced-search', async (req, res) => {
+  try {
+    const { searchText, limit = 50 } = req.body;
+    
+    if (!searchText) {
+      return res.status(400).json({ error: '検索テキストが必要です' });
+    }
+    
+    // 全履歴を取得
+    const allHistory = await db
+      .select({
+        id: supportHistory.id,
+        machineType: supportHistory.machineType,
+        machineNumber: supportHistory.machineNumber,
+        jsonData: supportHistory.jsonData,
+        imagePath: supportHistory.imagePath,
+        createdAt: supportHistory.createdAt
+      })
+      .from(supportHistory)
+      .orderBy(desc(supportHistory.createdAt));
+
+    // Fuse.jsで高度な検索を実行
+    const fuse = new Fuse(allHistory, {
+      keys: [
+        { name: 'machineType', weight: 0.3 },
+        { name: 'machineNumber', weight: 0.3 },
+        { name: 'jsonData', weight: 1.0 }
+      ],
+      threshold: 0.4,
+      includeScore: true,
+      ignoreLocation: true,
+      useExtendedSearch: true
+    });
+
+    const searchResults = fuse.search(searchText).slice(0, limit);
+    
+    const results = searchResults.map(result => ({
+      ...result.item,
+      score: result.score
+    }));
+
+    res.json({
+      items: results,
+      total: results.length,
+      searchText
+    });
+
+  } catch (error) {
+    console.error('高度な検索エラー:', error);
+    res.status(500).json({ error: '検索に失敗しました' });
   }
 });
 

@@ -322,11 +322,12 @@ function buildApiUrl(path: string): string {
     return `${window.location.protocol}//${window.location.hostname}:3000${path}`;
   }
   
-  // 開発環境では3001ポートを使用
+  // 開発環境ではプロキシ経由でアクセス（相対パスを使用）
   const isDevelopment = import.meta.env.DEV || window.location.hostname.includes('localhost');
   
   if (isDevelopment) {
-    return `http://localhost:3001${path}`;
+    console.log('✅ 開発環境: プロキシ経由でアクセス（相対パス）');
+    return path; // 相対パスを使用してプロキシ経由でアクセス
   }
   
   // その他の環境では相対パス
@@ -375,4 +376,21 @@ console.log('🔧 API設定:', {
 });
 
 // API Base URLの設定 - VITE_API_BASE_URLのみを使用
-const API_BASE_URL = VITE_API_BASE_URL || 'http://localhost:3001';
+const API_BASE_URL = (() => {
+  const isDevelopment = import.meta.env.DEV || window.location.hostname.includes('localhost');
+  
+  // 開発環境ではプロキシ経由でアクセス（相対パスを使用）
+  if (isDevelopment) {
+    console.log('✅ 開発環境: プロキシ経由でアクセス');
+    return ''; // 空文字列で相対パスを使用
+  }
+  
+  // 環境変数が設定されている場合は優先使用
+  if (VITE_API_BASE_URL && VITE_API_BASE_URL.trim() !== '') {
+    console.log('✅ 環境変数からAPI_BASE_URLを取得:', VITE_API_BASE_URL);
+    return VITE_API_BASE_URL;
+  }
+  
+  // デフォルト
+  return 'http://localhost:3001';
+})();

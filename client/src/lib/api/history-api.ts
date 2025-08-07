@@ -14,31 +14,65 @@ export const fetchMachineData = async (): Promise<{
   machineTypes: Array<{ id: string; machineTypeName: string }>;
   machines: Array<{ id: string; machineNumber: string; machineTypeName: string }>;
 }> => {
-  const response = await fetch('/api/history/machine-data');
-  
-  if (!response.ok) {
-    throw new Error(`Failed to fetch machine data: ${response.statusText}`);
+  try {
+    const response = await fetch('/api/history/machine-data');
+    
+    if (!response.ok) {
+      console.warn(`機種データ取得エラー: ${response.status} ${response.statusText}`);
+      // エラーの場合は空のデータを返す
+      return {
+        machineTypes: [],
+        machines: []
+      };
+    }
+    
+    return response.json();
+  } catch (error) {
+    console.error('機種データ取得エラー:', error);
+    // エラーの場合は空のデータを返す
+    return {
+      machineTypes: [],
+      machines: []
+    };
   }
-  
-  return response.json();
 };
 
 // 履歴一覧取得
 export const fetchHistoryList = async (filters: HistorySearchFilters = {}): Promise<HistoryListResponse> => {
-  const params = new URLSearchParams();
-  
-  if (filters.machineType) params.append('machineType', filters.machineType);
-  if (filters.machineNumber) params.append('machineNumber', filters.machineNumber);
-  if (filters.limit) params.append('limit', filters.limit.toString());
-  if (filters.offset) params.append('offset', filters.offset.toString());
+  try {
+    const params = new URLSearchParams();
+    
+    if (filters.machineType) params.append('machineType', filters.machineType);
+    if (filters.machineNumber) params.append('machineNumber', filters.machineNumber);
+    if (filters.searchText) params.append('searchText', filters.searchText);
+    if (filters.searchDate) params.append('searchDate', filters.searchDate);
+    if (filters.limit) params.append('limit', filters.limit.toString());
+    if (filters.offset) params.append('offset', filters.offset.toString());
 
-  const response = await fetch(`/api/history?${params.toString()}`);
-  
-  if (!response.ok) {
-    throw new Error(`Failed to fetch history: ${response.statusText}`);
+    const response = await fetch(`/api/history?${params.toString()}`);
+    
+    if (!response.ok) {
+      console.warn(`履歴一覧取得エラー: ${response.status} ${response.statusText}`);
+      // エラーの場合は空のデータを返す
+      return {
+        success: true,
+        items: [],
+        total: 0,
+        timestamp: new Date().toISOString()
+      };
+    }
+    
+    return response.json();
+  } catch (error) {
+    console.error('履歴一覧取得エラー:', error);
+    // エラーの場合は空のデータを返す
+    return {
+      success: true,
+      items: [],
+      total: 0,
+      timestamp: new Date().toISOString()
+    };
   }
-  
-  return response.json();
 };
 
 // 履歴詳細取得
@@ -208,4 +242,38 @@ export const fetchExportHistory = async (): Promise<ExportHistoryItem[]> => {
   }
   
   return response.json();
+};
+
+// 高度なテキスト検索
+export const advancedSearch = async (searchText: string, limit: number = 50): Promise<any> => {
+  const response = await fetch('/api/history/advanced-search', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ searchText, limit })
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to perform advanced search: ${response.statusText}`);
+  }
+  
+  return response.json();
+};
+
+// レポート生成
+export const generateReport = async (searchFilters: any, reportTitle?: string, reportDescription?: string): Promise<Blob> => {
+  const response = await fetch('/api/history/generate-report', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ searchFilters, reportTitle, reportDescription })
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to generate report: ${response.statusText}`);
+  }
+  
+  return response.blob();
 }; 

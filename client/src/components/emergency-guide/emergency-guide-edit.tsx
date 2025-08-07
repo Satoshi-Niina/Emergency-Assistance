@@ -179,9 +179,11 @@ const EmergencyGuideEdit: React.FC = () => {
       
       const timestamp = Date.now();
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list?ts=${timestamp}`, {
+        credentials: 'include',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
+          'Pragma': 'no-cache',
+          'Content-Type': 'application/json'
         }
       });
       
@@ -245,15 +247,147 @@ const EmergencyGuideEdit: React.FC = () => {
     };
   }, [fetchFlowList]);
 
-  const handleFlowSelect = (flow: FlowData) => {
-    setSelectedFlow(flow);
-    setEditorTab('metadata');
-    setPreviewFlow(null);
+  const handleFlowSelect = async (flow: FlowData) => {
+    console.log('🎯 フロー選択開始:', {
+      flowId: flow.id,
+      flowTitle: flow.title,
+      flowKeys: Object.keys(flow),
+      hasSteps: !!flow.steps,
+      stepsLength: flow.steps?.length || 0
+    });
+    
+    try {
+      setSelectedFlow(flow);
+      setEditorTab('metadata');
+      setPreviewFlow(null);
+      
+      console.log('📡 フロー詳細データを取得中:', flow.id);
+      console.log('📋 選択されたフロー:', flow);
+      
+      // フローの詳細データを取得
+      const timestamp = Date.now();
+      const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${flow.id}?_t=${timestamp}`;
+      console.log('🌐 API呼び出し:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      console.log('📡 APIレスポンス状態:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ API エラー:', errorText);
+        throw new Error(`フロー詳細の取得に失敗しました: ${response.status} - ${errorText}`);
+      }
+      
+      const flowDetail = await response.json();
+      console.log('📊 生APIレスポンス:', flowDetail);
+      console.log('✅ フロー詳細データ取得完了:', flowDetail);
+      
+      // APIレスポンスの構造を詳しく確認
+      console.log('🔍 APIレスポンス構造:', {
+        hasSuccess: 'success' in flowDetail,
+        hasData: 'data' in flowDetail,
+        hasSteps: 'steps' in flowDetail,
+        stepsType: typeof flowDetail.steps,
+        stepsIsArray: Array.isArray(flowDetail.steps),
+        stepsLength: flowDetail.steps?.length || 0,
+        allKeys: Object.keys(flowDetail)
+      });
+      
+      // APIレスポンスの構造に応じてデータを取得
+      const actualFlowData = flowDetail.success && flowDetail.data ? flowDetail.data : flowDetail;
+      console.log('🔍 実際のフローデータ:', actualFlowData);
+      
+      // 詳細データと一覧データをマージ
+      const completeFlowData = {
+        ...flow,
+        ...actualFlowData,
+        steps: actualFlowData.steps || flow.steps || []
+      };
+      
+      console.log('🔧 マージ後のデータ:', completeFlowData);
+      console.log('✅ フロー選択完了:', { 
+        flowId: completeFlowData.id, 
+        stepsLength: completeFlowData.steps?.length || 0,
+        title: completeFlowData.title,
+        hasSteps: !!completeFlowData.steps,
+        stepsType: typeof completeFlowData.steps,
+        stepsIsArray: Array.isArray(completeFlowData.steps),
+        stepsContent: completeFlowData.steps
+      });
+      
+      setSelectedFlow(completeFlowData);
+      setEditorTab('metadata');
+      setPreviewFlow(null);
+      
+      console.log('🔄 状態更新完了:', {
+        selectedFlow: completeFlowData,
+        editorTab: 'metadata',
+        previewFlow: null
+      });
+    } catch (error) {
+      console.error('❌ フロー詳細取得エラー:', error);
+      toast({
+        title: "エラー",
+        description: `フロー詳細の取得に失敗しました: ${error instanceof Error ? error.message : ''}`,
+        variant: "destructive",
+      });
+      // エラー時は一覧データを使用
+      console.log('🔄 エラー時のフォールバック処理');
+      setSelectedFlow(flow);
+      setEditorTab('metadata');
+      setPreviewFlow(null);
+    }
   };
 
-  const handlePreviewFlow = (flow: FlowData) => {
-    setPreviewFlow(flow);
-    setSelectedFlow(null);
+  const handlePreviewFlow = async (flow: FlowData) => {
+    try {
+      console.log('🔄 プレビュー用フロー詳細データを取得中:', flow.id);
+      
+      // フローの詳細データを取得
+      const timestamp = Date.now();
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${flow.id}?_t=${timestamp}`, {
+        credentials: 'include',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'X-Force-Fresh': 'true',
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`フロー詳細の取得に失敗しました: ${response.status}`);
+      }
+      
+      const flowDetail = await response.json();
+      console.log('✅ プレビュー用フロー詳細データ取得完了:', flowDetail);
+      
+      // 詳細データと一覧データをマージ
+      const completeFlowData = {
+        ...flow,
+        ...flowDetail,
+        steps: flowDetail.steps || flow.steps || []
+      };
+      
+      setPreviewFlow(completeFlowData);
+      setSelectedFlow(null);
+    } catch (error) {
+      console.error('❌ プレビュー用フロー詳細取得エラー:', error);
+      toast({
+        title: "エラー",
+        description: `フロー詳細の取得に失敗しました: ${error instanceof Error ? error.message : ''}`,
+        variant: "destructive",
+      });
+      // エラー時は一覧データを使用
+      setPreviewFlow(flow);
+      setSelectedFlow(null);
+    }
   };
 
   const handleDisplayFlow = (flow: FlowData) => {
@@ -351,6 +485,34 @@ const EmergencyGuideEdit: React.FC = () => {
     setPreviewFlow(null);
   };
 
+  const handleForceRefresh = async () => {
+    try {
+      console.log('🔄 強制リフレッシュ開始');
+      
+      // ブラウザキャッシュをクリア
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+        console.log('🧹 ブラウザキャッシュクリア完了');
+      }
+      
+      // フロー一覧を再取得
+      await fetchFlowList(true);
+      
+      toast({
+        title: "成功",
+        description: "キャッシュをクリアしてフロー一覧を再読み込みしました",
+      });
+    } catch (error) {
+      console.error('❌ 強制リフレッシュエラー:', error);
+      toast({
+        title: "エラー",
+        description: "リフレッシュに失敗しました",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -373,7 +535,10 @@ const EmergencyGuideEdit: React.FC = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <Tabs value={editorTab || 'metadata'} onValueChange={setEditorTab} className="w-full">
+            <Tabs value={editorTab || 'metadata'} onValueChange={(value) => {
+              console.log('🔄 タブ切り替え:', { from: editorTab, to: value });
+              setEditorTab(value);
+            }} className="w-full">
               <TabsList className="w-full grid grid-cols-2 mb-4">
                 <TabsTrigger value="metadata">メタデータ</TabsTrigger>
                 <TabsTrigger value="slides">スライド内容</TabsTrigger>
@@ -382,16 +547,18 @@ const EmergencyGuideEdit: React.FC = () => {
                 <EmergencyFlowEditor
                   flowData={selectedFlow}
                   onSave={handleSaveFlow}
-                  onBack={handleBackToList}
+                  onTabChange={setEditorTab}
                   currentTab="metadata"
+                  selectedFilePath={selectedFlow?.filePath}
                 />
               </TabsContent>
               <TabsContent value="slides">
                 <EmergencyFlowEditor
                   flowData={selectedFlow}
                   onSave={handleSaveFlow}
-                  onBack={handleBackToList}
+                  onTabChange={setEditorTab}
                   currentTab="slides"
+                  selectedFilePath={selectedFlow?.filePath}
                 />
               </TabsContent>
             </Tabs>
@@ -404,13 +571,25 @@ const EmergencyGuideEdit: React.FC = () => {
           isPreview={true}
         />
       ) : (
-        <FlowList
-          flows={flowList}
-          onSelectFlow={handleFlowSelect}
-          onDeleteFlow={handleDeleteFlow}
-          onPreviewFlow={handlePreviewFlow}
-          isLoading={isLoading}
-        />
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-semibold">フロー一覧</h2>
+            <Button
+              variant="outline"
+              onClick={handleForceRefresh}
+              className="text-sm"
+            >
+              🔄 強制リフレッシュ
+            </Button>
+          </div>
+          <FlowList
+            flows={flowList}
+            onSelectFlow={handleFlowSelect}
+            onDeleteFlow={handleDeleteFlow}
+            onPreviewFlow={handlePreviewFlow}
+            isLoading={isLoading}
+          />
+        </div>
       )}
     </div>
   );

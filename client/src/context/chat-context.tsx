@@ -11,37 +11,26 @@ const MIN_TEXT_LENGTH = 5;
 const MAX_TEXT_LENGTH = 50;
 
 // チャットコンテキストの型定義
-interface ChatContextValue {
+interface ChatContextType {
   messages: Message[];
-  setMessages: (messages: Message[] | ((prev: Message[]) => Message[])) => void;
+  setMessages: (messages: Message[]) => void;
+  sendMessage: (content: string, mediaUrls?: { type: string, url: string, thumbnail?: string }[], isAiResponse?: boolean) => Promise<void>;
   isLoading: boolean;
-  searching: boolean;
-  searchResults: any[];
-  selectedText: string;
-  setSelectedText: (text: string) => void;
-  sendMessage: (content: string, mediaUrls?: { type: string, url: string, thumbnail?: string }[]) => Promise<void>;
-  startRecording: () => void;
-  stopRecording: () => void;
-  isRecording: boolean;
-  recordedText: string;
-  searchBySelectedText: (text: string) => Promise<void>;
-  clearSearchResults: () => void;
-  captureImage: () => Promise<void>;
-  exportChatHistory: () => Promise<void>;
-  exportFormattedData: () => Promise<any>;
-  lastExportTimestamp: Date | null;
-  isExporting: boolean;
-  hasUnexportedMessages: boolean;
-  sendEmergencyGuide: (guideData: any) => Promise<any>; // 戻り値の型を変更
-  sendFlowExecutionResult: (flowData: any) => Promise<void>; // フロー実行結果送信関数を追加
-  draftMessage: { content: string, media?: { type: string, url: string, thumbnail?: string }[] } | null;
-  setDraftMessage: (message: { content: string, media?: { type: string, url: string, thumbnail?: string }[] } | null) => void;
-  clearChatHistory: () => Promise<void>;
+  clearChatHistory: () => void;
   isClearing: boolean;
+  chatId: string | null;
+  initializeChat: () => void;
+  exportChatHistory: () => void;
+  searchResults: any[];
+  setSearchResults: (results: any[]) => void;
+  searching: boolean;
+  setSearching: (searching: boolean) => void;
+  sendEmergencyGuide: (guideData: any) => Promise<void>;
+  // searchBySelectedText: (text: string) => Promise<void>; // 画像検索機能を削除
 }
 
 // チャットコンテキストの作成
-const ChatContext = createContext<ChatContextValue | null>(null);
+const ChatContext = createContext<ChatContextType | null>(null);
 
 export const useChat = () => {
   const context = useContext(ChatContext);
@@ -73,8 +62,10 @@ export const useChat = () => {
       draftMessage: null,
       setDraftMessage: () => {},
       clearChatHistory: async () => {},
-      isClearing: false
-    } as unknown as ChatContextValue;
+      isClearing: false,
+      initializeChat: async () => '',
+      chatId: null
+    } as unknown as ChatContextType;
   }
   return context;
 };
@@ -143,10 +134,10 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       const chatId = generateUUID();
       setChatId(chatId);
-      console.log('チャットIDを設定しました:', chatId);
+      console.log('✅ チャットIDを設定しました:', chatId);
       return chatId;
     } catch (error) {
-      console.error('Failed to initialize chat:', error);
+      console.error('❌ Failed to initialize chat:', error);
       // エラーが発生した場合もUUIDを生成
       const generateUUID = () => {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -157,6 +148,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       };
       const chatId = generateUUID();
       setChatId(chatId);
+      console.log('✅ エラー後のフォールバックでチャットIDを設定:', chatId);
       return chatId;
     } finally {
       setIsInitializing(false);
@@ -172,7 +164,16 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     if (chatId && !isInitializing) {
       console.log(`📝 新しいチャットとして開始: chatId=${chatId}`);
-      setMessages([]); // 常に空のメッセージリストで開始
+      // 既存のメッセージがある場合は保持し、ない場合のみ空にする
+      setMessages(prevMessages => {
+        if (prevMessages.length === 0) {
+          console.log('メッセージが空のため、新しいチャットとして開始');
+          return [];
+        } else {
+          console.log(`既存のメッセージ${prevMessages.length}件を保持`);
+          return prevMessages;
+        }
+      });
       setSearchResults([]);
       setLastExportTimestamp(null);
       setHasUnexportedMessages(false);
@@ -293,88 +294,10 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // 選択テキストで検索する関数（手動検索のみ）
   const searchBySelectedText = useCallback(async (text: string, isManualSearch: boolean = false) => {
-    // 手動検索以外は完全に無効化
-    if (!isManualSearch) {
-      console.log('⚠️ 自動検索は無効化されています - 手動検索のみ実行可能');
-      return;
-    }
-
-    // 既に検索中の場合はスキップ
-    if (searching) {
-      console.log('既に検索中のため、新しい検索をスキップします');
-      return;
-    }
-
-    try {
-      if (!text || !text.trim()) {
-        console.log('検索テキストが空のため、検索をスキップします');
-        return;
-      }
-
-      console.log('🔍 手動画像検索開始:', text);
-
-      setSearching(true);
-
-      // タイムアウト付きで画像検索APIを呼び出す
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒タイムアウト
-
-      try {
-        const response = await apiRequest('POST', '/api/tech-support/image-search', { 
-          query: text,
-          count: 10
-        }, undefined, { signal: controller.signal });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          throw new Error('画像検索に失敗しました');
-        }
-
-        const results = await response.json();
-        console.log('検索結果数:', results.images?.length || 0);
-
-        if (!results.images || results.images.length === 0) {
-          console.log(`「${text}」に関する検索結果はありませんでした`);
-          setSearchResults([]);
-        } else {
-          const validResults = results.images
-            .filter((img: any) => img && (img.url || img.file))
-            .map((img: any) => ({
-              ...img,
-              src: img.url || img.file,
-              alt: img.title || img.description || '画像',
-              title: img.title || '',
-              description: img.description || ''
-            }));
-
-          setSearchResults(validResults);
-        }
-      } catch (fetchError) {
-        clearTimeout(timeoutId);
-        if (fetchError.name === 'AbortError') {
-          console.log('検索がタイムアウトしました');
-          toast({
-            title: '検索タイムアウト',
-            description: '検索に時間がかかりすぎたため中断しました。',
-            variant: 'destructive',
-          });
-        } else {
-          throw fetchError;
-        }
-      }
-    } catch (error) {
-      console.error('検索エラー:', error);
-      toast({
-        title: '検索エラー',
-        description: '画像の検索に失敗しました。',
-        variant: 'destructive',
-      });
-      setSearchResults([]);
-    } finally {
-      setSearching(false);
-    }
-  }, [searching, toast]);
+    // 画像検索機能を無効化（Fuse.jsを使用しているため）
+    console.log('🔍 画像検索機能は無効化されています');
+    return;
+  }, []);
 
   // 検索結果をクリアする関数
   const clearSearchResults = useCallback(() => {
@@ -515,9 +438,23 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return normalizedMessage;
   }, []);
 
-  // メッセージ送信関数（シンプル化）
+  // メッセージ送信関数（シンプル化・エラーハンドリング強化）
   const sendMessage = useCallback(async (content: string, mediaUrls?: { type: string, url: string, thumbnail?: string }[], isAiResponse: boolean = false) => {
-    if (!content.trim() && (!mediaUrls || mediaUrls.length === 0)) return;
+    // 入力値の検証
+    if (!content || typeof content !== 'string') {
+      console.error('無効なメッセージ内容:', content);
+      toast({
+        title: 'エラー',
+        description: '無効なメッセージ内容です',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!content.trim() && (!mediaUrls || mediaUrls.length === 0)) {
+      console.log('空のメッセージのため送信をスキップ');
+      return;
+    }
 
     setIsLoading(true);
 
@@ -527,6 +464,9 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (!currentChatId) {
         console.log('チャットIDが未設定のため、初期化を実行');
         currentChatId = await initializeChat();
+        if (!currentChatId) {
+          throw new Error('チャットIDの初期化に失敗しました');
+        }
       }
 
       const timestamp = Date.now();
@@ -548,38 +488,25 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const message: Message = {
         id: timestamp,
         chatId: currentChatId,
-        content: content,
-        text: content,
+        content: content.trim(),
+        text: content.trim(),
         isAiResponse: isAiResponse,
         senderId: isAiResponse ? 'ai' : 'user',
         timestamp: new Date(),
         media: processedMedia
       };
 
+      console.log('💬 メッセージ送信:', {
+        id: message.id,
+        content: message.content.substring(0, 50) + '...',
+        isAiResponse: message.isAiResponse,
+        mediaCount: processedMedia.length
+      });
+
       // UIを即座に更新
       setMessages(prev => [...prev, message]);
 
-      // AIレスポンスの準備
-      let aiResponseContent = '';
-      let searchResults: any[] = [];
-
-      // 画像検索の実行
-      if (content.trim()) {
-        try {
-          setSearching(true);
-          const results = await searchBySelectedText(content);
-          searchResults = results || [];
-          setSearchResults(searchResults);
-          console.log('画像検索結果:', searchResults.length + '件');
-        } catch (searchError) {
-          console.warn('画像検索エラー:', searchError);
-          searchResults = [];
-        } finally {
-          setSearching(false);
-        }
-      }
-      // ChatGPT APIリクエストは無効化 - チャット表示のみ
-      console.log('💬 ChatGPT APIリクエストを無効化 - チャット表示のみ');
+      // 画像検索の実行を削除（Fuse.jsを使用しているため）
 
       // 送信されたテキストを応急処置ガイドの検索キーワードとして保存
       if (content.trim()) {
@@ -599,14 +526,14 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
       console.error('メッセージ送信エラー:', error);
       toast({
-        title: 'エラー',
-        description: 'メッセージの送信に失敗しました',
+        title: '送信エラー',
+        description: error instanceof Error ? error.message : 'メッセージの送信に失敗しました',
         variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
     }
-  }, [chatId, initializeChat, searchBySelectedText, setSearchResults, toast, apiRequest]);
+  }, [chatId, initializeChat, setSearchResults, toast]);
 
   // 音声認識の初期化を最適化
   const initializeSpeechRecognition = useCallback(() => {
@@ -788,17 +715,35 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // チャット履歴をエクスポートする関数
   const exportChatHistory = useCallback(async () => {
     try {
-      if (!chatId) return;
+      if (!chatId) {
+        console.error('エクスポートエラー: chatIdが未設定');
+        toast({
+          title: 'エクスポートエラー',
+          description: 'チャットIDが未設定です。',
+          variant: 'destructive',
+        });
+        return null;
+      }
 
+      console.log('エクスポート開始:', chatId);
       setIsExporting(true);
 
       const response = await apiRequest('POST', `/api/chats/${chatId}/export`);
 
+      console.log('エクスポートレスポンス:', {
+        status: response.status,
+        ok: response.ok,
+        statusText: response.statusText
+      });
+
       if (!response.ok) {
-        throw new Error('チャット履歴のエクスポートに失敗しました');
+        const errorText = await response.text();
+        console.error('エクスポートレスポンスエラー:', errorText);
+        throw new Error(`チャット履歴のエクスポートに失敗しました: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log('エクスポート成功:', data);
 
       toast({
         title: 'エクスポート完了',
@@ -814,7 +759,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.error('エクスポートエラー:', error);
       toast({
         title: 'エクスポートエラー',
-        description: 'チャット履歴のエクスポートに失敗しました。',
+        description: error instanceof Error ? error.message : 'チャット履歴のエクスポートに失敗しました。',
         variant: 'destructive',
       });
       return null;
@@ -914,14 +859,22 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // バックエンドにも送信を試行（非同期）
       try {
-        const response = await apiRequest('POST', `/api/emergency-guide/send`, {
-          chatId: currentChatId,
-          guideData: {
-            title: guideData.title,
-            content: guideData.content,
-            steps: guideData.steps || [],
-            images: guideImages // 画像情報も送信
-          }
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-guide/send`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache'
+          },
+          body: JSON.stringify({
+            chatId: currentChatId,
+            guideData: {
+              title: guideData.title,
+              content: guideData.content,
+              steps: guideData.steps || [],
+              images: guideImages // 画像情報も送信
+            }
+          })
         });
 
         if (response.ok) {
@@ -929,6 +882,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           console.log('応急処置ガイド: サーバーへの送信成功', data);
         } else {
           console.warn('サーバーへの送信は失敗しましたが、ローカルメッセージは表示されています');
+          console.error('送信エラー詳細:', response.status, response.statusText);
         }
       } catch (apiError) {
         console.error('API送信エラー:', apiError);
@@ -938,32 +892,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // 緊急ガイド送信時は自動検索を完全無効化
       console.log('🏥 緊急ガイド送信完了 - 自動検索は実行しません');
 
-      // 新規メッセージに対して画像検索を実行
-      try {
-        const { searchImages } = await import('../lib/image-search.ts');
-        const searchResults = await searchImages(userMessageContent);
-        console.log('🔍 緊急ガイド用画像検索結果:', searchResults?.length || 0, '件');
-
-        if (searchResults && searchResults.length > 0) {
-          // 検索結果を処理して画像パスを修正
-          const processedResults = searchResults.map((result: any, index: number) => ({
-            ...result,
-            id: result?.id || `img_${index}`,
-            url: result?.file || result?.url,
-            title: result?.title || '関連画像',
-            type: 'image'
-          }));
-
-          console.log('🖼️ 緊急ガイド関連画像表示:', processedResults.length, '件');
-          setSearchResults(processedResults);
-        } else {
-          console.log('🔍 緊急ガイド用画像検索結果なし');
-          setSearchResults([]);
-        }
-      } catch (searchError) {
-        console.warn('緊急ガイド画像検索エラー:', searchError);
-        setSearchResults([]);
-      }
+      // 新規メッセージに対して画像検索を削除（Fuse.jsを使用しているため）
 
       // 成功トーストを表示
       toast({
@@ -1001,7 +930,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } finally {
       setIsLoading(false);
     }
-  }, [chatId, initializeChat, setMessages, setSearchResults, toast, apiRequest]);
+  }, [chatId, initializeChat, setMessages, setSearchResults, toast]);
 
   // フロー実行結果をチャットに送信する関数（新規追加）
   const sendFlowExecutionResult = useCallback(async (flowData: any) => {
@@ -1106,17 +1035,14 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('- AIメッセージ:', aiMessage);
       console.log('- 含まれる画像数:', executedImages.length);
 
-      // 履歴に保存する処理を追加
-      await saveToHistory({
+      // 履歴保存処理は現在実装されていないため、ローカル状態への追加のみ行う
+      console.log('📝 フロー実行結果をローカル状態に保存:', {
         chatId: currentChatId,
-        title: `緊急フロー実行: ${flowResult.title}`,
-        description: message,
-        emergencyGuideTitle: flowResult.title,
+        title: `緊急フロー実行: ${flowData.title}`,
+        description: userMessageContent,
+        emergencyGuideTitle: flowData.title,
         emergencyGuideContent: aiMessageContent,
-        images: executedImages.map(img => ({
-          url: img.url,
-          description: img.description || img.fileName
-        }))
+        images: executedImages.length
       });
 
       // メッセージを即座にローカル状態に追加
@@ -1333,33 +1259,22 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [messages, lastExportTimestamp]);
 
   // コンテキスト値を提供
-  const contextValue: ChatContextValue = {
+  const contextValue: ChatContextType = {
     messages,
     setMessages,
-    isLoading,
-    searching,
-    searchResults,
-    selectedText,
-    setSelectedText,
     sendMessage,
-    startRecording,
-    stopRecording,
-    isRecording,
-    recordedText,
-    searchBySelectedText,
-    clearSearchResults,
-    captureImage,
-    exportChatHistory,
-    exportFormattedData,
-    lastExportTimestamp,
-    isExporting,
-    hasUnexportedMessages,
-    sendEmergencyGuide,
-    sendFlowExecutionResult,
-    draftMessage,
-    setDraftMessage,
+    isLoading,
     clearChatHistory,
-    isClearing
+    isClearing,
+    chatId,
+    initializeChat,
+    exportChatHistory,
+    searchResults,
+    setSearchResults,
+    searching,
+    setSearching,
+    sendEmergencyGuide,
+    // searchBySelectedText, // 画像検索機能を削除
   };
 
   return (
