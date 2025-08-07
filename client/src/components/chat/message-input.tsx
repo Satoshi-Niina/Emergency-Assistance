@@ -119,11 +119,11 @@ export default function MessageInput({
         {/* 入力エリア - 小さめ固定高さでオーバーフロー時はスクロール */}
         <div className="flex-1 flex items-center bg-white border border-blue-200 rounded-full px-3 py-1 shadow-inner">
           {isMobile ? (
-            /* モバイル用テキストエリア（より小さく） */
-            <div className="flex-1 relative h-[32px]"> {/* 高さを小さく */}
+            /* モバイル用テキストエリア（1.5倍の高さと文字サイズ） */
+            <div className="flex-1 relative h-[48px]"> {/* 高さを1.5倍に */}
               <Textarea
                 ref={textareaRef}
-                className="absolute inset-0 bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none py-1 overflow-y-auto text-sm"
+                className="absolute inset-0 bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none py-1 overflow-y-auto text-lg"
                 placeholder={"メッセージを入力..."}
                 value={message}
                 onChange={handleInputChange}
@@ -149,12 +149,12 @@ export default function MessageInput({
               )}
             </div>
           ) : (
-            /* デスクトップ用インプット（より小さく） */
-            <div className="flex-1 h-[32px] flex items-center relative"> {/* 高さを小さく */}
+            /* デスクトップ用インプット（1.5倍の高さと文字サイズ） */
+            <div className="flex-1 h-[48px] flex items-center relative"> {/* 高さを1.5倍に */}
               <Input
                 ref={inputRef}
                 type="text"
-                className="w-full h-full bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
+                className="w-full h-full bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 text-lg"
                 placeholder={"メッセージを入力..."}
                 value={message}
                 onChange={handleInputChange}
