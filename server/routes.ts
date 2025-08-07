@@ -34,6 +34,7 @@ import { historyRouter } from './routes/history.js';
 import { baseDataRouter } from './routes/base-data.js';
 import filesRouter from './routes/files.js';
 import knowledgeBaseRouter from './routes/knowledge-base.js';
+import qaLearningRouter from './routes/qa-learning.js';
 
 // ESM用__dirname定義
 const __filename = fileURLToPath(import.meta.url);
@@ -81,6 +82,7 @@ export function registerRoutes(app: Express): void {
   app.use('/api/base-data', baseDataRouter);
   app.use('/api/files', filesRouter);
   app.use('/api/knowledge-base', knowledgeBaseRouter);
+  app.use('/api/qa-learning', qaLearningRouter);
 
   // Add a health check endpoint for testing
   app.get('/api/health', (req, res) => {

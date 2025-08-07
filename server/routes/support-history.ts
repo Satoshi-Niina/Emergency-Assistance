@@ -1,7 +1,7 @@
 import express from 'express';
 import { db } from '../db/index.js';
 import { supportHistory, machineTypes, machines } from '../db/schema.js';
-import { eq, like, and, gte, desc, ilike } from 'drizzle-orm';
+import { eq, like, and, gte, desc, ilike, or } from 'drizzle-orm';
 import { z } from 'zod';
 import { upload } from '../lib/multer-config.js';
 import path from 'path';
@@ -14,41 +14,114 @@ const router = express.Router();
 // 履歴データから機種・機械番号一覧取得
 router.get('/machine-data', async (req, res) => {
   try {
-    // 履歴データから機種一覧を取得
+    console.log('🔍 機種・機械番号データ取得開始');
+    
+    // 履歴データから機種一覧を取得（データベースカラムとJSONデータの両方から）
     const machineTypesResult = await db
       .select({
-        machineType: supportHistory.machineType
+        machineType: supportHistory.machineType,
+        jsonData: supportHistory.jsonData
       })
       .from(supportHistory)
-      .groupBy(supportHistory.machineType)
-      .orderBy(supportHistory.machineType);
+      .orderBy(supportHistory.createdAt);
 
-    // 履歴データから機械番号一覧を取得
+    console.log('🔍 機種データ取得結果（DB）:', machineTypesResult.length, '件');
+
+    // 履歴データから機械番号一覧を取得（データベースカラムとJSONデータの両方から）
     const machinesResult = await db
       .select({
         machineNumber: supportHistory.machineNumber,
-        machineType: supportHistory.machineType
+        machineType: supportHistory.machineType,
+        jsonData: supportHistory.jsonData
       })
       .from(supportHistory)
-      .groupBy(supportHistory.machineNumber, supportHistory.machineType)
-      .orderBy(supportHistory.machineNumber);
+      .orderBy(supportHistory.createdAt);
 
-    // データ形式を統一
-    const machineTypes = machineTypesResult.map((item, index) => ({
-      id: `type_${index}`,
-      machineTypeName: item.machineType
-    }));
+    console.log('🔍 機械番号データ取得結果（DB）:', machinesResult.length, '件');
 
-    const machines = machinesResult.map((item, index) => ({
-      id: `machine_${index}`,
-      machineNumber: item.machineNumber,
-      machineTypeName: item.machineType
-    }));
+    // 機種一覧を構築（重複除去）
+    const machineTypeSet = new Set<string>();
+    const machineTypes: Array<{ id: string; machineTypeName: string }> = [];
 
-    res.json({
+    // データベースカラムから機種を取得
+    machineTypesResult.forEach((item, index) => {
+      if (item.machineType && !machineTypeSet.has(item.machineType)) {
+        machineTypeSet.add(item.machineType);
+        machineTypes.push({
+          id: `type_db_${index}`,
+          machineTypeName: item.machineType
+        });
+      }
+    });
+
+    // JSONデータから機種を取得
+    machineTypesResult.forEach((item, index) => {
+      try {
+        const jsonData = typeof item.jsonData === 'string' ? JSON.parse(item.jsonData) : item.jsonData;
+        if (jsonData.machineTypeName && !machineTypeSet.has(jsonData.machineTypeName)) {
+          machineTypeSet.add(jsonData.machineTypeName);
+          machineTypes.push({
+            id: `type_json_${index}`,
+            machineTypeName: jsonData.machineTypeName
+          });
+        }
+      } catch (error) {
+        // JSON解析エラーは無視
+        console.log('🔍 JSON解析エラー（機種）:', error);
+      }
+    });
+
+    // 機械番号一覧を構築（重複除去）
+    const machineSet = new Set<string>();
+    const machines: Array<{ id: string; machineNumber: string; machineTypeName: string }> = [];
+
+    // データベースカラムから機械番号を取得
+    machinesResult.forEach((item, index) => {
+      const key = `${item.machineNumber}_${item.machineType}`;
+      if (item.machineNumber && !machineSet.has(key)) {
+        machineSet.add(key);
+        machines.push({
+          id: `machine_db_${index}`,
+          machineNumber: item.machineNumber,
+          machineTypeName: item.machineType
+        });
+      }
+    });
+
+    // JSONデータから機械番号を取得
+    machinesResult.forEach((item, index) => {
+      try {
+        const jsonData = typeof item.jsonData === 'string' ? JSON.parse(item.jsonData) : item.jsonData;
+        if (jsonData.machineNumber && jsonData.machineTypeName) {
+          const key = `${jsonData.machineNumber}_${jsonData.machineTypeName}`;
+          if (!machineSet.has(key)) {
+            machineSet.add(key);
+            machines.push({
+              id: `machine_json_${index}`,
+              machineNumber: jsonData.machineNumber,
+              machineTypeName: jsonData.machineTypeName
+            });
+          }
+        }
+      } catch (error) {
+        // JSON解析エラーは無視
+        console.log('🔍 JSON解析エラー（機械番号）:', error);
+      }
+    });
+
+    const result = {
       machineTypes,
       machines
+    };
+
+    console.log('🔍 最終結果:', {
+      machineTypes: machineTypes.length,
+      machines: machines.length,
+      sampleMachineTypes: machineTypes.slice(0, 3),
+      sampleMachines: machines.slice(0, 3)
     });
+
+    res.json(result);
 
   } catch (error) {
     console.error('履歴データからの機種・機械番号データ取得エラー:', error);
@@ -74,19 +147,39 @@ router.get('/', async (req, res) => {
     // 基本クエリ構築
     let whereConditions = [];
     
-    // 機種フィルタ（JSONデータ内の部分一致検索）
+    // 機種フィルタ（データベースカラムとJSONデータの両方を検索）
     if (query.machineType) {
-      whereConditions.push(ilike(supportHistory.jsonData, `%${query.machineType}%`));
+      whereConditions.push(
+        or(
+          ilike(supportHistory.machineType, `%${query.machineType}%`),
+          ilike(supportHistory.jsonData, `%${query.machineType}%`)
+        )
+      );
     }
     
-    // 機械番号フィルタ（JSONデータ内の部分一致検索）
+    // 機械番号フィルタ（データベースカラムとJSONデータの両方を検索）
     if (query.machineNumber) {
-      whereConditions.push(ilike(supportHistory.jsonData, `%${query.machineNumber}%`));
+      whereConditions.push(
+        or(
+          ilike(supportHistory.machineNumber, `%${query.machineNumber}%`),
+          ilike(supportHistory.jsonData, `%${query.machineNumber}%`)
+        )
+      );
     }
     
     // テキスト検索（JSONデータ内の任意のテキスト検索）
     if (query.searchText) {
-      whereConditions.push(ilike(supportHistory.jsonData, `%${query.searchText}%`));
+      // 複数の検索条件を組み合わせてより詳細な検索を実行
+      const searchTerms = query.searchText.split(/\s+/).filter(term => term.length > 0);
+      
+      if (searchTerms.length > 0) {
+        const searchConditions = searchTerms.map(term => 
+          ilike(supportHistory.jsonData, `%${term}%`)
+        );
+        whereConditions.push(and(...searchConditions));
+      } else {
+        whereConditions.push(ilike(supportHistory.jsonData, `%${query.searchText}%`));
+      }
     }
     
     // 日付検索
@@ -453,23 +546,56 @@ router.post('/advanced-search', async (req, res) => {
         { name: 'machineNumber', weight: 0.3 },
         { name: 'jsonData', weight: 1.0 }
       ],
-      threshold: 0.4,
+      threshold: 0.3, // より厳密な検索
       includeScore: true,
       ignoreLocation: true,
-      useExtendedSearch: true
+      useExtendedSearch: true,
+      minMatchCharLength: 1, // 1文字でもマッチ
+      findAllMatches: true,
+      shouldSort: true
     });
 
-    const searchResults = fuse.search(searchText).slice(0, limit);
+    // 検索テキストを分割して複数条件で検索
+    const searchTerms = searchText.split(/\s+/).filter(term => term.length > 0);
+    let searchResults = [];
+
+    if (searchTerms.length > 1) {
+      // 複数キーワードの場合、各キーワードで検索して結果を統合
+      const allResults = new Map();
+      
+      searchTerms.forEach(term => {
+        const termResults = fuse.search(term);
+        termResults.forEach(result => {
+          if (!allResults.has(result.item.id)) {
+            allResults.set(result.item.id, { ...result.item, score: result.score });
+          } else {
+            // 既存の結果がある場合は、より良いスコアを採用
+            const existing = allResults.get(result.item.id);
+            if (result.score < existing.score) {
+              allResults.set(result.item.id, { ...result.item, score: result.score });
+            }
+          }
+        });
+      });
+      
+      searchResults = Array.from(allResults.values());
+    } else {
+      // 単一キーワードの場合
+      searchResults = fuse.search(searchText);
+    }
     
-    const results = searchResults.map(result => ({
-      ...result.item,
-      score: result.score
-    }));
+    const results = searchResults
+      .slice(0, limit)
+      .map(result => ({
+        ...result.item,
+        score: result.score
+      }));
 
     res.json({
       items: results,
       total: results.length,
-      searchText
+      searchText,
+      searchTerms: searchTerms
     });
 
   } catch (error) {

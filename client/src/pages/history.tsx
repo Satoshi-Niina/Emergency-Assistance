@@ -19,6 +19,7 @@ import {
   generateReport
 } from '../lib/api/history-api';
 import ChatExportReport from '../components/report/chat-export-report';
+import MachineFailureReport from '../components/report/machine-failure-report';
 
 interface SearchFilters {
   machineType: string;
@@ -54,12 +55,7 @@ const HistoryPage: React.FC = () => {
   const [showExportHistory, setShowExportHistory] = useState(false);
   
   // レポート機能の状態
-  const [showReportDialog, setShowReportDialog] = useState(false);
-  const [showReportPreview, setShowReportPreview] = useState(false);
-  const [reportTitle, setReportTitle] = useState('');
-  const [reportDescription, setReportDescription] = useState('');
   const [reportLoading, setReportLoading] = useState(false);
-  const [reportData, setReportData] = useState<any>(null);
   
   // 編集・プレビュー機能の状態
   const [editingItem, setEditingItem] = useState<SupportHistoryItem | null>(null);
@@ -75,6 +71,10 @@ const HistoryPage: React.FC = () => {
   const [showReport, setShowReport] = useState(false);
   const [selectedReportData, setSelectedReportData] = useState<any>(null);
   const [selectedFileName, setSelectedFileName] = useState<string>('');
+  
+  // 機械故障報告書の状態
+  const [showMachineFailureReport, setShowMachineFailureReport] = useState(false);
+  const [machineFailureReportData, setMachineFailureReportData] = useState<any>(null);
 
   // 機種・機械番号マスターデータ
   const [machineData, setMachineData] = useState<MachineData>({ 
@@ -113,8 +113,57 @@ const HistoryPage: React.FC = () => {
   const fetchMachineDataFromAPI = async () => {
     try {
       setMachineDataLoading(true);
-      const data = await fetchMachineData();
-      setMachineData(data || { machineTypes: [], machines: [] });
+      
+      // knowledge-base/exportsのJSONファイルから機種・機械番号データを取得
+      const response = await fetch('/api/history');
+      const data = await response.json();
+      
+      if (data.success && data.items) {
+        // 機種一覧を構築（重複除去）
+        const machineTypeSet = new Set<string>();
+        const machineTypes: Array<{ id: string; machineTypeName: string }> = [];
+        
+        // 機械番号一覧を構築（重複除去）
+        const machineSet = new Set<string>();
+        const machines: Array<{ id: string; machineNumber: string; machineTypeName: string }> = [];
+        
+        data.items.forEach((item: any, index: number) => {
+          const machineInfo = item.machineInfo;
+          if (machineInfo) {
+            // 機種データを追加
+            if (machineInfo.machineTypeName && !machineTypeSet.has(machineInfo.machineTypeName)) {
+              machineTypeSet.add(machineInfo.machineTypeName);
+              machineTypes.push({
+                id: `type_${index}`,
+                machineTypeName: machineInfo.machineTypeName
+              });
+            }
+            
+            // 機械番号データを追加
+            if (machineInfo.machineNumber && machineInfo.machineTypeName) {
+              const key = `${machineInfo.machineNumber}_${machineInfo.machineTypeName}`;
+              if (!machineSet.has(key)) {
+                machineSet.add(key);
+                machines.push({
+                  id: `machine_${index}`,
+                  machineNumber: machineInfo.machineNumber,
+                  machineTypeName: machineInfo.machineTypeName
+                });
+              }
+            }
+          }
+        });
+        
+        const result = {
+          machineTypes,
+          machines
+        };
+        
+        console.log('🔍 機種・機械番号データ取得結果:', result);
+        setMachineData(result);
+      } else {
+        setMachineData({ machineTypes: [], machines: [] });
+      }
     } catch (error) {
       console.error('機種・機械番号データの取得に失敗しました:', error);
       setMachineData({ machineTypes: [], machines: [] });
@@ -127,21 +176,33 @@ const HistoryPage: React.FC = () => {
     try {
       setLoading(true);
       
-      const searchFilters: HistorySearchFilters = {
-        limit: 20,
-        offset: (page - 1) * 20
-      };
+      // サーバー側でフィルタリングを行う
+      const params = new URLSearchParams();
+      if (filters.machineType) params.append('machineType', filters.machineType);
+      if (filters.machineNumber) params.append('machineNumber', filters.machineNumber);
+      if (filters.searchText) params.append('searchText', filters.searchText);
+      if (filters.searchDate) params.append('searchDate', filters.searchDate);
+      params.append('limit', '20');
+      params.append('offset', ((page - 1) * 20).toString());
       
-      if (filters.machineType) searchFilters.machineType = filters.machineType;
-      if (filters.machineNumber) searchFilters.machineNumber = filters.machineNumber;
-      if (filters.searchText) searchFilters.searchText = filters.searchText;
-      if (filters.searchDate) searchFilters.searchDate = filters.searchDate;
+      const response = await fetch(`/api/history?${params.toString()}`);
+      const data = await response.json();
       
-      const data = await fetchHistoryList(searchFilters);
-      setHistoryItems(data?.items || []);
-      setFilteredItems(data?.items || []);
-      setTotalPages(Math.ceil((data?.total || 0) / 20));
-      setCurrentPage(page);
+      console.log('🔍 取得したデータ:', data);
+      
+      if (data.success && data.items) {
+        console.log('🔍 取得件数:', data.items.length);
+        
+        setHistoryItems(data.items);
+        setFilteredItems(data.items);
+        setTotalPages(Math.ceil(data.total / 20));
+        setCurrentPage(page);
+      } else {
+        console.log('🔍 データ取得成功せず:', data);
+        setHistoryItems([]);
+        setFilteredItems([]);
+        setTotalPages(1);
+      }
     } catch (error) {
       console.error('履歴データの取得に失敗しました:', error);
       setHistoryItems([]);
@@ -154,8 +215,11 @@ const HistoryPage: React.FC = () => {
 
   // 検索とフィルタリング
   useEffect(() => {
-    fetchHistoryData(1);
-  }, [filters]);
+    // 初期ロード時のみ実行
+    if (currentPage === 1 && historyItems.length === 0) {
+      fetchHistoryData(1);
+    }
+  }, []); // filtersの依存を削除
 
   // フィルター変更時の処理
   const handleFilterChange = (key: keyof SearchFilters, value: string) => {
@@ -192,6 +256,7 @@ const HistoryPage: React.FC = () => {
       console.error('エクスポートエラー:', error);
     }
   };
+
 
   const fetchExportHistoryData = async () => {
     try {
@@ -231,6 +296,7 @@ const HistoryPage: React.FC = () => {
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
   };
+
 
   const handleExportItem = async (item: SupportHistoryItem, format: 'json' | 'csv' = 'json') => {
     try {
@@ -284,11 +350,26 @@ const HistoryPage: React.FC = () => {
   const handleGenerateReport = async () => {
     try {
       setReportLoading(true);
-      const blob = await generateReport(filters, reportTitle, reportDescription);
-      downloadFile(blob, `report_${new Date().toISOString().split('T')[0]}.pdf`);
-      setShowReportDialog(false);
-      setReportTitle('');
-      setReportDescription('');
+      
+      // 機械故障報告書形式のレポートデータを生成
+      const reportData = {
+        reportId: `R${Date.now().toString().slice(-5)}`,
+        machineId: filters.machineNumber || 'M98765',
+        date: new Date().toISOString().split('T')[0],
+        location: '○○線',
+        failureCode: 'FC01',
+        description: '履歴検索結果による機械故障報告',
+        status: '報告完了',
+        engineer: 'システム管理者',
+        notes: `検索条件:\n機種: ${filters.machineType || '全機種'}\n機械番号: ${filters.machineNumber || '全機械'}\n検索テキスト: ${filters.searchText || 'なし'}\n検索日付: ${filters.searchDate || '全期間'}\n\n検索結果: ${filteredItems.length}件`,
+        repairSchedule: '要確認',
+        repairLocation: '要確認',
+        images: undefined,
+        chatHistory: undefined
+      };
+      
+      setMachineFailureReportData(reportData);
+      setShowMachineFailureReport(true);
     } catch (error) {
       console.error('レポート生成エラー:', error);
     } finally {
@@ -296,35 +377,7 @@ const HistoryPage: React.FC = () => {
     }
   };
 
-  const handlePreviewReport = async () => {
-    try {
-      setReportLoading(true);
-      
-      // プレビューデータを構築
-      const previewData = {
-        title: reportTitle || '履歴検索レポート',
-        description: reportDescription || '',
-        generatedAt: new Date().toISOString(),
-        searchFilters: filters,
-        totalCount: filteredItems.length,
-        items: filteredItems.map(item => ({
-          id: item.id,
-          machineType: item.machineType,
-          machineNumber: item.machineNumber,
-          createdAt: item.createdAt,
-          jsonData: item.jsonData,
-          imagePath: item.imagePath
-        }))
-      };
-      
-      setReportData(previewData);
-      setShowReportPreview(true);
-    } catch (error) {
-      console.error('レポートプレビューエラー:', error);
-    } finally {
-      setReportLoading(false);
-    }
-  };
+
 
   const handleShowReport = async (fileName: string) => {
     try {
@@ -342,10 +395,43 @@ const HistoryPage: React.FC = () => {
     }
   };
 
+  const handleShowMachineFailureReport = (item: SupportHistoryItem) => {
+    const jsonInfo = extractJsonInfo(item.jsonData);
+    
+    const reportData = {
+      reportId: `R${item.id.slice(-5).toUpperCase()}`,
+      machineId: item.machineNumber || 'M98765',
+      date: new Date(item.createdAt).toISOString().split('T')[0],
+      location: '○○線',
+      failureCode: 'FC01',
+      description: jsonInfo.description || '機械故障による応急処置',
+      status: '応急処置完了',
+      engineer: '担当エンジニア',
+      notes: `機種: ${item.machineType}\n機械番号: ${item.machineNumber}\n作成日時: ${new Date(item.createdAt).toLocaleString('ja-JP')}\n${jsonInfo.emergencyMeasures ? `応急処置: ${jsonInfo.emergencyMeasures}` : ''}`,
+      repairSchedule: '2025年9月',
+      repairLocation: '工場内修理スペース',
+      images: item.imagePath ? [{
+        id: '1',
+        url: item.imagePath,
+        fileName: '故障箇所画像',
+        description: '機械故障箇所の写真'
+      }] : undefined,
+      chatHistory: undefined
+    };
+    
+    setMachineFailureReportData(reportData);
+    setShowMachineFailureReport(true);
+  };
+
   const handleCloseReport = () => {
     setShowReport(false);
     setSelectedReportData(null);
     setSelectedFileName('');
+  };
+
+  const handleCloseMachineFailureReport = () => {
+    setShowMachineFailureReport(false);
+    setMachineFailureReportData(null);
   };
 
   const handleSaveReport = (reportData: any) => {
@@ -469,7 +555,7 @@ const HistoryPage: React.FC = () => {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>履歴レポート - 印刷</title>
+        <title>機械故障報告書 - 印刷</title>
         <style>
           body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
           .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
@@ -491,73 +577,75 @@ const HistoryPage: React.FC = () => {
       </head>
       <body>
         <div class="header">
-          <h1>応急処置サポート履歴レポート</h1>
+          <h1>機械故障報告書</h1>
           <p>印刷日時: ${new Date().toLocaleString('ja-JP')}</p>
         </div>
         
         <div class="section">
-          <h2>基本情報</h2>
+          <h2>報告概要</h2>
           <div class="info-grid">
             <div class="info-item">
-              <strong>機種</strong>
-              ${item.machineType}
+              <strong>報告書ID</strong>
+              R${item.id.slice(-5).toUpperCase()}
             </div>
             <div class="info-item">
-              <strong>機械番号</strong>
+              <strong>機械ID</strong>
               ${item.machineNumber}
             </div>
             <div class="info-item">
-              <strong>作成日時</strong>
-              ${formatDate(item.createdAt)}
+              <strong>日付</strong>
+              ${new Date(item.createdAt).toISOString().split('T')[0]}
             </div>
             <div class="info-item">
-              <strong>画像</strong>
-              ${item.imagePath ? 'あり' : 'なし'}
+              <strong>場所</strong>
+              ○○線
+            </div>
+            <div class="info-item">
+              <strong>故障コード</strong>
+              FC01
             </div>
           </div>
         </div>
         
-        ${jsonInfo.title ? `
         <div class="section">
-          <h2>タイトル</h2>
+          <h2>故障詳細</h2>
           <div class="content-box">
-            ${jsonInfo.title}
+            <p><strong>説明:</strong> ${jsonInfo.description || '機械故障による応急処置'}</p>
+            <p><strong>ステータス:</strong> 応急処置完了</p>
+            <p><strong>担当エンジニア:</strong> 担当者</p>
+            <p><strong>備考:</strong> 機種: ${item.machineType}, 機械番号: ${item.machineNumber}</p>
           </div>
         </div>
-        ` : ''}
         
-        ${jsonInfo.description ? `
         <div class="section">
-          <h2>説明</h2>
-          <div class="content-box">
-            ${jsonInfo.description}
+          <h2>修繕予定</h2>
+          <div class="info-grid">
+            <div class="info-item">
+              <strong>予定月日</strong>
+              2025年9月
+            </div>
+            <div class="info-item">
+              <strong>場所</strong>
+              工場内修理スペース
+            </div>
           </div>
         </div>
-        ` : ''}
-        
-        ${jsonInfo.emergencyMeasures ? `
-        <div class="section">
-          <h2>応急処置</h2>
-          <div class="content-box">
-            ${jsonInfo.emergencyMeasures}
-          </div>
-        </div>
-        ` : ''}
         
         ${item.imagePath ? `
         <div class="section">
-          <h2>関連画像</h2>
+          <h2>故障箇所画像</h2>
           <div class="image-section">
-            <img src="${item.imagePath}" alt="履歴画像" />
+            <p>機械故障箇所の画像</p>
+            <img src="${item.imagePath}" alt="故障箇所画像" />
+            <p style="font-size: 12px; color: #666;">上記は故障箇所の写真です。</p>
           </div>
         </div>
         ` : ''}
         
         <div class="section">
-          <h2>詳細データ</h2>
-          <div class="content-box">
-            <pre style="white-space: pre-wrap; font-family: monospace; font-size: 12px;">${JSON.stringify(item.jsonData, null, 2)}</pre>
-          </div>
+          <p style="text-align: center; color: #666; font-size: 12px;">
+            © 2025 機械故障報告書. All rights reserved.
+          </p>
         </div>
         
         <div class="no-print" style="margin-top: 30px; text-align: center;">
@@ -606,59 +694,102 @@ const HistoryPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
             {/* テキスト検索 */}
             <div className="lg:col-span-2">
-              <Input
-                placeholder="タイトル、機種、事業所、応急処置内容などで検索..."
-                value={filters.searchText}
-                onChange={(e) => handleFilterChange('searchText', e.target.value)}
-                className="w-full"
-              />
+              <div className="space-y-2">
+                <Input
+                  placeholder="タイトル、機種、事業所、応急処置内容、キーワードなどで検索..."
+                  value={filters.searchText}
+                  onChange={(e) => handleFilterChange('searchText', e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSearch();
+                    }
+                  }}
+                  className="w-full"
+                />
+                <p className="text-xs text-gray-500">
+                  ※ 複数のキーワードをスペース区切りで入力すると、すべてのキーワードを含む履歴を検索します
+                </p>
+              </div>
             </div>
 
             {/* 日付検索 */}
             <div>
-              <Input
-                type="date"
-                value={filters.searchDate}
-                onChange={(e) => handleFilterChange('searchDate', e.target.value)}
-                className="w-full"
-              />
+              <div className="space-y-2">
+                <Input
+                  type="date"
+                  value={filters.searchDate}
+                  onChange={(e) => handleFilterChange('searchDate', e.target.value)}
+                  className="w-full"
+                />
+                <p className="text-xs text-gray-500">
+                  ※ 指定した日付の履歴を検索します
+                </p>
+              </div>
             </div>
 
             {/* 機種フィルタ */}
-            <Select
-              value={filters.machineType || "all"}
-              onValueChange={(value) => handleFilterChange('machineType', value === "all" ? "" : value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="機種を選択" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">すべての機種</SelectItem>
-                {machineData.machineTypes && machineData.machineTypes.length > 0 && machineData.machineTypes.map((type) => (
-                  <SelectItem key={type.id} value={type.machineTypeName}>
-                    {type.machineTypeName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div>
+              <div className="space-y-2">
+                <Select
+                  value={filters.machineType || "all"}
+                  onValueChange={(value) => handleFilterChange('machineType', value === "all" ? "" : value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="機種を選択" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">すべての機種</SelectItem>
+                    {machineDataLoading ? (
+                      <SelectItem value="loading" disabled>読み込み中...</SelectItem>
+                    ) : machineData.machineTypes && machineData.machineTypes.length > 0 ? (
+                      machineData.machineTypes.map((type) => (
+                        <SelectItem key={type.id} value={type.machineTypeName}>
+                          {type.machineTypeName}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-data" disabled>データがありません</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500">
+                  ※ JSONファイルから機種を取得しています
+                  {machineData.machineTypes && ` (${machineData.machineTypes.length}件)`}
+                </p>
+              </div>
+            </div>
 
             {/* 機械番号フィルタ */}
-            <Select
-              value={filters.machineNumber || "all"}
-              onValueChange={(value) => handleFilterChange('machineNumber', value === "all" ? "" : value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="機械番号を選択" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">すべての機械番号</SelectItem>
-                {machineData.machines && machineData.machines.length > 0 && machineData.machines.map((machine) => (
-                  <SelectItem key={machine.id} value={machine.machineNumber}>
-                    {machine.machineNumber}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div>
+              <div className="space-y-2">
+                <Select
+                  value={filters.machineNumber || "all"}
+                  onValueChange={(value) => handleFilterChange('machineNumber', value === "all" ? "" : value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="機械番号を選択" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">すべての機械番号</SelectItem>
+                    {machineDataLoading ? (
+                      <SelectItem value="loading" disabled>読み込み中...</SelectItem>
+                    ) : machineData.machines && machineData.machines.length > 0 ? (
+                      machineData.machines.map((machine) => (
+                        <SelectItem key={machine.id} value={machine.machineNumber}>
+                          {machine.machineNumber} ({machine.machineTypeName})
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-data" disabled>データがありません</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500">
+                  ※ JSONファイルから機械番号を取得しています
+                  {machineData.machines && ` (${machineData.machines.length}件)`}
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="flex gap-2">
@@ -679,7 +810,7 @@ const HistoryPage: React.FC = () => {
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              履歴一覧 ({filteredItems.length}件)
+              機械故障履歴一覧 ({filteredItems.length}件)
             </div>
             <div className="flex gap-2">
               <Button
@@ -690,15 +821,15 @@ const HistoryPage: React.FC = () => {
                 <BarChart3 className="h-4 w-4" />
                 レポート生成
               </Button>
-              <Button
-                onClick={handlePrintTable}
-                disabled={filteredItems.length === 0}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <FileText className="h-4 w-4" />
-                テーブル印刷
-              </Button>
+                              <Button
+                  onClick={handlePrintTable}
+                  disabled={filteredItems.length === 0}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  故障報告書印刷
+                </Button>
             </div>
           </CardTitle>
         </CardHeader>
@@ -746,77 +877,17 @@ const HistoryPage: React.FC = () => {
                       <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">応急処置/ファイル名</th>
                       <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">作成日時</th>
                       <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">画像</th>
-                      <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">編集</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredItems.map((item) => {
-                      // チャットエクスポートファイルの場合
-                      if (item.type === 'chat_export') {
-                        return (
-                          <tr key={item.id} className="hover:bg-gray-50 bg-blue-50">
-                            <td className="border border-gray-300 px-3 py-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleSelectItem(item.id)}
-                                className="p-1"
-                              >
-                                {selectedItems.has(item.id) ? (
-                                  <CheckSquare className="h-4 w-4 text-blue-600" />
-                                ) : (
-                                  <Square className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </td>
-                            <td className="border border-gray-300 px-3 py-2 text-sm">
-                              {item.machineInfo?.machineTypeName || 'チャットエクスポート'}
-                            </td>
-                            <td className="border border-gray-300 px-3 py-2 text-sm">
-                              {item.machineInfo?.machineNumber || '-'}
-                            </td>
-                            <td className="border border-gray-300 px-3 py-2 text-sm max-w-xs truncate" title={`チャットID: ${item.chatId}`}>
-                              チャットエクスポート ({item.messageCount}件)
-                            </td>
-                            <td className="border border-gray-300 px-3 py-2 text-sm max-w-xs truncate" title={item.exportType}>
-                              {item.exportType}
-                            </td>
-                            <td className="border border-gray-300 px-3 py-2 text-sm max-w-xs truncate" title={item.fileName}>
-                              {item.fileName}
-                            </td>
-                            <td className="border border-gray-300 px-3 py-2 text-sm">{formatDate(item.exportTimestamp)}</td>
-                            <td className="border border-gray-300 px-3 py-2">
-                              {item.savedImages && item.savedImages.length > 0 ? (
-                                <div className="flex flex-wrap gap-1">
-                                  {item.savedImages.slice(0, 3).map((image: any, index: number) => (
-                                    <img
-                                      key={index}
-                                      src={image.url}
-                                      alt={`画像 ${index + 1}`}
-                                      className="w-8 h-8 object-cover rounded border cursor-pointer"
-                                      title={image.fileName}
-                                      onClick={() => handleShowReport(item.fileName)}
-                                    />
-                                  ))}
-                                  {item.savedImages.length > 3 && (
-                                    <span className="text-xs text-gray-500">+{item.savedImages.length - 3}</span>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-gray-500">-</span>
-                              )}
-                            </td>
-                            <td className="border border-gray-300 px-3 py-2">
-                              <span className="text-gray-500 text-xs">読み取り専用</span>
-                            </td>
-                          </tr>
-                        );
-                      }
+                      // JSONファイルのデータ構造に合わせて表示
+                      const machineInfo = item.machineInfo;
+                      const messages = item.chatData?.messages || [];
+                      const messageCount = messages.length;
                       
-                      // 通常の履歴アイテムの場合
-                      const jsonInfo = extractJsonInfo(item.jsonData);
                       return (
-                        <tr key={item.id} className="hover:bg-gray-50">
+                        <tr key={item.id} className="hover:bg-gray-50 bg-blue-50">
                           <td className="border border-gray-300 px-3 py-2">
                             <Button
                               variant="ghost"
@@ -831,55 +902,42 @@ const HistoryPage: React.FC = () => {
                               )}
                             </Button>
                           </td>
-                          <td className="border border-gray-300 px-3 py-2 text-sm">{item.machineType}</td>
-                          <td className="border border-gray-300 px-3 py-2 text-sm">{item.machineNumber}</td>
-                          <td className="border border-gray-300 px-3 py-2 text-sm max-w-xs truncate" title={jsonInfo.title}>
-                            {jsonInfo.title}
-                          </td>
-                          <td className="border border-gray-300 px-3 py-2 text-sm max-w-xs truncate" title={jsonInfo.description}>
-                            {jsonInfo.description}
-                          </td>
-                          <td className="border border-gray-300 px-3 py-2 text-sm max-w-xs truncate" title={jsonInfo.emergencyMeasures}>
-                            {jsonInfo.emergencyMeasures}
-                          </td>
-                          <td className="border border-gray-300 px-3 py-2 text-sm">{formatDate(item.createdAt)}</td>
                           <td className="border border-gray-300 px-3 py-2 text-sm">
-                            {item.imagePath ? (
-                              <div className="flex items-center gap-1">
-                                <Image className="h-4 w-4 text-green-500" />
-                                <span>あり</span>
+                            {machineInfo?.machineTypeName || '-'}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-2 text-sm">
+                            {machineInfo?.machineNumber || '-'}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-2 text-sm max-w-xs truncate" title={`チャットID: ${item.chatId}`}>
+                            チャット履歴 ({messageCount}件)
+                          </td>
+                          <td className="border border-gray-300 px-3 py-2 text-sm max-w-xs truncate" title={item.exportType}>
+                            {item.exportType || 'manual_send'}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-2 text-sm max-w-xs truncate" title={item.fileName}>
+                            {item.fileName}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-2 text-sm">{formatDate(item.exportTimestamp)}</td>
+                          <td className="border border-gray-300 px-3 py-2">
+                            {item.savedImages && item.savedImages.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {item.savedImages.slice(0, 3).map((image: any, index: number) => (
+                                  <img
+                                    key={index}
+                                    src={image.url}
+                                    alt={`画像 ${index + 1}`}
+                                    className="w-8 h-8 object-cover rounded border cursor-pointer"
+                                    title={image.fileName}
+                                    onClick={() => handleShowReport(item.fileName)}
+                                  />
+                                ))}
+                                {item.savedImages.length > 3 && (
+                                  <span className="text-xs text-gray-500">+{item.savedImages.length - 3}</span>
+                                )}
                               </div>
                             ) : (
-                              <span className="text-gray-500">なし</span>
+                              <span className="text-gray-500">-</span>
                             )}
-                          </td>
-                          <td className="border border-gray-300 px-3 py-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setPreviewItem(item);
-                                setShowPreviewDialog(true);
-                              }}
-                              className="text-xs px-2 py-1"
-                            >
-                              <FileText className="h-3 w-3" />
-                              プレビュー
-                            </Button>
-                          </td>
-                          <td className="border border-gray-300 px-3 py-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setEditingItem(item);
-                                setShowEditDialog(true);
-                              }}
-                              className="text-xs px-2 py-1"
-                            >
-                              <Settings className="h-3 w-3" />
-                              編集
-                            </Button>
                           </td>
 
                         </tr>
@@ -892,6 +950,7 @@ const HistoryPage: React.FC = () => {
            )}
         </CardContent>
       </Card>
+
 
       {/* エクスポート機能エリア */}
       <Card className="mb-6">
@@ -1215,186 +1274,9 @@ const HistoryPage: React.FC = () => {
         </div>
       )}
 
-      {/* レポート生成ダイアログ */}
-      {showReportDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">レポート生成</h2>
-                <Button variant="ghost" onClick={() => setShowReportDialog(false)}>×</Button>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">レポートタイトル</label>
-                  <Input
-                    value={reportTitle}
-                    onChange={(e) => setReportTitle(e.target.value)}
-                    placeholder="履歴検索レポート"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-2">レポート説明</label>
-                  <textarea
-                    value={reportDescription}
-                    onChange={(e) => setReportDescription(e.target.value)}
-                    placeholder="レポートの説明を入力してください"
-                    className="w-full p-2 border border-gray-300 rounded-md resize-none"
-                    rows={3}
-                  />
-                </div>
-                
-                <div className="text-sm text-gray-600">
-                  <p>検索条件:</p>
-                  <ul className="list-disc list-inside ml-2">
-                    {filters.machineType && <li>機種: {filters.machineType}</li>}
-                    {filters.machineNumber && <li>機械番号: {filters.machineNumber}</li>}
-                    {filters.searchText && <li>検索テキスト: {filters.searchText}</li>}
-                    {filters.searchDate && <li>検索日付: {filters.searchDate}</li>}
-                  </ul>
-                  <p className="mt-2">検索結果: {filteredItems.length}件</p>
-                </div>
-                
-                <div className="flex gap-2 justify-end">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowReportDialog(false)}
-                    disabled={reportLoading}
-                  >
-                    キャンセル
-                  </Button>
-                  <Button
-                    onClick={handlePreviewReport}
-                    disabled={reportLoading}
-                    variant="secondary"
-                    className="flex items-center gap-2"
-                  >
-                    {reportLoading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        生成中...
-                      </>
-                    ) : (
-                      <>
-                        <FileText className="h-4 w-4" />
-                        プレビュー
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    onClick={handleGenerateReport}
-                    disabled={reportLoading}
-                    className="flex items-center gap-2"
-                  >
-                    {reportLoading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        生成中...
-                      </>
-                    ) : (
-                      <>
-                        <BarChart3 className="h-4 w-4" />
-                        レポート生成
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* レポートプレビューダイアログ */}
-      {showReportPreview && reportData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">レポートプレビュー</h2>
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => handleGenerateReport()}
-                    disabled={reportLoading}
-                    className="flex items-center gap-2"
-                  >
-                    <BarChart3 className="h-4 w-4" />
-                    レポート生成
-                  </Button>
-                  <Button variant="ghost" onClick={() => setShowReportPreview(false)}>×</Button>
-                </div>
-              </div>
-              
-              <div className="space-y-6">
-                {/* レポートヘッダー */}
-                <div className="text-center border-b pb-4">
-                  <h1 className="text-2xl font-bold mb-2">{reportData.title}</h1>
-                  {reportData.description && (
-                    <p className="text-gray-600 mb-2">{reportData.description}</p>
-                  )}
-                  <p className="text-sm text-gray-500">
-                    生成日時: {new Date(reportData.generatedAt).toLocaleString('ja-JP')}
-                  </p>
-                  <p className="text-sm text-gray-500">検索結果: {reportData.totalCount}件</p>
-                </div>
 
-                {/* 検索条件 */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">検索条件</h3>
-                  <div className="bg-gray-50 p-4 rounded-md">
-                    <ul className="space-y-1">
-                      {reportData.searchFilters.machineType && (
-                        <li>機種: {reportData.searchFilters.machineType}</li>
-                      )}
-                      {reportData.searchFilters.machineNumber && (
-                        <li>機械番号: {reportData.searchFilters.machineNumber}</li>
-                      )}
-                      {reportData.searchFilters.searchText && (
-                        <li>検索テキスト: {reportData.searchFilters.searchText}</li>
-                      )}
-                      {reportData.searchFilters.searchDate && (
-                        <li>検索日付: {reportData.searchFilters.searchDate}</li>
-                      )}
-                    </ul>
-                  </div>
-                </div>
 
-                {/* 検索結果一覧 */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">検索結果一覧</h3>
-                  <div className="space-y-4">
-                    {reportData.items.map((item: any, index: number) => {
-                      const jsonInfo = extractJsonInfo(item.jsonData);
-                      return (
-                        <div key={item.id} className="border rounded-md p-4">
-                          <h4 className="font-medium mb-2">
-                            {index + 1}. {item.machineType} - {item.machineNumber}
-                          </h4>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <p><strong>作成日時:</strong> {formatDate(item.createdAt)}</p>
-                              {jsonInfo.title && <p><strong>タイトル:</strong> {jsonInfo.title}</p>}
-                              {jsonInfo.description && <p><strong>説明:</strong> {jsonInfo.description}</p>}
-                            </div>
-                            <div>
-                              {jsonInfo.emergencyMeasures && (
-                                <p><strong>応急処置:</strong> {jsonInfo.emergencyMeasures}</p>
-                              )}
-                              {item.imagePath && <p><strong>画像:</strong> あり</p>}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* チャットエクスポートレポート表示 */}
       {showReport && selectedReportData && (
@@ -1403,6 +1285,32 @@ const HistoryPage: React.FC = () => {
           fileName={selectedFileName}
           onClose={handleCloseReport}
           onSave={handleSaveReport}
+        />
+      )}
+
+      {/* 機械故障報告書表示 */}
+      {showMachineFailureReport && machineFailureReportData && (
+        <MachineFailureReport
+          data={machineFailureReportData}
+          onClose={handleCloseMachineFailureReport}
+          onSave={(reportData) => {
+            console.log('機械故障報告書を保存:', reportData);
+            // 保存後にローカルストレージに保存
+            const savedReports = JSON.parse(localStorage.getItem('savedMachineFailureReports') || '[]');
+            const newReport = {
+              id: Date.now(),
+              reportData: reportData,
+              savedAt: new Date().toISOString()
+            };
+            savedReports.push(newReport);
+            localStorage.setItem('savedMachineFailureReports', JSON.stringify(savedReports));
+            alert('機械故障報告書が保存されました。');
+            handleCloseMachineFailureReport();
+          }}
+          onPrint={(reportData) => {
+            console.log('機械故障報告書を印刷:', reportData);
+            window.print();
+          }}
         />
       )}
     </div>

@@ -7,14 +7,16 @@ import CameraModal from "../components/chat/camera-modal";
 import ImagePreviewModal from "../components/chat/image-preview-modal";
 import EmergencyGuideDisplay from "../components/emergency-guide/emergency-guide-display";
 import KeywordButtons from "../components/troubleshooting/keyword-buttons";
+import StepByStepQA from "../components/chat/step-by-step-qa";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../components/ui/alert-dialog";
-import { RotateCcw, Download, Upload, FileText, BookOpen, Activity, ArrowLeft, X, Search, Send, Camera, Trash2, RefreshCw } from "lucide-react";
+import { RotateCcw, Download, Upload, FileText, BookOpen, Activity, ArrowLeft, X, Search, Send, Camera, Trash2, RefreshCw, Brain } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { searchTroubleshootingFlows, japaneseGuideTitles } from "../lib/troubleshooting-search";
+import { QAAnswer } from "../lib/qa-flow-manager";
 
 export default function ChatPage() {
   const {
@@ -45,6 +47,14 @@ export default function ChatPage() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [qaAnswers, setQaAnswers] = useState<string[]>([]);
   const [qaCompleted, setQaCompleted] = useState(false);
+  
+  // 段階的Q&Aシステムの状態管理
+  const [stepByStepQAMode, setStepByStepQAMode] = useState(false);
+  const [qaSessionData, setQaSessionData] = useState<{
+    answers: QAAnswer[];
+    solution: string;
+    knowledgeContext: string[];
+  } | null>(null);
   
   // 追加: 機種と機械番号のオートコンプリート状態管理
   const [machineTypes, setMachineTypes] = useState<Array<{id: string, machine_type_name: string}>>([]);
@@ -474,6 +484,109 @@ export default function ChatPage() {
         console.error('Q&A質問のサーバー送信エラー:', error);
       }
     }, 100);
+  };
+
+  // 段階的Q&Aシステムの開始
+  const startStepByStepQA = async () => {
+    setStepByStepQAMode(true);
+    setQaSessionData(null);
+    
+    // ナレッジベースから関連情報を取得
+    const knowledgeContext = await fetchKnowledgeContext();
+    
+    // 初期メッセージを送信
+    sendMessage("🔧 段階的問題解決を開始します。\n\n専門的なナレッジベースを活用して、問題の原因を特定し、具体的な解決策を提案します。\n\n安全確認から始めて、段階的に問題を解決していきましょう。", [], true);
+  };
+
+  // ナレッジベースから関連情報を取得
+  const fetchKnowledgeContext = async (): Promise<string[]> => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/knowledge-base/search?query=保守用車 トラブルシューティング`, {
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data.results?.map((item: any) => item.title || item.content) || [];
+      }
+    } catch (error) {
+      console.error('ナレッジベース取得エラー:', error);
+    }
+    return [];
+  };
+
+  // 段階的Q&Aの回答処理
+  const handleStepByStepAnswer = (answer: QAAnswer) => {
+    // 回答をチャットに追加
+    sendMessage(`Q${answer.stepId}: ${answer.answer}`, [], false);
+  };
+
+  // 段階的Q&Aの完了処理
+  const handleStepByStepComplete = async (solution: string, allAnswers: QAAnswer[]) => {
+    // 解決策をチャットに追加
+    sendMessage(solution, [], true);
+    
+    // セッションデータを保存
+    setQaSessionData({
+      answers: allAnswers,
+      solution,
+      knowledgeContext: []
+    });
+    
+    // 学習データを生成・保存
+    try {
+      await generateLearningData(allAnswers, solution);
+    } catch (error) {
+      console.error('学習データ生成エラー:', error);
+    }
+    
+    // Q&Aモードを終了
+    setStepByStepQAMode(false);
+    
+    toast({
+      title: "問題解決完了",
+      description: "段階的Q&Aによる問題解決が完了しました。学習データも保存されました。",
+    });
+  };
+
+  // 学習データの生成・保存
+  const generateLearningData = async (answers: QAAnswer[], solution: string) => {
+    try {
+      const question = answers.map(a => a.answer).join(' ');
+      
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/qa-learning/generate-learning-data`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          question: question,
+          answer: answers.map(a => a.answer).join(' | '),
+          solution: solution,
+          success: true,
+          category: 'troubleshooting',
+          machineType: selectedMachineType,
+          machineNumber: selectedMachineNumber,
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('学習データ生成成功:', result);
+      } else {
+        console.error('学習データ生成失敗:', response.status);
+      }
+    } catch (error) {
+      console.error('学習データ生成エラー:', error);
+    }
+  };
+
+  // 段階的Q&Aの終了処理
+  const handleStepByStepExit = () => {
+    setStepByStepQAMode(false);
+    setQaSessionData(null);
   };
 
   const handleExport = async () => {
@@ -946,6 +1059,16 @@ export default function ChatPage() {
             </Button>
 
             <Button 
+              onClick={startStepByStepQA}
+              className="bg-blue-500 hover:bg-blue-600 text-white flex items-center gap-2 px-6 py-3 font-bold text-lg shadow-lg"
+              size="lg"
+              disabled={stepByStepQAMode}
+            >
+              <Brain className="h-6 w-6" />
+              段階的Q&A
+            </Button>
+
+            <Button 
               onClick={handleCameraClick}
               variant="outline"
               className="border-2 border-black hover:bg-gray-100 flex items-center gap-2 px-6 py-3 font-bold text-lg"
@@ -1143,6 +1266,21 @@ export default function ChatPage() {
       {/* モーダル類 */}
       <CameraModal />
       <ImagePreviewModal />
+
+      {/* 段階的Q&Aシステム */}
+      {stepByStepQAMode && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-xl">
+            <StepByStepQA
+              onAnswer={handleStepByStepAnswer}
+              onComplete={handleStepByStepComplete}
+              onExit={handleStepByStepExit}
+              initialContext="保守用車のトラブルシューティング - 安全確認から始めて問題の原因を特定し、具体的な解決策を提案します"
+              knowledgeBase={qaSessionData?.knowledgeContext || []}
+            />
+          </div>
+        </div>
+      )}
 
       {/* ファイル入力（隠し要素） */}
       <input

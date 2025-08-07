@@ -45,12 +45,17 @@ router.get('/', async (req, res) => {
     // チャットエクスポートファイルのみを取得（データベースは使用しない）
     const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
     
+    console.log('📋 エクスポートディレクトリ:', exportsDir);
+    console.log('📋 ディレクトリ存在:', fs.existsSync(exportsDir));
+    
     let chatExports: any[] = [];
     if (fs.existsSync(exportsDir)) {
       // 再帰的にJSONファイルを検索する関数
       const findJsonFiles = (dir: string, baseDir: string = exportsDir): any[] => {
         const files: any[] = [];
         const items = fs.readdirSync(dir);
+        
+        console.log('📋 ディレクトリ内容:', dir, items);
         
         for (const item of items) {
           const itemPath = path.join(dir, item);
@@ -61,8 +66,17 @@ router.get('/', async (req, res) => {
             files.push(...findJsonFiles(itemPath, baseDir));
           } else if (item.endsWith('.json')) {
             try {
+              console.log('📋 JSONファイル読み込み:', itemPath);
               const content = fs.readFileSync(itemPath, 'utf8');
               const data = JSON.parse(content);
+              
+              console.log('📋 ファイル内容サンプル:', {
+                chatId: data.chatId,
+                machineTypeName: data.chatData?.machineInfo?.machineTypeName,
+                machineNumber: data.chatData?.machineInfo?.machineNumber,
+                messageCount: data.chatData?.messages?.length,
+                firstMessage: data.chatData?.messages?.[0]?.content?.substring(0, 50)
+              });
               
               // 相対パスを計算
               const relativePath = path.relative(baseDir, itemPath);
@@ -82,6 +96,7 @@ router.get('/', async (req, res) => {
                   machineTypeName: '',
                   machineNumber: ''
                 },
+                chatData: data.chatData, // chatDataも含める
                 savedImages: data.savedImages || [],
                 fileSize: stats.size,
                 lastModified: stats.mtime,
@@ -98,30 +113,76 @@ router.get('/', async (req, res) => {
       
       chatExports = findJsonFiles(exportsDir)
         .sort((a, b) => new Date(b.exportTimestamp).getTime() - new Date(a.exportTimestamp).getTime());
+      
+      console.log('📋 読み込み完了:', chatExports.length, '件');
     }
 
     // フィルタリングを適用
     let filteredExports = chatExports;
     
+    console.log('📋 フィルタリング前の件数:', filteredExports.length);
+    
     if (machineType) {
+      console.log('📋 機種フィルター適用:', machineType);
       filteredExports = filteredExports.filter(item => 
         item.machineInfo?.machineTypeName?.toLowerCase().includes(machineType.toLowerCase())
       );
+      console.log('📋 機種フィルター後の件数:', filteredExports.length);
     }
     
     if (machineNumber) {
+      console.log('📋 機械番号フィルター適用:', machineNumber);
       filteredExports = filteredExports.filter(item => 
         item.machineInfo?.machineNumber?.toLowerCase().includes(machineNumber.toLowerCase())
       );
+      console.log('📋 機械番号フィルター後の件数:', filteredExports.length);
     }
     
     if (searchText) {
-      filteredExports = filteredExports.filter(item => 
-        item.fileName.toLowerCase().includes(searchText.toLowerCase()) ||
-        item.exportType.toLowerCase().includes(searchText.toLowerCase()) ||
-        item.machineInfo?.machineTypeName?.toLowerCase().includes(searchText.toLowerCase()) ||
-        item.machineInfo?.machineNumber?.toLowerCase().includes(searchText.toLowerCase())
-      );
+      console.log('📋 テキスト検索適用:', searchText);
+      filteredExports = filteredExports.filter(item => {
+        // 検索対象のテキストを構築
+        const searchableText = [
+          item.fileName,
+          item.exportType,
+          item.machineInfo?.machineTypeName,
+          item.machineInfo?.machineNumber,
+          // メッセージの内容も検索対象に含める
+          ...(item.chatData?.messages?.map((msg: any) => msg.content) || [])
+        ].join(' ').toLowerCase();
+        
+        console.log('📋 検索対象アイテム:', {
+          fileName: item.fileName,
+          machineTypeName: item.machineInfo?.machineTypeName,
+          machineNumber: item.machineInfo?.machineNumber,
+          messageCount: item.chatData?.messages?.length,
+          messages: item.chatData?.messages?.map((msg: any) => msg.content?.substring(0, 30))
+        });
+        
+        console.log('📋 検索対象テキスト:', searchableText);
+        console.log('📋 検索キーワード:', searchText.toLowerCase());
+        
+        const match = searchableText.includes(searchText.toLowerCase());
+        console.log('📋 マッチ結果:', match);
+        
+        return match;
+      });
+      console.log('📋 テキスト検索後の件数:', filteredExports.length);
+    }
+
+    if (searchDate) {
+      console.log('📋 日付フィルター適用:', searchDate);
+      const searchDateObj = new Date(searchDate as string);
+      const nextDay = new Date(searchDateObj);
+      nextDay.setDate(nextDay.getDate() + 1);
+      
+      filteredExports = filteredExports.filter(item => {
+        const itemDate = new Date(item.exportTimestamp);
+        const match = itemDate >= searchDateObj && itemDate < nextDay;
+        console.log('📋 日付マッチ:', item.exportTimestamp, '→', match);
+        return match;
+      });
+      console.log('📋 日付フィルター後の件数:', filteredExports.length);
     }
 
     // ページネーションを適用
@@ -322,6 +383,404 @@ router.get('/view/:sessionId', async (req, res) => {
     console.error('❌ セッション詳細取得エラー:', error);
     res.status(500).json({
       error: 'セッション詳細取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/history/export-history
+ * エクスポート履歴一覧を取得
+ */
+router.get('/export-history', async (req, res) => {
+  try {
+    console.log('📋 エクスポート履歴取得リクエスト');
+
+    // エクスポートディレクトリから履歴を取得
+    const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+    
+    let exportHistory: any[] = [];
+    if (fs.existsSync(exportsDir)) {
+      const files = fs.readdirSync(exportsDir);
+      
+      exportHistory = files
+        .filter(file => file.endsWith('.json'))
+        .map(file => {
+          const filePath = path.join(exportsDir, file);
+          const stats = fs.statSync(filePath);
+          
+          try {
+            const content = fs.readFileSync(filePath, 'utf8');
+            const data = JSON.parse(content);
+            
+            return {
+              id: `export_${file.replace('.json', '')}`,
+              filename: file,
+              format: 'json' as const,
+              exportedAt: data.exportTimestamp || stats.mtime.toISOString(),
+              fileSize: stats.size,
+              recordCount: data.chatData?.messages?.length || 0
+            };
+          } catch (error) {
+            console.warn(`エクスポートファイルの読み込みエラー: ${filePath}`, error);
+            return {
+              id: `export_${file.replace('.json', '')}`,
+              filename: file,
+              format: 'json' as const,
+              exportedAt: stats.mtime.toISOString(),
+              fileSize: stats.size,
+              recordCount: 0
+            };
+          }
+        })
+        .sort((a, b) => new Date(b.exportedAt).getTime() - new Date(a.exportedAt).getTime());
+    }
+
+    console.log(`📋 エクスポート履歴取得完了: ${exportHistory.length}件`);
+
+    res.json(exportHistory);
+
+  } catch (error) {
+    console.error('❌ エクスポート履歴取得エラー:', error);
+    res.status(500).json({
+      error: 'エクスポート履歴の取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * POST /api/history/export-selected
+ * 選択された履歴を一括エクスポート
+ */
+router.post('/export-selected', async (req, res) => {
+  try {
+    const { ids, format = 'json' } = req.body;
+    console.log(`📋 選択履歴エクスポートリクエスト: ${ids?.length || 0}件, 形式: ${format}`);
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({
+        error: 'エクスポートする履歴IDが指定されていません'
+      });
+    }
+
+    // 選択された履歴を取得
+    const selectedHistory = await Promise.all(
+      ids.map(async (id) => {
+        try {
+          const response = await fetch(`${req.protocol}://${req.get('host')}/api/history/${id}`);
+          if (response.ok) {
+            return await response.json();
+          }
+        } catch (error) {
+          console.warn(`履歴取得エラー (ID: ${id}):`, error);
+        }
+        return null;
+      })
+    );
+
+    const validHistory = selectedHistory.filter(item => item !== null);
+
+    if (validHistory.length === 0) {
+      return res.status(404).json({
+        error: '有効な履歴が見つかりません'
+      });
+    }
+
+    let exportData: string;
+    let contentType: string;
+    let filename: string;
+
+    if (format === 'csv') {
+      // CSV形式でエクスポート
+      const csvData = validHistory.map((item, index) => ({
+        'No.': index + 1,
+        '機種': item.machineType || '',
+        '機械番号': item.machineNumber || '',
+        '作成日時': new Date(item.createdAt).toLocaleString('ja-JP'),
+        'JSONデータ': JSON.stringify(item.jsonData)
+      }));
+
+      const csvContent = [
+        'No.,機種,機械番号,作成日時,JSONデータ',
+        ...csvData.map(row => 
+          `${row['No.']},"${row['機種']}","${row['機械番号']}","${row['作成日時']}","${row['JSONデータ']}"`
+        )
+      ].join('\n');
+
+      exportData = csvContent;
+      contentType = 'text/csv; charset=utf-8';
+      filename = `selected_history_${new Date().toISOString().slice(0, 10)}.csv`;
+    } else {
+      // JSON形式でエクスポート
+      exportData = JSON.stringify(validHistory, null, 2);
+      contentType = 'application/json';
+      filename = `selected_history_${new Date().toISOString().slice(0, 10)}.json`;
+    }
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(exportData);
+
+  } catch (error) {
+    console.error('❌ 選択履歴エクスポートエラー:', error);
+    res.status(500).json({
+      error: '選択履歴のエクスポートに失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/history/export-all
+ * 全履歴をエクスポート
+ */
+router.get('/export-all', async (req, res) => {
+  try {
+    const { format = 'json', machineType, machineNumber } = req.query;
+    console.log(`📋 全履歴エクスポートリクエスト: 形式: ${format}`);
+
+    // フィルター条件を適用して履歴を取得
+    const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+    
+    let allHistory: any[] = [];
+    if (fs.existsSync(exportsDir)) {
+      const files = fs.readdirSync(exportsDir);
+      
+      allHistory = files
+        .filter(file => file.endsWith('.json'))
+        .map(file => {
+          const filePath = path.join(exportsDir, file);
+          try {
+            const content = fs.readFileSync(filePath, 'utf8');
+            return JSON.parse(content);
+          } catch (error) {
+            console.warn(`ファイル読み込みエラー: ${filePath}`, error);
+            return null;
+          }
+        })
+        .filter(item => item !== null);
+    }
+
+    // フィルター適用
+    if (machineType) {
+      allHistory = allHistory.filter(item => 
+        item.chatData?.machineInfo?.machineTypeName?.includes(machineType) ||
+        item.chatData?.machineInfo?.selectedMachineType?.includes(machineType)
+      );
+    }
+
+    if (machineNumber) {
+      allHistory = allHistory.filter(item => 
+        item.chatData?.machineInfo?.machineNumber?.includes(machineNumber) ||
+        item.chatData?.machineInfo?.selectedMachineNumber?.includes(machineNumber)
+      );
+    }
+
+    let exportData: string;
+    let contentType: string;
+    let filename: string;
+
+    if (format === 'csv') {
+      // CSV形式でエクスポート
+      const csvData = allHistory.map((item, index) => ({
+        'No.': index + 1,
+        'チャットID': item.chatId || '',
+        'ユーザーID': item.userId || '',
+        '機種': item.chatData?.machineInfo?.machineTypeName || '',
+        '機械番号': item.chatData?.machineInfo?.machineNumber || '',
+        'エクスポート日時': new Date(item.exportTimestamp).toLocaleString('ja-JP'),
+        'メッセージ数': item.chatData?.messages?.length || 0
+      }));
+
+      const csvContent = [
+        'No.,チャットID,ユーザーID,機種,機械番号,エクスポート日時,メッセージ数',
+        ...csvData.map(row => 
+          `${row['No.']},"${row['チャットID']}","${row['ユーザーID']}","${row['機種']}","${row['機械番号']}","${row['エクスポート日時']}","${row['メッセージ数']}"`
+        )
+      ].join('\n');
+
+      exportData = csvContent;
+      contentType = 'text/csv; charset=utf-8';
+      filename = `all_history_${new Date().toISOString().slice(0, 10)}.csv`;
+    } else {
+      // JSON形式でエクスポート
+      exportData = JSON.stringify(allHistory, null, 2);
+      contentType = 'application/json';
+      filename = `all_history_${new Date().toISOString().slice(0, 10)}.json`;
+    }
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(exportData);
+
+  } catch (error) {
+    console.error('❌ 全履歴エクスポートエラー:', error);
+    res.status(500).json({
+      error: '全履歴のエクスポートに失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * POST /api/history/advanced-search
+ * 高度なテキスト検索
+ */
+router.post('/advanced-search', async (req, res) => {
+  try {
+    const { searchText, limit = 50 } = req.body;
+    console.log(`📋 高度な検索リクエスト: "${searchText}", 制限: ${limit}`);
+
+    if (!searchText) {
+      return res.status(400).json({
+        error: '検索テキストが必要です'
+      });
+    }
+
+    // エクスポートディレクトリから履歴を検索
+    const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+    
+    let searchResults: any[] = [];
+    if (fs.existsSync(exportsDir)) {
+      const files = fs.readdirSync(exportsDir);
+      
+      searchResults = files
+        .filter(file => file.endsWith('.json'))
+        .map(file => {
+          const filePath = path.join(exportsDir, file);
+          try {
+            const content = fs.readFileSync(filePath, 'utf8');
+            const data = JSON.parse(content);
+            
+            // 検索テキストでマッチング
+            const searchLower = searchText.toLowerCase();
+            const contentStr = JSON.stringify(data).toLowerCase();
+            
+            if (contentStr.includes(searchLower)) {
+              return {
+                id: `export_${file.replace('.json', '')}`,
+                filename: file,
+                chatId: data.chatId,
+                userId: data.userId,
+                machineInfo: data.chatData?.machineInfo || {},
+                exportTimestamp: data.exportTimestamp,
+                messageCount: data.chatData?.messages?.length || 0,
+                matchScore: contentStr.split(searchLower).length - 1 // マッチ回数
+              };
+            }
+            return null;
+          } catch (error) {
+            console.warn(`検索ファイル読み込みエラー: ${filePath}`, error);
+            return null;
+          }
+        })
+        .filter(item => item !== null)
+        .sort((a, b) => b.matchScore - a.matchScore)
+        .slice(0, limit);
+    }
+
+    console.log(`📋 高度な検索完了: ${searchResults.length}件`);
+
+    res.json({
+      items: searchResults,
+      total: searchResults.length,
+      searchText,
+      searchTerms: searchText.split(/\s+/).filter(term => term.length > 0)
+    });
+
+  } catch (error) {
+    console.error('❌ 高度な検索エラー:', error);
+    res.status(500).json({
+      error: '高度な検索に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * POST /api/history/generate-report
+ * レポート生成
+ */
+router.post('/generate-report', async (req, res) => {
+  try {
+    const { searchFilters, reportTitle, reportDescription } = req.body;
+    console.log('📋 レポート生成リクエスト:', { searchFilters, reportTitle });
+
+    // フィルター条件を適用して履歴を取得
+    const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+    
+    let reportData: any[] = [];
+    if (fs.existsSync(exportsDir)) {
+      const files = fs.readdirSync(exportsDir);
+      
+      reportData = files
+        .filter(file => file.endsWith('.json'))
+        .map(file => {
+          const filePath = path.join(exportsDir, file);
+          try {
+            const content = fs.readFileSync(filePath, 'utf8');
+            return JSON.parse(content);
+          } catch (error) {
+            console.warn(`レポートファイル読み込みエラー: ${filePath}`, error);
+            return null;
+          }
+        })
+        .filter(item => item !== null);
+
+      // フィルター適用
+      if (searchFilters) {
+        if (searchFilters.machineType) {
+          reportData = reportData.filter(item => 
+            item.chatData?.machineInfo?.machineTypeName?.includes(searchFilters.machineType) ||
+            item.chatData?.machineInfo?.selectedMachineType?.includes(searchFilters.machineType)
+          );
+        }
+
+        if (searchFilters.machineNumber) {
+          reportData = reportData.filter(item => 
+            item.chatData?.machineInfo?.machineNumber?.includes(searchFilters.machineNumber) ||
+            item.chatData?.machineInfo?.selectedMachineNumber?.includes(searchFilters.machineNumber)
+          );
+        }
+
+        if (searchFilters.searchText) {
+          const searchLower = searchFilters.searchText.toLowerCase();
+          reportData = reportData.filter(item => 
+            JSON.stringify(item).toLowerCase().includes(searchLower)
+          );
+        }
+      }
+    }
+
+    // レポートデータを生成
+    const report = {
+      title: reportTitle || '履歴レポート',
+      description: reportDescription || '',
+      generatedAt: new Date().toISOString(),
+      totalCount: reportData.length,
+      items: reportData.map(item => ({
+        chatId: item.chatId,
+        userId: item.userId,
+        machineType: item.chatData?.machineInfo?.machineTypeName || '',
+        machineNumber: item.chatData?.machineInfo?.machineNumber || '',
+        exportTimestamp: item.exportTimestamp,
+        messageCount: item.chatData?.messages?.length || 0
+      }))
+    };
+
+    // JSON形式でレポートを返す
+    const reportJson = JSON.stringify(report, null, 2);
+    const filename = `report_${new Date().toISOString().slice(0, 10)}.json`;
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(reportJson);
+
+  } catch (error) {
+    console.error('❌ レポート生成エラー:', error);
+    res.status(500).json({
+      error: 'レポート生成に失敗しました',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
