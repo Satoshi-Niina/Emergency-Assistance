@@ -1,11 +1,13 @@
 import express from 'express';
 import { upload } from '../lib/multer-config.js';
 import { 
-  saveKnowledgeData, 
-  listKnowledgeData, 
+  initializeKnowledgeBase,
+  saveKnowledgeData,
+  listKnowledgeData,
   getKnowledgeData, 
   deleteKnowledgeData,
-  KnowledgeType 
+  KnowledgeType,
+  searchKnowledgeBase
 } from '../lib/knowledge-base.js';
 import fs from 'fs';
 import path from 'path';
@@ -212,6 +214,73 @@ router.get('/types/list', async (req, res) => {
 });
 
 /**
+ * GET /api/knowledge-base/search
+ * ナレッジベースから検索を実行
+ */
+router.get('/search', async (req, res) => {
+  try {
+    const { query } = req.query;
+    
+    if (!query || typeof query !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: '検索クエリが必要です'
+      });
+    }
+
+    console.log(`🔍 ナレッジベース検索: "${query}"`);
+    
+    // デバッグ: 検索前の状態を確認
+    console.log('🔍 検索前デバッグ情報:');
+    console.log('- 検索クエリ:', query);
+    
+    // 改善された検索機能を使用
+    const results = await searchKnowledgeBase(query);
+    
+    console.log(`✅ 検索完了: ${results.length}件の結果`);
+    console.log('🔍 検索結果詳細:', results.map(r => ({
+      source: r.metadata.source,
+      similarity: r.similarity,
+      textLength: r.text.length
+    })));
+    
+    if (results.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'ナレッジデータが見つかりません',
+        debug: {
+          query: query,
+          searchFunction: 'searchKnowledgeBase',
+          timestamp: new Date().toISOString()
+        }
+      });
+    }
+    
+    res.json({
+      success: true,
+      results: results.map(chunk => ({
+        text: chunk.text,
+        title: chunk.metadata.source,
+        content: chunk.text,
+        metadata: chunk.metadata,
+        similarity: chunk.similarity
+      })),
+      total: results.length,
+      query: query,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ ナレッジベース検索エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'ナレッジベース検索に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
  * ナレッジデータの種類ラベルを取得
  */
 function getTypeLabel(type: KnowledgeType): string {
@@ -228,3 +297,11 @@ function getTypeLabel(type: KnowledgeType): string {
 }
 
 export default router;
+
+/**
+ * ナレッジベースルートを登録する関数
+ * @param app Expressアプリケーション
+ */
+export function registerKnowledgeBaseRoutes(app: any): void {
+  app.use('/api/knowledge-base', router);
+}
