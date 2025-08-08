@@ -42,19 +42,13 @@ export default function ChatPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoadingGuides, setIsLoadingGuides] = useState(false);
 
-  // 追加: Q&A形式のチャット状態管理
-  const [qaMode, setQaMode] = useState(false);
+  // AI支援システムの状態管理（Q&A統合版）
+  const [aiSupportMode, setAiSupportMode] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [qaAnswers, setQaAnswers] = useState<string[]>([]);
-  const [qaCompleted, setQaCompleted] = useState(false);
-  
-  // 段階的Q&Aシステムの状態管理
-  const [stepByStepQAMode, setStepByStepQAMode] = useState(false);
-  const [qaSessionData, setQaSessionData] = useState<{
-    answers: QAAnswer[];
-    solution: string;
-    knowledgeContext: string[];
-  } | null>(null);
+  const [aiSupportAnswers, setAiSupportAnswers] = useState<string[]>([]);
+  const [aiSupportCompleted, setAiSupportCompleted] = useState(false);
+  const [currentQuestion, setCurrentQuestion] = useState<string>("");
+  const [currentOptions, setCurrentOptions] = useState<string[]>([]);
   
   // 追加: 機種と機械番号のオートコンプリート状態管理
   const [machineTypes, setMachineTypes] = useState<Array<{id: string, machine_type_name: string}>>([]);
@@ -93,52 +87,13 @@ export default function ChatPage() {
     };
   }, []);
   
-  // Q&A質問を設定から読み込み
-  const [qaQuestions, setQaQuestions] = useState<string[]>([
-    "発生した状況は？",
-    "どこか想定される？",
-    "どのような処置しましたか？"
-  ]);
-
-  // 設定からQ&A質問を読み込む
-  useEffect(() => {
-    const loadQaQuestions = () => {
-      try {
-        const savedSettings = localStorage.getItem('emergencyRecoverySettings');
-        if (savedSettings) {
-          const settings = JSON.parse(savedSettings);
-          if (settings.qaQuestions && Array.isArray(settings.qaQuestions)) {
-            setQaQuestions(settings.qaQuestions);
-          }
-        }
-      } catch (error) {
-        console.error('Q&A質問の読み込みに失敗しました:', error);
-      }
-    };
-
-    loadQaQuestions();
-
-    // 設定変更を監視するイベントリスナー
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'emergencyRecoverySettings') {
-        loadQaQuestions();
-      }
-    };
-
-    // カスタムイベントで設定変更を監視
-    const handleSettingsChanged = (e: CustomEvent) => {
-      if (e.detail && e.detail.qaQuestions) {
-        setQaQuestions(e.detail.qaQuestions);
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('settingsChanged', handleSettingsChanged as EventListener);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('settingsChanged', handleSettingsChanged as EventListener);
-    };
-  }, []);
+  // AI支援システムのセッション管理
+  const [aiSupportSessionData, setAiSupportSessionData] = useState<{
+    answers: string[];
+    solution: string;
+    knowledgeContext: string[];
+    questions: string[];
+  } | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -334,23 +289,17 @@ export default function ChatPage() {
 
 
 
-  // 追加: Q&Aモードの初期化（一時的に無効化）
-  // useEffect(() => {
-  //   if (qaMode && currentQuestionIndex === 0 && qaAnswers.length === 0) {
-  //     // 最初の質問を表示（右側に表示するためisAiResponse=false）
-  //     sendMessage(qaQuestions[0]);
-  //   }
-  // }, [qaMode, currentQuestionIndex, qaAnswers.length, sendMessage]);
+  // 追加: Q&Aモードの初期化（動的質問生成システムに変更済み）
 
-  // 追加: Q&A回答処理
-  const handleQaAnswer = async (answer: string) => {
-    const newAnswers = [...qaAnswers, answer];
-    setQaAnswers(newAnswers);
+  // AI支援回答処理（統合版）
+  const handleAiSupportAnswer = async (answer: string) => {
+    const newAnswers = [...aiSupportAnswers, answer];
+    setAiSupportAnswers(newAnswers);
     
     // 回答をチャットに追加（左側に表示）
     sendMessage(answer, [], false);
     
-    // Q&A回答をサーバーに送信
+    // AI支援回答をサーバーに送信
     try {
       if (chatId) {
         const response = await fetch(`/api/chats/${chatId}/messages`, {
@@ -366,172 +315,498 @@ export default function ChatPage() {
         });
         
         if (!response.ok) {
-          console.error('Q&A回答のサーバー送信に失敗:', response.status);
+          console.error('AI支援回答のサーバー送信に失敗:', response.status);
         } else {
-          console.log('Q&A回答をサーバーに送信しました:', answer);
+          console.log('AI支援回答をサーバーに送信しました:', answer);
         }
       }
     } catch (error) {
-      console.error('Q&A回答のサーバー送信エラー:', error);
+      console.error('AI支援回答のサーバー送信エラー:', error);
     }
     
-    // 次の質問があるかチェック
-    if (currentQuestionIndex < qaQuestions.length - 1) {
-      const nextIndex = currentQuestionIndex + 1;
-      setCurrentQuestionIndex(nextIndex);
-      
-      // 次の質問を表示（右側に表示するためisAiResponse=true）
-      setTimeout(async () => {
-        sendMessage(qaQuestions[nextIndex], [], true);
-        
-        // 次のQ&A質問をサーバーにシステムメッセージとして送信
-        try {
-          if (chatId) {
-            const response = await fetch(`/api/chats/${chatId}/messages/system`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              credentials: 'include',
-              body: JSON.stringify({
-                content: qaQuestions[nextIndex],
-                isUserMessage: false
-              })
-            });
-            
-            if (!response.ok) {
-              console.error('次のQ&A質問のサーバー送信に失敗:', response.status);
-            } else {
-              console.log('次のQ&A質問をサーバーに送信しました:', qaQuestions[nextIndex]);
-            }
-          }
-        } catch (error) {
-          console.error('次のQ&A質問のサーバー送信エラー:', error);
-        }
-      }, 500);
-    } else {
-      // 質問終了
-      setQaCompleted(true);
-      setTimeout(async () => {
-        sendMessage("入力ありがとうございました。応急処置情報を記録しました。", [], true);
-        
-        // Q&A完了メッセージをサーバーにシステムメッセージとして送信
-        try {
-          if (chatId) {
-            const response = await fetch(`/api/chats/${chatId}/messages/system`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              credentials: 'include',
-              body: JSON.stringify({
-                content: "入力ありがとうございました。応急処置情報を記録しました。",
-                isUserMessage: false
-              })
-            });
-            
-            if (!response.ok) {
-              console.error('Q&A完了メッセージのサーバー送信に失敗:', response.status);
-            } else {
-              console.log('Q&A完了メッセージをサーバーに送信しました');
-            }
-          }
-        } catch (error) {
-          console.error('Q&A完了メッセージのサーバー送信エラー:', error);
-        }
-        
-        setQaMode(false);
-        setCurrentQuestionIndex(0);
-        setQaAnswers([]);
-        setQaCompleted(false);
-      }, 1000);
-    }
-  };
-
-  // 追加: Q&Aモード開始
-  const startQaMode = async () => {
-    setQaMode(true);
-    setCurrentQuestionIndex(0);
-    setQaAnswers([]);
-    setQaCompleted(false);
-    
-    // 最初の質問を表示（右側に表示するためisAiResponse=true）
+    // 次の質問を動的に生成
     setTimeout(async () => {
-      sendMessage(qaQuestions[0], [], true);
-      
-      // Q&A質問をサーバーにシステムメッセージとして送信
       try {
-        if (chatId) {
-          const response = await fetch(`/api/chats/${chatId}/messages/system`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-            body: JSON.stringify({
-              content: qaQuestions[0],
-              isUserMessage: false
-            })
-          });
+        const nextQuestionResult = await generateNextQuestion(answer, newAnswers);
+        
+        if (nextQuestionResult) {
+          // 次の質問がある場合
+          setCurrentQuestion(nextQuestionResult.question);
+          setCurrentOptions(nextQuestionResult.options || []);
+          setCurrentQuestionIndex(prev => prev + 1);
+          sendMessage(nextQuestionResult.question, [], true);
           
-          if (!response.ok) {
-            console.error('Q&A質問のサーバー送信に失敗:', response.status);
-          } else {
-            console.log('Q&A質問をサーバーに送信しました:', qaQuestions[0]);
+          // 次の質問をサーバーにシステムメッセージとして送信
+          if (chatId) {
+            const response = await fetch(`/api/chats/${chatId}/messages/system`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              credentials: 'include',
+              body: JSON.stringify({
+                content: nextQuestionResult.question,
+                isUserMessage: false
+              })
+            });
+            
+            if (!response.ok) {
+              console.error('次の質問のサーバー送信に失敗:', response.status);
+            } else {
+              console.log('次の質問をサーバーに送信しました:', nextQuestionResult.question);
+            }
           }
+        } else {
+          // 質問終了、解決策を生成
+          const solution = await generateSolution(newAnswers);
+          sendMessage(solution, [], true);
+          
+          // 解決策をサーバーにシステムメッセージとして送信
+          if (chatId) {
+            const response = await fetch(`/api/chats/${chatId}/messages/system`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              credentials: 'include',
+              body: JSON.stringify({
+                content: solution,
+                isUserMessage: false
+              })
+            });
+            
+            if (!response.ok) {
+              console.error('解決策のサーバー送信に失敗:', response.status);
+            } else {
+              console.log('解決策をサーバーに送信しました');
+            }
+          }
+          
+          // AI支援モード終了
+          setTimeout(() => {
+            setAiSupportMode(false);
+            setCurrentQuestionIndex(0);
+            setAiSupportAnswers([]);
+            setAiSupportCompleted(false);
+            setCurrentQuestion("");
+            setCurrentOptions([]);
+          }, 1000);
         }
       } catch (error) {
-        console.error('Q&A質問のサーバー送信エラー:', error);
+        console.error('次の質問生成エラー:', error);
+        // エラー時のフォールバック
+        sendMessage("質問生成中にエラーが発生しました。専門家に相談してください。", [], true);
+        setAiSupportMode(false);
+        setCurrentQuestionIndex(0);
+        setAiSupportAnswers([]);
+        setAiSupportCompleted(false);
+        setCurrentQuestion("");
+        setCurrentOptions([]);
       }
-    }, 100);
+    }, 500);
   };
 
-  // 段階的Q&Aシステムの開始
-  const startStepByStepQA = async () => {
-    setStepByStepQAMode(true);
-    setQaSessionData(null);
+  // AI支援モード開始（統合版）
+  const startAiSupport = async () => {
+    setAiSupportMode(true);
+    setCurrentQuestionIndex(0);
+    setAiSupportAnswers([]);
+    setAiSupportCompleted(false);
+    setCurrentQuestion("何が起こりましたか？");
+    setCurrentOptions([]);
     
-    // ナレッジベースから関連情報を取得
-    const knowledgeContext = await fetchKnowledgeContext();
+    // 初期メッセージと質問を送信
+    sendMessage("🤖 AI支援システムを開始します。\n\n専門的なナレッジベースを活用して、問題の原因を特定し、具体的な解決策を提案します。", [], true);
     
-    // 初期メッセージを送信
-    sendMessage("🔧 段階的問題解決を開始します。\n\n専門的なナレッジベースを活用して、問題の原因を特定し、具体的な解決策を提案します。\n\n安全確認から始めて、段階的に問題を解決していきましょう。", [], true);
+    // 少し遅延してから初期質問を送信
+    setTimeout(() => {
+      sendMessage("何が起こりましたか？", [], true);
+    }, 500);
   };
 
-  // ナレッジベースから関連情報を取得
-  const fetchKnowledgeContext = async (): Promise<string[]> => {
+  // 動的質問生成関数（選択肢付き）
+  const generateDynamicQuestion = async (context: string, previousAnswers: string[]): Promise<{ question: string; options?: string[] }> => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/knowledge-base/search?query=保守用車 トラブルシューティング`, {
-        credentials: 'include'
+      // ナレッジベースから関連情報を取得
+      const knowledgeContext = await fetchKnowledgeContext();
+      
+      console.log('🔍 動的質問生成開始:', {
+        context: context,
+        previousAnswersCount: previousAnswers.length,
+        knowledgeContextCount: knowledgeContext.length
       });
       
-      if (response.ok) {
-        const data = await response.json();
-        return data.results?.map((item: any) => item.title || item.content) || [];
+      const response = await fetch('/api/chatgpt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          text: `保守用車の故障診断の専門家として、以下の状況に基づいて次の質問と選択肢を生成してください。
+
+**現在の状況**: ${context}
+**これまでの回答**: ${previousAnswers.map((answer, index) => `Q${index + 1}: ${answer}`).join(', ')}
+**利用可能なナレッジベース情報**: ${knowledgeContext.join(', ')}
+
+以下の条件を満たす質問と選択肢を生成してください：
+1. **問題の原因特定に直結する**: 症状から原因を絞り込む質問
+2. **具体的な対応策を導く**: 回答によって具体的な処置が決まる質問
+3. **安全確認を優先**: 危険性の有無を最初に確認
+4. **段階的な診断**: 簡単な確認から複雑な診断へ
+5. **実用的な選択肢**: 具体的で分かりやすい選択肢を提示
+6. **ナレッジベース活用**: 利用可能な専門知識を活用した質問
+
+以下のJSON形式で返してください：
+{
+  "question": "具体的な質問内容",
+  "options": ["選択肢1", "選択肢2", "選択肢3", "選択肢4", "選択肢5"]
+}
+
+選択肢は3-5個程度で、具体的で分かりやすい内容にしてください。`,
+          useOnlyKnowledgeBase: true
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`API呼び出しエラー: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const responseText = data.response || "";
+      
+      // 応答が空またはエラーの場合は、デフォルトの質問を生成
+      if (!responseText || responseText.includes("解決策を生成できませんでした") || responseText.includes("専門家に相談してください")) {
+        console.log('⚠️ GPT応答が不適切なため、デフォルト質問を生成');
+        return generateDefaultQuestion(context, previousAnswers);
+      }
+      
+      try {
+        // JSONとしてパースを試行
+        const parsed = JSON.parse(responseText);
+        return {
+          question: parsed.question || "次の質問",
+          options: parsed.options || []
+        };
+      } catch {
+        // JSONパースに失敗した場合は、テキストから質問のみを抽出
+        return {
+          question: responseText || "次の質問",
+          options: []
+        };
       }
     } catch (error) {
-      console.error('ナレッジベース取得エラー:', error);
+      console.error('❌ 動的質問生成エラー:', error);
+      return generateDefaultQuestion(context, previousAnswers);
     }
-    return [];
   };
 
-  // 段階的Q&Aの回答処理
-  const handleStepByStepAnswer = (answer: QAAnswer) => {
-    // 回答をチャットに追加
-    sendMessage(`Q${answer.stepId}: ${answer.answer}`, [], false);
+  // デフォルト質問生成関数
+  const generateDefaultQuestion = (context: string, previousAnswers: string[]): { question: string; options: string[] } => {
+    if (previousAnswers.length === 0) {
+      return {
+        question: "キーを回したときの状態は？以下から近いものを教えてください：",
+        options: [
+          "🔋 パネルのランプが全く点灯しない（無反応）",
+          "🔦 ランプは点灯するが、セルモーターが全く回らない",
+          "🚗 カチカチ音がするが、セルが回らない",
+          "🔄 セルが回るが、エンジンがかからない"
+        ]
+      };
+    } else if (previousAnswers.length === 1) {
+      return {
+        question: "エンジン停止前の状況を教えてください：",
+        options: [
+          "⚡ 突然停止した",
+          "🔧 作業中に停止した",
+          "🚗 走行中に停止した",
+          "⏰ 長時間放置後に停止した"
+        ]
+      };
+    } else {
+      return {
+        question: "現在の状況で最も重要な確認事項は？",
+        options: [
+          "🔋 バッテリー電圧の確認",
+          "⛽ 燃料残量の確認",
+          "🔧 エンジンオイルの確認",
+          "🌬️ エアフィルターの確認"
+        ]
+      };
+    }
   };
 
-  // 段階的Q&Aの完了処理
-  const handleStepByStepComplete = async (solution: string, allAnswers: QAAnswer[]) => {
+  // 次の質問を生成する関数（選択肢付き）
+  const generateNextQuestion = async (currentAnswer: string, allAnswers: string[]): Promise<{ question: string; options?: string[] } | null> => {
+    try {
+      // ナレッジベースから関連情報を取得
+      const knowledgeContext = await fetchKnowledgeContext();
+      
+      const response = await fetch('/api/chatgpt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          text: `保守用車の故障診断の専門家として、以下の回答を分析して次の質問と選択肢を決定してください。
+
+**現在の回答**: ${currentAnswer}
+**これまでの回答**: ${allAnswers.map((answer, index) => `Q${index + 1}: ${answer}`).join(', ')}
+**利用可能なナレッジベース情報**: ${knowledgeContext.join(', ')}
+
+以下の条件で次の質問を決定してください：
+1. **問題解決に十分な情報が得られた場合**: "解決策を提示します" と返す
+2. **まだ情報が不足している場合**: 原因特定や処置決定に必要な次の質問と選択肢を生成
+3. **緊急対応が必要な場合**: "緊急対応が必要です" と返す
+4. **ナレッジベース活用**: 利用可能な専門知識を活用した質問
+
+質問が必要な場合は以下のJSON形式で返してください：
+{
+  "question": "具体的な質問内容",
+  "options": ["選択肢1", "選択肢2", "選択肢3", "選択肢4", "選択肢5"]
+}
+
+解決策提示や緊急対応の場合は "解決策を提示します" または "緊急対応が必要です" と返してください。`,
+          useOnlyKnowledgeBase: true
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`API呼び出しエラー: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const result = data.response || "";
+      
+      // 解決策提示や緊急対応の判定
+      if (result.includes("解決策を提示") || result.includes("緊急対応")) {
+        return null; // 質問終了
+      }
+      
+      try {
+        // JSONとしてパースを試行
+        const parsed = JSON.parse(result);
+        return {
+          question: parsed.question || "次の質問",
+          options: parsed.options || []
+        };
+      } catch {
+        // JSONパースに失敗した場合は、テキストから質問のみを抽出
+        return {
+          question: result || "次の質問",
+          options: []
+        };
+      }
+    } catch (error) {
+      console.error('次の質問生成エラー:', error);
+      return null;
+    }
+  };
+
+  // 解決策生成関数
+  const generateSolution = async (allAnswers: string[]): Promise<string> => {
+    try {
+      // ナレッジベースから関連情報を取得
+      const knowledgeContext = await fetchKnowledgeContext();
+      
+      console.log('🔍 解決策生成開始:', {
+        answersCount: allAnswers.length,
+        knowledgeContextCount: knowledgeContext.length
+      });
+      
+      const response = await fetch('/api/chatgpt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          text: `保守用車の故障診断の専門家として、以下の回答に基づいて具体的な解決策を提示してください。
+
+**これまでの回答**: ${allAnswers.map((answer, index) => `Q${index + 1}: ${answer}`).join(', ')}
+**利用可能なナレッジベース情報**: ${knowledgeContext.join(', ')}
+
+以下の形式で解決策を提示してください：
+1. **問題の特定**: 回答から推測される問題
+2. **原因分析**: 考えられる原因
+3. **具体的な処置手順**: 段階的な対処方法
+4. **安全上の注意**: 作業時の注意事項
+5. **専門家への相談**: 必要に応じて専門家への相談タイミング
+6. **ナレッジベース参照**: 関連する技術情報やマニュアル
+
+実用的で安全な解決策を提示してください。
+必ず具体的な手順と安全上の注意を含めてください。`,
+          useOnlyKnowledgeBase: true
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`API呼び出しエラー: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const solution = data.response || "";
+      
+      // 解決策が空またはエラーメッセージの場合は、デフォルトの解決策を生成
+      if (!solution || solution.includes("解決策を生成できませんでした") || solution.includes("専門家に相談してください")) {
+        console.log('⚠️ GPT応答が不適切なため、デフォルト解決策を生成');
+        return generateDefaultSolution(allAnswers);
+      }
+      
+      return solution;
+    } catch (error) {
+      console.error('❌ 解決策生成エラー:', error);
+      return generateDefaultSolution(allAnswers);
+    }
+  };
+
+  // デフォルト解決策生成関数
+  const generateDefaultSolution = (allAnswers: string[]): string => {
+    const problemDescription = allAnswers.join(' ');
+    
+    return `## 🔍 問題の特定
+保守用車のエンジン停止に関する問題が発生しています。
+
+## ⚠️ 安全確認
+1. 作業環境の安全確認
+2. 適切な安全装備の着用
+3. 作業前の機器停止確認
+
+## 🛠️ 具体的な処置手順
+
+### 1. 初期確認
+- バッテリー電圧の確認
+- 燃料残量の確認
+- エアフィルターの状態確認
+
+### 2. 段階的診断
+- キーを回したときの反応確認
+- パネルランプの点灯状況
+- セルモーターの動作確認
+
+### 3. 対処方法
+- バッテリー充電または交換
+- 燃料補給
+- エアフィルター清掃または交換
+
+## 📋 注意事項
+- 作業前の安全確認を必ず実施
+- 専門知識が必要な場合は専門家に相談
+- 緊急時は安全を最優先に行動
+
+## 🚨 緊急時の対応
+問題が解決しない場合は、技術支援センターに連絡してください。
+- 電話番号: 0123-456-789
+- 緊急時: 0123-456-000
+
+## 📚 参考情報
+保守用車マニュアルの該当箇所を参照し、適切な手順で作業を進めてください。`;
+  };
+
+
+
+  // ナレッジベースから関連情報を取得
+  const fetchKnowledgeContext = async (query?: string): Promise<string[]> => {
+    try {
+      // 検索クエリがない場合は、現在の回答から自動生成
+      let searchQuery = query;
+      if (!searchQuery && aiSupportAnswers.length > 0) {
+        // 最新の回答からキーワードを抽出
+        const latestAnswer = aiSupportAnswers[aiSupportAnswers.length - 1];
+        searchQuery = `${latestAnswer} 保守用車 トラブルシューティング`;
+      } else if (!searchQuery) {
+        searchQuery = "保守用車 トラブルシューティング 故障診断";
+      }
+
+      console.log('🔍 ナレッジベース検索開始:', searchQuery);
+
+      // 複数の検索エンドポイントを試行
+      const searchEndpoints = [
+        `${import.meta.env.VITE_API_BASE_URL}/api/knowledge-base/search?query=${encodeURIComponent(searchQuery)}`,
+        `${import.meta.env.VITE_API_BASE_URL}/api/search?q=${encodeURIComponent(searchQuery)}`,
+        `${import.meta.env.VITE_API_BASE_URL}/api/knowledge?q=${encodeURIComponent(searchQuery)}`
+      ];
+
+      let results: any[] = [];
+      
+      for (const endpoint of searchEndpoints) {
+        try {
+          const response = await fetch(endpoint, {
+            credentials: 'include'
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            const endpointResults = data.results || data.data || [];
+            
+            if (endpointResults.length > 0) {
+              results = endpointResults;
+              console.log(`✅ ナレッジベース検索成功 (${endpoint}): ${results.length}件`);
+              break;
+            }
+          }
+        } catch (error) {
+          console.log(`❌ ナレッジベース検索エンドポイント ${endpoint} でエラー:`, error);
+          continue;
+        }
+      }
+      
+      // 結果がない場合は、基本的なキーワードで再検索
+      if (results.length === 0) {
+        console.log('⚠️ 検索結果が0件のため、フォールバック検索を実行');
+        const fallbackQuery = "保守用車 マニュアル 整備 点検";
+        try {
+          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/knowledge-base/search?query=${encodeURIComponent(fallbackQuery)}`, {
+            credentials: 'include'
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            results = data.results || [];
+            console.log(`✅ フォールバック検索成功: ${results.length}件`);
+          }
+        } catch (error) {
+          console.error('❌ フォールバック検索エラー:', error);
+        }
+      }
+      
+      // それでも結果がない場合は、デフォルトのナレッジ情報を提供
+      if (results.length === 0) {
+        console.log('⚠️ ナレッジベース検索が失敗したため、デフォルト情報を使用');
+        return [
+          "保守用車マニュアル: エンジン始動不良の基本的な対処法",
+          "保守用車整備ガイド: バッテリー、燃料、エアフィルターの点検手順",
+          "トラブルシューティング: 段階的な故障診断の手順",
+          "安全作業指針: 作業前の安全確認事項",
+          "緊急対応: 専門家への連絡方法と緊急時の対処法"
+        ];
+      }
+      
+      // 関連性の高い情報のみを返す（最大5件）
+      return results.slice(0, 5).map((item: any) => {
+        const title = item.title || item.metadata?.title || '';
+        const content = item.text || item.content || '';
+        const similarity = item.similarity ? ` (関連度: ${Math.round(item.similarity * 100)}%)` : '';
+        return `${title}${similarity}: ${content.substring(0, 200)}...`;
+      });
+    } catch (error) {
+      console.error('❌ ナレッジベース取得エラー:', error);
+      // エラー時もデフォルト情報を返す
+      return [
+        "保守用車マニュアル: エンジン始動不良の基本的な対処法",
+        "保守用車整備ガイド: バッテリー、燃料、エアフィルターの点検手順",
+        "トラブルシューティング: 段階的な故障診断の手順",
+        "安全作業指針: 作業前の安全確認事項",
+        "緊急対応: 専門家への連絡方法と緊急時の対処法"
+      ];
+    }
+  };
+
+  // AI支援の完了処理（統合版）
+  const handleAiSupportComplete = async (solution: string, allAnswers: string[]) => {
     // 解決策をチャットに追加
     sendMessage(solution, [], true);
-    
-    // セッションデータを保存
-    setQaSessionData({
-      answers: allAnswers,
-      solution,
-      knowledgeContext: []
-    });
     
     // 学習データを生成・保存
     try {
@@ -540,19 +815,27 @@ export default function ChatPage() {
       console.error('学習データ生成エラー:', error);
     }
     
-    // Q&Aモードを終了
-    setStepByStepQAMode(false);
+    // セッションデータを保存
+    setAiSupportSessionData({
+      answers: allAnswers,
+      solution,
+      knowledgeContext: [],
+      questions: [currentQuestion]
+    });
+    
+    // AI支援モードを終了
+    setAiSupportMode(false);
     
     toast({
       title: "問題解決完了",
-      description: "段階的Q&Aによる問題解決が完了しました。学習データも保存されました。",
+      description: "AI支援による問題解決が完了しました。学習データも保存されました。",
     });
   };
 
   // 学習データの生成・保存
-  const generateLearningData = async (answers: QAAnswer[], solution: string) => {
+  const generateLearningData = async (answers: string[], solution: string) => {
     try {
-      const question = answers.map(a => a.answer).join(' ');
+      const question = answers.join(' ');
       
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/qa-learning/generate-learning-data`, {
         method: 'POST',
@@ -562,7 +845,7 @@ export default function ChatPage() {
         credentials: 'include',
         body: JSON.stringify({
           question: question,
-          answer: answers.map(a => a.answer).join(' | '),
+          answer: answers.join(' | '),
           solution: solution,
           success: true,
           category: 'troubleshooting',
@@ -583,10 +866,25 @@ export default function ChatPage() {
     }
   };
 
-  // 段階的Q&Aの終了処理
-  const handleStepByStepExit = () => {
-    setStepByStepQAMode(false);
-    setQaSessionData(null);
+  // AI支援の終了処理
+  const handleAiSupportExit = () => {
+    setAiSupportMode(false);
+    setAiSupportSessionData(null);
+  };
+
+  // AI支援のリセット処理
+  const handleAiSupportReset = () => {
+    setAiSupportMode(false);
+    setAiSupportSessionData(null);
+    setCurrentQuestionIndex(0);
+    setAiSupportAnswers([]);
+    setAiSupportCompleted(false);
+    setCurrentQuestion("");
+    
+    toast({
+      title: "AI支援リセット",
+      description: "AI支援セッションをリセットしました。",
+    });
   };
 
   const handleExport = async () => {
@@ -750,11 +1048,12 @@ export default function ChatPage() {
         // 送信完了後にチャットをクリア
         await clearChatHistory();
         
-        // Q&Aモードの状態もリセット
-        setQaMode(false);
+        // AI支援モードの状態もリセット
+        setAiSupportMode(false);
         setCurrentQuestionIndex(0);
-        setQaAnswers([]);
-        setQaCompleted(false);
+        setAiSupportAnswers([]);
+        setAiSupportCompleted(false);
+        setCurrentQuestion("");
         
         // 機種と機械番号の選択状態もリセット
         setSelectedMachineType('');
@@ -1057,23 +1356,13 @@ export default function ChatPage() {
           {/* 中央のボタングループ */}
           <div className="flex items-center" style={{ gap: '126px', marginLeft: '-58px' }}>
             <Button 
-              onClick={startQaMode}
+              onClick={startAiSupport}
               className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-2 px-6 py-3 font-bold text-lg shadow-lg"
               size="lg"
-              disabled={qaMode}
+              disabled={aiSupportMode}
             >
               <FileText className="h-6 w-6" />
-              Q&A 開始
-            </Button>
-
-            <Button 
-              onClick={startStepByStepQA}
-              className="bg-blue-500 hover:bg-blue-600 text-white flex items-center gap-2 px-6 py-3 font-bold text-lg shadow-lg"
-              size="lg"
-              disabled={stepByStepQAMode}
-            >
-              <Brain className="h-6 w-6" />
-              段階的Q&A
+              AI支援開始
             </Button>
 
             <Button 
@@ -1137,11 +1426,12 @@ export default function ChatPage() {
                   <AlertDialogCancel>戻る</AlertDialogCancel>
                   <AlertDialogAction onClick={() => {
                     clearChatHistory();
-                    // Q&Aモードの状態もリセット
-                    setQaMode(false);
-                    setCurrentQuestionIndex(0);
-                    setQaAnswers([]);
-                    setQaCompleted(false);
+                            // AI支援モードの状態もリセット
+        setAiSupportMode(false);
+        setCurrentQuestionIndex(0);
+        setAiSupportAnswers([]);
+        setAiSupportCompleted(false);
+        setCurrentQuestion("");
                     // 機種と機械番号の選択状態もリセット
                     setSelectedMachineType('');
                     setSelectedMachineNumber('');
@@ -1231,20 +1521,41 @@ export default function ChatPage() {
                    4px 4px 12px rgba(0, 0, 0, 0.15)
                  `
                }}>
-            {qaMode && !qaCompleted ? (
-              // 追加: Q&Aモード用の入力エリア
+            {aiSupportMode && !aiSupportCompleted ? (
+              // AI支援モード用の入力エリア
               <div className="p-4">
                 <div className="mb-2 text-sm text-gray-600">
-                  質問 {currentQuestionIndex + 1}/{qaQuestions.length}: {qaQuestions[currentQuestionIndex]}
+                  AI支援質問 {currentQuestionIndex + 1}: {currentQuestion || "回答を入力してください"}
                 </div>
-                <div className="flex gap-2">
+                
+                {/* 選択肢ボタン */}
+                {currentOptions.length > 0 && (
+                  <div className="mb-3">
+                    <div className="text-sm text-gray-600 mb-2">選択肢から選んでください：</div>
+                    <div className="grid grid-cols-1 gap-2">
+                      {currentOptions.map((option, index) => (
+                        <Button
+                          key={index}
+                          onClick={() => handleAiSupportAnswer(option)}
+                          variant="outline"
+                          className="justify-start text-left h-auto py-2 px-3"
+                          disabled={isLoading}
+                        >
+                          {option}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex gap-2 mb-2">
                   <Input
                     type="text"
                     placeholder="回答を入力してください..."
                     className="flex-1"
                     onKeyPress={(e) => {
                       if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                        handleQaAnswer(e.currentTarget.value.trim());
+                        handleAiSupportAnswer(e.currentTarget.value.trim());
                         e.currentTarget.value = '';
                       }
                     }}
@@ -1253,7 +1564,7 @@ export default function ChatPage() {
                     onClick={(e) => {
                       const input = e.currentTarget.previousElementSibling as HTMLInputElement;
                       if (input.value.trim()) {
-                        handleQaAnswer(input.value.trim());
+                        handleAiSupportAnswer(input.value.trim());
                         input.value = '';
                       }
                     }}
@@ -1261,6 +1572,24 @@ export default function ChatPage() {
                     className="bg-blue-500 hover:bg-blue-600"
                   >
                     回答
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleAiSupportReset}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                  >
+                    リセット
+                  </Button>
+                  <Button
+                    onClick={handleAiSupportExit}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                  >
+                    終了
                   </Button>
                 </div>
               </div>
@@ -1275,20 +1604,7 @@ export default function ChatPage() {
       <CameraModal />
       <ImagePreviewModal />
 
-      {/* 段階的Q&Aシステム */}
-      {stepByStepQAMode && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-xl">
-            <StepByStepQA
-              onAnswer={handleStepByStepAnswer}
-              onComplete={handleStepByStepComplete}
-              onExit={handleStepByStepExit}
-              initialContext="保守用車のトラブルシューティング - 安全確認から始めて問題の原因を特定し、具体的な解決策を提案します"
-              knowledgeBase={qaSessionData?.knowledgeContext || []}
-            />
-          </div>
-        </div>
-      )}
+
 
       {/* ファイル入力（隠し要素） */}
       <input

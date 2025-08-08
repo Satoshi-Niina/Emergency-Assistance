@@ -165,7 +165,8 @@ export async function processOpenAIRequest(prompt: string, useKnowledgeBase: boo
         { role: "system", content: systemPrompt },
         { role: "user", content: prompt }
       ],
-      temperature: 0.2,
+      temperature: useKnowledgeBase ? 0.1 : 0.2, // ナレッジベース使用時はより低い温度で一貫性を向上
+      max_tokens: useKnowledgeBase ? 2000 : 1500, // ナレッジベース使用時はより長い回答を許可
       // JSON形式の強制は解除
     });
 

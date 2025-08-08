@@ -104,6 +104,57 @@ function calculateSimilarity(text1: string, text2: string): number {
 }
 
 /**
+ * 改善された類似度計算関数
+ * @param query 検索クエリ
+ * @param text 比較対象テキスト
+ * @param metadata メタデータ
+ * @returns 類似度スコア（0-1）
+ */
+function calculateEnhancedSimilarity(query: string, text: string, metadata: any): number {
+  // 基本の類似度計算
+  const baseSimilarity = calculateSimilarity(query, text);
+  
+  // 重要度ボーナス（isImportantフラグがある場合）
+  let importanceBonus = 0;
+  if (metadata.isImportant) {
+    importanceBonus = 0.2;
+  }
+  
+  // キーワードマッチングの強化
+  const queryWords = query.toLowerCase().split(/\s+/);
+  const textWords = text.toLowerCase().split(/\s+/);
+  
+  // 専門用語の重み付け
+  const technicalTerms = [
+    'エンジン', '保守', '整備', '故障', '修理', '点検', '安全', '作業',
+    '車両', '機械', '装置', 'システム', '運転', '操作', '確認', '対応',
+    'トラブル', '問題', '異常', '警告', '停止', '始動', '運転', '走行'
+  ];
+  
+  let technicalBonus = 0;
+  const matchedTechnicalTerms = queryWords.filter(word => 
+    technicalTerms.some(term => term.includes(word) || word.includes(term))
+  );
+  technicalBonus = matchedTechnicalTerms.length * 0.1;
+  
+  // 完全一致の重み付け
+  let exactMatchBonus = 0;
+  if (text.toLowerCase().includes(query.toLowerCase())) {
+    exactMatchBonus = 0.3;
+  }
+  
+  // 長さによる正規化（短いテキストは不利にならないように）
+  const lengthNormalization = Math.min(1.0, text.length / 100);
+  
+  // 最終スコアの計算
+  const finalScore = Math.min(1.0, 
+    baseSimilarity + importanceBonus + technicalBonus + exactMatchBonus
+  ) * lengthNormalization;
+  
+  return finalScore;
+}
+
+/**
  * テキストのチャンクを表すインターフェース
  */
 export interface TextChunk {
@@ -111,6 +162,8 @@ export interface TextChunk {
   metadata: {
     source: string;
     index: number;
+    isImportant?: boolean;
+    documentId?: string;
   };
   similarity?: number;
 }
@@ -123,12 +176,15 @@ export interface TextChunk {
 export async function searchKnowledgeBase(query: string): Promise<TextChunk[]> {
   // インメモリで単純な検索を実装
   try {
+    console.log('🔍 searchKnowledgeBase開始:', query);
     const chunks: TextChunk[] = [];
     
     // テキストファイルを読み込む
     try {
+      console.log('📁 TEXT_DIR確認:', TEXT_DIR);
       if (fs.existsSync(TEXT_DIR)) {
         const textFiles = fs.readdirSync(TEXT_DIR).filter(file => file.endsWith('.txt'));
+        console.log('📄 テキストファイル数:', textFiles.length);
         
         for (const file of textFiles) {
           try {
@@ -160,10 +216,77 @@ export async function searchKnowledgeBase(query: string): Promise<TextChunk[]> {
       console.error('テキストファイル検索エラー:', error);
     }
     
+    // documentsディレクトリのチャンクデータを読み込む（新規追加）
+    try {
+      console.log('📁 DOCUMENTS_DIR確認:', DOCUMENTS_DIR);
+      if (fs.existsSync(DOCUMENTS_DIR)) {
+        const documentDirs = fs.readdirSync(DOCUMENTS_DIR).filter(dir => {
+          const dirPath = path.join(DOCUMENTS_DIR, dir);
+          return fs.statSync(dirPath).isDirectory();
+        });
+        console.log('📂 ドキュメントディレクトリ数:', documentDirs.length);
+        
+        for (const dir of documentDirs) {
+          const chunksPath = path.join(DOCUMENTS_DIR, dir, 'chunks.json');
+          const metadataPath = path.join(DOCUMENTS_DIR, dir, 'metadata.json');
+          
+          console.log('🔍 チャンクファイル確認:', chunksPath);
+          if (fs.existsSync(chunksPath)) {
+            try {
+              const chunksContent = fs.readFileSync(chunksPath, 'utf-8');
+              const chunksData = JSON.parse(chunksContent);
+              
+              // メタデータも読み込み
+              let documentTitle = dir;
+              if (fs.existsSync(metadataPath)) {
+                try {
+                  const metadataContent = fs.readFileSync(metadataPath, 'utf-8');
+                  const metadata = JSON.parse(metadataContent);
+                  documentTitle = metadata.title || dir;
+                } catch (error) {
+                  console.error(`メタデータファイル ${metadataPath} の読み込み中にエラーが発生しました:`, error);
+                }
+              }
+              
+              // チャンクデータを検索対象に追加
+              if (Array.isArray(chunksData)) {
+                console.log(`📄 ${documentTitle} から ${chunksData.length} チャンクを読み込み`);
+                chunksData.forEach((chunk: any, index: number) => {
+                  if (chunk.text && chunk.text.trim()) {
+                    chunks.push({
+                      text: chunk.text,
+                      metadata: {
+                        source: `${documentTitle} (チャンク${index + 1})`,
+                        index: index,
+                        isImportant: chunk.metadata?.isImportant || false,
+                        documentId: dir
+                      }
+                    });
+                  }
+                });
+              }
+              
+              console.log(`ドキュメント ${documentTitle} から ${chunksData.length} チャンクを読み込みました`);
+            } catch (error) {
+              console.error(`チャンクファイル ${chunksPath} の読み込み中にエラーが発生しました:`, error);
+            }
+          } else {
+            console.log('チャンクファイルが存在しません:', chunksPath);
+          }
+        }
+      } else {
+        console.log('DOCUMENTS_DIRが存在しません:', DOCUMENTS_DIR);
+      }
+    } catch (error) {
+      console.error('documentsディレクトリ検索エラー:', error);
+    }
+    
     // トラブルシューティングフローも検索対象に含める
     try {
+      console.log('📁 TROUBLESHOOTING_DIR確認:', TROUBLESHOOTING_DIR);
       if (fs.existsSync(TROUBLESHOOTING_DIR)) {
         const flowFiles = fs.readdirSync(TROUBLESHOOTING_DIR).filter(file => file.endsWith('.json'));
+        console.log('📄 フローファイル数:', flowFiles.length);
         
         for (const file of flowFiles) {
           try {
@@ -219,9 +342,11 @@ export async function searchKnowledgeBase(query: string): Promise<TextChunk[]> {
       console.error('トラブルシューティングフロー検索エラー:', error);
     }
     
-    // クエリとの類似度を計算
+    console.log('📊 総チャンク数:', chunks.length);
+    
+    // クエリとの類似度を計算（改善版）
     const scoredChunks = chunks.map(chunk => {
-      const similarityScore = calculateSimilarity(query, chunk.text);
+      const similarityScore = calculateEnhancedSimilarity(query, chunk.text, chunk.metadata);
       return {
         ...chunk,
         similarity: similarityScore
@@ -229,9 +354,16 @@ export async function searchKnowledgeBase(query: string): Promise<TextChunk[]> {
     });
     
     // 類似度でソートして上位10件を返す
-    return scoredChunks
+    const results = scoredChunks
       .sort((a, b) => (b.similarity || 0) - (a.similarity || 0))
       .slice(0, 10);
+    
+    console.log('🔍 検索結果数:', results.length);
+    if (results.length > 0) {
+      console.log('🔍 最高類似度:', results[0].similarity);
+    }
+    
+    return results;
       
   } catch (error) {
     console.error('知識ベース検索エラー:', error);
@@ -252,18 +384,51 @@ export async function generateSystemPromptWithKnowledge(query: string): Promise<
   let knowledgeText = '';
   if (relevantChunks.length > 0) {
     knowledgeText = '\n\n【関連する知識ベース情報】:\n';
+    
+    // 重要度と類似度でソート
+    const sortedChunks = relevantChunks.sort((a, b) => {
+      // 重要度を優先
+      const aImportant = a.metadata.isImportant ? 1 : 0;
+      const bImportant = b.metadata.isImportant ? 1 : 0;
+      if (aImportant !== bImportant) {
+        return bImportant - aImportant;
+      }
+      // 次に類似度でソート
+      return (b.similarity || 0) - (a.similarity || 0);
+    });
+    
     // 最大5チャンクまで追加(多すぎるとトークン数制限に達する可能性がある)
-    const chunksToInclude = relevantChunks.slice(0, 5);
+    const chunksToInclude = sortedChunks.slice(0, 5);
     
     for (const chunk of chunksToInclude) {
-      knowledgeText += `---\n出典: ${chunk.metadata.source || '不明'}\n\n${chunk.text}\n---\n\n`;
+      const importance = chunk.metadata.isImportant ? '【重要】' : '';
+      const similarity = chunk.similarity ? `(関連度: ${Math.round(chunk.similarity * 100)}%)` : '';
+      knowledgeText += `---\n${importance}出典: ${chunk.metadata.source || '不明'} ${similarity}\n\n${chunk.text}\n---\n\n`;
     }
+    
+    // 検索結果の統計情報を追加
+    const totalChunks = relevantChunks.length;
+    const importantChunks = relevantChunks.filter(chunk => chunk.metadata.isImportant).length;
+    knowledgeText += `\n※ 検索結果: 総${totalChunks}件中、重要情報${importantChunks}件を含む\n`;
   }
   
-  // 基本的なシステムプロンプト
+  // 基本的なシステムプロンプト（改善版）
   const baseSystemPrompt = `あなたは保守用車支援システムの一部として機能するAIアシスタントです。
 ユーザーの質問に対して、正確で実用的な回答を提供してください。
-以下の知識ベースの情報を活用して回答を生成してください。`;
+
+以下の知識ベースの情報を活用して回答を生成してください：
+1. 提供された知識ベース情報を優先的に参照してください
+2. 重要とマークされた情報は特に注意深く考慮してください
+3. 関連度の高い情報から順に活用してください
+4. 知識ベースにない情報については、一般的な保守用車の知識を補完として使用してください
+5. 安全に関する情報は最優先で考慮してください
+
+回答の際は以下の点に注意してください：
+- 具体的で実践的なアドバイスを提供する
+- 安全上の注意事項を必ず含める
+- 段階的な手順を示す
+- 専門用語は分かりやすく説明する
+- 必要に応じて専門家への相談を推奨する`;
   
   return `${baseSystemPrompt}${knowledgeText}`;
 }

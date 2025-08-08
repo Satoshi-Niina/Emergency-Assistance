@@ -35,6 +35,7 @@ import { baseDataRouter } from './routes/base-data.js';
 import filesRouter from './routes/files.js';
 import knowledgeBaseRouter from './routes/knowledge-base.js';
 import qaLearningRouter from './routes/qa-learning.js';
+import { registerKnowledgeBaseRoutes } from "./routes/knowledge-base.js";
 
 // ESM用__dirname定義
 const __filename = fileURLToPath(import.meta.url);
@@ -485,4 +486,7 @@ export function registerRoutes(app: Express): void {
       });
     }
   });
+
+  // Knowledge base routes
+  registerKnowledgeBaseRoutes(app);
 }
