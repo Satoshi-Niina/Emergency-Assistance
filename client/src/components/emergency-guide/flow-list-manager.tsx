@@ -48,7 +48,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       setIsLoading(true);
       console.log('🔄 フロー一覧を取得中...');
       
-      const apiUrl = buildApiUrl('/api/flows');
+      const apiUrl = buildApiUrl('/api/troubleshooting/list');
       console.log('🔗 API URL:', apiUrl);
 
       const response = await fetch(apiUrl, {
@@ -120,12 +120,22 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
     if (!flowToDelete) return;
 
     try {
+      console.log('🗑️ フロー削除開始:', flowToDelete);
+      
       const response = await fetch(buildApiUrl(`/api/troubleshooting/${flowToDelete}`), {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
 
-      if (!response.ok) throw new Error('フローの削除に失敗しました');
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ 削除API エラー:', errorText);
+        throw new Error(`フローの削除に失敗しました: ${response.status} ${response.statusText}`);
+      }
 
+      console.log('✅ フロー削除完了');
       toast({
         title: "成功",
         description: "フローが削除されました",
@@ -134,7 +144,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       // 一覧を更新
       fetchFlowList();
     } catch (error) {
-      console.error('フロー削除エラー:', error);
+      console.error('❌ フロー削除エラー:', error);
       toast({
         title: "エラー",
         description: "フローの削除に失敗しました",

@@ -770,15 +770,23 @@ export default function ChatPage() {
         });
       } else {
         // エラーレスポンスの詳細を取得
-        let errorMessage = `送信失敗: ${response.status}`;
+        let errorMessage = `送信失敗: ${response.status} ${response.statusText}`;
+        let errorDetails = '';
+        
         try {
           const errorData = await response.json();
           errorMessage = errorData.error || errorData.message || errorMessage;
+          errorDetails = errorData.details || errorData.error || '';
         } catch (parseError) {
           console.warn('エラーレスポンスの解析に失敗:', parseError);
         }
         
-        throw new Error(errorMessage);
+        // より詳細なエラーメッセージを構築
+        const fullErrorMessage = errorDetails 
+          ? `${errorMessage}\n詳細: ${errorDetails}`
+          : errorMessage;
+        
+        throw new Error(fullErrorMessage);
       }
     } catch (error) {
       console.error('サーバー送信エラー:', error);
