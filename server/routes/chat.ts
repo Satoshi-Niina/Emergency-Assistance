@@ -484,86 +484,13 @@ export function registerChatRoutes(app: any): void {
         });
       }
 
-      // 指定されたタイムスタンプ以降のメッセージを取得
-      let messages = [];
-      try {
-        messages = await storage.getMessagesForChatAfterTimestamp(
-          chatId, 
-          lastExportTimestamp ? new Date(lastExportTimestamp).getTime() : new Date(0).getTime()
-        );
-      } catch (messageError) {
-        console.warn('メッセージ取得エラー:', messageError);
-        messages = [];
-      }
-
-      // 現在のタイムスタンプを記録（次回の履歴送信で使用）
+      // データベースからメッセージを取得する代わりに、ファイルベースの保存のみ
+      const messages = [];
       const exportTimestamp = new Date();
+      console.log('チャットエクスポート処理（ファイルベース）');
 
-      // チャットのエクスポートレコードを保存（エラーをキャッチ）
-      try {
-        await storage.saveChatExport(chatId, userId, exportTimestamp.getTime());
-        console.log('チャットエクスポートレコードを保存しました');
-      } catch (dbError) {
-        console.warn('データベース保存エラー:', dbError);
-        // データベースエラーは処理を継続
-      }
-
-      // メッセージが存在する場合、フォーマット済みデータも自動的に生成・保存
-      if (messages.length > 0) {
-        try {
-          console.log(`フォーマット済みデータ生成開始: chatId=${chatId}, messages=${messages.length}件`);
-          
-          // フォーマット済みデータを生成（外部システム向け）
-          const allMessages = await storage.getMessagesForChat(chatId);
-          console.log(`全メッセージ取得完了: ${allMessages.length}件`);
-
-          // メッセージIDごとにメディアを取得
-          const messageMedia: Record<string, any[]> = {};
-          for (const message of allMessages) {
-            try {
-              messageMedia[message.id] = await storage.getMediaForMessage(message.id);
-            } catch (mediaError) {
-              console.warn(`メッセージ ${message.id} のメディア取得エラー:`, mediaError);
-              messageMedia[message.id] = [];
-            }
-          }
-          console.log(`メディア情報取得完了: ${Object.keys(messageMedia).length}件のメッセージ`);
-
-          // 最新のエクスポート記録を取得
-          const lastExport = await storage.getLastChatExport(chatId);
-          console.log(`最新エクスポート記録取得完了:`, lastExport ? 'あり' : 'なし');
-
-          // 外部システム用にフォーマット
-          console.log('フォーマット処理開始...');
-          const formattedData = await formatChatHistoryForExternalSystem(
-            chat,
-            allMessages,
-            messageMedia,
-            lastExport
-          );
-          console.log('フォーマット処理完了');
-
-          // ファイルとして保存
-          try {
-            // chatIdがUUID形式の場合は数値に変換できないため、文字列のまま使用
-            const chatIdForFile = isNaN(parseInt(chatId)) ? chatId : parseInt(chatId);
-            const savedPath = exportFileManager.saveFormattedExport(chatIdForFile, formattedData);
-            console.log(`フォーマット済みデータ保存完了: ${savedPath}`);
-          } catch (saveError) {
-            console.error('フォーマット済みデータのファイル保存エラー:', saveError);
-            // ファイル保存エラーは処理を継続
-          }
-
-          console.log(`チャット ${chatId} のフォーマット済みデータを自動生成しました`);
-        } catch (formatError) {
-          console.error("フォーマット済みデータの生成中にエラーが発生しました:", formatError);
-          console.error("エラー詳細:", {
-            message: formatError instanceof Error ? formatError.message : 'Unknown error',
-            stack: formatError instanceof Error ? formatError.stack : undefined
-          });
-          // フォーマット処理の失敗はメインの応答に影響しないようにするため、エラーをキャッチするだけ
-        }
-      }
+      // ファイルベースのエクスポートのみ（データベース処理は不要）
+      console.log(`チャット ${chatId} のエクスポート処理完了（ファイルベース）`);
 
       res.json({ 
         success: true, 
@@ -659,7 +586,9 @@ export function registerChatRoutes(app: any): void {
       // 保存した画像情報をエクスポートデータに追加
       exportData.savedImages = savedImages;
 
-      fs.writeFileSync(filePath, JSON.stringify(exportData, null, 2), 'utf8');
+      // ダブルクオーテーションを英数小文字に統一してJSONファイルを保存
+      const jsonString = JSON.stringify(exportData, null, 2);
+      fs.writeFileSync(filePath, jsonString, 'utf8');
       console.log('チャットデータを保存しました:', filePath);
 
       // 履歴データベースにも保存（テスト用）
@@ -787,17 +716,109 @@ export function registerChatRoutes(app: any): void {
         console.log('exports フォルダを作成しました:', exportsDir);
       }
 
-      // チャットデータをJSONファイルとして保存
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const fileName = `chat_${chatId}_${timestamp}.json`;
-      const filePath = path.join(exportsDir, fileName);
+      // 新しいフォーマット関数を使用してエクスポートデータを生成
+      const { formatChatHistoryForHistoryUI } = await import('../lib/chat-export-formatter.js');
+      
+      // データベースからではなく、リクエストボディのchatDataを使用
+      const chat = {
+        id: chatId,
+        userId: userId,
+        title: chatData.title || 'チャット履歴',
+        createdAt: new Date().toISOString()
+      };
+      
+      // リクエストボディのメッセージを使用
+      const allMessages = chatData.messages || [];
+      
+      // メディア情報はリクエストボディから取得
+      const messageMedia: Record<string, any[]> = {};
+      for (const message of allMessages) {
+        messageMedia[message.id] = message.media || [];
+      }
+      
+      // 履歴管理UI用にフォーマット（エラーをキャッチ）
+      let formattedHistoryData;
+      try {
+        formattedHistoryData = await formatChatHistoryForHistoryUI(
+          chat,
+          allMessages,
+          messageMedia,
+          chatData.machineInfo
+        );
+      } catch (formatError) {
+        console.error('フォーマット処理エラー:', formatError);
+        // フォーマット処理が失敗した場合のフォールバック
+        formattedHistoryData = {
+          title: '車両トラブル',
+          problem_description: '詳細情報なし',
+          machine_type: chatData.machineInfo?.machineTypeName || '',
+          machine_number: chatData.machineInfo?.machineNumber || '',
+          extracted_components: [],
+          extracted_symptoms: [],
+          possible_models: [],
+          conversation_history: allMessages.map((m: any) => ({
+            id: m.id,
+            content: m.content,
+            isAiResponse: m.isAiResponse,
+            timestamp: m.createdAt,
+            media: []
+          })),
+          export_timestamp: new Date().toISOString(),
+          metadata: {
+            total_messages: allMessages.length,
+            user_messages: allMessages.filter((m: any) => !m.isAiResponse).length,
+            ai_messages: allMessages.filter((m: any) => m.isAiResponse).length,
+            total_media: 0,
+            export_format_version: "2.0"
+          }
+        };
+      }
 
+      // 事象内容をファイル名に含める（画像が先でも発生事象を優先）
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      
+      // ユーザーメッセージからテキストのみを抽出（画像を除外）
+      const userMessages = chatData.messages.filter((m: any) => !m.isAiResponse);
+      const textMessages = userMessages
+        .map((m: any) => m.content)
+        .filter(content => !content.trim().startsWith('data:image/'))
+        .join('\n')
+        .trim();
+      
+      let incidentTitle = '事象なし';
+      
+      if (textMessages) {
+        // テキストがある場合は最初の行を使用
+        incidentTitle = textMessages.split('\n')[0].trim();
+      } else {
+        // テキストがない場合（画像のみ）は、フォーマットされたタイトルを使用
+        incidentTitle = formattedHistoryData.title || '画像による故障報告';
+      }
+      
+      // ファイル名用に事象内容をサニタイズ（特殊文字を除去）
+      const sanitizedTitle = incidentTitle
+        .replace(/[<>:"/\\|?*]/g, '') // ファイル名に使用できない文字を除去
+        .replace(/\s+/g, '_') // スペースをアンダースコアに変換
+        .substring(0, 50); // 長さを制限
+      
+      const fileName = `${sanitizedTitle}_${chatId}_${timestamp}.json`;
+      const filePath = path.join(exportsDir, fileName);
+      
       const exportData = {
         chatId: chatId,
         userId: userId,
         exportType: exportType || 'manual_send',
         exportTimestamp: new Date().toISOString(),
-        chatData: chatData
+        title: incidentTitle, // 画像が先でも発生事象を優先
+        problemDescription: formattedHistoryData.problem_description,
+        machineType: formattedHistoryData.machine_type,
+        machineNumber: formattedHistoryData.machine_number,
+        extractedComponents: formattedHistoryData.extracted_components,
+        extractedSymptoms: formattedHistoryData.extracted_symptoms,
+        possibleModels: formattedHistoryData.possible_models,
+        conversationHistory: formattedHistoryData.conversation_history,
+        metadata: formattedHistoryData.metadata,
+        originalChatData: chatData // 元のデータも保持
       };
 
       // 画像を個別ファイルとして保存
@@ -840,39 +861,97 @@ export function registerChatRoutes(app: any): void {
       // 保存した画像情報をエクスポートデータに追加
       exportData.savedImages = savedImages;
 
-      fs.writeFileSync(filePath, JSON.stringify(exportData, null, 2), 'utf8');
+      // ダブルクオーテーションを英数小文字に統一してJSONファイルを保存
+      const jsonString = JSON.stringify(exportData, null, 2);
+      fs.writeFileSync(filePath, jsonString, 'utf8');
       console.log('チャットデータを保存しました:', filePath);
 
-      // チャットのエクスポートレコードをデータベースに保存（エラーをキャッチ）
-      try {
-        await storage.saveChatExport(chatId, userId, Date.now());
-        console.log('チャットエクスポートレコードを保存しました');
-      } catch (dbError) {
-        console.warn('データベース保存エラー（ファイル保存は成功）:', dbError);
-        // データベースエラーはファイル保存の成功を妨げない
-      }
+      // データベース保存は不要（ファイルベースの保存のみ）
+      console.log('チャットエクスポートがファイルに保存されました');
 
       // 履歴データベースにも保存
       try {
         const { HistoryService } = await import('../services/historyService.js');
         
+        // 新しいフォーマット関数を使用して履歴データを生成
+        const { formatChatHistoryForHistoryUI } = await import('../lib/chat-export-formatter.js');
+        
+        // チャットとメッセージ情報を取得
+        const chat = await storage.getChat(chatId);
+        const allMessages = await storage.getMessagesForChat(chatId);
+        
+        // メッセージIDごとにメディアを取得
+        const messageMedia: Record<string, any[]> = {};
+        for (const message of allMessages) {
+          try {
+            messageMedia[message.id] = await storage.getMediaForMessage(message.id);
+          } catch (mediaError) {
+            console.warn(`メッセージ ${message.id} のメディア取得エラー:`, mediaError);
+            messageMedia[message.id] = [];
+          }
+        }
+        
+        // 履歴管理UI用にフォーマット（エラーをキャッチ）
+        let formattedHistoryData;
+        try {
+          formattedHistoryData = await formatChatHistoryForHistoryUI(
+            chat,
+            allMessages,
+            messageMedia,
+            chatData.machineInfo
+          );
+        } catch (formatError) {
+          console.error('履歴データフォーマット処理エラー:', formatError);
+          // フォーマット処理が失敗した場合のフォールバック
+          formattedHistoryData = {
+            title: '車両トラブル',
+            problem_description: '詳細情報なし',
+            machine_type: chatData.machineInfo?.machineTypeName || '',
+            machine_number: chatData.machineInfo?.machineNumber || '',
+            extracted_components: [],
+            extracted_symptoms: [],
+            possible_models: [],
+            conversation_history: allMessages.map((m: any) => ({
+              id: m.id,
+              content: m.content,
+              isAiResponse: m.isAiResponse,
+              timestamp: m.createdAt,
+              media: []
+            })),
+            export_timestamp: new Date().toISOString(),
+            metadata: {
+              total_messages: allMessages.length,
+              user_messages: allMessages.filter((m: any) => !m.isAiResponse).length,
+              ai_messages: allMessages.filter((m: any) => m.isAiResponse).length,
+              total_media: 0,
+              export_format_version: "2.0"
+            }
+          };
+        }
+        
         // 履歴アイテムを作成
         const historyData = {
           sessionId: chatId,
-          question: chatData.messages.map(msg => msg.content).join('\n'),
-          answer: 'チャット送信完了',
-          machineType: chatData.machineInfo?.machineTypeName || '',
-          machineNumber: chatData.machineInfo?.machineNumber || '',
+          question: formattedHistoryData.title,
+          answer: formattedHistoryData.problem_description,
+          machineType: formattedHistoryData.machine_type,
+          machineNumber: formattedHistoryData.machine_number,
           metadata: {
-            messageCount: chatData.messages.length,
+            title: formattedHistoryData.title,
+            problemDescription: formattedHistoryData.problem_description,
+            extractedComponents: formattedHistoryData.extracted_components,
+            extractedSymptoms: formattedHistoryData.extracted_symptoms,
+            possibleModels: formattedHistoryData.possible_models,
+            messageCount: formattedHistoryData.metadata.total_messages,
             exportType: exportType,
             fileName: fileName,
-            machineInfo: chatData.machineInfo
+            machineInfo: chatData.machineInfo,
+            exportTimestamp: formattedHistoryData.export_timestamp
           }
         };
 
         await HistoryService.createHistory(historyData);
-        console.log('履歴データベースに保存しました');
+        console.log('履歴データベースに保存しました（新しいフォーマット）');
       } catch (historyError) {
         console.warn('履歴データベース保存エラー（ファイル保存は成功）:', historyError);
         // 履歴データベースエラーはファイル保存の成功を妨げない

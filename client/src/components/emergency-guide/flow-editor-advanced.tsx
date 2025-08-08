@@ -67,7 +67,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
   const { toast } = useToast();
   const [flowData, setFlowData] = useState<FlowData>({
     id: flowId || uuidv4(),
-    title: '新規フロー',
+    title: flowId ? 'フロー編集' : '新規フロー',
     description: '',
     steps: []
   });
@@ -84,10 +84,27 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
   const loadFlowData = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(buildApiUrl(`/api/troubleshooting/${flowId}`));
-      if (!response.ok) throw new Error('フローデータの取得に失敗しました');
+      console.log('🔄 フローデータ読み込み開始:', flowId);
       
-      const data = await response.json();
+      const response = await fetch(buildApiUrl(`/api/troubleshooting/${flowId}`), {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ API エラー:', errorText);
+        throw new Error(`フローデータの取得に失敗しました: ${response.status} ${response.statusText}`);
+      }
+      
+      const responseData = await response.json();
+      console.log('📊 APIレスポンス:', responseData);
+      
+      // サーバーからのレスポンス構造に合わせてデータを取得
+      const data = responseData.success && responseData.data ? responseData.data : responseData;
+      console.log('📋 処理対象データ:', data);
       
       // データ構造の正規化
       if (data.steps && Array.isArray(data.steps)) {
@@ -100,9 +117,15 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
         data.steps = [];
       }
 
+      console.log('✅ フローデータ読み込み完了:', {
+        id: data.id,
+        title: data.title,
+        stepsCount: data.steps.length
+      });
+      
       setFlowData(data);
     } catch (error) {
-      console.error('フローデータ読み込みエラー:', error);
+      console.error('❌ フローデータ読み込みエラー:', error);
       toast({
         title: "エラー",
         description: "フローデータの読み込みに失敗しました",
@@ -323,7 +346,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>フロー編集</span>
+            <span>{flowId ? 'フロー編集' : '新規フロー作成'}</span>
             <div className="flex gap-2">
               <Button variant="outline" onClick={onCancel}>
                 <X className="h-4 w-4 mr-1" />

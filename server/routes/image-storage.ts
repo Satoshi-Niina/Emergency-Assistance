@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { db } from '../db';
 import { imageData } from '../db/schema';
 import { eq, like } from 'drizzle-orm';
+import path from 'path';
+import fs from 'fs';
 
 const router = Router();
 
@@ -87,6 +89,38 @@ router.delete('/:id', async (req, res) => {
     } catch (error) {
         console.error('画像削除エラー:', error);
         res.status(500).json({ error: '画像の削除に失敗しました' });
+    }
+});
+
+// 画像ファイルを提供（knowledge-base/images/chat-exports/から）
+router.get('/chat-exports/:filename', async (req, res) => {
+    try {
+        const { filename } = req.params;
+        const imagePath = path.join(__dirname, '../../knowledge-base/images/chat-exports', filename);
+        
+        // ファイルの存在確認
+        if (!fs.existsSync(imagePath)) {
+            console.log('画像ファイルが見つかりません:', imagePath);
+            return res.status(404).json({ error: '画像ファイルが見つかりません' });
+        }
+        
+        // ファイルの拡張子からMIMEタイプを判定
+        const ext = path.extname(filename).toLowerCase();
+        let mimeType = 'image/jpeg'; // デフォルト
+        if (ext === '.png') mimeType = 'image/png';
+        else if (ext === '.gif') mimeType = 'image/gif';
+        else if (ext === '.webp') mimeType = 'image/webp';
+        
+        res.setHeader('Content-Type', mimeType);
+        res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1年間キャッシュ
+        
+        // ファイルをストリーミングで送信
+        const fileStream = fs.createReadStream(imagePath);
+        fileStream.pipe(res);
+        
+    } catch (error) {
+        console.error('画像ファイル提供エラー:', error);
+        res.status(500).json({ error: '画像ファイルの提供に失敗しました' });
     }
 });
 

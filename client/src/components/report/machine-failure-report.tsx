@@ -8,16 +8,17 @@ import { Calendar, User, MessageSquare, Image as ImageIcon, Edit, Save, X, Downl
 
 interface MachineFailureReportData {
   reportId: string;
-  machineId: string;
+  machineType: string; // 機種を追加
+  machineNumber: string; // 機械IDを機械番号に変更
   date: string;
   location: string;
-  failureCode: string;
   description: string;
   status: string;
   engineer: string;
   notes: string;
   repairSchedule: string;
   repairLocation: string;
+  repairRequestDate: string; // 修繕依頼月日を追加
   images?: Array<{
     id: string;
     url: string;
@@ -33,7 +34,7 @@ interface MachineFailureReportData {
 }
 
 interface MachineFailureReportProps {
-  data: MachineFailureReportData;
+  data: MachineFailureReportData | MachineFailureReportData[];
   onClose: () => void;
   onSave?: (reportData: MachineFailureReportData) => void;
   onPrint?: (reportData: MachineFailureReportData) => void;
@@ -45,13 +46,71 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
   onSave,
   onPrint 
 }) => {
+  // データが配列かどうかを判定
+  const isMultipleReports = Array.isArray(data);
+  const reports = isMultipleReports ? data : [data];
+  
+  console.log('MachineFailureReport - データ確認:', {
+    isMultipleReports,
+    reportsLength: reports.length,
+    dataType: Array.isArray(data) ? 'array' : 'single',
+    firstReport: reports[0]?.reportId
+  });
+  
+  const [currentPage, setCurrentPage] = useState(0);
   const [isEditing, setIsEditing] = useState(false); // 初期状態をプレビューモードに設定
-  const [reportData, setReportData] = useState<MachineFailureReportData>(data);
-  const [editedData, setEditedData] = useState<MachineFailureReportData>(data);
+  const [reportData, setReportData] = useState<MachineFailureReportData>(reports[0]);
+  const [editedData, setEditedData] = useState<MachineFailureReportData>(reports[0]);
 
   useEffect(() => {
     setEditedData(reportData);
   }, [reportData]);
+
+  // ページ変更時の処理
+  useEffect(() => {
+    console.log('ページ変更useEffect実行:', {
+      currentPage,
+      isMultipleReports,
+      reportsLength: reports.length,
+      hasCurrentReport: !!reports[currentPage]
+    });
+    
+    if (isMultipleReports && reports[currentPage]) {
+      console.log('レポートデータを更新:', {
+        currentPage,
+        reportId: reports[currentPage].reportId,
+        description: reports[currentPage].description
+      });
+      setReportData(reports[currentPage]);
+      setEditedData(reports[currentPage]);
+    }
+  }, [currentPage, isMultipleReports, reports]);
+
+  const handlePageChange = (direction: 'prev' | 'next') => {
+    console.log('ページ移動試行:', {
+      direction,
+      currentPage,
+      reportsLength: reports.length,
+      canGoPrev: currentPage > 0,
+      canGoNext: currentPage < reports.length - 1
+    });
+    
+    if (direction === 'prev' && currentPage > 0) {
+      const newPage = currentPage - 1;
+      console.log('前のページに移動:', newPage);
+      setCurrentPage(newPage);
+    } else if (direction === 'next' && currentPage < reports.length - 1) {
+      const newPage = currentPage + 1;
+      console.log('次のページに移動:', newPage);
+      setCurrentPage(newPage);
+    } else {
+      console.log('ページ移動できません:', {
+        direction,
+        currentPage,
+        reportsLength: reports.length
+      });
+    }
+  };
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -88,23 +147,24 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
   };
 
   const downloadReport = () => {
-    const reportContent = `
-機械故障報告書
+         const reportContent = `
+ 機械故障報告書
 
 報告概要:
 報告書ID: ${reportData.reportId}
-機械ID: ${reportData.machineId}
+機種: ${reportData.machineType}
+機械番号: ${reportData.machineNumber}
 日付: ${reportData.date}
 場所: ${reportData.location}
-故障コード: ${reportData.failureCode}
 
-故障詳細:
-説明: ${reportData.description}
-ステータス: ${reportData.status}
-担当エンジニア: ${reportData.engineer}
-備考: ${reportData.notes}
+ 故障詳細:
+ 説明: ${reportData.description}
+ ステータス: ${reportData.status}
+ 責任者: ${reportData.engineer}
+ 備考: ${reportData.notes}
 
 修繕予定:
+依頼月日: ${reportData.repairRequestDate}
 予定月日: ${reportData.repairSchedule}
 場所: ${reportData.repairLocation}
     `;
@@ -113,7 +173,7 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `機械故障報告書_${reportData.reportId}_${reportData.date}.txt`;
+         link.download = `報告書_${reportData.reportId}_${reportData.date}.txt`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -121,14 +181,47 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
   };
 
   const currentData = isEditing ? editedData : reportData;
+  
+  // 現在のレポート情報をログ出力
+  console.log('現在のレポートデータ:', {
+    currentPage,
+    reportId: currentData.reportId,
+    description: currentData.description,
+    isEditing
+  });
 
   return (
     <div className="min-h-screen bg-white p-6 print:p-0">
       <div className="max-w-6xl mx-auto bg-white">
-        {/* ヘッダー */}
-        <div className="text-center mb-8 print:mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2 print:text-2xl">機械故障報告書</h1>
-        </div>
+                 {/* ヘッダー */}
+         <div className="text-center mb-8 print:mb-6">
+           <h1 className="text-3xl font-bold text-gray-900 mb-2 print:text-2xl">機械故障報告書</h1>
+           {isMultipleReports && reports.length > 1 && (
+             <div className="flex justify-center items-center gap-4 mt-4 print:hidden">
+               <Button
+                 onClick={() => handlePageChange('prev')}
+                 disabled={currentPage === 0}
+                 variant="outline"
+                 size="sm"
+                 className="min-w-[120px]"
+               >
+                 ← 前のページ
+               </Button>
+               <span className="text-sm text-gray-600 font-medium">
+                 ページ {currentPage + 1} / {reports.length}
+               </span>
+               <Button
+                 onClick={() => handlePageChange('next')}
+                 disabled={currentPage === reports.length - 1}
+                 variant="outline"
+                 size="sm"
+                 className="min-w-[120px]"
+               >
+                 次のページ →
+               </Button>
+             </div>
+           )}
+         </div>
 
         {/* アクションボタン */}
         <div className="flex justify-end gap-2 mb-6 print:hidden">
@@ -174,52 +267,57 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
                 <CardTitle className="text-lg font-semibold text-gray-900">報告概要</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-gray-700">報告書ID:</span>
-                  <Input
-                    value={currentData.reportId}
-                    onChange={(e) => handleInputChange('reportId', e.target.value)}
-                    className="w-32 text-right font-mono"
-                    disabled={!isEditing}
-                  />
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-gray-700">機械ID:</span>
-                  <Input
-                    value={currentData.machineId}
-                    onChange={(e) => handleInputChange('machineId', e.target.value)}
-                    className="w-32 text-right font-mono"
-                    disabled={!isEditing}
-                  />
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-gray-700">日付:</span>
-                  <Input
-                    type="date"
-                    value={currentData.date}
-                    onChange={(e) => handleInputChange('date', e.target.value)}
-                    className="w-32 text-right"
-                    disabled={!isEditing}
-                  />
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-gray-700">場所:</span>
-                  <Input
-                    value={currentData.location}
-                    onChange={(e) => handleInputChange('location', e.target.value)}
-                    className="w-32 text-right"
-                    disabled={!isEditing}
-                  />
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-gray-700">故障コード:</span>
-                  <Input
-                    value={currentData.failureCode}
-                    onChange={(e) => handleInputChange('failureCode', e.target.value)}
-                    className="w-32 text-right font-mono"
-                    disabled={!isEditing}
-                  />
-                </div>
+                                 <div className="flex justify-between items-center">
+                   <span className="font-medium text-gray-700">報告書ID:</span>
+                                       <Input
+                      value={currentData.reportId}
+                      onChange={(e) => handleInputChange('reportId', e.target.value)}
+                      className="w-40 text-left font-mono"
+                      disabled={!isEditing}
+                    />
+                 </div>
+                                 <div className="flex justify-between items-center">
+                   <span className="font-medium text-gray-700">機種:</span>
+                                       <Input
+                      value={currentData.machineType}
+                      onChange={(e) => handleInputChange('machineType', e.target.value)}
+                      className="w-40 text-left"
+                      disabled={!isEditing}
+                      placeholder="例: MC300"
+                    />
+                 </div>
+                                 <div className="flex justify-between items-center">
+                   <span className="font-medium text-gray-700">機械番号:</span>
+                                       <Input
+                      value={currentData.machineNumber}
+                      onChange={(e) => handleInputChange('machineNumber', e.target.value)}
+                      className="w-40 text-left font-mono"
+                      disabled={!isEditing}
+                      placeholder="例: 200"
+                    />
+                 </div>
+                                 <div className="flex justify-between items-center">
+                   <span className="font-medium text-gray-700">日付:</span>
+                   <div className="relative">
+                                           <Input
+                        type="date"
+                        value={currentData.date}
+                        onChange={(e) => handleInputChange('date', e.target.value)}
+                        className="w-40 text-left pr-8"
+                        disabled={!isEditing}
+                      />
+                     <Calendar className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-600 pointer-events-none z-20" />
+                   </div>
+                 </div>
+                                 <div className="flex justify-between items-center">
+                   <span className="font-medium text-gray-700">場所:</span>
+                                       <Input
+                      value={currentData.location}
+                      onChange={(e) => handleInputChange('location', e.target.value)}
+                      className="w-40 text-left"
+                      disabled={!isEditing}
+                    />
+                 </div>
               </CardContent>
             </Card>
 
@@ -229,24 +327,41 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
                 <CardTitle className="text-lg font-semibold text-gray-900">修繕予定</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-gray-700">予定月日:</span>
-                  <Input
-                    value={currentData.repairSchedule}
-                    onChange={(e) => handleInputChange('repairSchedule', e.target.value)}
-                    className="w-32 text-right"
-                    disabled={!isEditing}
-                  />
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-gray-700">場所:</span>
-                  <Input
-                    value={currentData.repairLocation}
-                    onChange={(e) => handleInputChange('repairLocation', e.target.value)}
-                    className="w-48 text-right"
-                    disabled={!isEditing}
-                  />
-                </div>
+                                 <div className="flex justify-between items-center">
+                   <span className="font-medium text-gray-700">依頼月日:</span>
+                   <div className="relative">
+                                           <Input
+                        type="date"
+                        value={currentData.repairRequestDate}
+                        onChange={(e) => handleInputChange('repairRequestDate', e.target.value)}
+                        className="w-40 text-left pr-8"
+                        disabled={!isEditing}
+                      />
+                     <Calendar className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-600 pointer-events-none z-20" />
+                   </div>
+                 </div>
+                                 <div className="flex justify-between items-center">
+                   <span className="font-medium text-gray-700">予定月日:</span>
+                   <div className="relative">
+                                           <Input
+                        type="date"
+                        value={currentData.repairSchedule}
+                        onChange={(e) => handleInputChange('repairSchedule', e.target.value)}
+                        className="w-40 text-left pr-8"
+                        disabled={!isEditing}
+                      />
+                     <Calendar className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-600 pointer-events-none z-20" />
+                   </div>
+                 </div>
+                                 <div className="flex justify-between items-center">
+                   <span className="font-medium text-gray-700">場所:</span>
+                                       <Input
+                      value={currentData.repairLocation}
+                      onChange={(e) => handleInputChange('repairLocation', e.target.value)}
+                      className="w-56 text-left"
+                      disabled={!isEditing}
+                    />
+                 </div>
               </CardContent>
             </Card>
           </div>
@@ -264,36 +379,36 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
                     value={currentData.description}
                     onChange={(e) => handleInputChange('description', e.target.value)}
                     className="w-full"
-                    rows={3}
+                    rows={10}
                     disabled={!isEditing}
                     placeholder="故障の詳細な説明を入力してください"
                   />
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-gray-700">ステータス:</span>
-                  <Input
-                    value={currentData.status}
-                    onChange={(e) => handleInputChange('status', e.target.value)}
-                    className="w-48 text-right"
-                    disabled={!isEditing}
-                  />
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-gray-700">担当エンジニア:</span>
-                  <Input
-                    value={currentData.engineer}
-                    onChange={(e) => handleInputChange('engineer', e.target.value)}
-                    className="w-32 text-right"
-                    disabled={!isEditing}
-                  />
-                </div>
+                                 <div className="flex justify-between items-center">
+                   <span className="font-medium text-gray-700">ステータス:</span>
+                                       <Input
+                      value={currentData.status}
+                      onChange={(e) => handleInputChange('status', e.target.value)}
+                      className="w-56 text-left"
+                      disabled={!isEditing}
+                    />
+                 </div>
+                                 <div className="flex justify-between items-center">
+                   <span className="font-medium text-gray-700">責任者:</span>
+                                       <Input
+                      value={currentData.engineer}
+                      onChange={(e) => handleInputChange('engineer', e.target.value)}
+                      className="w-40 text-left"
+                      disabled={!isEditing}
+                    />
+                 </div>
                 <div>
                   <span className="font-medium text-gray-700 block mb-2">備考:</span>
                   <Textarea
                     value={currentData.notes}
                     onChange={(e) => handleInputChange('notes', e.target.value)}
                     className="w-full"
-                    rows={4}
+                    rows={8}
                     disabled={!isEditing}
                     placeholder="追加の備考事項を入力してください"
                   />
@@ -314,11 +429,26 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {currentData.images.map((image, index) => (
                   <div key={image.id} className="border rounded-lg p-3 print:break-inside-avoid">
-                    <img
-                      src={image.url}
-                      alt={`故障箇所画像 ${index + 1}`}
-                      className="w-full h-48 object-cover rounded-lg mb-2 print:h-32"
-                    />
+                                         <img
+                       src={image.url}
+                       alt={`故障箇所画像 ${index + 1}`}
+                       className="w-full h-48 object-cover rounded-lg mb-2 print:h-32"
+                       onError={(e) => {
+                         console.log('画像読み込みエラー:', image.url.substring(0, 50) + '...');
+                         const target = e.target as HTMLImageElement;
+                         target.style.display = 'none';
+                         const errorDiv = target.nextElementSibling as HTMLElement;
+                         if (errorDiv) {
+                           errorDiv.style.display = 'block';
+                         }
+                       }}
+                       onLoad={() => {
+                         console.log('画像読み込み成功:', image.url.substring(0, 50) + '...');
+                       }}
+                     />
+                     <div className="hidden text-center text-gray-500 text-sm">
+                       画像読み込みエラー
+                     </div>
                     <p className="text-xs text-gray-500 text-center">{image.fileName}</p>
                     {image.description && (
                       <p className="text-xs text-gray-600 text-center mt-1">{image.description}</p>
@@ -364,31 +494,51 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
           </Card>
         )}
 
-        {/* フッター */}
-        <div className="text-center text-sm text-gray-500 py-4 border-t print:border-t-2">
-          © 2025 機械故障報告書. All rights reserved.
-        </div>
+                 {/* フッター */}
+         <div className="text-center text-sm text-gray-500 py-4 border-t print:border-t-2">
+           © 2025 機械故障報告書. All rights reserved.
+         </div>
       </div>
 
-      {/* 印刷用スタイル */}
-      <style jsx>{`
-        @media print {
-          @page {
-            margin: 1cm;
-            size: A4;
-          }
-          body {
-            font-size: 12pt;
-            line-height: 1.4;
-          }
-          .print\\:shadow-none {
-            box-shadow: none !important;
-          }
-          .print\\:border-2 {
-            border-width: 2px !important;
-          }
-        }
-      `}</style>
+             {/* 印刷用スタイル */}
+       <style jsx>{`
+         @media print {
+           @page {
+             margin: 1cm;
+             size: A4 portrait;
+           }
+           body {
+             font-size: 12pt;
+             line-height: 1.4;
+             font-family: 'MS Gothic', 'Yu Gothic', sans-serif;
+           }
+           .print\\:shadow-none {
+             box-shadow: none !important;
+           }
+           .print\\:border-2 {
+             border-width: 2px !important;
+           }
+           .print\\:h-32 {
+             height: 8rem !important;
+           }
+           .print\\:h-8 {
+             height: 2rem !important;
+           }
+           .print\\:text-2xl {
+             font-size: 1.5rem !important;
+             line-height: 2rem !important;
+           }
+           .print\\:mb-6 {
+             margin-bottom: 1.5rem !important;
+           }
+           .print\\:max-h-none {
+             max-height: none !important;
+           }
+           .print\\:break-inside-avoid {
+             break-inside: avoid !important;
+           }
+         }
+       `}</style>
     </div>
   );
 };

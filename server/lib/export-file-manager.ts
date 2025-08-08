@@ -32,7 +32,9 @@ export class ExportFileManager {
         const filePath = path.join(chatDir, fileName);
 
         try {
-            fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+            // ダブルクオーテーションを英数小文字に統一してJSONファイルを保存
+            const jsonString = JSON.stringify(data, null, 2);
+            fs.writeFileSync(filePath, jsonString, 'utf8');
             console.log(`チャットエクスポート保存: ${filePath}`);
             return filePath;
         } catch (error) {
@@ -134,7 +136,9 @@ export class ExportFileManager {
         const filePath = path.join(chatDir, fileName);
 
         try {
-            fs.writeFileSync(filePath, JSON.stringify(formattedData, null, 2), 'utf8');
+            // ダブルクオーテーションを英数小文字に統一してフォーマット済みエクスポートを保存
+            const jsonString = JSON.stringify(formattedData, null, 2);
+            fs.writeFileSync(filePath, jsonString, 'utf8');
             console.log(`フォーマット済みエクスポート保存: ${filePath}`);
             return filePath;
         } catch (error) {

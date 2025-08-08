@@ -90,12 +90,23 @@ router.get('/', async (req, res) => {
                 exportType: data.exportType,
                 exportTimestamp: data.exportTimestamp,
                 messageCount: data.chatData?.messages?.length || 0,
+                // 新しいフォーマットのデータを優先的に使用
+                machineType: data.machineType || data.chatData?.machineInfo?.machineTypeName || '',
+                machineNumber: data.machineNumber || data.chatData?.machineInfo?.machineNumber || '',
                 machineInfo: data.chatData?.machineInfo || {
                   selectedMachineType: '',
                   selectedMachineNumber: '',
-                  machineTypeName: '',
-                  machineNumber: ''
+                  machineTypeName: data.machineType || '',
+                  machineNumber: data.machineNumber || ''
                 },
+                // 新しいフォーマットのデータも含める
+                title: data.title,
+                problemDescription: data.problemDescription,
+                extractedComponents: data.extractedComponents,
+                extractedSymptoms: data.extractedSymptoms,
+                possibleModels: data.possibleModels,
+                conversationHistory: data.conversationHistory,
+                metadata: data.metadata,
                 chatData: data.chatData, // chatDataも含める
                 savedImages: data.savedImages || [],
                 fileSize: stats.size,
@@ -115,6 +126,16 @@ router.get('/', async (req, res) => {
         .sort((a, b) => new Date(b.exportTimestamp).getTime() - new Date(a.exportTimestamp).getTime());
       
       console.log('📋 読み込み完了:', chatExports.length, '件');
+      
+      // 機種・機械番号データの確認
+      chatExports.forEach((item, index) => {
+        console.log(`📋 アイテム ${index + 1}:`, {
+          fileName: item.fileName,
+          machineType: item.machineType,
+          machineNumber: item.machineNumber,
+          machineInfo: item.machineInfo
+        });
+      });
     }
 
     // フィルタリングを適用
@@ -124,39 +145,55 @@ router.get('/', async (req, res) => {
     
     if (machineType) {
       console.log('📋 機種フィルター適用:', machineType);
-      filteredExports = filteredExports.filter(item => 
-        item.machineInfo?.machineTypeName?.toLowerCase().includes(machineType.toLowerCase())
-      );
+      filteredExports = filteredExports.filter(item => {
+        // 新しいフォーマットと従来のフォーマットの両方に対応
+        const itemMachineType = item.machineType || item.originalChatData?.machineInfo?.machineTypeName || item.machineInfo?.machineTypeName || '';
+        console.log(`📋 機種フィルター対象: ${item.fileName} -> ${itemMachineType}`);
+        return itemMachineType.toLowerCase().includes(machineType.toLowerCase());
+      });
       console.log('📋 機種フィルター後の件数:', filteredExports.length);
     }
     
     if (machineNumber) {
       console.log('📋 機械番号フィルター適用:', machineNumber);
-      filteredExports = filteredExports.filter(item => 
-        item.machineInfo?.machineNumber?.toLowerCase().includes(machineNumber.toLowerCase())
-      );
+      filteredExports = filteredExports.filter(item => {
+        // 新しいフォーマットと従来のフォーマットの両方に対応
+        const itemMachineNumber = item.machineNumber || item.originalChatData?.machineInfo?.machineNumber || item.machineInfo?.machineNumber || '';
+        console.log(`📋 機械番号フィルター対象: ${item.fileName} -> ${itemMachineNumber}`);
+        return itemMachineNumber.toLowerCase().includes(machineNumber.toLowerCase());
+      });
       console.log('📋 機械番号フィルター後の件数:', filteredExports.length);
     }
     
     if (searchText) {
       console.log('📋 テキスト検索適用:', searchText);
       filteredExports = filteredExports.filter(item => {
-        // 検索対象のテキストを構築
+        // 新しいフォーマットと従来のフォーマットの両方に対応
         const searchableText = [
           item.fileName,
           item.exportType,
-          item.machineInfo?.machineTypeName,
-          item.machineInfo?.machineNumber,
-          // メッセージの内容も検索対象に含める
-          ...(item.chatData?.messages?.map((msg: any) => msg.content) || [])
+          item.title || item.question || '',
+          item.problemDescription || item.answer || '',
+          item.machineType || item.originalChatData?.machineInfo?.machineTypeName || item.machineInfo?.machineTypeName || '',
+          item.machineNumber || item.originalChatData?.machineInfo?.machineNumber || item.machineInfo?.machineNumber || '',
+          // 新しいフォーマットの抽出情報も検索対象に含める
+          ...(item.extractedComponents || []),
+          ...(item.extractedSymptoms || []),
+          ...(item.possibleModels || []),
+          // 従来のメッセージ内容も検索対象に含める
+          ...(item.chatData?.messages?.map((msg: any) => msg.content) || []),
+          // 新しいフォーマットの会話履歴も検索対象に含める
+          ...(item.conversationHistory?.map((msg: any) => msg.content) || [])
         ].join(' ').toLowerCase();
         
         console.log('📋 検索対象アイテム:', {
           fileName: item.fileName,
-          machineTypeName: item.machineInfo?.machineTypeName,
-          machineNumber: item.machineInfo?.machineNumber,
-          messageCount: item.chatData?.messages?.length,
-          messages: item.chatData?.messages?.map((msg: any) => msg.content?.substring(0, 30))
+          title: item.title || item.question,
+          problemDescription: item.problemDescription || item.answer,
+          machineType: item.machineType || item.originalChatData?.machineInfo?.machineTypeName || item.machineInfo?.machineTypeName,
+          machineNumber: item.machineNumber || item.originalChatData?.machineInfo?.machineNumber || item.machineInfo?.machineNumber,
+          extractedComponents: item.extractedComponents,
+          extractedSymptoms: item.extractedSymptoms
         });
         
         console.log('📋 検索対象テキスト:', searchableText);
@@ -226,13 +263,139 @@ router.get('/machine-data', async (req, res) => {
     // Content-Typeを明示的に設定
     res.setHeader('Content-Type', 'application/json');
 
-    // 一時的に空のデータを返す
-    console.log('⚠️ 機種・機械番号データ取得を一時的に無効化 - 空のデータを返します');
+    // knowledge-base/exportsのJSONファイルから機種・機械番号データを取得
+    const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+    
+    if (!fs.existsSync(exportsDir)) {
+      console.log('📋 エクスポートディレクトリが存在しません:', exportsDir);
+      return res.json({
+        machineTypes: [],
+        machines: []
+      });
+    }
 
-    res.json({
-      machineTypes: [],
-      machines: []
+    // 再帰的にJSONファイルを検索する関数
+    const findJsonFiles = (dir: string, baseDir: string = exportsDir): any[] => {
+      const files: any[] = [];
+      const items = fs.readdirSync(dir);
+      
+      for (const item of items) {
+        const itemPath = path.join(dir, item);
+        const stats = fs.statSync(itemPath);
+        
+        if (stats.isDirectory()) {
+          // サブディレクトリを再帰的に検索
+          files.push(...findJsonFiles(itemPath, baseDir));
+        } else if (item.endsWith('.json')) {
+          try {
+            const content = fs.readFileSync(itemPath, 'utf8');
+            const data = JSON.parse(content);
+            
+            // 相対パスを計算
+            const relativePath = path.relative(baseDir, itemPath);
+            
+            files.push({
+              fileName: relativePath,
+              filePath: itemPath,
+              data: data
+            });
+          } catch (error) {
+            console.warn(`JSONファイルの読み込みエラー: ${itemPath}`, error);
+          }
+        }
+      }
+      
+      return files;
+    };
+
+    const jsonFiles = findJsonFiles(exportsDir);
+    console.log('📋 検索されたJSONファイル数:', jsonFiles.length);
+
+    // 機種一覧を構築（重複除去）
+    const machineTypeSet = new Set<string>();
+    const machineTypes: Array<{ id: string; machineTypeName: string }> = [];
+    
+    // 機械番号一覧を構築（重複除去）
+    const machineSet = new Set<string>();
+    const machines: Array<{ id: string; machineNumber: string; machineTypeName: string }> = [];
+    
+    jsonFiles.forEach((file, index) => {
+      const data = file.data;
+      
+      console.log(`📋 ファイル ${file.fileName} のデータ構造:`, {
+        hasMachineType: !!data?.machineType,
+        machineType: data?.machineType,
+        hasMachineNumber: !!data?.machineNumber,
+        machineNumber: data?.machineNumber,
+        hasChatData: !!data?.chatData,
+        hasMachineInfo: !!data?.chatData?.machineInfo
+      });
+      
+      // 新しいフォーマットと従来フォーマットの両方に対応
+      let machineTypeName = '';
+      let machineNumber = '';
+      
+      // 新しいフォーマットから取得
+      if (data?.machineType) {
+        machineTypeName = data.machineType;
+        console.log(`📋 新しいフォーマットから機種取得: ${machineTypeName}`);
+      } else if (data?.originalChatData?.machineInfo?.machineTypeName) {
+        machineTypeName = data.originalChatData.machineInfo.machineTypeName;
+        console.log(`📋 originalChatDataから機種取得: ${machineTypeName}`);
+      } else if (data?.chatData?.machineInfo?.machineTypeName) {
+        machineTypeName = data.chatData.machineInfo.machineTypeName;
+        console.log(`📋 従来フォーマットから機種取得: ${machineTypeName}`);
+      }
+      
+      if (data?.machineNumber) {
+        machineNumber = data.machineNumber;
+        console.log(`📋 新しいフォーマットから機械番号取得: ${machineNumber}`);
+      } else if (data?.originalChatData?.machineInfo?.machineNumber) {
+        machineNumber = data.originalChatData.machineInfo.machineNumber;
+        console.log(`📋 originalChatDataから機械番号取得: ${machineNumber}`);
+      } else if (data?.chatData?.machineInfo?.machineNumber) {
+        machineNumber = data.chatData.machineInfo.machineNumber;
+        console.log(`📋 従来フォーマットから機械番号取得: ${machineNumber}`);
+      }
+      
+      // 機種データを追加
+      if (machineTypeName && !machineTypeSet.has(machineTypeName)) {
+        machineTypeSet.add(machineTypeName);
+        machineTypes.push({
+          id: `type_${index}`,
+          machineTypeName: machineTypeName
+        });
+        console.log(`📋 機種データ追加: ${machineTypeName}`);
+      }
+      
+      // 機械番号データを追加
+      if (machineNumber && machineTypeName) {
+        const key = `${machineNumber}_${machineTypeName}`;
+        if (!machineSet.has(key)) {
+          machineSet.add(key);
+          machines.push({
+            id: `machine_${index}`,
+            machineNumber: machineNumber,
+            machineTypeName: machineTypeName
+          });
+          console.log(`📋 機械番号データ追加: ${machineNumber} (${machineTypeName})`);
+        }
+      }
     });
+
+    const result = {
+      machineTypes,
+      machines
+    };
+
+    console.log('📋 機種・機械番号データ取得結果:', {
+      machineTypes: machineTypes.length,
+      machines: machines.length,
+      sampleMachineTypes: machineTypes.slice(0, 3),
+      sampleMachines: machines.slice(0, 3)
+    });
+
+    res.json(result);
 
   } catch (error) {
     console.error('❌ 機種・機械番号データ取得エラー:', error);
@@ -732,6 +895,8 @@ router.post('/generate-report', async (req, res) => {
       if (searchFilters) {
         if (searchFilters.machineType) {
           reportData = reportData.filter(item => 
+            item.machineType?.includes(searchFilters.machineType) ||
+            item.originalChatData?.machineInfo?.machineTypeName?.includes(searchFilters.machineType) ||
             item.chatData?.machineInfo?.machineTypeName?.includes(searchFilters.machineType) ||
             item.chatData?.machineInfo?.selectedMachineType?.includes(searchFilters.machineType)
           );
@@ -739,6 +904,8 @@ router.post('/generate-report', async (req, res) => {
 
         if (searchFilters.machineNumber) {
           reportData = reportData.filter(item => 
+            item.machineNumber?.includes(searchFilters.machineNumber) ||
+            item.originalChatData?.machineInfo?.machineNumber?.includes(searchFilters.machineNumber) ||
             item.chatData?.machineInfo?.machineNumber?.includes(searchFilters.machineNumber) ||
             item.chatData?.machineInfo?.selectedMachineNumber?.includes(searchFilters.machineNumber)
           );
@@ -762,8 +929,8 @@ router.post('/generate-report', async (req, res) => {
       items: reportData.map(item => ({
         chatId: item.chatId,
         userId: item.userId,
-        machineType: item.chatData?.machineInfo?.machineTypeName || '',
-        machineNumber: item.chatData?.machineInfo?.machineNumber || '',
+        machineType: item.machineType || item.originalChatData?.machineInfo?.machineTypeName || item.chatData?.machineInfo?.machineTypeName || '',
+        machineNumber: item.machineNumber || item.originalChatData?.machineInfo?.machineNumber || item.chatData?.machineInfo?.machineNumber || '',
         exportTimestamp: item.exportTimestamp,
         messageCount: item.chatData?.messages?.length || 0
       }))

@@ -3,7 +3,40 @@ export interface SupportHistoryItem {
   id: string;
   machineType: string;
   machineNumber: string;
-  jsonData: any;
+  jsonData: {
+    // 新しいフォーマット
+    title?: string;
+    problemDescription?: string;
+    machineType?: string;
+    machineNumber?: string;
+    extractedComponents?: string[];
+    extractedSymptoms?: string[];
+    possibleModels?: string[];
+    conversationHistory?: any[];
+    exportTimestamp?: string;
+    metadata?: {
+      total_messages?: number;
+      user_messages?: number;
+      ai_messages?: number;
+      total_media?: number;
+      export_format_version?: string;
+      fileName?: string;
+    };
+    // 従来のフォーマット（後方互換性）
+    question?: string;
+    answer?: string;
+    machineInfo?: {
+      machineTypeName?: string;
+      machineNumber?: string;
+    };
+    chatData?: {
+      messages?: any[];
+    };
+    messageCount?: number;
+    exportType?: string;
+    fileName?: string;
+    exportTimestamp?: string;
+  };
   imagePath?: string;
   createdAt: string;
 }
