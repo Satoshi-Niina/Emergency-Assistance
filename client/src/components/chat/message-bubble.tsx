@@ -362,7 +362,7 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
 
   return (
     <div 
-      className={`flex items-end mb-4 ${isUserMessage ? "" : "flex-row-reverse"} min-w-[250px] ${isDraft ? "draft-message animate-pulse" : ""}`}
+      className={`flex items-end mb-4 ${isUserMessage ? "justify-start" : "justify-end"} min-w-[250px] ${isDraft ? "draft-message animate-pulse" : ""}`}
       onMouseUp={handleMouseUp}
     >
       <div className={`mx-2 flex flex-col ${isUserMessage ? "items-start" : "items-end"} max-w-[70%] min-w-[230px]`}>
@@ -384,8 +384,8 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
         <div 
           className={`px-4 py-3 mb-1 shadow-sm w-full ${
             isUserMessage 
-              ? `chat-bubble-user bg-blue-50 rounded-[18px_18px_4px_18px] border ${isDraft ? "border-blue-400 border-dashed" : "border-blue-200 border-solid"}` 
-              : "chat-bubble-ai bg-white rounded-[18px_18px_18px_4px] border border-blue-200 border-solid"
+              ? `chat-bubble-user bg-blue-500 text-white rounded-[18px_18px_18px_4px] border border-blue-500` 
+              : "chat-bubble-ai bg-white rounded-[18px_18px_4px_18px] border border-gray-200"
           }`}
         >
           <div className="relative">
@@ -413,7 +413,7 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
 
               // テキストの場合
               return (
-                <p className={!isUserMessage ? "text-blue-600" : "text-black"}>
+                <p className={isUserMessage ? "text-white" : "text-gray-900"}>
                   {content}
                 </p>
               );
@@ -434,16 +434,14 @@ export default function MessageBubble({ message, isDraft = false }: MessageBubbl
           {/* Display media attachments if any */}
           {renderMedia()}
         </div>
-        <span className="text-xs text-blue-400">{formattedTime}</span>
+        <span className={`text-xs ${isUserMessage ? "text-blue-400" : "text-gray-400"}`}>{formattedTime}</span>
       </div>
       <div>
         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-          isUserMessage ? "bg-blue-500" : "bg-indigo-600"
+          isUserMessage ? "bg-blue-500" : "bg-gray-500"
         }`}>
-          <span className={`material-icons text-white text-sm ${
-            isUserMessage ? "" : ""
-          }`}>
-            {isUserMessage ? "person" : "smart_toy"}
+          <span className="text-white text-sm">
+            {isUserMessage ? "👤" : "🤖"}
           </span>
         </div>
       </div>

@@ -281,6 +281,102 @@ router.get('/search', async (req, res) => {
 });
 
 /**
+ * POST /api/knowledge-base/process
+ * ナレッジデータのベクトル化処理を実行
+ */
+router.post('/process', async (req, res) => {
+  try {
+    console.log('📚 ナレッジデータベクトル化処理開始');
+    
+    // ナレッジベースのインデックスを読み込み
+    const index = loadKnowledgeBaseIndex();
+    
+    if (!index.knowledge || index.knowledge.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: '処理対象のナレッジデータが見つかりません'
+      });
+    }
+    
+    let processedCount = 0;
+    const errors: string[] = [];
+    
+    // 各ナレッジデータをベクトル化処理
+    for (const knowledgeItem of index.knowledge) {
+      try {
+        // ファイルが存在するかチェック
+        if (!fs.existsSync(knowledgeItem.path)) {
+          errors.push(`ファイルが見つかりません: ${knowledgeItem.path}`);
+          continue;
+        }
+        
+        // ファイル内容を読み込み
+        const content = fs.readFileSync(knowledgeItem.path, 'utf-8');
+        
+        // ベクトル化処理（OpenAI Embeddings APIを使用）
+        if (process.env.OPENAI_API_KEY) {
+          try {
+            const { openai } = await import('../lib/openai.js');
+            if (openai) {
+              const response = await openai.embeddings.create({
+                model: "text-embedding-3-small",
+                input: content
+              });
+              
+              const embedding = response.data[0].embedding;
+              
+              // ベクトルデータを保存
+              const embeddingPath = knowledgeItem.path.replace('.txt', '_embedding.json');
+              fs.writeFileSync(embeddingPath, JSON.stringify({
+                embedding,
+                timestamp: new Date().toISOString(),
+                model: "text-embedding-3-small"
+              }));
+              
+              // インデックスを更新
+              knowledgeItem.embeddingPath = embeddingPath;
+              knowledgeItem.processedAt = new Date().toISOString();
+              
+              processedCount++;
+              console.log(`✅ ベクトル化完了: ${knowledgeItem.title}`);
+            }
+          } catch (embeddingError) {
+            console.error(`ベクトル化エラー (${knowledgeItem.title}):`, embeddingError);
+            errors.push(`ベクトル化に失敗: ${knowledgeItem.title}`);
+          }
+        } else {
+          errors.push('OpenAI APIキーが設定されていません');
+          break;
+        }
+      } catch (error) {
+        console.error(`処理エラー (${knowledgeItem.title}):`, error);
+        errors.push(`処理に失敗: ${knowledgeItem.title}`);
+      }
+    }
+    
+    // 更新されたインデックスを保存
+    fs.writeFileSync(INDEX_FILE, JSON.stringify(index, null, 2));
+    
+    res.json({
+      success: true,
+      message: `${processedCount}件のナレッジデータをベクトル化しました`,
+      processedCount,
+      totalCount: index.knowledge.length,
+      errors: errors.length > 0 ? errors : undefined,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ ナレッジデータベクトル化処理エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'ナレッジデータのベクトル化処理に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
  * ナレッジデータの種類ラベルを取得
  */
 function getTypeLabel(type: KnowledgeType): string {
