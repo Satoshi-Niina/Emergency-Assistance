@@ -1,20 +1,16 @@
-import { useState, useRef, useEffect } from "react";
-import { useChat } from "../../context/chat-context";
-import { Button } from "../../components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
-import { 
-  Camera, 
-  VideoIcon, 
-  X, 
-  Square, 
-  Pause, 
-  Circle, 
-  TabletSmartphone,
-  RotateCcw
-} from "lucide-react";
-import { Switch } from "../../components/ui/switch";
-import { Label } from "../../components/ui/label";
-import { useToast } from "../../hooks/use-toast.ts";
+import React, { useState, useRef, useEffect } from 'react';
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Camera, RotateCcw, X, Download, Upload, Settings, Zap, Eye, EyeOff, Volume2, VolumeX, TabletSmartphone, Video, Pause, Square, Circle } from 'lucide-react';
+import { useToast } from '../../hooks/use-toast';
+import { useChat } from '../../context/chat-context';
+import { useAuth } from '../../context/auth-context';
+import { useIsMobile } from '../../hooks/use-mobile';
+import { useIsTablet } from '../../hooks/use-tablet';
+import { useIsDesktop } from '../../hooks/use-desktop';
+import { useIsLargeScreen } from '../../hooks/use-large-screen';
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useOrientation } from "../../hooks/use-orientation";
 
 export default function CameraModal() {
@@ -363,7 +359,7 @@ export default function CameraModal() {
                 checked={isVideoMode}
                 onCheckedChange={toggleCameraMode}
               />
-              <VideoIcon className="h-6 w-6 ml-2 text-indigo-600" />
+              <Video className="h-6 w-6 ml-2 text-indigo-600" />
             </div>
             <Button 
               variant="ghost" 

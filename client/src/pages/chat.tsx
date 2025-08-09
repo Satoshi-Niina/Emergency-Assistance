@@ -8,15 +8,18 @@ import ImagePreviewModal from "../components/chat/image-preview-modal";
 import EmergencyGuideDisplay from "../components/emergency-guide/emergency-guide-display";
 import KeywordButtons from "../components/troubleshooting/keyword-buttons";
 import StepByStepQA from "../components/chat/step-by-step-qa";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../components/ui/alert-dialog";
-import { RotateCcw, Download, Upload, FileText, BookOpen, Activity, ArrowLeft, X, Search, Send, Camera, Trash2, RefreshCw, Brain } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { RotateCcw, Download, Upload, FileText, BookOpen, Activity, ArrowLeft, X, Search, Send, Camera, Trash2, RefreshCw, Brain, Wrench, Database } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { searchTroubleshootingFlows, japaneseGuideTitles } from "../lib/troubleshooting-search";
 import { QAAnswer } from "../lib/qa-flow-manager";
+import TroubleshootingQABubble from "../components/chat/troubleshooting-qa-bubble";
+import SolutionBubble from "../components/chat/solution-bubble";
+import { Label } from "@/components/ui/label";
 
 export default function ChatPage() {
   const {
@@ -66,16 +69,120 @@ export default function ChatPage() {
   const [filteredMachineTypes, setFilteredMachineTypes] = useState<Array<{id: string, machine_type_name: string}>>([]);
   const [filteredMachines, setFilteredMachines] = useState<Array<{id: string, machine_number: string}>>([]);
 
+  // トラブルシューティングQAの状態管理
+  const [troubleshootingMode, setTroubleshootingMode] = useState(false);
+  const [troubleshootingSession, setTroubleshootingSession] = useState<{
+    problemDescription: string;
+    answers: any[];
+    currentQuestion?: string;
+    currentOptions?: string[];
+    reasoning?: string;
+  } | null>(null);
+
+  // ナレッジデータ管理の状態
+  const [knowledgeData, setKnowledgeData] = useState<any[]>([]);
+  const [isLoadingKnowledge, setIsLoadingKnowledge] = useState(false);
+
   // 機種データの初期読み込み
   useEffect(() => {
     fetchMachineTypes();
+    fetchKnowledgeData();
   }, []);
 
-  // ドロップダウン外クリックで閉じる
+  // 機種データが更新された時にフィルタリングリストも更新
+  useEffect(() => {
+    console.log('🔍 機種データ更新検知:', {
+      machineTypesCount: machineTypes.length,
+      machineTypes: machineTypes,
+      filteredMachineTypesCount: filteredMachineTypes.length
+    });
+    setFilteredMachineTypes(machineTypes);
+  }, [machineTypes]);
+
+  // 機械データが更新された時にフィルタリングリストも更新
+  useEffect(() => {
+    console.log('🔍 機械データ更新検知:', {
+      machinesCount: machines.length,
+      machines: machines,
+      filteredMachinesCount: filteredMachines.length
+    });
+    setFilteredMachines(machines);
+  }, [machines]);
+
+  // ナレッジデータを取得
+  const fetchKnowledgeData = async () => {
+    try {
+      setIsLoadingKnowledge(true);
+      const response = await fetch(`/api/knowledge-base`);
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setKnowledgeData(result.data);
+          console.log('✅ ナレッジデータ取得成功:', result.data.length + '件');
+        } else {
+          console.error('❌ ナレッジデータ取得失敗:', result.message);
+          setKnowledgeData([]);
+        }
+      } else {
+        throw new Error(`Failed to fetch knowledge data: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('❌ ナレッジデータ取得エラー:', error);
+      toast({
+        title: "エラー",
+        description: error instanceof Error ? error.message : "ナレッジデータの取得に失敗しました",
+        variant: "destructive"
+      });
+      setKnowledgeData([]);
+    } finally {
+      setIsLoadingKnowledge(false);
+    }
+  };
+
+  // ナレッジデータのベクトル化処理
+  const processKnowledgeData = async () => {
+    try {
+      setIsLoadingKnowledge(true);
+      const response = await fetch(`/api/knowledge-base/process`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          toast({
+            title: "成功",
+            description: "ナレッジデータのベクトル化処理が完了しました",
+          });
+          // データを再取得
+          await fetchKnowledgeData();
+        } else {
+          throw new Error(result.message || "ベクトル化処理に失敗しました");
+        }
+      } else {
+        throw new Error(`Failed to process knowledge data: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('❌ ナレッジデータ処理エラー:', error);
+      toast({
+        title: "エラー",
+        description: error instanceof Error ? error.message : "ナレッジデータの処理に失敗しました",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingKnowledge(false);
+    }
+  };
+
+  // ドロップダウンの表示/非表示制御
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
-      if (!target.closest('.machine-dropdown')) {
+      if (!target.closest('#machine-type') && !target.closest('#machine-number')) {
         setShowMachineTypeSuggestions(false);
         setShowMachineNumberSuggestions(false);
       }
@@ -103,9 +210,11 @@ export default function ChatPage() {
   const fetchMachineTypes = useCallback(async () => {
     try {
       setIsLoadingMachineTypes(true);
+      console.log('🔍 機種一覧取得開始');
+      
       // プロキシ経由でアクセス（相対パスを使用）
-      const apiUrl = '/api/machines/machine-types';
-      console.log('🔍 機種一覧取得開始:', apiUrl);
+      const apiUrl = `/api/machines/machine-types`;
+      console.log('🔍 機種一覧取得URL:', apiUrl);
       console.log('🔍 現在のURL:', window.location.href);
       
       const response = await fetch(apiUrl, {
@@ -124,81 +233,143 @@ export default function ChatPage() {
         console.log('✅ 機種一覧取得結果:', result);
         if (result.success) {
           console.log('✅ 機種一覧設定完了:', result.data.length, '件');
+          console.log('✅ 機種データ:', result.data);
           setMachineTypes(result.data);
+          setFilteredMachineTypes(result.data); // 初期表示用にも設定
         } else {
           console.error('❌ 機種一覧取得成功だがsuccess=false:', result);
+          setMachineTypes([]);
+          setFilteredMachineTypes([]);
         }
       } else {
         const errorText = await response.text();
         console.error('❌ 機種一覧取得エラー:', response.status, errorText);
+        setMachineTypes([]);
+        setFilteredMachineTypes([]);
       }
     } catch (error) {
       console.error('❌ 機種一覧取得エラー:', error);
-      // エラーが発生してもチャット画面は表示されるようにする
+      setMachineTypes([]);
+      setFilteredMachineTypes([]);
     } finally {
       setIsLoadingMachineTypes(false);
+      console.log('🔍 機種一覧取得完了、最終状態:', {
+        machineTypesCount: machineTypes.length,
+        filteredMachineTypesCount: filteredMachineTypes.length
+      });
     }
   }, []);
 
   // 機種入力のフィルタリング
   const filterMachineTypes = (input: string) => {
+    console.log('🔍 機種フィルタリング開始:', input, '機種数:', machineTypes.length);
     if (!input.trim()) {
-      setFilteredMachineTypes([]);
+      console.log('✅ 入力が空のため全機種を表示:', machineTypes.length, '件');
+      setFilteredMachineTypes(machineTypes);
       return;
     }
     
     const filtered = machineTypes.filter(type => 
       type.machine_type_name.toLowerCase().includes(input.toLowerCase())
     );
+    console.log('✅ フィルタリング結果:', filtered.length, '件');
     setFilteredMachineTypes(filtered);
   };
 
   // 機械番号入力のフィルタリング
   const filterMachines = (input: string) => {
+    console.log('🔍 機械番号フィルタリング開始:', input, '機械数:', machines.length);
     if (!input.trim()) {
-      setFilteredMachines([]);
+      console.log('✅ 入力が空のため全機械を表示:', machines.length, '件');
+      setFilteredMachines(machines);
       return;
     }
     
     const filtered = machines.filter(machine => 
       machine.machine_number.toLowerCase().includes(input.toLowerCase())
     );
+    console.log('✅ フィルタリング結果:', filtered.length, '件');
     setFilteredMachines(filtered);
   };
 
   // 機種選択処理
   const handleMachineTypeSelect = (type: {id: string, machine_type_name: string}) => {
-    console.log('🔍 機種選択:', type);
+    console.log('🔍 機種選択処理関数が呼び出されました');
+    console.log('🔍 機種選択開始:', type);
+    console.log('🔍 選択前の状態:', {
+      selectedMachineType,
+      machineTypeInput,
+      showMachineTypeSuggestions
+    });
+    
+    // 状態を確実に更新
     setSelectedMachineType(type.id);
     setMachineTypeInput(type.machine_type_name);
     setShowMachineTypeSuggestions(false);
-    setFilteredMachineTypes([]);
+    
+    console.log('🔍 選択後の状態:', {
+      selectedMachineType: type.id,
+      machineTypeInput: type.machine_type_name,
+      showMachineTypeSuggestions: false
+    });
     
     // 機種変更時は機械番号をリセット
     setSelectedMachineNumber('');
     setMachineNumberInput('');
+    setMachines([]);
     setFilteredMachines([]);
     
     // 対応する機械番号を取得
     fetchMachines(type.id);
+    
+    // デバッグ: 状態更新後の確認
+    setTimeout(() => {
+      console.log('🔍 機種選択後の状態確認:', {
+        selectedMachineType: type.id,
+        machineTypeInput: type.machine_type_name,
+        showMachineTypeSuggestions: false
+      });
+    }, 0);
   };
 
   // 機械番号選択処理
   const handleMachineNumberSelect = (machine: {id: string, machine_number: string}) => {
-    console.log('🔍 機械番号選択:', machine);
+    console.log('🔍 機械番号選択開始:', machine);
+    console.log('🔍 選択前の状態:', {
+      selectedMachineNumber,
+      machineNumberInput,
+      showMachineNumberSuggestions
+    });
+    
+    // 状態を確実に更新
     setSelectedMachineNumber(machine.id);
     setMachineNumberInput(machine.machine_number);
     setShowMachineNumberSuggestions(false);
-    setFilteredMachines([]);
+    
+    console.log('🔍 選択後の状態:', {
+      selectedMachineNumber: machine.id,
+      machineNumberInput: machine.machine_number,
+      showMachineNumberSuggestions: false
+    });
+    
+    // デバッグ: 状態更新後の確認
+    setTimeout(() => {
+      console.log('🔍 機械番号選択後の状態確認:', {
+        selectedMachineNumber: machine.id,
+        machineNumberInput: machine.machine_number,
+        showMachineNumberSuggestions: false
+      });
+    }, 0);
   };
 
   // 追加: 指定機種に紐づく機械番号一覧を取得する関数（設定UIと同じAPIを使用）
   const fetchMachines = useCallback(async (typeId: string) => {
     try {
       setIsLoadingMachines(true);
+      console.log('🔍 機械番号一覧取得開始, 機種ID:', typeId);
+      
       // プロキシ経由でアクセス（相対パスを使用）
       const apiUrl = `/api/machines/machines?type_id=${typeId}`;
-      console.log('🔍 機械番号一覧取得開始, 機種ID:', typeId);
       console.log('🔍 機械番号一覧取得URL:', apiUrl);
       
       const response = await fetch(apiUrl, {
@@ -216,19 +387,30 @@ export default function ChatPage() {
         console.log('✅ 機械番号一覧取得結果:', result);
         if (result.success) {
           console.log('✅ 機械番号一覧設定完了:', result.data.length, '件');
+          console.log('✅ 機械番号データ:', result.data);
           setMachines(result.data);
+          setFilteredMachines(result.data); // 初期表示用
         } else {
           console.error('❌ 機械番号一覧取得成功だがsuccess=false:', result);
+          setMachines([]);
+          setFilteredMachines([]);
         }
       } else {
         const errorText = await response.text();
         console.error('❌ 機械番号一覧取得エラー:', response.status, errorText);
+        setMachines([]);
+        setFilteredMachines([]);
       }
     } catch (error) {
       console.error('❌ 機械番号一覧取得エラー:', error);
-      // エラーが発生してもチャット画面は表示されるようにする
+      setMachines([]);
+      setFilteredMachines([]);
     } finally {
       setIsLoadingMachines(false);
+      console.log('🔍 機械番号一覧取得完了、最終状態:', {
+        machinesCount: machines.length,
+        filteredMachinesCount: filteredMachines.length
+      });
     }
   }, []);
 
@@ -242,6 +424,7 @@ export default function ChatPage() {
       fetchMachines(typeId);
     } else {
       setMachines([]);
+      setFilteredMachines([]);
     }
   };
 
@@ -267,143 +450,131 @@ export default function ChatPage() {
     });
   }, [chatId, initializeChat, fetchMachineTypes]);
 
-  // 機種データの状態変更を監視（デバッグ用）- 一時的に無効化
-  // useEffect(() => {
-  //   console.log('📊 機種データ状態更新:', {
-  //     machineTypesCount: machineTypes.length,
-  //     selectedMachineType,
-  //     machineTypeInput,
-  //     isLoadingMachineTypes
-  //   });
-  // }, [machineTypes.length, selectedMachineType, machineTypeInput, isLoadingMachineTypes]);
+  // 機種データの状態変更を監視してフィルタリングを更新
+  useEffect(() => {
+    console.log('📊 機種データ状態更新:', {
+      machineTypesCount: machineTypes.length,
+      selectedMachineType,
+      machineTypeInput,
+      isLoadingMachineTypes
+    });
+    
+    // 機種データが更新されたら、現在の入力に基づいてフィルタリングを更新
+    if (machineTypes.length > 0) {
+      filterMachineTypes(machineTypeInput);
+    }
+  }, [machineTypes, machineTypeInput]);
 
-  // 機械番号データの状態変更を監視（デバッグ用）- 一時的に無効化
-  // useEffect(() => {
-  //   console.log('📊 機械番号データ状態更新:', {
-  //     machinesCount: machines.length,
-  //     selectedMachineNumber,
-  //     machineNumberInput,
-  //     isLoadingMachines
-  //   });
-  // }, [machines.length, selectedMachineNumber, machineNumberInput, isLoadingMachines]);
+  // 機種入力の状態変更を監視
+  useEffect(() => {
+    console.log('📊 機種入力状態更新:', {
+      machineTypeInput,
+      selectedMachineType
+    });
+  }, [machineTypeInput, selectedMachineType]);
 
+  // 機械番号データの状態変更を監視してフィルタリングを更新
+  useEffect(() => {
+    console.log('📊 機械番号データ状態更新:', {
+      machinesCount: machines.length,
+      selectedMachineNumber,
+      machineNumberInput,
+      isLoadingMachines
+    });
+    
+    // 機械番号データが更新されたら、現在の入力に基づいてフィルタリングを更新
+    if (machines.length > 0) {
+      filterMachines(machineNumberInput);
+    }
+  }, [machines, machineNumberInput]);
 
+  // 機械番号入力の状態変更を監視
+  useEffect(() => {
+    console.log('📊 機械番号入力状態更新:', {
+      machineNumberInput,
+      selectedMachineNumber
+    });
+  }, [machineNumberInput, selectedMachineNumber]);
 
   // 追加: Q&Aモードの初期化（動的質問生成システムに変更済み）
 
-  // AI支援回答処理（統合版）
+  // AI支援の回答処理
   const handleAiSupportAnswer = async (answer: string) => {
-    const newAnswers = [...aiSupportAnswers, answer];
-    setAiSupportAnswers(newAnswers);
-    
-    // 回答をチャットに追加（左側に表示）
-    sendMessage(answer, [], false);
-    
-    // AI支援回答をサーバーに送信
     try {
-      if (chatId) {
-        const response = await fetch(`/api/chats/${chatId}/messages`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            content: answer,
-            useOnlyKnowledgeBase: true
-          })
-        });
+      const newAnswers = [...aiSupportAnswers, answer];
+      setAiSupportAnswers(newAnswers);
+      
+      // 回答をメッセージとして追加
+      const answerMessage = {
+        id: Date.now(),
+        content: answer,
+        isAiResponse: false,
+        senderId: 'user',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, answerMessage]);
+      
+      // 最低3つの質問を生成してから解決策を生成
+      if (newAnswers.length < 3) {
+        // 次の質問を生成
+        const nextQuestion = await generateNextQuestion(answer, newAnswers);
         
-        if (!response.ok) {
-          console.error('AI支援回答のサーバー送信に失敗:', response.status);
-        } else {
-          console.log('AI支援回答をサーバーに送信しました:', answer);
-        }
-      }
-    } catch (error) {
-      console.error('AI支援回答のサーバー送信エラー:', error);
-    }
-    
-    // 次の質問を動的に生成
-    setTimeout(async () => {
-      try {
-        const nextQuestionResult = await generateNextQuestion(answer, newAnswers);
-        
-        if (nextQuestionResult) {
-          // 次の質問がある場合
-          setCurrentQuestion(nextQuestionResult.question);
-          setCurrentOptions(nextQuestionResult.options || []);
+        if (nextQuestion) {
+          setCurrentQuestion(nextQuestion.question);
+          setCurrentOptions(nextQuestion.options || []);
           setCurrentQuestionIndex(prev => prev + 1);
-          sendMessage(nextQuestionResult.question, [], true);
           
-          // 次の質問をサーバーにシステムメッセージとして送信
-          if (chatId) {
-            const response = await fetch(`/api/chats/${chatId}/messages/system`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              credentials: 'include',
-              body: JSON.stringify({
-                content: nextQuestionResult.question,
-                isUserMessage: false
-              })
-            });
-            
-            if (!response.ok) {
-              console.error('次の質問のサーバー送信に失敗:', response.status);
-            } else {
-              console.log('次の質問をサーバーに送信しました:', nextQuestionResult.question);
-            }
-          }
-        } else {
-          // 質問終了、解決策を生成
-          const solution = await generateSolution(newAnswers);
-          sendMessage(solution, [], true);
-          
-          // 解決策をサーバーにシステムメッセージとして送信
-          if (chatId) {
-            const response = await fetch(`/api/chats/${chatId}/messages/system`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              credentials: 'include',
-              body: JSON.stringify({
-                content: solution,
-                isUserMessage: false
-              })
-            });
-            
-            if (!response.ok) {
-              console.error('解決策のサーバー送信に失敗:', response.status);
-            } else {
-              console.log('解決策をサーバーに送信しました');
-            }
-          }
-          
-          // AI支援モード終了
-          setTimeout(() => {
-            setAiSupportMode(false);
-            setCurrentQuestionIndex(0);
-            setAiSupportAnswers([]);
-            setAiSupportCompleted(false);
-            setCurrentQuestion("");
-            setCurrentOptions([]);
-          }, 1000);
+          // 質問をメッセージとして追加
+          const questionMessage = {
+            id: Date.now() + 1,
+            content: nextQuestion.question,
+            isAiResponse: true,
+            senderId: 'ai',
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, questionMessage]);
         }
-      } catch (error) {
-        console.error('次の質問生成エラー:', error);
-        // エラー時のフォールバック
-        sendMessage("質問生成中にエラーが発生しました。専門家に相談してください。", [], true);
-        setAiSupportMode(false);
-        setCurrentQuestionIndex(0);
-        setAiSupportAnswers([]);
-        setAiSupportCompleted(false);
+      } else {
+        // 3つ以上の回答が集まったら解決策を生成
+        const solution = await generateSolution(newAnswers);
+        setAiSupportCompleted(true);
         setCurrentQuestion("");
         setCurrentOptions([]);
+        
+        // 解決策をメッセージとして追加
+        const solutionMessage = {
+          id: Date.now(),
+          content: solution,
+          isAiResponse: true,
+          senderId: 'ai',
+          timestamp: new Date()
+        };
+        
+        setMessages(prev => [...prev, solutionMessage]);
+        
+        toast({
+          title: "AI支援完了",
+          description: "解決策を生成しました",
+        });
       }
-    }, 500);
+    } catch (error) {
+      console.error('AI支援回答エラー:', error);
+      toast({
+        title: "エラー",
+        description: "回答の処理に失敗しました",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // カメラボタンのクリック処理
+  const handleCameraClick = () => {
+    console.log('📸 カメラボタンがクリックされました');
+    // カメラモーダルを開くイベントを発火
+    window.dispatchEvent(new CustomEvent('open-camera'));
+
+    // デバッグ用: イベントが正しく発火されたかを確認
+    console.log('📸 open-camera イベントを発火しました');
   };
 
   // AI支援モード開始（統合版）
@@ -412,191 +583,174 @@ export default function ChatPage() {
     setCurrentQuestionIndex(0);
     setAiSupportAnswers([]);
     setAiSupportCompleted(false);
-    setCurrentQuestion("何が起こりましたか？");
-    setCurrentOptions([]);
     
-    // 初期メッセージと質問を送信
-    sendMessage("🤖 AI支援システムを開始します。\n\n専門的なナレッジベースを活用して、問題の原因を特定し、具体的な解決策を提案します。", [], true);
+    // 初期メッセージを送信
+    const initialMessage = "🤖 AI支援システムを開始します。\n\n発生した事象を教えてください。専門的なナレッジベースを活用して、問題の原因を特定し、具体的な解決策を提案します。";
+    sendMessage(initialMessage, [], true);
     
     // 少し遅延してから初期質問を送信
     setTimeout(() => {
-      sendMessage("何が起こりましたか？", [], true);
+      const initialQuestion = "どのような事象が発生しましたか？\n\n※具体的な症状や状況を教えてください。\n例：「エンジンが始動しない」「ブレーキが効かない」「異音がする」など\n\n👉 発生した事象を教えてください：";
+      setCurrentQuestion(initialQuestion);
+      setCurrentOptions([
+        "エンジンが始動しない",
+        "ブレーキが効かない",
+        "異音がする",
+        "警告ランプが点灯する",
+        "その他の問題"
+      ]);
+      
+      // 初期質問をメッセージとして追加
+      const questionMessage = {
+        id: Date.now(),
+        content: initialQuestion,
+        isAiResponse: true,
+        senderId: 'ai',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, questionMessage]);
     }, 500);
   };
 
-  // 動的質問生成関数（選択肢付き）
+  // AI支援の質問生成
   const generateDynamicQuestion = async (context: string, previousAnswers: string[]): Promise<{ question: string; options?: string[] }> => {
     try {
-      // ナレッジベースから関連情報を取得
-      const knowledgeContext = await fetchKnowledgeContext();
-      
-      console.log('🔍 動的質問生成開始:', {
-        context: context,
-        previousAnswersCount: previousAnswers.length,
-        knowledgeContextCount: knowledgeContext.length
-      });
-      
-      const response = await fetch('/api/chatgpt', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          text: `保守用車の故障診断の専門家として、以下の状況に基づいて次の質問と選択肢を生成してください。
-
-**現在の状況**: ${context}
-**これまでの回答**: ${previousAnswers.map((answer, index) => `Q${index + 1}: ${answer}`).join(', ')}
-**利用可能なナレッジベース情報**: ${knowledgeContext.join(', ')}
-
-以下の条件を満たす質問と選択肢を生成してください：
-1. **問題の原因特定に直結する**: 症状から原因を絞り込む質問
-2. **具体的な対応策を導く**: 回答によって具体的な処置が決まる質問
-3. **安全確認を優先**: 危険性の有無を最初に確認
-4. **段階的な診断**: 簡単な確認から複雑な診断へ
-5. **実用的な選択肢**: 具体的で分かりやすい選択肢を提示
-6. **ナレッジベース活用**: 利用可能な専門知識を活用した質問
-
-以下のJSON形式で返してください：
-{
-  "question": "具体的な質問内容",
-  "options": ["選択肢1", "選択肢2", "選択肢3", "選択肢4", "選択肢5"]
-}
-
-選択肢は3-5個程度で、具体的で分かりやすい内容にしてください。`,
-          useOnlyKnowledgeBase: true
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`API呼び出しエラー: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const responseText = data.response || "";
-      
-      // 応答が空またはエラーの場合は、デフォルトの質問を生成
-      if (!responseText || responseText.includes("解決策を生成できませんでした") || responseText.includes("専門家に相談してください")) {
-        console.log('⚠️ GPT応答が不適切なため、デフォルト質問を生成');
-        return generateDefaultQuestion(context, previousAnswers);
-      }
-      
-      try {
-        // JSONとしてパースを試行
-        const parsed = JSON.parse(responseText);
+      // 最低3つの質問を生成するまで続行
+      if (previousAnswers.length >= 3) {
         return {
-          question: parsed.question || "次の質問",
-          options: parsed.options || []
-        };
-      } catch {
-        // JSONパースに失敗した場合は、テキストから質問のみを抽出
-        return {
-          question: responseText || "次の質問",
+          question: "",
           options: []
         };
       }
+
+      // 前の回答に基づいて次の質問を生成
+      if (previousAnswers.length === 0) {
+        return {
+          question: "どのような事象が発生しましたか？\n\n※具体的な症状や状況を教えてください。",
+          options: [
+            "エンジンが始動しない",
+            "ブレーキが効かない",
+            "異音がする",
+            "警告ランプが点灯する",
+            "その他の問題"
+          ]
+        };
+      } else if (previousAnswers.length === 1) {
+        const firstAnswer = previousAnswers[0].toLowerCase();
+        
+        if (firstAnswer.includes("エンジン") && firstAnswer.includes("始動")) {
+          return {
+            question: "エンジンを始動しようとしたとき、どのような状態になりましたか？",
+            options: [
+              "キーを回しても何も起きない",
+              "セルモーターは回るが、エンジンがかからない",
+              "カチカチ音はするが、エンジンが動かない",
+              "始動しかけるが、すぐ止まる",
+              "異音や警告ランプが出た"
+            ]
+          };
+        } else if (firstAnswer.includes("ブレーキ")) {
+          return {
+            question: "ブレーキの状態について、どのような症状がありますか？",
+            options: [
+              "ブレーキペダルが柔らかい",
+              "ブレーキペダルが硬い",
+              "ブレーキを踏んでも効かない",
+              "ブレーキを踏むと異音がする",
+              "ブレーキランプが点灯する"
+            ]
+          };
+        } else if (firstAnswer.includes("異音")) {
+          return {
+            question: "どのような異音が聞こえますか？",
+            options: [
+              "エンジンから異音がする",
+              "ブレーキから異音がする",
+              "タイヤから異音がする",
+              "ギアから異音がする",
+              "その他の異音"
+            ]
+          };
+        } else if (firstAnswer.includes("警告") || firstAnswer.includes("ランプ")) {
+          return {
+            question: "どのような警告ランプが点灯していますか？",
+            options: [
+              "エンジン警告ランプ",
+              "オイル警告ランプ",
+              "バッテリー警告ランプ",
+              "ブレーキ警告ランプ",
+              "その他の警告ランプ"
+            ]
+          };
+        } else {
+          return {
+            question: "問題の詳細について教えてください。どのような症状がありますか？",
+            options: [
+              "動作しない",
+              "動作が不安定",
+              "異音がする",
+              "警告が出る",
+              "その他の症状"
+            ]
+          };
+        }
+      } else if (previousAnswers.length === 2) {
+        // 3つ目の質問：具体的な状況や環境について
+        return {
+          question: "問題が発生した状況について教えてください。",
+          options: [
+            "作業中に発生",
+            "起動時に発生",
+            "運転中に発生",
+            "停止中に発生",
+            "その他の状況"
+          ]
+        };
+      }
+
+      return {
+        question: "",
+        options: []
+      };
     } catch (error) {
-      console.error('❌ 動的質問生成エラー:', error);
-      return generateDefaultQuestion(context, previousAnswers);
-    }
-  };
-
-  // デフォルト質問生成関数
-  const generateDefaultQuestion = (context: string, previousAnswers: string[]): { question: string; options: string[] } => {
-    if (previousAnswers.length === 0) {
+      console.error('質問生成エラー:', error);
       return {
-        question: "キーを回したときの状態は？以下から近いものを教えてください：",
-        options: [
-          "🔋 パネルのランプが全く点灯しない（無反応）",
-          "🔦 ランプは点灯するが、セルモーターが全く回らない",
-          "🚗 カチカチ音がするが、セルが回らない",
-          "🔄 セルが回るが、エンジンがかからない"
-        ]
-      };
-    } else if (previousAnswers.length === 1) {
-      return {
-        question: "エンジン停止前の状況を教えてください：",
-        options: [
-          "⚡ 突然停止した",
-          "🔧 作業中に停止した",
-          "🚗 走行中に停止した",
-          "⏰ 長時間放置後に停止した"
-        ]
-      };
-    } else {
-      return {
-        question: "現在の状況で最も重要な確認事項は？",
-        options: [
-          "🔋 バッテリー電圧の確認",
-          "⛽ 燃料残量の確認",
-          "🔧 エンジンオイルの確認",
-          "🌬️ エアフィルターの確認"
-        ]
+        question: "どのような問題が発生していますか？",
+        options: []
       };
     }
   };
 
-  // 次の質問を生成する関数（選択肢付き）
+  // 次の質問生成
   const generateNextQuestion = async (currentAnswer: string, allAnswers: string[]): Promise<{ question: string; options?: string[] } | null> => {
     try {
       // ナレッジベースから関連情報を取得
       const knowledgeContext = await fetchKnowledgeContext();
       
-      const response = await fetch('/api/chatgpt', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting-qa/answer`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include',
         body: JSON.stringify({
-          text: `保守用車の故障診断の専門家として、以下の回答を分析して次の質問と選択肢を決定してください。
-
-**現在の回答**: ${currentAnswer}
-**これまでの回答**: ${allAnswers.map((answer, index) => `Q${index + 1}: ${answer}`).join(', ')}
-**利用可能なナレッジベース情報**: ${knowledgeContext.join(', ')}
-
-以下の条件で次の質問を決定してください：
-1. **問題解決に十分な情報が得られた場合**: "解決策を提示します" と返す
-2. **まだ情報が不足している場合**: 原因特定や処置決定に必要な次の質問と選択肢を生成
-3. **緊急対応が必要な場合**: "緊急対応が必要です" と返す
-4. **ナレッジベース活用**: 利用可能な専門知識を活用した質問
-
-質問が必要な場合は以下のJSON形式で返してください：
-{
-  "question": "具体的な質問内容",
-  "options": ["選択肢1", "選択肢2", "選択肢3", "選択肢4", "選択肢5"]
-}
-
-解決策提示や緊急対応の場合は "解決策を提示します" または "緊急対応が必要です" と返してください。`,
-          useOnlyKnowledgeBase: true
+          answer: currentAnswer,
+          previousAnswers: allAnswers,
+          knowledgeContext: knowledgeContext
         })
       });
 
-      if (!response.ok) {
-        throw new Error(`API呼び出しエラー: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const result = data.response || "";
-      
-      // 解決策提示や緊急対応の判定
-      if (result.includes("解決策を提示") || result.includes("緊急対応")) {
-        return null; // 質問終了
-      }
-      
-      try {
-        // JSONとしてパースを試行
-        const parsed = JSON.parse(result);
-        return {
-          question: parsed.question || "次の質問",
-          options: parsed.options || []
-        };
-      } catch {
-        // JSONパースに失敗した場合は、テキストから質問のみを抽出
-        return {
-          question: result || "次の質問",
-          options: []
-        };
+      if (response.ok) {
+        const data = await response.json();
+        if (data.question) {
+          return {
+            question: data.question,
+            options: data.options || []
+          };
+        } else {
+          return null; // 質問終了
+        }
+      } else {
+        throw new Error('次の質問生成に失敗しました');
       }
     } catch (error) {
       console.error('次の質問生成エラー:', error);
@@ -604,104 +758,453 @@ export default function ChatPage() {
     }
   };
 
-  // 解決策生成関数
+  // AI支援の解決策生成
   const generateSolution = async (allAnswers: string[]): Promise<string> => {
     try {
       // ナレッジベースから関連情報を取得
       const knowledgeContext = await fetchKnowledgeContext();
       
-      console.log('🔍 解決策生成開始:', {
-        answersCount: allAnswers.length,
-        knowledgeContextCount: knowledgeContext.length
-      });
+      // 回答内容を分析して解決策を生成
+      const problemDescription = allAnswers.join('、');
+      let solution = "";
       
-      const response = await fetch('/api/chatgpt', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          text: `保守用車の故障診断の専門家として、以下の回答に基づいて具体的な解決策を提示してください。
+      // エンジン関連の問題
+      if (problemDescription.includes("エンジン") && problemDescription.includes("始動")) {
+        solution = `🔧 エンジン始動問題の解決策
 
-**これまでの回答**: ${allAnswers.map((answer, index) => `Q${index + 1}: ${answer}`).join(', ')}
-**利用可能なナレッジベース情報**: ${knowledgeContext.join(', ')}
+【確認事項】
+1. バッテリー電圧の確認（12V以上必要）
+2. 燃料残量の確認
+3. エンジンオイルの確認
 
-以下の形式で解決策を提示してください：
-1. **問題の特定**: 回答から推測される問題
-2. **原因分析**: 考えられる原因
-3. **具体的な処置手順**: 段階的な対処方法
-4. **安全上の注意**: 作業時の注意事項
-5. **専門家への相談**: 必要に応じて専門家への相談タイミング
-6. **ナレッジベース参照**: 関連する技術情報やマニュアル
+【対処方法】
+1. バッテリー端子の清掃・締め付け確認
+2. 燃料フィルターの確認・交換
+3. スパークプラグの確認・清掃
+4. エンジンオイルの確認・交換
 
-実用的で安全な解決策を提示してください。
-必ず具体的な手順と安全上の注意を含めてください。`,
-          useOnlyKnowledgeBase: true
-        })
-      });
+【緊急時】
+- バッテリーが弱い場合は、ブースターケーブルでの応急処置
+- 燃料切れの場合は、燃料の補充
 
-      if (!response.ok) {
-        throw new Error(`API呼び出しエラー: ${response.status}`);
+専門的な点検が必要な場合は、メーカーまたは専門業者に相談してください。`;
       }
+      // ブレーキ関連の問題
+      else if (problemDescription.includes("ブレーキ")) {
+        solution = `🔧 ブレーキ問題の解決策
 
-      const data = await response.json();
-      const solution = data.response || "";
-      
-      // 解決策が空またはエラーメッセージの場合は、デフォルトの解決策を生成
-      if (!solution || solution.includes("解決策を生成できませんでした") || solution.includes("専門家に相談してください")) {
-        console.log('⚠️ GPT応答が不適切なため、デフォルト解決策を生成');
-        return generateDefaultSolution(allAnswers);
+【確認事項】
+1. ブレーキフルードの残量確認
+2. ブレーキパッドの摩耗状況
+3. ブレーキホースの損傷確認
+
+【対処方法】
+1. ブレーキフルードの補充・交換
+2. ブレーキパッドの交換
+3. ブレーキホースの交換
+4. ブレーキシステムの空気抜き
+
+【緊急時】
+- ブレーキが効かない場合は、エンジンブレーキとサイドブレーキを併用
+- 安全な場所に停車し、専門業者に連絡
+
+安全のため、ブレーキの問題は早期に専門業者に相談してください。`;
+      }
+      // 異音の問題
+      else if (problemDescription.includes("異音")) {
+        solution = `🔧 異音問題の解決策
+
+【確認事項】
+1. 異音の発生箇所の特定
+2. 異音の種類（金属音、摩擦音、振動音など）
+3. 異音の発生タイミング
+
+【対処方法】
+1. ボルト・ナットの締め付け確認
+2. ベルトの張り具合確認・交換
+3. 潤滑油の確認・補充
+4. 部品の摩耗・損傷確認
+
+【緊急時】
+- 大きな異音がする場合は、安全な場所に停車
+- エンジンを停止し、専門業者に連絡
+
+異音の原因特定には専門的な知識が必要です。専門業者に相談してください。`;
+      }
+      // 警告ランプの問題
+      else if (problemDescription.includes("警告") || problemDescription.includes("ランプ")) {
+        solution = `🔧 警告ランプ問題の解決策
+
+【確認事項】
+1. 点灯している警告ランプの種類
+2. エンジンオイルの残量
+3. 冷却水の残量
+4. バッテリーの状態
+
+【対処方法】
+1. エンジンオイルの確認・補充
+2. 冷却水の確認・補充
+3. バッテリー端子の清掃・締め付け
+4. フィルター類の確認・交換
+
+【緊急時】
+- 赤い警告ランプが点灯している場合は、即座にエンジンを停止
+- 安全な場所に停車し、専門業者に連絡
+
+警告ランプの点灯は重大な問題の可能性があります。専門業者に相談してください。`;
+      }
+      // その他の問題
+      else {
+        solution = `🔧 一般的な問題解決策
+
+【確認事項】
+1. 問題の発生状況の詳細確認
+2. 使用環境・条件の確認
+3. メンテナンス履歴の確認
+
+【対処方法】
+1. 基本的な点検項目の確認
+2. 清掃・調整の実施
+3. 消耗品の確認・交換
+4. 設定値の確認・調整
+
+【緊急時】
+- 安全を最優先に行動
+- 必要に応じて専門業者に連絡
+
+問題の詳細な分析が必要です。専門業者に相談することをお勧めします。`;
       }
       
-      return solution;
+      // ナレッジベースの情報があれば追加
+      if (knowledgeContext && knowledgeContext.length > 0) {
+        solution += `\n\n📚 ナレッジベース情報：
+${knowledgeContext.slice(0, 3).join('\n')}`;
+      }
+      
+      return solution || "解決策を生成できませんでした。専門家に相談してください。";
     } catch (error) {
-      console.error('❌ 解決策生成エラー:', error);
-      return generateDefaultSolution(allAnswers);
+      console.error('解決策生成エラー:', error);
+      return "解決策を生成できませんでした。専門家に相談してください。";
     }
   };
+
+  // デフォルトの質問生成関数
+  const generateDefaultQuestion = (context: string, previousAnswers: string[]): { question: string; options: string[] } => {
+    if (previousAnswers.length === 0) {
+      return {
+        question: "どのような事象が発生しましたか？\n\n※具体的な症状や状況を教えてください。",
+        options: [
+          "エンジンが始動しない",
+          "ブレーキが効かない",
+          "異音がする",
+          "警告ランプが点灯する",
+          "その他の問題"
+        ]
+      };
+    } else if (previousAnswers.length === 1) {
+      // 最初の回答（発生事象）に基づいて次の質問を決定
+      const firstAnswer = previousAnswers[0].toLowerCase();
+      
+      if (firstAnswer.includes("エンジン") && firstAnswer.includes("始動")) {
+        return {
+          question: "エンジンを始動しようとしたとき、どのような状態になりましたか？",
+          options: [
+            "キーを回しても何も起きない",
+            "セルモーターは回るが、エンジンがかからない",
+            "カチカチ音はするが、エンジンが動かない",
+            "始動しかけるが、すぐ止まる",
+            "異音や警告ランプが出た"
+          ]
+        };
+      } else if (firstAnswer.includes("ブレーキ")) {
+        return {
+          question: "ブレーキの状態について、どのような症状がありますか？",
+          options: [
+            "ブレーキペダルが柔らかい",
+            "ブレーキペダルが硬い",
+            "ブレーキを踏んでも効かない",
+            "ブレーキを踏むと異音がする",
+            "ブレーキランプが点灯する"
+          ]
+        };
+      } else if (firstAnswer.includes("異音")) {
+        return {
+          question: "どのような異音が聞こえますか？",
+          options: [
+            "エンジンから異音がする",
+            "ブレーキから異音がする",
+            "タイヤから異音がする",
+            "ギアから異音がする",
+            "その他の異音"
+          ]
+        };
+      } else if (firstAnswer.includes("警告") || firstAnswer.includes("ランプ")) {
+        return {
+          question: "どのような警告ランプが点灯していますか？",
+          options: [
+            "エンジン警告ランプ",
+            "オイル警告ランプ",
+            "バッテリー警告ランプ",
+            "ブレーキ警告ランプ",
+            "その他の警告ランプ"
+          ]
+        };
+      } else {
+        return {
+          question: "問題の詳細について教えてください。どのような症状がありますか？",
+          options: [
+            "動作しない",
+            "動作が不安定",
+            "異音がする",
+            "警告が出る",
+            "その他の症状"
+          ]
+        };
+      }
+    } else if (previousAnswers.length === 2) {
+      // 2つ目の回答に基づいて次の質問を決定
+      const secondAnswer = previousAnswers[1].toLowerCase();
+      
+      if (secondAnswer.includes("何も起きない") || secondAnswer.includes("無反応")) {
+        return {
+          question: "バッテリーの状態を確認してください。どのような状態ですか？",
+          options: [
+            "バッテリーが弱い（電圧が低い）",
+            "バッテリーは正常（電圧は12V以上）",
+            "バッテリー端子が緩んでいる",
+            "バッテリー端子が腐食している",
+            "その他"
+          ]
+        };
+      } else if (secondAnswer.includes("セルモーター") || secondAnswer.includes("セルが回る")) {
+        return {
+          question: "燃料の状態を確認してください。どのような状態ですか？",
+          options: [
+            "燃料が不足している",
+            "燃料は十分にある",
+            "燃料フィルターが詰まっている可能性",
+            "燃料ポンプの音がしない",
+            "その他"
+          ]
+        };
+      } else if (secondAnswer.includes("カチカチ") || secondAnswer.includes("音がする")) {
+        return {
+          question: "バッテリーの状態を確認してください。どのような状態ですか？",
+          options: [
+            "バッテリーが弱い（電圧が低い）",
+            "バッテリーは正常（電圧は12V以上）",
+            "バッテリー端子が緩んでいる",
+            "バッテリー端子が腐食している",
+            "その他"
+          ]
+        };
+      } else if (secondAnswer.includes("すぐ止まる") || secondAnswer.includes("始動しかける")) {
+        return {
+          question: "エンジンが始動した後、どのくらいの時間で止まりますか？",
+          options: [
+            "数秒で止まる",
+            "10-30秒程度で止まる",
+            "1分以上動くが不安定",
+            "アイドリングは安定している",
+            "その他"
+          ]
+        };
+      } else {
+        return {
+          question: "現在の状況で最も重要な確認事項は？",
+          options: [
+            "バッテリー電圧の確認",
+            "燃料残量の確認",
+            "エンジンオイルの確認",
+            "エアフィルターの確認",
+            "その他"
+          ]
+        };
+      }
+    } else if (previousAnswers.length === 3) {
+      // 3つ目の回答に基づいて次の質問を決定
+      const thirdAnswer = previousAnswers[2].toLowerCase();
+      
+      if (thirdAnswer.includes("バッテリー")) {
+        return {
+          question: "バッテリーの対処を行いましたか？どのような対応をしましたか？",
+          options: [
+            "バッテリーを充電した",
+            "バッテリー端子を清掃・締め直した",
+            "新しいバッテリーに交換した",
+            "まだ何もしていない",
+            "その他"
+          ]
+        };
+      } else if (thirdAnswer.includes("燃料")) {
+        return {
+          question: "燃料の対処を行いましたか？どのような対応をしましたか？",
+          options: [
+            "燃料を補給した",
+            "燃料フィルターを交換した",
+            "燃料ポンプを確認した",
+            "まだ何もしていない",
+            "その他"
+          ]
+        };
+      } else {
+        return {
+          question: "これまでの対応で状況は改善しましたか？",
+          options: [
+            "完全に解決した",
+            "一部改善したが、まだ問題がある",
+            "変化なし",
+            "悪化した",
+            "その他"
+          ]
+        };
+      }
+    } else {
+      return {
+        question: "これまでの対応で状況は改善しましたか？",
+        options: [
+          "完全に解決した",
+          "一部改善したが、まだ問題がある",
+          "変化なし",
+          "悪化した",
+          "その他"
+        ]
+      };
+    }
+  };
+
+
 
   // デフォルト解決策生成関数
   const generateDefaultSolution = (allAnswers: string[]): string => {
     const problemDescription = allAnswers.join(' ');
     
+    // 回答内容に基づいて具体的な解決策を生成
+    let specificSolution = "";
+    
+    if (allAnswers.length >= 1) {
+      const firstAnswer = allAnswers[0].toLowerCase();
+      
+      if (firstAnswer.includes("何も起きない") || firstAnswer.includes("無反応")) {
+        specificSolution = `
+### 🔋 バッテリー関連の対処
+1. **バッテリー電圧の確認**
+   - マルチメーターでバッテリー電圧を測定
+   - 12V未満の場合は充電または交換が必要
+
+2. **バッテリー端子の確認**
+   - 端子の緩みや腐食をチェック
+   - 必要に応じて清掃・締め直し
+
+3. **充電器での充電**
+   - 適切な充電器を使用
+   - 過充電に注意
+`;
+      } else if (firstAnswer.includes("セルモーター") || firstAnswer.includes("セルが回る")) {
+        specificSolution = `
+### ⛽ 燃料系の対処
+1. **燃料残量の確認**
+   - 燃料ゲージの確認
+   - 必要に応じて燃料補給
+
+2. **燃料フィルターの確認**
+   - フィルターの詰まりチェック
+   - 必要に応じて交換
+
+3. **燃料ポンプの確認**
+   - ポンプの動作音を確認
+   - 異常がある場合は専門家に相談
+`;
+      } else if (firstAnswer.includes("カチカチ") || firstAnswer.includes("音がする")) {
+        specificSolution = `
+### 🔋 バッテリー関連の対処
+1. **バッテリー電圧の確認**
+   - マルチメーターでバッテリー電圧を測定
+   - 12V未満の場合は充電または交換が必要
+
+2. **バッテリー端子の確認**
+   - 端子の緩みや腐食をチェック
+   - 必要に応じて清掃・締め直し
+
+3. **充電器での充電**
+   - 適切な充電器を使用
+   - 過充電に注意
+`;
+      } else if (firstAnswer.includes("すぐ止まる") || firstAnswer.includes("始動しかける")) {
+        specificSolution = `
+### 🔧 エンジン系の対処
+1. **燃料供給の確認**
+   - 燃料ポンプの動作確認
+   - 燃料フィルターの状態確認
+
+2. **点火系の確認**
+   - スパークプラグの状態確認
+   - 点火コイルの動作確認
+
+3. **エアフィルターの確認**
+   - フィルターの詰まりチェック
+   - 必要に応じて清掃・交換
+`;
+      } else {
+        specificSolution = `
+### 🔍 一般的な対処
+1. **基本確認**
+   - バッテリー電圧の確認
+   - 燃料残量の確認
+   - エアフィルターの状態確認
+
+2. **段階的診断**
+   - キーを回したときの反応確認
+   - パネルランプの点灯状況
+   - セルモーターの動作確認
+`;
+      }
+    }
+    
     return `## 🔍 問題の特定
 保守用車のエンジン停止に関する問題が発生しています。
+
+**症状**: ${allAnswers.join(' → ')}
 
 ## ⚠️ 安全確認
 1. 作業環境の安全確認
 2. 適切な安全装備の着用
 3. 作業前の機器停止確認
+4. 作業中の安全確保
 
 ## 🛠️ 具体的な処置手順
 
-### 1. 初期確認
-- バッテリー電圧の確認
-- 燃料残量の確認
-- エアフィルターの状態確認
+${specificSolution}
 
-### 2. 段階的診断
-- キーを回したときの反応確認
-- パネルランプの点灯状況
-- セルモーターの動作確認
+### 📋 作業手順
+1. **作業前の準備**
+   - 安全装備の着用
+   - 作業環境の確認
+   - 工具の準備
 
-### 3. 対処方法
-- バッテリー充電または交換
-- 燃料補給
-- エアフィルター清掃または交換
+2. **段階的診断**
+   - 症状の詳細確認
+   - 原因の特定
+   - 対処方法の決定
 
-## 📋 注意事項
+3. **対処実施**
+   - 安全に配慮した作業
+   - 段階的な確認
+   - 結果の検証
+
+## 🚨 注意事項
 - 作業前の安全確認を必ず実施
 - 専門知識が必要な場合は専門家に相談
 - 緊急時は安全を最優先に行動
+- 作業後は必ず動作確認を実施
 
-## 🚨 緊急時の対応
-問題が解決しない場合は、技術支援センターに連絡してください。
-- 電話番号: 0123-456-789
-- 緊急時: 0123-456-000
-
-## 📚 参考情報
-保守用車マニュアルの該当箇所を参照し、適切な手順で作業を進めてください。`;
+## 📞 専門家への相談
+以下の場合は専門家に相談してください：
+- 作業に自信がない場合
+- 安全上の懸念がある場合
+- 問題が解決しない場合
+- 緊急対応が必要な場合
+`;
   };
 
 
@@ -866,10 +1369,19 @@ export default function ChatPage() {
     }
   };
 
-  // AI支援の終了処理
+  // AI支援モード終了
   const handleAiSupportExit = () => {
     setAiSupportMode(false);
-    setAiSupportSessionData(null);
+    setAiSupportAnswers([]);
+    setAiSupportCompleted(false);
+    setCurrentQuestionIndex(0);
+    setCurrentQuestion("");
+    setCurrentOptions([]);
+    
+    toast({
+      title: "AI支援終了",
+      description: "AI支援モードを終了しました",
+    });
   };
 
   // AI支援のリセット処理
@@ -1134,47 +1646,25 @@ export default function ChatPage() {
     }
   };
 
+  // 応急処置ガイド関連の関数
   const fetchAvailableGuides = async () => {
     try {
       setIsLoadingGuides(true);
-      console.log('🔄 応急処置データ一覧の取得を開始');
-
-      // トラブルシューティングデータの取得
-      const timestamp = Date.now();
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list?_t=${timestamp}`, {
-        credentials: 'include',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Content-Type': 'application/json'
-        }
-      });
-
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list`);
+      
       if (response.ok) {
-        const troubleshootingData = await response.json();
-        console.log('✅ トラブルシューティングデータ取得:', troubleshootingData);
-        
-        // APIレスポンスの構造に合わせてデータをマッピング
-        const flows = troubleshootingData.success && troubleshootingData.data ? troubleshootingData.data : (Array.isArray(troubleshootingData) ? troubleshootingData : []);
-        console.log('✅ 処理対象フロー数:', flows.length + '件');
-
-        // データを整形して表示用にフォーマット
-        const formattedGuides = flows.map((item: any) => ({
-          id: item.id,
-          title: item.title || japaneseGuideTitles[item.id] || item.id,
-          description: item.description || '',
-          keyword: item.keyword || '',
-          steps: item.steps || [],
-          fileName: item.fileName || '',
-          createdAt: item.createdAt || ''
-        }));
-
-        setAvailableGuides(formattedGuides);
-        setFilteredGuides(formattedGuides);
+        const data = await response.json();
+        if (data.success) {
+          setAvailableGuides(data.data || []);
+          setFilteredGuides(data.data || []);
+          console.log('✅ 応急処置ガイド取得成功:', data.data?.length + '件');
+        } else {
+          console.error('❌ 応急処置ガイド取得失敗:', data.message);
+          setAvailableGuides([]);
+          setFilteredGuides([]);
+        }
       } else {
-        console.error('応急処置データの取得に失敗:', response.status);
-        setAvailableGuides([]);
-        setFilteredGuides([]);
+        throw new Error(`Failed to fetch emergency guides: ${response.statusText}`);
       }
     } catch (error) {
       console.error('ガイド一覧の取得に失敗:', error);
@@ -1192,15 +1682,6 @@ export default function ChatPage() {
 
   const handleEmergencyGuide = async () => {
     await fetchAvailableGuides();
-
-    // 最後に送信されたテキストを検索キーワードとして設定
-    const lastKeyword = localStorage.getItem('lastSearchKeyword');
-    if (lastKeyword) {
-      setSearchQuery(lastKeyword);
-      handleSearch(lastKeyword);
-      console.log('🔍 保存された検索キーワードを使用:', lastKeyword);
-    }
-
     setShowEmergencyGuide(true);
   };
 
@@ -1212,8 +1693,6 @@ export default function ChatPage() {
     setShowEmergencyGuide(false);
     setSelectedGuideId(null);
     setSearchQuery("");
-    // 検索キーワードもクリア
-    localStorage.removeItem('lastSearchKeyword');
   };
 
   // 検索処理
@@ -1245,486 +1724,606 @@ export default function ChatPage() {
     handleSearch(keyword);
   };
 
-  // カメラボタンのクリック処理
-  const handleCameraClick = () => {
-    console.log('📸 カメラボタンがクリックされました');
-    // カメラモーダルを開くイベントを発火
-    window.dispatchEvent(new CustomEvent('open-camera'));
-
-    // デバッグ用: イベントが正しく発火されたかを確認
-    console.log('📸 open-camera イベントを発火しました');
+  // AI支援開始関数
+  const handleStartAiSupport = async () => {
+    try {
+      setAiSupportMode(true);
+      setAiSupportAnswers([]);
+      setAiSupportCompleted(false);
+      setCurrentQuestionIndex(0);
+      
+      // 最初の質問を生成
+      const firstQuestion = await generateDynamicQuestion("", []);
+      if (firstQuestion) {
+        setCurrentQuestion(firstQuestion.question);
+        setCurrentOptions(firstQuestion.options || []);
+      } else {
+        // デフォルトの質問
+        setCurrentQuestion("どのような問題が発生していますか？");
+        setCurrentOptions([]);
+      }
+      
+      toast({
+        title: "AI支援開始",
+        description: "AIが問題解決をサポートします",
+      });
+    } catch (error) {
+      console.error('AI支援開始エラー:', error);
+      toast({
+        title: "エラー",
+        description: "AI支援の開始に失敗しました",
+        variant: "destructive",
+      });
+      setAiSupportMode(false);
+    }
   };
 
+  // トラブルシューティングQA開始
+  const startTroubleshootingQA = async (problemDescription: string) => {
+    try {
+      setTroubleshootingMode(true);
+      setTroubleshootingSession({
+        problemDescription,
+        answers: []
+      });
 
+      // トラブルシューティングQA APIを呼び出し
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting-qa/start`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          problemDescription
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const qaResponse = data.data;
+
+        setTroubleshootingSession(prev => ({
+          ...prev!,
+          currentQuestion: qaResponse.question,
+          currentOptions: qaResponse.options || [],
+          reasoning: qaResponse.reasoning
+        }));
+
+        // 初期質問をメッセージとして追加
+        sendMessage(qaResponse.question, [], true);
+      } else {
+        throw new Error('トラブルシューティングQAの開始に失敗しました');
+      }
+    } catch (error) {
+      console.error('❌ トラブルシューティングQA開始エラー:', error);
+      toast({
+        title: "エラー",
+        description: "トラブルシューティングQAの開始に失敗しました",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // トラブルシューティングQA回答処理
+  const handleTroubleshootingAnswer = async (answer: string) => {
+    if (!troubleshootingSession) return;
+
+    try {
+      // 回答をセッションに追加
+      const updatedSession = {
+        ...troubleshootingSession,
+        answers: [...troubleshootingSession.answers, {
+          stepId: `step_${Date.now()}`,
+          answer,
+          timestamp: new Date()
+        }]
+      };
+      setTroubleshootingSession(updatedSession);
+
+      // 回答をメッセージとして追加
+      sendMessage(answer, [], false);
+
+      // トラブルシューティングQA APIを呼び出し
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting-qa/answer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          problemDescription: troubleshootingSession.problemDescription,
+          previousAnswers: updatedSession.answers.slice(0, -1), // 現在の回答を除く
+          currentAnswer: answer
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const qaResponse = data.data;
+
+        if (qaResponse.status === 'complete') {
+          // 解決策を表示
+          setTroubleshootingSession(prev => ({
+            ...prev!,
+            currentQuestion: undefined,
+            currentOptions: undefined
+          }));
+          sendMessage(qaResponse.solution, [], true);
+          setTroubleshootingMode(false);
+        } else if (qaResponse.status === 'emergency') {
+          // 緊急対応を表示
+          setTroubleshootingSession(prev => ({
+            ...prev!,
+            currentQuestion: undefined,
+            currentOptions: undefined
+          }));
+          sendMessage(qaResponse.emergencyAction, [], true);
+          setTroubleshootingMode(false);
+        } else {
+          // 次の質問を表示
+          setTroubleshootingSession(prev => ({
+            ...prev!,
+            currentQuestion: qaResponse.question,
+            currentOptions: qaResponse.options || [],
+            reasoning: qaResponse.reasoning
+          }));
+          sendMessage(qaResponse.question, [], true);
+        }
+      } else {
+        throw new Error('回答の処理に失敗しました');
+      }
+    } catch (error) {
+      console.error('❌ トラブルシューティングQA回答処理エラー:', error);
+      toast({
+        title: "エラー",
+        description: "回答の処理に失敗しました",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // メッセージ送信処理を拡張
+  const handleSendMessage = async (content: string, media: any[] = []) => {
+    if (!content.trim() && media.length === 0) return;
+
+    // AI支援モードの場合は特別な処理
+    if (aiSupportMode && currentQuestion) {
+      await handleAiSupportAnswer(content);
+      return;
+    }
+
+    // トラブルシューティングモードの場合は特別な処理
+    if (troubleshootingMode && troubleshootingSession) {
+      await handleTroubleshootingAnswer(content);
+      return;
+    }
+
+    // 通常のメッセージ送信処理
+    sendMessage(content, media, false);
+  };
+
+  // トラブルシューティングQA開始ボタンの追加
+  const handleStartTroubleshooting = () => {
+    const problemDescription = prompt('発生した事象を教えてください（例：エンジンが止まった、ブレーキが効かないなど）:');
+    if (problemDescription && problemDescription.trim()) {
+      startTroubleshootingQA(problemDescription.trim());
+    }
+  };
+
+  // エクスポート機能
+  const handleExportChat = async () => {
+    try {
+      await exportChatHistory();
+      toast({
+        title: "成功",
+        description: "チャット履歴をエクスポートしました",
+      });
+    } catch (error) {
+      toast({
+        title: "エラー",
+        description: "エクスポートに失敗しました",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // クリア機能
+  const handleClearChat = async () => {
+    try {
+      await clearChatHistory();
+      setTroubleshootingMode(false);
+      setTroubleshootingSession(null);
+      setAiSupportMode(false);
+      setAiSupportAnswers([]);
+      setAiSupportCompleted(false);
+      setCurrentQuestionIndex(0);
+      setCurrentQuestion("");
+      setCurrentOptions([]);
+      toast({
+        title: "成功",
+        description: "チャット履歴をクリアしました",
+      });
+    } catch (error) {
+      toast({
+        title: "エラー",
+        description: "クリアに失敗しました",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // カメラモーダルの表示管理
+  const [showCameraModal, setShowCameraModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [showImagePreview, setShowImagePreview] = useState(false);
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* ヘッダーエリア - 固定表示 */}
-      <div className="bg-white shadow-sm border-b p-3 flex-shrink-0 sticky top-0 z-10">
-        <div className="flex justify-between items-center w-full">
-          {/* 左側: 機種と機械番号のドロップダウン選択 */}
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2 relative">
-              <label className="text-xs text-gray-600 font-medium">機種:</label>
-              {isLoadingMachineTypes ? (
-                <div className="w-48 h-10 text-sm border border-gray-300 rounded-md flex items-center justify-center bg-gray-50">
-                  読み込み中...
-                </div>
-              ) : (
-                <div className="relative machine-dropdown">
-                  <div 
-                    className="w-48 h-10 text-sm border border-gray-300 rounded-md flex items-center justify-between px-3 py-2 bg-white cursor-pointer hover:bg-gray-50"
-                    onClick={() => setShowMachineTypeSuggestions(!showMachineTypeSuggestions)}
-                  >
-                    <span className={machineTypeInput ? 'text-gray-900' : 'text-gray-500'}>
-                      {machineTypeInput || '機種を選択'}
-                    </span>
-                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                  {showMachineTypeSuggestions && (
-                    <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-40 overflow-y-auto">
-                      {machineTypes.length > 0 ? (
-                        machineTypes.map((type) => (
-                          <div
-                            key={type.id}
-                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                            onClick={() => handleMachineTypeSelect(type)}
-                          >
-                            {type.machine_type_name}
-                          </div>
-                        ))
-                      ) : (
-                        <div className="px-3 py-2 text-sm text-gray-500">
-                          機種が登録されていません
-                        </div>
-                      )}
+    <div className="flex flex-col h-screen bg-gray-50">
+      {/* ヘッダー */}
+      <div className="bg-white border-b px-4 py-3 flex items-center justify-between">
+        {/* 左側：機種・機械番号選択 */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Label htmlFor="machine-type" className="text-sm font-medium text-gray-700">
+              機種:
+            </Label>
+            <div className="relative">
+              <Input
+                id="machine-type"
+                type="text"
+                placeholder={isLoadingMachineTypes ? "読み込み中..." : "機種を選択..."}
+                value={machineTypeInput}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  console.log('🔍 機種入力変更:', value);
+                  setMachineTypeInput(value);
+                  filterMachineTypes(value);
+                  setShowMachineTypeSuggestions(true);
+                }}
+                onFocus={() => {
+                  console.log('🔍 機種入力フォーカス:', {
+                    machineTypesCount: machineTypes.length,
+                    machineTypes: machineTypes,
+                    filteredMachineTypesCount: filteredMachineTypes.length,
+                    showMachineTypeSuggestions: showMachineTypeSuggestions
+                  });
+                  setShowMachineTypeSuggestions(true);
+                  // フォーカス時に全機種を表示
+                  if (machineTypes.length > 0) {
+                    setFilteredMachineTypes(machineTypes);
+                  }
+                }}
+                disabled={isLoadingMachineTypes}
+                className="w-48"
+              />
+              {showMachineTypeSuggestions && (
+                <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                  {console.log('🔍 ドロップダウン表示条件:', {
+                    showMachineTypeSuggestions,
+                    filteredMachineTypesCount: filteredMachineTypes.length,
+                    filteredMachineTypes: filteredMachineTypes
+                  })}
+                  {filteredMachineTypes.length > 0 ? (
+                    filteredMachineTypes.map((type) => (
+                      <div
+                        key={type.id}
+                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          console.log('🔍 機種クリックイベント発火:', type);
+                          handleMachineTypeSelect(type);
+                        }}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                        }}
+                      >
+                        {type.machine_type_name}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-sm text-gray-500">
+                      {machineTypeInput.trim() ? "該当する機種が見つかりません" : "機種を入力してください"}
                     </div>
                   )}
                 </div>
               )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Label htmlFor="machine-number" className="text-sm font-medium text-gray-700">
+              機械番号:
+            </Label>
+            <div className="relative">
+              <Input
+                id="machine-number"
+                type="text"
+                placeholder={isLoadingMachines ? "読み込み中..." : "機械番号を選択..."}
+                value={machineNumberInput}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  console.log('🔍 機械番号入力変更:', value);
+                  setMachineNumberInput(value);
+                  filterMachines(value);
+                  setShowMachineNumberSuggestions(true);
+                }}
+                onFocus={() => {
+                  console.log('🔍 機械番号入力フォーカス');
+                  setShowMachineNumberSuggestions(true);
+                  // フォーカス時に全機械番号を表示
+                  if (machines.length > 0) {
+                    setFilteredMachines(machines);
+                  }
+                }}
+                disabled={!selectedMachineType || isLoadingMachines}
+                className="w-48"
+              />
+              {showMachineNumberSuggestions && (
+                <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                  {filteredMachines.length > 0 ? (
+                    filteredMachines.map((machine) => (
+                      <div
+                        key={machine.id}
+                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          console.log('🔍 機械番号クリックイベント発火:', machine);
+                          handleMachineNumberSelect(machine);
+                        }}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                        }}
+                      >
+                        {machine.machine_number}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-sm text-gray-500">
+                      {machineNumberInput.trim() ? "該当する機械番号が見つかりません" : "機械番号を入力してください"}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        
+        {/* 中央：AI支援・カメラ・応急処置ガイドボタン */}
+        <div className="flex items-center gap-6">
+          {/* AI支援開始/終了ボタン */}
+          {!aiSupportMode ? (
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={handleStartAiSupport}
+              disabled={isLoading}
+              className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 mr-6 px-8 py-3 text-base font-semibold"
+            >
+              <Brain className="w-6 h-6 mr-3" />
+              AI支援
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={handleAiSupportExit}
+              className="bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100 mr-6 px-8 py-3 text-base font-semibold"
+            >
+              <X className="w-6 h-6 mr-3" />
+              AI支援終了
+            </Button>
+          )}
+
+          {/* カメラボタン */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCameraClick}
+            className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 mr-6"
+          >
+            <Camera className="w-4 h-4 mr-2" />
+            カメラ
+          </Button>
+
+          {/* 応急処置ガイドボタン */}
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={handleEmergencyGuide}
+            disabled={isLoadingGuides}
+            className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100 mr-6 px-8 py-3 text-base font-semibold"
+          >
+            <Activity className="w-6 h-6 mr-3" />
+            応急処置ガイド
+          </Button>
+        </div>
+        
+        {/* 右側：サーバー送信・クリアボタン */}
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportChat}
+            disabled={isLoading || messages.length === 0}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            サーバー送信
+          </Button>
+
+          <Button 
+            variant="outline"
+            size="sm"
+            onClick={handleClearChat}
+            disabled={isLoading || isClearing || messages.length === 0}
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            クリア
+          </Button>
+        </div>
+      </div>
+
+      {/* メッセージ表示エリア */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.map((message) => (
+          <div key={message.id} className={`flex ${message.isAiResponse ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-2xl ${message.isAiResponse ? 'w-auto' : 'w-full'}`}>
+              {message.isAiResponse && troubleshootingMode && troubleshootingSession?.currentQuestion === message.content ? (
+                // トラブルシューティングQAバブル
+                <TroubleshootingQABubble
+                  question={message.content}
+                  options={troubleshootingSession?.currentOptions || []}
+                  reasoning={troubleshootingSession?.reasoning}
+                  onAnswer={handleTroubleshootingAnswer}
+                  isLoading={isLoading}
+                />
+              ) : message.isAiResponse && (message.content.includes('解決策') || message.content.includes('緊急対応')) ? (
+                // 解決策バブル
+                <SolutionBubble
+                  solution={message.content}
+                  problemDescription={troubleshootingSession?.problemDescription}
+                  isEmergency={message.content.includes('緊急対応')}
+                />
+              ) : (
+                // 通常のメッセージバブル
+                <MessageBubble message={message} />
+              )}
+            </div>
+          </div>
+        ))}
+        
+        {/* AI支援モードの質問表示 */}
+        {aiSupportMode && currentQuestion && !aiSupportCompleted && (
+          <div className="flex justify-end">
+            <div className="max-w-2xl w-auto">
+              <TroubleshootingQABubble
+                question={currentQuestion}
+                options={currentOptions}
+                onAnswer={handleAiSupportAnswer}
+                isLoading={isLoading}
+              />
+            </div>
+          </div>
+        )}
+        
+        {isLoading && (
+          <div className="flex justify-end">
+            <div className="bg-white rounded-lg shadow-sm border p-4">
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <span className="text-gray-600">AIが応答を生成中...</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* メッセージ入力エリア */}
+      <div className="border-t bg-white p-4">
+        <MessageInput
+          onSendMessage={handleSendMessage}
+          isLoading={isLoading}
+          disabled={troubleshootingMode && !troubleshootingSession?.currentQuestion}
+        />
+      </div>
+
+      {/* カメラモーダル */}
+      <CameraModal />
+
+      {/* 画像プレビューモーダル */}
+      {showImagePreview && selectedImage && (
+        <ImagePreviewModal
+          image={selectedImage}
+          onClose={() => setShowImagePreview(false)}
+          onConfirm={(imageData) => {
+            // 画像確認処理
+            console.log('画像確認:', imageData);
+            setShowImagePreview(false);
+          }}
+        />
+      )}
+
+      {/* 応急処置ガイドモーダル */}
+      {showEmergencyGuide && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">応急処置ガイド</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleExitGuide}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-4 h-4" />
+              </Button>
             </div>
             
-            <div className="flex items-center space-x-2 relative">
-              <label className="text-xs text-gray-600 font-medium">機械番号:</label>
-              {!selectedMachineType ? (
-                <div className="w-48 h-10 text-sm border border-gray-300 rounded-md flex items-center justify-center bg-gray-50">
-                  機種を先に選択
-                </div>
-              ) : isLoadingMachines ? (
-                <div className="w-48 h-10 text-sm border border-gray-300 rounded-md flex items-center justify-center bg-gray-50">
-                  読み込み中...
-                </div>
-              ) : (
-                <div className="relative machine-dropdown">
-                  <div 
-                    className="w-48 h-10 text-sm border border-gray-300 rounded-md flex items-center justify-between px-3 py-2 bg-white cursor-pointer hover:bg-gray-50"
-                    onClick={() => setShowMachineNumberSuggestions(!showMachineNumberSuggestions)}
+            {/* 検索機能 */}
+            <div className="mb-4">
+              <Input
+                type="text"
+                placeholder="ガイドを検索..."
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
+                className="w-full"
+              />
+            </div>
+
+            {/* キーワードボタン */}
+            <div className="mb-4">
+              <KeywordButtons onKeywordClick={handleKeywordClick} />
+            </div>
+            
+            {/* ガイド一覧 */}
+            {!selectedGuideId && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredGuides.map((guide) => (
+                  <Card
+                    key={guide.id}
+                    className={`cursor-pointer hover:shadow-md transition-shadow ${
+                      selectedGuideId === guide.id ? 'ring-2 ring-blue-500' : ''
+                    }`}
+                    onClick={() => handleSelectGuide(guide.id)}
                   >
-                    <span className={machineNumberInput ? 'text-gray-900' : 'text-gray-500'}>
-                      {machineNumberInput || '機械番号を選択'}
-                    </span>
-                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                  {showMachineNumberSuggestions && (
-                    <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-40 overflow-y-auto">
-                      {machines.length > 0 ? (
-                        machines.map((machine) => (
-                          <div
-                            key={machine.id}
-                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                            onClick={() => handleMachineNumberSelect(machine)}
-                          >
-                            {machine.machine_number}
-                          </div>
-                        ))
-                      ) : (
-                        <div className="px-3 py-2 text-sm text-gray-500">
-                          この機種に機械番号が登録されていません
+                    <CardHeader>
+                      <CardTitle className="text-lg">{guide.title}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-gray-600">{guide.description}</p>
+                      {guide.keyword && (
+                        <div className="mt-2">
+                          <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                            {guide.keyword}
+                          </span>
                         </div>
                       )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* 中央のボタングループ */}
-          <div className="flex items-center" style={{ gap: '126px', marginLeft: '-58px' }}>
-            <Button 
-              onClick={startAiSupport}
-              className="bg-green-500 hover:bg-green-600 text-white flex items-center gap-2 px-6 py-3 font-bold text-lg shadow-lg"
-              size="lg"
-              disabled={aiSupportMode}
-            >
-              <FileText className="h-6 w-6" />
-              AI支援開始
-            </Button>
-
-            <Button 
-              onClick={handleCameraClick}
-              variant="outline"
-              className="border-2 border-black hover:bg-gray-100 flex items-center gap-2 px-6 py-3 font-bold text-lg"
-              size="lg"
-            >
-              <Camera className="h-6 w-6" />
-              カメラ
-            </Button>
-
-            <Button 
-              onClick={handleEmergencyGuide}
-              className="bg-red-500 hover:bg-red-600 text-white flex items-center gap-2 px-6 py-3 font-bold text-lg shadow-lg"
-              size="lg"
-            >
-              <BookOpen className="h-6 w-6" />
-              🚨 応急処置ガイド 🚨
-            </Button>
-          </div>
-
-          {/* 右側のボタングループ */}
-          <div className="flex justify-end gap-2">
-            {/* 機種データ再取得ボタン */}
-            <Button 
-              onClick={() => {
-                console.log('🔄 機種データ手動再取得開始');
-                fetchMachineTypes();
-              }}
-              variant="outline" 
-              size="sm"
-              className="flex items-center gap-1 text-xs px-2 py-1 bg-green-50 hover:bg-green-100 border-green-300"
-              disabled={isLoadingMachineTypes}
-            >
-              <RefreshCw className={`h-3 w-3 ${isLoadingMachineTypes ? 'animate-spin' : ''}`} />
-              {isLoadingMachineTypes ? "取得中..." : "機種更新"}
-            </Button>
-
-            {/* クリアボタン */}
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="flex items-center gap-1 text-xs px-2 py-1 bg-red-50 hover:bg-red-100 border-red-300"
-                  disabled={messages.length === 0 || isClearing}
-                >
-                  <Trash2 className="h-3 w-3" />
-                  {isClearing ? "クリア中..." : "クリア"}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>チャット履歴をクリア</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    現在表示されているチャット内容をすべて削除します。この操作は元に戻すことができません。
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>戻る</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => {
-                    clearChatHistory();
-                            // AI支援モードの状態もリセット
-        setAiSupportMode(false);
-        setCurrentQuestionIndex(0);
-        setAiSupportAnswers([]);
-        setAiSupportCompleted(false);
-        setCurrentQuestion("");
-                    // 機種と機械番号の選択状態もリセット
-                    setSelectedMachineType('');
-                    setSelectedMachineNumber('');
-                    setMachineTypeInput('');
-                    setMachineNumberInput('');
-                    setFilteredMachineTypes([]);
-                    setFilteredMachines([]);
-                  }}>
-                    OK
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            {/* サーバー送信ボタン */}
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="flex items-center gap-1 text-xs px-2 py-1 bg-blue-50 hover:bg-blue-100 border-blue-300"
-                  disabled={!messages.some(msg => msg.content && msg.content.trim())}
-                  onClick={() => {
-                    console.log('送信ボタンクリック時の状態:', {
-                      messagesLength: messages.length,
-                      messages: messages,
-                      chatId: chatId
-                    });
-                  }}
-                >
-                  <Send className="h-3 w-3" />
-                  サーバーへ送信
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>サーバーへ送信</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    現在のチャット内容（{messages.filter(msg => msg.content && msg.content.trim()).length}件のメッセージ）をサーバーに送信します。送信完了後、チャット履歴はクリアされます。
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleSendToServer}>
-                    OK
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </div>
-      </div>
-
-      {/* メインコンテンツエリア */}
-      <div className="flex-1 flex flex-col overflow-hidden p-4">
-        {/* チャットエリア - 3D効果のある外枠 */}
-        <div className="flex-1 overflow-auto p-4 space-y-3 bg-white rounded-xl shadow-2xl border-4 border-gray-300 relative"
-             style={{
-               boxShadow: `
-                 inset 3px 3px 8px rgba(0, 0, 0, 0.15),
-                 inset -3px -3px 8px rgba(255, 255, 255, 0.9),
-                 6px 6px 16px rgba(0, 0, 0, 0.2),
-                 -2px -2px 8px rgba(255, 255, 255, 0.8)
-               `,
-               background: 'linear-gradient(145deg, #f8fafc, #e2e8f0)'
-             }}>
-
-          {/* 内側の装飾的な境界線 */}
-          <div className="absolute inset-2 border border-blue-200 rounded-lg pointer-events-none opacity-50"></div>
-
-          {/* メッセージ表示エリア */}
-          <div className="relative z-10">
-            {messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
-            ))}
-            <div ref={messagesEndRef} />
-          </div>
-        </div>
-
-        {/* 入力エリア - 3D効果のある外枠 */}
-        <div className="flex-shrink-0 p-4 pt-2">
-          <div className="bg-white rounded-lg shadow-lg border-2 border-gray-300"
-               style={{
-                 boxShadow: `
-                   inset 2px 2px 6px rgba(0, 0, 0, 0.1),
-                   inset -2px -2px 6px rgba(255, 255, 255, 0.9),
-                   4px 4px 12px rgba(0, 0, 0, 0.15)
-                 `
-               }}>
-            {aiSupportMode && !aiSupportCompleted ? (
-              // AI支援モード用の入力エリア
-              <div className="p-4">
-                <div className="mb-2 text-sm text-gray-600">
-                  AI支援質問 {currentQuestionIndex + 1}: {currentQuestion || "回答を入力してください"}
-                </div>
-                
-                {/* 選択肢ボタン */}
-                {currentOptions.length > 0 && (
-                  <div className="mb-3">
-                    <div className="text-sm text-gray-600 mb-2">選択肢から選んでください：</div>
-                    <div className="grid grid-cols-1 gap-2">
-                      {currentOptions.map((option, index) => (
-                        <Button
-                          key={index}
-                          onClick={() => handleAiSupportAnswer(option)}
-                          variant="outline"
-                          className="justify-start text-left h-auto py-2 px-3"
-                          disabled={isLoading}
-                        >
-                          {option}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                <div className="flex gap-2 mb-2">
-                  <Input
-                    type="text"
-                    placeholder="回答を入力してください..."
-                    className="flex-1"
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                        handleAiSupportAnswer(e.currentTarget.value.trim());
-                        e.currentTarget.value = '';
-                      }
-                    }}
-                  />
-                  <Button
-                    onClick={(e) => {
-                      const input = e.currentTarget.previousElementSibling as HTMLInputElement;
-                      if (input.value.trim()) {
-                        handleAiSupportAnswer(input.value.trim());
-                        input.value = '';
-                      }
-                    }}
-                    disabled={isLoading}
-                    className="bg-blue-500 hover:bg-blue-600"
-                  >
-                    回答
-                  </Button>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleAiSupportReset}
-                    variant="outline"
-                    size="sm"
-                    className="text-xs"
-                  >
-                    リセット
-                  </Button>
-                  <Button
-                    onClick={handleAiSupportExit}
-                    variant="outline"
-                    size="sm"
-                    className="text-xs"
-                  >
-                    終了
-                  </Button>
-                </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-            ) : (
-              <MessageInput sendMessage={sendMessage} isLoading={isLoading} />
             )}
-          </div>
-        </div>
-      </div>
-
-      {/* モーダル類 */}
-      <CameraModal />
-      <ImagePreviewModal />
-
-
-
-      {/* ファイル入力（隠し要素） */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".json"
-        onChange={handleFileChange}
-        style={{ display: 'none' }}
-      />
-
-      {/* 応急処置ガイドポップアップ */}
-      {showEmergencyGuide && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[75vh] overflow-hidden shadow-xl">
-            {selectedGuideId ? (
-              // フロー実行画面
-              <div className="h-full max-h-[75vh] overflow-auto">
+            
+            {/* 選択されたガイドの表示 */}
+            {selectedGuideId && (
+              <div className="mt-6">
+                <div className="flex justify-between items-center mb-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedGuideId(null)}
+                    className="text-gray-600 hover:text-gray-900"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    一覧に戻る
+                  </Button>
+                </div>
                 <EmergencyGuideDisplay
                   guideId={selectedGuideId}
                   onExit={handleExitGuide}
-                  onSendToChat={() => console.log('チャットに送信されました')}
                 />
-              </div>
-            ) : (
-              // ガイド一覧表示
-              <div className="flex flex-col h-full max-h-[75vh]">
-                <div className="bg-white shadow-sm border-b p-4 flex-shrink-0">
-                  <div className="flex justify-between items-center mb-4">
-                    <h1 className="text-xl font-bold text-gray-800">応急処置ガイド選択</h1>
-                    <Button 
-                      onClick={handleExitGuide}
-                      variant="outline"
-                      className="flex items-center gap-1"
-                      size="sm"
-                    >
-                      <X className="h-4 w-4" />
-                      閉じる
-                    </Button>
-                  </div>
-
-                  {/* 検索エリア */}
-                  <div className="space-y-3">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                      <Input
-                        type="text"
-                        placeholder="応急処置を検索..."
-                        value={searchQuery}
-                        onChange={(e) => handleSearch(e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
-
-                    {/* キーワードボタン */}
-                    <KeywordButtons onKeywordClick={handleKeywordClick} />
-                  </div>
-                </div>
-
-                <div className="flex-1 overflow-auto p-4">
-                  {isLoadingGuides ? (
-                    <div className="flex items-center justify-center h-64">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="mb-4 text-sm text-gray-600">
-                        {searchQuery ? (
-                          <span>検索結果: {filteredGuides.length}件 (検索語: "{searchQuery}")</span>
-                        ) : (
-                          <span>利用可能なガイド: {filteredGuides.length}件</span>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {filteredGuides.map((guide) => (
-                          <Card
-                            key={guide.id}
-                            className="hover:shadow-lg cursor-pointer transition-shadow"
-                            onClick={() => handleSelectGuide(guide.id)}
-                          >
-                            <CardHeader className="pb-2">
-                              <CardTitle className="text-lg font-semibold">{guide.title}</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                              {guide.description && (
-                                <p className="text-gray-600 text-sm mb-3 line-clamp-3">{guide.description}</p>
-                              )}
-                              {guide.keyword && (
-                                <div className="mb-3">
-                                  <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                                    {guide.keyword}
-                                  </span>
-                                </div>
-                              )}
-                              <div className="flex justify-between items-center text-sm text-gray-500">
-                                <span>{guide.steps?.length || 0} ステップ</span>
-                                <Button size="sm" className="text-xs">
-                                  ガイドを開く
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-
-                      {filteredGuides.length === 0 && !isLoadingGuides && (
-                        <div className="text-center py-8">
-                          {searchQuery ? (
-                            <div>
-                              <p className="text-gray-500 mb-2">検索結果が見つかりませんでした</p>
-                              <p className="text-sm text-gray-400">別のキーワードで検索してみてください</p>
-                            </div>
-                          ) : (
-                            <p className="text-gray-500">利用可能な応急処置ガイドがありません</p>
-                          )}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
               </div>
             )}
           </div>

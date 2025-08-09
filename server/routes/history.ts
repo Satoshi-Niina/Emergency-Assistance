@@ -395,7 +395,10 @@ router.get('/machine-data', async (req, res) => {
       sampleMachines: machines.slice(0, 3)
     });
 
-    res.json(result);
+    res.json({
+      success: true,
+      ...result
+    });
 
   } catch (error) {
     console.error('❌ 機種・機械番号データ取得エラー:', error);

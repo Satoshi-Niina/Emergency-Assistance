@@ -21,6 +21,7 @@ import { registerDataProcessorRoutes } from './routes/data-processor.js';
 import { usersDebugRouter } from './routes/users-debug.js';
 import { debugRouter } from './routes/debug.js';
 import systemCheckRouter from './routes/system-check.js';
+import troubleshootingQARouter from './routes/troubleshooting-qa.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -286,6 +287,9 @@ registerChatRoutes(app);
 
 // トラブルシューティングルート
 app.use('/api/troubleshooting', troubleshootingRouter);
+
+// トラブルシューティングQAルート
+app.use('/api/troubleshooting-qa', troubleshootingQARouter);
 
 // 新規APIルート登録
 app.use('/api/base-data', baseDataRouter);

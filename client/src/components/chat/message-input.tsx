@@ -1,21 +1,20 @@
 import { useState, useRef, useEffect } from "react";
 import { useChat } from "../../context/chat-context";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import { Textarea } from "../../components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Send, Camera, X } from "lucide-react";
 import { useIsMobile } from "../../hooks/use-mobile";
 
 interface MessageInputProps {
-  sendMessage: (message: string) => void;
-  isLoading: boolean;
+  onSendMessage: (content: string, media?: any[]) => void;
+  isLoading?: boolean;
+  disabled?: boolean;
 }
 
-export default function MessageInput({ 
-  sendMessage, 
-  isLoading
-}: MessageInputProps) {
+export default function MessageInput({ onSendMessage, isLoading = false, disabled = false }: MessageInputProps) {
   const [message, setMessage] = useState("");
+  const [media, setMedia] = useState<any[]>([]);
   const { 
     recordedText, 
     selectedText, 
@@ -56,45 +55,16 @@ export default function MessageInput({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!message.trim() && media.length === 0) return;
+    if (isLoading || disabled) return;
 
-    try {
-      // 入力値の検証
-      const textToSend = message.trim() || recordedText.trim();
-      if (!textToSend) {
-        console.log('送信するテキストが空のため送信をスキップ');
-        return;
-      }
-
-      if (isLoading) {
-        console.log('送信中のため送信をスキップ');
-        return;
-      }
-
-      console.log('💬 メッセージ送信開始:', textToSend);
-
-      // メッセージを送信
-      await sendMessage(textToSend);
-
-      console.log('✅ メッセージ送信完了');
-
-      // 入力欄をクリア
-      setMessage("");
-
-      // フォーカス処理
-      if (isMobile && textareaRef.current) {
-        textareaRef.current.focus();
-        // モバイルでキーボードが消えないように少し遅延
-        setTimeout(() => {
-          textareaRef.current?.blur();
-        }, 100);
-      } else if (inputRef.current) {
-        inputRef.current.focus();
-      }
-
-    } catch (error) {
-      console.error('メッセージ送信エラー:', error);
-      // エラーはsendMessage関数内でトースト表示されるため、ここではログのみ
-    }
+    const currentMessage = message;
+    const currentMedia = [...media];
+    
+    setMessage('');
+    setMedia([]);
+    
+    await onSendMessage(currentMessage, currentMedia);
   };
 
   const handleCameraClick = () => {

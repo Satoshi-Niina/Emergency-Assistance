@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Button } from "../../components/ui/button";
+import { Button } from "@/components/ui/button";
 import { ImageUp, BrainCog, Copy } from "lucide-react";
 import { useToast } from "../../hooks/use-toast.ts";
 

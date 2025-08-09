@@ -96,17 +96,105 @@ export class DocumentProcessor {
     }
 
     private createChunks(content: string, fileName: string): any[] {
-        // テキストをチャンクに分割（簡易実装）
-        const chunkSize = 1000; // 文字数
+        // 改善されたチャンク化実装
         const chunks = [];
         
-        for (let i = 0; i < content.length; i += chunkSize) {
-            const chunk = content.slice(i, i + chunkSize);
-            chunks.push({
-                id: `${fileName}_chunk_${chunks.length + 1}`,
-                text: chunk,
-                order: chunks.length + 1
+        // 1. 段落分割を試行
+        const paragraphs = content.split(/\n\s*\n/);
+        
+        if (paragraphs.length > 1) {
+            // 段落がある場合は段落単位でチャンク化
+            paragraphs.forEach((paragraph, index) => {
+                const trimmedParagraph = paragraph.trim();
+                if (trimmedParagraph.length === 0) return;
+                
+                // 段落が長すぎる場合はさらに分割
+                if (trimmedParagraph.length > 2000) {
+                    const subChunks = this.splitLongParagraph(trimmedParagraph);
+                    subChunks.forEach((subChunk, subIndex) => {
+                        chunks.push({
+                            id: `${fileName}_chunk_${chunks.length + 1}`,
+                            text: subChunk,
+                            order: chunks.length + 1,
+                            type: 'paragraph',
+                            metadata: {
+                                originalParagraph: index + 1,
+                                subChunk: subIndex + 1
+                            }
+                        });
+                    });
+                } else {
+                    chunks.push({
+                        id: `${fileName}_chunk_${chunks.length + 1}`,
+                        text: trimmedParagraph,
+                        order: chunks.length + 1,
+                        type: 'paragraph',
+                        metadata: {
+                            originalParagraph: index + 1
+                        }
+                    });
+                }
             });
+        } else {
+            // 段落がない場合は固定サイズで分割
+            const chunkSize = 1000;
+            for (let i = 0; i < content.length; i += chunkSize) {
+                const chunk = content.slice(i, i + chunkSize);
+                chunks.push({
+                    id: `${fileName}_chunk_${chunks.length + 1}`,
+                    text: chunk,
+                    order: chunks.length + 1,
+                    type: 'fixed-size',
+                    metadata: {
+                        startPosition: i,
+                        endPosition: Math.min(i + chunkSize, content.length)
+                    }
+                });
+            }
+        }
+        
+        // チャンクの品質チェックとフィルタリング
+        const filteredChunks = chunks.filter(chunk => {
+            // 空のチャンクを除外
+            if (chunk.text.trim().length === 0) return false;
+            
+            // 短すぎるチャンクを除外（50文字未満）
+            if (chunk.text.trim().length < 50) return false;
+            
+            // 特殊文字のみのチャンクを除外
+            const textContent = chunk.text.replace(/[\s\n\r\t]/g, '');
+            if (textContent.length < 10) return false;
+            
+            return true;
+        });
+        
+        return filteredChunks;
+    }
+
+    private splitLongParagraph(paragraph: string): string[] {
+        // 長い段落を意味のある単位で分割
+        const sentences = paragraph.split(/[。！？\n]/);
+        const chunks = [];
+        let currentChunk = '';
+        
+        for (const sentence of sentences) {
+            const trimmedSentence = sentence.trim();
+            if (trimmedSentence.length === 0) continue;
+            
+            // 現在のチャンクに文を追加した場合の長さをチェック
+            if (currentChunk.length + trimmedSentence.length > 1500) {
+                if (currentChunk.length > 0) {
+                    chunks.push(currentChunk.trim());
+                    currentChunk = '';
+                }
+            }
+            
+            currentChunk += (currentChunk.length > 0 ? '。' : '') + trimmedSentence;
+        }
+        
+        // 最後のチャンクを追加
+        if (currentChunk.length > 0) {
+            chunks.push(currentChunk.trim());
         }
         
         return chunks;

@@ -16,26 +16,42 @@ export class DatabaseStorage {
             checkPeriod: 86400000, // prune expired entries every 24h
         });
         // Seed initial users if not present
-        this.seedInitialUsers();
+        this.seedInitialUsers().catch(error => {
+            console.error("初期ユーザー作成エラー:", error);
+        });
     }
     seedInitialUsers = async (): Promise<void> => {
-        const adminUser = await this.getUserByUsername("niina");
-        if (!adminUser) {
-            await this.createUser({
-                username: "niina",
-                password: "0077", // In a real app, this would be hashed
-                displayName: "新納",
-                role: "システム管理者"
-            });
-        }
-        const employeeUser = await this.getUserByUsername("employee");
-        if (!employeeUser) {
-            await this.createUser({
-                username: "employee",
-                password: "employee123", // In a real app, this would be hashed
-                displayName: "山田太郎",
-                role: "employee"
-            });
+        try {
+            const adminUser = await this.getUserByUsername("niina");
+            if (!adminUser) {
+                await this.createUser({
+                    username: "niina",
+                    password: "0077", // In a real app, this would be hashed
+                    displayName: "新納",
+                    role: "システム管理者"
+                });
+                console.log("✅ niinaユーザーを作成しました");
+            } else {
+                console.log("✅ niinaユーザーは既に存在します");
+            }
+            
+            const employeeUser = await this.getUserByUsername("employee");
+            if (!employeeUser) {
+                const userData = {
+                    username: "employee",
+                    password: "employee123", // In a real app, this would be hashed
+                    displayName: "山田太郎",
+                    role: "employee"
+                };
+                console.log("🔍 employeeユーザー作成データ:", userData);
+                await this.createUser(userData);
+                console.log("✅ employeeユーザーを作成しました");
+            } else {
+                console.log("✅ employeeユーザーは既に存在します");
+            }
+        } catch (error) {
+            console.error("❌ 初期ユーザー作成エラー:", error);
+            // エラーが発生してもサーバーは起動を続行
         }
     };
     // User methods
