@@ -522,9 +522,9 @@ const EmergencyGuideEdit: React.FC = () => {
   }
 
   return (
-    <div className="h-[calc(100vh-220px)] flex flex-col">
+    <div className="flex-1 flex flex-col min-h-0">
       {selectedFlow ? (
-        <Card>
+        <Card className="h-full flex flex-col">
           <CardHeader>
             <div className="flex justify-between items-center">
               <CardTitle>{selectedFlow.title}</CardTitle>
@@ -534,16 +534,16 @@ const EmergencyGuideEdit: React.FC = () => {
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1 flex flex-col min-h-0">
             <Tabs value={editorTab || 'metadata'} onValueChange={(value) => {
               console.log('🔄 タブ切り替え:', { from: editorTab, to: value });
               setEditorTab(value);
-            }} className="w-full">
+            }} className="w-full h-full flex flex-col">
               <TabsList className="w-full grid grid-cols-2 mb-4">
                 <TabsTrigger value="metadata">メタデータ</TabsTrigger>
                 <TabsTrigger value="slides">スライド内容</TabsTrigger>
               </TabsList>
-              <TabsContent value="metadata">
+              <TabsContent value="metadata" className="flex-1 flex flex-col min-h-0">
                 <EmergencyFlowEditor
                   flowData={selectedFlow}
                   onSave={handleSaveFlow}
@@ -552,7 +552,7 @@ const EmergencyGuideEdit: React.FC = () => {
                   selectedFilePath={selectedFlow?.filePath}
                 />
               </TabsContent>
-              <TabsContent value="slides">
+              <TabsContent value="slides" className="flex-1 flex flex-col min-h-0">
                 <EmergencyFlowEditor
                   flowData={selectedFlow}
                   onSave={handleSaveFlow}

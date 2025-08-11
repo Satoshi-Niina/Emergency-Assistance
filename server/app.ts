@@ -22,6 +22,9 @@ import { usersDebugRouter } from './routes/users-debug.js';
 import { debugRouter } from './routes/debug.js';
 import systemCheckRouter from './routes/system-check.js';
 import troubleshootingQARouter from './routes/troubleshooting-qa.js';
+import configRouter from './routes/config.js';
+import ingestRouter from './routes/ingest.js';
+import searchRouter from './routes/search.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -273,6 +276,43 @@ app.use((req, res, next) => {
   next();
 });
 
+// ★ 認証より前: CSP設定と画像配信
+const KB_BASE = process.env.KNOWLEDGE_BASE_PATH
+  ? process.env.KNOWLEDGE_BASE_PATH.trim()
+  : path.resolve(__dirname, '../knowledge-base'); // フォールバック
+
+console.log('🔧 Knowledge Base Path:', KB_BASE);
+
+// CSP設定（data:image/...を許可）
+app.use((req, res, next) => {
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline';"
+  );
+  next();
+});
+
+// 画像の静的配信（knowledge-base/images）
+app.use('/api/images', express.static(path.join(KB_BASE, 'images'), {
+  fallthrough: true,
+  etag: true,
+  maxAge: '7d',
+}));
+
+// エクスポートJSONの詳細取得（knowledge-base/exports）
+app.get('/api/history/file', (req, res) => {
+  const name = String(req.query.name || '');
+  if (!name) return res.status(400).json({ error: 'name is required' });
+  const file = path.join(KB_BASE, 'exports', name);
+  if (!fs.existsSync(file)) return res.status(404).json({ error: 'not found' });
+  try {
+    const raw = fs.readFileSync(file, 'utf8');
+    res.type('application/json').send(raw);
+  } catch {
+    res.status(500).json({ error: 'read error' });
+  }
+});
+
 // ヘルスチェックAPI
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -305,6 +345,11 @@ app.use('/api/machines', machinesRouter);
 // デバッグ用ルートを追加
 app.use('/api/debug/users', usersDebugRouter);
 app.use('/api/debug', debugRouter);
+
+// RAGシステム用ルートを追加
+app.use('/api/config', configRouter);
+app.use('/api/ingest', ingestRouter);
+app.use('/api/search', searchRouter);
 
 // システムチェックAPIエンドポイント
 app.get('/api/db-check', async (req, res) => {

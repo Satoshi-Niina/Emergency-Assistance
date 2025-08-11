@@ -22,6 +22,7 @@ const DocumentsPage = lazy(() => import('./pages/documents'));
 const TroubleshootingPage = lazy(() => import('./pages/troubleshooting'));
 const EmergencyGuidePage = lazy(() => import('./pages/emergency-guide'));
 const UsersPage = lazy(() => import('./pages/users'));
+
 const NotFoundPage = lazy(() => import('./pages/not-found'));
 
 // 認証状態に基づいてルートパスを制御するコンポーネント
@@ -133,6 +134,8 @@ function App() {
                         <UsersPage />
                       </ProtectedRoute>
                     } />
+                    
+
                     
                     <Route path="*" element={<NotFoundPage />} />
                   </Routes>

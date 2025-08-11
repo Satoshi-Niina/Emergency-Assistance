@@ -6,7 +6,7 @@
   "title": "エンジンが全く始動しない",
   "problemDescription": "エンジンが全く始動しない\nバッテリー\ndata:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQ...",
   "machineType": "",
-  "machineNumber": "",
+  "machineNumber": "100",
   "extractedComponents": [
     "エンジン",
     "バッテリー"
@@ -118,6 +118,15 @@
       "fileName": "chat_image_0a9f4736-82fa-4a6a-a5aa-e029cf088afd_1754638047580.jpg",
       "path": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\システム\\Total Maintenance Control\\Emergency-Assistance\\knowledge-base\\images\\chat-exports\\chat_image_0a9f4736-82fa-4a6a-a5aa-e029cf088afd_1754638047580.jpg",
       "url": "/api/images/chat-exports/chat_image_0a9f4736-82fa-4a6a-a5aa-e029cf088afd_1754638047580.jpg"
+    }
+  ],
+  "updateHistory": [
+    {
+      "timestamp": "2025-08-09T10:22:16.159Z",
+      "updatedFields": [
+        "machineNumber"
+      ],
+      "updatedBy": "test-script"
     }
   ]
 }

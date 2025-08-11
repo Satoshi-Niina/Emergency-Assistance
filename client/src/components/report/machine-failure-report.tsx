@@ -5,25 +5,163 @@ import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Edit, Save, X, Printer, Image as ImageIcon } from 'lucide-react';
 
+// 相対URLを絶対URLに変換
+const toAbsUrl = (url: string): string => {
+  console.log('🔄 toAbsUrl input:', url);
+  if (url.startsWith('data:') || url.startsWith('http')) {
+    console.log('🔄 toAbsUrl output (absolute):', url);
+    return url;
+  }
+  const result = `${window.location.origin}${url.startsWith('/') ? url : `/${url}`}`;
+  console.log('🔄 toAbsUrl output (converted):', result);
+  return result;
+};
+
+// 画像を収集（base64優先、無ければ配信URLへフォールバック）
+const collectImages = (data: any): Array<{ id: string; url: string; fileName: string; description?: string }> => {
+  const images: Array<{ id: string; url: string; fileName: string; description?: string }> = [];
+  
+  // 1) conversationHistory から base64 画像を探す（最優先）
+  if (data?.conversationHistory && Array.isArray(data.conversationHistory)) {
+    console.log('🔍 conversationHistory から base64 画像を検索中...');
+    data.conversationHistory.forEach((message: any, messageIndex: number) => {
+      if (message?.content && typeof message.content === 'string' && message.content.startsWith('data:image/')) {
+        // base64文字列の正規化（改行除去、全角引用符除去）
+        let normalizedContent = message.content
+          .replace(/\r?\n/g, '') // 改行除去
+          .replace(/[""]/g, '"') // 全角引用符を半角に変換
+          .trim();
+        
+        console.log(`🖼️ Base64 画像発見 (message ${messageIndex}):`, {
+          messageId: message.id,
+          contentLength: normalizedContent.length,
+          startsWithData: normalizedContent.startsWith('data:image/'),
+          hasNewlines: normalizedContent.includes('\n'),
+          hasFullWidthQuotes: /[""]/.test(normalizedContent)
+        });
+        
+        images.push({
+          id: `base64-${messageIndex}`,
+          url: normalizedContent,
+          fileName: `会話画像${messageIndex + 1}`,
+          description: '故障箇所画像（Base64）'
+        });
+      }
+    });
+  }
+  
+  // 2) savedImages から配信URLを取得（base64がない場合のフォールバック）
+  if (data?.savedImages && Array.isArray(data.savedImages)) {
+    console.log('🔍 savedImages found:', data.savedImages);
+    data.savedImages.forEach((item: any, index: number) => {
+      console.log(`🔍 savedImages[${index}] 詳細:`, {
+        messageId: item.messageId,
+        fileName: item.fileName,
+        path: item.path,
+        url: item.url,
+        hasPath: !!item.path,
+        hasUrl: !!item.url
+      });
+      
+      // 優先順位: path > url
+      let imageUrl: string | null = null;
+      
+      if (item?.path) {
+        // Windows絶対パスの場合はファイル名のみを抽出
+        if (item.path.includes('\\') && item.path.includes('chat-exports')) {
+          const fileName = item.path.split('\\').pop();
+          if (fileName) {
+            imageUrl = `/api/images/chat-exports/${fileName}`;
+            console.log(`🔄 Windows絶対パスを変換:`, {
+              originalPath: item.path,
+              fileName: fileName,
+              newUrl: imageUrl
+            });
+          }
+        }
+      }
+      
+      // path から取得できない場合は url を使用
+      if (!imageUrl && item?.url) {
+        imageUrl = item.url;
+        console.log(`🔄 savedImages.url を使用:`, imageUrl);
+      }
+      
+      if (imageUrl) {
+        const absoluteUrl = toAbsUrl(imageUrl);
+        console.log(`🖼️ Image ${index}:`, {
+          originalUrl: item.url,
+          originalPath: item.path,
+          convertedUrl: imageUrl,
+          absoluteUrl: absoluteUrl,
+          fileName: item.fileName
+        });
+        
+        images.push({
+          id: `saved-${index}`,
+          url: absoluteUrl,
+          fileName: item.fileName || `保存画像${index + 1}`,
+          description: '故障箇所画像（配信URL）'
+        });
+      } else {
+        console.log(`⚠️ savedImages[${index}] から画像URLを取得できませんでした:`, item);
+      }
+    });
+  }
+  
+  // 3) imagePath を探す（最後のフォールバック）
+  if (data?.imagePath) {
+    const imagePaths = Array.isArray(data.imagePath) ? data.imagePath : [data.imagePath];
+    imagePaths.forEach((path: string, index: number) => {
+      if (path) {
+        images.push({
+          id: `path-${index}`,
+          url: toAbsUrl(path),
+          fileName: `画像${index + 1}`,
+          description: '故障箇所画像（パス）'
+        });
+      }
+    });
+  }
+  
+  console.log(`📊 画像収集完了: ${images.length}個の画像を発見`, {
+    base64Count: images.filter(img => img.url.startsWith('data:image/')).length,
+    urlCount: images.filter(img => !img.url.startsWith('data:image/')).length,
+    images: images.map(img => ({ id: img.id, type: img.url.startsWith('data:image/') ? 'base64' : 'url', fileName: img.fileName }))
+  });
+  
+  return images;
+};
+
 interface MachineFailureReportData {
-  reportId: string;
-  machineType: string;
-  machineNumber: string;
-  date: string;
-  location: string;
-  description: string;
-  status: string;
-  engineer: string;
-  notes: string;
-  repairSchedule: string;
-  repairLocation: string;
-  repairRequestDate: string;
+  reportId?: string;
+  machineType?: string;
+  machineNumber?: string;
+  date?: string;
+  location?: string;
+  description?: string;
+  status?: string;
+  engineer?: string;
+  notes?: string;
+  repairSchedule?: string;
+  repairLocation?: string;
+  repairRequestDate?: string;
   images?: Array<{
     id: string;
     url: string;
     fileName: string;
     description?: string;
   }>;
+  // エクスポートJSONファイルの生データフィールド
+  savedImages?: Array<{
+    messageId: number;
+    fileName: string;
+    path: string;
+    url: string;
+  }>;
+  conversationHistory?: any[];
+  originalChatData?: any;
+  [key: string]: any; // その他のフィールドも許可
 }
 
 interface MachineFailureReportProps {
@@ -31,6 +169,127 @@ interface MachineFailureReportProps {
   onClose: () => void;
   onSave?: (reportData: MachineFailureReportData) => void;
 }
+
+// 画像取得の共通関数（編集対象ファイル内のみで完結）
+function pickFirstImage(data: any): string | null {
+  // 1) 直下 or ネスト配列に dataURL があれば優先
+  const dig = (v:any): string | null => {
+    if (!v) return null;
+    if (typeof v === 'string' && v.startsWith('data:image/')) return v;
+    if (Array.isArray(v)) for (const x of v) { const r = dig(x); if (r) return r; }
+    if (typeof v === 'object') for (const k of Object.keys(v)) { const r = dig(v[k]); if (r) return r; }
+    return null;
+  };
+  const fromDataUrl = dig(data);
+  if (fromDataUrl) return fromDataUrl;
+
+  // 2) savedImages
+  const saved = data?.savedImages;
+  if (Array.isArray(saved) && saved[0]) return saved[0];
+
+  // 3) imagePath(URL)
+  if (typeof data?.imagePath === 'string') return data.imagePath;
+
+  return null;
+}
+
+// 印刷用CSS
+const PRINT_STYLES = `
+<style>
+  @page { size: A4 portrait; margin: 10mm; }
+  @media print {
+    html, body { margin: 0; padding: 0; }
+    .no-print, .print:hidden { display: none !important; }
+    img, .image-cell, .image-section { page-break-inside: avoid; break-inside: avoid; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td { border: 1px solid #ccc; padding: 4px; vertical-align: top; }
+  }
+  /* 画面プレビュー用：印刷専用ウィンドウでは最小限でOK */
+  img.thumb { width: 32px; height: 32px; object-fit: cover; border: 1px solid #ddd; border-radius: 4px; }
+  .report-img { max-width: 100%; height: auto; }
+</style>
+`;
+
+// 個票印刷用HTML生成
+const generateReportPrintHTML = (reportData: any, images: Array<{ id: string; url: string; fileName: string; description?: string }>): string => {
+  const imageSection = images && images.length > 0 
+    ? `<div class="image-section">
+         <h3>故障箇所画像</h3>
+         ${images.map((image, index) => `
+           <div class="image-item" style="margin-bottom: 20px; page-break-inside: avoid;">
+             <img class="report-img" src="${image.url}" alt="故障画像${index + 1}" style="max-width: 100%; height: auto;" />
+             <p style="text-align: center; margin-top: 8px; font-size: 12px; color: #666;">${image.fileName}</p>
+           </div>
+         `).join('')}
+       </div>`
+    : '';
+
+  return `
+    <!doctype html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>故障報告書印刷</title>
+      ${PRINT_STYLES}
+    </head>
+    <body>
+      <h1>故障報告書</h1>
+      
+      <div class="report-section">
+        <h3>基本情報</h3>
+        <table>
+          <tr><th>報告書ID</th><td>${reportData.reportId || '-'}</td></tr>
+          <tr><th>機械ID</th><td>${reportData.machineId || '-'}</td></tr>
+          <tr><th>機種</th><td>${reportData.machineType || '-'}</td></tr>
+          <tr><th>機械番号</th><td>${reportData.machineNumber || '-'}</td></tr>
+          <tr><th>日付</th><td>${reportData.date || '-'}</td></tr>
+          <tr><th>場所</th><td>${reportData.location || '-'}</td></tr>
+        </table>
+      </div>
+
+      <div class="report-section">
+        <h3>故障詳細</h3>
+        <table>
+          <tr><th>故障コード</th><td>${reportData.failureCode || '-'}</td></tr>
+          <tr><th>説明</th><td>${reportData.description || '-'}</td></tr>
+          <tr><th>ステータス</th><td>${reportData.status || '-'}</td></tr>
+          <tr><th>担当エンジニア</th><td>${reportData.engineer || '-'}</td></tr>
+        </table>
+      </div>
+
+      ${imageSection}
+
+      <div class="report-section">
+        <h3>備考</h3>
+        <p>${reportData.notes || '-'}</p>
+      </div>
+
+      <div class="report-section">
+        <h3>修繕予定</h3>
+        <table>
+          <tr><th>予定月日</th><td>${reportData.repairSchedule || '-'}</td></tr>
+          <tr><th>場所</th><td>${reportData.repairLocation || '-'}</td></tr>
+        </table>
+      </div>
+    </body>
+    </html>
+  `;
+};
+
+// 個票印刷実行
+const printReport = (reportData: any, images: Array<{ id: string; url: string; fileName: string; description?: string }>) => {
+  const w = window.open('', '_blank', 'noopener,noreferrer');
+  if (!w) return;
+  
+  const contentHTML = generateReportPrintHTML(reportData, images);
+  w.document.write(contentHTML);
+  w.document.close();
+  
+  // 印刷ダイアログを表示
+  setTimeout(() => {
+    w.print();
+  }, 100);
+};
 
 const MachineFailureReport: React.FC<MachineFailureReportProps> = ({ 
   data, 
@@ -48,7 +307,61 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
     if (onSave) {
       onSave(editedData);
     }
+    
+    // サーバーに更新リクエストを送信
+    updateReportOnServer(editedData);
+    
     setIsEditing(false);
+  };
+
+  // サーバーにレポートデータを更新
+  const updateReportOnServer = async (updatedData: MachineFailureReportData) => {
+    try {
+      // 元のデータからIDを取得（data.idまたはdata.reportIdから）
+      const reportId = data.id || data.reportId;
+      
+      if (!reportId) {
+        console.warn('レポートIDが見つからないため、サーバー更新をスキップします');
+        return;
+      }
+      
+      const response = await fetch(`/api/history/update-item/${reportId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          updatedData: {
+            // レポートデータを元のJSONファイルの形式に変換
+            machineType: updatedData.machineType,
+            machineNumber: updatedData.machineNumber,
+            description: updatedData.description,
+            status: updatedData.status,
+            engineer: updatedData.engineer,
+            notes: updatedData.notes,
+            repairRequestDate: updatedData.repairRequestDate,
+            repairSchedule: updatedData.repairSchedule,
+            repairLocation: updatedData.repairLocation,
+            // レポート固有のデータも保存
+            reportData: updatedData,
+            lastUpdated: new Date().toISOString()
+          },
+          updatedBy: 'user'
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'レポートの更新に失敗しました');
+      }
+      
+      const result = await response.json();
+      console.log('レポート更新完了:', result);
+      
+    } catch (error) {
+      console.error('レポート更新エラー:', error);
+      // エラーが発生してもユーザーには通知しない（ローカル保存は成功しているため）
+    }
   };
 
   const handleCancel = () => {
@@ -63,16 +376,16 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
     }));
   };
 
-  const handlePrint = () => {
-    // 印刷前に編集モードを終了
-    if (isEditing) {
-      setIsEditing(false);
-    }
-    // 印刷実行
-    window.print();
-  };
-
   const currentData = isEditing ? editedData : data;
+  const collectedImages = collectImages(currentData);
+
+  const handlePrint = () => {
+    if (onPrint) {
+      onPrint(currentData);
+      return;
+    }
+    printReport(currentData, collectedImages);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 print:p-0 print:bg-white print:min-h-0 print:fixed print:inset-0 print:z-50">
@@ -151,34 +464,34 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
                     <span className="font-medium text-gray-700">機種:</span>
                     {isEditing ? (
                       <Input
-                        value={currentData.machineType}
+                        value={currentData.machineType || currentData.originalChatData?.machineInfo?.machineTypeName || ''}
                         onChange={(e) => handleInputChange('machineType', e.target.value)}
                         className="w-48 text-left print:hidden"
                         placeholder="例: MC300"
                       />
                     ) : (
-                      <span className="text-gray-900">{currentData.machineType}</span>
+                      <span className="text-gray-900">{currentData.machineType || currentData.originalChatData?.machineInfo?.machineTypeName || '未設定'}</span>
                     )}
                     {/* 印刷時用の表示（編集モード時は非表示） */}
                     {isEditing && (
-                      <span className="text-gray-900 print:block hidden">{currentData.machineType}</span>
+                      <span className="text-gray-900 print:block hidden">{currentData.machineType || currentData.originalChatData?.machineInfo?.machineTypeName || '未設定'}</span>
                     )}
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="font-medium text-gray-700">機械番号:</span>
                     {isEditing ? (
                       <Input
-                        value={currentData.machineNumber}
+                        value={currentData.machineNumber || currentData.originalChatData?.machineInfo?.machineNumber || ''}
                         onChange={(e) => handleInputChange('machineNumber', e.target.value)}
                         className="w-48 text-left print:hidden"
                         placeholder="例: 200"
                       />
                     ) : (
-                      <span className="text-gray-900">{currentData.machineNumber}</span>
+                      <span className="text-gray-900">{currentData.machineNumber || currentData.originalChatData?.machineInfo?.machineNumber || '未設定'}</span>
                     )}
                     {/* 印刷時用の表示（編集モード時は非表示） */}
                     {isEditing && (
-                      <span className="text-gray-900 print:block hidden">{currentData.machineNumber}</span>
+                      <span className="text-gray-900 print:block hidden">{currentData.machineNumber || currentData.originalChatData?.machineInfo?.machineNumber || '未設定'}</span>
                     )}
                   </div>
                   <div className="flex justify-between items-center">
@@ -291,18 +604,18 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
                     <span className="font-medium text-gray-700 block mb-2 print:mb-1">説明:</span>
                     {isEditing ? (
                       <Textarea
-                        value={currentData.description}
+                        value={currentData.description || currentData.problemDescription || ''}
                         onChange={(e) => handleInputChange('description', e.target.value)}
                         className="w-full h-24 print:hidden"
                         rows={4}
                         placeholder="故障の詳細な説明を入力してください"
                       />
                     ) : (
-                      <p className="text-gray-900 whitespace-pre-wrap bg-gray-50 p-3 rounded border print:bg-white">{currentData.description}</p>
+                      <p className="text-gray-900 whitespace-pre-wrap bg-gray-50 p-3 rounded border print:bg-white">{currentData.description || currentData.problemDescription || '説明なし'}</p>
                     )}
                     {/* 印刷時用の表示（編集モード時は非表示） */}
                     {isEditing && (
-                      <p className="text-gray-900 whitespace-pre-wrap bg-gray-50 p-3 rounded border print:bg-white print:block hidden">{currentData.description}</p>
+                      <p className="text-gray-900 whitespace-pre-wrap bg-gray-50 p-3 rounded border print:bg-white print:block hidden">{currentData.description || currentData.problemDescription || '説明なし'}</p>
                     )}
                   </div>
                   <div className="flex justify-between items-center">
@@ -369,17 +682,30 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
             </CardHeader>
             <CardContent>
               <p className="text-gray-600 mb-4 print:mb-3">機械故障箇所の画像</p>
-              {currentData.images && currentData.images.length > 0 ? (
+              {collectedImages && collectedImages.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 print:gap-3">
-                  {currentData.images.map((image, index) => (
+                  {collectedImages.map((image, index) => (
                     <div key={image.id} className="border rounded-lg p-3 print:break-inside-avoid print:p-2 print:bg-white">
+                      {console.log(`🖼️ 画像表示 [${index}]:`, {
+                        id: image.id,
+                        url: image.url.substring(0, 100) + '...',
+                        fileName: image.fileName,
+                        description: image.description,
+                        isBase64: image.url.startsWith('data:image/'),
+                        urlLength: image.url.length
+                      })}
                       <img
                         src={image.url}
                         alt={`故障箇所画像 ${index + 1}`}
                         className="w-full h-40 object-cover rounded-lg mb-2 print:h-32 print:mb-1"
                         crossOrigin="anonymous"
                         onError={(e) => {
-                          console.log('画像読み込みエラー:', image.url.substring(0, 100) + '...');
+                          console.log('❌ 画像読み込みエラー:', {
+                            imageId: image.id,
+                            url: image.url.substring(0, 100) + '...',
+                            fileName: image.fileName,
+                            error: e
+                          });
                           const target = e.target as HTMLImageElement;
                           target.style.display = 'none';
                           const errorDiv = target.nextElementSibling as HTMLElement;
@@ -388,7 +714,12 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
                           }
                         }}
                         onLoad={() => {
-                          console.log('画像読み込み成功:', image.url.substring(0, 100) + '...');
+                          console.log('✅ 画像読み込み成功:', {
+                            imageId: image.id,
+                            url: image.url.substring(0, 100) + '...',
+                            fileName: image.fileName,
+                            isBase64: image.url.startsWith('data:image/')
+                          });
                         }}
                       />
                       <div className="hidden text-center text-gray-500 text-sm print:block">
@@ -416,7 +747,7 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
       </div>
 
       {/* 印刷用スタイル - 印刷範囲を厳密に制御 */}
-      <style jsx>{`
+      <style>{`
         @media print {
           @page {
             margin: 1cm;

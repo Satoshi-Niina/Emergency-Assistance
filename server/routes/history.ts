@@ -43,7 +43,15 @@ router.get('/', async (req, res) => {
     const { machineType, machineNumber, searchText, searchDate, limit = 20, offset = 0 } = req.query;
 
     // チャットエクスポートファイルのみを取得（データベースは使用しない）
-    const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+    let exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+    
+    // サーバーディレクトリから起動されている場合の代替パス
+    if (!fs.existsSync(exportsDir)) {
+      const alternativePath = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+      if (fs.existsSync(alternativePath)) {
+        exportsDir = alternativePath;
+      }
+    }
     
     console.log('📋 エクスポートディレクトリ:', exportsDir);
     console.log('📋 ディレクトリ存在:', fs.existsSync(exportsDir));
@@ -264,7 +272,15 @@ router.get('/machine-data', async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
 
     // knowledge-base/exportsのJSONファイルから機種・機械番号データを取得
-    const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+    let exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+    
+    // サーバーディレクトリから起動されている場合の代替パス
+    if (!fs.existsSync(exportsDir)) {
+      const alternativePath = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+      if (fs.existsSync(alternativePath)) {
+        exportsDir = alternativePath;
+      }
+    }
     
     if (!fs.existsSync(exportsDir)) {
       console.log('📋 エクスポートディレクトリが存在しません:', exportsDir);
@@ -563,7 +579,15 @@ router.get('/export-history', async (req, res) => {
     console.log('📋 エクスポート履歴取得リクエスト');
 
     // エクスポートディレクトリから履歴を取得
-    const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+    let exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+    
+    // サーバーディレクトリから起動されている場合の代替パス
+    if (!fs.existsSync(exportsDir)) {
+      const alternativePath = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+      if (fs.existsSync(alternativePath)) {
+        exportsDir = alternativePath;
+      }
+    }
     
     let exportHistory: any[] = [];
     if (fs.existsSync(exportsDir)) {
@@ -707,7 +731,15 @@ router.get('/export-all', async (req, res) => {
     console.log(`📋 全履歴エクスポートリクエスト: 形式: ${format}`);
 
     // フィルター条件を適用して履歴を取得
-    const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+    let exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+    
+    // サーバーディレクトリから起動されている場合の代替パス
+    if (!fs.existsSync(exportsDir)) {
+      const alternativePath = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+      if (fs.existsSync(alternativePath)) {
+        exportsDir = alternativePath;
+      }
+    }
     
     let allHistory: any[] = [];
     if (fs.existsSync(exportsDir)) {
@@ -805,7 +837,15 @@ router.post('/advanced-search', async (req, res) => {
     }
 
     // エクスポートディレクトリから履歴を検索
-    const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+    let exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+    
+    // サーバーディレクトリから起動されている場合の代替パス
+    if (!fs.existsSync(exportsDir)) {
+      const alternativePath = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+      if (fs.existsSync(alternativePath)) {
+        exportsDir = alternativePath;
+      }
+    }
     
     let searchResults: any[] = [];
     if (fs.existsSync(exportsDir)) {
@@ -874,7 +914,15 @@ router.post('/generate-report', async (req, res) => {
     console.log('📋 レポート生成リクエスト:', { searchFilters, reportTitle });
 
     // フィルター条件を適用して履歴を取得
-    const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+    let exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+    
+    // サーバーディレクトリから起動されている場合の代替パス
+    if (!fs.existsSync(exportsDir)) {
+      const alternativePath = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+      if (fs.existsSync(alternativePath)) {
+        exportsDir = alternativePath;
+      }
+    }
     
     let reportData: any[] = [];
     if (fs.existsSync(exportsDir)) {
@@ -1089,6 +1137,151 @@ router.put('/:sessionId', async (req, res) => {
     console.error('❌ セッション更新エラー:', error);
     res.status(500).json({
       error: 'セッション更新に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * PUT /api/history/update-item
+ * 履歴アイテムの更新（JSONファイルに差分で上書き保存）
+ */
+router.put('/update-item/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { updatedData } = req.body;
+    
+    console.log('📝 履歴アイテム更新リクエスト:', { id, updatedData });
+
+    // 元のJSONファイルを検索
+    let exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+    
+    // サーバーディレクトリから起動されている場合の代替パス
+    if (!fs.existsSync(exportsDir)) {
+      const alternativePath = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+      if (fs.existsSync(alternativePath)) {
+        exportsDir = alternativePath;
+      }
+    }
+    
+    const files = fs.readdirSync(exportsDir);
+    
+    let targetFile = null;
+    let originalData = null;
+    
+    // IDに基づいてファイルを検索
+    for (const file of files) {
+      if (file.endsWith('.json')) {
+        const filePath = path.join(exportsDir, file);
+        try {
+          const content = fs.readFileSync(filePath, 'utf8');
+          const data = JSON.parse(content);
+          
+          // IDが一致するかチェック（chatId、id、またはファイル名から）
+          if (data.chatId === id || data.id === id || file.includes(id)) {
+            targetFile = filePath;
+            originalData = data;
+            break;
+          }
+        } catch (error) {
+          console.warn(`ファイル読み込みエラー: ${filePath}`, error);
+        }
+      }
+    }
+    
+    if (!targetFile || !originalData) {
+      return res.status(404).json({ 
+        error: '対象の履歴ファイルが見つかりません',
+        id: id 
+      });
+    }
+    
+    // 差分を計算して更新
+    const updatedJsonData = {
+      ...originalData,
+      ...updatedData,
+      // 更新履歴を追加
+      updateHistory: [
+        ...(originalData.updateHistory || []),
+        {
+          timestamp: new Date().toISOString(),
+          updatedFields: Object.keys(updatedData),
+          updatedBy: req.body.updatedBy || 'system'
+        }
+      ]
+    };
+    
+    // ファイルに上書き保存
+    fs.writeFileSync(targetFile, JSON.stringify(updatedJsonData, null, 2), 'utf8');
+    
+    console.log('✅ 履歴ファイル更新完了:', targetFile);
+    
+    res.json({
+      success: true,
+      message: '履歴ファイルが更新されました',
+      updatedFile: path.basename(targetFile),
+      updatedData: updatedJsonData
+    });
+    
+  } catch (error) {
+    console.error('❌ 履歴アイテム更新エラー:', error);
+    res.status(500).json({ 
+      error: '履歴アイテムの更新に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/history/export-files
+ * エクスポートファイル一覧取得
+ */
+router.get('/export-files', async (req, res) => {
+  try {
+    let exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+    
+    // サーバーディレクトリから起動されている場合の代替パス
+    if (!fs.existsSync(exportsDir)) {
+      const alternativePath = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
+      if (fs.existsSync(alternativePath)) {
+        exportsDir = alternativePath;
+      }
+    }
+    
+    if (!fs.existsSync(exportsDir)) {
+      return res.json([]);
+    }
+    
+    const files = fs.readdirSync(exportsDir);
+    const exportFiles = files
+      .filter(file => file.endsWith('.json'))
+      .map(file => {
+        const filePath = path.join(exportsDir, file);
+        try {
+          const content = fs.readFileSync(filePath, 'utf8');
+          const data = JSON.parse(content);
+          return {
+            fileName: file,
+            filePath: filePath,
+            chatId: data.chatId || data.id || 'unknown',
+            title: data.title || data.problemDescription || 'タイトルなし',
+            createdAt: data.createdAt || data.exportTimestamp || new Date().toISOString(),
+            lastModified: fs.statSync(filePath).mtime.toISOString(),
+            size: fs.statSync(filePath).size
+          };
+        } catch (error) {
+          console.warn(`ファイル読み込みエラー: ${filePath}`, error);
+          return null;
+        }
+      })
+      .filter(item => item !== null);
+    
+    res.json(exportFiles);
+    
+  } catch (error) {
+    console.error('❌ エクスポートファイル一覧取得エラー:', error);
+    res.status(500).json({ 
+      error: 'エクスポートファイル一覧の取得に失敗しました',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }

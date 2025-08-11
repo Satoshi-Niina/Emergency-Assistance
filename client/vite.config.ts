@@ -52,6 +52,16 @@ export default defineConfig(({ command, mode }) => {
       host: '0.0.0.0',
       port: clientPort,
       allowedHosts: true,
+      // ローカル開発環境用の設定
+      watch: {
+        usePolling: false, // ローカルではポーリング不要
+        followSymlinks: true
+      },
+      hmr: {
+        host: 'localhost',
+        port: clientPort,
+        overlay: true
+      },
       // プロキシ設定を有効化 - APIサーバーへの接続
       proxy: {
         '/api': {

@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "../../components/ui/button";
 import { useToast } from "../../hooks/use-toast.ts";
-import { Loader2, Upload, Trash2, FileText, RefreshCw, Database, Image } from "lucide-react";
+import { Loader2, Upload, Trash2, FileText, RefreshCw, Database, Image, AlertTriangle } from "lucide-react";
 import { Checkbox } from "../../components/ui/checkbox";
 import { Label } from "../../components/ui/label";
+import FileIngestPanel from "../../components/FileIngestPanel";
 import {
   Table,
   TableBody,
@@ -247,6 +248,13 @@ const UnifiedDataProcessor: React.FC = () => {
       <div className="bg-white p-6 rounded-lg shadow-md border border-blue-100">
         <h2 className="text-xl font-semibold text-blue-800 mb-4">ファイルアップロード処理</h2>
         
+        {/* ファイルアップロード説明 */}
+        <div className="mb-4">
+          <p className="text-base font-semibold text-gray-700">
+            PPTX, PDF, DOCX、PDFをアップロードすると、システムは自動的に内容を解析し、検索とAIの応答に適した形式に変換します。この処理には数分かかることがあります。
+          </p>
+        </div>
+
         {/* ドラッグ&ドロップエリア */}
         <div
           className={`border-2 border-dashed border-blue-300 rounded-lg p-8 mb-4 text-center cursor-pointer bg-blue-50 hover:bg-blue-100 transition-colors ${
@@ -292,7 +300,7 @@ const UnifiedDataProcessor: React.FC = () => {
         </div>
 
         {/* 処理ボタン */}
-        <div className="flex justify-center">
+        <div className="flex justify-center mb-6">
           <Button
             onClick={handleProcessFile}
             disabled={!selectedFile || isUploading}
@@ -311,6 +319,10 @@ const UnifiedDataProcessor: React.FC = () => {
             )}
           </Button>
         </div>
+
+        {/* 故障情報取込 */}
+        <FileIngestPanel />
+
       </div>
 
       {/* 処理済み文書一覧 */}

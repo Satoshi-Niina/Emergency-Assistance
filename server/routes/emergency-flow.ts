@@ -1017,8 +1017,23 @@ function decryptUri(encryptedFileName: string): string {
 router.get('/image/:fileName', async (req, res) => {
   try {
     const { fileName } = req.params;
-    const uploadDir = path.join(__dirname, '../../knowledge-base/images/emergency-flows');
-    const filePath = path.join(uploadDir, fileName);
+    
+    // まず emergency-flows ディレクトリを確認
+    let uploadDir = path.join(__dirname, '../../knowledge-base/images/emergency-flows');
+    let filePath = path.join(uploadDir, fileName);
+    
+    // emergency-flows にファイルがない場合は chat-exports を確認
+    if (!fs.existsSync(filePath)) {
+      uploadDir = path.join(__dirname, '../../knowledge-base/images/chat-exports');
+      filePath = path.join(uploadDir, fileName);
+      
+      console.log('🔄 emergency-flows にファイルが見つからないため、chat-exports を確認:', {
+        fileName,
+        chatExportsDir: uploadDir,
+        chatExportsPath: filePath,
+        exists: fs.existsSync(filePath)
+      });
+    }
 
     // デバッグログ強化
     console.log('🖼️ 画像リクエスト:', {
@@ -1026,15 +1041,17 @@ router.get('/image/:fileName', async (req, res) => {
       uploadDir,
       filePath,
       exists: fs.existsSync(filePath),
-      filesInDir: fs.readdirSync(uploadDir)
+      filesInDir: fs.existsSync(uploadDir) ? fs.readdirSync(uploadDir) : []
     });
 
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({
         error: 'ファイルが存在しません',
         fileName,
-        filePath,
-        filesInDir: fs.readdirSync(uploadDir)
+        emergencyFlowsPath: path.join(__dirname, '../../knowledge-base/images/emergency-flows', fileName),
+        chatExportsPath: path.join(__dirname, '../../knowledge-base/images/chat-exports', fileName),
+        emergencyFlowsDir: fs.existsSync(path.join(__dirname, '../../knowledge-base/images/emergency-flows')) ? fs.readdirSync(path.join(__dirname, '../../knowledge-base/images/emergency-flows')) : [],
+        chatExportsDir: fs.existsSync(path.join(__dirname, '../../knowledge-base/images/chat-exports')) ? fs.readdirSync(path.join(__dirname, '../../knowledge-base/images/chat-exports')) : []
       });
     }
 
@@ -1059,7 +1076,8 @@ router.get('/image/:fileName', async (req, res) => {
       fileName,
       contentType,
       fileSize: fileBuffer.length,
-      filePath
+      filePath,
+      sourceDir: uploadDir.includes('emergency-flows') ? 'emergency-flows' : 'chat-exports'
     });
 
   } catch (error) {
