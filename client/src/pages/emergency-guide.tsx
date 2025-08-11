@@ -214,23 +214,25 @@ const EmergencyGuidePage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="h-screen flex flex-col">
       <Helmet>
         <title>応急処置ガイド - Emergency Assistance</title>
         <meta name="description" content="応急処置ガイドの管理と表示" />
       </Helmet>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="upload">アップロード</TabsTrigger>
-          <TabsTrigger value="edit">編集・管理</TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+        <div className="px-4 pt-8">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="upload">アップロード</TabsTrigger>
+            <TabsTrigger value="edit">編集・管理</TabsTrigger>
+          </TabsList>
+        </div>
 
-        <TabsContent value="upload" className="space-y-6">
+        <TabsContent value="upload" className="flex-1 flex flex-col min-h-0 px-4 pb-8">
           <EmergencyGuideUploader onUploadSuccess={handleUploadSuccess} />
         </TabsContent>
 
-        <TabsContent value="edit" className="space-y-6">
+        <TabsContent value="edit" className="flex-1 flex flex-col min-h-0 px-4 pb-8">
           <EmergencyGuideEdit />
         </TabsContent>
       </Tabs>

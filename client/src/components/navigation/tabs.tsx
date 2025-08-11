@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { cn } from "../../lib/utils.ts";
 import { Button } from "../../components/ui/button";
 import { Tabs as TabsPrimitive, TabsList, TabsTrigger } from "../../components/ui/tabs";
-import { MessageSquare, Database, Settings, FileText, History } from "lucide-react";
+import { MessageSquare, Database, Settings, FileText, History, Wrench } from "lucide-react";
 import { useAuth } from "../../context/auth-context";
 
 interface TabItem {
@@ -50,6 +50,7 @@ export function Tabs() {
       path: "/settings",
       icon: <Settings className="mr-2 h-4 w-4" />,
     },
+
   ];
 
   const filteredTabs = tabs.filter(tab => !tab.adminOnly || isAdmin);

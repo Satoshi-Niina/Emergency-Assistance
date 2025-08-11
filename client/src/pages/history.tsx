@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileText, Image, Calendar, MapPin, Settings, Filter, Download, Trash2, CheckSquare, Square, FileDown, History, FileText as FileTextIcon, Table, BarChart3, Grid3X3, List, ClipboardList, FileSpreadsheet, Grid } from 'lucide-react';
+import { Search, FileText, Image, Calendar, MapPin, Settings, Filter, Download, Trash2, CheckSquare, Square, FileDown, FileText as FileTextIcon, Table, BarChart3, Grid3X3, List, ClipboardList, FileSpreadsheet, Grid, Printer } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Badge } from "../components/ui/badge";
-import { SupportHistoryItem, HistorySearchFilters, ExportHistoryItem } from '../types/history';
+import { SupportHistoryItem, HistorySearchFilters } from '../types/history';
 import { 
   fetchHistoryList, 
   fetchMachineData,
@@ -13,12 +13,33 @@ import {
   exportHistoryItem, 
   exportSelectedHistory, 
   exportAllHistory,
-  fetchExportHistory,
   advancedSearch,
   generateReport
 } from '../lib/api/history-api';
 import ChatExportReport from '../components/report/chat-export-report';
 import MachineFailureReport from '../components/report/machine-failure-report';
+
+// 画像ユーティリティ関数
+const API_BASE = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_BASE_URL || window.location.origin);
+
+async function fetchDetailFile(name: string) {
+  const url = `${API_BASE}/api/history/file?name=${encodeURIComponent(name)}`;
+  console.log('[fetchDetailFile] リクエスト開始:', url);
+  const r = await fetch(url, { credentials: 'include' });
+  console.log('[fetchDetailFile] レスポンス受信:', { status: r.status, ok: r.ok });
+  if (!r.ok) throw new Error(`detail ${r.status}`);
+  const json = await r.json();
+  console.log('[fetchDetailFile] JSON解析完了:', { hasData: !!json, keys: Object.keys(json || {}) });
+  return json;
+}
+
+function getSelectedItemWithFallback(list: any[], selected: Set<number>) {
+  if (selected && selected.size > 0) {
+    const idx = [...selected][0];
+    return list[idx];
+  }
+  return list?.[0];
+}
 
 interface SearchFilters {
   machineType: string;
@@ -50,8 +71,6 @@ const HistoryPage: React.FC = () => {
   // エクスポート機能の状態
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [exportLoading, setExportLoading] = useState(false);
-  const [exportHistory, setExportHistory] = useState<ExportHistoryItem[]>([]);
-  const [showExportHistory, setShowExportHistory] = useState(false);
   
   // レポート機能の状態
   const [reportLoading, setReportLoading] = useState(false);
@@ -99,9 +118,6 @@ const HistoryPage: React.FC = () => {
           }),
           fetchMachineDataFromAPI().catch(error => {
             console.error('機種データ取得エラー:', error);
-          }),
-          fetchExportHistoryData().catch(error => {
-            console.error('エクスポート履歴取得エラー:', error);
           })
         ]);
         console.log('🔍 データ初期化完了');
@@ -263,15 +279,7 @@ const HistoryPage: React.FC = () => {
   };
 
 
-  const fetchExportHistoryData = async () => {
-    try {
-      const data = await fetchExportHistory();
-      setExportHistory(data);
-    } catch (error) {
-      console.error('エクスポート履歴の取得に失敗しました:', error);
-      setExportHistory([]);
-    }
-  };
+
 
   const handleSelectItem = (id: string) => {
     const newSelected = new Set(selectedItems);
@@ -353,7 +361,14 @@ const HistoryPage: React.FC = () => {
   };
 
   const handleGenerateReport = async () => {
+    // 既にレポート生成中の場合は処理を停止
+    if (reportLoading) {
+      console.log('レポート生成中です。処理を停止します。');
+      return;
+    }
+
     try {
+      console.log('=== レポート生成開始 ===');
       setReportLoading(true);
       
       // 選択されたアイテムのみを対象とする
@@ -361,16 +376,31 @@ const HistoryPage: React.FC = () => {
       
       console.log('レポート生成開始:', { 
         filteredItemsCount: filteredItems.length,
-        selectedItemsCount: selectedItemsList.length
+        selectedItemsCount: selectedItemsList.length,
+        selectedItems: Array.from(selectedItems)
       });
       
       // 選択されたアイテムがない場合は処理を停止
       if (selectedItemsList.length === 0) {
         alert('ファイルを選択してください。');
+        setReportLoading(false);
         return;
       }
       
       const targetItems = selectedItemsList;
+      
+      // 各アイテムのデータ構造を確認
+      targetItems.forEach((item, index) => {
+        console.log(`アイテム${index + 1}のデータ構造:`, {
+          id: item.id,
+          fileName: item.fileName,
+          hasJsonData: !!item.jsonData,
+          jsonDataKeys: item.jsonData ? Object.keys(item.jsonData) : [],
+          machineInfo: item.machineInfo,
+          machineType: item.machineType,
+          machineNumber: item.machineNumber
+        });
+      });
       
       // 選択されたアイテムからJSONデータを分析してレポートデータを生成
       const allTitles: string[] = [];
@@ -379,7 +409,7 @@ const HistoryPage: React.FC = () => {
       const allModels: string[] = [];
       
       targetItems.forEach(item => {
-        const jsonData = item.jsonData;
+        const jsonData = item?.jsonData ?? item?.data ?? {};
         
         // 事象タイトルを抽出（ファイル名から優先的に取得、次にJSONデータから）
         let title = null;
@@ -397,9 +427,9 @@ const HistoryPage: React.FC = () => {
           title = jsonData?.title;
           if (!title && jsonData?.chatData?.messages) {
             // 従来フォーマットの場合、ユーザーメッセージから事象を抽出
-            const userMessages = jsonData.chatData.messages.filter((msg: any) => !msg.isAiResponse);
-            if (userMessages.length > 0) {
-              title = userMessages[0].content;
+            const userMessages = jsonData?.chatData?.messages?.filter((msg: any) => !msg.isAiResponse);
+            if (userMessages?.length > 0) {
+              title = userMessages[0]?.content;
             }
           }
         }
@@ -411,9 +441,18 @@ const HistoryPage: React.FC = () => {
         if (jsonData?.possibleModels) allModels.push(...jsonData.possibleModels);
       });
       
+      console.log('抽出されたデータ:', {
+        titles: allTitles,
+        components: allComponents,
+        symptoms: allSymptoms,
+        models: allModels
+      });
+      
       // 各アイテムごとに個別のレポートを生成
       const reportDataArray = targetItems.map((item, index) => {
-        const jsonData = item.jsonData;
+        console.log(`レポート${index + 1}の生成開始:`, item.fileName);
+        
+        const jsonData = item?.jsonData ?? item?.data ?? {};
         
         // 事象タイトルを抽出（ファイル名から優先的に取得、次にJSONデータから）
         let title = '事象なし';
@@ -431,9 +470,9 @@ const HistoryPage: React.FC = () => {
           title = jsonData?.title;
           if (!title && jsonData?.chatData?.messages) {
             // 従来フォーマットの場合、ユーザーメッセージから事象を抽出
-            const userMessages = jsonData.chatData.messages.filter((msg: any) => !msg.isAiResponse);
-            if (userMessages.length > 0) {
-              title = userMessages[0].content;
+            const userMessages = jsonData?.chatData?.messages?.filter((msg: any) => !msg.isAiResponse);
+            if (userMessages?.length > 0) {
+              title = userMessages[0]?.content;
             }
           }
         }
@@ -448,7 +487,150 @@ const HistoryPage: React.FC = () => {
                             jsonData?.chatData?.machineInfo?.machineNumber || 
                             item.machineNumber || '';
         
-        return {
+        console.log(`レポート${index + 1}の基本情報:`, {
+          title,
+          machineType,
+          machineNumber
+        });
+        
+        // 画像データを収集（優先順位付き）
+        const images = [];
+        
+        try {
+          // 優先順位1: conversationHistoryからBase64画像を取得（最優先）
+          if (jsonData?.conversationHistory?.length > 0) {
+            console.log('handleGenerateReport: conversationHistoryからBase64画像を検索中...', jsonData.conversationHistory.length);
+            const imageMessages = jsonData.conversationHistory.filter((msg: any) => 
+              msg.content && typeof msg.content === 'string' && msg.content.startsWith('data:image/')
+            );
+            console.log('handleGenerateReport: conversationHistoryでBase64画像を発見:', imageMessages.length);
+            imageMessages.forEach((msg, index) => {
+              images.push({
+                id: `conv-${index}`,
+                url: msg.content,
+                fileName: `故障画像_${index + 1}`,
+                description: '機械故障箇所の写真',
+                source: 'conversationHistory'
+              });
+            });
+          }
+          
+          // 優先順位2: originalChatData.messagesからBase64画像を取得
+          if (jsonData?.originalChatData?.messages?.length > 0) {
+            console.log('handleGenerateReport: originalChatData.messagesからBase64画像を検索中...', jsonData.originalChatData.messages.length);
+            const imageMessages = jsonData.originalChatData.messages.filter((msg: any) => 
+              msg.content && typeof msg.content === 'string' && msg.content.startsWith('data:image/')
+            );
+            console.log('handleGenerateReport: originalChatData.messagesでBase64画像を発見:', imageMessages.length);
+            imageMessages.forEach((msg, index) => {
+              // 既に追加済みの画像は除外
+              if (!images.some(img => img.url === msg.content)) {
+                images.push({
+                  id: `orig-${index}`,
+                  url: msg.content,
+                  fileName: `故障画像_${images.length + 1}`,
+                  description: '機械故障箇所の写真',
+                  source: 'originalChatData'
+                });
+              }
+            });
+          }
+          
+          // 優先順位3: chatData.messagesからBase64画像を取得
+          if (jsonData?.chatData?.messages?.length > 0) {
+            console.log('handleGenerateReport: chatData.messagesからBase64画像を検索中...', jsonData.chatData.messages.length);
+            const imageMessages = jsonData.chatData.messages.filter((msg: any) => 
+              msg.content && typeof msg.content === 'string' && msg.content.startsWith('data:image/')
+            );
+            console.log('handleGenerateReport: chatData.messagesでBase64画像を発見:', imageMessages.length);
+            imageMessages.forEach((msg, index) => {
+              // 既に追加済みの画像は除外
+              if (!images.some(img => img.url === msg.content)) {
+                images.push({
+                  id: `chat-${index}`,
+                  url: msg.content,
+                  fileName: `故障画像_${images.length + 1}`,
+                  description: '機械故障箇所の写真',
+                  source: 'chatData'
+                });
+              }
+            });
+          }
+          
+          // 優先順位4: savedImagesフィールドから画像を取得
+          if (jsonData?.savedImages?.length > 0) {
+            console.log('handleGenerateReport: savedImagesから画像を取得中...', jsonData.savedImages.length);
+            jsonData.savedImages.forEach((img: any, index: number) => {
+              // 既に追加済みの画像は除外
+              if (!images.some(existingImg => existingImg.url === img.url || existingImg.url === img.path)) {
+                images.push({
+                  id: `saved-${index}`,
+                  url: img.url || img.path,
+                  fileName: img.fileName || `故障画像_${images.length + 1}`,
+                  description: img.description || '機械故障箇所の写真',
+                  source: 'savedImages'
+                });
+              }
+            });
+          }
+          
+          // 優先順位5: 再帰的にJSONデータ内の画像を検索
+          const findImagesRecursively = (obj: any, path: string = ''): string[] => {
+            const foundImages: string[] = [];
+            
+            if (obj && typeof obj === 'object') {
+              Object.entries(obj).forEach(([key, value]) => {
+                const currentPath = path ? `${path}.${key}` : key;
+                
+                if (typeof value === 'string' && value.startsWith('data:image/')) {
+                  foundImages.push(value);
+                } else if (Array.isArray(value)) {
+                  value.forEach((item, index) => {
+                    foundImages.push(...findImagesRecursively(item, `${currentPath}[${index}]`));
+                  });
+                } else if (typeof value === 'object' && value !== null) {
+                  foundImages.push(...findImagesRecursively(value, currentPath));
+                }
+              });
+            }
+            
+            return foundImages;
+          };
+          
+          const recursiveImages = findImagesRecursively(jsonData);
+          console.log('handleGenerateReport: 再帰検索で画像を発見:', recursiveImages.length);
+          recursiveImages.forEach((imgUrl, index) => {
+            // 既に追加済みの画像は除外
+            if (!images.some(img => img.url === imgUrl)) {
+              images.push({
+                id: `recursive-${index}`,
+                url: imgUrl,
+                fileName: `故障画像_${images.length + 1}`,
+                description: '機械故障箇所の写真',
+                source: 'recursive'
+              });
+            }
+          });
+          
+          // 優先順位6: imagePathフィールド（最終フォールバック）
+          if (jsonData?.imagePath && typeof jsonData.imagePath === 'string' && !images.some(img => img.url === jsonData.imagePath)) {
+            console.log('handleGenerateReport: imagePathから画像を取得中...');
+            images.push({
+              id: 'imagePath',
+              url: jsonData.imagePath,
+              fileName: '故障画像',
+              description: '機械故障箇所の写真',
+              source: 'imagePath'
+            });
+          }
+        } catch (imageError) {
+          console.error('画像データ処理中にエラーが発生しました:', imageError);
+          // 画像処理エラーが発生してもレポート生成は続行
+        }
+        
+        console.log(`レポート${index + 1}の画像数:`, images.length, '枚');
+        
+        const reportData = {
           reportId: `R${Date.now().toString().slice(-5)}-${index + 1}`,
           machineId: machineNumber || '不明',
           date: new Date(item.createdAt).toISOString().split('T')[0],
@@ -461,95 +643,20 @@ const HistoryPage: React.FC = () => {
           repairRequestDate: new Date().toISOString().split('T')[0],
           repairSchedule: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           repairLocation: '工場内修理スペース',
-          images: (() => {
-            const images = [];
-            
-            // 優先順位1: savedImagesから画像を取得（サーバー上のファイル）
-            if (jsonData?.savedImages && jsonData.savedImages.length > 0) {
-              jsonData.savedImages.forEach((savedImage, index) => {
-                let imageUrl = savedImage.url;
-                if (!imageUrl.startsWith('data:image/') && !imageUrl.startsWith('http')) {
-                  imageUrl = savedImage.url.startsWith('/') ? 
-                            `${window.location.origin}${savedImage.url}` :
-                            `${window.location.origin}/api/images/chat-exports/${savedImage.url}`;
-                }
-                images.push({
-                  id: `img-saved-${item.id}-${index}`,
-                  url: imageUrl,
-                  fileName: savedImage.fileName || `故障画像_${item.id}_${index + 1}`,
-                  description: savedImage.description || title
-                });
-              });
-            }
-            
-            // 優先順位2: 従来のimagePathフィールド
-            if (images.length === 0 && item.imagePath) {
-              let imageUrl = item.imagePath.startsWith('http') ? item.imagePath : 
-                           item.imagePath.startsWith('/') ? `${window.location.origin}${item.imagePath}` :
-                           `${window.location.origin}/api/images/chat-exports/${item.imagePath}`;
-              images.push({
-                id: `img-path-${item.id}`,
-                url: imageUrl,
-                fileName: `故障画像_${item.id}`,
-                description: title
-              });
-            }
-            
-            // 優先順位3: Base64画像（フォールバック）
-            if (images.length === 0) {
-              // conversationHistoryからBase64画像を取得
-              if (jsonData?.conversationHistory && jsonData.conversationHistory.length > 0) {
-                const imageMessages = jsonData.conversationHistory.filter((msg: any) => 
-                  msg.content && msg.content.startsWith('data:image/')
-                );
-                imageMessages.forEach((msg, index) => {
-                  images.push({
-                    id: `img-conv-${item.id}-${index}`,
-                    url: msg.content,
-                    fileName: `故障画像_${item.id}_${index + 1}`,
-                    description: title
-                  });
-                });
-              }
-              
-              // originalChatData.messagesからBase64画像を取得
-              if (images.length === 0 && jsonData?.originalChatData?.messages) {
-                const imageMessages = jsonData.originalChatData.messages.filter((msg: any) => 
-                  msg.content && msg.content.startsWith('data:image/')
-                );
-                imageMessages.forEach((msg, index) => {
-                  images.push({
-                    id: `img-orig-${item.id}-${index}`,
-                    url: msg.content,
-                    fileName: `故障画像_${item.id}_${index + 1}`,
-                    description: title
-                  });
-                });
-              }
-              
-              // 従来フォーマットのchatData.messagesからBase64画像を取得
-              if (images.length === 0 && jsonData?.chatData?.messages) {
-                const imageMessages = jsonData.chatData.messages.filter((msg: any) => 
-                  msg.content && msg.content.startsWith('data:image/')
-                );
-                imageMessages.forEach((msg, index) => {
-                  images.push({
-                    id: `img-msg-${item.id}-${index}`,
-                    url: msg.content,
-                    fileName: `故障画像_${item.id}_${index + 1}`,
-                    description: title
-                  });
-                });
-              }
-            }
-            
-            return images.length > 0 ? images : undefined;
-          })(),
+          images: images.length > 0 ? images : undefined,
           chatHistory: jsonData?.conversationHistory || jsonData?.chatData?.messages || undefined
         };
+        
+        console.log(`レポート${index + 1}の生成完了:`, {
+          reportId: reportData.reportId,
+          description: reportData.description,
+          images: reportData.images?.length || 0
+        });
+        
+        return reportData;
       });
       
-      console.log('レポートデータ生成完了:', reportDataArray);
+      console.log('=== レポートデータ生成完了 ===');
       console.log('レポート配列の長さ:', reportDataArray.length);
       console.log('各レポートの詳細:', reportDataArray.map((report, index) => ({
         index,
@@ -568,11 +675,17 @@ const HistoryPage: React.FC = () => {
       
       // 成功通知
       alert(`レポートが正常に生成されました。\n対象アイテム: ${targetItems.length}件 (選択済み)\n${targetItems.length > 1 ? '複数ページで表示されます。' : ''}`);
+      
+      console.log('=== レポート生成完了 ===');
     } catch (error) {
-      console.error('レポート生成エラー:', error);
+      console.error('=== レポート生成エラー ===');
+      console.error('エラー詳細:', error);
+      console.error('エラースタック:', error instanceof Error ? error.stack : 'スタックトレースなし');
       alert('レポート生成中にエラーが発生しました: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
+      // エラーが発生しても確実にローディング状態をリセット
       setReportLoading(false);
+      console.log('レポート生成状態をリセット完了');
     }
   };
 
@@ -580,7 +693,7 @@ const HistoryPage: React.FC = () => {
 
   const handleShowReport = async (fileName: string) => {
     try {
-      const response = await fetch(`/api/chats/exports/${fileName}`);
+      const response = await fetch(`/api/history/file?name=${encodeURIComponent(fileName)}`);
       if (!response.ok) {
         throw new Error('チャットエクスポートファイルの取得に失敗しました');
       }
@@ -616,162 +729,48 @@ const HistoryPage: React.FC = () => {
     }
   };
 
-  const handleShowMachineFailureReport = (item: SupportHistoryItem) => {
-    const jsonData = item.jsonData;
-    
-    // 新しいフォーマットのJSONデータから情報を抽出
-    let incidentTitle = '事象なし';
-    
-    // まずファイル名から事象内容を抽出
-    if (item.fileName) {
-      const fileNameParts = item.fileName.split('_');
-      if (fileNameParts.length > 1) {
-        // ファイル名の最初の部分が事象内容
-        incidentTitle = fileNameParts[0];
-      }
+    const handleShowMachineFailureReport = async (item: SupportHistoryItem) => {
+    console.log('[REPORT DETAIL] 関数開始 - item:', item);
+    if (!item?.fileName) {
+      console.warn('[REPORT DETAIL] no target - fileNameがありません'); 
+      return;
     }
-    
-    // ファイル名から取得できない場合は、JSONデータから取得
-    if (incidentTitle === '事象なし') {
-      incidentTitle = jsonData?.title || jsonData?.question || '事象なし';
-      if (incidentTitle === '事象なし' && jsonData?.chatData?.messages) {
-        // 従来フォーマットの場合、ユーザーメッセージから事象を抽出
-        const userMessages = jsonData.chatData.messages.filter((msg: any) => !msg.isAiResponse);
-        if (userMessages.length > 0) {
-          // 最初のユーザーメッセージを事象として使用
-          incidentTitle = userMessages[0].content || '事象なし';
-        }
-      }
-    }
-    
-    const problemDescription = jsonData?.problemDescription || jsonData?.answer || '説明なし';
-    
-    // 機種と機械番号を抽出（新しいフォーマットまたは従来フォーマットから）
-    const machineType = jsonData?.machineType || 
-                      jsonData?.originalChatData?.machineInfo?.machineTypeName ||
-                      jsonData?.chatData?.machineInfo?.machineTypeName || 
-                      item.machineType || '';
-    const machineNumber = jsonData?.machineNumber || 
-                        jsonData?.originalChatData?.machineInfo?.machineNumber ||
-                        jsonData?.chatData?.machineInfo?.machineNumber || 
-                        item.machineNumber || '';
-    
-    const extractedComponents = jsonData?.extractedComponents || [];
-    const extractedSymptoms = jsonData?.extractedSymptoms || [];
-    const possibleModels = jsonData?.possibleModels || [];
-    const conversationHistory = jsonData?.conversationHistory || jsonData?.chatData?.messages || [];
-    
-    // 画像URLを取得（優先順位付き）
-    let images = [];
-    
-    // 優先順位1: Base64画像（モバイル軽量化のため最優先）
-    if (jsonData?.conversationHistory && jsonData.conversationHistory.length > 0) {
-      const imageMessages = jsonData.conversationHistory.filter((msg: any) => 
-        msg.content && msg.content.startsWith('data:image/')
-      );
-      imageMessages.forEach((msg, index) => {
-        images.push({
-          id: `img-conv-${item.id}-${index}`,
-          url: msg.content,
-          fileName: `故障画像_${item.id}_${index + 1}`,
-          description: '機械故障箇所の写真'
-        });
+    const name = item.fileName;
+    console.log('[REPORT DETAIL] fetchDetailFile開始:', name);
+    try {
+      const json = await fetchDetailFile(name);
+      console.log('[REPORT DETAIL] fetchDetailFile成功:', { 
+        hasConv: !!json?.conversationHistory, 
+        hasSaved: !!json?.savedImages,
+        jsonKeys: Object.keys(json || {})
       });
-      console.log('機械故障報告書: conversationHistoryからBase64画像を取得（最優先）');
-    }
-    
-    // 優先順位2: originalChatData.messagesからBase64画像を取得
-    if (images.length === 0 && jsonData?.originalChatData?.messages) {
-      const imageMessages = jsonData.originalChatData.messages.filter((msg: any) => 
-        msg.content && msg.content.startsWith('data:image/')
-      );
-      imageMessages.forEach((msg, index) => {
-        images.push({
-          id: `img-orig-${item.id}-${index}`,
-          url: msg.content,
-          fileName: `故障画像_${item.id}_${index + 1}`,
-          description: '機械故障箇所の写真'
-        });
+      console.log('[REPORT DETAIL] 渡すデータ:', {
+        hasSavedImages: !!json?.savedImages,
+        savedImagesCount: json?.savedImages?.length || 0,
+        savedImagesUrls: json?.savedImages?.map((img: any) => img.url) || [],
+        machineInfo: json?.originalChatData?.machineInfo
       });
-      console.log('機械故障報告書: originalChatDataからBase64画像を取得（優先順位2）');
+      setMachineFailureReportData(json);  // ← 子に全文渡す
+      setShowMachineFailureReport(true);
+      console.log('[REPORT DETAIL] 状態更新完了');
+    } catch (e) {
+      console.error('[REPORT DETAIL] fetchDetailFile失敗:', e);
     }
-    
-    // 優先順位3: 従来フォーマットのchatData.messagesからBase64画像を取得
-    if (images.length === 0 && jsonData?.chatData?.messages) {
-      const imageMessages = jsonData.chatData.messages.filter((msg: any) => 
-        msg.content && msg.content.startsWith('data:image/')
-      );
-      imageMessages.forEach((msg, index) => {
-        images.push({
-          id: `img-msg-${item.id}-${index}`,
-          url: msg.content,
-          fileName: `故障画像_${item.id}_${index + 1}`,
-          description: '機械故障箇所の写真'
-        });
-      });
-      console.log('機械故障報告書: chatDataからBase64画像を取得（優先順位3）');
-    }
-    
-    // 優先順位4: savedImagesから画像を取得（Base64が読めない場合のフォールバック）
-    if (images.length === 0 && jsonData?.savedImages && jsonData.savedImages.length > 0) {
-      images = jsonData.savedImages.map((img: any, index: number) => ({
-        id: img.messageId?.toString() || `img_${index}`,
-        url: img.url,
-        fileName: img.fileName || `故障画像_${item.id}_${index + 1}`,
-        description: '機械故障箇所の写真'
-      }));
-      console.log('機械故障報告書: savedImagesから画像を取得（Base64フォールバック）');
-    }
-    
-    // 優先順位5: 従来のimagePathフィールド（最終フォールバック）
-    if (images.length === 0 && item.imagePath) {
-      const imageUrl = item.imagePath.startsWith('http') ? item.imagePath : 
-                     item.imagePath.startsWith('/') ? `${window.location.origin}${item.imagePath}` :
-                     `${window.location.origin}/api/images/chat-exports/${item.imagePath}`;
-      images = [{
-        id: '1',
-        url: imageUrl,
-        fileName: '故障箇所画像',
-        description: '機械故障箇所の写真'
-      }];
-      console.log('機械故障報告書: imagePathから画像を取得（最終フォールバック）');
-    }
-    
-    const reportData = {
-      reportId: `R${item.id.slice(-5).toUpperCase()}`,
-      machineType: machineType,
-      machineNumber: machineNumber,
-      date: new Date(item.createdAt).toISOString().split('T')[0],
-      location: '○○線',
-      description: problemDescription,
-      status: '応急処置完了',
-      engineer: '担当エンジニア',
-              notes: `事象タイトル: ${incidentTitle}\n機種: ${machineType}\n機械番号: ${machineNumber}\n作成日時: ${new Date(item.createdAt).toLocaleString('ja-JP')}\n影響コンポーネント: ${extractedComponents.join(', ')}\n症状: ${extractedSymptoms.join(', ')}\n可能性のある機種: ${possibleModels.join(', ')}`,
-      repairRequestDate: new Date().toISOString().split('T')[0], // 今日の日付を初期値として設定
-      repairSchedule: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30日後の日付を初期値として設定
-      repairLocation: '工場内修理スペース',
-      images: images.length > 0 ? images : undefined,
-      chatHistory: conversationHistory.map((msg: any) => ({
-        id: msg.id || Math.random(),
-        content: msg.content,
-        isAiResponse: msg.isAiResponse,
-        timestamp: msg.timestamp || msg.createdAt
-      }))
-    };
-    
-    setMachineFailureReportData(reportData);
-    setShowMachineFailureReport(true);
+  };
+
+  const handleCloseMachineFailureReport = () => {
+    setShowMachineFailureReport(false);
+    setMachineFailureReportData(null);
+    // レポート生成の状態もリセット
+    setReportLoading(false);
   };
 
   const handleCloseReport = () => {
     setShowReport(false);
     setSelectedReportData(null);
     setSelectedFileName('');
-  };
-
-  const handleCloseMachineFailureReport = () => {
-    setShowMachineFailureReport(false);
-    setMachineFailureReportData(null);
+    // レポート生成の状態もリセット
+    setReportLoading(false);
   };
 
   const handleSaveReport = (reportData: any) => {
@@ -791,6 +790,47 @@ const HistoryPage: React.FC = () => {
     console.log('レポートが保存されました:', newReport);
   };
 
+  // 履歴アイテムの編集データをサーバーに保存
+  const handleSaveEditedItem = async (editedItem: SupportHistoryItem) => {
+    try {
+      console.log('編集された履歴アイテムを保存:', editedItem);
+      
+      // サーバーに更新リクエストを送信
+      const response = await fetch(`/api/history/update-item/${editedItem.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          updatedData: editedItem.jsonData,
+          updatedBy: 'user' // 実際のユーザーIDに置き換える
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || '履歴の更新に失敗しました');
+      }
+      
+      const result = await response.json();
+      console.log('履歴更新完了:', result);
+      
+      // 成功通知
+      alert('履歴が正常に更新されました。');
+      
+      // 編集ダイアログを閉じる
+      setShowEditDialog(false);
+      setEditingItem(null);
+      
+      // 履歴リストを再読み込み
+      fetchHistory();
+      
+    } catch (error) {
+      console.error('履歴保存エラー:', error);
+      alert('履歴の保存に失敗しました: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
+  };
+
   const extractJsonInfo = (jsonData: any) => {
     try {
       const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
@@ -808,74 +848,117 @@ const HistoryPage: React.FC = () => {
     }
   };
 
+  // 画像取得の共通関数（編集対象ファイル内のみで完結）
+  function pickFirstImage(data: any): string | null {
+    // 1) 直下 or ネスト配列に dataURL があれば優先
+    const dig = (v:any): string | null => {
+      if (!v) return null;
+      if (typeof v === 'string' && v.startsWith('data:image/')) return v;
+      if (Array.isArray(v)) for (const x of v) { const r = dig(x); if (r) return r; }
+      if (typeof v === 'object') for (const k of Object.keys(v)) { const r = dig(v[k]); if (r) return r; }
+      return null;
+    };
+    const fromDataUrl = dig(data);
+    if (fromDataUrl) return fromDataUrl;
+
+    // 2) savedImages
+    const saved = data?.savedImages;
+    if (Array.isArray(saved) && saved[0]) return saved[0];
+
+    // 3) imagePath(URL)
+    if (typeof data?.imagePath === 'string') return data.imagePath;
+
+    return null;
+  }
+
+  // 印刷用CSS
+  const PRINT_STYLES = `
+<style>
+  @page { size: A4 portrait; margin: 10mm; }
+  @media print {
+    html, body { margin: 0; padding: 0; }
+    .no-print, .print:hidden { display: none !important; }
+    img, .image-cell, .image-section { page-break-inside: avoid; break-inside: avoid; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td { border: 1px solid #ccc; padding: 4px; vertical-align: top; }
+  }
+  /* 画面プレビュー用：印刷専用ウィンドウでは最小限でOK */
+  img.thumb { width: 32px; height: 32px; object-fit: cover; border: 1px solid #ddd; border-radius: 4px; }
+  .report-img { max-width: 100%; height: auto; }
+</style>
+`;
+
+  // 一覧印刷用HTML生成
+  const generateListPrintHTML = (items: any[]): string => {
+    const rows = items.map(item => {
+      const imageUrl = pickFirstImage(item);
+      const imageCell = imageUrl 
+        ? `<img class="thumb" src="${imageUrl}" alt="画像" />`
+        : '-';
+      
+      return `
+        <tr>
+          <td>${item.title || item.incidentTitle || 'タイトルなし'}</td>
+          <td>${item.machineType || item.machineTypeName || '-'}</td>
+          <td>${item.machineNumber || '-'}</td>
+          <td>${item.date || item.timestamp || '-'}</td>
+          <td>${item.status || '-'}</td>
+          <td>${imageCell}</td>
+        </tr>
+      `;
+    }).join('');
+
+    return `
+      <!doctype html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>故障一覧印刷</title>
+        ${PRINT_STYLES}
+      </head>
+      <body>
+        <h1>故障一覧</h1>
+        <table>
+          <thead>
+            <tr>
+              <th>タイトル</th>
+              <th>機種</th>
+              <th>機械番号</th>
+              <th>日付</th>
+              <th>ステータス</th>
+              <th>画像</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+  };
+
+  // 一覧印刷実行
+  const printList = (items: any[]) => {
+    const w = window.open('', '_blank', 'noopener,noreferrer');
+    if (!w) return;
+    
+    const contentHTML = generateListPrintHTML(items);
+    w.document.write(contentHTML);
+    w.document.close();
+    
+    // 印刷ダイアログを表示
+    setTimeout(() => {
+      w.print();
+    }, 100);
+  };
+
   // 印刷機能
   const handlePrintTable = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    // デバッグ用：画像パスの確認
-    console.log('印刷用画像パス確認:', filteredItems.map(item => {
-      const jsonData = item.jsonData;
-      let imageUrl = '';
-      let imageSource = 'なし';
-      
-      // 1. conversationHistoryからBase64画像を確認
-      if (jsonData?.conversationHistory && jsonData.conversationHistory.length > 0) {
-        const imageMessage = jsonData.conversationHistory.find((msg: any) => 
-          msg.content && msg.content.startsWith('data:image/')
-        );
-        if (imageMessage) {
-          imageUrl = 'Base64画像データあり (conversationHistory)';
-          imageSource = 'conversationHistory';
-        }
-      }
-      
-      // 2. originalChatData.messagesからBase64画像を確認
-      if (!imageUrl && jsonData?.originalChatData?.messages) {
-        const imageMessage = jsonData.originalChatData.messages.find((msg: any) => 
-          msg.content && msg.content.startsWith('data:image/')
-        );
-        if (imageMessage) {
-          imageUrl = 'Base64画像データあり (originalChatData)';
-          imageSource = 'originalChatData';
-        }
-      }
-      
-      // 3. 従来フォーマットのchatData.messagesからBase64画像を確認
-      if (!imageUrl && jsonData?.chatData?.messages) {
-        const imageMessage = jsonData.chatData.messages.find((msg: any) => 
-          msg.content && msg.content.startsWith('data:image/')
-        );
-        if (imageMessage) {
-          imageUrl = 'Base64画像データあり (chatData)';
-          imageSource = 'chatData';
-        }
-      }
-      
-      // 4. savedImagesから画像を確認
-      if (!imageUrl && jsonData?.savedImages && jsonData.savedImages.length > 0) {
-        imageUrl = `保存済み画像あり: ${jsonData.savedImages[0].url}`;
-        imageSource = 'savedImages';
-      }
-      
-      // 5. 従来のimagePathフィールドも確認
-      if (!imageUrl && item.imagePath) {
-        imageUrl = `imagePath: ${item.imagePath}`;
-        imageSource = 'imagePath';
-      }
-      
-      return {
-        id: item.id,
-        imagePath: item.imagePath,
-        hasImage: !!imageUrl,
-        imageSource: imageSource,
-        hasConversationHistory: !!jsonData?.conversationHistory,
-        hasOriginalChatData: !!jsonData?.originalChatData,
-        hasChatData: !!jsonData?.chatData,
-        hasSavedImages: !!jsonData?.savedImages,
-        processedUrl: imageUrl
-      };
-    }));
+
 
     const tableContent = `
       <!DOCTYPE html>
@@ -883,6 +966,14 @@ const HistoryPage: React.FC = () => {
       <head>
         <title>履歴一覧 - 印刷</title>
         <style>
+          @page { size: A4 portrait; margin: 10mm; }
+          @media print {
+            html, body { margin: 0; padding: 0; }
+            .no-print { display: none !important; }
+            img, .image-cell { break-inside: avoid; page-break-inside: avoid; }
+            table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+            th, td { border: 1px solid #ccc; padding: 4px; vertical-align: top; }
+          }
           body { font-family: Arial, sans-serif; margin: 20px; }
           .header { text-align: center; margin-bottom: 20px; }
           .header h1 { margin: 0; color: #333; }
@@ -893,20 +984,7 @@ const HistoryPage: React.FC = () => {
           .summary { margin-bottom: 20px; padding: 10px; background-color: #f9f9f9; border-radius: 5px; }
           .image-cell img { max-width: 100px; max-height: 100px; object-fit: cover; border: 1px solid #ddd; border-radius: 4px; display: block; margin: 0 auto; }
           .image-cell { text-align: center; vertical-align: middle; }
-          @media print {
-            .no-print { display: none; }
-            body { margin: 0; }
-            .image-cell img { 
-              max-width: 80px; 
-              max-height: 80px; 
-              page-break-inside: avoid !important;
-              break-inside: avoid !important;
-            }
-            .image-cell {
-              page-break-inside: avoid !important;
-              break-inside: avoid !important;
-            }
-          }
+          img.thumb { width: 32px; height: 32px; object-fit: cover; border: 1px solid #ddd; border-radius: 4px; }
         </style>
       </head>
       <body>
@@ -936,115 +1014,19 @@ const HistoryPage: React.FC = () => {
           <tbody>
             ${filteredItems.map((item) => {
               const jsonData = item.jsonData;
-              
-              // 事象データを抽出（ファイル名から優先的に取得、次にJSONデータから）
-              let incidentTitle = '事象なし';
-              
-              // まずファイル名から事象内容を抽出
-              if (item.fileName) {
-                const fileNameParts = item.fileName.split('_');
-                if (fileNameParts.length > 1) {
-                  // ファイル名の最初の部分が事象内容
-                  incidentTitle = fileNameParts[0];
-                }
-              }
-              
-              // ファイル名から取得できない場合は、JSONデータから取得
-              if (incidentTitle === '事象なし') {
-                incidentTitle = jsonData?.title || jsonData?.question || '事象なし';
-                if (incidentTitle === '事象なし' && jsonData?.chatData?.messages) {
-                  // 従来フォーマットの場合、ユーザーメッセージから事象を抽出
-                  const userMessages = jsonData.chatData.messages.filter((msg: any) => !msg.isAiResponse);
-                  if (userMessages.length > 0) {
-                    // 最初のユーザーメッセージを事象として使用
-                    incidentTitle = userMessages[0].content || '事象なし';
-                  }
-                }
-              }
-              
-              const problemDescription = jsonData?.problemDescription || jsonData?.answer || '説明なし';
-              const extractedComponents = jsonData?.extractedComponents || [];
-              const extractedSymptoms = jsonData?.extractedSymptoms || [];
-              
-              // 機種と機械番号を抽出（APIから返されるデータ構造に合わせる）
-              const machineType = item.machineInfo?.machineTypeName || 
-                                jsonData?.machineType || 
+              const machineType = jsonData?.machineType || 
+                                jsonData?.originalChatData?.machineInfo?.machineTypeName ||
                                 jsonData?.chatData?.machineInfo?.machineTypeName || 
                                 item.machineType || '';
-              const machineNumber = item.machineInfo?.machineNumber || 
-                                  jsonData?.machineNumber || 
+              const machineNumber = jsonData?.machineNumber || 
+                                  jsonData?.originalChatData?.machineInfo?.machineNumber ||
                                   jsonData?.chatData?.machineInfo?.machineNumber || 
                                   item.machineNumber || '';
+              const incidentTitle = jsonData?.title || jsonData?.question || '事象なし';
+              const problemDescription = jsonData?.problemDescription || jsonData?.answer || '説明なし';
               
-              // 画像URLを取得（優先順位付き）
-              let imageUrl = '';
-              let imageFileName = '';
-              
-              // 優先順位1: Base64画像（モバイル軽量化のため最優先）
-              if (jsonData?.conversationHistory && jsonData.conversationHistory.length > 0) {
-                const imageMessage = jsonData.conversationHistory.find((msg: any) => 
-                  msg.content && msg.content.startsWith('data:image/')
-                );
-                if (imageMessage) {
-                  imageUrl = imageMessage.content;
-                  imageFileName = `故障画像_${item.id}`;
-                  console.log('印刷用: conversationHistoryからBase64画像を取得（最優先）');
-                }
-              }
-              
-              // 優先順位2: originalChatData.messagesからBase64画像を取得
-              if (!imageUrl && jsonData?.originalChatData?.messages) {
-                const imageMessage = jsonData.originalChatData.messages.find((msg: any) => 
-                  msg.content && msg.content.startsWith('data:image/')
-                );
-                if (imageMessage) {
-                  imageUrl = imageMessage.content;
-                  imageFileName = `故障画像_${item.id}`;
-                  console.log('印刷用: originalChatDataからBase64画像を取得（優先順位2）');
-                }
-              }
-              
-              // 優先順位3: 従来フォーマットのchatData.messagesからBase64画像を取得
-              if (!imageUrl && jsonData?.chatData?.messages) {
-                const imageMessage = jsonData.chatData.messages.find((msg: any) => 
-                  msg.content && msg.content.startsWith('data:image/')
-                );
-                if (imageMessage) {
-                  imageUrl = imageMessage.content;
-                  imageFileName = `故障画像_${item.id}`;
-                  console.log('印刷用: chatDataからBase64画像を取得（優先順位3）');
-                }
-              }
-              
-              // 優先順位4: savedImagesから画像を取得（Base64が読めない場合のフォールバック）
-              if (!imageUrl && jsonData?.savedImages && jsonData.savedImages.length > 0) {
-                const savedImage = jsonData.savedImages[0];
-                imageUrl = savedImage.url;
-                imageFileName = savedImage.fileName || `故障画像_${item.id}`;
-                console.log('印刷用: savedImagesから画像を取得（Base64フォールバック）');
-              }
-              
-              // 優先順位5: 従来のimagePathフィールド（最終フォールバック）
-              if (!imageUrl && item.imagePath) {
-                imageUrl = item.imagePath.startsWith('http') ? item.imagePath : 
-                         item.imagePath.startsWith('/') ? `${window.location.origin}${item.imagePath}` :
-                         `${window.location.origin}/api/images/chat-exports/${item.imagePath}`;
-                imageFileName = `故障画像_${item.id}`;
-                console.log('印刷用: imagePathから画像を取得（最終フォールバック）');
-              }
-              
-              // デバッグ用：画像が見つからない場合の詳細ログ
-              if (!imageUrl) {
-                console.log('印刷用: 画像が見つかりません', {
-                  id: item.id,
-                  hasConversationHistory: !!jsonData?.conversationHistory,
-                  hasOriginalChatData: !!jsonData?.originalChatData,
-                  hasChatData: !!jsonData?.chatData,
-                  conversationHistoryLength: jsonData?.conversationHistory?.length || 0,
-                  originalChatDataLength: jsonData?.originalChatData?.messages?.length || 0,
-                  chatDataLength: jsonData?.chatData?.messages?.length || 0
-                });
-              }
+              // pickFirstImage関数を使用して画像URLを取得
+              const imageUrl = pickFirstImage(item);
               
               return `
                 <tr>
@@ -1053,7 +1035,7 @@ const HistoryPage: React.FC = () => {
                   <td>${incidentTitle}</td>
                   <td>${problemDescription}</td>
                   <td>${formatDate(item.createdAt)}</td>
-                  <td class="image-cell">${imageUrl ? `<img src="${imageUrl}" alt="故障画像" style="max-width: 100px; max-height: 100px; object-fit: cover;" onerror="this.style.display='none'; this.nextSibling.style.display='inline';" /><span style="display:none; color: #999; font-size: 10px;">画像読み込みエラー</span>` : 'なし'}</td>
+                  <td class="image-cell">${imageUrl ? `<img class="thumb" src="${imageUrl}" alt="故障画像" onerror="this.style.display='none'; this.nextSibling.style.display='inline';" /><span style="display:none; color: #999; font-size: 10px;">画像読み込みエラー</span>` : 'なし'}</td>
                 </tr>
               `;
             }).join('')}
@@ -1061,7 +1043,6 @@ const HistoryPage: React.FC = () => {
         </table>
         
         <div class="no-print" style="margin-top: 20px; text-align: center;">
-          <button onclick="window.print()">印刷</button>
           <button onclick="window.close()">閉じる</button>
         </div>
       </body>
@@ -1070,6 +1051,11 @@ const HistoryPage: React.FC = () => {
 
     printWindow.document.write(tableContent);
     printWindow.document.close();
+    
+    // 印刷ダイアログを自動的に表示
+    setTimeout(() => {
+      printWindow.print();
+    }, 100);
   };
 
   const handlePrintReport = (item: SupportHistoryItem) => {
@@ -1123,7 +1109,18 @@ const HistoryPage: React.FC = () => {
     let imageUrl = '';
     let imageFileName = '';
     
-    // 優先順位1: Base64画像（モバイル軽量化のため最優先）
+    console.log('個別レポート印刷用画像読み込み処理:', {
+      itemId: item.id,
+      hasJsonData: !!jsonData,
+      jsonDataKeys: jsonData ? Object.keys(jsonData) : [],
+      savedImages: jsonData?.savedImages,
+      conversationHistory: jsonData?.conversationHistory,
+      originalChatData: jsonData?.originalChatData,
+      chatData: jsonData?.chatData,
+      imagePath: item.imagePath
+    });
+    
+    // 優先順位1: conversationHistoryからBase64画像を取得（最優先）
     if (jsonData?.conversationHistory && jsonData.conversationHistory.length > 0) {
       const imageMessage = jsonData.conversationHistory.find((msg: any) => 
         msg.content && msg.content.startsWith('data:image/')
@@ -1131,7 +1128,7 @@ const HistoryPage: React.FC = () => {
       if (imageMessage) {
         imageUrl = imageMessage.content;
         imageFileName = `故障画像_${item.id}`;
-        console.log('レポート印刷用: conversationHistoryからBase64画像を取得（最優先）');
+        console.log('個別レポート印刷用: conversationHistoryからBase64画像を取得（最優先）');
       }
     }
     
@@ -1143,11 +1140,11 @@ const HistoryPage: React.FC = () => {
       if (imageMessage) {
         imageUrl = imageMessage.content;
         imageFileName = `故障画像_${item.id}`;
-        console.log('レポート印刷用: originalChatDataからBase64画像を取得（優先順位2）');
+        console.log('個別レポート印刷用: originalChatDataからBase64画像を取得（優先順位2）');
       }
     }
     
-    // 優先順位3: 従来フォーマットのchatData.messagesからBase64画像を取得
+    // 優先順位3: chatData.messagesからBase64画像を取得
     if (!imageUrl && jsonData?.chatData?.messages) {
       const imageMessage = jsonData.chatData.messages.find((msg: any) => 
         msg.content && msg.content.startsWith('data:image/')
@@ -1155,26 +1152,102 @@ const HistoryPage: React.FC = () => {
       if (imageMessage) {
         imageUrl = imageMessage.content;
         imageFileName = `故障画像_${item.id}`;
-        console.log('レポート印刷用: chatDataからBase64画像を取得（優先順位3）');
+        console.log('個別レポート印刷用: chatDataからBase64画像を取得（優先順位3）');
       }
     }
     
-    // 優先順位4: savedImagesから画像を取得（Base64が読めない場合のフォールバック）
+    // 優先順位4: 直接のmessagesフィールドからBase64画像を検索
+    if (!imageUrl && jsonData?.messages && Array.isArray(jsonData.messages)) {
+      const imageMessage = jsonData.messages.find((msg: any) => 
+        msg.content && msg.content.startsWith('data:image/')
+      );
+      if (imageMessage) {
+        imageUrl = imageMessage.content;
+        imageFileName = `故障画像_${item.id}`;
+        console.log('個別レポート印刷用: messagesフィールドからBase64画像を取得（優先順位4）');
+      }
+    }
+    
+    // 優先順位5: savedImagesから画像を取得（サーバー上のファイル）
     if (!imageUrl && jsonData?.savedImages && jsonData.savedImages.length > 0) {
       const savedImage = jsonData.savedImages[0];
       imageUrl = savedImage.url;
       imageFileName = savedImage.fileName || `故障画像_${item.id}`;
-      console.log('レポート印刷用: savedImagesから画像を取得（Base64フォールバック）');
+      console.log('個別レポート印刷用: savedImagesから画像を取得（優先順位5）');
     }
     
-    // 優先順位5: 従来のimagePathフィールド（最終フォールバック）
+    // 優先順位3: originalChatData.messagesからBase64画像を取得
+    if (!imageUrl && jsonData?.originalChatData?.messages) {
+      const imageMessage = jsonData.originalChatData.messages.find((msg: any) => 
+        msg.content && msg.content.startsWith('data:image/')
+      );
+      if (imageMessage) {
+        imageUrl = imageMessage.content;
+        imageFileName = `故障画像_${item.id}`;
+        console.log('個別レポート印刷用: originalChatDataからBase64画像を取得（優先順位3）');
+      }
+    }
+    
+    // 優先順位4: 従来フォーマットのchatData.messagesからBase64画像を取得
+    if (!imageUrl && jsonData?.chatData?.messages) {
+      const imageMessage = jsonData.chatData.messages.find((msg: any) => 
+        msg.content && msg.content.startsWith('data:image/')
+      );
+      if (imageMessage) {
+        imageUrl = imageMessage.content;
+        imageFileName = `故障画像_${item.id}`;
+        console.log('個別レポート印刷用: chatDataからBase64画像を取得（優先順位4）');
+      }
+    }
+    
+    // 優先順位6: その他の可能性のあるフィールドから画像を検索
+    if (!imageUrl) {
+      // 画像データが含まれる可能性のあるフィールドを再帰的に検索
+      const findImagesRecursively = (obj: any, path: string = ''): any[] => {
+        const foundImages = [];
+        if (obj && typeof obj === 'object') {
+          for (const [key, value] of Object.entries(obj)) {
+            const currentPath = path ? `${path}.${key}` : key;
+            if (typeof value === 'string' && value.startsWith('data:image/')) {
+              foundImages.push({
+                path: currentPath,
+                content: value
+              });
+            } else if (Array.isArray(value)) {
+              value.forEach((item, index) => {
+                foundImages.push(...findImagesRecursively(item, `${currentPath}[${index}]`));
+              });
+            } else if (typeof value === 'object' && value !== null) {
+              foundImages.push(...findImagesRecursively(value, currentPath));
+            }
+          }
+        }
+        return foundImages;
+      };
+      
+      const recursiveImages = findImagesRecursively(jsonData);
+      if (recursiveImages.length > 0) {
+        imageUrl = recursiveImages[0].content;
+        imageFileName = `故障画像_${item.id}`;
+        console.log('個別レポート印刷用: 再帰的検索で画像を取得（優先順位6）');
+      }
+    }
+    
+    // 優先順位7: 従来のimagePathフィールド（最終フォールバック）
     if (!imageUrl && item.imagePath) {
       imageUrl = item.imagePath.startsWith('http') ? item.imagePath : 
                item.imagePath.startsWith('/') ? `${window.location.origin}${item.imagePath}` :
                `${window.location.origin}/api/images/chat-exports/${item.imagePath}`;
       imageFileName = `故障画像_${item.id}`;
-      console.log('レポート印刷用: imagePathから画像を取得（最終フォールバック）');
+      console.log('個別レポート印刷用: imagePathから画像を取得（最終フォールバック）');
     }
+    
+    console.log('個別レポート印刷用: 最終的な画像情報:', {
+      hasImage: !!imageUrl,
+      imageUrl: imageUrl ? imageUrl.substring(0, 100) + '...' : 'なし',
+      imageFileName,
+      isBase64: imageUrl ? imageUrl.startsWith('data:image/') : false
+    });
     
     const reportContent = `
       <!DOCTYPE html>
@@ -1450,12 +1523,25 @@ const HistoryPage: React.FC = () => {
             </div>
             <div className="flex gap-2">
               <Button
-                onClick={() => {
+                onClick={async () => {
+                  // 既にレポート生成中の場合は処理を停止
+                  if (reportLoading) {
+                    console.log('レポート生成中です。処理を停止します。');
+                    return;
+                  }
+                  
                   console.log('レポート生成ボタンがクリックされました');
                   console.log('filteredItems:', filteredItems.length);
                   console.log('selectedItems:', selectedItems.size);
                   console.log('reportLoading:', reportLoading);
-                  handleGenerateReport();
+                  
+                  try {
+                    await handleGenerateReport();
+                  } catch (error) {
+                    console.error('レポート生成ボタンクリック時のエラー:', error);
+                    // エラーが発生した場合でもボタンの状態をリセット
+                    setReportLoading(false);
+                  }
                 }}
                 disabled={filteredItems.length === 0 || reportLoading}
                 className="flex items-center gap-2"
@@ -1468,15 +1554,7 @@ const HistoryPage: React.FC = () => {
                     : 'レポート生成 (全件)'
                 }
               </Button>
-              <Button
-                onClick={handlePrintTable}
-                disabled={filteredItems.length === 0}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <FileText className="h-4 w-4" />
-                故障一覧印刷
-              </Button>
+
             </div>
           </CardTitle>
         </CardHeader>
@@ -1613,25 +1691,28 @@ const HistoryPage: React.FC = () => {
                           </td>
                           <td className="border border-gray-300 px-3 py-2 text-sm">{formatDate(item.createdAt)}</td>
                           <td className="border border-gray-300 px-3 py-2">
-                            {item.savedImages && item.savedImages.length > 0 ? (
-                              <div className="flex flex-wrap gap-1">
-                                {item.savedImages.slice(0, 3).map((image: any, index: number) => (
-                                  <img
-                                    key={index}
-                                    src={image.url}
-                                    alt={`画像 ${index + 1}`}
+                            {(() => {
+                              const imageUrl = pickFirstImage(item);
+                              if (imageUrl) {
+                                return (
+                                  <img 
+                                    src={imageUrl} 
+                                    alt="画像" 
                                     className="w-8 h-8 object-cover rounded border cursor-pointer"
-                                    title={image.fileName}
-                                    onClick={() => handleShowReport(item.fileName)}
+                                    title="故障画像"
+                                    onClick={() => {
+                                      console.log('画像クリックイベント発生:', item);
+                                      handleShowMachineFailureReport(item);
+                                    }}
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = 'none';
+                                    }}
                                   />
-                                ))}
-                                {item.savedImages.length > 3 && (
-                                  <span className="text-xs text-gray-500">+{item.savedImages.length - 3}</span>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-gray-500">-</span>
-                            )}
+                                );
+                              }
+                              return <span className="text-gray-500">-</span>;
+                            })()}
                           </td>
 
                         </tr>
@@ -1671,98 +1752,74 @@ const HistoryPage: React.FC = () => {
         />
       )}
 
-      {/* エクスポート機能エリア */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <FileDown className="h-5 w-5" />
-              エクスポート機能
-            </div>
+      {/* エクスポート処理エリア */}
+      <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold">エクスポート処理</h2>
+        </div>
+        
+        <div className="flex flex-wrap gap-4 mb-4">
+          {/* 選択項目一括エクスポート */}
+          <div className="flex gap-2">
             <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowExportHistory(!showExportHistory)}
+              onClick={() => handleExportSelected('json')}
+              disabled={selectedItems.size === 0 || exportLoading}
               className="flex items-center gap-2"
             >
-              <History className="h-4 w-4" />
-              エクスポート履歴
+              <Download className="h-4 w-4" />
+              選択項目をエクスポート ({selectedItems.size}件)
             </Button>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-4 mb-4">
-            {/* 選択項目一括エクスポート */}
-            <div className="flex gap-2">
-              <Button
-                onClick={() => handleExportSelected('json')}
-                disabled={selectedItems.size === 0 || exportLoading}
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                選択項目をJSONエクスポート ({selectedItems.size}件)
-              </Button>
-              <Button
-                onClick={() => handleExportSelected('csv')}
-                disabled={selectedItems.size === 0 || exportLoading}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                選択項目をCSVエクスポート
-              </Button>
-            </div>
+            <Button
+              onClick={() => handleExportSelected('csv')}
+              disabled={selectedItems.size === 0 || exportLoading}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              CSVでエクスポート
+            </Button>
+            <Button
+              onClick={handlePrintTable}
+              disabled={selectedItems.size === 0 || exportLoading}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <FileText className="h-4 w-4" />
+              一覧を印刷
+            </Button>
 
-            {/* 全履歴エクスポート */}
-            <div className="flex gap-2">
-              <Button
-                onClick={() => handleExportAll('json')}
-                disabled={exportLoading}
-                variant="secondary"
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                全履歴をJSONエクスポート
-              </Button>
-              <Button
-                onClick={() => handleExportAll('csv')}
-                disabled={exportLoading}
-                variant="secondary"
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                全履歴をCSVエクスポート
-              </Button>
-            </div>
           </div>
 
-          {exportLoading && (
-            <div className="flex items-center gap-2 text-blue-600">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-              エクスポート処理中...
-            </div>
-          )}
+          {/* 全履歴エクスポート */}
+          <div className="flex gap-2">
+            <Button
+              onClick={() => handleExportAll('json')}
+              disabled={exportLoading}
+              variant="secondary"
+              className="flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              全履歴をJSONエクスポート
+            </Button>
+            <Button
+              onClick={() => handleExportAll('csv')}
+              disabled={exportLoading}
+              variant="secondary"
+              className="flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              全履歴をCSVエクスポート
+            </Button>
+          </div>
+        </div>
 
-          {/* エクスポート履歴表示 */}
-          {showExportHistory && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-md">
-              <h4 className="font-medium mb-2">エクスポート履歴</h4>
-              {exportHistory.length === 0 ? (
-                <p className="text-sm text-gray-600">エクスポート履歴がありません</p>
-              ) : (
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {exportHistory.slice(0, 10).map((item, index) => (
-                    <div key={index} className="flex justify-between items-center text-sm">
-                      <span>{item.filename}</span>
-                      <span className="text-gray-500">{new Date(item.exportedAt).toLocaleString('ja-JP')}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {exportLoading && (
+          <div className="flex items-center gap-2 text-blue-600">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+            エクスポート処理中...
+          </div>
+        )}
+      </div>
 
       {/* ページネーション */}
       {totalPages > 1 && (
@@ -1978,11 +2035,7 @@ const HistoryPage: React.FC = () => {
                     キャンセル
                   </Button>
                   <Button
-                    onClick={() => {
-                      // ここで保存処理を実装
-                      console.log('保存:', editingItem);
-                      setShowEditDialog(false);
-                    }}
+                    onClick={() => handleSaveEditedItem(editingItem)}
                   >
                     保存
                   </Button>
@@ -2011,6 +2064,7 @@ const HistoryPage: React.FC = () => {
         />
       )}
 
+      
 
     </div>
   );

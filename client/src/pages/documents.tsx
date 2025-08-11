@@ -32,12 +32,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { Upload, FileText, Trash2, Download, Eye, Edit, Plus, AlertCircle, BrainCircuit, Info, History } from "lucide-react";
+import { Upload, FileText, Trash2, Download, Eye, Edit, Plus, AlertCircle, BrainCircuit, Info, History, Wrench, AlertTriangle } from "lucide-react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 
 // Component for Unified Data Processing
 import UnifiedDataProcessor from "../components/knowledge/unified-data-processor";
+import FileIngestPanel from "../components/FileIngestPanel";
+import RagSettingsPanel from "../components/RagSettingsPanel";
 import { fetchBaseData, fetchHistoryList, fetchProcessedFiles } from "../lib/api/history-api";
 import { BaseDataItem, SupportHistoryItem } from "../types/history";
 
@@ -130,28 +132,17 @@ export default function DocumentsPage() {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-gray-800">
-                ナレッジベース管理
+                基礎データ管理
               </h1>
               <p className="text-gray-500">
-                AIの知識源となるすべてのドキュメントとデータを一元管理します。
+                保守用車に関する、仕様や機械故障の情報等をGPTの学習用データに変換します。
               </p>
             </div>
           </div>
+
         </div>
 
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 text-yellow-700 p-4 mb-6 rounded-r-lg">
-          <div className="flex">
-            <div className="py-1">
-              <Info className="h-5 w-5 text-yellow-400 mr-3" />
-            </div>
-            <div>
-              <p className="font-bold">重要：データ処理について</p>
-              <p className="text-sm">
-                ファイル（PPTX, PDF, DOCX）をアップロードすると、システムは自動的に内容を解析し、検索とAIの応答に適した形式に変換します。この処理には数分かかることがあります。
-              </p>
-            </div>
-          </div>
-        </div>
+
 
         {/* タブ切り替え */}
         <div className="flex space-x-1 mb-6 bg-white rounded-lg p-1 shadow-sm">
@@ -166,82 +157,28 @@ export default function DocumentsPage() {
             <BrainCircuit className="h-4 w-4 inline mr-2" />
             データ処理
           </button>
+
           <button
-            onClick={() => setActiveTab("history")}
+            onClick={() => setActiveTab("knowledge")}
             className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-              activeTab === "history"
+              activeTab === "knowledge"
                 ? "bg-blue-600 text-white"
                 : "text-gray-600 hover:text-gray-900"
             }`}
           >
-            <History className="h-4 w-4 inline mr-2" />
-            履歴一覧
+            <Wrench className="h-4 w-4 inline mr-2" />
+            AI設定
           </button>
         </div>
 
         {/* タブコンテンツ */}
         {activeTab === "processor" && <UnifiedDataProcessor />}
         
-        {activeTab === "history" && (
+
+
+        {activeTab === "knowledge" && (
           <div className="space-y-6">
-            {/* 処理済みデータ一覧 */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  処理済み文章データ
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">データを読み込み中...</p>
-                  </div>
-                ) : processedFiles.length > 0 ? (
-                  <div className="space-y-3">
-                    {processedFiles.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div>
-                          <h4 className="font-medium">{item.title}</h4>
-                          <p className="text-sm text-gray-600">
-                            処理日時: {formatDate(item.processedAt)}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            チャンク数: {item.chunkCount} | タイプ: {item.type}
-                          </p>
-                        </div>
-                        <Badge variant="secondary">{item.type}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <div className="bg-gray-50 rounded-lg p-6">
-                      <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">処理済みデータがありません</h3>
-                      <p className="text-gray-600 mb-4">
-                        まだファイルが処理されていません。データ処理タブでファイルをアップロードしてください。
-                      </p>
-                      <div className="flex justify-center space-x-2">
-                        <Button 
-                          variant="outline" 
-                          onClick={() => setActiveTab("processor")}
-                        >
-                          データ処理へ
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          onClick={() => window.location.reload()}
-                        >
-                          再読み込み
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <RagSettingsPanel />
           </div>
         )}
 

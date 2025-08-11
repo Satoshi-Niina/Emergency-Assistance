@@ -90,6 +90,57 @@ interface StepEditorProps {
   onAddStepBetween?: (index: number, type: 'step' | 'decision') => void;
 }
 
+// カスタムスクロールバーのスタイル
+const scrollbarStyles = `
+  .step-editor-scrollbar::-webkit-scrollbar {
+    width: 20px !important;
+    height: 20px !important;
+  }
+  
+  .step-editor-scrollbar::-webkit-scrollbar-track {
+    background: #f1f1f1 !important;
+    border-radius: 10px !important;
+    margin: 2px !important;
+  }
+  
+  .step-editor-scrollbar::-webkit-scrollbar-thumb {
+    background: #c1c1c1 !important;
+    border-radius: 10px !important;
+    border: 2px solid #f1f1f1 !important;
+  }
+  
+  .step-editor-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8 !important;
+  }
+  
+  .step-editor-scrollbar::-webkit-scrollbar-corner {
+    background: #f1f1f1 !important;
+  }
+  
+  .step-editor-scrollbar {
+    scrollbar-width: auto !important;
+    scrollbar-color: #c1c1c1 #f1f1f1 !important;
+  }
+  
+  /* より具体的なセレクタで優先度を上げる */
+  div.step-editor-scrollbar::-webkit-scrollbar {
+    width: 20px !important;
+    height: 20px !important;
+  }
+  
+  div.step-editor-scrollbar::-webkit-scrollbar-track {
+    background: #f1f1f1 !important;
+    border-radius: 10px !important;
+    margin: 2px !important;
+  }
+  
+  div.step-editor-scrollbar::-webkit-scrollbar-thumb {
+    background: #c1c1c1 !important;
+    border-radius: 10px !important;
+    border: 2px solid #f1f1f1 !important;
+  }
+`;
+
 const StepEditor: React.FC<StepEditorProps> = ({ 
   steps, 
   onStepUpdate,
@@ -122,6 +173,21 @@ const StepEditor: React.FC<StepEditorProps> = ({
     }, {} as { [key: string]: boolean });
     setExpandedSteps(allExpanded);
   }, [steps]);
+
+  // カスタムスクロールバーのスタイルを適用
+  useEffect(() => {
+    const styleElement = document.createElement('style');
+    styleElement.textContent = scrollbarStyles;
+    styleElement.id = 'step-editor-scrollbar-styles';
+    document.head.appendChild(styleElement);
+
+    return () => {
+      const existingStyle = document.getElementById('step-editor-scrollbar-styles');
+      if (existingStyle) {
+        document.head.removeChild(existingStyle);
+      }
+    };
+  }, []);
 
   const handleStepFieldChange = (stepId: string, field: keyof Step, value: any) => {
     onStepUpdate(stepId, { [field]: value });
@@ -359,7 +425,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
     }
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-4" style={{ minHeight: '0px' }}>
         {/* ステップヘッダー */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
@@ -653,9 +719,9 @@ const StepEditor: React.FC<StepEditorProps> = ({
   );
 
   return (
-    <div className="space-y-4">
+    <div className="h-full flex flex-col">
       {/* デバッグ情報 */}
-      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded">
+      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded mb-4 flex-shrink-0">
         <p className="text-yellow-800 font-medium">StepEditor デバッグ情報:</p>
         <p className="text-yellow-700 text-sm">受け取ったsteps.length: {steps.length}</p>
         <p className="text-yellow-700 text-sm">steps内容: {steps.map(s => `${s.id}:${s.title}`).join(', ')}</p>
@@ -663,7 +729,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
       </div>
       
       {/* スライダーコントロール */}
-      <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border">
+      <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border mb-4 flex-shrink-0">
         <div className="flex items-center space-x-2">
           <span className="text-sm font-medium text-blue-700">ステップナビゲーション</span>
           <span className="text-xs text-blue-600">({steps.length}個のステップ)</span>
@@ -695,8 +761,8 @@ const StepEditor: React.FC<StepEditorProps> = ({
       </div>
 
       {/* ステップ一覧表示 */}
-      <div className="bg-gray-50 rounded-lg p-3 mb-4">
-        <div className="text-sm font-medium text-gray-700 mb-2">ステップ一覧</div>
+      <div className="bg-gray-50 rounded-lg p-3 mb-4 flex-shrink-0">
+        <div className="text-sm font-medium text-gray-700 mb-2">ステップ</div>
         <div className="flex flex-wrap gap-2">
           {steps.map((step, index) => (
             <div
@@ -714,64 +780,78 @@ const StepEditor: React.FC<StepEditorProps> = ({
         </div>
       </div>
 
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <Droppable droppableId="steps">
-          {(provided) => (
-            <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4">
-              {steps.length === 0 ? (
-                <div className="p-8 text-center bg-red-50 border border-red-200 rounded">
-                  <p className="text-red-800 font-medium">⚠️ ステップが空です</p>
-                  <p className="text-red-700 text-sm">steps配列にデータが含まれていません</p>
-                </div>
-              ) : (
-                steps.map((step, index) => (
-                <div key={step.id}>
-                  <Draggable key={step.id} draggableId={step.id} index={index}>
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        className="relative"
-                      >
-                        <Card 
-                          className={`transition-shadow duration-200 ${snapshot.isDragging ? 'shadow-lg' : ''}`}
+      {/* スクロール可能なステップ表示エリア - 更新: 2024-01-XX */}
+      <div 
+        className="flex-1 overflow-y-auto step-editor-scrollbar" 
+        style={{ 
+          minHeight: '0px',
+          flex: '1 1 auto',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+        data-updated="2024-01-XX"
+      >
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <Droppable droppableId="steps">
+            {(provided) => (
+              <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4 pb-4" style={{ flex: '1 1 auto' }}>
+                {steps.length === 0 ? (
+                  <div className="p-8 text-center bg-red-50 border border-red-200 rounded">
+                    <p className="text-red-800 font-medium">⚠️ ステップが空です</p>
+                    <p className="text-red-700 text-sm">steps配列にデータが含まれていません</p>
+                  </div>
+                ) : (
+                  steps.map((step, index) => (
+                  <div key={step.id} style={{ minHeight: '0px' }}>
+                    <Draggable key={step.id} draggableId={step.id} index={index}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          className="relative"
+                          style={{ minHeight: '0px' }}
                         >
-                          <div {...provided.dragHandleProps} className="absolute top-1/2 -left-8 -translate-y-1/2 p-2 cursor-grab text-gray-400 hover:text-gray-600">
-                            <GripVertical />
-                          </div>
-                          <CardContent className="p-4 md:p-6">
-                            {renderStepContent(step)}
-                          </CardContent>
-                          <div className="absolute top-2 right-2 flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => onStepDelete(step.id)}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              スライドを削除
-                            </Button>
-                          </div>
-                        </Card>
-                      </div>
-                    )}
-                  </Draggable>
-                  
-                  {/* ステップ間に追加ボタンを表示（最後のステップ以外） */}
-                  {index < steps.length - 1 && renderAddStepBetween(index)}
-                </div>
-              ))
-              )}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
+                          <Card 
+                            className={`transition-shadow duration-200 ${snapshot.isDragging ? 'shadow-lg' : ''}`}
+                            style={{ minHeight: '0px' }}
+                          >
+                            <div {...provided.dragHandleProps} className="absolute top-1/2 -left-8 -translate-y-1/2 p-2 cursor-grab text-gray-400 hover:text-gray-600">
+                              <GripVertical />
+                            </div>
+                            <CardContent className="p-4 md:p-6" style={{ minHeight: '0px' }}>
+                              {renderStepContent(step)}
+                            </CardContent>
+                            <div className="absolute top-2 right-2 flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => onStepDelete(step.id)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                スライドを削除
+                              </Button>
+                            </div>
+                          </Card>
+                        </div>
+                      )}
+                    </Draggable>
+                    
+                    {/* ステップ間に追加ボタンを表示（最後のステップ以外） */}
+                    {index < steps.length - 1 && renderAddStepBetween(index)}
+                  </div>
+                ))
+                )}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        </DragDropContext>
+      </div>
       
       {/* 保存・キャンセルボタン */}
       {onSave && onCancel && (
-        <div className="flex justify-end gap-3 pt-4 border-t">
+        <div className="flex justify-end gap-3 pt-4 border-t bg-white mt-4 flex-shrink-0">
           <Button
             variant="outline"
             onClick={onCancel}

@@ -11,6 +11,16 @@ shared/dist/
 build/
 .next/
 .nuxt/
+out/
+.parcel-cache/
+.vite/
+.turbo/
+.swc/
+.cache/
+.eslintcache/
+coverage/
+.vercel/output/
+.svelte-kit/
 
 # Environment variables
 .env

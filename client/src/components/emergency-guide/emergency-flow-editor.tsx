@@ -591,12 +591,12 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
     selectedFilePath: selectedFilePath
   });
 
-  // スライドタブの場合
-  if (currentTab === "slides") {
+  // スライド編集タブ
+  if (currentTab === 'slides') {
     return (
-      <div className="space-y-6">
-        {/* デバッグ情報表示 */}
-        <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+      <div className="h-full flex flex-col">
+        {/* デバッグ情報 */}
+        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded mb-4">
           <h3 className="text-sm font-medium text-gray-700 mb-2">デバッグ情報</h3>
           <div className="text-xs text-gray-600 space-y-1">
             <p>flowData.id: {flowData?.id || 'なし'}</p>
@@ -610,7 +610,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
           </div>
         </div>
 
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold">スライド編集</h2>
           <div className="flex gap-2">
             <Button
@@ -631,7 +631,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="flex-1 flex flex-col min-h-0">
           {steps.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-500 mb-4">スライドがありません</p>
@@ -657,30 +657,32 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
               </div>
             </div>
           ) : (
-            <div>
+            <div className="flex-1 flex flex-col min-h-0">
               <div className="p-4 bg-blue-50 border border-blue-200 rounded mb-4">
                 <p className="text-blue-800 font-medium">StepEditor レンダリング情報:</p>
                 <p className="text-blue-700 text-sm">steps.length: {steps.length}</p>
                 <p className="text-blue-700 text-sm">flowId: {flowData?.id}</p>
                 <p className="text-blue-700 text-sm">steps内容: {steps.map(s => s.title).join(', ')}</p>
               </div>
-              <StepEditor
-                steps={steps}
-                onStepUpdate={handleStepUpdate}
-                onStepsReorder={handleStepsReorder}
-                onStepDelete={handleStepDelete}
-                onConditionAdd={handleConditionAdd}
-                onConditionDelete={handleConditionDelete}
-                onConditionEdit={handleConditionEdit}
-                flowId={flowData?.id}
-                onAddStepBetween={handleAddStepBetween}
-              />
+              <div className="flex-1 min-h-0">
+                <StepEditor
+                  steps={steps}
+                  onStepUpdate={handleStepUpdate}
+                  onStepsReorder={handleStepsReorder}
+                  onStepDelete={handleStepDelete}
+                  onConditionAdd={handleConditionAdd}
+                  onConditionDelete={handleConditionDelete}
+                  onConditionEdit={handleConditionEdit}
+                  flowId={flowData?.id}
+                  onAddStepBetween={handleAddStepBetween}
+                />
+              </div>
             </div>
           )}
         </div>
         
         {/* スライド追加ボタン */}
-        <div className="flex justify-center gap-4 my-6 p-6 bg-gray-50 rounded-lg border">
+        <div className="flex justify-center gap-4 mt-4 p-6 bg-gray-50 rounded-lg border">
           <Button
             size="sm"
             variant="outline"
@@ -702,7 +704,7 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
         </div>
         
         {hasChanges && (
-          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mt-4">
             <p className="text-base-2x text-yellow-800">
               ⚠️ 変更が検出されました。保存ボタンをクリックして変更を保存してください。
             </p>

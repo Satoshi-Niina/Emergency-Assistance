@@ -29,7 +29,8 @@ import {
   RefreshCw,
   AlertCircle,
   MessageSquare,
-  Edit3
+  Edit3,
+  Wrench
 } from "lucide-react";
 import { WarningDialog } from "../components/shared/warning-dialog";
 import { Separator } from "../components/ui/separator";
@@ -424,6 +425,8 @@ export default function SettingsPage() {
                     </Button>
                   </Link>
                 </div>
+
+
 
                 <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
                   <Button

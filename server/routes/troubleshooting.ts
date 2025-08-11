@@ -328,8 +328,23 @@ router.use((err: any, req: any, res: any, next: any) => {
 router.get('/image/:fileName', async (req, res) => {
   try {
     const { fileName } = req.params;
-    const uploadDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows');
-    const filePath = path.join(uploadDir, fileName);
+    
+    // まず emergency-flows ディレクトリを確認
+    let uploadDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows');
+    let filePath = path.join(uploadDir, fileName);
+    
+    // emergency-flows にファイルがない場合は chat-exports を確認
+    if (!existsSync(filePath)) {
+      uploadDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports');
+      filePath = path.join(uploadDir, fileName);
+      
+      console.log('🔄 emergency-flows にファイルが見つからないため、chat-exports を確認:', {
+        fileName,
+        chatExportsDir: uploadDir,
+        chatExportsPath: filePath,
+        exists: existsSync(filePath)
+      });
+    }
 
     // デバッグログ強化
     console.log('🖼️ 画像リクエスト:', {
@@ -344,8 +359,10 @@ router.get('/image/:fileName', async (req, res) => {
       return res.status(404).json({
         error: 'ファイルが存在しません',
         fileName,
-        filePath,
-        filesInDir: existsSync(uploadDir) ? readdirSync(uploadDir) : []
+        emergencyFlowsPath: path.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows', fileName),
+        chatExportsPath: path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports', fileName),
+        emergencyFlowsDir: existsSync(path.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows')) ? readdirSync(path.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows')) : [],
+        chatExportsDir: existsSync(path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports')) ? readdirSync(path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports')) : []
       });
     }
 
@@ -370,7 +387,8 @@ router.get('/image/:fileName', async (req, res) => {
       fileName,
       contentType,
       fileSize: fileBuffer.length,
-      filePath
+      filePath,
+      sourceDir: uploadDir.includes('emergency-flows') ? 'emergency-flows' : 'chat-exports'
     });
 
   } catch (error) {
