@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
@@ -210,15 +210,15 @@ const PRINT_STYLES = `
 </style>
 `;
 
-// 個票印刷用HTML生成
+// 個票印刷用HTML生成（現在のUIフォーマットと完全に同じ）
 const generateReportPrintHTML = (reportData: any, images: Array<{ id: string; url: string; fileName: string; description?: string }>): string => {
   const imageSection = images && images.length > 0 
     ? `<div class="image-section">
          <h3>故障箇所画像</h3>
          ${images.map((image, index) => `
-           <div class="image-item" style="margin-bottom: 20px; page-break-inside: avoid;">
-             <img class="report-img" src="${image.url}" alt="故障画像${index + 1}" style="max-width: 100%; height: auto;" />
-             <p style="text-align: center; margin-top: 8px; font-size: 12px; color: #666;">${image.fileName}</p>
+           <div class="image-item" style="margin-bottom: 15px; page-break-inside: avoid;">
+             <img class="report-img" src="${image.url}" alt="故障画像${index + 1}" style="max-width: 100%; max-height: 150px; border: 1px solid #ccc; border-radius: 3px; object-fit: contain;" />
+             <p style="text-align: center; margin-top: 5px; font-size: 8pt; color: #666;">${image.fileName}</p>
            </div>
          `).join('')}
        </div>`
@@ -229,47 +229,217 @@ const generateReportPrintHTML = (reportData: any, images: Array<{ id: string; ur
     <html>
     <head>
       <meta charset="utf-8">
-      <title>故障報告書印刷</title>
-      ${PRINT_STYLES}
+      <title>機械故障報告書 - 印刷</title>
+      <style>
+        @page {
+          size: A4 portrait;
+          margin: 15mm;
+        }
+        
+        * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
+        
+        body {
+          font-family: 'MS Gothic', 'Yu Gothic', 'Hiragino Sans', sans-serif;
+          font-size: 10pt;
+          line-height: 1.4;
+          color: #000;
+          background: white;
+          max-width: 100%;
+          overflow-x: hidden;
+        }
+        
+        .container {
+          max-width: 100%;
+          padding: 0;
+        }
+        
+        .header {
+          text-align: center;
+          margin-bottom: 15px;
+          padding-bottom: 10px;
+          border-bottom: 2px solid #333;
+        }
+        
+        .header h1 {
+          font-size: 16pt;
+          font-weight: bold;
+          margin-bottom: 8px;
+        }
+        
+        .header p {
+          font-size: 8pt;
+          color: #666;
+        }
+        
+        .section {
+          margin-bottom: 15px;
+          page-break-inside: avoid;
+        }
+        
+        .section h2 {
+          font-size: 11pt;
+          font-weight: bold;
+          color: #333;
+          border-bottom: 1px solid #ccc;
+          padding-bottom: 4px;
+          margin-bottom: 8px;
+        }
+        
+        .info-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+          margin-bottom: 10px;
+        }
+        
+        .info-item {
+          padding: 6px;
+          background-color: #f8f8f8;
+          border: 1px solid #ddd;
+          border-radius: 3px;
+        }
+        
+        .info-item strong {
+          display: block;
+          font-size: 8pt;
+          color: #333;
+          margin-bottom: 2px;
+        }
+        
+        .info-item span {
+          font-size: 8pt;
+          color: #000;
+        }
+        
+        .content-box {
+          background-color: #f8f8f8;
+          padding: 8px;
+          border: 1px solid #ddd;
+          border-radius: 3px;
+          margin-top: 6px;
+        }
+        
+        .content-box p {
+          font-size: 8pt;
+          line-height: 1.3;
+          margin: 0;
+        }
+        
+        .image-section {
+          text-align: center;
+          margin: 12px 0;
+          page-break-inside: avoid;
+        }
+        
+        .image-section h3 {
+          font-size: 10pt;
+          margin-bottom: 8px;
+        }
+        
+        .footer {
+          text-align: center;
+          margin-top: 15px;
+          padding-top: 10px;
+          border-top: 1px solid #ccc;
+          font-size: 7pt;
+          color: #666;
+        }
+        
+        @media print {
+          body { margin: 0; }
+          .no-print { display: none !important; }
+        }
+      </style>
     </head>
     <body>
-      <h1>故障報告書</h1>
-      
-      <div class="report-section">
-        <h3>基本情報</h3>
-        <table>
-          <tr><th>報告書ID</th><td>${reportData.reportId || '-'}</td></tr>
-          <tr><th>機械ID</th><td>${reportData.machineId || '-'}</td></tr>
-          <tr><th>機種</th><td>${reportData.machineType || '-'}</td></tr>
-          <tr><th>機械番号</th><td>${reportData.machineNumber || '-'}</td></tr>
-          <tr><th>日付</th><td>${reportData.date || '-'}</td></tr>
-          <tr><th>場所</th><td>${reportData.location || '-'}</td></tr>
-        </table>
+      <div class="container">
+        <div class="header">
+          <h1>機械故障報告書</h1>
+          <p>印刷日時: ${new Date().toLocaleString('ja-JP')}</p>
+        </div>
+        
+        <div class="section">
+          <h2>報告概要</h2>
+          <div class="info-grid">
+            <div class="info-item">
+              <strong>報告書ID</strong>
+              <span>${reportData.reportId || reportData.id || '-'}</span>
+            </div>
+            <div class="info-item">
+              <strong>機種</strong>
+              <span>${reportData.machineType || reportData.machineTypeName || '-'}</span>
+            </div>
+            <div class="info-item">
+              <strong>機械番号</strong>
+              <span>${reportData.machineNumber || '-'}</span>
+            </div>
+            <div class="info-item">
+              <strong>日付</strong>
+              <span>${reportData.date || reportData.timestamp || reportData.createdAt ? new Date(reportData.createdAt).toLocaleDateString('ja-JP') : '-'}</span>
+            </div>
+            <div class="info-item">
+              <strong>場所</strong>
+              <span>${reportData.location || '-'}</span>
+            </div>
+          </div>
       </div>
 
-      <div class="report-section">
-        <h3>故障詳細</h3>
-        <table>
-          <tr><th>故障コード</th><td>${reportData.failureCode || '-'}</td></tr>
-          <tr><th>説明</th><td>${reportData.description || '-'}</td></tr>
-          <tr><th>ステータス</th><td>${reportData.status || '-'}</td></tr>
-          <tr><th>担当エンジニア</th><td>${reportData.engineer || '-'}</td></tr>
-        </table>
+        <div class="section">
+          <h2>故障詳細</h2>
+          <div class="info-grid">
+            <div class="info-item">
+              <strong>ステータス</strong>
+              <span>${reportData.status || '-'}</span>
+            </div>
+            <div class="info-item">
+              <strong>責任者</strong>
+              <span>${reportData.engineer || '-'}</span>
+            </div>
       </div>
 
-      ${imageSection}
+          <div class="content-box">
+            <strong>説明</strong>
+            <p>${reportData.problemDescription || reportData.description || reportData.incidentTitle || reportData.title || '説明なし'}</p>
+          </div>
 
-      <div class="report-section">
-        <h3>備考</h3>
+          <div class="content-box">
+            <strong>備考</strong>
         <p>${reportData.notes || '-'}</p>
+          </div>
       </div>
 
-      <div class="report-section">
-        <h3>修繕予定</h3>
-        <table>
-          <tr><th>予定月日</th><td>${reportData.repairSchedule || '-'}</td></tr>
-          <tr><th>場所</th><td>${reportData.repairLocation || '-'}</td></tr>
-        </table>
+        ${imageSection}
+        
+        <div class="section">
+          <h2>修繕予定</h2>
+          <div class="info-grid">
+            <div class="info-item">
+              <strong>依頼月日</strong>
+              <span>${reportData.requestDate || '-'}</span>
+            </div>
+            <div class="info-item">
+              <strong>予定月日</strong>
+              <span>${reportData.repairSchedule || '-'}</span>
+            </div>
+            <div class="info-item">
+              <strong>場所</strong>
+              <span>${reportData.repairLocation || '-'}</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="footer">
+          <p>© 2025 機械故障報告書. All rights reserved.</p>
+        </div>
+      </div>
+      
+      <div class="no-print" style="position: fixed; top: 20px; right: 20px; z-index: 1000;">
+        <button onclick="window.print()" style="padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">印刷</button>
+        <button onclick="window.close()" style="padding: 10px 20px; margin: 5px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;">閉じる</button>
       </div>
     </body>
     </html>
@@ -299,19 +469,32 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editedData, setEditedData] = useState<MachineFailureReportData>(data);
 
+  // データが変更された場合、編集データも更新
+  useEffect(() => {
+    setEditedData(data);
+  }, [data]);
+
   const handleEdit = () => {
     setIsEditing(true);
   };
 
   const handleSave = () => {
+    // 編集されたデータを元のデータに反映
+    const updatedData = { ...data, ...editedData };
+    
+    // 親コンポーネントに更新されたデータを渡す
     if (onSave) {
-      onSave(editedData);
+      onSave(updatedData);
     }
     
     // サーバーに更新リクエストを送信
-    updateReportOnServer(editedData);
+    updateReportOnServer(updatedData);
     
+    // 編集モードを終了
     setIsEditing(false);
+    
+    // 成功メッセージを表示
+    alert('レポートが保存されました。');
   };
 
   // サーバーにレポートデータを更新
@@ -380,11 +563,249 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
   const collectedImages = collectImages(currentData);
 
   const handlePrint = () => {
-    if (onPrint) {
-      onPrint(currentData);
-      return;
-    }
-    printReport(currentData, collectedImages);
+    // 現在のUIフォーマットと同じレイアウトで印刷
+    const w = window.open('', '_blank', 'noopener,noreferrer');
+    if (!w) return;
+    
+    // 現在のUIフォーマットをそのまま印刷用HTMLに変換
+    const printHTML = `
+      <!doctype html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>機械故障報告書 - 印刷</title>
+        <style>
+          @page {
+            size: A4 portrait;
+            margin: 15mm;
+          }
+          
+          * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+          }
+          
+          body {
+            font-family: 'MS Gothic', 'Yu Gothic', 'Hiragino Sans', sans-serif;
+            font-size: 10pt;
+            line-height: 1.4;
+            color: #000;
+            background: white;
+            max-width: 100%;
+            overflow-x: hidden;
+          }
+          
+          .container {
+            max-width: 100%;
+            padding: 0;
+          }
+          
+          .header {
+            text-align: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #333;
+          }
+          
+          .header h1 {
+            font-size: 16pt;
+            font-weight: bold;
+            margin-bottom: 8px;
+          }
+          
+          .header p {
+            font-size: 8pt;
+            color: #666;
+          }
+          
+          .section {
+            margin-bottom: 15px;
+            page-break-inside: avoid;
+          }
+          
+          .section h2 {
+            font-size: 11pt;
+            font-weight: bold;
+            color: #333;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 4px;
+            margin-bottom: 8px;
+          }
+          
+          .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+          }
+          
+          .info-item {
+            padding: 6px;
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+          }
+          
+          .info-item strong {
+            display: block;
+            font-size: 8pt;
+            color: #333;
+            margin-bottom: 2px;
+          }
+          
+          .info-item span {
+            font-size: 8pt;
+            color: #000;
+          }
+          
+          .content-box {
+            background-color: #f8f8f8;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            margin-top: 6px;
+          }
+          
+          .content-box p {
+            font-size: 8pt;
+            line-height: 1.3;
+            margin: 0;
+          }
+          
+          .image-section {
+            text-align: center;
+            margin: 12px 0;
+            page-break-inside: avoid;
+          }
+          
+          .image-section h3 {
+            font-size: 10pt;
+            margin-bottom: 8px;
+          }
+          
+          .footer {
+            text-align: center;
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #ccc;
+            font-size: 7pt;
+            color: #666;
+          }
+          
+          @media print {
+            body { margin: 0; }
+            .no-print { display: none !important; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>機械故障報告書</h1>
+            <p>印刷日時: ${new Date().toLocaleString('ja-JP')}</p>
+          </div>
+          
+          <div class="section">
+            <h2>報告概要</h2>
+            <div class="info-grid">
+              <div class="info-item">
+                <strong>報告書ID</strong>
+                <span>${currentData.reportId || currentData.id || '-'}</span>
+              </div>
+              <div class="info-item">
+                <strong>機種</strong>
+                <span>${currentData.machineType || currentData.machineTypeName || '-'}</span>
+              </div>
+              <div class="info-item">
+                <strong>機械番号</strong>
+                <span>${currentData.machineNumber || '-'}</span>
+              </div>
+              <div class="info-item">
+                <strong>日付</strong>
+                <span>${currentData.date || currentData.timestamp || currentData.createdAt ? new Date(currentData.createdAt).toLocaleDateString('ja-JP') : '-'}</span>
+              </div>
+              <div class="info-item">
+                <strong>場所</strong>
+                <span>${currentData.location || '-'}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="section">
+            <h2>故障詳細</h2>
+            <div class="info-grid">
+              <div class="info-item">
+                <strong>ステータス</strong>
+                <span>${currentData.status || '-'}</span>
+              </div>
+              <div class="info-item">
+                <strong>責任者</strong>
+                <span>${currentData.engineer || '-'}</span>
+              </div>
+            </div>
+            
+            <div class="content-box">
+              <strong>説明</strong>
+              <p>${currentData.problemDescription || currentData.description || currentData.incidentTitle || currentData.title || '説明なし'}</p>
+            </div>
+            
+            <div class="content-box">
+              <strong>備考</strong>
+              <p>${currentData.notes || '-'}</p>
+            </div>
+          </div>
+          
+          ${collectedImages && collectedImages.length > 0 ? `
+            <div class="image-section">
+              <h3>故障箇所画像</h3>
+              ${collectedImages.map((image, index) => `
+                <div class="image-item" style="margin-bottom: 15px; page-break-inside: avoid;">
+                  <img class="report-img" src="${image.url}" alt="故障画像${index + 1}" style="max-width: 100%; max-height: 150px; border: 1px solid #ccc; border-radius: 3px; object-fit: contain;" />
+                  <p style="text-align: center; margin-top: 5px; font-size: 8pt; color: #666;">${image.fileName}</p>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+          
+          <div class="section">
+            <h2>修繕予定</h2>
+            <div class="info-grid">
+              <div class="info-item">
+                <strong>依頼月日</strong>
+                <span>${currentData.requestDate || '-'}</span>
+              </div>
+              <div class="info-item">
+                <strong>予定月日</strong>
+                <span>${currentData.repairSchedule || '-'}</span>
+              </div>
+              <div class="info-item">
+                <strong>場所</strong>
+                <span>${currentData.repairLocation || '-'}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="footer">
+            <p>© 2025 機械故障報告書. All rights reserved.</p>
+          </div>
+        </div>
+        
+        <div class="no-print" style="position: fixed; top: 20px; right: 20px; z-index: 1000;">
+          <button onclick="window.print()" style="padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">印刷</button>
+          <button onclick="window.close()" style="padding: 10px 20px; margin: 5px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;">閉じる</button>
+        </div>
+      </body>
+      </html>
+    `;
+    
+    w.document.write(printHTML);
+    w.document.close();
+    
+    // 印刷ダイアログを表示
+    setTimeout(() => {
+      w.print();
+    }, 100);
   };
 
   return (

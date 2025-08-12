@@ -812,7 +812,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
                           style={{ minHeight: '0px' }}
                         >
                           <Card 
-                            className={`transition-shadow duration-200 ${snapshot.isDragging ? 'shadow-lg' : ''}`}
+                            className={`transition-shadow duration-200 border-4 border-blue-500 ${snapshot.isDragging ? 'shadow-lg' : ''}`}
                             style={{ minHeight: '0px' }}
                           >
                             <div {...provided.dragHandleProps} className="absolute top-1/2 -left-8 -translate-y-1/2 p-2 cursor-grab text-gray-400 hover:text-gray-600">

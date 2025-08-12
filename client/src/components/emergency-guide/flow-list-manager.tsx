@@ -4,7 +4,7 @@ import { Button } from "../../components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { ScrollArea } from "../../components/ui/scroll-area";
 import { useToast } from "../../hooks/use-toast.ts";
-import { Edit, Eye, Trash2, RefreshCw, Plus } from 'lucide-react';
+import { Edit, Eye, Trash2, RefreshCw, Plus, Loader2 } from 'lucide-react';
 import { buildApiUrl } from "../../lib/api/config.ts";
 import {
   AlertDialog,
@@ -39,11 +39,18 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
 }) => {
   const { toast } = useToast();
   const [flowList, setFlowList] = useState<FlowData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [flowToDelete, setFlowToDelete] = useState<string | null>(null);
 
+  // 実際のAPI呼び出し
+  useEffect(() => {
+    console.log('🔄 FlowListManager マウント完了');
+    fetchFlowList();
+  }, []);
+
   const fetchFlowList = async () => {
+    console.log('🚀 fetchFlowList関数開始');
     try {
       setIsLoading(true);
       console.log('🔄 フロー一覧を取得中...');
@@ -51,28 +58,24 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       const apiUrl = buildApiUrl('/api/troubleshooting/list');
       console.log('🔗 API URL:', apiUrl);
 
-      const response = await fetch(apiUrl, {
+      // キャッシュ無効化のためのタイムスタンプ
+      const timestamp = Date.now();
+      const cacheBuster = `?t=${timestamp}`;
+      
+      const fullUrl = `${apiUrl}${cacheBuster}`;
+      console.log('🔗 完全なURL:', fullUrl);
+      
+      const response = await fetch(fullUrl, {
+        method: 'GET',
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
         }
       });
 
       console.log('📡 レスポンス状態:', response.status, response.statusText);
-      console.log('📡 レスポンスヘッダー:', Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ API エラー:', errorText);
-        
-        // Content-Typeをチェック
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('text/html')) {
-          console.error('❌ HTMLレスポンスが返されました。APIエンドポイントが正しく設定されているか確認してください。');
-          throw new Error(`APIエンドポイントエラー: HTMLレスポンスが返されました (${response.status})`);
-        }
-        
-        throw new Error(`ファイル一覧の取得に失敗しました: ${response.status} ${response.statusText}`);
+        throw new Error(`APIエラー: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
@@ -80,36 +83,54 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
 
       // APIレスポンスの構造に合わせてデータを取得
       let flows = [];
-      if (data.success && data.flows) {
-        flows = data.flows;
-      } else if (data.success && data.data) {
+      if (data.success && data.data) {
+        console.log('✅ dataプロパティからデータを取得');
         flows = data.data;
+      } else if (data.success && data.flows) {
+        console.log('✅ flowsプロパティからデータを取得');
+        flows = data.flows;
       } else if (Array.isArray(data)) {
+        console.log('✅ 配列として直接データを取得');
         flows = data;
       } else {
         console.error('❌ 予期しないフローデータ形式:', data);
         throw new Error("フローデータの形式が不正です");
       }
 
+      console.log('📋 処理前のflows配列:', flows);
+      console.log('📋 flows配列の詳細:', {
+        length: flows.length,
+        isArray: Array.isArray(flows),
+        firstItem: flows[0]
+      });
+
+      // createdAtプロパティが存在しない場合のデフォルト値を設定
+      flows = flows.map(flow => ({
+        ...flow,
+        createdAt: flow.createdAt || flow.updatedAt || flow.savedAt || new Date().toISOString()
+      }));
+
       console.log('✅ フロー一覧取得完了:', flows.length + '件');
-      console.log('📋 フロー詳細:', flows.map(f => ({ id: f.id, title: f.title, createdAt: f.createdAt })));
       setFlowList(flows);
+      
     } catch (error) {
-      console.error('フロー一覧取得エラー:', error);
+      console.error('❌ fetchFlowList関数でエラーが発生:', error);
       toast({
         title: "エラー",
         description: error instanceof Error ? error.message : "ファイル一覧の取得に失敗しました",
         variant: "destructive",
       });
-      setFlowList([]); // エラー時は空配列を設定
+      setFlowList([]);
     } finally {
       setIsLoading(false);
+      console.log('🏁 fetchFlowList関数終了');
     }
   };
 
-  useEffect(() => {
+  const handleRefresh = () => {
+    console.log('🔄 手動更新開始');
     fetchFlowList();
-  }, []);
+  };
 
   const handleDeleteClick = (flowId: string) => {
     setFlowToDelete(flowId);
@@ -118,49 +139,19 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
 
   const handleDeleteConfirm = async () => {
     if (!flowToDelete) return;
-
-    try {
-      console.log('🗑️ フロー削除開始:', flowToDelete);
-      
-      const response = await fetch(buildApiUrl(`/api/troubleshooting/${flowToDelete}`), {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ 削除API エラー:', errorText);
-        throw new Error(`フローの削除に失敗しました: ${response.status} ${response.statusText}`);
-      }
-
-      console.log('✅ フロー削除完了');
-      toast({
-        title: "成功",
-        description: "フローが削除されました",
-      });
-
-      // 一覧を更新
-      fetchFlowList();
-    } catch (error) {
-      console.error('❌ フロー削除エラー:', error);
-      toast({
-        title: "エラー",
-        description: "フローの削除に失敗しました",
-        variant: "destructive",
-      });
-    } finally {
-      setShowDeleteConfirm(false);
-      setFlowToDelete(null);
-    }
+    console.log('🗑️ フロー削除:', flowToDelete);
+    setShowDeleteConfirm(false);
+    setFlowToDelete(null);
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | undefined) => {
     try {
-      return new Date(dateString).toLocaleString('ja-JP');
-    } catch {
-      return '不明';
+      if (!dateString) return '未設定';
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '無効な日付';
+      return date.toLocaleString('ja-JP');
+    } catch (error) {
+      return 'エラー';
     }
   };
 
@@ -174,11 +165,20 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
-              onClick={fetchFlowList}
+              onClick={handleRefresh}
               disabled={isLoading}
             >
-              <RefreshCw className="h-4 w-4 mr-1" />
-              更新
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  更新中...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  更新
+                </>
+              )}
             </Button>
           </div>
         </CardHeader>
@@ -188,65 +188,68 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
             </div>
           ) : (
-            <ScrollArea className="h-[400px]">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>タイトル</TableHead>
-                    <TableHead>作成日時</TableHead>
-                    <TableHead className="text-right">操作</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+            <div className="overflow-auto">
+              <table className="w-full border-collapse border border-gray-300 text-sm">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border border-gray-300 p-2 text-left text-sm font-medium">タイトル</th>
+                    <th className="border border-gray-300 p-2 text-left text-sm font-medium">作成日時</th>
+                    <th className="border border-gray-300 p-2 text-left text-sm font-medium">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
                   {flowList.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={3} className="text-center py-8 text-gray-500">
+                    <tr>
+                      <td colSpan={3} className="border border-gray-300 p-4 text-center text-gray-500">
                         フローが見つかりません
-                      </TableCell>
-                    </TableRow>
+                      </td>
+                    </tr>
                   ) : (
                     flowList.map((flow) => (
-                      <TableRow key={flow.id}>
-                        <TableCell className="font-medium max-w-md">
-                          <div className="break-words leading-tight">{flow.title}</div>
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-500">
+                      <tr key={flow.id} className="hover:bg-gray-50">
+                        <td className="border border-gray-300 p-2">
+                          <div className="break-words leading-tight text-sm">{flow.title}</div>
+                        </td>
+                        <td className="border border-gray-300 p-2 text-xs text-gray-500">
                           {formatDate(flow.createdAt)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
+                        </td>
+                        <td className="border border-gray-300 p-2">
+                          <div className="flex gap-1">
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => onPreview(flow.id)}
                               title="プレビュー"
+                              className="h-7 px-2 text-xs"
                             >
-                              <Eye className="h-4 w-4" />
+                              <Eye className="h-3 w-3" />
                             </Button>
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => onEdit(flow.id)}
                               title="編集"
+                              className="h-7 px-2 text-xs"
                             >
-                              <Edit className="h-4 w-4" />
+                              <Edit className="h-3 w-3" />
                             </Button>
                             <Button
                               variant="destructive"
                               size="sm"
                               onClick={() => handleDeleteClick(flow.id)}
                               title="削除"
+                              className="h-7 px-2 text-xs"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-3 w-3" />
                             </Button>
                           </div>
-                        </TableCell>
-                      </TableRow>
+                        </td>
+                      </tr>
                     ))
                   )}
-                </TableBody>
-              </Table>
-            </ScrollArea>
+                </tbody>
+              </table>
+            </div>
           )}
         </CardContent>
       </Card>

@@ -127,7 +127,7 @@ const FlowList: React.FC<FlowListProps> = ({ flows, onSelectFlow, onDeleteFlow, 
   return (
     <div className="space-y-4">
       {flows.map((flow) => (
-        <Card key={flow.id} className="hover:shadow-md transition-shadow">
+        <Card key={flow.id} className="hover:shadow-md transition-shadow border-2 border-blue-500">
           <CardContent className="p-4 flex justify-between items-center">
             <div className="flex-grow cursor-pointer" onClick={() => onSelectFlow(flow)}>
               <p className="font-semibold text-lg">{flow.title}</p>
@@ -177,13 +177,18 @@ const EmergencyGuideEdit: React.FC = () => {
       setIsLoading(true);
       console.log('🔄 フロー一覧取得開始');
       
+      // キャッシュ無効化のためにタイムスタンプを追加
       const timestamp = Date.now();
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list?ts=${timestamp}`, {
-        credentials: 'include',
+      const randomId = Math.random().toString(36).substring(2);
+      const cacheBuster = `?ts=${timestamp}&r=${randomId}`;
+      
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list${cacheBuster}`, {
+        method: 'GET',
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
           'Pragma': 'no-cache',
-          'Content-Type': 'application/json'
+          'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
+          'X-Requested-With': 'XMLHttpRequest'
         }
       });
       

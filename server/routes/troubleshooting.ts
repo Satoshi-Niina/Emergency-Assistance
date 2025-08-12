@@ -18,29 +18,80 @@ async function loadTroubleshootingData() {
   try {
     console.log('🔍 トラブルシューティングディレクトリパス:', troubleshootingDir);
     console.log('🔍 現在の作業ディレクトリ:', process.cwd());
+    console.log('🔍 絶対パス:', path.resolve(troubleshootingDir));
     
     if (!existsSync(troubleshootingDir)) {
-      console.warn(`トラブルシューティングディレクトリが見つかりません: ${troubleshootingDir}`);
+      console.warn(`❌ トラブルシューティングディレクトリが見つかりません: ${troubleshootingDir}`);
+      console.warn(`🔍 代替パスを試行中...`);
+      
+      // 代替パスを試行
+      const alternativePaths = [
+        path.join(process.cwd(), 'knowledge-base', 'troubleshooting'),
+        path.join(__dirname, '..', '..', 'knowledge-base', 'troubleshooting'),
+        path.join(__dirname, '..', 'knowledge-base', 'troubleshooting')
+      ];
+      
+      for (const altPath of alternativePaths) {
+        console.log(`🔍 代替パスをチェック中: ${altPath}`);
+        if (existsSync(altPath)) {
+          console.log(`✅ 代替パスが見つかりました: ${altPath}`);
+          const files = readdirSync(altPath);
+          console.log(`📁 ディレクトリ内のファイル:`, files);
+          return await loadFromDirectory(altPath);
+        }
+      }
+      
+      console.error(`❌ どのパスでもディレクトリが見つかりませんでした`);
       return [];
     }
 
-    const files = readdirSync(troubleshootingDir);
+    return await loadFromDirectory(troubleshootingDir);
+  } catch (error) {
+    console.error('❌ トラブルシューティングデータの読み込みエラー:', error);
+    return [];
+  }
+}
+
+// 指定されたディレクトリからファイルを読み込む関数
+async function loadFromDirectory(dirPath: string) {
+  try {
+    console.log(`📁 ディレクトリから読み込み中: ${dirPath}`);
+    const files = readdirSync(dirPath);
     console.log('📁 ディレクトリ内のファイル:', files);
-    const jsonFiles = files.filter(file => file.endsWith('.json') && !file.includes('.backup') && !file.includes('.tmp'));
-    console.log('📄 JSONファイル:', jsonFiles);
+    
+    const jsonFiles = files.filter(file => {
+      const isJson = file.endsWith('.json');
+      const isNotBackup = !file.includes('.backup');
+      const isNotTmp = !file.includes('.tmp');
+      console.log(`📄 ファイル ${file}: JSON=${isJson}, バックアップ=${!isNotBackup}, 一時=${!isNotTmp}`);
+      return isJson && isNotBackup && isNotTmp;
+    });
+    
+    console.log('📄 処理対象のJSONファイル:', jsonFiles);
 
     const fileList = await Promise.all(jsonFiles.map(async (file) => {
       try {
-        const filePath = path.join(troubleshootingDir, file);
+        const filePath = path.join(dirPath, file);
+        console.log(`🔍 ファイル読み込み中: ${filePath}`);
+        
         const content = await fs.readFile(filePath, 'utf8');
+        console.log(`📄 ファイル ${file} のサイズ: ${content.length} 文字`);
+        
         const data = JSON.parse(content);
+        console.log(`✅ ファイル ${file} のJSON解析成功:`, {
+          id: data.id,
+          title: data.title,
+          hasDescription: !!data.description,
+          hasSteps: !!(data.steps && data.steps.length > 0)
+        });
         
         let description = data.description || '';
         if (!description && data.steps && data.steps.length > 0) {
-          description = data.steps[0].description || data.steps[0].message || '';
+          const firstStep = data.steps[0];
+          description = firstStep.description || firstStep.message || '';
         }
 
-        return {
+        const result = {
           id: data.id || file.replace('.json', ''),
           title: data.title || 'タイトルなし',
           description: description,
@@ -51,15 +102,25 @@ async function loadTroubleshootingData() {
           triggerKeywords: data.triggerKeywords || [],
           steps: data.steps || []
         };
+        
+        console.log(`✅ ファイル ${file} の処理完了:`, result);
+        return result;
       } catch (error) {
-        console.error(`ファイル ${file} の解析中にエラーが発生しました:`, error);
+        console.error(`❌ ファイル ${file} の解析中にエラーが発生しました:`, error);
+        console.error(`🔍 エラーの詳細:`, {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined
+        });
         return null;
       }
     }));
 
-    return fileList.filter(Boolean);
+    const validFiles = fileList.filter(Boolean);
+    console.log(`📋 有効なファイル数: ${validFiles.length}/${jsonFiles.length}`);
+    
+    return validFiles;
   } catch (error) {
-    console.error('トラブルシューティングデータの読み込みエラー:', error);
+    console.error(`❌ ディレクトリ ${dirPath} からの読み込みエラー:`, error);
     return [];
   }
 }
