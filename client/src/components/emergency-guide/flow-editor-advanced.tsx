@@ -342,8 +342,8 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
+    <div className="space-y-6 h-full flex flex-col">
+      <Card className="flex-shrink-0">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>{flowId ? 'フロー編集' : '新規フロー作成'}</span>
@@ -381,39 +381,43 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
               />
             </div>
           </div>
+        </CardContent>
+      </Card>
 
-          {/* ステップ一覧 */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <Label className="text-lg font-semibold">ステップ一覧</Label>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addStep('step')}
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  ステップ追加
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addStep('decision')}
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  条件分岐追加
-                </Button>
-              </div>
+      {/* ステップ一覧 */}
+      <Card className="flex-1 flex flex-col min-h-0">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>ステップ一覧</span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => addStep('step')}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                ステップ追加
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => addStep('decision')}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                条件分岐追加
+              </Button>
             </div>
-
-            <ScrollArea className="h-[600px]">
-              <div className="space-y-4">
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div className="space-y-4 pr-4">
                 {flowData.steps && flowData.steps.map((step, index) => (
                   <React.Fragment key={step.id}>
                     <ContextMenu>
                       <ContextMenuTrigger>
                         <Card
-                          className={`cursor-move transition-all ${
+                          className={`cursor-move transition-all border-4 border-blue-500 ${
                             draggedStepId === step.id ? 'opacity-50' : ''
                           }`}
                           draggable
@@ -604,9 +608,8 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                 ))}
               </div>
             </ScrollArea>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
     </div>
   );
 };

@@ -73,7 +73,7 @@ export async function apiRequest(
     : `${fullUrl}?_t=${Date.now()}`;
 
   // 修正: URLのパースエラーを防ぐため、ポート番号とパスを確認
-  if (!fullUrl.startsWith('http')) {
+  if (!fullUrl.startsWith('http') && !fullUrl.startsWith('/')) {
     console.error('不正なURL:', fullUrl);
   }
 

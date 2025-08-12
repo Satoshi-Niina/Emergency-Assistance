@@ -14,6 +14,7 @@ import imageStorageRouter from "./image-storage";
 import systemCheckRouter from "./system-check";
 import { flowsRouter } from "./flows";
 import filesRouter from "./files";
+import reportsRouter from "./reports";
 
 export function registerRoutes(app: any) {
   // Health check
@@ -40,4 +41,5 @@ export function registerRoutes(app: any) {
   app.use('/api/system-check', systemCheckRouter);
   app.use('/api/flows', flowsRouter);
   app.use('/api/files', filesRouter);
+  app.use('/api/reports', reportsRouter);
 }
