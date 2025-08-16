@@ -474,8 +474,16 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
     setEditedData(data);
   }, [data]);
 
+  // isEditingの状態変化を監視
+  useEffect(() => {
+    console.log('🔧 isEditing state changed:', isEditing);
+  }, [isEditing]);
+
   const handleEdit = () => {
+    console.log('🔧 handleEdit called');
+    console.log('🔧 Current isEditing state:', isEditing);
     setIsEditing(true);
+    console.log('🔧 setIsEditing(true) called');
   };
 
   const handleSave = () => {
@@ -819,7 +827,14 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
             <div className="flex gap-3">
               {!isEditing ? (
                 <>
-                  <Button onClick={handleEdit} variant="outline" className="flex items-center gap-2">
+                  <Button 
+                    onClick={() => {
+                      console.log('🔧 Edit button clicked!');
+                      handleEdit();
+                    }} 
+                    variant="outline" 
+                    className="flex items-center gap-2"
+                  >
                     <Edit className="h-4 w-4" />
                     編集
                   </Button>
