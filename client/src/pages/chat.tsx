@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { RotateCcw, Download, Upload, FileText, BookOpen, Activity, ArrowLeft, X, Search, Send, Camera, Trash2, RefreshCw, Brain, Wrench, Database } from "lucide-react";
+import { RotateCcw, Download, Upload, FileText, BookOpen, Activity, ArrowLeft, X, Search, Send, Camera, Trash2, RefreshCw, Brain, Wrench, Database, Save } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { searchTroubleshootingFlows, japaneseGuideTitles } from "../lib/troubleshooting-search";
 import { QAAnswer } from "../lib/qa-flow-manager";
@@ -231,19 +231,28 @@ export default function ChatPage() {
       if (response.ok) {
         const result = await response.json();
         console.log('✅ 機種一覧取得結果:', result);
-        if (result.success) {
+        if (result.success && Array.isArray(result.data)) {
           console.log('✅ 機種一覧設定完了:', result.data.length, '件');
           console.log('✅ 機種データ:', result.data);
           setMachineTypes(result.data);
           setFilteredMachineTypes(result.data); // 初期表示用にも設定
+          
+          if (result.data.length === 0) {
+            console.log('⚠️ 機種データが0件です');
+          }
         } else {
-          console.error('❌ 機種一覧取得成功だがsuccess=false:', result);
+          console.error('❌ 機種一覧取得成功だがデータが無効:', result);
           setMachineTypes([]);
           setFilteredMachineTypes([]);
         }
       } else {
         const errorText = await response.text();
         console.error('❌ 機種一覧取得エラー:', response.status, errorText);
+        
+        if (response.status === 401) {
+          console.log('🔐 認証エラーが発生しました。ログインが必要です。');
+        }
+        
         setMachineTypes([]);
         setFilteredMachineTypes([]);
       }
@@ -294,72 +303,46 @@ export default function ChatPage() {
 
   // 機種選択処理
   const handleMachineTypeSelect = (type: {id: string, machine_type_name: string}) => {
-    console.log('🔍 機種選択処理関数が呼び出されました');
-    console.log('🔍 機種選択開始:', type);
-    console.log('🔍 選択前の状態:', {
-      selectedMachineType,
-      machineTypeInput,
-      showMachineTypeSuggestions
-    });
+    console.log('🔍 機種選択処理開始 ===========================');
+    console.log('🔍 選択された機種:', type);
     
-    // 状態を確実に更新
-    setSelectedMachineType(type.id);
-    setMachineTypeInput(type.machine_type_name);
-    setShowMachineTypeSuggestions(false);
-    
-    console.log('🔍 選択後の状態:', {
-      selectedMachineType: type.id,
-      machineTypeInput: type.machine_type_name,
-      showMachineTypeSuggestions: false
-    });
-    
-    // 機種変更時は機械番号をリセット
-    setSelectedMachineNumber('');
-    setMachineNumberInput('');
-    setMachines([]);
-    setFilteredMachines([]);
-    
-    // 対応する機械番号を取得
-    fetchMachines(type.id);
-    
-    // デバッグ: 状態更新後の確認
-    setTimeout(() => {
-      console.log('🔍 機種選択後の状態確認:', {
-        selectedMachineType: type.id,
-        machineTypeInput: type.machine_type_name,
-        showMachineTypeSuggestions: false
-      });
-    }, 0);
+    try {
+      // バッチ状態更新を使用
+      setMachineTypeInput(type.machine_type_name);
+      setSelectedMachineType(type.id);
+      setShowMachineTypeSuggestions(false);
+      
+      // 機種変更時は機械番号をリセット
+      setSelectedMachineNumber('');
+      setMachineNumberInput('');
+      setMachines([]);
+      setFilteredMachines([]);
+      
+      console.log('✅ 機種選択完了:', type.machine_type_name);
+      
+      // 対応する機械番号を取得
+      fetchMachines(type.id);
+      
+    } catch (error) {
+      console.error('❌ 機種選択処理中にエラー:', error);
+    }
   };
 
   // 機械番号選択処理
   const handleMachineNumberSelect = (machine: {id: string, machine_number: string}) => {
     console.log('🔍 機械番号選択開始:', machine);
-    console.log('🔍 選択前の状態:', {
-      selectedMachineNumber,
-      machineNumberInput,
-      showMachineNumberSuggestions
-    });
     
-    // 状態を確実に更新
-    setSelectedMachineNumber(machine.id);
-    setMachineNumberInput(machine.machine_number);
-    setShowMachineNumberSuggestions(false);
-    
-    console.log('🔍 選択後の状態:', {
-      selectedMachineNumber: machine.id,
-      machineNumberInput: machine.machine_number,
-      showMachineNumberSuggestions: false
-    });
-    
-    // デバッグ: 状態更新後の確認
-    setTimeout(() => {
-      console.log('🔍 機械番号選択後の状態確認:', {
-        selectedMachineNumber: machine.id,
-        machineNumberInput: machine.machine_number,
-        showMachineNumberSuggestions: false
-      });
-    }, 0);
+    try {
+      // 状態を確実に更新
+      setSelectedMachineNumber(machine.id);
+      setMachineNumberInput(machine.machine_number);
+      setShowMachineNumberSuggestions(false);
+      
+      console.log('✅ 機械番号選択完了:', machine.machine_number);
+      
+    } catch (error) {
+      console.error('❌ 機械番号選択処理中にエラー:', error);
+    }
   };
 
   // 追加: 指定機種に紐づく機械番号一覧を取得する関数（設定UIと同じAPIを使用）
@@ -390,6 +373,15 @@ export default function ChatPage() {
           console.log('✅ 機械番号データ:', result.data);
           setMachines(result.data);
           setFilteredMachines(result.data); // 初期表示用
+          
+          // 機械番号データ取得完了のデバッグ情報
+          console.log('🔧 機械番号取得後の状態:', {
+            machinesCount: result.data.length,
+            machines: result.data,
+            machineNumberInput,
+            selectedMachineNumber,
+            showMachineNumberSuggestions
+          });
         } else {
           console.error('❌ 機械番号一覧取得成功だがsuccess=false:', result);
           setMachines([]);
@@ -412,7 +404,7 @@ export default function ChatPage() {
         filteredMachinesCount: filteredMachines.length
       });
     }
-  }, []);
+  }, [machines.length, filteredMachines.length, machineNumberInput, selectedMachineNumber, showMachineNumberSuggestions]);
 
   // 追加: 機種選択時の処理（オートコンプリート用）
   const handleMachineTypeChange = (typeId: string) => {
@@ -465,13 +457,22 @@ export default function ChatPage() {
     }
   }, [machineTypes, machineTypeInput]);
 
-  // 機種入力の状態変更を監視
+  // 機種入力の状態変更を監視（デバッグ用）
   useEffect(() => {
     console.log('📊 機種入力状態更新:', {
       machineTypeInput,
       selectedMachineType
     });
   }, [machineTypeInput, selectedMachineType]);
+
+  // machineTypeInputの値の変更を詳細に監視
+  useEffect(() => {
+    console.log('🔍 machineTypeInput値変更検出:', {
+      currentValue: machineTypeInput,
+      length: machineTypeInput.length,
+      timestamp: new Date().toISOString()
+    });
+  }, [machineTypeInput]);
 
   // 機械番号データの状態変更を監視してフィルタリングを更新
   useEffect(() => {
@@ -488,7 +489,7 @@ export default function ChatPage() {
     }
   }, [machines, machineNumberInput]);
 
-  // 機械番号入力の状態変更を監視
+  // 機械番号入力の状態変更を監視（デバッグ用）
   useEffect(() => {
     console.log('📊 機械番号入力状態更新:', {
       machineNumberInput,
@@ -816,11 +817,18 @@ export default function ChatPage() {
   const handleSendToServer = async () => {
     try {
       // デバッグ情報を追加
-      console.log('送信前の状態確認:', {
+      console.log('🚀 送信前の状態確認:', {
         chatId: chatId,
         messagesLength: messages.length,
         hasChatId: !!chatId,
-        hasMessages: messages.length > 0
+        hasMessages: messages.length > 0,
+        messagesWithContent: messages.filter(msg => msg.content && msg.content.trim()).length,
+        machineInfo: {
+          selectedMachineType,
+          selectedMachineNumber,
+          machineTypeInput,
+          machineNumberInput
+        }
       });
 
       // より詳細な条件チェック
@@ -828,7 +836,7 @@ export default function ChatPage() {
       const hasMessages = messages.length > 0;
       const hasValidMessages = messages.some(msg => msg.content && msg.content.trim());
       
-      console.log('送信条件チェック:', {
+      console.log('🔍 送信条件チェック:', {
         hasValidChatId,
         hasMessages,
         hasValidMessages,
@@ -837,28 +845,18 @@ export default function ChatPage() {
       });
 
       if (!hasValidChatId) {
-        console.log('送信エラー: チャットIDが無効 - 初期化を試行');
+        console.log('❌ 送信エラー: チャットIDが無効 - 初期化を試行');
         try {
           // チャットIDが無効な場合は初期化を試行
-          const newChatId = await initializeChat();
-          if (newChatId) {
-            console.log('チャットID初期化成功:', newChatId);
-            // 初期化成功後、再度送信処理を実行
-            setTimeout(() => {
-              handleSendToServer();
-            }, 100);
-            return;
-          } else {
-            console.log('チャットID初期化失敗');
-            toast({
-              title: "送信エラー",
-              description: "チャットIDの初期化に失敗しました。",
-              variant: "destructive",
-            });
-            return;
-          }
+          await initializeChat();
+          console.log('✅ チャットID初期化成功');
+          // 初期化成功後、再度送信処理を実行
+          setTimeout(() => {
+            handleSendToServer();
+          }, 100);
+          return;
         } catch (initError) {
-          console.error('チャットID初期化エラー:', initError);
+          console.error('❌ チャットID初期化エラー:', initError);
           toast({
             title: "送信エラー",
             description: "チャットIDの初期化に失敗しました。",
@@ -869,7 +867,7 @@ export default function ChatPage() {
       }
 
       if (!hasValidMessages) {
-        console.log('送信エラー: 有効なメッセージがありません');
+        console.log('❌ 送信エラー: 有効なメッセージがありません');
         toast({
           title: "送信エラー",
           description: "送信するチャット内容がありません。",
@@ -894,7 +892,7 @@ export default function ChatPage() {
           content: msg.content,
           isAiResponse: msg.isAiResponse,
           timestamp: msg.timestamp,
-          media: msg.media?.map(media => ({
+          media: msg.media?.map((media: any) => ({
             id: media.id,
             type: media.type,
             url: media.url,
@@ -904,21 +902,22 @@ export default function ChatPage() {
         }))
       };
 
-      console.log('送信データ:', {
+      console.log('📤 送信データ:', {
         chatId: chatData.chatId,
         messageCount: chatData.messages.length,
-        machineInfo: chatData.machineInfo
+        machineInfo: chatData.machineInfo,
+        totalDataSize: JSON.stringify(chatData).length
       });
 
       // サーバーに送信（開発環境ではテスト用エンドポイントを使用）
-      const isDevelopment = import.meta.env.NODE_ENV === 'development';
+      const isDevelopment = process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost';
       const apiUrl = isDevelopment 
-        ? `${import.meta.env.VITE_API_BASE_URL}/api/chats/${chatId}/send-test`
-        : `${import.meta.env.VITE_API_BASE_URL}/api/chats/${chatId}/send`;
+        ? `/api/chats/${chatId}/send-test`
+        : `/api/chats/${chatId}/send`;
       
-      console.log('送信URL:', apiUrl);
-      console.log('開発環境:', isDevelopment);
-      console.log('送信データ詳細:', JSON.stringify(chatData, null, 2));
+      console.log('🌐 送信URL:', apiUrl);
+      console.log('🏗️ 開発環境:', isDevelopment);
+      console.log('🏠 ホスト名:', window.location.hostname);
 
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -932,7 +931,7 @@ export default function ChatPage() {
         })
       });
 
-      console.log('送信レスポンス:', {
+      console.log('📡 送信レスポンス:', {
         status: response.status,
         statusText: response.statusText,
         ok: response.ok,
@@ -947,11 +946,12 @@ export default function ChatPage() {
           ? ` (機種: ${machineTypeInput}, 機械番号: ${machineNumberInput})`
           : '';
         
+        console.log('✅ サーバー送信成功:', result);
+        
         toast({
           title: "送信成功",
           description: `チャット内容をサーバーに送信しました。(${messages.filter(msg => msg.content && msg.content.trim()).length}件のメッセージ)${machineInfoText}`,
         });
-        console.log('サーバー送信結果:', result);
 
         // 送信完了後にチャットをクリア
         await clearChatHistory();
@@ -975,6 +975,8 @@ export default function ChatPage() {
           title: "チャットクリア完了",
           description: "送信後にチャット履歴をクリアしました。",
         });
+        
+        console.log('🧹 チャット状態をリセットしました');
       } else {
         // エラーレスポンスの詳細を取得
         let errorMessage = `送信失敗: ${response.status} ${response.statusText}`;
@@ -984,8 +986,9 @@ export default function ChatPage() {
           const errorData = await response.json();
           errorMessage = errorData.error || errorData.message || errorMessage;
           errorDetails = errorData.details || errorData.error || '';
+          console.error('❌ サーバーエラーレスポンス:', errorData);
         } catch (parseError) {
-          console.warn('エラーレスポンスの解析に失敗:', parseError);
+          console.warn('⚠️ エラーレスポンスの解析に失敗:', parseError);
         }
         
         // より詳細なエラーメッセージを構築
@@ -996,7 +999,7 @@ export default function ChatPage() {
         throw new Error(fullErrorMessage);
       }
     } catch (error) {
-      console.error('サーバー送信エラー:', error);
+      console.error('❌ サーバー送信エラー:', error);
       toast({
         title: "送信エラー",
         description: error instanceof Error ? error.message : "サーバーへの送信に失敗しました。",
@@ -1004,6 +1007,8 @@ export default function ChatPage() {
       });
     }
   };
+
+  // ローカル保存機能（削除済み）
 
   const handleImport = () => {
     fileInputRef.current?.click();
@@ -1019,7 +1024,7 @@ export default function ChatPage() {
         
         if (importedData.messages && Array.isArray(importedData.messages)) {
           // メッセージを設定（既存のメッセージに追加）
-          setMessages(prev => [...prev, ...importedData.messages]);
+          setMessages([...messages, ...importedData.messages]);
           toast({
             title: "インポート成功",
             description: "チャット履歴をインポートしました。",
@@ -1046,7 +1051,7 @@ export default function ChatPage() {
   const fetchAvailableGuides = async () => {
     try {
       setIsLoadingGuides(true);
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list`);
+      const response = await fetch(`/api/troubleshooting/list`);
       
       if (response.ok) {
         const data = await response.json();
@@ -1140,7 +1145,7 @@ export default function ChatPage() {
       });
 
       // トラブルシューティングQA APIを呼び出し
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting-qa/start`, {
+      const response = await fetch(`/api/troubleshooting-qa/start`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1197,7 +1202,7 @@ export default function ChatPage() {
       sendMessage(answer, [], false);
 
       // トラブルシューティングQA APIを呼び出し
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting-qa/answer`, {
+      const response = await fetch(`/api/troubleshooting-qa/answer`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1556,17 +1561,36 @@ export default function ChatPage() {
                     setFilteredMachineTypes(machineTypes);
                   }
                 }}
+                onBlur={(e) => {
+                  // ドロップダウン内のクリックの場合は閉じない
+                  const relatedTarget = e.relatedTarget as HTMLElement;
+                  if (relatedTarget && relatedTarget.closest('.machine-type-dropdown')) {
+                    return;
+                  }
+                  // 少し遅延させてクリックイベントが処理されるのを待つ
+                  setTimeout(() => {
+                    setShowMachineTypeSuggestions(false);
+                  }, 150);
+                }}
                 disabled={isLoadingMachineTypes}
                 className="w-48"
               />
+              {(() => {
+                console.log('🔍 機種ドロップダウン表示条件:', {
+                  showMachineTypeSuggestions,
+                  filteredMachineTypesCount: filteredMachineTypes.length,
+                  filteredMachineTypes: filteredMachineTypes,
+                  machineTypesCount: machineTypes.length,
+                  machineTypes: machineTypes,
+                  isLoadingMachineTypes
+                });
+                return null;
+              })()}
               {showMachineTypeSuggestions && (
-                <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                  {console.log('🔍 ドロップダウン表示条件:', {
-                    showMachineTypeSuggestions,
-                    filteredMachineTypesCount: filteredMachineTypes.length,
-                    filteredMachineTypes: filteredMachineTypes
-                  })}
-                  {filteredMachineTypes.length > 0 ? (
+                <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto machine-type-dropdown">
+                  {isLoadingMachineTypes ? (
+                    <div className="px-3 py-2 text-sm text-gray-500">読み込み中...</div>
+                  ) : filteredMachineTypes.length > 0 ? (
                     filteredMachineTypes.map((type) => (
                       <div
                         key={type.id}
@@ -1574,19 +1598,22 @@ export default function ChatPage() {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          console.log('🔍 機種クリックイベント発火:', type);
                           handleMachineTypeSelect(type);
                         }}
                         onMouseDown={(e) => {
+                          // マウスダウンイベントでブラウザのフォーカス変更を防ぐ
                           e.preventDefault();
                         }}
+                        tabIndex={0}
                       >
                         {type.machine_type_name}
                       </div>
                     ))
                   ) : (
                     <div className="px-3 py-2 text-sm text-gray-500">
-                      {machineTypeInput.trim() ? "該当する機種が見つかりません" : "機種を入力してください"}
+                      {machineTypeInput.trim() ? "該当する機種が見つかりません" : 
+                       machineTypes.length === 0 ? "機種データを読み込み中..." : 
+                       "機種を入力してください"}
                     </div>
                   )}
                 </div>
@@ -1613,17 +1640,52 @@ export default function ChatPage() {
                 }}
                 onFocus={() => {
                   console.log('🔍 機械番号入力フォーカス');
+                  console.log('🔧 フォーカス時の状態:', {
+                    selectedMachineType,
+                    machinesCount: machines.length,
+                    machines: machines,
+                    filteredMachinesCount: filteredMachines.length,
+                    filteredMachines: filteredMachines,
+                    isLoadingMachines,
+                    machineNumberInput,
+                    showMachineNumberSuggestions
+                  });
                   setShowMachineNumberSuggestions(true);
                   // フォーカス時に全機械番号を表示
                   if (machines.length > 0) {
                     setFilteredMachines(machines);
+                    console.log('✅ フォーカス時に機械番号リストを設定:', machines.length, '件');
+                  } else {
+                    console.log('⚠️ フォーカス時に機械番号がありません');
                   }
+                }}
+                onBlur={(e) => {
+                  // ドロップダウン内のクリックの場合は閉じない
+                  const relatedTarget = e.relatedTarget as HTMLElement;
+                  if (relatedTarget && relatedTarget.closest('.machine-number-dropdown')) {
+                    return;
+                  }
+                  // 少し遅延させてクリックイベントが処理されるのを待つ
+                  setTimeout(() => {
+                    setShowMachineNumberSuggestions(false);
+                  }, 150);
                 }}
                 disabled={!selectedMachineType || isLoadingMachines}
                 className="w-48"
               />
+              {(() => {
+                console.log('🔍 機械番号ドロップダウン表示条件:', {
+                  showMachineNumberSuggestions,
+                  filteredMachinesCount: filteredMachines.length,
+                  filteredMachines: filteredMachines,
+                  selectedMachineType,
+                  machineNumberInput,
+                  isLoadingMachines
+                });
+                return null;
+              })()}
               {showMachineNumberSuggestions && (
-                <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto machine-number-dropdown">
                   {filteredMachines.length > 0 ? (
                     filteredMachines.map((machine) => (
                       <div
@@ -1632,19 +1694,22 @@ export default function ChatPage() {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          console.log('🔍 機械番号クリックイベント発火:', machine);
                           handleMachineNumberSelect(machine);
                         }}
                         onMouseDown={(e) => {
+                          // マウスダウンイベントでブラウザのフォーカス変更を防ぐ
                           e.preventDefault();
                         }}
+                        tabIndex={0}
                       >
                         {machine.machine_number}
                       </div>
                     ))
                   ) : (
                     <div className="px-3 py-2 text-sm text-gray-500">
-                      {machineNumberInput.trim() ? "該当する機械番号が見つかりません" : "機械番号を入力してください"}
+                      {machineNumberInput.trim() ? "該当する機械番号が見つかりません" : 
+                       selectedMachineType ? "この機種に登録されている機械番号がありません" : 
+                       "先に機種を選択してください"}
                     </div>
                   )}
                 </div>
@@ -1655,6 +1720,15 @@ export default function ChatPage() {
         
         {/* 中央：AI支援・カメラ・応急処置ガイドボタン */}
         <div className="flex items-center gap-6">
+          {/* デバッグ情報表示 */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="text-xs text-gray-600 bg-gray-100 p-2 rounded">
+              <div>機種: {selectedMachineType ? `${machineTypeInput} (${selectedMachineType})` : '未選択'}</div>
+              <div>機械番号: {selectedMachineNumber ? `${machineNumberInput} (${selectedMachineNumber})` : '未選択'}</div>
+              <div>機械数: {machines.length}件</div>
+            </div>
+          )}
+          
           {/* AI支援開始/終了ボタン */}
           {!aiSupportMode ? (
             <Button
@@ -1703,15 +1777,15 @@ export default function ChatPage() {
           </Button>
         </div>
         
-        {/* 右側：サーバー送信・クリアボタン */}
+        {/* 右側：サーバー送信・ローカル保存・クリアボタン */}
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
             size="sm"
-            onClick={handleExportChat}
+            onClick={handleSendToServer}
             disabled={isLoading || messages.length === 0}
           >
-            <Download className="w-4 h-4 mr-2" />
+            <Upload className="w-4 h-4 mr-2" />
             サーバー送信
           </Button>
 
@@ -1784,15 +1858,7 @@ export default function ChatPage() {
 
       {/* 画像プレビューモーダル */}
       {showImagePreview && selectedImage && (
-        <ImagePreviewModal
-          image={selectedImage}
-          onClose={() => setShowImagePreview(false)}
-          onConfirm={(imageData) => {
-            // 画像確認処理
-            console.log('画像確認:', imageData);
-            setShowImagePreview(false);
-          }}
-        />
+        <ImagePreviewModal />
       )}
 
       {/* 応急処置ガイドモーダル */}
@@ -1874,6 +1940,10 @@ export default function ChatPage() {
                 <EmergencyGuideDisplay
                   guideId={selectedGuideId}
                   onExit={handleExitGuide}
+                  onSendToChat={() => {
+                    console.log('応急処置ガイドをチャットに送信');
+                    setShowEmergencyGuide(false);
+                  }}
                 />
               </div>
             )}

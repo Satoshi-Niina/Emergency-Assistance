@@ -1,10 +1,10 @@
 
 import express from 'express';
-import { createObjectCsvWriter } from 'csv-writer';
 import { HistoryService } from '../services/historyService';
 import { z } from 'zod';
 import { db } from '../db/index.js';
-import { historyItems } from '../db/schema.js';
+import { historyItems, machineTypes, machines } from '../db/schema.js';
+import { eq } from 'drizzle-orm';
 import fs from 'fs';
 import path from 'path';
 
@@ -151,7 +151,7 @@ router.get('/', async (req, res) => {
     
     console.log('📋 フィルタリング前の件数:', filteredExports.length);
     
-    if (machineType) {
+    if (machineType && typeof machineType === 'string') {
       console.log('📋 機種フィルター適用:', machineType);
       filteredExports = filteredExports.filter(item => {
         // 新しいフォーマットと従来のフォーマットの両方に対応
@@ -162,7 +162,7 @@ router.get('/', async (req, res) => {
       console.log('📋 機種フィルター後の件数:', filteredExports.length);
     }
     
-    if (machineNumber) {
+    if (machineNumber && typeof machineNumber === 'string') {
       console.log('📋 機械番号フィルター適用:', machineNumber);
       filteredExports = filteredExports.filter(item => {
         // 新しいフォーマットと従来のフォーマットの両方に対応
@@ -173,7 +173,7 @@ router.get('/', async (req, res) => {
       console.log('📋 機械番号フィルター後の件数:', filteredExports.length);
     }
     
-    if (searchText) {
+    if (searchText && typeof searchText === 'string') {
       console.log('📋 テキスト検索適用:', searchText);
       filteredExports = filteredExports.filter(item => {
         // 新しいフォーマットと従来のフォーマットの両方に対応
@@ -205,9 +205,9 @@ router.get('/', async (req, res) => {
         });
         
         console.log('📋 検索対象テキスト:', searchableText);
-        console.log('📋 検索キーワード:', searchText.toLowerCase());
+        console.log('📋 検索キーワード:', (searchText as string).toLowerCase());
         
-        const match = searchableText.includes(searchText.toLowerCase());
+        const match = searchableText.includes((searchText as string).toLowerCase());
         console.log('📋 マッチ結果:', match);
         
         return match;
@@ -261,154 +261,116 @@ router.get('/', async (req, res) => {
 });
 
 /**
- * GET /api/history/machine-data
- * 機種・機械番号マスターデータを取得
+ * GET /api/history/search-filters
+ * 履歴検索用のフィルターデータ（保存されたJSONファイルから動的に取得）
  */
-router.get('/machine-data', async (req, res) => {
+router.get('/search-filters', async (req, res) => {
   try {
-    console.log('📋 機種・機械番号データ取得リクエスト');
+    console.log('📋 履歴検索フィルターデータ取得リクエスト');
 
-    // Content-Typeを明示的に設定
-    res.setHeader('Content-Type', 'application/json');
-
-    // knowledge-base/exportsのJSONファイルから機種・機械番号データを取得
     let exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
     
-    // サーバーディレクトリから起動されている場合の代替パス
     if (!fs.existsSync(exportsDir)) {
       const alternativePath = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
       if (fs.existsSync(alternativePath)) {
         exportsDir = alternativePath;
       }
     }
-    
-    if (!fs.existsSync(exportsDir)) {
-      console.log('📋 エクスポートディレクトリが存在しません:', exportsDir);
-      return res.json({
-        machineTypes: [],
-        machines: []
-      });
-    }
 
-    // 再帰的にJSONファイルを検索する関数
-    const findJsonFiles = (dir: string, baseDir: string = exportsDir): any[] => {
-      const files: any[] = [];
-      const items = fs.readdirSync(dir);
+    const machineTypes = new Set<string>();
+    const machineNumbers = new Set<string>();
+
+    if (fs.existsSync(exportsDir)) {
+      const files = fs.readdirSync(exportsDir);
       
-      for (const item of items) {
-        const itemPath = path.join(dir, item);
-        const stats = fs.statSync(itemPath);
-        
-        if (stats.isDirectory()) {
-          // サブディレクトリを再帰的に検索
-          files.push(...findJsonFiles(itemPath, baseDir));
-        } else if (item.endsWith('.json')) {
+      for (const file of files) {
+        if (file.endsWith('.json') && !file.includes('.backup.')) {
           try {
-            const content = fs.readFileSync(itemPath, 'utf8');
+            const filePath = path.join(exportsDir, file);
+            const content = fs.readFileSync(filePath, 'utf8');
             const data = JSON.parse(content);
             
-            // 相対パスを計算
-            const relativePath = path.relative(baseDir, itemPath);
+            // 機種を収集
+            const machineType = data.machineType || data.chatData?.machineInfo?.machineTypeName || '';
+            if (machineType && machineType.trim()) {
+              machineTypes.add(machineType.trim());
+            }
             
-            files.push({
-              fileName: relativePath,
-              filePath: itemPath,
-              data: data
-            });
+            // 機械番号を収集
+            const machineNumber = data.machineNumber || data.chatData?.machineInfo?.machineNumber || '';
+            if (machineNumber && machineNumber.trim()) {
+              machineNumbers.add(machineNumber.trim());
+            }
           } catch (error) {
-            console.warn(`JSONファイルの読み込みエラー: ${itemPath}`, error);
+            console.warn(`JSONファイル読み込みエラー: ${file}`, error);
           }
         }
       }
-      
-      return files;
-    };
-
-    const jsonFiles = findJsonFiles(exportsDir);
-    console.log('📋 検索されたJSONファイル数:', jsonFiles.length);
-
-    // 機種一覧を構築（重複除去）
-    const machineTypeSet = new Set<string>();
-    const machineTypes: Array<{ id: string; machineTypeName: string }> = [];
-    
-    // 機械番号一覧を構築（重複除去）
-    const machineSet = new Set<string>();
-    const machines: Array<{ id: string; machineNumber: string; machineTypeName: string }> = [];
-    
-    jsonFiles.forEach((file, index) => {
-      const data = file.data;
-      
-      console.log(`📋 ファイル ${file.fileName} のデータ構造:`, {
-        hasMachineType: !!data?.machineType,
-        machineType: data?.machineType,
-        hasMachineNumber: !!data?.machineNumber,
-        machineNumber: data?.machineNumber,
-        hasChatData: !!data?.chatData,
-        hasMachineInfo: !!data?.chatData?.machineInfo
-      });
-      
-      // 新しいフォーマットと従来フォーマットの両方に対応
-      let machineTypeName = '';
-      let machineNumber = '';
-      
-      // 新しいフォーマットから取得
-      if (data?.machineType) {
-        machineTypeName = data.machineType;
-        console.log(`📋 新しいフォーマットから機種取得: ${machineTypeName}`);
-      } else if (data?.originalChatData?.machineInfo?.machineTypeName) {
-        machineTypeName = data.originalChatData.machineInfo.machineTypeName;
-        console.log(`📋 originalChatDataから機種取得: ${machineTypeName}`);
-      } else if (data?.chatData?.machineInfo?.machineTypeName) {
-        machineTypeName = data.chatData.machineInfo.machineTypeName;
-        console.log(`📋 従来フォーマットから機種取得: ${machineTypeName}`);
-      }
-      
-      if (data?.machineNumber) {
-        machineNumber = data.machineNumber;
-        console.log(`📋 新しいフォーマットから機械番号取得: ${machineNumber}`);
-      } else if (data?.originalChatData?.machineInfo?.machineNumber) {
-        machineNumber = data.originalChatData.machineInfo.machineNumber;
-        console.log(`📋 originalChatDataから機械番号取得: ${machineNumber}`);
-      } else if (data?.chatData?.machineInfo?.machineNumber) {
-        machineNumber = data.chatData.machineInfo.machineNumber;
-        console.log(`📋 従来フォーマットから機械番号取得: ${machineNumber}`);
-      }
-      
-      // 機種データを追加
-      if (machineTypeName && !machineTypeSet.has(machineTypeName)) {
-        machineTypeSet.add(machineTypeName);
-        machineTypes.push({
-          id: `type_${index}`,
-          machineTypeName: machineTypeName
-        });
-        console.log(`📋 機種データ追加: ${machineTypeName}`);
-      }
-      
-      // 機械番号データを追加
-      if (machineNumber && machineTypeName) {
-        const key = `${machineNumber}_${machineTypeName}`;
-        if (!machineSet.has(key)) {
-          machineSet.add(key);
-          machines.push({
-            id: `machine_${index}`,
-            machineNumber: machineNumber,
-            machineTypeName: machineTypeName
-          });
-          console.log(`📋 機械番号データ追加: ${machineNumber} (${machineTypeName})`);
-        }
-      }
-    });
+    }
 
     const result = {
-      machineTypes,
-      machines
+      success: true,
+      machineTypes: Array.from(machineTypes).sort(),
+      machineNumbers: Array.from(machineNumbers).sort()
+    };
+
+    console.log('📋 履歴検索フィルターデータ:', {
+      machineTypesCount: result.machineTypes.length,
+      machineNumbersCount: result.machineNumbers.length
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('❌ 履歴検索フィルターデータ取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '履歴検索フィルターデータの取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/history/machine-data
+ * 機種・機械番号マスターデータを取得（PostgreSQLから）
+ */
+router.get('/machine-data', async (req, res) => {
+  try {
+    console.log('📋 機種・機械番号データ取得リクエスト（PostgreSQLから）');
+
+    // Content-Typeを明示的に設定
+    res.setHeader('Content-Type', 'application/json');
+
+    // PostgreSQLのmachineTypesテーブルから機種一覧を取得
+    const machineTypesData = await db.select({
+      id: machineTypes.id,
+      machineTypeName: machineTypes.machineTypeName
+    }).from(machineTypes);
+
+    console.log('📋 PostgreSQLから取得した機種データ:', machineTypesData.length, '件');
+
+    // PostgreSQLのmachinesテーブルから機械番号一覧を取得（機種名も含む）
+    const machinesData = await db.select({
+      id: machines.id,
+      machineNumber: machines.machineNumber,
+      machineTypeId: machines.machineTypeId,
+      machineTypeName: machineTypes.machineTypeName
+    })
+    .from(machines)
+    .leftJoin(machineTypes, eq(machines.machineTypeId, machineTypes.id));
+
+    console.log('📋 PostgreSQLから取得した機械データ:', machinesData.length, '件');
+
+    const result = {
+      machineTypes: machineTypesData,
+      machines: machinesData
     };
 
     console.log('📋 機種・機械番号データ取得結果:', {
-      machineTypes: machineTypes.length,
-      machines: machines.length,
-      sampleMachineTypes: machineTypes.slice(0, 3),
-      sampleMachines: machines.slice(0, 3)
+      machineTypes: machineTypesData.length,
+      machines: machinesData.length,
+      sampleMachineTypes: machineTypesData.slice(0, 3),
+      sampleMachines: machinesData.slice(0, 3)
     });
 
     res.json({
@@ -1149,9 +1111,31 @@ router.put('/:sessionId', async (req, res) => {
 router.put('/update-item/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { updatedData } = req.body;
+    const { updatedData, updatedBy = 'user' } = req.body;
     
-    console.log('📝 履歴アイテム更新リクエスト:', { id, updatedData });
+    console.log('📝 履歴アイテム更新リクエスト:', { 
+      id, 
+      updatedDataType: typeof updatedData,
+      updatedDataKeys: updatedData ? Object.keys(updatedData) : [],
+      updatedBy 
+    });
+
+    // IDを正規化（export_プレフィックス除去など）
+    let normalizedId = id;
+    if (id.startsWith('export_')) {
+      normalizedId = id.replace('export_', '');
+      // ファイル名の場合は拡張子も除去
+      if (normalizedId.endsWith('.json')) {
+        normalizedId = normalizedId.replace('.json', '');
+      }
+      // ファイル名からchatIdを抽出（_で区切られた2番目の部分）
+      const parts = normalizedId.split('_');
+      if (parts.length >= 2 && parts[1].match(/^[a-f0-9-]+$/)) {
+        normalizedId = parts[1];
+      }
+    }
+    
+    console.log('📝 正規化されたID:', normalizedId, '元のID:', id);
 
     // 元のJSONファイルを検索
     let exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
@@ -1161,10 +1145,18 @@ router.put('/update-item/:id', async (req, res) => {
       const alternativePath = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
       if (fs.existsSync(alternativePath)) {
         exportsDir = alternativePath;
+        console.log('🔄 代替パスを使用:', alternativePath);
       }
+    }
+
+    // ディレクトリが存在しない場合は作成
+    if (!fs.existsSync(exportsDir)) {
+      console.log('📁 exportsディレクトリを作成:', exportsDir);
+      fs.mkdirSync(exportsDir, { recursive: true });
     }
     
     const files = fs.readdirSync(exportsDir);
+    console.log('📂 検索対象ファイル一覧:', files.filter(f => f.endsWith('.json')));
     
     let targetFile = null;
     let originalData = null;
@@ -1178,9 +1170,28 @@ router.put('/update-item/:id', async (req, res) => {
           const data = JSON.parse(content);
           
           // IDが一致するかチェック（chatId、id、またはファイル名から）
-          if (data.chatId === id || data.id === id || file.includes(id)) {
+          const matches = [
+            data.chatId === id,
+            data.id === id,
+            data.chatId === normalizedId,
+            data.id === normalizedId,
+            file.includes(id),
+            file.includes(normalizedId),
+            data.chat_id === id,
+            data.chat_id === normalizedId,
+            // ファイル名から抽出したIDと比較
+            file.split('_').some(part => part === id),
+            file.split('_').some(part => part === normalizedId),
+            // 短縮IDと比較
+            id.length > 8 && (data.chatId?.startsWith(id.substring(0, 8)) || data.id?.startsWith(id.substring(0, 8))),
+            normalizedId.length > 8 && (data.chatId?.startsWith(normalizedId.substring(0, 8)) || data.id?.startsWith(normalizedId.substring(0, 8)))
+          ];
+          
+          if (matches.some(Boolean)) {
             targetFile = filePath;
             originalData = data;
+            console.log('✅ 対象ファイル発見:', file);
+            console.log('🔍 マッチした条件:', matches.map((m, i) => m ? i : null).filter(x => x !== null));
             break;
           }
         } catch (error) {
@@ -1190,44 +1201,108 @@ router.put('/update-item/:id', async (req, res) => {
     }
     
     if (!targetFile || !originalData) {
+      console.log('❌ 対象ファイルが見つかりません:', {
+        id,
+        exportsDir,
+        filesFound: files.length,
+        jsonFiles: files.filter(f => f.endsWith('.json')).length
+      });
+      
       return res.status(404).json({ 
         error: '対象の履歴ファイルが見つかりません',
-        id: id 
+        id: id,
+        searchedDirectory: exportsDir,
+        availableFiles: files.filter(f => f.endsWith('.json'))
       });
     }
     
-    // 差分を計算して更新
-    const updatedJsonData = {
-      ...originalData,
+    // 差分を適用して更新（深いマージ）
+    const mergeData = (original: any, updates: any): any => {
+      const result = { ...original };
+      
+      for (const [key, value] of Object.entries(updates)) {
+        if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+          // オブジェクトの場合は再帰的にマージ
+          result[key] = mergeData(result[key] || {}, value);
+        } else {
+          // プリミティブ値や配列は直接代入
+          result[key] = value;
+        }
+      }
+      
+      return result;
+    };
+
+    const updatedJsonData = mergeData(originalData, {
       ...updatedData,
+      lastModified: new Date().toISOString(),
       // 更新履歴を追加
       updateHistory: [
         ...(originalData.updateHistory || []),
         {
           timestamp: new Date().toISOString(),
           updatedFields: Object.keys(updatedData),
-          updatedBy: req.body.updatedBy || 'system'
+          updatedBy: updatedBy
         }
       ]
+    });
+    
+    // バックアップ管理（最新の3つのバックアップのみ保持）
+    const manageBackups = (targetFilePath: string) => {
+      const dir = path.dirname(targetFilePath);
+      const baseName = path.basename(targetFilePath);
+      const files = fs.readdirSync(dir);
+      
+      // 該当ファイルのバックアップファイルを検索
+      const backupFiles = files
+        .filter(file => file.startsWith(baseName + '.backup.'))
+        .map(file => ({
+          name: file,
+          path: path.join(dir, file),
+          timestamp: parseInt(file.split('.backup.')[1]) || 0
+        }))
+        .sort((a, b) => b.timestamp - a.timestamp); // 新しい順にソート
+      
+      // 古いバックアップファイルを削除（最新3つを除く）
+      const filesToDelete = backupFiles.slice(3);
+      filesToDelete.forEach(file => {
+        try {
+          fs.unlinkSync(file.path);
+          console.log('🗑️ 古いバックアップを削除:', file.name);
+        } catch (error) {
+          console.warn('バックアップ削除エラー:', file.name, error);
+        }
+      });
     };
+
+    // バックアップを作成
+    const backupPath = targetFile + '.backup.' + Date.now();
+    fs.copyFileSync(targetFile, backupPath);
+    console.log('💾 バックアップ作成:', backupPath);
+    
+    // 古いバックアップを整理
+    manageBackups(targetFile);
     
     // ファイルに上書き保存
     fs.writeFileSync(targetFile, JSON.stringify(updatedJsonData, null, 2), 'utf8');
     
     console.log('✅ 履歴ファイル更新完了:', targetFile);
+    console.log('📊 更新されたフィールド:', Object.keys(updatedData));
     
     res.json({
       success: true,
       message: '履歴ファイルが更新されました',
       updatedFile: path.basename(targetFile),
-      updatedData: updatedJsonData
+      updatedData: updatedJsonData,
+      backupFile: path.basename(backupPath)
     });
     
   } catch (error) {
     console.error('❌ 履歴アイテム更新エラー:', error);
     res.status(500).json({ 
       error: '履歴アイテムの更新に失敗しました',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
     });
   }
 });

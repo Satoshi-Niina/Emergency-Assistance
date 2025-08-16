@@ -535,14 +535,45 @@ export function registerChatRoutes(app: any): void {
 
       // チャットデータをJSONファイルとして保存
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const fileName = `chat_${chatId}_${timestamp}.json`;
+      
+      // ユーザーメッセージから事象情報を抽出してファイル名に使用
+      const userMessages = chatData.messages.filter((m: any) => !m.isAiResponse);
+      console.log('🔍 事象抽出 - ユーザーメッセージ:', userMessages);
+      
+      const textMessages = userMessages
+        .map((m: any) => m.content)
+        .filter((content: string) => !content.trim().startsWith('data:image/'))
+        .join('\n')
+        .trim();
+      console.log('🔍 事象抽出 - テキストメッセージ:', textMessages);
+      
+      let incidentTitle = '事象なし';
+      
+      if (textMessages) {
+        // テキストがある場合は最初の行を使用
+        incidentTitle = textMessages.split('\n')[0].trim();
+        console.log('🔍 事象抽出 - 抽出されたタイトル:', incidentTitle);
+      } else {
+        // テキストがない場合（画像のみ）は、デフォルトタイトルを使用
+        incidentTitle = '画像による故障報告';
+        console.log('🔍 事象抽出 - デフォルトタイトル使用:', incidentTitle);
+      }
+      
+      // ファイル名用に事象内容をサニタイズ（特殊文字を除去）
+      const sanitizedTitle = incidentTitle
+        .replace(/[<>:"/\\|?*]/g, '') // ファイル名に使用できない文字を除去
+        .replace(/\s+/g, '_') // スペースをアンダースコアに変換
+        .substring(0, 50); // 長さを制限
+      
+      const fileName = `${sanitizedTitle}_${chatId}_${timestamp}.json`;
       const filePath = path.join(exportsDir, fileName);
 
-      const exportData = {
+      const exportData: any = {
         chatId: chatId,
         userId: 'test-user',
         exportType: exportType || 'manual_send',
         exportTimestamp: new Date().toISOString(),
+        title: incidentTitle, // 事象情報をタイトルとして追加
         chatData: chatData
       };
 
@@ -586,10 +617,21 @@ export function registerChatRoutes(app: any): void {
       // 保存した画像情報をエクスポートデータに追加
       exportData.savedImages = savedImages;
 
+      // titleフィールドの値でファイル名を再生成
+      const finalSanitizedTitle = exportData.title
+        .replace(/[<>:"/\\|?*]/g, '') // ファイル名に使用できない文字を除去
+        .replace(/\s+/g, '_') // スペースをアンダースコアに変換
+        .substring(0, 50); // 長さを制限
+      console.log('🔍 事象抽出 - 最終サニタイズ済みタイトル:', finalSanitizedTitle);
+      
+      const finalFileName = `${finalSanitizedTitle}_${chatId}_${timestamp}.json`;
+      const finalFilePath = path.join(exportsDir, finalFileName);
+      console.log('🔍 事象抽出 - 最終ファイル名:', finalFileName);
+
       // ダブルクオーテーションを英数小文字に統一してJSONファイルを保存
       const jsonString = JSON.stringify(exportData, null, 2);
-      fs.writeFileSync(filePath, jsonString, 'utf8');
-      console.log('チャットデータを保存しました:', filePath);
+      fs.writeFileSync(finalFilePath, jsonString, 'utf8');
+      console.log('チャットデータを保存しました:', finalFilePath);
 
       // 履歴データベースにも保存（テスト用）
       try {
@@ -605,7 +647,7 @@ export function registerChatRoutes(app: any): void {
           metadata: {
             messageCount: chatData.messages.length,
             exportType: exportType,
-            fileName: fileName,
+            fileName: finalFileName, // 最終的なファイル名を使用
             machineInfo: chatData.machineInfo,
             isTest: true
           }
@@ -804,7 +846,7 @@ export function registerChatRoutes(app: any): void {
       const fileName = `${sanitizedTitle}_${chatId}_${timestamp}.json`;
       const filePath = path.join(exportsDir, fileName);
       
-      const exportData = {
+      const exportData: any = {
         chatId: chatId,
         userId: userId,
         exportType: exportType || 'manual_send',

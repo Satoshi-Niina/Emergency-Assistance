@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileText, Image, Calendar, MapPin, Settings, Filter, Download, Trash2, FileDown, FileText as FileTextIcon, Table, Grid3X3, List, ClipboardList, FileSpreadsheet, Grid, Printer, AlertTriangle } from 'lucide-react';
+import { Search, FileText, Image, Calendar, MapPin, Settings, Filter, Download, Trash2, FileDown, FileText as FileTextIcon, Table, Grid3X3, List, ClipboardList, FileSpreadsheet, Grid, Printer } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -113,11 +113,79 @@ const HistoryPage: React.FC = () => {
   
 
 
-  // 機種・機械番号マスターデータ
+  // 機種・機械番号マスターデータ（編集UI用 - PostgreSQLから）
   const [machineData, setMachineData] = useState<MachineData>({ 
     machineTypes: [], 
     machines: [] 
   });
+
+  // 履歴検索フィルター用データ（保存されたJSONファイルから）
+  const [searchFilterData, setSearchFilterData] = useState<{
+    machineTypes: string[];
+    machineNumbers: string[];
+  }>({
+    machineTypes: [],
+    machineNumbers: []
+  });
+
+  const [searchFilterLoading, setSearchFilterLoading] = useState(false);
+
+  // JSONデータを正規化する関数
+  const normalizeJsonData = (item: SupportHistoryItem): SupportHistoryItem => {
+    console.log('正規化前のアイテム:', item);
+    
+    if (!item.jsonData) {
+      console.log('jsonDataが存在しません');
+      return item;
+    }
+
+    // 既にitem直接にmachineTypeとmachineNumberが存在する場合
+    if (item.machineType && item.machineNumber) {
+      console.log('既に正規化済み:', { machineType: item.machineType, machineNumber: item.machineNumber });
+      return item;
+    }
+
+    // サーバーから送信されたデータを基に正規化
+    const normalizedItem = {
+      ...item,
+      machineType: item.machineType || item.jsonData.machineType || '',
+      machineNumber: item.machineNumber || item.jsonData.machineNumber || '',
+      jsonData: {
+        ...item.jsonData,
+        // 必要なフィールドを確実に含める
+        title: item.jsonData.title || item.title || '',
+        problemDescription: item.jsonData.problemDescription || '',
+        machineType: item.machineType || item.jsonData.machineType || '',
+        machineNumber: item.machineNumber || item.jsonData.machineNumber || '',
+        extractedComponents: item.jsonData.extractedComponents || item.extractedComponents || [],
+        extractedSymptoms: item.jsonData.extractedSymptoms || item.extractedSymptoms || [],
+        possibleModels: item.jsonData.possibleModels || item.possibleModels || [],
+        conversationHistory: item.jsonData.conversationHistory || [],
+        savedImages: item.jsonData.savedImages || []
+      }
+    };
+
+    // chatDataが存在する場合の追加処理
+    if (item.jsonData.chatData) {
+      console.log('chatData形式を検出');
+      const chatData = item.jsonData.chatData;
+      
+      // machineInfoからmachineTypeとmachineNumberを取得
+      const machineTypeName = chatData.machineInfo?.machineTypeName || '';
+      const machineNumber = chatData.machineInfo?.machineNumber || '';
+      
+      console.log('chatDataから抽出:', { machineTypeName, machineNumber });
+
+      // chatDataの値で上書き
+      normalizedItem.machineType = machineTypeName || normalizedItem.machineType;
+      normalizedItem.machineNumber = machineNumber || normalizedItem.machineNumber;
+      normalizedItem.jsonData.machineType = machineTypeName || normalizedItem.jsonData.machineType;
+      normalizedItem.jsonData.machineNumber = machineNumber || normalizedItem.jsonData.machineNumber;
+    }
+
+    console.log('正規化後のアイテム:', normalizedItem);
+    return normalizedItem;
+  };
 
   // 履歴データ更新のメッセージリスナー
   useEffect(() => {
@@ -238,6 +306,34 @@ const HistoryPage: React.FC = () => {
     }
   };
 
+  // 履歴検索フィルター用データ（保存されたJSONファイルから取得）
+  const fetchSearchFilterData = async () => {
+    try {
+      setSearchFilterLoading(true);
+      console.log('🔍 履歴検索フィルターデータ取得開始');
+      
+      const response = await fetch('/api/history/search-filters');
+      const result = await response.json();
+      
+      if (result.success) {
+        setSearchFilterData({
+          machineTypes: result.machineTypes || [],
+          machineNumbers: result.machineNumbers || []
+        });
+        console.log('🔍 履歴検索フィルターデータ取得完了:', {
+          machineTypes: result.machineTypes?.length || 0,
+          machineNumbers: result.machineNumbers?.length || 0
+        });
+      } else {
+        console.error('履歴検索フィルターデータ取得失敗:', result.error);
+      }
+    } catch (error) {
+      console.error('履歴検索フィルターデータ取得エラー:', error);
+    } finally {
+      setSearchFilterLoading(false);
+    }
+  };
+
   const fetchHistoryData = async (page: number = 1) => {
     try {
       setLoading(true);
@@ -273,17 +369,56 @@ const HistoryPage: React.FC = () => {
         const updatedItems = data.items.map((item: any) => {
           const savedKey = 'savedMachineFailureReport_' + (item.id || item.chatId);
           const savedData = localStorage.getItem(savedKey);
+          let processedItem = item;
+          
           if (savedData) {
             try {
               const parsedData = JSON.parse(savedData);
               console.log('ローカルストレージから保存されたデータを読み込み:', parsedData);
-              return { ...item, ...parsedData };
+              processedItem = { ...item, ...parsedData };
             } catch (parseError) {
               console.warn('保存されたデータの解析に失敗:', parseError);
-              return item;
             }
           }
-          return item;
+          
+          // SupportHistoryItem型に変換
+          const convertedItem: SupportHistoryItem = {
+            id: processedItem.id,
+            chatId: processedItem.chatId,
+            fileName: processedItem.fileName,
+            machineType: processedItem.machineType || '',
+            machineNumber: processedItem.machineNumber || '',
+            title: processedItem.title,
+            createdAt: processedItem.createdAt || processedItem.exportTimestamp || new Date().toISOString(),
+            lastModified: processedItem.lastModified,
+            extractedComponents: processedItem.extractedComponents,
+            extractedSymptoms: processedItem.extractedSymptoms,
+            possibleModels: processedItem.possibleModels,
+            machineInfo: processedItem.machineInfo,
+            jsonData: {
+              ...processedItem, // 全ての元データを含める
+              machineType: processedItem.machineType || '',
+              machineNumber: processedItem.machineNumber || '',
+              title: processedItem.title,
+              problemDescription: processedItem.problemDescription,
+              extractedComponents: processedItem.extractedComponents,
+              extractedSymptoms: processedItem.extractedSymptoms,
+              possibleModels: processedItem.possibleModels,
+              conversationHistory: processedItem.conversationHistory,
+              chatData: processedItem.chatData,
+              savedImages: processedItem.savedImages,
+              metadata: processedItem.metadata
+            }
+          };
+          
+          console.log('変換されたアイテム:', {
+            fileName: convertedItem.fileName,
+            machineType: convertedItem.machineType,
+            machineNumber: convertedItem.machineNumber,
+            jsonData: convertedItem.jsonData
+          });
+          
+          return convertedItem;
         });
         
         setHistoryItems(updatedItems);
@@ -311,15 +446,30 @@ const HistoryPage: React.FC = () => {
     // 初期ロード時のみ実行
     if (currentPage === 1 && historyItems.length === 0) {
       fetchHistoryData(1);
+      fetchSearchFilterData(); // 履歴検索用フィルターデータを取得
     }
   }, []); // filtersの依存を削除
 
   // フィルター変更時の処理
   const handleFilterChange = (key: keyof SearchFilters, value: string) => {
+    // filters を更新
     setFilters(prev => ({
       ...prev,
       [key]: value
     }));
+
+    // 編集ダイアログが開いている場合は、編集中のアイテムにも反映する
+    // 期待される動作: フィルタで機種/機械番号を選択すると、すでに編集中のフォームに即座に反映される
+    try {
+      if (editingItem) {
+        if (key === 'machineType' || key === 'machineNumber') {
+          setEditingItem(prev => prev ? { ...prev, [key]: value } as SupportHistoryItem : prev);
+          console.log(`filters -> editingItem sync: ${key} = ${value}`);
+        }
+      }
+    } catch (syncError) {
+      console.warn('フィルターから編集アイテムへの同期に失敗しました:', syncError);
+    }
   };
 
   const handleSearch = () => {
@@ -812,116 +962,6 @@ const HistoryPage: React.FC = () => {
     }
   };
 
-    const handleShowMachineFailureReport = async (item: SupportHistoryItem) => {
-    console.log('[REPORT DETAIL] 関数開始 - item:', item);
-    console.log('[REPORT DETAIL] item.fileName:', item?.fileName);
-    console.log('[REPORT DETAIL] item.id:', item?.id);
-    
-    // 正しいIDを取得（UUID部分を抽出）
-    let identifier = item?.id;
-    
-    // IDが取得できない場合は、ファイル名からUUIDを抽出
-    if (!identifier && item?.fileName) {
-      console.log('[REPORT DETAIL] ファイル名からUUID抽出を試行:', item.fileName);
-      
-      // UUIDパターン1: 標準的なUUID形式
-      let fileNameMatch = item.fileName.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/);
-      
-      if (fileNameMatch) {
-        identifier = fileNameMatch[1];
-        console.log('[REPORT DETAIL] 標準UUIDから抽出したID:', identifier);
-      } else {
-        // UUIDパターン2: アンダースコア区切りのUUID
-        fileNameMatch = item.fileName.match(/_([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/);
-        if (fileNameMatch) {
-          identifier = fileNameMatch[1];
-          console.log('[REPORT DETAIL] アンダースコア区切りUUIDから抽出したID:', identifier);
-        }
-      }
-    }
-    
-    // それでもIDが取得できない場合は、ファイル名全体を使用
-    if (!identifier) {
-      identifier = item?.fileName;
-      console.log('[REPORT DETAIL] ファイル名全体をIDとして使用:', identifier);
-    }
-    
-    if (!identifier) {
-      console.warn('[REPORT DETAIL] no target - IDもfileNameもありません'); 
-      return;
-    }
-    
-    console.log('[REPORT DETAIL] fetchDetailFile開始:', identifier);
-          // 基本的なレポートデータを準備（画像データも含む）
-      const reportData = {
-        id: item.id,
-        chatId: item.id,
-        reportId: item.id,
-        machineId: item.machineNumber,
-        machineNumber: item.machineNumber,
-        machineType: item.machineTypeName || item.machineType || '-',
-        machineTypeName: item.machineTypeName || item.machineType || '-',
-        date: item.createdAt,
-        timestamp: item.createdAt,
-        createdAt: item.createdAt,
-        location: item.location || '-',
-        failureCode: item.failureCode || '-',
-        status: item.status || '-',
-        engineer: item.engineer || '-',
-        problemDescription: item.title || item.incidentTitle || '説明なし',
-        description: item.title || item.incidentTitle || '説明なし',
-        incidentTitle: item.title || item.incidentTitle || '説明なし',
-        notes: item.notes || '-',
-        extractedComponents: item.extractedComponents || [],
-        extractedSymptoms: item.extractedSymptoms || [],
-        possibleModels: item.possibleModels || [],
-        repairSchedule: item.repairSchedule || '-',
-        repairLocation: item.repairLocation || '-',
-        requestDate: item.requestDate || '-',
-        // 画像データを復旧
-        conversationHistory: item.conversationHistory || [],
-        originalChatData: item.originalChatData || {},
-        chatData: item.chatData || {},
-        messages: item.messages || [],
-        savedImages: item.savedImages || [],
-        imageUrl: item.imageUrl || null,
-        // ファイル名も追加
-        fileName: item.fileName
-      };
-    
-    console.log('[REPORT DETAIL] 基本的なレポートデータ準備完了:', reportData);
-      
-      // 新しいウィンドウで機械故障報告書を開く
-      console.log('新しいウィンドウを開いています...');
-      const newWindow = window.open('', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
-      if (newWindow) {
-        console.log('ウィンドウが開かれました。HTMLを生成中...');
-        // fileNameをreportDataに追加（確実に設定）
-        const reportDataWithFileName = {
-          ...reportData,
-          fileName: item.fileName || identifier // item.fileNameを優先、なければidentifierを使用
-        };
-        
-        console.log('reportDataWithFileName:', reportDataWithFileName);
-        console.log('使用するfileName:', item.fileName || identifier);
-        
-        // 機械故障報告書のHTMLを生成
-        const reportHTML = generateMachineFailureReportHTML(reportDataWithFileName);
-        console.log('HTML生成完了。長さ:', reportHTML.length);
-        newWindow.document.write(reportHTML);
-        newWindow.document.close();
-        console.log('HTMLの書き込み完了');
-      } else {
-        console.error('ポップアップがブロックされています');
-        alert('ポップアップがブロックされています。ポップアップを許可してから再度お試しください。');
-      }
-      
-      console.log('[REPORT DETAIL] 新しいウィンドウで機械故障報告書を開きました');
-    // エラーハンドリングは不要（API呼び出しなし）
-  };
-
-
-
   const handleCloseReport = () => {
     setShowReport(false);
     setSelectedReportData(null);
@@ -951,40 +991,133 @@ const HistoryPage: React.FC = () => {
   const handleSaveEditedItem = async (editedItem: SupportHistoryItem) => {
     try {
       console.log('編集された履歴アイテムを保存:', editedItem);
+      console.log('編集された履歴アイテムのID:', editedItem.id);
+      console.log('編集された履歴アイテムのJSONデータ:', editedItem.jsonData);
+      
+      // IDの確認と準備（export_プレフィックスを除去）
+      let itemId = editedItem.id || editedItem.chatId;
+      if (!itemId) {
+        alert('アイテムIDが見つかりません。保存できません。');
+        return;
+      }
+      
+      // export_プレフィックスがある場合は除去
+      if (itemId.startsWith('export_')) {
+        itemId = itemId.replace('export_', '');
+        // ファイル名の場合は拡張子も除去
+        if (itemId.endsWith('.json')) {
+          itemId = itemId.replace('.json', '');
+        }
+        // ファイル名からchatIdを抽出（_で区切られた2番目の部分）
+        const parts = itemId.split('_');
+        if (parts.length >= 2 && parts[1].match(/^[a-f0-9-]+$/)) {
+          itemId = parts[1];
+        }
+      }
+      
+      console.log('使用するID:', itemId, '元のID:', editedItem.id || editedItem.chatId);
+      
+      // 更新データの準備（editedItemの情報も含める）
+      const updatePayload = {
+        updatedData: {
+          ...editedItem.jsonData,
+          // 基本情報もJSONデータに含める
+          machineType: editedItem.machineType,
+          machineNumber: editedItem.machineNumber,
+          title: editedItem.jsonData?.title || editedItem.title,
+          lastModified: new Date().toISOString()
+        },
+        updatedBy: 'user'
+      };
+      
+      console.log('送信するペイロード:', updatePayload);
       
       // サーバーに更新リクエストを送信
-      const response = await fetch(`/api/history/update-item/${editedItem.id}`, {
+      const response = await fetch(`/api/history/update-item/${itemId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          updatedData: editedItem.jsonData,
-          updatedBy: 'user' // 実際のユーザーIDに置き換える
-        })
+        body: JSON.stringify(updatePayload)
       });
       
+      console.log('サーバーレスポンス:', response.status, response.statusText);
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || '履歴の更新に失敗しました');
+        const errorText = await response.text();
+        console.error('サーバーエラー詳細:', errorText);
+        let errorMessage = `履歴の更新に失敗しました (${response.status})`;
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          errorMessage += ': ' + errorText;
+        }
+        
+        alert(errorMessage);
+        return;
       }
       
       const result = await response.json();
       console.log('履歴更新完了:', result);
       
+      // ローカルストレージも更新
+      if (itemId) {
+        const savedKey = 'savedMachineFailureReport_' + itemId;
+        localStorage.setItem(savedKey, JSON.stringify(editedItem.jsonData));
+        console.log('ローカルストレージ更新:', savedKey);
+      }
+      
+      // 履歴リストの該当アイテムを更新
+      setHistoryItems(prevItems => 
+        prevItems.map(item => 
+          (item.id === itemId || item.chatId === itemId) 
+            ? { 
+                ...item, 
+                jsonData: editedItem.jsonData, 
+                lastModified: new Date().toISOString(),
+                // 基本情報も更新
+                machineType: editedItem.jsonData?.machineType || item.machineType,
+                machineNumber: editedItem.jsonData?.machineNumber || item.machineNumber,
+                title: editedItem.jsonData?.title || item.title,
+                incidentTitle: editedItem.jsonData?.title || item.incidentTitle
+              }
+            : item
+        )
+      );
+      
+      setFilteredItems(prevItems => 
+        prevItems.map(item => 
+          (item.id === itemId || item.chatId === itemId) 
+            ? { 
+                ...item, 
+                jsonData: editedItem.jsonData, 
+                lastModified: new Date().toISOString(),
+                // 基本情報も更新
+                machineType: editedItem.jsonData?.machineType || item.machineType,
+                machineNumber: editedItem.jsonData?.machineNumber || item.machineNumber,
+                title: editedItem.jsonData?.title || item.title,
+                incidentTitle: editedItem.jsonData?.title || item.incidentTitle
+              }
+            : item
+        )
+      );
+      
       // 成功通知
-      alert('履歴が正常に更新されました。');
+      alert('履歴が正常に更新され、元のファイルに上書き保存されました。');
       
       // 編集ダイアログを閉じる
       setShowEditDialog(false);
       setEditingItem(null);
       
-      // 履歴リストを再読み込み
-      fetchHistory();
+      // 履歴リストの再読み込みは行わない（既に更新済み）
+      console.log('履歴更新完了 - リスト再読み込みをスキップ');
       
     } catch (error) {
       console.error('履歴保存エラー:', error);
-      alert('履歴の保存に失敗しました: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert('履歴の保存に失敗しました: ' + errorMessage);
     }
   };
 
@@ -1007,13 +1140,85 @@ const HistoryPage: React.FC = () => {
 
   // 機械故障報告書のHTML生成関数
   const generateMachineFailureReportHTML = (reportData: any): string => {
-    // 画像を収集（base64優先、重複防止）
+    // JSONデータを安全にエスケープする関数（強化版）
+    const safeJsonStringify = (obj: any): string => {
+      try {
+        let jsonStr = JSON.stringify(obj);
+        // HTMLとJavaScriptで問題になる文字を徹底的にエスケープ
+        jsonStr = jsonStr
+          .replace(/\\/g, '\\\\')     // バックスラッシュを最初にエスケープ
+          .replace(/"/g, '\\"')       // ダブルクォート
+          .replace(/'/g, "\\'")       // シングルクォート
+          .replace(/</g, '\\u003c')   // <
+          .replace(/>/g, '\\u003e')   // >
+          .replace(/&/g, '\\u0026')   // &
+          .replace(/\//g, '\\/')      // スラッシュ
+          .replace(/:/g, '\\u003a')   // コロン（重要）
+          .replace(/\r/g, '\\r')      // キャリッジリターン
+          .replace(/\n/g, '\\n')      // 改行
+          .replace(/\t/g, '\\t')      // タブ
+          .replace(/\f/g, '\\f')      // フォームフィード
+          .replace(/\b/g, '\\b')      // バックスペース
+          .replace(/\u2028/g, '\\u2028') // ラインセパレータ
+          .replace(/\u2029/g, '\\u2029'); // パラグラフセパレータ
+        
+        console.log('🔧 safeJsonStringify result length:', jsonStr.length);
+        console.log('🔧 safeJsonStringify sample:', jsonStr.substring(0, 100) + '...');
+        return jsonStr;
+      } catch (e) {
+        console.error('JSONのシリアライズに失敗:', e);
+        return '{}';
+      }
+    };
+    // 画像を収集（base64のみ、詳細なデバッグ付き）
     const collectImages = (data: any): Array<{ id: string; url: string; fileName: string; description?: string }> => {
+      console.log('🖼️ 画像収集開始 - reportData:', data);
+      console.log('🖼️ reportData keys:', Object.keys(data || {}));
+      
       const images: Array<{ id: string; url: string; fileName: string; description?: string }> = [];
       const imageUrls = new Set<string>();
       
-      // 1) conversationHistory から base64 画像を探す（最優先）
+      // デバッグ: データ構造を詳細確認
+      console.log('🖼️ データ構造確認:');
+      console.log('🖼️ - chatData:', data?.chatData ? 'あり' : 'なし');
+      console.log('🖼️ - chatData.messages:', data?.chatData?.messages ? 'あり(' + data.chatData.messages.length + '件)' : 'なし');
+      console.log('🖼️ - conversationHistory:', data?.conversationHistory ? 'あり(' + (Array.isArray(data.conversationHistory) ? data.conversationHistory.length : 'non-array') + ')' : 'なし');
+      console.log('🖼️ - originalChatData.messages:', data?.originalChatData?.messages ? 'あり(' + data.originalChatData.messages.length + ')' : 'なし');
+      console.log('🖼️ - messages:', data?.messages ? 'あり(' + (Array.isArray(data.messages) ? data.messages.length : 'non-array') + ')' : 'なし');
+      
+      // 1) chatData.messages から base64 画像を探す（メイン）
+      if (data?.chatData?.messages && Array.isArray(data.chatData.messages)) {
+        console.log('🖼️ chatData.messagesをスキャン中...');
+        data.chatData.messages.forEach((message: any, messageIndex: number) => {
+          console.log('🖼️ message[' + messageIndex + ']:', { 
+            id: message?.id, 
+            content: message?.content ? message.content.substring(0, 50) + '...' : 'なし',
+            isBase64: message?.content?.startsWith('data:image/') 
+          });
+          
+          if (message?.content && typeof message.content === 'string' && message.content.startsWith('data:image/')) {
+            const normalizedContent = message.content
+              .replace(/\r?\n/g, '')
+              .replace(/[""]/g, '"')
+              .trim();
+            
+            if (!imageUrls.has(normalizedContent)) {
+              imageUrls.add(normalizedContent);
+              images.push({
+                id: `chatdata-${messageIndex}`,
+                url: normalizedContent,
+                fileName: `故障画像${images.length + 1}`,
+                description: '故障箇所画像（chatData.messages）'
+              });
+              console.log('🖼️ Base64画像見つかりました（chatData.messages）:', images.length);
+            }
+          }
+        });
+      }
+      
+      // 2) conversationHistory から base64 画像を探す
       if (data?.conversationHistory && Array.isArray(data.conversationHistory)) {
+        console.log('🖼️ conversationHistoryをスキャン中...');
         data.conversationHistory.forEach((message: any, messageIndex: number) => {
           if (message?.content && typeof message.content === 'string' && message.content.startsWith('data:image/')) {
             const normalizedContent = message.content
@@ -1024,18 +1229,20 @@ const HistoryPage: React.FC = () => {
             if (!imageUrls.has(normalizedContent)) {
               imageUrls.add(normalizedContent);
               images.push({
-                id: `base64-${messageIndex}`,
+                id: `conversation-${messageIndex}`,
                 url: normalizedContent,
                 fileName: `故障画像${images.length + 1}`,
-                description: '故障箇所画像（Base64）'
+                description: '故障箇所画像（conversationHistory）'
               });
+              console.log('🖼️ Base64画像見つかりました（conversationHistory）:', images.length);
             }
           }
         });
       }
       
-      // 2) originalChatData.messages から base64 画像を探す（conversationHistoryにない場合のみ）
-      if (images.length === 0 && data?.originalChatData?.messages && Array.isArray(data.originalChatData.messages)) {
+      // 3) originalChatData.messages から base64 画像を探す
+      if (data?.originalChatData?.messages && Array.isArray(data.originalChatData.messages)) {
+        console.log('🖼️ originalChatData.messagesをスキャン中...');
         data.originalChatData.messages.forEach((message: any, messageIndex: number) => {
           if (message?.content && typeof message.content === 'string' && message.content.startsWith('data:image/')) {
             const normalizedContent = message.content
@@ -1049,42 +1256,42 @@ const HistoryPage: React.FC = () => {
                 id: `original-${messageIndex}`,
                 url: normalizedContent,
                 fileName: `故障画像${images.length + 1}`,
-                description: '故障箇所画像（Base64）'
+                description: '故障箇所画像（originalChatData）'
               });
+              console.log('🖼️ Base64画像見つかりました（originalChatData）:', images.length);
             }
           }
         });
       }
       
-      // 3) savedImages から配信URLを取得（base64がない場合のフォールバック）
-      if (images.length === 0 && data?.savedImages && Array.isArray(data.savedImages)) {
-        data.savedImages.forEach((item: any, index: number) => {
-          let imageUrl: string | null = null;
-          
-          if (item?.path) {
-            if (item.path.includes('\\') && item.path.includes('chat-exports')) {
-              const fileName = item.path.split('\\').pop();
-              if (fileName) {
-                imageUrl = `/api/images/chat-exports/${fileName}`;
-              }
+      // 4) messages から base64 画像を探す
+      if (data?.messages && Array.isArray(data.messages)) {
+        console.log('🖼️ messagesをスキャン中...');
+        data.messages.forEach((message: any, messageIndex: number) => {
+          if (message?.content && typeof message.content === 'string' && message.content.startsWith('data:image/')) {
+            const normalizedContent = message.content
+              .replace(/\r?\n/g, '')
+              .replace(/[""]/g, '"')
+              .trim();
+            
+            if (!imageUrls.has(normalizedContent)) {
+              imageUrls.add(normalizedContent);
+              images.push({
+                id: `messages-${messageIndex}`,
+                url: normalizedContent,
+                fileName: `故障画像${images.length + 1}`,
+                description: '故障箇所画像（messages）'
+              });
+              console.log('🖼️ Base64画像見つかりました（messages）:', images.length);
             }
-          }
-          
-          if (!imageUrl && item?.url) {
-            imageUrl = item.url;
-          }
-          
-          if (imageUrl && !imageUrls.has(imageUrl)) {
-            imageUrls.add(imageUrl);
-            images.push({
-              id: `saved-${index}`,
-              url: imageUrl,
-              fileName: item.fileName || `保存画像${index + 1}`,
-              description: '故障箇所画像（配信URL）'
-            });
           }
         });
       }
+      
+      console.log('🖼️ 画像収集結果（Base64のみ）:', images.length + '件の画像');
+      images.forEach((img, index) => {
+        console.log('🖼️ 画像[' + index + ']:', img.description, '-', img.url.substring(0, 50) + '...');
+      });
       
       return images;
     };
@@ -1136,15 +1343,18 @@ const HistoryPage: React.FC = () => {
           /* 印刷時のみ文字サイズをさらに縮小してA4一枚に収める */
           @media print {
             body {
-              font-size: 3pt;
+              font-size: 10pt;
+              line-height: 1.2;
             }
             
             .header h1 {
-              font-size: 6pt;
+              font-size: 16pt;
+              margin-bottom: 5px;
             }
             
             .section h2 {
-              font-size: 5pt;
+              font-size: 12pt;
+              margin-bottom: 5px;
             }
             
             .info-item strong,
@@ -1153,25 +1363,26 @@ const HistoryPage: React.FC = () => {
             .info-item textarea,
             .content-box strong,
             .content-box p {
-              font-size: 4pt;
+              font-size: 10pt;
             }
             
             .header p {
-              font-size: 4pt;
+              font-size: 10pt;
             }
             
             input, textarea, .editable {
-              font-size: 4pt;
+              font-size: 10pt;
             }
             
             /* 印刷時のレイアウト最適化 */
             .section {
-              margin-bottom: 5px;
+              margin-bottom: 8px;
+              page-break-inside: avoid;
             }
             
             .info-grid {
-              gap: 3px;
-              margin-bottom: 5px;
+              gap: 4px;
+              margin-bottom: 8px;
             }
             
             .info-item {
@@ -1179,18 +1390,40 @@ const HistoryPage: React.FC = () => {
             }
             
             .content-box {
-              padding: 3px;
-              margin-top: 2px;
+              padding: 4px;
+              margin-top: 4px;
             }
             
             .image-grid {
               gap: 4px;
               margin: 4px 0;
+              grid-template-columns: repeat(2, 1fr);
+              max-width: 300px;
             }
             
             .report-img {
-              max-width: 60px;
-              max-height: 40px;
+              max-width: 120px;
+              max-height: 80px;
+            }
+            
+            /* A4一枚に収めるための調整 */
+            @page {
+              size: A4 portrait;
+              margin: 10mm;
+            }
+            
+            .container {
+              max-height: 260mm;
+              overflow: hidden;
+            }
+            
+            .action-buttons { 
+              display: none !important; 
+            }
+            
+            body { 
+              margin: 0; 
+              padding: 0;
             }
           }
           
@@ -1296,21 +1529,23 @@ const HistoryPage: React.FC = () => {
           }
           
           .image-section {
-            text-align: center;
             margin: 12px 0;
+            padding-left: 20px;
             page-break-inside: avoid;
           }
           
           .image-section h3 {
             font-size: 10pt;
             margin-bottom: 8px;
+            text-align: left;
           }
           
           .image-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
             margin: 8px 0;
+            max-width: 600px;
           }
           
           .image-item {
@@ -1380,14 +1615,11 @@ const HistoryPage: React.FC = () => {
             font-weight: bold;
           }
           
-          .btn-edit {
-            background: #007bff;
-            color: white;
-          }
-          
           .btn-print {
             background: #28a745;
             color: white;
+            padding: 20px 40px; /* 2倍サイズ */
+            font-size: 28px; /* 2倍サイズ */
           }
           
           .btn-save {
@@ -1398,6 +1630,8 @@ const HistoryPage: React.FC = () => {
           .btn-cancel {
             background: #6c757d;
             color: white;
+            padding: 20px 40px; /* 2倍サイズ */
+            font-size: 28px; /* 2倍サイズ */
           }
           
           .btn-close {
@@ -1440,12 +1674,35 @@ const HistoryPage: React.FC = () => {
             font-size: 18pt;
           }
           
+          /* 編集モード時の表示切り替え - 確実に動作するように強化 */
           .edit-mode .readonly {
             display: none !important;
+            visibility: hidden !important;
           }
           
           .edit-mode .editable {
             display: block !important;
+            visibility: visible !important;
+            width: 100% !important;
+            padding: 8px !important;
+            border: 2px solid #007bff !important;
+            border-radius: 3px !important;
+            font-size: 14pt !important;
+            color: #000 !important;
+            background-color: #fff !important;
+            font-family: inherit !important;
+          }
+          
+          /* デフォルトで編集要素を確実に非表示 */
+          .editable {
+            display: none !important;
+            visibility: hidden !important;
+          }
+          
+          /* 読み取り専用要素をデフォルトで表示 */
+          .readonly {
+            display: inline !important;
+            visibility: visible !important;
           }
           
           input, textarea {
@@ -1479,14 +1736,75 @@ const HistoryPage: React.FC = () => {
             .action-buttons { display: none !important; }
             body { margin: 0; }
           }
+          
+          /* 編集モード用スタイル */
+          .readonly {
+            display: inline;
+          }
+          
+          .editable {
+            display: none !important;
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+          }
+          
+          .edit-mode .readonly {
+            display: none !important;
+          }
+          
+          .edit-mode .editable {
+            display: block !important;
+            background-color: #ffffcc;
+            border: 2px solid #007bff;
+          }
+          
+          .btn {
+            padding: 8px 16px;
+            margin: 0 4px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+          }
+          
+          .btn-save {
+            background-color: #28a745;
+            color: white;
+          }
+          
+          .btn-cancel {
+            background-color: #6c757d;
+            color: white;
+            padding: 20px 40px; /* 2倍サイズ */
+            font-size: 28px; /* 2倍サイズ */
+          }
+          
+          .btn-print {
+            background-color: #17a2b8;
+            color: white;
+            padding: 20px 40px; /* 2倍サイズ */
+            font-size: 28px; /* 2倍サイズ */
+          }
+          
+          .btn-close {
+            background-color: #dc3545;
+            color: white;
+          }
         </style>
       </head>
       <body>
+        <script>
+          // シンプルで確実な設定
+          window.reportData = {};
+          console.log('Script starting...');
+        </script>
         <div class="action-buttons">
-          <button class="btn btn-edit" onclick="toggleEditMode()">編集</button>
-          <button class="btn btn-save" onclick="saveReport()" style="display: none;">保存</button>
+          <button class="btn btn-save" id="save-btn" style="display: none;">保存</button>
           <button class="btn btn-print" onclick="window.print()">印刷</button>
-          <button class="btn btn-cancel" onclick="toggleEditMode()" style="display: none;">キャンセル</button>
+          <button class="btn btn-cancel" id="cancel-btn" style="display: none;">キャンセル</button>
           <button class="btn btn-close" onclick="window.close()">閉じる</button>
         </div>
         
@@ -1502,27 +1820,27 @@ const HistoryPage: React.FC = () => {
               <div class="info-item">
                 <strong>報告書ID</strong>
                 <span class="readonly">${(reportData.reportId || reportData.id || '').substring(0, 8)}...</span>
-                <input class="editable" value="${reportData.reportId || reportData.id || ''}" style="display: none;" />
+                <input class="editable" value="${reportData.reportId || reportData.id || ''}" />
               </div>
               <div class="info-item">
                 <strong>機種</strong>
                 <span class="readonly">${reportData.machineType || reportData.machineTypeName || '-'}</span>
-                <input class="editable" value="${reportData.machineType || reportData.machineTypeName || ''}" style="display: none;" />
+                <input class="editable" value="${reportData.machineType || reportData.machineTypeName || ''}" />
               </div>
               <div class="info-item">
                 <strong>機械番号</strong>
                 <span class="readonly">${reportData.machineNumber || '-'}</span>
-                <input class="editable" value="${reportData.machineNumber || ''}" style="display: none;" />
+                <input class="editable" value="${reportData.machineNumber || ''}" />
               </div>
               <div class="info-item">
                 <strong>日付</strong>
                 <span class="readonly">${reportData.date ? new Date(reportData.date).toLocaleDateString('ja-JP') : reportData.timestamp ? new Date(reportData.timestamp).toLocaleDateString('ja-JP') : reportData.createdAt ? new Date(reportData.createdAt).toLocaleDateString('ja-JP') : '-'}</span>
-                <input class="editable" type="date" value="${reportData.date || reportData.timestamp || reportData.createdAt || ''}" style="display: none;" />
+                <input class="editable" type="date" value="${reportData.date || reportData.timestamp || reportData.createdAt || ''}" />
               </div>
               <div class="info-item">
                 <strong>場所</strong>
                 <span class="readonly">${reportData.location || '-'}</span>
-                <input class="editable" value="${reportData.location || ''}" style="display: none;" />
+                <input class="editable" value="${reportData.location || ''}" />
               </div>
             </div>
           </div>
@@ -1533,25 +1851,25 @@ const HistoryPage: React.FC = () => {
               <div class="info-item">
                 <strong>ステータス</strong>
                 <span class="readonly">${reportData.status || '-'}</span>
-                <input class="editable" value="${reportData.status || ''}" style="display: none;" />
+                <input class="editable" value="${reportData.status || ''}" />
               </div>
               <div class="info-item">
                 <strong>責任者</strong>
                 <span class="readonly">${reportData.engineer || '-'}</span>
-                <input class="editable" value="${reportData.engineer || ''}" style="display: none;" />
+                <input class="editable" value="${reportData.engineer || ''}" />
               </div>
             </div>
             
             <div class="content-box">
               <strong>説明</strong>
               <p class="readonly">${reportData.problemDescription || reportData.description || reportData.incidentTitle || reportData.title || '説明なし'}</p>
-              <textarea class="editable" rows="4" style="display: none;">${reportData.problemDescription || reportData.description || reportData.incidentTitle || reportData.title || ''}</textarea>
+              <textarea class="editable" rows="4">${reportData.problemDescription || reportData.description || reportData.incidentTitle || reportData.title || ''}</textarea>
             </div>
             
             <div class="content-box">
               <strong>備考</strong>
               <p class="readonly">${reportData.notes || '-'}</p>
-              <textarea class="editable" rows="4" style="display: none;">${reportData.notes || ''}</textarea>
+              <textarea class="editable" rows="4">${reportData.notes || ''}</textarea>
             </div>
           </div>
           
@@ -1563,17 +1881,17 @@ const HistoryPage: React.FC = () => {
               <div class="info-item">
                 <strong>依頼月日</strong>
                 <span class="readonly">${reportData.requestDate || '-'}</span>
-                <input class="editable" type="date" value="${reportData.requestDate || ''}" style="display: none;" />
+                <input class="editable" type="date" value="${reportData.requestDate || ''}" />
               </div>
               <div class="info-item">
                 <strong>予定月日</strong>
                 <span class="readonly">${reportData.repairSchedule || '-'}</span>
-                <input class="editable" type="date" value="${reportData.repairSchedule || ''}" style="display: none;" />
+                <input class="editable" type="date" value="${reportData.repairSchedule || ''}" />
               </div>
               <div class="info-item">
                 <strong>場所</strong>
                 <span class="readonly">${reportData.repairLocation || '-'}</span>
-                <input class="editable" value="${reportData.repairLocation || ''}" style="display: none;" />
+                <input class="editable" value="${reportData.repairLocation || ''}" />
               </div>
             </div>
           </div>
@@ -1585,43 +1903,319 @@ const HistoryPage: React.FC = () => {
         
         <script>
           let isEditMode = false;
-          let originalData = ${JSON.stringify(reportData)};
+          let originalData = {};
           
-          // 画像表示の初期化（シンプルな3列表示）
-          document.addEventListener('DOMContentLoaded', function() {
-            console.log('画像表示の初期化完了');
-          });
-          
-          function toggleEditMode() {
-            isEditMode = !isEditMode;
-            const editBtn = document.querySelector('.btn-edit');
-            const cancelBtn = document.querySelector('.btn-cancel');
-            const saveBtn = document.querySelector('.btn-save');
-            
-            if (isEditMode) {
-              editBtn.style.display = 'none';
-              cancelBtn.style.display = 'inline-block';
-              saveBtn.style.display = 'inline-block';
-              document.body.classList.add('edit-mode');
-              // 編集モード時に入力フィールドの値を設定
-              setupEditFields();
-            } else {
-              editBtn.style.display = 'inline-block';
-              cancelBtn.style.display = 'none';
-              saveBtn.style.display = 'none';
-              document.body.classList.remove('edit-mode');
-              // 編集内容を元に戻す
-              resetToOriginal();
+          // データを安全に設定する関数
+          function setOriginalData(data) {
+            try {
+              originalData = data;
+              console.log('🔧 originalData set:', originalData);
+            } catch (e) {
+              console.error('originalDataの設定に失敗:', e);
+              originalData = {};
             }
           }
           
+          // レポートデータを設定（グローバル変数から読み取り）
+          try {
+            if (window.reportData) {
+              setOriginalData(window.reportData);
+              console.log('🔧 データをグローバル変数から正常に読み込みました');
+            } else {
+              console.error('🔧 グローバル変数window.reportDataが見つかりません');
+              setOriginalData({});
+            }
+          } catch (e) {
+            console.error('🔧 グローバル変数からのデータ読み込みに失敗:', e);
+            setOriginalData({});
+          }
+          
+          // 画像表示の初期化とボタンイベントの設定
+          document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔧 DOMContentLoaded - Document ready');
+            console.log('🔧 Available edit elements:');
+            console.log('🔧 - Readonly elements:', document.querySelectorAll('.readonly').length);
+            console.log('🔧 - Editable elements:', document.querySelectorAll('.editable').length);
+            console.log('🔧 - Edit button:', !!document.querySelector('.btn-edit'));
+            console.log('🔧 Initial CSS classes:', document.body.classList.toString());
+            console.log('🔧 originalData:', originalData);
+            
+            // 初期状態では編集モードをオフにする
+            isEditMode = false;
+            document.body.classList.remove('edit-mode');
+            
+            // ボタンイベントの設定
+            setupButtonEvents();
+            
+            // 複数回実行して確実に設定
+            setTimeout(() => {
+              setupButtonEvents();
+            }, 100);
+            
+            setTimeout(() => {
+              setupButtonEvents();
+            }, 500);
+          });
+          
+          // ボタンイベントを設定する関数
+          function setupButtonEvents() {
+            console.log('🔧 setupButtonEvents called');
+            
+            // DOM要素の確実な取得のため少し待機
+            setTimeout(() => {
+              const editBtn = document.getElementById('edit-btn');
+              const saveBtn = document.getElementById('save-btn');
+              const cancelBtn = document.getElementById('cancel-btn');
+              
+              console.log('🔧 ボタンの取得状況:', {
+                editBtn: !!editBtn,
+                saveBtn: !!saveBtn,
+                cancelBtn: !!cancelBtn
+              });
+              
+              if (editBtn) {
+                console.log('🔧 Edit button found, setting up event listener');
+                
+                // 既存のイベントリスナーをクリア
+                const newEditBtn = editBtn.cloneNode(true);
+                editBtn.parentNode?.replaceChild(newEditBtn, editBtn);
+                
+                // 新しいイベントリスナーを追加
+                newEditBtn.addEventListener('click', function(e) {
+                  console.log('🔧 Edit button click event triggered');
+                  e.preventDefault();
+                  e.stopPropagation();
+                  try {
+                    console.log('🔧 Calling toggleEditMode()...');
+                    toggleEditMode();
+                  } catch (error) {
+                    console.error('🔧 Error in toggleEditMode:', error);
+                    alert('編集モードの切り替えでエラーが発生しました: ' + error.message);
+                  }
+                });
+                
+                // ボタンスタイルを設定
+                newEditBtn.style.pointerEvents = 'auto';
+                newEditBtn.style.cursor = 'pointer';
+                newEditBtn.style.backgroundColor = '#007bff';
+                newEditBtn.style.color = 'white';
+                newEditBtn.style.border = '1px solid #007bff';
+                newEditBtn.style.borderRadius = '4px';
+                newEditBtn.style.padding = '8px 16px';
+                newEditBtn.style.fontSize = '14px';
+                
+                console.log('🔧 Edit button event listener added successfully');
+              } else {
+              console.error('🔧 Edit button not found!');
+              }
+              
+              if (saveBtn) {
+                const newSaveBtn = saveBtn.cloneNode(true);
+                saveBtn.parentNode?.replaceChild(newSaveBtn, saveBtn);
+                
+                newSaveBtn.addEventListener('click', function(e) {
+                  console.log('🔧 Save button click event triggered');
+                  e.preventDefault();
+                  e.stopPropagation();
+                  try {
+                    saveReport();
+                  } catch (error) {
+                    console.error('🔧 Error in saveReport:', error);
+                    alert('保存でエラーが発生しました: ' + error.message);
+                  }
+                });
+              }
+              
+              if (cancelBtn) {
+                const newCancelBtn = cancelBtn.cloneNode(true);
+                cancelBtn.parentNode?.replaceChild(newCancelBtn, cancelBtn);
+                
+                newCancelBtn.addEventListener('click', function(e) {
+                  console.log('🔧 Cancel button click event triggered');
+                  e.preventDefault();
+                  e.stopPropagation();
+                  try {
+                    toggleEditMode();
+                  } catch (error) {
+                    console.error('🔧 Error in toggleEditMode (cancel):', error);
+                  }
+                });
+              }
+              
+              console.log('🔧 Button event setup complete');
+            }, 200); // DOM要素が確実に存在するまで待機
+          }          function toggleEditMode() {
+            console.log('🔧 toggleEditMode called, current isEditMode:', isEditMode);
+            console.log('🔧 Current document body classList before toggle:', document.body.classList.toString());
+            
+            isEditMode = !isEditMode;
+            console.log('🔧 toggled isEditMode to:', isEditMode);
+            
+            const editBtn = document.getElementById('edit-btn');
+            const cancelBtn = document.getElementById('cancel-btn');
+            const saveBtn = document.getElementById('save-btn');
+            
+            console.log('🔧 Found buttons:', { editBtn: !!editBtn, cancelBtn: !!cancelBtn, saveBtn: !!saveBtn });
+            
+            if (isEditMode) {
+              console.log('🔧 Entering edit mode...');
+              
+              // ボタン表示の変更
+              if (editBtn) {
+                editBtn.style.display = 'none';
+                console.log('🔧 Edit button hidden');
+              }
+              if (cancelBtn) {
+                cancelBtn.style.display = 'inline-block';
+                cancelBtn.style.backgroundColor = '#6c757d';
+                cancelBtn.style.color = 'white';
+                cancelBtn.style.border = '1px solid #6c757d';
+                cancelBtn.style.borderRadius = '4px';
+                cancelBtn.style.padding = '8px 16px';
+                cancelBtn.style.fontSize = '14px';
+                cancelBtn.style.cursor = 'pointer';
+                console.log('🔧 Cancel button shown');
+              }
+              if (saveBtn) {
+                saveBtn.style.display = 'inline-block';
+                saveBtn.style.backgroundColor = '#28a745';
+                saveBtn.style.color = 'white';
+                saveBtn.style.border = '1px solid #28a745';
+                saveBtn.style.borderRadius = '4px';
+                saveBtn.style.padding = '8px 16px';
+                saveBtn.style.fontSize = '14px';
+                saveBtn.style.cursor = 'pointer';
+                console.log('🔧 Save button shown');
+              }
+              
+              // 編集モードクラスを追加
+              document.body.classList.add('edit-mode');
+              console.log('🔧 Added edit-mode class, classList:', document.body.classList.toString());
+              
+              // 要素の表示を確実に切り替え
+              const readonlyElements = document.querySelectorAll('.readonly');
+              const editableElements = document.querySelectorAll('.editable');
+              
+              console.log('🔧 Found elements for toggle:', { 
+                readonly: readonlyElements.length, 
+                editable: editableElements.length 
+              });
+              
+              readonlyElements.forEach((el, index) => {
+                el.style.display = 'none !important';
+                el.style.visibility = 'hidden';
+                console.log('🔧 Hidden readonly element', index);
+              });
+              
+              editableElements.forEach((el, index) => {
+                el.style.display = 'block !important';
+                el.style.visibility = 'visible';
+                // 入力フィールドの背景色を変更して編集中であることを明確にする
+                if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                  el.style.backgroundColor = '#ffffcc';
+                  el.style.border = '2px solid #007bff';
+                  el.removeAttribute('readonly');
+                  el.removeAttribute('disabled');
+                }
+                console.log('🔧 Shown editable element', index, 'tag:', el.tagName);
+              });
+              
+              // 編集モード時に入力フィールドの値を設定
+              setupEditFields();
+              
+              console.log('🔧 Edit mode setup complete');
+            } else {
+              console.log('🔧 Exiting edit mode...');
+              
+              // ボタン表示の変更
+              if (editBtn) {
+                editBtn.style.display = 'inline-block';
+                console.log('🔧 Edit button shown');
+              }
+              if (cancelBtn) {
+                cancelBtn.style.display = 'none';
+                console.log('🔧 Cancel button hidden');
+              }
+              if (saveBtn) {
+                saveBtn.style.display = 'none';
+                console.log('🔧 Save button hidden');
+              }
+              
+              // 編集モードクラスを削除
+              document.body.classList.remove('edit-mode');
+              console.log('🔧 Removed edit-mode class, classList:', document.body.classList.toString());
+              
+              // 要素の表示を確実に切り替え
+              const readonlyElements = document.querySelectorAll('.readonly');
+              const editableElements = document.querySelectorAll('.editable');
+              
+              readonlyElements.forEach((el, index) => {
+                el.style.display = 'inline';
+                el.style.visibility = 'visible';
+                console.log('🔧 Shown readonly element', index);
+              });
+              
+              editableElements.forEach((el, index) => {
+                el.style.display = 'none !important';
+                el.style.visibility = 'hidden';
+                console.log('🔧 Hidden editable element', index);
+              });
+              
+              // 編集内容を元に戻す
+              resetToOriginal();
+              
+              console.log('🔧 Read-only mode setup complete');
+            }
+          }
+                console.log('🔧 Save button hidden');
+              }
+              
+              // 編集モードクラスを削除
+              document.body.classList.remove('edit-mode');
+              console.log('🔧 Removed edit-mode class, classList:', document.body.classList.toString());
+              
+              // 要素の表示を強制的に切り替え
+              readonlyElements.forEach((el, index) => {
+                el.style.display = 'inline';
+                el.style.visibility = 'visible';
+                console.log('🔧 Shown readonly element', index);
+              });
+              
+              editableElements.forEach((el, index) => {
+                el.style.display = 'none';
+                el.style.visibility = 'hidden';
+                console.log('🔧 Hidden editable element', index);
+              });
+              
+              // 編集内容を元に戻す
+              resetToOriginal();
+              
+              console.log('🔧 Read-only mode setup complete');
+            }
+          }
+          
+          // グローバルスコープでも利用可能にする
+          window.toggleEditMode = toggleEditMode;
+          
+          // ページが完全に読み込まれた後にもボタンイベントを再設定
+          window.addEventListener('load', function() {
+            console.log('🔧 Window load event - page fully loaded');
+            setTimeout(() => {
+              setupButtonEvents();
+            }, 500);
+          });
+          
           function setupEditFields() {
+            console.log('🔧 setupEditFields called');
             // 各入力フィールドに適切な値を設定
             const inputs = document.querySelectorAll('input.editable');
             const textareas = document.querySelectorAll('textarea.editable');
             
+            console.log('🔧 Found inputs:', inputs.length, 'textareas:', textareas.length);
+            
             // 入力フィールドの値を設定
             inputs.forEach((input, index) => {
+              console.log('🔧 Setting up input', index, input);
               if (index === 0) input.value = originalData.reportId || originalData.id || '';
               if (index === 1) input.value = originalData.machineType || originalData.machineTypeName || '';
               if (index === 2) input.value = originalData.machineNumber || '';
@@ -1748,32 +2342,9 @@ const HistoryPage: React.FC = () => {
           
           async function saveToJsonFile(updatedData) {
             try {
-              console.log('保存開始:', updatedData);
+              console.log('サーバーへの保存開始:', updatedData);
               
-              // 元のJSONファイルの場所を特定
-              const originalFileName = originalData.fileName || originalData.id;
-              console.log('元のファイル名:', originalFileName);
-              
-              // 更新されたデータを作成（元のデータをベースに編集内容を反映）
-              const updatedJsonData = {
-                ...originalData,
-                machineType: updatedData.machineType,
-                machineNumber: updatedData.machineNumber,
-                problemDescription: updatedData.problemDescription,
-                notes: updatedData.notes,
-                status: updatedData.status,
-                engineer: updatedData.engineer,
-                location: updatedData.location,
-                requestDate: updatedData.requestDate,
-                repairSchedule: updatedData.repairSchedule,
-                repairLocation: updatedData.repairLocation,
-                lastModified: new Date().toISOString()
-              };
-              
-              console.log('更新されたJSONデータ:', updatedJsonData);
-              console.log('元のファイル名:', originalFileName);
-              
-              // 正しいIDを取得（UI表示時に設定されたデータから）
+              // 正しいIDを取得
               let targetId = originalData.id || originalData.chatId || originalData.reportId;
               
               // IDが取得できない場合は、ファイル名からUUIDを抽出
@@ -1796,47 +2367,52 @@ const HistoryPage: React.FC = () => {
                 }
               }
               
-              // それでもIDが取得できない場合は、ファイル名全体を使用
-              if (!targetId && originalData.fileName) {
-                targetId = originalData.fileName.replace(/\.json$/, '');
-                console.log('ファイル名全体をIDとして使用:', targetId);
+              if (!targetId) {
+                console.error('対象IDが特定できません:', originalData);
+                throw new Error('対象IDが特定できません');
               }
               
-              console.log('保存処理で使用するID:', targetId);
-              console.log('originalData:', originalData);
+              console.log('保存対象ID:', targetId);
               
-              // 既存のAPIエンドポイントを使用して履歴アイテムを更新
-              const apiUrl = '/api/history/update-item/' + targetId;
-              console.log('保存APIエンドポイント:', apiUrl);
-              console.log('送信データ:', {
-                updatedData: {
-                  machineType: updatedData.machineType,
-                  machineNumber: updatedData.machineNumber,
-                  problemDescription: updatedData.problemDescription,
-                  notes: updatedData.notes,
-                  status: updatedData.status,
-                  engineer: updatedData.engineer,
-                  location: updatedData.location,
-                  requestDate: updatedData.requestDate,
-                  repairSchedule: updatedData.repairSchedule,
-                  repairLocation: updatedData.repairLocation,
-                  lastModified: new Date().toISOString()
-                },
+              // 更新データの準備
+              const updatePayload = {
+                updatedData: updatedData,
                 updatedBy: 'user'
-              });
+              };
               
-              const response = await fetch(apiUrl, {
+              console.log('送信するペイロード:', updatePayload);
+              
+              // サーバーAPIを呼び出して履歴アイテムを更新
+              const response = await fetch('/api/history/update-item/' + targetId, {
                 method: 'PUT',
                 headers: {
                   'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                  updatedData: {
-                    machineType: updatedData.machineType,
-                    machineNumber: updatedData.machineNumber,
-                    problemDescription: updatedData.problemDescription,
-                    notes: updatedData.notes,
-                    status: updatedData.status,
+                body: JSON.stringify(updatePayload)
+              });
+              
+              console.log('サーバーレスポンス:', response.status, response.statusText);
+              console.log('レスポンスヘッダー:', Object.fromEntries(response.headers.entries()));
+              
+              if (response.ok) {
+                const result = await response.json();
+                console.log('履歴ファイルが正常に更新されました:', result);
+                
+                // 成功メッセージを表示
+                alert('レポートが元のファイルに正常に上書き保存されました。');
+                
+                return result;
+              } else {
+                const errorData = await response.json();
+                console.error('サーバーエラー:', errorData);
+                throw new Error(errorData.error || 'サーバーエラー: ' + response.status);
+              }
+              
+            } catch (error) {
+              console.error('JSONファイル保存エラー:', error);
+              throw error;
+            }
+          }
                     engineer: updatedData.engineer,
                     location: updatedData.location,
                     requestDate: updatedData.requestDate,
@@ -2388,7 +2964,7 @@ const HistoryPage: React.FC = () => {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>報告書 - 印刷</title>
+        <title>機械故障報告書 - 印刷</title>
         <style>
           body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
           .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
@@ -2404,13 +2980,54 @@ const HistoryPage: React.FC = () => {
           .image-section img { max-width: 100%; max-height: 300px; border: 1px solid #ddd; border-radius: 5px; }
           @media print {
             .no-print { display: none; }
-            body { margin: 0; }
+            body { 
+              margin: 0; 
+              font-size: 10px;
+              line-height: 1.2;
+            }
+            .header h1 { 
+              font-size: 16px; 
+              margin: 5px 0; 
+            }
+            .header p { 
+              font-size: 8px; 
+              margin: 2px 0; 
+            }
+            .section { 
+              margin: 8px 0; 
+              page-break-inside: avoid;
+            }
+            .section h2 { 
+              font-size: 12px; 
+              margin: 5px 0; 
+            }
+            .info-grid { 
+              gap: 4px; 
+            }
+            .info-item { 
+              font-size: 9px; 
+              padding: 2px; 
+            }
+            .content { 
+              font-size: 9px; 
+              line-height: 1.1;
+            }
+            .image-section { 
+              margin: 8px 0; 
+            }
+            .image-section img { 
+              max-height: 150px; 
+            }
+            @page {
+              size: A4;
+              margin: 10mm;
+            }
           }
         </style>
       </head>
       <body>
         <div class="header">
-                      <h1>報告書</h1>
+                      <h1>機械故障報告書</h1>
           <p>印刷日時: ${new Date().toLocaleString('ja-JP')}</p>
         </div>
         
@@ -2488,7 +3105,7 @@ const HistoryPage: React.FC = () => {
         
         <div class="section">
           <p style="text-align: center; color: #666; font-size: 12px;">
-            © 2025 報告書. All rights reserved.
+            © 2025 機械故障報告書. All rights reserved.
           </p>
         </div>
         
@@ -2583,12 +3200,12 @@ const HistoryPage: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">すべての機種</SelectItem>
-                    {machineDataLoading ? (
+                    {searchFilterLoading ? (
                       <SelectItem value="loading" disabled>読み込み中...</SelectItem>
-                    ) : machineData.machineTypes && machineData.machineTypes.length > 0 ? (
-                      machineData.machineTypes.map((type) => (
-                        <SelectItem key={type.id} value={type.machineTypeName}>
-                          {type.machineTypeName}
+                    ) : searchFilterData.machineTypes && searchFilterData.machineTypes.length > 0 ? (
+                      searchFilterData.machineTypes.map((type, index) => (
+                        <SelectItem key={`type-${index}`} value={type}>
+                          {type}
                         </SelectItem>
                       ))
                     ) : (
@@ -2598,7 +3215,7 @@ const HistoryPage: React.FC = () => {
                 </Select>
                 <p className="text-xs text-gray-500">
                   ※ JSONファイルから機種を取得しています
-                  {machineData.machineTypes && ` (${machineData.machineTypes.length}件)`}
+                  {searchFilterData.machineTypes && ` (${searchFilterData.machineTypes.length}件)`}
                 </p>
               </div>
             </div>
@@ -2615,12 +3232,12 @@ const HistoryPage: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">すべての機械番号</SelectItem>
-                    {machineDataLoading ? (
+                    {searchFilterLoading ? (
                       <SelectItem value="loading" disabled>読み込み中...</SelectItem>
-                    ) : machineData.machines && machineData.machines.length > 0 ? (
-                      machineData.machines.map((machine) => (
-                        <SelectItem key={machine.id} value={machine.machineNumber}>
-                          {machine.machineNumber} ({machine.machineTypeName})
+                    ) : searchFilterData.machineNumbers && searchFilterData.machineNumbers.length > 0 ? (
+                      searchFilterData.machineNumbers.map((number, index) => (
+                        <SelectItem key={`number-${index}`} value={number}>
+                          {number}
                         </SelectItem>
                       ))
                     ) : (
@@ -2630,7 +3247,7 @@ const HistoryPage: React.FC = () => {
                 </Select>
                 <p className="text-xs text-gray-500">
                   ※ JSONファイルから機械番号を取得しています
-                  {machineData.machines && ` (${machineData.machines.length}件)`}
+                  {searchFilterData.machineNumbers && ` (${searchFilterData.machineNumbers.length}件)`}
                 </p>
               </div>
             </div>
@@ -2782,12 +3399,8 @@ const HistoryPage: React.FC = () => {
                                   <img 
                                     src={imageUrl} 
                                     alt="画像" 
-                                    className="w-8 h-8 object-cover rounded border cursor-pointer"
+                                    className="w-8 h-8 object-cover rounded border"
                                     title="故障画像"
-                                    onClick={() => {
-                                      console.log('画像クリックイベント発生:', item);
-                                      handleShowMachineFailureReport(item);
-                                    }}
                                     onError={(e) => {
                                       const target = e.target as HTMLImageElement;
                                       target.style.display = 'none';
@@ -2803,12 +3416,25 @@ const HistoryPage: React.FC = () => {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleShowMachineFailureReport(item)}
+                                onClick={() => {
+                                  console.log('🔍 編集ボタンクリック - 元のアイテム:', item);
+                                  console.log('🔍 item.machineType:', item.machineType);
+                                  console.log('🔍 item.machineNumber:', item.machineNumber);
+                                  console.log('🔍 item.jsonData:', item.jsonData);
+                                  
+                                  const normalizedItem = normalizeJsonData(item);
+                                  console.log('🔍 正規化後のアイテム:', normalizedItem);
+                                  console.log('🔍 正規化後 machineType:', normalizedItem.machineType);
+                                  console.log('🔍 正規化後 machineNumber:', normalizedItem.machineNumber);
+                                  
+                                  setEditingItem(normalizedItem);
+                                  setShowEditDialog(true);
+                                }}
                                 className="flex items-center gap-1 text-xs"
-                                title="機械故障報告書で開く"
+                                title="編集画面を開く"
                               >
-                                <AlertTriangle className="h-3 w-3" />
-                                故障報告
+                                <Settings className="h-3 w-3" />
+                                編集
                               </Button>
                             </div>
                           </td>
@@ -2948,7 +3574,8 @@ const HistoryPage: React.FC = () => {
                   </Button>
                   <Button
                     onClick={() => {
-                      setEditingItem(previewItem);
+                      const normalizedItem = normalizeJsonData(previewItem);
+                      setEditingItem(normalizedItem);
                       setShowPreviewDialog(false);
                       setShowEditDialog(true);
                     }}
@@ -3024,94 +3651,406 @@ const HistoryPage: React.FC = () => {
       {/* 編集ダイアログ */}
       {showEditDialog && editingItem && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
+          <div className="bg-white rounded-lg max-w-5xl w-full max-h-[95vh] overflow-auto">
             <div className="p-6">
+              {/* 機種・機械番号データが読み込まれていない場合は再取得 */}
+              {(() => {
+                if (machineData.machineTypes.length === 0 && !machineDataLoading) {
+                  fetchMachineDataFromAPI();
+                }
+                
+                // デバッグ: 編集ダイアログが開かれた時の初期値をログ出力
+                console.log('編集ダイアログ表示時のeditingItem:', {
+                  machineType: editingItem.machineType,
+                  machineNumber: editingItem.machineNumber,
+                  fileName: editingItem.fileName,
+                  title: editingItem.jsonData?.title,
+                  question: editingItem.jsonData?.question,
+                  jsonData: editingItem.jsonData
+                });
+                
+                return null;
+              })()}
+              
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">履歴編集</h2>
+                <h2 className="text-xl font-bold">機械故障情報編集</h2>
                 <div className="flex gap-2">
+                  <Button
+                    onClick={() => {
+                      console.log('編集データを保存します:', editingItem);
+                      handleSaveEditedItem(editingItem);
+                    }}
+                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <Download className="h-4 w-4" />
+                    保存
+                  </Button>
                   <Button
                     onClick={() => handlePrintReport(editingItem)}
                     className="flex items-center gap-2"
                   >
-                    <FileText className="h-4 w-4" />
+                    <Printer className="h-4 w-4" />
                     印刷
                   </Button>
-                  <Button
+                  <Button 
+                    variant="outline" 
                     onClick={() => {
-                      setPreviewItem(editingItem);
+                      console.log('編集をキャンセルします');
                       setShowEditDialog(false);
-                      setShowPreviewDialog(true);
+                      setEditingItem(null);
                     }}
-                    className="flex items-center gap-2"
                   >
-                    <FileText className="h-4 w-4" />
-                    プレビューに移動
+                    キャンセル
                   </Button>
-                  <Button variant="ghost" onClick={() => setShowEditDialog(false)}>×</Button>
                 </div>
               </div>
               
               <div className="space-y-6">
                 {/* 基本情報編集 */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">基本情報</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                    <Settings className="h-5 w-5" />
+                    基本情報
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium mb-2">機種</label>
-                      <Input
-                        value={editingItem.machineType}
-                        onChange={(e) => setEditingItem({
-                          ...editingItem,
-                          machineType: e.target.value
-                        })}
-                      />
+                      {machineDataLoading ? (
+                        <div className="h-10 flex items-center px-3 border border-gray-300 rounded">
+                          読み込み中...
+                        </div>
+                      ) : (
+                        <Select
+                          value={editingItem.machineType || ''}
+                          onValueChange={(value) => {
+                            console.log('機種を変更:', value);
+                            setEditingItem({
+                              ...editingItem,
+                              machineType: value,
+                              jsonData: {
+                                ...editingItem.jsonData,
+                                machineType: value
+                              }
+                            });
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="機種を選択" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {/* デバッグ: Select要素の値を確認 */}
+                            {(() => {
+                              console.log('🔍 機種Select - editingItem.machineType:', editingItem.machineType);
+                              console.log('🔍 機種Select - machineData.machineTypes:', machineData.machineTypes);
+                              return null;
+                            })()}
+                            {machineData.machineTypes.map((machineType) => (
+                              <SelectItem key={machineType.id} value={machineType.machineTypeName}>
+                                {machineType.machineTypeName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-2">機械番号</label>
+                      {machineDataLoading ? (
+                        <div className="h-10 flex items-center px-3 border border-gray-300 rounded">
+                          読み込み中...
+                        </div>
+                      ) : (
+                        <Select
+                          value={editingItem.machineNumber || ''}
+                          onValueChange={(value) => {
+                            console.log('機械番号を変更:', value);
+                            setEditingItem({
+                              ...editingItem,
+                              machineNumber: value,
+                              jsonData: {
+                                ...editingItem.jsonData,
+                                machineNumber: value
+                              }
+                            });
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="機械番号を選択" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {machineData.machines
+                              .filter(machine => !editingItem.machineType || machine.machineTypeName === editingItem.machineType)
+                              .map((machine) => (
+                              <SelectItem key={machine.id} value={machine.machineNumber}>
+                                {machine.machineNumber} ({machine.machineTypeName})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">ファイル名</label>
                       <Input
-                        value={editingItem.machineNumber}
-                        onChange={(e) => setEditingItem({
-                          ...editingItem,
-                          machineNumber: e.target.value
-                        })}
+                        value={editingItem.fileName || ''}
+                        onChange={(e) => {
+                          console.log('ファイル名を変更:', e.target.value);
+                          setEditingItem({
+                            ...editingItem,
+                            fileName: e.target.value
+                          });
+                        }}
+                        placeholder="ファイル名"
+                        disabled
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* JSONデータ編集 */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">データ内容</h3>
-                  <textarea
-                    value={JSON.stringify(editingItem.jsonData, null, 2)}
-                    onChange={(e) => {
-                      try {
-                        const newJsonData = JSON.parse(e.target.value);
-                        setEditingItem({
-                          ...editingItem,
-                          jsonData: newJsonData
-                        });
-                      } catch (error) {
-                        // JSON解析エラーは無視（編集中のため）
-                      }
-                    }}
-                    className="w-full h-64 p-4 border border-gray-300 rounded-md font-mono text-sm"
-                    placeholder="JSONデータを編集してください"
-                  />
+                {/* 事象・説明編集 */}
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    事象・説明
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">事象タイトル</label>
+                      <Input
+                        value={editingItem.jsonData?.title || editingItem.jsonData?.question || ''}
+                        onChange={(e) => {
+                          console.log('事象タイトルを変更:', e.target.value);
+                          setEditingItem({
+                            ...editingItem,
+                            jsonData: {
+                              ...editingItem.jsonData,
+                              title: e.target.value,
+                              question: e.target.value
+                            }
+                          });
+                        }}
+                        placeholder="事象タイトルを入力"
+                      />
+                      {/* デバッグ: 事象タイトルの値を確認 */}
+                      {(() => {
+                        const titleValue = editingItem.jsonData?.title || editingItem.jsonData?.question || '';
+                        console.log('🔍 事象タイトル - 表示値:', titleValue);
+                        console.log('🔍 事象タイトル - jsonData.title:', editingItem.jsonData?.title);
+                        console.log('🔍 事象タイトル - jsonData.question:', editingItem.jsonData?.question);
+                        return null;
+                      })()}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">事象説明</label>
+                      <textarea
+                        value={editingItem.jsonData?.problemDescription || editingItem.jsonData?.answer || ''}
+                        onChange={(e) => {
+                          console.log('事象説明を変更:', e.target.value);
+                          setEditingItem({
+                            ...editingItem,
+                            jsonData: {
+                              ...editingItem.jsonData,
+                              problemDescription: e.target.value,
+                              answer: e.target.value
+                            }
+                          });
+                        }}
+                        className="w-full h-24 p-3 border border-gray-300 rounded-md"
+                        placeholder="事象の詳細説明を入力"
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                {/* 保存ボタン */}
-                <div className="flex justify-end gap-2">
+                {/* 抽出情報編集 */}
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    抽出情報
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">影響コンポーネント</label>
+                      <Input
+                        value={editingItem.jsonData?.extractedComponents?.join(', ') || ''}
+                        onChange={(e) => {
+                          const components = e.target.value.split(',').map(c => c.trim()).filter(c => c);
+                          setEditingItem({
+                            ...editingItem,
+                            jsonData: {
+                              ...editingItem.jsonData,
+                              extractedComponents: components
+                            }
+                          });
+                        }}
+                        placeholder="コンポーネント（カンマ区切り）"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">症状</label>
+                      <Input
+                        value={editingItem.jsonData?.extractedSymptoms?.join(', ') || ''}
+                        onChange={(e) => {
+                          const symptoms = e.target.value.split(',').map(s => s.trim()).filter(s => s);
+                          setEditingItem({
+                            ...editingItem,
+                            jsonData: {
+                              ...editingItem.jsonData,
+                              extractedSymptoms: symptoms
+                            }
+                          });
+                        }}
+                        placeholder="症状（カンマ区切り）"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">可能性のある機種</label>
+                      <Input
+                        value={editingItem.jsonData?.possibleModels?.join(', ') || ''}
+                        onChange={(e) => {
+                          const models = e.target.value.split(',').map(m => m.trim()).filter(m => m);
+                          setEditingItem({
+                            ...editingItem,
+                            jsonData: {
+                              ...editingItem.jsonData,
+                              possibleModels: models
+                            }
+                          });
+                        }}
+                        placeholder="機種（カンマ区切り）"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 追加情報編集 */}
+                <div className="bg-yellow-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                    <MapPin className="h-5 w-5" />
+                    追加情報
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">場所</label>
+                      <Input
+                        value={editingItem.jsonData?.location || ''}
+                        onChange={(e) => {
+                          setEditingItem({
+                            ...editingItem,
+                            jsonData: {
+                              ...editingItem.jsonData,
+                              location: e.target.value
+                            }
+                          });
+                        }}
+                        placeholder="設置場所"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">ステータス</label>
+                      <Select
+                        value={editingItem.jsonData?.status || ''}
+                        onValueChange={(value) => {
+                          setEditingItem({
+                            ...editingItem,
+                            jsonData: {
+                              ...editingItem.jsonData,
+                              status: value
+                            }
+                          });
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="ステータスを選択" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="報告済み">報告済み</SelectItem>
+                          <SelectItem value="対応中">対応中</SelectItem>
+                          <SelectItem value="完了">完了</SelectItem>
+                          <SelectItem value="保留">保留</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 画像表示 */}
+                {(() => {
+                  const imageUrl = pickFirstImage(editingItem);
+                  if (imageUrl) {
+                    return (
+                      <div className="bg-purple-50 p-4 rounded-lg">
+                        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                          <Image className="h-5 w-5" />
+                          関連画像
+                        </h3>
+                        <div className="text-center">
+                          <img
+                            src={imageUrl}
+                            alt="故障画像"
+                            className="max-w-full max-h-64 mx-auto border border-gray-300 rounded-md shadow-sm"
+                          />
+                          <p className="text-sm text-gray-600 mt-2">
+                            故障箇所の画像 {imageUrl.startsWith('data:image/') ? '(Base64)' : '(URL)'}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+
+                {/* JSONデータ編集 (上級者向け) */}
+                <details className="bg-gray-100 p-4 rounded-lg">
+                  <summary className="text-lg font-semibold cursor-pointer flex items-center gap-2 mb-3">
+                    <FileText className="h-5 w-5" />
+                    JSONデータ編集 (上級者向け)
+                  </summary>
+                  <div className="mt-4">
+                    <textarea
+                      value={JSON.stringify(editingItem.jsonData, null, 2)}
+                      onChange={(e) => {
+                        try {
+                          const newJsonData = JSON.parse(e.target.value);
+                          console.log('JSONデータを更新:', newJsonData);
+                          setEditingItem({
+                            ...editingItem,
+                            jsonData: newJsonData
+                          });
+                        } catch (error) {
+                          console.warn('JSON解析エラー:', error);
+                          // エラーは無視（編集中のため）
+                        }
+                      }}
+                      className="w-full h-64 p-4 border border-gray-300 rounded-md font-mono text-sm bg-white"
+                      placeholder="JSONデータを編集してください"
+                    />
+                    <p className="text-xs text-gray-500 mt-2">
+                      ※ 上級者向け機能です。JSONフォーマットが正しくない場合、保存時にエラーになります。
+                    </p>
+                  </div>
+                </details>
+
+                {/* 保存ボタン（下部） */}
+                <div className="flex justify-end gap-2 pt-4 border-t">
                   <Button
                     variant="outline"
-                    onClick={() => setShowEditDialog(false)}
+                    onClick={() => {
+                      console.log('編集をキャンセルします');
+                      setShowEditDialog(false);
+                      setEditingItem(null);
+                    }}
                   >
                     キャンセル
                   </Button>
                   <Button
-                    onClick={() => handleSaveEditedItem(editingItem)}
+                    onClick={() => {
+                      console.log('編集データを保存します:', editingItem);
+                      handleSaveEditedItem(editingItem);
+                    }}
+                    className="bg-green-600 hover:bg-green-700 text-white"
                   >
-                    保存
+                    保存して適用
                   </Button>
                 </div>
               </div>

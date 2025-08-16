@@ -1,4 +1,4 @@
-import { schema } from "../shared/schema.js";
+import * as schema from "./db/schema.js";
 import { eq, like } from "drizzle-orm";
 import { storage } from "./storage.js";
 import { db } from "./db/index.js";
@@ -75,6 +75,10 @@ export class DatabaseStorage {
             department: insertUser.department,
             description: insertUser.description
         };
+        
+        console.log('🔍 createUser入力データ:', insertUser);
+        console.log('🔍 createUser変換後データ:', userData);
+        
         const user = (await db.insert(schema.users).values(userData).returning())[0];
         return user;
     };

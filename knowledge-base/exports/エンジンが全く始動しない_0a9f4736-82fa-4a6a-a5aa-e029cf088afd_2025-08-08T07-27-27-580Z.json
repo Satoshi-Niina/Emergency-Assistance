@@ -4,9 +4,9 @@
   "exportType": "manual_send",
   "exportTimestamp": "2025-08-08T07:27:27.580Z",
   "title": "エンジンが全く始動しない",
-  "problemDescription": "エンジンが全く始動しない\nバッテリー\ndata:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQ...",
-  "machineType": "",
-  "machineNumber": "100",
+  "problemDescription": "エンジンが全く始動しない",
+  "machineType": "MC300",
+  "machineNumber": "MC300-002",
   "extractedComponents": [
     "エンジン",
     "バッテリー"
@@ -127,6 +127,106 @@
         "machineNumber"
       ],
       "updatedBy": "test-script"
+    },
+    {
+      "timestamp": "2025-08-16T12:00:16.860Z",
+      "updatedFields": [
+        "id",
+        "type",
+        "fileName",
+        "chatId",
+        "userId",
+        "exportType",
+        "exportTimestamp",
+        "messageCount",
+        "machineType",
+        "machineNumber",
+        "machineInfo",
+        "title",
+        "problemDescription",
+        "extractedComponents",
+        "extractedSymptoms",
+        "possibleModels",
+        "conversationHistory",
+        "metadata",
+        "savedImages",
+        "fileSize",
+        "lastModified",
+        "createdAt"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-08-16T12:00:47.281Z",
+      "updatedFields": [
+        "id",
+        "type",
+        "fileName",
+        "chatId",
+        "userId",
+        "exportType",
+        "exportTimestamp",
+        "messageCount",
+        "machineType",
+        "machineNumber",
+        "machineInfo",
+        "title",
+        "problemDescription",
+        "extractedComponents",
+        "extractedSymptoms",
+        "possibleModels",
+        "conversationHistory",
+        "metadata",
+        "savedImages",
+        "fileSize",
+        "lastModified",
+        "createdAt",
+        "answer"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-08-16T12:02:51.324Z",
+      "updatedFields": [
+        "id",
+        "type",
+        "fileName",
+        "chatId",
+        "userId",
+        "exportType",
+        "exportTimestamp",
+        "messageCount",
+        "machineType",
+        "machineNumber",
+        "machineInfo",
+        "title",
+        "problemDescription",
+        "extractedComponents",
+        "extractedSymptoms",
+        "possibleModels",
+        "conversationHistory",
+        "metadata",
+        "savedImages",
+        "fileSize",
+        "lastModified",
+        "createdAt",
+        "answer"
+      ],
+      "updatedBy": "user"
     }
-  ]
+  ],
+  "id": "export_エンジンが全く始動しない_0a9f4736-82fa-4a6a-a5aa-e029cf088afd_2025-08-08T07-27-27-580Z.json",
+  "type": "chat_export",
+  "fileName": "エンジンが全く始動しない_0a9f4736-82fa-4a6a-a5aa-e029cf088afd_2025-08-08T07-27-27-580Z.json",
+  "messageCount": 0,
+  "machineInfo": {
+    "selectedMachineType": "",
+    "selectedMachineNumber": "",
+    "machineTypeName": "MC300",
+    "machineNumber": "MC300-002"
+  },
+  "fileSize": 15124,
+  "lastModified": "2025-08-16T12:02:51.324Z",
+  "createdAt": "2025-08-16T12:00:47.284Z",
+  "answer": "エンジンが全く始動しない"
 }

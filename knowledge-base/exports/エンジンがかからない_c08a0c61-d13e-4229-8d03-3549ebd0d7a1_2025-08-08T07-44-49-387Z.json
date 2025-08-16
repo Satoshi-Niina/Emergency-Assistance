@@ -6,7 +6,7 @@
   "title": "エンジンがかからない",
   "problemDescription": "エンジンがかからない",
   "machineType": "MC300",
-  "machineNumber": "200",
+  "machineNumber": "MC300-001",
   "extractedComponents": [
     "エンジン"
   ],
@@ -65,6 +65,49 @@
       "fileName": "chat_image_c08a0c61-d13e-4229-8d03-3549ebd0d7a1_1754639089388.jpg",
       "path": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\システム\\Total Maintenance Control\\Emergency-Assistance\\knowledge-base\\images\\chat-exports\\chat_image_c08a0c61-d13e-4229-8d03-3549ebd0d7a1_1754639089388.jpg",
       "url": "/api/images/chat-exports/chat_image_c08a0c61-d13e-4229-8d03-3549ebd0d7a1_1754639089388.jpg"
+    }
+  ],
+  "id": "export_エンジンがかからない_c08a0c61-d13e-4229-8d03-3549ebd0d7a1_2025-08-08T07-44-49-387Z.json",
+  "type": "chat_export",
+  "fileName": "エンジンがかからない_c08a0c61-d13e-4229-8d03-3549ebd0d7a1_2025-08-08T07-44-49-387Z.json",
+  "messageCount": 0,
+  "machineInfo": {
+    "selectedMachineType": "",
+    "selectedMachineNumber": "",
+    "machineTypeName": "MC300",
+    "machineNumber": "200"
+  },
+  "fileSize": 11906,
+  "lastModified": "2025-08-16T12:00:00.388Z",
+  "createdAt": "2025-08-16T02:03:29.014Z",
+  "updateHistory": [
+    {
+      "timestamp": "2025-08-16T12:00:00.389Z",
+      "updatedFields": [
+        "id",
+        "type",
+        "fileName",
+        "chatId",
+        "userId",
+        "exportType",
+        "exportTimestamp",
+        "messageCount",
+        "machineType",
+        "machineNumber",
+        "machineInfo",
+        "title",
+        "problemDescription",
+        "extractedComponents",
+        "extractedSymptoms",
+        "possibleModels",
+        "conversationHistory",
+        "metadata",
+        "savedImages",
+        "fileSize",
+        "lastModified",
+        "createdAt"
+      ],
+      "updatedBy": "user"
     }
   ]
 }
