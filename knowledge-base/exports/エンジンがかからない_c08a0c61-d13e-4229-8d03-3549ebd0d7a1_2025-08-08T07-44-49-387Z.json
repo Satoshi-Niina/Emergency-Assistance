@@ -5,8 +5,8 @@
   "exportTimestamp": "2025-08-08T07:44:49.387Z",
   "title": "エンジンがかからない",
   "problemDescription": "エンジンがかからない",
-  "machineType": "MC300",
-  "machineNumber": "MC300-001",
+  "machineType": "MC400",
+  "machineNumber": "MC300-002",
   "extractedComponents": [
     "エンジン"
   ],
@@ -75,14 +75,70 @@
     "selectedMachineType": "",
     "selectedMachineNumber": "",
     "machineTypeName": "MC300",
-    "machineNumber": "200"
+    "machineNumber": "MC300-001"
   },
-  "fileSize": 11906,
-  "lastModified": "2025-08-16T12:00:00.388Z",
-  "createdAt": "2025-08-16T02:03:29.014Z",
+  "fileSize": 13023,
+  "lastModified": "2025-08-17T01:41:31.656Z",
+  "createdAt": "2025-08-16T12:00:00.392Z",
   "updateHistory": [
     {
       "timestamp": "2025-08-16T12:00:00.389Z",
+      "updatedFields": [
+        "id",
+        "type",
+        "fileName",
+        "chatId",
+        "userId",
+        "exportType",
+        "exportTimestamp",
+        "messageCount",
+        "machineType",
+        "machineNumber",
+        "machineInfo",
+        "title",
+        "problemDescription",
+        "extractedComponents",
+        "extractedSymptoms",
+        "possibleModels",
+        "conversationHistory",
+        "metadata",
+        "savedImages",
+        "fileSize",
+        "lastModified",
+        "createdAt"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-08-17T01:40:11.957Z",
+      "updatedFields": [
+        "id",
+        "type",
+        "fileName",
+        "chatId",
+        "userId",
+        "exportType",
+        "exportTimestamp",
+        "messageCount",
+        "machineType",
+        "machineNumber",
+        "machineInfo",
+        "title",
+        "problemDescription",
+        "extractedComponents",
+        "extractedSymptoms",
+        "possibleModels",
+        "conversationHistory",
+        "metadata",
+        "savedImages",
+        "fileSize",
+        "lastModified",
+        "createdAt"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-08-17T01:41:31.656Z",
       "updatedFields": [
         "id",
         "type",

@@ -1896,6 +1896,15 @@ const HistoryPage: React.FC = () => {
             </div>
           </div>
           
+          <div class="section">
+            <h2>記事欄</h2>
+            <div class="info-item">
+              <strong>備考・記事</strong>
+              <p class="readonly">${reportData.remarks || '-'}</p>
+              <textarea class="editable" rows="4" maxlength="200">${reportData.remarks || ''}</textarea>
+            </div>
+          </div>
+          
           <div class="footer">
             <p>© 2025 機械故障報告書. All rights reserved.</p>
           </div>
@@ -2882,7 +2891,7 @@ const HistoryPage: React.FC = () => {
     // 優先順位5: savedImagesから画像を取得（サーバー上のファイル）
     if (!imageUrl && jsonData?.savedImages && jsonData.savedImages.length > 0) {
       const savedImage = jsonData.savedImages[0];
-      imageUrl = savedImage.url;
+      imageUrl = savedImage.url || '';
       imageFileName = savedImage.fileName || `故障画像_${item.id}`;
       console.log('個別レポート印刷用: savedImagesから画像を取得（優先順位5）');
     }
@@ -3069,29 +3078,6 @@ const HistoryPage: React.FC = () => {
           </div>
         </div>
         
-        <div class="section">
-          <h2>抽出情報</h2>
-          <div class="content-box">
-            <p><strong>影響コンポーネント:</strong> ${extractedComponents.join(', ') || 'なし'}</p>
-            <p><strong>症状:</strong> ${extractedSymptoms.join(', ') || 'なし'}</p>
-            <p><strong>可能性のある機種:</strong> ${possibleModels.join(', ') || 'なし'}</p>
-          </div>
-        </div>
-        
-        <div class="section">
-          <h2>修繕予定</h2>
-          <div class="info-grid">
-            <div class="info-item">
-              <strong>予定月日</strong>
-              2025年9月
-            </div>
-            <div class="info-item">
-              <strong>場所</strong>
-              工場内修理スペース
-            </div>
-          </div>
-        </div>
-        
         ${imageUrl ? `
         <div class="section">
           <h2>故障箇所画像</h2>
@@ -3102,6 +3088,27 @@ const HistoryPage: React.FC = () => {
           </div>
         </div>
         ` : ''}
+        
+        <div class="section">
+          <h2>修繕計画</h2>
+          <div class="info-grid">
+            <div class="info-item">
+              <strong>予定月日</strong>
+              ${item.jsonData?.repairSchedule || '-'}
+            </div>
+            <div class="info-item">
+              <strong>場所</strong>
+              ${item.jsonData?.location || '-'}
+            </div>
+          </div>
+        </div>
+        
+        <div class="section">
+          <h2>記事欄</h2>
+          <div class="content-box">
+            <p>${item.jsonData?.remarks || '記載なし'}</p>
+          </div>
+        </div>
         
         <div class="section">
           <p style="text-align: center; color: #666; font-size: 12px;">
@@ -3862,74 +3869,56 @@ const HistoryPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 抽出情報編集 */}
-                <div className="bg-green-50 p-4 rounded-lg">
-                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    抽出情報
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2">影響コンポーネント</label>
-                      <Input
-                        value={editingItem.jsonData?.extractedComponents?.join(', ') || ''}
-                        onChange={(e) => {
-                          const components = e.target.value.split(',').map(c => c.trim()).filter(c => c);
-                          setEditingItem({
-                            ...editingItem,
-                            jsonData: {
-                              ...editingItem.jsonData,
-                              extractedComponents: components
-                            }
-                          });
-                        }}
-                        placeholder="コンポーネント（カンマ区切り）"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">症状</label>
-                      <Input
-                        value={editingItem.jsonData?.extractedSymptoms?.join(', ') || ''}
-                        onChange={(e) => {
-                          const symptoms = e.target.value.split(',').map(s => s.trim()).filter(s => s);
-                          setEditingItem({
-                            ...editingItem,
-                            jsonData: {
-                              ...editingItem.jsonData,
-                              extractedSymptoms: symptoms
-                            }
-                          });
-                        }}
-                        placeholder="症状（カンマ区切り）"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">可能性のある機種</label>
-                      <Input
-                        value={editingItem.jsonData?.possibleModels?.join(', ') || ''}
-                        onChange={(e) => {
-                          const models = e.target.value.split(',').map(m => m.trim()).filter(m => m);
-                          setEditingItem({
-                            ...editingItem,
-                            jsonData: {
-                              ...editingItem.jsonData,
-                              possibleModels: models
-                            }
-                          });
-                        }}
-                        placeholder="機種（カンマ区切り）"
-                      />
-                    </div>
-                  </div>
-                </div>
+                {/* 故障個所の画像（修繕計画の上に移動） */}
+                {(() => {
+                  const imageUrl = pickFirstImage(editingItem);
+                  if (imageUrl) {
+                    return (
+                      <div className="bg-purple-50 p-4 rounded-lg">
+                        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                          <Image className="h-5 w-5" />
+                          故障個所の画像
+                        </h3>
+                        <div className="text-center">
+                          <img
+                            src={imageUrl}
+                            alt="故障画像"
+                            className="max-w-full max-h-64 mx-auto border border-gray-300 rounded-md shadow-sm"
+                          />
+                          <p className="text-sm text-gray-600 mt-2">
+                            故障箇所の画像 {imageUrl.startsWith('data:image/') ? '(Base64)' : '(URL)'}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
 
-                {/* 追加情報編集 */}
+                {/* 修繕計画編集 */}
                 <div className="bg-yellow-50 p-4 rounded-lg">
                   <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                     <MapPin className="h-5 w-5" />
-                    追加情報
+                    修繕計画
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">修繕予定月日</label>
+                      <Input
+                        type="date"
+                        value={editingItem.jsonData?.repairSchedule || ''}
+                        onChange={(e) => {
+                          setEditingItem({
+                            ...editingItem,
+                            jsonData: {
+                              ...editingItem.jsonData,
+                              repairSchedule: e.target.value
+                            }
+                          });
+                        }}
+                        placeholder="修繕予定月日"
+                      />
+                    </div>
                     <div>
                       <label className="block text-sm font-medium mb-2">場所</label>
                       <Input
@@ -3974,62 +3963,36 @@ const HistoryPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 画像表示 */}
-                {(() => {
-                  const imageUrl = pickFirstImage(editingItem);
-                  if (imageUrl) {
-                    return (
-                      <div className="bg-purple-50 p-4 rounded-lg">
-                        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                          <Image className="h-5 w-5" />
-                          関連画像
-                        </h3>
-                        <div className="text-center">
-                          <img
-                            src={imageUrl}
-                            alt="故障画像"
-                            className="max-w-full max-h-64 mx-auto border border-gray-300 rounded-md shadow-sm"
-                          />
-                          <p className="text-sm text-gray-600 mt-2">
-                            故障箇所の画像 {imageUrl.startsWith('data:image/') ? '(Base64)' : '(URL)'}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-
-                {/* JSONデータ編集 (上級者向け) */}
-                <details className="bg-gray-100 p-4 rounded-lg">
-                  <summary className="text-lg font-semibold cursor-pointer flex items-center gap-2 mb-3">
+                {/* 記事欄（200文字程度） */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                     <FileText className="h-5 w-5" />
-                    JSONデータ編集 (上級者向け)
-                  </summary>
-                  <div className="mt-4">
+                    記事欄
+                  </h3>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">備考・記事 (200文字以内)</label>
                     <textarea
-                      value={JSON.stringify(editingItem.jsonData, null, 2)}
+                      value={editingItem.jsonData?.remarks || ''}
                       onChange={(e) => {
-                        try {
-                          const newJsonData = JSON.parse(e.target.value);
-                          console.log('JSONデータを更新:', newJsonData);
+                        if (e.target.value.length <= 200) {
                           setEditingItem({
                             ...editingItem,
-                            jsonData: newJsonData
+                            jsonData: {
+                              ...editingItem.jsonData,
+                              remarks: e.target.value
+                            }
                           });
-                        } catch (error) {
-                          console.warn('JSON解析エラー:', error);
-                          // エラーは無視（編集中のため）
                         }
                       }}
-                      className="w-full h-64 p-4 border border-gray-300 rounded-md font-mono text-sm bg-white"
-                      placeholder="JSONデータを編集してください"
+                      className="w-full h-24 p-3 border border-gray-300 rounded-md"
+                      placeholder="修繕に関する備考や追加情報を記載してください（200文字以内）"
+                      maxLength={200}
                     />
-                    <p className="text-xs text-gray-500 mt-2">
-                      ※ 上級者向け機能です。JSONフォーマットが正しくない場合、保存時にエラーになります。
+                    <p className="text-xs text-gray-500 mt-1">
+                      {editingItem.jsonData?.remarks?.length || 0}/200文字
                     </p>
                   </div>
-                </details>
+                </div>
 
                 {/* 保存ボタン（下部） */}
                 <div className="flex justify-end gap-2 pt-4 border-t">
