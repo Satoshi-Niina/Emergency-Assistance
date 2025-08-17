@@ -180,17 +180,17 @@ export default function ChatPage() {
 
   // ドロップダウンの表示/非表示制御
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: Event) => {
       const target = event.target as Element;
-      if (!target.closest('#machine-type') && !target.closest('#machine-number')) {
+      if (!target.closest('#machine-type') && !target.closest('#machine-number') && !target.closest('#machine-type-menu') && !target.closest('#machine-number-menu')) {
         setShowMachineTypeSuggestions(false);
         setShowMachineNumberSuggestions(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('click', handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('click', handleClickOutside);
     };
   }, []);
   
@@ -1587,7 +1587,7 @@ export default function ChatPage() {
                 return null;
               })()}
               {showMachineTypeSuggestions && (
-                <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto machine-type-dropdown">
+                <div id="machine-type-menu" className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto machine-type-dropdown">
                   {isLoadingMachineTypes ? (
                     <div className="px-3 py-2 text-sm text-gray-500">読み込み中...</div>
                   ) : filteredMachineTypes.length > 0 ? (
@@ -1685,7 +1685,7 @@ export default function ChatPage() {
                 return null;
               })()}
               {showMachineNumberSuggestions && (
-                <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto machine-number-dropdown">
+                <div id="machine-number-menu" className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto machine-number-dropdown">
                   {filteredMachines.length > 0 ? (
                     filteredMachines.map((machine) => (
                       <div
@@ -1720,15 +1720,6 @@ export default function ChatPage() {
         
         {/* 中央：AI支援・カメラ・応急処置ガイドボタン */}
         <div className="flex items-center gap-6">
-          {/* デバッグ情報表示 */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="text-xs text-gray-600 bg-gray-100 p-2 rounded">
-              <div>機種: {selectedMachineType ? `${machineTypeInput} (${selectedMachineType})` : '未選択'}</div>
-              <div>機械番号: {selectedMachineNumber ? `${machineNumberInput} (${selectedMachineNumber})` : '未選択'}</div>
-              <div>機械数: {machines.length}件</div>
-            </div>
-          )}
-          
           {/* AI支援開始/終了ボタン */}
           {!aiSupportMode ? (
             <Button

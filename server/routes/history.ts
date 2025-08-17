@@ -7,8 +7,16 @@ import { historyItems, machineTypes, machines } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import fs from 'fs';
 import path from 'path';
+import { BackupManager } from '../lib/backup-manager';
 
 const router = express.Router();
+
+// バックアップマネージャーの設定
+const backupManager = new BackupManager({
+  maxBackups: parseInt(process.env.BACKUP_MAX_FILES || '3'),
+  backupBaseDir: process.env.BACKUP_FOLDER_NAME || 'backups',
+  disabled: process.env.BACKUP_ENABLED === 'false'
+});
 
 // バリデーションスキーマ
 const saveHistorySchema = z.object({
@@ -1247,41 +1255,8 @@ router.put('/update-item/:id', async (req, res) => {
       ]
     });
     
-    // バックアップ管理（最新の3つのバックアップのみ保持）
-    const manageBackups = (targetFilePath: string) => {
-      const dir = path.dirname(targetFilePath);
-      const baseName = path.basename(targetFilePath);
-      const files = fs.readdirSync(dir);
-      
-      // 該当ファイルのバックアップファイルを検索
-      const backupFiles = files
-        .filter(file => file.startsWith(baseName + '.backup.'))
-        .map(file => ({
-          name: file,
-          path: path.join(dir, file),
-          timestamp: parseInt(file.split('.backup.')[1]) || 0
-        }))
-        .sort((a, b) => b.timestamp - a.timestamp); // 新しい順にソート
-      
-      // 古いバックアップファイルを削除（最新3つを除く）
-      const filesToDelete = backupFiles.slice(3);
-      filesToDelete.forEach(file => {
-        try {
-          fs.unlinkSync(file.path);
-          console.log('🗑️ 古いバックアップを削除:', file.name);
-        } catch (error) {
-          console.warn('バックアップ削除エラー:', file.name, error);
-        }
-      });
-    };
-
-    // バックアップを作成
-    const backupPath = targetFile + '.backup.' + Date.now();
-    fs.copyFileSync(targetFile, backupPath);
-    console.log('💾 バックアップ作成:', backupPath);
-    
-    // 古いバックアップを整理
-    manageBackups(targetFile);
+    // バックアップを作成（BackupManagerを使用）
+    const backupPath = backupManager.createBackup(targetFile);
     
     // ファイルに上書き保存
     fs.writeFileSync(targetFile, JSON.stringify(updatedJsonData, null, 2), 'utf8');
@@ -1381,6 +1356,91 @@ router.get('/statistics', async (req, res) => {
     console.error('❌ 統計情報取得エラー:', error);
     res.status(500).json({
       error: '統計情報取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/history/backups/:fileName
+ * 指定ファイルのバックアップ一覧取得
+ */
+router.get('/backups/:fileName', async (req, res) => {
+  try {
+    const { fileName } = req.params;
+    const exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+    const targetFile = path.join(exportsDir, fileName);
+    
+    if (!fs.existsSync(targetFile)) {
+      return res.status(404).json({ error: 'ファイルが見つかりません' });
+    }
+    
+    const backups = backupManager.listBackups(targetFile);
+    res.json(backups);
+  } catch (error) {
+    console.error('バックアップ一覧取得エラー:', error);
+    res.status(500).json({ error: 'バックアップ一覧の取得に失敗しました' });
+  }
+});
+
+/**
+ * POST /api/history/backups/restore
+ * バックアップから復元
+ */
+router.post('/backups/restore', async (req, res) => {
+  try {
+    const { backupPath, targetFileName } = req.body;
+    const exportsDir = path.join(process.cwd(), 'knowledge-base', 'exports');
+    const targetFile = path.join(exportsDir, targetFileName);
+    
+    backupManager.restoreFromBackup(backupPath, targetFile);
+    
+    res.json({ 
+      success: true, 
+      message: 'バックアップから復元しました',
+      restoredFile: targetFileName
+    });
+  } catch (error) {
+    console.error('バックアップ復元エラー:', error);
+    res.status(500).json({ 
+      error: 'バックアップからの復元に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/history/backup-config
+ * バックアップ設定取得
+ */
+router.get('/backup-config', (req, res) => {
+  try {
+    const config = backupManager.getConfig();
+    res.json(config);
+  } catch (error) {
+    console.error('バックアップ設定取得エラー:', error);
+    res.status(500).json({ error: 'バックアップ設定の取得に失敗しました' });
+  }
+});
+
+/**
+ * PUT /api/history/backup-config
+ * バックアップ設定更新
+ */
+router.put('/backup-config', (req, res) => {
+  try {
+    const newConfig = req.body;
+    backupManager.updateConfig(newConfig);
+    
+    res.json({ 
+      success: true, 
+      message: 'バックアップ設定を更新しました',
+      config: backupManager.getConfig()
+    });
+  } catch (error) {
+    console.error('バックアップ設定更新エラー:', error);
+    res.status(500).json({ 
+      error: 'バックアップ設定の更新に失敗しました',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }

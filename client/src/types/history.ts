@@ -54,6 +54,8 @@ export interface SupportHistoryItem {
     messages?: any[];
     location?: string;
     status?: string;
+    repairSchedule?: string;
+    remarks?: string;
     imagePath?: string;
     exportTimestamp?: string;
     metadata?: {
