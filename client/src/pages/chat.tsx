@@ -46,17 +46,8 @@ export default function ChatPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoadingGuides, setIsLoadingGuides] = useState(false);
 
-  // AI支援システムの状態管理（Q&A統合版）
-  const [aiSupportMode, setAiSupportMode] = useState(false);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [aiSupportAnswers, setAiSupportAnswers] = useState<string[]>([]);
-  const [aiSupportCompleted, setAiSupportCompleted] = useState(false);
-  const [currentQuestion, setCurrentQuestion] = useState<string>("");
-  const [currentOptions, setCurrentOptions] = useState<string[]>([]);
-  
   // インタラクティブ診断モードの状態管理
   const [interactiveDiagnosisMode, setInteractiveDiagnosisMode] = useState(false);
-  const [chatMode, setChatMode] = useState<'normal' | 'ai-support' | 'interactive-diagnosis'>('normal');
   // 追加: 機種と機械番号のオートコンプリート状態管理
   const [machineTypes, setMachineTypes] = useState<Array<{id: string, machine_type_name: string}>>([]);
   const [machines, setMachines] = useState<Array<{id: string, machine_number: string}>>([]);
@@ -435,9 +426,11 @@ export default function ChatPage() {
     // チャットIDの初期化を確実に行う
     if (!chatId) {
       console.log('🔄 チャットIDが未設定のため初期化を実行');
-      initializeChat().catch(error => {
+      try {
+        initializeChat();
+      } catch (error) {
         console.error('❌ チャットID初期化エラー:', error);
-      });
+      }
     }
     
     // 機種データの取得
@@ -503,32 +496,15 @@ export default function ChatPage() {
 
   // 追加: Q&Aモードの初期化（動的質問生成システムに変更済み）
 
-  // AI支援開始（GPTとの一問一答チャット）
+  // AI支援開始（インタラクティブ診断モードに変更）
   const handleStartAiSupport = async () => {
     try {
-      setAiSupportMode(true);
-      setAiSupportAnswers([]);
-      setAiSupportCompleted(false);
-      setCurrentQuestionIndex(0);
-      
-      // 最初の質問を生成（端的に）
-      const firstQuestion = "どんな事象が発生しましたか？";
-      setCurrentQuestion(firstQuestion);
-      setCurrentOptions([]);
-      
-      // 初期質問をチャット履歴に追加
-      const questionMessage = {
-        id: Date.now(),
-        content: firstQuestion,
-        isAiResponse: true,
-        senderId: 'ai',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, questionMessage]);
+      // インタラクティブ診断モードを開始
+      setInteractiveDiagnosisMode(true);
       
       toast({
         title: "AI支援開始",
-        description: "AIが故障診断と応急処置をサポートします",
+        description: "インタラクティブ故障診断を開始します",
       });
     } catch (error) {
       console.error('AI支援開始エラー:', error);
@@ -537,266 +513,17 @@ export default function ChatPage() {
         description: "AI支援の開始に失敗しました",
         variant: "destructive",
       });
-      setAiSupportMode(false);
+      setInteractiveDiagnosisMode(false);
     }
   };
 
-  // AI支援回答処理（GPTとの一問一答チャット）
-  const handleAiSupportAnswer = async (answer: string) => {
-    try {
-      const newAnswers = [...aiSupportAnswers, answer];
-      setAiSupportAnswers(newAnswers);
-      
-      // 回答をメッセージとして追加
-      const answerMessage = {
-        id: Date.now(),
-        content: answer,
-        isAiResponse: false,
-        senderId: 'user',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, answerMessage]);
-      
-      // 最低5つの質問を生成してから解決策を生成（より詳細な情報収集のため）
-      if (newAnswers.length < 5) {
-        // 次の質問を生成
-        const nextQuestion = await generateEmergencyQuestion(answer, newAnswers);
-        
-        if (nextQuestion && nextQuestion.question) {
-          setCurrentQuestion(nextQuestion.question);
-          setCurrentOptions(nextQuestion.options || []);
-          setCurrentQuestionIndex(prev => prev + 1);
-          
-          // 質問をチャット履歴に追加
-          const questionMessage = {
-            id: Date.now() + 1,
-            content: nextQuestion.question,
-            isAiResponse: true,
-            senderId: 'ai',
-            timestamp: new Date()
-          };
-          setMessages(prev => [...prev, questionMessage]);
-        }
-      } else {
-        // 5つ以上の回答が集まったら解決策を生成
-        const solution = await generateEmergencySolution(newAnswers);
-        setAiSupportCompleted(true);
-        setCurrentQuestion("");
-        setCurrentOptions([]);
-        
-        // 解決策をメッセージとして追加
-        const solutionMessage = {
-          id: Date.now(),
-          content: solution,
-          isAiResponse: true,
-          senderId: 'ai',
-          timestamp: new Date()
-        };
-        
-        setMessages(prev => [...prev, solutionMessage]);
-        
-        toast({
-          title: "AI支援完了",
-          description: "応急処置手順を生成しました",
-        });
-      }
-    } catch (error) {
-      console.error('AI支援回答処理エラー:', error);
-      toast({
-        title: "エラー",
-        description: "回答の処理に失敗しました",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // ナレッジベースから関連情報を取得
-  const fetchKnowledgeContext = async (query?: string): Promise<string[]> => {
-    try {
-      // 検索クエリがない場合は、現在の回答から自動生成
-      let searchQuery = query;
-      if (!searchQuery && aiSupportAnswers.length > 0) {
-        // 最新の回答からキーワードを抽出
-        const latestAnswer = aiSupportAnswers[aiSupportAnswers.length - 1];
-        searchQuery = `${latestAnswer} 保守用車 トラブルシューティング`;
-      } else if (!searchQuery) {
-        searchQuery = "保守用車 トラブルシューティング 故障診断";
-      }
-
-      console.log('🔍 ナレッジベース検索開始:', searchQuery);
-
-      // 複数の検索エンドポイントを試行
-      const searchEndpoints = [
-        `${import.meta.env.VITE_API_BASE_URL}/api/knowledge-base/search?query=${encodeURIComponent(searchQuery)}`,
-        `${import.meta.env.VITE_API_BASE_URL}/api/search?q=${encodeURIComponent(searchQuery)}`,
-        `${import.meta.env.VITE_API_BASE_URL}/api/knowledge?q=${encodeURIComponent(searchQuery)}`
-      ];
-
-      let results: any[] = [];
-      
-      for (const endpoint of searchEndpoints) {
-        try {
-          const response = await fetch(endpoint, {
-            credentials: 'include'
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            const endpointResults = data.results || data.data || [];
-            
-            if (endpointResults.length > 0) {
-              results = endpointResults;
-              console.log(`✅ ナレッジベース検索成功 (${endpoint}): ${results.length}件`);
-              break;
-            }
-          }
-        } catch (error) {
-          console.log(`❌ ナレッジベース検索エンドポイント ${endpoint} でエラー:`, error);
-          continue;
-        }
-      }
-      
-      // 結果がない場合は、基本的なキーワードで再検索
-      if (results.length === 0) {
-        console.log('⚠️ 検索結果が0件のため、フォールバック検索を実行');
-        const fallbackQuery = "保守用車 マニュアル 整備 点検";
-        try {
-          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/knowledge-base/search?query=${encodeURIComponent(fallbackQuery)}`, {
-            credentials: 'include'
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            results = data.results || [];
-            console.log(`✅ フォールバック検索成功: ${results.length}件`);
-          }
-        } catch (error) {
-          console.error('❌ フォールバック検索エラー:', error);
-        }
-      }
-      
-      // それでも結果がない場合は、デフォルトのナレッジ情報を提供
-      if (results.length === 0) {
-        console.log('⚠️ ナレッジベース検索が失敗したため、デフォルト情報を使用');
-        return [
-          "保守用車マニュアル: エンジン始動不良の基本的な対処法",
-          "保守用車整備ガイド: バッテリー、燃料、エアフィルターの点検手順",
-          "トラブルシューティング: 段階的な故障診断の手順",
-          "安全作業指針: 作業前の安全確認事項",
-          "緊急対応: 専門家への連絡方法と緊急時の対処法"
-        ];
-      }
-      
-      // 関連性の高い情報のみを返す（最大5件）
-      return results.slice(0, 5).map((item: any) => {
-        const title = item.title || item.metadata?.title || '';
-        const content = item.text || item.content || '';
-        const similarity = item.similarity ? ` (関連度: ${Math.round(item.similarity * 100)}%)` : '';
-        return `${title}${similarity}: ${content.substring(0, 200)}...`;
-      });
-    } catch (error) {
-      console.error('❌ ナレッジベース取得エラー:', error);
-      // エラー時もデフォルト情報を返す
-      return [
-        "保守用車マニュアル: エンジン始動不良の基本的な対処法",
-        "保守用車整備ガイド: バッテリー、燃料、エアフィルターの点検手順",
-        "トラブルシューティング: 段階的な故障診断の手順",
-        "安全作業指針: 作業前の安全確認事項",
-        "緊急対応: 専門家への連絡方法と緊急時の対処法"
-      ];
-    }
-  };
-
-  // AI支援完了処理（GPTとの一問一答チャット）
-  const handleAiSupportComplete = async (solution: string, allAnswers: string[]) => {
-    // 解決策をチャットに追加
-    sendMessage(solution, [], true);
-    
-    // 学習データを生成・保存
-    try {
-      await generateLearningData(allAnswers, solution);
-    } catch (error) {
-      console.error('学習データ生成エラー:', error);
-    }
-    
-    // セッションデータを保存
-    setAiSupportSessionData({
-      answers: allAnswers,
-      solution,
-      knowledgeContext: [],
-      questions: [currentQuestion]
-    });
-    
-    // AI支援モードを終了
-    setAiSupportMode(false);
-    
-    toast({
-      title: "AI支援完了",
-      description: "AI支援による問題解決が完了しました。学習データも保存されました。",
-    });
-  };
-
-  // 学習データの生成・保存
-  const generateLearningData = async (answers: string[], solution: string) => {
-    try {
-      const question = answers.join(' ');
-      
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/qa-learning/generate-learning-data`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          question: question,
-          answer: answers.join(' | '),
-          solution: solution,
-          success: true,
-          category: 'troubleshooting',
-          machineType: selectedMachineType,
-          machineNumber: selectedMachineNumber,
-          timestamp: new Date().toISOString()
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('学習データ生成成功:', result);
-      } else {
-        console.error('学習データ生成失敗:', response.status);
-      }
-    } catch (error) {
-      console.error('学習データ生成エラー:', error);
-    }
-  };
-
-  // AI支援モード終了
+  // AI支援終了（インタラクティブ診断モード終了）
   const handleAiSupportExit = () => {
-    setAiSupportMode(false);
-    setAiSupportAnswers([]);
-    setAiSupportCompleted(false);
-    setCurrentQuestionIndex(0);
-    setCurrentQuestion("");
-    setCurrentOptions([]);
+    setInteractiveDiagnosisMode(false);
     
     toast({
       title: "AI支援終了",
-      description: "AI支援モードを終了しました",
-    });
-  };
-
-  // AI支援のリセット処理
-  const handleAiSupportReset = () => {
-    setAiSupportMode(false);
-    setAiSupportSessionData(null);
-    setCurrentQuestionIndex(0);
-    setAiSupportAnswers([]);
-    setAiSupportCompleted(false);
-    setCurrentQuestion("");
-    
-    toast({
-      title: "AI支援リセット",
-      description: "AI支援セッションをリセットしました。",
+      description: "インタラクティブ故障診断を終了しました",
     });
   };
 
@@ -959,13 +686,6 @@ export default function ChatPage() {
 
         // 送信完了後にチャットをクリア
         await clearChatHistory();
-        
-        // AI支援モードの状態もリセット
-        setAiSupportMode(false);
-        setCurrentQuestionIndex(0);
-        setAiSupportAnswers([]);
-        setAiSupportCompleted(false);
-        setCurrentQuestion("");
         
         // 機種と機械番号の選択状態もリセット
         setSelectedMachineType('');
@@ -1268,12 +988,6 @@ export default function ChatPage() {
   const handleSendMessage = async (content: string, media: any[] = []) => {
     if (!content.trim() && media.length === 0) return;
 
-    // AI支援モードの場合は特別な処理
-    if (aiSupportMode && currentQuestion) {
-      await handleAiSupportAnswer(content);
-      return;
-    }
-
     // トラブルシューティングモードの場合は特別な処理
     if (troubleshootingMode && troubleshootingSession) {
       await handleTroubleshootingAnswer(content);
@@ -1298,12 +1012,6 @@ export default function ChatPage() {
       await clearChatHistory();
       setTroubleshootingMode(false);
       setTroubleshootingSession(null);
-      setAiSupportMode(false);
-      setAiSupportAnswers([]);
-      setAiSupportCompleted(false);
-      setCurrentQuestionIndex(0);
-      setCurrentQuestion("");
-      setCurrentOptions([]);
       toast({
         title: "成功",
         description: "チャット履歴をクリアしました",
@@ -1410,122 +1118,29 @@ export default function ChatPage() {
     }
   };
 
-  // AI支援の解決策生成（GPTとの一問一答チャット）
-  const generateEmergencySolution = async (allAnswers: string[]): Promise<string> => {
-    try {
-      const firstAnswer = allAnswers[0]?.toLowerCase() || '';
-      const secondAnswer = allAnswers[1]?.toLowerCase() || '';
-      const thirdAnswer = allAnswers[2]?.toLowerCase() || '';
-      
-      // 故障の種類を動的に判断
-      let faultType = "一般故障";
-      let faultLocation = "故障部位";
-      let specificActions = [];
-      
-      if (firstAnswer.includes("動作") || firstAnswer.includes("動かない") || firstAnswer.includes("効かない")) {
-        faultType = "動作不良";
-        faultLocation = "動作不良が発生している部位";
-        specificActions = [
-          "エンジンの始動状態を確認（キーを回して反応を確認）",
-          "燃料タンクの残量を目視確認（燃料ゲージの確認）",
-          "バッテリー端子の接続状態を点検（緩み、腐食の有無）",
-          "エアフィルターの詰まり状況を確認（目視で汚れの程度を確認）"
-        ];
-      } else if (firstAnswer.includes("異音") || firstAnswer.includes("音")) {
-        faultType = "異音故障";
-        faultLocation = "異音が発生している部位";
-        specificActions = [
-          "エンジンルームの安全確認（エンジン停止、ブレーキ掛け）",
-          "異音の発生箇所を特定（音の方向と強さを確認）",
-          "異音の種類を判別（金属音、摩擦音、振動音など）",
-          "周辺部品の緩みや損傷を点検（ボルト、ナットの締め付け状態）"
-        ];
-      } else if (firstAnswer.includes("警告") || firstAnswer.includes("ランプ") || firstAnswer.includes("アラーム")) {
-        faultType = "警告故障";
-        faultLocation = "警告が発生している機器";
-        specificActions = [
-          "警告ランプの種類と色を確認（赤、黄、青の区別）",
-          "警告メッセージの内容を確認（ディスプレイの表示内容）",
-          "該当機器の動作状態を点検（警告対象の動作確認）",
-          "警告の継続時間と頻度を記録（発生パターンの把握）"
-        ];
-      } else if (firstAnswer.includes("漏れ") || firstAnswer.includes("漏れる")) {
-        faultType = "漏れ故障";
-        faultLocation = "漏れが発生している部位";
-        specificActions = [
-          "漏れの種類を特定（油、水、空気の区別）",
-          "漏れ箇所の位置を確認（漏れの発生源を特定）",
-          "漏れの程度を評価（滴下、流れ出し、噴出の区別）",
-          "周辺機器への影響を確認（漏れによる汚染範囲）"
-        ];
-      } else if (firstAnswer.includes("振動") || firstAnswer.includes("揺れる")) {
-        faultType = "振動故障";
-        faultLocation = "振動が発生している部位";
-        specificActions = [
-          "振動の発生箇所を特定（振動の中心位置を確認）",
-          "振動の強さと周波数を確認（手で触れて振動の程度を判断）",
-          "振動の発生タイミングを確認（エンジン回転数との関係）",
-          "周辺部品の固定状態を点検（ボルト、ナットの締め付け）"
-        ];
-      } else {
-        // デフォルトの具体的な手順
-        specificActions = [
-          "作業現場の安全確認（作業環境の危険箇所を点検）",
-          "故障状況の詳細観察（故障の程度と範囲を記録）",
-          "基本点検項目の確認（燃料、油量、バッテリー状態）",
-          "専門技術者への連絡準備（故障内容の整理と報告）"
-        ];
-      }
-      
-      let solution = `■ AI支援による応急処置ガイド\n\n`;
-      solution += `**${faultType}の応急処置**\n\n`;
-      solution += `**故障部位**: ${faultLocation}\n\n`;
-      
-      solution += "1. **安全確認**\n";
-      solution += "   • 作業現場の安全を確保\n";
-      solution += "   • 必要に応じて緊急停止\n";
-      solution += "   • 故障部位への安全なアクセス確認\n\n";
-      
-      solution += "2. **故障状況の詳細確認**\n";
-      solution += "   • 故障の程度と範囲を確認\n";
-      solution += "   • 周辺機器への影響を確認\n";
-      solution += "   • 作業継続の可否を判断\n\n";
-      
-      solution += "3. **具体的な応急処置**\n";
-      specificActions.forEach((action, index) => {
-        solution += `   • ${action}\n`;
-      });
-      solution += "\n";
-      
-      solution += "4. **予防策**\n";
-      solution += "   • 同様の故障の再発防止\n";
-      solution += "   • 定期的な点検・メンテナンスの実施\n";
-      solution += "   • 故障の早期発見体制の構築\n\n";
-      
-      solution += "⚠️ **注意**: 安全が確保できない場合は、作業を中止して専門家に相談してください。\n";
-      solution += "専門的な知識が必要な故障の場合は、必ず専門技術者に相談してください。";
-      
-      return solution;
-    } catch (error) {
-      console.error('AI支援解決策生成エラー:', error);
-      return "応急処置の生成に失敗しました。専門技術者に相談してください。";
-    }
-  };
-
   // エクスポート機能
   const handleExportChat = async () => {
     try {
-      await exportChatHistory();
-      toast({
-        title: "成功",
-        description: "チャット履歴をエクスポートしました",
-      });
+      // チャット履歴をエクスポート
+      const chatData = messages.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: new Date().toISOString()
+      }));
+      
+      const blob = new Blob([JSON.stringify(chatData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `chat_history_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      console.log('✅ チャット履歴をエクスポートしました');
     } catch (error) {
-      toast({
-        title: "エラー",
-        description: "エクスポートに失敗しました",
-        variant: "destructive",
-      });
+      console.error('❌ エクスポートエラー:', error);
     }
   };
 
@@ -1725,7 +1340,7 @@ export default function ChatPage() {
         {/* 中央：AI支援・カメラ・応急処置ガイドボタン */}
         <div className="flex items-center gap-6">
           {/* AI支援開始/終了ボタン */}
-          {!aiSupportMode ? (
+          {!interactiveDiagnosisMode ? (
             <Button
               variant="outline"
               size="lg"
@@ -1772,43 +1387,8 @@ export default function ChatPage() {
           </Button>
         </div>
         
-        {/* 右側：モード切り替えとアクションボタン */}
+        {/* 右側：アクションボタン */}
         <div className="flex items-center gap-4">
-          {/* モード切り替えタブ */}
-          <div className="flex bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => setChatMode('normal')}
-              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                chatMode === 'normal'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              通常チャット
-            </button>
-            <button
-              onClick={() => setChatMode('ai-support')}
-              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                chatMode === 'ai-support'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              AI支援
-            </button>
-            <button
-              onClick={() => setChatMode('interactive-diagnosis')}
-              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                chatMode === 'interactive-diagnosis'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              <Wrench className="w-4 h-4 mr-1 inline" />
-              対話診断
-            </button>
-          </div>
-          
           <Button
             variant="outline"
             size="sm"
@@ -1832,13 +1412,13 @@ export default function ChatPage() {
       </div>
 
       {/* メインコンテンツエリア */}
-      {chatMode === 'interactive-diagnosis' ? (
+      {interactiveDiagnosisMode ? (
         /* インタラクティブ診断モード */
         <div className="flex-1">
           <InteractiveDiagnosisChat />
         </div>
       ) : (
-        /* 通常チャット・AI支援モード */
+        /* 通常チャットモード */
         <>
           {/* メッセージ表示エリア */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -1881,7 +1461,7 @@ export default function ChatPage() {
             )}
           </div>
 
-          {/* メッセージ入力エリア（通常チャット・AI支援モードのみ） */}
+          {/* メッセージ入力エリア（通常チャットモード） */}
           <div className="border-t bg-white p-4">
             <MessageInput
               onSendMessage={handleSendMessage}

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { cn } from "../../lib/utils.ts";
+import { cn } from "../../lib/utils";
 import { Button } from "../../components/ui/button";
 import { Tabs as TabsPrimitive, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { MessageSquare, Database, Settings, FileText, History, Wrench } from "lucide-react";
@@ -35,9 +35,9 @@ export function Tabs() {
     },
     {
       title: "基礎データ管理",
-      path: "/documents",
-      icon: <Database className="mr-2 h-4 w-4" />,
-      adminOnly: true,
+      path: "/base-data",
+      icon: <Wrench className="mr-2 h-4 w-4" />,
+      adminOnly: false,
     },
     {
       title: "応急処置データ管理",

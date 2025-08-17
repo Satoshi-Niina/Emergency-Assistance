@@ -9,6 +9,7 @@ import { registerDataProcessorRoutes } from "./data-processor";
 import flowGeneratorRoutes from "./flow-generator";
 import { registerSearchRoutes } from "./search";
 import authRouter from "./auth";
+import settingsRouter from "./settings";
 // machinesRouterはapp.tsで直接マウントされているため、ここでは除外
 import imageStorageRouter from "./image-storage";
 import systemCheckRouter from "./system-check";
@@ -24,6 +25,7 @@ export function registerRoutes(app: any) {
 
   // API routes
   app.use('/api/auth', authRouter);
+  app.use('/api/settings', settingsRouter);
   registerChatRoutes(app);
   app.use('/api/emergency-flow', emergencyFlowRoutes);
   app.use('/api/tech-support', techSupportRouter);
