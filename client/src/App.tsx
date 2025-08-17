@@ -22,6 +22,7 @@ const DocumentsPage = lazy(() => import('./pages/documents'));
 const TroubleshootingPage = lazy(() => import('./pages/troubleshooting'));
 const EmergencyGuidePage = lazy(() => import('./pages/emergency-guide'));
 const UsersPage = lazy(() => import('./pages/users'));
+const BaseDataPage = lazy(() => import('./pages/base-data'));
 
 const NotFoundPage = lazy(() => import('./pages/not-found'));
 
@@ -124,6 +125,13 @@ function App() {
                     <Route path="/system-diagnostic" element={
                       <ProtectedRoute>
                         <SystemDiagnosticPage />
+                      </ProtectedRoute>
+                    } />
+                    
+                    {/* 基礎データ管理ページ */}
+                    <Route path="/base-data" element={
+                      <ProtectedRoute>
+                        <BaseDataPage />
                       </ProtectedRoute>
                     } />
                     

@@ -12,4 +12,5 @@ export default defineConfig({
   dbCredentials: {
     url: process.env.DATABASE_URL,
   },
+  // データベース名: webappdb (ローカル・本番共通)
 });

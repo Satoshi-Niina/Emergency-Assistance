@@ -24,6 +24,7 @@ import { registerSyncRoutes } from './routes/sync-routes.js';
 import { usersRouter } from './routes/users.js';
 import troubleshootingRouter from './routes/troubleshooting.js';
 import { supportHistoryRouter } from './routes/support-history.js';
+import maintenanceRouter from './routes/maintenance.js';
 import express from 'express';
 import { NextFunction } from "connect";
 import authRouter from './routes/auth.js';
@@ -84,6 +85,7 @@ export function registerRoutes(app: Express): void {
   app.use('/api/files', filesRouter);
   app.use('/api/knowledge-base', knowledgeBaseRouter);
   app.use('/api/qa-learning', qaLearningRouter);
+  app.use('/api/maintenance', maintenanceRouter);
 
   // Add a health check endpoint for testing
   app.get('/api/health', (req, res) => {
