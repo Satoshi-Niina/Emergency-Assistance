@@ -35,6 +35,7 @@ interface EmergencyGuideDisplayProps {
   onExit: () => void;
   isPreview?: boolean; // プレビューモードかどうかのフラグ
   onSendToChat: () => void;
+  backButtonText?: string; // 戻るボタンのテキスト
 }
 
 // フロー実行履歴の型定義
@@ -121,7 +122,8 @@ export default function EmergencyGuideDisplay({
   guideId, 
   onExit, 
   isPreview = false,
-  onSendToChat 
+  onSendToChat,
+  backButtonText = "戻る"
 }: EmergencyGuideDisplayProps) {
   const [guideData, setGuideData] = useState<EmergencyGuideData | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -258,7 +260,7 @@ export default function EmergencyGuideDisplay({
       ),
       totalSteps: executionHistory.length,
       completedAt: new Date(),
-      isPartial: !isCompleted // 途中送信かどうかのフラグ
+      isPartial: !isCompleted // 表示したフローをチャットに送信かどうかのフラグ
     };
 
     // カスタムイベントでチャットコンテキストに送信
@@ -271,12 +273,12 @@ export default function EmergencyGuideDisplay({
       onSendToChat();
     }
 
-    // 途中送信の場合はガイド画面を閉じない
+    // 表示したフローをチャットに送信の場合はガイド画面を閉じない
     if (isCompleted) {
       onExit();
     } else {
-      // 途中送信の場合は成功メッセージを表示
-      console.log('途中送信完了:', chatData);
+      // 表示したフローをチャットに送信の場合は成功メッセージを表示
+      console.log('表示したフローをチャットに送信完了:', chatData);
       setShowPartialSuccess(true);
       setTimeout(() => {
         setShowPartialSuccess(false);
@@ -330,7 +332,7 @@ export default function EmergencyGuideDisplay({
           <div className="flex items-start gap-2 flex-1 min-w-0">
             <Button variant="ghost" size="sm" onClick={onExit} className="flex-shrink-0">
               <ArrowLeft className="h-4 w-4" />
-              戻る
+              {backButtonText}
             </Button>
             <CardTitle className="text-xl break-words leading-tight">
               {guideData.title}{isPreview && ' (プレビュー)'}
@@ -464,7 +466,7 @@ export default function EmergencyGuideDisplay({
                   className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-300"
                 >
                   <Send className="h-4 w-4 mr-2" />
-                  途中送信
+                  表示したフローをチャットに送信
                 </Button>
               )}
 
@@ -525,12 +527,12 @@ export default function EmergencyGuideDisplay({
             </div>
           )}
 
-          {/* 途中送信成功メッセージ（プレビューモードでは非表示） */}
+          {/* 表示したフローをチャットに送信成功メッセージ（プレビューモードでは非表示） */}
           {showPartialSuccess && !isPreview && (
             <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg animate-pulse">
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-blue-600" />
-                <span className="text-blue-800 font-medium">途中経過をチャットに送信しました</span>
+                <span className="text-blue-800 font-medium">表示したフローをチャットに送信しました</span>
               </div>
               <p className="text-blue-700 text-sm mt-2">
                 現在までの実行履歴がチャット履歴に記録されました。ガイドを続行できます。

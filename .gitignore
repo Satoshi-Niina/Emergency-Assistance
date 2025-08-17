@@ -112,6 +112,8 @@ logs/dev/
 
 # Backup files
 *.backup
+backups/
+knowledge-base/backups/
 
 # Docker
 .dockerignore

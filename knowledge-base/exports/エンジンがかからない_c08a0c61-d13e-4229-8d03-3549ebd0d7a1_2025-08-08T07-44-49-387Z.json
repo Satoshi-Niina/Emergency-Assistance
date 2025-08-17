@@ -4,9 +4,9 @@
   "exportType": "manual_send",
   "exportTimestamp": "2025-08-08T07:44:49.387Z",
   "title": "エンジンがかからない",
-  "problemDescription": "エンジンがかからない",
-  "machineType": "MC400",
-  "machineNumber": "MC300-002",
+  "problemDescription": "仕業点検時にエンジンを始動しようとしたが、スターターが全く回らない。\nパネルのランプ類は点灯している\nスタータートキースイッチを回しても、スターターから何も音がしない。",
+  "machineType": "MC300",
+  "machineNumber": "MC300-001",
   "extractedComponents": [
     "エンジン"
   ],
@@ -75,11 +75,11 @@
     "selectedMachineType": "",
     "selectedMachineNumber": "",
     "machineTypeName": "MC300",
-    "machineNumber": "MC300-001"
+    "machineNumber": "MC300-002"
   },
-  "fileSize": 13023,
-  "lastModified": "2025-08-17T01:41:31.656Z",
-  "createdAt": "2025-08-16T12:00:00.392Z",
+  "fileSize": 16017,
+  "lastModified": "2025-08-17T03:05:58.717Z",
+  "createdAt": "2025-08-17T02:56:07.023Z",
   "updateHistory": [
     {
       "timestamp": "2025-08-16T12:00:00.389Z",
@@ -164,6 +164,92 @@
         "createdAt"
       ],
       "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-08-17T02:04:36.947Z",
+      "updatedFields": [
+        "id",
+        "type",
+        "fileName",
+        "chatId",
+        "userId",
+        "exportType",
+        "exportTimestamp",
+        "messageCount",
+        "machineType",
+        "machineNumber",
+        "machineInfo",
+        "title",
+        "problemDescription",
+        "extractedComponents",
+        "extractedSymptoms",
+        "possibleModels",
+        "conversationHistory",
+        "metadata",
+        "savedImages",
+        "fileSize",
+        "lastModified",
+        "createdAt",
+        "answer"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-08-17T02:56:07.022Z",
+      "updatedFields": [
+        "id",
+        "type",
+        "fileName",
+        "chatId",
+        "userId",
+        "exportType",
+        "exportTimestamp",
+        "messageCount",
+        "machineType",
+        "machineNumber",
+        "machineInfo",
+        "title",
+        "problemDescription",
+        "extractedComponents",
+        "extractedSymptoms",
+        "possibleModels",
+        "conversationHistory",
+        "metadata",
+        "savedImages",
+        "fileSize",
+        "lastModified",
+        "createdAt"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-08-17T03:05:58.717Z",
+      "updatedFields": [
+        "id",
+        "type",
+        "fileName",
+        "chatId",
+        "userId",
+        "exportType",
+        "exportTimestamp",
+        "messageCount",
+        "machineType",
+        "machineNumber",
+        "machineInfo",
+        "title",
+        "problemDescription",
+        "extractedComponents",
+        "extractedSymptoms",
+        "possibleModels",
+        "conversationHistory",
+        "metadata",
+        "savedImages",
+        "fileSize",
+        "lastModified",
+        "createdAt"
+      ],
+      "updatedBy": "user"
     }
-  ]
+  ],
+  "answer": "仕業点検時にエンジンを始動しようとしたが、スターターが全く回らない。\nパネルのランプ類は点灯している\nスタータートキースイッチを回しても、スターターから何も音がしない。"
 }

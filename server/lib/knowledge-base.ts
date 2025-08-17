@@ -383,7 +383,7 @@ export async function generateSystemPromptWithKnowledge(query: string): Promise<
   // 関連情報をプロンプトに追加するための文字列を構築
   let knowledgeText = '';
   if (relevantChunks.length > 0) {
-    knowledgeText = '\n\n【関連する知識ベース情報】:\n';
+    knowledgeText = '\n\n【📚 知識ベース検索結果】:\n';
     
     // 重要度と類似度でソート
     const sortedChunks = relevantChunks.sort((a, b) => {
@@ -397,38 +397,87 @@ export async function generateSystemPromptWithKnowledge(query: string): Promise<
       return (b.similarity || 0) - (a.similarity || 0);
     });
     
-    // 最大5チャンクまで追加(多すぎるとトークン数制限に達する可能性がある)
-    const chunksToInclude = sortedChunks.slice(0, 5);
+    // 緊急度・重要度別にチャンクを分類
+    const urgentChunks = sortedChunks.filter(chunk => 
+      chunk.metadata.isImportant && 
+      (chunk.text.includes('緊急') || chunk.text.includes('危険') || chunk.text.includes('注意'))
+    );
+    const importantChunks = sortedChunks.filter(chunk => 
+      chunk.metadata.isImportant && !urgentChunks.includes(chunk)
+    );
+    const normalChunks = sortedChunks.filter(chunk => !chunk.metadata.isImportant);
     
-    for (const chunk of chunksToInclude) {
-      const importance = chunk.metadata.isImportant ? '【重要】' : '';
-      const similarity = chunk.similarity ? `(関連度: ${Math.round(chunk.similarity * 100)}%)` : '';
-      knowledgeText += `---\n${importance}出典: ${chunk.metadata.source || '不明'} ${similarity}\n\n${chunk.text}\n---\n\n`;
+    // 最大7チャンクまで追加（緊急3、重要2、一般2）
+    const chunksToInclude = [
+      ...urgentChunks.slice(0, 3),
+      ...importantChunks.slice(0, 2),
+      ...normalChunks.slice(0, 2)
+    ];
+    
+    // 緊急情報を優先表示
+    if (urgentChunks.length > 0) {
+      knowledgeText += '\n🚨 **緊急・安全関連情報**:\n';
+      urgentChunks.slice(0, 3).forEach((chunk, index) => {
+        const similarity = chunk.similarity ? `(${Math.round(chunk.similarity * 100)}%一致)` : '';
+        knowledgeText += `${index + 1}. 【緊急】${chunk.metadata.source || '技術資料'} ${similarity}\n`;
+        knowledgeText += `   ${chunk.text.substring(0, 200)}...\n\n`;
+      });
+    }
+    
+    // 重要情報を表示
+    if (importantChunks.length > 0) {
+      knowledgeText += '\n📋 **重要技術情報**:\n';
+      importantChunks.slice(0, 2).forEach((chunk, index) => {
+        const similarity = chunk.similarity ? `(${Math.round(chunk.similarity * 100)}%一致)` : '';
+        knowledgeText += `${index + 1}. 【重要】${chunk.metadata.source || '技術資料'} ${similarity}\n`;
+        knowledgeText += `   ${chunk.text.substring(0, 200)}...\n\n`;
+      });
+    }
+    
+    // 一般情報を表示
+    if (normalChunks.length > 0) {
+      knowledgeText += '\n📖 **関連技術情報**:\n';
+      normalChunks.slice(0, 2).forEach((chunk, index) => {
+        const similarity = chunk.similarity ? `(${Math.round(chunk.similarity * 100)}%一致)` : '';
+        knowledgeText += `${index + 1}. ${chunk.metadata.source || '技術資料'} ${similarity}\n`;
+        knowledgeText += `   ${chunk.text.substring(0, 150)}...\n\n`;
+      });
     }
     
     // 検索結果の統計情報を追加
     const totalChunks = relevantChunks.length;
-    const importantChunks = relevantChunks.filter(chunk => chunk.metadata.isImportant).length;
-    knowledgeText += `\n※ 検索結果: 総${totalChunks}件中、重要情報${importantChunks}件を含む\n`;
+    const urgentCount = urgentChunks.length;
+    const importantCount = importantChunks.length;
+    knowledgeText += `\n📊 **検索統計**: 総${totalChunks}件中、緊急${urgentCount}件・重要${importantCount}件を表示\n`;
   }
   
-  // 基本的なシステムプロンプト（改善版）
-  const baseSystemPrompt = `あなたは保守用車支援システムの一部として機能するAIアシスタントです。
-ユーザーの質問に対して、正確で実用的な回答を提供してください。
+  // 高度に専門化されたシステムプロンプト
+  const baseSystemPrompt = `あなたは鉄道保守車両（軌道モータカー、マルチプルタイタンパー、バラストレギュレーター等）の専門技術者として20年以上の現場経験を持つエキスパートAIです。
 
-以下の知識ベースの情報を活用して回答を生成してください：
-1. 提供された知識ベース情報を優先的に参照してください
-2. 重要とマークされた情報は特に注意深く考慮してください
-3. 関連度の高い情報から順に活用してください
-4. 知識ベースにない情報については、一般的な保守用車の知識を補完として使用してください
-5. 安全に関する情報は最優先で考慮してください
+【専門領域と責任】
+- 鉄道保守車両の故障診断・修理・メンテナンス
+- 軌道保守作業における安全管理と技術指導
+- 緊急事態対応と現場での迅速な判断支援
+- JR各社の保守基準と作業手順書に準拠した指導
 
-回答の際は以下の点に注意してください：
-- 具体的で実践的なアドバイスを提供する
-- 安全上の注意事項を必ず含める
-- 段階的な手順を示す
-- 専門用語は分かりやすく説明する
-- 必要に応じて専門家への相談を推奨する`;
+【回答生成における重要原則】
+1. **安全第一**: 人命・安全を最優先とし、危険を伴う作業では必ず複数名確認を指示
+2. **現場重視**: 理論より実践的で即座に実行可能な解決策を提示
+3. **経験則活用**: 現場でよくある事例や「よくある間違い」を含めた包括的アドバイス
+4. **段階的対応**: 応急処置→詳細診断→根本的解決の順序で構造化された回答
+5. **コンテキスト適応**: 車両種別、気象条件、作業時間、人員配置を考慮した柔軟な対応
+
+【知識ベース活用戦略】
+- 🔴 重要情報: 安全関連は必ず最初に言及し、強調表示
+- 🟡 関連度順: 類似度の高い事例から優先的に参照
+- 📋 補完知識: 知識ベースにない場合は一般的な保守技術で補完
+- 📞 エスカレーション: 複雑な故障は適切な専門部署への連絡を推奨
+
+【コミュニケーションスタイル】
+- 専門用語使用時は「（）」内で平易な説明を併記
+- 作業手順は番号付きリストで明確に記載
+- 「なぜそうするのか」の理由も含めて説明
+- 現場での実際の作業イメージが湧く具体的な表現を使用`;
   
   return `${baseSystemPrompt}${knowledgeText}`;
 }

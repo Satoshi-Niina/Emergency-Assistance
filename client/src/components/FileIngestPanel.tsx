@@ -134,7 +134,7 @@ export default function FileIngestPanel() {
       {/* 補足説明 */}
       <div className="mb-6">
         <p className="text-base font-semibold text-gray-700">
-          チャットからサーバーへ送信したデータのほか、外部で作成した機械故障場をアップロードできます。
+          チャットからサーバーへ送信したデータのほか、外部で作成した機械故障情報をアップロードできます。
         </p>
       </div>
       

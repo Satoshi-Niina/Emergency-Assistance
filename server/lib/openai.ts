@@ -70,46 +70,139 @@ export function getOpenAIClientStatus() {
   };
 }
 
-// 開発環境用のモックレスポンス
+// 開発環境用のより専門的で動的なモックレスポンス
 const getMockResponse = (prompt: string): string => {
   const lowerPrompt = prompt.toLowerCase();
   
-  // 応急処置関連の質問に対するモックレスポンス
+  // キーワードベースの動的レスポンス生成
   if (lowerPrompt.includes('応急処置') || lowerPrompt.includes('緊急') || lowerPrompt.includes('故障')) {
-    return `応急処置についてのご質問ですね。
+    const vehicleTypes = ['軌道モータカー', 'マルチプルタイタンパー', 'バラストレギュレーター'];
+    const randomVehicle = vehicleTypes[Math.floor(Math.random() * vehicleTypes.length)];
+    
+    return `🚨 **緊急対応モード** - ${randomVehicle}の故障対応について
 
-現在は開発環境のため、実際のAI応答の代わりにモックレスポンスを返しています。
+**【即座に実行すべき安全確認】**
+1. 🔴 作業区域の安全確保（列車見張員配置確認）
+2. 🔴 機械の完全停止確認（エンジン停止、ブレーキ確認）
+3. 🔴 周囲作業員への安全指示伝達
 
-実際の運用では、以下のような応急処置手順を提供します：
-1. 安全確認 - 作業環境の安全性を確認
-2. 症状診断 - 故障の症状を詳しく確認
-3. 応急対応 - 即座に実行可能な対応手順
-4. 専門家連絡 - 必要に応じて専門家への連絡
+**【応急診断手順】**
+1. **症状の詳細確認**：
+   - エラー表示の内容記録
+   - 異音・振動・臭いの有無
+   - 直前の作業内容と発生タイミング
 
-本番環境では、OpenAI APIキーを設定することで、より詳細で正確な応急処置ガイダンスを提供できます。
+2. **基本チェック項目**：
+   - 油圧系統の油量・圧力確認
+   - 電気系統の接続状況
+   - 操縦系統の動作確認
 
-何か他にご質問がございましたら、お気軽にお聞かせください。`;
+**【現場判断基準】**
+- ✅ 軽微な調整で復旧可能 → 現場対応続行
+- ⚠️ 専門知識が必要 → 指令所・保守基地へ連絡
+- 🚫 安全に不安 → 即座に作業中止・機械回送
+
+**【本格運用時の機能】**
+実際のシステムでは、車両固有の技術資料と過去の故障事例を基に、より具体的で即座に実行可能な対応手順を提供します。
+
+何か具体的な症状や車両について教えていただければ、より詳細な対応をご案内できます。`;
   }
   
-  // 一般的な質問に対するモックレスポンス
+  // 車両別の専門的対応
+  if (lowerPrompt.includes('タイタンパー') || lowerPrompt.includes('突固')) {
+    return `🔧 **マルチプルタイタンパー専門対応**
+
+**【突固作業での一般的なトラブル】**
+1. **突固ユニット不調**：
+   - 振動周波数の異常 → 油圧ポンプ系統確認
+   - 突固深度不良 → リフト機構の油圧漏れチェック
+   - 左右バランス不良 → 測定装置の校正確認
+
+2. **走行系トラブル**：
+   - 軌道から脱線傾向 → 車輪フランジ摩耗確認
+   - 速度制御不良 → エンジン回転数・変速機確認
+
+**【現場での迅速対応ポイント】**
+- 油圧系：作動油温度85℃以下維持が重要
+- 電気系：制御盤の湿気対策確認
+- 機械系：各部グリス補給状況の定期確認
+
+より具体的な症状をお聞かせください。実際の現場経験に基づいた対応をご提案します。`;
+  }
+
+  if (lowerPrompt.includes('モータカー') || lowerPrompt.includes('軌道車')) {
+    return `🚂 **軌道モータカー技術サポート**
+
+**【エンジン系統の基本診断】**
+1. **始動不良**：
+   - バッテリー電圧確認（24V系統正常値確認）
+   - 燃料系統の水混入チェック
+   - エアクリーナーの目詰まり確認
+
+2. **走行中の異常**：
+   - 出力不足 → 排気色・音の確認
+   - 振動異常 → エンジンマウント点検
+   - 過熱 → 冷却水循環・ラジエーター清掃
+
+**【油圧作業装置の点検】**
+- PTO（パワーテイクオフ）の接続確認
+- 作動油の粘度・汚れ具合チェック
+- 各シリンダーのストローク確認
+
+現場での具体的な不具合症状を教えていただければ、経験に基づいた対処法をご提案できます。`;
+  }
+  
+  // 一般的な挨拶への専門的な対応
   if (lowerPrompt.includes('こんにちは') || lowerPrompt.includes('hello')) {
-    return `こんにちは！応急処置チャットシステムです。
+    return `こんにちは！鉄道保守車両技術サポートシステムです。
 
-現在は開発環境で動作しており、実際のAI応答の代わりにモックレスポンスを返しています。
+**【対応可能な専門領域】**
+🔧 軌道モータカー（エンジン・油圧・電気系統）
+🔧 マルチプルタイタンパー（突固・整正・道床整理）
+🔧 バラストレギュレーター（配石・整形作業）
+🔧 レール削正車・溶接車等の特殊車両
 
-本番環境では、OpenAI APIキーを設定することで、より詳細で正確な応答を提供できます。
+**【緊急時対応】**
+故障・トラブル発生時は「緊急」「故障」等のキーワードを含めてご質問ください。
+安全確認→応急対応→本格修理の段階的対応をサポートします。
 
-何かお手伝いできることがございましたら、お気軽にお聞かせください。`;
+どのような車両のどのような症状についてお困りでしょうか？
+現場の状況を詳しく教えていただければ、実践的なアドバイスを提供いたします。`;
   }
   
-  // デフォルトのモックレスポンス
-  return `ご質問ありがとうございます。
+  // より動的なデフォルトレスポンス
+  const responses = [
+    `🔍 **技術診断サポート準備完了**
 
-現在は開発環境のため、実際のAI応答の代わりにモックレスポンスを返しています。
+現在の症状や車両情報を詳しく教えてください：
+- 車両の種類（モータカー、タイタンパー等）
+- 発生している症状の詳細
+- 作業環境（天候、時間帯、作業内容）
 
-本番環境では、OpenAI APIキーを設定することで、より詳細で正確な応答を提供できます。
+経験豊富な保守技術者の視点で、現場で即座に実行可能な対応策をご提案します。`,
 
-応急処置や技術的な質問について、より具体的にお聞かせいただければ、適切なガイダンスを提供いたします。`;
+    `⚙️ **保守車両技術相談窓口**
+
+どのような技術的課題でお困りでしょうか？
+- 故障診断・応急修理
+- 定期点検・予防保全
+- 作業効率向上のアドバイス
+- 安全作業手順の確認
+
+現場の実情に即した、実践的なソリューションを提供いたします。`,
+
+    `🛠️ **現場技術者サポート**
+
+保守車両のトラブル解決をお手伝いします。
+症状の詳細をお聞かせください：
+- いつ、どのような状況で発生したか
+- エラー表示や異音の有無
+- 直前に行っていた作業内容
+
+20年以上の現場経験を基に、効果的な対応方法をご案内します。`
+  ];
+  
+  return responses[Math.floor(Math.random() * responses.length)];
 };
 
 /**
@@ -132,14 +225,17 @@ export async function processOpenAIRequest(prompt: string, useKnowledgeBase: boo
     }
 
     console.log('[DEBUG] OpenAI client is available, proceeding with API call');
-    console.log('[DEBUG] API Key validation in processOpenAIRequest:', {
-      apiKeyExists: !!process.env.OPENAI_API_KEY,
-      apiKeyPrefix: process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.substring(0, 10) + '...' : 'NOT FOUND',
-      apiKeyLength: process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.length : 0
-    });
 
-    // Remove detailed API call start logging
-    // console.log(`OpenAI API呼び出し開始: useKnowledgeBase=${useKnowledgeBase}, message="${prompt}"`);
+    // コンテキスト分析を実行
+    let contextAnalysis;
+    try {
+      const { analyzeUserContext, adjustSystemPromptForContext } = await import('./context-analyzer.js');
+      contextAnalysis = analyzeUserContext(prompt);
+      console.log('[DEBUG] Context analysis:', contextAnalysis);
+    } catch (error) {
+      console.warn('[WARN] Context analyzer not available, using default settings');
+      contextAnalysis = null;
+    }
 
     // システムプロンプトを設定
     let systemPrompt = "あなたは保守用車支援システムの一部として機能するAIアシスタントです。ユーザーの質問に対して、正確で実用的な回答を提供してください。";
@@ -149,6 +245,12 @@ export async function processOpenAIRequest(prompt: string, useKnowledgeBase: boo
       try {
         const { generateSystemPromptWithKnowledge } = await import('./knowledge-base.js');
         systemPrompt = await generateSystemPromptWithKnowledge(prompt);
+        
+        // コンテキスト分析結果でシステムプロンプトを調整
+        if (contextAnalysis) {
+          const { adjustSystemPromptForContext } = await import('./context-analyzer.js');
+          systemPrompt = adjustSystemPromptForContext(systemPrompt, contextAnalysis);
+        }
       } catch (error) {
         console.error('ナレッジベース初期化エラー:', error);
         // エラーが発生した場合は基本的なシステムプロンプトを使用
@@ -156,18 +258,22 @@ export async function processOpenAIRequest(prompt: string, useKnowledgeBase: boo
       }
     }
 
+    // コンテキストに基づいた動的パラメータ設定
+    const temperature = contextAnalysis?.suggestedResponseStyle.temperature || (useKnowledgeBase ? 0.3 : 0.5);
+    const maxTokens = contextAnalysis?.suggestedResponseStyle.maxTokens || (useKnowledgeBase ? 3000 : 2000);
+
     // OpenAI API呼び出し
-    // Remove API request sending logging
-    // console.log('OpenAI APIリクエストを送信中...');
     const response = await openai.chat.completions.create({
       model: OPENAI_MODEL,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: prompt }
       ],
-      temperature: useKnowledgeBase ? 0.1 : 0.2, // ナレッジベース使用時はより低い温度で一貫性を向上
-      max_tokens: useKnowledgeBase ? 2000 : 1500, // ナレッジベース使用時はより長い回答を許可
-      // JSON形式の強制は解除
+      temperature: temperature,
+      max_tokens: maxTokens,
+      top_p: 0.9, // より多様な表現を可能にする
+      frequency_penalty: 0.1, // 同じ表現の繰り返しを避ける
+      presence_penalty: 0.1, // 新しい概念の導入を促進
     });
 
     // Remove detailed API response receiving logging

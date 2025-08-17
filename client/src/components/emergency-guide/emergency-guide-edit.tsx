@@ -126,38 +126,73 @@ const FlowList: React.FC<FlowListProps> = ({ flows, onSelectFlow, onDeleteFlow, 
 
   return (
     <div className="space-y-4">
-      {flows.map((flow) => (
-        <Card key={flow.id} className="hover:shadow-md transition-shadow border-2 border-blue-500">
-          <CardContent className="p-4 flex justify-between items-center">
-            <div className="flex-grow cursor-pointer" onClick={() => onSelectFlow(flow)}>
-              <p className="font-semibold text-lg">{flow.title}</p>
-              <p className="text-sm text-gray-600 mb-1">
-                {flow.description || '説明なし'}
-              </p>
-              <div className="flex items-center space-x-4 text-xs text-gray-500">
-                <span>ステップ数: {flow.steps?.length || 0}</span>
-                <span>作成日時: {formatDate(flow.updatedAt)}</span>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="sm" onClick={() => onSelectFlow(flow)}>
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => onPreviewFlow(flow)}>
-                <Eye className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-red-500 hover:text-red-600"
-                onClick={() => onDeleteFlow(flow.id, flow.filePath)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+      <div className="overflow-auto">
+        <table className="w-full border-collapse border border-gray-300 text-sm">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="border border-gray-300 p-3 text-left text-sm font-medium">タイトル</th>
+              <th className="border border-gray-300 p-3 text-left text-sm font-medium">説明</th>
+              <th className="border border-gray-300 p-3 text-left text-sm font-medium">ステップ数</th>
+              <th className="border border-gray-300 p-3 text-left text-sm font-medium">更新日時</th>
+              <th className="border border-gray-300 p-3 text-center text-sm font-medium">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {flows.map((flow) => (
+              <tr key={flow.id} className="hover:bg-gray-50">
+                <td className="border border-gray-300 p-3">
+                  <div className="break-words leading-tight text-sm font-semibold cursor-pointer hover:text-blue-600" 
+                       onClick={() => onSelectFlow(flow)}>
+                    {flow.title}
+                  </div>
+                </td>
+                <td className="border border-gray-300 p-3">
+                  <div className="break-words leading-tight text-sm text-gray-600">
+                    {flow.description || '説明なし'}
+                  </div>
+                </td>
+                <td className="border border-gray-300 p-3 text-center">
+                  <span className="text-sm">{flow.steps?.length || 0}</span>
+                </td>
+                <td className="border border-gray-300 p-3">
+                  <span className="text-xs text-gray-500">{formatDate(flow.updatedAt)}</span>
+                </td>
+                <td className="border border-gray-300 p-3">
+                  <div className="flex justify-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onSelectFlow(flow)}
+                      title="編集"
+                      className="h-7 px-2 text-xs"
+                    >
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onPreviewFlow(flow)}
+                      title="プレビュー"
+                      className="h-7 px-2 text-xs"
+                    >
+                      <Eye className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => onDeleteFlow(flow.id, flow.filePath)}
+                      title="削除"
+                      className="h-7 px-2 text-xs"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
@@ -574,6 +609,7 @@ const EmergencyGuideEdit: React.FC = () => {
           guideId={previewFlow.id}
           onExit={handleBackToList}
           isPreview={true}
+          onSendToChat={() => {}}
         />
       ) : (
         <div className="space-y-4">

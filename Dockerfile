@@ -1,73 +1,99 @@
+# ======================================
 # Multi-stage build for production
+# ======================================
 FROM node:18-alpine AS base
 
-# Install dependencies only when needed
+# Set environment variables
+ENV NODE_ENV=production
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+
+# Install pnpm for better performance
+RUN corepack enable
+
+# ======================================
+# Dependencies stage
+# ======================================
 FROM base AS deps
 WORKDIR /app
 
-# Copy package files
+# Copy package manager files
 COPY package*.json ./
 COPY client/package*.json ./client/
 COPY server/package*.json ./server/
 COPY shared/package*.json ./shared/
 
-# Install dependencies
-RUN npm ci --only=production
+# Install dependencies with optimizations
+RUN npm ci --only=production --frozen-lockfile && \
+  npm cache clean --force
 
-# Rebuild the source code only when needed
+# ======================================
+# Builder stage
+# ======================================
 FROM base AS builder
 WORKDIR /app
 
-# Copy package files
+# Copy package manager files
 COPY package*.json ./
 COPY client/package*.json ./client/
 COPY server/package*.json ./server/
 COPY shared/package*.json ./shared/
 
-# Install all dependencies
-RUN npm ci
+# Install all dependencies including devDependencies
+RUN npm ci --frozen-lockfile
 
-# Copy source code
+# Copy source code (respect .dockerignore)
 COPY . .
 
-# Build the application
-RUN npm run build
+# Build shared package first
+RUN cd shared && npm run build
 
-# Production image, copy all the files and run the app
+# Build server and client
+RUN npm run build:server
+RUN npm run build:client
+
+# ======================================
+# Production runner stage
+# ======================================
 FROM base AS runner
 WORKDIR /app
 
-ENV NODE_ENV=production
+# Create a non-root user for security
+RUN addgroup --system --gid 1001 emergency && \
+  adduser --system --uid 1001 --ingroup emergency emergency
 
-# Create a non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Copy production dependencies
+COPY --from=deps --chown=emergency:emergency /app/node_modules ./node_modules
+COPY --from=deps --chown=emergency:emergency /app/server/node_modules ./server/node_modules
 
-# Copy built application
-COPY --from=builder --chown=nextjs:nodejs /app/server/dist ./server/dist
-COPY --from=builder --chown=nextjs:nodejs /app/client/dist ./client/dist
-COPY --from=builder --chown=nextjs:nodejs /app/shared/dist ./shared/dist
+# Copy built applications
+COPY --from=builder --chown=emergency:emergency /app/server/dist ./server/dist
+COPY --from=builder --chown=emergency:emergency /app/client/dist ./client/dist
+COPY --from=builder --chown=emergency:emergency /app/shared/dist ./shared/dist
 
-# Copy package files
-COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
-COPY --from=deps --chown=nextjs:nodejs /app/server/node_modules ./server/node_modules
-COPY --from=deps --chown=nextjs:nodejs /app/client/node_modules ./client/node_modules
-COPY --from=deps --chown=nextjs:nodejs /app/shared/node_modules ./shared/node_modules
+# Copy package.json files for runtime
+COPY --chown=emergency:emergency package*.json ./
+COPY --chown=emergency:emergency server/package*.json ./server/
+COPY --chown=emergency:emergency shared/package*.json ./shared/
 
-# Copy package.json files
-COPY package*.json ./
-COPY server/package*.json ./server/
-COPY client/package*.json ./client/
-COPY shared/package*.json ./shared/
+# Copy necessary runtime files
+COPY --chown=emergency:emergency migrations ./migrations
+COPY --chown=emergency:emergency drizzle.config.ts ./
+COPY --chown=emergency:emergency staticwebapp.config.json ./
 
-# Copy necessary files
-COPY migrations ./migrations
-COPY drizzle.config.ts ./
+# Set user permissions
+USER emergency
 
-USER nextjs
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3001/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"
 
+# Expose port
 EXPOSE 3001
 
+# Set environment variables
 ENV PORT=3001
+ENV NODE_ENV=production
 
-CMD ["npm", "start"] 
+# Start the application
+CMD ["npm", "run", "start:prod"] 
