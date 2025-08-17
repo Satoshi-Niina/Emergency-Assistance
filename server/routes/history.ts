@@ -1256,7 +1256,16 @@ router.put('/update-item/:id', async (req, res) => {
     });
     
     // バックアップを作成（BackupManagerを使用）
+    console.log('🔄 バックアップ作成開始:', {
+      targetFile,
+      exists: fs.existsSync(targetFile),
+      fileSize: fs.existsSync(targetFile) ? fs.statSync(targetFile).size : 'N/A'
+    });
     const backupPath = backupManager.createBackup(targetFile);
+    console.log('💾 バックアップ作成完了:', {
+      backupPath: backupPath || 'バックアップが無効化されています',
+      success: !!backupPath
+    });
     
     // ファイルに上書き保存
     fs.writeFileSync(targetFile, JSON.stringify(updatedJsonData, null, 2), 'utf8');
@@ -1269,7 +1278,8 @@ router.put('/update-item/:id', async (req, res) => {
       message: '履歴ファイルが更新されました',
       updatedFile: path.basename(targetFile),
       updatedData: updatedJsonData,
-      backupFile: path.basename(backupPath)
+      backupFile: backupPath ? path.basename(backupPath) : null,
+      backupPath: backupPath
     });
     
   } catch (error) {
@@ -1305,6 +1315,8 @@ router.get('/export-files', async (req, res) => {
     const files = fs.readdirSync(exportsDir);
     const exportFiles = files
       .filter(file => file.endsWith('.json'))
+      .filter(file => !file.includes('.backup.')) // バックアップファイルを除外
+      .filter(file => !file.startsWith('test-backup-')) // テストファイルを除外
       .map(file => {
         const filePath = path.join(exportsDir, file);
         try {

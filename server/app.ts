@@ -239,9 +239,9 @@ const sessionConfig = {
   resave: true, // セッションを常に保存
   saveUninitialized: false,
   cookie: {
-    secure: isProduction || isReplitEnvironment || isAzureEnvironment, // 本番環境ではtrue
+    secure: (isProduction || isReplitEnvironment || isAzureEnvironment) ? true : false, // 明示的にbooleanに変換
     httpOnly: true,
-    sameSite: isProduction || isReplitEnvironment || isAzureEnvironment ? 'none' : 'lax', // 本番環境ではnone
+    sameSite: (isProduction || isReplitEnvironment || isAzureEnvironment) ? 'none' as const : 'lax' as const,
     maxAge: 1000 * 60 * 60 * 24 * 7, // 7日間
     path: '/',
     domain: undefined // 明示的にundefinedに設定
@@ -350,6 +350,10 @@ app.use('/api/debug', debugRouter);
 app.use('/api/config', configRouter);
 app.use('/api/ingest', ingestRouter);
 app.use('/api/search', searchRouter);
+
+// インタラクティブ診断システム用ルートを追加
+import interactiveDiagnosisRouter from './routes/interactive-diagnosis.js';
+app.use('/api/interactive-diagnosis', interactiveDiagnosisRouter);
 
 // システムチェックAPIエンドポイント
 app.get('/api/db-check', async (req, res) => {

@@ -19,6 +19,7 @@ import { searchTroubleshootingFlows, japaneseGuideTitles } from "../lib/troubles
 import { QAAnswer } from "../lib/qa-flow-manager";
 import TroubleshootingQABubble from "../components/chat/troubleshooting-qa-bubble";
 import SolutionBubble from "../components/chat/solution-bubble";
+import InteractiveDiagnosisChat from "../components/InteractiveDiagnosisChat";
 import { Label } from "@/components/ui/label";
 
 export default function ChatPage() {
@@ -53,6 +54,9 @@ export default function ChatPage() {
   const [currentQuestion, setCurrentQuestion] = useState<string>("");
   const [currentOptions, setCurrentOptions] = useState<string[]>([]);
   
+  // インタラクティブ診断モードの状態管理
+  const [interactiveDiagnosisMode, setInteractiveDiagnosisMode] = useState(false);
+  const [chatMode, setChatMode] = useState<'normal' | 'ai-support' | 'interactive-diagnosis'>('normal');
   // 追加: 機種と機械番号のオートコンプリート状態管理
   const [machineTypes, setMachineTypes] = useState<Array<{id: string, machine_type_name: string}>>([]);
   const [machines, setMachines] = useState<Array<{id: string, machine_number: string}>>([]);
@@ -1768,8 +1772,43 @@ export default function ChatPage() {
           </Button>
         </div>
         
-        {/* 右側：サーバー送信・ローカル保存・クリアボタン */}
+        {/* 右側：モード切り替えとアクションボタン */}
         <div className="flex items-center gap-4">
+          {/* モード切り替えタブ */}
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setChatMode('normal')}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                chatMode === 'normal'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              通常チャット
+            </button>
+            <button
+              onClick={() => setChatMode('ai-support')}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                chatMode === 'ai-support'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              AI支援
+            </button>
+            <button
+              onClick={() => setChatMode('interactive-diagnosis')}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                chatMode === 'interactive-diagnosis'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <Wrench className="w-4 h-4 mr-1 inline" />
+              対話診断
+            </button>
+          </div>
+          
           <Button
             variant="outline"
             size="sm"
@@ -1792,57 +1831,66 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* メッセージ表示エリア */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
-          <div key={message.id} className={`flex ${message.isAiResponse ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-2xl ${message.isAiResponse ? 'w-auto' : 'w-full'}`}>
-              {message.isAiResponse && troubleshootingMode && troubleshootingSession?.currentQuestion === message.content ? (
-                // トラブルシューティングQAバブル
-                <TroubleshootingQABubble
-                  question={message.content}
-                  options={troubleshootingSession?.currentOptions || []}
-                  reasoning={troubleshootingSession?.reasoning}
-                  onAnswer={handleTroubleshootingAnswer}
-                  isLoading={isLoading}
-                />
-              ) : message.isAiResponse && (message.content.includes('解決策') || message.content.includes('緊急対応')) ? (
-                // 解決策バブル
-                <SolutionBubble
-                  solution={message.content}
-                  problemDescription={troubleshootingSession?.problemDescription}
-                  isEmergency={message.content.includes('緊急対応')}
-                />
-              ) : (
-                // 通常のメッセージバブル
-                <MessageBubble message={message} />
-              )}
-            </div>
-          </div>
-        ))}
-        
-
-        
-        {isLoading && (
-          <div className="flex justify-end">
-            <div className="bg-white rounded-lg shadow-sm border p-4">
-              <div className="flex items-center gap-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                <span className="text-gray-600">AIが応答を生成中...</span>
+      {/* メインコンテンツエリア */}
+      {chatMode === 'interactive-diagnosis' ? (
+        /* インタラクティブ診断モード */
+        <div className="flex-1">
+          <InteractiveDiagnosisChat />
+        </div>
+      ) : (
+        /* 通常チャット・AI支援モード */
+        <>
+          {/* メッセージ表示エリア */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {messages.map((message) => (
+              <div key={message.id} className={`flex ${message.isAiResponse ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-2xl ${message.isAiResponse ? 'w-auto' : 'w-full'}`}>
+                  {message.isAiResponse && troubleshootingMode && troubleshootingSession?.currentQuestion === message.content ? (
+                    // トラブルシューティングQAバブル
+                    <TroubleshootingQABubble
+                      question={message.content}
+                      options={troubleshootingSession?.currentOptions || []}
+                      reasoning={troubleshootingSession?.reasoning}
+                      onAnswer={handleTroubleshootingAnswer}
+                      isLoading={isLoading}
+                    />
+                  ) : message.isAiResponse && (message.content.includes('解決策') || message.content.includes('緊急対応')) ? (
+                    // 解決策バブル
+                    <SolutionBubble
+                      solution={message.content}
+                      problemDescription={troubleshootingSession?.problemDescription}
+                      isEmergency={message.content.includes('緊急対応')}
+                    />
+                  ) : (
+                    // 通常のメッセージバブル
+                    <MessageBubble message={message} />
+                  )}
+                </div>
               </div>
-            </div>
-          </div>
-        )}
-      </div>
+            ))}
 
-      {/* メッセージ入力エリア */}
-      <div className="border-t bg-white p-4">
-        <MessageInput
-          onSendMessage={handleSendMessage}
-          isLoading={isLoading}
-          disabled={troubleshootingMode && !troubleshootingSession?.currentQuestion}
-        />
-      </div>
+            {isLoading && (
+              <div className="flex justify-end">
+                <div className="bg-white rounded-lg shadow-sm border p-4">
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <span className="text-gray-600">AIが応答を生成中...</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* メッセージ入力エリア（通常チャット・AI支援モードのみ） */}
+          <div className="border-t bg-white p-4">
+            <MessageInput
+              onSendMessage={handleSendMessage}
+              isLoading={isLoading}
+              disabled={troubleshootingMode && !troubleshootingSession?.currentQuestion}
+            />
+          </div>
+        </>
+      )}
 
       {/* カメラモーダル */}
       <CameraModal />
@@ -1864,8 +1912,8 @@ export default function ChatPage() {
                 onClick={handleExitGuide}
                 className="text-gray-500 hover:text-gray-700"
               >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                一覧に戻る
+                <X className="w-4 h-4 mr-2" />
+                閉じる
               </Button>
             </div>
             
@@ -1887,50 +1935,55 @@ export default function ChatPage() {
             
             {/* ガイド一覧 */}
             {!selectedGuideId && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredGuides.map((guide) => (
-                  <Card
-                    key={guide.id}
-                    className={`cursor-pointer hover:shadow-md transition-shadow ${
-                      selectedGuideId === guide.id ? 'ring-2 ring-blue-500' : ''
-                    }`}
-                    onClick={() => handleSelectGuide(guide.id)}
-                  >
-                    <CardHeader>
-                      <CardTitle className="text-lg">{guide.title}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-gray-600">{guide.description}</p>
-                      {guide.keyword && (
-                        <div className="mt-2">
-                          <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                            {guide.keyword}
-                          </span>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
+              <div className="overflow-auto">
+                <table className="w-full border-collapse border border-gray-300 text-sm">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border border-gray-300 p-3 text-left text-sm font-medium">タイトル</th>
+                      <th className="border border-gray-300 p-3 text-left text-sm font-medium">説明</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredGuides.length === 0 ? (
+                      <tr>
+                        <td colSpan={2} className="border border-gray-300 p-4 text-center text-gray-500">
+                          ガイドが見つかりません
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredGuides.map((guide) => (
+                        <tr 
+                          key={guide.id} 
+                          className={`hover:bg-gray-50 cursor-pointer ${
+                            selectedGuideId === guide.id ? 'bg-blue-50 ring-2 ring-blue-500' : ''
+                          }`}
+                          onClick={() => handleSelectGuide(guide.id)}
+                        >
+                          <td className="border border-gray-300 p-3">
+                            <div className="break-words leading-tight text-sm font-semibold hover:text-blue-600">
+                              {guide.title}
+                            </div>
+                          </td>
+                          <td className="border border-gray-300 p-3">
+                            <div className="break-words leading-tight text-sm text-gray-600">
+                              {guide.description}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             )}
             
             {/* 選択されたガイドの表示 */}
             {selectedGuideId && (
               <div className="mt-6">
-                <div className="flex justify-between items-center mb-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedGuideId(null)}
-                    className="text-gray-600 hover:text-gray-900"
-                  >
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    一覧に戻る
-                  </Button>
-                </div>
                 <EmergencyGuideDisplay
                   guideId={selectedGuideId}
-                  onExit={handleExitGuide}
+                  onExit={() => setSelectedGuideId(null)}
+                  backButtonText="一覧に戻る"
                   onSendToChat={() => {
                     console.log('応急処置ガイドをチャットに送信');
                     setShowEmergencyGuide(false);
