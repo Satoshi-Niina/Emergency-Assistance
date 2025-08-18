@@ -1066,7 +1066,7 @@ export default function ChatPage() {
       if (response.ok) {
         const data = await response.json();
         
-        // AIからの返答をチャットに追加
+        // AIからの返答をチャットに追加（1回だけ）
         if (data.response) {
           sendMessage(data.response, [], true);
         }
@@ -1075,25 +1075,18 @@ export default function ChatPage() {
         setAiSessionData({
           ...aiSessionData,
           step: aiSessionData.step + 1,
-          context: updatedContext,
+          context: [...updatedContext, data.response || ''],
           lastQuestion: data.nextQuestion || aiSessionData.lastQuestion
         });
-
-        // 次の質問がある場合は追加で送信
-        if (data.nextQuestion && data.nextQuestion !== data.response) {
-          setTimeout(() => {
-            sendMessage(data.nextQuestion, [], true);
-          }, 1000);
-        }
 
         // 診断完了の場合
         if (data.completed) {
           setTimeout(() => {
-            const completionMessage = "🎯 **診断完了**\n\n上記の手順で対応してください。問題が解決しない場合は技術サポートにご連絡ください。";
+            const completionMessage = "🎯 診断が完了しました。他にもお困りのことがあれば、お気軽にお尋ねください。";
             sendMessage(completionMessage, [], true);
             setAiSupportMode(false);
             setAiSessionData(null);
-          }, 2000);
+          }, 1500);
         }
       } else {
         throw new Error('AI診断APIの呼び出しに失敗しました');

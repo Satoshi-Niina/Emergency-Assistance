@@ -54,55 +54,53 @@ router.post('/', async (req: Request, res: Response) => {
     if (step === 1) {
       // 初回メッセージの場合
       prompt = `
-鉄道保守用車の故障診断を行います。${machineInfoText}
+あなたは鉄道保守用車の専門技術者です。現場作業員とチャット形式で故障診断をサポートしてください。${machineInfoText}
 
-症状: ${userMessage}
+現場作業員からの報告: ${userMessage}
 
-簡潔に回答してください:
-1. 症状の要約（1行）
-2. 安全確認（必要な場合のみ）
-3. 次の確認事項（1つだけ）
+以下の方針でチャット形式で応答してください：
+- 親しみやすく、現場作業員が理解しやすい言葉遣い
+- 一度に1つだけの質問をする
+- 安全が最優先の場合は、安全確認を最初に行う
+- 番号付きリストや要約形式は使わない
+- 自然な会話形式で応答
 
-回答:`;
+最初の応答:`;
     } else if (step <= 5) {
       // 診断段階
       prompt = `
-故障診断継続中（${step}/5）${machineInfoText}
+あなたは鉄道保守用車の専門技術者です。現場作業員とチャット形式で故障診断を続けています。${machineInfoText}
 
-これまでの確認内容:
+これまでの会話:
 ${conversationHistory}
 
-最新回答: ${userMessage}
+現場作業員の最新回答: ${userMessage}
 
-簡潔に回答してください:
-- 原因が特定できた場合: 応急処置手順（箇条書き）
-- まだ不明な場合: 次の確認事項（1つだけ）
+以下の方針で応答してください：
+- 親しみやすく、現場作業員が理解しやすい言葉遣い
+- 原因が特定できた場合は、簡潔に応急処置を提案
+- まだ不明な場合は、次に確認すべき1つのことだけを聞く
+- 番号付きリストや要約形式は使わない
+- 自然な会話形式で応答
 
-回答:`;
+応答:`;
     } else {
       // 診断完了段階
       prompt = `
-故障診断完了${machineInfoText}
+あなたは鉄道保守用車の専門技術者です。故障診断を完了します。${machineInfoText}
 
-確認した内容:
+これまでの会話:
 ${conversationHistory}
 
-最終回答: ${userMessage}
+現場作業員の最終回答: ${userMessage}
 
-以下の形式で端的に回答してください:
+以下の方針で最終的な応急処置を提案してください：
+- 親しみやすく、現場作業員が理解しやすい言葉遣い
+- 原因を簡潔に説明し、具体的な応急処置手順を提示
+- 安全上の注意点があれば含める
+- 自然な会話形式で応答
 
-**診断結果**
-原因: （1行で）
-
-**応急処置**
-1. （手順1）
-2. （手順2）
-3. （手順3）
-
-**注意事項**
-・（重要な注意点のみ）
-
-回答:`;
+最終応答:`;
     }
 
     // OpenAI APIを呼び出し
@@ -116,7 +114,14 @@ ${conversationHistory}
     let nextQuestion = '';
     let completed = false;
 
-    if (step >= 5 || aiResponse.includes('診断結果') || aiResponse.includes('応急処置手順')) {
+    // 診断完了の判定をより柔軟に
+    if (step >= 6 || 
+        aiResponse.includes('応急処置') && aiResponse.includes('手順') ||
+        aiResponse.includes('対処法') && !aiResponse.includes('?') && !aiResponse.includes('？') ||
+        aiResponse.includes('専門家') && aiResponse.includes('連絡') ||
+        aiResponse.includes('解決') && !aiResponse.includes('質問') ||
+        aiResponse.includes('診断完了') ||
+        aiResponse.includes('技術サポート')) {
       completed = true;
     } else if (aiResponse.includes('?') || aiResponse.includes('？')) {
       // 質問が含まれている場合は次の質問として抽出
