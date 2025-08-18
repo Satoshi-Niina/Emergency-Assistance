@@ -19,7 +19,6 @@ import { searchTroubleshootingFlows, japaneseGuideTitles } from "../lib/troubles
 import { QAAnswer } from "../lib/qa-flow-manager";
 import TroubleshootingQABubble from "../components/chat/troubleshooting-qa-bubble";
 import SolutionBubble from "../components/chat/solution-bubble";
-import InteractiveDiagnosisChat from "../components/InteractiveDiagnosisChat";
 import { Label } from "@/components/ui/label";
 
 export default function ChatPage() {
@@ -46,8 +45,15 @@ export default function ChatPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoadingGuides, setIsLoadingGuides] = useState(false);
 
-  // インタラクティブ診断モードの状態管理
-  const [interactiveDiagnosisMode, setInteractiveDiagnosisMode] = useState(false);
+  // AI支援モードの状態管理
+  const [aiSupportMode, setAiSupportMode] = useState(false);
+  const [aiSessionData, setAiSessionData] = useState<{
+    sessionId: string;
+    step: number;
+    context: string[];
+    lastQuestion: string;
+  } | null>(null);
+  
   // 追加: 機種と機械番号のオートコンプリート状態管理
   const [machineTypes, setMachineTypes] = useState<Array<{id: string, machine_type_name: string}>>([]);
   const [machines, setMachines] = useState<Array<{id: string, machine_number: string}>>([]);
@@ -496,15 +502,27 @@ export default function ChatPage() {
 
   // 追加: Q&Aモードの初期化（動的質問生成システムに変更済み）
 
-  // AI支援開始（インタラクティブ診断モードに変更）
+  // AI支援開始（チャット内一問一答形式）
   const handleStartAiSupport = async () => {
     try {
-      // インタラクティブ診断モードを開始
-      setInteractiveDiagnosisMode(true);
+      setAiSupportMode(true);
+      
+      // AI支援開始メッセージを送信
+      const welcomeMessage = "🤖 **AI故障診断を開始します**\n\n発生している症状を教えてください。";
+      
+      sendMessage(welcomeMessage, [], true);
+      
+      // セッションデータを初期化
+      setAiSessionData({
+        sessionId: `ai_${Date.now()}`,
+        step: 1,
+        context: [],
+        lastQuestion: "発生している症状を教えてください。"
+      });
       
       toast({
         title: "AI支援開始",
-        description: "インタラクティブ故障診断を開始します",
+        description: "チャット内でAI故障診断を開始しました",
       });
     } catch (error) {
       console.error('AI支援開始エラー:', error);
@@ -513,17 +531,22 @@ export default function ChatPage() {
         description: "AI支援の開始に失敗しました",
         variant: "destructive",
       });
-      setInteractiveDiagnosisMode(false);
+      setAiSupportMode(false);
     }
   };
 
-  // AI支援終了（インタラクティブ診断モード終了）
+  // AI支援終了
   const handleAiSupportExit = () => {
-    setInteractiveDiagnosisMode(false);
+    setAiSupportMode(false);
+    setAiSessionData(null);
+    
+    // 終了メッセージを送信
+    const exitMessage = "🤖 **AI診断を終了しました**\n\n診断結果は上記のチャット履歴に保存されています。";
+    sendMessage(exitMessage, [], true);
     
     toast({
       title: "AI支援終了",
-      description: "インタラクティブ故障診断を終了しました",
+      description: "AI故障診断を終了しました",
     });
   };
 
@@ -694,6 +717,10 @@ export default function ChatPage() {
         setMachineNumberInput('');
         setFilteredMachineTypes([]);
         setFilteredMachines([]);
+
+        // AI支援モードもリセット
+        setAiSupportMode(false);
+        setAiSessionData(null);
 
         toast({
           title: "チャットクリア完了",
@@ -988,6 +1015,12 @@ export default function ChatPage() {
   const handleSendMessage = async (content: string, media: any[] = []) => {
     if (!content.trim() && media.length === 0) return;
 
+    // AI支援モードの場合は特別な処理
+    if (aiSupportMode && aiSessionData) {
+      await handleAiSupportMessage(content);
+      return;
+    }
+
     // トラブルシューティングモードの場合は特別な処理
     if (troubleshootingMode && troubleshootingSession) {
       await handleTroubleshootingAnswer(content);
@@ -996,6 +1029,80 @@ export default function ChatPage() {
 
     // 通常のメッセージ送信処理
     sendMessage(content, media, false);
+  };
+
+  // AI支援モードでのメッセージ処理
+  const handleAiSupportMessage = async (userMessage: string) => {
+    if (!aiSessionData) return;
+
+    try {
+      // ユーザーメッセージをチャットに追加
+      sendMessage(userMessage, [], false);
+
+      // コンテキストを更新
+      const updatedContext = [...aiSessionData.context, userMessage];
+      
+      // GPT APIに送信してレスポンスを取得
+      const response = await fetch('/api/ai-diagnosis', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          sessionId: aiSessionData.sessionId,
+          step: aiSessionData.step,
+          userMessage,
+          context: updatedContext,
+          machineInfo: {
+            selectedMachineType,
+            selectedMachineNumber,
+            machineTypeName: machineTypeInput,
+            machineNumber: machineNumberInput
+          }
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        // AIからの返答をチャットに追加
+        if (data.response) {
+          sendMessage(data.response, [], true);
+        }
+
+        // セッションデータを更新
+        setAiSessionData({
+          ...aiSessionData,
+          step: aiSessionData.step + 1,
+          context: updatedContext,
+          lastQuestion: data.nextQuestion || aiSessionData.lastQuestion
+        });
+
+        // 次の質問がある場合は追加で送信
+        if (data.nextQuestion && data.nextQuestion !== data.response) {
+          setTimeout(() => {
+            sendMessage(data.nextQuestion, [], true);
+          }, 1000);
+        }
+
+        // 診断完了の場合
+        if (data.completed) {
+          setTimeout(() => {
+            const completionMessage = "🎯 **診断完了**\n\n上記の手順で対応してください。問題が解決しない場合は技術サポートにご連絡ください。";
+            sendMessage(completionMessage, [], true);
+            setAiSupportMode(false);
+            setAiSessionData(null);
+          }, 2000);
+        }
+      } else {
+        throw new Error('AI診断APIの呼び出しに失敗しました');
+      }
+    } catch (error) {
+      console.error('AI支援メッセージ処理エラー:', error);
+      const errorMessage = "申し訳ございません。エラーが発生しました。もう一度お試しください。";
+      sendMessage(errorMessage, [], true);
+    }
   };
 
   // トラブルシューティングQA開始ボタンの追加
@@ -1012,6 +1119,8 @@ export default function ChatPage() {
       await clearChatHistory();
       setTroubleshootingMode(false);
       setTroubleshootingSession(null);
+      setAiSupportMode(false);
+      setAiSessionData(null);
       toast({
         title: "成功",
         description: "チャット履歴をクリアしました",
@@ -1340,7 +1449,7 @@ export default function ChatPage() {
         {/* 中央：AI支援・カメラ・応急処置ガイドボタン */}
         <div className="flex items-center gap-6">
           {/* AI支援開始/終了ボタン */}
-          {!interactiveDiagnosisMode ? (
+          {!aiSupportMode ? (
             <Button
               variant="outline"
               size="lg"
@@ -1411,66 +1520,57 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* メインコンテンツエリア */}
-      {interactiveDiagnosisMode ? (
-        /* インタラクティブ診断モード */
-        <div className="flex-1">
-          <InteractiveDiagnosisChat />
-        </div>
-      ) : (
-        /* 通常チャットモード */
-        <>
-          {/* メッセージ表示エリア */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((message) => (
-              <div key={message.id} className={`flex ${message.isAiResponse ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-2xl ${message.isAiResponse ? 'w-auto' : 'w-full'}`}>
-                  {message.isAiResponse && troubleshootingMode && troubleshootingSession?.currentQuestion === message.content ? (
-                    // トラブルシューティングQAバブル
-                    <TroubleshootingQABubble
-                      question={message.content}
-                      options={troubleshootingSession?.currentOptions || []}
-                      reasoning={troubleshootingSession?.reasoning}
-                      onAnswer={handleTroubleshootingAnswer}
-                      isLoading={isLoading}
-                    />
-                  ) : message.isAiResponse && (message.content.includes('解決策') || message.content.includes('緊急対応')) ? (
-                    // 解決策バブル
-                    <SolutionBubble
-                      solution={message.content}
-                      problemDescription={troubleshootingSession?.problemDescription}
-                      isEmergency={message.content.includes('緊急対応')}
-                    />
-                  ) : (
-                    // 通常のメッセージバブル
-                    <MessageBubble message={message} />
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {isLoading && (
-              <div className="flex justify-end">
-                <div className="bg-white rounded-lg shadow-sm border p-4">
-                  <div className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                    <span className="text-gray-600">AIが応答を生成中...</span>
-                  </div>
-                </div>
-              </div>
-            )}
+      {/* メインコンテンツエリア - 常にチャット表示 */}
+      {/* メッセージ表示エリア */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.map((message) => (
+          <div key={message.id} className={`flex ${message.isAiResponse ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-2xl ${message.isAiResponse ? 'w-auto' : 'w-full'}`}>
+              {message.isAiResponse && troubleshootingMode && troubleshootingSession?.currentQuestion === message.content ? (
+                // トラブルシューティングQAバブル
+                <TroubleshootingQABubble
+                  question={message.content}
+                  options={troubleshootingSession?.currentOptions || []}
+                  reasoning={troubleshootingSession?.reasoning}
+                  onAnswer={handleTroubleshootingAnswer}
+                  isLoading={isLoading}
+                />
+              ) : message.isAiResponse && (message.content.includes('解決策') || message.content.includes('緊急対応')) ? (
+                // 解決策バブル
+                <SolutionBubble
+                  solution={message.content}
+                  problemDescription={troubleshootingSession?.problemDescription}
+                  isEmergency={message.content.includes('緊急対応')}
+                />
+              ) : (
+                // 通常のメッセージバブル
+                <MessageBubble message={message} />
+              )}
+            </div>
           </div>
+        ))}
 
-          {/* メッセージ入力エリア（通常チャットモード） */}
-          <div className="border-t bg-white p-4">
-            <MessageInput
-              onSendMessage={handleSendMessage}
-              isLoading={isLoading}
-              disabled={troubleshootingMode && !troubleshootingSession?.currentQuestion}
-            />
+        {isLoading && (
+          <div className="flex justify-end">
+            <div className="bg-white rounded-lg shadow-sm border p-4">
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <span className="text-gray-600">AIが応答を生成中...</span>
+              </div>
+            </div>
           </div>
-        </>
-      )}
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* メッセージ入力エリア */}
+      <div className="border-t bg-white p-4">
+        <MessageInput
+          onSendMessage={handleSendMessage}
+          isLoading={isLoading}
+          disabled={troubleshootingMode && !troubleshootingSession?.currentQuestion}
+        />
+      </div>
 
       {/* カメラモーダル */}
       <CameraModal />
