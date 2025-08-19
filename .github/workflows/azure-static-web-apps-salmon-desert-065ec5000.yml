@@ -1,27 +1,28 @@
-name: Azure Static Web Apps CI/CD (Frontend) - Fixed
+name: Frontend Build & Azure Deploy
 
 on:
-  workflow_dispatch: # Manual trigger for testing
+  workflow_dispatch: # Manual trigger
     inputs:
-      force_deploy:
-        description: "Force deploy even if no changes"
+      skip_deploy:
+        description: "Skip deployment (build only)"
         required: false
         default: false
         type: boolean
-  # push:
-  #   branches:
-  #     - main
-  #   paths:
-  #     - "client/**"
-  #     - "shared/**"
+  push:
+    branches:
+      - main
+    paths:
+      - "client/**"
+      - "shared/**"
+      - ".github/workflows/azure-static-web-apps-*"
 
 jobs:
   build_and_deploy_job:
-    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    name: Build and Deploy Frontend Job
+    name: Build and Deploy Frontend
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
           submodules: true
           lfs: false
@@ -30,62 +31,71 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "18"
+          cache: 'npm'
 
-      - name: Install dependencies
+      - name: Install root dependencies
         run: |
+          echo "📦 Installing root dependencies..."
           npm install
+
+      - name: Install shared dependencies
+        run: |
+          echo "📦 Installing shared library dependencies..."
+          cd shared && npm install
+
+      - name: Install client dependencies
+        run: |
+          echo "📦 Installing client dependencies..."
           cd client && npm install
-          cd ../shared && npm install
 
       - name: Build shared library
-        run: cd shared && npm run build
+        run: |
+          echo "🔨 Building shared library..."
+          cd shared && npm run build
 
       - name: Build client
-        run: cd client && npm run build
-        env:
-          VITE_API_BASE_URL: https://emergencyassistance-swa.azurestaticapps.net
-
-      - name: Debug Azure Static Web Apps Configuration
         run: |
-          echo "Repository: ${{ github.repository }}"
-          echo "Branch: ${{ github.ref }}"
-          echo "Event: ${{ github.event_name }}"
-          echo "App Location: ./client"
-          echo "Output Location: dist"
-          echo "API Token exists: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_SALMON_DESERT_065EC5000 != '' }}"
+          echo "🔨 Building client application..."
+          cd client && npm run build
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'https://emergency-backend-api.azurecontainerapps.io' }}
+          NODE_ENV: production
 
-      - name: Build And Deploy
+      - name: Verify build output
+        run: |
+          echo "✅ Build completed successfully!"
+          echo "📁 Client dist contents:"
+          ls -la client/dist/
+          echo "📊 Build size:"
+          du -sh client/dist/
+
+      - name: Deploy to Azure Static Web Apps
         id: builddeploy
+        if: ${{ !inputs.skip_deploy }}
         uses: Azure/static-web-apps-deploy@v1
         continue-on-error: true
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_SALMON_DESERT_065EC5000 }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }} # Used for Github integrations (i.e. PR comments)
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
-          ###### Repository/Build Configurations ######
-          app_location: "./client" # App source code path
-          api_location: "" # Api source code path - empty for client-only
-          output_location: "dist" # Built app content directory
-          ###### End of Repository/Build Configurations ######
+          app_location: "./client"
+          api_location: ""
+          output_location: "dist"
 
-      - name: Show deployment result
+      - name: Deployment Status
         if: always()
         run: |
-          echo "Deployment outcome: ${{ steps.builddeploy.outcome }}"
-          echo "If failed, please check:"
-          echo "1. Azure Static Web App resource exists"
-          echo "2. API token is valid and not expired"
-          echo "3. GitHub repository permissions"
-
-  close_pull_request_job:
-    if: false # Disabled until API key is fixed
-    runs-on: ubuntu-latest
-    name: Close Pull Request Job
-    steps:
-      - name: Close Pull Request
-        id: closepullrequest
-        uses: Azure/static-web-apps-deploy@v1
-        with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_SALMON_DESERT_065EC5000 }}
-          action: "close"
-          app_location: "./client"
+          if [ "${{ steps.builddeploy.outcome }}" = "success" ]; then
+            echo "🚀 Azure deployment successful!"
+          elif [ "${{ steps.builddeploy.outcome }}" = "failure" ]; then
+            echo "⚠️ Azure deployment failed, but build was successful"
+            echo "💡 Check Azure Static Web App configuration:"
+            echo "   1. Resource exists: https://portal.azure.com"
+            echo "   2. API token is valid"
+            echo "   3. Repository permissions"
+          elif [ "${{ inputs.skip_deploy }}" = "true" ]; then
+            echo "⏭️ Deployment skipped by user request"
+          else
+            echo "ℹ️ Deployment was skipped"
+          fi
+          echo "✅ Frontend build completed successfully regardless of deployment status"
