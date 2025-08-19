@@ -32,9 +32,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('🔍 認証状態確認開始');
         setIsLoading(true);
         
-        // プロキシ経由でAPIにアクセス
-        const apiUrl = '/api/auth/me';
+        // Azure Static Web Apps または開発環境でのAPI URL設定
+        const isDevelopment = import.meta.env.DEV;
+        const apiUrl = isDevelopment ? '/api/auth/me' : '/api/auth/me';
         console.log('🔗 認証確認URL:', apiUrl);
+        console.log('🏗️ Environment:', { isDevelopment, mode: import.meta.env.MODE });
 
         const response = await fetch(apiUrl, {
           method: "GET",
@@ -46,7 +48,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         console.log('📡 認証確認レスポンス:', {
           status: response.status,
-          ok: response.ok
+          ok: response.ok,
+          url: response.url
         });
 
         if (response.ok) {
@@ -97,11 +100,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       
-      // 環境変数からAPI URLを取得
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-      const apiUrl = `${apiBaseUrl}/api/auth/login`;
+      // Azure Static Web Apps または開発環境でのAPI URL設定
+      const isDevelopment = import.meta.env.DEV;
+      const apiBaseUrl = isDevelopment 
+        ? (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001')
+        : ''; // Azure Static Web Apps では空文字でAPIを相対パス指定
+        
+      const apiUrl = isDevelopment 
+        ? `${apiBaseUrl}/api/auth/login`
+        : `/api/auth/login`; // Azure Static Web Apps での相対パス
+        
       console.log('🔗 ログインURL:', apiUrl);
       console.log('🌐 API Base URL:', apiBaseUrl);
+      console.log('🏗️ Environment:', { isDevelopment, mode: import.meta.env.MODE });
 
       const response = await fetch(apiUrl, {
         method: "POST",
@@ -114,7 +125,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       console.log('📡 ログインレスポンス:', {
         status: response.status,
-        ok: response.ok
+        ok: response.ok,
+        url: response.url
       });
 
       // レスポンスが200以外の場合はエラーをthrow

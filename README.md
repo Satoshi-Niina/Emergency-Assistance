@@ -1,6 +1,44 @@
 # Emergency Assistance System
 
-応急処置データ管理システム
+Railway Maintenance Emergency Support System - 本番環境対応済み
+
+## 🚀 本番環境デプロイ情報
+
+### 💻 デプロイ状況
+- ✅ **フロントエンド**: Azure Static Web Apps
+- ✅ **API**: Azure Functions（Node.js 18）
+- ✅ **データベース**: PostgreSQL対応
+- ✅ **認証**: bcrypt + フォールバック認証
+- ✅ **CI/CD**: GitHub Actions自動デプロイ
+
+### 🔑 テストアカウント
+| ユーザー名 | パスワード | 役割 | データソース |
+|----------|----------|------|------------|
+| admin | password | 管理者 | DB/フォールバック |
+| employee1 | password | 作業員 | DB/フォールバック |
+| employee2 | password | 作業員 | DB/フォールバック |
+| test | test | 作業員 | フォールバック |
+| demo | demo | 作業員 | フォールバック |
+| user | 123456 | 作業員 | フォールバック |
+
+### 🛠️ API エンドポイント
+- `GET /api/health` - ヘルスチェック
+- `GET /api/debug` - システム状態・デバッグ情報
+- `POST /api/auth/login` - ログイン認証
+- `GET /api/auth/me` - 認証状態確認
+
+### 🏗️ アーキテクチャ
+- **フロントエンド**: React + TypeScript + Vite
+- **API**: Azure Functions + Node.js 18
+- **データベース**: PostgreSQL（環境変数で設定）
+- **認証**: bcrypt + JWT Ready
+- **セキュリティ**: CORS、HTTPS、セキュリティヘッダー
+
+### 🔧 本番環境変数
+```bash
+DATABASE_URL=postgresql://user:pass@host:port/db
+NODE_ENV=production
+```
 
 ## 🚀 開発環境の起動
 

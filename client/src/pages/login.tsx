@@ -171,6 +171,17 @@ export default function Login() {
           </CardContent>
           <CardFooter className="flex flex-col space-y-2 text-center text-sm text-neutral-500 border-t pt-4 mt-2">
             <p>システムにログインしてください</p>
+            <div className="text-xs bg-blue-50 p-3 rounded border">
+              <p className="font-semibold text-blue-700 mb-1">テスト用アカウント:</p>
+              <div className="text-blue-600 space-y-1">
+                <p>admin / password（管理者）</p>
+                <p>employee1 / password（作業員1）</p>
+                <p>employee2 / password（作業員2）</p>
+                <p>test / test（テストユーザー）</p>
+                <p>demo / demo（デモユーザー）</p>
+                <p>user / 123456（一般ユーザー）</p>
+              </div>
+            </div>
           </CardFooter>
         </Card>
       </div>
