@@ -8,7 +8,7 @@ import { processPerplexityRequest } from './lib/perplexity';
 import fs from "fs";
 import path from "path";
 import { db } from './db/index';
-import { emergencyFlows } from './db/schema';
+// import { emergencyFlows } from './db/schema'; // コメントアウト - JSONファイルに移行済み
 import { upload } from './lib/multer-config';
 import { 
   addDocumentToKnowledgeBase, 

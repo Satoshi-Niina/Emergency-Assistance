@@ -22,15 +22,17 @@
     "isolatedModules": true,
     "declaration": true,
     "outDir": "./dist",
-    "rootDir": "./",
-    "baseUrl": "./",
+    "rootDir": "../",
+    "baseUrl": "../",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "shared/*": ["./shared/*"]
     }
   },
   "include": [
     "**/*.ts",
-    "**/*.js"
+    "**/*.js",
+    "../shared/**/*.ts"
   ],
   "exclude": [
     "node_modules",
