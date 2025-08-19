@@ -6,7 +6,9 @@ const isDevelopment = import.meta.env.DEV || window.location.hostname.includes('
 const isReplitEnvironment = window.location.hostname.includes('replit.dev') || window.location.hostname.includes('replit.app');
 
 // Azure環境の検出
-const isAzureEnvironment = window.location.hostname.includes('azurewebsites.net') || window.location.hostname.includes('azure.com');
+const isAzureEnvironment = window.location.hostname.includes('azurewebsites.net') || 
+                          window.location.hostname.includes('azure.com') ||
+                          window.location.hostname.includes('azurestaticapps.net');
 
 // API Base URLの設定
 // 開発環境ではプロキシ経由でアクセス

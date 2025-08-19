@@ -96,14 +96,16 @@ export const login = async (credentials: LoginCredentials) => {
  */
 export const logout = async () => {
   try {
-    const apiBaseUrl = 'http://localhost:3001';
-    const logoutUrl = `${apiBaseUrl}/api/auth/logout`;
+    console.log('🔐 ログアウト試行:', AUTH_API.LOGOUT);
     
-    console.log('🔐 ログアウト試行:', logoutUrl);
-    
-    const response = await fetch(logoutUrl, {
+    const response = await fetch(AUTH_API.LOGOUT, {
       method: 'POST',
       credentials: 'include'
+    });
+    
+    console.log('📡 ログアウトレスポンス:', { 
+      status: response.status, 
+      ok: response.ok 
     });
   } catch (error) {
     console.error('Logout error:', error);

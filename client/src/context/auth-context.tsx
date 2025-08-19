@@ -97,10 +97,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       
-      // API URLを直接指定（開発環境用）
-      const apiBaseUrl = 'http://localhost:3001';
+      // 環境変数からAPI URLを取得
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
       const apiUrl = `${apiBaseUrl}/api/auth/login`;
       console.log('🔗 ログインURL:', apiUrl);
+      console.log('🌐 API Base URL:', apiBaseUrl);
 
       const response = await fetch(apiUrl, {
         method: "POST",

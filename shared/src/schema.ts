@@ -132,6 +132,20 @@ export const insertDocumentSchema = z.object({
     userId: z.string()
 });
 
+// 認証関連のスキーマ
+export const loginCredentialsSchema = z.object({
+    username: z.string(),
+    password: z.string()
+});
+
+// TypeScript型の定義とエクスポート
+export type LoginCredentials = z.infer<typeof loginCredentialsSchema>;
+export type User = z.infer<typeof insertUserSchema>;
+export type Chat = z.infer<typeof insertChatSchema>;
+export type Message = z.infer<typeof insertMessageSchema>;
+export type Media = z.infer<typeof insertMediaSchema>;
+export type Document = z.infer<typeof insertDocumentSchema>;
+
 // スキーマの統合エクスポート
 export const schema = {
     users,
