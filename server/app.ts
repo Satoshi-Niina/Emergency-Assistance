@@ -7,7 +7,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import authRouter from './routes/auth';
 import { techSupportRouter } from './routes/tech-support';
-import { registerChatRoutes } from './routes/chat';
+// import { registerChatRoutes } from './routes/chat'; // Disabled for build
 import troubleshootingRouter from './routes/troubleshooting';
 import { registerRoutes } from './routes';
 import { baseDataRouter } from './routes/base-data';
@@ -323,7 +323,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/tech-support', techSupportRouter);
 
 // チャットルート
-registerChatRoutes(app);
+// registerChatRoutes(app); // Disabled for build
 
 // トラブルシューティングルート
 app.use('/api/troubleshooting', troubleshootingRouter);

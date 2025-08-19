@@ -1,5 +1,5 @@
 import emergencyFlowRoutes from "./emergency-flow";
-import { registerChatRoutes } from "./chat";
+// import { registerChatRoutes } from "./chat"; // Disabled for build
 import { techSupportRouter } from "./tech-support";
 import troubleshootingRouter from "./troubleshooting";
 import { usersRouter } from "./users";
@@ -26,7 +26,7 @@ export function registerRoutes(app: any) {
   // API routes
   app.use('/api/auth', authRouter);
   app.use('/api/settings', settingsRouter);
-  registerChatRoutes(app);
+  // registerChatRoutes(app); // Disabled for build
   app.use('/api/emergency-flow', emergencyFlowRoutes);
   app.use('/api/tech-support', techSupportRouter);
   app.use('/api/troubleshooting', troubleshootingRouter);

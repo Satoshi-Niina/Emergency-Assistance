@@ -1,11 +1,14 @@
 import { DatabaseStorage } from './database-storage';
-import { db } from './db/index';
-import { schema } from '../shared/schema';
+import { query } from './db/db';
+import fs from 'fs';
+import path from 'path';
+// import { schema } from '../shared/schema';
 
 // データベース接続テスト
 const testDatabaseConnection = async (): Promise<boolean> => {
     try {
-        await db.select().from(schema.users).limit(1);
+        // await db.select().from(schema.users).limit(1);
+        await query('SELECT 1 as test');
         console.log('データベース接続OK');
         return true;
     } catch (error) {

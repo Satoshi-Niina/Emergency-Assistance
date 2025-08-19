@@ -7,6 +7,7 @@ GitHub アクションワークフローは作成済みですが、Azure リソ�
 ## GitHub Secrets の設定手順
 
 ### 1. GitHub リポジトリでの設定
+
 1. https://github.com/Satoshi-Niina/Emergency-Assistance にアクセス
 2. "Settings" タブをクリック
 3. 左メニューから "Secrets and variables" > "Actions" を選択
@@ -40,7 +41,9 @@ AZURE_STATIC_WEB_APPS_API_TOKEN_SALMON_DESERT_065EC5000=<Static Web Apps Deploym
 ```
 
 ### 3. API トークンの確認方法
+
 Azure Portal で Static Web App を開き：
+
 1. "Deployment tokens" メニューを選択
 2. トークンが表示されない場合は "Reset token" をクリック
 3. 新しいトークンをコピーして GitHub Secrets に設定
@@ -80,6 +83,7 @@ az containerapp create \
 ### 5. Static Web App の作成
 
 #### Azure CLI での作成方法
+
 ```bash
 # Static Web App の作成
 az staticwebapp create \
@@ -94,6 +98,7 @@ az staticwebapp create \
 ```
 
 #### Azure Portal での作成方法
+
 1. Azure Portal にログイン
 2. "Static Web Apps" サービスを検索
 3. "+ Create" をクリック
@@ -109,7 +114,9 @@ az staticwebapp create \
    - **Output location**: `./client/dist`
 
 #### デプロイメントトークンの取得
+
 作成後、以下の手順でトークンを取得：
+
 1. Azure Portal で作成した Static Web App を開く
 2. 左メニューから "Deployment tokens" を選択
 3. トークンをコピーして GitHub Secrets に設定
@@ -149,18 +156,22 @@ az ad sp create-for-rbac --name "emergency-assistance-sp" --role Contributor --s
 **原因と解決策**:
 
 1. **Static Web App リソースが存在しない**
+
    ```bash
    # Azure CLI で確認
    az staticwebapp list --resource-group emergency-assistance-rg
    ```
+
    リソースが存在しない場合は上記の作成手順を実行
 
 2. **API トークンが無効**
+
    - Azure Portal で Static Web App を開く
    - "Deployment tokens" で新しいトークンを生成
    - GitHub Secrets の `AZURE_STATIC_WEB_APPS_API_TOKEN_SALMON_DESERT_065EC5000` を更新
 
 3. **シークレット名の不一致**
+
    - ワークフローファイルで使用されているシークレット名を確認
    - GitHub Settings > Secrets で同じ名前で設定されているか確認
 
@@ -176,12 +187,14 @@ az ad sp create-for-rbac --name "emergency-assistance-sp" --role Contributor --s
 エラーを即座に解決したい場合：
 
 1. **Static Web Apps ワークフローを完全に無効化**:
+
    ```bash
    # ワークフローファイルの名前を変更して無効化
    mv .github/workflows/azure-static-web-apps-salmon-desert-065ec5000.yml .github/workflows/azure-static-web-apps-salmon-desert-065ec5000.yml.disabled
    ```
 
 2. **手動でビルドをテスト**:
+
    ```bash
    cd client
    npm install

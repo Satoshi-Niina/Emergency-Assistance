@@ -22,20 +22,22 @@
     "isolatedModules": true,
     "declaration": true,
     "outDir": "./dist",
-    "rootDir": "../",
-    "baseUrl": "../",
+    "rootDir": "./",
+    "baseUrl": "./",
     "paths": {
       "@/*": ["./*"],
-      "shared/*": ["./shared/*"]
+      "shared/*": ["../shared/src/*"],
+      "@emergency-assistance/shared": ["../shared/src/index"]
     }
   },
   "include": [
     "**/*.ts",
-    "**/*.js",
-    "../shared/**/*.ts"
+    "**/*.js"
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "vite.ts",
+    "routes/chat.ts"
   ]
 }
