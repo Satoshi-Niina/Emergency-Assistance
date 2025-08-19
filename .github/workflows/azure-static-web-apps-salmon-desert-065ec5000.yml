@@ -1,28 +1,27 @@
-name: Azure Static Web Apps CI/CD (Frontend) - TEMP DISABLED
+name: Azure Static Web Apps CI/CD (Frontend)
 
-# Temporarily disabled due to API key configuration
 on:
-  workflow_dispatch: # Manual trigger only
-  # push:
-  #   branches:
-  #     - main
-  #     - Niina
-  #   paths:
-  #     - "client/**"
-  #     - "shared/**"
-  #     - ".github/workflows/azure-static-web-apps-*"
-  # pull_request:
-  #   types: [opened, synchronize, reopened]
-  #   branches:
-  #     - main
-  #     - Niina
-  #   paths:
-  #     - "client/**"
-  #     - "shared/**"
+  workflow_dispatch: # Manual trigger
+  push:
+    branches:
+      - main
+      - Niina
+    paths:
+      - "client/**"
+      - "shared/**"
+      - ".github/workflows/azure-static-web-apps-*"
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+      - Niina
+    paths:
+      - "client/**"
+      - "shared/**"
 
 jobs:
   build_and_deploy_job:
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
     name: Build and Deploy Frontend Job
     steps:
