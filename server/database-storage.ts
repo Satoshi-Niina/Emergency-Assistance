@@ -258,9 +258,9 @@ export class DatabaseStorage {
     };
     saveChatExport = async (chatId: string, userId: string, timestamp: number): Promise<void> => {
         await db.insert(schema.chatExports).values({
-                            chatId: chatId,
-                            userId: userId,
-                            timestamp: timestamp
+            chatId: chatId,
+            userId: userId,
+            timestamp: new Date(timestamp)
         });
     };
     getLastChatExport = async (chatId: string): Promise<any> => {

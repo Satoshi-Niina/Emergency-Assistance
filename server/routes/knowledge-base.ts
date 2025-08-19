@@ -7,12 +7,17 @@ import {
   getKnowledgeData, 
   deleteKnowledgeData,
   KnowledgeType,
-  searchKnowledgeBase
+  searchKnowledgeBase,
+  loadKnowledgeBaseIndex
 } from '../lib/knowledge-base';
 import fs from 'fs';
 import path from 'path';
 
 const router = express.Router();
+
+// ナレッジベースのパス定義
+const KNOWLEDGE_BASE_DIR = path.join(process.cwd(), 'knowledge-base');
+const INDEX_FILE = path.join(KNOWLEDGE_BASE_DIR, 'index.json');
 
 /**
  * GET /api/knowledge-base

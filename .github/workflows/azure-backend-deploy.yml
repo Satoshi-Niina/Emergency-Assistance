@@ -1,4 +1,4 @@
-name: Backend Build Test (Azure deployment disabled)
+name: Azure Backend Deployment
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
     paths:
       - "server/**"
       - "shared/**"
-      - "Dockerfile"
+      - "Dockerfile.backend"
       - ".github/workflows/azure-backend-deploy.yml"
   pull_request:
     types: [opened, synchronize, reopened]
@@ -18,12 +18,12 @@ on:
     paths:
       - "server/**"
       - "shared/**"
-      - "Dockerfile"
+      - "Dockerfile.backend"
 
 jobs:
-  build-test:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    name: Build and Test Backend
+    name: Build and Deploy Backend to Azure
 
     steps:
       - name: Checkout repository
@@ -43,14 +43,28 @@ jobs:
       - name: Build shared library
         run: cd shared && npm run build
 
-      - name: Build server (test build only)
+      - name: TypeScript compilation check
         run: |
           cd server
           npx tsc --noEmit --skipLibCheck
-          echo "✅ TypeScript compilation test passed!"
+          echo "✅ TypeScript compilation passed!"
 
-      - name: Test Docker build
-        run: |
-          echo "Testing Docker build..."
-          docker build -f Dockerfile.backend -t test-backend:latest .
-          echo "✅ Docker build test passed!"
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Build and deploy Container App to Azure
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          appSourcePath: ${{ github.workspace }}
+          dockerfilePath: Dockerfile.backend
+          acrName: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          acrUsername: ${{ secrets.REGISTRY_USERNAME }}
+          acrPassword: ${{ secrets.REGISTRY_PASSWORD }}
+          containerAppName: emergency-backend-api
+          resourceGroup: ${{ secrets.RESOURCE_GROUP }}
+          environmentVariables: |
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+            AZURE_STORAGE_CONNECTION_STRING=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}

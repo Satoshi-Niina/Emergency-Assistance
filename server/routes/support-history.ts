@@ -7,7 +7,7 @@ import { upload } from '../lib/multer-config';
 import path from 'path';
 import fs from 'fs';
 import PDFDocument from 'pdfkit';
-import Fuse from 'fuse';
+import Fuse from 'fuse.js';
 
 const router = express.Router();
 
@@ -191,7 +191,7 @@ router.get('/', async (req, res) => {
       whereConditions.push(
         and(
           gte(supportHistory.createdAt, searchDate),
-          gte(nextDay, supportHistory.createdAt)
+          gte(supportHistory.createdAt, nextDay)
         )
       );
     }

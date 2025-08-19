@@ -12,7 +12,7 @@ console.log('📂 Working directory:', process.cwd());
 console.log('📂 __dirname:', __dirname);
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = parseInt(process.env.PORT || '3001', 10);
 
 // 基本的なミドルウェア
 app.use(cors({

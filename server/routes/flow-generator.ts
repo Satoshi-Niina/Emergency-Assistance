@@ -366,13 +366,13 @@ ${relatedKnowledgeText}
             // 既存のファイル名と競合しないように確認
             let finalId = flowData.id;
             let counter = 1;
-            while (fs.existsSync(path.join(troubleshootingDir, `${finalId}.json`))) {
+            while (existsSync(path.join(troubleshootingDir, `${finalId}.json`))) {
                 finalId = `${flowData.id}_${counter}`;
                 counter++;
             }
             flowData.id = finalId;
             // フローをファイルに保存
-            fs.writeFileSync(path.join(troubleshootingDir, `${flowData.id}.json`), JSON.stringify(flowData, null, 2));
+            writeFileSync(path.join(troubleshootingDir, `${flowData.id}.json`), JSON.stringify(flowData, null, 2));
             // 生成日時を記録
             flowData.createdAt = new Date().toISOString();
             // 成功レスポンス

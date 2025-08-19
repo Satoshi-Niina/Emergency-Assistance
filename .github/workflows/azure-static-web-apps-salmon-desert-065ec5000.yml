@@ -1,8 +1,22 @@
-name: Azure Static Web Apps CI/CD (Frontend) - DISABLED
+name: Azure Static Web Apps CI/CD (Frontend)
 
-# Temporarily disabled due to API key issues
 on:
-  workflow_dispatch:  # Manual trigger only
+  push:
+    branches:
+      - main
+      - Niina
+    paths:
+      - "client/**"
+      - "shared/**"
+      - ".github/workflows/azure-static-web-apps-*"
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+      - Niina
+    paths:
+      - "client/**"
+      - "shared/**"
 
 jobs:
   build_and_deploy_job:

@@ -1,10 +1,10 @@
-import { createApp } from './app';
+import app from './app';
 import { createServer } from "node:http";
 import { registerRoutes } from './routes';
 import { setupAuth } from './auth';
 
 async function main() {
-  const app = await createApp();
+  // app is already configured, no need to createApp
 
   // Azure Storage統合の初期化
   if (process.env.NODE_ENV === 'production' && process.env.AZURE_STORAGE_CONNECTION_STRING) {
