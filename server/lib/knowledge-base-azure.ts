@@ -1,4 +1,4 @@
-import { azureStorage } from './azure-storage.js';
+import { azureStorage } from './azure-storage';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { fileURLToPath } from 'url';

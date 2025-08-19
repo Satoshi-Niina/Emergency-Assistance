@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { loadRagConfig, updateRagConfig, validateRagConfig, getConfigDiff } from '../services/config-manager.js';
+import { loadRagConfig, updateRagConfig, validateRagConfig, getConfigDiff } from '../services/config-manager';
 
 const router = Router();
 

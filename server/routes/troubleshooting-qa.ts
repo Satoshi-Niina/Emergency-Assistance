@@ -1,5 +1,5 @@
 import express from 'express';
-import { TroubleshootingQA, TroubleshootingAnswer } from '../lib/troubleshooting-qa.js';
+import { TroubleshootingQA, TroubleshootingAnswer } from '../lib/troubleshooting-qa';
 
 const router = express.Router();
 const troubleshootingQA = new TroubleshootingQA();

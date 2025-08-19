@@ -4,7 +4,7 @@ import * as path from 'path';
 import multer from 'multer';
 import AdmZip from 'adm-zip';
 import fetch from 'node-fetch';
-import { log } from '../vite.js';
+import { log } from '../vite';
 
 const router = express.Router();
 // 知識ベースディレクトリの設定 - uploadsフォルダの使用を廃止

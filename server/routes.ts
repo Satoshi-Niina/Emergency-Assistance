@@ -1,43 +1,43 @@
 import type { Express, Request, Response } from "express";
-import { storage } from "./storage.js";
-import { users } from "./db/schema.js";
+import { storage } from './storage';
+import { users } from './db/schema';
 import session from "express-session";
 import MemoryStore from 'memorystore';
-import { processOpenAIRequest } from "./lib/openai.js";
-import { processPerplexityRequest } from "./lib/perplexity.js";
+import { processOpenAIRequest } from './lib/openai';
+import { processPerplexityRequest } from './lib/perplexity';
 import fs from "fs";
 import path from "path";
-import { db } from "./db/index.js";
-import { emergencyFlows } from "./db/schema.js";
-import { upload } from './lib/multer-config.js';
+import { db } from './db/index';
+import { emergencyFlows } from './db/schema';
+import { upload } from './lib/multer-config';
 import { 
   addDocumentToKnowledgeBase, 
   listKnowledgeBaseDocuments, 
   removeDocumentFromKnowledgeBase 
-} from './lib/knowledge-base.js';
-import { techSupportRouter } from './routes/tech-support.js';
-import { registerDataProcessorRoutes } from './routes/data-processor.js';
-import emergencyGuideRouter from './routes/emergency-guide.js';
-import emergencyFlowRoutes from './routes/emergency-flow.js';
-import flowGeneratorRoutes from './routes/flow-generator.js';
-import { registerSyncRoutes } from './routes/sync-routes.js';
-import { usersRouter } from './routes/users.js';
-import troubleshootingRouter from './routes/troubleshooting.js';
-import { supportHistoryRouter } from './routes/support-history.js';
-import maintenanceRouter from './routes/maintenance.js';
+} from './lib/knowledge-base';
+import { techSupportRouter } from './routes/tech-support';
+import { registerDataProcessorRoutes } from './routes/data-processor';
+import emergencyGuideRouter from './routes/emergency-guide';
+import emergencyFlowRoutes from './routes/emergency-flow';
+import flowGeneratorRoutes from './routes/flow-generator';
+import { registerSyncRoutes } from './routes/sync-routes';
+import { usersRouter } from './routes/users';
+import troubleshootingRouter from './routes/troubleshooting';
+import { supportHistoryRouter } from './routes/support-history';
+import maintenanceRouter from './routes/maintenance';
 import express from 'express';
 import { NextFunction } from "connect";
-import authRouter from './routes/auth.js';
+import authRouter from './routes/auth';
 import { fileURLToPath } from 'url';
 import { eq } from 'drizzle-orm';
-import machinesRouter from './routes/machines.js';
-import { historyRouter } from './routes/history.js';
-import { baseDataRouter } from './routes/base-data.js';
-import filesRouter from './routes/files.js';
-import knowledgeBaseRouter from './routes/knowledge-base.js';
-import qaLearningRouter from './routes/qa-learning.js';
-import { registerKnowledgeBaseRoutes } from "./routes/knowledge-base.js";
-import aiDiagnosisRouter from './routes/ai-diagnosis.js';
+import machinesRouter from './routes/machines';
+import { historyRouter } from './routes/history';
+import { baseDataRouter } from './routes/base-data';
+import filesRouter from './routes/files';
+import knowledgeBaseRouter from './routes/knowledge-base';
+import qaLearningRouter from './routes/qa-learning';
+import { registerKnowledgeBaseRoutes } from './routes/knowledge-base';
+import aiDiagnosisRouter from './routes/ai-diagnosis';
 
 // ESM用__dirname定義
 const __filename = fileURLToPath(import.meta.url);

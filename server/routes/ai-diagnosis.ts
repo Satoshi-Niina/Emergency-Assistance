@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { processOpenAIRequest } from '../lib/openai.js';
+import { processOpenAIRequest } from '../lib/openai';
 
 const router = Router();
 

@@ -3,8 +3,8 @@ import multer from 'multer';
 import fs from 'fs';
 import { promises as fsPromises } from 'fs';
 import path from 'path';
-import { loadKnowledgeBaseIndex } from '../lib/knowledge-base.js';
-import { knowledgeBase } from '../knowledge-base-service.js';
+import { loadKnowledgeBaseIndex } from '../lib/knowledge-base';
+import { knowledgeBase } from '../knowledge-base-service';
 
 const router = express.Router();
 

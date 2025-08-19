@@ -1,11 +1,11 @@
 import * as express from 'express';
 import * as path from 'path';
 import { existsSync, writeFileSync, mkdirSync, readdirSync, readFileSync, unlinkSync } from 'fs';
-import { processOpenAIRequest } from '../lib/openai.js';
-import { searchKnowledgeBase } from '../lib/knowledge-base.js';
-import { cleanJsonResponse } from '../lib/json-helper.js';
-// import { db } from '../db/index.js';
-// import { emergencyFlows } from '../db/schema.js';
+import { processOpenAIRequest } from '../lib/openai';
+import { searchKnowledgeBase } from '../lib/knowledge-base';
+import { cleanJsonResponse } from '../lib/json-helper';
+// import { db } from '../db/index';
+// import { emergencyFlows } from '../db/schema';
 
 const router = express.Router();
 // 知識ベースディレクトリ

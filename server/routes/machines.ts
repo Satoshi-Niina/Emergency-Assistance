@@ -1,6 +1,6 @@
 import express from 'express';
-import { db } from '../db/index.js';
-import { machineTypes, machines } from '../db/schema.js';
+import { db } from '../db/index';
+import { machineTypes, machines } from '../db/schema';
 import { eq } from 'drizzle-orm';
 
 const router = express.Router();

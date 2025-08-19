@@ -1,7 +1,7 @@
-import * as schema from "./db/schema.js";
+import * as schema from './db/schema';
 import { eq, like } from "drizzle-orm";
-import { storage } from "./storage.js";
-import { db } from "./db/index.js";
+import { storage } from './storage';
+import { db } from './db/index';
 import session from "express-session";
 import memorystore from "memorystore";
 

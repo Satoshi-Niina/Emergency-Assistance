@@ -1,0 +1,18 @@
+{
+  "name": "emergency-assistance-api",
+  "version": "1.0.0",
+  "description": "Azure Static Web Apps API functions",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "func start",
+    "test": "echo \"No tests available yet\""
+  },
+  "dependencies": {
+    "@azure/functions": "^3.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}

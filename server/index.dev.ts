@@ -54,7 +54,7 @@ if (!process.env.DATABASE_URL) {
 }
 
 // アプリケーションを起動
-import app from './app.js';
+import app from './app';
 
 const PORT = Number(process.env.PORT) || 3001;
 const isDevelopment = process.env.NODE_ENV !== 'production';

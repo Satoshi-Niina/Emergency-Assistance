@@ -1,5 +1,5 @@
 import express from 'express';
-import { upload } from '../lib/multer-config.js';
+import { upload } from '../lib/multer-config';
 import { 
   initializeKnowledgeBase,
   saveKnowledgeData,
@@ -8,7 +8,7 @@ import {
   deleteKnowledgeData,
   KnowledgeType,
   searchKnowledgeBase
-} from '../lib/knowledge-base.js';
+} from '../lib/knowledge-base';
 import fs from 'fs';
 import path from 'path';
 

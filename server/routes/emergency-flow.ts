@@ -1,16 +1,16 @@
 import * as express from 'express';
 import OpenAI from 'openai';
 import { z } from 'zod';
-// import { db } from '../db/index.js';
-// import { emergencyFlows } from '../db/schema.js';
-import { findRelevantImages } from '../utils/image-matcher.js';
+// import { db } from '../db/index';
+// import { emergencyFlows } from '../db/schema';
+import { findRelevantImages } from '../utils/image-matcher';
 import * as fs from 'fs';
 import * as path from 'path';
 // import { eq } from 'drizzle-orm';
 import { validate as validateUUID } from 'uuid';
 import { promises as fsPromises } from 'fs';
-import { upload } from '../utils/image-uploader.js';
-import { validateFlowData, autoFixFlowData } from '../lib/flow-validator.js';
+import { upload } from '../utils/image-uploader';
+import { validateFlowData, autoFixFlowData } from '../lib/flow-validator';
 import * as crypto from 'crypto';
 import { fileURLToPath } from 'url';
 

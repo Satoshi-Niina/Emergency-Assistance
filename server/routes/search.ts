@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { pool } from '../services/db.js';
-import { embedText } from '../services/embedding.js';
-import { loadRagConfig } from '../services/config-manager.js';
+import { pool } from '../services/db';
+import { embedText } from '../services/embedding';
+import { loadRagConfig } from '../services/config-manager';
 
 const router = Router();
 

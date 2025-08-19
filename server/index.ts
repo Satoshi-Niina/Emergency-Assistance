@@ -115,7 +115,7 @@ if (!process.env.DATABASE_URL) {
 console.log("[DEV] Development server starting...");
 
 // app.tsから設定済みのExpressアプリケーションをインポート
-import app from './app.js';
+import app from './app';
 const PORT = Number(process.env.PORT) || 3001;
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
@@ -169,7 +169,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // その他のルートの読み込み
-import { registerRoutes } from './routes/index.js';
+import { registerRoutes } from './routes/index';
 registerRoutes(app);
 
 // 開発環境用のエラーハンドリング

@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { authenticateToken as requireAuth } from '../middleware/auth.js';
-import { processOpenAIRequest } from '../lib/openai.js';
-import { searchKnowledgeBase } from '../lib/knowledge-base.js';
+import { authenticateToken as requireAuth } from '../middleware/auth';
+import { processOpenAIRequest } from '../lib/openai';
+import { searchKnowledgeBase } from '../lib/knowledge-base';
 import fs from 'fs';
 import path from 'path';
 

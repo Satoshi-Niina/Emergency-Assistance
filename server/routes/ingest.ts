@@ -1,10 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
-import { pool } from '../services/db.js';
-import { chunkText } from '../services/chunker.js';
-import { embedTexts } from '../services/embedding.js';
-import { loadRagConfig } from '../services/config-manager.js';
+import { pool } from '../services/db';
+import { chunkText } from '../services/chunker';
+import { embedTexts } from '../services/embedding';
+import { loadRagConfig } from '../services/config-manager';
 
 const router = Router();
 

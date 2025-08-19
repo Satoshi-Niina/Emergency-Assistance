@@ -1,0 +1,112 @@
+# ======================================
+# Backend-only Docker build for Azure Container Apps
+# ======================================
+FROM node:18-alpine AS base
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+
+# Install pnpm for better performance
+RUN corepack enable
+
+# ======================================
+# Dependencies stage
+# ======================================
+FROM base AS deps
+WORKDIR /app
+
+# Copy package manager files
+COPY package*.json ./
+COPY server/package*.json ./server/
+COPY shared/package*.json ./shared/
+
+# Install dependencies
+RUN npm ci --only=production --frozen-lockfile && \
+  npm cache clean --force
+
+# Install server dependencies
+WORKDIR /app/server
+RUN npm ci --only=production --frozen-lockfile && \
+  npm cache clean --force
+
+# Install shared dependencies
+WORKDIR /app/shared
+RUN npm ci --only=production --frozen-lockfile && \
+  npm cache clean --force
+
+# ======================================
+# Builder stage
+# ======================================
+FROM base AS builder
+WORKDIR /app
+
+# Copy package manager files
+COPY package*.json ./
+COPY server/package*.json ./server/
+COPY shared/package*.json ./shared/
+
+# Install all dependencies including devDependencies
+RUN npm ci --frozen-lockfile
+
+# Copy source code
+COPY shared ./shared
+COPY server ./server
+COPY drizzle.config.ts ./
+COPY migrations ./migrations
+
+# Build shared package first
+WORKDIR /app/shared
+RUN npm run build
+
+# Build server
+WORKDIR /app/server
+RUN npm run build
+
+# ======================================
+# Production runner stage
+# ======================================
+FROM base AS runner
+WORKDIR /app
+
+# Create a non-root user for security
+RUN addgroup --system --gid 1001 emergency && \
+  adduser --system --uid 1001 --ingroup emergency emergency
+
+# Copy production dependencies
+COPY --from=deps --chown=emergency:emergency /app/node_modules ./node_modules
+COPY --from=deps --chown=emergency:emergency /app/server/node_modules ./server/node_modules
+COPY --from=deps --chown=emergency:emergency /app/shared/node_modules ./shared/node_modules
+
+# Copy built applications
+COPY --from=builder --chown=emergency:emergency /app/server/dist ./server/dist
+COPY --from=builder --chown=emergency:emergency /app/shared/dist ./shared/dist
+
+# Copy package.json files for runtime
+COPY --chown=emergency:emergency server/package*.json ./server/
+COPY --chown=emergency:emergency shared/package*.json ./shared/
+
+# Copy necessary runtime files
+COPY --chown=emergency:emergency migrations ./migrations
+COPY --chown=emergency:emergency drizzle.config.ts ./
+
+# Set user permissions
+USER emergency
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3001/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"
+
+# Expose port
+EXPOSE 3001
+
+# Set environment variables
+ENV PORT=3001
+ENV NODE_ENV=production
+
+# Set working directory to server
+WORKDIR /app/server
+
+# Start the application
+CMD ["npm", "run", "start:prod"]

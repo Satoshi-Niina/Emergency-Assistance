@@ -1,0 +1,111 @@
+name: Azure Container Apps CI/CD (Backend)
+
+on:
+  push:
+    branches:
+      - main
+      - Niina
+    paths:
+      - "server/**"
+      - "shared/**"
+      - "Dockerfile"
+      - ".github/workflows/azure-backend-deploy.yml"
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+      - Niina
+    paths:
+      - "server/**"
+      - "shared/**"
+      - "Dockerfile"
+
+env:
+  REGISTRY_NAME: emergencyassistance
+  IMAGE_NAME: emergency-backend-api
+  RESOURCE_GROUP: emergency-assistance-rg
+  CONTAINER_APP_NAME: emergency-backend-api
+  CONTAINER_APP_ENV: emergency-assistance-env
+
+jobs:
+  build-and-deploy:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+    runs-on: ubuntu-latest
+    name: Build and Deploy Backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: |
+            server/package-lock.json
+            shared/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm install
+          cd server && npm install
+          cd ../shared && npm install
+
+      - name: Build shared library
+        run: cd shared && npm run build
+
+      - name: Build server
+        run: cd server && npm run build
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Build and push Docker image
+        run: |
+          # Azure Container Registry にログイン
+          az acr login --name ${{ env.REGISTRY_NAME }}
+
+          # Dockerイメージをビルド（backend用Dockerfileを使用）
+          docker build -f Dockerfile.backend -t ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} .
+          docker build -f Dockerfile.backend -t ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest .
+
+          # イメージをプッシュ
+          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+
+      - name: Deploy to Azure Container Apps
+        run: |
+          az containerapp update \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --set-env-vars \
+              NODE_ENV=production \
+              PORT=3001 \
+              DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+              AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
+              AZURE_STORAGE_CONTAINER_NAME="knowledge-base" \
+              OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+              SESSION_SECRET="${{ secrets.SESSION_SECRET }}" \
+              FRONTEND_URL="https://emergencyassistance-swa.azurestaticapps.net" \
+              LOG_LEVEL=info
+
+      - name: Verify deployment
+        run: |
+          # デプロイメントの確認
+          FQDN=$(az containerapp show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query properties.configuration.ingress.fqdn \
+            --output tsv)
+
+          echo "Backend deployed to: https://$FQDN"
+
+          # ヘルスチェック
+          sleep 30
+          curl -f "https://$FQDN/api/health" || exit 1
+
+          echo "✅ Backend deployment successful!"

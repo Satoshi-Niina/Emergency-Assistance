@@ -2,8 +2,8 @@
 import express from 'express';
 import { HistoryService } from '../services/historyService';
 import { z } from 'zod';
-import { db } from '../db/index.js';
-import { historyItems, machineTypes, machines } from '../db/schema.js';
+import { db } from '../db/index';
+import { historyItems, machineTypes, machines } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import fs from 'fs';
 import path from 'path';

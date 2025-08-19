@@ -1,6 +1,6 @@
 import OpenAI from "openai";
-import { db } from "../db/index.js";
-import { images } from "../db/schema.js";
+import { db } from '../db/index';
+import { images } from '../db/schema';
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,

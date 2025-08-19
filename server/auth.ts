@@ -2,7 +2,7 @@ import * as express from 'express';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import * as util from 'util';
-import { storage } from "./storage.js";
+import { storage } from './storage';
 
 const scryptAsync = util.promisify(crypto.scrypt);
 

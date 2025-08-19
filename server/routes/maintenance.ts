@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { promises as fs } from 'fs';
 import path from 'path';
-import { knowledgeBase } from '../knowledge-base-service.js';
+import { knowledgeBase } from '../knowledge-base-service';
 
 const router = Router();
 

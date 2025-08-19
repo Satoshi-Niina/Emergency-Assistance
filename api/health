@@ -1,4 +1,15 @@
-// 既存の app に追加するだけでOK
-app.get("/api/health", (_req, res) => {
-  res.status(200).json({ status: "ok" });
-});
+module.exports = async (context, req) => {
+    context.log('Health check endpoint accessed.');
+
+    context.res = {
+        status: 200,
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: {
+            status: "ok",
+            timestamp: new Date().toISOString(),
+            service: "Emergency Assistance API"
+        }
+    };
+};

@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { HybridSearchService } from './hybrid-search.js';
+import { HybridSearchService } from './hybrid-search';
 
 export interface TroubleshootingStep {
   id: string;

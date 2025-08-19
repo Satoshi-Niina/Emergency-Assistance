@@ -5,7 +5,7 @@ import bcrypt from 'bcrypt';
 import session from 'express-session';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { users } from './db/schema.js';
+import { users } from './db/schema';
 import { eq } from 'drizzle-orm';
 
 const app = express();

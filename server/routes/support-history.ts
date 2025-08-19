@@ -1,13 +1,13 @@
 import express from 'express';
-import { db } from '../db/index.js';
-import { supportHistory, machineTypes, machines } from '../db/schema.js';
+import { db } from '../db/index';
+import { supportHistory, machineTypes, machines } from '../db/schema';
 import { eq, like, and, gte, desc, ilike, or } from 'drizzle-orm';
 import { z } from 'zod';
-import { upload } from '../lib/multer-config.js';
+import { upload } from '../lib/multer-config';
 import path from 'path';
 import fs from 'fs';
 import PDFDocument from 'pdfkit';
-import Fuse from 'fuse.js';
+import Fuse from 'fuse';
 
 const router = express.Router();
 

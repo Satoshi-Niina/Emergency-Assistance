@@ -3,11 +3,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import multer from 'multer';
 import AdmZip from 'adm-zip';
-import { log } from '../vite.js';
+import { log } from '../vite';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { addDocumentToKnowledgeBase, mergeDocumentContent, backupKnowledgeBase, loadKnowledgeBaseIndex } from '../lib/knowledge-base.js';
-import { processDocument } from '../lib/document-processor.js';
+import { addDocumentToKnowledgeBase, mergeDocumentContent, backupKnowledgeBase, loadKnowledgeBaseIndex } from '../lib/knowledge-base';
+import { processDocument } from '../lib/document-processor';
 
 // ESM対応の __dirname
 const __filename = fileURLToPath(import.meta.url);

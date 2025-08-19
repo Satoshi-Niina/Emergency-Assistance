@@ -7,7 +7,7 @@ import crypto from 'crypto';
 // Fuse.jsのインポートを削除（画像検索機能を削除したため）
 import sharp from 'sharp';
 import AdmZip from 'adm-zip';
-import { addDocumentToKnowledgeBase } from '../lib/knowledge-base.js';
+import { addDocumentToKnowledgeBase } from '../lib/knowledge-base';
 
 const router = express.Router();
 

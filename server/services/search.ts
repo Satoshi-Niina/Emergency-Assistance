@@ -2,9 +2,9 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import OpenAI from 'openai';
-import Fuse from 'fuse.js';
-import { db } from '../db/index.js';
-import { messages, chats } from '../db/schema.js';
+import Fuse from 'fuse';
+import { db } from '../db/index';
+import { messages, chats } from '../db/schema';
 import { like } from 'drizzle-orm';
 
 // ESM用__dirname定義

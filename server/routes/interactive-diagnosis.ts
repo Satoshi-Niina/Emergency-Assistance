@@ -5,8 +5,8 @@ import {
   updateDiagnosisState, 
   generateInteractiveResponse,
   InteractiveResponse 
-} from '../lib/interactive-diagnosis.js';
-import { processOpenAIRequest } from '../lib/openai.js';
+} from '../lib/interactive-diagnosis';
+import { processOpenAIRequest } from '../lib/openai';
 
 const router = Router();
 

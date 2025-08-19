@@ -1,6 +1,6 @@
 import 'dotenv/config';
-import { db } from '../db/index.js';
-import { machineTypes, machines, users } from '../db/schema.js';
+import { db } from '../db/index';
+import { machineTypes, machines, users } from '../db/schema';
 import bcrypt from 'bcrypt';
 
 async function insertTestData() {

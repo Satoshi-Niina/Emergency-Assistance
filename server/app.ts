@@ -5,26 +5,26 @@ import cookieParser from 'cookie-parser';
 import { fileURLToPath } from 'url';
 import * as path from 'path';
 import * as fs from 'fs';
-import authRouter from './routes/auth.js';
-import { techSupportRouter } from './routes/tech-support.js';
-import { registerChatRoutes } from './routes/chat.js';
-import troubleshootingRouter from './routes/troubleshooting.js';
-import { registerRoutes } from './routes.js';
-import { baseDataRouter } from './routes/base-data.js';
-import { flowsRouter } from './routes/flows.js';
-import { knowledgeRouter } from './routes/knowledge.js';
-import { historyRouter } from './routes/history.js';
-import emergencyGuideRouter from './routes/emergency-guide.js';
-import { usersRouter } from './routes/users.js';
-import machinesRouter from './routes/machines.js';
-import { registerDataProcessorRoutes } from './routes/data-processor.js';
-import { usersDebugRouter } from './routes/users-debug.js';
-import { debugRouter } from './routes/debug.js';
-import systemCheckRouter from './routes/system-check.js';
-import troubleshootingQARouter from './routes/troubleshooting-qa.js';
-import configRouter from './routes/config.js';
-import ingestRouter from './routes/ingest.js';
-import searchRouter from './routes/search.js';
+import authRouter from './routes/auth';
+import { techSupportRouter } from './routes/tech-support';
+import { registerChatRoutes } from './routes/chat';
+import troubleshootingRouter from './routes/troubleshooting';
+import { registerRoutes } from './routes';
+import { baseDataRouter } from './routes/base-data';
+import { flowsRouter } from './routes/flows';
+import { knowledgeRouter } from './routes/knowledge';
+import { historyRouter } from './routes/history';
+import emergencyGuideRouter from './routes/emergency-guide';
+import { usersRouter } from './routes/users';
+import machinesRouter from './routes/machines';
+import { registerDataProcessorRoutes } from './routes/data-processor';
+import { usersDebugRouter } from './routes/users-debug';
+import { debugRouter } from './routes/debug';
+import systemCheckRouter from './routes/system-check';
+import troubleshootingQARouter from './routes/troubleshooting-qa';
+import configRouter from './routes/config';
+import ingestRouter from './routes/ingest';
+import searchRouter from './routes/search';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -352,7 +352,7 @@ app.use('/api/ingest', ingestRouter);
 app.use('/api/search', searchRouter);
 
 // インタラクティブ診断システム用ルートを追加
-import interactiveDiagnosisRouter from './routes/interactive-diagnosis.js';
+import interactiveDiagnosisRouter from './routes/interactive-diagnosis';
 app.use('/api/interactive-diagnosis', interactiveDiagnosisRouter);
 
 // システムチェックAPIエンドポイント

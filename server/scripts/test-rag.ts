@@ -6,8 +6,8 @@
  */
 
 import { config } from 'dotenv';
-import { loadRagConfig } from '../services/config-manager.js';
-import { health } from '../services/db.js';
+import { loadRagConfig } from '../services/config-manager';
+import { health } from '../services/db';
 
 // 環境変数を読み込み
 config();

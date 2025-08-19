@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
-import { searchKnowledgeBase } from './knowledge-base.js';
-import { SearchService } from '../services/search.js';
+import { searchKnowledgeBase } from './knowledge-base';
+import { SearchService } from '../services/search';
 
 export interface HybridSearchResult {
   query: string;

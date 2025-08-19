@@ -1,7 +1,7 @@
-import { createApp } from "./app.js";
+import { createApp } from './app';
 import { createServer } from "node:http";
-import { registerRoutes } from "./routes.js";
-import { setupAuth } from "./auth.js";
+import { registerRoutes } from './routes';
+import { setupAuth } from './auth';
 
 async function main() {
   const app = await createApp();
