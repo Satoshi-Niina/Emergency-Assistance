@@ -143,20 +143,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // レスポンスが200以外の場合はエラーをthrow
       if (!response.ok) {
-        const errorText = await response.text();
+        let errorText = '';
+        try {
+          errorText = await response.text();
+        } catch (e) {
+          errorText = 'レスポンス読み取りエラー';
+        }
+        
         console.error('❌ ログインAPIエラー:', {
           status: response.status,
           statusText: response.statusText,
-          errorText
+          errorText,
+          url: response.url,
+          headers: Object.fromEntries(response.headers.entries())
         });
         
         let errorMessage = 'ログインに失敗しました';
         if (response.status === 401) {
           errorMessage = 'ユーザー名またはパスワードが違います';
+        } else if (response.status === 404) {
+          errorMessage = 'APIエンドポイントが見つかりません';
         } else if (response.status === 500) {
           errorMessage = 'サーバーエラーが発生しました';
         } else if (response.status === 0 || response.statusText === 'Failed to fetch') {
           errorMessage = 'サーバーに接続できません';
+        } else {
+          errorMessage = `エラー ${response.status}: ${response.statusText}`;
         }
         
         throw new Error(errorMessage);
