@@ -86,6 +86,9 @@ console.log('🔧 app.ts: 環境変数確認:', {
 
 const app = express();
 
+// プロキシ設定 - Azure Container Appsで必要
+app.set('trust proxy', true);
+
 // CORS設定 - セッション維持のため改善
 const isProduction = process.env.NODE_ENV === 'production';
 const isReplitEnvironment = process.env.REPLIT_ENVIRONMENT === 'true' || process.env.REPLIT_ID;
@@ -112,6 +115,13 @@ const getAllowedOrigins = () => {
     'http://127.0.0.1:3001'
   ];
 
+  // 本番環境のAzureドメインは常に許可
+  baseOrigins.push(
+    'https://*.azurestaticapps.net',
+    'https://salmon-desert-065ec5000.1.azurestaticapps.net',
+    'https://emergency-backend-api.azurecontainerapps.io'
+  );
+
   // Replit環境の場合
   if (isReplitEnvironment) {
     baseOrigins.push(
@@ -124,7 +134,10 @@ const getAllowedOrigins = () => {
   if (isAzureEnvironment) {
     baseOrigins.push(
       'https://*.azurewebsites.net',
-      'https://*.azure.com'
+      'https://*.azurestaticapps.net', // Azure Static Web Apps
+      'https://*.azure.com',
+      'https://salmon-desert-065ec5000.1.azurestaticapps.net', // 特定のStatic Web App
+      'https://emergency-backend-api.azurecontainerapps.io' // Container Apps
     );
   }
 
@@ -151,6 +164,7 @@ app.use(cors({
     });
 
     if (isAllowed) {
+      console.log('✅ CORS allowed origin:', origin);
       callback(null, true);
     } else {
       console.log('🚫 CORS blocked origin:', origin);
@@ -247,7 +261,8 @@ const sessionConfig = {
     domain: undefined // 明示的にundefinedに設定
   },
   name: 'emergency-assistance-session', // セッション名を統一
-  rolling: true // セッションを更新するたびに期限を延長
+  rolling: true, // セッションを更新するたびに期限を延長
+  proxy: true // プロキシ経由の場合に必要
 };
 
 console.log('🔧 セッション設定:', {
