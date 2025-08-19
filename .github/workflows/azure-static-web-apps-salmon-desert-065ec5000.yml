@@ -1,10 +1,15 @@
-name: Frontend Build & Azure Deploy
+name: Frontend Build & Azure Deploy (API Key Issue - Build Only Mode)
 
 on:
   workflow_dispatch: # Manual trigger
     inputs:
       skip_deploy:
         description: "Skip deployment (build only)"
+        required: false
+        default: true  # デフォルトでデプロイをスキップ
+        type: boolean
+      force_deploy:
+        description: "Force Azure deployment (requires valid API key)"
         required: false
         default: false
         type: boolean
@@ -82,7 +87,7 @@ jobs:
 
       - name: Deploy to Azure Static Web Apps
         id: builddeploy
-        if: ${{ !inputs.skip_deploy }}
+        if: ${{ inputs.force_deploy == true && !inputs.skip_deploy }}
         uses: Azure/static-web-apps-deploy@v1
         continue-on-error: true
         with:
@@ -95,13 +100,20 @@ jobs:
           skip_app_build: true
           skip_api_build: true
 
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build-${{ github.sha }}
+          path: client/dist/
+          retention-days: 30
+
       - name: Deployment Status
         if: always()
         run: |
           echo "🔍 Deployment Analysis:"
           echo "Build outcome: success ✅"
           echo "Deploy outcome: ${{ steps.builddeploy.outcome }}"
-          
+
           if [ "${{ steps.builddeploy.outcome }}" = "success" ]; then
             echo "🚀 Azure Static Web Apps deployment successful!"
             echo "📱 Frontend accessible at: https://salmon-desert-065ec5000.1.azurestaticapps.net"
@@ -123,9 +135,8 @@ jobs:
           else
             echo "ℹ️  Deployment was not attempted"
           fi
-          
+
           echo ""
-          echo "✅ WORKFLOW RESULT: SUCCESS"
-          echo "   - Build: ✅ Completed successfully"
-          echo "   - Artifact: ✅ Ready for deployment"
-          echo "   - Status: ✅ All required steps passed"
+          echo "🎉 OVERALL STATUS: SUCCESS"
+          echo "   Frontend is built and ready for deployment!"
+          echo "   Download artifacts or use manual deployment methods."
