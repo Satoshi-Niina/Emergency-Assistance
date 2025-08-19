@@ -1,9 +1,20 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
-import { useToast } from '../hooks/use-toast.ts';
-import { apiRequest } from '../lib/queryClient.ts';
+import { useToast } from '../hooks/use-toast';
+import { apiRequest } from '../lib/queryClient';
 import { useQueryClient } from '@tanstack/react-query';
-import { startSpeechRecognition, stopSpeechRecognition, startBrowserSpeechRecognition, stopBrowserSpeechRecognition } from '../lib/azure-speech.ts';
-import { Message } from '@shared/schema';
+import { startSpeechRecognition, stopSpeechRecognition, startBrowserSpeechRecognition, stopBrowserSpeechRecognition } from '../lib/azure-speech';
+
+// ローカルなMessage型定義（既存のコードに合わせる）
+interface Message {
+  id: string | number;
+  chatId: string;
+  content: string;
+  isAiResponse: boolean;
+  senderId?: string;
+  timestamp: Date;
+  text?: string;
+  media?: { type: string, url: string, thumbnail?: string }[];
+}
 
 // 十分な文とみなす最小文字数
 const MIN_TEXT_LENGTH = 5;

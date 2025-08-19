@@ -138,13 +138,13 @@ export const loginCredentialsSchema = z.object({
     password: z.string()
 });
 
-// TypeScript型の定義とエクスポート
+// TypeScript型の定義とエクスポート（データベース用）
 export type LoginCredentials = z.infer<typeof loginCredentialsSchema>;
-export type User = z.infer<typeof insertUserSchema>;
-export type Chat = z.infer<typeof insertChatSchema>;
-export type Message = z.infer<typeof insertMessageSchema>;
-export type Media = z.infer<typeof insertMediaSchema>;
-export type Document = z.infer<typeof insertDocumentSchema>;
+export type DbUser = z.infer<typeof insertUserSchema>;
+export type DbChat = z.infer<typeof insertChatSchema>;
+export type DbMessage = z.infer<typeof insertMessageSchema>;
+export type DbMedia = z.infer<typeof insertMediaSchema>;
+export type DbDocument = z.infer<typeof insertDocumentSchema>;
 
 // スキーマの統合エクスポート
 export const schema = {
