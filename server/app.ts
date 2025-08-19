@@ -137,7 +137,8 @@ const getAllowedOrigins = () => {
       'https://*.azurestaticapps.net', // Azure Static Web Apps
       'https://*.azure.com',
       'https://salmon-desert-065ec5000.1.azurestaticapps.net', // 特定のStatic Web App
-      'https://emergency-backend-api.azurecontainerapps.io' // Container Apps
+      'https://emergency-backend-api.azurecontainerapps.io', // Container Apps
+      'https://emergency-backend-e7enc2e8dhdabucv.japanwest-01.azurewebsites.net' // 実際のAzure WebサイトURL
     );
   }
 
@@ -247,15 +248,17 @@ app.use((req, res, next) => {
   next();
 });
 
-// セッション設定 - 認証維持のため改善
+// セッション設定 - Azure環境でのデバッグを追加
 const sessionConfig = {
   secret: process.env.SESSION_SECRET || 'dev-session-secret-for-development-only',
   resave: true, // セッションを常に保存
   saveUninitialized: false,
   cookie: {
-    secure: (isProduction || isReplitEnvironment || isAzureEnvironment) ? true : false, // 明示的にbooleanに変換
+    // Azure Container Apps では HTTPS が強制されるため、常に secure: true にする
+    secure: isAzureEnvironment ? true : (isProduction || isReplitEnvironment) ? true : false,
     httpOnly: true,
-    sameSite: (isProduction || isReplitEnvironment || isAzureEnvironment) ? 'none' as const : 'lax' as const,
+    // Azure 環境では 'none' を使用し、開発環境では 'lax' を使用
+    sameSite: isAzureEnvironment ? 'none' as const : (isProduction || isReplitEnvironment) ? 'none' as const : 'lax' as const,
     maxAge: 1000 * 60 * 60 * 24 * 7, // 7日間
     path: '/',
     domain: undefined // 明示的にundefinedに設定
@@ -270,7 +273,10 @@ console.log('🔧 セッション設定:', {
   sameSite: sessionConfig.cookie.sameSite,
   isProduction,
   isReplitEnvironment,
-  isAzureEnvironment
+  isAzureEnvironment,
+  nodeEnv: process.env.NODE_ENV,
+  websiteSiteName: process.env.WEBSITE_SITE_NAME,
+  azureEnvironmentVar: process.env.AZURE_ENVIRONMENT
 });
 
 app.use(session(sessionConfig));
@@ -286,7 +292,11 @@ app.use((req, res, next) => {
     method: req.method,
     origin: req.headers.origin,
     host: req.headers.host,
-    referer: req.headers.referer
+    referer: req.headers.referer,
+    userAgent: req.headers['user-agent'],
+    xForwardedProto: req.headers['x-forwarded-proto'],
+    xForwardedFor: req.headers['x-forwarded-for'],
+    sessionData: req.session ? Object.keys(req.session) : 'no session'
   });
   next();
 });
@@ -330,7 +340,58 @@ app.get('/api/history/file', (req, res) => {
 
 // ヘルスチェックAPI
 app.get('/api/health', (req: Request, res: Response) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    environment: {
+      NODE_ENV: process.env.NODE_ENV,
+      isProduction,
+      isAzureEnvironment,
+      isReplitEnvironment
+    },
+    session: {
+      hasSession: !!req.session,
+      sessionId: req.sessionID,
+      isAuthenticated: !!req.session?.userId
+    }
+  });
+});
+
+// Azure デバッグエンドポイント
+app.get('/api/debug/azure', (req: Request, res: Response) => {
+  res.json({
+    environment: {
+      NODE_ENV: process.env.NODE_ENV,
+      WEBSITE_SITE_NAME: process.env.WEBSITE_SITE_NAME,
+      AZURE_ENVIRONMENT: process.env.AZURE_ENVIRONMENT,
+      isAzureEnvironment,
+      isProduction,
+      isReplitEnvironment
+    },
+    headers: {
+      host: req.headers.host,
+      origin: req.headers.origin,
+      referer: req.headers.referer,
+      'user-agent': req.headers['user-agent'],
+      'x-forwarded-proto': req.headers['x-forwarded-proto'],
+      'x-forwarded-for': req.headers['x-forwarded-for']
+    },
+    session: {
+      hasSession: !!req.session,
+      sessionId: req.sessionID,
+      userId: req.session?.userId,
+      isAuthenticated: !!req.session?.userId,
+      cookie: req.headers.cookie ? '[SET]' : '[NOT SET]'
+    },
+    sessionConfig: {
+      secure: sessionConfig.cookie.secure,
+      sameSite: sessionConfig.cookie.sameSite,
+      httpOnly: sessionConfig.cookie.httpOnly,
+      maxAge: sessionConfig.cookie.maxAge,
+      domain: sessionConfig.cookie.domain
+    },
+    timestamp: new Date().toISOString()
+  });
 });
 
 // 認証ルート

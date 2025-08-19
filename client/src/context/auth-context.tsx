@@ -32,13 +32,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('🔍 認証状態確認開始');
         setIsLoading(true);
         
-        // Azure Static Web Apps または開発環境でのAPI URL設定
-        const isDevelopment = import.meta.env.DEV;
-        const apiUrl = isDevelopment ? '/api/auth/me' : '/api/auth/me';
-        console.log('🔗 認証確認URL:', apiUrl);
-        console.log('🏗️ Environment:', { isDevelopment, mode: import.meta.env.MODE });
-
-        const response = await fetch(apiUrl, {
+      // Azure Static Web Apps または開発環境でのAPI URL設定
+      const isDevelopment = import.meta.env.DEV;
+      const isAzureStaticWebApp = window.location.hostname.includes('azurestaticapps.net');
+      const apiUrl = isDevelopment || isAzureStaticWebApp ? '/api/auth/me' : '/api/auth/me';
+      console.log('🔗 認証確認URL:', apiUrl);
+      console.log('🏗️ Environment:', { 
+        isDevelopment, 
+        isAzureStaticWebApp, 
+        mode: import.meta.env.MODE,
+        hostname: window.location.hostname,
+        origin: window.location.origin
+      });        const response = await fetch(apiUrl, {
           method: "GET",
           headers: { 
             "Content-Type": "application/json"
@@ -102,17 +107,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Azure Static Web Apps または開発環境でのAPI URL設定
       const isDevelopment = import.meta.env.DEV;
+      const isAzureStaticWebApp = window.location.hostname.includes('azurestaticapps.net');
       const apiBaseUrl = isDevelopment 
         ? (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001')
         : ''; // Azure Static Web Apps では空文字でAPIを相対パス指定
         
-      const apiUrl = isDevelopment 
+      const apiUrl = isDevelopment && !isAzureStaticWebApp
         ? `${apiBaseUrl}/api/auth/login`
         : `/api/auth/login`; // Azure Static Web Apps での相対パス
         
       console.log('🔗 ログインURL:', apiUrl);
       console.log('🌐 API Base URL:', apiBaseUrl);
-      console.log('🏗️ Environment:', { isDevelopment, mode: import.meta.env.MODE });
+      console.log('🏗️ Environment:', { 
+        isDevelopment, 
+        isAzureStaticWebApp, 
+        mode: import.meta.env.MODE,
+        hostname: window.location.hostname,
+        origin: window.location.origin 
+      });
 
       const response = await fetch(apiUrl, {
         method: "POST",

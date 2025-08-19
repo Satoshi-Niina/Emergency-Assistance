@@ -8,7 +8,8 @@ const isReplitEnvironment = window.location.hostname.includes('replit.dev') || w
 // Azure環境の検出
 const isAzureEnvironment = window.location.hostname.includes('azurewebsites.net') || 
                           window.location.hostname.includes('azure.com') ||
-                          window.location.hostname.includes('azurestaticapps.net');
+                          window.location.hostname.includes('azurestaticapps.net') ||
+                          window.location.hostname.includes('azurecontainerapps.io');
 
 // API Base URLの設定
 // 開発環境ではプロキシ経由でアクセス
@@ -36,6 +37,12 @@ export const API_BASE_URL = (() => {
   // 本番環境の場合
   if (isProduction) {
     if (isAzureEnvironment) {
+      // Azure Static Web Apps の場合は API を相対パスで呼び出す
+      if (window.location.hostname.includes('azurestaticapps.net')) {
+        console.log('✅ Azure Static Web Apps: API を相対パスで呼び出し');
+        return '';
+      }
+      // Azure Container Apps や Web Apps の場合は実際のAPIドメインを使用
       return 'https://emergency-backend-e7enc2e8dhdabucv.japanwest-01.azurewebsites.net';
     }
     if (isReplitEnvironment) {
