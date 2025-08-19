@@ -1,0 +1,61 @@
+name: Frontend Build Test
+
+on:
+  workflow_dispatch: # Manual trigger
+  push:
+    branches:
+      - main
+    paths:
+      - "client/**"
+      - "shared/**"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Test Frontend Build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: |
+          echo "Installing root dependencies..."
+          npm install
+          echo "Installing shared dependencies..."
+          cd shared && npm install
+          echo "Installing client dependencies..."
+          cd ../client && npm install
+
+      - name: Build shared library
+        run: |
+          echo "Building shared library..."
+          cd shared && npm run build
+
+      - name: Build client
+        run: |
+          echo "Building client..."
+          cd client && npm run build
+        env:
+          VITE_API_BASE_URL: https://emergency-backend-api.azurecontainerapps.io
+          NODE_ENV: production
+
+      - name: Check build output
+        run: |
+          echo "Build completed successfully!"
+          echo "Client dist folder contents:"
+          ls -la client/dist/
+          echo "Build size:"
+          du -sh client/dist/
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: client/dist/
+          retention-days: 7

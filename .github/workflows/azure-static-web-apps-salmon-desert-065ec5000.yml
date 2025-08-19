@@ -1,20 +1,16 @@
-name: Azure Static Web Apps CI/CD (Frontend) - API Key Fix Required
+name: Azure Static Web Apps CI/CD (Frontend) - Fixed
 
 on:
-  workflow_dispatch: # Manual trigger only until API key is fixed
+  workflow_dispatch: # Manual trigger for testing
+    inputs:
+      force_deploy:
+        description: "Force deploy even if no changes"
+        required: false
+        default: false
+        type: boolean
   # push:
   #   branches:
   #     - main
-  #     - Niina
-  #   paths:
-  #     - "client/**"
-  #     - "shared/**"
-  #     - ".github/workflows/azure-static-web-apps-*"
-  # pull_request:
-  #   types: [opened, synchronize, reopened]
-  #   branches:
-  #     - main
-  #     - Niina
   #   paths:
   #     - "client/**"
   #     - "shared/**"
