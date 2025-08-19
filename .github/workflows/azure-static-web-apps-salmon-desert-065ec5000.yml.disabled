@@ -1,0 +1,77 @@
+name: Azure Static Web Apps CI/CD (Frontend) - TEMP DISABLED
+
+# Temporarily disabled due to API key configuration
+on:
+  workflow_dispatch: # Manual trigger only
+  # push:
+  #   branches:
+  #     - main
+  #     - Niina
+  #   paths:
+  #     - "client/**"
+  #     - "shared/**"
+  #     - ".github/workflows/azure-static-web-apps-*"
+  # pull_request:
+  #   types: [opened, synchronize, reopened]
+  #   branches:
+  #     - main
+  #     - Niina
+  #   paths:
+  #     - "client/**"
+  #     - "shared/**"
+
+jobs:
+  build_and_deploy_job:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+    runs-on: ubuntu-latest
+    name: Build and Deploy Frontend Job
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          lfs: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install dependencies
+        run: |
+          npm install
+          cd client && npm install
+          cd ../shared && npm install
+
+      - name: Build shared library
+        run: cd shared && npm run build
+
+      - name: Build client
+        run: cd client && npm run build
+        env:
+          VITE_API_BASE_URL: https://emergencyassistance-swa.azurestaticapps.net
+
+      - name: Build And Deploy
+        id: builddeploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_SALMON_DESERT_065EC5000 }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }} # Used for Github integrations (i.e. PR comments)
+          action: "upload"
+          ###### Repository/Build Configurations ######
+          app_location: "./client" # App source code path
+          api_location: "./api" # Api source code path
+          output_location: "dist" # Built app content directory
+          ###### End of Repository/Build Configurations ######
+
+  close_pull_request_job:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    name: Close Pull Request Job
+    steps:
+      - name: Close Pull Request
+        id: closepullrequest
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_SALMON_DESERT_065EC5000 }}
+          action: "close"
+          app_location: "./client"
