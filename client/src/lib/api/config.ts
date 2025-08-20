@@ -43,7 +43,7 @@ export const API_BASE_URL = (() => {
         return '';
       }
       // Azure Container Apps や Web Apps の場合は実際のAPIドメインを使用
-      return 'https://emergency-backend-api-efg6gaawcjdmaggy.japanwest-01.azurewebsites.net';
+      return 'https://emergency-backend-app.azurewebsites.net';
     }
     if (isReplitEnvironment) {
       return `${window.location.protocol}//${window.location.hostname.split(':')[0]}:3000`;
