@@ -124,10 +124,10 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
           app_location: "./client/dist"
-          api_location: ""
+          api_location: "./api"
           output_location: ""
           skip_app_build: true
-          skip_api_build: true
+          skip_api_build: false
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
