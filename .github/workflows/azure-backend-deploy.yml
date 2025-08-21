@@ -44,7 +44,12 @@ jobs:
         run: |
           cd ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
           echo "Installing dependencies..."
-          npm ci --only=production
+          # package-lock.jsonがない場合はnpm installを使用
+          if [ -f "package-lock.json" ]; then
+            npm ci --omit=dev
+          else
+            npm install --omit=dev
+          fi
           echo "✅ Dependencies installed"
 
       - name: 🔨 Build application (if needed)
