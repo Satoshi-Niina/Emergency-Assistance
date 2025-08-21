@@ -12,7 +12,7 @@ const isAzureEnvironment = window.location.hostname.includes('azurewebsites.net'
                           window.location.hostname.includes('azurecontainerapps.io');
 
 // API Base URLの設定
-// 開発環境ではプロキシ経由でアクセス
+// Azure Static Web Apps環境では内部API Functionsを使用
 export const API_BASE_URL = (() => {
   console.log('🔍 環境変数確認:', {
     VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
@@ -28,6 +28,12 @@ export const API_BASE_URL = (() => {
     return ''; // 空文字列で相対パスを使用
   }
   
+  // Azure Static Web Apps の場合は内部API Functionsを使用
+  if (window.location.hostname.includes('azurestaticapps.net')) {
+    console.log('✅ Azure Static Web Apps: 内部API Functionsを使用');
+    return window.location.origin; // 同じドメインのAPI Functionsを使用
+  }
+  
   // 環境変数が設定されている場合は優先使用
   if (import.meta.env.VITE_API_BASE_URL && import.meta.env.VITE_API_BASE_URL.trim() !== '') {
     console.log('✅ 環境変数からAPI_BASE_URLを取得:', import.meta.env.VITE_API_BASE_URL);
@@ -37,12 +43,7 @@ export const API_BASE_URL = (() => {
   // 本番環境の場合
   if (isProduction) {
     if (isAzureEnvironment) {
-      // Azure Static Web Apps の場合は外部のバックエンドAPIを使用
-      if (window.location.hostname.includes('azurestaticapps.net')) {
-        console.log('✅ Azure Static Web Apps: 外部バックエンドAPIを使用');
-        return 'https://emergency-backend-app.azurewebsites.net';
-      }
-      // Azure Container Apps や Web Apps の場合は実際のAPIドメインを使用
+      // その他のAzure環境の場合は外部バックエンドAPIを使用
       return 'https://emergency-backend-app.azurewebsites.net';
     }
     if (isReplitEnvironment) {
@@ -53,8 +54,8 @@ export const API_BASE_URL = (() => {
   }
   
   // デフォルト
-  console.log('⚠️ デフォルト値を使用: バックエンドAPIを直接指定');
-  return 'https://emergency-backend-app.azurewebsites.net';
+  console.log('⚠️ デフォルト値を使用: 内部API Functionsを使用');
+  return window.location.origin;
 })();
 
 console.log('🔧 API設定詳細:', {
@@ -130,7 +131,7 @@ export const AUTH_API = {
 
 // ナレッジベースAPIエンドポイント
 export const KNOWLEDGE_API = {
-  BASE: buildApiUrl('/api/knowledge'),
+  BASE: buildApiUrl('/api/knowledge-base'), // 新しいAPI Function
   GPT_DATA: buildApiUrl('/api/knowledge/gpt/data'),
   FUSE_IMAGES: buildApiUrl('/api/knowledge/fuse/images'),
   TROUBLESHOOTING_FLOWS: buildApiUrl('/api/knowledge/troubleshooting/flows'),
@@ -140,16 +141,16 @@ export const KNOWLEDGE_API = {
 
 // チャットAPIエンドポイント
 export const CHAT_API = {
-  CHATGPT: buildApiUrl('/api/chatgpt'),
+  CHATGPT: buildApiUrl('/api/chat'), // 新しいAPI Function
   HEALTH: buildApiUrl('/api/health'),
-  CHAT: buildApiUrl('/api/chat'),
+  CHAT: buildApiUrl('/api/chat'), // 新しいAPI Function
 };
 
 // 機種データAPIエンドポイント
 export const MACHINE_API = {
-  MACHINE_TYPES: buildApiUrl('/api/machines/machine-types'),
-  ALL_MACHINES: buildApiUrl('/api/machines/all-machines'),
-  MACHINE_DETAIL: (id: string) => buildApiUrl(`/api/machines/${id}`),
+  MACHINE_TYPES: buildApiUrl('/api/vehicles'), // 新しいAPI Function
+  ALL_MACHINES: buildApiUrl('/api/vehicles'), // 新しいAPI Function
+  MACHINE_DETAIL: (id: string) => buildApiUrl(`/api/vehicles?id=${id}`), // 新しいAPI Function
 };
 
 // ユーザー管理APIエンドポイント
@@ -186,7 +187,7 @@ export const API_REQUEST_OPTIONS = {
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'Cache-Control': 'no-cache',
     'X-Requested-With': 'XMLHttpRequest'
+    // 'Cache-Control' ヘッダーを削除してCORSエラーを回避
   }
 };

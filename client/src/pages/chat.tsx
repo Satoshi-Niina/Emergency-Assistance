@@ -231,13 +231,8 @@ export default function ChatPage() {
       console.log('🔍 現在のURL:', window.location.href);
       
       const response = await fetch(apiUrl, {
-        ...API_REQUEST_OPTIONS,
-        headers: {
-          ...API_REQUEST_OPTIONS.headers,
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
+        ...API_REQUEST_OPTIONS
+        // CORSエラーを避けるためキャッシュ関連ヘッダーを削除
       });
       console.log('🔍 機種一覧取得レスポンスステータス:', response.status);
       console.log('🔍 機種一覧取得レスポンスヘッダー:', Object.fromEntries(response.headers.entries()));
@@ -370,12 +365,8 @@ export default function ChatPage() {
       console.log('🔍 機械番号一覧取得URL:', apiUrl);
       
       const response = await fetch(apiUrl, {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        },
-        credentials: 'include' // セッション維持のため
+        ...API_REQUEST_OPTIONS
+        // CORSエラーを避けるためキャッシュ関連ヘッダーを削除
       });
       console.log('🔍 機械番号一覧取得レスポンスステータス:', response.status);
       
