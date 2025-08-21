@@ -89,7 +89,7 @@ app.post('/api/auth/login', async (req, res) => {
         console.log('🔍 Checking database for user:', username);
         
         // Add query timeout to prevent hanging
-        const query = 'SELECT id, username, password_hash, role, display_name, department FROM users WHERE username = $1';
+        const query = 'SELECT id, username, password, role, display_name, department FROM users WHERE username = $1';
         const queryPromise = dbClient.query(query, [username]);
         const timeoutPromise = new Promise((_, reject) => {
           setTimeout(() => reject(new Error('Database query timeout')), 5000); // 5 second timeout
@@ -103,12 +103,12 @@ app.post('/api/auth/login', async (req, res) => {
             id: dbUser.id,
             username: dbUser.username,
             role: dbUser.role,
-            hasPasswordHash: !!dbUser.password_hash
+            hasPasswordHash: !!dbUser.password
           });
           
           // Verify password
-          if (dbUser.password_hash) {
-            isValidLogin = await bcrypt.compare(password, dbUser.password_hash);
+          if (dbUser.password) {
+            isValidLogin = await bcrypt.compare(password, dbUser.password);
           }
           
           if (isValidLogin) {
