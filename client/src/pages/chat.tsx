@@ -19,6 +19,16 @@ import { searchTroubleshootingFlows, japaneseGuideTitles } from "../lib/troubles
 import { QAAnswer } from "../lib/qa-flow-manager";
 import TroubleshootingQABubble from "../components/chat/troubleshooting-qa-bubble";
 import SolutionBubble from "../components/chat/solution-bubble";
+
+// API URL構築ヘルパー関数
+const buildApiUrl = (endpoint: string): string => {
+  const isAzureStaticWebApp = window.location.hostname.includes('azurestaticapps.net');
+  const apiBaseUrl = isAzureStaticWebApp 
+    ? 'https://emergency-backend-app.azurewebsites.net'
+    : (import.meta.env.VITE_API_BASE_URL || '');
+  
+  return `${apiBaseUrl}${endpoint}`;
+};
 import { Label } from "@/components/ui/label";
 
 export default function ChatPage() {
@@ -213,8 +223,8 @@ export default function ChatPage() {
       setIsLoadingMachineTypes(true);
       console.log('🔍 機種一覧取得開始');
       
-      // プロキシ経由でアクセス（相対パスを使用）
-      const apiUrl = `/api/machines/machine-types`;
+      // Azure Static Web Apps環境では外部APIを直接呼び出し
+      const apiUrl = buildApiUrl('/api/machines/machine-types');
       console.log('🔍 機種一覧取得URL:', apiUrl);
       console.log('🔍 現在のURL:', window.location.href);
       

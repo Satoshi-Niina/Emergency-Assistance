@@ -65,6 +65,9 @@ app.get('/api/health', (req, res) => {
 
 // Database-enabled login endpoint
 app.post('/api/auth/login', async (req, res) => {
+  // Set request timeout to 30 seconds
+  req.setTimeout(30000);
+  
   try {
     console.log('Login request received:', req.body);
     
@@ -80,12 +83,19 @@ app.post('/api/auth/login', async (req, res) => {
     let user = null;
     let isValidLogin = false;
 
-    // Try database authentication first
+    // Try database authentication first with timeout
     if (dbClient) {
       try {
         console.log('🔍 Checking database for user:', username);
+        
+        // Add query timeout to prevent hanging
         const query = 'SELECT id, username, password_hash, role, display_name, department FROM users WHERE username = $1';
-        const result = await dbClient.query(query, [username]);
+        const queryPromise = dbClient.query(query, [username]);
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Database query timeout')), 5000); // 5 second timeout
+        });
+        
+        const result = await Promise.race([queryPromise, timeoutPromise]);
         
         if (result.rows.length > 0) {
           const dbUser = result.rows[0];
@@ -114,7 +124,8 @@ app.post('/api/auth/login', async (req, res) => {
           console.log('👤 User not found in database:', username);
         }
       } catch (dbError) {
-        console.error('❌ Database query error:', dbError);
+        console.error('❌ Database query error:', dbError.message);
+        console.log('🔄 Will fallback to hardcoded authentication');
       }
     }
 
@@ -182,6 +193,136 @@ app.post('/api/auth/login', async (req, res) => {
       message: 'Internal server error'
     });
   }
+});
+
+// Machine types endpoint
+app.get('/api/machines/machine-types', (req, res) => {
+  console.log('Machine types request received');
+  
+  // Sample machine types data
+  const machineTypes = [
+    {
+      id: '001',
+      name: '新幹線E5系',
+      category: '新幹線',
+      description: '東北新幹線の主力車両',
+      specifications: {
+        maxSpeed: '320km/h',
+        capacity: '731席',
+        powerSystem: '交流25kV'
+      }
+    },
+    {
+      id: '002', 
+      name: '新幹線N700S',
+      category: '新幹線',
+      description: '東海道新幹線の最新車両',
+      specifications: {
+        maxSpeed: '320km/h',
+        capacity: '1323席',
+        powerSystem: '交流25kV'
+      }
+    },
+    {
+      id: '003',
+      name: 'E233系',
+      category: '通勤電車',
+      description: '首都圏の主力通勤電車',
+      specifications: {
+        maxSpeed: '120km/h',
+        capacity: '1447名',
+        powerSystem: '直流1500V'
+      }
+    },
+    {
+      id: '004',
+      name: 'EF66形',
+      category: '機関車',
+      description: '貨物列車用電気機関車',
+      specifications: {
+        maxSpeed: '110km/h',
+        power: '3900kW',
+        powerSystem: '直流1500V'
+      }
+    },
+    {
+      id: '005',
+      name: 'キハE200系',
+      category: 'ディーゼル車',
+      description: 'ハイブリッド気動車',
+      specifications: {
+        maxSpeed: '100km/h',
+        capacity: '134名',
+        fuelType: 'ディーゼル+蓄電池'
+      }
+    }
+  ];
+  
+  res.json({
+    success: true,
+    data: machineTypes,
+    count: machineTypes.length
+  });
+});
+
+// Knowledge base endpoint for troubleshooting
+app.get('/api/knowledge/troubleshooting/:machineId', (req, res) => {
+  console.log('Troubleshooting knowledge request for machine:', req.params.machineId);
+  
+  const troubleshootingData = {
+    machineId: req.params.machineId,
+    commonIssues: [
+      {
+        issue: 'モーター異音',
+        severity: 'medium',
+        solution: 'モーターベアリングの点検・交換を実施してください。',
+        steps: [
+          '電源を切断する',
+          'モーターカバーを取り外す',
+          'ベアリングの状態を確認する',
+          '必要に応じてベアリング交換',
+          '動作確認を行う'
+        ]
+      },
+      {
+        issue: 'ブレーキ性能低下',
+        severity: 'high',
+        solution: 'ブレーキパッドとディスクの点検・交換が必要です。',
+        steps: [
+          '車両を安全な場所に停車',
+          'ブレーキパッドの厚さを測定',
+          'ディスクの摩耗状況を確認',
+          'パッド交換またはディスク研磨',
+          '制動試験の実施'
+        ]
+      }
+    ]
+  };
+  
+  res.json({
+    success: true,
+    data: troubleshootingData
+  });
+});
+
+// Chat endpoint for AI assistance
+app.post('/api/chat', async (req, res) => {
+  console.log('Chat request received:', req.body);
+  
+  const { message, machineType, context } = req.body;
+  
+  // Simulate AI response based on machine type and message
+  const aiResponse = {
+    response: `${machineType}に関するお問い合わせですね。「${message}」について回答いたします。\n\n現在の症状から判断すると、以下の対応をお勧めします：\n\n1. 基本点検の実施\n2. 関連部品の確認\n3. 必要に応じた部品交換\n\n詳細な手順については、保守マニュアルをご確認ください。`,
+    confidence: 0.85,
+    relatedTopics: ['定期点検', '部品交換', '安全確認'],
+    timestamp: new Date().toISOString()
+  };
+  
+  res.json({
+    success: true,
+    data: aiResponse
+  });
 });
 
 // User info endpoint
