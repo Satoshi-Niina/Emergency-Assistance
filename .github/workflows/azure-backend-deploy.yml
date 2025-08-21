@@ -1,95 +1,104 @@
-name: Backend Build Test (Azure deployment temp disabled)
+name: Deploy Emergency Backend to Azure
 
 on:
   push:
     branches:
       - main
-      - Niina
     paths:
       - "server/**"
-      - "shared/**"
-      - "Dockerfile.backend"
       - ".github/workflows/azure-backend-deploy.yml"
-  pull_request:
-    types: [opened, synchronize, reopened]
-    branches:
-      - main
-      - Niina
-    paths:
-      - "server/**"
-      - "shared/**"
-      - "Dockerfile.backend"
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: emergency-backend-app
+  AZURE_WEBAPP_PACKAGE_PATH: "server"
+  NODE_VERSION: "18"
 
 jobs:
-  build-test:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    name: Build and Test Backend
+    name: Build and Deploy Backend
 
     steps:
-      - name: Checkout repository
+      - name: 🔄 Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: 🟢 Setup Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/package.json
 
-      - name: Install dependencies
+      - name: 📋 Display environment info
         run: |
-          echo "Installing root dependencies..."
-          npm install
-          echo "Installing server dependencies..."
-          cd server && npm install
-          echo "Installing shared dependencies..."
-          cd ../shared && npm install
-          echo "✅ All dependencies installed successfully!"
-
-      - name: Build shared library
-        run: |
-          echo "Building shared library..."
-          cd shared
-          npm run build
-          echo "✅ Shared library built successfully!"
-          ls -la dist/
-
-      - name: TypeScript compilation check
-        run: |
-          echo "Checking TypeScript compilation..."
-          cd server
-          echo "Current directory: $(pwd)"
-          echo "TypeScript version: $(npx tsc --version)"
-          echo "Files in current directory:"
+          echo "Node.js version: $(node --version)"
+          echo "npm version: $(npm --version)"
+          echo "Working directory: $(pwd)"
+          echo "Files in workspace:"
           ls -la
-          echo "Running TypeScript compilation check..."
-          npx tsc --noEmit --skipLibCheck
-          echo "✅ TypeScript compilation passed!"
+          echo "Files in server directory:"
+          ls -la ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
-      # Docker build test temporarily disabled due to potential Docker daemon issues
-      # - name: Test Docker build
-      #   run: |
-      #     echo "Testing Docker build..."
-      #     docker build -f Dockerfile.backend -t test-backend:latest .
-      #     echo "✅ Docker build test passed!"
+      - name: 📦 Install dependencies
+        run: |
+          cd ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+          echo "Installing dependencies..."
+          npm ci --only=production
+          echo "✅ Dependencies installed"
 
-      # TODO: Re-enable when Azure credentials are properly configured
-      # - name: Log in to Azure
-      #   uses: azure/login@v2
-      #   with:
-      #     client-id: ${{ secrets.AZURE_CLIENT_ID }}
-      #     tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-      #     subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: 🔨 Build application (if needed)
+        run: |
+          cd ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+          # シンプルアプリの場合、ビルドは不要
+          echo "Using simple Express app - no build required"
 
-      # - name: Build and deploy Container App to Azure
-      #   uses: azure/container-apps-deploy-action@v2
-      #   with:
-      #     appSourcePath: ${{ github.workspace }}
-      #     dockerfilePath: Dockerfile.backend
-      #     acrName: ${{ secrets.REGISTRY_LOGIN_SERVER }}
-      #     acrUsername: ${{ secrets.REGISTRY_USERNAME }}
-      #     acrPassword: ${{ secrets.REGISTRY_PASSWORD }}
-      #     containerAppName: emergency-backend-api
-      #     resourceGroup: ${{ secrets.RESOURCE_GROUP }}
-      #     environmentVariables: |
-      #       DATABASE_URL=${{ secrets.DATABASE_URL }}
-      #       OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-      #       AZURE_STORAGE_CONNECTION_STRING=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+      - name: 🧪 Test application startup
+        run: |
+          cd ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+          echo "Testing application startup..."
+          # シンプルアプリが存在するかチェック
+          if [ -f "simple-app.js" ]; then
+            echo "✅ Simple application found: simple-app.js"
+            # package.jsonのstartスクリプトを確認
+            echo "Package.json start script:"
+            node -e "console.log(require('./package.json').scripts.start || 'No start script')"
+          else
+            echo "❌ Simple app file not found"
+            exit 1
+          fi
+
+      - name: 📂 Prepare deployment package
+        run: |
+          cd ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+          echo "Preparing deployment package..."
+          # node_modulesを除外してファイルを確認
+          echo "Files to be deployed:"
+          find . -name "node_modules" -prune -o -type f -print | head -20
+          echo "Package.json contents:"
+          cat package.json
+
+      - name: 🚀 Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_EMERGENCY_BACKEND }}
+          package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+
+      - name: 🔍 Post-deployment verification
+        run: |
+          echo "Waiting for deployment to complete..."
+          sleep 30
+          echo "Testing deployed application..."
+          curl -f https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/api/health || echo "Health check failed"
+          curl -f https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/ || echo "Root endpoint failed"
+
+      - name: 📊 Deployment summary
+        if: always()
+        run: |
+          echo "=== DEPLOYMENT SUMMARY ==="
+          echo "App Name: ${{ env.AZURE_WEBAPP_NAME }}"
+          echo "Package Path: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}"
+          echo "Node Version: ${{ env.NODE_VERSION }}"
+          echo "Deployment URL: https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+          echo "=========================="

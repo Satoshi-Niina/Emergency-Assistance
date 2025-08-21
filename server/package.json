@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "tsx index.dev.ts",
     "build": "tsc",
-    "start": "node index.js",
-    "start:prod": "NODE_ENV=production node index.js",
+    "start": "node simple-app.js",
+    "start:prod": "NODE_ENV=production node simple-app.js",
     "migrate": "drizzle-kit migrate",
     "generate": "drizzle-kit generate",
     "studio": "drizzle-kit studio",
