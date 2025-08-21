@@ -325,6 +325,173 @@ app.post('/api/chat', async (req, res) => {
   });
 });
 
+// Users API endpoint
+app.get('/api/users', (req, res) => {
+  console.log('Users API request received');
+  
+  // Sample users data
+  const users = [
+    {
+      id: 1,
+      username: 'niina',
+      displayName: 'Satoshi Niina',
+      role: 'admin',
+      department: 'IT',
+      email: 'niina@example.com',
+      createdAt: '2025-01-01T00:00:00Z',
+      lastLogin: '2025-08-21T06:00:00Z',
+      status: 'active'
+    },
+    {
+      id: 2,
+      username: 'admin',
+      displayName: 'Administrator',
+      role: 'admin',
+      department: 'IT',
+      email: 'admin@example.com',
+      createdAt: '2025-01-01T00:00:00Z',
+      lastLogin: '2025-08-20T18:00:00Z',
+      status: 'active'
+    },
+    {
+      id: 3,
+      username: 'maintenance1',
+      displayName: '保守担当者1',
+      role: 'employee',
+      department: '保守部',
+      email: 'maintenance1@example.com',
+      createdAt: '2025-01-15T00:00:00Z',
+      lastLogin: '2025-08-20T16:00:00Z',
+      status: 'active'
+    },
+    {
+      id: 4,
+      username: 'operator1',
+      displayName: '運転士1',
+      role: 'employee',
+      department: '運転部',
+      email: 'operator1@example.com',
+      createdAt: '2025-01-20T00:00:00Z',
+      lastLogin: '2025-08-20T14:00:00Z',
+      status: 'active'
+    }
+  ];
+  
+  res.json({
+    success: true,
+    data: users,
+    count: users.length
+  });
+});
+
+// Knowledge base API endpoint
+app.get('/api/knowledge-base', (req, res) => {
+  console.log('Knowledge base API request received');
+  
+  // Sample knowledge base data
+  const knowledgeData = [
+    {
+      id: 1,
+      title: '新幹線E5系メンテナンスガイド',
+      category: 'maintenance',
+      content: '新幹線E5系の定期メンテナンス手順について説明します。',
+      tags: ['新幹線', 'E5系', 'メンテナンス'],
+      created: '2025-01-01T00:00:00Z',
+      updated: '2025-08-01T00:00:00Z'
+    },
+    {
+      id: 2,
+      title: 'ブレーキシステム診断',
+      category: 'troubleshooting',
+      content: 'ブレーキシステムの異常診断と対処法について説明します。',
+      tags: ['ブレーキ', '診断', 'トラブルシューティング'],
+      created: '2025-01-15T00:00:00Z',
+      updated: '2025-07-15T00:00:00Z'
+    },
+    {
+      id: 3,
+      title: '電気系統トラブル対応',
+      category: 'emergency',
+      content: '電気系統のトラブル発生時の緊急対応手順について説明します。',
+      tags: ['電気系統', '緊急対応', 'トラブル'],
+      created: '2025-02-01T00:00:00Z',
+      updated: '2025-07-30T00:00:00Z'
+    }
+  ];
+  
+  res.json({
+    success: true,
+    data: knowledgeData,
+    count: knowledgeData.length
+  });
+});
+
+// Database migration endpoint
+app.post('/api/admin/migrate', async (req, res) => {
+  try {
+    console.log('🔧 Database migration requested');
+    
+    if (!dbClient) {
+      return res.status(500).json({
+        success: false,
+        message: 'Database not connected'
+      });
+    }
+
+    // Create extension
+    await dbClient.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
+    console.log('✅ UUID extension created');
+
+    // Create users table
+    const createUsersTable = `
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+        username TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL,
+        display_name TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'employee',
+        department TEXT,
+        description TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+    await dbClient.query(createUsersTable);
+    console.log('✅ Users table created');
+
+    // Create indexes
+    await dbClient.query('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);');
+    await dbClient.query('CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);');
+    await dbClient.query('CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);');
+    console.log('✅ Indexes created');
+
+    // Insert sample users
+    const insertUsers = `
+      INSERT INTO users (username, password, display_name, role, department) VALUES
+        ('admin', '$2b$10$rQZ8K9vX2mN3pL4qR5sT6uV7wX8yZ9aA0bB1cC2dE3fF4gG5hH6iI7jJ8kK9lL0mM1nN2oO3pP4qQ5rR6sS7tT8uU9vV0wW1xX2yY3zZ', '管理者', 'admin', 'システム管理部'),
+        ('employee1', '$2b$10$rQZ8K9vX2mN3pL4qR5sT6uV7wX8yZ9aA0bB1cC2dE3fF4gG5hH6iI7jJ8kK9lL0mM1nN2oO3pP4qQ5rR6sS7tT8uU9vV0wW1xX2yY3zZ', '従業員1', 'employee', '保守部'),
+        ('test', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'テストユーザー', 'employee', 'テスト部'),
+        ('demo', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'デモユーザー', 'employee', 'デモ部'),
+        ('niina', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '新名聡', 'admin', 'システム管理部')
+      ON CONFLICT (username) DO NOTHING;
+    `;
+    await dbClient.query(insertUsers);
+    console.log('✅ Sample users inserted');
+
+    res.json({
+      success: true,
+      message: 'Database migration completed successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ Migration error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Migration failed',
+      error: error.message
+    });
+  }
+});
+
 // User info endpoint
 app.get('/api/auth/me', (req, res) => {
   try {
