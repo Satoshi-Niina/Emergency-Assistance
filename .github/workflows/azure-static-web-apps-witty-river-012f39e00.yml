@@ -53,6 +53,11 @@ jobs:
           echo "📦 Installing client dependencies..."
           cd client && npm install
 
+      - name: Install API dependencies
+        run: |
+          echo "📦 Installing API dependencies..."
+          cd api && npm install
+
       - name: Build shared library
         run: |
           echo "🔨 Building shared library..."
@@ -66,6 +71,11 @@ jobs:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'https://emergency-backend-app.azurewebsites.net' }}
           NODE_ENV: production
 
+      - name: Build API
+        run: |
+          echo "🔨 Building API functions..."
+          cd api && npm run build
+
       - name: Verify build output
         run: |
           echo "✅ Build completed successfully!"
@@ -73,6 +83,8 @@ jobs:
           ls -la client/dist/
           echo "📊 Build size:"
           du -sh client/dist/
+          echo "📁 API dist contents:"
+          ls -la api/dist/ || echo "API dist not found"
 
       - name: Check API Token Status
         run: |
@@ -95,7 +107,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
           app_location: "./client"
-          api_location: ""
+          api_location: "./api"
           output_location: "dist"
           skip_app_build: true
           skip_api_build: true
