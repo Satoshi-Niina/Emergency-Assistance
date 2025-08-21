@@ -86,6 +86,23 @@ jobs:
           du -sh client/dist/
           echo "📁 API dist contents:"
           ls -la api/dist/ || echo "API dist not found"
+          echo "🔍 Checking for critical files:"
+          if [ -f "client/dist/index.html" ]; then
+            echo "✅ index.html exists"
+            echo "📄 index.html content preview:"
+            head -20 client/dist/index.html
+          else
+            echo "❌ index.html missing!"
+            exit 1
+          fi
+          if [ -d "client/dist/assets" ]; then
+            echo "✅ assets directory exists"
+            echo "📁 Assets contents:"
+            ls -la client/dist/assets/
+          else
+            echo "❌ assets directory missing!"
+            exit 1
+          fi
 
       - name: Check API Token Status
         run: |
@@ -107,9 +124,9 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_WITTY_RIVER_012F39E00 }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
-          app_location: "./client"
+          app_location: "./client/dist"
           api_location: "./api"
-          output_location: "dist"
+          output_location: ""
           skip_app_build: true
           skip_api_build: true
 
