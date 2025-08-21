@@ -18,6 +18,7 @@ on:
       - main
     paths:
       - "client/**"
+      - "api/**"
       - "shared/**"
       - ".github/workflows/azure-static-web-apps-*"
 
