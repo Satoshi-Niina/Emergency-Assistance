@@ -23,7 +23,8 @@ app.get('/', (req, res) => {
     message: 'Emergency Backend API is running',
     timestamp: new Date().toISOString(),
     env: process.env.NODE_ENV,
-    port: port
+    port: port,
+    version: '1.0.1'
   });
 });
 
