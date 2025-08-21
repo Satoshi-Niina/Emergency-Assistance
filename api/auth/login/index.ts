@@ -1,4 +1,5 @@
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
+import { getUserByUsername } from "../../database";
 
 interface User {
   id: string;
@@ -14,12 +15,29 @@ async function validateCredentials(username: string, password: string): Promise<
   try {
     console.log('🔍 認証開始:', { username });
 
-    // データベース接続は一時的にスキップしてフォールバック認証を使用
-    console.log('❌ データベース接続スキップ - フォールバック認証を使用');
+    // まずデータベース認証を試行
+    const user = await getUserByUsername(username);
+    if (user) {
+      const bcrypt = await import('bcrypt');
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      
+      if (isValidPassword) {
+        console.log('✅ データベース認証成功:', username);
+        return user;
+      } else {
+        console.log('❌ パスワード不正:', username);
+      }
+    } else {
+      console.log('❌ ユーザーが見つかりません:', username);
+    }
+
+    // データベース認証失敗時はフォールバック認証を使用
+    console.log('🔄 フォールバック認証にフォールバック');
     return await fallbackAuthentication(username, password);
 
   } catch (error) {
     console.error('❌ 認証処理エラー:', error);
+    // エラー時もフォールバック認証を使用
     return await fallbackAuthentication(username, password);
   }
 }
