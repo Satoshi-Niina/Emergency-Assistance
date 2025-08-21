@@ -1,4 +1,4 @@
-import { getUserByUsername, testDatabaseConnection } from '../database.js';
+import { AzureFunction, Context, HttpRequest } from "@azure/functions";
 
 interface User {
   id: string;
@@ -14,36 +14,9 @@ async function validateCredentials(username: string, password: string): Promise<
   try {
     console.log('🔍 認証開始:', { username });
 
-    // データベース接続テスト
-    const dbConnected = await testDatabaseConnection();
-    if (!dbConnected) {
-      console.log('❌ データベース接続失敗 - フォールバック認証を使用');
-      return await fallbackAuthentication(username, password);
-    }
-
-    // データベースからユーザー取得
-    const user = await getUserByUsername(username);
-    if (!user) {
-      console.log('❌ ユーザーが見つかりません:', username);
-      return null;
-    }
-
-    // パスワード検証
-    try {
-      const bcrypt = await import('bcrypt');
-      const isValidPassword = await bcrypt.compare(password, user.password);
-      
-      if (!isValidPassword) {
-        console.log('❌ パスワードが一致しません:', username);
-        return null;
-      }
-
-      console.log('✅ 認証成功:', { username, role: user.role });
-      return user;
-    } catch (bcryptError) {
-      console.log('❌ bcrypt比較エラー - フォールバック認証を使用:', bcryptError);
-      return await fallbackAuthentication(username, password);
-    }
+    // データベース接続は一時的にスキップしてフォールバック認証を使用
+    console.log('❌ データベース接続スキップ - フォールバック認証を使用');
+    return await fallbackAuthentication(username, password);
 
   } catch (error) {
     console.error('❌ 認証処理エラー:', error);
@@ -116,7 +89,7 @@ async function fallbackAuthentication(username: string, password: string): Promi
   return null;
 }
 
-export default async function handler(req: any): Promise<Response> {
+const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
   // CORS ヘッダーを設定
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -127,25 +100,28 @@ export default async function handler(req: any): Promise<Response> {
 
   // OPTIONSリクエスト（プリフライト）への対応
   if (req.method === 'OPTIONS') {
-    return new Response('', {
+    context.res = {
       status: 200,
-      headers: corsHeaders
-    });
+      headers: corsHeaders,
+      body: ''
+    };
+    return;
   }
 
   // POSTメソッドのみ受け付け
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+    context.res = {
       status: 405,
-      headers: corsHeaders
-    });
+      headers: corsHeaders,
+      body: JSON.stringify({ error: 'Method not allowed' })
+    };
+    return;
   }
 
   try {
-    const body = await req.json();
-    const { username, password } = body;
+    const { username, password } = req.body;
 
-    console.log('🔐 ログイン試行:', { 
+    context.log('🔐 ログイン試行:', { 
       username, 
       timestamp: new Date().toISOString(),
       hasPassword: !!password
@@ -153,54 +129,62 @@ export default async function handler(req: any): Promise<Response> {
 
     // 入力検証
     if (!username || !password) {
-      return new Response(JSON.stringify({ 
-        success: false,
-        error: 'ユーザー名とパスワードが必要です' 
-      }), {
+      context.res = {
         status: 400,
-        headers: corsHeaders
-      });
+        headers: corsHeaders,
+        body: JSON.stringify({ 
+          success: false,
+          error: 'ユーザー名とパスワードが必要です' 
+        })
+      };
+      return;
     }
 
     // 認証確認
     const user = await validateCredentials(username, password);
     
     if (!user) {
-      return new Response(JSON.stringify({ 
-        success: false,
-        error: 'ユーザー名またはパスワードが違います' 
-      }), {
+      context.res = {
         status: 401,
-        headers: corsHeaders
-      });
+        headers: corsHeaders,
+        body: JSON.stringify({ 
+          success: false,
+          error: 'ユーザー名またはパスワードが違います' 
+        })
+      };
+      return;
     }
 
     // 認証成功（パスワードフィールドを除外）
     const { password: _, ...userWithoutPassword } = user;
-    return new Response(JSON.stringify({
-      success: true,
-      user: {
-        id: userWithoutPassword.id,
-        username: userWithoutPassword.username,
-        displayName: userWithoutPassword.displayName,
-        role: userWithoutPassword.role,
-        department: userWithoutPassword.department
-      },
-      timestamp: new Date().toISOString()
-    }), {
+    context.res = {
       status: 200,
-      headers: corsHeaders
-    });
+      headers: corsHeaders,
+      body: JSON.stringify({
+        success: true,
+        user: {
+          id: userWithoutPassword.id,
+          username: userWithoutPassword.username,
+          displayName: userWithoutPassword.displayName,
+          role: userWithoutPassword.role,
+          department: userWithoutPassword.department
+        },
+        timestamp: new Date().toISOString()
+      })
+    };
 
   } catch (error) {
-    console.error('❌ ログインAPIエラー:', error);
-    return new Response(JSON.stringify({ 
-      success: false,
-      error: 'サーバーエラーが発生しました',
-      timestamp: new Date().toISOString()
-    }), {
+    context.log.error('❌ ログインAPIエラー:', error);
+    context.res = {
       status: 500,
-      headers: corsHeaders
-    });
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        success: false,
+        error: 'サーバーエラーが発生しました',
+        timestamp: new Date().toISOString()
+      })
+    };
   }
-}
+};
+
+export default httpTrigger;

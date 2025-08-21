@@ -6,7 +6,9 @@
   "scripts": {
     "build": "tsc",
     "start": "func start",
-    "test": "echo \"No tests available yet\""
+    "test": "echo \"No tests available yet\"",
+    "prestart": "npm run build",
+    "watch": "tsc -w"
   },
   "dependencies": {
     "@azure/functions": "^3.5.1",

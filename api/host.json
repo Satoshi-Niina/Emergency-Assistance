@@ -1,0 +1,15 @@
+{
+  "version": "2.0",
+  "extensions": {
+    "http": {
+      "routePrefix": ""
+    }
+  },
+  "functionTimeout": "00:05:00",
+  "logging": {
+    "fileLoggingMode": "always",
+    "logLevel": {
+      "default": "Information"
+    }
+  }
+}

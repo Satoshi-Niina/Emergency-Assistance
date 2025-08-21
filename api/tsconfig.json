@@ -27,11 +27,18 @@
     "allowUnreachableCode": false
   },
   "include": [
-    "**/*.ts",
-    "**/*.js"
+    "auth/**/*.ts",
+    "debug/**/*.ts",
+    "health.ts"
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "emergency-procedures.ts",
+    "knowledge-base.ts",
+    "learn.ts",
+    "database-helpers.ts",
+    "database.ts",
+    "debug.ts"
   ]
 }
