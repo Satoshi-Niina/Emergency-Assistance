@@ -93,18 +93,23 @@ export default defineConfig(({ command, mode }) => {
       rollupOptions: {
         input: './index.html',
         output: {
-          manualChunks: undefined
+          manualChunks: undefined,
+          entryFileNames: 'assets/[name]-[hash].js',
+          chunkFileNames: 'assets/[name]-[hash].js',
+          assetFileNames: 'assets/[name]-[hash].[ext]'
         }
       },
       sourcemap: true,
-      minify: true,
-      target: 'esnext',
-      modulePreload: true
+      minify: 'esbuild',
+      target: 'es2020',
+      modulePreload: true,
+      assetsInlineLimit: 4096
     },
     esbuild: {
       keepNames: true,
       legalComments: 'none',
-      target: 'es2015'
+      target: 'es2020',
+      format: 'esm'
     },
     define: {
       // 環境変数をクライアントサイドで利用可能にする
