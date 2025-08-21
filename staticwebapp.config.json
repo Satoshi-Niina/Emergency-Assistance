@@ -1,39 +1,8 @@
 {
   "routes": [
     {
-      "route": "/api/health",
-      "allowedRoles": ["anonymous"],
-      "methods": ["GET", "OPTIONS"]
-    },
-    {
-      "route": "/api/debug",
-      "allowedRoles": ["anonymous"],
-      "methods": ["GET", "OPTIONS"]
-    },
-    {
-      "route": "/api/auth/login",
-      "allowedRoles": ["anonymous"],
-      "methods": ["POST", "OPTIONS"]
-    },
-    {
-      "route": "/api/auth/me",
-      "allowedRoles": ["anonymous"],
-      "methods": ["GET", "OPTIONS"]
-    },
-    {
-      "route": "/api/auth/*",
-      "allowedRoles": ["anonymous"],
-      "methods": ["GET", "POST", "OPTIONS"]
-    },
-    {
-      "route": "/api/*",
-      "allowedRoles": ["anonymous"],
-      "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    },
-    {
       "route": "/*",
-      "serve": "/index.html",
-      "statusCode": 200
+      "rewrite": "/index.html"
     }
   ],
   "navigationFallback": {
