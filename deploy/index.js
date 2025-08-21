@@ -3,9 +3,39 @@ const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const { Client } = require('pg');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
+
+// Database connection setup
+let dbClient = null;
+
+async function initializeDatabase() {
+  try {
+    if (process.env.DATABASE_URL) {
+      dbClient = new Client({
+        connectionString: process.env.DATABASE_URL,
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+      });
+      
+      await dbClient.connect();
+      console.log('✅ Database connected successfully');
+      
+      // Test database connection with users table
+      const result = await dbClient.query('SELECT COUNT(*) FROM users');
+      console.log(`📊 Users in database: ${result.rows[0].count}`);
+    } else {
+      console.warn('⚠️ DATABASE_URL not configured, using fallback authentication');
+    }
+  } catch (error) {
+    console.error('❌ Database connection failed:', error);
+    console.warn('⚠️ Falling back to hardcoded authentication');
+  }
+}
+
+// Initialize database connection
+initializeDatabase();
 
 // Enable CORS for Azure Static Web Apps
 app.use(cors({
@@ -28,43 +58,118 @@ app.get('/api/health', (req, res) => {
     success: true,
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'production'
+    environment: process.env.NODE_ENV || 'production',
+    database: dbClient ? 'connected' : 'not connected'
   });
 });
 
-// Simple login endpoint for testing
+// Database-enabled login endpoint
 app.post('/api/auth/login', async (req, res) => {
   try {
     console.log('Login request received:', req.body);
     
     const { username, password } = req.body;
     
-    // Simple hardcoded authentication for testing
-    if (username === 'niina' && password === 'G&896845') {
+    if (!username || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username and password are required'
+      });
+    }
+
+    let user = null;
+    let isValidLogin = false;
+
+    // Try database authentication first
+    if (dbClient) {
+      try {
+        console.log('🔍 Checking database for user:', username);
+        const query = 'SELECT id, username, password_hash, role, display_name, department FROM users WHERE username = $1';
+        const result = await dbClient.query(query, [username]);
+        
+        if (result.rows.length > 0) {
+          const dbUser = result.rows[0];
+          console.log('👤 User found in database:', {
+            id: dbUser.id,
+            username: dbUser.username,
+            role: dbUser.role,
+            hasPasswordHash: !!dbUser.password_hash
+          });
+          
+          // Verify password
+          if (dbUser.password_hash) {
+            isValidLogin = await bcrypt.compare(password, dbUser.password_hash);
+          }
+          
+          if (isValidLogin) {
+            user = {
+              id: dbUser.id,
+              username: dbUser.username,
+              role: dbUser.role || 'employee',
+              displayName: dbUser.display_name || dbUser.username,
+              department: dbUser.department
+            };
+          }
+        } else {
+          console.log('👤 User not found in database:', username);
+        }
+      } catch (dbError) {
+        console.error('❌ Database query error:', dbError);
+      }
+    }
+
+    // Fallback to hardcoded authentication if database failed or user not found
+    if (!user) {
+      console.log('🔄 Falling back to hardcoded authentication');
+      
+      // Test users
+      const testUsers = [
+        { username: 'niina', password: 'Test896845', displayName: 'Satoshi Niina', role: 'admin' },
+        { username: 'niina', password: 'G&896845', displayName: 'Satoshi Niina', role: 'admin' },
+        { username: 'admin', password: 'admin123', displayName: 'Administrator', role: 'admin' },
+        { username: 'test', password: 'test123', displayName: 'Test User', role: 'employee' }
+      ];
+      
+      const matchedUser = testUsers.find(u => u.username === username && u.password === password);
+      
+      if (matchedUser) {
+        isValidLogin = true;
+        user = {
+          id: 1,
+          username: matchedUser.username,
+          role: matchedUser.role,
+          displayName: matchedUser.displayName,
+          department: 'IT'
+        };
+      }
+    }
+
+    if (isValidLogin && user) {
       const token = jwt.sign(
         { 
-          userId: 1, 
-          username: username,
-          role: 'admin'
+          userId: user.id, 
+          username: user.username,
+          role: user.role
         },
         process.env.JWT_SECRET || 'test-secret',
         { expiresIn: '24h' }
       );
       
-      console.log('Login successful for user:', username);
+      console.log('✅ Login successful for user:', user.username);
       
       res.json({
         success: true,
         token,
         user: {
-          id: 1,
-          username: username,
-          role: 'admin',
-          name: 'Satoshi Niina'
+          id: user.id,
+          username: user.username,
+          role: user.role,
+          displayName: user.displayName,
+          department: user.department
         }
       });
     } else {
-      console.log('Login failed for user:', username);
+      console.log('❌ Login failed for user:', username);
       res.status(401).json({
         success: false,
         message: 'Invalid credentials'

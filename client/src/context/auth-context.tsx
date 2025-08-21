@@ -35,14 +35,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Azure Static Web Apps または開発環境でのAPI URL設定
       const isDevelopment = import.meta.env.DEV;
       const isAzureStaticWebApp = window.location.hostname.includes('azurestaticapps.net');
-      const apiUrl = isDevelopment || isAzureStaticWebApp ? '/api/auth/me' : '/api/auth/me';
+      
+      // Azure Static Web Apps の場合は外部のバックエンドAPIを使用
+      const apiBaseUrl = isDevelopment 
+        ? (import.meta.env.VITE_API_BASE_URL || '')
+        : isAzureStaticWebApp 
+          ? 'https://emergency-backend-app.azurewebsites.net'
+          : '';
+          
+      const apiUrl = apiBaseUrl ? `${apiBaseUrl}/api/auth/me` : '/api/auth/me';
+      
       console.log('🔗 認証確認URL:', apiUrl);
       console.log('🏗️ Environment:', { 
         isDevelopment, 
         isAzureStaticWebApp, 
         mode: import.meta.env.MODE,
         hostname: window.location.hostname,
-        origin: window.location.origin
+        origin: window.location.origin,
+        apiBaseUrl
       });        const response = await fetch(apiUrl, {
           method: "GET",
           headers: { 
@@ -108,13 +118,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Azure Static Web Apps または開発環境でのAPI URL設定
       const isDevelopment = import.meta.env.DEV;
       const isAzureStaticWebApp = window.location.hostname.includes('azurestaticapps.net');
+      
+      // Azure Static Web Apps の場合は外部のバックエンドAPIを使用
       const apiBaseUrl = isDevelopment 
-        ? (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001')
-        : ''; // Azure Static Web Apps では空文字でAPIを相対パス指定
+        ? (import.meta.env.VITE_API_BASE_URL || '')
+        : isAzureStaticWebApp 
+          ? 'https://emergency-backend-app.azurewebsites.net'
+          : '';
         
-      const apiUrl = isDevelopment && !isAzureStaticWebApp
-        ? `${apiBaseUrl}/api/auth/login`
-        : `/api/auth/login`; // Azure Static Web Apps での相対パス
+      const apiUrl = apiBaseUrl ? `${apiBaseUrl}/api/auth/login` : '/api/auth/login';
         
       console.log('🔗 ログインURL:', apiUrl);
       console.log('🌐 API Base URL:', apiBaseUrl);
@@ -123,7 +135,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAzureStaticWebApp, 
         mode: import.meta.env.MODE,
         hostname: window.location.hostname,
-        origin: window.location.origin 
+        origin: window.location.origin,
+        apiBaseUrl
       });
 
       const response = await fetch(apiUrl, {

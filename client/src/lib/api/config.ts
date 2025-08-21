@@ -37,10 +37,10 @@ export const API_BASE_URL = (() => {
   // 本番環境の場合
   if (isProduction) {
     if (isAzureEnvironment) {
-      // Azure Static Web Apps の場合は API を相対パスで呼び出す
+      // Azure Static Web Apps の場合は外部のバックエンドAPIを使用
       if (window.location.hostname.includes('azurestaticapps.net')) {
-        console.log('✅ Azure Static Web Apps: API を相対パスで呼び出し');
-        return '';
+        console.log('✅ Azure Static Web Apps: 外部バックエンドAPIを使用');
+        return 'https://emergency-backend-app.azurewebsites.net';
       }
       // Azure Container Apps や Web Apps の場合は実際のAPIドメインを使用
       return 'https://emergency-backend-app.azurewebsites.net';
@@ -53,8 +53,8 @@ export const API_BASE_URL = (() => {
   }
   
   // デフォルト
-  console.log('⚠️ デフォルト値を使用');
-  return '';
+  console.log('⚠️ デフォルト値を使用: バックエンドAPIを直接指定');
+  return 'https://emergency-backend-app.azurewebsites.net';
 })();
 
 console.log('🔧 API設定詳細:', {
