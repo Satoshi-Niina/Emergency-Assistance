@@ -19,6 +19,7 @@ import { searchTroubleshootingFlows, japaneseGuideTitles } from "../lib/troubles
 import { QAAnswer } from "../lib/qa-flow-manager";
 import TroubleshootingQABubble from "../components/chat/troubleshooting-qa-bubble";
 import SolutionBubble from "../components/chat/solution-bubble";
+import { MACHINE_API, KNOWLEDGE_API, TROUBLESHOOTING_API, AI_API, CHAT_API, API_REQUEST_OPTIONS } from "../lib/api/config";
 
 // API URL構築ヘルパー関数
 const buildApiUrl = (endpoint: string): string => {
@@ -124,7 +125,7 @@ export default function ChatPage() {
   const fetchKnowledgeData = async () => {
     try {
       setIsLoadingKnowledge(true);
-      const response = await fetch(`/api/knowledge-base`);
+      const response = await fetch(KNOWLEDGE_API.BASE, API_REQUEST_OPTIONS);
       
       if (response.ok) {
         const result = await response.json();
@@ -155,7 +156,8 @@ export default function ChatPage() {
   const processKnowledgeData = async () => {
     try {
       setIsLoadingKnowledge(true);
-      const response = await fetch(`/api/knowledge-base/process`, {
+      const response = await fetch(buildApiUrl('/api/knowledge-base/process'), {
+        ...API_REQUEST_OPTIONS,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -224,17 +226,18 @@ export default function ChatPage() {
       console.log('🔍 機種一覧取得開始');
       
       // Azure Static Web Apps環境では外部APIを直接呼び出し
-      const apiUrl = buildApiUrl('/api/machines/machine-types');
+      const apiUrl = MACHINE_API.MACHINE_TYPES;
       console.log('🔍 機種一覧取得URL:', apiUrl);
       console.log('🔍 現在のURL:', window.location.href);
       
       const response = await fetch(apiUrl, {
+        ...API_REQUEST_OPTIONS,
         headers: {
+          ...API_REQUEST_OPTIONS.headers,
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
           'Expires': '0'
-        },
-        credentials: 'include' // セッション維持のため
+        }
       });
       console.log('🔍 機種一覧取得レスポンスステータス:', response.status);
       console.log('🔍 機種一覧取得レスポンスヘッダー:', Object.fromEntries(response.headers.entries()));
@@ -812,7 +815,7 @@ export default function ChatPage() {
   const fetchAvailableGuides = async () => {
     try {
       setIsLoadingGuides(true);
-      const response = await fetch(`/api/troubleshooting/list`);
+      const response = await fetch(TROUBLESHOOTING_API.LIST, API_REQUEST_OPTIONS);
       
       if (response.ok) {
         const data = await response.json();
@@ -906,7 +909,8 @@ export default function ChatPage() {
       });
 
       // トラブルシューティングQA APIを呼び出し
-      const response = await fetch(`/api/troubleshooting-qa/start`, {
+      const response = await fetch(TROUBLESHOOTING_API.START_QA, {
+        ...API_REQUEST_OPTIONS,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -963,7 +967,8 @@ export default function ChatPage() {
       sendMessage(answer, [], false);
 
       // トラブルシューティングQA APIを呼び出し
-      const response = await fetch(`/api/troubleshooting-qa/answer`, {
+      const response = await fetch(TROUBLESHOOTING_API.ANSWER_QA, {
+        ...API_REQUEST_OPTIONS,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1053,7 +1058,8 @@ export default function ChatPage() {
       const updatedContext = [...aiSessionData.context, userMessage];
       
       // GPT APIに送信してレスポンスを取得
-      const response = await fetch('/api/ai-diagnosis', {
+      const response = await fetch(AI_API.DIAGNOSIS, {
+        ...API_REQUEST_OPTIONS,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -2,6 +2,17 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../context/auth-context";
 import { useToast } from "../hooks/use-toast";
 import * as XLSX from 'xlsx';
+import { USER_API, API_REQUEST_OPTIONS } from "../lib/api/config";
+
+// API URL構築ヘルパー関数
+const buildApiUrl = (endpoint: string): string => {
+  const isAzureStaticWebApp = window.location.hostname.includes('azurestaticapps.net');
+  const apiBaseUrl = isAzureStaticWebApp 
+    ? 'https://emergency-backend-app.azurewebsites.net'
+    : (import.meta.env.VITE_API_BASE_URL || '');
+  
+  return `${apiBaseUrl}${endpoint}`;
+};
 
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -86,12 +97,9 @@ export default function UsersPage() {
         setIsLoading(true);
         setQueryError(null);
         
-        const res = await fetch('/api/users', {
-          method: 'GET',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json'
-          }
+        const res = await fetch(USER_API.USERS, {
+          ...API_REQUEST_OPTIONS,
+          method: 'GET'
         });
         
         console.log('🔍 ユーザー一覧取得レスポンス:', {

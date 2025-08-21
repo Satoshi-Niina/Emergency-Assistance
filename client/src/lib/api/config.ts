@@ -142,6 +142,33 @@ export const KNOWLEDGE_API = {
 export const CHAT_API = {
   CHATGPT: buildApiUrl('/api/chatgpt'),
   HEALTH: buildApiUrl('/api/health'),
+  CHAT: buildApiUrl('/api/chat'),
+};
+
+// 機種データAPIエンドポイント
+export const MACHINE_API = {
+  MACHINE_TYPES: buildApiUrl('/api/machines/machine-types'),
+  ALL_MACHINES: buildApiUrl('/api/machines/all-machines'),
+  MACHINE_DETAIL: (id: string) => buildApiUrl(`/api/machines/${id}`),
+};
+
+// ユーザー管理APIエンドポイント
+export const USER_API = {
+  USERS: buildApiUrl('/api/users'),
+  USER_DETAIL: (id: string) => buildApiUrl(`/api/users/${id}`),
+};
+
+// トラブルシューティングAPIエンドポイント
+export const TROUBLESHOOTING_API = {
+  LIST: buildApiUrl('/api/troubleshooting/list'),
+  START_QA: buildApiUrl('/api/troubleshooting-qa/start'),
+  ANSWER_QA: buildApiUrl('/api/troubleshooting-qa/answer'),
+  KNOWLEDGE_TROUBLESHOOTING: (machineId: string) => buildApiUrl(`/api/knowledge/troubleshooting/${machineId}`),
+};
+
+// AI診断APIエンドポイント
+export const AI_API = {
+  DIAGNOSIS: buildApiUrl('/api/ai-diagnosis'),
 };
 
 // 設定情報
