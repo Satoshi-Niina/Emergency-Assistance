@@ -28,7 +28,7 @@ export interface HistorySearchParams {
   offset?: number;
 }
 
-// 履歴の作成
+// 履歴の作�E
 export async function createHistoryItem(data: HistoryCreateData): Promise<any> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/history/create`, {
@@ -41,12 +41,12 @@ export async function createHistoryItem(data: HistoryCreateData): Promise<any> {
     });
 
     if (!response.ok) {
-      throw new Error(`履歴の作成に失敗しました: ${response.status}`);
+      throw new Error(`履歴の作�Eに失敗しました: ${response.status}`);
     }
 
     return await response.json();
   } catch (error) {
-    console.error('履歴作成エラー:', error);
+    console.error('履歴作�Eエラー:', error);
     throw error;
   }
 }
@@ -78,7 +78,7 @@ export async function searchHistoryItems(params: HistorySearchParams): Promise<a
   }
 }
 
-// 履歴詳細の取得
+// 履歴詳細の取征E
 export async function getHistoryItem(id: string): Promise<any> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/history/item/${id}`, {
@@ -97,7 +97,7 @@ export async function getHistoryItem(id: string): Promise<any> {
   }
 }
 
-// 統計情報の取得
+// 統計情報の取征E
 export async function getHistoryStats(): Promise<any> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/history/stats`, {
@@ -116,10 +116,10 @@ export async function getHistoryStats(): Promise<any> {
   }
 }
 
-// チャット送信時の自動履歴保存
+// チャチE��送信時�E自動履歴保孁E
 export async function saveToHistory(data: HistoryCreateData): Promise<void> {
   try {
-    // 機種や事業所などの情報を自動推測する処理
+    // 機種めE��業所などの惁E��を�E動推測する処琁E
     const enhancedData = {
       ...data,
       machineModel: extractMachineModel(data.description),
@@ -129,14 +129,14 @@ export async function saveToHistory(data: HistoryCreateData): Promise<void> {
     };
 
     await createHistoryItem(enhancedData);
-    console.log('✅ 履歴に保存しました:', enhancedData.title);
+    console.log('✁E履歴に保存しました:', enhancedData.title);
   } catch (error) {
-    console.error('❌ 履歴保存に失敗しました:', error);
-    // 履歴保存エラーは主機能に影響しないよう、エラーを投げない
+    console.error('❁E履歴保存に失敗しました:', error);
+    // 履歴保存エラーは主機�Eに影響しなぁE��ぁE��エラーを投げなぁE
   }
 }
 
-// テキストから機種を推測
+// チE��ストから機種を推測
 function extractMachineModel(text: string): string | undefined {
   const machineModels = ['MT-100', 'MR-400', 'TC-250', 'SS-750'];
   
@@ -149,7 +149,7 @@ function extractMachineModel(text: string): string | undefined {
   return undefined;
 }
 
-// テキストから事業所を推測
+// チE��ストから事業所を推測
 function extractOffice(text: string): string | undefined {
   const offices = ['東京事業所', '大阪事業所', '名古屋事業所', '福岡事業所'];
   
@@ -162,13 +162,13 @@ function extractOffice(text: string): string | undefined {
   return undefined;
 }
 
-// テキストからカテゴリを推測
+// チE��ストからカチE��リを推測
 function extractCategory(text: string): string | undefined {
   const categories = [
-    { name: 'エンジン', keywords: ['エンジン', '始動', '停止', '燃料'] },
-    { name: 'ブレーキ', keywords: ['ブレーキ', '制動', '停車'] },
-    { name: '電気系統', keywords: ['電気', '電源', 'バッテリー', 'ライト'] },
-    { name: '油圧系統', keywords: ['油圧', 'オイル', '圧力'] }
+    { name: 'エンジン', keywords: ['エンジン', '始動', '停止', '燁E��'] },
+    { name: 'ブレーキ', keywords: ['ブレーキ', '制勁E, '停軁E] },
+    { name: '電気系統', keywords: ['電氁E, '電溁E, 'バッチE��ー', 'ライチE] },
+    { name: '油圧系統', keywords: ['油圧', 'オイル', '圧劁E] }
   ];
   
   for (const category of categories) {
@@ -180,14 +180,14 @@ function extractCategory(text: string): string | undefined {
   return undefined;
 }
 
-// テキストからキーワードを抽出
+// チE��ストからキーワードを抽出
 function extractKeywords(text: string): string[] {
   const keywords: string[] = [];
   
-  // 一般的なキーワードパターン
+  // 一般皁E��キーワードパターン
   const patterns = [
     /エンジン[停止起動始動]/g,
-    /ブレーキ[不良故障]/g,
+    /ブレーキ[不良敁E��]/g,
     /MT-\d+|MR-\d+|TC-\d+|SS-\d+/g,
     /[東京大阪名古屋福岡]事業所/g
   ];
@@ -199,5 +199,5 @@ function extractKeywords(text: string): string[] {
     }
   });
   
-  return [...new Set(keywords)]; // 重複除去
+  return [...new Set(keywords)]; // 重褁E��去
 }

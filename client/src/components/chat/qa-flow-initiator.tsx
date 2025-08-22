@@ -43,8 +43,8 @@ interface ProblemType {
 const PROBLEM_TYPES: ProblemType[] = [
   {
     id: 'engine_start',
-    name: 'エンジンがかからない',
-    description: 'エンジンが正常に始動しない問題',
+    name: 'エンジンがかからなぁE,
+    description: 'エンジンが正常に始動しなぁE��顁E,
     icon: <Car className="h-6 w-6" />,
     category: 'エンジン系',
     emergencyLevel: 'medium',
@@ -53,8 +53,8 @@ const PROBLEM_TYPES: ProblemType[] = [
   },
   {
     id: 'engine_noise',
-    name: 'エンジンから異音がする',
-    description: 'エンジンから異常な音が発生する問題',
+    name: 'エンジンから異音がすめE,
+    description: 'エンジンから異常な音が発生する問顁E,
     icon: <AlertTriangle className="h-6 w-6" />,
     category: 'エンジン系',
     emergencyLevel: 'high',
@@ -63,8 +63,8 @@ const PROBLEM_TYPES: ProblemType[] = [
   },
   {
     id: 'battery_issue',
-    name: 'バッテリーの問題',
-    description: 'バッテリーの充電や接続に関する問題',
+    name: 'バッチE��ーの問顁E,
+    description: 'バッチE��ーの允E��めE��続に関する問顁E,
     icon: <Battery className="h-6 w-6" />,
     category: '電気系',
     emergencyLevel: 'medium',
@@ -73,8 +73,8 @@ const PROBLEM_TYPES: ProblemType[] = [
   },
   {
     id: 'lighting_issue',
-    name: '照明・灯火の問題',
-    description: '室内灯や作業灯が点灯しない問題',
+    name: '照明�E灯火の問顁E,
+    description: '室冁E�EめE��業灯が点灯しなぁE��顁E,
     icon: <Zap className="h-6 w-6" />,
     category: '電気系',
     emergencyLevel: 'low',
@@ -83,7 +83,7 @@ const PROBLEM_TYPES: ProblemType[] = [
   },
   {
     id: 'hydraulic_issue',
-    name: '油圧システムの問題',
+    name: '油圧シスチE��の問顁E,
     description: '油圧ポンプやシリンダーの動作不良',
     icon: <Settings className="h-6 w-6" />,
     category: '油圧系',
@@ -93,8 +93,8 @@ const PROBLEM_TYPES: ProblemType[] = [
   },
   {
     id: 'brake_issue',
-    name: 'ブレーキの問題',
-    description: 'ブレーキの効きが悪い、異音がする',
+    name: 'ブレーキの問顁E,
+    description: 'ブレーキの効きが悪ぁE��異音がすめE,
     icon: <Shield className="h-6 w-6" />,
     category: '走行系',
     emergencyLevel: 'critical',
@@ -103,28 +103,28 @@ const PROBLEM_TYPES: ProblemType[] = [
   },
   {
     id: 'crane_issue',
-    name: 'クレーン・作業装置の問題',
-    description: 'クレーンやウインチの動作不良',
+    name: 'クレーン・作業裁E��の問顁E,
+    description: 'クレーンめE��インチ�E動作不良',
     icon: <Tool className="h-6 w-6" />,
-    category: '作業装置系',
+    category: '作業裁E��系',
     emergencyLevel: 'high',
     estimatedTime: 90,
     requiresExpert: true
   },
   {
     id: 'safety_issue',
-    name: '安全装置の問題',
-    description: '非常停止や安全スイッチの動作不良',
+    name: '安�E裁E��の問顁E,
+    description: '非常停止めE���EスイチE��の動作不良',
     icon: <AlertTriangle className="h-6 w-6" />,
-    category: '安全装置系',
+    category: '安�E裁E��系',
     emergencyLevel: 'critical',
     estimatedTime: 30,
     requiresExpert: true
   },
   {
     id: 'transmission_issue',
-    name: 'トランスミッション・トルクコンバーターの問題',
-    description: '変速不良、トルクコンバーターの異常音や効率低下',
+    name: 'トランスミッション・トルクコンバ�Eターの問顁E,
+    description: '変速不良、トルクコンバ�Eターの異常音めE��玁E��丁E,
     icon: <Settings className="h-6 w-6" />,
     category: 'トランスミッション系',
     emergencyLevel: 'high',
@@ -133,8 +133,8 @@ const PROBLEM_TYPES: ProblemType[] = [
   },
   {
     id: 'cooling_issue',
-    name: '冷却システムの問題',
-    description: 'エンジンオーバーヒート、冷却水漏れ',
+    name: '冷却シスチE��の問顁E,
+    description: 'エンジンオーバ�Eヒ�Eト、�E却水漏れ',
     icon: <Thermometer className="h-6 w-6" />,
     category: '冷却系',
     emergencyLevel: 'high',
@@ -143,7 +143,7 @@ const PROBLEM_TYPES: ProblemType[] = [
   },
   {
     id: 'travel_issue',
-    name: '走行装置の問題',
+    name: '走行裁E��の問顁E,
     description: '走行時の異常音、振動、チェーンの伸び',
     icon: <Move className="h-6 w-6" />,
     category: '走行系',
@@ -166,7 +166,7 @@ export default function QAFlowInitiator({
   const handleProblemSelect = (problem: ProblemType) => {
     setSelectedProblem(problem);
     
-    // 緊急度が高い場合は直接フローを開始
+    // 緊急度が高い場合�E直接フローを開姁E
     if (problem.emergencyLevel === 'critical') {
       setShowEmergencyFlow(true);
     }
@@ -176,7 +176,7 @@ export default function QAFlowInitiator({
         if (selectedProblem) {
           const description = problemDescription || selectedProblem.description;
           
-          // すべての問題タイプでEnhancedQAFlowを使用（AI駆動の動的診断）
+          // すべての問題タイプでEnhancedQAFlowを使用�E�EI駁E��の動的診断�E�E
           setShowEnhancedFlow(true);
         }
       };
@@ -197,21 +197,21 @@ export default function QAFlowInitiator({
 
   const getEmergencyLevelText = (level: string) => {
     switch (level) {
-      case 'low': return '低';
+      case 'low': return '佁E;
       case 'medium': return '中';
-      case 'high': return '高';
+      case 'high': return '髁E;
       case 'critical': return '緊急';
-      default: return '不明';
+      default: return '不�E';
     }
   };
 
-  // EnhancedQAFlowが選択された場合（すべての問題タイプでAI駆動診断）
+  // EnhancedQAFlowが選択された場合（すべての問題タイプでAI駁E��診断�E�E
   if (showEnhancedFlow && selectedProblem) {
     return (
       <EnhancedQAFlow
         initialProblemDescription={problemDescription || selectedProblem.description}
         onComplete={(solution, answers) => {
-          // 解決策を親コンポーネントに送信
+          // 解決策を親コンポ�Eネントに送信
           onStartFlow(selectedProblem.id, solution);
         }}
         onEmergencyContact={handleEmergencyContact}
@@ -223,12 +223,12 @@ export default function QAFlowInitiator({
     );
   }
 
-  // フォールバック用のEmergencyQAFlow（エンジン始動不良のみ）
+  // フォールバック用のEmergencyQAFlow�E�エンジン始動不良のみ�E�E
   if (showEmergencyFlow && selectedProblem?.id === 'engine_start') {
     return (
       <EmergencyQAFlow
         onComplete={(solution, answers) => {
-          // 解決策を親コンポーネントに送信
+          // 解決策を親コンポ�Eネントに送信
           onStartFlow('engine_start', solution);
         }}
         onEmergencyContact={handleEmergencyContact}
@@ -248,31 +248,31 @@ export default function QAFlowInitiator({
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Brain className="h-6 w-6 text-blue-600" />
-              <CardTitle className="text-xl">問題診断の開始</CardTitle>
+              <CardTitle className="text-xl">問題診断の開姁E/CardTitle>
             </div>
             <Button
               variant="outline"
               onClick={onExit}
             >
-              終了
+              終亁E
             </Button>
           </div>
           <p className="text-gray-600">
-            発生している問題の種類を選択してください。段階的な質問により、最適な解決策を提案します。
+            発生してぁE��問題�E種類を選択してください。段階的な質問により、最適な解決策を提案します、E
           </p>
         </CardHeader>
       </Card>
 
-      {/* 緊急連絡アラート */}
+      {/* 緊急連絡アラーチE*/}
       <Alert className="border-orange-200 bg-orange-50">
         <AlertTriangle className="h-4 w-4 text-orange-600" />
         <AlertDescription className="text-orange-800">
-          <strong>緊急時:</strong> 安全に関わる問題や作業に支障がある場合は、
-          すぐに技術支援センター（0123-456-789）に連絡してください。
+          <strong>緊急晁E</strong> 安�Eに関わる問題や作業に支障がある場合�E、E
+          すぐに技術支援センター�E�E123-456-789�E�に連絡してください、E
         </AlertDescription>
       </Alert>
 
-      {/* 問題タイプ選択 */}
+      {/* 問題タイプ選抁E*/}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {PROBLEM_TYPES.map((problem) => (
           <Card
@@ -311,7 +311,7 @@ export default function QAFlowInitiator({
                   <div className="flex items-center justify-between text-xs text-gray-500">
                     <span className="flex items-center">
                       <Clock className="h-3 w-3 mr-1" />
-                      推定 {problem.estimatedTime}分
+                      推宁E{problem.estimatedTime}刁E
                     </span>
                     <span className="flex items-center">
                       {problem.requiresExpert ? (
@@ -322,7 +322,7 @@ export default function QAFlowInitiator({
                       ) : (
                         <>
                           <Tool className="h-3 w-3 mr-1" />
-                          自力対応
+                          自力対忁E
                         </>
                       )}
                     </span>
@@ -334,7 +334,7 @@ export default function QAFlowInitiator({
         ))}
       </div>
 
-      {/* 選択された問題の詳細 */}
+      {/* 選択された問題�E詳細 */}
       {selectedProblem && (
         <Card>
           <CardHeader>
@@ -346,7 +346,7 @@ export default function QAFlowInitiator({
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <h4 className="font-medium text-gray-900 mb-2">問題の詳細</h4>
+                <h4 className="font-medium text-gray-900 mb-2">問題�E詳細</h4>
                 <p className="text-gray-600">{selectedProblem.description}</p>
               </div>
               <div>
@@ -362,24 +362,24 @@ export default function QAFlowInitiator({
                     </Badge>
                   </div>
                   <div className="flex justify-between">
-                    <span>推定時間:</span>
-                    <span>{selectedProblem.estimatedTime}分</span>
+                    <span>推定時閁E</span>
+                    <span>{selectedProblem.estimatedTime}刁E/span>
                   </div>
                   <div className="flex justify-between">
-                    <span>対応方法:</span>
-                    <span>{selectedProblem.requiresExpert ? '専門家対応' : '自力対応可能'}</span>
+                    <span>対応方況E</span>
+                    <span>{selectedProblem.requiresExpert ? '専門家対忁E : '自力対応可能'}</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* 追加の詳細説明 */}
+            {/* 追加の詳細説昁E*/}
             <div>
-              <h4 className="font-medium text-gray-900 mb-2">詳細な症状や状況</h4>
+              <h4 className="font-medium text-gray-900 mb-2">詳細な痁E��めE��況E/h4>
               <textarea
                 className="w-full p-3 border border-gray-300 rounded-md resize-none"
                 rows={3}
-                placeholder="問題の詳細な症状や発生状況を教えてください（任意）"
+                placeholder="問題�E詳細な痁E��めE��生状況を教えてください�E�任意！E
                 value={problemDescription}
                 onChange={(e) => setProblemDescription(e.target.value)}
               />
@@ -414,7 +414,7 @@ export default function QAFlowInitiator({
                   className="flex items-center space-x-2"
                 >
                   <Search className="h-4 w-4" />
-                  <span>診断開始</span>
+                  <span>診断開姁E/span>
                 </Button>
               </div>
             </div>
@@ -430,10 +430,10 @@ export default function QAFlowInitiator({
             <div>
               <h4 className="font-medium text-gray-900 mb-2">診断の流れ</h4>
               <div className="text-sm text-gray-600 space-y-1">
-                <p>1. 問題の種類を選択してください</p>
-                <p>2. 段階的な質問に回答していただきます</p>
-                <p>3. 回答に基づいて最適な解決策を提案します</p>
-                <p>4. 必要に応じて専門家への相談を案内します</p>
+                <p>1. 問題�E種類を選択してください</p>
+                <p>2. 段階的な質問に回答してぁE��だきまぁE/p>
+                <p>3. 回答に基づぁE��最適な解決策を提案しまぁE/p>
+                <p>4. 忁E��に応じて専門家への相諁E��案�EしまぁE/p>
               </div>
             </div>
           </div>

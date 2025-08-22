@@ -5,7 +5,7 @@ import { Input } from "../../components/ui/input";
 import TroubleshootingFlow from "./troubleshooting-flow";
 import { useToast } from "../../hooks/use-toast.ts";
 
-// トラブルシューティングフローの型定義
+// トラブルシューチE��ングフローの型定義
 interface TroubleshootingFlow {
   id: string;
   description: string;
@@ -30,7 +30,7 @@ export default function TroubleshootingSelector({
   const [searchTerm, setSearchTerm] = useState(initialSearchKeyword || "");
   const [filteredFlows, setFilteredFlows] = useState<TroubleshootingFlow[]>([]);
 
-  // トラブルシューティングフローを取得
+  // トラブルシューチE��ングフローを取征E
   const fetchFlows = async () => {
     try {
       setLoading(true);
@@ -39,15 +39,15 @@ export default function TroubleshootingSelector({
       const data = await response.json();
       const normalizedFlows = data.map((flow: any) => ({
         id: flow.id,
-        title: flow.title || 'タイトルなし',
-        description: flow.description || flow.title || '説明なし',
+        title: flow.title || 'タイトルなぁE,
+        description: flow.description || flow.title || '説明なぁE,
         trigger: flow.trigger || flow.triggerKeywords || [],
         source: flow.dataSource || 'unknown'
       }));
       setFlows(normalizedFlows);
       setFilteredFlows(normalizedFlows);
     } catch (error) {
-      console.error("❌ フロー取得エラー:", error);
+      console.error("❁Eフロー取得エラー:", error);
       toast({
         title: "エラー",
         description: "フローの取得に失敗しました",
@@ -99,7 +99,7 @@ export default function TroubleshootingSelector({
     setFilteredFlows(filtered);
   }, [searchTerm, flows]);
 
-  // フローを選択
+  // フローを選抁E
   const handleSelectFlow = (id: string) => {
     setSelectedFlow(id);
   };
@@ -109,11 +109,11 @@ export default function TroubleshootingSelector({
     setSelectedFlow(null);
   };
 
-  // フローが完了した場合
+  // フローが完亁E��た場吁E
   const handleFlowComplete = () => {
     toast({
-      title: "完了",
-      description: "トラブルシューティングが完了しました",
+      title: "完亁E,
+      description: "トラブルシューチE��ングが完亁E��ました",
     });
     setSelectedFlow(null);
   };
@@ -137,7 +137,7 @@ export default function TroubleshootingSelector({
     setFilteredFlows(filtered);
   };
   
-  // 特定のフローが選択されている場合はそのフローを表示
+  // 特定�Eフローが選択されてぁE��場合�Eそ�Eフローを表示
   if (selectedFlow) {
     return (
       <div className="w-full max-w-full mx-auto p-0 md:p-4">
@@ -154,16 +154,16 @@ export default function TroubleshootingSelector({
     <div className="w-full max-w-full mx-auto">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl md:text-3xl">応急処-置ガイド</CardTitle>
+          <CardTitle className="text-2xl md:text-3xl">応急処-置ガイチE/CardTitle>
         </CardHeader>
         <CardContent>
           <div className="mb-8">
             <p className="mb-4 text-base md:text-lg text-gray-600">
-              以下から症状を選択するか、キーワードで検索してください。
+              以下から症状を選択するか、キーワードで検索してください、E
             </p>
             <div className="flex flex-wrap gap-3 mb-4">
-              <span className="text-base md:text-lg text-gray-600 self-center mr-2">代表的なキーワード:</span>
-              {["エンジン", "トルコン", "ブレーキ", "エアー", "バッテリー"].map(
+              <span className="text-base md:text-lg text-gray-600 self-center mr-2">代表皁E��キーワーチE</span>
+              {["エンジン", "トルコン", "ブレーキ", "エアー", "バッチE��ー"].map(
                 (keyword) => (
                   <Button
                     key={keyword}
@@ -210,14 +210,14 @@ export default function TroubleshootingSelector({
                   className="p-6 flex items-center justify-start cursor-pointer hover:bg-gray-100 min-h-[80px]"
                   onClick={() => handleSelectFlow(flow.id)}
                 >
-                  <p className="font-medium text-lg text-left">{flow.title || flow.description || 'タイトルなし'}</p>
+                  <p className="font-medium text-lg text-left">{flow.title || flow.description || 'タイトルなぁE}</p>
                 </Card>
               ))}
             </div>
           ) : (
             <div className="text-center py-12">
               <p className="text-lg text-gray-500">
-                検索結果がありません。別のキーワードで試してください。
+                検索結果がありません。別のキーワードで試してください、E
               </p>
             </div>
           )}

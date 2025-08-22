@@ -68,7 +68,7 @@ export default function EnhancedQAFlow({
   const [flow, setFlow] = useState<QAFlow | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // 初期化
+  // 初期匁E
   useEffect(() => {
     initializeQA();
   }, []);
@@ -76,10 +76,10 @@ export default function EnhancedQAFlow({
   const initializeQA = async () => {
     setIsLoading(true);
     try {
-      // ナレッジベースと応急処置情報の初期化
+      // ナレチE��ベ�Eスと応急処置惁E��の初期匁E
       await enhancedQAManager.initializeKnowledgeBase();
       
-      // 問題の分析とフロー生成
+      // 問題�E刁E��とフロー生�E
       const analysis = await enhancedQAManager.analyzeProblemAndGenerateFlow(
         initialProblemDescription
       );
@@ -89,13 +89,13 @@ export default function EnhancedQAFlow({
       enhancedQAManager.setProblemCategory(analysis.category);
       enhancedQAManager.setCurrentFlow(analysis.flow);
       
-      // 最初のステップを設定
+      // 最初�EスチE��プを設宁E
       if (analysis.flow.steps.length > 0) {
         setCurrentStep(analysis.flow.steps[0]);
         setProgress(10);
       }
       
-      // 文脈質問があれば設定
+      // 斁E��質問があれば設宁E
       if (analysis.contextualQuestions.length > 0) {
         setContextualQuestion(analysis.contextualQuestions[0]);
       }
@@ -103,13 +103,13 @@ export default function EnhancedQAFlow({
       setIsInitialized(true);
     } catch (error) {
       console.error('QA初期化エラー:', error);
-      // フォールバック用の基本的な質問を設定
+      // フォールバック用の基本皁E��質問を設宁E
       setCurrentStep({
         id: 'basic_question',
-        question: '問題の詳細を教えてください。',
+        question: '問題�E詳細を教えてください、E,
         type: 'text',
         required: true,
-        reasoning: '基本的な情報収集'
+        reasoning: '基本皁E��惁E��収集'
       });
       setIsInitialized(true);
     } finally {
@@ -117,7 +117,7 @@ export default function EnhancedQAFlow({
     }
   };
 
-  // 回答を処理
+  // 回答を処琁E
   const handleAnswerSubmit = async () => {
     if (!currentAnswer.trim() || !currentStep) return;
 
@@ -139,38 +139,38 @@ export default function EnhancedQAFlow({
       const newProgress = Math.min(90, progress + 15);
       setProgress(newProgress);
 
-      // 次のステップを決定
+      // 次のスチE��プを決宁E
       const nextStepResult = await enhancedQAManager.determineNextStep(
         answer,
         newAnswers,
         currentStep
       );
 
-      // 緊急対応のチェック
+      // 緊急対応�EチェチE��
       if (nextStepResult.emergencyAction) {
         setEmergencyAction(nextStepResult.emergencyAction);
         onEmergencyContact();
         return;
       }
 
-      // 次のステップを設定
+      // 次のスチE��プを設宁E
       if (nextStepResult.nextStep) {
         setCurrentStep(nextStepResult.nextStep);
         setCurrentAnswer('');
         
-        // 文脈質問があれば設定
+        // 斁E��質問があれば設宁E
         if (nextStepResult.contextualQuestion) {
           setContextualQuestion(nextStepResult.contextualQuestion);
         }
       } else {
-        // フロー完了
+        // フロー完亁E
         setProgress(100);
         const solution = await enhancedQAManager.generateComprehensiveSolution(
           newAnswers,
           problemCategory
         );
         
-        // 学習データの保存
+        // 学習データの保孁E
         await enhancedQAManager.learnFromSession(
           initialProblemDescription,
           newAnswers,
@@ -181,7 +181,7 @@ export default function EnhancedQAFlow({
         onComplete(solution, newAnswers);
       }
     } catch (error) {
-      console.error('回答処理エラー:', error);
+      console.error('回答�E琁E��ラー:', error);
     } finally {
       setIsLoading(false);
     }
@@ -211,7 +211,7 @@ export default function EnhancedQAFlow({
         <CardContent className="p-6">
           <div className="flex items-center justify-center space-x-2">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-            <span>AI診断を初期化中...</span>
+            <span>AI診断を�E期化中...</span>
           </div>
         </CardContent>
       </Card>
@@ -226,7 +226,7 @@ export default function EnhancedQAFlow({
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Brain className="h-5 w-5 text-blue-600" />
-              <CardTitle className="text-lg">AI診断システム</CardTitle>
+              <CardTitle className="text-lg">AI診断シスチE��</CardTitle>
               <Badge variant="secondary" className="text-xs">
                 OpenAI活用
               </Badge>
@@ -238,7 +238,7 @@ export default function EnhancedQAFlow({
                 onClick={() => setShowKnowledgeInfo(!showKnowledgeInfo)}
               >
                 <BookOpen className="h-4 w-4 mr-1" />
-                ナレッジ
+                ナレチE��
               </Button>
               <Button
                 variant="outline"
@@ -254,14 +254,14 @@ export default function EnhancedQAFlow({
                 onClick={resetQA}
               >
                 <RotateCcw className="h-4 w-4 mr-1" />
-                リセット
+                リセチE��
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={onExit}
               >
-                終了
+                終亁E
               </Button>
             </div>
           </div>
@@ -269,16 +269,16 @@ export default function EnhancedQAFlow({
           {/* 進捗バー */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm text-gray-600">
-              <span>診断進捗</span>
+              <span>診断進捁E/span>
               <span>{Math.round(progress)}%</span>
             </div>
             <Progress value={progress} className="h-2" />
           </div>
 
-          {/* 問題カテゴリ表示 */}
+          {/* 問題カチE��リ表示 */}
           {problemCategory && (
             <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <span>カテゴリ:</span>
+              <span>カチE��リ:</span>
               <Badge variant="outline">{problemCategory.name}</Badge>
               <span>緊急度:</span>
               <Badge 
@@ -291,19 +291,19 @@ export default function EnhancedQAFlow({
         </CardHeader>
       </Card>
 
-      {/* ナレッジ情報 */}
+      {/* ナレチE��惁E�� */}
       {showKnowledgeInfo && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center">
               <BookOpen className="h-4 w-4 mr-2" />
-              活用中のナレッジ
+              活用中のナレチE��
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <h4 className="font-medium text-sm mb-2">ナレッジベース</h4>
+                <h4 className="font-medium text-sm mb-2">ナレチE��ベ�Eス</h4>
                 <div className="text-xs text-gray-600 space-y-1">
                   {enhancedQAManager.getKnowledgeBase().slice(0, 3).map((item, index) => (
                     <div key={index} className="flex items-center space-x-2">
@@ -314,7 +314,7 @@ export default function EnhancedQAFlow({
                 </div>
               </div>
               <div>
-                <h4 className="font-medium text-sm mb-2">応急処置情報</h4>
+                <h4 className="font-medium text-sm mb-2">応急処置惁E��</h4>
                 <div className="text-xs text-gray-600 space-y-1">
                   {enhancedQAManager.getEmergencyProcedures().slice(0, 3).map((proc, index) => (
                     <div key={index} className="flex items-center space-x-2">
@@ -329,12 +329,12 @@ export default function EnhancedQAFlow({
         </Card>
       )}
 
-      {/* 緊急対応アラート */}
+      {/* 緊急対応アラーチE*/}
       {emergencyAction && (
         <Alert className="border-red-200 bg-red-50">
           <AlertCircle className="h-4 w-4 text-red-600" />
           <AlertDescription className="text-red-800">
-            <strong>緊急対応:</strong> {emergencyAction}
+            <strong>緊急対忁E</strong> {emergencyAction}
           </AlertDescription>
         </Alert>
       )}
@@ -356,7 +356,7 @@ export default function EnhancedQAFlow({
                 </Badge>
                 <div className="flex-1">
                   <p className="text-sm text-gray-700 mb-1 font-medium">
-                    回答: {answer.answer}
+                    回筁E {answer.answer}
                   </p>
                   <p className="text-xs text-gray-400">
                     {answer.timestamp.toLocaleTimeString()}
@@ -369,7 +369,7 @@ export default function EnhancedQAFlow({
         </Card>
       )}
 
-      {/* 現在の質問 */}
+      {/* 現在の質啁E*/}
       {currentStep && (
         <Card>
           <CardContent className="p-6">
@@ -386,7 +386,7 @@ export default function EnhancedQAFlow({
                   <div className="flex items-center gap-2 mb-2">
                     {currentStep.required && (
                       <Badge variant="destructive" className="text-xs">
-                        必須
+                        忁E��E
                       </Badge>
                     )}
                     {currentStep.reasoning && (
@@ -397,29 +397,29 @@ export default function EnhancedQAFlow({
                   </div>
                   {currentStep.expectedOutcome && (
                     <div className="text-sm text-gray-600 bg-blue-50 p-2 rounded-md mb-3">
-                      <strong>期待される結果:</strong> {currentStep.expectedOutcome}
+                      <strong>期征E��れる結果:</strong> {currentStep.expectedOutcome}
                     </div>
                   )}
                   {currentStep.emergencyAction && (
                     <div className="text-sm text-red-600 bg-red-50 p-2 rounded-md mb-3">
-                      <strong>⚠️ 緊急時:</strong> {currentStep.emergencyAction}
+                      <strong>⚠�E�E緊急晁E</strong> {currentStep.emergencyAction}
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* 文脈質問の表示 */}
+              {/* 斁E��質問�E表示 */}
               {contextualQuestion && (
                 <Alert className="border-blue-200 bg-blue-50">
                   <Lightbulb className="h-4 w-4 text-blue-600" />
                   <AlertDescription className="text-blue-800">
                     <div className="space-y-2">
                       <div>
-                        <strong>追加情報:</strong> {contextualQuestion.question}
+                        <strong>追加惁E��:</strong> {contextualQuestion.question}
                       </div>
                       {contextualQuestion.knowledgeReferences && contextualQuestion.knowledgeReferences.length > 0 && (
                         <div className="text-xs">
-                          <strong>参考:</strong> {contextualQuestion.knowledgeReferences.join(', ')}
+                          <strong>参老E</strong> {contextualQuestion.knowledgeReferences.join(', ')}
                         </div>
                       )}
                     </div>
@@ -427,7 +427,7 @@ export default function EnhancedQAFlow({
                 </Alert>
               )}
 
-              {/* 回答入力 */}
+              {/* 回答�E劁E*/}
               <div className="space-y-3">
                 {currentStep.type === 'choice' && currentStep.options ? (
                   <div className="grid grid-cols-1 gap-2">
@@ -464,12 +464,12 @@ export default function EnhancedQAFlow({
                       {isLoading ? (
                         <div className="flex items-center space-x-2">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                          <span>AI分析中...</span>
+                          <span>AI刁E��中...</span>
                         </div>
                       ) : (
                         <div className="flex items-center space-x-2">
                           <Send className="h-4 w-4" />
-                          <span>回答する</span>
+                          <span>回答すめE/span>
                         </div>
                       )}
                     </Button>
@@ -477,12 +477,12 @@ export default function EnhancedQAFlow({
                 )}
               </div>
 
-              {/* AI診断の説明 */}
+              {/* AI診断の説昁E*/}
               <Alert>
                 <Brain className="h-4 w-4" />
                 <AlertDescription>
-                  AIがナレッジベースと応急処置情報を活用して、最適な質問を生成しています。
-                  回答に基づいて、より具体的で実用的な解決策を提案します。
+                  AIがナレチE��ベ�Eスと応急処置惁E��を活用して、最適な質問を生�EしてぁE��す、E
+                  回答に基づぁE��、より�E体的で実用皁E��解決策を提案します、E
                 </AlertDescription>
               </Alert>
             </div>
@@ -490,13 +490,13 @@ export default function EnhancedQAFlow({
         </Card>
       )}
 
-      {/* 完了時の表示 */}
+      {/* 完亁E��の表示 */}
       {progress === 100 && (
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-center space-x-2 text-green-600">
               <CheckCircle className="h-6 w-6" />
-              <span className="text-lg font-medium">AI診断完了</span>
+              <span className="text-lg font-medium">AI診断完亁E/span>
             </div>
           </CardContent>
         </Card>

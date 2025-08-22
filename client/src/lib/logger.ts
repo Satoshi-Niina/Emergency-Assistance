@@ -6,11 +6,11 @@ export enum LogLevel {
   DEBUG = 3
 }
 
-// ログレベル設定
-const level = 'info'; // デフォルトログレベル（VITE_LOG_LEVELの参照を削除）
+// ログレベル設宁E
+const level = 'info'; // チE��ォルトログレベル�E�EITE_LOG_LEVELの参�Eを削除�E�E
 
 /**
- * デバッグレベルのログ出力
+ * チE��チE��レベルのログ出劁E
  */
 export const logDebug = (...args: any[]): void => {
   if (level === 'debug') {
@@ -19,7 +19,7 @@ export const logDebug = (...args: any[]): void => {
 };
 
 /**
- * 情報レベルのログ出力
+ * 惁E��レベルのログ出劁E
  */
 export const logInfo = (...args: any[]): void => {
   if (level === 'info') {
@@ -28,7 +28,7 @@ export const logInfo = (...args: any[]): void => {
 };
 
 /**
- * 警告レベルのログ出力
+ * 警告レベルのログ出劁E
  */
 export const logWarn = (...args: any[]): void => {
   if (level === 'warn') {
@@ -37,7 +37,7 @@ export const logWarn = (...args: any[]): void => {
 };
 
 /**
- * エラーレベルのログ出力
+ * エラーレベルのログ出劁E
  */
 export const logError = (...args: any[]): void => {
   if (level === 'error') {

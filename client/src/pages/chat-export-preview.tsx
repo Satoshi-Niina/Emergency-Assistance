@@ -53,7 +53,7 @@ const ChatExportPreview: React.FC = () => {
       const response = await fetch(`/api/chats/exports/${fileName}`);
       
       if (!response.ok) {
-        throw new Error('チャットエクスポートファイルの取得に失敗しました');
+        throw new Error('チャチE��エクスポ�Eトファイルの取得に失敗しました');
       }
       
       const data = await response.json();
@@ -98,7 +98,7 @@ const ChatExportPreview: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">エラー: {error}</p>
-          <Button onClick={() => window.history.back()}>戻る</Button>
+          <Button onClick={() => window.history.back()}>戻めE/Button>
         </div>
       </div>
     );
@@ -113,12 +113,12 @@ const ChatExportPreview: React.FC = () => {
             <div className="flex justify-between items-start">
               <div>
                 <CardTitle className="text-2xl font-bold text-gray-800">
-                  チャットエクスポート詳細
+                  チャチE��エクスポ�Eト詳細
                 </CardTitle>
-                <p className="text-gray-600 mt-2">ファイル名: {fileName}</p>
+                <p className="text-gray-600 mt-2">ファイル吁E {fileName}</p>
               </div>
               <Button onClick={() => window.history.back()} variant="outline">
-                戻る
+                戻めE
               </Button>
             </div>
           </CardHeader>
@@ -126,7 +126,7 @@ const ChatExportPreview: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-gray-500" />
-                <span>エクスポート日時: {formatDate(chatData.exportTimestamp)}</span>
+                <span>エクスポ�Eト日晁E {formatDate(chatData.exportTimestamp)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4 text-gray-500" />
@@ -134,7 +134,7 @@ const ChatExportPreview: React.FC = () => {
               </div>
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-gray-500" />
-                <span>メッセージ数: {chatData.chatData.messages.length}件</span>
+                <span>メチE��ージ数: {chatData.chatData.messages.length}件</span>
               </div>
               <div className="flex items-center gap-2">
                 <ImageIcon className="h-4 w-4 text-gray-500" />
@@ -142,24 +142,24 @@ const ChatExportPreview: React.FC = () => {
               </div>
             </div>
             
-            {/* 機種情報 */}
+            {/* 機種惁E�� */}
             {chatData.chatData.machineInfo && (
               <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                <h3 className="font-semibold text-blue-800 mb-2">機種情報</h3>
+                <h3 className="font-semibold text-blue-800 mb-2">機種惁E��</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                  <span>機種: {chatData.chatData.machineInfo.machineTypeName || '未設定'}</span>
-                  <span>機械番号: {chatData.chatData.machineInfo.machineNumber || '未設定'}</span>
+                  <span>機種: {chatData.chatData.machineInfo.machineTypeName || '未設宁E}</span>
+                  <span>機械番号: {chatData.chatData.machineInfo.machineNumber || '未設宁E}</span>
                 </div>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* チャット履歴 */}
+        {/* チャチE��履歴 */}
         <Card>
           <CardHeader>
             <CardTitle className="text-xl font-bold text-gray-800">
-              チャット履歴
+              チャチE��履歴
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -183,21 +183,21 @@ const ChatExportPreview: React.FC = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    {/* テキストメッセージ */}
+                    {/* チE��ストメチE��ージ */}
                     {!isImageMessage(message.content) && (
                       <p className="text-gray-800 whitespace-pre-wrap">
                         {message.content}
                       </p>
                     )}
                     
-                    {/* 画像メッセージ */}
+                    {/* 画像メチE��ージ */}
                     {isImageMessage(message.content) && (
                       <div className="space-y-2">
-                        <p className="text-sm text-gray-600">📷 画像メッセージ</p>
+                        <p className="text-sm text-gray-600">📷 画像メチE��ージ</p>
                         <div className="relative">
                           <img
                             src={message.content}
-                            alt="チャット画像"
+                            alt="チャチE��画僁E
                             className="max-w-full h-auto rounded-lg border"
                             style={{ maxHeight: '300px' }}
                           />
@@ -216,7 +216,7 @@ const ChatExportPreview: React.FC = () => {
                                       className="text-xs"
                                     >
                                       <Download className="h-3 w-3 mr-1" />
-                                      画像をダウンロード
+                                      画像をダウンローチE
                                     </Button>
                                     <span className="text-xs text-gray-500">
                                       {image.fileName}
@@ -249,13 +249,13 @@ const ChatExportPreview: React.FC = () => {
                   <div key={index} className="border rounded-lg p-3">
                     <img
                       src={image.url}
-                      alt={`保存画像 ${index + 1}`}
+                      alt={`保存画僁E${index + 1}`}
                       className="w-full h-48 object-cover rounded-lg mb-2"
                     />
                     <div className="space-y-1">
                       <p className="text-sm font-medium">{image.fileName}</p>
                       <p className="text-xs text-gray-500">
-                        メッセージID: {image.messageId}
+                        メチE��ージID: {image.messageId}
                       </p>
                       <Button
                         size="sm"
@@ -264,7 +264,7 @@ const ChatExportPreview: React.FC = () => {
                         className="w-full text-xs"
                       >
                         <Download className="h-3 w-3 mr-1" />
-                        ダウンロード
+                        ダウンローチE
                       </Button>
                     </div>
                   </div>

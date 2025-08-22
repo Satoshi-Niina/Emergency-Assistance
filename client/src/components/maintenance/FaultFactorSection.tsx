@@ -11,13 +11,13 @@ interface Props {
 }
 
 const FAULT_FACTOR_OPTIONS = [
-  '部品劣化',
-  'メンテナンス不備',
+  '部品劣匁E,
+  'メンチE��ンス不備',
   '外的要因',
   '設計不良',
   '操作ミス',
-  '環境要因',
-  'その他'
+  '環墁E��因',
+  'そ�E仁E
 ];
 
 export default function FaultFactorSection({ 
@@ -29,7 +29,7 @@ export default function FaultFactorSection({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">故障要因</h3>
+        <h3 className="text-lg font-semibold text-gray-900">敁E��要因</h3>
         <Button onClick={onAdd} type="button" variant="outline" size="sm" className="flex items-center gap-2">
           <Plus className="h-4 w-4" />
           要因追加
@@ -41,14 +41,14 @@ export default function FaultFactorSection({
           <div key={index} className="flex gap-3 items-start p-4 bg-gray-50 rounded-lg border">
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                要因タイプ
+                要因タイチE
               </label>
               <select
                 value={factor.type}
                 onChange={(e) => onUpdate(index, 'type', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="">タイプ選択</option>
+                <option value="">タイプ選抁E/option>
                 {FAULT_FACTOR_OPTIONS.map(option => (
                   <option key={option} value={option}>{option}</option>
                 ))}
@@ -57,13 +57,13 @@ export default function FaultFactorSection({
             
             <div className="flex-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                詳細内容
+                詳細冁E��
               </label>
               <input
                 type="text"
                 value={factor.content}
                 onChange={(e) => onUpdate(index, 'content', e.target.value)}
-                placeholder="故障要因の詳細内容を入力"
+                placeholder="敁E��要因の詳細冁E��を�E劁E
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>

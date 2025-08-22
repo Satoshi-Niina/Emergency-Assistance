@@ -13,14 +13,14 @@ export default function FileIngestPanel() {
     if (!files || !files.length) return;
     for (const file of Array.from(files)) {
       try {
-        // ファイルサイズチェック（20MB制限）
+        // ファイルサイズチェチE���E�E0MB制限！E
         if (file.size > 20 * 1024 * 1024) {
-          setStatus(`エラー: ${file.name} - ファイルサイズが20MBを超過しています。サーバに直接アップロードしてください。`);
+          setStatus(`エラー: ${file.name} - ファイルサイズぁE0MBを趁E��してぁE��す。サーバに直接アチE�Eロードしてください。`);
           continue;
         }
 
-        setStatus(`処理中: ${file.name}`);
-        // 原則：そのままサーバに送る。pptxは暫定で抽出に挑戦→失敗なら生送信。
+        setStatus(`処琁E��: ${file.name}`);
+        // 原則�E�そのままサーバに送る。pptxは暫定で抽出に挑戦→失敗なら生送信、E
         let text = "";
         if (file.name.toLowerCase().endsWith(".txt")) {
           text = await file.text();
@@ -28,15 +28,15 @@ export default function FileIngestPanel() {
           try { text = await extractTextFromPptx(file); } catch { /* フォールバック */ }
         }
         if (!text) {
-          // 生ファイルを送ってサーバで確定処理（推奨経路）
+          // 生ファイルを送ってサーバで確定�E琁E��推奨経路�E�E
           const fd = new FormData();
           fd.append("file", file);
           const r = await fetch("/api/ingest", { method: "POST", body: fd, credentials: "include" });
           if (!r.ok) throw new Error("upload failed");
           const j = await r.json();
-          setStatus(`完了: ${file.name} → doc_id=${j.doc_id}, chunks=${j.chunks}`);
+          setStatus(`完亁E ${file.name} ↁEdoc_id=${j.doc_id}, chunks=${j.chunks}`);
         } else {
-          // テキスト直接送信（txt/pptx抽出済み）
+          // チE��スト直接送信�E�Ext/pptx抽出済み�E�E
           const r = await fetch("/api/ingest", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -45,10 +45,10 @@ export default function FileIngestPanel() {
           });
           if (!r.ok) throw new Error("ingest failed");
           const j = await r.json();
-          setStatus(`完了: ${file.name} → doc_id=${j.doc_id}, chunks=${j.chunks}`);
+          setStatus(`完亁E ${file.name} ↁEdoc_id=${j.doc_id}, chunks=${j.chunks}`);
         }
       } catch (e:any) {
-        setStatus(`失敗: ${file?.name} (${e.message||e})`);
+        setStatus(`失敁E ${file?.name} (${e.message||e})`);
       }
     }
   }
@@ -60,32 +60,32 @@ export default function FileIngestPanel() {
       setStatus(`JSONファイル読み込み中: ${file.name}`);
       const content = await file.text();
       setJsonData(content);
-      setStatus(`JSONファイル読み込み完了: ${file.name}`);
+      setStatus(`JSONファイル読み込み完亁E ${file.name}`);
     } catch (e: any) {
-      setStatus(`JSONファイル読み込み失敗: ${file.name} (${e.message || e})`);
+      setStatus(`JSONファイル読み込み失敁E ${file.name} (${e.message || e})`);
     }
   }
 
   async function handleJsonIngest() {
     if (!jsonData.trim()) {
-      setStatus("エラー: JSONデータが入力されていません");
+      setStatus("エラー: JSONチE�Eタが�E力されてぁE��せん");
       return;
     }
 
     try {
-      setStatus("JSONデータ処理中...");
+      setStatus("JSONチE�Eタ処琁E��...");
       
-      // JSONデータをパースして検証
+      // JSONチE�Eタをパースして検証
       let parsedData;
       try {
         parsedData = JSON.parse(jsonData);
       } catch (e) {
-        setStatus("エラー: 無効なJSON形式です");
+        setStatus("エラー: 無効なJSON形式でぁE);
         return;
       }
 
-      // チャット履歴のJSONデータを処理
-      // チャットメッセージからテキストを抽出
+      // チャチE��履歴のJSONチE�Eタを�E琁E
+      // チャチE��メチE��ージからチE��ストを抽出
       let extractedText = "";
       if (parsedData.messages && Array.isArray(parsedData.messages)) {
         extractedText = parsedData.messages
@@ -97,16 +97,16 @@ export default function FileIngestPanel() {
       } else if (typeof parsedData === "string") {
         extractedText = parsedData;
       } else {
-        // その他の形式の場合は文字列化
+        // そ�E他�E形式�E場合�E斁E���E匁E
         extractedText = JSON.stringify(parsedData, null, 2);
       }
 
       if (!extractedText.trim()) {
-        setStatus("エラー: 有効なテキストデータが見つかりません");
+        setStatus("エラー: 有効なチE��ストデータが見つかりません");
         return;
       }
 
-      // サーバーに送信
+      // サーバ�Eに送信
       const r = await fetch("/api/ingest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -120,29 +120,29 @@ export default function FileIngestPanel() {
 
       if (!r.ok) throw new Error("ingest failed");
       const j = await r.json();
-      setStatus(`JSONデータ取込完了 → doc_id=${j.doc_id}, chunks=${j.chunks}`);
-      setJsonData(""); // 成功後はクリア
+      setStatus(`JSONチE�Eタ取込完亁EↁEdoc_id=${j.doc_id}, chunks=${j.chunks}`);
+      setJsonData(""); // 成功後�Eクリア
     } catch (e: any) {
-      setStatus(`JSONデータ処理失敗: ${e.message || e}`);
+      setStatus(`JSONチE�Eタ処琁E��敁E ${e.message || e}`);
     }
   }
 
   return (
     <div className="p-4 rounded-lg border border-gray-200 bg-white shadow-sm">
-             <div className="text-xl font-semibold text-blue-800 mb-3">機械故障報告書から取込</div>
+             <div className="text-xl font-semibold text-blue-800 mb-3">機械敁E��報告書から取込</div>
       
-      {/* 補足説明 */}
+      {/* 補足説昁E*/}
       <div className="mb-6">
         <p className="text-base font-semibold text-gray-700">
-          チャットからサーバーへ送信したデータのほか、外部で作成した機械故障情報をアップロードできます。
+          チャチE��からサーバ�Eへ送信したチE�Eタのほか、外部で作�Eした機械敁E��惁E��をアチE�Eロードできます、E
         </p>
       </div>
       
       <div className="space-y-6">
-        {/* 区切り線 */}
+        {/* 区刁E��緁E*/}
         <div className="border-t border-gray-200 pt-6">
           
-          {/* JSONファイル選択 */}
+          {/* JSONファイル選抁E*/}
           <div className="space-y-3 mb-6">
             <div className="flex items-center space-x-2">
               <input 
@@ -153,19 +153,19 @@ export default function FileIngestPanel() {
               />
             </div>
             <div className="text-xs text-gray-500">
-              チャットUIからエクスポートしたJSONファイルを選択
+              チャチE��UIからエクスポ�EトしたJSONファイルを選抁E
             </div>
           </div>
 
-          {/* JSONデータ手動入力 */}
+          {/* JSONチE�Eタ手動入劁E*/}
           <div className="space-y-3 mb-6">
             <label className="block text-sm font-medium text-gray-700">
-              JSONデータ（直接入力）
+              JSONチE�Eタ�E�直接入力！E
             </label>
             <textarea
               value={jsonData}
               onChange={(e) => setJsonData(e.target.value)}
-              placeholder="チャット履歴のJSONデータをここに貼り付けてください..."
+              placeholder="チャチE��履歴のJSONチE�Eタをここに貼り付けてください..."
               className="w-full h-32 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
             />
           </div>
@@ -177,12 +177,12 @@ export default function FileIngestPanel() {
               disabled={!jsonData.trim()}
               className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-                             処理開始
+                             処琁E��姁E
             </button>
           </div>
         </div>
 
-        {/* ステータス表示 */}
+        {/* スチE�Eタス表示 */}
         <div className="text-sm mt-2 p-2 bg-gray-50 rounded border min-h-[2rem]">
           {status}
         </div>

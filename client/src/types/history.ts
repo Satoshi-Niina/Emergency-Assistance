@@ -1,4 +1,4 @@
-// 応急処置サポート履歴の型定義
+// 応急処置サポ�Eト履歴の型定義
 export interface SupportHistoryItem {
   id: string;
   chatId?: string;
@@ -29,7 +29,7 @@ export interface SupportHistoryItem {
     machineNumber?: string;
   };
   jsonData: {
-    // 新しいフォーマット
+    // 新しいフォーマッチE
     title?: string;
     problemDescription?: string;
     machineType?: string;
@@ -66,7 +66,7 @@ export interface SupportHistoryItem {
       export_format_version?: string;
       fileName?: string;
     };
-    // 従来のフォーマット（後方互換性）
+    // 従来のフォーマット（後方互換性�E�E
     question?: string;
     answer?: string;
     machineInfo?: {
@@ -94,7 +94,7 @@ export interface SupportHistoryItem {
 export interface HistorySearchFilters {
   machineType?: string;
   machineNumber?: string;
-  searchText?: string; // テキスト検索用
+  searchText?: string; // チE��スト検索用
   searchDate?: string; // 日付検索用
   limit?: number;
   offset?: number;
@@ -107,7 +107,7 @@ export interface HistoryListResponse {
   hasMore: boolean;
 }
 
-// 基礎データ管理の型定義
+// 基礎データ管琁E�E型定義
 export interface BaseDataItem {
   id: string;
   title: string;
@@ -121,7 +121,7 @@ export interface BaseDataResponse {
   total: number;
 }
 
-// フロー管理の型定義
+// フロー管琁E�E型定義
 export interface FlowItem {
   id: string;
   title: string;
@@ -137,7 +137,7 @@ export interface FlowListResponse {
   total: number;
 }
 
-// ユーザー管理の型定義
+// ユーザー管琁E�E型定義
 export interface User {
   id: string;
   username: string;
@@ -157,7 +157,7 @@ export interface CreateUserRequest {
   description?: string;
 }
 
-// エクスポート機能の型定義
+// エクスポ�Eト機�Eの型定義
 export interface ExportHistoryItem {
   id: string;
   filename: string;

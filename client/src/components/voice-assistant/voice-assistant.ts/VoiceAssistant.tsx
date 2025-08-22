@@ -8,19 +8,19 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSpeechTimeRef = useRef<number>(0);
 
-  // Azure Speech設定 - デフォルト値を使用（REACT_APP_AZURE_SPEECH_*の参照を削除）
-  const azureKey = ''; // デフォルト値
-  const azureRegion = 'japaneast'; // デフォルト値
+  // Azure Speech設宁E- チE��ォルト値を使用�E�EEACT_APP_AZURE_SPEECH_*の参�Eを削除�E�E
+  const azureKey = ''; // チE��ォルト値
+  const azureRegion = 'japaneast'; // チE��ォルト値
 
-  // 設定
-  const SILENCE_TIMEOUT = 3000; // 3秒の無音で終了
+  // 設宁E
+  const SILENCE_TIMEOUT = 3000; // 3秒�E無音で終亁E
   const MIN_SPEECH_LENGTH = 3; // 最小文字数
 
   const isIOS = () => {
     return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   };
 
-  // バッファ処理
+  // バッファ処琁E
   const addToBuffer = (text: string) => {
     if (!text.trim()) return;
 
@@ -28,31 +28,31 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
     speechBufferRef.current.push(text.trim());
     lastSpeechTimeRef.current = Date.now();
 
-    // 無音タイマーをリセット
+    // 無音タイマ�EをリセチE��
     if (silenceTimeoutRef.current) {
       clearTimeout(silenceTimeoutRef.current);
     }
 
-    // 新しい無音タイマーを開始
+    // 新しい無音タイマ�Eを開姁E
     silenceTimeoutRef.current = setTimeout(() => {
       finalizeSpeech();
     }, SILENCE_TIMEOUT);
   };
 
-  // 発話終了処理
+  // 発話終亁E�E琁E
   const finalizeSpeech = () => {
     if (speechBufferRef.current.length === 0) return;
 
     const combinedText = speechBufferRef.current.join(' ').trim();
-    console.log('✅ 発話統合完了:', combinedText);
+    console.log('✁E発話統合完亁E', combinedText);
 
     if (combinedText.length >= MIN_SPEECH_LENGTH) {
-      // 画像検索のキーワードかどうかチェック（コンテキストと同じキーワードリストを使用）
+      // 画像検索のキーワードかどぁE��チェチE���E�コンチE��ストと同じキーワードリストを使用�E�E
       const imageSearchKeywords = [
         'ブレーキ', 'brake', 'エンジン', 'engine', '冷却', 'cooling', 'ラジエーター', 'radiator',
-        'ホイール', 'wheel', '車輪', 'タイヤ', 'tire', '部品', 'parts', '設備', 'equipment',
-        '機械', 'machine', '保守', 'maintenance', '点検', 'inspection', '修理', 'repair',
-        '故障', 'failure', '異常', 'abnormal', '音', 'sound', '振動', 'vibration'
+        'ホイール', 'wheel', '車輪', 'タイヤ', 'tire', '部品E, 'parts', '設傁E, 'equipment',
+        '機械', 'machine', '保宁E, 'maintenance', '点椁E, 'inspection', '修琁E, 'repair',
+        '敁E��', 'failure', '異常', 'abnormal', '音', 'sound', '振勁E, 'vibration'
       ];
       const hasImageKeyword = imageSearchKeywords.some(keyword => 
         combinedText.toLowerCase().includes(keyword.toLowerCase())
@@ -60,7 +60,7 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
 
       onRecognized(combinedText);
     } else {
-      console.log('⚠️ 発話が短すぎます:', combinedText);
+      console.log('⚠�E�E発話が短すぎまぁE', combinedText);
     }
 
     // バッファをクリア
@@ -72,7 +72,7 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
     }
   };
 
-  // 認識開始
+  // 認識開姁E
   const startRecognition = async () => {
     if (isRecording) return;
 
@@ -81,24 +81,24 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
       speechBufferRef.current = [];
       lastSpeechTimeRef.current = Date.now();
 
-      console.log('🎤 音声認識開始 -', isIOS() ? 'Web Speech API' : 'Azure Speech SDK');
+      console.log('🎤 音声認識開姁E-', isIOS() ? 'Web Speech API' : 'Azure Speech SDK');
 
       // speech-recognizer.tsのファクトリ関数を使用
       recognizerRef.current = createSpeechRecognizer(azureKey, azureRegion);
 
-      // 認識結果を受信する処理を設定
+      // 認識結果を受信する処琁E��設宁E
       recognizerRef.current.sendToServer = (text: string) => {
         console.log('🔊 音声認識結果受信:', text);
         addToBuffer(text);
       };
 
-      // 認識開始
+      // 認識開姁E
       await recognizerRef.current.start();
 
     } catch (error) {
-      console.error('❌ 音声認識開始エラー:', error);
+      console.error('❁E音声認識開始エラー:', error);
       setIsRecording(false);
-      alert('音声認識の開始に失敗しました: ' + (error as Error).message);
+      alert('音声認識�E開始に失敗しました: ' + (error as Error).message);
     }
   };
 
@@ -113,13 +113,13 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
       recognizerRef.current = null;
     }
 
-    // 残っているバッファを処理
+    // 残ってぁE��バッファを�E琁E
     finalizeSpeech();
 
     setIsRecording(false);
   };
 
-  // クリーンアップ
+  // クリーンアチE�E
   useEffect(() => {
     return () => {
       if (silenceTimeoutRef.current) {
@@ -131,12 +131,12 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
     };
   }, []);
 
-  // 自動停止監視（10秒後に自動停止）
+  // 自動停止監視！E0秒後に自動停止�E�E
   useEffect(() => {
     if (!isRecording) return;
 
     const autoStopTimeout = setTimeout(() => {
-      console.log('⏰ 自動停止（10秒経過）');
+      console.log('⏰ 自動停止�E�E0秒経過�E�E);
       stopRecognition();
     }, 10000);
 
@@ -158,14 +158,14 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
             </small>
           </span>
         ) : (
-          '🎙️ マイク開始'
+          '🎙�E�Eマイク開姁E
         )}
       </button>
 
       {isRecording && (
         <div className="recording-status">
           <div className="pulse-animation"></div>
-          <span>発話を聞いています...</span>
+          <span>発話を聞ぁE��ぁE��ぁE..</span>
           {speechBufferRef.current.length > 0 && (
             <div className="buffer-preview">
               最新: "{speechBufferRef.current[speechBufferRef.current.length - 1]}"

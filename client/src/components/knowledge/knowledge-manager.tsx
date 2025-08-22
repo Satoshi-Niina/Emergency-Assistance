@@ -47,7 +47,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 
-// ナレッジデータの型定義
+// ナレチE��チE�Eタの型定義
 interface KnowledgeData {
   id: string;
   title: string;
@@ -84,7 +84,7 @@ const KnowledgeManager: React.FC = () => {
     description: ''
   });
 
-  // ナレッジデータ一覧を取得
+  // ナレチE��チE�Eタ一覧を取征E
   const fetchKnowledgeData = async () => {
     try {
       setLoading(true);
@@ -99,16 +99,16 @@ const KnowledgeManager: React.FC = () => {
       
       if (result.success) {
         setKnowledgeData(result.data);
-        console.log('✅ ナレッジデータ取得成功:', result.data.length + '件');
+        console.log('✁EナレチE��チE�Eタ取得�E劁E', result.data.length + '件');
       } else {
-        console.error('❌ ナレッジデータ取得失敗:', result.message);
+        console.error('❁EナレチE��チE�Eタ取得失敁E', result.message);
         setKnowledgeData([]);
       }
     } catch (error) {
-      console.error('❌ ナレッジデータ取得エラー:', error);
+      console.error('❁EナレチE��チE�Eタ取得エラー:', error);
       toast({
         title: "エラー",
-        description: error instanceof Error ? error.message : "ナレッジデータの取得に失敗しました",
+        description: error instanceof Error ? error.message : "ナレチE��チE�Eタの取得に失敗しました",
         variant: "destructive"
       });
       setKnowledgeData([]);
@@ -117,7 +117,7 @@ const KnowledgeManager: React.FC = () => {
     }
   };
 
-  // ナレッジデータの種類一覧を取得
+  // ナレチE��チE�Eタの種類一覧を取征E
   const fetchKnowledgeTypes = async () => {
     try {
       const response = await fetch('/api/knowledge-base/types/list');
@@ -131,14 +131,14 @@ const KnowledgeManager: React.FC = () => {
       if (result.success) {
         setKnowledgeTypes(result.data);
       } else {
-        console.error('❌ ナレッジデータ種類取得失敗:', result.message);
+        console.error('❁EナレチE��チE�Eタ種類取得失敁E', result.message);
       }
     } catch (error) {
-      console.error('❌ ナレッジデータ種類取得エラー:', error);
+      console.error('❁EナレチE��チE�Eタ種類取得エラー:', error);
     }
   };
 
-  // コンポーネントマウント時にデータを取得
+  // コンポ�Eネント�Eウント時にチE�Eタを取征E
   useEffect(() => {
     fetchKnowledgeData();
     fetchKnowledgeTypes();
@@ -156,12 +156,12 @@ const KnowledgeManager: React.FC = () => {
     }
   };
 
-  // アップロードハンドラー
+  // アチE�Eロードハンドラー
   const handleUpload = async () => {
     if (!selectedFile) {
       toast({
         title: "エラー",
-        description: "ファイルが選択されていません",
+        description: "ファイルが選択されてぁE��せん",
         variant: "destructive"
       });
       return;
@@ -182,18 +182,18 @@ const KnowledgeManager: React.FC = () => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || "アップロードに失敗しました");
+        throw new Error(errorText || "アチE�Eロードに失敗しました");
       }
 
       const result = await response.json();
 
       if (result.success) {
         toast({
-          title: "アップロード成功",
-          description: `${selectedFile.name} がナレッジベースに追加されました`,
+          title: "アチE�Eロード�E劁E,
+          description: `${selectedFile.name} がナレチE��ベ�Eスに追加されました`,
         });
 
-        // フォームをリセット
+        // フォームをリセチE��
         setSelectedFile(null);
         setUploadForm({
           title: '',
@@ -203,15 +203,15 @@ const KnowledgeManager: React.FC = () => {
         });
         setUploadDialogOpen(false);
 
-        // データを再取得
+        // チE�Eタを�E取征E
         fetchKnowledgeData();
       } else {
-        throw new Error(result.message || "アップロードに失敗しました");
+        throw new Error(result.message || "アチE�Eロードに失敗しました");
       }
     } catch (error) {
       console.error("Upload error:", error);
       toast({
-        title: "アップロードエラー",
+        title: "アチE�Eロードエラー",
         description: error instanceof Error ? error.message : "未知のエラーが発生しました",
         variant: "destructive",
       });
@@ -220,7 +220,7 @@ const KnowledgeManager: React.FC = () => {
 
   // 削除ハンドラー
   const handleDelete = async (id: string, title: string) => {
-    if (!confirm(`「${title}」を削除しますか？`)) {
+    if (!confirm(`、E{title}」を削除しますか�E�`)) {
       return;
     }
 
@@ -242,7 +242,7 @@ const KnowledgeManager: React.FC = () => {
           description: `${title} を削除しました`,
         });
 
-        // データを再取得
+        // チE�Eタを�E取征E
         fetchKnowledgeData();
       } else {
         throw new Error(result.message || "削除に失敗しました");
@@ -257,20 +257,20 @@ const KnowledgeManager: React.FC = () => {
     }
   };
 
-  // ファイルサイズを人間が読みやすい形式に変換
+  // ファイルサイズを人間が読みめE��ぁE��式に変換
   const formatFileSize = (bytes?: number): string => {
-    if (!bytes) return '不明';
+    if (!bytes) return '不�E';
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
   };
 
-  // 日付をフォーマット
+  // 日付をフォーマッチE
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), 'yyyy/MM/dd HH:mm');
   };
 
-  // タイプに応じたアイコンを取得
+  // タイプに応じたアイコンを取征E
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'troubleshooting':
@@ -295,8 +295,8 @@ const KnowledgeManager: React.FC = () => {
       {/* ヘッダー */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">ナレッジデータ管理</h2>
-          <p className="text-gray-600">ナレッジベースのデータを管理します</p>
+          <h2 className="text-2xl font-bold">ナレチE��チE�Eタ管琁E/h2>
+          <p className="text-gray-600">ナレチE��ベ�EスのチE�Eタを管琁E��まぁE/p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -316,9 +316,9 @@ const KnowledgeManager: React.FC = () => {
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
-                <DialogTitle>ナレッジデータを追加</DialogTitle>
+                <DialogTitle>ナレチE��チE�Eタを追加</DialogTitle>
                 <DialogDescription>
-                  新しいナレッジデータをアップロードします
+                  新しいナレチE��チE�EタをアチE�EロードしまぁE
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
@@ -341,16 +341,16 @@ const KnowledgeManager: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="category">カテゴリ</Label>
+                  <Label htmlFor="category">カチE��リ</Label>
                   <Input
                     id="category"
                     value={uploadForm.category}
                     onChange={(e) => setUploadForm(prev => ({ ...prev, category: e.target.value }))}
-                    placeholder="カテゴリ"
+                    placeholder="カチE��リ"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="tags">タグ（カンマ区切り）</Label>
+                  <Label htmlFor="tags">タグ�E�カンマ区刁E���E�E/Label>
                   <Input
                     id="tags"
                     value={uploadForm.tags}
@@ -359,12 +359,12 @@ const KnowledgeManager: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="description">説明</Label>
+                  <Label htmlFor="description">説昁E/Label>
                   <Textarea
                     id="description"
                     value={uploadForm.description}
                     onChange={(e) => setUploadForm(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="ファイルの説明"
+                    placeholder="ファイルの説昁E
                     rows={3}
                   />
                 </div>
@@ -375,7 +375,7 @@ const KnowledgeManager: React.FC = () => {
                 </Button>
                 <Button onClick={handleUpload} disabled={!selectedFile}>
                   <Upload className="h-4 w-4 mr-2" />
-                  アップロード
+                  アチE�EローチE
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -394,13 +394,13 @@ const KnowledgeManager: React.FC = () => {
         <CardContent>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <Label htmlFor="filter-type">タイプ:</Label>
+              <Label htmlFor="filter-type">タイチE</Label>
               <Select value={filterType} onValueChange={setFilterType}>
                 <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="すべてのタイプ" />
+                  <SelectValue placeholder="すべてのタイチE />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">すべてのタイプ</SelectItem>
+                  <SelectItem value="">すべてのタイチE/SelectItem>
                   {knowledgeTypes.map((type) => (
                     <SelectItem key={type.value} value={type.value}>
                       {type.label}
@@ -413,30 +413,30 @@ const KnowledgeManager: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* ナレッジデータ一覧 */}
+      {/* ナレチE��チE�Eタ一覧 */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            ナレッジデータ一覧 ({knowledgeData.length}件)
+            ナレチE��チE�Eタ一覧 ({knowledgeData.length}件)
           </CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">データを読み込み中...</p>
+              <p className="text-gray-600">チE�Eタを読み込み中...</p>
             </div>
           ) : knowledgeData.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>タイトル</TableHead>
-                  <TableHead>タイプ</TableHead>
-                  <TableHead>カテゴリ</TableHead>
+                  <TableHead>タイチE/TableHead>
+                  <TableHead>カチE��リ</TableHead>
                   <TableHead>サイズ</TableHead>
-                  <TableHead>作成日時</TableHead>
-                  <TableHead>操作</TableHead>
+                  <TableHead>作�E日晁E/TableHead>
+                  <TableHead>操佁E/TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -494,8 +494,8 @@ const KnowledgeManager: React.FC = () => {
           ) : (
             <div className="text-center py-8">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">ナレッジデータがありません</p>
-              <p className="text-sm text-gray-500">新しいデータをアップロードしてください</p>
+              <p className="text-gray-600">ナレチE��チE�Eタがありません</p>
+              <p className="text-sm text-gray-500">新しいチE�EタをアチE�Eロードしてください</p>
             </div>
           )}
         </CardContent>

@@ -19,8 +19,8 @@ const DecisionNode = ({ data }: NodeProps) => {
         )}
       </div>
       
-      {/* 入力と複数の出力ハンドル - 角に配置 */}
-      {/* 上部の角（入力） */}
+      {/* 入力と褁E��の出力ハンドル - 角に配置 */}
+      {/* 上部の角（�E力！E*/}
       <Handle
         type="target"
         position={Position.Top}
@@ -34,7 +34,7 @@ const DecisionNode = ({ data }: NodeProps) => {
         isConnectable={true}
       />
       
-      {/* 右側の角（Yes出力） */}
+      {/* 右側の角！Ees出力！E*/}
       <Handle
         type="source"
         position={Position.Right}
@@ -49,7 +49,7 @@ const DecisionNode = ({ data }: NodeProps) => {
         isConnectable={true}
       />
       
-      {/* 下側の角（No出力） */}
+      {/* 下�Eの角！Eo出力！E*/}
       <Handle
         type="source"
         position={Position.Bottom}
@@ -64,7 +64,7 @@ const DecisionNode = ({ data }: NodeProps) => {
         isConnectable={true}
       />
       
-      {/* 左側の角（別の出力） */}
+      {/* 左側の角（別の出力！E*/}
       <Handle
         type="source"
         position={Position.Left}

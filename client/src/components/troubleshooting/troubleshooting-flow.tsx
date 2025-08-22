@@ -34,9 +34,9 @@ interface TroubleshootingFlowProps {
   onExit: () => void;
 }
 
-// 画像URL変換の改善
+// 画像URL変換の改喁E
 
-// 画像の読み込みエラーを処理する関数
+// 画像�E読み込みエラーを�E琁E��る関数
 function handleImageError(e: React.SyntheticEvent<HTMLImageElement, Event>, imageUrl: string) {
   console.error('画像読み込みエラー:', imageUrl);
   const target = e.currentTarget;
@@ -45,7 +45,7 @@ function handleImageError(e: React.SyntheticEvent<HTMLImageElement, Event>, imag
   // エラー表示用の要素を追加
   const errorDiv = document.createElement('div');
   errorDiv.className = 'bg-red-100 border border-red-300 text-red-700 px-3 py-2 rounded text-sm';
-  errorDiv.textContent = '画像の読み込みに失敗しました';
+  errorDiv.textContent = '画像�E読み込みに失敗しました';
   target.parentNode?.appendChild(errorDiv);
 }
 
@@ -96,9 +96,9 @@ export default function TroubleshootingFlow({
     const fetchFlowData = async () => {
       try {
         setLoading(true);
-        console.log(`🔄 フローデータ取得開始: ${id}`);
+        console.log(`🔄 フローチE�Eタ取得開姁E ${id}`);
         
-        // 正しいAPIエンドポイントを使用
+        // 正しいAPIエンド�Eイントを使用
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${id}`);
         
         if (!response.ok) {
@@ -106,14 +106,14 @@ export default function TroubleshootingFlow({
         }
 
         const data = await response.json();
-        console.log(`✅ フローデータ取得完了:`, data);
+        console.log(`✁EフローチE�Eタ取得完亁E`, data);
         setFlowData(data);
         
-        // 最初のステップを設定
+        // 最初�EスチE��プを設宁E
         if (data.steps && data.steps.length > 0) {
           setCurrentStepId(data.steps[0].id);
           
-          // 初期ステップを履歴に追加
+          // 初期スチE��プを履歴に追加
           const initialStep = data.steps[0];
           setExecutionHistory([{
             stepId: initialStep.id,
@@ -125,8 +125,8 @@ export default function TroubleshootingFlow({
           }]);
         }
       } catch (err) {
-        console.error("❌ Flow data fetch error:", err);
-        setError("フローデータの取得に失敗しました");
+        console.error("❁EFlow data fetch error:", err);
+        setError("フローチE�Eタの取得に失敗しました");
       } finally {
         setLoading(false);
       }
@@ -184,7 +184,7 @@ export default function TroubleshootingFlow({
     if (currentIndex > 0) {
       setCurrentStepId(flowData.steps[currentIndex - 1].id);
       
-      // 履歴から最後のステップを削除
+      // 履歴から最後�EスチE��プを削除
       setExecutionHistory(prev => prev.slice(0, -1));
     }
   };
@@ -206,8 +206,8 @@ export default function TroubleshootingFlow({
           <CardTitle className="text-red-600">エラー</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="mb-4">{error || "フローデータが見つかりません"}</p>
-          <Button onClick={onExit}>戻る</Button>
+          <p className="mb-4">{error || "フローチE�Eタが見つかりません"}</p>
+          <Button onClick={onExit}>戻めE/Button>
         </CardContent>
       </Card>
     );
@@ -217,7 +217,7 @@ export default function TroubleshootingFlow({
   const currentIndex = flowData.steps.findIndex(step => step.id === currentStepId);
   const isLastStep = currentIndex === flowData.steps.length - 1;
   
-  // 確実な画像表示ロジック
+  // 確実な画像表示ロジチE��
   const imagesToShow = [];
   if (currentStep?.images && currentStep.images.length > 0) {
     imagesToShow.push(...currentStep.images);
@@ -232,12 +232,12 @@ export default function TroubleshootingFlow({
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="lg" onClick={onExit}>
               <ArrowLeft className="h-5 w-5" />
-              戻る
+              戻めE
             </Button>
             <CardTitle className="text-2xl md:text-3xl">{flowData?.title}</CardTitle>
           </div>
           <div className="text-base text-gray-500">
-            ステップ {currentIndex + 1} / {flowData?.steps.length}
+            スチE��チE{currentIndex + 1} / {flowData?.steps.length}
           </div>
         </div>
       </CardHeader>
@@ -260,7 +260,7 @@ export default function TroubleshootingFlow({
           
           {currentStep.type === 'decision' && currentStep.options.length > 0 && (
             <div className="space-y-3">
-              <h4 className="font-medium text-gray-900">選択してください：</h4>
+              <h4 className="font-medium text-gray-900">選択してください�E�E/h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {currentStep.options.map((option, index) => (
                   <Button
@@ -284,7 +284,7 @@ export default function TroubleshootingFlow({
                   <div key={index} className="relative">
                     <img
                       src={convertImageUrl(image.url)}
-                      alt={`${currentStep.title} - ${image.fileName || '画像'}`}
+                      alt={`${currentStep.title} - ${image.fileName || '画僁E}`}
                       className="w-full h-auto rounded-lg shadow-md"
                       onError={(e) => handleImageError(e, image.url)}
                     />
@@ -298,7 +298,7 @@ export default function TroubleshootingFlow({
               </div>
             </div>
           ) : currentStep.imageUrl ? (
-            // 古い形式の imageUrl のみのフォールバック
+            // 古ぁE��式�E imageUrl のみのフォールバック
             <div className="mt-4">
               <img
                 src={convertImageUrl(currentStep.imageUrl)}
@@ -310,7 +310,7 @@ export default function TroubleshootingFlow({
           ) : (
             <div className="mt-4 text-center py-4 bg-gray-50 rounded-lg">
               {/* <ImageIcon className="mx-auto h-8 w-8 text-gray-400" />
-              <p className="mt-2 text-sm text-gray-600">このステップに画像はありません</p> */}
+              <p className="mt-2 text-sm text-gray-600">こ�EスチE��プに画像�Eありません</p> */}
             </div>
           )}
 

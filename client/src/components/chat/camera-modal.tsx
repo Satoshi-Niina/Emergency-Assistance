@@ -19,7 +19,7 @@ export default function CameraModal() {
   const [isRecording, setIsRecording] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
-  // 常に背面カメラを使用する（切替機能なし）
+  // 常に背面カメラを使用する�E��E替機�Eなし！E
   const [useBackCamera] = useState(true);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -37,27 +37,27 @@ export default function CameraModal() {
       setIsOpen(true);
     };
     
-    console.log('📸 CameraModal: open-camera イベントリスナーを登録しました');
+    console.log('📸 CameraModal: open-camera イベントリスナ�Eを登録しました');
     window.addEventListener('open-camera', handleOpenCamera);
 
     return () => {
-      console.log('📸 CameraModal: open-camera イベントリスナーを削除しました');
+      console.log('📸 CameraModal: open-camera イベントリスナ�Eを削除しました');
       window.removeEventListener('open-camera', handleOpenCamera);
     };
   }, []);
 
   useEffect(() => {
     if (isOpen) {
-      // カメラ権限を事前にチェック
+      // カメラ権限を事前にチェチE��
       const checkCameraPermission = async () => {
         try {
           const permission = await navigator.permissions.query({ name: 'camera' as PermissionName });
-          console.log('📸 カメラ権限状態:', permission.state);
+          console.log('📸 カメラ権限状慁E', permission.state);
           
           if (permission.state === 'denied') {
             toast({
-              title: "カメラ権限が拒否されています",
-              description: "ブラウザの設定でカメラアクセスを許可してください。",
+              title: "カメラ権限が拒否されてぁE��ぁE,
+              description: "ブラウザの設定でカメラアクセスを許可してください、E,
               variant: "destructive",
             });
             return;
@@ -66,8 +66,8 @@ export default function CameraModal() {
           console.log('📸 権限APIが利用できません:', err);
         }
         
-        // モーダルが開いたらカメラを起動
-        // 少し遅延させることでステートの適用を確実にする
+        // モーダルが開ぁE��らカメラを起勁E
+        // 少し遁E��させることでスチE�Eト�E適用を確実にする
         setTimeout(() => {
           startCamera();
         }, 300);
@@ -82,28 +82,28 @@ export default function CameraModal() {
 
   const startCamera = async () => {
     try {
-      console.log('📸 カメラアクセス開始');
+      console.log('📸 カメラアクセス開姁E);
       
-      // ブラウザの対応状況を確認
+      // ブラウザの対応状況を確誁E
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('このブラウザはカメラ機能をサポートしていません');
+        throw new Error('こ�Eブラウザはカメラ機�Eをサポ�EトしてぁE��せん');
       }
 
-      // HTTPSの確認
+      // HTTPSの確誁E
       const isSecure = location.protocol === 'https:' || location.hostname === 'localhost';
-      console.log('🔒 セキュアコンテキスト:', isSecure, 'プロトコル:', location.protocol, 'ホスト:', location.hostname);
+      console.log('🔒 セキュアコンチE��スチE', isSecure, 'プロトコル:', location.protocol, 'ホスチE', location.hostname);
       
       if (!isSecure) {
-        throw new Error('カメラアクセスにはHTTPS接続が必要です');
+        throw new Error('カメラアクセスにはHTTPS接続が忁E��でぁE);
       }
 
-      // ストリームが既に存在する場合は停止
+      // ストリームが既に存在する場合�E停止
       if (stream) {
-        console.log('🛑 既存のストリームを停止');
+        console.log('🛑 既存�Eストリームを停止');
         stream.getTracks().forEach(track => track.stop());
       }
 
-      console.log('📸 カメラ制約設定:', {
+      console.log('📸 カメラ制紁E��宁E', {
         facingMode: useBackCamera ? "environment" : "user",
         videoMode: isVideoMode,
         constraints: {
@@ -116,7 +116,7 @@ export default function CameraModal() {
         }
       });
 
-      // カメラ制約を明示的に設定
+      // カメラ制紁E��明示皁E��設宁E
       const constraints = { 
         video: { 
           facingMode: useBackCamera ? "environment" : "user",
@@ -126,9 +126,9 @@ export default function CameraModal() {
         audio: isVideoMode 
       };
 
-      console.log('📸 getUserMedia呼び出し開始');
+      console.log('📸 getUserMedia呼び出し開姁E);
       const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-      console.log('✅ getUserMedia成功:', {
+      console.log('✁EgetUserMedia成功:', {
         streamActive: mediaStream.active,
         videoTracks: mediaStream.getVideoTracks().length,
         audioTracks: mediaStream.getAudioTracks().length
@@ -137,33 +137,33 @@ export default function CameraModal() {
       setStream(mediaStream);
 
       if (videoRef.current) {
-        console.log('📺 ビデオ要素にストリーム設定');
+        console.log('📺 ビデオ要素にストリーム設宁E);
         videoRef.current.srcObject = mediaStream;
         
-        // ビデオが再生開始されるのを待つ
+        // ビデオが�E生開始されるのを征E��
         videoRef.current.onloadedmetadata = () => {
-          console.log('✅ ビデオメタデータ読み込み完了');
+          console.log('✁EビデオメタチE�Eタ読み込み完亁E);
           videoRef.current?.play().catch(err => {
-            console.error('❌ ビデオ再生エラー:', err);
+            console.error('❁Eビデオ再生エラー:', err);
           });
         };
       }
     } catch (error) {
-      console.error('❌ カメラアクセスエラー:', error);
+      console.error('❁Eカメラアクセスエラー:', error);
       
       let errorMessage = 'カメラにアクセスできませんでした';
       
       if (error instanceof Error) {
         if (error.name === 'NotAllowedError') {
-          errorMessage = 'カメラの使用が許可されていません。ブラウザの設定でカメラアクセスを許可してください。';
+          errorMessage = 'カメラの使用が許可されてぁE��せん。ブラウザの設定でカメラアクセスを許可してください、E;
         } else if (error.name === 'NotFoundError') {
-          errorMessage = 'カメラが見つかりません。デバイスにカメラが接続されているか確認してください。';
+          errorMessage = 'カメラが見つかりません。デバイスにカメラが接続されてぁE��か確認してください、E;
         } else if (error.name === 'NotReadableError') {
-          errorMessage = 'カメラが他のアプリケーションによって使用されています。';
+          errorMessage = 'カメラが他�Eアプリケーションによって使用されてぁE��す、E;
         } else if (error.name === 'OverconstrainedError') {
-          errorMessage = 'カメラの設定に問題があります。別のカメラを試してください。';
+          errorMessage = 'カメラの設定に問題があります。別のカメラを試してください、E;
         } else if (error.name === 'SecurityError') {
-          errorMessage = 'セキュリティ上の理由でカメラにアクセスできません。HTTPSで接続してください。';
+          errorMessage = 'セキュリチE��上�E琁E��でカメラにアクセスできません、ETTPSで接続してください、E;
         } else {
           errorMessage = `カメラエラー: ${error.message}`;
         }
@@ -177,7 +177,7 @@ export default function CameraModal() {
     }
   };
 
-  // カメラ切り替え機能は削除（常に背面カメラのみを使用）
+  // カメラ刁E��替え機�Eは削除�E�常に背面カメラのみを使用�E�E
 
   const stopCamera = () => {
     if (stream) {
@@ -203,13 +203,13 @@ export default function CameraModal() {
         startRecording();
       }
     } else {
-      // Capture image - 150dpi相当（約874px × 1240px）に圧縮
+      // Capture image - 150dpi相当（紁E74px ÁE1240px�E�に圧縮
       const canvas = document.createElement('canvas');
       const video = videoRef.current;
       
-      // 150dpi相当の最大解像度に制限
-      const maxWidth = 874;   // 150dpi相当の幅
-      const maxHeight = 1240; // 150dpi相当の高さ
+      // 150dpi相当�E最大解像度に制陁E
+      const maxWidth = 874;   // 150dpi相当�E幁E
+      const maxHeight = 1240; // 150dpi相当�E高さ
       let { videoWidth, videoHeight } = video;
       
       // アスペクト比を保持してリサイズ
@@ -232,20 +232,20 @@ export default function CameraModal() {
         ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
         
         try {
-          // より高い圧縮率でファイルサイズを最小化（品質0.4）
+          // より高い圧縮玁E��ファイルサイズを最小化�E�品質0.4�E�E
           const imageData = canvas.toDataURL('image/jpeg', 0.4);
           
-          // Base64データが正しい形式になっているかチェック
+          // Base64チE�Eタが正しい形式になってぁE��かチェチE��
           if (!imageData.startsWith('data:image/')) {
-            console.error('Base64データの形式が不正です:', imageData.substring(0, 50));
+            console.error('Base64チE�Eタの形式が不正でぁE', imageData.substring(0, 50));
             console.error('canvas.toDataURL()の結果:', typeof imageData, imageData.length);
             return;
           }
           
-          console.log('✅ 撮影画像をBase64形式で生成成功:', {
+          console.log('✁E撮影画像をBase64形式で生�E成功:', {
             format: 'image/jpeg',
             quality: 0.4,
-            resolution: '150dpi相当',
+            resolution: '150dpi相彁E,
             originalSize: `${video.videoWidth}x${video.videoHeight}`,
             compressedSize: `${videoWidth}x${videoHeight}`,
             maxResolution: `${maxWidth}x${maxHeight}`,
@@ -258,7 +258,7 @@ export default function CameraModal() {
           
           setCapturedImage(imageData);
         } catch (error) {
-          console.error('canvas.toDataURL()でエラーが発生:', error);
+          console.error('canvas.toDataURL()でエラーが発甁E', error);
         }
       }
     }
@@ -298,16 +298,16 @@ export default function CameraModal() {
   const handleSend = async () => {
     if (capturedImage) {
       try {
-        console.log('撮影した画像をチャットに送信します');
+        console.log('撮影した画像をチャチE��に送信しまぁE);
 
-        // capturedImageが既にBase64形式かチェック
+        // capturedImageが既にBase64形式かチェチE��
         let finalImageData = capturedImage;
         
         if (!capturedImage.startsWith('data:image/')) {
-          console.log('画像データがBase64形式ではありません。変換します:', typeof capturedImage);
-          // もしObjectやBlobの場合は、ここで変換処理を追加
+          console.log('画像データがBase64形式ではありません。変換しまぁE', typeof capturedImage);
+          // もしObjectやBlobの場合�E、ここで変換処琁E��追加
           if (typeof capturedImage === 'object') {
-            console.error('画像データがオブジェクト形式です。Base64変換が必要です。');
+            console.error('画像データがオブジェクト形式です、Ease64変換が忁E��です、E);
             return;
           }
           finalImageData = `data:image/jpeg;base64,${capturedImage}`;
@@ -320,7 +320,7 @@ export default function CameraModal() {
           preview: finalImageData.substring(0, 50) + '...'
         });
 
-        // 完全なBase64データURLを直接contentに格納して送信
+        // 完�EなBase64チE�EタURLを直接contentに格納して送信
         await sendMessage(finalImageData);
 
         setIsOpen(false);
@@ -348,9 +348,9 @@ export default function CameraModal() {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className={`${orientation === 'landscape' ? 'max-w-3xl' : 'max-w-md'} p-0 overflow-hidden bg-blue-50 border border-blue-200 camera-modal`} aria-describedby="camera-modal-desc">
         <DialogTitle className="sr-only">カメラ</DialogTitle>
-        <div id="camera-modal-desc" className="sr-only">写真や動画を撮影するためのカメラモーダル</div>
+        <div id="camera-modal-desc" className="sr-only">写真めE��画を撮影するためのカメラモーダル</div>
         <DialogHeader className="p-4 border-b border-blue-200 flex flex-row justify-between items-center bg-blue-100">
-          <DialogTitle className="text-indigo-600 text-lg font-bold">カメラ起動</DialogTitle>
+          <DialogTitle className="text-indigo-600 text-lg font-bold">カメラ起勁E/DialogTitle>
           <div className="flex items-center space-x-4">
             <div className="flex items-center bg-white px-2 py-1 rounded-full">
               <TabletSmartphone className="h-6 w-6 mr-2 text-indigo-600" />
@@ -399,13 +399,13 @@ export default function CameraModal() {
             )
           )}
 
-          {/* カメラ切り替えボタンは削除 - 常に背面カメラを使用 */}
+          {/* カメラ刁E��替え�Eタンは削除 - 常に背面カメラを使用 */}
 
           {/* Camera Controls - Different for Photo and Video modes */}
           {!capturedImage && (
             <div className="absolute bottom-4 left-0 right-0 flex justify-center space-x-4">
               {isVideoMode ? (
-                // ビデオモードのコントロール
+                // ビデオモード�Eコントロール
                 <>
                   {isRecording ? (
                     <>
@@ -438,7 +438,7 @@ export default function CameraModal() {
                   )}
                 </>
               ) : (
-                // 写真モードのコントロール
+                // 写真モード�Eコントロール
                 <Button 
                   className="bg-blue-600 rounded-full w-16 h-16 flex items-center justify-center shadow-lg border-2 border-white"
                   variant="outline"
@@ -464,8 +464,8 @@ export default function CameraModal() {
             <div className="flex items-center justify-between">
               <p className="text-sm text-blue-700 font-medium">
                 {isVideoMode ? 
-                  (isRecording ? "録画中... 停止するには□をタップ" : "◎ をタップして録画開始") : 
-                  "○ をタップして写真撮影"}
+                  (isRecording ? "録画中... 停止するには□をタチE�E" : "◁EをタチE�Eして録画開姁E) : 
+                  "◁EをタチE�Eして写真撮影"}
               </p>
             </div>
           )}

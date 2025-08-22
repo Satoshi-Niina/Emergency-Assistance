@@ -28,7 +28,7 @@ interface StepByStepQAProps {
   onExit: () => void;
   initialContext?: string;
   knowledgeBase?: string[];
-  initialProblemDescription?: string; // 初期問題説明
+  initialProblemDescription?: string; // 初期問題説昁E
 }
 
 export default function StepByStepQA({
@@ -49,7 +49,7 @@ export default function StepByStepQA({
   const [problemCategory, setProblemCategory] = useState<any>(null);
   const [qaManager] = useState(() => new QAFlowManager());
 
-  // 初期質問の生成
+  // 初期質問�E生�E
   useEffect(() => {
     if (initialProblemDescription) {
       classifyProblemAndStartFlow();
@@ -61,7 +61,7 @@ export default function StepByStepQA({
   const classifyProblemAndStartFlow = async () => {
     setIsLoading(true);
     try {
-      // 問題分類とフロー予測
+      // 問題�E類とフロー予測
       const result = await qaManager.classifyProblemAndPredictFlow(
         initialProblemDescription,
         knowledgeBase
@@ -72,17 +72,17 @@ export default function StepByStepQA({
         qaManager.setProblemCategory(result.category);
         qaManager.setCurrentFlow(result.flow);
         
-        // 最初の質問を設定
+        // 最初�E質問を設宁E
         if (result.flow.steps.length > 0) {
           setCurrentStep(result.flow.steps[0]);
           setProgress(10);
         }
       } else {
-        // 分類に失敗した場合は通常の質問生成
+        // 刁E��に失敗した場合�E通常の質問生戁E
         await generateInitialQuestion();
       }
     } catch (error) {
-      console.error('問題分類エラー:', error);
+      console.error('問題�E類エラー:', error);
       await generateInitialQuestion();
     } finally {
       setIsLoading(false);
@@ -93,7 +93,7 @@ export default function StepByStepQA({
     setIsLoading(true);
     try {
       const firstQuestion = await qaManager.generateNextQuestion(
-        initialContext || '問題の詳細を確認するため、段階的に質問させていただきます。',
+        initialContext || '問題�E詳細を確認するため、段階的に質問させてぁE��だきます、E,
         [],
         knowledgeBase
       );
@@ -126,16 +126,16 @@ export default function StepByStepQA({
       setAnswers(newAnswers);
       qaManager.addAnswer(answer);
 
-      // 回答を親コンポーネントに送信
+      // 回答を親コンポ�Eネントに送信
       onAnswer(answer);
 
       // 進捗を更新
       const newProgress = Math.min(90, progress + 20);
       setProgress(newProgress);
 
-      // 次の質問を生成
+      // 次の質問を生�E
       const nextStep = await qaManager.generateNextQuestion(
-        `これまでの回答: ${newAnswers.map(a => a.answer).join(', ')}`,
+        `これまでの回筁E ${newAnswers.map(a => a.answer).join(', ')}`,
         newAnswers,
         knowledgeBase
       );
@@ -144,11 +144,11 @@ export default function StepByStepQA({
         setCurrentStep(nextStep);
         setCurrentAnswer('');
       } else {
-        // 質問が終了した場合、解決策を生成
+        // 質問が終亁E��た場合、解決策を生�E
         await generateSolution(newAnswers);
       }
     } catch (error) {
-      console.error('回答処理エラー:', error);
+      console.error('回答�E琁E��ラー:', error);
     } finally {
       setIsLoading(false);
     }
@@ -159,7 +159,7 @@ export default function StepByStepQA({
       const solution = await qaManager.generateSolution(allAnswers, knowledgeBase);
       setProgress(100);
       
-      // 解決策を親コンポーネントに送信
+      // 解決策を親コンポ�Eネントに送信
       onComplete(solution, allAnswers);
     } catch (error) {
       console.error('解決策生成エラー:', error);
@@ -188,7 +188,7 @@ export default function StepByStepQA({
         <CardContent className="p-6">
           <div className="flex items-center justify-center space-x-2">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-            <span>質問を生成中...</span>
+            <span>質問を生�E中...</span>
           </div>
         </CardContent>
       </Card>
@@ -220,14 +220,14 @@ export default function StepByStepQA({
                 onClick={resetQA}
               >
                 <RotateCcw className="h-4 w-4 mr-1" />
-                リセット
+                リセチE��
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={onExit}
               >
-                終了
+                終亁E
               </Button>
             </div>
           </div>
@@ -235,7 +235,7 @@ export default function StepByStepQA({
           {/* 進捗バー */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm text-gray-600">
-              <span>進捗</span>
+              <span>進捁E/span>
               <span>{progress}%</span>
             </div>
             <Progress value={progress} className="h-2" />
@@ -260,7 +260,7 @@ export default function StepByStepQA({
                 </Badge>
                 <div className="flex-1">
                   <p className="text-sm text-gray-600 mb-1">
-                    回答: {answer.answer}
+                    回筁E {answer.answer}
                   </p>
                   <p className="text-xs text-gray-400">
                     {answer.timestamp.toLocaleTimeString()}
@@ -273,7 +273,7 @@ export default function StepByStepQA({
         </Card>
       )}
 
-      {/* 現在の質問 */}
+      {/* 現在の質啁E*/}
       {currentStep && (
         <Card>
           <CardContent className="p-6">
@@ -283,15 +283,15 @@ export default function StepByStepQA({
                  <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                    {(() => {
                      const questionText = currentStep.question.toLowerCase();
-                     if (questionText.includes('安全') || questionText.includes('危険')) {
+                     if (questionText.includes('安�E') || questionText.includes('危険')) {
                        return <Shield className="h-4 w-4 text-red-600" />;
-                     } else if (questionText.includes('症状') || questionText.includes('異常')) {
+                     } else if (questionText.includes('痁E��') || questionText.includes('異常')) {
                        return <AlertCircle className="h-4 w-4 text-orange-600" />;
-                     } else if (questionText.includes('原因') || questionText.includes('なぜ')) {
+                     } else if (questionText.includes('原因') || questionText.includes('なぁE)) {
                        return <Search className="h-4 w-4 text-blue-600" />;
-                     } else if (questionText.includes('対応') || questionText.includes('処置')) {
+                     } else if (questionText.includes('対忁E) || questionText.includes('処置')) {
                        return <Wrench className="h-4 w-4 text-green-600" />;
-                     } else if (questionText.includes('確認') || questionText.includes('チェック')) {
+                     } else if (questionText.includes('確誁E) || questionText.includes('チェチE��')) {
                        return <Eye className="h-4 w-4 text-purple-600" />;
                      } else {
                        return <span className="text-sm font-medium text-blue-600">{answers.length + 1}</span>;
@@ -305,7 +305,7 @@ export default function StepByStepQA({
                    <div className="flex items-center gap-2 mb-2">
                      {currentStep.required && (
                        <Badge variant="destructive" className="text-xs">
-                         必須
+                         忁E��E
                        </Badge>
                      )}
                      {currentStep.reasoning && (
@@ -316,13 +316,13 @@ export default function StepByStepQA({
                    </div>
                    {currentStep.expectedOutcome && (
                      <div className="text-sm text-gray-600 bg-blue-50 p-2 rounded-md mb-3">
-                       <strong>期待される結果:</strong> {currentStep.expectedOutcome}
+                       <strong>期征E��れる結果:</strong> {currentStep.expectedOutcome}
                      </div>
                    )}
                  </div>
                </div>
 
-              {/* 回答入力 */}
+              {/* 回答�E劁E*/}
               <div className="space-y-3">
                 {currentStep.type === 'choice' && currentStep.options ? (
                   <div className="grid grid-cols-1 gap-2">
@@ -359,12 +359,12 @@ export default function StepByStepQA({
                       {isLoading ? (
                         <div className="flex items-center space-x-2">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                          <span>処理中...</span>
+                          <span>処琁E��...</span>
                         </div>
                       ) : (
                         <div className="flex items-center space-x-2">
                           <Send className="h-4 w-4" />
-                          <span>回答する</span>
+                          <span>回答すめE/span>
                         </div>
                       )}
                     </Button>
@@ -372,12 +372,12 @@ export default function StepByStepQA({
                 )}
               </div>
 
-              {/* ヒント */}
+              {/* ヒンチE*/}
               <Alert>
                 <Lightbulb className="h-4 w-4" />
                 <AlertDescription>
-                  専門的なナレッジベースを活用して、最適な質問を生成しています。
-                  詳細な回答をいただくことで、より正確な解決策を提案できます。
+                  専門皁E��ナレチE��ベ�Eスを活用して、最適な質問を生�EしてぁE��す、E
+                  詳細な回答をぁE��だくことで、より正確な解決策を提案できます、E
                 </AlertDescription>
               </Alert>
             </div>
@@ -385,13 +385,13 @@ export default function StepByStepQA({
         </Card>
       )}
 
-      {/* 完了時の表示 */}
+      {/* 完亁E��の表示 */}
       {progress === 100 && (
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-center space-x-2 text-green-600">
               <CheckCircle className="h-6 w-6" />
-              <span className="text-lg font-medium">問題解決完了</span>
+              <span className="text-lg font-medium">問題解決完亁E/span>
             </div>
           </CardContent>
         </Card>

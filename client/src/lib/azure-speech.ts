@@ -1,12 +1,12 @@
 
-// Web Speech APIの実装
+// Web Speech APIの実裁E
 class WebSpeechRecognizer {
   private recognition: SpeechRecognition | null = null;
   public sendToServer: ((text: string) => void) | null = null;
 
   async start() {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      throw new Error('ブラウザが音声認識をサポートしていません');
+      throw new Error('ブラウザが音声認識をサポ�EトしてぁE��せん');
     }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -39,7 +39,7 @@ class WebSpeechRecognizer {
   }
 }
 
-// Azure Speech SDKの実装
+// Azure Speech SDKの実裁E
 class AzureSpeechRecognizer {
   private recognizer: any = null;
   public sendToServer: ((text: string) => void) | null = null;
@@ -48,7 +48,7 @@ class AzureSpeechRecognizer {
 
   async start() {
     try {
-      // Azure Speech SDKを動的にインポート
+      // Azure Speech SDKを動皁E��インポ�EチE
       const speechSdk = await import('microsoft-cognitiveservices-speech-sdk');
       
       const speechConfig = speechSdk.SpeechConfig.fromSubscription(this.subscriptionKey, this.region);
@@ -58,7 +58,7 @@ class AzureSpeechRecognizer {
       this.recognizer = new speechSdk.SpeechRecognizer(speechConfig, audioConfig);
 
       this.recognizer.recognizing = (_s: any, e: any) => {
-        // 中間結果は無視
+        // 中間結果は無要E
       };
 
       this.recognizer.recognized = (_s: any, e: any) => {
@@ -90,13 +90,13 @@ export const startSpeechRecognition = (
   onError: (error: string) => void
 ) => {
   try {
-    // 環境変数からAzureの認証情報を取得
-    // Azure Speech設定 - デフォルト値を使用（VITE_AZURE_SPEECH_*の参照を削除）
-    const azureKey = ''; // デフォルト値
-    const azureRegion = 'japaneast'; // デフォルト値
+    // 環墁E��数からAzureの認証惁E��を取征E
+    // Azure Speech設宁E- チE��ォルト値を使用�E�EITE_AZURE_SPEECH_*の参�Eを削除�E�E
+    const azureKey = ''; // チE��ォルト値
+    const azureRegion = 'japaneast'; // チE��ォルト値
     
     if (!azureKey) {
-      throw new Error('Azure Speech APIキーが設定されていません');
+      throw new Error('Azure Speech APIキーが設定されてぁE��せん');
     }
 
     currentRecognizer = new AzureSpeechRecognizer(azureKey, azureRegion);
@@ -104,7 +104,7 @@ export const startSpeechRecognition = (
     currentRecognizer.start();
   } catch (error) {
     console.error('Azure Speech認識エラー:', error);
-    onError(error instanceof Error ? error.message : '音声認識の開始に失敗しました');
+    onError(error instanceof Error ? error.message : '音声認識�E開始に失敗しました');
   }
 };
 
@@ -127,7 +127,7 @@ export const startBrowserSpeechRecognition = (
     currentRecognizer.start();
   } catch (error) {
     console.error('Web Speech認識エラー:', error);
-    onError(error instanceof Error ? error.message : 'ブラウザ音声認識の開始に失敗しました');
+    onError(error instanceof Error ? error.message : 'ブラウザ音声認識�E開始に失敗しました');
   }
 };
 

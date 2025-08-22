@@ -45,12 +45,12 @@ export default function FlowGenerationResult({
 
   return (
     <div className="space-y-4">
-      {/* フロー概要 */}
+      {/* フロー概要E*/}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CheckCircle className="h-5 w-5 text-green-600" />
-            応急処置フロー生成完了
+            応急処置フロー生�E完亁E
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -69,21 +69,21 @@ export default function FlowGenerationResult({
           
           <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
             <div>
-              <span className="font-medium">作成日時:</span> {formatDate(flowData.createdAt)}
+              <span className="font-medium">作�E日晁E</span> {formatDate(flowData.createdAt)}
             </div>
             <div>
-              <span className="font-medium">更新日時:</span> {formatDate(flowData.updatedAt)}
+              <span className="font-medium">更新日晁E</span> {formatDate(flowData.updatedAt)}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* 生成された手順 */}
+      {/* 生�Eされた手頁E*/}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Play className="h-5 w-5 text-blue-600" />
-            生成された手順 ({flowData.steps.length}ステップ)
+            生�Eされた手頁E({flowData.steps.length}スチE��チE
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -107,32 +107,32 @@ export default function FlowGenerationResult({
         </CardContent>
       </Card>
 
-      {/* 生成品質サマリー */}
+      {/* 生�E品質サマリー */}
       {summary && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Info className="h-5 w-5 text-blue-600" />
-              生成品質サマリー
+              生�E品質サマリー
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-600">{summary.totalSteps}</div>
-                <div className="text-sm text-gray-600">総ステップ数</div>
+                <div className="text-sm text-gray-600">総スチE��プ数</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-600">
-                  {summary.hasSpecificActions ? '✓' : '✗'}
+                  {summary.hasSpecificActions ? '✁E : '✁E}
                 </div>
-                <div className="text-sm text-gray-600">具体的な手順</div>
+                <div className="text-sm text-gray-600">具体的な手頁E/div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-orange-600">
-                  {summary.safetyNotes ? '✓' : '✗'}
+                  {summary.safetyNotes ? '✁E : '✁E}
                 </div>
-                <div className="text-sm text-gray-600">安全注意事項</div>
+                <div className="text-sm text-gray-600">安�E注意事頁E/div>
               </div>
             </div>
           </CardContent>
@@ -144,24 +144,24 @@ export default function FlowGenerationResult({
         {onExecuteFlow && (
           <Button onClick={onExecuteFlow} className="flex-1">
             <Play className="h-4 w-4 mr-2" />
-            フローを実行
+            フローを実衁E
           </Button>
         )}
         {onDownloadFlow && (
           <Button onClick={onDownloadFlow} variant="outline" className="flex-1">
             <Download className="h-4 w-4 mr-2" />
-            フローをダウンロード
+            フローをダウンローチE
           </Button>
         )}
       </div>
 
-      {/* GPTの生のレスポンス（開発用） */}
+      {/* GPTの生�Eレスポンス�E�開発用�E�E*/}
       {generatedContent && process.env.NODE_ENV === 'development' && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-yellow-600" />
-              GPT生レスポンス（開発用）
+              GPT生レスポンス�E�開発用�E�E
             </CardTitle>
           </CardHeader>
           <CardContent>

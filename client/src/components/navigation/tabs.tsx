@@ -18,35 +18,35 @@ export function Tabs() {
   const currentPath = location.pathname;
   const { user } = useAuth();
 
-  // 管理者判定を無効化（全タブ表示）
+  // 管琁E��E��定を無効化（�Eタブ表示�E�E
   const isAdmin = true;
 
   const tabs: TabItem[] = [
     {
-      title: "応急処置サポート",
+      title: "応急処置サポ�EチE,
       path: "/chat",
       icon: <MessageSquare className="mr-2 h-5 w-5 text-blue-600" />,
       className: "text-blue-600 font-bold text-lg border border-blue-300 rounded-md bg-blue-50",
     },
     {
-      title: "履歴管理",
+      title: "履歴管琁E,
       path: "/history",
       icon: <History className="mr-2 h-4 w-4" />,
     },
     {
-      title: "基礎データ管理",
+      title: "基礎データ管琁E,
       path: "/base-data",
       icon: <Wrench className="mr-2 h-4 w-4" />,
       adminOnly: false,
     },
     {
-      title: "応急処置データ管理",
+      title: "応急処置チE�Eタ管琁E,
       path: "/troubleshooting",
       icon: <FileText className="mr-2 h-4 w-4" />,
       adminOnly: true,
     },
     {
-      title: "設定",
+      title: "設宁E,
       path: "/settings",
       icon: <Settings className="mr-2 h-4 w-4" />,
     },

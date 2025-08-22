@@ -6,7 +6,7 @@ import { Textarea } from '../ui/textarea';
 import { Badge } from '../ui/badge';
 import { Calendar, User, MessageSquare, Image as ImageIcon, Edit, Save, X, Download, Printer } from 'lucide-react';
 
-// 画像ユーティリティ関数（exportして他のコンポーネントでも使用可能）
+// 画像ユーチE��リチE��関数�E�Exportして他�Eコンポ�Eネントでも使用可能�E�E
 const API_BASE = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_BASE_URL || window.location.origin);
 
 export const toAbsUrl = (u?: string | null) => {
@@ -18,7 +18,7 @@ export const toAbsUrl = (u?: string | null) => {
 };
 
 export const getImageSrc = (data: any): string | null => {
-  // 1) JSON 全体から data:image を再帰探索
+  // 1) JSON 全体かめEdata:image を�E帰探索
   const stack = [data];
   while (stack.length) {
     const v = stack.pop();
@@ -42,7 +42,7 @@ interface ChatExportData {
   userId: string;
   exportType: string;
   exportTimestamp: string;
-  // 新しいフォーマット
+  // 新しいフォーマッチE
   title?: string;
   problemDescription?: string;
   machineType?: string;
@@ -59,7 +59,7 @@ interface ChatExportData {
     export_format_version?: string;
     fileName?: string;
   };
-  // 従来のフォーマット（後方互換性）
+  // 従来のフォーマット（後方互換性�E�E
   chatData?: {
     chatId: string;
     timestamp: string;
@@ -83,7 +83,7 @@ interface ChatExportData {
     path: string;
     url: string;
   }>;
-  // 追加の画像ソース用フィールド
+  // 追加の画像ソース用フィールチE
   messages?: Array<{
     id: number;
     content: string;
@@ -117,7 +117,7 @@ interface ReportData {
   notes: string;
   repairSchedule: string;
   repairLocation: string;
-  // 新しいフィールド
+  // 新しいフィールチE
   incidentTitle: string;
   problemDescription: string;
   extractedComponents: string[];
@@ -134,25 +134,25 @@ interface ChatExportReportProps {
 }
 
 const ChatExportReport: React.FC<ChatExportReportProps> = ({ data, fileName, onClose, onSave, onPrint }) => {
-  const [isEditing, setIsEditing] = useState(false); // 初期状態をプレビューモードに設定
-  const [showDiff, setShowDiff] = useState(false); // 差分表示の状態
+  const [isEditing, setIsEditing] = useState(false); // 初期状態をプレビューモードに設宁E
+  const [showDiff, setShowDiff] = useState(false); // 差刁E��示の状慁E
   const [reportData, setReportData] = useState<ReportData>({
     reportId: `R${data.chatId.slice(-5).toUpperCase()}`,
     machineId: data.machineNumber || data.chatData?.machineInfo?.machineNumber || 'M98765',
     machineType: data.machineType || data.chatData?.machineInfo?.machineTypeName || '',
     machineNumber: data.machineNumber || data.chatData?.machineInfo?.machineNumber || '',
     date: new Date(data.exportTimestamp).toISOString().split('T')[0],
-    location: '○○線',
+    location: '○○緁E,
     failureCode: 'FC01',
-    description: data.problemDescription || 'チャットによる故障相談・応急処置',
-    status: '応急処置完了',
-    engineer: data.userId || '担当者',
-    notes: `チャットID: ${data.chatId}\nメッセージ数: ${data.metadata?.total_messages || data.chatData?.messages?.length || 0}件\nエクスポート種別: ${data.exportType}`,
-    repairSchedule: '2025年9月',
-    repairLocation: '工場内修理スペース',
-    // 新しいフィールド
-    incidentTitle: data.title || 'タイトルなし',
-    problemDescription: data.problemDescription || '説明なし',
+    description: data.problemDescription || 'チャチE��による敁E��相諁E�E応急処置',
+    status: '応急処置完亁E,
+    engineer: data.userId || '拁E��老E,
+    notes: `チャチE��ID: ${data.chatId}\nメチE��ージ数: ${data.metadata?.total_messages || data.chatData?.messages?.length || 0}件\nエクスポ�Eト種別: ${data.exportType}`,
+    repairSchedule: '2025年9朁E,
+    repairLocation: '工場冁E��琁E��ペ�Eス',
+    // 新しいフィールチE
+    incidentTitle: data.title || 'タイトルなぁE,
+    problemDescription: data.problemDescription || '説明なぁE,
     extractedComponents: data.extractedComponents || [],
     extractedSymptoms: data.extractedSymptoms || [],
     possibleModels: data.possibleModels || []
@@ -164,29 +164,29 @@ const ChatExportReport: React.FC<ChatExportReportProps> = ({ data, fileName, onC
     setEditedData(reportData);
   }, [reportData]);
 
-  // 差分を計算する関数
+  // 差刁E��計算する関数
   const calculateDiff = () => {
     const diff: { field: string; oldValue: string; newValue: string }[] = [];
     
-    // フィールド名の日本語マッピング
+    // フィールド名の日本語�EチE��ング
     const fieldNames: Record<string, string> = {
       reportId: '報告書ID',
       machineId: '機械ID',
       machineType: '機種',
       machineNumber: '機械番号',
-      date: '日付',
+      date: '日仁E,
       location: '場所',
-      failureCode: '故障コード',
-      description: '説明',
-      status: 'ステータス',
-      engineer: '担当エンジニア',
-      notes: '備考',
-      repairSchedule: '修繕予定',
+      failureCode: '敁E��コーチE,
+      description: '説昁E,
+      status: 'スチE�Eタス',
+      engineer: '拁E��エンジニア',
+      notes: '備老E,
+      repairSchedule: '修繕予宁E,
       repairLocation: '修繕場所',
       incidentTitle: '事象タイトル',
-      problemDescription: '事象説明',
-      extractedComponents: '影響コンポーネント',
-      extractedSymptoms: '症状',
+      problemDescription: '事象説昁E,
+      extractedComponents: '影響コンポ�EネンチE,
+      extractedSymptoms: '痁E��',
       possibleModels: '可能性のある機種'
     };
     
@@ -197,8 +197,8 @@ const ChatExportReport: React.FC<ChatExportReportProps> = ({ data, fileName, onC
       if (oldVal !== newVal) {
         diff.push({
           field: fieldNames[key] || key,
-          oldValue: String(oldVal || '未設定'),
-          newValue: String(newVal || '未設定')
+          oldValue: String(oldVal || '未設宁E),
+          newValue: String(newVal || '未設宁E)
         });
       }
     });
@@ -215,9 +215,9 @@ const ChatExportReport: React.FC<ChatExportReportProps> = ({ data, fileName, onC
   const handleSave = () => {
     setReportData(editedData);
     setIsEditing(false);
-    setShowDiff(false); // 差分表示を非表示にする
+    setShowDiff(false); // 差刁E��示を非表示にする
     
-    // サーバーに更新リクエストを送信
+    // サーバ�Eに更新リクエストを送信
     if (data.chatId) {
       updateReportOnServer(editedData);
     }
@@ -226,29 +226,29 @@ const ChatExportReport: React.FC<ChatExportReportProps> = ({ data, fileName, onC
       onSave(editedData);
     }
     
-    // 更新された内容を確認
+    // 更新された�E容を確誁E
     const updatedFields = [];
     if (data.machineType !== editedData.machineType) {
-      updatedFields.push(`機種: ${data.machineType || '未設定'} → ${editedData.machineType || '未設定'}`);
+      updatedFields.push(`機種: ${data.machineType || '未設宁E} ↁE${editedData.machineType || '未設宁E}`);
     }
     if (data.machineNumber !== editedData.machineNumber) {
-      updatedFields.push(`機械番号: ${data.machineNumber || '未設定'} → ${editedData.machineNumber || '未設定'}`);
+      updatedFields.push(`機械番号: ${data.machineNumber || '未設宁E} ↁE${editedData.machineNumber || '未設宁E}`);
     }
     
-    // 保存完了の通知
+    // 保存完亁E�E通知
     if (updatedFields.length > 0) {
-      alert(`レポートが保存されました。\n\n更新された内容:\n${updatedFields.join('\n')}`);
+      alert(`レポ�Eトが保存されました、En\n更新された�E容:\n${updatedFields.join('\n')}`);
     } else {
-      alert('レポートが保存されました。');
+      alert('レポ�Eトが保存されました、E);
     }
   };
 
-  // サーバーにレポートデータを更新
+  // サーバ�Eにレポ�Eトデータを更新
   const updateReportOnServer = async (updatedData: ReportData) => {
     try {
       const updatePayload = {
         updatedData: {
-          // レポートデータを元のJSONファイルの形式に変換
+          // レポ�Eトデータを�EのJSONファイルの形式に変換
           title: updatedData.incidentTitle,
           problemDescription: updatedData.problemDescription,
           machineType: updatedData.machineType || data.machineType || '',
@@ -256,17 +256,17 @@ const ChatExportReport: React.FC<ChatExportReportProps> = ({ data, fileName, onC
           extractedComponents: updatedData.extractedComponents,
           extractedSymptoms: updatedData.extractedSymptoms,
           possibleModels: updatedData.possibleModels,
-          // レポート固有のデータも保存
+          // レポ�Eト固有�EチE�Eタも保孁E
           reportData: updatedData,
           lastUpdated: new Date().toISOString()
         },
         updatedBy: 'user'
       };
 
-      console.log('📤 サーバーに送信する更新データ:', updatePayload);
-      console.log('🔍 機種・機械番号の更新確認:', {
-        machineType: `${data.machineType || '未設定'} → ${updatedData.machineType || '未設定'}`,
-        machineNumber: `${data.machineNumber || '未設定'} → ${updatedData.machineNumber || '未設定'}`
+      console.log('📤 サーバ�Eに送信する更新チE�Eタ:', updatePayload);
+      console.log('🔍 機種・機械番号の更新確誁E', {
+        machineType: `${data.machineType || '未設宁E} ↁE${updatedData.machineType || '未設宁E}`,
+        machineNumber: `${data.machineNumber || '未設宁E} ↁE${updatedData.machineNumber || '未設宁E}`
       });
 
       const response = await fetch(`/api/history/update-item/${data.chatId}`, {
@@ -279,31 +279,31 @@ const ChatExportReport: React.FC<ChatExportReportProps> = ({ data, fileName, onC
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'レポートの更新に失敗しました');
+        throw new Error(errorData.error || 'レポ�Eト�E更新に失敗しました');
       }
       
       const result = await response.json();
-      console.log('✅ レポート更新完了:', result);
+      console.log('✁Eレポ�Eト更新完亁E', result);
       
-      // 更新成功後、元のデータも更新
+      // 更新成功後、�EのチE�Eタも更新
       if (data.machineType !== updatedData.machineType || data.machineNumber !== updatedData.machineNumber) {
         console.log('🔄 機種・機械番号が更新されました:', {
-          machineType: `${data.machineType || '未設定'} → ${updatedData.machineType || '未設定'}`,
-          machineNumber: `${data.machineNumber || '未設定'} → ${updatedData.machineNumber || '未設定'}`
+          machineType: `${data.machineType || '未設宁E} ↁE${updatedData.machineType || '未設宁E}`,
+          machineNumber: `${data.machineNumber || '未設宁E} ↁE${updatedData.machineNumber || '未設宁E}`
         });
       }
       
     } catch (error) {
-      console.error('❌ レポート更新エラー:', error);
-      // エラーが発生してもユーザーには通知しない（ローカル保存は成功しているため）
+      console.error('❁Eレポ�Eト更新エラー:', error);
+      // エラーが発生してもユーザーには通知しなぁE��ローカル保存�E成功してぁE��ため�E�E
     }
   };
 
   const handleCancel = () => {
-    if (window.confirm('編集内容を破棄しますか？')) {
+    if (window.confirm('編雁E�E容を破棁E��ますか�E�E)) {
       setEditedData(reportData);
       setIsEditing(false);
-      setShowDiff(false); // 差分表示を非表示にする
+      setShowDiff(false); // 差刁E��示を非表示にする
     }
   };
 
@@ -316,9 +316,9 @@ const ChatExportReport: React.FC<ChatExportReportProps> = ({ data, fileName, onC
 
 
 
-  // pickFirstImage の優先順位を修正（dataURLを最優先）
+  // pickFirstImage の優先頁E��を修正�E�EataURLを最優先！E
   function pickFirstImage(data: any): string | null {
-    // 1) JSON内の "data:image/..." を最優先で検索
+    // 1) JSON冁E�E "data:image/..." を最優先で検索
     const dig = (v:any): string | null => {
       if (!v) return null;
       if (typeof v === 'string' && v.startsWith('data:image/')) return v;
@@ -329,7 +329,7 @@ const ChatExportReport: React.FC<ChatExportReportProps> = ({ data, fileName, onC
     const fromDataUrl = dig(data);
     if (fromDataUrl) return fromDataUrl;
 
-    // 2) savedImages（配列の {url|path} を優先）
+    // 2) savedImages�E��E列�E {url|path} を優先！E
     const saved = data?.savedImages;
     if (Array.isArray(saved) && saved.length > 0) {
       const first = saved.find((s:any) => typeof s?.url === 'string' || typeof s?.path === 'string');
@@ -337,7 +337,7 @@ const ChatExportReport: React.FC<ChatExportReportProps> = ({ data, fileName, onC
       if (first?.path) return toAbsUrl(first.path);
     }
 
-    // 3) imagePath（文字列 or 配列）
+    // 3) imagePath�E�文字�E or 配�E�E�E
     if (typeof data?.imagePath === 'string') return toAbsUrl(data.imagePath);
     if (Array.isArray(data?.imagePath) && data.imagePath.length > 0) {
       const firstPath = data.imagePath.find((p:string) => typeof p === 'string');
@@ -346,12 +346,12 @@ const ChatExportReport: React.FC<ChatExportReportProps> = ({ data, fileName, onC
     return null;
   }
 
-  // 個票印刷用HTML生成
+  // 個票印刷用HTML生�E
   const generateReportPrintHTML = (reportData: any, imageUrl: string | null): string => {
     const imageSection = imageUrl
       ? `<div class="image-section">
-           <h3>故障箇所画像</h3>
-           <img class="report-img" src="${imageUrl}" alt="故障画像" />
+           <h3>敁E��箁E��画僁E/h3>
+           <img class="report-img" src="${imageUrl}" alt="敁E��画僁E />
          </div>`
       : '';
 
@@ -360,7 +360,7 @@ const ChatExportReport: React.FC<ChatExportReportProps> = ({ data, fileName, onC
       <html>
       <head>
         <meta charset="utf-8">
-        <title>チャットエクスポート報告書印刷</title>
+        <title>チャチE��エクスポ�Eト報告書印刷</title>
         <style>
           @page { size: A4 portrait; margin: 10mm; }
           @media print {
@@ -375,16 +375,16 @@ const ChatExportReport: React.FC<ChatExportReportProps> = ({ data, fileName, onC
         </style>
       </head>
       <body>
-        <h1>チャットエクスポート報告書</h1>
+        <h1>チャチE��エクスポ�Eト報告書</h1>
 
         <div class="report-section">
-          <h3>基本情報</h3>
+          <h3>基本惁E��</h3>
           <table>
             <tr><th>報告書ID</th><td>${reportData.reportId || '-'}</td></tr>
             <tr><th>機械ID</th><td>${reportData.machineId || '-'}</td></tr>
             <tr><th>機種</th><td>${reportData.machineType || '-'}</td></tr>
             <tr><th>機械番号</th><td>${reportData.machineNumber || '-'}</td></tr>
-            <tr><th>日付</th><td>${reportData.date || '-'}</td></tr>
+            <tr><th>日仁E/th><td>${reportData.date || '-'}</td></tr>
             <tr><th>場所</th><td>${reportData.location || '-'}</td></tr>
           </table>
         </div>
@@ -393,18 +393,18 @@ const ChatExportReport: React.FC<ChatExportReportProps> = ({ data, fileName, onC
           <h3>事象詳細</h3>
           <table>
             <tr><th>事象タイトル</th><td>${reportData.incidentTitle || '-'}</td></tr>
-            <tr><th>事象説明</th><td>${reportData.problemDescription || '-'}</td></tr>
-            <tr><th>故障コード</th><td>${reportData.failureCode || '-'}</td></tr>
-            <tr><th>ステータス</th><td>${reportData.status || '-'}</td></tr>
-            <tr><th>担当エンジニア</th><td>${reportData.engineer || '-'}</td></tr>
+            <tr><th>事象説昁E/th><td>${reportData.problemDescription || '-'}</td></tr>
+            <tr><th>敁E��コーチE/th><td>${reportData.failureCode || '-'}</td></tr>
+            <tr><th>スチE�Eタス</th><td>${reportData.status || '-'}</td></tr>
+            <tr><th>拁E��エンジニア</th><td>${reportData.engineer || '-'}</td></tr>
           </table>
         </div>
 
         <div class="report-section">
-          <h3>抽出情報</h3>
+          <h3>抽出惁E��</h3>
           <table>
-            <tr><th>影響コンポーネント</th><td>${Array.isArray(reportData.extractedComponents) ? reportData.extractedComponents.join(', ') : '-'}</td></tr>
-            <tr><th>症状</th><td>${Array.isArray(reportData.extractedSymptoms) ? reportData.extractedSymptoms.join(', ') : '-'}</td></tr>
+            <tr><th>影響コンポ�EネンチE/th><td>${Array.isArray(reportData.extractedComponents) ? reportData.extractedComponents.join(', ') : '-'}</td></tr>
+            <tr><th>痁E��</th><td>${Array.isArray(reportData.extractedSymptoms) ? reportData.extractedSymptoms.join(', ') : '-'}</td></tr>
             <tr><th>可能性のある機種</th><td>${Array.isArray(reportData.possibleModels) ? reportData.possibleModels.join(', ') : '-'}</td></tr>
           </table>
         </div>
@@ -412,12 +412,12 @@ const ChatExportReport: React.FC<ChatExportReportProps> = ({ data, fileName, onC
         ${imageSection}
 
         <div class="report-section">
-          <h3>備考</h3>
+          <h3>備老E/h3>
           <p>${reportData.notes || '-'}</p>
         </div>
 
         <div class="report-section">
-          <h3>修繕予定</h3>
+          <h3>修繕予宁E/h3>
           <table>
             <tr><th>予定月日</th><td>${reportData.repairSchedule || '-'}</td></tr>
             <tr><th>場所</th><td>${reportData.repairLocation || '-'}</td></tr>
@@ -428,7 +428,7 @@ const ChatExportReport: React.FC<ChatExportReportProps> = ({ data, fileName, onC
     `;
   };
 
-  // 個票印刷実行
+  // 個票印刷実衁E
   const printReport = (reportData: any, imageUrl: string | null) => {
     const w = window.open('', '_blank', 'noopener,noreferrer');
     if (!w) return;
@@ -455,30 +455,30 @@ const ChatExportReport: React.FC<ChatExportReportProps> = ({ data, fileName, onC
      const reportContent = `
  報告書
 
-事象概要:
+事象概要E
 事象タイトル: ${reportData.incidentTitle}
 報告書ID: ${reportData.reportId}
 機械ID: ${reportData.machineId}
-日付: ${reportData.date}
+日仁E ${reportData.date}
 場所: ${reportData.location}
-故障コード: ${reportData.failureCode}
+敁E��コーチE ${reportData.failureCode}
 
 事象詳細:
-説明: ${reportData.problemDescription}
-ステータス: ${reportData.status}
-担当エンジニア: ${reportData.engineer}
-備考: ${reportData.notes}
+説昁E ${reportData.problemDescription}
+スチE�Eタス: ${reportData.status}
+拁E��エンジニア: ${reportData.engineer}
+備老E ${reportData.notes}
 
-抽出情報:
-影響コンポーネント: ${reportData.extractedComponents.join(', ')}
-症状: ${reportData.extractedSymptoms.join(', ')}
+抽出惁E��:
+影響コンポ�EネンチE ${reportData.extractedComponents.join(', ')}
+痁E��: ${reportData.extractedSymptoms.join(', ')}
 可能性のある機種: ${reportData.possibleModels.join(', ')}
 
-修繕予定:
+修繕予宁E
 予定月日: ${reportData.repairSchedule}
 場所: ${reportData.repairLocation}
 
-チャット履歴:
+チャチE��履歴:
 ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) => 
   `${msg.isAiResponse ? 'AI' : 'ユーザー'}: ${msg.content}`
 ).join('\n')}
@@ -495,7 +495,7 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
     window.URL.revokeObjectURL(url);
   };
 
-  const currentData = editedData; // 常に編集データを使用
+  const currentData = editedData; // 常に編雁E��ータを使用
 
 
 
@@ -514,7 +514,7 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
               <>
                 <Button onClick={handleEdit} variant="outline" className="flex items-center gap-2">
                   <Edit className="h-4 w-4" />
-                  レポート編集
+                  レポ�Eト編雁E
                 </Button>
                 {diff.length > 0 && (
                   <Button 
@@ -522,7 +522,7 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
                     variant="outline" 
                     className="flex items-center gap-2"
                   >
-                    <span className="text-sm">差分表示 ({diff.length})</span>
+                    <span className="text-sm">差刁E��示 ({diff.length})</span>
                   </Button>
                 )}
                 <Button onClick={() => {
@@ -533,36 +533,36 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
                 </Button>
                 <Button onClick={downloadReport} variant="outline" className="flex items-center gap-2">
                   <Download className="h-4 w-4" />
-                  ダウンロード
+                  ダウンローチE
                 </Button>
                 <Button onClick={onClose} variant="outline">
-                  閉じる
+                  閉じめE
                 </Button>
               </>
             ) : (
               <>
                 <Button onClick={handleSave} className="flex items-center gap-2">
                   <Save className="h-4 w-4" />
-                  保存
+                  保孁E
                 </Button>
                 <Button onClick={handleCancel} variant="outline" className="flex items-center gap-2">
                   <X className="h-4 w-4" />
                   キャンセル
                 </Button>
                 <Button onClick={onClose} variant="outline">
-                  閉じる
+                  閉じめE
                 </Button>
               </>
             )}
           </div>
         </div>
 
-        {/* 差分表示 */}
+        {/* 差刁E��示 */}
         {showDiff && diff.length > 0 && (
           <Card className="mb-6 border-orange-200 bg-orange-50">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-orange-800 flex items-center gap-2">
-                <span>📝 編集内容の差分 ({diff.length}件)</span>
+                <span>📝 編雁E�E容の差刁E({diff.length}件)</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -585,17 +585,17 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
               </div>
               <div className="mt-4 p-3 bg-blue-100 rounded-lg">
                 <p className="text-sm text-blue-800">
-                  💡 上記の変更内容は保存ボタンを押すまで確定されません。
+                  💡 上記�E変更冁E��は保存�Eタンを押すまで確定されません、E
                 </p>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* 事象概要 */}
+        {/* 事象概要E*/}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold">事象概要</CardTitle>
+            <CardTitle className="text-lg font-semibold">事象概要E/CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
@@ -634,7 +634,7 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
                   onChange={(e) => handleInputChange('machineType', e.target.value)}
                   className="w-32"
                   disabled={!isEditing}
-                  placeholder="機種名"
+                  placeholder="機種吁E
                 />
               </div>
               <div className="flex justify-between">
@@ -648,7 +648,7 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
                 />
               </div>
               <div className="flex justify-between">
-                <span className="font-medium">日付:</span>
+                <span className="font-medium">日仁E</span>
                 <Input
                   type="date"
                   value={currentData.date}
@@ -677,19 +677,19 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
-              <span className="font-medium">事象説明:</span>
+              <span className="font-medium">事象説昁E</span>
               <Textarea
                 value={currentData.problemDescription}
                 onChange={(e) => handleInputChange('problemDescription', e.target.value)}
                 className="mt-1"
                 rows={3}
                 disabled={!isEditing}
-                placeholder="事象の詳細な説明"
+                placeholder="事象の詳細な説昁E
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex justify-between">
-                <span className="font-medium">ステータス:</span>
+                <span className="font-medium">スチE�Eタス:</span>
                 <Input
                   value={currentData.status}
                   onChange={(e) => handleInputChange('status', e.target.value)}
@@ -698,7 +698,7 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
                 />
               </div>
               <div className="flex justify-between">
-                <span className="font-medium">担当エンジニア:</span>
+                <span className="font-medium">拁E��エンジニア:</span>
                 <Input
                   value={currentData.engineer}
                   onChange={(e) => handleInputChange('engineer', e.target.value)}
@@ -708,7 +708,7 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
               </div>
             </div>
             <div>
-              <span className="font-medium">備考:</span>
+              <span className="font-medium">備老E</span>
               <Textarea
                 value={currentData.notes}
                 onChange={(e) => handleInputChange('notes', e.target.value)}
@@ -720,14 +720,14 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
           </CardContent>
         </Card>
 
-        {/* 抽出情報 */}
+        {/* 抽出惁E�� */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold">抽出情報</CardTitle>
+            <CardTitle className="text-lg font-semibold">抽出惁E��</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
-              <span className="font-medium">影響コンポーネント:</span>
+              <span className="font-medium">影響コンポ�EネンチE</span>
               <Input
                 value={currentData.extractedComponents.join(', ')}
                 onChange={(e) => handleInputChange('extractedComponents', e.target.value.split(', ').filter(s => s.trim()))}
@@ -737,7 +737,7 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
               />
             </div>
             <div>
-              <span className="font-medium">症状:</span>
+              <span className="font-medium">痁E��:</span>
               <Input
                 value={currentData.extractedSymptoms.join(', ')}
                 onChange={(e) => handleInputChange('extractedSymptoms', e.target.value.split(', ').filter(s => s.trim()))}
@@ -753,16 +753,16 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
                 onChange={(e) => handleInputChange('possibleModels', e.target.value.split(', ').filter(s => s.trim()))}
                 className="mt-1"
                 disabled={!isEditing}
-                placeholder="MT-100型, MR-400シリーズ"
+                placeholder="MT-100垁E MR-400シリーズ"
               />
             </div>
           </CardContent>
         </Card>
 
-        {/* 修繕予定 */}
+        {/* 修繕予宁E*/}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold">修繕予定</CardTitle>
+            <CardTitle className="text-lg font-semibold">修繕予宁E/CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -788,42 +788,42 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
           </CardContent>
         </Card>
 
-        {/* 故障箇所画像 */}
+        {/* 敁E��箁E��画僁E*/}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold">故障箇所画像</CardTitle>
+            <CardTitle className="text-lg font-semibold">敁E��箁E��画僁E/CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-gray-600 mb-4">機械故障箇所の画像</p>
+            <p className="text-sm text-gray-600 mb-4">機械敁E��箁E��の画僁E/p>
             {imgSrc ? (
               <img
                 key={imgSrc.slice(0, 64)}
                 src={imgSrc}
-                alt="故障箇所画像"
+                alt="敁E��箁E��画僁E
                 style={{ maxWidth: '100%', height: 'auto', display: 'block' }}
                 onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
               />
             ) : (
               <div className="text-center text-gray-500">画像がありません</div>
             )}
-            <p className="text-sm text-gray-600 mt-4">上記は故障箇所の写真です。</p>
+            <p className="text-sm text-gray-600 mt-4">上記�E敁E��箁E��の写真です、E/p>
           </CardContent>
         </Card>
 
-        {/* チャット履歴サマリー */}
+        {/* チャチE��履歴サマリー */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold">チャット履歴サマリー</CardTitle>
+            <CardTitle className="text-lg font-semibold">チャチE��履歴サマリー</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-gray-500" />
-                <span>エクスポート日時: {formatDate(data.exportTimestamp)}</span>
+                <span>エクスポ�Eト日晁E {formatDate(data.exportTimestamp)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-gray-500" />
-                <span>メッセージ数: {data.metadata?.total_messages || data.chatData?.messages?.length || 0}件</span>
+                <span>メチE��ージ数: {data.metadata?.total_messages || data.chatData?.messages?.length || 0}件</span>
               </div>
               <div className="flex items-center gap-2">
                 <ImageIcon className="h-4 w-4 text-gray-500" />
@@ -831,7 +831,7 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
               </div>
             </div>
             
-            {/* 機種・機械番号情報 */}
+            {/* 機種・機械番号惁E�� */}
             {(data.machineType || data.machineNumber) && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-3 bg-blue-50 rounded-lg">
                 {data.machineType && (
@@ -864,7 +864,7 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
                     {isImageMessage(message.content) ? (
                       <div className="flex items-center gap-2">
                         <ImageIcon className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm text-gray-600">画像メッセージ</span>
+                        <span className="text-sm text-gray-600">画像メチE��ージ</span>
                       </div>
                     ) : (
                       <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>

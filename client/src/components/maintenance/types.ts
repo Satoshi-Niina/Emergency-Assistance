@@ -1,4 +1,4 @@
-// 車両保守記録システムの型定義
+// 車両保守記録シスチE��の型定義
 export interface FaultClassification {
   type: string;
   custom: string;

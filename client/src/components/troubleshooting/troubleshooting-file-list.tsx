@@ -42,7 +42,7 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
       setIsLoading(true);
       console.log('🔄 ファイル一覧を取得中...');
       
-      // キャッシュ無効化のためにタイムスタンプを追加
+      // キャチE��ュ無効化�Eためにタイムスタンプを追加
       const timestamp = Date.now();
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list?t=${timestamp}`, {
         headers: {
@@ -54,7 +54,7 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
       if (!response.ok) throw new Error('ファイル一覧の取得に失敗しました');
       const data = await response.json();
       
-      console.log('✅ ファイル一覧取得完了:', data.length + '件');
+      console.log('✁Eファイル一覧取得完亁E', data.length + '件');
       setFlowList(data);
     } catch (error) {
       console.error('ファイル一覧取得エラー:', error);
@@ -73,7 +73,7 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
   }, []);
 
   const handleDeleteClick = async (id: string) => {
-    if (!confirm('このファイルを削除してもよろしいですか？')) return;
+    if (!confirm('こ�Eファイルを削除してもよろしぁE��すか�E�E)) return;
     
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${id}`, {
@@ -101,7 +101,7 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
           <div>
             <CardTitle className="text-xl">フローファイル一覧</CardTitle>
             <CardDescription>
-              保存されているフローファイルを管理します
+              保存されてぁE��フローファイルを管琁E��まぁE
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -118,7 +118,7 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
               onClick={onNew}
             >
               <Plus className="h-4 w-4 mr-1" />
-              新規作成
+              新規作�E
             </Button>
           </div>
         </CardHeader>
@@ -133,8 +133,8 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
                 <TableHeader>
                   <TableRow>
                     <TableHead>タイトル</TableHead>
-                    <TableHead>説明</TableHead>
-                    <TableHead className="text-right">操作</TableHead>
+                    <TableHead>説昁E/TableHead>
+                    <TableHead className="text-right">操佁E/TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -154,7 +154,7 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
                             onClick={() => onEdit(flow.id)}
                           >
                             <FileEdit className="h-4 w-4 mr-1" />
-                            編集
+                            編雁E
                           </Button>
                           <Button
                             variant="destructive"
@@ -179,9 +179,9 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>フローを削除しますか？</AlertDialogTitle>
+            <AlertDialogTitle>フローを削除しますか�E�E/AlertDialogTitle>
             <AlertDialogDescription>
-              このフローを削除すると、すべての関連データが失われます。この操作は元に戻すことができません。
+              こ�Eフローを削除すると、すべての関連チE�Eタが失われます。この操作�E允E��戻すことができません、E
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

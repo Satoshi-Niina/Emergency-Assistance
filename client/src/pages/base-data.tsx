@@ -51,7 +51,7 @@ export default function BaseDataPage() {
   });
   const navigate = useNavigate();
 
-  // ファイル選択の処理
+  // ファイル選択�E処琁E
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     setSelectedFiles(files);
@@ -65,7 +65,7 @@ export default function BaseDataPage() {
     }
   };
 
-  // ファイルのインポート処理
+  // ファイルのインポ�Eト�E琁E
   const handleImport = async () => {
     if (!selectedFiles || selectedFiles.length === 0) {
       alert('ファイルを選択してください');
@@ -78,7 +78,7 @@ export default function BaseDataPage() {
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
         
-        // ステータスを「処理中」に更新
+        // スチE�Eタスを「�E琁E��」に更新
         setImportStatus(prev => prev.map((status, index) => 
           index === i 
             ? { ...status, status: 'processing' as const }
@@ -102,7 +102,7 @@ export default function BaseDataPage() {
                 ? { 
                     ...status, 
                     status: 'success' as const, 
-                    message: result.message || 'インポート完了'
+                    message: result.message || 'インポ�Eト完亁E
                   }
                 : status
             ));
@@ -113,7 +113,7 @@ export default function BaseDataPage() {
                 ? { 
                     ...status, 
                     status: 'error' as const, 
-                    message: error.message || 'インポートエラー'
+                    message: error.message || 'インポ�Eトエラー'
                   }
                 : status
             ));
@@ -138,19 +138,19 @@ export default function BaseDataPage() {
   const getStatusBadge = (status: ImportStatus['status']) => {
     switch (status) {
       case 'pending':
-        return <Badge variant="secondary">待機中</Badge>;
+        return <Badge variant="secondary">征E��中</Badge>;
       case 'processing':
-        return <Badge variant="default">処理中</Badge>;
+        return <Badge variant="default">処琁E��</Badge>;
       case 'success':
-        return <Badge variant="default" className="bg-green-500">完了</Badge>;
+        return <Badge variant="default" className="bg-green-500">完亁E/Badge>;
       case 'error':
         return <Badge variant="destructive">エラー</Badge>;
       default:
-        return <Badge variant="secondary">不明</Badge>;
+        return <Badge variant="secondary">不�E</Badge>;
     }
   };
 
-  // RAG設定の保存
+  // RAG設定�E保孁E
   const saveRagSettings = async () => {
     try {
       const response = await fetch('/api/settings/rag', {
@@ -165,15 +165,15 @@ export default function BaseDataPage() {
       if (response.ok) {
         alert('RAG設定が保存されました');
       } else {
-        throw new Error('設定の保存に失敗しました');
+        throw new Error('設定�E保存に失敗しました');
       }
     } catch (error) {
       console.error('RAG設定保存エラー:', error);
-      alert('設定の保存中にエラーが発生しました');
+      alert('設定�E保存中にエラーが発生しました');
     }
   };
 
-  // RAG設定の読み込み
+  // RAG設定�E読み込み
   const loadRagSettings = async () => {
     try {
       const response = await fetch('/api/settings/rag', {
@@ -189,7 +189,7 @@ export default function BaseDataPage() {
     }
   };
 
-  // コンポーネントマウント時に設定を読み込み
+  // コンポ�Eネント�Eウント時に設定を読み込み
   useEffect(() => {
     loadRagSettings();
   }, []);
@@ -200,43 +200,43 @@ export default function BaseDataPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
           <Database className="inline mr-2" />
-          基準データ管理
+          基準データ管琁E
         </h1>
         <p className="text-gray-600">
-          保守用車両データの管理と設定を行います
+          保守用車両チE�Eタの管琁E��設定を行いまぁE
         </p>
       </div>
 
-      {/* メインコンテンツ */}
+      {/* メインコンチE��チE*/}
       <Tabs defaultValue="import" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="import" className="flex items-center gap-2">
             <Upload className="h-4 w-4" />
-            データインポート
+            チE�Eタインポ�EチE
           </TabsTrigger>
           <TabsTrigger value="manual" className="flex items-center gap-2">
             <Edit className="h-4 w-4" />
-            手動入力
+            手動入劁E
           </TabsTrigger>
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
-            設定
+            設宁E
           </TabsTrigger>
         </TabsList>
 
-        {/* インポートタブ */}
+        {/* インポ�EトタチE*/}
         <TabsContent value="import" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
-                ファイルインポート
+                ファイルインポ�EチE
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="file-upload">
-                  ファイルを選択 (TXT, PDF, XLSX, PPTX)
+                  ファイルを選抁E(TXT, PDF, XLSX, PPTX)
                 </Label>
                 <Input
                   id="file-upload"
@@ -278,12 +278,12 @@ export default function BaseDataPage() {
                 {isProcessing ? (
                   <>
                     <AlertTriangle className="mr-2 h-4 w-4" />
-                    処理中...
+                    処琁E��...
                   </>
                 ) : (
                   <>
                     <Upload className="mr-2 h-4 w-4" />
-                    インポート実行
+                    インポ�Eト実衁E
                   </>
                 )}
               </Button>
@@ -291,13 +291,13 @@ export default function BaseDataPage() {
           </Card>
         </TabsContent>
 
-        {/* 手動入力タブ */}
+        {/* 手動入力タチE*/}
         <TabsContent value="manual" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Wrench className="h-5 w-5" />
-                保守用車両データ入力
+                保守用車両チE�Eタ入劁E
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -306,20 +306,20 @@ export default function BaseDataPage() {
           </Card>
         </TabsContent>
 
-        {/* 設定タブ */}
+        {/* 設定タチE*/}
         <TabsContent value="settings" className="space-y-6">
-          {/* 基本設定 */}
+          {/* 基本設宁E*/}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Settings className="h-5 w-5" />
-                基本システム設定
+                基本シスチE��設宁E
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>データディレクトリ</Label>
+                  <Label>チE�EタチE��レクトリ</Label>
                   <div className="flex items-center gap-2 p-3 bg-gray-50 rounded">
                     <FolderOpen className="h-4 w-4 text-gray-500" />
                     <span className="text-sm text-gray-700">
@@ -329,7 +329,7 @@ export default function BaseDataPage() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label>許可ファイル形式</Label>
+                  <Label>許可ファイル形弁E/Label>
                   <div className="flex gap-2">
                     <Badge variant="outline">TXT</Badge>
                     <Badge variant="outline">PDF</Badge>
@@ -341,28 +341,28 @@ export default function BaseDataPage() {
             </CardContent>
           </Card>
 
-          {/* RAG設定 */}
+          {/* RAG設宁E*/}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Brain className="h-5 w-5" />
-                RAG (Retrieval-Augmented Generation) 設定
+                RAG (Retrieval-Augmented Generation) 設宁E
               </CardTitle>
               <p className="text-sm text-gray-600">
-                GPTレスポンスの精度向上のための事前処理パラメーター
+                GPTレスポンスの精度向上�Eための事前処琁E��ラメーター
               </p>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* チャンク設定 */}
+              {/* チャンク設宁E*/}
               <div className="space-y-4">
                 <h4 className="font-medium flex items-center gap-2">
                   <FileSearch className="h-4 w-4" />
-                  テキスト分割設定
+                  チE��スト�E割設宁E
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="chunkSize">
-                      チャンクサイズ: {ragSettings.chunkSize}文字
+                      チャンクサイズ: {ragSettings.chunkSize}斁E��E
                     </Label>
                     <Slider
                       id="chunkSize"
@@ -376,13 +376,13 @@ export default function BaseDataPage() {
                       className="w-full"
                     />
                     <p className="text-xs text-gray-500">
-                      テキストを分割する際の1チャンクあたりの文字数
+                      チE��ストを刁E��する際�E1チャンクあたり�E斁E��数
                     </p>
                   </div>
                   
                   <div className="space-y-2">
                     <Label htmlFor="chunkOverlap">
-                      オーバーラップ: {ragSettings.chunkOverlap}文字
+                      オーバ�EラチE�E: {ragSettings.chunkOverlap}斁E��E
                     </Label>
                     <Slider
                       id="chunkOverlap"
@@ -396,17 +396,17 @@ export default function BaseDataPage() {
                       className="w-full"
                     />
                     <p className="text-xs text-gray-500">
-                      チャンク間で重複させる文字数
+                      チャンク間で重褁E��せる斁E��数
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* 検索設定 */}
+              {/* 検索設宁E*/}
               <div className="space-y-4">
                 <h4 className="font-medium flex items-center gap-2">
                   <Sliders className="h-4 w-4" />
-                  検索精度設定
+                  検索精度設宁E
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -445,17 +445,17 @@ export default function BaseDataPage() {
                       className="w-full"
                     />
                     <p className="text-xs text-gray-500">
-                      1回の検索で取得する最大結果数
+                      1回�E検索で取得する最大結果数
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* 検索手法 */}
+              {/* 検索手況E*/}
               <div className="space-y-4">
                 <h4 className="font-medium flex items-center gap-2">
                   <Zap className="h-4 w-4" />
-                  検索手法
+                  検索手況E
                 </h4>
                 <div className="flex gap-4">
                   <label className="flex items-center space-x-2">
@@ -467,7 +467,7 @@ export default function BaseDataPage() {
                       }
                       className="rounded"
                     />
-                    <span className="text-sm">セマンティック検索</span>
+                    <span className="text-sm">セマンチE��チE��検索</span>
                   </label>
                   <label className="flex items-center space-x-2">
                     <input
@@ -483,9 +483,9 @@ export default function BaseDataPage() {
                 </div>
               </div>
 
-              {/* 前処理設定 */}
+              {/* 前�E琁E��宁E*/}
               <div className="space-y-4">
-                <h4 className="font-medium">テキスト前処理</h4>
+                <h4 className="font-medium">チE��スト前処琁E/h4>
                 <div className="space-y-2">
                   <label className="flex items-center space-x-2">
                     <input
@@ -519,7 +519,7 @@ export default function BaseDataPage() {
                       }
                       className="rounded"
                     />
-                    <span className="text-sm">大文字小文字正規化</span>
+                    <span className="text-sm">大斁E��小文字正規化</span>
                   </label>
                   <label className="flex items-center space-x-2">
                     <input
@@ -550,19 +550,19 @@ export default function BaseDataPage() {
                   onChange={(e) => 
                     setRagSettings(prev => ({ ...prev, customPrompt: e.target.value }))
                   }
-                  placeholder="RAG検索結果を活用する際の追加指示を入力..."
+                  placeholder="RAG検索結果を活用する際�E追加持E��を�E劁E.."
                   rows={3}
                 />
                 <p className="text-xs text-gray-500">
-                  検索結果をGPTに渡す際の追加指示
+                  検索結果をGPTに渡す際の追加持E��
                 </p>
               </div>
 
-              {/* 設定保存ボタン */}
+              {/* 設定保存�Eタン */}
               <div className="flex gap-2 pt-4 border-t">
                 <Button onClick={saveRagSettings} className="flex items-center gap-2">
                   <Settings className="h-4 w-4" />
-                  RAG設定を保存
+                  RAG設定を保孁E
                 </Button>
                 <Button 
                   variant="outline" 
@@ -570,7 +570,7 @@ export default function BaseDataPage() {
                   className="flex items-center gap-2"
                 >
                   <CheckCircle className="h-4 w-4" />
-                  チャット画面に戻る
+                  チャチE��画面に戻めE
                 </Button>
               </div>
             </CardContent>

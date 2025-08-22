@@ -16,13 +16,13 @@ export default function RagSettingsPanel(){
   })(); }, []);
 
   function v(cfg: RagConfig): string | null {
-    if (cfg.chunkSize < 500 || cfg.chunkSize > 800) return "粒度は500–800にしてください";
-    if (cfg.chunkOverlap < 50 || cfg.chunkOverlap > 100) return "オーバーラップは50–100にしてください";
-    if (cfg.chunkOverlap >= cfg.chunkSize) return "オーバーラップは粒度より小さく";
-    if (cfg.retrieveK < 1 || cfg.retrieveK > 16) return "kは1–16";
-    if (cfg.rerankTop < 1 || cfg.rerankTop > 5) return "再ランク上位は1–5";
-    if (cfg.rerankTop > cfg.retrieveK) return "再ランク上位はk以下に";
-    if (cfg.rerankMin < 0 || cfg.rerankMin > 1) return "しきい値は0–1";
+    if (cfg.chunkSize < 500 || cfg.chunkSize > 800) return "粒度は500 E00にしてください";
+    if (cfg.chunkOverlap < 50 || cfg.chunkOverlap > 100) return "オーバ�EラチE�Eは50 E00にしてください";
+    if (cfg.chunkOverlap >= cfg.chunkSize) return "オーバ�EラチE�Eは粒度より小さぁE;
+    if (cfg.retrieveK < 1 || cfg.retrieveK > 16) return "kは1 E6";
+    if (cfg.rerankTop < 1 || cfg.rerankTop > 5) return "再ランク上位�E1 E";
+    if (cfg.rerankTop > cfg.retrieveK) return "再ランク上位�Ek以下に";
+    if (cfg.rerankMin < 0 || cfg.rerankMin > 1) return "しきぁE��は0 E";
     return null;
   }
 
@@ -35,16 +35,16 @@ export default function RagSettingsPanel(){
       credentials: "include",
       body: JSON.stringify(cfg)
     });
-    setMsg(r.ok ? "保存しました" : "保存失敗");
+    setMsg(r.ok ? "保存しました" : "保存失敁E);
   }
 
   const on = (k:keyof RagConfig)=>(e:any)=> setCfg({...cfg, [k]: Number(e.target.value)});
 
   return (
     <div className="p-4 rounded-lg border border-gray-200 bg-white shadow-sm">
-      <div className="font-semibold text-lg mb-3 text-gray-800">RAG設定</div>
+      <div className="font-semibold text-lg mb-3 text-gray-800">RAG設宁E/div>
              <p className="text-sm text-gray-600 mb-4 font-semibold">
-         RAG（Retrieval-Augmented Generation）は、AIが質問に答える際に関連する文書を検索して、より正確で信頼性の高い回答を生成するための設定です。これらのパラメータを調整することで、検索精度と処理速度のバランスを最適化できます。
+         RAG�E�Eetrieval-Augmented Generation�E��E、AIが質問に答える際に関連する斁E��を検索して、より正確で信頼性の高い回答を生�Eするための設定です。これらのパラメータを調整することで、検索精度と処琁E��度のバランスを最適化できます、E
        </p>
        
        
@@ -53,7 +53,7 @@ export default function RagSettingsPanel(){
        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
-            粒度 (500–800)
+            粒度 (500 E00)
             <input 
               type="number" 
               min="500" 
@@ -64,13 +64,13 @@ export default function RagSettingsPanel(){
             />
           </label>
                      <p className="text-xs text-gray-500">
-             文書を分割する際の1つの塊の文字数。大きいほど文脈を保ち、小さいほど細かく分割されます。
+             斁E��を�E割する際�E1つの塊�E斁E��数。大きいほど斁E��を保ち、小さぁE��ど細かく刁E��されます、E
            </p>
          </div>
          
          <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
-            重なり (50–100)
+            重なめE(50 E00)
             <input 
               type="number" 
               min="50" 
@@ -81,13 +81,13 @@ export default function RagSettingsPanel(){
             />
           </label>
                      <p className="text-xs text-gray-500">
-             隣接する文書の塊同士で重複する文字数。文脈の連続性を保つために重要です。
+             隣接する斁E��の塊同士で重褁E��る文字数。文脈�E連続性を保つために重要です、E
            </p>
          </div>
          
          <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
-            k (1–16)
+            k (1 E6)
             <input 
               type="number" 
               min="1" 
@@ -98,13 +98,13 @@ export default function RagSettingsPanel(){
             />
           </label>
                      <p className="text-xs text-gray-500">
-             検索時に取得する文書の塊の数。多いほど関連情報を多く取得できますが、処理時間が増加します。
+             検索時に取得する文書の塊�E数。多いほど関連惁E��を多く取得できますが、�E琁E��間が増加します、E
            </p>
          </div>
          
          <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
-            再ランク上位 (1–5)
+            再ランク上佁E(1 E)
             <input 
               type="number" 
               min="1" 
@@ -115,13 +115,13 @@ export default function RagSettingsPanel(){
             />
           </label>
                      <p className="text-xs text-gray-500">
-             検索結果を精度順に並び替える際に上位何件を対象にするか。多いほど精度が向上しますが、処理時間が増加します。
+             検索結果を精度頁E��並び替える際に上位何件を対象にするか。多いほど精度が向上しますが、�E琁E��間が増加します、E
            </p>
          </div>
          
          <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
-            しきい値 (0–1)
+            しきぁE�� (0 E)
             <input 
               type="number" 
               step="0.01" 
@@ -133,13 +133,13 @@ export default function RagSettingsPanel(){
             />
           </label>
                      <p className="text-xs text-gray-500">
-             検索結果の類似度の最低基準値。高いほど関連性の高い結果のみが表示され、低いほど多くの結果が表示されます。
+             検索結果の類似度の最低基準値。高いほど関連性の高い結果のみが表示され、低いほど多くの結果が表示されます、E
            </p>
          </div>
          
          <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
-            埋め込み次元
+            埋め込み次允E
             <input 
               type="number" 
               value={cfg.embedDim} 
@@ -148,7 +148,7 @@ export default function RagSettingsPanel(){
             />
           </label>
           <p className="text-xs text-gray-500">
-            テキストを数値ベクトルに変換する際の次元数。高いほど表現力が向上しますが、処理時間とメモリ使用量が増加します。
+            チE��ストを数値ベクトルに変換する際�E次允E��。高いほど表現力が向上しますが、�E琁E��間とメモリ使用量が増加します、E
           </p>
         </div>
       </div>
@@ -156,7 +156,7 @@ export default function RagSettingsPanel(){
         className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" 
         onClick={save}
       >
-        保存
+        保孁E
       </button>
       <div className="text-sm mt-3 p-2 bg-gray-50 rounded border min-h-[2rem] text-center">
         {msg || "設定を変更して保存してください"}

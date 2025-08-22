@@ -45,7 +45,7 @@ export default function TroubleshootingQABubble({
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
               <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                トラブルシューティング
+                トラブルシューチE��ング
               </Badge>
               {reasoning && (
                 <Badge variant="outline" className="text-xs">
@@ -60,7 +60,7 @@ export default function TroubleshootingQABubble({
             
             {reasoning && (
               <div className="text-sm text-gray-600 mb-4 p-3 bg-blue-100 rounded-lg">
-                <strong>診断の目的:</strong> {reasoning}
+                <strong>診断の目皁E</strong> {reasoning}
               </div>
             )}
           </div>
@@ -69,7 +69,7 @@ export default function TroubleshootingQABubble({
         {options && options.length > 0 && (
           <div className="space-y-2">
             <div className="text-sm font-medium text-gray-700 mb-3">
-              以下の選択肢から選んでください：
+              以下�E選択肢から選んでください�E�E
             </div>
             
             <div className="grid gap-2">
@@ -106,7 +106,7 @@ export default function TroubleshootingQABubble({
                 className="text-blue-600 hover:text-blue-700"
               >
                 <ArrowRight className="w-4 h-4 mr-2" />
-                その他の状況を入力
+                そ�E他�E状況を入劁E
               </Button>
             </div>
           </div>

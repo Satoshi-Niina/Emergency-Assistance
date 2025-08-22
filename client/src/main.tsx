@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import "./index.css";
 
-// シンプルなQueryClientの作成
+// シンプルなQueryClientの作�E
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -41,7 +41,7 @@ class ErrorBoundary extends React.Component<
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-red-600 mb-4">Application Error</h1>
-            <p className="text-gray-600 mb-4">アプリケーションでエラーが発生しました。</p>
+            <p className="text-gray-600 mb-4">アプリケーションでエラーが発生しました</p>
             <button
               onClick={() => window.location.reload()}
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
@@ -78,11 +78,11 @@ function initializeApp() {
       </React.StrictMode>
     );
 
-    console.log('✅ アプリケーションの初期化が完了しました');
+    console.log('✁Eアプリケーションの初期化が完亁E��ました');
   } catch (error) {
-    console.error('❌ アプリケーションの初期化に失敗しました:', error);
+    console.error('❁Eアプリケーションの初期化に失敗しました:', error);
     
-    // エラーが発生した場合のフォールバック表示
+    // エラーが発生した場合�Eフォールバック表示
     const container = document.getElementById('root');
     if (container) {
       container.innerHTML = `
@@ -99,7 +99,7 @@ function initializeApp() {
               アプリケーションエラー
             </h1>
             <p style="color: #6b7280; margin-bottom: 1rem;">
-              アプリケーションの初期化中にエラーが発生しました。
+              アプリケーションの初期化中にエラーが発生しました、E
             </p>
             <button 
               onclick="window.location.reload()"
@@ -115,7 +115,7 @@ function initializeApp() {
               onmouseover="this.style.backgroundColor='#2563eb'"
               onmouseout="this.style.backgroundColor='#3b82f6'"
             >
-              ページを再読み込み
+              ペ�Eジを�E読み込み
             </button>
           </div>
         </div>
@@ -124,7 +124,7 @@ function initializeApp() {
   }
 }
 
-// DOMが準備できたら初期化
+// DOMが準備できたら�E期化
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initializeApp);
 } else {

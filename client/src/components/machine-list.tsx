@@ -56,7 +56,7 @@ export default function MachineList() {
   if (data.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-gray-500">登録されている機種・機械番号がありません</p>
+        <p className="text-gray-500">登録されてぁE��機種・機械番号がありません</p>
       </div>
     );
   }
@@ -105,7 +105,7 @@ export default function MachineList() {
                 </div>
               ) : (
                 <div className="text-center py-4 text-gray-500">
-                  この機種に登録されている機械番号がありません
+                  こ�E機種に登録されてぁE��機械番号がありません
                 </div>
               )}
             </CardContent>

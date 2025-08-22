@@ -16,7 +16,7 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  console.log('🔧 Login コンポーネント レンダリング:', {
+  console.log('🔧 Login コンポ�EネンチEレンダリング:', {
     authLoading,
     hasUser: !!user,
     username: user?.username,
@@ -26,17 +26,17 @@ export default function Login() {
   
   // Redirect if already logged in (but only after proper authentication)
   useEffect(() => {
-    console.log('🔍 ログインページ - 認証状態確認:', {
+    console.log('🔍 ログインペ�Eジ - 認証状態確誁E', {
       authLoading,
       hasUser: !!user,
       username: user?.username
     });
     
     if (!authLoading && user && user.username) {
-      console.log('✅ ログイン済みユーザーを検出 - チャット画面に遷移');
+      console.log('✁Eログイン済みユーザーを検�E - チャチE��画面に遷移');
       navigate("/chat", { replace: true });
     } else if (!authLoading && !user) {
-      console.log('❌ 未ログインユーザー - ログイン画面を表示');
+      console.log('❁E未ログインユーザー - ログイン画面を表示');
     }
   }, [user, authLoading, navigate]);
 
@@ -52,27 +52,27 @@ export default function Login() {
     try {
       setIsLoading(true);
       setErrorMessage("");
-      console.log("🔐 ログイン試行開始:", values.username);
+      console.log("🔐 ログイン試行開姁E", values.username);
       console.log("📝 フォーム値:", values);
       
-      // ログイン処理を実行
+      // ログイン処琁E��実衁E
       await login(values.username, values.password);
       
-      console.log("✅ ログイン成功 - 認証状態の更新を待機中");
+      console.log("✁Eログイン成功 - 認証状態�E更新を征E��中");
       
-      // 認証コンテキストの状態更新を待つ（useEffectで自動的に遷移する）
+      // 認証コンチE��スト�E状態更新を征E���E�EseEffectで自動的に遷移する�E�E
       
     } catch (error) {
-      console.error("❌ ログインエラー:", error);
+      console.error("❁Eログインエラー:", error);
       let errorMsg = "ログインに失敗しました";
       
       if (error instanceof Error) {
-        if (error.message.includes('ユーザー名またはパスワードが違います')) {
-          errorMsg = "ユーザー名またはパスワードが違います";
-        } else if (error.message.includes('サーバーエラーが発生しました')) {
-          errorMsg = "サーバーエラーが発生しました。しばらく時間をおいて再度お試しください。";
-        } else if (error.message.includes('サーバーに接続できません')) {
-          errorMsg = "サーバーに接続できません。サーバーが起動しているか確認してください。";
+        if (error.message.includes('ユーザー名また�Eパスワードが違いまぁE)) {
+          errorMsg = "ユーザー名また�Eパスワードが違いまぁE;
+        } else if (error.message.includes('サーバ�Eエラーが発生しました')) {
+          errorMsg = "サーバ�Eエラーが発生しました。しばらく時間をおぁE��再度お試しください、E;
+        } else if (error.message.includes('サーバ�Eに接続できません')) {
+          errorMsg = "サーバ�Eに接続できません。サーバ�Eが起動してぁE��か確認してください、E;
         } else {
           errorMsg = error.message;
         }
@@ -84,7 +84,7 @@ export default function Login() {
     }
   };
 
-  // フォームの状態を監視
+  // フォームの状態を監要E
   useEffect(() => {
     const subscription = form.watch((value) => {
       console.log("📝 フォーム値変更:", value);
@@ -94,7 +94,7 @@ export default function Login() {
 
   // 認証状態読み込み中の表示
   if (authLoading) {
-    console.log('⏳ Login: 認証状態読み込み中、ローディング画面を表示');
+    console.log('⏳ Login: 認証状態読み込み中、ローチE��ング画面を表示');
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-b from-primary/10 to-primary/5 p-4">
         <div className="text-center">
@@ -105,13 +105,13 @@ export default function Login() {
     );
   }
 
-  console.log('✅ Login: 認証状態確認完了、ログインフォームを表示');
+  console.log('✁ELogin: 認証状態確認完亁E��ログインフォームを表示');
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-b from-primary/10 to-primary/5 p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-primary">応急処置サポートシステム</h1>
+          <h1 className="text-2xl font-bold text-primary">応急処置サポ�EトシスチE��</h1>
           <p className="text-neutral-600 mt-2">Emergency Support System</p>
         </div>
         <Card className="w-full shadow-lg">
@@ -122,7 +122,7 @@ export default function Login() {
             <Form {...form}>
               <form 
                 onSubmit={(e) => {
-                  console.log("📤 フォーム送信開始");
+                  console.log("📤 フォーム送信開姁E);
                   form.handleSubmit(onSubmit)(e);
                 }} 
                 className="space-y-4"
@@ -132,9 +132,9 @@ export default function Login() {
                   name="username"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>ユーザー名</FormLabel>
+                      <FormLabel>ユーザー吁E/FormLabel>
                       <FormControl>
-                        <Input placeholder="ユーザー名を入力" autoComplete="off" {...field} />
+                        <Input placeholder="ユーザー名を入劁E autoComplete="off" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -145,9 +145,9 @@ export default function Login() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>パスワード</FormLabel>
+                      <FormLabel>パスワーチE/FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="パスワードを入力" autoComplete="new-password" {...field} />
+                        <Input type="password" placeholder="パスワードを入劁E autoComplete="new-password" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -162,7 +162,7 @@ export default function Login() {
                   type="submit" 
                   className="w-full bg-primary" 
                   disabled={isLoading}
-                  onClick={() => console.log("🔘 ログインボタンクリック")}
+                  onClick={() => console.log("🔘 ログインボタンクリチE��")}
                 >
                   {isLoading ? "ログイン中..." : "ログイン"}
                 </Button>
@@ -170,7 +170,7 @@ export default function Login() {
             </Form>
           </CardContent>
           <CardFooter className="flex flex-col space-y-2 text-center text-sm text-neutral-500 border-t pt-4 mt-2">
-            <p>システムにログインしてください</p>
+            <p>シスチE��にログインしてください</p>
           </CardFooter>
         </Card>
       </div>

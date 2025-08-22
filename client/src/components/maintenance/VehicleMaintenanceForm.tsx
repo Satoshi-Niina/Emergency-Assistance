@@ -27,7 +27,7 @@ export default function VehicleMaintenanceForm() {
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [successMessage, setSuccessMessage] = useState('');
 
-  // 基本フィールドの更新
+  // 基本フィールド�E更新
   const updateField = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     // エラーをクリア
@@ -36,7 +36,7 @@ export default function VehicleMaintenanceForm() {
     }
   };
 
-  // 故障分類の管理
+  // 敁E��刁E���E管琁E
   const addFaultClassification = () => {
     setFormData(prev => ({
       ...prev,
@@ -62,7 +62,7 @@ export default function VehicleMaintenanceForm() {
     }));
   };
 
-  // 故障要因の管理
+  // 敁E��要因の管琁E
   const addFaultFactor = () => {
     setFormData(prev => ({
       ...prev,
@@ -88,38 +88,38 @@ export default function VehicleMaintenanceForm() {
     }));
   };
 
-  // バリデーション
+  // バリチE�Eション
   const validateForm = (): boolean => {
     const newErrors: {[key: string]: string} = {};
     
     if (!formData.occurrenceEvent.trim()) {
-      newErrors.occurrenceEvent = '発生事象は必須項目です。';
+      newErrors.occurrenceEvent = '発生事象は忁E��頁E��です、E;
     }
     if (!formData.vehicleNumber.trim()) {
-      newErrors.vehicleNumber = '機種は必須項目です。';
+      newErrors.vehicleNumber = '機種は忁E��頁E��です、E;
     }
     if (!formData.equipmentCategory.trim()) {
-      newErrors.equipmentCategory = '装置カテゴリ・装置名称は必須項目です。';
+      newErrors.equipmentCategory = '裁E��カチE��リ・裁E��名称は忁E��頁E��です、E;
     }
     if (!formData.phenomenonMemo.trim()) {
-      newErrors.phenomenonMemo = '現象メモは必須項目です。';
+      newErrors.phenomenonMemo = '現象メモは忁E��頁E��です、E;
     }
     if (!formData.recorder.trim()) {
-      newErrors.recorder = '記録者は必須項目です。';
+      newErrors.recorder = '記録老E�E忁E��頁E��です、E;
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // レコードIDの生成
+  // レコードIDの生�E
   const generateRecordId = (): string => {
     const timestamp = Date.now();
     const random = Math.random().toString(36).substr(2, 9);
     return `${timestamp}-${random}`;
   };
 
-  // JSONファイルの保存（サーバー経由）
+  // JSONファイルの保存（サーバ�E経由�E�E
   const saveToServer = async (data: VehicleMaintenanceRecord): Promise<void> => {
     try {
       const response = await fetch('/api/maintenance/save', {
@@ -131,11 +131,11 @@ export default function VehicleMaintenanceForm() {
       });
 
       if (!response.ok) {
-        throw new Error('サーバーへの保存に失敗しました');
+        throw new Error('サーバ�Eへの保存に失敗しました');
       }
 
       const result = await response.json();
-      console.log('保存成功:', result);
+      console.log('保存�E劁E', result);
     } catch (error) {
       console.error('保存エラー:', error);
       throw error;
@@ -151,17 +151,17 @@ export default function VehicleMaintenanceForm() {
     }
 
     try {
-      // 故障分類をフィルター（空のものを除外）
+      // 敁E��刁E��をフィルター�E�空のも�Eを除外！E
       const validClassifications = formData.faultClassifications.filter(
         item => item.type || item.custom
       );
 
-      // 故障要因をフィルター（空のものを除外）
+      // 敁E��要因をフィルター�E�空のも�Eを除外！E
       const validFactors = formData.faultFactors.filter(
         item => item.type || item.content
       );
 
-      // 構造化JSONデータの作成
+      // 構造化JSONチE�Eタの作�E
       const maintenanceRecord: VehicleMaintenanceRecord = {
         metadata: {
           recordId: generateRecordId(),
@@ -200,27 +200,27 @@ export default function VehicleMaintenanceForm() {
         }
       };
 
-      // サーバーに保存
+      // サーバ�Eに保孁E
       await saveToServer(maintenanceRecord);
 
-      // 成功メッセージを表示
-      setSuccessMessage('記録が正常に保存されました。');
+      // 成功メチE��ージを表示
+      setSuccessMessage('記録が正常に保存されました、E);
       
-      // 3秒後にメッセージを非表示
+      // 3秒後にメチE��ージを非表示
       setTimeout(() => {
         setSuccessMessage('');
       }, 3000);
 
-      // フォームリセットの確認
+      // フォームリセチE��の確誁E
       setTimeout(() => {
-        if (confirm('フォームをリセットして新しい記録を入力しますか？')) {
+        if (confirm('フォームをリセチE��して新しい記録を�E力しますか�E�E)) {
           resetForm();
         }
       }, 1000);
 
     } catch (error) {
       console.error('保存エラー:', error);
-      alert('保存中にエラーが発生しました。もう一度お試しください。');
+      alert('保存中にエラーが発生しました。もぁE��度お試しください、E);
     }
   };
 
@@ -230,7 +230,7 @@ export default function VehicleMaintenanceForm() {
     if (!file) return;
 
     if (!file.name.endsWith('.json')) {
-      alert('JSONファイルを選択してください。');
+      alert('JSONファイルを選択してください、E);
       return;
     }
 
@@ -239,17 +239,17 @@ export default function VehicleMaintenanceForm() {
       try {
         const jsonData = JSON.parse(e.target?.result as string);
         loadDataToForm(jsonData);
-        setSuccessMessage('ファイルが正常に読み込まれました。');
+        setSuccessMessage('ファイルが正常に読み込まれました、E);
         setTimeout(() => setSuccessMessage(''), 3000);
       } catch (error) {
         console.error('JSONファイルの読み込みエラー:', error);
-        alert('JSONファイルの形式が正しくありません。');
+        alert('JSONファイルの形式が正しくありません、E);
       }
     };
     reader.readAsText(file);
   };
 
-  // JSONデータをフォームに展開
+  // JSONチE�Eタをフォームに展開
   const loadDataToForm = (jsonData: VehicleMaintenanceRecord) => {
     setFormData({
       occurrenceEvent: jsonData.occurrence?.event || '',
@@ -268,7 +268,7 @@ export default function VehicleMaintenanceForm() {
     });
   };
 
-  // フォームリセット
+  // フォームリセチE��
   const resetForm = () => {
     setFormData({
       occurrenceEvent: '',
@@ -291,11 +291,11 @@ export default function VehicleMaintenanceForm() {
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-center text-gray-900">
-            車両保守故障記録システム
+            車両保守故障記録シスチE��
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {/* 成功メッセージ */}
+          {/* 成功メチE��ージ */}
           {successMessage && (
             <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-green-600" />
@@ -322,12 +322,12 @@ export default function VehicleMaintenanceForm() {
               </Button>
             </div>
             <p className="mt-2 text-xs text-gray-500">
-              JSONファイルを選択して既存の記録を読み込めます
+              JSONファイルを選択して既存�E記録を読み込めまぁE
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* 基本情報 */}
+            {/* 基本惁E�� */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <Label htmlFor="occurrenceEvent">
@@ -337,7 +337,7 @@ export default function VehicleMaintenanceForm() {
                   id="occurrenceEvent"
                   value={formData.occurrenceEvent}
                   onChange={(e) => updateField('occurrenceEvent', e.target.value)}
-                  placeholder="例: エンジン停止、冷却水漏れ、異音発生"
+                  placeholder="侁E エンジン停止、�E却水漏れ、異音発甁E
                   className={errors.occurrenceEvent ? 'border-red-500' : ''}
                 />
                 {errors.occurrenceEvent && (
@@ -353,7 +353,7 @@ export default function VehicleMaintenanceForm() {
                   id="vehicleNumber"
                   value={formData.vehicleNumber}
                   onChange={(e) => updateField('vehicleNumber', e.target.value)}
-                  placeholder="例: フォークリフト、ダンプトラック"
+                  placeholder="侁E フォークリフト、ダンプトラチE��"
                   className={errors.vehicleNumber ? 'border-red-500' : ''}
                 />
                 {errors.vehicleNumber && (
@@ -364,13 +364,13 @@ export default function VehicleMaintenanceForm() {
 
             <div>
               <Label htmlFor="equipmentCategory">
-                装置カテゴリ・装置名称 <span className="text-red-500">*</span>
+                裁E��カチE��リ・裁E��名称 <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="equipmentCategory"
                 value={formData.equipmentCategory}
                 onChange={(e) => updateField('equipmentCategory', e.target.value)}
-                placeholder="例: エンジン系統・冷却装置"
+                placeholder="侁E エンジン系統・冷却裁E��"
                 className={errors.equipmentCategory ? 'border-red-500' : ''}
               />
               {errors.equipmentCategory && (
@@ -378,7 +378,7 @@ export default function VehicleMaintenanceForm() {
               )}
             </div>
 
-            {/* 故障分類セクション */}
+            {/* 敁E��刁E��セクション */}
             <FaultClassificationSection
               faultClassifications={formData.faultClassifications}
               onAdd={addFaultClassification}
@@ -394,7 +394,7 @@ export default function VehicleMaintenanceForm() {
                 id="phenomenonMemo"
                 value={formData.phenomenonMemo}
                 onChange={(e) => updateField('phenomenonMemo', e.target.value)}
-                placeholder="故障の現象について詳しく記述してください"
+                placeholder="敁E��の現象につぁE��詳しく記述してください"
                 rows={4}
                 className={errors.phenomenonMemo ? 'border-red-500' : ''}
               />
@@ -403,7 +403,7 @@ export default function VehicleMaintenanceForm() {
               )}
             </div>
 
-            {/* 故障要因セクション */}
+            {/* 敁E��要因セクション */}
             <FaultFactorSection
               faultFactors={formData.faultFactors}
               onAdd={addFaultFactor}
@@ -414,12 +414,12 @@ export default function VehicleMaintenanceForm() {
             {/* 対応情報 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <Label htmlFor="inspectionProcedure">現場確認手順</Label>
+                <Label htmlFor="inspectionProcedure">現場確認手頁E/Label>
                 <Textarea
                   id="inspectionProcedure"
                   value={formData.inspectionProcedure}
                   onChange={(e) => updateField('inspectionProcedure', e.target.value)}
-                  placeholder="現場での確認手順を記述してください（複数行可）"
+                  placeholder="現場での確認手頁E��記述してください�E�褁E��行可�E�E
                   rows={4}
                 />
               </div>
@@ -430,44 +430,44 @@ export default function VehicleMaintenanceForm() {
                   id="emergencyMeasures"
                   value={formData.emergencyMeasures}
                   onChange={(e) => updateField('emergencyMeasures', e.target.value)}
-                  placeholder="実施した応急処置について記述してください（複数行可）"
+                  placeholder="実施した応急処置につぁE��記述してください�E�褁E��行可�E�E
                   rows={4}
                 />
               </div>
             </div>
 
             <div>
-              <Label htmlFor="permanentCountermeasures">恒久対策</Label>
+              <Label htmlFor="permanentCountermeasures">恒乁E��筁E/Label>
               <Textarea
                 id="permanentCountermeasures"
                 value={formData.permanentCountermeasures}
                 onChange={(e) => updateField('permanentCountermeasures', e.target.value)}
-                placeholder="恒久的な対策について記述してください"
+                placeholder="恒乁E��な対策につぁE��記述してください"
                 rows={3}
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <Label htmlFor="remarks">備考</Label>
+                <Label htmlFor="remarks">備老E/Label>
                 <Textarea
                   id="remarks"
                   value={formData.remarks}
                   onChange={(e) => updateField('remarks', e.target.value)}
-                  placeholder="その他の備考があれば記述してください"
+                  placeholder="そ�E他�E備老E��あれば記述してください"
                   rows={3}
                 />
               </div>
 
               <div>
                 <Label htmlFor="recorder">
-                  記録者 <span className="text-red-500">*</span>
+                  記録老E<span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="recorder"
                   value={formData.recorder}
                   onChange={(e) => updateField('recorder', e.target.value)}
-                  placeholder="記録者名を入力してください"
+                  placeholder="記録老E��を�E力してください"
                   className={errors.recorder ? 'border-red-500' : ''}
                 />
                 {errors.recorder && (
@@ -480,7 +480,7 @@ export default function VehicleMaintenanceForm() {
             <div className="flex justify-center pt-6 border-t">
               <Button type="submit" size="lg" className="flex items-center gap-2">
                 <Save className="h-5 w-5" />
-                記録を保存
+                記録を保孁E
               </Button>
             </div>
           </form>

@@ -36,12 +36,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const isDevelopment = import.meta.env.DEV;
       const isAzureStaticWebApp = window.location.hostname.includes('azurestaticapps.net');
       
-      // Azure Static Web Apps の場合は外部のバックエンドAPIを使用
+      // Azure Static Web Apps の場合は組み込みAPIを使用、開発環境では外部APIを使用
       const apiBaseUrl = isDevelopment 
         ? (import.meta.env.VITE_API_BASE_URL || '')
-        : isAzureStaticWebApp 
-          ? 'https://emergency-backend-app.azurewebsites.net'
-          : '';
+        : '';  // Azure Static Web Appsでは組み込みAPIを使用
           
       const apiUrl = apiBaseUrl ? `${apiBaseUrl}/api/auth/me` : '/api/auth/me';
       
@@ -119,12 +117,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const isDevelopment = import.meta.env.DEV;
       const isAzureStaticWebApp = window.location.hostname.includes('azurestaticapps.net');
       
-      // Azure Static Web Apps の場合は外部のバックエンドAPIを使用
+      // Azure Static Web Apps の場合は組み込みAPIを使用、開発環境では外部APIを使用
       const apiBaseUrl = isDevelopment 
         ? (import.meta.env.VITE_API_BASE_URL || '')
-        : isAzureStaticWebApp 
-          ? 'https://emergency-backend-app.azurewebsites.net'
-          : '';
+        : '';  // Azure Static Web Appsでは組み込みAPIを使用
         
       const apiUrl = apiBaseUrl ? `${apiBaseUrl}/api/auth/login` : '/api/auth/login';
         

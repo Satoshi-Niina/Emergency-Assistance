@@ -11,14 +11,14 @@ interface Props {
 }
 
 const FAULT_CLASSIFICATION_OPTIONS = [
-  '機械的故障',
-  '電気系故障',
-  '空圧系故障',
-  '油圧系故障',
-  '冷却系故障',
-  '燃料系故障',
-  '制御系故障',
-  'その他'
+  '機械皁E��隁E,
+  '電気系敁E��',
+  '空圧系敁E��',
+  '油圧系敁E��',
+  '冷却系敁E��',
+  '燁E��系敁E��',
+  '制御系敁E��',
+  'そ�E仁E
 ];
 
 export default function FaultClassificationSection({ 
@@ -30,10 +30,10 @@ export default function FaultClassificationSection({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">故障分類</h3>
+        <h3 className="text-lg font-semibold text-gray-900">敁E��刁E��E/h3>
         <Button onClick={onAdd} type="button" variant="outline" size="sm" className="flex items-center gap-2">
           <Plus className="h-4 w-4" />
-          分類追加
+          刁E��追加
         </Button>
       </div>
       
@@ -42,7 +42,7 @@ export default function FaultClassificationSection({
           <div key={index} className="flex gap-3 items-start p-4 bg-gray-50 rounded-lg border">
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                分類タイプ
+                刁E��タイチE
               </label>
               <select
                 value={classification.type}
@@ -58,13 +58,13 @@ export default function FaultClassificationSection({
             
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                カスタム分類（任意）
+                カスタム刁E��（任意！E
               </label>
               <input
                 type="text"
                 value={classification.custom}
                 onChange={(e) => onUpdate(index, 'custom', e.target.value)}
-                placeholder="カスタム分類を入力"
+                placeholder="カスタム刁E��を入劁E
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>

@@ -59,8 +59,8 @@ export default function TextSelectionControls({ text, onSearch }: TextSelectionC
   const handleCopy = () => {
     navigator.clipboard.writeText(text);
     toast({
-      title: "コピー完了",
-      description: "テキストがクリップボードにコピーされました",
+      title: "コピ�E完亁E,
+      description: "チE��ストがクリチE�Eボ�Eドにコピ�Eされました",
       duration: 2000,
     });
     setIsVisible(false);
@@ -91,7 +91,7 @@ export default function TextSelectionControls({ text, onSearch }: TextSelectionC
           variant="ghost" 
           size="icon" 
           className="p-1 hover:bg-neutral-100 rounded mr-1" 
-          title="AIに質問"
+          title="AIに質啁E
           onClick={handleChatGPT}
         >
           <BrainCog className="h-5 w-5 text-primary" />
@@ -100,7 +100,7 @@ export default function TextSelectionControls({ text, onSearch }: TextSelectionC
           variant="ghost" 
           size="icon" 
           className="p-1 hover:bg-neutral-100 rounded" 
-          title="コピー"
+          title="コピ�E"
           onClick={handleCopy}
         >
           <Copy className="h-5 w-5 text-primary" />

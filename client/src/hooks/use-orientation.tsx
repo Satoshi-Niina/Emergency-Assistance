@@ -17,7 +17,7 @@ export function useOrientation() {
     window.addEventListener('resize', handleResize);
     window.addEventListener('orientationchange', handleResize);
 
-    // 初期化時にも実行
+    // 初期化時にも実衁E
     handleResize();
 
     return () => {

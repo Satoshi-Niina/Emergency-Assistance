@@ -4,11 +4,11 @@ import { useToast } from "../hooks/use-toast";
 import * as XLSX from 'xlsx';
 import { USER_API, API_REQUEST_OPTIONS } from "../lib/api/config";
 
-// API URL構築ヘルパー関数
+// API URL構築�Eルパ�E関数
 const buildApiUrl = (endpoint: string): string => {
   const isAzureStaticWebApp = window.location.hostname.includes('azurestaticapps.net');
   const apiBaseUrl = isAzureStaticWebApp 
-    ? 'https://emergency-backend-app.azurewebsites.net'
+    ? 'https://emergency-backend-api-v2.azurewebsites.net'
     : (import.meta.env.VITE_API_BASE_URL || '');
   
   return `${apiBaseUrl}${endpoint}`;
@@ -55,7 +55,7 @@ interface UserData {
   description?: string;
 }
 
-// 新規ユーザー作成用インターフェース
+// 新規ユーザー作�E用インターフェース
 interface NewUserData {
   username: string;
   password: string;
@@ -72,14 +72,14 @@ export default function UsersPage() {
   const navigate = useNavigate();
   const [error, setError] = useState<Error | null>(null);
 
-  // ユーザーが未認証またはadmin以外の場合はリダイレクト
+  // ユーザーが未認証また�Eadmin以外�E場合�EリダイレクチE
   useEffect(() => {
     if (!authLoading && (!user || user.role !== "admin")) {
       navigate("/chat");
     }
   }, [user, authLoading, navigate]);
 
-  // ユーザーデータの取得（簡素化版）
+  // ユーザーチE�Eタの取得（簡素化版�E�E
   const [users, setUsers] = useState<UserData[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<UserData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -89,9 +89,9 @@ export default function UsersPage() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        console.log('🔍 ユーザー一覧取得開始');
+        console.log('🔍 ユーザー一覧取得開姁E);
         console.log('🔍 現在のユーザー:', user);
-        console.log('🔍 セッション状態:', document.cookie);
+        console.log('🔍 セチE��ョン状慁E', document.cookie);
         console.log('🔍 現在のURL:', window.location.href);
         
         setIsLoading(true);
@@ -110,22 +110,22 @@ export default function UsersPage() {
         
         if (!res.ok) {
           const errorText = await res.text();
-          console.error('❌ ユーザー一覧取得エラー:', errorText);
+          console.error('❁Eユーザー一覧取得エラー:', errorText);
           throw new Error(`HTTP ${res.status}: ${errorText}`);
         }
         
         const userData = await res.json();
-        console.log('🔍 ユーザー一覧データ:', userData);
+        console.log('🔍 ユーザー一覧チE�Eタ:', userData);
         
         if (userData.success && userData.data) {
           setUsers(userData.data);
           setFilteredUsers(userData.data);
         } else {
-          console.error('❌ 予期しないユーザーデータ形式:', userData);
-          throw new Error("ユーザーデータの形式が不正です");
+          console.error('❁E予期しなぁE��ーザーチE�Eタ形弁E', userData);
+          throw new Error("ユーザーチE�Eタの形式が不正でぁE);
         }
       } catch (error) {
-        console.error('❌ ユーザー一覧取得エラー:', error);
+        console.error('❁Eユーザー一覧取得エラー:', error);
         setQueryError(error instanceof Error ? error : new Error('Unknown error'));
       } finally {
         setIsLoading(false);
@@ -135,7 +135,7 @@ export default function UsersPage() {
     fetchUsers();
   }, [user]);
 
-  // 検索機能
+  // 検索機�E
   useEffect(() => {
     if (!searchQuery.trim()) {
       setFilteredUsers(users);
@@ -145,7 +145,7 @@ export default function UsersPage() {
     const filtered = users.filter(user => {
       const query = searchQuery.toLowerCase();
       
-      // ワイルドカード検索の処理
+      // ワイルドカード検索の処琁E
       if (query.includes('*')) {
         const pattern = query.replace(/\*/g, '.*');
         const regex = new RegExp(pattern, 'i');
@@ -159,7 +159,7 @@ export default function UsersPage() {
         );
       }
       
-      // 通常の部分一致検索
+      // 通常の部刁E��致検索
       return (
         user.username.toLowerCase().includes(query) ||
         user.display_name.toLowerCase().includes(query) ||
@@ -190,23 +190,23 @@ export default function UsersPage() {
     }
   }, [queryError, toast]);
 
-  // 認証エラーや権限エラーの場合の表示
+  // 認証エラーめE��限エラーの場合�E表示
   if (queryError instanceof Error) {
-    if (queryError.message.includes('認証が必要') || queryError.message.includes('管理者権限')) {
+    if (queryError.message.includes('認証が忁E��E) || queryError.message.includes('管琁E��E��陁E)) {
       return (
         <div className="flex-1 overflow-y-auto p-4 md:p-6 max-w-5xl mx-auto w-full">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-2xl font-bold flex items-center">
                 <Shield className="mr-2 h-6 w-6" />
-                ユーザー管理
+                ユーザー管琁E
               </h1>
-              <p className="text-neutral-300">システムの全ユーザーを管理します</p>
+              <p className="text-neutral-300">シスチE��の全ユーザーを管琁E��まぁE/p>
             </div>
             <Link to="/settings">
               <Button variant="outline" size="sm">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                設定に戻る
+                設定に戻めE
               </Button>
             </Link>
           </div>
@@ -217,13 +217,13 @@ export default function UsersPage() {
                 <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold mb-2">アクセス権限がありません</h3>
                 <p className="text-gray-600 mb-4">
-                  {queryError.message.includes('認証が必要') 
-                    ? "ログインが必要です。再度ログインしてください。" 
-                    : "このページにアクセスするには管理者権限が必要です。"}
+                  {queryError.message.includes('認証が忁E��E) 
+                    ? "ログインが忁E��です。�E度ログインしてください、E 
+                    : "こ�Eペ�Eジにアクセスするには管琁E��E��限が忁E��です、E}
                 </p>
                 <Link to="/chat">
                   <Button>
-                    チャットに戻る
+                    チャチE��に戻めE
                   </Button>
                 </Link>
               </div>
@@ -260,7 +260,7 @@ export default function UsersPage() {
     description: "",
   });
 
-  // フォームの値をリセット
+  // フォームの値をリセチE��
   const resetNewUserForm = () => {
     setNewUser({
       username: "",
@@ -274,35 +274,35 @@ export default function UsersPage() {
 
 
 
-  // フォーム送信処理
+  // フォーム送信処琁E
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // バリデーション
+    // バリチE�Eション
     if (!newUser.username || !newUser.password || !newUser.display_name || !newUser.role) {
       toast({
         title: "入力エラー",
-        description: "ユーザー名、パスワード、表示名、権限は必須項目です",
+        description: "ユーザー名、パスワード、表示名、権限�E忁E��頁E��でぁE,
         variant: "destructive",
       });
       return;
     }
 
-    // ユーザー名の形式チェック
+    // ユーザー名�E形式チェチE��
     if (newUser.username.length < 3 || newUser.username.length > 50) {
       toast({
         title: "入力エラー",
-        description: "ユーザー名は3文字以上50文字以下で入力してください",
+        description: "ユーザー名�E3斁E��以丁E0斁E��以下で入力してください",
         variant: "destructive",
       });
       return;
     }
 
-    // パスワードの強度チェック
+    // パスワード�E強度チェチE��
     if (newUser.password.length < 8) {
       toast({
         title: "パスワードエラー",
-        description: "パスワードは8文字以上で設定してください",
+        description: "パスワード�E8斁E��以上で設定してください",
         variant: "destructive",
       });
       return;
@@ -316,7 +316,7 @@ export default function UsersPage() {
     if (!hasUpperCase) {
       toast({
         title: "パスワードエラー",
-        description: "パスワードには大文字を1文字以上含めてください",
+        description: "パスワードには大斁E��を1斁E��以上含めてください",
         variant: "destructive",
       });
       return;
@@ -325,7 +325,7 @@ export default function UsersPage() {
     if (!hasLowerCase) {
       toast({
         title: "パスワードエラー",
-        description: "パスワードには小文字を1文字以上含めてください",
+        description: "パスワードには小文字を1斁E��以上含めてください",
         variant: "destructive",
       });
       return;
@@ -334,7 +334,7 @@ export default function UsersPage() {
     if (!hasNumbers) {
       toast({
         title: "パスワードエラー",
-        description: "パスワードには数字を1文字以上含めてください",
+        description: "パスワードには数字を1斁E��以上含めてください",
         variant: "destructive",
       });
       return;
@@ -343,34 +343,34 @@ export default function UsersPage() {
     if (!hasSymbols) {
       toast({
         title: "パスワードエラー",
-        description: "パスワードには記号を1文字以上含めてください",
+        description: "パスワードには記号めE斁E��以上含めてください",
         variant: "destructive",
       });
       return;
     }
 
-    // 表示名の形式チェック
+    // 表示名�E形式チェチE��
     if (newUser.display_name.length < 1 || newUser.display_name.length > 100) {
       toast({
         title: "入力エラー",
-        description: "表示名は1文字以上100文字以下で入力してください",
+        description: "表示名�E1斁E��以丁E00斁E��以下で入力してください",
         variant: "destructive",
       });
       return;
     }
 
-    // 権限の値チェック
+    // 権限�E値チェチE��
     if (!['employee', 'admin'].includes(newUser.role || '')) {
       toast({
         title: "入力エラー",
-        description: "権限は「一般ユーザー」または「管理者」を選択してください",
+        description: "権限�E「一般ユーザー」また�E「管琁E��E��を選択してください",
         variant: "destructive",
       });
       return;
     }
 
     try {
-      console.log('🔍 新規ユーザー作成開始:', newUser);
+      console.log('🔍 新規ユーザー作�E開姁E', newUser);
       
       const res = await fetch('/api/users', {
         method: 'POST',
@@ -390,22 +390,22 @@ export default function UsersPage() {
       
       if (!res.ok) {
         const errorText = await res.text();
-        throw new Error(`ユーザー作成失敗: ${errorText}`);
+        throw new Error(`ユーザー作�E失敁E ${errorText}`);
       }
       
       const result = await res.json();
-      console.log('🔍 ユーザー作成結果:', result);
+      console.log('🔍 ユーザー作�E結果:', result);
       
       if (result.success) {
-        console.log('✅ ユーザー作成成功:', result.data);
+        console.log('✁Eユーザー作�E成功:', result.data);
         toast({
           title: "成功",
-          description: "ユーザーが正常に作成されました",
+          description: "ユーザーが正常に作�Eされました",
         });
         setShowNewUserDialog(false);
         resetNewUserForm();
         
-        // ユーザー一覧を再取得
+        // ユーザー一覧を�E取征E
         const fetchUsers = async () => {
           try {
             const res = await fetch('/api/users', {
@@ -430,39 +430,39 @@ export default function UsersPage() {
         
         fetchUsers();
       } else {
-        throw new Error(result.error || 'ユーザーの作成に失敗しました');
+        throw new Error(result.error || 'ユーザーの作�Eに失敗しました');
       }
     } catch (error) {
-      console.error('❌ ユーザー作成エラー:', error);
+      console.error('❁Eユーザー作�Eエラー:', error);
       toast({
         title: "エラー",
-        description: error instanceof Error ? error.message : "ユーザーの作成に失敗しました",
+        description: error instanceof Error ? error.message : "ユーザーの作�Eに失敗しました",
         variant: "destructive",
       });
     }
   };
 
-  // 入力フィールド更新処理
+  // 入力フィールド更新処琁E
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setNewUser((prev) => ({ ...prev, [name]: value }));
   };
 
-  // セレクト更新処理
+  // セレクト更新処琁E
   const handleSelectChange = (name: string, value: string) => {
     setNewUser((prev) => ({ ...prev, [name]: value }));
   };
 
-  // 編集用セレクト更新処理
+  // 編雁E��セレクト更新処琁E
   const handleEditSelectChange = (name: string, value: string) => {
     setEditUser((prev) => ({ ...prev, [name]: value }));
   };
 
-  // エクセルファイル選択処理
+  // エクセルファイル選択�E琁E
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // ファイル形式チェック
+      // ファイル形式チェチE��
       const validTypes = [
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'application/vnd.ms-excel'
@@ -475,7 +475,7 @@ export default function UsersPage() {
       if (!isValidType) {
         toast({
           title: "ファイル形式エラー",
-          description: "エクセルファイル（.xlsx, .xls）のみアップロード可能です",
+          description: "エクセルファイル�E�Exlsx, .xls�E��EみアチE�Eロード可能でぁE,
           variant: "destructive",
         });
         return;
@@ -485,7 +485,7 @@ export default function UsersPage() {
     }
   };
 
-  // エクセルインポート処理
+  // エクセルインポ�Eト�E琁E
   const handleImportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -516,11 +516,11 @@ export default function UsersPage() {
       if (result.success) {
         setImportResults(result.results);
         toast({
-          title: "インポート完了",
-          description: `成功: ${result.results.success}件, 失敗: ${result.results.failed}件`,
+          title: "インポ�Eト完亁E,
+          description: `成功: ${result.results.success}件, 失敁E ${result.results.failed}件`,
         });
         
-        // ユーザー一覧を再取得
+        // ユーザー一覧を�E取征E
         const fetchUsers = async () => {
           try {
             const res = await fetch('/api/users', {
@@ -545,13 +545,13 @@ export default function UsersPage() {
         
         fetchUsers();
       } else {
-        throw new Error(result.error || 'インポートに失敗しました');
+        throw new Error(result.error || 'インポ�Eトに失敗しました');
       }
     } catch (error) {
-      console.error('エクセルインポートエラー:', error);
+      console.error('エクセルインポ�Eトエラー:', error);
       toast({
-        title: "インポートエラー",
-        description: error instanceof Error ? error.message : "インポート中にエラーが発生しました",
+        title: "インポ�Eトエラー",
+        description: error instanceof Error ? error.message : "インポ�Eト中にエラーが発生しました",
         variant: "destructive",
       });
     } finally {
@@ -559,12 +559,12 @@ export default function UsersPage() {
     }
   };
 
-  // エクセルテンプレートダウンロード
+  // エクセルチE��プレートダウンローチE
   const handleDownloadTemplate = () => {
     const templateData = [
       ['username', 'password', 'display_name', 'role', 'department', 'description'],
       ['user1', 'Password123!', 'ユーザー1', 'employee', '営業部', '一般ユーザー'],
-      ['admin1', 'Admin123!', '管理者1', 'admin', '管理部', 'システム管理者'],
+      ['admin1', 'Admin123!', '管琁E��E', 'admin', '管琁E��', 'シスチE��管琁E��E],
     ];
 
     const ws = XLSX.utils.aoa_to_sheet(templateData);
@@ -574,13 +574,13 @@ export default function UsersPage() {
     XLSX.writeFile(wb, 'user_import_template.xlsx');
   };
 
-  // 編集用入力フィールド更新処理
+  // 編雁E��入力フィールド更新処琁E
   const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setEditUser((prev) => ({ ...prev, [name]: value }));
   };
 
-  // ユーザー編集準備
+  // ユーザー編雁E��備
   const handleEditUser = (userData: UserData) => {
     setSelectedUserId(userData.id);
     setEditUser({
@@ -590,7 +590,7 @@ export default function UsersPage() {
       role: userData.role,
       department: userData.department,
       description: userData.description,
-      password: "" // パスワードフィールドを空で初期化
+      password: "" // パスワードフィールドを空で初期匁E
     });
     setShowEditUserDialog(true);
   };
@@ -601,16 +601,16 @@ export default function UsersPage() {
     setShowDeleteConfirmDialog(true);
   };
 
-  // ユーザー削除実行
+  // ユーザー削除実衁E
   const handleDeleteConfirm = async () => {
     if (!selectedUserId) return;
     
     try {
-      // 自分自身のアカウントは削除できないチェック
+      // 自刁E�E身のアカウント�E削除できなぁE��ェチE��
       if (user && selectedUserId === user.id) {
         toast({
           title: "削除エラー",
-          description: "自分自身のアカウントは削除できません",
+          description: "自刁E�E身のアカウント�E削除できません",
           variant: "destructive",
         });
         setShowDeleteConfirmDialog(false);
@@ -634,13 +634,13 @@ export default function UsersPage() {
       console.log('ユーザー削除結果:', result);
       
       toast({
-        title: "削除完了",
+        title: "削除完亁E,
         description: "ユーザーが削除されました",
       });
       
       setShowDeleteConfirmDialog(false);
       
-      // ユーザー一覧を再取得
+      // ユーザー一覧を�E取征E
       const fetchUsers = async () => {
         try {
           const res = await fetch('/api/users', {
@@ -668,7 +668,7 @@ export default function UsersPage() {
     } catch (error) {
       console.error('ユーザー削除エラー:', error);
       toast({
-        title: "削除失敗",
+        title: "削除失敁E,
         description: error instanceof Error ? error.message : "ユーザー削除中にエラーが発生しました",
         variant: "destructive",
       });
@@ -676,14 +676,14 @@ export default function UsersPage() {
     }
   };
 
-  // 編集フォーム送信処理
+  // 編雁E��ォーム送信処琁E
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // バリデーション
+    // バリチE�Eション
     if (!editUser.username || !editUser.display_name) {
       toast({
         title: "入力エラー",
-        description: "必須項目を入力してください",
+        description: "忁E��頁E��を�E力してください",
         variant: "destructive",
       });
       return;
@@ -693,23 +693,23 @@ export default function UsersPage() {
       // 空のパスワードフィールドを除去して送信
       const sanitizedEditUser = { ...editUser };
       
-      // パスワードが空、undefined、null、空白文字の場合は完全に除去
+      // パスワードが空、undefined、null、空白斁E���E場合�E完�Eに除去
       if (!sanitizedEditUser.password || 
           typeof sanitizedEditUser.password !== 'string' || 
           sanitizedEditUser.password.trim().length === 0) {
         delete sanitizedEditUser.password;
         console.log('空のパスワードフィールドを除去しました');
       } else {
-        console.log('パスワードフィールドを送信します');
+        console.log('パスワードフィールドを送信しまぁE);
       }
       
-      console.log('送信するユーザーデータ:', { 
+      console.log('送信するユーザーチE�Eタ:', { 
         ...sanitizedEditUser, 
         password: sanitizedEditUser.password ? '[SET]' : '[NOT_SET]' 
       });
       
       console.log('API URL:', `/api/users/${editUser.id}`);
-      console.log('リクエストボディ:', JSON.stringify(sanitizedEditUser, null, 2));
+      console.log('リクエスト�EチE��:', JSON.stringify(sanitizedEditUser, null, 2));
       
       const res = await fetch(`/api/users/${editUser.id}`, {
         method: 'PUT',
@@ -720,7 +720,7 @@ export default function UsersPage() {
         body: JSON.stringify(sanitizedEditUser)
       });
       
-      console.log('レスポンスステータス:', res.status);
+      console.log('レスポンススチE�Eタス:', res.status);
       console.log('レスポンスヘッダー:', Object.fromEntries(res.headers.entries()));
       
       if (!res.ok) {
@@ -740,10 +740,10 @@ export default function UsersPage() {
       
       toast({
         title: "成功",
-        description: "ユーザー情報を更新しました",
+        description: "ユーザー惁E��を更新しました",
       });
       
-      // ダイアログを閉じてユーザー一覧を再取得
+      // ダイアログを閉じてユーザー一覧を�E取征E
       setShowEditUserDialog(false);
       setEditUser({
         id: '',
@@ -755,7 +755,7 @@ export default function UsersPage() {
         password: ''
       });
       
-      // ユーザー一覧を再取得
+      // ユーザー一覧を�E取征E
       const fetchUsers = async () => {
         try {
           const res = await fetch('/api/users', {
@@ -790,7 +790,7 @@ export default function UsersPage() {
     }
   };
 
-  // 管理者でない場合のローディング表示
+  // 管琁E��E��なぁE��合�EローチE��ング表示
   if (!user || (user && user.role !== "admin")) {
     return <div>Loading...</div>;
   }
@@ -801,23 +801,23 @@ export default function UsersPage() {
         <div>
           <h1 className="text-2xl font-bold flex items-center">
             <Shield className="mr-2 h-6 w-6" />
-            ユーザー管理
+            ユーザー管琁E
           </h1>
-          <p className="text-neutral-300">システムの全ユーザーを管理します</p>
+          <p className="text-neutral-300">シスチE��の全ユーザーを管琁E��まぁE/p>
         </div>
 
         <div className="flex space-x-2">
           <Link to="/settings">
             <Button variant="outline" size="sm">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              設定に戻る
+              設定に戻めE
             </Button>
           </Link>
           <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
             <DialogTrigger asChild>
               <Button variant="outline">
                 <Upload className="mr-2 h-4 w-4" />
-                エクセルインポート
+                エクセルインポ�EチE
               </Button>
             </DialogTrigger>
           </Dialog>
@@ -825,21 +825,21 @@ export default function UsersPage() {
             <DialogTrigger asChild>
               <Button>
                 <UserPlus className="mr-2 h-4 w-4" />
-                新規ユーザー作成
+                新規ユーザー作�E
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>新規ユーザー作成</DialogTitle>
+                <DialogTitle>新規ユーザー作�E</DialogTitle>
                 <DialogDescription>
-                  新しいユーザーアカウントを作成します。
+                  新しいユーザーアカウントを作�Eします、E
                 </DialogDescription>
               </DialogHeader>
 
               <form onSubmit={handleSubmit}>
                 <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="username">ユーザー名</Label>
+                    <Label htmlFor="username">ユーザー吁E/Label>
                     <Input
                       id="username"
                       name="username"
@@ -850,7 +850,7 @@ export default function UsersPage() {
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="password">パスワード</Label>
+                    <Label htmlFor="password">パスワーチE/Label>
                     <Input
                       id="password"
                       name="password"
@@ -860,12 +860,12 @@ export default function UsersPage() {
                       required
                     />
                     <p className="text-sm text-gray-500">
-                      パスワードは8文字以上で、大文字・小文字・数字・記号をそれぞれ1文字以上含めてください
+                      パスワード�E8斁E��以上で、大斁E���E小文字�E数字�E記号をそれぞめE斁E��以上含めてください
                     </p>
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="display_name">表示名</Label>
+                    <Label htmlFor="display_name">表示吁E/Label>
                     <Input
                       id="display_name"
                       name="display_name"
@@ -886,28 +886,28 @@ export default function UsersPage() {
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="description">説明</Label>
+                    <Label htmlFor="description">説昁E/Label>
                     <Input
                       id="description"
                       name="description"
                       value={newUser.description || ""}
                       onChange={handleInputChange}
-                      placeholder="ユーザーの説明（任意）"
+                      placeholder="ユーザーの説明（任意！E
                     />
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="role">権限</Label>
+                    <Label htmlFor="role">権陁E/Label>
                     <Select
                       value={newUser.role}
                       onValueChange={(value) => handleSelectChange("role", value)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="権限を選択" />
+                        <SelectValue placeholder="権限を選抁E />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="employee">一般ユーザー</SelectItem>
-                        <SelectItem value="admin">管理者</SelectItem>
+                        <SelectItem value="admin">管琁E��E/SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -924,7 +924,7 @@ export default function UsersPage() {
                   <Button 
                     type="submit"
                   >
-                    作成
+                    作�E
                   </Button>
                 </DialogFooter>
               </form>
@@ -945,7 +945,7 @@ export default function UsersPage() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   type="text"
-                  placeholder="ユーザー検索（*でワイルドカード）"
+                  placeholder="ユーザー検索�E�Eでワイルドカード！E
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 w-64"
@@ -971,11 +971,11 @@ export default function UsersPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>ユーザー名</TableHead>
-                    <TableHead>表示名</TableHead>
-                    <TableHead>権限</TableHead>
+                    <TableHead>ユーザー吁E/TableHead>
+                    <TableHead>表示吁E/TableHead>
+                    <TableHead>権陁E/TableHead>
                     <TableHead>部署</TableHead>
-                    <TableHead>説明</TableHead>
+                    <TableHead>説昁E/TableHead>
                     <TableHead className="text-right">アクション</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -989,7 +989,7 @@ export default function UsersPage() {
                           <span className={`px-2 py-1 rounded-full text-xs ${
                             user.role === "admin" ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"
                           }`}>
-                            {user.role === "admin" ? "管理者" : "一般ユーザー"}
+                            {user.role === "admin" ? "管琁E��E : "一般ユーザー"}
                           </span>
                         </TableCell>
                         <TableCell>{user.department || "-"}</TableCell>
@@ -1035,20 +1035,20 @@ export default function UsersPage() {
         </CardContent>
       </Card>
 
-      {/* ユーザー編集ダイアログ */}
+      {/* ユーザー編雁E��イアログ */}
       <Dialog open={showEditUserDialog} onOpenChange={setShowEditUserDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>ユーザー編集</DialogTitle>
+            <DialogTitle>ユーザー編雁E/DialogTitle>
             <DialogDescription>
-              ユーザーアカウント情報を編集します。
+              ユーザーアカウント情報を編雁E��ます、E
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleEditSubmit}>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="edit-username">ユーザー名</Label>
+                <Label htmlFor="edit-username">ユーザー吁E/Label>
                 <Input
                   id="edit-username"
                   name="username"
@@ -1059,7 +1059,7 @@ export default function UsersPage() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="edit-display_name">表示名</Label>
+                <Label htmlFor="edit-display_name">表示吁E/Label>
                 <Input
                   id="edit-display_name"
                   name="display_name"
@@ -1070,17 +1070,17 @@ export default function UsersPage() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="edit-password">新しいパスワード（変更する場合のみ）</Label>
+                <Label htmlFor="edit-password">新しいパスワード（変更する場合�Eみ�E�E/Label>
                 <Input
                   id="edit-password"
                   name="password"
                   type="password"
                   value={editUser.password || ""}
                   onChange={handleEditInputChange}
-                  placeholder="パスワードを変更しない場合は空欄のまま"
+                  placeholder="パスワードを変更しなぁE��合�E空欁E�Eまま"
                 />
                  <p className="text-sm text-gray-500 mt-1">
-                    ※パスワードを変更しない場合は空のままにしてください
+                    ※パスワードを変更しなぁE��合�E空のままにしてください
                   </p>
               </div>
 
@@ -1095,28 +1095,28 @@ export default function UsersPage() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="edit-description">説明</Label>
+                <Label htmlFor="edit-description">説昁E/Label>
                 <Input
                   id="edit-description"
                   name="description"
                   value={editUser.description || ""}
                   onChange={handleEditInputChange}
-                  placeholder="ユーザーの説明（任意）"
+                  placeholder="ユーザーの説明（任意！E
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="edit-role">権限</Label>
+                <Label htmlFor="edit-role">権陁E/Label>
                 <Select
                   value={editUser.role}
                   onValueChange={(value) => handleEditSelectChange("role", value)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="権限を選択" />
+                    <SelectValue placeholder="権限を選抁E />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="employee">一般ユーザー</SelectItem>
-                    <SelectItem value="admin">管理者</SelectItem>
+                    <SelectItem value="admin">管琁E��E/SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1146,21 +1146,21 @@ export default function UsersPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center">
               <AlertCircle className="h-5 w-5 mr-2 text-red-500" />
-              ユーザー削除の確認
+              ユーザー削除の確誁E
             </DialogTitle>
             <DialogDescription>
-              このユーザーを削除すると、関連するすべてのデータが削除されます。この操作は元に戻せません。
+              こ�Eユーザーを削除すると、E��連するすべてのチE�Eタが削除されます。この操作�E允E��戻せません、E
             </DialogDescription>
           </DialogHeader>
 
           <div className="py-4 space-y-2">
-            <p className="text-center font-medium">本当にこのユーザーを削除しますか？</p>
+            <p className="text-center font-medium">本当にこ�Eユーザーを削除しますか�E�E/p>
             <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm text-amber-800">
               <p className="flex items-start">
                 <AlertCircle className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />
                 <span>
-                  <strong>注意:</strong> チャット、メッセージ、ドキュメントなど、このユーザーに関連するすべてのデータが削除されます。
-                  ユーザーがチャットやドキュメントを持っている場合、それらも同時に削除されます。
+                  <strong>注愁E</strong> チャチE��、メチE��ージ、ドキュメントなど、このユーザーに関連するすべてのチE�Eタが削除されます、E
+                  ユーザーがチャチE��めE��キュメントを持ってぁE��場合、それらも同時に削除されます、E
                 </span>
               </p>
             </div>
@@ -1185,25 +1185,25 @@ export default function UsersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* エクセルインポートダイアログ */}
+      {/* エクセルインポ�Eトダイアログ */}
       <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center">
               <Upload className="mr-2 h-5 w-5" />
-              エクセルファイルからユーザー一括インポート
+              エクセルファイルからユーザー一括インポ�EチE
             </DialogTitle>
             <DialogDescription>
-              エクセルファイルからユーザーを一括でインポートします。
+              エクセルファイルからユーザーを一括でインポ�Eトします、E
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* テンプレートダウンロード */}
+            {/* チE��プレートダウンローチE*/}
             <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-              <h4 className="font-medium text-blue-900 mb-2">テンプレートファイル</h4>
+              <h4 className="font-medium text-blue-900 mb-2">チE��プレートファイル</h4>
               <p className="text-sm text-blue-700 mb-3">
-                エクセルファイルの形式に合わせてテンプレートをダウンロードしてください。
+                エクセルファイルの形式に合わせてチE��プレートをダウンロードしてください、E
               </p>
               <Button 
                 variant="outline" 
@@ -1212,15 +1212,15 @@ export default function UsersPage() {
                 className="text-blue-700 border-blue-300 hover:bg-blue-100"
               >
                 <Download className="mr-2 h-4 w-4" />
-                テンプレートをダウンロード
+                チE��プレートをダウンローチE
               </Button>
             </div>
 
-            {/* ファイルアップロード */}
+            {/* ファイルアチE�EローチE*/}
             <form onSubmit={handleImportSubmit}>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="excel-file">エクセルファイルを選択</Label>
+                  <Label htmlFor="excel-file">エクセルファイルを選抁E/Label>
                   <Input
                     id="excel-file"
                     type="file"
@@ -1229,7 +1229,7 @@ export default function UsersPage() {
                     className="mt-1"
                   />
                   <p className="text-sm text-gray-500 mt-1">
-                    対応形式: .xlsx, .xls（最大5MB）
+                    対応形弁E .xlsx, .xls�E�最大5MB�E�E
                   </p>
                 </div>
 
@@ -1241,15 +1241,15 @@ export default function UsersPage() {
                   </div>
                 )}
 
-                {/* インポート結果表示 */}
+                {/* インポ�Eト結果表示 */}
                 {importResults && (
                   <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
-                    <h4 className="font-medium mb-2">インポート結果</h4>
+                    <h4 className="font-medium mb-2">インポ�Eト結果</h4>
                     <div className="space-y-2">
                       <p className="text-sm">
                         <span className="text-green-600 font-medium">成功: {importResults.success}件</span>
                         {importResults.failed > 0 && (
-                          <span className="text-red-600 font-medium ml-4">失敗: {importResults.failed}件</span>
+                          <span className="text-red-600 font-medium ml-4">失敁E {importResults.failed}件</span>
                         )}
                       </p>
                       
@@ -1285,7 +1285,7 @@ export default function UsersPage() {
                     type="submit"
                     disabled={!importFile || isImporting}
                   >
-                    {isImporting ? "インポート中..." : "インポート実行"}
+                    {isImporting ? "インポ�Eト中..." : "インポ�Eト実衁E}
                   </Button>
                 </DialogFooter>
               </div>

@@ -38,7 +38,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
       id: reportData?.id,
       hasReportData: !!reportData,
       reportDataKeys: reportData ? Object.keys(reportData) : [],
-      imageUrl: reportData?.imageUrl ? 'あり' : 'なし',
+      imageUrl: reportData?.imageUrl ? 'あり' : 'なぁE,
       conversationHistory: reportData?.conversationHistory?.length || 0,
       chatData: reportData?.chatData?.messages?.length || 0
     });
@@ -50,7 +50,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
   const extractImageUrl = () => {
     let foundImageUrl = null;
     
-    console.log('ReportViewer: 画像抽出開始', {
+    console.log('ReportViewer: 画像抽出開姁E, {
       hasReportData: !!reportData,
       reportDataKeys: reportData ? Object.keys(reportData) : [],
       conversationHistory: reportData?.conversationHistory?.length || 0,
@@ -59,63 +59,63 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
       savedImages: reportData?.savedImages?.length || 0
     });
 
-    // 優先順位1: 直接設定された画像URL
+    // 優先頁E��E: 直接設定された画像URL
     if (reportData?.imageUrl) {
       foundImageUrl = reportData.imageUrl;
       console.log('ReportViewer: 直接設定された画像URLを使用:', foundImageUrl.substring(0, 100) + '...');
     }
 
-    // 優先順位2: conversationHistoryからBase64画像を取得
+    // 優先頁E��E: conversationHistoryからBase64画像を取征E
     if (!foundImageUrl && reportData?.conversationHistory && reportData.conversationHistory.length > 0) {
       const imageMessage = reportData.conversationHistory.find((msg: any) => 
         msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         foundImageUrl = imageMessage.content;
-        console.log('ReportViewer: conversationHistoryから画像を取得');
+        console.log('ReportViewer: conversationHistoryから画像を取征E);
       }
     }
 
-    // 優先順位3: originalChatData.messagesからBase64画像を取得
+    // 優先頁E��E: originalChatData.messagesからBase64画像を取征E
     if (!foundImageUrl && reportData?.originalChatData?.messages) {
       const imageMessage = reportData.originalChatData.messages.find((msg: any) => 
         msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         foundImageUrl = imageMessage.content;
-        console.log('ReportViewer: originalChatDataから画像を取得');
+        console.log('ReportViewer: originalChatDataから画像を取征E);
       }
     }
 
-    // 優先順位4: chatData.messagesからBase64画像を取得
+    // 優先頁E��E: chatData.messagesからBase64画像を取征E
     if (!foundImageUrl && reportData?.chatData?.messages) {
       const imageMessage = reportData.chatData.messages.find((msg: any) => 
         msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         foundImageUrl = imageMessage.content;
-        console.log('ReportViewer: chatDataから画像を取得');
+        console.log('ReportViewer: chatDataから画像を取征E);
       }
     }
 
-    // 優先順位5: savedImagesから画像を取得
+    // 優先頁E��E: savedImagesから画像を取征E
     if (!foundImageUrl && reportData?.savedImages && reportData.savedImages.length > 0) {
       foundImageUrl = reportData.savedImages[0].url;
-      console.log('ReportViewer: savedImagesから画像を取得');
+      console.log('ReportViewer: savedImagesから画像を取征E);
     }
 
-    // 優先順位6: messagesフィールドからBase64画像を検索
+    // 優先頁E��E: messagesフィールドからBase64画像を検索
     if (!foundImageUrl && reportData?.messages && Array.isArray(reportData.messages)) {
       const imageMessage = reportData.messages.find((msg: any) => 
         msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         foundImageUrl = imageMessage.content;
-        console.log('ReportViewer: messagesフィールドから画像を取得');
+        console.log('ReportViewer: messagesフィールドから画像を取征E);
       }
     }
 
-    console.log('ReportViewer: 最終的な画像URL:', foundImageUrl ? foundImageUrl.substring(0, 100) + '...' : 'なし');
+    console.log('ReportViewer: 最終的な画像URL:', foundImageUrl ? foundImageUrl.substring(0, 100) + '...' : 'なぁE);
     setImageUrl(foundImageUrl);
   };
 
@@ -130,12 +130,12 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
     setIsEditing(false);
   };
 
-  // ファイルに差分で上書き保存
+  // ファイルに差刁E��上書き保孁E
   const handleSaveToFile = async () => {
     try {
       const data = isEditing ? editedData : reportData;
       
-      // 保存用のデータを準備
+      // 保存用のチE�Eタを準備
       const saveData = {
         id: data.id,
         reportId: data.reportId,
@@ -160,20 +160,20 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
         repairSchedule: data.repairSchedule,
         repairLocation: data.repairLocation,
         requestDate: data.requestDate,
-        // チャット履歴データ
+        // チャチE��履歴チE�Eタ
         conversationHistory: data.conversationHistory,
         originalChatData: data.originalChatData,
         chatData: data.chatData,
         messages: data.messages,
-        // 保存された画像
+        // 保存された画僁E
         savedImages: data.savedImages,
         // 直接画像URL
         imageUrl: data.imageUrl,
-        // 更新日時
+        // 更新日晁E
         updatedAt: new Date().toISOString()
       };
 
-      // 既存のファイルデータを取得
+      // 既存�EファイルチE�Eタを取征E
       const existingData = localStorage.getItem(`report_${data.id}`);
       let existingReport = null;
       
@@ -181,17 +181,17 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
         try {
           existingReport = JSON.parse(existingData);
         } catch (e) {
-          console.warn('既存データの解析に失敗:', e);
+          console.warn('既存データの解析に失敁E', e);
         }
       }
 
-      // 差分を検出して上書き
+      // 差刁E��検�Eして上書ぁE
       const mergedData = existingReport ? { ...existingReport, ...saveData } : saveData;
       
-      // ローカルストレージに保存
+      // ローカルストレージに保孁E
       localStorage.setItem(`report_${data.id}`, JSON.stringify(mergedData));
       
-      // サーバーにも保存を試行（APIが利用可能な場合）
+      // サーバ�Eにも保存を試行！EPIが利用可能な場合！E
       try {
         const response = await fetch('/api/reports/save', {
           method: 'POST',
@@ -202,20 +202,20 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
         });
         
         if (response.ok) {
-          console.log('サーバーへの保存が完了しました');
+          console.log('サーバ�Eへの保存が完亁E��ました');
         } else {
-          console.warn('サーバーへの保存に失敗しましたが、ローカルには保存されました');
+          console.warn('サーバ�Eへの保存に失敗しましたが、ローカルには保存されました');
         }
       } catch (error) {
-        console.warn('サーバーへの保存に失敗しましたが、ローカルには保存されました:', error);
+        console.warn('サーバ�Eへの保存に失敗しましたが、ローカルには保存されました:', error);
       }
 
-      alert('レポートが保存されました。');
-      console.log('レポート保存完了:', mergedData);
+      alert('レポ�Eトが保存されました、E);
+      console.log('レポ�Eト保存完亁E', mergedData);
       
     } catch (error) {
-      console.error('レポート保存中にエラーが発生しました:', error);
-      alert('レポートの保存に失敗しました: ' + error.message);
+      console.error('レポ�Eト保存中にエラーが発生しました:', error);
+      alert('レポ�Eト�E保存に失敗しました: ' + error.message);
     }
   };
 
@@ -247,7 +247,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
     }, 500);
   };
 
-  // 印刷用HTML生成（現在のレポートデータを使用）
+  // 印刷用HTML生�E�E�現在のレポ�Eトデータを使用�E�E
   const generatePrintHTML = (): string => {
     const data = isEditing ? editedData : reportData;
     
@@ -256,7 +256,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
       <html>
       <head>
         <meta charset="utf-8">
-        <title>機械故障報告書 - 印刷</title>
+        <title>機械敁E��報告書 - 印刷</title>
         <style>
           @page {
             size: A4 portrait;
@@ -394,12 +394,12 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
       <body>
         <div class="container">
           <div class="header">
-            <h1>機械故障報告書</h1>
-            <p>印刷日時: ${new Date().toLocaleString('ja-JP')}</p>
+            <h1>機械敁E��報告書</h1>
+            <p>印刷日晁E ${new Date().toLocaleString('ja-JP')}</p>
           </div>
           
           <div class="section">
-            <h2>報告概要</h2>
+            <h2>報告概要E/h2>
             <div class="info-grid">
               <div class="info-item">
                 <strong>報告書ID</strong>
@@ -414,7 +414,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                 <span>${data.machineNumber || '-'}</span>
               </div>
               <div class="info-item">
-                <strong>日付</strong>
+                <strong>日仁E/strong>
                 <span>${data.date || data.timestamp || data.createdAt ? new Date(data.createdAt).toLocaleDateString('ja-JP') : '-'}</span>
               </div>
               <div class="info-item">
@@ -425,52 +425,52 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
           </div>
           
           <div class="section">
-            <h2>故障詳細</h2>
+            <h2>敁E��詳細</h2>
             <div class="info-grid">
               <div class="info-item">
-                <strong>故障コード</strong>
+                <strong>敁E��コーチE/strong>
                 <span>${data.failureCode || '-'}</span>
               </div>
               <div class="info-item">
-                <strong>ステータス</strong>
+                <strong>スチE�Eタス</strong>
                 <span>${data.status || '-'}</span>
               </div>
               <div class="info-item">
-                <strong>責任者</strong>
+                <strong>責任老E/strong>
                 <span>${data.engineer || '-'}</span>
               </div>
             </div>
             
             <div class="content-box">
-              <strong>説明</strong>
+              <strong>説昁E/strong>
               <p>${data.problemDescription || data.description || data.incidentTitle || '-'}</p>
             </div>
             
             <div class="content-box">
-              <strong>備考</strong>
+              <strong>備老E/strong>
               <p>${data.notes || '-'}</p>
             </div>
           </div>
           
           ${imageUrl ? `
           <div class="section">
-            <h2>故障箇所画像</h2>
+            <h2>敁E��箁E��画僁E/h2>
             <div class="image-section">
-              <img src="${imageUrl}" alt="故障箇所画像" />
-              <p>上記は故障箇所の写真です。</p>
+              <img src="${imageUrl}" alt="敁E��箁E��画僁E />
+              <p>上記�E敁E��箁E��の写真です、E/p>
             </div>
           </div>
           ` : ''}
           
           <div class="section">
-            <h2>抽出情報</h2>
+            <h2>抽出惁E��</h2>
             <div class="info-grid">
               <div class="info-item">
-                <strong>影響コンポーネント</strong>
+                <strong>影響コンポ�EネンチE/strong>
                 <span>${(data.extractedComponents || []).join(', ') || '-'}</span>
               </div>
               <div class="info-item">
-                <strong>症状</strong>
+                <strong>痁E��</strong>
                 <span>${(data.extractedSymptoms || []).join(', ') || '-'}</span>
               </div>
               <div class="info-item">
@@ -481,7 +481,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
           </div>
           
           <div class="section">
-            <h2>修繕予定</h2>
+            <h2>修繕予宁E/h2>
             <div class="info-grid">
               <div class="info-item">
                 <strong>依頼月日</strong>
@@ -499,13 +499,13 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
           </div>
           
           <div class="footer">
-            <p>© 2025 機械故障報告書. All rights reserved.</p>
+            <p>© 2025 機械敁E��報告書. All rights reserved.</p>
           </div>
         </div>
         
         <div class="no-print" style="position: fixed; top: 20px; right: 20px; z-index: 1000;">
           <button onclick="window.print()" style="padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">印刷</button>
-          <button onclick="window.close()" style="padding: 10px 20px; margin: 5px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;">閉じる</button>
+          <button onclick="window.close()" style="padding: 10px 20px; margin: 5px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;">閉じめE/button>
         </div>
       </body>
       </html>
@@ -517,30 +517,30 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
     const content = `
 報告書
 
-事象概要:
+事象概要E
 事象タイトル: ${data.incidentTitle || data.problemDescription || '-'}
 報告書ID: ${data.reportId || data.id || '-'}
 機械ID: ${data.machineId || data.machineNumber || '-'}
-日付: ${data.date || data.timestamp || data.createdAt ? new Date(data.createdAt).toLocaleDateString('ja-JP') : '-'}
+日仁E ${data.date || data.timestamp || data.createdAt ? new Date(data.createdAt).toLocaleDateString('ja-JP') : '-'}
 場所: ${data.location || '-'}
-故障コード: ${data.failureCode || '-'}
+敁E��コーチE ${data.failureCode || '-'}
 
 事象詳細:
-説明: ${data.problemDescription || data.description || '-'}
-ステータス: ${data.status || '-'}
-担当エンジニア: ${data.engineer || '-'}
-備考: ${data.notes || '-'}
+説昁E ${data.problemDescription || data.description || '-'}
+スチE�Eタス: ${data.status || '-'}
+拁E��エンジニア: ${data.engineer || '-'}
+備老E ${data.notes || '-'}
 
-抽出情報:
-影響コンポーネント: ${(data.extractedComponents || []).join(', ')}
-症状: ${(data.extractedSymptoms || []).join(', ')}
+抽出惁E��:
+影響コンポ�EネンチE ${(data.extractedComponents || []).join(', ')}
+痁E��: ${(data.extractedSymptoms || []).join(', ')}
 可能性のある機種: ${(data.possibleModels || []).join(', ')}
 
-修繕予定:
+修繕予宁E
 予定月日: ${data.repairSchedule || '-'}
 場所: ${data.repairLocation || '-'}
 
-チャット履歴:
+チャチE��履歴:
 ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) => 
   `${msg.isAiResponse ? 'AI' : 'ユーザー'}: ${msg.content}`
 ).join('\n')}
@@ -570,7 +570,7 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
               <>
                 <Button onClick={handleEdit} variant="outline" className="flex items-center gap-2">
                   <Edit className="h-4 w-4" />
-                  編集
+                  編雁E
                 </Button>
                 <Button onClick={handlePrint} variant="outline" className="flex items-center gap-2">
                   <Printer className="h-4 w-4" />
@@ -578,14 +578,14 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
                 </Button>
                 <Button onClick={handleSaveToFile} variant="outline" className="flex items-center gap-2">
                   <Save className="h-4 w-4" />
-                  保存
+                  保孁E
                 </Button>
               </>
             ) : (
               <>
                 <Button onClick={handleSave} className="flex items-center gap-2">
                   <Save className="h-4 w-4" />
-                  保存
+                  保孁E
                 </Button>
                 <Button onClick={handleCancel} variant="outline">
                   キャンセル
@@ -598,14 +598,14 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
           </div>
         </div>
 
-        {/* コンテンツ */}
+        {/* コンチE��チE*/}
         <div className="p-6 space-y-6">
-          {/* 報告概要 */}
+          {/* 報告概要E*/}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
-                報告概要
+                報告概要E
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -644,7 +644,7 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>日付</Label>
+                  <Label>日仁E/Label>
                   {isEditing ? (
                     <Input
                       type="date"
@@ -672,34 +672,34 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
             </CardContent>
           </Card>
 
-          {/* 故障詳細 */}
+          {/* 敁E��詳細 */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5" />
-                故障詳細
+                敁E��詳細
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>説明</Label>
+                <Label>説昁E/Label>
                 {isEditing ? (
                   <Textarea
                     value={data.problemDescription || data.description || data.incidentTitle || ''}
                     onChange={(e) => handleInputChange('problemDescription', e.target.value)}
                     rows={3}
-                    placeholder="説明なし"
+                    placeholder="説明なぁE
                   />
                 ) : (
                   <p className="text-sm text-gray-600">
-                    {data.problemDescription || data.description || data.incidentTitle || '説明なし'}
+                    {data.problemDescription || data.description || data.incidentTitle || '説明なぁE}
                   </p>
                 )}
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>ステータス</Label>
+                  <Label>スチE�Eタス</Label>
                   {isEditing ? (
                     <Input
                       value={data.status || ''}
@@ -710,7 +710,7 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>責任者</Label>
+                  <Label>責任老E/Label>
                   {isEditing ? (
                     <Input
                       value={data.engineer || ''}
@@ -723,13 +723,13 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
               </div>
               
               <div className="space-y-2">
-                <Label>備考</Label>
+                <Label>備老E/Label>
                 {isEditing ? (
                   <Textarea
                     value={data.notes || ''}
                     onChange={(e) => handleInputChange('notes', e.target.value)}
                     rows={3}
-                    placeholder="備考を入力してください"
+                    placeholder="備老E��入力してください"
                   />
                 ) : (
                   <p className="text-sm text-gray-600">{data.notes || '-'}</p>
@@ -744,32 +744,32 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <ImageIcon className="h-5 w-5" />
-                  故障箇所画像
+                  敁E��箁E��画僁E
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-center">
                   <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-600 mb-2">画像URL情報:</p>
+                    <p className="text-sm text-gray-600 mb-2">画像URL惁E��:</p>
                     <p className="text-xs text-gray-500 break-all">
                       {imageUrl.startsWith('data:image/') 
-                        ? `Base64画像 (${imageUrl.length}文字)`
+                        ? `Base64画僁E(${imageUrl.length}斁E��E`
                         : `URL: ${imageUrl.substring(0, 100)}...`
                       }
                     </p>
                   </div>
                   <img
                     src={imageUrl}
-                    alt="故障箇所画像"
+                    alt="敁E��箁E��画僁E
                     className="max-w-full max-h-96 object-contain border rounded-lg"
                     onError={(e) => {
                       console.error('画像読み込みエラー:', e);
                       const target = e.target as HTMLImageElement;
                       target.style.display = 'none';
-                      // エラーメッセージを表示
+                      // エラーメチE��ージを表示
                       const errorDiv = document.createElement('div');
                       errorDiv.className = 'text-red-500 text-sm mt-2';
-                      errorDiv.textContent = '画像の読み込みに失敗しました';
+                      errorDiv.textContent = '画像�E読み込みに失敗しました';
                       target.parentNode?.appendChild(errorDiv);
                     }}
                     onLoad={() => {
@@ -780,29 +780,29 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
                       });
                     }}
                   />
-                  <p className="text-sm text-gray-500 mt-2">上記は故障箇所の写真です。</p>
+                  <p className="text-sm text-gray-500 mt-2">上記�E敁E��箁E��の写真です、E/p>
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* 抽出情報 */}
+          {/* 抽出惁E�� */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Wrench className="h-5 w-5" />
-                抽出情報
+                抽出惁E��
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>影響コンポーネント</Label>
+                  <Label>影響コンポ�EネンチE/Label>
                   {isEditing ? (
                     <Input
                       value={(data.extractedComponents || []).join(', ')}
                       onChange={(e) => handleInputChange('extractedComponents', e.target.value.split(',').map(s => s.trim()))}
-                      placeholder="カンマ区切りで入力"
+                      placeholder="カンマ区刁E��で入劁E
                     />
                   ) : (
                     <p className="text-sm text-gray-600">
@@ -811,12 +811,12 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>症状</Label>
+                  <Label>痁E��</Label>
                   {isEditing ? (
                     <Input
                       value={(data.extractedSymptoms || []).join(', ')}
                       onChange={(e) => handleInputChange('extractedSymptoms', e.target.value.split(',').map(s => s.trim()))}
-                      placeholder="カンマ区切りで入力"
+                      placeholder="カンマ区刁E��で入劁E
                     />
                   ) : (
                     <p className="text-sm text-gray-600">
@@ -830,7 +830,7 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
                     <Input
                       value={(data.possibleModels || []).join(', ')}
                       onChange={(e) => handleInputChange('possibleModels', e.target.value.split(',').map(s => s.trim()))}
-                      placeholder="カンマ区切りで入力"
+                      placeholder="カンマ区刁E��で入劁E
                     />
                   ) : (
                     <p className="text-sm text-gray-600">
@@ -842,12 +842,12 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
             </CardContent>
           </Card>
 
-          {/* 修繕予定 */}
+          {/* 修繕予宁E*/}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
-                修繕予定
+                修繕予宁E
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -891,10 +891,10 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
             </CardContent>
           </Card>
 
-          {/* 備考 */}
+          {/* 備老E*/}
           <Card>
             <CardHeader>
-              <CardTitle>備考</CardTitle>
+              <CardTitle>備老E/CardTitle>
             </CardHeader>
             <CardContent>
               {isEditing ? (
@@ -902,7 +902,7 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
                   value={data.notes || ''}
                   onChange={(e) => handleInputChange('notes', e.target.value)}
                   rows={3}
-                  placeholder="備考を入力してください"
+                  placeholder="備老E��入力してください"
                 />
               ) : (
                 <p className="text-sm text-gray-600">{data.notes || '-'}</p>

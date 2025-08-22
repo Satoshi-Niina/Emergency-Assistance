@@ -54,15 +54,15 @@ export default function DocumentsPage() {
   const [processedFiles, setProcessedFiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 管理者チェックを無効化 - 常に表示
-  console.log('📄 基礎データ管理ページ - 認証チェック無効化モード');
+  // 管琁E��E��ェチE��を無効匁E- 常に表示
+  console.log('📄 基礎データ管琁E�Eージ - 認証チェチE��無効化モーチE);
 
-  // データ取得
+  // チE�Eタ取征E
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        console.log('🔄 基礎データ取得開始');
+        console.log('🔄 基礎データ取得開姁E);
         
         const [baseDataResult, historyResult, processedFilesResult] = await Promise.all([
           fetchBaseData(),
@@ -71,41 +71,41 @@ export default function DocumentsPage() {
         ]);
         
         console.log('📊 基礎データ結果:', baseDataResult);
-        console.log('📊 履歴データ結果:', historyResult);
-        console.log('📊 処理済みファイル結果:', processedFilesResult);
+        console.log('📊 履歴チE�Eタ結果:', historyResult);
+        console.log('📊 処琁E��みファイル結果:', processedFilesResult);
         
-        // APIレスポンスの構造に合わせてデータを取得
+        // APIレスポンスの構造に合わせてチE�Eタを取征E
         if (baseDataResult.success && baseDataResult.data) {
-          console.log('✅ 基礎データ取得成功:', baseDataResult.data.length + '件');
+          console.log('✁E基礎データ取得�E劁E', baseDataResult.data.length + '件');
           setBaseData(baseDataResult.data);
         } else if (Array.isArray(baseDataResult)) {
-          console.log('✅ 基礎データ取得成功（配列形式）:', baseDataResult.length + '件');
+          console.log('✁E基礎データ取得�E功（�E列形式！E', baseDataResult.length + '件');
           setBaseData(baseDataResult);
         } else {
-          console.log('⚠️ 基礎データ形式不明:', baseDataResult);
+          console.log('⚠�E�E基礎データ形式不�E:', baseDataResult);
           setBaseData([]);
         }
         
         if (historyResult.items) {
-          console.log('✅ 履歴データ取得成功:', historyResult.items.length + '件');
+          console.log('✁E履歴チE�Eタ取得�E劁E', historyResult.items.length + '件');
           setHistoryData(historyResult.items);
         } else {
-          console.log('⚠️ 履歴データなし');
+          console.log('⚠�E�E履歴チE�EタなぁE);
           setHistoryData([]);
         }
         
         if (processedFilesResult.success && processedFilesResult.data) {
-          console.log('✅ 処理済みファイル取得成功:', processedFilesResult.data.length + '件');
+          console.log('✁E処琁E��みファイル取得�E劁E', processedFilesResult.data.length + '件');
           setProcessedFiles(processedFilesResult.data);
         } else {
-          console.log('⚠️ 処理済みファイルなし');
+          console.log('⚠�E�E処琁E��みファイルなぁE);
           setProcessedFiles([]);
         }
       } catch (error) {
-        console.error('❌ データ取得エラー:', error);
+        console.error('❁EチE�Eタ取得エラー:', error);
         toast({
           title: "エラー",
-          description: error instanceof Error ? error.message : "データの取得に失敗しました",
+          description: error instanceof Error ? error.message : "チE�Eタの取得に失敗しました",
           variant: "destructive"
         });
         setBaseData([]);
@@ -132,10 +132,10 @@ export default function DocumentsPage() {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-gray-800">
-                基礎データ管理
+                基礎データ管琁E
               </h1>
               <p className="text-gray-500">
-                保守用車に関する、仕様や機械故障の情報等をGPTの学習用データに変換します。
+                保守用車に関する、仕様や機械敁E��の惁E��等をGPTの学習用チE�Eタに変換します、E
               </p>
             </div>
           </div>
@@ -144,7 +144,7 @@ export default function DocumentsPage() {
 
 
 
-        {/* タブ切り替え */}
+        {/* タブ�Eり替ぁE*/}
         <div className="flex space-x-1 mb-6 bg-white rounded-lg p-1 shadow-sm">
           <button
             onClick={() => setActiveTab("processor")}
@@ -155,7 +155,7 @@ export default function DocumentsPage() {
             }`}
           >
             <BrainCircuit className="h-4 w-4 inline mr-2" />
-            データ処理
+            チE�Eタ処琁E
           </button>
 
           <button
@@ -167,11 +167,11 @@ export default function DocumentsPage() {
             }`}
           >
             <Wrench className="h-4 w-4 inline mr-2" />
-            AI設定
+            AI設宁E
           </button>
         </div>
 
-        {/* タブコンテンツ */}
+        {/* タブコンチE��チE*/}
         {activeTab === "processor" && <UnifiedDataProcessor />}
         
 

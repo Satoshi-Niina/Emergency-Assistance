@@ -38,7 +38,7 @@ export default function EmergencyFlowGenerator({ onFlowGenerated }: FlowGenerato
     if (!file && !keywords) {
       toast({
         title: 'エラー',
-        description: 'ファイルを選択するか、キーワードを入力してください。',
+        description: 'ファイルを選択するか、キーワードを入力してください、E,
         variant: 'destructive',
       });
       return;
@@ -54,12 +54,12 @@ export default function EmergencyFlowGenerator({ onFlowGenerated }: FlowGenerato
         formData.append('file', file);
         const response = await apiRequest('POST', '/api/flow-generator/file', formData);
         flowData = await response.json();
-        toast({ title: '成功', description: 'ファイルからフローが生成されました。' });
+        toast({ title: '成功', description: 'ファイルからフローが生成されました、E });
       } else {
         // Generate from keywords
         const response = await apiRequest('POST', '/api/flow-generator/keywords', { keywords });
         flowData = await response.json();
-        toast({ title: '成功', description: 'キーワードからフローが生成されました。' });
+        toast({ title: '成功', description: 'キーワードからフローが生成されました、E });
       }
       
       // Pass the generated flow data to the parent component
@@ -67,8 +67,8 @@ export default function EmergencyFlowGenerator({ onFlowGenerated }: FlowGenerato
 
     } catch (error: any) {
       toast({
-        title: '生成エラー',
-        description: error.message || 'フローの生成中に不明なエラーが発生しました。',
+        title: '生�Eエラー',
+        description: error.message || 'フローの生�E中に不�Eなエラーが発生しました、E,
         variant: 'destructive',
       });
     } finally {
@@ -81,20 +81,20 @@ export default function EmergencyFlowGenerator({ onFlowGenerated }: FlowGenerato
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Cpu className="w-6 h-6 text-blue-600" />
-          AIによるフロー自動生成
+          AIによるフロー自動生戁E
         </CardTitle>
         <CardDescription>
-          ドキュメントファイルまたはキーワードから、応急処置フローの草案を自動で生成します。
+          ドキュメントファイルまた�Eキーワードから、応急処置フローの草案を自動で生�Eします、E
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Keyword Input Section - 上段に移動 */}
+        {/* Keyword Input Section - 上段に移勁E*/}
         <div className="space-y-2">
-            <Label htmlFor="keywords" className="text-lg font-semibold">キーワードから生成</Label>
-            <p className="text-sm text-gray-500">フローの核となるキーワードや症状をカンマ区切りで入力してください。</p>
+            <Label htmlFor="keywords" className="text-lg font-semibold">キーワードから生戁E/Label>
+            <p className="text-sm text-gray-500">フローの核となるキーワードや痁E��をカンマ区刁E��で入力してください、E/p>
             <textarea
                 id="keywords"
-                placeholder="例: エンジン停止, 警告灯点灯, 異音"
+                placeholder="侁E エンジン停止, 警告�E点灯, 異音"
                 value={keywords}
                 onChange={(e) => setKeywords(e.target.value)}
                 disabled={!!file}
@@ -112,12 +112,12 @@ export default function EmergencyFlowGenerator({ onFlowGenerated }: FlowGenerato
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    生成中...
+                    生�E中...
                   </>
                 ) : (
                   <>
                     <Send className="mr-2 h-4 w-4" />
-                    フローを生成
+                    フローを生戁E
                   </>
                 )}
               </Button>
@@ -126,21 +126,21 @@ export default function EmergencyFlowGenerator({ onFlowGenerated }: FlowGenerato
 
         <div className="relative flex items-center justify-center">
             <div className="flex-grow border-t border-gray-300"></div>
-            <span className="flex-shrink mx-4 text-gray-500 font-semibold">または</span>
+            <span className="flex-shrink mx-4 text-gray-500 font-semibold">また�E</span>
             <div className="flex-grow border-t border-gray-300"></div>
         </div>
 
-        {/* File Upload Section - 下段に移動 */}
+        {/* File Upload Section - 下段に移勁E*/}
         <div {...getRootProps()} className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}`}>
           <input {...getInputProps()} />
           <div className="flex flex-col items-center justify-center gap-2 text-gray-500">
             <FileUp className="w-10 h-10" />
             {isDragActive ? (
-              <p>ここにファイルをドロップ</p>
+              <p>ここにファイルをドロチE�E</p>
             ) : (
-              <p>ここにファイルをドラッグ＆ドロップするか、クリックして選択</p>
+              <p>ここにファイルをドラチE���E�E��ロチE�Eするか、クリチE��して選抁E/p>
             )}
-            <p className="text-xs">(.pptx, .pdf, .txt ファイルに対応)</p>
+            <p className="text-xs">(.pptx, .pdf, .txt ファイルに対忁E</p>
           </div>
         </div>
 
@@ -152,7 +152,7 @@ export default function EmergencyFlowGenerator({ onFlowGenerated }: FlowGenerato
           </div>
         )}
 
-        {/* Generate Button - サイズを80%に変更、中央配置 */}
+        {/* Generate Button - サイズめE0%に変更、中央配置 */}
         <div className="flex justify-center">
           <Button 
             onClick={handleGenerate} 
@@ -164,12 +164,12 @@ export default function EmergencyFlowGenerator({ onFlowGenerated }: FlowGenerato
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                生成中...
+                生�E中...
               </>
             ) : (
               <>
                 <Send className="mr-2 h-3 w-3" />
-                フローを生成
+                フローを生戁E
               </>
             )}
           </Button>

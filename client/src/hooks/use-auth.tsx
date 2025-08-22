@@ -47,13 +47,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.setQueryData(["/api/auth/me"], userData);
       toast({
         title: "ログイン成功",
-        description: `ようこそ、${userData.displayName}さん`,
+        description: `ようこそ、E{userData.displayName}さん`,
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "ログイン失敗",
-        description: error.message || "ユーザー名またはパスワードが間違っています",
+        title: "ログイン失敁E,
+        description: error.message || "ユーザー名また�Eパスワードが間違ってぁE��ぁE,
         variant: "destructive",
       });
     },
@@ -72,12 +72,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.setQueryData(["/api/auth/me"], userData);
       toast({
         title: "登録成功",
-        description: `ようこそ、${userData.displayName}さん`,
+        description: `ようこそ、E{userData.displayName}さん`,
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "登録失敗",
+        title: "登録失敁E,
         description: error.message || "ユーザー登録に失敗しました",
         variant: "destructive",
       });
@@ -91,13 +91,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: () => {
       queryClient.setQueryData(["/api/auth/me"], null);
       toast({
-        title: "ログアウト成功",
+        title: "ログアウト�E劁E,
         description: "ログアウトしました",
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "ログアウト失敗",
+        title: "ログアウト失敁E,
         description: error.message || "ログアウトに失敗しました",
         variant: "destructive",
       });

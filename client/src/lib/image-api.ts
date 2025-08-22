@@ -1,6 +1,6 @@
-// 画像データベースAPI用のユーティリティ関数
+// 画像データベ�EスAPI用のユーチE��リチE��関数
 
-// API設定 - VITE_API_BASE_URLのみを使用
+// API設宁E- VITE_API_BASE_URLのみを使用
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
 export interface ImageData {
@@ -14,7 +14,7 @@ export interface ImageData {
     createdAt: string;
 }
 
-// 画像データをアップロード
+// 画像データをアチE�EローチE
 export async function uploadImage(
     file: File,
     category?: string,
@@ -44,20 +44,20 @@ export async function uploadImage(
         if (response.ok) {
             return { success: true, imageId: result.imageId };
         } else {
-            return { success: false, error: result.error || 'アップロードに失敗しました' };
+            return { success: false, error: result.error || 'アチE�Eロードに失敗しました' };
         }
     } catch (error) {
-        console.error('画像アップロードエラー:', error);
-        return { success: false, error: 'アップロード中にエラーが発生しました' };
+        console.error('画像アチE�Eロードエラー:', error);
+        return { success: false, error: 'アチE�Eロード中にエラーが発生しました' };
     }
 }
 
-// 画像データを取得
+// 画像データを取征E
 export function getImageUrl(imageId: string): string {
     return `${API_BASE_URL}/api/images/${imageId}`;
 }
 
-// カテゴリ別の画像一覧を取得
+// カチE��リ別の画像一覧を取征E
 export async function getImagesByCategory(category: string): Promise<ImageData[]> {
     try {
         const response = await fetch(`${API_BASE_URL}/api/images/category/${category}`);
@@ -105,14 +105,14 @@ export async function deleteImage(imageId: string): Promise<boolean> {
     }
 }
 
-// ファイルをBase64エンコード
+// ファイルをBase64エンコーチE
 function fileToBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
         reader.onload = () => {
             const result = reader.result as string;
-            // data:image/jpeg;base64, の部分を除去
+            // data:image/jpeg;base64, の部刁E��除去
             const base64 = result.split(',')[1];
             resolve(base64);
         };
@@ -120,7 +120,7 @@ function fileToBase64(file: File): Promise<string> {
     });
 }
 
-// Reactコンポーネント用の画像表示コンポーネント
+// Reactコンポ�Eネント用の画像表示コンポ�EネンチE
 export function DatabaseImage({ 
     imageId, 
     alt, 
@@ -135,7 +135,7 @@ export function DatabaseImage({
     return (
         <img
             src={getImageUrl(imageId)}
-            alt={alt || '画像'}
+            alt={alt || '画僁E}
             className={className}
             onError={onError}
         />

@@ -10,7 +10,7 @@ import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Check, ArrowRight } from 'lucide-react';
 
-// サンプルデータタイプと同じ型を使用
+// サンプルチE�Eタタイプと同じ型を使用
 interface TroubleshootingStep {
   id: string;
   message: string;
@@ -37,10 +37,10 @@ const TroubleshootingPreview: React.FC<TroubleshootingPreviewProps> = ({
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
   const [history, setHistory] = useState<string[]>([initialStepId]);
 
-  // 現在のステップを取得
+  // 現在のスチE��プを取征E
   const currentStep = steps.find(step => step.id === currentStepId);
   
-  // 次のステップに進む処理
+  // 次のスチE��プに進む処琁E
   const handleNext = () => {
     if (currentStep?.next) {
       const nextStep = currentStep.next;
@@ -49,13 +49,13 @@ const TroubleshootingPreview: React.FC<TroubleshootingPreviewProps> = ({
     }
   };
   
-  // オプションを選択したときの処理
+  // オプションを選択したとき�E処琁E
   const handleOptionSelect = (nextStepId: string) => {
     setCurrentStepId(nextStepId);
     setHistory([...history, nextStepId]);
   };
   
-  // チェックリストの項目をトグル
+  // チェチE��リスト�E頁E��をトグル
   const toggleChecklist = (index: number) => {
     const itemKey = `${currentStepId}-${index}`;
     setCheckedItems({
@@ -64,59 +64,59 @@ const TroubleshootingPreview: React.FC<TroubleshootingPreviewProps> = ({
     });
   };
   
-  // 戻るボタンの処理
+  // 戻る�Eタンの処琁E
   const handleBack = () => {
     if (history.length > 1) {
       const newHistory = [...history];
-      newHistory.pop(); // 現在のステップを削除
+      newHistory.pop(); // 現在のスチE��プを削除
       const previousStepId = newHistory[newHistory.length - 1];
       setCurrentStepId(previousStepId);
       setHistory(newHistory);
     }
   };
   
-  // フローをリセット
+  // フローをリセチE��
   const handleReset = () => {
     setCurrentStepId(initialStepId);
     setCheckedItems({});
     setHistory([initialStepId]);
   };
   
-  // 現在のステップがチェックリストを持っているかどうか
+  // 現在のスチE��プがチェチE��リストを持ってぁE��かどぁE��
   const hasChecklist = currentStep?.checklist && currentStep.checklist.length > 0;
   
-  // 現在のステップが選択肢を持っているかどうか
+  // 現在のスチE��プが選択肢を持ってぁE��かどぁE��
   const hasOptions = currentStep?.options && currentStep.options.length > 0;
   
-  // 次へボタンが有効かどうか（チェックリストがすべてチェックされているか）
+  // 次へボタンが有効かどぁE���E�チェチE��リストがすべてチェチE��されてぁE��か！E
   const isNextButtonEnabled = !hasChecklist || 
     (currentStep?.checklist?.every((_, index) => 
       checkedItems[`${currentStepId}-${index}`]));
   
-  // 終了ステップかどうか
+  // 終亁E��チE��プかどぁE��
   const isEndStep = currentStep?.end;
   
   if (!currentStep) {
-    return <div className="text-center p-4">ステップ "{currentStepId}" が見つかりません</div>;
+    return <div className="text-center p-4">スチE��チE"{currentStepId}" が見つかりません</div>;
   }
   
   return (
     <Card className="max-w-xl mx-auto shadow-lg">
       <CardHeader className="bg-blue-50">
         <div className="flex justify-between items-center">
-          <CardTitle className="text-lg">トラブルシューティングプレビュー</CardTitle>
+          <CardTitle className="text-lg">トラブルシューチE��ングプレビュー</CardTitle>
           <Badge variant="outline" className="font-mono">
             {currentStepId}
           </Badge>
         </div>
         <CardDescription>
-          現在編集中の内容をリアルタイムでプレビューします。編集内容がすぐに反映されます。
+          現在編雁E��の冁E��をリアルタイムでプレビューします。編雁E�E容がすぐに反映されます、E
         </CardDescription>
       </CardHeader>
       
       <CardContent className="pt-6 pb-4">
         <div className="space-y-6">
-          {/* ステップのメッセージ表示 */}
+          {/* スチE��プ�EメチE��ージ表示 */}
           <div className="prose">
             {currentStep.message.split('\n').map((line, idx) => (
               <p key={idx} className={idx === 0 ? "font-medium text-lg" : "text-gray-700"}>
@@ -125,10 +125,10 @@ const TroubleshootingPreview: React.FC<TroubleshootingPreviewProps> = ({
             ))}
           </div>
           
-          {/* チェックリスト表示 */}
+          {/* チェチE��リスト表示 */}
           {hasChecklist && (
             <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-md font-medium mb-3">確認事項:</h3>
+              <h3 className="text-md font-medium mb-3">確認事頁E</h3>
               <div className="space-y-2">
                 {currentStep.checklist?.map((item, index) => (
                   <div 
@@ -170,7 +170,7 @@ const TroubleshootingPreview: React.FC<TroubleshootingPreviewProps> = ({
             </div>
           )}
           
-          {/* 次へボタン（選択肢がない場合のみ表示） */}
+          {/* 次へボタン�E�選択肢がなぁE��合�Eみ表示�E�E*/}
           {!hasOptions && !isEndStep && currentStep.next && (
             <div className="pt-4">
               <Button 
@@ -184,11 +184,11 @@ const TroubleshootingPreview: React.FC<TroubleshootingPreviewProps> = ({
             </div>
           )}
           
-          {/* 終了メッセージ */}
+          {/* 終亁E��チE��ージ */}
           {isEndStep && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-              <h3 className="text-green-800 font-medium mb-2">トラブルシューティングが完了しました</h3>
-              <p className="text-green-700 text-sm">お疲れ様でした。問題は解決しましたか？</p>
+              <h3 className="text-green-800 font-medium mb-2">トラブルシューチE��ングが完亁E��ました</h3>
+              <p className="text-green-700 text-sm">お疲れ様でした。問題�E解決しましたか！E/p>
             </div>
           )}
           
@@ -200,7 +200,7 @@ const TroubleshootingPreview: React.FC<TroubleshootingPreviewProps> = ({
               onClick={handleBack}
               disabled={history.length <= 1}
             >
-              戻る
+              戻めE
             </Button>
             
             <Button
@@ -208,7 +208,7 @@ const TroubleshootingPreview: React.FC<TroubleshootingPreviewProps> = ({
               size="sm"
               onClick={handleReset}
             >
-              最初からやり直す
+              最初からやり直ぁE
             </Button>
           </div>
         </div>

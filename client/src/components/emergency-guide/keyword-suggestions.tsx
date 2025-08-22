@@ -8,13 +8,13 @@ interface KeywordSuggestionsProps {
 }
 
 /**
- * 検索コンポーネント
+ * 検索コンポ�EネンチE
  */
 const KeywordSuggestions: React.FC<KeywordSuggestionsProps> = ({ onKeywordClick }) => {
-  // カスタムキーワード入力用の状態
+  // カスタムキーワード�E力用の状慁E
   const [customKeyword, setCustomKeyword] = React.useState('');
   
-  // カスタムキーワード検索の実行
+  // カスタムキーワード検索の実衁E
   const handleCustomSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (customKeyword.trim()) {
@@ -36,7 +36,7 @@ const KeywordSuggestions: React.FC<KeywordSuggestionsProps> = ({ onKeywordClick 
           <input
             type="text"
             className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-            placeholder="キーワードを入力..."
+            placeholder="キーワードを入劁E.."
             value={customKeyword}
             onChange={(e) => setCustomKeyword(e.target.value)}
           />

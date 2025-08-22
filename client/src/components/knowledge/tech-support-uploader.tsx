@@ -52,7 +52,7 @@ const TechSupportUploader: React.FC = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // コンポーネントがマウントされたときにアップロード済みドキュメントを読み込む
+    // コンポ�EネントがマウントされたときにアチE�Eロード済みドキュメントを読み込む
     loadVehicleData();
   }, []);
 
@@ -61,12 +61,12 @@ const TechSupportUploader: React.FC = () => {
     if (event.target.files && event.target.files.length > 0) {
       setSelectedFile(event.target.files[0]);
       
-      // ファイル選択後にinput要素をリセットして、同じファイルを再選択できるようにする
+      // ファイル選択後にinput要素をリセチE��して、同じファイルを�E選択できるようにする
       event.target.value = '';
     }
   };
 
-  // extracted_data.jsonから車両データを読み込む
+  // extracted_data.jsonから車両チE�Eタを読み込む
   const loadVehicleData = async () => {
     try {
       setIsLoading(true);
@@ -78,7 +78,7 @@ const TechSupportUploader: React.FC = () => {
       
       const data = await response.json();
       
-      // 車両データからドキュメント形式（PDF, Excel, PowerPoint）のみを抽出
+      // 車両チE�Eタからドキュメント形式！EDF, Excel, PowerPoint�E��Eみを抽出
       const documents: TechDocument[] = [];
       
       if (data.vehicleData && Array.isArray(data.vehicleData)) {
@@ -89,7 +89,7 @@ const TechSupportUploader: React.FC = () => {
               name: item.title,
               path: item.image_path || '',
               type: item.category,
-              size: 0, // サイズ情報がないので0を設定
+              size: 0, // サイズ惁E��がなぁE�Eで0を設宁E
               extractedTextPreview: item.details
             });
           }
@@ -99,55 +99,55 @@ const TechSupportUploader: React.FC = () => {
       setUploadedDocuments(documents);
     } catch (error) {
       console.error('Failed to load vehicle data:', error);
-      // エラーが発生しても表示しない - 成功時のみデータ表示する仕様に変更
-      // エラーメッセージは開発時のみコンソールに表示
+      // エラーが発生しても表示しなぁE- 成功時�EみチE�Eタ表示する仕様に変更
+      // エラーメチE��ージは開発時�Eみコンソールに表示
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 処理タイプの選択肢
+  // 処琁E��イプ�E選択肢
   const [processingType, setProcessingType] = useState<'document' | 'image_search'>('document');
 
-  // ファイル形式バリデーション
+  // ファイル形式バリチE�Eション
   const isValidFileFormat = (file: File, type: 'document' | 'image_search'): boolean => {
     const fileName = file.name;
     const fileExt = fileName.substring(fileName.lastIndexOf(".")).toLowerCase();
     
     if (type === 'document') {
-      // ドキュメント処理の対応形式
+      // ドキュメント�E琁E�E対応形弁E
       const validDocumentExts = [".pdf", ".docx", ".xlsx", ".pptx"];
       return validDocumentExts.includes(fileExt);
     } else {
-      // 画像検索データ処理の対応形式
+      // 画像検索チE�Eタ処琁E�E対応形弁E
       const validImageExts = [".svg", ".png", ".jpg", ".jpeg", ".gif"];
       return validImageExts.includes(fileExt);
     }
   };
 
-  // ファイルアップロードハンドラ
+  // ファイルアチE�Eロードハンドラ
   const handleUpload = async () => {
     if (!selectedFile) {
       toast({
-        title: "ファイルが選択されていません",
-        description: "アップロードするファイルを選択してください",
+        title: "ファイルが選択されてぁE��せん",
+        description: "アチE�Eロードするファイルを選択してください",
         variant: "destructive",
       });
       return;
     }
 
-    // ファイル形式チェック
+    // ファイル形式チェチE��
     if (!isValidFileFormat(selectedFile, processingType)) {
       if (processingType === 'document') {
         toast({
-          title: "未対応のファイル形式",
-          description: "PDF, Word, Excel, PowerPoint ファイルのみアップロード可能です",
+          title: "未対応�Eファイル形弁E,
+          description: "PDF, Word, Excel, PowerPoint ファイルのみアチE�Eロード可能でぁE,
           variant: "destructive",
         });
       } else {
         toast({
-          title: "未対応の画像形式",
-          description: "SVG, PNG, JPG, GIF 画像ファイルのみアップロード可能です",
+          title: "未対応�E画像形弁E,
+          description: "SVG, PNG, JPG, GIF 画像ファイルのみアチE�Eロード可能でぁE,
           variant: "destructive",
         });
       }
@@ -159,12 +159,12 @@ const TechSupportUploader: React.FC = () => {
     try {
       const formData = new FormData();
       formData.append("file", selectedFile);
-      // 処理タイプをフォームデータに追加
+      // 処琁E��イプをフォームチE�Eタに追加
       formData.append("processingType", processingType);
-      // 元ファイル保存設定を追加
+      // 允E��ァイル保存設定を追加
       formData.append("keepOriginalFile", keepOriginalFile.toString());
 
-      console.log(`ファイルをアップロード: ${selectedFile.name}, 処理タイプ: ${processingType}`);
+      console.log(`ファイルをアチE�EローチE ${selectedFile.name}, 処琁E��イチE ${processingType}`);
 
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/tech-support/upload`, {
         method: "POST",
@@ -173,34 +173,34 @@ const TechSupportUploader: React.FC = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "アップロードに失敗しました");
+        throw new Error(errorData.error || "アチE�Eロードに失敗しました");
       }
 
       const result = await response.json();
-      console.log("アップロード結果:", result);
+      console.log("アチE�Eロード結果:", result);
 
       const successMessage = processingType === 'document' 
-        ? `${selectedFile.name} がナレッジベースに追加されました`
-        : `${selectedFile.name} が画像検索データに追加されました`;
+        ? `${selectedFile.name} がナレチE��ベ�Eスに追加されました`
+        : `${selectedFile.name} が画像検索チE�Eタに追加されました`;
 
       toast({
-        title: "アップロード成功",
+        title: "アチE�Eロード�E劁E,
         description: successMessage,
       });
 
-      // 必要に応じてデータを更新
+      // 忁E��に応じてチE�Eタを更新
       if (processingType === 'document') {
         loadVehicleData();
       } else {
-        // 画像検索データを直接リロード
+        // 画像検索チE�Eタを直接リローチE
         reloadImageSearchData();
-        // バックアップとしてイベントも発行
+        // バックアチE�Eとしてイベントも発衁E
         window.dispatchEvent(new Event('image-search-data-updated'));
       }
       
       setSelectedFile(null);
       
-      // ファイル入力をリセット
+      // ファイル入力をリセチE��
       const fileInput = document.getElementById("tech-file-upload") as HTMLInputElement;
       if (fileInput) {
         fileInput.value = "";
@@ -208,7 +208,7 @@ const TechSupportUploader: React.FC = () => {
     } catch (error) {
       console.error("Upload error:", error);
       toast({
-        title: "アップロードエラー",
+        title: "アチE�Eロードエラー",
         description: error instanceof Error ? error.message : "未知のエラーが発生しました",
         variant: "destructive",
       });
@@ -233,16 +233,16 @@ const TechSupportUploader: React.FC = () => {
     }
   };
 
-  // ファイルサイズを人間が読みやすい形式で表示する関数
+  // ファイルサイズを人間が読みめE��ぁE��式で表示する関数
   const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return 'サイズ不明';
+    if (bytes === 0) return 'サイズ不�E';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
   
-  // 一時ファイルをクリーンアップする関数
+  // 一時ファイルをクリーンアチE�Eする関数
   const handleCleanupTempFiles = async () => {
     try {
       setIsCleaningUp(true);
@@ -253,21 +253,21 @@ const TechSupportUploader: React.FC = () => {
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "クリーンアップに失敗しました");
+        throw new Error(errorData.error || "クリーンアチE�Eに失敗しました");
       }
       
       const result = await response.json();
-      console.log("クリーンアップ結果:", result);
+      console.log("クリーンアチE�E結果:", result);
       
       toast({
-        title: "クリーンアップ成功",
-        description: `一時ファイルのクリーンアップが完了しました。${result.details.removedFiles}件のファイルを削除しました。`,
+        title: "クリーンアチE�E成功",
+        description: `一時ファイルのクリーンアチE�Eが完亁E��ました、E{result.details.removedFiles}件のファイルを削除しました。`,
       });
       
     } catch (error) {
-      console.error("クリーンアップエラー:", error);
+      console.error("クリーンアチE�Eエラー:", error);
       toast({
-        title: "クリーンアップエラー",
+        title: "クリーンアチE�Eエラー",
         description: error instanceof Error ? error.message : "未知のエラーが発生しました",
         variant: "destructive",
       });
@@ -276,7 +276,7 @@ const TechSupportUploader: React.FC = () => {
     }
   };
   
-  // 重複画像を検出して削除する関数
+  // 重褁E��像を検�Eして削除する関数
   const handleDetectDuplicateImages = async () => {
     try {
       setIsCleaningUp(true);
@@ -287,24 +287,24 @@ const TechSupportUploader: React.FC = () => {
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "重複画像の検出に失敗しました");
+        throw new Error(errorData.error || "重褁E��像�E検�Eに失敗しました");
       }
       
       const result = await response.json();
-      console.log("重複画像検出結果:", result);
+      console.log("重褁E��像検�E結果:", result);
       
-      // 画像検索データを再読み込み
+      // 画像検索チE�Eタを�E読み込み
       reloadImageSearchData();
       
       toast({
-        title: "重複画像検出完了",
-        description: `内容が同じ重複画像の検出と削除が完了しました。${result.details.removedFiles}件の重複ファイルを削除しました。`,
+        title: "重褁E��像検�E完亁E,
+        description: `冁E��が同じ重褁E��像�E検�Eと削除が完亁E��ました、E{result.details.removedFiles}件の重褁E��ァイルを削除しました。`,
       });
       
     } catch (error) {
-      console.error("重複画像検出エラー:", error);
+      console.error("重褁E��像検�Eエラー:", error);
       toast({
-        title: "重複画像検出エラー",
+        title: "重褁E��像検�Eエラー",
         description: error instanceof Error ? error.message : "未知のエラーが発生しました",
         variant: "destructive",
       });
@@ -313,7 +313,7 @@ const TechSupportUploader: React.FC = () => {
     }
   };
   
-  // ディレクトリを同期する関数
+  // チE��レクトリを同期する関数
   const handleSyncDirectories = async () => {
     try {
       setIsSyncing(true);
@@ -324,22 +324,22 @@ const TechSupportUploader: React.FC = () => {
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "ディレクトリ同期に失敗しました");
+        throw new Error(errorData.error || "チE��レクトリ同期に失敗しました");
       }
       
       const result = await response.json();
-      console.log("ディレクトリ同期結果:", result);
+      console.log("チE��レクトリ同期結果:", result);
       
       toast({
         title: "同期成功",
         description: `
-          ディレクトリ同期が完了しました。
-          ・知識ベースへ移動: ${result.details.toKnowledgeBase}件
+          チE��レクトリ同期が完亁E��ました、E
+          ・知識�Eースへ移勁E ${result.details.toKnowledgeBase}件
           ・一時フォルダへ同期: ${result.details.fromKnowledgeBase}件
         `,
       });
       
-      // 画像検索データを再読み込み
+      // 画像検索チE�Eタを�E読み込み
       reloadImageSearchData();
       
     } catch (error) {
@@ -357,16 +357,16 @@ const TechSupportUploader: React.FC = () => {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>技術文書アップロード</CardTitle>
+        <CardTitle>技術文書アチE�EローチE/CardTitle>
         <CardDescription>
-          保守マニュアルやデータシートをアップロードして検索可能にします
+          保守�EニュアルめE��ータシートをアチE�Eロードして検索可能にしまぁE
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {/* 処理タイプの選択 */}
+          {/* 処琁E��イプ�E選抁E*/}
           <div className="flex flex-col space-y-2">
-            <Label>処理タイプを選択</Label>
+            <Label>処琁E��イプを選抁E/Label>
             <div className="flex space-x-4">
               <div className="flex items-center space-x-2">
                 <input
@@ -379,7 +379,7 @@ const TechSupportUploader: React.FC = () => {
                   className="h-4 w-4 text-blue-600"
                 />
                 <label htmlFor="document-processing" className="text-sm">
-                  ナレッジベース文書（PDF, Excel, PowerPoint）
+                  ナレチE��ベ�Eス斁E���E�EDF, Excel, PowerPoint�E�E
                 </label>
               </div>
               <div className="flex items-center space-x-2">
@@ -393,7 +393,7 @@ const TechSupportUploader: React.FC = () => {
                   className="h-4 w-4 text-blue-600"
                 />
                 <label htmlFor="image-search-processing" className="text-sm">
-                  画像検索データ（SVG, PNG, JPG）
+                  画像検索チE�Eタ�E�EVG, PNG, JPG�E�E
                 </label>
               </div>
             </div>
@@ -402,8 +402,8 @@ const TechSupportUploader: React.FC = () => {
           <div className="flex flex-col space-y-2">
             <Label htmlFor="tech-file-upload">
               {processingType === 'document' 
-                ? 'ファイルを選択（PDF, Excel, PowerPointなど）' 
-                : '画像ファイルを選択（SVG, PNG, JPG）'}
+                ? 'ファイルを選択！EDF, Excel, PowerPointなど�E�E 
+                : '画像ファイルを選択！EVG, PNG, JPG�E�E}
             </Label>
             <div className="flex space-x-2">
               <Input
@@ -423,7 +423,7 @@ const TechSupportUploader: React.FC = () => {
                 ) : (
                   <Upload className="mr-2 h-4 w-4" />
                 )}
-                アップロード
+                アチE�EローチE
               </Button>
             </div>
             {selectedFile && (
@@ -442,13 +442,13 @@ const TechSupportUploader: React.FC = () => {
                 className="h-4 w-4 text-blue-600 rounded"
               />
               <label htmlFor="keep-original-file" className="text-sm">
-                元ファイルを保存する（チェックを外すとストレージ容量を節約できます）
+                允E��ァイルを保存する（チェチE��を外すとストレージ容量を節紁E��きます！E
               </label>
             </div>
           </div>
 
           <div className="mt-8">
-            <h3 className="text-lg font-medium mb-2">アップロード済み技術文書</h3>
+            <h3 className="text-lg font-medium mb-2">アチE�Eロード済み技術文書</h3>
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
@@ -459,8 +459,8 @@ const TechSupportUploader: React.FC = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>タイプ</TableHead>
-                      <TableHead>ファイル名</TableHead>
+                      <TableHead>タイチE/TableHead>
+                      <TableHead>ファイル吁E/TableHead>
                       <TableHead>詳細</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -477,7 +477,7 @@ const TechSupportUploader: React.FC = () => {
                         </TableCell>
                         <TableCell>{doc.name}</TableCell>
                         <TableCell className="max-w-xs truncate">
-                          {doc.extractedTextPreview || "詳細なし"}
+                          {doc.extractedTextPreview || "詳細なぁE}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -487,17 +487,17 @@ const TechSupportUploader: React.FC = () => {
             ) : (
               <div className="py-4 text-center text-gray-500 border rounded-md">
                 <FileText className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                <p>アップロードされた技術文書はありません</p>
+                <p>アチE�Eロードされた技術文書はありません</p>
               </div>
             )}
           </div>
         </div>
         
-        {/* システムメンテナンスセクション */}
+        {/* シスチE��メンチE��ンスセクション */}
         <div className="mt-8 border-t pt-4">
-          <h3 className="text-lg font-medium mb-2">システムメンテナンス</h3>
+          <h3 className="text-lg font-medium mb-2">シスチE��メンチE��ンス</h3>
           <p className="text-sm text-gray-500 mb-4">
-            一時ファイルのクリーンアップや知識ベースの同期などのシステムメンテナンス機能を提供します。
+            一時ファイルのクリーンアチE�EめE��識�Eースの同期などのシスチE��メンチE��ンス機�Eを提供します、E
           </p>
           
           <div className="flex flex-wrap gap-3">
@@ -519,7 +519,7 @@ const TechSupportUploader: React.FC = () => {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>一時ファイルをクリーンアップしてストレージスペースを解放します</p>
+                  <p>一時ファイルをクリーンアチE�Eしてストレージスペ�Eスを解放しまぁE/p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -538,11 +538,11 @@ const TechSupportUploader: React.FC = () => {
                     ) : (
                       <Trash2 className="mr-2 h-4 w-4 text-amber-600" />
                     )}
-                    重複画像を検出・削除
+                    重褁E��像を検�E・削除
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>同じ内容の重複画像を検出して削除します（タイムスタンプが異なる同じ画像を削除）</p>
+                  <p>同じ冁E��の重褁E��像を検�Eして削除します（タイムスタンプが異なる同じ画像を削除�E�E/p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -561,11 +561,11 @@ const TechSupportUploader: React.FC = () => {
                     ) : (
                       <RefreshCw className="mr-2 h-4 w-4 text-green-600" />
                     )}
-                    ディレクトリを同期
+                    チE��レクトリを同朁E
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>知識ベースと一時ディレクトリ間でファイルを同期します</p>
+                  <p>知識�Eースと一時ディレクトリ間でファイルを同期しまぁE/p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -577,21 +577,21 @@ const TechSupportUploader: React.FC = () => {
                     variant="outline" 
                     className="border-purple-200 bg-purple-50"
                     onClick={() => {
-                      // キャッシュをクリアしてデータを再読み込み
+                      // キャチE��ュをクリアしてチE�Eタを�E読み込み
                       reloadImageSearchData();
                       loadVehicleData();
                       toast({
-                        title: "キャッシュクリア",
-                        description: "画像検索データとドキュメントデータを再読み込みしました",
+                        title: "キャチE��ュクリア",
+                        description: "画像検索チE�Eタとドキュメントデータを�E読み込みしました",
                       });
                     }}
                   >
                     <Database className="mr-2 h-4 w-4 text-purple-600" />
-                    キャッシュをクリア
+                    キャチE��ュをクリア
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>アプリケーションのキャッシュをクリアして最新のデータを読み込みます</p>
+                  <p>アプリケーションのキャチE��ュをクリアして最新のチE�Eタを読み込みまぁE/p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -600,7 +600,7 @@ const TechSupportUploader: React.FC = () => {
       </CardContent>
       <CardFooter className="flex justify-between border-t pt-4">
         <p className="text-xs text-gray-500">
-          アップロードされたファイルは自動的に処理され、検索可能になります。処理後は必要に応じて一時ファイルを削除してストレージ容量を最適化できます。
+          アチE�Eロードされたファイルは自動的に処琁E��れ、検索可能になります。�E琁E���E忁E��に応じて一時ファイルを削除してストレージ容量を最適化できます、E
         </p>
       </CardFooter>
     </Card>

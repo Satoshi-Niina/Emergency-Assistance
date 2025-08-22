@@ -15,7 +15,7 @@ export interface SearchResult {
   }[];
 }
 
-// トラブルシューティング検索用の設定
+// トラブルシューチE��ング検索用の設宁E
 const fuseOptions = {
   includeScore: true,
   keys: [
@@ -35,29 +35,29 @@ const fuseOptions = {
   matchAllTokens: false,
 };
 
-// 日本語タイトルにマッピングするためのディクショナリ
+// 日本語タイトルにマッピングするためのチE��クショナリ
 export const japaneseGuideTitles: { [key: string]: string } = {
-  'no_electrical_power': '電源が入らない',
-  'engine_wont_start': 'エンジンが始動しない',
-  'overheating': 'オーバーヒート',
-  'oil_pressure_warning': 'オイル圧力警告',
-  'brake_failure': 'ブレーキ故障',
-  'transmission_failure': '変速機故障',
-  'hydraulic_system_failure': '油圧システム故障',
-  'fuel_system_problem': '燃料システム問題',
-  'electrical_short': '電気回路ショート',
-  'battery_dead': 'バッテリー上がり',
-  // ここに必要に応じて追加
+  'no_electrical_power': '電源が入らなぁE,
+  'engine_wont_start': 'エンジンが始動しなぁE,
+  'overheating': 'オーバ�Eヒ�EチE,
+  'oil_pressure_warning': 'オイル圧力警呁E,
+  'brake_failure': 'ブレーキ敁E��',
+  'transmission_failure': '変速機故隁E,
+  'hydraulic_system_failure': '油圧シスチE��敁E��',
+  'fuel_system_problem': '燁E��シスチE��問顁E,
+  'electrical_short': '電気回路ショーチE,
+  'battery_dead': 'バッチE��ー上がめE,
+  // ここに忁E��に応じて追加
 };
 
 /**
- * 指定されたIDのトラブルシューティングフローを取得
+ * 持E��されたIDのトラブルシューチE��ングフローを取征E
  * @param id フローID
- * @returns フロー情報またはundefined
+ * @returns フロー惁E��また�Eundefined
  */
 export const getTroubleshootingFlowById = async (id: string): Promise<SearchResult | undefined> => {
   try {
-    // キャッシュ無効化のためのタイムスタンプを追加
+    // キャチE��ュ無効化�Eためのタイムスタンプを追加
     const timestamp = Date.now();
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${id}?_t=${timestamp}`, {
       headers: {
@@ -68,7 +68,7 @@ export const getTroubleshootingFlowById = async (id: string): Promise<SearchResu
 
     if (response.ok) {
       const flow = await response.json();
-      console.log(`🔍 取得したフローデータ:`, {
+      console.log(`🔍 取得したフローチE�Eタ:`, {
         id: flow.id,
         title: flow.title,
         stepsCount: flow.steps?.length || 0,
@@ -83,18 +83,18 @@ export const getTroubleshootingFlowById = async (id: string): Promise<SearchResu
       };
     }
 
-    console.warn(`⚠️ フローが見つかりません: ${id}`);
+    console.warn(`⚠�E�Eフローが見つかりません: ${id}`);
     return undefined;
   } catch (error) {
-    console.error('❌ トラブルシューティングフロー検索エラー:', error);
+    console.error('❁EトラブルシューチE��ングフロー検索エラー:', error);
     return undefined;
   }
 };
 
 /**
- * 特定のトラブルシューティングフローを検索
+ * 特定�EトラブルシューチE��ングフローを検索
  * @param id フローID
- * @returns 検索結果または未定義
+ * @returns 検索結果また�E未定義
  */
 export const searchTroubleshootingFlow = async (id: string): Promise<SearchResult | undefined> => {
   try {
@@ -110,15 +110,15 @@ export const searchTroubleshootingFlow = async (id: string): Promise<SearchResul
     }
     return undefined;
   } catch (error) {
-    console.error('トラブルシューティングフロー検索エラー:', error);
+    console.error('トラブルシューチE��ングフロー検索エラー:', error);
     return undefined;
   }
 };
 
 /**
- * テキストに基づいてトラブルシューティングフローを検索
+ * チE��ストに基づぁE��トラブルシューチE��ングフローを検索
  * @param query 検索クエリ
- * @returns 検索結果の配列
+ * @returns 検索結果の配�E
  */
 export const searchTroubleshootingFlows = async (query: string): Promise<SearchResult[]> => {
   if (!query || query.trim() === '') {
@@ -136,13 +136,13 @@ export const searchTroubleshootingFlows = async (query: string): Promise<SearchR
       }
       return [];
     } catch (error) {
-      console.error('トラブルシューティングフロー取得エラー:', error);
+      console.error('トラブルシューチE��ングフロー取得エラー:', error);
       return [];
     }
   }
 
   try {
-    // クライアントサイドで検索を行う場合
+    // クライアントサイドで検索を行う場吁E
     const response = await apiRequest('GET', '/api/troubleshooting');
     if (response.ok) {
       const flows = await response.json();
@@ -163,7 +163,7 @@ export const searchTroubleshootingFlows = async (query: string): Promise<SearchR
       });
     }
 
-    // サーバーサイドで検索を行う場合
+    // サーバ�Eサイドで検索を行う場吁E
     /*
     const searchResponse = await apiRequest('POST', '/api/troubleshooting/search', {
       query
@@ -183,7 +183,7 @@ export const searchTroubleshootingFlows = async (query: string): Promise<SearchR
 
     return [];
   } catch (error) {
-    console.error('トラブルシューティング検索エラー:', error);
+    console.error('トラブルシューチE��ング検索エラー:', error);
     return [];
   }
 };

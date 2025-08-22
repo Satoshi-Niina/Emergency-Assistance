@@ -53,7 +53,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
         setFlowData(data);
       } catch (err) {
         console.error("Flow data fetch error:", err);
-        setError("フローデータの取得に失敗しました");
+        setError("フローチE�Eタの取得に失敗しました");
       } finally {
         setLoading(false);
       }
@@ -98,8 +98,8 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
           <CardTitle className="text-red-600">エラー</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="mb-4">{error || "フローデータが見つかりません"}</p>
-          <Button onClick={onClose}>閉じる</Button>
+          <p className="mb-4">{error || "フローチE�Eタが見つかりません"}</p>
+          <Button onClick={onClose}>閉じめE/Button>
         </CardContent>
       </Card>
     );
@@ -113,8 +113,8 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
     return (
       <Card className="w-full max-w-4xl mx-auto">
         <CardContent>
-          <p className="text-center py-8">ステップが見つかりません</p>
-          <Button onClick={onClose} className="w-full">閉じる</Button>
+          <p className="text-center py-8">スチE��プが見つかりません</p>
+          <Button onClick={onClose} className="w-full">閉じめE/Button>
         </CardContent>
       </Card>
     );
@@ -127,7 +127,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
           <div className="flex items-start gap-2 flex-1 min-w-0">
             <Button variant="ghost" size="sm" onClick={onClose} className="flex-shrink-0">
               <ArrowLeft className="h-4 w-4" />
-              戻る
+              戻めE
             </Button>
             <CardTitle className="text-xl break-words leading-tight">
               {flowData.title} (プレビュー)
@@ -135,7 +135,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
           </div>
           <div className="flex items-center gap-2">
             <div className="text-sm text-gray-500 flex-shrink-0 ml-4">
-              ステップ {currentStepIndex + 1} / {flowData.steps.length}
+              スチE��チE{currentStepIndex + 1} / {flowData.steps.length}
             </div>
             <Button 
               variant="outline" 
@@ -143,7 +143,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
               onClick={onClose} 
               className="h-8 px-3 border-gray-300 hover:bg-gray-100"
             >
-              閉じる
+              閉じめE
             </Button>
           </div>
         </div>
@@ -151,7 +151,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
 
       <CardContent>
         <div className="space-y-6">
-          {/* ステップタイトル */}
+          {/* スチE��プタイトル */}
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
             <h3 className="font-semibold text-blue-900 mb-2 text-lg">
               {currentStep.title}
@@ -166,10 +166,10 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
             </div>
           </div>
 
-          {/* 条件分岐（プレビューモード） */}
+          {/* 条件刁E��（�Eレビューモード！E*/}
           {currentStep.type === 'decision' && currentStep.conditions && currentStep.conditions.length > 0 && (
             <div className="space-y-3">
-              <h4 className="font-medium text-gray-900">条件分岐:</h4>
+              <h4 className="font-medium text-gray-900">条件刁E��E</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {currentStep.conditions.map((condition, index) => (
                   <div
@@ -178,12 +178,12 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
                   >
                     <div className="font-medium text-sm">{condition.label}</div>
                     <div className="text-xs text-gray-500 mt-1">
-                      次ステップ: {(() => {
+                      次スチE��チE {(() => {
                         const targetStep = flowData.steps.find(s => s.id === condition.nextId);
                         const targetIndex = flowData.steps.findIndex(s => s.id === condition.nextId);
                         return targetStep ? 
-                          `${targetStep.title || `ステップ ${targetIndex + 1}`}` : 
-                          '未設定';
+                          `${targetStep.title || `スチE��チE${targetIndex + 1}`}` : 
+                          '未設宁E;
                       })()}
                     </div>
                   </div>
@@ -195,7 +195,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
           {/* 画像表示エリア */}
           {currentStep.images && currentStep.images.length > 0 && (
             <div className="space-y-3">
-              <h4 className="font-medium text-gray-900">画像:</h4>
+              <h4 className="font-medium text-gray-900">画僁E</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {currentStep.images.map((image, index) => {
                   const imageUrl = convertImageUrl(image.url);
@@ -209,13 +209,13 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
                         className="w-full h-48 object-cover rounded-lg border"
                         onError={(e) => {
                           console.error('画像読み込みエラー:', image.url);
-                          console.error('変換後のURL:', imageUrl);
+                          console.error('変換後�EURL:', imageUrl);
                           const target = e.currentTarget;
                           target.style.display = 'none';
                           
                           const errorDiv = document.createElement('div');
                           errorDiv.className = 'w-full h-48 bg-red-100 border border-red-300 text-red-700 px-3 py-2 rounded-lg text-sm flex items-center justify-center';
-                          errorDiv.textContent = '画像の読み込みに失敗しました';
+                          errorDiv.textContent = '画像�E読み込みに失敗しました';
                           target.parentNode?.appendChild(errorDiv);
                         }}
                       />

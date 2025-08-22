@@ -10,7 +10,7 @@ interface AdminRouteProps {
 export function AdminRoute({ children }: AdminRouteProps) {
   const { user, isLoading } = useAuth();
 
-  console.log('🔍 AdminRoute - 管理者権限確認:', {
+  console.log('🔍 AdminRoute - 管琁E��E��限確誁E', {
     isLoading,
     hasUser: !!user,
     role: user?.role,
@@ -26,18 +26,18 @@ export function AdminRoute({ children }: AdminRouteProps) {
     );
   }
 
-  // 未認証の場合はログインページにリダイレクト
+  // 未認証の場合�Eログインペ�EジにリダイレクチE
   if (!user) {
-    console.log('🚫 AdminRoute - 未認証、ログインページにリダイレクト');
+    console.log('🚫 AdminRoute - 未認証、ログインペ�EジにリダイレクチE);
     return <Navigate to="/login" replace />;
   }
 
-  // 管理者でない場合はチャットページにリダイレクト
+  // 管琁E��E��なぁE��合�EチャチE��ペ�EジにリダイレクチE
   if (user.role !== 'admin') {
-    console.log('🚫 AdminRoute - 管理者権限がありません、チャットページにリダイレクト');
+    console.log('🚫 AdminRoute - 管琁E��E��限がありません、チャチE��ペ�EジにリダイレクチE);
     return <Navigate to="/chat" replace />;
   }
 
-  console.log('✅ AdminRoute - 管理者権限OK、コンテンツを表示');
+  console.log('✁EAdminRoute - 管琁E��E��限OK、コンチE��チE��表示');
   return <>{children}</>;
 }

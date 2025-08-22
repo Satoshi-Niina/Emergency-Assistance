@@ -22,11 +22,11 @@ export default function MessageInput({ onSendMessage, isLoading = false, disable
     setDraftMessage
   } = useChat();
 
-  // ドラフトメッセージを更新する（ユーザー入力用）
+  // ドラフトメチE��ージを更新する�E�ユーザー入力用�E�E
   const updateDraftMessage = (content: string) => {
-    // 手動入力の場合のみコンテキスト直接更新（音声認識との重複防止）
+    // 手動入力�E場合�EみコンチE��スト直接更新�E�音声認識との重褁E��止�E�E
     if (setDraftMessage) {
-      console.log('手動入力からドラフトメッセージを更新:', content);
+      console.log('手動入力からドラフトメチE��ージを更新:', content);
       setDraftMessage({
         content,
         media: draftMessage?.media || []
@@ -37,7 +37,7 @@ export default function MessageInput({ onSendMessage, isLoading = false, disable
   const inputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // 選択されたテキストが変更されたら入力欄に反映
+  // 選択されたチE��ストが変更されたら入力欁E��反映
   useEffect(() => {
     if (selectedText) {
       setMessage(selectedText);
@@ -68,11 +68,11 @@ export default function MessageInput({ onSendMessage, isLoading = false, disable
   };
 
   const handleCameraClick = () => {
-    // カメラモーダルを開く
+    // カメラモーダルを開ぁE
     window.dispatchEvent(new CustomEvent('open-camera'));
   };
 
-  // テキスト入力欄をクリアする
+  // チE��スト�E力欁E��クリアする
   const handleClearText = () => {
     setMessage("");
     if (isMobile && textareaRef.current) {
@@ -86,15 +86,15 @@ export default function MessageInput({ onSendMessage, isLoading = false, disable
     <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-t border-blue-200 p-2 message-input-container">
       <form onSubmit={handleSubmit} className="flex items-center">
 
-        {/* 入力エリア - 小さめ固定高さでオーバーフロー時はスクロール */}
+        {/* 入力エリア - 小さめ固定高さでオーバ�Eフロー時�Eスクロール */}
         <div className="flex-1 flex items-center bg-white border border-blue-200 rounded-full px-3 py-1 shadow-inner">
           {isMobile ? (
-            /* モバイル用テキストエリア（1.5倍の高さと文字サイズ） */
-            <div className="flex-1 relative h-[48px]"> {/* 高さを1.5倍に */}
+            /* モバイル用チE��ストエリア�E�E.5倍�E高さと斁E��サイズ�E�E*/
+            <div className="flex-1 relative h-[48px]"> {/* 高さめE.5倍に */}
               <Textarea
                 ref={textareaRef}
                 className="absolute inset-0 bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none py-1 overflow-y-auto text-lg"
-                placeholder={"メッセージを入力..."}
+                placeholder={"メチE��ージを�E劁E.."}
                 value={message}
                 onChange={handleInputChange}
                 disabled={isLoading}
@@ -107,7 +107,7 @@ export default function MessageInput({ onSendMessage, isLoading = false, disable
                   }
                 }}
               />
-              {/* テキストがある場合にのみクリアボタンを表示 */}
+              {/* チE��ストがある場合にのみクリアボタンを表示 */}
               {message.trim() && (
                 <button
                   type="button"
@@ -119,18 +119,18 @@ export default function MessageInput({ onSendMessage, isLoading = false, disable
               )}
             </div>
           ) : (
-            /* デスクトップ用インプット（1.5倍の高さと文字サイズ） */
-            <div className="flex-1 h-[48px] flex items-center relative"> {/* 高さを1.5倍に */}
+            /* チE��クトップ用インプット！E.5倍�E高さと斁E��サイズ�E�E*/
+            <div className="flex-1 h-[48px] flex items-center relative"> {/* 高さめE.5倍に */}
               <Input
                 ref={inputRef}
                 type="text"
                 className="w-full h-full bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 text-lg"
-                placeholder={"メッセージを入力..."}
+                placeholder={"メチE��ージを�E劁E.."}
                 value={message}
                 onChange={handleInputChange}
                 disabled={isLoading}
               />
-              {/* テキストがある場合にのみクリアボタンを表示 */}
+              {/* チE��ストがある場合にのみクリアボタンを表示 */}
               {message.trim() && (
                 <button
                   type="button"
@@ -167,7 +167,7 @@ export default function MessageInput({ onSendMessage, isLoading = false, disable
           </Button>
         </div>
 
-        {/* デスクトップ向けのカメラボタン - 右配置 - コンパクト化 */}
+        {/* チE��クトップ向け�Eカメラボタン - 右配置 - コンパクト化 */}
         <div className="hidden md:flex md:flex-col md:items-center md:ml-2">
           <span className="text-xs font-medium text-indigo-700 mb-0.5">カメラ</span>
           <Button 

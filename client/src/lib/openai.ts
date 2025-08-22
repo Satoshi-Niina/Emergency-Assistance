@@ -27,14 +27,14 @@ export const processWithChatGPT = async (text: string): Promise<string> => {
     
     // Handle specific HTTP status codes
     if (error.status === 401) {
-      throw new Error('APIキーが無効です。システム管理者に連絡してください。');
+      throw new Error('APIキーが無効です。シスチE��管琁E��E��連絡してください、E);
     } else if (error.status === 429) {
-      throw new Error('APIの利用制限に達しました。しばらくしてからもう一度お試しください。');
+      throw new Error('APIの利用制限に達しました。しばらくしてからもう一度お試しください、E);
     } else if (error.status === 500) {
-      throw new Error('サーバーエラーが発生しました。管理者に連絡してください。');
+      throw new Error('サーバ�Eエラーが発生しました。管琁E��E��連絡してください、E);
     }
     
-    throw new Error('ChatGPTでの処理に失敗しました');
+    throw new Error('ChatGPTでの処琁E��失敗しました');
   }
 };
 
@@ -85,13 +85,13 @@ export const analyzeImage = async (imageBase64: string): Promise<{ analysis: str
     
     // Handle specific HTTP status codes
     if (error.status === 401) {
-      throw new Error('APIキーが無効です。システム管理者に連絡してください。');
+      throw new Error('APIキーが無効です。シスチE��管琁E��E��連絡してください、E);
     } else if (error.status === 429) {
-      throw new Error('APIの利用制限に達しました。しばらくしてからもう一度お試しください。');
+      throw new Error('APIの利用制限に達しました。しばらくしてからもう一度お試しください、E);
     } else if (error.status === 500) {
-      throw new Error('サーバーエラーが発生しました。管理者に連絡してください。');
+      throw new Error('サーバ�Eエラーが発生しました。管琁E��E��連絡してください、E);
     }
     
-    throw new Error('画像分析に失敗しました');
+    throw new Error('画像�E析に失敗しました');
   }
 };

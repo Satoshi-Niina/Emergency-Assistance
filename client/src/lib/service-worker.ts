@@ -3,7 +3,7 @@
  */
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator)) {
-    console.warn('Service Workerはこのブラウザではサポートされていません');
+    console.warn('Service Workerはこ�Eブラウザではサポ�EトされてぁE��せん');
     return null;
   }
   
@@ -18,25 +18,25 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
 }
 
 /**
- * バックグラウンド同期をリクエスト
+ * バックグラウンド同期をリクエスチE
  */
 export async function requestBackgroundSync(): Promise<boolean> {
   if (!('serviceWorker' in navigator)) {
-    console.warn('Service Workerはこのブラウザではサポートされていません');
+    console.warn('Service Workerはこ�Eブラウザではサポ�EトされてぁE��せん');
     return false;
   }
   
   try {
-    // Service Workerが準備できるまで待機
+    // Service Workerが準備できるまで征E��E
     const registration = await getServiceWorkerRegistration();
     if (!registration) {
       console.warn('Service Workerの登録が見つかりません');
       return false;
     }
     
-    // 'sync'がサポートされているか確認
+    // 'sync'がサポ�EトされてぁE��か確誁E
     if (!('sync' in registration)) {
-      console.warn('バックグラウンド同期APIはこのブラウザではサポートされていません');
+      console.warn('バックグラウンド同期APIはこ�Eブラウザではサポ�EトされてぁE��せん');
       return false;
     }
     
@@ -47,13 +47,13 @@ export async function requestBackgroundSync(): Promise<boolean> {
     console.log('バックグラウンド同期が登録されました');
     return true;
   } catch (error) {
-    console.error('バックグラウンド同期の登録に失敗しました:', error);
+    console.error('バックグラウンド同期�E登録に失敗しました:', error);
     return false;
   }
 }
 
 /**
- * 現在のService Worker登録を取得
+ * 現在のService Worker登録を取征E
  */
 export async function getServiceWorkerRegistration(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator)) {
@@ -61,14 +61,14 @@ export async function getServiceWorkerRegistration(): Promise<ServiceWorkerRegis
   }
   
   try {
-    // 登録済みのService Workerを取得
+    // 登録済みのService Workerを取征E
     const registrations = await navigator.serviceWorker.getRegistrations();
     if (registrations.length === 0) {
-      // 登録されていない場合は新規登録
+      // 登録されてぁE��ぁE��合�E新規登録
       return await registerServiceWorker();
     }
     
-    // 最初の登録を返す
+    // 最初�E登録を返す
     return registrations[0];
   } catch (error) {
     console.error('Service Worker登録の取得に失敗しました:', error);
@@ -77,7 +77,7 @@ export async function getServiceWorkerRegistration(): Promise<ServiceWorkerRegis
 }
 
 /**
- * 同期タグが登録されているか確認
+ * 同期タグが登録されてぁE��か確誁E
  */
 export async function hasSyncRegistered(): Promise<boolean> {
   const registration = await getServiceWorkerRegistration();
@@ -102,19 +102,19 @@ export async function hasSyncRegistered(): Promise<boolean> {
 }
 
 /**
- * Service Workerのステータス通知を設定
+ * Service WorkerのスチE�Eタス通知を設宁E
  */
 export function setupServiceWorkerMessages() {
   if (!('serviceWorker' in navigator)) {
     return;
   }
   
-  // Service Workerからのメッセージリスナー
+  // Service WorkerからのメチE��ージリスナ�E
   navigator.serviceWorker.addEventListener('message', (event) => {
     const { type, data } = event.data;
     
     if (type === 'sync-status') {
-      // 同期状態の更新イベントを発火
+      // 同期状態�E更新イベントを発火
       window.dispatchEvent(new CustomEvent('sync-status-update', {
         detail: data
       }));
@@ -123,14 +123,14 @@ export function setupServiceWorkerMessages() {
 }
 
 /**
- * モバイルデバイスかどうかを判定
+ * モバイルチE��イスかどぁE��を判宁E
  */
 export function isMobileDevice(): boolean {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 }
 
 /**
- * iPadかどうかを判定
+ * iPadかどぁE��を判宁E
  */
 export function isIPadDevice(): boolean {
   return /iPad/i.test(navigator.userAgent) || 
@@ -138,11 +138,11 @@ export function isIPadDevice(): boolean {
 }
 
 /**
- * ネットワークの状態を取得
+ * ネットワークの状態を取征E
  */
 export function getNetworkInfo(): { online: boolean, effectiveType?: string } {
   const online = navigator.onLine;
-  // @ts-ignore - TS2339: effectiveTypeプロパティがConnection型に存在しない
+  // @ts-ignore - TS2339: effectiveTypeプロパティがConnection型に存在しなぁE
   const effectiveType = navigator.connection?.effectiveType;
   
   return {

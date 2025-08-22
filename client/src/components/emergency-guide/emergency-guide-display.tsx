@@ -33,9 +33,9 @@ interface EmergencyGuideData {
 interface EmergencyGuideDisplayProps {
   guideId: string;
   onExit: () => void;
-  isPreview?: boolean; // プレビューモードかどうかのフラグ
+  isPreview?: boolean; // プレビューモードかどぁE��のフラグ
   onSendToChat: () => void;
-  backButtonText?: string; // 戻るボタンのテキスト
+  backButtonText?: string; // 戻る�EタンのチE��スチE
 }
 
 // フロー実行履歴の型定義
@@ -53,36 +53,36 @@ interface FlowExecutionStep {
   timestamp: Date;
 }
 
-// 画像URL変換の改善
+// 画像URL変換の改喁E
 
-// 画像エラーハンドリングの改善
+// 画像エラーハンドリングの改喁E
 function handleImageError(e: React.SyntheticEvent<HTMLImageElement, Event>, imageUrl: string) {
   const imgElement = e.currentTarget;
   console.error('画像表示エラー:', imageUrl);
 
-  // 元のURLをログ出力
-  console.log('元の画像URL:', imageUrl);
-  console.log('変換後のURL:', imgElement.src);
+  // 允E�EURLをログ出劁E
+  console.log('允E�E画像URL:', imageUrl);
+  console.log('変換後�EURL:', imgElement.src);
 
-  // エラー時のフォールバック処理
+  // エラー時�Eフォールバック処琁E
   try {
-    // API設定 - VITE_API_BASE_URLのみを使用
+    // API設宁E- VITE_API_BASE_URLのみを使用
     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
-    // 1. ファイル名のみで再試行
+    // 1. ファイル名�Eみで再試衁E
     const fileName = imageUrl.split('/').pop()?.split('\\').pop();
     if (fileName && fileName !== imageUrl) {
-      console.log('ファイル名のみで再試行:', fileName);
+      console.log('ファイル名�Eみで再試衁E', fileName);
       imgElement.src = `${apiBaseUrl}/api/emergency-flow/image/${fileName}`;
       return;
     }
 
-    // 2. 元のURLをそのまま使用
-    console.log('元のURLをそのまま使用');
+    // 2. 允E�EURLをそのまま使用
+    console.log('允E�EURLをそのまま使用');
     imgElement.src = imageUrl;
 
   } catch (error) {
-    console.error('画像エラーハンドリング失敗:', error);
+    console.error('画像エラーハンドリング失敁E', error);
     // エラー画像を表示
     imgElement.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMDAgNzBDMTE2LjU2OSA3MCAxMzAgODMuNDMxIDEzMCAxMDBDMTMwIDExNi41NjkgMTE2LjU2OSAxMzAgMTAwIDEzMEM4My40MzEgMTMwIDcwIDExNi41NjkgNzAgMTAwQzcwIDgzLjQzMSA4My40MzEgNzAgMTAwIDcwWiIgZmlsbD0iIzlDQTBBNiIvPgo8cGF0aCBkPSJNMTAwIDE0MEMxMTYuNTY5IDE0MCAxMzAgMTUzLjQzMSAxMzAgMTcwQzEzMCAxODYuNTY5IDExNi41NjkgMjAwIDEwMCAyMDBDODMuNDMxIDIwMCA3MCAxODYuNTY5IDcwIDE3MEM3MCAxNTMuNDMxIDgzLjQzMSAxNDAgMTAwIDE0MFoiIGZpbGw9IiM5Q0EwQTYiLz4KPHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDIwQzIwIDE3LjIzOSAyMi4yMzkgMTUgMjUgMTVIMzVDMzcuNzYxIDE1IDQwIDE3LjIzOSA0MCAyMFYzMEM0MCAzMi43NjEgMzcuNzYxIDM1IDM1IDM1SDI1QzIyLjIzOSAzNSAyMCAzMi43NjEgMjAgMzBWMjBaIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yNSAxN0MyNSAxNi40NDc3IDI1LjQ0NzcgMTYgMjYgMTZIMzRDMzQuNTUyMyAxNiAzNSAxNi40NDc3IDM1IDE3VjI5QzM1IDI5LjU1MjMgMzQuNTUyMyAzMCAzNCAzMEgyNkMyNS40NDc3IDMwIDI1IDI5LjU1MjMgMjUgMjlWMTdaIiBmaWxsPSIjOTlBM0Y2Ii8+Cjwvc3ZnPgo8L3N2Zz4K';
   }
@@ -90,15 +90,15 @@ function handleImageError(e: React.SyntheticEvent<HTMLImageElement, Event>, imag
 
 // 画像URLを正しく構築する関数
 function buildImageUrl(imageUrl: string): string {
-  // API設定 - VITE_API_BASE_URLのみを使用
+  // API設宁E- VITE_API_BASE_URLのみを使用
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
-  // 既に完全なURLの場合はそのまま返す
+  // 既に完�EなURLの場合�Eそ�Eまま返す
   if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
     return imageUrl;
   }
 
-  // 既にAPIエンドポイント形式の場合はベースURLを追加
+  // 既にAPIエンド�Eイント形式�E場合�Eベ�EスURLを追加
   if (imageUrl.startsWith('/api/emergency-flow/image/')) {
     return `${apiBaseUrl}${imageUrl}`;
   }
@@ -114,7 +114,7 @@ function buildImageUrl(imageUrl: string): string {
     fileName = imageUrl.split('\\').pop() || imageUrl;
   }
 
-  // 新しいAPIエンドポイント形式に変換
+  // 新しいAPIエンド�Eイント形式に変換
   return `${apiBaseUrl}/api/troubleshooting/image/${fileName}`;
 }
 
@@ -123,7 +123,7 @@ export default function EmergencyGuideDisplay({
   onExit, 
   isPreview = false,
   onSendToChat,
-  backButtonText = "戻る"
+  backButtonText = "戻めE
 }: EmergencyGuideDisplayProps) {
   const [guideData, setGuideData] = useState<EmergencyGuideData | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -150,7 +150,7 @@ export default function EmergencyGuideDisplay({
         const data = responseData.success && responseData.data ? responseData.data : responseData;
         setGuideData(data);
 
-        // 初期ステップを履歴に追加
+        // 初期スチE��プを履歴に追加
         if (data.steps && data.steps.length > 0) {
           const initialStep = data.steps[0];
           setExecutionHistory([{
@@ -185,13 +185,13 @@ export default function EmergencyGuideDisplay({
     if (!guideData) return;
 
     if (nextStepId) {
-      // 条件分岐で指定された次のステップに移動
+      // 条件刁E��で持E��された次のスチE��プに移勁E
       const nextIndex = guideData.steps.findIndex(step => step.id === nextStepId);
       if (nextIndex !== -1) {
         setCurrentStepIndex(nextIndex);
         setSelectedCondition(null);
 
-        // 次のステップを履歴に追加
+        // 次のスチE��プを履歴に追加
         const nextStep = guideData.steps[nextIndex];
         const newHistoryStep: FlowExecutionStep = {
           stepId: nextStep.id,
@@ -206,13 +206,13 @@ export default function EmergencyGuideDisplay({
         setExecutionHistory(prev => [...prev, newHistoryStep]);
       }
     } else {
-      // 次のステップに移動
+      // 次のスチE��プに移勁E
       if (currentStepIndex < guideData.steps.length - 1) {
         const nextIndex = currentStepIndex + 1;
         setCurrentStepIndex(nextIndex);
         setSelectedCondition(null);
 
-        // 次のステップを履歴に追加
+        // 次のスチE��プを履歴に追加
         const nextStep = guideData.steps[nextIndex];
         const newHistoryStep: FlowExecutionStep = {
           stepId: nextStep.id,
@@ -233,7 +233,7 @@ export default function EmergencyGuideDisplay({
       setCurrentStepIndex(currentStepIndex - 1);
       setSelectedCondition(null);
 
-      // 履歴から最後のステップを削除
+      // 履歴から最後�EスチE��プを削除
       setExecutionHistory(prev => prev.slice(0, -1));
     }
   };
@@ -247,11 +247,11 @@ export default function EmergencyGuideDisplay({
     setIsCompleted(true);
   };
 
-  // フロー実行結果をチャットに送信
+  // フロー実行結果をチャチE��に送信
   const sendToChat = () => {
     if (!guideData || executionHistory.length === 0) return;
 
-    // 実行履歴からチャット用のデータを作成
+    // 実行履歴からチャチE��用のチE�Eタを作�E
     const chatData = {
       title: guideData.title,
       description: guideData.description,
@@ -260,25 +260,25 @@ export default function EmergencyGuideDisplay({
       ),
       totalSteps: executionHistory.length,
       completedAt: new Date(),
-      isPartial: !isCompleted // 表示したフローをチャットに送信かどうかのフラグ
+      isPartial: !isCompleted // 表示したフローをチャチE��に送信かどぁE��のフラグ
     };
 
-    // カスタムイベントでチャットコンテキストに送信
+    // カスタムイベントでチャチE��コンチE��ストに送信
     window.dispatchEvent(new CustomEvent('emergency-guide-completed', {
       detail: chatData
     }));
 
-    // onSendToChat関数が提供されている場合は呼び出す
+    // onSendToChat関数が提供されてぁE��場合�E呼び出ぁE
     if (onSendToChat) {
       onSendToChat();
     }
 
-    // 表示したフローをチャットに送信の場合はガイド画面を閉じない
+    // 表示したフローをチャチE��に送信の場合�Eガイド画面を閉じなぁE
     if (isCompleted) {
       onExit();
     } else {
-      // 表示したフローをチャットに送信の場合は成功メッセージを表示
-      console.log('表示したフローをチャットに送信完了:', chatData);
+      // 表示したフローをチャチE��に送信の場合�E成功メチE��ージを表示
+      console.log('表示したフローをチャチE��に送信完亁E', chatData);
       setShowPartialSuccess(true);
       setTimeout(() => {
         setShowPartialSuccess(false);
@@ -304,7 +304,7 @@ export default function EmergencyGuideDisplay({
         </CardHeader>
         <CardContent>
           <p className="mb-4">{error || "ガイドデータが見つかりません"}</p>
-          <Button onClick={onExit}>戻る</Button>
+          <Button onClick={onExit}>戻めE/Button>
         </CardContent>
       </Card>
     );
@@ -318,8 +318,8 @@ export default function EmergencyGuideDisplay({
     return (
       <Card className="w-full max-w-4xl mx-auto">
         <CardContent>
-          <p className="text-center py-8">ステップが見つかりません</p>
-          <Button onClick={onExit} className="w-full">戻る</Button>
+          <p className="text-center py-8">スチE��プが見つかりません</p>
+          <Button onClick={onExit} className="w-full">戻めE/Button>
         </CardContent>
       </Card>
     );
@@ -339,14 +339,14 @@ export default function EmergencyGuideDisplay({
             </CardTitle>
           </div>
           <div className="text-sm text-gray-500 flex-shrink-0 ml-4">
-            ステップ {currentStepIndex + 1} / {guideData.steps.length}
+            スチE��チE{currentStepIndex + 1} / {guideData.steps.length}
           </div>
         </div>
       </CardHeader>
 
       <CardContent key={currentStep.id}>
         <div className="space-y-6">
-          {/* ステップタイトル */}
+          {/* スチE��プタイトル */}
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
             <h3 className="font-semibold text-blue-900 mb-2 text-lg">
               {currentStep.title}
@@ -361,14 +361,14 @@ export default function EmergencyGuideDisplay({
             </div>
           </div>
 
-          {/* 条件分岐 */}
+          {/* 条件刁E��E*/}
           {currentStep.type === 'decision' && currentStep.conditions && currentStep.conditions.length > 0 && (
             <div className="space-y-3">
               <h4 className="font-medium text-gray-900">
-                {isPreview ? '条件分岐:' : '選択してください：'}
+                {isPreview ? '条件刁E��E' : '選択してください�E�E}
               </h4>
               {isPreview ? (
-                // プレビューモードでは条件分岐の情報のみ表示
+                // プレビューモードでは条件刁E���E惁E��のみ表示
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {currentStep.conditions.map((condition, index) => (
                     <div
@@ -377,19 +377,19 @@ export default function EmergencyGuideDisplay({
                     >
                       <div className="font-medium text-sm">{condition.label}</div>
                       <div className="text-xs text-gray-500 mt-1">
-                        次ステップ: {(() => {
+                        次スチE��チE {(() => {
                           const targetStep = guideData.steps.find(s => s.id === condition.nextId);
                           const targetIndex = guideData.steps.findIndex(s => s.id === condition.nextId);
                           return targetStep ? 
-                            `${targetStep.title || `ステップ ${targetIndex + 1}`}` : 
-                            '未設定';
+                            `${targetStep.title || `スチE��チE${targetIndex + 1}`}` : 
+                            '未設宁E;
                         })()}
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                // 本番モードでは選択ボタンを表示
+                // 本番モードでは選択�Eタンを表示
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {currentStep.conditions.map((condition, index) => (
                     <Button
@@ -416,7 +416,7 @@ export default function EmergencyGuideDisplay({
                   <div key={index} className="relative">
                     <img
                       src={buildImageUrl(image.url)}
-                      alt={`${currentStep.title} - ${image.fileName || '画像'}`}
+                      alt={`${currentStep.title} - ${image.fileName || '画僁E}`}
                       className="w-full h-auto rounded-lg shadow-md"
                       onError={(e) => handleImageError(e, image.url)}
                     />
@@ -430,7 +430,7 @@ export default function EmergencyGuideDisplay({
               </div>
             </div>
           ) : currentStep.imageUrl ? (
-            // 古い形式の imageUrl のみのフォールバック
+            // 古ぁE��式�E imageUrl のみのフォールバック
             <div className="mt-4">
               <img
                 src={buildImageUrl(currentStep.imageUrl)}
@@ -442,7 +442,7 @@ export default function EmergencyGuideDisplay({
           ) : (
             <div className="mt-4 text-center py-4 bg-gray-50 rounded-lg">
               <ImageIcon className="mx-auto h-8 w-8 text-gray-400" />
-              <p className="mt-2 text-sm text-gray-600">このステップに画像はありません</p>
+              <p className="mt-2 text-sm text-gray-600">こ�EスチE��プに画像�Eありません</p>
             </div>
           )}
 
@@ -458,7 +458,7 @@ export default function EmergencyGuideDisplay({
             </Button>
 
             <div className="flex gap-2">
-              {/* ステップ2以降で送信ボタンを表示（プレビューモードでは非表示） */}
+              {/* スチE��チE以降で送信ボタンを表示�E��Eレビューモードでは非表示�E�E*/}
               {currentStepIndex >= 1 && !isCompleted && !isPreview && (
                 <Button
                   onClick={sendToChat}
@@ -466,11 +466,11 @@ export default function EmergencyGuideDisplay({
                   className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-300"
                 >
                   <Send className="h-4 w-4 mr-2" />
-                  表示したフローをチャットに送信
+                  表示したフローをチャチE��に送信
                 </Button>
               )}
 
-              {/* プレビューモードでは常に次へボタンを表示、本番モードでは条件分岐以外で表示 */}
+              {/* プレビューモードでは常に次へボタンを表示、本番モードでは条件刁E��以外で表示 */}
               {(isPreview || currentStep.type !== 'decision') && (
                 <Button
                   onClick={isLastStep ? handleComplete : () => handleNext()}
@@ -479,7 +479,7 @@ export default function EmergencyGuideDisplay({
                   {isLastStep ? (
                     <>
                       <CheckCircle className="h-4 w-4" />
-                      完了
+                      完亁E
                     </>
                   ) : (
                     <>
@@ -492,50 +492,50 @@ export default function EmergencyGuideDisplay({
             </div>
           </div>
 
-          {/* 完了後のチャット送信ボタン（プレビューモードでは非表示） */}
+          {/* 完亁E���EチャチE��送信ボタン�E��Eレビューモードでは非表示�E�E*/}
           {isCompleted && !isPreview && (
             <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="h-5 w-5 text-green-600" />
-                  <span className="text-green-800 font-medium">応急処置ガイドが完了しました</span>
+                  <span className="text-green-800 font-medium">応急処置ガイドが完亁E��ました</span>
                 </div>
                 <Button
                   onClick={sendToChat}
                   className="bg-green-600 hover:bg-green-700 text-white"
                 >
                   <Send className="h-4 w-4 mr-2" />
-                  チャットに送信
+                  チャチE��に送信
                 </Button>
               </div>
               <p className="text-green-700 text-sm mt-2">
-                実行したステップと画像をチャット履歴に記録します
+                実行したスチE��プと画像をチャチE��履歴に記録しまぁE
               </p>
             </div>
           )}
 
-          {/* プレビューモードでの完了メッセージ */}
+          {/* プレビューモードでの完亁E��チE��ージ */}
           {isCompleted && isPreview && (
             <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-blue-600" />
-                <span className="text-blue-800 font-medium">プレビュー完了</span>
+                <span className="text-blue-800 font-medium">プレビュー完亁E/span>
               </div>
               <p className="text-blue-700 text-sm mt-2">
-                フローのプレビューが完了しました。実際の使用時にはチャット送信機能が利用できます。
+                フローのプレビューが完亁E��ました。実際の使用時にはチャチE��送信機�Eが利用できます、E
               </p>
             </div>
           )}
 
-          {/* 表示したフローをチャットに送信成功メッセージ（プレビューモードでは非表示） */}
+          {/* 表示したフローをチャチE��に送信成功メチE��ージ�E��Eレビューモードでは非表示�E�E*/}
           {showPartialSuccess && !isPreview && (
             <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg animate-pulse">
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-blue-600" />
-                <span className="text-blue-800 font-medium">表示したフローをチャットに送信しました</span>
+                <span className="text-blue-800 font-medium">表示したフローをチャチE��に送信しました</span>
               </div>
               <p className="text-blue-700 text-sm mt-2">
-                現在までの実行履歴がチャット履歴に記録されました。ガイドを続行できます。
+                現在までの実行履歴がチャチE��履歴に記録されました。ガイドを続行できます、E
               </p>
             </div>
           )}

@@ -8,7 +8,7 @@ import {
 } from './offline-storage';
 
 /**
- * データURLをBlobに変換
+ * チE�EタURLをBlobに変換
  */
 function dataURLtoBlob(dataUrl: string): Blob {
   const arr = dataUrl.split(',');
@@ -25,7 +25,7 @@ function dataURLtoBlob(dataUrl: string): Blob {
 }
 
 /**
- * Base64のデータURLからFileオブジェクトを作成
+ * Base64のチE�EタURLからFileオブジェクトを作�E
  */
 function dataURLtoFile(dataUrl: string, filename: string): File {
   const blob = dataURLtoBlob(dataUrl);
@@ -33,31 +33,31 @@ function dataURLtoFile(dataUrl: string, filename: string): File {
 }
 
 /**
- * 指定されたチャットの未同期メッセージを同期
+ * 持E��されたチャチE��の未同期メチE��ージを同朁E
  */
 export async function syncChat(chatId: number) {
   try {
-    // 未同期メッセージを取得
+    // 未同期メチE��ージを取征E
     const messages = await getUnsyncedMessages(chatId);
     
     if (messages.length === 0) {
-      console.log('同期するメッセージがありません');
+      console.log('同期するメチE��ージがありません');
       return { success: true, totalSynced: 0 };
     }
     
-    console.log(`${messages.length}件のメッセージを同期します`);
+    console.log(`${messages.length}件のメチE��ージを同期します`);
     
-    // メッセージを1件ずつ同期
+    // メチE��ージめE件ずつ同期
     let syncedCount = 0;
     
     for (const message of messages) {
-      // 既に同期済みの場合はスキップ
+      // 既に同期済みの場合�EスキチE�E
       if (message.synced) {
         continue;
       }
       
       try {
-        // メッセージを送信
+        // メチE��ージを送信
         const response = await apiRequest('POST', `/api/chats/${chatId}/messages`, {
           content: message.content,
           senderId: message.senderId,
@@ -65,42 +65,42 @@ export async function syncChat(chatId: number) {
         });
         
         if (!response.ok) {
-          console.error('メッセージの同期に失敗しました:', await response.text());
+          console.error('メチE��ージの同期に失敗しました:', await response.text());
           continue;
         }
         
         const data = await response.json();
         
-        // メッセージを同期済みとしてマーク
+        // メチE��ージを同期済みとしてマ�Eク
         await markMessageAsSynced(message.localId, data.id);
         
-        // メディアがある場合は同期
+        // メチE��アがある場合�E同期
         if (message.media && message.media.length > 0) {
           for (const media of message.media) {
             if (media.synced) continue;
             
-            // 画像の場合は最適化
+            // 画像�E場合�E最適匁E
             let mediaUrl = media.url;
             if (media.type === 'image' && mediaUrl.startsWith('data:')) {
               try {
                 mediaUrl = await optimizeImageDataUrl(mediaUrl, 0.8);
               } catch (err) {
-                console.warn('画像の最適化に失敗しました:', err);
+                console.warn('画像�E最適化に失敗しました:', err);
               }
             }
             
-            // メディアデータを送信
+            // メチE��アチE�Eタを送信
             const formData = new FormData();
             
             if (mediaUrl.startsWith('data:')) {
-              // データURLの場合はファイルに変換
+              // チE�EタURLの場合�Eファイルに変換
               const file = dataURLtoFile(
                 mediaUrl, 
                 `media_${Date.now()}.${media.type === 'image' ? 'jpg' : 'mp4'}`
               );
               formData.append('file', file);
             } else {
-              // 既存のURLはそのまま送信
+              // 既存�EURLはそ�Eまま送信
               formData.append('url', mediaUrl);
             }
             
@@ -118,13 +118,13 @@ export async function syncChat(chatId: number) {
             });
             
             if (!mediaResponse.ok) {
-              console.error('メディアの同期に失敗しました:', await mediaResponse.text());
+              console.error('メチE��アの同期に失敗しました:', await mediaResponse.text());
               continue;
             }
             
             const mediaData = await mediaResponse.json();
             
-            // メディアを同期済みとしてマーク
+            // メチE��アを同期済みとしてマ�Eク
             await markMediaAsSynced(media.localId, mediaData.id);
           }
         }
@@ -142,7 +142,7 @@ export async function syncChat(chatId: number) {
         }));
         
       } catch (error) {
-        console.error('メッセージの同期処理中にエラーが発生しました:', error);
+        console.error('メチE��ージの同期処琁E��にエラーが発生しました:', error);
       }
     }
     
@@ -155,7 +155,7 @@ export async function syncChat(chatId: number) {
       stats
     };
   } catch (error) {
-    console.error('同期処理中にエラーが発生しました:', error);
+    console.error('同期処琁E��にエラーが発生しました:', error);
     return { 
       success: false, 
       totalSynced: 0,

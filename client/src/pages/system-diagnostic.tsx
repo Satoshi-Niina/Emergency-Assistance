@@ -28,7 +28,7 @@ export default function SystemDiagnosticPage() {
   const [isCheckingDb, setIsCheckingDb] = useState(false);
   const [isCheckingGpt, setIsCheckingGpt] = useState(false);
 
-  // APIのベースURLを取得
+  // APIのベ�EスURLを取征E
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
   const checkDatabaseConnection = async () => {
@@ -43,14 +43,14 @@ export default function SystemDiagnosticPage() {
       
       if (result.status === "OK") {
         toast({
-          title: "DB接続確認",
-          description: "データベース接続が正常です",
+          title: "DB接続確誁E,
+          description: "チE�Eタベ�Eス接続が正常でぁE,
           variant: "default",
         });
       } else {
         toast({
-          title: "DB接続確認",
-          description: result.message || "データベース接続エラー",
+          title: "DB接続確誁E,
+          description: result.message || "チE�Eタベ�Eス接続エラー",
           variant: "destructive",
         });
       }
@@ -62,7 +62,7 @@ export default function SystemDiagnosticPage() {
       });
       
       toast({
-        title: "DB接続確認",
+        title: "DB接続確誁E,
         description: errorMessage,
         variant: "destructive",
       });
@@ -82,7 +82,7 @@ export default function SystemDiagnosticPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          message: "テスト"
+          message: "チE��チE
         }),
       });
       
@@ -91,13 +91,13 @@ export default function SystemDiagnosticPage() {
       
       if (result.status === "OK") {
         toast({
-          title: "GPT接続確認",
-          description: "GPT接続が正常です",
+          title: "GPT接続確誁E,
+          description: "GPT接続が正常でぁE,
           variant: "default",
         });
       } else {
         toast({
-          title: "GPT接続確認",
+          title: "GPT接続確誁E,
           description: result.message || "GPT接続エラー",
           variant: "destructive",
         });
@@ -110,7 +110,7 @@ export default function SystemDiagnosticPage() {
       });
       
       toast({
-        title: "GPT接続確認",
+        title: "GPT接続確誁E,
         description: errorMessage,
         variant: "destructive",
       });
@@ -127,20 +127,20 @@ export default function SystemDiagnosticPage() {
   return (
     <div className="container mx-auto p-6 max-w-4xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">システム診断</h1>
+        <h1 className="text-3xl font-bold mb-2">シスチE��診断</h1>
         <p className="text-muted-foreground">
-          データベース接続とGPT接続の状態を確認できます
+          チE�Eタベ�Eス接続とGPT接続�E状態を確認できまぁE
         </p>
       </div>
 
-      {/* 全体実行ボタン */}
+      {/* 全体実行�Eタン */}
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold mb-2">一括診断</h3>
               <p className="text-sm text-muted-foreground">
-                すべての接続確認を一度に実行します
+                すべての接続確認を一度に実行しまぁE
               </p>
             </div>
             <Button 
@@ -153,25 +153,25 @@ export default function SystemDiagnosticPage() {
               ) : (
                 <RefreshCw className="h-4 w-4" />
               )}
-              全体診断実行
+              全体診断実衁E
             </Button>
           </div>
         </CardContent>
       </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
-        {/* DB接続確認 */}
+        {/* DB接続確誁E*/}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Database className="h-5 w-5" />
-              PostgreSQL接続確認
+              PostgreSQL接続確誁E
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
-                データベースへの接続状態を確認します
+                チE�Eタベ�Eスへの接続状態を確認しまぁE
               </p>
               <Button 
                 onClick={checkDatabaseConnection}
@@ -184,7 +184,7 @@ export default function SystemDiagnosticPage() {
                 ) : (
                   <CheckCircle className="h-4 w-4" />
                 )}
-                確認実行
+                確認実衁E
               </Button>
             </div>
 
@@ -198,7 +198,7 @@ export default function SystemDiagnosticPage() {
                     <XCircle className="h-4 w-4 text-red-500" />
                   )}
                   <Badge variant={dbCheckResult.status === "OK" ? "default" : "destructive"}>
-                    {dbCheckResult.status === "OK" ? "接続成功" : "接続失敗"}
+                    {dbCheckResult.status === "OK" ? "接続�E劁E : "接続失敁E}
                   </Badge>
                 </div>
                 
@@ -221,18 +221,18 @@ export default function SystemDiagnosticPage() {
           </CardContent>
         </Card>
 
-        {/* GPT接続確認 */}
+        {/* GPT接続確誁E*/}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
-              GPT接続確認
+              GPT接続確誁E
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
-                OpenAI APIへの接続状態を確認します
+                OpenAI APIへの接続状態を確認しまぁE
               </p>
               <Button 
                 onClick={checkGptConnection}
@@ -245,7 +245,7 @@ export default function SystemDiagnosticPage() {
                 ) : (
                   <CheckCircle className="h-4 w-4" />
                 )}
-                確認実行
+                確認実衁E
               </Button>
             </div>
 
@@ -259,13 +259,13 @@ export default function SystemDiagnosticPage() {
                     <XCircle className="h-4 w-4 text-red-500" />
                   )}
                   <Badge variant={gptCheckResult.status === "OK" ? "default" : "destructive"}>
-                    {gptCheckResult.status === "OK" ? "接続成功" : "接続失敗"}
+                    {gptCheckResult.status === "OK" ? "接続�E劁E : "接続失敁E}
                   </Badge>
                 </div>
                 
                 {gptCheckResult.status === "OK" && gptCheckResult.reply && (
                   <div className="text-sm">
-                    <span className="font-medium">GPT応答:</span>
+                    <span className="font-medium">GPT応筁E</span>
                     <div className="mt-1 p-2 bg-gray-50 rounded text-xs max-h-20 overflow-y-auto">
                       {gptCheckResult.reply}
                     </div>
@@ -314,7 +314,7 @@ export default function SystemDiagnosticPage() {
               <div className="mt-4 p-3 bg-green-50 text-green-700 rounded-md">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4" />
-                  <span className="font-medium">すべての接続が正常です</span>
+                  <span className="font-medium">すべての接続が正常でぁE/span>
                 </div>
               </div>
             )}
@@ -323,7 +323,7 @@ export default function SystemDiagnosticPage() {
               <div className="mt-4 p-3 bg-yellow-50 text-yellow-700 rounded-md">
                 <div className="flex items-center gap-2">
                   <AlertCircle className="h-4 w-4" />
-                  <span className="font-medium">一部の接続に問題があります</span>
+                  <span className="font-medium">一部の接続に問題がありまぁE/span>
                 </div>
               </div>
             )}

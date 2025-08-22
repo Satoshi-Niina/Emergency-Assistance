@@ -26,12 +26,12 @@ const BaseDataPage = lazy(() => import('./pages/base-data'));
 
 const NotFoundPage = lazy(() => import('./pages/not-found'));
 
-// 認証状態に基づいてルートパスを制御するコンポーネント
+// 認証状態に基づくルートパスを制御するコンポーネント
 function RootRedirect() {
   console.log('🔍 RootRedirect - コンポーネント実行開始');
   const { user, isLoading } = useAuth();
   
-  console.log('🔍 RootRedirect - 認証状態確認:', {
+  console.log('🔍 RootRedirect - 認証状態確認', {
     isLoading,
     hasUser: !!user,
     username: user?.username
@@ -54,7 +54,7 @@ function RootRedirect() {
 
 function App() {
   console.log('🔧 App.tsx: アプリケーション初期化開始');
-  console.log('🔧 App.tsx: 環境変数確認:', {
+  console.log('🔧 App.tsx: 環境変数確認', {
     VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
     NODE_ENV: import.meta.env.NODE_ENV,
     timestamp: new Date().toISOString()
@@ -83,7 +83,7 @@ function App() {
                     <Route path="/" element={<RootRedirect />} />
                     <Route path="/login" element={<LoginPage />} />
                     
-                    {/* 認証が必要なルート */}
+                    {/* 認証が忁E��なルーチE*/}
                     <Route path="/chat" element={
                       <ProtectedRoute>
                         <ChatPage />
@@ -114,28 +114,28 @@ function App() {
                       </ProtectedRoute>
                     } />
                     
-                    {/* 設定ページ（一般ユーザーもアクセス可能） */}
+                    {/* 設定�Eージ�E�一般ユーザーもアクセス可能�E�E*/}
                     <Route path="/settings" element={
                       <ProtectedRoute>
                         <SettingsPage />
                       </ProtectedRoute>
                     } />
                     
-                    {/* システム診断ページ（一般ユーザーもアクセス可能） */}
+                    {/* シスチE��診断ペ�Eジ�E�一般ユーザーもアクセス可能�E�E*/}
                     <Route path="/system-diagnostic" element={
                       <ProtectedRoute>
                         <SystemDiagnosticPage />
                       </ProtectedRoute>
                     } />
                     
-                    {/* 基礎データ管理ページ */}
+                    {/* 基礎データ管琁E�Eージ */}
                     <Route path="/base-data" element={
                       <ProtectedRoute>
                         <BaseDataPage />
                       </ProtectedRoute>
                     } />
                     
-                    {/* 管理者権限が必要なルート */}
+                    {/* 管琁E��E��限が忁E��なルーチE*/}
                     
                     <Route path="/users" element={
                       <ProtectedRoute requireAdmin={true}>

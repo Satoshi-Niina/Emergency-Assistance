@@ -40,13 +40,13 @@ const newFlowTemplate: Omit<Flow, 'id' | 'createdAt' | 'updatedAt'> = {
   keywords: [],
   steps: [
     {
-      id: 'start_node', type: 'start', title: '開始', description: 'このフローを開始します', nextId: 'step_1'
+      id: 'start_node', type: 'start', title: '開姁E, description: 'こ�Eフローを開始しまぁE, nextId: 'step_1'
     },
     {
-      id: 'step_1', type: 'step', title: '最初のステップ', description: 'ここに最初の指示を入力します。', images: [], nextId: 'end_node'
+      id: 'step_1', type: 'step', title: '最初�EスチE��チE, description: 'ここに最初�E持E��を�E力します、E, images: [], nextId: 'end_node'
     },
     {
-      id: 'end_node', type: 'end', title: '終了', description: 'フローが完了しました。'
+      id: 'end_node', type: 'end', title: '終亁E, description: 'フローが完亁E��ました、E
     },
   ],
 };
@@ -84,7 +84,7 @@ export default function TroubleshootingPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/troubleshooting/list'] });
-      toast({ title: '成功', description: 'ファイルが正常に保存されました。' });
+      toast({ title: '成功', description: 'ファイルが正常に保存されました、E });
       setIsEditorOpen(false);
       setSelectedFlow(null);
       setFlowState({ view: 'list' });
@@ -96,7 +96,7 @@ export default function TroubleshootingPage() {
     mutationFn: (flowId: string) => apiRequest('DELETE', `/api/troubleshooting/${flowId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/troubleshooting/list'] });
-      toast({ title: '成功', description: 'ファイルが削除されました。' });
+      toast({ title: '成功', description: 'ファイルが削除されました、E });
       setFlowToDelete(null);
       setIsWarningOpen(false);
     },
@@ -129,7 +129,7 @@ export default function TroubleshootingPage() {
     apiRequest('GET', `/api/troubleshooting/detail/${flowId}`).then(res => res.json()).then(fullFlowData => {
       setSelectedFlow(fullFlowData);
       setIsEditorOpen(true);
-    }).catch(err => toast({ title: 'エラー', description: `ファイルデータの取得に失敗しました: ${err.message}`, variant: 'destructive' }));
+    }).catch(err => toast({ title: 'エラー', description: `ファイルチE�Eタの取得に失敗しました: ${err.message}`, variant: 'destructive' }));
   };
 
   const handleOpenViewer = (flow: Flow) => {
@@ -158,7 +158,7 @@ export default function TroubleshootingPage() {
     setPreviewFlowId(null);
   };
 
-  // プレビューが開いている場合
+  // プレビューが開ぁE��ぁE��場吁E
   if (previewFlowId) {
     return (
       <div className="container mx-auto p-4 sm:p-6 bg-gray-50 min-h-screen">
@@ -173,9 +173,9 @@ export default function TroubleshootingPage() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 flex items-center gap-3">
             <Workflow className="w-8 h-8 text-blue-600" />
-            応急処置データ管理
+            応急処置チE�Eタ管琁E
           </h1>
-          <p className="text-gray-500 mt-1">フローの新規作成、および既存フローの編集を行います。</p>
+          <p className="text-gray-500 mt-1">フローの新規作�E、およ�E既存フローの編雁E��行います、E/p>
         </div>
       </div>
 
@@ -183,11 +183,11 @@ export default function TroubleshootingPage() {
         <TabsList className="grid w-full grid-cols-2 bg-gray-200 p-1 rounded-lg">
           <TabsTrigger value="generator" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md">
             <BrainCircuit className="h-5 w-5" />
-            新規フロー生成
+            新規フロー生�E
           </TabsTrigger>
           <TabsTrigger value="editor" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md">
             <ListChecks className="h-5 w-5" />
-            フローの管理・編集
+            フローの管琁E�E編雁E
           </TabsTrigger>
         </TabsList>
 
@@ -246,7 +246,7 @@ export default function TroubleshootingPage() {
         onOpenChange={setIsWarningOpen}
         onConfirm={confirmDelete}
         title="フローの削除"
-        description="本当にこのフローを削除しますか？この操作は元に戻せません。"
+        description="本当にこ�Eフローを削除しますか�E�この操作�E允E��戻せません、E
       />
     </div>
   );

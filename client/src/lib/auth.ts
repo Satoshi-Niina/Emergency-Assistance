@@ -9,10 +9,10 @@ import { AUTH_API } from './api/config';
  */
 export const login = async (credentials: LoginCredentials) => {
   try {
-    console.log('🔐 ログイン試行:', { username: credentials.username });
-    console.log('📡 リクエストURL:', AUTH_API.LOGIN);
+    console.log('🔐 ログイン試衁E', { username: credentials.username });
+    console.log('📡 リクエスチERL:', AUTH_API.LOGIN);
     console.log('🔗 ログインURL:', AUTH_API.LOGIN);
-    console.log('📡 リクエスト設定:', {
+    console.log('📡 リクエスト設宁E', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -21,7 +21,7 @@ export const login = async (credentials: LoginCredentials) => {
       body: JSON.stringify(credentials)
     });
     
-    // リクエスト前のデバッグ情報
+    // リクエスト前のチE��チE��惁E��
     console.log('🌐 現在のlocation:', {
       origin: window.location.origin,
       hostname: window.location.hostname,
@@ -59,29 +59,29 @@ export const login = async (credentials: LoginCredentials) => {
         errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       }
       
-      console.error('❌ ログインエラー:', {
+      console.error('❁Eログインエラー:', {
         status: response.status,
         statusText: response.statusText,
         message: errorMessage
       });
       
-      // 503エラーの場合は特別なメッセージ
+      // 503エラーの場合�E特別なメチE��ージ
       if (response.status === 503) {
-        throw new Error('バックエンドサーバーが利用できません。しばらく待ってから再試行してください。');
+        throw new Error('バックエンドサーバ�Eが利用できません。しばらく征E��てから再試行してください、E);
       }
       
       throw new Error(errorMessage);
     }
     
     const userData = await response.json();
-    console.log('✅ ログイン成功:', userData);
+    console.log('✁Eログイン成功:', userData);
     return userData;
   } catch (error) {
-    console.error('❌ Login error:', error);
+    console.error('❁ELogin error:', error);
     
-    // ネットワークエラーの場合
+    // ネットワークエラーの場吁E
     if (error instanceof TypeError && error.message.includes('fetch')) {
-      throw new Error('バックエンドサーバーに接続できません。ネットワーク接続を確認してください。');
+      throw new Error('バックエンドサーバ�Eに接続できません。ネチE��ワーク接続を確認してください、E);
     }
     
     if (error instanceof Error) {
@@ -96,7 +96,7 @@ export const login = async (credentials: LoginCredentials) => {
  */
 export const logout = async () => {
   try {
-    console.log('🔐 ログアウト試行:', AUTH_API.LOGOUT);
+    console.log('🔐 ログアウト試衁E', AUTH_API.LOGOUT);
     
     const response = await fetch(AUTH_API.LOGOUT, {
       method: 'POST',

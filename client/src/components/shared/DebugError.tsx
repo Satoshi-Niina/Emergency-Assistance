@@ -8,7 +8,7 @@ export function DebugError({ enabled = false }: DebugErrorProps) {
   const [shouldError, setShouldError] = useState(false);
 
   if (enabled && shouldError) {
-    throw new Error('デバッグ用の強制エラー');
+    throw new Error('チE��チE��用の強制エラー');
   }
 
   if (!enabled) {
@@ -21,7 +21,7 @@ export function DebugError({ enabled = false }: DebugErrorProps) {
         onClick={() => setShouldError(true)}
         className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
       >
-        エラーを発生させる（テスト用）
+        エラーを発生させる�E�テスト用�E�E
       </button>
     </div>
   );

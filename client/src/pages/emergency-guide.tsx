@@ -9,13 +9,13 @@ import { Button } from "../components/ui/button";
 import { useToast } from "../hooks/use-toast.ts";
 
 const EmergencyGuidePage: React.FC = () => {
-  // URLからクエリパラメータを取得
+  // URLからクエリパラメータを取征E
   const getQueryParam = (name: string): string | null => {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get(name);
   };
 
-  // 初期タブをURLから設定
+  // 初期タブをURLから設宁E
   const initialTab = getQueryParam('tab') || "edit";
   const [activeTab, setActiveTab] = useState(initialTab);
   const [targetGuideId, setTargetGuideId] = useState<string | null>(
@@ -28,10 +28,10 @@ const EmergencyGuidePage: React.FC = () => {
     null,
   );
 
-  // 検索機能の状態
+  // 検索機�Eの状慁E
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // タブ切り替えイベントのリスナー
+  // タブ�Eり替えイベント�Eリスナ�E
   useEffect(() => {
     const handleSwitchToFlowTab = (event: Event) => {
       const customEvent = event as CustomEvent;
@@ -58,7 +58,7 @@ const EmergencyGuidePage: React.FC = () => {
     };
   }, []);
 
-  // フローデータ更新イベントのリスナー
+  // フローチE�Eタ更新イベント�Eリスナ�E
   useEffect(() => {
     const refreshFlowList = async () => {
       try {
@@ -68,9 +68,9 @@ const EmergencyGuidePage: React.FC = () => {
             'Content-Type': 'application/json'
           }
         });
-        if (!response.ok) throw new Error("読み込み失敗");
+        if (!response.ok) throw new Error("読み込み失敁E);
         const data = await response.json();
-        // APIレスポンスの構造に合わせてデータをマッピング
+        // APIレスポンスの構造に合わせてチE�Eタを�EチE��ング
         const flows = data.success && data.data ? data.data : (Array.isArray(data) ? data : []);
         // フロー一覧を直接更新
         if (typeof window !== 'undefined') {
@@ -94,15 +94,15 @@ const EmergencyGuidePage: React.FC = () => {
     };
   }, []);
 
-  // データ更新を監視（削除されたファイルの再表示問題も修正）
+  // チE�Eタ更新を監視（削除されたファイルの再表示問題も修正�E�E
   useEffect(() => {
     const handleFlowDataUpdated = (event) => {
-      console.log('🔄 フローデータ更新イベントを受信:', event.detail);
-      // 強制的にキャッシュをクリアして再取得
+      console.log('🔄 フローチE�Eタ更新イベントを受信:', event.detail);
+      // 強制皁E��キャチE��ュをクリアして再取征E
       fetchFlowList(true);
     };
 
-    // 複数のイベントタイプに対応
+    // 褁E��のイベントタイプに対忁E
     const eventTypes = [
       'flowDataUpdated',
       'troubleshootingDataUpdated', 
@@ -114,7 +114,7 @@ const EmergencyGuidePage: React.FC = () => {
       window.addEventListener(eventType, handleFlowDataUpdated);
     });
 
-    // 定期的な更新チェックを無効化（イベントベースで十分）
+    // 定期皁E��更新チェチE��を無効化（イベント�Eースで十�E�E�E
     // const intervalId = setInterval(() => {
     //   fetchFlowList(true);
     // }, 30000); // 30秒ごと
@@ -127,10 +127,10 @@ const EmergencyGuidePage: React.FC = () => {
     };
   }, []);
 
-  // アップロード成功時のハンドラー
+  // アチE�Eロード�E功時のハンドラー
   const handleUploadSuccess = (guideId: string) => {
     setLastUploadedGuideId(guideId);
-    // アップロード成功後に編集タブに切り替え
+    // アチE�Eロード�E功後に編雁E��ブに刁E��替ぁE
     setActiveTab("edit");
   };
 
@@ -141,13 +141,13 @@ const EmergencyGuidePage: React.FC = () => {
   const fetchFlowList = async (forceRefresh = false) => {
     try {
       setIsLoadingFlowList(true);
-      console.log(`🔄 応急処置データ一覧の取得を開始します (forceRefresh: ${forceRefresh})`);
+      console.log(`🔄 応急処置チE�Eタ一覧の取得を開始しまぁE(forceRefresh: ${forceRefresh})`);
 
-      // キャッシュクリア処理を簡素化
+      // キャチE��ュクリア処琁E��簡素匁E
         if (forceRefresh && typeof window !== 'undefined') {
           localStorage.clear();
           sessionStorage.clear();
-          console.log('🧹 キャッシュクリア完了');
+          console.log('🧹 キャチE��ュクリア完亁E);
         }
 
       const timestamp = Date.now();
@@ -162,17 +162,17 @@ const EmergencyGuidePage: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`応急処置データの取得に失敗しました: ${response.status}`);
+        throw new Error(`応急処置チE�Eタの取得に失敗しました: ${response.status}`);
       }
 
       const data = await response.json();
 
-      // APIレスポンスの構造に合わせてデータをマッピング
+      // APIレスポンスの構造に合わせてチE�Eタを�EチE��ング
       const flows = data.success && data.data ? data.data : (Array.isArray(data) ? data : []);
-      console.log(`✅ 取得したフローデータ: ${flows.length}件`);
+      console.log(`✁E取得したフローチE�Eタ: ${flows.length}件`);
       setFlowList(flows);
 
-      // データをキャッシュ
+      // チE�EタをキャチE��ュ
       if (typeof window !== 'undefined') {
         localStorage.setItem('emergencyFlowList', JSON.stringify({
           data: flows,
@@ -183,10 +183,10 @@ const EmergencyGuidePage: React.FC = () => {
       }
 
     } catch (error) {
-      console.error('❌ 応急処置データ取得エラー:', error);
+      console.error('❁E応急処置チE�Eタ取得エラー:', error);
       toast({
         title: "エラー",
-        description: "応急処置データの取得に失敗しました",
+        description: "応急処置チE�Eタの取得に失敗しました",
         variant: "destructive",
       });
       setFlowList([]);
@@ -195,13 +195,13 @@ const EmergencyGuidePage: React.FC = () => {
     }
   };
 
-  // ガイド表示を終了する関数
+  // ガイド表示を終亁E��る関数
   const handleExitDisplay = () => {
     setDisplayingGuideId(null);
     setActiveTab("edit");
   };
 
-  // ガイド表示中の場合
+  // ガイド表示中の場吁E
   if (displayingGuideId && activeTab === "display") {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -216,15 +216,15 @@ const EmergencyGuidePage: React.FC = () => {
   return (
     <div className="h-screen flex flex-col">
       <Helmet>
-        <title>応急処置ガイド - Emergency Assistance</title>
-        <meta name="description" content="応急処置ガイドの管理と表示" />
+        <title>応急処置ガイチE- Emergency Assistance</title>
+        <meta name="description" content="応急処置ガイド�E管琁E��表示" />
       </Helmet>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
         <div className="px-4 pt-8">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="upload">アップロード</TabsTrigger>
-            <TabsTrigger value="edit">編集・管理</TabsTrigger>
+            <TabsTrigger value="upload">アチE�EローチE/TabsTrigger>
+            <TabsTrigger value="edit">編雁E�E管琁E/TabsTrigger>
           </TabsList>
         </div>
 

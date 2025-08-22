@@ -13,7 +13,7 @@ export const openDatabase = async () => {
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
       
-      // 未同期メッセージ用のストアを作成
+      // 未同期メチE��ージ用のストアを作�E
       if (!db.objectStoreNames.contains('unsyncedMessages')) {
         const store = db.createObjectStore('unsyncedMessages', { keyPath: 'localId', autoIncrement: true });
         store.createIndex('by-chat', 'chatId', { unique: false });

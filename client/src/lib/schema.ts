@@ -8,10 +8,10 @@ export type User = {
   department?: string;
 };
 
-// ログインスキーマの定義
+// ログインスキーマ�E定義
 export const loginSchema = z.object({
   username: z.string().min(1, "ユーザー名を入力してください"),
   password: z.string().min(1, "パスワードを入力してください"),
 });
 
-// 他のスキーマや型定義があればここに追加
+// 他�Eスキーマや型定義があれ�Eここに追加

@@ -4,18 +4,18 @@ import { useState, useEffect, useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { X, ChevronLeft, ChevronRight, Info } from "lucide-react";
 
-// 画像パスを修正するヘルパー関数 - PNG形式に統一
+// 画像パスを修正するヘルパ�E関数 - PNG形式に統一
 function fixImagePath(path: string | undefined): string {
   if (!path) return '';
   
-  // プロトコルを含むURLの場合はそのまま返す (外部リンク)
+  // プロトコルを含むURLの場合�Eそ�Eまま返す (外部リンク)
   if (path.startsWith('http://') || path.startsWith('https://')) {
     return path;
   }
   
-  // すでに knowledge-base パスを持っていればそのまま返す
+  // すでに knowledge-base パスを持ってぁE��ばそ�Eまま返す
   if (path.includes('/knowledge-base/images/')) {
-    return path; // 元の拡張子を維持
+    return path; // 允E�E拡張子を維持E
   }
   
   // uploads パスから knowledge-base パスへ変換
@@ -23,17 +23,17 @@ function fixImagePath(path: string | undefined): string {
     return path.replace('/uploads/', '/knowledge-base/');
   }
   
-  // 画像ファイルの拡張子を持つパスはファイル名だけ抽出して知識ベースのパスに変換
+  // 画像ファイルの拡張子を持つパスはファイル名だけ抽出して知識�Eースのパスに変換
   if (path.endsWith('.png') || path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.svg')) {
     const fileName = path.split('/').pop();
     if (fileName) {
-      // SVG形式の場合はPNG形式に変換
+      // SVG形式�E場合�EPNG形式に変換
       if (fileName.endsWith('.svg')) {
         const pngFileName = fileName.replace('.svg', '.png');
         return `/knowledge-base/images/${pngFileName}`;
       }
       
-      // 他の形式はそのまま
+      // 他�E形式�Eそ�Eまま
       return `/knowledge-base/images/${fileName}`;
     }
   }
@@ -44,19 +44,19 @@ function fixImagePath(path: string | undefined): string {
 interface ImageMetaData {
   metadata?: {
     タイトル?: string;
-    作成者?: string;
-    作成日?: string;
+    作�E老E: string;
+    作�E日?: string;
     修正日?: string;
-    説明?: string;
+    説昁E: string;
   };
   slides?: Array<{
     スライド番号?: number;
     タイトル?: string | null;
-    本文?: string[];
-    ノート?: string | null;
-    画像テキスト?: Array<{
+    本斁E: string[];
+    ノ�EチE: string | null;
+    画像テキスチE: Array<{
       画像パス?: string;
-      テキスト?: string;
+      チE��スチE: string;
     }>;
   }>;
 }
@@ -71,12 +71,12 @@ export default function ImagePreviewModal() {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [metadataJson, setMetadataJson] = useState<ImageMetaData | null>(null);
   const [isLoadingMetadata, setIsLoadingMetadata] = useState(false);
-  // 説明文パネルを完全に非表示にする（常にfalse）
+  // 説明文パネルを完�Eに非表示にする�E�常にfalse�E�E
   const showInfo = false;
-  const [title, setTitle] = useState<string>("画像プレビュー");
+  const [title, setTitle] = useState<string>("画像�Eレビュー");
   const [content, setContent] = useState<string>("");
   
-  // メタデータを読み込む
+  // メタチE�Eタを読み込む
   const loadMetadata = async (url: string) => {
     try {
       setIsLoadingMetadata(true);
@@ -105,46 +105,46 @@ export default function ImagePreviewModal() {
     
     setCurrentSlideIndex(newIndex);
     
-    // 新スライドURLを設定
+    // 新スライドURLを設宁E
     const newSlideUrl = allSlides[newIndex];
     setImageUrl(newSlideUrl);
     
-    // PNG形式のみを使用するため、フォールバックは設定しない
+    // PNG形式�Eみを使用するため、フォールバックは設定しなぁE
     setPngFallbackUrl("");
   };
 
   useEffect(() => {
-    // プレビュー画像イベントのリスナー
+    // プレビュー画像イベント�Eリスナ�E
     const handlePreviewImage = (e: Event) => {
       const customEvent = e as CustomEvent;
       if (customEvent.detail) {
-        // URLを設定
+        // URLを設宁E
         if (customEvent.detail.url) {
           setImageUrl(customEvent.detail.url);
         }
         
-        // PNG形式のフォールバックURLを設定
+        // PNG形式�EフォールバックURLを設宁E
         if (customEvent.detail.pngFallbackUrl) {
           setPngFallbackUrl(customEvent.detail.pngFallbackUrl);
         } else {
           setPngFallbackUrl("");
         }
         
-        // タイトルを設定
+        // タイトルを設宁E
         if (customEvent.detail.title) {
           setTitle(customEvent.detail.title);
         } else {
-          setTitle("画像プレビュー");
+          setTitle("画像�Eレビュー");
         }
         
-        // コンテンツ（説明文）を設定
+        // コンチE��チE��説明文�E�を設宁E
         if (customEvent.detail.content) {
           setContent(customEvent.detail.content);
         } else {
           setContent("");
         }
         
-        // メタデータJSONへのパスを設定
+        // メタチE�EタJSONへのパスを設宁E
         if (customEvent.detail.metadata_json) {
           setMetadataUrl(customEvent.detail.metadata_json);
           loadMetadata(customEvent.detail.metadata_json);
@@ -153,10 +153,10 @@ export default function ImagePreviewModal() {
           setMetadataJson(null);
         }
         
-        // 全スライドの配列を設定
+        // 全スライド�E配�Eを設宁E
         if (customEvent.detail.all_slides && Array.isArray(customEvent.detail.all_slides)) {
           setAllSlides(customEvent.detail.all_slides);
-          // 現在の画像がスライド配列のどこにあるか見つける
+          // 現在の画像がスライド�E列�Eどこにあるか見つける
           const index = customEvent.detail.all_slides.findIndex(
             (url: string) => url === customEvent.detail.url
           );
@@ -166,10 +166,10 @@ export default function ImagePreviewModal() {
           setCurrentSlideIndex(0);
         }
         
-        // モーダルを必ず表示する
+        // モーダルを忁E��表示する
         setIsOpen(true);
         
-        // 情報パネルは表示しない（setShowInfoを削除）
+        // 惁E��パネルは表示しなぁE��EetShowInfoを削除�E�E
       }
     };
     
@@ -180,11 +180,11 @@ export default function ImagePreviewModal() {
     };
   }, []);
 
-  // 現在のスライドに関連するスライド情報を取得
+  // 現在のスライドに関連するスライド情報を取征E
   const getCurrentSlideInfo = () => {
     if (!metadataJson || !metadataJson.slides) return null;
     
-    // 現在のスライドインデックスに一致するスライド情報を探す
+    // 現在のスライドインチE��クスに一致するスライド情報を探ぁE
     const currentSlideNumber = currentSlideIndex + 1; // 0-indexから1-indexに変換
     return metadataJson.slides.find(
       slide => slide.スライド番号 === currentSlideNumber
@@ -203,12 +203,12 @@ export default function ImagePreviewModal() {
         <div className="sr-only">
           <h2 id="dialog-title">{metadataJson?.metadata?.タイトル || title}</h2>
           <p id="dialog-description">拡大画像ビューワー</p>
-          <p id="image-preview-description">画像のプレビュー表示と関連情報の確認ができます</p>
+          <p id="image-preview-description">画像�Eプレビュー表示と関連惁E��の確認ができまぁE/p>
         </div>
         <div className="w-full flex justify-between items-center p-2 bg-blue-700 text-white">
           <h3 className="text-sm font-medium ml-2">
             {metadataJson?.metadata?.タイトル || title} 
-            {allSlides.length > 1 && ` - スライド ${currentSlideIndex + 1}/${allSlides.length}`}
+            {allSlides.length > 1 && ` - スライチE${currentSlideIndex + 1}/${allSlides.length}`}
           </h3>
           <div className="flex items-center">
             <Button 
@@ -239,19 +239,19 @@ export default function ImagePreviewModal() {
             <div className="w-12 h-12 rounded-full border-4 border-blue-600 border-t-transparent animate-spin"></div>
           </div>
           
-          {/* メイン画像表示 - 拡張子はそのまま使用、エラー時は自動切り替え */}
+          {/* メイン画像表示 - 拡張子�Eそ�Eまま使用、エラー時�E自動�Eり替ぁE*/}
           <img 
             src={fixImagePath(imageUrl || '')} 
-            alt={currentSlideInfo?.タイトル || title || "拡大画像"} 
+            alt={currentSlideInfo?.タイトル || title || "拡大画僁E} 
             className="max-w-full max-h-[70vh] object-contain rounded-lg border border-blue-500 z-10 relative"
             loading="eager"
             decoding="async"
             onLoad={(e) => {
-              // 読み込み完了時にプレースホルダーを非表示に
+              // 読み込み完亁E��にプレースホルダーを非表示に
               const imgElement = e.currentTarget;
               imgElement.classList.add('loaded');
               
-              // 親要素を取得
+              // 親要素を取征E
               const parent = imgElement.parentElement;
               if (parent) {
                 // 読み込み中プレースホルダーを非表示に
@@ -264,22 +264,22 @@ export default function ImagePreviewModal() {
               }
             }}
             onError={(e) => {
-              // エラー発生時は包括的なフォールバック処理
+              // エラー発生時は匁E��皁E��フォールバック処琁E
               const imgElement = e.currentTarget;
               const originalSrc = imgElement.src || '';
               
               console.log('画像表示エラー:', originalSrc);
               
               try {
-                // 1. 専用フォールバックURLが指定されている場合
+                // 1. 専用フォールバックURLが指定されてぁE��場吁E
                 if (pngFallbackUrl && pngFallbackUrl.trim() !== '') {
-                  console.log('指定されたフォールバックURLを使用:', pngFallbackUrl);
+                  console.log('持E��されたフォールバックURLを使用:', pngFallbackUrl);
                   imgElement.src = fixImagePath(pngFallbackUrl);
                   return;
                 }
                 
                 // 2. ファイル拡張子に基づくフォールバック
-                // SVG画像の場合はPNGにフォールバック
+                // SVG画像�E場合�EPNGにフォールバック
                 if (originalSrc.endsWith('.svg')) {
                   console.log('SVG->PNGのフォールバック');
                   const pngPath = originalSrc.replace('.svg', '.png');
@@ -287,7 +287,7 @@ export default function ImagePreviewModal() {
                   return;
                 }
                 
-                // JPEG/JPG形式の場合はPNGにフォールバック
+                // JPEG/JPG形式�E場合�EPNGにフォールバック
                 if (originalSrc.endsWith('.jpeg') || originalSrc.endsWith('.jpg')) {
                   console.log('JPEG->PNGのフォールバック');
                   const pngPath = originalSrc.replace(/\.(jpeg|jpg)$/, '.png');
@@ -295,8 +295,8 @@ export default function ImagePreviewModal() {
                   return;
                 }
                 
-                // 3. パスの修正を試みる
-                // knowledge-baseパスが含まれていない場合
+                // 3. パスの修正を試みめE
+                // knowledge-baseパスが含まれてぁE��ぁE��吁E
                 if (!originalSrc.includes('/knowledge-base/')) {
                   const fileName = originalSrc.split('/').pop();
                   if (fileName) {
@@ -306,10 +306,10 @@ export default function ImagePreviewModal() {
                   }
                 }
                 
-                // 4. 選択したスライドが1つで、全スライドリストがある場合は別のスライドを試す
+                // 4. 選択したスライドが1つで、�Eスライドリストがある場合�E別のスライドを試ぁE
                 if (allSlides.length > 1) {
                   const nextIndex = (currentSlideIndex + 1) % allSlides.length;
-                  console.log(`現在のスライドが表示できないため、次のスライド(${nextIndex})に切り替え`);
+                  console.log(`現在のスライドが表示できなぁE��め、次のスライチE${nextIndex})に刁E��替ぁE);
                   changeSlide('next');
                   return;
                 }
@@ -317,13 +317,13 @@ export default function ImagePreviewModal() {
                 // 5. 最終手段: エラー表示の提示
                 console.log('すべてのフォールバック試行が失敗、エラー表示');
                 
-                // エラーメッセージをオーバーレイ表示
+                // エラーメチE��ージをオーバ�Eレイ表示
                 const parent = imgElement.parentElement;
                 if (parent) {
                   // imgElementを非表示
                   imgElement.style.opacity = '0.2';
                   
-                  // エラーメッセージを表示（既存の場合は作成しない）
+                  // エラーメチE��ージを表示�E�既存�E場合�E作�EしなぁE��E
                   if (!parent.querySelector('.error-message')) {
                     const errorDiv = document.createElement('div');
                     errorDiv.className = 'error-message absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-50 text-white p-4 rounded-lg z-20';
@@ -341,7 +341,7 @@ export default function ImagePreviewModal() {
                   }
                 }
               } catch (error) {
-                console.error('エラー処理中に例外が発生:', error);
+                console.error('エラー処琁E��に例外が発甁E', error);
               }
             }}
           />
@@ -358,7 +358,7 @@ export default function ImagePreviewModal() {
           )}
         </div>
         
-        {/* 情報パネル - 表示/非表示切り替え可能 */}
+        {/* 惁E��パネル - 表示/非表示刁E��替え可能 */}
         {showInfo && (
           <div className="w-full border-t border-blue-500 bg-gray-900 p-4 text-white">
             <Tabs defaultValue="slide" className="w-full">
@@ -378,24 +378,24 @@ export default function ImagePreviewModal() {
                 ) : currentSlideInfo ? (
                   <div className="text-sm">
                     <h4 className="font-medium mb-1">
-                      {currentSlideInfo.タイトル || `スライド ${currentSlideInfo.スライド番号}`}
+                      {currentSlideInfo.タイトル || `スライチE${currentSlideInfo.スライド番号}`}
                     </h4>
                     
-                    {currentSlideInfo.本文 && currentSlideInfo.本文.length > 0 && (
+                    {currentSlideInfo.本斁E&& currentSlideInfo.本斁Elength > 0 && (
                       <div className="mb-2">
-                        <p className="text-xs text-blue-300">本文:</p>
+                        <p className="text-xs text-blue-300">本斁E</p>
                         <ul className="list-disc list-inside pl-2">
-                          {currentSlideInfo.本文.map((text, idx) => (
+                          {currentSlideInfo.本斁Emap((text, idx) => (
                             <li key={idx} className="text-gray-200">{text}</li>
                           ))}
                         </ul>
                       </div>
                     )}
                     
-                    {currentSlideInfo.ノート && (
+                    {currentSlideInfo.ノ�EチE&& (
                       <div className="mb-2">
-                        <p className="text-xs text-blue-300">ノート:</p>
-                        <p className="text-gray-200 whitespace-pre-wrap">{currentSlideInfo.ノート}</p>
+                        <p className="text-xs text-blue-300">ノ�EチE</p>
+                        <p className="text-gray-200 whitespace-pre-wrap">{currentSlideInfo.ノ�EチE</p>
                       </div>
                     )}
                   </div>
@@ -409,27 +409,27 @@ export default function ImagePreviewModal() {
                   <div className="text-sm grid grid-cols-2 gap-2">
                     <div>
                       <p className="text-xs text-blue-300">タイトル:</p>
-                      <p className="text-gray-200">{metadataJson.metadata.タイトル || "なし"}</p>
+                      <p className="text-gray-200">{metadataJson.metadata.タイトル || "なぁE}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-blue-300">作成者:</p>
-                      <p className="text-gray-200">{metadataJson.metadata.作成者 || "なし"}</p>
+                      <p className="text-xs text-blue-300">作�E老E</p>
+                      <p className="text-gray-200">{metadataJson.metadata.作�E老E|| "なぁE}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-blue-300">作成日:</p>
-                      <p className="text-gray-200">{metadataJson.metadata.作成日 || "なし"}</p>
+                      <p className="text-xs text-blue-300">作�E日:</p>
+                      <p className="text-gray-200">{metadataJson.metadata.作�E日 || "なぁE}</p>
                     </div>
                     <div>
                       <p className="text-xs text-blue-300">修正日:</p>
-                      <p className="text-gray-200">{metadataJson.metadata.修正日 || "なし"}</p>
+                      <p className="text-gray-200">{metadataJson.metadata.修正日 || "なぁE}</p>
                     </div>
                     <div className="col-span-2">
-                      <p className="text-xs text-blue-300">説明:</p>
-                      <p className="text-gray-200">{metadataJson.metadata.説明 || "なし"}</p>
+                      <p className="text-xs text-blue-300">説昁E</p>
+                      <p className="text-gray-200">{metadataJson.metadata.説昁E|| "なぁE}</p>
                     </div>
                   </div>
                 ) : isLoadingMetadata ? (
-                  <p className="text-gray-400">メタデータを読み込み中...</p>
+                  <p className="text-gray-400">メタチE�Eタを読み込み中...</p>
                 ) : (
                   <p className="text-gray-400">ドキュメント情報はありません</p>
                 )}
@@ -438,7 +438,7 @@ export default function ImagePreviewModal() {
           </div>
         )}
         
-        {/* スライドのサムネイルリスト */}
+        {/* スライド�EサムネイルリスチE*/}
         {allSlides.length > 1 && (
           <div className="w-full px-2 py-3 border-t border-blue-500 overflow-x-auto flex bg-gray-800">
             {allSlides.map((slide, index) => (
@@ -453,7 +453,7 @@ export default function ImagePreviewModal() {
                   setCurrentSlideIndex(index);
                   setImageUrl(slide);
                   
-                  // PNG形式のみに統一するためフォールバックは不要
+                  // PNG形式�Eみに統一するためフォールバックは不要E
                   setPngFallbackUrl("");
                 }}
               >
@@ -465,14 +465,14 @@ export default function ImagePreviewModal() {
                   
                   <img 
                     src={fixImagePath(slide)} 
-                    alt={`スライド ${index + 1}`}
+                    alt={`スライチE${index + 1}`}
                     className="h-16 w-24 object-cover relative z-10"
                     loading="eager"
                     decoding="async"
                     onLoad={(e) => {
-                      // 読み込み完了時にプレースホルダーを非表示に
+                      // 読み込み完亁E��にプレースホルダーを非表示に
                       const imgElement = e.currentTarget;
-                      // 親要素を取得
+                      // 親要素を取征E
                       const parent = imgElement.parentElement;
                       if (parent) {
                         // 読み込み中プレースホルダーを非表示に
@@ -485,7 +485,7 @@ export default function ImagePreviewModal() {
                       }
                     }}
                     onError={(e) => {
-                      // サムネイルの読み込みエラー処理
+                      // サムネイルの読み込みエラー処琁E
                       console.log(`サムネイル(${index})読み込みエラー`);
                       const imgElement = e.currentTarget;
                       imgElement.style.opacity = '0.3';

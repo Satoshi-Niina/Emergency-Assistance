@@ -42,12 +42,12 @@ const KnowledgeUploader: React.FC = () => {
     if (event.target.files && event.target.files.length > 0) {
       setSelectedFile(event.target.files[0]);
       
-      // ファイル選択後にinput要素をリセットして、同じファイルを再選択できるようにする
+      // ファイル選択後にinput要素をリセチE��して、同じファイルを�E選択できるようにする
       event.target.value = '';
     }
   };
 
-  // 再処理ハンドラ
+  // 再�E琁E��ンドラ
   const handleProcessDocument = async (docId: string, title: string) => {
     try {
       setIsLoading(true);
@@ -57,20 +57,20 @@ const KnowledgeUploader: React.FC = () => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || "処理に失敗しました");
+        throw new Error(errorText || "処琁E��失敗しました");
       }
 
       toast({
-        title: "処理成功",
-        description: `${title} を再処理しました`,
+        title: "処琁E�E劁E,
+        description: `${title} を�E処琁E��ました`,
       });
       
-      // ドキュメント一覧を再読み込み
+      // ドキュメント一覧を�E読み込み
       await fetchDocuments();
     } catch (error) {
       console.error("Processing error:", error);
       toast({
-        title: "処理エラー",
+        title: "処琁E��ラー",
         description: error instanceof Error ? error.message : "未知のエラーが発生しました",
         variant: "destructive",
       });
@@ -79,24 +79,24 @@ const KnowledgeUploader: React.FC = () => {
     }
   };
 
-  // ファイルアップロードハンドラ
+  // ファイルアチE�Eロードハンドラ
   const handleUpload = async () => {
     if (!selectedFile) {
       toast({
-        title: "ファイルが選択されていません",
-        description: "アップロードするファイルを選択してください",
+        title: "ファイルが選択されてぁE��せん",
+        description: "アチE�Eロードするファイルを選択してください",
         variant: "destructive",
       });
       return;
     }
 
-    // 対応しているファイル形式をチェック
+    // 対応してぁE��ファイル形式をチェチE��
     const validExtensions = [".pdf", ".docx", ".txt", ".xlsx", ".pptx"];
     const fileExt = selectedFile.name.substring(selectedFile.name.lastIndexOf(".")).toLowerCase();
     if (!validExtensions.includes(fileExt)) {
       toast({
-        title: "未対応のファイル形式",
-        description: "PDF, Word, Excel, PowerPoint, またはテキストファイルのみアップロード可能です",
+        title: "未対応�Eファイル形弁E,
+        description: "PDF, Word, Excel, PowerPoint, また�EチE��ストファイルのみアチE�Eロード可能でぁE,
         variant: "destructive",
       });
       return;
@@ -115,21 +115,21 @@ const KnowledgeUploader: React.FC = () => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || "アップロードに失敗しました");
+        throw new Error(errorText || "アチE�Eロードに失敗しました");
       }
 
       const result = await response.json();
 
       toast({
-        title: "アップロード成功",
-        description: `${selectedFile.name} が知識ベースに追加されました`,
+        title: "アチE�Eロード�E劁E,
+        description: `${selectedFile.name} が知識�Eースに追加されました`,
       });
 
       // ドキュメントリストを更新
       fetchDocuments();
       setSelectedFile(null);
       
-      // ファイル入力をリセット
+      // ファイル入力をリセチE��
       const fileInput = document.getElementById("file-upload") as HTMLInputElement;
       if (fileInput) {
         fileInput.value = "";
@@ -137,7 +137,7 @@ const KnowledgeUploader: React.FC = () => {
     } catch (error) {
       console.error("Upload error:", error);
       toast({
-        title: "アップロードエラー",
+        title: "アチE�Eロードエラー",
         description: error instanceof Error ? error.message : "未知のエラーが発生しました",
         variant: "destructive",
       });
@@ -160,7 +160,7 @@ const KnowledgeUploader: React.FC = () => {
 
       toast({
         title: "削除成功",
-        description: `${title} が知識ベースから削除されました`,
+        description: `${title} が知識�Eースから削除されました`,
       });
 
       // ドキュメントリストを更新
@@ -175,13 +175,13 @@ const KnowledgeUploader: React.FC = () => {
     }
   };
 
-  // ドキュメントリスト取得
+  // ドキュメントリスト取征E
   const fetchDocuments = async () => {
     setIsLoading(true);
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/knowledge`);
       if (!response.ok) {
-        throw new Error("ドキュメントの取得に失敗しました");
+        throw new Error("ドキュメント�E取得に失敗しました");
       }
       const data = await response.json();
       setDocuments(data);
@@ -189,7 +189,7 @@ const KnowledgeUploader: React.FC = () => {
       console.error("Fetch documents error:", error);
       toast({
         title: "エラー",
-        description: "ドキュメントの取得に失敗しました",
+        description: "ドキュメント�E取得に失敗しました",
         variant: "destructive",
       });
     } finally {
@@ -197,7 +197,7 @@ const KnowledgeUploader: React.FC = () => {
     }
   };
 
-  // コンポーネントマウント時にドキュメントリストを取得
+  // コンポ�Eネント�Eウント時にドキュメントリストを取征E
   React.useEffect(() => {
     fetchDocuments();
   }, []);
@@ -224,9 +224,9 @@ const KnowledgeUploader: React.FC = () => {
     <div className="space-y-8">
       <Card className="bg-white border border-cyan-200 shadow-sm mb-6">
         <CardHeader className="bg-gradient-to-r from-cyan-50 to-blue-50 border-b border-cyan-100">
-          <CardTitle className="text-cyan-700">ナレッジファイルのアップロード</CardTitle>
+          <CardTitle className="text-cyan-700">ナレチE��ファイルのアチE�EローチE/CardTitle>
           <CardDescription className="text-cyan-600">
-            保守用車のマニュアルやガイドラインをアップロードし、AIチャットの知識ベースとして活用します
+            保守用車�EマニュアルめE��イドラインをアチE�Eロードし、AIチャチE��の知識�Eースとして活用しまぁE
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
@@ -247,18 +247,18 @@ const KnowledgeUploader: React.FC = () => {
                 {isUploading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    処理中...
+                    処琁E��...
                   </>
                 ) : (
                   <>
                     <Upload className="mr-2 h-4 w-4" />
-                    アップロード
+                    アチE�EローチE
                   </>
                 )}
               </Button>
             </div>
             <p className="text-sm text-cyan-600 mt-2">
-              対応フォーマット: PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), テキストファイル (.txt)
+              対応フォーマッチE PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), チE��ストファイル (.txt)
             </p>
           </div>
         </CardContent>
@@ -266,9 +266,9 @@ const KnowledgeUploader: React.FC = () => {
 
       <Card className="bg-white border border-cyan-200 shadow-sm">
         <CardHeader className="bg-gradient-to-r from-cyan-50 to-blue-50 border-b border-cyan-100">
-          <CardTitle className="text-cyan-700">登録済みナレッジ一覧</CardTitle>
+          <CardTitle className="text-cyan-700">登録済みナレチE��一覧</CardTitle>
           <CardDescription className="text-cyan-600">
-            AIがユーザーの質問に回答する際に参照する知識ベースファイル
+            AIがユーザーの質問に回答する際に参�Eする知識�Eースファイル
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
@@ -278,17 +278,17 @@ const KnowledgeUploader: React.FC = () => {
             </div>
           ) : documents.length === 0 ? (
             <div className="text-center py-8 text-cyan-400 bg-cyan-50 rounded-lg border border-cyan-100">
-              登録されているドキュメントはありません
+              登録されてぁE��ドキュメント�Eありません
             </div>
           ) : (
             <Table>
-              <TableCaption className="text-cyan-500">AI回答生成に使用されるナレッジ文書一覧</TableCaption>
+              <TableCaption className="text-cyan-500">AI回答生成に使用されるナレチE��斁E��一覧</TableCaption>
               <TableHeader>
                 <TableRow className="bg-gradient-to-r from-cyan-50 to-blue-50">
                   <TableHead className="w-12"></TableHead>
-                  <TableHead className="text-cyan-700">ファイル名</TableHead>
-                  <TableHead className="text-cyan-700">タイプ</TableHead>
-                  <TableHead className="text-cyan-700">追加日時</TableHead>
+                  <TableHead className="text-cyan-700">ファイル吁E/TableHead>
+                  <TableHead className="text-cyan-700">タイチE/TableHead>
+                  <TableHead className="text-cyan-700">追加日晁E/TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -306,7 +306,7 @@ const KnowledgeUploader: React.FC = () => {
                           size="icon"
                           onClick={() => handleProcessDocument(doc.id, doc.title)}
                           className="hover:bg-blue-100 text-blue-500"
-                          title="ファイルを再処理"
+                          title="ファイルを�E処琁E
                         >
                           <FileText className="h-5 w-5" />
                         </Button>

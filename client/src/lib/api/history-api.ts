@@ -9,7 +9,7 @@ import {
   ExportHistoryItem
 } from '../../types/history';
 
-// 履歴データから機種・機械番号一覧取得
+// 履歴チE�Eタから機種・機械番号一覧取征E
 export const fetchMachineData = async (): Promise<{
   machineTypes: Array<{ id: string; machineTypeName: string }>;
   machines: Array<{ id: string; machineNumber: string; machineTypeName: string }>;
@@ -18,8 +18,8 @@ export const fetchMachineData = async (): Promise<{
     const response = await fetch('/api/history/machine-data');
     
     if (!response.ok) {
-      console.warn(`機種データ取得エラー: ${response.status} ${response.statusText}`);
-      // エラーの場合は空のデータを返す
+      console.warn(`機種チE�Eタ取得エラー: ${response.status} ${response.statusText}`);
+      // エラーの場合�E空のチE�Eタを返す
       return {
         machineTypes: [],
         machines: []
@@ -28,8 +28,8 @@ export const fetchMachineData = async (): Promise<{
     
     return response.json();
   } catch (error) {
-    console.error('機種データ取得エラー:', error);
-    // エラーの場合は空のデータを返す
+    console.error('機種チE�Eタ取得エラー:', error);
+    // エラーの場合�E空のチE�Eタを返す
     return {
       machineTypes: [],
       machines: []
@@ -37,7 +37,7 @@ export const fetchMachineData = async (): Promise<{
   }
 };
 
-// 履歴一覧取得
+// 履歴一覧取征E
 export const fetchHistoryList = async (filters: HistorySearchFilters = {}): Promise<HistoryListResponse> => {
   try {
     const params = new URLSearchParams();
@@ -53,7 +53,7 @@ export const fetchHistoryList = async (filters: HistorySearchFilters = {}): Prom
     
     if (!response.ok) {
       console.warn(`履歴一覧取得エラー: ${response.status} ${response.statusText}`);
-      // エラーの場合は空のデータを返す
+      // エラーの場合�E空のチE�Eタを返す
       return {
         success: true,
         items: [],
@@ -65,7 +65,7 @@ export const fetchHistoryList = async (filters: HistorySearchFilters = {}): Prom
     return response.json();
   } catch (error) {
     console.error('履歴一覧取得エラー:', error);
-    // エラーの場合は空のデータを返す
+    // エラーの場合�E空のチE�Eタを返す
     return {
       success: true,
       items: [],
@@ -75,7 +75,7 @@ export const fetchHistoryList = async (filters: HistorySearchFilters = {}): Prom
   }
 };
 
-// 履歴詳細取得
+// 履歴詳細取征E
 export const fetchHistoryDetail = async (id: string): Promise<SupportHistoryItem> => {
   const response = await fetch(`/api/history/${id}`);
   
@@ -86,7 +86,7 @@ export const fetchHistoryDetail = async (id: string): Promise<SupportHistoryItem
   return response.json();
 };
 
-// 履歴作成
+// 履歴作�E
 export const createHistory = async (data: {
   machineType: string;
   machineNumber: string;
@@ -125,7 +125,7 @@ export const deleteHistory = async (id: string): Promise<void> => {
   }
 };
 
-// 基礎データ取得
+// 基礎データ取征E
 export const fetchBaseData = async (): Promise<BaseDataResponse> => {
   const response = await fetch('/api/base-data');
   
@@ -136,7 +136,7 @@ export const fetchBaseData = async (): Promise<BaseDataResponse> => {
   return response.json();
 };
 
-// 処理済みファイル一覧取得
+// 処琁E��みファイル一覧取征E
 export const fetchProcessedFiles = async (): Promise<any> => {
   const response = await fetch('/api/files/processed');
   
@@ -147,7 +147,7 @@ export const fetchProcessedFiles = async (): Promise<any> => {
   return response.json();
 };
 
-// フロー一覧取得
+// フロー一覧取征E
 export const fetchFlows = async (): Promise<FlowListResponse> => {
   const response = await fetch('/api/flows');
   
@@ -158,7 +158,7 @@ export const fetchFlows = async (): Promise<FlowListResponse> => {
   return response.json();
 };
 
-// ユーザー一覧取得
+// ユーザー一覧取征E
 export const fetchUsers = async (): Promise<User[]> => {
   const response = await fetch('/api/users');
   
@@ -169,7 +169,7 @@ export const fetchUsers = async (): Promise<User[]> => {
   return response.json();
 };
 
-// ユーザー作成
+// ユーザー作�E
 export const createUser = async (userData: CreateUserRequest): Promise<User> => {
   const response = await fetch('/api/users', {
     method: 'POST',
@@ -186,9 +186,9 @@ export const createUser = async (userData: CreateUserRequest): Promise<User> => 
   return response.json();
 };
 
-// 履歴エクスポート機能
+// 履歴エクスポ�Eト機�E
 
-// 個別履歴エクスポート
+// 個別履歴エクスポ�EチE
 export const exportHistoryItem = async (id: string, format: 'json' | 'csv' = 'json'): Promise<Blob> => {
   const response = await fetch(`/api/history/${id}/export?format=${format}`);
   
@@ -199,7 +199,7 @@ export const exportHistoryItem = async (id: string, format: 'json' | 'csv' = 'js
   return response.blob();
 };
 
-// 選択履歴一括エクスポート
+// 選択履歴一括エクスポ�EチE
 export const exportSelectedHistory = async (ids: string[], format: 'json' | 'csv' = 'json'): Promise<Blob> => {
   const response = await fetch('/api/history/export-selected', {
     method: 'POST',
@@ -216,7 +216,7 @@ export const exportSelectedHistory = async (ids: string[], format: 'json' | 'csv
   return response.blob();
 };
 
-// 全履歴エクスポート
+// 全履歴エクスポ�EチE
 export const exportAllHistory = async (filters: HistorySearchFilters = {}, format: 'json' | 'csv' = 'json'): Promise<Blob> => {
   const params = new URLSearchParams();
   params.append('format', format);
@@ -233,7 +233,7 @@ export const exportAllHistory = async (filters: HistorySearchFilters = {}, forma
   return response.blob();
 };
 
-// エクスポート履歴取得
+// エクスポ�Eト履歴取征E
 export const fetchExportHistory = async (): Promise<ExportHistoryItem[]> => {
   const response = await fetch('/api/history/export-history');
   
@@ -244,7 +244,7 @@ export const fetchExportHistory = async (): Promise<ExportHistoryItem[]> => {
   return response.json();
 };
 
-// 高度なテキスト検索
+// 高度なチE��スト検索
 export const advancedSearch = async (searchText: string, limit: number = 50): Promise<any> => {
   const response = await fetch('/api/history/advanced-search', {
     method: 'POST',
@@ -261,7 +261,7 @@ export const advancedSearch = async (searchText: string, limit: number = 50): Pr
   return response.json();
 };
 
-// レポート生成
+// レポ�Eト生戁E
 export const generateReport = async (searchFilters: any, reportTitle?: string, reportDescription?: string): Promise<Blob> => {
   const response = await fetch('/api/history/generate-report', {
     method: 'POST',

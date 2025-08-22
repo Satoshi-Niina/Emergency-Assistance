@@ -17,12 +17,12 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
-    console.error('❌ ErrorBoundary caught an error:', error);
+    console.error('❁EErrorBoundary caught an error:', error);
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('❌ ErrorBoundary error details:', {
+    console.error('❁EErrorBoundary error details:', {
       error: error.message,
       stack: error.stack,
       componentStack: errorInfo.componentStack
@@ -38,10 +38,10 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-b from-red-50 to-red-100 p-4">
           <div className="text-center max-w-md">
-            <div className="text-red-500 text-6xl mb-4">⚠️</div>
+            <div className="text-red-500 text-6xl mb-4">⚠�E�E/div>
             <h1 className="text-2xl font-bold text-red-800 mb-4">エラーが発生しました</h1>
             <p className="text-red-600 mb-6">
-              アプリケーションで予期しないエラーが発生しました。
+              アプリケーションで予期しなぁE��ラーが発生しました、E
             </p>
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
               <p className="text-sm text-red-700 font-mono">
@@ -52,7 +52,7 @@ export class ErrorBoundary extends Component<Props, State> {
               onClick={() => window.location.reload()}
               className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
             >
-              ページを再読み込み
+              ペ�Eジを�E読み込み
             </button>
           </div>
         </div>

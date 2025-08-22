@@ -11,7 +11,7 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
   const { user, isLoading } = useAuth();
   const location = useLocation();
 
-  console.log('🔍 ProtectedRoute - 認証状態確認:', {
+  console.log('🔍 ProtectedRoute - 認証状態確誁E', {
     isLoading,
     hasUser: !!user,
     username: user?.username,
@@ -34,18 +34,18 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
     );
   }
 
-  // 未認証の場合はログインページにリダイレクト
+  // 未認証の場合�Eログインペ�EジにリダイレクチE
   if (!user) {
-    console.log('🚫 ProtectedRoute - 未認証、ログインページにリダイレクト');
+    console.log('🚫 ProtectedRoute - 未認証、ログインペ�EジにリダイレクチE);
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // 管理者権限が必要で、管理者でない場合
+  // 管琁E��E��限が忁E��で、管琁E��E��なぁE��吁E
   if (requireAdmin && user.role !== 'admin') {
-    console.log('🚫 ProtectedRoute - 管理者権限が必要ですが、権限がありません');
+    console.log('🚫 ProtectedRoute - 管琁E��E��限が忁E��ですが、権限がありません');
     return <Navigate to="/chat" replace />;
   }
 
-  console.log('✅ ProtectedRoute - 認証OK、コンテンツを表示');
+  console.log('✁EProtectedRoute - 認証OK、コンチE��チE��表示');
   return <>{children}</>;
 }

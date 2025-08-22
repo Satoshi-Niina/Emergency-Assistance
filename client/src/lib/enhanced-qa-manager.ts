@@ -1,4 +1,4 @@
-// 拡張されたQAマネージャー - OpenAI活用版
+// 拡張されたQAマネージャー - OpenAI活用牁E
 import { QAFlowStep, QAAnswer, QAFlow, ProblemCategory } from './qa-flow-manager';
 
 interface EmergencyProcedure {
@@ -32,7 +32,7 @@ interface ContextualQuestion {
   knowledgeReferences?: string[];
 }
 
-// クライアント側ではサーバーAPIを呼び出す
+// クライアント�Eではサーバ�EAPIを呼び出ぁE
 async function callOpenAIAPI(prompt: string, useKnowledgeBase: boolean = true): Promise<string> {
   try {
     const response = await fetch('/api/chatgpt', {
@@ -52,7 +52,7 @@ async function callOpenAIAPI(prompt: string, useKnowledgeBase: boolean = true): 
     }
 
     const data = await response.json();
-    return data.response || '応答を取得できませんでした。';
+    return data.response || '応答を取得できませんでした、E;
   } catch (error) {
     console.error('OpenAI API呼び出しエラー:', error);
     throw error;
@@ -67,10 +67,10 @@ export class EnhancedQAManager {
   private emergencyProcedures: EmergencyProcedure[] = [];
   private contextualHistory: ContextualQuestion[] = [];
 
-  // ナレッジベースと応急処置情報の初期化
+  // ナレチE��ベ�Eスと応急処置惁E��の初期匁E
   async initializeKnowledgeBase(): Promise<void> {
     try {
-      // ナレッジベースの取得
+      // ナレチE��ベ�Eスの取征E
       const knowledgeResponse = await fetch('/api/knowledge-base', {
         method: 'GET',
         credentials: 'include'
@@ -80,7 +80,7 @@ export class EnhancedQAManager {
         this.knowledgeBase = await knowledgeResponse.json();
       }
 
-      // 応急処置情報の取得
+      // 応急処置惁E��の取征E
       const emergencyResponse = await fetch('/api/emergency-procedures', {
         method: 'GET',
         credentials: 'include'
@@ -90,39 +90,39 @@ export class EnhancedQAManager {
         this.emergencyProcedures = await emergencyResponse.json();
       }
     } catch (error) {
-      console.error('ナレッジベース初期化エラー:', error);
+      console.error('ナレチE��ベ�Eス初期化エラー:', error);
     }
   }
 
-  // 問題の詳細分析と最適な質問フローの生成
+  // 問題�E詳細刁E��と最適な質問フローの生�E
   async analyzeProblemAndGenerateFlow(
     initialDescription: string,
     context: string = ''
   ): Promise<{ category: ProblemCategory; flow: QAFlow; contextualQuestions: ContextualQuestion[] }> {
     try {
       const analysisPrompt = `
-あなたは保守用車の専門技術者です。初期の問題説明を詳細に分析し、最適な質問フローを生成してください。
+あなた�E保守用車�E専門技術老E��す。�E期�E問題説明を詳細に刁E��し、最適な質問フローを生成してください、E
 
-**初期問題説明**: ${initialDescription}
-**追加コンテキスト**: ${context}
-**利用可能なナレッジ**: ${this.knowledgeBase.map(k => k.title).join(', ')}
-**応急処置情報**: ${this.emergencyProcedures.map(e => e.title).join(', ')}
+**初期問題説昁E*: ${initialDescription}
+**追加コンチE��スチE*: ${context}
+**利用可能なナレチE��**: ${this.knowledgeBase.map(k => k.title).join(', ')}
+**応急処置惁E��**: ${this.emergencyProcedures.map(e => e.title).join(', ')}
 
-以下の分析を行ってください：
+以下�E刁E��を行ってください�E�E
 
-1. **問題の分類**: エンジン系、電気系、油圧系、走行系、作業装置系、安全装置系から最適なカテゴリを選択
-2. **緊急度の判定**: 安全リスク、作業への影響、時間的制約を考慮
-3. **質問戦略**: 段階的な診断に最適な質問の順序と内容
-4. **応急処置の必要性**: 即座に必要な安全対応や応急処置の有無
-5. **専門知識の活用**: ナレッジベースと応急処置情報を活用した具体的な質問
+1. **問題�E刁E��E*: エンジン系、E��気系、油圧系、走行系、作業裁E��系、安�E裁E��系から最適なカチE��リを選抁E
+2. **緊急度の判宁E*: 安�Eリスク、作業への影響、時間的制紁E��老E�E
+3. **質問戦略**: 段階的な診断に最適な質問�E頁E��と冁E��
+4. **応急処置の忁E��性**: 即座に忁E��な安�E対応や応急処置の有無
+5. **専門知識�E活用**: ナレチE��ベ�Eスと応急処置惁E��を活用した具体的な質啁E
 
-以下のJSON形式で返してください：
+以下�EJSON形式で返してください�E�E
 {
   "category": {
     "id": "engine_start",
     "name": "エンジン始動不良",
-    "description": "エンジンが正常に始動しない問題",
-    "keywords": ["エンジン", "始動", "かからない", "スターター"],
+    "description": "エンジンが正常に始動しなぁE��顁E,
+    "keywords": ["エンジン", "始動", "かからなぁE, "スターター"],
     "emergencyLevel": "medium",
     "estimatedTime": 30,
     "requiresExpert": false
@@ -130,31 +130,31 @@ export class EnhancedQAManager {
   "flow": {
     "id": "engine_start_flow",
     "title": "エンジン始動不良の診断フロー",
-    "description": "エンジンがかからない問題の段階的診断",
+    "description": "エンジンがかからなぁE��題�E段階的診断",
     "category": "engine_start",
     "emergencyContact": "技術支援センター: 0123-456-789",
     "estimatedTime": 30,
     "steps": [
       {
         "id": "safety_check",
-        "question": "安全確認: 作業環境に危険はありませんか？",
+        "question": "安�E確誁E 作業環墁E��危険はありませんか！E,
         "type": "choice",
-        "options": ["安全", "危険", "不明"],
+        "options": ["安�E", "危険", "不�E"],
         "required": true,
-        "reasoning": "作業前の安全確認",
-        "expectedOutcome": "安全な作業環境の確認",
-        "emergencyAction": "危険な場合は作業を中止し、安全確保を優先してください"
+        "reasoning": "作業前�E安�E確誁E,
+        "expectedOutcome": "安�Eな作業環墁E�E確誁E,
+        "emergencyAction": "危険な場合�E作業を中止し、安�E確保を優先してください"
       }
     ]
   },
   "contextualQuestions": [
     {
-      "question": "問題の発生時期を教えてください",
-      "reasoning": "問題の経時変化の把握",
-      "expectedOutcome": "問題の進行度合いの判断",
-      "followUpQuestions": ["前回の点検はいつですか？", "類似の問題は過去にありましたか？"],
-      "emergencyTriggers": ["突然発生", "作業中に発生"],
-      "knowledgeReferences": ["定期点検ガイド", "故障診断マニュアル"]
+      "question": "問題�E発生時期を教えてください",
+      "reasoning": "問題�E経時変化の把握",
+      "expectedOutcome": "問題�E進行度合いの判断",
+      "followUpQuestions": ["前回の点検�EぁE��ですか�E�E, "類似の問題�E過去にありましたか！E],
+      "emergencyTriggers": ["突然発甁E, "作業中に発甁E],
+      "knowledgeReferences": ["定期点検ガイチE, "敁E��診断マニュアル"]
     }
   ]
 }
@@ -170,51 +170,51 @@ export class EnhancedQAManager {
           contextualQuestions: parsed.contextualQuestions || []
         };
       } catch (parseError) {
-        console.error('問題分析のJSON解析エラー:', parseError);
-        throw new Error('問題分析に失敗しました');
+        console.error('問題�E析�EJSON解析エラー:', parseError);
+        throw new Error('問題�E析に失敗しました');
       }
     } catch (error) {
-      console.error('問題分析エラー:', error);
+      console.error('問題�E析エラー:', error);
       throw error;
     }
   }
 
-  // 動的質問生成（ナレッジベースと応急処置情報を活用）
+  // 動的質問生成（ナレチE��ベ�Eスと応急処置惁E��を活用�E�E
   async generateContextualQuestion(
     currentContext: string,
     previousAnswers: QAAnswer[],
     currentStep: QAFlowStep
   ): Promise<ContextualQuestion> {
     try {
-      // 関連するナレッジと応急処置を検索
+      // 関連するナレチE��と応急処置を検索
       const relevantKnowledge = this.findRelevantKnowledge(currentContext, previousAnswers);
       const relevantProcedures = this.findRelevantProcedures(currentContext, previousAnswers);
 
       const contextualPrompt = `
-あなたは保守用車の専門技術者です。現在の状況に基づいて、最も効果的な質問を生成してください。
+あなた�E保守用車�E専門技術老E��す。現在の状況に基づぁE��、最も効果的な質問を生�Eしてください、E
 
-**現在の状況**: ${currentContext}
-**現在の質問**: ${currentStep.question}
-**これまでの回答**: ${previousAnswers.map(a => `${a.stepId}: ${a.answer}`).join(', ')}
-**関連ナレッジ**: ${relevantKnowledge.map(k => k.title).join(', ')}
+**現在の状況E*: ${currentContext}
+**現在の質啁E*: ${currentStep.question}
+**これまでの回筁E*: ${previousAnswers.map(a => `${a.stepId}: ${a.answer}`).join(', ')}
+**関連ナレチE��**: ${relevantKnowledge.map(k => k.title).join(', ')}
 **関連応急処置**: ${relevantProcedures.map(p => p.title).join(', ')}
 
-以下の条件を満たす質問を生成してください：
+以下�E条件を満たす質問を生�Eしてください�E�E
 
-1. **状況に特化**: 現在の回答と状況に基づいた具体的な質問
-2. **安全性優先**: 危険性の早期発見を重視
-3. **効率的な診断**: 原因特定に直結する質問
-4. **実用的な選択肢**: 現場で実行可能な対応策の提示
-5. **ナレッジ活用**: 専門知識を活用した高度な質問
+1. **状況に特匁E*: 現在の回答と状況に基づぁE��具体的な質啁E
+2. **安�E性優允E*: 危険性の早期発見を重要E
+3. **効玁E��な診断**: 原因特定に直結する質啁E
+4. **実用皁E��選択肢**: 現場で実行可能な対応策�E提示
+5. **ナレチE��活用**: 専門知識を活用した高度な質啁E
 
-以下のJSON形式で返してください：
+以下�EJSON形式で返してください�E�E
 {
-  "question": "具体的で実用的な質問内容",
-  "reasoning": "この質問で何を特定・解決したいか",
-  "expectedOutcome": "この質問への回答で得られる情報",
-  "followUpQuestions": ["関連する追加質問1", "関連する追加質問2"],
-  "emergencyTriggers": ["緊急対応が必要な条件1", "緊急対応が必要な条件2"],
-  "knowledgeReferences": ["参照すべきナレッジ1", "参照すべきナレッジ2"]
+  "question": "具体的で実用皁E��質問�E容",
+  "reasoning": "こ�E質問で何を特定�E解決したぁE��",
+  "expectedOutcome": "こ�E質問への回答で得られる惁E��",
+  "followUpQuestions": ["関連する追加質啁E", "関連する追加質啁E"],
+  "emergencyTriggers": ["緊急対応が忁E��な条件1", "緊急対応が忁E��な条件2"],
+  "knowledgeReferences": ["参�EすべきナレチE��1", "参�EすべきナレチE��2"]
 }
 `;
 
@@ -231,20 +231,20 @@ export class EnhancedQAManager {
           knowledgeReferences: parsed.knowledgeReferences || []
         };
       } catch (parseError) {
-        console.error('文脈質問生成のJSON解析エラー:', parseError);
+        console.error('斁E��質問生成�EJSON解析エラー:', parseError);
         return {
-          question: "問題の詳細を教えてください。",
-          reasoning: "基本的な情報収集",
-          expectedOutcome: "問題の詳細把握"
+          question: "問題�E詳細を教えてください、E,
+          reasoning: "基本皁E��惁E��収集",
+          expectedOutcome: "問題�E詳細把握"
         };
       }
     } catch (error) {
-      console.error('文脈質問生成エラー:', error);
+      console.error('斁E��質問生成エラー:', error);
       throw error;
     }
   }
 
-  // 関連するナレッジベース情報の検索
+  // 関連するナレチE��ベ�Eス惁E��の検索
   private findRelevantKnowledge(context: string, answers: QAAnswer[]): KnowledgeBaseItem[] {
     const searchTerms = [
       context,
@@ -260,10 +260,10 @@ export class EnhancedQAManager {
           keyword.toLowerCase().includes(term.toLowerCase())
         )
       )
-    ).slice(0, 5); // 上位5件を返す
+    ).slice(0, 5); // 上佁E件を返す
   }
 
-  // 関連する応急処置情報の検索
+  // 関連する応急処置惁E��の検索
   private findRelevantProcedures(context: string, answers: QAAnswer[]): EmergencyProcedure[] {
     const searchTerms = [
       context,
@@ -277,10 +277,10 @@ export class EnhancedQAManager {
         procedure.description.toLowerCase().includes(term.toLowerCase()) ||
         procedure.category.toLowerCase().includes(term.toLowerCase())
       )
-    ).slice(0, 3); // 上位3件を返す
+    ).slice(0, 3); // 上佁E件を返す
   }
 
-  // 回答に基づく次のステップの動的決定
+  // 回答に基づく次のスチE��プ�E動的決宁E
   async determineNextStep(
     currentAnswer: QAAnswer,
     allAnswers: QAAnswer[],
@@ -288,27 +288,27 @@ export class EnhancedQAManager {
   ): Promise<{ nextStep: QAFlowStep | null; contextualQuestion: ContextualQuestion | null; emergencyAction: string | null }> {
     try {
       const analysisPrompt = `
-以下の回答を分析して、次のステップを決定してください：
+以下�E回答を刁E��して、次のスチE��プを決定してください�E�E
 
-**現在の回答**: ${currentAnswer.answer}
-**現在の質問**: ${currentStep.question}
-**これまでの回答**: ${allAnswers.map(a => `${a.stepId}: ${a.answer}`).join(', ')}
-**利用可能なステップ**: ${this.currentFlow?.steps.map(s => s.question).join(', ') || ''}
-**関連ナレッジ**: ${this.findRelevantKnowledge(currentAnswer.answer, allAnswers).map(k => k.title).join(', ')}
+**現在の回筁E*: ${currentAnswer.answer}
+**現在の質啁E*: ${currentStep.question}
+**これまでの回筁E*: ${allAnswers.map(a => `${a.stepId}: ${a.answer}`).join(', ')}
+**利用可能なスチE��チE*: ${this.currentFlow?.steps.map(s => s.question).join(', ') || ''}
+**関連ナレチE��**: ${this.findRelevantKnowledge(currentAnswer.answer, allAnswers).map(k => k.title).join(', ')}
 **関連応急処置**: ${this.findRelevantProcedures(currentAnswer.answer, allAnswers).map(p => p.title).join(', ')}
 
-分析結果を以下のJSON形式で返してください：
+刁E��結果を以下�EJSON形式で返してください�E�E
 {
-  "nextStepId": "次のステップのID",
-  "reasoning": "このステップを選んだ理由",
+  "nextStepId": "次のスチE��プ�EID",
+  "reasoning": "こ�EスチE��プを選んだ琁E��",
   "isComplete": false,
   "contextualQuestion": {
-    "question": "状況に応じた追加質問",
-    "reasoning": "この質問の目的",
-    "expectedOutcome": "期待される結果"
+    "question": "状況に応じた追加質啁E,
+    "reasoning": "こ�E質問�E目皁E,
+    "expectedOutcome": "期征E��れる結果"
   },
-  "emergencyAction": "緊急対応が必要な場合の指示",
-  "suggestedKnowledge": ["参照すべきナレッジ1", "参照すべきナレッジ2"],
+  "emergencyAction": "緊急対応が忁E��な場合�E持E��",
+  "suggestedKnowledge": ["参�EすべきナレチE��1", "参�EすべきナレチE��2"],
   "suggestedProcedures": ["実行すべき応急処置1", "実行すべき応急処置2"]
 }
 `;
@@ -318,19 +318,19 @@ export class EnhancedQAManager {
       try {
         const parsed = JSON.parse(response);
         
-        // 緊急対応のチェック
+        // 緊急対応�EチェチE��
         let emergencyAction = null;
         if (parsed.emergencyAction) {
           emergencyAction = parsed.emergencyAction;
         }
 
-        // 次のステップの決定
+        // 次のスチE��プ�E決宁E
         let nextStep = null;
         if (parsed.nextStepId && this.currentFlow) {
           nextStep = this.currentFlow.steps.find(s => s.id === parsed.nextStepId) || null;
         }
 
-        // 文脈質問の生成
+        // 斁E��質問�E生�E
         let contextualQuestion = null;
         if (parsed.contextualQuestion) {
           contextualQuestion = parsed.contextualQuestion;
@@ -342,7 +342,7 @@ export class EnhancedQAManager {
           emergencyAction
         };
       } catch (parseError) {
-        console.error('次のステップ決定のJSON解析エラー:', parseError);
+        console.error('次のスチE��プ決定�EJSON解析エラー:', parseError);
         return {
           nextStep: null,
           contextualQuestion: null,
@@ -350,12 +350,12 @@ export class EnhancedQAManager {
         };
       }
     } catch (error) {
-      console.error('次のステップ決定エラー:', error);
+      console.error('次のスチE��プ決定エラー:', error);
       throw error;
     }
   }
 
-  // 解決策の生成（ナレッジベースと応急処置情報を活用）
+  // 解決策�E生�E�E�ナレチE��ベ�Eスと応急処置惁E��を活用�E�E
   async generateComprehensiveSolution(
     allAnswers: QAAnswer[],
     problemCategory?: ProblemCategory
@@ -365,60 +365,60 @@ export class EnhancedQAManager {
       const relevantProcedures = this.findRelevantProcedures('', allAnswers);
 
       const solutionPrompt = `
-あなたは保守用車の専門技術者です。収集した情報と専門知識に基づいて、包括的な解決策を提案してください。
+あなた�E保守用車�E専門技術老E��す。収雁E��た情報と専門知識に基づぁE��、包括皁E��解決策を提案してください、E
 
-**問題カテゴリ**: ${problemCategory?.name || '不明'}
-**収集した情報**: ${allAnswers.map(a => `${a.stepId}: ${a.answer}`).join(', ')}
-**関連ナレッジ**: ${relevantKnowledge.map(k => `${k.title}: ${k.content}`).join('\n')}
+**問題カチE��リ**: ${problemCategory?.name || '不�E'}
+**収集した惁E��**: ${allAnswers.map(a => `${a.stepId}: ${a.answer}`).join(', ')}
+**関連ナレチE��**: ${relevantKnowledge.map(k => `${k.title}: ${k.content}`).join('\n')}
 **関連応急処置**: ${relevantProcedures.map(p => `${p.title}: ${p.description}`).join('\n')}
 
-以下の形式で具体的な解決策を提案してください：
+以下�E形式で具体的な解決策を提案してください�E�E
 
-## 🔍 問題の特定
-- 現在発生している問題の具体的な内容
-- 影響範囲と緊急度
-- 根本原因の分析
+## 🔍 問題�E特宁E
+- 現在発生してぁE��問題�E具体的な冁E��
+- 影響篁E��と緊急度
+- 根本原因の刁E��
 
-## ⚠️ 安全確認
-- 作業前の安全確認事項
-- 危険性の有無と対処法
-- 安全装備の必要性
+## ⚠�E�E安�E確誁E
+- 作業前�E安�E確認事頁E
+- 危険性の有無と対処況E
+- 安�E裁E��の忁E��性
 
-## 🛠️ 具体的な対応手順
-1. **準備**: 必要な工具・部品・安全装備
-2. **作業手順**: ステップバイステップの具体的な手順
-3. **確認事項**: 各ステップでの確認ポイント
-4. **応急処置**: 必要に応じた応急処置の手順
+## 🛠�E�E具体的な対応手頁E
+1. **準備**: 忁E��な工具・部品�E安�E裁E��
+2. **作業手頁E*: スチE��プバイスチE��プ�E具体的な手頁E
+3. **確認事頁E*: 吁E��チE��プでの確認�EインチE
+4. **応急処置**: 忁E��に応じた応急処置の手頁E
 
-## 📋 注意事項
-- 作業時の安全上の注意点
-- よくある失敗パターンと回避法
-- 専門家への相談が必要な場合
+## 📋 注意事頁E
+- 作業時�E安�E上�E注意点
+- よくある失敗パターンと回避況E
+- 専門家への相諁E��忁E��な場吁E
 
-## ✅ 完了確認
-- 作業完了後の確認事項
-- 再発防止策
+## ✁E完亁E��誁E
+- 作業完亁E���E確認事頁E
+- 再発防止筁E
 - 次回点検時の注意点
 
-## 🚨 緊急時の対応
-- 作業中に問題が発生した場合の対処法
-- 緊急連絡先: ${problemCategory?.requiresExpert ? '専門技術者に連絡してください' : '技術支援センター'}
+## 🚨 緊急時�E対忁E
+- 作業中に問題が発生した場合�E対処況E
+- 緊急連絡允E ${problemCategory?.requiresExpert ? '専門技術老E��連絡してください' : '技術支援センター'}
 
-## 📚 参考情報
-- 関連するナレッジベース情報
-- 応急処置マニュアルの参照箇所
+## 📚 参老E��報
+- 関連するナレチE��ベ�Eス惁E��
+- 応急処置マニュアルの参�E箁E��
 
-専門的で実用的、かつ安全な解決策を提供してください。
+専門皁E��実用皁E��かつ安�Eな解決策を提供してください、E
 `;
 
       return await callOpenAIAPI(solutionPrompt, true);
     } catch (error) {
-      console.error('包括的解決策生成エラー:', error);
-      return '解決策の生成に失敗しました。専門家に相談してください。';
+      console.error('匁E��皁E��決策生成エラー:', error);
+      return '解決策�E生�Eに失敗しました。専門家に相諁E��てください、E;
     }
   }
 
-  // 学習データの生成と保存
+  // 学習データの生�Eと保孁E
   async learnFromSession(
     problemDescription: string,
     allAnswers: QAAnswer[],
@@ -428,29 +428,29 @@ export class EnhancedQAManager {
   ): Promise<void> {
     try {
       const learningPrompt = `
-以下のQ&Aセッションから学習データを生成してください：
+以下�EQ&AセチE��ョンから学習データを生成してください�E�E
 
-**問題説明**: ${problemDescription}
+**問題説昁E*: ${problemDescription}
 **回答履歴**: ${allAnswers.map(a => `${a.stepId}: ${a.answer}`).join(', ')}
-**解決策**: ${solution}
+**解決筁E*: ${solution}
 **成功**: ${success}
-**ユーザーフィードバック**: ${userFeedback || 'なし'}
+**ユーザーフィードバチE��**: ${userFeedback || 'なぁE}
 
-この情報をナレッジベースに追加するための構造化データを生成してください：
+こ�E惁E��をナレチE��ベ�Eスに追加するための構造化データを生成してください�E�E
 {
-  "category": "カテゴリ",
-  "keywords": ["キーワード1", "キーワード2"],
-  "summary": "要約",
-  "solution": "解決策",
-  "prevention": "予防策",
-  "lessonsLearned": "学んだ教訓",
-  "improvementSuggestions": "改善提案"
+  "category": "カチE��リ",
+  "keywords": ["キーワーチE", "キーワーチE"],
+  "summary": "要紁E,
+  "solution": "解決筁E,
+  "prevention": "予防筁E,
+  "lessonsLearned": "学んだ教訁E,
+  "improvementSuggestions": "改喁E��桁E
 }
 `;
 
       const response = await callOpenAIAPI(learningPrompt, false);
       
-      // 学習データを保存
+      // 学習データを保孁E
       try {
         await fetch('/api/learn', {
           method: 'POST',
@@ -474,11 +474,11 @@ export class EnhancedQAManager {
       }
       
     } catch (error) {
-      console.error('学習データ生成エラー:', error);
+      console.error('学習データ生�Eエラー:', error);
     }
   }
 
-  // 状態管理メソッド
+  // 状態管琁E��ソチE��
   setCurrentFlow(flow: QAFlow): void {
     this.currentFlow = flow;
     this.answers = [];

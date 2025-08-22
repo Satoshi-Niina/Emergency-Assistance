@@ -12,7 +12,7 @@ export async function extractTextFromPptx(file: File): Promise<string> {
   for (const p of slideFiles) {
     const xml = await zip.file(p)!.async("text");
     const json = parser.parse(xml);
-    // a:t（テキスト）を抽出
+    // a:t�E�テキスト）を抽出
     const texts: string[] = [];
     const walk = (n: any) => {
       if (!n || typeof n !== "object") return;

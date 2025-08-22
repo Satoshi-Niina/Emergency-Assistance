@@ -53,19 +53,19 @@ export interface PerplexityResponse {
 }
 
 /**
- * Perplexity API を使用して質問に回答する
- * @param query ユーザーの質問
- * @param systemPrompt システムプロンプト
- * @param useKnowledgeBaseOnly ナレッジベースのみを使用するか
- * @returns Perplexity APIからの応答
+ * Perplexity API を使用して質問に回答すめE
+ * @param query ユーザーの質啁E
+ * @param systemPrompt シスチE��プロンプト
+ * @param useKnowledgeBaseOnly ナレチE��ベ�Eスのみを使用するぁE
+ * @returns Perplexity APIからの応筁E
  */
 export async function getPerplexityAnswer(
   query: string,
-  systemPrompt: string = "保守用車の緊急対応に関する質問に具体的に回答してください。回答は簡潔にしてください。",
+  systemPrompt: string = "保守用車�E緊急対応に関する質問に具体的に回答してください。回答�E簡潔にしてください、E,
   useKnowledgeBaseOnly: boolean = true
 ): Promise<{ content: string, citations: PerplexityCitation[] }> {
   try {
-    // サーバーサイドで実行するAPIリクエスト
+    // サーバ�Eサイドで実行するAPIリクエスチE
     const response = await axios.post('/api/perplexity', {
       query,
       systemPrompt,

@@ -22,14 +22,14 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({ onUploa
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [saveOriginalFile, setSaveOriginalFile] = useState(false);
-  // 自動フロー生成は常に有効
+  // 自動フロー生�Eは常に有効
   const autoGenerateFlow = true;
   
-  // キーワードベースのフロー生成機能
+  // キーワード�Eースのフロー生�E機�E
   const [keywordsInput, setKeywordsInput] = useState<string>('');
   const [isGeneratingFlow, setIsGeneratingFlow] = useState(false);
   
-  // キーワードからフローを生成する
+  // キーワードからフローを生成すめE
   const generateFlowFromKeywords = async () => {
     if (!keywordsInput.trim()) {
       toast({
@@ -44,11 +44,11 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({ onUploa
       setIsGeneratingFlow(true);
       
       toast({
-        title: "フロー生成中",
-        description: `キーワード「${keywordsInput}」からフローを生成しています...`,
+        title: "フロー生�E中",
+        description: `キーワード、E{keywordsInput}」からフローを生成してぁE��ぁE..`,
       });
       
-      // まず高度なフロー生成を試行（OpenAI APIキーが必要）
+      // まず高度なフロー生�Eを試行！EpenAI APIキーが忁E��E��E
       let response;
       try {
         response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/flow-generator/generate-from-keywords`, {
@@ -59,8 +59,8 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({ onUploa
           body: JSON.stringify({ keywords: keywordsInput }),
         });
       } catch (error) {
-        // 高度なフロー生成が失敗した場合、基本的なフロー生成にフォールバック
-        console.log('高度なフロー生成が失敗、基本的なフロー生成にフォールバック');
+        // 高度なフロー生�Eが失敗した場合、基本皁E��フロー生�Eにフォールバック
+        console.log('高度なフロー生�Eが失敗、基本皁E��フロー生�Eにフォールバック');
         response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/flow-generator/keywords`, {
           method: 'POST',
           headers: {
@@ -74,19 +74,19 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({ onUploa
       console.log("APIからの応答データ:", data);
       
       if (!response.ok) {
-        // エラーレスポンスの場合
-        const errorMessage = data.error || '生成に失敗しました';
+        // エラーレスポンスの場吁E
+        const errorMessage = data.error || '生�Eに失敗しました';
         const errorDetails = data.details || '';
         
-        // OpenAI APIキーエラーの場合の特別な処理
+        // OpenAI APIキーエラーの場合�E特別な処琁E
         if (errorMessage.includes('OpenAI APIキー') || errorMessage.includes('APIキーが無効')) {
           toast({
             title: "OpenAI APIキーエラー",
-            description: "高度なフロー生成が利用できません。基本的なフロー生成を使用します。",
+            description: "高度なフロー生�Eが利用できません。基本皁E��フロー生�Eを使用します、E,
             variant: "destructive",
           });
           
-          // 基本的なフロー生成にフォールバック
+          // 基本皁E��フロー生�Eにフォールバック
           try {
             const fallbackResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/flow-generator/keywords`, {
               method: 'POST',
@@ -100,33 +100,33 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({ onUploa
             
             if (fallbackData.success && fallbackData.flowData) {
               toast({
-                title: "基本的なフロー生成完了",
-                description: `「${fallbackData.flowData.title || 'タイトルなし'}」が生成されました。`,
+                title: "基本皁E��フロー生�E完亁E,
+                description: `、E{fallbackData.flowData.title || 'タイトルなぁE}」が生�Eされました。`,
               });
               
-              // 生成されたフローの詳細ページに移動するためのイベントを発火
+              // 生�Eされたフローの詳細ペ�Eジに移動するため�Eイベントを発火
               if (onUploadSuccess) {
                 onUploadSuccess(fallbackData.flowData.id);
               }
               
-              // キーワード入力をクリア
+              // キーワード�E力をクリア
               setKeywordsInput('');
               return;
             }
           } catch (fallbackError) {
-            console.error('基本的なフロー生成も失敗:', fallbackError);
+            console.error('基本皁E��フロー生�Eも失敁E', fallbackError);
           }
         }
         
-        // その他のエラーメッセージの表示
+        // そ�E他�EエラーメチE��ージの表示
         toast({
-          title: "生成エラー",
+          title: "生�Eエラー",
           description: errorMessage,
           variant: "destructive",
         });
         
-        // 詳細情報をコンソールに出力
-        console.error('フロー生成エラー詳細:', {
+        // 詳細惁E��をコンソールに出劁E
+        console.error('フロー生�Eエラー詳細:', {
           error: errorMessage,
           details: errorDetails,
           status: response.status
@@ -136,25 +136,25 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({ onUploa
       
       if (data.success && data.flowData) {
         toast({
-          title: "フロー生成完了",
-          description: `「${data.flowData.title || 'タイトルなし'}」が生成されました。`,
+          title: "フロー生�E完亁E,
+          description: `、E{data.flowData.title || 'タイトルなぁE}」が生�Eされました。`,
         });
         
-        // 生成されたフローの詳細ページに移動するためのイベントを発火
+        // 生�Eされたフローの詳細ペ�Eジに移動するため�Eイベントを発火
         if (onUploadSuccess) {
           onUploadSuccess(data.flowData.id);
         }
         
-        // キーワード入力をクリア
+        // キーワード�E力をクリア
         setKeywordsInput('');
       } else {
-        throw new Error('フローデータの形式が無効です');
+        throw new Error('フローチE�Eタの形式が無効でぁE);
       }
     } catch (error) {
-      console.error('フロー生成エラー:', error);
+      console.error('フロー生�Eエラー:', error);
       toast({
-        title: "生成エラー",
-        description: error instanceof Error ? error.message : "フローの生成に失敗しました",
+        title: "生�Eエラー",
+        description: error instanceof Error ? error.message : "フローの生�Eに失敗しました",
         variant: "destructive",
       });
     } finally {
@@ -162,7 +162,7 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({ onUploa
     }
   };
 
-  // クリックしてファイルを選択
+  // クリチE��してファイルを選抁E
   const handleFileSelectClick = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
@@ -173,14 +173,14 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({ onUploa
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
       const file = event.target.files[0];
-      // 拡張子チェック
+      // 拡張子チェチE��
       const extension = file.name.toLowerCase().split('.').pop() || '';
       const allowedExtensions = ['pptx', 'ppt', 'xlsx', 'xls', 'pdf', 'json'];
       
       if (!allowedExtensions.includes(extension)) {
         toast({
-          title: "未対応のファイル形式",
-          description: "PowerPoint(.pptx, .ppt)、Excel(.xlsx, .xls)、PDF(.pdf)、またはJSON(.json)ファイルのみアップロード可能です",
+          title: "未対応�Eファイル形弁E,
+          description: "PowerPoint(.pptx, .ppt)、Excel(.xlsx, .xls)、PDF(.pdf)、また�EJSON(.json)ファイルのみアチE�Eロード可能でぁE,
           variant: "destructive",
         });
         return;
@@ -189,12 +189,12 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({ onUploa
     }
   };
 
-  // アップロード処理
+  // アチE�Eロード�E琁E
   const handleUpload = async () => {
     if (!selectedFile) {
       toast({
-        title: "ファイルが選択されていません",
-        description: "アップロードするファイルを選択してください",
+        title: "ファイルが選択されてぁE��せん",
+        description: "アチE�Eロードするファイルを選択してください",
         variant: "destructive",
       });
       return;
@@ -209,7 +209,7 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({ onUploa
       formData.append("saveOriginalFile", saveOriginalFile.toString());
       formData.append("autoGenerateFlow", autoGenerateFlow.toString());
       
-      // 模擬的な進捗表示用のインターバル
+      // 模擬皁E��進捗表示用のインターバル
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => {
           if (prev >= 90) {
@@ -228,7 +228,7 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({ onUploa
       clearInterval(progressInterval);
       
       if (!response.ok) {
-        throw new Error('ファイルのアップロードに失敗しました');
+        throw new Error('ファイルのアチE�Eロードに失敗しました');
       }
       
       const data = await response.json();
@@ -238,28 +238,28 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({ onUploa
         setUploadSuccess(true);
         
         toast({
-          title: "アップロード成功",
-          description: "ファイルが正常に処理されました",
+          title: "アチE�Eロード�E劁E,
+          description: "ファイルが正常に処琁E��れました",
         });
         
         if (onUploadSuccess) {
           onUploadSuccess(data.guideId);
         }
         
-        // 数秒後にリセット
+        // 数秒後にリセチE��
         setTimeout(() => {
           setSelectedFile(null);
           setUploadSuccess(false);
           setUploadProgress(0);
         }, 3000);
       } else {
-        throw new Error(data.error || 'ファイル処理中にエラーが発生しました');
+        throw new Error(data.error || 'ファイル処琁E��にエラーが発生しました');
       }
     } catch (error) {
       console.error('Upload error:', error);
       toast({
         title: "エラー",
-        description: error instanceof Error ? error.message : "ファイルのアップロードに失敗しました",
+        description: error instanceof Error ? error.message : "ファイルのアチE�Eロードに失敗しました",
         variant: "destructive",
       });
     } finally {
@@ -270,28 +270,28 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({ onUploa
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>応急処置フロー生成</CardTitle>
-        <CardDescription>キーワードやファイルから応急処置フローを生成・編集できます</CardDescription>
+        <CardTitle>応急処置フロー生�E</CardTitle>
+        <CardDescription>キーワードやファイルから応急処置フローを生成�E編雁E��きまぁE/CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="keywords" className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="keywords">キーワードから生成</TabsTrigger>
-            <TabsTrigger value="file">ファイルから生成</TabsTrigger>
+            <TabsTrigger value="keywords">キーワードから生戁E/TabsTrigger>
+            <TabsTrigger value="file">ファイルから生�E</TabsTrigger>
           </TabsList>
           
           <TabsContent value="keywords" className="space-y-4">
             <div className="space-y-4">
               <div>
-                <h3 className="text-lg font-medium mb-2">発生事象キーワード</h3>
+                <h3 className="text-lg font-medium mb-2">発生事象キーワーチE/h3>
                 <Textarea
-                  placeholder="具体的な事象や状況、機器名などを入力してください！自動的に判断します。"
+                  placeholder="具体的な事象めE��況、機器名などを�E力してください�E��E動的に判断します、E
                   value={keywordsInput}
                   onChange={(e) => setKeywordsInput(e.target.value)}
                   className="min-h-[100px]"
                 />
                 <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>{keywordsInput.length}/100文字</span>
+                  <span>{keywordsInput.length}/100斁E��E/span>
                 </div>
               </div>
               
@@ -304,12 +304,12 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({ onUploa
                 {isGeneratingFlow ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    生成中...
+                    生�E中...
                   </>
                 ) : (
                   <>
                     <Wand2 className="mr-2 h-4 w-4" />
-                    GPTフロー生成
+                    GPTフロー生�E
                   </>
                 )}
               </Button>
@@ -319,12 +319,12 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({ onUploa
                 <div className="text-sm text-gray-700">
                   <p className="font-medium mb-1">主な流れ:</p>
                   <ol className="list-decimal list-inside space-y-1 pl-1">
-                    <li>キーワードを入力してGPTフロー生成</li>
-                    <li>生成された最適な応急処置フローを選択</li>
-                    <li>選択したフローは以下の方法で編集可能：</li>
+                    <li>キーワードを入力してGPTフロー生�E</li>
+                    <li>生�Eされた最適な応急処置フローを選抁E/li>
+                    <li>選択したフローは以下�E方法で編雁E��能�E�E/li>
                     <ul className="list-disc list-inside pl-6 space-y-1">
-                      <li>「テキスト編集」タブ：フローの内容をテキストベースで編集</li>
-                      <li>「キャラクター編集」タブ：フローチャートとして視覚的に編集</li>
+                      <li>「テキスト編雁E��タブ：フローの冁E��をテキスト�Eースで編雁E/li>
+                      <li>「キャラクター編雁E��タブ：フローチャートとして視覚的に編雁E/li>
                     </ul>
                   </ol>
                 </div>
@@ -334,7 +334,7 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({ onUploa
           
           <TabsContent value="file" className="space-y-4">
             <div>
-              {/* ファイル入力 (非表示) */}
+              {/* ファイル入劁E(非表示) */}
               <input
                 type="file"
                 ref={fileInputRef}
@@ -344,7 +344,7 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({ onUploa
               />
               
               <div className="mb-4">
-                <h3 className="text-lg font-medium mb-2">ファイルアップロード</h3>
+                <h3 className="text-lg font-medium mb-2">ファイルアチE�EローチE/h3>
                 <Button 
                   variant="outline" 
                   className="w-full h-24 border-dashed" 
@@ -352,9 +352,9 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({ onUploa
                 >
                   <div className="flex flex-col items-center">
                     <FileText className="h-8 w-8 text-gray-400 mb-2" />
-                    <p className="text-gray-700 font-medium">クリックしてファイルを選択</p>
+                    <p className="text-gray-700 font-medium">クリチE��してファイルを選抁E/p>
                     <p className="text-xs text-gray-500 mt-1">
-                      PowerPoint、Excel、PDF、またはJSONファイル
+                      PowerPoint、Excel、PDF、また�EJSONファイル
                     </p>
                   </div>
                 </Button>
@@ -374,12 +374,12 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({ onUploa
                 </div>
               )}
               
-              {/* アップロード進捗 */}
+              {/* アチE�Eロード進捁E*/}
               {(isUploading || uploadSuccess) && (
                 <div className="mb-4">
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-sm font-medium text-gray-700">
-                      {uploadSuccess ? "完了" : "処理中..."}
+                      {uploadSuccess ? "完亁E : "処琁E��..."}
                     </span>
                     <span className="text-sm font-medium text-gray-700">
                       {uploadProgress}%
@@ -389,7 +389,7 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({ onUploa
                 </div>
               )}
               
-              {/* データ保存オプション */}
+              {/* チE�Eタ保存オプション */}
               <div className="flex mb-4">
                 <div className="flex items-center space-x-2">
                   <Checkbox 
@@ -398,20 +398,20 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({ onUploa
                     onCheckedChange={(checked) => setSaveOriginalFile(checked === true)}
                   />
                   <Label htmlFor="saveOriginalFile" className="text-sm text-gray-700">
-                    元のファイルも保存する
+                    允E�Eファイルも保存すめE
                   </Label>
                 </div>
               </div>
               
-              {/* 自動フロー生成の情報表示 */}
+              {/* 自動フロー生�Eの惁E��表示 */}
               <div className="flex items-center space-x-2 mb-4 bg-amber-50 p-2 rounded-md border border-amber-200">
                 <Sparkles className="h-4 w-4 text-amber-500 flex-shrink-0" />
                 <p className="text-sm text-gray-700">
-                  アップロード後、自動的に応急処置フローが生成されます
+                  アチE�Eロード後、�E動的に応急処置フローが生成されまぁE
                 </p>
               </div>
               
-              {/* アップロードボタン */}
+              {/* アチE�Eロード�Eタン */}
               <Button
                 className="w-full"
                 onClick={handleUpload}
@@ -420,15 +420,15 @@ const EmergencyGuideUploader: React.FC<EmergencyGuideUploaderProps> = ({ onUploa
                 {isUploading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    処理中...
+                    処琁E��...
                   </>
                 ) : uploadSuccess ? (
                   <>
                     <CheckCircle className="mr-2 h-4 w-4" />
-                    完了しました
+                    完亁E��ました
                   </>
                 ) : (
-                  "アップロードして処理"
+                  "アチE�Eロードして処琁E
                 )}
               </Button>
             </div>

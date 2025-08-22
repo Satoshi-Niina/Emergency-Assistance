@@ -39,20 +39,20 @@ const UnifiedDataProcessor: React.FC = () => {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // 処理オプション（自動化するため、すべてデフォルトで有効に設定）
+  // 処琁E��プション�E��E動化するため、すべてチE��ォルトで有効に設定！E
   const [options, setOptions] = useState<ProcessingOptions>({
-    keepOriginalFile: false, // 元ファイルを保存するオプションのみユーザーが選択可能（デフォルトでは無効）
+    keepOriginalFile: false, // 允E��ァイルを保存するオプションのみユーザーが選択可能�E�デフォルトでは無効�E�E
     extractKnowledgeBase: true,
     extractImageSearch: true,
     createQA: true
   });
 
-  // コンポーネントがマウントされたときに文書リストを読み込む
+  // コンポ�Eネントがマウントされたときに斁E��リストを読み込む
   useEffect(() => {
     fetchDocuments();
   }, []);
 
-  // ドラッグ&ドロップエリアのイベントハンドラー
+  // ドラチE��&ドロチE�Eエリアのイベントハンドラー
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -68,7 +68,7 @@ const UnifiedDataProcessor: React.FC = () => {
     }
   };
 
-  // クリックしてファイル選択するためのハンドラー
+  // クリチE��してファイル選択するため�Eハンドラー
   const handleFileSelectClick = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
@@ -80,7 +80,7 @@ const UnifiedDataProcessor: React.FC = () => {
     if (event.target.files && event.target.files.length > 0) {
       setSelectedFile(event.target.files[0]);
       
-      // 同じファイルを再選択可能にするために入力をリセット
+      // 同じファイルを�E選択可能にするために入力をリセチE��
       event.target.value = '';
     }
   };
@@ -93,7 +93,7 @@ const UnifiedDataProcessor: React.FC = () => {
     }));
   };
 
-  // ファイルサイズのフォーマット
+  // ファイルサイズのフォーマッチE
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -102,30 +102,30 @@ const UnifiedDataProcessor: React.FC = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // ファイルのアップロードと処理
+  // ファイルのアチE�Eロードと処琁E
   const handleProcessFile = async () => {
     if (!selectedFile) {
       toast({
-        title: "ファイルが選択されていません",
-        description: "処理するファイルを選択してください",
+        title: "ファイルが選択されてぁE��せん",
+        description: "処琁E��るファイルを選択してください",
         variant: "destructive",
       });
       return;
     }
 
-    // 対応しているファイル形式をチェック
+    // 対応してぁE��ファイル形式をチェチE��
     const validExtensions = [".pdf", ".docx", ".txt", ".xlsx", ".pptx", ".ppt", ".doc"];
     const fileExt = selectedFile.name.substring(selectedFile.name.lastIndexOf(".")).toLowerCase();
     if (!validExtensions.includes(fileExt)) {
       toast({
-        title: "未対応のファイル形式",
-        description: "PDF, Word, Excel, PowerPoint, またはテキストファイルのみ処理可能です",
+        title: "未対応�Eファイル形弁E,
+        description: "PDF, Word, Excel, PowerPoint, また�EチE��ストファイルのみ処琁E��能でぁE,
         variant: "destructive",
       });
       return;
     }
     
-    // 処理オプションは自動的に有効化されているので確認不要
+    // 処琁E��プションは自動的に有効化されてぁE��ので確認不要E
 
     setIsUploading(true);
 
@@ -137,7 +137,7 @@ const UnifiedDataProcessor: React.FC = () => {
       formData.append("extractImageSearch", options.extractImageSearch.toString());
       formData.append("createQA", options.createQA.toString());
 
-      // 統合データ処理APIを呼び出す
+      // 統合データ処琁EPIを呼び出ぁE
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/data-processor/process`, {
         method: "POST",
         body: formData,
@@ -145,26 +145,26 @@ const UnifiedDataProcessor: React.FC = () => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || "処理に失敗しました");
+        throw new Error(errorText || "処琁E��失敗しました");
       }
 
       const result = await response.json();
 
       toast({
-        title: "処理成功",
-        description: `${selectedFile.name} を処理しました。${result.message || ""}`,
+        title: "処琁E�E劁E,
+        description: `${selectedFile.name} を�E琁E��ました、E{result.message || ""}`,
       });
 
-      // 処理完了後、画像検索データを更新するイベントを発生させる
+      // 処琁E��亁E��、画像検索チE�Eタを更新するイベントを発生させる
       window.dispatchEvent(new CustomEvent('image-search-data-updated'));
 
-      // 文書リストを更新
+      // 斁E��リストを更新
       fetchDocuments();
       setSelectedFile(null);
     } catch (error) {
       console.error("Processing error:", error);
       toast({
-        title: "処理エラー",
+        title: "処琁E��ラー",
         description: error instanceof Error ? error.message : "未知のエラーが発生しました",
         variant: "destructive",
       });
@@ -173,7 +173,7 @@ const UnifiedDataProcessor: React.FC = () => {
     }
   };
 
-  // 文書の削除
+  // 斁E��の削除
   const handleDeleteDocument = async (docId: string, title: string) => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/knowledge/${docId}`, {
@@ -190,10 +190,10 @@ const UnifiedDataProcessor: React.FC = () => {
         description: `${title} を削除しました`,
       });
 
-      // 文書リストを更新
+      // 斁E��リストを更新
       fetchDocuments();
       
-      // 画像検索データも更新
+      // 画像検索チE�Eタも更新
       window.dispatchEvent(new CustomEvent('image-search-data-updated'));
     } catch (error) {
       console.error("Delete error:", error);
@@ -205,13 +205,13 @@ const UnifiedDataProcessor: React.FC = () => {
     }
   };
 
-  // 文書リストの取得
+  // 斁E��リスト�E取征E
   const fetchDocuments = async () => {
     setIsLoading(true);
     try {
       const response = await fetch(buildApiUrl('/api/knowledge'));
       if (!response.ok) {
-        throw new Error("文書の取得に失敗しました");
+        throw new Error("斁E��の取得に失敗しました");
       }
       const data = await response.json();
       setDocuments(data);
@@ -219,7 +219,7 @@ const UnifiedDataProcessor: React.FC = () => {
       console.error("Fetch documents error:", error);
       toast({
         title: "エラー",
-        description: "文書リストの取得に失敗しました",
+        description: "斁E��リスト�E取得に失敗しました",
         variant: "destructive",
       });
     } finally {
@@ -227,7 +227,7 @@ const UnifiedDataProcessor: React.FC = () => {
     }
   };
 
-  // 日付のフォーマット
+  // 日付�EフォーマッチE
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
@@ -239,23 +239,23 @@ const UnifiedDataProcessor: React.FC = () => {
         minute: '2-digit'
       }).format(date);
     } catch (e) {
-      return dateString || '不明';
+      return dateString || '不�E';
     }
   };
 
   return (
     <div className="space-y-6">
       <div className="bg-white p-6 rounded-lg shadow-md border border-blue-100">
-        <h2 className="text-xl font-semibold text-blue-800 mb-4">ファイルアップロード処理</h2>
+        <h2 className="text-xl font-semibold text-blue-800 mb-4">ファイルアチE�Eロード�E琁E/h2>
         
-        {/* ファイルアップロード説明 */}
+        {/* ファイルアチE�Eロード説昁E*/}
         <div className="mb-4">
           <p className="text-base font-semibold text-gray-700">
-            PPTX, PDF, DOCX、PDFをアップロードすると、システムは自動的に内容を解析し、検索とAIの応答に適した形式に変換します。この処理には数分かかることがあります。
+            PPTX, PDF, DOCX、PDFをアチE�Eロードすると、シスチE��は自動的に冁E��を解析し、検索とAIの応答に適した形式に変換します。この処琁E��は数刁E��かることがあります、E
           </p>
         </div>
 
-        {/* ドラッグ&ドロップエリア */}
+        {/* ドラチE��&ドロチE�Eエリア */}
         <div
           className={`border-2 border-dashed border-blue-300 rounded-lg p-8 mb-4 text-center cursor-pointer bg-blue-50 hover:bg-blue-100 transition-colors ${
             selectedFile ? 'border-blue-600 bg-blue-100' : ''
@@ -280,14 +280,14 @@ const UnifiedDataProcessor: React.FC = () => {
               </div>
             ) : (
               <div>
-                <p className="text-lg font-medium text-blue-700">ここにファイルをドラッグ&ドロップ</p>
-                <p className="text-sm text-gray-500">または<span className="text-blue-600 font-medium">クリックして選択</span></p>
+                <p className="text-lg font-medium text-blue-700">ここにファイルをドラチE��&ドロチE�E</p>
+                <p className="text-sm text-gray-500">また�E<span className="text-blue-600 font-medium">クリチE��して選抁E/span></p>
               </div>
             )}
           </div>
         </div>
 
-        {/* 処理オプション（元ファイル保存のみ表示） */}
+        {/* 処琁E��プション�E��Eファイル保存�Eみ表示�E�E*/}
         <div className="flex items-center space-x-2 mb-4">
           <Checkbox 
             id="keepOriginalFile" 
@@ -295,11 +295,11 @@ const UnifiedDataProcessor: React.FC = () => {
             onCheckedChange={() => handleOptionChange('keepOriginalFile')}
           />
           <Label htmlFor="keepOriginalFile" className="cursor-pointer">
-            元ファイルを保存する
+            允E��ァイルを保存すめE
           </Label>
         </div>
 
-        {/* 処理ボタン */}
+        {/* 処琁E�Eタン */}
         <div className="flex justify-center mb-6">
           <Button
             onClick={handleProcessFile}
@@ -309,26 +309,26 @@ const UnifiedDataProcessor: React.FC = () => {
             {isUploading ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                処理中...
+                処琁E��...
               </>
             ) : (
               <>
                 <Database className="mr-2 h-5 w-5" />
-                処理開始
+                処琁E��姁E
               </>
             )}
           </Button>
         </div>
 
-        {/* 故障情報取込 */}
+        {/* 敁E��惁E��取込 */}
         <FileIngestPanel />
 
       </div>
 
-      {/* 処理済み文書一覧 */}
+      {/* 処琁E��み斁E��一覧 */}
       <div className="bg-white p-6 rounded-lg shadow-md border border-blue-100">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-blue-800">処理済み文書一覧</h2>
+          <h2 className="text-xl font-semibold text-blue-800">処琁E��み斁E��一覧</h2>
           <Button
             onClick={fetchDocuments}
             variant="outline"
@@ -354,16 +354,16 @@ const UnifiedDataProcessor: React.FC = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>タイトル</TableHead>
-                  <TableHead>種類</TableHead>
-                  <TableHead>追加日時</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
+                  <TableHead>種顁E/TableHead>
+                  <TableHead>追加日晁E/TableHead>
+                  <TableHead className="text-right">操佁E/TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {documents.map((doc) => (
                   <TableRow key={doc.id}>
-                    <TableCell className="font-medium">{doc.title || "無題"}</TableCell>
-                    <TableCell>{doc.type || "不明"}</TableCell>
+                    <TableCell className="font-medium">{doc.title || "無顁E}</TableCell>
+                    <TableCell>{doc.type || "不�E"}</TableCell>
                     <TableCell>{formatDate(doc.addedAt)}</TableCell>
                     <TableCell className="text-right">
                       <Button
@@ -383,7 +383,7 @@ const UnifiedDataProcessor: React.FC = () => {
         ) : (
           <div className="text-center py-8 text-gray-500">
             <Database className="h-12 w-12 mx-auto mb-2 text-gray-400" />
-            <p>処理済み文書はありません</p>
+            <p>処琁E��み斁E��はありません</p>
           </div>
         )}
       </div>

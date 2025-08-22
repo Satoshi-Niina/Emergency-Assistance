@@ -60,228 +60,228 @@ interface EmergencyQAFlowProps {
 const ENGINE_START_FLOW: QAFlowStep[] = [
   {
     id: 'location_check',
-    question: '今はどこにいますか？',
+    question: '今�EどこにぁE��すか�E�E,
     type: 'choice',
-    options: ['保材線', '車庫', '現場', 'その他'],
+    options: ['保材緁E, '車庫', '現場', 'そ�E仁E],
     required: true,
-    reasoning: '場所によって対応方法が異なるため',
-    expectedOutcome: '対応可能な場所かどうかの判断'
+    reasoning: '場所によって対応方法が異なるためE,
+    expectedOutcome: '対応可能な場所かどぁE��の判断'
   },
   {
     id: 'time_check',
-    question: '作業に使える時間はありますか？',
+    question: '作業に使える時間はありますか�E�E,
     type: 'choice',
-    options: ['20分以下', '30分程度', '1時間程度', '十分にある'],
+    options: ['20刁E��丁E, '30刁E��度', '1時間程度', '十�Eにある'],
     required: true,
-    reasoning: '時間によって対応方法を決定',
-    expectedOutcome: '緊急対応の必要性判断',
-    emergencyAction: '20分以下の場合: すぐに支援者へ連絡してください',
+    reasoning: '時間によって対応方法を決宁E,
+    expectedOutcome: '緊急対応�E忁E��性判断',
+    emergencyAction: '20刁E��下�E場吁E すぐに支援老E��連絡してください',
     timeLimit: 20,
     nextStepCondition: [
-      { condition: '20分以下', nextStepId: 'emergency_contact' },
-      { condition: '30分程度', nextStepId: 'lighting_check' },
+      { condition: '20刁E��丁E, nextStepId: 'emergency_contact' },
+      { condition: '30刁E��度', nextStepId: 'lighting_check' },
       { condition: '1時間程度', nextStepId: 'lighting_check' },
-      { condition: '十分にある', nextStepId: 'lighting_check' }
+      { condition: '十�Eにある', nextStepId: 'lighting_check' }
     ]
   },
   {
     id: 'emergency_contact',
-    question: '時間が限られているため、すぐに支援者に連絡してください。',
+    question: '時間が限られてぁE��ため、すぐに支援老E��連絡してください、E,
     type: 'text',
     required: true,
-    reasoning: '緊急時の安全確保',
-    expectedOutcome: '専門家による迅速な対応'
+    reasoning: '緊急時�E安�E確俁E,
+    expectedOutcome: '専門家による迁E��な対忁E
   },
   {
     id: 'lighting_check',
-    question: '室内灯や照明類は点灯していますか？',
+    question: '室冁E�EめE�E明類�E点灯してぁE��すか�E�E,
     type: 'choice',
-    options: ['点灯している', '点灯していない', '一部点灯している'],
+    options: ['点灯してぁE��', '点灯してぁE��ぁE, '一部点灯してぁE��'],
     required: true,
-    reasoning: 'バッテリー状態の確認',
-    expectedOutcome: 'バッテリー電圧の確認',
+    reasoning: 'バッチE��ー状態�E確誁E,
+    expectedOutcome: 'バッチE��ー電圧の確誁E,
     nextStepCondition: [
-      { condition: '点灯している', nextStepId: 'starter_key_check' },
-      { condition: '点灯していない', nextStepId: 'battery_connection_check' },
-      { condition: '一部点灯している', nextStepId: 'battery_connection_check' }
+      { condition: '点灯してぁE��', nextStepId: 'starter_key_check' },
+      { condition: '点灯してぁE��ぁE, nextStepId: 'battery_connection_check' },
+      { condition: '一部点灯してぁE��', nextStepId: 'battery_connection_check' }
     ]
   },
   {
     id: 'starter_key_check',
-    question: 'スターターキーは回りますか？',
+    question: 'スターターキーは回りますか�E�E,
     type: 'choice',
-    options: ['回る', '回らない', '少し回る'],
+    options: ['回る', '回らなぁE, '少し回る'],
     required: true,
-    reasoning: 'スターターシステムの動作確認',
-    expectedOutcome: 'スターターの状態確認',
+    reasoning: 'スターターシスチE��の動作確誁E,
+    expectedOutcome: 'スターターの状態確誁E,
     nextStepCondition: [
       { condition: '回る', nextStepId: 'starter_sound_check' },
-      { condition: '回らない', nextStepId: 'key_switch_check' },
+      { condition: '回らなぁE, nextStepId: 'key_switch_check' },
       { condition: '少し回る', nextStepId: 'starter_sound_check' }
     ]
   },
   {
     id: 'starter_sound_check',
-    question: 'スターターを回した時、スターターから"カチ"と音が出ますか？',
+    question: 'スターターを回した時、スターターから"カチEと音が�Eますか�E�E,
     type: 'choice',
-    options: ['カチと音が出る', '全く音が出ない', '別の音が出る'],
+    options: ['カチと音が�EめE, '全く音が�EなぁE, '別の音が�EめE],
     required: true,
-    reasoning: 'スターターの動作状態確認',
-    expectedOutcome: 'スターターの故障判定',
+    reasoning: 'スターターの動作状態確誁E,
+    expectedOutcome: 'スターターの敁E��判宁E,
     nextStepCondition: [
-      { condition: 'カチと音が出る', nextStepId: 'fuel_check' },
-      { condition: '全く音が出ない', nextStepId: 'battery_connection_check' },
-      { condition: '別の音が出る', nextStepId: 'starter_diagnosis' }
+      { condition: 'カチと音が�EめE, nextStepId: 'fuel_check' },
+      { condition: '全く音が�EなぁE, nextStepId: 'battery_connection_check' },
+      { condition: '別の音が�EめE, nextStepId: 'starter_diagnosis' }
     ]
   },
   {
     id: 'battery_connection_check',
-    question: 'バッテリーは接続されていますか？（もしくはメインブレーカーが入っていますか？）',
+    question: 'バッチE��ーは接続されてぁE��すか�E�（もしくはメインブレーカーが�EってぁE��すか�E�！E,
     type: 'choice',
-    options: ['接続されている', '接続されていない', '確認できない'],
+    options: ['接続されてぁE��', '接続されてぁE��ぁE, '確認できなぁE],
     required: true,
-    reasoning: '電源供給の確認',
-    expectedOutcome: '電源問題の特定',
+    reasoning: '電源供給の確誁E,
+    expectedOutcome: '電源問題�E特宁E,
     nextStepCondition: [
-      { condition: '接続されている', nextStepId: 'battery_voltage_check' },
-      { condition: '接続されていない', nextStepId: 'connect_battery' },
-      { condition: '確認できない', nextStepId: 'battery_voltage_check' }
+      { condition: '接続されてぁE��', nextStepId: 'battery_voltage_check' },
+      { condition: '接続されてぁE��ぁE, nextStepId: 'connect_battery' },
+      { condition: '確認できなぁE, nextStepId: 'battery_voltage_check' }
     ]
   },
   {
     id: 'battery_voltage_check',
-    question: 'バッテリーの電圧を確認できますか？',
+    question: 'バッチE��ーの電圧を確認できますか�E�E,
     type: 'choice',
-    options: ['12V以上', '10-12V', '10V以下', '確認できない'],
+    options: ['12V以丁E, '10-12V', '10V以丁E, '確認できなぁE],
     required: true,
-    reasoning: 'バッテリーの充電状態確認',
-    expectedOutcome: 'バッテリー不良の判定',
+    reasoning: 'バッチE��ーの允E��状態確誁E,
+    expectedOutcome: 'バッチE��ー不良の判宁E,
     nextStepCondition: [
-      { condition: '12V以上', nextStepId: 'fuel_check' },
+      { condition: '12V以丁E, nextStepId: 'fuel_check' },
       { condition: '10-12V', nextStepId: 'charge_battery' },
-      { condition: '10V以下', nextStepId: 'charge_battery' },
-      { condition: '確認できない', nextStepId: 'charge_battery' }
+      { condition: '10V以丁E, nextStepId: 'charge_battery' },
+      { condition: '確認できなぁE, nextStepId: 'charge_battery' }
     ]
   },
   {
     id: 'charge_battery',
-    question: 'バッテリー不良が想定されます。充電してください。',
+    question: 'バッチE��ー不良が想定されます。�E電してください、E,
     type: 'text',
     required: true,
-    reasoning: 'バッテリー充電の指示',
-    expectedOutcome: 'バッテリーの復旧'
+    reasoning: 'バッチE��ー允E��の持E��',
+    expectedOutcome: 'バッチE��ーの復旧'
   },
   {
     id: 'connect_battery',
-    question: 'バッテリーを接続してください。',
+    question: 'バッチE��ーを接続してください、E,
     type: 'text',
     required: true,
-    reasoning: '電源接続の指示',
-    expectedOutcome: '電源の復旧'
+    reasoning: '電源接続�E持E��',
+    expectedOutcome: '電源�E復旧'
   },
   {
     id: 'fuel_check',
-    question: '燃料は十分にありますか？',
+    question: '燁E��は十�Eにありますか�E�E,
     type: 'choice',
-    options: ['十分にある', '少ない', '確認できない'],
+    options: ['十�Eにある', '少なぁE, '確認できなぁE],
     required: true,
-    reasoning: '燃料供給の確認',
-    expectedOutcome: '燃料問題の特定',
+    reasoning: '燁E��供給の確誁E,
+    expectedOutcome: '燁E��問題�E特宁E,
     nextStepCondition: [
-      { condition: '十分にある', nextStepId: 'air_filter_check' },
-      { condition: '少ない', nextStepId: 'add_fuel' },
-      { condition: '確認できない', nextStepId: 'add_fuel' }
+      { condition: '十�Eにある', nextStepId: 'air_filter_check' },
+      { condition: '少なぁE, nextStepId: 'add_fuel' },
+      { condition: '確認できなぁE, nextStepId: 'add_fuel' }
     ]
   },
   {
     id: 'add_fuel',
-    question: '燃料を補充してください。',
+    question: '燁E��を補�Eしてください、E,
     type: 'text',
     required: true,
-    reasoning: '燃料補充の指示',
-    expectedOutcome: '燃料供給の復旧'
+    reasoning: '燁E��補�Eの持E��',
+    expectedOutcome: '燁E��供給の復旧'
   },
   {
     id: 'air_filter_check',
-    question: 'エアフィルターは清潔ですか？',
+    question: 'エアフィルターは渁E��ですか�E�E,
     type: 'choice',
-    options: ['清潔', '汚れている', '確認できない'],
+    options: ['渁E��E, '汚れてぁE��', '確認できなぁE],
     required: true,
-    reasoning: '空気供給の確認',
-    expectedOutcome: 'エアフィルターの状態確認',
+    reasoning: '空気供給の確誁E,
+    expectedOutcome: 'エアフィルターの状態確誁E,
     nextStepCondition: [
-      { condition: '清潔', nextStepId: 'final_diagnosis' },
-      { condition: '汚れている', nextStepId: 'clean_air_filter' },
-      { condition: '確認できない', nextStepId: 'clean_air_filter' }
+      { condition: '渁E��E, nextStepId: 'final_diagnosis' },
+      { condition: '汚れてぁE��', nextStepId: 'clean_air_filter' },
+      { condition: '確認できなぁE, nextStepId: 'clean_air_filter' }
     ]
   },
   {
     id: 'clean_air_filter',
-    question: 'エアフィルターを清掃または交換してください。',
+    question: 'エアフィルターを渁E��また�E交換してください、E,
     type: 'text',
     required: true,
-    reasoning: 'エアフィルター清掃の指示',
-    expectedOutcome: '空気供給の改善'
+    reasoning: 'エアフィルター渁E��の持E��',
+    expectedOutcome: '空気供給の改喁E
   },
   {
     id: 'key_switch_check',
-    question: 'キースイッチの状態を確認してください。',
+    question: 'キースイチE��の状態を確認してください、E,
     type: 'choice',
-    options: ['正常', '異常', '確認できない'],
+    options: ['正常', '異常', '確認できなぁE],
     required: true,
-    reasoning: 'キースイッチの動作確認',
-    expectedOutcome: 'キースイッチの故障判定',
+    reasoning: 'キースイチE��の動作確誁E,
+    expectedOutcome: 'キースイチE��の敁E��判宁E,
     nextStepCondition: [
       { condition: '正常', nextStepId: 'starter_sound_check' },
       { condition: '異常', nextStepId: 'replace_key_switch' },
-      { condition: '確認できない', nextStepId: 'replace_key_switch' }
+      { condition: '確認できなぁE, nextStepId: 'replace_key_switch' }
     ]
   },
   {
     id: 'replace_key_switch',
-    question: 'キースイッチの交換が必要です。専門家に相談してください。',
+    question: 'キースイチE��の交換が忁E��です。専門家に相諁E��てください、E,
     type: 'text',
     required: true,
-    reasoning: '専門修理の指示',
-    expectedOutcome: 'キースイッチの修理'
+    reasoning: '専門修琁E�E持E��',
+    expectedOutcome: 'キースイチE��の修琁E
   },
   {
     id: 'starter_diagnosis',
-    question: 'スターターの詳細診断が必要です。専門家に相談してください。',
+    question: 'スターターの詳細診断が忁E��です。専門家に相諁E��てください、E,
     type: 'text',
     required: true,
-    reasoning: '専門診断の指示',
-    expectedOutcome: 'スターターの専門修理'
+    reasoning: '専門診断の持E��',
+    expectedOutcome: 'スターターの専門修琁E
   },
   {
     id: 'final_diagnosis',
-    question: '基本的な確認が完了しました。エンジンを始動してみてください。',
+    question: '基本皁E��確認が完亁E��ました。エンジンを始動してみてください、E,
     type: 'choice',
-    options: ['始動した', '始動しない', '異常音がする'],
+    options: ['始動した', '始動しなぁE, '異常音がすめE],
     required: true,
-    reasoning: '最終確認',
-    expectedOutcome: '問題解決の確認',
+    reasoning: '最終確誁E,
+    expectedOutcome: '問題解決の確誁E,
     nextStepCondition: [
       { condition: '始動した', nextStepId: 'success' },
-      { condition: '始動しない', nextStepId: 'expert_consultation' },
-      { condition: '異常音がする', nextStepId: 'expert_consultation' }
+      { condition: '始動しなぁE, nextStepId: 'expert_consultation' },
+      { condition: '異常音がすめE, nextStepId: 'expert_consultation' }
     ]
   },
   {
     id: 'success',
-    question: 'エンジンが正常に始動しました！問題は解決されました。',
+    question: 'エンジンが正常に始動しました�E�問題�E解決されました、E,
     type: 'text',
     required: true,
-    reasoning: '成功の確認',
-    expectedOutcome: '問題解決完了'
+    reasoning: '成功の確誁E,
+    expectedOutcome: '問題解決完亁E
   },
   {
     id: 'expert_consultation',
-    question: '専門的な診断が必要です。技術支援センターに連絡してください。',
+    question: '専門皁E��診断が忁E��です。技術支援センターに連絡してください、E,
     type: 'text',
     required: true,
-    reasoning: '専門家への相談指示',
-    expectedOutcome: '専門家による対応'
+    reasoning: '専門家への相諁E��示',
+    expectedOutcome: '専門家による対忁E
   }
 ];
 
@@ -299,7 +299,7 @@ export default function EmergencyQAFlow({
   const [emergencyAction, setEmergencyAction] = useState<string | null>(null);
   const [flowSteps, setFlowSteps] = useState<QAFlowStep[]>(ENGINE_START_FLOW);
 
-  // 初期化
+  // 初期匁E
   useEffect(() => {
     if (flowSteps.length > 0) {
       setCurrentStep(flowSteps[0]);
@@ -307,21 +307,21 @@ export default function EmergencyQAFlow({
     }
   }, []);
 
-  // 次のステップを決定
+  // 次のスチE��プを決宁E
   const getNextStep = useCallback((currentStepId: string, answer: string): QAFlowStep | null => {
     const currentStep = flowSteps.find(step => step.id === currentStepId);
     if (!currentStep || !currentStep.nextStepCondition) {
       return null;
     }
 
-    // 条件に基づいて次のステップを決定
+    // 条件に基づぁE��次のスチE��プを決宁E
     for (const condition of currentStep.nextStepCondition) {
       if (answer.includes(condition.condition)) {
         return flowSteps.find(step => step.id === condition.nextStepId) || null;
       }
     }
 
-    // デフォルトの次のステップ（順序で決定）
+    // チE��ォルト�E次のスチE��プ（頁E��で決定！E
     const currentIndex = flowSteps.findIndex(step => step.id === currentStepId);
     if (currentIndex < flowSteps.length - 1) {
       return flowSteps[currentIndex + 1];
@@ -330,19 +330,19 @@ export default function EmergencyQAFlow({
     return null;
   }, [flowSteps]);
 
-  // 回答を処理
+  // 回答を処琁E
   const handleAnswerSubmit = async () => {
     if (!currentAnswer.trim() || !currentStep) return;
 
     setIsLoading(true);
     
     try {
-      // 緊急対応チェック
+      // 緊急対応チェチE��
       if (currentStep.emergencyAction && currentStep.timeLimit) {
         const timeAnswer = currentAnswer.toLowerCase();
-        if (timeAnswer.includes(`${currentStep.timeLimit}分以下`) || 
-            timeAnswer.includes('20分以下') || 
-            timeAnswer.includes('30分以下')) {
+        if (timeAnswer.includes(`${currentStep.timeLimit}刁E��下`) || 
+            timeAnswer.includes('20刁E��丁E) || 
+            timeAnswer.includes('30刁E��丁E)) {
           setEmergencyAction(currentStep.emergencyAction);
           onEmergencyContact();
           return;
@@ -364,83 +364,83 @@ export default function EmergencyQAFlow({
       const newProgress = Math.min(95, progress + (100 / flowSteps.length));
       setProgress(newProgress);
 
-      // 次のステップを決定
+      // 次のスチE��プを決宁E
       const nextStep = getNextStep(currentStep.id, currentAnswer);
       
       if (nextStep) {
         setCurrentStep(nextStep);
         setCurrentAnswer('');
       } else {
-        // フロー完了
+        // フロー完亁E
         setProgress(100);
         const solution = generateSolution(newAnswers);
         onComplete(solution, newAnswers);
       }
     } catch (error) {
-      console.error('回答処理エラー:', error);
+      console.error('回答�E琁E��ラー:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 解決策を生成
+  // 解決策を生�E
   const generateSolution = (allAnswers: QAAnswer[]): string => {
     const lastAnswer = allAnswers[allAnswers.length - 1];
     
     if (lastAnswer.stepId === 'success') {
       return `
-## ✅ 問題解決完了
+## ✁E問題解決完亁E
 
-エンジンが正常に始動しました！
+エンジンが正常に始動しました�E�E
 
-### 📋 実施した対応
+### 📋 実施した対忁E
 ${allAnswers.map((answer, index) => 
-  `${index + 1}. ${answer.question}\n   回答: ${answer.answer}`
+  `${index + 1}. ${answer.question}\n   回筁E ${answer.answer}`
 ).join('\n')}
 
-### 🔧 今後の予防策
-1. **定期的なバッテリーチェック**: 月1回の電圧確認
-2. **燃料管理**: 燃料残量の定期的な確認
-3. **エアフィルター清掃**: 作業環境に応じた清掃頻度の設定
-4. **定期点検**: メーカー推奨の定期点検の実施
+### 🔧 今後�E予防筁E
+1. **定期皁E��バッチE��ーチェチE��**: 朁E回�E電圧確誁E
+2. **燁E��管琁E*: 燁E��残量の定期皁E��確誁E
+3. **エアフィルター渁E��**: 作業環墁E��応じた渁E��頻度の設宁E
+4. **定期点椁E*: メーカー推奨の定期点検�E実施
 
-### 📞 緊急時の連絡先
+### 📞 緊急時�E連絡允E
 - 技術支援センター: 0123-456-789
-- 緊急時: 0123-456-000
+- 緊急晁E 0123-456-000
       `;
     } else if (lastAnswer.stepId === 'expert_consultation') {
       return `
-## 🚨 専門家による対応が必要
+## 🚨 専門家による対応が忁E��E
 
 ### 📞 技術支援センターに連絡してください
 - 電話番号: 0123-456-789
-- 緊急時: 0123-456-000
+- 緊急晁E 0123-456-000
 
 ### 📋 伝えるべき情報
 ${allAnswers.map((answer, index) => 
-  `${index + 1}. ${answer.question}\n   回答: ${answer.answer}`
+  `${index + 1}. ${answer.question}\n   回筁E ${answer.answer}`
 ).join('\n')}
 
-### 🔧 専門家による対応内容
-1. **詳細診断**: 専門機器による精密検査
-2. **部品交換**: 必要に応じた部品の交換
-3. **調整作業**: エンジンの調整・最適化
-4. **予防保全**: 再発防止のための対策
+### 🔧 専門家による対応�E容
+1. **詳細診断**: 専門機器による精寁E��査
+2. **部品交揁E*: 忁E��に応じた部品�E交揁E
+3. **調整作業**: エンジンの調整・最適匁E
+4. **予防保�E**: 再発防止のための対筁E
       `;
     } else {
       return `
-## 🔧 対応完了
+## 🔧 対応完亁E
 
-### 📋 実施した対応
+### 📋 実施した対忁E
 ${allAnswers.map((answer, index) => 
-  `${index + 1}. ${answer.question}\n   回答: ${answer.answer}`
+  `${index + 1}. ${answer.question}\n   回筁E ${answer.answer}`
 ).join('\n')}
 
-### ✅ 次のステップ
+### ✁E次のスチE��チE
 ${lastAnswer.answer}
 
-### 📞 サポート
-問題が解決しない場合は、技術支援センターに連絡してください。
+### 📞 サポ�EチE
+問題が解決しなぁE��合�E、技術支援センターに連絡してください、E
 - 電話番号: 0123-456-789
       `;
     }
@@ -502,14 +502,14 @@ ${lastAnswer.answer}
                 onClick={resetQA}
               >
                 <RotateCcw className="h-4 w-4 mr-1" />
-                リセット
+                リセチE��
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={onExit}
               >
-                終了
+                終亁E
               </Button>
             </div>
           </div>
@@ -517,7 +517,7 @@ ${lastAnswer.answer}
           {/* 進捗バー */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm text-gray-600">
-              <span>診断進捗</span>
+              <span>診断進捁E/span>
               <span>{Math.round(progress)}%</span>
             </div>
             <Progress value={progress} className="h-2" />
@@ -525,12 +525,12 @@ ${lastAnswer.answer}
         </CardHeader>
       </Card>
 
-      {/* 緊急対応アラート */}
+      {/* 緊急対応アラーチE*/}
       {emergencyAction && (
         <Alert className="border-red-200 bg-red-50">
           <AlertCircle className="h-4 w-4 text-red-600" />
           <AlertDescription className="text-red-800">
-            <strong>緊急対応:</strong> {emergencyAction}
+            <strong>緊急対忁E</strong> {emergencyAction}
           </AlertDescription>
         </Alert>
       )}
@@ -555,7 +555,7 @@ ${lastAnswer.answer}
                     {answer.question}
                   </p>
                   <p className="text-sm text-gray-600 mb-1">
-                    回答: {answer.answer}
+                    回筁E {answer.answer}
                   </p>
                   <p className="text-xs text-gray-400">
                     {answer.timestamp.toLocaleTimeString()}
@@ -568,7 +568,7 @@ ${lastAnswer.answer}
         </Card>
       )}
 
-      {/* 現在の質問 */}
+      {/* 現在の質啁E*/}
       {currentStep && (
         <Card>
           <CardContent className="p-6">
@@ -580,13 +580,13 @@ ${lastAnswer.answer}
                     const questionText = currentStep.question.toLowerCase();
                     if (questionText.includes('時間') || questionText.includes('緊急')) {
                       return <Clock className="h-4 w-4 text-red-600" />;
-                    } else if (questionText.includes('照明') || questionText.includes('点灯')) {
+                    } else if (questionText.includes('照昁E) || questionText.includes('点灯')) {
                       return <Zap className="h-4 w-4 text-yellow-600" />;
                     } else if (questionText.includes('スターター') || questionText.includes('キー')) {
                       return <Key className="h-4 w-4 text-blue-600" />;
-                    } else if (questionText.includes('バッテリー')) {
+                    } else if (questionText.includes('バッチE��ー')) {
                       return <Battery className="h-4 w-4 text-green-600" />;
-                    } else if (questionText.includes('燃料')) {
+                    } else if (questionText.includes('燁E��')) {
                       return <Car className="h-4 w-4 text-orange-600" />;
                     } else {
                       return <span className="text-sm font-medium text-blue-600">{answers.length + 1}</span>;
@@ -600,7 +600,7 @@ ${lastAnswer.answer}
                   <div className="flex items-center gap-2 mb-2">
                     {currentStep.required && (
                       <Badge variant="destructive" className="text-xs">
-                        必須
+                        忁E��E
                       </Badge>
                     )}
                     {currentStep.reasoning && (
@@ -611,18 +611,18 @@ ${lastAnswer.answer}
                   </div>
                   {currentStep.expectedOutcome && (
                     <div className="text-sm text-gray-600 bg-blue-50 p-2 rounded-md mb-3">
-                      <strong>期待される結果:</strong> {currentStep.expectedOutcome}
+                      <strong>期征E��れる結果:</strong> {currentStep.expectedOutcome}
                     </div>
                   )}
                   {currentStep.emergencyAction && (
                     <div className="text-sm text-red-600 bg-red-50 p-2 rounded-md mb-3">
-                      <strong>⚠️ 緊急時:</strong> {currentStep.emergencyAction}
+                      <strong>⚠�E�E緊急晁E</strong> {currentStep.emergencyAction}
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* 回答入力 */}
+              {/* 回答�E劁E*/}
               <div className="space-y-3">
                 {currentStep.type === 'choice' && currentStep.options ? (
                   <div className="grid grid-cols-1 gap-2">
@@ -659,12 +659,12 @@ ${lastAnswer.answer}
                       {isLoading ? (
                         <div className="flex items-center space-x-2">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                          <span>処理中...</span>
+                          <span>処琁E��...</span>
                         </div>
                       ) : (
                         <div className="flex items-center space-x-2">
                           <Send className="h-4 w-4" />
-                          <span>回答する</span>
+                          <span>回答すめE/span>
                         </div>
                       )}
                     </Button>
@@ -672,12 +672,12 @@ ${lastAnswer.answer}
                 )}
               </div>
 
-              {/* ヒント */}
+              {/* ヒンチE*/}
               <Alert>
                 <Lightbulb className="h-4 w-4" />
                 <AlertDescription>
-                  段階的な診断により、エンジン始動不良の原因を特定します。
-                  時間が限られている場合は、すぐに支援者に連絡してください。
+                  段階的な診断により、エンジン始動不良の原因を特定します、E
+                  時間が限られてぁE��場合�E、すぐに支援老E��連絡してください、E
                 </AlertDescription>
               </Alert>
             </div>
@@ -685,13 +685,13 @@ ${lastAnswer.answer}
         </Card>
       )}
 
-      {/* 完了時の表示 */}
+      {/* 完亁E��の表示 */}
       {progress === 100 && (
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-center space-x-2 text-green-600">
               <CheckCircle className="h-6 w-6" />
-              <span className="text-lg font-medium">診断完了</span>
+              <span className="text-lg font-medium">診断完亁E/span>
             </div>
           </CardContent>
         </Card>

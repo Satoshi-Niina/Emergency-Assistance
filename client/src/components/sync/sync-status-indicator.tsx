@@ -28,13 +28,13 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
   const [syncError, setSyncError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // オンライン状態を監視
+  // オンライン状態を監要E
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
       toast({
         title: 'オンラインに戻りました',
-        description: 'ネットワーク接続が復旧しました。自動的に同期を開始します。',
+        description: 'ネットワーク接続が復旧しました。�E動的に同期を開始します、E,
         variant: 'default'
       });
       checkSyncStatus();
@@ -44,7 +44,7 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
       setIsOnline(false);
       toast({
         title: 'オフラインになりました',
-        description: 'ネットワーク接続が切断されました。接続が復旧すると自動的に同期します。',
+        description: 'ネットワーク接続が刁E��されました。接続が復旧すると自動的に同期します、E,
         variant: 'destructive'
       });
       setStatus('offline');
@@ -62,8 +62,8 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
         setProgress(100);
         setHasPendingMessages(false);
         toast({
-          title: '同期完了',
-          description: 'すべてのメッセージが正常に同期されました。',
+          title: '同期完亁E,
+          description: 'すべてのメチE��ージが正常に同期されました、E,
           variant: 'default'
         });
         if (onComplete) onComplete();
@@ -84,7 +84,7 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
     window.addEventListener('offline', handleOffline);
     window.addEventListener('sync-status-update', handleSyncStatusUpdate);
 
-    // 初期状態を確認
+    // 初期状態を確誁E
     checkSyncStatus();
 
     return () => {
@@ -94,7 +94,7 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
     };
   }, [chatId, toast, onComplete]);
 
-  // 同期状態を確認
+  // 同期状態を確誁E
   const checkSyncStatus = async () => {
     try {
       const synced = await isChatSynced(chatId);
@@ -106,12 +106,12 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
         setHasPendingMessages(true);
         
         if (isOnline) {
-          // オンラインの場合は自動的に同期を開始
+          // オンラインの場合�E自動的に同期を開姁E
           handleManualSync();
         }
       }
     } catch (error) {
-      console.error('同期状態の確認中にエラーが発生しました:', error);
+      console.error('同期状態�E確認中にエラーが発生しました:', error);
     }
   };
 
@@ -119,8 +119,8 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
   const handleManualSync = async () => {
     if (!isOnline) {
       toast({
-        title: 'オフライン状態です',
-        description: 'ネットワーク接続がありません。接続が復旧すると自動的に同期します。',
+        title: 'オフライン状態でぁE,
+        description: 'ネットワーク接続がありません。接続が復旧すると自動的に同期します、E,
         variant: 'destructive'
       });
       return;
@@ -135,11 +135,11 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
         detail: { type: 'sync-started' }
       }));
 
-      // 同期実行
+      // 同期実衁E
       const result = await syncChat(chatId);
 
       if (result.success) {
-        // 完了イベント
+        // 完亁E��ベンチE
         window.dispatchEvent(new CustomEvent('sync-status-update', {
           detail: { 
             type: 'sync-complete',
@@ -149,8 +149,8 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
         
         if (result.totalSynced > 0) {
           toast({
-            title: '同期完了',
-            description: `${result.totalSynced}件のメッセージが同期されました。`,
+            title: '同期完亁E,
+            description: `${result.totalSynced}件のメチE��ージが同期されました。`,
             variant: 'default'
           });
         } else {
@@ -158,7 +158,7 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
           setStatus('synced');
         }
       } else {
-        // エラーイベント
+        // エラーイベンチE
         window.dispatchEvent(new CustomEvent('sync-status-update', {
           detail: { 
             type: 'sync-error',
@@ -167,7 +167,7 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
         }));
       }
     } catch (error: any) {
-      // エラーイベント
+      // エラーイベンチE
       window.dispatchEvent(new CustomEvent('sync-status-update', {
         detail: { 
           type: 'sync-error',
@@ -177,7 +177,7 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
     }
   };
 
-  // ステータスに応じたアイコンとテキスト
+  // スチE�Eタスに応じたアイコンとチE��スチE
   const getStatusInfo = () => {
     switch (status) {
       case 'synced':
@@ -221,7 +221,7 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
 
   const statusInfo = getStatusInfo();
 
-  // コンパクト表示（アイコンのみ）
+  // コンパクト表示�E�アイコンのみ�E�E
   if (!hasPendingMessages && status === 'synced') {
     return (
       <div className={cn("flex items-center", className)} title="同期済み">
@@ -230,7 +230,7 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
     );
   }
 
-  // 詳細表示（ステータスと操作ボタン）
+  // 詳細表示�E�スチE�Eタスと操作�Eタン�E�E
   return (
     <Card className={cn("w-full", className)}>
       <CardContent className="p-3">
@@ -255,7 +255,7 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
               onClick={handleManualSync}
               disabled={!isOnline}
             >
-              再同期
+              再同朁E
             </Button>
           )}
         </div>

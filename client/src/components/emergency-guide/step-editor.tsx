@@ -24,10 +24,10 @@ import { Plus, Trash2, GripVertical, Upload, X, Image as ImageIcon, Save, Rotate
 import { convertImageUrl } from '../../lib/utils.ts';
 
 /**
- * ⚠️ AI編集制限: このファイルはスライド編集UI専用です
- * - タイトル編集機能の変更は禁止
- * - 条件分岐UI構造の変更は禁止
- * - バックエンド連携コードの追加は禁止
+ * ⚠�E�EAI編雁E��陁E こ�Eファイルはスライド編雁EI専用でぁE
+ * - タイトル編雁E���Eの変更は禁止
+ * - 条件刁E��UI構造の変更は禁止
+ * - バックエンド連携コード�E追加は禁止
  */
 
 // Helper function for UTF-8 safe base64 encoding
@@ -40,7 +40,7 @@ function utf8_to_b64(str: string): string {
   }
 }
 
-// 1. ImageInfoインターフェースをエクスポート可能に変更し、ファイルURLとファイル名を保持するようにします
+// 1. ImageInfoインターフェースをエクスポ�Eト可能に変更し、ファイルURLとファイル名を保持するようにしまぁE
 export interface ImageInfo {
   url: string;
   fileName: string;
@@ -52,7 +52,7 @@ interface DecisionCondition {
   nextSlideId?: string;
 }
 
-// 2. Stepインターフェースの画像関連のフィールドを images 配列に変更します
+// 2. Stepインターフェースの画像関連のフィールドを images 配�Eに変更しまぁE
 interface Step {
   id: string;
   title: string;
@@ -71,7 +71,7 @@ interface Step {
     label: string;
     nextId: string;
   }>;
-  // 古いプロパティは後方互換性のために残す（将来的には削除）
+  // 古ぁE�Eロパティは後方互換性のために残す�E�封E��皁E��は削除�E�E
   imageUrl?: string;
   imageFileName?: string;
 }
@@ -90,7 +90,7 @@ interface StepEditorProps {
   onAddStepBetween?: (index: number, type: 'step' | 'decision') => void;
 }
 
-// カスタムスクロールバーのスタイル
+// カスタムスクロールバ�Eのスタイル
 const scrollbarStyles = `
   .step-editor-scrollbar::-webkit-scrollbar {
     width: 20px !important;
@@ -122,7 +122,7 @@ const scrollbarStyles = `
     scrollbar-color: #c1c1c1 #f1f1f1 !important;
   }
   
-  /* より具体的なセレクタで優先度を上げる */
+  /* より具体的なセレクタで優先度を上げめE*/
   div.step-editor-scrollbar::-webkit-scrollbar {
     width: 20px !important;
     height: 20px !important;
@@ -154,7 +154,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
   flowId,
   onAddStepBetween
 }) => {
-  console.log('🔄 StepEditor レンダリング開始:', { 
+  console.log('🔄 StepEditor レンダリング開姁E', { 
     stepsLength: steps.length, 
     flowId,
     steps: steps.map(s => ({ id: s.id, title: s.title, type: s.type }))
@@ -165,7 +165,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
   const [expandedSteps, setExpandedSteps] = useState<{ [key: string]: boolean }>({});
   const [showStepControls, setShowStepControls] = useState<{ [key: string]: boolean }>({});
   
-  // すべてのステップを展開状態にする
+  // すべてのスチE��プを展開状態にする
   useEffect(() => {
     const allExpanded = steps.reduce((acc, step) => {
       acc[step.id] = true;
@@ -174,7 +174,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
     setExpandedSteps(allExpanded);
   }, [steps]);
 
-  // カスタムスクロールバーのスタイルを適用
+  // カスタムスクロールバ�Eのスタイルを適用
   useEffect(() => {
     const styleElement = document.createElement('style');
     styleElement.textContent = scrollbarStyles;
@@ -200,9 +200,9 @@ const StepEditor: React.FC<StepEditorProps> = ({
     }));
   };
 
-  // 画像URL変換の簡略化
+  // 画像URL変換の簡略匁E
 
-  // 画像の読み込みエラーを処理する関数
+  // 画像�E読み込みエラーを�E琁E��る関数
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>, imageUrl: string) => {
     console.error('画像読み込みエラー:', imageUrl);
     const target = e.currentTarget;
@@ -211,7 +211,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
     // エラー表示用の要素を追加
     const errorDiv = document.createElement('div');
     errorDiv.className = 'bg-red-100 border border-red-300 text-red-700 px-3 py-2 rounded text-sm';
-    errorDiv.textContent = '画像の読み込みに失敗しました';
+    errorDiv.textContent = '画像�E読み込みに失敗しました';
     target.parentNode?.appendChild(errorDiv);
   };
 
@@ -223,20 +223,20 @@ const StepEditor: React.FC<StepEditorProps> = ({
     setUploadingImages(prev => ({ ...prev, [stepId]: true }));
     
     try {
-      console.log('🖼️ 画像アップロード開始:', { stepId, fileName: file.name });
+      console.log('🖼�E�E画像アチE�Eロード開姁E', { stepId, fileName: file.name });
       
-      // 重複チェック: 同じファイル名の画像が既に存在するかチェック
+      // 重褁E��ェチE��: 同じファイル名�E画像が既に存在するかチェチE��
       const stepToUpdate = steps.find(step => step.id === stepId);
       if (stepToUpdate && stepToUpdate.images) {
         const existingImage = (stepToUpdate.images ?? []).find(img => 
           img.fileName === file.name || 
-          img.fileName === file.name.replace(/\.[^/.]+$/, '') // 拡張子を除いた比較
+          img.fileName === file.name.replace(/\.[^/.]+$/, '') // 拡張子を除ぁE��比輁E
         );
         
         if (existingImage) {
           const confirmReplace = window.confirm(
-            `同じファイル名の画像 "${file.name}" が既に存在します。\n` +
-            `既存の画像を置き換えますか？`
+            `同じファイル名�E画僁E"${file.name}" が既に存在します、En` +
+            `既存�E画像を置き換えますか�E�`
           );
           
           if (!confirmReplace) {
@@ -244,7 +244,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
             return;
           }
           
-          // 既存の画像を削除
+          // 既存�E画像を削除
           const updatedImages = stepToUpdate.images.filter(img => img.fileName !== existingImage.fileName);
           onStepUpdate(stepId, { images: updatedImages });
         }
@@ -262,7 +262,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || '画像のアップロードに失敗しました');
+        throw new Error(errorData.error || '画像�EアチE�Eロードに失敗しました');
       }
 
       const result = await response.json();
@@ -275,12 +275,12 @@ const StepEditor: React.FC<StepEditorProps> = ({
         fileName: result.imageFileName || result.fileName,
       };
 
-      // 重複画像の場合は通知
+      // 重褁E��像�E場合�E通知
       if (result.isDuplicate) {
-        console.log('🔄 重複画像を検出、既存ファイルを使用:', result.fileName);
+        console.log('🔄 重褁E��像を検�E、既存ファイルを使用:', result.fileName);
       }
 
-      // 画像アップロード処理を、配列に画像を追加するように変更
+      // 画像アチE�Eロード�E琁E��、E�E列に画像を追加するように変更
       const currentStepToUpdate = steps.find(step => step.id === stepId);
       if (currentStepToUpdate) {
         const currentImages = currentStepToUpdate.images ?? [];
@@ -290,58 +290,58 @@ const StepEditor: React.FC<StepEditorProps> = ({
           
           // 成功通知
           const message = result.isDuplicate 
-            ? `重複画像を検出しました。既存の画像 "${result.fileName}" を使用します。`
-            : '画像が正常にアップロードされました';
+            ? `重褁E��像を検�Eしました。既存�E画僁E"${result.fileName}" を使用します。`
+            : '画像が正常にアチE�Eロードされました';
           
-          // トースト通知の代わりにコンソールログ
-          console.log('✅ 画像アップロード完了:', message);
+          // ト�Eスト通知の代わりにコンソールログ
+          console.log('✁E画像アチE�Eロード完亁E', message);
         } else {
-          throw new Error('画像は最大3枚までアップロードできます');
+          throw new Error('画像�E最大3枚までアチE�EロードできまぁE);
         }
       }
 
     } catch (error) {
-      console.error('❌ 画像アップロード失敗:', error);
-      alert(`画像アップロードに失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('❁E画像アチE�Eロード失敁E', error);
+      alert(`画像アチE�Eロードに失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setUploadingImages(prev => ({ ...prev, [stepId]: false }));
     }
   };
 
-  // 画像削除処理を改善
+  // 画像削除処琁E��改喁E
   const handleImageRemove = async (stepId: string, imageIndex: number) => {
-    console.log('🗑️ 画像削除:', { stepId, imageIndex });
+    console.log('🗑�E�E画像削除:', { stepId, imageIndex });
     const stepToUpdate = steps.find(step => step.id === stepId);
     if (stepToUpdate) {
         const newImages = [...(stepToUpdate.images || [])];
         if (imageIndex >= 0 && imageIndex < newImages.length) {
             const imageToRemove = newImages[imageIndex];
             
-            // 削除確認
+            // 削除確誁E
             const confirmDelete = window.confirm(
-                `画像 "${imageToRemove.fileName}" を削除しますか？\n` +
-                `サーバーからファイルが完全に削除され、この操作は元に戻せません。`
+                `画僁E"${imageToRemove.fileName}" を削除しますか�E�\n` +
+                `サーバ�Eからファイルが完�Eに削除され、この操作�E允E��戻せません。`
             );
             
             if (confirmDelete) {
                 try {
-                    // APIを呼び出してサーバーから画像を削除
+                    // APIを呼び出してサーバ�Eから画像を削除
                     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/image/${imageToRemove.fileName}`);
 
                     if (!response.ok) {
                         const errorData = await response.json().catch(() => ({}));
-                        throw new Error(errorData.error || 'サーバー上の画像ファイル削除に失敗しました。');
+                        throw new Error(errorData.error || 'サーバ�E上�E画像ファイル削除に失敗しました、E);
                     }
 
-                    // フロントエンドの状態を更新
+                    // フロントエンド�E状態を更新
                     newImages.splice(imageIndex, 1);
                     onStepUpdate(stepId, { images: newImages });
-                    console.log('✅ 画像削除完了:', imageToRemove.fileName);
-                    alert(`画像 "${imageToRemove.fileName}" を削除しました。`);
+                    console.log('✁E画像削除完亁E', imageToRemove.fileName);
+                    alert(`画僁E"${imageToRemove.fileName}" を削除しました。`);
 
                 } catch (error) {
-                    console.error('❌ 画像削除エラー:', error);
-                    alert(`画像削除に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
+                    console.error('❁E画像削除エラー:', error);
+                    alert(`画像削除に失敗しました: ${error instanceof Error ? error.message : '不�Eなエラー'}`);
                 }
             }
         }
@@ -368,10 +368,10 @@ const StepEditor: React.FC<StepEditorProps> = ({
     const imageFile = files.find(file => file.type.startsWith('image/'));
     
     if (imageFile) {
-      console.log('🖼️ ドラッグ&ドロップで画像アップロード:', { stepId, fileName: imageFile.name });
+      console.log('🖼�E�EドラチE��&ドロチE�Eで画像アチE�EローチE', { stepId, fileName: imageFile.name });
       handleImageUpload(stepId, imageFile);
     } else {
-      console.warn('⚠️ ドロップされたファイルに画像が含まれていません');
+      console.warn('⚠�E�EドロチE�Eされたファイルに画像が含まれてぁE��せん');
     }
   };
 
@@ -391,7 +391,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
         <div className="flex items-center justify-between p-2">
           <div className="flex items-center space-x-4 flex-1">
             <div className="flex items-center space-x-2">
-              <span className="font-medium">{step.title || `ステップ ${step.id}`}</span>
+              <span className="font-medium">{step.title || `スチE��チE${step.id}`}</span>
               <span className="text-xs text-gray-500">({step.type})</span>
             </div>
             {step.description && (
@@ -402,7 +402,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
             {step.images && step.images.length > 0 && (
               <div className="flex items-center space-x-1">
                 <ImageIcon className="w-3 h-3 text-blue-500" />
-                <span className="text-xs text-blue-600">{step.images.length}枚</span>
+                <span className="text-xs text-blue-600">{step.images.length}极E/span>
               </div>
             )}
             {step.type === 'decision' && step.conditions && step.conditions.length > 0 && (
@@ -426,10 +426,10 @@ const StepEditor: React.FC<StepEditorProps> = ({
 
     return (
       <div className="space-y-4" style={{ minHeight: '0px' }}>
-        {/* ステップヘッダー */}
+        {/* スチE��プ�EチE��ー */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <span className="font-medium text-sm text-gray-600">ステップ詳細</span>
+            <span className="font-medium text-sm text-gray-600">スチE��プ詳細</span>
           </div>
           <div className="flex items-center space-x-2">
             <Button
@@ -449,39 +449,39 @@ const StepEditor: React.FC<StepEditorProps> = ({
               id={`title-${step.id}`}
               value={step.title}
               onChange={(e) => handleStepFieldChange(step.id, 'title', e.target.value)}
-              placeholder="スライドのタイトルを入力"
+              placeholder="スライド�Eタイトルを�E劁E
               className="text-base-2x h-12"
             />
           </div>
           <div>
-            <Label htmlFor={`description-${step.id}`} className="text-base-2x">説明</Label>
+            <Label htmlFor={`description-${step.id}`} className="text-base-2x">説昁E/Label>
             <Input
               id={`description-${step.id}`}
               value={step.description}
               onChange={(e) => handleStepFieldChange(step.id, 'description', e.target.value)}
-              placeholder="スライドの説明を入力"
+              placeholder="スライド�E説明を入劁E
               className="text-base-2x h-12"
             />
           </div>
         </div>
 
         <div>
-          <Label htmlFor={`message-${step.id}`} className="text-base-2x">メッセージ</Label>
+          <Label htmlFor={`message-${step.id}`} className="text-base-2x">メチE��ージ</Label>
           <Textarea
             id={`message-${step.id}`}
             value={step.message}
             onChange={(e) => handleStepFieldChange(step.id, 'message', e.target.value)}
-            placeholder="表示するメッセージを入力"
+            placeholder="表示するメチE��ージを�E劁E
             rows={3}
             className="text-base-2x min-h-24"
           />
         </div>
 
-        {/* 6. 画像セクションのUIを複数画像対応に全面的に書き換え */}
+        {/* 6. 画像セクションのUIを褁E��画像対応に全面皁E��書き換ぁE*/}
         <div>
-          <Label className="text-base-2x">画像（最大3枚まで）</Label>
+          <Label className="text-base-2x">画像（最大3枚まで�E�E/Label>
           <p className="text-base-2x text-muted-foreground mt-2">
-            対応形式: JPG, PNG, GIFになります。重複画像は自動的に検出されます。
+            対応形弁E JPG, PNG, GIFになります。重褁E��像�E自動的に検�Eされます、E
           </p>
           <div 
             className="mt-2 p-4 border-2 border-dashed rounded-lg"
@@ -493,7 +493,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
                 <div key={index} className="relative group aspect-video">
                   {(() => {
                     const convertedUrl = convertImageUrl(image.url);
-                    console.log(`🖼️ 画像表示デバッグ [${step.id}][${index}]:`, {
+                    console.log(`🖼�E�E画像表示チE��チE�� [${step.id}][${index}]:`, {
                       originalUrl: image.url,
                       convertedUrl: convertedUrl,
                       fileName: image.fileName
@@ -504,7 +504,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
                         alt={image.fileName}
                         className="w-full h-full object-cover rounded-lg border shadow-sm"
                         onError={(e) => {
-                          console.error('❌ 画像読み込みエラー:', {
+                          console.error('❁E画像読み込みエラー:', {
                             originalUrl: image.url,
                             convertedUrl: convertedUrl,
                             fileName: image.fileName,
@@ -513,7 +513,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
                           handleImageError(e, image.url);
                         }}
                         onLoad={() => {
-                          console.log('✅ 画像読み込み成功:', {
+                          console.log('✁E画像読み込み成功:', {
                             originalUrl: image.url,
                             convertedUrl: convertedUrl,
                             fileName: image.fileName
@@ -528,13 +528,13 @@ const StepEditor: React.FC<StepEditorProps> = ({
                     <div className="absolute inset-0 bg-red-500 bg-opacity-50 flex items-center justify-center rounded-lg">
                       <div className="text-center text-white p-2">
                         <X className="h-8 w-8 mx-auto" />
-                        <p className="text-xs font-bold mt-1">読込失敗</p>
+                        <p className="text-xs font-bold mt-1">読込失敁E/p>
                         <p className="text-xs mt-1">{image.fileName}</p>
                       </div>
                     </div>
                   )}
                   
-                  {/* 画像操作ボタン */}
+                  {/* 画像操作�Eタン */}
                   <div className="absolute top-1 right-1 flex gap-1">
                     <Button
                       type="button"
@@ -553,11 +553,11 @@ const StepEditor: React.FC<StepEditorProps> = ({
                     {image.fileName}
                   </div>
                   
-                  {/* 重複画像の場合は警告表示 */}
+                  {/* 重褁E��像�E場合�E警告表示 */}
                   {(step.images ?? []).filter(img => img.fileName === image.fileName).length > 1 && (
                     <div className="absolute top-1 left-1">
                       <div className="bg-yellow-500 text-white text-xs px-1 py-0.5 rounded">
-                        重複
+                        重褁E
                       </div>
                     </div>
                   )}
@@ -576,13 +576,13 @@ const StepEditor: React.FC<StepEditorProps> = ({
                       <Upload className="mx-auto h-8 w-8 text-gray-400" />
                     )}
                     <span className="mt-2 block text-sm font-medium text-gray-600">
-                      {uploadingImages[step.id] ? 'アップロード中...' : '画像を追加'}
+                      {uploadingImages[step.id] ? 'アチE�Eロード中...' : '画像を追加'}
                     </span>
                     <p className="text-xs text-gray-500">
-                      {(step.images?.length || 0)} / 3枚
+                      {(step.images?.length || 0)} / 3极E
                     </p>
                     <p className="text-xs text-gray-400 mt-1">
-                      ドラッグ&ドロップ対応
+                      ドラチE��&ドロチE�E対忁E
                     </p>
                   </div>
                   <input
@@ -596,15 +596,15 @@ const StepEditor: React.FC<StepEditorProps> = ({
               )}
             </div>
             
-            {/* 画像管理のヒント */}
+            {/* 画像管琁E�EヒンチE*/}
             {step.images && step.images.length > 0 && (
               <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded text-base-2x text-blue-700">
-                <p className="font-medium">画像管理のヒント:</p>
+                <p className="font-medium">画像管琁E�EヒンチE</p>
                 <ul className="mt-2 space-y-2">
-                  <li>• 同じファイル名の画像は自動的に重複として検出されます</li>
-                  <li>• 重複画像は既存のファイルを再利用してストレージを節約します</li>
-                  <li>• 画像は最大3枚までアップロードできます</li>
-                  <li>• 削除した画像は元に戻せません</li>
+                  <li>• 同じファイル名�E画像�E自動的に重褁E��して検�EされまぁE/li>
+                  <li>• 重褁E��像�E既存�Eファイルを�E利用してストレージを節紁E��まぁE/li>
+                  <li>• 画像�E最大3枚までアチE�EロードできまぁE/li>
+                  <li>• 削除した画像�E允E��戻せません</li>
                 </ul>
               </div>
             )}
@@ -614,7 +614,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
         {step.type === 'decision' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label>条件分岐</Label>
+              <Label>条件刁E��E/Label>
               <div className="text-sm text-gray-500">
                 条件数: {step.conditions?.length || 0}/4
               </div>
@@ -626,7 +626,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
                     <Input
                       value={condition.label}
                       onChange={(e) => onConditionEdit(step.id, conditionIndex, 'label', e.target.value)}
-                      placeholder="条件の説明"
+                      placeholder="条件の説昁E
                       className="mb-2"
                     />
                     <Select
@@ -634,14 +634,14 @@ const StepEditor: React.FC<StepEditorProps> = ({
                       onValueChange={(value) => onConditionEdit(step.id, conditionIndex, 'nextId', value)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="次のスライドを選択" />
+                        <SelectValue placeholder="次のスライドを選抁E />
                       </SelectTrigger>
                       <SelectContent>
                         {steps
                           .filter(s => s.id !== step.id)
                           .map(s => (
                             <SelectItem key={s.id} value={s.id}>
-                              {s.title || `スライド ${s.id}`}
+                              {s.title || `スライチE${s.id}`}
                             </SelectItem>
                           ))}
                       </SelectContent>
@@ -676,7 +676,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
     );
   };
 
-  // ステップ間の追加ボタンをレンダリング
+  // スチE��プ間の追加ボタンをレンダリング
   const renderAddStepBetween = (index: number) => {
     if (!onAddStepBetween) return null;
     
@@ -690,7 +690,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
             className="h-6 px-2 text-xs"
           >
             <Plus className="w-3 h-3 mr-1" />
-            通常ステップ
+            通常スチE��チE
           </Button>
           <Button
             size="sm"
@@ -699,40 +699,40 @@ const StepEditor: React.FC<StepEditorProps> = ({
             className="h-6 px-2 text-xs"
           >
             <Plus className="w-3 h-3 mr-1" />
-            条件分岐
+            条件刁E��E
           </Button>
         </div>
       </div>
     );
   };
 
-  // アクションボタンコンポーネント
+  // アクションボタンコンポ�EネンチE
   const ActionButtons = () => (
     <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg border">
       <div className="text-sm text-gray-500">
         スライド数: {steps.length}
       </div>
       <div className="text-sm text-gray-600">
-        最後のスライドは自動的に終了スライドになります
+        最後�Eスライド�E自動的に終亁E��ライドになりまぁE
       </div>
     </div>
   );
 
   return (
     <div className="h-full flex flex-col">
-      {/* デバッグ情報 */}
+      {/* チE��チE��惁E�� */}
       <div className="p-4 bg-yellow-50 border border-yellow-200 rounded mb-4 flex-shrink-0">
-        <p className="text-yellow-800 font-medium">StepEditor デバッグ情報:</p>
+        <p className="text-yellow-800 font-medium">StepEditor チE��チE��惁E��:</p>
         <p className="text-yellow-700 text-sm">受け取ったsteps.length: {steps.length}</p>
-        <p className="text-yellow-700 text-sm">steps内容: {steps.map(s => `${s.id}:${s.title}`).join(', ')}</p>
-        <p className="text-yellow-700 text-sm">expandedSteps: {Object.keys(expandedSteps).length}個</p>
+        <p className="text-yellow-700 text-sm">steps冁E��: {steps.map(s => `${s.id}:${s.title}`).join(', ')}</p>
+        <p className="text-yellow-700 text-sm">expandedSteps: {Object.keys(expandedSteps).length}倁E/p>
       </div>
       
       {/* スライダーコントロール */}
       <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border mb-4 flex-shrink-0">
         <div className="flex items-center space-x-2">
-          <span className="text-sm font-medium text-blue-700">ステップナビゲーション</span>
-          <span className="text-xs text-blue-600">({steps.length}個のステップ)</span>
+          <span className="text-sm font-medium text-blue-700">スチE��プナビゲーション</span>
+          <span className="text-xs text-blue-600">({steps.length}個�EスチE��チE</span>
         </div>
         <div className="flex items-center space-x-2">
           <Button
@@ -760,9 +760,9 @@ const StepEditor: React.FC<StepEditorProps> = ({
         </div>
       </div>
 
-      {/* ステップ一覧表示 */}
+      {/* スチE��プ一覧表示 */}
       <div className="bg-gray-50 rounded-lg p-3 mb-4 flex-shrink-0">
-        <div className="text-sm font-medium text-gray-700 mb-2">ステップ</div>
+        <div className="text-sm font-medium text-gray-700 mb-2">スチE��チE/div>
         <div className="flex flex-wrap gap-2">
           {steps.map((step, index) => (
             <div
@@ -774,13 +774,13 @@ const StepEditor: React.FC<StepEditorProps> = ({
               }`}
               onClick={() => toggleStepExpansion(step.id)}
             >
-              {index + 1}. {step.title || `ステップ ${index + 1}`}
+              {index + 1}. {step.title || `スチE��チE${index + 1}`}
             </div>
           ))}
         </div>
       </div>
 
-      {/* スクロール可能なステップ表示エリア - 更新: 2024-01-XX */}
+      {/* スクロール可能なスチE��プ表示エリア - 更新: 2024-01-XX */}
       <div 
         className="flex-1 overflow-y-auto step-editor-scrollbar" 
         style={{ 
@@ -797,8 +797,8 @@ const StepEditor: React.FC<StepEditorProps> = ({
               <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4 pb-4" style={{ flex: '1 1 auto' }}>
                 {steps.length === 0 ? (
                   <div className="p-8 text-center bg-red-50 border border-red-200 rounded">
-                    <p className="text-red-800 font-medium">⚠️ ステップが空です</p>
-                    <p className="text-red-700 text-sm">steps配列にデータが含まれていません</p>
+                    <p className="text-red-800 font-medium">⚠�E�EスチE��プが空でぁE/p>
+                    <p className="text-red-700 text-sm">steps配�EにチE�Eタが含まれてぁE��せん</p>
                   </div>
                 ) : (
                   steps.map((step, index) => (
@@ -837,7 +837,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
                       )}
                     </Draggable>
                     
-                    {/* ステップ間に追加ボタンを表示（最後のステップ以外） */}
+                    {/* スチE��プ間に追加ボタンを表示�E�最後�EスチE��プ以外！E*/}
                     {index < steps.length - 1 && renderAddStepBetween(index)}
                   </div>
                 ))
@@ -849,7 +849,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
         </DragDropContext>
       </div>
       
-      {/* 保存・キャンセルボタン */}
+      {/* 保存�Eキャンセルボタン */}
       {onSave && onCancel && (
         <div className="flex justify-end gap-3 pt-4 border-t bg-white mt-4 flex-shrink-0">
           <Button
@@ -861,7 +861,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
           <Button
             onClick={onSave}
           >
-            保存
+            保孁E
           </Button>
         </div>
       )}

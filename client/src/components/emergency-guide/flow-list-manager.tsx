@@ -43,14 +43,14 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [flowToDelete, setFlowToDelete] = useState<string | null>(null);
 
-  // 実際のAPI呼び出し
+  // 実際のAPI呼び出ぁE
   useEffect(() => {
-    console.log('🔄 FlowListManager マウント完了');
+    console.log('🔄 FlowListManager マウント完亁E);
     fetchFlowList();
   }, []);
 
   const fetchFlowList = async () => {
-    console.log('🚀 fetchFlowList関数開始');
+    console.log('🚀 fetchFlowList関数開姁E);
     try {
       setIsLoading(true);
       console.log('🔄 フロー一覧を取得中...');
@@ -58,12 +58,12 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       const apiUrl = buildApiUrl('/api/troubleshooting/list');
       console.log('🔗 API URL:', apiUrl);
 
-      // キャッシュ無効化のためのタイムスタンプ
+      // キャチE��ュ無効化�EためのタイムスタンチE
       const timestamp = Date.now();
       const cacheBuster = `?t=${timestamp}`;
       
       const fullUrl = `${apiUrl}${cacheBuster}`;
-      console.log('🔗 完全なURL:', fullUrl);
+      console.log('🔗 完�EなURL:', fullUrl);
       
       const response = await fetch(fullUrl, {
         method: 'GET',
@@ -72,7 +72,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
         }
       });
 
-      console.log('📡 レスポンス状態:', response.status, response.statusText);
+      console.log('📡 レスポンス状慁E', response.status, response.statusText);
 
       if (!response.ok) {
         throw new Error(`APIエラー: ${response.status} ${response.statusText}`);
@@ -81,40 +81,40 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       const data = await response.json();
       console.log('📊 取得したデータ:', data);
 
-      // APIレスポンスの構造に合わせてデータを取得
+      // APIレスポンスの構造に合わせてチE�Eタを取征E
       let flows = [];
       if (data.success && data.data) {
-        console.log('✅ dataプロパティからデータを取得');
+        console.log('✁EdataプロパティからチE�Eタを取征E);
         flows = data.data;
       } else if (data.success && data.flows) {
-        console.log('✅ flowsプロパティからデータを取得');
+        console.log('✁EflowsプロパティからチE�Eタを取征E);
         flows = data.flows;
       } else if (Array.isArray(data)) {
-        console.log('✅ 配列として直接データを取得');
+        console.log('✁E配�Eとして直接チE�Eタを取征E);
         flows = data;
       } else {
-        console.error('❌ 予期しないフローデータ形式:', data);
-        throw new Error("フローデータの形式が不正です");
+        console.error('❁E予期しなぁE��ローチE�Eタ形弁E', data);
+        throw new Error("フローチE�Eタの形式が不正でぁE);
       }
 
-      console.log('📋 処理前のflows配列:', flows);
-      console.log('📋 flows配列の詳細:', {
+      console.log('📋 処琁E��のflows配�E:', flows);
+      console.log('📋 flows配�Eの詳細:', {
         length: flows.length,
         isArray: Array.isArray(flows),
         firstItem: flows[0]
       });
 
-      // createdAtプロパティが存在しない場合のデフォルト値を設定
+      // createdAtプロパティが存在しなぁE��合�EチE��ォルト値を設宁E
       flows = flows.map(flow => ({
         ...flow,
         createdAt: flow.createdAt || flow.updatedAt || flow.savedAt || new Date().toISOString()
       }));
 
-      console.log('✅ フロー一覧取得完了:', flows.length + '件');
+      console.log('✁Eフロー一覧取得完亁E', flows.length + '件');
       setFlowList(flows);
       
     } catch (error) {
-      console.error('❌ fetchFlowList関数でエラーが発生:', error);
+      console.error('❁EfetchFlowList関数でエラーが発甁E', error);
       toast({
         title: "エラー",
         description: error instanceof Error ? error.message : "ファイル一覧の取得に失敗しました",
@@ -123,12 +123,12 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       setFlowList([]);
     } finally {
       setIsLoading(false);
-      console.log('🏁 fetchFlowList関数終了');
+      console.log('🏁 fetchFlowList関数終亁E);
     }
   };
 
   const handleRefresh = () => {
-    console.log('🔄 手動更新開始');
+    console.log('🔄 手動更新開姁E);
     fetchFlowList();
   };
 
@@ -139,16 +139,16 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
 
   const handleDeleteConfirm = async () => {
     if (!flowToDelete) return;
-    console.log('🗑️ フロー削除:', flowToDelete);
+    console.log('🗑�E�Eフロー削除:', flowToDelete);
     setShowDeleteConfirm(false);
     setFlowToDelete(null);
   };
 
   const formatDate = (dateString: string | undefined) => {
     try {
-      if (!dateString) return '未設定';
+      if (!dateString) return '未設宁E;
       const date = new Date(dateString);
-      if (isNaN(date.getTime())) return '無効な日付';
+      if (isNaN(date.getTime())) return '無効な日仁E;
       return date.toLocaleString('ja-JP');
     } catch (error) {
       return 'エラー';
@@ -193,8 +193,8 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
                 <thead>
                   <tr className="bg-gray-100">
                     <th className="border border-gray-300 p-2 text-left text-sm font-medium">タイトル</th>
-                    <th className="border border-gray-300 p-2 text-left text-sm font-medium">作成日時</th>
-                    <th className="border border-gray-300 p-2 text-left text-sm font-medium">操作</th>
+                    <th className="border border-gray-300 p-2 text-left text-sm font-medium">作�E日晁E/th>
+                    <th className="border border-gray-300 p-2 text-left text-sm font-medium">操佁E/th>
                   </tr>
                 </thead>
                 <tbody>
@@ -228,7 +228,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
                               variant="outline"
                               size="sm"
                               onClick={() => onEdit(flow.id)}
-                              title="編集"
+                              title="編雁E
                               className="h-7 px-2 text-xs"
                             >
                               <Edit className="h-3 w-3" />
@@ -259,7 +259,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
           <AlertDialogHeader>
             <AlertDialogTitle>フローの削除</AlertDialogTitle>
             <AlertDialogDescription>
-              このフローを削除してもよろしいですか？この操作は元に戻せません。
+              こ�Eフローを削除してもよろしぁE��すか�E�この操作�E允E��戻せません、E
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

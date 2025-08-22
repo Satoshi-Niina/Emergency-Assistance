@@ -6,16 +6,16 @@ interface KeywordButtonsProps {
 }
 
 /**
- * 代表的な検索キーワードを表示するコンポーネント
- * 「エンジン」「トルコン」「ブレーキ」「エアー回路」の4つのキーワードを表示
+ * 代表皁E��検索キーワードを表示するコンポ�EネンチE
+ * 「エンジン」「トルコン」「ブレーキ」「エアー回路」�E4つのキーワードを表示
  */
 const KeywordButtons: React.FC<KeywordButtonsProps> = ({ onKeywordClick }) => {
-  // 代表的なキーワード
+  // 代表皁E��キーワーチE
   const keywords = ['エンジン', 'トルコン', 'ブレーキ', 'エアー回路'];
 
   return (
     <div className="flex flex-wrap gap-2 my-3">
-      <span className="text-sm text-gray-600 self-center mr-1">代表的なキーワード:</span>
+      <span className="text-sm text-gray-600 self-center mr-1">代表皁E��キーワーチE</span>
       {keywords.map((keyword) => (
         <Button
           key={keyword}

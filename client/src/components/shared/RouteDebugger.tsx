@@ -5,7 +5,7 @@ export function RouteDebugger() {
   const location = useLocation();
 
   useEffect(() => {
-    console.log('🛣️ ルート遷移:', {
+    console.log('🛣�E�Eルート�E移:', {
       pathname: location.pathname,
       search: location.search,
       hash: location.hash,
@@ -14,5 +14,5 @@ export function RouteDebugger() {
     });
   }, [location]);
 
-  return null; // このコンポーネントは何もレンダリングしない
+  return null; // こ�Eコンポ�Eネント�E何もレンダリングしなぁE
 } 
