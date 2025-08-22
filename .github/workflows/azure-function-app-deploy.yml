@@ -1,0 +1,263 @@
+name: Deploy Function App to Azure
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "api/**"
+      - ".github/workflows/azure-function-app-deploy.yml"
+  workflow_dispatch:
+    inputs:
+      target_function_app:
+        description: "Target Function App name"
+        required: true
+        default: "emergency-backend-api-v2"
+        type: choice
+        options:
+          - "emergency-backend-api-v2"
+          - "emergency-backend-api"
+
+env:
+  AZURE_FUNCTIONAPP_NAME: ${{ inputs.target_function_app || 'emergency-backend-api-v2' }}
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: "./api"
+  NODE_VERSION: "20"
+  AZURE_RESOURCE_GROUP: "rg-Emergencyassistant-app"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    name: Build and Deploy Function App
+    environment: production
+
+    steps:
+      - name: 🔄 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/package.json
+
+      - name: 📋 Display environment info
+        run: |
+          echo "🔍 Environment Information:"
+          echo "Node.js version: $(node --version)"
+          echo "npm version: $(npm --version)"
+          echo "Function App: ${{ env.AZURE_FUNCTIONAPP_NAME }}"
+          echo "Resource Group: ${{ env.AZURE_RESOURCE_GROUP }}"
+          echo "Package Path: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}"
+          echo ""
+          echo "📁 Workspace Contents:"
+          ls -la
+          echo ""
+          echo "📁 API Directory Contents:"
+          ls -la ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+
+      - name: 📦 Install dependencies
+        run: |
+          cd ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+          echo "📦 Installing Function App dependencies..."
+          if [ -f "package-lock.json" ]; then
+            npm ci
+          else
+            npm install
+          fi
+          echo "✅ Dependencies installed successfully"
+
+      - name: 🔨 Build Function App
+        run: |
+          cd ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+          echo "🔨 Building TypeScript Functions..."
+          npm run build
+          echo "✅ Build completed successfully"
+          echo ""
+          echo "📁 Built files:"
+          ls -la dist/
+
+      - name: 🧪 Validate Function App structure
+        run: |
+          cd ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+          echo "🧪 Validating Function App structure..."
+
+          # Check for host.json
+          if [ -f "host.json" ]; then
+            echo "✅ host.json found"
+            echo "📄 host.json content:"
+            cat host.json
+          else
+            echo "❌ host.json missing!"
+            exit 1
+          fi
+
+          # Check for package.json
+          if [ -f "package.json" ]; then
+            echo "✅ package.json found"
+            echo "📄 Package.json scripts:"
+            node -e "console.log(JSON.stringify(require('./package.json').scripts, null, 2))"
+          else
+            echo "❌ package.json missing!"
+            exit 1
+          fi
+
+          # Check for built functions
+          if [ -d "dist" ]; then
+            echo "✅ dist directory found"
+            echo "📁 Functions built:"
+            find dist -name "index.js" | head -10
+          else
+            echo "❌ dist directory missing!"
+            exit 1
+          fi
+
+          # Check function.json files
+          echo "📋 Function bindings:"
+          find . -name "function.json" -exec echo "📄 {}" \; -exec cat {} \; -exec echo "" \;
+
+      - name: 🔐 Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: 🔍 Pre-deployment Function App status
+        run: |
+          echo "🔍 Checking Function App status before deployment..."
+          az functionapp show \
+            --name ${{ env.AZURE_FUNCTIONAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "{name:name, state:state, defaultHostName:defaultHostName, kind:kind}" \
+            --output table || echo "❌ Function App not found or not accessible"
+
+      - name: 📂 Prepare deployment package
+        run: |
+          cd ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+          echo "📂 Preparing deployment package..."
+
+          # Create deployment directory
+          mkdir -p ../deployment-package
+
+          # Copy essential files
+          cp -r dist/* ../deployment-package/ 2>/dev/null || echo "No dist files to copy"
+          cp -r auth ../deployment-package/ 2>/dev/null || echo "No auth directory to copy"
+          cp -r chat ../deployment-package/ 2>/dev/null || echo "No chat directory to copy"
+          cp -r db-check ../deployment-package/ 2>/dev/null || echo "No db-check directory to copy"
+          cp -r debug ../deployment-package/ 2>/dev/null || echo "No debug directory to copy"
+          cp -r gpt-check ../deployment-package/ 2>/dev/null || echo "No gpt-check directory to copy"
+          cp -r health ../deployment-package/ 2>/dev/null || echo "No health directory to copy"
+          cp -r knowledge-base ../deployment-package/ 2>/dev/null || echo "No knowledge-base directory to copy"
+          cp -r shared ../deployment-package/ 2>/dev/null || echo "No shared directory to copy"
+          cp -r vehicles ../deployment-package/ 2>/dev/null || echo "No vehicles directory to copy"
+          cp host.json ../deployment-package/ 2>/dev/null || echo "No host.json to copy"
+          cp package.json ../deployment-package/ 2>/dev/null || echo "No package.json to copy"
+          cp *.ts ../deployment-package/ 2>/dev/null || echo "No TypeScript files to copy"
+
+          echo "📦 Deployment package contents:"
+          ls -la ../deployment-package/
+
+          echo "📊 Package size:"
+          du -sh ../deployment-package/
+
+      - name: 🚀 Deploy to Azure Function App
+        uses: Azure/functions-action@v1
+        id: deploy-function
+        with:
+          app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+          package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+
+      - name: 🔧 Configure Function App settings
+        run: |
+          echo "🔧 Setting Function App configuration..."
+          az functionapp config appsettings set \
+            --name ${{ env.AZURE_FUNCTIONAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --settings \
+              "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+              "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" \
+              "FRONTEND_URL=${{ secrets.FRONTEND_URL }}" \
+              "JWT_SECRET=${{ secrets.JWT_SECRET }}" \
+              "SESSION_SECRET=${{ secrets.SESSION_SECRET }}" \
+              "LOG_LEVEL=info" \
+              "NODE_ENV=production" \
+              "FUNCTIONS_WORKER_RUNTIME=node" \
+              "WEBSITE_NODE_DEFAULT_VERSION=~20" \
+              "FUNCTIONS_EXTENSION_VERSION=~4"
+
+      - name: ♻️ Restart Function App
+        run: |
+          echo "♻️ Restarting Function App to apply changes..."
+          az functionapp restart \
+            --name ${{ env.AZURE_FUNCTIONAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }}
+          echo "✅ Function App restarted"
+
+      - name: ⏱️ Wait for deployment completion
+        run: |
+          echo "⏱️ Waiting for deployment to complete..."
+          sleep 60
+          echo "✅ Wait completed"
+
+      - name: 🧪 Post-deployment verification
+        run: |
+          echo "🧪 Post-deployment verification..."
+
+          # Function App status
+          echo "🔍 Function App status:"
+          az functionapp show \
+            --name ${{ env.AZURE_FUNCTIONAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "{name:name, state:state, defaultHostName:defaultHostName}" \
+            --output table
+
+          # List functions
+          echo "📋 Deployed functions:"
+          az functionapp function list \
+            --name ${{ env.AZURE_FUNCTIONAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --output table || echo "❌ Could not list functions"
+
+          # Test endpoints
+          echo "🌐 Testing endpoints..."
+          FUNCTION_URL="https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net"
+
+          echo "Testing root endpoint..."
+          curl -f -s -o /dev/null -w "%{http_code}" "$FUNCTION_URL/" || echo "❌ Root endpoint failed"
+
+          echo "Testing auth/me endpoint..."
+          curl -f -s -o /dev/null -w "%{http_code}" "$FUNCTION_URL/api/auth/me" || echo "❌ Auth/me endpoint failed"
+
+          echo "Testing auth/login endpoint with OPTIONS..."
+          curl -f -s -o /dev/null -w "%{http_code}" -X OPTIONS "$FUNCTION_URL/api/auth/login" || echo "❌ Auth/login OPTIONS failed"
+
+      - name: 📊 Deployment summary
+        if: always()
+        run: |
+          echo "=========================="
+          echo "🚀 DEPLOYMENT SUMMARY"
+          echo "=========================="
+          echo "Function App: ${{ env.AZURE_FUNCTIONAPP_NAME }}"
+          echo "Resource Group: ${{ env.AZURE_RESOURCE_GROUP }}"
+          echo "Package Path: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}"
+          echo "Node Version: ${{ env.NODE_VERSION }}"
+          echo "Deployment Status: ${{ steps.deploy-function.outcome }}"
+          echo ""
+          echo "🌐 URLs:"
+          echo "Function App URL: https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net"
+          echo "Auth Login: https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net/api/auth/login"
+          echo "Auth Me: https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net/api/auth/me"
+          echo ""
+          if [ "${{ steps.deploy-function.outcome }}" = "success" ]; then
+            echo "✅ Deployment completed successfully!"
+          else
+            echo "❌ Deployment failed. Check logs for details."
+          fi
+          echo "=========================="
+
+      - name: 🧹 Cleanup
+        if: always()
+        run: |
+          echo "🧹 Cleaning up temporary files..."
+          rm -rf deployment-package 2>/dev/null || true
+          echo "✅ Cleanup completed"
