@@ -68,7 +68,7 @@ jobs:
           echo "🔨 Building client application..."
           cd client && npm run build
         env:
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'https://emergency-backend-app.azurewebsites.net' }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || '' }}
           NODE_ENV: production
 
       - name: Build API
@@ -128,6 +128,14 @@ jobs:
           output_location: ""
           skip_app_build: true
           skip_api_build: false
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PGHOST: ${{ secrets.PGHOST }}
+          PGUSER: ${{ secrets.PGUSER }}
+          PGPASSWORD: ${{ secrets.PGPASSWORD }}
+          PGDATABASE: ${{ secrets.PGDATABASE }}
+          PGPORT: ${{ secrets.PGPORT }}
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4

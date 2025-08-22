@@ -5,16 +5,14 @@
       "type": "httpTrigger",
       "direction": "in",
       "name": "req",
-      "methods": [
-        "get",
-        "post",
-        "options"
-      ]
+      "methods": ["get", "options"],
+      "route": "vehicles"
     },
     {
       "type": "http",
       "direction": "out",
       "name": "res"
     }
-  ]
+  ],
+  "scriptFile": "../dist/vehicles/index.js"
 }

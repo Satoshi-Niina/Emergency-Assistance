@@ -5,16 +5,14 @@
       "type": "httpTrigger",
       "direction": "in",
       "name": "req",
-      "methods": [
-        "get",
-        "post",
-        "options"
-      ]
+      "methods": ["get", "post", "options"],
+      "route": "knowledge-base/{category?}"
     },
     {
       "type": "http",
       "direction": "out",
       "name": "res"
     }
-  ]
+  ],
+  "scriptFile": "../dist/knowledge-base/index.js"
 }

@@ -1,4 +1,27 @@
-import { AzureFunction, Context, HttpRequest } from "@azure/functions";
+import { AzureFunction } from "@azure/functions";
+import { getUserByUsername, testDatabaseConnection } from '../database';
+
+// 型定義
+interface Context {
+  log: {
+    (message: string, ...optionalParams: any[]): void;
+    error: (message: string, ...optionalParams: any[]) => void;
+  };
+  res?: {
+    status?: number;
+    headers?: { [key: string]: string };
+    body?: any;
+  };
+}
+
+interface HttpRequest {
+  method?: string;
+  url?: string;
+  headers?: { [key: string]: string };
+  query?: { [key: string]: string };
+  params?: { [key: string]: string };
+  body?: any;
+}
 
 interface User {
   id: string;
@@ -9,13 +32,36 @@ interface User {
   password: string;
 }
 
-// 認証関数
+// 認証関数（データベースとフォールバック併用）
 async function validateCredentials(username: string, password: string): Promise<User | null> {
   try {
     console.log('🔍 認証開始:', { username });
-
-    // データベース接続は一時的にスキップしてフォールバック認証を使用
-    console.log('❌ データベース接続スキップ - フォールバック認証を使用');
+    
+    // まずデータベース接続をテスト
+    const dbConnected = await testDatabaseConnection();
+    
+    if (dbConnected) {
+      console.log('✅ データベース接続成功 - データベース認証を使用');
+      try {
+        const user = await getUserByUsername(username);
+        if (user) {
+          const bcrypt = await import('bcrypt');
+          const isValidPassword = await bcrypt.compare(password, user.password);
+          if (isValidPassword) {
+            console.log('✅ データベース認証成功:', username);
+            return user;
+          }
+        }
+        console.log('❌ データベース認証失敗 - フォールバックを実行');
+      } catch (dbError) {
+        console.error('❌ データベース認証エラー:', dbError);
+        console.log('🔄 フォールバック認証にフォールバック');
+      }
+    } else {
+      console.log('❌ データベース接続失敗 - フォールバック認証を使用');
+    }
+    
+    // フォールバック認証
     return await fallbackAuthentication(username, password);
 
   } catch (error) {

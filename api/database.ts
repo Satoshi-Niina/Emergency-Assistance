@@ -12,10 +12,23 @@ interface User {
 
 // データベース接続設定
 function getDatabaseUrl(): string {
+  // Azure環境の場合
   if (process.env.DATABASE_URL) {
+    console.log('✅ DATABASE_URL環境変数を使用');
     return process.env.DATABASE_URL;
   }
-  return 'postgresql://postgres:password@localhost:5432/emergency_assistance';
+  
+  // PostgreSQL接続文字列を個別の環境変数から構築
+  const host = process.env.PGHOST || process.env.DB_HOST || 'localhost';
+  const port = process.env.PGPORT || process.env.DB_PORT || '5432';
+  const database = process.env.PGDATABASE || process.env.DB_NAME || 'emergency_assistance';
+  const username = process.env.PGUSER || process.env.DB_USER || 'postgres';
+  const password = process.env.PGPASSWORD || process.env.DB_PASSWORD || 'password';
+  
+  const connectionString = `postgresql://${username}:${password}@${host}:${port}/${database}`;
+  console.log('🔗 接続文字列を構築:', `postgresql://${username}:***@${host}:${port}/${database}`);
+  
+  return connectionString;
 }
 
 // データベース接続（シングルトンパターン）
@@ -23,12 +36,24 @@ let dbConnection: ReturnType<typeof postgres> | null = null;
 
 function getDbConnection() {
   if (!dbConnection) {
-    dbConnection = postgres(getDatabaseUrl(), {
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    const dbUrl = getDatabaseUrl();
+    console.log('🔗 データベース接続を初期化中...');
+    
+    // SSL設定の改善
+    const sslConfig = process.env.NODE_ENV === 'production' || process.env.DATABASE_URL?.includes('azure') 
+      ? { rejectUnauthorized: false } 
+      : false;
+    
+    dbConnection = postgres(dbUrl, {
+      ssl: sslConfig,
       max: 10,
       idle_timeout: 20,
       connect_timeout: 10,
+      onnotice: () => {}, // 通知を無視
+      debug: false // デバッグモードを無効化
     });
+    
+    console.log('✅ データベース接続プールを作成');
   }
   return dbConnection;
 }
@@ -161,4 +186,11 @@ export async function seedInitialUsers(): Promise<void> {
   }
 }
 
-console.log("🔍 API DATABASE_URL =", process.env.DATABASE_URL ? '[SET]' : '[NOT SET]');
+console.log("🔍 API 環境変数の状態確認:", {
+  DATABASE_URL: process.env.DATABASE_URL ? '[SET]' : '[NOT SET]',
+  PGHOST: process.env.PGHOST ? '[SET]' : '[NOT SET]',
+  PGUSER: process.env.PGUSER ? '[SET]' : '[NOT SET]',
+  PGDATABASE: process.env.PGDATABASE ? '[SET]' : '[NOT SET]',
+  NODE_ENV: process.env.NODE_ENV || '[NOT SET]',
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY ? '[SET]' : '[NOT SET]'
+});

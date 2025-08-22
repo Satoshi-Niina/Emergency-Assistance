@@ -61,5 +61,12 @@
     "identityProviders": {
       "customOpenIdConnectProviders": {}
     }
+  },
+  "networking": {
+    "allowedIpRanges": []
+  },
+  "forwardingGateway": {
+    "allowedForwardedHosts": [],
+    "requiredHeaders": {}
   }
 }

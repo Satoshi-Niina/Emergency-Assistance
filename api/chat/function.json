@@ -5,15 +5,14 @@
       "type": "httpTrigger",
       "direction": "in",
       "name": "req",
-      "methods": [
-        "post",
-        "options"
-      ]
+      "methods": ["post", "options"],
+      "route": "chat"
     },
     {
       "type": "http",
       "direction": "out",
       "name": "res"
     }
-  ]
+  ],
+  "scriptFile": "../dist/chat/index.js"
 }

@@ -13,13 +13,45 @@ function getDatabaseUrl(): string {
   return 'postgresql://postgres:password@localhost:5432/emergency_assistance';
 }
 
+// SSLオプションの設定
+function getSSLOptions() {
+  const url = getDatabaseUrl();
+  const isAzure = url.includes('azure.com') || url.includes('sslmode=require');
+  
+  if (isAzure) {
+    return { 
+      rejectUnauthorized: false,
+      ca: false,
+      key: false,
+      cert: false
+    };
+  }
+  
+  return false;
+}
+
 // データベース接続
-const client = postgres(getDatabaseUrl(), {
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false, // 使用中: 環境判別
+const dbUrl = getDatabaseUrl();
+
+// postgres-js specific SSL configuration for Azure
+const connectionOptions: any = {
   max: 10,
   idle_timeout: 20,
   connect_timeout: 10,
-});
+};
+
+// Azure環境の場合はSSL必須
+if (dbUrl.includes('azure.com') || dbUrl.includes('sslmode=require')) {
+  connectionOptions.ssl = true;
+  console.log('🔍 DEBUG server/db/index.ts: Azure環境 - SSL有効');
+} else {
+  connectionOptions.ssl = false;
+  console.log('🔍 DEBUG server/db/index.ts: ローカル環境 - SSL無効');
+}
+
+console.log('🔍 DEBUG server/db/index.ts: 接続オプション =', connectionOptions);
+
+const client = postgres(dbUrl, connectionOptions);
 
 // Drizzle ORMインスタンス
 export const db = drizzle(client, { schema });

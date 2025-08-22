@@ -1,4 +1,4 @@
-import { AzureFunction, Context, HttpRequest } from "@azure/functions";
+import { AzureFunction } from "@azure/functions";
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -11,6 +11,28 @@ interface ChatRequest {
   history?: ChatMessage[];
   vehicleId?: string;
   category?: string;
+}
+
+// 型定義
+interface Context {
+  log: {
+    (message: string, ...optionalParams: any[]): void;
+    error: (message: string, ...optionalParams: any[]) => void;
+  };
+  res?: {
+    status?: number;
+    headers?: { [key: string]: string };
+    body?: any;
+  };
+}
+
+interface HttpRequest {
+  method?: string;
+  url?: string;
+  headers?: { [key: string]: string };
+  query?: { [key: string]: string };
+  params?: { [key: string]: string };
+  body?: any;
 }
 
 const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
@@ -108,9 +130,9 @@ ${category ? `現在のカテゴリ: ${category}` : ''}`;
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
+        model: 'gpt-4o',
         messages: messages,
-        max_tokens: 1000,
+        max_tokens: 1500,
         temperature: 0.7
       })
     });

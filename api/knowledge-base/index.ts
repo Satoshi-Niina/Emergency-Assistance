@@ -1,4 +1,26 @@
-import { AzureFunction, Context, HttpRequest } from "@azure/functions";
+import { AzureFunction } from "@azure/functions";
+
+// 型定義
+interface Context {
+  log: {
+    (message: string, ...optionalParams: any[]): void;
+    error: (message: string, ...optionalParams: any[]) => void;
+  };
+  res?: {
+    status?: number;
+    headers?: { [key: string]: string };
+    body?: any;
+  };
+}
+
+interface HttpRequest {
+  method?: string;
+  url?: string;
+  headers?: { [key: string]: string };
+  query?: { [key: string]: string };
+  params?: { [key: string]: string };
+  body?: any;
+}
 
 interface KnowledgeBaseItem {
   id: string;
