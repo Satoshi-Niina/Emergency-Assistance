@@ -20,7 +20,8 @@
     "build:shared": "cd shared && npm run build",
     "build:client": "cd client && npm run build",
     "build:server": "cd server && npm run build",
-    "start": "cd server && npm start",
+    "start": "node app.js",
+    "start:server": "cd server && npm start",
     "start:prod": "cd server && npm run start:prod",
     "install:all": "npm install && cd client && npm install && cd ../server && npm install && cd ../shared && npm install",
     "clean": "node scripts/clean.mjs",
@@ -40,11 +41,16 @@
   },
   "dependencies": {
     "concurrently": "^9.2.0",
-    "cors": "^2.8.5",
+    "cors": "^2.8.5", 
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
     "fuse.js": "^7.1.0",
-    "tsx": "^4.20.3"
+    "tsx": "^4.20.3",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "pg": "^8.12.0",
+    "drizzle-orm": "^0.31.2",
+    "@azure/storage-blob": "^12.25.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
