@@ -21,22 +21,24 @@ export const API_BASE_URL = (() => {
     MODE: import.meta.env.MODE
   });
   
+  // 環境変数が設定されている場合は最優先使用
+  if (import.meta.env.VITE_API_BASE_URL && import.meta.env.VITE_API_BASE_URL.trim() !== '') {
+    console.log('✅ 環境変数からAPI_BASE_URLを取得:', import.meta.env.VITE_API_BASE_URL);
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  
   // 開発環境ではプロキシ経由でアクセス（相対パスを使用）
   if (isDevelopment) {
     console.log('✅ 開発環境: プロキシ経由でアクセス');
     return ''; // 空文字列で相対パスを使用
   }
   
-  // 環境変数が設定されている場合は優先使用
-  if (import.meta.env.VITE_API_BASE_URL && import.meta.env.VITE_API_BASE_URL.trim() !== '') {
-    console.log('✅ 環境変数からAPI_BASE_URLを取得:', import.meta.env.VITE_API_BASE_URL);
-    return import.meta.env.VITE_API_BASE_URL;
-  }
-  
   // 本番環境の場合
   if (isProduction) {
     if (isAzureEnvironment) {
-      return 'https://emergency-backend-e7enc2e8dhdabucv.japanwest-01.azurewebsites.net';
+      // Azure Static Web Apps から Azure App Service への接続
+      console.log('✅ Azure本番環境を検出');
+      return 'https://emergency-backend-webapp.azurewebsites.net';
     }
     if (isReplitEnvironment) {
       return `${window.location.protocol}//${window.location.hostname.split(':')[0]}:3000`;
@@ -47,7 +49,7 @@ export const API_BASE_URL = (() => {
   
   // デフォルト
   console.log('⚠️ デフォルト値を使用');
-  return '';
+  return 'http://localhost:3001';
 })();
 
 console.log('🔧 API設定詳細:', {
