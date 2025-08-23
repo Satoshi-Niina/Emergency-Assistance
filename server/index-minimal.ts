@@ -1,4 +1,8 @@
 
+// UTF-8エンコーディング設定
+process.env.LANG = 'ja_JP.UTF-8';
+process.env.LC_ALL = 'ja_JP.UTF-8';
+
 import express from "express";
 import cors from "cors";
 import * as path from 'path';
@@ -20,17 +24,28 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json());
+// UTF-8エンコーディングの設定
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// レスポンスヘッダーにUTF-8を設定
+app.use((req, res, next) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  next();
+});
 
 // 単純なヘルスチェック
 app.get('/api/health', (req, res) => {
   console.log('📊 ヘルスチェックリクエスト受信');
+  res.charset = 'utf-8';
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
     port: port,
     pid: process.pid,
-    message: '最小サーバーが動作中です'
+    message: '最小サーバーが動作中です',
+    encoding: 'UTF-8',
+    locale: 'ja-JP'
   });
 });
 

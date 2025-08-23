@@ -1,3 +1,7 @@
+// UTF-8エンコーディング設定
+process.env.LANG = 'ja_JP.UTF-8';
+process.env.LC_ALL = 'ja_JP.UTF-8';
+
 import express, { Request, Response } from 'express';
 import session from 'express-session';
 import cors from 'cors';
@@ -207,8 +211,15 @@ app.options('*', (req, res) => {
 // Cookieパーサーを追加
 app.use(cookieParser());
 
-// JSONパース
-app.use(express.json());
+// JSONパース - UTF-8エンコーディング設定
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// UTF-8エンコーディングのレスポンスヘッダー設定
+app.use((req, res, next) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  next();
+});
 
 // CORSヘッダーを確実に設定するミドルウェア
 app.use((req, res, next) => {
