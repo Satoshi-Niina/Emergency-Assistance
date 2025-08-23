@@ -13,7 +13,7 @@ export { sql };
 // クエリ実行関数
 export const query = async (text: string, params?: any[]): Promise<any> => {
   try {
-    const result = await sql(text, params);
+    const result = await sql.unsafe(text, params);
     return result;
   } catch (error) {
     console.error('❌ クエリ実行エラー:', error);
@@ -24,12 +24,10 @@ export const query = async (text: string, params?: any[]): Promise<any> => {
 // トランザクション実行関数
 export const transaction = async (callback: (client: any) => Promise<any>): Promise<any> => {
   try {
-    await sql('BEGIN');
-    const result = await callback(sql);
-    await sql('COMMIT');
-    return result;
+    return await sql.begin(async (tx) => {
+      return await callback(tx);
+    });
   } catch (error) {
-    await sql('ROLLBACK');
     console.error('❌ トランザクションエラー:', error);
     throw error;
   }

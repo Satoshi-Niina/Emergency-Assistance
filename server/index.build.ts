@@ -1,11 +1,9 @@
-import { createApp } from "./app.js";
+import app from "./app.js";
 import { createServer } from "node:http";
 import { registerRoutes } from "./routes.js";
 import { setupAuth } from "./auth.js";
 
 async function main() {
-  const app = await createApp();
-
   // Azure Storage統合の初期化
   if (process.env.NODE_ENV === 'production' && process.env.AZURE_STORAGE_CONNECTION_STRING) {
     try {
@@ -18,9 +16,6 @@ async function main() {
       console.log('⚠️ Azure Storage統合なしで続行します');
     }
   }
-
-  registerRoutes(app);
-  setupAuth(app);
 
   const server = createServer(app);
   const PORT = process.env.PORT || 8080;
