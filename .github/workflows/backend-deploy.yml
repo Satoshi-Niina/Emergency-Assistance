@@ -21,61 +21,37 @@ jobs:
       - name: Install root dependencies
         run: |
           npm ci --legacy-peer-deps
-      - name: Install shared dependencies
+      - name: Install root dependencies only
         run: |
-          cd shared
-          npm ci --legacy-peer-deps || echo "Shared install failed, continuing with source files"
-      - name: Install server dependencies
-        run: |
-          cd server
           npm ci --legacy-peer-deps
-      - name: Skip builds and prepare deployment with source files
-        run: |
-          echo "Skipping TypeScript builds due to dependency issues"
-          echo "Using source files directly with tsx runtime"
-      - name: Prepare server for deployment (skip TypeScript build)
+      - name: Prepare minimal server deployment (no builds)
         run: |
           mkdir -p deploy-package
-          # Copy all server files to deploy-package root
-          cp -r server/* deploy-package/
-          # Copy shared directory to deploy-package
-          cp -r shared deploy-package/
-          # Copy workspace package.json for workspace setup
-          cp package.json deploy-package/workspace-package.json
-          # Create web.config for Azure App Service
-          cat > deploy-package/web.config << 'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <configuration>
-            <system.webServer>
-              <handlers>
-                <add name="iisnode" path="server.js" verb="*" modules="iisnode"/>
-              </handlers>
-              <rewrite>
-                <rules>
-                  <rule name="DynamicContent">
-                    <conditions>
-                      <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="True"/>
-                    </conditions>
-                    <action type="Rewrite" url="server.js"/>
-                  </rule>
-                </rules>
-              </rewrite>
-            </system.webServer>
-          </configuration>
-          EOF
-          # Create simple server.js startup file for Azure
-          cat > deploy-package/server.js << 'EOF'
+          # Copy only essential server files for minimal server
+          cp server/index-minimal.ts deploy-package/
+          cp server/package.json deploy-package/
+          # Install production dependencies in deploy package
+          cd deploy-package
+          npm install --production --legacy-peer-deps
+          # Create a simple startup script for Azure
+          cat > server.js << 'EOF'
           const { spawn } = require('child_process');
-          const path = require('path');
           
-          // Start the TypeScript server using tsx
+          // Install tsx if not available and start the server
           const server = spawn('npx', ['tsx', 'index-minimal.ts'], {
             cwd: __dirname,
-            stdio: 'inherit'
+            stdio: 'inherit',
+            env: { ...process.env, NODE_ENV: 'production' }
           });
           
           server.on('error', (err) => {
             console.error('Server startup error:', err);
+            process.exit(1);
+          });
+          
+          server.on('exit', (code) => {
+            console.log('Server exited with code:', code);
+            process.exit(code);
           });
           EOF
       - name: Deploy to Azure Web App
