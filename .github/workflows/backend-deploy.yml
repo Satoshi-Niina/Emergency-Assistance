@@ -71,9 +71,9 @@ jobs:
           # Install dependencies
           cd deploy-package
           npm install --only=production
-      - name: Deploy to Azure Function App (using webapps-deploy)
+      - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'emergency-backend-api'
+          app-name: 'emergency-backend-webapp'
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: 'deploy-package'
