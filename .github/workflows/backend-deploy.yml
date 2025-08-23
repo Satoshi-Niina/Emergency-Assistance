@@ -18,19 +18,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
-      - name: Prepare minimal server deployment (skip all builds and workspace installs)
+      - name: Prepare minimal server deployment for Function App
         run: |
           mkdir -p deploy-package
-          # Copy only essential server files for minimal server
-          cp server/index-minimal.ts deploy-package/
-          # Create minimal package.json for deployment
+          # Copy essential server files
+          cp server/index-minimal.ts deploy-package/index.ts
+          # Create Function App compatible package.json
           cat > deploy-package/package.json << 'EOF'
           {
-            "name": "emergency-backend-minimal",
+            "name": "emergency-backend-function",
             "version": "1.0.0",
             "type": "module",
+            "main": "index.ts",
             "scripts": {
-              "start": "tsx index-minimal.ts"
+              "start": "tsx index.ts"
             },
             "dependencies": {
               "express": "^4.21.2",
@@ -39,33 +40,24 @@ jobs:
             }
           }
           EOF
-          # Install only minimal dependencies
+          # Create host.json for Function App
+          cat > deploy-package/host.json << 'EOF'
+          {
+            "version": "2.0",
+            "functionTimeout": "00:05:00",
+            "extensions": {
+              "http": {
+                "routePrefix": ""
+              }
+            }
+          }
+          EOF
+          # Install dependencies
           cd deploy-package
           npm install --legacy-peer-deps
-          # Create a simple startup script for Azure
-          cat > server.js << 'EOF'
-          const { spawn } = require('child_process');
-          
-          // Install tsx if not available and start the server
-          const server = spawn('npx', ['tsx', 'index-minimal.ts'], {
-            cwd: __dirname,
-            stdio: 'inherit',
-            env: { ...process.env, NODE_ENV: 'production' }
-          });
-          
-          server.on('error', (err) => {
-            console.error('Server startup error:', err);
-            process.exit(1);
-          });
-          
-          server.on('exit', (code) => {
-            console.log('Server exited with code:', code);
-            process.exit(code);
-          });
-          EOF
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
+      - name: Deploy to Azure Function App
+        uses: Azure/functions-action@v1
         with:
           app-name: 'emergency-backend-api'
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: 'deploy-package'
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
