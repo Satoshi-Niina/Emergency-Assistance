@@ -22,10 +22,20 @@ jobs:
         run: |
           cd client
           npm ci --legacy-peer-deps
+      - name: Debug environment
+        run: |
+          cd client
+          echo "Node version: $(node -v)"
+          echo "npm version: $(npm -v)"
+          echo "Current directory: $(pwd)"
+          echo "Files in client directory:"
+          ls -la
+          echo "Package.json exists: $(test -f package.json && echo 'yes' || echo 'no')"
       - name: Build
         run: |
           cd client
-          export VITE_API_BASE_URL=https://emergency-backend-app.azurewebsites.net
+          export VITE_API_BASE_URL=https://emergency-backend-api.azurewebsites.net
+          echo "Building with API URL: $VITE_API_BASE_URL"
           npm run build
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
