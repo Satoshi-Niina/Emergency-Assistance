@@ -13,17 +13,36 @@ function getDatabaseUrl(): string {
   return 'postgresql://postgres:password@localhost:5432/emergency_assistance';
 }
 
+// 本番環境でのSSL設定を改善
+function getSSLConfig() {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const isAzure = process.env.WEBSITE_SITE_NAME || process.env.AZURE_ENVIRONMENT;
+  
+  if (isProduction || isAzure) {
+    return { rejectUnauthorized: false };
+  }
+  
+  return false;
+}
+
 // データベース接続
 const client = postgres(getDatabaseUrl(), {
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false, // 使用中: 環境判別
+  ssl: getSSLConfig(),
   max: 10,
   idle_timeout: 20,
   connect_timeout: 10,
+  prepare: false, // Azure PostgreSQL対応
 });
 
 // Drizzle ORMインスタンス
 export const db = drizzle(client, { schema });
 
 // デバッグ用ログ
-console.log("🔍 DEBUG server/db/index.ts: DATABASE_URL =", process.env.DATABASE_URL ? '[SET]' : '[NOT SET]'); // 使用中: データベース接続文字列
-console.log("🔍 DEBUG server/db/index.ts: 接続文字列 =", getDatabaseUrl().replace(/\/\/.*@/, '//***:***@')); // パスワードを隠して表示 
+console.log("🔍 DEBUG server/db/index.ts: DATABASE_URL =", process.env.DATABASE_URL ? '[SET]' : '[NOT SET]');
+console.log("🔍 DEBUG server/db/index.ts: 接続文字列 =", getDatabaseUrl().replace(/\/\/.*@/, '//***:***@')); // パスワードを隠して表示
+console.log("🔍 DEBUG server/db/index.ts: SSL設定 =", getSSLConfig());
+console.log("🔍 DEBUG server/db/index.ts: 環境 =", {
+  NODE_ENV: process.env.NODE_ENV,
+  WEBSITE_SITE_NAME: process.env.WEBSITE_SITE_NAME ? '[SET]' : '[NOT SET]',
+  AZURE_ENVIRONMENT: process.env.AZURE_ENVIRONMENT ? '[SET]' : '[NOT SET]'
+}); 

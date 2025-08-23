@@ -393,6 +393,32 @@ app.get('/api/db-check', async (req, res) => {
   }
 });
 
+// DB疎通確認用の/db-pingエンドポイント
+app.get('/db-ping', async (req, res) => {
+  try {
+    const { db } = await import('./db/index.js');
+    const { sql } = await import('drizzle-orm');
+    
+    const result = await db.execute(sql`SELECT NOW() as current_time, 'Database connection successful' as message`);
+    
+    res.json({
+      status: "healthy",
+      message: "Database connection successful",
+      current_time: result[0].current_time,
+      timestamp: new Date().toISOString(),
+      database_url: process.env.DATABASE_URL ? 'configured' : 'not configured'
+    });
+  } catch (error) {
+    console.error('DB ping エラー:', error);
+    res.status(500).json({
+      status: "error",
+      message: error instanceof Error ? error.message : "データベース接続エラー",
+      timestamp: new Date().toISOString(),
+      database_url: process.env.DATABASE_URL ? 'configured' : 'not configured'
+    });
+  }
+});
+
 app.post('/api/gpt-check', async (req, res) => {
   try {
     const { message } = req.body;

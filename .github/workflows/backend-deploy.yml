@@ -18,59 +18,35 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
-      - name: Prepare minimal server deployment for Function App
+      - name: Prepare full backend deployment
         run: |
           mkdir -p deploy-package
-          # Copy essential server files
-          cp server/index-minimal.ts deploy-package/index.js
-          # Create simple package.json without type: module for compatibility
-          cat > deploy-package/package.json << 'EOF'
-          {
-            "name": "emergency-backend-function",
-            "version": "1.0.0",
-            "main": "index.js",
-            "scripts": {
-              "start": "node index.js"
-            },
-            "dependencies": {
-              "express": "^4.21.2",
-              "cors": "^2.8.5"
-            }
-          }
+          
+          # サーバーファイルをコピー
+          cp -r server/ deploy-package/
+          cp -r shared/ deploy-package/
+          cp -r knowledge-base/ deploy-package/
+          cp -r migrations/ deploy-package/
+          
+          # package.jsonをコピー
+          cp package.json deploy-package/
+          cp tsconfig.json deploy-package/
+          cp drizzle.config.ts deploy-package/
+          
+          # 環境ファイルの設定（本番用）
+          cat > deploy-package/.env << 'EOF'
+          NODE_ENV=production
+          PORT=3001
+          LANG=ja_JP.UTF-8
+          LC_ALL=ja_JP.UTF-8
+          NODE_OPTIONS=--max-old-space-size=4096
+          SESSION_SECRET=emergency-assistance-session-secret-production
           EOF
-          # Convert TypeScript to JavaScript for simpler deployment
-          cat > deploy-package/index.js << 'EOF'
-          const express = require('express');
-          const cors = require('cors');
           
-          const app = express();
-          const port = process.env.PORT || 3001;
-          
-          // Middleware
-          app.use(cors());
-          app.use(express.json());
-          
-          // Basic health check
-          app.get('/', (req, res) => {
-            res.json({ 
-              message: 'Emergency Backend API is running!',
-              timestamp: new Date().toISOString(),
-              environment: process.env.NODE_ENV || 'development'
-            });
-          });
-          
-          app.get('/health', (req, res) => {
-            res.json({ status: 'healthy', timestamp: new Date().toISOString() });
-          });
-          
-          // Start server
-          app.listen(port, () => {
-            console.log(`Emergency Backend API listening on port ${port}`);
-          });
-          EOF
-          # Install dependencies
+          # 依存関係のインストールとビルド
           cd deploy-package
-          npm install --only=production
+          npm install
+          npm run build
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
