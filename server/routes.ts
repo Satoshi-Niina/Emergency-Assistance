@@ -3,12 +3,21 @@ import { storage } from "./storage.js";
 import { users } from "./db/schema.js";
 import session from "express-session";
 import MemoryStore from 'memorystore';
+
+// Requestタイプの拡張
+declare global {
+  namespace Express {
+    interface Request {
+      user?: any;
+    }
+  }
+}
 import { processOpenAIRequest } from "./lib/openai.js";
 import { processPerplexityRequest } from "./lib/perplexity.js";
 import fs from "fs";
 import path from "path";
 import { db } from "./db/index.js";
-import { emergencyFlows } from "./db/schema.js";
+import { schema } from "../shared/schema.js";
 import { upload } from './lib/multer-config.js';
 import { 
   addDocumentToKnowledgeBase, 

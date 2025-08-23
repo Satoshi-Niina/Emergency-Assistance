@@ -1,5 +1,5 @@
-import { db } from '../db/db';
-import { emergencyFlows } from '../db/schema';
+import db from '../db/db.js';
+import { schema } from '../../shared/schema.js';
 import { eq, desc, like, and } from 'drizzle-orm';
 import { z } from 'zod';
 
