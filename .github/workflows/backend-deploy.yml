@@ -21,21 +21,47 @@ jobs:
           node-version: '20.x'
       - name: Prepare full backend deployment
         run: |
+          # デバッグ情報を出力
+          echo "=== Current directory and files ==="
+          pwd
+          ls -la
+          echo "=== Node and npm versions ==="
+          node -v
+          npm -v
+          
+          # Deploy packageディレクトリを作成
           mkdir -p deploy-package
           
-          # サーバーファイルをコピー
+          # 必要なファイルを確認してからコピー
+          echo "=== Checking required directories ==="
+          test -d server && echo "✅ server directory exists" || echo "❌ server directory missing"
+          test -d shared && echo "✅ shared directory exists" || echo "❌ shared directory missing"
+          test -d knowledge-base && echo "✅ knowledge-base directory exists" || echo "❌ knowledge-base directory missing"
+          test -d migrations && echo "✅ migrations directory exists" || echo "❌ migrations directory missing"
+          test -f package.json && echo "✅ package.json exists" || echo "❌ package.json missing"
+          
+          # ファイルをコピー
           cp -r server/ deploy-package/
           cp -r shared/ deploy-package/
           cp -r knowledge-base/ deploy-package/
           cp -r migrations/ deploy-package/
           
-          # package.jsonをコピー
+          # 設定ファイルをコピー
           cp package.json deploy-package/
           cp tsconfig.json deploy-package/
           cp drizzle.config.ts deploy-package/
           
+          # サーバー用のpackage.jsonを修正（本番用スタートスクリプト）
+          cd deploy-package/server
+          echo "=== Updating server package.json for production ==="
+          # startスクリプトを本番用に変更
+          npm pkg set scripts.start="tsx index.ts"
+          npm pkg set scripts.start:prod="NODE_ENV=production tsx index.ts"
+          cat package.json | grep -A 5 -B 5 "start"
+          cd ..
+          
           # 環境ファイルの設定（本番用）
-          cat > deploy-package/.env << 'EOF'
+          cat > .env << 'EOF'
           NODE_ENV=production
           PORT=3001
           LANG=ja_JP.UTF-8
@@ -44,10 +70,19 @@ jobs:
           SESSION_SECRET=emergency-assistance-session-secret-production
           EOF
           
-          # 依存関係のインストールとビルド
-          cd deploy-package
-          npm install
-          npm run build
+          # Deploy packageの内容を確認
+          echo "=== Deploy package contents ==="
+          ls -la
+          
+          # 各ディレクトリの依存関係を個別にインストール
+          echo "=== Installing shared dependencies ==="
+          cd shared && npm install && npm run build && cd ..
+          
+          echo "=== Installing server dependencies ==="
+          cd server && npm install && npm run build && cd ..
+          
+          echo "=== Installing root dependencies ==="
+          npm install --production
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
