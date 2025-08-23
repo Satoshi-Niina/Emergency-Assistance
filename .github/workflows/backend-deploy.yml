@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - buckup
+      - deployment-fix
   workflow_dispatch:
 
 jobs:
