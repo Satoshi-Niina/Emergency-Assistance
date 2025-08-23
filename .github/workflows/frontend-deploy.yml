@@ -1,0 +1,36 @@
+# Azure Static Web Apps GitHub Actions Workflow
+# フロントエンド（client）をビルドし、Azure Static Web Apps にデプロイ
+name: Deploy Frontend to Azure Static Web Apps
+
+on:
+  push:
+    branches:
+      - buckup
+  workflow_dispatch:
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    name: Build and Deploy Frontend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      - name: Install dependencies
+        run: |
+          cd client
+          npm ci
+      - name: Build
+        run: |
+          cd client
+          npm run build
+      - name: Deploy to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: 'upload'
+          app_location: 'client'
+          output_location: 'client/dist'
