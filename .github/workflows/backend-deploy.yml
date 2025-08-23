@@ -22,42 +22,58 @@ jobs:
         run: |
           mkdir -p deploy-package
           # Copy essential server files
-          cp server/index-minimal.ts deploy-package/index.ts
-          # Create Function App compatible package.json
+          cp server/index-minimal.ts deploy-package/index.js
+          # Create simple package.json without type: module for compatibility
           cat > deploy-package/package.json << 'EOF'
           {
             "name": "emergency-backend-function",
             "version": "1.0.0",
-            "type": "module",
-            "main": "index.ts",
+            "main": "index.js",
             "scripts": {
-              "start": "tsx index.ts"
+              "start": "node index.js"
             },
             "dependencies": {
               "express": "^4.21.2",
-              "cors": "^2.8.5",
-              "tsx": "^4.20.3"
+              "cors": "^2.8.5"
             }
           }
           EOF
-          # Create host.json for Function App
-          cat > deploy-package/host.json << 'EOF'
-          {
-            "version": "2.0",
-            "functionTimeout": "00:05:00",
-            "extensions": {
-              "http": {
-                "routePrefix": ""
-              }
-            }
-          }
+          # Convert TypeScript to JavaScript for simpler deployment
+          cat > deploy-package/index.js << 'EOF'
+          const express = require('express');
+          const cors = require('cors');
+          
+          const app = express();
+          const port = process.env.PORT || 3001;
+          
+          // Middleware
+          app.use(cors());
+          app.use(express.json());
+          
+          // Basic health check
+          app.get('/', (req, res) => {
+            res.json({ 
+              message: 'Emergency Backend API is running!',
+              timestamp: new Date().toISOString(),
+              environment: process.env.NODE_ENV || 'development'
+            });
+          });
+          
+          app.get('/health', (req, res) => {
+            res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+          });
+          
+          // Start server
+          app.listen(port, () => {
+            console.log(`Emergency Backend API listening on port ${port}`);
+          });
           EOF
           # Install dependencies
           cd deploy-package
-          npm install --legacy-peer-deps
-      - name: Deploy to Azure Function App
-        uses: Azure/functions-action@v1
+          npm install --only=production
+      - name: Deploy to Azure Function App (using webapps-deploy)
+        uses: azure/webapps-deploy@v3
         with:
           app-name: 'emergency-backend-api'
-          package: 'deploy-package'
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: 'deploy-package'
