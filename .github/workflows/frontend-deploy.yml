@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: |
           cd client
-          npm ci --legacy-peer-deps
+          npm install --legacy-peer-deps
       - name: Debug environment
         run: |
           cd client
@@ -34,7 +34,7 @@ jobs:
       - name: Build
         run: |
           cd client
-          export VITE_API_BASE_URL=https://emergency-backend-api.azurewebsites.net
+          export VITE_API_BASE_URL=https://emergency-backend-api-efg6gaawcjdmaggy.japanwest-01.azurewebsites.net
           echo "Building with API URL: $VITE_API_BASE_URL"
           npm run build
       - name: Deploy to Azure Static Web Apps
