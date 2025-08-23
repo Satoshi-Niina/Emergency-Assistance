@@ -36,9 +36,9 @@ export const API_BASE_URL = (() => {
   // 本番環境の場合
   if (isProduction) {
     if (isAzureEnvironment) {
-      // Azure Static Web Apps から Azure App Service への接続
-      console.log('✅ Azure本番環境を検出');
-      return 'https://emergency-backend-webapp.azurewebsites.net';
+      // Azure Static Web Apps でのAPI Functionsを使用
+      console.log('✅ Azure Static Web Apps環境: API Functionsを使用');
+      return window.location.origin; // 同じドメインのAPI Functionsを使用
     }
     if (isReplitEnvironment) {
       return `${window.location.protocol}//${window.location.hostname.split(':')[0]}:3000`;

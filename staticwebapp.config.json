@@ -1,18 +1,6 @@
 {
   "routes": [
     {
-      "route": "/api/health",
-      "allowedRoles": ["anonymous"],
-      "methods": ["GET"],
-      "rewrite": "https://emergency-backend-api-efg6gaawcjdmaggy.japanwest-01.azurewebsites.net/api/health"
-    },
-    {
-      "route": "/api/*",
-      "allowedRoles": ["anonymous"],
-      "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-      "rewrite": "https://emergency-backend-api-efg6gaawcjdmaggy.japanwest-01.azurewebsites.net/api/{*path}"
-    },
-    {
       "route": "/*",
       "rewrite": "/index.html"
     }
@@ -28,6 +16,7 @@
     }
   },
   "globalHeaders": {
+    "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Origin, Accept",
     "X-Content-Type-Options": "nosniff",
