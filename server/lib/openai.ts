@@ -553,3 +553,6 @@ export async function analyzeVehicleImage(base64Image: string): Promise<any> {
     };
   }
 }
+
+// OpenAIクライアントをエクスポート
+export { openai };

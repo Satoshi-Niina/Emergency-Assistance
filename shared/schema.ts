@@ -47,7 +47,9 @@ export const emergencyFlows: any = pgTable('emergency_flows', {
     steps: jsonb('steps').notNull(),
     keyword: text('keyword').notNull(),
     category: text('category').notNull().default(''),
-    createdAt: timestamp('created_at').defaultNow().notNull()
+    imagePath: text('image_path'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull()
 });
 
 export const images: any = pgTable('images', {

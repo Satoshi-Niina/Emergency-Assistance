@@ -1,6 +1,8 @@
-import db from '../db/db.js';
+import { db } from '../db/index.js';
 import { schema } from '../../shared/schema.js';
-import { eq, desc, like, and } from 'drizzle-orm';
+import { eq, desc, like, and, gte, lte } from 'drizzle-orm';
+
+const { emergencyFlows } = schema;
 import { z } from 'zod';
 
 // バリデーションスキーマ
@@ -241,7 +243,7 @@ export class KnowledgeService {
       }
 
       console.log('✅ 応急処置フロー更新完了:', id);
-      return result[0];
+      return result[0] as any;
       
     } catch (error) {
       console.error('❌ 応急処置フロー更新エラー:', error);
@@ -335,8 +337,8 @@ export class KnowledgeService {
       const weekResult = await db.select({ count: emergencyFlows.id })
         .from(emergencyFlows)
         .where(and(
-          emergencyFlows.createdAt >= weekAgo,
-          emergencyFlows.createdAt <= now
+          gte(emergencyFlows.createdAt, weekAgo),
+          lte(emergencyFlows.createdAt, now)
         ));
       const thisWeekCount = weekResult.length;
 

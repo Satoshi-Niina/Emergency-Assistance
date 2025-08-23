@@ -272,4 +272,8 @@ router.get('/stats', async (req: Request, res: Response) => {
   }
 });
 
+export function registerSearchRoutes(app: any) {
+  app.use('/api/search', router);
+}
+
 export default router; 

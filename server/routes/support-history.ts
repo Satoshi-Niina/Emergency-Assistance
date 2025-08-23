@@ -1,7 +1,7 @@
 import express from 'express';
 import { db } from '../db/index.js';
 import { supportHistory, machineTypes, machines } from '../db/schema.js';
-import { eq, like, and, gte, desc, ilike, or } from 'drizzle-orm';
+import { eq, like, and, gte, lte, desc, ilike, or } from 'drizzle-orm';
 import { z } from 'zod';
 import { upload } from '../lib/multer-config.js';
 import path from 'path';
@@ -191,7 +191,7 @@ router.get('/', async (req, res) => {
       whereConditions.push(
         and(
           gte(supportHistory.createdAt, searchDate),
-          gte(nextDay, supportHistory.createdAt)
+          lte(supportHistory.createdAt, nextDay)
         )
       );
     }

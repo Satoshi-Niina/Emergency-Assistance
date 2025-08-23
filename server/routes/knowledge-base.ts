@@ -7,7 +7,9 @@ import {
   getKnowledgeData, 
   deleteKnowledgeData,
   KnowledgeType,
-  searchKnowledgeBase
+  searchKnowledgeBase,
+  loadKnowledgeBaseIndex,
+  INDEX_FILE
 } from '../lib/knowledge-base.js';
 import fs from 'fs';
 import path from 'path';
