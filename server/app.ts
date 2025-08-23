@@ -98,6 +98,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5002';
 const getAllowedOrigins = () => {
   const baseOrigins = [
     FRONTEND_URL, // 環境変数から取得したフロントエンドURLを優先
+    'https://witty-river-012f39e00.1.azurestaticapps.net', // 本番環境のStatic Web App URL
     'http://localhost:5002', 
     'http://127.0.0.1:5002',
     'http://localhost:5003',
@@ -124,7 +125,8 @@ const getAllowedOrigins = () => {
   if (isAzureEnvironment) {
     baseOrigins.push(
       'https://*.azurewebsites.net',
-      'https://*.azure.com'
+      'https://*.azure.com',
+      'https://*.azurestaticapps.net' // Azure Static Web Appsのサポート追加
     );
   }
 
@@ -313,8 +315,12 @@ app.get('/api/history/file', (req, res) => {
   }
 });
 
-// ヘルスチェックAPI
-app.get('/api/health', (req: Request, res: Response) => {
+// ヘルスチェックルート
+import { healthRouter } from './routes/health.js';
+app.use('/api/health', healthRouter);
+
+// 基本ヘルスチェック（後方互換性のため残す）
+app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 

@@ -22,6 +22,7 @@
     "build:server": "cd server && npm run build",
     "start": "cd server && npm start",
     "start:prod": "cd server && npm run start:prod",
+    "diagnose:azure": "node scripts/diagnose-azure-connections.mjs",
     "install:all": "npm install && cd client && npm install && cd ../server && npm install && cd ../shared && npm install",
     "clean": "node scripts/clean.mjs",
     "clean:build": "rm -rf client/dist server/dist shared/dist",

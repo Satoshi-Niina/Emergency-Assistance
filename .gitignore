@@ -119,7 +119,7 @@ knowledge-base/backups/
 .dockerignore
 
 # IDE
-.vscode/
+
 .idea/
 *.swp
 *.swo

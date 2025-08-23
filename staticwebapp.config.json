@@ -4,24 +4,17 @@
       "route": "/api/health",
       "allowedRoles": ["anonymous"],
       "methods": ["GET"],
-      "rewrite": "/api/health"
-    },
-    {
-      "route": "/api/auth/*",
-      "allowedRoles": ["anonymous"],
-      "methods": ["GET", "POST", "OPTIONS"],
-      "rewrite": "/api/auth/{*path}"
+      "rewrite": "https://emergency-backend-api-efg6gaawcjdmaggy.japanwest-01.azurewebsites.net/api/health"
     },
     {
       "route": "/api/*",
       "allowedRoles": ["anonymous"],
       "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-      "rewrite": "/api/{*path}"
+      "rewrite": "https://emergency-backend-api-efg6gaawcjdmaggy.japanwest-01.azurewebsites.net/api/{*path}"
     },
     {
       "route": "/*",
-      "serve": "/index.html",
-      "statusCode": 200
+      "rewrite": "/index.html"
     }
   ],
   "navigationFallback": {
