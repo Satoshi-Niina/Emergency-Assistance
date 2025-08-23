@@ -29,9 +29,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         setIsLoading(true);
         
-        // lib/auth の getCurrentUser を利用
-        const userData = await fetchCurrentUser();
+        // Azure Static Web Apps のコールドスタート対策でタイムアウトを延長
+        console.log('🔍 認証状態チェック開始...');
+        
+        // リトライ機能付きで認証状態を確認
+        let retryCount = 0;
+        const maxRetries = 3;
+        let userData = null;
+        
+        while (retryCount < maxRetries) {
+          try {
+            console.log(`🔄 認証確認試行 ${retryCount + 1}/${maxRetries}`);
+            userData = await fetchCurrentUser();
+            break; // 成功したらループを抜ける
+          } catch (error) {
+            retryCount++;
+            console.warn(`⚠️ 認証確認失敗 (${retryCount}/${maxRetries}):`, error);
+            
+            if (retryCount < maxRetries) {
+              // 指数バックオフで待機
+              const delay = Math.pow(2, retryCount) * 1000;
+              console.log(`⏳ ${delay}ms 待機してリトライ...`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+            }
+          }
+        }
+        
         if (userData) {
+          console.log('✅ 認証状態確認成功:', userData);
           setUser({
             id: userData.id,
             username: userData.username,
@@ -40,13 +65,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             department: userData.department
           });
         } else {
+          console.log('❌ 未認証またはセッション期限切れ');
           setUser(null);
         }
       } catch (error) {
+        console.error('❌ 認証状態チェック最終エラー:', error);
         setUser(null);
       } finally {
         setIsLoading(false);
         setAuthChecked(true);
+        console.log('🏁 認証状態チェック完了');
       }
     };
 

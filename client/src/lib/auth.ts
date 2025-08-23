@@ -11,15 +11,6 @@ export const login = async (credentials: LoginCredentials) => {
   try {
     console.log('🔐 ログイン試行:', { username: credentials.username });
     console.log('📡 リクエストURL:', AUTH_API.LOGIN);
-    console.log('🔗 ログインURL:', AUTH_API.LOGIN);
-    console.log('📡 リクエスト設定:', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-      body: JSON.stringify(credentials)
-    });
     
     // リクエスト前のデバッグ情報
     console.log('🌐 現在のlocation:', {
@@ -29,32 +20,35 @@ export const login = async (credentials: LoginCredentials) => {
       port: window.location.port
     });
     
+    // Azure Static Web Apps のコールドスタート対策
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20秒タイムアウト
+    
     const response = await fetch(AUTH_API.LOGIN, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache'
       },
       credentials: 'include',
+      signal: controller.signal,
       body: JSON.stringify(credentials)
     });
     
-    console.log('📡 ログインレスポンス:', { 
-      status: response.status, 
-      ok: response.ok 
-    });
+    clearTimeout(timeoutId);
     
-    console.log('📡 レスポンス受信:', { 
+    console.log('📡 ログインレスポンス:', { 
       status: response.status, 
       ok: response.ok,
       statusText: response.statusText,
-      headers: Object.fromEntries(response.headers.entries())
+      url: response.url
     });
     
     if (!response.ok) {
       let errorMessage = '認証エラー';
       try {
         const errorData = await response.json();
-        errorMessage = errorData.message || `HTTP ${response.status}: ${response.statusText}`;
+        errorMessage = errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`;
       } catch (parseError) {
         errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       }
@@ -70,6 +64,10 @@ export const login = async (credentials: LoginCredentials) => {
         throw new Error('バックエンドサーバーが利用できません。しばらく待ってから再試行してください。');
       }
       
+      if (response.status === 404) {
+        throw new Error('認証APIが見つかりません。設定を確認してください。');
+      }
+      
       throw new Error(errorMessage);
     }
     
@@ -77,6 +75,11 @@ export const login = async (credentials: LoginCredentials) => {
     console.log('✅ ログイン成功:', userData);
     return userData;
   } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error('⏰ ログインタイムアウト:', error);
+      throw new Error('ログイン処理がタイムアウトしました。ネットワーク接続を確認してください。');
+    }
+    
     console.error('❌ Login error:', error);
     
     // ネットワークエラーの場合
@@ -114,20 +117,47 @@ export const logout = async () => {
  */
 export const getCurrentUser = async () => {
   try {
+    console.log('🔍 getCurrentUser API呼び出し:', AUTH_API.ME);
+    
+    // Azure Static Web Apps のコールドスタート対策
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15秒タイムアウト
+    
     const response = await fetch(AUTH_API.ME, {
-      credentials: 'include'
+      credentials: 'include',
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache'
+      }
+    });
+    
+    clearTimeout(timeoutId);
+    
+    console.log('📡 getCurrentUser レスポンス:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok,
+      url: response.url
     });
     
     if (!response.ok) {
       if (response.status === 401) {
+        console.log('🔓 未認証状態');
         return null;
       }
-      throw new Error('Failed to get current user');
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
     
-    return await response.json();
+    const userData = await response.json();
+    console.log('✅ getCurrentUser 成功:', userData);
+    return userData;
   } catch (error) {
-    console.error('Get current user error:', error);
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error('⏰ getCurrentUser タイムアウト:', error);
+      throw new Error('認証確認がタイムアウトしました。ネットワーク接続を確認してください。');
+    }
+    console.error('❌ Get current user error:', error);
     return null;
   }
 };

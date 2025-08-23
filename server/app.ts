@@ -29,9 +29,69 @@ import troubleshootingQARouter from './routes/troubleshooting-qa.js';
 import configRouter from './routes/config.js';
 import ingestRouter from './routes/ingest.js';
 import searchRouter from './routes/search.js';
+import { 
+  getStorageConfig, 
+  initializeStorageDirectories, 
+  createStorageService, 
+  StorageSyncManager,
+  validateStorageConfig 
+} from './lib/storage-config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// ★ ストレージ設定の初期化
+console.log('🚀 Initializing Enhanced Storage Configuration...');
+
+const storageValidation = validateStorageConfig();
+if (!storageValidation.isValid) {
+  console.error('❌ Storage configuration validation failed:', storageValidation.errors);
+  // Continue with warnings but not errors
+}
+if (storageValidation.warnings.length > 0) {
+  console.warn('⚠️ Storage configuration warnings:', storageValidation.warnings);
+}
+
+const { paths: storageConfig, azure: azureConfig, isProduction: isProductionEnv, isAzureEnabled } = getStorageConfig();
+console.log('🔧 Storage Configuration:', {
+  isProduction: isProductionEnv,
+  isAzureEnabled,
+  knowledgeBasePath: storageConfig.knowledgeBasePath,
+  autoSyncEnabled: storageConfig.enableAutoSync,
+  azureContainer: azureConfig.containerName,
+});
+
+// Initialize storage directories
+try {
+  await initializeStorageDirectories(storageConfig);
+  console.log('✅ Storage directories initialized successfully');
+} catch (error: any) {
+  console.error('❌ Failed to initialize storage directories:', error.message);
+  // Don't exit the process, continue with degraded functionality
+}
+
+// Initialize Azure Storage service (if configured)
+const azureStorageService = createStorageService();
+let syncManager: StorageSyncManager | null = null;
+
+if (azureStorageService) {
+  try {
+    const healthCheck = await azureStorageService.healthCheck();
+    console.log('🔍 Azure Storage Health Check:', healthCheck);
+    
+    if (healthCheck.status === 'healthy') {
+      syncManager = new StorageSyncManager(azureStorageService, storageConfig);
+      syncManager.start();
+      console.log('✅ Azure Storage sync manager started');
+    } else {
+      console.warn('⚠️ Azure Storage health check failed, sync disabled');
+    }
+  } catch (error: any) {
+    console.error('❌ Azure Storage health check failed:', error.message);
+  }
+} else {
+  console.log('ℹ️ Azure Storage not configured, using local storage only');
+}
 
 // サーバー起動時に重要なパス・存在有無をログ出力
 function logPathStatus(label: string, relPath: string) {
@@ -290,9 +350,7 @@ app.use((req, res, next) => {
 });
 
 // ★ 認証より前: CSP設定と画像配信
-const KB_BASE = process.env.KNOWLEDGE_BASE_PATH
-  ? process.env.KNOWLEDGE_BASE_PATH.trim()
-  : path.resolve(__dirname, '../knowledge-base'); // フォールバック
+const KB_BASE = storageConfig.knowledgeBasePath; // 新しい設定を使用
 
 console.log('🔧 Knowledge Base Path:', KB_BASE);
 
@@ -367,6 +425,81 @@ app.use('/api/debug', debugRouter);
 app.use('/api/config', configRouter);
 app.use('/api/ingest', ingestRouter);
 app.use('/api/search', searchRouter);
+
+// ★ 新しいストレージ関連エンドポイント
+app.get('/api/storage/status', async (req, res) => {
+  try {
+    const status = {
+      storageConfig: {
+        knowledgeBasePath: storageConfig.knowledgeBasePath,
+        tempPath: storageConfig.tempPath,
+        uploadsPath: storageConfig.uploadsPath,
+        autoSyncEnabled: storageConfig.enableAutoSync,
+        syncIntervalMs: storageConfig.syncIntervalMs,
+      },
+      azure: {
+        enabled: isAzureEnabled,
+        accountName: azureConfig.accountName,
+        containerName: azureConfig.containerName,
+        useManagedIdentity: azureConfig.useManagedIdentity,
+      },
+      sync: syncManager ? syncManager.getStatus() : null,
+      health: null as any,
+    };
+
+    // Azure Storage health check
+    if (azureStorageService) {
+      try {
+        status.health = await azureStorageService.healthCheck();
+      } catch (error: any) {
+        status.health = {
+          status: 'error',
+          error: error.message,
+        };
+      }
+    }
+
+    res.json(status);
+  } catch (error: any) {
+    console.error('Storage status error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/storage/sync', async (req, res) => {
+  try {
+    if (!syncManager) {
+      return res.status(400).json({ error: 'Sync manager not available' });
+    }
+
+    const success = await syncManager.syncNow();
+    res.json({ 
+      success, 
+      message: success ? 'Sync completed successfully' : 'Sync failed',
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error('Manual sync error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/storage/files', async (req, res) => {
+  try {
+    if (!azureStorageService) {
+      return res.status(400).json({ error: 'Azure Storage not available' });
+    }
+
+    const prefix = String(req.query.prefix || '');
+    const maxResults = parseInt(String(req.query.limit || '100'));
+
+    const result = await azureStorageService.listBlobs(prefix, maxResults);
+    res.json(result);
+  } catch (error: any) {
+    console.error('List files error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // インタラクティブ診断システム用ルートを追加
 import interactiveDiagnosisRouter from './routes/interactive-diagnosis.js';

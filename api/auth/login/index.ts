@@ -25,12 +25,21 @@ export default async function handler(req: any): Promise<Response> {
 
   try {
     console.log('🔐 ログイン認証API呼び出し');
+    console.log('📡 リクエスト詳細:', {
+      method: req.method,
+      url: req.url,
+      headers: Object.fromEntries(req.headers?.entries() || []),
+      timestamp: new Date().toISOString()
+    });
     
     const body = await req.json();
     const { username, password } = body || {};
     
+    console.log('📝 受信データ:', { username, passwordLength: password?.length });
+    
     // バリデーション
     if (!username || !password) {
+      console.log('❌ バリデーションエラー: ユーザー名またはパスワードが空');
       return new Response(JSON.stringify({ 
         success: false,
         error: 'ユーザー名とパスワードが必要です' 
@@ -44,6 +53,7 @@ export default async function handler(req: any): Promise<Response> {
     const user = await validateCredentials(username, password);
     
     if (!user) {
+      console.log('❌ 認証失敗:', username);
       return new Response(JSON.stringify({ 
         success: false,
         error: 'ユーザー名またはパスワードが違います' 
@@ -55,6 +65,8 @@ export default async function handler(req: any): Promise<Response> {
 
     // 認証成功（パスワードフィールドを除外）
     const { password: _, ...userWithoutPassword } = user;
+    console.log('✅ 認証成功:', { username, role: user.role });
+    
     return new Response(JSON.stringify({
       success: true,
       user: {

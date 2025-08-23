@@ -100,6 +100,12 @@ export default function Login() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-gray-600">認証状態を確認中...</p>
+          <p className="text-gray-500 text-sm mt-2">
+            Azure Static Web Apps の初回起動には時間がかかる場合があります
+          </p>
+          <p className="text-gray-400 text-xs mt-1">
+            最大2分程度お待ちください
+          </p>
         </div>
       </div>
     );
