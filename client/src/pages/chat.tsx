@@ -19,7 +19,7 @@ import { searchTroubleshootingFlows, japaneseGuideTitles } from "../lib/troubles
 import { QAAnswer } from "../lib/qa-flow-manager";
 import TroubleshootingQABubble from "../components/chat/troubleshooting-qa-bubble";
 import SolutionBubble from "../components/chat/solution-bubble";
-import InteractiveDiagnosisChat from "../components/InteractiveDiagnosisChat";
+// import InteractiveDiagnosisChat from "../components/InteractiveDiagnosisChat";
 import { Label } from "@/components/ui/label";
 
 export default function ChatPage() {
@@ -189,7 +189,7 @@ export default function ChatPage() {
     };
   }, []);
   
-  // AI支援システムのセッション管理
+  // AIサポートシステムのセッション管理
   const [aiSupportSessionData, setAiSupportSessionData] = useState<{
     answers: string[];
     solution: string;
@@ -207,8 +207,8 @@ export default function ChatPage() {
       setIsLoadingMachineTypes(true);
       console.log('🔍 機種一覧取得開始');
       
-      // プロキシ経由でアクセス（相対パスを使用）
-      const apiUrl = `/api/machines/machine-types`;
+  // プロキシ経由でアクセス（相対パスを使用）
+  const apiUrl = `/api/machines/machine-types`;
       console.log('🔍 機種一覧取得URL:', apiUrl);
       console.log('🔍 現在のURL:', window.location.href);
       
@@ -432,7 +432,7 @@ export default function ChatPage() {
         console.error('❌ チャットID初期化エラー:', error);
       }
     }
-    
+  // 初期表示時は何もしない（AIサポートボタン押下時のみ質問を表示）
     // 機種データの取得
     fetchMachineTypes().catch(error => {
       console.error('❌ 機種データ取得でエラーが発生しましたが、チャット画面は表示されます:', error);
@@ -496,33 +496,36 @@ export default function ChatPage() {
 
   // 追加: Q&Aモードの初期化（動的質問生成システムに変更済み）
 
-  // AI支援開始（インタラクティブ診断モードに変更）
+  // AIサポート開始（インタラクティブ診断モードに変更）
   const handleStartAiSupport = async () => {
     try {
       // インタラクティブ診断モードを開始
       setInteractiveDiagnosisMode(true);
       
       toast({
-        title: "AI支援開始",
+        title: "AIサポート開始",
         description: "インタラクティブ故障診断を開始します",
       });
+
+  // 最初の質問を送信
+  sendMessage("サポートします。どのような事象が発生しましたか？お気軽に教えてください。", [], true);
     } catch (error) {
-      console.error('AI支援開始エラー:', error);
+      console.error('AIサポート開始エラー:', error);
       toast({
         title: "エラー",
-        description: "AI支援の開始に失敗しました",
+        description: "AIサポートの開始に失敗しました",
         variant: "destructive",
       });
       setInteractiveDiagnosisMode(false);
     }
   };
 
-  // AI支援終了（インタラクティブ診断モード終了）
+  // AIサポート終了（インタラクティブ診断モード終了）
   const handleAiSupportExit = () => {
     setInteractiveDiagnosisMode(false);
     
     toast({
-      title: "AI支援終了",
+      title: "AIサポート終了",
       description: "インタラクティブ故障診断を終了しました",
     });
   };
@@ -994,8 +997,87 @@ export default function ChatPage() {
       return;
     }
 
-    // 通常のメッセージ送信処理
+    // --- AIサポート一問一答・多様化・重複防止 ---
+    // 既存メッセージ履歴からAIサポートのやりとりを抽出
+    const aiHistory = messages.filter(m => m.isAiResponse || !m.isAiResponse).map(m => m.content);
+    // ユーザーの新しい回答を履歴に追加
     sendMessage(content, media, false);
+
+    // 質問観点リスト（順序優先）
+    const questionPoints = [
+      { key: 'symptom', label: '機械の調子はいかがですか？', variations: [
+        "機械の調子はいかがですか？",
+        "何か気になる症状やトラブルはありますか？",
+        "最近、機械で気になることはありませんか？"
+      ] },
+      { key: 'location', label: 'どこで発生していますか？', variations: ["どの部位・場所で発生していますか？","トラブルの箇所はどこですか？"] },
+      { key: 'timing', label: 'いつから発生していますか？', variations: ["いつから症状が出ていますか？","発生時期を教えてください"] },
+      { key: 'sound', label: '異音はありますか？', variations: ["異音はどこから聞こえますか？","音の種類や場所を教えてください"] },
+      { key: 'warning', label: '警告やランプは点灯していますか？', variations: ["どんな警告やランプが点灯していますか？"] },
+      { key: 'leak', label: '液体や油の漏れはありますか？', variations: ["何が漏れていますか？"] },
+      { key: 'vibration', label: '振動はありますか？', variations: ["どこが振動していますか？"] },
+      { key: 'safety', label: '現場は安全ですか？', variations: ["作業現場の安全は確保されていますか？"] },
+      { key: 'tool', label: '必要な工具は揃っていますか？', variations: ["作業に必要な工具は揃っていますか？"] },
+    ];
+
+    // 既に質問・回答済みの観点を抽出
+  const usedPoints: string[] = [];
+    for (const msg of aiHistory) {
+      for (const pt of questionPoints) {
+        if (pt.variations.some(v => msg.includes(v)) || msg.includes(pt.label)) {
+          usedPoints.push(pt.key);
+        }
+      }
+    }
+
+    // 直前のユーザー回答から新たな観点を推定
+    const lastUser = content.trim();
+    let nextPoint = null;
+    for (const pt of questionPoints) {
+      if (!usedPoints.includes(pt.key)) {
+        // 回答内容に関連する観点を優先
+        if (
+          (pt.key === 'sound' && lastUser.match(/(異音|音|ガタガタ|キュルキュル)/)) ||
+          (pt.key === 'warning' && lastUser.match(/(警告|ランプ|アラーム|点灯)/)) ||
+          (pt.key === 'leak' && lastUser.match(/(漏れ|漏れる|液体|油|水)/)) ||
+          (pt.key === 'vibration' && lastUser.match(/(振動|揺れ|ブルブル)/)) ||
+          (pt.key === 'location' && lastUser.match(/(場所|部位|箇所|どこ)/)) ||
+          (pt.key === 'timing' && lastUser.match(/(時期|いつ|発生|昨日|今日)/)) ||
+          (pt.key === 'safety' && lastUser.match(/(安全|危険|怪我|火花)/)) ||
+          (pt.key === 'tool' && lastUser.match(/(工具|道具|レンチ|ドライバー)/))
+        ) {
+          nextPoint = pt;
+          break;
+        }
+      }
+    }
+    // まだ未質問の観点があれば順に質問
+    if (!nextPoint) {
+      nextPoint = questionPoints.find(pt => !usedPoints.includes(pt.key));
+    }
+
+    let nextQuestion = "";
+    let suggestSolution = "";
+    if (nextPoint) {
+      // 最初の質問（symptom）は必ず親しみやすい文言で
+      if (nextPoint.key === 'symptom' && aiHistory.length === 0) {
+        const v = nextPoint.variations;
+        nextQuestion = v[Math.floor(Math.random() * v.length)];
+      } else {
+        // 2問目以降はバリエーションからランダム
+        const v = nextPoint.variations;
+        nextQuestion = v[Math.floor(Math.random() * v.length)];
+      }
+    } else {
+      // すべての観点を聞き終えたら応急処置案
+      suggestSolution = "状況から推定される原因に応じて、\n・電源や配線の確認\n・異音箇所の点検\n・油や液体の漏れ止め\nなど、基本的な応急処置を行ってみてください。\nさらに詳しい手順が必要な場合は、現場の状況をもう少し教えてください。";
+    }
+    // 空レスポンスは追加しない
+    if (suggestSolution) {
+      sendMessage(suggestSolution, [], true);
+    } else if (nextQuestion) {
+      sendMessage(nextQuestion, [], true);
+    }
   };
 
   // トラブルシューティングQA開始ボタンの追加
@@ -1030,92 +1112,10 @@ export default function ChatPage() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showImagePreview, setShowImagePreview] = useState(false);
 
-  // AI支援の質問生成（GPTとの一問一答チャット）
+  // AIサポートの質問生成（GPTとの一問一答チャット）
   const generateEmergencyQuestion = async (context: string, previousAnswers: string[]): Promise<{ question: string; options?: string[] }> => {
-    try {
-      // 最低5つの質問を生成するまで続行
-      if (previousAnswers.length >= 5) {
-        return {
-          question: "",
-          options: []
-        };
-      }
-
-      // 前の回答に基づいて次の質問を生成
-      if (previousAnswers.length === 0) {
-        return {
-          question: "具体的な症状を教えてください",
-          options: []
-        };
-      } else if (previousAnswers.length === 1) {
-        const firstAnswer = previousAnswers[0].toLowerCase();
-        
-        // 故障の種類を動的に判断
-        if (firstAnswer.includes("動作") || firstAnswer.includes("動かない") || firstAnswer.includes("効かない")) {
-          return {
-            question: "故障部位はどこですか？",
-            options: []
-          };
-        } else if (firstAnswer.includes("異音") || firstAnswer.includes("音")) {
-          return {
-            question: "異音の発生箇所は？",
-            options: []
-          };
-        } else if (firstAnswer.includes("警告") || firstAnswer.includes("ランプ") || firstAnswer.includes("アラーム")) {
-          return {
-            question: "警告の内容は？",
-            options: []
-          };
-        } else if (firstAnswer.includes("漏れ") || firstAnswer.includes("漏れる")) {
-          return {
-            question: "何が漏れていますか？",
-            options: []
-          };
-        } else if (firstAnswer.includes("振動") || firstAnswer.includes("揺れる")) {
-          return {
-            question: "振動箇所はどこですか？",
-            options: []
-          };
-        } else {
-          return {
-            question: "問題の詳細を教えてください",
-            options: []
-          };
-        }
-      } else if (previousAnswers.length === 2) {
-        const firstAnswer = previousAnswers[0].toLowerCase();
-        const secondAnswer = previousAnswers[1].toLowerCase();
-        
-        // 故障部位や機器の情報を収集
-        return {
-          question: "作業現場は安全ですか？",
-          options: []
-        };
-      } else if (previousAnswers.length === 3) {
-        // 3つ目の質問：故障の詳細情報
-        return {
-          question: "故障の発生時期は？",
-          options: []
-        };
-      } else if (previousAnswers.length === 4) {
-        // 4つ目の質問：作業環境の確認
-        return {
-          question: "作業に必要な工具はありますか？",
-          options: []
-        };
-      }
-      
-      return {
-        question: "詳細を教えてください",
-        options: []
-      };
-    } catch (error) {
-      console.error('AI支援質問生成エラー:', error);
-      return {
-        question: "詳細な状況を教えてください",
-        options: []
-      };
-    }
+    // 使わない（handleSendMessageで一問一答・応急処置まで制御）
+    return { question: "", options: [] };
   };
 
   // エクスポート機能
@@ -1337,9 +1337,9 @@ export default function ChatPage() {
           </div>
         </div>
         
-        {/* 中央：AI支援・カメラ・応急処置ガイドボタン */}
+  {/* 中央：AIサポート・カメラ・応急処置ガイドボタン */}
         <div className="flex items-center gap-6">
-          {/* AI支援開始/終了ボタン */}
+          {/* AIサポート開始/終了ボタン */}
           {!interactiveDiagnosisMode ? (
             <Button
               variant="outline"
@@ -1349,7 +1349,7 @@ export default function ChatPage() {
               className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 mr-6 px-8 py-3 text-base font-semibold"
             >
               <Brain className="w-6 h-6 mr-3" />
-              AI支援
+              AIサポート
             </Button>
           ) : (
             <Button
@@ -1359,7 +1359,7 @@ export default function ChatPage() {
               className="bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100 mr-6 px-8 py-3 text-base font-semibold"
             >
               <X className="w-6 h-6 mr-3" />
-              AI支援終了
+              AIサポート終了
             </Button>
           )}
 
@@ -1412,65 +1412,58 @@ export default function ChatPage() {
       </div>
 
       {/* メインコンテンツエリア */}
-      {interactiveDiagnosisMode ? (
-        /* インタラクティブ診断モード */
-        <div className="flex-1">
-          <InteractiveDiagnosisChat />
+      {/* メインコンテンツエリア：常に既存チャットUIのみ */}
+      <>
+        {/* メッセージ表示エリア */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {messages.map((message) => (
+            <div key={message.id} className={`flex ${message.isAiResponse ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-2xl ${message.isAiResponse ? 'w-auto' : 'w-full'}`}>
+                {message.isAiResponse && troubleshootingMode && troubleshootingSession?.currentQuestion === message.content ? (
+                  // トラブルシューティングQAバブル
+                  <TroubleshootingQABubble
+                    question={message.content}
+                    options={troubleshootingSession?.currentOptions || []}
+                    reasoning={troubleshootingSession?.reasoning}
+                    onAnswer={handleTroubleshootingAnswer}
+                    isLoading={isLoading}
+                  />
+                ) : message.isAiResponse && (message.content.includes('解決策') || message.content.includes('緊急対応')) ? (
+                  // 解決策バブル
+                  <SolutionBubble
+                    solution={message.content}
+                    problemDescription={troubleshootingSession?.problemDescription}
+                    isEmergency={message.content.includes('緊急対応')}
+                  />
+                ) : (
+                  // 通常のメッセージバブル
+                  <MessageBubble message={message} />
+                )}
+              </div>
+            </div>
+          ))}
+
+          {isLoading && (
+            <div className="flex justify-end">
+              <div className="bg-white rounded-lg shadow-sm border p-4">
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <span className="text-gray-600">AIが応答を生成中...</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      ) : (
-        /* 通常チャットモード */
-        <>
-          {/* メッセージ表示エリア */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((message) => (
-              <div key={message.id} className={`flex ${message.isAiResponse ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-2xl ${message.isAiResponse ? 'w-auto' : 'w-full'}`}>
-                  {message.isAiResponse && troubleshootingMode && troubleshootingSession?.currentQuestion === message.content ? (
-                    // トラブルシューティングQAバブル
-                    <TroubleshootingQABubble
-                      question={message.content}
-                      options={troubleshootingSession?.currentOptions || []}
-                      reasoning={troubleshootingSession?.reasoning}
-                      onAnswer={handleTroubleshootingAnswer}
-                      isLoading={isLoading}
-                    />
-                  ) : message.isAiResponse && (message.content.includes('解決策') || message.content.includes('緊急対応')) ? (
-                    // 解決策バブル
-                    <SolutionBubble
-                      solution={message.content}
-                      problemDescription={troubleshootingSession?.problemDescription}
-                      isEmergency={message.content.includes('緊急対応')}
-                    />
-                  ) : (
-                    // 通常のメッセージバブル
-                    <MessageBubble message={message} />
-                  )}
-                </div>
-              </div>
-            ))}
 
-            {isLoading && (
-              <div className="flex justify-end">
-                <div className="bg-white rounded-lg shadow-sm border p-4">
-                  <div className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                    <span className="text-gray-600">AIが応答を生成中...</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* メッセージ入力エリア（通常チャットモード） */}
-          <div className="border-t bg-white p-4">
-            <MessageInput
-              onSendMessage={handleSendMessage}
-              isLoading={isLoading}
-              disabled={troubleshootingMode && !troubleshootingSession?.currentQuestion}
-            />
-          </div>
-        </>
-      )}
+        {/* メッセージ入力エリア */}
+        <div className="border-t bg-white p-4">
+          <MessageInput
+            onSendMessage={handleSendMessage}
+            isLoading={isLoading}
+            disabled={troubleshootingMode && !troubleshootingSession?.currentQuestion}
+          />
+        </div>
+      </>
 
       {/* カメラモーダル */}
       <CameraModal />
