@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import { upload } from '../lib/multer-config.js';
 import { 
   initializeKnowledgeBase,
@@ -18,14 +18,14 @@ const router = express.Router();
 
 /**
  * GET /api/knowledge-base
- * ナレッジデータ一覧を取得
+ * 繝翫Ξ繝・ず繝・・繧ｿ荳隕ｧ繧貞叙蠕・
  */
 router.get('/', async (req, res) => {
   try {
     const { type } = req.query;
     const knowledgeType = type ? (type as KnowledgeType) : undefined;
     
-    console.log('📚 ナレッジデータ一覧取得リクエスト:', { type: knowledgeType });
+    console.log('答 繝翫Ξ繝・ず繝・・繧ｿ荳隕ｧ蜿門ｾ励Μ繧ｯ繧ｨ繧ｹ繝・', { type: knowledgeType });
     
     const result = listKnowledgeData(knowledgeType);
     
@@ -38,10 +38,10 @@ router.get('/', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ ナレッジデータ一覧取得エラー:', error);
+    console.error('笶・繝翫Ξ繝・ず繝・・繧ｿ荳隕ｧ蜿門ｾ励お繝ｩ繝ｼ:', error);
     res.status(500).json({
       success: false,
-      error: 'ナレッジデータ一覧の取得に失敗しました',
+      error: '繝翫Ξ繝・ず繝・・繧ｿ荳隕ｧ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
@@ -49,20 +49,20 @@ router.get('/', async (req, res) => {
 
 /**
  * GET /api/knowledge-base/:id
- * 特定のナレッジデータを取得
+ * 迚ｹ螳壹・繝翫Ξ繝・ず繝・・繧ｿ繧貞叙蠕・
  */
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
-    console.log('📚 ナレッジデータ取得リクエスト:', { id });
+    console.log('答 繝翫Ξ繝・ず繝・・繧ｿ蜿門ｾ励Μ繧ｯ繧ｨ繧ｹ繝・', { id });
     
     const result = getKnowledgeData(id);
     
     if (!result.success) {
       return res.status(404).json({
         success: false,
-        error: result.message || 'ナレッジデータが見つかりません'
+        error: result.message || '繝翫Ξ繝・ず繝・・繧ｿ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ'
       });
     }
     
@@ -73,10 +73,10 @@ router.get('/:id', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ ナレッジデータ取得エラー:', error);
+    console.error('笶・繝翫Ξ繝・ず繝・・繧ｿ蜿門ｾ励お繝ｩ繝ｼ:', error);
     res.status(500).json({
       success: false,
-      error: 'ナレッジデータの取得に失敗しました',
+      error: '繝翫Ξ繝・ず繝・・繧ｿ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
@@ -84,14 +84,14 @@ router.get('/:id', async (req, res) => {
 
 /**
  * POST /api/knowledge-base/upload
- * ナレッジデータをアップロード
+ * 繝翫Ξ繝・ず繝・・繧ｿ繧偵い繝・・繝ｭ繝ｼ繝・
  */
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        error: 'ファイルがアップロードされていません'
+        error: '繝輔ぃ繧､繝ｫ縺後い繝・・繝ｭ繝ｼ繝峨＆繧後※縺・∪縺帙ｓ'
       });
     }
     
@@ -99,39 +99,39 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     const filePath = req.file.path;
     const filename = req.file.originalname;
     
-    console.log('📚 ナレッジデータアップロードリクエスト:', { 
+    console.log('答 繝翫Ξ繝・ず繝・・繧ｿ繧｢繝・・繝ｭ繝ｼ繝峨Μ繧ｯ繧ｨ繧ｹ繝・', { 
       filename, 
       title, 
       category, 
       tags: tags ? tags.split(',') : undefined 
     });
     
-    // ファイル内容を読み込み
+    // 繝輔ぃ繧､繝ｫ蜀・ｮｹ繧定ｪｭ縺ｿ霎ｼ縺ｿ
     const content = fs.readFileSync(filePath, 'utf-8');
     
-    // メタデータを準備
+    // 繝｡繧ｿ繝・・繧ｿ繧呈ｺ門ｙ
     const metadata = {
       title: title || filename,
       category: category || 'general',
       tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
-      description: description || `アップロードされた${filename}`
+      description: description || `繧｢繝・・繝ｭ繝ｼ繝峨＆繧後◆${filename}`
     };
     
-    // ナレッジデータとして保存
+    // 繝翫Ξ繝・ず繝・・繧ｿ縺ｨ縺励※菫晏ｭ・
     const result = saveKnowledgeData(filename, content, metadata);
     
     if (!result.success) {
       return res.status(500).json({
         success: false,
-        error: result.message || 'ナレッジデータの保存に失敗しました'
+        error: result.message || '繝翫Ξ繝・ず繝・・繧ｿ縺ｮ菫晏ｭ倥↓螟ｱ謨励＠縺ｾ縺励◆'
       });
     }
     
-    // アップロードされた一時ファイルを削除
+    // 繧｢繝・・繝ｭ繝ｼ繝峨＆繧後◆荳譎ゅヵ繧｡繧､繝ｫ繧貞炎髯､
     try {
       fs.unlinkSync(filePath);
     } catch (deleteError) {
-      console.warn('一時ファイル削除警告:', deleteError);
+      console.warn('荳譎ゅヵ繧｡繧､繝ｫ蜑企勁隴ｦ蜻・', deleteError);
     }
     
     res.json({
@@ -142,10 +142,10 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ ナレッジデータアップロードエラー:', error);
+    console.error('笶・繝翫Ξ繝・ず繝・・繧ｿ繧｢繝・・繝ｭ繝ｼ繝峨お繝ｩ繝ｼ:', error);
     res.status(500).json({
       success: false,
-      error: 'ナレッジデータのアップロードに失敗しました',
+      error: '繝翫Ξ繝・ず繝・・繧ｿ縺ｮ繧｢繝・・繝ｭ繝ｼ繝峨↓螟ｱ謨励＠縺ｾ縺励◆',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
@@ -153,20 +153,20 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
 /**
  * DELETE /api/knowledge-base/:id
- * ナレッジデータを削除
+ * 繝翫Ξ繝・ず繝・・繧ｿ繧貞炎髯､
  */
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
-    console.log('📚 ナレッジデータ削除リクエスト:', { id });
+    console.log('答 繝翫Ξ繝・ず繝・・繧ｿ蜑企勁繝ｪ繧ｯ繧ｨ繧ｹ繝・', { id });
     
     const result = deleteKnowledgeData(id);
     
     if (!result.success) {
       return res.status(404).json({
         success: false,
-        error: result.message || 'ナレッジデータの削除に失敗しました'
+        error: result.message || '繝翫Ξ繝・ず繝・・繧ｿ縺ｮ蜑企勁縺ｫ螟ｱ謨励＠縺ｾ縺励◆'
       });
     }
     
@@ -177,10 +177,10 @@ router.delete('/:id', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ ナレッジデータ削除エラー:', error);
+    console.error('笶・繝翫Ξ繝・ず繝・・繧ｿ蜑企勁繧ｨ繝ｩ繝ｼ:', error);
     res.status(500).json({
       success: false,
-      error: 'ナレッジデータの削除に失敗しました',
+      error: '繝翫Ξ繝・ず繝・・繧ｿ縺ｮ蜑企勁縺ｫ螟ｱ謨励＠縺ｾ縺励◆',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
@@ -188,11 +188,11 @@ router.delete('/:id', async (req, res) => {
 
 /**
  * GET /api/knowledge-base/types
- * ナレッジデータの種類一覧を取得
+ * 繝翫Ξ繝・ず繝・・繧ｿ縺ｮ遞ｮ鬘樔ｸ隕ｧ繧貞叙蠕・
  */
 router.get('/types/list', async (req, res) => {
   try {
-    console.log('📚 ナレッジデータ種類一覧取得リクエスト');
+    console.log('答 繝翫Ξ繝・ず繝・・繧ｿ遞ｮ鬘樔ｸ隕ｧ蜿門ｾ励Μ繧ｯ繧ｨ繧ｹ繝・);
     
     const types = Object.values(KnowledgeType).map(type => ({
       value: type,
@@ -206,10 +206,10 @@ router.get('/types/list', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ ナレッジデータ種類一覧取得エラー:', error);
+    console.error('笶・繝翫Ξ繝・ず繝・・繧ｿ遞ｮ鬘樔ｸ隕ｧ蜿門ｾ励お繝ｩ繝ｼ:', error);
     res.status(500).json({
       success: false,
-      error: 'ナレッジデータ種類一覧の取得に失敗しました',
+      error: '繝翫Ξ繝・ず繝・・繧ｿ遞ｮ鬘樔ｸ隕ｧ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
@@ -217,7 +217,7 @@ router.get('/types/list', async (req, res) => {
 
 /**
  * GET /api/knowledge-base/search
- * ナレッジベースから検索を実行
+ * 繝翫Ξ繝・ず繝吶・繧ｹ縺九ｉ讀懃ｴ｢繧貞ｮ溯｡・
  */
 router.get('/search', async (req, res) => {
   try {
@@ -226,21 +226,21 @@ router.get('/search', async (req, res) => {
     if (!query || typeof query !== 'string') {
       return res.status(400).json({
         success: false,
-        error: '検索クエリが必要です'
+        error: '讀懃ｴ｢繧ｯ繧ｨ繝ｪ縺悟ｿ・ｦ√〒縺・
       });
     }
 
-    console.log(`🔍 ナレッジベース検索: "${query}"`);
+    console.log(`剥 繝翫Ξ繝・ず繝吶・繧ｹ讀懃ｴ｢: "${query}"`);
     
-    // デバッグ: 検索前の状態を確認
-    console.log('🔍 検索前デバッグ情報:');
-    console.log('- 検索クエリ:', query);
+    // 繝・ヰ繝・げ: 讀懃ｴ｢蜑阪・迥ｶ諷九ｒ遒ｺ隱・
+    console.log('剥 讀懃ｴ｢蜑阪ョ繝舌ャ繧ｰ諠・ｱ:');
+    console.log('- 讀懃ｴ｢繧ｯ繧ｨ繝ｪ:', query);
     
-    // 改善された検索機能を使用
+    // 謾ｹ蝟・＆繧後◆讀懃ｴ｢讖溯・繧剃ｽｿ逕ｨ
     const results = await searchKnowledgeBase(query);
     
-    console.log(`✅ 検索完了: ${results.length}件の結果`);
-    console.log('🔍 検索結果詳細:', results.map(r => ({
+    console.log(`笨・讀懃ｴ｢螳御ｺ・ ${results.length}莉ｶ縺ｮ邨先棡`);
+    console.log('剥 讀懃ｴ｢邨先棡隧ｳ邏ｰ:', results.map(r => ({
       source: r.metadata.source,
       similarity: r.similarity,
       textLength: r.text.length
@@ -249,7 +249,7 @@ router.get('/search', async (req, res) => {
     if (results.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'ナレッジデータが見つかりません',
+        error: '繝翫Ξ繝・ず繝・・繧ｿ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ',
         debug: {
           query: query,
           searchFunction: 'searchKnowledgeBase',
@@ -273,10 +273,10 @@ router.get('/search', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ ナレッジベース検索エラー:', error);
+    console.error('笶・繝翫Ξ繝・ず繝吶・繧ｹ讀懃ｴ｢繧ｨ繝ｩ繝ｼ:', error);
     res.status(500).json({
       success: false,
-      error: 'ナレッジベース検索に失敗しました',
+      error: '繝翫Ξ繝・ず繝吶・繧ｹ讀懃ｴ｢縺ｫ螟ｱ謨励＠縺ｾ縺励◆',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
@@ -284,38 +284,38 @@ router.get('/search', async (req, res) => {
 
 /**
  * POST /api/knowledge-base/process
- * ナレッジデータのベクトル化処理を実行
+ * 繝翫Ξ繝・ず繝・・繧ｿ縺ｮ繝吶け繝医Ν蛹門・逅・ｒ螳溯｡・
  */
 router.post('/process', async (req, res) => {
   try {
-    console.log('📚 ナレッジデータベクトル化処理開始');
+    console.log('答 繝翫Ξ繝・ず繝・・繧ｿ繝吶け繝医Ν蛹門・逅・幕蟋・);
     
-    // ナレッジベースのインデックスを読み込み
+    // 繝翫Ξ繝・ず繝吶・繧ｹ縺ｮ繧､繝ｳ繝・ャ繧ｯ繧ｹ繧定ｪｭ縺ｿ霎ｼ縺ｿ
     const index = loadKnowledgeBaseIndex();
     
     if (!index.knowledge || index.knowledge.length === 0) {
       return res.status(404).json({
         success: false,
-        error: '処理対象のナレッジデータが見つかりません'
+        error: '蜃ｦ逅・ｯｾ雎｡縺ｮ繝翫Ξ繝・ず繝・・繧ｿ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ'
       });
     }
     
     let processedCount = 0;
     const errors: string[] = [];
     
-    // 各ナレッジデータをベクトル化処理
+    // 蜷・リ繝ｬ繝・ず繝・・繧ｿ繧偵・繧ｯ繝医Ν蛹門・逅・
     for (const knowledgeItem of index.knowledge) {
       try {
-        // ファイルが存在するかチェック
+        // 繝輔ぃ繧､繝ｫ縺悟ｭ伜惠縺吶ｋ縺九メ繧ｧ繝・け
         if (!fs.existsSync(knowledgeItem.path)) {
-          errors.push(`ファイルが見つかりません: ${knowledgeItem.path}`);
+          errors.push(`繝輔ぃ繧､繝ｫ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ: ${knowledgeItem.path}`);
           continue;
         }
         
-        // ファイル内容を読み込み
+        // 繝輔ぃ繧､繝ｫ蜀・ｮｹ繧定ｪｭ縺ｿ霎ｼ縺ｿ
         const content = fs.readFileSync(knowledgeItem.path, 'utf-8');
         
-        // ベクトル化処理（OpenAI Embeddings APIを使用）
+        // 繝吶け繝医Ν蛹門・逅・ｼ・penAI Embeddings API繧剃ｽｿ逕ｨ・・
         if (process.env.OPENAI_API_KEY) {
           try {
             const { openai } = await import('../lib/openai.js');
@@ -327,7 +327,7 @@ router.post('/process', async (req, res) => {
               
               const embedding = response.data[0].embedding;
               
-              // ベクトルデータを保存
+              // 繝吶け繝医Ν繝・・繧ｿ繧剃ｿ晏ｭ・
               const embeddingPath = knowledgeItem.path.replace('.txt', '_embedding.json');
               fs.writeFileSync(embeddingPath, JSON.stringify({
                 embedding,
@@ -335,33 +335,33 @@ router.post('/process', async (req, res) => {
                 model: "text-embedding-3-small"
               }));
               
-              // インデックスを更新
+              // 繧､繝ｳ繝・ャ繧ｯ繧ｹ繧呈峩譁ｰ
               knowledgeItem.embeddingPath = embeddingPath;
               knowledgeItem.processedAt = new Date().toISOString();
               
               processedCount++;
-              console.log(`✅ ベクトル化完了: ${knowledgeItem.title}`);
+              console.log(`笨・繝吶け繝医Ν蛹門ｮ御ｺ・ ${knowledgeItem.title}`);
             }
           } catch (embeddingError) {
-            console.error(`ベクトル化エラー (${knowledgeItem.title}):`, embeddingError);
-            errors.push(`ベクトル化に失敗: ${knowledgeItem.title}`);
+            console.error(`繝吶け繝医Ν蛹悶お繝ｩ繝ｼ (${knowledgeItem.title}):`, embeddingError);
+            errors.push(`繝吶け繝医Ν蛹悶↓螟ｱ謨・ ${knowledgeItem.title}`);
           }
         } else {
-          errors.push('OpenAI APIキーが設定されていません');
+          errors.push('OpenAI API繧ｭ繝ｼ縺瑚ｨｭ螳壹＆繧後※縺・∪縺帙ｓ');
           break;
         }
       } catch (error) {
-        console.error(`処理エラー (${knowledgeItem.title}):`, error);
-        errors.push(`処理に失敗: ${knowledgeItem.title}`);
+        console.error(`蜃ｦ逅・お繝ｩ繝ｼ (${knowledgeItem.title}):`, error);
+        errors.push(`蜃ｦ逅・↓螟ｱ謨・ ${knowledgeItem.title}`);
       }
     }
     
-    // 更新されたインデックスを保存
+    // 譖ｴ譁ｰ縺輔ｌ縺溘う繝ｳ繝・ャ繧ｯ繧ｹ繧剃ｿ晏ｭ・
     fs.writeFileSync(INDEX_FILE, JSON.stringify(index, null, 2));
     
     res.json({
       success: true,
-      message: `${processedCount}件のナレッジデータをベクトル化しました`,
+      message: `${processedCount}莉ｶ縺ｮ繝翫Ξ繝・ず繝・・繧ｿ繧偵・繧ｯ繝医Ν蛹悶＠縺ｾ縺励◆`,
       processedCount,
       totalCount: index.knowledge.length,
       errors: errors.length > 0 ? errors : undefined,
@@ -369,26 +369,26 @@ router.post('/process', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ ナレッジデータベクトル化処理エラー:', error);
+    console.error('笶・繝翫Ξ繝・ず繝・・繧ｿ繝吶け繝医Ν蛹門・逅・お繝ｩ繝ｼ:', error);
     res.status(500).json({
       success: false,
-      error: 'ナレッジデータのベクトル化処理に失敗しました',
+      error: '繝翫Ξ繝・ず繝・・繧ｿ縺ｮ繝吶け繝医Ν蛹門・逅・↓螟ｱ謨励＠縺ｾ縺励◆',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
 
 /**
- * ナレッジデータの種類ラベルを取得
+ * 繝翫Ξ繝・ず繝・・繧ｿ縺ｮ遞ｮ鬘槭Λ繝吶Ν繧貞叙蠕・
  */
 function getTypeLabel(type: KnowledgeType): string {
   const labels: { [key in KnowledgeType]: string } = {
-    [KnowledgeType.TROUBLESHOOTING]: 'トラブルシューティング',
-    [KnowledgeType.DOCUMENT]: 'ドキュメント',
+    [KnowledgeType.TROUBLESHOOTING]: '繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ',
+    [KnowledgeType.DOCUMENT]: '繝峨く繝･繝｡繝ｳ繝・,
     [KnowledgeType.QA]: 'Q&A',
-    [KnowledgeType.JSON]: 'JSONデータ',
-    [KnowledgeType.PPT]: 'プレゼンテーション',
-    [KnowledgeType.TEXT]: 'テキスト'
+    [KnowledgeType.JSON]: 'JSON繝・・繧ｿ',
+    [KnowledgeType.PPT]: '繝励Ξ繧ｼ繝ｳ繝・・繧ｷ繝ｧ繝ｳ',
+    [KnowledgeType.TEXT]: '繝・く繧ｹ繝・
   };
   
   return labels[type] || type;
@@ -397,8 +397,8 @@ function getTypeLabel(type: KnowledgeType): string {
 export default router;
 
 /**
- * ナレッジベースルートを登録する関数
- * @param app Expressアプリケーション
+ * 繝翫Ξ繝・ず繝吶・繧ｹ繝ｫ繝ｼ繝医ｒ逋ｻ骭ｲ縺吶ｋ髢｢謨ｰ
+ * @param app Express繧｢繝励Μ繧ｱ繝ｼ繧ｷ繝ｧ繝ｳ
  */
 export function registerKnowledgeBaseRoutes(app: any): void {
   app.use('/api/knowledge-base', router);

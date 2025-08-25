@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
@@ -40,9 +40,9 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
   const fetchFlowList = async () => {
     try {
       setIsLoading(true);
-      console.log('🔄 ファイル一覧を取得中...');
+      console.log('売 繝輔ぃ繧､繝ｫ荳隕ｧ繧貞叙蠕嶺ｸｭ...');
       
-      // キャッシュ無効化のためにタイムスタンプを追加
+      // 繧ｭ繝｣繝・す繝･辟｡蜉ｹ蛹悶・縺溘ａ縺ｫ繧ｿ繧､繝繧ｹ繧ｿ繝ｳ繝励ｒ霑ｽ蜉
       const timestamp = Date.now();
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list?t=${timestamp}`, {
         headers: {
@@ -51,16 +51,16 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
         }
       });
       
-      if (!response.ok) throw new Error('ファイル一覧の取得に失敗しました');
+      if (!response.ok) throw new Error('繝輔ぃ繧､繝ｫ荳隕ｧ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆');
       const data = await response.json();
       
-      console.log('✅ ファイル一覧取得完了:', data.length + '件');
+      console.log('笨・繝輔ぃ繧､繝ｫ荳隕ｧ蜿門ｾ怜ｮ御ｺ・', data.length + '莉ｶ');
       setFlowList(data);
     } catch (error) {
-      console.error('ファイル一覧取得エラー:', error);
+      console.error('繝輔ぃ繧､繝ｫ荳隕ｧ蜿門ｾ励お繝ｩ繝ｼ:', error);
       toast({
-        title: "エラー",
-        description: "ファイル一覧の取得に失敗しました",
+        title: "繧ｨ繝ｩ繝ｼ",
+        description: "繝輔ぃ繧､繝ｫ荳隕ｧ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆",
         variant: "destructive",
       });
     } finally {
@@ -73,22 +73,22 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
   }, []);
 
   const handleDeleteClick = async (id: string) => {
-    if (!confirm('このファイルを削除してもよろしいですか？')) return;
+    if (!confirm('縺薙・繝輔ぃ繧､繝ｫ繧貞炎髯､縺励※繧ゅｈ繧阪＠縺・〒縺吶°・・)) return;
     
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${id}`, {
         method: 'DELETE'
       });
       
-      if (!response.ok) throw new Error('ファイルの削除に失敗しました');
+      if (!response.ok) throw new Error('繝輔ぃ繧､繝ｫ縺ｮ蜑企勁縺ｫ螟ｱ謨励＠縺ｾ縺励◆');
       
-      // 一覧を更新
+      // 荳隕ｧ繧呈峩譁ｰ
       fetchFlowList();
     } catch (error) {
-      console.error('ファイル削除エラー:', error);
+      console.error('繝輔ぃ繧､繝ｫ蜑企勁繧ｨ繝ｩ繝ｼ:', error);
       toast({
-        title: "エラー",
-        description: "ファイルの削除に失敗しました",
+        title: "繧ｨ繝ｩ繝ｼ",
+        description: "繝輔ぃ繧､繝ｫ縺ｮ蜑企勁縺ｫ螟ｱ謨励＠縺ｾ縺励◆",
         variant: "destructive",
       });
     }
@@ -99,9 +99,9 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div>
-            <CardTitle className="text-xl">フローファイル一覧</CardTitle>
+            <CardTitle className="text-xl">繝輔Ο繝ｼ繝輔ぃ繧､繝ｫ荳隕ｧ</CardTitle>
             <CardDescription>
-              保存されているフローファイルを管理します
+              菫晏ｭ倥＆繧後※縺・ｋ繝輔Ο繝ｼ繝輔ぃ繧､繝ｫ繧堤ｮ｡逅・＠縺ｾ縺・
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -111,14 +111,14 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
               disabled={isLoading}
             >
               <RefreshCw className="h-4 w-4 mr-1" />
-              更新
+              譖ｴ譁ｰ
             </Button>
             <Button
               variant="default"
               onClick={onNew}
             >
               <Plus className="h-4 w-4 mr-1" />
-              新規作成
+              譁ｰ隕丈ｽ懈・
             </Button>
           </div>
         </CardHeader>
@@ -132,9 +132,9 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>タイトル</TableHead>
-                    <TableHead>説明</TableHead>
-                    <TableHead className="text-right">操作</TableHead>
+                    <TableHead>繧ｿ繧､繝医Ν</TableHead>
+                    <TableHead>隱ｬ譏・/TableHead>
+                    <TableHead className="text-right">謫堺ｽ・/TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -154,7 +154,7 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
                             onClick={() => onEdit(flow.id)}
                           >
                             <FileEdit className="h-4 w-4 mr-1" />
-                            編集
+                            邱ｨ髮・
                           </Button>
                           <Button
                             variant="destructive"
@@ -162,7 +162,7 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
                             onClick={() => handleDeleteClick(flow.id)}
                           >
                             <Trash2 className="h-4 w-4 mr-1" />
-                            削除
+                            蜑企勁
                           </Button>
                         </div>
                       </TableCell>
@@ -175,20 +175,20 @@ const TroubleshootingFileList: React.FC<TroubleshootingFileListProps> = ({
         </CardContent>
       </Card>
 
-      {/* 削除確認ダイアログ */}
+      {/* 蜑企勁遒ｺ隱阪ム繧､繧｢繝ｭ繧ｰ */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>フローを削除しますか？</AlertDialogTitle>
+            <AlertDialogTitle>繝輔Ο繝ｼ繧貞炎髯､縺励∪縺吶°・・/AlertDialogTitle>
             <AlertDialogDescription>
-              このフローを削除すると、すべての関連データが失われます。この操作は元に戻すことができません。
+              縺薙・繝輔Ο繝ｼ繧貞炎髯､縺吶ｋ縺ｨ縲√☆縺ｹ縺ｦ縺ｮ髢｢騾｣繝・・繧ｿ縺悟､ｱ繧上ｌ縺ｾ縺吶ゅ％縺ｮ謫堺ｽ懊・蜈・↓謌ｻ縺吶％縺ｨ縺後〒縺阪∪縺帙ｓ縲・
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowDeleteConfirm(false)}>キャンセル</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setShowDeleteConfirm(false)}>繧ｭ繝｣繝ｳ繧ｻ繝ｫ</AlertDialogCancel>
             <AlertDialogAction onClick={() => handleDeleteClick(flowToDelete || '')} className="bg-red-600 hover:bg-red-700">
               <Trash2 className="mr-2 h-4 w-4" />
-              削除する
+              蜑企勁縺吶ｋ
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

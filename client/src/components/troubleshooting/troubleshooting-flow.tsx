@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+﻿import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { ArrowLeft, CheckCircle, Send, ArrowRight, X } from "lucide-react";
@@ -34,22 +34,22 @@ interface TroubleshootingFlowProps {
   onExit: () => void;
 }
 
-// 画像URL変換の改善
+// 逕ｻ蜒酋RL螟画鋤縺ｮ謾ｹ蝟・
 
-// 画像の読み込みエラーを処理する関数
+// 逕ｻ蜒上・隱ｭ縺ｿ霎ｼ縺ｿ繧ｨ繝ｩ繝ｼ繧貞・逅・☆繧矩未謨ｰ
 function handleImageError(e: React.SyntheticEvent<HTMLImageElement, Event>, imageUrl: string) {
-  console.error('画像読み込みエラー:', imageUrl);
+  console.error('逕ｻ蜒剰ｪｭ縺ｿ霎ｼ縺ｿ繧ｨ繝ｩ繝ｼ:', imageUrl);
   const target = e.currentTarget;
   target.style.display = 'none';
   
-  // エラー表示用の要素を追加
+  // 繧ｨ繝ｩ繝ｼ陦ｨ遉ｺ逕ｨ縺ｮ隕∫ｴ繧定ｿｽ蜉
   const errorDiv = document.createElement('div');
   errorDiv.className = 'bg-red-100 border border-red-300 text-red-700 px-3 py-2 rounded text-sm';
-  errorDiv.textContent = '画像の読み込みに失敗しました';
+  errorDiv.textContent = '逕ｻ蜒上・隱ｭ縺ｿ霎ｼ縺ｿ縺ｫ螟ｱ謨励＠縺ｾ縺励◆';
   target.parentNode?.appendChild(errorDiv);
 }
 
-// フロー実行履歴の型定義
+// 繝輔Ο繝ｼ螳溯｡悟ｱ･豁ｴ縺ｮ蝙句ｮ夂ｾｩ
 interface FlowExecutionStep {
   stepId: string;
   title: string;
@@ -73,7 +73,7 @@ export default function TroubleshootingFlow({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   
-  // フロー実行履歴を追跡
+  // 繝輔Ο繝ｼ螳溯｡悟ｱ･豁ｴ繧定ｿｽ霍｡
   const [executionHistory, setExecutionHistory] = useState<FlowExecutionStep[]>([]);
   const [showPartialSuccess, setShowPartialSuccess] = useState(false);
 
@@ -96,9 +96,9 @@ export default function TroubleshootingFlow({
     const fetchFlowData = async () => {
       try {
         setLoading(true);
-        console.log(`🔄 フローデータ取得開始: ${id}`);
+        console.log(`売 繝輔Ο繝ｼ繝・・繧ｿ蜿門ｾ鈴幕蟋・ ${id}`);
         
-        // 正しいAPIエンドポイントを使用
+        // 豁｣縺励＞API繧ｨ繝ｳ繝峨・繧､繝ｳ繝医ｒ菴ｿ逕ｨ
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${id}`);
         
         if (!response.ok) {
@@ -106,14 +106,14 @@ export default function TroubleshootingFlow({
         }
 
         const data = await response.json();
-        console.log(`✅ フローデータ取得完了:`, data);
+        console.log(`笨・繝輔Ο繝ｼ繝・・繧ｿ蜿門ｾ怜ｮ御ｺ・`, data);
         setFlowData(data);
         
-        // 最初のステップを設定
+        // 譛蛻昴・繧ｹ繝・ャ繝励ｒ險ｭ螳・
         if (data.steps && data.steps.length > 0) {
           setCurrentStepId(data.steps[0].id);
           
-          // 初期ステップを履歴に追加
+          // 蛻晄悄繧ｹ繝・ャ繝励ｒ螻･豁ｴ縺ｫ霑ｽ蜉
           const initialStep = data.steps[0];
           setExecutionHistory([{
             stepId: initialStep.id,
@@ -125,8 +125,8 @@ export default function TroubleshootingFlow({
           }]);
         }
       } catch (err) {
-        console.error("❌ Flow data fetch error:", err);
-        setError("フローデータの取得に失敗しました");
+        console.error("笶・Flow data fetch error:", err);
+        setError("繝輔Ο繝ｼ繝・・繧ｿ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆");
       } finally {
         setLoading(false);
       }
@@ -184,7 +184,7 @@ export default function TroubleshootingFlow({
     if (currentIndex > 0) {
       setCurrentStepId(flowData.steps[currentIndex - 1].id);
       
-      // 履歴から最後のステップを削除
+      // 螻･豁ｴ縺九ｉ譛蠕後・繧ｹ繝・ャ繝励ｒ蜑企勁
       setExecutionHistory(prev => prev.slice(0, -1));
     }
   };
@@ -203,11 +203,11 @@ export default function TroubleshootingFlow({
     return (
       <Card className="w-full max-w-4xl mx-auto">
         <CardHeader>
-          <CardTitle className="text-red-600">エラー</CardTitle>
+          <CardTitle className="text-red-600">繧ｨ繝ｩ繝ｼ</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="mb-4">{error || "フローデータが見つかりません"}</p>
-          <Button onClick={onExit}>戻る</Button>
+          <p className="mb-4">{error || "繝輔Ο繝ｼ繝・・繧ｿ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ"}</p>
+          <Button onClick={onExit}>謌ｻ繧・/Button>
         </CardContent>
       </Card>
     );
@@ -217,7 +217,7 @@ export default function TroubleshootingFlow({
   const currentIndex = flowData.steps.findIndex(step => step.id === currentStepId);
   const isLastStep = currentIndex === flowData.steps.length - 1;
   
-  // 確実な画像表示ロジック
+  // 遒ｺ螳溘↑逕ｻ蜒剰｡ｨ遉ｺ繝ｭ繧ｸ繝・け
   const imagesToShow = [];
   if (currentStep?.images && currentStep.images.length > 0) {
     imagesToShow.push(...currentStep.images);
@@ -232,12 +232,12 @@ export default function TroubleshootingFlow({
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="lg" onClick={onExit}>
               <ArrowLeft className="h-5 w-5" />
-              戻る
+              謌ｻ繧・
             </Button>
             <CardTitle className="text-2xl md:text-3xl">{flowData?.title}</CardTitle>
           </div>
           <div className="text-base text-gray-500">
-            ステップ {currentIndex + 1} / {flowData?.steps.length}
+            繧ｹ繝・ャ繝・{currentIndex + 1} / {flowData?.steps.length}
           </div>
         </div>
       </CardHeader>
@@ -260,7 +260,7 @@ export default function TroubleshootingFlow({
           
           {currentStep.type === 'decision' && currentStep.options.length > 0 && (
             <div className="space-y-3">
-              <h4 className="font-medium text-gray-900">選択してください：</h4>
+              <h4 className="font-medium text-gray-900">驕ｸ謚槭＠縺ｦ縺上□縺輔＞・・/h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {currentStep.options.map((option, index) => (
                   <Button
@@ -276,7 +276,7 @@ export default function TroubleshootingFlow({
             </div>
           )}
 
-          {/* 画像表示エリア - 横並び表示 */}
+          {/* 逕ｻ蜒剰｡ｨ遉ｺ繧ｨ繝ｪ繧｢ - 讓ｪ荳ｦ縺ｳ陦ｨ遉ｺ */}
           {(currentStep.images && currentStep.images.length > 0) ? (
             <div className="mt-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -284,7 +284,7 @@ export default function TroubleshootingFlow({
                   <div key={index} className="relative">
                     <img
                       src={convertImageUrl(image.url)}
-                      alt={`${currentStep.title} - ${image.fileName || '画像'}`}
+                      alt={`${currentStep.title} - ${image.fileName || '逕ｻ蜒・}`}
                       className="w-full h-auto rounded-lg shadow-md"
                       onError={(e) => handleImageError(e, image.url)}
                     />
@@ -298,7 +298,7 @@ export default function TroubleshootingFlow({
               </div>
             </div>
           ) : currentStep.imageUrl ? (
-            // 古い形式の imageUrl のみのフォールバック
+            // 蜿､縺・ｽ｢蠑上・ imageUrl 縺ｮ縺ｿ縺ｮ繝輔か繝ｼ繝ｫ繝舌ャ繧ｯ
             <div className="mt-4">
               <img
                 src={convertImageUrl(currentStep.imageUrl)}
@@ -310,11 +310,11 @@ export default function TroubleshootingFlow({
           ) : (
             <div className="mt-4 text-center py-4 bg-gray-50 rounded-lg">
               {/* <ImageIcon className="mx-auto h-8 w-8 text-gray-400" />
-              <p className="mt-2 text-sm text-gray-600">このステップに画像はありません</p> */}
+              <p className="mt-2 text-sm text-gray-600">縺薙・繧ｹ繝・ャ繝励↓逕ｻ蜒上・縺ゅｊ縺ｾ縺帙ｓ</p> */}
             </div>
           )}
 
-          {/* ナビゲーションボタン */}
+          {/* 繝翫ン繧ｲ繝ｼ繧ｷ繝ｧ繝ｳ繝懊ち繝ｳ */}
           <div className="flex justify-between items-center pt-4 border-t">
             <Button
               variant="outline"
@@ -322,13 +322,13 @@ export default function TroubleshootingFlow({
               disabled={flowData.steps.findIndex(s => s.id === currentStep.id) === 0}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              前へ
+              蜑阪∈
             </Button>
 
             <div className="flex gap-2">
               {currentStep.type !== 'decision' && (
                 <Button onClick={() => handleNext()}>
-                  次へ
+                  谺｡縺ｸ
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               )}

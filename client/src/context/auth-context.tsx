@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+﻿import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { login as authLogin, logout as authLogout, getCurrentUser as fetchCurrentUser } from '../lib/auth';
 
 interface User {
@@ -23,40 +23,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
 
-  // 初期認証状態チェック
+  // 蛻晄悄隱崎ｨｼ迥ｶ諷九メ繧ｧ繝・け
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
         setIsLoading(true);
         
-        // Azure Static Web Apps のコールドスタート対策でタイムアウトを延長
-        console.log('🔍 認証状態チェック開始...');
+        // Azure Static Web Apps 縺ｮ繧ｳ繝ｼ繝ｫ繝峨せ繧ｿ繝ｼ繝亥ｯｾ遲悶〒繧ｿ繧､繝繧｢繧ｦ繝医ｒ蟒ｶ髟ｷ
+        console.log('剥 隱崎ｨｼ迥ｶ諷九メ繧ｧ繝・け髢句ｧ・..');
         
-        // リトライ機能付きで認証状態を確認
+        // 繝ｪ繝医Λ繧､讖溯・莉倥″縺ｧ隱崎ｨｼ迥ｶ諷九ｒ遒ｺ隱・
         let retryCount = 0;
         const maxRetries = 3;
         let userData = null;
         
         while (retryCount < maxRetries) {
           try {
-            console.log(`🔄 認証確認試行 ${retryCount + 1}/${maxRetries}`);
+            console.log(`売 隱崎ｨｼ遒ｺ隱崎ｩｦ陦・${retryCount + 1}/${maxRetries}`);
             userData = await fetchCurrentUser();
-            break; // 成功したらループを抜ける
+            break; // 謌仙粥縺励◆繧峨Ν繝ｼ繝励ｒ謚懊￠繧・
           } catch (error) {
             retryCount++;
-            console.warn(`⚠️ 認証確認失敗 (${retryCount}/${maxRetries}):`, error);
+            console.warn(`笞・・隱崎ｨｼ遒ｺ隱榊､ｱ謨・(${retryCount}/${maxRetries}):`, error);
             
             if (retryCount < maxRetries) {
-              // 指数バックオフで待機
+              // 謖・焚繝舌ャ繧ｯ繧ｪ繝輔〒蠕・ｩ・
               const delay = Math.pow(2, retryCount) * 1000;
-              console.log(`⏳ ${delay}ms 待機してリトライ...`);
+              console.log(`竢ｳ ${delay}ms 蠕・ｩ溘＠縺ｦ繝ｪ繝医Λ繧､...`);
               await new Promise(resolve => setTimeout(resolve, delay));
             }
           }
         }
         
         if (userData) {
-          console.log('✅ 認証状態確認成功:', userData);
+          console.log('笨・隱崎ｨｼ迥ｶ諷狗｢ｺ隱肴・蜉・', userData);
           setUser({
             id: userData.id,
             username: userData.username,
@@ -65,16 +65,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             department: userData.department
           });
         } else {
-          console.log('❌ 未認証またはセッション期限切れ');
+          console.log('笶・譛ｪ隱崎ｨｼ縺ｾ縺溘・繧ｻ繝・す繝ｧ繝ｳ譛滄剞蛻・ｌ');
           setUser(null);
         }
       } catch (error) {
-        console.error('❌ 認証状態チェック最終エラー:', error);
+        console.error('笶・隱崎ｨｼ迥ｶ諷九メ繧ｧ繝・け譛邨ゅお繝ｩ繝ｼ:', error);
         setUser(null);
       } finally {
         setIsLoading(false);
         setAuthChecked(true);
-        console.log('🏁 認証状態チェック完了');
+        console.log('潤 隱崎ｨｼ迥ｶ諷九メ繧ｧ繝・け螳御ｺ・);
       }
     };
 
@@ -82,12 +82,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (username: string, password: string): Promise<void> => {
-    console.log('🔐 ログイン試行開始:', { username });
+    console.log('柏 繝ｭ繧ｰ繧､繝ｳ隧ｦ陦碁幕蟋・', { username });
 
     try {
       setIsLoading(true);
       
-      // lib/auth の login を利用
+      // lib/auth 縺ｮ login 繧貞茜逕ｨ
       const userData = await authLogin({ username, password });
       setUser({
         id: userData.user.id,
@@ -105,41 +105,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    console.log('🔐 ログアウト処理開始');
+    console.log('柏 繝ｭ繧ｰ繧｢繧ｦ繝亥・逅・幕蟋・);
 
     try {
       await authLogout();
-      console.log('✅ ログアウト成功');
+      console.log('笨・繝ｭ繧ｰ繧｢繧ｦ繝域・蜉・);
     } catch (error) {
-      console.error('❌ ログアウトエラー:', error);
+      console.error('笶・繝ｭ繧ｰ繧｢繧ｦ繝医お繝ｩ繝ｼ:', error);
     } finally {
       setUser(null);
     }
   };
 
-  console.log('🔧 AuthProvider レンダリング:', {
+  console.log('肌 AuthProvider 繝ｬ繝ｳ繝繝ｪ繝ｳ繧ｰ:', {
     user: user ? user.username : null,
     isLoading,
     authChecked,
     timestamp: new Date().toISOString()
   });
 
-  // 認証状態確認中は常にローディング画面を表示（nullレンダリング禁止）
+  // 隱崎ｨｼ迥ｶ諷狗｢ｺ隱堺ｸｭ縺ｯ蟶ｸ縺ｫ繝ｭ繝ｼ繝・ぅ繝ｳ繧ｰ逕ｻ髱｢繧定｡ｨ遉ｺ・・ull繝ｬ繝ｳ繝繝ｪ繝ｳ繧ｰ遖∵ｭ｢・・
   if (isLoading) {
-    console.log('⏳ AuthProvider: 認証状態確認中、ローディング画面を表示');
+    console.log('竢ｳ AuthProvider: 隱崎ｨｼ迥ｶ諷狗｢ｺ隱堺ｸｭ縲√Ο繝ｼ繝・ぅ繝ｳ繧ｰ逕ｻ髱｢繧定｡ｨ遉ｺ');
     return (
       <AuthContext.Provider value={{ user, isLoading, login, logout }}>
         <div className="flex justify-center items-center h-screen">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-gray-600">認証状態を確認中...</p>
+            <p className="text-gray-600">隱崎ｨｼ迥ｶ諷九ｒ遒ｺ隱堺ｸｭ...</p>
           </div>
         </div>
       </AuthContext.Provider>
     );
   }
 
-  console.log('✅ AuthProvider: 認証状態確認完了、子コンポーネントを表示');
+  console.log('笨・AuthProvider: 隱崎ｨｼ迥ｶ諷狗｢ｺ隱榊ｮ御ｺ・∝ｭ舌さ繝ｳ繝昴・繝阪Φ繝医ｒ陦ｨ遉ｺ');
   return (
     <AuthContext.Provider value={{ user, isLoading, login, logout }}>
       {children}

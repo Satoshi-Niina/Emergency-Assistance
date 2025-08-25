@@ -1,15 +1,15 @@
-import { DatabaseStorage } from "./database-storage.js";
+﻿import { DatabaseStorage } from "./database-storage.js";
 import { db } from "./db/index.js";
 import { schema } from "../shared/schema.js";
 
-// データベース接続テスト
+// 繝・・繧ｿ繝吶・繧ｹ謗･邯壹ユ繧ｹ繝・
 const testDatabaseConnection = async (): Promise<boolean> => {
     try {
         await db.select().from(schema.users).limit(1);
-        console.log('データベース接続OK');
+        console.log('繝・・繧ｿ繝吶・繧ｹ謗･邯唹K');
         return true;
     } catch (error) {
-        console.error('データベース接続エラー:', error);
+        console.error('繝・・繧ｿ繝吶・繧ｹ謗･邯壹お繝ｩ繝ｼ:', error);
         return false;
     }
 };

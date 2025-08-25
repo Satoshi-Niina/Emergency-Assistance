@@ -1,18 +1,18 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+﻿import { NextApiRequest, NextApiResponse } from 'next';
 import fs from 'fs';
 import path from 'path';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // 正しいknowledge-base/jsonディレクトリのパスを設定
+    // 豁｣縺励＞knowledge-base/json繝・ぅ繝ｬ繧ｯ繝医Μ縺ｮ繝代せ繧定ｨｭ螳・
     const metadataDir = path.join(process.cwd(), 'knowledge-base', 'json');
     
-    // ディレクトリが存在しない場合は作成
+    // 繝・ぅ繝ｬ繧ｯ繝医Μ縺悟ｭ伜惠縺励↑縺・ｴ蜷医・菴懈・
     if (!fs.existsSync(metadataDir)) {
       fs.mkdirSync(metadataDir, { recursive: true });
     }
 
-    // JSONファイルの一覧を取得（実際に存在するファイルのみ）
+    // JSON繝輔ぃ繧､繝ｫ縺ｮ荳隕ｧ繧貞叙蠕暦ｼ亥ｮ滄圀縺ｫ蟄伜惠縺吶ｋ繝輔ぃ繧､繝ｫ縺ｮ縺ｿ・・
     const files = fs.readdirSync(metadataDir)
       .filter(file => file.endsWith('_metadata.json'))
       .filter(file => {
@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return fs.existsSync(filePath);
       })
       .sort((a, b) => {
-        // 最新のファイルを先頭に
+        // 譛譁ｰ縺ｮ繝輔ぃ繧､繝ｫ繧貞・鬆ｭ縺ｫ
         const statA = fs.statSync(path.join(metadataDir, a));
         const statB = fs.statSync(path.join(metadataDir, b));
         return statB.mtime.getTime() - statA.mtime.getTime();

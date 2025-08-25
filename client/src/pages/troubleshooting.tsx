@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '../lib/queryClient.ts';
 import { Button } from '../components/ui/button';
@@ -34,19 +34,19 @@ interface Flow {
 }
 
 const newFlowTemplate: Omit<Flow, 'id' | 'createdAt' | 'updatedAt'> = {
-  title: '新しいフロー',
+  title: '譁ｰ縺励＞繝輔Ο繝ｼ',
   description: '',
   category: 'general',
   keywords: [],
   steps: [
     {
-      id: 'start_node', type: 'start', title: '開始', description: 'このフローを開始します', nextId: 'step_1'
+      id: 'start_node', type: 'start', title: '髢句ｧ・, description: '縺薙・繝輔Ο繝ｼ繧帝幕蟋九＠縺ｾ縺・, nextId: 'step_1'
     },
     {
-      id: 'step_1', type: 'step', title: '最初のステップ', description: 'ここに最初の指示を入力します。', images: [], nextId: 'end_node'
+      id: 'step_1', type: 'step', title: '譛蛻昴・繧ｹ繝・ャ繝・, description: '縺薙％縺ｫ譛蛻昴・謖・､ｺ繧貞・蜉帙＠縺ｾ縺吶・, images: [], nextId: 'end_node'
     },
     {
-      id: 'end_node', type: 'end', title: '終了', description: 'フローが完了しました。'
+      id: 'end_node', type: 'end', title: '邨ゆｺ・, description: '繝輔Ο繝ｼ縺悟ｮ御ｺ・＠縺ｾ縺励◆縲・
     },
   ],
 };
@@ -71,7 +71,7 @@ export default function TroubleshootingPage() {
     queryKey: ['/api/troubleshooting/list'],
     queryFn: async () => {
       const res = await apiRequest('GET', '/api/troubleshooting/list');
-      if (!res.ok) throw new Error('ファイル一覧の取得に失敗しました');
+      if (!res.ok) throw new Error('繝輔ぃ繧､繝ｫ荳隕ｧ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆');
       return await res.json();
     },
   });
@@ -84,23 +84,23 @@ export default function TroubleshootingPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/troubleshooting/list'] });
-      toast({ title: '成功', description: 'ファイルが正常に保存されました。' });
+      toast({ title: '謌仙粥', description: '繝輔ぃ繧､繝ｫ縺梧ｭ｣蟶ｸ縺ｫ菫晏ｭ倥＆繧後∪縺励◆縲・ });
       setIsEditorOpen(false);
       setSelectedFlow(null);
       setFlowState({ view: 'list' });
     },
-    onError: (error) => toast({ title: 'エラー', description: `ファイルの保存中にエラーが発生しました: ${error.message}`, variant: 'destructive' }),
+    onError: (error) => toast({ title: '繧ｨ繝ｩ繝ｼ', description: `繝輔ぃ繧､繝ｫ縺ｮ菫晏ｭ倅ｸｭ縺ｫ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆: ${error.message}`, variant: 'destructive' }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (flowId: string) => apiRequest('DELETE', `/api/troubleshooting/${flowId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/troubleshooting/list'] });
-      toast({ title: '成功', description: 'ファイルが削除されました。' });
+      toast({ title: '謌仙粥', description: '繝輔ぃ繧､繝ｫ縺悟炎髯､縺輔ｌ縺ｾ縺励◆縲・ });
       setFlowToDelete(null);
       setIsWarningOpen(false);
     },
-    onError: (error) => toast({ title: 'エラー', description: `ファイルの削除中にエラーが発生しました: ${error.message}`, variant: 'destructive' }),
+    onError: (error) => toast({ title: '繧ｨ繝ｩ繝ｼ', description: `繝輔ぃ繧､繝ｫ縺ｮ蜑企勁荳ｭ縺ｫ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆: ${error.message}`, variant: 'destructive' }),
   });
 
   const handleEdit = (flowId: string) => {
@@ -129,7 +129,7 @@ export default function TroubleshootingPage() {
     apiRequest('GET', `/api/troubleshooting/detail/${flowId}`).then(res => res.json()).then(fullFlowData => {
       setSelectedFlow(fullFlowData);
       setIsEditorOpen(true);
-    }).catch(err => toast({ title: 'エラー', description: `ファイルデータの取得に失敗しました: ${err.message}`, variant: 'destructive' }));
+    }).catch(err => toast({ title: '繧ｨ繝ｩ繝ｼ', description: `繝輔ぃ繧､繝ｫ繝・・繧ｿ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆: ${err.message}`, variant: 'destructive' }));
   };
 
   const handleOpenViewer = (flow: Flow) => {
@@ -158,7 +158,7 @@ export default function TroubleshootingPage() {
     setPreviewFlowId(null);
   };
 
-  // プレビューが開いている場合
+  // 繝励Ξ繝薙Η繝ｼ縺碁幕縺・※縺・ｋ蝣ｴ蜷・
   if (previewFlowId) {
     return (
       <div className="container mx-auto p-4 sm:p-6 bg-gray-50 min-h-screen">
@@ -173,9 +173,9 @@ export default function TroubleshootingPage() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 flex items-center gap-3">
             <Workflow className="w-8 h-8 text-blue-600" />
-            応急処置データ管理
+            蠢懈･蜃ｦ鄂ｮ繝・・繧ｿ邂｡逅・
           </h1>
-          <p className="text-gray-500 mt-1">フローの新規作成、および既存フローの編集を行います。</p>
+          <p className="text-gray-500 mt-1">繝輔Ο繝ｼ縺ｮ譁ｰ隕丈ｽ懈・縲√♀繧医・譌｢蟄倥ヵ繝ｭ繝ｼ縺ｮ邱ｨ髮・ｒ陦後＞縺ｾ縺吶・/p>
         </div>
       </div>
 
@@ -183,11 +183,11 @@ export default function TroubleshootingPage() {
         <TabsList className="grid w-full grid-cols-2 bg-gray-200 p-1 rounded-lg">
           <TabsTrigger value="generator" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md">
             <BrainCircuit className="h-5 w-5" />
-            新規フロー生成
+            譁ｰ隕上ヵ繝ｭ繝ｼ逕滓・
           </TabsTrigger>
           <TabsTrigger value="editor" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md">
             <ListChecks className="h-5 w-5" />
-            フローの管理・編集
+            繝輔Ο繝ｼ縺ｮ邂｡逅・・邱ｨ髮・
           </TabsTrigger>
         </TabsList>
 
@@ -245,8 +245,8 @@ export default function TroubleshootingPage() {
         isOpen={isWarningOpen}
         onOpenChange={setIsWarningOpen}
         onConfirm={confirmDelete}
-        title="フローの削除"
-        description="本当にこのフローを削除しますか？この操作は元に戻せません。"
+        title="繝輔Ο繝ｼ縺ｮ蜑企勁"
+        description="譛ｬ蠖薙↓縺薙・繝輔Ο繝ｼ繧貞炎髯､縺励∪縺吶°・溘％縺ｮ謫堺ｽ懊・蜈・↓謌ｻ縺帙∪縺帙ｓ縲・
       />
     </div>
   );

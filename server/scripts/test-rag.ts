@@ -1,67 +1,67 @@
-#!/usr/bin/env tsx
+﻿#!/usr/bin/env tsx
 
 /**
- * RAGシステムの動作確認用テストスクリプト
- * 既存UIを変更せずにRAG APIの動作を確認できる
+ * RAG繧ｷ繧ｹ繝・Β縺ｮ蜍穂ｽ懃｢ｺ隱咲畑繝・せ繝医せ繧ｯ繝ｪ繝励ヨ
+ * 譌｢蟄篭I繧貞､画峩縺帙★縺ｫRAG API縺ｮ蜍穂ｽ懊ｒ遒ｺ隱阪〒縺阪ｋ
  */
 
 import { config } from 'dotenv';
 import { loadRagConfig } from '../services/config-manager.js';
 import { health } from '../services/db.js';
 
-// 環境変数を読み込み
+// 迺ｰ蠅・､画焚繧定ｪｭ縺ｿ霎ｼ縺ｿ
 config();
 
 async function testRagSystem() {
-  console.log('🧪 RAGシステムの動作確認を開始します...\n');
+  console.log('ｧｪ RAG繧ｷ繧ｹ繝・Β縺ｮ蜍穂ｽ懃｢ｺ隱阪ｒ髢句ｧ九＠縺ｾ縺・..\n');
 
   try {
-    // 1. データベース接続確認
-    console.log('1️⃣ データベース接続確認...');
+    // 1. 繝・・繧ｿ繝吶・繧ｹ謗･邯夂｢ｺ隱・
+    console.log('1・鞘Ε 繝・・繧ｿ繝吶・繧ｹ謗･邯夂｢ｺ隱・..');
     const dbHealthy = await health();
     if (dbHealthy) {
-      console.log('✅ データベース接続: OK');
+      console.log('笨・繝・・繧ｿ繝吶・繧ｹ謗･邯・ OK');
     } else {
-      console.log('❌ データベース接続: FAILED');
+      console.log('笶・繝・・繧ｿ繝吶・繧ｹ謗･邯・ FAILED');
       return;
     }
 
-    // 2. RAG設定読み込み確認
-    console.log('\n2️⃣ RAG設定読み込み確認...');
+    // 2. RAG險ｭ螳夊ｪｭ縺ｿ霎ｼ縺ｿ遒ｺ隱・
+    console.log('\n2・鞘Ε RAG險ｭ螳夊ｪｭ縺ｿ霎ｼ縺ｿ遒ｺ隱・..');
     try {
       const ragConfig = await loadRagConfig();
-      console.log('✅ RAG設定読み込み: OK');
-      console.log('   - 埋め込み次元数:', ragConfig.embedDim);
-      console.log('   - チャンクサイズ:', ragConfig.chunkSize);
-      console.log('   - チャンクオーバーラップ:', ragConfig.chunkOverlap);
-      console.log('   - 検索結果数:', ragConfig.retrieveK);
+      console.log('笨・RAG險ｭ螳夊ｪｭ縺ｿ霎ｼ縺ｿ: OK');
+      console.log('   - 蝓九ａ霎ｼ縺ｿ谺｡蜈・焚:', ragConfig.embedDim);
+      console.log('   - 繝√Ε繝ｳ繧ｯ繧ｵ繧､繧ｺ:', ragConfig.chunkSize);
+      console.log('   - 繝√Ε繝ｳ繧ｯ繧ｪ繝ｼ繝舌・繝ｩ繝・・:', ragConfig.chunkOverlap);
+      console.log('   - 讀懃ｴ｢邨先棡謨ｰ:', ragConfig.retrieveK);
     } catch (error) {
-      console.log('❌ RAG設定読み込み: FAILED');
-      console.error('   エラー:', error);
+      console.log('笶・RAG險ｭ螳夊ｪｭ縺ｿ霎ｼ縺ｿ: FAILED');
+      console.error('   繧ｨ繝ｩ繝ｼ:', error);
       return;
     }
 
-    // 3. 環境変数確認
-    console.log('\n3️⃣ 環境変数確認...');
+    // 3. 迺ｰ蠅・､画焚遒ｺ隱・
+    console.log('\n3・鞘Ε 迺ｰ蠅・､画焚遒ｺ隱・..');
     const requiredEnvVars = ['DATABASE_URL', 'OPENAI_API_KEY'];
     const missingVars: string[] = [];
     
     for (const envVar of requiredEnvVars) {
       if (process.env[envVar]) {
-        console.log(`✅ ${envVar}: SET`);
+        console.log(`笨・${envVar}: SET`);
       } else {
-        console.log(`❌ ${envVar}: NOT SET`);
+        console.log(`笶・${envVar}: NOT SET`);
         missingVars.push(envVar);
       }
     }
 
     if (missingVars.length > 0) {
-      console.log(`\n⚠️  以下の環境変数が設定されていません: ${missingVars.join(', ')}`);
-      console.log('   一部の機能が動作しない可能性があります。');
+      console.log(`\n笞・・ 莉･荳九・迺ｰ蠅・､画焚縺瑚ｨｭ螳壹＆繧後※縺・∪縺帙ｓ: ${missingVars.join(', ')}`);
+      console.log('   荳驛ｨ縺ｮ讖溯・縺悟虚菴懊＠縺ｪ縺・庄閭ｽ諤ｧ縺後≠繧翫∪縺吶・);
     }
 
-    // 4. APIエンドポイント確認
-    console.log('\n4️⃣ APIエンドポイント確認...');
+    // 4. API繧ｨ繝ｳ繝峨・繧､繝ｳ繝育｢ｺ隱・
+    console.log('\n4・鞘Ε API繧ｨ繝ｳ繝峨・繧､繝ｳ繝育｢ｺ隱・..');
     const baseUrl = process.env.VITE_API_BASE_URL || 'http://localhost:3001';
     const endpoints = [
       '/api/config/rag',
@@ -73,22 +73,22 @@ async function testRagSystem() {
       try {
         const response = await fetch(`${baseUrl}${endpoint}`);
         if (response.ok) {
-          console.log(`✅ ${endpoint}: OK (${response.status})`);
+          console.log(`笨・${endpoint}: OK (${response.status})`);
         } else {
-          console.log(`❌ ${endpoint}: FAILED (${response.status})`);
+          console.log(`笶・${endpoint}: FAILED (${response.status})`);
         }
       } catch (error) {
-        console.log(`❌ ${endpoint}: ERROR (${error instanceof Error ? error.message : 'Unknown'})`);
+        console.log(`笶・${endpoint}: ERROR (${error instanceof Error ? error.message : 'Unknown'})`);
       }
     }
 
-    // 5. サンプルデータ取込テスト（オプション）
-    console.log('\n5️⃣ サンプルデータ取込テスト...');
+    // 5. 繧ｵ繝ｳ繝励Ν繝・・繧ｿ蜿冶ｾｼ繝・せ繝茨ｼ医が繝励す繝ｧ繝ｳ・・
+    console.log('\n5・鞘Ε 繧ｵ繝ｳ繝励Ν繝・・繧ｿ蜿冶ｾｼ繝・せ繝・..');
     if (process.env.OPENAI_API_KEY) {
       try {
         const sampleData = {
           filename: 'test-sample.txt',
-          text: 'これはテスト用のサンプルテキストです。エンジンの始動手順について説明します。まず、燃料タンクの残量を確認してください。次に、スタータースイッチを押してエンジンを始動します。エンジンが正常に始動したら、オイル圧力と水温を確認してください。',
+          text: '縺薙ｌ縺ｯ繝・せ繝育畑縺ｮ繧ｵ繝ｳ繝励Ν繝・く繧ｹ繝医〒縺吶ゅお繝ｳ繧ｸ繝ｳ縺ｮ蟋句虚謇矩・↓縺､縺・※隱ｬ譏弱＠縺ｾ縺吶ゅ∪縺壹∫㏍譁吶ち繝ｳ繧ｯ縺ｮ谿矩㍼繧堤｢ｺ隱阪＠縺ｦ縺上□縺輔＞縲よｬ｡縺ｫ縲√せ繧ｿ繝ｼ繧ｿ繝ｼ繧ｹ繧､繝・メ繧呈款縺励※繧ｨ繝ｳ繧ｸ繝ｳ繧貞ｧ句虚縺励∪縺吶ゅお繝ｳ繧ｸ繝ｳ縺梧ｭ｣蟶ｸ縺ｫ蟋句虚縺励◆繧峨√が繧､繝ｫ蝨ｧ蜉帙→豌ｴ貂ｩ繧堤｢ｺ隱阪＠縺ｦ縺上□縺輔＞縲・,
           tags: ['test', 'engine', 'procedure']
         };
 
@@ -100,63 +100,63 @@ async function testRagSystem() {
 
         if (response.ok) {
           const result = await response.json();
-          console.log('✅ サンプルデータ取込: OK');
-          console.log(`   - ドキュメントID: ${result.doc_id}`);
-          console.log(`   - チャンク数: ${result.chunks}`);
-          console.log(`   - 処理時間: ${result.stats.processingTime}ms`);
+          console.log('笨・繧ｵ繝ｳ繝励Ν繝・・繧ｿ蜿冶ｾｼ: OK');
+          console.log(`   - 繝峨く繝･繝｡繝ｳ繝・D: ${result.doc_id}`);
+          console.log(`   - 繝√Ε繝ｳ繧ｯ謨ｰ: ${result.chunks}`);
+          console.log(`   - 蜃ｦ逅・凾髢・ ${result.stats.processingTime}ms`);
         } else {
-          console.log('❌ サンプルデータ取込: FAILED');
+          console.log('笶・繧ｵ繝ｳ繝励Ν繝・・繧ｿ蜿冶ｾｼ: FAILED');
           const errorData = await response.json().catch(() => ({}));
-          console.log(`   エラー: ${errorData.message || response.statusText}`);
+          console.log(`   繧ｨ繝ｩ繝ｼ: ${errorData.message || response.statusText}`);
         }
       } catch (error) {
-        console.log('❌ サンプルデータ取込: ERROR');
-        console.log(`   エラー: ${error instanceof Error ? error.message : 'Unknown'}`);
+        console.log('笶・繧ｵ繝ｳ繝励Ν繝・・繧ｿ蜿冶ｾｼ: ERROR');
+        console.log(`   繧ｨ繝ｩ繝ｼ: ${error instanceof Error ? error.message : 'Unknown'}`);
       }
     } else {
-      console.log('⚠️  OPENAI_API_KEYが設定されていないため、サンプルデータ取込テストをスキップします');
+      console.log('笞・・ OPENAI_API_KEY縺瑚ｨｭ螳壹＆繧後※縺・↑縺・◆繧√√し繝ｳ繝励Ν繝・・繧ｿ蜿冶ｾｼ繝・せ繝医ｒ繧ｹ繧ｭ繝・・縺励∪縺・);
     }
 
-    // 6. 検索テスト（オプション）
-    console.log('\n6️⃣ 検索テスト...');
+    // 6. 讀懃ｴ｢繝・せ繝茨ｼ医が繝励す繝ｧ繝ｳ・・
+    console.log('\n6・鞘Ε 讀懃ｴ｢繝・せ繝・..');
     if (process.env.OPENAI_API_KEY) {
       try {
-        const searchQuery = 'エンジン';
+        const searchQuery = '繧ｨ繝ｳ繧ｸ繝ｳ';
         const response = await fetch(`${baseUrl}/api/search?q=${encodeURIComponent(searchQuery)}`);
         
         if (response.ok) {
           const result = await response.json();
-          console.log('✅ 検索テスト: OK');
-          console.log(`   - クエリ: "${searchQuery}"`);
-          console.log(`   - 結果数: ${result.stats.totalResults}`);
-          console.log(`   - 上位結果数: ${result.stats.topResults}`);
+          console.log('笨・讀懃ｴ｢繝・せ繝・ OK');
+          console.log(`   - 繧ｯ繧ｨ繝ｪ: "${searchQuery}"`);
+          console.log(`   - 邨先棡謨ｰ: ${result.stats.totalResults}`);
+          console.log(`   - 荳贋ｽ咲ｵ先棡謨ｰ: ${result.stats.topResults}`);
         } else {
-          console.log('❌ 検索テスト: FAILED');
+          console.log('笶・讀懃ｴ｢繝・せ繝・ FAILED');
           const errorData = await response.json().catch(() => ({}));
-          console.log(`   エラー: ${errorData.message || response.statusText}`);
+          console.log(`   繧ｨ繝ｩ繝ｼ: ${errorData.message || response.statusText}`);
         }
       } catch (error) {
-        console.log('❌ 検索テスト: ERROR');
-        console.log(`   エラー: ${error instanceof Error ? error.message : 'Unknown'}`);
+        console.log('笶・讀懃ｴ｢繝・せ繝・ ERROR');
+        console.log(`   繧ｨ繝ｩ繝ｼ: ${error instanceof Error ? error.message : 'Unknown'}`);
       }
     } else {
-      console.log('⚠️  OPENAI_API_KEYが設定されていないため、検索テストをスキップします');
+      console.log('笞・・ OPENAI_API_KEY縺瑚ｨｭ螳壹＆繧後※縺・↑縺・◆繧√∵､懃ｴ｢繝・せ繝医ｒ繧ｹ繧ｭ繝・・縺励∪縺・);
     }
 
-    console.log('\n🎉 RAGシステムの動作確認が完了しました！');
-    console.log('\n📋 次のステップ:');
-    console.log('   1. npm run db:migrate でデータベースを初期化');
-    console.log('   2. サーバーを起動 (npm run dev)');
-    console.log('   3. ブラウザでAPIエンドポイントをテスト');
-    console.log('   4. クライアントSDKを使用してフロントエンドから呼び出し');
+    console.log('\n脂 RAG繧ｷ繧ｹ繝・Β縺ｮ蜍穂ｽ懃｢ｺ隱阪′螳御ｺ・＠縺ｾ縺励◆・・);
+    console.log('\n搭 谺｡縺ｮ繧ｹ繝・ャ繝・');
+    console.log('   1. npm run db:migrate 縺ｧ繝・・繧ｿ繝吶・繧ｹ繧貞・譛溷喧');
+    console.log('   2. 繧ｵ繝ｼ繝舌・繧定ｵｷ蜍・(npm run dev)');
+    console.log('   3. 繝悶Λ繧ｦ繧ｶ縺ｧAPI繧ｨ繝ｳ繝峨・繧､繝ｳ繝医ｒ繝・せ繝・);
+    console.log('   4. 繧ｯ繝ｩ繧､繧｢繝ｳ繝・DK繧剃ｽｿ逕ｨ縺励※繝輔Ο繝ｳ繝医お繝ｳ繝峨°繧牙他縺ｳ蜃ｺ縺・);
 
   } catch (error) {
-    console.error('\n❌ テスト実行中にエラーが発生しました:', error);
+    console.error('\n笶・繝・せ繝亥ｮ溯｡御ｸｭ縺ｫ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆:', error);
     process.exit(1);
   }
 }
 
-// スクリプトが直接実行された場合のみテストを実行
+// 繧ｹ繧ｯ繝ｪ繝励ヨ縺檎峩謗･螳溯｡後＆繧後◆蝣ｴ蜷医・縺ｿ繝・せ繝医ｒ螳溯｡・
 if (import.meta.url === `file://${process.argv[1]}`) {
   testRagSystem();
 }

@@ -1,10 +1,10 @@
-import path from 'path';
+﻿import path from 'path';
 import fs from 'fs/promises';
 import { EnhancedAzureStorageService } from './azure-storage-enhanced.js';
 
 /**
  * Storage configuration utility for production deployment
- * 本番デプロイメント用のストレージ設定ユーティリティ
+ * 譛ｬ逡ｪ繝・・繝ｭ繧､繝｡繝ｳ繝育畑縺ｮ繧ｹ繝医Ξ繝ｼ繧ｸ險ｭ螳壹Θ繝ｼ繝・ぅ繝ｪ繝・ぅ
  */
 
 export interface StoragePathConfig {
@@ -34,7 +34,7 @@ export interface AzureStorageConnectionConfig {
 
 /**
  * Get storage configuration based on environment
- * 環境に応じたストレージ設定の取得
+ * 迺ｰ蠅・↓蠢懊§縺溘せ繝医Ξ繝ｼ繧ｸ險ｭ螳壹・蜿門ｾ・
  */
 export function getStorageConfig(): {
   paths: StoragePathConfig;
@@ -90,7 +90,7 @@ export function getStorageConfig(): {
 
 /**
  * Initialize storage directories
- * ストレージディレクトリの初期化
+ * 繧ｹ繝医Ξ繝ｼ繧ｸ繝・ぅ繝ｬ繧ｯ繝医Μ縺ｮ蛻晄悄蛹・
  */
 export async function initializeStorageDirectories(config: StoragePathConfig): Promise<void> {
   const directories = [
@@ -110,35 +110,35 @@ export async function initializeStorageDirectories(config: StoragePathConfig): P
     path.join(config.knowledgeBasePath, 'temp'),
   ];
 
-  console.log('📁 Initializing storage directories...');
+  console.log('刀 Initializing storage directories...');
   
   for (const dir of directories) {
     try {
       await fs.mkdir(dir, { recursive: true });
-      console.log(`✅ Directory ready: ${dir}`);
+      console.log(`笨・Directory ready: ${dir}`);
     } catch (error: any) {
-      console.error(`❌ Failed to create directory ${dir}:`, error.message);
+      console.error(`笶・Failed to create directory ${dir}:`, error.message);
       throw error;
     }
   }
   
-  console.log('📁 All storage directories initialized');
+  console.log('刀 All storage directories initialized');
 }
 
 /**
  * Create storage service instance with proper configuration
- * 適切な設定でストレージサービスインスタンスを作成
+ * 驕ｩ蛻・↑險ｭ螳壹〒繧ｹ繝医Ξ繝ｼ繧ｸ繧ｵ繝ｼ繝薙せ繧､繝ｳ繧ｹ繧ｿ繝ｳ繧ｹ繧剃ｽ懈・
  */
 export function createStorageService(): EnhancedAzureStorageService | null {
   const { azure, isAzureEnabled } = getStorageConfig();
   
   if (!isAzureEnabled) {
-    console.log('ℹ️ Azure Storage not configured, using local storage only');
+    console.log('邃ｹ・・Azure Storage not configured, using local storage only');
     return null;
   }
 
   if (!azure.accountName) {
-    console.warn('⚠️ Azure Storage account name not provided');
+    console.warn('笞・・Azure Storage account name not provided');
     return null;
   }
 
@@ -152,7 +152,7 @@ export function createStorageService(): EnhancedAzureStorageService | null {
       retryDelayMs: 1000,
     };
 
-    console.log('🔧 Initializing Azure Storage service:', {
+    console.log('肌 Initializing Azure Storage service:', {
       accountName: azure.accountName,
       containerName: azure.containerName,
       useManagedIdentity: azure.useManagedIdentity,
@@ -162,14 +162,14 @@ export function createStorageService(): EnhancedAzureStorageService | null {
 
     return new EnhancedAzureStorageService(storageConfig);
   } catch (error: any) {
-    console.error('❌ Failed to initialize Azure Storage service:', error.message);
+    console.error('笶・Failed to initialize Azure Storage service:', error.message);
     return null;
   }
 }
 
 /**
  * Sync manager for automated synchronization
- * 自動同期のための同期マネージャー
+ * 閾ｪ蜍募酔譛溘・縺溘ａ縺ｮ蜷梧悄繝槭ロ繝ｼ繧ｸ繝｣繝ｼ
  */
 export class StorageSyncManager {
   private storageService: EnhancedAzureStorageService | null;
@@ -184,44 +184,44 @@ export class StorageSyncManager {
 
   /**
    * Start automatic synchronization
-   * 自動同期の開始
+   * 閾ｪ蜍募酔譛溘・髢句ｧ・
    */
   start(): void {
     if (!this.storageService || !this.config.enableAutoSync) {
-      console.log('ℹ️ Auto-sync disabled or Azure Storage not available');
+      console.log('邃ｹ・・Auto-sync disabled or Azure Storage not available');
       return;
     }
 
-    console.log(`🔄 Starting auto-sync (interval: ${this.config.syncIntervalMs}ms)`);
+    console.log(`売 Starting auto-sync (interval: ${this.config.syncIntervalMs}ms)`);
     
     // Initial sync
     this.performSync().catch(error => {
-      console.error('❌ Initial sync failed:', error.message);
+      console.error('笶・Initial sync failed:', error.message);
     });
 
     // Scheduled sync
     this.syncTimer = setInterval(() => {
       this.performSync().catch(error => {
-        console.error('❌ Scheduled sync failed:', error.message);
+        console.error('笶・Scheduled sync failed:', error.message);
       });
     }, this.config.syncIntervalMs);
   }
 
   /**
    * Stop automatic synchronization
-   * 自動同期の停止
+   * 閾ｪ蜍募酔譛溘・蛛懈ｭ｢
    */
   stop(): void {
     if (this.syncTimer) {
       clearInterval(this.syncTimer);
       this.syncTimer = null;
-      console.log('⏹️ Auto-sync stopped');
+      console.log('竢ｹ・・Auto-sync stopped');
     }
   }
 
   /**
    * Perform manual synchronization
-   * 手動同期の実行
+   * 謇句虚蜷梧悄縺ｮ螳溯｡・
    */
   async syncNow(): Promise<boolean> {
     return this.performSync();
@@ -229,7 +229,7 @@ export class StorageSyncManager {
 
   /**
    * Internal sync implementation
-   * 内部同期実装
+   * 蜀・Κ蜷梧悄螳溯｣・
    */
   private async performSync(): Promise<boolean> {
     if (!this.storageService || this.isSyncing) {
@@ -240,7 +240,7 @@ export class StorageSyncManager {
     const startTime = Date.now();
 
     try {
-      console.log('🔄 Starting storage synchronization...');
+      console.log('売 Starting storage synchronization...');
 
       // Sync knowledge base to Azure
       const kbResult = await this.storageService.syncDirectoryToBlob(
@@ -253,7 +253,7 @@ export class StorageSyncManager {
         }
       );
 
-      console.log(`📤 Knowledge base sync: ${kbResult.uploaded.length} uploaded, ${kbResult.errors.length} errors`);
+      console.log(`豆 Knowledge base sync: ${kbResult.uploaded.length} uploaded, ${kbResult.errors.length} errors`);
 
       // Sync uploads to Azure (if not empty)
       try {
@@ -267,18 +267,18 @@ export class StorageSyncManager {
           }
         );
 
-        console.log(`📤 Uploads sync: ${uploadsResult.uploaded.length} uploaded, ${uploadsResult.errors.length} errors`);
+        console.log(`豆 Uploads sync: ${uploadsResult.uploaded.length} uploaded, ${uploadsResult.errors.length} errors`);
       } catch {
         // Uploads directory doesn't exist yet, skip
       }
 
       const duration = Date.now() - startTime;
-      console.log(`✅ Sync completed in ${duration}ms`);
+      console.log(`笨・Sync completed in ${duration}ms`);
       
       return true;
     } catch (error: any) {
       const duration = Date.now() - startTime;
-      console.error(`❌ Sync failed after ${duration}ms:`, error.message);
+      console.error(`笶・Sync failed after ${duration}ms:`, error.message);
       return false;
     } finally {
       this.isSyncing = false;
@@ -287,7 +287,7 @@ export class StorageSyncManager {
 
   /**
    * Get sync status
-   * 同期ステータスの取得
+   * 蜷梧悄繧ｹ繝・・繧ｿ繧ｹ縺ｮ蜿門ｾ・
    */
   getStatus(): {
     isEnabled: boolean;
@@ -306,7 +306,7 @@ export class StorageSyncManager {
 
 /**
  * Helper function to get file size in human readable format
- * ファイルサイズを人間が読みやすい形式で取得
+ * 繝輔ぃ繧､繝ｫ繧ｵ繧､繧ｺ繧剃ｺｺ髢薙′隱ｭ縺ｿ繧・☆縺・ｽ｢蠑上〒蜿門ｾ・
  */
 export function formatFileSize(bytes: number): string {
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -323,7 +323,7 @@ export function formatFileSize(bytes: number): string {
 
 /**
  * Validate storage configuration
- * ストレージ設定の検証
+ * 繧ｹ繝医Ξ繝ｼ繧ｸ險ｭ螳壹・讀懆ｨｼ
  */
 export function validateStorageConfig(): {
   isValid: boolean;

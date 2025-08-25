@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useAuth } from "../context/auth-context";
 import { useToast } from "../hooks/use-toast.ts";
 import { API_BASE_URL } from "../lib/api/config";
@@ -61,22 +61,22 @@ export default function SettingsPage() {
   const [autoSave, setAutoSave] = useState(true);
   const [useOnlyKnowledgeBase, setUseOnlyKnowledgeBase] = useState(true);
 
-  // システム健全性チェック
+  // 繧ｷ繧ｹ繝・Β蛛･蜈ｨ諤ｧ繝√ぉ繝・け
   // System health state removed - integrated into system diagnostic page
 
 
 
-  // Q&A質問管理用の状態
+  // Q&A雉ｪ蝠冗ｮ｡逅・畑縺ｮ迥ｶ諷・
   const [qaQuestions, setQaQuestions] = useState<string[]>([
-    "発生した状況は？",
-    "どこか想定される？",
-    "どのような処置しましたか？"
+    "逋ｺ逕溘＠縺溽憾豕√・・・,
+    "縺ｩ縺薙°諠ｳ螳壹＆繧後ｋ・・,
+    "縺ｩ縺ｮ繧医≧縺ｪ蜃ｦ鄂ｮ縺励∪縺励◆縺具ｼ・
   ]);
   const [editingQuestionIndex, setEditingQuestionIndex] = useState<number | null>(null);
   const [editingQuestionText, setEditingQuestionText] = useState('');
   const [newQuestionText, setNewQuestionText] = useState('');
 
-  // 機種と機械番号管理用の状態
+  // 讖溽ｨｮ縺ｨ讖滓｢ｰ逡ｪ蜿ｷ邂｡逅・畑縺ｮ迥ｶ諷・
   const [machineTypes, setMachineTypes] = useState<Array<{id: string, machine_type_name: string}>>([]);
   const [machines, setMachines] = useState<Array<{id: string, machine_number: string, machine_type_id: string}>>([]);
   const [newMachineType, setNewMachineType] = useState('');
@@ -84,12 +84,12 @@ export default function SettingsPage() {
   const [selectedMachineType, setSelectedMachineType] = useState('');
   const [isLoadingMachineData, setIsLoadingMachineData] = useState(false);
 
-  // 機種データを初期読み込み
+  // 讖溽ｨｮ繝・・繧ｿ繧貞・譛溯ｪｭ縺ｿ霎ｼ縺ｿ
   useEffect(() => {
     fetchMachineData();
   }, []);
 
-  // 機種と機械番号のデータを取得
+  // 讖溽ｨｮ縺ｨ讖滓｢ｰ逡ｪ蜿ｷ縺ｮ繝・・繧ｿ繧貞叙蠕・
   const fetchMachineData = async () => {
     try {
       setIsLoadingMachineData(true);
@@ -152,18 +152,18 @@ export default function SettingsPage() {
   };
 
   const deleteMachineType = async (typeId: string, typeName: string) => {
-    if (!confirm(`機種「${typeName}」を削除してもよろしいですか？\n関連する機械番号も削除されます。`)) return;
+    if (!confirm(`讖溽ｨｮ縲・{typeName}縲阪ｒ蜑企勁縺励※繧ゅｈ繧阪＠縺・〒縺吶°・歃n髢｢騾｣縺吶ｋ讖滓｢ｰ逡ｪ蜿ｷ繧ょ炎髯､縺輔ｌ縺ｾ縺吶Ａ)) return;
     const response = await fetch(`/api/machines/machine-types/${typeId}`, { method: 'DELETE' });
     if (response.ok) fetchMachineData();
   };
 
   const deleteMachineNumber = async (machineId: string, machineNumber: string) => {
-    if (!confirm(`機械番号「${machineNumber}」を削除してもよろしいですか？`)) return;
+    if (!confirm(`讖滓｢ｰ逡ｪ蜿ｷ縲・{machineNumber}縲阪ｒ蜑企勁縺励※繧ゅｈ繧阪＠縺・〒縺吶°・歔)) return;
     const response = await fetch(`/api/machines/machines/${machineId}`, { method: 'DELETE' });
     if (response.ok) fetchMachineData();
   };
 
-  // LocalStorageからの設定読み込み
+  // LocalStorage縺九ｉ縺ｮ險ｭ螳夊ｪｭ縺ｿ霎ｼ縺ｿ
   useEffect(() => {
     const loadSettings = () => {
       try {
@@ -180,14 +180,14 @@ export default function SettingsPage() {
         if (settings.qaQuestions !== undefined) setQaQuestions(settings.qaQuestions);
         }
       } catch (error) {
-        console.error('設定の読み込みに失敗しました:', error);
+        console.error('險ｭ螳壹・隱ｭ縺ｿ霎ｼ縺ｿ縺ｫ螟ｱ謨励＠縺ｾ縺励◆:', error);
       }
     };
 
     loadSettings();
   }, []);
 
-  // 設定保存関数（トップレベルに移動）
+  // 險ｭ螳壻ｿ晏ｭ倬未謨ｰ・医ヨ繝・・繝ｬ繝吶Ν縺ｫ遘ｻ蜍包ｼ・
   const saveSettings = () => {
     try {
       const settings = {
@@ -203,11 +203,11 @@ export default function SettingsPage() {
       localStorage.setItem('useOnlyKnowledgeBase', useOnlyKnowledgeBase.toString());
       window.dispatchEvent(new CustomEvent('settingsChanged', { detail: settings }));
     } catch (error) {
-      console.error('設定の保存に失敗しました:', error);
+      console.error('險ｭ螳壹・菫晏ｭ倥↓螟ｱ謨励＠縺ｾ縺励◆:', error);
     }
   };
 
-  // 設定変更時の自動保存
+  // 險ｭ螳壼､画峩譎ゅ・閾ｪ蜍穂ｿ晏ｭ・
   useEffect(() => {
     saveSettings();
   }, [notifications, textToSpeech, speechVolume, darkMode, autoSave, useOnlyKnowledgeBase, qaQuestions]);
@@ -222,8 +222,8 @@ export default function SettingsPage() {
       await logout();
     } catch (error) {
       toast({
-        title: "ログアウト失敗",
-        description: "ログアウト中にエラーが発生しました。",
+        title: "繝ｭ繧ｰ繧｢繧ｦ繝亥､ｱ謨・,
+        description: "繝ｭ繧ｰ繧｢繧ｦ繝井ｸｭ縺ｫ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆縲・,
         variant: "destructive",
       });
     } finally {
@@ -238,18 +238,18 @@ export default function SettingsPage() {
       });
 
       if (!response.ok) {
-        throw new Error('クリーンアップに失敗しました');
+        throw new Error('繧ｯ繝ｪ繝ｼ繝ｳ繧｢繝・・縺ｫ螟ｱ謨励＠縺ｾ縺励◆');
       }
 
       const result = await response.json();
       toast({
-        title: "クリーンアップ完了",
-        description: `アップロードファイルをクリーンアップしました`
+        title: "繧ｯ繝ｪ繝ｼ繝ｳ繧｢繝・・螳御ｺ・,
+        description: `繧｢繝・・繝ｭ繝ｼ繝峨ヵ繧｡繧､繝ｫ繧偵け繝ｪ繝ｼ繝ｳ繧｢繝・・縺励∪縺励◆`
       });
     } catch (error) {
       toast({
-        title: "エラー",
-        description: "クリーンアップに失敗しました",
+        title: "繧ｨ繝ｩ繝ｼ",
+        description: "繧ｯ繝ｪ繝ｼ繝ｳ繧｢繝・・縺ｫ螟ｱ謨励＠縺ｾ縺励◆",
         variant: "destructive"
       });
     }
@@ -262,24 +262,24 @@ export default function SettingsPage() {
       });
 
       if (!response.ok) {
-        throw new Error('ログクリーンアップに失敗しました');
+        throw new Error('繝ｭ繧ｰ繧ｯ繝ｪ繝ｼ繝ｳ繧｢繝・・縺ｫ螟ｱ謨励＠縺ｾ縺励◆');
       }
 
       const result = await response.json();
       toast({
-        title: "ログクリーンアップ完了",
-        description: `${result.deletedCount}件のログファイルを削除しました (${(result.totalSize / 1024 / 1024).toFixed(2)} MB)`
+        title: "繝ｭ繧ｰ繧ｯ繝ｪ繝ｼ繝ｳ繧｢繝・・螳御ｺ・,
+        description: `${result.deletedCount}莉ｶ縺ｮ繝ｭ繧ｰ繝輔ぃ繧､繝ｫ繧貞炎髯､縺励∪縺励◆ (${(result.totalSize / 1024 / 1024).toFixed(2)} MB)`
       });
     } catch (error) {
       toast({
-        title: "エラー",
-        description: "ログクリーンアップに失敗しました",
+        title: "繧ｨ繝ｩ繝ｼ",
+        description: "繝ｭ繧ｰ繧ｯ繝ｪ繝ｼ繝ｳ繧｢繝・・縺ｫ螟ｱ謨励＠縺ｾ縺励◆",
         variant: "destructive"
       });
     }
   };
 
-  // Q&A質問管理の関数
+  // Q&A雉ｪ蝠冗ｮ｡逅・・髢｢謨ｰ
   const handleEditQuestion = (index: number) => {
     setEditingQuestionIndex(index);
     setEditingQuestionText(qaQuestions[index]);
@@ -293,8 +293,8 @@ export default function SettingsPage() {
       setEditingQuestionIndex(null);
       setEditingQuestionText('');
       toast({
-        title: "質問を更新しました",
-        description: "Q&A質問が正常に更新されました"
+        title: "雉ｪ蝠上ｒ譖ｴ譁ｰ縺励∪縺励◆",
+        description: "Q&A雉ｪ蝠上′豁｣蟶ｸ縺ｫ譖ｴ譁ｰ縺輔ｌ縺ｾ縺励◆"
       });
     }
   };
@@ -309,8 +309,8 @@ export default function SettingsPage() {
       setQaQuestions([...qaQuestions, newQuestionText.trim()]);
       setNewQuestionText('');
       toast({
-        title: "質問を追加しました",
-        description: "新しいQ&A質問が追加されました"
+        title: "雉ｪ蝠上ｒ霑ｽ蜉縺励∪縺励◆",
+        description: "譁ｰ縺励＞Q&A雉ｪ蝠上′霑ｽ蜉縺輔ｌ縺ｾ縺励◆"
       });
     }
   };
@@ -320,13 +320,13 @@ export default function SettingsPage() {
       const newQuestions = qaQuestions.filter((_, i) => i !== index);
       setQaQuestions(newQuestions);
       toast({
-        title: "質問を削除しました",
-        description: "Q&A質問が削除されました"
+        title: "雉ｪ蝠上ｒ蜑企勁縺励∪縺励◆",
+        description: "Q&A雉ｪ蝠上′蜑企勁縺輔ｌ縺ｾ縺励◆"
       });
     } else {
       toast({
-        title: "エラー",
-        description: "最低1つの質問が必要です",
+        title: "繧ｨ繝ｩ繝ｼ",
+        description: "譛菴・縺､縺ｮ雉ｪ蝠上′蠢・ｦ√〒縺・,
         variant: "destructive"
       });
     }
@@ -347,9 +347,9 @@ export default function SettingsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold flex items-center bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
           <Settings className="mr-2 h-6 w-6 text-indigo-500" />
-          設定
+          險ｭ螳・
         </h1>
-        <p className="text-blue-400">アプリケーションの設定を管理します</p>
+        <p className="text-blue-400">繧｢繝励Μ繧ｱ繝ｼ繧ｷ繝ｧ繝ｳ縺ｮ險ｭ螳壹ｒ邂｡逅・＠縺ｾ縺・/p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -358,7 +358,7 @@ export default function SettingsPage() {
           <CardHeader className="pb-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white">
             <CardTitle className="text-lg flex items-center">
               <User className="mr-2 h-5 w-5" />
-              ユーザープロフィール
+              繝ｦ繝ｼ繧ｶ繝ｼ繝励Ο繝輔ぅ繝ｼ繝ｫ
             </CardTitle>
           </CardHeader>
           <CardContent className="bg-white">
@@ -367,21 +367,21 @@ export default function SettingsPage() {
                 <div>
                   <p className="font-medium text-blue-800">{user?.displayName}</p>
                   <p className="text-sm text-blue-400">{user?.username}</p>
-                  <p className="text-sm text-blue-400">{user?.department || '部署未設定'}</p>
+                  <p className="text-sm text-blue-400">{user?.department || '驛ｨ鄂ｲ譛ｪ險ｭ螳・}</p>
                 </div>
                 <div className={`text-white text-xs px-3 py-1 rounded-full ${user?.role === 'admin' ? 'bg-gradient-to-r from-purple-500 to-indigo-500' : 'bg-gradient-to-r from-blue-500 to-green-500'}`}>
-                  {user?.role === 'admin' ? '管理者' : '一般ユーザー'}
+                  {user?.role === 'admin' ? '邂｡逅・・ : '荳闊ｬ繝ｦ繝ｼ繧ｶ繝ｼ'}
                 </div>
               </div>
               
-              {/* このアプリについての説明 */}
+              {/* 縺薙・繧｢繝励Μ縺ｫ縺､縺・※縺ｮ隱ｬ譏・*/}
               <div className="border-t border-blue-100 pt-3">
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-blue-700">Emergency Recovery Chat</p>
-                  <p className="text-sm text-blue-500">バージョン 1.0.0</p>
-                  <p className="text-sm text-blue-500">© 2024 All Rights Reserved</p>
+                  <p className="text-sm text-blue-500">繝舌・繧ｸ繝ｧ繝ｳ 1.0.0</p>
+                  <p className="text-sm text-blue-500">ﾂｩ 2024 All Rights Reserved</p>
                   <p className="text-xs text-blue-400">
-                    応急復旧サポートのための対話型アシスタントシステム
+                    蠢懈･蠕ｩ譌ｧ繧ｵ繝昴・繝医・縺溘ａ縺ｮ蟇ｾ隧ｱ蝙九い繧ｷ繧ｹ繧ｿ繝ｳ繝医す繧ｹ繝・Β
                   </p>
                 </div>
               </div>
@@ -395,33 +395,33 @@ export default function SettingsPage() {
             <CardHeader className="pb-2 bg-gradient-to-r from-blue-700 to-indigo-700 text-white">
               <CardTitle className="text-lg flex items-center">
                 <Shield className="mr-2 h-5 w-5" />
-                管理者設定
+                邂｡逅・・ｨｭ螳・
               </CardTitle>
             </CardHeader>
             <CardContent className="bg-white">
               <div className="space-y-4">
                 <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
                   <div>
-                    <p className="font-medium text-blue-800">ユーザー管理</p>
-                    <p className="text-sm text-blue-400">ユーザーアカウントを管理する</p>
+                    <p className="font-medium text-blue-800">繝ｦ繝ｼ繧ｶ繝ｼ邂｡逅・/p>
+                    <p className="text-sm text-blue-400">繝ｦ繝ｼ繧ｶ繝ｼ繧｢繧ｫ繧ｦ繝ｳ繝医ｒ邂｡逅・☆繧・/p>
                   </div>
                   <Link to="/users">
                     <Button variant="outline" size="sm" className="border-blue-300 text-blue-700 hover:bg-blue-50">
                       <UserPlus className="mr-2 h-4 w-4 text-blue-500" />
-                      管理
+                      邂｡逅・
                     </Button>
                   </Link>
                 </div>
 
                 <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
                   <div>
-                    <p className="font-medium text-blue-800">システム診断</p>
-                    <p className="text-sm text-blue-400">DB接続とGPT接続の状態を確認</p>
+                    <p className="font-medium text-blue-800">繧ｷ繧ｹ繝・Β險ｺ譁ｭ</p>
+                    <p className="text-sm text-blue-400">DB謗･邯壹→GPT謗･邯壹・迥ｶ諷九ｒ遒ｺ隱・/p>
                   </div>
                   <Link to="/system-diagnostic">
                     <Button variant="outline" size="sm" className="border-blue-300 text-blue-700 hover:bg-blue-50">
                       <CheckCircle className="mr-2 h-4 w-4 text-blue-500" />
-                      診断
+                      險ｺ譁ｭ
                     </Button>
                   </Link>
                 </div>
@@ -435,7 +435,7 @@ export default function SettingsPage() {
                     className="w-full"
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
-                    一時ファイルを削除
+                    荳譎ゅヵ繧｡繧､繝ｫ繧貞炎髯､
                   </Button>
 
                   <Button
@@ -444,18 +444,18 @@ export default function SettingsPage() {
                     className="w-full"
                   >
                     <FileX className="mr-2 h-4 w-4" />
-                    ログファイルを削除
+                    繝ｭ繧ｰ繝輔ぃ繧､繝ｫ繧貞炎髯､
                   </Button>
                 </div>
 
-                {/* 機種・機械番号管理UI */}
+                {/* 讖溽ｨｮ繝ｻ讖滓｢ｰ逡ｪ蜿ｷ邂｡逅・I */}
                 <div className="border-t border-blue-100 pt-4 space-y-4">
-                  {/* 機種追加 */}
+                  {/* 讖溽ｨｮ霑ｽ蜉 */}
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-blue-700">新規機種追加</Label>
+                    <Label className="text-sm font-medium text-blue-700">譁ｰ隕乗ｩ溽ｨｮ霑ｽ蜉</Label>
                     <div className="flex gap-2">
                       <Input
-                        placeholder="機種名を入力"
+                        placeholder="讖溽ｨｮ蜷阪ｒ蜈･蜉・
                         value={newMachineType}
                         onChange={(e) => setNewMachineType(e.target.value)}
                         className="flex-1"
@@ -466,17 +466,17 @@ export default function SettingsPage() {
                         className="bg-blue-500 hover:bg-blue-600"
                       >
                         <Plus className="mr-1 h-3 w-3" />
-                        追加
+                        霑ｽ蜉
                       </Button>
                     </div>
                   </div>
-                  {/* 機械番号追加 */}
+                  {/* 讖滓｢ｰ逡ｪ蜿ｷ霑ｽ蜉 */}
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-blue-700">新規機械番号追加</Label>
+                    <Label className="text-sm font-medium text-blue-700">譁ｰ隕乗ｩ滓｢ｰ逡ｪ蜿ｷ霑ｽ蜉</Label>
                     <div className="flex gap-2">
                       <Select value={selectedMachineType} onValueChange={setSelectedMachineType}>
                         <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="機種を選択" />
+                          <SelectValue placeholder="讖溽ｨｮ繧帝∈謚・ />
                         </SelectTrigger>
                         <SelectContent>
                           {machineTypes.map((type) => (
@@ -487,7 +487,7 @@ export default function SettingsPage() {
                         </SelectContent>
                       </Select>
                       <Input
-                        placeholder="機械番号を入力"
+                        placeholder="讖滓｢ｰ逡ｪ蜿ｷ繧貞・蜉・
                         value={newMachineNumber}
                         onChange={(e) => setNewMachineNumber(e.target.value)}
                         className="flex-1"
@@ -498,15 +498,15 @@ export default function SettingsPage() {
                         className="bg-blue-500 hover:bg-blue-600"
                       >
                         <Plus className="mr-1 h-3 w-3" />
-                        追加
+                        霑ｽ蜉
                       </Button>
                     </div>
                   </div>
-                  {/* 現在の機種・機械番号一覧 */}
+                  {/* 迴ｾ蝨ｨ縺ｮ讖溽ｨｮ繝ｻ讖滓｢ｰ逡ｪ蜿ｷ荳隕ｧ */}
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-blue-700">現在の登録状況</Label>
+                    <Label className="text-sm font-medium text-blue-700">迴ｾ蝨ｨ縺ｮ逋ｻ骭ｲ迥ｶ豕・/Label>
                     {isLoadingMachineData ? (
-                      <div className="text-sm text-blue-400">読み込み中...</div>
+                      <div className="text-sm text-blue-400">隱ｭ縺ｿ霎ｼ縺ｿ荳ｭ...</div>
                     ) : (
                       <div className="space-y-2 max-h-40 overflow-y-auto">
                         {machineTypes.map((type) => {
@@ -542,7 +542,7 @@ export default function SettingsPage() {
                                     ))}
                                   </div>
                                 ) : (
-                                  <span className="text-gray-400">機械番号未登録</span>
+                                  <span className="text-gray-400">讖滓｢ｰ逡ｪ蜿ｷ譛ｪ逋ｻ骭ｲ</span>
                                 )}
                               </div>
                             </div>
@@ -557,22 +557,22 @@ export default function SettingsPage() {
           </Card>
         )}
 
-        {/* Q&A質問管理 */}
+        {/* Q&A雉ｪ蝠冗ｮ｡逅・*/}
         <Card className="border border-blue-200 shadow-md overflow-hidden col-span-2">
           <CardHeader className="pb-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white">
             <CardTitle className="text-lg flex items-center">
               <MessageSquare className="mr-2 h-5 w-5" />
-              Q&A質問管理
+              Q&A雉ｪ蝠冗ｮ｡逅・
             </CardTitle>
             <CardDescription className="text-purple-100">
-              チャット画面のQ&Aモードで使用される質問を編集できます
+              繝√Ε繝・ヨ逕ｻ髱｢縺ｮQ&A繝｢繝ｼ繝峨〒菴ｿ逕ｨ縺輔ｌ繧玖ｳｪ蝠上ｒ邱ｨ髮・〒縺阪∪縺・
             </CardDescription>
           </CardHeader>
           <CardContent className="bg-white">
             <div className="space-y-4">
-              {/* 現在の質問一覧 */}
+              {/* 迴ｾ蝨ｨ縺ｮ雉ｪ蝠丈ｸ隕ｧ */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-blue-700">現在の質問一覧</Label>
+                <Label className="text-sm font-medium text-blue-700">迴ｾ蝨ｨ縺ｮ雉ｪ蝠丈ｸ隕ｧ</Label>
                 <div className="space-y-2 max-h-60 overflow-y-auto">
                   {qaQuestions.map((question, index) => (
                     <div key={index} className="flex items-center gap-2 p-2 border border-blue-200 rounded">
@@ -582,7 +582,7 @@ export default function SettingsPage() {
                             value={editingQuestionText}
                             onChange={(e) => setEditingQuestionText(e.target.value)}
                             className="flex-1"
-                            placeholder="質問を入力"
+                            placeholder="雉ｪ蝠上ｒ蜈･蜉・
                           />
                           <Button
                             onClick={handleSaveQuestion}
@@ -613,7 +613,7 @@ export default function SettingsPage() {
                               disabled={index === 0}
                               className="h-6 w-6 p-0"
                             >
-                              ↑
+                              竊・
                             </Button>
                             <Button
                               onClick={() => handleMoveQuestion(index, 'down')}
@@ -622,7 +622,7 @@ export default function SettingsPage() {
                               disabled={index === qaQuestions.length - 1}
                               className="h-6 w-6 p-0"
                             >
-                              ↓
+                              竊・
                             </Button>
                             <Button
                               onClick={() => handleEditQuestion(index)}
@@ -648,12 +648,12 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* 新しい質問追加 */}
+              {/* 譁ｰ縺励＞雉ｪ蝠剰ｿｽ蜉 */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-blue-700">新しい質問を追加</Label>
+                <Label className="text-sm font-medium text-blue-700">譁ｰ縺励＞雉ｪ蝠上ｒ霑ｽ蜉</Label>
                 <div className="flex gap-2">
                   <Input
-                    placeholder="新しい質問を入力"
+                    placeholder="譁ｰ縺励＞雉ｪ蝠上ｒ蜈･蜉・
                     value={newQuestionText}
                     onChange={(e) => setNewQuestionText(e.target.value)}
                     className="flex-1"
@@ -664,16 +664,16 @@ export default function SettingsPage() {
                     className="bg-purple-500 hover:bg-purple-600"
                   >
                     <Plus className="mr-1 h-3 w-3" />
-                    追加
+                    霑ｽ蜉
                   </Button>
                 </div>
               </div>
 
-              {/* 説明 */}
+              {/* 隱ｬ譏・*/}
               <div className="text-xs text-blue-400 bg-blue-50 p-2 rounded">
-                <p>• 質問の順序は上下矢印ボタンで変更できます</p>
-                <p>• 最低1つの質問が必要です</p>
-                <p>• 変更は自動的に保存されます</p>
+                <p>窶｢ 雉ｪ蝠上・鬆・ｺ上・荳贋ｸ狗泙蜊ｰ繝懊ち繝ｳ縺ｧ螟画峩縺ｧ縺阪∪縺・/p>
+                <p>窶｢ 譛菴・縺､縺ｮ雉ｪ蝠上′蠢・ｦ√〒縺・/p>
+                <p>窶｢ 螟画峩縺ｯ閾ｪ蜍慕噪縺ｫ菫晏ｭ倥＆繧後∪縺・/p>
               </div>
             </div>
           </CardContent>
@@ -684,15 +684,15 @@ export default function SettingsPage() {
           <CardHeader className="pb-2 bg-gradient-to-r from-blue-400 to-sky-500 text-white">
             <CardTitle className="text-lg flex items-center">
               <Mic className="mr-2 h-5 w-5" />
-              通知設定
+              騾夂衍險ｭ螳・
             </CardTitle>
           </CardHeader>
           <CardContent className="bg-white">
             <div className="space-y-4">
               <div className="flex items-center justify-between py-2">
                 <div>
-                  <p className="font-medium text-blue-700">通知を有効にする</p>
-                  <p className="text-sm text-blue-400">新しいメッセージの通知を受け取る</p>
+                  <p className="font-medium text-blue-700">騾夂衍繧呈怏蜉ｹ縺ｫ縺吶ｋ</p>
+                  <p className="text-sm text-blue-400">譁ｰ縺励＞繝｡繝・そ繝ｼ繧ｸ縺ｮ騾夂衍繧貞女縺大叙繧・/p>
                 </div>
                 <Switch 
                   checked={notifications} 
@@ -703,8 +703,8 @@ export default function SettingsPage() {
 
               <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
                 <div>
-                  <p className="font-medium text-blue-700">音声読み上げ</p>
-                  <p className="text-sm text-blue-400">AI応答を音声で読み上げる</p>
+                  <p className="font-medium text-blue-700">髻ｳ螢ｰ隱ｭ縺ｿ荳翫￡</p>
+                  <p className="text-sm text-blue-400">AI蠢懃ｭ斐ｒ髻ｳ螢ｰ縺ｧ隱ｭ縺ｿ荳翫￡繧・/p>
                 </div>
                 <Switch 
                   checked={textToSpeech} 
@@ -715,7 +715,7 @@ export default function SettingsPage() {
 
               {textToSpeech && (
                 <div className="py-2 border-t border-blue-100 pt-3">
-                  <p className="font-medium mb-2 text-blue-700">音声の音量</p>
+                  <p className="font-medium mb-2 text-blue-700">髻ｳ螢ｰ縺ｮ髻ｳ驥・/p>
                   <Slider 
                     value={speechVolume} 
                     onValueChange={setSpeechVolume}
@@ -738,15 +738,15 @@ export default function SettingsPage() {
           <CardHeader className="pb-2 bg-gradient-to-r from-indigo-500 to-blue-600 text-white">
             <CardTitle className="text-lg flex items-center">
               <Settings className="mr-2 h-5 w-5" />
-              アプリ設定
+              繧｢繝励Μ險ｭ螳・
             </CardTitle>
           </CardHeader>
           <CardContent className="bg-white">
             <div className="space-y-4">
               <div className="flex items-center justify-between py-2">
                 <div>
-                  <p className="font-medium text-indigo-700">ダークモード</p>
-                  <p className="text-sm text-indigo-400">暗い色のテーマを使用する</p>
+                  <p className="font-medium text-indigo-700">繝繝ｼ繧ｯ繝｢繝ｼ繝・/p>
+                  <p className="text-sm text-indigo-400">證励＞濶ｲ縺ｮ繝・・繝槭ｒ菴ｿ逕ｨ縺吶ｋ</p>
                 </div>
                 <Switch 
                   checked={darkMode} 
@@ -757,8 +757,8 @@ export default function SettingsPage() {
 
               <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
                 <div>
-                  <p className="font-medium text-indigo-700">自動保存</p>
-                  <p className="text-sm text-indigo-400">会話を自動的に保存する</p>
+                  <p className="font-medium text-indigo-700">閾ｪ蜍穂ｿ晏ｭ・/p>
+                  <p className="text-sm text-indigo-400">莨夊ｩｱ繧定・蜍慕噪縺ｫ菫晏ｭ倥☆繧・/p>
                 </div>
                 <Switch 
                   checked={autoSave} 
@@ -769,8 +769,8 @@ export default function SettingsPage() {
 
               <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
                 <div>
-                  <p className="font-medium text-indigo-700">独自の技術資料のみを使用</p>
-                  <p className="text-sm text-indigo-400">AI応答に登録済みナレッジのみを使用する</p>
+                  <p className="font-medium text-indigo-700">迢ｬ閾ｪ縺ｮ謚陦楢ｳ・侭縺ｮ縺ｿ繧剃ｽｿ逕ｨ</p>
+                  <p className="text-sm text-indigo-400">AI蠢懃ｭ斐↓逋ｻ骭ｲ貂医∩繝翫Ξ繝・ず縺ｮ縺ｿ繧剃ｽｿ逕ｨ縺吶ｋ</p>
                 </div>
                 <Switch 
                   checked={useOnlyKnowledgeBase} 
@@ -785,7 +785,7 @@ export default function SettingsPage() {
                   className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600"
                 >
                   <Save className="mr-2 h-4 w-4" />
-                  設定を保存
+                  險ｭ螳壹ｒ菫晏ｭ・
                 </Button>
               </div>
             </div>
@@ -796,8 +796,8 @@ export default function SettingsPage() {
       {/* Warning Dialog */}
       <WarningDialog
         open={showWarningDialog}
-        title="ログアウト確認"
-        message="ログアウトしてもよろしいですか？未保存のデータは失われる可能性があります。"
+        title="繝ｭ繧ｰ繧｢繧ｦ繝育｢ｺ隱・
+        message="繝ｭ繧ｰ繧｢繧ｦ繝医＠縺ｦ繧ゅｈ繧阪＠縺・〒縺吶°・滓悴菫晏ｭ倥・繝・・繧ｿ縺ｯ螟ｱ繧上ｌ繧句庄閭ｽ諤ｧ縺後≠繧翫∪縺吶・
         onCancel={() => setShowWarningDialog(false)}
         onConfirm={confirmLogout}
       />

@@ -1,15 +1,15 @@
-import express from 'express';
+﻿import express from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 
-// ESM用__dirname定義
+// ESM逕ｨ__dirname螳夂ｾｩ
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function setupVite(app: any) {
     try {
-        // 本番環境では静的ファイルを配信
+        // 譛ｬ逡ｪ迺ｰ蠅・〒縺ｯ髱咏噪繝輔ぃ繧､繝ｫ繧帝・菫｡
         if (process.env.NODE_ENV === 'production') {
             const clientDistPath = path.resolve(__dirname, '../../dist/client');
             
@@ -23,7 +23,7 @@ async function setupVite(app: any) {
                 console.warn('Client dist directory not found:', clientDistPath);
             }
         } else {
-            // 開発環境では開発サーバーを使用
+            // 髢狗匱迺ｰ蠅・〒縺ｯ髢狗匱繧ｵ繝ｼ繝舌・繧剃ｽｿ逕ｨ
             console.log('Development mode: Vite dev server should be running separately');
         }
     } catch (error) {

@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import path from 'path';
 import multer from 'multer';
 import fs from 'fs';
@@ -43,15 +43,15 @@ const upload = multer({
 });
 
 export function registerSyncRoutes(app) {
-    // メディアアップロードAPI
+    // 繝｡繝・ぅ繧｢繧｢繝・・繝ｭ繝ｼ繝陰PI
     app.post('/api/media/upload', upload.single('file'), async (req, res) => {
         try {
             if (!req.file) {
-                return res.status(400).json({ error: 'ファイルがアップロードされていません' });
+                return res.status(400).json({ error: '繝輔ぃ繧､繝ｫ縺後い繝・・繝ｭ繝ｼ繝峨＆繧後※縺・∪縺帙ｓ' });
             }
-            // アップロードされたメディアのメタデータを返す
+            // 繧｢繝・・繝ｭ繝ｼ繝峨＆繧後◆繝｡繝・ぅ繧｢縺ｮ繝｡繧ｿ繝・・繧ｿ繧定ｿ斐☆
             const mediaUrl = `/knowledge-base/media/${req.file.filename}`;
-            // メディアの種類（画像/動画/音声）を判定
+            // 繝｡繝・ぅ繧｢縺ｮ遞ｮ鬘橸ｼ育判蜒・蜍慕判/髻ｳ螢ｰ・峨ｒ蛻､螳・
             let mediaType = 'image';
             if (req.file.mimetype.startsWith('video/')) {
                 mediaType = 'video';
@@ -59,7 +59,7 @@ export function registerSyncRoutes(app) {
             else if (req.file.mimetype.startsWith('audio/')) {
                 mediaType = 'audio';
             }
-            // サムネイル生成などの処理はここに追加（必要に応じて）
+            // 繧ｵ繝繝阪う繝ｫ逕滓・縺ｪ縺ｩ縺ｮ蜃ｦ逅・・縺薙％縺ｫ霑ｽ蜉・亥ｿ・ｦ√↓蠢懊§縺ｦ・・
             res.json({
                 success: true,
                 url: mediaUrl,
@@ -68,45 +68,45 @@ export function registerSyncRoutes(app) {
             });
         }
         catch (error) {
-            console.error('メディアアップロードエラー:', error);
-            res.status(500).json({ error: 'メディアのアップロードに失敗しました' });
+            console.error('繝｡繝・ぅ繧｢繧｢繝・・繝ｭ繝ｼ繝峨お繝ｩ繝ｼ:', error);
+            res.status(500).json({ error: '繝｡繝・ぅ繧｢縺ｮ繧｢繝・・繝ｭ繝ｼ繝峨↓螟ｱ謨励＠縺ｾ縺励◆' });
         }
     });
-    // チャットメッセージの同期API
+    // 繝√Ε繝・ヨ繝｡繝・そ繝ｼ繧ｸ縺ｮ蜷梧悄API
     app.post('/api/chats/:id/sync-messages', async (req, res) => {
         try {
             if (!req.session.userId) {
-                return res.status(401).json({ error: '認証されていません' });
+                return res.status(401).json({ error: '隱崎ｨｼ縺輔ｌ縺ｦ縺・∪縺帙ｓ' });
             }
             const userId: any = req.session.userId;
             const chatId: any = parseInt(req.params.id);
             const { messages } = req.body;
-            // チャットの存在確認
+            // 繝√Ε繝・ヨ縺ｮ蟄伜惠遒ｺ隱・
             const chat: any = await storage.getChat(String(chatId));
             if (!chat) {
-                return res.status(404).json({ error: 'チャットが見つかりません' });
+                return res.status(404).json({ error: '繝√Ε繝・ヨ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ' });
             }
-            // チャットアクセス権限（コメントアウトで全ユーザーに解放）
+            // 繝√Ε繝・ヨ繧｢繧ｯ繧ｻ繧ｹ讓ｩ髯撰ｼ医さ繝｡繝ｳ繝医い繧ｦ繝医〒蜈ｨ繝ｦ繝ｼ繧ｶ繝ｼ縺ｫ隗｣謾ｾ・・
             // if (chat.userId !== userId) {
-            //   return res.status(403).json({ error: 'アクセス権限がありません' });
+            //   return res.status(403).json({ error: '繧｢繧ｯ繧ｻ繧ｹ讓ｩ髯舌′縺ゅｊ縺ｾ縺帙ｓ' });
             // }
-            // メッセージを処理
+            // 繝｡繝・そ繝ｼ繧ｸ繧貞・逅・
             const processedMessages = [];
             for (const message of messages) {
                 try {
-                    // メッセージを保存（timestampはサーバー側で設定される）
+                    // 繝｡繝・そ繝ｼ繧ｸ繧剃ｿ晏ｭ假ｼ・imestamp縺ｯ繧ｵ繝ｼ繝舌・蛛ｴ縺ｧ險ｭ螳壹＆繧後ｋ・・
                     const savedMessage: any = await storage.createMessage({
                         chatId: String(chatId),
                         content: message.content,
                         senderId: String(userId),
                         isAiResponse: message.role === 'assistant'
                     });
-                    // メディアを処理
+                    // 繝｡繝・ぅ繧｢繧貞・逅・
                     if (message.media && Array.isArray(message.media)) {
                         for (const mediaItem of message.media) {
-                            // URLからファイル名を抽出
+                            // URL縺九ｉ繝輔ぃ繧､繝ｫ蜷阪ｒ謚ｽ蜃ｺ
                             const mediaUrl: any = mediaItem.url;
-                            // データベースにメディア情報を保存
+                            // 繝・・繧ｿ繝吶・繧ｹ縺ｫ繝｡繝・ぅ繧｢諠・ｱ繧剃ｿ晏ｭ・
                             await storage.createMedia({
                                 messageId: savedMessage.id,
                                 type: mediaItem.type || 'image',
@@ -118,11 +118,11 @@ export function registerSyncRoutes(app) {
                     processedMessages.push(savedMessage.id);
                 }
                 catch (messageError) {
-                    console.error(`メッセージ処理エラー:`, messageError);
-                    // 1件のメッセージエラーで全体を失敗させないよう続行
+                    console.error(`繝｡繝・そ繝ｼ繧ｸ蜃ｦ逅・お繝ｩ繝ｼ:`, messageError);
+                    // 1莉ｶ縺ｮ繝｡繝・そ繝ｼ繧ｸ繧ｨ繝ｩ繝ｼ縺ｧ蜈ｨ菴薙ｒ螟ｱ謨励＆縺帙↑縺・ｈ縺・ｶ夊｡・
                 }
             }
-            // チャットエクスポートレコードを更新
+            // 繝√Ε繝・ヨ繧ｨ繧ｯ繧ｹ繝昴・繝医Ξ繧ｳ繝ｼ繝峨ｒ譖ｴ譁ｰ
             await storage.saveChatExport(String(chatId), String(userId), new Date().getTime());
             res.json({
                 success: true,
@@ -131,15 +131,15 @@ export function registerSyncRoutes(app) {
             });
         }
         catch (error) {
-            console.error('メッセージ同期エラー:', error);
-            res.status(500).json({ error: 'メッセージの同期に失敗しました' });
+            console.error('繝｡繝・そ繝ｼ繧ｸ蜷梧悄繧ｨ繝ｩ繝ｼ:', error);
+            res.status(500).json({ error: '繝｡繝・そ繝ｼ繧ｸ縺ｮ蜷梧悄縺ｫ螟ｱ謨励＠縺ｾ縺励◆' });
         }
     });
-    // チャットの最終エクスポート情報を取得するAPI
+    // 繝√Ε繝・ヨ縺ｮ譛邨ゅお繧ｯ繧ｹ繝昴・繝域ュ蝣ｱ繧貞叙蠕励☆繧帰PI
     app.get('/api/chats/:id/last-exp', async (req, res) => {
         try {
             const chatId: any = req.params.id;
-            // 最終エクスポート情報を取得
+            // 譛邨ゅお繧ｯ繧ｹ繝昴・繝域ュ蝣ｱ繧貞叙蠕・
             const lastExport: any = await storage.getLastChatExport(String(chatId));
             if (!lastExport) {
                 return res.json({
@@ -156,11 +156,11 @@ export function registerSyncRoutes(app) {
             });
         }
         catch (error) {
-            console.error('最終エクスポート情報取得エラー:', error);
-            res.status(500).json({ error: '最終エクスポート情報の取得に失敗しました' });
+            console.error('譛邨ゅお繧ｯ繧ｹ繝昴・繝域ュ蝣ｱ蜿門ｾ励お繝ｩ繝ｼ:', error);
+            res.status(500).json({ error: '譛邨ゅお繧ｯ繧ｹ繝昴・繝域ュ蝣ｱ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆' });
         }
     });
 }
 
-// Routerは使っていないが、importエラー回避のためダミーエクスポート
+// Router縺ｯ菴ｿ縺｣縺ｦ縺・↑縺・′縲（mport繧ｨ繝ｩ繝ｼ蝗樣∩縺ｮ縺溘ａ繝繝溘・繧ｨ繧ｯ繧ｹ繝昴・繝・
 export const syncRoutesRouter = undefined;

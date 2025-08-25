@@ -1,8 +1,8 @@
-import * as fs from 'fs';
+﻿import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 
-// ESM用__dirname定義
+// ESM逕ｨ__dirname螳夂ｾｩ
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -12,14 +12,14 @@ export class ExportFileManager {
     constructor(baseDir: string = path.join(__dirname, '../../knowledge-base/exports')) {
         this.baseDir = baseDir;
         
-        // ディレクトリが存在しない場合は作成
+        // 繝・ぅ繝ｬ繧ｯ繝医Μ縺悟ｭ伜惠縺励↑縺・ｴ蜷医・菴懈・
         if (!fs.existsSync(this.baseDir)) {
             fs.mkdirSync(this.baseDir, { recursive: true });
         }
     }
 
     /**
-     * チャットエクスポートデータをファイルに保存
+     * 繝√Ε繝・ヨ繧ｨ繧ｯ繧ｹ繝昴・繝医ョ繝ｼ繧ｿ繧偵ヵ繧｡繧､繝ｫ縺ｫ菫晏ｭ・
      */
     saveChatExport(chatId: string, data: any, timestamp: number): string {
         const chatDir = path.join(this.baseDir, `chat_${chatId}`);
@@ -32,19 +32,19 @@ export class ExportFileManager {
         const filePath = path.join(chatDir, fileName);
 
         try {
-            // ダブルクオーテーションを英数小文字に統一してJSONファイルを保存
+            // 繝繝悶Ν繧ｯ繧ｪ繝ｼ繝・・繧ｷ繝ｧ繝ｳ繧定恭謨ｰ蟆乗枚蟄励↓邨ｱ荳縺励※JSON繝輔ぃ繧､繝ｫ繧剃ｿ晏ｭ・
             const jsonString = JSON.stringify(data, null, 2);
             fs.writeFileSync(filePath, jsonString, 'utf8');
-            console.log(`チャットエクスポート保存: ${filePath}`);
+            console.log(`繝√Ε繝・ヨ繧ｨ繧ｯ繧ｹ繝昴・繝井ｿ晏ｭ・ ${filePath}`);
             return filePath;
         } catch (error) {
-            console.error('エクスポートファイル保存エラー:', error);
+            console.error('繧ｨ繧ｯ繧ｹ繝昴・繝医ヵ繧｡繧､繝ｫ菫晏ｭ倥お繝ｩ繝ｼ:', error);
             throw error;
         }
     }
 
     /**
-     * 最新のチャットエクスポートファイルを読み込み
+     * 譛譁ｰ縺ｮ繝√Ε繝・ヨ繧ｨ繧ｯ繧ｹ繝昴・繝医ヵ繧｡繧､繝ｫ繧定ｪｭ縺ｿ霎ｼ縺ｿ
      */
     loadLatestChatExport(chatId: string): any {
         const chatDir = path.join(this.baseDir, `chat_${chatId}`);
@@ -67,13 +67,13 @@ export class ExportFileManager {
             const data = fs.readFileSync(latestFile, 'utf8');
             return JSON.parse(data);
         } catch (error) {
-            console.error('エクスポートファイル読み込みエラー:', error);
+            console.error('繧ｨ繧ｯ繧ｹ繝昴・繝医ヵ繧｡繧､繝ｫ隱ｭ縺ｿ霎ｼ縺ｿ繧ｨ繝ｩ繝ｼ:', error);
             return null;
         }
     }
 
     /**
-     * チャットの全エクスポートファイル一覧を取得
+     * 繝√Ε繝・ヨ縺ｮ蜈ｨ繧ｨ繧ｯ繧ｹ繝昴・繝医ヵ繧｡繧､繝ｫ荳隕ｧ繧貞叙蠕・
      */
     getChatExportFiles(chatId: string): string[] {
         const chatDir = path.join(this.baseDir, `chat_${chatId}`);
@@ -87,13 +87,13 @@ export class ExportFileManager {
                 .filter(file => file.endsWith('.json'))
                 .map(file => path.join(chatDir, file));
         } catch (error) {
-            console.error('エクスポートファイル一覧取得エラー:', error);
+            console.error('繧ｨ繧ｯ繧ｹ繝昴・繝医ヵ繧｡繧､繝ｫ荳隕ｧ蜿門ｾ励お繝ｩ繝ｼ:', error);
             return [];
         }
     }
 
     /**
-     * 古いエクスポートファイルを削除
+     * 蜿､縺・お繧ｯ繧ｹ繝昴・繝医ヵ繧｡繧､繝ｫ繧貞炎髯､
      */
     cleanupOldExports(chatId: string, keepCount: number = 5): void {
         const chatDir = path.join(this.baseDir, `chat_${chatId}`);
@@ -108,22 +108,22 @@ export class ExportFileManager {
                 .sort()
                 .reverse();
 
-            // 指定数より多い場合は古いファイルを削除
+            // 謖・ｮ壽焚繧医ｊ螟壹＞蝣ｴ蜷医・蜿､縺・ヵ繧｡繧､繝ｫ繧貞炎髯､
             if (files.length > keepCount) {
                 const filesToDelete = files.slice(keepCount);
                 for (const file of filesToDelete) {
                     const filePath = path.join(chatDir, file);
                     fs.unlinkSync(filePath);
-                    console.log(`古いエクスポートファイル削除: ${filePath}`);
+                    console.log(`蜿､縺・お繧ｯ繧ｹ繝昴・繝医ヵ繧｡繧､繝ｫ蜑企勁: ${filePath}`);
                 }
             }
         } catch (error) {
-            console.error('古いエクスポートファイル削除エラー:', error);
+            console.error('蜿､縺・お繧ｯ繧ｹ繝昴・繝医ヵ繧｡繧､繝ｫ蜑企勁繧ｨ繝ｩ繝ｼ:', error);
         }
     }
 
     /**
-     * フォーマット済みエクスポートデータを保存
+     * 繝輔か繝ｼ繝槭ャ繝域ｸ医∩繧ｨ繧ｯ繧ｹ繝昴・繝医ョ繝ｼ繧ｿ繧剃ｿ晏ｭ・
      */
     saveFormattedExport(chatId: number | string, formattedData: any): string {
         const chatDir = path.join(this.baseDir, `chat_${chatId}`);
@@ -136,17 +136,17 @@ export class ExportFileManager {
         const filePath = path.join(chatDir, fileName);
 
         try {
-            // ダブルクオーテーションを英数小文字に統一してフォーマット済みエクスポートを保存
+            // 繝繝悶Ν繧ｯ繧ｪ繝ｼ繝・・繧ｷ繝ｧ繝ｳ繧定恭謨ｰ蟆乗枚蟄励↓邨ｱ荳縺励※繝輔か繝ｼ繝槭ャ繝域ｸ医∩繧ｨ繧ｯ繧ｹ繝昴・繝医ｒ菫晏ｭ・
             const jsonString = JSON.stringify(formattedData, null, 2);
             fs.writeFileSync(filePath, jsonString, 'utf8');
-            console.log(`フォーマット済みエクスポート保存: ${filePath}`);
+            console.log(`繝輔か繝ｼ繝槭ャ繝域ｸ医∩繧ｨ繧ｯ繧ｹ繝昴・繝井ｿ晏ｭ・ ${filePath}`);
             return filePath;
         } catch (error) {
-            console.error('フォーマット済みエクスポートファイル保存エラー:', error);
+            console.error('繝輔か繝ｼ繝槭ャ繝域ｸ医∩繧ｨ繧ｯ繧ｹ繝昴・繝医ヵ繧｡繧､繝ｫ菫晏ｭ倥お繝ｩ繝ｼ:', error);
             throw error;
         }
     }
 }
 
-// デフォルトインスタンス
+// 繝・ヵ繧ｩ繝ｫ繝医う繝ｳ繧ｹ繧ｿ繝ｳ繧ｹ
 export const exportFileManager = new ExportFileManager(); 

@@ -1,75 +1,75 @@
-import express from 'express';
+﻿import express from 'express';
 import fs from 'fs/promises';
 import path from 'path';
 
 const router = express.Router();
 
-// JSONファイルを更新するエンドポイント
+// JSON繝輔ぃ繧､繝ｫ繧呈峩譁ｰ縺吶ｋ繧ｨ繝ｳ繝峨・繧､繝ｳ繝・
 router.post('/update', async (req, res) => {
   try {
-    console.log('=== /api/reports/update エンドポイントが呼び出されました ===');
-    console.log('リクエストボディ:', req.body);
+    console.log('=== /api/reports/update 繧ｨ繝ｳ繝峨・繧､繝ｳ繝医′蜻ｼ縺ｳ蜃ｺ縺輔ｌ縺ｾ縺励◆ ===');
+    console.log('繝ｪ繧ｯ繧ｨ繧ｹ繝医・繝・ぅ:', req.body);
     
     const { chatId, diffData } = req.body;
     
     if (!chatId || !diffData) {
-      console.log('パラメータ不足:', { chatId, diffData });
-      return res.status(400).json({ error: 'chatId と diffData が必要です' });
+      console.log('繝代Λ繝｡繝ｼ繧ｿ荳崎ｶｳ:', { chatId, diffData });
+      return res.status(400).json({ error: 'chatId 縺ｨ diffData 縺悟ｿ・ｦ√〒縺・ });
     }
     
-    console.log('検索するchatId:', chatId);
+    console.log('讀懃ｴ｢縺吶ｋchatId:', chatId);
     
-    // knowledge-base/exports フォルダ内のJSONファイルを検索
+    // knowledge-base/exports 繝輔か繝ｫ繝蜀・・JSON繝輔ぃ繧､繝ｫ繧呈､懃ｴ｢
     const exportsDir = path.join(__dirname, '../../knowledge-base/exports');
-    console.log('検索ディレクトリ:', exportsDir);
+    console.log('讀懃ｴ｢繝・ぅ繝ｬ繧ｯ繝医Μ:', exportsDir);
     
     const files = await fs.readdir(exportsDir);
-    console.log('ディレクトリ内のファイル:', files);
+    console.log('繝・ぅ繝ｬ繧ｯ繝医Μ蜀・・繝輔ぃ繧､繝ｫ:', files);
     
-    // chatIdを含むJSONファイルを検索
+    // chatId繧貞性繧JSON繝輔ぃ繧､繝ｫ繧呈､懃ｴ｢
     const targetFile = files.find(file => 
       file.includes(chatId) && file.endsWith('.json')
     );
     
-    console.log('見つかったファイル:', targetFile);
+    console.log('隕九▽縺九▲縺溘ヵ繧｡繧､繝ｫ:', targetFile);
     
     if (!targetFile) {
-      console.log('対象のJSONファイルが見つかりません');
-      return res.status(404).json({ error: '対象のJSONファイルが見つかりません' });
+      console.log('蟇ｾ雎｡縺ｮJSON繝輔ぃ繧､繝ｫ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ');
+      return res.status(404).json({ error: '蟇ｾ雎｡縺ｮJSON繝輔ぃ繧､繝ｫ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ' });
     }
     
     const filePath = path.join(exportsDir, targetFile);
-    console.log('ファイルパス:', filePath);
+    console.log('繝輔ぃ繧､繝ｫ繝代せ:', filePath);
     
-    // 既存のJSONファイルを読み込み
+    // 譌｢蟄倥・JSON繝輔ぃ繧､繝ｫ繧定ｪｭ縺ｿ霎ｼ縺ｿ
     const fileContent = await fs.readFile(filePath, 'utf-8');
     const jsonData = JSON.parse(fileContent);
-    console.log('既存データのキー:', Object.keys(jsonData));
+    console.log('譌｢蟄倥ョ繝ｼ繧ｿ縺ｮ繧ｭ繝ｼ:', Object.keys(jsonData));
     
-    // 差分データで更新
+    // 蟾ｮ蛻・ョ繝ｼ繧ｿ縺ｧ譖ｴ譁ｰ
     const updatedData = {
       ...jsonData,
       ...diffData
     };
     
-    console.log('更新後のデータキー:', Object.keys(updatedData));
+    console.log('譖ｴ譁ｰ蠕後・繝・・繧ｿ繧ｭ繝ｼ:', Object.keys(updatedData));
     
-    // 更新されたJSONファイルを保存
+    // 譖ｴ譁ｰ縺輔ｌ縺櫟SON繝輔ぃ繧､繝ｫ繧剃ｿ晏ｭ・
     await fs.writeFile(filePath, JSON.stringify(updatedData, null, 2), 'utf-8');
     
-    console.log(`JSONファイルが更新されました: ${targetFile}`);
+    console.log(`JSON繝輔ぃ繧､繝ｫ縺梧峩譁ｰ縺輔ｌ縺ｾ縺励◆: ${targetFile}`);
     
     res.json({ 
       success: true, 
-      message: 'JSONファイルが更新されました',
+      message: 'JSON繝輔ぃ繧､繝ｫ縺梧峩譁ｰ縺輔ｌ縺ｾ縺励◆',
       updatedFile: targetFile
     });
     
   } catch (error) {
-    console.error('JSONファイル更新エラー:', error);
-    console.error('エラースタック:', error.stack);
+    console.error('JSON繝輔ぃ繧､繝ｫ譖ｴ譁ｰ繧ｨ繝ｩ繝ｼ:', error);
+    console.error('繧ｨ繝ｩ繝ｼ繧ｹ繧ｿ繝・け:', error.stack);
     res.status(500).json({ 
-      error: 'JSONファイルの更新に失敗しました',
+      error: 'JSON繝輔ぃ繧､繝ｫ縺ｮ譖ｴ譁ｰ縺ｫ螟ｱ謨励＠縺ｾ縺励◆',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }

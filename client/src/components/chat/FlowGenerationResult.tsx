@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -45,12 +45,12 @@ export default function FlowGenerationResult({
 
   return (
     <div className="space-y-4">
-      {/* フロー概要 */}
+      {/* 繝輔Ο繝ｼ讎りｦ・*/}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CheckCircle className="h-5 w-5 text-green-600" />
-            応急処置フロー生成完了
+            蠢懈･蜃ｦ鄂ｮ繝輔Ο繝ｼ逕滓・螳御ｺ・
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -69,21 +69,21 @@ export default function FlowGenerationResult({
           
           <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
             <div>
-              <span className="font-medium">作成日時:</span> {formatDate(flowData.createdAt)}
+              <span className="font-medium">菴懈・譌･譎・</span> {formatDate(flowData.createdAt)}
             </div>
             <div>
-              <span className="font-medium">更新日時:</span> {formatDate(flowData.updatedAt)}
+              <span className="font-medium">譖ｴ譁ｰ譌･譎・</span> {formatDate(flowData.updatedAt)}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* 生成された手順 */}
+      {/* 逕滓・縺輔ｌ縺滓焔鬆・*/}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Play className="h-5 w-5 text-blue-600" />
-            生成された手順 ({flowData.steps.length}ステップ)
+            逕滓・縺輔ｌ縺滓焔鬆・({flowData.steps.length}繧ｹ繝・ャ繝・
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -107,61 +107,61 @@ export default function FlowGenerationResult({
         </CardContent>
       </Card>
 
-      {/* 生成品質サマリー */}
+      {/* 逕滓・蜩∬ｳｪ繧ｵ繝槭Μ繝ｼ */}
       {summary && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Info className="h-5 w-5 text-blue-600" />
-              生成品質サマリー
+              逕滓・蜩∬ｳｪ繧ｵ繝槭Μ繝ｼ
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-600">{summary.totalSteps}</div>
-                <div className="text-sm text-gray-600">総ステップ数</div>
+                <div className="text-sm text-gray-600">邱上せ繝・ャ繝玲焚</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-600">
-                  {summary.hasSpecificActions ? '✓' : '✗'}
+                  {summary.hasSpecificActions ? '笨・ : '笨・}
                 </div>
-                <div className="text-sm text-gray-600">具体的な手順</div>
+                <div className="text-sm text-gray-600">蜈ｷ菴鍋噪縺ｪ謇矩・/div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-orange-600">
-                  {summary.safetyNotes ? '✓' : '✗'}
+                  {summary.safetyNotes ? '笨・ : '笨・}
                 </div>
-                <div className="text-sm text-gray-600">安全注意事項</div>
+                <div className="text-sm text-gray-600">螳牙・豕ｨ諢丈ｺ矩・/div>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* アクションボタン */}
+      {/* 繧｢繧ｯ繧ｷ繝ｧ繝ｳ繝懊ち繝ｳ */}
       <div className="flex gap-3">
         {onExecuteFlow && (
           <Button onClick={onExecuteFlow} className="flex-1">
             <Play className="h-4 w-4 mr-2" />
-            フローを実行
+            繝輔Ο繝ｼ繧貞ｮ溯｡・
           </Button>
         )}
         {onDownloadFlow && (
           <Button onClick={onDownloadFlow} variant="outline" className="flex-1">
             <Download className="h-4 w-4 mr-2" />
-            フローをダウンロード
+            繝輔Ο繝ｼ繧偵ム繧ｦ繝ｳ繝ｭ繝ｼ繝・
           </Button>
         )}
       </div>
 
-      {/* GPTの生のレスポンス（開発用） */}
+      {/* GPT縺ｮ逕溘・繝ｬ繧ｹ繝昴Φ繧ｹ・磯幕逋ｺ逕ｨ・・*/}
       {generatedContent && process.env.NODE_ENV === 'development' && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-yellow-600" />
-              GPT生レスポンス（開発用）
+              GPT逕溘Ξ繧ｹ繝昴Φ繧ｹ・磯幕逋ｺ逕ｨ・・
             </CardTitle>
           </CardHeader>
           <CardContent>

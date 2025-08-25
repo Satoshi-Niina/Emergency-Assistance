@@ -1,10 +1,10 @@
-import express from "express";
+﻿import express from "express";
 import cors from "cors";
 
 const app = express();
 const port = 3001;
 
-// CORS設定
+// CORS險ｭ螳・
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:4173', // Vite preview port
@@ -37,36 +37,36 @@ app.use(cors({
   exposedHeaders: ['Set-Cookie']
 }));
 
-// JSONパース
+// JSON繝代・繧ｹ
 app.use(express.json());
 
-// ヘルスチェック
+// 繝倥Ν繧ｹ繝√ぉ繝・け
 app.get("/api/health", (_, res) => {
   res.json({ status: "OK", timestamp: new Date().toISOString() });
 });
 
-// テスト用ログインAPI
+// 繝・せ繝育畑繝ｭ繧ｰ繧､繝ｳAPI
 app.post("/api/auth/login", (req, res) => {
   console.log('Login request:', req.body);
   res.json({ 
-    message: "ログイン成功", 
-    user: { id: '123', name: 'テストユーザー' },
+    message: "繝ｭ繧ｰ繧､繝ｳ謌仙粥", 
+    user: { id: '123', name: '繝・せ繝医Θ繝ｼ繧ｶ繝ｼ' },
     timestamp: new Date().toISOString()
   });
 });
 
-// ユーザー情報取得API
+// 繝ｦ繝ｼ繧ｶ繝ｼ諠・ｱ蜿門ｾ輸PI
 app.get("/api/auth/me", (req, res) => {
   res.json({
     id: '123',
     username: 'niina',
-    displayName: '管理者',
+    displayName: '邂｡逅・・,
     role: 'admin',
-    department: 'システム管理'
+    department: '繧ｷ繧ｹ繝・Β邂｡逅・
   });
 });
 
-// チャット関連API（ダミー）
+// 繝√Ε繝・ヨ髢｢騾｣API・医ム繝溘・・・
 app.get("/api/chats/:chatId/last-export", (req, res) => {
   console.log('Get last export request for chat:', req.params.chatId);
   res.json({ 
@@ -75,7 +75,7 @@ app.get("/api/chats/:chatId/last-export", (req, res) => {
   });
 });
 
-// その他のチャットAPI（ダミー）
+// 縺昴・莉悶・繝√Ε繝・ヨAPI・医ム繝溘・・・
 app.get("/api/chats/:chatId/*", (req, res) => {
   console.log('Chat API request:', req.path);
   res.json({ 
@@ -85,8 +85,8 @@ app.get("/api/chats/:chatId/*", (req, res) => {
   });
 });
 
-// サーバー起動
+// 繧ｵ繝ｼ繝舌・襍ｷ蜍・
 app.listen(port, () => {
-  console.log(`🚀 Simple server listening on port ${port}`);
-  console.log(`🔧 CORS allowed origins:`, allowedOrigins);
+  console.log(`噫 Simple server listening on port ${port}`);
+  console.log(`肌 CORS allowed origins:`, allowedOrigins);
 }); 

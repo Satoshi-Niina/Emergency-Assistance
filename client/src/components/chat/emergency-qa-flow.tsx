@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -56,232 +56,232 @@ interface EmergencyQAFlowProps {
   onExit: () => void;
 }
 
-// エンジン始動不良の具体的なフロー定義
+// 繧ｨ繝ｳ繧ｸ繝ｳ蟋句虚荳崎憶縺ｮ蜈ｷ菴鍋噪縺ｪ繝輔Ο繝ｼ螳夂ｾｩ
 const ENGINE_START_FLOW: QAFlowStep[] = [
   {
     id: 'location_check',
-    question: '今はどこにいますか？',
+    question: '莉翫・縺ｩ縺薙↓縺・∪縺吶°・・,
     type: 'choice',
-    options: ['保材線', '車庫', '現場', 'その他'],
+    options: ['菫晄攝邱・, '霆雁ｺｫ', '迴ｾ蝣ｴ', '縺昴・莉・],
     required: true,
-    reasoning: '場所によって対応方法が異なるため',
-    expectedOutcome: '対応可能な場所かどうかの判断'
+    reasoning: '蝣ｴ謇縺ｫ繧医▲縺ｦ蟇ｾ蠢懈婿豕輔′逡ｰ縺ｪ繧九◆繧・,
+    expectedOutcome: '蟇ｾ蠢懷庄閭ｽ縺ｪ蝣ｴ謇縺九←縺・°縺ｮ蛻､譁ｭ'
   },
   {
     id: 'time_check',
-    question: '作業に使える時間はありますか？',
+    question: '菴懈･ｭ縺ｫ菴ｿ縺医ｋ譎る俣縺ｯ縺ゅｊ縺ｾ縺吶°・・,
     type: 'choice',
-    options: ['20分以下', '30分程度', '1時間程度', '十分にある'],
+    options: ['20蛻・ｻ･荳・, '30蛻・ｨ句ｺｦ', '1譎る俣遞句ｺｦ', '蜊∝・縺ｫ縺ゅｋ'],
     required: true,
-    reasoning: '時間によって対応方法を決定',
-    expectedOutcome: '緊急対応の必要性判断',
-    emergencyAction: '20分以下の場合: すぐに支援者へ連絡してください',
+    reasoning: '譎る俣縺ｫ繧医▲縺ｦ蟇ｾ蠢懈婿豕輔ｒ豎ｺ螳・,
+    expectedOutcome: '邱頑･蟇ｾ蠢懊・蠢・ｦ∵ｧ蛻､譁ｭ',
+    emergencyAction: '20蛻・ｻ･荳九・蝣ｴ蜷・ 縺吶＄縺ｫ謾ｯ謠ｴ閠・∈騾｣邨｡縺励※縺上□縺輔＞',
     timeLimit: 20,
     nextStepCondition: [
-      { condition: '20分以下', nextStepId: 'emergency_contact' },
-      { condition: '30分程度', nextStepId: 'lighting_check' },
-      { condition: '1時間程度', nextStepId: 'lighting_check' },
-      { condition: '十分にある', nextStepId: 'lighting_check' }
+      { condition: '20蛻・ｻ･荳・, nextStepId: 'emergency_contact' },
+      { condition: '30蛻・ｨ句ｺｦ', nextStepId: 'lighting_check' },
+      { condition: '1譎る俣遞句ｺｦ', nextStepId: 'lighting_check' },
+      { condition: '蜊∝・縺ｫ縺ゅｋ', nextStepId: 'lighting_check' }
     ]
   },
   {
     id: 'emergency_contact',
-    question: '時間が限られているため、すぐに支援者に連絡してください。',
+    question: '譎る俣縺碁剞繧峨ｌ縺ｦ縺・ｋ縺溘ａ縲√☆縺舌↓謾ｯ謠ｴ閠・↓騾｣邨｡縺励※縺上□縺輔＞縲・,
     type: 'text',
     required: true,
-    reasoning: '緊急時の安全確保',
-    expectedOutcome: '専門家による迅速な対応'
+    reasoning: '邱頑･譎ゅ・螳牙・遒ｺ菫・,
+    expectedOutcome: '蟆る摩螳ｶ縺ｫ繧医ｋ霑・溘↑蟇ｾ蠢・
   },
   {
     id: 'lighting_check',
-    question: '室内灯や照明類は点灯していますか？',
+    question: '螳､蜀・・繧・・譏朱｡槭・轤ｹ轣ｯ縺励※縺・∪縺吶°・・,
     type: 'choice',
-    options: ['点灯している', '点灯していない', '一部点灯している'],
+    options: ['轤ｹ轣ｯ縺励※縺・ｋ', '轤ｹ轣ｯ縺励※縺・↑縺・, '荳驛ｨ轤ｹ轣ｯ縺励※縺・ｋ'],
     required: true,
-    reasoning: 'バッテリー状態の確認',
-    expectedOutcome: 'バッテリー電圧の確認',
+    reasoning: '繝舌ャ繝・Μ繝ｼ迥ｶ諷九・遒ｺ隱・,
+    expectedOutcome: '繝舌ャ繝・Μ繝ｼ髮ｻ蝨ｧ縺ｮ遒ｺ隱・,
     nextStepCondition: [
-      { condition: '点灯している', nextStepId: 'starter_key_check' },
-      { condition: '点灯していない', nextStepId: 'battery_connection_check' },
-      { condition: '一部点灯している', nextStepId: 'battery_connection_check' }
+      { condition: '轤ｹ轣ｯ縺励※縺・ｋ', nextStepId: 'starter_key_check' },
+      { condition: '轤ｹ轣ｯ縺励※縺・↑縺・, nextStepId: 'battery_connection_check' },
+      { condition: '荳驛ｨ轤ｹ轣ｯ縺励※縺・ｋ', nextStepId: 'battery_connection_check' }
     ]
   },
   {
     id: 'starter_key_check',
-    question: 'スターターキーは回りますか？',
+    question: '繧ｹ繧ｿ繝ｼ繧ｿ繝ｼ繧ｭ繝ｼ縺ｯ蝗槭ｊ縺ｾ縺吶°・・,
     type: 'choice',
-    options: ['回る', '回らない', '少し回る'],
+    options: ['蝗槭ｋ', '蝗槭ｉ縺ｪ縺・, '蟆代＠蝗槭ｋ'],
     required: true,
-    reasoning: 'スターターシステムの動作確認',
-    expectedOutcome: 'スターターの状態確認',
+    reasoning: '繧ｹ繧ｿ繝ｼ繧ｿ繝ｼ繧ｷ繧ｹ繝・Β縺ｮ蜍穂ｽ懃｢ｺ隱・,
+    expectedOutcome: '繧ｹ繧ｿ繝ｼ繧ｿ繝ｼ縺ｮ迥ｶ諷狗｢ｺ隱・,
     nextStepCondition: [
-      { condition: '回る', nextStepId: 'starter_sound_check' },
-      { condition: '回らない', nextStepId: 'key_switch_check' },
-      { condition: '少し回る', nextStepId: 'starter_sound_check' }
+      { condition: '蝗槭ｋ', nextStepId: 'starter_sound_check' },
+      { condition: '蝗槭ｉ縺ｪ縺・, nextStepId: 'key_switch_check' },
+      { condition: '蟆代＠蝗槭ｋ', nextStepId: 'starter_sound_check' }
     ]
   },
   {
     id: 'starter_sound_check',
-    question: 'スターターを回した時、スターターから"カチ"と音が出ますか？',
+    question: '繧ｹ繧ｿ繝ｼ繧ｿ繝ｼ繧貞屓縺励◆譎ゅ√せ繧ｿ繝ｼ繧ｿ繝ｼ縺九ｉ"繧ｫ繝・縺ｨ髻ｳ縺悟・縺ｾ縺吶°・・,
     type: 'choice',
-    options: ['カチと音が出る', '全く音が出ない', '別の音が出る'],
+    options: ['繧ｫ繝√→髻ｳ縺悟・繧・, '蜈ｨ縺城浹縺悟・縺ｪ縺・, '蛻･縺ｮ髻ｳ縺悟・繧・],
     required: true,
-    reasoning: 'スターターの動作状態確認',
-    expectedOutcome: 'スターターの故障判定',
+    reasoning: '繧ｹ繧ｿ繝ｼ繧ｿ繝ｼ縺ｮ蜍穂ｽ懃憾諷狗｢ｺ隱・,
+    expectedOutcome: '繧ｹ繧ｿ繝ｼ繧ｿ繝ｼ縺ｮ謨・囿蛻､螳・,
     nextStepCondition: [
-      { condition: 'カチと音が出る', nextStepId: 'fuel_check' },
-      { condition: '全く音が出ない', nextStepId: 'battery_connection_check' },
-      { condition: '別の音が出る', nextStepId: 'starter_diagnosis' }
+      { condition: '繧ｫ繝√→髻ｳ縺悟・繧・, nextStepId: 'fuel_check' },
+      { condition: '蜈ｨ縺城浹縺悟・縺ｪ縺・, nextStepId: 'battery_connection_check' },
+      { condition: '蛻･縺ｮ髻ｳ縺悟・繧・, nextStepId: 'starter_diagnosis' }
     ]
   },
   {
     id: 'battery_connection_check',
-    question: 'バッテリーは接続されていますか？（もしくはメインブレーカーが入っていますか？）',
+    question: '繝舌ャ繝・Μ繝ｼ縺ｯ謗･邯壹＆繧後※縺・∪縺吶°・滂ｼ医ｂ縺励￥縺ｯ繝｡繧､繝ｳ繝悶Ξ繝ｼ繧ｫ繝ｼ縺悟・縺｣縺ｦ縺・∪縺吶°・滂ｼ・,
     type: 'choice',
-    options: ['接続されている', '接続されていない', '確認できない'],
+    options: ['謗･邯壹＆繧後※縺・ｋ', '謗･邯壹＆繧後※縺・↑縺・, '遒ｺ隱阪〒縺阪↑縺・],
     required: true,
-    reasoning: '電源供給の確認',
-    expectedOutcome: '電源問題の特定',
+    reasoning: '髮ｻ貅蝉ｾ帷ｵｦ縺ｮ遒ｺ隱・,
+    expectedOutcome: '髮ｻ貅仙撫鬘後・迚ｹ螳・,
     nextStepCondition: [
-      { condition: '接続されている', nextStepId: 'battery_voltage_check' },
-      { condition: '接続されていない', nextStepId: 'connect_battery' },
-      { condition: '確認できない', nextStepId: 'battery_voltage_check' }
+      { condition: '謗･邯壹＆繧後※縺・ｋ', nextStepId: 'battery_voltage_check' },
+      { condition: '謗･邯壹＆繧後※縺・↑縺・, nextStepId: 'connect_battery' },
+      { condition: '遒ｺ隱阪〒縺阪↑縺・, nextStepId: 'battery_voltage_check' }
     ]
   },
   {
     id: 'battery_voltage_check',
-    question: 'バッテリーの電圧を確認できますか？',
+    question: '繝舌ャ繝・Μ繝ｼ縺ｮ髮ｻ蝨ｧ繧堤｢ｺ隱阪〒縺阪∪縺吶°・・,
     type: 'choice',
-    options: ['12V以上', '10-12V', '10V以下', '確認できない'],
+    options: ['12V莉･荳・, '10-12V', '10V莉･荳・, '遒ｺ隱阪〒縺阪↑縺・],
     required: true,
-    reasoning: 'バッテリーの充電状態確認',
-    expectedOutcome: 'バッテリー不良の判定',
+    reasoning: '繝舌ャ繝・Μ繝ｼ縺ｮ蜈・崕迥ｶ諷狗｢ｺ隱・,
+    expectedOutcome: '繝舌ャ繝・Μ繝ｼ荳崎憶縺ｮ蛻､螳・,
     nextStepCondition: [
-      { condition: '12V以上', nextStepId: 'fuel_check' },
+      { condition: '12V莉･荳・, nextStepId: 'fuel_check' },
       { condition: '10-12V', nextStepId: 'charge_battery' },
-      { condition: '10V以下', nextStepId: 'charge_battery' },
-      { condition: '確認できない', nextStepId: 'charge_battery' }
+      { condition: '10V莉･荳・, nextStepId: 'charge_battery' },
+      { condition: '遒ｺ隱阪〒縺阪↑縺・, nextStepId: 'charge_battery' }
     ]
   },
   {
     id: 'charge_battery',
-    question: 'バッテリー不良が想定されます。充電してください。',
+    question: '繝舌ャ繝・Μ繝ｼ荳崎憶縺梧Φ螳壹＆繧後∪縺吶ょ・髮ｻ縺励※縺上□縺輔＞縲・,
     type: 'text',
     required: true,
-    reasoning: 'バッテリー充電の指示',
-    expectedOutcome: 'バッテリーの復旧'
+    reasoning: '繝舌ャ繝・Μ繝ｼ蜈・崕縺ｮ謖・､ｺ',
+    expectedOutcome: '繝舌ャ繝・Μ繝ｼ縺ｮ蠕ｩ譌ｧ'
   },
   {
     id: 'connect_battery',
-    question: 'バッテリーを接続してください。',
+    question: '繝舌ャ繝・Μ繝ｼ繧呈磁邯壹＠縺ｦ縺上□縺輔＞縲・,
     type: 'text',
     required: true,
-    reasoning: '電源接続の指示',
-    expectedOutcome: '電源の復旧'
+    reasoning: '髮ｻ貅先磁邯壹・謖・､ｺ',
+    expectedOutcome: '髮ｻ貅舌・蠕ｩ譌ｧ'
   },
   {
     id: 'fuel_check',
-    question: '燃料は十分にありますか？',
+    question: '辯・侭縺ｯ蜊∝・縺ｫ縺ゅｊ縺ｾ縺吶°・・,
     type: 'choice',
-    options: ['十分にある', '少ない', '確認できない'],
+    options: ['蜊∝・縺ｫ縺ゅｋ', '蟆代↑縺・, '遒ｺ隱阪〒縺阪↑縺・],
     required: true,
-    reasoning: '燃料供給の確認',
-    expectedOutcome: '燃料問題の特定',
+    reasoning: '辯・侭萓帷ｵｦ縺ｮ遒ｺ隱・,
+    expectedOutcome: '辯・侭蝠城｡後・迚ｹ螳・,
     nextStepCondition: [
-      { condition: '十分にある', nextStepId: 'air_filter_check' },
-      { condition: '少ない', nextStepId: 'add_fuel' },
-      { condition: '確認できない', nextStepId: 'add_fuel' }
+      { condition: '蜊∝・縺ｫ縺ゅｋ', nextStepId: 'air_filter_check' },
+      { condition: '蟆代↑縺・, nextStepId: 'add_fuel' },
+      { condition: '遒ｺ隱阪〒縺阪↑縺・, nextStepId: 'add_fuel' }
     ]
   },
   {
     id: 'add_fuel',
-    question: '燃料を補充してください。',
+    question: '辯・侭繧定｣懷・縺励※縺上□縺輔＞縲・,
     type: 'text',
     required: true,
-    reasoning: '燃料補充の指示',
-    expectedOutcome: '燃料供給の復旧'
+    reasoning: '辯・侭陬懷・縺ｮ謖・､ｺ',
+    expectedOutcome: '辯・侭萓帷ｵｦ縺ｮ蠕ｩ譌ｧ'
   },
   {
     id: 'air_filter_check',
-    question: 'エアフィルターは清潔ですか？',
+    question: '繧ｨ繧｢繝輔ぅ繝ｫ繧ｿ繝ｼ縺ｯ貂・ｽ斐〒縺吶°・・,
     type: 'choice',
-    options: ['清潔', '汚れている', '確認できない'],
+    options: ['貂・ｽ・, '豎壹ｌ縺ｦ縺・ｋ', '遒ｺ隱阪〒縺阪↑縺・],
     required: true,
-    reasoning: '空気供給の確認',
-    expectedOutcome: 'エアフィルターの状態確認',
+    reasoning: '遨ｺ豌嶺ｾ帷ｵｦ縺ｮ遒ｺ隱・,
+    expectedOutcome: '繧ｨ繧｢繝輔ぅ繝ｫ繧ｿ繝ｼ縺ｮ迥ｶ諷狗｢ｺ隱・,
     nextStepCondition: [
-      { condition: '清潔', nextStepId: 'final_diagnosis' },
-      { condition: '汚れている', nextStepId: 'clean_air_filter' },
-      { condition: '確認できない', nextStepId: 'clean_air_filter' }
+      { condition: '貂・ｽ・, nextStepId: 'final_diagnosis' },
+      { condition: '豎壹ｌ縺ｦ縺・ｋ', nextStepId: 'clean_air_filter' },
+      { condition: '遒ｺ隱阪〒縺阪↑縺・, nextStepId: 'clean_air_filter' }
     ]
   },
   {
     id: 'clean_air_filter',
-    question: 'エアフィルターを清掃または交換してください。',
+    question: '繧ｨ繧｢繝輔ぅ繝ｫ繧ｿ繝ｼ繧呈ｸ・祉縺ｾ縺溘・莠､謠帙＠縺ｦ縺上□縺輔＞縲・,
     type: 'text',
     required: true,
-    reasoning: 'エアフィルター清掃の指示',
-    expectedOutcome: '空気供給の改善'
+    reasoning: '繧ｨ繧｢繝輔ぅ繝ｫ繧ｿ繝ｼ貂・祉縺ｮ謖・､ｺ',
+    expectedOutcome: '遨ｺ豌嶺ｾ帷ｵｦ縺ｮ謾ｹ蝟・
   },
   {
     id: 'key_switch_check',
-    question: 'キースイッチの状態を確認してください。',
+    question: '繧ｭ繝ｼ繧ｹ繧､繝・メ縺ｮ迥ｶ諷九ｒ遒ｺ隱阪＠縺ｦ縺上□縺輔＞縲・,
     type: 'choice',
-    options: ['正常', '異常', '確認できない'],
+    options: ['豁｣蟶ｸ', '逡ｰ蟶ｸ', '遒ｺ隱阪〒縺阪↑縺・],
     required: true,
-    reasoning: 'キースイッチの動作確認',
-    expectedOutcome: 'キースイッチの故障判定',
+    reasoning: '繧ｭ繝ｼ繧ｹ繧､繝・メ縺ｮ蜍穂ｽ懃｢ｺ隱・,
+    expectedOutcome: '繧ｭ繝ｼ繧ｹ繧､繝・メ縺ｮ謨・囿蛻､螳・,
     nextStepCondition: [
-      { condition: '正常', nextStepId: 'starter_sound_check' },
-      { condition: '異常', nextStepId: 'replace_key_switch' },
-      { condition: '確認できない', nextStepId: 'replace_key_switch' }
+      { condition: '豁｣蟶ｸ', nextStepId: 'starter_sound_check' },
+      { condition: '逡ｰ蟶ｸ', nextStepId: 'replace_key_switch' },
+      { condition: '遒ｺ隱阪〒縺阪↑縺・, nextStepId: 'replace_key_switch' }
     ]
   },
   {
     id: 'replace_key_switch',
-    question: 'キースイッチの交換が必要です。専門家に相談してください。',
+    question: '繧ｭ繝ｼ繧ｹ繧､繝・メ縺ｮ莠､謠帙′蠢・ｦ√〒縺吶ょｰる摩螳ｶ縺ｫ逶ｸ隲・＠縺ｦ縺上□縺輔＞縲・,
     type: 'text',
     required: true,
-    reasoning: '専門修理の指示',
-    expectedOutcome: 'キースイッチの修理'
+    reasoning: '蟆る摩菫ｮ逅・・謖・､ｺ',
+    expectedOutcome: '繧ｭ繝ｼ繧ｹ繧､繝・メ縺ｮ菫ｮ逅・
   },
   {
     id: 'starter_diagnosis',
-    question: 'スターターの詳細診断が必要です。専門家に相談してください。',
+    question: '繧ｹ繧ｿ繝ｼ繧ｿ繝ｼ縺ｮ隧ｳ邏ｰ險ｺ譁ｭ縺悟ｿ・ｦ√〒縺吶ょｰる摩螳ｶ縺ｫ逶ｸ隲・＠縺ｦ縺上□縺輔＞縲・,
     type: 'text',
     required: true,
-    reasoning: '専門診断の指示',
-    expectedOutcome: 'スターターの専門修理'
+    reasoning: '蟆る摩險ｺ譁ｭ縺ｮ謖・､ｺ',
+    expectedOutcome: '繧ｹ繧ｿ繝ｼ繧ｿ繝ｼ縺ｮ蟆る摩菫ｮ逅・
   },
   {
     id: 'final_diagnosis',
-    question: '基本的な確認が完了しました。エンジンを始動してみてください。',
+    question: '蝓ｺ譛ｬ逧・↑遒ｺ隱阪′螳御ｺ・＠縺ｾ縺励◆縲ゅお繝ｳ繧ｸ繝ｳ繧貞ｧ句虚縺励※縺ｿ縺ｦ縺上□縺輔＞縲・,
     type: 'choice',
-    options: ['始動した', '始動しない', '異常音がする'],
+    options: ['蟋句虚縺励◆', '蟋句虚縺励↑縺・, '逡ｰ蟶ｸ髻ｳ縺後☆繧・],
     required: true,
-    reasoning: '最終確認',
-    expectedOutcome: '問題解決の確認',
+    reasoning: '譛邨ら｢ｺ隱・,
+    expectedOutcome: '蝠城｡瑚ｧ｣豎ｺ縺ｮ遒ｺ隱・,
     nextStepCondition: [
-      { condition: '始動した', nextStepId: 'success' },
-      { condition: '始動しない', nextStepId: 'expert_consultation' },
-      { condition: '異常音がする', nextStepId: 'expert_consultation' }
+      { condition: '蟋句虚縺励◆', nextStepId: 'success' },
+      { condition: '蟋句虚縺励↑縺・, nextStepId: 'expert_consultation' },
+      { condition: '逡ｰ蟶ｸ髻ｳ縺後☆繧・, nextStepId: 'expert_consultation' }
     ]
   },
   {
     id: 'success',
-    question: 'エンジンが正常に始動しました！問題は解決されました。',
+    question: '繧ｨ繝ｳ繧ｸ繝ｳ縺梧ｭ｣蟶ｸ縺ｫ蟋句虚縺励∪縺励◆・∝撫鬘後・隗｣豎ｺ縺輔ｌ縺ｾ縺励◆縲・,
     type: 'text',
     required: true,
-    reasoning: '成功の確認',
-    expectedOutcome: '問題解決完了'
+    reasoning: '謌仙粥縺ｮ遒ｺ隱・,
+    expectedOutcome: '蝠城｡瑚ｧ｣豎ｺ螳御ｺ・
   },
   {
     id: 'expert_consultation',
-    question: '専門的な診断が必要です。技術支援センターに連絡してください。',
+    question: '蟆る摩逧・↑險ｺ譁ｭ縺悟ｿ・ｦ√〒縺吶よ橿陦捺髪謠ｴ繧ｻ繝ｳ繧ｿ繝ｼ縺ｫ騾｣邨｡縺励※縺上□縺輔＞縲・,
     type: 'text',
     required: true,
-    reasoning: '専門家への相談指示',
-    expectedOutcome: '専門家による対応'
+    reasoning: '蟆る摩螳ｶ縺ｸ縺ｮ逶ｸ隲・欠遉ｺ',
+    expectedOutcome: '蟆る摩螳ｶ縺ｫ繧医ｋ蟇ｾ蠢・
   }
 ];
 
@@ -299,7 +299,7 @@ export default function EmergencyQAFlow({
   const [emergencyAction, setEmergencyAction] = useState<string | null>(null);
   const [flowSteps, setFlowSteps] = useState<QAFlowStep[]>(ENGINE_START_FLOW);
 
-  // 初期化
+  // 蛻晄悄蛹・
   useEffect(() => {
     if (flowSteps.length > 0) {
       setCurrentStep(flowSteps[0]);
@@ -307,21 +307,21 @@ export default function EmergencyQAFlow({
     }
   }, []);
 
-  // 次のステップを決定
+  // 谺｡縺ｮ繧ｹ繝・ャ繝励ｒ豎ｺ螳・
   const getNextStep = useCallback((currentStepId: string, answer: string): QAFlowStep | null => {
     const currentStep = flowSteps.find(step => step.id === currentStepId);
     if (!currentStep || !currentStep.nextStepCondition) {
       return null;
     }
 
-    // 条件に基づいて次のステップを決定
+    // 譚｡莉ｶ縺ｫ蝓ｺ縺･縺・※谺｡縺ｮ繧ｹ繝・ャ繝励ｒ豎ｺ螳・
     for (const condition of currentStep.nextStepCondition) {
       if (answer.includes(condition.condition)) {
         return flowSteps.find(step => step.id === condition.nextStepId) || null;
       }
     }
 
-    // デフォルトの次のステップ（順序で決定）
+    // 繝・ヵ繧ｩ繝ｫ繝医・谺｡縺ｮ繧ｹ繝・ャ繝暦ｼ磯・ｺ上〒豎ｺ螳夲ｼ・
     const currentIndex = flowSteps.findIndex(step => step.id === currentStepId);
     if (currentIndex < flowSteps.length - 1) {
       return flowSteps[currentIndex + 1];
@@ -330,26 +330,26 @@ export default function EmergencyQAFlow({
     return null;
   }, [flowSteps]);
 
-  // 回答を処理
+  // 蝗樒ｭ斐ｒ蜃ｦ逅・
   const handleAnswerSubmit = async () => {
     if (!currentAnswer.trim() || !currentStep) return;
 
     setIsLoading(true);
     
     try {
-      // 緊急対応チェック
+      // 邱頑･蟇ｾ蠢懊メ繧ｧ繝・け
       if (currentStep.emergencyAction && currentStep.timeLimit) {
         const timeAnswer = currentAnswer.toLowerCase();
-        if (timeAnswer.includes(`${currentStep.timeLimit}分以下`) || 
-            timeAnswer.includes('20分以下') || 
-            timeAnswer.includes('30分以下')) {
+        if (timeAnswer.includes(`${currentStep.timeLimit}蛻・ｻ･荳義) || 
+            timeAnswer.includes('20蛻・ｻ･荳・) || 
+            timeAnswer.includes('30蛻・ｻ･荳・)) {
           setEmergencyAction(currentStep.emergencyAction);
           onEmergencyContact();
           return;
         }
       }
 
-      // 回答を記録
+      // 蝗樒ｭ斐ｒ險倬鹸
       const answer: QAAnswer = {
         stepId: currentStep.id,
         answer: currentAnswer.trim(),
@@ -360,88 +360,88 @@ export default function EmergencyQAFlow({
       const newAnswers = [...answers, answer];
       setAnswers(newAnswers);
 
-      // 進捗を更新
+      // 騾ｲ謐励ｒ譖ｴ譁ｰ
       const newProgress = Math.min(95, progress + (100 / flowSteps.length));
       setProgress(newProgress);
 
-      // 次のステップを決定
+      // 谺｡縺ｮ繧ｹ繝・ャ繝励ｒ豎ｺ螳・
       const nextStep = getNextStep(currentStep.id, currentAnswer);
       
       if (nextStep) {
         setCurrentStep(nextStep);
         setCurrentAnswer('');
       } else {
-        // フロー完了
+        // 繝輔Ο繝ｼ螳御ｺ・
         setProgress(100);
         const solution = generateSolution(newAnswers);
         onComplete(solution, newAnswers);
       }
     } catch (error) {
-      console.error('回答処理エラー:', error);
+      console.error('蝗樒ｭ泌・逅・お繝ｩ繝ｼ:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 解決策を生成
+  // 隗｣豎ｺ遲悶ｒ逕滓・
   const generateSolution = (allAnswers: QAAnswer[]): string => {
     const lastAnswer = allAnswers[allAnswers.length - 1];
     
     if (lastAnswer.stepId === 'success') {
       return `
-## ✅ 問題解決完了
+## 笨・蝠城｡瑚ｧ｣豎ｺ螳御ｺ・
 
-エンジンが正常に始動しました！
+繧ｨ繝ｳ繧ｸ繝ｳ縺梧ｭ｣蟶ｸ縺ｫ蟋句虚縺励∪縺励◆・・
 
-### 📋 実施した対応
+### 搭 螳滓命縺励◆蟇ｾ蠢・
 ${allAnswers.map((answer, index) => 
-  `${index + 1}. ${answer.question}\n   回答: ${answer.answer}`
+  `${index + 1}. ${answer.question}\n   蝗樒ｭ・ ${answer.answer}`
 ).join('\n')}
 
-### 🔧 今後の予防策
-1. **定期的なバッテリーチェック**: 月1回の電圧確認
-2. **燃料管理**: 燃料残量の定期的な確認
-3. **エアフィルター清掃**: 作業環境に応じた清掃頻度の設定
-4. **定期点検**: メーカー推奨の定期点検の実施
+### 肌 莉雁ｾ後・莠磯亟遲・
+1. **螳壽悄逧・↑繝舌ャ繝・Μ繝ｼ繝√ぉ繝・け**: 譛・蝗槭・髮ｻ蝨ｧ遒ｺ隱・
+2. **辯・侭邂｡逅・*: 辯・侭谿矩㍼縺ｮ螳壽悄逧・↑遒ｺ隱・
+3. **繧ｨ繧｢繝輔ぅ繝ｫ繧ｿ繝ｼ貂・祉**: 菴懈･ｭ迺ｰ蠅・↓蠢懊§縺滓ｸ・祉鬆ｻ蠎ｦ縺ｮ險ｭ螳・
+4. **螳壽悄轤ｹ讀・*: 繝｡繝ｼ繧ｫ繝ｼ謗ｨ螂ｨ縺ｮ螳壽悄轤ｹ讀懊・螳滓命
 
-### 📞 緊急時の連絡先
-- 技術支援センター: 0123-456-789
-- 緊急時: 0123-456-000
+### 到 邱頑･譎ゅ・騾｣邨｡蜈・
+- 謚陦捺髪謠ｴ繧ｻ繝ｳ繧ｿ繝ｼ: 0123-456-789
+- 邱頑･譎・ 0123-456-000
       `;
     } else if (lastAnswer.stepId === 'expert_consultation') {
       return `
-## 🚨 専門家による対応が必要
+## 圷 蟆る摩螳ｶ縺ｫ繧医ｋ蟇ｾ蠢懊′蠢・ｦ・
 
-### 📞 技術支援センターに連絡してください
-- 電話番号: 0123-456-789
-- 緊急時: 0123-456-000
+### 到 謚陦捺髪謠ｴ繧ｻ繝ｳ繧ｿ繝ｼ縺ｫ騾｣邨｡縺励※縺上□縺輔＞
+- 髮ｻ隧ｱ逡ｪ蜿ｷ: 0123-456-789
+- 邱頑･譎・ 0123-456-000
 
-### 📋 伝えるべき情報
+### 搭 莨昴∴繧九∋縺肴ュ蝣ｱ
 ${allAnswers.map((answer, index) => 
-  `${index + 1}. ${answer.question}\n   回答: ${answer.answer}`
+  `${index + 1}. ${answer.question}\n   蝗樒ｭ・ ${answer.answer}`
 ).join('\n')}
 
-### 🔧 専門家による対応内容
-1. **詳細診断**: 専門機器による精密検査
-2. **部品交換**: 必要に応じた部品の交換
-3. **調整作業**: エンジンの調整・最適化
-4. **予防保全**: 再発防止のための対策
+### 肌 蟆る摩螳ｶ縺ｫ繧医ｋ蟇ｾ蠢懷・螳ｹ
+1. **隧ｳ邏ｰ險ｺ譁ｭ**: 蟆る摩讖溷勣縺ｫ繧医ｋ邊ｾ蟇・､懈渊
+2. **驛ｨ蜩∽ｺ､謠・*: 蠢・ｦ√↓蠢懊§縺滄Κ蜩√・莠､謠・
+3. **隱ｿ謨ｴ菴懈･ｭ**: 繧ｨ繝ｳ繧ｸ繝ｳ縺ｮ隱ｿ謨ｴ繝ｻ譛驕ｩ蛹・
+4. **莠磯亟菫晏・**: 蜀咲匱髦ｲ豁｢縺ｮ縺溘ａ縺ｮ蟇ｾ遲・
       `;
     } else {
       return `
-## 🔧 対応完了
+## 肌 蟇ｾ蠢懷ｮ御ｺ・
 
-### 📋 実施した対応
+### 搭 螳滓命縺励◆蟇ｾ蠢・
 ${allAnswers.map((answer, index) => 
-  `${index + 1}. ${answer.question}\n   回答: ${answer.answer}`
+  `${index + 1}. ${answer.question}\n   蝗樒ｭ・ ${answer.answer}`
 ).join('\n')}
 
-### ✅ 次のステップ
+### 笨・谺｡縺ｮ繧ｹ繝・ャ繝・
 ${lastAnswer.answer}
 
-### 📞 サポート
-問題が解決しない場合は、技術支援センターに連絡してください。
-- 電話番号: 0123-456-789
+### 到 繧ｵ繝昴・繝・
+蝠城｡後′隗｣豎ｺ縺励↑縺・ｴ蜷医・縲∵橿陦捺髪謠ｴ繧ｻ繝ｳ繧ｿ繝ｼ縺ｫ騾｣邨｡縺励※縺上□縺輔＞縲・
+- 髮ｻ隧ｱ逡ｪ蜿ｷ: 0123-456-789
       `;
     }
   };
@@ -470,7 +470,7 @@ ${lastAnswer.answer}
         <CardContent className="p-6">
           <div className="flex items-center justify-center space-x-2">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-            <span>診断を開始中...</span>
+            <span>險ｺ譁ｭ繧帝幕蟋倶ｸｭ...</span>
           </div>
         </CardContent>
       </Card>
@@ -479,13 +479,13 @@ ${lastAnswer.answer}
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-4">
-      {/* ヘッダー */}
+      {/* 繝倥ャ繝繝ｼ */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Car className="h-5 w-5 text-blue-600" />
-              <CardTitle className="text-lg">エンジン始動不良の診断</CardTitle>
+              <CardTitle className="text-lg">繧ｨ繝ｳ繧ｸ繝ｳ蟋句虚荳崎憶縺ｮ險ｺ譁ｭ</CardTitle>
             </div>
             <div className="flex items-center space-x-2">
               <Button
@@ -494,7 +494,7 @@ ${lastAnswer.answer}
                 onClick={() => setShowHistory(!showHistory)}
               >
                 <History className="h-4 w-4 mr-1" />
-                履歴
+                螻･豁ｴ
               </Button>
               <Button
                 variant="outline"
@@ -502,22 +502,22 @@ ${lastAnswer.answer}
                 onClick={resetQA}
               >
                 <RotateCcw className="h-4 w-4 mr-1" />
-                リセット
+                繝ｪ繧ｻ繝・ヨ
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={onExit}
               >
-                終了
+                邨ゆｺ・
               </Button>
             </div>
           </div>
           
-          {/* 進捗バー */}
+          {/* 騾ｲ謐励ヰ繝ｼ */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm text-gray-600">
-              <span>診断進捗</span>
+              <span>險ｺ譁ｭ騾ｲ謐・/span>
               <span>{Math.round(progress)}%</span>
             </div>
             <Progress value={progress} className="h-2" />
@@ -525,23 +525,23 @@ ${lastAnswer.answer}
         </CardHeader>
       </Card>
 
-      {/* 緊急対応アラート */}
+      {/* 邱頑･蟇ｾ蠢懊い繝ｩ繝ｼ繝・*/}
       {emergencyAction && (
         <Alert className="border-red-200 bg-red-50">
           <AlertCircle className="h-4 w-4 text-red-600" />
           <AlertDescription className="text-red-800">
-            <strong>緊急対応:</strong> {emergencyAction}
+            <strong>邱頑･蟇ｾ蠢・</strong> {emergencyAction}
           </AlertDescription>
         </Alert>
       )}
 
-      {/* 回答履歴 */}
+      {/* 蝗樒ｭ泌ｱ･豁ｴ */}
       {showHistory && answers.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center">
               <History className="h-4 w-4 mr-2" />
-              診断履歴
+              險ｺ譁ｭ螻･豁ｴ
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -555,7 +555,7 @@ ${lastAnswer.answer}
                     {answer.question}
                   </p>
                   <p className="text-sm text-gray-600 mb-1">
-                    回答: {answer.answer}
+                    蝗樒ｭ・ {answer.answer}
                   </p>
                   <p className="text-xs text-gray-400">
                     {answer.timestamp.toLocaleTimeString()}
@@ -568,25 +568,25 @@ ${lastAnswer.answer}
         </Card>
       )}
 
-      {/* 現在の質問 */}
+      {/* 迴ｾ蝨ｨ縺ｮ雉ｪ蝠・*/}
       {currentStep && (
         <Card>
           <CardContent className="p-6">
             <div className="space-y-4">
-              {/* 質問表示 */}
+              {/* 雉ｪ蝠剰｡ｨ遉ｺ */}
               <div className="flex items-start space-x-3">
                 <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                   {(() => {
                     const questionText = currentStep.question.toLowerCase();
-                    if (questionText.includes('時間') || questionText.includes('緊急')) {
+                    if (questionText.includes('譎る俣') || questionText.includes('邱頑･')) {
                       return <Clock className="h-4 w-4 text-red-600" />;
-                    } else if (questionText.includes('照明') || questionText.includes('点灯')) {
+                    } else if (questionText.includes('辣ｧ譏・) || questionText.includes('轤ｹ轣ｯ')) {
                       return <Zap className="h-4 w-4 text-yellow-600" />;
-                    } else if (questionText.includes('スターター') || questionText.includes('キー')) {
+                    } else if (questionText.includes('繧ｹ繧ｿ繝ｼ繧ｿ繝ｼ') || questionText.includes('繧ｭ繝ｼ')) {
                       return <Key className="h-4 w-4 text-blue-600" />;
-                    } else if (questionText.includes('バッテリー')) {
+                    } else if (questionText.includes('繝舌ャ繝・Μ繝ｼ')) {
                       return <Battery className="h-4 w-4 text-green-600" />;
-                    } else if (questionText.includes('燃料')) {
+                    } else if (questionText.includes('辯・侭')) {
                       return <Car className="h-4 w-4 text-orange-600" />;
                     } else {
                       return <span className="text-sm font-medium text-blue-600">{answers.length + 1}</span>;
@@ -600,7 +600,7 @@ ${lastAnswer.answer}
                   <div className="flex items-center gap-2 mb-2">
                     {currentStep.required && (
                       <Badge variant="destructive" className="text-xs">
-                        必須
+                        蠢・・
                       </Badge>
                     )}
                     {currentStep.reasoning && (
@@ -611,18 +611,18 @@ ${lastAnswer.answer}
                   </div>
                   {currentStep.expectedOutcome && (
                     <div className="text-sm text-gray-600 bg-blue-50 p-2 rounded-md mb-3">
-                      <strong>期待される結果:</strong> {currentStep.expectedOutcome}
+                      <strong>譛溷ｾ・＆繧後ｋ邨先棡:</strong> {currentStep.expectedOutcome}
                     </div>
                   )}
                   {currentStep.emergencyAction && (
                     <div className="text-sm text-red-600 bg-red-50 p-2 rounded-md mb-3">
-                      <strong>⚠️ 緊急時:</strong> {currentStep.emergencyAction}
+                      <strong>笞・・邱頑･譎・</strong> {currentStep.emergencyAction}
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* 回答入力 */}
+              {/* 蝗樒ｭ泌・蜉・*/}
               <div className="space-y-3">
                 {currentStep.type === 'choice' && currentStep.options ? (
                   <div className="grid grid-cols-1 gap-2">
@@ -647,7 +647,7 @@ ${lastAnswer.answer}
                       value={currentAnswer}
                       onChange={(e) => setCurrentAnswer(e.target.value)}
                       onKeyPress={handleKeyPress}
-                      placeholder="回答を入力してください..."
+                      placeholder="蝗樒ｭ斐ｒ蜈･蜉帙＠縺ｦ縺上□縺輔＞..."
                       disabled={isLoading}
                       className="h-12"
                     />
@@ -659,12 +659,12 @@ ${lastAnswer.answer}
                       {isLoading ? (
                         <div className="flex items-center space-x-2">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                          <span>処理中...</span>
+                          <span>蜃ｦ逅・ｸｭ...</span>
                         </div>
                       ) : (
                         <div className="flex items-center space-x-2">
                           <Send className="h-4 w-4" />
-                          <span>回答する</span>
+                          <span>蝗樒ｭ斐☆繧・/span>
                         </div>
                       )}
                     </Button>
@@ -672,12 +672,12 @@ ${lastAnswer.answer}
                 )}
               </div>
 
-              {/* ヒント */}
+              {/* 繝偵Φ繝・*/}
               <Alert>
                 <Lightbulb className="h-4 w-4" />
                 <AlertDescription>
-                  段階的な診断により、エンジン始動不良の原因を特定します。
-                  時間が限られている場合は、すぐに支援者に連絡してください。
+                  谿ｵ髫守噪縺ｪ險ｺ譁ｭ縺ｫ繧医ｊ縲√お繝ｳ繧ｸ繝ｳ蟋句虚荳崎憶縺ｮ蜴溷屏繧堤音螳壹＠縺ｾ縺吶・
+                  譎る俣縺碁剞繧峨ｌ縺ｦ縺・ｋ蝣ｴ蜷医・縲√☆縺舌↓謾ｯ謠ｴ閠・↓騾｣邨｡縺励※縺上□縺輔＞縲・
                 </AlertDescription>
               </Alert>
             </div>
@@ -685,13 +685,13 @@ ${lastAnswer.answer}
         </Card>
       )}
 
-      {/* 完了時の表示 */}
+      {/* 螳御ｺ・凾縺ｮ陦ｨ遉ｺ */}
       {progress === 100 && (
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-center space-x-2 text-green-600">
               <CheckCircle className="h-6 w-6" />
-              <span className="text-lg font-medium">診断完了</span>
+              <span className="text-lg font-medium">險ｺ譁ｭ螳御ｺ・/span>
             </div>
           </CardContent>
         </Card>

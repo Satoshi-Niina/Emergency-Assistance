@@ -1,4 +1,4 @@
-{
+﻿{
   "out": "./migrations",
   "schema": "./db/schema.ts",
   "dialect": "postgresql",

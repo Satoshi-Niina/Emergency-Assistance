@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 
 type Orientation = 'portrait' | 'landscape';
 
@@ -17,7 +17,7 @@ export function useOrientation() {
     window.addEventListener('resize', handleResize);
     window.addEventListener('orientationchange', handleResize);
 
-    // 初期化時にも実行
+    // 蛻晄悄蛹匁凾縺ｫ繧ょｮ溯｡・
     handleResize();
 
     return () => {

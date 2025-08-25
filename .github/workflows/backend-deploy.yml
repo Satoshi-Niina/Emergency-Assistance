@@ -1,5 +1,5 @@
-# Azure App Service GitHub Actions Workflow
-# バックエンド（Node.jsアプリ）をビルドし、Azure App Service にデプロイ
+﻿# Azure App Service GitHub Actions Workflow
+# 繝舌ャ繧ｯ繧ｨ繝ｳ繝会ｼ・ode.js繧｢繝励Μ・峨ｒ繝薙Ν繝峨＠縲、zure App Service 縺ｫ繝・・繝ｭ繧､
 name: Deploy Backend to Azure App Service
 
 on:
@@ -21,7 +21,7 @@ jobs:
           node-version: '20.x'
       - name: Prepare full backend deployment
         run: |
-          # デバッグ情報を出力
+          # 繝・ヰ繝・げ諠・ｱ繧貞・蜉・
           echo "=== Current directory and files ==="
           pwd
           ls -la
@@ -29,38 +29,38 @@ jobs:
           node -v
           npm -v
           
-          # Deploy packageディレクトリを作成
+          # Deploy package繝・ぅ繝ｬ繧ｯ繝医Μ繧剃ｽ懈・
           mkdir -p deploy-package
           
-          # 必要なファイルを確認してからコピー
+          # 蠢・ｦ√↑繝輔ぃ繧､繝ｫ繧堤｢ｺ隱阪＠縺ｦ縺九ｉ繧ｳ繝斐・
           echo "=== Checking required directories ==="
-          test -d server && echo "✅ server directory exists" || echo "❌ server directory missing"
-          test -d shared && echo "✅ shared directory exists" || echo "❌ shared directory missing"
-          test -d knowledge-base && echo "✅ knowledge-base directory exists" || echo "❌ knowledge-base directory missing"
-          test -d migrations && echo "✅ migrations directory exists" || echo "❌ migrations directory missing"
-          test -f package.json && echo "✅ package.json exists" || echo "❌ package.json missing"
+          test -d server && echo "笨・server directory exists" || echo "笶・server directory missing"
+          test -d shared && echo "笨・shared directory exists" || echo "笶・shared directory missing"
+          test -d knowledge-base && echo "笨・knowledge-base directory exists" || echo "笶・knowledge-base directory missing"
+          test -d migrations && echo "笨・migrations directory exists" || echo "笶・migrations directory missing"
+          test -f package.json && echo "笨・package.json exists" || echo "笶・package.json missing"
           
-          # ファイルをコピー
+          # 繝輔ぃ繧､繝ｫ繧偵さ繝斐・
           cp -r server/ deploy-package/
           cp -r shared/ deploy-package/
           cp -r knowledge-base/ deploy-package/
           cp -r migrations/ deploy-package/
           
-          # 設定ファイルをコピー
+          # 險ｭ螳壹ヵ繧｡繧､繝ｫ繧偵さ繝斐・
           cp package.json deploy-package/
           cp tsconfig.json deploy-package/
           cp drizzle.config.ts deploy-package/
           
-          # サーバー用のpackage.jsonを修正（本番用スタートスクリプト）
+          # 繧ｵ繝ｼ繝舌・逕ｨ縺ｮpackage.json繧剃ｿｮ豁｣・域悽逡ｪ逕ｨ繧ｹ繧ｿ繝ｼ繝医せ繧ｯ繝ｪ繝励ヨ・・
           cd deploy-package/server
           echo "=== Updating server package.json for production ==="
-          # startスクリプトを本番用に変更
+          # start繧ｹ繧ｯ繝ｪ繝励ヨ繧呈悽逡ｪ逕ｨ縺ｫ螟画峩
           npm pkg set scripts.start="tsx index.ts"
           npm pkg set scripts.start:prod="NODE_ENV=production tsx index.ts"
           cat package.json | grep -A 5 -B 5 "start"
           cd ..
           
-          # 環境ファイルの設定（本番用）
+          # 迺ｰ蠅・ヵ繧｡繧､繝ｫ縺ｮ險ｭ螳夲ｼ域悽逡ｪ逕ｨ・・
           cat > .env << 'EOF'
           NODE_ENV=production
           PORT=3001
@@ -70,11 +70,11 @@ jobs:
           SESSION_SECRET=emergency-assistance-session-secret-production
           EOF
           
-          # Deploy packageの内容を確認
+          # Deploy package縺ｮ蜀・ｮｹ繧堤｢ｺ隱・
           echo "=== Deploy package contents ==="
           ls -la
           
-          # 各ディレクトリの依存関係を個別にインストール
+          # 蜷・ョ繧｣繝ｬ繧ｯ繝医Μ縺ｮ萓晏ｭ倬未菫ゅｒ蛟句挨縺ｫ繧､繝ｳ繧ｹ繝医・繝ｫ
           echo "=== Installing shared dependencies ==="
           cd shared && npm install && npm run build && cd ..
           

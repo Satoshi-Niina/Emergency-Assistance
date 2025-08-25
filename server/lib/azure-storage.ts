@@ -1,4 +1,4 @@
-import { BlobServiceClient, ContainerClient, StorageSharedKeyCredential } from '@azure/storage-blob';
+﻿import { BlobServiceClient, ContainerClient, StorageSharedKeyCredential } from '@azure/storage-blob';
 import { DefaultAzureCredential } from '@azure/identity';
 import * as fs from 'fs-extra';
 import * as path from 'path';
@@ -23,7 +23,7 @@ export class AzureStorageService {
         credential
       );
     } else {
-      // Managed Identityを使用（Azure App Service上で動作）
+      // Managed Identity繧剃ｽｿ逕ｨ・・zure App Service荳翫〒蜍穂ｽ懶ｼ・
       const credential = new DefaultAzureCredential();
       this.blobServiceClient = new BlobServiceClient(
         `https://${accountName || 'your-storage-account'}.blob.core.windows.net`,
@@ -34,18 +34,18 @@ export class AzureStorageService {
     this.containerClient = this.blobServiceClient.getContainerClient(this.containerName);
   }
 
-  // コンテナの初期化
+  // 繧ｳ繝ｳ繝・リ縺ｮ蛻晄悄蛹・
   async initializeContainer(): Promise<void> {
     try {
       await this.containerClient.createIfNotExists();
-      console.log(`✅ Azure Storage container '${this.containerName}' initialized`);
+      console.log(`笨・Azure Storage container '${this.containerName}' initialized`);
     } catch (error) {
-      console.error('❌ Failed to initialize Azure Storage container:', error);
+      console.error('笶・Failed to initialize Azure Storage container:', error);
       throw error;
     }
   }
 
-  // ファイルをアップロード
+  // 繝輔ぃ繧､繝ｫ繧偵い繝・・繝ｭ繝ｼ繝・
   async uploadFile(localPath: string, blobName: string): Promise<string> {
     try {
       const blockBlobClient = this.containerClient.getBlockBlobClient(blobName);
@@ -58,24 +58,24 @@ export class AzureStorageService {
       });
 
       const url = blockBlobClient.url;
-      console.log(`✅ File uploaded: ${blobName} -> ${url}`);
+      console.log(`笨・File uploaded: ${blobName} -> ${url}`);
       return url;
     } catch (error) {
-      console.error(`❌ Failed to upload file ${blobName}:`, error);
+      console.error(`笶・Failed to upload file ${blobName}:`, error);
       throw error;
     }
   }
 
-  // ファイルをダウンロード
+  // 繝輔ぃ繧､繝ｫ繧偵ム繧ｦ繝ｳ繝ｭ繝ｼ繝・
   async downloadFile(blobName: string, localPath: string): Promise<void> {
     try {
       const blockBlobClient = this.containerClient.getBlockBlobClient(blobName);
       const downloadResponse = await blockBlobClient.download();
       
-      // ディレクトリを作成
+      // 繝・ぅ繝ｬ繧ｯ繝医Μ繧剃ｽ懈・
       await fs.ensureDir(path.dirname(localPath));
       
-      // ファイルに書き込み
+      // 繝輔ぃ繧､繝ｫ縺ｫ譖ｸ縺崎ｾｼ縺ｿ
       const writeStream = fs.createWriteStream(localPath);
       downloadResponse.readableStreamBody?.pipe(writeStream);
       
@@ -84,12 +84,12 @@ export class AzureStorageService {
         writeStream.on('error', reject);
       });
     } catch (error) {
-      console.error(`❌ Failed to download file ${blobName}:`, error);
+      console.error(`笶・Failed to download file ${blobName}:`, error);
       throw error;
     }
   }
 
-  // ファイルの存在確認
+  // 繝輔ぃ繧､繝ｫ縺ｮ蟄伜惠遒ｺ隱・
   async fileExists(blobName: string): Promise<boolean> {
     try {
       const blockBlobClient = this.containerClient.getBlockBlobClient(blobName);
@@ -100,19 +100,19 @@ export class AzureStorageService {
     }
   }
 
-  // ファイルを削除
+  // 繝輔ぃ繧､繝ｫ繧貞炎髯､
   async deleteFile(blobName: string): Promise<void> {
     try {
       const blockBlobClient = this.containerClient.getBlockBlobClient(blobName);
       await blockBlobClient.delete();
-      console.log(`✅ File deleted: ${blobName}`);
+      console.log(`笨・File deleted: ${blobName}`);
     } catch (error) {
-      console.error(`❌ Failed to delete file ${blobName}:`, error);
+      console.error(`笶・Failed to delete file ${blobName}:`, error);
       throw error;
     }
   }
 
-  // ディレクトリ内のファイル一覧を取得
+  // 繝・ぅ繝ｬ繧ｯ繝医Μ蜀・・繝輔ぃ繧､繝ｫ荳隕ｧ繧貞叙蠕・
   async listFiles(prefix?: string): Promise<string[]> {
     try {
       const files: string[] = [];
@@ -124,18 +124,18 @@ export class AzureStorageService {
       
       return files;
     } catch (error) {
-      console.error('❌ Failed to list files:', error);
+      console.error('笶・Failed to list files:', error);
       throw error;
     }
   }
 
-  // ファイルのURLを取得
+  // 繝輔ぃ繧､繝ｫ縺ｮURL繧貞叙蠕・
   getFileUrl(blobName: string): string {
     const blockBlobClient = this.containerClient.getBlockBlobClient(blobName);
     return blockBlobClient.url;
   }
 
-  // ローカルディレクトリ全体をアップロード
+  // 繝ｭ繝ｼ繧ｫ繝ｫ繝・ぅ繝ｬ繧ｯ繝医Μ蜈ｨ菴薙ｒ繧｢繝・・繝ｭ繝ｼ繝・
   async uploadDirectory(localDir: string, remotePrefix: string = ''): Promise<void> {
     try {
       const files = await this.getAllFiles(localDir);
@@ -146,14 +146,14 @@ export class AzureStorageService {
         await this.uploadFile(file, blobName);
       }
       
-      console.log(`✅ Directory uploaded: ${localDir} -> ${remotePrefix}`);
+      console.log(`笨・Directory uploaded: ${localDir} -> ${remotePrefix}`);
     } catch (error) {
-      console.error(`❌ Failed to upload directory ${localDir}:`, error);
+      console.error(`笶・Failed to upload directory ${localDir}:`, error);
       throw error;
     }
   }
 
-  // ディレクトリ全体をダウンロード
+  // 繝・ぅ繝ｬ繧ｯ繝医Μ蜈ｨ菴薙ｒ繝繧ｦ繝ｳ繝ｭ繝ｼ繝・
   async downloadDirectory(remotePrefix: string, localDir: string): Promise<void> {
     try {
       const files = await this.listFiles(remotePrefix);
@@ -164,14 +164,14 @@ export class AzureStorageService {
         await this.downloadFile(blobName, localPath);
       }
       
-      console.log(`✅ Directory downloaded: ${remotePrefix} -> ${localDir}`);
+      console.log(`笨・Directory downloaded: ${remotePrefix} -> ${localDir}`);
     } catch (error) {
-      console.error(`❌ Failed to download directory ${remotePrefix}:`, error);
+      console.error(`笶・Failed to download directory ${remotePrefix}:`, error);
       throw error;
     }
   }
 
-  // 再帰的にファイル一覧を取得
+  // 蜀榊ｸｰ逧・↓繝輔ぃ繧､繝ｫ荳隕ｧ繧貞叙蠕・
   private async getAllFiles(dir: string): Promise<string[]> {
     const files: string[] = [];
     const items = await fs.readdir(dir);
@@ -190,7 +190,7 @@ export class AzureStorageService {
     return files;
   }
 
-  // コンテンツタイプを取得
+  // 繧ｳ繝ｳ繝・Φ繝・ち繧､繝励ｒ蜿門ｾ・
   private getContentType(filename: string): string {
     const ext = path.extname(filename).toLowerCase();
     const contentTypes: { [key: string]: string } = {
@@ -214,5 +214,5 @@ export class AzureStorageService {
   }
 }
 
-// シングルトンインスタンス
+// 繧ｷ繝ｳ繧ｰ繝ｫ繝医Φ繧､繝ｳ繧ｹ繧ｿ繝ｳ繧ｹ
 export const azureStorage = new AzureStorageService(); 

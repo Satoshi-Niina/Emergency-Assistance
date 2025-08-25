@@ -1,37 +1,37 @@
-import 'dotenv/config';
+﻿import 'dotenv/config';
 import { db } from '../db/index.js';
 import { machineTypes, machines, users } from '../db/schema.js';
 import bcrypt from 'bcrypt';
 
 async function insertTestData() {
   try {
-    console.log('🔧 テストデータ挿入開始...');
+    console.log('肌 繝・せ繝医ョ繝ｼ繧ｿ謖ｿ蜈･髢句ｧ・..');
 
-    // 既存のデータを確認
+    // 譌｢蟄倥・繝・・繧ｿ繧堤｢ｺ隱・
     const existingMachineTypes = await db.select().from(machineTypes);
-    console.log('📊 既存の機種数:', existingMachineTypes.length);
+    console.log('投 譌｢蟄倥・讖溽ｨｮ謨ｰ:', existingMachineTypes.length);
 
     if (existingMachineTypes.length > 0) {
-      console.log('⚠️ 機種データが既に存在します。スキップします。');
+      console.log('笞・・讖溽ｨｮ繝・・繧ｿ縺梧里縺ｫ蟄伜惠縺励∪縺吶ゅせ繧ｭ繝・・縺励∪縺吶・);
     } else {
-      // テスト機種の挿入
+      // 繝・せ繝域ｩ溽ｨｮ縺ｮ謖ｿ蜈･
       const testMachineTypes = await db.insert(machineTypes).values([
         {
-          machineTypeName: '新幹線N700系'
+          machineTypeName: '譁ｰ蟷ｹ邱哢700邉ｻ'
         },
         {
-          machineTypeName: '新幹線E5系'
+          machineTypeName: '譁ｰ蟷ｹ邱哘5邉ｻ'
         },
         {
-          machineTypeName: '在来線E231系'
+          machineTypeName: '蝨ｨ譚･邱哘231邉ｻ'
         },
         {
-          machineTypeName: '在来線E233系'
+          machineTypeName: '蝨ｨ譚･邱哘233邉ｻ'
         }
       ]).returning();
-      console.log('✅ テスト機種挿入完了:', testMachineTypes);
+      console.log('笨・繝・せ繝域ｩ溽ｨｮ謖ｿ蜈･螳御ｺ・', testMachineTypes);
 
-      // テスト機械の挿入
+      // 繝・せ繝域ｩ滓｢ｰ縺ｮ謖ｿ蜈･
       const testMachines = await db.insert(machines).values([
         {
           machineNumber: 'N700-7001',
@@ -58,12 +58,12 @@ async function insertTestData() {
           machineTypeId: testMachineTypes[3].id
         }
       ]).returning();
-      console.log('✅ テスト機械挿入完了:', testMachines);
+      console.log('笨・繝・せ繝域ｩ滓｢ｰ謖ｿ蜈･螳御ｺ・', testMachines);
     }
 
-    console.log('🎉 テストデータ挿入処理完了！');
+    console.log('脂 繝・せ繝医ョ繝ｼ繧ｿ謖ｿ蜈･蜃ｦ逅・ｮ御ｺ・ｼ・);
   } catch (error) {
-    console.error('❌ テストデータ挿入エラー:', error);
+    console.error('笶・繝・せ繝医ョ繝ｼ繧ｿ謖ｿ蜈･繧ｨ繝ｩ繝ｼ:', error);
   } finally {
     process.exit(0);
   }

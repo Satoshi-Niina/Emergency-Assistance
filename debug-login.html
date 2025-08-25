@@ -1,7 +1,7 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
-    <title>緊急支援システム - ログインデバッグ</title>
+    <title>邱頑･謾ｯ謠ｴ繧ｷ繧ｹ繝・Β - 繝ｭ繧ｰ繧､繝ｳ繝・ヰ繝・げ</title>
     <meta charset="UTF-8">
     <style>
         body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
@@ -13,51 +13,51 @@
     </style>
 </head>
 <body>
-    <h1>🚨 緊急支援システム - ログインデバッグ</h1>
+    <h1>圷 邱頑･謾ｯ謠ｴ繧ｷ繧ｹ繝・Β - 繝ｭ繧ｰ繧､繝ｳ繝・ヰ繝・げ</h1>
     
     <div class="status-panel">
-        <h3>📋 システム情報</h3>
-        <p><strong>フロントエンド URL:</strong> Azure Static Web Apps</p>
-        <p><strong>バックエンド API:</strong> https://emergency-backend-webapp.azurewebsites.net</p>
-        <p><strong>現在の接続状態:</strong> <span id="connection-status">確認中...</span></p>
+        <h3>搭 繧ｷ繧ｹ繝・Β諠・ｱ</h3>
+        <p><strong>繝輔Ο繝ｳ繝医お繝ｳ繝・URL:</strong> Azure Static Web Apps</p>
+        <p><strong>繝舌ャ繧ｯ繧ｨ繝ｳ繝・API:</strong> https://emergency-backend-webapp.azurewebsites.net</p>
+        <p><strong>迴ｾ蝨ｨ縺ｮ謗･邯夂憾諷・</strong> <span id="connection-status">遒ｺ隱堺ｸｭ...</span></p>
     </div>
 
     <div class="debug-section">
-        <h3>🔐 ログイン情報</h3>
-        <p><strong>管理者:</strong></p>
+        <h3>柏 繝ｭ繧ｰ繧､繝ｳ諠・ｱ</h3>
+        <p><strong>邂｡逅・・</strong></p>
         <ul>
-            <li>ユーザー名: <code>admin</code></li>
-            <li>パスワード: <code>password</code></li>
+            <li>繝ｦ繝ｼ繧ｶ繝ｼ蜷・ <code>admin</code></li>
+            <li>繝代せ繝ｯ繝ｼ繝・ <code>password</code></li>
         </ul>
-        <p><strong>従業員:</strong></p>
+        <p><strong>蠕捺･ｭ蜩｡:</strong></p>
         <ul>
-            <li>ユーザー名: <code>employee1</code></li>
-            <li>パスワード: <code>password</code></li>
+            <li>繝ｦ繝ｼ繧ｶ繝ｼ蜷・ <code>employee1</code></li>
+            <li>繝代せ繝ｯ繝ｼ繝・ <code>password</code></li>
         </ul>
     </div>
 
     <div class="debug-section">
-        <h3>🧪 ログインテスト</h3>
+        <h3>ｧｪ 繝ｭ繧ｰ繧､繝ｳ繝・せ繝・/h3>
         <form id="loginForm">
             <div>
-                <input type="text" id="username" placeholder="ユーザー名" value="admin">
+                <input type="text" id="username" placeholder="繝ｦ繝ｼ繧ｶ繝ｼ蜷・ value="admin">
             </div>
             <div>
-                <input type="password" id="password" placeholder="パスワード" value="password">
+                <input type="password" id="password" placeholder="繝代せ繝ｯ繝ｼ繝・ value="password">
             </div>
             <div>
-                <button type="submit">ログインテスト</button>
+                <button type="submit">繝ｭ繧ｰ繧､繝ｳ繝・せ繝・/button>
             </div>
         </form>
         <div id="login-result"></div>
     </div>
 
     <div class="debug-section">
-        <h3>🔧 診断結果</h3>
+        <h3>肌 險ｺ譁ｭ邨先棡</h3>
         <div id="diagnostics">
-            <p>1. <span id="api-health">API接続確認中...</span></p>
-            <p>2. <span id="db-connection">データベース接続確認中...</span></p>
-            <p>3. <span id="gpt-connection">GPT接続確認中...</span></p>
+            <p>1. <span id="api-health">API謗･邯夂｢ｺ隱堺ｸｭ...</span></p>
+            <p>2. <span id="db-connection">繝・・繧ｿ繝吶・繧ｹ謗･邯夂｢ｺ隱堺ｸｭ...</span></p>
+            <p>3. <span id="gpt-connection">GPT謗･邯夂｢ｺ隱堺ｸｭ...</span></p>
         </div>
     </div>
 
@@ -70,15 +70,15 @@
                 const response = await fetch(`${API_BASE}/health`);
                 const data = await response.json();
                 document.getElementById('api-health').innerHTML = 
-                    `<span class="success">✅ API接続OK (${data.status})</span>`;
+                    `<span class="success">笨・API謗･邯唹K (${data.status})</span>`;
                 document.getElementById('connection-status').innerHTML = 
-                    '<span class="success">接続OK</span>';
+                    '<span class="success">謗･邯唹K</span>';
                 return true;
             } catch (error) {
                 document.getElementById('api-health').innerHTML = 
-                    `<span class="error">❌ API接続エラー: ${error.message}</span>`;
+                    `<span class="error">笶・API謗･邯壹お繝ｩ繝ｼ: ${error.message}</span>`;
                 document.getElementById('connection-status').innerHTML = 
-                    '<span class="error">接続エラー</span>';
+                    '<span class="error">謗･邯壹お繝ｩ繝ｼ</span>';
                 return false;
             }
         }
@@ -90,14 +90,14 @@
                 if (response.ok) {
                     const data = await response.json();
                     document.getElementById('db-connection').innerHTML = 
-                        `<span class="success">✅ データベース接続OK</span>`;
+                        `<span class="success">笨・繝・・繧ｿ繝吶・繧ｹ謗･邯唹K</span>`;
                 } else {
                     document.getElementById('db-connection').innerHTML = 
-                        `<span class="error">❌ データベース接続エラー (${response.status})</span>`;
+                        `<span class="error">笶・繝・・繧ｿ繝吶・繧ｹ謗･邯壹お繝ｩ繝ｼ (${response.status})</span>`;
                 }
             } catch (error) {
                 document.getElementById('db-connection').innerHTML = 
-                    `<span class="error">❌ データベース接続エラー: ${error.message}</span>`;
+                    `<span class="error">笶・繝・・繧ｿ繝吶・繧ｹ謗･邯壹お繝ｩ繝ｼ: ${error.message}</span>`;
             }
         }
 
@@ -108,14 +108,14 @@
                 if (response.ok) {
                     const data = await response.json();
                     document.getElementById('gpt-connection').innerHTML = 
-                        `<span class="success">✅ GPT接続OK</span>`;
+                        `<span class="success">笨・GPT謗･邯唹K</span>`;
                 } else {
                     document.getElementById('gpt-connection').innerHTML = 
-                        `<span class="error">❌ GPT接続エラー (${response.status})</span>`;
+                        `<span class="error">笶・GPT謗･邯壹お繝ｩ繝ｼ (${response.status})</span>`;
                 }
             } catch (error) {
                 document.getElementById('gpt-connection').innerHTML = 
-                    `<span class="error">❌ GPT接続エラー: ${error.message}</span>`;
+                    `<span class="error">笶・GPT謗･邯壹お繝ｩ繝ｼ: ${error.message}</span>`;
             }
         }
 
@@ -127,7 +127,7 @@
             const password = document.getElementById('password').value;
             const resultDiv = document.getElementById('login-result');
             
-            resultDiv.innerHTML = '<p>ログイン中...</p>';
+            resultDiv.innerHTML = '<p>繝ｭ繧ｰ繧､繝ｳ荳ｭ...</p>';
             
             try {
                 const response = await fetch(`${API_BASE}/api/auth/login`, {
@@ -144,15 +144,15 @@
                 if (response.ok) {
                     resultDiv.innerHTML = `
                         <div class="success">
-                            <h4>✅ ログイン成功!</h4>
-                            <p>ユーザー: ${data.user.display_name}</p>
-                            <p>権限: ${data.user.role}</p>
+                            <h4>笨・繝ｭ繧ｰ繧､繝ｳ謌仙粥!</h4>
+                            <p>繝ｦ繝ｼ繧ｶ繝ｼ: ${data.user.display_name}</p>
+                            <p>讓ｩ髯・ ${data.user.role}</p>
                         </div>
                     `;
                 } else {
                     resultDiv.innerHTML = `
                         <div class="error">
-                            <h4>❌ ログイン失敗</h4>
+                            <h4>笶・繝ｭ繧ｰ繧､繝ｳ螟ｱ謨・/h4>
                             <p>${data.error || 'Unknown error'}</p>
                         </div>
                     `;
@@ -160,7 +160,7 @@
             } catch (error) {
                 resultDiv.innerHTML = `
                     <div class="error">
-                        <h4>❌ 接続エラー</h4>
+                        <h4>笶・謗･邯壹お繝ｩ繝ｼ</h4>
                         <p>${error.message}</p>
                     </div>
                 `;

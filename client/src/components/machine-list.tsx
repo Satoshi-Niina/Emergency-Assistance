@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
@@ -24,12 +24,12 @@ export default function MachineList() {
       .then(json => {
         setData(json.data || []);
         setLoading(false);
-        // 初期状態で全て展開
+        // 蛻晄悄迥ｶ諷九〒蜈ｨ縺ｦ螻暮幕
         const allIds = new Set((json.data || []).map((group: MachineTypeGroup) => group.type_id));
         setExpandedGroups(allIds);
       })
       .catch(error => {
-        console.error('機種・機械番号一覧取得エラー:', error);
+        console.error('讖溽ｨｮ繝ｻ讖滓｢ｰ逡ｪ蜿ｷ荳隕ｧ蜿門ｾ励お繝ｩ繝ｼ:', error);
         setLoading(false);
       });
   }, []);
@@ -48,7 +48,7 @@ export default function MachineList() {
     return (
       <div className="flex justify-center items-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <p className="ml-3 text-gray-600">機種・機械番号一覧を読み込み中...</p>
+        <p className="ml-3 text-gray-600">讖溽ｨｮ繝ｻ讖滓｢ｰ逡ｪ蜿ｷ荳隕ｧ繧定ｪｭ縺ｿ霎ｼ縺ｿ荳ｭ...</p>
       </div>
     );
   }
@@ -56,14 +56,14 @@ export default function MachineList() {
   if (data.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-gray-500">登録されている機種・機械番号がありません</p>
+        <p className="text-gray-500">逋ｻ骭ｲ縺輔ｌ縺ｦ縺・ｋ讖溽ｨｮ繝ｻ讖滓｢ｰ逡ｪ蜿ｷ縺後≠繧翫∪縺帙ｓ</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-gray-800 mb-4">機種と機械番号一覧</h3>
+      <h3 className="text-lg font-semibold text-gray-800 mb-4">讖溽ｨｮ縺ｨ讖滓｢ｰ逡ｪ蜿ｷ荳隕ｧ</h3>
       {data.map(group => (
         <Card key={group.type_id} className="border border-gray-200 shadow-sm">
           <CardHeader 
@@ -72,11 +72,11 @@ export default function MachineList() {
           >
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-medium text-gray-800">
-                機種: {group.machine_type_name}
+                讖溽ｨｮ: {group.machine_type_name}
               </CardTitle>
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-gray-500">
-                  {group.machines.length}台
+                  {group.machines.length}蜿ｰ
                 </span>
                 {expandedGroups.has(group.type_id) ? (
                   <ChevronUp className="h-4 w-4 text-gray-500" />
@@ -97,7 +97,7 @@ export default function MachineList() {
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-medium text-blue-800">
-                          機械番号: {machine.machine_number}
+                          讖滓｢ｰ逡ｪ蜿ｷ: {machine.machine_number}
                         </span>
                       </div>
                     </div>
@@ -105,7 +105,7 @@ export default function MachineList() {
                 </div>
               ) : (
                 <div className="text-center py-4 text-gray-500">
-                  この機種に登録されている機械番号がありません
+                  縺薙・讖溽ｨｮ縺ｫ逋ｻ骭ｲ縺輔ｌ縺ｦ縺・ｋ讖滓｢ｰ逡ｪ蜿ｷ縺後≠繧翫∪縺帙ｓ
                 </div>
               )}
             </CardContent>

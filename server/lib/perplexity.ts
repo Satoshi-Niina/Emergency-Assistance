@@ -1,4 +1,4 @@
-import OpenAI from 'openai';
+﻿import OpenAI from 'openai';
 
 export class PerplexityService {
     private openai: OpenAI | null = null;
@@ -26,7 +26,7 @@ export class PerplexityService {
                 messages: [
                     {
                         role: 'system',
-                        content: 'あなたは有用なアシスタントです。最新の情報を提供し、正確で詳細な回答をしてください。'
+                        content: '縺ゅ↑縺溘・譛臥畑縺ｪ繧｢繧ｷ繧ｹ繧ｿ繝ｳ繝医〒縺吶よ怙譁ｰ縺ｮ諠・ｱ繧呈署萓帙＠縲∵ｭ｣遒ｺ縺ｧ隧ｳ邏ｰ縺ｪ蝗樒ｭ斐ｒ縺励※縺上□縺輔＞縲・
                     },
                     {
                         role: 'user',
@@ -43,7 +43,7 @@ export class PerplexityService {
                 usage: response.usage
             };
         } catch (error) {
-            console.error('Perplexity検索エラー:', error);
+            console.error('Perplexity讀懃ｴ｢繧ｨ繝ｩ繝ｼ:', error);
             throw error;
         }
     }
@@ -59,7 +59,7 @@ export class PerplexityService {
                 messages: [
                     {
                         role: 'system',
-                        content: 'あなたは有用なアシスタントです。回答には必ず情報源を含めてください。'
+                        content: '縺ゅ↑縺溘・譛臥畑縺ｪ繧｢繧ｷ繧ｹ繧ｿ繝ｳ繝医〒縺吶ょ屓遲斐↓縺ｯ蠢・★諠・ｱ貅舌ｒ蜷ｫ繧√※縺上□縺輔＞縲・
                     },
                     {
                         role: 'user',
@@ -76,7 +76,7 @@ export class PerplexityService {
                 usage: response.usage
             };
         } catch (error) {
-            console.error('Perplexity検索エラー（ソース付き）:', error);
+            console.error('Perplexity讀懃ｴ｢繧ｨ繝ｩ繝ｼ・医た繝ｼ繧ｹ莉倥″・・', error);
             throw error;
         }
     }

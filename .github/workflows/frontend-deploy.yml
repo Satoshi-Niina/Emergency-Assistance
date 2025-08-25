@@ -1,5 +1,5 @@
-# Azure Static Web Apps GitHub Actions Workflow
-# フロントエンド（client）をビルドし、Azure Static Web Apps にデプロイ
+﻿# Azure Static Web Apps GitHub Actions Workflow
+# 繝輔Ο繝ｳ繝医お繝ｳ繝会ｼ・lient・峨ｒ繝薙Ν繝峨＠縲、zure Static Web Apps 縺ｫ繝・・繝ｭ繧､
 name: Deploy Frontend to Azure Static Web Apps
 
 on:

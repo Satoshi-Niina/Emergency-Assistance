@@ -1,8 +1,8 @@
-<!doctype html>
+﻿<!doctype html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>編集機能テスト</title>
+  <title>邱ｨ髮・ｩ溯・繝・せ繝・/title>
   <style>
     .readonly {
       display: block;
@@ -59,27 +59,27 @@
 </head>
 <body>
   <div>
-    <button class="btn btn-edit" onclick="console.log('編集ボタンクリック'); toggleEditMode()">編集</button>
-    <button class="btn btn-save" onclick="console.log('保存ボタンクリック'); saveData()" style="display: none;">保存</button>
-    <button class="btn btn-cancel" onclick="console.log('キャンセルボタンクリック'); toggleEditMode()" style="display: none;">キャンセル</button>
+    <button class="btn btn-edit" onclick="console.log('邱ｨ髮・・繧ｿ繝ｳ繧ｯ繝ｪ繝・け'); toggleEditMode()">邱ｨ髮・/button>
+    <button class="btn btn-save" onclick="console.log('菫晏ｭ倥・繧ｿ繝ｳ繧ｯ繝ｪ繝・け'); saveData()" style="display: none;">菫晏ｭ・/button>
+    <button class="btn btn-cancel" onclick="console.log('繧ｭ繝｣繝ｳ繧ｻ繝ｫ繝懊ち繝ｳ繧ｯ繝ｪ繝・け'); toggleEditMode()" style="display: none;">繧ｭ繝｣繝ｳ繧ｻ繝ｫ</button>
   </div>
   
   <div style="margin: 20px; padding: 20px; border: 1px solid #ccc;">
-    <h2>テストフィールド</h2>
+    <h2>繝・せ繝医ヵ繧｣繝ｼ繝ｫ繝・/h2>
     <div style="margin: 10px 0;">
-      <strong>名前：</strong>
-      <span class="readonly">テスト太郎</span>
-      <input class="editable" value="テスト太郎" />
+      <strong>蜷榊燕・・/strong>
+      <span class="readonly">繝・せ繝亥､ｪ驛・/span>
+      <input class="editable" value="繝・せ繝亥､ｪ驛・ />
     </div>
     <div style="margin: 10px 0;">
-      <strong>場所：</strong>
-      <span class="readonly">東京</span>
-      <input class="editable" value="東京" />
+      <strong>蝣ｴ謇・・/strong>
+      <span class="readonly">譚ｱ莠ｬ</span>
+      <input class="editable" value="譚ｱ莠ｬ" />
     </div>
     <div style="margin: 10px 0;">
-      <strong>説明：</strong>
-      <span class="readonly">これはテストです</span>
-      <textarea class="editable">これはテストです</textarea>
+      <strong>隱ｬ譏趣ｼ・/strong>
+      <span class="readonly">縺薙ｌ縺ｯ繝・せ繝医〒縺・/span>
+      <textarea class="editable">縺薙ｌ縺ｯ繝・せ繝医〒縺・/textarea>
     </div>
   </div>
   
@@ -87,30 +87,30 @@
     let isEditMode = false;
     
     function toggleEditMode() {
-      console.log('toggleEditMode呼び出し, 現在のisEditMode:', isEditMode);
+      console.log('toggleEditMode蜻ｼ縺ｳ蜃ｺ縺・ 迴ｾ蝨ｨ縺ｮisEditMode:', isEditMode);
       
       isEditMode = !isEditMode;
-      console.log('新しいisEditMode:', isEditMode);
+      console.log('譁ｰ縺励＞isEditMode:', isEditMode);
       
       const editBtn = document.querySelector('.btn-edit');
       const saveBtn = document.querySelector('.btn-save');
       const cancelBtn = document.querySelector('.btn-cancel');
       
-      console.log('ボタン要素:', { 
+      console.log('繝懊ち繝ｳ隕∫ｴ:', { 
         editBtn: !!editBtn, 
         saveBtn: !!saveBtn, 
         cancelBtn: !!cancelBtn 
       });
       
       if (isEditMode) {
-        console.log('編集モードに入る');
+        console.log('邱ｨ髮・Δ繝ｼ繝峨↓蜈･繧・);
         if (editBtn) editBtn.style.display = 'none';
         if (saveBtn) saveBtn.style.display = 'inline-block';
         if (cancelBtn) cancelBtn.style.display = 'inline-block';
         document.body.classList.add('edit-mode');
         console.log('body class:', document.body.classList.toString());
       } else {
-        console.log('編集モードを終了');
+        console.log('邱ｨ髮・Δ繝ｼ繝峨ｒ邨ゆｺ・);
         if (editBtn) editBtn.style.display = 'inline-block';
         if (saveBtn) saveBtn.style.display = 'none';
         if (cancelBtn) cancelBtn.style.display = 'none';
@@ -118,13 +118,13 @@
         console.log('body class:', document.body.classList.toString());
       }
       
-      // 表示状態を確認
+      // 陦ｨ遉ｺ迥ｶ諷九ｒ遒ｺ隱・
       setTimeout(() => {
         const readonlyElements = document.querySelectorAll('.readonly');
         const editableElements = document.querySelectorAll('.editable');
         
-        console.log('readonly要素数:', readonlyElements.length);
-        console.log('editable要素数:', editableElements.length);
+        console.log('readonly隕∫ｴ謨ｰ:', readonlyElements.length);
+        console.log('editable隕∫ｴ謨ｰ:', editableElements.length);
         
         readonlyElements.forEach((el, index) => {
           const computedStyle = window.getComputedStyle(el);
@@ -139,17 +139,17 @@
     }
     
     function saveData() {
-      console.log('保存処理実行');
-      // 編集を終了
+      console.log('菫晏ｭ伜・逅・ｮ溯｡・);
+      // 邱ｨ髮・ｒ邨ゆｺ・
       toggleEditMode();
-      alert('保存されました');
+      alert('菫晏ｭ倥＆繧後∪縺励◆');
     }
     
-    // ページ読み込み時
+    // 繝壹・繧ｸ隱ｭ縺ｿ霎ｼ縺ｿ譎・
     document.addEventListener('DOMContentLoaded', function() {
-      console.log('ページ読み込み完了');
-      console.log('readonly要素数:', document.querySelectorAll('.readonly').length);
-      console.log('editable要素数:', document.querySelectorAll('.editable').length);
+      console.log('繝壹・繧ｸ隱ｭ縺ｿ霎ｼ縺ｿ螳御ｺ・);
+      console.log('readonly隕∫ｴ謨ｰ:', document.querySelectorAll('.readonly').length);
+      console.log('editable隕∫ｴ謨ｰ:', document.querySelectorAll('.editable').length);
     });
   </script>
 </body>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,13 +17,13 @@ export default function SignIn() {
     setError('');
 
     try {
-      console.log('🔐 サインインページ: ログイン処理開始');
+      console.log('柏 繧ｵ繧､繝ｳ繧､繝ｳ繝壹・繧ｸ: 繝ｭ繧ｰ繧､繝ｳ蜃ｦ逅・幕蟋・);
       await login(username, password);
-      console.log('✅ サインインページ: ログイン成功、チャットページに遷移');
+      console.log('笨・繧ｵ繧､繝ｳ繧､繝ｳ繝壹・繧ｸ: 繝ｭ繧ｰ繧､繝ｳ謌仙粥縲√メ繝｣繝・ヨ繝壹・繧ｸ縺ｫ驕ｷ遘ｻ');
       navigate('/chat');
     } catch (error) {
-      console.error('❌ サインインページ: ログインエラー:', error);
-      setError(error instanceof Error ? error.message : 'ログインに失敗しました');
+      console.error('笶・繧ｵ繧､繝ｳ繧､繝ｳ繝壹・繧ｸ: 繝ｭ繧ｰ繧､繝ｳ繧ｨ繝ｩ繝ｼ:', error);
+      setError(error instanceof Error ? error.message : '繝ｭ繧ｰ繧､繝ｳ縺ｫ螟ｱ謨励＠縺ｾ縺励◆');
     }
   };
 
@@ -31,7 +31,7 @@ export default function SignIn() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl text-center">ログイン</CardTitle>
+          <CardTitle className="text-2xl text-center">繝ｭ繧ｰ繧､繝ｳ</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignIn} className="space-y-4">
@@ -41,7 +41,7 @@ export default function SignIn() {
             <div>
               <Input
                 type="text"
-                placeholder="ユーザー名"
+                placeholder="繝ｦ繝ｼ繧ｶ繝ｼ蜷・
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
@@ -51,7 +51,7 @@ export default function SignIn() {
             <div>
               <Input
                 type="password"
-                placeholder="パスワード"
+                placeholder="繝代せ繝ｯ繝ｼ繝・
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -59,7 +59,7 @@ export default function SignIn() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'ログイン中...' : 'ログイン'}
+              {isLoading ? '繝ｭ繧ｰ繧､繝ｳ荳ｭ...' : '繝ｭ繧ｰ繧､繝ｳ'}
             </Button>
           </form>
         </CardContent>

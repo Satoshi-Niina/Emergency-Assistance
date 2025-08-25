@@ -1,4 +1,4 @@
-
+﻿
 import { Router } from 'express';
 import fs from 'fs/promises';
 import path from 'path';
@@ -10,21 +10,21 @@ const __dirname = path.dirname(__filename);
 
 const router = Router();
 
-// トラブルシューティングディレクトリのパス
+// 繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ繝・ぅ繝ｬ繧ｯ繝医Μ縺ｮ繝代せ
 const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
 
-// トラブルシューティングデータを読み込む関数
+// 繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ繝・・繧ｿ繧定ｪｭ縺ｿ霎ｼ繧髢｢謨ｰ
 async function loadTroubleshootingData() {
   try {
-    console.log('🔍 トラブルシューティングディレクトリパス:', troubleshootingDir);
-    console.log('🔍 現在の作業ディレクトリ:', process.cwd());
-    console.log('🔍 絶対パス:', path.resolve(troubleshootingDir));
+    console.log('剥 繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ繝・ぅ繝ｬ繧ｯ繝医Μ繝代せ:', troubleshootingDir);
+    console.log('剥 迴ｾ蝨ｨ縺ｮ菴懈･ｭ繝・ぅ繝ｬ繧ｯ繝医Μ:', process.cwd());
+    console.log('剥 邨ｶ蟇ｾ繝代せ:', path.resolve(troubleshootingDir));
     
     if (!existsSync(troubleshootingDir)) {
-      console.warn(`❌ トラブルシューティングディレクトリが見つかりません: ${troubleshootingDir}`);
-      console.warn(`🔍 代替パスを試行中...`);
+      console.warn(`笶・繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ繝・ぅ繝ｬ繧ｯ繝医Μ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ: ${troubleshootingDir}`);
+      console.warn(`剥 莉｣譖ｿ繝代せ繧定ｩｦ陦御ｸｭ...`);
       
-      // 代替パスを試行
+      // 莉｣譖ｿ繝代せ繧定ｩｦ陦・
       const alternativePaths = [
         path.join(process.cwd(), 'knowledge-base', 'troubleshooting'),
         path.join(__dirname, '..', '..', 'knowledge-base', 'troubleshooting'),
@@ -32,53 +32,53 @@ async function loadTroubleshootingData() {
       ];
       
       for (const altPath of alternativePaths) {
-        console.log(`🔍 代替パスをチェック中: ${altPath}`);
+        console.log(`剥 莉｣譖ｿ繝代せ繧偵メ繧ｧ繝・け荳ｭ: ${altPath}`);
         if (existsSync(altPath)) {
-          console.log(`✅ 代替パスが見つかりました: ${altPath}`);
+          console.log(`笨・莉｣譖ｿ繝代せ縺瑚ｦ九▽縺九ｊ縺ｾ縺励◆: ${altPath}`);
           const files = readdirSync(altPath);
-          console.log(`📁 ディレクトリ内のファイル:`, files);
+          console.log(`刀 繝・ぅ繝ｬ繧ｯ繝医Μ蜀・・繝輔ぃ繧､繝ｫ:`, files);
           return await loadFromDirectory(altPath);
         }
       }
       
-      console.error(`❌ どのパスでもディレクトリが見つかりませんでした`);
+      console.error(`笶・縺ｩ縺ｮ繝代せ縺ｧ繧ゅョ繧｣繝ｬ繧ｯ繝医Μ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ縺ｧ縺励◆`);
       return [];
     }
 
     return await loadFromDirectory(troubleshootingDir);
   } catch (error) {
-    console.error('❌ トラブルシューティングデータの読み込みエラー:', error);
+    console.error('笶・繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ繝・・繧ｿ縺ｮ隱ｭ縺ｿ霎ｼ縺ｿ繧ｨ繝ｩ繝ｼ:', error);
     return [];
   }
 }
 
-// 指定されたディレクトリからファイルを読み込む関数
+// 謖・ｮ壹＆繧後◆繝・ぅ繝ｬ繧ｯ繝医Μ縺九ｉ繝輔ぃ繧､繝ｫ繧定ｪｭ縺ｿ霎ｼ繧髢｢謨ｰ
 async function loadFromDirectory(dirPath: string) {
   try {
-    console.log(`📁 ディレクトリから読み込み中: ${dirPath}`);
+    console.log(`刀 繝・ぅ繝ｬ繧ｯ繝医Μ縺九ｉ隱ｭ縺ｿ霎ｼ縺ｿ荳ｭ: ${dirPath}`);
     const files = readdirSync(dirPath);
-    console.log('📁 ディレクトリ内のファイル:', files);
+    console.log('刀 繝・ぅ繝ｬ繧ｯ繝医Μ蜀・・繝輔ぃ繧､繝ｫ:', files);
     
     const jsonFiles = files.filter(file => {
       const isJson = file.endsWith('.json');
       const isNotBackup = !file.includes('.backup');
       const isNotTmp = !file.includes('.tmp');
-      console.log(`📄 ファイル ${file}: JSON=${isJson}, バックアップ=${!isNotBackup}, 一時=${!isNotTmp}`);
+      console.log(`塘 繝輔ぃ繧､繝ｫ ${file}: JSON=${isJson}, 繝舌ャ繧ｯ繧｢繝・・=${!isNotBackup}, 荳譎・${!isNotTmp}`);
       return isJson && isNotBackup && isNotTmp;
     });
     
-    console.log('📄 処理対象のJSONファイル:', jsonFiles);
+    console.log('塘 蜃ｦ逅・ｯｾ雎｡縺ｮJSON繝輔ぃ繧､繝ｫ:', jsonFiles);
 
     const fileList = await Promise.all(jsonFiles.map(async (file) => {
       try {
         const filePath = path.join(dirPath, file);
-        console.log(`🔍 ファイル読み込み中: ${filePath}`);
+        console.log(`剥 繝輔ぃ繧､繝ｫ隱ｭ縺ｿ霎ｼ縺ｿ荳ｭ: ${filePath}`);
         
         const content = await fs.readFile(filePath, 'utf8');
-        console.log(`📄 ファイル ${file} のサイズ: ${content.length} 文字`);
+        console.log(`塘 繝輔ぃ繧､繝ｫ ${file} 縺ｮ繧ｵ繧､繧ｺ: ${content.length} 譁・ｭ輿);
         
         const data = JSON.parse(content);
-        console.log(`✅ ファイル ${file} のJSON解析成功:`, {
+        console.log(`笨・繝輔ぃ繧､繝ｫ ${file} 縺ｮJSON隗｣譫先・蜉・`, {
           id: data.id,
           title: data.title,
           hasDescription: !!data.description,
@@ -93,7 +93,7 @@ async function loadFromDirectory(dirPath: string) {
 
         const result = {
           id: data.id || file.replace('.json', ''),
-          title: data.title || 'タイトルなし',
+          title: data.title || '繧ｿ繧､繝医Ν縺ｪ縺・,
           description: description,
           fileName: file,
           filePath: `knowledge-base/troubleshooting/${file}`,
@@ -103,11 +103,11 @@ async function loadFromDirectory(dirPath: string) {
           steps: data.steps || []
         };
         
-        console.log(`✅ ファイル ${file} の処理完了:`, result);
+        console.log(`笨・繝輔ぃ繧､繝ｫ ${file} 縺ｮ蜃ｦ逅・ｮ御ｺ・`, result);
         return result;
       } catch (error) {
-        console.error(`❌ ファイル ${file} の解析中にエラーが発生しました:`, error);
-        console.error(`🔍 エラーの詳細:`, {
+        console.error(`笶・繝輔ぃ繧､繝ｫ ${file} 縺ｮ隗｣譫蝉ｸｭ縺ｫ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆:`, error);
+        console.error(`剥 繧ｨ繝ｩ繝ｼ縺ｮ隧ｳ邏ｰ:`, {
           message: error instanceof Error ? error.message : 'Unknown error',
           stack: error instanceof Error ? error.stack : undefined
         });
@@ -116,21 +116,21 @@ async function loadFromDirectory(dirPath: string) {
     }));
 
     const validFiles = fileList.filter(Boolean);
-    console.log(`📋 有効なファイル数: ${validFiles.length}/${jsonFiles.length}`);
+    console.log(`搭 譛牙柑縺ｪ繝輔ぃ繧､繝ｫ謨ｰ: ${validFiles.length}/${jsonFiles.length}`);
     
     return validFiles;
   } catch (error) {
-    console.error(`❌ ディレクトリ ${dirPath} からの読み込みエラー:`, error);
+    console.error(`笶・繝・ぅ繝ｬ繧ｯ繝医Μ ${dirPath} 縺九ｉ縺ｮ隱ｭ縺ｿ霎ｼ縺ｿ繧ｨ繝ｩ繝ｼ:`, error);
     return [];
   }
 }
 
-// トラブルシューティング一覧取得
+// 繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ荳隕ｧ蜿門ｾ・
 router.get('/list', async (req, res) => {
-  console.log('📋 トラブルシューティング一覧リクエスト受信');
+  console.log('搭 繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ荳隕ｧ繝ｪ繧ｯ繧ｨ繧ｹ繝亥女菫｡');
   try {
     const data = await loadTroubleshootingData();
-    console.log(`✅ トラブルシューティング一覧取得完了: ${data.length}件`);
+    console.log(`笨・繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ荳隕ｧ蜿門ｾ怜ｮ御ｺ・ ${data.length}莉ｶ`);
     
     res.setHeader('Content-Type', 'application/json');
     res.json({
@@ -140,23 +140,23 @@ router.get('/list', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('❌ トラブルシューティング一覧取得エラー:', error);
+    console.error('笶・繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ荳隕ｧ蜿門ｾ励お繝ｩ繝ｼ:', error);
     res.status(500).json({ 
       success: false,
-      error: 'データの取得に失敗しました',
+      error: '繝・・繧ｿ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆',
       details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// 特定のトラブルシューティング取得
+// 迚ｹ螳壹・繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ蜿門ｾ・
 router.get('/:id', async (req, res) => {
-  console.log('📋 特定のトラブルシューティング取得開始:', req.params.id);
+  console.log('搭 迚ｹ螳壹・繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ蜿門ｾ鈴幕蟋・', req.params.id);
   try {
     const { id } = req.params;
     
-    // キャッシュ制御ヘッダーを設定
+    // 繧ｭ繝｣繝・す繝･蛻ｶ蠕｡繝倥ャ繝繝ｼ繧定ｨｭ螳・
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2);
     res.set({
@@ -169,37 +169,37 @@ router.get('/:id', async (req, res) => {
       'X-Requested-With': 'XMLHttpRequest'
     });
     
-    console.log('🔍 トラブルシューティングディレクトリ確認:', troubleshootingDir);
+    console.log('剥 繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ繝・ぅ繝ｬ繧ｯ繝医Μ遒ｺ隱・', troubleshootingDir);
     
-    // トラブルシューティングディレクトリから該当するJSONファイルを検索
+    // 繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ繝・ぅ繝ｬ繧ｯ繝医Μ縺九ｉ隧ｲ蠖薙☆繧徽SON繝輔ぃ繧､繝ｫ繧呈､懃ｴ｢
     if (!existsSync(troubleshootingDir)) {
-      console.error('❌ トラブルシューティングディレクトリが見つかりません:', troubleshootingDir);
+      console.error('笶・繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ繝・ぅ繝ｬ繧ｯ繝医Μ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ:', troubleshootingDir);
       return res.status(404).json({ 
         success: false,
-        error: 'トラブルシューティングディレクトリが見つかりません',
+        error: '繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ繝・ぅ繝ｬ繧ｯ繝医Μ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ',
         id,
         timestamp: new Date().toISOString()
       });
     }
     
     const files = readdirSync(troubleshootingDir);
-    console.log('📁 ディレクトリ内のファイル:', files);
+    console.log('刀 繝・ぅ繝ｬ繧ｯ繝医Μ蜀・・繝輔ぃ繧､繝ｫ:', files);
     
     const jsonFiles = files.filter(file => file.endsWith('.json'));
-    console.log('📄 JSONファイル:', jsonFiles);
+    console.log('塘 JSON繝輔ぃ繧､繝ｫ:', jsonFiles);
     
     let flowData = null;
     let fileName = null;
     
-    // IDに一致するファイルを検索
+    // ID縺ｫ荳閾ｴ縺吶ｋ繝輔ぃ繧､繝ｫ繧呈､懃ｴ｢
     for (const file of jsonFiles) {
       try {
-        console.log(`🔍 ファイル ${file} をチェック中...`);
+        console.log(`剥 繝輔ぃ繧､繝ｫ ${file} 繧偵メ繧ｧ繝・け荳ｭ...`);
         const filePath = path.join(troubleshootingDir, file);
         const fileContent = await fs.readFile(filePath, 'utf8');
         const data = JSON.parse(fileContent);
         
-        console.log(`📋 ファイル ${file} の内容:`, {
+        console.log(`搭 繝輔ぃ繧､繝ｫ ${file} 縺ｮ蜀・ｮｹ:`, {
           fileId: data.id,
           requestId: id,
           idsMatch: data.id === id,
@@ -209,25 +209,25 @@ router.get('/:id', async (req, res) => {
         if (data.id === id || file.replace('.json', '') === id) {
           flowData = data;
           fileName = file;
-          console.log(`✅ マッチするファイルを発見: ${file}`);
+          console.log(`笨・繝槭ャ繝√☆繧九ヵ繧｡繧､繝ｫ繧堤匱隕・ ${file}`);
           break;
         }
       } catch (error) {
-        console.error(`❌ ファイル ${file} の読み込みエラー:`, error);
+        console.error(`笶・繝輔ぃ繧､繝ｫ ${file} 縺ｮ隱ｭ縺ｿ霎ｼ縺ｿ繧ｨ繝ｩ繝ｼ:`, error);
       }
     }
     
     if (!flowData) {
-      console.error('❌ マッチするファイルが見つかりません:', id);
+      console.error('笶・繝槭ャ繝√☆繧九ヵ繧｡繧､繝ｫ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ:', id);
       return res.status(404).json({ 
         success: false,
-        error: 'アイテムが見つかりません',
+        error: '繧｢繧､繝・Β縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ',
         id,
         timestamp: new Date().toISOString()
       });
     }
     
-    console.log(`✅ トラブルシューティング取得完了:`, {
+    console.log(`笨・繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ蜿門ｾ怜ｮ御ｺ・`, {
       id: flowData.id,
       title: flowData.title,
       stepsCount: flowData.steps?.length || 0,
@@ -238,9 +238,9 @@ router.get('/:id', async (req, res) => {
       flowDataKeys: Object.keys(flowData)
     });
     
-    // データ構造の詳細ログ
+    // 繝・・繧ｿ讒矩縺ｮ隧ｳ邏ｰ繝ｭ繧ｰ
     if (flowData.steps && Array.isArray(flowData.steps)) {
-      console.log('📋 ステップデータ詳細:', {
+      console.log('搭 繧ｹ繝・ャ繝励ョ繝ｼ繧ｿ隧ｳ邏ｰ:', {
         totalSteps: flowData.steps.length,
         stepIds: flowData.steps.map((step: any, index: number) => ({
           index,
@@ -251,7 +251,7 @@ router.get('/:id', async (req, res) => {
         }))
       });
     } else {
-      console.warn('⚠️ ステップデータが存在しないか、配列ではありません:', {
+      console.warn('笞・・繧ｹ繝・ャ繝励ョ繝ｼ繧ｿ縺悟ｭ伜惠縺励↑縺・°縲・・蛻励〒縺ｯ縺ゅｊ縺ｾ縺帙ｓ:', {
         steps: flowData.steps,
         stepsType: typeof flowData.steps
       });
@@ -264,7 +264,7 @@ router.get('/:id', async (req, res) => {
       timestamp: new Date().toISOString()
     };
     
-    console.log('📤 レスポンス送信:', {
+    console.log('豆 繝ｬ繧ｹ繝昴Φ繧ｹ騾∽ｿ｡:', {
       success: responseData.success,
       dataId: responseData.data.id,
       dataStepsCount: responseData.data.steps?.length || 0
@@ -272,43 +272,43 @@ router.get('/:id', async (req, res) => {
     
     res.json(responseData);
   } catch (error) {
-    console.error('❌ トラブルシューティング取得エラー:', error);
+    console.error('笶・繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ蜿門ｾ励お繝ｩ繝ｼ:', error);
     res.status(500).json({ 
       success: false,
-      error: 'データの取得に失敗しました',
+      error: '繝・・繧ｿ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆',
       details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// トラブルシューティング更新
+// 繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ譖ｴ譁ｰ
 router.put('/:id', async (req, res) => {
-  console.log('📝 トラブルシューティング更新:', req.params.id);
+  console.log('統 繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ譖ｴ譁ｰ:', req.params.id);
   try {
     const { id } = req.params;
     const flowData = req.body;
     
-    // 必須フィールドの検証
+    // 蠢・医ヵ繧｣繝ｼ繝ｫ繝峨・讀懆ｨｼ
     if (!flowData.title) {
       return res.status(400).json({
         success: false,
-        error: 'タイトルは必須です'
+        error: '繧ｿ繧､繝医Ν縺ｯ蠢・医〒縺・
       });
     }
 
-    // タイムスタンプを更新
+    // 繧ｿ繧､繝繧ｹ繧ｿ繝ｳ繝励ｒ譖ｴ譁ｰ
     flowData.updatedAt = new Date().toISOString();
-    flowData.id = id; // IDを確実に設定
+    flowData.id = id; // ID繧堤｢ｺ螳溘↓險ｭ螳・
 
-    // ファイルパスを構築
+    // 繝輔ぃ繧､繝ｫ繝代せ繧呈ｧ狗ｯ・
     const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
     const filePath = path.join(troubleshootingDir, `${id}.json`);
 
-    // ファイルに保存
+    // 繝輔ぃ繧､繝ｫ縺ｫ菫晏ｭ・
     writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf8');
     
-    console.log('✅ トラブルシューティング更新成功:', {
+    console.log('笨・繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ譖ｴ譁ｰ謌仙粥:', {
       id: flowData.id,
       title: flowData.title,
       stepsCount: flowData.steps?.length || 0
@@ -317,89 +317,89 @@ router.put('/:id', async (req, res) => {
     res.json({
       success: true,
       data: flowData,
-      message: 'トラブルシューティングが正常に更新されました'
+      message: '繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ縺梧ｭ｣蟶ｸ縺ｫ譖ｴ譁ｰ縺輔ｌ縺ｾ縺励◆'
     });
   } catch (error) {
-    console.error('❌ トラブルシューティング更新エラー:', error);
+    console.error('笶・繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ譖ｴ譁ｰ繧ｨ繝ｩ繝ｼ:', error);
     res.status(500).json({ 
       success: false,
-      error: 'データの更新に失敗しました',
+      error: '繝・・繧ｿ縺ｮ譖ｴ譁ｰ縺ｫ螟ｱ謨励＠縺ｾ縺励◆',
       details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// トラブルシューティング削除
+// 繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ蜑企勁
 router.delete('/:id', async (req, res) => {
-  console.log('🗑️ トラブルシューティング削除:', req.params.id);
+  console.log('卵・・繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ蜑企勁:', req.params.id);
   try {
     const { id } = req.params;
     
-    // ファイルパスを構築
+    // 繝輔ぃ繧､繝ｫ繝代せ繧呈ｧ狗ｯ・
     const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
     const filePath = path.join(troubleshootingDir, `${id}.json`);
 
-    // ファイルの存在確認
+    // 繝輔ぃ繧､繝ｫ縺ｮ蟄伜惠遒ｺ隱・
     if (!existsSync(filePath)) {
       return res.status(404).json({
         success: false,
-        error: '指定されたトラブルシューティングが見つかりません',
+        error: '謖・ｮ壹＆繧後◆繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ',
         id
       });
     }
 
-    // ファイルを削除
+    // 繝輔ぃ繧､繝ｫ繧貞炎髯､
     unlinkSync(filePath);
     
-    console.log('✅ トラブルシューティング削除成功:', id);
+    console.log('笨・繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ蜑企勁謌仙粥:', id);
 
     res.json({
       success: true,
-      message: 'トラブルシューティングが正常に削除されました',
+      message: '繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ縺梧ｭ｣蟶ｸ縺ｫ蜑企勁縺輔ｌ縺ｾ縺励◆',
       id
     });
   } catch (error) {
-    console.error('❌ トラブルシューティング削除エラー:', error);
+    console.error('笶・繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ蜑企勁繧ｨ繝ｩ繝ｼ:', error);
     res.status(500).json({ 
       success: false,
-      error: 'データの削除に失敗しました',
+      error: '繝・・繧ｿ縺ｮ蜑企勁縺ｫ螟ｱ謨励＠縺ｾ縺励◆',
       details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// エラーハンドリングミドルウェア
+// 繧ｨ繝ｩ繝ｼ繝上Φ繝峨Μ繝ｳ繧ｰ繝溘ラ繝ｫ繧ｦ繧ｧ繧｢
 router.use((err: any, req: any, res: any, next: any) => {
-  console.error('トラブルシューティングエラー:', err);
+  console.error('繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ繧ｨ繝ｩ繝ｼ:', err);
   
-  // Content-Typeを明示的に設定
+  // Content-Type繧呈・遉ｺ逧・↓險ｭ螳・
   res.setHeader('Content-Type', 'application/json');
   
   res.status(500).json({
     success: false,
-    error: 'トラブルシューティングの処理中にエラーが発生しました',
+    error: '繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ縺ｮ蜃ｦ逅・ｸｭ縺ｫ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆',
     details: err.message || 'Unknown error',
     timestamp: new Date().toISOString()
   });
 });
 
-// 画像配信エンドポイント（knowledge-baseから直接配信）
+// 逕ｻ蜒城・菫｡繧ｨ繝ｳ繝峨・繧､繝ｳ繝茨ｼ・nowledge-base縺九ｉ逶ｴ謗･驟堺ｿ｡・・
 router.get('/image/:fileName', async (req, res) => {
   try {
     const { fileName } = req.params;
     
-    // まず emergency-flows ディレクトリを確認
+    // 縺ｾ縺・emergency-flows 繝・ぅ繝ｬ繧ｯ繝医Μ繧堤｢ｺ隱・
     let uploadDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows');
     let filePath = path.join(uploadDir, fileName);
     
-    // emergency-flows にファイルがない場合は chat-exports を確認
+    // emergency-flows 縺ｫ繝輔ぃ繧､繝ｫ縺後↑縺・ｴ蜷医・ chat-exports 繧堤｢ｺ隱・
     if (!existsSync(filePath)) {
       uploadDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports');
       filePath = path.join(uploadDir, fileName);
       
-      console.log('🔄 emergency-flows にファイルが見つからないため、chat-exports を確認:', {
+      console.log('売 emergency-flows 縺ｫ繝輔ぃ繧､繝ｫ縺瑚ｦ九▽縺九ｉ縺ｪ縺・◆繧√…hat-exports 繧堤｢ｺ隱・', {
         fileName,
         chatExportsDir: uploadDir,
         chatExportsPath: filePath,
@@ -407,8 +407,8 @@ router.get('/image/:fileName', async (req, res) => {
       });
     }
 
-    // デバッグログ強化
-    console.log('🖼️ 画像リクエスト:', {
+    // 繝・ヰ繝・げ繝ｭ繧ｰ蠑ｷ蛹・
+    console.log('名・・逕ｻ蜒上Μ繧ｯ繧ｨ繧ｹ繝・', {
       fileName,
       uploadDir,
       filePath,
@@ -418,7 +418,7 @@ router.get('/image/:fileName', async (req, res) => {
 
     if (!existsSync(filePath)) {
       return res.status(404).json({
-        error: 'ファイルが存在しません',
+        error: '繝輔ぃ繧､繝ｫ縺悟ｭ伜惠縺励∪縺帙ｓ',
         fileName,
         emergencyFlowsPath: path.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows', fileName),
         chatExportsPath: path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports', fileName),
@@ -427,7 +427,7 @@ router.get('/image/:fileName', async (req, res) => {
       });
     }
 
-    // ファイルのMIMEタイプを判定
+    // 繝輔ぃ繧､繝ｫ縺ｮMIME繧ｿ繧､繝励ｒ蛻､螳・
     const ext = path.extname(fileName).toLowerCase();
     const mimeTypes: { [key: string]: string } = {
       '.jpg': 'image/jpeg',
@@ -438,13 +438,13 @@ router.get('/image/:fileName', async (req, res) => {
     };
     const contentType = mimeTypes[ext] || 'application/octet-stream';
 
-    // ファイルを読み込んでレスポンス
+    // 繝輔ぃ繧､繝ｫ繧定ｪｭ縺ｿ霎ｼ繧薙〒繝ｬ繧ｹ繝昴Φ繧ｹ
     const fileBuffer = readFileSync(filePath);
     res.setHeader('Content-Type', contentType);
-    res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1年間キャッシュ
+    res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1蟷ｴ髢薙く繝｣繝・す繝･
     res.send(fileBuffer);
 
-    console.log('✅ 画像配信成功:', {
+    console.log('笨・逕ｻ蜒城・菫｡謌仙粥:', {
       fileName,
       contentType,
       fileSize: fileBuffer.length,
@@ -453,24 +453,24 @@ router.get('/image/:fileName', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ 画像配信エラー:', {
+    console.error('笶・逕ｻ蜒城・菫｡繧ｨ繝ｩ繝ｼ:', {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
       fileName: req.params.fileName
     });
     res.status(500).json({
       success: false,
-      error: '画像の配信に失敗しました'
+      error: '逕ｻ蜒上・驟堺ｿ｡縺ｫ螟ｱ謨励＠縺ｾ縺励◆'
     });
   }
 });
 
-// 404ハンドリング
+// 404繝上Φ繝峨Μ繝ｳ繧ｰ
 router.use('*', (req: any, res: any) => {
   res.setHeader('Content-Type', 'application/json');
   res.status(404).json({
     success: false,
-    error: 'トラブルシューティングのエンドポイントが見つかりません',
+    error: '繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ縺ｮ繧ｨ繝ｳ繝峨・繧､繝ｳ繝医′隕九▽縺九ｊ縺ｾ縺帙ｓ',
     path: req.originalUrl,
     timestamp: new Date().toISOString()
   });

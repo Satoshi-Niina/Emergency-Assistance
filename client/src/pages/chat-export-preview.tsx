@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -53,13 +53,13 @@ const ChatExportPreview: React.FC = () => {
       const response = await fetch(`/api/chats/exports/${fileName}`);
       
       if (!response.ok) {
-        throw new Error('チャットエクスポートファイルの取得に失敗しました');
+        throw new Error('繝√Ε繝・ヨ繧ｨ繧ｯ繧ｹ繝昴・繝医ヵ繧｡繧､繝ｫ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆');
       }
       
       const data = await response.json();
       setChatData(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'エラーが発生しました');
+      setError(err instanceof Error ? err.message : '繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆');
     } finally {
       setLoading(false);
     }
@@ -87,7 +87,7 @@ const ChatExportPreview: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">読み込み中...</p>
+          <p className="mt-4 text-gray-600">隱ｭ縺ｿ霎ｼ縺ｿ荳ｭ...</p>
         </div>
       </div>
     );
@@ -97,8 +97,8 @@ const ChatExportPreview: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 mb-4">エラー: {error}</p>
-          <Button onClick={() => window.history.back()}>戻る</Button>
+          <p className="text-red-600 mb-4">繧ｨ繝ｩ繝ｼ: {error}</p>
+          <Button onClick={() => window.history.back()}>謌ｻ繧・/Button>
         </div>
       </div>
     );
@@ -107,18 +107,18 @@ const ChatExportPreview: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-4xl mx-auto">
-        {/* ヘッダー */}
+        {/* 繝倥ャ繝繝ｼ */}
         <Card className="mb-6">
           <CardHeader>
             <div className="flex justify-between items-start">
               <div>
                 <CardTitle className="text-2xl font-bold text-gray-800">
-                  チャットエクスポート詳細
+                  繝√Ε繝・ヨ繧ｨ繧ｯ繧ｹ繝昴・繝郁ｩｳ邏ｰ
                 </CardTitle>
-                <p className="text-gray-600 mt-2">ファイル名: {fileName}</p>
+                <p className="text-gray-600 mt-2">繝輔ぃ繧､繝ｫ蜷・ {fileName}</p>
               </div>
               <Button onClick={() => window.history.back()} variant="outline">
-                戻る
+                謌ｻ繧・
               </Button>
             </div>
           </CardHeader>
@@ -126,40 +126,40 @@ const ChatExportPreview: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-gray-500" />
-                <span>エクスポート日時: {formatDate(chatData.exportTimestamp)}</span>
+                <span>繧ｨ繧ｯ繧ｹ繝昴・繝域律譎・ {formatDate(chatData.exportTimestamp)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4 text-gray-500" />
-                <span>ユーザーID: {chatData.userId}</span>
+                <span>繝ｦ繝ｼ繧ｶ繝ｼID: {chatData.userId}</span>
               </div>
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-gray-500" />
-                <span>メッセージ数: {chatData.chatData.messages.length}件</span>
+                <span>繝｡繝・そ繝ｼ繧ｸ謨ｰ: {chatData.chatData.messages.length}莉ｶ</span>
               </div>
               <div className="flex items-center gap-2">
                 <ImageIcon className="h-4 w-4 text-gray-500" />
-                <span>画像数: {chatData.savedImages?.length || 0}件</span>
+                <span>逕ｻ蜒乗焚: {chatData.savedImages?.length || 0}莉ｶ</span>
               </div>
             </div>
             
-            {/* 機種情報 */}
+            {/* 讖溽ｨｮ諠・ｱ */}
             {chatData.chatData.machineInfo && (
               <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                <h3 className="font-semibold text-blue-800 mb-2">機種情報</h3>
+                <h3 className="font-semibold text-blue-800 mb-2">讖溽ｨｮ諠・ｱ</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                  <span>機種: {chatData.chatData.machineInfo.machineTypeName || '未設定'}</span>
-                  <span>機械番号: {chatData.chatData.machineInfo.machineNumber || '未設定'}</span>
+                  <span>讖溽ｨｮ: {chatData.chatData.machineInfo.machineTypeName || '譛ｪ險ｭ螳・}</span>
+                  <span>讖滓｢ｰ逡ｪ蜿ｷ: {chatData.chatData.machineInfo.machineNumber || '譛ｪ險ｭ螳・}</span>
                 </div>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* チャット履歴 */}
+        {/* 繝√Ε繝・ヨ螻･豁ｴ */}
         <Card>
           <CardHeader>
             <CardTitle className="text-xl font-bold text-gray-800">
-              チャット履歴
+              繝√Ε繝・ヨ螻･豁ｴ
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -175,7 +175,7 @@ const ChatExportPreview: React.FC = () => {
                 >
                   <div className="flex justify-between items-start mb-2">
                     <Badge variant={message.isAiResponse ? 'default' : 'secondary'}>
-                      {message.isAiResponse ? 'AI' : 'ユーザー'}
+                      {message.isAiResponse ? 'AI' : '繝ｦ繝ｼ繧ｶ繝ｼ'}
                     </Badge>
                     <span className="text-xs text-gray-500">
                       {formatDate(message.timestamp)}
@@ -183,26 +183,26 @@ const ChatExportPreview: React.FC = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    {/* テキストメッセージ */}
+                    {/* 繝・く繧ｹ繝医Γ繝・そ繝ｼ繧ｸ */}
                     {!isImageMessage(message.content) && (
                       <p className="text-gray-800 whitespace-pre-wrap">
                         {message.content}
                       </p>
                     )}
                     
-                    {/* 画像メッセージ */}
+                    {/* 逕ｻ蜒上Γ繝・そ繝ｼ繧ｸ */}
                     {isImageMessage(message.content) && (
                       <div className="space-y-2">
-                        <p className="text-sm text-gray-600">📷 画像メッセージ</p>
+                        <p className="text-sm text-gray-600">胴 逕ｻ蜒上Γ繝・そ繝ｼ繧ｸ</p>
                         <div className="relative">
                           <img
                             src={message.content}
-                            alt="チャット画像"
+                            alt="繝√Ε繝・ヨ逕ｻ蜒・
                             className="max-w-full h-auto rounded-lg border"
                             style={{ maxHeight: '300px' }}
                           />
                           
-                          {/* 保存された画像ファイルへのリンク */}
+                          {/* 菫晏ｭ倥＆繧後◆逕ｻ蜒上ヵ繧｡繧､繝ｫ縺ｸ縺ｮ繝ｪ繝ｳ繧ｯ */}
                           {chatData.savedImages && (
                             <div className="mt-2">
                               {chatData.savedImages
@@ -216,7 +216,7 @@ const ChatExportPreview: React.FC = () => {
                                       className="text-xs"
                                     >
                                       <Download className="h-3 w-3 mr-1" />
-                                      画像をダウンロード
+                                      逕ｻ蜒上ｒ繝繧ｦ繝ｳ繝ｭ繝ｼ繝・
                                     </Button>
                                     <span className="text-xs text-gray-500">
                                       {image.fileName}
@@ -235,12 +235,12 @@ const ChatExportPreview: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* 保存された画像一覧 */}
+        {/* 菫晏ｭ倥＆繧後◆逕ｻ蜒丈ｸ隕ｧ */}
         {chatData.savedImages && chatData.savedImages.length > 0 && (
           <Card className="mt-6">
             <CardHeader>
               <CardTitle className="text-xl font-bold text-gray-800">
-                保存された画像一覧
+                菫晏ｭ倥＆繧後◆逕ｻ蜒丈ｸ隕ｧ
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -249,13 +249,13 @@ const ChatExportPreview: React.FC = () => {
                   <div key={index} className="border rounded-lg p-3">
                     <img
                       src={image.url}
-                      alt={`保存画像 ${index + 1}`}
+                      alt={`菫晏ｭ倡判蜒・${index + 1}`}
                       className="w-full h-48 object-cover rounded-lg mb-2"
                     />
                     <div className="space-y-1">
                       <p className="text-sm font-medium">{image.fileName}</p>
                       <p className="text-xs text-gray-500">
-                        メッセージID: {image.messageId}
+                        繝｡繝・そ繝ｼ繧ｸID: {image.messageId}
                       </p>
                       <Button
                         size="sm"
@@ -264,7 +264,7 @@ const ChatExportPreview: React.FC = () => {
                         className="w-full text-xs"
                       >
                         <Download className="h-3 w-3 mr-1" />
-                        ダウンロード
+                        繝繧ｦ繝ｳ繝ｭ繝ｼ繝・
                       </Button>
                     </div>
                   </div>

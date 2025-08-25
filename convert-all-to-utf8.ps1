@@ -1,13 +1,14 @@
-# PowerShellスクリプト: すべてのテキストファイルをUTF-8に一括変換
-# 既存ファイルを上書きします。必要に応じてバックアップを取ってください。
-# 使い方: PowerShellでこのスクリプトを実行
+
+# PowerShell script: Convert all text files in the project to UTF-8 (no BOM)
+# This will overwrite existing files. Backup if necessary.
+# Usage: Run this script in PowerShell
 
 $root = "$PSScriptRoot"
 
-# 対象拡張子（必要に応じて追加）
+# Target extensions (add as needed)
 $exts = @('*.js','*.ts','*.tsx','*.json','*.md','*.html','*.css','*.txt','*.mjs','*.sh','*.bat','*.conf','*.sql','*.yml','*.yaml')
 
-# すべての対象ファイルを再帰的に取得
+# Recursively get all target files
 $files = @()
 foreach ($ext in $exts) {
     $files += Get-ChildItem -Path $root -Recurse -Include $ext -File
@@ -15,14 +16,13 @@ foreach ($ext in $exts) {
 
 foreach ($file in $files) {
     try {
-        # 既存のエンコーディングを自動判別してUTF-8で再保存
-        $content = Get-Content -Path $file.FullName -Raw
-        # UTF-8(BOMなし)で上書き保存
-        [System.IO.File]::WriteAllText($file.FullName, $content, [System.Text.Encoding]::UTF8)
-        Write-Host "変換完了: $($file.FullName)"
+    # Read content and overwrite as UTF-8 (no BOM)
+    $content = Get-Content -Path $file.FullName -Raw
+    [System.IO.File]::WriteAllText($file.FullName, $content, [System.Text.Encoding]::UTF8)
+    Write-Host "Converted: $($file.FullName)"
     } catch {
-        Write-Warning "変換失敗: $($file.FullName) ($_ )"
+    Write-Warning "Failed: $($file.FullName) ($_ )"
     }
 }
 
-Write-Host "すべての変換が完了しました。"
+Write-Host "All files have been converted to UTF-8."

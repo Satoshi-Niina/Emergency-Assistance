@@ -1,6 +1,6 @@
-/**
- * インタラクティブ故障診断システム
- * ユーザーの回答に基づいて動的に次の質問や処置を決定する
+﻿/**
+ * 繧､繝ｳ繧ｿ繝ｩ繧ｯ繝・ぅ繝匁腐髫懆ｨｺ譁ｭ繧ｷ繧ｹ繝・Β
+ * 繝ｦ繝ｼ繧ｶ繝ｼ縺ｮ蝗樒ｭ斐↓蝓ｺ縺･縺・※蜍慕噪縺ｫ谺｡縺ｮ雉ｪ蝠上ｄ蜃ｦ鄂ｮ繧呈ｱｺ螳壹☆繧・
  */
 
 export interface DiagnosisState {
@@ -31,7 +31,7 @@ export interface InteractiveResponse {
 }
 
 /**
- * ユーザーの回答から故障診断状態を更新
+ * 繝ｦ繝ｼ繧ｶ繝ｼ縺ｮ蝗樒ｭ斐°繧画腐髫懆ｨｺ譁ｭ迥ｶ諷九ｒ譖ｴ譁ｰ
  */
 export function updateDiagnosisState(
   currentState: DiagnosisState,
@@ -40,50 +40,50 @@ export function updateDiagnosisState(
   const response = userResponse.toLowerCase();
   const newState = { ...currentState };
 
-  // 症状の分析と追加
+  // 逞・憾縺ｮ蛻・梵縺ｨ霑ｽ蜉
   const detectedSymptoms = extractSymptoms(response);
   newState.collectedInfo.symptoms = [
     ...new Set([...newState.collectedInfo.symptoms, ...detectedSymptoms])
   ];
 
-  // 車両タイプの特定
+  // 霆贋ｸ｡繧ｿ繧､繝励・迚ｹ螳・
   if (!newState.collectedInfo.vehicleType) {
     newState.collectedInfo.vehicleType = detectVehicleType(response);
   }
 
-  // 安全状況の確認
+  // 螳牙・迥ｶ豕√・遒ｺ隱・
   if (!newState.collectedInfo.safetyStatus) {
     newState.collectedInfo.safetyStatus = detectSafetyStatus(response);
   }
 
-  // 緊急度の更新
+  // 邱頑･蠎ｦ縺ｮ譖ｴ譁ｰ
   newState.collectedInfo.urgency = assessUrgency(newState.collectedInfo);
 
-  // 疑われる原因の更新
+  // 逍代ｏ繧後ｋ蜴溷屏縺ｮ譖ｴ譁ｰ
   newState.suspectedCauses = generateSuspectedCauses(newState.collectedInfo);
 
-  // フェーズの更新
+  // 繝輔ぉ繝ｼ繧ｺ縺ｮ譖ｴ譁ｰ
   newState.phase = determineNextPhase(newState);
 
-  // 信頼度の計算
+  // 菫｡鬆ｼ蠎ｦ縺ｮ險育ｮ・
   newState.confidence = calculateDiagnosisConfidence(newState);
 
   return newState;
 }
 
 /**
- * 現在の診断状態に基づいて次のインタラクティブな応答を生成
+ * 迴ｾ蝨ｨ縺ｮ險ｺ譁ｭ迥ｶ諷九↓蝓ｺ縺･縺・※谺｡縺ｮ繧､繝ｳ繧ｿ繝ｩ繧ｯ繝・ぅ繝悶↑蠢懃ｭ斐ｒ逕滓・
  */
 export function generateInteractiveResponse(
   state: DiagnosisState,
   userResponse?: string
 ): InteractiveResponse {
   
-  // 安全確認が最優先
+  // 螳牙・遒ｺ隱阪′譛蜆ｪ蜈・
   if (state.collectedInfo.urgency === 'critical' && !state.collectedInfo.safetyStatus) {
     return {
-      message: "🚨 **緊急安全確認**\n\n現在の状況は緊急性が高いと判断されます。",
-      nextQuestion: "作業現場は安全ですか？周囲に人はいませんか？機械は完全に停止していますか？",
+      message: "圷 **邱頑･螳牙・遒ｺ隱・*\n\n迴ｾ蝨ｨ縺ｮ迥ｶ豕√・邱頑･諤ｧ縺碁ｫ倥＞縺ｨ蛻､譁ｭ縺輔ｌ縺ｾ縺吶・,
+      nextQuestion: "菴懈･ｭ迴ｾ蝣ｴ縺ｯ螳牙・縺ｧ縺吶°・溷捉蝗ｲ縺ｫ莠ｺ縺ｯ縺・∪縺帙ｓ縺具ｼ滓ｩ滓｢ｰ縺ｯ螳悟・縺ｫ蛛懈ｭ｢縺励※縺・∪縺吶°・・,
       priority: 'safety',
       requiresInput: true,
       phase: 'investigation'
@@ -113,16 +113,16 @@ export function generateInteractiveResponse(
 
 function generateInitialResponse(state: DiagnosisState): InteractiveResponse {
   return {
-    message: `🔧 **故障診断サポート開始**
+    message: `肌 **謨・囿險ｺ譁ｭ繧ｵ繝昴・繝磯幕蟋・*
 
-現在の状況を教えてください。どのような症状が発生していますか？
+迴ｾ蝨ｨ縺ｮ迥ｶ豕√ｒ謨吶∴縺ｦ縺上□縺輔＞縲ゅ←縺ｮ繧医≧縺ｪ逞・憾縺檎匱逕溘＠縺ｦ縺・∪縺吶°・・
 
-例：
-• エンジンが始動しない
-• 異音がする
-• 作業装置が動かない
-• 警告灯が点灯している`,
-    nextQuestion: "具体的にどのような症状が発生していますか？",
+萓具ｼ・
+窶｢ 繧ｨ繝ｳ繧ｸ繝ｳ縺悟ｧ句虚縺励↑縺・
+窶｢ 逡ｰ髻ｳ縺後☆繧・
+窶｢ 菴懈･ｭ陬・ｽｮ縺悟虚縺九↑縺・
+窶｢ 隴ｦ蜻顔・縺檎せ轣ｯ縺励※縺・ｋ`,
+    nextQuestion: "蜈ｷ菴鍋噪縺ｫ縺ｩ縺ｮ繧医≧縺ｪ逞・憾縺檎匱逕溘＠縺ｦ縺・∪縺吶°・・,
     priority: 'info',
     requiresInput: true,
     phase: 'investigation'
@@ -132,34 +132,34 @@ function generateInitialResponse(state: DiagnosisState): InteractiveResponse {
 function generateInvestigationResponse(state: DiagnosisState, userResponse?: string): InteractiveResponse {
   const { symptoms, vehicleType, safetyStatus, urgency } = state.collectedInfo;
   
-  // 安全確認が未完了で緊急度が高い場合
+  // 螳牙・遒ｺ隱阪′譛ｪ螳御ｺ・〒邱頑･蠎ｦ縺碁ｫ倥＞蝣ｴ蜷・
   if (!safetyStatus && urgency !== 'low') {
     return {
-      message: "⚠️ **安全確認**\n\n症状を確認しました。安全な作業環境の確保が重要です。",
-      nextQuestion: "現在、作業現場は安全な状態ですか？機械は停止していますか？",
+      message: "笞・・**螳牙・遒ｺ隱・*\n\n逞・憾繧堤｢ｺ隱阪＠縺ｾ縺励◆縲ょｮ牙・縺ｪ菴懈･ｭ迺ｰ蠅・・遒ｺ菫昴′驥崎ｦ√〒縺吶・,
+      nextQuestion: "迴ｾ蝨ｨ縲∽ｽ懈･ｭ迴ｾ蝣ｴ縺ｯ螳牙・縺ｪ迥ｶ諷九〒縺吶°・滓ｩ滓｢ｰ縺ｯ蛛懈ｭ｢縺励※縺・∪縺吶°・・,
       priority: 'safety',
       requiresInput: true,
       phase: 'investigation'
     };
   }
 
-  // 車両タイプが不明な場合
+  // 霆贋ｸ｡繧ｿ繧､繝励′荳肴・縺ｪ蝣ｴ蜷・
   if (!vehicleType && symptoms.length > 0) {
     return {
-      message: `📋 **車両情報確認**\n\n${symptoms.join('、')}の症状を確認しました。\n\n車両の詳細情報が必要です。`,
-      nextQuestion: "使用している保守用車の種類を教えてください（例：軌道モータカー、マルチプルタイタンパー、バラストレギュレーター等）",
+      message: `搭 **霆贋ｸ｡諠・ｱ遒ｺ隱・*\n\n${symptoms.join('縲・)}縺ｮ逞・憾繧堤｢ｺ隱阪＠縺ｾ縺励◆縲・n\n霆贋ｸ｡縺ｮ隧ｳ邏ｰ諠・ｱ縺悟ｿ・ｦ√〒縺吶Ａ,
+      nextQuestion: "菴ｿ逕ｨ縺励※縺・ｋ菫晏ｮ育畑霆翫・遞ｮ鬘槭ｒ謨吶∴縺ｦ縺上□縺輔＞・井ｾ具ｼ夊ｻ碁％繝｢繝ｼ繧ｿ繧ｫ繝ｼ縲√・繝ｫ繝√・繝ｫ繧ｿ繧､繧ｿ繝ｳ繝代・縲√ヰ繝ｩ繧ｹ繝医Ξ繧ｮ繝･繝ｬ繝ｼ繧ｿ繝ｼ遲会ｼ・,
       priority: 'info',
       requiresInput: true,
       phase: 'investigation'
     };
   }
 
-  // 症状に基づく具体的な調査
+  // 逞・憾縺ｫ蝓ｺ縺･縺丞・菴鍋噪縺ｪ隱ｿ譟ｻ
   if (symptoms.length > 0 && vehicleType) {
     const specificQuestions = generateSpecificQuestions(symptoms, vehicleType);
     if (specificQuestions.length > 0) {
       return {
-        message: `🔍 **詳細診断**\n\n${vehicleType}の${symptoms.join('、')}について詳しく調査します。`,
+        message: `剥 **隧ｳ邏ｰ險ｺ譁ｭ**\n\n${vehicleType}縺ｮ${symptoms.join('縲・)}縺ｫ縺､縺・※隧ｳ縺励￥隱ｿ譟ｻ縺励∪縺吶Ａ,
         nextQuestion: specificQuestions[0],
         priority: 'diagnosis',
         requiresInput: true,
@@ -168,10 +168,10 @@ function generateInvestigationResponse(state: DiagnosisState, userResponse?: str
     }
   }
 
-  // デフォルトの調査継続
+  // 繝・ヵ繧ｩ繝ｫ繝医・隱ｿ譟ｻ邯咏ｶ・
   return {
-    message: "🔎 **追加情報収集**\n\n現在の情報から原因を特定するため、もう少し詳しく教えてください。",
-    nextQuestion: "症状が発生したタイミングや、直前に行っていた作業について教えてください。",
+    message: "博 **霑ｽ蜉諠・ｱ蜿朱寔**\n\n迴ｾ蝨ｨ縺ｮ諠・ｱ縺九ｉ蜴溷屏繧堤音螳壹☆繧九◆繧√√ｂ縺・ｰ代＠隧ｳ縺励￥謨吶∴縺ｦ縺上□縺輔＞縲・,
+    nextQuestion: "逞・憾縺檎匱逕溘＠縺溘ち繧､繝溘Φ繧ｰ繧・∫峩蜑阪↓陦後▲縺ｦ縺・◆菴懈･ｭ縺ｫ縺､縺・※謨吶∴縺ｦ縺上□縺輔＞縲・,
     priority: 'info',
     requiresInput: true,
     phase: 'investigation'
@@ -184,18 +184,18 @@ function generateDiagnosisResponse(state: DiagnosisState): InteractiveResponse {
   if (confidence >= 0.7 && suspectedCauses.length > 0) {
     const primaryCause = suspectedCauses[0];
     return {
-      message: `💡 **診断結果**\n\n収集した情報から、**${primaryCause}**の可能性が高いと判断されます。\n\n信頼度: ${Math.round(confidence * 100)}%`,
-      nextQuestion: "この診断に基づいて応急処置を開始しますか？",
+      message: `庁 **險ｺ譁ｭ邨先棡**\n\n蜿朱寔縺励◆諠・ｱ縺九ｉ縲・*${primaryCause}**縺ｮ蜿ｯ閭ｽ諤ｧ縺碁ｫ倥＞縺ｨ蛻､譁ｭ縺輔ｌ縺ｾ縺吶・n\n菫｡鬆ｼ蠎ｦ: ${Math.round(confidence * 100)}%`,
+      nextQuestion: "縺薙・險ｺ譁ｭ縺ｫ蝓ｺ縺･縺・※蠢懈･蜃ｦ鄂ｮ繧帝幕蟋九＠縺ｾ縺吶°・・,
       suggestedActions: generateInitialActions(primaryCause),
-      options: ["はい、処置を開始", "もう少し詳しく調査", "専門家に連絡"],
+      options: ["縺ｯ縺・∝・鄂ｮ繧帝幕蟋・, "繧ゅ≧蟆代＠隧ｳ縺励￥隱ｿ譟ｻ", "蟆る摩螳ｶ縺ｫ騾｣邨｡"],
       priority: 'action',
       requiresInput: true,
       phase: 'action'
     };
   } else {
     return {
-      message: `🤔 **診断継続**\n\n複数の原因が考えられます：\n${suspectedCauses.map((cause, i) => `${i + 1}. ${cause}`).join('\n')}`,
-      nextQuestion: "どの項目について詳しく確認しますか？",
+      message: `､・**險ｺ譁ｭ邯咏ｶ・*\n\n隍・焚縺ｮ蜴溷屏縺瑚・∴繧峨ｌ縺ｾ縺呻ｼ喀n${suspectedCauses.map((cause, i) => `${i + 1}. ${cause}`).join('\n')}`,
+      nextQuestion: "縺ｩ縺ｮ鬆・岼縺ｫ縺､縺・※隧ｳ縺励￥遒ｺ隱阪＠縺ｾ縺吶°・・,
       options: suspectedCauses.slice(0, 3),
       priority: 'diagnosis',
       requiresInput: true,
@@ -211,8 +211,8 @@ function generateActionResponse(state: DiagnosisState): InteractiveResponse {
   const stepByStepActions = generateStepByStepActions(primaryCause, collectedInfo.vehicleType);
   
   return {
-    message: `🛠️ **応急処置手順**\n\n**対象**: ${primaryCause}\n\n**ステップ1**: ${stepByStepActions[0]}`,
-    nextQuestion: "ステップ1は完了しましたか？結果を教えてください。",
+    message: `屏・・**蠢懈･蜃ｦ鄂ｮ謇矩・*\n\n**蟇ｾ雎｡**: ${primaryCause}\n\n**繧ｹ繝・ャ繝・**: ${stepByStepActions[0]}`,
+    nextQuestion: "繧ｹ繝・ャ繝・縺ｯ螳御ｺ・＠縺ｾ縺励◆縺具ｼ溽ｵ先棡繧呈蕗縺医※縺上□縺輔＞縲・,
     suggestedActions: stepByStepActions,
     priority: 'action',
     requiresInput: true,
@@ -222,9 +222,9 @@ function generateActionResponse(state: DiagnosisState): InteractiveResponse {
 
 function generateVerificationResponse(state: DiagnosisState): InteractiveResponse {
   return {
-    message: `✅ **処置確認**\n\n実行した処置の結果を確認します。`,
-    nextQuestion: "症状は改善されましたか？まだ問題が残っていますか？",
-    options: ["完全に解決", "部分的に改善", "変化なし", "悪化した"],
+    message: `笨・**蜃ｦ鄂ｮ遒ｺ隱・*\n\n螳溯｡後＠縺溷・鄂ｮ縺ｮ邨先棡繧堤｢ｺ隱阪＠縺ｾ縺吶Ａ,
+    nextQuestion: "逞・憾縺ｯ謾ｹ蝟・＆繧後∪縺励◆縺具ｼ溘∪縺蝠城｡後′谿九▲縺ｦ縺・∪縺吶°・・,
+    options: ["螳悟・縺ｫ隗｣豎ｺ", "驛ｨ蛻・噪縺ｫ謾ｹ蝟・, "螟牙喧縺ｪ縺・, "謔ｪ蛹悶＠縺・],
     priority: 'action',
     requiresInput: true,
     phase: 'completed'
@@ -233,23 +233,23 @@ function generateVerificationResponse(state: DiagnosisState): InteractiveRespons
 
 function generateCompletedResponse(state: DiagnosisState): InteractiveResponse {
   return {
-    message: `🎉 **診断・処置完了**\n\n今回の対応内容をまとめました。\n\n何か他にご質問があれば、いつでもお声がけください。`,
+    message: `脂 **險ｺ譁ｭ繝ｻ蜃ｦ鄂ｮ螳御ｺ・*\n\n莉雁屓縺ｮ蟇ｾ蠢懷・螳ｹ繧偵∪縺ｨ繧√∪縺励◆縲・n\n菴輔°莉悶↓縺碑ｳｪ蝠上′縺ゅｌ縺ｰ縲√＞縺､縺ｧ繧ゅ♀螢ｰ縺後￠縺上□縺輔＞縲Ａ,
     priority: 'info',
     requiresInput: false,
     phase: 'completed'
   };
 }
 
-// ユーティリティ関数群
+// 繝ｦ繝ｼ繝・ぅ繝ｪ繝・ぅ髢｢謨ｰ鄒､
 function extractSymptoms(response: string): string[] {
   const symptomPatterns = [
-    { pattern: /始動.*しない|エンジン.*かからない/, symptom: 'エンジン始動不良' },
-    { pattern: /異音|音.*おかしい|変な音/, symptom: '異音' },
-    { pattern: /動かない|作動.*しない|操作.*効かない/, symptom: '動作不良' },
-    { pattern: /煙|発煙|臭い/, symptom: '異常発熱・煙' },
-    { pattern: /警告.*点灯|ランプ.*光/, symptom: '警告表示' },
-    { pattern: /振動|ガタガタ|ブレ/, symptom: '異常振動' },
-    { pattern: /漏れ|オイル.*出/, symptom: '油圧・油脂漏れ' }
+    { pattern: /蟋句虚.*縺励↑縺л繧ｨ繝ｳ繧ｸ繝ｳ.*縺九°繧峨↑縺・, symptom: '繧ｨ繝ｳ繧ｸ繝ｳ蟋句虚荳崎憶' },
+    { pattern: /逡ｰ髻ｳ|髻ｳ.*縺翫°縺励＞|螟峨↑髻ｳ/, symptom: '逡ｰ髻ｳ' },
+    { pattern: /蜍輔°縺ｪ縺л菴懷虚.*縺励↑縺л謫堺ｽ・*蜉ｹ縺九↑縺・, symptom: '蜍穂ｽ應ｸ崎憶' },
+    { pattern: /辣處逋ｺ辣處閾ｭ縺・, symptom: '逡ｰ蟶ｸ逋ｺ辭ｱ繝ｻ辣・ },
+    { pattern: /隴ｦ蜻・*轤ｹ轣ｯ|繝ｩ繝ｳ繝・*蜈・, symptom: '隴ｦ蜻願｡ｨ遉ｺ' },
+    { pattern: /謖ｯ蜍怖繧ｬ繧ｿ繧ｬ繧ｿ|繝悶Ξ/, symptom: '逡ｰ蟶ｸ謖ｯ蜍・ },
+    { pattern: /貍上ｌ|繧ｪ繧､繝ｫ.*蜃ｺ/, symptom: '豐ｹ蝨ｧ繝ｻ豐ｹ閼よｼ上ｌ' }
   ];
   
   return symptomPatterns
@@ -259,11 +259,11 @@ function extractSymptoms(response: string): string[] {
 
 function detectVehicleType(response: string): string | null {
   const vehiclePatterns = [
-    { pattern: /タイタンパー|突固|整正/, type: 'マルチプルタイタンパー' },
-    { pattern: /モータカー|軌道車/, type: '軌道モータカー' },
-    { pattern: /バラスト|配石/, type: 'バラストレギュレーター' },
-    { pattern: /削正|レール削/, type: 'レール削正車' },
-    { pattern: /溶接/, type: 'レール溶接車' }
+    { pattern: /繧ｿ繧､繧ｿ繝ｳ繝代・|遯∝崋|謨ｴ豁｣/, type: '繝槭Ν繝√・繝ｫ繧ｿ繧､繧ｿ繝ｳ繝代・' },
+    { pattern: /繝｢繝ｼ繧ｿ繧ｫ繝ｼ|霆碁％霆・, type: '霆碁％繝｢繝ｼ繧ｿ繧ｫ繝ｼ' },
+    { pattern: /繝舌Λ繧ｹ繝・驟咲浹/, type: '繝舌Λ繧ｹ繝医Ξ繧ｮ繝･繝ｬ繝ｼ繧ｿ繝ｼ' },
+    { pattern: /蜑頑ｭ｣|繝ｬ繝ｼ繝ｫ蜑・, type: '繝ｬ繝ｼ繝ｫ蜑頑ｭ｣霆・ },
+    { pattern: /貅ｶ謗･/, type: '繝ｬ繝ｼ繝ｫ貅ｶ謗･霆・ }
   ];
   
   const match = vehiclePatterns.find(({ pattern }) => pattern.test(response));
@@ -271,14 +271,14 @@ function detectVehicleType(response: string): string | null {
 }
 
 function detectSafetyStatus(response: string): string | null {
-  if (/安全|大丈夫|停止/.test(response)) return 'safe';
-  if (/危険|不安|動いている/.test(response)) return 'unsafe';
+  if (/螳牙・|螟ｧ荳亥､ｫ|蛛懈ｭ｢/.test(response)) return 'safe';
+  if (/蜊ｱ髯ｺ|荳榊ｮ榎蜍輔＞縺ｦ縺・ｋ/.test(response)) return 'unsafe';
   return null;
 }
 
 function assessUrgency(info: DiagnosisState['collectedInfo']): DiagnosisState['collectedInfo']['urgency'] {
-  const criticalSymptoms = ['異常発熱・煙', '異常振動'];
-  const urgentSymptoms = ['エンジン始動不良', '動作不良'];
+  const criticalSymptoms = ['逡ｰ蟶ｸ逋ｺ辭ｱ繝ｻ辣・, '逡ｰ蟶ｸ謖ｯ蜍・];
+  const urgentSymptoms = ['繧ｨ繝ｳ繧ｸ繝ｳ蟋句虚荳崎憶', '蜍穂ｽ應ｸ崎憶'];
   
   if (info.symptoms.some(s => criticalSymptoms.includes(s))) return 'critical';
   if (info.symptoms.some(s => urgentSymptoms.includes(s))) return 'high';
@@ -289,14 +289,14 @@ function assessUrgency(info: DiagnosisState['collectedInfo']): DiagnosisState['c
 function generateSuspectedCauses(info: DiagnosisState['collectedInfo']): string[] {
   const causes = [];
   
-  if (info.symptoms.includes('エンジン始動不良')) {
-    causes.push('バッテリー不良', '燃料系統トラブル', 'スターター故障');
+  if (info.symptoms.includes('繧ｨ繝ｳ繧ｸ繝ｳ蟋句虚荳崎憶')) {
+    causes.push('繝舌ャ繝・Μ繝ｼ荳崎憶', '辯・侭邉ｻ邨ｱ繝医Λ繝悶Ν', '繧ｹ繧ｿ繝ｼ繧ｿ繝ｼ謨・囿');
   }
-  if (info.symptoms.includes('異音')) {
-    causes.push('ベアリング摩耗', 'エンジン内部異常', 'ベルト不良');
+  if (info.symptoms.includes('逡ｰ髻ｳ')) {
+    causes.push('繝吶い繝ｪ繝ｳ繧ｰ鞫ｩ閠・, '繧ｨ繝ｳ繧ｸ繝ｳ蜀・Κ逡ｰ蟶ｸ', '繝吶Ν繝井ｸ崎憶');
   }
-  if (info.symptoms.includes('動作不良')) {
-    causes.push('油圧系統異常', '電気系統故障', '機械的故障');
+  if (info.symptoms.includes('蜍穂ｽ應ｸ崎憶')) {
+    causes.push('豐ｹ蝨ｧ邉ｻ邨ｱ逡ｰ蟶ｸ', '髮ｻ豌礼ｳｻ邨ｱ謨・囿', '讖滓｢ｰ逧・腐髫・);
   }
   
   return causes.slice(0, 3);
@@ -329,14 +329,14 @@ function calculateDiagnosisConfidence(state: DiagnosisState): number {
 function generateSpecificQuestions(symptoms: string[], vehicleType: string): string[] {
   const questions = [];
   
-  if (symptoms.includes('エンジン始動不良')) {
-    questions.push("スターターは回りますか？バッテリーランプは点灯していますか？");
+  if (symptoms.includes('繧ｨ繝ｳ繧ｸ繝ｳ蟋句虚荳崎憶')) {
+    questions.push("繧ｹ繧ｿ繝ｼ繧ｿ繝ｼ縺ｯ蝗槭ｊ縺ｾ縺吶°・溘ヰ繝・ユ繝ｪ繝ｼ繝ｩ繝ｳ繝励・轤ｹ轣ｯ縺励※縺・∪縺吶°・・);
   }
-  if (symptoms.includes('異音') && vehicleType === 'マルチプルタイタンパー') {
-    questions.push("異音は突固作業中ですか？それとも走行中ですか？");
+  if (symptoms.includes('逡ｰ髻ｳ') && vehicleType === '繝槭Ν繝√・繝ｫ繧ｿ繧､繧ｿ繝ｳ繝代・') {
+    questions.push("逡ｰ髻ｳ縺ｯ遯∝崋菴懈･ｭ荳ｭ縺ｧ縺吶°・溘◎繧後→繧りｵｰ陦御ｸｭ縺ｧ縺吶°・・);
   }
-  if (symptoms.includes('動作不良')) {
-    questions.push("油圧計の圧力は正常ですか？作動油の量は十分ですか？");
+  if (symptoms.includes('蜍穂ｽ應ｸ崎憶')) {
+    questions.push("豐ｹ蝨ｧ險医・蝨ｧ蜉帙・豁｣蟶ｸ縺ｧ縺吶°・滉ｽ懷虚豐ｹ縺ｮ驥上・蜊∝・縺ｧ縺吶°・・);
   }
   
   return questions;
@@ -344,18 +344,18 @@ function generateSpecificQuestions(symptoms: string[], vehicleType: string): str
 
 function generateInitialActions(cause: string): string[] {
   const actionMap: Record<string, string[]> = {
-    'バッテリー不良': ['バッテリー電圧確認', '端子清掃', '充電またはジャンプスタート'],
-    '燃料系統トラブル': ['燃料残量確認', '燃料フィルター点検', '水分除去'],
-    '油圧系統異常': ['油圧計確認', '作動油量点検', '漏れ箇所確認'],
+    '繝舌ャ繝・Μ繝ｼ荳崎憶': ['繝舌ャ繝・Μ繝ｼ髮ｻ蝨ｧ遒ｺ隱・, '遶ｯ蟄先ｸ・祉', '蜈・崕縺ｾ縺溘・繧ｸ繝｣繝ｳ繝励せ繧ｿ繝ｼ繝・],
+    '辯・侭邉ｻ邨ｱ繝医Λ繝悶Ν': ['辯・侭谿矩㍼遒ｺ隱・, '辯・侭繝輔ぅ繝ｫ繧ｿ繝ｼ轤ｹ讀・, '豌ｴ蛻・勁蜴ｻ'],
+    '豐ｹ蝨ｧ邉ｻ邨ｱ逡ｰ蟶ｸ': ['豐ｹ蝨ｧ險育｢ｺ隱・, '菴懷虚豐ｹ驥冗せ讀・, '貍上ｌ邂・園遒ｺ隱・],
   };
   
-  return actionMap[cause] || ['基本点検', '専門家連絡'];
+  return actionMap[cause] || ['蝓ｺ譛ｬ轤ｹ讀・, '蟆る摩螳ｶ騾｣邨｡'];
 }
 
 function generateStepByStepActions(cause: string, vehicleType: string | null): string[] {
-  // 車両タイプと原因に応じた詳細なステップを生成
+  // 霆贋ｸ｡繧ｿ繧､繝励→蜴溷屏縺ｫ蠢懊§縺溯ｩｳ邏ｰ縺ｪ繧ｹ繝・ャ繝励ｒ逕滓・
   const baseActions = generateInitialActions(cause);
   return baseActions.map((action, index) => 
-    `${action}（${vehicleType || '保守用車'}専用手順に従って実施）`
+    `${action}・・{vehicleType || '菫晏ｮ育畑霆・}蟆ら畑謇矩・↓蠕薙▲縺ｦ螳滓命・荏
   );
 }

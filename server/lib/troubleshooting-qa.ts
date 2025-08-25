@@ -1,4 +1,4 @@
-import OpenAI from 'openai';
+﻿import OpenAI from 'openai';
 import { HybridSearchService } from './hybrid-search.js';
 
 export interface TroubleshootingStep {
@@ -51,12 +51,12 @@ export class TroubleshootingQA {
   
   async startTroubleshooting(problemDescription: string): Promise<TroubleshootingResponse> {
     try {
-      console.log('🔍 トラブルシューティング開始:', problemDescription);
+      console.log('剥 繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ髢句ｧ・', problemDescription);
       
-      // ハイブリッド検索で関連情報を取得
+      // 繝上う繝悶Μ繝・ラ讀懃ｴ｢縺ｧ髢｢騾｣諠・ｱ繧貞叙蠕・
       const searchResults = await this.hybridSearch.hybridSearch(problemDescription);
       
-      // 初期質問を生成
+      // 蛻晄悄雉ｪ蝠上ｒ逕滓・
       const initialQuestion = await this.generateInitialQuestion(problemDescription, searchResults);
       
       return {
@@ -67,10 +67,10 @@ export class TroubleshootingQA {
       };
       
     } catch (error) {
-      console.error('❌ トラブルシューティング開始エラー:', error);
+      console.error('笶・繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ髢句ｧ九お繝ｩ繝ｼ:', error);
       return {
-        question: '発生した事象を教えてください',
-        options: ['エンジンが止まった', 'ブレーキが効かない', '異音がする', 'その他'],
+        question: '逋ｺ逕溘＠縺滉ｺ玖ｱ｡繧呈蕗縺医※縺上□縺輔＞',
+        options: ['繧ｨ繝ｳ繧ｸ繝ｳ縺梧ｭ｢縺ｾ縺｣縺・, '繝悶Ξ繝ｼ繧ｭ縺悟柑縺九↑縺・, '逡ｰ髻ｳ縺後☆繧・, '縺昴・莉・],
         status: 'continue'
       };
     }
@@ -82,28 +82,28 @@ export class TroubleshootingQA {
     currentAnswer: string
   ): Promise<TroubleshootingResponse> {
     try {
-      console.log('🔍 回答処理:', { problemDescription, currentAnswer, previousAnswersCount: previousAnswers.length });
+      console.log('剥 蝗樒ｭ泌・逅・', { problemDescription, currentAnswer, previousAnswersCount: previousAnswers.length });
       
-      // 回答を記録
+      // 蝗樒ｭ斐ｒ險倬鹸
       const allAnswers = [...previousAnswers, {
         stepId: `step_${Date.now()}`,
         answer: currentAnswer,
         timestamp: new Date()
       }];
       
-      // ハイブリッド検索で関連情報を取得
+      // 繝上う繝悶Μ繝・ラ讀懃ｴ｢縺ｧ髢｢騾｣諠・ｱ繧貞叙蠕・
       const searchQuery = `${problemDescription} ${currentAnswer} ${allAnswers.map(a => a.answer).join(' ')}`;
       const searchResults = await this.hybridSearch.hybridSearch(searchQuery);
       
-      // 次の質問または解決策を生成
+      // 谺｡縺ｮ雉ｪ蝠上∪縺溘・隗｣豎ｺ遲悶ｒ逕滓・
       const response = await this.generateNextStep(problemDescription, allAnswers, searchResults);
       
       return response;
       
     } catch (error) {
-      console.error('❌ 回答処理エラー:', error);
+      console.error('笶・蝗樒ｭ泌・逅・お繝ｩ繝ｼ:', error);
       return {
-        question: '詳細な状況を教えてください',
+        question: '隧ｳ邏ｰ縺ｪ迥ｶ豕√ｒ謨吶∴縺ｦ縺上□縺輔＞',
         status: 'continue'
       };
     }
@@ -117,35 +117,35 @@ export class TroubleshootingQA {
     try {
       const context = this.buildContext(searchResults.results);
       
-      const prompt = `あなたは保守用車の専門技術者です。以下の問題に対して、段階的な診断を行うための最初の質問を生成してください。
+      const prompt = `縺ゅ↑縺溘・菫晏ｮ育畑霆翫・蟆る摩謚陦楢・〒縺吶ゆｻ･荳九・蝠城｡後↓蟇ｾ縺励※縲∵ｮｵ髫守噪縺ｪ險ｺ譁ｭ繧定｡後≧縺溘ａ縺ｮ譛蛻昴・雉ｪ蝠上ｒ逕滓・縺励※縺上□縺輔＞縲・
 
-**問題**: ${problemDescription}
-**関連情報**: ${context}
+**蝠城｡・*: ${problemDescription}
+**髢｢騾｣諠・ｱ**: ${context}
 
-以下の条件を満たす質問を生成してください：
-1. **問題の原因特定に直結する**: 症状から原因を絞り込む質問
-2. **具体的な対応策を導く**: 回答によって具体的な処置が決まる質問
-3. **安全確認を優先**: 危険性の有無を最初に確認
-4. **実用的な選択肢**: 選択肢がある場合は具体的で分かりやすい選択肢を提示
+莉･荳九・譚｡莉ｶ繧呈ｺ縺溘☆雉ｪ蝠上ｒ逕滓・縺励※縺上□縺輔＞・・
+1. **蝠城｡後・蜴溷屏迚ｹ螳壹↓逶ｴ邨舌☆繧・*: 逞・憾縺九ｉ蜴溷屏繧堤ｵ槭ｊ霎ｼ繧雉ｪ蝠・
+2. **蜈ｷ菴鍋噪縺ｪ蟇ｾ蠢懃ｭ悶ｒ蟆弱￥**: 蝗樒ｭ斐↓繧医▲縺ｦ蜈ｷ菴鍋噪縺ｪ蜃ｦ鄂ｮ縺梧ｱｺ縺ｾ繧玖ｳｪ蝠・
+3. **螳牙・遒ｺ隱阪ｒ蜆ｪ蜈・*: 蜊ｱ髯ｺ諤ｧ縺ｮ譛臥┌繧呈怙蛻昴↓遒ｺ隱・
+4. **螳溽畑逧・↑驕ｸ謚櫁い**: 驕ｸ謚櫁い縺後≠繧句ｴ蜷医・蜈ｷ菴鍋噪縺ｧ蛻・°繧翫ｄ縺吶＞驕ｸ謚櫁い繧呈署遉ｺ
 
-**質問の種類**:
-- 症状の詳細確認（例：エンジンが止まった時の状況）
-- 安全確認（例：作業環境に危険はありませんか？）
-- 原因の絞り込み（例：バッテリー、燃料、点火系など）
+**雉ｪ蝠上・遞ｮ鬘・*:
+- 逞・憾縺ｮ隧ｳ邏ｰ遒ｺ隱搾ｼ井ｾ具ｼ壹お繝ｳ繧ｸ繝ｳ縺梧ｭ｢縺ｾ縺｣縺滓凾縺ｮ迥ｶ豕・ｼ・
+- 螳牙・遒ｺ隱搾ｼ井ｾ具ｼ壻ｽ懈･ｭ迺ｰ蠅・↓蜊ｱ髯ｺ縺ｯ縺ゅｊ縺ｾ縺帙ｓ縺具ｼ滂ｼ・
+- 蜴溷屏縺ｮ邨槭ｊ霎ｼ縺ｿ・井ｾ具ｼ壹ヰ繝・ユ繝ｪ繝ｼ縲∫㏍譁吶∫せ轣ｫ邉ｻ縺ｪ縺ｩ・・
 
-以下のJSON形式で返してください：
+莉･荳九・JSON蠖｢蠑上〒霑斐＠縺ｦ縺上□縺輔＞・・
 {
-  "question": "具体的な質問内容",
-  "options": ["選択肢1", "選択肢2", "選択肢3", "選択肢4"],
-  "reasoning": "この質問で何を特定・解決したいか"
+  "question": "蜈ｷ菴鍋噪縺ｪ雉ｪ蝠丞・螳ｹ",
+  "options": ["驕ｸ謚櫁い1", "驕ｸ謚櫁い2", "驕ｸ謚櫁い3", "驕ｸ謚櫁い4"],
+  "reasoning": "縺薙・雉ｪ蝠上〒菴輔ｒ迚ｹ螳壹・隗｣豎ｺ縺励◆縺・°"
 }
 
-選択肢は3-5個程度で、具体的で分かりやすい内容にしてください。`;
+驕ｸ謚櫁い縺ｯ3-5蛟狗ｨ句ｺｦ縺ｧ縲∝・菴鍋噪縺ｧ蛻・°繧翫ｄ縺吶＞蜀・ｮｹ縺ｫ縺励※縺上□縺輔＞縲Ａ;
 
       const response = await this.openai.chat.completions.create({
         model: "gpt-4",
         messages: [
-          { role: "system", content: "あなたは保守用車の専門技術者です。段階的な診断を行うための質問を生成してください。" },
+          { role: "system", content: "縺ゅ↑縺溘・菫晏ｮ育畑霆翫・蟆る摩謚陦楢・〒縺吶よｮｵ髫守噪縺ｪ險ｺ譁ｭ繧定｡後≧縺溘ａ縺ｮ雉ｪ蝠上ｒ逕滓・縺励※縺上□縺輔＞縲・ },
           { role: "user", content: prompt }
         ],
         temperature: 0.1,
@@ -157,25 +157,25 @@ export class TroubleshootingQA {
       try {
         const parsed = JSON.parse(content);
         return {
-          question: parsed.question || '発生した事象の詳細を教えてください',
+          question: parsed.question || '逋ｺ逕溘＠縺滉ｺ玖ｱ｡縺ｮ隧ｳ邏ｰ繧呈蕗縺医※縺上□縺輔＞',
           options: parsed.options || [],
           reasoning: parsed.reasoning || ''
         };
       } catch (parseError) {
-        console.error('JSON解析エラー:', parseError);
+        console.error('JSON隗｣譫舌お繝ｩ繝ｼ:', parseError);
         return {
-          question: '発生した事象の詳細を教えてください',
-          options: ['エンジンが止まった', 'ブレーキが効かない', '異音がする', 'その他'],
-          reasoning: '初期症状の確認'
+          question: '逋ｺ逕溘＠縺滉ｺ玖ｱ｡縺ｮ隧ｳ邏ｰ繧呈蕗縺医※縺上□縺輔＞',
+          options: ['繧ｨ繝ｳ繧ｸ繝ｳ縺梧ｭ｢縺ｾ縺｣縺・, '繝悶Ξ繝ｼ繧ｭ縺悟柑縺九↑縺・, '逡ｰ髻ｳ縺後☆繧・, '縺昴・莉・],
+          reasoning: '蛻晄悄逞・憾縺ｮ遒ｺ隱・
         };
       }
       
     } catch (error) {
-      console.error('❌ 初期質問生成エラー:', error);
+      console.error('笶・蛻晄悄雉ｪ蝠冗函謌舌お繝ｩ繝ｼ:', error);
       return {
-        question: '発生した事象の詳細を教えてください',
-        options: ['エンジンが止まった', 'ブレーキが効かない', '異音がする', 'その他'],
-        reasoning: '初期症状の確認'
+        question: '逋ｺ逕溘＠縺滉ｺ玖ｱ｡縺ｮ隧ｳ邏ｰ繧呈蕗縺医※縺上□縺輔＞',
+        options: ['繧ｨ繝ｳ繧ｸ繝ｳ縺梧ｭ｢縺ｾ縺｣縺・, '繝悶Ξ繝ｼ繧ｭ縺悟柑縺九↑縺・, '逡ｰ髻ｳ縺後☆繧・, '縺昴・莉・],
+        reasoning: '蛻晄悄逞・憾縺ｮ遒ｺ隱・
       };
     }
   }
@@ -189,39 +189,39 @@ export class TroubleshootingQA {
       const context = this.buildContext(searchResults.results);
       const answersText = answers.map((a, index) => `Q${index + 1}: ${a.answer}`).join(', ');
       
-      const prompt = `あなたは保守用車の専門技術者です。以下の状況に基づいて、次の質問または解決策を決定してください。
+      const prompt = `縺ゅ↑縺溘・菫晏ｮ育畑霆翫・蟆る摩謚陦楢・〒縺吶ゆｻ･荳九・迥ｶ豕√↓蝓ｺ縺･縺・※縲∵ｬ｡縺ｮ雉ｪ蝠上∪縺溘・隗｣豎ｺ遲悶ｒ豎ｺ螳壹＠縺ｦ縺上□縺輔＞縲・
 
-**初期問題**: ${problemDescription}
-**これまでの回答**: ${answersText}
-**関連情報**: ${context}
+**蛻晄悄蝠城｡・*: ${problemDescription}
+**縺薙ｌ縺ｾ縺ｧ縺ｮ蝗樒ｭ・*: ${answersText}
+**髢｢騾｣諠・ｱ**: ${context}
 
-以下の条件で次のステップを決定してください：
-1. **問題解決に十分な情報が得られた場合**: 具体的な解決策を提示
-2. **まだ情報が不足している場合**: 原因特定や処置決定に必要な次の質問と選択肢を生成
-3. **緊急対応が必要な場合**: 緊急対応の指示を提示
-4. **ナレッジベース活用**: 利用可能な専門知識を活用した質問
+莉･荳九・譚｡莉ｶ縺ｧ谺｡縺ｮ繧ｹ繝・ャ繝励ｒ豎ｺ螳壹＠縺ｦ縺上□縺輔＞・・
+1. **蝠城｡瑚ｧ｣豎ｺ縺ｫ蜊∝・縺ｪ諠・ｱ縺悟ｾ励ｉ繧後◆蝣ｴ蜷・*: 蜈ｷ菴鍋噪縺ｪ隗｣豎ｺ遲悶ｒ謠千､ｺ
+2. **縺ｾ縺諠・ｱ縺御ｸ崎ｶｳ縺励※縺・ｋ蝣ｴ蜷・*: 蜴溷屏迚ｹ螳壹ｄ蜃ｦ鄂ｮ豎ｺ螳壹↓蠢・ｦ√↑谺｡縺ｮ雉ｪ蝠上→驕ｸ謚櫁い繧堤函謌・
+3. **邱頑･蟇ｾ蠢懊′蠢・ｦ√↑蝣ｴ蜷・*: 邱頑･蟇ｾ蠢懊・謖・､ｺ繧呈署遉ｺ
+4. **繝翫Ξ繝・ず繝吶・繧ｹ豢ｻ逕ｨ**: 蛻ｩ逕ｨ蜿ｯ閭ｽ縺ｪ蟆る摩遏･隴倥ｒ豢ｻ逕ｨ縺励◆雉ｪ蝠・
 
-**質問の流れ**:
-- 1段階目: 発生事象の確認（例：エンジンが始動しない）
-- 2段階目: 症状の詳細確認（例：エンジン始動時の状態）
-- 3段階目: 原因の絞り込み（例：バッテリー、燃料、点火系など）
-- 4段階目: 具体的な確認（例：バッテリー電圧、燃料残量など）
-- 5段階目: 対応策の選択（例：充電、燃料補給、部品交換など）
+**雉ｪ蝠上・豬√ｌ**:
+- 1谿ｵ髫守岼: 逋ｺ逕滉ｺ玖ｱ｡縺ｮ遒ｺ隱搾ｼ井ｾ具ｼ壹お繝ｳ繧ｸ繝ｳ縺悟ｧ句虚縺励↑縺・ｼ・
+- 2谿ｵ髫守岼: 逞・憾縺ｮ隧ｳ邏ｰ遒ｺ隱搾ｼ井ｾ具ｼ壹お繝ｳ繧ｸ繝ｳ蟋句虚譎ゅ・迥ｶ諷具ｼ・
+- 3谿ｵ髫守岼: 蜴溷屏縺ｮ邨槭ｊ霎ｼ縺ｿ・井ｾ具ｼ壹ヰ繝・ユ繝ｪ繝ｼ縲∫㏍譁吶∫せ轣ｫ邉ｻ縺ｪ縺ｩ・・
+- 4谿ｵ髫守岼: 蜈ｷ菴鍋噪縺ｪ遒ｺ隱搾ｼ井ｾ具ｼ壹ヰ繝・ユ繝ｪ繝ｼ髮ｻ蝨ｧ縲∫㏍譁呎ｮ矩㍼縺ｪ縺ｩ・・
+- 5谿ｵ髫守岼: 蟇ｾ蠢懃ｭ悶・驕ｸ謚橸ｼ井ｾ具ｼ壼・髮ｻ縲∫㏍譁呵｣懃ｵｦ縲・Κ蜩∽ｺ､謠帙↑縺ｩ・・
 
-以下のJSON形式で返してください：
+莉･荳九・JSON蠖｢蠑上〒霑斐＠縺ｦ縺上□縺輔＞・・
 {
   "status": "continue|complete|emergency",
-  "question": "次の質問内容（statusがcontinueの場合）",
-  "options": ["選択肢1", "選択肢2", "選択肢3"],
-  "solution": "具体的な解決策（statusがcompleteの場合）",
-  "emergencyAction": "緊急対応の指示（statusがemergencyの場合）",
-  "reasoning": "この判断の理由"
+  "question": "谺｡縺ｮ雉ｪ蝠丞・螳ｹ・・tatus縺慶ontinue縺ｮ蝣ｴ蜷茨ｼ・,
+  "options": ["驕ｸ謚櫁い1", "驕ｸ謚櫁い2", "驕ｸ謚櫁い3"],
+  "solution": "蜈ｷ菴鍋噪縺ｪ隗｣豎ｺ遲厄ｼ・tatus縺慶omplete縺ｮ蝣ｴ蜷茨ｼ・,
+  "emergencyAction": "邱頑･蟇ｾ蠢懊・謖・､ｺ・・tatus縺憩mergency縺ｮ蝣ｴ蜷茨ｼ・,
+  "reasoning": "縺薙・蛻､譁ｭ縺ｮ逅・罰"
 }`;
 
       const response = await this.openai.chat.completions.create({
         model: "gpt-4",
         messages: [
-          { role: "system", content: "あなたは保守用車の専門技術者です。段階的な診断と解決策を提供してください。" },
+          { role: "system", content: "縺ゅ↑縺溘・菫晏ｮ育畑霆翫・蟆る摩謚陦楢・〒縺吶よｮｵ髫守噪縺ｪ險ｺ譁ｭ縺ｨ隗｣豎ｺ遲悶ｒ謠蝉ｾ帙＠縺ｦ縺上□縺輔＞縲・ },
           { role: "user", content: prompt }
         ],
         temperature: 0.1,
@@ -235,19 +235,19 @@ export class TroubleshootingQA {
         
         if (parsed.status === 'complete') {
           return {
-            solution: parsed.solution || '解決策を生成できませんでした。専門家に相談してください。',
+            solution: parsed.solution || '隗｣豎ｺ遲悶ｒ逕滓・縺ｧ縺阪∪縺帙ｓ縺ｧ縺励◆縲ょｰる摩螳ｶ縺ｫ逶ｸ隲・＠縺ｦ縺上□縺輔＞縲・,
             status: 'complete',
             reasoning: parsed.reasoning
           };
         } else if (parsed.status === 'emergency') {
           return {
-            emergencyAction: parsed.emergencyAction || '緊急対応が必要です。専門家に連絡してください。',
+            emergencyAction: parsed.emergencyAction || '邱頑･蟇ｾ蠢懊′蠢・ｦ√〒縺吶ょｰる摩螳ｶ縺ｫ騾｣邨｡縺励※縺上□縺輔＞縲・,
             status: 'emergency',
             reasoning: parsed.reasoning
           };
         } else {
           return {
-            question: parsed.question || '詳細な状況を教えてください',
+            question: parsed.question || '隧ｳ邏ｰ縺ｪ迥ｶ豕√ｒ謨吶∴縺ｦ縺上□縺輔＞',
             options: parsed.options || [],
             status: 'continue',
             reasoning: parsed.reasoning
@@ -255,17 +255,17 @@ export class TroubleshootingQA {
         }
         
       } catch (parseError) {
-        console.error('JSON解析エラー:', parseError);
+        console.error('JSON隗｣譫舌お繝ｩ繝ｼ:', parseError);
         return {
-          question: '詳細な状況を教えてください',
+          question: '隧ｳ邏ｰ縺ｪ迥ｶ豕√ｒ謨吶∴縺ｦ縺上□縺輔＞',
           status: 'continue'
         };
       }
       
     } catch (error) {
-      console.error('❌ 次のステップ生成エラー:', error);
+      console.error('笶・谺｡縺ｮ繧ｹ繝・ャ繝礼函謌舌お繝ｩ繝ｼ:', error);
       return {
-        question: '詳細な状況を教えてください',
+        question: '隧ｳ邏ｰ縺ｪ迥ｶ豕√ｒ謨吶∴縺ｦ縺上□縺輔＞',
         status: 'continue'
       };
     }
@@ -273,15 +273,15 @@ export class TroubleshootingQA {
   
   private buildContext(searchResults: any[]): string {
     if (!searchResults || searchResults.length === 0) {
-      return '関連情報なし';
+      return '髢｢騾｣諠・ｱ縺ｪ縺・;
     }
     
     return searchResults
-      .slice(0, 3) // 上位3件のみ使用
+      .slice(0, 3) // 荳贋ｽ・莉ｶ縺ｮ縺ｿ菴ｿ逕ｨ
       .map(result => {
-        const source = result.metadata?.source || result.title || '不明';
+        const source = result.metadata?.source || result.title || '荳肴・';
         const score = Math.round((result.finalScore || result.score || result.similarity || 0) * 100);
-        return `【${source} (関連度: ${score}%)】${result.text || result.content || ''}`;
+        return `縲・{source} (髢｢騾｣蠎ｦ: ${score}%)縲・{result.text || result.content || ''}`;
       })
       .join('\n');
   }
@@ -293,36 +293,36 @@ export class TroubleshootingQA {
     try {
       const answersText = answers.map((a, index) => `Q${index + 1}: ${a.answer}`).join(', ');
       
-      const prompt = `あなたは保守用車の専門技術者です。以下の回答に基づいて具体的な解決策を提示してください。
+      const prompt = `縺ゅ↑縺溘・菫晏ｮ育畑霆翫・蟆る摩謚陦楢・〒縺吶ゆｻ･荳九・蝗樒ｭ斐↓蝓ｺ縺･縺・※蜈ｷ菴鍋噪縺ｪ隗｣豎ｺ遲悶ｒ謠千､ｺ縺励※縺上□縺輔＞縲・
 
-**初期問題**: ${problemDescription}
-**これまでの回答**: ${answersText}
+**蛻晄悄蝠城｡・*: ${problemDescription}
+**縺薙ｌ縺ｾ縺ｧ縺ｮ蝗樒ｭ・*: ${answersText}
 
-以下の形式で解決策を提示してください：
-1. **問題の特定**: 回答から推測される問題
-2. **原因分析**: 考えられる原因
-3. **具体的な処置手順**: 段階的な対処方法
-4. **安全上の注意**: 作業時の注意事項
-5. **専門家への相談**: 必要に応じて専門家への相談タイミング
+莉･荳九・蠖｢蠑上〒隗｣豎ｺ遲悶ｒ謠千､ｺ縺励※縺上□縺輔＞・・
+1. **蝠城｡後・迚ｹ螳・*: 蝗樒ｭ斐°繧画耳貂ｬ縺輔ｌ繧句撫鬘・
+2. **蜴溷屏蛻・梵**: 閠・∴繧峨ｌ繧句次蝗
+3. **蜈ｷ菴鍋噪縺ｪ蜃ｦ鄂ｮ謇矩・*: 谿ｵ髫守噪縺ｪ蟇ｾ蜃ｦ譁ｹ豕・
+4. **螳牙・荳翫・豕ｨ諢・*: 菴懈･ｭ譎ゅ・豕ｨ諢丈ｺ矩・
+5. **蟆る摩螳ｶ縺ｸ縺ｮ逶ｸ隲・*: 蠢・ｦ√↓蠢懊§縺ｦ蟆る摩螳ｶ縺ｸ縺ｮ逶ｸ隲・ち繧､繝溘Φ繧ｰ
 
-実用的で安全な解決策を提示してください。
-必ず具体的な手順と安全上の注意を含めてください。`;
+螳溽畑逧・〒螳牙・縺ｪ隗｣豎ｺ遲悶ｒ謠千､ｺ縺励※縺上□縺輔＞縲・
+蠢・★蜈ｷ菴鍋噪縺ｪ謇矩・→螳牙・荳翫・豕ｨ諢上ｒ蜷ｫ繧√※縺上□縺輔＞縲Ａ;
 
       const response = await this.openai.chat.completions.create({
         model: "gpt-4",
         messages: [
-          { role: "system", content: "あなたは保守用車の専門技術者です。具体的で安全な解決策を提供してください。" },
+          { role: "system", content: "縺ゅ↑縺溘・菫晏ｮ育畑霆翫・蟆る摩謚陦楢・〒縺吶ょ・菴鍋噪縺ｧ螳牙・縺ｪ隗｣豎ｺ遲悶ｒ謠蝉ｾ帙＠縺ｦ縺上□縺輔＞縲・ },
           { role: "user", content: prompt }
         ],
         temperature: 0.1,
         max_tokens: 2000
       });
 
-      return response.choices[0].message.content || '解決策を生成できませんでした。専門家に相談してください。';
+      return response.choices[0].message.content || '隗｣豎ｺ遲悶ｒ逕滓・縺ｧ縺阪∪縺帙ｓ縺ｧ縺励◆縲ょｰる摩螳ｶ縺ｫ逶ｸ隲・＠縺ｦ縺上□縺輔＞縲・;
       
     } catch (error) {
-      console.error('❌ 解決策生成エラー:', error);
-      return '解決策を生成できませんでした。専門家に相談してください。';
+      console.error('笶・隗｣豎ｺ遲也函謌舌お繝ｩ繝ｼ:', error);
+      return '隗｣豎ｺ遲悶ｒ逕滓・縺ｧ縺阪∪縺帙ｓ縺ｧ縺励◆縲ょｰる摩螳ｶ縺ｫ逶ｸ隲・＠縺ｦ縺上□縺輔＞縲・;
     }
   }
 }

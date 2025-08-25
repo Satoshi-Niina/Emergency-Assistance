@@ -1,4 +1,4 @@
-
+﻿
 import { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/auth-context';
@@ -26,12 +26,12 @@ const BaseDataPage = lazy(() => import('./pages/base-data'));
 
 const NotFoundPage = lazy(() => import('./pages/not-found'));
 
-// 認証状態に基づいてルートパスを制御するコンポーネント
+// 隱崎ｨｼ迥ｶ諷九↓蝓ｺ縺･縺・※繝ｫ繝ｼ繝医ヱ繧ｹ繧貞宛蠕｡縺吶ｋ繧ｳ繝ｳ繝昴・繝阪Φ繝・
 function RootRedirect() {
-  console.log('🔍 RootRedirect - コンポーネント実行開始');
+  console.log('剥 RootRedirect - 繧ｳ繝ｳ繝昴・繝阪Φ繝亥ｮ溯｡碁幕蟋・);
   const { user, isLoading } = useAuth();
   
-  console.log('🔍 RootRedirect - 認証状態確認:', {
+  console.log('剥 RootRedirect - 隱崎ｨｼ迥ｶ諷狗｢ｺ隱・', {
     isLoading,
     hasUser: !!user,
     username: user?.username
@@ -42,25 +42,25 @@ function RootRedirect() {
       <div className="flex justify-center items-center h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">認証状態を確認中...</p>
+          <p className="text-gray-600">隱崎ｨｼ迥ｶ諷九ｒ遒ｺ隱堺ｸｭ...</p>
         </div>
       </div>
     );
   }
 
-  // 認証済みの場合はチャット画面に、未認証の場合はログイン画面にリダイレクト
+  // 隱崎ｨｼ貂医∩縺ｮ蝣ｴ蜷医・繝√Ε繝・ヨ逕ｻ髱｢縺ｫ縲∵悴隱崎ｨｼ縺ｮ蝣ｴ蜷医・繝ｭ繧ｰ繧､繝ｳ逕ｻ髱｢縺ｫ繝ｪ繝繧､繝ｬ繧ｯ繝・
   return <Navigate to={user ? "/chat" : "/login"} replace />;
 }
 
 function App() {
-  console.log('🔧 App.tsx: アプリケーション初期化開始');
-  console.log('🔧 App.tsx: 環境変数確認:', {
+  console.log('肌 App.tsx: 繧｢繝励Μ繧ｱ繝ｼ繧ｷ繝ｧ繝ｳ蛻晄悄蛹夜幕蟋・);
+  console.log('肌 App.tsx: 迺ｰ蠅・､画焚遒ｺ隱・', {
     VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
     NODE_ENV: import.meta.env.NODE_ENV,
     timestamp: new Date().toISOString()
   });
   
-  console.log('🔧 App.tsx: コンポーネントレンダリング開始');
+  console.log('肌 App.tsx: 繧ｳ繝ｳ繝昴・繝阪Φ繝医Ξ繝ｳ繝繝ｪ繝ｳ繧ｰ髢句ｧ・);
   
   return (
     <ErrorBoundary>
@@ -75,7 +75,7 @@ function App() {
                   <div className="flex justify-center items-center h-full">
                     <div className="text-center">
                       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                      <p className="text-gray-600">読み込み中...</p>
+                      <p className="text-gray-600">隱ｭ縺ｿ霎ｼ縺ｿ荳ｭ...</p>
                     </div>
                   </div>
                 }>
@@ -83,7 +83,7 @@ function App() {
                     <Route path="/" element={<RootRedirect />} />
                     <Route path="/login" element={<LoginPage />} />
                     
-                    {/* 認証が必要なルート */}
+                    {/* 隱崎ｨｼ縺悟ｿ・ｦ√↑繝ｫ繝ｼ繝・*/}
                     <Route path="/chat" element={
                       <ProtectedRoute>
                         <ChatPage />
@@ -114,28 +114,28 @@ function App() {
                       </ProtectedRoute>
                     } />
                     
-                    {/* 設定ページ（一般ユーザーもアクセス可能） */}
+                    {/* 險ｭ螳壹・繝ｼ繧ｸ・井ｸ闊ｬ繝ｦ繝ｼ繧ｶ繝ｼ繧ゅい繧ｯ繧ｻ繧ｹ蜿ｯ閭ｽ・・*/}
                     <Route path="/settings" element={
                       <ProtectedRoute>
                         <SettingsPage />
                       </ProtectedRoute>
                     } />
                     
-                    {/* システム診断ページ（一般ユーザーもアクセス可能） */}
+                    {/* 繧ｷ繧ｹ繝・Β險ｺ譁ｭ繝壹・繧ｸ・井ｸ闊ｬ繝ｦ繝ｼ繧ｶ繝ｼ繧ゅい繧ｯ繧ｻ繧ｹ蜿ｯ閭ｽ・・*/}
                     <Route path="/system-diagnostic" element={
                       <ProtectedRoute>
                         <SystemDiagnosticPage />
                       </ProtectedRoute>
                     } />
                     
-                    {/* 基礎データ管理ページ */}
+                    {/* 蝓ｺ遉弱ョ繝ｼ繧ｿ邂｡逅・・繝ｼ繧ｸ */}
                     <Route path="/base-data" element={
                       <ProtectedRoute>
                         <BaseDataPage />
                       </ProtectedRoute>
                     } />
                     
-                    {/* 管理者権限が必要なルート */}
+                    {/* 邂｡逅・・ｨｩ髯舌′蠢・ｦ√↑繝ｫ繝ｼ繝・*/}
                     
                     <Route path="/users" element={
                       <ProtectedRoute requireAdmin={true}>

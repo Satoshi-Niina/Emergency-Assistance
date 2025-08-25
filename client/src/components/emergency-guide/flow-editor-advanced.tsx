@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -67,14 +67,14 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
   const { toast } = useToast();
   const [flowData, setFlowData] = useState<FlowData>({
     id: flowId || uuidv4(),
-    title: flowId ? 'フロー編集' : '新規フロー',
+    title: flowId ? '繝輔Ο繝ｼ邱ｨ髮・ : '譁ｰ隕上ヵ繝ｭ繝ｼ',
     description: '',
     steps: []
   });
   const [isLoading, setIsLoading] = useState(false);
   const [draggedStepId, setDraggedStepId] = useState<string | null>(null);
 
-  // フローデータの読み込み
+  // 繝輔Ο繝ｼ繝・・繧ｿ縺ｮ隱ｭ縺ｿ霎ｼ縺ｿ
   useEffect(() => {
     if (flowId) {
       loadFlowData();
@@ -84,7 +84,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
   const loadFlowData = async () => {
     try {
       setIsLoading(true);
-      console.log('🔄 フローデータ読み込み開始:', flowId);
+      console.log('売 繝輔Ο繝ｼ繝・・繧ｿ隱ｭ縺ｿ霎ｼ縺ｿ髢句ｧ・', flowId);
       
       const response = await fetch(buildApiUrl(`/api/troubleshooting/${flowId}`), {
         headers: {
@@ -95,18 +95,18 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ API エラー:', errorText);
-        throw new Error(`フローデータの取得に失敗しました: ${response.status} ${response.statusText}`);
+        console.error('笶・API 繧ｨ繝ｩ繝ｼ:', errorText);
+        throw new Error(`繝輔Ο繝ｼ繝・・繧ｿ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆: ${response.status} ${response.statusText}`);
       }
       
       const responseData = await response.json();
-      console.log('📊 APIレスポンス:', responseData);
+      console.log('投 API繝ｬ繧ｹ繝昴Φ繧ｹ:', responseData);
       
-      // サーバーからのレスポンス構造に合わせてデータを取得
+      // 繧ｵ繝ｼ繝舌・縺九ｉ縺ｮ繝ｬ繧ｹ繝昴Φ繧ｹ讒矩縺ｫ蜷医ｏ縺帙※繝・・繧ｿ繧貞叙蠕・
       const data = responseData.success && responseData.data ? responseData.data : responseData;
-      console.log('📋 処理対象データ:', data);
+      console.log('搭 蜃ｦ逅・ｯｾ雎｡繝・・繧ｿ:', data);
       
-      // データ構造の正規化
+      // 繝・・繧ｿ讒矩縺ｮ豁｣隕丞喧
       if (data.steps && Array.isArray(data.steps)) {
         data.steps = data.steps.map(step => ({
           ...step,
@@ -117,7 +117,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
         data.steps = [];
       }
 
-      console.log('✅ フローデータ読み込み完了:', {
+      console.log('笨・繝輔Ο繝ｼ繝・・繧ｿ隱ｭ縺ｿ霎ｼ縺ｿ螳御ｺ・', {
         id: data.id,
         title: data.title,
         stepsCount: data.steps.length
@@ -125,10 +125,10 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
       
       setFlowData(data);
     } catch (error) {
-      console.error('❌ フローデータ読み込みエラー:', error);
+      console.error('笶・繝輔Ο繝ｼ繝・・繧ｿ隱ｭ縺ｿ霎ｼ縺ｿ繧ｨ繝ｩ繝ｼ:', error);
       toast({
-        title: "エラー",
-        description: "フローデータの読み込みに失敗しました",
+        title: "繧ｨ繝ｩ繝ｼ",
+        description: "繝輔Ο繝ｼ繝・・繧ｿ縺ｮ隱ｭ縺ｿ霎ｼ縺ｿ縺ｫ螟ｱ謨励＠縺ｾ縺励◆",
         variant: "destructive",
       });
     } finally {
@@ -136,12 +136,12 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
     }
   };
 
-  // ステップの追加
+  // 繧ｹ繝・ャ繝励・霑ｽ蜉
   const addStep = (type: 'step' | 'decision', index?: number) => {
     const newStep: Step = {
       id: uuidv4(),
       type,
-      title: `新しい${type === 'step' ? 'ステップ' : '条件分岐'}`,
+      title: `譁ｰ縺励＞${type === 'step' ? '繧ｹ繝・ャ繝・ : '譚｡莉ｶ蛻・ｲ・}`,
       description: '',
       message: '',
       images: [],
@@ -159,7 +159,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
     });
   };
 
-  // ステップの削除
+  // 繧ｹ繝・ャ繝励・蜑企勁
   const deleteStep = (stepId: string) => {
     setFlowData(prev => ({
       ...prev,
@@ -167,7 +167,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
     }));
   };
 
-  // ステップの更新
+  // 繧ｹ繝・ャ繝励・譖ｴ譁ｰ
   const updateStep = (stepId: string, updates: Partial<Step>) => {
     setFlowData(prev => ({
       ...prev,
@@ -177,7 +177,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
     }));
   };
 
-  // ドラッグ&ドロップ機能
+  // 繝峨Λ繝・げ&繝峨Ο繝・・讖溯・
   const handleDragStart = (e: React.DragEvent, stepId: string) => {
     setDraggedStepId(stepId);
     e.dataTransfer.effectAllowed = 'move';
@@ -207,7 +207,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
     setDraggedStepId(null);
   };
 
-  // 画像アップロード
+  // 逕ｻ蜒上い繝・・繝ｭ繝ｼ繝・
   const handleImageUpload = async (stepId: string, files: FileList) => {
     const newImages = Array.from(files).map(file => ({
       url: URL.createObjectURL(file),
@@ -220,7 +220,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
     });
   };
 
-  // 画像の削除
+  // 逕ｻ蜒上・蜑企勁
   const removeImage = (stepId: string, imageIndex: number) => {
     setFlowData(prev => ({
       ...prev,
@@ -235,7 +235,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
     }));
   };
 
-  // 条件の追加
+  // 譚｡莉ｶ縺ｮ霑ｽ蜉
   const addCondition = (stepId: string) => {
     setFlowData(prev => ({
       ...prev,
@@ -251,7 +251,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
     }));
   };
 
-  // 条件の削除
+  // 譚｡莉ｶ縺ｮ蜑企勁
   const removeCondition = (stepId: string, conditionIndex: number) => {
     setFlowData(prev => ({
       ...prev,
@@ -267,7 +267,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
     }));
   };
 
-  // 条件の更新
+  // 譚｡莉ｶ縺ｮ譖ｴ譁ｰ
   const updateCondition = (stepId: string, conditionIndex: number, field: 'label' | 'nextId', value: string) => {
     setFlowData(prev => ({
       ...prev,
@@ -282,18 +282,18 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
     }));
   };
 
-  // 保存処理
+  // 菫晏ｭ伜・逅・
   const handleSave = async () => {
     try {
       setIsLoading(true);
       
-      // 画像ファイルのアップロード
+      // 逕ｻ蜒上ヵ繧｡繧､繝ｫ縺ｮ繧｢繝・・繝ｭ繝ｼ繝・
       const updatedFlowData = { ...flowData };
       for (const step of updatedFlowData.steps) {
         const uploadedImages = [];
         for (const image of step.images) {
           if (image.file) {
-            // 画像ファイルをアップロード
+            // 逕ｻ蜒上ヵ繧｡繧､繝ｫ繧偵い繝・・繝ｭ繝ｼ繝・
             const formData = new FormData();
             formData.append('image', image.file);
             
@@ -318,14 +318,14 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
 
       onSave(updatedFlowData);
       toast({
-        title: "成功",
-        description: "フローが保存されました",
+        title: "謌仙粥",
+        description: "繝輔Ο繝ｼ縺御ｿ晏ｭ倥＆繧後∪縺励◆",
       });
     } catch (error) {
-      console.error('保存エラー:', error);
+      console.error('菫晏ｭ倥お繝ｩ繝ｼ:', error);
       toast({
-        title: "エラー",
-        description: "フローの保存に失敗しました",
+        title: "繧ｨ繝ｩ繝ｼ",
+        description: "繝輔Ο繝ｼ縺ｮ菫晏ｭ倥↓螟ｱ謨励＠縺ｾ縺励◆",
         variant: "destructive",
       });
     } finally {
@@ -346,49 +346,49 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
       <Card className="flex-shrink-0">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>{flowId ? 'フロー編集' : '新規フロー作成'}</span>
+            <span>{flowId ? '繝輔Ο繝ｼ邱ｨ髮・ : '譁ｰ隕上ヵ繝ｭ繝ｼ菴懈・'}</span>
             <div className="flex gap-2">
               <Button variant="outline" onClick={onCancel}>
                 <X className="h-4 w-4 mr-1" />
-                キャンセル
+                繧ｭ繝｣繝ｳ繧ｻ繝ｫ
               </Button>
               <Button onClick={handleSave} disabled={isLoading}>
                 <Save className="h-4 w-4 mr-1" />
-                保存
+                菫晏ｭ・
               </Button>
             </div>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* フロー基本情報 */}
+          {/* 繝輔Ο繝ｼ蝓ｺ譛ｬ諠・ｱ */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="title">タイトル</Label>
+              <Label htmlFor="title">繧ｿ繧､繝医Ν</Label>
               <Input
                 id="title"
                 value={flowData.title}
                 onChange={(e) => setFlowData(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="フローのタイトル"
+                placeholder="繝輔Ο繝ｼ縺ｮ繧ｿ繧､繝医Ν"
               />
             </div>
             <div>
-              <Label htmlFor="description">説明</Label>
+              <Label htmlFor="description">隱ｬ譏・/Label>
               <Input
                 id="description"
                 value={flowData.description}
                 onChange={(e) => setFlowData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="フローの説明"
+                placeholder="繝輔Ο繝ｼ縺ｮ隱ｬ譏・
               />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* ステップ一覧 */}
+      {/* 繧ｹ繝・ャ繝嶺ｸ隕ｧ */}
       <Card className="flex-1 flex flex-col min-h-0">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>ステップ一覧</span>
+            <span>繧ｹ繝・ャ繝嶺ｸ隕ｧ</span>
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -396,7 +396,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                 onClick={() => addStep('step')}
               >
                 <Plus className="h-4 w-4 mr-1" />
-                ステップ追加
+                繧ｹ繝・ャ繝苓ｿｽ蜉
               </Button>
               <Button
                 variant="outline"
@@ -404,7 +404,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                 onClick={() => addStep('decision')}
               >
                 <Plus className="h-4 w-4 mr-1" />
-                条件分岐追加
+                譚｡莉ｶ蛻・ｲ占ｿｽ蜉
               </Button>
             </div>
           </CardTitle>
@@ -429,14 +429,14 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                             <div className="flex items-start gap-3">
                               <GripVertical className="h-5 w-5 text-gray-400 mt-1 flex-shrink-0" />
                               <div className="flex-1 space-y-4">
-                                {/* ステップヘッダー */}
+                                {/* 繧ｹ繝・ャ繝励・繝・ム繝ｼ */}
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-2">
                                     <span className="text-sm font-medium text-gray-500">
                                       {index + 1}
                                     </span>
                                     <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
-                                      {step.type === 'step' ? 'ステップ' : '条件分岐'}
+                                      {step.type === 'step' ? '繧ｹ繝・ャ繝・ : '譚｡莉ｶ蛻・ｲ・}
                                     </span>
                                   </div>
                                   <Button
@@ -449,39 +449,39 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                                   </Button>
                                 </div>
 
-                                {/* ステップ内容 */}
+                                {/* 繧ｹ繝・ャ繝怜・螳ｹ */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                   <div>
-                                    <Label>タイトル</Label>
+                                    <Label>繧ｿ繧､繝医Ν</Label>
                                     <Input
                                       value={step.title}
                                       onChange={(e) => updateStep(step.id, { title: e.target.value })}
-                                      placeholder="ステップのタイトル"
+                                      placeholder="繧ｹ繝・ャ繝励・繧ｿ繧､繝医Ν"
                                     />
                                   </div>
                                   <div>
-                                    <Label>説明</Label>
+                                    <Label>隱ｬ譏・/Label>
                                     <Input
                                       value={step.description}
                                       onChange={(e) => updateStep(step.id, { description: e.target.value })}
-                                      placeholder="ステップの説明"
+                                      placeholder="繧ｹ繝・ャ繝励・隱ｬ譏・
                                     />
                                   </div>
                                 </div>
 
                                 <div>
-                                  <Label>メッセージ</Label>
+                                  <Label>繝｡繝・そ繝ｼ繧ｸ</Label>
                                   <Textarea
                                     value={step.message}
                                     onChange={(e) => updateStep(step.id, { message: e.target.value })}
-                                    placeholder="ステップの詳細メッセージ"
+                                    placeholder="繧ｹ繝・ャ繝励・隧ｳ邏ｰ繝｡繝・そ繝ｼ繧ｸ"
                                     rows={3}
                                   />
                                 </div>
 
-                                {/* 画像アップロード */}
+                                {/* 逕ｻ蜒上い繝・・繝ｭ繝ｼ繝・*/}
                                 <div>
-                                  <Label>画像</Label>
+                                  <Label>逕ｻ蜒・/Label>
                                   <div className="flex flex-wrap gap-2 mt-2">
                                     {step.images.map((image, imageIndex) => (
                                       <div key={imageIndex} className="relative">
@@ -520,28 +520,28 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                                       className="w-20 h-20 flex flex-col items-center justify-center"
                                     >
                                       <Upload className="h-4 w-4" />
-                                      <span className="text-xs">追加</span>
+                                      <span className="text-xs">霑ｽ蜉</span>
                                     </Button>
                                   </div>
                                 </div>
 
-                                {/* 条件分岐 */}
+                                {/* 譚｡莉ｶ蛻・ｲ・*/}
                                 {step.type === 'decision' && (
                                   <div>
-                                    <Label>条件分岐</Label>
+                                    <Label>譚｡莉ｶ蛻・ｲ・/Label>
                                     <div className="space-y-2">
                                       {(step.conditions || []).map((condition, conditionIndex) => (
                                         <div key={conditionIndex} className="flex gap-2">
                                           <Input
                                             value={condition.label}
                                             onChange={(e) => updateCondition(step.id, conditionIndex, 'label', e.target.value)}
-                                            placeholder="条件のラベル"
+                                            placeholder="譚｡莉ｶ縺ｮ繝ｩ繝吶Ν"
                                             className="flex-1"
                                           />
                                           <Input
                                             value={condition.nextId}
                                             onChange={(e) => updateCondition(step.id, conditionIndex, 'nextId', e.target.value)}
-                                            placeholder="次のステップID"
+                                            placeholder="谺｡縺ｮ繧ｹ繝・ャ繝悠D"
                                             className="flex-1"
                                           />
                                           <Button
@@ -560,7 +560,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                                         onClick={() => addCondition(step.id)}
                                       >
                                         <Plus className="h-4 w-4 mr-1" />
-                                        条件追加
+                                        譚｡莉ｶ霑ｽ蜉
                                       </Button>
                                     </div>
                                   </div>
@@ -572,18 +572,18 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                       </ContextMenuTrigger>
                       <ContextMenuContent>
                         <ContextMenuItem onClick={() => addStep('step', index + 1)}>
-                          ステップを下に挿入
+                          繧ｹ繝・ャ繝励ｒ荳九↓謖ｿ蜈･
                         </ContextMenuItem>
                         <ContextMenuItem onClick={() => addStep('decision', index + 1)}>
-                          条件分岐を下に挿入
+                          譚｡莉ｶ蛻・ｲ舌ｒ荳九↓謖ｿ蜈･
                         </ContextMenuItem>
                         <ContextMenuItem onClick={() => deleteStep(step.id)} className="text-red-600">
-                          削除
+                          蜑企勁
                         </ContextMenuItem>
                       </ContextMenuContent>
                     </ContextMenu>
                     
-                    {/* ステップ間の追加ボタン */}
+                    {/* 繧ｹ繝・ャ繝鈴俣縺ｮ霑ｽ蜉繝懊ち繝ｳ */}
                     <div className="flex items-center justify-center gap-4 my-2">
                       <Button
                         variant="outline"
@@ -592,7 +592,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                         onClick={() => addStep('step', index + 1)}
                       >
                         <Plus className="h-4 w-4 mr-1" />
-                        ステップ追加
+                        繧ｹ繝・ャ繝苓ｿｽ蜉
                       </Button>
                       <Button
                         variant="outline"
@@ -601,7 +601,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                         onClick={() => addStep('decision', index + 1)}
                       >
                         <Plus className="h-4 w-4 mr-1" />
-                        条件分岐追加
+                        譚｡莉ｶ蛻・ｲ占ｿｽ蜉
                       </Button>
                     </div>
                   </React.Fragment>

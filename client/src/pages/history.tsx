@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Search, FileText, Image, Calendar, MapPin, Settings, Filter, Download, Trash2, FileDown, FileText as FileTextIcon, Table, Grid3X3, List, ClipboardList, FileSpreadsheet, Grid, Printer } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -20,11 +20,11 @@ import ChatExportReport from '../components/report/chat-export-report';
 
 
 
-// 画像ユーティリティ関数
+// 逕ｻ蜒上Θ繝ｼ繝・ぅ繝ｪ繝・ぅ髢｢謨ｰ
 const API_BASE = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_BASE_URL || window.location.origin);
 
 async function fetchDetailFile(name: string) {
-  // IDベースのエンドポイントを試行
+  // ID繝吶・繧ｹ縺ｮ繧ｨ繝ｳ繝峨・繧､繝ｳ繝医ｒ隧ｦ陦・
   const endpoints = [
     `${API_BASE}/api/history/${name}`,
     `${API_BASE}/api/history/detail/${name}`,
@@ -33,22 +33,22 @@ async function fetchDetailFile(name: string) {
   
   for (const url of endpoints) {
     try {
-      console.log('[fetchDetailFile] リクエスト開始:', url);
+      console.log('[fetchDetailFile] 繝ｪ繧ｯ繧ｨ繧ｹ繝磯幕蟋・', url);
       const r = await fetch(url, { credentials: 'include' });
-      console.log('[fetchDetailFile] レスポンス受信:', { status: r.status, ok: r.ok, url });
+      console.log('[fetchDetailFile] 繝ｬ繧ｹ繝昴Φ繧ｹ蜿嶺ｿ｡:', { status: r.status, ok: r.ok, url });
       
       if (r.ok) {
         const json = await r.json();
-        console.log('[fetchDetailFile] JSON解析完了:', { hasData: !!json, keys: Object.keys(json || {}) });
+        console.log('[fetchDetailFile] JSON隗｣譫仙ｮ御ｺ・', { hasData: !!json, keys: Object.keys(json || {}) });
         return json;
       }
     } catch (error) {
-      console.warn('[fetchDetailFile] エンドポイント失敗:', url, error);
+      console.warn('[fetchDetailFile] 繧ｨ繝ｳ繝峨・繧､繝ｳ繝亥､ｱ謨・', url, error);
     }
   }
   
-  // すべてのエンドポイントが失敗した場合
-  throw new Error(`detail 404 - IDが見つかりません: ${name}`);
+  // 縺吶∋縺ｦ縺ｮ繧ｨ繝ｳ繝峨・繧､繝ｳ繝医′螟ｱ謨励＠縺溷ｴ蜷・
+  throw new Error(`detail 404 - ID縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ: ${name}`);
 }
 
 function getSelectedItemWithFallback(list: any[], selected: Set<number>) {
@@ -87,24 +87,24 @@ const HistoryPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   
-  // エクスポート機能の状態
+  // 繧ｨ繧ｯ繧ｹ繝昴・繝域ｩ溯・縺ｮ迥ｶ諷・
 
   const [exportLoading, setExportLoading] = useState(false);
   
-  // レポート機能の状態
+  // 繝ｬ繝昴・繝域ｩ溯・縺ｮ迥ｶ諷・
   const [reportLoading, setReportLoading] = useState(false);
   
-  // 編集・プレビュー機能の状態
+  // 邱ｨ髮・・繝励Ξ繝薙Η繝ｼ讖溯・縺ｮ迥ｶ諷・
   const [editingItem, setEditingItem] = useState<SupportHistoryItem | null>(null);
   const [previewItem, setPreviewItem] = useState<SupportHistoryItem | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   
-  // 印刷機能の状態
+  // 蜊ｰ蛻ｷ讖溯・縺ｮ迥ｶ諷・
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [printMode, setPrintMode] = useState<'table' | 'report'>('table');
   
-  // レポート表示の状態
+  // 繝ｬ繝昴・繝郁｡ｨ遉ｺ縺ｮ迥ｶ諷・
   const [showReport, setShowReport] = useState(false);
   const [selectedReportData, setSelectedReportData] = useState<any>(null);
   const [selectedFileName, setSelectedFileName] = useState<string>('');
@@ -113,13 +113,13 @@ const HistoryPage: React.FC = () => {
   
 
 
-  // 機種・機械番号マスターデータ（編集UI用 - PostgreSQLから）
+  // 讖溽ｨｮ繝ｻ讖滓｢ｰ逡ｪ蜿ｷ繝槭せ繧ｿ繝ｼ繝・・繧ｿ・育ｷｨ髮・I逕ｨ - PostgreSQL縺九ｉ・・
   const [machineData, setMachineData] = useState<MachineData>({ 
     machineTypes: [], 
     machines: [] 
   });
 
-  // 履歴検索フィルター用データ（保存されたJSONファイルから）
+  // 螻･豁ｴ讀懃ｴ｢繝輔ぅ繝ｫ繧ｿ繝ｼ逕ｨ繝・・繧ｿ・井ｿ晏ｭ倥＆繧後◆JSON繝輔ぃ繧､繝ｫ縺九ｉ・・
   const [searchFilterData, setSearchFilterData] = useState<{
     machineTypes: string[];
     machineNumbers: string[];
@@ -130,29 +130,29 @@ const HistoryPage: React.FC = () => {
 
   const [searchFilterLoading, setSearchFilterLoading] = useState(false);
 
-  // JSONデータを正規化する関数
+  // JSON繝・・繧ｿ繧呈ｭ｣隕丞喧縺吶ｋ髢｢謨ｰ
   const normalizeJsonData = (item: SupportHistoryItem): SupportHistoryItem => {
-    console.log('正規化前のアイテム:', item);
+    console.log('豁｣隕丞喧蜑阪・繧｢繧､繝・Β:', item);
     
     if (!item.jsonData) {
-      console.log('jsonDataが存在しません');
+      console.log('jsonData縺悟ｭ伜惠縺励∪縺帙ｓ');
       return item;
     }
 
-    // 既にitem直接にmachineTypeとmachineNumberが存在する場合
+    // 譌｢縺ｫitem逶ｴ謗･縺ｫmachineType縺ｨmachineNumber縺悟ｭ伜惠縺吶ｋ蝣ｴ蜷・
     if (item.machineType && item.machineNumber) {
-      console.log('既に正規化済み:', { machineType: item.machineType, machineNumber: item.machineNumber });
+      console.log('譌｢縺ｫ豁｣隕丞喧貂医∩:', { machineType: item.machineType, machineNumber: item.machineNumber });
       return item;
     }
 
-    // サーバーから送信されたデータを基に正規化
+    // 繧ｵ繝ｼ繝舌・縺九ｉ騾∽ｿ｡縺輔ｌ縺溘ョ繝ｼ繧ｿ繧貞渕縺ｫ豁｣隕丞喧
     const normalizedItem = {
       ...item,
       machineType: item.machineType || item.jsonData.machineType || '',
       machineNumber: item.machineNumber || item.jsonData.machineNumber || '',
       jsonData: {
         ...item.jsonData,
-        // 必要なフィールドを確実に含める
+        // 蠢・ｦ√↑繝輔ぅ繝ｼ繝ｫ繝峨ｒ遒ｺ螳溘↓蜷ｫ繧√ｋ
         title: item.jsonData.title || item.title || '',
         problemDescription: item.jsonData.problemDescription || '',
         machineType: item.machineType || item.jsonData.machineType || '',
@@ -165,36 +165,36 @@ const HistoryPage: React.FC = () => {
       }
     };
 
-    // chatDataが存在する場合の追加処理
+    // chatData縺悟ｭ伜惠縺吶ｋ蝣ｴ蜷医・霑ｽ蜉蜃ｦ逅・
     if (item.jsonData.chatData) {
-      console.log('chatData形式を検出');
+      console.log('chatData蠖｢蠑上ｒ讀懷・');
       const chatData = item.jsonData.chatData;
       
-      // machineInfoからmachineTypeとmachineNumberを取得
+      // machineInfo縺九ｉmachineType縺ｨmachineNumber繧貞叙蠕・
       const machineTypeName = chatData.machineInfo?.machineTypeName || '';
       const machineNumber = chatData.machineInfo?.machineNumber || '';
       
-      console.log('chatDataから抽出:', { machineTypeName, machineNumber });
+      console.log('chatData縺九ｉ謚ｽ蜃ｺ:', { machineTypeName, machineNumber });
 
-      // chatDataの値で上書き
+      // chatData縺ｮ蛟､縺ｧ荳頑嶌縺・
       normalizedItem.machineType = machineTypeName || normalizedItem.machineType;
       normalizedItem.machineNumber = machineNumber || normalizedItem.machineNumber;
       normalizedItem.jsonData.machineType = machineTypeName || normalizedItem.jsonData.machineType;
       normalizedItem.jsonData.machineNumber = machineNumber || normalizedItem.jsonData.machineNumber;
     }
 
-    console.log('正規化後のアイテム:', normalizedItem);
+    console.log('豁｣隕丞喧蠕後・繧｢繧､繝・Β:', normalizedItem);
     return normalizedItem;
   };
 
-  // 履歴データ更新のメッセージリスナー
+  // 螻･豁ｴ繝・・繧ｿ譖ｴ譁ｰ縺ｮ繝｡繝・そ繝ｼ繧ｸ繝ｪ繧ｹ繝翫・
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data && event.data.type === 'UPDATE_HISTORY_ITEM') {
         const updatedData = event.data.data;
-        console.log('履歴データ更新メッセージを受信:', updatedData);
+        console.log('螻･豁ｴ繝・・繧ｿ譖ｴ譁ｰ繝｡繝・そ繝ｼ繧ｸ繧貞女菫｡:', updatedData);
         
-        // 履歴一覧表の該当アイテムを更新
+        // 螻･豁ｴ荳隕ｧ陦ｨ縺ｮ隧ｲ蠖薙い繧､繝・Β繧呈峩譁ｰ
         setHistoryItems(prevItems => 
           prevItems.map(item => 
             item.id === updatedData.id || item.chatId === updatedData.chatId 
@@ -203,7 +203,7 @@ const HistoryPage: React.FC = () => {
           )
         );
         
-        // フィルタリングされたアイテムも更新
+        // 繝輔ぅ繝ｫ繧ｿ繝ｪ繝ｳ繧ｰ縺輔ｌ縺溘い繧､繝・Β繧よ峩譁ｰ
         setFilteredItems(prevItems => 
           prevItems.map(item => 
             item.id === updatedData.id || item.chatId === updatedData.chatId 
@@ -212,7 +212,7 @@ const HistoryPage: React.FC = () => {
           )
         );
         
-        // 選択中のアイテムも更新
+        // 驕ｸ謚樔ｸｭ縺ｮ繧｢繧､繝・Β繧よ峩譁ｰ
         if (selectedItem && (selectedItem.id === updatedData.id || selectedItem.chatId === updatedData.chatId)) {
           setSelectedItem(prev => prev ? { ...prev, ...updatedData } : null);
         }
@@ -224,93 +224,93 @@ const HistoryPage: React.FC = () => {
   }, [selectedItem]);
   const [machineDataLoading, setMachineDataLoading] = useState(false);
 
-  // machineDataの状態変化を監視
+  // machineData縺ｮ迥ｶ諷句､牙喧繧堤屮隕・
   useEffect(() => {
-    console.log('🔍 machineData状態変化:', machineData);
+    console.log('剥 machineData迥ｶ諷句､牙喧:', machineData);
   }, [machineData]);
 
-  // データ取得（サーバーAPIから取得）
+  // 繝・・繧ｿ蜿門ｾ暦ｼ医し繝ｼ繝舌・API縺九ｉ蜿門ｾ暦ｼ・
   useEffect(() => {
     const initializeData = async () => {
       try {
-        console.log('🔍 データ初期化開始');
+        console.log('剥 繝・・繧ｿ蛻晄悄蛹夜幕蟋・);
         setLoading(true);
         await Promise.all([
           fetchHistoryData().catch(error => {
-            console.error('履歴データ取得エラー:', error);
+            console.error('螻･豁ｴ繝・・繧ｿ蜿門ｾ励お繝ｩ繝ｼ:', error);
           }),
           fetchMachineDataFromAPI().catch(error => {
-            console.error('機種データ取得エラー:', error);
+            console.error('讖溽ｨｮ繝・・繧ｿ蜿門ｾ励お繝ｩ繝ｼ:', error);
           })
         ]);
-        console.log('🔍 データ初期化完了');
+        console.log('剥 繝・・繧ｿ蛻晄悄蛹門ｮ御ｺ・);
       } catch (error) {
-        console.error('データ初期化エラー:', error);
+        console.error('繝・・繧ｿ蛻晄悄蛹悶お繝ｩ繝ｼ:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    console.log('🔍 useEffect実行');
+    console.log('剥 useEffect螳溯｡・);
     initializeData();
   }, []);
 
-  // 機種・機械番号マスターデータ取得
+  // 讖溽ｨｮ繝ｻ讖滓｢ｰ逡ｪ蜿ｷ繝槭せ繧ｿ繝ｼ繝・・繧ｿ蜿門ｾ・
   const fetchMachineDataFromAPI = async () => {
     try {
       setMachineDataLoading(true);
       
-      // 機種・機械番号データを専用APIから取得
-      console.log('🔍 機種・機械番号データ取得開始');
+      // 讖溽ｨｮ繝ｻ讖滓｢ｰ逡ｪ蜿ｷ繝・・繧ｿ繧貞ｰら畑API縺九ｉ蜿門ｾ・
+      console.log('剥 讖溽ｨｮ繝ｻ讖滓｢ｰ逡ｪ蜿ｷ繝・・繧ｿ蜿門ｾ鈴幕蟋・);
       const response = await fetch('/api/history/machine-data');
-      console.log('🔍 APIレスポンス:', response.status, response.statusText);
+      console.log('剥 API繝ｬ繧ｹ繝昴Φ繧ｹ:', response.status, response.statusText);
       const data = await response.json();
-      console.log('🔍 APIレスポンスデータ:', data);
+      console.log('剥 API繝ｬ繧ｹ繝昴Φ繧ｹ繝・・繧ｿ:', data);
       
       if (data.success && data.machineTypes && data.machines) {
-        // 機種一覧を構築（重複除去）
+        // 讖溽ｨｮ荳隕ｧ繧呈ｧ狗ｯ会ｼ磯㍾隍・勁蜴ｻ・・
         const machineTypeSet = new Set<string>();
         const machineTypes: Array<{ id: string; machineTypeName: string }> = [];
         
-        // 機械番号一覧を構築（重複除去）
+        // 讖滓｢ｰ逡ｪ蜿ｷ荳隕ｧ繧呈ｧ狗ｯ会ｼ磯㍾隍・勁蜴ｻ・・
         const machineSet = new Set<string>();
         const machines: Array<{ id: string; machineNumber: string; machineTypeName: string }> = [];
         
-        console.log('🔍 機種・機械番号データは専用APIから取得されます');
+        console.log('剥 讖溽ｨｮ繝ｻ讖滓｢ｰ逡ｪ蜿ｷ繝・・繧ｿ縺ｯ蟆ら畑API縺九ｉ蜿門ｾ励＆繧後∪縺・);
         
         const result = {
           machineTypes: data.machineTypes || [],
           machines: data.machines || []
         };
         
-        console.log('🔍 機種・機械番号データ取得結果:', result);
-        console.log('🔍 機種数:', result.machineTypes.length);
-        console.log('🔍 機械番号数:', result.machines.length);
-        console.log('🔍 機種一覧:', result.machineTypes.map(t => t.machineTypeName));
-        console.log('🔍 機械番号一覧:', result.machines.map(m => `${m.machineNumber} (${m.machineTypeName})`));
-        console.log('🔍 setMachineData呼び出し前:', result);
+        console.log('剥 讖溽ｨｮ繝ｻ讖滓｢ｰ逡ｪ蜿ｷ繝・・繧ｿ蜿門ｾ礼ｵ先棡:', result);
+        console.log('剥 讖溽ｨｮ謨ｰ:', result.machineTypes.length);
+        console.log('剥 讖滓｢ｰ逡ｪ蜿ｷ謨ｰ:', result.machines.length);
+        console.log('剥 讖溽ｨｮ荳隕ｧ:', result.machineTypes.map(t => t.machineTypeName));
+        console.log('剥 讖滓｢ｰ逡ｪ蜿ｷ荳隕ｧ:', result.machines.map(m => `${m.machineNumber} (${m.machineTypeName})`));
+        console.log('剥 setMachineData蜻ｼ縺ｳ蜃ｺ縺怜燕:', result);
         setMachineData(result);
-        console.log('🔍 setMachineData呼び出し完了');
+        console.log('剥 setMachineData蜻ｼ縺ｳ蜃ｺ縺怜ｮ御ｺ・);
       } else {
-        console.log('⚠️ 機種・機械番号データが正しく取得できませんでした:', data);
-        console.log('⚠️ data.success:', data.success);
-        console.log('⚠️ data.machineTypes:', data.machineTypes);
-        console.log('⚠️ data.machines:', data.machines);
+        console.log('笞・・讖溽ｨｮ繝ｻ讖滓｢ｰ逡ｪ蜿ｷ繝・・繧ｿ縺梧ｭ｣縺励￥蜿門ｾ励〒縺阪∪縺帙ｓ縺ｧ縺励◆:', data);
+        console.log('笞・・data.success:', data.success);
+        console.log('笞・・data.machineTypes:', data.machineTypes);
+        console.log('笞・・data.machines:', data.machines);
         setMachineData({ machineTypes: [], machines: [] });
       }
     } catch (error) {
-      console.error('機種・機械番号データの取得に失敗しました:', error);
+      console.error('讖溽ｨｮ繝ｻ讖滓｢ｰ逡ｪ蜿ｷ繝・・繧ｿ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆:', error);
       setMachineData({ machineTypes: [], machines: [] });
     } finally {
       setMachineDataLoading(false);
     }
   };
 
-  // 履歴検索フィルター用データ（保存されたJSONファイルから取得）
+  // 螻･豁ｴ讀懃ｴ｢繝輔ぅ繝ｫ繧ｿ繝ｼ逕ｨ繝・・繧ｿ・井ｿ晏ｭ倥＆繧後◆JSON繝輔ぃ繧､繝ｫ縺九ｉ蜿門ｾ暦ｼ・
   const fetchSearchFilterData = async () => {
     try {
       setSearchFilterLoading(true);
-      console.log('🔍 履歴検索フィルターデータ取得開始');
+      console.log('剥 螻･豁ｴ讀懃ｴ｢繝輔ぅ繝ｫ繧ｿ繝ｼ繝・・繧ｿ蜿門ｾ鈴幕蟋・);
       
       const response = await fetch('/api/history/search-filters');
       const result = await response.json();
@@ -320,15 +320,15 @@ const HistoryPage: React.FC = () => {
           machineTypes: result.machineTypes || [],
           machineNumbers: result.machineNumbers || []
         });
-        console.log('🔍 履歴検索フィルターデータ取得完了:', {
+        console.log('剥 螻･豁ｴ讀懃ｴ｢繝輔ぅ繝ｫ繧ｿ繝ｼ繝・・繧ｿ蜿門ｾ怜ｮ御ｺ・', {
           machineTypes: result.machineTypes?.length || 0,
           machineNumbers: result.machineNumbers?.length || 0
         });
       } else {
-        console.error('履歴検索フィルターデータ取得失敗:', result.error);
+        console.error('螻･豁ｴ讀懃ｴ｢繝輔ぅ繝ｫ繧ｿ繝ｼ繝・・繧ｿ蜿門ｾ怜､ｱ謨・', result.error);
       }
     } catch (error) {
-      console.error('履歴検索フィルターデータ取得エラー:', error);
+      console.error('螻･豁ｴ讀懃ｴ｢繝輔ぅ繝ｫ繧ｿ繝ｼ繝・・繧ｿ蜿門ｾ励お繝ｩ繝ｼ:', error);
     } finally {
       setSearchFilterLoading(false);
     }
@@ -338,7 +338,7 @@ const HistoryPage: React.FC = () => {
     try {
       setLoading(true);
       
-      // サーバー側でフィルタリングを行う
+      // 繧ｵ繝ｼ繝舌・蛛ｴ縺ｧ繝輔ぅ繝ｫ繧ｿ繝ｪ繝ｳ繧ｰ繧定｡後≧
       const params = new URLSearchParams();
       if (filters.machineType) params.append('machineType', filters.machineType);
       if (filters.machineNumber) params.append('machineNumber', filters.machineNumber);
@@ -350,14 +350,14 @@ const HistoryPage: React.FC = () => {
       const response = await fetch(`/api/history?${params.toString()}`);
       const data = await response.json();
       
-      console.log('🔍 取得したデータ:', data);
+      console.log('剥 蜿門ｾ励＠縺溘ョ繝ｼ繧ｿ:', data);
       
       if (data.success && data.items) {
-        console.log('🔍 取得件数:', data.items.length);
+        console.log('剥 蜿門ｾ嶺ｻｶ謨ｰ:', data.items.length);
         
-        // 機種・機械番号データの確認
+        // 讖溽ｨｮ繝ｻ讖滓｢ｰ逡ｪ蜿ｷ繝・・繧ｿ縺ｮ遒ｺ隱・
         data.items.forEach((item: any, index: number) => {
-          console.log(`🔍 アイテム ${index + 1}:`, {
+          console.log(`剥 繧｢繧､繝・Β ${index + 1}:`, {
             fileName: item.fileName,
             machineType: item.machineType,
             machineNumber: item.machineNumber,
@@ -365,7 +365,7 @@ const HistoryPage: React.FC = () => {
           });
         });
         
-        // ローカルストレージから保存されたデータを読み込んで履歴データを更新
+        // 繝ｭ繝ｼ繧ｫ繝ｫ繧ｹ繝医Ξ繝ｼ繧ｸ縺九ｉ菫晏ｭ倥＆繧後◆繝・・繧ｿ繧定ｪｭ縺ｿ霎ｼ繧薙〒螻･豁ｴ繝・・繧ｿ繧呈峩譁ｰ
         const updatedItems = data.items.map((item: any) => {
           const savedKey = 'savedMachineFailureReport_' + (item.id || item.chatId);
           const savedData = localStorage.getItem(savedKey);
@@ -374,14 +374,14 @@ const HistoryPage: React.FC = () => {
           if (savedData) {
             try {
               const parsedData = JSON.parse(savedData);
-              console.log('ローカルストレージから保存されたデータを読み込み:', parsedData);
+              console.log('繝ｭ繝ｼ繧ｫ繝ｫ繧ｹ繝医Ξ繝ｼ繧ｸ縺九ｉ菫晏ｭ倥＆繧後◆繝・・繧ｿ繧定ｪｭ縺ｿ霎ｼ縺ｿ:', parsedData);
               processedItem = { ...item, ...parsedData };
             } catch (parseError) {
-              console.warn('保存されたデータの解析に失敗:', parseError);
+              console.warn('菫晏ｭ倥＆繧後◆繝・・繧ｿ縺ｮ隗｣譫舌↓螟ｱ謨・', parseError);
             }
           }
           
-          // SupportHistoryItem型に変換
+          // SupportHistoryItem蝙九↓螟画鋤
           const convertedItem: SupportHistoryItem = {
             id: processedItem.id,
             chatId: processedItem.chatId,
@@ -396,7 +396,7 @@ const HistoryPage: React.FC = () => {
             possibleModels: processedItem.possibleModels,
             machineInfo: processedItem.machineInfo,
             jsonData: {
-              ...processedItem, // 全ての元データを含める
+              ...processedItem, // 蜈ｨ縺ｦ縺ｮ蜈・ョ繝ｼ繧ｿ繧貞性繧√ｋ
               machineType: processedItem.machineType || '',
               machineNumber: processedItem.machineNumber || '',
               title: processedItem.title,
@@ -411,7 +411,7 @@ const HistoryPage: React.FC = () => {
             }
           };
           
-          console.log('変換されたアイテム:', {
+          console.log('螟画鋤縺輔ｌ縺溘い繧､繝・Β:', {
             fileName: convertedItem.fileName,
             machineType: convertedItem.machineType,
             machineNumber: convertedItem.machineNumber,
@@ -426,13 +426,13 @@ const HistoryPage: React.FC = () => {
         setTotalPages(Math.ceil(data.total / 20));
         setCurrentPage(page);
       } else {
-        console.log('🔍 データ取得成功せず:', data);
+        console.log('剥 繝・・繧ｿ蜿門ｾ玲・蜉溘○縺・', data);
         setHistoryItems([]);
         setFilteredItems([]);
         setTotalPages(1);
       }
     } catch (error) {
-      console.error('履歴データの取得に失敗しました:', error);
+      console.error('螻･豁ｴ繝・・繧ｿ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆:', error);
       setHistoryItems([]);
       setFilteredItems([]);
       setTotalPages(1);
@@ -441,25 +441,25 @@ const HistoryPage: React.FC = () => {
     }
   };
 
-  // 検索とフィルタリング
+  // 讀懃ｴ｢縺ｨ繝輔ぅ繝ｫ繧ｿ繝ｪ繝ｳ繧ｰ
   useEffect(() => {
-    // 初期ロード時のみ実行
+    // 蛻晄悄繝ｭ繝ｼ繝画凾縺ｮ縺ｿ螳溯｡・
     if (currentPage === 1 && historyItems.length === 0) {
       fetchHistoryData(1);
-      fetchSearchFilterData(); // 履歴検索用フィルターデータを取得
+      fetchSearchFilterData(); // 螻･豁ｴ讀懃ｴ｢逕ｨ繝輔ぅ繝ｫ繧ｿ繝ｼ繝・・繧ｿ繧貞叙蠕・
     }
-  }, []); // filtersの依存を削除
+  }, []); // filters縺ｮ萓晏ｭ倥ｒ蜑企勁
 
-  // フィルター変更時の処理
+  // 繝輔ぅ繝ｫ繧ｿ繝ｼ螟画峩譎ゅ・蜃ｦ逅・
   const handleFilterChange = (key: keyof SearchFilters, value: string) => {
-    // filters を更新
+    // filters 繧呈峩譁ｰ
     setFilters(prev => ({
       ...prev,
       [key]: value
     }));
 
-    // 編集ダイアログが開いている場合は、編集中のアイテムにも反映する
-    // 期待される動作: フィルタで機種/機械番号を選択すると、すでに編集中のフォームに即座に反映される
+    // 邱ｨ髮・ム繧､繧｢繝ｭ繧ｰ縺碁幕縺・※縺・ｋ蝣ｴ蜷医・縲∫ｷｨ髮・ｸｭ縺ｮ繧｢繧､繝・Β縺ｫ繧ょ渚譏縺吶ｋ
+    // 譛溷ｾ・＆繧後ｋ蜍穂ｽ・ 繝輔ぅ繝ｫ繧ｿ縺ｧ讖溽ｨｮ/讖滓｢ｰ逡ｪ蜿ｷ繧帝∈謚槭☆繧九→縲√☆縺ｧ縺ｫ邱ｨ髮・ｸｭ縺ｮ繝輔か繝ｼ繝縺ｫ蜊ｳ蠎ｧ縺ｫ蜿肴丐縺輔ｌ繧・
     try {
       if (editingItem) {
         if (key === 'machineType' || key === 'machineNumber') {
@@ -468,7 +468,7 @@ const HistoryPage: React.FC = () => {
         }
       }
     } catch (syncError) {
-      console.warn('フィルターから編集アイテムへの同期に失敗しました:', syncError);
+      console.warn('繝輔ぅ繝ｫ繧ｿ繝ｼ縺九ｉ邱ｨ髮・い繧､繝・Β縺ｸ縺ｮ蜷梧悄縺ｫ螟ｱ謨励＠縺ｾ縺励◆:', syncError);
     }
   };
 
@@ -481,17 +481,17 @@ const HistoryPage: React.FC = () => {
   };
 
   const handleDeleteHistory = async (id: string) => {
-    if (window.confirm('この履歴を削除しますか？')) {
+    if (window.confirm('縺薙・螻･豁ｴ繧貞炎髯､縺励∪縺吶°・・)) {
       try {
         await deleteHistory(id);
         fetchHistoryData(currentPage);
       } catch (error) {
-        console.error('履歴削除エラー:', error);
+        console.error('螻･豁ｴ蜑企勁繧ｨ繝ｩ繝ｼ:', error);
       }
     }
   };
 
-  // 選択チェック機能
+  // 驕ｸ謚槭メ繧ｧ繝・け讖溯・
   const handleSelectItem = (id: string) => {
     setSelectedItems(prev => {
       const newSet = new Set(prev);
@@ -514,7 +514,7 @@ const HistoryPage: React.FC = () => {
 
   const handleExportSelected = async (format: 'json' | 'csv' = 'json') => {
     if (selectedItems.size === 0) {
-      alert('エクスポートする履歴を選択してください。');
+      alert('繧ｨ繧ｯ繧ｹ繝昴・繝医☆繧句ｱ･豁ｴ繧帝∈謚槭＠縺ｦ縺上□縺輔＞縲・);
       return;
     }
 
@@ -524,7 +524,7 @@ const HistoryPage: React.FC = () => {
       const blob = await exportSelectedHistory(selectedItemsArray, format);
       downloadFile(blob, `selected_history.${format}`);
     } catch (error) {
-      console.error('選択履歴エクスポートエラー:', error);
+      console.error('驕ｸ謚槫ｱ･豁ｴ繧ｨ繧ｯ繧ｹ繝昴・繝医お繝ｩ繝ｼ:', error);
     } finally {
       setExportLoading(false);
     }
@@ -535,7 +535,7 @@ const HistoryPage: React.FC = () => {
       const blob = await exportHistoryItem(item.id, 'json');
       downloadFile(blob, `history_${item.id}.json`);
     } catch (error) {
-      console.error('エクスポートエラー:', error);
+      console.error('繧ｨ繧ｯ繧ｹ繝昴・繝医お繝ｩ繝ｼ:', error);
     }
   };
 
@@ -562,7 +562,7 @@ const HistoryPage: React.FC = () => {
       const blob = await exportHistoryItem(item.id, format);
       downloadFile(blob, `history_${item.id}.${format}`);
     } catch (error) {
-      console.error('エクスポートエラー:', error);
+      console.error('繧ｨ繧ｯ繧ｹ繝昴・繝医お繝ｩ繝ｼ:', error);
     } finally {
       setExportLoading(false);
     }
@@ -576,7 +576,7 @@ const HistoryPage: React.FC = () => {
       const blob = await exportAllHistory(filters, format);
       downloadFile(blob, `all_history.${format}`);
     } catch (error) {
-      console.error('エクスポートエラー:', error);
+      console.error('繧ｨ繧ｯ繧ｹ繝昴・繝医お繝ｩ繝ｼ:', error);
     } finally {
       setExportLoading(false);
     }
@@ -596,35 +596,35 @@ const HistoryPage: React.FC = () => {
   };
 
   const handleGenerateReport = async () => {
-    // 既にレポート生成中の場合は処理を停止
+    // 譌｢縺ｫ繝ｬ繝昴・繝育函謌蝉ｸｭ縺ｮ蝣ｴ蜷医・蜃ｦ逅・ｒ蛛懈ｭ｢
     if (reportLoading) {
-      console.log('レポート生成中です。処理を停止します。');
+      console.log('繝ｬ繝昴・繝育函謌蝉ｸｭ縺ｧ縺吶ょ・逅・ｒ蛛懈ｭ｢縺励∪縺吶・);
       return;
     }
 
     try {
-      console.log('=== レポート生成開始 ===');
+      console.log('=== 繝ｬ繝昴・繝育函謌宣幕蟋・===');
       setReportLoading(true);
       
-      // 選択されたアイテムのみを対象とする
-      // 全件を対象とする
+      // 驕ｸ謚槭＆繧後◆繧｢繧､繝・Β縺ｮ縺ｿ繧貞ｯｾ雎｡縺ｨ縺吶ｋ
+      // 蜈ｨ莉ｶ繧貞ｯｾ雎｡縺ｨ縺吶ｋ
       const targetItems = filteredItems;
       
-      console.log('レポート生成開始:', { 
+      console.log('繝ｬ繝昴・繝育函謌宣幕蟋・', { 
         filteredItemsCount: filteredItems.length,
         targetItemsCount: targetItems.length
       });
       
-      // 対象アイテムがない場合は処理を停止
+      // 蟇ｾ雎｡繧｢繧､繝・Β縺後↑縺・ｴ蜷医・蜃ｦ逅・ｒ蛛懈ｭ｢
       if (targetItems.length === 0) {
-        alert('対象アイテムがありません。');
+        alert('蟇ｾ雎｡繧｢繧､繝・Β縺後≠繧翫∪縺帙ｓ縲・);
         setReportLoading(false);
         return;
       }
       
-      // 各アイテムのデータ構造を確認
+      // 蜷・い繧､繝・Β縺ｮ繝・・繧ｿ讒矩繧堤｢ｺ隱・
       targetItems.forEach((item, index) => {
-        console.log(`アイテム${index + 1}のデータ構造:`, {
+        console.log(`繧｢繧､繝・Β${index + 1}縺ｮ繝・・繧ｿ讒矩:`, {
           id: item.id,
           fileName: item.fileName,
           hasJsonData: !!item.jsonData,
@@ -635,7 +635,7 @@ const HistoryPage: React.FC = () => {
         });
       });
       
-      // 選択されたアイテムからJSONデータを分析してレポートデータを生成
+      // 驕ｸ謚槭＆繧後◆繧｢繧､繝・Β縺九ｉJSON繝・・繧ｿ繧貞・譫舌＠縺ｦ繝ｬ繝昴・繝医ョ繝ｼ繧ｿ繧堤函謌・
       const allTitles: string[] = [];
       const allComponents: string[] = [];
       const allSymptoms: string[] = [];
@@ -644,10 +644,10 @@ const HistoryPage: React.FC = () => {
       targetItems.forEach(item => {
         const jsonData = item?.jsonData ?? item?.data ?? {};
         
-        // 事象タイトルを抽出（ファイル名から優先的に取得、次にJSONデータから）
+        // 莠玖ｱ｡繧ｿ繧､繝医Ν繧呈歓蜃ｺ・医ヵ繧｡繧､繝ｫ蜷阪°繧牙━蜈育噪縺ｫ蜿門ｾ励∵ｬ｡縺ｫJSON繝・・繧ｿ縺九ｉ・・
         let title = null;
         
-        // まずファイル名から事象内容を抽出
+        // 縺ｾ縺壹ヵ繧｡繧､繝ｫ蜷阪°繧我ｺ玖ｱ｡蜀・ｮｹ繧呈歓蜃ｺ
         if (item.fileName) {
           const fileNameParts = item.fileName.split('_');
           if (fileNameParts.length > 1) {
@@ -655,11 +655,11 @@ const HistoryPage: React.FC = () => {
           }
         }
         
-        // ファイル名から取得できない場合は、JSONデータから取得
+        // 繝輔ぃ繧､繝ｫ蜷阪°繧牙叙蠕励〒縺阪↑縺・ｴ蜷医・縲゛SON繝・・繧ｿ縺九ｉ蜿門ｾ・
         if (!title) {
           title = jsonData?.title;
           if (!title && jsonData?.chatData?.messages) {
-            // 従来フォーマットの場合、ユーザーメッセージから事象を抽出
+            // 蠕捺擂繝輔か繝ｼ繝槭ャ繝医・蝣ｴ蜷医√Θ繝ｼ繧ｶ繝ｼ繝｡繝・そ繝ｼ繧ｸ縺九ｉ莠玖ｱ｡繧呈歓蜃ｺ
             const userMessages = jsonData?.chatData?.messages?.filter((msg: any) => !msg.isAiResponse);
             if (userMessages?.length > 0) {
               title = userMessages[0]?.content;
@@ -674,23 +674,23 @@ const HistoryPage: React.FC = () => {
         if (jsonData?.possibleModels) allModels.push(...jsonData.possibleModels);
       });
       
-      console.log('抽出されたデータ:', {
+      console.log('謚ｽ蜃ｺ縺輔ｌ縺溘ョ繝ｼ繧ｿ:', {
         titles: allTitles,
         components: allComponents,
         symptoms: allSymptoms,
         models: allModels
       });
       
-      // 各アイテムごとに個別のレポートを生成
+      // 蜷・い繧､繝・Β縺斐→縺ｫ蛟句挨縺ｮ繝ｬ繝昴・繝医ｒ逕滓・
       const reportDataArray = targetItems.map((item, index) => {
-        console.log(`レポート${index + 1}の生成開始:`, item.fileName);
+        console.log(`繝ｬ繝昴・繝・{index + 1}縺ｮ逕滓・髢句ｧ・`, item.fileName);
         
         const jsonData = item?.jsonData ?? item?.data ?? {};
         
-        // 事象タイトルを抽出（ファイル名から優先的に取得、次にJSONデータから）
-        let title = '事象なし';
+        // 莠玖ｱ｡繧ｿ繧､繝医Ν繧呈歓蜃ｺ・医ヵ繧｡繧､繝ｫ蜷阪°繧牙━蜈育噪縺ｫ蜿門ｾ励∵ｬ｡縺ｫJSON繝・・繧ｿ縺九ｉ・・
+        let title = '莠玖ｱ｡縺ｪ縺・;
         
-        // まずファイル名から事象内容を抽出
+        // 縺ｾ縺壹ヵ繧｡繧､繝ｫ蜷阪°繧我ｺ玖ｱ｡蜀・ｮｹ繧呈歓蜃ｺ
         if (item.fileName) {
           const fileNameParts = item.fileName.split('_');
           if (fileNameParts.length > 1) {
@@ -698,11 +698,11 @@ const HistoryPage: React.FC = () => {
           }
         }
         
-        // ファイル名から取得できない場合は、JSONデータから取得
-        if (title === '事象なし') {
+        // 繝輔ぃ繧､繝ｫ蜷阪°繧牙叙蠕励〒縺阪↑縺・ｴ蜷医・縲゛SON繝・・繧ｿ縺九ｉ蜿門ｾ・
+        if (title === '莠玖ｱ｡縺ｪ縺・) {
           title = jsonData?.title;
           if (!title && jsonData?.chatData?.messages) {
-            // 従来フォーマットの場合、ユーザーメッセージから事象を抽出
+            // 蠕捺擂繝輔か繝ｼ繝槭ャ繝医・蝣ｴ蜷医√Θ繝ｼ繧ｶ繝ｼ繝｡繝・そ繝ｼ繧ｸ縺九ｉ莠玖ｱ｡繧呈歓蜃ｺ
             const userMessages = jsonData?.chatData?.messages?.filter((msg: any) => !msg.isAiResponse);
             if (userMessages?.length > 0) {
               title = userMessages[0]?.content;
@@ -710,7 +710,7 @@ const HistoryPage: React.FC = () => {
           }
         }
         
-        // 機種と機械番号を抽出
+        // 讖溽ｨｮ縺ｨ讖滓｢ｰ逡ｪ蜿ｷ繧呈歓蜃ｺ
         const machineType = item.machineInfo?.machineTypeName || 
                           jsonData?.machineType || 
                           jsonData?.chatData?.machineInfo?.machineTypeName || 
@@ -720,94 +720,94 @@ const HistoryPage: React.FC = () => {
                             jsonData?.chatData?.machineInfo?.machineNumber || 
                             item.machineNumber || '';
         
-        console.log(`レポート${index + 1}の基本情報:`, {
+        console.log(`繝ｬ繝昴・繝・{index + 1}縺ｮ蝓ｺ譛ｬ諠・ｱ:`, {
           title,
           machineType,
           machineNumber
         });
         
-        // 画像データを収集（優先順位付き）
+        // 逕ｻ蜒上ョ繝ｼ繧ｿ繧貞庶髮・ｼ亥━蜈磯・ｽ堺ｻ倥″・・
         const images = [];
         
         try {
-          // 優先順位1: conversationHistoryからBase64画像を取得（最優先）
+          // 蜆ｪ蜈磯・ｽ・: conversationHistory縺九ｉBase64逕ｻ蜒上ｒ蜿門ｾ暦ｼ域怙蜆ｪ蜈茨ｼ・
           if (jsonData?.conversationHistory?.length > 0) {
-            console.log('handleGenerateReport: conversationHistoryからBase64画像を検索中...', jsonData.conversationHistory.length);
+            console.log('handleGenerateReport: conversationHistory縺九ｉBase64逕ｻ蜒上ｒ讀懃ｴ｢荳ｭ...', jsonData.conversationHistory.length);
             const imageMessages = jsonData.conversationHistory.filter((msg: any) => 
               msg.content && typeof msg.content === 'string' && msg.content.startsWith('data:image/')
             );
-            console.log('handleGenerateReport: conversationHistoryでBase64画像を発見:', imageMessages.length);
+            console.log('handleGenerateReport: conversationHistory縺ｧBase64逕ｻ蜒上ｒ逋ｺ隕・', imageMessages.length);
             imageMessages.forEach((msg, index) => {
               images.push({
                 id: `conv-${index}`,
                 url: msg.content,
-                fileName: `故障画像_${index + 1}`,
-                description: '機械故障箇所の写真',
+                fileName: `謨・囿逕ｻ蜒柔${index + 1}`,
+                description: '讖滓｢ｰ謨・囿邂・園縺ｮ蜀咏悄',
                 source: 'conversationHistory'
               });
             });
           }
           
-          // 優先順位2: originalChatData.messagesからBase64画像を取得
+          // 蜆ｪ蜈磯・ｽ・: originalChatData.messages縺九ｉBase64逕ｻ蜒上ｒ蜿門ｾ・
           if (jsonData?.originalChatData?.messages?.length > 0) {
-            console.log('handleGenerateReport: originalChatData.messagesからBase64画像を検索中...', jsonData.originalChatData.messages.length);
+            console.log('handleGenerateReport: originalChatData.messages縺九ｉBase64逕ｻ蜒上ｒ讀懃ｴ｢荳ｭ...', jsonData.originalChatData.messages.length);
             const imageMessages = jsonData.originalChatData.messages.filter((msg: any) => 
               msg.content && typeof msg.content === 'string' && msg.content.startsWith('data:image/')
             );
-            console.log('handleGenerateReport: originalChatData.messagesでBase64画像を発見:', imageMessages.length);
+            console.log('handleGenerateReport: originalChatData.messages縺ｧBase64逕ｻ蜒上ｒ逋ｺ隕・', imageMessages.length);
             imageMessages.forEach((msg, index) => {
-              // 既に追加済みの画像は除外
+              // 譌｢縺ｫ霑ｽ蜉貂医∩縺ｮ逕ｻ蜒上・髯､螟・
               if (!images.some(img => img.url === msg.content)) {
                 images.push({
                   id: `orig-${index}`,
                   url: msg.content,
-                  fileName: `故障画像_${images.length + 1}`,
-                  description: '機械故障箇所の写真',
+                  fileName: `謨・囿逕ｻ蜒柔${images.length + 1}`,
+                  description: '讖滓｢ｰ謨・囿邂・園縺ｮ蜀咏悄',
                   source: 'originalChatData'
                 });
               }
             });
           }
           
-          // 優先順位3: chatData.messagesからBase64画像を取得
+          // 蜆ｪ蜈磯・ｽ・: chatData.messages縺九ｉBase64逕ｻ蜒上ｒ蜿門ｾ・
           if (jsonData?.chatData?.messages?.length > 0) {
-            console.log('handleGenerateReport: chatData.messagesからBase64画像を検索中...', jsonData.chatData.messages.length);
+            console.log('handleGenerateReport: chatData.messages縺九ｉBase64逕ｻ蜒上ｒ讀懃ｴ｢荳ｭ...', jsonData.chatData.messages.length);
             const imageMessages = jsonData.chatData.messages.filter((msg: any) => 
               msg.content && typeof msg.content === 'string' && msg.content.startsWith('data:image/')
             );
-            console.log('handleGenerateReport: chatData.messagesでBase64画像を発見:', imageMessages.length);
+            console.log('handleGenerateReport: chatData.messages縺ｧBase64逕ｻ蜒上ｒ逋ｺ隕・', imageMessages.length);
             imageMessages.forEach((msg, index) => {
-              // 既に追加済みの画像は除外
+              // 譌｢縺ｫ霑ｽ蜉貂医∩縺ｮ逕ｻ蜒上・髯､螟・
               if (!images.some(img => img.url === msg.content)) {
                 images.push({
                   id: `chat-${index}`,
                   url: msg.content,
-                  fileName: `故障画像_${images.length + 1}`,
-                  description: '機械故障箇所の写真',
+                  fileName: `謨・囿逕ｻ蜒柔${images.length + 1}`,
+                  description: '讖滓｢ｰ謨・囿邂・園縺ｮ蜀咏悄',
                   source: 'chatData'
                 });
               }
             });
           }
           
-          // 優先順位4: savedImagesフィールドから画像を取得
+          // 蜆ｪ蜈磯・ｽ・: savedImages繝輔ぅ繝ｼ繝ｫ繝峨°繧臥判蜒上ｒ蜿門ｾ・
           if (jsonData?.savedImages?.length > 0) {
-            console.log('handleGenerateReport: savedImagesから画像を取得中...', jsonData.savedImages.length);
+            console.log('handleGenerateReport: savedImages縺九ｉ逕ｻ蜒上ｒ蜿門ｾ嶺ｸｭ...', jsonData.savedImages.length);
             jsonData.savedImages.forEach((img: any, index: number) => {
-              // 既に追加済みの画像は除外
+              // 譌｢縺ｫ霑ｽ蜉貂医∩縺ｮ逕ｻ蜒上・髯､螟・
               if (!images.some(existingImg => existingImg.url === img.url || existingImg.url === img.path)) {
                 images.push({
                   id: `saved-${index}`,
                   url: img.url || img.path,
-                  fileName: img.fileName || `故障画像_${images.length + 1}`,
-                  description: img.description || '機械故障箇所の写真',
+                  fileName: img.fileName || `謨・囿逕ｻ蜒柔${images.length + 1}`,
+                  description: img.description || '讖滓｢ｰ謨・囿邂・園縺ｮ蜀咏悄',
                   source: 'savedImages'
                 });
               }
             });
           }
           
-          // 優先順位5: 再帰的にJSONデータ内の画像を検索
+          // 蜆ｪ蜈磯・ｽ・: 蜀榊ｸｰ逧・↓JSON繝・・繧ｿ蜀・・逕ｻ蜒上ｒ讀懃ｴ｢
           const findImagesRecursively = (obj: any, path: string = ''): string[] => {
             const foundImages: string[] = [];
             
@@ -831,56 +831,56 @@ const HistoryPage: React.FC = () => {
           };
           
           const recursiveImages = findImagesRecursively(jsonData);
-          console.log('handleGenerateReport: 再帰検索で画像を発見:', recursiveImages.length);
+          console.log('handleGenerateReport: 蜀榊ｸｰ讀懃ｴ｢縺ｧ逕ｻ蜒上ｒ逋ｺ隕・', recursiveImages.length);
           recursiveImages.forEach((imgUrl, index) => {
-            // 既に追加済みの画像は除外
+            // 譌｢縺ｫ霑ｽ蜉貂医∩縺ｮ逕ｻ蜒上・髯､螟・
             if (!images.some(img => img.url === imgUrl)) {
               images.push({
                 id: `recursive-${index}`,
                 url: imgUrl,
-                fileName: `故障画像_${images.length + 1}`,
-                description: '機械故障箇所の写真',
+                fileName: `謨・囿逕ｻ蜒柔${images.length + 1}`,
+                description: '讖滓｢ｰ謨・囿邂・園縺ｮ蜀咏悄',
                 source: 'recursive'
               });
             }
           });
           
-          // 優先順位6: imagePathフィールド（最終フォールバック）
+          // 蜆ｪ蜈磯・ｽ・: imagePath繝輔ぅ繝ｼ繝ｫ繝会ｼ域怙邨ゅヵ繧ｩ繝ｼ繝ｫ繝舌ャ繧ｯ・・
           if (jsonData?.imagePath && typeof jsonData.imagePath === 'string' && !images.some(img => img.url === jsonData.imagePath)) {
-            console.log('handleGenerateReport: imagePathから画像を取得中...');
+            console.log('handleGenerateReport: imagePath縺九ｉ逕ｻ蜒上ｒ蜿門ｾ嶺ｸｭ...');
             images.push({
               id: 'imagePath',
               url: jsonData.imagePath,
-              fileName: '故障画像',
-              description: '機械故障箇所の写真',
+              fileName: '謨・囿逕ｻ蜒・,
+              description: '讖滓｢ｰ謨・囿邂・園縺ｮ蜀咏悄',
               source: 'imagePath'
             });
           }
         } catch (imageError) {
-          console.error('画像データ処理中にエラーが発生しました:', imageError);
-          // 画像処理エラーが発生してもレポート生成は続行
+          console.error('逕ｻ蜒上ョ繝ｼ繧ｿ蜃ｦ逅・ｸｭ縺ｫ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆:', imageError);
+          // 逕ｻ蜒丞・逅・お繝ｩ繝ｼ縺檎匱逕溘＠縺ｦ繧ゅΞ繝昴・繝育函謌舌・邯夊｡・
         }
         
-        console.log(`レポート${index + 1}の画像数:`, images.length, '枚');
+        console.log(`繝ｬ繝昴・繝・{index + 1}縺ｮ逕ｻ蜒乗焚:`, images.length, '譫・);
         
         const reportData = {
           reportId: `R${Date.now().toString().slice(-5)}-${index + 1}`,
-          machineId: machineNumber || '不明',
+          machineId: machineNumber || '荳肴・',
           date: new Date(item.createdAt).toISOString().split('T')[0],
-          location: '○○線',
+          location: '笳銀雷邱・,
           failureCode: 'FC01',
           description: title,
-          status: '報告完了',
-          engineer: 'システム管理者',
-          notes: `事象タイトル: ${title}\n機種: ${machineType}\n機械番号: ${machineNumber}\n作成日時: ${new Date(item.createdAt).toLocaleString('ja-JP')}\n影響コンポーネント: ${jsonData?.extractedComponents?.join(', ') || 'なし'}\n症状: ${jsonData?.extractedSymptoms?.join(', ') || 'なし'}\n可能性のある機種: ${jsonData?.possibleModels?.join(', ') || 'なし'}`,
+          status: '蝣ｱ蜻雁ｮ御ｺ・,
+          engineer: '繧ｷ繧ｹ繝・Β邂｡逅・・,
+          notes: `莠玖ｱ｡繧ｿ繧､繝医Ν: ${title}\n讖溽ｨｮ: ${machineType}\n讖滓｢ｰ逡ｪ蜿ｷ: ${machineNumber}\n菴懈・譌･譎・ ${new Date(item.createdAt).toLocaleString('ja-JP')}\n蠖ｱ髻ｿ繧ｳ繝ｳ繝昴・繝阪Φ繝・ ${jsonData?.extractedComponents?.join(', ') || '縺ｪ縺・}\n逞・憾: ${jsonData?.extractedSymptoms?.join(', ') || '縺ｪ縺・}\n蜿ｯ閭ｽ諤ｧ縺ｮ縺ゅｋ讖溽ｨｮ: ${jsonData?.possibleModels?.join(', ') || '縺ｪ縺・}`,
           repairRequestDate: new Date().toISOString().split('T')[0],
           repairSchedule: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          repairLocation: '工場内修理スペース',
+          repairLocation: '蟾･蝣ｴ蜀・ｿｮ逅・せ繝壹・繧ｹ',
           images: images.length > 0 ? images : undefined,
           chatHistory: jsonData?.conversationHistory || jsonData?.chatData?.messages || undefined
         };
         
-        console.log(`レポート${index + 1}の生成完了:`, {
+        console.log(`繝ｬ繝昴・繝・{index + 1}縺ｮ逕滓・螳御ｺ・`, {
           reportId: reportData.reportId,
           description: reportData.description,
           images: reportData.images?.length || 0
@@ -889,9 +889,9 @@ const HistoryPage: React.FC = () => {
         return reportData;
       });
       
-      console.log('=== レポートデータ生成完了 ===');
-      console.log('レポート配列の長さ:', reportDataArray.length);
-      console.log('各レポートの詳細:', reportDataArray.map((report, index) => ({
+      console.log('=== 繝ｬ繝昴・繝医ョ繝ｼ繧ｿ逕滓・螳御ｺ・===');
+      console.log('繝ｬ繝昴・繝磯・蛻励・髟ｷ縺・', reportDataArray.length);
+      console.log('蜷・Ξ繝昴・繝医・隧ｳ邏ｰ:', reportDataArray.map((report, index) => ({
         index,
         reportId: report.reportId,
         description: report.description,
@@ -904,21 +904,21 @@ const HistoryPage: React.FC = () => {
       
       setMachineFailureReportData(reportDataArray);
       setShowMachineFailureReport(true);
-      console.log('レポート表示状態を設定完了');
+      console.log('繝ｬ繝昴・繝郁｡ｨ遉ｺ迥ｶ諷九ｒ險ｭ螳壼ｮ御ｺ・);
       
-      // 成功通知
-      alert(`レポートが正常に生成されました。\n対象アイテム: ${targetItems.length}件 (選択済み)\n${targetItems.length > 1 ? '複数ページで表示されます。' : ''}`);
+      // 謌仙粥騾夂衍
+      alert(`繝ｬ繝昴・繝医′豁｣蟶ｸ縺ｫ逕滓・縺輔ｌ縺ｾ縺励◆縲・n蟇ｾ雎｡繧｢繧､繝・Β: ${targetItems.length}莉ｶ (驕ｸ謚樊ｸ医∩)\n${targetItems.length > 1 ? '隍・焚繝壹・繧ｸ縺ｧ陦ｨ遉ｺ縺輔ｌ縺ｾ縺吶・ : ''}`);
       
-      console.log('=== レポート生成完了 ===');
+      console.log('=== 繝ｬ繝昴・繝育函謌仙ｮ御ｺ・===');
     } catch (error) {
-      console.error('=== レポート生成エラー ===');
-      console.error('エラー詳細:', error);
-      console.error('エラースタック:', error instanceof Error ? error.stack : 'スタックトレースなし');
-      alert('レポート生成中にエラーが発生しました: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      console.error('=== 繝ｬ繝昴・繝育函謌舌お繝ｩ繝ｼ ===');
+      console.error('繧ｨ繝ｩ繝ｼ隧ｳ邏ｰ:', error);
+      console.error('繧ｨ繝ｩ繝ｼ繧ｹ繧ｿ繝・け:', error instanceof Error ? error.stack : '繧ｹ繧ｿ繝・け繝医Ξ繝ｼ繧ｹ縺ｪ縺・);
+      alert('繝ｬ繝昴・繝育函謌蝉ｸｭ縺ｫ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
-      // エラーが発生しても確実にローディング状態をリセット
+      // 繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｦ繧ら｢ｺ螳溘↓繝ｭ繝ｼ繝・ぅ繝ｳ繧ｰ迥ｶ諷九ｒ繝ｪ繧ｻ繝・ヨ
       setReportLoading(false);
-      console.log('レポート生成状態をリセット完了');
+      console.log('繝ｬ繝昴・繝育函謌千憾諷九ｒ繝ｪ繧ｻ繝・ヨ螳御ｺ・);
     }
   };
 
@@ -928,17 +928,17 @@ const HistoryPage: React.FC = () => {
     try {
       const response = await fetch(`/api/history/file?name=${encodeURIComponent(fileName)}`);
       if (!response.ok) {
-        throw new Error('チャットエクスポートファイルの取得に失敗しました');
+        throw new Error('繝√Ε繝・ヨ繧ｨ繧ｯ繧ｹ繝昴・繝医ヵ繧｡繧､繝ｫ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆');
       }
       
       const data = await response.json();
       
-      // 新しいフォーマットのデータを確認して、適切な形式に変換
+      // 譁ｰ縺励＞繝輔か繝ｼ繝槭ャ繝医・繝・・繧ｿ繧堤｢ｺ隱阪＠縺ｦ縲・←蛻・↑蠖｢蠑上↓螟画鋤
       const reportData = {
         ...data,
-        // 新しいフォーマットのフィールドを追加
-        title: data.title || data.chatData?.machineInfo?.machineTypeName || 'タイトルなし',
-        problemDescription: data.problemDescription || '説明なし',
+        // 譁ｰ縺励＞繝輔か繝ｼ繝槭ャ繝医・繝輔ぅ繝ｼ繝ｫ繝峨ｒ霑ｽ蜉
+        title: data.title || data.chatData?.machineInfo?.machineTypeName || '繧ｿ繧､繝医Ν縺ｪ縺・,
+        problemDescription: data.problemDescription || '隱ｬ譏弱↑縺・,
         machineType: data.machineType || data.chatData?.machineInfo?.machineTypeName || '',
         machineNumber: data.machineNumber || data.chatData?.machineInfo?.machineNumber || '',
         extractedComponents: data.extractedComponents || [],
@@ -958,7 +958,7 @@ const HistoryPage: React.FC = () => {
       setSelectedFileName(fileName);
       setShowReport(true);
     } catch (error) {
-      console.error('レポート表示エラー:', error);
+      console.error('繝ｬ繝昴・繝郁｡ｨ遉ｺ繧ｨ繝ｩ繝ｼ:', error);
     }
   };
 
@@ -966,14 +966,14 @@ const HistoryPage: React.FC = () => {
     setShowReport(false);
     setSelectedReportData(null);
     setSelectedFileName('');
-    // レポート生成の状態もリセット
+    // 繝ｬ繝昴・繝育函謌舌・迥ｶ諷九ｂ繝ｪ繧ｻ繝・ヨ
     setReportLoading(false);
   };
 
   const handleSaveReport = (reportData: any) => {
-    console.log('レポートデータを保存:', reportData);
+    console.log('繝ｬ繝昴・繝医ョ繝ｼ繧ｿ繧剃ｿ晏ｭ・', reportData);
     
-    // レポートデータをローカルストレージに保存
+    // 繝ｬ繝昴・繝医ョ繝ｼ繧ｿ繧偵Ο繝ｼ繧ｫ繝ｫ繧ｹ繝医Ξ繝ｼ繧ｸ縺ｫ菫晏ｭ・
     const savedReports = JSON.parse(localStorage.getItem('savedReports') || '[]');
     const newReport = {
       id: Date.now(),
@@ -984,44 +984,44 @@ const HistoryPage: React.FC = () => {
     savedReports.push(newReport);
     localStorage.setItem('savedReports', JSON.stringify(savedReports));
     
-    console.log('レポートが保存されました:', newReport);
+    console.log('繝ｬ繝昴・繝医′菫晏ｭ倥＆繧後∪縺励◆:', newReport);
   };
 
-  // 履歴アイテムの編集データをサーバーに保存
+  // 螻･豁ｴ繧｢繧､繝・Β縺ｮ邱ｨ髮・ョ繝ｼ繧ｿ繧偵し繝ｼ繝舌・縺ｫ菫晏ｭ・
   const handleSaveEditedItem = async (editedItem: SupportHistoryItem) => {
     try {
-      console.log('編集された履歴アイテムを保存:', editedItem);
-      console.log('編集された履歴アイテムのID:', editedItem.id);
-      console.log('編集された履歴アイテムのJSONデータ:', editedItem.jsonData);
+      console.log('邱ｨ髮・＆繧後◆螻･豁ｴ繧｢繧､繝・Β繧剃ｿ晏ｭ・', editedItem);
+      console.log('邱ｨ髮・＆繧後◆螻･豁ｴ繧｢繧､繝・Β縺ｮID:', editedItem.id);
+      console.log('邱ｨ髮・＆繧後◆螻･豁ｴ繧｢繧､繝・Β縺ｮJSON繝・・繧ｿ:', editedItem.jsonData);
       
-      // IDの確認と準備（export_プレフィックスを除去）
+      // ID縺ｮ遒ｺ隱阪→貅門ｙ・・xport_繝励Ξ繝輔ぅ繝・け繧ｹ繧帝勁蜴ｻ・・
       let itemId = editedItem.id || editedItem.chatId;
       if (!itemId) {
-        alert('アイテムIDが見つかりません。保存できません。');
+        alert('繧｢繧､繝・ΒID縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ縲ゆｿ晏ｭ倥〒縺阪∪縺帙ｓ縲・);
         return;
       }
       
-      // export_プレフィックスがある場合は除去
+      // export_繝励Ξ繝輔ぅ繝・け繧ｹ縺後≠繧句ｴ蜷医・髯､蜴ｻ
       if (itemId.startsWith('export_')) {
         itemId = itemId.replace('export_', '');
-        // ファイル名の場合は拡張子も除去
+        // 繝輔ぃ繧､繝ｫ蜷阪・蝣ｴ蜷医・諡｡蠑ｵ蟄舌ｂ髯､蜴ｻ
         if (itemId.endsWith('.json')) {
           itemId = itemId.replace('.json', '');
         }
-        // ファイル名からchatIdを抽出（_で区切られた2番目の部分）
+        // 繝輔ぃ繧､繝ｫ蜷阪°繧営hatId繧呈歓蜃ｺ・・縺ｧ蛹ｺ蛻・ｉ繧後◆2逡ｪ逶ｮ縺ｮ驛ｨ蛻・ｼ・
         const parts = itemId.split('_');
         if (parts.length >= 2 && parts[1].match(/^[a-f0-9-]+$/)) {
           itemId = parts[1];
         }
       }
       
-      console.log('使用するID:', itemId, '元のID:', editedItem.id || editedItem.chatId);
+      console.log('菴ｿ逕ｨ縺吶ｋID:', itemId, '蜈・・ID:', editedItem.id || editedItem.chatId);
       
-      // 更新データの準備（editedItemの情報も含める）
+      // 譖ｴ譁ｰ繝・・繧ｿ縺ｮ貅門ｙ・・ditedItem縺ｮ諠・ｱ繧ょ性繧√ｋ・・
       const updatePayload = {
         updatedData: {
           ...editedItem.jsonData,
-          // 基本情報もJSONデータに含める
+          // 蝓ｺ譛ｬ諠・ｱ繧・SON繝・・繧ｿ縺ｫ蜷ｫ繧√ｋ
           machineType: editedItem.machineType,
           machineNumber: editedItem.machineNumber,
           title: editedItem.jsonData?.title || editedItem.title,
@@ -1030,9 +1030,9 @@ const HistoryPage: React.FC = () => {
         updatedBy: 'user'
       };
       
-      console.log('送信するペイロード:', updatePayload);
+      console.log('騾∽ｿ｡縺吶ｋ繝壹う繝ｭ繝ｼ繝・', updatePayload);
       
-      // サーバーに更新リクエストを送信
+      // 繧ｵ繝ｼ繝舌・縺ｫ譖ｴ譁ｰ繝ｪ繧ｯ繧ｨ繧ｹ繝医ｒ騾∽ｿ｡
       const response = await fetch(`/api/history/update-item/${itemId}`, {
         method: 'PUT',
         headers: {
@@ -1041,12 +1041,12 @@ const HistoryPage: React.FC = () => {
         body: JSON.stringify(updatePayload)
       });
       
-      console.log('サーバーレスポンス:', response.status, response.statusText);
+      console.log('繧ｵ繝ｼ繝舌・繝ｬ繧ｹ繝昴Φ繧ｹ:', response.status, response.statusText);
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('サーバーエラー詳細:', errorText);
-        let errorMessage = `履歴の更新に失敗しました (${response.status})`;
+        console.error('繧ｵ繝ｼ繝舌・繧ｨ繝ｩ繝ｼ隧ｳ邏ｰ:', errorText);
+        let errorMessage = `螻･豁ｴ縺ｮ譖ｴ譁ｰ縺ｫ螟ｱ謨励＠縺ｾ縺励◆ (${response.status})`;
         
         try {
           const errorData = JSON.parse(errorText);
@@ -1060,16 +1060,16 @@ const HistoryPage: React.FC = () => {
       }
       
       const result = await response.json();
-      console.log('履歴更新完了:', result);
+      console.log('螻･豁ｴ譖ｴ譁ｰ螳御ｺ・', result);
       
-      // ローカルストレージも更新
+      // 繝ｭ繝ｼ繧ｫ繝ｫ繧ｹ繝医Ξ繝ｼ繧ｸ繧よ峩譁ｰ
       if (itemId) {
         const savedKey = 'savedMachineFailureReport_' + itemId;
         localStorage.setItem(savedKey, JSON.stringify(editedItem.jsonData));
-        console.log('ローカルストレージ更新:', savedKey);
+        console.log('繝ｭ繝ｼ繧ｫ繝ｫ繧ｹ繝医Ξ繝ｼ繧ｸ譖ｴ譁ｰ:', savedKey);
       }
       
-      // 履歴リストの該当アイテムを更新
+      // 螻･豁ｴ繝ｪ繧ｹ繝医・隧ｲ蠖薙い繧､繝・Β繧呈峩譁ｰ
       setHistoryItems(prevItems => 
         prevItems.map(item => 
           (item.id === itemId || item.chatId === itemId) 
@@ -1077,7 +1077,7 @@ const HistoryPage: React.FC = () => {
                 ...item, 
                 jsonData: editedItem.jsonData, 
                 lastModified: new Date().toISOString(),
-                // 基本情報も更新
+                // 蝓ｺ譛ｬ諠・ｱ繧よ峩譁ｰ
                 machineType: editedItem.jsonData?.machineType || item.machineType,
                 machineNumber: editedItem.jsonData?.machineNumber || item.machineNumber,
                 title: editedItem.jsonData?.title || item.title,
@@ -1094,7 +1094,7 @@ const HistoryPage: React.FC = () => {
                 ...item, 
                 jsonData: editedItem.jsonData, 
                 lastModified: new Date().toISOString(),
-                // 基本情報も更新
+                // 蝓ｺ譛ｬ諠・ｱ繧よ峩譁ｰ
                 machineType: editedItem.jsonData?.machineType || item.machineType,
                 machineNumber: editedItem.jsonData?.machineNumber || item.machineNumber,
                 title: editedItem.jsonData?.title || item.title,
@@ -1104,20 +1104,20 @@ const HistoryPage: React.FC = () => {
         )
       );
       
-      // 成功通知
-      alert('履歴が正常に更新され、元のファイルに上書き保存されました。');
+      // 謌仙粥騾夂衍
+      alert('螻･豁ｴ縺梧ｭ｣蟶ｸ縺ｫ譖ｴ譁ｰ縺輔ｌ縲∝・縺ｮ繝輔ぃ繧､繝ｫ縺ｫ荳頑嶌縺堺ｿ晏ｭ倥＆繧後∪縺励◆縲・);
       
-      // 編集ダイアログを閉じる
+      // 邱ｨ髮・ム繧､繧｢繝ｭ繧ｰ繧帝哩縺倥ｋ
       setShowEditDialog(false);
       setEditingItem(null);
       
-      // 履歴リストの再読み込みは行わない（既に更新済み）
-      console.log('履歴更新完了 - リスト再読み込みをスキップ');
+      // 螻･豁ｴ繝ｪ繧ｹ繝医・蜀崎ｪｭ縺ｿ霎ｼ縺ｿ縺ｯ陦後ｏ縺ｪ縺・ｼ域里縺ｫ譖ｴ譁ｰ貂医∩・・
+      console.log('螻･豁ｴ譖ｴ譁ｰ螳御ｺ・- 繝ｪ繧ｹ繝亥・隱ｭ縺ｿ霎ｼ縺ｿ繧偵せ繧ｭ繝・・');
       
     } catch (error) {
-      console.error('履歴保存エラー:', error);
+      console.error('螻･豁ｴ菫晏ｭ倥お繝ｩ繝ｼ:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      alert('履歴の保存に失敗しました: ' + errorMessage);
+      alert('螻･豁ｴ縺ｮ菫晏ｭ倥↓螟ｱ謨励＠縺ｾ縺励◆: ' + errorMessage);
     }
   };
 
@@ -1138,61 +1138,61 @@ const HistoryPage: React.FC = () => {
     }
   };
 
-  // 機械故障報告書のHTML生成関数
+  // 讖滓｢ｰ謨・囿蝣ｱ蜻頑嶌縺ｮHTML逕滓・髢｢謨ｰ
   const generateMachineFailureReportHTML = (reportData: any): string => {
-    // JSONデータを安全にエスケープする関数（強化版）
+    // JSON繝・・繧ｿ繧貞ｮ牙・縺ｫ繧ｨ繧ｹ繧ｱ繝ｼ繝励☆繧矩未謨ｰ・亥ｼｷ蛹也沿・・
     const safeJsonStringify = (obj: any): string => {
       try {
         let jsonStr = JSON.stringify(obj);
-        // HTMLとJavaScriptで問題になる文字を徹底的にエスケープ
+        // HTML縺ｨJavaScript縺ｧ蝠城｡後↓縺ｪ繧区枚蟄励ｒ蠕ｹ蠎慕噪縺ｫ繧ｨ繧ｹ繧ｱ繝ｼ繝・
         jsonStr = jsonStr
-          .replace(/\\/g, '\\\\')     // バックスラッシュを最初にエスケープ
-          .replace(/"/g, '\\"')       // ダブルクォート
-          .replace(/'/g, "\\'")       // シングルクォート
+          .replace(/\\/g, '\\\\')     // 繝舌ャ繧ｯ繧ｹ繝ｩ繝・す繝･繧呈怙蛻昴↓繧ｨ繧ｹ繧ｱ繝ｼ繝・
+          .replace(/"/g, '\\"')       // 繝繝悶Ν繧ｯ繧ｩ繝ｼ繝・
+          .replace(/'/g, "\\'")       // 繧ｷ繝ｳ繧ｰ繝ｫ繧ｯ繧ｩ繝ｼ繝・
           .replace(/</g, '\\u003c')   // <
           .replace(/>/g, '\\u003e')   // >
           .replace(/&/g, '\\u0026')   // &
-          .replace(/\//g, '\\/')      // スラッシュ
-          .replace(/:/g, '\\u003a')   // コロン（重要）
-          .replace(/\r/g, '\\r')      // キャリッジリターン
-          .replace(/\n/g, '\\n')      // 改行
-          .replace(/\t/g, '\\t')      // タブ
-          .replace(/\f/g, '\\f')      // フォームフィード
-          .replace(/\b/g, '\\b')      // バックスペース
-          .replace(/\u2028/g, '\\u2028') // ラインセパレータ
-          .replace(/\u2029/g, '\\u2029'); // パラグラフセパレータ
+          .replace(/\//g, '\\/')      // 繧ｹ繝ｩ繝・す繝･
+          .replace(/:/g, '\\u003a')   // 繧ｳ繝ｭ繝ｳ・磯㍾隕・ｼ・
+          .replace(/\r/g, '\\r')      // 繧ｭ繝｣繝ｪ繝・ず繝ｪ繧ｿ繝ｼ繝ｳ
+          .replace(/\n/g, '\\n')      // 謾ｹ陦・
+          .replace(/\t/g, '\\t')      // 繧ｿ繝・
+          .replace(/\f/g, '\\f')      // 繝輔か繝ｼ繝繝輔ぅ繝ｼ繝・
+          .replace(/\b/g, '\\b')      // 繝舌ャ繧ｯ繧ｹ繝壹・繧ｹ
+          .replace(/\u2028/g, '\\u2028') // 繝ｩ繧､繝ｳ繧ｻ繝代Ξ繝ｼ繧ｿ
+          .replace(/\u2029/g, '\\u2029'); // 繝代Λ繧ｰ繝ｩ繝輔そ繝代Ξ繝ｼ繧ｿ
         
-        console.log('🔧 safeJsonStringify result length:', jsonStr.length);
-        console.log('🔧 safeJsonStringify sample:', jsonStr.substring(0, 100) + '...');
+        console.log('肌 safeJsonStringify result length:', jsonStr.length);
+        console.log('肌 safeJsonStringify sample:', jsonStr.substring(0, 100) + '...');
         return jsonStr;
       } catch (e) {
-        console.error('JSONのシリアライズに失敗:', e);
+        console.error('JSON縺ｮ繧ｷ繝ｪ繧｢繝ｩ繧､繧ｺ縺ｫ螟ｱ謨・', e);
         return '{}';
       }
     };
-    // 画像を収集（base64のみ、詳細なデバッグ付き）
+    // 逕ｻ蜒上ｒ蜿朱寔・・ase64縺ｮ縺ｿ縲∬ｩｳ邏ｰ縺ｪ繝・ヰ繝・げ莉倥″・・
     const collectImages = (data: any): Array<{ id: string; url: string; fileName: string; description?: string }> => {
-      console.log('🖼️ 画像収集開始 - reportData:', data);
-      console.log('🖼️ reportData keys:', Object.keys(data || {}));
+      console.log('名・・逕ｻ蜒丞庶髮・幕蟋・- reportData:', data);
+      console.log('名・・reportData keys:', Object.keys(data || {}));
       
       const images: Array<{ id: string; url: string; fileName: string; description?: string }> = [];
       const imageUrls = new Set<string>();
       
-      // デバッグ: データ構造を詳細確認
-      console.log('🖼️ データ構造確認:');
-      console.log('🖼️ - chatData:', data?.chatData ? 'あり' : 'なし');
-      console.log('🖼️ - chatData.messages:', data?.chatData?.messages ? 'あり(' + data.chatData.messages.length + '件)' : 'なし');
-      console.log('🖼️ - conversationHistory:', data?.conversationHistory ? 'あり(' + (Array.isArray(data.conversationHistory) ? data.conversationHistory.length : 'non-array') + ')' : 'なし');
-      console.log('🖼️ - originalChatData.messages:', data?.originalChatData?.messages ? 'あり(' + data.originalChatData.messages.length + ')' : 'なし');
-      console.log('🖼️ - messages:', data?.messages ? 'あり(' + (Array.isArray(data.messages) ? data.messages.length : 'non-array') + ')' : 'なし');
+      // 繝・ヰ繝・げ: 繝・・繧ｿ讒矩繧定ｩｳ邏ｰ遒ｺ隱・
+      console.log('名・・繝・・繧ｿ讒矩遒ｺ隱・');
+      console.log('名・・- chatData:', data?.chatData ? '縺ゅｊ' : '縺ｪ縺・);
+      console.log('名・・- chatData.messages:', data?.chatData?.messages ? '縺ゅｊ(' + data.chatData.messages.length + '莉ｶ)' : '縺ｪ縺・);
+      console.log('名・・- conversationHistory:', data?.conversationHistory ? '縺ゅｊ(' + (Array.isArray(data.conversationHistory) ? data.conversationHistory.length : 'non-array') + ')' : '縺ｪ縺・);
+      console.log('名・・- originalChatData.messages:', data?.originalChatData?.messages ? '縺ゅｊ(' + data.originalChatData.messages.length + ')' : '縺ｪ縺・);
+      console.log('名・・- messages:', data?.messages ? '縺ゅｊ(' + (Array.isArray(data.messages) ? data.messages.length : 'non-array') + ')' : '縺ｪ縺・);
       
-      // 1) chatData.messages から base64 画像を探す（メイン）
+      // 1) chatData.messages 縺九ｉ base64 逕ｻ蜒上ｒ謗｢縺呻ｼ医Γ繧､繝ｳ・・
       if (data?.chatData?.messages && Array.isArray(data.chatData.messages)) {
-        console.log('🖼️ chatData.messagesをスキャン中...');
+        console.log('名・・chatData.messages繧偵せ繧ｭ繝｣繝ｳ荳ｭ...');
         data.chatData.messages.forEach((message: any, messageIndex: number) => {
-          console.log('🖼️ message[' + messageIndex + ']:', { 
+          console.log('名・・message[' + messageIndex + ']:', { 
             id: message?.id, 
-            content: message?.content ? message.content.substring(0, 50) + '...' : 'なし',
+            content: message?.content ? message.content.substring(0, 50) + '...' : '縺ｪ縺・,
             isBase64: message?.content?.startsWith('data:image/') 
           });
           
@@ -1207,18 +1207,18 @@ const HistoryPage: React.FC = () => {
               images.push({
                 id: `chatdata-${messageIndex}`,
                 url: normalizedContent,
-                fileName: `故障画像${images.length + 1}`,
-                description: '故障箇所画像（chatData.messages）'
+                fileName: `謨・囿逕ｻ蜒・{images.length + 1}`,
+                description: '謨・囿邂・園逕ｻ蜒擾ｼ・hatData.messages・・
               });
-              console.log('🖼️ Base64画像見つかりました（chatData.messages）:', images.length);
+              console.log('名・・Base64逕ｻ蜒剰ｦ九▽縺九ｊ縺ｾ縺励◆・・hatData.messages・・', images.length);
             }
           }
         });
       }
       
-      // 2) conversationHistory から base64 画像を探す
+      // 2) conversationHistory 縺九ｉ base64 逕ｻ蜒上ｒ謗｢縺・
       if (data?.conversationHistory && Array.isArray(data.conversationHistory)) {
-        console.log('🖼️ conversationHistoryをスキャン中...');
+        console.log('名・・conversationHistory繧偵せ繧ｭ繝｣繝ｳ荳ｭ...');
         data.conversationHistory.forEach((message: any, messageIndex: number) => {
           if (message?.content && typeof message.content === 'string' && message.content.startsWith('data:image/')) {
             const normalizedContent = message.content
@@ -1231,18 +1231,18 @@ const HistoryPage: React.FC = () => {
               images.push({
                 id: `conversation-${messageIndex}`,
                 url: normalizedContent,
-                fileName: `故障画像${images.length + 1}`,
-                description: '故障箇所画像（conversationHistory）'
+                fileName: `謨・囿逕ｻ蜒・{images.length + 1}`,
+                description: '謨・囿邂・園逕ｻ蜒擾ｼ・onversationHistory・・
               });
-              console.log('🖼️ Base64画像見つかりました（conversationHistory）:', images.length);
+              console.log('名・・Base64逕ｻ蜒剰ｦ九▽縺九ｊ縺ｾ縺励◆・・onversationHistory・・', images.length);
             }
           }
         });
       }
       
-      // 3) originalChatData.messages から base64 画像を探す
+      // 3) originalChatData.messages 縺九ｉ base64 逕ｻ蜒上ｒ謗｢縺・
       if (data?.originalChatData?.messages && Array.isArray(data.originalChatData.messages)) {
-        console.log('🖼️ originalChatData.messagesをスキャン中...');
+        console.log('名・・originalChatData.messages繧偵せ繧ｭ繝｣繝ｳ荳ｭ...');
         data.originalChatData.messages.forEach((message: any, messageIndex: number) => {
           if (message?.content && typeof message.content === 'string' && message.content.startsWith('data:image/')) {
             const normalizedContent = message.content
@@ -1255,18 +1255,18 @@ const HistoryPage: React.FC = () => {
               images.push({
                 id: `original-${messageIndex}`,
                 url: normalizedContent,
-                fileName: `故障画像${images.length + 1}`,
-                description: '故障箇所画像（originalChatData）'
+                fileName: `謨・囿逕ｻ蜒・{images.length + 1}`,
+                description: '謨・囿邂・園逕ｻ蜒擾ｼ・riginalChatData・・
               });
-              console.log('🖼️ Base64画像見つかりました（originalChatData）:', images.length);
+              console.log('名・・Base64逕ｻ蜒剰ｦ九▽縺九ｊ縺ｾ縺励◆・・riginalChatData・・', images.length);
             }
           }
         });
       }
       
-      // 4) messages から base64 画像を探す
+      // 4) messages 縺九ｉ base64 逕ｻ蜒上ｒ謗｢縺・
       if (data?.messages && Array.isArray(data.messages)) {
-        console.log('🖼️ messagesをスキャン中...');
+        console.log('名・・messages繧偵せ繧ｭ繝｣繝ｳ荳ｭ...');
         data.messages.forEach((message: any, messageIndex: number) => {
           if (message?.content && typeof message.content === 'string' && message.content.startsWith('data:image/')) {
             const normalizedContent = message.content
@@ -1279,18 +1279,18 @@ const HistoryPage: React.FC = () => {
               images.push({
                 id: `messages-${messageIndex}`,
                 url: normalizedContent,
-                fileName: `故障画像${images.length + 1}`,
-                description: '故障箇所画像（messages）'
+                fileName: `謨・囿逕ｻ蜒・{images.length + 1}`,
+                description: '謨・囿邂・園逕ｻ蜒擾ｼ・essages・・
               });
-              console.log('🖼️ Base64画像見つかりました（messages）:', images.length);
+              console.log('名・・Base64逕ｻ蜒剰ｦ九▽縺九ｊ縺ｾ縺励◆・・essages・・', images.length);
             }
           }
         });
       }
       
-      console.log('🖼️ 画像収集結果（Base64のみ）:', images.length + '件の画像');
+      console.log('名・・逕ｻ蜒丞庶髮・ｵ先棡・・ase64縺ｮ縺ｿ・・', images.length + '莉ｶ縺ｮ逕ｻ蜒・);
       images.forEach((img, index) => {
-        console.log('🖼️ 画像[' + index + ']:', img.description, '-', img.url.substring(0, 50) + '...');
+        console.log('名・・逕ｻ蜒充' + index + ']:', img.description, '-', img.url.substring(0, 50) + '...');
       });
       
       return images;
@@ -1299,13 +1299,13 @@ const HistoryPage: React.FC = () => {
     const collectedImages = collectImages(reportData);
     const imageSection = collectedImages && collectedImages.length > 0 
       ? `             <div class="image-section">
-               <h3>故障箇所画像</h3>
+               <h3>謨・囿邂・園逕ｻ蜒・/h3>
                <div class="image-grid">
                  ${collectedImages.map((image, index) => `
                    <div class="image-item">
                      <img class="report-img" 
                           src="${image.url}" 
-                          alt="故障画像${index + 1}" />
+                          alt="謨・囿逕ｻ蜒・{index + 1}" />
                    </div>
                  `).join('')}
                </div>
@@ -1317,7 +1317,7 @@ const HistoryPage: React.FC = () => {
       <html>
       <head>
         <meta charset="utf-8">
-        <title>機械故障報告書</title>
+        <title>讖滓｢ｰ謨・囿蝣ｱ蜻頑嶌</title>
         <style>
           @page {
             size: A4 portrait;
@@ -1331,7 +1331,7 @@ const HistoryPage: React.FC = () => {
           }
           
           body {
-            font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Hiragino Mincho Pro', 'HGS明朝', 'MS Mincho', serif;
+            font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Hiragino Mincho Pro', 'HGS譏取悃', 'MS Mincho', serif;
             font-size: 12pt;
             line-height: 1.4;
             color: #000;
@@ -1340,7 +1340,7 @@ const HistoryPage: React.FC = () => {
             overflow-x: hidden;
           }
           
-          /* 印刷時のみ文字サイズをさらに縮小してA4一枚に収める */
+          /* 蜊ｰ蛻ｷ譎ゅ・縺ｿ譁・ｭ励し繧､繧ｺ繧偵＆繧峨↓邵ｮ蟆上＠縺ｦA4荳譫壹↓蜿弱ａ繧・*/
           @media print {
             body {
               font-size: 10pt;
@@ -1374,7 +1374,7 @@ const HistoryPage: React.FC = () => {
               font-size: 10pt;
             }
             
-            /* 印刷時のレイアウト最適化 */
+            /* 蜊ｰ蛻ｷ譎ゅ・繝ｬ繧､繧｢繧ｦ繝域怙驕ｩ蛹・*/
             .section {
               margin-bottom: 8px;
               page-break-inside: avoid;
@@ -1406,7 +1406,7 @@ const HistoryPage: React.FC = () => {
               max-height: 80px;
             }
             
-            /* A4一枚に収めるための調整 */
+            /* A4荳譫壹↓蜿弱ａ繧九◆繧√・隱ｿ謨ｴ */
             @page {
               size: A4 portrait;
               margin: 10mm;
@@ -1445,7 +1445,7 @@ const HistoryPage: React.FC = () => {
             margin-bottom: 8px;
           }
           
-          /* 編集モード時のヘッダー統一 */
+          /* 邱ｨ髮・Δ繝ｼ繝画凾縺ｮ繝倥ャ繝繝ｼ邨ｱ荳 */
           .edit-mode .header h1 {
             font-size: 27pt;
             font-weight: bold;
@@ -1460,7 +1460,7 @@ const HistoryPage: React.FC = () => {
             margin-bottom: 8px;
           }
           
-          /* 編集モード時のセクション見出し統一 */
+          /* 邱ｨ髮・Δ繝ｼ繝画凾縺ｮ繧ｻ繧ｯ繧ｷ繝ｧ繝ｳ隕句・縺礼ｵｱ荳 */
           .edit-mode .section h2 {
             font-size: 20pt;
             font-weight: bold;
@@ -1485,7 +1485,7 @@ const HistoryPage: React.FC = () => {
             color: #000;
           }
           
-          /* 編集モード時のヘッダー日付統一 */
+          /* 邱ｨ髮・Δ繝ｼ繝画凾縺ｮ繝倥ャ繝繝ｼ譌･莉倡ｵｱ荳 */
           .edit-mode .header p {
             font-size: 18pt;
             color: #000;
@@ -1618,8 +1618,8 @@ const HistoryPage: React.FC = () => {
           .btn-print {
             background: #28a745;
             color: white;
-            padding: 20px 40px; /* 2倍サイズ */
-            font-size: 28px; /* 2倍サイズ */
+            padding: 20px 40px; /* 2蛟阪し繧､繧ｺ */
+            font-size: 28px; /* 2蛟阪し繧､繧ｺ */
           }
           
           .btn-save {
@@ -1630,8 +1630,8 @@ const HistoryPage: React.FC = () => {
           .btn-cancel {
             background: #6c757d;
             color: white;
-            padding: 20px 40px; /* 2倍サイズ */
-            font-size: 28px; /* 2倍サイズ */
+            padding: 20px 40px; /* 2蛟阪し繧､繧ｺ */
+            font-size: 28px; /* 2蛟阪し繧､繧ｺ */
           }
           
           .btn-close {
@@ -1653,7 +1653,7 @@ const HistoryPage: React.FC = () => {
             font-size: 18pt;
           }
           
-          /* 編集モード時の文字サイズを機械故障報告書UIに合わせる */
+          /* 邱ｨ髮・Δ繝ｼ繝画凾縺ｮ譁・ｭ励し繧､繧ｺ繧呈ｩ滓｢ｰ謨・囿蝣ｱ蜻頑嶌UI縺ｫ蜷医ｏ縺帙ｋ */
           .edit-mode .editable {
             font-size: 18pt;
           }
@@ -1674,7 +1674,7 @@ const HistoryPage: React.FC = () => {
             font-size: 18pt;
           }
           
-          /* 編集モード時の表示切り替え - 確実に動作するように強化 */
+          /* 邱ｨ髮・Δ繝ｼ繝画凾縺ｮ陦ｨ遉ｺ蛻・ｊ譖ｿ縺・- 遒ｺ螳溘↓蜍穂ｽ懊☆繧九ｈ縺・↓蠑ｷ蛹・*/
           .edit-mode .readonly {
             display: none !important;
             visibility: hidden !important;
@@ -1693,13 +1693,13 @@ const HistoryPage: React.FC = () => {
             font-family: inherit !important;
           }
           
-          /* デフォルトで編集要素を確実に非表示 */
+          /* 繝・ヵ繧ｩ繝ｫ繝医〒邱ｨ髮・ｦ∫ｴ繧堤｢ｺ螳溘↓髱櫁｡ｨ遉ｺ */
           .editable {
             display: none !important;
             visibility: hidden !important;
           }
           
-          /* 読み取り専用要素をデフォルトで表示 */
+          /* 隱ｭ縺ｿ蜿悶ｊ蟆ら畑隕∫ｴ繧偵ョ繝輔か繝ｫ繝医〒陦ｨ遉ｺ */
           .readonly {
             display: inline !important;
             visibility: visible !important;
@@ -1714,7 +1714,7 @@ const HistoryPage: React.FC = () => {
             color: #000;
           }
           
-          /* 編集モード時の入力フィールドスタイル統一 */
+          /* 邱ｨ髮・Δ繝ｼ繝画凾縺ｮ蜈･蜉帙ヵ繧｣繝ｼ繝ｫ繝峨せ繧ｿ繧､繝ｫ邨ｱ荳 */
           .edit-mode input,
           .edit-mode textarea {
             font-size: 18pt;
@@ -1737,7 +1737,7 @@ const HistoryPage: React.FC = () => {
             body { margin: 0; }
           }
           
-          /* 編集モード用スタイル */
+          /* 邱ｨ髮・Δ繝ｼ繝臥畑繧ｹ繧ｿ繧､繝ｫ */
           .readonly {
             display: inline;
           }
@@ -1778,15 +1778,15 @@ const HistoryPage: React.FC = () => {
           .btn-cancel {
             background-color: #6c757d;
             color: white;
-            padding: 20px 40px; /* 2倍サイズ */
-            font-size: 28px; /* 2倍サイズ */
+            padding: 20px 40px; /* 2蛟阪し繧､繧ｺ */
+            font-size: 28px; /* 2蛟阪し繧､繧ｺ */
           }
           
           .btn-print {
             background-color: #17a2b8;
             color: white;
-            padding: 20px 40px; /* 2倍サイズ */
-            font-size: 28px; /* 2倍サイズ */
+            padding: 20px 40px; /* 2蛟阪し繧､繧ｺ */
+            font-size: 28px; /* 2蛟阪し繧､繧ｺ */
           }
           
           .btn-close {
@@ -1797,48 +1797,48 @@ const HistoryPage: React.FC = () => {
       </head>
       <body>
         <script>
-          // シンプルで確実な設定
+          // 繧ｷ繝ｳ繝励Ν縺ｧ遒ｺ螳溘↑險ｭ螳・
           window.reportData = {};
           console.log('Script starting...');
         </script>
         <div class="action-buttons">
-          <button class="btn btn-save" id="save-btn" style="display: none;">保存</button>
-          <button class="btn btn-print" onclick="window.print()">印刷</button>
-          <button class="btn btn-cancel" id="cancel-btn" style="display: none;">キャンセル</button>
-          <button class="btn btn-close" onclick="window.close()">閉じる</button>
+          <button class="btn btn-save" id="save-btn" style="display: none;">菫晏ｭ・/button>
+          <button class="btn btn-print" onclick="window.print()">蜊ｰ蛻ｷ</button>
+          <button class="btn btn-cancel" id="cancel-btn" style="display: none;">繧ｭ繝｣繝ｳ繧ｻ繝ｫ</button>
+          <button class="btn btn-close" onclick="window.close()">髢峨§繧・/button>
         </div>
         
         <div class="container">
           <div class="header">
-            <h1>機械故障報告書</h1>
-            <p>印刷日時: ${new Date().toLocaleString('ja-JP')}</p>
+            <h1>讖滓｢ｰ謨・囿蝣ｱ蜻頑嶌</h1>
+            <p>蜊ｰ蛻ｷ譌･譎・ ${new Date().toLocaleString('ja-JP')}</p>
           </div>
           
           <div class="section">
-            <h2>報告概要</h2>
+            <h2>蝣ｱ蜻頑ｦりｦ・/h2>
             <div class="info-grid">
               <div class="info-item">
-                <strong>報告書ID</strong>
+                <strong>蝣ｱ蜻頑嶌ID</strong>
                 <span class="readonly">${(reportData.reportId || reportData.id || '').substring(0, 8)}...</span>
                 <input class="editable" value="${reportData.reportId || reportData.id || ''}" />
               </div>
               <div class="info-item">
-                <strong>機種</strong>
+                <strong>讖溽ｨｮ</strong>
                 <span class="readonly">${reportData.machineType || reportData.machineTypeName || '-'}</span>
                 <input class="editable" value="${reportData.machineType || reportData.machineTypeName || ''}" />
               </div>
               <div class="info-item">
-                <strong>機械番号</strong>
+                <strong>讖滓｢ｰ逡ｪ蜿ｷ</strong>
                 <span class="readonly">${reportData.machineNumber || '-'}</span>
                 <input class="editable" value="${reportData.machineNumber || ''}" />
               </div>
               <div class="info-item">
-                <strong>日付</strong>
+                <strong>譌･莉・/strong>
                 <span class="readonly">${reportData.date ? new Date(reportData.date).toLocaleDateString('ja-JP') : reportData.timestamp ? new Date(reportData.timestamp).toLocaleDateString('ja-JP') : reportData.createdAt ? new Date(reportData.createdAt).toLocaleDateString('ja-JP') : '-'}</span>
                 <input class="editable" type="date" value="${reportData.date || reportData.timestamp || reportData.createdAt || ''}" />
               </div>
               <div class="info-item">
-                <strong>場所</strong>
+                <strong>蝣ｴ謇</strong>
                 <span class="readonly">${reportData.location || '-'}</span>
                 <input class="editable" value="${reportData.location || ''}" />
               </div>
@@ -1846,28 +1846,28 @@ const HistoryPage: React.FC = () => {
           </div>
           
           <div class="section">
-            <h2>故障詳細</h2>
+            <h2>謨・囿隧ｳ邏ｰ</h2>
             <div class="info-grid">
               <div class="info-item">
-                <strong>ステータス</strong>
+                <strong>繧ｹ繝・・繧ｿ繧ｹ</strong>
                 <span class="readonly">${reportData.status || '-'}</span>
                 <input class="editable" value="${reportData.status || ''}" />
               </div>
               <div class="info-item">
-                <strong>責任者</strong>
+                <strong>雋ｬ莉ｻ閠・/strong>
                 <span class="readonly">${reportData.engineer || '-'}</span>
                 <input class="editable" value="${reportData.engineer || ''}" />
               </div>
             </div>
             
             <div class="content-box">
-              <strong>説明</strong>
-              <p class="readonly">${reportData.problemDescription || reportData.description || reportData.incidentTitle || reportData.title || '説明なし'}</p>
+              <strong>隱ｬ譏・/strong>
+              <p class="readonly">${reportData.problemDescription || reportData.description || reportData.incidentTitle || reportData.title || '隱ｬ譏弱↑縺・}</p>
               <textarea class="editable" rows="4">${reportData.problemDescription || reportData.description || reportData.incidentTitle || reportData.title || ''}</textarea>
             </div>
             
             <div class="content-box">
-              <strong>備考</strong>
+              <strong>蛯呵・/strong>
               <p class="readonly">${reportData.notes || '-'}</p>
               <textarea class="editable" rows="4">${reportData.notes || ''}</textarea>
             </div>
@@ -1876,20 +1876,20 @@ const HistoryPage: React.FC = () => {
           ${imageSection}
           
           <div class="section">
-            <h2>修繕計画</h2>
+            <h2>菫ｮ郢戊ｨ育判</h2>
             <div class="info-grid">
               <div class="info-item">
-                <strong>依頼月日</strong>
+                <strong>萓晞ｼ譛域律</strong>
                 <span class="readonly">${reportData.requestDate || '-'}</span>
                 <input class="editable" type="date" value="${reportData.requestDate || ''}" />
               </div>
               <div class="info-item">
-                <strong>予定月日</strong>
+                <strong>莠亥ｮ壽怦譌･</strong>
                 <span class="readonly">${reportData.repairSchedule || '-'}</span>
                 <input class="editable" type="date" value="${reportData.repairSchedule || ''}" />
               </div>
               <div class="info-item">
-                <strong>場所</strong>
+                <strong>蝣ｴ謇</strong>
                 <span class="readonly">${reportData.repairLocation || '-'}</span>
                 <input class="editable" value="${reportData.repairLocation || ''}" />
               </div>
@@ -1897,16 +1897,16 @@ const HistoryPage: React.FC = () => {
           </div>
           
           <div class="section">
-            <h2>記事欄</h2>
+            <h2>險倅ｺ区ｬ・/h2>
             <div class="info-item">
-              <strong>備考・記事</strong>
+              <strong>蛯呵・・險倅ｺ・/strong>
               <p class="readonly">${reportData.remarks || '-'}</p>
               <textarea class="editable" rows="4" maxlength="200">${reportData.remarks || ''}</textarea>
             </div>
           </div>
           
           <div class="footer">
-            <p>© 2025 機械故障報告書. All rights reserved.</p>
+            <p>ﾂｩ 2025 讖滓｢ｰ謨・囿蝣ｱ蜻頑嶌. All rights reserved.</p>
           </div>
         </div>
         
@@ -1914,49 +1914,49 @@ const HistoryPage: React.FC = () => {
           let isEditMode = false;
           let originalData = {};
           
-          // データを安全に設定する関数
+          // 繝・・繧ｿ繧貞ｮ牙・縺ｫ險ｭ螳壹☆繧矩未謨ｰ
           function setOriginalData(data) {
             try {
               originalData = data;
-              console.log('🔧 originalData set:', originalData);
+              console.log('肌 originalData set:', originalData);
             } catch (e) {
-              console.error('originalDataの設定に失敗:', e);
+              console.error('originalData縺ｮ險ｭ螳壹↓螟ｱ謨・', e);
               originalData = {};
             }
           }
           
-          // レポートデータを設定（グローバル変数から読み取り）
+          // 繝ｬ繝昴・繝医ョ繝ｼ繧ｿ繧定ｨｭ螳夲ｼ医げ繝ｭ繝ｼ繝舌Ν螟画焚縺九ｉ隱ｭ縺ｿ蜿悶ｊ・・
           try {
             if (window.reportData) {
               setOriginalData(window.reportData);
-              console.log('🔧 データをグローバル変数から正常に読み込みました');
+              console.log('肌 繝・・繧ｿ繧偵げ繝ｭ繝ｼ繝舌Ν螟画焚縺九ｉ豁｣蟶ｸ縺ｫ隱ｭ縺ｿ霎ｼ縺ｿ縺ｾ縺励◆');
             } else {
-              console.error('🔧 グローバル変数window.reportDataが見つかりません');
+              console.error('肌 繧ｰ繝ｭ繝ｼ繝舌Ν螟画焚window.reportData縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ');
               setOriginalData({});
             }
           } catch (e) {
-            console.error('🔧 グローバル変数からのデータ読み込みに失敗:', e);
+            console.error('肌 繧ｰ繝ｭ繝ｼ繝舌Ν螟画焚縺九ｉ縺ｮ繝・・繧ｿ隱ｭ縺ｿ霎ｼ縺ｿ縺ｫ螟ｱ謨・', e);
             setOriginalData({});
           }
           
-          // 画像表示の初期化とボタンイベントの設定
+          // 逕ｻ蜒剰｡ｨ遉ｺ縺ｮ蛻晄悄蛹悶→繝懊ち繝ｳ繧､繝吶Φ繝医・險ｭ螳・
           document.addEventListener('DOMContentLoaded', function() {
-            console.log('🔧 DOMContentLoaded - Document ready');
-            console.log('🔧 Available edit elements:');
-            console.log('🔧 - Readonly elements:', document.querySelectorAll('.readonly').length);
-            console.log('🔧 - Editable elements:', document.querySelectorAll('.editable').length);
-            console.log('🔧 - Edit button:', !!document.querySelector('.btn-edit'));
-            console.log('🔧 Initial CSS classes:', document.body.classList.toString());
-            console.log('🔧 originalData:', originalData);
+            console.log('肌 DOMContentLoaded - Document ready');
+            console.log('肌 Available edit elements:');
+            console.log('肌 - Readonly elements:', document.querySelectorAll('.readonly').length);
+            console.log('肌 - Editable elements:', document.querySelectorAll('.editable').length);
+            console.log('肌 - Edit button:', !!document.querySelector('.btn-edit'));
+            console.log('肌 Initial CSS classes:', document.body.classList.toString());
+            console.log('肌 originalData:', originalData);
             
-            // 初期状態では編集モードをオフにする
+            // 蛻晄悄迥ｶ諷九〒縺ｯ邱ｨ髮・Δ繝ｼ繝峨ｒ繧ｪ繝輔↓縺吶ｋ
             isEditMode = false;
             document.body.classList.remove('edit-mode');
             
-            // ボタンイベントの設定
+            // 繝懊ち繝ｳ繧､繝吶Φ繝医・險ｭ螳・
             setupButtonEvents();
             
-            // 複数回実行して確実に設定
+            // 隍・焚蝗槫ｮ溯｡後＠縺ｦ遒ｺ螳溘↓險ｭ螳・
             setTimeout(() => {
               setupButtonEvents();
             }, 100);
@@ -1966,44 +1966,44 @@ const HistoryPage: React.FC = () => {
             }, 500);
           });
           
-          // ボタンイベントを設定する関数
+          // 繝懊ち繝ｳ繧､繝吶Φ繝医ｒ險ｭ螳壹☆繧矩未謨ｰ
           function setupButtonEvents() {
-            console.log('🔧 setupButtonEvents called');
+            console.log('肌 setupButtonEvents called');
             
-            // DOM要素の確実な取得のため少し待機
+            // DOM隕∫ｴ縺ｮ遒ｺ螳溘↑蜿門ｾ励・縺溘ａ蟆代＠蠕・ｩ・
             setTimeout(() => {
               const editBtn = document.getElementById('edit-btn');
               const saveBtn = document.getElementById('save-btn');
               const cancelBtn = document.getElementById('cancel-btn');
               
-              console.log('🔧 ボタンの取得状況:', {
+              console.log('肌 繝懊ち繝ｳ縺ｮ蜿門ｾ礼憾豕・', {
                 editBtn: !!editBtn,
                 saveBtn: !!saveBtn,
                 cancelBtn: !!cancelBtn
               });
               
               if (editBtn) {
-                console.log('🔧 Edit button found, setting up event listener');
+                console.log('肌 Edit button found, setting up event listener');
                 
-                // 既存のイベントリスナーをクリア
+                // 譌｢蟄倥・繧､繝吶Φ繝医Μ繧ｹ繝翫・繧偵け繝ｪ繧｢
                 const newEditBtn = editBtn.cloneNode(true);
                 editBtn.parentNode?.replaceChild(newEditBtn, editBtn);
                 
-                // 新しいイベントリスナーを追加
+                // 譁ｰ縺励＞繧､繝吶Φ繝医Μ繧ｹ繝翫・繧定ｿｽ蜉
                 newEditBtn.addEventListener('click', function(e) {
-                  console.log('🔧 Edit button click event triggered');
+                  console.log('肌 Edit button click event triggered');
                   e.preventDefault();
                   e.stopPropagation();
                   try {
-                    console.log('🔧 Calling toggleEditMode()...');
+                    console.log('肌 Calling toggleEditMode()...');
                     toggleEditMode();
                   } catch (error) {
-                    console.error('🔧 Error in toggleEditMode:', error);
-                    alert('編集モードの切り替えでエラーが発生しました: ' + error.message);
+                    console.error('肌 Error in toggleEditMode:', error);
+                    alert('邱ｨ髮・Δ繝ｼ繝峨・蛻・ｊ譖ｿ縺医〒繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆: ' + error.message);
                   }
                 });
                 
-                // ボタンスタイルを設定
+                // 繝懊ち繝ｳ繧ｹ繧ｿ繧､繝ｫ繧定ｨｭ螳・
                 newEditBtn.style.pointerEvents = 'auto';
                 newEditBtn.style.cursor = 'pointer';
                 newEditBtn.style.backgroundColor = '#007bff';
@@ -2013,9 +2013,9 @@ const HistoryPage: React.FC = () => {
                 newEditBtn.style.padding = '8px 16px';
                 newEditBtn.style.fontSize = '14px';
                 
-                console.log('🔧 Edit button event listener added successfully');
+                console.log('肌 Edit button event listener added successfully');
               } else {
-              console.error('🔧 Edit button not found!');
+              console.error('肌 Edit button not found!');
               }
               
               if (saveBtn) {
@@ -2023,14 +2023,14 @@ const HistoryPage: React.FC = () => {
                 saveBtn.parentNode?.replaceChild(newSaveBtn, saveBtn);
                 
                 newSaveBtn.addEventListener('click', function(e) {
-                  console.log('🔧 Save button click event triggered');
+                  console.log('肌 Save button click event triggered');
                   e.preventDefault();
                   e.stopPropagation();
                   try {
                     saveReport();
                   } catch (error) {
-                    console.error('🔧 Error in saveReport:', error);
-                    alert('保存でエラーが発生しました: ' + error.message);
+                    console.error('肌 Error in saveReport:', error);
+                    alert('菫晏ｭ倥〒繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆: ' + error.message);
                   }
                 });
               }
@@ -2040,39 +2040,39 @@ const HistoryPage: React.FC = () => {
                 cancelBtn.parentNode?.replaceChild(newCancelBtn, cancelBtn);
                 
                 newCancelBtn.addEventListener('click', function(e) {
-                  console.log('🔧 Cancel button click event triggered');
+                  console.log('肌 Cancel button click event triggered');
                   e.preventDefault();
                   e.stopPropagation();
                   try {
                     toggleEditMode();
                   } catch (error) {
-                    console.error('🔧 Error in toggleEditMode (cancel):', error);
+                    console.error('肌 Error in toggleEditMode (cancel):', error);
                   }
                 });
               }
               
-              console.log('🔧 Button event setup complete');
-            }, 200); // DOM要素が確実に存在するまで待機
+              console.log('肌 Button event setup complete');
+            }, 200); // DOM隕∫ｴ縺檎｢ｺ螳溘↓蟄伜惠縺吶ｋ縺ｾ縺ｧ蠕・ｩ・
           }          function toggleEditMode() {
-            console.log('🔧 toggleEditMode called, current isEditMode:', isEditMode);
-            console.log('🔧 Current document body classList before toggle:', document.body.classList.toString());
+            console.log('肌 toggleEditMode called, current isEditMode:', isEditMode);
+            console.log('肌 Current document body classList before toggle:', document.body.classList.toString());
             
             isEditMode = !isEditMode;
-            console.log('🔧 toggled isEditMode to:', isEditMode);
+            console.log('肌 toggled isEditMode to:', isEditMode);
             
             const editBtn = document.getElementById('edit-btn');
             const cancelBtn = document.getElementById('cancel-btn');
             const saveBtn = document.getElementById('save-btn');
             
-            console.log('🔧 Found buttons:', { editBtn: !!editBtn, cancelBtn: !!cancelBtn, saveBtn: !!saveBtn });
+            console.log('肌 Found buttons:', { editBtn: !!editBtn, cancelBtn: !!cancelBtn, saveBtn: !!saveBtn });
             
             if (isEditMode) {
-              console.log('🔧 Entering edit mode...');
+              console.log('肌 Entering edit mode...');
               
-              // ボタン表示の変更
+              // 繝懊ち繝ｳ陦ｨ遉ｺ縺ｮ螟画峩
               if (editBtn) {
                 editBtn.style.display = 'none';
-                console.log('🔧 Edit button hidden');
+                console.log('肌 Edit button hidden');
               }
               if (cancelBtn) {
                 cancelBtn.style.display = 'inline-block';
@@ -2083,7 +2083,7 @@ const HistoryPage: React.FC = () => {
                 cancelBtn.style.padding = '8px 16px';
                 cancelBtn.style.fontSize = '14px';
                 cancelBtn.style.cursor = 'pointer';
-                console.log('🔧 Cancel button shown');
+                console.log('肌 Cancel button shown');
               }
               if (saveBtn) {
                 saveBtn.style.display = 'inline-block';
@@ -2094,18 +2094,18 @@ const HistoryPage: React.FC = () => {
                 saveBtn.style.padding = '8px 16px';
                 saveBtn.style.fontSize = '14px';
                 saveBtn.style.cursor = 'pointer';
-                console.log('🔧 Save button shown');
+                console.log('肌 Save button shown');
               }
               
-              // 編集モードクラスを追加
+              // 邱ｨ髮・Δ繝ｼ繝峨け繝ｩ繧ｹ繧定ｿｽ蜉
               document.body.classList.add('edit-mode');
-              console.log('🔧 Added edit-mode class, classList:', document.body.classList.toString());
+              console.log('肌 Added edit-mode class, classList:', document.body.classList.toString());
               
-              // 要素の表示を確実に切り替え
+              // 隕∫ｴ縺ｮ陦ｨ遉ｺ繧堤｢ｺ螳溘↓蛻・ｊ譖ｿ縺・
               const readonlyElements = document.querySelectorAll('.readonly');
               const editableElements = document.querySelectorAll('.editable');
               
-              console.log('🔧 Found elements for toggle:', { 
+              console.log('肌 Found elements for toggle:', { 
                 readonly: readonlyElements.length, 
                 editable: editableElements.length 
               });
@@ -2113,118 +2113,118 @@ const HistoryPage: React.FC = () => {
               readonlyElements.forEach((el, index) => {
                 el.style.display = 'none !important';
                 el.style.visibility = 'hidden';
-                console.log('🔧 Hidden readonly element', index);
+                console.log('肌 Hidden readonly element', index);
               });
               
               editableElements.forEach((el, index) => {
                 el.style.display = 'block !important';
                 el.style.visibility = 'visible';
-                // 入力フィールドの背景色を変更して編集中であることを明確にする
+                // 蜈･蜉帙ヵ繧｣繝ｼ繝ｫ繝峨・閭梧勹濶ｲ繧貞､画峩縺励※邱ｨ髮・ｸｭ縺ｧ縺ゅｋ縺薙→繧呈・遒ｺ縺ｫ縺吶ｋ
                 if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
                   el.style.backgroundColor = '#ffffcc';
                   el.style.border = '2px solid #007bff';
                   el.removeAttribute('readonly');
                   el.removeAttribute('disabled');
                 }
-                console.log('🔧 Shown editable element', index, 'tag:', el.tagName);
+                console.log('肌 Shown editable element', index, 'tag:', el.tagName);
               });
               
-              // 編集モード時に入力フィールドの値を設定
+              // 邱ｨ髮・Δ繝ｼ繝画凾縺ｫ蜈･蜉帙ヵ繧｣繝ｼ繝ｫ繝峨・蛟､繧定ｨｭ螳・
               setupEditFields();
               
-              console.log('🔧 Edit mode setup complete');
+              console.log('肌 Edit mode setup complete');
             } else {
-              console.log('🔧 Exiting edit mode...');
+              console.log('肌 Exiting edit mode...');
               
-              // ボタン表示の変更
+              // 繝懊ち繝ｳ陦ｨ遉ｺ縺ｮ螟画峩
               if (editBtn) {
                 editBtn.style.display = 'inline-block';
-                console.log('🔧 Edit button shown');
+                console.log('肌 Edit button shown');
               }
               if (cancelBtn) {
                 cancelBtn.style.display = 'none';
-                console.log('🔧 Cancel button hidden');
+                console.log('肌 Cancel button hidden');
               }
               if (saveBtn) {
                 saveBtn.style.display = 'none';
-                console.log('🔧 Save button hidden');
+                console.log('肌 Save button hidden');
               }
               
-              // 編集モードクラスを削除
+              // 邱ｨ髮・Δ繝ｼ繝峨け繝ｩ繧ｹ繧貞炎髯､
               document.body.classList.remove('edit-mode');
-              console.log('🔧 Removed edit-mode class, classList:', document.body.classList.toString());
+              console.log('肌 Removed edit-mode class, classList:', document.body.classList.toString());
               
-              // 要素の表示を確実に切り替え
+              // 隕∫ｴ縺ｮ陦ｨ遉ｺ繧堤｢ｺ螳溘↓蛻・ｊ譖ｿ縺・
               const readonlyElements = document.querySelectorAll('.readonly');
               const editableElements = document.querySelectorAll('.editable');
               
               readonlyElements.forEach((el, index) => {
                 el.style.display = 'inline';
                 el.style.visibility = 'visible';
-                console.log('🔧 Shown readonly element', index);
+                console.log('肌 Shown readonly element', index);
               });
               
               editableElements.forEach((el, index) => {
                 el.style.display = 'none !important';
                 el.style.visibility = 'hidden';
-                console.log('🔧 Hidden editable element', index);
+                console.log('肌 Hidden editable element', index);
               });
               
-              // 編集内容を元に戻す
+              // 邱ｨ髮・・螳ｹ繧貞・縺ｫ謌ｻ縺・
               resetToOriginal();
               
-              console.log('🔧 Read-only mode setup complete');
+              console.log('肌 Read-only mode setup complete');
             }
           }
-                console.log('🔧 Save button hidden');
+                console.log('肌 Save button hidden');
               }
               
-              // 編集モードクラスを削除
+              // 邱ｨ髮・Δ繝ｼ繝峨け繝ｩ繧ｹ繧貞炎髯､
               document.body.classList.remove('edit-mode');
-              console.log('🔧 Removed edit-mode class, classList:', document.body.classList.toString());
+              console.log('肌 Removed edit-mode class, classList:', document.body.classList.toString());
               
-              // 要素の表示を強制的に切り替え
+              // 隕∫ｴ縺ｮ陦ｨ遉ｺ繧貞ｼｷ蛻ｶ逧・↓蛻・ｊ譖ｿ縺・
               readonlyElements.forEach((el, index) => {
                 el.style.display = 'inline';
                 el.style.visibility = 'visible';
-                console.log('🔧 Shown readonly element', index);
+                console.log('肌 Shown readonly element', index);
               });
               
               editableElements.forEach((el, index) => {
                 el.style.display = 'none';
                 el.style.visibility = 'hidden';
-                console.log('🔧 Hidden editable element', index);
+                console.log('肌 Hidden editable element', index);
               });
               
-              // 編集内容を元に戻す
+              // 邱ｨ髮・・螳ｹ繧貞・縺ｫ謌ｻ縺・
               resetToOriginal();
               
-              console.log('🔧 Read-only mode setup complete');
+              console.log('肌 Read-only mode setup complete');
             }
           }
           
-          // グローバルスコープでも利用可能にする
+          // 繧ｰ繝ｭ繝ｼ繝舌Ν繧ｹ繧ｳ繝ｼ繝励〒繧ょ茜逕ｨ蜿ｯ閭ｽ縺ｫ縺吶ｋ
           window.toggleEditMode = toggleEditMode;
           
-          // ページが完全に読み込まれた後にもボタンイベントを再設定
+          // 繝壹・繧ｸ縺悟ｮ悟・縺ｫ隱ｭ縺ｿ霎ｼ縺ｾ繧後◆蠕後↓繧ゅ・繧ｿ繝ｳ繧､繝吶Φ繝医ｒ蜀崎ｨｭ螳・
           window.addEventListener('load', function() {
-            console.log('🔧 Window load event - page fully loaded');
+            console.log('肌 Window load event - page fully loaded');
             setTimeout(() => {
               setupButtonEvents();
             }, 500);
           });
           
           function setupEditFields() {
-            console.log('🔧 setupEditFields called');
-            // 各入力フィールドに適切な値を設定
+            console.log('肌 setupEditFields called');
+            // 蜷・・蜉帙ヵ繧｣繝ｼ繝ｫ繝峨↓驕ｩ蛻・↑蛟､繧定ｨｭ螳・
             const inputs = document.querySelectorAll('input.editable');
             const textareas = document.querySelectorAll('textarea.editable');
             
-            console.log('🔧 Found inputs:', inputs.length, 'textareas:', textareas.length);
+            console.log('肌 Found inputs:', inputs.length, 'textareas:', textareas.length);
             
-            // 入力フィールドの値を設定
+            // 蜈･蜉帙ヵ繧｣繝ｼ繝ｫ繝峨・蛟､繧定ｨｭ螳・
             inputs.forEach((input, index) => {
-              console.log('🔧 Setting up input', index, input);
+              console.log('肌 Setting up input', index, input);
               if (index === 0) input.value = originalData.reportId || originalData.id || '';
               if (index === 1) input.value = originalData.machineType || originalData.machineTypeName || '';
               if (index === 2) input.value = originalData.machineNumber || '';
@@ -2243,7 +2243,7 @@ const HistoryPage: React.FC = () => {
               if (index === 9) input.value = originalData.repairLocation || '';
             });
             
-            // テキストエリアの値を設定
+            // 繝・く繧ｹ繝医お繝ｪ繧｢縺ｮ蛟､繧定ｨｭ螳・
             textareas.forEach((textarea, index) => {
               if (index === 0) {
                 textarea.value = originalData.problemDescription || originalData.description || originalData.incidentTitle || originalData.title || '';
@@ -2255,29 +2255,29 @@ const HistoryPage: React.FC = () => {
           }
           
           function resetToOriginal() {
-            // 入力フィールドを元の値に戻す
+            // 蜈･蜉帙ヵ繧｣繝ｼ繝ｫ繝峨ｒ蜈・・蛟､縺ｫ謌ｻ縺・
             setupEditFields();
           }
           
           async function saveReport() {
-            console.log('保存処理開始');
+            console.log('菫晏ｭ伜・逅・幕蟋・);
             console.log('originalData:', originalData);
             console.log('originalData.id:', originalData.id);
             console.log('originalData.chatId:', originalData.chatId);
             console.log('originalData.reportId:', originalData.reportId);
             console.log('originalData.fileName:', originalData.fileName);
             
-            // 編集されたデータを収集
+            // 邱ｨ髮・＆繧後◆繝・・繧ｿ繧貞庶髮・
             const updatedData = { ...originalData };
             
-            // 各入力フィールドから値を取得
+            // 蜷・・蜉帙ヵ繧｣繝ｼ繝ｫ繝峨°繧牙､繧貞叙蠕・
             const inputs = document.querySelectorAll('input.editable');
             const textareas = document.querySelectorAll('textarea.editable');
             
-            console.log('入力フィールド数:', inputs.length);
-            console.log('テキストエリア数:', textareas.length);
+            console.log('蜈･蜉帙ヵ繧｣繝ｼ繝ｫ繝画焚:', inputs.length);
+            console.log('繝・く繧ｹ繝医お繝ｪ繧｢謨ｰ:', textareas.length);
             
-            // 入力フィールドの値を取得
+            // 蜈･蜉帙ヵ繧｣繝ｼ繝ｫ繝峨・蛟､繧貞叙蠕・
             inputs.forEach((input, index) => {
               if (index === 0) updatedData.reportId = input.value;
               if (index === 1) updatedData.machineType = input.value;
@@ -2291,7 +2291,7 @@ const HistoryPage: React.FC = () => {
               if (index === 9) updatedData.repairLocation = input.value;
             });
             
-            // テキストエリアの値を取得
+            // 繝・く繧ｹ繝医お繝ｪ繧｢縺ｮ蛟､繧貞叙蠕・
             textareas.forEach((textarea, index) => {
               if (index === 0) {
                 updatedData.problemDescription = textarea.value;
@@ -2301,97 +2301,97 @@ const HistoryPage: React.FC = () => {
               }
             });
             
-            console.log('更新されたデータ:', updatedData);
-            console.log('使用するchatId:', updatedData.chatId || updatedData.id);
+            console.log('譖ｴ譁ｰ縺輔ｌ縺溘ョ繝ｼ繧ｿ:', updatedData);
+            console.log('菴ｿ逕ｨ縺吶ｋchatId:', updatedData.chatId || updatedData.id);
             
-            // ローカルストレージに保存
+            // 繝ｭ繝ｼ繧ｫ繝ｫ繧ｹ繝医Ξ繝ｼ繧ｸ縺ｫ菫晏ｭ・
             localStorage.setItem('savedMachineFailureReport_' + updatedData.id, JSON.stringify(updatedData));
             
-            // 履歴データを更新（親ウィンドウの履歴一覧表を更新）
+            // 螻･豁ｴ繝・・繧ｿ繧呈峩譁ｰ・郁ｦｪ繧ｦ繧｣繝ｳ繝峨え縺ｮ螻･豁ｴ荳隕ｧ陦ｨ繧呈峩譁ｰ・・
             try {
               if (window.opener && !window.opener.closed) {
-                // 親ウィンドウの履歴データを更新
+                // 隕ｪ繧ｦ繧｣繝ｳ繝峨え縺ｮ螻･豁ｴ繝・・繧ｿ繧呈峩譁ｰ
                 window.opener.postMessage({
                   type: 'UPDATE_HISTORY_ITEM',
                   data: updatedData
                 }, '*');
                 
-                // 親ウィンドウのローカルストレージも更新
+                // 隕ｪ繧ｦ繧｣繝ｳ繝峨え縺ｮ繝ｭ繝ｼ繧ｫ繝ｫ繧ｹ繝医Ξ繝ｼ繧ｸ繧よ峩譁ｰ
                 try {
                   const parentStorage = window.opener.localStorage;
                   const historyKey = 'savedMachineFailureReport_' + updatedData.id;
                   parentStorage.setItem(historyKey, JSON.stringify(updatedData));
                 } catch (storageError) {
-                  console.warn('親ウィンドウのローカルストレージ更新に失敗:', storageError);
+                  console.warn('隕ｪ繧ｦ繧｣繝ｳ繝峨え縺ｮ繝ｭ繝ｼ繧ｫ繝ｫ繧ｹ繝医Ξ繝ｼ繧ｸ譖ｴ譁ｰ縺ｫ螟ｱ謨・', storageError);
                 }
               }
             } catch (error) {
-              console.warn('親ウィンドウへの通知に失敗:', error);
+              console.warn('隕ｪ繧ｦ繧｣繝ｳ繝峨え縺ｸ縺ｮ騾夂衍縺ｫ螟ｱ謨・', error);
             }
             
-            // 元のデータを更新
+            // 蜈・・繝・・繧ｿ繧呈峩譁ｰ
             originalData = updatedData;
             
-            // UIを更新
+            // UI繧呈峩譁ｰ
             updateUIAfterSave(updatedData);
             
-            // 編集モードを終了
+            // 邱ｨ髮・Δ繝ｼ繝峨ｒ邨ゆｺ・
             toggleEditMode();
             
-            // 成功メッセージを表示
-            alert('レポートが保存されました。履歴アイテムも更新されます。');
+            // 謌仙粥繝｡繝・そ繝ｼ繧ｸ繧定｡ｨ遉ｺ
+            alert('繝ｬ繝昴・繝医′菫晏ｭ倥＆繧後∪縺励◆縲ょｱ･豁ｴ繧｢繧､繝・Β繧よ峩譁ｰ縺輔ｌ縺ｾ縺吶・);
             
-            // サーバーへの保存も試行
+            // 繧ｵ繝ｼ繝舌・縺ｸ縺ｮ菫晏ｭ倥ｂ隧ｦ陦・
             try {
               await saveToJsonFile(updatedData);
             } catch (error) {
-              console.warn('サーバーへの保存は失敗しましたが、ローカルには保存されています:', error);
+              console.warn('繧ｵ繝ｼ繝舌・縺ｸ縺ｮ菫晏ｭ倥・螟ｱ謨励＠縺ｾ縺励◆縺後√Ο繝ｼ繧ｫ繝ｫ縺ｫ縺ｯ菫晏ｭ倥＆繧後※縺・∪縺・', error);
             }
           }
           
           async function saveToJsonFile(updatedData) {
             try {
-              console.log('サーバーへの保存開始:', updatedData);
+              console.log('繧ｵ繝ｼ繝舌・縺ｸ縺ｮ菫晏ｭ倬幕蟋・', updatedData);
               
-              // 正しいIDを取得
+              // 豁｣縺励＞ID繧貞叙蠕・
               let targetId = originalData.id || originalData.chatId || originalData.reportId;
               
-              // IDが取得できない場合は、ファイル名からUUIDを抽出
+              // ID縺悟叙蠕励〒縺阪↑縺・ｴ蜷医・縲√ヵ繧｡繧､繝ｫ蜷阪°繧蔚UID繧呈歓蜃ｺ
               if (!targetId && originalData.fileName) {
-                console.log('ファイル名からUUID抽出を試行:', originalData.fileName);
+                console.log('繝輔ぃ繧､繝ｫ蜷阪°繧蔚UID謚ｽ蜃ｺ繧定ｩｦ陦・', originalData.fileName);
                 
-                // UUIDパターン1: 標準的なUUID形式
+                // UUID繝代ち繝ｼ繝ｳ1: 讓呎ｺ也噪縺ｪUUID蠖｢蠑・
                 let fileNameMatch = originalData.fileName.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/);
                 
                 if (fileNameMatch) {
                   targetId = fileNameMatch[1];
-                  console.log('標準UUIDから抽出したID:', targetId);
+                  console.log('讓呎ｺ剖UID縺九ｉ謚ｽ蜃ｺ縺励◆ID:', targetId);
                 } else {
-                  // UUIDパターン2: アンダースコア区切りのUUID
+                  // UUID繝代ち繝ｼ繝ｳ2: 繧｢繝ｳ繝繝ｼ繧ｹ繧ｳ繧｢蛹ｺ蛻・ｊ縺ｮUUID
                   fileNameMatch = originalData.fileName.match(/_([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/);
                   if (fileNameMatch) {
                     targetId = fileNameMatch[1];
-                    console.log('アンダースコア区切りUUIDから抽出したID:', targetId);
+                    console.log('繧｢繝ｳ繝繝ｼ繧ｹ繧ｳ繧｢蛹ｺ蛻・ｊUUID縺九ｉ謚ｽ蜃ｺ縺励◆ID:', targetId);
                   }
                 }
               }
               
               if (!targetId) {
-                console.error('対象IDが特定できません:', originalData);
-                throw new Error('対象IDが特定できません');
+                console.error('蟇ｾ雎｡ID縺檎音螳壹〒縺阪∪縺帙ｓ:', originalData);
+                throw new Error('蟇ｾ雎｡ID縺檎音螳壹〒縺阪∪縺帙ｓ');
               }
               
-              console.log('保存対象ID:', targetId);
+              console.log('菫晏ｭ伜ｯｾ雎｡ID:', targetId);
               
-              // 更新データの準備
+              // 譖ｴ譁ｰ繝・・繧ｿ縺ｮ貅門ｙ
               const updatePayload = {
                 updatedData: updatedData,
                 updatedBy: 'user'
               };
               
-              console.log('送信するペイロード:', updatePayload);
+              console.log('騾∽ｿ｡縺吶ｋ繝壹う繝ｭ繝ｼ繝・', updatePayload);
               
-              // サーバーAPIを呼び出して履歴アイテムを更新
+              // 繧ｵ繝ｼ繝舌・API繧貞他縺ｳ蜃ｺ縺励※螻･豁ｴ繧｢繧､繝・Β繧呈峩譁ｰ
               const response = await fetch('/api/history/update-item/' + targetId, {
                 method: 'PUT',
                 headers: {
@@ -2400,25 +2400,25 @@ const HistoryPage: React.FC = () => {
                 body: JSON.stringify(updatePayload)
               });
               
-              console.log('サーバーレスポンス:', response.status, response.statusText);
-              console.log('レスポンスヘッダー:', Object.fromEntries(response.headers.entries()));
+              console.log('繧ｵ繝ｼ繝舌・繝ｬ繧ｹ繝昴Φ繧ｹ:', response.status, response.statusText);
+              console.log('繝ｬ繧ｹ繝昴Φ繧ｹ繝倥ャ繝繝ｼ:', Object.fromEntries(response.headers.entries()));
               
               if (response.ok) {
                 const result = await response.json();
-                console.log('履歴ファイルが正常に更新されました:', result);
+                console.log('螻･豁ｴ繝輔ぃ繧､繝ｫ縺梧ｭ｣蟶ｸ縺ｫ譖ｴ譁ｰ縺輔ｌ縺ｾ縺励◆:', result);
                 
-                // 成功メッセージを表示
-                alert('レポートが元のファイルに正常に上書き保存されました。');
+                // 謌仙粥繝｡繝・そ繝ｼ繧ｸ繧定｡ｨ遉ｺ
+                alert('繝ｬ繝昴・繝医′蜈・・繝輔ぃ繧､繝ｫ縺ｫ豁｣蟶ｸ縺ｫ荳頑嶌縺堺ｿ晏ｭ倥＆繧後∪縺励◆縲・);
                 
                 return result;
               } else {
                 const errorData = await response.json();
-                console.error('サーバーエラー:', errorData);
-                throw new Error(errorData.error || 'サーバーエラー: ' + response.status);
+                console.error('繧ｵ繝ｼ繝舌・繧ｨ繝ｩ繝ｼ:', errorData);
+                throw new Error(errorData.error || '繧ｵ繝ｼ繝舌・繧ｨ繝ｩ繝ｼ: ' + response.status);
               }
               
             } catch (error) {
-              console.error('JSONファイル保存エラー:', error);
+              console.error('JSON繝輔ぃ繧､繝ｫ菫晏ｭ倥お繝ｩ繝ｼ:', error);
               throw error;
             }
           }
@@ -2433,32 +2433,32 @@ const HistoryPage: React.FC = () => {
                 })
               });
               
-              console.log('サーバーレスポンス:', response.status, response.statusText);
-              console.log('レスポンスヘッダー:', Object.fromEntries(response.headers.entries()));
+              console.log('繧ｵ繝ｼ繝舌・繝ｬ繧ｹ繝昴Φ繧ｹ:', response.status, response.statusText);
+              console.log('繝ｬ繧ｹ繝昴Φ繧ｹ繝倥ャ繝繝ｼ:', Object.fromEntries(response.headers.entries()));
               
               if (response.ok) {
                 try {
                   const result = await response.json();
-                  console.log('履歴アイテムが正常に更新されました:', result);
+                  console.log('螻･豁ｴ繧｢繧､繝・Β縺梧ｭ｣蟶ｸ縺ｫ譖ｴ譁ｰ縺輔ｌ縺ｾ縺励◆:', result);
                   
-                  // 保存成功後の処理
+                  // 菫晏ｭ俶・蜉溷ｾ後・蜃ｦ逅・
                   updateUIAfterSave(updatedData);
                   
-                  // 成功メッセージを表示
-                  alert('履歴アイテムが正常に更新されました。');
+                  // 謌仙粥繝｡繝・そ繝ｼ繧ｸ繧定｡ｨ遉ｺ
+                  alert('螻･豁ｴ繧｢繧､繝・Β縺梧ｭ｣蟶ｸ縺ｫ譖ｴ譁ｰ縺輔ｌ縺ｾ縺励◆縲・);
                 } catch (parseError) {
-                  console.warn('レスポンスの解析に失敗しましたが、保存は成功しています:', parseError);
+                  console.warn('繝ｬ繧ｹ繝昴Φ繧ｹ縺ｮ隗｣譫舌↓螟ｱ謨励＠縺ｾ縺励◆縺後∽ｿ晏ｭ倥・謌仙粥縺励※縺・∪縺・', parseError);
                   updateUIAfterSave(updatedData);
-                  alert('履歴アイテムが更新されました。');
+                  alert('螻･豁ｴ繧｢繧､繝・Β縺梧峩譁ｰ縺輔ｌ縺ｾ縺励◆縲・);
                 }
               } else {
-                let errorMessage = 'サーバーエラー';
+                let errorMessage = '繧ｵ繝ｼ繝舌・繧ｨ繝ｩ繝ｼ';
                 try {
-                  // レスポンスのContent-Typeを確認
+                  // 繝ｬ繧ｹ繝昴Φ繧ｹ縺ｮContent-Type繧堤｢ｺ隱・
                   const contentType = response.headers.get('content-type');
                   if (contentType && contentType.includes('application/json')) {
                     const errorData = await response.json();
-                    console.error('エラーレスポンス詳細:', errorData);
+                    console.error('繧ｨ繝ｩ繝ｼ繝ｬ繧ｹ繝昴Φ繧ｹ隧ｳ邏ｰ:', errorData);
                     if (errorData.error) {
                       errorMessage = errorData.error;
                     } else if (errorData.message) {
@@ -2467,46 +2467,46 @@ const HistoryPage: React.FC = () => {
                       errorMessage = 'HTTP ' + response.status + ': ' + response.statusText;
                     }
                   } else {
-                    // HTMLレスポンスの場合
+                    // HTML繝ｬ繧ｹ繝昴Φ繧ｹ縺ｮ蝣ｴ蜷・
                     const textResponse = await response.text();
-                    console.error('HTMLレスポンス:', textResponse.substring(0, 200));
-                    errorMessage = 'HTTP ' + response.status + ': ' + response.statusText + ' (HTMLレスポンス)';
+                    console.error('HTML繝ｬ繧ｹ繝昴Φ繧ｹ:', textResponse.substring(0, 200));
+                    errorMessage = 'HTTP ' + response.status + ': ' + response.statusText + ' (HTML繝ｬ繧ｹ繝昴Φ繧ｹ)';
                   }
                 } catch (parseError) {
-                  console.error('エラーレスポンスの解析に失敗:', parseError);
+                  console.error('繧ｨ繝ｩ繝ｼ繝ｬ繧ｹ繝昴Φ繧ｹ縺ｮ隗｣譫舌↓螟ｱ謨・', parseError);
                   errorMessage = 'HTTP ' + response.status + ': ' + response.statusText;
                 }
                 
-                console.error('履歴アイテムの更新に失敗しました:', errorMessage);
-                alert('履歴アイテムの更新に失敗しました: ' + errorMessage);
+                console.error('螻･豁ｴ繧｢繧､繝・Β縺ｮ譖ｴ譁ｰ縺ｫ螟ｱ謨励＠縺ｾ縺励◆:', errorMessage);
+                alert('螻･豁ｴ繧｢繧､繝・Β縺ｮ譖ｴ譁ｰ縺ｫ螟ｱ謨励＠縺ｾ縺励◆: ' + errorMessage);
               }
             } catch (error) {
-              console.error('保存エラー:', error);
-              console.error('エラースタック:', error.stack);
-              alert('保存中にエラーが発生しました: ' + error.message);
+              console.error('菫晏ｭ倥お繝ｩ繝ｼ:', error);
+              console.error('繧ｨ繝ｩ繝ｼ繧ｹ繧ｿ繝・け:', error.stack);
+              alert('菫晏ｭ倅ｸｭ縺ｫ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆: ' + error.message);
             }
           }
           
           function updateUIAfterSave(updatedData) {
-            // 保存後にUIを更新
+            // 菫晏ｭ伜ｾ後↓UI繧呈峩譁ｰ
             const readonlyElements = document.querySelectorAll('.readonly');
             
-            // 報告書ID
+            // 蝣ｱ蜻頑嶌ID
             if (readonlyElements[0]) {
               readonlyElements[0].textContent = (updatedData.reportId || updatedData.id || '').substring(0, 8) + '...';
             }
             
-            // 機種
+            // 讖溽ｨｮ
             if (readonlyElements[1]) {
               readonlyElements[1].textContent = updatedData.machineType || updatedData.machineTypeName || '-';
             }
             
-            // 機械番号
+            // 讖滓｢ｰ逡ｪ蜿ｷ
             if (readonlyElements[2]) {
               readonlyElements[2].textContent = updatedData.machineNumber || '-';
             }
             
-            // 日付
+            // 譌･莉・
             if (readonlyElements[3]) {
               const dateValue = updatedData.date || updatedData.timestamp || updatedData.createdAt;
               if (dateValue) {
@@ -2517,42 +2517,42 @@ const HistoryPage: React.FC = () => {
               }
             }
             
-            // 場所
+            // 蝣ｴ謇
             if (readonlyElements[4]) {
               readonlyElements[4].textContent = updatedData.location || '-';
             }
             
-            // ステータス
+            // 繧ｹ繝・・繧ｿ繧ｹ
             if (readonlyElements[5]) {
               readonlyElements[5].textContent = updatedData.status || '-';
             }
             
-            // 責任者
+            // 雋ｬ莉ｻ閠・
             if (readonlyElements[6]) {
               readonlyElements[6].textContent = updatedData.engineer || '-';
             }
             
-            // 説明
+            // 隱ｬ譏・
             if (readonlyElements[7]) {
-              readonlyElements[7].textContent = updatedData.problemDescription || updatedData.description || updatedData.incidentTitle || updatedData.title || '説明なし';
+              readonlyElements[7].textContent = updatedData.problemDescription || updatedData.description || updatedData.incidentTitle || updatedData.title || '隱ｬ譏弱↑縺・;
             }
             
-            // 備考
+            // 蛯呵・
             if (readonlyElements[8]) {
               readonlyElements[8].textContent = updatedData.notes || '-';
             }
             
-            // 依頼月日
+            // 萓晞ｼ譛域律
             if (readonlyElements[9]) {
               readonlyElements[9].textContent = updatedData.requestDate || '-';
             }
             
-            // 予定月日
+            // 莠亥ｮ壽怦譌･
             if (readonlyElements[10]) {
               readonlyElements[10].textContent = updatedData.repairSchedule || '-';
             }
             
-            // 修繕場所
+            // 菫ｮ郢募ｴ謇
             if (readonlyElements[11]) {
               readonlyElements[11].textContent = updatedData.repairLocation || '-';
             }
@@ -2563,9 +2563,9 @@ const HistoryPage: React.FC = () => {
     `;
   };
 
-  // 画像取得の共通関数（編集対象ファイル内のみで完結）
+  // 逕ｻ蜒丞叙蠕励・蜈ｱ騾夐未謨ｰ・育ｷｨ髮・ｯｾ雎｡繝輔ぃ繧､繝ｫ蜀・・縺ｿ縺ｧ螳檎ｵ撰ｼ・
   function pickFirstImage(data: any): string | null {
-    // 1) 直下 or ネスト配列に dataURL があれば優先
+    // 1) 逶ｴ荳・or 繝阪せ繝磯・蛻励↓ dataURL 縺後≠繧後・蜆ｪ蜈・
     const dig = (v:any): string | null => {
       if (!v) return null;
       if (typeof v === 'string' && v.startsWith('data:image/')) return v;
@@ -2586,7 +2586,7 @@ const HistoryPage: React.FC = () => {
     return null;
   }
 
-  // 印刷用CSS
+  // 蜊ｰ蛻ｷ逕ｨCSS
   const PRINT_STYLES = `
 <style>
   @page { size: A4 portrait; margin: 10mm; }
@@ -2597,23 +2597,23 @@ const HistoryPage: React.FC = () => {
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     th, td { border: 1px solid #ccc; padding: 4px; vertical-align: top; }
   }
-  /* 画面プレビュー用：印刷専用ウィンドウでは最小限でOK */
+  /* 逕ｻ髱｢繝励Ξ繝薙Η繝ｼ逕ｨ・壼魂蛻ｷ蟆ら畑繧ｦ繧｣繝ｳ繝峨え縺ｧ縺ｯ譛蟆城剞縺ｧOK */
   img.thumb { width: 32px; height: 32px; object-fit: cover; border: 1px solid #ddd; border-radius: 4px; }
   .report-img { max-width: 100%; height: auto; }
 </style>
 `;
 
-  // 一覧印刷用HTML生成
+  // 荳隕ｧ蜊ｰ蛻ｷ逕ｨHTML逕滓・
   const generateListPrintHTML = (items: any[]): string => {
     const rows = items.map(item => {
       const imageUrl = pickFirstImage(item);
       const imageCell = imageUrl 
-        ? `<img class="thumb" src="${imageUrl}" alt="画像" />`
+        ? `<img class="thumb" src="${imageUrl}" alt="逕ｻ蜒・ />`
         : '-';
       
       return `
         <tr>
-          <td>${item.title || item.incidentTitle || 'タイトルなし'}</td>
+          <td>${item.title || item.incidentTitle || '繧ｿ繧､繝医Ν縺ｪ縺・}</td>
           <td>${item.machineType || item.machineTypeName || '-'}</td>
           <td>${item.machineNumber || '-'}</td>
           <td>${item.date || item.timestamp || '-'}</td>
@@ -2628,20 +2628,20 @@ const HistoryPage: React.FC = () => {
       <html>
       <head>
         <meta charset="utf-8">
-        <title>故障一覧印刷</title>
+        <title>謨・囿荳隕ｧ蜊ｰ蛻ｷ</title>
         ${PRINT_STYLES}
       </head>
       <body>
-        <h1>故障一覧</h1>
+        <h1>謨・囿荳隕ｧ</h1>
         <table>
           <thead>
             <tr>
-              <th>タイトル</th>
-              <th>機種</th>
-              <th>機械番号</th>
-              <th>日付</th>
-              <th>ステータス</th>
-              <th>画像</th>
+              <th>繧ｿ繧､繝医Ν</th>
+              <th>讖溽ｨｮ</th>
+              <th>讖滓｢ｰ逡ｪ蜿ｷ</th>
+              <th>譌･莉・/th>
+              <th>繧ｹ繝・・繧ｿ繧ｹ</th>
+              <th>逕ｻ蜒・/th>
             </tr>
           </thead>
           <tbody>
@@ -2653,7 +2653,7 @@ const HistoryPage: React.FC = () => {
     `;
   };
 
-  // 一覧印刷実行
+  // 荳隕ｧ蜊ｰ蛻ｷ螳溯｡・
   const printList = (items: any[]) => {
     const w = window.open('', '_blank', 'noopener,noreferrer');
     if (!w) return;
@@ -2662,7 +2662,7 @@ const HistoryPage: React.FC = () => {
     w.document.write(contentHTML);
     w.document.close();
     
-    // 印刷ダイアログを表示
+    // 蜊ｰ蛻ｷ繝繧､繧｢繝ｭ繧ｰ繧定｡ｨ遉ｺ
     setTimeout(() => {
       w.print();
     }, 100);
@@ -2670,12 +2670,12 @@ const HistoryPage: React.FC = () => {
 
 
 
-  // 印刷機能
+  // 蜊ｰ蛻ｷ讖溯・
   const handlePrintTable = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    // 選択された履歴のみを印刷対象とする
+    // 驕ｸ謚槭＆繧後◆螻･豁ｴ縺ｮ縺ｿ繧貞魂蛻ｷ蟇ｾ雎｡縺ｨ縺吶ｋ
     const targetItems = selectedItems.size > 0 
       ? filteredItems.filter(item => selectedItems.has(item.id))
       : filteredItems;
@@ -2684,7 +2684,7 @@ const HistoryPage: React.FC = () => {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>履歴一覧 - 印刷</title>
+        <title>螻･豁ｴ荳隕ｧ - 蜊ｰ蛻ｷ</title>
         <style>
           @page { size: A4 portrait; margin: 10mm; }
           @media print {
@@ -2709,26 +2709,26 @@ const HistoryPage: React.FC = () => {
       </head>
       <body>
         <div class="header">
-          <h1>機械故障履歴一覧</h1>
-          <p>印刷日時: ${new Date().toLocaleString('ja-JP')}</p>
-          <p>対象件数: ${targetItems.length}件${selectedItems.size > 0 ? ' (選択された履歴)' : ''}</p>
+          <h1>讖滓｢ｰ謨・囿螻･豁ｴ荳隕ｧ</h1>
+          <p>蜊ｰ蛻ｷ譌･譎・ ${new Date().toLocaleString('ja-JP')}</p>
+          <p>蟇ｾ雎｡莉ｶ謨ｰ: ${targetItems.length}莉ｶ${selectedItems.size > 0 ? ' (驕ｸ謚槭＆繧後◆螻･豁ｴ)' : ''}</p>
         </div>
         
         <div class="summary">
-          <strong>印刷対象:</strong> ${selectedItems.size > 0 ? '選択された履歴' : '機械故障履歴一覧'}<br>
-          <strong>印刷日時:</strong> ${new Date().toLocaleString('ja-JP')}<br>
-          <strong>対象件数:</strong> ${targetItems.length}件
+          <strong>蜊ｰ蛻ｷ蟇ｾ雎｡:</strong> ${selectedItems.size > 0 ? '驕ｸ謚槭＆繧後◆螻･豁ｴ' : '讖滓｢ｰ謨・囿螻･豁ｴ荳隕ｧ'}<br>
+          <strong>蜊ｰ蛻ｷ譌･譎・</strong> ${new Date().toLocaleString('ja-JP')}<br>
+          <strong>蟇ｾ雎｡莉ｶ謨ｰ:</strong> ${targetItems.length}莉ｶ
         </div>
         
         <table>
           <thead>
             <tr>
-              <th>機種</th>
-              <th>機械番号</th>
-              <th>事象</th>
-              <th>説明</th>
-              <th>作成日時</th>
-              <th>画像</th>
+              <th>讖溽ｨｮ</th>
+              <th>讖滓｢ｰ逡ｪ蜿ｷ</th>
+              <th>莠玖ｱ｡</th>
+              <th>隱ｬ譏・/th>
+              <th>菴懈・譌･譎・/th>
+              <th>逕ｻ蜒・/th>
             </tr>
           </thead>
           <tbody>
@@ -2742,10 +2742,10 @@ const HistoryPage: React.FC = () => {
                                   jsonData?.originalChatData?.machineInfo?.machineNumber ||
                                   jsonData?.chatData?.machineInfo?.machineNumber || 
                                   item.machineNumber || '';
-              const incidentTitle = jsonData?.title || jsonData?.question || '事象なし';
-              const problemDescription = jsonData?.problemDescription || jsonData?.answer || '説明なし';
+              const incidentTitle = jsonData?.title || jsonData?.question || '莠玖ｱ｡縺ｪ縺・;
+              const problemDescription = jsonData?.problemDescription || jsonData?.answer || '隱ｬ譏弱↑縺・;
               
-              // pickFirstImage関数を使用して画像URLを取得
+              // pickFirstImage髢｢謨ｰ繧剃ｽｿ逕ｨ縺励※逕ｻ蜒酋RL繧貞叙蠕・
               const imageUrl = pickFirstImage(item);
               
               return `
@@ -2755,7 +2755,7 @@ const HistoryPage: React.FC = () => {
                   <td>${incidentTitle}</td>
                   <td>${problemDescription}</td>
                   <td>${formatDate(item.createdAt)}</td>
-                  <td class="image-cell">${imageUrl ? `<img class="thumb" src="${imageUrl}" alt="故障画像" onerror="this.style.display='none'; this.nextSibling.style.display='inline';" /><span style="display:none; color: #999; font-size: 10px;">画像読み込みエラー</span>` : 'なし'}</td>
+                  <td class="image-cell">${imageUrl ? `<img class="thumb" src="${imageUrl}" alt="謨・囿逕ｻ蜒・ onerror="this.style.display='none'; this.nextSibling.style.display='inline';" /><span style="display:none; color: #999; font-size: 10px;">逕ｻ蜒剰ｪｭ縺ｿ霎ｼ縺ｿ繧ｨ繝ｩ繝ｼ</span>` : '縺ｪ縺・}</td>
                 </tr>
               `;
             }).join('')}
@@ -2763,7 +2763,7 @@ const HistoryPage: React.FC = () => {
         </table>
         
         <div class="no-print" style="margin-top: 20px; text-align: center;">
-          <button onclick="window.close()">閉じる</button>
+          <button onclick="window.close()">髢峨§繧・/button>
         </div>
       </body>
       </html>
@@ -2772,7 +2772,7 @@ const HistoryPage: React.FC = () => {
     printWindow.document.write(tableContent);
     printWindow.document.close();
     
-    // 印刷ダイアログを自動的に表示
+    // 蜊ｰ蛻ｷ繝繧､繧｢繝ｭ繧ｰ繧定・蜍慕噪縺ｫ陦ｨ遉ｺ
     setTimeout(() => {
       printWindow.print();
     }, 100);
@@ -2784,34 +2784,34 @@ const HistoryPage: React.FC = () => {
 
     const jsonData = item.jsonData;
     
-    // 事象データを抽出（ファイル名から優先的に取得、次にJSONデータから）
-    let incidentTitle = '事象なし';
+    // 莠玖ｱ｡繝・・繧ｿ繧呈歓蜃ｺ・医ヵ繧｡繧､繝ｫ蜷阪°繧牙━蜈育噪縺ｫ蜿門ｾ励∵ｬ｡縺ｫJSON繝・・繧ｿ縺九ｉ・・
+    let incidentTitle = '莠玖ｱ｡縺ｪ縺・;
     
-    // まずファイル名から事象内容を抽出
+    // 縺ｾ縺壹ヵ繧｡繧､繝ｫ蜷阪°繧我ｺ玖ｱ｡蜀・ｮｹ繧呈歓蜃ｺ
     if (item.fileName) {
       const fileNameParts = item.fileName.split('_');
       if (fileNameParts.length > 1) {
-        // ファイル名の最初の部分が事象内容
+        // 繝輔ぃ繧､繝ｫ蜷阪・譛蛻昴・驛ｨ蛻・′莠玖ｱ｡蜀・ｮｹ
         incidentTitle = fileNameParts[0];
       }
     }
     
-    // ファイル名から取得できない場合は、JSONデータから取得
-    if (incidentTitle === '事象なし') {
-      incidentTitle = jsonData?.title || jsonData?.question || '事象なし';
-      if (incidentTitle === '事象なし' && jsonData?.chatData?.messages) {
-        // 従来フォーマットの場合、ユーザーメッセージから事象を抽出
+    // 繝輔ぃ繧､繝ｫ蜷阪°繧牙叙蠕励〒縺阪↑縺・ｴ蜷医・縲゛SON繝・・繧ｿ縺九ｉ蜿門ｾ・
+    if (incidentTitle === '莠玖ｱ｡縺ｪ縺・) {
+      incidentTitle = jsonData?.title || jsonData?.question || '莠玖ｱ｡縺ｪ縺・;
+      if (incidentTitle === '莠玖ｱ｡縺ｪ縺・ && jsonData?.chatData?.messages) {
+        // 蠕捺擂繝輔か繝ｼ繝槭ャ繝医・蝣ｴ蜷医√Θ繝ｼ繧ｶ繝ｼ繝｡繝・そ繝ｼ繧ｸ縺九ｉ莠玖ｱ｡繧呈歓蜃ｺ
         const userMessages = jsonData.chatData.messages.filter((msg: any) => !msg.isAiResponse);
         if (userMessages.length > 0) {
-          // 最初のユーザーメッセージを事象として使用
-          incidentTitle = userMessages[0].content || '事象なし';
+          // 譛蛻昴・繝ｦ繝ｼ繧ｶ繝ｼ繝｡繝・そ繝ｼ繧ｸ繧剃ｺ玖ｱ｡縺ｨ縺励※菴ｿ逕ｨ
+          incidentTitle = userMessages[0].content || '莠玖ｱ｡縺ｪ縺・;
         }
       }
     }
     
-    const problemDescription = jsonData?.problemDescription || jsonData?.answer || '説明なし';
+    const problemDescription = jsonData?.problemDescription || jsonData?.answer || '隱ｬ譏弱↑縺・;
     
-    // 機種と機械番号を抽出（APIから返されるデータ構造に合わせる）
+    // 讖溽ｨｮ縺ｨ讖滓｢ｰ逡ｪ蜿ｷ繧呈歓蜃ｺ・・PI縺九ｉ霑斐＆繧後ｋ繝・・繧ｿ讒矩縺ｫ蜷医ｏ縺帙ｋ・・
     const machineType = item.machineInfo?.machineTypeName || 
                       jsonData?.machineType || 
                       jsonData?.chatData?.machineInfo?.machineTypeName || 
@@ -2825,11 +2825,11 @@ const HistoryPage: React.FC = () => {
     const extractedSymptoms = jsonData?.extractedSymptoms || [];
     const possibleModels = jsonData?.possibleModels || [];
     
-    // 画像URLを取得（優先順位付き）
+    // 逕ｻ蜒酋RL繧貞叙蠕暦ｼ亥━蜈磯・ｽ堺ｻ倥″・・
     let imageUrl = '';
     let imageFileName = '';
     
-    console.log('個別レポート印刷用画像読み込み処理:', {
+    console.log('蛟句挨繝ｬ繝昴・繝亥魂蛻ｷ逕ｨ逕ｻ蜒剰ｪｭ縺ｿ霎ｼ縺ｿ蜃ｦ逅・', {
       itemId: item.id,
       hasJsonData: !!jsonData,
       jsonDataKeys: jsonData ? Object.keys(jsonData) : [],
@@ -2840,89 +2840,89 @@ const HistoryPage: React.FC = () => {
       imagePath: item.imagePath
     });
     
-    // 優先順位1: conversationHistoryからBase64画像を取得（最優先）
+    // 蜆ｪ蜈磯・ｽ・: conversationHistory縺九ｉBase64逕ｻ蜒上ｒ蜿門ｾ暦ｼ域怙蜆ｪ蜈茨ｼ・
     if (jsonData?.conversationHistory && jsonData.conversationHistory.length > 0) {
       const imageMessage = jsonData.conversationHistory.find((msg: any) => 
         msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         imageUrl = imageMessage.content;
-        imageFileName = `故障画像_${item.id}`;
-        console.log('個別レポート印刷用: conversationHistoryからBase64画像を取得（最優先）');
+        imageFileName = `謨・囿逕ｻ蜒柔${item.id}`;
+        console.log('蛟句挨繝ｬ繝昴・繝亥魂蛻ｷ逕ｨ: conversationHistory縺九ｉBase64逕ｻ蜒上ｒ蜿門ｾ暦ｼ域怙蜆ｪ蜈茨ｼ・);
       }
     }
     
-    // 優先順位2: originalChatData.messagesからBase64画像を取得
+    // 蜆ｪ蜈磯・ｽ・: originalChatData.messages縺九ｉBase64逕ｻ蜒上ｒ蜿門ｾ・
     if (!imageUrl && jsonData?.originalChatData?.messages) {
       const imageMessage = jsonData.originalChatData.messages.find((msg: any) => 
         msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         imageUrl = imageMessage.content;
-        imageFileName = `故障画像_${item.id}`;
-        console.log('個別レポート印刷用: originalChatDataからBase64画像を取得（優先順位2）');
+        imageFileName = `謨・囿逕ｻ蜒柔${item.id}`;
+        console.log('蛟句挨繝ｬ繝昴・繝亥魂蛻ｷ逕ｨ: originalChatData縺九ｉBase64逕ｻ蜒上ｒ蜿門ｾ暦ｼ亥━蜈磯・ｽ・・・);
       }
     }
     
-    // 優先順位3: chatData.messagesからBase64画像を取得
+    // 蜆ｪ蜈磯・ｽ・: chatData.messages縺九ｉBase64逕ｻ蜒上ｒ蜿門ｾ・
     if (!imageUrl && jsonData?.chatData?.messages) {
       const imageMessage = jsonData.chatData.messages.find((msg: any) => 
         msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         imageUrl = imageMessage.content;
-        imageFileName = `故障画像_${item.id}`;
-        console.log('個別レポート印刷用: chatDataからBase64画像を取得（優先順位3）');
+        imageFileName = `謨・囿逕ｻ蜒柔${item.id}`;
+        console.log('蛟句挨繝ｬ繝昴・繝亥魂蛻ｷ逕ｨ: chatData縺九ｉBase64逕ｻ蜒上ｒ蜿門ｾ暦ｼ亥━蜈磯・ｽ・・・);
       }
     }
     
-    // 優先順位4: 直接のmessagesフィールドからBase64画像を検索
+    // 蜆ｪ蜈磯・ｽ・: 逶ｴ謗･縺ｮmessages繝輔ぅ繝ｼ繝ｫ繝峨°繧隠ase64逕ｻ蜒上ｒ讀懃ｴ｢
     if (!imageUrl && jsonData?.messages && Array.isArray(jsonData.messages)) {
       const imageMessage = jsonData.messages.find((msg: any) => 
         msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         imageUrl = imageMessage.content;
-        imageFileName = `故障画像_${item.id}`;
-        console.log('個別レポート印刷用: messagesフィールドからBase64画像を取得（優先順位4）');
+        imageFileName = `謨・囿逕ｻ蜒柔${item.id}`;
+        console.log('蛟句挨繝ｬ繝昴・繝亥魂蛻ｷ逕ｨ: messages繝輔ぅ繝ｼ繝ｫ繝峨°繧隠ase64逕ｻ蜒上ｒ蜿門ｾ暦ｼ亥━蜈磯・ｽ・・・);
       }
     }
     
-    // 優先順位5: savedImagesから画像を取得（サーバー上のファイル）
+    // 蜆ｪ蜈磯・ｽ・: savedImages縺九ｉ逕ｻ蜒上ｒ蜿門ｾ暦ｼ医し繝ｼ繝舌・荳翫・繝輔ぃ繧､繝ｫ・・
     if (!imageUrl && jsonData?.savedImages && jsonData.savedImages.length > 0) {
       const savedImage = jsonData.savedImages[0];
       imageUrl = savedImage.url || '';
-      imageFileName = savedImage.fileName || `故障画像_${item.id}`;
-      console.log('個別レポート印刷用: savedImagesから画像を取得（優先順位5）');
+      imageFileName = savedImage.fileName || `謨・囿逕ｻ蜒柔${item.id}`;
+      console.log('蛟句挨繝ｬ繝昴・繝亥魂蛻ｷ逕ｨ: savedImages縺九ｉ逕ｻ蜒上ｒ蜿門ｾ暦ｼ亥━蜈磯・ｽ・・・);
     }
     
-    // 優先順位3: originalChatData.messagesからBase64画像を取得
+    // 蜆ｪ蜈磯・ｽ・: originalChatData.messages縺九ｉBase64逕ｻ蜒上ｒ蜿門ｾ・
     if (!imageUrl && jsonData?.originalChatData?.messages) {
       const imageMessage = jsonData.originalChatData.messages.find((msg: any) => 
         msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         imageUrl = imageMessage.content;
-        imageFileName = `故障画像_${item.id}`;
-        console.log('個別レポート印刷用: originalChatDataからBase64画像を取得（優先順位3）');
+        imageFileName = `謨・囿逕ｻ蜒柔${item.id}`;
+        console.log('蛟句挨繝ｬ繝昴・繝亥魂蛻ｷ逕ｨ: originalChatData縺九ｉBase64逕ｻ蜒上ｒ蜿門ｾ暦ｼ亥━蜈磯・ｽ・・・);
       }
     }
     
-    // 優先順位4: 従来フォーマットのchatData.messagesからBase64画像を取得
+    // 蜆ｪ蜈磯・ｽ・: 蠕捺擂繝輔か繝ｼ繝槭ャ繝医・chatData.messages縺九ｉBase64逕ｻ蜒上ｒ蜿門ｾ・
     if (!imageUrl && jsonData?.chatData?.messages) {
       const imageMessage = jsonData.chatData.messages.find((msg: any) => 
         msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         imageUrl = imageMessage.content;
-        imageFileName = `故障画像_${item.id}`;
-        console.log('個別レポート印刷用: chatDataからBase64画像を取得（優先順位4）');
+        imageFileName = `謨・囿逕ｻ蜒柔${item.id}`;
+        console.log('蛟句挨繝ｬ繝昴・繝亥魂蛻ｷ逕ｨ: chatData縺九ｉBase64逕ｻ蜒上ｒ蜿門ｾ暦ｼ亥━蜈磯・ｽ・・・);
       }
     }
     
-    // 優先順位6: その他の可能性のあるフィールドから画像を検索
+    // 蜆ｪ蜈磯・ｽ・: 縺昴・莉悶・蜿ｯ閭ｽ諤ｧ縺ｮ縺ゅｋ繝輔ぅ繝ｼ繝ｫ繝峨°繧臥判蜒上ｒ讀懃ｴ｢
     if (!imageUrl) {
-      // 画像データが含まれる可能性のあるフィールドを再帰的に検索
+      // 逕ｻ蜒上ョ繝ｼ繧ｿ縺悟性縺ｾ繧後ｋ蜿ｯ閭ｽ諤ｧ縺ｮ縺ゅｋ繝輔ぅ繝ｼ繝ｫ繝峨ｒ蜀榊ｸｰ逧・↓讀懃ｴ｢
       const findImagesRecursively = (obj: any, path: string = ''): any[] => {
         const foundImages = [];
         if (obj && typeof obj === 'object') {
@@ -2948,23 +2948,23 @@ const HistoryPage: React.FC = () => {
       const recursiveImages = findImagesRecursively(jsonData);
       if (recursiveImages.length > 0) {
         imageUrl = recursiveImages[0].content;
-        imageFileName = `故障画像_${item.id}`;
-        console.log('個別レポート印刷用: 再帰的検索で画像を取得（優先順位6）');
+        imageFileName = `謨・囿逕ｻ蜒柔${item.id}`;
+        console.log('蛟句挨繝ｬ繝昴・繝亥魂蛻ｷ逕ｨ: 蜀榊ｸｰ逧・､懃ｴ｢縺ｧ逕ｻ蜒上ｒ蜿門ｾ暦ｼ亥━蜈磯・ｽ・・・);
       }
     }
     
-    // 優先順位7: 従来のimagePathフィールド（最終フォールバック）
+    // 蜆ｪ蜈磯・ｽ・: 蠕捺擂縺ｮimagePath繝輔ぅ繝ｼ繝ｫ繝会ｼ域怙邨ゅヵ繧ｩ繝ｼ繝ｫ繝舌ャ繧ｯ・・
     if (!imageUrl && item.imagePath) {
       imageUrl = item.imagePath.startsWith('http') ? item.imagePath : 
                item.imagePath.startsWith('/') ? `${window.location.origin}${item.imagePath}` :
                `${window.location.origin}/api/images/chat-exports/${item.imagePath}`;
-      imageFileName = `故障画像_${item.id}`;
-      console.log('個別レポート印刷用: imagePathから画像を取得（最終フォールバック）');
+      imageFileName = `謨・囿逕ｻ蜒柔${item.id}`;
+      console.log('蛟句挨繝ｬ繝昴・繝亥魂蛻ｷ逕ｨ: imagePath縺九ｉ逕ｻ蜒上ｒ蜿門ｾ暦ｼ域怙邨ゅヵ繧ｩ繝ｼ繝ｫ繝舌ャ繧ｯ・・);
     }
     
-    console.log('個別レポート印刷用: 最終的な画像情報:', {
+    console.log('蛟句挨繝ｬ繝昴・繝亥魂蛻ｷ逕ｨ: 譛邨ら噪縺ｪ逕ｻ蜒乗ュ蝣ｱ:', {
       hasImage: !!imageUrl,
-      imageUrl: imageUrl ? imageUrl.substring(0, 100) + '...' : 'なし',
+      imageUrl: imageUrl ? imageUrl.substring(0, 100) + '...' : '縺ｪ縺・,
       imageFileName,
       isBase64: imageUrl ? imageUrl.startsWith('data:image/') : false
     });
@@ -2973,7 +2973,7 @@ const HistoryPage: React.FC = () => {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>機械故障報告書 - 印刷</title>
+        <title>讖滓｢ｰ謨・囿蝣ｱ蜻頑嶌 - 蜊ｰ蛻ｷ</title>
         <style>
           body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
           .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
@@ -3036,89 +3036,89 @@ const HistoryPage: React.FC = () => {
       </head>
       <body>
         <div class="header">
-                      <h1>機械故障報告書</h1>
-          <p>印刷日時: ${new Date().toLocaleString('ja-JP')}</p>
+                      <h1>讖滓｢ｰ謨・囿蝣ｱ蜻頑嶌</h1>
+          <p>蜊ｰ蛻ｷ譌･譎・ ${new Date().toLocaleString('ja-JP')}</p>
         </div>
         
         <div class="section">
-          <h2>報告概要</h2>
+          <h2>蝣ｱ蜻頑ｦりｦ・/h2>
           <div class="info-grid">
             <div class="info-item">
-              <strong>報告書ID</strong>
+              <strong>蝣ｱ蜻頑嶌ID</strong>
               R${item.id.slice(-5).toUpperCase()}
             </div>
             <div class="info-item">
-              <strong>機械ID</strong>
+              <strong>讖滓｢ｰID</strong>
               ${item.machineNumber}
             </div>
             <div class="info-item">
-              <strong>日付</strong>
+              <strong>譌･莉・/strong>
               ${new Date(item.createdAt).toISOString().split('T')[0]}
             </div>
             <div class="info-item">
-              <strong>場所</strong>
-              ○○線
+              <strong>蝣ｴ謇</strong>
+              笳銀雷邱・
             </div>
             <div class="info-item">
-              <strong>故障コード</strong>
+              <strong>謨・囿繧ｳ繝ｼ繝・/strong>
               FC01
             </div>
           </div>
         </div>
         
         <div class="section">
-          <h2>事象詳細</h2>
+          <h2>莠玖ｱ｡隧ｳ邏ｰ</h2>
           <div class="content-box">
-            <p><strong>事象タイトル:</strong> ${incidentTitle}</p>
-            <p><strong>事象説明:</strong> ${problemDescription}</p>
-            <p><strong>ステータス:</strong> 応急処置完了</p>
-            <p><strong>担当エンジニア:</strong> 担当者</p>
-            <p><strong>機種:</strong> ${machineType}</p>
-            <p><strong>機械番号:</strong> ${machineNumber}</p>
+            <p><strong>莠玖ｱ｡繧ｿ繧､繝医Ν:</strong> ${incidentTitle}</p>
+            <p><strong>莠玖ｱ｡隱ｬ譏・</strong> ${problemDescription}</p>
+            <p><strong>繧ｹ繝・・繧ｿ繧ｹ:</strong> 蠢懈･蜃ｦ鄂ｮ螳御ｺ・/p>
+            <p><strong>諡・ｽ薙お繝ｳ繧ｸ繝九い:</strong> 諡・ｽ楢・/p>
+            <p><strong>讖溽ｨｮ:</strong> ${machineType}</p>
+            <p><strong>讖滓｢ｰ逡ｪ蜿ｷ:</strong> ${machineNumber}</p>
           </div>
         </div>
         
         ${imageUrl ? `
         <div class="section">
-          <h2>故障箇所画像</h2>
+          <h2>謨・囿邂・園逕ｻ蜒・/h2>
           <div class="image-section">
-            <p>機械故障箇所の画像</p>
-            <img src="${imageUrl}" alt="故障箇所画像" />
-            <p style="font-size: 12px; color: #666;">上記は故障箇所の写真です。</p>
+            <p>讖滓｢ｰ謨・囿邂・園縺ｮ逕ｻ蜒・/p>
+            <img src="${imageUrl}" alt="謨・囿邂・園逕ｻ蜒・ />
+            <p style="font-size: 12px; color: #666;">荳願ｨ倥・謨・囿邂・園縺ｮ蜀咏悄縺ｧ縺吶・/p>
           </div>
         </div>
         ` : ''}
         
         <div class="section">
-          <h2>修繕計画</h2>
+          <h2>菫ｮ郢戊ｨ育判</h2>
           <div class="info-grid">
             <div class="info-item">
-              <strong>予定月日</strong>
+              <strong>莠亥ｮ壽怦譌･</strong>
               ${item.jsonData?.repairSchedule || '-'}
             </div>
             <div class="info-item">
-              <strong>場所</strong>
+              <strong>蝣ｴ謇</strong>
               ${item.jsonData?.location || '-'}
             </div>
           </div>
         </div>
         
         <div class="section">
-          <h2>記事欄</h2>
+          <h2>險倅ｺ区ｬ・/h2>
           <div class="content-box">
-            <p>${item.jsonData?.remarks || '記載なし'}</p>
+            <p>${item.jsonData?.remarks || '險倩ｼ峨↑縺・}</p>
           </div>
         </div>
         
         <div class="section">
           <p style="text-align: center; color: #666; font-size: 12px;">
-            © 2025 機械故障報告書. All rights reserved.
+            ﾂｩ 2025 讖滓｢ｰ謨・囿蝣ｱ蜻頑嶌. All rights reserved.
           </p>
         </div>
         
         <div class="no-print" style="margin-top: 30px; text-align: center;">
-          <button onclick="window.print()">印刷</button>
-          <button onclick="window.close()">閉じる</button>
+          <button onclick="window.print()">蜊ｰ蛻ｷ</button>
+          <button onclick="window.close()">髢峨§繧・/button>
         </div>
       </body>
       </html>
@@ -3128,43 +3128,43 @@ const HistoryPage: React.FC = () => {
     printWindow.document.close();
   };
 
-  // ローディング状態の表示
+  // 繝ｭ繝ｼ繝・ぅ繝ｳ繧ｰ迥ｶ諷九・陦ｨ遉ｺ
   if (loading) {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">履歴データを読み込み中...</p>
+            <p className="text-gray-600">螻･豁ｴ繝・・繧ｿ繧定ｪｭ縺ｿ霎ｼ縺ｿ荳ｭ...</p>
           </div>
         </div>
       </div>
     );
   }
 
-  // メインコンテンツの表示
+  // 繝｡繧､繝ｳ繧ｳ繝ｳ繝・Φ繝・・陦ｨ遉ｺ
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">履歴管理</h1>
-        <p className="text-gray-600">送信されたデータと関連画像の履歴を管理・検索できます</p>
+        <h1 className="text-2xl font-bold mb-2">螻･豁ｴ邂｡逅・/h1>
+        <p className="text-gray-600">騾∽ｿ｡縺輔ｌ縺溘ョ繝ｼ繧ｿ縺ｨ髢｢騾｣逕ｻ蜒上・螻･豁ｴ繧堤ｮ｡逅・・讀懃ｴ｢縺ｧ縺阪∪縺・/p>
       </div>
 
-      {/* 検索・フィルタエリア */}
+      {/* 讀懃ｴ｢繝ｻ繝輔ぅ繝ｫ繧ｿ繧ｨ繝ｪ繧｢ */}
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Search className="h-5 w-5" />
-            検索フィルター
+            讀懃ｴ｢繝輔ぅ繝ｫ繧ｿ繝ｼ
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-            {/* テキスト検索 */}
+            {/* 繝・く繧ｹ繝域､懃ｴ｢ */}
             <div className="lg:col-span-2">
               <div className="space-y-2">
                 <Input
-                  placeholder="タイトル、機種、事業所、応急処置内容、キーワードなどで検索..."
+                  placeholder="繧ｿ繧､繝医Ν縲∵ｩ溽ｨｮ縲∽ｺ区･ｭ謇縲∝ｿ懈･蜃ｦ鄂ｮ蜀・ｮｹ縲√く繝ｼ繝ｯ繝ｼ繝峨↑縺ｩ縺ｧ讀懃ｴ｢..."
                   value={filters.searchText}
                   onChange={(e) => handleFilterChange('searchText', e.target.value)}
                   onKeyDown={(e) => {
@@ -3175,12 +3175,12 @@ const HistoryPage: React.FC = () => {
                   className="w-full"
                 />
                 <p className="text-xs text-gray-500">
-                  ※ 複数のキーワードをスペース区切りで入力すると、すべてのキーワードを含む履歴を検索します
+                  窶ｻ 隍・焚縺ｮ繧ｭ繝ｼ繝ｯ繝ｼ繝峨ｒ繧ｹ繝壹・繧ｹ蛹ｺ蛻・ｊ縺ｧ蜈･蜉帙☆繧九→縲√☆縺ｹ縺ｦ縺ｮ繧ｭ繝ｼ繝ｯ繝ｼ繝峨ｒ蜷ｫ繧螻･豁ｴ繧呈､懃ｴ｢縺励∪縺・
                 </p>
               </div>
             </div>
 
-            {/* 日付検索 */}
+            {/* 譌･莉俶､懃ｴ｢ */}
             <div>
               <div className="space-y-2">
                 <Input
@@ -3190,12 +3190,12 @@ const HistoryPage: React.FC = () => {
                   className="w-full"
                 />
                 <p className="text-xs text-gray-500">
-                  ※ 指定した日付の履歴を検索します
+                  窶ｻ 謖・ｮ壹＠縺滓律莉倥・螻･豁ｴ繧呈､懃ｴ｢縺励∪縺・
                 </p>
               </div>
             </div>
 
-            {/* 機種フィルタ */}
+            {/* 讖溽ｨｮ繝輔ぅ繝ｫ繧ｿ */}
             <div>
               <div className="space-y-2">
                 <Select
@@ -3203,12 +3203,12 @@ const HistoryPage: React.FC = () => {
                   onValueChange={(value) => handleFilterChange('machineType', value === "all" ? "" : value)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="機種を選択" />
+                    <SelectValue placeholder="讖溽ｨｮ繧帝∈謚・ />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">すべての機種</SelectItem>
+                    <SelectItem value="all">縺吶∋縺ｦ縺ｮ讖溽ｨｮ</SelectItem>
                     {searchFilterLoading ? (
-                      <SelectItem value="loading" disabled>読み込み中...</SelectItem>
+                      <SelectItem value="loading" disabled>隱ｭ縺ｿ霎ｼ縺ｿ荳ｭ...</SelectItem>
                     ) : searchFilterData.machineTypes && searchFilterData.machineTypes.length > 0 ? (
                       searchFilterData.machineTypes.map((type, index) => (
                         <SelectItem key={`type-${index}`} value={type}>
@@ -3216,18 +3216,18 @@ const HistoryPage: React.FC = () => {
                         </SelectItem>
                       ))
                     ) : (
-                      <SelectItem value="no-data" disabled>データがありません</SelectItem>
+                      <SelectItem value="no-data" disabled>繝・・繧ｿ縺後≠繧翫∪縺帙ｓ</SelectItem>
                     )}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-gray-500">
-                  ※ JSONファイルから機種を取得しています
-                  {searchFilterData.machineTypes && ` (${searchFilterData.machineTypes.length}件)`}
+                  窶ｻ JSON繝輔ぃ繧､繝ｫ縺九ｉ讖溽ｨｮ繧貞叙蠕励＠縺ｦ縺・∪縺・
+                  {searchFilterData.machineTypes && ` (${searchFilterData.machineTypes.length}莉ｶ)`}
                 </p>
               </div>
             </div>
 
-            {/* 機械番号フィルタ */}
+            {/* 讖滓｢ｰ逡ｪ蜿ｷ繝輔ぅ繝ｫ繧ｿ */}
             <div>
               <div className="space-y-2">
                 <Select
@@ -3235,12 +3235,12 @@ const HistoryPage: React.FC = () => {
                   onValueChange={(value) => handleFilterChange('machineNumber', value === "all" ? "" : value)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="機械番号を選択" />
+                    <SelectValue placeholder="讖滓｢ｰ逡ｪ蜿ｷ繧帝∈謚・ />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">すべての機械番号</SelectItem>
+                    <SelectItem value="all">縺吶∋縺ｦ縺ｮ讖滓｢ｰ逡ｪ蜿ｷ</SelectItem>
                     {searchFilterLoading ? (
-                      <SelectItem value="loading" disabled>読み込み中...</SelectItem>
+                      <SelectItem value="loading" disabled>隱ｭ縺ｿ霎ｼ縺ｿ荳ｭ...</SelectItem>
                     ) : searchFilterData.machineNumbers && searchFilterData.machineNumbers.length > 0 ? (
                       searchFilterData.machineNumbers.map((number, index) => (
                         <SelectItem key={`number-${index}`} value={number}>
@@ -3248,13 +3248,13 @@ const HistoryPage: React.FC = () => {
                         </SelectItem>
                       ))
                     ) : (
-                      <SelectItem value="no-data" disabled>データがありません</SelectItem>
+                      <SelectItem value="no-data" disabled>繝・・繧ｿ縺後≠繧翫∪縺帙ｓ</SelectItem>
                     )}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-gray-500">
-                  ※ JSONファイルから機械番号を取得しています
-                  {searchFilterData.machineNumbers && ` (${searchFilterData.machineNumbers.length}件)`}
+                  窶ｻ JSON繝輔ぃ繧､繝ｫ縺九ｉ讖滓｢ｰ逡ｪ蜿ｷ繧貞叙蠕励＠縺ｦ縺・∪縺・
+                  {searchFilterData.machineNumbers && ` (${searchFilterData.machineNumbers.length}莉ｶ)`}
                 </p>
               </div>
             </div>
@@ -3263,22 +3263,22 @@ const HistoryPage: React.FC = () => {
           <div className="flex gap-2">
             <Button onClick={handleSearch} className="flex items-center gap-2">
               <Search className="h-4 w-4" />
-              検索
+              讀懃ｴ｢
             </Button>
             <Button variant="outline" onClick={clearFilters}>
-              フィルタークリア
+              繝輔ぅ繝ｫ繧ｿ繝ｼ繧ｯ繝ｪ繧｢
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* 履歴一覧 */}
+      {/* 螻･豁ｴ荳隕ｧ */}
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              機械故障履歴一覧 ({filteredItems.length}件)
+              讖滓｢ｰ謨・囿螻･豁ｴ荳隕ｧ ({filteredItems.length}莉ｶ)
             </div>
 
           </CardTitle>
@@ -3287,14 +3287,14 @@ const HistoryPage: React.FC = () => {
           {filteredItems.length === 0 ? (
             <div className="text-center py-8">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">履歴データがありません</p>
+              <p className="text-gray-600">螻･豁ｴ繝・・繧ｿ縺後≠繧翫∪縺帙ｓ</p>
             </div>
           ) : (
-            // テーブル形式表示
+            // 繝・・繝悶Ν蠖｢蠑剰｡ｨ遉ｺ
             <div className="space-y-4">
 
 
-              {/* テーブル */}
+              {/* 繝・・繝悶Ν */}
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse border border-gray-300">
                   <thead>
@@ -3306,50 +3306,50 @@ const HistoryPage: React.FC = () => {
                           onChange={handleSelectAll}
                           className="mr-2 w-6 h-6"
                         />
-                        選択
+                        驕ｸ謚・
                       </th>
-                      <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">機種</th>
-                      <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">機械番号</th>
-                      <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">事象内容</th>
-                      <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">説明/エクスポート種別</th>
-                      <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">作成日時</th>
-                      <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">画像</th>
-                      <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">アクション</th>
+                      <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">讖溽ｨｮ</th>
+                      <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">讖滓｢ｰ逡ｪ蜿ｷ</th>
+                      <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">莠玖ｱ｡蜀・ｮｹ</th>
+                      <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">隱ｬ譏・繧ｨ繧ｯ繧ｹ繝昴・繝育ｨｮ蛻･</th>
+                      <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">菴懈・譌･譎・/th>
+                      <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">逕ｻ蜒・/th>
+                      <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">繧｢繧ｯ繧ｷ繝ｧ繝ｳ</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredItems.map((item) => {
-                      // 新しいフォーマットのデータ構造に合わせて表示
+                      // 譁ｰ縺励＞繝輔か繝ｼ繝槭ャ繝医・繝・・繧ｿ讒矩縺ｫ蜷医ｏ縺帙※陦ｨ遉ｺ
                       const jsonData = item.jsonData;
                       
-                      // 事象データを抽出（ファイル名から優先的に取得、次にJSONデータから）
-                      let incidentTitle = '事象なし';
+                      // 莠玖ｱ｡繝・・繧ｿ繧呈歓蜃ｺ・医ヵ繧｡繧､繝ｫ蜷阪°繧牙━蜈育噪縺ｫ蜿門ｾ励∵ｬ｡縺ｫJSON繝・・繧ｿ縺九ｉ・・
+                      let incidentTitle = '莠玖ｱ｡縺ｪ縺・;
                       
-                      // まずファイル名から事象内容を抽出
+                      // 縺ｾ縺壹ヵ繧｡繧､繝ｫ蜷阪°繧我ｺ玖ｱ｡蜀・ｮｹ繧呈歓蜃ｺ
                       if (item.fileName) {
                         const fileNameParts = item.fileName.split('_');
                         if (fileNameParts.length > 1) {
-                          // ファイル名の最初の部分が事象内容
+                          // 繝輔ぃ繧､繝ｫ蜷阪・譛蛻昴・驛ｨ蛻・′莠玖ｱ｡蜀・ｮｹ
                           incidentTitle = fileNameParts[0];
                         }
                       }
                       
-                      // ファイル名から取得できない場合は、JSONデータから取得
-                      if (incidentTitle === '事象なし') {
-                        incidentTitle = jsonData?.title || jsonData?.question || '事象なし';
-                        if (incidentTitle === '事象なし' && jsonData?.chatData?.messages) {
-                          // 従来フォーマットの場合、ユーザーメッセージから事象を抽出
+                      // 繝輔ぃ繧､繝ｫ蜷阪°繧牙叙蠕励〒縺阪↑縺・ｴ蜷医・縲゛SON繝・・繧ｿ縺九ｉ蜿門ｾ・
+                      if (incidentTitle === '莠玖ｱ｡縺ｪ縺・) {
+                        incidentTitle = jsonData?.title || jsonData?.question || '莠玖ｱ｡縺ｪ縺・;
+                        if (incidentTitle === '莠玖ｱ｡縺ｪ縺・ && jsonData?.chatData?.messages) {
+                          // 蠕捺擂繝輔か繝ｼ繝槭ャ繝医・蝣ｴ蜷医√Θ繝ｼ繧ｶ繝ｼ繝｡繝・そ繝ｼ繧ｸ縺九ｉ莠玖ｱ｡繧呈歓蜃ｺ
                           const userMessages = jsonData.chatData.messages.filter((msg: any) => !msg.isAiResponse);
                           if (userMessages.length > 0) {
-                            // 最初のユーザーメッセージを事象として使用
-                            incidentTitle = userMessages[0].content || '事象なし';
+                            // 譛蛻昴・繝ｦ繝ｼ繧ｶ繝ｼ繝｡繝・そ繝ｼ繧ｸ繧剃ｺ玖ｱ｡縺ｨ縺励※菴ｿ逕ｨ
+                            incidentTitle = userMessages[0].content || '莠玖ｱ｡縺ｪ縺・;
                           }
                         }
                       }
                       
-                      const problemDescription = jsonData?.problemDescription || jsonData?.answer || '説明なし';
+                      const problemDescription = jsonData?.problemDescription || jsonData?.answer || '隱ｬ譏弱↑縺・;
                       
-                      // 機種と機械番号を抽出（APIから返されるデータ構造に合わせる）
+                      // 讖溽ｨｮ縺ｨ讖滓｢ｰ逡ｪ蜿ｷ繧呈歓蜃ｺ・・PI縺九ｉ霑斐＆繧後ｋ繝・・繧ｿ讒矩縺ｫ蜷医ｏ縺帙ｋ・・
                       const machineType = jsonData?.machineType || 
                                         jsonData?.chatData?.machineInfo?.machineTypeName || 
                                         item.machineInfo?.machineTypeName || 
@@ -3359,8 +3359,8 @@ const HistoryPage: React.FC = () => {
                                           item.machineInfo?.machineNumber || 
                                           item.machineNumber || '';
                       
-                      // デバッグ情報
-                      console.log(`🔍 アイテム表示: ${item.fileName}`, {
+                      // 繝・ヰ繝・げ諠・ｱ
+                      console.log(`剥 繧｢繧､繝・Β陦ｨ遉ｺ: ${item.fileName}`, {
                         machineType,
                         machineNumber,
                         jsonDataMachineType: jsonData?.machineType,
@@ -3405,9 +3405,9 @@ const HistoryPage: React.FC = () => {
                                 return (
                                   <img 
                                     src={imageUrl} 
-                                    alt="画像" 
+                                    alt="逕ｻ蜒・ 
                                     className="w-8 h-8 object-cover rounded border"
-                                    title="故障画像"
+                                    title="謨・囿逕ｻ蜒・
                                     onError={(e) => {
                                       const target = e.target as HTMLImageElement;
                                       target.style.display = 'none';
@@ -3424,24 +3424,24 @@ const HistoryPage: React.FC = () => {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => {
-                                  console.log('🔍 編集ボタンクリック - 元のアイテム:', item);
-                                  console.log('🔍 item.machineType:', item.machineType);
-                                  console.log('🔍 item.machineNumber:', item.machineNumber);
-                                  console.log('🔍 item.jsonData:', item.jsonData);
+                                  console.log('剥 邱ｨ髮・・繧ｿ繝ｳ繧ｯ繝ｪ繝・け - 蜈・・繧｢繧､繝・Β:', item);
+                                  console.log('剥 item.machineType:', item.machineType);
+                                  console.log('剥 item.machineNumber:', item.machineNumber);
+                                  console.log('剥 item.jsonData:', item.jsonData);
                                   
                                   const normalizedItem = normalizeJsonData(item);
-                                  console.log('🔍 正規化後のアイテム:', normalizedItem);
-                                  console.log('🔍 正規化後 machineType:', normalizedItem.machineType);
-                                  console.log('🔍 正規化後 machineNumber:', normalizedItem.machineNumber);
+                                  console.log('剥 豁｣隕丞喧蠕後・繧｢繧､繝・Β:', normalizedItem);
+                                  console.log('剥 豁｣隕丞喧蠕・machineType:', normalizedItem.machineType);
+                                  console.log('剥 豁｣隕丞喧蠕・machineNumber:', normalizedItem.machineNumber);
                                   
                                   setEditingItem(normalizedItem);
                                   setShowEditDialog(true);
                                 }}
                                 className="flex items-center gap-1 text-xs"
-                                title="編集画面を開く"
+                                title="邱ｨ髮・判髱｢繧帝幕縺・
                               >
                                 <Settings className="h-3 w-3" />
-                                編集
+                                邱ｨ髮・
                               </Button>
                             </div>
                           </td>
@@ -3459,14 +3459,14 @@ const HistoryPage: React.FC = () => {
 
 
 
-      {/* エクスポート処理エリア */}
+      {/* 繧ｨ繧ｯ繧ｹ繝昴・繝亥・逅・お繝ｪ繧｢ */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">エクスポート処理</h2>
+          <h2 className="text-xl font-bold">繧ｨ繧ｯ繧ｹ繝昴・繝亥・逅・/h2>
         </div>
         
         <div className="flex flex-wrap gap-4 mb-4">
-          {/* 選択履歴エクスポート */}
+          {/* 驕ｸ謚槫ｱ･豁ｴ繧ｨ繧ｯ繧ｹ繝昴・繝・*/}
           <div className="flex gap-2">
             <Button
               onClick={() => handleExportSelected('json')}
@@ -3475,7 +3475,7 @@ const HistoryPage: React.FC = () => {
               className="flex items-center gap-2"
             >
               <Download className="h-4 w-4" />
-              選択履歴をJSONエクスポート ({selectedItems.size})
+              驕ｸ謚槫ｱ･豁ｴ繧谷SON繧ｨ繧ｯ繧ｹ繝昴・繝・({selectedItems.size})
             </Button>
             <Button
               onClick={() => handleExportSelected('csv')}
@@ -3484,7 +3484,7 @@ const HistoryPage: React.FC = () => {
               className="flex items-center gap-2"
             >
               <Download className="h-4 w-4" />
-              選択履歴をCSVエクスポート ({selectedItems.size})
+              驕ｸ謚槫ｱ･豁ｴ繧辰SV繧ｨ繧ｯ繧ｹ繝昴・繝・({selectedItems.size})
             </Button>
             <Button
               onClick={handlePrintTable}
@@ -3493,11 +3493,11 @@ const HistoryPage: React.FC = () => {
               className="flex items-center gap-2"
             >
               <FileText className="h-4 w-4" />
-              選択の一覧を印刷 ({selectedItems.size})
+              驕ｸ謚槭・荳隕ｧ繧貞魂蛻ｷ ({selectedItems.size})
             </Button>
           </div>
 
-          {/* 全履歴エクスポート */}
+          {/* 蜈ｨ螻･豁ｴ繧ｨ繧ｯ繧ｹ繝昴・繝・*/}
           <div className="flex gap-2">
             <Button
               onClick={() => handleExportAll('json')}
@@ -3506,7 +3506,7 @@ const HistoryPage: React.FC = () => {
               className="flex items-center gap-2"
             >
               <Download className="h-4 w-4" />
-              全履歴をJSONエクスポート
+              蜈ｨ螻･豁ｴ繧谷SON繧ｨ繧ｯ繧ｹ繝昴・繝・
             </Button>
             <Button
               onClick={() => handleExportAll('csv')}
@@ -3515,7 +3515,7 @@ const HistoryPage: React.FC = () => {
               className="flex items-center gap-2"
             >
               <Download className="h-4 w-4" />
-              全履歴をCSVエクスポート
+              蜈ｨ螻･豁ｴ繧辰SV繧ｨ繧ｯ繧ｹ繝昴・繝・
             </Button>
           </div>
         </div>
@@ -3523,12 +3523,12 @@ const HistoryPage: React.FC = () => {
         {exportLoading && (
           <div className="flex items-center gap-2 text-blue-600">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-            エクスポート処理中...
+            繧ｨ繧ｯ繧ｹ繝昴・繝亥・逅・ｸｭ...
           </div>
         )}
       </div>
 
-      {/* ページネーション */}
+      {/* 繝壹・繧ｸ繝阪・繧ｷ繝ｧ繝ｳ */}
       {totalPages > 1 && (
         <div className="flex justify-center mt-6">
           <div className="flex gap-2">
@@ -3537,7 +3537,7 @@ const HistoryPage: React.FC = () => {
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
             >
-              前へ
+              蜑阪∈
             </Button>
             
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -3558,26 +3558,26 @@ const HistoryPage: React.FC = () => {
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
             >
-              次へ
+              谺｡縺ｸ
             </Button>
           </div>
         </div>
       )}
 
-      {/* プレビューダイアログ */}
+      {/* 繝励Ξ繝薙Η繝ｼ繝繧､繧｢繝ｭ繧ｰ */}
       {showPreviewDialog && previewItem && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">履歴プレビュー</h2>
+                <h2 className="text-xl font-bold">螻･豁ｴ繝励Ξ繝薙Η繝ｼ</h2>
                 <div className="flex gap-2">
                   <Button
                     onClick={() => handlePrintReport(previewItem)}
                     className="flex items-center gap-2"
                   >
                     <FileText className="h-4 w-4" />
-                    印刷
+                    蜊ｰ蛻ｷ
                   </Button>
                   <Button
                     onClick={() => {
@@ -3589,60 +3589,60 @@ const HistoryPage: React.FC = () => {
                     className="flex items-center gap-2"
                   >
                     <Settings className="h-4 w-4" />
-                    編集に移動
+                    邱ｨ髮・↓遘ｻ蜍・
                   </Button>
-                  <Button variant="ghost" onClick={() => setShowPreviewDialog(false)}>×</Button>
+                  <Button variant="ghost" onClick={() => setShowPreviewDialog(false)}>ﾃ・/Button>
                 </div>
               </div>
               
               <div className="space-y-6">
-                {/* レポートヘッダー */}
+                {/* 繝ｬ繝昴・繝医・繝・ム繝ｼ */}
                 <div className="text-center border-b pb-4">
-                  <h1 className="text-2xl font-bold mb-2">応急処置サポート履歴</h1>
+                  <h1 className="text-2xl font-bold mb-2">蠢懈･蜃ｦ鄂ｮ繧ｵ繝昴・繝亥ｱ･豁ｴ</h1>
                   <p className="text-sm text-gray-500">
-                    作成日時: {formatDate(previewItem.createdAt)}
+                    菴懈・譌･譎・ {formatDate(previewItem.createdAt)}
                   </p>
                 </div>
 
-                {/* 基本情報 */}
+                {/* 蝓ｺ譛ｬ諠・ｱ */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <h3 className="text-lg font-semibold mb-3">基本情報</h3>
+                    <h3 className="text-lg font-semibold mb-3">蝓ｺ譛ｬ諠・ｱ</h3>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <Settings className="h-4 w-4 text-gray-500" />
-                        <span><strong>機種:</strong> {previewItem.machineType}</span>
+                        <span><strong>讖溽ｨｮ:</strong> {previewItem.machineType}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <MapPin className="h-4 w-4 text-gray-500" />
-                        <span><strong>機械番号:</strong> {previewItem.machineNumber}</span>
+                        <span><strong>讖滓｢ｰ逡ｪ蜿ｷ:</strong> {previewItem.machineNumber}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-gray-500" />
-                        <span><strong>作成日時:</strong> {formatDate(previewItem.createdAt)}</span>
+                        <span><strong>菴懈・譌･譎・</strong> {formatDate(previewItem.createdAt)}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Image className="h-4 w-4 text-gray-500" />
-                        <span><strong>画像:</strong> {previewItem.imagePath ? 'あり' : 'なし'}</span>
+                        <span><strong>逕ｻ蜒・</strong> {previewItem.imagePath ? '縺ゅｊ' : '縺ｪ縺・}</span>
                       </div>
                     </div>
                   </div>
                   
                   {previewItem.imagePath && (
                     <div>
-                      <h3 className="text-lg font-semibold mb-3">関連画像</h3>
+                      <h3 className="text-lg font-semibold mb-3">髢｢騾｣逕ｻ蜒・/h3>
                       <img
                         src={previewItem.imagePath}
-                        alt="履歴画像"
+                        alt="螻･豁ｴ逕ｻ蜒・
                         className="w-full h-48 object-cover rounded-md"
                       />
                     </div>
                   )}
                 </div>
 
-                {/* 詳細情報 */}
+                {/* 隧ｳ邏ｰ諠・ｱ */}
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">詳細情報</h3>
+                  <h3 className="text-lg font-semibold mb-3">隧ｳ邏ｰ諠・ｱ</h3>
                   <div className="bg-gray-50 p-4 rounded-md">
                     <pre className="text-sm overflow-auto max-h-64">
                       {JSON.stringify(previewItem.jsonData, null, 2)}
@@ -3655,19 +3655,19 @@ const HistoryPage: React.FC = () => {
         </div>
       )}
 
-      {/* 編集ダイアログ */}
+      {/* 邱ｨ髮・ム繧､繧｢繝ｭ繧ｰ */}
       {showEditDialog && editingItem && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-5xl w-full max-h-[95vh] overflow-auto">
             <div className="p-6">
-              {/* 機種・機械番号データが読み込まれていない場合は再取得 */}
+              {/* 讖溽ｨｮ繝ｻ讖滓｢ｰ逡ｪ蜿ｷ繝・・繧ｿ縺瑚ｪｭ縺ｿ霎ｼ縺ｾ繧後※縺・↑縺・ｴ蜷医・蜀榊叙蠕・*/}
               {(() => {
                 if (machineData.machineTypes.length === 0 && !machineDataLoading) {
                   fetchMachineDataFromAPI();
                 }
                 
-                // デバッグ: 編集ダイアログが開かれた時の初期値をログ出力
-                console.log('編集ダイアログ表示時のeditingItem:', {
+                // 繝・ヰ繝・げ: 邱ｨ髮・ム繧､繧｢繝ｭ繧ｰ縺碁幕縺九ｌ縺滓凾縺ｮ蛻晄悄蛟､繧偵Ο繧ｰ蜃ｺ蜉・
+                console.log('邱ｨ髮・ム繧､繧｢繝ｭ繧ｰ陦ｨ遉ｺ譎ゅ・editingItem:', {
                   machineType: editingItem.machineType,
                   machineNumber: editingItem.machineNumber,
                   fileName: editingItem.fileName,
@@ -3680,57 +3680,57 @@ const HistoryPage: React.FC = () => {
               })()}
               
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">機械故障情報編集</h2>
+                <h2 className="text-xl font-bold">讖滓｢ｰ謨・囿諠・ｱ邱ｨ髮・/h2>
                 <div className="flex gap-2">
                   <Button
                     onClick={() => {
-                      console.log('編集データを保存します:', editingItem);
+                      console.log('邱ｨ髮・ョ繝ｼ繧ｿ繧剃ｿ晏ｭ倥＠縺ｾ縺・', editingItem);
                       handleSaveEditedItem(editingItem);
                     }}
                     className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
                   >
                     <Download className="h-4 w-4" />
-                    保存
+                    菫晏ｭ・
                   </Button>
                   <Button
                     onClick={() => handlePrintReport(editingItem)}
                     className="flex items-center gap-2"
                   >
                     <Printer className="h-4 w-4" />
-                    印刷
+                    蜊ｰ蛻ｷ
                   </Button>
                   <Button 
                     variant="outline" 
                     onClick={() => {
-                      console.log('編集をキャンセルします');
+                      console.log('邱ｨ髮・ｒ繧ｭ繝｣繝ｳ繧ｻ繝ｫ縺励∪縺・);
                       setShowEditDialog(false);
                       setEditingItem(null);
                     }}
                   >
-                    キャンセル
+                    繧ｭ繝｣繝ｳ繧ｻ繝ｫ
                   </Button>
                 </div>
               </div>
               
               <div className="space-y-6">
-                {/* 基本情報編集 */}
+                {/* 蝓ｺ譛ｬ諠・ｱ邱ｨ髮・*/}
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                     <Settings className="h-5 w-5" />
-                    基本情報
+                    蝓ｺ譛ｬ諠・ｱ
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-sm font-medium mb-2">機種</label>
+                      <label className="block text-sm font-medium mb-2">讖溽ｨｮ</label>
                       {machineDataLoading ? (
                         <div className="h-10 flex items-center px-3 border border-gray-300 rounded">
-                          読み込み中...
+                          隱ｭ縺ｿ霎ｼ縺ｿ荳ｭ...
                         </div>
                       ) : (
                         <Select
                           value={editingItem.machineType || ''}
                           onValueChange={(value) => {
-                            console.log('機種を変更:', value);
+                            console.log('讖溽ｨｮ繧貞､画峩:', value);
                             setEditingItem({
                               ...editingItem,
                               machineType: value,
@@ -3742,13 +3742,13 @@ const HistoryPage: React.FC = () => {
                           }}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="機種を選択" />
+                            <SelectValue placeholder="讖溽ｨｮ繧帝∈謚・ />
                           </SelectTrigger>
                           <SelectContent>
-                            {/* デバッグ: Select要素の値を確認 */}
+                            {/* 繝・ヰ繝・げ: Select隕∫ｴ縺ｮ蛟､繧堤｢ｺ隱・*/}
                             {(() => {
-                              console.log('🔍 機種Select - editingItem.machineType:', editingItem.machineType);
-                              console.log('🔍 機種Select - machineData.machineTypes:', machineData.machineTypes);
+                              console.log('剥 讖溽ｨｮSelect - editingItem.machineType:', editingItem.machineType);
+                              console.log('剥 讖溽ｨｮSelect - machineData.machineTypes:', machineData.machineTypes);
                               return null;
                             })()}
                             {machineData.machineTypes.map((machineType) => (
@@ -3761,16 +3761,16 @@ const HistoryPage: React.FC = () => {
                       )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-2">機械番号</label>
+                      <label className="block text-sm font-medium mb-2">讖滓｢ｰ逡ｪ蜿ｷ</label>
                       {machineDataLoading ? (
                         <div className="h-10 flex items-center px-3 border border-gray-300 rounded">
-                          読み込み中...
+                          隱ｭ縺ｿ霎ｼ縺ｿ荳ｭ...
                         </div>
                       ) : (
                         <Select
                           value={editingItem.machineNumber || ''}
                           onValueChange={(value) => {
-                            console.log('機械番号を変更:', value);
+                            console.log('讖滓｢ｰ逡ｪ蜿ｷ繧貞､画峩:', value);
                             setEditingItem({
                               ...editingItem,
                               machineNumber: value,
@@ -3782,7 +3782,7 @@ const HistoryPage: React.FC = () => {
                           }}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="機械番号を選択" />
+                            <SelectValue placeholder="讖滓｢ｰ逡ｪ蜿ｷ繧帝∈謚・ />
                           </SelectTrigger>
                           <SelectContent>
                             {machineData.machines
@@ -3797,36 +3797,36 @@ const HistoryPage: React.FC = () => {
                       )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-2">ファイル名</label>
+                      <label className="block text-sm font-medium mb-2">繝輔ぃ繧､繝ｫ蜷・/label>
                       <Input
                         value={editingItem.fileName || ''}
                         onChange={(e) => {
-                          console.log('ファイル名を変更:', e.target.value);
+                          console.log('繝輔ぃ繧､繝ｫ蜷阪ｒ螟画峩:', e.target.value);
                           setEditingItem({
                             ...editingItem,
                             fileName: e.target.value
                           });
                         }}
-                        placeholder="ファイル名"
+                        placeholder="繝輔ぃ繧､繝ｫ蜷・
                         disabled
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* 事象・説明編集 */}
+                {/* 莠玖ｱ｡繝ｻ隱ｬ譏守ｷｨ髮・*/}
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                     <FileText className="h-5 w-5" />
-                    事象・説明
+                    莠玖ｱ｡繝ｻ隱ｬ譏・
                   </h3>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium mb-2">事象タイトル</label>
+                      <label className="block text-sm font-medium mb-2">莠玖ｱ｡繧ｿ繧､繝医Ν</label>
                       <Input
                         value={editingItem.jsonData?.title || editingItem.jsonData?.question || ''}
                         onChange={(e) => {
-                          console.log('事象タイトルを変更:', e.target.value);
+                          console.log('莠玖ｱ｡繧ｿ繧､繝医Ν繧貞､画峩:', e.target.value);
                           setEditingItem({
                             ...editingItem,
                             jsonData: {
@@ -3836,23 +3836,23 @@ const HistoryPage: React.FC = () => {
                             }
                           });
                         }}
-                        placeholder="事象タイトルを入力"
+                        placeholder="莠玖ｱ｡繧ｿ繧､繝医Ν繧貞・蜉・
                       />
-                      {/* デバッグ: 事象タイトルの値を確認 */}
+                      {/* 繝・ヰ繝・げ: 莠玖ｱ｡繧ｿ繧､繝医Ν縺ｮ蛟､繧堤｢ｺ隱・*/}
                       {(() => {
                         const titleValue = editingItem.jsonData?.title || editingItem.jsonData?.question || '';
-                        console.log('🔍 事象タイトル - 表示値:', titleValue);
-                        console.log('🔍 事象タイトル - jsonData.title:', editingItem.jsonData?.title);
-                        console.log('🔍 事象タイトル - jsonData.question:', editingItem.jsonData?.question);
+                        console.log('剥 莠玖ｱ｡繧ｿ繧､繝医Ν - 陦ｨ遉ｺ蛟､:', titleValue);
+                        console.log('剥 莠玖ｱ｡繧ｿ繧､繝医Ν - jsonData.title:', editingItem.jsonData?.title);
+                        console.log('剥 莠玖ｱ｡繧ｿ繧､繝医Ν - jsonData.question:', editingItem.jsonData?.question);
                         return null;
                       })()}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-2">事象説明</label>
+                      <label className="block text-sm font-medium mb-2">莠玖ｱ｡隱ｬ譏・/label>
                       <textarea
                         value={editingItem.jsonData?.problemDescription || editingItem.jsonData?.answer || ''}
                         onChange={(e) => {
-                          console.log('事象説明を変更:', e.target.value);
+                          console.log('莠玖ｱ｡隱ｬ譏弱ｒ螟画峩:', e.target.value);
                           setEditingItem({
                             ...editingItem,
                             jsonData: {
@@ -3863,13 +3863,13 @@ const HistoryPage: React.FC = () => {
                           });
                         }}
                         className="w-full h-24 p-3 border border-gray-300 rounded-md"
-                        placeholder="事象の詳細説明を入力"
+                        placeholder="莠玖ｱ｡縺ｮ隧ｳ邏ｰ隱ｬ譏弱ｒ蜈･蜉・
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* 故障個所の画像（修繕計画の上に移動） */}
+                {/* 謨・囿蛟区園縺ｮ逕ｻ蜒擾ｼ井ｿｮ郢戊ｨ育判縺ｮ荳翫↓遘ｻ蜍包ｼ・*/}
                 {(() => {
                   const imageUrl = pickFirstImage(editingItem);
                   if (imageUrl) {
@@ -3877,16 +3877,16 @@ const HistoryPage: React.FC = () => {
                       <div className="bg-purple-50 p-4 rounded-lg">
                         <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                           <Image className="h-5 w-5" />
-                          故障個所の画像
+                          謨・囿蛟区園縺ｮ逕ｻ蜒・
                         </h3>
                         <div className="text-center">
                           <img
                             src={imageUrl}
-                            alt="故障画像"
+                            alt="謨・囿逕ｻ蜒・
                             className="max-w-full max-h-64 mx-auto border border-gray-300 rounded-md shadow-sm"
                           />
                           <p className="text-sm text-gray-600 mt-2">
-                            故障箇所の画像 {imageUrl.startsWith('data:image/') ? '(Base64)' : '(URL)'}
+                            謨・囿邂・園縺ｮ逕ｻ蜒・{imageUrl.startsWith('data:image/') ? '(Base64)' : '(URL)'}
                           </p>
                         </div>
                       </div>
@@ -3895,15 +3895,15 @@ const HistoryPage: React.FC = () => {
                   return null;
                 })()}
 
-                {/* 修繕計画編集 */}
+                {/* 菫ｮ郢戊ｨ育判邱ｨ髮・*/}
                 <div className="bg-yellow-50 p-4 rounded-lg">
                   <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                     <MapPin className="h-5 w-5" />
-                    修繕計画
+                    菫ｮ郢戊ｨ育判
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-sm font-medium mb-2">修繕予定月日</label>
+                      <label className="block text-sm font-medium mb-2">菫ｮ郢穂ｺ亥ｮ壽怦譌･</label>
                       <Input
                         type="date"
                         value={editingItem.jsonData?.repairSchedule || ''}
@@ -3916,11 +3916,11 @@ const HistoryPage: React.FC = () => {
                             }
                           });
                         }}
-                        placeholder="修繕予定月日"
+                        placeholder="菫ｮ郢穂ｺ亥ｮ壽怦譌･"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-2">場所</label>
+                      <label className="block text-sm font-medium mb-2">蝣ｴ謇</label>
                       <Input
                         value={editingItem.jsonData?.location || ''}
                         onChange={(e) => {
@@ -3932,11 +3932,11 @@ const HistoryPage: React.FC = () => {
                             }
                           });
                         }}
-                        placeholder="設置場所"
+                        placeholder="險ｭ鄂ｮ蝣ｴ謇"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-2">ステータス</label>
+                      <label className="block text-sm font-medium mb-2">繧ｹ繝・・繧ｿ繧ｹ</label>
                       <Select
                         value={editingItem.jsonData?.status || ''}
                         onValueChange={(value) => {
@@ -3950,27 +3950,27 @@ const HistoryPage: React.FC = () => {
                         }}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="ステータスを選択" />
+                          <SelectValue placeholder="繧ｹ繝・・繧ｿ繧ｹ繧帝∈謚・ />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="報告済み">報告済み</SelectItem>
-                          <SelectItem value="対応中">対応中</SelectItem>
-                          <SelectItem value="完了">完了</SelectItem>
-                          <SelectItem value="保留">保留</SelectItem>
+                          <SelectItem value="蝣ｱ蜻頑ｸ医∩">蝣ｱ蜻頑ｸ医∩</SelectItem>
+                          <SelectItem value="蟇ｾ蠢應ｸｭ">蟇ｾ蠢應ｸｭ</SelectItem>
+                          <SelectItem value="螳御ｺ・>螳御ｺ・/SelectItem>
+                          <SelectItem value="菫晉蕗">菫晉蕗</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
                 </div>
 
-                {/* 記事欄（200文字程度） */}
+                {/* 險倅ｺ区ｬ・ｼ・00譁・ｭ礼ｨ句ｺｦ・・*/}
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                     <FileText className="h-5 w-5" />
-                    記事欄
+                    險倅ｺ区ｬ・
                   </h3>
                   <div>
-                    <label className="block text-sm font-medium mb-2">備考・記事 (200文字以内)</label>
+                    <label className="block text-sm font-medium mb-2">蛯呵・・險倅ｺ・(200譁・ｭ嶺ｻ･蜀・</label>
                     <textarea
                       value={editingItem.jsonData?.remarks || ''}
                       onChange={(e) => {
@@ -3985,35 +3985,35 @@ const HistoryPage: React.FC = () => {
                         }
                       }}
                       className="w-full h-24 p-3 border border-gray-300 rounded-md"
-                      placeholder="修繕に関する備考や追加情報を記載してください（200文字以内）"
+                      placeholder="菫ｮ郢輔↓髢｢縺吶ｋ蛯呵・ｄ霑ｽ蜉諠・ｱ繧定ｨ倩ｼ峨＠縺ｦ縺上□縺輔＞・・00譁・ｭ嶺ｻ･蜀・ｼ・
                       maxLength={200}
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      {editingItem.jsonData?.remarks?.length || 0}/200文字
+                      {editingItem.jsonData?.remarks?.length || 0}/200譁・ｭ・
                     </p>
                   </div>
                 </div>
 
-                {/* 保存ボタン（下部） */}
+                {/* 菫晏ｭ倥・繧ｿ繝ｳ・井ｸ矩Κ・・*/}
                 <div className="flex justify-end gap-2 pt-4 border-t">
                   <Button
                     variant="outline"
                     onClick={() => {
-                      console.log('編集をキャンセルします');
+                      console.log('邱ｨ髮・ｒ繧ｭ繝｣繝ｳ繧ｻ繝ｫ縺励∪縺・);
                       setShowEditDialog(false);
                       setEditingItem(null);
                     }}
                   >
-                    キャンセル
+                    繧ｭ繝｣繝ｳ繧ｻ繝ｫ
                   </Button>
                   <Button
                     onClick={() => {
-                      console.log('編集データを保存します:', editingItem);
+                      console.log('邱ｨ髮・ョ繝ｼ繧ｿ繧剃ｿ晏ｭ倥＠縺ｾ縺・', editingItem);
                       handleSaveEditedItem(editingItem);
                     }}
                     className="bg-green-600 hover:bg-green-700 text-white"
                   >
-                    保存して適用
+                    菫晏ｭ倥＠縺ｦ驕ｩ逕ｨ
                   </Button>
                 </div>
               </div>
@@ -4026,7 +4026,7 @@ const HistoryPage: React.FC = () => {
 
 
 
-      {/* チャットエクスポートレポート表示 */}
+      {/* 繝√Ε繝・ヨ繧ｨ繧ｯ繧ｹ繝昴・繝医Ξ繝昴・繝郁｡ｨ遉ｺ */}
       {showReport && selectedReportData && (
         <ChatExportReport
           data={selectedReportData}
@@ -4034,7 +4034,7 @@ const HistoryPage: React.FC = () => {
           onClose={handleCloseReport}
           onSave={handleSaveReport}
           onPrint={(reportData) => {
-            console.log('チャットエクスポートレポートを印刷:', reportData);
+            console.log('繝√Ε繝・ヨ繧ｨ繧ｯ繧ｹ繝昴・繝医Ξ繝昴・繝医ｒ蜊ｰ蛻ｷ:', reportData);
             window.print();
           }}
         />

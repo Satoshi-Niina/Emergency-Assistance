@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { useToast } from "../../hooks/use-toast.ts";
@@ -35,12 +35,12 @@ interface FlowData {
   filePath: string;
 }
 
-// 日付フォーマット関数
+// 譌･莉倥ヵ繧ｩ繝ｼ繝槭ャ繝磯未謨ｰ
 function formatDate(dateString: string): string {
   try {
     const date = new Date(dateString);
     if (isNaN(date.getTime())) {
-      return '日付不明';
+      return '譌･莉倅ｸ肴・';
     }
     return date.toLocaleString('ja-JP', {
       year: 'numeric',
@@ -50,11 +50,11 @@ function formatDate(dateString: string): string {
       minute: '2-digit'
     });
   } catch (error) {
-    return '日付不明';
+    return '譌･莉倅ｸ肴・';
   }
 }
 
-// 差分を計算するユーティリティ関数
+// 蟾ｮ蛻・ｒ險育ｮ励☆繧九Θ繝ｼ繝・ぅ繝ｪ繝・ぅ髢｢謨ｰ
 function getObjectDiff(original: any, fixed: any, path = ''): string[] {
   const diffs: string[] = [];
   for (const key of new Set([...Object.keys(original || {}), ...Object.keys(fixed || {})])) {
@@ -65,14 +65,14 @@ function getObjectDiff(original: any, fixed: any, path = ''): string[] {
       diffs.push(...getObjectDiff(origVal, fixVal, currentPath));
     } else if (Array.isArray(origVal) && Array.isArray(fixVal)) {
       if (origVal.length !== fixVal.length) {
-        diffs.push(`${currentPath}: 配列の長さが ${origVal.length} → ${fixVal.length} に修正`);
+        diffs.push(`${currentPath}: 驟榊・縺ｮ髟ｷ縺輔′ ${origVal.length} 竊・${fixVal.length} 縺ｫ菫ｮ豁｣`);
       }
-      // 配列の各要素も比較（最大5件まで）
+      // 驟榊・縺ｮ蜷・ｦ∫ｴ繧よｯ碑ｼ・ｼ域怙螟ｧ5莉ｶ縺ｾ縺ｧ・・
       for (let i = 0; i < Math.min(origVal.length, fixVal.length, 5); i++) {
         diffs.push(...getObjectDiff(origVal[i], fixVal[i], `${currentPath}[${i}]`));
       }
     } else if (origVal !== fixVal) {
-      diffs.push(`${currentPath}: 「${origVal ?? '未設定'}」→「${fixVal ?? '未設定'}」`);
+      diffs.push(`${currentPath}: 縲・{origVal ?? '譛ｪ險ｭ螳・}縲坂・縲・{fixVal ?? '譛ｪ險ｭ螳・}縲港);
     }
   }
   return diffs;
@@ -91,7 +91,7 @@ const FlowList: React.FC<FlowListProps> = ({ flows, onSelectFlow, onDeleteFlow, 
     return (
       <div className="flex justify-center items-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <p className="ml-3 text-gray-600">フロー一覧を読み込み中...</p>
+        <p className="ml-3 text-gray-600">繝輔Ο繝ｼ荳隕ｧ繧定ｪｭ縺ｿ霎ｼ縺ｿ荳ｭ...</p>
       </div>
     );
   }
@@ -101,22 +101,22 @@ const FlowList: React.FC<FlowListProps> = ({ flows, onSelectFlow, onDeleteFlow, 
       <div className="text-center p-8">
         <div className="bg-gray-50 rounded-lg p-6">
           <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">フローがありません</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">繝輔Ο繝ｼ縺後≠繧翫∪縺帙ｓ</h3>
           <p className="text-gray-600 mb-4">
-            まだフローが作成されていません。新規フロー生成タブでフローを作成してください。
+            縺ｾ縺繝輔Ο繝ｼ縺御ｽ懈・縺輔ｌ縺ｦ縺・∪縺帙ｓ縲よ眠隕上ヵ繝ｭ繝ｼ逕滓・繧ｿ繝悶〒繝輔Ο繝ｼ繧剃ｽ懈・縺励※縺上□縺輔＞縲・
           </p>
           <div className="flex justify-center space-x-2">
             <Button 
               variant="outline" 
               onClick={() => window.dispatchEvent(new CustomEvent('switchToGenerator'))}
             >
-              新規フロー生成へ
+              譁ｰ隕上ヵ繝ｭ繝ｼ逕滓・縺ｸ
             </Button>
             <Button 
               variant="outline" 
               onClick={() => window.location.reload()}
             >
-              再読み込み
+              蜀崎ｪｭ縺ｿ霎ｼ縺ｿ
             </Button>
           </div>
         </div>
@@ -130,11 +130,11 @@ const FlowList: React.FC<FlowListProps> = ({ flows, onSelectFlow, onDeleteFlow, 
         <table className="w-full border-collapse border border-gray-300 text-sm">
           <thead>
             <tr className="bg-gray-100">
-              <th className="border border-gray-300 p-3 text-left text-sm font-medium">タイトル</th>
-              <th className="border border-gray-300 p-3 text-left text-sm font-medium">説明</th>
-              <th className="border border-gray-300 p-3 text-left text-sm font-medium">ステップ数</th>
-              <th className="border border-gray-300 p-3 text-left text-sm font-medium">更新日時</th>
-              <th className="border border-gray-300 p-3 text-center text-sm font-medium">操作</th>
+              <th className="border border-gray-300 p-3 text-left text-sm font-medium">繧ｿ繧､繝医Ν</th>
+              <th className="border border-gray-300 p-3 text-left text-sm font-medium">隱ｬ譏・/th>
+              <th className="border border-gray-300 p-3 text-left text-sm font-medium">繧ｹ繝・ャ繝玲焚</th>
+              <th className="border border-gray-300 p-3 text-left text-sm font-medium">譖ｴ譁ｰ譌･譎・/th>
+              <th className="border border-gray-300 p-3 text-center text-sm font-medium">謫堺ｽ・/th>
             </tr>
           </thead>
           <tbody>
@@ -148,7 +148,7 @@ const FlowList: React.FC<FlowListProps> = ({ flows, onSelectFlow, onDeleteFlow, 
                 </td>
                 <td className="border border-gray-300 p-3">
                   <div className="break-words leading-tight text-sm text-gray-600">
-                    {flow.description || '説明なし'}
+                    {flow.description || '隱ｬ譏弱↑縺・}
                   </div>
                 </td>
                 <td className="border border-gray-300 p-3 text-center">
@@ -163,7 +163,7 @@ const FlowList: React.FC<FlowListProps> = ({ flows, onSelectFlow, onDeleteFlow, 
                       variant="outline"
                       size="sm"
                       onClick={() => onSelectFlow(flow)}
-                      title="編集"
+                      title="邱ｨ髮・
                       className="h-7 px-2 text-xs"
                     >
                       <Edit className="h-3 w-3" />
@@ -172,7 +172,7 @@ const FlowList: React.FC<FlowListProps> = ({ flows, onSelectFlow, onDeleteFlow, 
                       variant="outline"
                       size="sm"
                       onClick={() => onPreviewFlow(flow)}
-                      title="プレビュー"
+                      title="繝励Ξ繝薙Η繝ｼ"
                       className="h-7 px-2 text-xs"
                     >
                       <Eye className="h-3 w-3" />
@@ -181,7 +181,7 @@ const FlowList: React.FC<FlowListProps> = ({ flows, onSelectFlow, onDeleteFlow, 
                       variant="destructive"
                       size="sm"
                       onClick={() => onDeleteFlow(flow.id, flow.filePath)}
-                      title="削除"
+                      title="蜑企勁"
                       className="h-7 px-2 text-xs"
                     >
                       <Trash2 className="h-3 w-3" />
@@ -210,9 +210,9 @@ const EmergencyGuideEdit: React.FC = () => {
   const fetchFlowList = useCallback(async (force = false) => {
     try {
       setIsLoading(true);
-      console.log('🔄 フロー一覧取得開始');
+      console.log('売 繝輔Ο繝ｼ荳隕ｧ蜿門ｾ鈴幕蟋・);
       
-      // キャッシュ無効化のためにタイムスタンプを追加
+      // 繧ｭ繝｣繝・す繝･辟｡蜉ｹ蛹悶・縺溘ａ縺ｫ繧ｿ繧､繝繧ｹ繧ｿ繝ｳ繝励ｒ霑ｽ蜉
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2);
       const cacheBuster = `?ts=${timestamp}&r=${randomId}`;
@@ -227,24 +227,24 @@ const EmergencyGuideEdit: React.FC = () => {
         }
       });
       
-      console.log('📡 レスポンス状態:', response.status, response.statusText);
+      console.log('藤 繝ｬ繧ｹ繝昴Φ繧ｹ迥ｶ諷・', response.status, response.statusText);
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ API エラー:', errorText);
-        throw new Error(`HTTP ${response.status}: フロー一覧の取得に失敗しました - ${errorText}`);
+        console.error('笶・API 繧ｨ繝ｩ繝ｼ:', errorText);
+        throw new Error(`HTTP ${response.status}: 繝輔Ο繝ｼ荳隕ｧ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆ - ${errorText}`);
       }
       
       const data = await response.json();
-      console.log('📊 取得したデータ:', data);
+      console.log('投 蜿門ｾ励＠縺溘ョ繝ｼ繧ｿ:', data);
       
-      // APIレスポンスの構造に合わせてデータをマッピング
+      // API繝ｬ繧ｹ繝昴Φ繧ｹ縺ｮ讒矩縺ｫ蜷医ｏ縺帙※繝・・繧ｿ繧偵・繝・ヴ繝ｳ繧ｰ
       const flows = data.success && data.data ? data.data : (Array.isArray(data) ? data : []);
-      console.log('🔄 処理対象フロー数:', flows.length);
+      console.log('売 蜃ｦ逅・ｯｾ雎｡繝輔Ο繝ｼ謨ｰ:', flows.length);
       
       const mappedFlows = flows.map((flow: any) => ({
         id: flow.id || flow.fileName?.replace('.json', '') || '',
-        title: flow.title || 'タイトルなし',
+        title: flow.title || '繧ｿ繧､繝医Ν縺ｪ縺・,
         description: flow.description || '',
         triggerKeywords: flow.triggerKeywords || flow.trigger || [],
         steps: flow.steps || [],
@@ -253,16 +253,16 @@ const EmergencyGuideEdit: React.FC = () => {
         fileName: flow.fileName || flow.id + '.json'
       }));
       
-      console.log('✅ マッピング完了:', mappedFlows.length + '件');
+      console.log('笨・繝槭ャ繝斐Φ繧ｰ螳御ｺ・', mappedFlows.length + '莉ｶ');
       setFlowList(mappedFlows);
     } catch (error) {
-      console.error('❌ フロー取得エラー:', error);
+      console.error('笶・繝輔Ο繝ｼ蜿門ｾ励お繝ｩ繝ｼ:', error);
       toast({
-        title: "エラー",
-        description: error instanceof Error ? error.message : "フロー一覧の取得に失敗しました",
+        title: "繧ｨ繝ｩ繝ｼ",
+        description: error instanceof Error ? error.message : "繝輔Ο繝ｼ荳隕ｧ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆",
         variant: "destructive",
       });
-      setFlowList([]); // エラー時は空配列を設定
+      setFlowList([]); // 繧ｨ繝ｩ繝ｼ譎ゅ・遨ｺ驟榊・繧定ｨｭ螳・
     } finally {
       setIsLoading(false);
     }
@@ -272,7 +272,7 @@ const EmergencyGuideEdit: React.FC = () => {
     fetchFlowList();
 
     const handleForceRefresh = (event: Event) => {
-      console.log('🔄 強制更新イベントを受信:', (event as CustomEvent).detail);
+      console.log('売 蠑ｷ蛻ｶ譖ｴ譁ｰ繧､繝吶Φ繝医ｒ蜿嶺ｿ｡:', (event as CustomEvent).detail);
       fetchFlowList(true);
     };
     
@@ -288,7 +288,7 @@ const EmergencyGuideEdit: React.FC = () => {
   }, [fetchFlowList]);
 
   const handleFlowSelect = async (flow: FlowData) => {
-    console.log('🎯 フロー選択開始:', {
+    console.log('識 繝輔Ο繝ｼ驕ｸ謚樣幕蟋・', {
       flowId: flow.id,
       flowTitle: flow.title,
       flowKeys: Object.keys(flow),
@@ -301,13 +301,13 @@ const EmergencyGuideEdit: React.FC = () => {
       setEditorTab('metadata');
       setPreviewFlow(null);
       
-      console.log('📡 フロー詳細データを取得中:', flow.id);
-      console.log('📋 選択されたフロー:', flow);
+      console.log('藤 繝輔Ο繝ｼ隧ｳ邏ｰ繝・・繧ｿ繧貞叙蠕嶺ｸｭ:', flow.id);
+      console.log('搭 驕ｸ謚槭＆繧後◆繝輔Ο繝ｼ:', flow);
       
-      // フローの詳細データを取得
+      // 繝輔Ο繝ｼ縺ｮ隧ｳ邏ｰ繝・・繧ｿ繧貞叙蠕・
       const timestamp = Date.now();
       const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${flow.id}?_t=${timestamp}`;
-      console.log('🌐 API呼び出し:', apiUrl);
+      console.log('倹 API蜻ｼ縺ｳ蜃ｺ縺・', apiUrl);
       
       const response = await fetch(apiUrl, {
         credentials: 'include',
@@ -316,20 +316,20 @@ const EmergencyGuideEdit: React.FC = () => {
         }
       });
       
-      console.log('📡 APIレスポンス状態:', response.status, response.statusText);
+      console.log('藤 API繝ｬ繧ｹ繝昴Φ繧ｹ迥ｶ諷・', response.status, response.statusText);
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ API エラー:', errorText);
-        throw new Error(`フロー詳細の取得に失敗しました: ${response.status} - ${errorText}`);
+        console.error('笶・API 繧ｨ繝ｩ繝ｼ:', errorText);
+        throw new Error(`繝輔Ο繝ｼ隧ｳ邏ｰ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆: ${response.status} - ${errorText}`);
       }
       
       const flowDetail = await response.json();
-      console.log('📊 生APIレスポンス:', flowDetail);
-      console.log('✅ フロー詳細データ取得完了:', flowDetail);
+      console.log('投 逕蘗PI繝ｬ繧ｹ繝昴Φ繧ｹ:', flowDetail);
+      console.log('笨・繝輔Ο繝ｼ隧ｳ邏ｰ繝・・繧ｿ蜿門ｾ怜ｮ御ｺ・', flowDetail);
       
-      // APIレスポンスの構造を詳しく確認
-      console.log('🔍 APIレスポンス構造:', {
+      // API繝ｬ繧ｹ繝昴Φ繧ｹ縺ｮ讒矩繧定ｩｳ縺励￥遒ｺ隱・
+      console.log('剥 API繝ｬ繧ｹ繝昴Φ繧ｹ讒矩:', {
         hasSuccess: 'success' in flowDetail,
         hasData: 'data' in flowDetail,
         hasSteps: 'steps' in flowDetail,
@@ -339,19 +339,19 @@ const EmergencyGuideEdit: React.FC = () => {
         allKeys: Object.keys(flowDetail)
       });
       
-      // APIレスポンスの構造に応じてデータを取得
+      // API繝ｬ繧ｹ繝昴Φ繧ｹ縺ｮ讒矩縺ｫ蠢懊§縺ｦ繝・・繧ｿ繧貞叙蠕・
       const actualFlowData = flowDetail.success && flowDetail.data ? flowDetail.data : flowDetail;
-      console.log('🔍 実際のフローデータ:', actualFlowData);
+      console.log('剥 螳滄圀縺ｮ繝輔Ο繝ｼ繝・・繧ｿ:', actualFlowData);
       
-      // 詳細データと一覧データをマージ
+      // 隧ｳ邏ｰ繝・・繧ｿ縺ｨ荳隕ｧ繝・・繧ｿ繧偵・繝ｼ繧ｸ
       const completeFlowData = {
         ...flow,
         ...actualFlowData,
         steps: actualFlowData.steps || flow.steps || []
       };
       
-      console.log('🔧 マージ後のデータ:', completeFlowData);
-      console.log('✅ フロー選択完了:', { 
+      console.log('肌 繝槭・繧ｸ蠕後・繝・・繧ｿ:', completeFlowData);
+      console.log('笨・繝輔Ο繝ｼ驕ｸ謚槫ｮ御ｺ・', { 
         flowId: completeFlowData.id, 
         stepsLength: completeFlowData.steps?.length || 0,
         title: completeFlowData.title,
@@ -365,20 +365,20 @@ const EmergencyGuideEdit: React.FC = () => {
       setEditorTab('metadata');
       setPreviewFlow(null);
       
-      console.log('🔄 状態更新完了:', {
+      console.log('売 迥ｶ諷区峩譁ｰ螳御ｺ・', {
         selectedFlow: completeFlowData,
         editorTab: 'metadata',
         previewFlow: null
       });
     } catch (error) {
-      console.error('❌ フロー詳細取得エラー:', error);
+      console.error('笶・繝輔Ο繝ｼ隧ｳ邏ｰ蜿門ｾ励お繝ｩ繝ｼ:', error);
       toast({
-        title: "エラー",
-        description: `フロー詳細の取得に失敗しました: ${error instanceof Error ? error.message : ''}`,
+        title: "繧ｨ繝ｩ繝ｼ",
+        description: `繝輔Ο繝ｼ隧ｳ邏ｰ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆: ${error instanceof Error ? error.message : ''}`,
         variant: "destructive",
       });
-      // エラー時は一覧データを使用
-      console.log('🔄 エラー時のフォールバック処理');
+      // 繧ｨ繝ｩ繝ｼ譎ゅ・荳隕ｧ繝・・繧ｿ繧剃ｽｿ逕ｨ
+      console.log('売 繧ｨ繝ｩ繝ｼ譎ゅ・繝輔か繝ｼ繝ｫ繝舌ャ繧ｯ蜃ｦ逅・);
       setSelectedFlow(flow);
       setEditorTab('metadata');
       setPreviewFlow(null);
@@ -387,9 +387,9 @@ const EmergencyGuideEdit: React.FC = () => {
 
   const handlePreviewFlow = async (flow: FlowData) => {
     try {
-      console.log('🔄 プレビュー用フロー詳細データを取得中:', flow.id);
+      console.log('売 繝励Ξ繝薙Η繝ｼ逕ｨ繝輔Ο繝ｼ隧ｳ邏ｰ繝・・繧ｿ繧貞叙蠕嶺ｸｭ:', flow.id);
       
-      // フローの詳細データを取得
+      // 繝輔Ο繝ｼ縺ｮ隧ｳ邏ｰ繝・・繧ｿ繧貞叙蠕・
       const timestamp = Date.now();
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${flow.id}?_t=${timestamp}`, {
         credentials: 'include',
@@ -402,13 +402,13 @@ const EmergencyGuideEdit: React.FC = () => {
       });
       
       if (!response.ok) {
-        throw new Error(`フロー詳細の取得に失敗しました: ${response.status}`);
+        throw new Error(`繝輔Ο繝ｼ隧ｳ邏ｰ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆: ${response.status}`);
       }
       
       const flowDetail = await response.json();
-      console.log('✅ プレビュー用フロー詳細データ取得完了:', flowDetail);
+      console.log('笨・繝励Ξ繝薙Η繝ｼ逕ｨ繝輔Ο繝ｼ隧ｳ邏ｰ繝・・繧ｿ蜿門ｾ怜ｮ御ｺ・', flowDetail);
       
-      // 詳細データと一覧データをマージ
+      // 隧ｳ邏ｰ繝・・繧ｿ縺ｨ荳隕ｧ繝・・繧ｿ繧偵・繝ｼ繧ｸ
       const completeFlowData = {
         ...flow,
         ...flowDetail,
@@ -418,20 +418,20 @@ const EmergencyGuideEdit: React.FC = () => {
       setPreviewFlow(completeFlowData);
       setSelectedFlow(null);
     } catch (error) {
-      console.error('❌ プレビュー用フロー詳細取得エラー:', error);
+      console.error('笶・繝励Ξ繝薙Η繝ｼ逕ｨ繝輔Ο繝ｼ隧ｳ邏ｰ蜿門ｾ励お繝ｩ繝ｼ:', error);
       toast({
-        title: "エラー",
-        description: `フロー詳細の取得に失敗しました: ${error instanceof Error ? error.message : ''}`,
+        title: "繧ｨ繝ｩ繝ｼ",
+        description: `繝輔Ο繝ｼ隧ｳ邏ｰ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆: ${error instanceof Error ? error.message : ''}`,
         variant: "destructive",
       });
-      // エラー時は一覧データを使用
+      // 繧ｨ繝ｩ繝ｼ譎ゅ・荳隕ｧ繝・・繧ｿ繧剃ｽｿ逕ｨ
       setPreviewFlow(flow);
       setSelectedFlow(null);
     }
   };
 
   const handleDisplayFlow = (flow: FlowData) => {
-    // カスタムイベントでガイド表示を通知
+    // 繧ｫ繧ｹ繧ｿ繝繧､繝吶Φ繝医〒繧ｬ繧､繝芽｡ｨ遉ｺ繧帝夂衍
     window.dispatchEvent(new CustomEvent('display-emergency-guide', {
       detail: { guideId: flow.id }
     }));
@@ -439,7 +439,7 @@ const EmergencyGuideEdit: React.FC = () => {
 
   const handleSaveFlow = async (updatedFlowData: any) => {
     try {
-      console.log("💾 保存リクエストを送信:", {
+      console.log("沈 菫晏ｭ倥Μ繧ｯ繧ｨ繧ｹ繝医ｒ騾∽ｿ｡:", {
         id: updatedFlowData.id,
         title: updatedFlowData.title,
         stepsCount: updatedFlowData.steps.length,
@@ -454,27 +454,27 @@ const EmergencyGuideEdit: React.FC = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || '保存に失敗しました');
+        throw new Error(errorData.error || '菫晏ｭ倥↓螟ｱ謨励＠縺ｾ縺励◆');
       }
 
       const result = await response.json();
-      console.log("✅ 保存成功:", result);
+      console.log("笨・菫晏ｭ俶・蜉・", result);
       toast({
-        title: "成功",
-        description: "フローが正常に保存されました。",
+        title: "謌仙粥",
+        description: "繝輔Ο繝ｼ縺梧ｭ｣蟶ｸ縺ｫ菫晏ｭ倥＆繧後∪縺励◆縲・,
       });
       
-      // 保存後、リストを強制的に再読み込みして最新の状態を反映
+      // 菫晏ｭ伜ｾ後√Μ繧ｹ繝医ｒ蠑ｷ蛻ｶ逧・↓蜀崎ｪｭ縺ｿ霎ｼ縺ｿ縺励※譛譁ｰ縺ｮ迥ｶ諷九ｒ蜿肴丐
       await fetchFlowList(true);
       
-      // 更新されたフローデータを特定して再選択
+      // 譖ｴ譁ｰ縺輔ｌ縺溘ヵ繝ｭ繝ｼ繝・・繧ｿ繧堤音螳壹＠縺ｦ蜀埼∈謚・
       setSelectedFlow(prev => updatedFlowData);
 
     } catch (error) {
-      console.error("❌ フローの保存に失敗しました:", error);
+      console.error("笶・繝輔Ο繝ｼ縺ｮ菫晏ｭ倥↓螟ｱ謨励＠縺ｾ縺励◆:", error);
       toast({
-        title: "エラー",
-        description: `フローの保存に失敗しました: ${error instanceof Error ? error.message : ''}`,
+        title: "繧ｨ繝ｩ繝ｼ",
+        description: `繝輔Ο繝ｼ縺ｮ菫晏ｭ倥↓螟ｱ謨励＠縺ｾ縺励◆: ${error instanceof Error ? error.message : ''}`,
         variant: "destructive",
       });
     }
@@ -482,7 +482,7 @@ const EmergencyGuideEdit: React.FC = () => {
 
   const handleDeleteFlow = async (flowId: string, filePath: string) => {
     try {
-      console.log("🗑️ フロー削除リクエストを送信:", {
+      console.log("卵・・繝輔Ο繝ｼ蜑企勁繝ｪ繧ｯ繧ｨ繧ｹ繝医ｒ騾∽ｿ｡:", {
         id: flowId,
         filePath: filePath
       });
@@ -494,27 +494,27 @@ const EmergencyGuideEdit: React.FC = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || '削除に失敗しました');
+        throw new Error(errorData.error || '蜑企勁縺ｫ螟ｱ謨励＠縺ｾ縺励◆');
       }
 
       const result = await response.json();
-      console.log("✅ 削除成功:", result);
+      console.log("笨・蜑企勁謌仙粥:", result);
       toast({
-        title: "成功",
-        description: "フローが正常に削除されました。",
+        title: "謌仙粥",
+        description: "繝輔Ο繝ｼ縺梧ｭ｣蟶ｸ縺ｫ蜑企勁縺輔ｌ縺ｾ縺励◆縲・,
       });
       
-      // 削除後、リストを強制的に再読み込みして最新の状態を反映
+      // 蜑企勁蠕後√Μ繧ｹ繝医ｒ蠑ｷ蛻ｶ逧・↓蜀崎ｪｭ縺ｿ霎ｼ縺ｿ縺励※譛譁ｰ縺ｮ迥ｶ諷九ｒ蜿肴丐
       await fetchFlowList(true);
       
-      // 削除されたフローデータを特定して再選択
+      // 蜑企勁縺輔ｌ縺溘ヵ繝ｭ繝ｼ繝・・繧ｿ繧堤音螳壹＠縺ｦ蜀埼∈謚・
       setSelectedFlow(null);
 
     } catch (error) {
-      console.error('❌ フローの削除に失敗しました:', error);
+      console.error('笶・繝輔Ο繝ｼ縺ｮ蜑企勁縺ｫ螟ｱ謨励＠縺ｾ縺励◆:', error);
       toast({
-        title: "エラー",
-        description: `フローの削除に失敗しました: ${error instanceof Error ? error.message : ''}`,
+        title: "繧ｨ繝ｩ繝ｼ",
+        description: `繝輔Ο繝ｼ縺ｮ蜑企勁縺ｫ螟ｱ謨励＠縺ｾ縺励◆: ${error instanceof Error ? error.message : ''}`,
         variant: "destructive",
       });
     }
@@ -527,27 +527,27 @@ const EmergencyGuideEdit: React.FC = () => {
 
   const handleForceRefresh = async () => {
     try {
-      console.log('🔄 強制リフレッシュ開始');
+      console.log('売 蠑ｷ蛻ｶ繝ｪ繝輔Ξ繝・す繝･髢句ｧ・);
       
-      // ブラウザキャッシュをクリア
+      // 繝悶Λ繧ｦ繧ｶ繧ｭ繝｣繝・す繝･繧偵け繝ｪ繧｢
       if ('caches' in window) {
         const cacheNames = await caches.keys();
         await Promise.all(cacheNames.map(name => caches.delete(name)));
-        console.log('🧹 ブラウザキャッシュクリア完了');
+        console.log('ｧｹ 繝悶Λ繧ｦ繧ｶ繧ｭ繝｣繝・す繝･繧ｯ繝ｪ繧｢螳御ｺ・);
       }
       
-      // フロー一覧を再取得
+      // 繝輔Ο繝ｼ荳隕ｧ繧貞・蜿門ｾ・
       await fetchFlowList(true);
       
       toast({
-        title: "成功",
-        description: "キャッシュをクリアしてフロー一覧を再読み込みしました",
+        title: "謌仙粥",
+        description: "繧ｭ繝｣繝・す繝･繧偵け繝ｪ繧｢縺励※繝輔Ο繝ｼ荳隕ｧ繧貞・隱ｭ縺ｿ霎ｼ縺ｿ縺励∪縺励◆",
       });
     } catch (error) {
-      console.error('❌ 強制リフレッシュエラー:', error);
+      console.error('笶・蠑ｷ蛻ｶ繝ｪ繝輔Ξ繝・す繝･繧ｨ繝ｩ繝ｼ:', error);
       toast({
-        title: "エラー",
-        description: "リフレッシュに失敗しました",
+        title: "繧ｨ繝ｩ繝ｼ",
+        description: "繝ｪ繝輔Ξ繝・す繝･縺ｫ螟ｱ謨励＠縺ｾ縺励◆",
         variant: "destructive",
       });
     }
@@ -570,18 +570,18 @@ const EmergencyGuideEdit: React.FC = () => {
               <CardTitle>{selectedFlow.title}</CardTitle>
               <Button variant="ghost" onClick={handleBackToList}>
                 <X className="h-4 w-4 mr-2" />
-                一覧に戻る
+                荳隕ｧ縺ｫ謌ｻ繧・
               </Button>
             </div>
           </CardHeader>
           <CardContent className="flex-1 flex flex-col min-h-0">
             <Tabs value={editorTab || 'metadata'} onValueChange={(value) => {
-              console.log('🔄 タブ切り替え:', { from: editorTab, to: value });
+              console.log('売 繧ｿ繝門・繧頑崛縺・', { from: editorTab, to: value });
               setEditorTab(value);
             }} className="w-full h-full flex flex-col">
               <TabsList className="w-full grid grid-cols-2 mb-4">
-                <TabsTrigger value="metadata">メタデータ</TabsTrigger>
-                <TabsTrigger value="slides">スライド内容</TabsTrigger>
+                <TabsTrigger value="metadata">繝｡繧ｿ繝・・繧ｿ</TabsTrigger>
+                <TabsTrigger value="slides">繧ｹ繝ｩ繧､繝牙・螳ｹ</TabsTrigger>
               </TabsList>
               <TabsContent value="metadata" className="flex-1 flex flex-col min-h-0">
                 <EmergencyFlowEditor
@@ -614,13 +614,13 @@ const EmergencyGuideEdit: React.FC = () => {
       ) : (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold">フロー一覧</h2>
+            <h2 className="text-lg font-semibold">繝輔Ο繝ｼ荳隕ｧ</h2>
             <Button
               variant="outline"
               onClick={handleForceRefresh}
               className="text-sm"
             >
-              🔄 強制リフレッシュ
+              売 蠑ｷ蛻ｶ繝ｪ繝輔Ξ繝・す繝･
             </Button>
           </div>
           <FlowList

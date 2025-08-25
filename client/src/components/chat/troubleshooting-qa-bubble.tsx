@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,7 +27,7 @@ export default function TroubleshootingQABubble({
   };
 
   const handleCustomAnswer = () => {
-    const customAnswer = prompt('詳細な状況を教えてください:');
+    const customAnswer = prompt('隧ｳ邏ｰ縺ｪ迥ｶ豕√ｒ謨吶∴縺ｦ縺上□縺輔＞:');
     if (customAnswer && customAnswer.trim()) {
       onAnswer(customAnswer.trim());
     }
@@ -45,11 +45,11 @@ export default function TroubleshootingQABubble({
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
               <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                トラブルシューティング
+                繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ
               </Badge>
               {reasoning && (
                 <Badge variant="outline" className="text-xs">
-                  診断中
+                  險ｺ譁ｭ荳ｭ
                 </Badge>
               )}
             </div>
@@ -60,7 +60,7 @@ export default function TroubleshootingQABubble({
             
             {reasoning && (
               <div className="text-sm text-gray-600 mb-4 p-3 bg-blue-100 rounded-lg">
-                <strong>診断の目的:</strong> {reasoning}
+                <strong>險ｺ譁ｭ縺ｮ逶ｮ逧・</strong> {reasoning}
               </div>
             )}
           </div>
@@ -69,7 +69,7 @@ export default function TroubleshootingQABubble({
         {options && options.length > 0 && (
           <div className="space-y-2">
             <div className="text-sm font-medium text-gray-700 mb-3">
-              以下の選択肢から選んでください：
+              莉･荳九・驕ｸ謚櫁い縺九ｉ驕ｸ繧薙〒縺上□縺輔＞・・
             </div>
             
             <div className="grid gap-2">
@@ -106,7 +106,7 @@ export default function TroubleshootingQABubble({
                 className="text-blue-600 hover:text-blue-700"
               >
                 <ArrowRight className="w-4 h-4 mr-2" />
-                その他の状況を入力
+                縺昴・莉悶・迥ｶ豕√ｒ蜈･蜉・
               </Button>
             </div>
           </div>
@@ -115,7 +115,7 @@ export default function TroubleshootingQABubble({
         {isLoading && (
           <div className="mt-4 flex items-center gap-2 text-blue-600">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-            <span className="text-sm">診断中...</span>
+            <span className="text-sm">險ｺ譁ｭ荳ｭ...</span>
           </div>
         )}
       </CardContent>

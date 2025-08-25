@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import { createSpeechRecognizer, ISpeechRecognizer } from '../speech-recognizer';
 
 const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void }) => {
@@ -8,51 +8,51 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSpeechTimeRef = useRef<number>(0);
 
-  // Azure Speech設定 - デフォルト値を使用（REACT_APP_AZURE_SPEECH_*の参照を削除）
-  const azureKey = ''; // デフォルト値
-  const azureRegion = 'japaneast'; // デフォルト値
+  // Azure Speech險ｭ螳・- 繝・ヵ繧ｩ繝ｫ繝亥､繧剃ｽｿ逕ｨ・・EACT_APP_AZURE_SPEECH_*縺ｮ蜿ら・繧貞炎髯､・・
+  const azureKey = ''; // 繝・ヵ繧ｩ繝ｫ繝亥､
+  const azureRegion = 'japaneast'; // 繝・ヵ繧ｩ繝ｫ繝亥､
 
-  // 設定
-  const SILENCE_TIMEOUT = 3000; // 3秒の無音で終了
-  const MIN_SPEECH_LENGTH = 3; // 最小文字数
+  // 險ｭ螳・
+  const SILENCE_TIMEOUT = 3000; // 3遘偵・辟｡髻ｳ縺ｧ邨ゆｺ・
+  const MIN_SPEECH_LENGTH = 3; // 譛蟆乗枚蟄玲焚
 
   const isIOS = () => {
     return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   };
 
-  // バッファ処理
+  // 繝舌ャ繝輔ぃ蜃ｦ逅・
   const addToBuffer = (text: string) => {
     if (!text.trim()) return;
 
-    console.log('🔄 音声バッファに追加:', text);
+    console.log('売 髻ｳ螢ｰ繝舌ャ繝輔ぃ縺ｫ霑ｽ蜉:', text);
     speechBufferRef.current.push(text.trim());
     lastSpeechTimeRef.current = Date.now();
 
-    // 無音タイマーをリセット
+    // 辟｡髻ｳ繧ｿ繧､繝槭・繧偵Μ繧ｻ繝・ヨ
     if (silenceTimeoutRef.current) {
       clearTimeout(silenceTimeoutRef.current);
     }
 
-    // 新しい無音タイマーを開始
+    // 譁ｰ縺励＞辟｡髻ｳ繧ｿ繧､繝槭・繧帝幕蟋・
     silenceTimeoutRef.current = setTimeout(() => {
       finalizeSpeech();
     }, SILENCE_TIMEOUT);
   };
 
-  // 発話終了処理
+  // 逋ｺ隧ｱ邨ゆｺ・・逅・
   const finalizeSpeech = () => {
     if (speechBufferRef.current.length === 0) return;
 
     const combinedText = speechBufferRef.current.join(' ').trim();
-    console.log('✅ 発話統合完了:', combinedText);
+    console.log('笨・逋ｺ隧ｱ邨ｱ蜷亥ｮ御ｺ・', combinedText);
 
     if (combinedText.length >= MIN_SPEECH_LENGTH) {
-      // 画像検索のキーワードかどうかチェック（コンテキストと同じキーワードリストを使用）
+      // 逕ｻ蜒乗､懃ｴ｢縺ｮ繧ｭ繝ｼ繝ｯ繝ｼ繝峨°縺ｩ縺・°繝√ぉ繝・け・医さ繝ｳ繝・く繧ｹ繝医→蜷後§繧ｭ繝ｼ繝ｯ繝ｼ繝峨Μ繧ｹ繝医ｒ菴ｿ逕ｨ・・
       const imageSearchKeywords = [
-        'ブレーキ', 'brake', 'エンジン', 'engine', '冷却', 'cooling', 'ラジエーター', 'radiator',
-        'ホイール', 'wheel', '車輪', 'タイヤ', 'tire', '部品', 'parts', '設備', 'equipment',
-        '機械', 'machine', '保守', 'maintenance', '点検', 'inspection', '修理', 'repair',
-        '故障', 'failure', '異常', 'abnormal', '音', 'sound', '振動', 'vibration'
+        '繝悶Ξ繝ｼ繧ｭ', 'brake', '繧ｨ繝ｳ繧ｸ繝ｳ', 'engine', '蜀ｷ蜊ｴ', 'cooling', '繝ｩ繧ｸ繧ｨ繝ｼ繧ｿ繝ｼ', 'radiator',
+        '繝帙う繝ｼ繝ｫ', 'wheel', '霆願ｼｪ', '繧ｿ繧､繝､', 'tire', '驛ｨ蜩・, 'parts', '險ｭ蛯・, 'equipment',
+        '讖滓｢ｰ', 'machine', '菫晏ｮ・, 'maintenance', '轤ｹ讀・, 'inspection', '菫ｮ逅・, 'repair',
+        '謨・囿', 'failure', '逡ｰ蟶ｸ', 'abnormal', '髻ｳ', 'sound', '謖ｯ蜍・, 'vibration'
       ];
       const hasImageKeyword = imageSearchKeywords.some(keyword => 
         combinedText.toLowerCase().includes(keyword.toLowerCase())
@@ -60,10 +60,10 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
 
       onRecognized(combinedText);
     } else {
-      console.log('⚠️ 発話が短すぎます:', combinedText);
+      console.log('笞・・逋ｺ隧ｱ縺檎洒縺吶℃縺ｾ縺・', combinedText);
     }
 
-    // バッファをクリア
+    // 繝舌ャ繝輔ぃ繧偵け繝ｪ繧｢
     speechBufferRef.current = [];
 
     if (silenceTimeoutRef.current) {
@@ -72,7 +72,7 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
     }
   };
 
-  // 認識開始
+  // 隱崎ｭ倬幕蟋・
   const startRecognition = async () => {
     if (isRecording) return;
 
@@ -81,45 +81,45 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
       speechBufferRef.current = [];
       lastSpeechTimeRef.current = Date.now();
 
-      console.log('🎤 音声認識開始 -', isIOS() ? 'Web Speech API' : 'Azure Speech SDK');
+      console.log('痔 髻ｳ螢ｰ隱崎ｭ倬幕蟋・-', isIOS() ? 'Web Speech API' : 'Azure Speech SDK');
 
-      // speech-recognizer.tsのファクトリ関数を使用
+      // speech-recognizer.ts縺ｮ繝輔ぃ繧ｯ繝医Μ髢｢謨ｰ繧剃ｽｿ逕ｨ
       recognizerRef.current = createSpeechRecognizer(azureKey, azureRegion);
 
-      // 認識結果を受信する処理を設定
+      // 隱崎ｭ倡ｵ先棡繧貞女菫｡縺吶ｋ蜃ｦ逅・ｒ險ｭ螳・
       recognizerRef.current.sendToServer = (text: string) => {
-        console.log('🔊 音声認識結果受信:', text);
+        console.log('矧 髻ｳ螢ｰ隱崎ｭ倡ｵ先棡蜿嶺ｿ｡:', text);
         addToBuffer(text);
       };
 
-      // 認識開始
+      // 隱崎ｭ倬幕蟋・
       await recognizerRef.current.start();
 
     } catch (error) {
-      console.error('❌ 音声認識開始エラー:', error);
+      console.error('笶・髻ｳ螢ｰ隱崎ｭ倬幕蟋九お繝ｩ繝ｼ:', error);
       setIsRecording(false);
-      alert('音声認識の開始に失敗しました: ' + (error as Error).message);
+      alert('髻ｳ螢ｰ隱崎ｭ倥・髢句ｧ九↓螟ｱ謨励＠縺ｾ縺励◆: ' + (error as Error).message);
     }
   };
 
-  // 認識停止
+  // 隱崎ｭ伜●豁｢
   const stopRecognition = () => {
     if (!isRecording) return;
 
-    console.log('🛑 音声認識停止');
+    console.log('尅 髻ｳ螢ｰ隱崎ｭ伜●豁｢');
 
     if (recognizerRef.current) {
       recognizerRef.current.stop();
       recognizerRef.current = null;
     }
 
-    // 残っているバッファを処理
+    // 谿九▲縺ｦ縺・ｋ繝舌ャ繝輔ぃ繧貞・逅・
     finalizeSpeech();
 
     setIsRecording(false);
   };
 
-  // クリーンアップ
+  // 繧ｯ繝ｪ繝ｼ繝ｳ繧｢繝・・
   useEffect(() => {
     return () => {
       if (silenceTimeoutRef.current) {
@@ -131,12 +131,12 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
     };
   }, []);
 
-  // 自動停止監視（10秒後に自動停止）
+  // 閾ｪ蜍募●豁｢逶｣隕厄ｼ・0遘貞ｾ後↓閾ｪ蜍募●豁｢・・
   useEffect(() => {
     if (!isRecording) return;
 
     const autoStopTimeout = setTimeout(() => {
-      console.log('⏰ 自動停止（10秒経過）');
+      console.log('竢ｰ 閾ｪ蜍募●豁｢・・0遘堤ｵ碁℃・・);
       stopRecognition();
     }, 10000);
 
@@ -152,23 +152,23 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
       >
         {isRecording ? (
           <span>
-            🔴 録音中... 
+            閥 骭ｲ髻ｳ荳ｭ... 
             <small style={{ display: 'block', fontSize: '0.8em' }}>
-              ({speechBufferRef.current.length}件認識済み)
+              ({speechBufferRef.current.length}莉ｶ隱崎ｭ俶ｸ医∩)
             </small>
           </span>
         ) : (
-          '🎙️ マイク開始'
+          '児・・繝槭う繧ｯ髢句ｧ・
         )}
       </button>
 
       {isRecording && (
         <div className="recording-status">
           <div className="pulse-animation"></div>
-          <span>発話を聞いています...</span>
+          <span>逋ｺ隧ｱ繧定◇縺・※縺・∪縺・..</span>
           {speechBufferRef.current.length > 0 && (
             <div className="buffer-preview">
-              最新: "{speechBufferRef.current[speechBufferRef.current.length - 1]}"
+              譛譁ｰ: "{speechBufferRef.current[speechBufferRef.current.length - 1]}"
             </div>
           )}
         </div>

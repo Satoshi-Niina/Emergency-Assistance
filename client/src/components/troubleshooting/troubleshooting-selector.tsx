@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import TroubleshootingFlow from "./troubleshooting-flow";
 import { useToast } from "../../hooks/use-toast.ts";
 
-// トラブルシューティングフローの型定義
+// 繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ繝輔Ο繝ｼ縺ｮ蝙句ｮ夂ｾｩ
 interface TroubleshootingFlow {
   id: string;
   description: string;
@@ -30,7 +30,7 @@ export default function TroubleshootingSelector({
   const [searchTerm, setSearchTerm] = useState(initialSearchKeyword || "");
   const [filteredFlows, setFilteredFlows] = useState<TroubleshootingFlow[]>([]);
 
-  // トラブルシューティングフローを取得
+  // 繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ繝輔Ο繝ｼ繧貞叙蠕・
   const fetchFlows = async () => {
     try {
       setLoading(true);
@@ -39,18 +39,18 @@ export default function TroubleshootingSelector({
       const data = await response.json();
       const normalizedFlows = data.map((flow: any) => ({
         id: flow.id,
-        title: flow.title || 'タイトルなし',
-        description: flow.description || flow.title || '説明なし',
+        title: flow.title || '繧ｿ繧､繝医Ν縺ｪ縺・,
+        description: flow.description || flow.title || '隱ｬ譏弱↑縺・,
         trigger: flow.trigger || flow.triggerKeywords || [],
         source: flow.dataSource || 'unknown'
       }));
       setFlows(normalizedFlows);
       setFilteredFlows(normalizedFlows);
     } catch (error) {
-      console.error("❌ フロー取得エラー:", error);
+      console.error("笶・繝輔Ο繝ｼ蜿門ｾ励お繝ｩ繝ｼ:", error);
       toast({
-        title: "エラー",
-        description: "フローの取得に失敗しました",
+        title: "繧ｨ繝ｩ繝ｼ",
+        description: "繝輔Ο繝ｼ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆",
         variant: "destructive",
       });
     } finally {
@@ -62,7 +62,7 @@ export default function TroubleshootingSelector({
     fetchFlows();
   }, []);
 
-  // フローを検索
+  // 繝輔Ο繝ｼ繧呈､懃ｴ｢
   useEffect(() => {
     if (initialSearchKeyword && initialSearchKeyword.trim() && flows.length > 0) {
       const term = initialSearchKeyword.toLowerCase();
@@ -82,7 +82,7 @@ export default function TroubleshootingSelector({
     }
   }, [initialSearchKeyword, flows, setSelectedFlow]);
 
-  // 検索条件でフローをフィルタリング
+  // 讀懃ｴ｢譚｡莉ｶ縺ｧ繝輔Ο繝ｼ繧偵ヵ繧｣繝ｫ繧ｿ繝ｪ繝ｳ繧ｰ
   useEffect(() => {
     const term = searchTerm.toLowerCase();
     if (!term) {
@@ -99,21 +99,21 @@ export default function TroubleshootingSelector({
     setFilteredFlows(filtered);
   }, [searchTerm, flows]);
 
-  // フローを選択
+  // 繝輔Ο繝ｼ繧帝∈謚・
   const handleSelectFlow = (id: string) => {
     setSelectedFlow(id);
   };
 
-  // フローの表示をキャンセル
+  // 繝輔Ο繝ｼ縺ｮ陦ｨ遉ｺ繧偵く繝｣繝ｳ繧ｻ繝ｫ
   const handleCancelFlow = () => {
     setSelectedFlow(null);
   };
 
-  // フローが完了した場合
+  // 繝輔Ο繝ｼ縺悟ｮ御ｺ・＠縺溷ｴ蜷・
   const handleFlowComplete = () => {
     toast({
-      title: "完了",
-      description: "トラブルシューティングが完了しました",
+      title: "螳御ｺ・,
+      description: "繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ縺悟ｮ御ｺ・＠縺ｾ縺励◆",
     });
     setSelectedFlow(null);
   };
@@ -137,7 +137,7 @@ export default function TroubleshootingSelector({
     setFilteredFlows(filtered);
   };
   
-  // 特定のフローが選択されている場合はそのフローを表示
+  // 迚ｹ螳壹・繝輔Ο繝ｼ縺碁∈謚槭＆繧後※縺・ｋ蝣ｴ蜷医・縺昴・繝輔Ο繝ｼ繧定｡ｨ遉ｺ
   if (selectedFlow) {
     return (
       <div className="w-full max-w-full mx-auto p-0 md:p-4">
@@ -154,16 +154,16 @@ export default function TroubleshootingSelector({
     <div className="w-full max-w-full mx-auto">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl md:text-3xl">応急処-置ガイド</CardTitle>
+          <CardTitle className="text-2xl md:text-3xl">蠢懈･蜃ｦ-鄂ｮ繧ｬ繧､繝・/CardTitle>
         </CardHeader>
         <CardContent>
           <div className="mb-8">
             <p className="mb-4 text-base md:text-lg text-gray-600">
-              以下から症状を選択するか、キーワードで検索してください。
+              莉･荳九°繧臥裸迥ｶ繧帝∈謚槭☆繧九°縲√く繝ｼ繝ｯ繝ｼ繝峨〒讀懃ｴ｢縺励※縺上□縺輔＞縲・
             </p>
             <div className="flex flex-wrap gap-3 mb-4">
-              <span className="text-base md:text-lg text-gray-600 self-center mr-2">代表的なキーワード:</span>
-              {["エンジン", "トルコン", "ブレーキ", "エアー", "バッテリー"].map(
+              <span className="text-base md:text-lg text-gray-600 self-center mr-2">莉｣陦ｨ逧・↑繧ｭ繝ｼ繝ｯ繝ｼ繝・</span>
+              {["繧ｨ繝ｳ繧ｸ繝ｳ", "繝医Ν繧ｳ繝ｳ", "繝悶Ξ繝ｼ繧ｭ", "繧ｨ繧｢繝ｼ", "繝舌ャ繝・Μ繝ｼ"].map(
                 (keyword) => (
                   <Button
                     key={keyword}
@@ -178,24 +178,24 @@ export default function TroubleshootingSelector({
               )}
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">事象一覧</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">莠玖ｱ｡荳隕ｧ</label>
               <div className="flex gap-3">
                 <Input
-                  placeholder="キーワードで検索..."
+                  placeholder="繧ｭ繝ｼ繝ｯ繝ｼ繝峨〒讀懃ｴ｢..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSearch(); } }}
                   className="flex-1 text-base md:text-lg p-4 h-auto"
                 />
-                <Button variant="outline" onClick={() => setSearchTerm("")} className="p-4 text-base md:text-lg">クリア</Button>
-                <Button onClick={handleSearch} className="p-4 text-base md:text-lg">検索</Button>
+                <Button variant="outline" onClick={() => setSearchTerm("")} className="p-4 text-base md:text-lg">繧ｯ繝ｪ繧｢</Button>
+                <Button onClick={handleSearch} className="p-4 text-base md:text-lg">讀懃ｴ｢</Button>
               </div>
             </div>
           </div>
           
-          {/* フロー一覧タイトル */}
+          {/* 繝輔Ο繝ｼ荳隕ｧ繧ｿ繧､繝医Ν */}
           <div className="mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">フロー一覧</h3>
+            <h3 className="text-lg font-semibold text-gray-900">繝輔Ο繝ｼ荳隕ｧ</h3>
           </div>
           
           {loading ? (
@@ -210,14 +210,14 @@ export default function TroubleshootingSelector({
                   className="p-6 flex items-center justify-start cursor-pointer hover:bg-gray-100 min-h-[80px]"
                   onClick={() => handleSelectFlow(flow.id)}
                 >
-                  <p className="font-medium text-lg text-left">{flow.title || flow.description || 'タイトルなし'}</p>
+                  <p className="font-medium text-lg text-left">{flow.title || flow.description || '繧ｿ繧､繝医Ν縺ｪ縺・}</p>
                 </Card>
               ))}
             </div>
           ) : (
             <div className="text-center py-12">
               <p className="text-lg text-gray-500">
-                検索結果がありません。別のキーワードで試してください。
+                讀懃ｴ｢邨先棡縺後≠繧翫∪縺帙ｓ縲ょ挨縺ｮ繧ｭ繝ｼ繝ｯ繝ｼ繝峨〒隧ｦ縺励※縺上□縺輔＞縲・
               </p>
             </div>
           )}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 
 interface EmergencyFlow {
   title: string;
@@ -16,7 +16,7 @@ export function EmergencyFlowGenerator() {
 
   const generateFlow = async () => {
     if (!keyword.trim()) {
-      setError('キーワードを入力してください');
+      setError('繧ｭ繝ｼ繝ｯ繝ｼ繝峨ｒ蜈･蜉帙＠縺ｦ縺上□縺輔＞');
       return;
     }
 
@@ -33,13 +33,13 @@ export function EmergencyFlowGenerator() {
       });
 
       if (!response.ok) {
-        throw new Error('フローの生成に失敗しました');
+        throw new Error('繝輔Ο繝ｼ縺ｮ逕滓・縺ｫ螟ｱ謨励＠縺ｾ縺励◆');
       }
 
       const data = await response.json();
       setGeneratedFlow(data);
     } catch (error) {
-      setError(error instanceof Error ? error.message : '予期せぬエラーが発生しました');
+      setError(error instanceof Error ? error.message : '莠域悄縺帙〓繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆');
     } finally {
       setIsGenerating(false);
     }
@@ -47,23 +47,23 @@ export function EmergencyFlowGenerator() {
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
-      {/* タブメニュー */}
+      {/* 繧ｿ繝悶Γ繝九Η繝ｼ */}
       <div style={{ marginBottom: '24px', borderBottom: '1px solid #e5e7eb' }}>
         <div style={{ display: 'flex', gap: '16px' }}>
-          <button style={{ padding: '8px 16px', fontWeight: 'bold' }}>新規作成（アップロード）</button>
-          <button style={{ padding: '8px 16px' }}>テキスト編集</button>
-          <button style={{ padding: '8px 16px' }}>キャラクター編集</button>
+          <button style={{ padding: '8px 16px', fontWeight: 'bold' }}>譁ｰ隕丈ｽ懈・・医い繝・・繝ｭ繝ｼ繝会ｼ・/button>
+          <button style={{ padding: '8px 16px' }}>繝・く繧ｹ繝育ｷｨ髮・/button>
+          <button style={{ padding: '8px 16px' }}>繧ｭ繝｣繝ｩ繧ｯ繧ｿ繝ｼ邱ｨ髮・/button>
         </div>
       </div>
 
-      {/* 入力セクション */}
+      {/* 蜈･蜉帙そ繧ｯ繧ｷ繝ｧ繝ｳ */}
       <div style={{ marginBottom: '32px' }}>
         <h2 style={{ 
           fontSize: '1.25rem', 
           fontWeight: 'bold', 
           marginBottom: '8px' 
         }}>
-          事象入力
+          莠玖ｱ｡蜈･蜉・
         </h2>
         <div style={{ 
           backgroundColor: '#f9fafb', 
@@ -74,7 +74,7 @@ export function EmergencyFlowGenerator() {
           <textarea
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            placeholder="具体的な発生事象と状況を入力してください！これをキーワードとしてフローを生成します。"
+            placeholder="蜈ｷ菴鍋噪縺ｪ逋ｺ逕滉ｺ玖ｱ｡縺ｨ迥ｶ豕√ｒ蜈･蜉帙＠縺ｦ縺上□縺輔＞・√％繧後ｒ繧ｭ繝ｼ繝ｯ繝ｼ繝峨→縺励※繝輔Ο繝ｼ繧堤函謌舌＠縺ｾ縺吶・
             style={{
               width: '100%',
               minHeight: '120px',
@@ -98,16 +98,16 @@ export function EmergencyFlowGenerator() {
             opacity: isGenerating ? 0.7 : 1
           }}
         >
-          {isGenerating ? '生成中...' : 'フローを生成'}
+          {isGenerating ? '逕滓・荳ｭ...' : '繝輔Ο繝ｼ繧堤函謌・}
         </button>
         {error && (
           <div style={{ color: 'red', marginTop: '8px' }}>{error}</div>
         )}
       </div>
 
-      {/* 生成されたフロー */}
+      {/* 逕滓・縺輔ｌ縺溘ヵ繝ｭ繝ｼ */}
       <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '16px' }}>
-        応急処置フロー生成
+        蠢懈･蜃ｦ鄂ｮ繝輔Ο繝ｼ逕滓・
       </h1>
 
       {generatedFlow && (

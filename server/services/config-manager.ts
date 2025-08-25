@@ -1,12 +1,12 @@
-import fs from 'fs/promises';
+﻿import fs from 'fs/promises';
 import path from 'path';
 import { z } from 'zod';
 import { config } from 'dotenv';
 
-// 環境変数を読み込み
+// 迺ｰ蠅・､画焚繧定ｪｭ縺ｿ霎ｼ縺ｿ
 config();
 
-// RAG設定のスキーマ定義
+// RAG險ｭ螳壹・繧ｹ繧ｭ繝ｼ繝槫ｮ夂ｾｩ
 export const RagConfigSchema = z.object({
   embedDim: z.number().min(1).max(4096).default(1536),
   chunkSize: z.number().min(100).max(2000).default(800),
@@ -21,11 +21,11 @@ export const RagConfigSchema = z.object({
 
 export type RagConfig = z.infer<typeof RagConfigSchema>;
 
-// 設定ファイルのパス
+// 險ｭ螳壹ヵ繧｡繧､繝ｫ縺ｮ繝代せ
 const CONFIG_DIR = path.join(process.cwd(), 'server', 'config');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'rag.config.json');
 
-// デフォルト設定
+// 繝・ヵ繧ｩ繝ｫ繝郁ｨｭ螳・
 const DEFAULT_CONFIG: RagConfig = {
   embedDim: 1536,
   chunkSize: 800,
@@ -39,100 +39,100 @@ const DEFAULT_CONFIG: RagConfig = {
 };
 
 /**
- * 設定ファイルを読み込む
- * @returns RAG設定
+ * 險ｭ螳壹ヵ繧｡繧､繝ｫ繧定ｪｭ縺ｿ霎ｼ繧
+ * @returns RAG險ｭ螳・
  */
 export async function loadRagConfig(): Promise<RagConfig> {
   try {
-    // 設定ディレクトリが存在しない場合は作成
+    // 險ｭ螳壹ョ繧｣繝ｬ繧ｯ繝医Μ縺悟ｭ伜惠縺励↑縺・ｴ蜷医・菴懈・
     await fs.mkdir(CONFIG_DIR, { recursive: true });
     
-    // 設定ファイルが存在しない場合はデフォルト設定で作成
+    // 險ｭ螳壹ヵ繧｡繧､繝ｫ縺悟ｭ伜惠縺励↑縺・ｴ蜷医・繝・ヵ繧ｩ繝ｫ繝郁ｨｭ螳壹〒菴懈・
     try {
       await fs.access(CONFIG_FILE);
     } catch {
-      console.log('📝 RAG設定ファイルが存在しません。デフォルト設定で作成します。');
+      console.log('統 RAG險ｭ螳壹ヵ繧｡繧､繝ｫ縺悟ｭ伜惠縺励∪縺帙ｓ縲ゅョ繝輔か繝ｫ繝郁ｨｭ螳壹〒菴懈・縺励∪縺吶・);
       await saveRagConfig(DEFAULT_CONFIG);
       return DEFAULT_CONFIG;
     }
     
-    // 設定ファイルを読み込み
+    // 險ｭ螳壹ヵ繧｡繧､繝ｫ繧定ｪｭ縺ｿ霎ｼ縺ｿ
     const configData = await fs.readFile(CONFIG_FILE, 'utf-8');
     const parsedConfig = JSON.parse(configData);
     
-    // スキーマ検証
+    // 繧ｹ繧ｭ繝ｼ繝樊､懆ｨｼ
     const validatedConfig = RagConfigSchema.parse(parsedConfig);
     
-    // 環境変数から値を上書き（.envが存在する場合）
+    // 迺ｰ蠅・､画焚縺九ｉ蛟､繧剃ｸ頑嶌縺搾ｼ・env縺悟ｭ伜惠縺吶ｋ蝣ｴ蜷茨ｼ・
     if (process.env.EMBED_DIM) {
       const embedDim = parseInt(process.env.EMBED_DIM);
       if (!isNaN(embedDim) && embedDim > 0) {
         validatedConfig.embedDim = embedDim;
-        console.log(`🔧 EMBED_DIM環境変数から設定を読み込み: ${embedDim}`);
+        console.log(`肌 EMBED_DIM迺ｰ蠅・､画焚縺九ｉ險ｭ螳壹ｒ隱ｭ縺ｿ霎ｼ縺ｿ: ${embedDim}`);
       }
     }
     
-    console.log('✅ RAG設定を読み込みました:', validatedConfig);
+    console.log('笨・RAG險ｭ螳壹ｒ隱ｭ縺ｿ霎ｼ縺ｿ縺ｾ縺励◆:', validatedConfig);
     return validatedConfig;
     
   } catch (error) {
-    console.error('❌ RAG設定の読み込みに失敗しました:', error);
-    console.log('⚠️ デフォルト設定を使用します。');
+    console.error('笶・RAG險ｭ螳壹・隱ｭ縺ｿ霎ｼ縺ｿ縺ｫ螟ｱ謨励＠縺ｾ縺励◆:', error);
+    console.log('笞・・繝・ヵ繧ｩ繝ｫ繝郁ｨｭ螳壹ｒ菴ｿ逕ｨ縺励∪縺吶・);
     return DEFAULT_CONFIG;
   }
 }
 
 /**
- * 設定ファイルを保存する
- * @param config RAG設定
+ * 險ｭ螳壹ヵ繧｡繧､繝ｫ繧剃ｿ晏ｭ倥☆繧・
+ * @param config RAG險ｭ螳・
  */
 export async function saveRagConfig(config: RagConfig): Promise<void> {
   try {
-    // 設定ディレクトリが存在しない場合は作成
+    // 險ｭ螳壹ョ繧｣繝ｬ繧ｯ繝医Μ縺悟ｭ伜惠縺励↑縺・ｴ蜷医・菴懈・
     await fs.mkdir(CONFIG_DIR, { recursive: true });
     
-    // 設定を検証
+    // 險ｭ螳壹ｒ讀懆ｨｼ
     const validatedConfig = RagConfigSchema.parse(config);
     
-    // 設定ファイルに保存
+    // 險ｭ螳壹ヵ繧｡繧､繝ｫ縺ｫ菫晏ｭ・
     await fs.writeFile(CONFIG_FILE, JSON.stringify(validatedConfig, null, 2), 'utf-8');
     
-    console.log('✅ RAG設定を保存しました:', validatedConfig);
+    console.log('笨・RAG險ｭ螳壹ｒ菫晏ｭ倥＠縺ｾ縺励◆:', validatedConfig);
     
   } catch (error) {
-    console.error('❌ RAG設定の保存に失敗しました:', error);
-    throw new Error(`設定の保存に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('笶・RAG險ｭ螳壹・菫晏ｭ倥↓螟ｱ謨励＠縺ｾ縺励◆:', error);
+    throw new Error(`險ｭ螳壹・菫晏ｭ倥↓螟ｱ謨励＠縺ｾ縺励◆: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
 /**
- * 設定を更新する（部分更新）
- * @param partialConfig 部分的な設定更新
- * @returns 更新後の設定
+ * 險ｭ螳壹ｒ譖ｴ譁ｰ縺吶ｋ・磯Κ蛻・峩譁ｰ・・
+ * @param partialConfig 驛ｨ蛻・噪縺ｪ險ｭ螳壽峩譁ｰ
+ * @returns 譖ｴ譁ｰ蠕後・險ｭ螳・
  */
 export async function updateRagConfig(partialConfig: Partial<RagConfig>): Promise<RagConfig> {
   try {
     const currentConfig = await loadRagConfig();
     const updatedConfig = { ...currentConfig, ...partialConfig };
     
-    // 更新された設定を検証
+    // 譖ｴ譁ｰ縺輔ｌ縺溯ｨｭ螳壹ｒ讀懆ｨｼ
     const validatedConfig = RagConfigSchema.parse(updatedConfig);
     
-    // 設定を保存
+    // 險ｭ螳壹ｒ菫晏ｭ・
     await saveRagConfig(validatedConfig);
     
     return validatedConfig;
     
   } catch (error) {
-    console.error('❌ RAG設定の更新に失敗しました:', error);
-    throw new Error(`設定の更新に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('笶・RAG險ｭ螳壹・譖ｴ譁ｰ縺ｫ螟ｱ謨励＠縺ｾ縺励◆:', error);
+    throw new Error(`險ｭ螳壹・譖ｴ譁ｰ縺ｫ螟ｱ謨励＠縺ｾ縺励◆: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
 /**
- * 設定の検証を行う
- * @param config 検証対象の設定
- * @returns 検証結果
+ * 險ｭ螳壹・讀懆ｨｼ繧定｡後≧
+ * @param config 讀懆ｨｼ蟇ｾ雎｡縺ｮ險ｭ螳・
+ * @returns 讀懆ｨｼ邨先棡
  */
 export function validateRagConfig(config: unknown): { valid: boolean; errors: string[] } {
   try {
@@ -153,9 +153,9 @@ export function validateRagConfig(config: unknown): { valid: boolean; errors: st
 }
 
 /**
- * 設定の差分を確認する
- * @param newConfig 新しい設定
- * @returns 変更された項目のリスト
+ * 險ｭ螳壹・蟾ｮ蛻・ｒ遒ｺ隱阪☆繧・
+ * @param newConfig 譁ｰ縺励＞險ｭ螳・
+ * @returns 螟画峩縺輔ｌ縺滄・岼縺ｮ繝ｪ繧ｹ繝・
  */
 export async function getConfigDiff(newConfig: Partial<RagConfig>): Promise<string[]> {
   try {
@@ -164,13 +164,13 @@ export async function getConfigDiff(newConfig: Partial<RagConfig>): Promise<stri
     
     for (const [key, value] of Object.entries(newConfig)) {
       if (currentConfig[key as keyof RagConfig] !== value) {
-        changes.push(`${key}: ${currentConfig[key as keyof RagConfig]} → ${value}`);
+        changes.push(`${key}: ${currentConfig[key as keyof RagConfig]} 竊・${value}`);
       }
     }
     
     return changes;
   } catch (error) {
-    console.error('❌ 設定差分の確認に失敗しました:', error);
+    console.error('笶・險ｭ螳壼ｷｮ蛻・・遒ｺ隱阪↓螟ｱ謨励＠縺ｾ縺励◆:', error);
     return [];
   }
 }

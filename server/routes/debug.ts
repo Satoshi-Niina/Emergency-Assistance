@@ -1,17 +1,17 @@
-import express from 'express';
+﻿import express from 'express';
 import { db } from '../db/index.js';
 
 const router = express.Router();
 
-// データベース接続テスト
+// 繝・・繧ｿ繝吶・繧ｹ謗･邯壹ユ繧ｹ繝・
 router.get('/database-test', async (req: any, res: any) => {
     try {
-        console.log('[DEBUG] データベース接続テスト開始');
+        console.log('[DEBUG] 繝・・繧ｿ繝吶・繧ｹ謗･邯壹ユ繧ｹ繝磯幕蟋・);
         
-        // データベース接続テスト
+        // 繝・・繧ｿ繝吶・繧ｹ謗･邯壹ユ繧ｹ繝・
         const result = await db.execute('SELECT NOW() as current_time');
         
-        // テーブル一覧取得
+        // 繝・・繝悶Ν荳隕ｧ蜿門ｾ・
         const tables = await db.execute(`
             SELECT table_name 
             FROM information_schema.tables 
@@ -19,7 +19,7 @@ router.get('/database-test', async (req: any, res: any) => {
             ORDER BY table_name
         `);
         
-        // usersテーブルの構造を確認
+        // users繝・・繝悶Ν縺ｮ讒矩繧堤｢ｺ隱・
         const userColumns = await db.execute(`
             SELECT column_name, data_type, is_nullable
             FROM information_schema.columns 
@@ -38,7 +38,7 @@ router.get('/database-test', async (req: any, res: any) => {
             }))
         };
         
-        console.log('[DEBUG] データベース接続テスト成功:', dbInfo);
+        console.log('[DEBUG] 繝・・繧ｿ繝吶・繧ｹ謗･邯壹ユ繧ｹ繝域・蜉・', dbInfo);
         
         res.json({
             success: true,
@@ -46,19 +46,19 @@ router.get('/database-test', async (req: any, res: any) => {
             timestamp: new Date().toISOString()
         });
     } catch (error) {
-        console.error('[DEBUG] データベース接続エラー:', error);
+        console.error('[DEBUG] 繝・・繧ｿ繝吶・繧ｹ謗･邯壹お繝ｩ繝ｼ:', error);
         res.status(500).json({
             success: false,
-            error: 'データベース接続に失敗しました',
+            error: '繝・・繧ｿ繝吶・繧ｹ謗･邯壹↓螟ｱ謨励＠縺ｾ縺励◆',
             details: error instanceof Error ? error.message : 'Unknown error',
             timestamp: new Date().toISOString()
         });
     }
 });
 
-// セッション情報確認
+// 繧ｻ繝・す繝ｧ繝ｳ諠・ｱ遒ｺ隱・
 router.get('/session', (req: any, res: any) => {
-    console.log('[DEBUG] セッション情報確認');
+    console.log('[DEBUG] 繧ｻ繝・す繝ｧ繝ｳ諠・ｱ遒ｺ隱・);
     
     const sessionInfo = {
         hasSession: !!req.session,
@@ -73,7 +73,7 @@ router.get('/session', (req: any, res: any) => {
         }
     };
     
-    console.log('[DEBUG] セッション情報:', sessionInfo);
+    console.log('[DEBUG] 繧ｻ繝・す繝ｧ繝ｳ諠・ｱ:', sessionInfo);
     
     res.json({
         success: true,
@@ -82,9 +82,9 @@ router.get('/session', (req: any, res: any) => {
     });
 });
 
-// API接続テスト
+// API謗･邯壹ユ繧ｹ繝・
 router.get('/api-test', (req: any, res: any) => {
-    console.log('[DEBUG] API接続テスト');
+    console.log('[DEBUG] API謗･邯壹ユ繧ｹ繝・);
     
     const apiInfo = {
         method: req.method,
@@ -97,12 +97,12 @@ router.get('/api-test', (req: any, res: any) => {
         timestamp: new Date().toISOString()
     };
     
-    console.log('[DEBUG] API接続テスト成功:', apiInfo);
+    console.log('[DEBUG] API謗･邯壹ユ繧ｹ繝域・蜉・', apiInfo);
     
     res.json({
         success: true,
         api: apiInfo,
-        message: 'API接続が正常です'
+        message: 'API謗･邯壹′豁｣蟶ｸ縺ｧ縺・
     });
 });
 

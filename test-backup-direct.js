@@ -1,48 +1,48 @@
-const { BackupManager } = require('./server/lib/backup-manager.ts');
+﻿const { BackupManager } = require('./server/lib/backup-manager.ts');
 const path = require('path');
 
-// TypeScriptファイルを実行可能にするために tsx を使用
+// TypeScript繝輔ぃ繧､繝ｫ繧貞ｮ溯｡悟庄閭ｽ縺ｫ縺吶ｋ縺溘ａ縺ｫ tsx 繧剃ｽｿ逕ｨ
 const { execSync } = require('child_process');
 
-// BackupManagerを直接テストするためのスクリプト
+// BackupManager繧堤峩謗･繝・せ繝医☆繧九◆繧√・繧ｹ繧ｯ繝ｪ繝励ヨ
 const testBackupManagerJs = `
 const { BackupManager } = require('./server/lib/backup-manager.ts');
 const path = require('path');
 
-// BackupManagerを初期化
+// BackupManager繧貞・譛溷喧
 const backupManager = new BackupManager({
   maxBackups: 3,
   backupBaseDir: 'backups',
   disabled: false
 });
 
-console.log('バックアップマネージャー設定:', backupManager.config);
+console.log('繝舌ャ繧ｯ繧｢繝・・繝槭ロ繝ｼ繧ｸ繝｣繝ｼ險ｭ螳・', backupManager.config);
 
-// テスト対象ファイル
-const targetFile = path.join(__dirname, 'knowledge-base', 'exports', 'エンジンがかからない_c08a0c61-d13e-4229-8d03-3549ebd0d7a1_2025-08-08T07-44-49-387Z.json');
+// 繝・せ繝亥ｯｾ雎｡繝輔ぃ繧､繝ｫ
+const targetFile = path.join(__dirname, 'knowledge-base', 'exports', '繧ｨ繝ｳ繧ｸ繝ｳ縺後°縺九ｉ縺ｪ縺Юc08a0c61-d13e-4229-8d03-3549ebd0d7a1_2025-08-08T07-44-49-387Z.json');
 
-console.log('テスト対象ファイル:', targetFile);
-console.log('ファイル存在確認:', require('fs').existsSync(targetFile));
+console.log('繝・せ繝亥ｯｾ雎｡繝輔ぃ繧､繝ｫ:', targetFile);
+console.log('繝輔ぃ繧､繝ｫ蟄伜惠遒ｺ隱・', require('fs').existsSync(targetFile));
 
 try {
   const backupPath = backupManager.createBackup(targetFile);
-  console.log('バックアップ成功:', backupPath);
+  console.log('繝舌ャ繧ｯ繧｢繝・・謌仙粥:', backupPath);
 } catch (error) {
-  console.error('バックアップエラー:', error.message);
-  console.error('スタック:', error.stack);
+  console.error('繝舌ャ繧ｯ繧｢繝・・繧ｨ繝ｩ繝ｼ:', error.message);
+  console.error('繧ｹ繧ｿ繝・け:', error.stack);
 }
 `;
 
-// TypeScriptファイルをテストするためのJavaScriptバージョンを実行
+// TypeScript繝輔ぃ繧､繝ｫ繧偵ユ繧ｹ繝医☆繧九◆繧√・JavaScript繝舌・繧ｸ繝ｧ繝ｳ繧貞ｮ溯｡・
 try {
   execSync(`cd "${__dirname}" && node -e "${testBackupManagerJs.replace(/"/g, '\\"')}"`, { 
     stdio: 'inherit',
     encoding: 'utf8'
   });
 } catch (error) {
-  console.log('TypeScriptを直接実行してテストします...');
+  console.log('TypeScript繧堤峩謗･螳溯｡後＠縺ｦ繝・せ繝医＠縺ｾ縺・..');
   
-  // tsx を使用してTypeScriptを直接実行
+  // tsx 繧剃ｽｿ逕ｨ縺励※TypeScript繧堤峩謗･螳溯｡・
   const testScript = `
 import { BackupManager } from './server/lib/backup-manager.js';
 import path from 'path';
@@ -50,25 +50,25 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// BackupManagerを初期化
+// BackupManager繧貞・譛溷喧
 const backupManager = new BackupManager({
   maxBackups: 3,
   backupBaseDir: 'backups',
   disabled: false
 });
 
-console.log('バックアップマネージャー設定:', backupManager);
+console.log('繝舌ャ繧ｯ繧｢繝・・繝槭ロ繝ｼ繧ｸ繝｣繝ｼ險ｭ螳・', backupManager);
 
-// テスト対象ファイル
-const targetFile = path.join(__dirname, 'knowledge-base', 'exports', 'エンジンがかからない_c08a0c61-d13e-4229-8d03-3549ebd0d7a1_2025-08-08T07-44-49-387Z.json');
+// 繝・せ繝亥ｯｾ雎｡繝輔ぃ繧､繝ｫ
+const targetFile = path.join(__dirname, 'knowledge-base', 'exports', '繧ｨ繝ｳ繧ｸ繝ｳ縺後°縺九ｉ縺ｪ縺Юc08a0c61-d13e-4229-8d03-3549ebd0d7a1_2025-08-08T07-44-49-387Z.json');
 
-console.log('テスト対象ファイル:', targetFile);
+console.log('繝・せ繝亥ｯｾ雎｡繝輔ぃ繧､繝ｫ:', targetFile);
 
 try {
   const backupPath = backupManager.createBackup(targetFile);
-  console.log('バックアップ成功:', backupPath);
+  console.log('繝舌ャ繧ｯ繧｢繝・・謌仙粥:', backupPath);
 } catch (error) {
-  console.error('バックアップエラー:', error.message);
+  console.error('繝舌ャ繧ｯ繧｢繝・・繧ｨ繝ｩ繝ｼ:', error.message);
 }
 `;
 
@@ -80,6 +80,6 @@ try {
       cwd: __dirname
     });
   } catch (tsError) {
-    console.error('TypeScript実行エラー:', tsError.message);
+    console.error('TypeScript螳溯｡後お繝ｩ繝ｼ:', tsError.message);
   }
 }

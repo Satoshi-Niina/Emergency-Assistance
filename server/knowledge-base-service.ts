@@ -1,4 +1,4 @@
-import path from 'path';
+﻿import path from 'path';
 import { promises as fs } from 'fs';
 
 export class KnowledgeBaseService {
@@ -7,11 +7,11 @@ export class KnowledgeBaseService {
     private azureStorage: any = null;
 
     constructor() {
-        // 開発環境ではローカル、本番環境ではAzure Storageを使用
+        // 髢狗匱迺ｰ蠅・〒縺ｯ繝ｭ繝ｼ繧ｫ繝ｫ縲∵悽逡ｪ迺ｰ蠅・〒縺ｯAzure Storage繧剃ｽｿ逕ｨ
         this.useAzureStorage = process.env.NODE_ENV === 'production' && 
                               !!process.env.AZURE_STORAGE_CONNECTION_STRING;
         
-        // Azure Storageが必要な場合のみインポート
+        // Azure Storage縺悟ｿ・ｦ√↑蝣ｴ蜷医・縺ｿ繧､繝ｳ繝昴・繝・
         if (this.useAzureStorage) {
             this.initializeAzureStorage();
         }
@@ -45,7 +45,7 @@ export class KnowledgeBaseService {
             await this.azureStorage.writeStringToFile(azurePath, content);
         } else {
             const localPath = path.join(this.localBasePath, relativePath);
-            // ディレクトリを作成
+            // 繝・ぅ繝ｬ繧ｯ繝医Μ繧剃ｽ懈・
             await fs.mkdir(path.dirname(localPath), { recursive: true });
             await fs.writeFile(localPath, content, 'utf-8');
         }
@@ -72,7 +72,7 @@ export class KnowledgeBaseService {
                 path.posix.join(this.azureBasePath, relativePath) : 
                 this.azureBasePath;
             const files = await this.azureStorage.listFiles(azurePath);
-            // プレフィックスを除去して相対パスを返す
+            // 繝励Ξ繝輔ぅ繝・け繧ｹ繧帝勁蜴ｻ縺励※逶ｸ蟇ｾ繝代せ繧定ｿ斐☆
             return files.map(file => file.replace(this.azureBasePath + '/', ''));
         } else {
             const localPath = relativePath ? 
@@ -104,7 +104,7 @@ export class KnowledgeBaseService {
         }
     }
 
-    // JSONファイルの読み書き用のヘルパーメソッド
+    // JSON繝輔ぃ繧､繝ｫ縺ｮ隱ｭ縺ｿ譖ｸ縺咲畑縺ｮ繝倥Ν繝代・繝｡繧ｽ繝・ラ
     async readJSON(relativePath: string): Promise<any> {
         const content = await this.readFile(relativePath);
         return JSON.parse(content);
@@ -116,5 +116,5 @@ export class KnowledgeBaseService {
     }
 }
 
-// シングルトンインスタンス
+// 繧ｷ繝ｳ繧ｰ繝ｫ繝医Φ繧､繝ｳ繧ｹ繧ｿ繝ｳ繧ｹ
 export const knowledgeBase = new KnowledgeBaseService();

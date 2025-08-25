@@ -1,4 +1,4 @@
-// Emergency Guide Types
+﻿// Emergency Guide Types
 export interface EmergencyGuide {
     id: string;
     title: string;

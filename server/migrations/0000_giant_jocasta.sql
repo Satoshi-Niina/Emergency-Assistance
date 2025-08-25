@@ -1,4 +1,4 @@
-CREATE TABLE "base_documents" (
+﻿CREATE TABLE "base_documents" (
 	"id" text PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"title" text NOT NULL,
 	"file_path" text NOT NULL,

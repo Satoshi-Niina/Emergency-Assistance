@@ -1,4 +1,4 @@
-import { BlobServiceClient, ContainerClient } from '@azure/storage-blob';
+﻿import { BlobServiceClient, ContainerClient } from '@azure/storage-blob';
 import { promises as fs } from 'fs';
 import path from 'path';
 
@@ -50,7 +50,7 @@ export class AzureStorageService {
         try {
             const blockBlobClient = this.containerClient.getBlockBlobClient(blobName);
             
-            // ローカルディレクトリを作成
+            // 繝ｭ繝ｼ繧ｫ繝ｫ繝・ぅ繝ｬ繧ｯ繝医Μ繧剃ｽ懈・
             const dir = path.dirname(localPath);
             await fs.mkdir(dir, { recursive: true });
             
@@ -132,7 +132,7 @@ export class AzureStorageService {
     }
 }
 
-// シングルトンインスタンス（環境変数がある場合のみ）
+// 繧ｷ繝ｳ繧ｰ繝ｫ繝医Φ繧､繝ｳ繧ｹ繧ｿ繝ｳ繧ｹ・育腸蠅・､画焚縺後≠繧句ｴ蜷医・縺ｿ・・
 export const azureStorage = process.env.AZURE_STORAGE_CONNECTION_STRING 
     ? new AzureStorageService() 
     : null;

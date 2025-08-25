@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import { db } from '../db/index.js';
 import { supportHistory, machineTypes, machines } from '../db/schema.js';
 import { eq, like, and, gte, lte, desc, ilike, or } from 'drizzle-orm';
@@ -11,12 +11,12 @@ import Fuse from 'fuse.js';
 
 const router = express.Router();
 
-// 履歴データから機種・機械番号一覧取得
+// 螻･豁ｴ繝・・繧ｿ縺九ｉ讖溽ｨｮ繝ｻ讖滓｢ｰ逡ｪ蜿ｷ荳隕ｧ蜿門ｾ・
 router.get('/machine-data', async (req, res) => {
   try {
-    console.log('🔍 機種・機械番号データ取得開始');
+    console.log('剥 讖溽ｨｮ繝ｻ讖滓｢ｰ逡ｪ蜿ｷ繝・・繧ｿ蜿門ｾ鈴幕蟋・);
     
-    // 履歴データから機種一覧を取得（データベースカラムとJSONデータの両方から）
+    // 螻･豁ｴ繝・・繧ｿ縺九ｉ讖溽ｨｮ荳隕ｧ繧貞叙蠕暦ｼ医ョ繝ｼ繧ｿ繝吶・繧ｹ繧ｫ繝ｩ繝縺ｨJSON繝・・繧ｿ縺ｮ荳｡譁ｹ縺九ｉ・・
     const machineTypesResult = await db
       .select({
         machineType: supportHistory.machineType,
@@ -25,9 +25,9 @@ router.get('/machine-data', async (req, res) => {
       .from(supportHistory)
       .orderBy(supportHistory.createdAt);
 
-    console.log('🔍 機種データ取得結果（DB）:', machineTypesResult.length, '件');
+    console.log('剥 讖溽ｨｮ繝・・繧ｿ蜿門ｾ礼ｵ先棡・・B・・', machineTypesResult.length, '莉ｶ');
 
-    // 履歴データから機械番号一覧を取得（データベースカラムとJSONデータの両方から）
+    // 螻･豁ｴ繝・・繧ｿ縺九ｉ讖滓｢ｰ逡ｪ蜿ｷ荳隕ｧ繧貞叙蠕暦ｼ医ョ繝ｼ繧ｿ繝吶・繧ｹ繧ｫ繝ｩ繝縺ｨJSON繝・・繧ｿ縺ｮ荳｡譁ｹ縺九ｉ・・
     const machinesResult = await db
       .select({
         machineNumber: supportHistory.machineNumber,
@@ -37,13 +37,13 @@ router.get('/machine-data', async (req, res) => {
       .from(supportHistory)
       .orderBy(supportHistory.createdAt);
 
-    console.log('🔍 機械番号データ取得結果（DB）:', machinesResult.length, '件');
+    console.log('剥 讖滓｢ｰ逡ｪ蜿ｷ繝・・繧ｿ蜿門ｾ礼ｵ先棡・・B・・', machinesResult.length, '莉ｶ');
 
-    // 機種一覧を構築（重複除去）
+    // 讖溽ｨｮ荳隕ｧ繧呈ｧ狗ｯ会ｼ磯㍾隍・勁蜴ｻ・・
     const machineTypeSet = new Set<string>();
     const machineTypes: Array<{ id: string; machineTypeName: string }> = [];
 
-    // データベースカラムから機種を取得
+    // 繝・・繧ｿ繝吶・繧ｹ繧ｫ繝ｩ繝縺九ｉ讖溽ｨｮ繧貞叙蠕・
     machineTypesResult.forEach((item, index) => {
       if (item.machineType && !machineTypeSet.has(item.machineType)) {
         machineTypeSet.add(item.machineType);
@@ -54,7 +54,7 @@ router.get('/machine-data', async (req, res) => {
       }
     });
 
-    // JSONデータから機種を取得
+    // JSON繝・・繧ｿ縺九ｉ讖溽ｨｮ繧貞叙蠕・
     machineTypesResult.forEach((item, index) => {
       try {
         const jsonData = typeof item.jsonData === 'string' ? JSON.parse(item.jsonData) : item.jsonData;
@@ -66,16 +66,16 @@ router.get('/machine-data', async (req, res) => {
           });
         }
       } catch (error) {
-        // JSON解析エラーは無視
-        console.log('🔍 JSON解析エラー（機種）:', error);
+        // JSON隗｣譫舌お繝ｩ繝ｼ縺ｯ辟｡隕・
+        console.log('剥 JSON隗｣譫舌お繝ｩ繝ｼ・域ｩ溽ｨｮ・・', error);
       }
     });
 
-    // 機械番号一覧を構築（重複除去）
+    // 讖滓｢ｰ逡ｪ蜿ｷ荳隕ｧ繧呈ｧ狗ｯ会ｼ磯㍾隍・勁蜴ｻ・・
     const machineSet = new Set<string>();
     const machines: Array<{ id: string; machineNumber: string; machineTypeName: string }> = [];
 
-    // データベースカラムから機械番号を取得
+    // 繝・・繧ｿ繝吶・繧ｹ繧ｫ繝ｩ繝縺九ｉ讖滓｢ｰ逡ｪ蜿ｷ繧貞叙蠕・
     machinesResult.forEach((item, index) => {
       const key = `${item.machineNumber}_${item.machineType}`;
       if (item.machineNumber && !machineSet.has(key)) {
@@ -88,7 +88,7 @@ router.get('/machine-data', async (req, res) => {
       }
     });
 
-    // JSONデータから機械番号を取得
+    // JSON繝・・繧ｿ縺九ｉ讖滓｢ｰ逡ｪ蜿ｷ繧貞叙蠕・
     machinesResult.forEach((item, index) => {
       try {
         const jsonData = typeof item.jsonData === 'string' ? JSON.parse(item.jsonData) : item.jsonData;
@@ -104,8 +104,8 @@ router.get('/machine-data', async (req, res) => {
           }
         }
       } catch (error) {
-        // JSON解析エラーは無視
-        console.log('🔍 JSON解析エラー（機械番号）:', error);
+        // JSON隗｣譫舌お繝ｩ繝ｼ縺ｯ辟｡隕・
+        console.log('剥 JSON隗｣譫舌お繝ｩ繝ｼ・域ｩ滓｢ｰ逡ｪ蜿ｷ・・', error);
       }
     });
 
@@ -114,7 +114,7 @@ router.get('/machine-data', async (req, res) => {
       machines
     };
 
-    console.log('🔍 最終結果:', {
+    console.log('剥 譛邨らｵ先棡:', {
       machineTypes: machineTypes.length,
       machines: machines.length,
       sampleMachineTypes: machineTypes.slice(0, 3),
@@ -124,30 +124,30 @@ router.get('/machine-data', async (req, res) => {
     res.json(result);
 
   } catch (error) {
-    console.error('履歴データからの機種・機械番号データ取得エラー:', error);
-    res.status(500).json({ error: '機種・機械番号データの取得に失敗しました' });
+    console.error('螻･豁ｴ繝・・繧ｿ縺九ｉ縺ｮ讖溽ｨｮ繝ｻ讖滓｢ｰ逡ｪ蜿ｷ繝・・繧ｿ蜿門ｾ励お繝ｩ繝ｼ:', error);
+    res.status(500).json({ error: '讖溽ｨｮ繝ｻ讖滓｢ｰ逡ｪ蜿ｷ繝・・繧ｿ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆' });
   }
 });
 
-// 履歴検索用スキーマ
+// 螻･豁ｴ讀懃ｴ｢逕ｨ繧ｹ繧ｭ繝ｼ繝・
 const historyQuerySchema = z.object({
   machineType: z.string().optional(),
   machineNumber: z.string().optional(),
-  searchText: z.string().optional(), // テキスト検索用
-  searchDate: z.string().optional(), // 日付検索用
+  searchText: z.string().optional(), // 繝・く繧ｹ繝域､懃ｴ｢逕ｨ
+  searchDate: z.string().optional(), // 譌･莉俶､懃ｴ｢逕ｨ
   limit: z.coerce.number().min(1).max(100).default(50),
   offset: z.coerce.number().min(0).default(0)
 });
 
-// 履歴一覧取得
+// 螻･豁ｴ荳隕ｧ蜿門ｾ・
 router.get('/', async (req, res) => {
   try {
     const query = historyQuerySchema.parse(req.query);
     
-    // 基本クエリ構築
+    // 蝓ｺ譛ｬ繧ｯ繧ｨ繝ｪ讒狗ｯ・
     let whereConditions = [];
     
-    // 機種フィルタ（データベースカラムとJSONデータの両方を検索）
+    // 讖溽ｨｮ繝輔ぅ繝ｫ繧ｿ・医ョ繝ｼ繧ｿ繝吶・繧ｹ繧ｫ繝ｩ繝縺ｨJSON繝・・繧ｿ縺ｮ荳｡譁ｹ繧呈､懃ｴ｢・・
     if (query.machineType) {
       whereConditions.push(
         or(
@@ -157,7 +157,7 @@ router.get('/', async (req, res) => {
       );
     }
     
-    // 機械番号フィルタ（データベースカラムとJSONデータの両方を検索）
+    // 讖滓｢ｰ逡ｪ蜿ｷ繝輔ぅ繝ｫ繧ｿ・医ョ繝ｼ繧ｿ繝吶・繧ｹ繧ｫ繝ｩ繝縺ｨJSON繝・・繧ｿ縺ｮ荳｡譁ｹ繧呈､懃ｴ｢・・
     if (query.machineNumber) {
       whereConditions.push(
         or(
@@ -167,9 +167,9 @@ router.get('/', async (req, res) => {
       );
     }
     
-    // テキスト検索（JSONデータ内の任意のテキスト検索）
+    // 繝・く繧ｹ繝域､懃ｴ｢・・SON繝・・繧ｿ蜀・・莉ｻ諢上・繝・く繧ｹ繝域､懃ｴ｢・・
     if (query.searchText) {
-      // 複数の検索条件を組み合わせてより詳細な検索を実行
+      // 隍・焚縺ｮ讀懃ｴ｢譚｡莉ｶ繧堤ｵ・∩蜷医ｏ縺帙※繧医ｊ隧ｳ邏ｰ縺ｪ讀懃ｴ｢繧貞ｮ溯｡・
       const searchTerms = query.searchText.split(/\s+/).filter(term => term.length > 0);
       
       if (searchTerms.length > 0) {
@@ -182,7 +182,7 @@ router.get('/', async (req, res) => {
       }
     }
     
-    // 日付検索
+    // 譌･莉俶､懃ｴ｢
     if (query.searchDate) {
       const searchDate = new Date(query.searchDate);
       const nextDay = new Date(searchDate);
@@ -196,7 +196,7 @@ router.get('/', async (req, res) => {
       );
     }
     
-    // データベースから履歴を取得
+    // 繝・・繧ｿ繝吶・繧ｹ縺九ｉ螻･豁ｴ繧貞叙蠕・
     const results = await db
       .select({
         id: supportHistory.id,
@@ -212,7 +212,7 @@ router.get('/', async (req, res) => {
       .limit(query.limit)
       .offset(query.offset);
 
-    // 総件数を取得
+    // 邱丈ｻｶ謨ｰ繧貞叙蠕・
     const totalCount = await db
       .select({ count: supportHistory.id })
       .from(supportHistory)
@@ -225,12 +225,12 @@ router.get('/', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('履歴取得エラー:', error);
-    res.status(500).json({ error: '履歴の取得に失敗しました' });
+    console.error('螻･豁ｴ蜿門ｾ励お繝ｩ繝ｼ:', error);
+    res.status(500).json({ error: '螻･豁ｴ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆' });
   }
 });
 
-// 履歴詳細取得
+// 螻･豁ｴ隧ｳ邏ｰ蜿門ｾ・
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -242,48 +242,48 @@ router.get('/:id', async (req, res) => {
       .limit(1);
     
     if (historyItem.length === 0) {
-      return res.status(404).json({ error: '履歴が見つかりません' });
+      return res.status(404).json({ error: '螻･豁ｴ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ' });
     }
 
     res.json(historyItem[0]);
 
   } catch (error) {
-    console.error('履歴詳細取得エラー:', error);
-    res.status(500).json({ error: '履歴詳細の取得に失敗しました' });
+    console.error('螻･豁ｴ隧ｳ邏ｰ蜿門ｾ励お繝ｩ繝ｼ:', error);
+    res.status(500).json({ error: '螻･豁ｴ隧ｳ邏ｰ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆' });
   }
 });
 
-// 履歴作成（画像アップロード対応）
+// 螻･豁ｴ菴懈・・育判蜒上い繝・・繝ｭ繝ｼ繝牙ｯｾ蠢懶ｼ・
 router.post('/', upload.single('image'), async (req, res) => {
   try {
     const createSchema = z.object({
       machineType: z.string(),
       machineNumber: z.string(),
-      jsonData: z.any() // JSONBデータ
+      jsonData: z.any() // JSONB繝・・繧ｿ
     });
 
     const data = createSchema.parse(req.body);
     
     let imagePath = null;
     
-    // 画像がアップロードされた場合の処理
+    // 逕ｻ蜒上′繧｢繝・・繝ｭ繝ｼ繝峨＆繧後◆蝣ｴ蜷医・蜃ｦ逅・
     if (req.file) {
       const fileName = `support_history_${Date.now()}_${req.file.originalname}`;
       const uploadDir = path.join(process.cwd(), 'public', 'images', 'support-history');
       
-      // ディレクトリが存在しない場合は作成
+      // 繝・ぅ繝ｬ繧ｯ繝医Μ縺悟ｭ伜惠縺励↑縺・ｴ蜷医・菴懈・
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
       
       const filePath = path.join(uploadDir, fileName);
       
-      // ファイルを移動
+      // 繝輔ぃ繧､繝ｫ繧堤ｧｻ蜍・
       fs.renameSync(req.file.path, filePath);
       imagePath = `/images/support-history/${fileName}`;
     }
 
-    // データベースに保存
+    // 繝・・繧ｿ繝吶・繧ｹ縺ｫ菫晏ｭ・
     const newHistoryItem = await db
       .insert(supportHistory)
       .values({
@@ -297,17 +297,17 @@ router.post('/', upload.single('image'), async (req, res) => {
     res.status(201).json(newHistoryItem[0]);
 
   } catch (error) {
-    console.error('履歴作成エラー:', error);
-    res.status(500).json({ error: '履歴の作成に失敗しました' });
+    console.error('螻･豁ｴ菴懈・繧ｨ繝ｩ繝ｼ:', error);
+    res.status(500).json({ error: '螻･豁ｴ縺ｮ菴懈・縺ｫ螟ｱ謨励＠縺ｾ縺励◆' });
   }
 });
 
-// 履歴削除
+// 螻･豁ｴ蜑企勁
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
-    // 履歴項目を取得
+    // 螻･豁ｴ鬆・岼繧貞叙蠕・
     const historyItem = await db
       .select()
       .from(supportHistory)
@@ -315,10 +315,10 @@ router.delete('/:id', async (req, res) => {
       .limit(1);
     
     if (historyItem.length === 0) {
-      return res.status(404).json({ error: '履歴が見つかりません' });
+      return res.status(404).json({ error: '螻･豁ｴ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ' });
     }
 
-    // 画像ファイルが存在する場合は削除
+    // 逕ｻ蜒上ヵ繧｡繧､繝ｫ縺悟ｭ伜惠縺吶ｋ蝣ｴ蜷医・蜑企勁
     if (historyItem[0].imagePath) {
       const imagePath = path.join(process.cwd(), 'public', historyItem[0].imagePath);
       if (fs.existsSync(imagePath)) {
@@ -326,20 +326,20 @@ router.delete('/:id', async (req, res) => {
       }
     }
 
-    // データベースから削除
+    // 繝・・繧ｿ繝吶・繧ｹ縺九ｉ蜑企勁
     await db
       .delete(supportHistory)
       .where(eq(supportHistory.id, id));
 
-    res.json({ message: '履歴を削除しました' });
+    res.json({ message: '螻･豁ｴ繧貞炎髯､縺励∪縺励◆' });
 
   } catch (error) {
-    console.error('履歴削除エラー:', error);
-    res.status(500).json({ error: '履歴の削除に失敗しました' });
+    console.error('螻･豁ｴ蜑企勁繧ｨ繝ｩ繝ｼ:', error);
+    res.status(500).json({ error: '螻･豁ｴ縺ｮ蜑企勁縺ｫ螟ｱ謨励＠縺ｾ縺励◆' });
   }
 });
 
-// PDFエクスポート
+// PDF繧ｨ繧ｯ繧ｹ繝昴・繝・
 router.get('/:id/export-pdf', async (req, res) => {
   try {
     const { id } = req.params;
@@ -351,41 +351,41 @@ router.get('/:id/export-pdf', async (req, res) => {
       .limit(1);
     
     if (historyItem.length === 0) {
-      return res.status(404).json({ error: '履歴が見つかりません' });
+      return res.status(404).json({ error: '螻･豁ｴ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ' });
     }
 
     const item = historyItem[0];
     
-    // PDFドキュメントを作成
+    // PDF繝峨く繝･繝｡繝ｳ繝医ｒ菴懈・
     const doc = new PDFDocument();
     
-    // レスポンスヘッダーを設定
+    // 繝ｬ繧ｹ繝昴Φ繧ｹ繝倥ャ繝繝ｼ繧定ｨｭ螳・
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="support_history_${item.machineType}_${item.machineNumber}.pdf"`);
     
-    // PDFをレスポンスストリームにパイプ
+    // PDF繧偵Ξ繧ｹ繝昴Φ繧ｹ繧ｹ繝医Μ繝ｼ繝縺ｫ繝代う繝・
     doc.pipe(res);
     
-    // PDFの内容を作成
-    doc.fontSize(20).text('応急処置サポート履歴', { align: 'center' });
+    // PDF縺ｮ蜀・ｮｹ繧剃ｽ懈・
+    doc.fontSize(20).text('蠢懈･蜃ｦ鄂ｮ繧ｵ繝昴・繝亥ｱ･豁ｴ', { align: 'center' });
     doc.moveDown();
     
-    doc.fontSize(12).text(`機種: ${item.machineType}`);
-    doc.text(`機械番号: ${item.machineNumber}`);
-    doc.text(`作成日時: ${new Date(item.createdAt).toLocaleString('ja-JP')}`);
+    doc.fontSize(12).text(`讖溽ｨｮ: ${item.machineType}`);
+    doc.text(`讖滓｢ｰ逡ｪ蜿ｷ: ${item.machineNumber}`);
+    doc.text(`菴懈・譌･譎・ ${new Date(item.createdAt).toLocaleString('ja-JP')}`);
     doc.moveDown();
     
-    doc.fontSize(14).text('データ内容:', { underline: true });
+    doc.fontSize(14).text('繝・・繧ｿ蜀・ｮｹ:', { underline: true });
     doc.moveDown();
     
-    // JSONデータを整形して表示
+    // JSON繝・・繧ｿ繧呈紛蠖｢縺励※陦ｨ遉ｺ
     const jsonString = JSON.stringify(item.jsonData, null, 2);
     doc.fontSize(10).text(jsonString, { align: 'left' });
     
-    // 画像が存在する場合
+    // 逕ｻ蜒上′蟄伜惠縺吶ｋ蝣ｴ蜷・
     if (item.imagePath) {
       doc.moveDown();
-      doc.fontSize(14).text('関連画像:', { underline: true });
+      doc.fontSize(14).text('髢｢騾｣逕ｻ蜒・', { underline: true });
       doc.moveDown();
       
       const imagePath = path.join(process.cwd(), 'public', item.imagePath);
@@ -393,28 +393,28 @@ router.get('/:id/export-pdf', async (req, res) => {
         try {
           doc.image(imagePath, { width: 300 });
         } catch (error) {
-          doc.text('画像の読み込みに失敗しました');
+          doc.text('逕ｻ蜒上・隱ｭ縺ｿ霎ｼ縺ｿ縺ｫ螟ｱ謨励＠縺ｾ縺励◆');
         }
       } else {
-        doc.text('画像ファイルが見つかりません');
+        doc.text('逕ｻ蜒上ヵ繧｡繧､繝ｫ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ');
       }
     }
     
-    // PDFを終了
+    // PDF繧堤ｵゆｺ・
     doc.end();
 
   } catch (error) {
-    console.error('PDFエクスポートエラー:', error);
-    res.status(500).json({ error: 'PDFエクスポートに失敗しました' });
+    console.error('PDF繧ｨ繧ｯ繧ｹ繝昴・繝医お繝ｩ繝ｼ:', error);
+    res.status(500).json({ error: 'PDF繧ｨ繧ｯ繧ｹ繝昴・繝医↓螟ｱ謨励＠縺ｾ縺励◆' });
   }
 });
 
-// レポート生成機能
+// 繝ｬ繝昴・繝育函謌先ｩ溯・
 router.post('/generate-report', async (req, res) => {
   try {
     const { searchFilters, reportTitle, reportDescription } = req.body;
     
-    // 検索条件に基づいて履歴を取得
+    // 讀懃ｴ｢譚｡莉ｶ縺ｫ蝓ｺ縺･縺・※螻･豁ｴ繧貞叙蠕・
     let whereConditions = [];
     
     if (searchFilters.machineType) {
@@ -442,9 +442,9 @@ router.post('/generate-report', async (req, res) => {
       .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
       .orderBy(desc(supportHistory.createdAt));
 
-    // レポートデータを構築
+    // 繝ｬ繝昴・繝医ョ繝ｼ繧ｿ繧呈ｧ狗ｯ・
     const reportData = {
-      title: reportTitle || '履歴検索レポート',
+      title: reportTitle || '螻･豁ｴ讀懃ｴ｢繝ｬ繝昴・繝・,
       description: reportDescription || '',
       generatedAt: new Date().toISOString(),
       searchFilters,
@@ -459,7 +459,7 @@ router.post('/generate-report', async (req, res) => {
       }))
     };
 
-    // PDFレポートを生成
+    // PDF繝ｬ繝昴・繝医ｒ逕滓・
     const doc = new PDFDocument();
     
     res.setHeader('Content-Type', 'application/pdf');
@@ -467,7 +467,7 @@ router.post('/generate-report', async (req, res) => {
     
     doc.pipe(res);
     
-    // レポートヘッダー
+    // 繝ｬ繝昴・繝医・繝・ム繝ｼ
     doc.fontSize(24).text(reportData.title, { align: 'center' });
     doc.moveDown();
     
@@ -476,34 +476,34 @@ router.post('/generate-report', async (req, res) => {
       doc.moveDown();
     }
     
-    doc.fontSize(10).text(`生成日時: ${new Date(reportData.generatedAt).toLocaleString('ja-JP')}`);
-    doc.fontSize(10).text(`検索結果: ${reportData.totalCount}件`);
+    doc.fontSize(10).text(`逕滓・譌･譎・ ${new Date(reportData.generatedAt).toLocaleString('ja-JP')}`);
+    doc.fontSize(10).text(`讀懃ｴ｢邨先棡: ${reportData.totalCount}莉ｶ`);
     doc.moveDown();
     
-    // 検索条件
-    doc.fontSize(14).text('検索条件:', { underline: true });
+    // 讀懃ｴ｢譚｡莉ｶ
+    doc.fontSize(14).text('讀懃ｴ｢譚｡莉ｶ:', { underline: true });
     doc.moveDown();
-    if (searchFilters.machineType) doc.fontSize(10).text(`機種: ${searchFilters.machineType}`);
-    if (searchFilters.machineNumber) doc.fontSize(10).text(`機械番号: ${searchFilters.machineNumber}`);
-    if (searchFilters.searchText) doc.fontSize(10).text(`検索テキスト: ${searchFilters.searchText}`);
+    if (searchFilters.machineType) doc.fontSize(10).text(`讖溽ｨｮ: ${searchFilters.machineType}`);
+    if (searchFilters.machineNumber) doc.fontSize(10).text(`讖滓｢ｰ逡ｪ蜿ｷ: ${searchFilters.machineNumber}`);
+    if (searchFilters.searchText) doc.fontSize(10).text(`讀懃ｴ｢繝・く繧ｹ繝・ ${searchFilters.searchText}`);
     doc.moveDown();
     
-    // 検索結果一覧
-    doc.fontSize(14).text('検索結果一覧:', { underline: true });
+    // 讀懃ｴ｢邨先棡荳隕ｧ
+    doc.fontSize(14).text('讀懃ｴ｢邨先棡荳隕ｧ:', { underline: true });
     doc.moveDown();
     
     reportData.items.forEach((item, index) => {
       doc.fontSize(12).text(`${index + 1}. ${item.machineType} - ${item.machineNumber}`, { underline: true });
-      doc.fontSize(10).text(`作成日時: ${new Date(item.createdAt).toLocaleString('ja-JP')}`);
+      doc.fontSize(10).text(`菴懈・譌･譎・ ${new Date(item.createdAt).toLocaleString('ja-JP')}`);
       
-      // JSONデータの主要な情報を抽出
+      // JSON繝・・繧ｿ縺ｮ荳ｻ隕√↑諠・ｱ繧呈歓蜃ｺ
       try {
         const jsonData = typeof item.jsonData === 'string' ? JSON.parse(item.jsonData) : item.jsonData;
-        if (jsonData.title) doc.fontSize(10).text(`タイトル: ${jsonData.title}`);
-        if (jsonData.description) doc.fontSize(10).text(`説明: ${jsonData.description}`);
-        if (jsonData.emergencyMeasures) doc.fontSize(10).text(`応急処置: ${jsonData.emergencyMeasures}`);
+        if (jsonData.title) doc.fontSize(10).text(`繧ｿ繧､繝医Ν: ${jsonData.title}`);
+        if (jsonData.description) doc.fontSize(10).text(`隱ｬ譏・ ${jsonData.description}`);
+        if (jsonData.emergencyMeasures) doc.fontSize(10).text(`蠢懈･蜃ｦ鄂ｮ: ${jsonData.emergencyMeasures}`);
       } catch (error) {
-        doc.fontSize(10).text('データ形式エラー');
+        doc.fontSize(10).text('繝・・繧ｿ蠖｢蠑上お繝ｩ繝ｼ');
       }
       
       doc.moveDown();
@@ -512,21 +512,21 @@ router.post('/generate-report', async (req, res) => {
     doc.end();
 
   } catch (error) {
-    console.error('レポート生成エラー:', error);
-    res.status(500).json({ error: 'レポート生成に失敗しました' });
+    console.error('繝ｬ繝昴・繝育函謌舌お繝ｩ繝ｼ:', error);
+    res.status(500).json({ error: '繝ｬ繝昴・繝育函謌舌↓螟ｱ謨励＠縺ｾ縺励◆' });
   }
 });
 
-// 高度なテキスト検索機能
+// 鬮伜ｺｦ縺ｪ繝・く繧ｹ繝域､懃ｴ｢讖溯・
 router.post('/advanced-search', async (req, res) => {
   try {
     const { searchText, limit = 50 } = req.body;
     
     if (!searchText) {
-      return res.status(400).json({ error: '検索テキストが必要です' });
+      return res.status(400).json({ error: '讀懃ｴ｢繝・く繧ｹ繝医′蠢・ｦ√〒縺・ });
     }
     
-    // 全履歴を取得
+    // 蜈ｨ螻･豁ｴ繧貞叙蠕・
     const allHistory = await db
       .select({
         id: supportHistory.id,
@@ -539,28 +539,28 @@ router.post('/advanced-search', async (req, res) => {
       .from(supportHistory)
       .orderBy(desc(supportHistory.createdAt));
 
-    // Fuse.jsで高度な検索を実行
+    // Fuse.js縺ｧ鬮伜ｺｦ縺ｪ讀懃ｴ｢繧貞ｮ溯｡・
     const fuse = new Fuse(allHistory, {
       keys: [
         { name: 'machineType', weight: 0.3 },
         { name: 'machineNumber', weight: 0.3 },
         { name: 'jsonData', weight: 1.0 }
       ],
-      threshold: 0.3, // より厳密な検索
+      threshold: 0.3, // 繧医ｊ蜴ｳ蟇・↑讀懃ｴ｢
       includeScore: true,
       ignoreLocation: true,
       useExtendedSearch: true,
-      minMatchCharLength: 1, // 1文字でもマッチ
+      minMatchCharLength: 1, // 1譁・ｭ励〒繧ゅ・繝・メ
       findAllMatches: true,
       shouldSort: true
     });
 
-    // 検索テキストを分割して複数条件で検索
+    // 讀懃ｴ｢繝・く繧ｹ繝医ｒ蛻・牡縺励※隍・焚譚｡莉ｶ縺ｧ讀懃ｴ｢
     const searchTerms = searchText.split(/\s+/).filter(term => term.length > 0);
     let searchResults = [];
 
     if (searchTerms.length > 1) {
-      // 複数キーワードの場合、各キーワードで検索して結果を統合
+      // 隍・焚繧ｭ繝ｼ繝ｯ繝ｼ繝峨・蝣ｴ蜷医∝推繧ｭ繝ｼ繝ｯ繝ｼ繝峨〒讀懃ｴ｢縺励※邨先棡繧堤ｵｱ蜷・
       const allResults = new Map();
       
       searchTerms.forEach(term => {
@@ -569,7 +569,7 @@ router.post('/advanced-search', async (req, res) => {
           if (!allResults.has(result.item.id)) {
             allResults.set(result.item.id, { ...result.item, score: result.score });
           } else {
-            // 既存の結果がある場合は、より良いスコアを採用
+            // 譌｢蟄倥・邨先棡縺後≠繧句ｴ蜷医・縲√ｈ繧願憶縺・せ繧ｳ繧｢繧呈治逕ｨ
             const existing = allResults.get(result.item.id);
             if (result.score < existing.score) {
               allResults.set(result.item.id, { ...result.item, score: result.score });
@@ -580,7 +580,7 @@ router.post('/advanced-search', async (req, res) => {
       
       searchResults = Array.from(allResults.values());
     } else {
-      // 単一キーワードの場合
+      // 蜊倅ｸ繧ｭ繝ｼ繝ｯ繝ｼ繝峨・蝣ｴ蜷・
       searchResults = fuse.search(searchText);
     }
     
@@ -599,8 +599,8 @@ router.post('/advanced-search', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('高度な検索エラー:', error);
-    res.status(500).json({ error: '検索に失敗しました' });
+    console.error('鬮伜ｺｦ縺ｪ讀懃ｴ｢繧ｨ繝ｩ繝ｼ:', error);
+    res.status(500).json({ error: '讀懃ｴ｢縺ｫ螟ｱ謨励＠縺ｾ縺励◆' });
   }
 });
 

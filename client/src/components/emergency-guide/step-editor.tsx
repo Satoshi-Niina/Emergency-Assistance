@@ -1,4 +1,4 @@
-// @ts-ignore
+﻿// @ts-ignore
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
@@ -24,10 +24,10 @@ import { Plus, Trash2, GripVertical, Upload, X, Image as ImageIcon, Save, Rotate
 import { convertImageUrl } from '../../lib/utils.ts';
 
 /**
- * ⚠️ AI編集制限: このファイルはスライド編集UI専用です
- * - タイトル編集機能の変更は禁止
- * - 条件分岐UI構造の変更は禁止
- * - バックエンド連携コードの追加は禁止
+ * 笞・・AI邱ｨ髮・宛髯・ 縺薙・繝輔ぃ繧､繝ｫ縺ｯ繧ｹ繝ｩ繧､繝臥ｷｨ髮・I蟆ら畑縺ｧ縺・
+ * - 繧ｿ繧､繝医Ν邱ｨ髮・ｩ溯・縺ｮ螟画峩縺ｯ遖∵ｭ｢
+ * - 譚｡莉ｶ蛻・ｲ振I讒矩縺ｮ螟画峩縺ｯ遖∵ｭ｢
+ * - 繝舌ャ繧ｯ繧ｨ繝ｳ繝蛾｣謳ｺ繧ｳ繝ｼ繝峨・霑ｽ蜉縺ｯ遖∵ｭ｢
  */
 
 // Helper function for UTF-8 safe base64 encoding
@@ -40,7 +40,7 @@ function utf8_to_b64(str: string): string {
   }
 }
 
-// 1. ImageInfoインターフェースをエクスポート可能に変更し、ファイルURLとファイル名を保持するようにします
+// 1. ImageInfo繧､繝ｳ繧ｿ繝ｼ繝輔ぉ繝ｼ繧ｹ繧偵お繧ｯ繧ｹ繝昴・繝亥庄閭ｽ縺ｫ螟画峩縺励√ヵ繧｡繧､繝ｫURL縺ｨ繝輔ぃ繧､繝ｫ蜷阪ｒ菫晄戟縺吶ｋ繧医≧縺ｫ縺励∪縺・
 export interface ImageInfo {
   url: string;
   fileName: string;
@@ -52,7 +52,7 @@ interface DecisionCondition {
   nextSlideId?: string;
 }
 
-// 2. Stepインターフェースの画像関連のフィールドを images 配列に変更します
+// 2. Step繧､繝ｳ繧ｿ繝ｼ繝輔ぉ繝ｼ繧ｹ縺ｮ逕ｻ蜒城未騾｣縺ｮ繝輔ぅ繝ｼ繝ｫ繝峨ｒ images 驟榊・縺ｫ螟画峩縺励∪縺・
 interface Step {
   id: string;
   title: string;
@@ -71,7 +71,7 @@ interface Step {
     label: string;
     nextId: string;
   }>;
-  // 古いプロパティは後方互換性のために残す（将来的には削除）
+  // 蜿､縺・・繝ｭ繝代ユ繧｣縺ｯ蠕梧婿莠呈鋤諤ｧ縺ｮ縺溘ａ縺ｫ谿九☆・亥ｰ・擂逧・↓縺ｯ蜑企勁・・
   imageUrl?: string;
   imageFileName?: string;
 }
@@ -90,7 +90,7 @@ interface StepEditorProps {
   onAddStepBetween?: (index: number, type: 'step' | 'decision') => void;
 }
 
-// カスタムスクロールバーのスタイル
+// 繧ｫ繧ｹ繧ｿ繝繧ｹ繧ｯ繝ｭ繝ｼ繝ｫ繝舌・縺ｮ繧ｹ繧ｿ繧､繝ｫ
 const scrollbarStyles = `
   .step-editor-scrollbar::-webkit-scrollbar {
     width: 20px !important;
@@ -122,7 +122,7 @@ const scrollbarStyles = `
     scrollbar-color: #c1c1c1 #f1f1f1 !important;
   }
   
-  /* より具体的なセレクタで優先度を上げる */
+  /* 繧医ｊ蜈ｷ菴鍋噪縺ｪ繧ｻ繝ｬ繧ｯ繧ｿ縺ｧ蜆ｪ蜈亥ｺｦ繧剃ｸ翫￡繧・*/
   div.step-editor-scrollbar::-webkit-scrollbar {
     width: 20px !important;
     height: 20px !important;
@@ -154,7 +154,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
   flowId,
   onAddStepBetween
 }) => {
-  console.log('🔄 StepEditor レンダリング開始:', { 
+  console.log('売 StepEditor 繝ｬ繝ｳ繝繝ｪ繝ｳ繧ｰ髢句ｧ・', { 
     stepsLength: steps.length, 
     flowId,
     steps: steps.map(s => ({ id: s.id, title: s.title, type: s.type }))
@@ -165,7 +165,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
   const [expandedSteps, setExpandedSteps] = useState<{ [key: string]: boolean }>({});
   const [showStepControls, setShowStepControls] = useState<{ [key: string]: boolean }>({});
   
-  // すべてのステップを展開状態にする
+  // 縺吶∋縺ｦ縺ｮ繧ｹ繝・ャ繝励ｒ螻暮幕迥ｶ諷九↓縺吶ｋ
   useEffect(() => {
     const allExpanded = steps.reduce((acc, step) => {
       acc[step.id] = true;
@@ -174,7 +174,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
     setExpandedSteps(allExpanded);
   }, [steps]);
 
-  // カスタムスクロールバーのスタイルを適用
+  // 繧ｫ繧ｹ繧ｿ繝繧ｹ繧ｯ繝ｭ繝ｼ繝ｫ繝舌・縺ｮ繧ｹ繧ｿ繧､繝ｫ繧帝←逕ｨ
   useEffect(() => {
     const styleElement = document.createElement('style');
     styleElement.textContent = scrollbarStyles;
@@ -200,18 +200,18 @@ const StepEditor: React.FC<StepEditorProps> = ({
     }));
   };
 
-  // 画像URL変換の簡略化
+  // 逕ｻ蜒酋RL螟画鋤縺ｮ邁｡逡･蛹・
 
-  // 画像の読み込みエラーを処理する関数
+  // 逕ｻ蜒上・隱ｭ縺ｿ霎ｼ縺ｿ繧ｨ繝ｩ繝ｼ繧貞・逅・☆繧矩未謨ｰ
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>, imageUrl: string) => {
-    console.error('画像読み込みエラー:', imageUrl);
+    console.error('逕ｻ蜒剰ｪｭ縺ｿ霎ｼ縺ｿ繧ｨ繝ｩ繝ｼ:', imageUrl);
     const target = e.currentTarget;
     target.style.display = 'none';
     
-    // エラー表示用の要素を追加
+    // 繧ｨ繝ｩ繝ｼ陦ｨ遉ｺ逕ｨ縺ｮ隕∫ｴ繧定ｿｽ蜉
     const errorDiv = document.createElement('div');
     errorDiv.className = 'bg-red-100 border border-red-300 text-red-700 px-3 py-2 rounded text-sm';
-    errorDiv.textContent = '画像の読み込みに失敗しました';
+    errorDiv.textContent = '逕ｻ蜒上・隱ｭ縺ｿ霎ｼ縺ｿ縺ｫ螟ｱ謨励＠縺ｾ縺励◆';
     target.parentNode?.appendChild(errorDiv);
   };
 
@@ -223,20 +223,20 @@ const StepEditor: React.FC<StepEditorProps> = ({
     setUploadingImages(prev => ({ ...prev, [stepId]: true }));
     
     try {
-      console.log('🖼️ 画像アップロード開始:', { stepId, fileName: file.name });
+      console.log('名・・逕ｻ蜒上い繝・・繝ｭ繝ｼ繝蛾幕蟋・', { stepId, fileName: file.name });
       
-      // 重複チェック: 同じファイル名の画像が既に存在するかチェック
+      // 驥崎､・メ繧ｧ繝・け: 蜷後§繝輔ぃ繧､繝ｫ蜷阪・逕ｻ蜒上′譌｢縺ｫ蟄伜惠縺吶ｋ縺九メ繧ｧ繝・け
       const stepToUpdate = steps.find(step => step.id === stepId);
       if (stepToUpdate && stepToUpdate.images) {
         const existingImage = (stepToUpdate.images ?? []).find(img => 
           img.fileName === file.name || 
-          img.fileName === file.name.replace(/\.[^/.]+$/, '') // 拡張子を除いた比較
+          img.fileName === file.name.replace(/\.[^/.]+$/, '') // 諡｡蠑ｵ蟄舌ｒ髯､縺・◆豈碑ｼ・
         );
         
         if (existingImage) {
           const confirmReplace = window.confirm(
-            `同じファイル名の画像 "${file.name}" が既に存在します。\n` +
-            `既存の画像を置き換えますか？`
+            `蜷後§繝輔ぃ繧､繝ｫ蜷阪・逕ｻ蜒・"${file.name}" 縺梧里縺ｫ蟄伜惠縺励∪縺吶・n` +
+            `譌｢蟄倥・逕ｻ蜒上ｒ鄂ｮ縺肴鋤縺医∪縺吶°・歔
           );
           
           if (!confirmReplace) {
@@ -244,7 +244,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
             return;
           }
           
-          // 既存の画像を削除
+          // 譌｢蟄倥・逕ｻ蜒上ｒ蜑企勁
           const updatedImages = stepToUpdate.images.filter(img => img.fileName !== existingImage.fileName);
           onStepUpdate(stepId, { images: updatedImages });
         }
@@ -262,12 +262,12 @@ const StepEditor: React.FC<StepEditorProps> = ({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || '画像のアップロードに失敗しました');
+        throw new Error(errorData.error || '逕ｻ蜒上・繧｢繝・・繝ｭ繝ｼ繝峨↓螟ｱ謨励＠縺ｾ縺励◆');
       }
 
       const result = await response.json();
       if (!result.success || !result.imageUrl) {
-        throw new Error('画像URLが返されませんでした');
+        throw new Error('逕ｻ蜒酋RL縺瑚ｿ斐＆繧後∪縺帙ｓ縺ｧ縺励◆');
       }
 
       const newImage: ImageInfo = {
@@ -275,12 +275,12 @@ const StepEditor: React.FC<StepEditorProps> = ({
         fileName: result.imageFileName || result.fileName,
       };
 
-      // 重複画像の場合は通知
+      // 驥崎､・判蜒上・蝣ｴ蜷医・騾夂衍
       if (result.isDuplicate) {
-        console.log('🔄 重複画像を検出、既存ファイルを使用:', result.fileName);
+        console.log('売 驥崎､・判蜒上ｒ讀懷・縲∵里蟄倥ヵ繧｡繧､繝ｫ繧剃ｽｿ逕ｨ:', result.fileName);
       }
 
-      // 画像アップロード処理を、配列に画像を追加するように変更
+      // 逕ｻ蜒上い繝・・繝ｭ繝ｼ繝牙・逅・ｒ縲・・蛻励↓逕ｻ蜒上ｒ霑ｽ蜉縺吶ｋ繧医≧縺ｫ螟画峩
       const currentStepToUpdate = steps.find(step => step.id === stepId);
       if (currentStepToUpdate) {
         const currentImages = currentStepToUpdate.images ?? [];
@@ -288,60 +288,60 @@ const StepEditor: React.FC<StepEditorProps> = ({
           const updatedImages = [...currentImages, newImage];
           onStepUpdate(stepId, { images: updatedImages });
           
-          // 成功通知
+          // 謌仙粥騾夂衍
           const message = result.isDuplicate 
-            ? `重複画像を検出しました。既存の画像 "${result.fileName}" を使用します。`
-            : '画像が正常にアップロードされました';
+            ? `驥崎､・判蜒上ｒ讀懷・縺励∪縺励◆縲よ里蟄倥・逕ｻ蜒・"${result.fileName}" 繧剃ｽｿ逕ｨ縺励∪縺吶Ａ
+            : '逕ｻ蜒上′豁｣蟶ｸ縺ｫ繧｢繝・・繝ｭ繝ｼ繝峨＆繧後∪縺励◆';
           
-          // トースト通知の代わりにコンソールログ
-          console.log('✅ 画像アップロード完了:', message);
+          // 繝医・繧ｹ繝磯夂衍縺ｮ莉｣繧上ｊ縺ｫ繧ｳ繝ｳ繧ｽ繝ｼ繝ｫ繝ｭ繧ｰ
+          console.log('笨・逕ｻ蜒上い繝・・繝ｭ繝ｼ繝牙ｮ御ｺ・', message);
         } else {
-          throw new Error('画像は最大3枚までアップロードできます');
+          throw new Error('逕ｻ蜒上・譛螟ｧ3譫壹∪縺ｧ繧｢繝・・繝ｭ繝ｼ繝峨〒縺阪∪縺・);
         }
       }
 
     } catch (error) {
-      console.error('❌ 画像アップロード失敗:', error);
-      alert(`画像アップロードに失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('笶・逕ｻ蜒上い繝・・繝ｭ繝ｼ繝牙､ｱ謨・', error);
+      alert(`逕ｻ蜒上い繝・・繝ｭ繝ｼ繝峨↓螟ｱ謨励＠縺ｾ縺励◆: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setUploadingImages(prev => ({ ...prev, [stepId]: false }));
     }
   };
 
-  // 画像削除処理を改善
+  // 逕ｻ蜒丞炎髯､蜃ｦ逅・ｒ謾ｹ蝟・
   const handleImageRemove = async (stepId: string, imageIndex: number) => {
-    console.log('🗑️ 画像削除:', { stepId, imageIndex });
+    console.log('卵・・逕ｻ蜒丞炎髯､:', { stepId, imageIndex });
     const stepToUpdate = steps.find(step => step.id === stepId);
     if (stepToUpdate) {
         const newImages = [...(stepToUpdate.images || [])];
         if (imageIndex >= 0 && imageIndex < newImages.length) {
             const imageToRemove = newImages[imageIndex];
             
-            // 削除確認
+            // 蜑企勁遒ｺ隱・
             const confirmDelete = window.confirm(
-                `画像 "${imageToRemove.fileName}" を削除しますか？\n` +
-                `サーバーからファイルが完全に削除され、この操作は元に戻せません。`
+                `逕ｻ蜒・"${imageToRemove.fileName}" 繧貞炎髯､縺励∪縺吶°・歃n` +
+                `繧ｵ繝ｼ繝舌・縺九ｉ繝輔ぃ繧､繝ｫ縺悟ｮ悟・縺ｫ蜑企勁縺輔ｌ縲√％縺ｮ謫堺ｽ懊・蜈・↓謌ｻ縺帙∪縺帙ｓ縲Ａ
             );
             
             if (confirmDelete) {
                 try {
-                    // APIを呼び出してサーバーから画像を削除
+                    // API繧貞他縺ｳ蜃ｺ縺励※繧ｵ繝ｼ繝舌・縺九ｉ逕ｻ蜒上ｒ蜑企勁
                     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/image/${imageToRemove.fileName}`);
 
                     if (!response.ok) {
                         const errorData = await response.json().catch(() => ({}));
-                        throw new Error(errorData.error || 'サーバー上の画像ファイル削除に失敗しました。');
+                        throw new Error(errorData.error || '繧ｵ繝ｼ繝舌・荳翫・逕ｻ蜒上ヵ繧｡繧､繝ｫ蜑企勁縺ｫ螟ｱ謨励＠縺ｾ縺励◆縲・);
                     }
 
-                    // フロントエンドの状態を更新
+                    // 繝輔Ο繝ｳ繝医お繝ｳ繝峨・迥ｶ諷九ｒ譖ｴ譁ｰ
                     newImages.splice(imageIndex, 1);
                     onStepUpdate(stepId, { images: newImages });
-                    console.log('✅ 画像削除完了:', imageToRemove.fileName);
-                    alert(`画像 "${imageToRemove.fileName}" を削除しました。`);
+                    console.log('笨・逕ｻ蜒丞炎髯､螳御ｺ・', imageToRemove.fileName);
+                    alert(`逕ｻ蜒・"${imageToRemove.fileName}" 繧貞炎髯､縺励∪縺励◆縲Ａ);
 
                 } catch (error) {
-                    console.error('❌ 画像削除エラー:', error);
-                    alert(`画像削除に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
+                    console.error('笶・逕ｻ蜒丞炎髯､繧ｨ繝ｩ繝ｼ:', error);
+                    alert(`逕ｻ蜒丞炎髯､縺ｫ螟ｱ謨励＠縺ｾ縺励◆: ${error instanceof Error ? error.message : '荳肴・縺ｪ繧ｨ繝ｩ繝ｼ'}`);
                 }
             }
         }
@@ -368,10 +368,10 @@ const StepEditor: React.FC<StepEditorProps> = ({
     const imageFile = files.find(file => file.type.startsWith('image/'));
     
     if (imageFile) {
-      console.log('🖼️ ドラッグ&ドロップで画像アップロード:', { stepId, fileName: imageFile.name });
+      console.log('名・・繝峨Λ繝・げ&繝峨Ο繝・・縺ｧ逕ｻ蜒上い繝・・繝ｭ繝ｼ繝・', { stepId, fileName: imageFile.name });
       handleImageUpload(stepId, imageFile);
     } else {
-      console.warn('⚠️ ドロップされたファイルに画像が含まれていません');
+      console.warn('笞・・繝峨Ο繝・・縺輔ｌ縺溘ヵ繧｡繧､繝ｫ縺ｫ逕ｻ蜒上′蜷ｫ縺ｾ繧後※縺・∪縺帙ｓ');
     }
   };
 
@@ -391,7 +391,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
         <div className="flex items-center justify-between p-2">
           <div className="flex items-center space-x-4 flex-1">
             <div className="flex items-center space-x-2">
-              <span className="font-medium">{step.title || `ステップ ${step.id}`}</span>
+              <span className="font-medium">{step.title || `繧ｹ繝・ャ繝・${step.id}`}</span>
               <span className="text-xs text-gray-500">({step.type})</span>
             </div>
             {step.description && (
@@ -402,13 +402,13 @@ const StepEditor: React.FC<StepEditorProps> = ({
             {step.images && step.images.length > 0 && (
               <div className="flex items-center space-x-1">
                 <ImageIcon className="w-3 h-3 text-blue-500" />
-                <span className="text-xs text-blue-600">{step.images.length}枚</span>
+                <span className="text-xs text-blue-600">{step.images.length}譫・/span>
               </div>
             )}
             {step.type === 'decision' && step.conditions && step.conditions.length > 0 && (
               <div className="flex items-center space-x-1">
                 <span className="text-xs text-orange-600 bg-orange-100 px-1 rounded">
-                  {step.conditions.length}条件
+                  {step.conditions.length}譚｡莉ｶ
                 </span>
               </div>
             )}
@@ -426,10 +426,10 @@ const StepEditor: React.FC<StepEditorProps> = ({
 
     return (
       <div className="space-y-4" style={{ minHeight: '0px' }}>
-        {/* ステップヘッダー */}
+        {/* 繧ｹ繝・ャ繝励・繝・ム繝ｼ */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <span className="font-medium text-sm text-gray-600">ステップ詳細</span>
+            <span className="font-medium text-sm text-gray-600">繧ｹ繝・ャ繝苓ｩｳ邏ｰ</span>
           </div>
           <div className="flex items-center space-x-2">
             <Button
@@ -444,44 +444,44 @@ const StepEditor: React.FC<StepEditorProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <Label htmlFor={`title-${step.id}`} className="text-base-2x">タイトル</Label>
+            <Label htmlFor={`title-${step.id}`} className="text-base-2x">繧ｿ繧､繝医Ν</Label>
             <Input
               id={`title-${step.id}`}
               value={step.title}
               onChange={(e) => handleStepFieldChange(step.id, 'title', e.target.value)}
-              placeholder="スライドのタイトルを入力"
+              placeholder="繧ｹ繝ｩ繧､繝峨・繧ｿ繧､繝医Ν繧貞・蜉・
               className="text-base-2x h-12"
             />
           </div>
           <div>
-            <Label htmlFor={`description-${step.id}`} className="text-base-2x">説明</Label>
+            <Label htmlFor={`description-${step.id}`} className="text-base-2x">隱ｬ譏・/Label>
             <Input
               id={`description-${step.id}`}
               value={step.description}
               onChange={(e) => handleStepFieldChange(step.id, 'description', e.target.value)}
-              placeholder="スライドの説明を入力"
+              placeholder="繧ｹ繝ｩ繧､繝峨・隱ｬ譏弱ｒ蜈･蜉・
               className="text-base-2x h-12"
             />
           </div>
         </div>
 
         <div>
-          <Label htmlFor={`message-${step.id}`} className="text-base-2x">メッセージ</Label>
+          <Label htmlFor={`message-${step.id}`} className="text-base-2x">繝｡繝・そ繝ｼ繧ｸ</Label>
           <Textarea
             id={`message-${step.id}`}
             value={step.message}
             onChange={(e) => handleStepFieldChange(step.id, 'message', e.target.value)}
-            placeholder="表示するメッセージを入力"
+            placeholder="陦ｨ遉ｺ縺吶ｋ繝｡繝・そ繝ｼ繧ｸ繧貞・蜉・
             rows={3}
             className="text-base-2x min-h-24"
           />
         </div>
 
-        {/* 6. 画像セクションのUIを複数画像対応に全面的に書き換え */}
+        {/* 6. 逕ｻ蜒上そ繧ｯ繧ｷ繝ｧ繝ｳ縺ｮUI繧定､・焚逕ｻ蜒丞ｯｾ蠢懊↓蜈ｨ髱｢逧・↓譖ｸ縺肴鋤縺・*/}
         <div>
-          <Label className="text-base-2x">画像（最大3枚まで）</Label>
+          <Label className="text-base-2x">逕ｻ蜒擾ｼ域怙螟ｧ3譫壹∪縺ｧ・・/Label>
           <p className="text-base-2x text-muted-foreground mt-2">
-            対応形式: JPG, PNG, GIFになります。重複画像は自動的に検出されます。
+            蟇ｾ蠢懷ｽ｢蠑・ JPG, PNG, GIF縺ｫ縺ｪ繧翫∪縺吶る㍾隍・判蜒上・閾ｪ蜍慕噪縺ｫ讀懷・縺輔ｌ縺ｾ縺吶・
           </p>
           <div 
             className="mt-2 p-4 border-2 border-dashed rounded-lg"
@@ -493,7 +493,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
                 <div key={index} className="relative group aspect-video">
                   {(() => {
                     const convertedUrl = convertImageUrl(image.url);
-                    console.log(`🖼️ 画像表示デバッグ [${step.id}][${index}]:`, {
+                    console.log(`名・・逕ｻ蜒剰｡ｨ遉ｺ繝・ヰ繝・げ [${step.id}][${index}]:`, {
                       originalUrl: image.url,
                       convertedUrl: convertedUrl,
                       fileName: image.fileName
@@ -504,7 +504,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
                         alt={image.fileName}
                         className="w-full h-full object-cover rounded-lg border shadow-sm"
                         onError={(e) => {
-                          console.error('❌ 画像読み込みエラー:', {
+                          console.error('笶・逕ｻ蜒剰ｪｭ縺ｿ霎ｼ縺ｿ繧ｨ繝ｩ繝ｼ:', {
                             originalUrl: image.url,
                             convertedUrl: convertedUrl,
                             fileName: image.fileName,
@@ -513,12 +513,12 @@ const StepEditor: React.FC<StepEditorProps> = ({
                           handleImageError(e, image.url);
                         }}
                         onLoad={() => {
-                          console.log('✅ 画像読み込み成功:', {
+                          console.log('笨・逕ｻ蜒剰ｪｭ縺ｿ霎ｼ縺ｿ謌仙粥:', {
                             originalUrl: image.url,
                             convertedUrl: convertedUrl,
                             fileName: image.fileName
                           });
-                          // 画像読み込み成功時にエラーフラグをクリア
+                          // 逕ｻ蜒剰ｪｭ縺ｿ霎ｼ縺ｿ謌仙粥譎ゅ↓繧ｨ繝ｩ繝ｼ繝輔Λ繧ｰ繧偵け繝ｪ繧｢
                           setImageErrors(prev => ({ ...prev, [image.url]: false }));
                         }}
                       />
@@ -528,13 +528,13 @@ const StepEditor: React.FC<StepEditorProps> = ({
                     <div className="absolute inset-0 bg-red-500 bg-opacity-50 flex items-center justify-center rounded-lg">
                       <div className="text-center text-white p-2">
                         <X className="h-8 w-8 mx-auto" />
-                        <p className="text-xs font-bold mt-1">読込失敗</p>
+                        <p className="text-xs font-bold mt-1">隱ｭ霎ｼ螟ｱ謨・/p>
                         <p className="text-xs mt-1">{image.fileName}</p>
                       </div>
                     </div>
                   )}
                   
-                  {/* 画像操作ボタン */}
+                  {/* 逕ｻ蜒乗桃菴懊・繧ｿ繝ｳ */}
                   <div className="absolute top-1 right-1 flex gap-1">
                     <Button
                       type="button"
@@ -542,22 +542,22 @@ const StepEditor: React.FC<StepEditorProps> = ({
                       size="sm"
                       onClick={() => handleImageRemove(step.id, index)}
                       className="h-7 w-7 p-0 rounded-full opacity-80 group-hover:opacity-100 transition-opacity"
-                      title="画像を削除"
+                      title="逕ｻ蜒上ｒ蜑企勁"
                     >
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
                   
-                  {/* 画像情報表示 */}
+                  {/* 逕ｻ蜒乗ュ蝣ｱ陦ｨ遉ｺ */}
                   <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 truncate rounded-b-lg">
                     {image.fileName}
                   </div>
                   
-                  {/* 重複画像の場合は警告表示 */}
+                  {/* 驥崎､・判蜒上・蝣ｴ蜷医・隴ｦ蜻願｡ｨ遉ｺ */}
                   {(step.images ?? []).filter(img => img.fileName === image.fileName).length > 1 && (
                     <div className="absolute top-1 left-1">
                       <div className="bg-yellow-500 text-white text-xs px-1 py-0.5 rounded">
-                        重複
+                        驥崎､・
                       </div>
                     </div>
                   )}
@@ -576,13 +576,13 @@ const StepEditor: React.FC<StepEditorProps> = ({
                       <Upload className="mx-auto h-8 w-8 text-gray-400" />
                     )}
                     <span className="mt-2 block text-sm font-medium text-gray-600">
-                      {uploadingImages[step.id] ? 'アップロード中...' : '画像を追加'}
+                      {uploadingImages[step.id] ? '繧｢繝・・繝ｭ繝ｼ繝我ｸｭ...' : '逕ｻ蜒上ｒ霑ｽ蜉'}
                     </span>
                     <p className="text-xs text-gray-500">
-                      {(step.images?.length || 0)} / 3枚
+                      {(step.images?.length || 0)} / 3譫・
                     </p>
                     <p className="text-xs text-gray-400 mt-1">
-                      ドラッグ&ドロップ対応
+                      繝峨Λ繝・げ&繝峨Ο繝・・蟇ｾ蠢・
                     </p>
                   </div>
                   <input
@@ -596,15 +596,15 @@ const StepEditor: React.FC<StepEditorProps> = ({
               )}
             </div>
             
-            {/* 画像管理のヒント */}
+            {/* 逕ｻ蜒冗ｮ｡逅・・繝偵Φ繝・*/}
             {step.images && step.images.length > 0 && (
               <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded text-base-2x text-blue-700">
-                <p className="font-medium">画像管理のヒント:</p>
+                <p className="font-medium">逕ｻ蜒冗ｮ｡逅・・繝偵Φ繝・</p>
                 <ul className="mt-2 space-y-2">
-                  <li>• 同じファイル名の画像は自動的に重複として検出されます</li>
-                  <li>• 重複画像は既存のファイルを再利用してストレージを節約します</li>
-                  <li>• 画像は最大3枚までアップロードできます</li>
-                  <li>• 削除した画像は元に戻せません</li>
+                  <li>窶｢ 蜷後§繝輔ぃ繧､繝ｫ蜷阪・逕ｻ蜒上・閾ｪ蜍慕噪縺ｫ驥崎､・→縺励※讀懷・縺輔ｌ縺ｾ縺・/li>
+                  <li>窶｢ 驥崎､・判蜒上・譌｢蟄倥・繝輔ぃ繧､繝ｫ繧貞・蛻ｩ逕ｨ縺励※繧ｹ繝医Ξ繝ｼ繧ｸ繧堤ｯ邏・＠縺ｾ縺・/li>
+                  <li>窶｢ 逕ｻ蜒上・譛螟ｧ3譫壹∪縺ｧ繧｢繝・・繝ｭ繝ｼ繝峨〒縺阪∪縺・/li>
+                  <li>窶｢ 蜑企勁縺励◆逕ｻ蜒上・蜈・↓謌ｻ縺帙∪縺帙ｓ</li>
                 </ul>
               </div>
             )}
@@ -614,9 +614,9 @@ const StepEditor: React.FC<StepEditorProps> = ({
         {step.type === 'decision' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label>条件分岐</Label>
+              <Label>譚｡莉ｶ蛻・ｲ・/Label>
               <div className="text-sm text-gray-500">
-                条件数: {step.conditions?.length || 0}/4
+                譚｡莉ｶ謨ｰ: {step.conditions?.length || 0}/4
               </div>
             </div>
             <div className="space-y-2">
@@ -626,7 +626,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
                     <Input
                       value={condition.label}
                       onChange={(e) => onConditionEdit(step.id, conditionIndex, 'label', e.target.value)}
-                      placeholder="条件の説明"
+                      placeholder="譚｡莉ｶ縺ｮ隱ｬ譏・
                       className="mb-2"
                     />
                     <Select
@@ -634,14 +634,14 @@ const StepEditor: React.FC<StepEditorProps> = ({
                       onValueChange={(value) => onConditionEdit(step.id, conditionIndex, 'nextId', value)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="次のスライドを選択" />
+                        <SelectValue placeholder="谺｡縺ｮ繧ｹ繝ｩ繧､繝峨ｒ驕ｸ謚・ />
                       </SelectTrigger>
                       <SelectContent>
                         {steps
                           .filter(s => s.id !== step.id)
                           .map(s => (
                             <SelectItem key={s.id} value={s.id}>
-                              {s.title || `スライド ${s.id}`}
+                              {s.title || `繧ｹ繝ｩ繧､繝・${s.id}`}
                             </SelectItem>
                           ))}
                       </SelectContent>
@@ -666,7 +666,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
                   className="w-full"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  条件を追加
+                  譚｡莉ｶ繧定ｿｽ蜉
                 </Button>
               )}
             </div>
@@ -676,7 +676,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
     );
   };
 
-  // ステップ間の追加ボタンをレンダリング
+  // 繧ｹ繝・ャ繝鈴俣縺ｮ霑ｽ蜉繝懊ち繝ｳ繧偵Ξ繝ｳ繝繝ｪ繝ｳ繧ｰ
   const renderAddStepBetween = (index: number) => {
     if (!onAddStepBetween) return null;
     
@@ -690,7 +690,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
             className="h-6 px-2 text-xs"
           >
             <Plus className="w-3 h-3 mr-1" />
-            通常ステップ
+            騾壼ｸｸ繧ｹ繝・ャ繝・
           </Button>
           <Button
             size="sm"
@@ -699,40 +699,40 @@ const StepEditor: React.FC<StepEditorProps> = ({
             className="h-6 px-2 text-xs"
           >
             <Plus className="w-3 h-3 mr-1" />
-            条件分岐
+            譚｡莉ｶ蛻・ｲ・
           </Button>
         </div>
       </div>
     );
   };
 
-  // アクションボタンコンポーネント
+  // 繧｢繧ｯ繧ｷ繝ｧ繝ｳ繝懊ち繝ｳ繧ｳ繝ｳ繝昴・繝阪Φ繝・
   const ActionButtons = () => (
     <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg border">
       <div className="text-sm text-gray-500">
-        スライド数: {steps.length}
+        繧ｹ繝ｩ繧､繝画焚: {steps.length}
       </div>
       <div className="text-sm text-gray-600">
-        最後のスライドは自動的に終了スライドになります
+        譛蠕後・繧ｹ繝ｩ繧､繝峨・閾ｪ蜍慕噪縺ｫ邨ゆｺ・せ繝ｩ繧､繝峨↓縺ｪ繧翫∪縺・
       </div>
     </div>
   );
 
   return (
     <div className="h-full flex flex-col">
-      {/* デバッグ情報 */}
+      {/* 繝・ヰ繝・げ諠・ｱ */}
       <div className="p-4 bg-yellow-50 border border-yellow-200 rounded mb-4 flex-shrink-0">
-        <p className="text-yellow-800 font-medium">StepEditor デバッグ情報:</p>
-        <p className="text-yellow-700 text-sm">受け取ったsteps.length: {steps.length}</p>
-        <p className="text-yellow-700 text-sm">steps内容: {steps.map(s => `${s.id}:${s.title}`).join(', ')}</p>
-        <p className="text-yellow-700 text-sm">expandedSteps: {Object.keys(expandedSteps).length}個</p>
+        <p className="text-yellow-800 font-medium">StepEditor 繝・ヰ繝・げ諠・ｱ:</p>
+        <p className="text-yellow-700 text-sm">蜿励￠蜿悶▲縺殱teps.length: {steps.length}</p>
+        <p className="text-yellow-700 text-sm">steps蜀・ｮｹ: {steps.map(s => `${s.id}:${s.title}`).join(', ')}</p>
+        <p className="text-yellow-700 text-sm">expandedSteps: {Object.keys(expandedSteps).length}蛟・/p>
       </div>
       
-      {/* スライダーコントロール */}
+      {/* 繧ｹ繝ｩ繧､繝繝ｼ繧ｳ繝ｳ繝医Ο繝ｼ繝ｫ */}
       <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border mb-4 flex-shrink-0">
         <div className="flex items-center space-x-2">
-          <span className="text-sm font-medium text-blue-700">ステップナビゲーション</span>
-          <span className="text-xs text-blue-600">({steps.length}個のステップ)</span>
+          <span className="text-sm font-medium text-blue-700">繧ｹ繝・ャ繝励リ繝薙ご繝ｼ繧ｷ繝ｧ繝ｳ</span>
+          <span className="text-xs text-blue-600">({steps.length}蛟九・繧ｹ繝・ャ繝・</span>
         </div>
         <div className="flex items-center space-x-2">
           <Button
@@ -747,7 +747,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
             }}
             className="h-7 px-2 text-xs"
           >
-            すべて展開
+            縺吶∋縺ｦ螻暮幕
           </Button>
           <Button
             variant="outline"
@@ -755,14 +755,14 @@ const StepEditor: React.FC<StepEditorProps> = ({
             onClick={() => setExpandedSteps({})}
             className="h-7 px-2 text-xs"
           >
-            すべて折りたたみ
+            縺吶∋縺ｦ謚倥ｊ縺溘◆縺ｿ
           </Button>
         </div>
       </div>
 
-      {/* ステップ一覧表示 */}
+      {/* 繧ｹ繝・ャ繝嶺ｸ隕ｧ陦ｨ遉ｺ */}
       <div className="bg-gray-50 rounded-lg p-3 mb-4 flex-shrink-0">
-        <div className="text-sm font-medium text-gray-700 mb-2">ステップ</div>
+        <div className="text-sm font-medium text-gray-700 mb-2">繧ｹ繝・ャ繝・/div>
         <div className="flex flex-wrap gap-2">
           {steps.map((step, index) => (
             <div
@@ -774,13 +774,13 @@ const StepEditor: React.FC<StepEditorProps> = ({
               }`}
               onClick={() => toggleStepExpansion(step.id)}
             >
-              {index + 1}. {step.title || `ステップ ${index + 1}`}
+              {index + 1}. {step.title || `繧ｹ繝・ャ繝・${index + 1}`}
             </div>
           ))}
         </div>
       </div>
 
-      {/* スクロール可能なステップ表示エリア - 更新: 2024-01-XX */}
+      {/* 繧ｹ繧ｯ繝ｭ繝ｼ繝ｫ蜿ｯ閭ｽ縺ｪ繧ｹ繝・ャ繝苓｡ｨ遉ｺ繧ｨ繝ｪ繧｢ - 譖ｴ譁ｰ: 2024-01-XX */}
       <div 
         className="flex-1 overflow-y-auto step-editor-scrollbar" 
         style={{ 
@@ -797,8 +797,8 @@ const StepEditor: React.FC<StepEditorProps> = ({
               <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4 pb-4" style={{ flex: '1 1 auto' }}>
                 {steps.length === 0 ? (
                   <div className="p-8 text-center bg-red-50 border border-red-200 rounded">
-                    <p className="text-red-800 font-medium">⚠️ ステップが空です</p>
-                    <p className="text-red-700 text-sm">steps配列にデータが含まれていません</p>
+                    <p className="text-red-800 font-medium">笞・・繧ｹ繝・ャ繝励′遨ｺ縺ｧ縺・/p>
+                    <p className="text-red-700 text-sm">steps驟榊・縺ｫ繝・・繧ｿ縺悟性縺ｾ繧後※縺・∪縺帙ｓ</p>
                   </div>
                 ) : (
                   steps.map((step, index) => (
@@ -829,7 +829,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
                                 onClick={() => onStepDelete(step.id)}
                               >
                                 <Trash2 className="h-4 w-4 mr-2" />
-                                スライドを削除
+                                繧ｹ繝ｩ繧､繝峨ｒ蜑企勁
                               </Button>
                             </div>
                           </Card>
@@ -837,7 +837,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
                       )}
                     </Draggable>
                     
-                    {/* ステップ間に追加ボタンを表示（最後のステップ以外） */}
+                    {/* 繧ｹ繝・ャ繝鈴俣縺ｫ霑ｽ蜉繝懊ち繝ｳ繧定｡ｨ遉ｺ・域怙蠕後・繧ｹ繝・ャ繝嶺ｻ･螟厄ｼ・*/}
                     {index < steps.length - 1 && renderAddStepBetween(index)}
                   </div>
                 ))
@@ -849,19 +849,19 @@ const StepEditor: React.FC<StepEditorProps> = ({
         </DragDropContext>
       </div>
       
-      {/* 保存・キャンセルボタン */}
+      {/* 菫晏ｭ倥・繧ｭ繝｣繝ｳ繧ｻ繝ｫ繝懊ち繝ｳ */}
       {onSave && onCancel && (
         <div className="flex justify-end gap-3 pt-4 border-t bg-white mt-4 flex-shrink-0">
           <Button
             variant="outline"
             onClick={onCancel}
           >
-            キャンセル
+            繧ｭ繝｣繝ｳ繧ｻ繝ｫ
           </Button>
           <Button
             onClick={onSave}
           >
-            保存
+            菫晏ｭ・
           </Button>
         </div>
       )}

@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+﻿import { Link, useLocation } from "react-router-dom";
 import { cn } from "../../lib/utils";
 import { Button } from "../../components/ui/button";
 import { Tabs as TabsPrimitive, TabsList, TabsTrigger } from "../../components/ui/tabs";
@@ -18,35 +18,35 @@ export function Tabs() {
   const currentPath = location.pathname;
   const { user } = useAuth();
 
-  // 管理者判定を無効化（全タブ表示）
+  // 邂｡逅・・愛螳壹ｒ辟｡蜉ｹ蛹厄ｼ亥・繧ｿ繝冶｡ｨ遉ｺ・・
   const isAdmin = true;
 
   const tabs: TabItem[] = [
     {
-      title: "応急処置サポート",
+      title: "蠢懈･蜃ｦ鄂ｮ繧ｵ繝昴・繝・,
       path: "/chat",
       icon: <MessageSquare className="mr-2 h-5 w-5 text-blue-600" />,
       className: "text-blue-600 font-bold text-lg border border-blue-300 rounded-md bg-blue-50",
     },
     {
-      title: "履歴管理",
+      title: "螻･豁ｴ邂｡逅・,
       path: "/history",
       icon: <History className="mr-2 h-4 w-4" />,
     },
     {
-      title: "基礎データ管理",
+      title: "蝓ｺ遉弱ョ繝ｼ繧ｿ邂｡逅・,
       path: "/base-data",
       icon: <Wrench className="mr-2 h-4 w-4" />,
       adminOnly: false,
     },
     {
-      title: "応急処置データ管理",
+      title: "蠢懈･蜃ｦ鄂ｮ繝・・繧ｿ邂｡逅・,
       path: "/troubleshooting",
       icon: <FileText className="mr-2 h-4 w-4" />,
       adminOnly: true,
     },
     {
-      title: "設定",
+      title: "險ｭ螳・,
       path: "/settings",
       icon: <Settings className="mr-2 h-4 w-4" />,
     },

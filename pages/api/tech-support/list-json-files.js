@@ -1,4 +1,4 @@
-"use strict";
+﻿"use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -8,13 +8,13 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 async function handler(req, res) {
     try {
-        // 正しいknowledge-base/jsonディレクトリのパスを設定
+        // 豁｣縺励＞knowledge-base/json繝・ぅ繝ｬ繧ｯ繝医Μ縺ｮ繝代せ繧定ｨｭ螳・
         const metadataDir = path_1.default.join(process.cwd(), 'knowledge-base', 'json');
-        // ディレクトリが存在しない場合は作成
+        // 繝・ぅ繝ｬ繧ｯ繝医Μ縺悟ｭ伜惠縺励↑縺・ｴ蜷医・菴懈・
         if (!fs_1.default.existsSync(metadataDir)) {
             fs_1.default.mkdirSync(metadataDir, { recursive: true });
         }
-        // JSONファイルの一覧を取得（実際に存在するファイルのみ）
+        // JSON繝輔ぃ繧､繝ｫ縺ｮ荳隕ｧ繧貞叙蠕暦ｼ亥ｮ滄圀縺ｫ蟄伜惠縺吶ｋ繝輔ぃ繧､繝ｫ縺ｮ縺ｿ・・
         const files = fs_1.default.readdirSync(metadataDir)
             .filter(file => file.endsWith('_metadata.json'))
             .filter(file => {
@@ -22,7 +22,7 @@ async function handler(req, res) {
             return fs_1.default.existsSync(filePath);
         })
             .sort((a, b) => {
-            // 最新のファイルを先頭に
+            // 譛譁ｰ縺ｮ繝輔ぃ繧､繝ｫ繧貞・鬆ｭ縺ｫ
             const statA = fs_1.default.statSync(path_1.default.join(metadataDir, a));
             const statB = fs_1.default.statSync(path_1.default.join(metadataDir, b));
             return statB.mtime.getTime() - statA.mtime.getTime();

@@ -1,4 +1,4 @@
-import * as express from 'express';
+﻿import * as express from 'express';
 import OpenAI from 'openai';
 import { z } from 'zod';
 import fs from 'fs';
@@ -12,7 +12,7 @@ import { exportFileManager } from '../lib/export-file-manager.js';
 import { processOpenAIRequest } from '../lib/openai.js';
 import { insertMessageSchema, insertMediaSchema, insertChatSchema, messages } from '../../shared/schema.js';
 
-// セッション型の拡張
+// 繧ｻ繝・す繝ｧ繝ｳ蝙九・諡｡蠑ｵ
 interface SessionData {
   userId?: string;
   userRole?: string;
@@ -26,10 +26,10 @@ declare module 'express-session' {
 }
 
 export function registerChatRoutes(app: any): void {
-  console.log('📡 チャットルートを登録中...');
+  console.log('藤 繝√Ε繝・ヨ繝ｫ繝ｼ繝医ｒ逋ｻ骭ｲ荳ｭ...');
 
   const requireAuth = async (req: Request, res: Response, next: Function) => {
-    console.log('🔐 認証チェック:', {
+    console.log('柏 隱崎ｨｼ繝√ぉ繝・け:', {
       hasSession: !!(req as any).session,
       userId: (req as any).session?.userId,
       sessionId: (req as any).session?.id,
@@ -37,43 +37,43 @@ export function registerChatRoutes(app: any): void {
       method: req.method
     });
     
-    // 開発環境では認証を一時的に無効化
+    // 髢狗匱迺ｰ蠅・〒縺ｯ隱崎ｨｼ繧剃ｸ譎ら噪縺ｫ辟｡蜉ｹ蛹・
     if (process.env.NODE_ENV === 'development') {
-      console.log('🔓 開発環境: 認証をスキップ');
-      // セッションにダミーユーザーIDを設定
+      console.log('箔 髢狗匱迺ｰ蠅・ 隱崎ｨｼ繧偵せ繧ｭ繝・・');
+      // 繧ｻ繝・す繝ｧ繝ｳ縺ｫ繝繝溘・繝ｦ繝ｼ繧ｶ繝ｼID繧定ｨｭ螳・
       if (!(req as any).session?.userId) {
         (req as any).session = (req as any).session || {};
         (req as any).session.userId = 'dev-user-123';
-        console.log('🔓 ダミーユーザーIDを設定:', (req as any).session.userId);
+        console.log('箔 繝繝溘・繝ｦ繝ｼ繧ｶ繝ｼID繧定ｨｭ螳・', (req as any).session.userId);
       }
       next();
       return;
     }
     
-    // req.sessionの型エラーを型アサーションで回避
+    // req.session縺ｮ蝙九お繝ｩ繝ｼ繧貞梛繧｢繧ｵ繝ｼ繧ｷ繝ｧ繝ｳ縺ｧ蝗樣∩
     if (!(req as any).session?.userId) {
-      console.log('❌ 認証失敗: ユーザーIDが見つかりません');
+      console.log('笶・隱崎ｨｼ螟ｱ謨・ 繝ｦ繝ｼ繧ｶ繝ｼID縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ');
       return (res as any).status(401).json({ 
         message: "Authentication required",
         details: "No user ID found in session"
       });
     }
     
-    console.log('✅ 認証成功:', (req as any).session.userId);
+    console.log('笨・隱崎ｨｼ謌仙粥:', (req as any).session.userId);
     next();
   };
 
-  // チャット一覧取得
+  // 繝√Ε繝・ヨ荳隕ｧ蜿門ｾ・
   app.get("/api/chats", requireAuth, async (req, res) => {
-    // 残りのreq.sessionの型エラーを型アサーションで回避
+    // 谿九ｊ縺ｮreq.session縺ｮ蝙九お繝ｩ繝ｼ繧貞梛繧｢繧ｵ繝ｼ繧ｷ繝ｧ繝ｳ縺ｧ蝗樣∩
     const chats = await storage.getChatsForUser(String((req as any).session.userId ?? ''));
     return res.json(chats);
   });
 
-  // チャット作成
+  // 繝√Ε繝・ヨ菴懈・
   app.post("/api/chats", requireAuth, async (req, res) => {
     try {
-      // チャット作成時のreq.session
+      // 繝√Ε繝・ヨ菴懈・譎ゅ・req.session
       const chatData = insertChatSchema.parse({
         ...req.body,
         userId: String((req as any).session.userId ?? '')
@@ -88,20 +88,20 @@ export function registerChatRoutes(app: any): void {
     }
   });
 
-  // チャット取得
+  // 繝√Ε繝・ヨ蜿門ｾ・
   app.get("/api/chats/:id", requireAuth, async (req, res) => {
     const chat = await storage.getChat(req.params.id);
     if (!chat) {
       return res.status(404).json({ message: "Chat not found" });
     }
-    // チャット取得時のreq.session
+    // 繝√Ε繝・ヨ蜿門ｾ玲凾縺ｮreq.session
     if (String(chat.userId) !== String((req as any).session.userId)) {
       return res.status(403).json({ message: "Forbidden" });
     }
     return res.json(chat);
   });
 
-  // チャットメッセージ取得
+  // 繝√Ε繝・ヨ繝｡繝・そ繝ｼ繧ｸ蜿門ｾ・
   app.get("/api/chats/:id/messages", requireAuth, async (req, res) => {
     const chatId = req.params.id;
     const clearCache = req.query.clear === 'true';
@@ -109,7 +109,7 @@ export function registerChatRoutes(app: any): void {
     if (!chat) {
       return res.status(404).json({ message: "Chat not found" });
     }
-    // チャットメッセージ取得時のreq.session
+    // 繝√Ε繝・ヨ繝｡繝・そ繝ｼ繧ｸ蜿門ｾ玲凾縺ｮreq.session
     if (String(chat.userId) !== String((req as any).session.userId)) {
       return res.status(403).json({ message: "Forbidden" });
     }
@@ -128,7 +128,7 @@ export function registerChatRoutes(app: any): void {
     return res.json(messagesWithMedia);
   });
 
-  // システムメッセージ送信
+  // 繧ｷ繧ｹ繝・Β繝｡繝・そ繝ｼ繧ｸ騾∽ｿ｡
   app.post("/api/chats/:id/messages/system", requireAuth, async (req, res) => {
     try {
       const chatId = req.params.id;
@@ -137,7 +137,7 @@ export function registerChatRoutes(app: any): void {
       if (!chat) {
         return res.status(404).json({ message: "Chat not found" });
       }
-      console.log(`システムメッセージ送信: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${(req as any).session.userId}`);
+      console.log(`繧ｷ繧ｹ繝・Β繝｡繝・そ繝ｼ繧ｸ騾∽ｿ｡: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${(req as any).session.userId}`);
       const message = await storage.createMessage({
         chatId,
         content,
@@ -146,26 +146,26 @@ export function registerChatRoutes(app: any): void {
       });
       return res.json(message);
     } catch (error) {
-      console.error("システムメッセージ送信エラー:", error);
+      console.error("繧ｷ繧ｹ繝・Β繝｡繝・そ繝ｼ繧ｸ騾∽ｿ｡繧ｨ繝ｩ繝ｼ:", error);
       return res.status(500).json({ message: "Error creating system message" });
     }
   });
 
-  // メッセージ送信
+  // 繝｡繝・そ繝ｼ繧ｸ騾∽ｿ｡
   app.post("/api/chats/:id/messages", requireAuth, async (req, res) => {
     try {
       const chatId = req.params.id;
       const { content, useOnlyKnowledgeBase = true, usePerplexity = false } = req.body;
       const userId = String((req as any).session.userId ?? '');
       
-      // チャットIDのバリデーション
+      // 繝√Ε繝・ヨID縺ｮ繝舌Μ繝・・繧ｷ繝ｧ繝ｳ
       if (!chatId || chatId === '1') {
         return res.status(400).json({ 
           message: "Invalid chat ID. Please use a valid UUID format." 
         });
       }
       
-      // UUID形式の簡易チェック
+      // UUID蠖｢蠑上・邁｡譏薙メ繧ｧ繝・け
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       if (!uuidRegex.test(chatId)) {
         return res.status(400).json({ 
@@ -173,8 +173,8 @@ export function registerChatRoutes(app: any): void {
         });
       }
       
-      // デバッグログを追加
-      console.log('📥 メッセージ送信リクエスト受信:', {
+      // 繝・ヰ繝・げ繝ｭ繧ｰ繧定ｿｽ蜉
+      console.log('踏 繝｡繝・そ繝ｼ繧ｸ騾∽ｿ｡繝ｪ繧ｯ繧ｨ繧ｹ繝亥女菫｡:', {
         chatId,
         content: content?.substring(0, 100) + '...',
         contentLength: content?.length,
@@ -188,21 +188,21 @@ export function registerChatRoutes(app: any): void {
       
       let chat = await storage.getChat(chatId);
       if (!chat) {
-        console.log(`メッセージ送信時: チャットID ${chatId} が存在しないため、新規作成します`);
+        console.log(`繝｡繝・そ繝ｼ繧ｸ騾∽ｿ｡譎・ 繝√Ε繝・ヨID ${chatId} 縺悟ｭ伜惠縺励↑縺・◆繧√∵眠隕丈ｽ懈・縺励∪縺兪);
         try {
           chat = await storage.createChat({
             id: chatId,
             userId: userId,
-            title: "新しいチャット"
+            title: "譁ｰ縺励＞繝√Ε繝・ヨ"
           });
-          console.log(`メッセージ送信時: チャットID ${chatId} を作成しました`);
+          console.log(`繝｡繝・そ繝ｼ繧ｸ騾∽ｿ｡譎・ 繝√Ε繝・ヨID ${chatId} 繧剃ｽ懈・縺励∪縺励◆`);
         } catch (createError) {
-          console.error("メッセージ送信時のチャット作成エラー:", createError);
+          console.error("繝｡繝・そ繝ｼ繧ｸ騾∽ｿ｡譎ゅ・繝√Ε繝・ヨ菴懈・繧ｨ繝ｩ繝ｼ:", createError);
           return res.status(500).json({ message: "Failed to create chat" });
         }
       }
-      console.log(`チャットアクセス: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${(req as any).session.userId}`);
-      console.log(`設定: ナレッジベースのみを使用=${useOnlyKnowledgeBase}`);
+      console.log(`繝√Ε繝・ヨ繧｢繧ｯ繧ｻ繧ｹ: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${(req as any).session.userId}`);
+      console.log(`險ｭ螳・ 繝翫Ξ繝・ず繝吶・繧ｹ縺ｮ縺ｿ繧剃ｽｿ逕ｨ=${useOnlyKnowledgeBase}`);
       
       const messageData = insertMessageSchema.parse({
         chatId: chatId,
@@ -216,38 +216,38 @@ export function registerChatRoutes(app: any): void {
         try {
           return await processOpenAIRequest(content, useKnowledgeBase);
         } catch (error) {
-          console.error('OpenAI処理エラー:', error);
-          return 'AI応答の生成に失敗しました。';
+          console.error('OpenAI蜃ｦ逅・お繝ｩ繝ｼ:', error);
+          return 'AI蠢懃ｭ斐・逕滓・縺ｫ螟ｱ謨励＠縺ｾ縺励◆縲・;
         }
       };
 
-      // AIからの応答を取得
+      // AI縺九ｉ縺ｮ蠢懃ｭ斐ｒ蜿門ｾ・
       const aiResponse = await getAIResponse(content, useOnlyKnowledgeBase);
 
-      // 応答の型チェックとサニタイズ
+      // 蠢懃ｭ斐・蝙九メ繧ｧ繝・け縺ｨ繧ｵ繝九ち繧､繧ｺ
       let responseContent: string;
       if (typeof aiResponse === 'string') {
         responseContent = aiResponse;
       } else if (aiResponse && typeof aiResponse === 'object') {
-        // オブジェクト型の場合、適切なプロパティから文字列を抽出
+        // 繧ｪ繝悶ず繧ｧ繧ｯ繝亥梛縺ｮ蝣ｴ蜷医・←蛻・↑繝励Ο繝代ユ繧｣縺九ｉ譁・ｭ怜・繧呈歓蜃ｺ
         responseContent = aiResponse.content || aiResponse.text || aiResponse.message || JSON.stringify(aiResponse);
       } else {
-        responseContent = 'AI応答の処理中にエラーが発生しました。';
-        console.error('サーバー側AIレスポンス検証: 不正な型', { 
+        responseContent = 'AI蠢懃ｭ斐・蜃ｦ逅・ｸｭ縺ｫ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆縲・;
+        console.error('繧ｵ繝ｼ繝舌・蛛ｴAI繝ｬ繧ｹ繝昴Φ繧ｹ讀懆ｨｼ: 荳肴ｭ｣縺ｪ蝙・, { 
           type: typeof aiResponse, 
           value: aiResponse 
         });
       }
 
-      console.log('📤 クライアントに送信するAIレスポンス:', {
+      console.log('豆 繧ｯ繝ｩ繧､繧｢繝ｳ繝医↓騾∽ｿ｡縺吶ｋAI繝ｬ繧ｹ繝昴Φ繧ｹ:', {
         type: typeof responseContent,
         content: responseContent.substring(0, 100) + '...',
         length: responseContent.length,
         isValidString: typeof responseContent === 'string' && responseContent.trim().length > 0
       });
       
-      // AIメッセージを保存
-      // db.insert(messages).values を型アサーションで回避
+      // AI繝｡繝・そ繝ｼ繧ｸ繧剃ｿ晏ｭ・
+      // db.insert(messages).values 繧貞梛繧｢繧ｵ繝ｼ繧ｷ繝ｧ繝ｳ縺ｧ蝗樣∩
       const [aiMessage] = await (db as any).insert(messages).values({
         chatId: chatId,
         senderId: 'ai',
@@ -256,24 +256,24 @@ export function registerChatRoutes(app: any): void {
         createdAt: new Date()
       }).returning();
 
-      // クライアントに送信するレスポンス構造を統一化
+      // 繧ｯ繝ｩ繧､繧｢繝ｳ繝医↓騾∽ｿ｡縺吶ｋ繝ｬ繧ｹ繝昴Φ繧ｹ讒矩繧堤ｵｱ荳蛹・
       const responseMessage = {
         ...aiMessage,
-        content: responseContent, // メイン表示用
-        text: responseContent,    // 互換性用（contentと同じ値）
+        content: responseContent, // 繝｡繧､繝ｳ陦ｨ遉ｺ逕ｨ
+        text: responseContent,    // 莠呈鋤諤ｧ逕ｨ・・ontent縺ｨ蜷後§蛟､・・
         role: 'assistant' as const,
         timestamp: aiMessage.createdAt || new Date()
       };
 
-      console.log('📤 最終レスポンス:', {
+      console.log('豆 譛邨ゅΞ繧ｹ繝昴Φ繧ｹ:', {
         id: responseMessage.id,
         contentType: typeof responseMessage.content,
         contentPreview: responseMessage.content.substring(0, 100) + '...',
         hasValidContent: !!responseMessage.content && responseMessage.content.trim().length > 0
       });
 
-      // レスポンス送信前の最終確認ログ
-      console.log('📤 レスポンス送信:', {
+      // 繝ｬ繧ｹ繝昴Φ繧ｹ騾∽ｿ｡蜑阪・譛邨ら｢ｺ隱阪Ο繧ｰ
+      console.log('豆 繝ｬ繧ｹ繝昴Φ繧ｹ騾∽ｿ｡:', {
         statusCode: 200,
         responseType: typeof responseMessage,
         responseKeys: Object.keys(responseMessage),
@@ -284,7 +284,7 @@ export function registerChatRoutes(app: any): void {
     } catch (error) {
       console.error("Error sending message:", error);
       
-      // エラーの詳細情報をログに出力
+      // 繧ｨ繝ｩ繝ｼ縺ｮ隧ｳ邏ｰ諠・ｱ繧偵Ο繧ｰ縺ｫ蜃ｺ蜉・
       if (error instanceof Error) {
         console.error("Error details:", {
           name: error.name,
@@ -295,7 +295,7 @@ export function registerChatRoutes(app: any): void {
         console.error("Unknown error type:", typeof error, error);
       }
       
-      // エラーの詳細情報を返す
+      // 繧ｨ繝ｩ繝ｼ縺ｮ隧ｳ邏ｰ諠・ｱ繧定ｿ斐☆
       let errorMessage = "Failed to send message";
       let statusCode = 500;
       
@@ -307,12 +307,12 @@ export function registerChatRoutes(app: any): void {
         }
       }
       
-      // 特定のエラーに応じてステータスコードを調整
-      if (errorMessage.includes('認証') || errorMessage.includes('auth')) {
+      // 迚ｹ螳壹・繧ｨ繝ｩ繝ｼ縺ｫ蠢懊§縺ｦ繧ｹ繝・・繧ｿ繧ｹ繧ｳ繝ｼ繝峨ｒ隱ｿ謨ｴ
+      if (errorMessage.includes('隱崎ｨｼ') || errorMessage.includes('auth')) {
         statusCode = 401;
-      } else if (errorMessage.includes('権限') || errorMessage.includes('permission')) {
+      } else if (errorMessage.includes('讓ｩ髯・) || errorMessage.includes('permission')) {
         statusCode = 403;
-      } else if (errorMessage.includes('見つかりません') || errorMessage.includes('not found')) {
+      } else if (errorMessage.includes('隕九▽縺九ｊ縺ｾ縺帙ｓ') || errorMessage.includes('not found')) {
         statusCode = 404;
       }
       
@@ -323,7 +323,7 @@ export function registerChatRoutes(app: any): void {
     }
   });
 
-  // メディア関連ルート
+  // 繝｡繝・ぅ繧｢髢｢騾｣繝ｫ繝ｼ繝・
   app.post("/api/media", requireAuth, async (req, res) => {
     try {
       const mediaData = insertMediaSchema.parse(req.body);
@@ -337,26 +337,26 @@ export function registerChatRoutes(app: any): void {
     }
   });
 
-  // チャット履歴をクリアするAPI
+  // 繝√Ε繝・ヨ螻･豁ｴ繧偵け繝ｪ繧｢縺吶ｋAPI
   app.post("/api/chats/:id/clear", requireAuth, async (req, res) => {
     try {
       const chatId = req.params.id;
       const { force, clearAll } = req.body;
-      console.log(`チャット履歴クリア開始: chatId=${chatId}, force=${force}, clearAll=${clearAll}`);
+      console.log(`繝√Ε繝・ヨ螻･豁ｴ繧ｯ繝ｪ繧｢髢句ｧ・ chatId=${chatId}, force=${force}, clearAll=${clearAll}`);
       const chat = await storage.getChat(chatId);
       if (!chat) {
         return res.status(404).json({ message: "Chat not found" });
       }
-      console.log(`チャット履歴クリア: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${(req as any).session.userId}`);
+      console.log(`繝√Ε繝・ヨ螻･豁ｴ繧ｯ繝ｪ繧｢: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${(req as any).session.userId}`);
       let deletedMessageCount = 0;
       let deletedMediaCount = 0;
       try {
-        // まず現在のメッセージ数を確認
+        // 縺ｾ縺夂樟蝨ｨ縺ｮ繝｡繝・そ繝ｼ繧ｸ謨ｰ繧堤｢ｺ隱・
         const beforeMessages = await storage.getMessagesForChat(chatId);
         const beforeCount = beforeMessages.length;
-        console.log(`削除前のメッセージ数: ${beforeCount}`);
+        console.log(`蜑企勁蜑阪・繝｡繝・そ繝ｼ繧ｸ謨ｰ: ${beforeCount}`);
 
-        // 各メッセージに関連するメディアも削除
+        // 蜷・Γ繝・そ繝ｼ繧ｸ縺ｫ髢｢騾｣縺吶ｋ繝｡繝・ぅ繧｢繧ょ炎髯､
         for (const message of beforeMessages) {
           try {
             const media = await storage.getMediaForMessage(message.id);
@@ -365,56 +365,56 @@ export function registerChatRoutes(app: any): void {
               deletedMediaCount++;
             }
           } catch (mediaError) {
-            console.error(`メディア削除エラー (messageId: ${message.id}):`, mediaError);
+            console.error(`繝｡繝・ぅ繧｢蜑企勁繧ｨ繝ｩ繝ｼ (messageId: ${message.id}):`, mediaError);
           }
         }
 
-        // データベースからメッセージを完全削除
+        // 繝・・繧ｿ繝吶・繧ｹ縺九ｉ繝｡繝・そ繝ｼ繧ｸ繧貞ｮ悟・蜑企勁
         try {
           const result = await storage.clearChatMessages(chatId);
-          console.log(`データベース削除結果:`, result);
+          console.log(`繝・・繧ｿ繝吶・繧ｹ蜑企勁邨先棡:`, result);
         } catch (clearError) {
-          console.error('clearChatMessages実行エラー:', clearError);
-          // 個別削除にフォールバック
+          console.error('clearChatMessages螳溯｡後お繝ｩ繝ｼ:', clearError);
+          // 蛟句挨蜑企勁縺ｫ繝輔か繝ｼ繝ｫ繝舌ャ繧ｯ
         }
 
-        // 削除後のメッセージ数を確認
+        // 蜑企勁蠕後・繝｡繝・そ繝ｼ繧ｸ謨ｰ繧堤｢ｺ隱・
         const afterMessages = await storage.getMessagesForChat(chatId);
         const afterCount = afterMessages.length;
         deletedMessageCount = beforeCount - afterCount;
 
-        console.log(`削除後のメッセージ数: ${afterCount}, 削除されたメッセージ数: ${deletedMessageCount}`);
+        console.log(`蜑企勁蠕後・繝｡繝・そ繝ｼ繧ｸ謨ｰ: ${afterCount}, 蜑企勁縺輔ｌ縺溘Γ繝・そ繝ｼ繧ｸ謨ｰ: ${deletedMessageCount}`);
 
         if (afterCount > 0) {
-          console.warn(`警告: ${afterCount}件のメッセージが残っています`);
+          console.warn(`隴ｦ蜻・ ${afterCount}莉ｶ縺ｮ繝｡繝・そ繝ｼ繧ｸ縺梧ｮ九▲縺ｦ縺・∪縺兪);
 
-          // 強制削除または残存メッセージの個別削除
+          // 蠑ｷ蛻ｶ蜑企勁縺ｾ縺溘・谿句ｭ倥Γ繝・そ繝ｼ繧ｸ縺ｮ蛟句挨蜑企勁
           if (force || clearAll) {
-            console.log('強制削除モードで残存メッセージを個別削除します');
+            console.log('蠑ｷ蛻ｶ蜑企勁繝｢繝ｼ繝峨〒谿句ｭ倥Γ繝・そ繝ｼ繧ｸ繧貞句挨蜑企勁縺励∪縺・);
             for (const remainingMessage of afterMessages) {
               try {
                 // await storage.deleteMessage(remainingMessage.id);
                 deletedMessageCount++;
               } catch (individualDeleteError) {
-                console.error(`個別削除エラー (messageId: ${remainingMessage.id}):`, individualDeleteError);
+                console.error(`蛟句挨蜑企勁繧ｨ繝ｩ繝ｼ (messageId: ${remainingMessage.id}):`, individualDeleteError);
               }
             }
           }
         }
 
       } catch (dbError) {
-        console.error(`データベース削除エラー:`, dbError);
+        console.error(`繝・・繧ｿ繝吶・繧ｹ蜑企勁繧ｨ繝ｩ繝ｼ:`, dbError);
         return res.status(500).json({ 
           message: "Database deletion failed",
           error: String((dbError as Error).message) 
         });
       }
 
-      // 最終確認
+      // 譛邨ら｢ｺ隱・
       const finalMessages = await storage.getMessagesForChat(chatId);
       const finalCount = finalMessages.length;
 
-      console.log(`チャット履歴クリア完了: chatId=${chatId}, 削除メッセージ数=${deletedMessageCount}, 削除メディア数=${deletedMediaCount}, 最終メッセージ数=${finalCount}`);
+      console.log(`繝√Ε繝・ヨ螻･豁ｴ繧ｯ繝ｪ繧｢螳御ｺ・ chatId=${chatId}, 蜑企勁繝｡繝・そ繝ｼ繧ｸ謨ｰ=${deletedMessageCount}, 蜑企勁繝｡繝・ぅ繧｢謨ｰ=${deletedMediaCount}, 譛邨ゅΓ繝・そ繝ｼ繧ｸ謨ｰ=${finalCount}`);
 
       return res.json({ 
         cleared: true,
@@ -433,24 +433,24 @@ export function registerChatRoutes(app: any): void {
     }
   });
 
-  // 履歴送信のためのAPI（従来の形式）
+  // 螻･豁ｴ騾∽ｿ｡縺ｮ縺溘ａ縺ｮAPI・亥ｾ捺擂縺ｮ蠖｢蠑擾ｼ・
   app.post("/api/chats/:id/export", requireAuth, async (req, res) => {
     try {
       const userId = (req as any).session.userId!;
       const chatId = req.params.id;
       const { lastExportTimestamp } = req.body;
 
-      console.log('チャットエクスポートリクエスト受信:', {
+      console.log('繝√Ε繝・ヨ繧ｨ繧ｯ繧ｹ繝昴・繝医Μ繧ｯ繧ｨ繧ｹ繝亥女菫｡:', {
         chatId,
         userId,
         lastExportTimestamp
       });
 
-      // チャットIDの形式をチェック（UUID形式かどうか）
+      // 繝√Ε繝・ヨID縺ｮ蠖｢蠑上ｒ繝√ぉ繝・け・・UID蠖｢蠑上°縺ｩ縺・°・・
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       if (!uuidRegex.test(chatId)) {
-        console.warn('無効なチャットID形式:', chatId);
-        // UUID形式でない場合は、新しいチャットとして処理
+        console.warn('辟｡蜉ｹ縺ｪ繝√Ε繝・ヨID蠖｢蠑・', chatId);
+        // UUID蠖｢蠑上〒縺ｪ縺・ｴ蜷医・縲∵眠縺励＞繝√Ε繝・ヨ縺ｨ縺励※蜃ｦ逅・
         return res.json({ 
           success: true, 
           exportTimestamp: new Date(),
@@ -459,13 +459,13 @@ export function registerChatRoutes(app: any): void {
         });
       }
 
-      // チャットの存在確認（エラーをキャッチ）
+      // 繝√Ε繝・ヨ縺ｮ蟄伜惠遒ｺ隱搾ｼ医お繝ｩ繝ｼ繧偵く繝｣繝・メ・・
       let chat = null;
       try {
         chat = await storage.getChat(chatId);
       } catch (chatError) {
-        console.warn('チャット取得エラー（新規チャットとして処理）:', chatError);
-        // チャットが存在しない場合は新規チャットとして処理
+        console.warn('繝√Ε繝・ヨ蜿門ｾ励お繝ｩ繝ｼ・域眠隕上メ繝｣繝・ヨ縺ｨ縺励※蜃ｦ逅・ｼ・', chatError);
+        // 繝√Ε繝・ヨ縺悟ｭ伜惠縺励↑縺・ｴ蜷医・譁ｰ隕上メ繝｣繝・ヨ縺ｨ縺励※蜃ｦ逅・
         return res.json({ 
           success: true, 
           exportTimestamp: new Date(),
@@ -475,7 +475,7 @@ export function registerChatRoutes(app: any): void {
       }
 
       if (!chat) {
-        console.log('チャットが見つかりません（新規チャットとして処理）:', chatId);
+        console.log('繝√Ε繝・ヨ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ・域眠隕上メ繝｣繝・ヨ縺ｨ縺励※蜃ｦ逅・ｼ・', chatId);
         return res.json({ 
           success: true, 
           exportTimestamp: new Date(),
@@ -484,13 +484,13 @@ export function registerChatRoutes(app: any): void {
         });
       }
 
-      // データベースからメッセージを取得する代わりに、ファイルベースの保存のみ
+      // 繝・・繧ｿ繝吶・繧ｹ縺九ｉ繝｡繝・そ繝ｼ繧ｸ繧貞叙蠕励☆繧倶ｻ｣繧上ｊ縺ｫ縲√ヵ繧｡繧､繝ｫ繝吶・繧ｹ縺ｮ菫晏ｭ倥・縺ｿ
       const messages = [];
       const exportTimestamp = new Date();
-      console.log('チャットエクスポート処理（ファイルベース）');
+      console.log('繝√Ε繝・ヨ繧ｨ繧ｯ繧ｹ繝昴・繝亥・逅・ｼ医ヵ繧｡繧､繝ｫ繝吶・繧ｹ・・);
 
-      // ファイルベースのエクスポートのみ（データベース処理は不要）
-      console.log(`チャット ${chatId} のエクスポート処理完了（ファイルベース）`);
+      // 繝輔ぃ繧､繝ｫ繝吶・繧ｹ縺ｮ繧ｨ繧ｯ繧ｹ繝昴・繝医・縺ｿ・医ョ繝ｼ繧ｿ繝吶・繧ｹ蜃ｦ逅・・荳崎ｦ・ｼ・
+      console.log(`繝√Ε繝・ヨ ${chatId} 縺ｮ繧ｨ繧ｯ繧ｹ繝昴・繝亥・逅・ｮ御ｺ・ｼ医ヵ繧｡繧､繝ｫ繝吶・繧ｹ・荏);
 
       res.json({ 
         success: true, 
@@ -503,13 +503,13 @@ export function registerChatRoutes(app: any): void {
     }
   });
 
-  // テスト用の認証なしチャット送信API（開発環境のみ）
+  // 繝・せ繝育畑縺ｮ隱崎ｨｼ縺ｪ縺励メ繝｣繝・ヨ騾∽ｿ｡API・磯幕逋ｺ迺ｰ蠅・・縺ｿ・・
   app.post("/api/chats/:id/send-test", async (req, res) => {
     try {
       const chatId = req.params.id;
       const { chatData, exportType } = req.body;
 
-      console.log('🔍 テスト用チャット送信リクエスト受信:', {
+      console.log('剥 繝・せ繝育畑繝√Ε繝・ヨ騾∽ｿ｡繝ｪ繧ｯ繧ｨ繧ｹ繝亥女菫｡:', {
         chatId,
         exportType,
         messageCount: chatData?.messages?.length || 0,
@@ -518,7 +518,7 @@ export function registerChatRoutes(app: any): void {
         headers: req.headers
       });
 
-      // チャットデータの検証
+      // 繝√Ε繝・ヨ繝・・繧ｿ縺ｮ讀懆ｨｼ
       if (!chatData || !chatData.messages || !Array.isArray(chatData.messages)) {
         return res.status(400).json({ 
           error: "Invalid chat data format",
@@ -526,44 +526,44 @@ export function registerChatRoutes(app: any): void {
         });
       }
 
-      // knowledge-base/exports フォルダを作成（ルートディレクトリ）
+      // knowledge-base/exports 繝輔か繝ｫ繝繧剃ｽ懈・・医Ν繝ｼ繝医ョ繧｣繝ｬ繧ｯ繝医Μ・・
       const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
       if (!fs.existsSync(exportsDir)) {
         fs.mkdirSync(exportsDir, { recursive: true });
-        console.log('exports フォルダを作成しました:', exportsDir);
+        console.log('exports 繝輔か繝ｫ繝繧剃ｽ懈・縺励∪縺励◆:', exportsDir);
       }
 
-      // チャットデータをJSONファイルとして保存
+      // 繝√Ε繝・ヨ繝・・繧ｿ繧谷SON繝輔ぃ繧､繝ｫ縺ｨ縺励※菫晏ｭ・
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       
-      // ユーザーメッセージから事象情報を抽出してファイル名に使用
+      // 繝ｦ繝ｼ繧ｶ繝ｼ繝｡繝・そ繝ｼ繧ｸ縺九ｉ莠玖ｱ｡諠・ｱ繧呈歓蜃ｺ縺励※繝輔ぃ繧､繝ｫ蜷阪↓菴ｿ逕ｨ
       const userMessages = chatData.messages.filter((m: any) => !m.isAiResponse);
-      console.log('🔍 事象抽出 - ユーザーメッセージ:', userMessages);
+      console.log('剥 莠玖ｱ｡謚ｽ蜃ｺ - 繝ｦ繝ｼ繧ｶ繝ｼ繝｡繝・そ繝ｼ繧ｸ:', userMessages);
       
       const textMessages = userMessages
         .map((m: any) => m.content)
         .filter((content: string) => !content.trim().startsWith('data:image/'))
         .join('\n')
         .trim();
-      console.log('🔍 事象抽出 - テキストメッセージ:', textMessages);
+      console.log('剥 莠玖ｱ｡謚ｽ蜃ｺ - 繝・く繧ｹ繝医Γ繝・そ繝ｼ繧ｸ:', textMessages);
       
-      let incidentTitle = '事象なし';
+      let incidentTitle = '莠玖ｱ｡縺ｪ縺・;
       
       if (textMessages) {
-        // テキストがある場合は最初の行を使用
+        // 繝・く繧ｹ繝医′縺ゅｋ蝣ｴ蜷医・譛蛻昴・陦後ｒ菴ｿ逕ｨ
         incidentTitle = textMessages.split('\n')[0].trim();
-        console.log('🔍 事象抽出 - 抽出されたタイトル:', incidentTitle);
+        console.log('剥 莠玖ｱ｡謚ｽ蜃ｺ - 謚ｽ蜃ｺ縺輔ｌ縺溘ち繧､繝医Ν:', incidentTitle);
       } else {
-        // テキストがない場合（画像のみ）は、デフォルトタイトルを使用
-        incidentTitle = '画像による故障報告';
-        console.log('🔍 事象抽出 - デフォルトタイトル使用:', incidentTitle);
+        // 繝・く繧ｹ繝医′縺ｪ縺・ｴ蜷茨ｼ育判蜒上・縺ｿ・峨・縲√ョ繝輔か繝ｫ繝医ち繧､繝医Ν繧剃ｽｿ逕ｨ
+        incidentTitle = '逕ｻ蜒上↓繧医ｋ謨・囿蝣ｱ蜻・;
+        console.log('剥 莠玖ｱ｡謚ｽ蜃ｺ - 繝・ヵ繧ｩ繝ｫ繝医ち繧､繝医Ν菴ｿ逕ｨ:', incidentTitle);
       }
       
-      // ファイル名用に事象内容をサニタイズ（特殊文字を除去）
+      // 繝輔ぃ繧､繝ｫ蜷咲畑縺ｫ莠玖ｱ｡蜀・ｮｹ繧偵し繝九ち繧､繧ｺ・育音谿頑枚蟄励ｒ髯､蜴ｻ・・
       const sanitizedTitle = incidentTitle
-        .replace(/[<>:"/\\|?*]/g, '') // ファイル名に使用できない文字を除去
-        .replace(/\s+/g, '_') // スペースをアンダースコアに変換
-        .substring(0, 50); // 長さを制限
+        .replace(/[<>:"/\\|?*]/g, '') // 繝輔ぃ繧､繝ｫ蜷阪↓菴ｿ逕ｨ縺ｧ縺阪↑縺・枚蟄励ｒ髯､蜴ｻ
+        .replace(/\s+/g, '_') // 繧ｹ繝壹・繧ｹ繧偵い繝ｳ繝繝ｼ繧ｹ繧ｳ繧｢縺ｫ螟画鋤
+        .substring(0, 50); // 髟ｷ縺輔ｒ蛻ｶ髯・
       
       const fileName = `${sanitizedTitle}_${chatId}_${timestamp}.json`;
       const filePath = path.join(exportsDir, fileName);
@@ -573,34 +573,34 @@ export function registerChatRoutes(app: any): void {
         userId: 'test-user',
         exportType: exportType || 'manual_send',
         exportTimestamp: new Date().toISOString(),
-        title: incidentTitle, // 事象情報をタイトルとして追加
+        title: incidentTitle, // 莠玖ｱ｡諠・ｱ繧偵ち繧､繝医Ν縺ｨ縺励※霑ｽ蜉
         chatData: chatData
       };
 
-      // 画像を個別ファイルとして保存
+      // 逕ｻ蜒上ｒ蛟句挨繝輔ぃ繧､繝ｫ縺ｨ縺励※菫晏ｭ・
       const imagesDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports');
       if (!fs.existsSync(imagesDir)) {
         fs.mkdirSync(imagesDir, { recursive: true });
-        console.log('画像保存ディレクトリを作成しました:', imagesDir);
+        console.log('逕ｻ蜒丈ｿ晏ｭ倥ョ繧｣繝ｬ繧ｯ繝医Μ繧剃ｽ懈・縺励∪縺励◆:', imagesDir);
       }
 
-      // チャットメッセージから画像を抽出して保存
+      // 繝√Ε繝・ヨ繝｡繝・そ繝ｼ繧ｸ縺九ｉ逕ｻ蜒上ｒ謚ｽ蜃ｺ縺励※菫晏ｭ・
       let savedImages: any[] = [];
       for (const message of chatData.messages) {
         if (message.content && message.content.startsWith('data:image/')) {
           try {
-            // Base64データから画像を抽出
+            // Base64繝・・繧ｿ縺九ｉ逕ｻ蜒上ｒ謚ｽ蜃ｺ
             const base64Data = message.content.replace(/^data:image\/[a-z]+;base64,/, '');
             const buffer = Buffer.from(base64Data, 'base64');
             
-            // ファイル名を生成
+            // 繝輔ぃ繧､繝ｫ蜷阪ｒ逕滓・
             const timestamp = Date.now();
             const imageFileName = `chat_image_${chatId}_${timestamp}.jpg`;
             const imagePath = path.join(imagesDir, imageFileName);
             
-            // 画像ファイルを保存
+            // 逕ｻ蜒上ヵ繧｡繧､繝ｫ繧剃ｿ晏ｭ・
             fs.writeFileSync(imagePath, buffer);
-            console.log('画像ファイルを保存しました:', imagePath);
+            console.log('逕ｻ蜒上ヵ繧｡繧､繝ｫ繧剃ｿ晏ｭ倥＠縺ｾ縺励◆:', imagePath);
             
             savedImages.push({
               messageId: message.id,
@@ -609,61 +609,61 @@ export function registerChatRoutes(app: any): void {
               url: `/api/images/chat-exports/${imageFileName}`
             });
           } catch (imageError) {
-            console.warn('画像保存エラー:', imageError);
+            console.warn('逕ｻ蜒丈ｿ晏ｭ倥お繝ｩ繝ｼ:', imageError);
           }
         }
       }
 
-      // 保存した画像情報をエクスポートデータに追加
+      // 菫晏ｭ倥＠縺溽判蜒乗ュ蝣ｱ繧偵お繧ｯ繧ｹ繝昴・繝医ョ繝ｼ繧ｿ縺ｫ霑ｽ蜉
       exportData.savedImages = savedImages;
 
-      // titleフィールドの値でファイル名を再生成
+      // title繝輔ぅ繝ｼ繝ｫ繝峨・蛟､縺ｧ繝輔ぃ繧､繝ｫ蜷阪ｒ蜀咲函謌・
       const finalSanitizedTitle = exportData.title
-        .replace(/[<>:"/\\|?*]/g, '') // ファイル名に使用できない文字を除去
-        .replace(/\s+/g, '_') // スペースをアンダースコアに変換
-        .substring(0, 50); // 長さを制限
-      console.log('🔍 事象抽出 - 最終サニタイズ済みタイトル:', finalSanitizedTitle);
+        .replace(/[<>:"/\\|?*]/g, '') // 繝輔ぃ繧､繝ｫ蜷阪↓菴ｿ逕ｨ縺ｧ縺阪↑縺・枚蟄励ｒ髯､蜴ｻ
+        .replace(/\s+/g, '_') // 繧ｹ繝壹・繧ｹ繧偵い繝ｳ繝繝ｼ繧ｹ繧ｳ繧｢縺ｫ螟画鋤
+        .substring(0, 50); // 髟ｷ縺輔ｒ蛻ｶ髯・
+      console.log('剥 莠玖ｱ｡謚ｽ蜃ｺ - 譛邨ゅし繝九ち繧､繧ｺ貂医∩繧ｿ繧､繝医Ν:', finalSanitizedTitle);
       
       const finalFileName = `${finalSanitizedTitle}_${chatId}_${timestamp}.json`;
       const finalFilePath = path.join(exportsDir, finalFileName);
-      console.log('🔍 事象抽出 - 最終ファイル名:', finalFileName);
+      console.log('剥 莠玖ｱ｡謚ｽ蜃ｺ - 譛邨ゅヵ繧｡繧､繝ｫ蜷・', finalFileName);
 
-      // ダブルクオーテーションを英数小文字に統一してJSONファイルを保存
+      // 繝繝悶Ν繧ｯ繧ｪ繝ｼ繝・・繧ｷ繝ｧ繝ｳ繧定恭謨ｰ蟆乗枚蟄励↓邨ｱ荳縺励※JSON繝輔ぃ繧､繝ｫ繧剃ｿ晏ｭ・
       const jsonString = JSON.stringify(exportData, null, 2);
       fs.writeFileSync(finalFilePath, jsonString, 'utf8');
-      console.log('チャットデータを保存しました:', finalFilePath);
+      console.log('繝√Ε繝・ヨ繝・・繧ｿ繧剃ｿ晏ｭ倥＠縺ｾ縺励◆:', finalFilePath);
 
-      // 履歴データベースにも保存（テスト用）
+      // 螻･豁ｴ繝・・繧ｿ繝吶・繧ｹ縺ｫ繧ゆｿ晏ｭ假ｼ医ユ繧ｹ繝育畑・・
       try {
         const { HistoryService } = await import('../services/historyService.js');
         
-        // 履歴アイテムを作成
+        // 螻･豁ｴ繧｢繧､繝・Β繧剃ｽ懈・
         const historyData = {
           sessionId: chatId,
           question: chatData.messages.map(msg => msg.content).join('\n'),
-          answer: 'チャット送信完了（テスト用）',
+          answer: '繝√Ε繝・ヨ騾∽ｿ｡螳御ｺ・ｼ医ユ繧ｹ繝育畑・・,
           machineType: chatData.machineInfo?.machineTypeName || '',
           machineNumber: chatData.machineInfo?.machineNumber || '',
           metadata: {
             messageCount: chatData.messages.length,
             exportType: exportType,
-            fileName: finalFileName, // 最終的なファイル名を使用
+            fileName: finalFileName, // 譛邨ら噪縺ｪ繝輔ぃ繧､繝ｫ蜷阪ｒ菴ｿ逕ｨ
             machineInfo: chatData.machineInfo,
             isTest: true
           }
         };
 
         await HistoryService.createHistory(historyData);
-        console.log('履歴データベースに保存しました（テスト用）');
+        console.log('螻･豁ｴ繝・・繧ｿ繝吶・繧ｹ縺ｫ菫晏ｭ倥＠縺ｾ縺励◆・医ユ繧ｹ繝育畑・・);
       } catch (historyError) {
-        console.warn('履歴データベース保存エラー（ファイル保存は成功）:', historyError);
-        // 履歴データベースエラーはファイル保存の成功を妨げない
+        console.warn('螻･豁ｴ繝・・繧ｿ繝吶・繧ｹ菫晏ｭ倥お繝ｩ繝ｼ・医ヵ繧｡繧､繝ｫ菫晏ｭ倥・謌仙粥・・', historyError);
+        // 螻･豁ｴ繝・・繧ｿ繝吶・繧ｹ繧ｨ繝ｩ繝ｼ縺ｯ繝輔ぃ繧､繝ｫ菫晏ｭ倥・謌仙粥繧貞ｦｨ縺偵↑縺・
       }
 
-      // 成功レスポンス
+      // 謌仙粥繝ｬ繧ｹ繝昴Φ繧ｹ
       res.json({ 
         success: true, 
-        message: "チャットデータが正常に保存されました（テスト用）",
+        message: "繝√Ε繝・ヨ繝・・繧ｿ縺梧ｭ｣蟶ｸ縺ｫ菫晏ｭ倥＆繧後∪縺励◆・医ユ繧ｹ繝育畑・・,
         filePath: filePath,
         fileName: fileName,
         messageCount: chatData.messages.length
@@ -678,12 +678,12 @@ export function registerChatRoutes(app: any): void {
     }
   });
 
-  // チャットエクスポート一覧を取得するエンドポイント
+  // 繝√Ε繝・ヨ繧ｨ繧ｯ繧ｹ繝昴・繝井ｸ隕ｧ繧貞叙蠕励☆繧九お繝ｳ繝峨・繧､繝ｳ繝・
   app.get("/api/chats/exports", async (req, res) => {
     try {
-      console.log('📋 チャットエクスポート一覧取得リクエスト');
+      console.log('搭 繝√Ε繝・ヨ繧ｨ繧ｯ繧ｹ繝昴・繝井ｸ隕ｧ蜿門ｾ励Μ繧ｯ繧ｨ繧ｹ繝・);
 
-      // Content-Typeを明示的に設定
+      // Content-Type繧呈・遉ｺ逧・↓險ｭ螳・
       res.setHeader('Content-Type', 'application/json');
 
       const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
@@ -718,22 +718,22 @@ export function registerChatRoutes(app: any): void {
       res.json(files);
 
     } catch (error) {
-      console.error('❌ チャットエクスポート一覧取得エラー:', error);
+      console.error('笶・繝√Ε繝・ヨ繧ｨ繧ｯ繧ｹ繝昴・繝井ｸ隕ｧ蜿門ｾ励お繝ｩ繝ｼ:', error);
       res.status(500).json({
-        error: 'チャットエクスポート一覧の取得に失敗しました',
+        error: '繝√Ε繝・ヨ繧ｨ繧ｯ繧ｹ繝昴・繝井ｸ隕ｧ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆',
         details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });
 
-  // 新しいチャット送信API（クライアント側の形式に対応）
+  // 譁ｰ縺励＞繝√Ε繝・ヨ騾∽ｿ｡API・医け繝ｩ繧､繧｢繝ｳ繝亥・縺ｮ蠖｢蠑上↓蟇ｾ蠢懶ｼ・
   app.post("/api/chats/:id/send", requireAuth, async (req, res) => {
     try {
       const userId = (req as any).session.userId!;
       const chatId = req.params.id;
       const { chatData, exportType } = req.body;
 
-      console.log('🔍 チャット送信リクエスト受信:', {
+      console.log('剥 繝√Ε繝・ヨ騾∽ｿ｡繝ｪ繧ｯ繧ｨ繧ｹ繝亥女菫｡:', {
         chatId,
         userId,
         exportType,
@@ -743,7 +743,7 @@ export function registerChatRoutes(app: any): void {
         headers: req.headers
       });
 
-      // チャットデータの検証
+      // 繝√Ε繝・ヨ繝・・繧ｿ縺ｮ讀懆ｨｼ
       if (!chatData || !chatData.messages || !Array.isArray(chatData.messages)) {
         return res.status(400).json({ 
           error: "Invalid chat data format",
@@ -751,34 +751,34 @@ export function registerChatRoutes(app: any): void {
         });
       }
 
-      // knowledge-base/exports フォルダを作成（ルートディレクトリ）
+      // knowledge-base/exports 繝輔か繝ｫ繝繧剃ｽ懈・・医Ν繝ｼ繝医ョ繧｣繝ｬ繧ｯ繝医Μ・・
       const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
       if (!fs.existsSync(exportsDir)) {
         fs.mkdirSync(exportsDir, { recursive: true });
-        console.log('exports フォルダを作成しました:', exportsDir);
+        console.log('exports 繝輔か繝ｫ繝繧剃ｽ懈・縺励∪縺励◆:', exportsDir);
       }
 
-      // 新しいフォーマット関数を使用してエクスポートデータを生成
+      // 譁ｰ縺励＞繝輔か繝ｼ繝槭ャ繝磯未謨ｰ繧剃ｽｿ逕ｨ縺励※繧ｨ繧ｯ繧ｹ繝昴・繝医ョ繝ｼ繧ｿ繧堤函謌・
       const { formatChatHistoryForHistoryUI } = await import('../lib/chat-export-formatter.js');
       
-      // データベースからではなく、リクエストボディのchatDataを使用
+      // 繝・・繧ｿ繝吶・繧ｹ縺九ｉ縺ｧ縺ｯ縺ｪ縺上√Μ繧ｯ繧ｨ繧ｹ繝医・繝・ぅ縺ｮchatData繧剃ｽｿ逕ｨ
       const chat = {
         id: chatId,
         userId: userId,
-        title: chatData.title || 'チャット履歴',
+        title: chatData.title || '繝√Ε繝・ヨ螻･豁ｴ',
         createdAt: new Date().toISOString()
       };
       
-      // リクエストボディのメッセージを使用
+      // 繝ｪ繧ｯ繧ｨ繧ｹ繝医・繝・ぅ縺ｮ繝｡繝・そ繝ｼ繧ｸ繧剃ｽｿ逕ｨ
       const allMessages = chatData.messages || [];
       
-      // メディア情報はリクエストボディから取得
+      // 繝｡繝・ぅ繧｢諠・ｱ縺ｯ繝ｪ繧ｯ繧ｨ繧ｹ繝医・繝・ぅ縺九ｉ蜿門ｾ・
       const messageMedia: Record<string, any[]> = {};
       for (const message of allMessages) {
         messageMedia[message.id] = message.media || [];
       }
       
-      // 履歴管理UI用にフォーマット（エラーをキャッチ）
+      // 螻･豁ｴ邂｡逅・I逕ｨ縺ｫ繝輔か繝ｼ繝槭ャ繝茨ｼ医お繝ｩ繝ｼ繧偵く繝｣繝・メ・・
       let formattedHistoryData;
       try {
         formattedHistoryData = await formatChatHistoryForHistoryUI(
@@ -788,11 +788,11 @@ export function registerChatRoutes(app: any): void {
           chatData.machineInfo
         );
       } catch (formatError) {
-        console.error('フォーマット処理エラー:', formatError);
-        // フォーマット処理が失敗した場合のフォールバック
+        console.error('繝輔か繝ｼ繝槭ャ繝亥・逅・お繝ｩ繝ｼ:', formatError);
+        // 繝輔か繝ｼ繝槭ャ繝亥・逅・′螟ｱ謨励＠縺溷ｴ蜷医・繝輔か繝ｼ繝ｫ繝舌ャ繧ｯ
         formattedHistoryData = {
-          title: '車両トラブル',
-          problem_description: '詳細情報なし',
+          title: '霆贋ｸ｡繝医Λ繝悶Ν',
+          problem_description: '隧ｳ邏ｰ諠・ｱ縺ｪ縺・,
           machine_type: chatData.machineInfo?.machineTypeName || '',
           machine_number: chatData.machineInfo?.machineNumber || '',
           extracted_components: [],
@@ -816,10 +816,10 @@ export function registerChatRoutes(app: any): void {
         };
       }
 
-      // 事象内容をファイル名に含める（画像が先でも発生事象を優先）
+      // 莠玖ｱ｡蜀・ｮｹ繧偵ヵ繧｡繧､繝ｫ蜷阪↓蜷ｫ繧√ｋ・育判蜒上′蜈医〒繧ら匱逕滉ｺ玖ｱ｡繧貞━蜈茨ｼ・
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       
-      // ユーザーメッセージからテキストのみを抽出（画像を除外）
+      // 繝ｦ繝ｼ繧ｶ繝ｼ繝｡繝・そ繝ｼ繧ｸ縺九ｉ繝・く繧ｹ繝医・縺ｿ繧呈歓蜃ｺ・育判蜒上ｒ髯､螟厄ｼ・
       const userMessages = chatData.messages.filter((m: any) => !m.isAiResponse);
       const textMessages = userMessages
         .map((m: any) => m.content)
@@ -827,21 +827,21 @@ export function registerChatRoutes(app: any): void {
         .join('\n')
         .trim();
       
-      let incidentTitle = '事象なし';
+      let incidentTitle = '莠玖ｱ｡縺ｪ縺・;
       
       if (textMessages) {
-        // テキストがある場合は最初の行を使用
+        // 繝・く繧ｹ繝医′縺ゅｋ蝣ｴ蜷医・譛蛻昴・陦後ｒ菴ｿ逕ｨ
         incidentTitle = textMessages.split('\n')[0].trim();
       } else {
-        // テキストがない場合（画像のみ）は、フォーマットされたタイトルを使用
-        incidentTitle = formattedHistoryData.title || '画像による故障報告';
+        // 繝・く繧ｹ繝医′縺ｪ縺・ｴ蜷茨ｼ育判蜒上・縺ｿ・峨・縲√ヵ繧ｩ繝ｼ繝槭ャ繝医＆繧後◆繧ｿ繧､繝医Ν繧剃ｽｿ逕ｨ
+        incidentTitle = formattedHistoryData.title || '逕ｻ蜒上↓繧医ｋ謨・囿蝣ｱ蜻・;
       }
       
-      // ファイル名用に事象内容をサニタイズ（特殊文字を除去）
+      // 繝輔ぃ繧､繝ｫ蜷咲畑縺ｫ莠玖ｱ｡蜀・ｮｹ繧偵し繝九ち繧､繧ｺ・育音谿頑枚蟄励ｒ髯､蜴ｻ・・
       const sanitizedTitle = incidentTitle
-        .replace(/[<>:"/\\|?*]/g, '') // ファイル名に使用できない文字を除去
-        .replace(/\s+/g, '_') // スペースをアンダースコアに変換
-        .substring(0, 50); // 長さを制限
+        .replace(/[<>:"/\\|?*]/g, '') // 繝輔ぃ繧､繝ｫ蜷阪↓菴ｿ逕ｨ縺ｧ縺阪↑縺・枚蟄励ｒ髯､蜴ｻ
+        .replace(/\s+/g, '_') // 繧ｹ繝壹・繧ｹ繧偵い繝ｳ繝繝ｼ繧ｹ繧ｳ繧｢縺ｫ螟画鋤
+        .substring(0, 50); // 髟ｷ縺輔ｒ蛻ｶ髯・
       
       const fileName = `${sanitizedTitle}_${chatId}_${timestamp}.json`;
       const filePath = path.join(exportsDir, fileName);
@@ -851,7 +851,7 @@ export function registerChatRoutes(app: any): void {
         userId: userId,
         exportType: exportType || 'manual_send',
         exportTimestamp: new Date().toISOString(),
-        title: incidentTitle, // 画像が先でも発生事象を優先
+        title: incidentTitle, // 逕ｻ蜒上′蜈医〒繧ら匱逕滉ｺ玖ｱ｡繧貞━蜈・
         problemDescription: formattedHistoryData.problem_description,
         machineType: formattedHistoryData.machine_type,
         machineNumber: formattedHistoryData.machine_number,
@@ -860,33 +860,33 @@ export function registerChatRoutes(app: any): void {
         possibleModels: formattedHistoryData.possible_models,
         conversationHistory: formattedHistoryData.conversation_history,
         metadata: formattedHistoryData.metadata,
-        originalChatData: chatData // 元のデータも保持
+        originalChatData: chatData // 蜈・・繝・・繧ｿ繧ゆｿ晄戟
       };
 
-      // 画像を個別ファイルとして保存
+      // 逕ｻ蜒上ｒ蛟句挨繝輔ぃ繧､繝ｫ縺ｨ縺励※菫晏ｭ・
       const imagesDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports');
       if (!fs.existsSync(imagesDir)) {
         fs.mkdirSync(imagesDir, { recursive: true });
-        console.log('画像保存ディレクトリを作成しました:', imagesDir);
+        console.log('逕ｻ蜒丈ｿ晏ｭ倥ョ繧｣繝ｬ繧ｯ繝医Μ繧剃ｽ懈・縺励∪縺励◆:', imagesDir);
       }
 
-      // チャットメッセージから画像を抽出して保存
+      // 繝√Ε繝・ヨ繝｡繝・そ繝ｼ繧ｸ縺九ｉ逕ｻ蜒上ｒ謚ｽ蜃ｺ縺励※菫晏ｭ・
       let savedImages: any[] = [];
       for (const message of chatData.messages) {
         if (message.content && message.content.startsWith('data:image/')) {
           try {
-            // Base64データから画像を抽出
+            // Base64繝・・繧ｿ縺九ｉ逕ｻ蜒上ｒ謚ｽ蜃ｺ
             const base64Data = message.content.replace(/^data:image\/[a-z]+;base64,/, '');
             const buffer = Buffer.from(base64Data, 'base64');
             
-            // ファイル名を生成
+            // 繝輔ぃ繧､繝ｫ蜷阪ｒ逕滓・
             const timestamp = Date.now();
             const imageFileName = `chat_image_${chatId}_${timestamp}.jpg`;
             const imagePath = path.join(imagesDir, imageFileName);
             
-            // 画像ファイルを保存
+            // 逕ｻ蜒上ヵ繧｡繧､繝ｫ繧剃ｿ晏ｭ・
             fs.writeFileSync(imagePath, buffer);
-            console.log('画像ファイルを保存しました:', imagePath);
+            console.log('逕ｻ蜒上ヵ繧｡繧､繝ｫ繧剃ｿ晏ｭ倥＠縺ｾ縺励◆:', imagePath);
             
             savedImages.push({
               messageId: message.id,
@@ -895,45 +895,45 @@ export function registerChatRoutes(app: any): void {
               url: `/api/images/chat-exports/${imageFileName}`
             });
           } catch (imageError) {
-            console.warn('画像保存エラー:', imageError);
+            console.warn('逕ｻ蜒丈ｿ晏ｭ倥お繝ｩ繝ｼ:', imageError);
           }
         }
       }
 
-      // 保存した画像情報をエクスポートデータに追加
+      // 菫晏ｭ倥＠縺溽判蜒乗ュ蝣ｱ繧偵お繧ｯ繧ｹ繝昴・繝医ョ繝ｼ繧ｿ縺ｫ霑ｽ蜉
       exportData.savedImages = savedImages;
 
-      // ダブルクオーテーションを英数小文字に統一してJSONファイルを保存
+      // 繝繝悶Ν繧ｯ繧ｪ繝ｼ繝・・繧ｷ繝ｧ繝ｳ繧定恭謨ｰ蟆乗枚蟄励↓邨ｱ荳縺励※JSON繝輔ぃ繧､繝ｫ繧剃ｿ晏ｭ・
       const jsonString = JSON.stringify(exportData, null, 2);
       fs.writeFileSync(filePath, jsonString, 'utf8');
-      console.log('チャットデータを保存しました:', filePath);
+      console.log('繝√Ε繝・ヨ繝・・繧ｿ繧剃ｿ晏ｭ倥＠縺ｾ縺励◆:', filePath);
 
-      // データベース保存は不要（ファイルベースの保存のみ）
-      console.log('チャットエクスポートがファイルに保存されました');
+      // 繝・・繧ｿ繝吶・繧ｹ菫晏ｭ倥・荳崎ｦ・ｼ医ヵ繧｡繧､繝ｫ繝吶・繧ｹ縺ｮ菫晏ｭ倥・縺ｿ・・
+      console.log('繝√Ε繝・ヨ繧ｨ繧ｯ繧ｹ繝昴・繝医′繝輔ぃ繧､繝ｫ縺ｫ菫晏ｭ倥＆繧後∪縺励◆');
 
-      // 履歴データベースにも保存
+      // 螻･豁ｴ繝・・繧ｿ繝吶・繧ｹ縺ｫ繧ゆｿ晏ｭ・
       try {
         const { HistoryService } = await import('../services/historyService.js');
         
-        // 新しいフォーマット関数を使用して履歴データを生成
+        // 譁ｰ縺励＞繝輔か繝ｼ繝槭ャ繝磯未謨ｰ繧剃ｽｿ逕ｨ縺励※螻･豁ｴ繝・・繧ｿ繧堤函謌・
         const { formatChatHistoryForHistoryUI } = await import('../lib/chat-export-formatter.js');
         
-        // チャットとメッセージ情報を取得
+        // 繝√Ε繝・ヨ縺ｨ繝｡繝・そ繝ｼ繧ｸ諠・ｱ繧貞叙蠕・
         const chat = await storage.getChat(chatId);
         const allMessages = await storage.getMessagesForChat(chatId);
         
-        // メッセージIDごとにメディアを取得
+        // 繝｡繝・そ繝ｼ繧ｸID縺斐→縺ｫ繝｡繝・ぅ繧｢繧貞叙蠕・
         const messageMedia: Record<string, any[]> = {};
         for (const message of allMessages) {
           try {
             messageMedia[message.id] = await storage.getMediaForMessage(message.id);
           } catch (mediaError) {
-            console.warn(`メッセージ ${message.id} のメディア取得エラー:`, mediaError);
+            console.warn(`繝｡繝・そ繝ｼ繧ｸ ${message.id} 縺ｮ繝｡繝・ぅ繧｢蜿門ｾ励お繝ｩ繝ｼ:`, mediaError);
             messageMedia[message.id] = [];
           }
         }
         
-        // 履歴管理UI用にフォーマット（エラーをキャッチ）
+        // 螻･豁ｴ邂｡逅・I逕ｨ縺ｫ繝輔か繝ｼ繝槭ャ繝茨ｼ医お繝ｩ繝ｼ繧偵く繝｣繝・メ・・
         let formattedHistoryData;
         try {
           formattedHistoryData = await formatChatHistoryForHistoryUI(
@@ -943,11 +943,11 @@ export function registerChatRoutes(app: any): void {
             chatData.machineInfo
           );
         } catch (formatError) {
-          console.error('履歴データフォーマット処理エラー:', formatError);
-          // フォーマット処理が失敗した場合のフォールバック
+          console.error('螻･豁ｴ繝・・繧ｿ繝輔か繝ｼ繝槭ャ繝亥・逅・お繝ｩ繝ｼ:', formatError);
+          // 繝輔か繝ｼ繝槭ャ繝亥・逅・′螟ｱ謨励＠縺溷ｴ蜷医・繝輔か繝ｼ繝ｫ繝舌ャ繧ｯ
           formattedHistoryData = {
-            title: '車両トラブル',
-            problem_description: '詳細情報なし',
+            title: '霆贋ｸ｡繝医Λ繝悶Ν',
+            problem_description: '隧ｳ邏ｰ諠・ｱ縺ｪ縺・,
             machine_type: chatData.machineInfo?.machineTypeName || '',
             machine_number: chatData.machineInfo?.machineNumber || '',
             extracted_components: [],
@@ -971,7 +971,7 @@ export function registerChatRoutes(app: any): void {
           };
         }
         
-        // 履歴アイテムを作成
+        // 螻･豁ｴ繧｢繧､繝・Β繧剃ｽ懈・
         const historyData = {
           sessionId: chatId,
           question: formattedHistoryData.title,
@@ -993,16 +993,16 @@ export function registerChatRoutes(app: any): void {
         };
 
         await HistoryService.createHistory(historyData);
-        console.log('履歴データベースに保存しました（新しいフォーマット）');
+        console.log('螻･豁ｴ繝・・繧ｿ繝吶・繧ｹ縺ｫ菫晏ｭ倥＠縺ｾ縺励◆・域眠縺励＞繝輔か繝ｼ繝槭ャ繝茨ｼ・);
       } catch (historyError) {
-        console.warn('履歴データベース保存エラー（ファイル保存は成功）:', historyError);
-        // 履歴データベースエラーはファイル保存の成功を妨げない
+        console.warn('螻･豁ｴ繝・・繧ｿ繝吶・繧ｹ菫晏ｭ倥お繝ｩ繝ｼ・医ヵ繧｡繧､繝ｫ菫晏ｭ倥・謌仙粥・・', historyError);
+        // 螻･豁ｴ繝・・繧ｿ繝吶・繧ｹ繧ｨ繝ｩ繝ｼ縺ｯ繝輔ぃ繧､繝ｫ菫晏ｭ倥・謌仙粥繧貞ｦｨ縺偵↑縺・
       }
 
-      // 成功レスポンス
+      // 謌仙粥繝ｬ繧ｹ繝昴Φ繧ｹ
       res.json({ 
         success: true, 
-        message: "チャットデータが正常に保存されました",
+        message: "繝√Ε繝・ヨ繝・・繧ｿ縺梧ｭ｣蟶ｸ縺ｫ菫晏ｭ倥＆繧後∪縺励◆",
         filePath: filePath,
         fileName: fileName,
         messageCount: chatData.messages.length
@@ -1017,7 +1017,7 @@ export function registerChatRoutes(app: any): void {
     }
   });
 
-  // 外部AI分析システム向けフォーマット済みデータを取得するAPI
+  // 螟夜ΚAI蛻・梵繧ｷ繧ｹ繝・Β蜷代￠繝輔か繝ｼ繝槭ャ繝域ｸ医∩繝・・繧ｿ繧貞叙蠕励☆繧帰PI
   app.get("/api/chats/:id/export-formatted", requireAuth, async (req, res) => {
     try {
       const userId = (req as any).session.userId!;
@@ -1026,7 +1026,7 @@ export function registerChatRoutes(app: any): void {
       if (!chat) {
         return res.status(404).json({ message: "Chat not found" });
       }
-      console.log(`フォーマット済みエクスポート: chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${userId}`);
+      console.log(`繝輔か繝ｼ繝槭ャ繝域ｸ医∩繧ｨ繧ｯ繧ｹ繝昴・繝・ chatId=${chat.id}, chatUserId=${chat.userId}, sessionUserId=${userId}`);
       if (String(chat.userId) !== String(userId) && (req as any).session.userRole !== 'admin') {
         return res.status(403).json({ message: "Access denied" });
       }
@@ -1049,7 +1049,7 @@ export function registerChatRoutes(app: any): void {
     }
   });
 
-  // チャットの最後のエクスポート履歴を取得
+  // 繝√Ε繝・ヨ縺ｮ譛蠕後・繧ｨ繧ｯ繧ｹ繝昴・繝亥ｱ･豁ｴ繧貞叙蠕・
   app.get("/api/chats/:id/last-export", requireAuth, async (req, res) => {
     try {
       const chatId = req.params.id;
@@ -1065,7 +1065,7 @@ export function registerChatRoutes(app: any): void {
     }
   });
 
-  // 保存されたチャット履歴一覧を取得
+  // 菫晏ｭ倥＆繧後◆繝√Ε繝・ヨ螻･豁ｴ荳隕ｧ繧貞叙蠕・
   app.get("/api/chats/exports", requireAuth, async (req, res) => {
     try {
       const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
@@ -1074,7 +1074,7 @@ export function registerChatRoutes(app: any): void {
         return res.json([]);
       }
 
-      // 再帰的にJSONファイルを検索する関数
+      // 蜀榊ｸｰ逧・↓JSON繝輔ぃ繧､繝ｫ繧呈､懃ｴ｢縺吶ｋ髢｢謨ｰ
       const findJsonFiles = (dir: string, baseDir: string = exportsDir): any[] => {
         const files: any[] = [];
         const items = fs.readdirSync(dir);
@@ -1084,14 +1084,14 @@ export function registerChatRoutes(app: any): void {
           const stats = fs.statSync(itemPath);
           
           if (stats.isDirectory()) {
-            // サブディレクトリを再帰的に検索
+            // 繧ｵ繝悶ョ繧｣繝ｬ繧ｯ繝医Μ繧貞・蟶ｰ逧・↓讀懃ｴ｢
             files.push(...findJsonFiles(itemPath, baseDir));
           } else if (item.endsWith('.json')) {
             try {
               const content = fs.readFileSync(itemPath, 'utf8');
               const data = JSON.parse(content);
               
-              // 相対パスを計算
+              // 逶ｸ蟇ｾ繝代せ繧定ｨ育ｮ・
               const relativePath = path.relative(baseDir, itemPath);
               
               files.push({
@@ -1112,7 +1112,7 @@ export function registerChatRoutes(app: any): void {
                 lastModified: stats.mtime
               });
             } catch (error) {
-              console.warn(`JSONファイルの読み込みエラー: ${itemPath}`, error);
+              console.warn(`JSON繝輔ぃ繧､繝ｫ縺ｮ隱ｭ縺ｿ霎ｼ縺ｿ繧ｨ繝ｩ繝ｼ: ${itemPath}`, error);
             }
           }
         }
@@ -1130,7 +1130,7 @@ export function registerChatRoutes(app: any): void {
     }
   });
 
-  // 特定のチャット履歴ファイルを取得
+  // 迚ｹ螳壹・繝√Ε繝・ヨ螻･豁ｴ繝輔ぃ繧､繝ｫ繧貞叙蠕・
   app.get("/api/chats/exports/:fileName", requireAuth, async (req, res) => {
     try {
       const fileName = req.params.fileName;
@@ -1151,7 +1151,7 @@ export function registerChatRoutes(app: any): void {
     }
   });
 
-  // チャットエクスポート画像を提供するエンドポイント
+  // 繝√Ε繝・ヨ繧ｨ繧ｯ繧ｹ繝昴・繝育判蜒上ｒ謠蝉ｾ帙☆繧九お繝ｳ繝峨・繧､繝ｳ繝・
   app.get("/api/images/chat-exports/:fileName", async (req, res) => {
     try {
       const fileName = req.params.fileName;
@@ -1161,7 +1161,7 @@ export function registerChatRoutes(app: any): void {
         return res.status(404).json({ message: "Image not found" });
       }
 
-      // 画像ファイルを読み込んで送信
+      // 逕ｻ蜒上ヵ繧｡繧､繝ｫ繧定ｪｭ縺ｿ霎ｼ繧薙〒騾∽ｿ｡
       const imageBuffer = fs.readFileSync(imagePath);
       const ext = path.extname(fileName).toLowerCase();
       
@@ -1171,7 +1171,7 @@ export function registerChatRoutes(app: any): void {
       else if (ext === '.webp') contentType = 'image/webp';
 
       res.setHeader('Content-Type', contentType);
-      res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1年間キャッシュ
+      res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1蟷ｴ髢薙く繝｣繝・す繝･
       res.send(imageBuffer);
     } catch (error) {
       console.error("Error serving chat export image:", error);
@@ -1179,5 +1179,5 @@ export function registerChatRoutes(app: any): void {
     }
   });
 
-  console.log('✅ チャットルート登録完了');
+  console.log('笨・繝√Ε繝・ヨ繝ｫ繝ｼ繝育匳骭ｲ螳御ｺ・);
 } 

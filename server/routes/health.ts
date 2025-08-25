@@ -1,10 +1,10 @@
-import express from 'express';
+﻿import express from 'express';
 import { storage } from '../storage.js';
 import { getOpenAIClientStatus } from '../lib/openai.js';
 
 const router = express.Router();
 
-// 基本的なヘルスチェック
+// 蝓ｺ譛ｬ逧・↑繝倥Ν繧ｹ繝√ぉ繝・け
 router.get('/', (req, res) => {
   res.json({
     status: 'healthy',
@@ -14,7 +14,7 @@ router.get('/', (req, res) => {
   });
 });
 
-// データベース接続チェック
+// 繝・・繧ｿ繝吶・繧ｹ謗･邯壹メ繧ｧ繝・け
 router.get('/db', async (req, res) => {
   try {
     const isConnected = await storage.testConnection();
@@ -43,13 +43,13 @@ router.get('/db', async (req, res) => {
   }
 });
 
-// GPT/OpenAI接続チェック
+// GPT/OpenAI謗･邯壹メ繧ｧ繝・け
 router.get('/gpt', async (req, res) => {
   try {
     const clientStatus = getOpenAIClientStatus();
     
     if (clientStatus.clientExists && clientStatus.apiKeyExists && !clientStatus.isMockKey) {
-      // 実際のGPT接続テスト
+      // 螳滄圀縺ｮGPT謗･邯壹ユ繧ｹ繝・
       const { processOpenAIRequest } = await import('../lib/openai.js');
       const testResponse = await processOpenAIRequest('Health check', false);
       
@@ -83,7 +83,7 @@ router.get('/gpt', async (req, res) => {
   }
 });
 
-// 全体的なシステムチェック
+// 蜈ｨ菴鍋噪縺ｪ繧ｷ繧ｹ繝・Β繝√ぉ繝・け
 router.get('/system', async (req, res) => {
   const checks = {
     timestamp: new Date().toISOString(),
@@ -98,7 +98,7 @@ router.get('/system', async (req, res) => {
     }
   };
 
-  // データベースチェック
+  // 繝・・繧ｿ繝吶・繧ｹ繝√ぉ繝・け
   try {
     const isDbConnected = await storage.testConnection();
     checks.database = isDbConnected ? 'healthy' : 'unhealthy';
@@ -106,7 +106,7 @@ router.get('/system', async (req, res) => {
     checks.database = 'error';
   }
 
-  // GPTチェック
+  // GPT繝√ぉ繝・け
   try {
     const clientStatus = getOpenAIClientStatus();
     if (clientStatus.clientExists && clientStatus.apiKeyExists && !clientStatus.isMockKey) {
@@ -118,7 +118,7 @@ router.get('/system', async (req, res) => {
     checks.gpt = 'error';
   }
 
-  // 全体ステータスの決定
+  // 蜈ｨ菴薙せ繝・・繧ｿ繧ｹ縺ｮ豎ｺ螳・
   const hasIssues = checks.database !== 'healthy' || checks.gpt !== 'healthy';
   const statusCode = hasIssues ? 503 : 200;
   

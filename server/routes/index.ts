@@ -1,4 +1,4 @@
-import emergencyFlowRoutes from "./emergency-flow";
+﻿import emergencyFlowRoutes from "./emergency-flow";
 import { registerChatRoutes } from "./chat";
 import { techSupportRouter } from "./tech-support";
 import troubleshootingRouter from "./troubleshooting";
@@ -10,7 +10,7 @@ import flowGeneratorRoutes from "./flow-generator";
 import { registerSearchRoutes } from "./search";
 import authRouter from "./auth";
 import settingsRouter from "./settings";
-// machinesRouterはapp.tsで直接マウントされているため、ここでは除外
+// machinesRouter縺ｯapp.ts縺ｧ逶ｴ謗･繝槭え繝ｳ繝医＆繧後※縺・ｋ縺溘ａ縲√％縺薙〒縺ｯ髯､螟・
 import imageStorageRouter from "./image-storage";
 import systemCheckRouter from "./system-check";
 import { flowsRouter } from "./flows";
@@ -38,7 +38,7 @@ export function registerRoutes(app: any) {
   registerDataProcessorRoutes(app);
   app.use('/api/flow-generator', flowGeneratorRoutes);
   registerSearchRoutes(app);
-  // machinesRouterはapp.tsで直接マウントされているため、ここでは除外
+  // machinesRouter縺ｯapp.ts縺ｧ逶ｴ謗･繝槭え繝ｳ繝医＆繧後※縺・ｋ縺溘ａ縲√％縺薙〒縺ｯ髯､螟・
   app.use('/api/images', imageStorageRouter);
   app.use('/api/system-check', systemCheckRouter);
   app.use('/api/flows', flowsRouter);

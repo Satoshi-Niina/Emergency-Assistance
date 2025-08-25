@@ -1,10 +1,10 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { query } from '../db/db';
 import { processOpenAIRequest } from '../lib/openai';
 
 const router = Router();
 
-// PostgreSQL接続確認API
+// PostgreSQL謗･邯夂｢ｺ隱喉PI
 router.get('/db-check', async (req, res) => {
   try {
     const result = await query('SELECT NOW() as db_time');
@@ -13,15 +13,15 @@ router.get('/db-check', async (req, res) => {
       db_time: result[0].db_time
     });
   } catch (error) {
-    console.error('DB接続確認エラー:', error);
+    console.error('DB謗･邯夂｢ｺ隱阪お繝ｩ繝ｼ:', error);
     res.status(500).json({
       status: "ERROR",
-      message: error instanceof Error ? error.message : "データベース接続エラー"
+      message: error instanceof Error ? error.message : "繝・・繧ｿ繝吶・繧ｹ謗･邯壹お繝ｩ繝ｼ"
     });
   }
 });
 
-// GPT接続確認API
+// GPT謗･邯夂｢ｺ隱喉PI
 router.post('/gpt-check', async (req, res) => {
   try {
     const { message } = req.body;
@@ -29,7 +29,7 @@ router.post('/gpt-check', async (req, res) => {
     if (!message) {
       return res.status(400).json({
         status: "ERROR",
-        message: "メッセージが指定されていません"
+        message: "繝｡繝・そ繝ｼ繧ｸ縺梧欠螳壹＆繧後※縺・∪縺帙ｓ"
       });
     }
 
@@ -40,10 +40,10 @@ router.post('/gpt-check', async (req, res) => {
       reply: reply
     });
   } catch (error) {
-    console.error('GPT接続確認エラー:', error);
+    console.error('GPT謗･邯夂｢ｺ隱阪お繝ｩ繝ｼ:', error);
     res.status(500).json({
       status: "ERROR",
-      message: error instanceof Error ? error.message : "GPT接続エラー"
+      message: error instanceof Error ? error.message : "GPT謗･邯壹お繝ｩ繝ｼ"
     });
   }
 });

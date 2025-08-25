@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+﻿import OpenAI from "openai";
 import { db } from "../db/index.js";
 import { images } from "../db/schema.js";
 

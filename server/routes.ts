@@ -1,10 +1,10 @@
-import type { Express, Request, Response } from "express";
+﻿import type { Express, Request, Response } from "express";
 import { storage } from "./storage.js";
 import { users } from "./db/schema.js";
 import session from "express-session";
 import MemoryStore from 'memorystore';
 
-// Requestタイプの拡張
+// Request繧ｿ繧､繝励・諡｡蠑ｵ
 declare global {
   namespace Express {
     interface Request {
@@ -47,7 +47,7 @@ import knowledgeBaseRouter from './routes/knowledge-base.js';
 import qaLearningRouter from './routes/qa-learning.js';
 import { registerKnowledgeBaseRoutes } from "./routes/knowledge-base.js";
 
-// ESM用__dirname定義
+// ESM逕ｨ__dirname螳夂ｾｩ
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -64,7 +64,7 @@ declare module 'express-session' {
 // Session will now use Postgres via storage.sessionStore
 
 export function registerRoutes(app: Express): void {
-  // 静的ファイル配信の設定（最優先で登録）
+  // 髱咏噪繝輔ぃ繧､繝ｫ驟堺ｿ｡縺ｮ險ｭ螳夲ｼ域怙蜆ｪ蜈医〒逋ｻ骭ｲ・・
   app.use('/images', express.static(path.join(__dirname, '../../public/images')));
   app.use('/public', express.static(path.join(__dirname, '../../public')));
 
@@ -105,10 +105,10 @@ export function registerRoutes(app: Express): void {
     });
   });
 
-  // データベース接続確認エンドポイント
+  // 繝・・繧ｿ繝吶・繧ｹ謗･邯夂｢ｺ隱阪お繝ｳ繝峨・繧､繝ｳ繝・
   app.get('/api/debug/database', async (req, res) => {
     try {
-      // データベース接続テスト
+      // 繝・・繧ｿ繝吶・繧ｹ謗･邯壹ユ繧ｹ繝・
       const testQuery = await db.select().from(users).limit(1);
       
       res.json({
@@ -120,7 +120,7 @@ export function registerRoutes(app: Express): void {
         environment: process.env.NODE_ENV || 'development'
       });
     } catch (error) {
-      console.error('データベース接続エラー:', error);
+      console.error('繝・・繧ｿ繝吶・繧ｹ謗･邯壹お繝ｩ繝ｼ:', error);
       res.status(500).json({
         status: 'error',
         database: 'PostgreSQL',
@@ -129,15 +129,15 @@ export function registerRoutes(app: Express): void {
         timestamp: new Date().toISOString(),
         environment: process.env.NODE_ENV || 'development',
         recommendations: [
-          "DATABASE_URL環境変数を確認してください",
-          "PostgreSQLサーバーが起動しているか確認してください",
-          "データベースの接続情報を確認してください"
+          "DATABASE_URL迺ｰ蠅・､画焚繧堤｢ｺ隱阪＠縺ｦ縺上□縺輔＞",
+          "PostgreSQL繧ｵ繝ｼ繝舌・縺瑚ｵｷ蜍輔＠縺ｦ縺・ｋ縺狗｢ｺ隱阪＠縺ｦ縺上□縺輔＞",
+          "繝・・繧ｿ繝吶・繧ｹ縺ｮ謗･邯壽ュ蝣ｱ繧堤｢ｺ隱阪＠縺ｦ縺上□縺輔＞"
         ]
       });
     }
   });
 
-  // OpenAI APIキーの設定状況を確認するエンドポイント
+  // OpenAI API繧ｭ繝ｼ縺ｮ險ｭ螳夂憾豕√ｒ遒ｺ隱阪☆繧九お繝ｳ繝峨・繧､繝ｳ繝・
   app.get('/api/debug/openai', (req, res) => {
     const apiKey = process.env.OPENAI_API_KEY;
     const hasApiKey = !!apiKey && apiKey !== 'dev-mock-key';
@@ -148,9 +148,9 @@ export function registerRoutes(app: Express): void {
       environment: process.env.NODE_ENV || 'development',
       timestamp: new Date().toISOString(),
       recommendations: hasApiKey ? [] : [
-        "OPENAI_API_KEY環境変数を設定してください",
-        "env.exampleファイルを参考に.envファイルを作成してください",
-        "開発環境では'dev-mock-key'を使用できます"
+        "OPENAI_API_KEY迺ｰ蠅・､画焚繧定ｨｭ螳壹＠縺ｦ縺上□縺輔＞",
+        "env.example繝輔ぃ繧､繝ｫ繧貞盾閠・↓.env繝輔ぃ繧､繝ｫ繧剃ｽ懈・縺励※縺上□縺輔＞",
+        "髢狗匱迺ｰ蠅・〒縺ｯ'dev-mock-key'繧剃ｽｿ逕ｨ縺ｧ縺阪∪縺・
       ]
     });
   });
@@ -220,27 +220,27 @@ export function registerRoutes(app: Express): void {
       if (!req.session?.userId) {
         return res.status(401).json({ 
           error: 'Authentication required',
-          message: 'ログインが必要です'
+          message: '繝ｭ繧ｰ繧､繝ｳ縺悟ｿ・ｦ√〒縺・
         });
       }
 
-      // データベースからユーザー情報を確認
+      // 繝・・繧ｿ繝吶・繧ｹ縺九ｉ繝ｦ繝ｼ繧ｶ繝ｼ諠・ｱ繧堤｢ｺ隱・
       const user = await db.select().from(users).where(eq(users.id, req.session.userId)).limit(1);
       if (user.length === 0) {
         return res.status(401).json({ 
           error: 'User not found',
-          message: 'ユーザーが見つかりません'
+          message: '繝ｦ繝ｼ繧ｶ繝ｼ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ'
         });
       }
 
-      // ユーザー情報をリクエストに追加
+      // 繝ｦ繝ｼ繧ｶ繝ｼ諠・ｱ繧偵Μ繧ｯ繧ｨ繧ｹ繝医↓霑ｽ蜉
       req.user = user[0];
       next();
     } catch (error) {
       console.error('Auth middleware error:', error);
       return res.status(500).json({ 
         error: 'Authentication error',
-        message: '認証エラーが発生しました'
+        message: '隱崎ｨｼ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆'
       });
     }
   };
@@ -251,48 +251,48 @@ export function registerRoutes(app: Express): void {
       if (!req.session?.userId) {
         return res.status(401).json({ 
           error: 'Authentication required',
-          message: 'ログインが必要です'
+          message: '繝ｭ繧ｰ繧､繝ｳ縺悟ｿ・ｦ√〒縺・
         });
       }
 
-      // データベースからユーザー情報を確認
+      // 繝・・繧ｿ繝吶・繧ｹ縺九ｉ繝ｦ繝ｼ繧ｶ繝ｼ諠・ｱ繧堤｢ｺ隱・
       const user = await db.select().from(users).where(eq(users.id, req.session.userId)).limit(1);
       if (user.length === 0) {
         return res.status(401).json({ 
           error: 'User not found',
-          message: 'ユーザーが見つかりません'
+          message: '繝ｦ繝ｼ繧ｶ繝ｼ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ'
         });
       }
 
-      // 管理者権限チェック
+      // 邂｡逅・・ｨｩ髯舌メ繧ｧ繝・け
       if (user[0].role !== 'admin') {
         return res.status(403).json({ 
           error: 'Admin access required',
-          message: '管理者権限が必要です'
+          message: '邂｡逅・・ｨｩ髯舌′蠢・ｦ√〒縺・
         });
       }
 
-      // ユーザー情報をリクエストに追加
+      // 繝ｦ繝ｼ繧ｶ繝ｼ諠・ｱ繧偵Μ繧ｯ繧ｨ繧ｹ繝医↓霑ｽ蜉
       req.user = user[0];
       next();
     } catch (error) {
       console.error('Admin middleware error:', error);
       return res.status(500).json({ 
         error: 'Authentication error',
-        message: '認証エラーが発生しました'
+        message: '隱崎ｨｼ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆'
       });
     }
   };
 
-  // Auth routes - JSON Content-Typeを設定
+  // Auth routes - JSON Content-Type繧定ｨｭ螳・
   app.use("/api/auth", (req, res, next) => {
     res.setHeader('Content-Type', 'application/json');
     next();
   }, authRouter);
 
-  // ヘルスチェックエンドポイント（デバッグ用）
+  // 繝倥Ν繧ｹ繝√ぉ繝・け繧ｨ繝ｳ繝峨・繧､繝ｳ繝茨ｼ医ョ繝舌ャ繧ｰ逕ｨ・・
   app.get("/api/health", (req, res) => {
-    console.log('🏥 ヘルスチェックリクエスト受信');
+    console.log('唱 繝倥Ν繧ｹ繝√ぉ繝・け繝ｪ繧ｯ繧ｨ繧ｹ繝亥女菫｡');
     res.setHeader('Content-Type', 'application/json');
     res.status(200).json({
       success: true,
@@ -306,9 +306,9 @@ export function registerRoutes(app: Express): void {
     });
   });
 
-  // デバッグ用エンドポイント
+  // 繝・ヰ繝・げ逕ｨ繧ｨ繝ｳ繝峨・繧､繝ｳ繝・
   app.get("/api/debug", (req, res) => {
-    console.log('🔍 デバッグリクエスト受信');
+    console.log('剥 繝・ヰ繝・げ繝ｪ繧ｯ繧ｨ繧ｹ繝亥女菫｡');
     res.status(200).json({
       success: true,
       message: 'Debug endpoint working',
@@ -353,11 +353,11 @@ export function registerRoutes(app: Express): void {
 
   // Knowledge Base API routes
 
-  // ドキュメントアップロード
+  // 繝峨く繝･繝｡繝ｳ繝医い繝・・繝ｭ繝ｼ繝・
   app.post('/api/knowledge/upload', requireAuth, requireAdmin, upload.single('file'), async (req, res) => {
     try {
       if (!req.file) {
-        return res.status(400).json({ error: 'ファイルがありません' });
+        return res.status(400).json({ error: '繝輔ぃ繧､繝ｫ縺後≠繧翫∪縺帙ｓ' });
       }
 
       const filePath = req.file.path;
@@ -369,10 +369,10 @@ export function registerRoutes(app: Express): void {
         return res.status(201).json({ 
           success: true, 
           docId,
-          message: 'ドキュメントが正常に追加されました'
+          message: '繝峨く繝･繝｡繝ｳ繝医′豁｣蟶ｸ縺ｫ霑ｽ蜉縺輔ｌ縺ｾ縺励◆'
         });
       } catch (err) {
-        // エラー発生時にアップロードファイルを削除
+        // 繧ｨ繝ｩ繝ｼ逋ｺ逕滓凾縺ｫ繧｢繝・・繝ｭ繝ｼ繝峨ヵ繧｡繧､繝ｫ繧貞炎髯､
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
         }
@@ -380,22 +380,22 @@ export function registerRoutes(app: Express): void {
       }
     } catch (error) {
       console.error('Error uploading document:', error);
-      const errorMessage = error instanceof Error ? error.message : '不明なエラー';
-      res.status(500).json({ error: '知識ベースへの追加に失敗しました: ' + errorMessage });
+      const errorMessage = error instanceof Error ? error.message : '荳肴・縺ｪ繧ｨ繝ｩ繝ｼ';
+      res.status(500).json({ error: '遏･隴倥・繝ｼ繧ｹ縺ｸ縺ｮ霑ｽ蜉縺ｫ螟ｱ謨励＠縺ｾ縺励◆: ' + errorMessage });
     }
   });
 
-  // ドキュメント削除
+  // 繝峨く繝･繝｡繝ｳ繝亥炎髯､
   app.delete('/api/knowledge/:docId', requireAuth, requireAdmin, (req, res) => {
     try {
       const docId = req.params.docId;
       console.log(`Document deletion request: ID=${docId}`);
 
-      // ドキュメントとその関連ファイルを削除
+      // 繝峨く繝･繝｡繝ｳ繝医→縺昴・髢｢騾｣繝輔ぃ繧､繝ｫ繧貞炎髯､
       const success = removeDocumentFromKnowledgeBase(docId);
 
       if (success){
-        // 画像検索データを再初期化
+        // 逕ｻ蜒乗､懃ｴ｢繝・・繧ｿ繧貞・蛻晄悄蛹・
         fetch('http://localhost:5000/api/tech-support/init-image-search-data', {
           method: 'POST'
         }).then(response => {
@@ -423,11 +423,11 @@ export function registerRoutes(app: Express): void {
     }
   });
 
-  // ドキュメント再処理
+  // 繝峨く繝･繝｡繝ｳ繝亥・蜃ｦ逅・
   app.post('/api/knowledge/:docId/process', requireAuth, requireAdmin, async (req, res) => {
     try {
       const docId = req.params.docId;
-      // ナレッジベースからドキュメント情報を取得
+      // 繝翫Ξ繝・ず繝吶・繧ｹ縺九ｉ繝峨く繝･繝｡繝ｳ繝域ュ蝣ｱ繧貞叙蠕・
       const documents = listKnowledgeBaseDocuments();
       if (documents.success && documents.documents) {
         const document = documents.documents.find((doc) => doc.id === docId);
@@ -436,7 +436,7 @@ export function registerRoutes(app: Express): void {
           return res.status(404).json({ error: 'Document not found' });
         }
 
-        // ドキュメントのパスを取得
+        // 繝峨く繝･繝｡繝ｳ繝医・繝代せ繧貞叙蠕・
         const docPath = path.join(__dirname, '../../knowledge-base', document.title);
 
         if (!fs.existsSync(docPath)) {
@@ -445,7 +445,7 @@ export function registerRoutes(app: Express): void {
 
         console.log(`Starting document reprocessing: ${docPath}`);
 
-        // 再処理を実行
+        // 蜀榊・逅・ｒ螳溯｡・
         const newDocId = await addDocumentToKnowledgeBase(
           { originalname: path.basename(docPath), path: docPath, mimetype: 'text/plain' },
           fs.readFileSync(docPath, 'utf-8')
@@ -475,15 +475,15 @@ export function registerRoutes(app: Express): void {
         return res.status(400).json({ message: "Text is required" });
       }
 
-      console.log(`ChatGPT API呼び出し: ナレッジベースのみを使用=${useOnlyKnowledgeBase}`);
+      console.log(`ChatGPT API蜻ｼ縺ｳ蜃ｺ縺・ 繝翫Ξ繝・ず繝吶・繧ｹ縺ｮ縺ｿ繧剃ｽｿ逕ｨ=${useOnlyKnowledgeBase}`);
       const response = await processOpenAIRequest(text, useOnlyKnowledgeBase);
 
       // Check for specific error messages returned from OpenAI
-      if (response.includes("OpenAI APIキーが無効")) {
+      if (response.includes("OpenAI API繧ｭ繝ｼ縺檎┌蜉ｹ")) {
         return res.status(401).json({ message: response });
       }
 
-      if (response.includes("OpenAI APIのリクエスト制限")) {
+      if (response.includes("OpenAI API縺ｮ繝ｪ繧ｯ繧ｨ繧ｹ繝亥宛髯・)) {
         return res.status(429).json({ message: response });
       }
 

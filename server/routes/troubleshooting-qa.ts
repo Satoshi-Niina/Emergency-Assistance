@@ -1,10 +1,10 @@
-import express from 'express';
+﻿import express from 'express';
 import { TroubleshootingQA, TroubleshootingAnswer } from '../lib/troubleshooting-qa.js';
 
 const router = express.Router();
 const troubleshootingQA = new TroubleshootingQA();
 
-// トラブルシューティングセッションの開始
+// 繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ繧ｻ繝・す繝ｧ繝ｳ縺ｮ髢句ｧ・
 router.post('/start', async (req, res) => {
   try {
     const { problemDescription } = req.body;
@@ -12,11 +12,11 @@ router.post('/start', async (req, res) => {
     if (!problemDescription) {
       return res.status(400).json({
         success: false,
-        error: '問題の説明が必要です'
+        error: '蝠城｡後・隱ｬ譏弱′蠢・ｦ√〒縺・
       });
     }
 
-    console.log('🔍 トラブルシューティング開始:', problemDescription);
+    console.log('剥 繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ髢句ｧ・', problemDescription);
     
     const response = await troubleshootingQA.startTroubleshooting(problemDescription);
     
@@ -27,16 +27,16 @@ router.post('/start', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ トラブルシューティング開始エラー:', error);
+    console.error('笶・繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ髢句ｧ九お繝ｩ繝ｼ:', error);
     res.status(500).json({
       success: false,
-      error: 'トラブルシューティングの開始に失敗しました',
+      error: '繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ縺ｮ髢句ｧ九↓螟ｱ謨励＠縺ｾ縺励◆',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
 
-// 回答の処理と次の質問の生成
+// 蝗樒ｭ斐・蜃ｦ逅・→谺｡縺ｮ雉ｪ蝠上・逕滓・
 router.post('/answer', async (req, res) => {
   try {
     const { problemDescription, previousAnswers, currentAnswer } = req.body;
@@ -44,11 +44,11 @@ router.post('/answer', async (req, res) => {
     if (!problemDescription || !currentAnswer) {
       return res.status(400).json({
         success: false,
-        error: '問題の説明と回答が必要です'
+        error: '蝠城｡後・隱ｬ譏弱→蝗樒ｭ斐′蠢・ｦ√〒縺・
       });
     }
 
-    console.log('🔍 回答処理:', { problemDescription, currentAnswer, previousAnswersCount: previousAnswers?.length || 0 });
+    console.log('剥 蝗樒ｭ泌・逅・', { problemDescription, currentAnswer, previousAnswersCount: previousAnswers?.length || 0 });
     
     const response = await troubleshootingQA.processAnswer(
       problemDescription,
@@ -63,16 +63,16 @@ router.post('/answer', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ 回答処理エラー:', error);
+    console.error('笶・蝗樒ｭ泌・逅・お繝ｩ繝ｼ:', error);
     res.status(500).json({
       success: false,
-      error: '回答の処理に失敗しました',
+      error: '蝗樒ｭ斐・蜃ｦ逅・↓螟ｱ謨励＠縺ｾ縺励◆',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
 
-// 解決策の生成
+// 隗｣豎ｺ遲悶・逕滓・
 router.post('/solution', async (req, res) => {
   try {
     const { problemDescription, answers } = req.body;
@@ -80,11 +80,11 @@ router.post('/solution', async (req, res) => {
     if (!problemDescription || !answers) {
       return res.status(400).json({
         success: false,
-        error: '問題の説明と回答履歴が必要です'
+        error: '蝠城｡後・隱ｬ譏弱→蝗樒ｭ泌ｱ･豁ｴ縺悟ｿ・ｦ√〒縺・
       });
     }
 
-    console.log('🔍 解決策生成:', { problemDescription, answersCount: answers.length });
+    console.log('剥 隗｣豎ｺ遲也函謌・', { problemDescription, answersCount: answers.length });
     
     const solution = await troubleshootingQA.generateSolution(problemDescription, answers);
     
@@ -99,10 +99,10 @@ router.post('/solution', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ 解決策生成エラー:', error);
+    console.error('笶・隗｣豎ｺ遲也函謌舌お繝ｩ繝ｼ:', error);
     res.status(500).json({
       success: false,
-      error: '解決策の生成に失敗しました',
+      error: '隗｣豎ｺ遲悶・逕滓・縺ｫ螟ｱ謨励＠縺ｾ縺励◆',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }

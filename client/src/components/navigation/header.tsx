@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useAuth } from "../../context/auth-context";
 import { useChat } from "../../context/chat-context";
 import { Button } from "../../components/ui/button";
@@ -19,11 +19,11 @@ export default function Header({ onModelChange, onMachineNumberChange }: HeaderP
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
-  // 追加: 機種と機械番号の状態管理
+  // 霑ｽ蜉: 讖溽ｨｮ縺ｨ讖滓｢ｰ逡ｪ蜿ｷ縺ｮ迥ｶ諷狗ｮ｡逅・
   const [model, setModel] = useState("");
   const [machineNumber, setMachineNumber] = useState("");
 
-  // 追加: 値が変更されたときに親コンポーネントに通知
+  // 霑ｽ蜉: 蛟､縺悟､画峩縺輔ｌ縺溘→縺阪↓隕ｪ繧ｳ繝ｳ繝昴・繝阪Φ繝医↓騾夂衍
   const handleModelChange = (value: string) => {
     setModel(value);
     onModelChange?.(value);
@@ -42,19 +42,19 @@ export default function Header({ onModelChange, onMachineNumberChange }: HeaderP
     try {
       await logout();
     } catch (error) {
-      console.error('ログアウトエラー:', error);
+      console.error('繝ｭ繧ｰ繧｢繧ｦ繝医お繝ｩ繝ｼ:', error);
     }
   };
 
   const handleSettingsClick = () => {
-    console.log('設定ボタンがクリックされました');
+    console.log('險ｭ螳壹・繧ｿ繝ｳ縺後け繝ｪ繝・け縺輔ｌ縺ｾ縺励◆');
     navigate('/settings');
   };
 
   return (
     <header className="bg-primary text-white py-3 px-4 flex items-center justify-between shadow-md">
       <div className="flex items-center">
-        <h1 className="text-sm font-semibold mr-6" style={{ fontSize: '70%' }}>応急処置支援システム</h1>
+        <h1 className="text-sm font-semibold mr-6" style={{ fontSize: '70%' }}>蠢懈･蜃ｦ鄂ｮ謾ｯ謠ｴ繧ｷ繧ｹ繝・Β</h1>
         <div className="hidden md:flex items-center space-x-1">
           <Tabs />
         </div>
@@ -62,32 +62,32 @@ export default function Header({ onModelChange, onMachineNumberChange }: HeaderP
       
       <div className="flex items-center space-x-4">
         <div className="text-xs" style={{ fontSize: '80%' }}>
-          ログインユーザー：{user?.display_name || user?.username || 'ゲスト'}
+          繝ｭ繧ｰ繧､繝ｳ繝ｦ繝ｼ繧ｶ繝ｼ・嘴user?.display_name || user?.username || '繧ｲ繧ｹ繝・}
         </div>
 
-        {/* 設定ボタン */}
+        {/* 險ｭ螳壹・繧ｿ繝ｳ */}
         <Button 
           variant="ghost" 
           size="icon" 
           className="text-white hover:bg-white/20"
           onClick={handleSettingsClick}
-          title="設定"
+          title="險ｭ螳・
         >
           <Settings className="h-6 w-6" />
         </Button>
 
-        {/* ログアウトボタン */}
+        {/* 繝ｭ繧ｰ繧｢繧ｦ繝医・繧ｿ繝ｳ */}
         <Button 
           variant="ghost" 
           size="icon" 
           className="text-white hover:bg-white/20"
           onClick={handleLogout}
-          title="ログアウト"
+          title="繝ｭ繧ｰ繧｢繧ｦ繝・
         >
           <LogOut className="h-6 w-6" />
         </Button>
 
-        {/* モバイルメニュー */}
+        {/* 繝｢繝舌う繝ｫ繝｡繝九Η繝ｼ */}
         <div className="md:hidden">
           <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
             <SheetTrigger asChild>
@@ -97,7 +97,7 @@ export default function Header({ onModelChange, onMachineNumberChange }: HeaderP
             </SheetTrigger>
             <SheetContent side="left" className="p-0">
               <div className="bg-primary text-white p-4">
-                <h2 className="text-xl font-semibold">メニュー</h2>
+                <h2 className="text-xl font-semibold">繝｡繝九Η繝ｼ</h2>
               </div>
               <nav className="p-4">
                 <Tabs />
@@ -110,7 +110,7 @@ export default function Header({ onModelChange, onMachineNumberChange }: HeaderP
                     className="flex items-center w-full px-3 py-2 text-sm rounded-md hover:bg-gray-100 text-blue-600"
                   >
                     <Settings className="mr-2 h-4 w-4" />
-                    設定
+                    險ｭ螳・
                   </button>
                   <button 
                     onClick={() => {
@@ -120,7 +120,7 @@ export default function Header({ onModelChange, onMachineNumberChange }: HeaderP
                     className="flex items-center w-full px-3 py-2 text-sm rounded-md hover:bg-gray-100 text-red-600"
                   >
                     <LogOut className="mr-2 h-4 w-4" />
-                    ログアウト
+                    繝ｭ繧ｰ繧｢繧ｦ繝・
                   </button>
                 </div>
               </nav>

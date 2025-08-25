@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Search } from 'lucide-react';
@@ -8,13 +8,13 @@ interface KeywordSuggestionsProps {
 }
 
 /**
- * 検索コンポーネント
+ * 讀懃ｴ｢繧ｳ繝ｳ繝昴・繝阪Φ繝・
  */
 const KeywordSuggestions: React.FC<KeywordSuggestionsProps> = ({ onKeywordClick }) => {
-  // カスタムキーワード入力用の状態
+  // 繧ｫ繧ｹ繧ｿ繝繧ｭ繝ｼ繝ｯ繝ｼ繝牙・蜉帷畑縺ｮ迥ｶ諷・
   const [customKeyword, setCustomKeyword] = React.useState('');
   
-  // カスタムキーワード検索の実行
+  // 繧ｫ繧ｹ繧ｿ繝繧ｭ繝ｼ繝ｯ繝ｼ繝画､懃ｴ｢縺ｮ螳溯｡・
   const handleCustomSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (customKeyword.trim()) {
@@ -28,7 +28,7 @@ const KeywordSuggestions: React.FC<KeywordSuggestionsProps> = ({ onKeywordClick 
       <CardHeader className="pb-2">
         <CardTitle className="text-md flex items-center">
           <Search className="h-4 w-4 mr-2 text-gray-500" />
-          <span>検索</span>
+          <span>讀懃ｴ｢</span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -36,11 +36,11 @@ const KeywordSuggestions: React.FC<KeywordSuggestionsProps> = ({ onKeywordClick 
           <input
             type="text"
             className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-            placeholder="キーワードを入力..."
+            placeholder="繧ｭ繝ｼ繝ｯ繝ｼ繝峨ｒ蜈･蜉・.."
             value={customKeyword}
             onChange={(e) => setCustomKeyword(e.target.value)}
           />
-          <Button type="submit" size="sm">検索</Button>
+          <Button type="submit" size="sm">讀懃ｴ｢</Button>
         </form>
       </CardContent>
     </Card>

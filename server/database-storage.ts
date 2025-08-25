@@ -1,4 +1,4 @@
-import * as schema from "./db/schema.js";
+﻿import * as schema from "./db/schema.js";
 import { eq, like } from "drizzle-orm";
 import { storage } from "./storage.js";
 import { db } from "./db/index.js";
@@ -17,7 +17,7 @@ export class DatabaseStorage {
         });
         // Seed initial users if not present
         this.seedInitialUsers().catch(error => {
-            console.error("初期ユーザー作成エラー:", error);
+            console.error("蛻晄悄繝ｦ繝ｼ繧ｶ繝ｼ菴懈・繧ｨ繝ｩ繝ｼ:", error);
         });
     }
     seedInitialUsers = async (): Promise<void> => {
@@ -27,12 +27,12 @@ export class DatabaseStorage {
                 await this.createUser({
                     username: "niina",
                     password: "0077", // In a real app, this would be hashed
-                    displayName: "新納",
-                    role: "システム管理者"
+                    displayName: "譁ｰ邏・,
+                    role: "繧ｷ繧ｹ繝・Β邂｡逅・・
                 });
-                console.log("✅ niinaユーザーを作成しました");
+                console.log("笨・niina繝ｦ繝ｼ繧ｶ繝ｼ繧剃ｽ懈・縺励∪縺励◆");
             } else {
-                console.log("✅ niinaユーザーは既に存在します");
+                console.log("笨・niina繝ｦ繝ｼ繧ｶ繝ｼ縺ｯ譌｢縺ｫ蟄伜惠縺励∪縺・);
             }
             
             const employeeUser = await this.getUserByUsername("employee");
@@ -40,18 +40,18 @@ export class DatabaseStorage {
                 const userData = {
                     username: "employee",
                     password: "employee123", // In a real app, this would be hashed
-                    displayName: "山田太郎",
+                    displayName: "螻ｱ逕ｰ螟ｪ驛・,
                     role: "employee"
                 };
-                console.log("🔍 employeeユーザー作成データ:", userData);
+                console.log("剥 employee繝ｦ繝ｼ繧ｶ繝ｼ菴懈・繝・・繧ｿ:", userData);
                 await this.createUser(userData);
-                console.log("✅ employeeユーザーを作成しました");
+                console.log("笨・employee繝ｦ繝ｼ繧ｶ繝ｼ繧剃ｽ懈・縺励∪縺励◆");
             } else {
-                console.log("✅ employeeユーザーは既に存在します");
+                console.log("笨・employee繝ｦ繝ｼ繧ｶ繝ｼ縺ｯ譌｢縺ｫ蟄伜惠縺励∪縺・);
             }
         } catch (error) {
-            console.error("❌ 初期ユーザー作成エラー:", error);
-            // エラーが発生してもサーバーは起動を続行
+            console.error("笶・蛻晄悄繝ｦ繝ｼ繧ｶ繝ｼ菴懈・繧ｨ繝ｩ繝ｼ:", error);
+            // 繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｦ繧ゅし繝ｼ繝舌・縺ｯ襍ｷ蜍輔ｒ邯夊｡・
         }
     };
     // User methods
@@ -70,14 +70,14 @@ export class DatabaseStorage {
         const userData = {
             username: insertUser.username,
             password: insertUser.password,
-            displayName: insertUser.displayName || insertUser.username, // デフォルト値を設定
+            displayName: insertUser.displayName || insertUser.username, // 繝・ヵ繧ｩ繝ｫ繝亥､繧定ｨｭ螳・
             role: insertUser.role || 'employee',
             department: insertUser.department,
             description: insertUser.description
         };
         
-        console.log('🔍 createUser入力データ:', insertUser);
-        console.log('🔍 createUser変換後データ:', userData);
+        console.log('剥 createUser蜈･蜉帙ョ繝ｼ繧ｿ:', insertUser);
+        console.log('剥 createUser螟画鋤蠕後ョ繝ｼ繧ｿ:', userData);
         
         const user = (await db.insert(schema.users).values(userData).returning())[0];
         return user;
@@ -116,7 +116,7 @@ export class DatabaseStorage {
             await db.delete(schema.users).where(eq(schema.users.id, id));
             return true;
         } catch (error) {
-            console.error("ユーザー削除時のエラー", error);
+            console.error("繝ｦ繝ｼ繧ｶ繝ｼ蜑企勁譎ゅ・繧ｨ繝ｩ繝ｼ", error);
             return false;
                 }
     };
@@ -145,7 +145,7 @@ export class DatabaseStorage {
                             return aTime - bTime;
                         });
                         if (sortedMessages.length === 0) {
-            console.log(`チャットID ${chatId} にはメッセージがありません`);
+            console.log(`繝√Ε繝・ヨID ${chatId} 縺ｫ縺ｯ繝｡繝・そ繝ｼ繧ｸ縺後≠繧翫∪縺帙ｓ`);
                         }
         return sortedMessages.map((msg: any) => ({ ...msg, text: msg.content }));
     };
@@ -160,19 +160,19 @@ export class DatabaseStorage {
         return { ...newMessage, text: newMessage.content };
     };
     clearChatMessages = async (chatId: string): Promise<void> => {
-        console.log(`チャットメッセージをクリア開始: chatId=${chatId}`);
+        console.log(`繝√Ε繝・ヨ繝｡繝・そ繝ｼ繧ｸ繧偵け繝ｪ繧｢髢句ｧ・ chatId=${chatId}`);
         const chatMessages = await this.getMessagesForChat(chatId);
         const messageIds = chatMessages.map((message: any) => message.id);
-        console.log(`削除対象メッセージ数: ${messageIds.length}`);
+        console.log(`蜑企勁蟇ｾ雎｡繝｡繝・そ繝ｼ繧ｸ謨ｰ: ${messageIds.length}`);
         let deletedMediaCount = 0;
         if (messageIds.length > 0) {
             for (const messageId of messageIds) {
                 try {
                     await db.delete(schema.media).where(eq(schema.media.messageId, messageId));
-                    console.log(`メディア削除: messageId=${messageId}`);
+                    console.log(`繝｡繝・ぅ繧｢蜑企勁: messageId=${messageId}`);
                         deletedMediaCount++;
                 } catch (error) {
-                    console.error(`メディア削除エラー (messageId: ${messageId}):`, error);
+                    console.error(`繝｡繝・ぅ繧｢蜑企勁繧ｨ繝ｩ繝ｼ (messageId: ${messageId}):`, error);
                 }
             }
         }
@@ -181,33 +181,33 @@ export class DatabaseStorage {
         while (attempt < 3) {
             try {
                 await db.delete(schema.messages).where(eq(schema.messages.chatId, chatId));
-                console.log(`メッセージ削除試行 ${attempt + 1}: 完了`);
+                console.log(`繝｡繝・そ繝ｼ繧ｸ蜑企勁隧ｦ陦・${attempt + 1}: 螳御ｺ・);
                 const remainingMessages = await this.getMessagesForChat(chatId);
                 if (remainingMessages.length === 0) {
-                    console.log(`チャットメッセージクリア完了: chatId=${chatId}, 削除メディア=${deletedMediaCount}, 削除メッセージ=${deletedMessageCount}`);
+                    console.log(`繝√Ε繝・ヨ繝｡繝・そ繝ｼ繧ｸ繧ｯ繝ｪ繧｢螳御ｺ・ chatId=${chatId}, 蜑企勁繝｡繝・ぅ繧｢=${deletedMediaCount}, 蜑企勁繝｡繝・そ繝ｼ繧ｸ=${deletedMessageCount}`);
                     break;
                 }
-                console.warn(`試行 ${attempt + 1} 後に ${remainingMessages.length} 件のメッセージが残っています`);
+                console.warn(`隧ｦ陦・${attempt + 1} 蠕後↓ ${remainingMessages.length} 莉ｶ縺ｮ繝｡繝・そ繝ｼ繧ｸ縺梧ｮ九▲縺ｦ縺・∪縺兪);
                 if (attempt === 2) {
                     for (const msg of remainingMessages) {
                         try {
                             await db.delete(schema.messages).where(eq(schema.messages.id, msg.id));
                         deletedMessageCount++;
                         } catch (error) {
-                            console.error(`個別メッセージ削除エラー (id: ${msg.id}):`, error);
+                            console.error(`蛟句挨繝｡繝・そ繝ｼ繧ｸ蜑企勁繧ｨ繝ｩ繝ｼ (id: ${msg.id}):`, error);
                         }
                     }
                 }
                         attempt++;
             } catch (error) {
-                console.error(`メッセージ削除試行 ${attempt + 1} エラー:`, error);
+                console.error(`繝｡繝・そ繝ｼ繧ｸ蜑企勁隧ｦ陦・${attempt + 1} 繧ｨ繝ｩ繝ｼ:`, error);
                 if (attempt === 2) {
                     throw error;
                 }
                 attempt++;
             }
         }
-        console.log(`チャットメッセージクリア完了: chatId=${chatId}, 削除メディア=${deletedMediaCount}, 削除メッセージ=${deletedMessageCount}`);
+        console.log(`繝√Ε繝・ヨ繝｡繝・そ繝ｼ繧ｸ繧ｯ繝ｪ繧｢螳御ｺ・ chatId=${chatId}, 蜑企勁繝｡繝・ぅ繧｢=${deletedMediaCount}, 蜑企勁繝｡繝・そ繝ｼ繧ｸ=${deletedMessageCount}`);
     };
     // Media methods
     getMedia = async (id: string): Promise<any> => {
@@ -241,11 +241,11 @@ export class DatabaseStorage {
         const matchingDocuments = [];
         for (const docId of documentIds) {
             if (docId === null) continue;
-            // ここで必要に応じてドキュメント取得処理を追加
+            // 縺薙％縺ｧ蠢・ｦ√↓蠢懊§縺ｦ繝峨く繝･繝｡繝ｳ繝亥叙蠕怜・逅・ｒ霑ｽ蜉
                         }
         return matchingDocuments;
     };
-    // チャットエクスポート関連のメソッド
+    // 繝√Ε繝・ヨ繧ｨ繧ｯ繧ｹ繝昴・繝磯未騾｣縺ｮ繝｡繧ｽ繝・ラ
     getMessagesForChatAfterTimestamp = async (chatId: string, timestamp: number): Promise<any[]> => {
         const allMessages = await db.select().from(schema.messages).where(eq(schema.messages.chatId, chatId));
         return allMessages

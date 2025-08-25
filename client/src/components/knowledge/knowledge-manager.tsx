@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useToast } from "../../hooks/use-toast.ts";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -47,7 +47,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 
-// ナレッジデータの型定義
+// 繝翫Ξ繝・ず繝・・繧ｿ縺ｮ蝙句ｮ夂ｾｩ
 interface KnowledgeData {
   id: string;
   title: string;
@@ -84,7 +84,7 @@ const KnowledgeManager: React.FC = () => {
     description: ''
   });
 
-  // ナレッジデータ一覧を取得
+  // 繝翫Ξ繝・ず繝・・繧ｿ荳隕ｧ繧貞叙蠕・
   const fetchKnowledgeData = async () => {
     try {
       setLoading(true);
@@ -99,16 +99,16 @@ const KnowledgeManager: React.FC = () => {
       
       if (result.success) {
         setKnowledgeData(result.data);
-        console.log('✅ ナレッジデータ取得成功:', result.data.length + '件');
+        console.log('笨・繝翫Ξ繝・ず繝・・繧ｿ蜿門ｾ玲・蜉・', result.data.length + '莉ｶ');
       } else {
-        console.error('❌ ナレッジデータ取得失敗:', result.message);
+        console.error('笶・繝翫Ξ繝・ず繝・・繧ｿ蜿門ｾ怜､ｱ謨・', result.message);
         setKnowledgeData([]);
       }
     } catch (error) {
-      console.error('❌ ナレッジデータ取得エラー:', error);
+      console.error('笶・繝翫Ξ繝・ず繝・・繧ｿ蜿門ｾ励お繝ｩ繝ｼ:', error);
       toast({
-        title: "エラー",
-        description: error instanceof Error ? error.message : "ナレッジデータの取得に失敗しました",
+        title: "繧ｨ繝ｩ繝ｼ",
+        description: error instanceof Error ? error.message : "繝翫Ξ繝・ず繝・・繧ｿ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆",
         variant: "destructive"
       });
       setKnowledgeData([]);
@@ -117,7 +117,7 @@ const KnowledgeManager: React.FC = () => {
     }
   };
 
-  // ナレッジデータの種類一覧を取得
+  // 繝翫Ξ繝・ず繝・・繧ｿ縺ｮ遞ｮ鬘樔ｸ隕ｧ繧貞叙蠕・
   const fetchKnowledgeTypes = async () => {
     try {
       const response = await fetch('/api/knowledge-base/types/list');
@@ -131,20 +131,20 @@ const KnowledgeManager: React.FC = () => {
       if (result.success) {
         setKnowledgeTypes(result.data);
       } else {
-        console.error('❌ ナレッジデータ種類取得失敗:', result.message);
+        console.error('笶・繝翫Ξ繝・ず繝・・繧ｿ遞ｮ鬘槫叙蠕怜､ｱ謨・', result.message);
       }
     } catch (error) {
-      console.error('❌ ナレッジデータ種類取得エラー:', error);
+      console.error('笶・繝翫Ξ繝・ず繝・・繧ｿ遞ｮ鬘槫叙蠕励お繝ｩ繝ｼ:', error);
     }
   };
 
-  // コンポーネントマウント時にデータを取得
+  // 繧ｳ繝ｳ繝昴・繝阪Φ繝医・繧ｦ繝ｳ繝域凾縺ｫ繝・・繧ｿ繧貞叙蠕・
   useEffect(() => {
     fetchKnowledgeData();
     fetchKnowledgeTypes();
   }, [filterType]);
 
-  // ファイル選択ハンドラー
+  // 繝輔ぃ繧､繝ｫ驕ｸ謚槭ワ繝ｳ繝峨Λ繝ｼ
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
       const file = event.target.files[0];
@@ -156,12 +156,12 @@ const KnowledgeManager: React.FC = () => {
     }
   };
 
-  // アップロードハンドラー
+  // 繧｢繝・・繝ｭ繝ｼ繝峨ワ繝ｳ繝峨Λ繝ｼ
   const handleUpload = async () => {
     if (!selectedFile) {
       toast({
-        title: "エラー",
-        description: "ファイルが選択されていません",
+        title: "繧ｨ繝ｩ繝ｼ",
+        description: "繝輔ぃ繧､繝ｫ縺碁∈謚槭＆繧後※縺・∪縺帙ｓ",
         variant: "destructive"
       });
       return;
@@ -182,18 +182,18 @@ const KnowledgeManager: React.FC = () => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || "アップロードに失敗しました");
+        throw new Error(errorText || "繧｢繝・・繝ｭ繝ｼ繝峨↓螟ｱ謨励＠縺ｾ縺励◆");
       }
 
       const result = await response.json();
 
       if (result.success) {
         toast({
-          title: "アップロード成功",
-          description: `${selectedFile.name} がナレッジベースに追加されました`,
+          title: "繧｢繝・・繝ｭ繝ｼ繝画・蜉・,
+          description: `${selectedFile.name} 縺後リ繝ｬ繝・ず繝吶・繧ｹ縺ｫ霑ｽ蜉縺輔ｌ縺ｾ縺励◆`,
         });
 
-        // フォームをリセット
+        // 繝輔か繝ｼ繝繧偵Μ繧ｻ繝・ヨ
         setSelectedFile(null);
         setUploadForm({
           title: '',
@@ -203,24 +203,24 @@ const KnowledgeManager: React.FC = () => {
         });
         setUploadDialogOpen(false);
 
-        // データを再取得
+        // 繝・・繧ｿ繧貞・蜿門ｾ・
         fetchKnowledgeData();
       } else {
-        throw new Error(result.message || "アップロードに失敗しました");
+        throw new Error(result.message || "繧｢繝・・繝ｭ繝ｼ繝峨↓螟ｱ謨励＠縺ｾ縺励◆");
       }
     } catch (error) {
       console.error("Upload error:", error);
       toast({
-        title: "アップロードエラー",
-        description: error instanceof Error ? error.message : "未知のエラーが発生しました",
+        title: "繧｢繝・・繝ｭ繝ｼ繝峨お繝ｩ繝ｼ",
+        description: error instanceof Error ? error.message : "譛ｪ遏･縺ｮ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆",
         variant: "destructive",
       });
     }
   };
 
-  // 削除ハンドラー
+  // 蜑企勁繝上Φ繝峨Λ繝ｼ
   const handleDelete = async (id: string, title: string) => {
-    if (!confirm(`「${title}」を削除しますか？`)) {
+    if (!confirm(`縲・{title}縲阪ｒ蜑企勁縺励∪縺吶°・歔)) {
       return;
     }
 
@@ -231,46 +231,46 @@ const KnowledgeManager: React.FC = () => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || "削除に失敗しました");
+        throw new Error(errorText || "蜑企勁縺ｫ螟ｱ謨励＠縺ｾ縺励◆");
       }
 
       const result = await response.json();
 
       if (result.success) {
         toast({
-          title: "削除成功",
-          description: `${title} を削除しました`,
+          title: "蜑企勁謌仙粥",
+          description: `${title} 繧貞炎髯､縺励∪縺励◆`,
         });
 
-        // データを再取得
+        // 繝・・繧ｿ繧貞・蜿門ｾ・
         fetchKnowledgeData();
       } else {
-        throw new Error(result.message || "削除に失敗しました");
+        throw new Error(result.message || "蜑企勁縺ｫ螟ｱ謨励＠縺ｾ縺励◆");
       }
     } catch (error) {
       console.error("Delete error:", error);
       toast({
-        title: "削除エラー",
-        description: error instanceof Error ? error.message : "未知のエラーが発生しました",
+        title: "蜑企勁繧ｨ繝ｩ繝ｼ",
+        description: error instanceof Error ? error.message : "譛ｪ遏･縺ｮ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆",
         variant: "destructive",
       });
     }
   };
 
-  // ファイルサイズを人間が読みやすい形式に変換
+  // 繝輔ぃ繧､繝ｫ繧ｵ繧､繧ｺ繧剃ｺｺ髢薙′隱ｭ縺ｿ繧・☆縺・ｽ｢蠑上↓螟画鋤
   const formatFileSize = (bytes?: number): string => {
-    if (!bytes) return '不明';
+    if (!bytes) return '荳肴・';
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
   };
 
-  // 日付をフォーマット
+  // 譌･莉倥ｒ繝輔か繝ｼ繝槭ャ繝・
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), 'yyyy/MM/dd HH:mm');
   };
 
-  // タイプに応じたアイコンを取得
+  // 繧ｿ繧､繝励↓蠢懊§縺溘い繧､繧ｳ繝ｳ繧貞叙蠕・
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'troubleshooting':
@@ -292,11 +292,11 @@ const KnowledgeManager: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* ヘッダー */}
+      {/* 繝倥ャ繝繝ｼ */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">ナレッジデータ管理</h2>
-          <p className="text-gray-600">ナレッジベースのデータを管理します</p>
+          <h2 className="text-2xl font-bold">繝翫Ξ繝・ず繝・・繧ｿ邂｡逅・/h2>
+          <p className="text-gray-600">繝翫Ξ繝・ず繝吶・繧ｹ縺ｮ繝・・繧ｿ繧堤ｮ｡逅・＠縺ｾ縺・/p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -305,25 +305,25 @@ const KnowledgeManager: React.FC = () => {
             disabled={loading}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            更新
+            譖ｴ譁ｰ
           </Button>
           <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
-                新規追加
+                譁ｰ隕剰ｿｽ蜉
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
-                <DialogTitle>ナレッジデータを追加</DialogTitle>
+                <DialogTitle>繝翫Ξ繝・ず繝・・繧ｿ繧定ｿｽ蜉</DialogTitle>
                 <DialogDescription>
-                  新しいナレッジデータをアップロードします
+                  譁ｰ縺励＞繝翫Ξ繝・ず繝・・繧ｿ繧偵い繝・・繝ｭ繝ｼ繝峨＠縺ｾ縺・
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="file">ファイル</Label>
+                  <Label htmlFor="file">繝輔ぃ繧､繝ｫ</Label>
                   <Input
                     id="file"
                     type="file"
@@ -332,50 +332,50 @@ const KnowledgeManager: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="title">タイトル</Label>
+                  <Label htmlFor="title">繧ｿ繧､繝医Ν</Label>
                   <Input
                     id="title"
                     value={uploadForm.title}
                     onChange={(e) => setUploadForm(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="ファイルのタイトル"
+                    placeholder="繝輔ぃ繧､繝ｫ縺ｮ繧ｿ繧､繝医Ν"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="category">カテゴリ</Label>
+                  <Label htmlFor="category">繧ｫ繝・ざ繝ｪ</Label>
                   <Input
                     id="category"
                     value={uploadForm.category}
                     onChange={(e) => setUploadForm(prev => ({ ...prev, category: e.target.value }))}
-                    placeholder="カテゴリ"
+                    placeholder="繧ｫ繝・ざ繝ｪ"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="tags">タグ（カンマ区切り）</Label>
+                  <Label htmlFor="tags">繧ｿ繧ｰ・医き繝ｳ繝槫玄蛻・ｊ・・/Label>
                   <Input
                     id="tags"
                     value={uploadForm.tags}
                     onChange={(e) => setUploadForm(prev => ({ ...prev, tags: e.target.value }))}
-                    placeholder="タグ1, タグ2, タグ3"
+                    placeholder="繧ｿ繧ｰ1, 繧ｿ繧ｰ2, 繧ｿ繧ｰ3"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="description">説明</Label>
+                  <Label htmlFor="description">隱ｬ譏・/Label>
                   <Textarea
                     id="description"
                     value={uploadForm.description}
                     onChange={(e) => setUploadForm(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="ファイルの説明"
+                    placeholder="繝輔ぃ繧､繝ｫ縺ｮ隱ｬ譏・
                     rows={3}
                   />
                 </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setUploadDialogOpen(false)}>
-                  キャンセル
+                  繧ｭ繝｣繝ｳ繧ｻ繝ｫ
                 </Button>
                 <Button onClick={handleUpload} disabled={!selectedFile}>
                   <Upload className="h-4 w-4 mr-2" />
-                  アップロード
+                  繧｢繝・・繝ｭ繝ｼ繝・
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -383,24 +383,24 @@ const KnowledgeManager: React.FC = () => {
         </div>
       </div>
 
-      {/* フィルター */}
+      {/* 繝輔ぅ繝ｫ繧ｿ繝ｼ */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Filter className="h-5 w-5" />
-            フィルター
+            繝輔ぅ繝ｫ繧ｿ繝ｼ
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <Label htmlFor="filter-type">タイプ:</Label>
+              <Label htmlFor="filter-type">繧ｿ繧､繝・</Label>
               <Select value={filterType} onValueChange={setFilterType}>
                 <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="すべてのタイプ" />
+                  <SelectValue placeholder="縺吶∋縺ｦ縺ｮ繧ｿ繧､繝・ />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">すべてのタイプ</SelectItem>
+                  <SelectItem value="">縺吶∋縺ｦ縺ｮ繧ｿ繧､繝・/SelectItem>
                   {knowledgeTypes.map((type) => (
                     <SelectItem key={type.value} value={type.value}>
                       {type.label}
@@ -413,30 +413,30 @@ const KnowledgeManager: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* ナレッジデータ一覧 */}
+      {/* 繝翫Ξ繝・ず繝・・繧ｿ荳隕ｧ */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            ナレッジデータ一覧 ({knowledgeData.length}件)
+            繝翫Ξ繝・ず繝・・繧ｿ荳隕ｧ ({knowledgeData.length}莉ｶ)
           </CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">データを読み込み中...</p>
+              <p className="text-gray-600">繝・・繧ｿ繧定ｪｭ縺ｿ霎ｼ縺ｿ荳ｭ...</p>
             </div>
           ) : knowledgeData.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>タイトル</TableHead>
-                  <TableHead>タイプ</TableHead>
-                  <TableHead>カテゴリ</TableHead>
-                  <TableHead>サイズ</TableHead>
-                  <TableHead>作成日時</TableHead>
-                  <TableHead>操作</TableHead>
+                  <TableHead>繧ｿ繧､繝医Ν</TableHead>
+                  <TableHead>繧ｿ繧､繝・/TableHead>
+                  <TableHead>繧ｫ繝・ざ繝ｪ</TableHead>
+                  <TableHead>繧ｵ繧､繧ｺ</TableHead>
+                  <TableHead>菴懈・譌･譎・/TableHead>
+                  <TableHead>謫堺ｽ・/TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -494,8 +494,8 @@ const KnowledgeManager: React.FC = () => {
           ) : (
             <div className="text-center py-8">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">ナレッジデータがありません</p>
-              <p className="text-sm text-gray-500">新しいデータをアップロードしてください</p>
+              <p className="text-gray-600">繝翫Ξ繝・ず繝・・繧ｿ縺後≠繧翫∪縺帙ｓ</p>
+              <p className="text-sm text-gray-500">譁ｰ縺励＞繝・・繧ｿ繧偵い繝・・繝ｭ繝ｼ繝峨＠縺ｦ縺上□縺輔＞</p>
             </div>
           )}
         </CardContent>

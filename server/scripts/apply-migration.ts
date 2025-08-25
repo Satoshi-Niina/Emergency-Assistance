@@ -1,15 +1,15 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
+﻿import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
-// ESM対応の __dirname
+// ESM蟇ｾ蠢懊・ __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// データベース接続設定
+// 繝・・繧ｿ繝吶・繧ｹ謗･邯夊ｨｭ螳・
 function getDatabaseUrl(): string {
   if (process.env.DATABASE_URL) {
     return process.env.DATABASE_URL;
@@ -26,38 +26,38 @@ async function applyMigration() {
   });
 
   try {
-    console.log('🔍 マイグレーションファイルを読み込み中...');
+    console.log('剥 繝槭う繧ｰ繝ｬ繝ｼ繧ｷ繝ｧ繝ｳ繝輔ぃ繧､繝ｫ繧定ｪｭ縺ｿ霎ｼ縺ｿ荳ｭ...');
     
-    // マイグレーションファイルのパス（最新版を使用）
+    // 繝槭う繧ｰ繝ｬ繝ｼ繧ｷ繝ｧ繝ｳ繝輔ぃ繧､繝ｫ縺ｮ繝代せ・域怙譁ｰ迚医ｒ菴ｿ逕ｨ・・
     const migrationPath = path.join(__dirname, '../../migrations/0003_fix_schema_final.sql');
     
-    // usersテーブル用のマイグレーションファイルのパス
+    // users繝・・繝悶Ν逕ｨ縺ｮ繝槭う繧ｰ繝ｬ繝ｼ繧ｷ繝ｧ繝ｳ繝輔ぃ繧､繝ｫ縺ｮ繝代せ
     const usersMigrationPath = path.join(__dirname, '../../migrations/0004_add_users_table.sql');
     
     if (!fs.existsSync(migrationPath)) {
-      throw new Error(`マイグレーションファイルが見つかりません: ${migrationPath}`);
+      throw new Error(`繝槭う繧ｰ繝ｬ繝ｼ繧ｷ繝ｧ繝ｳ繝輔ぃ繧､繝ｫ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ: ${migrationPath}`);
     }
     
     const migrationSQL = fs.readFileSync(migrationPath, 'utf-8');
     
-    console.log('🔍 メインマイグレーションを実行中...');
+    console.log('剥 繝｡繧､繝ｳ繝槭う繧ｰ繝ｬ繝ｼ繧ｷ繝ｧ繝ｳ繧貞ｮ溯｡御ｸｭ...');
     
-    // メインマイグレーションを実行
+    // 繝｡繧､繝ｳ繝槭う繧ｰ繝ｬ繝ｼ繧ｷ繝ｧ繝ｳ繧貞ｮ溯｡・
     await client.unsafe(migrationSQL);
     
-    // usersテーブル用マイグレーションを実行
+    // users繝・・繝悶Ν逕ｨ繝槭う繧ｰ繝ｬ繝ｼ繧ｷ繝ｧ繝ｳ繧貞ｮ溯｡・
     if (fs.existsSync(usersMigrationPath)) {
-        console.log('🔍 usersテーブル用マイグレーションを実行中...');
+        console.log('剥 users繝・・繝悶Ν逕ｨ繝槭う繧ｰ繝ｬ繝ｼ繧ｷ繝ｧ繝ｳ繧貞ｮ溯｡御ｸｭ...');
         const usersMigrationSQL = fs.readFileSync(usersMigrationPath, 'utf-8');
         await client.unsafe(usersMigrationSQL);
     } else {
-        console.log('⚠️ usersテーブル用マイグレーションファイルが見つかりません');
+        console.log('笞・・users繝・・繝悶Ν逕ｨ繝槭う繧ｰ繝ｬ繝ｼ繧ｷ繝ｧ繝ｳ繝輔ぃ繧､繝ｫ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ');
     }
     
-    console.log('✅ マイグレーションが正常に完了しました');
+    console.log('笨・繝槭う繧ｰ繝ｬ繝ｼ繧ｷ繝ｧ繝ｳ縺梧ｭ｣蟶ｸ縺ｫ螳御ｺ・＠縺ｾ縺励◆');
     
-    // 確認用クエリ
-    console.log('🔍 テーブル構造を確認中...');
+    // 遒ｺ隱咲畑繧ｯ繧ｨ繝ｪ
+    console.log('剥 繝・・繝悶Ν讒矩繧堤｢ｺ隱堺ｸｭ...');
     
     const tables = await client`
       SELECT table_name 
@@ -67,9 +67,9 @@ async function applyMigration() {
       ORDER BY table_name
     `;
     
-    console.log('📋 存在するテーブル:', tables.map(t => t.table_name));
+    console.log('搭 蟄伜惠縺吶ｋ繝・・繝悶Ν:', tables.map(t => t.table_name));
     
-    // machines テーブルのカラム確認
+    // machines 繝・・繝悶Ν縺ｮ繧ｫ繝ｩ繝遒ｺ隱・
     const machineColumns = await client`
       SELECT column_name, data_type, is_nullable
       FROM information_schema.columns 
@@ -77,12 +77,12 @@ async function applyMigration() {
       ORDER BY ordinal_position
     `;
     
-    console.log('📋 machines テーブルのカラム:');
+    console.log('搭 machines 繝・・繝悶Ν縺ｮ繧ｫ繝ｩ繝:');
     machineColumns.forEach(col => {
       console.log(`  - ${col.column_name}: ${col.data_type} (${col.is_nullable === 'YES' ? 'NULL' : 'NOT NULL'})`);
     });
     
-    // history_items テーブルのカラム確認
+    // history_items 繝・・繝悶Ν縺ｮ繧ｫ繝ｩ繝遒ｺ隱・
     const historyColumns = await client`
       SELECT column_name, data_type, is_nullable
       FROM information_schema.columns 
@@ -90,40 +90,40 @@ async function applyMigration() {
       ORDER BY ordinal_position
     `;
     
-    console.log('📋 history_items テーブルのカラム:');
+    console.log('搭 history_items 繝・・繝悶Ν縺ｮ繧ｫ繝ｩ繝:');
     historyColumns.forEach(col => {
       console.log(`  - ${col.column_name}: ${col.data_type} (${col.is_nullable === 'YES' ? 'NULL' : 'NOT NULL'})`);
     });
     
-    // サンプルデータの確認
+    // 繧ｵ繝ｳ繝励Ν繝・・繧ｿ縺ｮ遒ｺ隱・
     const machineCount = await client`SELECT COUNT(*) as count FROM machines`;
     const machineTypeCount = await client`SELECT COUNT(*) as count FROM machine_types`;
     const historyCount = await client`SELECT COUNT(*) as count FROM history_items`;
     const userCount = await client`SELECT COUNT(*) as count FROM users`;
     
-    console.log('📊 データ件数:');
-    console.log(`  - machines: ${machineCount[0].count}件`);
-    console.log(`  - machine_types: ${machineTypeCount[0].count}件`);
-    console.log(`  - history_items: ${historyCount[0].count}件`);
-    console.log(`  - users: ${userCount[0].count}件`);
+    console.log('投 繝・・繧ｿ莉ｶ謨ｰ:');
+    console.log(`  - machines: ${machineCount[0].count}莉ｶ`);
+    console.log(`  - machine_types: ${machineTypeCount[0].count}莉ｶ`);
+    console.log(`  - history_items: ${historyCount[0].count}莉ｶ`);
+    console.log(`  - users: ${userCount[0].count}莉ｶ`);
     
   } catch (error) {
-    console.error('❌ マイグレーションエラー:', error);
+    console.error('笶・繝槭う繧ｰ繝ｬ繝ｼ繧ｷ繝ｧ繝ｳ繧ｨ繝ｩ繝ｼ:', error);
     throw error;
   } finally {
     await client.end();
   }
 }
 
-// スクリプト実行
+// 繧ｹ繧ｯ繝ｪ繝励ヨ螳溯｡・
 if (import.meta.url === `file://${process.argv[1]}`) {
   applyMigration()
     .then(() => {
-      console.log('🎉 マイグレーション処理が完了しました');
+      console.log('脂 繝槭う繧ｰ繝ｬ繝ｼ繧ｷ繝ｧ繝ｳ蜃ｦ逅・′螳御ｺ・＠縺ｾ縺励◆');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('💥 マイグレーション処理でエラーが発生しました:', error);
+      console.error('徴 繝槭う繧ｰ繝ｬ繝ｼ繧ｷ繝ｧ繝ｳ蜃ｦ逅・〒繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆:', error);
       process.exit(1);
     });
 } 

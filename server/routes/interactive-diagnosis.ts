@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+﻿import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { 
   DiagnosisState, 
@@ -10,7 +10,7 @@ import { processOpenAIRequest } from '../lib/openai.js';
 
 const router = Router();
 
-// リクエストスキーマ
+// 繝ｪ繧ｯ繧ｨ繧ｹ繝医せ繧ｭ繝ｼ繝・
 const InteractiveDiagnosisRequestSchema = z.object({
   userResponse: z.string().min(1),
   currentState: z.object({
@@ -34,12 +34,12 @@ const InteractiveDiagnosisRequestSchema = z.object({
 type InteractiveDiagnosisRequest = z.infer<typeof InteractiveDiagnosisRequestSchema>;
 
 /**
- * インタラクティブ故障診断 - ユーザーとの対話的な診断プロセス
+ * 繧､繝ｳ繧ｿ繝ｩ繧ｯ繝・ぅ繝匁腐髫懆ｨｺ譁ｭ - 繝ｦ繝ｼ繧ｶ繝ｼ縺ｨ縺ｮ蟇ｾ隧ｱ逧・↑險ｺ譁ｭ繝励Ο繧ｻ繧ｹ
  * POST /api/interactive-diagnosis
  */
 router.post('/', async (req: Request, res: Response) => {
   try {
-    // リクエストの検証
+    // 繝ｪ繧ｯ繧ｨ繧ｹ繝医・讀懆ｨｼ
     const validationResult = InteractiveDiagnosisRequestSchema.safeParse(req.body);
     if (!validationResult.success) {
       return res.status(400).json({
@@ -50,7 +50,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     const { userResponse, currentState } = validationResult.data;
 
-    // 初期状態の設定
+    // 蛻晄悄迥ｶ諷九・險ｭ螳・
     let diagnosisState: DiagnosisState;
     
     if (currentState) {
@@ -89,75 +89,75 @@ router.post('/', async (req: Request, res: Response) => {
       };
     }
 
-    // 診断状態の更新
+    // 險ｺ譁ｭ迥ｶ諷九・譖ｴ譁ｰ
     const updatedState = updateDiagnosisState(diagnosisState, userResponse);
 
-    // インタラクティブレスポンスの生成
+    // 繧､繝ｳ繧ｿ繝ｩ繧ｯ繝・ぅ繝悶Ξ繧ｹ繝昴Φ繧ｹ縺ｮ逕滓・
     let interactiveResponse = generateInteractiveResponse(updatedState, userResponse);
 
-    // 高度な分析が必要な場合はOpenAI APIを使用
+    // 鬮伜ｺｦ縺ｪ蛻・梵縺悟ｿ・ｦ√↑蝣ｴ蜷医・OpenAI API繧剃ｽｿ逕ｨ
     if (updatedState.confidence < 0.6 && updatedState.phase === 'diagnosis') {
       try {
-        // 収集した情報をコンテキストとしてまとめる
+        // 蜿朱寔縺励◆諠・ｱ繧偵さ繝ｳ繝・く繧ｹ繝医→縺励※縺ｾ縺ｨ繧√ｋ
         const context = `
-車両: ${updatedState.collectedInfo.vehicleType || '未特定'}
-症状: ${updatedState.collectedInfo.symptoms.join(', ')}
-緊急度: ${updatedState.collectedInfo.urgency}
-安全状況: ${updatedState.collectedInfo.safetyStatus || '未確認'}
-疑われる原因: ${updatedState.suspectedCauses.join(', ')}
-最新回答: ${userResponse}
+霆贋ｸ｡: ${updatedState.collectedInfo.vehicleType || '譛ｪ迚ｹ螳・}
+逞・憾: ${updatedState.collectedInfo.symptoms.join(', ')}
+邱頑･蠎ｦ: ${updatedState.collectedInfo.urgency}
+螳牙・迥ｶ豕・ ${updatedState.collectedInfo.safetyStatus || '譛ｪ遒ｺ隱・}
+逍代ｏ繧後ｋ蜴溷屏: ${updatedState.suspectedCauses.join(', ')}
+譛譁ｰ蝗樒ｭ・ ${userResponse}
         `.trim();
 
         const aiPrompt = `
-保守用車の故障診断を行っています。以下の情報に基づいて、次に確認すべき重要な質問を1つ提案してください。
+菫晏ｮ育畑霆翫・謨・囿險ｺ譁ｭ繧定｡後▲縺ｦ縺・∪縺吶ゆｻ･荳九・諠・ｱ縺ｫ蝓ｺ縺･縺・※縲∵ｬ｡縺ｫ遒ｺ隱阪☆縺ｹ縺埼㍾隕√↑雉ｪ蝠上ｒ1縺､謠先｡医＠縺ｦ縺上□縺輔＞縲・
 
 ${context}
 
-以下の条件で回答してください：
-1. 安全確認が最優先
-2. 症状の原因を特定するための具体的な質問
-3. 現場で確認可能な内容
-4. 簡潔で理解しやすい表現
+莉･荳九・譚｡莉ｶ縺ｧ蝗樒ｭ斐＠縺ｦ縺上□縺輔＞・・
+1. 螳牙・遒ｺ隱阪′譛蜆ｪ蜈・
+2. 逞・憾縺ｮ蜴溷屏繧堤音螳壹☆繧九◆繧√・蜈ｷ菴鍋噪縺ｪ雉ｪ蝠・
+3. 迴ｾ蝣ｴ縺ｧ遒ｺ隱榊庄閭ｽ縺ｪ蜀・ｮｹ
+4. 邁｡貎斐〒逅・ｧ｣縺励ｄ縺吶＞陦ｨ迴ｾ
 
-質問のみを回答してください（余計な説明は不要）。
+雉ｪ蝠上・縺ｿ繧貞屓遲斐＠縺ｦ縺上□縺輔＞・井ｽ呵ｨ医↑隱ｬ譏弱・荳崎ｦ・ｼ峨・
         `;
 
         const aiResponse = await processOpenAIRequest(aiPrompt, true);
         
-        // AI生成の質問で更新
+        // AI逕滓・縺ｮ雉ｪ蝠上〒譖ｴ譁ｰ
         if (aiResponse && aiResponse.length > 0) {
           interactiveResponse = {
             ...interactiveResponse,
-            message: `🤖 **AI分析結果**\n\n収集した情報を分析しました。より正確な診断のため、以下を確認させてください。`,
+            message: `､・**AI蛻・梵邨先棡**\n\n蜿朱寔縺励◆諠・ｱ繧貞・譫舌＠縺ｾ縺励◆縲ゅｈ繧頑ｭ｣遒ｺ縺ｪ險ｺ譁ｭ縺ｮ縺溘ａ縲∽ｻ･荳九ｒ遒ｺ隱阪＆縺帙※縺上□縺輔＞縲Ａ,
             nextQuestion: aiResponse,
             priority: 'diagnosis'
           };
         }
       } catch (error) {
-        console.error('AI分析エラー:', error);
-        // AIエラーの場合は通常のロジックを使用
+        console.error('AI蛻・梵繧ｨ繝ｩ繝ｼ:', error);
+        // AI繧ｨ繝ｩ繝ｼ縺ｮ蝣ｴ蜷医・騾壼ｸｸ縺ｮ繝ｭ繧ｸ繝・け繧剃ｽｿ逕ｨ
       }
     }
 
-    // 応急処置の具体的手順が必要な場合
+    // 蠢懈･蜃ｦ鄂ｮ縺ｮ蜈ｷ菴鍋噪謇矩・′蠢・ｦ√↑蝣ｴ蜷・
     if (updatedState.phase === 'action' && updatedState.suspectedCauses.length > 0) {
       try {
         const primaryCause = updatedState.suspectedCauses[0];
-        const vehicleInfo = updatedState.collectedInfo.vehicleType || '保守用車';
+        const vehicleInfo = updatedState.collectedInfo.vehicleType || '菫晏ｮ育畑霆・;
         
         const actionPrompt = `
-${vehicleInfo}の${primaryCause}に対する応急処置手順を、現場で実行可能な形で提案してください。
+${vehicleInfo}縺ｮ${primaryCause}縺ｫ蟇ｾ縺吶ｋ蠢懈･蜃ｦ鄂ｮ謇矩・ｒ縲∫樟蝣ｴ縺ｧ螳溯｡悟庄閭ｽ縺ｪ蠖｢縺ｧ謠先｡医＠縺ｦ縺上□縺輔＞縲・
 
-症状: ${updatedState.collectedInfo.symptoms.join(', ')}
-緊急度: ${updatedState.collectedInfo.urgency}
+逞・憾: ${updatedState.collectedInfo.symptoms.join(', ')}
+邱頑･蠎ｦ: ${updatedState.collectedInfo.urgency}
 
-以下の形式で回答してください：
-1. 安全確認事項
-2. 準備するもの
-3. 具体的手順（ステップバイステップ）
-4. 確認ポイント
+莉･荳九・蠖｢蠑上〒蝗樒ｭ斐＠縺ｦ縺上□縺輔＞・・
+1. 螳牙・遒ｺ隱堺ｺ矩・
+2. 貅門ｙ縺吶ｋ繧ゅ・
+3. 蜈ｷ菴鍋噪謇矩・ｼ医せ繝・ャ繝励ヰ繧､繧ｹ繝・ャ繝暦ｼ・
+4. 遒ｺ隱阪・繧､繝ｳ繝・
 
-現場の技術者が迷わずに実行できる内容にしてください。
+迴ｾ蝣ｴ縺ｮ謚陦楢・′霑ｷ繧上★縺ｫ螳溯｡後〒縺阪ｋ蜀・ｮｹ縺ｫ縺励※縺上□縺輔＞縲・
         `;
 
         const actionResponse = await processOpenAIRequest(actionPrompt, true);
@@ -165,17 +165,17 @@ ${vehicleInfo}の${primaryCause}に対する応急処置手順を、現場で実
         if (actionResponse && actionResponse.length > 0) {
           interactiveResponse = {
             ...interactiveResponse,
-            message: `🛠️ **専門的応急処置手順**\n\n${actionResponse}`,
-            nextQuestion: "上記の手順を実行しましたか？結果を教えてください。",
+            message: `屏・・**蟆る摩逧・ｿ懈･蜃ｦ鄂ｮ謇矩・*\n\n${actionResponse}`,
+            nextQuestion: "荳願ｨ倥・謇矩・ｒ螳溯｡後＠縺ｾ縺励◆縺具ｼ溽ｵ先棡繧呈蕗縺医※縺上□縺輔＞縲・,
             priority: 'action'
           };
         }
       } catch (error) {
-        console.error('応急処置生成エラー:', error);
+        console.error('蠢懈･蜃ｦ鄂ｮ逕滓・繧ｨ繝ｩ繝ｼ:', error);
       }
     }
 
-    // レスポンス
+    // 繝ｬ繧ｹ繝昴Φ繧ｹ
     const response = {
       interactiveResponse,
       updatedState,
@@ -190,7 +190,7 @@ ${vehicleInfo}の${primaryCause}に対する応急処置手順を、現場で実
     res.json(response);
 
   } catch (error) {
-    console.error('インタラクティブ診断エラー:', error);
+    console.error('繧､繝ｳ繧ｿ繝ｩ繧ｯ繝・ぅ繝冶ｨｺ譁ｭ繧ｨ繝ｩ繝ｼ:', error);
     res.status(500).json({
       error: 'Interactive diagnosis failed',
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -199,7 +199,7 @@ ${vehicleInfo}の${primaryCause}に対する応急処置手順を、現場で実
 });
 
 /**
- * 新しい診断セッションの開始
+ * 譁ｰ縺励＞險ｺ譁ｭ繧ｻ繝・す繝ｧ繝ｳ縺ｮ髢句ｧ・
  * POST /api/interactive-diagnosis/start
  */
 router.post('/start', async (req: Request, res: Response) => {
@@ -236,7 +236,7 @@ router.post('/start', async (req: Request, res: Response) => {
     });
 
   } catch (error) {
-    console.error('診断セッション開始エラー:', error);
+    console.error('險ｺ譁ｭ繧ｻ繝・す繝ｧ繝ｳ髢句ｧ九お繝ｩ繝ｼ:', error);
     res.status(500).json({
       error: 'Failed to start diagnosis session',
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -245,15 +245,15 @@ router.post('/start', async (req: Request, res: Response) => {
 });
 
 /**
- * 診断状態の保存
+ * 險ｺ譁ｭ迥ｶ諷九・菫晏ｭ・
  * POST /api/interactive-diagnosis/save
  */
 router.post('/save', async (req: Request, res: Response) => {
   try {
     const { sessionId, diagnosisState, userNotes } = req.body;
 
-    // ここで診断状態をデータベースに保存
-    // 実装例：
+    // 縺薙％縺ｧ險ｺ譁ｭ迥ｶ諷九ｒ繝・・繧ｿ繝吶・繧ｹ縺ｫ菫晏ｭ・
+    // 螳溯｣・ｾ具ｼ・
     // await saveDiagnosisSession(sessionId, diagnosisState, userNotes);
 
     res.json({
@@ -263,7 +263,7 @@ router.post('/save', async (req: Request, res: Response) => {
     });
 
   } catch (error) {
-    console.error('診断セッション保存エラー:', error);
+    console.error('險ｺ譁ｭ繧ｻ繝・す繝ｧ繝ｳ菫晏ｭ倥お繝ｩ繝ｼ:', error);
     res.status(500).json({
       error: 'Failed to save diagnosis session',
       message: error instanceof Error ? error.message : 'Unknown error'

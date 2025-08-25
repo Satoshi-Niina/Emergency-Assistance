@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+﻿import { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/auth-context';
 
@@ -11,7 +11,7 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
   const { user, isLoading } = useAuth();
   const location = useLocation();
 
-  console.log('🔍 ProtectedRoute - 認証状態確認:', {
+  console.log('剥 ProtectedRoute - 隱崎ｨｼ迥ｶ諷狗｢ｺ隱・', {
     isLoading,
     hasUser: !!user,
     username: user?.username,
@@ -21,31 +21,31 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
     timestamp: new Date().toISOString()
   });
 
-  // 認証状態読み込み中
+  // 隱崎ｨｼ迥ｶ諷玖ｪｭ縺ｿ霎ｼ縺ｿ荳ｭ
   if (isLoading) {
-    console.log('⏳ ProtectedRoute - 認証状態読み込み中...');
+    console.log('竢ｳ ProtectedRoute - 隱崎ｨｼ迥ｶ諷玖ｪｭ縺ｿ霎ｼ縺ｿ荳ｭ...');
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">認証状態を確認中...</p>
+          <p className="text-gray-600">隱崎ｨｼ迥ｶ諷九ｒ遒ｺ隱堺ｸｭ...</p>
         </div>
       </div>
     );
   }
 
-  // 未認証の場合はログインページにリダイレクト
+  // 譛ｪ隱崎ｨｼ縺ｮ蝣ｴ蜷医・繝ｭ繧ｰ繧､繝ｳ繝壹・繧ｸ縺ｫ繝ｪ繝繧､繝ｬ繧ｯ繝・
   if (!user) {
-    console.log('🚫 ProtectedRoute - 未認証、ログインページにリダイレクト');
+    console.log('圻 ProtectedRoute - 譛ｪ隱崎ｨｼ縲√Ο繧ｰ繧､繝ｳ繝壹・繧ｸ縺ｫ繝ｪ繝繧､繝ｬ繧ｯ繝・);
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // 管理者権限が必要で、管理者でない場合
+  // 邂｡逅・・ｨｩ髯舌′蠢・ｦ√〒縲∫ｮ｡逅・・〒縺ｪ縺・ｴ蜷・
   if (requireAdmin && user.role !== 'admin') {
-    console.log('🚫 ProtectedRoute - 管理者権限が必要ですが、権限がありません');
+    console.log('圻 ProtectedRoute - 邂｡逅・・ｨｩ髯舌′蠢・ｦ√〒縺吶′縲∵ｨｩ髯舌′縺ゅｊ縺ｾ縺帙ｓ');
     return <Navigate to="/chat" replace />;
   }
 
-  console.log('✅ ProtectedRoute - 認証OK、コンテンツを表示');
+  console.log('笨・ProtectedRoute - 隱崎ｨｼOK縲√さ繝ｳ繝・Φ繝・ｒ陦ｨ遉ｺ');
   return <>{children}</>;
 }

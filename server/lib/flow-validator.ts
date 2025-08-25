@@ -1,4 +1,4 @@
-export interface FlowNode {
+﻿export interface FlowNode {
     id: string;
     type: 'start' | 'decision' | 'action' | 'end';
     title: string;
@@ -18,21 +18,21 @@ export class FlowValidator {
         const errors: string[] = [];
         const warnings: string[] = [];
 
-        // 開始ノードの確認
+        // 髢句ｧ九ヮ繝ｼ繝峨・遒ｺ隱・
         const startNodes = nodes.filter(node => node.type === 'start');
         if (startNodes.length === 0) {
-            errors.push('開始ノードが存在しません');
+            errors.push('髢句ｧ九ヮ繝ｼ繝峨′蟄伜惠縺励∪縺帙ｓ');
         } else if (startNodes.length > 1) {
-            errors.push('開始ノードは1つだけである必要があります');
+            errors.push('髢句ｧ九ヮ繝ｼ繝峨・1縺､縺縺代〒縺ゅｋ蠢・ｦ√′縺ゅｊ縺ｾ縺・);
         }
 
-        // 終了ノードの確認
+        // 邨ゆｺ・ヮ繝ｼ繝峨・遒ｺ隱・
         const endNodes = nodes.filter(node => node.type === 'end');
         if (endNodes.length === 0) {
-            errors.push('終了ノードが存在しません');
+            errors.push('邨ゆｺ・ヮ繝ｼ繝峨′蟄伜惠縺励∪縺帙ｓ');
         }
 
-        // 孤立ノードの確認
+        // 蟄､遶九ヮ繝ｼ繝峨・遒ｺ隱・
         const connectedNodes = new Set<string>();
         nodes.forEach(node => {
             if (node.connections) {
@@ -44,14 +44,14 @@ export class FlowValidator {
 
         nodes.forEach(node => {
             if (node.type !== 'start' && !connectedNodes.has(node.id)) {
-                warnings.push(`ノード "${node.title}" が他のノードから接続されていません`);
+                warnings.push(`繝弱・繝・"${node.title}" 縺御ｻ悶・繝弱・繝峨°繧画磁邯壹＆繧後※縺・∪縺帙ｓ`);
             }
         });
 
-        // 循環参照の確認
+        // 蠕ｪ迺ｰ蜿ら・縺ｮ遒ｺ隱・
         const hasCycle = this.detectCycle(nodes);
         if (hasCycle) {
-            errors.push('フローに循環参照が検出されました');
+            errors.push('繝輔Ο繝ｼ縺ｫ蠕ｪ迺ｰ蜿ら・縺梧､懷・縺輔ｌ縺ｾ縺励◆');
         }
 
         return {
@@ -67,7 +67,7 @@ export class FlowValidator {
 
         const dfs = (nodeId: string): boolean => {
             if (recursionStack.has(nodeId)) {
-                return true; // 循環検出
+                return true; // 蠕ｪ迺ｰ讀懷・
             }
             if (visited.has(nodeId)) {
                 return false;
@@ -110,13 +110,13 @@ export const validateFlowData = (flowData: any) => {
 
 // Auto fix flow data function for emergency-flow.ts
 export const autoFixFlowData = (flowData: any) => {
-    // 基本的な自動修正ロジック
+    // 蝓ｺ譛ｬ逧・↑閾ｪ蜍穂ｿｮ豁｣繝ｭ繧ｸ繝・け
     const result = validateFlowData(flowData);
     if (result.isValid) {
         return flowData;
     }
     
-    // エラーがある場合は基本的な修正を試行
+    // 繧ｨ繝ｩ繝ｼ縺後≠繧句ｴ蜷医・蝓ｺ譛ｬ逧・↑菫ｮ豁｣繧定ｩｦ陦・
     const fixedData = { ...flowData };
     if (!fixedData.steps) {
         fixedData.steps = [];

@@ -1,4 +1,4 @@
-/* scripts/clean.mjs */
+﻿/* scripts/clean.mjs */
 import { rm } from 'node:fs/promises';
 const targets = [
   'dist','build','.vite','.next','.nuxt','out',

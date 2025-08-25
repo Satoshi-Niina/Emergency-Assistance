@@ -1,8 +1,8 @@
-import { query, transaction } from '../db/db';
+﻿import { query, transaction } from '../db/db';
 import { storageService } from './storageService';
 import { z } from 'zod';
 
-// バリデーションスキーマ
+// 繝舌Μ繝・・繧ｷ繝ｧ繝ｳ繧ｹ繧ｭ繝ｼ繝・
 const createSessionSchema = z.object({
   title: z.string().optional(),
   machineType: z.string().optional(),
@@ -11,8 +11,8 @@ const createSessionSchema = z.object({
 });
 
 const createHistorySchema = z.object({
-  sessionId: z.string().uuid('セッションIDはUUID形式である必要があります'),
-  question: z.string().min(1, '質問は必須です'),
+  sessionId: z.string().uuid('繧ｻ繝・す繝ｧ繝ｳID縺ｯUUID蠖｢蠑上〒縺ゅｋ蠢・ｦ√′縺ゅｊ縺ｾ縺・),
+  question: z.string().min(1, '雉ｪ蝠上・蠢・医〒縺・),
   answer: z.string().optional(),
   imageBase64: z.string().optional(),
   machineType: z.string().optional(),
@@ -70,21 +70,21 @@ export interface HistorySearchResult {
 
 export class HistoryService {
   /**
-   * チャットセッションを作成
+   * 繝√Ε繝・ヨ繧ｻ繝・す繝ｧ繝ｳ繧剃ｽ懈・
    */
   static async createSession(data: z.infer<typeof createSessionSchema>): Promise<ChatSession> {
     try {
-      console.log('📋 新規チャットセッション作成:', data);
+      console.log('搭 譁ｰ隕上メ繝｣繝・ヨ繧ｻ繝・す繝ｧ繝ｳ菴懈・:', data);
       
-      // バリデーション
+      // 繝舌Μ繝・・繧ｷ繝ｧ繝ｳ
       const validationResult = createSessionSchema.safeParse(data);
       if (!validationResult.success) {
-        throw new Error(`バリデーションエラー: ${validationResult.error.errors.map(e => e.message).join(', ')}`);
+        throw new Error(`繝舌Μ繝・・繧ｷ繝ｧ繝ｳ繧ｨ繝ｩ繝ｼ: ${validationResult.error.errors.map(e => e.message).join(', ')}`);
       }
 
       const { title, machineType, machineNumber, metadata } = validationResult.data;
 
-      // セッションを作成
+      // 繧ｻ繝・す繝ｧ繝ｳ繧剃ｽ懈・
       const result = await query(
         `INSERT INTO chat_sessions (title, machine_type, machine_number, metadata)
          VALUES ($1, $2, $3, $4)
@@ -93,7 +93,7 @@ export class HistoryService {
       );
 
       const session = result.rows[0];
-      console.log('✅ チャットセッション作成完了:', session.id);
+      console.log('笨・繝√Ε繝・ヨ繧ｻ繝・す繝ｧ繝ｳ菴懈・螳御ｺ・', session.id);
       
       return {
         id: session.id,
@@ -107,35 +107,35 @@ export class HistoryService {
       };
       
     } catch (error) {
-      console.error('❌ チャットセッション作成エラー:', error);
+      console.error('笶・繝√Ε繝・ヨ繧ｻ繝・す繝ｧ繝ｳ菴懈・繧ｨ繝ｩ繝ｼ:', error);
       throw error;
     }
   }
 
   /**
-   * チャット履歴を作成
+   * 繝√Ε繝・ヨ螻･豁ｴ繧剃ｽ懈・
    */
   static async createHistory(data: z.infer<typeof createHistorySchema>): Promise<ChatHistory> {
     try {
-      console.log('📋 新規チャット履歴作成:', data);
+      console.log('搭 譁ｰ隕上メ繝｣繝・ヨ螻･豁ｴ菴懈・:', data);
       
-      // バリデーション
+      // 繝舌Μ繝・・繧ｷ繝ｧ繝ｳ
       const validationResult = createHistorySchema.safeParse(data);
       if (!validationResult.success) {
-        throw new Error(`バリデーションエラー: ${validationResult.error.errors.map(e => e.message).join(', ')}`);
+        throw new Error(`繝舌Μ繝・・繧ｷ繝ｧ繝ｳ繧ｨ繝ｩ繝ｼ: ${validationResult.error.errors.map(e => e.message).join(', ')}`);
       }
 
       const { sessionId, question, answer, imageBase64, machineType, machineNumber, metadata } = validationResult.data;
 
       let imageUrl: string | undefined;
 
-      // 画像がある場合はストレージに保存
+      // 逕ｻ蜒上′縺ゅｋ蝣ｴ蜷医・繧ｹ繝医Ξ繝ｼ繧ｸ縺ｫ菫晏ｭ・
       if (imageBase64) {
         const uploadResult = await storageService.saveBase64Image(imageBase64);
         imageUrl = uploadResult.url;
       }
 
-      // 履歴を保存
+      // 螻･豁ｴ繧剃ｿ晏ｭ・
       const result = await query(
         `INSERT INTO chat_history (session_id, question, answer, image_url, machine_type, machine_number, metadata)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -144,7 +144,7 @@ export class HistoryService {
       );
 
       const history = result.rows[0];
-      console.log('✅ チャット履歴作成完了:', history.id);
+      console.log('笨・繝√Ε繝・ヨ螻･豁ｴ菴懈・螳御ｺ・', history.id);
       
       return {
         id: history.id,
@@ -159,27 +159,27 @@ export class HistoryService {
       };
       
     } catch (error) {
-      console.error('❌ チャット履歴作成エラー:', error);
+      console.error('笶・繝√Ε繝・ヨ螻･豁ｴ菴懈・繧ｨ繝ｩ繝ｼ:', error);
       throw error;
     }
   }
 
   /**
-   * セッション一覧を取得
+   * 繧ｻ繝・す繝ｧ繝ｳ荳隕ｧ繧貞叙蠕・
    */
   static async getSessionList(searchParams: HistorySearchParams): Promise<HistorySearchResult> {
     try {
-      console.log('📋 セッション一覧取得:', searchParams);
+      console.log('搭 繧ｻ繝・す繝ｧ繝ｳ荳隕ｧ蜿門ｾ・', searchParams);
       
-      // バリデーション
+      // 繝舌Μ繝・・繧ｷ繝ｧ繝ｳ
       const validationResult = searchHistorySchema.safeParse(searchParams);
       if (!validationResult.success) {
-        throw new Error(`バリデーションエラー: ${validationResult.error.errors.map(e => e.message).join(', ')}`);
+        throw new Error(`繝舌Μ繝・・繧ｷ繝ｧ繝ｳ繧ｨ繝ｩ繝ｼ: ${validationResult.error.errors.map(e => e.message).join(', ')}`);
       }
 
       const { machineType, machineNumber, status, limit = 20, offset = 0 } = validationResult.data;
 
-      // 検索条件を構築
+      // 讀懃ｴ｢譚｡莉ｶ繧呈ｧ狗ｯ・
       const conditions: string[] = [];
       const queryParams: any[] = [];
       let paramIndex = 1;
@@ -204,7 +204,7 @@ export class HistoryService {
 
       const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-      // セッション一覧を取得（ビューを使用）
+      // 繧ｻ繝・す繝ｧ繝ｳ荳隕ｧ繧貞叙蠕暦ｼ医ン繝･繝ｼ繧剃ｽｿ逕ｨ・・
       const result = await query(
         `SELECT * FROM chat_session_summary ${whereClause}
          ORDER BY created_at DESC
@@ -212,7 +212,7 @@ export class HistoryService {
         [...queryParams, limit, offset]
       );
 
-      // 総件数を取得
+      // 邱丈ｻｶ謨ｰ繧貞叙蠕・
       const countResult = await query(
         `SELECT COUNT(*) as total FROM chat_sessions ${whereClause}`,
         queryParams
@@ -234,7 +234,7 @@ export class HistoryService {
         lastMessageAt: row.last_message_at
       }));
 
-      console.log(`✅ セッション一覧取得完了: ${items.length}件 (全${total}件)`);
+      console.log(`笨・繧ｻ繝・す繝ｧ繝ｳ荳隕ｧ蜿門ｾ怜ｮ御ｺ・ ${items.length}莉ｶ (蜈ｨ${total}莉ｶ)`);
 
       return {
         items,
@@ -244,17 +244,17 @@ export class HistoryService {
       };
       
     } catch (error) {
-      console.error('❌ セッション一覧取得エラー:', error);
+      console.error('笶・繧ｻ繝・す繝ｧ繝ｳ荳隕ｧ蜿門ｾ励お繝ｩ繝ｼ:', error);
       throw error;
     }
   }
 
   /**
-   * セッション詳細を取得
+   * 繧ｻ繝・す繝ｧ繝ｳ隧ｳ邏ｰ繧貞叙蠕・
    */
   static async getSessionById(id: string): Promise<ChatSession | null> {
     try {
-      console.log(`📋 セッション詳細取得: ${id}`);
+      console.log(`搭 繧ｻ繝・す繝ｧ繝ｳ隧ｳ邏ｰ蜿門ｾ・ ${id}`);
 
       const result = await query(
         `SELECT * FROM chat_sessions WHERE id = $1`,
@@ -262,12 +262,12 @@ export class HistoryService {
       );
 
       if (result.rows.length === 0) {
-        console.log('⚠️  セッションが見つかりません:', id);
+        console.log('笞・・ 繧ｻ繝・す繝ｧ繝ｳ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ:', id);
         return null;
       }
 
       const session = result.rows[0];
-      console.log('✅ セッション詳細取得完了');
+      console.log('笨・繧ｻ繝・す繝ｧ繝ｳ隧ｳ邏ｰ蜿門ｾ怜ｮ御ｺ・);
 
       return {
         id: session.id,
@@ -281,17 +281,17 @@ export class HistoryService {
       };
       
     } catch (error) {
-      console.error('❌ セッション詳細取得エラー:', error);
+      console.error('笶・繧ｻ繝・す繝ｧ繝ｳ隧ｳ邏ｰ蜿門ｾ励お繝ｩ繝ｼ:', error);
       throw error;
     }
   }
 
   /**
-   * セッションの履歴を取得
+   * 繧ｻ繝・す繝ｧ繝ｳ縺ｮ螻･豁ｴ繧貞叙蠕・
    */
   static async getSessionHistory(sessionId: string): Promise<ChatHistory[]> {
     try {
-      console.log(`📋 セッション履歴取得: ${sessionId}`);
+      console.log(`搭 繧ｻ繝・す繝ｧ繝ｳ螻･豁ｴ蜿門ｾ・ ${sessionId}`);
 
       const result = await query(
         `SELECT * FROM chat_history 
@@ -312,29 +312,29 @@ export class HistoryService {
         createdAt: row.created_at
       }));
 
-      console.log(`✅ セッション履歴取得完了: ${history.length}件`);
+      console.log(`笨・繧ｻ繝・す繝ｧ繝ｳ螻･豁ｴ蜿門ｾ怜ｮ御ｺ・ ${history.length}莉ｶ`);
       return history;
       
     } catch (error) {
-      console.error('❌ セッション履歴取得エラー:', error);
+      console.error('笶・繧ｻ繝・す繝ｧ繝ｳ螻･豁ｴ蜿門ｾ励お繝ｩ繝ｼ:', error);
       throw error;
     }
   }
 
   /**
-   * セッションを削除
+   * 繧ｻ繝・す繝ｧ繝ｳ繧貞炎髯､
    */
   static async deleteSession(id: string): Promise<boolean> {
     try {
-      console.log(`📋 セッション削除: ${id}`);
+      console.log(`搭 繧ｻ繝・す繝ｧ繝ｳ蜑企勁: ${id}`);
 
-      // セッションに関連する画像を削除
+      // 繧ｻ繝・す繝ｧ繝ｳ縺ｫ髢｢騾｣縺吶ｋ逕ｻ蜒上ｒ蜑企勁
       const historyResult = await query(
         `SELECT image_url FROM chat_history WHERE session_id = $1 AND image_url IS NOT NULL`,
         [id]
       );
 
-      // 画像ファイルを削除
+      // 逕ｻ蜒上ヵ繧｡繧､繝ｫ繧貞炎髯､
       for (const row of historyResult.rows) {
         if (row.image_url) {
           const filename = row.image_url.split('/').pop();
@@ -344,32 +344,32 @@ export class HistoryService {
         }
       }
 
-      // セッションを削除（CASCADEで履歴も削除される）
+      // 繧ｻ繝・す繝ｧ繝ｳ繧貞炎髯､・・ASCADE縺ｧ螻･豁ｴ繧ょ炎髯､縺輔ｌ繧具ｼ・
       const result = await query(
         `DELETE FROM chat_sessions WHERE id = $1 RETURNING id`,
         [id]
       );
 
       if (result.rows.length === 0) {
-        console.log('⚠️  削除対象のセッションが見つかりません:', id);
+        console.log('笞・・ 蜑企勁蟇ｾ雎｡縺ｮ繧ｻ繝・す繝ｧ繝ｳ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ:', id);
         return false;
       }
 
-      console.log('✅ セッション削除完了:', id);
+      console.log('笨・繧ｻ繝・す繝ｧ繝ｳ蜑企勁螳御ｺ・', id);
       return true;
       
     } catch (error) {
-      console.error('❌ セッション削除エラー:', error);
+      console.error('笶・繧ｻ繝・す繝ｧ繝ｳ蜑企勁繧ｨ繝ｩ繝ｼ:', error);
       throw error;
     }
   }
 
   /**
-   * セッションを更新
+   * 繧ｻ繝・す繝ｧ繝ｳ繧呈峩譁ｰ
    */
   static async updateSession(id: string, data: Partial<z.infer<typeof createSessionSchema>>): Promise<ChatSession | null> {
     try {
-      console.log(`📋 セッション更新: ${id}`, data);
+      console.log(`搭 繧ｻ繝・す繝ｧ繝ｳ譖ｴ譁ｰ: ${id}`, data);
 
       const updateFields: string[] = [];
       const params: any[] = [];
@@ -400,7 +400,7 @@ export class HistoryService {
       }
 
       if (updateFields.length === 0) {
-        throw new Error('更新するフィールドが指定されていません');
+        throw new Error('譖ｴ譁ｰ縺吶ｋ繝輔ぅ繝ｼ繝ｫ繝峨′謖・ｮ壹＆繧後※縺・∪縺帙ｓ');
       }
 
       params.push(id);
@@ -413,12 +413,12 @@ export class HistoryService {
       );
 
       if (result.rows.length === 0) {
-        console.log('⚠️  更新対象のセッションが見つかりません:', id);
+        console.log('笞・・ 譖ｴ譁ｰ蟇ｾ雎｡縺ｮ繧ｻ繝・す繝ｧ繝ｳ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ:', id);
         return null;
       }
 
       const session = result.rows[0];
-      console.log('✅ セッション更新完了:', id);
+      console.log('笨・繧ｻ繝・す繝ｧ繝ｳ譖ｴ譁ｰ螳御ｺ・', id);
 
       return {
         id: session.id,
@@ -432,13 +432,13 @@ export class HistoryService {
       };
       
     } catch (error) {
-      console.error('❌ セッション更新エラー:', error);
+      console.error('笶・繧ｻ繝・す繝ｧ繝ｳ譖ｴ譁ｰ繧ｨ繝ｩ繝ｼ:', error);
       throw error;
     }
   }
 
   /**
-   * 統計情報を取得
+   * 邨ｱ險域ュ蝣ｱ繧貞叙蠕・
    */
   static async getStatistics(): Promise<{
     totalSessions: number;
@@ -449,41 +449,41 @@ export class HistoryService {
     activeSessions: number;
   }> {
     try {
-      console.log('📋 履歴統計情報取得');
+      console.log('搭 螻･豁ｴ邨ｱ險域ュ蝣ｱ蜿門ｾ・);
 
-      // 総セッション数
+      // 邱上そ繝・す繝ｧ繝ｳ謨ｰ
       const totalResult = await query('SELECT COUNT(*) as total FROM chat_sessions');
       const totalSessions = parseInt(totalResult.rows[0].total);
 
-      // 今日のセッション数
+      // 莉頑律縺ｮ繧ｻ繝・す繝ｧ繝ｳ謨ｰ
       const todayResult = await query(
         'SELECT COUNT(*) as total FROM chat_sessions WHERE DATE(created_at) = CURRENT_DATE'
       );
       const todaySessions = parseInt(todayResult.rows[0].total);
 
-      // 今週のセッション数
+      // 莉企ｱ縺ｮ繧ｻ繝・す繝ｧ繝ｳ謨ｰ
       const weekResult = await query(
         'SELECT COUNT(*) as total FROM chat_sessions WHERE created_at >= CURRENT_DATE - INTERVAL \'7 days\''
       );
       const thisWeekSessions = parseInt(weekResult.rows[0].total);
 
-      // 今月のセッション数
+      // 莉頑怦縺ｮ繧ｻ繝・す繝ｧ繝ｳ謨ｰ
       const monthResult = await query(
         'SELECT COUNT(*) as total FROM chat_sessions WHERE created_at >= CURRENT_DATE - INTERVAL \'30 days\''
       );
       const thisMonthSessions = parseInt(monthResult.rows[0].total);
 
-      // 総メッセージ数
+      // 邱上Γ繝・そ繝ｼ繧ｸ謨ｰ
       const messagesResult = await query('SELECT COUNT(*) as total FROM chat_history');
       const totalMessages = parseInt(messagesResult.rows[0].total);
 
-      // アクティブセッション数
+      // 繧｢繧ｯ繝・ぅ繝悶そ繝・す繝ｧ繝ｳ謨ｰ
       const activeResult = await query(
         'SELECT COUNT(*) as total FROM chat_sessions WHERE status = \'active\''
       );
       const activeSessions = parseInt(activeResult.rows[0].total);
 
-      console.log('✅ 統計情報取得完了');
+      console.log('笨・邨ｱ險域ュ蝣ｱ蜿門ｾ怜ｮ御ｺ・);
 
       return {
         totalSessions,
@@ -495,20 +495,20 @@ export class HistoryService {
       };
       
     } catch (error) {
-      console.error('❌ 統計情報取得エラー:', error);
+      console.error('笶・邨ｱ險域ュ蝣ｱ蜿門ｾ励お繝ｩ繝ｼ:', error);
       throw error;
     }
   }
 
   /**
-   * CSVエクスポート用データを取得
+   * CSV繧ｨ繧ｯ繧ｹ繝昴・繝育畑繝・・繧ｿ繧貞叙蠕・
    */
   static async getExportData(sessionId: string): Promise<{
     session: ChatSession;
     history: ChatHistory[];
   } | null> {
     try {
-      console.log(`📋 エクスポートデータ取得: ${sessionId}`);
+      console.log(`搭 繧ｨ繧ｯ繧ｹ繝昴・繝医ョ繝ｼ繧ｿ蜿門ｾ・ ${sessionId}`);
 
       const session = await this.getSessionById(sessionId);
       if (!session) {
@@ -523,7 +523,7 @@ export class HistoryService {
       };
       
     } catch (error) {
-      console.error('❌ エクスポートデータ取得エラー:', error);
+      console.error('笶・繧ｨ繧ｯ繧ｹ繝昴・繝医ョ繝ｼ繧ｿ蜿門ｾ励お繝ｩ繝ｼ:', error);
       throw error;
     }
   }

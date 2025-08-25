@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+﻿import crypto from 'crypto';
 
 export interface Chunk {
   page: number;
@@ -12,15 +12,15 @@ export interface ChunkOptions {
 }
 
 /**
- * テキストをチャンクに分割する
- * @param text 分割対象のテキスト
- * @param options チャンクサイズとオーバーラップ設定
- * @returns チャンクの配列
+ * 繝・く繧ｹ繝医ｒ繝√Ε繝ｳ繧ｯ縺ｫ蛻・牡縺吶ｋ
+ * @param text 蛻・牡蟇ｾ雎｡縺ｮ繝・く繧ｹ繝・
+ * @param options 繝√Ε繝ｳ繧ｯ繧ｵ繧､繧ｺ縺ｨ繧ｪ繝ｼ繝舌・繝ｩ繝・・險ｭ螳・
+ * @returns 繝√Ε繝ｳ繧ｯ縺ｮ驟榊・
  */
 export function chunkText(text: string, options: ChunkOptions = { size: 800, overlap: 80 }): Chunk[] {
   const { size, overlap } = options;
   
-  // 入力検証
+  // 蜈･蜉帶､懆ｨｼ
   if (!text || text.trim().length === 0) {
     return [];
   }
@@ -29,7 +29,7 @@ export function chunkText(text: string, options: ChunkOptions = { size: 800, ove
     throw new Error('Invalid chunk options: size must be positive and overlap must be less than size');
   }
   
-  // テキストを正規化（改行を空白に変換、連続空白を単一空白に）
+  // 繝・く繧ｹ繝医ｒ豁｣隕丞喧・域隼陦後ｒ遨ｺ逋ｽ縺ｫ螟画鋤縲・｣邯夂ｩｺ逋ｽ繧貞腰荳遨ｺ逋ｽ縺ｫ・・
   const normalizedText = text
     .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n')
@@ -38,7 +38,7 @@ export function chunkText(text: string, options: ChunkOptions = { size: 800, ove
     .trim();
   
   if (normalizedText.length <= size) {
-    // テキストがチャンクサイズ以下の場合はそのまま返す
+    // 繝・く繧ｹ繝医′繝√Ε繝ｳ繧ｯ繧ｵ繧､繧ｺ莉･荳九・蝣ｴ蜷医・縺昴・縺ｾ縺ｾ霑斐☆
     const hash = crypto.createHash('sha1').update(normalizedText).digest('hex');
     return [{
       page: 1,
@@ -54,11 +54,11 @@ export function chunkText(text: string, options: ChunkOptions = { size: 800, ove
   while (start < normalizedText.length) {
     let end = start + size;
     
-    // チャンクの境界を調整（単語の境界で切る）
+    // 繝√Ε繝ｳ繧ｯ縺ｮ蠅・阜繧定ｪｿ謨ｴ・亥腰隱槭・蠅・阜縺ｧ蛻・ｋ・・
     if (end < normalizedText.length) {
-      // 次の空白を探す
+      // 谺｡縺ｮ遨ｺ逋ｽ繧呈爾縺・
       const nextSpace = normalizedText.indexOf(' ', end);
-      if (nextSpace !== -1 && nextSpace - end < 50) { // 50文字以内に空白があれば調整
+      if (nextSpace !== -1 && nextSpace - end < 50) { // 50譁・ｭ嶺ｻ･蜀・↓遨ｺ逋ｽ縺後≠繧後・隱ｿ謨ｴ
         end = nextSpace;
       }
     }
@@ -74,10 +74,10 @@ export function chunkText(text: string, options: ChunkOptions = { size: 800, ove
       page++;
     }
     
-    // 次の開始位置（オーバーラップを考慮）
+    // 谺｡縺ｮ髢句ｧ倶ｽ咲ｽｮ・医が繝ｼ繝舌・繝ｩ繝・・繧定・・・・
     start = Math.max(start + 1, end - overlap);
     
-    // 無限ループ防止
+    // 辟｡髯舌Ν繝ｼ繝鈴亟豁｢
     if (start >= end) {
       break;
     }
@@ -87,9 +87,9 @@ export function chunkText(text: string, options: ChunkOptions = { size: 800, ove
 }
 
 /**
- * チャンクの統計情報を取得
- * @param chunks チャンク配列
- * @returns 統計情報
+ * 繝√Ε繝ｳ繧ｯ縺ｮ邨ｱ險域ュ蝣ｱ繧貞叙蠕・
+ * @param chunks 繝√Ε繝ｳ繧ｯ驟榊・
+ * @returns 邨ｱ險域ュ蝣ｱ
  */
 export function getChunkStats(chunks: Chunk[]) {
   if (chunks.length === 0) {

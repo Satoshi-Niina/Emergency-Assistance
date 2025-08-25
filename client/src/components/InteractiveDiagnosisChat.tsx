@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -57,7 +57,7 @@ export default function InteractiveDiagnosisChat() {
     scrollToBottom();
   }, [messages]);
 
-  // 診断セッションの開始
+  // 險ｺ譁ｭ繧ｻ繝・す繝ｧ繝ｳ縺ｮ髢句ｧ・
   const startDiagnosis = async () => {
     setIsLoading(true);
     try {
@@ -67,14 +67,14 @@ export default function InteractiveDiagnosisChat() {
         credentials: 'include'
       });
 
-      if (!response.ok) throw new Error('診断セッション開始に失敗');
+      if (!response.ok) throw new Error('險ｺ譁ｭ繧ｻ繝・す繝ｧ繝ｳ髢句ｧ九↓螟ｱ謨・);
 
       const data = await response.json();
       setDiagnosisState(data.diagnosisState);
       setCurrentResponse(data.interactiveResponse);
       setSessionId(data.sessionId);
 
-      // 初期メッセージを追加
+      // 蛻晄悄繝｡繝・そ繝ｼ繧ｸ繧定ｿｽ蜉
       const initialMessage: ChatMessage = {
         id: Date.now(),
         content: data.interactiveResponse.message,
@@ -97,19 +97,19 @@ export default function InteractiveDiagnosisChat() {
       }
 
     } catch (error) {
-      console.error('診断開始エラー:', error);
+      console.error('險ｺ譁ｭ髢句ｧ九お繝ｩ繝ｼ:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ユーザー回答の送信
+  // 繝ｦ繝ｼ繧ｶ繝ｼ蝗樒ｭ斐・騾∽ｿ｡
   const sendResponse = async (userResponse: string) => {
     if (!userResponse.trim() || !diagnosisState) return;
 
     setIsLoading(true);
 
-    // ユーザーのメッセージを追加
+    // 繝ｦ繝ｼ繧ｶ繝ｼ縺ｮ繝｡繝・そ繝ｼ繧ｸ繧定ｿｽ蜉
     const userMessage: ChatMessage = {
       id: Date.now(),
       content: userResponse,
@@ -131,13 +131,13 @@ export default function InteractiveDiagnosisChat() {
         })
       });
 
-      if (!response.ok) throw new Error('診断処理に失敗');
+      if (!response.ok) throw new Error('險ｺ譁ｭ蜃ｦ逅・↓螟ｱ謨・);
 
       const data = await response.json();
       setDiagnosisState(data.updatedState);
       setCurrentResponse(data.interactiveResponse);
 
-      // AIの応答を追加
+      // AI縺ｮ蠢懃ｭ斐ｒ霑ｽ蜉
       const aiMessage: ChatMessage = {
         id: Date.now() + 1,
         content: data.interactiveResponse.message,
@@ -148,7 +148,7 @@ export default function InteractiveDiagnosisChat() {
 
       const newMessages = [aiMessage];
 
-      // 次の質問がある場合は追加
+      // 谺｡縺ｮ雉ｪ蝠上′縺ゅｋ蝣ｴ蜷医・霑ｽ蜉
       if (data.interactiveResponse.nextQuestion) {
         const questionMessage: ChatMessage = {
           id: Date.now() + 2,
@@ -163,10 +163,10 @@ export default function InteractiveDiagnosisChat() {
       setMessages(prev => [...prev, ...newMessages]);
 
     } catch (error) {
-      console.error('診断処理エラー:', error);
+      console.error('險ｺ譁ｭ蜃ｦ逅・お繝ｩ繝ｼ:', error);
       const errorMessage: ChatMessage = {
         id: Date.now() + 1,
-        content: 'エラーが発生しました。再度お試しください。',
+        content: '繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆縲ょ・蠎ｦ縺願ｩｦ縺励￥縺縺輔＞縲・,
         isAiResponse: true,
         timestamp: new Date(),
         type: 'message'
@@ -177,12 +177,12 @@ export default function InteractiveDiagnosisChat() {
     }
   };
 
-  // オプション選択の処理
+  // 繧ｪ繝励す繝ｧ繝ｳ驕ｸ謚槭・蜃ｦ逅・
   const selectOption = (option: string) => {
     sendResponse(option);
   };
 
-  // メッセージタイプの決定
+  // 繝｡繝・そ繝ｼ繧ｸ繧ｿ繧､繝励・豎ｺ螳・
   const getMessageType = (priority: string): ChatMessage['type'] => {
     switch (priority) {
       case 'safety': return 'safety';
@@ -192,7 +192,7 @@ export default function InteractiveDiagnosisChat() {
     }
   };
 
-  // 緊急度の表示色
+  // 邱頑･蠎ｦ縺ｮ陦ｨ遉ｺ濶ｲ
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
       case 'critical': return 'bg-red-100 text-red-800 border-red-200';
@@ -202,7 +202,7 @@ export default function InteractiveDiagnosisChat() {
     }
   };
 
-  // メッセージアイコンの取得
+  // 繝｡繝・そ繝ｼ繧ｸ繧｢繧､繧ｳ繝ｳ縺ｮ蜿門ｾ・
   const getMessageIcon = (type: ChatMessage['type']) => {
     switch (type) {
       case 'safety': return <AlertTriangle className="w-4 h-4 text-red-500" />;
@@ -219,19 +219,19 @@ export default function InteractiveDiagnosisChat() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Wrench className="w-5 h-5" />
-              インタラクティブ故障診断
+              繧､繝ｳ繧ｿ繝ｩ繧ｯ繝・ぅ繝匁腐髫懆ｨｺ譁ｭ
             </CardTitle>
             {diagnosisState && (
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className={getUrgencyColor(diagnosisState.collectedInfo.urgency)}>
-                  緊急度: {diagnosisState.collectedInfo.urgency}
+                  邱頑･蠎ｦ: {diagnosisState.collectedInfo.urgency}
                 </Badge>
                 <Badge variant="outline">
                   <Clock className="w-3 h-3 mr-1" />
-                  信頼度: {Math.round(diagnosisState.confidence * 100)}%
+                  菫｡鬆ｼ蠎ｦ: {Math.round(diagnosisState.confidence * 100)}%
                 </Badge>
                 <Badge variant="outline">
-                  フェーズ: {diagnosisState.phase}
+                  繝輔ぉ繝ｼ繧ｺ: {diagnosisState.phase}
                 </Badge>
               </div>
             )}
@@ -243,19 +243,19 @@ export default function InteractiveDiagnosisChat() {
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
                 <Wrench className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-lg font-semibold mb-2">故障診断を開始</h3>
+                <h3 className="text-lg font-semibold mb-2">謨・囿險ｺ譁ｭ繧帝幕蟋・/h3>
                 <p className="text-gray-600 mb-4">
-                  AIとの対話を通じて、段階的に故障の原因を特定し、<br />
-                  適切な応急処置をサポートします。
+                  AI縺ｨ縺ｮ蟇ｾ隧ｱ繧帝壹§縺ｦ縲∵ｮｵ髫守噪縺ｫ謨・囿縺ｮ蜴溷屏繧堤音螳壹＠縲・br />
+                  驕ｩ蛻・↑蠢懈･蜃ｦ鄂ｮ繧偵し繝昴・繝医＠縺ｾ縺吶・
                 </p>
                 <Button onClick={startDiagnosis} disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
-                  {isLoading ? '開始中...' : '診断開始'}
+                  {isLoading ? '髢句ｧ倶ｸｭ...' : '險ｺ譁ｭ髢句ｧ・}
                 </Button>
               </div>
             </div>
           ) : (
             <>
-              {/* チャットメッセージ表示エリア */}
+              {/* 繝√Ε繝・ヨ繝｡繝・そ繝ｼ繧ｸ陦ｨ遉ｺ繧ｨ繝ｪ繧｢ */}
               <div className="flex-1 overflow-y-auto space-y-4 mb-4 p-4 bg-gray-50 rounded-lg">
                 {messages.map((message) => (
                   <div
@@ -273,7 +273,7 @@ export default function InteractiveDiagnosisChat() {
                         <div className="flex items-center gap-2 mb-2">
                           {getMessageIcon(message.type)}
                           <span className="text-xs font-medium text-gray-500">
-                            AI診断システム
+                            AI險ｺ譁ｭ繧ｷ繧ｹ繝・Β
                           </span>
                         </div>
                       )}
@@ -289,7 +289,7 @@ export default function InteractiveDiagnosisChat() {
                     <div className="bg-white border border-gray-200 p-3 rounded-lg">
                       <div className="flex items-center gap-2">
                         <div className="animate-spin w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-                        <span className="text-sm text-gray-600">分析中...</span>
+                        <span className="text-sm text-gray-600">蛻・梵荳ｭ...</span>
                       </div>
                     </div>
                   </div>
@@ -297,10 +297,10 @@ export default function InteractiveDiagnosisChat() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* オプション選択ボタン */}
+              {/* 繧ｪ繝励す繝ｧ繝ｳ驕ｸ謚槭・繧ｿ繝ｳ */}
               {currentResponse?.options && currentResponse.options.length > 0 && (
                 <div className="mb-4">
-                  <p className="text-sm text-gray-600 mb-2">クイック選択:</p>
+                  <p className="text-sm text-gray-600 mb-2">繧ｯ繧､繝・け驕ｸ謚・</p>
                   <div className="flex flex-wrap gap-2">
                     {currentResponse.options.map((option, index) => (
                       <Button
@@ -318,13 +318,13 @@ export default function InteractiveDiagnosisChat() {
                 </div>
               )}
 
-              {/* 入力エリア */}
+              {/* 蜈･蜉帙お繝ｪ繧｢ */}
               {currentResponse?.requiresInput && diagnosisState.phase !== 'completed' && (
                 <div className="flex gap-2">
                   <Input
                     value={currentInput}
                     onChange={(e) => setCurrentInput(e.target.value)}
-                    placeholder="回答を入力してください..."
+                    placeholder="蝗樒ｭ斐ｒ蜈･蜉帙＠縺ｦ縺上□縺輔＞..."
                     onKeyPress={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
@@ -339,22 +339,22 @@ export default function InteractiveDiagnosisChat() {
                     disabled={isLoading || !currentInput.trim()}
                     className="bg-blue-600 hover:bg-blue-700"
                   >
-                    送信
+                    騾∽ｿ｡
                   </Button>
                 </div>
               )}
 
-              {/* 完了状態 */}
+              {/* 螳御ｺ・憾諷・*/}
               {diagnosisState.phase === 'completed' && (
                 <div className="text-center p-4 bg-green-50 border border-green-200 rounded-lg">
                   <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                  <p className="text-green-800 font-medium">診断・対応が完了しました</p>
+                  <p className="text-green-800 font-medium">險ｺ譁ｭ繝ｻ蟇ｾ蠢懊′螳御ｺ・＠縺ｾ縺励◆</p>
                   <Button
                     onClick={() => window.location.reload()}
                     className="mt-2"
                     variant="outline"
                   >
-                    新しい診断を開始
+                    譁ｰ縺励＞險ｺ譁ｭ繧帝幕蟋・
                   </Button>
                 </div>
               )}

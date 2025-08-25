@@ -1,4 +1,4 @@
-
+﻿
 import express from 'express';
 import bcrypt from 'bcrypt';
 import { db } from '../db/index';
@@ -7,9 +7,9 @@ import { eq } from 'drizzle-orm';
 
 const router = express.Router();
 
-// デバッグ用エンドポイント - 環境変数とセッション状態を確認
+// 繝・ヰ繝・げ逕ｨ繧ｨ繝ｳ繝峨・繧､繝ｳ繝・- 迺ｰ蠅・､画焚縺ｨ繧ｻ繝・す繝ｧ繝ｳ迥ｶ諷九ｒ遒ｺ隱・
 router.get('/debug/env', (req, res) => {
-  console.log('🔍 デバッグエンドポイント呼び出し');
+  console.log('剥 繝・ヰ繝・げ繧ｨ繝ｳ繝峨・繧､繝ｳ繝亥他縺ｳ蜃ｺ縺・);
   
   const debugInfo = {
     environment: {
@@ -35,7 +35,7 @@ router.get('/debug/env', (req, res) => {
     }
   };
   
-  console.log('📊 デバッグ情報:', debugInfo);
+  console.log('投 繝・ヰ繝・げ諠・ｱ:', debugInfo);
   
   res.json({
     success: true,
@@ -44,10 +44,10 @@ router.get('/debug/env', (req, res) => {
   });
 });
 
-// ログインエンドポイント
+// 繝ｭ繧ｰ繧､繝ｳ繧ｨ繝ｳ繝峨・繧､繝ｳ繝・
 router.post('/login', async (req, res) => {
   try {
-    console.log('🔐 Login attempt:', {
+    console.log('柏 Login attempt:', {
       body: req.body,
       session: req.session,
       sessionId: req.session?.id,
@@ -62,58 +62,58 @@ router.post('/login', async (req, res) => {
     const { username, password } = req.body;
 
     if (!username || !password) {
-      console.log('❌ Missing credentials:', { username: !!username, password: !!password });
+      console.log('笶・Missing credentials:', { username: !!username, password: !!password });
       return res.status(400).json({
         success: false,
-        error: 'ユーザー名とパスワードを入力してください'
+        error: '繝ｦ繝ｼ繧ｶ繝ｼ蜷阪→繝代せ繝ｯ繝ｼ繝峨ｒ蜈･蜉帙＠縺ｦ縺上□縺輔＞'
       });
     }
 
-    // データベースからユーザーを検索
-    console.log('🔍 Searching user in database:', username);
+    // 繝・・繧ｿ繝吶・繧ｹ縺九ｉ繝ｦ繝ｼ繧ｶ繝ｼ繧呈､懃ｴ｢
+    console.log('剥 Searching user in database:', username);
     const user = await db.select().from(users).where(eq(users.username, username)).limit(1);
     
     if (user.length === 0) {
-      console.log('❌ User not found:', username);
+      console.log('笶・User not found:', username);
       return res.status(401).json({
         success: false,
-        error: 'ユーザー名またはパスワードが違います'
+        error: '繝ｦ繝ｼ繧ｶ繝ｼ蜷阪∪縺溘・繝代せ繝ｯ繝ｼ繝峨′驕輔＞縺ｾ縺・
       });
     }
 
     const foundUser = user[0];
-    console.log('✅ User found:', { id: foundUser.id, username: foundUser.username, role: foundUser.role });
+    console.log('笨・User found:', { id: foundUser.id, username: foundUser.username, role: foundUser.role });
     
-    // パスワードチェック（bcryptでハッシュ化されたパスワードまたは平文パスワード）
+    // 繝代せ繝ｯ繝ｼ繝峨メ繧ｧ繝・け・・crypt縺ｧ繝上ャ繧ｷ繝･蛹悶＆繧後◆繝代せ繝ｯ繝ｼ繝峨∪縺溘・蟷ｳ譁・ヱ繧ｹ繝ｯ繝ｼ繝会ｼ・
     let isValidPassword = false;
     
-    console.log('🔐 Password check details:', {
+    console.log('柏 Password check details:', {
       inputPassword: password,
       storedPassword: foundUser.password,
       passwordLength: foundUser.password.length
     });
     
-    // まずbcryptでハッシュ化されたパスワードをチェック
+    // 縺ｾ縺喘crypt縺ｧ繝上ャ繧ｷ繝･蛹悶＆繧後◆繝代せ繝ｯ繝ｼ繝峨ｒ繝√ぉ繝・け
     try {
       isValidPassword = await bcrypt.compare(password, foundUser.password);
-      console.log('🔐 bcrypt password check:', isValidPassword);
+      console.log('柏 bcrypt password check:', isValidPassword);
     } catch (error) {
-      console.log('bcrypt比較エラー、平文パスワードをチェック:', error);
+      console.log('bcrypt豈碑ｼ・お繝ｩ繝ｼ縲∝ｹｳ譁・ヱ繧ｹ繝ｯ繝ｼ繝峨ｒ繝√ぉ繝・け:', error);
     }
     
-    // bcryptで失敗した場合、平文パスワードをチェック（開発環境用）
+    // bcrypt縺ｧ螟ｱ謨励＠縺溷ｴ蜷医∝ｹｳ譁・ヱ繧ｹ繝ｯ繝ｼ繝峨ｒ繝√ぉ繝・け・磯幕逋ｺ迺ｰ蠅・畑・・
     if (!isValidPassword) {
       const plainTextMatch = (foundUser.password === password);
-      console.log('🔐 Plain text password check:', plainTextMatch);
+      console.log('柏 Plain text password check:', plainTextMatch);
       isValidPassword = plainTextMatch;
       if (isValidPassword) {
-        console.log('✅ 平文パスワードで認証成功（開発環境）');
+        console.log('笨・蟷ｳ譁・ヱ繧ｹ繝ｯ繝ｼ繝峨〒隱崎ｨｼ謌仙粥・磯幕逋ｺ迺ｰ蠅・ｼ・);
       }
     }
     
     if (!isValidPassword) {
-      console.log('❌ Invalid password for:', username);
-      console.log('❌ Password validation failed:', {
+      console.log('笶・Invalid password for:', username);
+      console.log('笶・Password validation failed:', {
         username: username,
         inputPassword: password,
         storedPassword: foundUser.password,
@@ -122,44 +122,44 @@ router.post('/login', async (req, res) => {
       });
       return res.status(401).json({
         success: false,
-        error: 'ユーザー名またはパスワードが違います'
+        error: '繝ｦ繝ｼ繧ｶ繝ｼ蜷阪∪縺溘・繝代せ繝ｯ繝ｼ繝峨′驕輔＞縺ｾ縺・
       });
     }
 
-    console.log('✅ Login successful for:', username);
+    console.log('笨・Login successful for:', username);
 
-    // セッションにユーザー情報を保存
+    // 繧ｻ繝・す繝ｧ繝ｳ縺ｫ繝ｦ繝ｼ繧ｶ繝ｼ諠・ｱ繧剃ｿ晏ｭ・
     req.session.userId = foundUser.id;
     req.session.userRole = foundUser.role;
     
-    console.log('💾 Session data before save:', {
+    console.log('沈 Session data before save:', {
       userId: req.session.userId,
       userRole: req.session.userRole,
       sessionId: req.session.id,
       sessionData: req.session
     });
     
-    // セッションを明示的に保存
+    // 繧ｻ繝・す繝ｧ繝ｳ繧呈・遉ｺ逧・↓菫晏ｭ・
     req.session.save((err) => {
       if (err) {
-        console.error('❌ Session save error:', err);
+        console.error('笶・Session save error:', err);
         return res.status(500).json({
           success: false,
-          error: 'セッションの保存に失敗しました'
+          error: '繧ｻ繝・す繝ｧ繝ｳ縺ｮ菫晏ｭ倥↓螟ｱ謨励＠縺ｾ縺励◆'
         });
       }
       
-      console.log('💾 Session saved successfully:', {
+      console.log('沈 Session saved successfully:', {
         userId: req.session.userId,
         userRole: req.session.userRole,
         sessionId: req.session.id,
         sessionData: req.session
       });
 
-      // 成功レスポンス（Reactの認証コンテキストに合わせる）
+      // 謌仙粥繝ｬ繧ｹ繝昴Φ繧ｹ・・eact縺ｮ隱崎ｨｼ繧ｳ繝ｳ繝・く繧ｹ繝医↓蜷医ｏ縺帙ｋ・・
       return res.json({
         success: true,
-        message: 'ログインに成功しました',
+        message: '繝ｭ繧ｰ繧､繝ｳ縺ｫ謌仙粥縺励∪縺励◆',
         user: {
           id: foundUser.id,
           username: foundUser.username,
@@ -171,23 +171,23 @@ router.post('/login', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Login error:', error);
+    console.error('笶・Login error:', error);
     return res.status(500).json({
       success: false,
-      error: 'サーバーエラーが発生しました'
+      error: '繧ｵ繝ｼ繝舌・繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆'
     });
   }
 });
 
-// ログアウトエンドポイント
+// 繝ｭ繧ｰ繧｢繧ｦ繝医お繝ｳ繝峨・繧､繝ｳ繝・
 router.post('/logout', (req, res) => {
   try {
-    console.log('🚪 Logout request');
+    console.log('坎 Logout request');
     
-    // セッションを破棄
+    // 繧ｻ繝・す繝ｧ繝ｳ繧堤ｴ譽・
     req.session.destroy((err) => {
       if (err) {
-        console.error('❌ Session destroy error:', err);
+        console.error('笶・Session destroy error:', err);
         return res.status(500).json({
           error: 'Logout failed'
         });
@@ -199,17 +199,17 @@ router.post('/logout', (req, res) => {
       });
     });
   } catch (error) {
-    console.error('❌ Logout error:', error);
+    console.error('笶・Logout error:', error);
     return res.status(500).json({
       error: 'Internal server error'
     });
   }
 });
 
-// 現在のユーザー情報取得
+// 迴ｾ蝨ｨ縺ｮ繝ｦ繝ｼ繧ｶ繝ｼ諠・ｱ蜿門ｾ・
 router.get('/me', async (req, res) => {
   try {
-    console.log('🔍 /me endpoint called:', {
+    console.log('剥 /me endpoint called:', {
       session: req.session,
       sessionId: req.session?.id,
       userId: req.session?.userId,
@@ -222,31 +222,31 @@ router.get('/me', async (req, res) => {
       }
     });
     
-    // セッションからユーザーIDを取得
+    // 繧ｻ繝・す繝ｧ繝ｳ縺九ｉ繝ｦ繝ｼ繧ｶ繝ｼID繧貞叙蠕・
     const userId = req.session?.userId;
     
     if (!userId) {
-      console.log('❌ No user ID in session');
+      console.log('笶・No user ID in session');
       return res.status(401).json({
         success: false,
-        error: '認証されていません'
+        error: '隱崎ｨｼ縺輔ｌ縺ｦ縺・∪縺帙ｓ'
       });
     }
 
-    console.log('🔍 Searching user by ID:', userId);
-    // データベースからユーザー情報を取得
+    console.log('剥 Searching user by ID:', userId);
+    // 繝・・繧ｿ繝吶・繧ｹ縺九ｉ繝ｦ繝ｼ繧ｶ繝ｼ諠・ｱ繧貞叙蠕・
     const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
     
     if (user.length === 0) {
-      console.log('❌ User not found in database:', userId);
+      console.log('笶・User not found in database:', userId);
       return res.status(401).json({
         success: false,
-        error: 'ユーザーが見つかりません'
+        error: '繝ｦ繝ｼ繧ｶ繝ｼ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ'
       });
     }
 
     const foundUser = user[0];
-    console.log('✅ User found:', { id: foundUser.id, username: foundUser.username, role: foundUser.role });
+    console.log('笨・User found:', { id: foundUser.id, username: foundUser.username, role: foundUser.role });
     
     return res.json({
       success: true,
@@ -259,10 +259,10 @@ router.get('/me', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('❌ Get user error:', error);
+    console.error('笶・Get user error:', error);
     return res.status(500).json({
       success: false,
-      error: 'サーバーエラーが発生しました'
+      error: '繧ｵ繝ｼ繝舌・繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆'
     });
   }
 });

@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../../components/ui/dialog";
+﻿import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../../components/ui/dialog";
 import { Button } from "../../components/ui/button";
 import { AlertTriangle } from "lucide-react";
 
@@ -32,7 +32,7 @@ export function WarningDialog({
             variant="outline"
             onClick={onCancel}
           >
-            キャンセル
+            繧ｭ繝｣繝ｳ繧ｻ繝ｫ
           </Button>
           <Button
             variant="default"

@@ -1,12 +1,12 @@
-import * as fs from 'fs';
+﻿import * as fs from 'fs';
 import * as path from 'path';
 
 export interface BackupConfig {
-  /** バックアップを保持する最大数 */
+  /** 繝舌ャ繧ｯ繧｢繝・・繧剃ｿ晄戟縺吶ｋ譛螟ｧ謨ｰ */
   maxBackups: number;
-  /** バックアップフォルダのベースパス */
+  /** 繝舌ャ繧ｯ繧｢繝・・繝輔か繝ｫ繝縺ｮ繝吶・繧ｹ繝代せ */
   backupBaseDir?: string;
-  /** バックアップを無効にする */
+  /** 繝舌ャ繧ｯ繧｢繝・・繧堤┌蜉ｹ縺ｫ縺吶ｋ */
   disabled?: boolean;
 }
 
@@ -21,124 +21,124 @@ export class BackupManager {
       ...config
     };
     
-    // 初期化時にバックアップフォルダを作成
+    // 蛻晄悄蛹匁凾縺ｫ繝舌ャ繧ｯ繧｢繝・・繝輔か繝ｫ繝繧剃ｽ懈・
     this.ensureBackupDirectoryExists();
   }
 
   /**
-   * バックアップディレクトリが存在することを確認し、なければ作成
+   * 繝舌ャ繧ｯ繧｢繝・・繝・ぅ繝ｬ繧ｯ繝医Μ縺悟ｭ伜惠縺吶ｋ縺薙→繧堤｢ｺ隱阪＠縲√↑縺代ｌ縺ｰ菴懈・
    */
   private ensureBackupDirectoryExists(): void {
     try {
-      // プロジェクトルートを取得
+      // 繝励Ο繧ｸ繧ｧ繧ｯ繝医Ν繝ｼ繝医ｒ蜿門ｾ・
       const projectRoot = this.findProjectRoot();
-      console.log('🔍 BackupManager初期化 - プロジェクトルート:', projectRoot);
-      console.log('🔍 BackupManager初期化 - 開始ディレクトリ:', process.cwd());
+      console.log('剥 BackupManager蛻晄悄蛹・- 繝励Ο繧ｸ繧ｧ繧ｯ繝医Ν繝ｼ繝・', projectRoot);
+      console.log('剥 BackupManager蛻晄悄蛹・- 髢句ｧ九ョ繧｣繝ｬ繧ｯ繝医Μ:', process.cwd());
       
       if (projectRoot) {
-        // knowledge-base フォルダ内にバックアップフォルダを作成
+        // knowledge-base 繝輔か繝ｫ繝蜀・↓繝舌ャ繧ｯ繧｢繝・・繝輔か繝ｫ繝繧剃ｽ懈・
         const knowledgeBaseDir = path.join(projectRoot, 'knowledge-base');
         const backupBaseDir = path.join(knowledgeBaseDir, this.config.backupBaseDir!);
         
-        console.log('🔍 BackupManager初期化 - knowledge-baseディレクトリ:', knowledgeBaseDir);
-        console.log('🔍 BackupManager初期化 - バックアップディレクトリ:', backupBaseDir);
+        console.log('剥 BackupManager蛻晄悄蛹・- knowledge-base繝・ぅ繝ｬ繧ｯ繝医Μ:', knowledgeBaseDir);
+        console.log('剥 BackupManager蛻晄悄蛹・- 繝舌ャ繧ｯ繧｢繝・・繝・ぅ繝ｬ繧ｯ繝医Μ:', backupBaseDir);
         
         if (!fs.existsSync(backupBaseDir)) {
           fs.mkdirSync(backupBaseDir, { recursive: true });
-          console.log('📁 バックアップベースフォルダを作成:', backupBaseDir);
+          console.log('刀 繝舌ャ繧ｯ繧｢繝・・繝吶・繧ｹ繝輔か繝ｫ繝繧剃ｽ懈・:', backupBaseDir);
         } else {
-          console.log('📁 バックアップベースフォルダは既に存在:', backupBaseDir);
+          console.log('刀 繝舌ャ繧ｯ繧｢繝・・繝吶・繧ｹ繝輔か繝ｫ繝縺ｯ譌｢縺ｫ蟄伜惠:', backupBaseDir);
         }
       } else {
-        console.warn('⚠️ プロジェクトルートが見つかりません');
+        console.warn('笞・・繝励Ο繧ｸ繧ｧ繧ｯ繝医Ν繝ｼ繝医′隕九▽縺九ｊ縺ｾ縺帙ｓ');
       }
     } catch (error) {
-      console.warn('⚠️ バックアップディレクトリの初期化に失敗:', error);
+      console.warn('笞・・繝舌ャ繧ｯ繧｢繝・・繝・ぅ繝ｬ繧ｯ繝医Μ縺ｮ蛻晄悄蛹悶↓螟ｱ謨・', error);
     }
   }
 
   /**
-   * プロジェクトルートディレクトリを探す
+   * 繝励Ο繧ｸ繧ｧ繧ｯ繝医Ν繝ｼ繝医ョ繧｣繝ｬ繧ｯ繝医Μ繧呈爾縺・
    */
   private findProjectRoot(startDir?: string): string | null {
     let currentDir = startDir || process.cwd();
-    console.log('🔍 プロジェクトルート検索開始:', currentDir);
+    console.log('剥 繝励Ο繧ｸ繧ｧ繧ｯ繝医Ν繝ｼ繝域､懃ｴ｢髢句ｧ・', currentDir);
     
     while (currentDir !== path.dirname(currentDir)) {
       const packageJsonPath = path.join(currentDir, 'package.json');
-      console.log('🔍 package.json検索:', packageJsonPath);
+      console.log('剥 package.json讀懃ｴ｢:', packageJsonPath);
       
       if (fs.existsSync(packageJsonPath)) {
         try {
           const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-          console.log('🔍 package.json発見:', packageJsonPath, 'name:', packageJson.name);
+          console.log('剥 package.json逋ｺ隕・', packageJsonPath, 'name:', packageJson.name);
           
-          // メインのプロジェクトpackage.jsonを識別（workspacesがあるかnameが想定されるもの）
+          // 繝｡繧､繝ｳ縺ｮ繝励Ο繧ｸ繧ｧ繧ｯ繝・ackage.json繧定ｭ伜挨・・orkspaces縺後≠繧九°name縺梧Φ螳壹＆繧後ｋ繧ゅ・・・
           if (packageJson.workspaces || packageJson.name === 'emergency-assistance') {
-            console.log('✅ メインプロジェクトpackage.json発見:', currentDir);
+            console.log('笨・繝｡繧､繝ｳ繝励Ο繧ｸ繧ｧ繧ｯ繝・ackage.json逋ｺ隕・', currentDir);
             return currentDir;
           }
         } catch (error) {
-          // package.jsonの読み込みに失敗した場合はスキップ
-          console.warn('⚠️ package.json読み込み失敗:', packageJsonPath, error);
+          // package.json縺ｮ隱ｭ縺ｿ霎ｼ縺ｿ縺ｫ螟ｱ謨励＠縺溷ｴ蜷医・繧ｹ繧ｭ繝・・
+          console.warn('笞・・package.json隱ｭ縺ｿ霎ｼ縺ｿ螟ｱ謨・', packageJsonPath, error);
         }
       }
       currentDir = path.dirname(currentDir);
     }
     
-    // 見つからなかった場合は、最初に見つかったpackage.jsonの親ディレクトリを使用
+    // 隕九▽縺九ｉ縺ｪ縺九▲縺溷ｴ蜷医・縲∵怙蛻昴↓隕九▽縺九▲縺殫ackage.json縺ｮ隕ｪ繝・ぅ繝ｬ繧ｯ繝医Μ繧剃ｽｿ逕ｨ
     currentDir = startDir || process.cwd();
-    console.log('🔍 フォールバック検索開始:', currentDir);
+    console.log('剥 繝輔か繝ｼ繝ｫ繝舌ャ繧ｯ讀懃ｴ｢髢句ｧ・', currentDir);
     
     while (currentDir !== path.dirname(currentDir)) {
       if (fs.existsSync(path.join(currentDir, 'package.json'))) {
-        console.log('✅ フォールバックでpackage.json発見:', currentDir);
+        console.log('笨・繝輔か繝ｼ繝ｫ繝舌ャ繧ｯ縺ｧpackage.json逋ｺ隕・', currentDir);
         return currentDir;
       }
       currentDir = path.dirname(currentDir);
     }
     
-    console.warn('❌ プロジェクトルートが見つかりません');
+    console.warn('笶・繝励Ο繧ｸ繧ｧ繧ｯ繝医Ν繝ｼ繝医′隕九▽縺九ｊ縺ｾ縺帙ｓ');
     return null;
   }
 
   /**
-   * ファイルのバックアップを作成
-   * @param targetFilePath バックアップ対象のファイルパス
-   * @returns バックアップファイルのパス（バックアップが無効の場合はnull）
+   * 繝輔ぃ繧､繝ｫ縺ｮ繝舌ャ繧ｯ繧｢繝・・繧剃ｽ懈・
+   * @param targetFilePath 繝舌ャ繧ｯ繧｢繝・・蟇ｾ雎｡縺ｮ繝輔ぃ繧､繝ｫ繝代せ
+   * @returns 繝舌ャ繧ｯ繧｢繝・・繝輔ぃ繧､繝ｫ縺ｮ繝代せ・医ヰ繝・け繧｢繝・・縺檎┌蜉ｹ縺ｮ蝣ｴ蜷医・null・・
    */
   createBackup(targetFilePath: string): string | null {
-    console.log('🔄 バックアップ作成開始:', {
+    console.log('売 繝舌ャ繧ｯ繧｢繝・・菴懈・髢句ｧ・', {
       targetFilePath,
       disabled: this.config.disabled,
       config: this.config
     });
 
     if (this.config.disabled) {
-      console.log('💾 バックアップが無効化されています');
+      console.log('沈 繝舌ャ繧ｯ繧｢繝・・縺檎┌蜉ｹ蛹悶＆繧後※縺・∪縺・);
       return null;
     }
 
     if (!fs.existsSync(targetFilePath)) {
-      console.error(`❌ バックアップ対象ファイルが存在しません: ${targetFilePath}`);
-      throw new Error(`バックアップ対象ファイルが存在しません: ${targetFilePath}`);
+      console.error(`笶・繝舌ャ繧ｯ繧｢繝・・蟇ｾ雎｡繝輔ぃ繧､繝ｫ縺悟ｭ伜惠縺励∪縺帙ｓ: ${targetFilePath}`);
+      throw new Error(`繝舌ャ繧ｯ繧｢繝・・蟇ｾ雎｡繝輔ぃ繧､繝ｫ縺悟ｭ伜惠縺励∪縺帙ｓ: ${targetFilePath}`);
     }
 
-    console.log('✅ バックアップ対象ファイル存在確認済み:', targetFilePath);
+    console.log('笨・繝舌ャ繧ｯ繧｢繝・・蟇ｾ雎｡繝輔ぃ繧､繝ｫ蟄伜惠遒ｺ隱肴ｸ医∩:', targetFilePath);
     const dir = path.dirname(targetFilePath);
     const baseName = path.basename(targetFilePath);
     
-    // バックアップフォルダを作成（knowledge-base内のbackupsフォルダに統一）
+    // 繝舌ャ繧ｯ繧｢繝・・繝輔か繝ｫ繝繧剃ｽ懈・・・nowledge-base蜀・・backups繝輔か繝ｫ繝縺ｫ邨ｱ荳・・
     const projectRoot = this.findProjectRoot(dir);
     if (!projectRoot) {
-      throw new Error('プロジェクトルートが見つかりません');
+      throw new Error('繝励Ο繧ｸ繧ｧ繧ｯ繝医Ν繝ｼ繝医′隕九▽縺九ｊ縺ｾ縺帙ｓ');
     }
     
-    // knowledge-base フォルダ内にバックアップフォルダを作成
+    // knowledge-base 繝輔か繝ｫ繝蜀・↓繝舌ャ繧ｯ繧｢繝・・繝輔か繝ｫ繝繧剃ｽ懈・
     const knowledgeBaseDir = path.join(projectRoot, 'knowledge-base');
     const backupBaseDir = path.join(knowledgeBaseDir, this.config.backupBaseDir!);
     
-    // 元ファイルの相対パス構造を保持（knowledge-baseからの相対パス）
+    // 蜈・ヵ繧｡繧､繝ｫ縺ｮ逶ｸ蟇ｾ繝代せ讒矩繧剃ｿ晄戟・・nowledge-base縺九ｉ縺ｮ逶ｸ蟇ｾ繝代せ・・
     const relativePath = path.relative(knowledgeBaseDir, dir);
     const backupSubDir = path.join(backupBaseDir, relativePath);
     
@@ -149,49 +149,49 @@ export class BackupManager {
       fs.mkdirSync(backupSubDir, { recursive: true });
     }
     
-    // バックアップファイル名とパス
+    // 繝舌ャ繧ｯ繧｢繝・・繝輔ぃ繧､繝ｫ蜷阪→繝代せ
     const timestamp = Date.now();
     const backupFileName = `${baseName}.backup.${timestamp}`;
     const backupPath = path.join(backupSubDir, backupFileName);
     
     try {
-      // バックアップファイルを作成
+      // 繝舌ャ繧ｯ繧｢繝・・繝輔ぃ繧､繝ｫ繧剃ｽ懈・
       fs.copyFileSync(targetFilePath, backupPath);
-      console.log('💾 バックアップ作成:', backupPath);
-      console.log('📁 バックアップフォルダ構造:', {
-        プロジェクトルート: projectRoot,
-        元ファイル: targetFilePath,
+      console.log('沈 繝舌ャ繧ｯ繧｢繝・・菴懈・:', backupPath);
+      console.log('刀 繝舌ャ繧ｯ繧｢繝・・繝輔か繝ｫ繝讒矩:', {
+        繝励Ο繧ｸ繧ｧ繧ｯ繝医Ν繝ｼ繝・ projectRoot,
+        蜈・ヵ繧｡繧､繝ｫ: targetFilePath,
         knowledge_base: knowledgeBaseDir,
-        相対パス: relativePath,
-        バックアップ先: backupPath
+        逶ｸ蟇ｾ繝代せ: relativePath,
+        繝舌ャ繧ｯ繧｢繝・・蜈・ backupPath
       });
       
-      // 古いバックアップを整理
+      // 蜿､縺・ヰ繝・け繧｢繝・・繧呈紛逅・
       this.cleanupOldBackups(targetFilePath);
       
       return backupPath;
     } catch (error) {
-      console.error('❌ バックアップ作成エラー:', error);
+      console.error('笶・繝舌ャ繧ｯ繧｢繝・・菴懈・繧ｨ繝ｩ繝ｼ:', error);
       throw error;
     }
   }
 
   /**
-   * 古いバックアップファイルを削除
-   * @param targetFilePath 元のファイルパス
+   * 蜿､縺・ヰ繝・け繧｢繝・・繝輔ぃ繧､繝ｫ繧貞炎髯､
+   * @param targetFilePath 蜈・・繝輔ぃ繧､繝ｫ繝代せ
    */
   private cleanupOldBackups(targetFilePath: string): void {
     const dir = path.dirname(targetFilePath);
     const baseName = path.basename(targetFilePath);
     
-    // プロジェクトルートを取得
+    // 繝励Ο繧ｸ繧ｧ繧ｯ繝医Ν繝ｼ繝医ｒ蜿門ｾ・
     const projectRoot = this.findProjectRoot(dir);
     if (!projectRoot) {
-      console.warn('プロジェクトルートが見つからないため、バックアップクリーンアップをスキップします');
+      console.warn('繝励Ο繧ｸ繧ｧ繧ｯ繝医Ν繝ｼ繝医′隕九▽縺九ｉ縺ｪ縺・◆繧√√ヰ繝・け繧｢繝・・繧ｯ繝ｪ繝ｼ繝ｳ繧｢繝・・繧偵せ繧ｭ繝・・縺励∪縺・);
       return;
     }
     
-    // knowledge-base フォルダ内のバックアップフォルダ
+    // knowledge-base 繝輔か繝ｫ繝蜀・・繝舌ャ繧ｯ繧｢繝・・繝輔か繝ｫ繝
     const knowledgeBaseDir = path.join(projectRoot, 'knowledge-base');
     const backupBaseDir = path.join(knowledgeBaseDir, this.config.backupBaseDir!);
     const relativePath = path.relative(knowledgeBaseDir, dir);
@@ -204,7 +204,7 @@ export class BackupManager {
     try {
       const files = fs.readdirSync(backupSubDir);
       
-      // 該当ファイルのバックアップファイルを検索
+      // 隧ｲ蠖薙ヵ繧｡繧､繝ｫ縺ｮ繝舌ャ繧ｯ繧｢繝・・繝輔ぃ繧､繝ｫ繧呈､懃ｴ｢
       const backupFiles = files
         .filter(file => file.startsWith(baseName + '.backup.'))
         .map(file => ({
@@ -212,40 +212,40 @@ export class BackupManager {
           path: path.join(backupSubDir, file),
           timestamp: parseInt(file.split('.backup.')[1]) || 0
         }))
-        .sort((a, b) => b.timestamp - a.timestamp); // 新しい順にソート
+        .sort((a, b) => b.timestamp - a.timestamp); // 譁ｰ縺励＞鬆・↓繧ｽ繝ｼ繝・
       
-      // 古いバックアップファイルを削除
+      // 蜿､縺・ヰ繝・け繧｢繝・・繝輔ぃ繧､繝ｫ繧貞炎髯､
       const filesToDelete = backupFiles.slice(this.config.maxBackups);
       filesToDelete.forEach(file => {
         try {
           fs.unlinkSync(file.path);
-          console.log('🗑️ 古いバックアップを削除:', file.name);
+          console.log('卵・・蜿､縺・ヰ繝・け繧｢繝・・繧貞炎髯､:', file.name);
         } catch (error) {
-          console.warn('バックアップ削除エラー:', file.name, error);
+          console.warn('繝舌ャ繧ｯ繧｢繝・・蜑企勁繧ｨ繝ｩ繝ｼ:', file.name, error);
         }
       });
     } catch (error) {
-      console.warn('バックアップフォルダ管理エラー:', error);
+      console.warn('繝舌ャ繧ｯ繧｢繝・・繝輔か繝ｫ繝邂｡逅・お繝ｩ繝ｼ:', error);
     }
   }
 
   /**
-   * 指定ファイルのバックアップ一覧を取得
-   * @param targetFilePath 元のファイルパス
-   * @returns バックアップファイル情報の配列
+   * 謖・ｮ壹ヵ繧｡繧､繝ｫ縺ｮ繝舌ャ繧ｯ繧｢繝・・荳隕ｧ繧貞叙蠕・
+   * @param targetFilePath 蜈・・繝輔ぃ繧､繝ｫ繝代せ
+   * @returns 繝舌ャ繧ｯ繧｢繝・・繝輔ぃ繧､繝ｫ諠・ｱ縺ｮ驟榊・
    */
   listBackups(targetFilePath: string): Array<{name: string; path: string; timestamp: number; date: Date}> {
     const dir = path.dirname(targetFilePath);
     const baseName = path.basename(targetFilePath);
     
-    // プロジェクトルートを取得
+    // 繝励Ο繧ｸ繧ｧ繧ｯ繝医Ν繝ｼ繝医ｒ蜿門ｾ・
     const projectRoot = this.findProjectRoot(dir);
     if (!projectRoot) {
-      console.warn('プロジェクトルートが見つからないため、バックアップ一覧を取得できません');
+      console.warn('繝励Ο繧ｸ繧ｧ繧ｯ繝医Ν繝ｼ繝医′隕九▽縺九ｉ縺ｪ縺・◆繧√√ヰ繝・け繧｢繝・・荳隕ｧ繧貞叙蠕励〒縺阪∪縺帙ｓ');
       return [];
     }
     
-    // knowledge-base フォルダ内のバックアップフォルダ
+    // knowledge-base 繝輔か繝ｫ繝蜀・・繝舌ャ繧ｯ繧｢繝・・繝輔か繝ｫ繝
     const knowledgeBaseDir = path.join(projectRoot, 'knowledge-base');
     const backupBaseDir = path.join(knowledgeBaseDir, this.config.backupBaseDir!);
     const relativePath = path.relative(knowledgeBaseDir, dir);
@@ -269,54 +269,54 @@ export class BackupManager {
             date: new Date(timestamp)
           };
         })
-        .sort((a, b) => b.timestamp - a.timestamp); // 新しい順にソート
+        .sort((a, b) => b.timestamp - a.timestamp); // 譁ｰ縺励＞鬆・↓繧ｽ繝ｼ繝・
     } catch (error) {
-      console.warn('バックアップ一覧取得エラー:', error);
+      console.warn('繝舌ャ繧ｯ繧｢繝・・荳隕ｧ蜿門ｾ励お繝ｩ繝ｼ:', error);
       return [];
     }
   }
 
   /**
-   * バックアップから復元
-   * @param backupFilePath バックアップファイルのパス
-   * @param targetFilePath 復元先のファイルパス
+   * 繝舌ャ繧ｯ繧｢繝・・縺九ｉ蠕ｩ蜈・
+   * @param backupFilePath 繝舌ャ繧ｯ繧｢繝・・繝輔ぃ繧､繝ｫ縺ｮ繝代せ
+   * @param targetFilePath 蠕ｩ蜈・・縺ｮ繝輔ぃ繧､繝ｫ繝代せ
    */
   restoreFromBackup(backupFilePath: string, targetFilePath: string): void {
     if (!fs.existsSync(backupFilePath)) {
-      throw new Error(`バックアップファイルが存在しません: ${backupFilePath}`);
+      throw new Error(`繝舌ャ繧ｯ繧｢繝・・繝輔ぃ繧､繝ｫ縺悟ｭ伜惠縺励∪縺帙ｓ: ${backupFilePath}`);
     }
 
     try {
-      // 復元前に現在のファイルのバックアップを作成
+      // 蠕ｩ蜈・燕縺ｫ迴ｾ蝨ｨ縺ｮ繝輔ぃ繧､繝ｫ縺ｮ繝舌ャ繧ｯ繧｢繝・・繧剃ｽ懈・
       if (fs.existsSync(targetFilePath)) {
         this.createBackup(targetFilePath);
       }
 
-      // バックアップから復元
+      // 繝舌ャ繧ｯ繧｢繝・・縺九ｉ蠕ｩ蜈・
       fs.copyFileSync(backupFilePath, targetFilePath);
-      console.log('🔄 バックアップから復元完了:', targetFilePath);
+      console.log('売 繝舌ャ繧ｯ繧｢繝・・縺九ｉ蠕ｩ蜈・ｮ御ｺ・', targetFilePath);
     } catch (error) {
-      console.error('❌ バックアップ復元エラー:', error);
+      console.error('笶・繝舌ャ繧ｯ繧｢繝・・蠕ｩ蜈・お繝ｩ繝ｼ:', error);
       throw error;
     }
   }
 
   /**
-   * 設定を更新
-   * @param newConfig 新しい設定
+   * 險ｭ螳壹ｒ譖ｴ譁ｰ
+   * @param newConfig 譁ｰ縺励＞險ｭ螳・
    */
   updateConfig(newConfig: Partial<BackupConfig>): void {
     this.config = { ...this.config, ...newConfig };
   }
 
   /**
-   * 現在の設定を取得
-   * @returns 現在の設定
+   * 迴ｾ蝨ｨ縺ｮ險ｭ螳壹ｒ蜿門ｾ・
+   * @returns 迴ｾ蝨ｨ縺ｮ險ｭ螳・
    */
   getConfig(): BackupConfig {
     return { ...this.config };
   }
 }
 
-// デフォルトのバックアップマネージャーインスタンス
+// 繝・ヵ繧ｩ繝ｫ繝医・繝舌ャ繧ｯ繧｢繝・・繝槭ロ繝ｼ繧ｸ繝｣繝ｼ繧､繝ｳ繧ｹ繧ｿ繝ｳ繧ｹ
 export const defaultBackupManager = new BackupManager();

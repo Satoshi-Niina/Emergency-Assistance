@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import { db } from '../db/index.js';
 import { baseDocuments } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
@@ -7,16 +7,16 @@ const router = express.Router();
 
 /**
  * GET /api/base-data
- * base_documentsテーブルから全データ取得
+ * base_documents繝・・繝悶Ν縺九ｉ蜈ｨ繝・・繧ｿ蜿門ｾ・
  */
 router.get('/', async (req, res) => {
   try {
-    console.log('📄 基礎データ取得リクエスト');
+    console.log('塘 蝓ｺ遉弱ョ繝ｼ繧ｿ蜿門ｾ励Μ繧ｯ繧ｨ繧ｹ繝・);
     
-    // Content-Typeを明示的に設定
+    // Content-Type繧呈・遉ｺ逧・↓險ｭ螳・
     res.setHeader('Content-Type', 'application/json');
     
-    // base_documentsテーブルから全データを取得
+    // base_documents繝・・繝悶Ν縺九ｉ蜈ｨ繝・・繧ｿ繧貞叙蠕・
     const documents = await db.select({
       id: baseDocuments.id,
       title: baseDocuments.title,
@@ -25,7 +25,7 @@ router.get('/', async (req, res) => {
     }).from(baseDocuments)
     .orderBy(baseDocuments.createdAt);
 
-    console.log(`✅ 基礎データ取得完了: ${documents.length}件`);
+    console.log(`笨・蝓ｺ遉弱ョ繝ｼ繧ｿ蜿門ｾ怜ｮ御ｺ・ ${documents.length}莉ｶ`);
 
     res.json({
       success: true,
@@ -35,10 +35,10 @@ router.get('/', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ 基礎データ取得エラー:', error);
+    console.error('笶・蝓ｺ遉弱ョ繝ｼ繧ｿ蜿門ｾ励お繝ｩ繝ｼ:', error);
     res.status(500).json({
       success: false,
-      error: '基礎データの取得に失敗しました',
+      error: '蝓ｺ遉弱ョ繝ｼ繧ｿ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆',
       details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     });
@@ -47,47 +47,47 @@ router.get('/', async (req, res) => {
 
 /**
  * POST /api/base-data
- * 新規基礎データ（文書）を作成
+ * 譁ｰ隕丞渕遉弱ョ繝ｼ繧ｿ・域枚譖ｸ・峨ｒ菴懈・
  */
 router.post('/', async (req, res) => {
   try {
-    console.log('📄 基礎データ作成リクエスト:', req.body);
+    console.log('塘 蝓ｺ遉弱ョ繝ｼ繧ｿ菴懈・繝ｪ繧ｯ繧ｨ繧ｹ繝・', req.body);
     
-    // Content-Typeを明示的に設定
+    // Content-Type繧呈・遉ｺ逧・↓險ｭ螳・
     res.setHeader('Content-Type', 'application/json');
     
     const { title, filePath } = req.body;
 
-    // バリデーション
+    // 繝舌Μ繝・・繧ｷ繝ｧ繝ｳ
     if (!title || !filePath) {
       return res.status(400).json({
         success: false,
-        error: 'タイトルとファイルパスは必須です',
+        error: '繧ｿ繧､繝医Ν縺ｨ繝輔ぃ繧､繝ｫ繝代せ縺ｯ蠢・医〒縺・,
         required: ['title', 'filePath'],
         received: { title: !!title, filePath: !!filePath }
       });
     }
 
-    // 新規文書を作成
+    // 譁ｰ隕乗枚譖ｸ繧剃ｽ懈・
     const newDocument = await db.insert(baseDocuments).values({
       title,
       filePath
     }).returning();
 
-    console.log('✅ 基礎データ作成完了:', newDocument[0]);
+    console.log('笨・蝓ｺ遉弱ョ繝ｼ繧ｿ菴懈・螳御ｺ・', newDocument[0]);
 
     res.status(201).json({
       success: true,
       data: newDocument[0],
-      message: '基礎データが正常に作成されました',
+      message: '蝓ｺ遉弱ョ繝ｼ繧ｿ縺梧ｭ｣蟶ｸ縺ｫ菴懈・縺輔ｌ縺ｾ縺励◆',
       timestamp: new Date().toISOString()
     });
 
   } catch (error) {
-    console.error('❌ 基礎データ作成エラー:', error);
+    console.error('笶・蝓ｺ遉弱ョ繝ｼ繧ｿ菴懈・繧ｨ繝ｩ繝ｼ:', error);
     res.status(500).json({
       success: false,
-      error: '基礎データの作成に失敗しました',
+      error: '蝓ｺ遉弱ョ繝ｼ繧ｿ縺ｮ菴懈・縺ｫ螟ｱ謨励＠縺ｾ縺励◆',
       details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     });
@@ -96,58 +96,58 @@ router.post('/', async (req, res) => {
 
 /**
  * PUT /api/base-data/:id
- * 基礎データ（文書）を更新
+ * 蝓ｺ遉弱ョ繝ｼ繧ｿ・域枚譖ｸ・峨ｒ譖ｴ譁ｰ
  */
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { title, filePath } = req.body;
     
-    console.log(`📄 基礎データ更新リクエスト: ID=${id}`, req.body);
+    console.log(`塘 蝓ｺ遉弱ョ繝ｼ繧ｿ譖ｴ譁ｰ繝ｪ繧ｯ繧ｨ繧ｹ繝・ ID=${id}`, req.body);
     
-    // Content-Typeを明示的に設定
+    // Content-Type繧呈・遉ｺ逧・↓險ｭ螳・
     res.setHeader('Content-Type', 'application/json');
 
-    // バリデーション
+    // 繝舌Μ繝・・繧ｷ繝ｧ繝ｳ
     if (!title || !filePath) {
       return res.status(400).json({
         success: false,
-        error: 'タイトルとファイルパスは必須です',
+        error: '繧ｿ繧､繝医Ν縺ｨ繝輔ぃ繧､繝ｫ繝代せ縺ｯ蠢・医〒縺・,
         required: ['title', 'filePath'],
         received: { title: !!title, filePath: !!filePath }
       });
     }
 
-    // 既存文書をチェック
+    // 譌｢蟄俶枚譖ｸ繧偵メ繧ｧ繝・け
     const existingDocument = await db.select().from(baseDocuments).where(eq(baseDocuments.id, id));
     if (existingDocument.length === 0) {
       return res.status(404).json({
         success: false,
-        error: '更新対象の文書が見つかりません',
+        error: '譖ｴ譁ｰ蟇ｾ雎｡縺ｮ譁・嶌縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ',
         id
       });
     }
 
-    // 文書を更新
+    // 譁・嶌繧呈峩譁ｰ
     const updatedDocument = await db.update(baseDocuments)
       .set({ title, filePath })
       .where(eq(baseDocuments.id, id))
       .returning();
 
-    console.log('✅ 基礎データ更新完了:', updatedDocument[0]);
+    console.log('笨・蝓ｺ遉弱ョ繝ｼ繧ｿ譖ｴ譁ｰ螳御ｺ・', updatedDocument[0]);
 
     res.json({
       success: true,
       data: updatedDocument[0],
-      message: '基礎データが正常に更新されました',
+      message: '蝓ｺ遉弱ョ繝ｼ繧ｿ縺梧ｭ｣蟶ｸ縺ｫ譖ｴ譁ｰ縺輔ｌ縺ｾ縺励◆',
       timestamp: new Date().toISOString()
     });
 
   } catch (error) {
-    console.error('❌ 基礎データ更新エラー:', error);
+    console.error('笶・蝓ｺ遉弱ョ繝ｼ繧ｿ譖ｴ譁ｰ繧ｨ繝ｩ繝ｼ:', error);
     res.status(500).json({
       success: false,
-      error: '基礎データの更新に失敗しました',
+      error: '蝓ｺ遉弱ョ繝ｼ繧ｿ縺ｮ譖ｴ譁ｰ縺ｫ螟ｱ謨励＠縺ｾ縺励◆',
       details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     });
@@ -156,44 +156,44 @@ router.put('/:id', async (req, res) => {
 
 /**
  * DELETE /api/base-data/:id
- * 基礎データ（文書）を削除
+ * 蝓ｺ遉弱ョ繝ｼ繧ｿ・域枚譖ｸ・峨ｒ蜑企勁
  */
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
-    console.log(`📄 基礎データ削除リクエスト: ID=${id}`);
+    console.log(`塘 蝓ｺ遉弱ョ繝ｼ繧ｿ蜑企勁繝ｪ繧ｯ繧ｨ繧ｹ繝・ ID=${id}`);
     
-    // Content-Typeを明示的に設定
+    // Content-Type繧呈・遉ｺ逧・↓險ｭ螳・
     res.setHeader('Content-Type', 'application/json');
 
-    // 既存文書をチェック
+    // 譌｢蟄俶枚譖ｸ繧偵メ繧ｧ繝・け
     const existingDocument = await db.select().from(baseDocuments).where(eq(baseDocuments.id, id));
     if (existingDocument.length === 0) {
       return res.status(404).json({
         success: false,
-        error: '削除対象の文書が見つかりません',
+        error: '蜑企勁蟇ｾ雎｡縺ｮ譁・嶌縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ',
         id
       });
     }
 
-    // 文書を削除
+    // 譁・嶌繧貞炎髯､
     await db.delete(baseDocuments).where(eq(baseDocuments.id, id));
 
-    console.log('✅ 基礎データ削除完了:', id);
+    console.log('笨・蝓ｺ遉弱ョ繝ｼ繧ｿ蜑企勁螳御ｺ・', id);
 
     res.json({
       success: true,
-      message: '基礎データが正常に削除されました',
+      message: '蝓ｺ遉弱ョ繝ｼ繧ｿ縺梧ｭ｣蟶ｸ縺ｫ蜑企勁縺輔ｌ縺ｾ縺励◆',
       id,
       timestamp: new Date().toISOString()
     });
 
   } catch (error) {
-    console.error('❌ 基礎データ削除エラー:', error);
+    console.error('笶・蝓ｺ遉弱ョ繝ｼ繧ｿ蜑企勁繧ｨ繝ｩ繝ｼ:', error);
     res.status(500).json({
       success: false,
-      error: '基礎データの削除に失敗しました',
+      error: '蝓ｺ遉弱ョ繝ｼ繧ｿ縺ｮ蜑企勁縺ｫ螟ｱ謨励＠縺ｾ縺励◆',
       details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     });
@@ -202,14 +202,14 @@ router.delete('/:id', async (req, res) => {
 
 /**
  * GET /api/base-data/:id
- * 特定の基礎データ（文書）を取得
+ * 迚ｹ螳壹・蝓ｺ遉弱ョ繝ｼ繧ｿ・域枚譖ｸ・峨ｒ蜿門ｾ・
  */
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`📄 基礎データ詳細取得: ${id}`);
+    console.log(`塘 蝓ｺ遉弱ョ繝ｼ繧ｿ隧ｳ邏ｰ蜿門ｾ・ ${id}`);
 
-    // Content-Typeを明示的に設定
+    // Content-Type繧呈・遉ｺ逧・↓險ｭ螳・
     res.setHeader('Content-Type', 'application/json');
 
     const document = await db.select({
@@ -224,12 +224,12 @@ router.get('/:id', async (req, res) => {
     if (document.length === 0) {
       return res.status(404).json({
         success: false,
-        error: '文書が見つかりません',
+        error: '譁・嶌縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ',
         id
       });
     }
 
-    console.log('✅ 基礎データ詳細取得完了');
+    console.log('笨・蝓ｺ遉弱ョ繝ｼ繧ｿ隧ｳ邏ｰ蜿門ｾ怜ｮ御ｺ・);
 
     res.json({
       success: true,
@@ -238,37 +238,37 @@ router.get('/:id', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ 基礎データ詳細取得エラー:', error);
+    console.error('笶・蝓ｺ遉弱ョ繝ｼ繧ｿ隧ｳ邏ｰ蜿門ｾ励お繝ｩ繝ｼ:', error);
     res.status(500).json({
       success: false,
-      error: '基礎データの詳細取得に失敗しました',
+      error: '蝓ｺ遉弱ョ繝ｼ繧ｿ縺ｮ隧ｳ邏ｰ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆',
       details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// エラーハンドリングミドルウェア
+// 繧ｨ繝ｩ繝ｼ繝上Φ繝峨Μ繝ｳ繧ｰ繝溘ラ繝ｫ繧ｦ繧ｧ繧｢
 router.use((err: any, req: any, res: any, next: any) => {
-  console.error('基礎データエラー:', err);
+  console.error('蝓ｺ遉弱ョ繝ｼ繧ｿ繧ｨ繝ｩ繝ｼ:', err);
   
-  // Content-Typeを明示的に設定
+  // Content-Type繧呈・遉ｺ逧・↓險ｭ螳・
   res.setHeader('Content-Type', 'application/json');
   
   res.status(500).json({
     success: false,
-    error: '基礎データの処理中にエラーが発生しました',
+    error: '蝓ｺ遉弱ョ繝ｼ繧ｿ縺ｮ蜃ｦ逅・ｸｭ縺ｫ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆',
     details: err.message || 'Unknown error',
     timestamp: new Date().toISOString()
   });
 });
 
-// 404ハンドリング
+// 404繝上Φ繝峨Μ繝ｳ繧ｰ
 router.use('*', (req: any, res: any) => {
   res.setHeader('Content-Type', 'application/json');
   res.status(404).json({
     success: false,
-    error: '基礎データのエンドポイントが見つかりません',
+    error: '蝓ｺ遉弱ョ繝ｼ繧ｿ縺ｮ繧ｨ繝ｳ繝峨・繧､繝ｳ繝医′隕九▽縺九ｊ縺ｾ縺帙ｓ',
     path: req.originalUrl,
     timestamp: new Date().toISOString()
   });

@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
@@ -28,7 +28,7 @@ export default function SystemDiagnosticPage() {
   const [isCheckingDb, setIsCheckingDb] = useState(false);
   const [isCheckingGpt, setIsCheckingGpt] = useState(false);
 
-  // APIのベースURLを取得
+  // API縺ｮ繝吶・繧ｹURL繧貞叙蠕・
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
   const checkDatabaseConnection = async () => {
@@ -43,26 +43,26 @@ export default function SystemDiagnosticPage() {
       
       if (result.status === "OK") {
         toast({
-          title: "DB接続確認",
-          description: "データベース接続が正常です",
+          title: "DB謗･邯夂｢ｺ隱・,
+          description: "繝・・繧ｿ繝吶・繧ｹ謗･邯壹′豁｣蟶ｸ縺ｧ縺・,
           variant: "default",
         });
       } else {
         toast({
-          title: "DB接続確認",
-          description: result.message || "データベース接続エラー",
+          title: "DB謗･邯夂｢ｺ隱・,
+          description: result.message || "繝・・繧ｿ繝吶・繧ｹ謗･邯壹お繝ｩ繝ｼ",
           variant: "destructive",
         });
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "ネットワークエラー";
+      const errorMessage = error instanceof Error ? error.message : "繝阪ャ繝医Ρ繝ｼ繧ｯ繧ｨ繝ｩ繝ｼ";
       setDbCheckResult({
         status: "ERROR",
         message: errorMessage
       });
       
       toast({
-        title: "DB接続確認",
+        title: "DB謗･邯夂｢ｺ隱・,
         description: errorMessage,
         variant: "destructive",
       });
@@ -82,7 +82,7 @@ export default function SystemDiagnosticPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          message: "テスト"
+          message: "繝・せ繝・
         }),
       });
       
@@ -91,26 +91,26 @@ export default function SystemDiagnosticPage() {
       
       if (result.status === "OK") {
         toast({
-          title: "GPT接続確認",
-          description: "GPT接続が正常です",
+          title: "GPT謗･邯夂｢ｺ隱・,
+          description: "GPT謗･邯壹′豁｣蟶ｸ縺ｧ縺・,
           variant: "default",
         });
       } else {
         toast({
-          title: "GPT接続確認",
-          description: result.message || "GPT接続エラー",
+          title: "GPT謗･邯夂｢ｺ隱・,
+          description: result.message || "GPT謗･邯壹お繝ｩ繝ｼ",
           variant: "destructive",
         });
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "ネットワークエラー";
+      const errorMessage = error instanceof Error ? error.message : "繝阪ャ繝医Ρ繝ｼ繧ｯ繧ｨ繝ｩ繝ｼ";
       setGptCheckResult({
         status: "ERROR",
         message: errorMessage
       });
       
       toast({
-        title: "GPT接続確認",
+        title: "GPT謗･邯夂｢ｺ隱・,
         description: errorMessage,
         variant: "destructive",
       });
@@ -127,20 +127,20 @@ export default function SystemDiagnosticPage() {
   return (
     <div className="container mx-auto p-6 max-w-4xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">システム診断</h1>
+        <h1 className="text-3xl font-bold mb-2">繧ｷ繧ｹ繝・Β險ｺ譁ｭ</h1>
         <p className="text-muted-foreground">
-          データベース接続とGPT接続の状態を確認できます
+          繝・・繧ｿ繝吶・繧ｹ謗･邯壹→GPT謗･邯壹・迥ｶ諷九ｒ遒ｺ隱阪〒縺阪∪縺・
         </p>
       </div>
 
-      {/* 全体実行ボタン */}
+      {/* 蜈ｨ菴灘ｮ溯｡後・繧ｿ繝ｳ */}
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold mb-2">一括診断</h3>
+              <h3 className="text-lg font-semibold mb-2">荳諡ｬ險ｺ譁ｭ</h3>
               <p className="text-sm text-muted-foreground">
-                すべての接続確認を一度に実行します
+                縺吶∋縺ｦ縺ｮ謗･邯夂｢ｺ隱阪ｒ荳蠎ｦ縺ｫ螳溯｡後＠縺ｾ縺・
               </p>
             </div>
             <Button 
@@ -153,25 +153,25 @@ export default function SystemDiagnosticPage() {
               ) : (
                 <RefreshCw className="h-4 w-4" />
               )}
-              全体診断実行
+              蜈ｨ菴楢ｨｺ譁ｭ螳溯｡・
             </Button>
           </div>
         </CardContent>
       </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
-        {/* DB接続確認 */}
+        {/* DB謗･邯夂｢ｺ隱・*/}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Database className="h-5 w-5" />
-              PostgreSQL接続確認
+              PostgreSQL謗･邯夂｢ｺ隱・
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
-                データベースへの接続状態を確認します
+                繝・・繧ｿ繝吶・繧ｹ縺ｸ縺ｮ謗･邯夂憾諷九ｒ遒ｺ隱阪＠縺ｾ縺・
               </p>
               <Button 
                 onClick={checkDatabaseConnection}
@@ -184,7 +184,7 @@ export default function SystemDiagnosticPage() {
                 ) : (
                   <CheckCircle className="h-4 w-4" />
                 )}
-                確認実行
+                遒ｺ隱榊ｮ溯｡・
               </Button>
             </div>
 
@@ -198,13 +198,13 @@ export default function SystemDiagnosticPage() {
                     <XCircle className="h-4 w-4 text-red-500" />
                   )}
                   <Badge variant={dbCheckResult.status === "OK" ? "default" : "destructive"}>
-                    {dbCheckResult.status === "OK" ? "接続成功" : "接続失敗"}
+                    {dbCheckResult.status === "OK" ? "謗･邯壽・蜉・ : "謗･邯壼､ｱ謨・}
                   </Badge>
                 </div>
                 
                 {dbCheckResult.status === "OK" && dbCheckResult.db_time && (
                   <div className="text-sm">
-                    <span className="font-medium">DB時刻:</span> {new Date(dbCheckResult.db_time).toLocaleString('ja-JP')}
+                    <span className="font-medium">DB譎ょ綾:</span> {new Date(dbCheckResult.db_time).toLocaleString('ja-JP')}
                   </div>
                 )}
                 
@@ -221,18 +221,18 @@ export default function SystemDiagnosticPage() {
           </CardContent>
         </Card>
 
-        {/* GPT接続確認 */}
+        {/* GPT謗･邯夂｢ｺ隱・*/}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
-              GPT接続確認
+              GPT謗･邯夂｢ｺ隱・
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
-                OpenAI APIへの接続状態を確認します
+                OpenAI API縺ｸ縺ｮ謗･邯夂憾諷九ｒ遒ｺ隱阪＠縺ｾ縺・
               </p>
               <Button 
                 onClick={checkGptConnection}
@@ -245,7 +245,7 @@ export default function SystemDiagnosticPage() {
                 ) : (
                   <CheckCircle className="h-4 w-4" />
                 )}
-                確認実行
+                遒ｺ隱榊ｮ溯｡・
               </Button>
             </div>
 
@@ -259,13 +259,13 @@ export default function SystemDiagnosticPage() {
                     <XCircle className="h-4 w-4 text-red-500" />
                   )}
                   <Badge variant={gptCheckResult.status === "OK" ? "default" : "destructive"}>
-                    {gptCheckResult.status === "OK" ? "接続成功" : "接続失敗"}
+                    {gptCheckResult.status === "OK" ? "謗･邯壽・蜉・ : "謗･邯壼､ｱ謨・}
                   </Badge>
                 </div>
                 
                 {gptCheckResult.status === "OK" && gptCheckResult.reply && (
                   <div className="text-sm">
-                    <span className="font-medium">GPT応答:</span>
+                    <span className="font-medium">GPT蠢懃ｭ・</span>
                     <div className="mt-1 p-2 bg-gray-50 rounded text-xs max-h-20 overflow-y-auto">
                       {gptCheckResult.reply}
                     </div>
@@ -286,11 +286,11 @@ export default function SystemDiagnosticPage() {
         </Card>
       </div>
 
-      {/* 診断結果サマリー */}
+      {/* 險ｺ譁ｭ邨先棡繧ｵ繝槭Μ繝ｼ */}
       {dbCheckResult && gptCheckResult && (
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle>診断結果サマリー</CardTitle>
+            <CardTitle>險ｺ譁ｭ邨先棡繧ｵ繝槭Μ繝ｼ</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
@@ -298,14 +298,14 @@ export default function SystemDiagnosticPage() {
                 <Database className="h-4 w-4" />
                 <span>PostgreSQL:</span>
                 <Badge variant={dbCheckResult.status === "OK" ? "default" : "destructive"}>
-                  {dbCheckResult.status === "OK" ? "正常" : "異常"}
+                  {dbCheckResult.status === "OK" ? "豁｣蟶ｸ" : "逡ｰ蟶ｸ"}
                 </Badge>
               </div>
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4" />
                 <span>GPT:</span>
                 <Badge variant={gptCheckResult.status === "OK" ? "default" : "destructive"}>
-                  {gptCheckResult.status === "OK" ? "正常" : "異常"}
+                  {gptCheckResult.status === "OK" ? "豁｣蟶ｸ" : "逡ｰ蟶ｸ"}
                 </Badge>
               </div>
             </div>
@@ -314,7 +314,7 @@ export default function SystemDiagnosticPage() {
               <div className="mt-4 p-3 bg-green-50 text-green-700 rounded-md">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4" />
-                  <span className="font-medium">すべての接続が正常です</span>
+                  <span className="font-medium">縺吶∋縺ｦ縺ｮ謗･邯壹′豁｣蟶ｸ縺ｧ縺・/span>
                 </div>
               </div>
             )}
@@ -323,7 +323,7 @@ export default function SystemDiagnosticPage() {
               <div className="mt-4 p-3 bg-yellow-50 text-yellow-700 rounded-md">
                 <div className="flex items-center gap-2">
                   <AlertCircle className="h-4 w-4" />
-                  <span className="font-medium">一部の接続に問題があります</span>
+                  <span className="font-medium">荳驛ｨ縺ｮ謗･邯壹↓蝠城｡後′縺ゅｊ縺ｾ縺・/span>
                 </div>
               </div>
             )}

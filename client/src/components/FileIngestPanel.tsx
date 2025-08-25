@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { extractTextFromPptx } from "@/utils/pptxExtract";
 import { AlertTriangle } from "lucide-react";
 
@@ -13,30 +13,30 @@ export default function FileIngestPanel() {
     if (!files || !files.length) return;
     for (const file of Array.from(files)) {
       try {
-        // ファイルサイズチェック（20MB制限）
+        // 繝輔ぃ繧､繝ｫ繧ｵ繧､繧ｺ繝√ぉ繝・け・・0MB蛻ｶ髯撰ｼ・
         if (file.size > 20 * 1024 * 1024) {
-          setStatus(`エラー: ${file.name} - ファイルサイズが20MBを超過しています。サーバに直接アップロードしてください。`);
+          setStatus(`繧ｨ繝ｩ繝ｼ: ${file.name} - 繝輔ぃ繧､繝ｫ繧ｵ繧､繧ｺ縺・0MB繧定ｶ・℃縺励※縺・∪縺吶ゅし繝ｼ繝舌↓逶ｴ謗･繧｢繝・・繝ｭ繝ｼ繝峨＠縺ｦ縺上□縺輔＞縲Ａ);
           continue;
         }
 
-        setStatus(`処理中: ${file.name}`);
-        // 原則：そのままサーバに送る。pptxは暫定で抽出に挑戦→失敗なら生送信。
+        setStatus(`蜃ｦ逅・ｸｭ: ${file.name}`);
+        // 蜴溷援・壹◎縺ｮ縺ｾ縺ｾ繧ｵ繝ｼ繝舌↓騾√ｋ縲Ｑptx縺ｯ證ｫ螳壹〒謚ｽ蜃ｺ縺ｫ謖第姶竊貞､ｱ謨励↑繧臥函騾∽ｿ｡縲・
         let text = "";
         if (file.name.toLowerCase().endsWith(".txt")) {
           text = await file.text();
         } else if (file.name.toLowerCase().endsWith(".pptx")) {
-          try { text = await extractTextFromPptx(file); } catch { /* フォールバック */ }
+          try { text = await extractTextFromPptx(file); } catch { /* 繝輔か繝ｼ繝ｫ繝舌ャ繧ｯ */ }
         }
         if (!text) {
-          // 生ファイルを送ってサーバで確定処理（推奨経路）
+          // 逕溘ヵ繧｡繧､繝ｫ繧帝√▲縺ｦ繧ｵ繝ｼ繝舌〒遒ｺ螳壼・逅・ｼ域耳螂ｨ邨瑚ｷｯ・・
           const fd = new FormData();
           fd.append("file", file);
           const r = await fetch("/api/ingest", { method: "POST", body: fd, credentials: "include" });
           if (!r.ok) throw new Error("upload failed");
           const j = await r.json();
-          setStatus(`完了: ${file.name} → doc_id=${j.doc_id}, chunks=${j.chunks}`);
+          setStatus(`螳御ｺ・ ${file.name} 竊・doc_id=${j.doc_id}, chunks=${j.chunks}`);
         } else {
-          // テキスト直接送信（txt/pptx抽出済み）
+          // 繝・く繧ｹ繝育峩謗･騾∽ｿ｡・・xt/pptx謚ｽ蜃ｺ貂医∩・・
           const r = await fetch("/api/ingest", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -45,10 +45,10 @@ export default function FileIngestPanel() {
           });
           if (!r.ok) throw new Error("ingest failed");
           const j = await r.json();
-          setStatus(`完了: ${file.name} → doc_id=${j.doc_id}, chunks=${j.chunks}`);
+          setStatus(`螳御ｺ・ ${file.name} 竊・doc_id=${j.doc_id}, chunks=${j.chunks}`);
         }
       } catch (e:any) {
-        setStatus(`失敗: ${file?.name} (${e.message||e})`);
+        setStatus(`螟ｱ謨・ ${file?.name} (${e.message||e})`);
       }
     }
   }
@@ -57,35 +57,35 @@ export default function FileIngestPanel() {
     if (!files || !files.length) return;
     const file = files[0];
     try {
-      setStatus(`JSONファイル読み込み中: ${file.name}`);
+      setStatus(`JSON繝輔ぃ繧､繝ｫ隱ｭ縺ｿ霎ｼ縺ｿ荳ｭ: ${file.name}`);
       const content = await file.text();
       setJsonData(content);
-      setStatus(`JSONファイル読み込み完了: ${file.name}`);
+      setStatus(`JSON繝輔ぃ繧､繝ｫ隱ｭ縺ｿ霎ｼ縺ｿ螳御ｺ・ ${file.name}`);
     } catch (e: any) {
-      setStatus(`JSONファイル読み込み失敗: ${file.name} (${e.message || e})`);
+      setStatus(`JSON繝輔ぃ繧､繝ｫ隱ｭ縺ｿ霎ｼ縺ｿ螟ｱ謨・ ${file.name} (${e.message || e})`);
     }
   }
 
   async function handleJsonIngest() {
     if (!jsonData.trim()) {
-      setStatus("エラー: JSONデータが入力されていません");
+      setStatus("繧ｨ繝ｩ繝ｼ: JSON繝・・繧ｿ縺悟・蜉帙＆繧後※縺・∪縺帙ｓ");
       return;
     }
 
     try {
-      setStatus("JSONデータ処理中...");
+      setStatus("JSON繝・・繧ｿ蜃ｦ逅・ｸｭ...");
       
-      // JSONデータをパースして検証
+      // JSON繝・・繧ｿ繧偵ヱ繝ｼ繧ｹ縺励※讀懆ｨｼ
       let parsedData;
       try {
         parsedData = JSON.parse(jsonData);
       } catch (e) {
-        setStatus("エラー: 無効なJSON形式です");
+        setStatus("繧ｨ繝ｩ繝ｼ: 辟｡蜉ｹ縺ｪJSON蠖｢蠑上〒縺・);
         return;
       }
 
-      // チャット履歴のJSONデータを処理
-      // チャットメッセージからテキストを抽出
+      // 繝√Ε繝・ヨ螻･豁ｴ縺ｮJSON繝・・繧ｿ繧貞・逅・
+      // 繝√Ε繝・ヨ繝｡繝・そ繝ｼ繧ｸ縺九ｉ繝・く繧ｹ繝医ｒ謚ｽ蜃ｺ
       let extractedText = "";
       if (parsedData.messages && Array.isArray(parsedData.messages)) {
         extractedText = parsedData.messages
@@ -97,16 +97,16 @@ export default function FileIngestPanel() {
       } else if (typeof parsedData === "string") {
         extractedText = parsedData;
       } else {
-        // その他の形式の場合は文字列化
+        // 縺昴・莉悶・蠖｢蠑上・蝣ｴ蜷医・譁・ｭ怜・蛹・
         extractedText = JSON.stringify(parsedData, null, 2);
       }
 
       if (!extractedText.trim()) {
-        setStatus("エラー: 有効なテキストデータが見つかりません");
+        setStatus("繧ｨ繝ｩ繝ｼ: 譛牙柑縺ｪ繝・く繧ｹ繝医ョ繝ｼ繧ｿ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ");
         return;
       }
 
-      // サーバーに送信
+      // 繧ｵ繝ｼ繝舌・縺ｫ騾∽ｿ｡
       const r = await fetch("/api/ingest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -120,29 +120,29 @@ export default function FileIngestPanel() {
 
       if (!r.ok) throw new Error("ingest failed");
       const j = await r.json();
-      setStatus(`JSONデータ取込完了 → doc_id=${j.doc_id}, chunks=${j.chunks}`);
-      setJsonData(""); // 成功後はクリア
+      setStatus(`JSON繝・・繧ｿ蜿冶ｾｼ螳御ｺ・竊・doc_id=${j.doc_id}, chunks=${j.chunks}`);
+      setJsonData(""); // 謌仙粥蠕後・繧ｯ繝ｪ繧｢
     } catch (e: any) {
-      setStatus(`JSONデータ処理失敗: ${e.message || e}`);
+      setStatus(`JSON繝・・繧ｿ蜃ｦ逅・､ｱ謨・ ${e.message || e}`);
     }
   }
 
   return (
     <div className="p-4 rounded-lg border border-gray-200 bg-white shadow-sm">
-             <div className="text-xl font-semibold text-blue-800 mb-3">機械故障報告書から取込</div>
+             <div className="text-xl font-semibold text-blue-800 mb-3">讖滓｢ｰ謨・囿蝣ｱ蜻頑嶌縺九ｉ蜿冶ｾｼ</div>
       
-      {/* 補足説明 */}
+      {/* 陬懆ｶｳ隱ｬ譏・*/}
       <div className="mb-6">
         <p className="text-base font-semibold text-gray-700">
-          チャットからサーバーへ送信したデータのほか、外部で作成した機械故障情報をアップロードできます。
+          繝√Ε繝・ヨ縺九ｉ繧ｵ繝ｼ繝舌・縺ｸ騾∽ｿ｡縺励◆繝・・繧ｿ縺ｮ縺ｻ縺九∝､夜Κ縺ｧ菴懈・縺励◆讖滓｢ｰ謨・囿諠・ｱ繧偵い繝・・繝ｭ繝ｼ繝峨〒縺阪∪縺吶・
         </p>
       </div>
       
       <div className="space-y-6">
-        {/* 区切り線 */}
+        {/* 蛹ｺ蛻・ｊ邱・*/}
         <div className="border-t border-gray-200 pt-6">
           
-          {/* JSONファイル選択 */}
+          {/* JSON繝輔ぃ繧､繝ｫ驕ｸ謚・*/}
           <div className="space-y-3 mb-6">
             <div className="flex items-center space-x-2">
               <input 
@@ -153,36 +153,36 @@ export default function FileIngestPanel() {
               />
             </div>
             <div className="text-xs text-gray-500">
-              チャットUIからエクスポートしたJSONファイルを選択
+              繝√Ε繝・ヨUI縺九ｉ繧ｨ繧ｯ繧ｹ繝昴・繝医＠縺櫟SON繝輔ぃ繧､繝ｫ繧帝∈謚・
             </div>
           </div>
 
-          {/* JSONデータ手動入力 */}
+          {/* JSON繝・・繧ｿ謇句虚蜈･蜉・*/}
           <div className="space-y-3 mb-6">
             <label className="block text-sm font-medium text-gray-700">
-              JSONデータ（直接入力）
+              JSON繝・・繧ｿ・育峩謗･蜈･蜉幢ｼ・
             </label>
             <textarea
               value={jsonData}
               onChange={(e) => setJsonData(e.target.value)}
-              placeholder="チャット履歴のJSONデータをここに貼り付けてください..."
+              placeholder="繝√Ε繝・ヨ螻･豁ｴ縺ｮJSON繝・・繧ｿ繧偵％縺薙↓雋ｼ繧贋ｻ倥￠縺ｦ縺上□縺輔＞..."
               className="w-full h-32 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
             />
           </div>
 
-          {/* 手動取込ボタン */}
+          {/* 謇句虚蜿冶ｾｼ繝懊ち繝ｳ */}
           <div className="pt-2 mb-6">
             <button
               onClick={handleJsonIngest}
               disabled={!jsonData.trim()}
               className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-                             処理開始
+                             蜃ｦ逅・幕蟋・
             </button>
           </div>
         </div>
 
-        {/* ステータス表示 */}
+        {/* 繧ｹ繝・・繧ｿ繧ｹ陦ｨ遉ｺ */}
         <div className="text-sm mt-2 p-2 bg-gray-50 rounded border min-h-[2rem]">
           {status}
         </div>

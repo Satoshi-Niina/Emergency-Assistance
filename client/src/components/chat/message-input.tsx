@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+﻿import { useState, useRef, useEffect } from "react";
 import { useChat } from "../../context/chat-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,11 +22,11 @@ export default function MessageInput({ onSendMessage, isLoading = false, disable
     setDraftMessage
   } = useChat();
 
-  // ドラフトメッセージを更新する（ユーザー入力用）
+  // 繝峨Λ繝輔ヨ繝｡繝・そ繝ｼ繧ｸ繧呈峩譁ｰ縺吶ｋ・医Θ繝ｼ繧ｶ繝ｼ蜈･蜉帷畑・・
   const updateDraftMessage = (content: string) => {
-    // 手動入力の場合のみコンテキスト直接更新（音声認識との重複防止）
+    // 謇句虚蜈･蜉帙・蝣ｴ蜷医・縺ｿ繧ｳ繝ｳ繝・く繧ｹ繝育峩謗･譖ｴ譁ｰ・磯浹螢ｰ隱崎ｭ倥→縺ｮ驥崎､・亟豁｢・・
     if (setDraftMessage) {
-      console.log('手動入力からドラフトメッセージを更新:', content);
+      console.log('謇句虚蜈･蜉帙°繧峨ラ繝ｩ繝輔ヨ繝｡繝・そ繝ｼ繧ｸ繧呈峩譁ｰ:', content);
       setDraftMessage({
         content,
         media: draftMessage?.media || []
@@ -37,7 +37,7 @@ export default function MessageInput({ onSendMessage, isLoading = false, disable
   const inputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // 選択されたテキストが変更されたら入力欄に反映
+  // 驕ｸ謚槭＆繧後◆繝・く繧ｹ繝医′螟画峩縺輔ｌ縺溘ｉ蜈･蜉帶ｬ・↓蜿肴丐
   useEffect(() => {
     if (selectedText) {
       setMessage(selectedText);
@@ -68,11 +68,11 @@ export default function MessageInput({ onSendMessage, isLoading = false, disable
   };
 
   const handleCameraClick = () => {
-    // カメラモーダルを開く
+    // 繧ｫ繝｡繝ｩ繝｢繝ｼ繝繝ｫ繧帝幕縺・
     window.dispatchEvent(new CustomEvent('open-camera'));
   };
 
-  // テキスト入力欄をクリアする
+  // 繝・く繧ｹ繝亥・蜉帶ｬ・ｒ繧ｯ繝ｪ繧｢縺吶ｋ
   const handleClearText = () => {
     setMessage("");
     if (isMobile && textareaRef.current) {
@@ -86,15 +86,15 @@ export default function MessageInput({ onSendMessage, isLoading = false, disable
     <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-t border-blue-200 p-2 message-input-container">
       <form onSubmit={handleSubmit} className="flex items-center">
 
-        {/* 入力エリア - 小さめ固定高さでオーバーフロー時はスクロール */}
+        {/* 蜈･蜉帙お繝ｪ繧｢ - 蟆上＆繧∝崋螳夐ｫ倥＆縺ｧ繧ｪ繝ｼ繝舌・繝輔Ο繝ｼ譎ゅ・繧ｹ繧ｯ繝ｭ繝ｼ繝ｫ */}
         <div className="flex-1 flex items-center bg-white border border-blue-200 rounded-full px-3 py-1 shadow-inner">
           {isMobile ? (
-            /* モバイル用テキストエリア（1.5倍の高さと文字サイズ） */
-            <div className="flex-1 relative h-[48px]"> {/* 高さを1.5倍に */}
+            /* 繝｢繝舌う繝ｫ逕ｨ繝・く繧ｹ繝医お繝ｪ繧｢・・.5蛟阪・鬮倥＆縺ｨ譁・ｭ励し繧､繧ｺ・・*/
+            <div className="flex-1 relative h-[48px]"> {/* 鬮倥＆繧・.5蛟阪↓ */}
               <Textarea
                 ref={textareaRef}
                 className="absolute inset-0 bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none py-1 overflow-y-auto text-lg"
-                placeholder={"メッセージを入力..."}
+                placeholder={"繝｡繝・そ繝ｼ繧ｸ繧貞・蜉・.."}
                 value={message}
                 onChange={handleInputChange}
                 disabled={isLoading}
@@ -107,7 +107,7 @@ export default function MessageInput({ onSendMessage, isLoading = false, disable
                   }
                 }}
               />
-              {/* テキストがある場合にのみクリアボタンを表示 */}
+              {/* 繝・く繧ｹ繝医′縺ゅｋ蝣ｴ蜷医↓縺ｮ縺ｿ繧ｯ繝ｪ繧｢繝懊ち繝ｳ繧定｡ｨ遉ｺ */}
               {message.trim() && (
                 <button
                   type="button"
@@ -119,18 +119,18 @@ export default function MessageInput({ onSendMessage, isLoading = false, disable
               )}
             </div>
           ) : (
-            /* デスクトップ用インプット（1.5倍の高さと文字サイズ） */
-            <div className="flex-1 h-[48px] flex items-center relative"> {/* 高さを1.5倍に */}
+            /* 繝・せ繧ｯ繝医ャ繝礼畑繧､繝ｳ繝励ャ繝茨ｼ・.5蛟阪・鬮倥＆縺ｨ譁・ｭ励し繧､繧ｺ・・*/
+            <div className="flex-1 h-[48px] flex items-center relative"> {/* 鬮倥＆繧・.5蛟阪↓ */}
               <Input
                 ref={inputRef}
                 type="text"
                 className="w-full h-full bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 text-lg"
-                placeholder={"メッセージを入力..."}
+                placeholder={"繝｡繝・そ繝ｼ繧ｸ繧貞・蜉・.."}
                 value={message}
                 onChange={handleInputChange}
                 disabled={isLoading}
               />
-              {/* テキストがある場合にのみクリアボタンを表示 */}
+              {/* 繝・く繧ｹ繝医′縺ゅｋ蝣ｴ蜷医↓縺ｮ縺ｿ繧ｯ繝ｪ繧｢繝懊ち繝ｳ繧定｡ｨ遉ｺ */}
               {message.trim() && (
                 <button
                   type="button"
@@ -153,9 +153,9 @@ export default function MessageInput({ onSendMessage, isLoading = false, disable
           </Button>
         </div>
 
-        {/* モバイル向けカメラボタン - 右配置 - コンパクト化 */}
+        {/* 繝｢繝舌う繝ｫ蜷代￠繧ｫ繝｡繝ｩ繝懊ち繝ｳ - 蜿ｳ驟咲ｽｮ - 繧ｳ繝ｳ繝代け繝亥喧 */}
         <div className="md:hidden flex flex-col items-center ml-2">
-          <span className="text-xs font-medium text-indigo-700 mb-0.5">カメラ</span>
+          <span className="text-xs font-medium text-indigo-700 mb-0.5">繧ｫ繝｡繝ｩ</span>
           <Button 
             type="button" 
             onClick={handleCameraClick}
@@ -167,9 +167,9 @@ export default function MessageInput({ onSendMessage, isLoading = false, disable
           </Button>
         </div>
 
-        {/* デスクトップ向けのカメラボタン - 右配置 - コンパクト化 */}
+        {/* 繝・せ繧ｯ繝医ャ繝怜髄縺代・繧ｫ繝｡繝ｩ繝懊ち繝ｳ - 蜿ｳ驟咲ｽｮ - 繧ｳ繝ｳ繝代け繝亥喧 */}
         <div className="hidden md:flex md:flex-col md:items-center md:ml-2">
-          <span className="text-xs font-medium text-indigo-700 mb-0.5">カメラ</span>
+          <span className="text-xs font-medium text-indigo-700 mb-0.5">繧ｫ繝｡繝ｩ</span>
           <Button 
             type="button" 
             onClick={handleCameraClick}

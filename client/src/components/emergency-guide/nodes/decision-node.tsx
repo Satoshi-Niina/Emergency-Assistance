@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+﻿import React, { memo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 
 const DecisionNode = ({ data }: NodeProps) => {
@@ -13,14 +13,14 @@ const DecisionNode = ({ data }: NodeProps) => {
       alignItems: 'center',
     }}>
       <div style={{ transform: 'rotate(-45deg)' }} className="text-center">
-        <div className="font-bold text-yellow-800">{data.label || '判断'}</div>
+        <div className="font-bold text-yellow-800">{data.label || '蛻､譁ｭ'}</div>
         {data.message && (
           <div className="mt-2 text-sm text-gray-700">{data.message}</div>
         )}
       </div>
       
-      {/* 入力と複数の出力ハンドル - 角に配置 */}
-      {/* 上部の角（入力） */}
+      {/* 蜈･蜉帙→隍・焚縺ｮ蜃ｺ蜉帙ワ繝ｳ繝峨Ν - 隗偵↓驟咲ｽｮ */}
+      {/* 荳企Κ縺ｮ隗抵ｼ亥・蜉幢ｼ・*/}
       <Handle
         type="target"
         position={Position.Top}
@@ -34,7 +34,7 @@ const DecisionNode = ({ data }: NodeProps) => {
         isConnectable={true}
       />
       
-      {/* 右側の角（Yes出力） */}
+      {/* 蜿ｳ蛛ｴ縺ｮ隗抵ｼ・es蜃ｺ蜉幢ｼ・*/}
       <Handle
         type="source"
         position={Position.Right}
@@ -49,7 +49,7 @@ const DecisionNode = ({ data }: NodeProps) => {
         isConnectable={true}
       />
       
-      {/* 下側の角（No出力） */}
+      {/* 荳句・縺ｮ隗抵ｼ・o蜃ｺ蜉幢ｼ・*/}
       <Handle
         type="source"
         position={Position.Bottom}
@@ -64,7 +64,7 @@ const DecisionNode = ({ data }: NodeProps) => {
         isConnectable={true}
       />
       
-      {/* 左側の角（別の出力） */}
+      {/* 蟾ｦ蛛ｴ縺ｮ隗抵ｼ亥挨縺ｮ蜃ｺ蜉幢ｼ・*/}
       <Handle
         type="source"
         position={Position.Left}

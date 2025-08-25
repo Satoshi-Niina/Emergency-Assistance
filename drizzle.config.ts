@@ -1,4 +1,4 @@
-
+﻿
 import { defineConfig } from "drizzle-kit";
 
 if (!process.env.DATABASE_URL) {
@@ -12,5 +12,5 @@ export default defineConfig({
   dbCredentials: {
     url: process.env.DATABASE_URL,
   },
-  // データベース名: webappdb (ローカル・本番共通)
+  // 繝・・繧ｿ繝吶・繧ｹ蜷・ webappdb (繝ｭ繝ｼ繧ｫ繝ｫ繝ｻ譛ｬ逡ｪ蜈ｱ騾・
 });

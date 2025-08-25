@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useState, useEffect } from "react";
+﻿import { createContext, ReactNode, useContext, useState, useEffect } from "react";
 import {
   useQuery,
   useMutation,
@@ -39,21 +39,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await apiRequest("POST", "/api/auth/login", credentials);
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "ログインに失敗しました");
+        throw new Error(errorData.message || "繝ｭ繧ｰ繧､繝ｳ縺ｫ螟ｱ謨励＠縺ｾ縺励◆");
       }
       return await res.json();
     },
     onSuccess: (userData: User) => {
       queryClient.setQueryData(["/api/auth/me"], userData);
       toast({
-        title: "ログイン成功",
-        description: `ようこそ、${userData.displayName}さん`,
+        title: "繝ｭ繧ｰ繧､繝ｳ謌仙粥",
+        description: `繧医≧縺薙◎縲・{userData.displayName}縺輔ｓ`,
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "ログイン失敗",
-        description: error.message || "ユーザー名またはパスワードが間違っています",
+        title: "繝ｭ繧ｰ繧､繝ｳ螟ｱ謨・,
+        description: error.message || "繝ｦ繝ｼ繧ｶ繝ｼ蜷阪∪縺溘・繝代せ繝ｯ繝ｼ繝峨′髢馴＆縺｣縺ｦ縺・∪縺・,
         variant: "destructive",
       });
     },
@@ -64,21 +64,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await apiRequest("POST", "/api/auth/register", userData);
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "ユーザー登録に失敗しました");
+        throw new Error(errorData.message || "繝ｦ繝ｼ繧ｶ繝ｼ逋ｻ骭ｲ縺ｫ螟ｱ謨励＠縺ｾ縺励◆");
       }
       return await res.json();
     },
     onSuccess: (userData: User) => {
       queryClient.setQueryData(["/api/auth/me"], userData);
       toast({
-        title: "登録成功",
-        description: `ようこそ、${userData.displayName}さん`,
+        title: "逋ｻ骭ｲ謌仙粥",
+        description: `繧医≧縺薙◎縲・{userData.displayName}縺輔ｓ`,
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "登録失敗",
-        description: error.message || "ユーザー登録に失敗しました",
+        title: "逋ｻ骭ｲ螟ｱ謨・,
+        description: error.message || "繝ｦ繝ｼ繧ｶ繝ｼ逋ｻ骭ｲ縺ｫ螟ｱ謨励＠縺ｾ縺励◆",
         variant: "destructive",
       });
     },
@@ -91,14 +91,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: () => {
       queryClient.setQueryData(["/api/auth/me"], null);
       toast({
-        title: "ログアウト成功",
-        description: "ログアウトしました",
+        title: "繝ｭ繧ｰ繧｢繧ｦ繝域・蜉・,
+        description: "繝ｭ繧ｰ繧｢繧ｦ繝医＠縺ｾ縺励◆",
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "ログアウト失敗",
-        description: error.message || "ログアウトに失敗しました",
+        title: "繝ｭ繧ｰ繧｢繧ｦ繝亥､ｱ謨・,
+        description: error.message || "繝ｭ繧ｰ繧｢繧ｦ繝医↓螟ｱ謨励＠縺ｾ縺励◆",
         variant: "destructive",
       });
     },

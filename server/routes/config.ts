@@ -1,10 +1,10 @@
-import { Router, Request, Response } from 'express';
+﻿import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { loadRagConfig, updateRagConfig, validateRagConfig, getConfigDiff } from '../services/config-manager.js';
 
 const router = Router();
 
-// 設定更新スキーマの定義
+// 險ｭ螳壽峩譁ｰ繧ｹ繧ｭ繝ｼ繝槭・螳夂ｾｩ
 const ConfigUpdateSchema = z.object({
   embedDim: z.number().min(1).max(4096).optional(),
   chunkSize: z.number().min(100).max(2000).optional(),
@@ -20,7 +20,7 @@ const ConfigUpdateSchema = z.object({
 type ConfigUpdate = z.infer<typeof ConfigUpdateSchema>;
 
 /**
- * 現在のRAG設定を取得
+ * 迴ｾ蝨ｨ縺ｮRAG險ｭ螳壹ｒ蜿門ｾ・
  * GET /api/config/rag
  */
 router.get('/rag', async (req: Request, res: Response) => {
@@ -29,12 +29,12 @@ router.get('/rag', async (req: Request, res: Response) => {
     
     res.json({
       config,
-      message: 'RAG設定を取得しました',
+      message: 'RAG險ｭ螳壹ｒ蜿門ｾ励＠縺ｾ縺励◆',
       timestamp: new Date().toISOString()
     });
     
   } catch (error) {
-    console.error('❌ RAG設定取得エラー:', error);
+    console.error('笶・RAG險ｭ螳壼叙蠕励お繝ｩ繝ｼ:', error);
     
     res.status(500).json({
       error: 'Failed to load RAG configuration',
@@ -44,12 +44,12 @@ router.get('/rag', async (req: Request, res: Response) => {
 });
 
 /**
- * RAG設定を更新
+ * RAG險ｭ螳壹ｒ譖ｴ譁ｰ
  * PATCH /api/config/rag
  */
 router.patch('/rag', async (req: Request, res: Response) => {
   try {
-    // リクエストボディの検証
+    // 繝ｪ繧ｯ繧ｨ繧ｹ繝医・繝・ぅ縺ｮ讀懆ｨｼ
     const validationResult = ConfigUpdateSchema.safeParse(req.body);
     if (!validationResult.success) {
       return res.status(400).json({
@@ -60,7 +60,7 @@ router.patch('/rag', async (req: Request, res: Response) => {
     
     const updateData = validationResult.data;
     
-    // 設定の検証
+    // 險ｭ螳壹・讀懆ｨｼ
     const validation = validateRagConfig(updateData);
     if (!validation.valid) {
       return res.status(400).json({
@@ -69,31 +69,31 @@ router.patch('/rag', async (req: Request, res: Response) => {
       });
     }
     
-    // 現在の設定との差分を確認
+    // 迴ｾ蝨ｨ縺ｮ險ｭ螳壹→縺ｮ蟾ｮ蛻・ｒ遒ｺ隱・
     const changes = await getConfigDiff(updateData);
     
     if (changes.length === 0) {
       return res.json({
-        message: '設定に変更はありません',
+        message: '險ｭ螳壹↓螟画峩縺ｯ縺ゅｊ縺ｾ縺帙ｓ',
         config: await loadRagConfig(),
         changes: []
       });
     }
     
-    // 設定を更新
+    // 險ｭ螳壹ｒ譖ｴ譁ｰ
     const updatedConfig = await updateRagConfig(updateData);
     
-    console.log(`🔧 RAG設定を更新しました: ${changes.join(', ')}`);
+    console.log(`肌 RAG險ｭ螳壹ｒ譖ｴ譁ｰ縺励∪縺励◆: ${changes.join(', ')}`);
     
     res.json({
-      message: 'RAG設定を更新しました',
+      message: 'RAG險ｭ螳壹ｒ譖ｴ譁ｰ縺励∪縺励◆',
       config: updatedConfig,
       changes,
       timestamp: new Date().toISOString()
     });
     
   } catch (error) {
-    console.error('❌ RAG設定更新エラー:', error);
+    console.error('笶・RAG險ｭ螳壽峩譁ｰ繧ｨ繝ｩ繝ｼ:', error);
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     
@@ -105,7 +105,7 @@ router.patch('/rag', async (req: Request, res: Response) => {
 });
 
 /**
- * 設定の検証
+ * 險ｭ螳壹・讀懆ｨｼ
  * POST /api/config/rag/validate
  */
 router.post('/rag/validate', async (req: Request, res: Response) => {
@@ -124,19 +124,19 @@ router.post('/rag/validate', async (req: Request, res: Response) => {
     if (validation.valid) {
       res.json({
         valid: true,
-        message: '設定は有効です',
+        message: '險ｭ螳壹・譛牙柑縺ｧ縺・,
         config: configData
       });
     } else {
       res.status(400).json({
         valid: false,
-        message: '設定に問題があります',
+        message: '險ｭ螳壹↓蝠城｡後′縺ゅｊ縺ｾ縺・,
         errors: validation.errors
       });
     }
     
   } catch (error) {
-    console.error('❌ 設定検証エラー:', error);
+    console.error('笶・險ｭ螳壽､懆ｨｼ繧ｨ繝ｩ繝ｼ:', error);
     
     res.status(500).json({
       error: 'Configuration validation failed',
@@ -146,7 +146,7 @@ router.post('/rag/validate', async (req: Request, res: Response) => {
 });
 
 /**
- * 設定の差分確認
+ * 險ｭ螳壹・蟾ｮ蛻・｢ｺ隱・
  * POST /api/config/rag/diff
  */
 router.post('/rag/diff', async (req: Request, res: Response) => {
@@ -165,11 +165,11 @@ router.post('/rag/diff', async (req: Request, res: Response) => {
     res.json({
       changes,
       hasChanges: changes.length > 0,
-      message: changes.length > 0 ? `${changes.length}件の変更があります` : '変更はありません'
+      message: changes.length > 0 ? `${changes.length}莉ｶ縺ｮ螟画峩縺後≠繧翫∪縺兪 : '螟画峩縺ｯ縺ゅｊ縺ｾ縺帙ｓ'
     });
     
   } catch (error) {
-    console.error('❌ 設定差分確認エラー:', error);
+    console.error('笶・險ｭ螳壼ｷｮ蛻・｢ｺ隱阪お繝ｩ繝ｼ:', error);
     
     res.status(500).json({
       error: 'Failed to get configuration diff',
@@ -179,12 +179,12 @@ router.post('/rag/diff', async (req: Request, res: Response) => {
 });
 
 /**
- * 設定のリセット
+ * 險ｭ螳壹・繝ｪ繧ｻ繝・ヨ
  * POST /api/config/rag/reset
  */
 router.post('/rag/reset', async (req: Request, res: Response) => {
   try {
-    // デフォルト設定を読み込み
+    // 繝・ヵ繧ｩ繝ｫ繝郁ｨｭ螳壹ｒ隱ｭ縺ｿ霎ｼ縺ｿ
     const defaultConfig = {
       embedDim: 1536,
       chunkSize: 800,
@@ -197,31 +197,31 @@ router.post('/rag/reset', async (req: Request, res: Response) => {
       similarityThreshold: 0.7
     };
     
-    // 現在の設定との差分を確認
+    // 迴ｾ蝨ｨ縺ｮ險ｭ螳壹→縺ｮ蟾ｮ蛻・ｒ遒ｺ隱・
     const changes = await getConfigDiff(defaultConfig);
     
     if (changes.length === 0) {
       return res.json({
-        message: '設定は既にデフォルト値です',
+        message: '險ｭ螳壹・譌｢縺ｫ繝・ヵ繧ｩ繝ｫ繝亥､縺ｧ縺・,
         config: await loadRagConfig(),
         changes: []
       });
     }
     
-    // 設定をリセット
+    // 險ｭ螳壹ｒ繝ｪ繧ｻ繝・ヨ
     const resetConfig = await updateRagConfig(defaultConfig);
     
-    console.log(`🔄 RAG設定をリセットしました: ${changes.join(', ')}`);
+    console.log(`売 RAG險ｭ螳壹ｒ繝ｪ繧ｻ繝・ヨ縺励∪縺励◆: ${changes.join(', ')}`);
     
     res.json({
-      message: 'RAG設定をリセットしました',
+      message: 'RAG險ｭ螳壹ｒ繝ｪ繧ｻ繝・ヨ縺励∪縺励◆',
       config: resetConfig,
       changes,
       timestamp: new Date().toISOString()
     });
     
   } catch (error) {
-    console.error('❌ RAG設定リセットエラー:', error);
+    console.error('笶・RAG險ｭ螳壹Μ繧ｻ繝・ヨ繧ｨ繝ｩ繝ｼ:', error);
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     
@@ -233,7 +233,7 @@ router.post('/rag/reset', async (req: Request, res: Response) => {
 });
 
 /**
- * 設定のエクスポート
+ * 險ｭ螳壹・繧ｨ繧ｯ繧ｹ繝昴・繝・
  * GET /api/config/rag/export
  */
 router.get('/rag/export', async (req: Request, res: Response) => {
@@ -246,7 +246,7 @@ router.get('/rag/export', async (req: Request, res: Response) => {
     res.json(config);
     
   } catch (error) {
-    console.error('❌ RAG設定エクスポートエラー:', error);
+    console.error('笶・RAG險ｭ螳壹お繧ｯ繧ｹ繝昴・繝医お繝ｩ繝ｼ:', error);
     
     res.status(500).json({
       error: 'Failed to export RAG configuration',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -34,23 +34,23 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
   const [imageUrl, setImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log('ReportViewer: reportData変更検知:', {
+    console.log('ReportViewer: reportData螟画峩讀懃衍:', {
       id: reportData?.id,
       hasReportData: !!reportData,
       reportDataKeys: reportData ? Object.keys(reportData) : [],
-      imageUrl: reportData?.imageUrl ? 'あり' : 'なし',
+      imageUrl: reportData?.imageUrl ? '縺ゅｊ' : '縺ｪ縺・,
       conversationHistory: reportData?.conversationHistory?.length || 0,
       chatData: reportData?.chatData?.messages?.length || 0
     });
     
-    // 画像URLを抽出
+    // 逕ｻ蜒酋RL繧呈歓蜃ｺ
     extractImageUrl();
   }, [reportData]);
 
   const extractImageUrl = () => {
     let foundImageUrl = null;
     
-    console.log('ReportViewer: 画像抽出開始', {
+    console.log('ReportViewer: 逕ｻ蜒乗歓蜃ｺ髢句ｧ・, {
       hasReportData: !!reportData,
       reportDataKeys: reportData ? Object.keys(reportData) : [],
       conversationHistory: reportData?.conversationHistory?.length || 0,
@@ -59,63 +59,63 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
       savedImages: reportData?.savedImages?.length || 0
     });
 
-    // 優先順位1: 直接設定された画像URL
+    // 蜆ｪ蜈磯・ｽ・: 逶ｴ謗･險ｭ螳壹＆繧後◆逕ｻ蜒酋RL
     if (reportData?.imageUrl) {
       foundImageUrl = reportData.imageUrl;
-      console.log('ReportViewer: 直接設定された画像URLを使用:', foundImageUrl.substring(0, 100) + '...');
+      console.log('ReportViewer: 逶ｴ謗･險ｭ螳壹＆繧後◆逕ｻ蜒酋RL繧剃ｽｿ逕ｨ:', foundImageUrl.substring(0, 100) + '...');
     }
 
-    // 優先順位2: conversationHistoryからBase64画像を取得
+    // 蜆ｪ蜈磯・ｽ・: conversationHistory縺九ｉBase64逕ｻ蜒上ｒ蜿門ｾ・
     if (!foundImageUrl && reportData?.conversationHistory && reportData.conversationHistory.length > 0) {
       const imageMessage = reportData.conversationHistory.find((msg: any) => 
         msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         foundImageUrl = imageMessage.content;
-        console.log('ReportViewer: conversationHistoryから画像を取得');
+        console.log('ReportViewer: conversationHistory縺九ｉ逕ｻ蜒上ｒ蜿門ｾ・);
       }
     }
 
-    // 優先順位3: originalChatData.messagesからBase64画像を取得
+    // 蜆ｪ蜈磯・ｽ・: originalChatData.messages縺九ｉBase64逕ｻ蜒上ｒ蜿門ｾ・
     if (!foundImageUrl && reportData?.originalChatData?.messages) {
       const imageMessage = reportData.originalChatData.messages.find((msg: any) => 
         msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         foundImageUrl = imageMessage.content;
-        console.log('ReportViewer: originalChatDataから画像を取得');
+        console.log('ReportViewer: originalChatData縺九ｉ逕ｻ蜒上ｒ蜿門ｾ・);
       }
     }
 
-    // 優先順位4: chatData.messagesからBase64画像を取得
+    // 蜆ｪ蜈磯・ｽ・: chatData.messages縺九ｉBase64逕ｻ蜒上ｒ蜿門ｾ・
     if (!foundImageUrl && reportData?.chatData?.messages) {
       const imageMessage = reportData.chatData.messages.find((msg: any) => 
         msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         foundImageUrl = imageMessage.content;
-        console.log('ReportViewer: chatDataから画像を取得');
+        console.log('ReportViewer: chatData縺九ｉ逕ｻ蜒上ｒ蜿門ｾ・);
       }
     }
 
-    // 優先順位5: savedImagesから画像を取得
+    // 蜆ｪ蜈磯・ｽ・: savedImages縺九ｉ逕ｻ蜒上ｒ蜿門ｾ・
     if (!foundImageUrl && reportData?.savedImages && reportData.savedImages.length > 0) {
       foundImageUrl = reportData.savedImages[0].url;
-      console.log('ReportViewer: savedImagesから画像を取得');
+      console.log('ReportViewer: savedImages縺九ｉ逕ｻ蜒上ｒ蜿門ｾ・);
     }
 
-    // 優先順位6: messagesフィールドからBase64画像を検索
+    // 蜆ｪ蜈磯・ｽ・: messages繝輔ぅ繝ｼ繝ｫ繝峨°繧隠ase64逕ｻ蜒上ｒ讀懃ｴ｢
     if (!foundImageUrl && reportData?.messages && Array.isArray(reportData.messages)) {
       const imageMessage = reportData.messages.find((msg: any) => 
         msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         foundImageUrl = imageMessage.content;
-        console.log('ReportViewer: messagesフィールドから画像を取得');
+        console.log('ReportViewer: messages繝輔ぅ繝ｼ繝ｫ繝峨°繧臥判蜒上ｒ蜿門ｾ・);
       }
     }
 
-    console.log('ReportViewer: 最終的な画像URL:', foundImageUrl ? foundImageUrl.substring(0, 100) + '...' : 'なし');
+    console.log('ReportViewer: 譛邨ら噪縺ｪ逕ｻ蜒酋RL:', foundImageUrl ? foundImageUrl.substring(0, 100) + '...' : '縺ｪ縺・);
     setImageUrl(foundImageUrl);
   };
 
@@ -130,12 +130,12 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
     setIsEditing(false);
   };
 
-  // ファイルに差分で上書き保存
+  // 繝輔ぃ繧､繝ｫ縺ｫ蟾ｮ蛻・〒荳頑嶌縺堺ｿ晏ｭ・
   const handleSaveToFile = async () => {
     try {
       const data = isEditing ? editedData : reportData;
       
-      // 保存用のデータを準備
+      // 菫晏ｭ倡畑縺ｮ繝・・繧ｿ繧呈ｺ門ｙ
       const saveData = {
         id: data.id,
         reportId: data.reportId,
@@ -160,20 +160,20 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
         repairSchedule: data.repairSchedule,
         repairLocation: data.repairLocation,
         requestDate: data.requestDate,
-        // チャット履歴データ
+        // 繝√Ε繝・ヨ螻･豁ｴ繝・・繧ｿ
         conversationHistory: data.conversationHistory,
         originalChatData: data.originalChatData,
         chatData: data.chatData,
         messages: data.messages,
-        // 保存された画像
+        // 菫晏ｭ倥＆繧後◆逕ｻ蜒・
         savedImages: data.savedImages,
-        // 直接画像URL
+        // 逶ｴ謗･逕ｻ蜒酋RL
         imageUrl: data.imageUrl,
-        // 更新日時
+        // 譖ｴ譁ｰ譌･譎・
         updatedAt: new Date().toISOString()
       };
 
-      // 既存のファイルデータを取得
+      // 譌｢蟄倥・繝輔ぃ繧､繝ｫ繝・・繧ｿ繧貞叙蠕・
       const existingData = localStorage.getItem(`report_${data.id}`);
       let existingReport = null;
       
@@ -181,17 +181,17 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
         try {
           existingReport = JSON.parse(existingData);
         } catch (e) {
-          console.warn('既存データの解析に失敗:', e);
+          console.warn('譌｢蟄倥ョ繝ｼ繧ｿ縺ｮ隗｣譫舌↓螟ｱ謨・', e);
         }
       }
 
-      // 差分を検出して上書き
+      // 蟾ｮ蛻・ｒ讀懷・縺励※荳頑嶌縺・
       const mergedData = existingReport ? { ...existingReport, ...saveData } : saveData;
       
-      // ローカルストレージに保存
+      // 繝ｭ繝ｼ繧ｫ繝ｫ繧ｹ繝医Ξ繝ｼ繧ｸ縺ｫ菫晏ｭ・
       localStorage.setItem(`report_${data.id}`, JSON.stringify(mergedData));
       
-      // サーバーにも保存を試行（APIが利用可能な場合）
+      // 繧ｵ繝ｼ繝舌・縺ｫ繧ゆｿ晏ｭ倥ｒ隧ｦ陦鯉ｼ・PI縺悟茜逕ｨ蜿ｯ閭ｽ縺ｪ蝣ｴ蜷茨ｼ・
       try {
         const response = await fetch('/api/reports/save', {
           method: 'POST',
@@ -202,20 +202,20 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
         });
         
         if (response.ok) {
-          console.log('サーバーへの保存が完了しました');
+          console.log('繧ｵ繝ｼ繝舌・縺ｸ縺ｮ菫晏ｭ倥′螳御ｺ・＠縺ｾ縺励◆');
         } else {
-          console.warn('サーバーへの保存に失敗しましたが、ローカルには保存されました');
+          console.warn('繧ｵ繝ｼ繝舌・縺ｸ縺ｮ菫晏ｭ倥↓螟ｱ謨励＠縺ｾ縺励◆縺後√Ο繝ｼ繧ｫ繝ｫ縺ｫ縺ｯ菫晏ｭ倥＆繧後∪縺励◆');
         }
       } catch (error) {
-        console.warn('サーバーへの保存に失敗しましたが、ローカルには保存されました:', error);
+        console.warn('繧ｵ繝ｼ繝舌・縺ｸ縺ｮ菫晏ｭ倥↓螟ｱ謨励＠縺ｾ縺励◆縺後√Ο繝ｼ繧ｫ繝ｫ縺ｫ縺ｯ菫晏ｭ倥＆繧後∪縺励◆:', error);
       }
 
-      alert('レポートが保存されました。');
-      console.log('レポート保存完了:', mergedData);
+      alert('繝ｬ繝昴・繝医′菫晏ｭ倥＆繧後∪縺励◆縲・);
+      console.log('繝ｬ繝昴・繝井ｿ晏ｭ伜ｮ御ｺ・', mergedData);
       
     } catch (error) {
-      console.error('レポート保存中にエラーが発生しました:', error);
-      alert('レポートの保存に失敗しました: ' + error.message);
+      console.error('繝ｬ繝昴・繝井ｿ晏ｭ倅ｸｭ縺ｫ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆:', error);
+      alert('繝ｬ繝昴・繝医・菫晏ｭ倥↓螟ｱ謨励＠縺ｾ縺励◆: ' + error.message);
     }
   };
 
@@ -241,13 +241,13 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
     printWindow.document.write(htmlContent);
     printWindow.document.close();
 
-    // 印刷ダイアログを表示
+    // 蜊ｰ蛻ｷ繝繧､繧｢繝ｭ繧ｰ繧定｡ｨ遉ｺ
     setTimeout(() => {
       printWindow.print();
     }, 500);
   };
 
-  // 印刷用HTML生成（現在のレポートデータを使用）
+  // 蜊ｰ蛻ｷ逕ｨHTML逕滓・・育樟蝨ｨ縺ｮ繝ｬ繝昴・繝医ョ繝ｼ繧ｿ繧剃ｽｿ逕ｨ・・
   const generatePrintHTML = (): string => {
     const data = isEditing ? editedData : reportData;
     
@@ -256,7 +256,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
       <html>
       <head>
         <meta charset="utf-8">
-        <title>機械故障報告書 - 印刷</title>
+        <title>讖滓｢ｰ謨・囿蝣ｱ蜻頑嶌 - 蜊ｰ蛻ｷ</title>
         <style>
           @page {
             size: A4 portrait;
@@ -394,118 +394,118 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
       <body>
         <div class="container">
           <div class="header">
-            <h1>機械故障報告書</h1>
-            <p>印刷日時: ${new Date().toLocaleString('ja-JP')}</p>
+            <h1>讖滓｢ｰ謨・囿蝣ｱ蜻頑嶌</h1>
+            <p>蜊ｰ蛻ｷ譌･譎・ ${new Date().toLocaleString('ja-JP')}</p>
           </div>
           
           <div class="section">
-            <h2>報告概要</h2>
+            <h2>蝣ｱ蜻頑ｦりｦ・/h2>
             <div class="info-grid">
               <div class="info-item">
-                <strong>報告書ID</strong>
+                <strong>蝣ｱ蜻頑嶌ID</strong>
                 <span>${data.reportId || data.id || '-'}</span>
               </div>
               <div class="info-item">
-                <strong>機種</strong>
+                <strong>讖溽ｨｮ</strong>
                 <span>${data.machineType || data.machineTypeName || '-'}</span>
               </div>
               <div class="info-item">
-                <strong>機械番号</strong>
+                <strong>讖滓｢ｰ逡ｪ蜿ｷ</strong>
                 <span>${data.machineNumber || '-'}</span>
               </div>
               <div class="info-item">
-                <strong>日付</strong>
+                <strong>譌･莉・/strong>
                 <span>${data.date || data.timestamp || data.createdAt ? new Date(data.createdAt).toLocaleDateString('ja-JP') : '-'}</span>
               </div>
               <div class="info-item">
-                <strong>場所</strong>
+                <strong>蝣ｴ謇</strong>
                 <span>${data.location || '-'}</span>
               </div>
             </div>
           </div>
           
           <div class="section">
-            <h2>故障詳細</h2>
+            <h2>謨・囿隧ｳ邏ｰ</h2>
             <div class="info-grid">
               <div class="info-item">
-                <strong>故障コード</strong>
+                <strong>謨・囿繧ｳ繝ｼ繝・/strong>
                 <span>${data.failureCode || '-'}</span>
               </div>
               <div class="info-item">
-                <strong>ステータス</strong>
+                <strong>繧ｹ繝・・繧ｿ繧ｹ</strong>
                 <span>${data.status || '-'}</span>
               </div>
               <div class="info-item">
-                <strong>責任者</strong>
+                <strong>雋ｬ莉ｻ閠・/strong>
                 <span>${data.engineer || '-'}</span>
               </div>
             </div>
             
             <div class="content-box">
-              <strong>説明</strong>
+              <strong>隱ｬ譏・/strong>
               <p>${data.problemDescription || data.description || data.incidentTitle || '-'}</p>
             </div>
             
             <div class="content-box">
-              <strong>備考</strong>
+              <strong>蛯呵・/strong>
               <p>${data.notes || '-'}</p>
             </div>
           </div>
           
           ${imageUrl ? `
           <div class="section">
-            <h2>故障箇所画像</h2>
+            <h2>謨・囿邂・園逕ｻ蜒・/h2>
             <div class="image-section">
-              <img src="${imageUrl}" alt="故障箇所画像" />
-              <p>上記は故障箇所の写真です。</p>
+              <img src="${imageUrl}" alt="謨・囿邂・園逕ｻ蜒・ />
+              <p>荳願ｨ倥・謨・囿邂・園縺ｮ蜀咏悄縺ｧ縺吶・/p>
             </div>
           </div>
           ` : ''}
           
           <div class="section">
-            <h2>抽出情報</h2>
+            <h2>謚ｽ蜃ｺ諠・ｱ</h2>
             <div class="info-grid">
               <div class="info-item">
-                <strong>影響コンポーネント</strong>
+                <strong>蠖ｱ髻ｿ繧ｳ繝ｳ繝昴・繝阪Φ繝・/strong>
                 <span>${(data.extractedComponents || []).join(', ') || '-'}</span>
               </div>
               <div class="info-item">
-                <strong>症状</strong>
+                <strong>逞・憾</strong>
                 <span>${(data.extractedSymptoms || []).join(', ') || '-'}</span>
               </div>
               <div class="info-item">
-                <strong>可能性のある機種</strong>
+                <strong>蜿ｯ閭ｽ諤ｧ縺ｮ縺ゅｋ讖溽ｨｮ</strong>
                 <span>${(data.possibleModels || []).join(', ') || '-'}</span>
               </div>
             </div>
           </div>
           
           <div class="section">
-            <h2>修繕予定</h2>
+            <h2>菫ｮ郢穂ｺ亥ｮ・/h2>
             <div class="info-grid">
               <div class="info-item">
-                <strong>依頼月日</strong>
+                <strong>萓晞ｼ譛域律</strong>
                 <span>${data.requestDate || '-'}</span>
               </div>
               <div class="info-item">
-                <strong>予定月日</strong>
+                <strong>莠亥ｮ壽怦譌･</strong>
                 <span>${data.repairSchedule || '-'}</span>
               </div>
               <div class="info-item">
-                <strong>場所</strong>
+                <strong>蝣ｴ謇</strong>
                 <span>${data.repairLocation || '-'}</span>
               </div>
             </div>
           </div>
           
           <div class="footer">
-            <p>© 2025 機械故障報告書. All rights reserved.</p>
+            <p>ﾂｩ 2025 讖滓｢ｰ謨・囿蝣ｱ蜻頑嶌. All rights reserved.</p>
           </div>
         </div>
         
         <div class="no-print" style="position: fixed; top: 20px; right: 20px; z-index: 1000;">
-          <button onclick="window.print()" style="padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">印刷</button>
-          <button onclick="window.close()" style="padding: 10px 20px; margin: 5px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;">閉じる</button>
+          <button onclick="window.print()" style="padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">蜊ｰ蛻ｷ</button>
+          <button onclick="window.close()" style="padding: 10px 20px; margin: 5px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;">髢峨§繧・/button>
         </div>
       </body>
       </html>
@@ -515,34 +515,34 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
   const handleDownload = () => {
     const data = isEditing ? editedData : reportData;
     const content = `
-報告書
+蝣ｱ蜻頑嶌
 
-事象概要:
-事象タイトル: ${data.incidentTitle || data.problemDescription || '-'}
-報告書ID: ${data.reportId || data.id || '-'}
-機械ID: ${data.machineId || data.machineNumber || '-'}
-日付: ${data.date || data.timestamp || data.createdAt ? new Date(data.createdAt).toLocaleDateString('ja-JP') : '-'}
-場所: ${data.location || '-'}
-故障コード: ${data.failureCode || '-'}
+莠玖ｱ｡讎りｦ・
+莠玖ｱ｡繧ｿ繧､繝医Ν: ${data.incidentTitle || data.problemDescription || '-'}
+蝣ｱ蜻頑嶌ID: ${data.reportId || data.id || '-'}
+讖滓｢ｰID: ${data.machineId || data.machineNumber || '-'}
+譌･莉・ ${data.date || data.timestamp || data.createdAt ? new Date(data.createdAt).toLocaleDateString('ja-JP') : '-'}
+蝣ｴ謇: ${data.location || '-'}
+謨・囿繧ｳ繝ｼ繝・ ${data.failureCode || '-'}
 
-事象詳細:
-説明: ${data.problemDescription || data.description || '-'}
-ステータス: ${data.status || '-'}
-担当エンジニア: ${data.engineer || '-'}
-備考: ${data.notes || '-'}
+莠玖ｱ｡隧ｳ邏ｰ:
+隱ｬ譏・ ${data.problemDescription || data.description || '-'}
+繧ｹ繝・・繧ｿ繧ｹ: ${data.status || '-'}
+諡・ｽ薙お繝ｳ繧ｸ繝九い: ${data.engineer || '-'}
+蛯呵・ ${data.notes || '-'}
 
-抽出情報:
-影響コンポーネント: ${(data.extractedComponents || []).join(', ')}
-症状: ${(data.extractedSymptoms || []).join(', ')}
-可能性のある機種: ${(data.possibleModels || []).join(', ')}
+謚ｽ蜃ｺ諠・ｱ:
+蠖ｱ髻ｿ繧ｳ繝ｳ繝昴・繝阪Φ繝・ ${(data.extractedComponents || []).join(', ')}
+逞・憾: ${(data.extractedSymptoms || []).join(', ')}
+蜿ｯ閭ｽ諤ｧ縺ｮ縺ゅｋ讖溽ｨｮ: ${(data.possibleModels || []).join(', ')}
 
-修繕予定:
-予定月日: ${data.repairSchedule || '-'}
-場所: ${data.repairLocation || '-'}
+菫ｮ郢穂ｺ亥ｮ・
+莠亥ｮ壽怦譌･: ${data.repairSchedule || '-'}
+蝣ｴ謇: ${data.repairLocation || '-'}
 
-チャット履歴:
+繝√Ε繝・ヨ螻･豁ｴ:
 ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) => 
-  `${msg.isAiResponse ? 'AI' : 'ユーザー'}: ${msg.content}`
+  `${msg.isAiResponse ? 'AI' : '繝ｦ繝ｼ繧ｶ繝ｼ'}: ${msg.content}`
 ).join('\n')}
     `;
 
@@ -550,7 +550,7 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `報告書_${data.incidentTitle || data.id}_${new Date().toISOString().split('T')[0]}.txt`;
+    link.download = `蝣ｱ蜻頑嶌_${data.incidentTitle || data.id}_${new Date().toISOString().split('T')[0]}.txt`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -562,33 +562,33 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        {/* ヘッダー */}
+        {/* 繝倥ャ繝繝ｼ */}
         <div className="flex justify-between items-center p-6 border-b">
-          <h1 className="text-2xl font-bold">報告書ビューアー</h1>
+          <h1 className="text-2xl font-bold">蝣ｱ蜻頑嶌繝薙Η繝ｼ繧｢繝ｼ</h1>
           <div className="flex gap-2">
             {!isEditing ? (
               <>
                 <Button onClick={handleEdit} variant="outline" className="flex items-center gap-2">
                   <Edit className="h-4 w-4" />
-                  編集
+                  邱ｨ髮・
                 </Button>
                 <Button onClick={handlePrint} variant="outline" className="flex items-center gap-2">
                   <Printer className="h-4 w-4" />
-                  印刷
+                  蜊ｰ蛻ｷ
                 </Button>
                 <Button onClick={handleSaveToFile} variant="outline" className="flex items-center gap-2">
                   <Save className="h-4 w-4" />
-                  保存
+                  菫晏ｭ・
                 </Button>
               </>
             ) : (
               <>
                 <Button onClick={handleSave} className="flex items-center gap-2">
                   <Save className="h-4 w-4" />
-                  保存
+                  菫晏ｭ・
                 </Button>
                 <Button onClick={handleCancel} variant="outline">
-                  キャンセル
+                  繧ｭ繝｣繝ｳ繧ｻ繝ｫ
                 </Button>
               </>
             )}
@@ -598,20 +598,20 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
           </div>
         </div>
 
-        {/* コンテンツ */}
+        {/* 繧ｳ繝ｳ繝・Φ繝・*/}
         <div className="p-6 space-y-6">
-          {/* 報告概要 */}
+          {/* 蝣ｱ蜻頑ｦりｦ・*/}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
-                報告概要
+                蝣ｱ蜻頑ｦりｦ・
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>報告書ID</Label>
+                  <Label>蝣ｱ蜻頑嶌ID</Label>
                   {isEditing ? (
                     <Input
                       value={data.reportId || data.id || ''}
@@ -622,7 +622,7 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>機種</Label>
+                  <Label>讖溽ｨｮ</Label>
                   {isEditing ? (
                     <Input
                       value={data.machineType || data.machineTypeName || ''}
@@ -633,7 +633,7 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>機械番号</Label>
+                  <Label>讖滓｢ｰ逡ｪ蜿ｷ</Label>
                   {isEditing ? (
                     <Input
                       value={data.machineNumber || ''}
@@ -644,7 +644,7 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>日付</Label>
+                  <Label>譌･莉・/Label>
                   {isEditing ? (
                     <Input
                       type="date"
@@ -658,7 +658,7 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>場所</Label>
+                  <Label>蝣ｴ謇</Label>
                   {isEditing ? (
                     <Input
                       value={data.location || ''}
@@ -672,34 +672,34 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
             </CardContent>
           </Card>
 
-          {/* 故障詳細 */}
+          {/* 謨・囿隧ｳ邏ｰ */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5" />
-                故障詳細
+                謨・囿隧ｳ邏ｰ
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>説明</Label>
+                <Label>隱ｬ譏・/Label>
                 {isEditing ? (
                   <Textarea
                     value={data.problemDescription || data.description || data.incidentTitle || ''}
                     onChange={(e) => handleInputChange('problemDescription', e.target.value)}
                     rows={3}
-                    placeholder="説明なし"
+                    placeholder="隱ｬ譏弱↑縺・
                   />
                 ) : (
                   <p className="text-sm text-gray-600">
-                    {data.problemDescription || data.description || data.incidentTitle || '説明なし'}
+                    {data.problemDescription || data.description || data.incidentTitle || '隱ｬ譏弱↑縺・}
                   </p>
                 )}
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>ステータス</Label>
+                  <Label>繧ｹ繝・・繧ｿ繧ｹ</Label>
                   {isEditing ? (
                     <Input
                       value={data.status || ''}
@@ -710,7 +710,7 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>責任者</Label>
+                  <Label>雋ｬ莉ｻ閠・/Label>
                   {isEditing ? (
                     <Input
                       value={data.engineer || ''}
@@ -723,13 +723,13 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
               </div>
               
               <div className="space-y-2">
-                <Label>備考</Label>
+                <Label>蛯呵・/Label>
                 {isEditing ? (
                   <Textarea
                     value={data.notes || ''}
                     onChange={(e) => handleInputChange('notes', e.target.value)}
                     rows={3}
-                    placeholder="備考を入力してください"
+                    placeholder="蛯呵・ｒ蜈･蜉帙＠縺ｦ縺上□縺輔＞"
                   />
                 ) : (
                   <p className="text-sm text-gray-600">{data.notes || '-'}</p>
@@ -738,71 +738,71 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
             </CardContent>
           </Card>
 
-          {/* 画像セクション */}
+          {/* 逕ｻ蜒上そ繧ｯ繧ｷ繝ｧ繝ｳ */}
           {imageUrl && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <ImageIcon className="h-5 w-5" />
-                  故障箇所画像
+                  謨・囿邂・園逕ｻ蜒・
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-center">
                   <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-600 mb-2">画像URL情報:</p>
+                    <p className="text-sm text-gray-600 mb-2">逕ｻ蜒酋RL諠・ｱ:</p>
                     <p className="text-xs text-gray-500 break-all">
                       {imageUrl.startsWith('data:image/') 
-                        ? `Base64画像 (${imageUrl.length}文字)`
+                        ? `Base64逕ｻ蜒・(${imageUrl.length}譁・ｭ・`
                         : `URL: ${imageUrl.substring(0, 100)}...`
                       }
                     </p>
                   </div>
                   <img
                     src={imageUrl}
-                    alt="故障箇所画像"
+                    alt="謨・囿邂・園逕ｻ蜒・
                     className="max-w-full max-h-96 object-contain border rounded-lg"
                     onError={(e) => {
-                      console.error('画像読み込みエラー:', e);
+                      console.error('逕ｻ蜒剰ｪｭ縺ｿ霎ｼ縺ｿ繧ｨ繝ｩ繝ｼ:', e);
                       const target = e.target as HTMLImageElement;
                       target.style.display = 'none';
-                      // エラーメッセージを表示
+                      // 繧ｨ繝ｩ繝ｼ繝｡繝・そ繝ｼ繧ｸ繧定｡ｨ遉ｺ
                       const errorDiv = document.createElement('div');
                       errorDiv.className = 'text-red-500 text-sm mt-2';
-                      errorDiv.textContent = '画像の読み込みに失敗しました';
+                      errorDiv.textContent = '逕ｻ蜒上・隱ｭ縺ｿ霎ｼ縺ｿ縺ｫ螟ｱ謨励＠縺ｾ縺励◆';
                       target.parentNode?.appendChild(errorDiv);
                     }}
                     onLoad={() => {
-                      console.log('画像読み込み成功:', {
+                      console.log('逕ｻ蜒剰ｪｭ縺ｿ霎ｼ縺ｿ謌仙粥:', {
                         src: imageUrl.substring(0, 100) + '...',
                         naturalWidth: (e.target as HTMLImageElement).naturalWidth,
                         naturalHeight: (e.target as HTMLImageElement).naturalHeight
                       });
                     }}
                   />
-                  <p className="text-sm text-gray-500 mt-2">上記は故障箇所の写真です。</p>
+                  <p className="text-sm text-gray-500 mt-2">荳願ｨ倥・謨・囿邂・園縺ｮ蜀咏悄縺ｧ縺吶・/p>
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* 抽出情報 */}
+          {/* 謚ｽ蜃ｺ諠・ｱ */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Wrench className="h-5 w-5" />
-                抽出情報
+                謚ｽ蜃ｺ諠・ｱ
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>影響コンポーネント</Label>
+                  <Label>蠖ｱ髻ｿ繧ｳ繝ｳ繝昴・繝阪Φ繝・/Label>
                   {isEditing ? (
                     <Input
                       value={(data.extractedComponents || []).join(', ')}
                       onChange={(e) => handleInputChange('extractedComponents', e.target.value.split(',').map(s => s.trim()))}
-                      placeholder="カンマ区切りで入力"
+                      placeholder="繧ｫ繝ｳ繝槫玄蛻・ｊ縺ｧ蜈･蜉・
                     />
                   ) : (
                     <p className="text-sm text-gray-600">
@@ -811,12 +811,12 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>症状</Label>
+                  <Label>逞・憾</Label>
                   {isEditing ? (
                     <Input
                       value={(data.extractedSymptoms || []).join(', ')}
                       onChange={(e) => handleInputChange('extractedSymptoms', e.target.value.split(',').map(s => s.trim()))}
-                      placeholder="カンマ区切りで入力"
+                      placeholder="繧ｫ繝ｳ繝槫玄蛻・ｊ縺ｧ蜈･蜉・
                     />
                   ) : (
                     <p className="text-sm text-gray-600">
@@ -825,12 +825,12 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>可能性のある機種</Label>
+                  <Label>蜿ｯ閭ｽ諤ｧ縺ｮ縺ゅｋ讖溽ｨｮ</Label>
                   {isEditing ? (
                     <Input
                       value={(data.possibleModels || []).join(', ')}
                       onChange={(e) => handleInputChange('possibleModels', e.target.value.split(',').map(s => s.trim()))}
-                      placeholder="カンマ区切りで入力"
+                      placeholder="繧ｫ繝ｳ繝槫玄蛻・ｊ縺ｧ蜈･蜉・
                     />
                   ) : (
                     <p className="text-sm text-gray-600">
@@ -842,18 +842,18 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
             </CardContent>
           </Card>
 
-          {/* 修繕予定 */}
+          {/* 菫ｮ郢穂ｺ亥ｮ・*/}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
-                修繕予定
+                菫ｮ郢穂ｺ亥ｮ・
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>依頼月日</Label>
+                  <Label>萓晞ｼ譛域律</Label>
                   {isEditing ? (
                     <Input
                       type="date"
@@ -865,7 +865,7 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>予定月日</Label>
+                  <Label>莠亥ｮ壽怦譌･</Label>
                   {isEditing ? (
                     <Input
                       type="date"
@@ -877,7 +877,7 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>場所</Label>
+                  <Label>蝣ｴ謇</Label>
                   {isEditing ? (
                     <Input
                       value={data.repairLocation || ''}
@@ -891,10 +891,10 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
             </CardContent>
           </Card>
 
-          {/* 備考 */}
+          {/* 蛯呵・*/}
           <Card>
             <CardHeader>
-              <CardTitle>備考</CardTitle>
+              <CardTitle>蛯呵・/CardTitle>
             </CardHeader>
             <CardContent>
               {isEditing ? (
@@ -902,7 +902,7 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
                   value={data.notes || ''}
                   onChange={(e) => handleInputChange('notes', e.target.value)}
                   rows={3}
-                  placeholder="備考を入力してください"
+                  placeholder="蛯呵・ｒ蜈･蜉帙＠縺ｦ縺上□縺輔＞"
                 />
               ) : (
                 <p className="text-sm text-gray-600">{data.notes || '-'}</p>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   AlertCircle,
   CheckCircle,
@@ -41,13 +41,13 @@ export const SyncPopup: React.FC<SyncPopupProps> = ({
     }
   }, [syncedItems, totalItems]);
 
-  // 自動閉じるタイマー（成功時）
+  // 閾ｪ蜍暮哩縺倥ｋ繧ｿ繧､繝槭・・域・蜉滓凾・・
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (status === 'success' && visible) {
       timer = setTimeout(() => {
         onClose();
-      }, 3000); // 3秒後に自動的に閉じる
+      }, 3000); // 3遘貞ｾ後↓閾ｪ蜍慕噪縺ｫ髢峨§繧・
     }
     return () => {
       if (timer) clearTimeout(timer);
@@ -72,30 +72,30 @@ export const SyncPopup: React.FC<SyncPopupProps> = ({
   const getStatusTitle = () => {
     switch (status) {
       case 'syncing':
-        return '同期中...';
+        return '蜷梧悄荳ｭ...';
       case 'success':
-        return '同期完了';
+        return '蜷梧悄螳御ｺ・;
       case 'error':
-        return '同期エラー';
+        return '蜷梧悄繧ｨ繝ｩ繝ｼ';
       case 'partial':
-        return '一部同期完了';
+        return '荳驛ｨ蜷梧悄螳御ｺ・;
       default:
-        return '同期準備中';
+        return '蜷梧悄貅門ｙ荳ｭ';
     }
   };
 
   const getStatusDescription = () => {
     switch (status) {
       case 'syncing':
-        return `${totalItems}件中${syncedItems}件が同期されました...`;
+        return `${totalItems}莉ｶ荳ｭ${syncedItems}莉ｶ縺悟酔譛溘＆繧後∪縺励◆...`;
       case 'success':
-        return `${totalItems}件のデータがすべて同期されました`;
+        return `${totalItems}莉ｶ縺ｮ繝・・繧ｿ縺後☆縺ｹ縺ｦ蜷梧悄縺輔ｌ縺ｾ縺励◆`;
       case 'error':
-        return errorMessage || '同期中にエラーが発生しました';
+        return errorMessage || '蜷梧悄荳ｭ縺ｫ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆';
       case 'partial':
-        return `${totalItems}件中${syncedItems}件のみ同期されました`;
+        return `${totalItems}莉ｶ荳ｭ${syncedItems}莉ｶ縺ｮ縺ｿ蜷梧悄縺輔ｌ縺ｾ縺励◆`;
       default:
-        return '同期を開始します...';
+        return '蜷梧悄繧帝幕蟋九＠縺ｾ縺・..';
     }
   };
 
@@ -144,15 +144,15 @@ export const SyncPopup: React.FC<SyncPopupProps> = ({
                   size="sm" 
                   variant="outline" 
                   onClick={() => {
-                    // 再試行アクション
+                    // 蜀崎ｩｦ陦後い繧ｯ繧ｷ繝ｧ繝ｳ
                     toast({
-                      title: "同期を再試行しています",
-                      description: "未同期のデータの同期を再試行します..."
+                      title: "蜷梧悄繧貞・隧ｦ陦後＠縺ｦ縺・∪縺・,
+                      description: "譛ｪ蜷梧悄縺ｮ繝・・繧ｿ縺ｮ蜷梧悄繧貞・隧ｦ陦後＠縺ｾ縺・.."
                     });
-                    // 実際の再試行ロジックはここに実装（親コンポーネントから渡すことも可能）
+                    // 螳滄圀縺ｮ蜀崎ｩｦ陦後Ο繧ｸ繝・け縺ｯ縺薙％縺ｫ螳溯｣・ｼ郁ｦｪ繧ｳ繝ｳ繝昴・繝阪Φ繝医°繧画ｸ｡縺吶％縺ｨ繧ょ庄閭ｽ・・
                   }}
                 >
-                  再試行
+                  蜀崎ｩｦ陦・
                 </Button>
               </CardFooter>
             )}

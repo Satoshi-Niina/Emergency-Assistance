@@ -1,4 +1,4 @@
-import * as express from 'express';
+﻿import * as express from 'express';
 import * as path from 'path';
 import { existsSync, writeFileSync, mkdirSync, readdirSync, readFileSync, unlinkSync } from 'fs';
 import { processOpenAIRequest } from '../lib/openai.js';
@@ -8,15 +8,15 @@ import { cleanJsonResponse } from '../lib/json-helper.js';
 // import { emergencyFlows } from '../db/schema.js';
 
 const router = express.Router();
-// 知識ベースディレクトリ
+// 遏･隴倥・繝ｼ繧ｹ繝・ぅ繝ｬ繧ｯ繝医Μ
 const knowledgeBaseDir = path.join(process.cwd(), '..', 'knowledge-base');
 const jsonDir: any = path.join(knowledgeBaseDir, 'json');
 const troubleshootingDir: any = path.join(knowledgeBaseDir, 'troubleshooting');
-// ディレクトリが存在しない場合は作成
+// 繝・ぅ繝ｬ繧ｯ繝医Μ縺悟ｭ伜惠縺励↑縺・ｴ蜷医・菴懈・
 if (!existsSync(troubleshootingDir)) {
     mkdirSync(troubleshootingDir, { recursive: true });
 }
-// デバッグ用エンドポイント
+// 繝・ヰ繝・げ逕ｨ繧ｨ繝ｳ繝峨・繧､繝ｳ繝・
 router.get('/debug', (req, res) => {
   res.json({
     success: true,
@@ -30,63 +30,63 @@ router.get('/debug', (req, res) => {
   });
 });
 
-// キーワードからフローを生成するエンドポイント（互換性のため）
+// 繧ｭ繝ｼ繝ｯ繝ｼ繝峨°繧峨ヵ繝ｭ繝ｼ繧堤函謌舌☆繧九お繝ｳ繝峨・繧､繝ｳ繝茨ｼ井ｺ呈鋤諤ｧ縺ｮ縺溘ａ・・
 router.post('/keywords', async (req, res) => {
   try {
     const { keywords } = req.body;
     if (!keywords || typeof keywords !== 'string' || !keywords.trim()) {
       return res.status(400).json({
         success: false,
-        error: 'キーワードが指定されていません'
+        error: '繧ｭ繝ｼ繝ｯ繝ｼ繝峨′謖・ｮ壹＆繧後※縺・∪縺帙ｓ'
       });
     }
-    console.log(`キーワード "${keywords}" からフローを生成します`);
+    console.log(`繧ｭ繝ｼ繝ｯ繝ｼ繝・"${keywords}" 縺九ｉ繝輔Ο繝ｼ繧堤函謌舌＠縺ｾ縺兪);
     
-    // 簡単なフローを生成（ダミー実装）
+    // 邁｡蜊倥↑繝輔Ο繝ｼ繧堤函謌撰ｼ医ム繝溘・螳溯｣・ｼ・
     const flowData = {
       id: `flow_${Date.now()}`,
-      title: `キーワード生成フロー: ${keywords}`,
-      description: `キーワード「${keywords}」から自動生成されたフロー`,
+      title: `繧ｭ繝ｼ繝ｯ繝ｼ繝臥函謌舌ヵ繝ｭ繝ｼ: ${keywords}`,
+      description: `繧ｭ繝ｼ繝ｯ繝ｼ繝峨・{keywords}縲阪°繧芽・蜍慕函謌舌＆繧後◆繝輔Ο繝ｼ`,
       triggerKeywords: keywords.split(',').map(k => k.trim()),
       steps: [
         {
           id: 'step1',
-          title: '開始',
-          description: `キーワード「${keywords}」に関する応急処置を開始します`,
-          message: `キーワード「${keywords}」に関する応急処置を開始します`,
+          title: '髢句ｧ・,
+          description: `繧ｭ繝ｼ繝ｯ繝ｼ繝峨・{keywords}縲阪↓髢｢縺吶ｋ蠢懈･蜃ｦ鄂ｮ繧帝幕蟋九＠縺ｾ縺兪,
+          message: `繧ｭ繝ｼ繝ｯ繝ｼ繝峨・{keywords}縲阪↓髢｢縺吶ｋ蠢懈･蜃ｦ鄂ｮ繧帝幕蟋九＠縺ｾ縺兪,
           type: 'step',
           options: []
         },
         {
           id: 'step2',
-          title: '状況確認',
-          description: '現在の状況を確認してください',
-          message: '現在の状況を確認してください',
+          title: '迥ｶ豕∫｢ｺ隱・,
+          description: '迴ｾ蝨ｨ縺ｮ迥ｶ豕√ｒ遒ｺ隱阪＠縺ｦ縺上□縺輔＞',
+          message: '迴ｾ蝨ｨ縺ｮ迥ｶ豕√ｒ遒ｺ隱阪＠縺ｦ縺上□縺輔＞',
           type: 'condition',
           conditions: [
             {
-              label: '問題解決',
+              label: '蝠城｡瑚ｧ｣豎ｺ',
               nextId: 'step3'
             },
             {
-              label: '問題継続',
+              label: '蝠城｡檎ｶ咏ｶ・,
               nextId: 'step4'
             }
           ]
         },
         {
           id: 'step3',
-          title: '完了',
-          description: '応急処置が完了しました',
-          message: '応急処置が完了しました',
+          title: '螳御ｺ・,
+          description: '蠢懈･蜃ｦ鄂ｮ縺悟ｮ御ｺ・＠縺ｾ縺励◆',
+          message: '蠢懈･蜃ｦ鄂ｮ縺悟ｮ御ｺ・＠縺ｾ縺励◆',
           type: 'step',
           options: []
         },
         {
           id: 'step4',
-          title: '専門家連絡',
-          description: '専門家に連絡してください',
-          message: '専門家に連絡してください',
+          title: '蟆る摩螳ｶ騾｣邨｡',
+          description: '蟆る摩螳ｶ縺ｫ騾｣邨｡縺励※縺上□縺輔＞',
+          message: '蟆る摩螳ｶ縺ｫ騾｣邨｡縺励※縺上□縺輔＞',
           type: 'step',
           options: []
         }
@@ -95,48 +95,48 @@ router.post('/keywords', async (req, res) => {
       updatedAt: new Date().toISOString()
     };
     
-    // knowledge-base/troubleshootingフォルダに保存
+    // knowledge-base/troubleshooting繝輔か繝ｫ繝縺ｫ菫晏ｭ・
     try {
       const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
       const filePath = path.join(troubleshootingDir, `${flowData.id}.json`);
       
-      // ディレクトリが存在しない場合は作成
+      // 繝・ぅ繝ｬ繧ｯ繝医Μ縺悟ｭ伜惠縺励↑縺・ｴ蜷医・菴懈・
       if (!existsSync(troubleshootingDir)) {
         mkdirSync(troubleshootingDir, { recursive: true });
       }
       
-      // ファイルに保存
+      // 繝輔ぃ繧､繝ｫ縺ｫ菫晏ｭ・
       writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf8');
       
-      console.log('✅ キーワードフロー保存成功:', {
+      console.log('笨・繧ｭ繝ｼ繝ｯ繝ｼ繝峨ヵ繝ｭ繝ｼ菫晏ｭ俶・蜉・', {
         id: flowData.id,
         title: flowData.title,
         filePath: filePath
       });
     } catch (fileError) {
-      console.error('❌ ファイル保存エラー:', fileError);
+      console.error('笶・繝輔ぃ繧､繝ｫ菫晏ｭ倥お繝ｩ繝ｼ:', fileError);
       return res.status(500).json({
         success: false,
-        error: 'ファイルへの保存に失敗しました',
+        error: '繝輔ぃ繧､繝ｫ縺ｸ縺ｮ菫晏ｭ倥↓螟ｱ謨励＠縺ｾ縺励◆',
         details: fileError instanceof Error ? fileError.message : 'Unknown file error'
       });
     }
     
     res.json({
       success: true,
-      message: `フローが正常に生成されました: ${flowData.title}`,
+      message: `繝輔Ο繝ｼ縺梧ｭ｣蟶ｸ縺ｫ逕滓・縺輔ｌ縺ｾ縺励◆: ${flowData.title}`,
       flowData
     });
   } catch (error) {
-    console.error('フロー生成エラー:', error);
+    console.error('繝輔Ο繝ｼ逕滓・繧ｨ繝ｩ繝ｼ:', error);
     res.status(500).json({
       success: false,
-      error: 'フローの生成に失敗しました'
+      error: '繝輔Ο繝ｼ縺ｮ逕滓・縺ｫ螟ｱ謨励＠縺ｾ縺励◆'
     });
   }
 });
 
-// キーワードからフローを生成するエンドポイント（元の実装）
+// 繧ｭ繝ｼ繝ｯ繝ｼ繝峨°繧峨ヵ繝ｭ繝ｼ繧堤函謌舌☆繧九お繝ｳ繝峨・繧､繝ｳ繝茨ｼ亥・縺ｮ螳溯｣・ｼ・
 router.post('/generate-from-keywords', async (req, res) => {
     try {
         console.log('[DEBUG] generate-from-keywords endpoint called');
@@ -145,12 +145,12 @@ router.post('/generate-from-keywords', async (req, res) => {
         if (!keywords || typeof keywords !== 'string' || !keywords.trim()) {
             return res.status(400).json({
                 success: false,
-                error: 'キーワードが指定されていません'
+                error: '繧ｭ繝ｼ繝ｯ繝ｼ繝峨′謖・ｮ壹＆繧後※縺・∪縺帙ｓ'
             });
         }
-        console.log(`キーワード "${keywords}" からフローを生成します`);
+        console.log(`繧ｭ繝ｼ繝ｯ繝ｼ繝・"${keywords}" 縺九ｉ繝輔Ο繝ｼ繧堤函謌舌＠縺ｾ縺兪);
         
-        // OpenAI APIキーの確認
+        // OpenAI API繧ｭ繝ｼ縺ｮ遒ｺ隱・
         console.log('[DEBUG] Checking OpenAI API key...');
         console.log('[DEBUG] process.env.OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'EXISTS' : 'NOT EXISTS');
         
@@ -158,18 +158,18 @@ router.post('/generate-from-keywords', async (req, res) => {
             console.log('[DEBUG] OpenAI API key validation failed - missing or default value');
             return res.status(400).json({
                 success: false,
-                error: 'OpenAI APIキーが設定されていません。環境変数OPENAI_API_KEYを設定してください。',
-                details: '開発環境では.envファイルにOPENAI_API_KEYを設定してください。'
+                error: 'OpenAI API繧ｭ繝ｼ縺瑚ｨｭ螳壹＆繧後※縺・∪縺帙ｓ縲ら腸蠅・､画焚OPENAI_API_KEY繧定ｨｭ螳壹＠縺ｦ縺上□縺輔＞縲・,
+                details: '髢狗匱迺ｰ蠅・〒縺ｯ.env繝輔ぃ繧､繝ｫ縺ｫOPENAI_API_KEY繧定ｨｭ螳壹＠縺ｦ縺上□縺輔＞縲・
             });
         }
         
-        // APIキーの形式確認
+        // API繧ｭ繝ｼ縺ｮ蠖｢蠑冗｢ｺ隱・
         if (!process.env.OPENAI_API_KEY.startsWith('sk-')) {
             console.log('[DEBUG] OpenAI API key validation failed - invalid format');
             return res.status(400).json({
                 success: false,
-                error: 'OpenAI APIキーの形式が無効です。',
-                details: 'APIキーは「sk-」で始まる必要があります。'
+                error: 'OpenAI API繧ｭ繝ｼ縺ｮ蠖｢蠑上′辟｡蜉ｹ縺ｧ縺吶・,
+                details: 'API繧ｭ繝ｼ縺ｯ縲茎k-縲阪〒蟋九∪繧句ｿ・ｦ√′縺ゅｊ縺ｾ縺吶・
             });
         }
         
@@ -181,68 +181,68 @@ router.post('/generate-from-keywords', async (req, res) => {
             prefix: process.env.OPENAI_API_KEY.substring(0, 10) + '...'
         });
         
-        // OpenAIクライアントの状態を確認
+        // OpenAI繧ｯ繝ｩ繧､繧｢繝ｳ繝医・迥ｶ諷九ｒ遒ｺ隱・
         console.log('[DEBUG] Importing OpenAI modules...');
         const { processOpenAIRequest, getOpenAIClientStatus } = await import('../lib/openai.js');
         console.log('[DEBUG] processOpenAIRequest function imported successfully');
         
-        // OpenAIクライアントの詳細な状態を確認
+        // OpenAI繧ｯ繝ｩ繧､繧｢繝ｳ繝医・隧ｳ邏ｰ縺ｪ迥ｶ諷九ｒ遒ｺ隱・
         const clientStatus = getOpenAIClientStatus();
         console.log('[DEBUG] OpenAI Client Status:', clientStatus);
         
         if (!clientStatus.clientExists) {
             return res.status(400).json({
                 success: false,
-                error: 'OpenAIクライアントが初期化されていません',
+                error: 'OpenAI繧ｯ繝ｩ繧､繧｢繝ｳ繝医′蛻晄悄蛹悶＆繧後※縺・∪縺帙ｓ',
                 details: clientStatus
             });
         }
         
-        // ナレッジベースから関連情報を検索
-        console.log('ナレッジベースから関連情報を検索中...');
+        // 繝翫Ξ繝・ず繝吶・繧ｹ縺九ｉ髢｢騾｣諠・ｱ繧呈､懃ｴ｢
+        console.log('繝翫Ξ繝・ず繝吶・繧ｹ縺九ｉ髢｢騾｣諠・ｱ繧呈､懃ｴ｢荳ｭ...');
         const relevantChunks: any = await searchKnowledgeBase(keywords);
-        console.log(`関連チャンク数: ${relevantChunks.length}`);
+        console.log(`髢｢騾｣繝√Ε繝ｳ繧ｯ謨ｰ: ${relevantChunks.length}`);
         
-        // 関連情報をプロンプトに追加するための文字列を構築
+        // 髢｢騾｣諠・ｱ繧偵・繝ｭ繝ｳ繝励ヨ縺ｫ霑ｽ蜉縺吶ｋ縺溘ａ縺ｮ譁・ｭ怜・繧呈ｧ狗ｯ・
         let relatedKnowledgeText = '';
         if (relevantChunks.length > 0) {
-            relatedKnowledgeText = '\n\n【関連する知識ベース情報】:\n';
-            // 最大5チャンクまで追加(多すぎるとトークン数制限に達する可能性がある)
+            relatedKnowledgeText = '\n\n縲宣未騾｣縺吶ｋ遏･隴倥・繝ｼ繧ｹ諠・ｱ縲・\n';
+            // 譛螟ｧ5繝√Ε繝ｳ繧ｯ縺ｾ縺ｧ霑ｽ蜉(螟壹☆縺弱ｋ縺ｨ繝医・繧ｯ繝ｳ謨ｰ蛻ｶ髯舌↓驕斐☆繧句庄閭ｽ諤ｧ縺後≠繧・
             const chunksToInclude: any = relevantChunks.slice(0, 5);
             for (const chunk of chunksToInclude) {
-                relatedKnowledgeText += `---\n出典: ${chunk.metadata.source || '不明'}\n\n${chunk.text}\n---\n\n`;
+                relatedKnowledgeText += `---\n蜃ｺ蜈ｸ: ${chunk.metadata.source || '荳肴・'}\n\n${chunk.text}\n---\n\n`;
             }
         }
         
-        // GPTに渡す強化されたプロンプト
-        const prompt = `以下のキーワードに関連する応急処置フローを生成してください。
-必ず完全なJSONオブジェクトのみを返してください。追加の説明やテキストは一切含めないでください。
-レスポンスは純粋なJSONデータだけであるべきで、コードブロックのマークダウン記法は使用しないでください。
-生成するJSONは完全な有効なJSONである必要があり、途中で切れたり不完全な構造であってはなりません。
-特に、各配列やオブジェクトが適切に閉じられていることを確認してください。
+        // GPT縺ｫ貂｡縺吝ｼｷ蛹悶＆繧後◆繝励Ο繝ｳ繝励ヨ
+        const prompt = `莉･荳九・繧ｭ繝ｼ繝ｯ繝ｼ繝峨↓髢｢騾｣縺吶ｋ蠢懈･蜃ｦ鄂ｮ繝輔Ο繝ｼ繧堤函謌舌＠縺ｦ縺上□縺輔＞縲・
+蠢・★螳悟・縺ｪJSON繧ｪ繝悶ず繧ｧ繧ｯ繝医・縺ｿ繧定ｿ斐＠縺ｦ縺上□縺輔＞縲りｿｽ蜉縺ｮ隱ｬ譏弱ｄ繝・く繧ｹ繝医・荳蛻・性繧√↑縺・〒縺上□縺輔＞縲・
+繝ｬ繧ｹ繝昴Φ繧ｹ縺ｯ邏皮ｲ九↑JSON繝・・繧ｿ縺縺代〒縺ゅｋ縺ｹ縺阪〒縲√さ繝ｼ繝峨ヶ繝ｭ繝・け縺ｮ繝槭・繧ｯ繝繧ｦ繝ｳ險俶ｳ輔・菴ｿ逕ｨ縺励↑縺・〒縺上□縺輔＞縲・
+逕滓・縺吶ｋJSON縺ｯ螳悟・縺ｪ譛牙柑縺ｪJSON縺ｧ縺ゅｋ蠢・ｦ√′縺ゅｊ縲・比ｸｭ縺ｧ蛻・ｌ縺溘ｊ荳榊ｮ悟・縺ｪ讒矩縺ｧ縺ゅ▲縺ｦ縺ｯ縺ｪ繧翫∪縺帙ｓ縲・
+迚ｹ縺ｫ縲∝推驟榊・繧・が繝悶ず繧ｧ繧ｯ繝医′驕ｩ蛻・↓髢峨§繧峨ｌ縺ｦ縺・ｋ縺薙→繧堤｢ｺ隱阪＠縺ｦ縺上□縺輔＞縲・
 
-以下の形式に厳密に従ってください。条件分岐ノード（"type": "condition"）では必ず"conditions"配列と"message"フィールドを含めてください:
+莉･荳九・蠖｢蠑上↓蜴ｳ蟇・↓蠕薙▲縺ｦ縺上□縺輔＞縲よ擅莉ｶ蛻・ｲ舌ヮ繝ｼ繝会ｼ・type": "condition"・峨〒縺ｯ蠢・★"conditions"驟榊・縺ｨ"message"繝輔ぅ繝ｼ繝ｫ繝峨ｒ蜷ｫ繧√※縺上□縺輔＞:
 
 {
-  "id": "機械的なID（英数字とアンダースコアのみ）",
-  "title": "フローのタイトル",
-  "description": "簡潔な説明",
-  "triggerKeywords": ["キーワード1", "キーワード2"],
+  "id": "讖滓｢ｰ逧・↑ID・郁恭謨ｰ蟄励→繧｢繝ｳ繝繝ｼ繧ｹ繧ｳ繧｢縺ｮ縺ｿ・・,
+  "title": "繝輔Ο繝ｼ縺ｮ繧ｿ繧､繝医Ν",
+  "description": "邁｡貎斐↑隱ｬ譏・,
+  "triggerKeywords": ["繧ｭ繝ｼ繝ｯ繝ｼ繝・", "繧ｭ繝ｼ繝ｯ繝ｼ繝・"],
   "steps": [
     {
       "id": "step1",
-      "title": "開始",
-      "description": "この応急処置ガイドでは、[主な症状や問題]に対処する手順を説明します。安全を確保しながら、原因を特定し解決するための手順に従ってください。",
-      "message": "この応急処置ガイドでは、[主な症状や問題]に対処する手順を説明します。安全を確保しながら、原因を特定し解決するための手順に従ってください。",
+      "title": "髢句ｧ・,
+      "description": "縺薙・蠢懈･蜃ｦ鄂ｮ繧ｬ繧､繝峨〒縺ｯ縲ー荳ｻ縺ｪ逞・憾繧・撫鬘珪縺ｫ蟇ｾ蜃ｦ縺吶ｋ謇矩・ｒ隱ｬ譏弱＠縺ｾ縺吶ょｮ牙・繧堤｢ｺ菫昴＠縺ｪ縺後ｉ縲∝次蝗繧堤音螳壹＠隗｣豎ｺ縺吶ｋ縺溘ａ縺ｮ謇矩・↓蠕薙▲縺ｦ縺上□縺輔＞縲・,
+      "message": "縺薙・蠢懈･蜃ｦ鄂ｮ繧ｬ繧､繝峨〒縺ｯ縲ー荳ｻ縺ｪ逞・憾繧・撫鬘珪縺ｫ蟇ｾ蜃ｦ縺吶ｋ謇矩・ｒ隱ｬ譏弱＠縺ｾ縺吶ょｮ牙・繧堤｢ｺ菫昴＠縺ｪ縺後ｉ縲∝次蝗繧堤音螳壹＠隗｣豎ｺ縺吶ｋ縺溘ａ縺ｮ謇矩・↓蠕薙▲縺ｦ縺上□縺輔＞縲・,
       "imageUrl": "",
       "type": "step",
       "options": []
     },
     {
       "id": "step2",
-      "title": "安全確保",
-      "description": "1. 二次災害を防ぐため、車両が安全な場所に停止していることを確認します。\n2. 接近する列車や障害物がないか周囲を確認します。\n3. 必要に応じて停止表示器や防護無線を使用します。",
-      "message": "1. 二次災害を防ぐため、車両が安全な場所に停止していることを確認します。\n2. 接近する列車や障害物がないか周囲を確認します。\n3. 必要に応じて停止表示器や防護無線を使用します。",
+      "title": "螳牙・遒ｺ菫・,
+      "description": "1. 莠梧ｬ｡轣ｽ螳ｳ繧帝亟縺舌◆繧√∬ｻ贋ｸ｡縺悟ｮ牙・縺ｪ蝣ｴ謇縺ｫ蛛懈ｭ｢縺励※縺・ｋ縺薙→繧堤｢ｺ隱阪＠縺ｾ縺吶・n2. 謗･霑代☆繧句・霆翫ｄ髫懷ｮｳ迚ｩ縺後↑縺・°蜻ｨ蝗ｲ繧堤｢ｺ隱阪＠縺ｾ縺吶・n3. 蠢・ｦ√↓蠢懊§縺ｦ蛛懈ｭ｢陦ｨ遉ｺ蝎ｨ繧・亟隴ｷ辟｡邱壹ｒ菴ｿ逕ｨ縺励∪縺吶・,
+      "message": "1. 莠梧ｬ｡轣ｽ螳ｳ繧帝亟縺舌◆繧√∬ｻ贋ｸ｡縺悟ｮ牙・縺ｪ蝣ｴ謇縺ｫ蛛懈ｭ｢縺励※縺・ｋ縺薙→繧堤｢ｺ隱阪＠縺ｾ縺吶・n2. 謗･霑代☆繧句・霆翫ｄ髫懷ｮｳ迚ｩ縺後↑縺・°蜻ｨ蝗ｲ繧堤｢ｺ隱阪＠縺ｾ縺吶・n3. 蠢・ｦ√↓蠢懊§縺ｦ蛛懈ｭ｢陦ｨ遉ｺ蝎ｨ繧・亟隴ｷ辟｡邱壹ｒ菴ｿ逕ｨ縺励∪縺吶・,
       "imageUrl": "",
       "type": "step",
       "options": []
@@ -250,33 +250,33 @@ router.post('/generate-from-keywords', async (req, res) => {
     {
       "id": "step3",
       "type": "condition",
-      "title": "状態確認分岐",
-      "message": "現在の状況を確認してください。該当する状況を選択してください。",
+      "title": "迥ｶ諷狗｢ｺ隱榊・蟯・,
+      "message": "迴ｾ蝨ｨ縺ｮ迥ｶ豕√ｒ遒ｺ隱阪＠縺ｦ縺上□縺輔＞縲りｩｲ蠖薙☆繧狗憾豕√ｒ驕ｸ謚槭＠縺ｦ縺上□縺輔＞縲・,
       "conditions": [
         {
-          "label": "状況A",
+          "label": "迥ｶ豕、",
           "nextId": "step4"
         },
         {
-          "label": "状況B",
+          "label": "迥ｶ豕。",
           "nextId": "step5"
         }
       ]
     },
     {
       "id": "step4",
-      "title": "状況Aの対処",
-      "description": "状況Aに対する具体的な対処手順を説明します。",
-      "message": "状況Aに対する具体的な対処手順を説明します。",
+      "title": "迥ｶ豕、縺ｮ蟇ｾ蜃ｦ",
+      "description": "迥ｶ豕、縺ｫ蟇ｾ縺吶ｋ蜈ｷ菴鍋噪縺ｪ蟇ｾ蜃ｦ謇矩・ｒ隱ｬ譏弱＠縺ｾ縺吶・,
+      "message": "迥ｶ豕、縺ｫ蟇ｾ縺吶ｋ蜈ｷ菴鍋噪縺ｪ蟇ｾ蜃ｦ謇矩・ｒ隱ｬ譏弱＠縺ｾ縺吶・,
       "imageUrl": "",
       "type": "step",
       "options": []
     },
     {
       "id": "step5",
-      "title": "状況Bの対処",
-      "description": "状況Bに対する具体的な対処手順を説明します。",
-      "message": "状況Bに対する具体的な対処手順を説明します。",
+      "title": "迥ｶ豕。縺ｮ蟇ｾ蜃ｦ",
+      "description": "迥ｶ豕。縺ｫ蟇ｾ縺吶ｋ蜈ｷ菴鍋噪縺ｪ蟇ｾ蜃ｦ謇矩・ｒ隱ｬ譏弱＠縺ｾ縺吶・,
+      "message": "迥ｶ豕。縺ｫ蟇ｾ縺吶ｋ蜈ｷ菴鍋噪縺ｪ蟇ｾ蜃ｦ謇矩・ｒ隱ｬ譏弱＠縺ｾ縺吶・,
       "imageUrl": "",
       "type": "step",
       "options": []
@@ -284,33 +284,33 @@ router.post('/generate-from-keywords', async (req, res) => {
     {
       "id": "step6",
       "type": "condition",
-      "title": "最終確認",
-      "message": "対処後の状況を確認してください。",
+      "title": "譛邨ら｢ｺ隱・,
+      "message": "蟇ｾ蜃ｦ蠕後・迥ｶ豕√ｒ遒ｺ隱阪＠縺ｦ縺上□縺輔＞縲・,
       "conditions": [
         {
-          "label": "問題解決",
+          "label": "蝠城｡瑚ｧ｣豎ｺ",
           "nextId": "step7"
         },
         {
-          "label": "問題継続",
+          "label": "蝠城｡檎ｶ咏ｶ・,
           "nextId": "step8"
         }
       ]
     },
     {
       "id": "step7",
-      "title": "運転再開手順",
-      "description": "1. 各計器の値が正常範囲内にあることを確認します。\n2. 異常な音、振動、臭いがないか確認します。\n3. 全て正常であれば、運転を再開します。",
-      "message": "1. 各計器の値が正常範囲内にあることを確認します。\n2. 異常な音、振動、臭いがないか確認します。\n3. 全て正常であれば、運転を再開します。",
+      "title": "驕玖ｻ｢蜀埼幕謇矩・,
+      "description": "1. 蜷・ｨ亥勣縺ｮ蛟､縺梧ｭ｣蟶ｸ遽・峇蜀・↓縺ゅｋ縺薙→繧堤｢ｺ隱阪＠縺ｾ縺吶・n2. 逡ｰ蟶ｸ縺ｪ髻ｳ縲∵険蜍輔∬・縺・′縺ｪ縺・°遒ｺ隱阪＠縺ｾ縺吶・n3. 蜈ｨ縺ｦ豁｣蟶ｸ縺ｧ縺ゅｌ縺ｰ縲・°霆｢繧貞・髢九＠縺ｾ縺吶・,
+      "message": "1. 蜷・ｨ亥勣縺ｮ蛟､縺梧ｭ｣蟶ｸ遽・峇蜀・↓縺ゅｋ縺薙→繧堤｢ｺ隱阪＠縺ｾ縺吶・n2. 逡ｰ蟶ｸ縺ｪ髻ｳ縲∵険蜍輔∬・縺・′縺ｪ縺・°遒ｺ隱阪＠縺ｾ縺吶・n3. 蜈ｨ縺ｦ豁｣蟶ｸ縺ｧ縺ゅｌ縺ｰ縲・°霆｢繧貞・髢九＠縺ｾ縺吶・,
       "imageUrl": "",
       "type": "step",
       "options": []
     },
     {
       "id": "step8",
-      "title": "専門的な支援要請",
-      "description": "1. 指令所または保守担当に連絡し、現在の状況と位置を報告します。\n2. これまでに実施した確認事項と対処内容を伝えます。\n3. 支援を要請し、安全な場所で待機します。",
-      "message": "1. 指令所または保守担当に連絡し、現在の状況と位置を報告します。\n2. これまでに実施した確認事項と対処内容を伝えます。\n3. 支援を要請し、安全な場所で待機します。",
+      "title": "蟆る摩逧・↑謾ｯ謠ｴ隕∬ｫ・,
+      "description": "1. 謖・ｻ､謇縺ｾ縺溘・菫晏ｮ域球蠖薙↓騾｣邨｡縺励∫樟蝨ｨ縺ｮ迥ｶ豕√→菴咲ｽｮ繧貞ｱ蜻翫＠縺ｾ縺吶・n2. 縺薙ｌ縺ｾ縺ｧ縺ｫ螳滓命縺励◆遒ｺ隱堺ｺ矩・→蟇ｾ蜃ｦ蜀・ｮｹ繧剃ｼ昴∴縺ｾ縺吶・n3. 謾ｯ謠ｴ繧定ｦ∬ｫ九＠縲∝ｮ牙・縺ｪ蝣ｴ謇縺ｧ蠕・ｩ溘＠縺ｾ縺吶・,
+      "message": "1. 謖・ｻ､謇縺ｾ縺溘・菫晏ｮ域球蠖薙↓騾｣邨｡縺励∫樟蝨ｨ縺ｮ迥ｶ豕√→菴咲ｽｮ繧貞ｱ蜻翫＠縺ｾ縺吶・n2. 縺薙ｌ縺ｾ縺ｧ縺ｫ螳滓命縺励◆遒ｺ隱堺ｺ矩・→蟇ｾ蜃ｦ蜀・ｮｹ繧剃ｼ昴∴縺ｾ縺吶・n3. 謾ｯ謠ｴ繧定ｦ∬ｫ九＠縲∝ｮ牙・縺ｪ蝣ｴ謇縺ｧ蠕・ｩ溘＠縺ｾ縺吶・,
       "imageUrl": "",
       "type": "step",
       "options": []
@@ -319,51 +319,51 @@ router.post('/generate-from-keywords', async (req, res) => {
   "updatedAt": "2025-06-14T09:28:05.650Z"
 }
 
-【キーワード】: ${keywords}
+縲舌く繝ｼ繝ｯ繝ｼ繝峨・ ${keywords}
 ${relatedKnowledgeText}
 
-フロー生成に関する重要なガイドライン：
-1. フローは実用的で、実際の緊急時に役立つ手順を提供してください。プレースホルダーやサンプルテキストは使用せず、具体的で実行可能な指示を含めてください。
-2. 各ステップには具体的な指示や確認事項を箇条書きで含めてください。1〜3のような数字付きリストを使用し、改行には\\nを使用してください。
-3. decision（判断）ノードでは、明確な質問形式の説明を提供し、選択肢は具体的な状態や条件を反映させてください。
-4. 保守用車の専門知識を活用し、安全を最優先した技術的に正確な手順を作成してください。
-5. 緊急時の対応として、まず安全確保、次に状況評価、そして解決策の実行という論理的な流れにしてください。
-6. 少なくとも2つの主要な判断ポイント（decision）と、それぞれに対応する分岐パスを含めてください。
-7. すべてのパスが完了または専門家への相談で終わるようにし、行き止まりのないフローにしてください。
-8. title（タイトル）フィールドには短く明確な見出しを、description（説明）フィールドには詳細な指示や状況説明を入れてください。
-9. 軌道モータカー特有の機器やシステム（例：制御装置、ブレーキシステム、パンタグラフ等）に関する具体的な言及を含めてください。
-10. 最終ステップでは必ず具体的な対応結果や次のステップを明示し、利用者が次にとるべき行動を明確にしてください。`;
+繝輔Ο繝ｼ逕滓・縺ｫ髢｢縺吶ｋ驥崎ｦ√↑繧ｬ繧､繝峨Λ繧､繝ｳ・・
+1. 繝輔Ο繝ｼ縺ｯ螳溽畑逧・〒縲∝ｮ滄圀縺ｮ邱頑･譎ゅ↓蠖ｹ遶九▽謇矩・ｒ謠蝉ｾ帙＠縺ｦ縺上□縺輔＞縲ゅ・繝ｬ繝ｼ繧ｹ繝帙Ν繝繝ｼ繧・し繝ｳ繝励Ν繝・く繧ｹ繝医・菴ｿ逕ｨ縺帙★縲∝・菴鍋噪縺ｧ螳溯｡悟庄閭ｽ縺ｪ謖・､ｺ繧貞性繧√※縺上□縺輔＞縲・
+2. 蜷・せ繝・ャ繝励↓縺ｯ蜈ｷ菴鍋噪縺ｪ謖・､ｺ繧・｢ｺ隱堺ｺ矩・ｒ邂・擅譖ｸ縺阪〒蜷ｫ繧√※縺上□縺輔＞縲・縲・縺ｮ繧医≧縺ｪ謨ｰ蟄嶺ｻ倥″繝ｪ繧ｹ繝医ｒ菴ｿ逕ｨ縺励∵隼陦後↓縺ｯ\\n繧剃ｽｿ逕ｨ縺励※縺上□縺輔＞縲・
+3. decision・亥愛譁ｭ・峨ヮ繝ｼ繝峨〒縺ｯ縲∵・遒ｺ縺ｪ雉ｪ蝠丞ｽ｢蠑上・隱ｬ譏弱ｒ謠蝉ｾ帙＠縲・∈謚櫁い縺ｯ蜈ｷ菴鍋噪縺ｪ迥ｶ諷九ｄ譚｡莉ｶ繧貞渚譏縺輔○縺ｦ縺上□縺輔＞縲・
+4. 菫晏ｮ育畑霆翫・蟆る摩遏･隴倥ｒ豢ｻ逕ｨ縺励∝ｮ牙・繧呈怙蜆ｪ蜈医＠縺滓橿陦鍋噪縺ｫ豁｣遒ｺ縺ｪ謇矩・ｒ菴懈・縺励※縺上□縺輔＞縲・
+5. 邱頑･譎ゅ・蟇ｾ蠢懊→縺励※縲√∪縺壼ｮ牙・遒ｺ菫昴∵ｬ｡縺ｫ迥ｶ豕∬ｩ穂ｾ｡縲√◎縺励※隗｣豎ｺ遲悶・螳溯｡後→縺・≧隲也炊逧・↑豬√ｌ縺ｫ縺励※縺上□縺輔＞縲・
+6. 蟆代↑縺上→繧・縺､縺ｮ荳ｻ隕√↑蛻､譁ｭ繝昴う繝ｳ繝茨ｼ・ecision・峨→縲√◎繧後◇繧後↓蟇ｾ蠢懊☆繧句・蟯舌ヱ繧ｹ繧貞性繧√※縺上□縺輔＞縲・
+7. 縺吶∋縺ｦ縺ｮ繝代せ縺悟ｮ御ｺ・∪縺溘・蟆る摩螳ｶ縺ｸ縺ｮ逶ｸ隲・〒邨ゅｏ繧九ｈ縺・↓縺励∬｡後″豁｢縺ｾ繧翫・縺ｪ縺・ヵ繝ｭ繝ｼ縺ｫ縺励※縺上□縺輔＞縲・
+8. title・医ち繧､繝医Ν・峨ヵ繧｣繝ｼ繝ｫ繝峨↓縺ｯ遏ｭ縺乗・遒ｺ縺ｪ隕句・縺励ｒ縲‥escription・郁ｪｬ譏趣ｼ峨ヵ繧｣繝ｼ繝ｫ繝峨↓縺ｯ隧ｳ邏ｰ縺ｪ謖・､ｺ繧・憾豕∬ｪｬ譏弱ｒ蜈･繧後※縺上□縺輔＞縲・
+9. 霆碁％繝｢繝ｼ繧ｿ繧ｫ繝ｼ迚ｹ譛峨・讖溷勣繧・す繧ｹ繝・Β・井ｾ具ｼ壼宛蠕｡陬・ｽｮ縲√ヶ繝ｬ繝ｼ繧ｭ繧ｷ繧ｹ繝・Β縲√ヱ繝ｳ繧ｿ繧ｰ繝ｩ繝慕ｭ会ｼ峨↓髢｢縺吶ｋ蜈ｷ菴鍋噪縺ｪ險蜿翫ｒ蜷ｫ繧√※縺上□縺輔＞縲・
+10. 譛邨ゅせ繝・ャ繝励〒縺ｯ蠢・★蜈ｷ菴鍋噪縺ｪ蟇ｾ蠢懃ｵ先棡繧・ｬ｡縺ｮ繧ｹ繝・ャ繝励ｒ譏守､ｺ縺励∝茜逕ｨ閠・′谺｡縺ｫ縺ｨ繧九∋縺崎｡悟虚繧呈・遒ｺ縺ｫ縺励※縺上□縺輔＞縲Ａ;
         
-        // OpenAIでフローを生成
-        console.log('OpenAIにフロー生成をリクエスト中...');
+        // OpenAI縺ｧ繝輔Ο繝ｼ繧堤函謌・
+        console.log('OpenAI縺ｫ繝輔Ο繝ｼ逕滓・繧偵Μ繧ｯ繧ｨ繧ｹ繝井ｸｭ...');
         const generatedFlow: any = await processOpenAIRequest(prompt);
         
-        // OpenAI APIエラーの確認
-        if (typeof generatedFlow === 'string' && generatedFlow.includes('OpenAI APIキーが無効です')) {
+        // OpenAI API繧ｨ繝ｩ繝ｼ縺ｮ遒ｺ隱・
+        if (typeof generatedFlow === 'string' && generatedFlow.includes('OpenAI API繧ｭ繝ｼ縺檎┌蜉ｹ縺ｧ縺・)) {
             return res.status(400).json({
                 success: false,
-                error: 'OpenAI APIキーが無効です。有効なAPIキーを設定してください。',
-                details: '環境変数OPENAI_API_KEYに有効なAPIキーを設定してください。'
+                error: 'OpenAI API繧ｭ繝ｼ縺檎┌蜉ｹ縺ｧ縺吶よ怏蜉ｹ縺ｪAPI繧ｭ繝ｼ繧定ｨｭ螳壹＠縺ｦ縺上□縺輔＞縲・,
+                details: '迺ｰ蠅・､画焚OPENAI_API_KEY縺ｫ譛牙柑縺ｪAPI繧ｭ繝ｼ繧定ｨｭ螳壹＠縺ｦ縺上□縺輔＞縲・
             });
         }
         
         try {
-            // 共通のJSON処理ヘルパーを使用してレスポンスをクリーニング
+            // 蜈ｱ騾壹・JSON蜃ｦ逅・・繝ｫ繝代・繧剃ｽｿ逕ｨ縺励※繝ｬ繧ｹ繝昴Φ繧ｹ繧偵け繝ｪ繝ｼ繝九Φ繧ｰ
             const cleanedResponse: any = cleanJsonResponse(generatedFlow);
-            // JSONとして解析
+            // JSON縺ｨ縺励※隗｣譫・
             const flowData: any = JSON.parse(cleanedResponse);
-            // IDが設定されていない場合はキーワードから生成
+            // ID縺瑚ｨｭ螳壹＆繧後※縺・↑縺・ｴ蜷医・繧ｭ繝ｼ繝ｯ繝ｼ繝峨°繧臥函謌・
             if (!flowData.id) {
-                // キーワードからIDを生成(小文字化してスペースをアンダースコアに置換)
+                // 繧ｭ繝ｼ繝ｯ繝ｼ繝峨°繧迂D繧堤函謌・蟆乗枚蟄怜喧縺励※繧ｹ繝壹・繧ｹ繧偵い繝ｳ繝繝ｼ繧ｹ繧ｳ繧｢縺ｫ鄂ｮ謠・
                 const generatedId: any = keywords.toLowerCase()
                     .replace(/[^a-z0-9_]/g, '_')
                     .replace(/_+/g, '_')
-                    .substring(0, 50); // 長すぎる場合は切り詰め
+                    .substring(0, 50); // 髟ｷ縺吶℃繧句ｴ蜷医・蛻・ｊ隧ｰ繧・
                 flowData.id = `flow_${generatedId}_${Date.now()}`;
             }
-            // フローのファイルパス
+            // 繝輔Ο繝ｼ縺ｮ繝輔ぃ繧､繝ｫ繝代せ
             const flowFilePath: any = path.join(troubleshootingDir, `${flowData.id}.json`);
-            // 既存のファイル名と競合しないように確認
+            // 譌｢蟄倥・繝輔ぃ繧､繝ｫ蜷阪→遶ｶ蜷医＠縺ｪ縺・ｈ縺・↓遒ｺ隱・
             let finalId = flowData.id;
             let counter = 1;
             while (existsSync(path.join(troubleshootingDir, `${finalId}.json`))) {
@@ -371,49 +371,49 @@ ${relatedKnowledgeText}
                 counter++;
             }
             flowData.id = finalId;
-            // フローをファイルに保存
+            // 繝輔Ο繝ｼ繧偵ヵ繧｡繧､繝ｫ縺ｫ菫晏ｭ・
             writeFileSync(path.join(troubleshootingDir, `${flowData.id}.json`), JSON.stringify(flowData, null, 2));
-            // 生成日時を記録
+            // 逕滓・譌･譎ゅｒ險倬鹸
             flowData.createdAt = new Date().toISOString();
-            // 成功レスポンス
+            // 謌仙粥繝ｬ繧ｹ繝昴Φ繧ｹ
             res.json({
                 success: true,
-                message: `フローが正常に生成されました: ${flowData.title}`,
+                message: `繝輔Ο繝ｼ縺梧ｭ｣蟶ｸ縺ｫ逕滓・縺輔ｌ縺ｾ縺励◆: ${flowData.title}`,
                 flowData
             });
         }
         catch (parseError) {
             const error: any = parseError;
-            console.error('生成されたフローの解析エラー:', error);
-            console.error('生成されたテキスト:', generatedFlow);
-            // JSON解析エラーの詳細を確認
+            console.error('逕滓・縺輔ｌ縺溘ヵ繝ｭ繝ｼ縺ｮ隗｣譫舌お繝ｩ繝ｼ:', error);
+            console.error('逕滓・縺輔ｌ縺溘ユ繧ｭ繧ｹ繝・', generatedFlow);
+            // JSON隗｣譫舌お繝ｩ繝ｼ縺ｮ隧ｳ邏ｰ繧堤｢ｺ隱・
             const errorPosition: any = error.message?.match(/position\s+(\d+)/i);
             if (errorPosition && errorPosition[1]) {
                 const position: any = parseInt(errorPosition[1], 10);
                 const contextStart: any = Math.max(0, position - 20);
                 const contextEnd: any = Math.min(generatedFlow.length, position + 20);
-                console.error(`エラー位置: ${position}`);
-                console.error(`問題箇所の周辺: "${generatedFlow.substring(contextStart, position)}<<<ERROR HERE>>>${generatedFlow.substring(position, contextEnd)}"`);
-                // 末尾のJSONを切り取る試み
+                console.error(`繧ｨ繝ｩ繝ｼ菴咲ｽｮ: ${position}`);
+                console.error(`蝠城｡檎ｮ・園縺ｮ蜻ｨ霎ｺ: "${generatedFlow.substring(contextStart, position)}<<<ERROR HERE>>>${generatedFlow.substring(position, contextEnd)}"`);
+                // 譛ｫ蟆ｾ縺ｮJSON繧貞・繧雁叙繧玖ｩｦ縺ｿ
                 if (position > generatedFlow.length * 0.9) {
                     const lastBraceIndex: any = generatedFlow.lastIndexOf('}');
                     if (lastBraceIndex > 0) {
                         const truncated: any = generatedFlow.substring(0, lastBraceIndex + 1);
-                        console.log('末尾を切り詰めたJSONを試行...');
+                        console.log('譛ｫ蟆ｾ繧貞・繧願ｩｰ繧√◆JSON繧定ｩｦ陦・..');
                         try {
                             const truncatedData: any = JSON.parse(truncated);
-                            // 成功した場合は切り詰めたデータを使用
-                            console.log('切り詰めたJSONの解析に成功しました');
-                            // 以下、IDの生成などの処理を続行...
-                            // この部分は上記のコードと同様
+                            // 謌仙粥縺励◆蝣ｴ蜷医・蛻・ｊ隧ｰ繧√◆繝・・繧ｿ繧剃ｽｿ逕ｨ
+                            console.log('蛻・ｊ隧ｰ繧√◆JSON縺ｮ隗｣譫舌↓謌仙粥縺励∪縺励◆');
+                            // 莉･荳九！D縺ｮ逕滓・縺ｪ縺ｩ縺ｮ蜃ｦ逅・ｒ邯夊｡・..
+                            // 縺薙・驛ｨ蛻・・荳願ｨ倥・繧ｳ繝ｼ繝峨→蜷梧ｧ・
                             const generatedId: any = keywords.toLowerCase()
                                 .replace(/[^a-z0-9_]/g, '_')
                                 .replace(/_+/g, '_')
                                 .substring(0, 50);
                             truncatedData.id = `flow_${generatedId}_${Date.now()}`;
-                            // フローのファイルパス
+                            // 繝輔Ο繝ｼ縺ｮ繝輔ぃ繧､繝ｫ繝代せ
                             const flowFilePath: any = path.join(troubleshootingDir, `${truncatedData.id}.json`);
-                            // 既存のファイル名と競合しないように確認
+                            // 譌｢蟄倥・繝輔ぃ繧､繝ｫ蜷阪→遶ｶ蜷医＠縺ｪ縺・ｈ縺・↓遒ｺ隱・
                             let finalId = truncatedData.id;
                             let counter = 1;
                             while (existsSync(path.join(troubleshootingDir, `${finalId}.json`))) {
@@ -421,42 +421,42 @@ ${relatedKnowledgeText}
                                 counter++;
                             }
                             truncatedData.id = finalId;
-                            // フローをファイルに保存
+                            // 繝輔Ο繝ｼ繧偵ヵ繧｡繧､繝ｫ縺ｫ菫晏ｭ・
                             writeFileSync(path.join(troubleshootingDir, `${truncatedData.id}.json`), JSON.stringify(truncatedData, null, 2));
-                            // 生成日時を記録
+                            // 逕滓・譌･譎ゅｒ險倬鹸
                             truncatedData.createdAt = new Date().toISOString();
-                            // 成功レスポンス
+                            // 謌仙粥繝ｬ繧ｹ繝昴Φ繧ｹ
                             return res.json({
                                 success: true,
-                                message: `修復したJSONからフローが生成されました: ${truncatedData.title}`,
+                                message: `菫ｮ蠕ｩ縺励◆JSON縺九ｉ繝輔Ο繝ｼ縺檎函謌舌＆繧後∪縺励◆: ${truncatedData.title}`,
                                 flowData: truncatedData
                             });
                         }
                         catch (secondError) {
-                            console.error('切り詰めたJSONの解析にも失敗しました:', secondError);
+                            console.error('蛻・ｊ隧ｰ繧√◆JSON縺ｮ隗｣譫舌↓繧ょ､ｱ謨励＠縺ｾ縺励◆:', secondError);
                         }
                     }
                 }
             }
             res.status(500).json({
                 success: false,
-                error: 'フローデータの解析に失敗しました',
+                error: '繝輔Ο繝ｼ繝・・繧ｿ縺ｮ隗｣譫舌↓螟ｱ謨励＠縺ｾ縺励◆',
                 rawResponse: generatedFlow
             });
         }
     }
     catch (error) {
-        console.error('フロー生成エラー:', error);
+        console.error('繝輔Ο繝ｼ逕滓・繧ｨ繝ｩ繝ｼ:', error);
         res.status(500).json({
             success: false,
-            error: error instanceof Error ? error.message : '不明なエラーが発生しました'
+            error: error instanceof Error ? error.message : '荳肴・縺ｪ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆'
         });
     }
 });
-// トラブルシューティングフローを取得するエンドポイント
+// 繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ繝輔Ο繝ｼ繧貞叙蠕励☆繧九お繝ｳ繝峨・繧､繝ｳ繝・
 router.get('/list', (req, res) => {
     try {
-        // トラブルシューティングディレクトリからJSONファイルを取得
+        // 繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ繝・ぅ繝ｬ繧ｯ繝医Μ縺九ｉJSON繝輔ぃ繧､繝ｫ繧貞叙蠕・
         const files: any = readdirSync(troubleshootingDir)
             .filter(file => file.endsWith('.json'));
         const flowList: any = files.map(file => {
@@ -465,14 +465,14 @@ router.get('/list', (req, res) => {
                 const flowData: any = JSON.parse(fileContent);
                 return {
                     id: flowData.id || file.replace('.json', ''),
-                    title: flowData.title || 'タイトルなし',
+                    title: flowData.title || '繧ｿ繧､繝医Ν縺ｪ縺・,
                     description: flowData.description || '',
                     triggerKeywords: flowData.triggerKeywords || [],
                     createdAt: flowData.createdAt || null
                 };
             }
             catch (error) {
-                console.error(`ファイル ${file} の解析中にエラーが発生しました:`, error);
+                console.error(`繝輔ぃ繧､繝ｫ ${file} 縺ｮ隗｣譫蝉ｸｭ縺ｫ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆:`, error);
                 return null;
             }
         }).filter(Boolean);
@@ -482,14 +482,14 @@ router.get('/list', (req, res) => {
         });
     }
     catch (error) {
-        console.error('フローリスト取得エラー:', error);
+        console.error('繝輔Ο繝ｼ繝ｪ繧ｹ繝亥叙蠕励お繝ｩ繝ｼ:', error);
         res.status(500).json({
             success: false,
-            error: error instanceof Error ? error.message : '不明なエラーが発生しました'
+            error: error instanceof Error ? error.message : '荳肴・縺ｪ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆'
         });
     }
 });
-// トラブルシューティングフローの詳細を取得するエンドポイント
+// 繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ繝輔Ο繝ｼ縺ｮ隧ｳ邏ｰ繧貞叙蠕励☆繧九お繝ｳ繝峨・繧､繝ｳ繝・
 router.get('/detail/:id', (req, res) => {
     try {
         const cleanFlowId: any = req.params.id.startsWith('ts_') ? req.params.id.substring(3) : req.params.id;
@@ -497,7 +497,7 @@ router.get('/detail/:id', (req, res) => {
         if (!existsSync(filePath)) {
             return res.status(404).json({
                 success: false,
-                error: '指定されたフローが見つかりません'
+                error: '謖・ｮ壹＆繧後◆繝輔Ο繝ｼ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ'
             });
         }
         const fileContent: any = readFileSync(filePath, 'utf-8');
@@ -528,14 +528,14 @@ router.get('/detail/:id', (req, res) => {
         });
     }
     catch (error) {
-        console.error('フロー詳細取得エラー:', error);
+        console.error('繝輔Ο繝ｼ隧ｳ邏ｰ蜿門ｾ励お繝ｩ繝ｼ:', error);
         res.status(500).json({
             success: false,
-            error: error instanceof Error ? error.message : '不明なエラーが発生しました'
+            error: error instanceof Error ? error.message : '荳肴・縺ｪ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆'
         });
     }
 });
-// トラブルシューティングフローを削除するエンドポイント
+// 繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ繝輔Ο繝ｼ繧貞炎髯､縺吶ｋ繧ｨ繝ｳ繝峨・繧､繝ｳ繝・
 router.delete('/:id', (req, res) => {
     try {
         const flowId: any = req.params.id;
@@ -543,20 +543,20 @@ router.delete('/:id', (req, res) => {
         if (!existsSync(filePath)) {
             return res.status(404).json({
                 success: false,
-                error: '指定されたフローが見つかりません'
+                error: '謖・ｮ壹＆繧後◆繝輔Ο繝ｼ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ'
             });
         }
         unlinkSync(filePath);
         res.json({
             success: true,
-            message: 'フローが正常に削除されました'
+            message: '繝輔Ο繝ｼ縺梧ｭ｣蟶ｸ縺ｫ蜑企勁縺輔ｌ縺ｾ縺励◆'
         });
     }
     catch (error) {
-        console.error('フロー削除エラー:', error);
+        console.error('繝輔Ο繝ｼ蜑企勁繧ｨ繝ｩ繝ｼ:', error);
         res.status(500).json({
             success: false,
-            error: error instanceof Error ? error.message : '不明なエラーが発生しました'
+            error: error instanceof Error ? error.message : '荳肴・縺ｪ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆'
         });
     }
 });

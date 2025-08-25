@@ -1,14 +1,14 @@
-import 'dotenv/config';
+﻿import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { users } from '../db/schema.js';
 import bcrypt from 'bcrypt';
 import { eq } from 'drizzle-orm';
 
-// データベース接続
+// 繝・・繧ｿ繝吶・繧ｹ謗･邯・
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
-  console.error('❌ DATABASE_URLが設定されていません');
+  console.error('笶・DATABASE_URL縺瑚ｨｭ螳壹＆繧後※縺・∪縺帙ｓ');
   process.exit(1);
 }
 
@@ -17,38 +17,38 @@ const db = drizzle(client);
 
 async function createNiinaUser() {
   try {
-    console.log('🔍 niinaユーザーの存在確認中...');
+    console.log('剥 niina繝ｦ繝ｼ繧ｶ繝ｼ縺ｮ蟄伜惠遒ｺ隱堺ｸｭ...');
     
-    // 既存のniinaユーザーを確認
+    // 譌｢蟄倥・niina繝ｦ繝ｼ繧ｶ繝ｼ繧堤｢ｺ隱・
     const existingUser = await db.select().from(users).where(eq(users.username, 'niina')).limit(1);
     
     if (existingUser.length > 0) {
-      console.log('✅ niinaユーザーは既に存在します:', existingUser[0]);
+      console.log('笨・niina繝ｦ繝ｼ繧ｶ繝ｼ縺ｯ譌｢縺ｫ蟄伜惠縺励∪縺・', existingUser[0]);
       return;
     }
     
-    console.log('📝 niinaユーザーを作成中...');
+    console.log('統 niina繝ｦ繝ｼ繧ｶ繝ｼ繧剃ｽ懈・荳ｭ...');
     
-    // パスワードをハッシュ化
+    // 繝代せ繝ｯ繝ｼ繝峨ｒ繝上ャ繧ｷ繝･蛹・
     const hashedPassword = await bcrypt.hash('0077', 10);
     
-    // ユーザーを作成
+    // 繝ｦ繝ｼ繧ｶ繝ｼ繧剃ｽ懈・
     const newUser = await db.insert(users).values({
       username: 'niina',
       password: hashedPassword,
-      displayName: '新納',
+      displayName: '譁ｰ邏・,
       role: 'admin',
-      department: 'システム管理部'
+      department: '繧ｷ繧ｹ繝・Β邂｡逅・Κ'
     }).returning();
     
-    console.log('✅ niinaユーザーが正常に作成されました:', newUser[0]);
+    console.log('笨・niina繝ｦ繝ｼ繧ｶ繝ｼ縺梧ｭ｣蟶ｸ縺ｫ菴懈・縺輔ｌ縺ｾ縺励◆:', newUser[0]);
     
   } catch (error) {
-    console.error('❌ ユーザー作成エラー:', error);
+    console.error('笶・繝ｦ繝ｼ繧ｶ繝ｼ菴懈・繧ｨ繝ｩ繝ｼ:', error);
   } finally {
     await client.end();
   }
 }
 
-// スクリプト実行
+// 繧ｹ繧ｯ繝ｪ繝励ヨ螳溯｡・
 createNiinaUser(); 

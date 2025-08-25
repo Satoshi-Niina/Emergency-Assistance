@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+﻿import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { pool } from '../services/db.js';
@@ -8,14 +8,14 @@ import { loadRagConfig } from '../services/config-manager.js';
 
 const router = Router();
 
-// 入力スキーマの定義
+// 蜈･蜉帙せ繧ｭ繝ｼ繝槭・螳夂ｾｩ
 const IngestRequestSchema = z.object({
   filename: z.string().min(1).max(255),
-  text: z.string().min(1).max(1000000), // 最大1MB
+  text: z.string().min(1).max(1000000), // 譛螟ｧ1MB
   tags: z.array(z.string()).optional().default([])
 });
 
-// レスポンススキーマの定義
+// 繝ｬ繧ｹ繝昴Φ繧ｹ繧ｹ繧ｭ繝ｼ繝槭・螳夂ｾｩ
 const IngestResponseSchema = z.object({
   doc_id: z.string(),
   chunks: z.number(),
@@ -31,14 +31,14 @@ type IngestRequest = z.infer<typeof IngestRequestSchema>;
 type IngestResponse = z.infer<typeof IngestResponseSchema>;
 
 /**
- * ドキュメントの取込処理
+ * 繝峨く繝･繝｡繝ｳ繝医・蜿冶ｾｼ蜃ｦ逅・
  * POST /api/ingest
  */
 router.post('/', async (req: Request, res: Response) => {
   const startTime = Date.now();
   
   try {
-    // リクエストボディの検証
+    // 繝ｪ繧ｯ繧ｨ繧ｹ繝医・繝・ぅ縺ｮ讀懆ｨｼ
     const validationResult = IngestRequestSchema.safeParse(req.body);
     if (!validationResult.success) {
       return res.status(400).json({
@@ -49,10 +49,10 @@ router.post('/', async (req: Request, res: Response) => {
     
     const { filename, text, tags } = validationResult.data;
     
-    // 設定を読み込み
+    // 險ｭ螳壹ｒ隱ｭ縺ｿ霎ｼ縺ｿ
     const config = await loadRagConfig();
     
-    // テキストの長さ制限チェック
+    // 繝・く繧ｹ繝医・髟ｷ縺募宛髯舌メ繧ｧ繝・け
     if (text.length > config.maxTextLength) {
       return res.status(400).json({
         error: 'Text too long',
@@ -61,18 +61,18 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
     
-    // 原文のハッシュを生成
+    // 蜴滓枚縺ｮ繝上ャ繧ｷ繝･繧堤函謌・
     const textHash = crypto.createHash('sha1').update(text).digest('hex');
     const docId = textHash;
     
-    // データベース接続
+    // 繝・・繧ｿ繝吶・繧ｹ謗･邯・
     const client = await pool.connect();
     
     try {
-      // トランザクション開始
+      // 繝医Λ繝ｳ繧ｶ繧ｯ繧ｷ繝ｧ繝ｳ髢句ｧ・
       await client.query('BEGIN');
       
-      // 既存ドキュメントの確認
+      // 譌｢蟄倥ラ繧ｭ繝･繝｡繝ｳ繝医・遒ｺ隱・
       const existingDoc = await client.query(
         'SELECT doc_id, hash FROM documents WHERE doc_id = $1',
         [docId]
@@ -81,9 +81,9 @@ router.post('/', async (req: Request, res: Response) => {
       if (existingDoc.rows.length > 0) {
         const existingHash = existingDoc.rows[0].hash;
         
-        // ハッシュが同じ場合は既存のドキュメント
+        // 繝上ャ繧ｷ繝･縺悟酔縺伜ｴ蜷医・譌｢蟄倥・繝峨く繝･繝｡繝ｳ繝・
         if (existingHash === textHash) {
-          // 既存のチャンク数を取得
+          // 譌｢蟄倥・繝√Ε繝ｳ繧ｯ謨ｰ繧貞叙蠕・
           const chunkCount = await client.query(
             'SELECT COUNT(*) as count FROM chunks WHERE doc_id = $1',
             [docId]
@@ -105,23 +105,23 @@ router.post('/', async (req: Request, res: Response) => {
           return res.json(response);
         }
         
-        // ハッシュが異なる場合はバージョンアップ
+        // 繝上ャ繧ｷ繝･縺檎焚縺ｪ繧句ｴ蜷医・繝舌・繧ｸ繝ｧ繝ｳ繧｢繝・・
         await client.query(
           'UPDATE documents SET version = version + 1, hash = $1 WHERE doc_id = $2',
           [textHash, docId]
         );
       } else {
-        // 新規ドキュメントの挿入
+        // 譁ｰ隕上ラ繧ｭ繝･繝｡繝ｳ繝医・謖ｿ蜈･
         await client.query(
           'INSERT INTO documents (doc_id, filename, hash) VALUES ($1, $2, $3)',
           [docId, filename, textHash]
         );
       }
       
-      // 既存のチャンクを削除（新しい内容で再作成）
+      // 譌｢蟄倥・繝√Ε繝ｳ繧ｯ繧貞炎髯､・域眠縺励＞蜀・ｮｹ縺ｧ蜀堺ｽ懈・・・
       await client.query('DELETE FROM chunks WHERE doc_id = $1', [docId]);
       
-      // テキストをチャンク化
+      // 繝・く繧ｹ繝医ｒ繝√Ε繝ｳ繧ｯ蛹・
       const chunks = chunkText(text, {
         size: config.chunkSize,
         overlap: config.chunkOverlap
@@ -131,7 +131,7 @@ router.post('/', async (req: Request, res: Response) => {
         throw new Error('No chunks generated from text');
       }
       
-      // チャンクをデータベースに挿入
+      // 繝√Ε繝ｳ繧ｯ繧偵ョ繝ｼ繧ｿ繝吶・繧ｹ縺ｫ謖ｿ蜈･
       const chunkIds: number[] = [];
       for (const chunk of chunks) {
         const result = await client.query(
@@ -141,11 +141,11 @@ router.post('/', async (req: Request, res: Response) => {
         chunkIds.push(result.rows[0].id);
       }
       
-      // チャンクの内容を埋め込みベクトルに変換
+      // 繝√Ε繝ｳ繧ｯ縺ｮ蜀・ｮｹ繧貞沂繧∬ｾｼ縺ｿ繝吶け繝医Ν縺ｫ螟画鋤
       const chunkContents = chunks.map(chunk => chunk.content);
       const embeddings = await embedTexts(chunkContents, config.batchSize);
       
-      // 埋め込みベクトルをデータベースに挿入
+      // 蝓九ａ霎ｼ縺ｿ繝吶け繝医Ν繧偵ョ繝ｼ繧ｿ繝吶・繧ｹ縺ｫ謖ｿ蜈･
       for (let i = 0; i < chunkIds.length; i++) {
         if (embeddings[i] && embeddings[i].embedding.length === config.embedDim) {
           await client.query(
@@ -157,10 +157,10 @@ router.post('/', async (req: Request, res: Response) => {
         }
       }
       
-      // トランザクションをコミット
+      // 繝医Λ繝ｳ繧ｶ繧ｯ繧ｷ繝ｧ繝ｳ繧偵さ繝溘ャ繝・
       await client.query('COMMIT');
       
-      // 統計情報の計算
+      // 邨ｱ險域ュ蝣ｱ縺ｮ險育ｮ・
       const totalTokens = embeddings.reduce((sum, emb) => sum + emb.tokenCount, 0);
       
       const response: IngestResponse = {
@@ -174,11 +174,11 @@ router.post('/', async (req: Request, res: Response) => {
         }
       };
       
-      console.log(`✅ ドキュメント取込完了: ${filename} (${chunks.length} chunks, ${totalTokens} tokens)`);
+      console.log(`笨・繝峨く繝･繝｡繝ｳ繝亥叙霎ｼ螳御ｺ・ ${filename} (${chunks.length} chunks, ${totalTokens} tokens)`);
       res.json(response);
       
     } catch (error) {
-      // エラーが発生した場合はロールバック
+      // 繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺溷ｴ蜷医・繝ｭ繝ｼ繝ｫ繝舌ャ繧ｯ
       await client.query('ROLLBACK');
       throw error;
     } finally {
@@ -186,7 +186,7 @@ router.post('/', async (req: Request, res: Response) => {
     }
     
   } catch (error) {
-    console.error('❌ ドキュメント取込エラー:', error);
+    console.error('笶・繝峨く繝･繝｡繝ｳ繝亥叙霎ｼ繧ｨ繝ｩ繝ｼ:', error);
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     
@@ -199,7 +199,7 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 /**
- * 取込状況の確認
+ * 蜿冶ｾｼ迥ｶ豕√・遒ｺ隱・
  * GET /api/ingest/status
  */
 router.get('/status', async (req: Request, res: Response) => {
@@ -207,7 +207,7 @@ router.get('/status', async (req: Request, res: Response) => {
     const client = await pool.connect();
     
     try {
-      // 統計情報を取得
+      // 邨ｱ險域ュ蝣ｱ繧貞叙蠕・
       const docCount = await client.query('SELECT COUNT(*) as count FROM documents');
       const chunkCount = await client.query('SELECT COUNT(*) as count FROM chunks');
       const vectorCount = await client.query('SELECT COUNT(*) as count FROM kb_vectors');
@@ -224,7 +224,7 @@ router.get('/status', async (req: Request, res: Response) => {
     }
     
   } catch (error) {
-    console.error('❌ 取込状況確認エラー:', error);
+    console.error('笶・蜿冶ｾｼ迥ｶ豕∫｢ｺ隱阪お繝ｩ繝ｼ:', error);
     res.status(500).json({
       error: 'Failed to get ingestion status',
       message: error instanceof Error ? error.message : 'Unknown error'

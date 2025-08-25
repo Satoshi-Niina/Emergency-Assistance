@@ -1,4 +1,4 @@
-import * as express from 'express';
+﻿import * as express from 'express';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import * as util from 'util';
@@ -8,33 +8,33 @@ const scryptAsync = util.promisify(crypto.scrypt);
 
 export const authRouter = express.Router();
 
-// ログイン
+// 繝ｭ繧ｰ繧､繝ｳ
 authRouter.post('/login', async (req, res) => {
     try {
         const { username, password } = req.body;
 
         if (!username || !password) {
-            return res.status(400).json({ error: 'ユーザー名とパスワードが必要です' });
+            return res.status(400).json({ error: '繝ｦ繝ｼ繧ｶ繝ｼ蜷阪→繝代せ繝ｯ繝ｼ繝峨′蠢・ｦ√〒縺・ });
         }
 
         const user = await storage.getUserByUsername(username);
         if (!user) {
-            return res.status(401).json({ error: 'ユーザーが見つかりません' });
+            return res.status(401).json({ error: '繝ｦ繝ｼ繧ｶ繝ｼ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ' });
         }
 
         const isValidPassword = await bcrypt.compare(password, user.password);
         if (!isValidPassword) {
-            return res.status(401).json({ error: 'パスワードが正しくありません' });
+            return res.status(401).json({ error: '繝代せ繝ｯ繝ｼ繝峨′豁｣縺励￥縺ゅｊ縺ｾ縺帙ｓ' });
         }
 
-        // セッションにユーザー情報を保存
+        // 繧ｻ繝・す繝ｧ繝ｳ縺ｫ繝ｦ繝ｼ繧ｶ繝ｼ諠・ｱ繧剃ｿ晏ｭ・
         req.session.userId = user.id;
-        // req.sessionの型エラーを型アサーションで回避
+        // req.session縺ｮ蝙九お繝ｩ繝ｼ繧貞梛繧｢繧ｵ繝ｼ繧ｷ繝ｧ繝ｳ縺ｧ蝗樣∩
         (req.session as any).username = user.username;
         (req.session as any).role = user.role;
 
         res.json({
-            message: 'ログイン成功',
+            message: '繝ｭ繧ｰ繧､繝ｳ謌仙粥',
             user: {
                 id: user.id,
                 username: user.username,
@@ -43,41 +43,41 @@ authRouter.post('/login', async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('ログインエラー:', error);
-        res.status(500).json({ error: 'ログイン処理中にエラーが発生しました' });
+        console.error('繝ｭ繧ｰ繧､繝ｳ繧ｨ繝ｩ繝ｼ:', error);
+        res.status(500).json({ error: '繝ｭ繧ｰ繧､繝ｳ蜃ｦ逅・ｸｭ縺ｫ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆' });
     }
 });
 
-// ログアウト
+// 繝ｭ繧ｰ繧｢繧ｦ繝・
 authRouter.post('/logout', (req, res) => {
     req.session.destroy((err) => {
         if (err) {
-            console.error('セッション削除エラー:', err);
-            return res.status(500).json({ error: 'ログアウト処理中にエラーが発生しました' });
+            console.error('繧ｻ繝・す繝ｧ繝ｳ蜑企勁繧ｨ繝ｩ繝ｼ:', err);
+            return res.status(500).json({ error: '繝ｭ繧ｰ繧｢繧ｦ繝亥・逅・ｸｭ縺ｫ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆' });
         }
-        res.json({ message: 'ログアウト成功' });
+        res.json({ message: '繝ｭ繧ｰ繧｢繧ｦ繝域・蜉・ });
     });
 });
 
-// ユーザー登録
+// 繝ｦ繝ｼ繧ｶ繝ｼ逋ｻ骭ｲ
 authRouter.post('/register', async (req, res) => {
     try {
         const { username, password, display_name, role = 'employee' } = req.body;
 
         if (!username || !password || !display_name) {
-            return res.status(400).json({ error: 'ユーザー名、パスワード、表示名が必要です' });
+            return res.status(400).json({ error: '繝ｦ繝ｼ繧ｶ繝ｼ蜷阪√ヱ繧ｹ繝ｯ繝ｼ繝峨∬｡ｨ遉ｺ蜷阪′蠢・ｦ√〒縺・ });
         }
 
-        // 既存ユーザーの確認
+        // 譌｢蟄倥Θ繝ｼ繧ｶ繝ｼ縺ｮ遒ｺ隱・
         const existingUser = await storage.getUserByUsername(username);
         if (existingUser) {
-            return res.status(400).json({ error: 'このユーザー名は既に使用されています' });
+            return res.status(400).json({ error: '縺薙・繝ｦ繝ｼ繧ｶ繝ｼ蜷阪・譌｢縺ｫ菴ｿ逕ｨ縺輔ｌ縺ｦ縺・∪縺・ });
         }
 
-        // パスワードのハッシュ化
+        // 繝代せ繝ｯ繝ｼ繝峨・繝上ャ繧ｷ繝･蛹・
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // ユーザーの作成
+        // 繝ｦ繝ｼ繧ｶ繝ｼ縺ｮ菴懈・
         const newUser = await storage.createUser({
             username,
             password: hashedPassword,
@@ -86,7 +86,7 @@ authRouter.post('/register', async (req, res) => {
         });
 
         res.status(201).json({
-            message: 'ユーザー登録成功',
+            message: '繝ｦ繝ｼ繧ｶ繝ｼ逋ｻ骭ｲ謌仙粥',
             user: {
                 id: newUser.id,
                 username: newUser.username,
@@ -95,12 +95,12 @@ authRouter.post('/register', async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('ユーザー登録エラー:', error);
-        res.status(500).json({ error: 'ユーザー登録処理中にエラーが発生しました' });
+        console.error('繝ｦ繝ｼ繧ｶ繝ｼ逋ｻ骭ｲ繧ｨ繝ｩ繝ｼ:', error);
+        res.status(500).json({ error: '繝ｦ繝ｼ繧ｶ繝ｼ逋ｻ骭ｲ蜃ｦ逅・ｸｭ縺ｫ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆' });
     }
 });
 
-// セッション確認
+// 繧ｻ繝・す繝ｧ繝ｳ遒ｺ隱・
 authRouter.get('/session', (req, res) => {
     if (req.session.userId) {
         res.json({
@@ -116,41 +116,41 @@ authRouter.get('/session', (req, res) => {
     }
 });
 
-// パスワード変更
+// 繝代せ繝ｯ繝ｼ繝牙､画峩
 authRouter.post('/change-password', async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
         const userId = req.session.userId;
 
         if (!userId) {
-            return res.status(401).json({ error: 'ログインが必要です' });
+            return res.status(401).json({ error: '繝ｭ繧ｰ繧､繝ｳ縺悟ｿ・ｦ√〒縺・ });
         }
 
         if (!currentPassword || !newPassword) {
-            return res.status(400).json({ error: '現在のパスワードと新しいパスワードが必要です' });
+            return res.status(400).json({ error: '迴ｾ蝨ｨ縺ｮ繝代せ繝ｯ繝ｼ繝峨→譁ｰ縺励＞繝代せ繝ｯ繝ｼ繝峨′蠢・ｦ√〒縺・ });
         }
 
         const user = await storage.getUser(userId);
         if (!user) {
-            return res.status(404).json({ error: 'ユーザーが見つかりません' });
+            return res.status(404).json({ error: '繝ｦ繝ｼ繧ｶ繝ｼ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ' });
         }
 
-        // 現在のパスワードの確認
+        // 迴ｾ蝨ｨ縺ｮ繝代せ繝ｯ繝ｼ繝峨・遒ｺ隱・
         const isValidPassword = await bcrypt.compare(currentPassword, user.password);
         if (!isValidPassword) {
-            return res.status(401).json({ error: '現在のパスワードが正しくありません' });
+            return res.status(401).json({ error: '迴ｾ蝨ｨ縺ｮ繝代せ繝ｯ繝ｼ繝峨′豁｣縺励￥縺ゅｊ縺ｾ縺帙ｓ' });
         }
 
-        // 新しいパスワードのハッシュ化
+        // 譁ｰ縺励＞繝代せ繝ｯ繝ｼ繝峨・繝上ャ繧ｷ繝･蛹・
         const hashedNewPassword = await bcrypt.hash(newPassword, 10);
 
-        // パスワードの更新
+        // 繝代せ繝ｯ繝ｼ繝峨・譖ｴ譁ｰ
         await storage.updateUser(userId, { password: hashedNewPassword });
 
-        res.json({ message: 'パスワード変更成功' });
+        res.json({ message: '繝代せ繝ｯ繝ｼ繝牙､画峩謌仙粥' });
     } catch (error) {
-        console.error('パスワード変更エラー:', error);
-        res.status(500).json({ error: 'パスワード変更処理中にエラーが発生しました' });
+        console.error('繝代せ繝ｯ繝ｼ繝牙､画峩繧ｨ繝ｩ繝ｼ:', error);
+        res.status(500).json({ error: '繝代せ繝ｯ繝ｼ繝牙､画峩蜃ｦ逅・ｸｭ縺ｫ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆' });
     }
 });
 

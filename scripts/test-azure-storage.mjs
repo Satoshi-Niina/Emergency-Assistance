@@ -1,8 +1,8 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 
 /**
  * Azure Storage Configuration Test Script
- * Azure Storageの設定確認・テストスクリプト
+ * Azure Storage縺ｮ險ｭ螳夂｢ｺ隱阪・繝・せ繝医せ繧ｯ繝ｪ繝励ヨ
  */
 
 import { EnhancedAzureStorageService } from '../server/lib/azure-storage-enhanced.js';
@@ -16,32 +16,32 @@ import fs from 'fs/promises';
 import path from 'path';
 
 async function main() {
-  console.log('🔍 Azure Storage Configuration Test');
+  console.log('剥 Azure Storage Configuration Test');
   console.log('================================\n');
 
-  // 1. 設定の検証
-  console.log('1️⃣ Validating Configuration...');
+  // 1. 險ｭ螳壹・讀懆ｨｼ
+  console.log('1・鞘Ε Validating Configuration...');
   const validation = validateStorageConfig();
   
   if (validation.errors.length > 0) {
-    console.error('❌ Configuration Errors:');
+    console.error('笶・Configuration Errors:');
     validation.errors.forEach(error => console.error(`   - ${error}`));
   }
   
   if (validation.warnings.length > 0) {
-    console.warn('⚠️ Configuration Warnings:');
+    console.warn('笞・・Configuration Warnings:');
     validation.warnings.forEach(warning => console.warn(`   - ${warning}`));
   }
   
   if (validation.isValid) {
-    console.log('✅ Configuration is valid\n');
+    console.log('笨・Configuration is valid\n');
   } else {
-    console.error('❌ Configuration is invalid. Please fix errors and try again.\n');
+    console.error('笶・Configuration is invalid. Please fix errors and try again.\n');
     process.exit(1);
   }
 
-  // 2. 設定情報の表示
-  console.log('2️⃣ Configuration Details...');
+  // 2. 險ｭ螳壽ュ蝣ｱ縺ｮ陦ｨ遉ｺ
+  console.log('2・鞘Ε Configuration Details...');
   const { paths, azure, isProduction, isAzureEnabled } = getStorageConfig();
   
   console.log('Environment:', isProduction ? 'Production' : 'Development');
@@ -52,23 +52,23 @@ async function main() {
   console.log('');
 
   if (!isAzureEnabled) {
-    console.log('ℹ️ Azure Storage is not configured. Test complete.');
+    console.log('邃ｹ・・Azure Storage is not configured. Test complete.');
     return;
   }
 
-  // 3. Azure Storage サービスの初期化
-  console.log('3️⃣ Initializing Azure Storage Service...');
+  // 3. Azure Storage 繧ｵ繝ｼ繝薙せ縺ｮ蛻晄悄蛹・
+  console.log('3・鞘Ε Initializing Azure Storage Service...');
   const storageService = createStorageService();
   
   if (!storageService) {
-    console.error('❌ Failed to create storage service');
+    console.error('笶・Failed to create storage service');
     process.exit(1);
   }
   
-  console.log('✅ Storage service created\n');
+  console.log('笨・Storage service created\n');
 
-  // 4. ヘルスチェック
-  console.log('4️⃣ Running Health Check...');
+  // 4. 繝倥Ν繧ｹ繝√ぉ繝・け
+  console.log('4・鞘Ε Running Health Check...');
   try {
     const healthCheck = await storageService.healthCheck();
     
@@ -82,21 +82,21 @@ async function main() {
     }
     
     if (healthCheck.status !== 'healthy') {
-      console.error('❌ Health check failed');
+      console.error('笶・Health check failed');
       process.exit(1);
     }
     
-    console.log('✅ Health check passed\n');
+    console.log('笨・Health check passed\n');
   } catch (error) {
-    console.error('❌ Health check error:', error.message);
+    console.error('笶・Health check error:', error.message);
     process.exit(1);
   }
 
-  // 5. 基本的なファイル操作テスト
-  console.log('5️⃣ Testing File Operations...');
+  // 5. 蝓ｺ譛ｬ逧・↑繝輔ぃ繧､繝ｫ謫堺ｽ懊ユ繧ｹ繝・
+  console.log('5・鞘Ε Testing File Operations...');
   
   try {
-    // テストファイルの作成
+    // 繝・せ繝医ヵ繧｡繧､繝ｫ縺ｮ菴懈・
     const testContent = `Azure Storage Test
 Timestamp: ${new Date().toISOString()}
 Environment: ${isProduction ? 'Production' : 'Development'}
@@ -106,22 +106,22 @@ Container: ${azure.containerName}`;
     const testFilePath = path.join(tempDir, 'test-file.txt');
     
     await fs.writeFile(testFilePath, testContent);
-    console.log('📝 Created test file:', testFilePath);
+    console.log('統 Created test file:', testFilePath);
 
-    // アップロードテスト
+    // 繧｢繝・・繝ｭ繝ｼ繝峨ユ繧ｹ繝・
     const uploadResult = await storageService.uploadFile(
       testFilePath,
       'test/storage-test.txt',
       { overwrite: true, metadata: { test: 'true', timestamp: Date.now().toString() } }
     );
     
-    console.log('📤 Upload result:', {
+    console.log('豆 Upload result:', {
       success: uploadResult.success,
       url: uploadResult.url,
       etag: uploadResult.etag?.substring(0, 20) + '...'
     });
 
-    // ダウンロードテスト
+    // 繝繧ｦ繝ｳ繝ｭ繝ｼ繝峨ユ繧ｹ繝・
     const downloadPath = path.join(tempDir, 'downloaded-test-file.txt');
     const downloadResult = await storageService.downloadFile(
       'test/storage-test.txt',
@@ -129,20 +129,20 @@ Container: ${azure.containerName}`;
       { createLocalPath: true }
     );
     
-    console.log('📥 Download result:', {
+    console.log('踏 Download result:', {
       success: downloadResult.success,
       size: formatFileSize(downloadResult.size),
       lastModified: downloadResult.lastModified
     });
 
-    // ダウンロードしたファイルの内容確認
+    // 繝繧ｦ繝ｳ繝ｭ繝ｼ繝峨＠縺溘ヵ繧｡繧､繝ｫ縺ｮ蜀・ｮｹ遒ｺ隱・
     const downloadedContent = await fs.readFile(downloadPath, 'utf-8');
     const contentMatches = downloadedContent === testContent;
-    console.log('🔍 Content verification:', contentMatches ? 'PASSED' : 'FAILED');
+    console.log('剥 Content verification:', contentMatches ? 'PASSED' : 'FAILED');
 
-    // リストテスト
+    // 繝ｪ繧ｹ繝医ユ繧ｹ繝・
     const listResult = await storageService.listBlobs('test/', 10);
-    console.log('📋 List result:', {
+    console.log('搭 List result:', {
       totalFiles: listResult.totalCount,
       files: listResult.blobs.map(b => ({ 
         name: b.name, 
@@ -151,29 +151,29 @@ Container: ${azure.containerName}`;
       }))
     });
 
-    // クリーンアップ
+    // 繧ｯ繝ｪ繝ｼ繝ｳ繧｢繝・・
     const deleteResult = await storageService.deleteBlob('test/storage-test.txt');
-    console.log('🗑️ Delete result:', deleteResult);
+    console.log('卵・・Delete result:', deleteResult);
 
-    // 一時ディレクトリのクリーンアップ
+    // 荳譎ゅョ繧｣繝ｬ繧ｯ繝医Μ縺ｮ繧ｯ繝ｪ繝ｼ繝ｳ繧｢繝・・
     await fs.rm(tempDir, { recursive: true });
     
-    console.log('✅ All file operations completed successfully\n');
+    console.log('笨・All file operations completed successfully\n');
     
   } catch (error) {
-    console.error('❌ File operations test failed:', error.message);
+    console.error('笶・File operations test failed:', error.message);
     process.exit(1);
   }
 
-  // 6. 同期テスト (オプション)
+  // 6. 蜷梧悄繝・せ繝・(繧ｪ繝励す繝ｧ繝ｳ)
   if (process.argv.includes('--test-sync')) {
-    console.log('6️⃣ Testing Directory Sync...');
+    console.log('6・鞘Ε Testing Directory Sync...');
     
     try {
-      // テストディレクトリの作成
+      // 繝・せ繝医ョ繧｣繝ｬ繧ｯ繝医Μ縺ｮ菴懈・
       const testSyncDir = await fs.mkdtemp(path.join(await fs.realpath(process.env.TMPDIR || '/tmp'), 'sync-test-'));
       
-      // いくつかのテストファイルを作成
+      // 縺・￥縺､縺九・繝・せ繝医ヵ繧｡繧､繝ｫ繧剃ｽ懈・
       const testFiles = [
         { name: 'file1.txt', content: 'Test file 1' },
         { name: 'subdir/file2.json', content: '{"test": true}' },
@@ -186,9 +186,9 @@ Container: ${azure.containerName}`;
         await fs.writeFile(filePath, file.content);
       }
       
-      console.log(`📁 Created test directory with ${testFiles.length} files`);
+      console.log(`刀 Created test directory with ${testFiles.length} files`);
 
-      // 同期実行
+      // 蜷梧悄螳溯｡・
       const syncResult = await storageService.syncDirectoryToBlob(
         testSyncDir,
         'sync-test',
@@ -199,7 +199,7 @@ Container: ${azure.containerName}`;
         }
       );
       
-      console.log('🔄 Sync result:', {
+      console.log('売 Sync result:', {
         uploaded: syncResult.uploaded.length,
         deleted: syncResult.deleted.length,
         skipped: syncResult.skipped.length,
@@ -210,30 +210,30 @@ Container: ${azure.containerName}`;
         console.error('Sync errors:', syncResult.errors);
       }
 
-      // 同期されたファイルをクリーンアップ
+      // 蜷梧悄縺輔ｌ縺溘ヵ繧｡繧､繝ｫ繧偵け繝ｪ繝ｼ繝ｳ繧｢繝・・
       for (const uploadedFile of syncResult.uploaded) {
         await storageService.deleteBlob(uploadedFile);
       }
       
-      // テストディレクトリのクリーンアップ
+      // 繝・せ繝医ョ繧｣繝ｬ繧ｯ繝医Μ縺ｮ繧ｯ繝ｪ繝ｼ繝ｳ繧｢繝・・
       await fs.rm(testSyncDir, { recursive: true });
       
-      console.log('✅ Sync test completed successfully\n');
+      console.log('笨・Sync test completed successfully\n');
       
     } catch (error) {
-      console.error('❌ Sync test failed:', error.message);
+      console.error('笶・Sync test failed:', error.message);
     }
   }
 
-  console.log('🎉 All tests completed successfully!');
+  console.log('脂 All tests completed successfully!');
   console.log('\nYour Azure Storage configuration is working correctly.');
   console.log('You can now deploy your application with confidence.');
 }
 
-// スクリプト実行
+// 繧ｹ繧ｯ繝ｪ繝励ヨ螳溯｡・
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch(error => {
-    console.error('💥 Test script failed:', error);
+    console.error('徴 Test script failed:', error);
     process.exit(1);
   });
 }

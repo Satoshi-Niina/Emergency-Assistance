@@ -1,17 +1,17 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 const path = require('path');
 
-// 既存のJSONファイルのファイル名を事象内容に変更するスクリプト
+// 譌｢蟄倥・JSON繝輔ぃ繧､繝ｫ縺ｮ繝輔ぃ繧､繝ｫ蜷阪ｒ莠玖ｱ｡蜀・ｮｹ縺ｫ螟画峩縺吶ｋ繧ｹ繧ｯ繝ｪ繝励ヨ
 async function renameJsonFiles() {
   const exportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'exports');
   
   if (!fs.existsSync(exportsDir)) {
-    console.log('exports ディレクトリが見つかりません:', exportsDir);
+    console.log('exports 繝・ぅ繝ｬ繧ｯ繝医Μ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ:', exportsDir);
     return;
   }
 
   const files = fs.readdirSync(exportsDir).filter(file => file.endsWith('.json'));
-  console.log(`処理対象ファイル数: ${files.length}`);
+  console.log(`蜃ｦ逅・ｯｾ雎｡繝輔ぃ繧､繝ｫ謨ｰ: ${files.length}`);
 
   for (const file of files) {
     const filePath = path.join(exportsDir, file);
@@ -20,14 +20,14 @@ async function renameJsonFiles() {
       const content = fs.readFileSync(filePath, 'utf8');
       const jsonData = JSON.parse(content);
       
-      // 事象内容を抽出
-      let incidentTitle = '事象なし';
+      // 莠玖ｱ｡蜀・ｮｹ繧呈歓蜃ｺ
+      let incidentTitle = '莠玖ｱ｡縺ｪ縺・;
       
-      // 新しいフォーマットから取得
+      // 譁ｰ縺励＞繝輔か繝ｼ繝槭ャ繝医°繧牙叙蠕・
       if (jsonData.title) {
         incidentTitle = jsonData.title;
       }
-      // 従来フォーマットから取得
+      // 蠕捺擂繝輔か繝ｼ繝槭ャ繝医°繧牙叙蠕・
       else if (jsonData.chatData?.messages) {
         const userMessages = jsonData.chatData.messages.filter((msg) => !msg.isAiResponse);
         if (userMessages.length > 0) {
@@ -35,14 +35,14 @@ async function renameJsonFiles() {
         }
       }
       
-      if (incidentTitle !== '事象なし') {
-        // ファイル名用に事象内容をサニタイズ
+      if (incidentTitle !== '莠玖ｱ｡縺ｪ縺・) {
+        // 繝輔ぃ繧､繝ｫ蜷咲畑縺ｫ莠玖ｱ｡蜀・ｮｹ繧偵し繝九ち繧､繧ｺ
         const sanitizedTitle = incidentTitle
-          .replace(/[<>:"/\\|?*]/g, '') // ファイル名に使用できない文字を除去
-          .replace(/\s+/g, '_') // スペースをアンダースコアに変換
-          .substring(0, 50); // 長さを制限
+          .replace(/[<>:"/\\|?*]/g, '') // 繝輔ぃ繧､繝ｫ蜷阪↓菴ｿ逕ｨ縺ｧ縺阪↑縺・枚蟄励ｒ髯､蜴ｻ
+          .replace(/\s+/g, '_') // 繧ｹ繝壹・繧ｹ繧偵い繝ｳ繝繝ｼ繧ｹ繧ｳ繧｢縺ｫ螟画鋤
+          .substring(0, 50); // 髟ｷ縺輔ｒ蛻ｶ髯・
         
-        // 既存のファイル名からchatIdとtimestampを抽出
+        // 譌｢蟄倥・繝輔ぃ繧､繝ｫ蜷阪°繧営hatId縺ｨtimestamp繧呈歓蜃ｺ
         const fileNameParts = file.replace('.json', '').split('_');
         const chatId = fileNameParts[1] || 'unknown';
         const timestamp = fileNameParts[2] || 'unknown';
@@ -50,24 +50,24 @@ async function renameJsonFiles() {
         const newFileName = `${sanitizedTitle}_${chatId}_${timestamp}.json`;
         const newFilePath = path.join(exportsDir, newFileName);
         
-        // ファイル名が変更される場合のみリネーム
+        // 繝輔ぃ繧､繝ｫ蜷阪′螟画峩縺輔ｌ繧句ｴ蜷医・縺ｿ繝ｪ繝阪・繝
         if (file !== newFileName) {
           fs.renameSync(filePath, newFilePath);
-          console.log(`リネーム: ${file} → ${newFileName}`);
+          console.log(`繝ｪ繝阪・繝: ${file} 竊・${newFileName}`);
         } else {
-          console.log(`変更不要: ${file}`);
+          console.log(`螟画峩荳崎ｦ・ ${file}`);
         }
       } else {
-        console.log(`事象内容が見つからない: ${file}`);
+        console.log(`莠玖ｱ｡蜀・ｮｹ縺瑚ｦ九▽縺九ｉ縺ｪ縺・ ${file}`);
       }
       
     } catch (error) {
-      console.error(`エラー (${file}):`, error.message);
+      console.error(`繧ｨ繝ｩ繝ｼ (${file}):`, error.message);
     }
   }
   
-  console.log('ファイル名変更処理が完了しました');
+  console.log('繝輔ぃ繧､繝ｫ蜷榊､画峩蜃ｦ逅・′螳御ｺ・＠縺ｾ縺励◆');
 }
 
-// スクリプト実行
+// 繧ｹ繧ｯ繝ｪ繝励ヨ螳溯｡・
 renameJsonFiles().catch(console.error);

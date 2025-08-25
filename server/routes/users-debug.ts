@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import bcrypt from 'bcrypt';
 import { db } from '../db/index.js';
 import { users } from '../db/schema.js';
@@ -6,15 +6,15 @@ import { eq } from 'drizzle-orm';
 
 const router = express.Router();
 
-// デバッグ用 - 認証なしでユーザー一覧を取得
+// 繝・ヰ繝・げ逕ｨ - 隱崎ｨｼ縺ｪ縺励〒繝ｦ繝ｼ繧ｶ繝ｼ荳隕ｧ繧貞叙蠕・
 router.get('/debug/list', async (req: any, res: any) => {
     try {
-        console.log('[DEBUG] ユーザー一覧取得（認証なし）');
+        console.log('[DEBUG] 繝ｦ繝ｼ繧ｶ繝ｼ荳隕ｧ蜿門ｾ暦ｼ郁ｪ崎ｨｼ縺ｪ縺暦ｼ・);
         
-        // Content-Typeを明示的に設定
+        // Content-Type繧呈・遉ｺ逧・↓險ｭ螳・
         res.setHeader('Content-Type', 'application/json');
         
-        // データベースから全ユーザーを取得
+        // 繝・・繧ｿ繝吶・繧ｹ縺九ｉ蜈ｨ繝ｦ繝ｼ繧ｶ繝ｼ繧貞叙蠕・
         const allUsers = await db.select({
             id: users.id,
             username: users.username,
@@ -25,7 +25,7 @@ router.get('/debug/list', async (req: any, res: any) => {
             created_at: users.created_at
         }).from(users);
         
-        console.log('[DEBUG] ユーザー一覧取得完了:', {
+        console.log('[DEBUG] 繝ｦ繝ｼ繧ｶ繝ｼ荳隕ｧ蜿門ｾ怜ｮ御ｺ・', {
             count: allUsers.length,
             users: allUsers.map(u => ({ id: u.id, username: u.username, role: u.role }))
         });
@@ -37,19 +37,19 @@ router.get('/debug/list', async (req: any, res: any) => {
             timestamp: new Date().toISOString()
         });
     } catch (error) {
-        console.error('[DEBUG] ユーザー一覧取得エラー:', error);
+        console.error('[DEBUG] 繝ｦ繝ｼ繧ｶ繝ｼ荳隕ｧ蜿門ｾ励お繝ｩ繝ｼ:', error);
         res.status(500).json({ 
             success: false,
-            error: 'ユーザー一覧の取得に失敗しました',
+            error: '繝ｦ繝ｼ繧ｶ繝ｼ荳隕ｧ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆',
             details: error instanceof Error ? error.message : 'Unknown error',
             timestamp: new Date().toISOString()
         });
     }
 });
 
-// デバッグ用 - セッション情報を確認
+// 繝・ヰ繝・げ逕ｨ - 繧ｻ繝・す繝ｧ繝ｳ諠・ｱ繧堤｢ｺ隱・
 router.get('/debug/session', (req: any, res: any) => {
-    console.log('[DEBUG] セッション情報確認');
+    console.log('[DEBUG] 繧ｻ繝・す繝ｧ繝ｳ諠・ｱ遒ｺ隱・);
     
     const sessionInfo = {
         hasSession: !!req.session,
@@ -64,7 +64,7 @@ router.get('/debug/session', (req: any, res: any) => {
         }
     };
     
-    console.log('[DEBUG] セッション情報:', sessionInfo);
+    console.log('[DEBUG] 繧ｻ繝・す繝ｧ繝ｳ諠・ｱ:', sessionInfo);
     
     res.json({
         success: true,
@@ -73,12 +73,12 @@ router.get('/debug/session', (req: any, res: any) => {
     });
 });
 
-// デバッグ用 - データベース接続確認
+// 繝・ヰ繝・げ逕ｨ - 繝・・繧ｿ繝吶・繧ｹ謗･邯夂｢ｺ隱・
 router.get('/debug/database', async (req: any, res: any) => {
     try {
-        console.log('[DEBUG] データベース接続確認');
+        console.log('[DEBUG] 繝・・繧ｿ繝吶・繧ｹ謗･邯夂｢ｺ隱・);
         
-        // テーブル一覧を取得
+        // 繝・・繝悶Ν荳隕ｧ繧貞叙蠕・
         const tables = await db.execute(`
             SELECT table_name 
             FROM information_schema.tables 
@@ -86,7 +86,7 @@ router.get('/debug/database', async (req: any, res: any) => {
             ORDER BY table_name
         `);
         
-        // usersテーブルの構造を確認
+        // users繝・・繝悶Ν縺ｮ讒矩繧堤｢ｺ隱・
         const userColumns = await db.execute(`
             SELECT column_name, data_type, is_nullable
             FROM information_schema.columns 
@@ -94,7 +94,7 @@ router.get('/debug/database', async (req: any, res: any) => {
             ORDER BY ordinal_position
         `);
         
-        // ユーザー数を確認
+        // 繝ｦ繝ｼ繧ｶ繝ｼ謨ｰ繧堤｢ｺ隱・
         const userCount = await db.select().from(users);
         
         const dbInfo = {
@@ -112,7 +112,7 @@ router.get('/debug/database', async (req: any, res: any) => {
             }))
         };
         
-        console.log('[DEBUG] データベース情報:', dbInfo);
+        console.log('[DEBUG] 繝・・繧ｿ繝吶・繧ｹ諠・ｱ:', dbInfo);
         
         res.json({
             success: true,
@@ -120,10 +120,10 @@ router.get('/debug/database', async (req: any, res: any) => {
             timestamp: new Date().toISOString()
         });
     } catch (error) {
-        console.error('[DEBUG] データベース確認エラー:', error);
+        console.error('[DEBUG] 繝・・繧ｿ繝吶・繧ｹ遒ｺ隱阪お繝ｩ繝ｼ:', error);
         res.status(500).json({ 
             success: false,
-            error: 'データベース確認に失敗しました',
+            error: '繝・・繧ｿ繝吶・繧ｹ遒ｺ隱阪↓螟ｱ謨励＠縺ｾ縺励◆',
             details: error instanceof Error ? error.message : 'Unknown error',
             timestamp: new Date().toISOString()
         });

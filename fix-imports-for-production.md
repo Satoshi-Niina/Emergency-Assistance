@@ -1,11 +1,11 @@
-# 本番デプロイ用インポート修正ガイド
+﻿# 譛ｬ逡ｪ繝・・繝ｭ繧､逕ｨ繧､繝ｳ繝昴・繝井ｿｮ豁｣繧ｬ繧､繝・
 
-## 必要な修正箇所
+## 蠢・ｦ√↑菫ｮ豁｣邂・園
 
-### 1. Server 側の修正
+### 1. Server 蛛ｴ縺ｮ菫ｮ豁｣
 
 ```typescript
-// 修正前
+// 菫ｮ豁｣蜑・
 import { schema } from "../shared/schema.js";
 import {
   insertMessageSchema,
@@ -14,7 +14,7 @@ import {
   messages,
 } from "../../shared/schema.js";
 
-// 修正後
+// 菫ｮ豁｣蠕・
 import {
   schema,
   insertMessageSchema,
@@ -24,20 +24,20 @@ import {
 } from "@emergency-assistance/shared";
 ```
 
-### 2. Client 側の修正
+### 2. Client 蛛ｴ縺ｮ菫ｮ豁｣
 
 ```typescript
-// 修正前
+// 菫ｮ豁｣蜑・
 import { LoginCredentials } from "@shared/schema";
 import { Message } from "@shared/schema";
 
-// 修正後
+// 菫ｮ豁｣蠕・
 import { LoginCredentials, Message } from "@emergency-assistance/shared";
 ```
 
-### 3. package.json 修正
+### 3. package.json 菫ｮ豁｣
 
-shared パッケージを適切に参照するよう修正:
+shared 繝代ャ繧ｱ繝ｼ繧ｸ繧帝←蛻・↓蜿ら・縺吶ｋ繧医≧菫ｮ豁｣:
 
 ```json
 {
@@ -47,7 +47,7 @@ shared パッケージを適切に参照するよう修正:
 }
 ```
 
-### 4. tsconfig.json 修正
+### 4. tsconfig.json 菫ｮ豁｣
 
 ```json
 {
@@ -60,7 +60,7 @@ shared パッケージを適切に参照するよう修正:
 }
 ```
 
-### 5. Vite.config.ts 修正（Client）
+### 5. Vite.config.ts 菫ｮ豁｣・・lient・・
 
 ```typescript
 resolve: {
@@ -71,10 +71,10 @@ resolve: {
 }
 ```
 
-## クラウドデプロイ時の対応
+## 繧ｯ繝ｩ繧ｦ繝峨ョ繝励Ο繧､譎ゅ・蟇ｾ蠢・
 
-### 本番環境では以下が推奨:
+### 譛ｬ逡ｪ迺ｰ蠅・〒縺ｯ莉･荳九′謗ｨ螂ｨ:
 
-1. **shared パッケージの事前ビルド**
-2. **Docker コンテナ化時の COPY コマンド調整**
-3. **環境変数による API エンドポイント設定**
+1. **shared 繝代ャ繧ｱ繝ｼ繧ｸ縺ｮ莠句燕繝薙Ν繝・*
+2. **Docker 繧ｳ繝ｳ繝・リ蛹匁凾縺ｮ COPY 繧ｳ繝槭Φ繝芽ｪｿ謨ｴ**
+3. **迺ｰ蠅・､画焚縺ｫ繧医ｋ API 繧ｨ繝ｳ繝峨・繧､繝ｳ繝郁ｨｭ螳・*

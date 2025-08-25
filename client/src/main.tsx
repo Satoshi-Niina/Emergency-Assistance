@@ -1,10 +1,10 @@
-import React from "react";
+﻿import React from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import "./index.css";
 
-// シンプルなQueryClientの作成
+// 繧ｷ繝ｳ繝励Ν縺ｪQueryClient縺ｮ菴懈・
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -17,7 +17,7 @@ const queryClient = new QueryClient({
   },
 });
 
-// エラーバウンダリー
+// 繧ｨ繝ｩ繝ｼ繝舌え繝ｳ繝繝ｪ繝ｼ
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode }, 
   { hasError: boolean }
@@ -41,12 +41,12 @@ class ErrorBoundary extends React.Component<
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-red-600 mb-4">Application Error</h1>
-            <p className="text-gray-600 mb-4">アプリケーションでエラーが発生しました。</p>
+            <p className="text-gray-600 mb-4">繧｢繝励Μ繧ｱ繝ｼ繧ｷ繝ｧ繝ｳ縺ｧ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆縲・/p>
             <button
               onClick={() => window.location.reload()}
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
             >
-              ページを再読み込み
+              繝壹・繧ｸ繧貞・隱ｭ縺ｿ霎ｼ縺ｿ
             </button>
           </div>
         </div>
@@ -56,10 +56,10 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-// メインの初期化関数
+// 繝｡繧､繝ｳ縺ｮ蛻晄悄蛹夜未謨ｰ
 function initializeApp() {
   try {
-    console.log('🚀 アプリケーションを初期化中...');
+    console.log('噫 繧｢繝励Μ繧ｱ繝ｼ繧ｷ繝ｧ繝ｳ繧貞・譛溷喧荳ｭ...');
     
     const container = document.getElementById('root');
     if (!container) {
@@ -78,11 +78,11 @@ function initializeApp() {
       </React.StrictMode>
     );
 
-    console.log('✅ アプリケーションの初期化が完了しました');
+    console.log('笨・繧｢繝励Μ繧ｱ繝ｼ繧ｷ繝ｧ繝ｳ縺ｮ蛻晄悄蛹悶′螳御ｺ・＠縺ｾ縺励◆');
   } catch (error) {
-    console.error('❌ アプリケーションの初期化に失敗しました:', error);
+    console.error('笶・繧｢繝励Μ繧ｱ繝ｼ繧ｷ繝ｧ繝ｳ縺ｮ蛻晄悄蛹悶↓螟ｱ謨励＠縺ｾ縺励◆:', error);
     
-    // エラーが発生した場合のフォールバック表示
+    // 繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺溷ｴ蜷医・繝輔か繝ｼ繝ｫ繝舌ャ繧ｯ陦ｨ遉ｺ
     const container = document.getElementById('root');
     if (container) {
       container.innerHTML = `
@@ -96,10 +96,10 @@ function initializeApp() {
         ">
           <div style="text-align: center; padding: 2rem;">
             <h1 style="color: #dc2626; font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem;">
-              アプリケーションエラー
+              繧｢繝励Μ繧ｱ繝ｼ繧ｷ繝ｧ繝ｳ繧ｨ繝ｩ繝ｼ
             </h1>
             <p style="color: #6b7280; margin-bottom: 1rem;">
-              アプリケーションの初期化中にエラーが発生しました。
+              繧｢繝励Μ繧ｱ繝ｼ繧ｷ繝ｧ繝ｳ縺ｮ蛻晄悄蛹紋ｸｭ縺ｫ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆縲・
             </p>
             <button 
               onclick="window.location.reload()"
@@ -115,7 +115,7 @@ function initializeApp() {
               onmouseover="this.style.backgroundColor='#2563eb'"
               onmouseout="this.style.backgroundColor='#3b82f6'"
             >
-              ページを再読み込み
+              繝壹・繧ｸ繧貞・隱ｭ縺ｿ霎ｼ縺ｿ
             </button>
           </div>
         </div>
@@ -124,7 +124,7 @@ function initializeApp() {
   }
 }
 
-// DOMが準備できたら初期化
+// DOM縺梧ｺ門ｙ縺ｧ縺阪◆繧牙・譛溷喧
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initializeApp);
 } else {

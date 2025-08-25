@@ -1,16 +1,16 @@
-const express = require('express');
+﻿const express = require('express');
 const cors = require('cors');
 
 const app = express();
 const port = process.env.PORT || 3001;
 
-console.log('🚀 Emergency Backend API starting...');
-console.log('📊 Environment variables:');
+console.log('噫 Emergency Backend API starting...');
+console.log('投 Environment variables:');
 console.log('  - NODE_ENV:', process.env.NODE_ENV);
 console.log('  - PORT:', port);
 console.log('  - DATABASE_URL:', process.env.DATABASE_URL ? '[SET]' : '[NOT SET]');
 
-// CORS設定
+// CORS險ｭ螳・
 const corsOptions = {
   origin: [
     'https://witty-river-012f39e00.1.azurestaticapps.net',
@@ -27,7 +27,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// ログミドルウェア
+// 繝ｭ繧ｰ繝溘ラ繝ｫ繧ｦ繧ｧ繧｢
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
   console.log('  Origin:', req.headers.origin);
@@ -35,7 +35,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// ルートエンドポイント
+// 繝ｫ繝ｼ繝医お繝ｳ繝峨・繧､繝ｳ繝・
 app.get('/', (req, res) => {
   res.json({ 
     message: 'Emergency Backend API is running!',
@@ -45,9 +45,9 @@ app.get('/', (req, res) => {
   });
 });
 
-// ヘルスチェック
+// 繝倥Ν繧ｹ繝√ぉ繝・け
 app.get('/api/health', (req, res) => {
-  console.log('🏥 Health check requested');
+  console.log('唱 Health check requested');
   res.json({ 
     status: 'healthy', 
     timestamp: new Date().toISOString(),
@@ -56,22 +56,22 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// ログインエンドポイント（モックデータ）
+// 繝ｭ繧ｰ繧､繝ｳ繧ｨ繝ｳ繝峨・繧､繝ｳ繝茨ｼ医Δ繝・け繝・・繧ｿ・・
 app.post('/api/auth/login', (req, res) => {
-  console.log('🔐 Login request received:', req.body);
+  console.log('柏 Login request received:', req.body);
   
   const { username, password } = req.body;
   
   if (!username || !password) {
     return res.status(400).json({
       success: false,
-      error: 'ユーザー名とパスワードが必要です'
+      error: '繝ｦ繝ｼ繧ｶ繝ｼ蜷阪→繝代せ繝ｯ繝ｼ繝峨′蠢・ｦ√〒縺・
     });
   }
   
-  // モック認証
+  // 繝｢繝・け隱崎ｨｼ
   if (username === 'niina' && password === '0077') {
-    console.log('✅ Login successful for user:', username);
+    console.log('笨・Login successful for user:', username);
     res.json({
       success: true,
       user: {
@@ -84,37 +84,37 @@ app.post('/api/auth/login', (req, res) => {
       }
     });
   } else {
-    console.log('❌ Login failed for user:', username);
+    console.log('笶・Login failed for user:', username);
     res.status(401).json({
       success: false,
-      error: 'ユーザー名またはパスワードが正しくありません'
+      error: '繝ｦ繝ｼ繧ｶ繝ｼ蜷阪∪縺溘・繝代せ繝ｯ繝ｼ繝峨′豁｣縺励￥縺ゅｊ縺ｾ縺帙ｓ'
     });
   }
 });
 
-// ユーザー情報取得エンドポイント
+// 繝ｦ繝ｼ繧ｶ繝ｼ諠・ｱ蜿門ｾ励お繝ｳ繝峨・繧､繝ｳ繝・
 app.get('/api/auth/me', (req, res) => {
-  console.log('👤 User info requested');
+  console.log('側 User info requested');
   
-  // モックデータ（実際の実装ではセッションから取得）
+  // 繝｢繝・け繝・・繧ｿ・亥ｮ滄圀縺ｮ螳溯｣・〒縺ｯ繧ｻ繝・す繝ｧ繝ｳ縺九ｉ蜿門ｾ暦ｼ・
   res.json({
     isAuthenticated: false,
     user: null
   });
 });
 
-// ログアウトエンドポイント
+// 繝ｭ繧ｰ繧｢繧ｦ繝医お繝ｳ繝峨・繧､繝ｳ繝・
 app.post('/api/auth/logout', (req, res) => {
-  console.log('🚪 Logout requested');
+  console.log('坎 Logout requested');
   res.json({
     success: true,
-    message: 'ログアウトしました'
+    message: '繝ｭ繧ｰ繧｢繧ｦ繝医＠縺ｾ縺励◆'
   });
 });
 
-// エラーハンドラー
+// 繧ｨ繝ｩ繝ｼ繝上Φ繝峨Λ繝ｼ
 app.use((err, req, res, next) => {
-  console.error('❌ Error:', err);
+  console.error('笶・Error:', err);
   res.status(500).json({
     success: false,
     error: 'Internal Server Error',
@@ -122,9 +122,9 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404ハンドラー
+// 404繝上Φ繝峨Λ繝ｼ
 app.use('*', (req, res) => {
-  console.log('🔍 404 Not Found:', req.method, req.originalUrl);
+  console.log('剥 404 Not Found:', req.method, req.originalUrl);
   res.status(404).json({
     success: false,
     error: 'Not Found',
@@ -134,7 +134,7 @@ app.use('*', (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`🌐 Emergency Backend API listening on port ${port}`);
-  console.log(`📍 Server URL: http://localhost:${port}`);
-  console.log('✅ Server started successfully');
+  console.log(`倹 Emergency Backend API listening on port ${port}`);
+  console.log(`桃 Server URL: http://localhost:${port}`);
+  console.log('笨・Server started successfully');
 });

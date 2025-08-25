@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { useToast } from "../../hooks/use-toast.ts";
 import {
   Card,
@@ -52,21 +52,21 @@ const TechSupportUploader: React.FC = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // コンポーネントがマウントされたときにアップロード済みドキュメントを読み込む
+    // 繧ｳ繝ｳ繝昴・繝阪Φ繝医′繝槭え繝ｳ繝医＆繧後◆縺ｨ縺阪↓繧｢繝・・繝ｭ繝ｼ繝画ｸ医∩繝峨く繝･繝｡繝ｳ繝医ｒ隱ｭ縺ｿ霎ｼ繧
     loadVehicleData();
   }, []);
 
-  // ファイル選択ハンドラ
+  // 繝輔ぃ繧､繝ｫ驕ｸ謚槭ワ繝ｳ繝峨Λ
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
       setSelectedFile(event.target.files[0]);
       
-      // ファイル選択後にinput要素をリセットして、同じファイルを再選択できるようにする
+      // 繝輔ぃ繧､繝ｫ驕ｸ謚槫ｾ後↓input隕∫ｴ繧偵Μ繧ｻ繝・ヨ縺励※縲∝酔縺倥ヵ繧｡繧､繝ｫ繧貞・驕ｸ謚槭〒縺阪ｋ繧医≧縺ｫ縺吶ｋ
       event.target.value = '';
     }
   };
 
-  // extracted_data.jsonから車両データを読み込む
+  // extracted_data.json縺九ｉ霆贋ｸ｡繝・・繧ｿ繧定ｪｭ縺ｿ霎ｼ繧
   const loadVehicleData = async () => {
     try {
       setIsLoading(true);
@@ -78,7 +78,7 @@ const TechSupportUploader: React.FC = () => {
       
       const data = await response.json();
       
-      // 車両データからドキュメント形式（PDF, Excel, PowerPoint）のみを抽出
+      // 霆贋ｸ｡繝・・繧ｿ縺九ｉ繝峨く繝･繝｡繝ｳ繝亥ｽ｢蠑擾ｼ・DF, Excel, PowerPoint・峨・縺ｿ繧呈歓蜃ｺ
       const documents: TechDocument[] = [];
       
       if (data.vehicleData && Array.isArray(data.vehicleData)) {
@@ -89,7 +89,7 @@ const TechSupportUploader: React.FC = () => {
               name: item.title,
               path: item.image_path || '',
               type: item.category,
-              size: 0, // サイズ情報がないので0を設定
+              size: 0, // 繧ｵ繧､繧ｺ諠・ｱ縺後↑縺・・縺ｧ0繧定ｨｭ螳・
               extractedTextPreview: item.details
             });
           }
@@ -99,55 +99,55 @@ const TechSupportUploader: React.FC = () => {
       setUploadedDocuments(documents);
     } catch (error) {
       console.error('Failed to load vehicle data:', error);
-      // エラーが発生しても表示しない - 成功時のみデータ表示する仕様に変更
-      // エラーメッセージは開発時のみコンソールに表示
+      // 繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｦ繧り｡ｨ遉ｺ縺励↑縺・- 謌仙粥譎ゅ・縺ｿ繝・・繧ｿ陦ｨ遉ｺ縺吶ｋ莉墓ｧ倥↓螟画峩
+      // 繧ｨ繝ｩ繝ｼ繝｡繝・そ繝ｼ繧ｸ縺ｯ髢狗匱譎ゅ・縺ｿ繧ｳ繝ｳ繧ｽ繝ｼ繝ｫ縺ｫ陦ｨ遉ｺ
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 処理タイプの選択肢
+  // 蜃ｦ逅・ち繧､繝励・驕ｸ謚櫁い
   const [processingType, setProcessingType] = useState<'document' | 'image_search'>('document');
 
-  // ファイル形式バリデーション
+  // 繝輔ぃ繧､繝ｫ蠖｢蠑上ヰ繝ｪ繝・・繧ｷ繝ｧ繝ｳ
   const isValidFileFormat = (file: File, type: 'document' | 'image_search'): boolean => {
     const fileName = file.name;
     const fileExt = fileName.substring(fileName.lastIndexOf(".")).toLowerCase();
     
     if (type === 'document') {
-      // ドキュメント処理の対応形式
+      // 繝峨く繝･繝｡繝ｳ繝亥・逅・・蟇ｾ蠢懷ｽ｢蠑・
       const validDocumentExts = [".pdf", ".docx", ".xlsx", ".pptx"];
       return validDocumentExts.includes(fileExt);
     } else {
-      // 画像検索データ処理の対応形式
+      // 逕ｻ蜒乗､懃ｴ｢繝・・繧ｿ蜃ｦ逅・・蟇ｾ蠢懷ｽ｢蠑・
       const validImageExts = [".svg", ".png", ".jpg", ".jpeg", ".gif"];
       return validImageExts.includes(fileExt);
     }
   };
 
-  // ファイルアップロードハンドラ
+  // 繝輔ぃ繧､繝ｫ繧｢繝・・繝ｭ繝ｼ繝峨ワ繝ｳ繝峨Λ
   const handleUpload = async () => {
     if (!selectedFile) {
       toast({
-        title: "ファイルが選択されていません",
-        description: "アップロードするファイルを選択してください",
+        title: "繝輔ぃ繧､繝ｫ縺碁∈謚槭＆繧後※縺・∪縺帙ｓ",
+        description: "繧｢繝・・繝ｭ繝ｼ繝峨☆繧九ヵ繧｡繧､繝ｫ繧帝∈謚槭＠縺ｦ縺上□縺輔＞",
         variant: "destructive",
       });
       return;
     }
 
-    // ファイル形式チェック
+    // 繝輔ぃ繧､繝ｫ蠖｢蠑上メ繧ｧ繝・け
     if (!isValidFileFormat(selectedFile, processingType)) {
       if (processingType === 'document') {
         toast({
-          title: "未対応のファイル形式",
-          description: "PDF, Word, Excel, PowerPoint ファイルのみアップロード可能です",
+          title: "譛ｪ蟇ｾ蠢懊・繝輔ぃ繧､繝ｫ蠖｢蠑・,
+          description: "PDF, Word, Excel, PowerPoint 繝輔ぃ繧､繝ｫ縺ｮ縺ｿ繧｢繝・・繝ｭ繝ｼ繝牙庄閭ｽ縺ｧ縺・,
           variant: "destructive",
         });
       } else {
         toast({
-          title: "未対応の画像形式",
-          description: "SVG, PNG, JPG, GIF 画像ファイルのみアップロード可能です",
+          title: "譛ｪ蟇ｾ蠢懊・逕ｻ蜒丞ｽ｢蠑・,
+          description: "SVG, PNG, JPG, GIF 逕ｻ蜒上ヵ繧｡繧､繝ｫ縺ｮ縺ｿ繧｢繝・・繝ｭ繝ｼ繝牙庄閭ｽ縺ｧ縺・,
           variant: "destructive",
         });
       }
@@ -159,12 +159,12 @@ const TechSupportUploader: React.FC = () => {
     try {
       const formData = new FormData();
       formData.append("file", selectedFile);
-      // 処理タイプをフォームデータに追加
+      // 蜃ｦ逅・ち繧､繝励ｒ繝輔か繝ｼ繝繝・・繧ｿ縺ｫ霑ｽ蜉
       formData.append("processingType", processingType);
-      // 元ファイル保存設定を追加
+      // 蜈・ヵ繧｡繧､繝ｫ菫晏ｭ倩ｨｭ螳壹ｒ霑ｽ蜉
       formData.append("keepOriginalFile", keepOriginalFile.toString());
 
-      console.log(`ファイルをアップロード: ${selectedFile.name}, 処理タイプ: ${processingType}`);
+      console.log(`繝輔ぃ繧､繝ｫ繧偵い繝・・繝ｭ繝ｼ繝・ ${selectedFile.name}, 蜃ｦ逅・ち繧､繝・ ${processingType}`);
 
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/tech-support/upload`, {
         method: "POST",
@@ -173,34 +173,34 @@ const TechSupportUploader: React.FC = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "アップロードに失敗しました");
+        throw new Error(errorData.error || "繧｢繝・・繝ｭ繝ｼ繝峨↓螟ｱ謨励＠縺ｾ縺励◆");
       }
 
       const result = await response.json();
-      console.log("アップロード結果:", result);
+      console.log("繧｢繝・・繝ｭ繝ｼ繝臥ｵ先棡:", result);
 
       const successMessage = processingType === 'document' 
-        ? `${selectedFile.name} がナレッジベースに追加されました`
-        : `${selectedFile.name} が画像検索データに追加されました`;
+        ? `${selectedFile.name} 縺後リ繝ｬ繝・ず繝吶・繧ｹ縺ｫ霑ｽ蜉縺輔ｌ縺ｾ縺励◆`
+        : `${selectedFile.name} 縺檎判蜒乗､懃ｴ｢繝・・繧ｿ縺ｫ霑ｽ蜉縺輔ｌ縺ｾ縺励◆`;
 
       toast({
-        title: "アップロード成功",
+        title: "繧｢繝・・繝ｭ繝ｼ繝画・蜉・,
         description: successMessage,
       });
 
-      // 必要に応じてデータを更新
+      // 蠢・ｦ√↓蠢懊§縺ｦ繝・・繧ｿ繧呈峩譁ｰ
       if (processingType === 'document') {
         loadVehicleData();
       } else {
-        // 画像検索データを直接リロード
+        // 逕ｻ蜒乗､懃ｴ｢繝・・繧ｿ繧堤峩謗･繝ｪ繝ｭ繝ｼ繝・
         reloadImageSearchData();
-        // バックアップとしてイベントも発行
+        // 繝舌ャ繧ｯ繧｢繝・・縺ｨ縺励※繧､繝吶Φ繝医ｂ逋ｺ陦・
         window.dispatchEvent(new Event('image-search-data-updated'));
       }
       
       setSelectedFile(null);
       
-      // ファイル入力をリセット
+      // 繝輔ぃ繧､繝ｫ蜈･蜉帙ｒ繝ｪ繧ｻ繝・ヨ
       const fileInput = document.getElementById("tech-file-upload") as HTMLInputElement;
       if (fileInput) {
         fileInput.value = "";
@@ -208,8 +208,8 @@ const TechSupportUploader: React.FC = () => {
     } catch (error) {
       console.error("Upload error:", error);
       toast({
-        title: "アップロードエラー",
-        description: error instanceof Error ? error.message : "未知のエラーが発生しました",
+        title: "繧｢繝・・繝ｭ繝ｼ繝峨お繝ｩ繝ｼ",
+        description: error instanceof Error ? error.message : "譛ｪ遏･縺ｮ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆",
         variant: "destructive",
       });
     } finally {
@@ -217,7 +217,7 @@ const TechSupportUploader: React.FC = () => {
     }
   };
 
-  // ファイルタイプに応じたアイコンを返す関数
+  // 繝輔ぃ繧､繝ｫ繧ｿ繧､繝励↓蠢懊§縺溘い繧､繧ｳ繝ｳ繧定ｿ斐☆髢｢謨ｰ
   const getFileIcon = (type: string) => {
     switch (type.toUpperCase()) {
       case 'PDF':
@@ -233,16 +233,16 @@ const TechSupportUploader: React.FC = () => {
     }
   };
 
-  // ファイルサイズを人間が読みやすい形式で表示する関数
+  // 繝輔ぃ繧､繝ｫ繧ｵ繧､繧ｺ繧剃ｺｺ髢薙′隱ｭ縺ｿ繧・☆縺・ｽ｢蠑上〒陦ｨ遉ｺ縺吶ｋ髢｢謨ｰ
   const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return 'サイズ不明';
+    if (bytes === 0) return '繧ｵ繧､繧ｺ荳肴・';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
   
-  // 一時ファイルをクリーンアップする関数
+  // 荳譎ゅヵ繧｡繧､繝ｫ繧偵け繝ｪ繝ｼ繝ｳ繧｢繝・・縺吶ｋ髢｢謨ｰ
   const handleCleanupTempFiles = async () => {
     try {
       setIsCleaningUp(true);
@@ -253,22 +253,22 @@ const TechSupportUploader: React.FC = () => {
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "クリーンアップに失敗しました");
+        throw new Error(errorData.error || "繧ｯ繝ｪ繝ｼ繝ｳ繧｢繝・・縺ｫ螟ｱ謨励＠縺ｾ縺励◆");
       }
       
       const result = await response.json();
-      console.log("クリーンアップ結果:", result);
+      console.log("繧ｯ繝ｪ繝ｼ繝ｳ繧｢繝・・邨先棡:", result);
       
       toast({
-        title: "クリーンアップ成功",
-        description: `一時ファイルのクリーンアップが完了しました。${result.details.removedFiles}件のファイルを削除しました。`,
+        title: "繧ｯ繝ｪ繝ｼ繝ｳ繧｢繝・・謌仙粥",
+        description: `荳譎ゅヵ繧｡繧､繝ｫ縺ｮ繧ｯ繝ｪ繝ｼ繝ｳ繧｢繝・・縺悟ｮ御ｺ・＠縺ｾ縺励◆縲・{result.details.removedFiles}莉ｶ縺ｮ繝輔ぃ繧､繝ｫ繧貞炎髯､縺励∪縺励◆縲Ａ,
       });
       
     } catch (error) {
-      console.error("クリーンアップエラー:", error);
+      console.error("繧ｯ繝ｪ繝ｼ繝ｳ繧｢繝・・繧ｨ繝ｩ繝ｼ:", error);
       toast({
-        title: "クリーンアップエラー",
-        description: error instanceof Error ? error.message : "未知のエラーが発生しました",
+        title: "繧ｯ繝ｪ繝ｼ繝ｳ繧｢繝・・繧ｨ繝ｩ繝ｼ",
+        description: error instanceof Error ? error.message : "譛ｪ遏･縺ｮ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆",
         variant: "destructive",
       });
     } finally {
@@ -276,7 +276,7 @@ const TechSupportUploader: React.FC = () => {
     }
   };
   
-  // 重複画像を検出して削除する関数
+  // 驥崎､・判蜒上ｒ讀懷・縺励※蜑企勁縺吶ｋ髢｢謨ｰ
   const handleDetectDuplicateImages = async () => {
     try {
       setIsCleaningUp(true);
@@ -287,25 +287,25 @@ const TechSupportUploader: React.FC = () => {
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "重複画像の検出に失敗しました");
+        throw new Error(errorData.error || "驥崎､・判蜒上・讀懷・縺ｫ螟ｱ謨励＠縺ｾ縺励◆");
       }
       
       const result = await response.json();
-      console.log("重複画像検出結果:", result);
+      console.log("驥崎､・判蜒乗､懷・邨先棡:", result);
       
-      // 画像検索データを再読み込み
+      // 逕ｻ蜒乗､懃ｴ｢繝・・繧ｿ繧貞・隱ｭ縺ｿ霎ｼ縺ｿ
       reloadImageSearchData();
       
       toast({
-        title: "重複画像検出完了",
-        description: `内容が同じ重複画像の検出と削除が完了しました。${result.details.removedFiles}件の重複ファイルを削除しました。`,
+        title: "驥崎､・判蜒乗､懷・螳御ｺ・,
+        description: `蜀・ｮｹ縺悟酔縺倬㍾隍・判蜒上・讀懷・縺ｨ蜑企勁縺悟ｮ御ｺ・＠縺ｾ縺励◆縲・{result.details.removedFiles}莉ｶ縺ｮ驥崎､・ヵ繧｡繧､繝ｫ繧貞炎髯､縺励∪縺励◆縲Ａ,
       });
       
     } catch (error) {
-      console.error("重複画像検出エラー:", error);
+      console.error("驥崎､・判蜒乗､懷・繧ｨ繝ｩ繝ｼ:", error);
       toast({
-        title: "重複画像検出エラー",
-        description: error instanceof Error ? error.message : "未知のエラーが発生しました",
+        title: "驥崎､・判蜒乗､懷・繧ｨ繝ｩ繝ｼ",
+        description: error instanceof Error ? error.message : "譛ｪ遏･縺ｮ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆",
         variant: "destructive",
       });
     } finally {
@@ -313,7 +313,7 @@ const TechSupportUploader: React.FC = () => {
     }
   };
   
-  // ディレクトリを同期する関数
+  // 繝・ぅ繝ｬ繧ｯ繝医Μ繧貞酔譛溘☆繧矩未謨ｰ
   const handleSyncDirectories = async () => {
     try {
       setIsSyncing(true);
@@ -324,29 +324,29 @@ const TechSupportUploader: React.FC = () => {
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "ディレクトリ同期に失敗しました");
+        throw new Error(errorData.error || "繝・ぅ繝ｬ繧ｯ繝医Μ蜷梧悄縺ｫ螟ｱ謨励＠縺ｾ縺励◆");
       }
       
       const result = await response.json();
-      console.log("ディレクトリ同期結果:", result);
+      console.log("繝・ぅ繝ｬ繧ｯ繝医Μ蜷梧悄邨先棡:", result);
       
       toast({
-        title: "同期成功",
+        title: "蜷梧悄謌仙粥",
         description: `
-          ディレクトリ同期が完了しました。
-          ・知識ベースへ移動: ${result.details.toKnowledgeBase}件
-          ・一時フォルダへ同期: ${result.details.fromKnowledgeBase}件
+          繝・ぅ繝ｬ繧ｯ繝医Μ蜷梧悄縺悟ｮ御ｺ・＠縺ｾ縺励◆縲・
+          繝ｻ遏･隴倥・繝ｼ繧ｹ縺ｸ遘ｻ蜍・ ${result.details.toKnowledgeBase}莉ｶ
+          繝ｻ荳譎ゅヵ繧ｩ繝ｫ繝縺ｸ蜷梧悄: ${result.details.fromKnowledgeBase}莉ｶ
         `,
       });
       
-      // 画像検索データを再読み込み
+      // 逕ｻ蜒乗､懃ｴ｢繝・・繧ｿ繧貞・隱ｭ縺ｿ霎ｼ縺ｿ
       reloadImageSearchData();
       
     } catch (error) {
-      console.error("同期エラー:", error);
+      console.error("蜷梧悄繧ｨ繝ｩ繝ｼ:", error);
       toast({
-        title: "同期エラー",
-        description: error instanceof Error ? error.message : "未知のエラーが発生しました",
+        title: "蜷梧悄繧ｨ繝ｩ繝ｼ",
+        description: error instanceof Error ? error.message : "譛ｪ遏･縺ｮ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆",
         variant: "destructive",
       });
     } finally {
@@ -357,16 +357,16 @@ const TechSupportUploader: React.FC = () => {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>技術文書アップロード</CardTitle>
+        <CardTitle>謚陦捺枚譖ｸ繧｢繝・・繝ｭ繝ｼ繝・/CardTitle>
         <CardDescription>
-          保守マニュアルやデータシートをアップロードして検索可能にします
+          菫晏ｮ医・繝九Η繧｢繝ｫ繧・ョ繝ｼ繧ｿ繧ｷ繝ｼ繝医ｒ繧｢繝・・繝ｭ繝ｼ繝峨＠縺ｦ讀懃ｴ｢蜿ｯ閭ｽ縺ｫ縺励∪縺・
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {/* 処理タイプの選択 */}
+          {/* 蜃ｦ逅・ち繧､繝励・驕ｸ謚・*/}
           <div className="flex flex-col space-y-2">
-            <Label>処理タイプを選択</Label>
+            <Label>蜃ｦ逅・ち繧､繝励ｒ驕ｸ謚・/Label>
             <div className="flex space-x-4">
               <div className="flex items-center space-x-2">
                 <input
@@ -379,7 +379,7 @@ const TechSupportUploader: React.FC = () => {
                   className="h-4 w-4 text-blue-600"
                 />
                 <label htmlFor="document-processing" className="text-sm">
-                  ナレッジベース文書（PDF, Excel, PowerPoint）
+                  繝翫Ξ繝・ず繝吶・繧ｹ譁・嶌・・DF, Excel, PowerPoint・・
                 </label>
               </div>
               <div className="flex items-center space-x-2">
@@ -393,7 +393,7 @@ const TechSupportUploader: React.FC = () => {
                   className="h-4 w-4 text-blue-600"
                 />
                 <label htmlFor="image-search-processing" className="text-sm">
-                  画像検索データ（SVG, PNG, JPG）
+                  逕ｻ蜒乗､懃ｴ｢繝・・繧ｿ・・VG, PNG, JPG・・
                 </label>
               </div>
             </div>
@@ -402,8 +402,8 @@ const TechSupportUploader: React.FC = () => {
           <div className="flex flex-col space-y-2">
             <Label htmlFor="tech-file-upload">
               {processingType === 'document' 
-                ? 'ファイルを選択（PDF, Excel, PowerPointなど）' 
-                : '画像ファイルを選択（SVG, PNG, JPG）'}
+                ? '繝輔ぃ繧､繝ｫ繧帝∈謚橸ｼ・DF, Excel, PowerPoint縺ｪ縺ｩ・・ 
+                : '逕ｻ蜒上ヵ繧｡繧､繝ｫ繧帝∈謚橸ｼ・VG, PNG, JPG・・}
             </Label>
             <div className="flex space-x-2">
               <Input
@@ -423,16 +423,16 @@ const TechSupportUploader: React.FC = () => {
                 ) : (
                   <Upload className="mr-2 h-4 w-4" />
                 )}
-                アップロード
+                繧｢繝・・繝ｭ繝ｼ繝・
               </Button>
             </div>
             {selectedFile && (
               <p className="text-sm text-blue-600">
-                選択中: {selectedFile.name} ({formatFileSize(selectedFile.size)})
+                驕ｸ謚樔ｸｭ: {selectedFile.name} ({formatFileSize(selectedFile.size)})
               </p>
             )}
             
-            {/* ストレージ最適化オプション */}
+            {/* 繧ｹ繝医Ξ繝ｼ繧ｸ譛驕ｩ蛹悶が繝励す繝ｧ繝ｳ */}
             <div className="flex items-center space-x-2 mt-2">
               <input
                 type="checkbox"
@@ -442,26 +442,26 @@ const TechSupportUploader: React.FC = () => {
                 className="h-4 w-4 text-blue-600 rounded"
               />
               <label htmlFor="keep-original-file" className="text-sm">
-                元ファイルを保存する（チェックを外すとストレージ容量を節約できます）
+                蜈・ヵ繧｡繧､繝ｫ繧剃ｿ晏ｭ倥☆繧具ｼ医メ繧ｧ繝・け繧貞､悶☆縺ｨ繧ｹ繝医Ξ繝ｼ繧ｸ螳ｹ驥上ｒ遽邏・〒縺阪∪縺呻ｼ・
               </label>
             </div>
           </div>
 
           <div className="mt-8">
-            <h3 className="text-lg font-medium mb-2">アップロード済み技術文書</h3>
+            <h3 className="text-lg font-medium mb-2">繧｢繝・・繝ｭ繝ｼ繝画ｸ医∩謚陦捺枚譖ｸ</h3>
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                <span className="ml-2 text-blue-600">読み込み中...</span>
+                <span className="ml-2 text-blue-600">隱ｭ縺ｿ霎ｼ縺ｿ荳ｭ...</span>
               </div>
             ) : uploadedDocuments.length > 0 ? (
               <div className="border rounded-md overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>タイプ</TableHead>
-                      <TableHead>ファイル名</TableHead>
-                      <TableHead>詳細</TableHead>
+                      <TableHead>繧ｿ繧､繝・/TableHead>
+                      <TableHead>繝輔ぃ繧､繝ｫ蜷・/TableHead>
+                      <TableHead>隧ｳ邏ｰ</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -477,7 +477,7 @@ const TechSupportUploader: React.FC = () => {
                         </TableCell>
                         <TableCell>{doc.name}</TableCell>
                         <TableCell className="max-w-xs truncate">
-                          {doc.extractedTextPreview || "詳細なし"}
+                          {doc.extractedTextPreview || "隧ｳ邏ｰ縺ｪ縺・}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -487,17 +487,17 @@ const TechSupportUploader: React.FC = () => {
             ) : (
               <div className="py-4 text-center text-gray-500 border rounded-md">
                 <FileText className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                <p>アップロードされた技術文書はありません</p>
+                <p>繧｢繝・・繝ｭ繝ｼ繝峨＆繧後◆謚陦捺枚譖ｸ縺ｯ縺ゅｊ縺ｾ縺帙ｓ</p>
               </div>
             )}
           </div>
         </div>
         
-        {/* システムメンテナンスセクション */}
+        {/* 繧ｷ繧ｹ繝・Β繝｡繝ｳ繝・リ繝ｳ繧ｹ繧ｻ繧ｯ繧ｷ繝ｧ繝ｳ */}
         <div className="mt-8 border-t pt-4">
-          <h3 className="text-lg font-medium mb-2">システムメンテナンス</h3>
+          <h3 className="text-lg font-medium mb-2">繧ｷ繧ｹ繝・Β繝｡繝ｳ繝・リ繝ｳ繧ｹ</h3>
           <p className="text-sm text-gray-500 mb-4">
-            一時ファイルのクリーンアップや知識ベースの同期などのシステムメンテナンス機能を提供します。
+            荳譎ゅヵ繧｡繧､繝ｫ縺ｮ繧ｯ繝ｪ繝ｼ繝ｳ繧｢繝・・繧・衍隴倥・繝ｼ繧ｹ縺ｮ蜷梧悄縺ｪ縺ｩ縺ｮ繧ｷ繧ｹ繝・Β繝｡繝ｳ繝・リ繝ｳ繧ｹ讖溯・繧呈署萓帙＠縺ｾ縺吶・
           </p>
           
           <div className="flex flex-wrap gap-3">
@@ -515,11 +515,11 @@ const TechSupportUploader: React.FC = () => {
                     ) : (
                       <Eraser className="mr-2 h-4 w-4 text-blue-600" />
                     )}
-                    一時ファイルを削除
+                    荳譎ゅヵ繧｡繧､繝ｫ繧貞炎髯､
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>一時ファイルをクリーンアップしてストレージスペースを解放します</p>
+                  <p>荳譎ゅヵ繧｡繧､繝ｫ繧偵け繝ｪ繝ｼ繝ｳ繧｢繝・・縺励※繧ｹ繝医Ξ繝ｼ繧ｸ繧ｹ繝壹・繧ｹ繧定ｧ｣謾ｾ縺励∪縺・/p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -538,11 +538,11 @@ const TechSupportUploader: React.FC = () => {
                     ) : (
                       <Trash2 className="mr-2 h-4 w-4 text-amber-600" />
                     )}
-                    重複画像を検出・削除
+                    驥崎､・判蜒上ｒ讀懷・繝ｻ蜑企勁
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>同じ内容の重複画像を検出して削除します（タイムスタンプが異なる同じ画像を削除）</p>
+                  <p>蜷後§蜀・ｮｹ縺ｮ驥崎､・判蜒上ｒ讀懷・縺励※蜑企勁縺励∪縺呻ｼ医ち繧､繝繧ｹ繧ｿ繝ｳ繝励′逡ｰ縺ｪ繧句酔縺倡判蜒上ｒ蜑企勁・・/p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -561,11 +561,11 @@ const TechSupportUploader: React.FC = () => {
                     ) : (
                       <RefreshCw className="mr-2 h-4 w-4 text-green-600" />
                     )}
-                    ディレクトリを同期
+                    繝・ぅ繝ｬ繧ｯ繝医Μ繧貞酔譛・
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>知識ベースと一時ディレクトリ間でファイルを同期します</p>
+                  <p>遏･隴倥・繝ｼ繧ｹ縺ｨ荳譎ゅョ繧｣繝ｬ繧ｯ繝医Μ髢薙〒繝輔ぃ繧､繝ｫ繧貞酔譛溘＠縺ｾ縺・/p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -577,21 +577,21 @@ const TechSupportUploader: React.FC = () => {
                     variant="outline" 
                     className="border-purple-200 bg-purple-50"
                     onClick={() => {
-                      // キャッシュをクリアしてデータを再読み込み
+                      // 繧ｭ繝｣繝・す繝･繧偵け繝ｪ繧｢縺励※繝・・繧ｿ繧貞・隱ｭ縺ｿ霎ｼ縺ｿ
                       reloadImageSearchData();
                       loadVehicleData();
                       toast({
-                        title: "キャッシュクリア",
-                        description: "画像検索データとドキュメントデータを再読み込みしました",
+                        title: "繧ｭ繝｣繝・す繝･繧ｯ繝ｪ繧｢",
+                        description: "逕ｻ蜒乗､懃ｴ｢繝・・繧ｿ縺ｨ繝峨く繝･繝｡繝ｳ繝医ョ繝ｼ繧ｿ繧貞・隱ｭ縺ｿ霎ｼ縺ｿ縺励∪縺励◆",
                       });
                     }}
                   >
                     <Database className="mr-2 h-4 w-4 text-purple-600" />
-                    キャッシュをクリア
+                    繧ｭ繝｣繝・す繝･繧偵け繝ｪ繧｢
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>アプリケーションのキャッシュをクリアして最新のデータを読み込みます</p>
+                  <p>繧｢繝励Μ繧ｱ繝ｼ繧ｷ繝ｧ繝ｳ縺ｮ繧ｭ繝｣繝・す繝･繧偵け繝ｪ繧｢縺励※譛譁ｰ縺ｮ繝・・繧ｿ繧定ｪｭ縺ｿ霎ｼ縺ｿ縺ｾ縺・/p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -600,7 +600,7 @@ const TechSupportUploader: React.FC = () => {
       </CardContent>
       <CardFooter className="flex justify-between border-t pt-4">
         <p className="text-xs text-gray-500">
-          アップロードされたファイルは自動的に処理され、検索可能になります。処理後は必要に応じて一時ファイルを削除してストレージ容量を最適化できます。
+          繧｢繝・・繝ｭ繝ｼ繝峨＆繧後◆繝輔ぃ繧､繝ｫ縺ｯ閾ｪ蜍慕噪縺ｫ蜃ｦ逅・＆繧後∵､懃ｴ｢蜿ｯ閭ｽ縺ｫ縺ｪ繧翫∪縺吶ょ・逅・ｾ後・蠢・ｦ√↓蠢懊§縺ｦ荳譎ゅヵ繧｡繧､繝ｫ繧貞炎髯､縺励※繧ｹ繝医Ξ繝ｼ繧ｸ螳ｹ驥上ｒ譛驕ｩ蛹悶〒縺阪∪縺吶・
         </p>
       </CardFooter>
     </Card>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,7 +28,7 @@ interface StepByStepQAProps {
   onExit: () => void;
   initialContext?: string;
   knowledgeBase?: string[];
-  initialProblemDescription?: string; // 初期問題説明
+  initialProblemDescription?: string; // 蛻晄悄蝠城｡瑚ｪｬ譏・
 }
 
 export default function StepByStepQA({
@@ -49,7 +49,7 @@ export default function StepByStepQA({
   const [problemCategory, setProblemCategory] = useState<any>(null);
   const [qaManager] = useState(() => new QAFlowManager());
 
-  // 初期質問の生成
+  // 蛻晄悄雉ｪ蝠上・逕滓・
   useEffect(() => {
     if (initialProblemDescription) {
       classifyProblemAndStartFlow();
@@ -61,7 +61,7 @@ export default function StepByStepQA({
   const classifyProblemAndStartFlow = async () => {
     setIsLoading(true);
     try {
-      // 問題分類とフロー予測
+      // 蝠城｡悟・鬘槭→繝輔Ο繝ｼ莠域ｸｬ
       const result = await qaManager.classifyProblemAndPredictFlow(
         initialProblemDescription,
         knowledgeBase
@@ -72,17 +72,17 @@ export default function StepByStepQA({
         qaManager.setProblemCategory(result.category);
         qaManager.setCurrentFlow(result.flow);
         
-        // 最初の質問を設定
+        // 譛蛻昴・雉ｪ蝠上ｒ險ｭ螳・
         if (result.flow.steps.length > 0) {
           setCurrentStep(result.flow.steps[0]);
           setProgress(10);
         }
       } else {
-        // 分類に失敗した場合は通常の質問生成
+        // 蛻・｡槭↓螟ｱ謨励＠縺溷ｴ蜷医・騾壼ｸｸ縺ｮ雉ｪ蝠冗函謌・
         await generateInitialQuestion();
       }
     } catch (error) {
-      console.error('問題分類エラー:', error);
+      console.error('蝠城｡悟・鬘槭お繝ｩ繝ｼ:', error);
       await generateInitialQuestion();
     } finally {
       setIsLoading(false);
@@ -93,7 +93,7 @@ export default function StepByStepQA({
     setIsLoading(true);
     try {
       const firstQuestion = await qaManager.generateNextQuestion(
-        initialContext || '問題の詳細を確認するため、段階的に質問させていただきます。',
+        initialContext || '蝠城｡後・隧ｳ邏ｰ繧堤｢ｺ隱阪☆繧九◆繧√∵ｮｵ髫守噪縺ｫ雉ｪ蝠上＆縺帙※縺・◆縺縺阪∪縺吶・,
         [],
         knowledgeBase
       );
@@ -103,7 +103,7 @@ export default function StepByStepQA({
         setProgress(10);
       }
     } catch (error) {
-      console.error('初期質問生成エラー:', error);
+      console.error('蛻晄悄雉ｪ蝠冗函謌舌お繝ｩ繝ｼ:', error);
     } finally {
       setIsLoading(false);
     }
@@ -115,7 +115,7 @@ export default function StepByStepQA({
     setIsLoading(true);
     
     try {
-      // 回答を記録
+      // 蝗樒ｭ斐ｒ險倬鹸
       const answer: QAAnswer = {
         stepId: currentStep.id,
         answer: currentAnswer.trim(),
@@ -126,16 +126,16 @@ export default function StepByStepQA({
       setAnswers(newAnswers);
       qaManager.addAnswer(answer);
 
-      // 回答を親コンポーネントに送信
+      // 蝗樒ｭ斐ｒ隕ｪ繧ｳ繝ｳ繝昴・繝阪Φ繝医↓騾∽ｿ｡
       onAnswer(answer);
 
-      // 進捗を更新
+      // 騾ｲ謐励ｒ譖ｴ譁ｰ
       const newProgress = Math.min(90, progress + 20);
       setProgress(newProgress);
 
-      // 次の質問を生成
+      // 谺｡縺ｮ雉ｪ蝠上ｒ逕滓・
       const nextStep = await qaManager.generateNextQuestion(
-        `これまでの回答: ${newAnswers.map(a => a.answer).join(', ')}`,
+        `縺薙ｌ縺ｾ縺ｧ縺ｮ蝗樒ｭ・ ${newAnswers.map(a => a.answer).join(', ')}`,
         newAnswers,
         knowledgeBase
       );
@@ -144,11 +144,11 @@ export default function StepByStepQA({
         setCurrentStep(nextStep);
         setCurrentAnswer('');
       } else {
-        // 質問が終了した場合、解決策を生成
+        // 雉ｪ蝠上′邨ゆｺ・＠縺溷ｴ蜷医∬ｧ｣豎ｺ遲悶ｒ逕滓・
         await generateSolution(newAnswers);
       }
     } catch (error) {
-      console.error('回答処理エラー:', error);
+      console.error('蝗樒ｭ泌・逅・お繝ｩ繝ｼ:', error);
     } finally {
       setIsLoading(false);
     }
@@ -159,10 +159,10 @@ export default function StepByStepQA({
       const solution = await qaManager.generateSolution(allAnswers, knowledgeBase);
       setProgress(100);
       
-      // 解決策を親コンポーネントに送信
+      // 隗｣豎ｺ遲悶ｒ隕ｪ繧ｳ繝ｳ繝昴・繝阪Φ繝医↓騾∽ｿ｡
       onComplete(solution, allAnswers);
     } catch (error) {
-      console.error('解決策生成エラー:', error);
+      console.error('隗｣豎ｺ遲也函謌舌お繝ｩ繝ｼ:', error);
     }
   };
 
@@ -188,7 +188,7 @@ export default function StepByStepQA({
         <CardContent className="p-6">
           <div className="flex items-center justify-center space-x-2">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-            <span>質問を生成中...</span>
+            <span>雉ｪ蝠上ｒ逕滓・荳ｭ...</span>
           </div>
         </CardContent>
       </Card>
@@ -197,13 +197,13 @@ export default function StepByStepQA({
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-4">
-      {/* ヘッダー */}
+      {/* 繝倥ャ繝繝ｼ */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Brain className="h-5 w-5 text-blue-600" />
-              <CardTitle className="text-lg">段階的問題解決</CardTitle>
+              <CardTitle className="text-lg">谿ｵ髫守噪蝠城｡瑚ｧ｣豎ｺ</CardTitle>
             </div>
             <div className="flex items-center space-x-2">
               <Button
@@ -212,7 +212,7 @@ export default function StepByStepQA({
                 onClick={() => setShowHistory(!showHistory)}
               >
                 <History className="h-4 w-4 mr-1" />
-                履歴
+                螻･豁ｴ
               </Button>
               <Button
                 variant="outline"
@@ -220,22 +220,22 @@ export default function StepByStepQA({
                 onClick={resetQA}
               >
                 <RotateCcw className="h-4 w-4 mr-1" />
-                リセット
+                繝ｪ繧ｻ繝・ヨ
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={onExit}
               >
-                終了
+                邨ゆｺ・
               </Button>
             </div>
           </div>
           
-          {/* 進捗バー */}
+          {/* 騾ｲ謐励ヰ繝ｼ */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm text-gray-600">
-              <span>進捗</span>
+              <span>騾ｲ謐・/span>
               <span>{progress}%</span>
             </div>
             <Progress value={progress} className="h-2" />
@@ -243,13 +243,13 @@ export default function StepByStepQA({
         </CardHeader>
       </Card>
 
-      {/* 回答履歴 */}
+      {/* 蝗樒ｭ泌ｱ･豁ｴ */}
       {showHistory && answers.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center">
               <History className="h-4 w-4 mr-2" />
-              回答履歴
+              蝗樒ｭ泌ｱ･豁ｴ
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -260,7 +260,7 @@ export default function StepByStepQA({
                 </Badge>
                 <div className="flex-1">
                   <p className="text-sm text-gray-600 mb-1">
-                    回答: {answer.answer}
+                    蝗樒ｭ・ {answer.answer}
                   </p>
                   <p className="text-xs text-gray-400">
                     {answer.timestamp.toLocaleTimeString()}
@@ -273,25 +273,25 @@ export default function StepByStepQA({
         </Card>
       )}
 
-      {/* 現在の質問 */}
+      {/* 迴ｾ蝨ｨ縺ｮ雉ｪ蝠・*/}
       {currentStep && (
         <Card>
           <CardContent className="p-6">
             <div className="space-y-4">
-                             {/* 質問表示 */}
+                             {/* 雉ｪ蝠剰｡ｨ遉ｺ */}
                <div className="flex items-start space-x-3">
                  <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                    {(() => {
                      const questionText = currentStep.question.toLowerCase();
-                     if (questionText.includes('安全') || questionText.includes('危険')) {
+                     if (questionText.includes('螳牙・') || questionText.includes('蜊ｱ髯ｺ')) {
                        return <Shield className="h-4 w-4 text-red-600" />;
-                     } else if (questionText.includes('症状') || questionText.includes('異常')) {
+                     } else if (questionText.includes('逞・憾') || questionText.includes('逡ｰ蟶ｸ')) {
                        return <AlertCircle className="h-4 w-4 text-orange-600" />;
-                     } else if (questionText.includes('原因') || questionText.includes('なぜ')) {
+                     } else if (questionText.includes('蜴溷屏') || questionText.includes('縺ｪ縺・)) {
                        return <Search className="h-4 w-4 text-blue-600" />;
-                     } else if (questionText.includes('対応') || questionText.includes('処置')) {
+                     } else if (questionText.includes('蟇ｾ蠢・) || questionText.includes('蜃ｦ鄂ｮ')) {
                        return <Wrench className="h-4 w-4 text-green-600" />;
-                     } else if (questionText.includes('確認') || questionText.includes('チェック')) {
+                     } else if (questionText.includes('遒ｺ隱・) || questionText.includes('繝√ぉ繝・け')) {
                        return <Eye className="h-4 w-4 text-purple-600" />;
                      } else {
                        return <span className="text-sm font-medium text-blue-600">{answers.length + 1}</span>;
@@ -305,7 +305,7 @@ export default function StepByStepQA({
                    <div className="flex items-center gap-2 mb-2">
                      {currentStep.required && (
                        <Badge variant="destructive" className="text-xs">
-                         必須
+                         蠢・・
                        </Badge>
                      )}
                      {currentStep.reasoning && (
@@ -316,13 +316,13 @@ export default function StepByStepQA({
                    </div>
                    {currentStep.expectedOutcome && (
                      <div className="text-sm text-gray-600 bg-blue-50 p-2 rounded-md mb-3">
-                       <strong>期待される結果:</strong> {currentStep.expectedOutcome}
+                       <strong>譛溷ｾ・＆繧後ｋ邨先棡:</strong> {currentStep.expectedOutcome}
                      </div>
                    )}
                  </div>
                </div>
 
-              {/* 回答入力 */}
+              {/* 蝗樒ｭ泌・蜉・*/}
               <div className="space-y-3">
                 {currentStep.type === 'choice' && currentStep.options ? (
                   <div className="grid grid-cols-1 gap-2">
@@ -347,7 +347,7 @@ export default function StepByStepQA({
                       value={currentAnswer}
                       onChange={(e) => setCurrentAnswer(e.target.value)}
                       onKeyPress={handleKeyPress}
-                      placeholder="回答を入力してください..."
+                      placeholder="蝗樒ｭ斐ｒ蜈･蜉帙＠縺ｦ縺上□縺輔＞..."
                       disabled={isLoading}
                       className="h-12"
                     />
@@ -359,12 +359,12 @@ export default function StepByStepQA({
                       {isLoading ? (
                         <div className="flex items-center space-x-2">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                          <span>処理中...</span>
+                          <span>蜃ｦ逅・ｸｭ...</span>
                         </div>
                       ) : (
                         <div className="flex items-center space-x-2">
                           <Send className="h-4 w-4" />
-                          <span>回答する</span>
+                          <span>蝗樒ｭ斐☆繧・/span>
                         </div>
                       )}
                     </Button>
@@ -372,12 +372,12 @@ export default function StepByStepQA({
                 )}
               </div>
 
-              {/* ヒント */}
+              {/* 繝偵Φ繝・*/}
               <Alert>
                 <Lightbulb className="h-4 w-4" />
                 <AlertDescription>
-                  専門的なナレッジベースを活用して、最適な質問を生成しています。
-                  詳細な回答をいただくことで、より正確な解決策を提案できます。
+                  蟆る摩逧・↑繝翫Ξ繝・ず繝吶・繧ｹ繧呈ｴｻ逕ｨ縺励※縲∵怙驕ｩ縺ｪ雉ｪ蝠上ｒ逕滓・縺励※縺・∪縺吶・
+                  隧ｳ邏ｰ縺ｪ蝗樒ｭ斐ｒ縺・◆縺縺上％縺ｨ縺ｧ縲√ｈ繧頑ｭ｣遒ｺ縺ｪ隗｣豎ｺ遲悶ｒ謠先｡医〒縺阪∪縺吶・
                 </AlertDescription>
               </Alert>
             </div>
@@ -385,13 +385,13 @@ export default function StepByStepQA({
         </Card>
       )}
 
-      {/* 完了時の表示 */}
+      {/* 螳御ｺ・凾縺ｮ陦ｨ遉ｺ */}
       {progress === 100 && (
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-center space-x-2 text-green-600">
               <CheckCircle className="h-6 w-6" />
-              <span className="text-lg font-medium">問題解決完了</span>
+              <span className="text-lg font-medium">蝠城｡瑚ｧ｣豎ｺ螳御ｺ・/span>
             </div>
           </CardContent>
         </Card>

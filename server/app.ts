@@ -1,4 +1,4 @@
-// UTF-8エンコーディング設定
+﻿// UTF-8繧ｨ繝ｳ繧ｳ繝ｼ繝・ぅ繝ｳ繧ｰ險ｭ螳・
 process.env.LANG = 'ja_JP.UTF-8';
 process.env.LC_ALL = 'ja_JP.UTF-8';
 
@@ -40,20 +40,20 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ★ ストレージ設定の初期化
-console.log('🚀 Initializing Enhanced Storage Configuration...');
+// 笘・繧ｹ繝医Ξ繝ｼ繧ｸ險ｭ螳壹・蛻晄悄蛹・
+console.log('噫 Initializing Enhanced Storage Configuration...');
 
 const storageValidation = validateStorageConfig();
 if (!storageValidation.isValid) {
-  console.error('❌ Storage configuration validation failed:', storageValidation.errors);
+  console.error('笶・Storage configuration validation failed:', storageValidation.errors);
   // Continue with warnings but not errors
 }
 if (storageValidation.warnings.length > 0) {
-  console.warn('⚠️ Storage configuration warnings:', storageValidation.warnings);
+  console.warn('笞・・Storage configuration warnings:', storageValidation.warnings);
 }
 
 const { paths: storageConfig, azure: azureConfig, isProduction: isProductionEnv, isAzureEnabled } = getStorageConfig();
-console.log('🔧 Storage Configuration:', {
+console.log('肌 Storage Configuration:', {
   isProduction: isProductionEnv,
   isAzureEnabled,
   knowledgeBasePath: storageConfig.knowledgeBasePath,
@@ -64,9 +64,9 @@ console.log('🔧 Storage Configuration:', {
 // Initialize storage directories
 try {
   await initializeStorageDirectories(storageConfig);
-  console.log('✅ Storage directories initialized successfully');
+  console.log('笨・Storage directories initialized successfully');
 } catch (error: any) {
-  console.error('❌ Failed to initialize storage directories:', error.message);
+  console.error('笶・Failed to initialize storage directories:', error.message);
   // Don't exit the process, continue with degraded functionality
 }
 
@@ -77,45 +77,45 @@ let syncManager: StorageSyncManager | null = null;
 if (azureStorageService) {
   try {
     const healthCheck = await azureStorageService.healthCheck();
-    console.log('🔍 Azure Storage Health Check:', healthCheck);
+    console.log('剥 Azure Storage Health Check:', healthCheck);
     
     if (healthCheck.status === 'healthy') {
       syncManager = new StorageSyncManager(azureStorageService, storageConfig);
       syncManager.start();
-      console.log('✅ Azure Storage sync manager started');
+      console.log('笨・Azure Storage sync manager started');
     } else {
-      console.warn('⚠️ Azure Storage health check failed, sync disabled');
+      console.warn('笞・・Azure Storage health check failed, sync disabled');
     }
   } catch (error: any) {
-    console.error('❌ Azure Storage health check failed:', error.message);
+    console.error('笶・Azure Storage health check failed:', error.message);
   }
 } else {
-  console.log('ℹ️ Azure Storage not configured, using local storage only');
+  console.log('邃ｹ・・Azure Storage not configured, using local storage only');
 }
 
-// サーバー起動時に重要なパス・存在有無をログ出力
+// 繧ｵ繝ｼ繝舌・襍ｷ蜍墓凾縺ｫ驥崎ｦ√↑繝代せ繝ｻ蟄伜惠譛臥┌繧偵Ο繧ｰ蜃ｺ蜉・
 function logPathStatus(label: string, relPath: string) {
   const absPath = path.resolve(__dirname, relPath);
   const exists = fs.existsSync(absPath);
-  console.log(`🔎 [起動時パス確認] ${label}: ${absPath} (exists: ${exists})`);
+  console.log(`博 [襍ｷ蜍墓凾繝代せ遒ｺ隱江 ${label}: ${absPath} (exists: ${exists})`);
   return { absPath, exists };
 }
 
-// 必要なディレクトリを自動作成
+// 蠢・ｦ√↑繝・ぅ繝ｬ繧ｯ繝医Μ繧定・蜍穂ｽ懈・
 function ensureDirectoryExists(dirPath: string, label: string) {
   if (!fs.existsSync(dirPath)) {
     try {
       fs.mkdirSync(dirPath, { recursive: true });
-      console.log(`✅ ディレクトリを作成しました: ${label} (${dirPath})`);
+      console.log(`笨・繝・ぅ繝ｬ繧ｯ繝医Μ繧剃ｽ懈・縺励∪縺励◆: ${label} (${dirPath})`);
     } catch (error) {
-      console.error(`❌ ディレクトリ作成エラー: ${label}`, error);
+      console.error(`笶・繝・ぅ繝ｬ繧ｯ繝医Μ菴懈・繧ｨ繝ｩ繝ｼ: ${label}`, error);
     }
   } else {
-    console.log(`✅ ディレクトリが存在します: ${label} (${dirPath})`);
+    console.log(`笨・繝・ぅ繝ｬ繧ｯ繝医Μ縺悟ｭ伜惠縺励∪縺・ ${label} (${dirPath})`);
   }
 }
 
-// 必要なディレクトリを確認・作成
+// 蠢・ｦ√↑繝・ぅ繝ｬ繧ｯ繝医Μ繧堤｢ｺ隱阪・菴懈・
 const knowledgeBasePath = path.resolve(__dirname, '../../knowledge-base');
 const imagesPath = path.join(knowledgeBasePath, 'images');
 const dataPath = path.join(knowledgeBasePath, 'data');
@@ -138,8 +138,8 @@ logPathStatus('.env', '../../.env');
 logPathStatus('OpenAI API KEY', process.env.OPENAI_API_KEY ? '[SET]' : '[NOT SET]');
 logPathStatus('DATABASE_URL', process.env.DATABASE_URL ? '[SET]' : '[NOT SET]');
 
-// 環境変数の確認
-console.log('🔧 app.ts: 環境変数確認:', {
+// 迺ｰ蠅・､画焚縺ｮ遒ｺ隱・
+console.log('肌 app.ts: 迺ｰ蠅・､画焚遒ｺ隱・', {
   NODE_ENV: process.env.NODE_ENV,
   PORT: process.env.PORT,
   DATABASE_URL: process.env.DATABASE_URL ? '[SET]' : '[NOT SET]',
@@ -150,19 +150,19 @@ console.log('🔧 app.ts: 環境変数確認:', {
 
 const app = express();
 
-// CORS設定 - セッション維持のため改善
+// CORS險ｭ螳・- 繧ｻ繝・す繝ｧ繝ｳ邯ｭ謖√・縺溘ａ謾ｹ蝟・
 const isProduction = process.env.NODE_ENV === 'production';
 const isReplitEnvironment = process.env.REPLIT_ENVIRONMENT === 'true' || process.env.REPLIT_ID;
 const isAzureEnvironment = process.env.WEBSITE_SITE_NAME || process.env.AZURE_ENVIRONMENT;
 
-// フロントエンドURLの取得（環境変数から優先、デフォルトはlocalhost:5002）
+// 繝輔Ο繝ｳ繝医お繝ｳ繝蔚RL縺ｮ蜿門ｾ暦ｼ育腸蠅・､画焚縺九ｉ蜆ｪ蜈医√ョ繝輔か繝ｫ繝医・localhost:5002・・
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5002';
 
-// 許可するオリジンのリスト（環境別）
+// 險ｱ蜿ｯ縺吶ｋ繧ｪ繝ｪ繧ｸ繝ｳ縺ｮ繝ｪ繧ｹ繝茨ｼ育腸蠅・挨・・
 const getAllowedOrigins = () => {
   const baseOrigins = [
-    FRONTEND_URL, // 環境変数から取得したフロントエンドURLを優先
-    'https://witty-river-012f39e00.1.azurestaticapps.net', // 本番環境のStatic Web App URL
+    FRONTEND_URL, // 迺ｰ蠅・､画焚縺九ｉ蜿門ｾ励＠縺溘ヵ繝ｭ繝ｳ繝医お繝ｳ繝蔚RL繧貞━蜈・
+    'https://witty-river-012f39e00.1.azurestaticapps.net', // 譛ｬ逡ｪ迺ｰ蠅・・Static Web App URL
     'http://localhost:5002', 
     'http://127.0.0.1:5002',
     'http://localhost:5003',
@@ -171,13 +171,13 @@ const getAllowedOrigins = () => {
     'http://127.0.0.1:5004',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
-    'http://localhost:5173', // Vite開発サーバー
+    'http://localhost:5173', // Vite髢狗匱繧ｵ繝ｼ繝舌・
     'http://127.0.0.1:5173',
     'http://localhost:3001',
     'http://127.0.0.1:3001'
   ];
 
-  // Replit環境の場合
+  // Replit迺ｰ蠅・・蝣ｴ蜷・
   if (isReplitEnvironment) {
     baseOrigins.push(
       'https://*.replit.app',
@@ -185,12 +185,12 @@ const getAllowedOrigins = () => {
     );
   }
 
-  // Azure環境の場合
+  // Azure迺ｰ蠅・・蝣ｴ蜷・
   if (isAzureEnvironment) {
     baseOrigins.push(
       'https://*.azurewebsites.net',
       'https://*.azure.com',
-      'https://*.azurestaticapps.net' // Azure Static Web Appsのサポート追加
+      'https://*.azurestaticapps.net' // Azure Static Web Apps縺ｮ繧ｵ繝昴・繝郁ｿｽ蜉
     );
   }
 
@@ -201,13 +201,13 @@ app.use(cors({
   origin: function(origin, callback) {
     const allowedOrigins = getAllowedOrigins();
     
-    // originがnullの場合（同一オリジンリクエスト）も許可
+    // origin縺系ull縺ｮ蝣ｴ蜷茨ｼ亥酔荳繧ｪ繝ｪ繧ｸ繝ｳ繝ｪ繧ｯ繧ｨ繧ｹ繝茨ｼ峨ｂ險ｱ蜿ｯ
     if (!origin) {
       callback(null, true);
       return;
     }
 
-    // ワイルドカードドメインのチェック
+    // 繝ｯ繧､繝ｫ繝峨き繝ｼ繝峨ラ繝｡繧､繝ｳ縺ｮ繝√ぉ繝・け
     const isAllowed = allowedOrigins.some(allowedOrigin => {
       if (allowedOrigin.includes('*')) {
         const pattern = allowedOrigin.replace('*', '.*');
@@ -219,12 +219,12 @@ app.use(cors({
     if (isAllowed) {
       callback(null, true);
     } else {
-      console.log('🚫 CORS blocked origin:', origin);
-      console.log('🔍 Allowed origins:', allowedOrigins);
+      console.log('圻 CORS blocked origin:', origin);
+      console.log('剥 Allowed origins:', allowedOrigins);
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true, // 必須設定 - セッション維持のため
+  credentials: true, // 蠢・郁ｨｭ螳・- 繧ｻ繝・す繝ｧ繝ｳ邯ｭ謖√・縺溘ａ
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: [
     'Content-Type', 
@@ -244,12 +244,12 @@ app.use(cors({
   optionsSuccessStatus: 204
 }));
 
-// OPTIONSリクエストの明示的処理
+// OPTIONS繝ｪ繧ｯ繧ｨ繧ｹ繝医・譏守､ｺ逧・・逅・
 app.options('*', (req, res) => {
   const origin = req.headers.origin;
   const allowedOrigins = getAllowedOrigins();
   
-  // ワイルドカードドメインのチェック
+  // 繝ｯ繧､繝ｫ繝峨き繝ｼ繝峨ラ繝｡繧､繝ｳ縺ｮ繝√ぉ繝・け
   const isAllowed = !origin || allowedOrigins.some(allowedOrigin => {
     if (allowedOrigin.includes('*')) {
       const pattern = allowedOrigin.replace('*', '.*');
@@ -263,30 +263,30 @@ app.options('*', (req, res) => {
   }
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept, Cookie, credentials, cache-control, Cache-Control, pragma, Pragma');
-  res.header('Access-Control-Allow-Credentials', 'true'); // 必須設定 - セッション維持のため
+  res.header('Access-Control-Allow-Credentials', 'true'); // 蠢・郁ｨｭ螳・- 繧ｻ繝・す繝ｧ繝ｳ邯ｭ謖√・縺溘ａ
   res.header('Access-Control-Expose-Headers', 'Set-Cookie');
   res.status(204).end();
 });
 
-// Cookieパーサーを追加
+// Cookie繝代・繧ｵ繝ｼ繧定ｿｽ蜉
 app.use(cookieParser());
 
-// JSONパース - UTF-8エンコーディング設定
+// JSON繝代・繧ｹ - UTF-8繧ｨ繝ｳ繧ｳ繝ｼ繝・ぅ繝ｳ繧ｰ險ｭ螳・
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// UTF-8エンコーディングのレスポンスヘッダー設定
+// UTF-8繧ｨ繝ｳ繧ｳ繝ｼ繝・ぅ繝ｳ繧ｰ縺ｮ繝ｬ繧ｹ繝昴Φ繧ｹ繝倥ャ繝繝ｼ險ｭ螳・
 app.use((req, res, next) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   next();
 });
 
-// CORSヘッダーを確実に設定するミドルウェア
+// CORS繝倥ャ繝繝ｼ繧堤｢ｺ螳溘↓險ｭ螳壹☆繧九Α繝峨Ν繧ｦ繧ｧ繧｢
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   const allowedOrigins = getAllowedOrigins();
   
-  // ワイルドカードドメインのチェック
+  // 繝ｯ繧､繝ｫ繝峨き繝ｼ繝峨ラ繝｡繧､繝ｳ縺ｮ繝√ぉ繝・け
   const isAllowed = !origin || allowedOrigins.some(allowedOrigin => {
     if (allowedOrigin.includes('*')) {
       const pattern = allowedOrigin.replace('*', '.*');
@@ -306,24 +306,24 @@ app.use((req, res, next) => {
   next();
 });
 
-// セッション設定 - 認証維持のため改善
+// 繧ｻ繝・す繝ｧ繝ｳ險ｭ螳・- 隱崎ｨｼ邯ｭ謖√・縺溘ａ謾ｹ蝟・
 const sessionConfig = {
   secret: process.env.SESSION_SECRET || 'dev-session-secret-for-development-only',
-  resave: true, // セッションを常に保存
+  resave: true, // 繧ｻ繝・す繝ｧ繝ｳ繧貞ｸｸ縺ｫ菫晏ｭ・
   saveUninitialized: false,
   cookie: {
-    secure: (isProduction || isReplitEnvironment || isAzureEnvironment) ? true : false, // 明示的にbooleanに変換
+    secure: (isProduction || isReplitEnvironment || isAzureEnvironment) ? true : false, // 譏守､ｺ逧・↓boolean縺ｫ螟画鋤
     httpOnly: true,
     sameSite: (isProduction || isReplitEnvironment || isAzureEnvironment) ? 'none' as const : 'lax' as const,
-    maxAge: 1000 * 60 * 60 * 24 * 7, // 7日間
+    maxAge: 1000 * 60 * 60 * 24 * 7, // 7譌･髢・
     path: '/',
-    domain: undefined // 明示的にundefinedに設定
+    domain: undefined // 譏守､ｺ逧・↓undefined縺ｫ險ｭ螳・
   },
-  name: 'emergency-assistance-session', // セッション名を統一
-  rolling: true // セッションを更新するたびに期限を延長
+  name: 'emergency-assistance-session', // 繧ｻ繝・す繝ｧ繝ｳ蜷阪ｒ邨ｱ荳
+  rolling: true // 繧ｻ繝・す繝ｧ繝ｳ繧呈峩譁ｰ縺吶ｋ縺溘・縺ｫ譛滄剞繧貞ｻｶ髟ｷ
 };
 
-console.log('🔧 セッション設定:', {
+console.log('肌 繧ｻ繝・す繝ｧ繝ｳ險ｭ螳・', {
   secure: sessionConfig.cookie.secure,
   sameSite: sessionConfig.cookie.sameSite,
   isProduction,
@@ -333,9 +333,9 @@ console.log('🔧 セッション設定:', {
 
 app.use(session(sessionConfig));
 
-// セッションデバッグミドルウェア
+// 繧ｻ繝・す繝ｧ繝ｳ繝・ヰ繝・げ繝溘ラ繝ｫ繧ｦ繧ｧ繧｢
 app.use((req, res, next) => {
-  console.log('🔍 Session Debug:', {
+  console.log('剥 Session Debug:', {
     sessionId: req.sessionID,
     userId: req.session?.userId,
     userRole: req.session?.userRole,
@@ -349,12 +349,12 @@ app.use((req, res, next) => {
   next();
 });
 
-// ★ 認証より前: CSP設定と画像配信
-const KB_BASE = storageConfig.knowledgeBasePath; // 新しい設定を使用
+// 笘・隱崎ｨｼ繧医ｊ蜑・ CSP險ｭ螳壹→逕ｻ蜒城・菫｡
+const KB_BASE = storageConfig.knowledgeBasePath; // 譁ｰ縺励＞險ｭ螳壹ｒ菴ｿ逕ｨ
 
-console.log('🔧 Knowledge Base Path:', KB_BASE);
+console.log('肌 Knowledge Base Path:', KB_BASE);
 
-// CSP設定（data:image/...を許可）
+// CSP險ｭ螳夲ｼ・ata:image/...繧定ｨｱ蜿ｯ・・
 app.use((req, res, next) => {
   res.setHeader(
     'Content-Security-Policy',
@@ -363,14 +363,14 @@ app.use((req, res, next) => {
   next();
 });
 
-// 画像の静的配信（knowledge-base/images）
+// 逕ｻ蜒上・髱咏噪驟堺ｿ｡・・nowledge-base/images・・
 app.use('/api/images', express.static(path.join(KB_BASE, 'images'), {
   fallthrough: true,
   etag: true,
   maxAge: '7d',
 }));
 
-// エクスポートJSONの詳細取得（knowledge-base/exports）
+// 繧ｨ繧ｯ繧ｹ繝昴・繝・SON縺ｮ隧ｳ邏ｰ蜿門ｾ暦ｼ・nowledge-base/exports・・
 app.get('/api/history/file', (req, res) => {
   const name = String(req.query.name || '');
   if (!name) return res.status(400).json({ error: 'name is required' });
@@ -384,49 +384,49 @@ app.get('/api/history/file', (req, res) => {
   }
 });
 
-// ヘルスチェックルート
+// 繝倥Ν繧ｹ繝√ぉ繝・け繝ｫ繝ｼ繝・
 import { healthRouter } from './routes/health.js';
 app.use('/api/health', healthRouter);
 
-// 基本ヘルスチェック（後方互換性のため残す）
+// 蝓ｺ譛ｬ繝倥Ν繧ｹ繝√ぉ繝・け・亥ｾ梧婿莠呈鋤諤ｧ縺ｮ縺溘ａ谿九☆・・
 app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// 認証ルート
+// 隱崎ｨｼ繝ｫ繝ｼ繝・
 app.use('/api/auth', authRouter);
 app.use('/api/tech-support', techSupportRouter);
 
-// チャットルート
+// 繝√Ε繝・ヨ繝ｫ繝ｼ繝・
 registerChatRoutes(app);
 
-// トラブルシューティングルート
+// 繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ繝ｫ繝ｼ繝・
 app.use('/api/troubleshooting', troubleshootingRouter);
 
-// トラブルシューティングQAルート
+// 繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰQA繝ｫ繝ｼ繝・
 app.use('/api/troubleshooting-qa', troubleshootingQARouter);
 
-// 新規APIルート登録
+// 譁ｰ隕就PI繝ｫ繝ｼ繝育匳骭ｲ
 app.use('/api/base-data', baseDataRouter);
 app.use('/api/flows', flowsRouter);
 app.use('/api/knowledge', knowledgeRouter);
 app.use('/api/history', historyRouter);
 app.use('/api/emergency-guide', emergencyGuideRouter);
 
-// 不足していたルートを追加
+// 荳崎ｶｳ縺励※縺・◆繝ｫ繝ｼ繝医ｒ霑ｽ蜉
 app.use('/api/users', usersRouter);
 app.use('/api/machines', machinesRouter);
 
-// デバッグ用ルートを追加
+// 繝・ヰ繝・げ逕ｨ繝ｫ繝ｼ繝医ｒ霑ｽ蜉
 app.use('/api/debug/users', usersDebugRouter);
 app.use('/api/debug', debugRouter);
 
-// RAGシステム用ルートを追加
+// RAG繧ｷ繧ｹ繝・Β逕ｨ繝ｫ繝ｼ繝医ｒ霑ｽ蜉
 app.use('/api/config', configRouter);
 app.use('/api/ingest', ingestRouter);
 app.use('/api/search', searchRouter);
 
-// ★ 新しいストレージ関連エンドポイント
+// 笘・譁ｰ縺励＞繧ｹ繝医Ξ繝ｼ繧ｸ髢｢騾｣繧ｨ繝ｳ繝峨・繧､繝ｳ繝・
 app.get('/api/storage/status', async (req, res) => {
   try {
     const status = {
@@ -501,11 +501,11 @@ app.get('/api/storage/files', async (req, res) => {
   }
 });
 
-// インタラクティブ診断システム用ルートを追加
+// 繧､繝ｳ繧ｿ繝ｩ繧ｯ繝・ぅ繝冶ｨｺ譁ｭ繧ｷ繧ｹ繝・Β逕ｨ繝ｫ繝ｼ繝医ｒ霑ｽ蜉
 import interactiveDiagnosisRouter from './routes/interactive-diagnosis.js';
 app.use('/api/interactive-diagnosis', interactiveDiagnosisRouter);
 
-// システムチェックAPIエンドポイント
+// 繧ｷ繧ｹ繝・Β繝√ぉ繝・けAPI繧ｨ繝ｳ繝峨・繧､繝ｳ繝・
 app.get('/api/db-check', async (req, res) => {
   try {
     const { db } = await import('./db/index.js');
@@ -518,15 +518,15 @@ app.get('/api/db-check', async (req, res) => {
       db_time: result[0].db_time
     });
   } catch (error) {
-    console.error('DB接続確認エラー:', error);
+    console.error('DB謗･邯夂｢ｺ隱阪お繝ｩ繝ｼ:', error);
     res.status(500).json({
       status: "ERROR",
-      message: error instanceof Error ? error.message : "データベース接続エラー"
+      message: error instanceof Error ? error.message : "繝・・繧ｿ繝吶・繧ｹ謗･邯壹お繝ｩ繝ｼ"
     });
   }
 });
 
-// DB疎通確認用の/db-pingエンドポイント
+// DB逍朱夂｢ｺ隱咲畑縺ｮ/db-ping繧ｨ繝ｳ繝峨・繧､繝ｳ繝・
 app.get('/db-ping', async (req, res) => {
   try {
     const { db } = await import('./db/index.js');
@@ -542,10 +542,10 @@ app.get('/db-ping', async (req, res) => {
       database_url: process.env.DATABASE_URL ? 'configured' : 'not configured'
     });
   } catch (error) {
-    console.error('DB ping エラー:', error);
+    console.error('DB ping 繧ｨ繝ｩ繝ｼ:', error);
     res.status(500).json({
       status: "error",
-      message: error instanceof Error ? error.message : "データベース接続エラー",
+      message: error instanceof Error ? error.message : "繝・・繧ｿ繝吶・繧ｹ謗･邯壹お繝ｩ繝ｼ",
       timestamp: new Date().toISOString(),
       database_url: process.env.DATABASE_URL ? 'configured' : 'not configured'
     });
@@ -559,7 +559,7 @@ app.post('/api/gpt-check', async (req, res) => {
     if (!message) {
       return res.status(400).json({
         status: "ERROR",
-        message: "メッセージが指定されていません"
+        message: "繝｡繝・そ繝ｼ繧ｸ縺梧欠螳壹＆繧後※縺・∪縺帙ｓ"
       });
     }
 
@@ -571,28 +571,28 @@ app.post('/api/gpt-check', async (req, res) => {
       reply: reply
     });
   } catch (error) {
-    console.error('GPT接続確認エラー:', error);
+    console.error('GPT謗･邯夂｢ｺ隱阪お繝ｩ繝ｼ:', error);
     res.status(500).json({
       status: "ERROR",
-      message: error instanceof Error ? error.message : "GPT接続エラー"
+      message: error instanceof Error ? error.message : "GPT謗･邯壹お繝ｩ繝ｼ"
     });
   }
 });
 
-// 機械管理APIはmachinesRouterで処理されるため、直接ルートは削除
+// 讖滓｢ｰ邂｡逅・PI縺ｯmachinesRouter縺ｧ蜃ｦ逅・＆繧後ｋ縺溘ａ縲∫峩謗･繝ｫ繝ｼ繝医・蜑企勁
 
-// データプロセッサールート
+// 繝・・繧ｿ繝励Ο繧ｻ繝・し繝ｼ繝ｫ繝ｼ繝・
 registerDataProcessorRoutes(app);
 
-// メインルート登録（重複を避けるため、基本的なルートのみ）
+// 繝｡繧､繝ｳ繝ｫ繝ｼ繝育匳骭ｲ・磯㍾隍・ｒ驕ｿ縺代ｋ縺溘ａ縲∝渕譛ｬ逧・↑繝ｫ繝ｼ繝医・縺ｿ・・
 try {
   registerRoutes(app);
-  console.log('✅ 全てのルートが正常に登録されました');
+  console.log('笨・蜈ｨ縺ｦ縺ｮ繝ｫ繝ｼ繝医′豁｣蟶ｸ縺ｫ逋ｻ骭ｲ縺輔ｌ縺ｾ縺励◆');
 } catch (error) {
-  console.error('❌ ルート登録エラー:', error);
+  console.error('笶・繝ｫ繝ｼ繝育匳骭ｲ繧ｨ繝ｩ繝ｼ:', error);
 }
 
-// サーバー起動処理はindex.tsで管理するため、ここでは設定のみ
-console.log('✅ Expressアプリケーションの設定が完了しました');
+// 繧ｵ繝ｼ繝舌・襍ｷ蜍募・逅・・index.ts縺ｧ邂｡逅・☆繧九◆繧√√％縺薙〒縺ｯ險ｭ螳壹・縺ｿ
+console.log('笨・Express繧｢繝励Μ繧ｱ繝ｼ繧ｷ繝ｧ繝ｳ縺ｮ險ｭ螳壹′螳御ｺ・＠縺ｾ縺励◆');
 
 export default app;

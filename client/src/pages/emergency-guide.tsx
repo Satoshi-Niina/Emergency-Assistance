@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import EmergencyGuideUploader from "../components/emergency-guide/emergency-guide-uploader";
 import EmergencyGuideEdit from "../components/emergency-guide/emergency-guide-edit";
@@ -9,13 +9,13 @@ import { Button } from "../components/ui/button";
 import { useToast } from "../hooks/use-toast.ts";
 
 const EmergencyGuidePage: React.FC = () => {
-  // URLからクエリパラメータを取得
+  // URL縺九ｉ繧ｯ繧ｨ繝ｪ繝代Λ繝｡繝ｼ繧ｿ繧貞叙蠕・
   const getQueryParam = (name: string): string | null => {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get(name);
   };
 
-  // 初期タブをURLから設定
+  // 蛻晄悄繧ｿ繝悶ｒURL縺九ｉ險ｭ螳・
   const initialTab = getQueryParam('tab') || "edit";
   const [activeTab, setActiveTab] = useState(initialTab);
   const [targetGuideId, setTargetGuideId] = useState<string | null>(
@@ -28,10 +28,10 @@ const EmergencyGuidePage: React.FC = () => {
     null,
   );
 
-  // 検索機能の状態
+  // 讀懃ｴ｢讖溯・縺ｮ迥ｶ諷・
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // タブ切り替えイベントのリスナー
+  // 繧ｿ繝門・繧頑崛縺医う繝吶Φ繝医・繝ｪ繧ｹ繝翫・
   useEffect(() => {
     const handleSwitchToFlowTab = (event: Event) => {
       const customEvent = event as CustomEvent;
@@ -58,7 +58,7 @@ const EmergencyGuidePage: React.FC = () => {
     };
   }, []);
 
-  // フローデータ更新イベントのリスナー
+  // 繝輔Ο繝ｼ繝・・繧ｿ譖ｴ譁ｰ繧､繝吶Φ繝医・繝ｪ繧ｹ繝翫・
   useEffect(() => {
     const refreshFlowList = async () => {
       try {
@@ -68,18 +68,18 @@ const EmergencyGuidePage: React.FC = () => {
             'Content-Type': 'application/json'
           }
         });
-        if (!response.ok) throw new Error("読み込み失敗");
+        if (!response.ok) throw new Error("隱ｭ縺ｿ霎ｼ縺ｿ螟ｱ謨・);
         const data = await response.json();
-        // APIレスポンスの構造に合わせてデータをマッピング
+        // API繝ｬ繧ｹ繝昴Φ繧ｹ縺ｮ讒矩縺ｫ蜷医ｏ縺帙※繝・・繧ｿ繧偵・繝・ヴ繝ｳ繧ｰ
         const flows = data.success && data.data ? data.data : (Array.isArray(data) ? data : []);
-        // フロー一覧を直接更新
+        // 繝輔Ο繝ｼ荳隕ｧ繧堤峩謗･譖ｴ譁ｰ
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('forceRefreshFlowList', {
             detail: { flowList: flows }
           }));
         }
       } catch (err) {
-        console.error("フロー一覧取得エラー", err);
+        console.error("繝輔Ο繝ｼ荳隕ｧ蜿門ｾ励お繝ｩ繝ｼ", err);
       }
     };
 
@@ -94,15 +94,15 @@ const EmergencyGuidePage: React.FC = () => {
     };
   }, []);
 
-  // データ更新を監視（削除されたファイルの再表示問題も修正）
+  // 繝・・繧ｿ譖ｴ譁ｰ繧堤屮隕厄ｼ亥炎髯､縺輔ｌ縺溘ヵ繧｡繧､繝ｫ縺ｮ蜀崎｡ｨ遉ｺ蝠城｡後ｂ菫ｮ豁｣・・
   useEffect(() => {
     const handleFlowDataUpdated = (event) => {
-      console.log('🔄 フローデータ更新イベントを受信:', event.detail);
-      // 強制的にキャッシュをクリアして再取得
+      console.log('売 繝輔Ο繝ｼ繝・・繧ｿ譖ｴ譁ｰ繧､繝吶Φ繝医ｒ蜿嶺ｿ｡:', event.detail);
+      // 蠑ｷ蛻ｶ逧・↓繧ｭ繝｣繝・す繝･繧偵け繝ｪ繧｢縺励※蜀榊叙蠕・
       fetchFlowList(true);
     };
 
-    // 複数のイベントタイプに対応
+    // 隍・焚縺ｮ繧､繝吶Φ繝医ち繧､繝励↓蟇ｾ蠢・
     const eventTypes = [
       'flowDataUpdated',
       'troubleshootingDataUpdated', 
@@ -114,10 +114,10 @@ const EmergencyGuidePage: React.FC = () => {
       window.addEventListener(eventType, handleFlowDataUpdated);
     });
 
-    // 定期的な更新チェックを無効化（イベントベースで十分）
+    // 螳壽悄逧・↑譖ｴ譁ｰ繝√ぉ繝・け繧堤┌蜉ｹ蛹厄ｼ医う繝吶Φ繝医・繝ｼ繧ｹ縺ｧ蜊∝・・・
     // const intervalId = setInterval(() => {
     //   fetchFlowList(true);
-    // }, 30000); // 30秒ごと
+    // }, 30000); // 30遘偵＃縺ｨ
 
     return () => {
       eventTypes.forEach(eventType => {
@@ -127,10 +127,10 @@ const EmergencyGuidePage: React.FC = () => {
     };
   }, []);
 
-  // アップロード成功時のハンドラー
+  // 繧｢繝・・繝ｭ繝ｼ繝画・蜉滓凾縺ｮ繝上Φ繝峨Λ繝ｼ
   const handleUploadSuccess = (guideId: string) => {
     setLastUploadedGuideId(guideId);
-    // アップロード成功後に編集タブに切り替え
+    // 繧｢繝・・繝ｭ繝ｼ繝画・蜉溷ｾ後↓邱ｨ髮・ち繝悶↓蛻・ｊ譖ｿ縺・
     setActiveTab("edit");
   };
 
@@ -141,13 +141,13 @@ const EmergencyGuidePage: React.FC = () => {
   const fetchFlowList = async (forceRefresh = false) => {
     try {
       setIsLoadingFlowList(true);
-      console.log(`🔄 応急処置データ一覧の取得を開始します (forceRefresh: ${forceRefresh})`);
+      console.log(`売 蠢懈･蜃ｦ鄂ｮ繝・・繧ｿ荳隕ｧ縺ｮ蜿門ｾ励ｒ髢句ｧ九＠縺ｾ縺・(forceRefresh: ${forceRefresh})`);
 
-      // キャッシュクリア処理を簡素化
+      // 繧ｭ繝｣繝・す繝･繧ｯ繝ｪ繧｢蜃ｦ逅・ｒ邁｡邏蛹・
         if (forceRefresh && typeof window !== 'undefined') {
           localStorage.clear();
           sessionStorage.clear();
-          console.log('🧹 キャッシュクリア完了');
+          console.log('ｧｹ 繧ｭ繝｣繝・す繝･繧ｯ繝ｪ繧｢螳御ｺ・);
         }
 
       const timestamp = Date.now();
@@ -162,17 +162,17 @@ const EmergencyGuidePage: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`応急処置データの取得に失敗しました: ${response.status}`);
+        throw new Error(`蠢懈･蜃ｦ鄂ｮ繝・・繧ｿ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆: ${response.status}`);
       }
 
       const data = await response.json();
 
-      // APIレスポンスの構造に合わせてデータをマッピング
+      // API繝ｬ繧ｹ繝昴Φ繧ｹ縺ｮ讒矩縺ｫ蜷医ｏ縺帙※繝・・繧ｿ繧偵・繝・ヴ繝ｳ繧ｰ
       const flows = data.success && data.data ? data.data : (Array.isArray(data) ? data : []);
-      console.log(`✅ 取得したフローデータ: ${flows.length}件`);
+      console.log(`笨・蜿門ｾ励＠縺溘ヵ繝ｭ繝ｼ繝・・繧ｿ: ${flows.length}莉ｶ`);
       setFlowList(flows);
 
-      // データをキャッシュ
+      // 繝・・繧ｿ繧偵く繝｣繝・す繝･
       if (typeof window !== 'undefined') {
         localStorage.setItem('emergencyFlowList', JSON.stringify({
           data: flows,
@@ -183,10 +183,10 @@ const EmergencyGuidePage: React.FC = () => {
       }
 
     } catch (error) {
-      console.error('❌ 応急処置データ取得エラー:', error);
+      console.error('笶・蠢懈･蜃ｦ鄂ｮ繝・・繧ｿ蜿門ｾ励お繝ｩ繝ｼ:', error);
       toast({
-        title: "エラー",
-        description: "応急処置データの取得に失敗しました",
+        title: "繧ｨ繝ｩ繝ｼ",
+        description: "蠢懈･蜃ｦ鄂ｮ繝・・繧ｿ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆",
         variant: "destructive",
       });
       setFlowList([]);
@@ -195,13 +195,13 @@ const EmergencyGuidePage: React.FC = () => {
     }
   };
 
-  // ガイド表示を終了する関数
+  // 繧ｬ繧､繝芽｡ｨ遉ｺ繧堤ｵゆｺ・☆繧矩未謨ｰ
   const handleExitDisplay = () => {
     setDisplayingGuideId(null);
     setActiveTab("edit");
   };
 
-  // ガイド表示中の場合
+  // 繧ｬ繧､繝芽｡ｨ遉ｺ荳ｭ縺ｮ蝣ｴ蜷・
   if (displayingGuideId && activeTab === "display") {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -216,15 +216,15 @@ const EmergencyGuidePage: React.FC = () => {
   return (
     <div className="h-screen flex flex-col">
       <Helmet>
-        <title>応急処置ガイド - Emergency Assistance</title>
-        <meta name="description" content="応急処置ガイドの管理と表示" />
+        <title>蠢懈･蜃ｦ鄂ｮ繧ｬ繧､繝・- Emergency Assistance</title>
+        <meta name="description" content="蠢懈･蜃ｦ鄂ｮ繧ｬ繧､繝峨・邂｡逅・→陦ｨ遉ｺ" />
       </Helmet>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
         <div className="px-4 pt-8">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="upload">アップロード</TabsTrigger>
-            <TabsTrigger value="edit">編集・管理</TabsTrigger>
+            <TabsTrigger value="upload">繧｢繝・・繝ｭ繝ｼ繝・/TabsTrigger>
+            <TabsTrigger value="edit">邱ｨ髮・・邂｡逅・/TabsTrigger>
           </TabsList>
         </div>
 

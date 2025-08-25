@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { ImageUp, BrainCog, Copy } from "lucide-react";
 import { useToast } from "../../hooks/use-toast.ts";
@@ -59,8 +59,8 @@ export default function TextSelectionControls({ text, onSearch }: TextSelectionC
   const handleCopy = () => {
     navigator.clipboard.writeText(text);
     toast({
-      title: "コピー完了",
-      description: "テキストがクリップボードにコピーされました",
+      title: "繧ｳ繝斐・螳御ｺ・,
+      description: "繝・く繧ｹ繝医′繧ｯ繝ｪ繝・・繝懊・繝峨↓繧ｳ繝斐・縺輔ｌ縺ｾ縺励◆",
       duration: 2000,
     });
     setIsVisible(false);
@@ -82,7 +82,7 @@ export default function TextSelectionControls({ text, onSearch }: TextSelectionC
           variant="ghost" 
           size="icon" 
           className="p-1 hover:bg-neutral-100 rounded mr-1" 
-          title="画像検索"
+          title="逕ｻ蜒乗､懃ｴ｢"
           onClick={handleSearch}
         >
           <ImageUp className="h-5 w-5 text-primary" />
@@ -91,7 +91,7 @@ export default function TextSelectionControls({ text, onSearch }: TextSelectionC
           variant="ghost" 
           size="icon" 
           className="p-1 hover:bg-neutral-100 rounded mr-1" 
-          title="AIに質問"
+          title="AI縺ｫ雉ｪ蝠・
           onClick={handleChatGPT}
         >
           <BrainCog className="h-5 w-5 text-primary" />
@@ -100,7 +100,7 @@ export default function TextSelectionControls({ text, onSearch }: TextSelectionC
           variant="ghost" 
           size="icon" 
           className="p-1 hover:bg-neutral-100 rounded" 
-          title="コピー"
+          title="繧ｳ繝斐・"
           onClick={handleCopy}
         >
           <Copy className="h-5 w-5 text-primary" />

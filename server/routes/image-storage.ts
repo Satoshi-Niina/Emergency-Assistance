@@ -1,4 +1,4 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { db } from '../db';
 import { imageData } from '../db/schema';
 import { eq, like } from 'drizzle-orm';
@@ -7,13 +7,13 @@ import fs from 'fs';
 
 const router = Router();
 
-// 画像データをアップロード
+// 逕ｻ蜒上ョ繝ｼ繧ｿ繧偵い繝・・繝ｭ繝ｼ繝・
 router.post('/upload', async (req, res) => {
     try {
         const { fileName, originalFileName, mimeType, fileSize, data, category, description } = req.body;
 
         if (!fileName || !originalFileName || !mimeType || !fileSize || !data) {
-            return res.status(400).json({ error: '必要なフィールドが不足しています' });
+            return res.status(400).json({ error: '蠢・ｦ√↑繝輔ぅ繝ｼ繝ｫ繝峨′荳崎ｶｳ縺励※縺・∪縺・ });
         }
 
         const result = await db.insert(imageData).values({
@@ -28,19 +28,19 @@ router.post('/upload', async (req, res) => {
 
         res.json({ success: true, imageId: result[0].id });
     } catch (error) {
-        console.error('画像アップロードエラー:', error);
-        res.status(500).json({ error: '画像のアップロードに失敗しました' });
+        console.error('逕ｻ蜒上い繝・・繝ｭ繝ｼ繝峨お繝ｩ繝ｼ:', error);
+        res.status(500).json({ error: '逕ｻ蜒上・繧｢繝・・繝ｭ繝ｼ繝峨↓螟ｱ謨励＠縺ｾ縺励◆' });
     }
 });
 
-// 画像データを取得
+// 逕ｻ蜒上ョ繝ｼ繧ｿ繧貞叙蠕・
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const result = await db.select().from(imageData).where(eq(imageData.id, id));
 
         if (result.length === 0) {
-            return res.status(404).json({ error: '画像が見つかりません' });
+            return res.status(404).json({ error: '逕ｻ蜒上′隕九▽縺九ｊ縺ｾ縺帙ｓ' });
         }
 
         const image = result[0];
@@ -48,12 +48,12 @@ router.get('/:id', async (req, res) => {
         res.setHeader('Content-Length', image.fileSize);
         res.send(Buffer.from(image.data, 'base64'));
     } catch (error) {
-        console.error('画像取得エラー:', error);
-        res.status(500).json({ error: '画像の取得に失敗しました' });
+        console.error('逕ｻ蜒丞叙蠕励お繝ｩ繝ｼ:', error);
+        res.status(500).json({ error: '逕ｻ蜒上・蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆' });
     }
 });
 
-// カテゴリ別の画像一覧を取得
+// 繧ｫ繝・ざ繝ｪ蛻･縺ｮ逕ｻ蜒丈ｸ隕ｧ繧貞叙蠕・
 router.get('/category/:category', async (req, res) => {
     try {
         const { category } = req.params;
@@ -70,61 +70,61 @@ router.get('/category/:category', async (req, res) => {
 
         res.json(result);
     } catch (error) {
-        console.error('画像一覧取得エラー:', error);
-        res.status(500).json({ error: '画像一覧の取得に失敗しました' });
+        console.error('逕ｻ蜒丈ｸ隕ｧ蜿門ｾ励お繝ｩ繝ｼ:', error);
+        res.status(500).json({ error: '逕ｻ蜒丈ｸ隕ｧ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆' });
     }
 });
 
-// 画像データを削除
+// 逕ｻ蜒上ョ繝ｼ繧ｿ繧貞炎髯､
 router.delete('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const result = await db.delete(imageData).where(eq(imageData.id, id)).returning();
 
         if (result.length === 0) {
-            return res.status(404).json({ error: '画像が見つかりません' });
+            return res.status(404).json({ error: '逕ｻ蜒上′隕九▽縺九ｊ縺ｾ縺帙ｓ' });
         }
 
         res.json({ success: true });
     } catch (error) {
-        console.error('画像削除エラー:', error);
-        res.status(500).json({ error: '画像の削除に失敗しました' });
+        console.error('逕ｻ蜒丞炎髯､繧ｨ繝ｩ繝ｼ:', error);
+        res.status(500).json({ error: '逕ｻ蜒上・蜑企勁縺ｫ螟ｱ謨励＠縺ｾ縺励◆' });
     }
 });
 
-// 画像ファイルを提供（knowledge-base/images/chat-exports/から）
+// 逕ｻ蜒上ヵ繧｡繧､繝ｫ繧呈署萓幢ｼ・nowledge-base/images/chat-exports/縺九ｉ・・
 router.get('/chat-exports/:filename', async (req, res) => {
     try {
         const { filename } = req.params;
         const imagePath = path.join(__dirname, '../../knowledge-base/images/chat-exports', filename);
         
-        // ファイルの存在確認
+        // 繝輔ぃ繧､繝ｫ縺ｮ蟄伜惠遒ｺ隱・
         if (!fs.existsSync(imagePath)) {
-            console.log('画像ファイルが見つかりません:', imagePath);
-            return res.status(404).json({ error: '画像ファイルが見つかりません' });
+            console.log('逕ｻ蜒上ヵ繧｡繧､繝ｫ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ:', imagePath);
+            return res.status(404).json({ error: '逕ｻ蜒上ヵ繧｡繧､繝ｫ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ' });
         }
         
-        // ファイルの拡張子からMIMEタイプを判定
+        // 繝輔ぃ繧､繝ｫ縺ｮ諡｡蠑ｵ蟄舌°繧窺IME繧ｿ繧､繝励ｒ蛻､螳・
         const ext = path.extname(filename).toLowerCase();
-        let mimeType = 'image/jpeg'; // デフォルト
+        let mimeType = 'image/jpeg'; // 繝・ヵ繧ｩ繝ｫ繝・
         if (ext === '.png') mimeType = 'image/png';
         else if (ext === '.gif') mimeType = 'image/gif';
         else if (ext === '.webp') mimeType = 'image/webp';
         
         res.setHeader('Content-Type', mimeType);
-        res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1年間キャッシュ
+        res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1蟷ｴ髢薙く繝｣繝・す繝･
         
-        // ファイルをストリーミングで送信
+        // 繝輔ぃ繧､繝ｫ繧偵せ繝医Μ繝ｼ繝溘Φ繧ｰ縺ｧ騾∽ｿ｡
         const fileStream = fs.createReadStream(imagePath);
         fileStream.pipe(res);
         
     } catch (error) {
-        console.error('画像ファイル提供エラー:', error);
-        res.status(500).json({ error: '画像ファイルの提供に失敗しました' });
+        console.error('逕ｻ蜒上ヵ繧｡繧､繝ｫ謠蝉ｾ帙お繝ｩ繝ｼ:', error);
+        res.status(500).json({ error: '逕ｻ蜒上ヵ繧｡繧､繝ｫ縺ｮ謠蝉ｾ帙↓螟ｱ謨励＠縺ｾ縺励◆' });
     }
 });
 
-// 画像データを検索
+// 逕ｻ蜒上ョ繝ｼ繧ｿ繧呈､懃ｴ｢
 router.get('/search/:query', async (req, res) => {
     try {
         const { query } = req.params;
@@ -143,8 +143,8 @@ router.get('/search/:query', async (req, res) => {
 
         res.json(result);
     } catch (error) {
-        console.error('画像検索エラー:', error);
-        res.status(500).json({ error: '画像の検索に失敗しました' });
+        console.error('逕ｻ蜒乗､懃ｴ｢繧ｨ繝ｩ繝ｼ:', error);
+        res.status(500).json({ error: '逕ｻ蜒上・讀懃ｴ｢縺ｫ螟ｱ謨励＠縺ｾ縺励◆' });
     }
 });
 

@@ -1,4 +1,4 @@
-import * as fs from 'fs/promises';
+﻿import * as fs from 'fs/promises';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import OpenAI from 'openai';
@@ -7,7 +7,7 @@ import { db } from '../db/index.js';
 import { messages, chats } from '../db/schema.js';
 import { like } from 'drizzle-orm';
 
-// ESM用__dirname定義
+// ESM逕ｨ__dirname螳夂ｾｩ
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -26,7 +26,7 @@ export class SearchService {
 
     async searchDocuments(query: string, limit: number = 10): Promise<any[]> {
         try {
-            // メタデータファイルを読み込み
+            // 繝｡繧ｿ繝・・繧ｿ繝輔ぃ繧､繝ｫ繧定ｪｭ縺ｿ霎ｼ縺ｿ
             const metadataFiles = await this.getMetadataFiles();
             const searchableItems: any[] = [];
 
@@ -36,11 +36,11 @@ export class SearchService {
                     const metadata = JSON.parse(content);
                     searchableItems.push(metadata);
                 } catch (error) {
-                    console.error(`メタデータファイル読み込みエラー: ${file}`, error);
+                    console.error(`繝｡繧ｿ繝・・繧ｿ繝輔ぃ繧､繝ｫ隱ｭ縺ｿ霎ｼ縺ｿ繧ｨ繝ｩ繝ｼ: ${file}`, error);
                 }
             }
 
-            // Fuse.jsで検索
+            // Fuse.js縺ｧ讀懃ｴ｢
             if (!this.fuse) {
                 this.fuse = new Fuse(searchableItems, {
                     keys: ['title', 'content', 'keywords'],
@@ -55,14 +55,14 @@ export class SearchService {
                 score: result.score
             }));
         } catch (error) {
-            console.error('ドキュメント検索エラー:', error);
+            console.error('繝峨く繝･繝｡繝ｳ繝域､懃ｴ｢繧ｨ繝ｩ繝ｼ:', error);
             return [];
         }
     }
 
     async searchEmergencyGuides(query: string, limit: number = 5): Promise<any[]> {
         try {
-            // 緊急ガイドファイルを読み込み
+            // 邱頑･繧ｬ繧､繝峨ヵ繧｡繧､繝ｫ繧定ｪｭ縺ｿ霎ｼ縺ｿ
             const guideFiles = await this.getEmergencyGuideFiles();
             const emergencyItems: any[] = [];
 
@@ -72,11 +72,11 @@ export class SearchService {
                     const guide = JSON.parse(content);
                     emergencyItems.push(guide);
                 } catch (error) {
-                    console.error(`緊急ガイドファイル読み込みエラー: ${file}`, error);
+                    console.error(`邱頑･繧ｬ繧､繝峨ヵ繧｡繧､繝ｫ隱ｭ縺ｿ霎ｼ縺ｿ繧ｨ繝ｩ繝ｼ: ${file}`, error);
                 }
             }
 
-            // Fuse.jsで検索
+            // Fuse.js縺ｧ讀懃ｴ｢
             if (!this.emergencyFuse) {
                 this.emergencyFuse = new Fuse(emergencyItems, {
                     keys: ['title', 'description', 'keywords', 'steps'],
@@ -91,14 +91,14 @@ export class SearchService {
                 score: result.score
             }));
         } catch (error) {
-            console.error('緊急ガイド検索エラー:', error);
+            console.error('邱頑･繧ｬ繧､繝画､懃ｴ｢繧ｨ繝ｩ繝ｼ:', error);
             return [];
         }
     }
 
     async semanticSearch(query: string, limit: number = 5): Promise<any[]> {
         try {
-            // OpenAIのEmbeddings APIを使用したセマンティック検索
+            // OpenAI縺ｮEmbeddings API繧剃ｽｿ逕ｨ縺励◆繧ｻ繝槭Φ繝・ぅ繝・け讀懃ｴ｢
             const response = await this.openai.embeddings.create({
                 model: "text-embedding-3-small",
                 input: query
@@ -106,7 +106,7 @@ export class SearchService {
 
             const queryEmbedding = response.data[0].embedding;
             
-            // メタデータファイルを読み込み
+            // 繝｡繧ｿ繝・・繧ｿ繝輔ぃ繧､繝ｫ繧定ｪｭ縺ｿ霎ｼ縺ｿ
             const metadataFiles = await this.getMetadataFiles();
             const searchableItems: any[] = [];
 
@@ -118,11 +118,11 @@ export class SearchService {
                         searchableItems.push(metadata);
                     }
                 } catch (error) {
-                    console.error(`メタデータファイル読み込みエラー: ${file}`, error);
+                    console.error(`繝｡繧ｿ繝・・繧ｿ繝輔ぃ繧､繝ｫ隱ｭ縺ｿ霎ｼ縺ｿ繧ｨ繝ｩ繝ｼ: ${file}`, error);
                 }
             }
 
-            // コサイン類似度で検索
+            // 繧ｳ繧ｵ繧､繝ｳ鬘樔ｼｼ蠎ｦ縺ｧ讀懃ｴ｢
             const results = searchableItems
                 .map(item => ({
                     ...item,
@@ -133,14 +133,14 @@ export class SearchService {
 
             return results;
         } catch (error) {
-            console.error('セマンティック検索エラー:', error);
+            console.error('繧ｻ繝槭Φ繝・ぅ繝・け讀懃ｴ｢繧ｨ繝ｩ繝ｼ:', error);
             return [];
         }
     }
 
     async performSearch(query: string) {
         try {
-            // メッセージから検索
+            // 繝｡繝・そ繝ｼ繧ｸ縺九ｉ讀懃ｴ｢
             const messageResults = await db.select()
                 .from(messages)
                 .where(
@@ -148,7 +148,7 @@ export class SearchService {
                 )
                 .limit(10);
 
-            // チャットから検索
+            // 繝√Ε繝・ヨ縺九ｉ讀懃ｴ｢
             const chatResults = await db.select()
                 .from(chats)
                 .where(
@@ -174,7 +174,7 @@ export class SearchService {
                 .filter(file => file.endsWith('.json'))
                 .map(file => path.join(this.metadataPath, file));
         } catch (error) {
-            console.error('メタデータディレクトリ読み込みエラー:', error);
+            console.error('繝｡繧ｿ繝・・繧ｿ繝・ぅ繝ｬ繧ｯ繝医Μ隱ｭ縺ｿ霎ｼ縺ｿ繧ｨ繝ｩ繝ｼ:', error);
             return [];
         }
     }
@@ -186,7 +186,7 @@ export class SearchService {
                 .filter(file => file.endsWith('.json'))
                 .map(file => path.join(this.emergencyGuidePath, file));
         } catch (error) {
-            console.error('緊急ガイドディレクトリ読み込みエラー:', error);
+            console.error('邱頑･繧ｬ繧､繝峨ョ繧｣繝ｬ繧ｯ繝医Μ隱ｭ縺ｿ霎ｼ縺ｿ繧ｨ繝ｩ繝ｼ:', error);
             return [];
         }
     }

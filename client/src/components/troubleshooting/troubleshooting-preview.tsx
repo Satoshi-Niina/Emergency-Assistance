@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   Card,
   CardContent,
@@ -10,7 +10,7 @@ import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Check, ArrowRight } from 'lucide-react';
 
-// サンプルデータタイプと同じ型を使用
+// 繧ｵ繝ｳ繝励Ν繝・・繧ｿ繧ｿ繧､繝励→蜷後§蝙九ｒ菴ｿ逕ｨ
 interface TroubleshootingStep {
   id: string;
   message: string;
@@ -37,10 +37,10 @@ const TroubleshootingPreview: React.FC<TroubleshootingPreviewProps> = ({
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
   const [history, setHistory] = useState<string[]>([initialStepId]);
 
-  // 現在のステップを取得
+  // 迴ｾ蝨ｨ縺ｮ繧ｹ繝・ャ繝励ｒ蜿門ｾ・
   const currentStep = steps.find(step => step.id === currentStepId);
   
-  // 次のステップに進む処理
+  // 谺｡縺ｮ繧ｹ繝・ャ繝励↓騾ｲ繧蜃ｦ逅・
   const handleNext = () => {
     if (currentStep?.next) {
       const nextStep = currentStep.next;
@@ -49,13 +49,13 @@ const TroubleshootingPreview: React.FC<TroubleshootingPreviewProps> = ({
     }
   };
   
-  // オプションを選択したときの処理
+  // 繧ｪ繝励す繝ｧ繝ｳ繧帝∈謚槭＠縺溘→縺阪・蜃ｦ逅・
   const handleOptionSelect = (nextStepId: string) => {
     setCurrentStepId(nextStepId);
     setHistory([...history, nextStepId]);
   };
   
-  // チェックリストの項目をトグル
+  // 繝√ぉ繝・け繝ｪ繧ｹ繝医・鬆・岼繧偵ヨ繧ｰ繝ｫ
   const toggleChecklist = (index: number) => {
     const itemKey = `${currentStepId}-${index}`;
     setCheckedItems({
@@ -64,59 +64,59 @@ const TroubleshootingPreview: React.FC<TroubleshootingPreviewProps> = ({
     });
   };
   
-  // 戻るボタンの処理
+  // 謌ｻ繧九・繧ｿ繝ｳ縺ｮ蜃ｦ逅・
   const handleBack = () => {
     if (history.length > 1) {
       const newHistory = [...history];
-      newHistory.pop(); // 現在のステップを削除
+      newHistory.pop(); // 迴ｾ蝨ｨ縺ｮ繧ｹ繝・ャ繝励ｒ蜑企勁
       const previousStepId = newHistory[newHistory.length - 1];
       setCurrentStepId(previousStepId);
       setHistory(newHistory);
     }
   };
   
-  // フローをリセット
+  // 繝輔Ο繝ｼ繧偵Μ繧ｻ繝・ヨ
   const handleReset = () => {
     setCurrentStepId(initialStepId);
     setCheckedItems({});
     setHistory([initialStepId]);
   };
   
-  // 現在のステップがチェックリストを持っているかどうか
+  // 迴ｾ蝨ｨ縺ｮ繧ｹ繝・ャ繝励′繝√ぉ繝・け繝ｪ繧ｹ繝医ｒ謖√▲縺ｦ縺・ｋ縺九←縺・°
   const hasChecklist = currentStep?.checklist && currentStep.checklist.length > 0;
   
-  // 現在のステップが選択肢を持っているかどうか
+  // 迴ｾ蝨ｨ縺ｮ繧ｹ繝・ャ繝励′驕ｸ謚櫁い繧呈戟縺｣縺ｦ縺・ｋ縺九←縺・°
   const hasOptions = currentStep?.options && currentStep.options.length > 0;
   
-  // 次へボタンが有効かどうか（チェックリストがすべてチェックされているか）
+  // 谺｡縺ｸ繝懊ち繝ｳ縺梧怏蜉ｹ縺九←縺・°・医メ繧ｧ繝・け繝ｪ繧ｹ繝医′縺吶∋縺ｦ繝√ぉ繝・け縺輔ｌ縺ｦ縺・ｋ縺具ｼ・
   const isNextButtonEnabled = !hasChecklist || 
     (currentStep?.checklist?.every((_, index) => 
       checkedItems[`${currentStepId}-${index}`]));
   
-  // 終了ステップかどうか
+  // 邨ゆｺ・せ繝・ャ繝励°縺ｩ縺・°
   const isEndStep = currentStep?.end;
   
   if (!currentStep) {
-    return <div className="text-center p-4">ステップ "{currentStepId}" が見つかりません</div>;
+    return <div className="text-center p-4">繧ｹ繝・ャ繝・"{currentStepId}" 縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ</div>;
   }
   
   return (
     <Card className="max-w-xl mx-auto shadow-lg">
       <CardHeader className="bg-blue-50">
         <div className="flex justify-between items-center">
-          <CardTitle className="text-lg">トラブルシューティングプレビュー</CardTitle>
+          <CardTitle className="text-lg">繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ繝励Ξ繝薙Η繝ｼ</CardTitle>
           <Badge variant="outline" className="font-mono">
             {currentStepId}
           </Badge>
         </div>
         <CardDescription>
-          現在編集中の内容をリアルタイムでプレビューします。編集内容がすぐに反映されます。
+          迴ｾ蝨ｨ邱ｨ髮・ｸｭ縺ｮ蜀・ｮｹ繧偵Μ繧｢繝ｫ繧ｿ繧､繝縺ｧ繝励Ξ繝薙Η繝ｼ縺励∪縺吶らｷｨ髮・・螳ｹ縺後☆縺舌↓蜿肴丐縺輔ｌ縺ｾ縺吶・
         </CardDescription>
       </CardHeader>
       
       <CardContent className="pt-6 pb-4">
         <div className="space-y-6">
-          {/* ステップのメッセージ表示 */}
+          {/* 繧ｹ繝・ャ繝励・繝｡繝・そ繝ｼ繧ｸ陦ｨ遉ｺ */}
           <div className="prose">
             {currentStep.message.split('\n').map((line, idx) => (
               <p key={idx} className={idx === 0 ? "font-medium text-lg" : "text-gray-700"}>
@@ -125,10 +125,10 @@ const TroubleshootingPreview: React.FC<TroubleshootingPreviewProps> = ({
             ))}
           </div>
           
-          {/* チェックリスト表示 */}
+          {/* 繝√ぉ繝・け繝ｪ繧ｹ繝郁｡ｨ遉ｺ */}
           {hasChecklist && (
             <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-md font-medium mb-3">確認事項:</h3>
+              <h3 className="text-md font-medium mb-3">遒ｺ隱堺ｺ矩・</h3>
               <div className="space-y-2">
                 {currentStep.checklist?.map((item, index) => (
                   <div 
@@ -149,7 +149,7 @@ const TroubleshootingPreview: React.FC<TroubleshootingPreviewProps> = ({
             </div>
           )}
           
-          {/* 選択肢表示 */}
+          {/* 驕ｸ謚櫁い陦ｨ遉ｺ */}
           {hasOptions && (
             <div className="space-y-2">
               {currentStep.options?.map((option, index) => (
@@ -170,7 +170,7 @@ const TroubleshootingPreview: React.FC<TroubleshootingPreviewProps> = ({
             </div>
           )}
           
-          {/* 次へボタン（選択肢がない場合のみ表示） */}
+          {/* 谺｡縺ｸ繝懊ち繝ｳ・磯∈謚櫁い縺後↑縺・ｴ蜷医・縺ｿ陦ｨ遉ｺ・・*/}
           {!hasOptions && !isEndStep && currentStep.next && (
             <div className="pt-4">
               <Button 
@@ -178,21 +178,21 @@ const TroubleshootingPreview: React.FC<TroubleshootingPreviewProps> = ({
                 onClick={handleNext}
                 disabled={!isNextButtonEnabled}
               >
-                次へ進む
+                谺｡縺ｸ騾ｲ繧
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
           )}
           
-          {/* 終了メッセージ */}
+          {/* 邨ゆｺ・Γ繝・そ繝ｼ繧ｸ */}
           {isEndStep && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-              <h3 className="text-green-800 font-medium mb-2">トラブルシューティングが完了しました</h3>
-              <p className="text-green-700 text-sm">お疲れ様でした。問題は解決しましたか？</p>
+              <h3 className="text-green-800 font-medium mb-2">繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ縺悟ｮ御ｺ・＠縺ｾ縺励◆</h3>
+              <p className="text-green-700 text-sm">縺顔夢繧梧ｧ倥〒縺励◆縲ょ撫鬘後・隗｣豎ｺ縺励∪縺励◆縺具ｼ・/p>
             </div>
           )}
           
-          {/* ナビゲーションコントロール */}
+          {/* 繝翫ン繧ｲ繝ｼ繧ｷ繝ｧ繝ｳ繧ｳ繝ｳ繝医Ο繝ｼ繝ｫ */}
           <div className="flex justify-between pt-6 border-t">
             <Button
               variant="ghost"
@@ -200,7 +200,7 @@ const TroubleshootingPreview: React.FC<TroubleshootingPreviewProps> = ({
               onClick={handleBack}
               disabled={history.length <= 1}
             >
-              戻る
+              謌ｻ繧・
             </Button>
             
             <Button
@@ -208,7 +208,7 @@ const TroubleshootingPreview: React.FC<TroubleshootingPreviewProps> = ({
               size="sm"
               onClick={handleReset}
             >
-              最初からやり直す
+              譛蛻昴°繧峨ｄ繧顔峩縺・
             </Button>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { BlobServiceClient, StorageSharedKeyCredential, ContainerClient } from '@azure/storage-blob';
+﻿import { BlobServiceClient, StorageSharedKeyCredential, ContainerClient } from '@azure/storage-blob';
 import path from 'path';
 import fs from 'fs/promises';
 import { createReadStream, createWriteStream } from 'fs';
@@ -25,7 +25,7 @@ interface DownloadOptions {
 
 /**
  * Enhanced Azure Blob Storage Service with reliability features
- * 信頼性の高いAzure Blob Storageサービス
+ * 菫｡鬆ｼ諤ｧ縺ｮ鬮倥＞Azure Blob Storage繧ｵ繝ｼ繝薙せ
  */
 export class EnhancedAzureStorageService {
   private blobServiceClient: BlobServiceClient;
@@ -60,28 +60,28 @@ export class EnhancedAzureStorageService {
 
   /**
    * Ensure container exists with proper error handling
-   * コンテナの存在確認とエラーハンドリング
+   * 繧ｳ繝ｳ繝・リ縺ｮ蟄伜惠遒ｺ隱阪→繧ｨ繝ｩ繝ｼ繝上Φ繝峨Μ繝ｳ繧ｰ
    */
   async ensureContainer(): Promise<boolean> {
     try {
       const exists = await this.containerClient.exists();
       if (!exists) {
-        console.log(`📦 Creating container: ${this.config.containerName}`);
+        console.log(`逃 Creating container: ${this.config.containerName}`);
         await this.containerClient.create({
           access: 'blob', // or 'container' for public access
         });
-        console.log(`✅ Container created: ${this.config.containerName}`);
+        console.log(`笨・Container created: ${this.config.containerName}`);
       }
       return true;
     } catch (error: any) {
-      console.error('❌ Container initialization failed:', error.message);
+      console.error('笶・Container initialization failed:', error.message);
       throw new Error(`Container initialization failed: ${error.message}`);
     }
   }
 
   /**
    * Retry wrapper for operations
-   * 操作のリトライラッパー
+   * 謫堺ｽ懊・繝ｪ繝医Λ繧､繝ｩ繝・ヱ繝ｼ
    */
   private async withRetry<T>(
     operation: () => Promise<T>,
@@ -94,11 +94,11 @@ export class EnhancedAzureStorageService {
         return await operation();
       } catch (error: any) {
         lastError = error;
-        console.warn(`⚠️ ${operationName} attempt ${attempt}/${this.config.maxRetries} failed:`, error.message);
+        console.warn(`笞・・${operationName} attempt ${attempt}/${this.config.maxRetries} failed:`, error.message);
         
         if (attempt < this.config.maxRetries) {
           const delay = this.config.retryDelayMs * attempt;
-          console.log(`⏳ Retrying in ${delay}ms...`);
+          console.log(`竢ｳ Retrying in ${delay}ms...`);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
@@ -109,7 +109,7 @@ export class EnhancedAzureStorageService {
 
   /**
    * Normalize blob path for consistency
-   * Blobパスの正規化
+   * Blob繝代せ縺ｮ豁｣隕丞喧
    */
   private normalizeBlobPath(blobPath: string): string {
     return blobPath
@@ -120,7 +120,7 @@ export class EnhancedAzureStorageService {
 
   /**
    * Upload file with enhanced reliability
-   * 信頼性の高いファイルアップロード
+   * 菫｡鬆ｼ諤ｧ縺ｮ鬮倥＞繝輔ぃ繧､繝ｫ繧｢繝・・繝ｭ繝ｼ繝・
    */
   async uploadFile(
     localFilePath: string, 
@@ -147,7 +147,7 @@ export class EnhancedAzureStorageService {
           }
         }
 
-        console.log(`⬆️ Uploading: ${localFilePath} → ${normalizedPath} (${stats.size} bytes)`);
+        console.log(`筮・ｸ・Uploading: ${localFilePath} 竊・${normalizedPath} (${stats.size} bytes)`);
         
         const uploadResponse = await blockBlobClient.uploadFile(localFilePath, {
           metadata: options.metadata,
@@ -156,7 +156,7 @@ export class EnhancedAzureStorageService {
           },
         });
 
-        console.log(`✅ Upload successful: ${normalizedPath}`);
+        console.log(`笨・Upload successful: ${normalizedPath}`);
         
         return {
           success: true,
@@ -164,7 +164,7 @@ export class EnhancedAzureStorageService {
           etag: uploadResponse.etag,
         };
       } catch (error: any) {
-        console.error(`❌ Upload failed: ${normalizedPath}`, error.message);
+        console.error(`笶・Upload failed: ${normalizedPath}`, error.message);
         throw error;
       }
     }, `Upload ${normalizedPath}`);
@@ -172,7 +172,7 @@ export class EnhancedAzureStorageService {
 
   /**
    * Download file with enhanced reliability
-   * 信頼性の高いファイルダウンロード
+   * 菫｡鬆ｼ諤ｧ縺ｮ鬮倥＞繝輔ぃ繧､繝ｫ繝繧ｦ繝ｳ繝ｭ繝ｼ繝・
    */
   async downloadFile(
     blobPath: string, 
@@ -199,13 +199,13 @@ export class EnhancedAzureStorageService {
           await fs.mkdir(localDir, { recursive: true });
         }
 
-        console.log(`⬇️ Downloading: ${normalizedPath} → ${localFilePath}`);
+        console.log(`筮・ｸ・Downloading: ${normalizedPath} 竊・${localFilePath}`);
         
         const downloadResponse = await blockBlobClient.downloadToFile(localFilePath);
         
         const stats = await fs.stat(localFilePath);
         
-        console.log(`✅ Download successful: ${normalizedPath} (${stats.size} bytes)`);
+        console.log(`笨・Download successful: ${normalizedPath} (${stats.size} bytes)`);
         
         return {
           success: true,
@@ -213,7 +213,7 @@ export class EnhancedAzureStorageService {
           lastModified: downloadResponse.lastModified,
         };
       } catch (error: any) {
-        console.error(`❌ Download failed: ${normalizedPath}`, error.message);
+        console.error(`笶・Download failed: ${normalizedPath}`, error.message);
         throw error;
       }
     }, `Download ${normalizedPath}`);
@@ -221,7 +221,7 @@ export class EnhancedAzureStorageService {
 
   /**
    * List blobs with filtering and pagination
-   * Blobの一覧取得（フィルタリングとページネーション対応）
+   * Blob縺ｮ荳隕ｧ蜿門ｾ暦ｼ医ヵ繧｣繝ｫ繧ｿ繝ｪ繝ｳ繧ｰ縺ｨ繝壹・繧ｸ繝阪・繧ｷ繝ｧ繝ｳ蟇ｾ蠢懶ｼ・
    */
   async listBlobs(prefix?: string, maxResults?: number): Promise<{
     blobs: Array<{
@@ -239,7 +239,7 @@ export class EnhancedAzureStorageService {
       const blobs: any[] = [];
       const normalizedPrefix = prefix ? this.normalizeBlobPath(prefix) : undefined;
       
-      console.log(`📋 Listing blobs${normalizedPrefix ? ` with prefix: ${normalizedPrefix}` : ''}`);
+      console.log(`搭 Listing blobs${normalizedPrefix ? ` with prefix: ${normalizedPrefix}` : ''}`);
       
       for await (const blob of this.containerClient.listBlobsFlat({ 
         prefix: normalizedPrefix,
@@ -257,7 +257,7 @@ export class EnhancedAzureStorageService {
         }
       }
       
-      console.log(`📋 Found ${blobs.length} blobs`);
+      console.log(`搭 Found ${blobs.length} blobs`);
       
       return {
         blobs,
@@ -268,7 +268,7 @@ export class EnhancedAzureStorageService {
 
   /**
    * Delete blob with confirmation
-   * Blobの削除（確認付き）
+   * Blob縺ｮ蜑企勁・育｢ｺ隱堺ｻ倥″・・
    */
   async deleteBlob(blobPath: string): Promise<{ success: boolean; deleted: boolean }> {
     await this.ensureContainer();
@@ -282,19 +282,19 @@ export class EnhancedAzureStorageService {
         // Check if blob exists
         const exists = await blockBlobClient.exists();
         if (!exists) {
-          console.log(`ℹ️ Blob not found (already deleted?): ${normalizedPath}`);
+          console.log(`邃ｹ・・Blob not found (already deleted?): ${normalizedPath}`);
           return { success: true, deleted: false };
         }
 
-        console.log(`🗑️ Deleting blob: ${normalizedPath}`);
+        console.log(`卵・・Deleting blob: ${normalizedPath}`);
         
         await blockBlobClient.delete();
         
-        console.log(`✅ Blob deleted: ${normalizedPath}`);
+        console.log(`笨・Blob deleted: ${normalizedPath}`);
         
         return { success: true, deleted: true };
       } catch (error: any) {
-        console.error(`❌ Delete failed: ${normalizedPath}`, error.message);
+        console.error(`笶・Delete failed: ${normalizedPath}`, error.message);
         throw error;
       }
     }, `Delete ${normalizedPath}`);
@@ -302,7 +302,7 @@ export class EnhancedAzureStorageService {
 
   /**
    * Sync directory to blob storage
-   * ディレクトリをBlobストレージに同期
+   * 繝・ぅ繝ｬ繧ｯ繝医Μ繧達lob繧ｹ繝医Ξ繝ｼ繧ｸ縺ｫ蜷梧悄
    */
   async syncDirectoryToBlob(
     localDirPath: string, 
@@ -333,10 +333,10 @@ export class EnhancedAzureStorageService {
       // Get remote blobs
       const { blobs: remoteBlobs } = await this.listBlobs(blobPrefix);
       
-      console.log(`🔄 Syncing ${localFiles.length} local files with ${remoteBlobs.length} remote blobs`);
+      console.log(`売 Syncing ${localFiles.length} local files with ${remoteBlobs.length} remote blobs`);
       
       if (options.dryRun) {
-        console.log('🔍 DRY RUN MODE - No changes will be made');
+        console.log('剥 DRY RUN MODE - No changes will be made');
       }
 
       // Upload local files
@@ -350,7 +350,7 @@ export class EnhancedAzureStorageService {
           }
           
           result.uploaded.push(blobPath);
-          console.log(`📤 ${options.dryRun ? '[DRY RUN] ' : ''}Uploaded: ${blobPath}`);
+          console.log(`豆 ${options.dryRun ? '[DRY RUN] ' : ''}Uploaded: ${blobPath}`);
         } catch (error: any) {
           result.errors.push({ path: localFile, error: error.message });
         }
@@ -371,7 +371,7 @@ export class EnhancedAzureStorageService {
               }
               
               result.deleted.push(remoteBlob.name);
-              console.log(`🗑️ ${options.dryRun ? '[DRY RUN] ' : ''}Deleted orphaned: ${remoteBlob.name}`);
+              console.log(`卵・・${options.dryRun ? '[DRY RUN] ' : ''}Deleted orphaned: ${remoteBlob.name}`);
             } catch (error: any) {
               result.errors.push({ path: remoteBlob.name, error: error.message });
             }
@@ -380,7 +380,7 @@ export class EnhancedAzureStorageService {
       }
 
     } catch (error: any) {
-      console.error('❌ Sync operation failed:', error.message);
+      console.error('笶・Sync operation failed:', error.message);
       throw error;
     }
 
@@ -389,7 +389,7 @@ export class EnhancedAzureStorageService {
 
   /**
    * Sync blob storage to directory
-   * Blobストレージからディレクトリに同期
+   * Blob繧ｹ繝医Ξ繝ｼ繧ｸ縺九ｉ繝・ぅ繝ｬ繧ｯ繝医Μ縺ｫ蜷梧悄
    */
   async syncBlobToDirectory(
     blobPrefix: string,
@@ -416,10 +416,10 @@ export class EnhancedAzureStorageService {
       // Get remote blobs
       const { blobs: remoteBlobs } = await this.listBlobs(blobPrefix);
       
-      console.log(`🔄 Syncing ${remoteBlobs.length} remote blobs to ${localDirPath}`);
+      console.log(`売 Syncing ${remoteBlobs.length} remote blobs to ${localDirPath}`);
       
       if (options.dryRun) {
-        console.log('🔍 DRY RUN MODE - No changes will be made');
+        console.log('剥 DRY RUN MODE - No changes will be made');
       }
 
       // Download remote blobs
@@ -436,7 +436,7 @@ export class EnhancedAzureStorageService {
           
           if (localExists && !options.overwrite) {
             result.skipped.push(localFilePath);
-            console.log(`⏭️ Skipped (exists): ${localFilePath}`);
+            console.log(`竢ｭ・・Skipped (exists): ${localFilePath}`);
             continue;
           }
           
@@ -445,7 +445,7 @@ export class EnhancedAzureStorageService {
           }
           
           result.downloaded.push(localFilePath);
-          console.log(`📥 ${options.dryRun ? '[DRY RUN] ' : ''}Downloaded: ${localFilePath}`);
+          console.log(`踏 ${options.dryRun ? '[DRY RUN] ' : ''}Downloaded: ${localFilePath}`);
         } catch (error: any) {
           result.errors.push({ path: remoteBlob.name, error: error.message });
         }
@@ -469,7 +469,7 @@ export class EnhancedAzureStorageService {
               }
               
               result.deleted.push(localFile);
-              console.log(`🗑️ ${options.dryRun ? '[DRY RUN] ' : ''}Deleted orphaned: ${localFile}`);
+              console.log(`卵・・${options.dryRun ? '[DRY RUN] ' : ''}Deleted orphaned: ${localFile}`);
             } catch (error: any) {
               result.errors.push({ path: localFile, error: error.message });
             }
@@ -478,7 +478,7 @@ export class EnhancedAzureStorageService {
       }
 
     } catch (error: any) {
-      console.error('❌ Sync operation failed:', error.message);
+      console.error('笶・Sync operation failed:', error.message);
       throw error;
     }
 
@@ -487,7 +487,7 @@ export class EnhancedAzureStorageService {
 
   /**
    * Get content type from file extension
-   * ファイル拡張子からコンテンツタイプを取得
+   * 繝輔ぃ繧､繝ｫ諡｡蠑ｵ蟄舌°繧峨さ繝ｳ繝・Φ繝・ち繧､繝励ｒ蜿門ｾ・
    */
   private getContentType(filePath: string): string {
     const ext = path.extname(filePath).toLowerCase();
@@ -513,7 +513,7 @@ export class EnhancedAzureStorageService {
 
   /**
    * Get local files recursively
-   * ローカルファイルを再帰的に取得
+   * 繝ｭ繝ｼ繧ｫ繝ｫ繝輔ぃ繧､繝ｫ繧貞・蟶ｰ逧・↓蜿門ｾ・
    */
   private async getLocalFiles(
     dirPath: string, 
@@ -551,7 +551,7 @@ export class EnhancedAzureStorageService {
 
   /**
    * Health check for storage service
-   * ストレージサービスのヘルスチェック
+   * 繧ｹ繝医Ξ繝ｼ繧ｸ繧ｵ繝ｼ繝薙せ縺ｮ繝倥Ν繧ｹ繝√ぉ繝・け
    */
   async healthCheck(): Promise<{
     status: 'healthy' | 'unhealthy';

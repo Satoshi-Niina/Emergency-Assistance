@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { ArrowLeft, ArrowRight, X } from 'lucide-react';
@@ -53,7 +53,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
         setFlowData(data);
       } catch (err) {
         console.error("Flow data fetch error:", err);
-        setError("フローデータの取得に失敗しました");
+        setError("繝輔Ο繝ｼ繝・・繧ｿ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆");
       } finally {
         setLoading(false);
       }
@@ -95,11 +95,11 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
     return (
       <Card className="w-full max-w-4xl mx-auto">
         <CardHeader>
-          <CardTitle className="text-red-600">エラー</CardTitle>
+          <CardTitle className="text-red-600">繧ｨ繝ｩ繝ｼ</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="mb-4">{error || "フローデータが見つかりません"}</p>
-          <Button onClick={onClose}>閉じる</Button>
+          <p className="mb-4">{error || "繝輔Ο繝ｼ繝・・繧ｿ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ"}</p>
+          <Button onClick={onClose}>髢峨§繧・/Button>
         </CardContent>
       </Card>
     );
@@ -113,8 +113,8 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
     return (
       <Card className="w-full max-w-4xl mx-auto">
         <CardContent>
-          <p className="text-center py-8">ステップが見つかりません</p>
-          <Button onClick={onClose} className="w-full">閉じる</Button>
+          <p className="text-center py-8">繧ｹ繝・ャ繝励′隕九▽縺九ｊ縺ｾ縺帙ｓ</p>
+          <Button onClick={onClose} className="w-full">髢峨§繧・/Button>
         </CardContent>
       </Card>
     );
@@ -127,15 +127,15 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
           <div className="flex items-start gap-2 flex-1 min-w-0">
             <Button variant="ghost" size="sm" onClick={onClose} className="flex-shrink-0">
               <ArrowLeft className="h-4 w-4" />
-              戻る
+              謌ｻ繧・
             </Button>
             <CardTitle className="text-xl break-words leading-tight">
-              {flowData.title} (プレビュー)
+              {flowData.title} (繝励Ξ繝薙Η繝ｼ)
             </CardTitle>
           </div>
           <div className="flex items-center gap-2">
             <div className="text-sm text-gray-500 flex-shrink-0 ml-4">
-              ステップ {currentStepIndex + 1} / {flowData.steps.length}
+              繧ｹ繝・ャ繝・{currentStepIndex + 1} / {flowData.steps.length}
             </div>
             <Button 
               variant="outline" 
@@ -143,7 +143,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
               onClick={onClose} 
               className="h-8 px-3 border-gray-300 hover:bg-gray-100"
             >
-              閉じる
+              髢峨§繧・
             </Button>
           </div>
         </div>
@@ -151,7 +151,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
 
       <CardContent>
         <div className="space-y-6">
-          {/* ステップタイトル */}
+          {/* 繧ｹ繝・ャ繝励ち繧､繝医Ν */}
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
             <h3 className="font-semibold text-blue-900 mb-2 text-lg">
               {currentStep.title}
@@ -166,10 +166,10 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
             </div>
           </div>
 
-          {/* 条件分岐（プレビューモード） */}
+          {/* 譚｡莉ｶ蛻・ｲ撰ｼ医・繝ｬ繝薙Η繝ｼ繝｢繝ｼ繝会ｼ・*/}
           {currentStep.type === 'decision' && currentStep.conditions && currentStep.conditions.length > 0 && (
             <div className="space-y-3">
-              <h4 className="font-medium text-gray-900">条件分岐:</h4>
+              <h4 className="font-medium text-gray-900">譚｡莉ｶ蛻・ｲ・</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {currentStep.conditions.map((condition, index) => (
                   <div
@@ -178,12 +178,12 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
                   >
                     <div className="font-medium text-sm">{condition.label}</div>
                     <div className="text-xs text-gray-500 mt-1">
-                      次ステップ: {(() => {
+                      谺｡繧ｹ繝・ャ繝・ {(() => {
                         const targetStep = flowData.steps.find(s => s.id === condition.nextId);
                         const targetIndex = flowData.steps.findIndex(s => s.id === condition.nextId);
                         return targetStep ? 
-                          `${targetStep.title || `ステップ ${targetIndex + 1}`}` : 
-                          '未設定';
+                          `${targetStep.title || `繧ｹ繝・ャ繝・${targetIndex + 1}`}` : 
+                          '譛ｪ險ｭ螳・;
                       })()}
                     </div>
                   </div>
@@ -192,14 +192,14 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
             </div>
           )}
 
-          {/* 画像表示エリア */}
+          {/* 逕ｻ蜒剰｡ｨ遉ｺ繧ｨ繝ｪ繧｢ */}
           {currentStep.images && currentStep.images.length > 0 && (
             <div className="space-y-3">
-              <h4 className="font-medium text-gray-900">画像:</h4>
+              <h4 className="font-medium text-gray-900">逕ｻ蜒・</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {currentStep.images.map((image, index) => {
                   const imageUrl = convertImageUrl(image.url);
-                  console.log('画像URL変換:', { original: image.url, converted: imageUrl });
+                  console.log('逕ｻ蜒酋RL螟画鋤:', { original: image.url, converted: imageUrl });
                   
                   return (
                     <div key={index} className="relative">
@@ -208,14 +208,14 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
                         alt={image.fileName}
                         className="w-full h-48 object-cover rounded-lg border"
                         onError={(e) => {
-                          console.error('画像読み込みエラー:', image.url);
-                          console.error('変換後のURL:', imageUrl);
+                          console.error('逕ｻ蜒剰ｪｭ縺ｿ霎ｼ縺ｿ繧ｨ繝ｩ繝ｼ:', image.url);
+                          console.error('螟画鋤蠕後・URL:', imageUrl);
                           const target = e.currentTarget;
                           target.style.display = 'none';
                           
                           const errorDiv = document.createElement('div');
                           errorDiv.className = 'w-full h-48 bg-red-100 border border-red-300 text-red-700 px-3 py-2 rounded-lg text-sm flex items-center justify-center';
-                          errorDiv.textContent = '画像の読み込みに失敗しました';
+                          errorDiv.textContent = '逕ｻ蜒上・隱ｭ縺ｿ霎ｼ縺ｿ縺ｫ螟ｱ謨励＠縺ｾ縺励◆';
                           target.parentNode?.appendChild(errorDiv);
                         }}
                       />
@@ -229,7 +229,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
             </div>
           )}
 
-          {/* ナビゲーションボタン */}
+          {/* 繝翫ン繧ｲ繝ｼ繧ｷ繝ｧ繝ｳ繝懊ち繝ｳ */}
           <div className="flex justify-between items-center pt-4 border-t">
             <Button
               variant="outline"
@@ -237,7 +237,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
               disabled={isFirstStep}
             >
               <ArrowLeft className="h-4 w-4 mr-1" />
-              前へ
+              蜑阪∈
             </Button>
             
             <div className="text-sm text-gray-500">
@@ -249,7 +249,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
               onClick={handleNext}
               disabled={isLastStep}
             >
-              次へ
+              谺｡縺ｸ
               <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
           </div>

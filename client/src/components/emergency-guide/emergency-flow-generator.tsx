@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+﻿import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -37,8 +37,8 @@ export default function EmergencyFlowGenerator({ onFlowGenerated }: FlowGenerato
   const handleGenerate = async () => {
     if (!file && !keywords) {
       toast({
-        title: 'エラー',
-        description: 'ファイルを選択するか、キーワードを入力してください。',
+        title: '繧ｨ繝ｩ繝ｼ',
+        description: '繝輔ぃ繧､繝ｫ繧帝∈謚槭☆繧九°縲√く繝ｼ繝ｯ繝ｼ繝峨ｒ蜈･蜉帙＠縺ｦ縺上□縺輔＞縲・,
         variant: 'destructive',
       });
       return;
@@ -54,12 +54,12 @@ export default function EmergencyFlowGenerator({ onFlowGenerated }: FlowGenerato
         formData.append('file', file);
         const response = await apiRequest('POST', '/api/flow-generator/file', formData);
         flowData = await response.json();
-        toast({ title: '成功', description: 'ファイルからフローが生成されました。' });
+        toast({ title: '謌仙粥', description: '繝輔ぃ繧､繝ｫ縺九ｉ繝輔Ο繝ｼ縺檎函謌舌＆繧後∪縺励◆縲・ });
       } else {
         // Generate from keywords
         const response = await apiRequest('POST', '/api/flow-generator/keywords', { keywords });
         flowData = await response.json();
-        toast({ title: '成功', description: 'キーワードからフローが生成されました。' });
+        toast({ title: '謌仙粥', description: '繧ｭ繝ｼ繝ｯ繝ｼ繝峨°繧峨ヵ繝ｭ繝ｼ縺檎函謌舌＆繧後∪縺励◆縲・ });
       }
       
       // Pass the generated flow data to the parent component
@@ -67,8 +67,8 @@ export default function EmergencyFlowGenerator({ onFlowGenerated }: FlowGenerato
 
     } catch (error: any) {
       toast({
-        title: '生成エラー',
-        description: error.message || 'フローの生成中に不明なエラーが発生しました。',
+        title: '逕滓・繧ｨ繝ｩ繝ｼ',
+        description: error.message || '繝輔Ο繝ｼ縺ｮ逕滓・荳ｭ縺ｫ荳肴・縺ｪ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆縲・,
         variant: 'destructive',
       });
     } finally {
@@ -81,20 +81,20 @@ export default function EmergencyFlowGenerator({ onFlowGenerated }: FlowGenerato
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Cpu className="w-6 h-6 text-blue-600" />
-          AIによるフロー自動生成
+          AI縺ｫ繧医ｋ繝輔Ο繝ｼ閾ｪ蜍慕函謌・
         </CardTitle>
         <CardDescription>
-          ドキュメントファイルまたはキーワードから、応急処置フローの草案を自動で生成します。
+          繝峨く繝･繝｡繝ｳ繝医ヵ繧｡繧､繝ｫ縺ｾ縺溘・繧ｭ繝ｼ繝ｯ繝ｼ繝峨°繧峨∝ｿ懈･蜃ｦ鄂ｮ繝輔Ο繝ｼ縺ｮ闕画｡医ｒ閾ｪ蜍輔〒逕滓・縺励∪縺吶・
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Keyword Input Section - 上段に移動 */}
+        {/* Keyword Input Section - 荳頑ｮｵ縺ｫ遘ｻ蜍・*/}
         <div className="space-y-2">
-            <Label htmlFor="keywords" className="text-lg font-semibold">キーワードから生成</Label>
-            <p className="text-sm text-gray-500">フローの核となるキーワードや症状をカンマ区切りで入力してください。</p>
+            <Label htmlFor="keywords" className="text-lg font-semibold">繧ｭ繝ｼ繝ｯ繝ｼ繝峨°繧臥函謌・/Label>
+            <p className="text-sm text-gray-500">繝輔Ο繝ｼ縺ｮ譬ｸ縺ｨ縺ｪ繧九く繝ｼ繝ｯ繝ｼ繝峨ｄ逞・憾繧偵き繝ｳ繝槫玄蛻・ｊ縺ｧ蜈･蜉帙＠縺ｦ縺上□縺輔＞縲・/p>
             <textarea
                 id="keywords"
-                placeholder="例: エンジン停止, 警告灯点灯, 異音"
+                placeholder="萓・ 繧ｨ繝ｳ繧ｸ繝ｳ蛛懈ｭ｢, 隴ｦ蜻顔・轤ｹ轣ｯ, 逡ｰ髻ｳ"
                 value={keywords}
                 onChange={(e) => setKeywords(e.target.value)}
                 disabled={!!file}
@@ -112,12 +112,12 @@ export default function EmergencyFlowGenerator({ onFlowGenerated }: FlowGenerato
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    生成中...
+                    逕滓・荳ｭ...
                   </>
                 ) : (
                   <>
                     <Send className="mr-2 h-4 w-4" />
-                    フローを生成
+                    繝輔Ο繝ｼ繧堤函謌・
                   </>
                 )}
               </Button>
@@ -126,21 +126,21 @@ export default function EmergencyFlowGenerator({ onFlowGenerated }: FlowGenerato
 
         <div className="relative flex items-center justify-center">
             <div className="flex-grow border-t border-gray-300"></div>
-            <span className="flex-shrink mx-4 text-gray-500 font-semibold">または</span>
+            <span className="flex-shrink mx-4 text-gray-500 font-semibold">縺ｾ縺溘・</span>
             <div className="flex-grow border-t border-gray-300"></div>
         </div>
 
-        {/* File Upload Section - 下段に移動 */}
+        {/* File Upload Section - 荳区ｮｵ縺ｫ遘ｻ蜍・*/}
         <div {...getRootProps()} className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}`}>
           <input {...getInputProps()} />
           <div className="flex flex-col items-center justify-center gap-2 text-gray-500">
             <FileUp className="w-10 h-10" />
             {isDragActive ? (
-              <p>ここにファイルをドロップ</p>
+              <p>縺薙％縺ｫ繝輔ぃ繧､繝ｫ繧偵ラ繝ｭ繝・・</p>
             ) : (
-              <p>ここにファイルをドラッグ＆ドロップするか、クリックして選択</p>
+              <p>縺薙％縺ｫ繝輔ぃ繧､繝ｫ繧偵ラ繝ｩ繝・げ・・ラ繝ｭ繝・・縺吶ｋ縺九√け繝ｪ繝・け縺励※驕ｸ謚・/p>
             )}
-            <p className="text-xs">(.pptx, .pdf, .txt ファイルに対応)</p>
+            <p className="text-xs">(.pptx, .pdf, .txt 繝輔ぃ繧､繝ｫ縺ｫ蟇ｾ蠢・</p>
           </div>
         </div>
 
@@ -152,7 +152,7 @@ export default function EmergencyFlowGenerator({ onFlowGenerated }: FlowGenerato
           </div>
         )}
 
-        {/* Generate Button - サイズを80%に変更、中央配置 */}
+        {/* Generate Button - 繧ｵ繧､繧ｺ繧・0%縺ｫ螟画峩縲∽ｸｭ螟ｮ驟咲ｽｮ */}
         <div className="flex justify-center">
           <Button 
             onClick={handleGenerate} 
@@ -164,12 +164,12 @@ export default function EmergencyFlowGenerator({ onFlowGenerated }: FlowGenerato
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                生成中...
+                逕滓・荳ｭ...
               </>
             ) : (
               <>
                 <Send className="mr-2 h-3 w-3" />
-                フローを生成
+                繝輔Ο繝ｼ繧堤函謌・
               </>
             )}
           </Button>

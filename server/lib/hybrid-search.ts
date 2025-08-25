@@ -1,4 +1,4 @@
-import OpenAI from 'openai';
+﻿import OpenAI from 'openai';
 import { searchKnowledgeBase } from './knowledge-base.js';
 import { SearchService } from '../services/search.js';
 
@@ -32,28 +32,28 @@ export class HybridSearchService {
   
   async hybridSearch(query: string): Promise<HybridSearchResult> {
     try {
-      console.log('🔍 ハイブリッド検索開始:', query);
+      console.log('剥 繝上う繝悶Μ繝・ラ讀懃ｴ｢髢句ｧ・', query);
       
-      // 1. キーワードベース検索（Fuse.js）
+      // 1. 繧ｭ繝ｼ繝ｯ繝ｼ繝峨・繝ｼ繧ｹ讀懃ｴ｢・・use.js・・
       const keywordResults = await this.searchService.searchDocuments(query, 5);
-      console.log('📊 キーワード検索結果:', keywordResults.length);
+      console.log('投 繧ｭ繝ｼ繝ｯ繝ｼ繝画､懃ｴ｢邨先棡:', keywordResults.length);
       
-      // 2. セマンティック検索（OpenAI Embeddings）
+      // 2. 繧ｻ繝槭Φ繝・ぅ繝・け讀懃ｴ｢・・penAI Embeddings・・
       const semanticResults = await this.searchService.semanticSearch(query, 5);
-      console.log('📊 セマンティック検索結果:', semanticResults.length);
+      console.log('投 繧ｻ繝槭Φ繝・ぅ繝・け讀懃ｴ｢邨先棡:', semanticResults.length);
       
-      // 3. ナレッジベース検索（既存実装）
+      // 3. 繝翫Ξ繝・ず繝吶・繧ｹ讀懃ｴ｢・域里蟄伜ｮ溯｣・ｼ・
       const knowledgeResults = await searchKnowledgeBase(query);
-      console.log('📊 ナレッジベース検索結果:', knowledgeResults.length);
+      console.log('投 繝翫Ξ繝・ず繝吶・繧ｹ讀懃ｴ｢邨先棡:', knowledgeResults.length);
       
-      // 4. 結果の統合と重み付け
+      // 4. 邨先棡縺ｮ邨ｱ蜷医→驥阪∩莉倥￠
       const combinedResults = this.combineResults(
         keywordResults,
         semanticResults, 
         knowledgeResults
       );
       
-      // 5. 最終的なランキング
+      // 5. 譛邨ら噪縺ｪ繝ｩ繝ｳ繧ｭ繝ｳ繧ｰ
       const rankedResults = this.rankResults(combinedResults, query);
       
       const result: HybridSearchResult = {
@@ -67,11 +67,11 @@ export class HybridSearchService {
         timestamp: new Date()
       };
       
-      console.log('✅ ハイブリッド検索完了:', result);
+      console.log('笨・繝上う繝悶Μ繝・ラ讀懃ｴ｢螳御ｺ・', result);
       return result;
       
     } catch (error) {
-      console.error('❌ ハイブリッド検索エラー:', error);
+      console.error('笶・繝上う繝悶Μ繝・ラ讀懃ｴ｢繧ｨ繝ｩ繝ｼ:', error);
       return {
         query,
         results: [],
@@ -84,7 +84,7 @@ export class HybridSearchService {
   private combineResults(keywordResults: any[], semanticResults: any[], knowledgeResults: any[]): any[] {
     const combined = new Map();
     
-    // キーワード検索結果を追加
+    // 繧ｭ繝ｼ繝ｯ繝ｼ繝画､懃ｴ｢邨先棡繧定ｿｽ蜉
     keywordResults.forEach((result, index) => {
       const key = result.id || `keyword_${index}`;
       combined.set(key, {
@@ -95,7 +95,7 @@ export class HybridSearchService {
       });
     });
     
-    // セマンティック検索結果を追加
+    // 繧ｻ繝槭Φ繝・ぅ繝・け讀懃ｴ｢邨先棡繧定ｿｽ蜉
     semanticResults.forEach((result, index) => {
       const key = result.id || `semantic_${index}`;
       if (combined.has(key)) {
@@ -113,7 +113,7 @@ export class HybridSearchService {
       }
     });
     
-    // ナレッジベース検索結果を追加
+    // 繝翫Ξ繝・ず繝吶・繧ｹ讀懃ｴ｢邨先棡繧定ｿｽ蜉
     knowledgeResults.forEach((result, index) => {
       const key = result.metadata?.documentId || `knowledge_${index}`;
       if (combined.has(key)) {
@@ -147,29 +147,29 @@ export class HybridSearchService {
   private calculateFinalScore(result: any, query: string): number {
     let score = result.finalScore || result.score || 0;
     
-    // 検索タイプによる重み付け
+    // 讀懃ｴ｢繧ｿ繧､繝励↓繧医ｋ驥阪∩莉倥￠
     switch (result.searchType) {
       case 'hybrid':
-        score *= 1.5; // ハイブリッド結果は高評価
+        score *= 1.5; // 繝上う繝悶Μ繝・ラ邨先棡縺ｯ鬮倩ｩ穂ｾ｡
         break;
       case 'semantic':
-        score *= 1.2; // セマンティック検索は中評価
+        score *= 1.2; // 繧ｻ繝槭Φ繝・ぅ繝・け讀懃ｴ｢縺ｯ荳ｭ隧穂ｾ｡
         break;
       case 'keyword':
-        score *= 1.0; // キーワード検索は基本評価
+        score *= 1.0; // 繧ｭ繝ｼ繝ｯ繝ｼ繝画､懃ｴ｢縺ｯ蝓ｺ譛ｬ隧穂ｾ｡
         break;
     }
     
-    // 重要度ボーナス
+    // 驥崎ｦ∝ｺｦ繝懊・繝翫せ
     if (result.metadata?.isImportant) {
       score *= 1.3;
     }
     
-    // 専門用語マッチングボーナス
+    // 蟆る摩逕ｨ隱槭・繝・メ繝ｳ繧ｰ繝懊・繝翫せ
     const technicalTerms = [
-      'エンジン', '保守', '整備', '故障', '修理', '点検', '安全', '作業',
-      '車両', '機械', '装置', 'システム', '運転', '操作', '確認', '対応',
-      'トラブル', '問題', '異常', '警告', '停止', '始動', '運転', '走行'
+      '繧ｨ繝ｳ繧ｸ繝ｳ', '菫晏ｮ・, '謨ｴ蛯・, '謨・囿', '菫ｮ逅・, '轤ｹ讀・, '螳牙・', '菴懈･ｭ',
+      '霆贋ｸ｡', '讖滓｢ｰ', '陬・ｽｮ', '繧ｷ繧ｹ繝・Β', '驕玖ｻ｢', '謫堺ｽ・, '遒ｺ隱・, '蟇ｾ蠢・,
+      '繝医Λ繝悶Ν', '蝠城｡・, '逡ｰ蟶ｸ', '隴ｦ蜻・, '蛛懈ｭ｢', '蟋句虚', '驕玖ｻ｢', '襍ｰ陦・
     ];
     
     const queryWords = query.toLowerCase().split(/\s+/);
@@ -189,7 +189,7 @@ export class HybridSearchService {
       });
       return response.data[0].embedding;
     } catch (error) {
-      console.error('❌ ベクトル化エラー:', error);
+      console.error('笶・繝吶け繝医Ν蛹悶お繝ｩ繝ｼ:', error);
       return [];
     }
   }
