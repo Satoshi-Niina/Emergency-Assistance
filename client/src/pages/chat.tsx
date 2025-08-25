@@ -208,7 +208,7 @@ export default function ChatPage() {
       console.log('🔍 機種一覧取得開始');
       
   // プロキシ経由でアクセス（相対パスを使用）
-  const apiUrl = `/api/machine-types`;
+  const apiUrl = `/api/machines/machine-types`;
       console.log('🔍 機種一覧取得URL:', apiUrl);
       console.log('🔍 現在のURL:', window.location.href);
       
