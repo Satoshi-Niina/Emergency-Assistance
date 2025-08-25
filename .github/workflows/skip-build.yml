@@ -1,0 +1,14 @@
+name: Do Nothing
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  skip-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip build
+        run: echo "Build is intentionally skipped for this workflow."

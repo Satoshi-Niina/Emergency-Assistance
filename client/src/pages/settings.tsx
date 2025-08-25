@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/auth-context";
-import { useToast } from "../hooks/use-toast.ts";
+import { useToast } from "../hooks/use-toast";
 import { API_BASE_URL } from "../lib/api/config";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
@@ -93,14 +93,14 @@ export default function SettingsPage() {
   const fetchMachineData = async () => {
     try {
       setIsLoadingMachineData(true);
-      const typesResponse = await fetch(`/api/machines/machine-types`);
+      const typesResponse = await fetch(`${API_BASE_URL}/api/machines/machine-types`);
       if (typesResponse.ok) {
         const typesResult = await typesResponse.json();
         if (typesResult.success) {
           setMachineTypes(typesResult.data);
         }
       }
-      const machinesResponse = await fetch(`/api/machines/all-machines`);
+      const machinesResponse = await fetch(`${API_BASE_URL}/api/machines/all-machines`);
       if (machinesResponse.ok) {
         const machinesResult = await machinesResponse.json();
         if (machinesResult.success) {

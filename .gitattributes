@@ -1,0 +1,9 @@
+* text=auto eol=lf
+*.ts text diff=ts eol=lf
+*.tsx text diff=ts eol=lf
+*.js text diff=js eol=lf
+*.json text diff=json eol=lf
+*.md text diff=markdown eol=lf
+*.sh text eol=lf
+*.bat text eol=lf
+*.ps1 text eol=lf

@@ -1,0 +1,38 @@
+name: Lint, Encoding & EOL Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-encoding:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        run: |
+          npm ci || npm install
+      - name: Run ESLint
+        run: |
+          npx eslint . --ext .ts,.tsx,.js,.json
+      - name: Check for CRLF (should be LF only)
+        run: |
+          if git grep -I -l $'\r' -- '*.ts' '*.tsx' '*.js' '*.json' '*.md' | grep .; then
+            echo 'CRLF (\r) found! Please use LF only.'
+            exit 1
+          fi
+      - name: Check for BOM (should be UTF-8 without BOM)
+        run: |
+          if find . -type f \( -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.json' -o -name '*.md' \) -exec head -c3 {} + | grep -q $'\xef\xbb\xbf'; then
+            echo 'BOM found! Please save files as UTF-8 without BOM.'
+            exit 1
+          fi
+      - name: Prettier check
+        run: |
+          npx prettier --check "**/*.{ts,tsx,js,json,md}"
