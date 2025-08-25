@@ -4,6 +4,7 @@ import bcrypt from 'bcrypt';
 import { db } from '../db/index';
 import { users } from '../db/schema';
 import { eq } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 
 const router = express.Router();
 
@@ -42,6 +43,36 @@ router.get('/debug/env', (req, res) => {
     debug: debugInfo,
     timestamp: new Date().toISOString()
   });
+});
+
+// データベース接続状態確認エンドポイント
+router.get('/debug/db', async (req, res) => {
+  try {
+    console.log('🔍 データベース接続確認エンドポイント呼び出し');
+    
+    // データベース接続テスト
+    const result = await db.execute(sql`SELECT NOW() as db_time, version() as db_version`);
+    
+    res.json({
+      success: true,
+      database: {
+        connected: true,
+        time: result[0].db_time,
+        version: result[0].db_version,
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('❌ データベース接続確認エラー:', error);
+    res.status(500).json({
+      success: false,
+      database: {
+        connected: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      }
+    });
+  }
 });
 
 // ログインエンドポイント
@@ -172,9 +203,25 @@ router.post('/login', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Login error:', error);
+    console.error('❌ Login error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString()
+    });
+    
+    // データベース接続エラーの場合
+    if (error instanceof Error && error.message.includes('connection')) {
+      return res.status(503).json({
+        success: false,
+        error: 'データベース接続エラーが発生しました'
+      });
+    }
+    
+    // その他のエラーの場合
     return res.status(500).json({
       success: false,
-      error: 'サーバーエラーが発生しました'
+      error: 'サーバーエラーが発生しました',
+      details: process.env.NODE_ENV === 'development' ? error instanceof Error ? error.message : 'Unknown error' : undefined
     });
   }
 });

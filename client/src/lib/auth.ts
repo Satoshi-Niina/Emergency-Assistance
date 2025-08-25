@@ -96,8 +96,8 @@ export const login = async (credentials: LoginCredentials) => {
  */
 export const logout = async () => {
   try {
-    const apiBaseUrl = 'http://localhost:3001';
-    const logoutUrl = `${apiBaseUrl}/api/auth/logout`;
+    // プロキシ経由でAPIにアクセス（相対パスを使用）
+    const logoutUrl = '/api/auth/logout';
     
     console.log('🔐 ログアウト試行:', logoutUrl);
     
