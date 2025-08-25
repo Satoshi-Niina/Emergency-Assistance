@@ -97,10 +97,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       
-      // API URLを直接指定（開発環境用）
-      const apiBaseUrl = 'http://localhost:3001';
-      const apiUrl = `${apiBaseUrl}/api/auth/login`;
+      // 直接サーバーにアクセス（デバッグ用）
+      const apiUrl = 'http://localhost:3001/api/auth/login';
       console.log('🔗 ログインURL:', apiUrl);
+      console.log('📤 送信データ:', { username, password });
 
       const response = await fetch(apiUrl, {
         method: "POST",
@@ -113,7 +113,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       console.log('📡 ログインレスポンス:', {
         status: response.status,
-        ok: response.ok
+        ok: response.ok,
+        statusText: response.statusText
       });
 
       // レスポンスが200以外の場合はエラーをthrow
