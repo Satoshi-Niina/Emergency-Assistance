@@ -1,11 +1,11 @@
-/**
- * バリデーションエラーをユーザーフレンドリーなメッセージに変換
+﻿/**
+ * 繝舌Μ繝・・繧ｷ繝ｧ繝ｳ繧ｨ繝ｩ繝ｼ繧偵Θ繝ｼ繧ｶ繝ｼ繝輔Ξ繝ｳ繝峨Μ繝ｼ縺ｪ繝｡繝・そ繝ｼ繧ｸ縺ｫ螟画鋤
  */
 export function formatValidationError(error: any): string {
     return error.errors.map((err: any) => err.message).join(', ');
 }
 /**
- * APIレスポンスの成功レスポンスを作成
+ * API繝ｬ繧ｹ繝昴Φ繧ｹ縺ｮ謌仙粥繝ｬ繧ｹ繝昴Φ繧ｹ繧剃ｽ懈・
  */
 export function createSuccessResponse(data: any, message: any): any {
     return {
@@ -15,7 +15,7 @@ export function createSuccessResponse(data: any, message: any): any {
     };
 }
 /**
- * APIレスポンスのエラーレスポンスを作成
+ * API繝ｬ繧ｹ繝昴Φ繧ｹ縺ｮ繧ｨ繝ｩ繝ｼ繝ｬ繧ｹ繝昴Φ繧ｹ繧剃ｽ懈・
  */
 export function createErrorResponse(error: any, data: any): any {
     return {
@@ -25,7 +25,7 @@ export function createErrorResponse(error: any, data: any): any {
     };
 }
 /**
- * 検索結果を作成
+ * 讀懃ｴ｢邨先棡繧剃ｽ懈・
  */
 export function createSearchResult(items: any, total: any, page: any, limit: any): any {
     return {
@@ -37,7 +37,7 @@ export function createSearchResult(items: any, total: any, page: any, limit: any
     };
 }
 /**
- * ファイルサイズを人間が読みやすい形式に変換
+ * 繝輔ぃ繧､繝ｫ繧ｵ繧､繧ｺ繧剃ｺｺ髢薙′隱ｭ縺ｿ繧・☆縺・ｽ｢蠑上↓螟画鋤
  */
 export function formatFileSize(bytes: number): string {
     if (bytes < 1024) return bytes + ' B';
@@ -46,7 +46,7 @@ export function formatFileSize(bytes: number): string {
     return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
 }
 /**
- * 日付をフォーマット
+ * 譌･莉倥ｒ繝輔か繝ｼ繝槭ャ繝・
  */
 export function formatDate(date: any, format: any = 'short') {
     const d: any = typeof date === 'string' ? new Date(date) : date;
@@ -72,7 +72,7 @@ export function formatDate(date: any, format: any = 'short') {
     }
 }
 /**
- * 文字列を安全に切り詰める
+ * 譁・ｭ怜・繧貞ｮ牙・縺ｫ蛻・ｊ隧ｰ繧√ｋ
  */
 export function truncateString(str: any, maxLength: any, suffix: any = '...') {
     if (str.length <= maxLength)
@@ -80,7 +80,7 @@ export function truncateString(str: any, maxLength: any, suffix: any = '...') {
     return str.substring(0, maxLength - suffix.length) + suffix;
 }
 /**
- * UUIDを生成
+ * UUID繧堤函謌・
  */
 export function generateUUID() {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
@@ -90,13 +90,13 @@ export function generateUUID() {
     });
 }
 /**
- * ファイル拡張子を取得
+ * 繝輔ぃ繧､繝ｫ諡｡蠑ｵ蟄舌ｒ蜿門ｾ・
  */
 export function getFileExtension(filename: string): string {
     return filename.slice((filename.lastIndexOf('.') - 1 >>> 0) + 2);
 }
 /**
- * MIMEタイプからファイルタイプを判定
+ * MIME繧ｿ繧､繝励°繧峨ヵ繧｡繧､繝ｫ繧ｿ繧､繝励ｒ蛻､螳・
  */
 export function getFileTypeFromMime(mimeType: string): string {
     if (mimeType.startsWith('image/'))
@@ -108,7 +108,7 @@ export function getFileTypeFromMime(mimeType: string): string {
     return 'document';
 }
 /**
- * ファイルが画像かどうかを判定
+ * 繝輔ぃ繧､繝ｫ縺檎判蜒上°縺ｩ縺・°繧貞愛螳・
  */
 export function isImageFile(filename: string): boolean {
     const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
@@ -116,7 +116,7 @@ export function isImageFile(filename: string): boolean {
     return imageExtensions.includes(ext);
 }
 /**
- * パスワードの強度をチェック
+ * 繝代せ繝ｯ繝ｼ繝峨・蠑ｷ蠎ｦ繧偵メ繧ｧ繝・け
  */
 export function validatePasswordStrength(password: string): { isValid: boolean, score: number, feedback: string[] } {
     const feedback: string[] = [];
@@ -124,23 +124,23 @@ export function validatePasswordStrength(password: string): { isValid: boolean, 
     if (password.length >= 8)
         score += 1;
     else
-        feedback.push('パスワードは8文字以上である必要があります');
+        feedback.push('繝代せ繝ｯ繝ｼ繝峨・8譁・ｭ嶺ｻ･荳翫〒縺ゅｋ蠢・ｦ√′縺ゅｊ縺ｾ縺・);
     if (/[a-z]/.test(password))
         score += 1;
     else
-        feedback.push('小文字を含める必要があります');
+        feedback.push('蟆乗枚蟄励ｒ蜷ｫ繧√ｋ蠢・ｦ√′縺ゅｊ縺ｾ縺・);
     if (/[A-Z]/.test(password))
         score += 1;
     else
-        feedback.push('大文字を含める必要があります');
+        feedback.push('螟ｧ譁・ｭ励ｒ蜷ｫ繧√ｋ蠢・ｦ√′縺ゅｊ縺ｾ縺・);
     if (/[0-9]/.test(password))
         score += 1;
     else
-        feedback.push('数字を含める必要があります');
+        feedback.push('謨ｰ蟄励ｒ蜷ｫ繧√ｋ蠢・ｦ√′縺ゅｊ縺ｾ縺・);
     if (/[^A-Za-z0-9]/.test(password))
         score += 1;
     else
-        feedback.push('特殊文字を含めることを推奨します');
+        feedback.push('迚ｹ谿頑枚蟄励ｒ蜷ｫ繧√ｋ縺薙→繧呈耳螂ｨ縺励∪縺・);
     return {
         isValid: score >= 3,
         score,
@@ -148,10 +148,10 @@ export function validatePasswordStrength(password: string): { isValid: boolean, 
     };
 }
 /**
- * 環境変数からシステム設定を取得
+ * 迺ｰ蠅・､画焚縺九ｉ繧ｷ繧ｹ繝・Β險ｭ螳壹ｒ蜿門ｾ・
  */
 export function getSystemConfig() {
-    // Node.js環境でのみprocess.envにアクセス
+    // Node.js迺ｰ蠅・〒縺ｮ縺ｿprocess.env縺ｫ繧｢繧ｯ繧ｻ繧ｹ
     const isNode = typeof process !== 'undefined' && process.env;
     
     return {
@@ -172,7 +172,7 @@ export function getSystemConfig() {
     };
 }
 /**
- * デバウンス関数
+ * 繝・ヰ繧ｦ繝ｳ繧ｹ髢｢謨ｰ
  */
 export function debounce(func: (...args: any[]) => void, wait: number): (...args: any[]) => void {
     let timeout: any;
@@ -182,7 +182,7 @@ export function debounce(func: (...args: any[]) => void, wait: number): (...args
     };
 }
 /**
- * スロットル関数
+ * 繧ｹ繝ｭ繝・ヨ繝ｫ髢｢謨ｰ
  */
 export function throttle(func: (...args: any[]) => void, limit: number): (...args: any[]) => void {
     let inThrottle: any;
@@ -195,7 +195,7 @@ export function throttle(func: (...args: any[]) => void, limit: number): (...arg
     };
 }
 /**
- * 深いオブジェクトの比較
+ * 豺ｱ縺・が繝悶ず繧ｧ繧ｯ繝医・豈碑ｼ・
  */
 export function deepEqual(obj1: any, obj2: any): boolean {
     if (obj1 === obj2)
@@ -219,7 +219,7 @@ export function deepEqual(obj1: any, obj2: any): boolean {
     return true;
 }
 /**
- * オブジェクトの深いコピー
+ * 繧ｪ繝悶ず繧ｧ繧ｯ繝医・豺ｱ縺・さ繝斐・
  */
 export function deepClone(obj: any): any {
     if (obj === null || typeof obj !== 'object')
@@ -240,7 +240,7 @@ export function deepClone(obj: any): any {
     return obj;
 }
 /**
- * 配列を指定されたサイズのチャンクに分割
+ * 驟榊・繧呈欠螳壹＆繧後◆繧ｵ繧､繧ｺ縺ｮ繝√Ε繝ｳ繧ｯ縺ｫ蛻・牡
  */
 export function chunkArray(array: any[], size: number): any[][] {
     const chunks: any[][] = [];
@@ -250,7 +250,7 @@ export function chunkArray(array: any[], size: number): any[][] {
     return chunks;
 }
 /**
- * 配列から重複を除去
+ * 驟榊・縺九ｉ驥崎､・ｒ髯､蜴ｻ
  */
 export function removeDuplicates(array: any[], key?: string): any[] {
     if (key) {
@@ -266,7 +266,7 @@ export function removeDuplicates(array: any[], key?: string): any[] {
     return [...new Set(array)];
 }
 /**
- * 非同期処理のリトライ機能
+ * 髱槫酔譛溷・逅・・繝ｪ繝医Λ繧､讖溯・
  */
 export async function retry(fn: any, maxAttempts: number = 3, delay: number = 1000) {
     let lastError;
@@ -283,3 +283,5 @@ export async function retry(fn: any, maxAttempts: number = 3, delay: number = 10
     }
     throw lastError;
 }
+
+

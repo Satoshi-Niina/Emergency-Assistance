@@ -1,4 +1,4 @@
-{
+﻿{
   "rules": [
     {
       "id": "vendored-rules.generic.bicep.security.secure-parameter-for-secrets",
@@ -51440,3 +51440,4 @@
     }
   ]
 }
+

@@ -1,9 +1,9 @@
-import { QueryClient, QueryFunction } from "@tanstack/react-query";
+﻿import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { buildApiUrl } from "./api/config.ts";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    // Responseのbody streamを一度だけ読む
+    // Response縺ｮbody stream繧剃ｸ蠎ｦ縺縺題ｪｭ繧
     let errorText = res.statusText;
     try {
       const clonedRes = res.clone();
@@ -21,7 +21,7 @@ export async function apiRequest(
   dataOrHeaders?: unknown | Record<string, string>,
   customHeaders?: Record<string, string>,
 ): Promise<Response> {
-  // 改善された引数の正規化
+  // 謾ｹ蝟・＆繧後◆蠑墓焚縺ｮ豁｣隕丞喧
   let method = 'GET';
   let url = '';
   let data: unknown = undefined;
@@ -30,64 +30,64 @@ export async function apiRequest(
   const httpMethods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
 
   if (httpMethods.includes(methodOrUrl)) {
-    // 新しい形式: apiRequest('GET', '/api/endpoint')
+    // 譁ｰ縺励＞蠖｢蠑・ apiRequest('GET', '/api/endpoint')
     method = methodOrUrl;
     url = urlOrData as string;
     data = dataOrHeaders;
     headers = customHeaders || {};
   } else {
-    // 第一引数がURL
+    // 隨ｬ荳蠑墓焚縺袈RL
     url = methodOrUrl;
     if (urlOrData && typeof urlOrData !== 'string') {
-      // 第二引数がデータオブジェクト: apiRequest('/api/endpoint', {data})
+      // 隨ｬ莠悟ｼ墓焚縺後ョ繝ｼ繧ｿ繧ｪ繝悶ず繧ｧ繧ｯ繝・ apiRequest('/api/endpoint', {data})
       method = 'POST';
       data = urlOrData;
       headers = dataOrHeaders as Record<string, string> || {};
     } else if (urlOrData && typeof urlOrData === 'string' && httpMethods.includes(urlOrData)) {
-      // 旧形式の互換性維持: apiRequest('POST', '/api/endpoint', {data})
-      // 警告メッセージを表示しない（同じ実装を使っているので警告を消す）
+      // 譌ｧ蠖｢蠑上・莠呈鋤諤ｧ邯ｭ謖・ apiRequest('POST', '/api/endpoint', {data})
+      // 隴ｦ蜻翫Γ繝・そ繝ｼ繧ｸ繧定｡ｨ遉ｺ縺励↑縺・ｼ亥酔縺伜ｮ溯｣・ｒ菴ｿ縺｣縺ｦ縺・ｋ縺ｮ縺ｧ隴ｦ蜻翫ｒ豸医☆・・
       method = urlOrData;
       url = methodOrUrl;
       data = dataOrHeaders;
       headers = customHeaders || {};
     } else if (urlOrData && typeof urlOrData === 'string') {
-      // URLパスと合体させるケース: apiRequest('/api', '/endpoint')
+      // URL繝代せ縺ｨ蜷井ｽ薙＆縺帙ｋ繧ｱ繝ｼ繧ｹ: apiRequest('/api', '/endpoint')
       url = `${methodOrUrl}${urlOrData}`;
     }
   }
 
-  // Content-TypeとAuthorizationヘッダーを追加
+  // Content-Type縺ｨAuthorization繝倥ャ繝繝ｼ繧定ｿｽ蜉
   if (data) {
     headers['Content-Type'] = 'application/json';
   }
 
-  // セッションクッキーを含めるための設定（credentialsヘッダーは送信しない）
+  // 繧ｻ繝・す繝ｧ繝ｳ繧ｯ繝・く繝ｼ繧貞性繧√ｋ縺溘ａ縺ｮ險ｭ螳夲ｼ・redentials繝倥ャ繝繝ｼ縺ｯ騾∽ｿ｡縺励↑縺・ｼ・
   headers['Cache-Control'] = 'no-cache';
 
-  // 相対パスの場合はAPI_BASE_URLと結合
+  // 逶ｸ蟇ｾ繝代せ縺ｮ蝣ｴ蜷医・API_BASE_URL縺ｨ邨仙粋
   const fullUrl = url.startsWith('/') ? buildApiUrl(url) : url;
 
-  // ブラウザキャッシュ対策用のタイムスタンプパラメータを追加
+  // 繝悶Λ繧ｦ繧ｶ繧ｭ繝｣繝・す繝･蟇ｾ遲也畑縺ｮ繧ｿ繧､繝繧ｹ繧ｿ繝ｳ繝励ヱ繝ｩ繝｡繝ｼ繧ｿ繧定ｿｽ蜉
   const urlWithCache = fullUrl.includes('?') 
     ? `${fullUrl}&_t=${Date.now()}` 
     : `${fullUrl}?_t=${Date.now()}`;
 
-  // 修正: URLのパースエラーを防ぐため、ポート番号とパスを確認
+  // 菫ｮ豁｣: URL縺ｮ繝代・繧ｹ繧ｨ繝ｩ繝ｼ繧帝亟縺舌◆繧√√・繝ｼ繝育分蜿ｷ縺ｨ繝代せ繧堤｢ｺ隱・
   if (!fullUrl.startsWith('http') && !fullUrl.startsWith('/')) {
-    console.error('不正なURL:', fullUrl);
+    console.error('荳肴ｭ｣縺ｪURL:', fullUrl);
   }
 
-  console.log('🔍 APIリクエスト実行:', { 
+  console.log('剥 API繝ｪ繧ｯ繧ｨ繧ｹ繝亥ｮ溯｡・', { 
     method, 
     url: urlWithCache, 
     hasData: !!data,
     headers,
-    // 追加のデバッグ情報
+    // 霑ｽ蜉縺ｮ繝・ヰ繝・げ諠・ｱ
     fullUrl: urlWithCache,
     baseUrl: window.location.origin,
     isRelative: url.startsWith('/'),
     isAbsolute: url.startsWith('http'),
-    // リクエストの詳細
+    // 繝ｪ繧ｯ繧ｨ繧ｹ繝医・隧ｳ邏ｰ
     requestBody: data ? JSON.stringify(data).substring(0, 200) : 'none',
     timestamp: new Date().toISOString()
   });
@@ -99,11 +99,11 @@ export async function apiRequest(
       body: data ? JSON.stringify(data) : undefined,
       credentials: "include",
       mode: 'cors',
-      // キャッシュ制御を追加
+      // 繧ｭ繝｣繝・す繝･蛻ｶ蠕｡繧定ｿｽ蜉
       cache: method === 'GET' ? 'no-cache' : 'default'
     });
 
-    console.log('📡 APIレスポンス受信:', { 
+    console.log('藤 API繝ｬ繧ｹ繝昴Φ繧ｹ蜿嶺ｿ｡:', { 
       url: urlWithCache,
       status: res.status,
       statusText: res.statusText,
@@ -113,7 +113,7 @@ export async function apiRequest(
       timestamp: new Date().toISOString()
     });
 
-    // エラーレスポンスの詳細ログ
+    // 繧ｨ繝ｩ繝ｼ繝ｬ繧ｹ繝昴Φ繧ｹ縺ｮ隧ｳ邏ｰ繝ｭ繧ｰ
     if (!res.ok) {
       let errorText = res.statusText;
       try {
@@ -122,7 +122,7 @@ export async function apiRequest(
       } catch (e) {
         console.warn('Error reading error response body:', e);
       }
-      console.error('❌ APIエラーレスポンス:', {
+      console.error('笶・API繧ｨ繝ｩ繝ｼ繝ｬ繧ｹ繝昴Φ繧ｹ:', {
         url: urlWithCache,
         status: res.status,
         statusText: res.statusText,
@@ -134,7 +134,7 @@ export async function apiRequest(
 
     return res;
   } catch (error) {
-    console.error('❌ APIリクエストエラー:', {
+    console.error('笶・API繝ｪ繧ｯ繧ｨ繧ｹ繝医お繝ｩ繝ｼ:', {
       url: urlWithCache,
       method,
       error: error instanceof Error ? error.message : String(error),
@@ -150,7 +150,7 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    // チャットクリア後は強制的に空配列を返す
+    // 繝√Ε繝・ヨ繧ｯ繝ｪ繧｢蠕後・蠑ｷ蛻ｶ逧・↓遨ｺ驟榊・繧定ｿ斐☆
     if (
       (queryKey[0] as string).includes('/api/chats') && 
       (queryKey[0] as string).includes('/messages')
@@ -159,24 +159,24 @@ export const getQueryFn: <T>(options: {
       if (chatClearedTimestamp) {
         const clearTime = parseInt(chatClearedTimestamp);
         const now = Date.now();
-        // クリアしてから10秒以内なら強制的に空配列を返す
+        // 繧ｯ繝ｪ繧｢縺励※縺九ｉ10遘剃ｻ･蜀・↑繧牙ｼｷ蛻ｶ逧・↓遨ｺ驟榊・繧定ｿ斐☆
         if (now - clearTime < 10000) {
-          console.log('クエリキャッシュクリア直後のためメッセージを空にします');
+          console.log('繧ｯ繧ｨ繝ｪ繧ｭ繝｣繝・す繝･繧ｯ繝ｪ繧｢逶ｴ蠕後・縺溘ａ繝｡繝・そ繝ｼ繧ｸ繧堤ｩｺ縺ｫ縺励∪縺・);
           return [];
         }
       }
     }
 
-    // クエリキーにキャッシュバスティングパラメータを追加
+    // 繧ｯ繧ｨ繝ｪ繧ｭ繝ｼ縺ｫ繧ｭ繝｣繝・す繝･繝舌せ繝・ぅ繝ｳ繧ｰ繝代Λ繝｡繝ｼ繧ｿ繧定ｿｽ蜉
     let url = queryKey[0] as string;
     const timestamp = Date.now();
     url = url.includes('?') ? `${url}&_t=${timestamp}` : `${url}?_t=${timestamp}`;
 
-    console.log('🔍 クエリ実行:', { url, timestamp });
+    console.log('剥 繧ｯ繧ｨ繝ｪ螳溯｡・', { url, timestamp });
 
     const res = await fetch(url, {
       credentials: "include",
-      cache: "no-cache", // ブラウザキャッシュを使用しない
+      cache: "no-cache", // 繝悶Λ繧ｦ繧ｶ繧ｭ繝｣繝・す繝･繧剃ｽｿ逕ｨ縺励↑縺・
       headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',
@@ -184,7 +184,7 @@ export const getQueryFn: <T>(options: {
       }
     });
 
-    console.log('📡 レスポンス受信:', { 
+    console.log('藤 繝ｬ繧ｹ繝昴Φ繧ｹ蜿嶺ｿ｡:', { 
       url, 
       status: res.status, 
       statusText: res.statusText,
@@ -195,10 +195,10 @@ export const getQueryFn: <T>(options: {
       return null;
     }
 
-    // キャッシュクリアヘッダーをチェック
+    // 繧ｭ繝｣繝・す繝･繧ｯ繝ｪ繧｢繝倥ャ繝繝ｼ繧偵メ繧ｧ繝・け
     if (res.headers.get('X-Chat-Cleared') === 'true') {
-      console.log('クエリ実行中にキャッシュクリア指示を受信: 空配列を返します');
-      // クリアフラグが付いている場合は空配列を返す
+      console.log('繧ｯ繧ｨ繝ｪ螳溯｡御ｸｭ縺ｫ繧ｭ繝｣繝・す繝･繧ｯ繝ｪ繧｢謖・､ｺ繧貞女菫｡: 遨ｺ驟榊・繧定ｿ斐＠縺ｾ縺・);
+      // 繧ｯ繝ｪ繧｢繝輔Λ繧ｰ縺御ｻ倥＞縺ｦ縺・ｋ蝣ｴ蜷医・遨ｺ驟榊・繧定ｿ斐☆
       return [];
     }
 
@@ -217,9 +217,9 @@ export function getQueryClient(): QueryClient {
           queryFn: getQueryFn({ on401: "throw" }),
           refetchInterval: false,
           refetchOnWindowFocus: false,
-          staleTime: 60000, // 1分間はキャッシュを使用
+          staleTime: 60000, // 1蛻・俣縺ｯ繧ｭ繝｣繝・す繝･繧剃ｽｿ逕ｨ
           retry: false,
-          refetchOnMount: true, // コンポーネントがマウントされるたびに再取得
+          refetchOnMount: true, // 繧ｳ繝ｳ繝昴・繝阪Φ繝医′繝槭え繝ｳ繝医＆繧後ｋ縺溘・縺ｫ蜀榊叙蠕・
         },
         mutations: {
           retry: false,
@@ -237,30 +237,30 @@ const setupWebSocket = (token: string) => {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const host = window.location.hostname;
 
-  // デプロイメント環境では標準ポートを使用、開発環境では5000番ポートを使用
+  // 繝・・繝ｭ繧､繝｡繝ｳ繝育腸蠅・〒縺ｯ讓呎ｺ悶・繝ｼ繝医ｒ菴ｿ逕ｨ縲・幕逋ｺ迺ｰ蠅・〒縺ｯ5000逡ｪ繝昴・繝医ｒ菴ｿ逕ｨ
   let wsUrl;
   if (window.location.hostname.includes('replit.app') || window.location.hostname.includes('replit.dev')) {
-    // Replitデプロイメント環境
+    // Replit繝・・繝ｭ繧､繝｡繝ｳ繝育腸蠅・
     wsUrl = `${protocol}//${host}/ws?token=${token}`;
   } else {
-    // 開発環境
+    // 髢狗匱迺ｰ蠅・
     const port = window.location.port || '5000';
     wsUrl = `${protocol}//${host}:${port}/ws?token=${token}`;
   }
 
-  console.log('WebSocket接続を開始:', wsUrl);
+  console.log('WebSocket謗･邯壹ｒ髢句ｧ・', wsUrl);
 
   try {
     const ws = new WebSocket(wsUrl);
-    ws.binaryType = 'arraybuffer';  // バイナリデータの高速処理
+    ws.binaryType = 'arraybuffer';  // 繝舌う繝翫Μ繝・・繧ｿ縺ｮ鬮倬溷・逅・
     return ws;
   } catch (error) {
-    console.error('WebSocket作成エラー:', error);
+    console.error('WebSocket菴懈・繧ｨ繝ｩ繝ｼ:', error);
     throw error;
   }
 };
 
-// WebSocket接続のテスト関数
+// WebSocket謗･邯壹・繝・せ繝磯未謨ｰ
 export function testWebSocketConnection(): Promise<boolean> {
   return new Promise((resolve) => {
     try {
@@ -282,7 +282,7 @@ export function testWebSocketConnection(): Promise<boolean> {
         resolve(false);
       };
     } catch (error) {
-      console.error('WebSocket接続テストエラー:', error);
+      console.error('WebSocket謗･邯壹ユ繧ｹ繝医お繝ｩ繝ｼ:', error);
       resolve(false);
     }
   });
@@ -291,11 +291,11 @@ export function testWebSocketConnection(): Promise<boolean> {
 // Placeholder function, assuming this is where message processing happens
 export async function processMessage(text: string): Promise<string> {
   try {
-    // ステップ形式のレスポンスを取得
+    // 繧ｹ繝・ャ繝怜ｽ｢蠑上・繝ｬ繧ｹ繝昴Φ繧ｹ繧貞叙蠕・
     const response = await apiRequest('POST', '/api/chatgpt/steps', { text });
     const data = await response.json();
     if (data.steps) {
-      // ステップ形式のレスポンスを整形
+      // 繧ｹ繝・ャ繝怜ｽ｢蠑上・繝ｬ繧ｹ繝昴Φ繧ｹ繧呈紛蠖｢
       let formattedResponse = `${data.title}\n\n`;
       data.steps.forEach((step: { description: string }, index: number) => {
         formattedResponse += `${index + 1}. ${step.description}\n`;
@@ -305,42 +305,42 @@ export async function processMessage(text: string): Promise<string> {
       return data.response;
     }
   } catch (error) {
-    console.error('メッセージ処理エラー:', error);
-    return 'メッセージの処理中にエラーが発生しました。';
+    console.error('繝｡繝・そ繝ｼ繧ｸ蜃ｦ逅・お繝ｩ繝ｼ:', error);
+    return '繝｡繝・そ繝ｼ繧ｸ縺ｮ蜃ｦ逅・ｸｭ縺ｫ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆縲・;
   }
 }
 // The change request does not directly modify buildApiUrl but it relies on it, keep the original implementation of buildApiUrl function
 
-// Replit環境を考慮したAPI URL構築
+// Replit迺ｰ蠅・ｒ閠・・縺励◆API URL讒狗ｯ・
 function buildApiUrl(path: string): string {
   if (path.startsWith('http')) return path;
   
-  // Replit環境では専用ポートを使用
+  // Replit迺ｰ蠅・〒縺ｯ蟆ら畑繝昴・繝医ｒ菴ｿ逕ｨ
   const isReplitEnvironment = window.location.hostname.includes('replit.dev') || window.location.hostname.includes('replit.app');
   
   if (isReplitEnvironment) {
     return `${window.location.protocol}//${window.location.hostname}:3000${path}`;
   }
   
-  // 開発環境ではプロキシ経由でアクセス（相対パスを使用）
+  // 髢狗匱迺ｰ蠅・〒縺ｯ繝励Ο繧ｭ繧ｷ邨檎罰縺ｧ繧｢繧ｯ繧ｻ繧ｹ・育嶌蟇ｾ繝代せ繧剃ｽｿ逕ｨ・・
   const isDevelopment = import.meta.env.DEV || window.location.hostname.includes('localhost');
   
   if (isDevelopment) {
-    console.log('✅ 開発環境: プロキシ経由でアクセス（相対パス）');
-    return path; // 相対パスを使用してプロキシ経由でアクセス
+    console.log('笨・髢狗匱迺ｰ蠅・ 繝励Ο繧ｭ繧ｷ邨檎罰縺ｧ繧｢繧ｯ繧ｻ繧ｹ・育嶌蟇ｾ繝代せ・・);
+    return path; // 逶ｸ蟇ｾ繝代せ繧剃ｽｿ逕ｨ縺励※繝励Ο繧ｭ繧ｷ邨檎罰縺ｧ繧｢繧ｯ繧ｻ繧ｹ
   }
   
-  // その他の環境では相対パス
+  // 縺昴・莉悶・迺ｰ蠅・〒縺ｯ逶ｸ蟇ｾ繝代せ
   return `${window.location.origin}${path}`;
 }
-// API設定 - VITE_API_BASE_URLのみを使用
+// API險ｭ螳・- VITE_API_BASE_URL縺ｮ縺ｿ繧剃ｽｿ逕ｨ
 const VITE_API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-// 環境変数の定義
+// 迺ｰ蠅・､画焚縺ｮ螳夂ｾｩ
 const isProduction = import.meta.env.PROD;
 const isDevelopment = import.meta.env.DEV;
 
-console.log('🔍 環境変数詳細確認:', {
+console.log('剥 迺ｰ蠅・､画焚隧ｳ邏ｰ遒ｺ隱・', {
   VITE_API_BASE_URL,
   VITE_API_BASE_URL_TYPE: typeof VITE_API_BASE_URL,
   VITE_API_BASE_URL_LENGTH: VITE_API_BASE_URL?.length,
@@ -349,25 +349,25 @@ console.log('🔍 環境変数詳細確認:', {
   NODE_ENV: import.meta.env.NODE_ENV,
   MODE: import.meta.env.MODE,
   BASE_URL: import.meta.env.BASE_URL,
-  // 実際に使用されるURL
+  // 螳滄圀縺ｫ菴ｿ逕ｨ縺輔ｌ繧偽RL
   finalApiBaseUrl: VITE_API_BASE_URL || 'http://localhost:3001'
 });
 
-console.log('🔧 API設定:', {
+console.log('肌 API險ｭ螳・', {
   isProduction,
   isDevelopment,
   API_BASE_URL: VITE_API_BASE_URL || 'http://localhost:3001',
-  // デバッグ用：実際のリクエストURLを確認
+  // 繝・ヰ繝・げ逕ｨ・壼ｮ滄圀縺ｮ繝ｪ繧ｯ繧ｨ繧ｹ繝・RL繧堤｢ｺ隱・
   sampleAuthUrl: `${VITE_API_BASE_URL || 'http://localhost:3001'}/api/login`,
-  // 追加のデバッグ情報
+  // 霑ｽ蜉縺ｮ繝・ヰ繝・げ諠・ｱ
   location: window.location.href,
   origin: window.location.origin,
   hostname: window.location.hostname,
   protocol: window.location.protocol,
-  // 実際のAPI URLを構築して確認
+  // 螳滄圀縺ｮAPI URL繧呈ｧ狗ｯ峨＠縺ｦ遒ｺ隱・
   actualAuthUrl: `${VITE_API_BASE_URL || 'http://localhost:3001'}/api/login`,
   actualMeUrl: `${VITE_API_BASE_URL || 'http://localhost:3001'}/api/auth/me`,
-  // 環境変数の詳細確認
+  // 迺ｰ蠅・､画焚縺ｮ隧ｳ邏ｰ遒ｺ隱・
   envVars: {
     VITE_API_BASE_URL,
     NODE_ENV: import.meta.env.NODE_ENV,
@@ -375,22 +375,24 @@ console.log('🔧 API設定:', {
   }
 });
 
-// API Base URLの設定 - VITE_API_BASE_URLのみを使用
+// API Base URL縺ｮ險ｭ螳・- VITE_API_BASE_URL縺ｮ縺ｿ繧剃ｽｿ逕ｨ
 const API_BASE_URL = (() => {
   const isDevelopment = import.meta.env.DEV || window.location.hostname.includes('localhost');
   
-  // 開発環境ではプロキシ経由でアクセス（相対パスを使用）
+  // 髢狗匱迺ｰ蠅・〒縺ｯ繝励Ο繧ｭ繧ｷ邨檎罰縺ｧ繧｢繧ｯ繧ｻ繧ｹ・育嶌蟇ｾ繝代せ繧剃ｽｿ逕ｨ・・
   if (isDevelopment) {
-    console.log('✅ 開発環境: プロキシ経由でアクセス');
-    return ''; // 空文字列で相対パスを使用
+    console.log('笨・髢狗匱迺ｰ蠅・ 繝励Ο繧ｭ繧ｷ邨檎罰縺ｧ繧｢繧ｯ繧ｻ繧ｹ');
+    return ''; // 遨ｺ譁・ｭ怜・縺ｧ逶ｸ蟇ｾ繝代せ繧剃ｽｿ逕ｨ
   }
   
-  // 環境変数が設定されている場合は優先使用
+  // 迺ｰ蠅・､画焚縺瑚ｨｭ螳壹＆繧後※縺・ｋ蝣ｴ蜷医・蜆ｪ蜈井ｽｿ逕ｨ
   if (VITE_API_BASE_URL && VITE_API_BASE_URL.trim() !== '') {
-    console.log('✅ 環境変数からAPI_BASE_URLを取得:', VITE_API_BASE_URL);
+    console.log('笨・迺ｰ蠅・､画焚縺九ｉAPI_BASE_URL繧貞叙蠕・', VITE_API_BASE_URL);
     return VITE_API_BASE_URL;
   }
   
-  // デフォルト
+  // 繝・ヵ繧ｩ繝ｫ繝・
   return 'http://localhost:3001';
 })();
+
+

@@ -1,4 +1,4 @@
-import { 
+﻿import { 
   SupportHistoryItem, 
   HistorySearchFilters, 
   HistoryListResponse,
@@ -9,7 +9,7 @@ import {
   ExportHistoryItem
 } from '../../types/history';
 
-// 履歴データから機種・機械番号一覧取得
+// 螻･豁ｴ繝・・繧ｿ縺九ｉ讖溽ｨｮ繝ｻ讖滓｢ｰ逡ｪ蜿ｷ荳隕ｧ蜿門ｾ・
 export const fetchMachineData = async (): Promise<{
   machineTypes: Array<{ id: string; machineTypeName: string }>;
   machines: Array<{ id: string; machineNumber: string; machineTypeName: string }>;
@@ -18,8 +18,8 @@ export const fetchMachineData = async (): Promise<{
     const response = await fetch('/api/history/machine-data');
     
     if (!response.ok) {
-      console.warn(`機種データ取得エラー: ${response.status} ${response.statusText}`);
-      // エラーの場合は空のデータを返す
+      console.warn(`讖溽ｨｮ繝・・繧ｿ蜿門ｾ励お繝ｩ繝ｼ: ${response.status} ${response.statusText}`);
+      // 繧ｨ繝ｩ繝ｼ縺ｮ蝣ｴ蜷医・遨ｺ縺ｮ繝・・繧ｿ繧定ｿ斐☆
       return {
         machineTypes: [],
         machines: []
@@ -28,8 +28,8 @@ export const fetchMachineData = async (): Promise<{
     
     return response.json();
   } catch (error) {
-    console.error('機種データ取得エラー:', error);
-    // エラーの場合は空のデータを返す
+    console.error('讖溽ｨｮ繝・・繧ｿ蜿門ｾ励お繝ｩ繝ｼ:', error);
+    // 繧ｨ繝ｩ繝ｼ縺ｮ蝣ｴ蜷医・遨ｺ縺ｮ繝・・繧ｿ繧定ｿ斐☆
     return {
       machineTypes: [],
       machines: []
@@ -37,7 +37,7 @@ export const fetchMachineData = async (): Promise<{
   }
 };
 
-// 履歴一覧取得
+// 螻･豁ｴ荳隕ｧ蜿門ｾ・
 export const fetchHistoryList = async (filters: HistorySearchFilters = {}): Promise<HistoryListResponse> => {
   try {
     const params = new URLSearchParams();
@@ -52,8 +52,8 @@ export const fetchHistoryList = async (filters: HistorySearchFilters = {}): Prom
     const response = await fetch(`/api/history?${params.toString()}`);
     
     if (!response.ok) {
-      console.warn(`履歴一覧取得エラー: ${response.status} ${response.statusText}`);
-      // エラーの場合は空のデータを返す
+      console.warn(`螻･豁ｴ荳隕ｧ蜿門ｾ励お繝ｩ繝ｼ: ${response.status} ${response.statusText}`);
+      // 繧ｨ繝ｩ繝ｼ縺ｮ蝣ｴ蜷医・遨ｺ縺ｮ繝・・繧ｿ繧定ｿ斐☆
       return {
         success: true,
         items: [],
@@ -64,8 +64,8 @@ export const fetchHistoryList = async (filters: HistorySearchFilters = {}): Prom
     
     return response.json();
   } catch (error) {
-    console.error('履歴一覧取得エラー:', error);
-    // エラーの場合は空のデータを返す
+    console.error('螻･豁ｴ荳隕ｧ蜿門ｾ励お繝ｩ繝ｼ:', error);
+    // 繧ｨ繝ｩ繝ｼ縺ｮ蝣ｴ蜷医・遨ｺ縺ｮ繝・・繧ｿ繧定ｿ斐☆
     return {
       success: true,
       items: [],
@@ -75,7 +75,7 @@ export const fetchHistoryList = async (filters: HistorySearchFilters = {}): Prom
   }
 };
 
-// 履歴詳細取得
+// 螻･豁ｴ隧ｳ邏ｰ蜿門ｾ・
 export const fetchHistoryDetail = async (id: string): Promise<SupportHistoryItem> => {
   const response = await fetch(`/api/history/${id}`);
   
@@ -86,7 +86,7 @@ export const fetchHistoryDetail = async (id: string): Promise<SupportHistoryItem
   return response.json();
 };
 
-// 履歴作成
+// 螻･豁ｴ菴懈・
 export const createHistory = async (data: {
   machineType: string;
   machineNumber: string;
@@ -114,7 +114,7 @@ export const createHistory = async (data: {
   return response.json();
 };
 
-// 履歴削除
+// 螻･豁ｴ蜑企勁
 export const deleteHistory = async (id: string): Promise<void> => {
   const response = await fetch(`/api/history/${id}`, {
     method: 'DELETE'
@@ -125,7 +125,7 @@ export const deleteHistory = async (id: string): Promise<void> => {
   }
 };
 
-// 基礎データ取得
+// 蝓ｺ遉弱ョ繝ｼ繧ｿ蜿門ｾ・
 export const fetchBaseData = async (): Promise<BaseDataResponse> => {
   const response = await fetch('/api/base-data');
   
@@ -136,7 +136,7 @@ export const fetchBaseData = async (): Promise<BaseDataResponse> => {
   return response.json();
 };
 
-// 処理済みファイル一覧取得
+// 蜃ｦ逅・ｸ医∩繝輔ぃ繧､繝ｫ荳隕ｧ蜿門ｾ・
 export const fetchProcessedFiles = async (): Promise<any> => {
   const response = await fetch('/api/files/processed');
   
@@ -147,7 +147,7 @@ export const fetchProcessedFiles = async (): Promise<any> => {
   return response.json();
 };
 
-// フロー一覧取得
+// 繝輔Ο繝ｼ荳隕ｧ蜿門ｾ・
 export const fetchFlows = async (): Promise<FlowListResponse> => {
   const response = await fetch('/api/flows');
   
@@ -158,7 +158,7 @@ export const fetchFlows = async (): Promise<FlowListResponse> => {
   return response.json();
 };
 
-// ユーザー一覧取得
+// 繝ｦ繝ｼ繧ｶ繝ｼ荳隕ｧ蜿門ｾ・
 export const fetchUsers = async (): Promise<User[]> => {
   const response = await fetch('/api/users');
   
@@ -169,7 +169,7 @@ export const fetchUsers = async (): Promise<User[]> => {
   return response.json();
 };
 
-// ユーザー作成
+// 繝ｦ繝ｼ繧ｶ繝ｼ菴懈・
 export const createUser = async (userData: CreateUserRequest): Promise<User> => {
   const response = await fetch('/api/users', {
     method: 'POST',
@@ -186,9 +186,9 @@ export const createUser = async (userData: CreateUserRequest): Promise<User> => 
   return response.json();
 };
 
-// 履歴エクスポート機能
+// 螻･豁ｴ繧ｨ繧ｯ繧ｹ繝昴・繝域ｩ溯・
 
-// 個別履歴エクスポート
+// 蛟句挨螻･豁ｴ繧ｨ繧ｯ繧ｹ繝昴・繝・
 export const exportHistoryItem = async (id: string, format: 'json' | 'csv' = 'json'): Promise<Blob> => {
   const response = await fetch(`/api/history/${id}/export?format=${format}`);
   
@@ -199,7 +199,7 @@ export const exportHistoryItem = async (id: string, format: 'json' | 'csv' = 'js
   return response.blob();
 };
 
-// 選択履歴一括エクスポート
+// 驕ｸ謚槫ｱ･豁ｴ荳諡ｬ繧ｨ繧ｯ繧ｹ繝昴・繝・
 export const exportSelectedHistory = async (ids: string[], format: 'json' | 'csv' = 'json'): Promise<Blob> => {
   const response = await fetch('/api/history/export-selected', {
     method: 'POST',
@@ -216,7 +216,7 @@ export const exportSelectedHistory = async (ids: string[], format: 'json' | 'csv
   return response.blob();
 };
 
-// 全履歴エクスポート
+// 蜈ｨ螻･豁ｴ繧ｨ繧ｯ繧ｹ繝昴・繝・
 export const exportAllHistory = async (filters: HistorySearchFilters = {}, format: 'json' | 'csv' = 'json'): Promise<Blob> => {
   const params = new URLSearchParams();
   params.append('format', format);
@@ -233,7 +233,7 @@ export const exportAllHistory = async (filters: HistorySearchFilters = {}, forma
   return response.blob();
 };
 
-// エクスポート履歴取得
+// 繧ｨ繧ｯ繧ｹ繝昴・繝亥ｱ･豁ｴ蜿門ｾ・
 export const fetchExportHistory = async (): Promise<ExportHistoryItem[]> => {
   const response = await fetch('/api/history/export-history');
   
@@ -244,7 +244,7 @@ export const fetchExportHistory = async (): Promise<ExportHistoryItem[]> => {
   return response.json();
 };
 
-// 高度なテキスト検索
+// 鬮伜ｺｦ縺ｪ繝・く繧ｹ繝域､懃ｴ｢
 export const advancedSearch = async (searchText: string, limit: number = 50): Promise<any> => {
   const response = await fetch('/api/history/advanced-search', {
     method: 'POST',
@@ -261,7 +261,7 @@ export const advancedSearch = async (searchText: string, limit: number = 50): Pr
   return response.json();
 };
 
-// レポート生成
+// 繝ｬ繝昴・繝育函謌・
 export const generateReport = async (searchFilters: any, reportTitle?: string, reportDescription?: string): Promise<Blob> => {
   const response = await fetch('/api/history/generate-report', {
     method: 'POST',
@@ -277,3 +277,5 @@ export const generateReport = async (searchFilters: any, reportTitle?: string, r
   
   return response.blob();
 }; 
+
+

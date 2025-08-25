@@ -1,4 +1,4 @@
-import dotenv from 'dotenv';
+﻿import dotenv from 'dotenv';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -9,15 +9,15 @@ const __dirname = path.dirname(__filename);
 
 // https://vitejs.dev/config/
 export default defineConfig(({ command, mode }) => {
-  // 環境変数を読み込み
+  // 迺ｰ蠅・､画焚繧定ｪｭ縺ｿ霎ｼ縺ｿ
   const env = loadEnv(mode, process.cwd(), '');
   
-  // APIのベースURLを環境変数から取得（VITE_API_BASE_URLのみ使用）
+  // API縺ｮ繝吶・繧ｹURL繧堤腸蠅・､画焚縺九ｉ蜿門ｾ暦ｼ・ITE_API_BASE_URL縺ｮ縺ｿ菴ｿ逕ｨ・・
   const apiBaseUrl = env.VITE_API_BASE_URL || 'http://localhost:3001';
   const serverPort = parseInt(env.PORT || '3001');
   const clientPort = parseInt(env.CLIENT_PORT || '5002');
   
-  console.log('🔧 Vite環境変数確認:', {
+  console.log('肌 Vite迺ｰ蠅・､画焚遒ｺ隱・', {
     VITE_API_BASE_URL: env.VITE_API_BASE_URL,
     VITE_API_BASE_URL_TYPE: typeof env.VITE_API_BASE_URL,
     VITE_API_BASE_URL_LENGTH: env.VITE_API_BASE_URL?.length,
@@ -26,16 +26,16 @@ export default defineConfig(({ command, mode }) => {
     clientPort
   });
   
-  console.log('🔧 Vite設定:', {
+  console.log('肌 Vite險ｭ螳・', {
     command,
     mode,
     apiBaseUrl,
     serverPort,
     clientPort,
     env: {
-      VITE_API_BASE_URL: env.VITE_API_BASE_URL, // 使用中: APIのベースURL
-      PORT: env.PORT, // 使用中: サーバーポート
-      NODE_ENV: env.NODE_ENV // 使用中: 環境判別
+      VITE_API_BASE_URL: env.VITE_API_BASE_URL, // 菴ｿ逕ｨ荳ｭ: API縺ｮ繝吶・繧ｹURL
+      PORT: env.PORT, // 菴ｿ逕ｨ荳ｭ: 繧ｵ繝ｼ繝舌・繝昴・繝・
+      NODE_ENV: env.NODE_ENV // 菴ｿ逕ｨ荳ｭ: 迺ｰ蠅・愛蛻･
     }
   });
 
@@ -52,9 +52,9 @@ export default defineConfig(({ command, mode }) => {
       host: '0.0.0.0',
       port: clientPort,
       allowedHosts: true,
-      // ローカル開発環境用の設定
+      // 繝ｭ繝ｼ繧ｫ繝ｫ髢狗匱迺ｰ蠅・畑縺ｮ險ｭ螳・
       watch: {
-        usePolling: false, // ローカルではポーリング不要
+        usePolling: false, // 繝ｭ繝ｼ繧ｫ繝ｫ縺ｧ縺ｯ繝昴・繝ｪ繝ｳ繧ｰ荳崎ｦ・
         followSymlinks: true
       },
       hmr: {
@@ -62,7 +62,7 @@ export default defineConfig(({ command, mode }) => {
         port: clientPort,
         overlay: true
       },
-      // プロキシ設定を有効化 - APIサーバーへの接続
+      // 繝励Ο繧ｭ繧ｷ險ｭ螳壹ｒ譛牙柑蛹・- API繧ｵ繝ｼ繝舌・縺ｸ縺ｮ謗･邯・
       proxy: {
         '/api': {
           target: apiBaseUrl,
@@ -72,13 +72,13 @@ export default defineConfig(({ command, mode }) => {
           rewrite: (path) => path,
           configure: (proxy, options) => {
             proxy.on('error', (err, req, res) => {
-              console.log('🔴 Proxy error:', err);
+              console.log('閥 Proxy error:', err);
             });
             proxy.on('proxyReq', (proxyReq, req, res) => {
-              console.log('📤 Sending Request to the Target:', req.method, req.url);
+              console.log('豆 Sending Request to the Target:', req.method, req.url);
             });
             proxy.on('proxyRes', (proxyRes, req, res) => {
-              console.log('📥 Received Response from the Target:', proxyRes.statusCode, req.url);
+              console.log('踏 Received Response from the Target:', proxyRes.statusCode, req.url);
             });
           },
         },
@@ -107,11 +107,11 @@ export default defineConfig(({ command, mode }) => {
       target: 'es2015'
     },
     define: {
-      // 環境変数をクライアントサイドで利用可能にする
+      // 迺ｰ蠅・､画焚繧偵け繝ｩ繧､繧｢繝ｳ繝医し繧､繝峨〒蛻ｩ逕ｨ蜿ｯ閭ｽ縺ｫ縺吶ｋ
       __VITE_API_BASE_URL__: JSON.stringify(apiBaseUrl),
       __VITE_MODE__: JSON.stringify(mode),
       __VITE_COMMAND__: JSON.stringify(command),
-      // 環境変数を直接定義
+      // 迺ｰ蠅・､画焚繧堤峩謗･螳夂ｾｩ
       'import.meta.env.VITE_API_BASE_URL': JSON.stringify(env.VITE_API_BASE_URL),
       'import.meta.env.NODE_ENV': JSON.stringify(env.NODE_ENV),
       'import.meta.env.MODE': JSON.stringify(mode),
@@ -119,3 +119,5 @@ export default defineConfig(({ command, mode }) => {
     logLevel: 'info'
   };
 });
+
+

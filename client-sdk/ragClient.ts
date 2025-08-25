@@ -1,6 +1,6 @@
-/**
- * RAGシステム用クライアントSDK
- * 既存UIを変更せずにRAG APIを呼び出せる
+﻿/**
+ * RAG繧ｷ繧ｹ繝・Β逕ｨ繧ｯ繝ｩ繧､繧｢繝ｳ繝・DK
+ * 譌｢蟄篭I繧貞､画峩縺帙★縺ｫRAG API繧貞他縺ｳ蜃ｺ縺帙ｋ
  */
 
 export interface RagConfig {
@@ -63,7 +63,7 @@ export class RagClient {
   }
 
   /**
-   * 現在のRAG設定を取得
+   * 迴ｾ蝨ｨ縺ｮRAG險ｭ螳壹ｒ蜿門ｾ・
    */
   async getRagConfig(): Promise<RagConfig> {
     try {
@@ -74,13 +74,13 @@ export class RagClient {
       const data = await response.json();
       return data.config;
     } catch (error) {
-      console.error('RAG設定の取得に失敗:', error);
+      console.error('RAG險ｭ螳壹・蜿門ｾ励↓螟ｱ謨・', error);
       throw error;
     }
   }
 
   /**
-   * RAG設定を更新
+   * RAG險ｭ螳壹ｒ譖ｴ譁ｰ
    */
   async updateRagConfig(partialConfig: Partial<RagConfig>): Promise<RagConfig> {
     try {
@@ -99,13 +99,13 @@ export class RagClient {
       const data = await response.json();
       return data.config;
     } catch (error) {
-      console.error('RAG設定の更新に失敗:', error);
+      console.error('RAG險ｭ螳壹・譖ｴ譁ｰ縺ｫ螟ｱ謨・', error);
       throw error;
     }
   }
 
   /**
-   * ドキュメントを取込
+   * 繝峨く繝･繝｡繝ｳ繝医ｒ蜿冶ｾｼ
    */
   async ingest(request: IngestRequest): Promise<IngestResponse> {
     try {
@@ -124,13 +124,13 @@ export class RagClient {
       
       return await response.json();
     } catch (error) {
-      console.error('ドキュメント取込に失敗:', error);
+      console.error('繝峨く繝･繝｡繝ｳ繝亥叙霎ｼ縺ｫ螟ｱ謨・', error);
       throw error;
     }
   }
 
   /**
-   * ベクトル検索を実行
+   * 繝吶け繝医Ν讀懃ｴ｢繧貞ｮ溯｡・
    */
   async search(query: string, options?: { limit?: number; threshold?: number }): Promise<SearchResponse> {
     try {
@@ -146,13 +146,13 @@ export class RagClient {
       
       return await response.json();
     } catch (error) {
-      console.error('検索に失敗:', error);
+      console.error('讀懃ｴ｢縺ｫ螟ｱ謨・', error);
       throw error;
     }
   }
 
   /**
-   * タグによる検索
+   * 繧ｿ繧ｰ縺ｫ繧医ｋ讀懃ｴ｢
    */
   async searchByTags(tags: string[]): Promise<{ results: SearchResult[]; tags: string[]; count: number; message: string }> {
     try {
@@ -165,13 +165,13 @@ export class RagClient {
       
       return await response.json();
     } catch (error) {
-      console.error('タグ検索に失敗:', error);
+      console.error('繧ｿ繧ｰ讀懃ｴ｢縺ｫ螟ｱ謨・', error);
       throw error;
     }
   }
 
   /**
-   * 取込状況を確認
+   * 蜿冶ｾｼ迥ｶ豕√ｒ遒ｺ隱・
    */
   async getIngestStatus(): Promise<{ documents: number; chunks: number; vectors: number; timestamp: string }> {
     try {
@@ -181,13 +181,13 @@ export class RagClient {
       }
       return await response.json();
     } catch (error) {
-      console.error('取込状況の取得に失敗:', error);
+      console.error('蜿冶ｾｼ迥ｶ豕√・蜿門ｾ励↓螟ｱ謨・', error);
       throw error;
     }
   }
 
   /**
-   * 検索統計を取得
+   * 讀懃ｴ｢邨ｱ險医ｒ蜿門ｾ・
    */
   async getSearchStats(): Promise<{ documents: number; chunks: number; vectors: number; topTags: any[]; timestamp: string }> {
     try {
@@ -197,13 +197,13 @@ export class RagClient {
       }
       return await response.json();
     } catch (error) {
-      console.error('検索統計の取得に失敗:', error);
+      console.error('讀懃ｴ｢邨ｱ險医・蜿門ｾ励↓螟ｱ謨・', error);
       throw error;
     }
   }
 
   /**
-   * 設定の検証
+   * 險ｭ螳壹・讀懆ｨｼ
    */
   async validateConfig(config: Partial<RagConfig>): Promise<{ valid: boolean; message: string; config?: RagConfig }> {
     try {
@@ -221,13 +221,13 @@ export class RagClient {
       
       return await response.json();
     } catch (error) {
-      console.error('設定検証に失敗:', error);
+      console.error('險ｭ螳壽､懆ｨｼ縺ｫ螟ｱ謨・', error);
       throw error;
     }
   }
 
   /**
-   * 設定の差分確認
+   * 險ｭ螳壹・蟾ｮ蛻・｢ｺ隱・
    */
   async getConfigDiff(config: Partial<RagConfig>): Promise<{ changes: string[]; hasChanges: boolean; message: string }> {
     try {
@@ -245,13 +245,13 @@ export class RagClient {
       
       return await response.json();
     } catch (error) {
-      console.error('設定差分確認に失敗:', error);
+      console.error('險ｭ螳壼ｷｮ蛻・｢ｺ隱阪↓螟ｱ謨・', error);
       throw error;
     }
   }
 
   /**
-   * 設定をリセット
+   * 險ｭ螳壹ｒ繝ｪ繧ｻ繝・ヨ
    */
   async resetConfig(): Promise<{ message: string; config: RagConfig; changes: string[]; timestamp: string }> {
     try {
@@ -265,13 +265,13 @@ export class RagClient {
       
       return await response.json();
     } catch (error) {
-      console.error('設定リセットに失敗:', error);
+      console.error('險ｭ螳壹Μ繧ｻ繝・ヨ縺ｫ螟ｱ謨・', error);
       throw error;
     }
   }
 
   /**
-   * 設定をエクスポート
+   * 險ｭ螳壹ｒ繧ｨ繧ｯ繧ｹ繝昴・繝・
    */
   async exportConfig(): Promise<RagConfig> {
     try {
@@ -281,17 +281,19 @@ export class RagClient {
       }
       return await response.json();
     } catch (error) {
-      console.error('設定エクスポートに失敗:', error);
+      console.error('險ｭ螳壹お繧ｯ繧ｹ繝昴・繝医↓螟ｱ謨・', error);
       throw error;
     }
   }
 }
 
-// デフォルトインスタンスをエクスポート
+// 繝・ヵ繧ｩ繝ｫ繝医う繝ｳ繧ｹ繧ｿ繝ｳ繧ｹ繧偵お繧ｯ繧ｹ繝昴・繝・
 export const ragClient = new RagClient();
 
-// 個別関数としてもエクスポート（既存コードとの互換性のため）
+// 蛟句挨髢｢謨ｰ縺ｨ縺励※繧ゅお繧ｯ繧ｹ繝昴・繝茨ｼ域里蟄倥さ繝ｼ繝峨→縺ｮ莠呈鋤諤ｧ縺ｮ縺溘ａ・・
 export const getRagConfig = () => ragClient.getRagConfig();
 export const updateRagConfig = (config: Partial<RagConfig>) => ragClient.updateRagConfig(config);
 export const ingest = (request: IngestRequest) => ragClient.ingest(request);
 export const search = (query: string, options?: { limit?: number; threshold?: number }) => ragClient.search(query, options);
+
+

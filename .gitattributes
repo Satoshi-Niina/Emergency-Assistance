@@ -1,0 +1,18 @@
+# テキストファイルのエンコーディングと改行コードを統一
+* text=auto eol=lf
+*.js   text diff
+*.ts   text diff
+*.tsx  text diff
+*.json text diff
+*.md   text diff
+*.sh   text eol=lf
+*.bat  text eol=crlf
+*.ps1  text eol=crlf
+*.html text diff
+*.css  text diff
+*.scss text diff
+*.yml  text diff
+*.yaml text diff
+*.mjs  text diff
+*.cjs  text diff
+*.lock text diff

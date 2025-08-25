@@ -1,4 +1,4 @@
-// 車両保守記録システムの型定義
+﻿// 霆贋ｸ｡菫晏ｮ郁ｨ倬鹸繧ｷ繧ｹ繝・Β縺ｮ蝙句ｮ夂ｾｩ
 export interface FaultClassification {
   type: string;
   custom: string;
@@ -58,3 +58,6 @@ export interface FormData {
   faultClassifications: FaultClassification[];
   faultFactors: FaultFactor[];
 }
+
+
+

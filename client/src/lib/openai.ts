@@ -1,4 +1,4 @@
-import { apiRequest } from './queryClient';
+﻿import { apiRequest } from './queryClient';
 
 /**
  * Process text with ChatGPT
@@ -27,14 +27,14 @@ export const processWithChatGPT = async (text: string): Promise<string> => {
     
     // Handle specific HTTP status codes
     if (error.status === 401) {
-      throw new Error('APIキーが無効です。システム管理者に連絡してください。');
+      throw new Error('API繧ｭ繝ｼ縺檎┌蜉ｹ縺ｧ縺吶ゅす繧ｹ繝・Β邂｡逅・・↓騾｣邨｡縺励※縺上□縺輔＞縲・);
     } else if (error.status === 429) {
-      throw new Error('APIの利用制限に達しました。しばらくしてからもう一度お試しください。');
+      throw new Error('API縺ｮ蛻ｩ逕ｨ蛻ｶ髯舌↓驕斐＠縺ｾ縺励◆縲ゅ＠縺ｰ繧峨￥縺励※縺九ｉ繧ゅ≧荳蠎ｦ縺願ｩｦ縺励￥縺縺輔＞縲・);
     } else if (error.status === 500) {
-      throw new Error('サーバーエラーが発生しました。管理者に連絡してください。');
+      throw new Error('繧ｵ繝ｼ繝舌・繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆縲らｮ｡逅・・↓騾｣邨｡縺励※縺上□縺輔＞縲・);
     }
     
-    throw new Error('ChatGPTでの処理に失敗しました');
+    throw new Error('ChatGPT縺ｧ縺ｮ蜃ｦ逅・↓螟ｱ謨励＠縺ｾ縺励◆');
   }
 };
 
@@ -85,13 +85,16 @@ export const analyzeImage = async (imageBase64: string): Promise<{ analysis: str
     
     // Handle specific HTTP status codes
     if (error.status === 401) {
-      throw new Error('APIキーが無効です。システム管理者に連絡してください。');
+      throw new Error('API繧ｭ繝ｼ縺檎┌蜉ｹ縺ｧ縺吶ゅす繧ｹ繝・Β邂｡逅・・↓騾｣邨｡縺励※縺上□縺輔＞縲・);
     } else if (error.status === 429) {
-      throw new Error('APIの利用制限に達しました。しばらくしてからもう一度お試しください。');
+      throw new Error('API縺ｮ蛻ｩ逕ｨ蛻ｶ髯舌↓驕斐＠縺ｾ縺励◆縲ゅ＠縺ｰ繧峨￥縺励※縺九ｉ繧ゅ≧荳蠎ｦ縺願ｩｦ縺励￥縺縺輔＞縲・);
     } else if (error.status === 500) {
-      throw new Error('サーバーエラーが発生しました。管理者に連絡してください。');
+      throw new Error('繧ｵ繝ｼ繝舌・繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆縲らｮ｡逅・・↓騾｣邨｡縺励※縺上□縺輔＞縲・);
     }
     
-    throw new Error('画像分析に失敗しました');
+    throw new Error('逕ｻ蜒丞・譫舌↓螟ｱ謨励＠縺ｾ縺励◆');
   }
 };
+
+
+

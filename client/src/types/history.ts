@@ -1,4 +1,4 @@
-// 応急処置サポート履歴の型定義
+﻿// 蠢懈･蜃ｦ鄂ｮ繧ｵ繝昴・繝亥ｱ･豁ｴ縺ｮ蝙句ｮ夂ｾｩ
 export interface SupportHistoryItem {
   id: string;
   chatId?: string;
@@ -19,7 +19,7 @@ export interface SupportHistoryItem {
   repairLocation?: string;
   requestDate?: string;
   machineTypeName?: string;
-  data?: any; // 後方互換性
+  data?: any; // 蠕梧婿莠呈鋤諤ｧ
   conversationHistory?: any[];
   originalChatData?: any;
   messages?: any[];
@@ -29,7 +29,7 @@ export interface SupportHistoryItem {
     machineNumber?: string;
   };
   jsonData: {
-    // 新しいフォーマット
+    // 譁ｰ縺励＞繝輔か繝ｼ繝槭ャ繝・
     title?: string;
     problemDescription?: string;
     machineType?: string;
@@ -66,7 +66,7 @@ export interface SupportHistoryItem {
       export_format_version?: string;
       fileName?: string;
     };
-    // 従来のフォーマット（後方互換性）
+    // 蠕捺擂縺ｮ繝輔か繝ｼ繝槭ャ繝茨ｼ亥ｾ梧婿莠呈鋤諤ｧ・・
     question?: string;
     answer?: string;
     machineInfo?: {
@@ -90,24 +90,24 @@ export interface SupportHistoryItem {
   lastModified?: string;
 }
 
-// 履歴検索フィルター
+// 螻･豁ｴ讀懃ｴ｢繝輔ぅ繝ｫ繧ｿ繝ｼ
 export interface HistorySearchFilters {
   machineType?: string;
   machineNumber?: string;
-  searchText?: string; // テキスト検索用
-  searchDate?: string; // 日付検索用
+  searchText?: string; // 繝・く繧ｹ繝域､懃ｴ｢逕ｨ
+  searchDate?: string; // 譌･莉俶､懃ｴ｢逕ｨ
   limit?: number;
   offset?: number;
 }
 
-// 履歴APIレスポンス
+// 螻･豁ｴAPI繝ｬ繧ｹ繝昴Φ繧ｹ
 export interface HistoryListResponse {
   items: SupportHistoryItem[];
   total: number;
   hasMore: boolean;
 }
 
-// 基礎データ管理の型定義
+// 蝓ｺ遉弱ョ繝ｼ繧ｿ邂｡逅・・蝙句ｮ夂ｾｩ
 export interface BaseDataItem {
   id: string;
   title: string;
@@ -121,7 +121,7 @@ export interface BaseDataResponse {
   total: number;
 }
 
-// フロー管理の型定義
+// 繝輔Ο繝ｼ邂｡逅・・蝙句ｮ夂ｾｩ
 export interface FlowItem {
   id: string;
   title: string;
@@ -137,7 +137,7 @@ export interface FlowListResponse {
   total: number;
 }
 
-// ユーザー管理の型定義
+// 繝ｦ繝ｼ繧ｶ繝ｼ邂｡逅・・蝙句ｮ夂ｾｩ
 export interface User {
   id: string;
   username: string;
@@ -157,7 +157,7 @@ export interface CreateUserRequest {
   description?: string;
 }
 
-// エクスポート機能の型定義
+// 繧ｨ繧ｯ繧ｹ繝昴・繝域ｩ溯・縺ｮ蝙句ｮ夂ｾｩ
 export interface ExportHistoryItem {
   id: string;
   filename: string;
@@ -179,3 +179,5 @@ export interface ExportResponse {
   downloadUrl?: string;
   message?: string;
 } 
+
+

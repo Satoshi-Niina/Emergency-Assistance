@@ -1,4 +1,4 @@
-// Shared types for the Emergency Assistance System
+﻿// Shared types for the Emergency Assistance System
 
 export interface User {
   id: string;
@@ -75,3 +75,4 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
     totalPages: number;
   };
 } 
+

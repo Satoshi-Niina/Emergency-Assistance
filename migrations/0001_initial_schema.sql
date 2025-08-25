@@ -1,4 +1,4 @@
--- Initial schema for Emergency Assistance System
+﻿-- Initial schema for Emergency Assistance System
 -- This migration creates all the base tables
 
 -- Users table
@@ -153,3 +153,4 @@ CREATE TABLE IF NOT EXISTS "image_data" (
     "description" text,
     "created_at" timestamp DEFAULT now() NOT NULL
 ); 
+

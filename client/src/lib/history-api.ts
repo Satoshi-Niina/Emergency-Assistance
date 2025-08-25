@@ -1,4 +1,4 @@
-
+﻿
 import { API_BASE_URL } from './api/config';
 
 export interface HistoryCreateData {
@@ -28,7 +28,7 @@ export interface HistorySearchParams {
   offset?: number;
 }
 
-// 履歴の作成
+// 螻･豁ｴ縺ｮ菴懈・
 export async function createHistoryItem(data: HistoryCreateData): Promise<any> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/history/create`, {
@@ -41,17 +41,17 @@ export async function createHistoryItem(data: HistoryCreateData): Promise<any> {
     });
 
     if (!response.ok) {
-      throw new Error(`履歴の作成に失敗しました: ${response.status}`);
+      throw new Error(`螻･豁ｴ縺ｮ菴懈・縺ｫ螟ｱ謨励＠縺ｾ縺励◆: ${response.status}`);
     }
 
     return await response.json();
   } catch (error) {
-    console.error('履歴作成エラー:', error);
+    console.error('螻･豁ｴ菴懈・繧ｨ繝ｩ繝ｼ:', error);
     throw error;
   }
 }
 
-// 履歴の検索
+// 螻･豁ｴ縺ｮ讀懃ｴ｢
 export async function searchHistoryItems(params: HistorySearchParams): Promise<any> {
   try {
     const searchParams = new URLSearchParams();
@@ -68,17 +68,17 @@ export async function searchHistoryItems(params: HistorySearchParams): Promise<a
     });
 
     if (!response.ok) {
-      throw new Error(`履歴の検索に失敗しました: ${response.status}`);
+      throw new Error(`螻･豁ｴ縺ｮ讀懃ｴ｢縺ｫ螟ｱ謨励＠縺ｾ縺励◆: ${response.status}`);
     }
 
     return await response.json();
   } catch (error) {
-    console.error('履歴検索エラー:', error);
+    console.error('螻･豁ｴ讀懃ｴ｢繧ｨ繝ｩ繝ｼ:', error);
     throw error;
   }
 }
 
-// 履歴詳細の取得
+// 螻･豁ｴ隧ｳ邏ｰ縺ｮ蜿門ｾ・
 export async function getHistoryItem(id: string): Promise<any> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/history/item/${id}`, {
@@ -87,17 +87,17 @@ export async function getHistoryItem(id: string): Promise<any> {
     });
 
     if (!response.ok) {
-      throw new Error(`履歴詳細の取得に失敗しました: ${response.status}`);
+      throw new Error(`螻･豁ｴ隧ｳ邏ｰ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆: ${response.status}`);
     }
 
     return await response.json();
   } catch (error) {
-    console.error('履歴詳細取得エラー:', error);
+    console.error('螻･豁ｴ隧ｳ邏ｰ蜿門ｾ励お繝ｩ繝ｼ:', error);
     throw error;
   }
 }
 
-// 統計情報の取得
+// 邨ｱ險域ュ蝣ｱ縺ｮ蜿門ｾ・
 export async function getHistoryStats(): Promise<any> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/history/stats`, {
@@ -106,20 +106,20 @@ export async function getHistoryStats(): Promise<any> {
     });
 
     if (!response.ok) {
-      throw new Error(`統計情報の取得に失敗しました: ${response.status}`);
+      throw new Error(`邨ｱ險域ュ蝣ｱ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆: ${response.status}`);
     }
 
     return await response.json();
   } catch (error) {
-    console.error('統計情報取得エラー:', error);
+    console.error('邨ｱ險域ュ蝣ｱ蜿門ｾ励お繝ｩ繝ｼ:', error);
     throw error;
   }
 }
 
-// チャット送信時の自動履歴保存
+// 繝√Ε繝・ヨ騾∽ｿ｡譎ゅ・閾ｪ蜍募ｱ･豁ｴ菫晏ｭ・
 export async function saveToHistory(data: HistoryCreateData): Promise<void> {
   try {
-    // 機種や事業所などの情報を自動推測する処理
+    // 讖溽ｨｮ繧・ｺ区･ｭ謇縺ｪ縺ｩ縺ｮ諠・ｱ繧定・蜍墓耳貂ｬ縺吶ｋ蜃ｦ逅・
     const enhancedData = {
       ...data,
       machineModel: extractMachineModel(data.description),
@@ -129,14 +129,14 @@ export async function saveToHistory(data: HistoryCreateData): Promise<void> {
     };
 
     await createHistoryItem(enhancedData);
-    console.log('✅ 履歴に保存しました:', enhancedData.title);
+    console.log('笨・螻･豁ｴ縺ｫ菫晏ｭ倥＠縺ｾ縺励◆:', enhancedData.title);
   } catch (error) {
-    console.error('❌ 履歴保存に失敗しました:', error);
-    // 履歴保存エラーは主機能に影響しないよう、エラーを投げない
+    console.error('笶・螻･豁ｴ菫晏ｭ倥↓螟ｱ謨励＠縺ｾ縺励◆:', error);
+    // 螻･豁ｴ菫晏ｭ倥お繝ｩ繝ｼ縺ｯ荳ｻ讖溯・縺ｫ蠖ｱ髻ｿ縺励↑縺・ｈ縺・√お繝ｩ繝ｼ繧呈兜縺偵↑縺・
   }
 }
 
-// テキストから機種を推測
+// 繝・く繧ｹ繝医°繧画ｩ溽ｨｮ繧呈耳貂ｬ
 function extractMachineModel(text: string): string | undefined {
   const machineModels = ['MT-100', 'MR-400', 'TC-250', 'SS-750'];
   
@@ -149,9 +149,9 @@ function extractMachineModel(text: string): string | undefined {
   return undefined;
 }
 
-// テキストから事業所を推測
+// 繝・く繧ｹ繝医°繧我ｺ区･ｭ謇繧呈耳貂ｬ
 function extractOffice(text: string): string | undefined {
-  const offices = ['東京事業所', '大阪事業所', '名古屋事業所', '福岡事業所'];
+  const offices = ['譚ｱ莠ｬ莠区･ｭ謇', '螟ｧ髦ｪ莠区･ｭ謇', '蜷榊商螻倶ｺ区･ｭ謇', '遖丞ｲ｡莠区･ｭ謇'];
   
   for (const office of offices) {
     if (text.includes(office)) {
@@ -162,13 +162,13 @@ function extractOffice(text: string): string | undefined {
   return undefined;
 }
 
-// テキストからカテゴリを推測
+// 繝・く繧ｹ繝医°繧峨き繝・ざ繝ｪ繧呈耳貂ｬ
 function extractCategory(text: string): string | undefined {
   const categories = [
-    { name: 'エンジン', keywords: ['エンジン', '始動', '停止', '燃料'] },
-    { name: 'ブレーキ', keywords: ['ブレーキ', '制動', '停車'] },
-    { name: '電気系統', keywords: ['電気', '電源', 'バッテリー', 'ライト'] },
-    { name: '油圧系統', keywords: ['油圧', 'オイル', '圧力'] }
+    { name: '繧ｨ繝ｳ繧ｸ繝ｳ', keywords: ['繧ｨ繝ｳ繧ｸ繝ｳ', '蟋句虚', '蛛懈ｭ｢', '辯・侭'] },
+    { name: '繝悶Ξ繝ｼ繧ｭ', keywords: ['繝悶Ξ繝ｼ繧ｭ', '蛻ｶ蜍・, '蛛懆ｻ・] },
+    { name: '髮ｻ豌礼ｳｻ邨ｱ', keywords: ['髮ｻ豌・, '髮ｻ貅・, '繝舌ャ繝・Μ繝ｼ', '繝ｩ繧､繝・] },
+    { name: '豐ｹ蝨ｧ邉ｻ邨ｱ', keywords: ['豐ｹ蝨ｧ', '繧ｪ繧､繝ｫ', '蝨ｧ蜉・] }
   ];
   
   for (const category of categories) {
@@ -180,16 +180,16 @@ function extractCategory(text: string): string | undefined {
   return undefined;
 }
 
-// テキストからキーワードを抽出
+// 繝・く繧ｹ繝医°繧峨く繝ｼ繝ｯ繝ｼ繝峨ｒ謚ｽ蜃ｺ
 function extractKeywords(text: string): string[] {
   const keywords: string[] = [];
   
-  // 一般的なキーワードパターン
+  // 荳闊ｬ逧・↑繧ｭ繝ｼ繝ｯ繝ｼ繝峨ヱ繧ｿ繝ｼ繝ｳ
   const patterns = [
-    /エンジン[停止起動始動]/g,
-    /ブレーキ[不良故障]/g,
+    /繧ｨ繝ｳ繧ｸ繝ｳ[蛛懈ｭ｢襍ｷ蜍募ｧ句虚]/g,
+    /繝悶Ξ繝ｼ繧ｭ[荳崎憶謨・囿]/g,
     /MT-\d+|MR-\d+|TC-\d+|SS-\d+/g,
-    /[東京大阪名古屋福岡]事業所/g
+    /[譚ｱ莠ｬ螟ｧ髦ｪ蜷榊商螻狗ｦ丞ｲ｡]莠区･ｭ謇/g
   ];
   
   patterns.forEach(pattern => {
@@ -199,5 +199,8 @@ function extractKeywords(text: string): string[] {
     }
   });
   
-  return [...new Set(keywords)]; // 重複除去
+  return [...new Set(keywords)]; // 驥崎､・勁蜴ｻ
 }
+
+
+

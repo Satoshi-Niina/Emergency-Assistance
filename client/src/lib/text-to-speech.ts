@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Text-to-speech functionality using Web Speech API
  */
 
@@ -18,40 +18,40 @@ export const speakText = (
   } = {}
 ): Promise<void> => {
   return new Promise((resolve, reject) => {
-    // SpeechSynthesis APIが利用可能か確認
+    // SpeechSynthesis API縺悟茜逕ｨ蜿ｯ閭ｽ縺狗｢ｺ隱・
     if (!('speechSynthesis' in window)) {
-      reject(new Error('このブラウザは音声合成をサポートしていません'));
+      reject(new Error('縺薙・繝悶Λ繧ｦ繧ｶ縺ｯ髻ｳ螢ｰ蜷域・繧偵し繝昴・繝医＠縺ｦ縺・∪縺帙ｓ'));
       return;
     }
 
-    // SpeechSynthesisUtteranceインスタンスを作成
+    // SpeechSynthesisUtterance繧､繝ｳ繧ｹ繧ｿ繝ｳ繧ｹ繧剃ｽ懈・
     const utterance = new SpeechSynthesisUtterance(text);
 
-    // オプションの設定
-    utterance.rate = options.rate || 1.0; // 速度 (0.1-10)
-    utterance.pitch = options.pitch || 1.0; // ピッチ (0-2)
-    utterance.volume = options.volume || 1.0; // 音量 (0-1)
-    utterance.lang = options.lang || 'ja-JP'; // 言語
+    // 繧ｪ繝励す繝ｧ繝ｳ縺ｮ險ｭ螳・
+    utterance.rate = options.rate || 1.0; // 騾溷ｺｦ (0.1-10)
+    utterance.pitch = options.pitch || 1.0; // 繝斐ャ繝・(0-2)
+    utterance.volume = options.volume || 1.0; // 髻ｳ驥・(0-1)
+    utterance.lang = options.lang || 'ja-JP'; // 險隱・
 
-    // イベントハンドラー
+    // 繧､繝吶Φ繝医ワ繝ｳ繝峨Λ繝ｼ
     utterance.onend = () => {
       resolve();
     };
     
     utterance.onerror = (event) => {
-      reject(new Error(`音声合成エラー: ${event.error}`));
+      reject(new Error(`髻ｳ螢ｰ蜷域・繧ｨ繝ｩ繝ｼ: ${event.error}`));
     };
 
-    // 実行中の発声をキャンセル
+    // 螳溯｡御ｸｭ縺ｮ逋ｺ螢ｰ繧偵く繝｣繝ｳ繧ｻ繝ｫ
     window.speechSynthesis.cancel();
 
-    // 発話開始
+    // 逋ｺ隧ｱ髢句ｧ・
     window.speechSynthesis.speak(utterance);
   });
 };
 
 /**
- * 音声合成を停止する
+ * 髻ｳ螢ｰ蜷域・繧貞●豁｢縺吶ｋ
  */
 export const stopSpeaking = (): void => {
   if ('speechSynthesis' in window) {
@@ -60,8 +60,8 @@ export const stopSpeaking = (): void => {
 };
 
 /**
- * 利用可能な音声のリストを取得
- * @returns 利用可能な音声の配列
+ * 蛻ｩ逕ｨ蜿ｯ閭ｽ縺ｪ髻ｳ螢ｰ縺ｮ繝ｪ繧ｹ繝医ｒ蜿門ｾ・
+ * @returns 蛻ｩ逕ｨ蜿ｯ閭ｽ縺ｪ髻ｳ螢ｰ縺ｮ驟榊・
  */
 export const getAvailableVoices = (): Promise<SpeechSynthesisVoice[]> => {
   return new Promise((resolve) => {
@@ -70,14 +70,14 @@ export const getAvailableVoices = (): Promise<SpeechSynthesisVoice[]> => {
       return;
     }
 
-    // 音声が既にロードされている場合
+    // 髻ｳ螢ｰ縺梧里縺ｫ繝ｭ繝ｼ繝峨＆繧後※縺・ｋ蝣ｴ蜷・
     let voices = window.speechSynthesis.getVoices();
     if (voices.length > 0) {
       resolve(voices);
       return;
     }
 
-    // 音声がまだロードされていない場合は、イベントを待機
+    // 髻ｳ螢ｰ縺後∪縺繝ｭ繝ｼ繝峨＆繧後※縺・↑縺・ｴ蜷医・縲√う繝吶Φ繝医ｒ蠕・ｩ・
     window.speechSynthesis.onvoiceschanged = () => {
       voices = window.speechSynthesis.getVoices();
       resolve(voices);
@@ -86,28 +86,30 @@ export const getAvailableVoices = (): Promise<SpeechSynthesisVoice[]> => {
 };
 
 /**
- * 指定された言語に最適な音声を選択する
- * @param lang 言語コード（例: 'ja-JP'）
- * @returns 選択された音声、または利用可能な音声がない場合はnull
+ * 謖・ｮ壹＆繧後◆險隱槭↓譛驕ｩ縺ｪ髻ｳ螢ｰ繧帝∈謚槭☆繧・
+ * @param lang 險隱槭さ繝ｼ繝会ｼ井ｾ・ 'ja-JP'・・
+ * @returns 驕ｸ謚槭＆繧後◆髻ｳ螢ｰ縲√∪縺溘・蛻ｩ逕ｨ蜿ｯ閭ｽ縺ｪ髻ｳ螢ｰ縺後↑縺・ｴ蜷医・null
  */
 export const selectVoiceForLanguage = async (
   lang: string
 ): Promise<SpeechSynthesisVoice | null> => {
   const voices = await getAvailableVoices();
   
-  // 指定された言語に完全に一致する音声を検索
+  // 謖・ｮ壹＆繧後◆險隱槭↓螳悟・縺ｫ荳閾ｴ縺吶ｋ髻ｳ螢ｰ繧呈､懃ｴ｢
   const exactMatch = voices.find(
     (voice) => voice.lang.toLowerCase() === lang.toLowerCase()
   );
   if (exactMatch) return exactMatch;
   
-  // 言語コードの先頭部分が一致する音声を検索（例: 'ja-JP' → 'ja'）
+  // 險隱槭さ繝ｼ繝峨・蜈磯ｭ驛ｨ蛻・′荳閾ｴ縺吶ｋ髻ｳ螢ｰ繧呈､懃ｴ｢・井ｾ・ 'ja-JP' 竊・'ja'・・
   const langPrefix = lang.split('-')[0].toLowerCase();
   const prefixMatch = voices.find(
     (voice) => voice.lang.toLowerCase().startsWith(langPrefix)
   );
   if (prefixMatch) return prefixMatch;
   
-  // デフォルト音声（最初の音声）を返す、または音声がない場合はnull
+  // 繝・ヵ繧ｩ繝ｫ繝磯浹螢ｰ・域怙蛻昴・髻ｳ螢ｰ・峨ｒ霑斐☆縲√∪縺溘・髻ｳ螢ｰ縺後↑縺・ｴ蜷医・null
   return voices.length > 0 ? voices[0] : null;
 };
+
+

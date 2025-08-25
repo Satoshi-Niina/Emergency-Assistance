@@ -1,46 +1,46 @@
-{
+﻿{
   "chatId": "0a9f4736-82fa-4a6a-a5aa-e029cf088afd",
   "userId": "38f38114-5691-4f7c-8047-f492034dc0cc",
   "exportType": "manual_send",
   "exportTimestamp": "2025-08-08T07:27:27.580Z",
-  "title": "エンジンが全く始動しない",
-  "problemDescription": "エンジンが全く始動しない",
+  "title": "繧ｨ繝ｳ繧ｸ繝ｳ縺悟・縺丞ｧ句虚縺励↑縺・,
+  "problemDescription": "繧ｨ繝ｳ繧ｸ繝ｳ縺悟・縺丞ｧ句虚縺励↑縺・,
   "machineType": "MC300",
   "machineNumber": "MC300-002",
   "extractedComponents": [
-    "エンジン",
-    "バッテリー"
+    "繧ｨ繝ｳ繧ｸ繝ｳ",
+    "繝舌ャ繝・Μ繝ｼ"
   ],
   "extractedSymptoms": [],
   "possibleModels": [],
   "conversationHistory": [
     {
       "id": 1754637999930,
-      "content": "発生した状況は？",
+      "content": "逋ｺ逕溘＠縺溽憾豕√・・・,
       "isAiResponse": true,
       "media": []
     },
     {
       "id": 1754638027817,
-      "content": "エンジンが全く始動しない",
+      "content": "繧ｨ繝ｳ繧ｸ繝ｳ縺悟・縺丞ｧ句虚縺励↑縺・,
       "isAiResponse": false,
       "media": []
     },
     {
       "id": 1754638028379,
-      "content": "どこか想定される？",
+      "content": "縺ｩ縺薙°諠ｳ螳壹＆繧後ｋ・・,
       "isAiResponse": true,
       "media": []
     },
     {
       "id": 1754638038979,
-      "content": "バッテリー",
+      "content": "繝舌ャ繝・Μ繝ｼ",
       "isAiResponse": false,
       "media": []
     },
     {
       "id": 1754638039489,
-      "content": "どのような処置しましたか？",
+      "content": "縺ｩ縺ｮ繧医≧縺ｪ蜃ｦ鄂ｮ縺励∪縺励◆縺具ｼ・,
       "isAiResponse": true,
       "media": []
     },
@@ -70,35 +70,35 @@
     "messages": [
       {
         "id": 1754637999930,
-        "content": "発生した状況は？",
+        "content": "逋ｺ逕溘＠縺溽憾豕√・・・,
         "isAiResponse": true,
         "timestamp": "2025-08-08T07:26:39.930Z",
         "media": []
       },
       {
         "id": 1754638027817,
-        "content": "エンジンが全く始動しない",
+        "content": "繧ｨ繝ｳ繧ｸ繝ｳ縺悟・縺丞ｧ句虚縺励↑縺・,
         "isAiResponse": false,
         "timestamp": "2025-08-08T07:27:07.817Z",
         "media": []
       },
       {
         "id": 1754638028379,
-        "content": "どこか想定される？",
+        "content": "縺ｩ縺薙°諠ｳ螳壹＆繧後ｋ・・,
         "isAiResponse": true,
         "timestamp": "2025-08-08T07:27:08.379Z",
         "media": []
       },
       {
         "id": 1754638038979,
-        "content": "バッテリー",
+        "content": "繝舌ャ繝・Μ繝ｼ",
         "isAiResponse": false,
         "timestamp": "2025-08-08T07:27:18.979Z",
         "media": []
       },
       {
         "id": 1754638039489,
-        "content": "どのような処置しましたか？",
+        "content": "縺ｩ縺ｮ繧医≧縺ｪ蜃ｦ鄂ｮ縺励∪縺励◆縺具ｼ・,
         "isAiResponse": true,
         "timestamp": "2025-08-08T07:27:19.489Z",
         "media": []
@@ -116,7 +116,7 @@
     {
       "messageId": 1754638044155,
       "fileName": "chat_image_0a9f4736-82fa-4a6a-a5aa-e029cf088afd_1754638047580.jpg",
-      "path": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\システム\\Total Maintenance Control\\Emergency-Assistance\\knowledge-base\\images\\chat-exports\\chat_image_0a9f4736-82fa-4a6a-a5aa-e029cf088afd_1754638047580.jpg",
+      "path": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\繧ｷ繧ｹ繝・Β\\Total Maintenance Control\\Emergency-Assistance\\knowledge-base\\images\\chat-exports\\chat_image_0a9f4736-82fa-4a6a-a5aa-e029cf088afd_1754638047580.jpg",
       "url": "/api/images/chat-exports/chat_image_0a9f4736-82fa-4a6a-a5aa-e029cf088afd_1754638047580.jpg"
     }
   ],
@@ -215,9 +215,9 @@
       "updatedBy": "user"
     }
   ],
-  "id": "export_エンジンが全く始動しない_0a9f4736-82fa-4a6a-a5aa-e029cf088afd_2025-08-08T07-27-27-580Z.json",
+  "id": "export_繧ｨ繝ｳ繧ｸ繝ｳ縺悟・縺丞ｧ句虚縺励↑縺Ю0a9f4736-82fa-4a6a-a5aa-e029cf088afd_2025-08-08T07-27-27-580Z.json",
   "type": "chat_export",
-  "fileName": "エンジンが全く始動しない_0a9f4736-82fa-4a6a-a5aa-e029cf088afd_2025-08-08T07-27-27-580Z.json",
+  "fileName": "繧ｨ繝ｳ繧ｸ繝ｳ縺悟・縺丞ｧ句虚縺励↑縺Ю0a9f4736-82fa-4a6a-a5aa-e029cf088afd_2025-08-08T07-27-27-580Z.json",
   "messageCount": 0,
   "machineInfo": {
     "selectedMachineType": "",
@@ -228,5 +228,6 @@
   "fileSize": 15124,
   "lastModified": "2025-08-16T12:02:51.324Z",
   "createdAt": "2025-08-16T12:00:47.284Z",
-  "answer": "エンジンが全く始動しない"
+  "answer": "繧ｨ繝ｳ繧ｸ繝ｳ縺悟・縺丞ｧ句虚縺励↑縺・
 }
+

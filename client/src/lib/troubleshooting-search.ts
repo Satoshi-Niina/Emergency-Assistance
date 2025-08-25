@@ -1,7 +1,7 @@
-import Fuse from 'fuse.js';
+﻿import Fuse from 'fuse.js';
 import { apiRequest } from './queryClient';
 
-// 検索結果の型定義
+// 讀懃ｴ｢邨先棡縺ｮ蝙句ｮ夂ｾｩ
 export interface SearchResult {
   id: string;
   title: string;
@@ -15,7 +15,7 @@ export interface SearchResult {
   }[];
 }
 
-// トラブルシューティング検索用の設定
+// 繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ讀懃ｴ｢逕ｨ縺ｮ險ｭ螳・
 const fuseOptions = {
   includeScore: true,
   keys: [
@@ -35,29 +35,29 @@ const fuseOptions = {
   matchAllTokens: false,
 };
 
-// 日本語タイトルにマッピングするためのディクショナリ
+// 譌･譛ｬ隱槭ち繧､繝医Ν縺ｫ繝槭ャ繝斐Φ繧ｰ縺吶ｋ縺溘ａ縺ｮ繝・ぅ繧ｯ繧ｷ繝ｧ繝翫Μ
 export const japaneseGuideTitles: { [key: string]: string } = {
-  'no_electrical_power': '電源が入らない',
-  'engine_wont_start': 'エンジンが始動しない',
-  'overheating': 'オーバーヒート',
-  'oil_pressure_warning': 'オイル圧力警告',
-  'brake_failure': 'ブレーキ故障',
-  'transmission_failure': '変速機故障',
-  'hydraulic_system_failure': '油圧システム故障',
-  'fuel_system_problem': '燃料システム問題',
-  'electrical_short': '電気回路ショート',
-  'battery_dead': 'バッテリー上がり',
-  // ここに必要に応じて追加
+  'no_electrical_power': '髮ｻ貅舌′蜈･繧峨↑縺・,
+  'engine_wont_start': '繧ｨ繝ｳ繧ｸ繝ｳ縺悟ｧ句虚縺励↑縺・,
+  'overheating': '繧ｪ繝ｼ繝舌・繝偵・繝・,
+  'oil_pressure_warning': '繧ｪ繧､繝ｫ蝨ｧ蜉幄ｭｦ蜻・,
+  'brake_failure': '繝悶Ξ繝ｼ繧ｭ謨・囿',
+  'transmission_failure': '螟蛾滓ｩ滓腐髫・,
+  'hydraulic_system_failure': '豐ｹ蝨ｧ繧ｷ繧ｹ繝・Β謨・囿',
+  'fuel_system_problem': '辯・侭繧ｷ繧ｹ繝・Β蝠城｡・,
+  'electrical_short': '髮ｻ豌怜屓霍ｯ繧ｷ繝ｧ繝ｼ繝・,
+  'battery_dead': '繝舌ャ繝・Μ繝ｼ荳翫′繧・,
+  // 縺薙％縺ｫ蠢・ｦ√↓蠢懊§縺ｦ霑ｽ蜉
 };
 
 /**
- * 指定されたIDのトラブルシューティングフローを取得
- * @param id フローID
- * @returns フロー情報またはundefined
+ * 謖・ｮ壹＆繧後◆ID縺ｮ繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ繝輔Ο繝ｼ繧貞叙蠕・
+ * @param id 繝輔Ο繝ｼID
+ * @returns 繝輔Ο繝ｼ諠・ｱ縺ｾ縺溘・undefined
  */
 export const getTroubleshootingFlowById = async (id: string): Promise<SearchResult | undefined> => {
   try {
-    // キャッシュ無効化のためのタイムスタンプを追加
+    // 繧ｭ繝｣繝・す繝･辟｡蜉ｹ蛹悶・縺溘ａ縺ｮ繧ｿ繧､繝繧ｹ繧ｿ繝ｳ繝励ｒ霑ｽ蜉
     const timestamp = Date.now();
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${id}?_t=${timestamp}`, {
       headers: {
@@ -68,7 +68,7 @@ export const getTroubleshootingFlowById = async (id: string): Promise<SearchResu
 
     if (response.ok) {
       const flow = await response.json();
-      console.log(`🔍 取得したフローデータ:`, {
+      console.log(`剥 蜿門ｾ励＠縺溘ヵ繝ｭ繝ｼ繝・・繧ｿ:`, {
         id: flow.id,
         title: flow.title,
         stepsCount: flow.steps?.length || 0,
@@ -83,18 +83,18 @@ export const getTroubleshootingFlowById = async (id: string): Promise<SearchResu
       };
     }
 
-    console.warn(`⚠️ フローが見つかりません: ${id}`);
+    console.warn(`笞・・繝輔Ο繝ｼ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ: ${id}`);
     return undefined;
   } catch (error) {
-    console.error('❌ トラブルシューティングフロー検索エラー:', error);
+    console.error('笶・繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ繝輔Ο繝ｼ讀懃ｴ｢繧ｨ繝ｩ繝ｼ:', error);
     return undefined;
   }
 };
 
 /**
- * 特定のトラブルシューティングフローを検索
- * @param id フローID
- * @returns 検索結果または未定義
+ * 迚ｹ螳壹・繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ繝輔Ο繝ｼ繧呈､懃ｴ｢
+ * @param id 繝輔Ο繝ｼID
+ * @returns 讀懃ｴ｢邨先棡縺ｾ縺溘・譛ｪ螳夂ｾｩ
  */
 export const searchTroubleshootingFlow = async (id: string): Promise<SearchResult | undefined> => {
   try {
@@ -110,19 +110,19 @@ export const searchTroubleshootingFlow = async (id: string): Promise<SearchResul
     }
     return undefined;
   } catch (error) {
-    console.error('トラブルシューティングフロー検索エラー:', error);
+    console.error('繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ繝輔Ο繝ｼ讀懃ｴ｢繧ｨ繝ｩ繝ｼ:', error);
     return undefined;
   }
 };
 
 /**
- * テキストに基づいてトラブルシューティングフローを検索
- * @param query 検索クエリ
- * @returns 検索結果の配列
+ * 繝・く繧ｹ繝医↓蝓ｺ縺･縺・※繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ繝輔Ο繝ｼ繧呈､懃ｴ｢
+ * @param query 讀懃ｴ｢繧ｯ繧ｨ繝ｪ
+ * @returns 讀懃ｴ｢邨先棡縺ｮ驟榊・
  */
 export const searchTroubleshootingFlows = async (query: string): Promise<SearchResult[]> => {
   if (!query || query.trim() === '') {
-    // クエリが空の場合、すべてのフローを返す
+    // 繧ｯ繧ｨ繝ｪ縺檎ｩｺ縺ｮ蝣ｴ蜷医√☆縺ｹ縺ｦ縺ｮ繝輔Ο繝ｼ繧定ｿ斐☆
     try {
       const response = await apiRequest('GET', '/api/troubleshooting');
       if (response.ok) {
@@ -136,18 +136,18 @@ export const searchTroubleshootingFlows = async (query: string): Promise<SearchR
       }
       return [];
     } catch (error) {
-      console.error('トラブルシューティングフロー取得エラー:', error);
+      console.error('繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ繝輔Ο繝ｼ蜿門ｾ励お繝ｩ繝ｼ:', error);
       return [];
     }
   }
 
   try {
-    // クライアントサイドで検索を行う場合
+    // 繧ｯ繝ｩ繧､繧｢繝ｳ繝医し繧､繝峨〒讀懃ｴ｢繧定｡後≧蝣ｴ蜷・
     const response = await apiRequest('GET', '/api/troubleshooting');
     if (response.ok) {
       const flows = await response.json();
 
-      // Fuse.jsを使用してクライアントサイド検索
+      // Fuse.js繧剃ｽｿ逕ｨ縺励※繧ｯ繝ｩ繧､繧｢繝ｳ繝医し繧､繝画､懃ｴ｢
       const fuse = new Fuse(flows, fuseOptions);
       const results = fuse.search(query);
 
@@ -163,7 +163,7 @@ export const searchTroubleshootingFlows = async (query: string): Promise<SearchR
       });
     }
 
-    // サーバーサイドで検索を行う場合
+    // 繧ｵ繝ｼ繝舌・繧ｵ繧､繝峨〒讀懃ｴ｢繧定｡後≧蝣ｴ蜷・
     /*
     const searchResponse = await apiRequest('POST', '/api/troubleshooting/search', {
       query
@@ -183,7 +183,9 @@ export const searchTroubleshootingFlows = async (query: string): Promise<SearchR
 
     return [];
   } catch (error) {
-    console.error('トラブルシューティング検索エラー:', error);
+    console.error('繝医Λ繝悶Ν繧ｷ繝･繝ｼ繝・ぅ繝ｳ繧ｰ讀懃ｴ｢繧ｨ繝ｩ繝ｼ:', error);
     return [];
   }
 };
+
+

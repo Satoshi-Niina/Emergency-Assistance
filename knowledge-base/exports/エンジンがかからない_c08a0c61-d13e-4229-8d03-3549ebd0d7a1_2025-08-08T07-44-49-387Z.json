@@ -1,14 +1,14 @@
-{
+﻿{
   "chatId": "c08a0c61-d13e-4229-8d03-3549ebd0d7a1",
   "userId": "38f38114-5691-4f7c-8047-f492034dc0cc",
   "exportType": "manual_send",
   "exportTimestamp": "2025-08-08T07:44:49.387Z",
-  "title": "エンジンがかからない",
-  "problemDescription": "仕業点検時にエンジンを始動しようとしたが、スターターが全く回らない。\nパネルのランプ類は点灯している\nスタータートキースイッチを回しても、スターターから何も音がしない。",
+  "title": "繧ｨ繝ｳ繧ｸ繝ｳ縺後°縺九ｉ縺ｪ縺・,
+  "problemDescription": "莉墓･ｭ轤ｹ讀懈凾縺ｫ繧ｨ繝ｳ繧ｸ繝ｳ繧貞ｧ句虚縺励ｈ縺・→縺励◆縺後√せ繧ｿ繝ｼ繧ｿ繝ｼ縺悟・縺丞屓繧峨↑縺・・n繝代ロ繝ｫ縺ｮ繝ｩ繝ｳ繝鈴｡槭・轤ｹ轣ｯ縺励※縺・ｋ\n繧ｹ繧ｿ繝ｼ繧ｿ繝ｼ繝医く繝ｼ繧ｹ繧､繝・メ繧貞屓縺励※繧ゅ√せ繧ｿ繝ｼ繧ｿ繝ｼ縺九ｉ菴輔ｂ髻ｳ縺後＠縺ｪ縺・・,
   "machineType": "MC300",
   "machineNumber": "MC300-001",
   "extractedComponents": [
-    "エンジン"
+    "繧ｨ繝ｳ繧ｸ繝ｳ"
   ],
   "extractedSymptoms": [],
   "possibleModels": [],
@@ -21,7 +21,7 @@
     },
     {
       "id": 1754639085770,
-      "content": "エンジンがかからない",
+      "content": "繧ｨ繝ｳ繧ｸ繝ｳ縺後°縺九ｉ縺ｪ縺・,
       "isAiResponse": false,
       "media": []
     }
@@ -52,7 +52,7 @@
       },
       {
         "id": 1754639085770,
-        "content": "エンジンがかからない",
+        "content": "繧ｨ繝ｳ繧ｸ繝ｳ縺後°縺九ｉ縺ｪ縺・,
         "isAiResponse": false,
         "timestamp": "2025-08-08T07:44:45.770Z",
         "media": []
@@ -63,13 +63,13 @@
     {
       "messageId": 1754639068543,
       "fileName": "chat_image_c08a0c61-d13e-4229-8d03-3549ebd0d7a1_1754639089388.jpg",
-      "path": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\システム\\Total Maintenance Control\\Emergency-Assistance\\knowledge-base\\images\\chat-exports\\chat_image_c08a0c61-d13e-4229-8d03-3549ebd0d7a1_1754639089388.jpg",
+      "path": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\繧ｷ繧ｹ繝・Β\\Total Maintenance Control\\Emergency-Assistance\\knowledge-base\\images\\chat-exports\\chat_image_c08a0c61-d13e-4229-8d03-3549ebd0d7a1_1754639089388.jpg",
       "url": "/api/images/chat-exports/chat_image_c08a0c61-d13e-4229-8d03-3549ebd0d7a1_1754639089388.jpg"
     }
   ],
-  "id": "export_エンジンがかからない_c08a0c61-d13e-4229-8d03-3549ebd0d7a1_2025-08-08T07-44-49-387Z.json",
+  "id": "export_繧ｨ繝ｳ繧ｸ繝ｳ縺後°縺九ｉ縺ｪ縺Юc08a0c61-d13e-4229-8d03-3549ebd0d7a1_2025-08-08T07-44-49-387Z.json",
   "type": "chat_export",
-  "fileName": "エンジンがかからない_c08a0c61-d13e-4229-8d03-3549ebd0d7a1_2025-08-08T07-44-49-387Z.json",
+  "fileName": "繧ｨ繝ｳ繧ｸ繝ｳ縺後°縺九ｉ縺ｪ縺Юc08a0c61-d13e-4229-8d03-3549ebd0d7a1_2025-08-08T07-44-49-387Z.json",
   "messageCount": 0,
   "machineInfo": {
     "selectedMachineType": "",
@@ -251,5 +251,6 @@
       "updatedBy": "user"
     }
   ],
-  "answer": "仕業点検時にエンジンを始動しようとしたが、スターターが全く回らない。\nパネルのランプ類は点灯している\nスタータートキースイッチを回しても、スターターから何も音がしない。"
+  "answer": "莉墓･ｭ轤ｹ讀懈凾縺ｫ繧ｨ繝ｳ繧ｸ繝ｳ繧貞ｧ句虚縺励ｈ縺・→縺励◆縺後√せ繧ｿ繝ｼ繧ｿ繝ｼ縺悟・縺丞屓繧峨↑縺・・n繝代ロ繝ｫ縺ｮ繝ｩ繝ｳ繝鈴｡槭・轤ｹ轣ｯ縺励※縺・ｋ\n繧ｹ繧ｿ繝ｼ繧ｿ繝ｼ繝医く繝ｼ繧ｹ繧､繝・メ繧貞屓縺励※繧ゅ√せ繧ｿ繝ｼ繧ｿ繝ｼ縺九ｉ菴輔ｂ髻ｳ縺後＠縺ｪ縺・・
 }
+

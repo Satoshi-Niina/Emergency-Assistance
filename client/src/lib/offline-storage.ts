@@ -1,7 +1,7 @@
-import { openDB, IDBPDatabase } from 'idb';
+﻿import { openDB, IDBPDatabase } from 'idb';
 
 /**
- * IndexedDBのデータベース定義
+ * IndexedDB縺ｮ繝・・繧ｿ繝吶・繧ｹ螳夂ｾｩ
  */
 interface SyncDB {
   unsyncedMessages: {
@@ -34,24 +34,24 @@ interface SyncDB {
   };
 }
 
-// データベース名とバージョン
+// 繝・・繧ｿ繝吶・繧ｹ蜷阪→繝舌・繧ｸ繝ｧ繝ｳ
 const DB_NAME = 'chat-sync-db';
 const DB_VERSION = 1;
 
 /**
- * IndexedDBを開く
+ * IndexedDB繧帝幕縺・
  */
 async function openDatabase(): Promise<IDBPDatabase<SyncDB>> {
   return await openDB<SyncDB>(DB_NAME, DB_VERSION, {
     upgrade(db) {
-      // 未同期メッセージ用のオブジェクトストア
+      // 譛ｪ蜷梧悄繝｡繝・そ繝ｼ繧ｸ逕ｨ縺ｮ繧ｪ繝悶ず繧ｧ繧ｯ繝医せ繝医い
       const messageStore = db.createObjectStore('unsyncedMessages', { 
         keyPath: 'localId',
         autoIncrement: true 
       });
       messageStore.createIndex('by-chat', 'chatId');
       
-      // 未同期メディア用のオブジェクトストア
+      // 譛ｪ蜷梧悄繝｡繝・ぅ繧｢逕ｨ縺ｮ繧ｪ繝悶ず繧ｧ繧ｯ繝医せ繝医い
       const mediaStore = db.createObjectStore('unsyncedMedia', { 
         keyPath: 'localId',
         autoIncrement: true 
@@ -62,7 +62,7 @@ async function openDatabase(): Promise<IDBPDatabase<SyncDB>> {
 }
 
 /**
- * 未同期メッセージをローカルストレージに保存
+ * 譛ｪ蜷梧悄繝｡繝・そ繝ｼ繧ｸ繧偵Ο繝ｼ繧ｫ繝ｫ繧ｹ繝医Ξ繝ｼ繧ｸ縺ｫ菫晏ｭ・
  */
 export async function storeUnsyncedMessage(message: {
   content: string;
@@ -78,20 +78,20 @@ export async function storeUnsyncedMessage(message: {
       ...message,
       timestamp: new Date(),
       synced: false,
-      localId: Date.now() // 一時的なローカルID
+      localId: Date.now() // 荳譎ら噪縺ｪ繝ｭ繝ｼ繧ｫ繝ｫID
     });
     
     await tx.done;
-    console.log('未同期メッセージをローカルに保存しました:', localId);
+    console.log('譛ｪ蜷梧悄繝｡繝・そ繝ｼ繧ｸ繧偵Ο繝ｼ繧ｫ繝ｫ縺ｫ菫晏ｭ倥＠縺ｾ縺励◆:', localId);
     return localId;
   } catch (error) {
-    console.error('メッセージのローカル保存に失敗しました:', error);
+    console.error('繝｡繝・そ繝ｼ繧ｸ縺ｮ繝ｭ繝ｼ繧ｫ繝ｫ菫晏ｭ倥↓螟ｱ謨励＠縺ｾ縺励◆:', error);
     throw error;
   }
 }
 
 /**
- * 未同期メディアをローカルストレージに保存
+ * 譛ｪ蜷梧悄繝｡繝・ぅ繧｢繧偵Ο繝ｼ繧ｫ繝ｫ繧ｹ繝医Ξ繝ｼ繧ｸ縺ｫ菫晏ｭ・
  */
 export async function storeUnsyncedMedia(media: {
   localMessageId: number;
@@ -106,20 +106,20 @@ export async function storeUnsyncedMedia(media: {
     const localId = await tx.store.add({
       ...media,
       synced: false,
-      localId: Date.now() // 一時的なローカルID
+      localId: Date.now() // 荳譎ら噪縺ｪ繝ｭ繝ｼ繧ｫ繝ｫID
     });
     
     await tx.done;
-    console.log('未同期メディアをローカルに保存しました:', localId);
+    console.log('譛ｪ蜷梧悄繝｡繝・ぅ繧｢繧偵Ο繝ｼ繧ｫ繝ｫ縺ｫ菫晏ｭ倥＠縺ｾ縺励◆:', localId);
     return localId;
   } catch (error) {
-    console.error('メディアのローカル保存に失敗しました:', error);
+    console.error('繝｡繝・ぅ繧｢縺ｮ繝ｭ繝ｼ繧ｫ繝ｫ菫晏ｭ倥↓螟ｱ謨励＠縺ｾ縺励◆:', error);
     throw error;
   }
 }
 
 /**
- * 特定のチャットの未同期メッセージを取得
+ * 迚ｹ螳壹・繝√Ε繝・ヨ縺ｮ譛ｪ蜷梧悄繝｡繝・そ繝ｼ繧ｸ繧貞叙蠕・
  */
 export async function getUnsyncedMessages(chatId: number) {
   try {
@@ -129,7 +129,7 @@ export async function getUnsyncedMessages(chatId: number) {
     
     const messages = await index.getAll(chatId);
     
-    // メッセージに紐づくメディアも取得
+    // 繝｡繝・そ繝ｼ繧ｸ縺ｫ邏舌▼縺上Γ繝・ぅ繧｢繧ょ叙蠕・
     const messagesWithMedia = await Promise.all(
       messages.map(async (message) => {
         const mediaTx = db.transaction('unsyncedMedia', 'readonly');
@@ -146,13 +146,13 @@ export async function getUnsyncedMessages(chatId: number) {
     await tx.done;
     return messagesWithMedia;
   } catch (error) {
-    console.error('未同期メッセージの取得に失敗しました:', error);
+    console.error('譛ｪ蜷梧悄繝｡繝・そ繝ｼ繧ｸ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆:', error);
     return [];
   }
 }
 
 /**
- * メッセージを同期済みにマーク
+ * 繝｡繝・そ繝ｼ繧ｸ繧貞酔譛滓ｸ医∩縺ｫ繝槭・繧ｯ
  */
 export async function markMessageAsSynced(localId: number, serverId: number) {
   try {
@@ -168,13 +168,13 @@ export async function markMessageAsSynced(localId: number, serverId: number) {
     
     await tx.done;
   } catch (error) {
-    console.error('メッセージの同期状態の更新に失敗しました:', error);
+    console.error('繝｡繝・そ繝ｼ繧ｸ縺ｮ蜷梧悄迥ｶ諷九・譖ｴ譁ｰ縺ｫ螟ｱ謨励＠縺ｾ縺励◆:', error);
     throw error;
   }
 }
 
 /**
- * メディアを同期済みにマーク
+ * 繝｡繝・ぅ繧｢繧貞酔譛滓ｸ医∩縺ｫ繝槭・繧ｯ
  */
 export async function markMediaAsSynced(localId: number, serverId: number) {
   try {
@@ -190,13 +190,13 @@ export async function markMediaAsSynced(localId: number, serverId: number) {
     
     await tx.done;
   } catch (error) {
-    console.error('メディアの同期状態の更新に失敗しました:', error);
+    console.error('繝｡繝・ぅ繧｢縺ｮ蜷梧悄迥ｶ諷九・譖ｴ譁ｰ縺ｫ螟ｱ謨励＠縺ｾ縺励◆:', error);
     throw error;
   }
 }
 
 /**
- * チャットが完全に同期されているか確認
+ * 繝√Ε繝・ヨ縺悟ｮ悟・縺ｫ蜷梧悄縺輔ｌ縺ｦ縺・ｋ縺狗｢ｺ隱・
  */
 export async function isChatSynced(chatId: number): Promise<boolean> {
   try {
@@ -210,13 +210,13 @@ export async function isChatSynced(chatId: number): Promise<boolean> {
     await tx.done;
     return !hasUnsyncedMessages;
   } catch (error) {
-    console.error('同期状態の確認に失敗しました:', error);
+    console.error('蜷梧悄迥ｶ諷九・遒ｺ隱阪↓螟ｱ謨励＠縺ｾ縺励◆:', error);
     return false;
   }
 }
 
 /**
- * チャットの同期統計を取得
+ * 繝√Ε繝・ヨ縺ｮ蜷梧悄邨ｱ險医ｒ蜿門ｾ・
  */
 export async function getChatSyncStats(chatId: number) {
   try {
@@ -236,13 +236,13 @@ export async function getChatSyncStats(chatId: number) {
       isFullySynced: total === synced
     };
   } catch (error) {
-    console.error('同期統計の取得に失敗しました:', error);
+    console.error('蜷梧悄邨ｱ險医・蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆:', error);
     return { total: 0, synced: 0, pending: 0, isFullySynced: true };
   }
 }
 
 /**
- * 画像DataURLを最適化（サイズ削減）
+ * 逕ｻ蜒愁ataURL繧呈怙驕ｩ蛹厄ｼ医し繧､繧ｺ蜑頑ｸ幢ｼ・
  */
 export async function optimizeImageDataUrl(dataUrl: string, quality = 0.8, maxWidth = 1200) {
   return new Promise<string>((resolve, reject) => {
@@ -250,7 +250,7 @@ export async function optimizeImageDataUrl(dataUrl: string, quality = 0.8, maxWi
     img.onload = () => {
       const canvas = document.createElement('canvas');
       
-      // 最大幅に合わせてサイズを調整
+      // 譛螟ｧ蟷・↓蜷医ｏ縺帙※繧ｵ繧､繧ｺ繧定ｪｿ謨ｴ
       let width = img.width;
       let height = img.height;
       
@@ -265,19 +265,19 @@ export async function optimizeImageDataUrl(dataUrl: string, quality = 0.8, maxWi
       
       const ctx = canvas.getContext('2d');
       if (!ctx) {
-        reject(new Error('キャンバスコンテキストの取得に失敗しました'));
+        reject(new Error('繧ｭ繝｣繝ｳ繝舌せ繧ｳ繝ｳ繝・く繧ｹ繝医・蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆'));
         return;
       }
       
       ctx.drawImage(img, 0, 0, width, height);
       
-      // 最適化した画像を取得
+      // 譛驕ｩ蛹悶＠縺溽判蜒上ｒ蜿門ｾ・
       const optimizedDataUrl = canvas.toDataURL('image/jpeg', quality);
       resolve(optimizedDataUrl);
     };
     
     img.onerror = () => {
-      reject(new Error('画像の読み込みに失敗しました'));
+      reject(new Error('逕ｻ蜒上・隱ｭ縺ｿ霎ｼ縺ｿ縺ｫ螟ｱ謨励＠縺ｾ縺励◆'));
     };
     
     img.src = dataUrl;
@@ -285,13 +285,13 @@ export async function optimizeImageDataUrl(dataUrl: string, quality = 0.8, maxWi
 }
 
 /**
- * 同期済みのメッセージとメディアをクリーンアップ
+ * 蜷梧悄貂医∩縺ｮ繝｡繝・そ繝ｼ繧ｸ縺ｨ繝｡繝・ぅ繧｢繧偵け繝ｪ繝ｼ繝ｳ繧｢繝・・
  */
 export async function cleanupSyncedData() {
   try {
     const db = await openDatabase();
     
-    // 同期済みメッセージを削除
+    // 蜷梧悄貂医∩繝｡繝・そ繝ｼ繧ｸ繧貞炎髯､
     const messageTx = db.transaction('unsyncedMessages', 'readwrite');
     const messages = await messageTx.store.getAll();
     
@@ -303,7 +303,7 @@ export async function cleanupSyncedData() {
     
     await messageTx.done;
     
-    // 同期済みメディアを削除
+    // 蜷梧悄貂医∩繝｡繝・ぅ繧｢繧貞炎髯､
     const mediaTx = db.transaction('unsyncedMedia', 'readwrite');
     const mediaItems = await mediaTx.store.getAll();
     
@@ -315,8 +315,10 @@ export async function cleanupSyncedData() {
     
     await mediaTx.done;
     
-    console.log('同期済みデータのクリーンアップが完了しました');
+    console.log('蜷梧悄貂医∩繝・・繧ｿ縺ｮ繧ｯ繝ｪ繝ｼ繝ｳ繧｢繝・・縺悟ｮ御ｺ・＠縺ｾ縺励◆');
   } catch (error) {
-    console.error('同期済みデータのクリーンアップに失敗しました:', error);
+    console.error('蜷梧悄貂医∩繝・・繧ｿ縺ｮ繧ｯ繝ｪ繝ｼ繝ｳ繧｢繝・・縺ｫ螟ｱ謨励＠縺ｾ縺励◆:', error);
   }
 }
+
+

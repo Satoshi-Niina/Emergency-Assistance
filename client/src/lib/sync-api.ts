@@ -1,4 +1,4 @@
-import { apiRequest } from "../lib/queryClient.ts";
+﻿import { apiRequest } from "../lib/queryClient.ts";
 import { 
   getUnsyncedMessages, 
   markMessageAsSynced,
@@ -8,7 +8,7 @@ import {
 } from './offline-storage';
 
 /**
- * データURLをBlobに変換
+ * 繝・・繧ｿURL繧達lob縺ｫ螟画鋤
  */
 function dataURLtoBlob(dataUrl: string): Blob {
   const arr = dataUrl.split(',');
@@ -25,7 +25,7 @@ function dataURLtoBlob(dataUrl: string): Blob {
 }
 
 /**
- * Base64のデータURLからFileオブジェクトを作成
+ * Base64縺ｮ繝・・繧ｿURL縺九ｉFile繧ｪ繝悶ず繧ｧ繧ｯ繝医ｒ菴懈・
  */
 function dataURLtoFile(dataUrl: string, filename: string): File {
   const blob = dataURLtoBlob(dataUrl);
@@ -33,31 +33,31 @@ function dataURLtoFile(dataUrl: string, filename: string): File {
 }
 
 /**
- * 指定されたチャットの未同期メッセージを同期
+ * 謖・ｮ壹＆繧後◆繝√Ε繝・ヨ縺ｮ譛ｪ蜷梧悄繝｡繝・そ繝ｼ繧ｸ繧貞酔譛・
  */
 export async function syncChat(chatId: number) {
   try {
-    // 未同期メッセージを取得
+    // 譛ｪ蜷梧悄繝｡繝・そ繝ｼ繧ｸ繧貞叙蠕・
     const messages = await getUnsyncedMessages(chatId);
     
     if (messages.length === 0) {
-      console.log('同期するメッセージがありません');
+      console.log('蜷梧悄縺吶ｋ繝｡繝・そ繝ｼ繧ｸ縺後≠繧翫∪縺帙ｓ');
       return { success: true, totalSynced: 0 };
     }
     
-    console.log(`${messages.length}件のメッセージを同期します`);
+    console.log(`${messages.length}莉ｶ縺ｮ繝｡繝・そ繝ｼ繧ｸ繧貞酔譛溘＠縺ｾ縺兪);
     
-    // メッセージを1件ずつ同期
+    // 繝｡繝・そ繝ｼ繧ｸ繧・莉ｶ縺壹▽蜷梧悄
     let syncedCount = 0;
     
     for (const message of messages) {
-      // 既に同期済みの場合はスキップ
+      // 譌｢縺ｫ蜷梧悄貂医∩縺ｮ蝣ｴ蜷医・繧ｹ繧ｭ繝・・
       if (message.synced) {
         continue;
       }
       
       try {
-        // メッセージを送信
+        // 繝｡繝・そ繝ｼ繧ｸ繧帝∽ｿ｡
         const response = await apiRequest('POST', `/api/chats/${chatId}/messages`, {
           content: message.content,
           senderId: message.senderId,
@@ -65,42 +65,42 @@ export async function syncChat(chatId: number) {
         });
         
         if (!response.ok) {
-          console.error('メッセージの同期に失敗しました:', await response.text());
+          console.error('繝｡繝・そ繝ｼ繧ｸ縺ｮ蜷梧悄縺ｫ螟ｱ謨励＠縺ｾ縺励◆:', await response.text());
           continue;
         }
         
         const data = await response.json();
         
-        // メッセージを同期済みとしてマーク
+        // 繝｡繝・そ繝ｼ繧ｸ繧貞酔譛滓ｸ医∩縺ｨ縺励※繝槭・繧ｯ
         await markMessageAsSynced(message.localId, data.id);
         
-        // メディアがある場合は同期
+        // 繝｡繝・ぅ繧｢縺後≠繧句ｴ蜷医・蜷梧悄
         if (message.media && message.media.length > 0) {
           for (const media of message.media) {
             if (media.synced) continue;
             
-            // 画像の場合は最適化
+            // 逕ｻ蜒上・蝣ｴ蜷医・譛驕ｩ蛹・
             let mediaUrl = media.url;
             if (media.type === 'image' && mediaUrl.startsWith('data:')) {
               try {
                 mediaUrl = await optimizeImageDataUrl(mediaUrl, 0.8);
               } catch (err) {
-                console.warn('画像の最適化に失敗しました:', err);
+                console.warn('逕ｻ蜒上・譛驕ｩ蛹悶↓螟ｱ謨励＠縺ｾ縺励◆:', err);
               }
             }
             
-            // メディアデータを送信
+            // 繝｡繝・ぅ繧｢繝・・繧ｿ繧帝∽ｿ｡
             const formData = new FormData();
             
             if (mediaUrl.startsWith('data:')) {
-              // データURLの場合はファイルに変換
+              // 繝・・繧ｿURL縺ｮ蝣ｴ蜷医・繝輔ぃ繧､繝ｫ縺ｫ螟画鋤
               const file = dataURLtoFile(
                 mediaUrl, 
                 `media_${Date.now()}.${media.type === 'image' ? 'jpg' : 'mp4'}`
               );
               formData.append('file', file);
             } else {
-              // 既存のURLはそのまま送信
+              // 譌｢蟄倥・URL縺ｯ縺昴・縺ｾ縺ｾ騾∽ｿ｡
               formData.append('url', mediaUrl);
             }
             
@@ -118,20 +118,20 @@ export async function syncChat(chatId: number) {
             });
             
             if (!mediaResponse.ok) {
-              console.error('メディアの同期に失敗しました:', await mediaResponse.text());
+              console.error('繝｡繝・ぅ繧｢縺ｮ蜷梧悄縺ｫ螟ｱ謨励＠縺ｾ縺励◆:', await mediaResponse.text());
               continue;
             }
             
             const mediaData = await mediaResponse.json();
             
-            // メディアを同期済みとしてマーク
+            // 繝｡繝・ぅ繧｢繧貞酔譛滓ｸ医∩縺ｨ縺励※繝槭・繧ｯ
             await markMediaAsSynced(media.localId, mediaData.id);
           }
         }
         
         syncedCount++;
         
-        // 進捗状況を通知
+        // 騾ｲ謐礼憾豕√ｒ騾夂衍
         window.dispatchEvent(new CustomEvent('sync-status-update', {
           detail: { 
             type: 'sync-progress',
@@ -142,11 +142,11 @@ export async function syncChat(chatId: number) {
         }));
         
       } catch (error) {
-        console.error('メッセージの同期処理中にエラーが発生しました:', error);
+        console.error('繝｡繝・そ繝ｼ繧ｸ縺ｮ蜷梧悄蜃ｦ逅・ｸｭ縺ｫ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆:', error);
       }
     }
     
-    // 同期結果を返す
+    // 蜷梧悄邨先棡繧定ｿ斐☆
     const stats = await getChatSyncStats(chatId);
     
     return { 
@@ -155,7 +155,7 @@ export async function syncChat(chatId: number) {
       stats
     };
   } catch (error) {
-    console.error('同期処理中にエラーが発生しました:', error);
+    console.error('蜷梧悄蜃ｦ逅・ｸｭ縺ｫ繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆:', error);
     return { 
       success: false, 
       totalSynced: 0,
@@ -163,3 +163,5 @@ export async function syncChat(chatId: number) {
     };
   }
 }
+
+

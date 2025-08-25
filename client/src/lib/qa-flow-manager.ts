@@ -1,4 +1,4 @@
-// クライアント側ではサーバーAPIを呼び出す
+﻿// 繧ｯ繝ｩ繧､繧｢繝ｳ繝亥・縺ｧ縺ｯ繧ｵ繝ｼ繝舌・API繧貞他縺ｳ蜃ｺ縺・
 async function callOpenAIAPI(prompt: string, useKnowledgeBase: boolean = true): Promise<string> {
   try {
     const response = await fetch('/api/chatgpt', {
@@ -14,13 +14,13 @@ async function callOpenAIAPI(prompt: string, useKnowledgeBase: boolean = true): 
     });
 
     if (!response.ok) {
-      throw new Error(`API呼び出しエラー: ${response.status}`);
+      throw new Error(`API蜻ｼ縺ｳ蜃ｺ縺励お繝ｩ繝ｼ: ${response.status}`);
     }
 
     const data = await response.json();
-    return data.response || '応答を取得できませんでした。';
+    return data.response || '蠢懃ｭ斐ｒ蜿門ｾ励〒縺阪∪縺帙ｓ縺ｧ縺励◆縲・;
   } catch (error) {
-    console.error('OpenAI API呼び出しエラー:', error);
+    console.error('OpenAI API蜻ｼ縺ｳ蜃ｺ縺励お繝ｩ繝ｼ:', error);
     throw error;
   }
 }
@@ -31,12 +31,12 @@ export interface QAFlowStep {
   type: 'text' | 'choice' | 'image' | 'location';
   options?: string[];
   required: boolean;
-  dependsOn?: string; // 前の回答に依存する質問
-  condition?: string; // 表示条件
-  reasoning?: string; // 質問の目的
-  expectedOutcome?: string; // 期待される結果
-  emergencyAction?: string; // 緊急時の対応
-  timeLimit?: number; // 時間制限（分）
+  dependsOn?: string; // 蜑阪・蝗樒ｭ斐↓萓晏ｭ倥☆繧玖ｳｪ蝠・
+  condition?: string; // 陦ｨ遉ｺ譚｡莉ｶ
+  reasoning?: string; // 雉ｪ蝠上・逶ｮ逧・
+  expectedOutcome?: string; // 譛溷ｾ・＆繧後ｋ邨先棡
+  emergencyAction?: string; // 邱頑･譎ゅ・蟇ｾ蠢・
+  timeLimit?: number; // 譎る俣蛻ｶ髯撰ｼ亥・・・
 }
 
 export interface QAFlow {
@@ -46,8 +46,8 @@ export interface QAFlow {
   category: string;
   steps: QAFlowStep[];
   knowledgeContext: string[];
-  emergencyContact?: string; // 緊急連絡先
-  estimatedTime?: number; // 推定所要時間
+  emergencyContact?: string; // 邱頑･騾｣邨｡蜈・
+  estimatedTime?: number; // 謗ｨ螳壽園隕∵凾髢・
 }
 
 export interface QAAnswer {
@@ -74,65 +74,65 @@ export class QAFlowManager {
   private currentStepIndex = 0;
   private problemCategory: ProblemCategory | null = null;
 
-  // 問題分類とフロー予測
+  // 蝠城｡悟・鬘槭→繝輔Ο繝ｼ莠域ｸｬ
   async classifyProblemAndPredictFlow(
     initialDescription: string,
     knowledgeBase: string[]
   ): Promise<{ category: ProblemCategory; flow: QAFlow } | null> {
     try {
       const classificationPrompt = `
-あなたは保守用車の専門技術者です。初期の問題説明から問題を分類し、適切な質問フローを予測してください。
+縺ゅ↑縺溘・菫晏ｮ育畑霆翫・蟆る摩謚陦楢・〒縺吶ょ・譛溘・蝠城｡瑚ｪｬ譏弱°繧牙撫鬘後ｒ蛻・｡槭＠縲・←蛻・↑雉ｪ蝠上ヵ繝ｭ繝ｼ繧剃ｺ域ｸｬ縺励※縺上□縺輔＞縲・
 
-**初期問題説明**: ${initialDescription}
-**利用可能なナレッジ**: ${knowledgeBase.join(', ')}
+**蛻晄悄蝠城｡瑚ｪｬ譏・*: ${initialDescription}
+**蛻ｩ逕ｨ蜿ｯ閭ｽ縺ｪ繝翫Ξ繝・ず**: ${knowledgeBase.join(', ')}
 
-以下の問題カテゴリから最も適切なものを選択し、段階的な質問フローを生成してください：
+莉･荳九・蝠城｡後き繝・ざ繝ｪ縺九ｉ譛繧る←蛻・↑繧ゅ・繧帝∈謚槭＠縲∵ｮｵ髫守噪縺ｪ雉ｪ蝠上ヵ繝ｭ繝ｼ繧堤函謌舌＠縺ｦ縺上□縺輔＞・・
 
-## 問題カテゴリ
-1. **エンジン系**: エンジンがかからない、異音、オーバーヒート等
-2. **電気系**: バッテリー、照明、スターター等
-3. **油圧系**: 油圧ポンプ、シリンダー、配管等
-4. **走行系**: ブレーキ、タイヤ、サスペンション等
-5. **作業装置系**: クレーン、ウインチ、油圧ショベル等
-6. **安全装置系**: 非常停止、安全スイッチ等
+## 蝠城｡後き繝・ざ繝ｪ
+1. **繧ｨ繝ｳ繧ｸ繝ｳ邉ｻ**: 繧ｨ繝ｳ繧ｸ繝ｳ縺後°縺九ｉ縺ｪ縺・∫焚髻ｳ縲√が繝ｼ繝舌・繝偵・繝育ｭ・
+2. **髮ｻ豌礼ｳｻ**: 繝舌ャ繝・Μ繝ｼ縲∫・譏弱√せ繧ｿ繝ｼ繧ｿ繝ｼ遲・
+3. **豐ｹ蝨ｧ邉ｻ**: 豐ｹ蝨ｧ繝昴Φ繝励√す繝ｪ繝ｳ繝繝ｼ縲・・邂｡遲・
+4. **襍ｰ陦檎ｳｻ**: 繝悶Ξ繝ｼ繧ｭ縲√ち繧､繝､縲√し繧ｹ繝壹Φ繧ｷ繝ｧ繝ｳ遲・
+5. **菴懈･ｭ陬・ｽｮ邉ｻ**: 繧ｯ繝ｬ繝ｼ繝ｳ縲√え繧､繝ｳ繝√∵ｲｹ蝨ｧ繧ｷ繝ｧ繝吶Ν遲・
+6. **螳牙・陬・ｽｮ邉ｻ**: 髱槫ｸｸ蛛懈ｭ｢縲∝ｮ牙・繧ｹ繧､繝・メ遲・
 
-以下のJSON形式で返してください：
+莉･荳九・JSON蠖｢蠑上〒霑斐＠縺ｦ縺上□縺輔＞・・
 {
   "category": {
     "id": "engine_start",
-    "name": "エンジン始動不良",
-    "description": "エンジンが正常に始動しない問題",
-    "keywords": ["エンジン", "始動", "かからない", "スターター"],
+    "name": "繧ｨ繝ｳ繧ｸ繝ｳ蟋句虚荳崎憶",
+    "description": "繧ｨ繝ｳ繧ｸ繝ｳ縺梧ｭ｣蟶ｸ縺ｫ蟋句虚縺励↑縺・撫鬘・,
+    "keywords": ["繧ｨ繝ｳ繧ｸ繝ｳ", "蟋句虚", "縺九°繧峨↑縺・, "繧ｹ繧ｿ繝ｼ繧ｿ繝ｼ"],
     "emergencyLevel": "medium",
     "estimatedTime": 30,
     "requiresExpert": false
   },
   "flow": {
     "id": "engine_start_flow",
-    "title": "エンジン始動不良の診断フロー",
-    "description": "エンジンがかからない問題の段階的診断",
+    "title": "繧ｨ繝ｳ繧ｸ繝ｳ蟋句虚荳崎憶縺ｮ險ｺ譁ｭ繝輔Ο繝ｼ",
+    "description": "繧ｨ繝ｳ繧ｸ繝ｳ縺後°縺九ｉ縺ｪ縺・撫鬘後・谿ｵ髫守噪險ｺ譁ｭ",
     "category": "engine_start",
-    "emergencyContact": "技術支援センター: 0123-456-789",
+    "emergencyContact": "謚陦捺髪謠ｴ繧ｻ繝ｳ繧ｿ繝ｼ: 0123-456-789",
     "estimatedTime": 30,
     "steps": [
       {
         "id": "location_check",
-        "question": "現在の場所を教えてください",
+        "question": "迴ｾ蝨ｨ縺ｮ蝣ｴ謇繧呈蕗縺医※縺上□縺輔＞",
         "type": "choice",
-        "options": ["保材線", "車庫", "現場", "その他"],
+        "options": ["菫晄攝邱・, "霆雁ｺｫ", "迴ｾ蝣ｴ", "縺昴・莉・],
         "required": true,
-        "reasoning": "場所によって対応方法が異なるため",
-        "expectedOutcome": "対応可能な場所かどうかの判断"
+        "reasoning": "蝣ｴ謇縺ｫ繧医▲縺ｦ蟇ｾ蠢懈婿豕輔′逡ｰ縺ｪ繧九◆繧・,
+        "expectedOutcome": "蟇ｾ蠢懷庄閭ｽ縺ｪ蝣ｴ謇縺九←縺・°縺ｮ蛻､譁ｭ"
       },
       {
         "id": "time_check",
-        "question": "作業に使える時間はありますか？",
+        "question": "菴懈･ｭ縺ｫ菴ｿ縺医ｋ譎る俣縺ｯ縺ゅｊ縺ｾ縺吶°・・,
         "type": "choice",
-        "options": ["20分以下", "30分程度", "1時間程度", "十分にある"],
+        "options": ["20蛻・ｻ･荳・, "30蛻・ｨ句ｺｦ", "1譎る俣遞句ｺｦ", "蜊∝・縺ｫ縺ゅｋ"],
         "required": true,
-        "reasoning": "時間によって対応方法を決定",
-        "expectedOutcome": "緊急対応の必要性判断",
-        "emergencyAction": "20分以下の場合: すぐに支援者へ連絡してください",
+        "reasoning": "譎る俣縺ｫ繧医▲縺ｦ蟇ｾ蠢懈婿豕輔ｒ豎ｺ螳・,
+        "expectedOutcome": "邱頑･蟇ｾ蠢懊・蠢・ｦ∵ｧ蛻､譁ｭ",
+        "emergencyAction": "20蛻・ｻ･荳九・蝣ｴ蜷・ 縺吶＄縺ｫ謾ｯ謠ｴ閠・∈騾｣邨｡縺励※縺上□縺輔＞",
         "timeLimit": 20
       }
     ]
@@ -149,16 +149,16 @@ export class QAFlowManager {
           flow: parsed.flow
         };
       } catch (parseError) {
-        console.error('問題分類のJSON解析エラー:', parseError);
+        console.error('蝠城｡悟・鬘槭・JSON隗｣譫舌お繝ｩ繝ｼ:', parseError);
         return null;
       }
     } catch (error) {
-      console.error('問題分類エラー:', error);
+      console.error('蝠城｡悟・鬘槭お繝ｩ繝ｼ:', error);
       return null;
     }
   }
 
-  // 動的質問生成（改善版）
+  // 蜍慕噪雉ｪ蝠冗函謌撰ｼ域隼蝟・沿・・
   async generateNextQuestion(
     context: string,
     previousAnswers: QAAnswer[],
@@ -166,13 +166,13 @@ export class QAFlowManager {
     currentFlow?: QAFlow
   ): Promise<QAFlowStep | null> {
     try {
-      // 事前定義されたフローがある場合はそれを使用
+      // 莠句燕螳夂ｾｩ縺輔ｌ縺溘ヵ繝ｭ繝ｼ縺後≠繧句ｴ蜷医・縺昴ｌ繧剃ｽｿ逕ｨ
       if (currentFlow && currentFlow.steps.length > 0) {
         const nextStepIndex = previousAnswers.length;
         if (nextStepIndex < currentFlow.steps.length) {
           const nextStep = currentFlow.steps[nextStepIndex];
           
-          // 条件チェック
+          // 譚｡莉ｶ繝√ぉ繝・け
           if (nextStep.condition) {
             const shouldShow = this.evaluateCondition(nextStep.condition, previousAnswers);
             if (!shouldShow) {
@@ -182,42 +182,42 @@ export class QAFlowManager {
           
           return nextStep;
         } else {
-          // フローが完了した場合、解決策を生成
+          // 繝輔Ο繝ｼ縺悟ｮ御ｺ・＠縺溷ｴ蜷医∬ｧ｣豎ｺ遲悶ｒ逕滓・
           return null;
         }
       }
 
-      // 動的質問生成（フォールバック）
+      // 蜍慕噪雉ｪ蝠冗函謌撰ｼ医ヵ繧ｩ繝ｼ繝ｫ繝舌ャ繧ｯ・・
       const contextPrompt = `
-あなたは保守用車の専門技術者です。問題解決のために段階的に質問を行います。
+縺ゅ↑縺溘・菫晏ｮ育畑霆翫・蟆る摩謚陦楢・〒縺吶ょ撫鬘瑚ｧ｣豎ｺ縺ｮ縺溘ａ縺ｫ谿ｵ髫守噪縺ｫ雉ｪ蝠上ｒ陦後＞縺ｾ縺吶・
 
-**現在の状況**: ${context}
-**これまでの回答**: ${previousAnswers.map(a => `${a.stepId}: ${a.answer}`).join(', ')}
-**利用可能なナレッジ**: ${knowledgeBase.join(', ')}
+**迴ｾ蝨ｨ縺ｮ迥ｶ豕・*: ${context}
+**縺薙ｌ縺ｾ縺ｧ縺ｮ蝗樒ｭ・*: ${previousAnswers.map(a => `${a.stepId}: ${a.answer}`).join(', ')}
+**蛻ｩ逕ｨ蜿ｯ閭ｽ縺ｪ繝翫Ξ繝・ず**: ${knowledgeBase.join(', ')}
 
-次の質問は以下の条件を満たす必要があります：
-1. **問題の原因特定に直結する**: 症状から原因を絞り込む質問
-2. **具体的な対応策を導く**: 回答によって具体的な処置が決まる質問
-3. **安全確認を優先**: 危険性の有無を最初に確認
-4. **段階的な診断**: 簡単な確認から複雑な診断へ
-5. **実用的な選択肢**: 選択肢がある場合は具体的な選択肢を提示
+谺｡縺ｮ雉ｪ蝠上・莉･荳九・譚｡莉ｶ繧呈ｺ縺溘☆蠢・ｦ√′縺ゅｊ縺ｾ縺呻ｼ・
+1. **蝠城｡後・蜴溷屏迚ｹ螳壹↓逶ｴ邨舌☆繧・*: 逞・憾縺九ｉ蜴溷屏繧堤ｵ槭ｊ霎ｼ繧雉ｪ蝠・
+2. **蜈ｷ菴鍋噪縺ｪ蟇ｾ蠢懃ｭ悶ｒ蟆弱￥**: 蝗樒ｭ斐↓繧医▲縺ｦ蜈ｷ菴鍋噪縺ｪ蜃ｦ鄂ｮ縺梧ｱｺ縺ｾ繧玖ｳｪ蝠・
+3. **螳牙・遒ｺ隱阪ｒ蜆ｪ蜈・*: 蜊ｱ髯ｺ諤ｧ縺ｮ譛臥┌繧呈怙蛻昴↓遒ｺ隱・
+4. **谿ｵ髫守噪縺ｪ險ｺ譁ｭ**: 邁｡蜊倥↑遒ｺ隱阪°繧芽､・尅縺ｪ險ｺ譁ｭ縺ｸ
+5. **螳溽畑逧・↑驕ｸ謚櫁い**: 驕ｸ謚櫁い縺後≠繧句ｴ蜷医・蜈ｷ菴鍋噪縺ｪ驕ｸ謚櫁い繧呈署遉ｺ
 
-質問の種類：
-- **症状確認**: 具体的な症状や異常の詳細
-- **原因特定**: 考えられる原因の絞り込み
-- **安全確認**: 作業の安全性や緊急度
-- **対応策選択**: 具体的な処置方法の選択
-- **確認・検証**: 処置後の確認事項
+雉ｪ蝠上・遞ｮ鬘橸ｼ・
+- **逞・憾遒ｺ隱・*: 蜈ｷ菴鍋噪縺ｪ逞・憾繧・焚蟶ｸ縺ｮ隧ｳ邏ｰ
+- **蜴溷屏迚ｹ螳・*: 閠・∴繧峨ｌ繧句次蝗縺ｮ邨槭ｊ霎ｼ縺ｿ
+- **螳牙・遒ｺ隱・*: 菴懈･ｭ縺ｮ螳牙・諤ｧ繧・ｷ頑･蠎ｦ
+- **蟇ｾ蠢懃ｭ夜∈謚・*: 蜈ｷ菴鍋噪縺ｪ蜃ｦ鄂ｮ譁ｹ豕輔・驕ｸ謚・
+- **遒ｺ隱阪・讀懆ｨｼ**: 蜃ｦ鄂ｮ蠕後・遒ｺ隱堺ｺ矩・
 
-以下のJSON形式で返してください：
+莉･荳九・JSON蠖｢蠑上〒霑斐＠縺ｦ縺上□縺輔＞・・
 {
   "id": "step_${Date.now()}",
-  "question": "具体的で実用的な質問内容",
+  "question": "蜈ｷ菴鍋噪縺ｧ螳溽畑逧・↑雉ｪ蝠丞・螳ｹ",
   "type": "text",
   "required": true,
-  "options": ["選択肢1", "選択肢2", "選択肢3"],
-  "reasoning": "この質問で何を特定・解決したいか",
-  "expectedOutcome": "この質問への回答で得られる情報"
+  "options": ["驕ｸ謚櫁い1", "驕ｸ謚櫁い2", "驕ｸ謚櫁い3"],
+  "reasoning": "縺薙・雉ｪ蝠上〒菴輔ｒ迚ｹ螳壹・隗｣豎ｺ縺励◆縺・°",
+  "expectedOutcome": "縺薙・雉ｪ蝠上∈縺ｮ蝗樒ｭ斐〒蠕励ｉ繧後ｋ諠・ｱ"
 }
 `;
 
@@ -226,7 +226,7 @@ export class QAFlowManager {
       try {
         const parsed = JSON.parse(response);
         
-        // 選択肢がある場合はchoiceタイプに設定
+        // 驕ｸ謚櫁い縺後≠繧句ｴ蜷医・choice繧ｿ繧､繝励↓險ｭ螳・
         const questionType = parsed.options && parsed.options.length > 0 ? 'choice' : 'text';
         
         return {
@@ -241,60 +241,60 @@ export class QAFlowManager {
           expectedOutcome: parsed.expectedOutcome
         };
       } catch (parseError) {
-        console.error('質問生成のJSON解析エラー:', parseError);
-        // フォールバック用の基本的な質問を返す
+        console.error('雉ｪ蝠冗函謌舌・JSON隗｣譫舌お繝ｩ繝ｼ:', parseError);
+        // 繝輔か繝ｼ繝ｫ繝舌ャ繧ｯ逕ｨ縺ｮ蝓ｺ譛ｬ逧・↑雉ｪ蝠上ｒ霑斐☆
         return {
           id: `step_${Date.now()}`,
-          question: "問題の具体的な症状を教えてください。",
+          question: "蝠城｡後・蜈ｷ菴鍋噪縺ｪ逞・憾繧呈蕗縺医※縺上□縺輔＞縲・,
           type: 'text',
           required: true,
           options: [],
-          reasoning: "基本的な症状確認",
-          expectedOutcome: "問題の詳細把握"
+          reasoning: "蝓ｺ譛ｬ逧・↑逞・憾遒ｺ隱・,
+          expectedOutcome: "蝠城｡後・隧ｳ邏ｰ謚頑升"
         };
       }
     } catch (error) {
-      console.error('動的質問生成エラー:', error);
+      console.error('蜍慕噪雉ｪ蝠冗函謌舌お繝ｩ繝ｼ:', error);
       return null;
     }
   }
 
-  // 条件評価
+  // 譚｡莉ｶ隧穂ｾ｡
   private evaluateCondition(condition: string, answers: QAAnswer[]): boolean {
     try {
-      // 簡単な条件評価（実際の実装ではより複雑な条件解析が必要）
+      // 邁｡蜊倥↑譚｡莉ｶ隧穂ｾ｡・亥ｮ滄圀縺ｮ螳溯｣・〒縺ｯ繧医ｊ隍・尅縺ｪ譚｡莉ｶ隗｣譫舌′蠢・ｦ・ｼ・
       const lastAnswer = answers[answers.length - 1];
       if (!lastAnswer) return true;
 
       if (condition.includes('time_limit')) {
         const timeLimit = parseInt(condition.match(/time_limit:(\d+)/)?.[1] || '0');
         const timeAnswer = lastAnswer.answer;
-        if (timeAnswer.includes('20分以下') || timeAnswer.includes('30分以下')) {
-          return false; // 時間制限により次の質問をスキップ
+        if (timeAnswer.includes('20蛻・ｻ･荳・) || timeAnswer.includes('30蛻・ｻ･荳・)) {
+          return false; // 譎る俣蛻ｶ髯舌↓繧医ｊ谺｡縺ｮ雉ｪ蝠上ｒ繧ｹ繧ｭ繝・・
         }
       }
 
       return true;
     } catch (error) {
-      console.error('条件評価エラー:', error);
+      console.error('譚｡莉ｶ隧穂ｾ｡繧ｨ繝ｩ繝ｼ:', error);
       return true;
     }
   }
 
-  // 緊急対応チェック
+  // 邱頑･蟇ｾ蠢懊メ繧ｧ繝・け
   checkEmergencyAction(currentStep: QAFlowStep, answer: string): string | null {
     if (currentStep.emergencyAction && currentStep.timeLimit) {
       const timeAnswer = answer.toLowerCase();
-      if (timeAnswer.includes(`${currentStep.timeLimit}分以下`) || 
-          timeAnswer.includes('20分以下') || 
-          timeAnswer.includes('30分以下')) {
+      if (timeAnswer.includes(`${currentStep.timeLimit}蛻・ｻ･荳義) || 
+          timeAnswer.includes('20蛻・ｻ･荳・) || 
+          timeAnswer.includes('30蛻・ｻ･荳・)) {
         return currentStep.emergencyAction;
       }
     }
     return null;
   }
 
-  // 回答に基づく次のステップ決定
+  // 蝗樒ｭ斐↓蝓ｺ縺･縺乗ｬ｡縺ｮ繧ｹ繝・ャ繝玲ｱｺ螳・
   async determineNextStep(
     currentAnswer: QAAnswer,
     allAnswers: QAAnswer[],
@@ -302,18 +302,18 @@ export class QAFlowManager {
   ): Promise<QAFlowStep | null> {
     try {
       const analysisPrompt = `
-以下の回答を分析して、次のステップを決定してください：
+莉･荳九・蝗樒ｭ斐ｒ蛻・梵縺励※縲∵ｬ｡縺ｮ繧ｹ繝・ャ繝励ｒ豎ｺ螳壹＠縺ｦ縺上□縺輔＞・・
 
-**現在の回答**: ${currentAnswer.answer}
-**これまでの回答**: ${allAnswers.map(a => `${a.stepId}: ${a.answer}`).join(', ')}
-**利用可能なステップ**: ${flow.steps.map(s => s.question).join(', ')}
+**迴ｾ蝨ｨ縺ｮ蝗樒ｭ・*: ${currentAnswer.answer}
+**縺薙ｌ縺ｾ縺ｧ縺ｮ蝗樒ｭ・*: ${allAnswers.map(a => `${a.stepId}: ${a.answer}`).join(', ')}
+**蛻ｩ逕ｨ蜿ｯ閭ｽ縺ｪ繧ｹ繝・ャ繝・*: ${flow.steps.map(s => s.question).join(', ')}
 
-分析結果を以下のJSON形式で返してください：
+蛻・梵邨先棡繧剃ｻ･荳九・JSON蠖｢蠑上〒霑斐＠縺ｦ縺上□縺輔＞・・
 {
-  "nextStepId": "次のステップのID",
-  "reasoning": "このステップを選んだ理由",
+  "nextStepId": "谺｡縺ｮ繧ｹ繝・ャ繝励・ID",
+  "reasoning": "縺薙・繧ｹ繝・ャ繝励ｒ驕ｸ繧薙□逅・罰",
   "isComplete": false,
-  "suggestedAction": "推奨される対応"
+  "suggestedAction": "謗ｨ螂ｨ縺輔ｌ繧句ｯｾ蠢・
 }
 `;
 
@@ -324,16 +324,16 @@ export class QAFlowManager {
         const nextStep = flow.steps.find(s => s.id === parsed.nextStepId);
         return nextStep || null;
       } catch (parseError) {
-        console.error('次のステップ決定のJSON解析エラー:', parseError);
+        console.error('谺｡縺ｮ繧ｹ繝・ャ繝玲ｱｺ螳壹・JSON隗｣譫舌お繝ｩ繝ｼ:', parseError);
         return null;
       }
     } catch (error) {
-      console.error('次のステップ決定エラー:', error);
+      console.error('谺｡縺ｮ繧ｹ繝・ャ繝玲ｱｺ螳壹お繝ｩ繝ｼ:', error);
       return null;
     }
   }
 
-  // 問題解決の提案生成
+  // 蝠城｡瑚ｧ｣豎ｺ縺ｮ謠先｡育函謌・
   async generateSolution(
     allAnswers: QAAnswer[],
     knowledgeBase: string[],
@@ -341,52 +341,52 @@ export class QAFlowManager {
   ): Promise<string> {
     try {
       const solutionPrompt = `
-あなたは保守用車の専門技術者です。収集した情報に基づいて、具体的で実用的な解決策を提案してください。
+縺ゅ↑縺溘・菫晏ｮ育畑霆翫・蟆る摩謚陦楢・〒縺吶ょ庶髮・＠縺滓ュ蝣ｱ縺ｫ蝓ｺ縺･縺・※縲∝・菴鍋噪縺ｧ螳溽畑逧・↑隗｣豎ｺ遲悶ｒ謠先｡医＠縺ｦ縺上□縺輔＞縲・
 
-**問題カテゴリ**: ${problemCategory?.name || '不明'}
-**収集した情報**: ${allAnswers.map(a => `${a.stepId}: ${a.answer}`).join(', ')}
-**専門ナレッジ**: ${knowledgeBase.join(', ')}
+**蝠城｡後き繝・ざ繝ｪ**: ${problemCategory?.name || '荳肴・'}
+**蜿朱寔縺励◆諠・ｱ**: ${allAnswers.map(a => `${a.stepId}: ${a.answer}`).join(', ')}
+**蟆る摩繝翫Ξ繝・ず**: ${knowledgeBase.join(', ')}
 
-以下の形式で具体的な解決策を提案してください：
+莉･荳九・蠖｢蠑上〒蜈ｷ菴鍋噪縺ｪ隗｣豎ｺ遲悶ｒ謠先｡医＠縺ｦ縺上□縺輔＞・・
 
-## 🔍 問題の特定
-- 現在発生している問題の具体的な内容
-- 影響範囲と緊急度
+## 剥 蝠城｡後・迚ｹ螳・
+- 迴ｾ蝨ｨ逋ｺ逕溘＠縺ｦ縺・ｋ蝠城｡後・蜈ｷ菴鍋噪縺ｪ蜀・ｮｹ
+- 蠖ｱ髻ｿ遽・峇縺ｨ邱頑･蠎ｦ
 
-## ⚠️ 安全確認
-- 作業前の安全確認事項
-- 危険性の有無と対処法
+## 笞・・螳牙・遒ｺ隱・
+- 菴懈･ｭ蜑阪・螳牙・遒ｺ隱堺ｺ矩・
+- 蜊ｱ髯ｺ諤ｧ縺ｮ譛臥┌縺ｨ蟇ｾ蜃ｦ豕・
 
-## 🛠️ 具体的な対応手順
-1. **準備**: 必要な工具・部品・安全装備
-2. **作業手順**: ステップバイステップの具体的な手順
-3. **確認事項**: 各ステップでの確認ポイント
+## 屏・・蜈ｷ菴鍋噪縺ｪ蟇ｾ蠢懈焔鬆・
+1. **貅門ｙ**: 蠢・ｦ√↑蟾･蜈ｷ繝ｻ驛ｨ蜩√・螳牙・陬・ｙ
+2. **菴懈･ｭ謇矩・*: 繧ｹ繝・ャ繝励ヰ繧､繧ｹ繝・ャ繝励・蜈ｷ菴鍋噪縺ｪ謇矩・
+3. **遒ｺ隱堺ｺ矩・*: 蜷・せ繝・ャ繝励〒縺ｮ遒ｺ隱阪・繧､繝ｳ繝・
 
-## 📋 注意事項
-- 作業時の安全上の注意点
-- よくある失敗パターンと回避法
-- 専門家への相談が必要な場合
+## 搭 豕ｨ諢丈ｺ矩・
+- 菴懈･ｭ譎ゅ・螳牙・荳翫・豕ｨ諢冗せ
+- 繧医￥縺ゅｋ螟ｱ謨励ヱ繧ｿ繝ｼ繝ｳ縺ｨ蝗樣∩豕・
+- 蟆る摩螳ｶ縺ｸ縺ｮ逶ｸ隲・′蠢・ｦ√↑蝣ｴ蜷・
 
-## ✅ 完了確認
-- 作業完了後の確認事項
-- 再発防止策
-- 次回点検時の注意点
+## 笨・螳御ｺ・｢ｺ隱・
+- 菴懈･ｭ螳御ｺ・ｾ後・遒ｺ隱堺ｺ矩・
+- 蜀咲匱髦ｲ豁｢遲・
+- 谺｡蝗樒せ讀懈凾縺ｮ豕ｨ諢冗せ
 
-## 🚨 緊急時の対応
-- 作業中に問題が発生した場合の対処法
-- 緊急連絡先: ${problemCategory?.requiresExpert ? '専門技術者に連絡してください' : '技術支援センター'}
+## 圷 邱頑･譎ゅ・蟇ｾ蠢・
+- 菴懈･ｭ荳ｭ縺ｫ蝠城｡後′逋ｺ逕溘＠縺溷ｴ蜷医・蟇ｾ蜃ｦ豕・
+- 邱頑･騾｣邨｡蜈・ ${problemCategory?.requiresExpert ? '蟆る摩謚陦楢・↓騾｣邨｡縺励※縺上□縺輔＞' : '謚陦捺髪謠ｴ繧ｻ繝ｳ繧ｿ繝ｼ'}
 
-専門的で実用的、かつ安全な解決策を提供してください。
+蟆る摩逧・〒螳溽畑逧・√°縺､螳牙・縺ｪ隗｣豎ｺ遲悶ｒ謠蝉ｾ帙＠縺ｦ縺上□縺輔＞縲・
 `;
 
       return await callOpenAIAPI(solutionPrompt, true);
     } catch (error) {
-      console.error('解決策生成エラー:', error);
-      return '解決策の生成に失敗しました。専門家に相談してください。';
+      console.error('隗｣豎ｺ遲也函謌舌お繝ｩ繝ｼ:', error);
+      return '隗｣豎ｺ遲悶・逕滓・縺ｫ螟ｱ謨励＠縺ｾ縺励◆縲ょｰる摩螳ｶ縺ｫ逶ｸ隲・＠縺ｦ縺上□縺輔＞縲・;
     }
   }
 
-  // ナレッジベースの学習
+  // 繝翫Ξ繝・ず繝吶・繧ｹ縺ｮ蟄ｦ鄙・
   async learnFromQA(
     question: string,
     answer: string,
@@ -395,34 +395,34 @@ export class QAFlowManager {
   ): Promise<void> {
     try {
       const learningPrompt = `
-以下のQ&Aセッションから学習データを生成してください：
+莉･荳九・Q&A繧ｻ繝・す繝ｧ繝ｳ縺九ｉ蟄ｦ鄙偵ョ繝ｼ繧ｿ繧堤函謌舌＠縺ｦ縺上□縺輔＞・・
 
-**質問**: ${question}
-**回答**: ${answer}
-**解決策**: ${solution}
-**成功**: ${success}
+**雉ｪ蝠・*: ${question}
+**蝗樒ｭ・*: ${answer}
+**隗｣豎ｺ遲・*: ${solution}
+**謌仙粥**: ${success}
 
-この情報をナレッジベースに追加するための構造化データを生成してください：
+縺薙・諠・ｱ繧偵リ繝ｬ繝・ず繝吶・繧ｹ縺ｫ霑ｽ蜉縺吶ｋ縺溘ａ縺ｮ讒矩蛹悶ョ繝ｼ繧ｿ繧堤函謌舌＠縺ｦ縺上□縺輔＞・・
 {
-  "category": "カテゴリ",
-  "keywords": ["キーワード1", "キーワード2"],
-  "summary": "要約",
-  "solution": "解決策",
-  "prevention": "予防策"
+  "category": "繧ｫ繝・ざ繝ｪ",
+  "keywords": ["繧ｭ繝ｼ繝ｯ繝ｼ繝・", "繧ｭ繝ｼ繝ｯ繝ｼ繝・"],
+  "summary": "隕∫ｴ・,
+  "solution": "隗｣豎ｺ遲・,
+  "prevention": "莠磯亟遲・
 }
 `;
 
       const response = await callOpenAIAPI(learningPrompt, false);
       
-      // 学習データを保存（実際の実装ではデータベースに保存）
-      console.log('学習データ生成:', response);
+      // 蟄ｦ鄙偵ョ繝ｼ繧ｿ繧剃ｿ晏ｭ假ｼ亥ｮ滄圀縺ｮ螳溯｣・〒縺ｯ繝・・繧ｿ繝吶・繧ｹ縺ｫ菫晏ｭ假ｼ・
+      console.log('蟄ｦ鄙偵ョ繝ｼ繧ｿ逕滓・:', response);
       
     } catch (error) {
-      console.error('学習データ生成エラー:', error);
+      console.error('蟄ｦ鄙偵ョ繝ｼ繧ｿ逕滓・繧ｨ繝ｩ繝ｼ:', error);
     }
   }
 
-  // フロー状態の管理
+  // 繝輔Ο繝ｼ迥ｶ諷九・邂｡逅・
   setCurrentFlow(flow: QAFlow): void {
     this.currentFlow = flow;
     this.answers = [];
@@ -457,5 +457,8 @@ export class QAFlowManager {
   }
 }
 
-// シングルトンインスタンス
+// 繧ｷ繝ｳ繧ｰ繝ｫ繝医Φ繧､繝ｳ繧ｹ繧ｿ繝ｳ繧ｹ
 export const qaFlowManager = new QAFlowManager();
+
+
+

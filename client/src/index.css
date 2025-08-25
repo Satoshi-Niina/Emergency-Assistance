@@ -1,4 +1,4 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -55,35 +55,35 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* ベースフォントサイズを2倍に設定 */
+    /* 繝吶・繧ｹ繝輔か繝ｳ繝医し繧､繧ｺ繧・蛟阪↓險ｭ螳・*/
     font-size: 2rem;
     line-height: 1.5;
   }
 
-  /* フォーム要素のサイズ調整 */
+  /* 繝輔か繝ｼ繝隕∫ｴ縺ｮ繧ｵ繧､繧ｺ隱ｿ謨ｴ */
   input, textarea, select, button {
     font-size: 1.5rem !important;
     padding: 0.75rem 1rem !important;
     border-radius: 0.5rem !important;
   }
 
-  /* ボタンの高さ調整 */
+  /* 繝懊ち繝ｳ縺ｮ鬮倥＆隱ｿ謨ｴ */
   button {
     min-height: 3rem !important;
   }
 
-  /* ラベルのサイズ調整 */
+  /* 繝ｩ繝吶Ν縺ｮ繧ｵ繧､繧ｺ隱ｿ謨ｴ */
   label {
     font-size: 1.5rem !important;
     font-weight: 500 !important;
   }
 
-  /* カードのパディング調整 */
+  /* 繧ｫ繝ｼ繝峨・繝代ョ繧｣繝ｳ繧ｰ隱ｿ謨ｴ */
   .card, [class*="card"] {
     padding: 1.5rem !important;
   }
 
-  /* テキストサイズの調整 */
+  /* 繝・く繧ｹ繝医し繧､繧ｺ縺ｮ隱ｿ謨ｴ */
   h1 { font-size: 3rem !important; }
   h2 { font-size: 2.5rem !important; }
   h3 { font-size: 2rem !important; }
@@ -91,7 +91,7 @@
   h5 { font-size: 1.5rem !important; }
   h6 { font-size: 1.25rem !important; }
 
-  /* 小さいテキストの調整 */
+  /* 蟆上＆縺・ユ繧ｭ繧ｹ繝医・隱ｿ謨ｴ */
   .text-xs { font-size: 1rem !important; }
   .text-sm { font-size: 1.25rem !important; }
   .text-base { font-size: 1.5rem !important; }
@@ -100,7 +100,7 @@
   .text-2xl { font-size: 2.5rem !important; }
 }
 
-/* body全体のスタイル */
+/* body蜈ｨ菴薙・繧ｹ繧ｿ繧､繝ｫ */
 body {
   margin: 0;
   display: flex;
@@ -110,7 +110,7 @@ body {
   overflow: hidden;
 }
 
-/* スクロールバーのカスタマイズ */
+/* 繧ｹ繧ｯ繝ｭ繝ｼ繝ｫ繝舌・縺ｮ繧ｫ繧ｹ繧ｿ繝槭う繧ｺ */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -129,7 +129,7 @@ body {
   background: rgba(100, 116, 139, 0.7);
 }
 
-/* チャットメッセージのコンテナ */
+/* 繝√Ε繝・ヨ繝｡繝・そ繝ｼ繧ｸ縺ｮ繧ｳ繝ｳ繝・リ */
 .chat-container {
   display: flex;
   flex-direction: column;
@@ -141,7 +141,7 @@ body {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
-/* 3Dチャットエリア専用スタイル */
+/* 3D繝√Ε繝・ヨ繧ｨ繝ｪ繧｢蟆ら畑繧ｹ繧ｿ繧､繝ｫ */
 .chat-area-3d {
   background: linear-gradient(145deg, #f8fafc, #e2e8f0);
   border: 4px solid #d1d5db;
@@ -163,7 +163,7 @@ body {
   pointer-events: none;
 }
 
-/* 入力エリア3D効果 */
+/* 蜈･蜉帙お繝ｪ繧｢3D蜉ｹ譫・*/
 .input-area-3d {
   background: linear-gradient(145deg, #ffffff, #f1f5f9);
   border: 2px solid #d1d5db;
@@ -201,7 +201,7 @@ body {
   border-radius: 0 0 0.375rem 0.375rem;
 }
 
-/* AIメッセージとユーザーメッセージのスタイル */
+/* AI繝｡繝・そ繝ｼ繧ｸ縺ｨ繝ｦ繝ｼ繧ｶ繝ｼ繝｡繝・そ繝ｼ繧ｸ縺ｮ繧ｹ繧ｿ繧､繝ｫ */
 .ai-message, .user-message {
   max-width: 80%;
   padding: 0.75rem 1rem;
@@ -235,7 +235,7 @@ body {
   text-align: right;
 }
 
-/* レスポンシブなタイピングインジケーター */
+/* 繝ｬ繧ｹ繝昴Φ繧ｷ繝悶↑繧ｿ繧､繝斐Φ繧ｰ繧､繝ｳ繧ｸ繧ｱ繝ｼ繧ｿ繝ｼ */
 .typing-indicator {
   display: flex;
   align-items: center;
@@ -274,7 +274,7 @@ body {
   }
 }
 
-/* フォーム要素のスタイリング */
+/* 繝輔か繝ｼ繝隕∫ｴ縺ｮ繧ｹ繧ｿ繧､繝ｪ繝ｳ繧ｰ */
 input[type="text"], 
 input[type="password"], 
 textarea {
@@ -304,7 +304,7 @@ button:disabled {
   cursor: not-allowed;
 }
 
-/* ボタンのカスタマイズ */
+/* 繝懊ち繝ｳ縺ｮ繧ｫ繧ｹ繧ｿ繝槭う繧ｺ */
 .icon-button {
   display: flex;
   align-items: center;
@@ -323,7 +323,7 @@ button:disabled {
   background-color: rgba(226, 232, 240, 0.9);
 }
 
-/* メディアクエリ - モバイル対応 */
+/* 繝｡繝・ぅ繧｢繧ｯ繧ｨ繝ｪ - 繝｢繝舌う繝ｫ蟇ｾ蠢・*/
 @media (max-width: 640px) {
   .chat-container {
     height: 100vh;
@@ -343,7 +343,7 @@ button:disabled {
   input[type="text"], 
   input[type="password"], 
   textarea {
-    font-size: 1rem; /* モバイルで読みやすいサイズに */
+    font-size: 1rem; /* 繝｢繝舌う繝ｫ縺ｧ隱ｭ縺ｿ繧・☆縺・し繧､繧ｺ縺ｫ */
   }
 
   .icon-button {
@@ -399,9 +399,9 @@ button:disabled {
     overflow-y: auto;
   }
 
-  /* モバイル横向き時のレイアウト調整 */
+  /* 繝｢繝舌う繝ｫ讓ｪ蜷代″譎ゅ・繝ｬ繧､繧｢繧ｦ繝郁ｪｿ謨ｴ */
   @media (orientation: landscape) and (max-height: 500px) {
-    /* 横向き時の検索結果パネル */
+    /* 讓ｪ蜷代″譎ゅ・讀懃ｴ｢邨先棡繝代ロ繝ｫ */
     #mobile-search-slider {
       width: 40% !important;
       right: 0 !important;
@@ -423,7 +423,7 @@ button:disabled {
       box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
     }
 
-    /* モバイル横向き時のヘッダー調整 */
+    /* 繝｢繝舌う繝ｫ讓ｪ蜷代″譎ゅ・繝倥ャ繝繝ｼ隱ｿ謨ｴ */
     .mobile-landscape-header {
       position: sticky;
       top: 0;
@@ -433,20 +433,20 @@ button:disabled {
       background-color: rgba(255, 255, 255, 0.95);
     }
 
-    /* 検索結果の横スクロール対応 */
+    /* 讀懃ｴ｢邨先棡縺ｮ讓ｪ繧ｹ繧ｯ繝ｭ繝ｼ繝ｫ蟇ｾ蠢・*/
     .search-results-container {
       overflow-x: auto !important; 
       white-space: nowrap;
       min-width: 320px;
     }
 
-    /* カメラモーダルのサイズ調整 */
+    /* 繧ｫ繝｡繝ｩ繝｢繝ｼ繝繝ｫ縺ｮ繧ｵ繧､繧ｺ隱ｿ謨ｴ */
     .camera-modal {
       max-width: 90vw !important;
       max-height: 80vh !important;
     }
 
-    /* メッセージ入力エリアの調整 */
+    /* 繝｡繝・そ繝ｼ繧ｸ蜈･蜉帙お繝ｪ繧｢縺ｮ隱ｿ謨ｴ */
     .message-input-container {
       position: sticky;
       bottom: 0;
@@ -454,19 +454,19 @@ button:disabled {
     }
   }
 
-  /* スライダーのための特別なスタイル */
+  /* 繧ｹ繝ｩ繧､繝繝ｼ縺ｮ縺溘ａ縺ｮ迚ｹ蛻･縺ｪ繧ｹ繧ｿ繧､繝ｫ */
   .search-panel-visible {
     transform: none !important;
   }
 }
 
-/* フュージョン検索結果のレスポンシブスタイル */
+/* 繝輔Η繝ｼ繧ｸ繝ｧ繝ｳ讀懃ｴ｢邨先棡縺ｮ繝ｬ繧ｹ繝昴Φ繧ｷ繝悶せ繧ｿ繧､繝ｫ */
 .fuse-result-container {
   display: flex;
   flex-direction: column;
 }
 
-/* 横スクロール検索結果：縦画面モード */
+/* 讓ｪ繧ｹ繧ｯ繝ｭ繝ｼ繝ｫ讀懃ｴ｢邨先棡・夂ｸｦ逕ｻ髱｢繝｢繝ｼ繝・*/
 @media screen and (orientation: portrait) {
   .fuse-result-container {
     display: flex;
@@ -484,7 +484,7 @@ button:disabled {
   }
 }
 
-/* 横画面モード用のスタイル */
+/* 讓ｪ逕ｻ髱｢繝｢繝ｼ繝臥畑縺ｮ繧ｹ繧ｿ繧､繝ｫ */
 @media screen and (orientation: landscape) {
   .fuse-landscape-wrapper {
     display: flex;
@@ -515,7 +515,7 @@ button:disabled {
   }
 }
 
-/* 検索結果のアニメーション効果 */
+/* 讀懃ｴ｢邨先棡縺ｮ繧｢繝九Γ繝ｼ繧ｷ繝ｧ繝ｳ蜉ｹ譫・*/
 .search-results-animation {
   animation: slideIn 0.3s ease-in-out;
 }
@@ -531,7 +531,7 @@ button:disabled {
   }
 }
 
-/* iOS縦向き時の検索結果パネル特別スタイル */
+/* iOS邵ｦ蜷代″譎ゅ・讀懃ｴ｢邨先棡繝代ロ繝ｫ迚ｹ蛻･繧ｹ繧ｿ繧､繝ｫ */
 .ios-portrait-search-results {
   position: fixed;
   bottom: 0;
@@ -549,7 +549,7 @@ button:disabled {
   transition: transform 0.3s ease-in-out;
 }
 
-/* 画像とコンテンツをより見やすくする */
+/* 逕ｻ蜒上→繧ｳ繝ｳ繝・Φ繝・ｒ繧医ｊ隕九ｄ縺吶￥縺吶ｋ */
 .search-results-container img:hover,
 .fuse-result-container img:hover {
   opacity: 0.9;
@@ -565,3 +565,5 @@ button:disabled {
   text-align: left;
   overflow: hidden;
 }
+
+

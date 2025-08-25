@@ -1,4 +1,4 @@
-
+﻿
 export enum LogLevel {
   ERROR = 0,
   WARN = 1,
@@ -6,11 +6,11 @@ export enum LogLevel {
   DEBUG = 3
 }
 
-// ログレベル設定
-const level = 'info'; // デフォルトログレベル（VITE_LOG_LEVELの参照を削除）
+// 繝ｭ繧ｰ繝ｬ繝吶Ν險ｭ螳・
+const level = 'info'; // 繝・ヵ繧ｩ繝ｫ繝医Ο繧ｰ繝ｬ繝吶Ν・・ITE_LOG_LEVEL縺ｮ蜿ら・繧貞炎髯､・・
 
 /**
- * デバッグレベルのログ出力
+ * 繝・ヰ繝・げ繝ｬ繝吶Ν縺ｮ繝ｭ繧ｰ蜃ｺ蜉・
  */
 export const logDebug = (...args: any[]): void => {
   if (level === 'debug') {
@@ -19,7 +19,7 @@ export const logDebug = (...args: any[]): void => {
 };
 
 /**
- * 情報レベルのログ出力
+ * 諠・ｱ繝ｬ繝吶Ν縺ｮ繝ｭ繧ｰ蜃ｺ蜉・
  */
 export const logInfo = (...args: any[]): void => {
   if (level === 'info') {
@@ -28,7 +28,7 @@ export const logInfo = (...args: any[]): void => {
 };
 
 /**
- * 警告レベルのログ出力
+ * 隴ｦ蜻翫Ξ繝吶Ν縺ｮ繝ｭ繧ｰ蜃ｺ蜉・
  */
 export const logWarn = (...args: any[]): void => {
   if (level === 'warn') {
@@ -37,10 +37,13 @@ export const logWarn = (...args: any[]): void => {
 };
 
 /**
- * エラーレベルのログ出力
+ * 繧ｨ繝ｩ繝ｼ繝ｬ繝吶Ν縺ｮ繝ｭ繧ｰ蜃ｺ蜉・
  */
 export const logError = (...args: any[]): void => {
   if (level === 'error') {
     console.error('[ERROR]', ...args);
   }
 };
+
+
+

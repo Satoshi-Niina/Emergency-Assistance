@@ -1,9 +1,9 @@
-// データベースに必要なdrizzle-ormの型とヘルパーをインポート
+﻿// 繝・・繧ｿ繝吶・繧ｹ縺ｫ蠢・ｦ√↑drizzle-orm縺ｮ蝙九→繝倥Ν繝代・繧偵う繝ｳ繝昴・繝・
 import { pgTable, text, timestamp, jsonb, boolean } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
-// ユーザーテーブルの定義
+// 繝ｦ繝ｼ繧ｶ繝ｼ繝・・繝悶Ν縺ｮ螳夂ｾｩ
 export const users: any = pgTable('users', {
     id: text('id').primaryKey().default(sql `gen_random_uuid()`),
     username: text('username').notNull().unique(),
@@ -82,7 +82,7 @@ export const chatExports: any = pgTable('chat_exports', {
     timestamp: timestamp('timestamp').defaultNow().notNull()
 });
 
-// Zodスキーマの定義
+// Zod繧ｹ繧ｭ繝ｼ繝槭・螳夂ｾｩ
 export const insertUserSchema = z.object({
     username: z.string(),
     password: z.string(),
@@ -117,7 +117,7 @@ export const insertDocumentSchema = z.object({
     userId: z.string()
 });
 
-// スキーマの統合エクスポート
+// 繧ｹ繧ｭ繝ｼ繝槭・邨ｱ蜷医お繧ｯ繧ｹ繝昴・繝・
 export const schema = {
     users,
     chats,
@@ -129,3 +129,4 @@ export const schema = {
     images,
     chatExports,
 }; 
+

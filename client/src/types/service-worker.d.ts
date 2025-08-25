@@ -1,4 +1,4 @@
-interface ServiceWorkerRegistration {
+﻿interface ServiceWorkerRegistration {
   sync?: {
     register(tag: string): Promise<void>;
     getTags(): Promise<string[]>;
@@ -24,3 +24,5 @@ declare module 'workbox-window' {
 interface Window {
   SyncManager?: any;
 }
+
+
