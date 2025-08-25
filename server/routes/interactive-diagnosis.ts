@@ -27,7 +27,9 @@ const InteractiveDiagnosisRequestSchema = z.object({
     suspectedCauses: z.array(z.string()),
     currentFocus: z.string().nullable(),
     nextActions: z.array(z.string()),
-    confidence: z.number()
+  confidence: z.number(),
+  phraseHistory: z.array(z.string()).optional(),
+  lastQuestion: z.string().optional()
   }).optional()
 });
 
@@ -68,7 +70,9 @@ router.post('/', async (req: Request, res: Response) => {
         suspectedCauses: currentState.suspectedCauses,
         currentFocus: currentState.currentFocus,
         nextActions: currentState.nextActions,
-        confidence: currentState.confidence
+  confidence: currentState.confidence,
+  phraseHistory: currentState.phraseHistory || [],
+  lastQuestion: currentState.lastQuestion
       };
     } else {
       diagnosisState = {
@@ -85,7 +89,9 @@ router.post('/', async (req: Request, res: Response) => {
         suspectedCauses: [],
         currentFocus: null,
         nextActions: [],
-        confidence: 0.0
+  confidence: 0.0,
+  phraseHistory: [],
+  lastQuestion: undefined
       };
     }
 
@@ -175,6 +181,11 @@ ${vehicleInfo}の${primaryCause}に対する応急処置手順を、現場で実
       }
     }
 
+  // 質問重複再表現はロジック層で実施済み（ここでは再処理しない）
+
+    // 次回用に lastQuestion を更新
+    (updatedState as any).lastQuestion = interactiveResponse.nextQuestion || null;
+
     // レスポンス
     const response = {
       interactiveResponse,
@@ -218,7 +229,9 @@ router.post('/start', async (req: Request, res: Response) => {
       suspectedCauses: [],
       currentFocus: null,
       nextActions: [],
-      confidence: 0.0
+      confidence: 0.0,
+      phraseHistory: [],
+      lastQuestion: undefined
     };
 
     const initialResponse = generateInteractiveResponse(initialState);

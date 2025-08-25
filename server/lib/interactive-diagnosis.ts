@@ -18,15 +18,34 @@ export interface DiagnosisState {
   currentFocus: string | null;
   nextActions: string[];
   confidence: number;
+  /** 短期的に使用した可変フレーズの履歴（"group:index" 形式） */
+  phraseHistory?: string[];
+  /** 直近に提示した質問（重複抑止用） */
+  lastQuestion?: string | null;
 }
 
 export interface InteractiveResponse {
+  /** ユーザーにまず表示する端的なメッセージ（1～3行） */
   message: string;
+  /** 次に投げる単一の質問 */
   nextQuestion?: string;
+  /** 追加の詳しい説明（ユーザーが「詳細」等を要求した時に統合表示可能） */
+  details?: string;
+  /** 業務ログ用のフォーマル版メッセージ */
+  formalMessage?: string;
+  /** 業務ログ用のフォーマル版質問 */
+  formalNextQuestion?: string;
+  /** 業務ログ用のフォーマル版詳細 */
+  formalDetails?: string;
+  /** 推奨アクション一覧 */
   suggestedActions?: string[];
+  /** 即時選択肢 */
   options?: string[];
+  /** 優先度タグ */
   priority: 'safety' | 'diagnosis' | 'action' | 'info';
+  /** 追加入力が必要か */
   requiresInput: boolean;
+  /** 現在フェーズ */
   phase: DiagnosisState['phase'];
 }
 
@@ -62,6 +81,18 @@ export function updateDiagnosisState(
   // 疑われる原因の更新
   newState.suspectedCauses = generateSuspectedCauses(newState.collectedInfo);
 
+  // ステップ進行: verificationで「成功/変化なし/悪化」等の入力が来たらnextActionsにpush
+  if (currentState.phase === 'action' && userResponse) {
+    // 直前のactionで案内したステップを履歴に追加
+    const lastStepIdx = currentState.nextActions.length;
+    const actions = generateStepByStepActions(
+      currentState.suspectedCauses[0],
+      currentState.collectedInfo.vehicleType
+    );
+    if (actions[lastStepIdx]) {
+      newState.nextActions = [...currentState.nextActions, actions[lastStepIdx]];
+    }
+  }
   // フェーズの更新
   newState.phase = determineNextPhase(newState);
 
@@ -78,51 +109,150 @@ export function generateInteractiveResponse(
   state: DiagnosisState,
   userResponse?: string
 ): InteractiveResponse {
-  
+  const detailRequested = !!userResponse && /詳細|もっと詳しく|くわしく|詳しく教/.test(userResponse);
+
   // 安全確認が最優先
   if (state.collectedInfo.urgency === 'critical' && !state.collectedInfo.safetyStatus) {
-    return {
-      message: "🚨 **緊急安全確認**\n\n現在の状況は緊急性が高いと判断されます。",
-      nextQuestion: "作業現場は安全ですか？周囲に人はいませんか？機械は完全に停止していますか？",
+    return decorateWithDetail({
+      message: '🚨 緊急安全確認: まず安全を確保してください。',
+      nextQuestion: '現場は安全ですか？ 人の立入りなし / 機械は完全停止 / 火気・漏れなし を確認してください。',
       priority: 'safety',
       requiresInput: true,
       phase: 'investigation'
+    }, state, detailRequested);
+  }
+
+  let base: InteractiveResponse;
+  switch (state.phase) {
+    case 'initial':
+      base = generateInitialResponse(state); break;
+    case 'investigation':
+      base = generateInvestigationResponse(state, userResponse); break;
+    case 'diagnosis':
+      base = generateDiagnosisResponse(state); break;
+    case 'action':
+      base = generateActionResponse(state); break;
+    case 'verification':
+      base = generateVerificationResponse(state); break;
+    default:
+      base = generateCompletedResponse(state); break;
+  }
+  // 重複質問検知 & 再表現
+  if (base.nextQuestion && state.lastQuestion && normalizeQ(base.nextQuestion) === normalizeQ(state.lastQuestion)) {
+    base.nextQuestion = rephraseQuestion(base.nextQuestion);
+    base.message += '\n(前回と同趣旨の質問を再表現しています)';
+  }
+  const withDetail = decorateWithDetail(base, state, detailRequested);
+  return attachFormalVariants(withDetail);
+}
+
+/** 端的メッセージに「詳細」要求時の深掘りを付加 */
+function decorateWithDetail(base: InteractiveResponse, state: DiagnosisState, detailRequested: boolean): InteractiveResponse {
+  // 既に details が生成されている場合はそのまま
+  if (detailRequested) {
+    const detailParts: string[] = [];
+    if (state.collectedInfo.symptoms.length) {
+      detailParts.push(`症状: ${state.collectedInfo.symptoms.join(' / ')}`);
+    }
+    if (state.suspectedCauses.length) {
+      detailParts.push(`想定原因TOP3:\n${state.suspectedCauses.map((c,i)=>`${i+1}. ${c}`).join('\n')}`);
+    }
+    detailParts.push(`緊急度: ${state.collectedInfo.urgency}  信頼度: ${Math.round(state.confidence*100)}%`);
+    if (base.suggestedActions && base.suggestedActions.length) {
+      detailParts.push(`推奨アクション候補:\n- ${base.suggestedActions.slice(0,5).join('\n- ')}`);
+    }
+    const details = detailParts.join('\n\n');
+    return {
+      ...base,
+      details,
+      message: base.message + '\n\n' + details,
+      // 「詳細」要求後は再び詳細を繰り返さないため nextQuestion はそのまま
+      options: enrichOptions(base.options, true)
     };
   }
 
-  switch (state.phase) {
-    case 'initial':
-      return generateInitialResponse(state);
-    
-    case 'investigation':
-      return generateInvestigationResponse(state, userResponse);
-    
-    case 'diagnosis':
-      return generateDiagnosisResponse(state);
-    
-    case 'action':
-      return generateActionResponse(state);
-    
-    case 'verification':
-      return generateVerificationResponse(state);
-    
-    default:
-      return generateCompletedResponse(state);
-  }
+  return {
+    ...base,
+    // 詳細未要求時: 端的メッセージにヒントを付加（改行1つまでで抑制）
+    message: base.message.trim(),
+    options: enrichOptions(base.options, false)
+  };
+}
+
+function enrichOptions(options: string[] | undefined, detailRequested: boolean): string[] | undefined {
+  const base = options ? [...options] : [];
+  if (!detailRequested && !base.includes('詳細')) base.push('詳細');
+  if (!base.includes('別の可能性')) base.push('別の可能性');
+  if (!base.includes('安全再確認')) base.push('安全再確認');
+  return base;
+}
+
+// ---------- フォーマル変換 & 重複処理ユーティリティ ----------
+function attachFormalVariants(resp: InteractiveResponse): InteractiveResponse {
+  const formalMessage = toFormal(resp.message);
+  const formalNext = resp.nextQuestion ? toFormal(resp.nextQuestion) : undefined;
+  const formalDetails = resp.details ? toFormal(resp.details) : undefined;
+  // 画面表示用: カジュアル + 業務ログ併記
+  const combinedMessage = resp.message.includes('[業務ログ]')
+    ? resp.message
+    : `${resp.message}\n[業務ログ] ${formalMessage}`;
+  return {
+    ...resp,
+    message: combinedMessage,
+    formalMessage,
+    formalNextQuestion: formalNext,
+    formalDetails
+  };
+}
+
+function toFormal(text: string): string {
+  if (!text) return text;
+  let t = text;
+  // 絵文字除去（使用中のものを対象）
+  t = t.replace(/[🚨🔧⚠️💡🛠️✅🎉]/g, '');
+  // カジュアル語尾の簡易正規化
+  t = t.replace(/(しましょう|していきますね|していきます|進めていきますね|進めてくださいね|進めてください)/g, 'します');
+  t = t.replace(/(見ていきましょう|確認しましょう|一緒に見ていきましょう)/g, '確認します');
+  t = t.replace(/(教えてくださいね|教えてくださいね。|教えてください。?|教えてください)/g, '提示してください');
+  t = t.replace(/(くださいね|ください。)/g, 'ください');
+  t = t.replace(/ね。/g, '。');
+  t = t.replace(/ね/g, '');
+  t = t.replace(/！/g, '。');
+  // 余分な空白と句点整形
+  t = t.replace(/\s+/g, ' ').trim();
+  t = t.replace(/。。+/g, '。');
+  return t.trim();
+}
+
+function normalizeQ(q: string): string {
+  return q.replace(/[？?\s]/g,'').toLowerCase();
+}
+
+function rephraseQuestion(original: string): string {
+  // シンプルな再表現: 末尾に具体化依頼を追加
+  if (/具体|詳/.test(original)) return original + '（前回答との差分を明確にしてください）';
+  return original.replace(/？?$/,'') + 'を、より具体的な名詞または数値で示してください。';
 }
 
 function generateInitialResponse(state: DiagnosisState): InteractiveResponse {
+  const openers = [
+    '🔧 まず状況の共有から始めましょうね。',
+    '🔧 わかりました、症状を一つずつ一緒に見ていきましょう。',
+    '🔧 診断スタートです。落ち着いて順番に進めていきます。'
+  ];
+  const ask = [
+    '最初に「一番気になること」を短く教えてくださいね。',
+    '今いちばん困っていることを一言で教えてくださいね。',
+    'まず最初に気になる点を端的に教えてくださいね。'
+  ];
   return {
-    message: `🔧 **故障診断サポート開始**
-
-現在の状況を教えてください。どのような症状が発生していますか？
-
-例：
-• エンジンが始動しない
-• 異音がする
-• 作業装置が動かない
-• 警告灯が点灯している`,
-    nextQuestion: "具体的にどのような症状が発生していますか？",
+    message: `${v(state,'initial.opener',openers)} ${v(state,'initial.ask',ask)}`.trim(),
+    details: '例: 始動不可 / 異音 / 作業装置不作動 / 警告灯点灯 など。複数は重要度順に。',
+    nextQuestion: v(state,'initial.next',[
+      '最初に気になることは何でしょうか？',
+      '一番最初に挙げる現象は何でしょうか？',
+      'まず一つ気になる点を教えてくださいね。'
+    ]),
     priority: 'info',
     requiresInput: true,
     phase: 'investigation'
@@ -135,8 +265,16 @@ function generateInvestigationResponse(state: DiagnosisState, userResponse?: str
   // 安全確認が未完了で緊急度が高い場合
   if (!safetyStatus && urgency !== 'low') {
     return {
-      message: "⚠️ **安全確認**\n\n症状を確認しました。安全な作業環境の確保が重要です。",
-      nextQuestion: "現在、作業現場は安全な状態ですか？機械は停止していますか？",
+      message: v(state,'safety.msg',[
+        '⚠️ まずは安全が最優先なので確認させてくださいね。',
+        '⚠️ 念のため安全状態を最初にチェックしましょう。',
+        '⚠️ 作業を続ける前に安全が確保できているか見ておきましょう。'
+      ]),
+      nextQuestion: v(state,'safety.q',[
+        '現場は完全停止・人員退避済みでしょうか？',
+        '機械停止・人員離隔・漏れなしはクリアしていますか？',
+        '停止 / 人離隔 / 漏れ無し の安全条件は揃っていますか？'
+      ]),
       priority: 'safety',
       requiresInput: true,
       phase: 'investigation'
@@ -145,9 +283,15 @@ function generateInvestigationResponse(state: DiagnosisState, userResponse?: str
 
   // 車両タイプが不明な場合
   if (!vehicleType && symptoms.length > 0) {
+    // 症状・現象・状態などの同義語が連続しないよう1回のみ表示
+    const symptomText = symptoms.length ? symptoms[0] : '';
     return {
-      message: `📋 **車両情報確認**\n\n${symptoms.join('、')}の症状を確認しました。\n\n車両の詳細情報が必要です。`,
-      nextQuestion: "使用している保守用車の種類を教えてください（例：軌道モータカー、マルチプルタイタンパー、バラストレギュレーター等）",
+      message: `${symptomText} を確認しました。車種がわかると精度が上がります。`,
+      nextQuestion: v(state,'veh.q',[
+        'ご利用中の保守用車の種類を教えてくださいね。',
+        '車両タイプは何でしょうか？',
+        'どの種類の保守用車か教えていただけますか？'
+      ]),
       priority: 'info',
       requiresInput: true,
       phase: 'investigation'
@@ -159,8 +303,8 @@ function generateInvestigationResponse(state: DiagnosisState, userResponse?: str
     const specificQuestions = generateSpecificQuestions(symptoms, vehicleType);
     if (specificQuestions.length > 0) {
       return {
-        message: `🔍 **詳細診断**\n\n${vehicleType}の${symptoms.join('、')}について詳しく調査します。`,
-        nextQuestion: specificQuestions[0],
+        message: `${vehicleType}で${symptoms[0]}について詳しく確認しますね。`,
+        nextQuestion: specificQuestions[0].replace(/\?$/, 'でしょうか？'),
         priority: 'diagnosis',
         requiresInput: true,
         phase: 'diagnosis'
@@ -170,8 +314,16 @@ function generateInvestigationResponse(state: DiagnosisState, userResponse?: str
 
   // デフォルトの調査継続
   return {
-    message: "🔎 **追加情報収集**\n\n現在の情報から原因を特定するため、もう少し詳しく教えてください。",
-    nextQuestion: "症状が発生したタイミングや、直前に行っていた作業について教えてください。",
+    message: v(state,'investigate.more',[
+      'もう少し具体的な手がかりを頂けると助かります。',
+      '追加で一つだけ補足してもらえますか？',
+      '原因絞り込みのため、あと一歩情報をくださいね。'
+    ]),
+    nextQuestion: v(state,'investigate.q',[
+      '発生タイミング（起動直後 / 負荷中 / 長時間後）を教えてくださいね。',
+      '直前に行っていた操作や環境の変化はありましたか？',
+      '再現条件（こうすると必ず起きる 等）はありますか？'
+    ]),
     priority: 'info',
     requiresInput: true,
     phase: 'investigation'
@@ -181,21 +333,36 @@ function generateInvestigationResponse(state: DiagnosisState, userResponse?: str
 function generateDiagnosisResponse(state: DiagnosisState): InteractiveResponse {
   const { suspectedCauses, confidence } = state;
   
+  // 一定の情報が揃ったら自動で応急処置フェーズへ遷移
   if (confidence >= 0.7 && suspectedCauses.length > 0) {
     const primaryCause = suspectedCauses[0];
     return {
-      message: `💡 **診断結果**\n\n収集した情報から、**${primaryCause}**の可能性が高いと判断されます。\n\n信頼度: ${Math.round(confidence * 100)}%`,
-      nextQuestion: "この診断に基づいて応急処置を開始しますか？",
+      message: v(state,'diag.primary',[
+        `💡 今の最有力候補は ${primaryCause} です。`,
+        `💡 現段階で一番濃いのは ${primaryCause} です。`,
+        `💡 いま優勢なのは ${primaryCause} の線ですね。`
+      ]) + `（信頼度 ${Math.round(confidence*100)}%）`,
+      details: `他の候補: ${state.suspectedCauses.slice(1).join(' / ') || 'なし'}\n安全状態: ${state.collectedInfo.safetyStatus || '未確認'}\n→ このまま処置へ進みます。`,
+      nextQuestion: '応急処置のSTEP1からご案内しますね。よろしいでしょうか？',
       suggestedActions: generateInitialActions(primaryCause),
-      options: ["はい、処置を開始", "もう少し詳しく調査", "専門家に連絡"],
+      options: ['はい、進めてください', 'もう少し詳しく調査', '専門家に連絡'],
       priority: 'action',
       requiresInput: true,
       phase: 'action'
     };
   } else {
     return {
-      message: `🤔 **診断継続**\n\n複数の原因が考えられます：\n${suspectedCauses.map((cause, i) => `${i + 1}. ${cause}`).join('\n')}`,
-      nextQuestion: "どの項目について詳しく確認しますか？",
+      message: v(state,'diag.multi',[
+        '🤔 候補がいくつか並んでいますね。',
+        '🤔 まだ複数パターンが拮抗しています。',
+        '🤔 ここから候補を一つ深掘りしましょう。'
+      ]),
+      details: suspectedCauses.length ? suspectedCauses.map((c,i)=>`${i+1}. ${c}`).join('\n') : 'まだ十分な特徴がありません。',
+      nextQuestion: v(state,'diag.multi.q',[
+        'まずどれを確認してみましょうか？',
+        '最初に焦点を当てる候補を選んでください。',
+        '一番確かめたい候補はどれでしょう？'
+      ]),
       options: suspectedCauses.slice(0, 3),
       priority: 'diagnosis',
       requiresInput: true,
@@ -207,13 +374,16 @@ function generateDiagnosisResponse(state: DiagnosisState): InteractiveResponse {
 function generateActionResponse(state: DiagnosisState): InteractiveResponse {
   const { suspectedCauses, collectedInfo } = state;
   const primaryCause = suspectedCauses[0];
-  
   const stepByStepActions = generateStepByStepActions(primaryCause, collectedInfo.vehicleType);
-  
+  // 1ステップずつ案内
+  let stepIdx = (state.nextActions && state.nextActions.length) ? state.nextActions.length : 0;
+  if (stepIdx >= stepByStepActions.length) stepIdx = stepByStepActions.length - 1;
+  const stepMsg = stepByStepActions[stepIdx] || stepByStepActions[0];
   return {
-    message: `🛠️ **応急処置手順**\n\n**対象**: ${primaryCause}\n\n**ステップ1**: ${stepByStepActions[0]}`,
-    nextQuestion: "ステップ1は完了しましたか？結果を教えてください。",
-    suggestedActions: stepByStepActions,
+    message: `🛠️ 応急処置STEP${stepIdx+1}をご案内しますね。「${stepMsg}」を実施してください。`,
+    details: `STEP${stepIdx+1}: ${stepMsg}\n（全体: ${stepByStepActions.length}ステップ）`,
+    nextQuestion: `STEP${stepIdx+1}の結果はいかがでしょうか？（成功/変化なし/悪化など）`,
+    suggestedActions: [stepMsg],
     priority: 'action',
     requiresInput: true,
     phase: 'verification'
@@ -221,10 +391,21 @@ function generateActionResponse(state: DiagnosisState): InteractiveResponse {
 }
 
 function generateVerificationResponse(state: DiagnosisState): InteractiveResponse {
+  // まだ未実施のステップがあれば action に戻す
+  const { suspectedCauses, collectedInfo, nextActions } = state;
+  const actions = generateStepByStepActions(suspectedCauses[0], collectedInfo.vehicleType);
+  if (nextActions.length < actions.length) {
+    return generateActionResponse(state);
+  }
   return {
-    message: `✅ **処置確認**\n\n実行した処置の結果を確認します。`,
-    nextQuestion: "症状は改善されましたか？まだ問題が残っていますか？",
-    options: ["完全に解決", "部分的に改善", "変化なし", "悪化した"],
+    message: v(state,'verify.msg',[
+      '✅ 効果を一緒に確認しましょう。',
+      '✅ このタイミングで状態をチェックします。',
+      '✅ 処置後の変化を教えてくださいね。'
+    ]),
+    details: '例: 完全に解決 / 部分的に改善(どこが残存) / 変化なし / 悪化(追加症状)',
+    nextQuestion: v(state,'verify.q',['結果はいかがですか？','変化はありましたか？','現在の状態を教えてください。']),
+    options: ['完全に解決', '部分的に改善', '変化なし', '悪化した'],
     priority: 'action',
     requiresInput: true,
     phase: 'completed'
@@ -233,7 +414,12 @@ function generateVerificationResponse(state: DiagnosisState): InteractiveRespons
 
 function generateCompletedResponse(state: DiagnosisState): InteractiveResponse {
   return {
-    message: `🎉 **診断・処置完了**\n\n今回の対応内容をまとめました。\n\n何か他にご質問があれば、いつでもお声がけください。`,
+    message: v(state,'complete.msg',[
+      '🎉 ここまでの応急対応お疲れさまでした。',
+      '🎉 一次的な処置は完了です。ご協力ありがとうございます。',
+      '🎉 応急フェーズは完了です。ナイス対応でした。'
+    ]),
+    details: 'ログ保存推奨: 1) 点検周期の見直し 2) 兆候の早期共有 3) 恒久対策が必要なら計画化しましょう。',
     priority: 'info',
     requiresInput: false,
     phase: 'completed'
@@ -358,4 +544,30 @@ function generateStepByStepActions(cause: string, vehicleType: string | null): s
   return baseActions.map((action, index) => 
     `${action}（${vehicleType || '保守用車'}専用手順に従って実施）`
   );
+}
+
+// ---------- 可変表現ユーティリティ ----------
+function v(state: DiagnosisState, group: string, arr: string[]): string {
+  if (!arr.length) return '';
+  if (arr.length === 1) return arr[0];
+  const history = state.phraseHistory || [];
+  const recent = history.slice(-12); // 直近12件で重複避け
+  // 利用可能候補（同じ group の未使用 or 使用回数最少）
+  const candidates = arr.map((text, idx) => ({ text, key: `${group}:${idx}`, idx }));
+  // グループ内使用回数算出
+  const counts: Record<string, number> = {};
+  for (const k of history) {
+    if (k.startsWith(group+':')) counts[k] = (counts[k]||0)+1;
+  }
+  const minCount = Math.min(...candidates.map(c => counts[c.key]||0));
+  let filtered = candidates.filter(c => (counts[c.key]||0) === minCount);
+  // さらに直近出現を避ける
+  filtered = filtered.filter(c => !recent.includes(c.key)) || filtered;
+  const pickIdx = Math.floor(Math.random() * filtered.length);
+  const chosen = filtered[pickIdx];
+  // 履歴更新（呼び出し元で state を mutate しないので注意: ここで push しても元の参照を編集）
+  if (!state.phraseHistory) state.phraseHistory = [];
+  state.phraseHistory.push(chosen.key);
+  if (state.phraseHistory.length > 100) state.phraseHistory.splice(0, state.phraseHistory.length - 100);
+  return chosen.text;
 }

@@ -25,6 +25,7 @@ interface DiagnosisState {
 interface InteractiveResponse {
   message: string;
   nextQuestion?: string;
+  details?: string; // 追加の詳細（サーバ側 details フィールド）
   suggestedActions?: string[];
   options?: string[];
   priority: 'safety' | 'diagnosis' | 'action' | 'info';
@@ -48,6 +49,7 @@ export default function InteractiveDiagnosisChat() {
   const [currentResponse, setCurrentResponse] = useState<InteractiveResponse | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const initializedRef = useRef(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -57,7 +59,7 @@ export default function InteractiveDiagnosisChat() {
     scrollToBottom();
   }, [messages]);
 
-  // 診断セッションの開始
+  // 診断セッションの開始（外部トリガ無し / マウント時自動）
   const startDiagnosis = async () => {
     setIsLoading(true);
     try {
@@ -74,26 +76,27 @@ export default function InteractiveDiagnosisChat() {
       setCurrentResponse(data.interactiveResponse);
       setSessionId(data.sessionId);
 
-      // 初期メッセージを追加
-      const initialMessage: ChatMessage = {
-        id: Date.now(),
-        content: data.interactiveResponse.message,
-        isAiResponse: true,
-        timestamp: new Date(),
-        type: 'message'
-      };
-
+      // 1問一答: 次の質問がある場合は質問のみ表示し、まとめて表示しない
       if (data.interactiveResponse.nextQuestion) {
-        const questionMessage: ChatMessage = {
-          id: Date.now() + 1,
-          content: data.interactiveResponse.nextQuestion,
-          isAiResponse: true,
-          timestamp: new Date(),
-          type: 'question'
-        };
-        setMessages([initialMessage, questionMessage]);
+        setMessages([
+          {
+            id: Date.now(),
+            content: data.interactiveResponse.nextQuestion,
+            isAiResponse: true,
+            timestamp: new Date(),
+            type: 'question'
+          }
+        ]);
       } else {
-        setMessages([initialMessage]);
+        setMessages([
+          {
+            id: Date.now(),
+            content: data.interactiveResponse.message,
+            isAiResponse: true,
+            timestamp: new Date(),
+            type: 'message'
+          }
+        ]);
       }
 
     } catch (error) {
@@ -102,6 +105,14 @@ export default function InteractiveDiagnosisChat() {
       setIsLoading(false);
     }
   };
+
+  // 初回自動開始
+  useEffect(() => {
+    if (!initializedRef.current) {
+      initializedRef.current = true;
+      startDiagnosis();
+    }
+  }, []);
 
   // ユーザー回答の送信
   const sendResponse = async (userResponse: string) => {
@@ -137,30 +148,30 @@ export default function InteractiveDiagnosisChat() {
       setDiagnosisState(data.updatedState);
       setCurrentResponse(data.interactiveResponse);
 
-      // AIの応答を追加
-      const aiMessage: ChatMessage = {
-        id: Date.now() + 1,
-        content: data.interactiveResponse.message,
-        isAiResponse: true,
-        timestamp: new Date(),
-        type: getMessageType(data.interactiveResponse.priority)
-      };
-
-      const newMessages = [aiMessage];
-
-      // 次の質問がある場合は追加
+      // 1問一答ポリシー: 次の質問があれば質問のみ、なければ指示/結果のみ
       if (data.interactiveResponse.nextQuestion) {
-        const questionMessage: ChatMessage = {
-          id: Date.now() + 2,
-          content: data.interactiveResponse.nextQuestion,
-          isAiResponse: true,
-          timestamp: new Date(),
-          type: 'question'
-        };
-        newMessages.push(questionMessage);
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            content: data.interactiveResponse.nextQuestion,
+            isAiResponse: true,
+            timestamp: new Date(),
+            type: 'question'
+          }
+        ]);
+      } else {
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            content: data.interactiveResponse.message,
+            isAiResponse: true,
+            timestamp: new Date(),
+            type: getMessageType(data.interactiveResponse.priority)
+          }
+        ]);
       }
-
-      setMessages(prev => [...prev, ...newMessages]);
 
     } catch (error) {
       console.error('診断処理エラー:', error);
@@ -215,70 +226,62 @@ export default function InteractiveDiagnosisChat() {
   return (
     <div className="max-w-4xl mx-auto p-4">
       <Card className="h-[700px] flex flex-col">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Wrench className="w-5 h-5" />
-              インタラクティブ故障診断
+        <CardHeader className="py-2 border-b">
+          <div className="flex items-center justify-between text-sm">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              <Wrench className="w-4 h-4" /> AIインタラクティブ支援
             </CardTitle>
             {diagnosisState && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Badge variant="outline" className={getUrgencyColor(diagnosisState.collectedInfo.urgency)}>
-                  緊急度: {diagnosisState.collectedInfo.urgency}
+                  {diagnosisState.collectedInfo.urgency}
                 </Badge>
                 <Badge variant="outline">
-                  <Clock className="w-3 h-3 mr-1" />
-                  信頼度: {Math.round(diagnosisState.confidence * 100)}%
+                  <Clock className="w-3 h-3 mr-1" />信頼 {Math.round(diagnosisState.confidence * 100)}%
                 </Badge>
-                <Badge variant="outline">
-                  フェーズ: {diagnosisState.phase}
-                </Badge>
+                <Badge variant="outline">{diagnosisState.phase}</Badge>
               </div>
             )}
           </div>
         </CardHeader>
 
         <CardContent className="flex-1 flex flex-col">
-          {!diagnosisState ? (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center">
-                <Wrench className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-lg font-semibold mb-2">故障診断を開始</h3>
-                <p className="text-gray-600 mb-4">
-                  AIとの対話を通じて、段階的に故障の原因を特定し、<br />
-                  適切な応急処置をサポートします。
-                </p>
-                <Button onClick={startDiagnosis} disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
-                  {isLoading ? '開始中...' : '診断開始'}
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <>
+          {/* 常時チャット表示（初期化中はスケルトン） */}
+          <>
               {/* チャットメッセージ表示エリア */}
               <div className="flex-1 overflow-y-auto space-y-4 mb-4 p-4 bg-gray-50 rounded-lg">
+                {!diagnosisState && (
+                  <div className="flex justify-center py-8">
+                    <div className="flex items-center gap-2 text-gray-500 text-sm">
+                      <div className="animate-spin w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full" />
+                      初期化中...
+                    </div>
+                  </div>
+                )}
                 {messages.map((message) => (
                   <div
                     key={message.id}
-                    className={`flex ${message.isAiResponse ? 'justify-start' : 'justify-end'}`}
+                    className={`flex ${message.isAiResponse ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`max-w-[80%] p-3 rounded-lg ${
+                      className={`max-w-[80%] p-3 rounded-lg shadow-sm ${
                         message.isAiResponse
-                          ? 'bg-white border border-gray-200 text-gray-800'
-                          : 'bg-blue-600 text-white'
+                          ? 'bg-white border border-gray-200 text-gray-800 rounded-[18px_18px_4px_18px]'
+                          : 'bg-blue-600 text-white rounded-[18px_18px_18px_4px]'
                       }`}
                     >
                       {message.isAiResponse && (
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center gap-2 mb-1">
                           {getMessageIcon(message.type)}
-                          <span className="text-xs font-medium text-gray-500">
-                            AI診断システム
+                          <span className="text-[11px] font-medium text-gray-500 tracking-wide">
+                            GPTサポート
                           </span>
                         </div>
                       )}
-                      <div className="whitespace-pre-wrap">{message.content}</div>
-                      <div className="text-xs opacity-70 mt-1">
+                      <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                        {message.content}
+                      </div>
+                      <div className="text-[10px] opacity-60 mt-1 text-right">
                         {message.timestamp.toLocaleTimeString()}
                       </div>
                     </div>
@@ -298,7 +301,7 @@ export default function InteractiveDiagnosisChat() {
               </div>
 
               {/* オプション選択ボタン */}
-              {currentResponse?.options && currentResponse.options.length > 0 && (
+              {diagnosisState && currentResponse?.options && currentResponse.options.length > 0 && (
                 <div className="mb-4">
                   <p className="text-sm text-gray-600 mb-2">クイック選択:</p>
                   <div className="flex flex-wrap gap-2">
@@ -314,12 +317,24 @@ export default function InteractiveDiagnosisChat() {
                         {option}
                       </Button>
                     ))}
+                    {/* 詳細要求ボタン: details が存在し、まだ表示に含まれていない場合 */}
+                    {currentResponse.details && !messages.some(m => m.content.includes(currentResponse.details!)) && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => selectOption('詳細')}
+                        disabled={isLoading}
+                        className="text-sm"
+                      >
+                        詳細
+                      </Button>
+                    )}
                   </div>
                 </div>
               )}
 
               {/* 入力エリア */}
-              {currentResponse?.requiresInput && diagnosisState.phase !== 'completed' && (
+              {diagnosisState && currentResponse?.requiresInput && diagnosisState.phase !== 'completed' && (
                 <div className="flex gap-2">
                   <Input
                     value={currentInput}
@@ -344,8 +359,8 @@ export default function InteractiveDiagnosisChat() {
                 </div>
               )}
 
-              {/* 完了状態 */}
-              {diagnosisState.phase === 'completed' && (
+        {/* 完了状態 */}
+        {diagnosisState?.phase === 'completed' && (
                 <div className="text-center p-4 bg-green-50 border border-green-200 rounded-lg">
                   <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
                   <p className="text-green-800 font-medium">診断・対応が完了しました</p>
@@ -358,8 +373,7 @@ export default function InteractiveDiagnosisChat() {
                   </Button>
                 </div>
               )}
-            </>
-          )}
+      </>
         </CardContent>
       </Card>
     </div>
