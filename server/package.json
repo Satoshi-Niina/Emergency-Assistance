@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "tsx index.dev.ts",
     "build": "tsc",
-    "start": "tsx --env-file=.env index-minimal.ts",
-    "start:prod": "NODE_ENV=production tsx --env-file=.env index-minimal.ts",
+    "start": "tsx --env-file=../.env index-minimal.ts",
+    "start:prod": "NODE_ENV=production tsx --env-file=../.env index-minimal.ts",
     "migrate": "drizzle-kit migrate",
     "generate": "drizzle-kit generate",
     "studio": "drizzle-kit studio",
