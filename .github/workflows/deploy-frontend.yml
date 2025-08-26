@@ -42,6 +42,14 @@ jobs:
           echo "Installing client dependencies..."
           cd client
           npm ci --legacy-peer-deps
+      
+      - name: Force Install Vite
+        run: |
+          cd client
+          echo "Force installing vite and related packages..."
+          npm install vite @vitejs/plugin-react --force
+          echo "Checking vite installation:"
+          ls -la node_modules/ | grep -E "(vite|@vitejs)"
 
       - name: Verify Dependencies
         run: |
@@ -56,6 +64,12 @@ jobs:
             ls -la node_modules/ | grep -E "(vite|@vitejs)"
             exit 1
           fi
+          
+          echo "Checking package.json dependencies:"
+          cat package.json | grep -A 10 -B 5 "vite"
+          
+          echo "Checking node_modules structure:"
+          find node_modules -name "*vite*" -type d | head -10
       
       - name: Build
         env:
@@ -66,6 +80,12 @@ jobs:
           echo "Node version: $(node --version)"
           echo "NPM version: $(npm --version)"
           cd client
+          
+          echo "Final dependency check before build:"
+          npm list vite
+          npm list @vitejs/plugin-react
+          
+          echo "Starting build..."
           npm run build
 
       - name: Verify dist (debug)
