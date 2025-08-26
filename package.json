@@ -24,6 +24,7 @@
     "start:prod": "cd server && npm run start:prod",
     "install:all": "npm install && cd client && npm install && cd ../server && npm install && cd ../shared && npm install",
     "clean": "node scripts/clean.mjs",
+    "clean:all": "node scripts/clean-all.mjs",
     "clean:build": "rm -rf client/dist server/dist shared/dist",
     "db:migrate": "cd server && npm run migrate",
     "db:generate": "cd server && npm run generate",

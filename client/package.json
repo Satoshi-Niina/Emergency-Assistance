@@ -11,6 +11,9 @@
     "build:server": "tsc -p server"
   },
   "dependencies": {
+    "@alloc/quick-lru": "^5.2.0",
+    "@babel/runtime": "^7.28.3",
+    "@floating-ui/react-dom": "^2.1.6",
     "@hookform/resolvers": "^5.1.1",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
