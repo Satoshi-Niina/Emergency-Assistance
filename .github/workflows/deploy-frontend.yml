@@ -25,64 +25,18 @@ jobs:
         with:
           node-version: "20"
 
-      # フロントは client/ 配下
       - name: Install deps
         working-directory: client
         run: |
           echo "Installing client dependencies..."
           npm ci --legacy-peer-deps
-          echo "Force installing vite packages..."
-          npm install vite @vitejs/plugin-react --force
-          echo "Installing all vite-related packages..."
-          npm install @vitejs/plugin-react vite @types/node --force
-          echo "Clearing npm cache and reinstalling..."
-          npm cache clean --force
-          npm install vite @vitejs/plugin-react --force
-          echo "Installing vite globally..."
-          npm install -g vite
-
-      - name: Verify Dependencies
-        working-directory: client
-        run: |
-          echo "Checking if vite is installed..."
-          if [ -d "node_modules/vite" ]; then
-            echo "✅ vite package found"
-            ls -la node_modules/vite
-          else
-            echo "❌ vite package not found"
-            echo "Available packages:"
-            ls -la node_modules/ | grep -E "(vite|@vitejs)"
-            echo "Trying to install vite again..."
-            npm install vite --force
-            if [ -d "node_modules/vite" ]; then
-              echo "✅ vite package found after retry"
-            else
-              echo "❌ vite package still not found"
-              echo "Trying global vite..."
-              if command -v vite >/dev/null 2>&1; then
-                echo "✅ Global vite found"
-              else
-                echo "❌ Global vite not found"
-                exit 1
-              fi
-            fi
-          fi
       
-      - name: Build (Vite)
+      - name: Build
         working-directory: client
         run: |
-          echo "Final dependency check before build:"
-          if [ -d "node_modules/vite" ]; then
-            echo "Using local vite"
-            npm list vite
-            npm list @vitejs/plugin-react
-            npm run build
-          else
-            echo "Using global vite"
-            vite build
-          fi
+          echo "Building client with Vite..."
+          npm run build
 
-      # SWA へデプロイ（app_location はリポジトリルートからの相対パス）
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
@@ -91,5 +45,5 @@ jobs:
           action: upload
           app_location: "client"
           output_location: "dist"
-          deployment_environment: "production"
+          deployment_environment: production
 

@@ -25,20 +25,18 @@ jobs:
         with:
           node-version: "20"
 
-      # バックエンドは server/ 配下（最小限の本番用サーバーのみビルド）
       - name: Install deps
         working-directory: server
         run: |
           echo "Installing server dependencies..."
           npm ci --legacy-peer-deps
       
-      - name: Build (Production Server Only)
+      - name: Build
         working-directory: server
         run: |
-          echo "Building only production server..."
-          npx tsc production-server.ts --outDir dist --target es2020 --module commonjs --esModuleInterop --skipLibCheck
+          echo "Building server with TypeScript..."
+          npx tsc
 
-      # デプロイ用のZIPを作成（ビルド成果物とpackage.jsonのみ）
       - name: Create package (zip)
         run: |
           cd server
