@@ -40,9 +40,8 @@ jobs:
         run: |
           (npm ci) || npm install
 
-      # TypeScript 等でビルドが必要なら有効化
-      # - name: Build
-      #   run: npm run build
+      - name: Build
+        run: npm run build:prod
 
       - name: Deploy Backend
         uses: azure/webapps-deploy@v2
@@ -51,6 +50,7 @@ jobs:
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: ./server
           startup-command: 'npm start'
+          slot-name: 'Production'
 
       - name: Cleanup (safe)
         if: always()

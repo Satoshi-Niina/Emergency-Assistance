@@ -43,11 +43,17 @@ jobs:
       - name: Build
         env:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
-        run: npm run build
+        run: |
+          echo "Building with VITE_API_BASE_URL: $VITE_API_BASE_URL"
+          npm run build
 
       - name: Verify dist (debug)
         run: |
-          test -d dist || (echo "dist not found" && exit 1)
+          if [ ! -d dist ]; then
+            echo "❌ dist directory not found - build failed"
+            exit 1
+          fi
+          echo "✅ dist directory found"
           ls -la dist
 
       - name: Deploy Frontend
@@ -59,6 +65,8 @@ jobs:
           app_location: "client/dist"
           skip_app_build: true
           deployment_environment: production
+          app_build_command: "npm run build"
+          output_location: "dist"
 
       - name: Cleanup (safe)
         if: always()
