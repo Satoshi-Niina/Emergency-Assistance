@@ -17,7 +17,7 @@ console.log('📝 Expressアプリケーション作成完了');
 
 // ミドルウェア
 app.use(cors({
-  origin: ['http://localhost:5002', 'http://localhost:3000'],
+  origin: process.env.FRONTEND_URL,
   credentials: true
 }));
 app.use(express.json());

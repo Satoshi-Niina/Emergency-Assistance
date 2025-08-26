@@ -16,7 +16,7 @@ const port = process.env.PORT || 3001;
 
 // 基本的なミドルウェア
 app.use(cors({
-  origin: '*',
+  origin: process.env.FRONTEND_URL,
   credentials: true
 }));
 
