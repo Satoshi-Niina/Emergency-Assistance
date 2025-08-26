@@ -42,7 +42,7 @@ jobs:
 
       - name: Build
         env:
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'https://emergencyassistance-sv.azurewebsites.net' }}
         run: |
           echo "Building with VITE_API_BASE_URL: $VITE_API_BASE_URL"
           npm run build
@@ -65,8 +65,6 @@ jobs:
           app_location: "client/dist"
           skip_app_build: true
           deployment_environment: production
-          app_build_command: "npm run build"
-          output_location: "dist"
 
       - name: Cleanup (safe)
         if: always()
