@@ -28,8 +28,24 @@ jobs:
       # フロントは client/ 配下
       - name: Install deps
         working-directory: client
-        run: npm ci
+        run: |
+          echo "Installing client dependencies..."
+          npm ci --legacy-peer-deps
+          echo "Force installing vite packages..."
+          npm install vite @vitejs/plugin-react --force
 
+      - name: Verify Dependencies
+        working-directory: client
+        run: |
+          echo "Checking if vite is installed..."
+          if [ -d "node_modules/vite" ]; then
+            echo "✅ vite package found"
+            ls -la node_modules/vite
+          else
+            echo "❌ vite package not found"
+            exit 1
+          fi
+      
       - name: Build (Vite)
         working-directory: client
         run: npm run build

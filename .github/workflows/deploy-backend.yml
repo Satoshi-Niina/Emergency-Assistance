@@ -25,20 +25,24 @@ jobs:
         with:
           node-version: "20"
 
-      # バックエンドは server/ 配下（tsc で dist を生成）
+      # バックエンドは server/ 配下（最小限の本番用サーバーのみビルド）
       - name: Install deps
         working-directory: server
-        run: npm ci
-
-      - name: Build (tsc)
+        run: |
+          echo "Installing server dependencies..."
+          npm ci --legacy-peer-deps
+      
+      - name: Build (Production Server Only)
         working-directory: server
-        run: npm run build
+        run: |
+          echo "Building only production server..."
+          npx tsc production-server.ts --outDir dist --target es2020 --module commonjs --esModuleInterop --skipLibCheck
 
-      # デプロイ用のZIPを作成（node_modulesは除外、Azure側でOryxが復元）
+      # デプロイ用のZIPを作成（ビルド成果物とpackage.jsonのみ）
       - name: Create package (zip)
         run: |
           cd server
-          zip -r $RUNNER_TEMP/backend.zip . -x "**/node_modules/**" "**/.git/**" "**/.github/**"
+          zip -r $RUNNER_TEMP/backend.zip dist/ package.json package-lock.json -x "**/node_modules/**"
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
