@@ -23,7 +23,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
           # キャッシュパスを明示的に指定（オプション）
           # cache-dependency-path: './client/package-lock.json'
 
@@ -36,14 +35,28 @@ jobs:
       - name: Install deps (Root)
         run: |
           echo "Installing root dependencies..."
-          npm ci
+          npm ci --legacy-peer-deps
       
       - name: Install deps (Client)
         run: |
           echo "Installing client dependencies..."
           cd client
-          npm ci
+          npm ci --legacy-peer-deps
 
+      - name: Verify Dependencies
+        run: |
+          cd client
+          echo "Checking if vite is installed..."
+          if [ -d "node_modules/vite" ]; then
+            echo "✅ vite package found"
+            ls -la node_modules/vite
+          else
+            echo "❌ vite package not found"
+            echo "Available packages:"
+            ls -la node_modules/ | grep -E "(vite|@vitejs)"
+            exit 1
+          fi
+      
       - name: Build
         env:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'https://emergencyassistance-sv.azurewebsites.net' }}
@@ -74,6 +87,7 @@ jobs:
           app_location: "client/dist"
           skip_app_build: true
           deployment_environment: production
+
 
       - name: Cleanup (safe)
         if: always()
