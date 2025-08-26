@@ -33,6 +33,11 @@ jobs:
           npm ci --legacy-peer-deps
           echo "Force installing vite packages..."
           npm install vite @vitejs/plugin-react --force
+          echo "Installing all vite-related packages..."
+          npm install @vitejs/plugin-react vite @types/node --force
+          echo "Clearing npm cache and reinstalling..."
+          npm cache clean --force
+          npm install vite @vitejs/plugin-react --force
 
       - name: Verify Dependencies
         working-directory: client
@@ -43,12 +48,26 @@ jobs:
             ls -la node_modules/vite
           else
             echo "❌ vite package not found"
-            exit 1
+            echo "Available packages:"
+            ls -la node_modules/ | grep -E "(vite|@vitejs)"
+            echo "Trying to install vite again..."
+            npm install vite --force
+            if [ -d "node_modules/vite" ]; then
+              echo "✅ vite package found after retry"
+            else
+              echo "❌ vite package still not found"
+              exit 1
+            fi
           fi
       
       - name: Build (Vite)
         working-directory: client
-        run: npm run build
+        run: |
+          echo "Final dependency check before build:"
+          npm list vite
+          npm list @vitejs/plugin-react
+          echo "Starting build..."
+          npm run build
 
       # SWA へデプロイ（app_location はリポジトリルートからの相対パス）
       - name: Deploy to Azure Static Web Apps
