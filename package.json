@@ -25,6 +25,8 @@
     "install:all": "npm install && cd client && npm install && cd ../server && npm install && cd ../shared && npm install",
     "clean": "node scripts/clean.mjs",
     "clean:all": "node scripts/clean-all.mjs",
+    "clean:safe": "node scripts/clean-safe.mjs",
+    "clean:ultimate": "node scripts/clean-ultimate.mjs",
     "clean:legacy": "npm install --legacy-peer-deps && cd client && npm install --legacy-peer-deps && cd ../server && npm install --legacy-peer-deps && cd ../shared && npm install --legacy-peer-deps",
     "clean:build": "rm -rf client/dist server/dist shared/dist",
     "db:migrate": "cd server && npm run migrate",
@@ -65,7 +67,7 @@
   "author": "Emergency Assistance Team",
   "license": "MIT",
   "engines": {
-    "node": ">=18.0.0",
+    "node": "18.x",
     "npm": ">=8.0.0"
   }
 }
