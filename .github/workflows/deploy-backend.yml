@@ -1,4 +1,4 @@
-name: Deploy Backend to Azure Web App
+name: Deploy Backend to Azure
 
 on:
   push:
@@ -13,32 +13,44 @@ on:
       - '.github/workflows/deploy-backend.yml'
 
 jobs:
-  build_and_deploy:
+  be:
     runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: server/package-lock.json
-        
-    - name: Install dependencies
-      working-directory: ./server
-      run: npm ci
-      
-    - name: Build
-      working-directory: ./server
-      run: npm run build
-      
-    - name: Deploy to Azure Web App
-      uses: azure/webapps-deploy@v2
-      with:
-        app-name: Emergencyassistance-sv
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_BACKEND }}
-        package: ./server/dist
+    defaults:
+      run:
+        working-directory: server
 
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+
+      - name: Show tree (debug)
+        run: |
+          pwd
+          ls -la
+          test -f package.json || (echo "No package.json in server" && exit 1)
+
+      - name: Install deps
+        run: |
+          (npm ci) || npm install
+
+      # TypeScript 等でビルドが必要なら有効化
+      # - name: Build
+      #   run: npm run build
+
+      - name: Deploy Backend
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: Emergencyassistance-sv
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          # ⚠ 実行に必要な package.json を含む場所を指定
+          package: ./server
+
+      - name: Cleanup (safe)
+        if: always()
+        run: rm -rf dist || true

@@ -1,4 +1,4 @@
-name: Deploy Frontend to Azure Static Web Apps
+name: Deploy Frontend to Azure
 
 on:
   push:
@@ -13,36 +13,51 @@ on:
       - '.github/workflows/deploy-frontend.yml'
 
 jobs:
-  build_and_deploy:
+  fe:
     runs-on: ubuntu-latest
-    
+    defaults:
+      run:
+        working-directory: client
+
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: client/package-lock.json
-        
-    - name: Install dependencies
-      working-directory: ./client
-      run: npm ci
-      
-    - name: Build
-      working-directory: ./client
-      run: npm run build
-      
-    - name: Deploy to Azure Static Web Apps
-      uses: Azure/static-web-apps-deploy@v1
-      with:
-        azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_FRONTEND }}
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        action: "upload"
-        app_location: "client/dist"
-        skip_app_build: true
-        deployment_environment: production
+      - uses: actions/checkout@v4
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+
+      - name: Show tree (debug)
+        run: |
+          pwd
+          ls -la
+          test -f package.json || (echo "No package.json in client" && exit 1)
+
+      - name: Install deps
+        run: |
+          (npm ci) || npm install
+
+      - name: Build
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+        run: npm run build
+
+      - name: Verify dist (debug)
+        run: |
+          test -d dist || (echo "dist not found" && exit 1)
+          ls -la dist
+
+      - name: Deploy Frontend
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: <フロントAppService名 or SWAは別アクション>
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_FRONT }}
+          package: ./client/dist
+
+      - name: Cleanup (safe)
+        if: always()
+        run: rm -rf dist || true
 
 
