@@ -62,9 +62,27 @@ jobs:
       - name: Deploy using Azure CLI
         run: |
           echo "Creating deployment package..."
-          zip -r deployment.zip dist/ package.json package-lock.json
+          zip -r deployment.zip dist/ package.json package-lock.json azure-startup.js
           echo "Deployment package created:"
           ls -la deployment.zip
+          
+          echo "Optimizing Azure Web App settings..."
+          az webapp config set \
+            --resource-group "rg-Emergencyassistant-app" \
+            --name "Emergencyassistance-sv" \
+            --startup-file "node azure-startup.js" \
+            --min-tls-version "1.2" \
+            --http20-enabled true
+          
+          echo "Setting environment variables..."
+          az webapp config appsettings set \
+            --resource-group "rg-Emergencyassistant-app" \
+            --name "Emergencyassistance-sv" \
+            --settings \
+            WEBSITE_NODE_DEFAULT_VERSION="~20" \
+            NODE_ENV="production" \
+            WEBSITE_RUN_FROM_PACKAGE="1" \
+            WEBSITE_WEBSOCKETS_ENABLED="1"
           
           echo "Deploying to Azure Web App..."
           az webapp deployment source config-zip \
@@ -72,5 +90,24 @@ jobs:
             --name "Emergencyassistance-sv" \
             --src "deployment.zip" \
             --timeout 1800
+          
+          echo "Waiting for deployment to complete..."
+          sleep 30
+          
+          echo "Checking application health..."
+          # ヘルスチェックを複数回試行
+          for i in {1..10}; do
+            echo "Health check attempt $i..."
+            if curl -f "https://Emergencyassistance-sv.azurewebsites.net/healthz" > /dev/null 2>&1; then
+              echo "✅ Application is healthy!"
+              break
+            elif [ $i -eq 10 ]; then
+              echo "❌ Application health check failed after 10 attempts"
+              exit 1
+            else
+              echo "⏳ Application not ready yet, waiting 30 seconds..."
+              sleep 30
+            fi
+          done
           
           echo "Deployment completed successfully!"

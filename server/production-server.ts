@@ -56,14 +56,22 @@ async function initializeDatabase() {
     }
 
     client = postgres(connectionString, {
-      max: 10,
-      idle_timeout: 30000,
-      connect_timeout: 10000,
+      max: 5, // 接続数を減らす
+      idle_timeout: 15000, // タイムアウトを短縮
+      connect_timeout: 5000, // 接続タイムアウトを短縮
+      connection: {
+        application_name: 'emergency-assistance-server'
+      }
     });
     db = drizzle(client);
     
-    // データベース接続テスト
-    await client`SELECT 1`;
+    // データベース接続テスト（タイムアウト付き）
+    const testPromise = client`SELECT 1`;
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Database connection timeout')), 10000)
+    );
+    
+    await Promise.race([testPromise, timeoutPromise]);
     console.log('✅ データベース接続成功');
     return true;
   } catch (error) {
@@ -77,7 +85,10 @@ app.get('/healthz', (req, res) => {
   res.status(200).json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    database: db ? 'connected' : 'disconnected'
+    database: db ? 'connected' : 'disconnected',
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    version: process.version
   });
 });
 
@@ -86,7 +97,10 @@ app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    database: db ? 'connected' : 'disconnected'
+    database: db ? 'connected' : 'disconnected',
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    version: process.version
   });
 });
 
@@ -282,18 +296,26 @@ app.get('*', (req, res) => {
 async function startServer() {
   console.log('🚀 本番サーバーを起動中...');
   
-  // データベース初期化
-  const dbInitialized = await initializeDatabase();
-  if (!dbInitialized) {
-    console.log('⚠️ データベース接続なしでサーバーを起動します');
-  }
+  // データベース初期化（並行実行）
+  const dbInitPromise = initializeDatabase();
   
-  app.listen(PORT, HOST, () => {
+  // サーバーを即座に起動
+  const server = app.listen(PORT, HOST, () => {
     console.log(`✅ 本番サーバーが起動しました: http://${HOST}:${PORT}`);
     console.log(`🔐 ログインエンドポイント: http://${HOST}:${PORT}/api/auth/login`);
     console.log(`🌍 環境: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🗄️ データベース: ${dbInitialized ? '接続済み' : '未接続'}`);
+    console.log(`📊 プロセスID: ${process.pid}`);
+    console.log(`⏰ 起動時刻: ${new Date().toISOString()}`);
   });
+  
+  // データベース接続結果を待つ（非ブロッキング）
+  dbInitPromise.then((dbInitialized) => {
+    console.log(`🗄️ データベース: ${dbInitialized ? '接続済み' : '未接続'}`);
+  }).catch((error) => {
+    console.log('⚠️ データベース接続なしでサーバーを起動します');
+  });
+  
+  return server;
 }
 
 // グレースフルシャットダウン

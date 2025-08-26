@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "tsx index.dev.ts",
     "build": "tsc",
-    "start:production": "set NODE_ENV=production && node dist/production-server.js",
+    "start": "node dist/production-server.js",
+    "start:production": "node dist/production-server.js",
+    "start:azure": "node azure-startup.js",
     "migrate": "drizzle-kit migrate",
     "generate": "drizzle-kit generate",
     "studio": "drizzle-kit studio"
@@ -59,5 +61,8 @@
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "azure": {
+    "startupCommand": "node dist/production-server.js"
   }
 }
