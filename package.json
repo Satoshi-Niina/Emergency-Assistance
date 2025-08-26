@@ -4,11 +4,6 @@
   "description": "Emergency Assistance System with AI-powered support",
   "main": "index.js",
   "type": "commonjs",
-  "workspaces": [
-    "client",
-    "server",
-    "shared"
-  ],
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:local": "concurrently \"npm run dev:local-server\" \"npm run dev:local-client\"",

@@ -5,30 +5,43 @@ import bcrypt from 'bcrypt';
 import session from 'express-session';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { users } from './db/schema.js';
-import { eq } from 'drizzle-orm';
 import path from 'path';
-import productionConfig from './config/production.config.js';
+import { fileURLToPath } from 'url';
 
 // セッションの型定義を拡張
 declare module 'express-session' {
   interface SessionData {
-    userId: string;
-    userRole: string;
+    userId?: string;
+    userRole?: string;
   }
 }
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
-const PORT = Number(productionConfig.port);
-const HOST = productionConfig.host;
+const PORT = Number(process.env.PORT) || 3001;
+const HOST = process.env.HOST || '0.0.0.0';
 
 // ミドルウェア
-app.use(cors(productionConfig.cors));
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5002',
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../../client/dist')));
 
 // セッション設定
-app.use(session(productionConfig.session));
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
 
 // データベース接続
 let db: any = null;
@@ -36,16 +49,16 @@ let client: any = null;
 
 async function initializeDatabase() {
   try {
-    const connectionString = productionConfig.database.url;
+    const connectionString = process.env.DATABASE_URL;
     if (!connectionString) {
       console.error('❌ DATABASE_URLが設定されていません');
       return false;
     }
 
     client = postgres(connectionString, {
-      max: productionConfig.database.maxConnections,
-      idle_timeout: productionConfig.database.idleTimeoutMillis,
-      connect_timeout: productionConfig.database.connectionTimeoutMillis,
+      max: 10,
+      idle_timeout: 30000,
+      connect_timeout: 10000,
     });
     db = drizzle(client);
     
@@ -60,6 +73,15 @@ async function initializeDatabase() {
 }
 
 // ヘルスチェック
+app.get('/healthz', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    database: db ? 'connected' : 'disconnected'
+  });
+});
+
+// APIヘルスチェック
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
@@ -89,10 +111,10 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
-    // データベースからユーザーを検索
-    const user = await db.select().from(users).where(eq(users.username, username)).limit(1);
+    // データベースからユーザーを検索（簡易版）
+    const result = await client`SELECT * FROM users WHERE username = ${username} LIMIT 1`;
     
-    if (user.length === 0) {
+    if (result.length === 0) {
       console.log('❌ ユーザーが見つかりません:', username);
       return res.status(401).json({
         success: false,
@@ -100,7 +122,7 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
-    const foundUser = user[0];
+    const foundUser = result[0];
     console.log('✅ ユーザーが見つかりました:', { id: foundUser.id, username: foundUser.username });
     
     // パスワードチェック
@@ -148,7 +170,7 @@ app.post('/api/auth/login', async (req, res) => {
         user: {
           id: foundUser.id,
           username: foundUser.username,
-          displayName: foundUser.displayName || foundUser.username,
+          displayName: foundUser.display_name || foundUser.username,
           role: foundUser.role,
           department: foundUser.department || 'General'
         }
@@ -189,9 +211,9 @@ app.get('/api/auth/me', async (req, res) => {
     }
 
     // データベースからユーザー情報を取得
-    const user = await db.select().from(users).where(eq(users.id, req.session.userId)).limit(1);
+    const result = await client`SELECT * FROM users WHERE id = ${req.session.userId} LIMIT 1`;
     
-    if (user.length === 0) {
+    if (result.length === 0) {
       console.log('❌ ユーザーが見つかりません:', req.session.userId);
       return res.status(401).json({
         success: false,
@@ -199,7 +221,7 @@ app.get('/api/auth/me', async (req, res) => {
       });
     }
 
-    const foundUser = user[0];
+    const foundUser = result[0];
     console.log('✅ 認証済みユーザー:', foundUser.username);
 
     res.json({
@@ -207,7 +229,7 @@ app.get('/api/auth/me', async (req, res) => {
       user: {
         id: foundUser.id,
         username: foundUser.username,
-        displayName: foundUser.displayName || foundUser.username,
+        displayName: foundUser.display_name || foundUser.username,
         role: foundUser.role,
         department: foundUser.department || 'General'
       }
@@ -271,7 +293,6 @@ async function startServer() {
     console.log(`🔐 ログインエンドポイント: http://${HOST}:${PORT}/api/auth/login`);
     console.log(`🌍 環境: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🗄️ データベース: ${dbInitialized ? '接続済み' : '未接続'}`);
-    console.log(`⚙️ 設定: ${JSON.stringify(productionConfig, null, 2)}`);
   });
 }
 

@@ -20,7 +20,7 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "declaration": true,
+    "declaration": false,
     "outDir": "./dist",
     "rootDir": "./",
     "baseUrl": "./",
@@ -29,11 +29,14 @@
     }
   },
   "include": [
-    "**/*.ts",
-    "**/*.js"
+    "production-server.ts",
+    "types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "shared",
+    "**/*.test.ts",
+    "**/*.spec.ts"
   ]
 }
