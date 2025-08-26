@@ -15,9 +15,6 @@ on:
 jobs:
   be:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: server
 
     steps:
       - uses: actions/checkout@v4
@@ -36,19 +33,21 @@ jobs:
           ls -la
           test -f package.json || (echo "No package.json in server" && exit 1)
 
-      - name: Install deps
+      - name: Install deps (Root)
         run: |
-          echo "Installing dependencies..."
-          if [ -f package-lock.json ]; then
-            echo "Using package-lock.json for installation"
-            npm ci
-          else
-            echo "No package-lock.json found, using npm install"
-            npm install
-          fi
+          echo "Installing root dependencies..."
+          npm ci
+      
+      - name: Install deps (Server)
+        run: |
+          echo "Installing server dependencies..."
+          cd server
+          npm ci
 
       - name: Build
-        run: npm run build:prod
+        run: |
+          cd server
+          npm run build:prod
 
       - name: Deploy Backend
         uses: azure/webapps-deploy@v2

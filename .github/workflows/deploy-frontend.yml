@@ -15,9 +15,6 @@ on:
 jobs:
   fe:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: client
 
     steps:
       - uses: actions/checkout@v4
@@ -36,16 +33,16 @@ jobs:
           ls -la
           test -f package.json || (echo "No package.json in client" && exit 1)
 
-      - name: Install deps
+      - name: Install deps (Root)
         run: |
-          echo "Installing dependencies..."
-          if [ -f package-lock.json ]; then
-            echo "Using package-lock.json for installation"
-            npm ci
-          else
-            echo "No package-lock.json found, using npm install"
-            npm install
-          fi
+          echo "Installing root dependencies..."
+          npm ci
+      
+      - name: Install deps (Client)
+        run: |
+          echo "Installing client dependencies..."
+          cd client
+          npm ci
 
       - name: Build
         env:
@@ -55,10 +52,12 @@ jobs:
           echo "Current directory: $(pwd)"
           echo "Node version: $(node --version)"
           echo "NPM version: $(npm --version)"
+          cd client
           npm run build
 
       - name: Verify dist (debug)
         run: |
+          cd client
           if [ ! -d dist ]; then
             echo "❌ dist directory not found - build failed"
             exit 1
