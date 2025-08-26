@@ -56,9 +56,9 @@ async function initializeDatabase() {
     }
 
     client = postgres(connectionString, {
-      max: 5, // 接続数を減らす
-      idle_timeout: 15000, // タイムアウトを短縮
-      connect_timeout: 5000, // 接続タイムアウトを短縮
+      max: 3, // 接続数をさらに削減
+      idle_timeout: 10000, // タイムアウトをさらに短縮
+      connect_timeout: 3000, // 接続タイムアウトをさらに短縮
       connection: {
         application_name: 'emergency-assistance-server'
       }
@@ -68,7 +68,7 @@ async function initializeDatabase() {
     // データベース接続テスト（タイムアウト付き）
     const testPromise = client`SELECT 1`;
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Database connection timeout')), 10000)
+      setTimeout(() => reject(new Error('Database connection timeout')), 5000)
     );
     
     await Promise.race([testPromise, timeoutPromise]);
@@ -296,23 +296,25 @@ app.get('*', (req, res) => {
 async function startServer() {
   console.log('🚀 本番サーバーを起動中...');
   
-  // データベース初期化（並行実行）
-  const dbInitPromise = initializeDatabase();
-  
-  // サーバーを即座に起動
+  // サーバーを即座に起動（データベース接続を待たない）
   const server = app.listen(PORT, HOST, () => {
     console.log(`✅ 本番サーバーが起動しました: http://${HOST}:${PORT}`);
     console.log(`🔐 ログインエンドポイント: http://${HOST}:${PORT}/api/auth/login`);
     console.log(`🌍 環境: ${process.env.NODE_ENV || 'development'}`);
     console.log(`📊 プロセスID: ${process.pid}`);
     console.log(`⏰ 起動時刻: ${new Date().toISOString()}`);
+    console.log(`⚡ 起動時間: ${process.uptime()}秒`);
   });
   
-  // データベース接続結果を待つ（非ブロッキング）
-  dbInitPromise.then((dbInitialized) => {
-    console.log(`🗄️ データベース: ${dbInitialized ? '接続済み' : '未接続'}`);
-  }).catch((error) => {
-    console.log('⚠️ データベース接続なしでサーバーを起動します');
+  // データベース初期化（完全に非ブロッキング）
+  setImmediate(async () => {
+    try {
+      console.log('🗄️ データベース接続を開始...');
+      const dbInitialized = await initializeDatabase();
+      console.log(`🗄️ データベース: ${dbInitialized ? '接続済み' : '未接続'}`);
+    } catch (error) {
+      console.log('⚠️ データベース接続エラー、アプリケーションは継続動作:', error);
+    }
   });
   
   return server;

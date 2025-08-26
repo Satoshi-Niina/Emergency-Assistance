@@ -1,0 +1,26 @@
+const { Client } = require('pg');
+
+console.log('🔍 Azure PostgreSQL データベース接続確認');
+console.log('📍 エンドポイント: emergencyassistance-db.postgres.database.azure.com');
+console.log('📋 必要な接続情報:');
+console.log('   - ホスト: emergencyassistance-db.postgres.database.azure.com');
+console.log('   - ポート: 5432');
+console.log('   - データベース: postgres');
+console.log('   - ユーザー: postgres');
+console.log('   - パスワード: [設定が必要]');
+console.log('   - SSL: 必須 (rejectUnauthorized: false)');
+console.log('');
+console.log('🔧 接続テスト手順:');
+console.log('1. 実際のパスワードを確認');
+console.log('2. test-azure-connection.js の password を更新');
+console.log('3. node test-azure-connection.js を実行');
+console.log('');
+console.log('⚠️  注意事項:');
+console.log('   - Azure ファイアウォール設定でクライアントIPを許可する必要があります');
+console.log('   - SSL接続が必須です');
+console.log('   - 接続タイムアウトは30秒に設定されています');
+console.log('');
+console.log('📚 参考リンク:');
+console.log('   - Azure Portal > PostgreSQL サーバー > 接続セキュリティ');
+console.log('   - ファイアウォール規則の追加');
+console.log('   - SSL接続設定の確認');

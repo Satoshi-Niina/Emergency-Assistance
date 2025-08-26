@@ -62,7 +62,7 @@ jobs:
       - name: Deploy using Azure CLI
         run: |
           echo "Creating deployment package..."
-          zip -r deployment.zip dist/ package.json package-lock.json azure-startup.js
+          zip -r deployment.zip dist/ package.json package-lock.json startup-minimal.js web.config
           echo "Deployment package created:"
           ls -la deployment.zip
           
@@ -70,7 +70,7 @@ jobs:
           az webapp config set \
             --resource-group "rg-Emergencyassistant-app" \
             --name "Emergencyassistance-sv" \
-            --startup-file "node azure-startup.js" \
+            --startup-file "node startup-minimal.js" \
             --min-tls-version "1.2" \
             --http20-enabled true
           
@@ -82,7 +82,8 @@ jobs:
             WEBSITE_NODE_DEFAULT_VERSION="~20" \
             NODE_ENV="production" \
             WEBSITE_RUN_FROM_PACKAGE="1" \
-            WEBSITE_WEBSOCKETS_ENABLED="1"
+            WEBSITE_WEBSOCKETS_ENABLED="1" \
+            WEBSITE_LOAD_BALANCER_ALGORITHM="LeastRequests"
           
           echo "Deploying to Azure Web App..."
           az webapp deployment source config-zip \
@@ -92,21 +93,21 @@ jobs:
             --timeout 1800
           
           echo "Waiting for deployment to complete..."
-          sleep 30
+          sleep 15
           
           echo "Checking application health..."
-          # ヘルスチェックを複数回試行
-          for i in {1..10}; do
+          # ヘルスチェックを複数回試行（短い間隔で）
+          for i in {1..15}; do
             echo "Health check attempt $i..."
-            if curl -f "https://Emergencyassistance-sv.azurewebsites.net/healthz" > /dev/null 2>&1; then
+            if curl -f --max-time 10 "https://Emergencyassistance-sv.azurewebsites.net/" > /dev/null 2>&1; then
               echo "✅ Application is healthy!"
               break
-            elif [ $i -eq 10 ]; then
-              echo "❌ Application health check failed after 10 attempts"
+            elif [ $i -eq 15 ]; then
+              echo "❌ Application health check failed after 15 attempts"
               exit 1
             else
-              echo "⏳ Application not ready yet, waiting 30 seconds..."
-              sleep 30
+              echo "⏳ Application not ready yet, waiting 10 seconds..."
+              sleep 10
             fi
           done
           

@@ -8,6 +8,7 @@
     "start": "node dist/production-server.js",
     "start:production": "node dist/production-server.js",
     "start:azure": "node azure-startup.js",
+    "start:minimal": "node startup-minimal.js",
     "migrate": "drizzle-kit migrate",
     "generate": "drizzle-kit generate",
     "studio": "drizzle-kit studio"
