@@ -2,7 +2,7 @@ name: Deploy Backend
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, backup-clean ]
     paths:
       - "server/src/**"
       - "server/production-server.ts"
@@ -37,7 +37,7 @@ on:
       - "**/dist/**"
       - "**/.git/**"
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, develop, backup-clean ]
     paths:
       - "server/src/**"
       - "server/production-server.ts"

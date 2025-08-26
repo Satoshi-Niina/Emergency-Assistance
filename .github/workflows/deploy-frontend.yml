@@ -2,7 +2,7 @@ name: Deploy Frontend to Azure Static Web Apps
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, backup-clean ]
     paths:
       - "client/src/**"
       - "client/package.json"
@@ -26,7 +26,7 @@ on:
       - "api/**"
       - "shared/**"
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop, backup-clean ]
     paths:
       - "client/src/**"
       - "client/package.json"
