@@ -30,20 +30,41 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Debug Environment
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+          echo "Directory contents:"
+          ls -la
+
       - name: Install & Build
         run: |
-          npm ci
-          npm run build || echo "no build step"
+          echo "Installing dependencies..."
+          npm ci --verbose
+          echo "Building project..."
+          npm run build || echo "Build step not found or failed"
+          echo "Build completed. Checking dist directory:"
+          ls -la dist/ || echo "dist directory not found"
 
       - name: Login to Azure
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Debug Azure CLI
+        run: |
+          echo "Azure CLI version:"
+          az --version
+          echo "Current Azure account:"
+          az account show --query "{name:name, id:id, tenantId:tenantId}" --output table
+
       - name: Deploy using Azure CLI
         run: |
           echo "Creating deployment package..."
           zip -r deployment.zip dist/ package.json package-lock.json
+          echo "Deployment package created:"
+          ls -la deployment.zip
           
           echo "Deploying to Azure Web App..."
           az webapp deployment source config-zip \
