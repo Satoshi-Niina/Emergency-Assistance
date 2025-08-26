@@ -1,34 +1,30 @@
-name: Deploy Backend to Azure Web App
+name: Deploy Backend
 
 on:
   push:
-    branches: [ main, develop ]
-    paths:
-      - "server/**"
-      - ".github/workflows/deploy-backend.yml"
-  pull_request:
     branches: [ main ]
-    paths:
-      - "server/**"
-      - ".github/workflows/deploy-backend.yml"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Check dist directory
-        run: |
-          echo "Checking server/dist contents:"
-          ls -la server/dist/ || echo "dist directory not found"
-          echo "Checking package.json:"
-          cat server/package.json | grep -E '"name"|"version"|"scripts"'
-      
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v2
+
+      - uses: actions/setup-node@v4
         with:
-          app-name: "Emergencyassistance-sv"
+          node-version: '20'
+
+      - name: Install & Build
+        run: |
+          npm ci
+          npm run build || echo "no build step"
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: "server/dist"
-          startup-command: "npm run start:production"
+          package: ./dist    # ← ビルド成果物の実パスに合わせる
