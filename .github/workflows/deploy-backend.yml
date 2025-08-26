@@ -1,69 +1,49 @@
-name: Deploy Backend to Azure
+name: Deploy Backend to Azure Web App
 
 on:
   push:
     branches: [ main, develop ]
     paths:
-      - 'server/**'
-      - '.github/workflows/deploy-backend.yml'
+      - "server/**"
+      - ".github/workflows/deploy-backend.yml"
   pull_request:
     branches: [ main ]
     paths:
-      - 'server/**'
-      - '.github/workflows/deploy-backend.yml'
+      - "server/**"
+      - ".github/workflows/deploy-backend.yml"
 
 jobs:
-  be:
+  build_and_deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Use Node
+      - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          # キャッシュパスを明示的に指定（オプション）
-          # cache-dependency-path: './server/package-lock.json'
+          node-version: "20"
 
-      - name: Show tree (debug)
-        run: |
-          pwd
-          ls -la
-          test -f package.json || (echo "No package.json in server" && exit 1)
+      # バックエンドは server/ 配下（tsc で dist を生成）
+      - name: Install deps
+        working-directory: server
+        run: npm ci
 
-      - name: Install deps (Root)
-        run: |
-          echo "Installing root dependencies..."
-          npm ci --legacy-peer-deps
-      
-      - name: Install deps (Server)
-        run: |
-          echo "Installing server dependencies..."
-          cd server
-          npm ci --legacy-peer-deps
-      
-      - name: Verify Server Dependencies
+      - name: Build (tsc)
+        working-directory: server
+        run: npm run build
+
+      # デプロイ用のZIPを作成（node_modulesは除外、Azure側でOryxが復元）
+      - name: Create package (zip)
         run: |
           cd server
-          echo "Checking server dependencies:"
-          npm list --depth=0
+          zip -r $RUNNER_TEMP/backend.zip . -x "**/node_modules/**" "**/.git/**" "**/.github/**"
 
-      - name: Build
-        run: |
-          cd server
-          npm run build:prod
-
-      - name: Deploy Backend
+      - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
-          app-name: Emergencyassistance-sv
+          app-name: "Emergencyassistance-sv"
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ./server
-          startup-command: 'npm start'
-
-
-
-      - name: Cleanup (safe)
-        if: always()
-        run: rm -rf dist || true
+          package: ${{ runner.temp }}/backend.zip
+          startup-command: "npm run start:production"

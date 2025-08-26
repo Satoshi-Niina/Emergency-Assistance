@@ -1,116 +1,47 @@
-name: Deploy Frontend to Azure
+name: Deploy Frontend to Azure Static Web Apps
 
 on:
   push:
     branches: [ main, develop ]
     paths:
-      - 'client/**'
-      - '.github/workflows/deploy-frontend.yml'
+      - "client/**"
+      - ".github/workflows/deploy-frontend.yml"
   pull_request:
     branches: [ main ]
     paths:
-      - 'client/**'
-      - '.github/workflows/deploy-frontend.yml'
+      - "client/**"
+      - ".github/workflows/deploy-frontend.yml"
 
 jobs:
-  fe:
+  build_and_deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Use Node
+      - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          # キャッシュパスを明示的に指定（オプション）
-          # cache-dependency-path: './client/package-lock.json'
+          node-version: "20"
 
-      - name: Show tree (debug)
-        run: |
-          pwd
-          ls -la
-          test -f package.json || (echo "No package.json in client" && exit 1)
+      # フロントは client/ 配下
+      - name: Install deps
+        working-directory: client
+        run: npm ci
 
-      - name: Install deps (Root)
-        run: |
-          echo "Installing root dependencies..."
-          npm ci --legacy-peer-deps
-      
-      - name: Install deps (Client)
-        run: |
-          echo "Installing client dependencies..."
-          cd client
-          npm ci --legacy-peer-deps
-      
-      - name: Force Install Vite
-        run: |
-          cd client
-          echo "Force installing vite and related packages..."
-          npm install vite @vitejs/plugin-react --force
-          echo "Checking vite installation:"
-          ls -la node_modules/ | grep -E "(vite|@vitejs)"
+      - name: Build (Vite)
+        working-directory: client
+        run: npm run build
 
-      - name: Verify Dependencies
-        run: |
-          cd client
-          echo "Checking if vite is installed..."
-          if [ -d "node_modules/vite" ]; then
-            echo "✅ vite package found"
-            ls -la node_modules/vite
-          else
-            echo "❌ vite package not found"
-            echo "Available packages:"
-            ls -la node_modules/ | grep -E "(vite|@vitejs)"
-            exit 1
-          fi
-          
-          echo "Checking package.json dependencies:"
-          cat package.json | grep -A 10 -B 5 "vite"
-          
-          echo "Checking node_modules structure:"
-          find node_modules -name "*vite*" -type d | head -10
-      
-      - name: Build
-        env:
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'https://emergencyassistance-sv.azurewebsites.net' }}
-        run: |
-          echo "Building with VITE_API_BASE_URL: $VITE_API_BASE_URL"
-          echo "Current directory: $(pwd)"
-          echo "Node version: $(node --version)"
-          echo "NPM version: $(npm --version)"
-          cd client
-          
-          echo "Final dependency check before build:"
-          npm list vite
-          npm list @vitejs/plugin-react
-          
-          echo "Starting build..."
-          npm run build
-
-      - name: Verify dist (debug)
-        run: |
-          cd client
-          if [ ! -d dist ]; then
-            echo "❌ dist directory not found - build failed"
-            exit 1
-          fi
-          echo "✅ dist directory found"
-          ls -la dist
-
-      - name: Deploy Frontend
+      # SWA へデプロイ（app_location はリポジトリルートからの相対パス）
+      - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          action: "upload"
-          app_location: "client/dist"
-          skip_app_build: true
-          deployment_environment: production
-
-
-      - name: Cleanup (safe)
-        if: always()
-        run: rm -rf dist || true
-
+          action: upload
+          app_location: "client"
+          output_location: "dist"
+          deployment_environment: "production"
 
