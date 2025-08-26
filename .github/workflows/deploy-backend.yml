@@ -2,7 +2,15 @@ name: Deploy Backend
 
 on:
   push:
+    branches: [ main, develop, backup-clean ]
+    paths:
+      - "server/**"
+      - ".github/workflows/deploy-backend.yml"
+  pull_request:
     branches: [ main ]
+    paths:
+      - "server/**"
+      - ".github/workflows/deploy-backend.yml"
 
 jobs:
   deploy:
@@ -26,5 +34,6 @@ jobs:
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
+          app-name: "Emergencyassistance-sv"
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ./dist    # ← ビルド成果物の実パスに合わせる
+          package: ./dist
