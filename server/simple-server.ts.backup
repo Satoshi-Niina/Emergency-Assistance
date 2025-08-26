@@ -8,14 +8,6 @@ import postgres from 'postgres';
 import { users } from './db/schema.js';
 import { eq } from 'drizzle-orm';
 
-// セッションの型定義を拡張
-declare module 'express-session' {
-  interface SessionData {
-    userId: string;
-    userRole: string;
-  }
-}
-
 const app = express();
 const PORT = 3001;
 
@@ -23,7 +15,7 @@ const PORT = 3001;
 app.use(cors({
   origin: process.env.FRONTEND_URL,
   credentials: true
-}));
+});
 app.use(express.json());
 
 // セッション設定
@@ -121,8 +113,10 @@ app.post('/api/auth/login', async (req, res) => {
         sessionId: req.session.id
       });
 
+      // 成功レスポンス
       res.json({
         success: true,
+        message: 'ログインに成功しました',
         user: {
           id: foundUser.id,
           username: foundUser.username,

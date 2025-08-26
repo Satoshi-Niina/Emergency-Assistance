@@ -7,6 +7,8 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { users } from './db/schema.js';
 import { eq } from 'drizzle-orm';
+import path from 'path';
+import productionConfig from './config/production.config.js';
 
 // セッションの型定義を拡張
 declare module 'express-session' {
@@ -17,45 +19,65 @@ declare module 'express-session' {
 }
 
 const app = express();
-const PORT = 3001;
+const PORT = Number(productionConfig.port);
+const HOST = productionConfig.host;
 
 // ミドルウェア
-app.use(cors({
-  origin: process.env.FRONTEND_URL,
-  credentials: true
-}));
+app.use(cors(productionConfig.cors));
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '../../client/dist')));
 
 // セッション設定
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'dev-session-secret',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: false, // 開発環境ではfalse
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24時間
-  }
-}));
+app.use(session(productionConfig.session));
 
 // データベース接続
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  console.error('❌ DATABASE_URLが設定されていません');
-  process.exit(1);
-}
+let db: any = null;
+let client: any = null;
 
-const client = postgres(connectionString);
-const db = drizzle(client);
+async function initializeDatabase() {
+  try {
+    const connectionString = productionConfig.database.url;
+    if (!connectionString) {
+      console.error('❌ DATABASE_URLが設定されていません');
+      return false;
+    }
+
+    client = postgres(connectionString, {
+      max: productionConfig.database.maxConnections,
+      idle_timeout: productionConfig.database.idleTimeoutMillis,
+      connect_timeout: productionConfig.database.connectionTimeoutMillis,
+    });
+    db = drizzle(client);
+    
+    // データベース接続テスト
+    await client`SELECT 1`;
+    console.log('✅ データベース接続成功');
+    return true;
+  } catch (error) {
+    console.error('❌ データベース接続エラー:', error);
+    return false;
+  }
+}
 
 // ヘルスチェック
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    database: db ? 'connected' : 'disconnected'
+  });
 });
 
 // ログインエンドポイント
 app.post('/api/auth/login', async (req, res) => {
   try {
+    if (!db) {
+      return res.status(503).json({
+        success: false,
+        error: 'データベースが利用できません'
+      });
+    }
+
     console.log('🔐 ログインリクエスト:', req.body);
     
     const { username, password } = req.body;
@@ -145,6 +167,13 @@ app.post('/api/auth/login', async (req, res) => {
 // 認証確認エンドポイント
 app.get('/api/auth/me', async (req, res) => {
   try {
+    if (!db) {
+      return res.status(503).json({
+        success: false,
+        error: 'データベースが利用できません'
+      });
+    }
+
     console.log('🔍 認証確認リクエスト:', {
       sessionId: req.session?.id,
       userId: req.session?.userId,
@@ -222,22 +251,60 @@ app.post('/api/auth/logout', (req, res) => {
   }
 });
 
-// サーバー起動
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 シンプルサーバーが起動しました: http://localhost:${PORT}`);
-  console.log(`🔐 ログインエンドポイント: http://localhost:${PORT}/api/auth/login`);
-  console.log(`👤 テストユーザー: niina / 0077`);
+// フロントエンドのルート
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
 });
+
+// サーバー起動
+async function startServer() {
+  console.log('🚀 本番サーバーを起動中...');
+  
+  // データベース初期化
+  const dbInitialized = await initializeDatabase();
+  if (!dbInitialized) {
+    console.log('⚠️ データベース接続なしでサーバーを起動します');
+  }
+  
+  app.listen(PORT, HOST, () => {
+    console.log(`✅ 本番サーバーが起動しました: http://${HOST}:${PORT}`);
+    console.log(`🔐 ログインエンドポイント: http://${HOST}:${PORT}/api/auth/login`);
+    console.log(`🌍 環境: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🗄️ データベース: ${dbInitialized ? '接続済み' : '未接続'}`);
+    console.log(`⚙️ 設定: ${JSON.stringify(productionConfig, null, 2)}`);
+  });
+}
 
 // グレースフルシャットダウン
 process.on('SIGTERM', () => {
   console.log('🛑 サーバーを停止中...');
-  client.end();
+  if (client) {
+    client.end();
+  }
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
   console.log('🛑 サーバーを停止中...');
-  client.end();
+  if (client) {
+    client.end();
+  }
   process.exit(0);
-}); 
+});
+
+// エラーハンドリング
+process.on('uncaughtException', (error) => {
+  console.error('❌ 未捕捉の例外:', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ 未処理のPromise拒否:', reason);
+  process.exit(1);
+});
+
+// サーバー起動
+startServer().catch((error) => {
+  console.error('❌ サーバー起動エラー:', error);
+  process.exit(1);
+});
