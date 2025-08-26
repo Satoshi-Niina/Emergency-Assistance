@@ -4,13 +4,51 @@ on:
   push:
     branches: [ main, develop ]
     paths:
-      - "client/**"
+      - "client/src/**"
+      - "client/package.json"
+      - "client/package-lock.json"
+      - "client/tailwind.config.ts"
+      - "client/vite.config.ts"
+      - "client/tsconfig.json"
+      - "client/tsconfig.node.json"
+      - "client/postcss.config.js"
+      - "client/index.html"
       - ".github/workflows/deploy-frontend.yml"
+    paths-ignore:
+      - "server/**"
+      - "**/*.md"
+      - "**/*.txt"
+      - "**/*.log"
+      - "**/node_modules/**"
+      - "**/dist/**"
+      - "**/.git/**"
+      - "knowledge-base/**"
+      - "api/**"
+      - "shared/**"
   pull_request:
     branches: [ main ]
     paths:
-      - "client/**"
+      - "client/src/**"
+      - "client/package.json"
+      - "client/package-lock.json"
+      - "client/tailwind.config.ts"
+      - "client/vite.config.ts"
+      - "client/tsconfig.json"
+      - "client/tsconfig.node.json"
+      - "client/postcss.config.js"
+      - "client/index.html"
       - ".github/workflows/deploy-frontend.yml"
+    paths-ignore:
+      - "server/**"
+      - "**/*.md"
+      - "**/*.txt"
+      - "**/*.log"
+      - "**/node_modules/**"
+      - "**/dist/**"
+      - "**/.git/**"
+      - "knowledge-base/**"
+      - "api/**"
+      - "shared/**"
 
 jobs:
   deploy:

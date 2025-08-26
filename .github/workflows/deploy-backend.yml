@@ -2,15 +2,75 @@ name: Deploy Backend
 
 on:
   push:
-    branches: [ main, develop, backup-clean ]
+    branches: [ main, develop ]
     paths:
-      - "server/**"
+      - "server/src/**"
+      - "server/production-server.ts"
+      - "server/azure-startup.js"
+      - "server/startup-minimal.js"
+      - "server/web.config"
+      - "server/package.json"
+      - "server/package-lock.json"
+      - "server/tsconfig.json"
+      - "server/drizzle.config.ts"
+      - "server/migrations/**"
+      - "server/lib/**"
+      - "server/routes/**"
+      - "server/services/**"
+      - "server/types/**"
+      - "server/utils/**"
+      - "server/auth.ts"
+      - "server/app.ts"
+      - "server/index.ts"
+      - "server/index.build.ts"
+      - "server/index.dev.ts"
+      - "server/index-minimal.ts"
+      - "server/simple-server.ts"
+      - "server/simple.ts"
       - ".github/workflows/deploy-backend.yml"
+    paths-ignore:
+      - "client/**"
+      - "**/*.md"
+      - "**/*.txt"
+      - "**/*.log"
+      - "**/node_modules/**"
+      - "**/dist/**"
+      - "**/.git/**"
   pull_request:
-    branches: [ main, develop, backup-clean ]
+    branches: [ main, develop ]
     paths:
-      - "server/**"
+      - "server/src/**"
+      - "server/production-server.ts"
+      - "server/azure-startup.js"
+      - "server/startup-minimal.js"
+      - "server/web.config"
+      - "server/package.json"
+      - "server/package-lock.json"
+      - "server/tsconfig.json"
+      - "server/drizzle.config.ts"
+      - "server/migrations/**"
+      - "server/lib/**"
+      - "server/routes/**"
+      - "server/services/**"
+      - "server/types/**"
+      - "server/utils/**"
+      - "server/auth.ts"
+      - "server/app.ts"
+      - "server/index.ts"
+      - "server/index.build.ts"
+      - "server/index.dev.ts"
+      - "server/index-minimal.ts"
+      - "server/simple-server.ts"
+      - "server/simple.ts"
       - ".github/workflows/deploy-backend.yml"
+    paths-ignore:
+      - "client/**"
+      - "**/*.md"
+      - "**/*.txt"
+      - "**/*.log"
+      - "**/node_modules/**"
+      - "**/dist/**"
+      - "**/.git/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
