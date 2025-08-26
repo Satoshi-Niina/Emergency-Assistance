@@ -31,7 +31,7 @@ jobs:
         working-directory: client
         run: |
           echo "Installing client dependencies..."
-          npm ci --legacy-peer-deps --ignore-scripts
+          npm ci --legacy-peer-deps --ignore-scripts --no-optional
       
       - name: Build
         working-directory: client
