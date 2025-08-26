@@ -7,10 +7,14 @@ on:
       - "server/**"
       - ".github/workflows/deploy-backend.yml"
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop, backup-clean ]
     paths:
       - "server/**"
       - ".github/workflows/deploy-backend.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -43,7 +47,7 @@ jobs:
           
           echo "Deploying to Azure Web App..."
           az webapp deployment source config-zip \
-            --resource-group "emergency-assistance-rg" \
+            --resource-group "rg-Emergencyassistant-app" \
             --name "Emergencyassistance-sv" \
             --src "deployment.zip" \
             --timeout 1800
