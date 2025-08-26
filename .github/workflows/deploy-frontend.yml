@@ -43,7 +43,7 @@ jobs:
       - name: Build
         env:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
-        run: npm run build || (echo "Build failed, but continuing..." && exit 0)
+        run: npm run build
 
       - name: Verify dist (debug)
         run: |
@@ -51,11 +51,14 @@ jobs:
           ls -la dist
 
       - name: Deploy Frontend
-        uses: azure/webapps-deploy@v2
+        uses: Azure/static-web-apps-deploy@v1
         with:
-          app-name: Emergencyassistance-frontend
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_FRONT }}
-          package: ./client/dist
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: "upload"
+          app_location: "client/dist"
+          skip_app_build: true
+          deployment_environment: production
 
       - name: Cleanup (safe)
         if: always()
