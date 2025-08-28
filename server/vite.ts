@@ -1,4 +1,4 @@
-import { createServer as createViteServer } from 'vite';
+import { createServer } from 'vite';
 import express from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
