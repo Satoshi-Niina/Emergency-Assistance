@@ -65,15 +65,26 @@ jobs:
           echo "Directory contents:"
           ls -la
 
-      - name: Install & Build
+      - name: Install Dependencies
         run: |
-          echo "Installing dependencies..."
-          npm ci --verbose
-          echo "Checking TypeScript configuration..."
-          npm run build:check
-          echo "Building project..."
-          npm run build
-          echo "Build completed. Checking dist directory:"
+          echo "Installing shared module dependencies..."
+          cd ../shared && npm ci
+          echo "Installing server dependencies..."
+          cd ../server && npm ci
+          echo "Installing root dependencies..."
+          cd .. && npm ci
+
+      - name: Build Shared Module
+        run: |
+          echo "Building shared module..."
+          cd ../shared && npm run build
+          echo "Shared module build completed"
+
+      - name: Build Server
+        run: |
+          echo "Building server..."
+          cd ../server && npm run build
+          echo "Server build completed. Checking dist directory:"
           ls -la dist/ || echo "dist directory not found"
           echo "Checking for JavaScript files in dist:"
           find dist/ -name "*.js" -type f | head -10 || echo "No JavaScript files found"
