@@ -106,10 +106,10 @@ jobs:
           echo "Creating deployment package..."
           echo "Checking files before packaging..."
           ls -la dist/ || echo "dist directory not found"
-          ls -la startup-minimal.js || echo "startup-minimal.js not found"
+          ls -la startup-azure.js || echo "startup-azure.js not found"
           ls -la web.config || echo "web.config not found"
           
-          zip -r deployment.zip dist/ package.json package-lock.json startup-minimal.js web.config
+          zip -r deployment.zip dist/ package.json package-lock.json startup-azure.js web.config
           echo "Deployment package created:"
           ls -la deployment.zip
           echo "Deployment package created:"
@@ -119,7 +119,7 @@ jobs:
           az webapp config set \
             --resource-group "rg-Emergencyassistant-app" \
             --name "Emergencyassistance-sv" \
-            --startup-file "node startup-minimal.js" \
+            --startup-file "node startup-azure.js" \
             --min-tls-version "1.2" \
             --http20-enabled true
           
@@ -152,16 +152,19 @@ jobs:
           
           echo "Checking application health..."
           # ヘルスチェックを複数回試行（より長い間隔で）
-          for i in {1..30}; do
+          for i in {1..40}; do
             echo "Health check attempt $i..."
             echo "Testing endpoint: https://Emergencyassistance-sv.azurewebsites.net/"
             
             # 詳細なレスポンス情報を取得
-            response=$(curl -s -w "\nHTTP_CODE:%{http_code}\nTIME:%{time_total}s" --max-time 30 "https://Emergencyassistance-sv.azurewebsites.net/" 2>&1 || echo "CURL_FAILED")
+            response=$(curl -s -w "\nHTTP_CODE:%{http_code}\nTIME:%{time_total}s" --max-time 45 "https://Emergencyassistance-sv.azurewebsites.net/" 2>&1 || echo "CURL_FAILED")
+            
+            echo "Response: $response"
             
             if echo "$response" | grep -q "HTTP_CODE:2"; then
               echo "✅ Application is healthy! (HTTP 2xx response)"
               echo "Response time: $(echo "$response" | grep "TIME:" | cut -d: -f2)"
+              echo "Full response: $response"
               break
             elif echo "$response" | grep -q "HTTP_CODE:5"; then
               echo "⚠️ Server error (HTTP 5xx) - application starting up..."
@@ -173,14 +176,15 @@ jobs:
               echo "⚠️ Unexpected response: $response"
             fi
             
-            if [ $i -eq 30 ]; then
-              echo "⚠️ Application health check failed after 30 attempts, but deployment may still be successful"
+            if [ $i -eq 40 ]; then
+              echo "⚠️ Application health check failed after 40 attempts, but deployment may still be successful"
               echo "Continuing without failing the workflow..."
               echo "Note: Application may take longer to start up in production environment"
+              echo "Final response: $response"
               break
             else
-              echo "⏳ Application not ready yet, waiting 30 seconds..."
-              sleep 30
+              echo "⏳ Application not ready yet, waiting 45 seconds..."
+              sleep 45
             fi
           done
           
