@@ -30,13 +30,27 @@
   },
   "include": [
     "production-server.ts",
-    "types/**/*.ts"
+    "index.ts",
+    "index.build.ts",
+    "index.dev.ts",
+    "index-minimal.ts",
+    "simple-server.ts",
+    "simple.ts",
+    "auth.ts",
+    "app.ts",
+    "types/**/*.ts",
+    "lib/**/*.ts",
+    "routes/**/*.ts",
+    "services/**/*.ts",
+    "utils/**/*.ts",
+    "middleware/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "dist",
     "shared",
     "**/*.test.ts",
-    "**/*.spec.ts"
+    "**/*.spec.ts",
+    "temp/**/*"
   ]
 }

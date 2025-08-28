@@ -102,10 +102,14 @@ jobs:
         run: |
           echo "Installing dependencies..."
           npm ci --verbose
+          echo "Checking TypeScript configuration..."
+          npm run build:check
           echo "Building project..."
-          npm run build || echo "Build step not found or failed"
+          npm run build
           echo "Build completed. Checking dist directory:"
           ls -la dist/ || echo "dist directory not found"
+          echo "Checking for JavaScript files in dist:"
+          find dist/ -name "*.js" -type f | head -10 || echo "No JavaScript files found"
 
       - name: Login to Azure
         uses: azure/login@v1
