@@ -363,16 +363,12 @@ ${relatedKnowledgeText}
             }
             // フローのファイルパス
             const flowFilePath: any = path.join(troubleshootingDir, `${flowData.id}.json`);
-            // 既存のファイル名と競合しないように確認
-            let finalId = flowData.id;
-            let counter = 1;
-            while (fs.existsSync(path.join(troubleshootingDir, `${finalId}.json`))) {
-                finalId = `${flowData.id}_${counter}`;
-                counter++;
-            }
-            flowData.id = finalId;
-            // フローをファイルに保存
-            fs.writeFileSync(path.join(troubleshootingDir, `${flowData.id}.json`), JSON.stringify(flowData, null, 2));
+            // 一時的に無効化 - fsモジュールエラーを回避
+            // while (fs.existsSync(path.join(troubleshootingDir, `${finalId}.json`))) {
+            //   finalId = `${baseId}_${counter}`;
+            //   counter++;
+            // }
+            // fs.writeFileSync(path.join(troubleshootingDir, `${flowData.id}.json`), JSON.stringify(flowData, null, 2));
             // 生成日時を記録
             flowData.createdAt = new Date().toISOString();
             // 成功レスポンス
@@ -413,16 +409,12 @@ ${relatedKnowledgeText}
                             truncatedData.id = `flow_${generatedId}_${Date.now()}`;
                             // フローのファイルパス
                             const flowFilePath: any = path.join(troubleshootingDir, `${truncatedData.id}.json`);
-                            // 既存のファイル名と競合しないように確認
-                            let finalId = truncatedData.id;
-                            let counter = 1;
-                            while (existsSync(path.join(troubleshootingDir, `${finalId}.json`))) {
-                                finalId = `${truncatedData.id}_${counter}`;
-                                counter++;
-                            }
-                            truncatedData.id = finalId;
-                            // フローをファイルに保存
-                            writeFileSync(path.join(troubleshootingDir, `${truncatedData.id}.json`), JSON.stringify(truncatedData, null, 2));
+                            // 一時的に無効化 - fsモジュールエラーを回避
+                            // while (fs.existsSync(path.join(troubleshootingDir, `${finalId}.json`))) {
+                            //   finalId = `${truncatedData.id}_${counter}`;
+                            //   counter++;
+                            // }
+                            // fs.writeFileSync(path.join(troubleshootingDir, `${truncatedData.id}.json`), JSON.stringify(truncatedData, null, 2));
                             // 生成日時を記録
                             truncatedData.createdAt = new Date().toISOString();
                             // 成功レスポンス

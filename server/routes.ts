@@ -46,8 +46,8 @@ const MemoryStoreSession = MemoryStore(session);
 // Extend the express-session types
 declare module 'express-session' {
   interface SessionData {
-    userId?: string;
-    userRole?: string;
+    userId: string;
+    userRole: string;
   }
 }
 

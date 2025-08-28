@@ -11,8 +11,8 @@ import { fileURLToPath } from 'url';
 // セッションの型定義を拡張
 declare module 'express-session' {
   interface SessionData {
-    userId?: string;
-    userRole?: string;
+    userId: string;
+    userRole: string;
   }
 }
 
