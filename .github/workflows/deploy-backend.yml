@@ -104,7 +104,14 @@ jobs:
       - name: Deploy using Azure CLI
         run: |
           echo "Creating deployment package..."
+          echo "Checking files before packaging..."
+          ls -la dist/ || echo "dist directory not found"
+          ls -la startup-minimal.js || echo "startup-minimal.js not found"
+          ls -la web.config || echo "web.config not found"
+          
           zip -r deployment.zip dist/ package.json package-lock.json startup-minimal.js web.config
+          echo "Deployment package created:"
+          ls -la deployment.zip
           echo "Deployment package created:"
           ls -la deployment.zip
           
@@ -125,7 +132,13 @@ jobs:
             NODE_ENV="production" \
             WEBSITE_RUN_FROM_PACKAGE="1" \
             WEBSITE_WEBSOCKETS_ENABLED="1" \
-            WEBSITE_LOAD_BALANCER_ALGORITHM="LeastRequests"
+            WEBSITE_LOAD_BALANCER_ALGORITHM="LeastRequests" \
+            WEBSITE_NODE_ENV="production" \
+            WEBSITE_SKIP_ALL_CUSTOM_HOSTNAME_BINDINGS="0" \
+            WEBSITE_DISABLE_MSI="false" \
+            WEBSITE_ENABLE_APP_SERVICE_EDITOR="false" \
+            WEBSITE_ENABLE_APP_SERVICE_EDITOR_V2="false" \
+            WEBSITE_ENABLE_APP_SERVICE_EDITOR_V3="false"
           
           echo "Deploying to Azure Web App..."
           az webapp deployment source config-zip \
@@ -135,16 +148,16 @@ jobs:
             --timeout 1800
           
           echo "Waiting for deployment to complete..."
-          sleep 30
+          sleep 60
           
           echo "Checking application health..."
-          # ヘルスチェックを複数回試行（長い間隔で）
-          for i in {1..20}; do
+          # ヘルスチェックを複数回試行（より長い間隔で）
+          for i in {1..30}; do
             echo "Health check attempt $i..."
             echo "Testing endpoint: https://Emergencyassistance-sv.azurewebsites.net/"
             
             # 詳細なレスポンス情報を取得
-            response=$(curl -s -w "\nHTTP_CODE:%{http_code}\nTIME:%{time_total}s" --max-time 15 "https://Emergencyassistance-sv.azurewebsites.net/" 2>&1 || echo "CURL_FAILED")
+            response=$(curl -s -w "\nHTTP_CODE:%{http_code}\nTIME:%{time_total}s" --max-time 30 "https://Emergencyassistance-sv.azurewebsites.net/" 2>&1 || echo "CURL_FAILED")
             
             if echo "$response" | grep -q "HTTP_CODE:2"; then
               echo "✅ Application is healthy! (HTTP 2xx response)"
@@ -160,14 +173,14 @@ jobs:
               echo "⚠️ Unexpected response: $response"
             fi
             
-            if [ $i -eq 20 ]; then
-              echo "⚠️ Application health check failed after 20 attempts, but deployment may still be successful"
+            if [ $i -eq 30 ]; then
+              echo "⚠️ Application health check failed after 30 attempts, but deployment may still be successful"
               echo "Continuing without failing the workflow..."
               echo "Note: Application may take longer to start up in production environment"
               break
             else
-              echo "⏳ Application not ready yet, waiting 20 seconds..."
-              sleep 20
+              echo "⏳ Application not ready yet, waiting 30 seconds..."
+              sleep 30
             fi
           done
           
