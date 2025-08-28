@@ -1,5 +1,6 @@
 name: Deploy Backend
 
+# ワークフロー再実行用 - 2025-08-28
 on:
   push:
     branches: [ main, develop, backup-clean ]
