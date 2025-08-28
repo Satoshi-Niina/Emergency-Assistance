@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx index.dev.ts",
-    "build": "npm run clean && tsc",
+    "build": "rimraf dist && tsc",
     "build:check": "tsc --noEmit",
     "clean": "rimraf dist",
     "start": "node dist/production-server.js",

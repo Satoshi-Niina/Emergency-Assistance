@@ -51,6 +51,7 @@
     "shared",
     "**/*.test.ts",
     "**/*.spec.ts",
-    "temp/**/*"
+    "temp/**/*",
+    "migrations/**/*.sql"
   ]
 }
