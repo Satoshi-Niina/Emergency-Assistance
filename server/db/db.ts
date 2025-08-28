@@ -10,23 +10,11 @@ const sql = postgres(process.env.DATABASE_URL || 'postgresql://postgres:password
 
 export { sql };
 
-// クエリ実行関数
-export const query = async (text: string, params?: any[]): Promise<any> => {
-  try {
-    const result = await sql(text, params);
-    return result;
-  } catch (error) {
-    console.error('❌ クエリ実行エラー:', error);
-    throw error;
-  }
-};
-
 // トランザクション実行関数
 export const transaction = async (callback: (client: any) => Promise<any>): Promise<any> => {
   try {
-    await sql.begin(async (tx) => {
+    return await sql.begin(async (tx) => {
       const result = await callback(tx);
-      await tx.commit();
       return result;
     });
   } catch (error) {
@@ -43,7 +31,7 @@ export const closePool = async (): Promise<void> => {
 // データベース接続テスト
 export const testConnection = async (): Promise<boolean> => {
   try {
-    const result = await query('SELECT NOW()');
+    const result = await sql`SELECT NOW()`;
     console.log('✅ データベース接続テスト成功:', result[0]);
     return true;
   } catch (error) {
@@ -54,7 +42,6 @@ export const testConnection = async (): Promise<boolean> => {
 
 // デフォルトエクスポート
 export default {
-  query,
   transaction,
   closePool,
   testConnection,

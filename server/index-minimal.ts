@@ -64,7 +64,7 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // サーバー起動
-const server = app.listen(port, '0.0.0.0', () => {
+const server = app.listen(Number(port), '0.0.0.0', () => {
   console.log(`✅ 最小サーバーが正常に起動しました`);
   console.log(`🌐 URL: http://0.0.0.0:${port}`);
   console.log(`📊 ヘルスチェック: http://0.0.0.0:${port}/api/health`);

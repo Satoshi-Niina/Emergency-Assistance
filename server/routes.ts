@@ -8,7 +8,6 @@ import { processPerplexityRequest } from "./lib/perplexity.js";
 import fs from "fs";
 import path from "path";
 import { db } from "./db/index.js";
-import { emergencyFlows } from "./db/schema.js";
 import { upload } from './lib/multer-config.js';
 import { 
   addDocumentToKnowledgeBase, 
