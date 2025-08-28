@@ -1,11 +1,11 @@
 import { DatabaseStorage } from "./database-storage.js";
 import { db } from "./db/index.js";
-import { schema } from "../shared/schema.js";
+import { users } from "./db/schema.js";
 
 // データベース接続テスト
 const testDatabaseConnection = async (): Promise<boolean> => {
     try {
-        await db.select().from(schema.users).limit(1);
+        await db.select().from(users).limit(1);
         console.log('データベース接続OK');
         return true;
     } catch (error) {

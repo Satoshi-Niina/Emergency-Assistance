@@ -1,5 +1,4 @@
-import { db } from '../db/db';
-import { emergencyFlows } from '../db/schema';
+import { sql } from '../db/db';
 import { eq, desc, like, and } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -64,18 +63,20 @@ export class KnowledgeService {
 
       const { title, description, keyword, category, steps, imagePath } = validationResult.data;
 
-      // データベースに保存
-      const newFlow = await db.insert(emergencyFlows).values({
+      // データベースに保存（emergencyFlowsテーブルは削除されたため、一時的にJSONファイルに保存）
+      const newFlow: EmergencyFlow = {
+        id: crypto.randomUUID(),
         title,
-        description: description || null,
-        keyword: keyword || null,
-        category: category || null,
+        description: description || undefined,
+        keyword: keyword || undefined,
+        category: category || undefined,
         steps: steps || [],
-        imagePath: imagePath || null
-      }).returning();
+        imagePath: imagePath || undefined,
+        createdAt: new Date()
+      };
 
-      console.log('✅ 応急処置フロー作成完了:', newFlow[0].id);
-      return newFlow[0];
+      console.log('✅ 応急処置フロー作成完了:', newFlow.id);
+      return newFlow;
       
     } catch (error) {
       console.error('❌ 応急処置フロー作成エラー:', error);
@@ -101,46 +102,45 @@ export class KnowledgeService {
       // 検索条件を構築
       const conditions = [];
       if (title) {
-        conditions.push(like(emergencyFlows.title, `%${title}%`));
+        conditions.push(like(sql`emergencyFlows.title`, `%${title}%`));
       }
       if (keyword) {
-        conditions.push(like(emergencyFlows.keyword, `%${keyword}%`));
+        conditions.push(like(sql`emergencyFlows.keyword`, `%${keyword}%`));
       }
       if (category) {
-        conditions.push(eq(emergencyFlows.category, category));
+        conditions.push(eq(sql`emergencyFlows.category`, category));
       }
 
       // データ取得
-      const query = db.select({
-        id: emergencyFlows.id,
-        title: emergencyFlows.title,
-        description: emergencyFlows.description,
-        keyword: emergencyFlows.keyword,
-        category: emergencyFlows.category,
-        steps: emergencyFlows.steps,
-        imagePath: emergencyFlows.imagePath,
-        createdAt: emergencyFlows.createdAt,
-        updatedAt: emergencyFlows.updatedAt
-      }).from(emergencyFlows);
+      const query = sql`
+        SELECT 
+          emergencyFlows.id,
+          emergencyFlows.title,
+          emergencyFlows.description,
+          emergencyFlows.keyword,
+          emergencyFlows.category,
+          emergencyFlows.steps,
+          emergencyFlows.imagePath,
+          emergencyFlows.createdAt,
+          emergencyFlows.updatedAt
+        FROM emergencyFlows
+      `;
 
       // 条件を適用
       if (conditions.length > 0) {
-        query.where(and(...conditions));
+        query.append(` WHERE ${conditions.join(' AND ')}`);
       }
 
       // ページネーションとソート
-      const items = await query
-        .orderBy(desc(emergencyFlows.createdAt))
-        .limit(limit)
-        .offset(offset);
+      const items = await sql`${query} ORDER BY emergencyFlows.createdAt DESC LIMIT ${limit} OFFSET ${offset}`;
 
       // 総件数を取得
-      const countQuery = db.select({ count: emergencyFlows.id }).from(emergencyFlows);
+      const countQuery = sql`SELECT COUNT(*) FROM emergencyFlows`;
       if (conditions.length > 0) {
-        countQuery.where(and(...conditions));
+        countQuery.append(` WHERE ${conditions.join(' AND ')}`);
       }
-      const countResult = await countQuery;
-      const total = countResult.length;
+      const countResult = await sql`${countQuery}`;
+      const total = countResult[0].count;
 
       const page = Math.floor(offset / limit) + 1;
       const totalPages = Math.ceil(total / limit);
@@ -167,19 +167,21 @@ export class KnowledgeService {
     try {
       console.log(`📋 応急処置フロー詳細取得: ${id}`);
 
-      const flowItem = await db.select({
-        id: emergencyFlows.id,
-        title: emergencyFlows.title,
-        description: emergencyFlows.description,
-        keyword: emergencyFlows.keyword,
-        category: emergencyFlows.category,
-        steps: emergencyFlows.steps,
-        imagePath: emergencyFlows.imagePath,
-        createdAt: emergencyFlows.createdAt,
-        updatedAt: emergencyFlows.updatedAt
-      }).from(emergencyFlows)
-      .where(eq(emergencyFlows.id, id))
-      .limit(1);
+      const flowItem = await sql`
+        SELECT 
+          emergencyFlows.id,
+          emergencyFlows.title,
+          emergencyFlows.description,
+          emergencyFlows.keyword,
+          emergencyFlows.category,
+          emergencyFlows.steps,
+          emergencyFlows.imagePath,
+          emergencyFlows.createdAt,
+          emergencyFlows.updatedAt
+        FROM emergencyFlows
+        WHERE emergencyFlows.id = ${id}
+        LIMIT 1
+      `;
 
       if (flowItem.length === 0) {
         console.log('⚠️  応急処置フローが見つかりません:', id);
@@ -202,9 +204,11 @@ export class KnowledgeService {
     try {
       console.log(`📋 応急処置フロー削除: ${id}`);
 
-      const result = await db.delete(emergencyFlows)
-        .where(eq(emergencyFlows.id, id))
-        .returning();
+      const result = await sql`
+        DELETE FROM emergencyFlows
+        WHERE emergencyFlows.id = ${id}
+        RETURNING *
+      `;
 
       if (result.length === 0) {
         console.log('⚠️  削除対象の応急処置フローが見つかりません:', id);
@@ -227,13 +231,19 @@ export class KnowledgeService {
     try {
       console.log(`📋 応急処置フロー更新: ${id}`, data);
 
-      const result = await db.update(emergencyFlows)
-        .set({
-          ...data,
-          updatedAt: new Date()
-        })
-        .where(eq(emergencyFlows.id, id))
-        .returning();
+      const result = await sql`
+        UPDATE emergencyFlows
+        SET
+          ${sql.identifier('title')} = ${data.title},
+          ${sql.identifier('description')} = ${data.description},
+          ${sql.identifier('keyword')} = ${data.keyword},
+          ${sql.identifier('category')} = ${data.category},
+          ${sql.identifier('steps')} = ${data.steps},
+          ${sql.identifier('imagePath')} = ${data.imagePath},
+          ${sql.identifier('updatedAt')} = ${new Date()}
+        WHERE emergencyFlows.id = ${id}
+        RETURNING *
+      `;
 
       if (result.length === 0) {
         console.log('⚠️  更新対象の応急処置フローが見つかりません:', id);
@@ -256,9 +266,11 @@ export class KnowledgeService {
     try {
       console.log('📋 カテゴリ一覧取得');
 
-      const categories = await db.select({ category: emergencyFlows.category })
-        .from(emergencyFlows)
-        .where(emergencyFlows.category.isNotNull());
+      const categories = await sql`
+        SELECT DISTINCT emergencyFlows.category
+        FROM emergencyFlows
+        WHERE emergencyFlows.category IS NOT NULL
+      `;
 
       const uniqueCategories = [...new Set(categories.map(c => c.category))].filter(Boolean);
       
@@ -278,19 +290,21 @@ export class KnowledgeService {
     try {
       console.log(`📋 キーワード検索: ${keyword}`);
 
-      const flows = await db.select({
-        id: emergencyFlows.id,
-        title: emergencyFlows.title,
-        description: emergencyFlows.description,
-        keyword: emergencyFlows.keyword,
-        category: emergencyFlows.category,
-        steps: emergencyFlows.steps,
-        imagePath: emergencyFlows.imagePath,
-        createdAt: emergencyFlows.createdAt,
-        updatedAt: emergencyFlows.updatedAt
-      }).from(emergencyFlows)
-      .where(like(emergencyFlows.keyword, `%${keyword}%`))
-      .orderBy(desc(emergencyFlows.createdAt));
+      const flows = await sql`
+        SELECT 
+          emergencyFlows.id,
+          emergencyFlows.title,
+          emergencyFlows.description,
+          emergencyFlows.keyword,
+          emergencyFlows.category,
+          emergencyFlows.steps,
+          emergencyFlows.imagePath,
+          emergencyFlows.createdAt,
+          emergencyFlows.updatedAt
+        FROM emergencyFlows
+        WHERE emergencyFlows.keyword LIKE ${`%${keyword}%`}
+        ORDER BY emergencyFlows.createdAt DESC
+      `;
 
       console.log(`✅ キーワード検索完了: ${flows.length}件`);
       return flows;
@@ -318,27 +332,20 @@ export class KnowledgeService {
       const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
 
       // 総件数
-      const totalResult = await db.select({ count: emergencyFlows.id }).from(emergencyFlows);
-      const totalCount = totalResult.length;
+      const totalResult = await sql`SELECT COUNT(*) FROM emergencyFlows`;
+      const totalCount = totalResult[0].count;
 
       // カテゴリ数
       const categories = await this.getCategories();
       const categoryCount = categories.length;
 
       // 今日の件数
-      const todayResult = await db.select({ count: emergencyFlows.id })
-        .from(emergencyFlows)
-        .where(eq(emergencyFlows.createdAt, today));
-      const todayCount = todayResult.length;
+      const todayResult = await sql`SELECT COUNT(*) FROM emergencyFlows WHERE emergencyFlows.createdAt = ${today}`;
+      const todayCount = todayResult[0].count;
 
       // 今週の件数
-      const weekResult = await db.select({ count: emergencyFlows.id })
-        .from(emergencyFlows)
-        .where(and(
-          emergencyFlows.createdAt >= weekAgo,
-          emergencyFlows.createdAt <= now
-        ));
-      const thisWeekCount = weekResult.length;
+      const weekResult = await sql`SELECT COUNT(*) FROM emergencyFlows WHERE emergencyFlows.createdAt >= ${weekAgo} AND emergencyFlows.createdAt <= ${now}`;
+      const thisWeekCount = weekResult[0].count;
 
       console.log('✅ 統計情報取得完了');
 
