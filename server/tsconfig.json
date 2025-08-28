@@ -22,7 +22,7 @@
     "isolatedModules": true,
     "declaration": false,
     "outDir": "./dist",
-    "rootDir": "./",
+    "rootDir": "../",
     "baseUrl": "./",
     "paths": {
       "@/*": ["./*"]
@@ -48,7 +48,6 @@
   "exclude": [
     "node_modules",
     "dist",
-    "shared",
     "**/*.test.ts",
     "**/*.spec.ts",
     "temp/**/*",

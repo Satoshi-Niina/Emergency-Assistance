@@ -5,16 +5,10 @@ import bcrypt from 'bcrypt';
 import session from 'express-session';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { users } from './db/schema.js';
+import { users } from '../shared/schema.js';
 import { eq } from 'drizzle-orm';
 
-// セッションの型定義を拡張
-declare module 'express-session' {
-  interface SessionData {
-    userId: string;
-    userRole: string;
-  }
-}
+// セッション型は types/session.d.ts で定義済み
 
 const app = express();
 const PORT = 3001;

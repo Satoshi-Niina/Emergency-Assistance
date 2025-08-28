@@ -21,7 +21,7 @@ const JSON_DIR = path.join(KNOWLEDGE_BASE_DIR, 'json');
 const PPT_DIR = path.join(KNOWLEDGE_BASE_DIR, 'ppt');
 
 // 知識ベースインデックスファイル
-const INDEX_FILE = path.join(KNOWLEDGE_BASE_DIR, 'index.json');
+export const INDEX_FILE = path.join(KNOWLEDGE_BASE_DIR, 'index.json');
 
 // ナレッジデータの種類
 export enum KnowledgeType {

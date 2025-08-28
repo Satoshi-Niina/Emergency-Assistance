@@ -8,13 +8,7 @@ import postgres from 'postgres';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// セッションの型定義を拡張
-declare module 'express-session' {
-  interface SessionData {
-    userId: string;
-    userRole: string;
-  }
-}
+// セッション型は types/session.d.ts で定義済み
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

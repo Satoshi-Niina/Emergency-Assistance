@@ -43,13 +43,7 @@ const __dirname = path.dirname(__filename);
 
 const MemoryStoreSession = MemoryStore(session);
 
-// Extend the express-session types
-declare module 'express-session' {
-  interface SessionData {
-    userId: string;
-    userRole: string;
-  }
-}
+// セッション型は types/session.d.ts で定義済み
 
 // Session will now use Postgres via storage.sessionStore
 

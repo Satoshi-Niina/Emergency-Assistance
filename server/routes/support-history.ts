@@ -188,10 +188,13 @@ router.get('/', async (req, res) => {
       const nextDay = new Date(searchDate);
       nextDay.setDate(nextDay.getDate() + 1);
       
+      // sql関数を使用して日付を比較
+      const { sql } = await import('drizzle-orm');
+      
       whereConditions.push(
         and(
-          gte(supportHistory.createdAt, searchDate),
-          gte(nextDay, supportHistory.createdAt)
+          gte(supportHistory.createdAt, sql`${searchDate}`),
+          gte(sql`${nextDay}`, supportHistory.createdAt)
         )
       );
     }

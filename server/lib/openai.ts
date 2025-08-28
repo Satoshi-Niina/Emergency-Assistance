@@ -58,6 +58,9 @@ console.log("[DEBUG] Final OpenAI client status:", {
   apiKeyPrefix: apiKey ? apiKey.substring(0, 10) + '...' : 'NOT FOUND'
 });
 
+// OpenAIクライアントを直接エクスポート
+export { openai };
+
 // OpenAIクライアントの状態を外部から確認する関数
 export function getOpenAIClientStatus() {
   return {

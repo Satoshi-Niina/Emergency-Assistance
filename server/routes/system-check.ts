@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { query } from '../db/db';
+import { sql } from '../db/db';
 import { processOpenAIRequest } from '../lib/openai';
 
 const router = Router();
@@ -7,7 +7,7 @@ const router = Router();
 // PostgreSQL接続確認API
 router.get('/db-check', async (req, res) => {
   try {
-    const result = await query('SELECT NOW() as db_time');
+    const result = await sql`SELECT NOW() as db_time`;
     res.json({
       status: "OK",
       db_time: result[0].db_time
