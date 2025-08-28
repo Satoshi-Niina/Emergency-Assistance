@@ -106,10 +106,10 @@ jobs:
           echo "Creating deployment package..."
           echo "Checking files before packaging..."
           ls -la dist/ || echo "dist directory not found"
-          ls -la startup-azure.js || echo "startup-azure.js not found"
+          ls -la startup-simple.js || echo "startup-simple.js not found"
           ls -la web.config || echo "web.config not found"
           
-          zip -r deployment.zip dist/ package.json package-lock.json startup-azure.js web.config
+          zip -r deployment.zip dist/ package.json package-lock.json startup-simple.js web.config
           echo "Deployment package created:"
           ls -la deployment.zip
           echo "Deployment package created:"
@@ -119,7 +119,7 @@ jobs:
           az webapp config set \
             --resource-group "rg-Emergencyassistant-app" \
             --name "Emergencyassistance-sv" \
-            --startup-file "node startup-azure.js" \
+            --startup-file "node startup-simple.js" \
             --min-tls-version "1.2" \
             --http20-enabled true
           
@@ -148,7 +148,7 @@ jobs:
             --timeout 1800
           
           echo "Waiting for deployment to complete..."
-          sleep 60
+          sleep 30
           
           echo "Checking application health..."
           # ヘルスチェックを複数回試行（より長い間隔で）
@@ -183,8 +183,8 @@ jobs:
               echo "Final response: $response"
               break
             else
-              echo "⏳ Application not ready yet, waiting 45 seconds..."
-              sleep 45
+              echo "⏳ Application not ready yet, waiting 30 seconds..."
+              sleep 30
             fi
           done
           

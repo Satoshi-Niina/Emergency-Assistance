@@ -23,7 +23,7 @@
     "declaration": false,
     "outDir": "./dist",
     "rootDir": "../",
-    "baseUrl": "./",
+    "baseUrl": "../",
     "paths": {
       "@/*": ["./*"]
     }
@@ -43,7 +43,8 @@
     "routes/**/*.ts",
     "services/**/*.ts",
     "utils/**/*.ts",
-    "middleware/**/*.ts"
+    "middleware/**/*.ts",
+    "../shared/**/*.ts"
   ],
   "exclude": [
     "node_modules",
