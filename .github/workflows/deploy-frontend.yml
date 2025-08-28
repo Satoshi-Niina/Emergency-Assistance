@@ -14,17 +14,6 @@ on:
       - "client/postcss.config.js"
       - "client/index.html"
       - ".github/workflows/deploy-frontend.yml"
-    paths-ignore:
-      - "server/**"
-      - "**/*.md"
-      - "**/*.txt"
-      - "**/*.log"
-      - "**/node_modules/**"
-      - "**/dist/**"
-      - "**/.git/**"
-      - "knowledge-base/**"
-      - "api/**"
-      - "shared/**"
   pull_request:
     branches: [ main, develop, backup-clean ]
     paths:
@@ -38,17 +27,6 @@ on:
       - "client/postcss.config.js"
       - "client/index.html"
       - ".github/workflows/deploy-frontend.yml"
-    paths-ignore:
-      - "server/**"
-      - "**/*.md"
-      - "**/*.txt"
-      - "**/*.log"
-      - "**/node_modules/**"
-      - "**/dist/**"
-      - "**/.git/**"
-      - "knowledge-base/**"
-      - "api/**"
-      - "shared/**"
 
 jobs:
   deploy:

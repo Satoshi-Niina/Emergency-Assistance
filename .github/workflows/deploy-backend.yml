@@ -28,14 +28,6 @@ on:
       - "server/simple-server.ts"
       - "server/simple.ts"
       - ".github/workflows/deploy-backend.yml"
-    paths-ignore:
-      - "client/**"
-      - "**/*.md"
-      - "**/*.txt"
-      - "**/*.log"
-      - "**/node_modules/**"
-      - "**/dist/**"
-      - "**/.git/**"
   pull_request:
     branches: [ main, develop, backup-clean ]
     paths:
@@ -63,14 +55,6 @@ on:
       - "server/simple-server.ts"
       - "server/simple.ts"
       - ".github/workflows/deploy-backend.yml"
-    paths-ignore:
-      - "client/**"
-      - "**/*.md"
-      - "**/*.txt"
-      - "**/*.log"
-      - "**/node_modules/**"
-      - "**/dist/**"
-      - "**/.git/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
