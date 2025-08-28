@@ -163,12 +163,29 @@ jobs:
           # ヘルスチェックを複数回試行（長い間隔で）
           for i in {1..20}; do
             echo "Health check attempt $i..."
-            if curl -f --max-time 15 "https://Emergencyassistance-sv.azurewebsites.net/" > /dev/null 2>&1; then
-              echo "✅ Application is healthy!"
+            echo "Testing endpoint: https://Emergencyassistance-sv.azurewebsites.net/"
+            
+            # 詳細なレスポンス情報を取得
+            response=$(curl -s -w "\nHTTP_CODE:%{http_code}\nTIME:%{time_total}s" --max-time 15 "https://Emergencyassistance-sv.azurewebsites.net/" 2>&1 || echo "CURL_FAILED")
+            
+            if echo "$response" | grep -q "HTTP_CODE:2"; then
+              echo "✅ Application is healthy! (HTTP 2xx response)"
+              echo "Response time: $(echo "$response" | grep "TIME:" | cut -d: -f2)"
               break
-            elif [ $i -eq 20 ]; then
+            elif echo "$response" | grep -q "HTTP_CODE:5"; then
+              echo "⚠️ Server error (HTTP 5xx) - application starting up..."
+            elif echo "$response" | grep -q "HTTP_CODE:4"; then
+              echo "⚠️ Client error (HTTP 4xx) - application may be starting..."
+            elif echo "$response" | grep -q "CURL_FAILED"; then
+              echo "⚠️ Connection failed - application may be starting up..."
+            else
+              echo "⚠️ Unexpected response: $response"
+            fi
+            
+            if [ $i -eq 20 ]; then
               echo "⚠️ Application health check failed after 20 attempts, but deployment may still be successful"
               echo "Continuing without failing the workflow..."
+              echo "Note: Application may take longer to start up in production environment"
               break
             else
               echo "⏳ Application not ready yet, waiting 20 seconds..."
