@@ -123,10 +123,6 @@ jobs:
             --min-tls-version "1.2" \
             --http20-enabled true \
             --ftps-state "Disabled" \
-            --http-logging "FileSystem" \
-            --request-tracing "Off" \
-            --detailed-error-logging "On" \
-            --failed-request-tracing "Off" \
             --web-sockets-enabled true
           
           echo "Setting environment variables..."
