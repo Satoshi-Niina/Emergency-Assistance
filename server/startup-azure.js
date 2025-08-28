@@ -8,7 +8,7 @@ console.log('📁 作業ディレクトリ:', process.cwd());
 console.log('🌍 環境変数 NODE_ENV:', process.env.NODE_ENV);
 console.log('🔌 ポート:', process.env.PORT || process.env.WEBSITES_PORT || 8080);
 
-const http = require('http');
+import http from 'http';
 const startTime = Date.now();
 
 // 即座にヘルスチェックサーバーを起動

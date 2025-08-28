@@ -3,7 +3,7 @@
 // 最もシンプルな起動スクリプト - 確実に動作することを優先
 console.log('🚀 Simple startup script starting...');
 
-const http = require('http');
+import http from 'http';
 
 // 即座にHTTPサーバーを起動
 const server = http.createServer((req, res) => {

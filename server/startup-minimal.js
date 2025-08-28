@@ -3,7 +3,7 @@
 // 最小限の起動スクリプト - 即座に応答可能
 console.log('🚀 最小限起動スクリプト開始');
 
-const http = require('http');
+import http from 'http';
 const startTime = Date.now();
 
 // 即座にヘルスチェックサーバーを起動

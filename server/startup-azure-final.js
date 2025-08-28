@@ -11,7 +11,7 @@ console.log('  - PORT:', process.env.PORT);
 console.log('  - WEBSITES_PORT:', process.env.WEBSITES_PORT);
 console.log('  - WEBSITE_SITE_NAME:', process.env.WEBSITE_SITE_NAME);
 
-const http = require('http');
+import http from 'http';
 const startTime = Date.now();
 
 // 即座にHTTPサーバーを起動
