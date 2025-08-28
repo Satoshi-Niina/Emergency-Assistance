@@ -5,17 +5,11 @@ on:
   push:
     branches: [ main, develop, backup-clean ]
     paths:
-      - "client/src/**"
-      - "client/package.json"
-      - "client/package-lock.json"
-      - "client/tailwind.config.ts"
-      - "client/vite.config.ts"
-      - "client/tsconfig.json"
-      - "client/tsconfig.node.json"
-      - "client/postcss.config.js"
-      - "client/index.html"
+      - "client/**"
       - "shared/**"
-      - ".github/workflows/deploy-frontend.yml"
+      - ".github/workflows/**"
+      - "package.json"
+      - "package-lock.json"
   # 一時的にpull_requestを無効化して重複実行を防止
   # pull_request:
   #   branches: [ main, develop, backup-clean ]
