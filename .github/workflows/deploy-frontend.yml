@@ -14,6 +14,7 @@ on:
       - "client/tsconfig.node.json"
       - "client/postcss.config.js"
       - "client/index.html"
+      - "shared/**"
       - ".github/workflows/deploy-frontend.yml"
   # 一時的にpull_requestを無効化して重複実行を防止
   # pull_request:

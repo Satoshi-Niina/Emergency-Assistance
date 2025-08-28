@@ -28,6 +28,7 @@ on:
       - "server/index-minimal.ts"
       - "server/simple-server.ts"
       - "server/simple.ts"
+      - "shared/**"
       - ".github/workflows/deploy-backend.yml"
   # 一時的にpull_requestを無効化して重複実行を防止
   # pull_request:
