@@ -24,12 +24,12 @@ export const query = async (text: string, params?: any[]): Promise<any> => {
 // トランザクション実行関数
 export const transaction = async (callback: (client: any) => Promise<any>): Promise<any> => {
   try {
-    await sql('BEGIN');
-    const result = await callback(sql);
-    await sql('COMMIT');
-    return result;
+    await sql.begin(async (tx) => {
+      const result = await callback(tx);
+      await tx.commit();
+      return result;
+    });
   } catch (error) {
-    await sql('ROLLBACK');
     console.error('❌ トランザクションエラー:', error);
     throw error;
   }
