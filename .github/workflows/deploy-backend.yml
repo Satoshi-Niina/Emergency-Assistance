@@ -127,7 +127,7 @@ jobs:
             --request-tracing "Off" \
             --detailed-error-logging "On" \
             --failed-request-tracing "Off" \
-            --web-sockets "On"
+            --web-sockets-enabled true
           
           echo "Setting environment variables..."
           az webapp config appsettings set \
