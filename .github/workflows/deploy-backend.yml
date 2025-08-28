@@ -106,10 +106,10 @@ jobs:
           echo "Creating deployment package..."
           echo "Checking files before packaging..."
           ls -la dist/ || echo "dist directory not found"
-          ls -la startup-azure-final.js || echo "startup-azure-final.js not found"
+          ls -la startup-minimal-final.js || echo "startup-minimal-final.js not found"
           ls -la web.config || echo "web.config not found"
           
-          zip -r deployment.zip dist/ package.json package-lock.json startup-azure-final.js web.config
+          zip -r deployment.zip dist/ package.json package-lock.json startup-minimal-final.js web.config
           echo "Deployment package created:"
           ls -la deployment.zip
           echo "Deployment package created:"
@@ -119,9 +119,15 @@ jobs:
           az webapp config set \
             --resource-group "rg-Emergencyassistant-app" \
             --name "Emergencyassistance-sv" \
-            --startup-file "node startup-azure-final.js" \
+            --startup-file "node startup-minimal-final.js" \
             --min-tls-version "1.2" \
-            --http20-enabled true
+            --http20-enabled true \
+            --ftps-state "Disabled" \
+            --http-logging "FileSystem" \
+            --request-tracing "Off" \
+            --detailed-error-logging "On" \
+            --failed-request-tracing "Off" \
+            --web-sockets "On"
           
           echo "Setting environment variables..."
           az webapp config appsettings set \
@@ -138,7 +144,13 @@ jobs:
             WEBSITE_DISABLE_MSI="false" \
             WEBSITE_ENABLE_APP_SERVICE_EDITOR="false" \
             WEBSITE_ENABLE_APP_SERVICE_EDITOR_V2="false" \
-            WEBSITE_ENABLE_APP_SERVICE_EDITOR_V3="false"
+            WEBSITE_ENABLE_APP_SERVICE_EDITOR_V3="false" \
+            WEBSITE_DISABLE_HTTPS_REDIRECT="false" \
+            WEBSITE_HTTPLOGGING_RETENTION_DAYS="7" \
+            WEBSITE_ENABLE_DETAILED_LOGGING="true" \
+            WEBSITE_ENABLE_APP_SERVICE_LOGS="true" \
+            WEBSITE_APP_SETTINGS_OVERRIDE="false" \
+            WEBSITE_OVERRIDE_DEFAULT_APP_SETTINGS="false"
           
           echo "Deploying to Azure Web App..."
           az webapp deployment source config-zip \
