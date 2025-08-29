@@ -22,27 +22,19 @@ export const API_BASE_URL = (() => {
   // 開発環境ではプロキシ経由でアクセス（相対パスを使用）
   if (isDevelopment) {
     console.log('✅ 開発環境: プロキシ経由でアクセス');
-    return ''; // 空文字列で相対パスを使用
+    return '';
   }
-  
-  // 環境変数が設定されている場合は優先使用
-  if (import.meta.env.VITE_API_BASE_URL && import.meta.env.VITE_API_BASE_URL.trim() !== '') {
-    console.log('✅ 環境変数からAPI_BASE_URLを取得:', import.meta.env.VITE_API_BASE_URL);
-    return import.meta.env.VITE_API_BASE_URL;
-  }
-  
-  // 本番環境の場合
+
+  // 本番環境では必ずVITE_API_BASE_URLを使う
   if (isProduction) {
-    if (isAzureEnvironment) {
-      return 'https://emergency-backend-e7enc2e8dhdabucv.japanwest-01.azurewebsites.net';
+    if (import.meta.env.VITE_API_BASE_URL && import.meta.env.VITE_API_BASE_URL.trim() !== '') {
+      console.log('✅ 本番: 環境変数からAPI_BASE_URLを取得:', import.meta.env.VITE_API_BASE_URL);
+      return import.meta.env.VITE_API_BASE_URL;
+    } else {
+      throw new Error('VITE_API_BASE_URLが本番環境で未設定です');
     }
-    if (isReplitEnvironment) {
-      return `${window.location.protocol}//${window.location.hostname.split(':')[0]}:3000`;
-    }
-    // その他の本番環境
-    return window.location.origin;
   }
-  
+
   // デフォルト
   console.log('⚠️ デフォルト値を使用');
   return '';
