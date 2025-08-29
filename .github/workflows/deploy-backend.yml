@@ -1,139 +1,25 @@
-  # Oryxビルド利用、zip不要。App Service標準のデプロイに任せる
-          echo "Node version: $(node --version)"
-          echo "NPM version: $(npm --version)"
-          echo "Directory contents:"
-          ls -la
+name: Deploy Backend
 
-      - name: Install Dependencies
-        run: |
-          echo "Installing shared module dependencies..."
-          cd ../shared && npm ci
-          echo "Installing server dependencies..."
-          cd ../server && npm ci
-          echo "Installing root dependencies..."
-          cd .. && npm ci
+on:
+  push:
+    branches: [ main, develop, backup-clean ]
+    paths:
+      - "server/**"
+      - "shared/**"
+      - ".github/workflows/**"
+      - "package.json"
+      - "package-lock.json"
 
-      - name: Build Shared Module
-        run: |
-          echo "Building shared module..."
-          cd ../shared && npm run build
-          echo "Shared module build completed"
-
-
-      - name: Build Server (TypeScript)
-        run: |
-          echo "Running npm run build (TypeScript build) in server..."
-          npm run build
-          echo "Build completed. Checking dist directory:"
-          ls -la dist/ || echo "dist directory not found"
-          echo "Checking for JavaScript files in dist:"
-          find dist/ -name "*.js" -type f | head -10 || echo "No JavaScript files found"
-
-      - name: Login to Azure
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Debug Azure CLI
-        run: |
-          echo "Azure CLI version:"
-          az --version
-          echo "Current Azure account:"
-          az account show --query "{name:name, id:id, tenantId:tenantId}" --output table
-
-      - name: Deploy using Azure CLI
-        run: |
-          echo "Creating deployment package..."
-          echo "Checking files before packaging..."
-          ls -la dist/ || echo "dist directory not found"
-          ls -la startup-minimal-final.js || echo "startup-minimal-final.js not found"
-          ls -la web.config || echo "web.config not found"
-          
-          zip -r deployment.zip dist/ package.json package-lock.json production-server.js web.config
-          echo "Deployment package created:"
-          ls -la deployment.zip
-          echo "Deployment package created:"
-          ls -la deployment.zip
-          
-          echo "Optimizing Azure Web App settings..."
-          az webapp config set \
-            --resource-group "rg-Emergencyassistant-app" \
-            --name "Emergencyassistance-sv" \
-            --startup-file "node dist/production-server.js" \
-            --min-tls-version "1.2" \
-            --http20-enabled true \
-            --ftps-state "Disabled" \
-            --web-sockets-enabled true
-          
-          echo "Setting environment variables..."
-          az webapp config appsettings set \
-            --resource-group "rg-Emergencyassistant-app" \
-            --name "Emergencyassistance-sv" \
-            --settings \
-            WEBSITE_NODE_DEFAULT_VERSION="~20" \
-            NODE_ENV="production" \
-            WEBSITE_RUN_FROM_PACKAGE="1" \
-            WEBSITE_WEBSOCKETS_ENABLED="1" \
-            WEBSITE_LOAD_BALANCER_ALGORITHM="LeastRequests" \
-            WEBSITE_NODE_ENV="production" \
-            WEBSITE_SKIP_ALL_CUSTOM_HOSTNAME_BINDINGS="0" \
-            WEBSITE_DISABLE_MSI="false" \
-            WEBSITE_ENABLE_APP_SERVICE_EDITOR="false" \
-            WEBSITE_ENABLE_APP_SERVICE_EDITOR_V2="false" \
-            WEBSITE_ENABLE_APP_SERVICE_EDITOR_V3="false" \
-            WEBSITE_DISABLE_HTTPS_REDIRECT="false" \
-            WEBSITE_HTTPLOGGING_RETENTION_DAYS="7" \
-            WEBSITE_ENABLE_DETAILED_LOGGING="true" \
-            WEBSITE_ENABLE_APP_SERVICE_LOGS="true" \
-            WEBSITE_APP_SETTINGS_OVERRIDE="false" \
-            WEBSITE_OVERRIDE_DEFAULT_APP_SETTINGS="false"
-          
-          echo "Deploying to Azure Web App..."
-          az webapp deployment source config-zip \
-            --resource-group "rg-Emergencyassistant-app" \
-            --name "Emergencyassistance-sv" \
-            --src "deployment.zip" \
-            --timeout 1800
-          
-          echo "Waiting for deployment to complete..."
-          sleep 30
-          
-          echo "Checking application health..."
-          # ヘルスチェックを複数回試行（より長い間隔で）
-          for i in {1..40}; do
-            echo "Health check attempt $i..."
-            echo "Testing endpoint: https://Emergencyassistance-sv.azurewebsites.net/"
-            
-            # 詳細なレスポンス情報を取得
-            response=$(curl -s -w "\nHTTP_CODE:%{http_code}\nTIME:%{time_total}s" --max-time 45 "https://Emergencyassistance-sv.azurewebsites.net/" 2>&1 || echo "CURL_FAILED")
-            
-            echo "Response: $response"
-            
-            if echo "$response" | grep -q "HTTP_CODE:2"; then
-              echo "✅ Application is healthy! (HTTP 2xx response)"
-              echo "Response time: $(echo "$response" | grep "TIME:" | cut -d: -f2)"
-              echo "Full response: $response"
-              break
-            elif echo "$response" | grep -q "HTTP_CODE:5"; then
-              echo "⚠️ Server error (HTTP 5xx) - application starting up..."
-            elif echo "$response" | grep -q "HTTP_CODE:4"; then
-              echo "⚠️ Client error (HTTP 4xx) - application may be starting..."
-            elif echo "$response" | grep -q "CURL_FAILED"; then
-              echo "⚠️ Connection failed - application may be starting up..."
-            else
-              echo "⚠️ Unexpected response: $response"
-            fi
-            
-            if [ $i -eq 40 ]; then
-              echo "⚠️ Application health check failed after 40 attempts, but deployment may still be successful"
-              echo "Continuing without failing the workflow..."
-              echo "Note: Application may take longer to start up in production environment"
-              echo "Final response: $response"
-              break
-            else
-              echo "⏳ Application not ready yet, waiting 30 seconds..."
-              sleep 30
-            fi
-          done
-          
-          echo "Deployment completed successfully!"
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install root dependencies
+        run: npm ci
+      - name: Install shared dependencies
+        run: cd shared && npm ci
+      - name: Install server dependencies
+        run: cd server && npm ci
+      - name: Build all (TypeScript/Client/Server)
+        run: npm run build
