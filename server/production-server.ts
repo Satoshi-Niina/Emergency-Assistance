@@ -1,4 +1,5 @@
 import 'dotenv/config';
+console.log('起動テスト', process.env);
 import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcrypt';
