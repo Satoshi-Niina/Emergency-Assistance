@@ -1,5 +1,6 @@
 
 
+
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { login as authLogin, logout as authLogout, getCurrentUser } from '../lib/auth';
 
@@ -10,6 +11,14 @@ interface User {
   role: 'admin' | 'employee';
   department?: string;
 }
+
+// グローバルなAuthContextを1回だけ定義（exportしない）
+const AuthContext = createContext<{
+  user: User | null;
+  isLoading: boolean;
+  login: (username: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+} | undefined>(undefined);
 
 // 認証確認API呼び出し（useCallbackで外出し）
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -140,14 +149,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // AuthContextの定義
-  const AuthContext = createContext<{
-    user: User | null;
-    isLoading: boolean;
-    login: (username: string, password: string) => Promise<void>;
-    logout: () => Promise<void>;
-  } | undefined>(undefined);
-
   // 認証状態確認中はローディング画面
   if (isLoading) {
     return (
@@ -172,13 +173,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 // useAuthフック
 export function useAuth() {
-  // AuthContextはAuthProvider内で定義されているため、グローバルに再定義
-  const AuthContext = createContext<{
-    user: User | null;
-    isLoading: boolean;
-    login: (username: string, password: string) => Promise<void>;
-    logout: () => Promise<void>;
-  } | undefined>(undefined);
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
