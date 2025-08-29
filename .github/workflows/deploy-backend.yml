@@ -80,11 +80,12 @@ jobs:
           cd ../shared && npm run build
           echo "Shared module build completed"
 
-      - name: Build Server
+
+      - name: Build Server (TypeScript)
         run: |
-          echo "Building server..."
-          cd ../server && npm run build
-          echo "Server build completed. Checking dist directory:"
+          echo "Running npm run build (TypeScript build) in server..."
+          npm run build
+          echo "Build completed. Checking dist directory:"
           ls -la dist/ || echo "dist directory not found"
           echo "Checking for JavaScript files in dist:"
           find dist/ -name "*.js" -type f | head -10 || echo "No JavaScript files found"
@@ -109,7 +110,7 @@ jobs:
           ls -la startup-minimal-final.js || echo "startup-minimal-final.js not found"
           ls -la web.config || echo "web.config not found"
           
-          zip -r deployment.zip dist/ package.json package-lock.json startup-minimal-final.js web.config
+          zip -r deployment.zip dist/ package.json package-lock.json production-server.js web.config
           echo "Deployment package created:"
           ls -la deployment.zip
           echo "Deployment package created:"
@@ -119,7 +120,7 @@ jobs:
           az webapp config set \
             --resource-group "rg-Emergencyassistant-app" \
             --name "Emergencyassistance-sv" \
-            --startup-file "node startup-minimal-final.js" \
+            --startup-file "node dist/production-server.js" \
             --min-tls-version "1.2" \
             --http20-enabled true \
             --ftps-state "Disabled" \
