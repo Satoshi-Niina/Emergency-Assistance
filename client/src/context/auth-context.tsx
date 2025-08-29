@@ -6,59 +6,133 @@ import { login as authLogin, logout as authLogout, getCurrentUser } from '../lib
 interface User {
   id: string;
   username: string;
-  displayName: string;
-  role: 'admin' | 'employee';
-  department?: string;
-}
+  // 認証確認API呼び出し（useCallbackで外出し）
+  const fetchMe = React.useCallback(async (signal?: AbortSignal) => {
+    try {
+      setIsLoading(true);
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const apiUrl = `${apiBaseUrl}/api/auth/me`;
+      console.log('🔗 認証確認URL:', apiUrl);
 
-interface AuthContextType {
-  user: User | null;
-  isLoading: boolean;
-  login: (username: string, password: string) => Promise<void>;
-  logout: () => void;
-}
+      const response = await fetch(apiUrl, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        credentials: "include",
+        signal
+      });
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+      console.log('📡 認証確認レスポンス:', {
+        status: response.status,
+        ok: response.ok
+      });
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [authChecked, setAuthChecked] = useState(false);
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        throw new Error('サーバー応答がJSONではありません');
+      }
 
-  // 初期認証状態チェック
-  useEffect(() => {
-    const checkAuthStatus = async () => {
-      try {
-        console.log('🔍 認証状態確認開始');
-        setIsLoading(true);
-        // APIベースURLを環境変数から取得
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-        const apiUrl = `${apiBaseUrl}/api/auth/me`;
-        console.log('🔗 認証確認URL:', apiUrl);
+      if (response.ok) {
+        const userData = await response.json();
+        console.log('📦 認証確認データ:', userData);
+        if (userData && userData.success && userData.user) {
+          setUser({
+            // 認証確認API呼び出し（useCallbackで外出し）
+            const fetchMe = React.useCallback(async (signal?: AbortSignal) => {
+              try {
+                setIsLoading(true);
+                const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+                const apiUrl = `${apiBaseUrl}/api/auth/me`;
+                console.log('🔗 認証確認URL:', apiUrl);
 
-        const response = await fetch(apiUrl, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-          },
-          credentials: "include"
-        });
+                const response = await fetch(apiUrl, {
+                  method: "GET",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                  },
+                  credentials: "include",
+                  signal
+                });
 
-        console.log('📡 認証確認レスポンス:', {
-          status: response.status,
-          ok: response.ok
-        });
+                console.log('📡 認証確認レスポンス:', {
+                  status: response.status,
+                  ok: response.ok
+                });
 
-        if (response.ok) {
-          const userData = await response.json();
-          console.log('📦 認証確認データ:', userData);
-          if (userData && userData.success && userData.user) {
-            console.log('✅ 認証済みユーザー:', userData.user);
-            setUser({
-              id: userData.user.id,
-              username: userData.user.username,
-              displayName: userData.user.displayName,
+                const contentType = response.headers.get('content-type') || '';
+                if (!contentType.includes('application/json')) {
+                  throw new Error('サーバー応答がJSONではありません');
+                }
+
+                if (response.ok) {
+                  const userData = await response.json();
+                  console.log('📦 認証確認データ:', userData);
+                  if (userData && userData.success && userData.user) {
+                    setUser({
+                      id: userData.user.id,
+                      username: userData.user.username,
+                      displayName: userData.user.displayName,
+                      role: userData.user.role,
+                      department: userData.user.department
+                    });
+                  } else {
+                    setUser(null);
+                  }
+                } else {
+                  setUser(null);
+                }
+              } catch (error) {
+                console.error('❌ 認証確認エラー:', error);
+                setUser(null);
+              } finally {
+                setIsLoading(false);
+                setAuthChecked(true);
+                console.log('✅ 認証状態確認完了 - authChecked:', true);
+              }
+            }, []);
+
+            useEffect(() => {
+              const controller = new AbortController();
+              const timer = setTimeout(() => controller.abort(), 8000);
+              fetchMe(controller.signal);
+              return () => {
+                controller.abort();
+                clearTimeout(timer);
+              };
+            }, [fetchMe]);
+                        username: userData.user.username,
+                        displayName: userData.user.displayName,
+                        role: userData.user.role,
+                        department: userData.user.department
+                      });
+                    } else {
+                      setUser(null);
+                    }
+                  } else {
+                    setUser(null);
+                  }
+                } catch (error) {
+                  console.error('❌ 認証確認エラー:', error);
+                  setUser(null);
+                } finally {
+                  setIsLoading(false);
+                  setAuthChecked(true);
+                }
+              }, []);
+
+              // useEffectでAbortController/タイマーを1つだけ生成しcleanupでabort
+              useEffect(() => {
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), 8000);
+                fetchMe(controller.signal);
+                return () => {
+                  controller.abort();
+                  clearTimeout(timer);
+                };
+              }, [fetchMe]);
               role: userData.user.role,
               department: userData.user.department
             });
@@ -75,10 +149,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         console.error('❌ 認証確認エラー:', error);
-        console.error('❌ 認証確認エラー詳細:', {
-          message: error instanceof Error ? error.message : 'Unknown error',
-          stack: error instanceof Error ? error.stack : undefined
-        });
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -88,65 +158,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     checkAuthStatus();
   }, []);
-
-  const login = async (username: string, password: string): Promise<void> => {
-    console.log('🔐 ログイン試行開始:', { username });
-
-    try {
-      setIsLoading(true);
-      // APIベースURLを環境変数から取得
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-      const apiUrl = `${apiBaseUrl}/api/auth/login`;
-      console.log('🔗 ログインURL:', apiUrl);
-
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        credentials: "include",
-        body: JSON.stringify({ username, password })
-      });
-
-      console.log('📡 ログインレスポンス:', {
-        status: response.status,
-        ok: response.ok
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ ログインAPIエラー:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorText
-        });
-
-        let errorMessage = 'ログインに失敗しました';
-        if (response.status === 401) {
-          errorMessage = 'ユーザー名またはパスワードが違います';
-        } else if (response.status === 500) {
-          errorMessage = 'サーバーエラーが発生しました';
-        } else if (response.status === 0 || response.statusText === 'Failed to fetch') {
-          errorMessage = 'サーバーに接続できません';
-        }
-
-        throw new Error(errorMessage);
-      }
-
-      const userData = await response.json();
-      console.log('📦 ログインレスポンスデータ:', userData);
-
-      if (userData && userData.success && userData.user) {
-        console.log('✅ ログイン成功:', userData.user);
-        setUser({
-          id: userData.user.id,
-          username: userData.user.username,
-          displayName: userData.user.displayName,
-          role: userData.user.role,
-          department: userData.user.department
-        });
-      } else {
         throw new Error('ログインレスポンスが無効です');
       }
     } catch (error) {
