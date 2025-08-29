@@ -31,15 +31,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         console.log('🔍 認証状態確認開始');
         setIsLoading(true);
-        
-        // プロキシ経由でAPIにアクセス
-        const apiUrl = '/api/auth/me';
+        // APIベースURLを環境変数から取得
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+        const apiUrl = `${apiBaseUrl}/api/auth/me`;
         console.log('🔗 認証確認URL:', apiUrl);
 
         const response = await fetch(apiUrl, {
           method: "GET",
-          headers: { 
-            "Content-Type": "application/json"
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
           },
           credentials: "include"
         });
@@ -52,7 +53,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (response.ok) {
           const userData = await response.json();
           console.log('📦 認証確認データ:', userData);
-          
           if (userData && userData.success && userData.user) {
             console.log('✅ 認証済みユーザー:', userData.user);
             setUser({
@@ -77,8 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('❌ 認証確認エラー:', error);
         console.error('❌ 認証確認エラー詳細:', {
           message: error instanceof Error ? error.message : 'Unknown error',
-          stack: error instanceof Error ? error.stack : undefined,
-          timestamp: new Date().toISOString()
+          stack: error instanceof Error ? error.stack : undefined
         });
         setUser(null);
       } finally {
@@ -87,7 +86,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('✅ 認証状態確認完了 - authChecked:', true);
       }
     };
-
     checkAuthStatus();
   }, []);
 
@@ -96,16 +94,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       setIsLoading(true);
-      
-      // API URLを直接指定（開発環境用）
-      const apiBaseUrl = 'http://localhost:3001';
+      // APIベースURLを環境変数から取得
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
       const apiUrl = `${apiBaseUrl}/api/auth/login`;
       console.log('🔗 ログインURL:', apiUrl);
 
       const response = await fetch(apiUrl, {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json"
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
         },
         credentials: "include",
         body: JSON.stringify({ username, password })
@@ -116,7 +114,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ok: response.ok
       });
 
-      // レスポンスが200以外の場合はエラーをthrow
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ ログインAPIエラー:', {
@@ -124,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           statusText: response.statusText,
           errorText
         });
-        
+
         let errorMessage = 'ログインに失敗しました';
         if (response.status === 401) {
           errorMessage = 'ユーザー名またはパスワードが違います';
@@ -133,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else if (response.status === 0 || response.statusText === 'Failed to fetch') {
           errorMessage = 'サーバーに接続できません';
         }
-        
+
         throw new Error(errorMessage);
       }
 
