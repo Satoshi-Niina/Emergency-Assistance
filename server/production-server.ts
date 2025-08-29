@@ -297,6 +297,10 @@ app.get('*', (req, res) => {
 async function startServer() {
   console.log('🚀 本番サーバーを起動中...');
   
+  // --- Hello World最小起動用フラグ ---
+  if (process.env.HELLO_ONLY === '1') {
+    app.get('*', (_, res) => res.send('Hello World'));
+  }
   // サーバーを即座に起動（データベース接続を待たない）
   const server = app.listen(PORT, HOST, () => {
     console.log(`✅ 本番サーバーが起動しました: http://${HOST}:${PORT}`);
