@@ -281,6 +281,12 @@ app.post('/api/auth/logout', (req, res) => {
   }
 });
 
+
+// ルートGETエンドポイント（App Service用OK応答）
+app.get('/', (req, res) => {
+  res.type('text/plain').send('OK');
+});
+
 // フロントエンドのルート
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
