@@ -312,6 +312,12 @@ app.get('/api/history/file', (req, res) => {
   }
 });
 
+
+// ルートGETエンドポイント（App Service用OK応答）
+app.get('/', (req: Request, res: Response) => {
+  res.type('text/plain').send('OK');
+});
+
 // ヘルスチェックAPI
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
