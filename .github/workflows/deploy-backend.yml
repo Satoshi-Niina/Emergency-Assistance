@@ -36,8 +36,8 @@ jobs:
         run: |
           echo "=== server/dist/ ==="
           ls -l server/dist || echo "server/dist not found"
-          echo "=== server/dist/production-server.js ==="
-          if [ -f server/dist/production-server.js ]; then
+          echo "=== server/dist/server/production-server.js ==="
+          if [ -f server/dist/server/production-server.js ]; then
             echo "production-server.js exists"
           else
             echo "production-server.js NOT FOUND" && exit 1
