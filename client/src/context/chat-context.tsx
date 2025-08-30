@@ -26,6 +26,21 @@ interface ChatContextType {
   searching: boolean;
   setSearching: (searching: boolean) => void;
   sendEmergencyGuide: (guideData: any) => Promise<void>;
+  // 以下は実行時に参照される追加プロパティ（既に実装またはスタブで提供されている）
+  captureImage: () => Promise<void>;
+  setSelectedText: (text: string) => void;
+  selectedText: string;
+  recordedText: string;
+  draftMessage: { content: string; media?: { type: string; url: string; thumbnail?: string }[] } | null;
+  setDraftMessage: (v: { content: string; media?: { type: string; url: string; thumbnail?: string }[] } | null) => void;
+  startRecording: () => void;
+  stopRecording: () => void;
+  isRecording: boolean;
+  lastExportTimestamp: Date | null;
+  exportFormattedData: () => Promise<any>;
+  isExporting: boolean;
+  hasUnexportedMessages: boolean;
+  sendFlowExecutionResult?: (data?: any) => Promise<void>;
   // searchBySelectedText: (text: string) => Promise<void>; // 画像検索機能を削除
 }
 
@@ -1274,6 +1289,20 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     searching,
     setSearching,
     sendEmergencyGuide,
+  captureImage,
+  setSelectedText,
+  selectedText,
+  recordedText,
+  draftMessage,
+  setDraftMessage,
+  startRecording: () => setIsRecording(true),
+  stopRecording: () => setIsRecording(false),
+  isRecording,
+  lastExportTimestamp,
+  exportFormattedData: async () => ({}),
+  isExporting,
+  hasUnexportedMessages,
+  sendFlowExecutionResult: async () => {},
     // searchBySelectedText, // 画像検索機能を削除
   };
 
