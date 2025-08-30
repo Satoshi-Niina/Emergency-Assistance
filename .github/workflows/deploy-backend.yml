@@ -68,12 +68,14 @@ jobs:
         run: |
           set -e
           echo "=== Post-deploy smoke test ==="
-          API_BASE="${{ secrets.BACKEND_API_BASE_URL }}"
-          echo "Health endpoint: $API_BASE/health"
-          curl -sSf "$API_BASE/health" | tee health_response.txt
+          echo "API_BASE=${{ secrets.API_BASE }}" >> $GITHUB_ENV
+          API_BASE="${{ secrets.API_BASE }}"
+          : "${API_BASE:?API_BASE is empty. Set API_BASE before smoke test.}"
+          echo "Health endpoint: $API_BASE/api/health"
+          curl -fsSL "$API_BASE/api/health" -o health_response.txt
           echo "Auth endpoint: $API_BASE/api/auth/me"
-          curl -sSf -c cookies.txt -b cookies.txt "$API_BASE/api/auth/me" | tee authme_response.txt
-          echo "--- /health ---"
+          curl -fsSL -c cookies.txt -b cookies.txt "$API_BASE/api/auth/me" -o authme_response.txt
+          echo "--- /api/health ---"
           cat health_response.txt
           echo "--- /api/auth/me ---"
           cat authme_response.txt
