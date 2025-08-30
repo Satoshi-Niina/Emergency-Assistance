@@ -36,6 +36,29 @@ export const messages: any = pgTable('messages', {
     createdAt: timestamp('created_at').defaultNow().notNull() // 送信日時
 });
 
+// Type helpers for frontend (small, runtime-independent shapes)
+export type Message = {
+    id: string;
+    chatId: string;
+    senderId: string;
+    content: string;
+    isAiResponse?: boolean;
+    createdAt: string;
+};
+
+export type LoginCredentials = {
+    username: string;
+    password: string;
+};
+
+export type User = {
+    id: string;
+    username: string;
+    display_name?: string;
+    displayName?: string; // tolerate both shapes used across code
+    role?: string;
+};
+
 // メディアテーブルの定義
 // 画像や動画などのメディアファイルを管理
 export const media: any = pgTable('media', {
