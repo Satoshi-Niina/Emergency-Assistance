@@ -28,7 +28,7 @@ jobs:
         run: cd server && npm ci
 
       - name: Build server (TypeScript)
-        run: npm run build --workspace=server
+        run: cd server && npm run build
 
       - name: Check server build output
         run: |
