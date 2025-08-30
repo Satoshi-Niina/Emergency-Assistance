@@ -1,12 +1,23 @@
 import { Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/login';
+import ChatPage from './pages/chat';
+import HistoryPage from './pages/history';
+import DocumentsPage from './pages/documents';
+import TroubleshootingPage from './pages/troubleshooting';
+import EmergencyGuidePage from './pages/emergency-guide';
+import SettingsPage from './pages/settings';
+import SystemDiagnosticPage from './pages/system-diagnostic';
+import BaseDataPage from './pages/base-data';
+import UsersPage from './pages/users';
+import NotFound from './pages/not-found';
 import { ChatProvider } from './context/chat-context';
 import { useAuth } from './context/auth-context';
 import Header from './components/navigation/header';
 import { Toaster } from './components/ui/toaster';
 import { RouteDebugger } from './components/shared/RouteDebugger';
 import { DebugError } from './components/shared/DebugError';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
 // ...他の必要なimport...
 
 function App() {
@@ -33,7 +44,7 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
               {/* ダッシュボード: 未認証なら/loginへ */}
               <Route path="/dashboard" element={
-                user ? <DashboardPage /> : <Navigate to="/login" replace />
+                user ? <ChatPage /> : <Navigate to="/login" replace />
               } />
               {/* 認証が必要なルート */}
               <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
@@ -49,7 +60,7 @@ function App() {
               <Route path="/base-data" element={<ProtectedRoute><BaseDataPage /></ProtectedRoute>} />
               {/* 管理者権限が必要なルート */}
               <Route path="/users" element={<ProtectedRoute requireAdmin={true}><UsersPage /></ProtectedRoute>} />
-              <Route path="*" element={<NotFoundPage />} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
         </main>
