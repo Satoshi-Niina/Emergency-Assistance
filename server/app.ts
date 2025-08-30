@@ -87,18 +87,21 @@ const app = express();
 
 
 
-// CORS: 本番は静的WebAppsのみ許可、credentials有効、プリフライト対応
+
+// === CORS 設定統一 ===
+// origin: Azure Static Web Apps のみ許可
+// credentials: true, allowedHeaders/methods明示, プリフライト(OPTIONS)対応
+// ※検証手順は本ファイル末尾参照
 app.set('trust proxy', 1);
-const allowedOrigin = 'https://witty-river-012f93e00.1.azurestaticapps.net';
-const corsOptions = {
-  origin: allowedOrigin,
+const ORIGIN = 'https://witty-river-012f93e00.1.azurestaticapps.net';
+app.use(cors({
+  origin: ORIGIN,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   optionsSuccessStatus: 200
-};
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+}));
+app.options('*', cors({ origin: ORIGIN, credentials: true }));
 
 // Cookieパーサーを追加
 app.use(cookieParser());
@@ -113,7 +116,9 @@ app.use((req, res, next) => {
 });
 
 
-// セッション設定 - SameSite=None; Secure
+
+// セッション設定 - クロスサイトCookie対応
+// cookie: { httpOnly: true, secure: true, sameSite: 'none' } で統一
 const sessionConfig = {
   secret: process.env.SESSION_SECRET || 'dev-session-secret-for-development-only',
   resave: true,
@@ -196,10 +201,24 @@ app.get('/', (req: Request, res: Response) => {
   res.type('text/plain').send('OK');
 });
 
-// ヘルスチェックAPI
+// ヘルスチェックAPI (GET /api/health)
+// 200を必ず返す。CORS/プリフライトも有効。
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+/*
+====================
+【検証手順コメント】
+====================
+1. GET /api/health が 200 を返すこと
+2. CORSプリフライト(OPTIONS)が 200 で、
+  Access-Control-Allow-Origin: https://witty-river-012f93e00.1.azurestaticapps.net
+  Access-Control-Allow-Credentials: true
+  がレスポンスヘッダに付与されること
+3. 本番(NODE_ENV=production)でDB接続時にTLSエラーなく接続できること
+  (ECONNREFUSEDは到達性問題なのでコード外)
+*/
 
 // 認証ルート
 app.use('/api/auth', authRouter);

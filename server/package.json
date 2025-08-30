@@ -7,14 +7,13 @@
     "build": "rimraf dist && tsc",
     "build:check": "tsc --noEmit",
     "clean": "rimraf dist",
-    "start": "npm run migrate && node startup-minimal-final.js",
-    "start:production": "npm run migrate && node startup-minimal-final.js",
-    "start:azure": "npm run migrate && node azure-startup.js",
-    "start:minimal": "npm run migrate && node startup-minimal.js",
     "migrate": "drizzle-kit migrate",
-    "generate": "drizzle-kit generate",
-    "studio": "drizzle-kit studio"
+    "start": "node dist/server.js",
+    "start:prod": "npm run migrate && npm run start"
   },
+  // 運用・検証手順:
+  // - 本番運用は `npm run start:prod` で起動（マイグレーション→本体起動）
+  // - GET /api/health, CORS, DB TLS などは app.ts コメント参照
   "dependencies": {
     "@azure/identity": "^4.0.1",
     "@azure/storage-blob": "^12.20.0",
