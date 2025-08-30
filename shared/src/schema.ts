@@ -60,14 +60,6 @@ export type LoginCredentials = {
     password: string;
 };
 
-export type User = {
-    id: string;
-    username: string;
-    display_name?: string;
-    displayName?: string; // tolerate both shapes used across code
-    role?: string;
-};
-
 // メディアテーブルの定義
 // 画像や動画などのメディアファイルを管理
 export const media: any = pgTable('media', {
