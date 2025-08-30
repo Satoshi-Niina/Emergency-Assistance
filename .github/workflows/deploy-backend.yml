@@ -1,7 +1,3 @@
-      - name: Build (TypeScript)
-        run: |
-          cd server
-          npm run build
 name: Deploy Backend
 
 on:
@@ -9,11 +5,7 @@ on:
     branches: [ main, develop, backup-clean ]
     paths:
       - "server/**"
-      - "shared/**"
-      - "client/**"
       - ".github/workflows/**"
-      - "package.json"
-      - "package-lock.json"
 
 jobs:
   deploy:
@@ -21,65 +13,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies (root)
-        shell: bash
-        run: npm ci
-
-      - name: Install dependencies (shared)
-        shell: bash
-        run: cd shared && npm ci
-
-      - name: Install dependencies (server)
-        shell: bash
+      - name: Install dependencies
         run: cd server && npm ci
 
+      - name: Build (TypeScript)
+        run: cd server && npm run build
+
       - name: Show dist contents
-        run: |
-          ls -la ./server/dist || true
+        run: ls -la server/dist || true
 
       - name: Check dist entry existence
         run: |
-          if [ ! -f ./server/dist/index.js ] && [ ! -f ./server/dist/server.js ]; then
+          if [ ! -f server/dist/index.js ] && [ ! -f server/dist/server.js ]; then
             echo "dist entry (index.js or server.js) not found!" >&2
-            ls -la ./server/dist || true
             exit 1
           fi
 
-      - name: Login to Azure
-        uses: azure/login@v1
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Deploy to Azure Web App (Oryx build)
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          slot-name: ${{ env.AZURE_WEBAPP_SLOT }}
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          slot-name: ${{ secrets.AZURE_WEBAPP_SLOT }}
           package: ./server
-        # dist ディレクトリのみ zip して送る代替案: package: ./server/dist.zip など（今回は未採用、コメントのみ）
-
-      - name: Post-deploy smoke test (health/auth)
-        shell: bash
-        run: |
-          set -e
-          echo "=== Post-deploy smoke test ==="
-          echo "API_BASE=${{ secrets.API_BASE }}" >> $GITHUB_ENV
-          API_BASE="${{ secrets.API_BASE }}"
-          : "${API_BASE:?API_BASE is empty. Set API_BASE before smoke test.}"
-          echo "Health endpoint: $API_BASE/api/health"
-          curl -fsSL "$API_BASE/api/health" -o health_response.txt
-          echo "Auth endpoint: $API_BASE/api/auth/me"
-          curl -fsSL -c cookies.txt -b cookies.txt "$API_BASE/api/auth/me" -o authme_response.txt
-          echo "--- /api/health ---"
-          cat health_response.txt
-          echo "--- /api/auth/me ---"
-          cat authme_response.txt
-
-      - name: Set API_BASE from secret
-        run: echo "API_BASE=${{ secrets.API_BASE }}" >> $GITHUB_ENV
 
       - name: Post-deploy smoke test (retry)
         shell: bash
+        env:
+          API_BASE: ${{ secrets.API_BASE }}
         run: |
           set -e
           : "${API_BASE:?API_BASE is empty. Set API_BASE before smoke test.}"
