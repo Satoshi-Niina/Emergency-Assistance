@@ -1,13 +1,15 @@
 import { Suspense } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { ChatProvider } from './context/chat-context';
+import { useAuth } from './context/auth-context';
 import Header from './components/navigation/header';
 import { Toaster } from './components/ui/toaster';
 import { RouteDebugger } from './components/shared/RouteDebugger';
 import { DebugError } from './components/shared/DebugError';
-// ...必要なimport...
+// ...他の必要なimport...
 
 function App() {
+  const { user, isLoading } = useAuth();
   return (
     <ChatProvider>
       <RouteDebugger />
@@ -23,8 +25,15 @@ function App() {
             </div>
           }>
             <Routes>
-              <Route path="/" element={<RootRedirect />} />
+              {/* ルート: userの有無でリダイレクト */}
+              <Route path="/" element={
+                user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />
+              } />
               <Route path="/login" element={<LoginPage />} />
+              {/* ダッシュボード: 未認証なら/loginへ */}
+              <Route path="/dashboard" element={
+                user ? <DashboardPage /> : <Navigate to="/login" replace />
+              } />
               {/* 認証が必要なルート */}
               <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
               <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
