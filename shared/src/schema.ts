@@ -38,12 +38,21 @@ export const messages: any = pgTable('messages', {
 
 // Type helpers for frontend (small, runtime-independent shapes)
 export type Message = {
-    id: string;
-    chatId: string;
-    senderId: string;
-    content: string;
+    id: string | number;
+    chatId?: string;
+    senderId?: string | number;
+    content?: string;
+    // aliases the client code uses
+    text?: string;
+    message?: string;
+    // timestamp aliases
+    createdAt?: string;
+    timestamp?: string | number | Date;
     isAiResponse?: boolean;
-    createdAt: string;
+    // optional fields used in UI
+    media?: { id?: string | number; type?: string; url?: string; thumbnail?: string }[];
+    role?: string;
+    title?: string;
 };
 
 export type LoginCredentials = {
