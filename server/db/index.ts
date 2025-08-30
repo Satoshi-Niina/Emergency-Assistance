@@ -4,18 +4,16 @@ import * as schema from './schema.js';
 
 // データベース接続設定 - DATABASE_URLのみを使用
 function getDatabaseUrl(): string {
-  // DATABASE_URLが設定されている場合は優先使用（DATABASE_URLのみ使用）
-  if (process.env.DATABASE_URL) {
-    return process.env.DATABASE_URL;
+  let url = process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/emergency_assistance';
+  if (!url.includes('sslmode=require')) {
+    url += (url.includes('?') ? '&' : '?') + 'sslmode=require';
   }
-  
-  // デフォルトの接続文字列
-  return 'postgresql://postgres:password@localhost:5432/emergency_assistance';
+  return url;
 }
 
 // データベース接続
 const client = postgres(getDatabaseUrl(), {
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false, // 使用中: 環境判別
+  ssl: process.env.NODE_ENV === 'production' || getDatabaseUrl().includes('sslmode=require') ? { rejectUnauthorized: false } : false,
   max: 10,
   idle_timeout: 20,
   connect_timeout: 10,

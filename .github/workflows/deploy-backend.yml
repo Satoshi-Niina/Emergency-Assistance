@@ -49,14 +49,6 @@ jobs:
             exit 1
           fi
 
-      - name: Run DB migration (drizzle-kit)
-        shell: bash
-        run: |
-          echo "=== Running DB migration ==="
-          cd server
-          npx drizzle-kit migrate
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
 
       - name: Login to Azure

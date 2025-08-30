@@ -86,59 +86,18 @@ console.log('🔧 app.ts: 環境変数確認:', {
 const app = express();
 
 
-// CORS: Azure Static Web Apps用に厳密許可
-app.set('trust proxy', 1);
-const allowedOriginsProd = [
-  'https://witty-river-012f39e00.1.azurestaticapps.net'
-];
-const allowedOriginsDev = [
-  ...allowedOriginsProd,
-  'http://localhost:5002',
-  'http://127.0.0.1:5002',
-  'http://localhost:3000',
-  'http://127.0.0.1:3000',
-  'http://localhost:5173',
-  'http://127.0.0.1:5173'
-];
-const corsOptions = {
-  origin: function(origin, callback) {
-    const env = process.env.NODE_ENV;
-    const allowed = env === 'production' ? allowedOriginsProd : allowedOriginsDev;
-    if (!origin) return callback(null, true);
-    if (allowed.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.log('🚫 CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'X-Requested-With',
-    'Origin',
-    'Accept',
-    'Cookie',
-    'credentials',
-    'cache-control',
-    'Cache-Control',
-    'pragma',
-    'Pragma'
-  ],
-  exposedHeaders: ['Set-Cookie'],
-  preflightContinue: false,
-  optionsSuccessStatus: 204
-};
-app.use((req, res, next) => {
-  res.header('Vary', 'Origin');
-  next();
-});
-app.options('*', cors(corsOptions));
-app.use(cors(corsOptions));
 
-// OPTIONSリクエストの明示的処理
+// CORS: 本番は静的WebAppsのみ許可、credentials有効、プリフライト対応
+app.set('trust proxy', 1);
+const allowedOrigin = 'https://witty-river-012f93e00.1.azurestaticapps.net';
+const corsOptions = {
+  origin: allowedOrigin,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
 // Cookieパーサーを追加
