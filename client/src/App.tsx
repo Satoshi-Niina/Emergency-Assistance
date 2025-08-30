@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import LoginPage from './pages/login';
 import { ChatProvider } from './context/chat-context';
 import { useAuth } from './context/auth-context';
 import Header from './components/navigation/header';
