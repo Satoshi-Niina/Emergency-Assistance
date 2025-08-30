@@ -31,6 +31,19 @@ jobs:
         shell: bash
         run: cd server && npm ci
 
+        # dist ディレクトリの中身を出力（ビルド成果物の確認）
+        - name: Show dist contents
+          run: |
+            ls -la ./server/dist || true
+
+        # dist/index.js または dist/server.js のどちらかが存在するかチェック
+        - name: Check dist entry existence
+          run: |
+            if [ ! -f ./server/dist/index.js ] && [ ! -f ./server/dist/server.js ]; then
+              echo "dist entry (index.js or server.js) not found!" >&2
+              ls -la ./server/dist || true
+              exit 1
+            fi
       # Oryxビルド方式: serverごとデプロイし、App Service側でnpm install & npm run build
       - name: Login to Azure
         uses: azure/login@v1
@@ -40,9 +53,10 @@ jobs:
       - name: Deploy to Azure Web App (Oryx build)
         uses: azure/webapps-deploy@v3
         with:
-          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
-          slot-name: 'production'
-          package: ./server
+            app-name: ${{ env.AZURE_WEBAPP_NAME }}
+            slot-name: ${{ env.AZURE_WEBAPP_SLOT }}
+            package: ./server
+          # dist ディレクトリのみ zip して送る代替案: package: ./server/dist.zip など（今回は未採用、コメントのみ）
 
       - name: Post-deploy smoke test (health/auth)
         shell: bash
@@ -60,3 +74,30 @@ jobs:
           cat health_response.txt
           echo "--- /api/auth/me ---"
           cat authme_response.txt
+        # API_BASE を GitHub Secrets から $GITHUB_ENV にエクスポート
+        - name: Set API_BASE from secret
+          run: echo "API_BASE=${{ secrets.API_BASE }}" >> $GITHUB_ENV
+
+        # デプロイ後の Smoke Test（指数バックオフ付きリトライ、/api/health 200 で合格、/api/auth/me は best-effort）
+        - name: Post-deploy smoke test (retry)
+          shell: bash
+          run: |
+            set -e
+            : "${API_BASE:?API_BASE is empty. Set API_BASE before smoke test.}"
+            echo "=== Post-deploy smoke test ==="
+            sleep 10
+            for i in 5 10 20 30 60; do
+              echo "Attempt (wait=$i s): $API_BASE/api/health"
+              if curl -fsSL "$API_BASE/api/health" -o health_response.txt; then
+                echo "Health OK"; break
+              fi
+              echo "Waiting $i seconds..."
+              sleep $i
+              if [ "$i" -eq 60 ]; then
+                echo "Health check failed after retries"; exit 1
+              fi
+            done
+            echo "Auth endpoint: $API_BASE/api/auth/me"
+            curl -fsSL -c cookies.txt -b cookies.txt "$API_BASE/api/auth/me" -o authme_response.txt || true
+            echo "--- /api/health ---"; cat health_response.txt || true
+            echo "--- /api/auth/me ---"; cat authme_response.txt || true
