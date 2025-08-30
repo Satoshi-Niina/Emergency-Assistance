@@ -31,37 +31,18 @@ jobs:
         shell: bash
         run: cd server && npm ci
 
-      - name: Build server (TypeScript)
-        shell: bash
-        run: cd server && npm run build
-
-      - name: Check server build output
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "=== server/dist ==="
-          ls -la server/dist || true
-          echo "=== check production-server.js ==="
-          if [ -f "server/dist/server/production-server.js" ]; then
-            echo "FOUND: server/dist/server/production-server.js"
-          else
-            echo "NOT FOUND: server/dist/server/production-server.js"
-            exit 1
-          fi
-
-
-
+      # Oryxビルド方式: serverごとデプロイし、App Service側でnpm install & npm run build
       - name: Login to Azure
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Deploy to Azure Web App
+      - name: Deploy to Azure Web App (Oryx build)
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           slot-name: 'production'
-          package: ./server/dist
+          package: ./server
 
       - name: Post-deploy smoke test (health/auth)
         shell: bash

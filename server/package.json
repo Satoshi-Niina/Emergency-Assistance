@@ -62,7 +62,4 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "azure": {
-    "startupCommand": "node dist/production-server.js"
-  }
 }
