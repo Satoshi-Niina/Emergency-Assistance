@@ -17,20 +17,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install root dependencies
+
+      - name: Install dependencies (root)
         run: npm ci
 
-      - name: Install shared dependencies
+      - name: Install dependencies (shared)
         run: cd shared && npm ci
 
-      - name: Install server dependencies
+      - name: Install dependencies (server)
         run: cd server && npm ci
 
-      - name: Install client dependencies
-        run: cd client && npm ci
-
-      - name: Build all (TypeScript/Client/Server)
-        run: npm run build
+      - name: Build server (TypeScript)
+        run: npm run build --workspace=server
 
       - name: Check server build output
         run: |
@@ -53,4 +51,4 @@ jobs:
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           slot-name: 'production'
-          package: ./server/dist/server
+          package: ./server/dist
