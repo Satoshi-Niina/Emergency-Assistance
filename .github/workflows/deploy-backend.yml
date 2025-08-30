@@ -18,74 +18,45 @@ jobs:
       - uses: actions/checkout@v4
 
 
+
       - name: Install dependencies (root)
+        shell: bash
         run: npm ci
 
       - name: Install dependencies (shared)
+        shell: bash
         run: cd shared && npm ci
 
       - name: Install dependencies (server)
+        shell: bash
         run: cd server && npm ci
 
       - name: Build server (TypeScript)
+        shell: bash
         run: cd server && npm run build
 
       - name: Check server build output
+        shell: bash
         run: |
-          echo "=== server/dist/ ==="
-          ls -l server/dist || echo "server/dist not found"
-          echo "=== server/dist/server/production-server.js ==="
-          if [ -f server/dist/server/production-server.js ]; then
-            echo "production-server.js exists"
-          name: Deploy Backend
+          set -euo pipefail
+          echo "=== server/dist ==="
+          ls -la server/dist || true
+          echo "=== check production-server.js ==="
+          if [ -f "server/dist/server/production-server.js" ]; then
+            echo "FOUND: server/dist/server/production-server.js"
+          else
+            echo "NOT FOUND: server/dist/server/production-server.js"
+            exit 1
+          fi
 
-          on:
-            push:
-              branches: [ main, develop, backup-clean ]
-              paths:
-                - "server/**"
-                - "shared/**"
-                - ".github/workflows/**"
-                - "package.json"
-                - "package-lock.json"
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-          jobs:
-            deploy:
-              runs-on: ubuntu-latest
-              steps:
-                - uses: actions/checkout@v4
-
-                - name: Install dependencies (root)
-                  run: npm ci
-
-                - name: Install dependencies (shared)
-                  run: cd shared && npm ci
-
-                - name: Install dependencies (server)
-                  run: cd server && npm ci
-
-                - name: Build server (TypeScript)
-                  run: cd server && npm run build
-
-                - name: Check server build output
-                  run: |
-                    echo "=== server/dist/ ==="
-                    ls -l server/dist || echo "server/dist not found"
-                    echo "=== server/dist/server/production-server.js ==="
-                    if [ -f server/dist/server/production-server.js ]; then
-                      echo "production-server.js exists"
-                    else
-                      echo "production-server.js NOT FOUND" && exit 1
-                    fi
-
-                - name: Login to Azure
-                  uses: azure/login@v1
-                  with:
-                    creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-                - name: Deploy to Azure Web App
-                  uses: azure/webapps-deploy@v3
-                  with:
-                    app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
-                    slot-name: 'production'
-                    package: ./server/dist
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          slot-name: 'production'
+          package: ./server/dist
