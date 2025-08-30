@@ -23,10 +23,17 @@
     "declaration": false,
   "outDir": "./dist",
   "rootDir": "../",
-    "baseUrl": "../",
+    "baseUrl": "./",
     "paths": {
-      "@/*": ["./*"]
-    }
+      "@/*": ["../*"],
+      "drizzle-orm": ["node_modules/drizzle-orm"],
+      "drizzle-orm/*": ["node_modules/drizzle-orm/*"],
+      "zod": ["node_modules/zod"]
+    },
+    "typeRoots": [
+      "./node_modules/@types",
+      "../node_modules/@types"
+    ]
   },
   "include": [
   "**/*.ts",
