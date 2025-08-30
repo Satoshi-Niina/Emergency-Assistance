@@ -1,5 +1,5 @@
-import { query, transaction } from '../db/db';
-import { storageService } from './storageService';
+import { sql, transaction } from '../db/db.js';
+import { storageService } from './storageService.js';
 import { z } from 'zod';
 
 // バリデーションスキーマ
@@ -85,14 +85,17 @@ export class HistoryService {
       const { title, machineType, machineNumber, metadata } = validationResult.data;
 
       // セッションを作成
-      const result = await query(
-        `INSERT INTO chat_sessions (title, machine_type, machine_number, metadata)
-         VALUES ($1, $2, $3, $4)
-         RETURNING *`,
-        [title, machineType, machineNumber, metadata ? JSON.stringify(metadata) : null]
-      );
+      const result = await transaction(async (client) => {
+        const sessionResult = await client.query(
+          `INSERT INTO chat_sessions (title, machine_type, machine_number, metadata)
+           VALUES ($1, $2, $3, $4)
+           RETURNING *`,
+          [title, machineType, machineNumber, metadata ? JSON.stringify(metadata) : null]
+        );
+        return sessionResult.rows[0];
+      });
 
-      const session = result.rows[0];
+      const session = result;
       console.log('✅ チャットセッション作成完了:', session.id);
       
       return {
@@ -136,14 +139,17 @@ export class HistoryService {
       }
 
       // 履歴を保存
-      const result = await query(
-        `INSERT INTO chat_history (session_id, question, answer, image_url, machine_type, machine_number, metadata)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         RETURNING *`,
-        [sessionId, question, answer, imageUrl, machineType, machineNumber, metadata ? JSON.stringify(metadata) : null]
-      );
+      const result = await transaction(async (client) => {
+        const historyResult = await client.query(
+          `INSERT INTO chat_history (session_id, question, answer, image_url, machine_type, machine_number, metadata)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           RETURNING *`,
+          [sessionId, question, answer, imageUrl, machineType, machineNumber, metadata ? JSON.stringify(metadata) : null]
+        );
+        return historyResult.rows[0];
+      });
 
-      const history = result.rows[0];
+      const history = result;
       console.log('✅ チャット履歴作成完了:', history.id);
       
       return {
@@ -205,24 +211,30 @@ export class HistoryService {
       const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
       // セッション一覧を取得（ビューを使用）
-      const result = await query(
-        `SELECT * FROM chat_session_summary ${whereClause}
-         ORDER BY created_at DESC
-         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
-        [...queryParams, limit, offset]
-      );
+      const result = await transaction(async (client) => {
+        const sessionResult = await client.query(
+          `SELECT * FROM chat_session_summary ${whereClause}
+           ORDER BY created_at DESC
+           LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
+          [...queryParams, limit, offset]
+        );
+        return sessionResult.rows;
+      });
 
       // 総件数を取得
-      const countResult = await query(
-        `SELECT COUNT(*) as total FROM chat_sessions ${whereClause}`,
-        queryParams
-      );
+      const countResult = await transaction(async (client) => {
+        const countResult = await client.query(
+          `SELECT COUNT(*) as total FROM chat_sessions ${whereClause}`,
+          queryParams
+        );
+        return countResult.rows[0];
+      });
 
-      const total = parseInt(countResult.rows[0].total);
+      const total = parseInt(countResult.total);
       const page = Math.floor(offset / limit) + 1;
       const totalPages = Math.ceil(total / limit);
 
-      const items = result.rows.map(row => ({
+      const items = result.map(row => ({
         id: row.session_id,
         title: row.title,
         machineType: row.machine_type,
@@ -256,17 +268,20 @@ export class HistoryService {
     try {
       console.log(`📋 セッション詳細取得: ${id}`);
 
-      const result = await query(
-        `SELECT * FROM chat_sessions WHERE id = $1`,
-        [id]
-      );
+      const result = await transaction(async (client) => {
+        const sessionResult = await client.query(
+          `SELECT * FROM chat_sessions WHERE id = $1`,
+          [id]
+        );
+        return sessionResult.rows[0];
+      });
 
-      if (result.rows.length === 0) {
+      if (!result) {
         console.log('⚠️  セッションが見つかりません:', id);
         return null;
       }
 
-      const session = result.rows[0];
+      const session = result;
       console.log('✅ セッション詳細取得完了');
 
       return {
@@ -293,14 +308,17 @@ export class HistoryService {
     try {
       console.log(`📋 セッション履歴取得: ${sessionId}`);
 
-      const result = await query(
-        `SELECT * FROM chat_history 
-         WHERE session_id = $1 
-         ORDER BY created_at ASC`,
-        [sessionId]
-      );
+      const result = await transaction(async (client) => {
+        const historyResult = await client.query(
+          `SELECT * FROM chat_history 
+           WHERE session_id = $1 
+           ORDER BY created_at ASC`,
+          [sessionId]
+        );
+        return historyResult.rows;
+      });
 
-      const history = result.rows.map(row => ({
+      const history = result.map(row => ({
         id: row.id,
         sessionId: row.session_id,
         question: row.question,
@@ -329,13 +347,16 @@ export class HistoryService {
       console.log(`📋 セッション削除: ${id}`);
 
       // セッションに関連する画像を削除
-      const historyResult = await query(
-        `SELECT image_url FROM chat_history WHERE session_id = $1 AND image_url IS NOT NULL`,
-        [id]
-      );
+      const historyResult = await transaction(async (client) => {
+        const historyResult = await client.query(
+          `SELECT image_url FROM chat_history WHERE session_id = $1 AND image_url IS NOT NULL`,
+          [id]
+        );
+        return historyResult.rows;
+      });
 
       // 画像ファイルを削除
-      for (const row of historyResult.rows) {
+      for (const row of historyResult) {
         if (row.image_url) {
           const filename = row.image_url.split('/').pop();
           if (filename) {
@@ -345,12 +366,15 @@ export class HistoryService {
       }
 
       // セッションを削除（CASCADEで履歴も削除される）
-      const result = await query(
-        `DELETE FROM chat_sessions WHERE id = $1 RETURNING id`,
-        [id]
-      );
+      const result = await transaction(async (client) => {
+        const deleteResult = await client.query(
+          `DELETE FROM chat_sessions WHERE id = $1 RETURNING id`,
+          [id]
+        );
+        return deleteResult.rows[0];
+      });
 
-      if (result.rows.length === 0) {
+      if (!result) {
         console.log('⚠️  削除対象のセッションが見つかりません:', id);
         return false;
       }
@@ -404,20 +428,23 @@ export class HistoryService {
       }
 
       params.push(id);
-      const result = await query(
-        `UPDATE chat_sessions 
-         SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP
-         WHERE id = $${paramIndex}
-         RETURNING *`,
-        params
-      );
+      const result = await transaction(async (client) => {
+        const updateResult = await client.query(
+          `UPDATE chat_sessions 
+           SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP
+           WHERE id = $${paramIndex}
+           RETURNING *`,
+          params
+        );
+        return updateResult.rows[0];
+      });
 
-      if (result.rows.length === 0) {
+      if (!result) {
         console.log('⚠️  更新対象のセッションが見つかりません:', id);
         return null;
       }
 
-      const session = result.rows[0];
+      const session = result;
       console.log('✅ セッション更新完了:', id);
 
       return {
@@ -452,36 +479,54 @@ export class HistoryService {
       console.log('📋 履歴統計情報取得');
 
       // 総セッション数
-      const totalResult = await query('SELECT COUNT(*) as total FROM chat_sessions');
-      const totalSessions = parseInt(totalResult.rows[0].total);
+      const totalResult = await transaction(async (client) => {
+        const totalResult = await client.query('SELECT COUNT(*) as total FROM chat_sessions');
+        return totalResult.rows[0];
+      });
+      const totalSessions = parseInt(totalResult.total);
 
       // 今日のセッション数
-      const todayResult = await query(
-        'SELECT COUNT(*) as total FROM chat_sessions WHERE DATE(created_at) = CURRENT_DATE'
-      );
-      const todaySessions = parseInt(todayResult.rows[0].total);
+      const todayResult = await transaction(async (client) => {
+        const todayResult = await client.query(
+          'SELECT COUNT(*) as total FROM chat_sessions WHERE DATE(created_at) = CURRENT_DATE'
+        );
+        return todayResult.rows[0];
+      });
+      const todaySessions = parseInt(todayResult.total);
 
       // 今週のセッション数
-      const weekResult = await query(
-        'SELECT COUNT(*) as total FROM chat_sessions WHERE created_at >= CURRENT_DATE - INTERVAL \'7 days\''
-      );
-      const thisWeekSessions = parseInt(weekResult.rows[0].total);
+      const weekResult = await transaction(async (client) => {
+        const weekResult = await client.query(
+          'SELECT COUNT(*) as total FROM chat_sessions WHERE created_at >= CURRENT_DATE - INTERVAL \'7 days\''
+        );
+        return weekResult.rows[0];
+      });
+      const thisWeekSessions = parseInt(weekResult.total);
 
       // 今月のセッション数
-      const monthResult = await query(
-        'SELECT COUNT(*) as total FROM chat_sessions WHERE created_at >= CURRENT_DATE - INTERVAL \'30 days\''
-      );
-      const thisMonthSessions = parseInt(monthResult.rows[0].total);
+      const monthResult = await transaction(async (client) => {
+        const monthResult = await client.query(
+          'SELECT COUNT(*) as total FROM chat_sessions WHERE created_at >= CURRENT_DATE - INTERVAL \'30 days\''
+        );
+        return monthResult.rows[0];
+      });
+      const thisMonthSessions = parseInt(monthResult.total);
 
       // 総メッセージ数
-      const messagesResult = await query('SELECT COUNT(*) as total FROM chat_history');
-      const totalMessages = parseInt(messagesResult.rows[0].total);
+      const messagesResult = await transaction(async (client) => {
+        const messagesResult = await client.query('SELECT COUNT(*) as total FROM chat_history');
+        return messagesResult.rows[0];
+      });
+      const totalMessages = parseInt(messagesResult.total);
 
       // アクティブセッション数
-      const activeResult = await query(
-        'SELECT COUNT(*) as total FROM chat_sessions WHERE status = \'active\''
-      );
-      const activeSessions = parseInt(activeResult.rows[0].total);
+      const activeResult = await transaction(async (client) => {
+        const activeResult = await client.query(
+          'SELECT COUNT(*) as total FROM chat_sessions WHERE status = \'active\''
+        );
+        return activeResult.rows[0];
+      });
+      const activeSessions = parseInt(activeResult.total);
 
       console.log('✅ 統計情報取得完了');
 

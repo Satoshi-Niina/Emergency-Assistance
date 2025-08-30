@@ -44,7 +44,7 @@ export default defineConfig(({ command, mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
-        '@shared': path.resolve(__dirname, '../shared'),
+        '@shared': path.resolve(__dirname, '../shared/src'),
       },
       extensions: ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.json'],
     },

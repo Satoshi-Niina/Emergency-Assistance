@@ -1,0 +1,63 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [ main, develop, backup-clean ]
+    paths:
+      - "server/**"
+      - "shared/**"
+      - ".github/workflows/**"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies (server)
+        run: cd server && npm ci
+
+      - name: Build (TypeScript) (run in server cwd)
+        run: cd server && npm run build
+
+      - name: Show dist contents
+        run: ls -la server/dist || true
+
+      - name: Check dist entry existence
+        run: |
+          if [ ! -f server/dist/index.js ] && [ ! -f server/dist/server.js ]; then
+            echo "dist entry (index.js or server.js) not found!" >&2
+            exit 1
+          fi
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          slot-name: ${{ secrets.AZURE_WEBAPP_SLOT }}
+          package: ./server
+
+      - name: Post-deploy smoke test (retry)
+        shell: bash
+        env:
+          API_BASE: ${{ secrets.API_BASE }}
+        run: |
+          set -e
+          : "${API_BASE:?API_BASE is empty. Set API_BASE before smoke test.}"
+          echo "=== Post-deploy smoke test ==="
+          sleep 10
+          for i in 5 10 20 30 60; do
+            echo "Attempt (wait=$i s): $API_BASE/api/health"
+            if curl -fsSL "$API_BASE/api/health" -o health_response.txt; then
+              echo "Health OK"; break
+            fi
+            echo "Waiting $i seconds..."
+            sleep $i
+            if [ "$i" -eq 60 ]; then
+              echo "Health check failed after retries"; exit 1
+            fi
+          done
+          echo "Auth endpoint: $API_BASE/api/auth/me"
+          curl -fsSL -c cookies.txt -b cookies.txt "$API_BASE/api/auth/me" -o authme_response.txt || true
+          echo "--- /api/health ---"; cat health_response.txt || true
+          echo "--- /api/auth/me ---"; cat authme_response.txt || true

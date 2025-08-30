@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "ESNext",
-    "moduleResolution": "node",
+  "module": "NodeNext",
+  "moduleResolution": "NodeNext",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "allowJs": true,
@@ -20,20 +20,33 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "declaration": true,
-    "outDir": "./dist",
-    "rootDir": "./",
+    "declaration": false,
+  "outDir": "./dist",
+  "rootDir": "../",
     "baseUrl": "./",
     "paths": {
-      "@/*": ["./*"]
-    }
+      "@/*": ["../*"],
+      "drizzle-orm": ["node_modules/drizzle-orm"],
+  "drizzle-orm/*": ["node_modules/drizzle-orm/*"],
+  "drizzle-orm/pg-core": ["node_modules/drizzle-orm/pg-core"],
+  "drizzle-orm/pg-core/*": ["node_modules/drizzle-orm/pg-core/*"],
+      "zod": ["node_modules/zod"]
+    },
+    "typeRoots": [
+      "./node_modules/@types",
+      "../node_modules/@types"
+    ]
   },
   "include": [
-    "**/*.ts",
-    "**/*.js"
+  "**/*.ts",
+  "../shared/**/*.ts"
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "temp/**/*",
+    "migrations/**/*.sql"
   ]
 }

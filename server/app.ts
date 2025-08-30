@@ -6,21 +6,20 @@ import { fileURLToPath } from 'url';
 import * as path from 'path';
 import * as fs from 'fs';
 import authRouter from './routes/auth.js';
-import { techSupportRouter } from './routes/tech-support.js';
-import { registerChatRoutes } from './routes/chat.js';
+import techSupportRouter from './routes/tech-support.js';
 import troubleshootingRouter from './routes/troubleshooting.js';
 import { registerRoutes } from './routes.js';
-import { baseDataRouter } from './routes/base-data.js';
-import { flowsRouter } from './routes/flows.js';
-import { knowledgeRouter } from './routes/knowledge.js';
-import { historyRouter } from './routes/history.js';
+import baseDataRouter from './routes/base-data.js';
+import flowsRouter from './routes/flows.js';
+import knowledgeRouter from './routes/knowledge.js';
+import historyRouter from './routes/history.js';
 import emergencyGuideRouter from './routes/emergency-guide.js';
-import { usersRouter } from './routes/users.js';
+import usersRouter from './routes/users.js';
 import machinesRouter from './routes/machines.js';
 import { registerDataProcessorRoutes } from './routes/data-processor.js';
-import { usersDebugRouter } from './routes/users-debug.js';
-import { debugRouter } from './routes/debug.js';
-import systemCheckRouter from './routes/system-check.js';
+import usersDebugRouter from './routes/users-debug.js';
+import debugRouter from './routes/debug.js';
+// import systemCheckRouter from './routes/system-check.js'; // 未使用なら削除
 import troubleshootingQARouter from './routes/troubleshooting-qa.js';
 import configRouter from './routes/config.js';
 import ingestRouter from './routes/ingest.js';
@@ -86,176 +85,51 @@ console.log('🔧 app.ts: 環境変数確認:', {
 
 const app = express();
 
-// CORS設定 - セッション維持のため改善
-const isProduction = process.env.NODE_ENV === 'production';
-const isReplitEnvironment = process.env.REPLIT_ENVIRONMENT === 'true' || process.env.REPLIT_ID;
-const isAzureEnvironment = process.env.WEBSITE_SITE_NAME || process.env.AZURE_ENVIRONMENT;
 
-// フロントエンドURLの取得（環境変数から優先、デフォルトはlocalhost:5002）
+
+
+
+// === CORS 設定（FRONTEND_URLを動的に利用、express.json()より上） ===
+app.set('trust proxy', 1);
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5002';
-
-// 許可するオリジンのリスト（環境別）
-const getAllowedOrigins = () => {
-  const baseOrigins = [
-    FRONTEND_URL, // 環境変数から取得したフロントエンドURLを優先
-    'http://localhost:5002', 
-    'http://127.0.0.1:5002',
-    'http://localhost:5003',
-    'http://127.0.0.1:5003',
-    'http://localhost:5004',
-    'http://127.0.0.1:5004',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:5173', // Vite開発サーバー
-    'http://127.0.0.1:5173',
-    'http://localhost:3001',
-    'http://127.0.0.1:3001'
-  ];
-
-  // Replit環境の場合
-  if (isReplitEnvironment) {
-    baseOrigins.push(
-      'https://*.replit.app',
-      'https://*.replit.dev'
-    );
-  }
-
-  // Azure環境の場合
-  if (isAzureEnvironment) {
-    baseOrigins.push(
-      'https://*.azurewebsites.net',
-      'https://*.azure.com'
-    );
-  }
-
-  return baseOrigins;
-};
-
 app.use(cors({
-  origin: function(origin, callback) {
-    const allowedOrigins = getAllowedOrigins();
-    
-    // originがnullの場合（同一オリジンリクエスト）も許可
-    if (!origin) {
-      callback(null, true);
-      return;
-    }
-
-    // ワイルドカードドメインのチェック
-    const isAllowed = allowedOrigins.some(allowedOrigin => {
-      if (allowedOrigin.includes('*')) {
-        const pattern = allowedOrigin.replace('*', '.*');
-        return new RegExp(pattern).test(origin);
-      }
-      return allowedOrigin === origin;
-    });
-
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      console.log('🚫 CORS blocked origin:', origin);
-      console.log('🔍 Allowed origins:', allowedOrigins);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true, // 必須設定 - セッション維持のため
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: [
-    'Content-Type', 
-    'Authorization', 
-    'X-Requested-With', 
-    'Origin', 
-    'Accept', 
-    'Cookie',
-    'credentials',
-    'cache-control',
-    'Cache-Control',
-    'pragma',
-    'Pragma'
-  ],
-  exposedHeaders: ['Set-Cookie'],
-  preflightContinue: false,
-  optionsSuccessStatus: 204
+  origin: FRONTEND_URL,
+  credentials: true
 }));
+app.options('*', cors({ origin: FRONTEND_URL, credentials: true }));
 
-// OPTIONSリクエストの明示的処理
-app.options('*', (req, res) => {
-  const origin = req.headers.origin;
-  const allowedOrigins = getAllowedOrigins();
-  
-  // ワイルドカードドメインのチェック
-  const isAllowed = !origin || allowedOrigins.some(allowedOrigin => {
-    if (allowedOrigin.includes('*')) {
-      const pattern = allowedOrigin.replace('*', '.*');
-      return new RegExp(pattern).test(origin);
-    }
-    return allowedOrigin === origin;
-  });
-  
-  if (isAllowed) {
-    res.header('Access-Control-Allow-Origin', origin || '*');
-  }
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept, Cookie, credentials, cache-control, Cache-Control, pragma, Pragma');
-  res.header('Access-Control-Allow-Credentials', 'true'); // 必須設定 - セッション維持のため
-  res.header('Access-Control-Expose-Headers', 'Set-Cookie');
-  res.status(204).end();
-});
-
-// Cookieパーサーを追加
 app.use(cookieParser());
-
-// JSONパース
 app.use(express.json());
 
-// CORSヘッダーを確実に設定するミドルウェア
+// Vary: Originを常に付与
 app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  const allowedOrigins = getAllowedOrigins();
-  
-  // ワイルドカードドメインのチェック
-  const isAllowed = !origin || allowedOrigins.some(allowedOrigin => {
-    if (allowedOrigin.includes('*')) {
-      const pattern = allowedOrigin.replace('*', '.*');
-      return new RegExp(pattern).test(origin);
-    }
-    return allowedOrigin === origin;
-  });
-  
-  if (isAllowed && origin) {
-    res.header('Access-Control-Allow-Origin', origin);
-  }
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept, Cookie, credentials, cache-control, Cache-Control, pragma, Pragma');
-  res.header('Access-Control-Expose-Headers', 'Set-Cookie');
-  
+  res.header('Vary', 'Origin');
   next();
 });
 
-// セッション設定 - 認証維持のため改善
+
+
+// セッション設定 - クロスサイトCookie対応
+// cookie: { httpOnly: true, secure: true, sameSite: 'none' } で統一
 const sessionConfig = {
   secret: process.env.SESSION_SECRET || 'dev-session-secret-for-development-only',
-  resave: true, // セッションを常に保存
+  resave: true,
   saveUninitialized: false,
   cookie: {
-    secure: (isProduction || isReplitEnvironment || isAzureEnvironment) ? true : false, // 明示的にbooleanに変換
+    secure: true,
     httpOnly: true,
-    sameSite: (isProduction || isReplitEnvironment || isAzureEnvironment) ? 'none' as const : 'lax' as const,
-    maxAge: 1000 * 60 * 60 * 24 * 7, // 7日間
+    sameSite: 'none' as 'none',
+    maxAge: 1000 * 60 * 60 * 24 * 7,
     path: '/',
-    domain: undefined // 明示的にundefinedに設定
+    domain: undefined
   },
-  name: 'emergency-assistance-session', // セッション名を統一
-  rolling: true // セッションを更新するたびに期限を延長
+  name: 'emergency-assistance-session',
+  rolling: true
 };
 
 console.log('🔧 セッション設定:', {
   secure: sessionConfig.cookie.secure,
-  sameSite: sessionConfig.cookie.sameSite,
-  isProduction,
-  isReplitEnvironment,
-  isAzureEnvironment
+  sameSite: sessionConfig.cookie.sameSite
 });
 
 app.use(session(sessionConfig));
@@ -313,17 +187,36 @@ app.get('/api/history/file', (req, res) => {
   }
 });
 
-// ヘルスチェックAPI
+
+// ルートGETエンドポイント（App Service用OK応答）
+app.get('/', (req: Request, res: Response) => {
+  res.type('text/plain').send('OK');
+});
+
+// ヘルスチェックAPI (GET /api/health)
+// 200を必ず返す。CORS/プリフライトも有効。
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+/*
+====================
+【検証手順コメント】
+====================
+1. GET /api/health が 200 を返すこと
+2. CORSプリフライト(OPTIONS)が 200 で、
+  Access-Control-Allow-Origin: https://witty-river-012f93e00.1.azurestaticapps.net
+  Access-Control-Allow-Credentials: true
+  がレスポンスヘッダに付与されること
+3. 本番(NODE_ENV=production)でDB接続時にTLSエラーなく接続できること
+  (ECONNREFUSEDは到達性問題なのでコード外)
+*/
 
 // 認証ルート
 app.use('/api/auth', authRouter);
 app.use('/api/tech-support', techSupportRouter);
 
 // チャットルート
-registerChatRoutes(app);
 
 // トラブルシューティングルート
 app.use('/api/troubleshooting', troubleshootingRouter);

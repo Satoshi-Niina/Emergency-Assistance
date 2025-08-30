@@ -106,4 +106,4 @@ router.get('/api-test', (req: any, res: any) => {
     });
 });
 
-export { router as debugRouter }; 
+export default router;

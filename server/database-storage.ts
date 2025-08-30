@@ -102,11 +102,11 @@ export class DatabaseStorage {
                 await db.delete(schema.messages).where(eq(schema.messages.chatId, chat.id));
             }
             await db.delete(schema.chats).where(eq(schema.chats.userId, id));
-            const userMessages = await db.select().from(schema.messages).where(eq(schema.messages.userId, id));
+            const userMessages = await db.select().from(schema.messages).where(eq(schema.messages.senderId, id));
             for (const message of userMessages) {
                 await db.delete(schema.media).where(eq(schema.media.messageId, message.id));
             }
-            await db.delete(schema.messages).where(eq(schema.messages.userId, id));
+            await db.delete(schema.messages).where(eq(schema.messages.senderId, id));
             const userDocuments = await db.select().from(schema.documents).where(eq(schema.documents.userId, id));
             for (const document of userDocuments) {
                 await db.delete(schema.keywords).where(eq(schema.keywords.documentId, document.id));
@@ -260,7 +260,7 @@ export class DatabaseStorage {
         await db.insert(schema.chatExports).values({
                             chatId: chatId,
                             userId: userId,
-                            timestamp: timestamp
+                            timestamp: new Date(timestamp)
         });
     };
     getLastChatExport = async (chatId: string): Promise<any> => {

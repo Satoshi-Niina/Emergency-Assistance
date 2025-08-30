@@ -76,3 +76,4 @@ npm run dev
 1. GitHub Actionsのログを確認
 2. サーバーのログを確認
 3. PM2の状態を確認
+

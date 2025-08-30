@@ -1609,4 +1609,4 @@ router.post('/cleanup-json', async (req, res) => {
     }
 });
 // Routerは使っていないが、importエラー回避のためダミーエクスポート
-export const techSupportRouter = router;
+export default router;

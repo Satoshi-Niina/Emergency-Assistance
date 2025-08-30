@@ -1,13 +1,13 @@
 
 import express from 'express';
-import { HistoryService } from '../services/historyService';
+import { HistoryService } from '../services/historyService.js';
 import { z } from 'zod';
 import { db } from '../db/index.js';
 import { historyItems, machineTypes, machines } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import fs from 'fs';
 import path from 'path';
-import { BackupManager } from '../lib/backup-manager';
+import { BackupManager } from '../lib/backup-manager.js';
 
 const router = express.Router();
 
@@ -1458,4 +1458,4 @@ router.put('/backup-config', (req, res) => {
   }
 });
 
-export { router as historyRouter };
+export default router;

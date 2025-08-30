@@ -2,20 +2,17 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema.js';
 
+
 // データベース接続設定 - DATABASE_URLのみを使用
 function getDatabaseUrl(): string {
-  // DATABASE_URLが設定されている場合は優先使用（DATABASE_URLのみ使用）
-  if (process.env.DATABASE_URL) {
-    return process.env.DATABASE_URL;
-  }
-  
-  // デフォルトの接続文字列
-  return 'postgresql://postgres:password@localhost:5432/emergency_assistance';
+  // ?sslmode=require は環境変数側で付与する前提
+  return process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/emergency_assistance';
 }
 
-// データベース接続
+// 本番はTLS緩和 (rejectUnauthorized: false)
+const isProd = process.env.NODE_ENV === 'production';
 const client = postgres(getDatabaseUrl(), {
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false, // 使用中: 環境判別
+  ssl: isProd ? { rejectUnauthorized: false } : undefined,
   max: 10,
   idle_timeout: 20,
   connect_timeout: 10,

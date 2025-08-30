@@ -1,28 +1,22 @@
+# ========================================
 # Dependencies
+# ========================================
 node_modules/
 */node_modules/
 
+# ========================================
 # Build outputs
+# ========================================
 dist/
 client/dist/
-client/dist-dev/
 server/dist/
 shared/dist/
 build/
-.next/
-.nuxt/
-out/
-.parcel-cache/
-.vite/
-.turbo/
-.swc/
-.cache/
-.eslintcache/
-coverage/
-.vercel/output/
-.svelte-kit/
+*.tsbuildinfo
 
+# ========================================
 # Environment variables
+# ========================================
 .env
 .env.local
 .env.development
@@ -30,228 +24,87 @@ coverage/
 .env.production
 .env.development.local
 
-# Logs
+# ========================================
+# Logs and runtime data
+# ========================================
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 logs/
-webapp_logs/
-
-# Runtime data
-pids
 *.pid
 *.seed
 *.pid.lock
 
-# Coverage directory used by tools like istanbul
+# ========================================
+# Cache and temporary files
+# ========================================
+.cache/
+.parcel-cache/
+.vite/
+.turbo/
+.swc/
+.eslintcache
 coverage/
 *.lcov
-
-# nyc test coverage
 .nyc_output
-
-# Dependency directories
-jspm_packages/
-
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
-.eslintcache
-
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-
-# dotenv environment variables file
-.env
-
-# parcel-bundler cache (https://parceljs.org/)
-.cache
-.parcel-cache
-
-# next.js build output
-.next
-
-# nuxt.js build output
-.nuxt
-
-# vuepress build output
-.vuepress/dist
-
-# Serverless directories
-.serverless
-
-# FuseBox cache
-.fusebox/
-
-# DynamoDB Local files
-.dynamodb/
-
-# TernJS port file
-.tern-port
-
-# Stores VSCode versions used for testing VSCode extensions
-.vscode-test
-
-# Temporary files
 temp/
-uploads/temp/
-knowledge-base/temp/
-temp/dev/
-uploads/dev/
-logs/dev/
 *.tmp
 *.temp
 
-# Backup files
-*.backup
-backups/
-knowledge-base/backups/
-
-# Docker
-.dockerignore
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Azure
-.azure/
-
-# Local development
-*.local
-
-# Database
+# ========================================
+# Database files
+# ========================================
 *.db
 *.sqlite
 *.sqlite3
 
-# Uploads (keep structure but ignore content)
+# ========================================
+# Uploads and knowledge base
+# ========================================
 uploads/*
 !uploads/.gitkeep
-
-# Knowledge base temp files
 knowledge-base/temp/*
 !knowledge-base/temp/.gitkeep
-
-# Build artifacts
-*.tsbuildinfo
+knowledge-base/backups/
 
 # ========================================
-# Deployment and CI/CD
+# IDE and editor files
 # ========================================
-
-# Deployment artifacts
-.vercel/
-.railway/
-.netlify/
-
-# CI/CD logs
-.github/workflows/logs/
-
-# Deployment configs (if containing secrets)
-deploy-config.json
-deploy-secrets.json
-
-# ========================================
-# Cloud Platform Specific
-# ========================================
-
-# Vercel
-.vercel
-
-# Railway
-.railway
-
-# Netlify
-.netlify
-
-# Heroku
-.heroku/
-
-# ========================================
-# Security and Secrets
-# ========================================
-
-# API keys and secrets
-secrets.json
-*.key
-*.pem
-*.p12
-
-# SSL certificates
-*.crt
-*.cert
-*.pem
-
-# ========================================
-# Monitoring and Analytics
-# ========================================
-
-# Sentry
-.sentryclirc
-
-# Analytics
-analytics.json
-metrics.json
-
-# ========================================
-# Development Tools
-# ========================================
-
-# Local development databases
-*.sqlite
-*.db
-
-# Local cache
-.cache/
-.parcel-cache/
-
-# Local logs
-logs/
-*.log
-
-# ========================================
-# OS and Editor Specific
-# ========================================
-
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
-
-# Windows
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-
-# Linux
-*~
-
-# VSCode
 .vscode/settings.json
 .vscode/launch.json
 .vscode/extensions.json
-
-# IntelliJ
 .idea/
 *.iml
 *.ipr
 *.iws
+*.swp
+*.swo
 
-# Sublime Text
-*.sublime-project
-*.sublime-workspace
+# ========================================
+# OS specific files
+# ========================================
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+*~
+
+# ========================================
+# Security and secrets
+# ========================================
+secrets.json
+*.key
+*.pem
+*.p12
+*.crt
+*.cert
+
+# ========================================
+# Package manager
+# ========================================
+.npm
+.yarn-integrity
+*.tgz

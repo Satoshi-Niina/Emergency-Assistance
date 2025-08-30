@@ -121,6 +121,8 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 // Reactコンポーネント用の画像表示コンポーネント
+import React from 'react';
+
 export function DatabaseImage({ 
     imageId, 
     alt, 
@@ -140,4 +142,4 @@ export function DatabaseImage({
             onError={onError}
         />
     );
-} 
+}

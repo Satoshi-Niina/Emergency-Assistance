@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { db } from '../db';
-import { imageData } from '../db/schema';
+import { db } from '../db/index.js';
+import { imageData } from '../db/schema.js';
 import { eq, like } from 'drizzle-orm';
 import path from 'path';
 import fs from 'fs';

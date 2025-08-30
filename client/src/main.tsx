@@ -1,7 +1,10 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
 import App from "./App";
+import { AuthProvider } from "./context/auth-context";
+import { BrowserRouter } from "react-router-dom";
 import "./index.css";
 
 // シンプルなQueryClientの作成
@@ -72,7 +75,11 @@ function initializeApp() {
       <React.StrictMode>
         <ErrorBoundary>
           <QueryClientProvider client={queryClient}>
-            <App />
+            <BrowserRouter>
+              <AuthProvider>
+                <App />
+              </AuthProvider>
+            </BrowserRouter>
           </QueryClientProvider>
         </ErrorBoundary>
       </React.StrictMode>

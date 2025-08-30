@@ -5,15 +5,17 @@ import bcrypt from 'bcrypt';
 import session from 'express-session';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { users } from './db/schema.js';
+import { users } from '../shared/schema.js';
 import { eq } from 'drizzle-orm';
+
+// セッション型は types/session.d.ts で定義済み
 
 const app = express();
 const PORT = 3001;
 
 // ミドルウェア
 app.use(cors({
-  origin: ['http://localhost:5002', 'http://localhost:3000'],
+  origin: process.env.FRONTEND_URL,
   credentials: true
 }));
 app.use(express.json());
@@ -113,10 +115,8 @@ app.post('/api/auth/login', async (req, res) => {
         sessionId: req.session.id
       });
 
-      // 成功レスポンス
       res.json({
         success: true,
-        message: 'ログインに成功しました',
         user: {
           id: foundUser.id,
           username: foundUser.username,
