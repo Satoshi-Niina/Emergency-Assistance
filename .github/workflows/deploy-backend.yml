@@ -37,18 +37,55 @@ jobs:
           echo "=== server/dist/server/production-server.js ==="
           if [ -f server/dist/server/production-server.js ]; then
             echo "production-server.js exists"
-          else
-            echo "production-server.js NOT FOUND" && exit 1
-          fi
+          name: Deploy Backend
 
-      - name: Login to Azure
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          on:
+            push:
+              branches: [ main, develop, backup-clean ]
+              paths:
+                - "server/**"
+                - "shared/**"
+                - ".github/workflows/**"
+                - "package.json"
+                - "package-lock.json"
 
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
-          slot-name: 'production'
-          package: ./server/dist
+          jobs:
+            deploy:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/checkout@v4
+
+                - name: Install dependencies (root)
+                  run: npm ci
+
+                - name: Install dependencies (shared)
+                  run: cd shared && npm ci
+
+                - name: Install dependencies (server)
+                  run: cd server && npm ci
+
+                - name: Build server (TypeScript)
+                  run: cd server && npm run build
+
+                - name: Check server build output
+                  run: |
+                    echo "=== server/dist/ ==="
+                    ls -l server/dist || echo "server/dist not found"
+                    echo "=== server/dist/server/production-server.js ==="
+                    if [ -f server/dist/server/production-server.js ]; then
+                      echo "production-server.js exists"
+                    else
+                      echo "production-server.js NOT FOUND" && exit 1
+                    fi
+
+                - name: Login to Azure
+                  uses: azure/login@v1
+                  with:
+                    creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+                - name: Deploy to Azure Web App
+                  uses: azure/webapps-deploy@v3
+                  with:
+                    app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+                    slot-name: 'production'
+                    package: ./server/dist
