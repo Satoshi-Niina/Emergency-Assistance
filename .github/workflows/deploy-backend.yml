@@ -17,8 +17,8 @@ jobs:
       - name: Install dependencies (server)
         run: cd server && npm ci
 
-      - name: Build (TypeScript) (use server package)
-        run: npm run build --prefix server
+      - name: Build (TypeScript) (run in server cwd)
+        run: cd server && npm run build
 
       - name: Show dist contents
         run: ls -la server/dist || true

@@ -27,7 +27,9 @@
     "paths": {
       "@/*": ["../*"],
       "drizzle-orm": ["node_modules/drizzle-orm"],
-      "drizzle-orm/*": ["node_modules/drizzle-orm/*"],
+  "drizzle-orm/*": ["node_modules/drizzle-orm/*"],
+  "drizzle-orm/pg-core": ["node_modules/drizzle-orm/pg-core"],
+  "drizzle-orm/pg-core/*": ["node_modules/drizzle-orm/pg-core/*"],
       "zod": ["node_modules/zod"]
     },
     "typeRoots": [
