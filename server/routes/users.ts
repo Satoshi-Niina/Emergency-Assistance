@@ -601,4 +601,4 @@ router.use('*', (req: any, res: any) => {
   });
 });
 
-export { router as usersRouter }; 
+export default router;

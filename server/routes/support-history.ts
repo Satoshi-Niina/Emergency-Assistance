@@ -607,4 +607,4 @@ router.post('/advanced-search', async (req, res) => {
   }
 });
 
-export { router as supportHistoryRouter }; 
+export default router;

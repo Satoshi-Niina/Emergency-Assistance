@@ -274,4 +274,4 @@ router.use('*', (req: any, res: any) => {
   });
 });
 
-export { router as baseDataRouter }; 
+export default router;

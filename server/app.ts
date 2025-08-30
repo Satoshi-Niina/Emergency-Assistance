@@ -6,19 +6,19 @@ import { fileURLToPath } from 'url';
 import * as path from 'path';
 import * as fs from 'fs';
 import authRouter from './routes/auth.js';
-import { techSupportRouter } from './routes/tech-support.js';
+import techSupportRouter from './routes/tech-support.js';
 import troubleshootingRouter from './routes/troubleshooting.js';
 import { registerRoutes } from './routes.js';
-import { baseDataRouter } from './routes/base-data.js';
-import { flowsRouter } from './routes/flows.js';
-import { knowledgeRouter } from './routes/knowledge.js';
-import { historyRouter } from './routes/history.js';
+import baseDataRouter from './routes/base-data.js';
+import flowsRouter from './routes/flows.js';
+import knowledgeRouter from './routes/knowledge.js';
+import historyRouter from './routes/history.js';
 import emergencyGuideRouter from './routes/emergency-guide.js';
-import { usersRouter } from './routes/users.js';
-import { machinesRouter } from './routes/machines.js'; // ← named importに統一
+import usersRouter from './routes/users.js';
+import machinesRouter from './routes/machines.js';
 import { registerDataProcessorRoutes } from './routes/data-processor.js';
-import { usersDebugRouter } from './routes/users-debug.js';
-import { debugRouter } from './routes/debug.js';
+import usersDebugRouter from './routes/users-debug.js';
+import debugRouter from './routes/debug.js';
 // import systemCheckRouter from './routes/system-check.js'; // 未使用なら削除
 import troubleshootingQARouter from './routes/troubleshooting-qa.js';
 import configRouter from './routes/config.js';

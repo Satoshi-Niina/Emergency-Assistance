@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { sql } from '../db/db';
-import { processOpenAIRequest } from '../lib/openai';
+import { sql } from '../db/db.js';
+import { processOpenAIRequest } from '../lib/openai.js';
 
 const router = Router();
 

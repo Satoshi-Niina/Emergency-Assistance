@@ -1,4 +1,4 @@
-import { sql } from '../db/db';
+import { sql } from '../db/db.js';
 
 // 一時的に無効化 - TypeScriptエラーが多すぎるため
 export interface EmergencyFlow {

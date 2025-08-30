@@ -1,5 +1,5 @@
-import { sql, transaction } from '../db/db';
-import { storageService } from './storageService';
+import { sql, transaction } from '../db/db.js';
+import { storageService } from './storageService.js';
 import { z } from 'zod';
 
 // バリデーションスキーマ

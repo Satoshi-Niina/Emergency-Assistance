@@ -20,7 +20,10 @@ const HOST = process.env.HOST || '0.0.0.0';
 
 // ミドルウェア
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5002',
+  origin: [
+    'https://<SWA本番ドメイン>',
+    'http://localhost:5002'
+  ],
   credentials: true
 }));
 app.use(express.json());
@@ -34,6 +37,8 @@ app.use(session({
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
+    sameSite: 'none',
+    path: '/',
     maxAge: 24 * 60 * 60 * 1000 // 24 hours
   }
 }));

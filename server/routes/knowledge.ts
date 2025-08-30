@@ -120,4 +120,4 @@ router.get('/:filename', async (req, res) => {
   }
 });
 
-export { router as knowledgeRouter }; 
+export default router;

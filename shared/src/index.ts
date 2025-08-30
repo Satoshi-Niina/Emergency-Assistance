@@ -1,5 +1,5 @@
 // Export all shared types and utilities
-export * from './schema';
-export * from './types';
-export * from './utils';
+export * from './schema.js';
+export * from './types.js';
+export * from './utils.js';
 // Note: validation schemas are already exported from schema.ts

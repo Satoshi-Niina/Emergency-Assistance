@@ -14,15 +14,15 @@ import {
   listKnowledgeBaseDocuments, 
   removeDocumentFromKnowledgeBase 
 } from './lib/knowledge-base.js';
-import { techSupportRouter } from './routes/tech-support.js';
+import techSupportRouter from './routes/tech-support.js';
 import { registerDataProcessorRoutes } from './routes/data-processor.js';
 import emergencyGuideRouter from './routes/emergency-guide.js';
 import emergencyFlowRoutes from './routes/emergency-flow.js';
 import flowGeneratorRoutes from './routes/flow-generator.js';
 import { registerSyncRoutes } from './routes/sync-routes.js';
-import { usersRouter } from './routes/users.js';
+import usersRouter from './routes/users.js';
 import troubleshootingRouter from './routes/troubleshooting.js';
-import { supportHistoryRouter } from './routes/support-history.js';
+import supportHistoryRouter from './routes/support-history.js';
 import maintenanceRouter from './routes/maintenance.js';
 import express from 'express';
 import { NextFunction } from "connect";
@@ -30,8 +30,8 @@ import authRouter from './routes/auth.js';
 import { fileURLToPath } from 'url';
 import { eq } from 'drizzle-orm';
 import machinesRouter from './routes/machines.js';
-import { historyRouter } from './routes/history.js';
-import { baseDataRouter } from './routes/base-data.js';
+import historyRouter from './routes/history.js';
+import baseDataRouter from './routes/base-data.js';
 import filesRouter from './routes/files.js';
 import knowledgeBaseRouter from './routes/knowledge-base.js';
 import qaLearningRouter from './routes/qa-learning.js';

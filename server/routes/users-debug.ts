@@ -130,4 +130,4 @@ router.get('/debug/database', async (req: any, res: any) => {
     }
 });
 
-export { router as usersDebugRouter }; 
+export default router;

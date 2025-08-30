@@ -370,4 +370,4 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-export { router as flowsRouter }; 
+export default router;
