@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx index.dev.ts",
-    "build": "rimraf dist && tsc",
+  "build": "rimraf dist && mkdir dist && tsc",
     "build:check": "tsc --noEmit",
     "clean": "rimraf dist",
     "migrate": "drizzle-kit migrate",

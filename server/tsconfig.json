@@ -21,7 +21,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "declaration": false,
-  "outDir": "./dist",
+  "outDir": "./server/dist",
   "rootDir": "../",
     "baseUrl": "../",
     "paths": {
@@ -29,6 +29,7 @@
     }
   },
   "include": [
+    "server/**/*.ts",
     "production-server.ts",
     "index.ts",
     "index.build.ts",
