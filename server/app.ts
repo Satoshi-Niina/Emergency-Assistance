@@ -88,25 +88,17 @@ const app = express();
 
 
 
-// === CORS 設定統一 ===
-// origin: Azure Static Web Apps のみ許可
-// credentials: true, allowedHeaders/methods明示, プリフライト(OPTIONS)対応
-// ※検証手順は本ファイル末尾参照
+
+// === CORS 設定（FRONTEND_URLを動的に利用、express.json()より上） ===
 app.set('trust proxy', 1);
-const ORIGIN = 'https://witty-river-012f93e00.1.azurestaticapps.net';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5002';
 app.use(cors({
-  origin: ORIGIN,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  optionsSuccessStatus: 200
+  origin: FRONTEND_URL,
+  credentials: true
 }));
-app.options('*', cors({ origin: ORIGIN, credentials: true }));
+app.options('*', cors({ origin: FRONTEND_URL, credentials: true }));
 
-// Cookieパーサーを追加
 app.use(cookieParser());
-
-// JSONパース
 app.use(express.json());
 
 // Vary: Originを常に付与
