@@ -88,8 +88,11 @@ const app = express();
 
 // CORS: Azure Static Web Apps用に厳密許可
 app.set('trust proxy', 1);
-const allowedOrigins = [
-  'https://witty-river-012f39e00.1.azurestaticapps.net',
+const allowedOriginsProd = [
+  'https://witty-river-012f39e00.1.azurestaticapps.net'
+];
+const allowedOriginsDev = [
+  ...allowedOriginsProd,
   'http://localhost:5002',
   'http://127.0.0.1:5002',
   'http://localhost:3000',
@@ -99,8 +102,10 @@ const allowedOrigins = [
 ];
 const corsOptions = {
   origin: function(origin, callback) {
+    const env = process.env.NODE_ENV;
+    const allowed = env === 'production' ? allowedOriginsProd : allowedOriginsDev;
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
+    if (allowed.includes(origin)) {
       callback(null, true);
     } else {
       console.log('🚫 CORS blocked origin:', origin);
