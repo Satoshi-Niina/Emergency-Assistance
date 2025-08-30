@@ -1,3 +1,7 @@
+      - name: Build (TypeScript)
+        run: |
+          cd server
+          npm run build
 name: Deploy Backend
 
 on:

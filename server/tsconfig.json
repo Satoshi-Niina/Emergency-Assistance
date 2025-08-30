@@ -21,7 +21,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "declaration": false,
-  "outDir": "./server/dist",
+  "outDir": "./dist",
   "rootDir": "../",
     "baseUrl": "../",
     "paths": {
@@ -29,23 +29,7 @@
     }
   },
   "include": [
-    "server/**/*.ts",
-    "production-server.ts",
-    "index.ts",
-    "index.build.ts",
-    "index.dev.ts",
-    "index-minimal.ts",
-    "simple-server.ts",
-    "simple.ts",
-    "auth.ts",
-    "app.ts",
-    "types/**/*.ts",
-    "lib/**/*.ts",
-    "routes/**/*.ts",
-    "services/**/*.ts",
-    "utils/**/*.ts",
-    "middleware/**/*.ts",
-    "../shared/**/*.ts"
+    "**/*.ts"
   ],
   "exclude": [
     "node_modules",
