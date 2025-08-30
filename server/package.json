@@ -11,10 +11,7 @@
     "start": "node dist/server.js",
     "start:prod": "npm run migrate && npm run start"
   },
-  // 運用・検証手順:
-  // - 本番運用は `npm run start:prod` で起動（マイグレーション→本体起動）
-  // - GET /api/health, CORS, DB TLS などは app.ts コメント参照
-  "dependencies": {
+    "dependencies": {
     "@azure/identity": "^4.0.1",
     "@azure/storage-blob": "^12.20.0",
     "@azure/storage-file-share": "^12.20.0",
