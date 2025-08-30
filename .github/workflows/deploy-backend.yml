@@ -14,11 +14,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install dependencies (server)
         run: cd server && npm ci
 
-      - name: Build (TypeScript)
-        run: cd server && npm run build
+      - name: Build (TypeScript) (use server package)
+        run: npm run build --prefix server
 
       - name: Show dist contents
         run: ls -la server/dist || true
