@@ -70,9 +70,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setUser(null);
       }
-    } catch (error) {
-      console.error('❌ 認証確認エラー:', error);
-      setUser(null);
+    } catch (error: any) {
+      if (error?.name === 'AbortError') {
+        // タイムアウトやアンマウント時のabortは正常終了扱い
+        console.log('認証確認: fetch中断(AbortError)');
+      } else {
+        console.error('❌ 認証確認エラー:', error);
+        setUser(null);
+      }
     } finally {
       setIsLoading(false);
       setAuthChecked(true);
@@ -83,10 +88,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000);
-    fetchMe(controller.signal);
+    let mounted = true;
+    const timer = setTimeout(() => {
+      // タイムアウト時はUI解放のみ、fetch中断はしない
+      setIsLoading(false);
+    }, 8000);
+    (async () => {
+      try {
+        await fetchMe(controller.signal);
+      } catch (err: any) {
+        // fetchMe内でAbortErrorは握り潰すが、念のため
+        if (err?.name === 'AbortError') return;
+        // それ以外はログ
+        console.error('❌ 認証確認エラー:', err);
+      }
+    })();
     return () => {
-      controller.abort();
+      mounted = false;
+      controller.abort(); // アンマウント時のみfetch中断
       clearTimeout(timer);
     };
   }, [fetchMe]);
