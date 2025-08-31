@@ -89,14 +89,35 @@ const app = express();
 
 
 
-// === CORS 設定（FRONTEND_URLを動的に利用、express.json()より上） ===
+// === CORS 設定（CORS_ORIGINS 環境変数を利用、express.json()より上） ===
+// CORS_ORIGINS はカンマ区切りの origin リスト。厳密一致で許可する。
 app.set('trust proxy', 1);
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5002';
+const origins = (process.env.CORS_ORIGINS ?? '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
+console.log('🔧 CORS allowed origins:', origins.length ? origins : '[none - local dev only]');
+
 app.use(cors({
-  origin: FRONTEND_URL,
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true); // curlやサーバ間リクエストなど、ブラウザ起点でない場合は許可
+    if (origins.includes(origin)) return cb(null, true);
+    console.log('🚫 CORS blocked origin:', origin);
+    return cb(new Error(`CORS: ${origin} not allowed`));
+  },
   credentials: true
 }));
-app.options('*', cors({ origin: FRONTEND_URL, credentials: true }));
+
+// OPTIONS も同様に扱う
+app.options('*', cors({
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);
+    if (origins.includes(origin)) return cb(null, true);
+    return cb(new Error(`CORS: ${origin} not allowed`));
+  },
+  credentials: true
+}));
 
 app.use(cookieParser());
 app.use(express.json());
