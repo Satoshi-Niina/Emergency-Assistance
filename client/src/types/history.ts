@@ -19,11 +19,16 @@ export interface SupportHistoryItem {
   repairLocation?: string;
   requestDate?: string;
   machineTypeName?: string;
-  data?: any; // 後方互換性
-  conversationHistory?: any[];
-  originalChatData?: any;
-  messages?: any[];
-  savedImages?: any[];
+  data?: unknown; // 後方互換性
+  conversationHistory?: unknown[];
+  originalChatData?: unknown;
+  messages?: unknown[];
+  savedImages?: Array<{
+    url?: string;
+    path?: string;
+    fileName?: string;
+    description?: string;
+  }>;
   machineInfo?: {
     machineTypeName?: string;
     machineNumber?: string;
@@ -37,9 +42,9 @@ export interface SupportHistoryItem {
     extractedComponents?: string[];
     extractedSymptoms?: string[];
     possibleModels?: string[];
-    conversationHistory?: any[];
+    conversationHistory?: unknown[];
     originalChatData?: {
-      messages?: any[];
+      messages?: unknown[];
       machineInfo?: {
         machineTypeName?: string;
         machineNumber?: string;
@@ -51,7 +56,7 @@ export interface SupportHistoryItem {
       fileName?: string;
       description?: string;
     }>;
-    messages?: any[];
+    messages?: unknown[];
     location?: string;
     status?: string;
     repairSchedule?: string;
@@ -74,7 +79,7 @@ export interface SupportHistoryItem {
       machineNumber?: string;
     };
     chatData?: {
-      messages?: any[];
+      messages?: unknown[];
       machineInfo?: {
         machineTypeName?: string;
         machineNumber?: string;
