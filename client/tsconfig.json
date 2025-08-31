@@ -1,6 +1,11 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@shared/*": ["../shared/src/*"]
+    },
     "outDir": "dist",
     "rootDir": "src",
     "moduleResolution": "node",
@@ -13,5 +18,6 @@
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "references": [{ "path": "../shared" }]
 }
