@@ -103,8 +103,9 @@ app.use(cors({
   origin: (origin, cb) => {
     if (!origin) return cb(null, true); // curlやサーバ間リクエストなど、ブラウザ起点でない場合は許可
     if (origins.includes(origin)) return cb(null, true);
+    // 不許可の origin はエラーを投げずに CORS ヘッダを付与しない（ブラウザ側でブロックされる）
     console.log('🚫 CORS blocked origin:', origin);
-    return cb(new Error(`CORS: ${origin} not allowed`));
+    return cb(null, false);
   },
   credentials: true
 }));
@@ -114,7 +115,7 @@ app.options('*', cors({
   origin: (origin, cb) => {
     if (!origin) return cb(null, true);
     if (origins.includes(origin)) return cb(null, true);
-    return cb(new Error(`CORS: ${origin} not allowed`));
+    return cb(null, false);
   },
   credentials: true
 }));
