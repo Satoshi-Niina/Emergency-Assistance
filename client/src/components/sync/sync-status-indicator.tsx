@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { AlertCircle, CheckCircle, CloudOff, CloudSun, Wifi, WifiOff } from 'lucide-react';
 import { useToast } from "../../hooks/use-toast";
 import { Button } from "../../components/ui/button";
 import { Progress } from "../../components/ui/progress";
-import { cn } from '../../lib/utils.ts';
+import { cn } from '../../lib/utils';
 import { Card, CardContent } from "../../components/ui/card";
 import { isChatSynced } from "../../lib/offline-storage";
 import { syncChat } from "../../lib/sync-api";

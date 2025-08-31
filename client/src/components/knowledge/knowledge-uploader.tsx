@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useToast } from "../../hooks/use-toast.ts";
+﻿import React, { useState } from "react";
+import { useToast } from "../../hooks/use-toast";
 import {
   Card,
   CardContent,

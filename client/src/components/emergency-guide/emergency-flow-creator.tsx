@@ -1,11 +1,11 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+﻿import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Badge } from "../../components/ui/badge";
-import { useToast } from "../../hooks/use-toast.ts";
+import { useToast } from "../../hooks/use-toast";
 import { Upload, X, File, FileText, Plus, FolderOpen, Trash2, RefreshCw } from 'lucide-react';
 import { Progress } from "../../components/ui/progress";
 import {
@@ -24,7 +24,7 @@ import EmergencyFlowEditor from './emergency-flow-editor';
 
 
 import { v4 as uuidv4 } from 'uuid';
-import { convertImageUrl } from '../../lib/utils.ts';
+import { convertImageUrl } from '../../lib/utils';
 
 interface FlowFile {
   id: string;

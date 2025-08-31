@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   AlertCircle,
   CheckCircle,
@@ -10,7 +10,7 @@ import {
 import { Progress } from "../../components/ui/progress";
 import { Card, CardContent, CardFooter } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
-import { useToast } from "../../hooks/use-toast.ts";
+import { useToast } from "../../hooks/use-toast";
 import { AnimatePresence, motion } from 'framer-motion';
 
 interface SyncPopupProps {
