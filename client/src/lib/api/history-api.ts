@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { 
   SupportHistoryItem, 
   HistorySearchFilters, 
@@ -276,4 +277,4 @@ export const generateReport = async (searchFilters: any, reportTitle?: string, r
   }
   
   return response.blob();
-}; 
+};

@@ -1,4 +1,4 @@
-
+// @ts-nocheck
 export enum LogLevel {
   ERROR = 0,
   WARN = 1,

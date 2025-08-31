@@ -1,0 +1,3 @@
+C:\Users\Satoshi Niina\OneDrive\Desktop\システム\Emergency-Assistance\client\src\components\chat\message-bubble.tsx
+C:\Users\Satoshi Niina\OneDrive\Desktop\システム\Emergency-Assistance\client\src\components\chat\text-selection-controls.tsx
+C:\Users\Satoshi Niina\OneDrive\Desktop\システム\Emergency-Assistance\client\src\components\knowledge\tech-support-uploader.tsx

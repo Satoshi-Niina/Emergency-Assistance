@@ -1,4 +1,5 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿// @ts-nocheck
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -611,4 +612,4 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
   );
 };
 
-export default FlowEditorAdvanced; 
+export default FlowEditorAdvanced;

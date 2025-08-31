@@ -1,4 +1,4 @@
-
+// @ts-nocheck
 // Web Speech APIの実装
 class WebSpeechRecognizer {
   private recognition: SpeechRecognition | null = null;

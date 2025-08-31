@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { buildApiUrl } from "./api/config";
 

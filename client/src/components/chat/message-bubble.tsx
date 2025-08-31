@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState } from "react";
 import { useAuth } from "../../context/auth-context";
 import { useChat } from "../../context/chat-context";

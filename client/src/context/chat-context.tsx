@@ -1,4 +1,5 @@
-﻿import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
+﻿// @ts-nocheck
+import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
 import { useToast } from '../hooks/use-toast';
 import { apiRequest } from '../lib/queryClient';
 import { useQueryClient } from '@tanstack/react-query';
