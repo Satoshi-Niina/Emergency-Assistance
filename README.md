@@ -53,6 +53,16 @@ Emergency-Assistance/
 - サーバー環境変数で設定
 - PM2で管理
 
+### CORS_ORIGINS の設定（App Service）
+- Azure Portal > App Service (Emergencyassistance-sv) > 構成 > アプリ設定
+- `CORS_ORIGINS` に SWA の公開URLを設定（例：`https://<your-swa>.azurestaticapps.net`）
+- 複数ある場合はカンマ区切り
+
+### 開発用 .env.local（client 例）
+```
+VITE_API_BASE_URL=http://localhost:3001
+```
+
 ## 📝 開発フロー
 
 1. **開発**: ローカルで `npm run dev`
