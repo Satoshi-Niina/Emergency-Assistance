@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { useToast } from "../../hooks/use-toast.ts";
+﻿import React, { useState, useRef } from 'react';
+import { useToast } from "../../hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Loader2, FileText, CheckCircle, Sparkles, Wand2 } from 'lucide-react';

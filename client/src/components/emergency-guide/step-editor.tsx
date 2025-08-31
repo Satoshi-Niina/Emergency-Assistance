@@ -1,4 +1,4 @@
-// @ts-ignore
+﻿// @ts-ignore
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
@@ -16,7 +16,7 @@ import {
 } from "../../components/ui/select";
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { Plus, Trash2, GripVertical, Upload, X, Image as ImageIcon, ChevronUp, ChevronDown } from 'lucide-react';
-import { convertImageUrl } from '../../lib/utils.ts';
+import { convertImageUrl } from '../../lib/utils';
 
 /**
  * ⚠️ AI編集制限: このファイルはスライド編集UI専用です
