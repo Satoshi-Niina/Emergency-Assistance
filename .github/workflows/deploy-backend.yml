@@ -60,24 +60,24 @@ jobs:
           fi
 
       - name: Validate publish profile matches app
-        shell: bash
         run: |
-          APP="${{ env.AZURE_WEBAPP_NAME }}"
-          expectedHost="$(echo "$APP" | tr '[:upper:]' '[:lower:]').scm.azurewebsites.net"
-          xml="$(printf '%s' "${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}" | tr -d '\r')"
-          actualHost="$(printf '%s' "$xml" | perl -ne 'print "$1\n" if /publishUrl=[\"\']https?:\/\/([^:\"\'\/]+)/i')"
-          echo "expectedHost=${expectedHost}"
-          echo "actualHost=${actualHost}"
-          if [ -z "$actualHost" ]; then
-            echo "No publishUrl found in secret. Recreate publish profile from App Service Emergencyassistance-sv and paste XML as-is into secret."; exit 1;
-          fi
-          if ! echo "$actualHost" | grep -qi "^$(printf '%s' "$expectedHost" | sed 's/\./\\./g')$"; then
-            echo "NG: publish profile host mismatch"; exit 1;
-          fi
+          node -e "
+            const app = (process.env.AZURE_WEBAPP_NAME || '').toLowerCase();
+            const expected = `${app}.scm.azurewebsites.net`;
+            const xml = process.env.PP || '';
+            const m = xml.match(/publishUrl=\"https?:\/\/([^:\"'\/]+)/i);
+            const actual = (m ? m[1] : '').toLowerCase();
+            console.log('expectedHost=' + expected);
+            console.log('actualHost=' + actual);
+            if (!actual) { console.error('No publishUrl found in secret. Paste the App Service publish profile XML as-is into the secret.'); process.exit(1); }
+            if (actual !== expected) { console.error('NG: publish profile host mismatch'); process.exit(1); }
+          "
+        env:
+          PP: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
 
       - name: Deploy to Azure WebApp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: emergencyassistance-sv
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: server
