@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_VERSION: 20
-      AZURE_WEBAPP_NAME: emergencyassistance-sv
+      AZURE_WEBAPP_NAME: Emergencyassistance-sv
       WORKING_DIR_SERVER: server
       WORKING_DIR_SHARED: shared
 
@@ -70,12 +70,21 @@ jobs:
       - name: Validate publish profile matches app
         shell: bash
         run: |
-          APP="emergencyassistance-sv"
-          echo "${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}" | grep -qi "${APP}\.scm\.azurewebsites\.net" || { echo "NG: profile host not for ${APP}"; exit 1; }
+          APP="${{ env.AZURE_WEBAPP_NAME }}"
+          expectedHost="$(echo "$APP" | tr '[:upper:]' '[:lower:]').scm.azurewebsites.net"
+          actualHost="$(
+            echo "${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}" \
+            | sed -n 's/.*publishUrl="https:\/\/\([^:"]*\).*/\1/p'
+          )"
+          echo "expectedHost=${expectedHost}"
+          echo "actualHost=${actualHost}"
+          if ! echo "$actualHost" | grep -qi "^$(printf '%s' "$expectedHost" | sed 's/\./\\./g')$"; then
+            echo "NG: publish profile host mismatch"; exit 1;
+          fi
 
       - name: Deploy to Azure WebApp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: emergencyassistance-sv
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: server
