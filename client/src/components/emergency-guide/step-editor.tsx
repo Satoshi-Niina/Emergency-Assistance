@@ -54,7 +54,7 @@ interface Step {
   description: string;
   message: string;
   type: 'start' | 'step' | 'decision' | 'condition' | 'end';
-  images?: ImageInfo[];
+  images?: string[];
   options?: Array<{
     text: string;
     nextStepId: string;
@@ -223,24 +223,32 @@ const StepEditor: React.FC<StepEditorProps> = ({
       // 重複チェック: 同じファイル名の画像が既に存在するかチェック
       const stepToUpdate = steps.find(step => step.id === stepId);
       if (stepToUpdate && stepToUpdate.images) {
-        const existingImage = (stepToUpdate.images ?? []).find(img => 
-          img.fileName === file.name || 
-          img.fileName === file.name.replace(/\.[^/.]+$/, '') // 拡張子を除いた比較
-        );
-        
+        const existingImage = (stepToUpdate.images ?? []).find((img: any) => {
+          // support legacy object or string URL
+          if (typeof img === 'string') {
+            const fname = img.split('/').pop() || '';
+            return fname === file.name || fname === file.name.replace(/\.[^/.]+$/, '');
+          } else if (img && typeof img === 'object') {
+            return img.fileName === file.name || img.fileName === file.name.replace(/\.[^/.]+$/, '');
+          }
+          return false;
+        });
+
         if (existingImage) {
           const confirmReplace = window.confirm(
-            `同じファイル名の画像 "${file.name}" が既に存在します。\n` +
-            `既存の画像を置き換えますか？`
+            `同じファイル名の画像 "${file.name}" が既に存在します。\n既存の画像を置き換えますか？`
           );
-          
+
           if (!confirmReplace) {
             setUploadingImages(prev => ({ ...prev, [stepId]: false }));
             return;
           }
-          
-          // 既存の画像を削除
-          const updatedImages = stepToUpdate.images.filter(img => img.fileName !== existingImage.fileName);
+
+          // 既存の画像を削除 (normalize existing to URLs and remove by filename)
+          const updatedImages = (stepToUpdate.images ?? []).filter((img: any) => {
+            const fname = typeof img === 'string' ? (img.split('/').pop() || '') : img.fileName;
+            return fname !== (existingImage && typeof existingImage === 'string' ? existingImage.split('/').pop() : existingImage.fileName);
+          }).map((img: any) => (typeof img === 'string' ? img : img.url));
           onStepUpdate(stepId, { images: updatedImages });
         }
       }
@@ -265,30 +273,26 @@ const StepEditor: React.FC<StepEditorProps> = ({
         throw new Error('画像URLが返されませんでした');
       }
 
-      const newImage: ImageInfo = {
-        url: result.imageUrl,
-        fileName: result.imageFileName || result.fileName,
-      };
+      const newImageUrl = result.imageUrl;
 
       // 重複画像の場合は通知
       if (result.isDuplicate) {
         console.log('🔄 重複画像を検出、既存ファイルを使用:', result.fileName);
       }
 
-      // 画像アップロード処理を、配列に画像を追加するように変更
+      // 画像アップロード処理を、配列に画像URLを追加するように変更
       const currentStepToUpdate = steps.find(step => step.id === stepId);
       if (currentStepToUpdate) {
-        const currentImages = currentStepToUpdate.images ?? [];
-        if (currentImages.length < 3) {
-          const updatedImages = [...currentImages, newImage];
+        const currentImagesNormalized = (currentStepToUpdate.images ?? []).map((img: any) => (typeof img === 'string' ? img : img.url));
+        if (currentImagesNormalized.length < 3) {
+          const updatedImages = [...currentImagesNormalized, newImageUrl];
           onStepUpdate(stepId, { images: updatedImages });
-          
+
           // 成功通知
           const message = result.isDuplicate 
             ? `重複画像を検出しました。既存の画像 "${result.fileName}" を使用します。`
             : '画像が正常にアップロードされました';
-          
-          // トースト通知の代わりにコンソールログ
+
           console.log('✅ 画像アップロード完了:', message);
         } else {
           throw new Error('画像は最大3枚までアップロードできます');
@@ -310,35 +314,38 @@ const StepEditor: React.FC<StepEditorProps> = ({
     if (stepToUpdate) {
         const newImages = [...(stepToUpdate.images || [])];
         if (imageIndex >= 0 && imageIndex < newImages.length) {
-            const imageToRemove = newImages[imageIndex];
-            
-            // 削除確認
-            const confirmDelete = window.confirm(
-                `画像 "${imageToRemove.fileName}" を削除しますか？\n` +
-                `サーバーからファイルが完全に削除され、この操作は元に戻せません。`
-            );
-            
-            if (confirmDelete) {
-                try {
-                    // APIを呼び出してサーバーから画像を削除
-                    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/image/${imageToRemove.fileName}`);
+      const imageToRemove = newImages[imageIndex];
 
-                    if (!response.ok) {
-                        const errorData = await response.json().catch(() => ({}));
-                        throw new Error(errorData.error || 'サーバー上の画像ファイル削除に失敗しました。');
-                    }
+      // derive fileName from string or object
+      const fileNameToRemove = typeof imageToRemove === 'string' ? (imageToRemove.split('/').pop() || imageToRemove) : imageToRemove.fileName;
 
-                    // フロントエンドの状態を更新
-                    newImages.splice(imageIndex, 1);
-                    onStepUpdate(stepId, { images: newImages });
-                    console.log('✅ 画像削除完了:', imageToRemove.fileName);
-                    alert(`画像 "${imageToRemove.fileName}" を削除しました。`);
+      // 削除確認
+      const confirmDelete = window.confirm(
+        `画像 "${fileNameToRemove}" を削除しますか？\nサーバーからファイルが完全に削除され、この操作は元に戻せません。`
+      );
 
-                } catch (error) {
-                    console.error('❌ 画像削除エラー:', error);
-                    alert(`画像削除に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
-                }
-            }
+      if (confirmDelete) {
+        try {
+          // APIを呼び出してサーバーから画像を削除
+          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/image/${fileNameToRemove}`);
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'サーバー上の画像ファイル削除に失敗しました。');
+          }
+
+          // フロントエンドの状態を更新 (normalize stored images to URLs)
+          newImages.splice(imageIndex, 1);
+          const normalized = newImages.map((img: any) => (typeof img === 'string' ? img : img.url));
+          onStepUpdate(stepId, { images: normalized });
+          console.log('✅ 画像削除完了:', fileNameToRemove);
+          alert(`画像 "${fileNameToRemove}" を削除しました。`);
+
+        } catch (error) {
+          console.error('❌ 画像削除エラー:', error);
+          alert(`画像削除に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
+        }
+      }
         }
     }
   };

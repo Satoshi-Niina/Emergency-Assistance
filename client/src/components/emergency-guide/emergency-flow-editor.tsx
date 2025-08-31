@@ -1,5 +1,4 @@
-﻿// @ts-nocheck
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
@@ -14,10 +13,7 @@ interface Step {
   description: string;
   message: string;
   type: 'start' | 'step' | 'decision' | 'condition' | 'end';
-  images?: Array<{
-    url: string;
-    fileName: string;
-  }>;
+  images?: string[]; // normalized as string[] of URLs
   options?: Array<{
     text: string;
     nextStepId: string;
@@ -247,8 +243,8 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
       stepDetails: initialSteps.map(s => ({ id: s.id, title: s.title, type: s.type }))
     });
     
-    console.log('🔧 setSteps呼び出し前:', { initialStepsLength: initialSteps.length });
-    setSteps(initialSteps);
+  console.log('🔧 setSteps呼び出し前:', { initialStepsLength: initialSteps.length });
+  setSteps(initialSteps as Step[]);
     
     // 元のデータもディープコピーで保存
     setOriginalTitle(flowData.title || '無題のフロー');

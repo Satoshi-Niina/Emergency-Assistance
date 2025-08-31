@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useChat } from "../context/chat-context";
@@ -1330,8 +1329,8 @@ export default function ChatPage() {
               )}
             </div>
           </div>
-        </div>
-        
+    </div>
+
   {/* 中央：AIサポート・カメラ・応急処置ガイドボタン */}
         <div className="flex items-center gap-6">
           {/* AIサポート開始/終了ボタン */}
@@ -1380,9 +1379,9 @@ export default function ChatPage() {
             <Activity className="w-6 h-6 mr-3" />
             応急処置ガイド
           </Button>
-        </div>
-        
-        {/* 右側：アクションボタン */}
+  </div>
+
+  {/* 右側：アクションボタン */}
         <div className="flex items-center gap-4">
           <Button
             variant="outline"

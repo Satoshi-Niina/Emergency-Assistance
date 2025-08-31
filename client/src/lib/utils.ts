@@ -71,3 +71,11 @@ export function convertImageUrl(url: string | undefined | null): string {
   console.log('画像URL変換完了:', { original: url, fileName: fileName, final: finalUrl });
   return finalUrl;
 }
+
+/**
+ * Normalize an unknown value into string[] of image URLs.
+ */
+export const normalizeImages = (v: unknown): string[] =>
+  Array.isArray(v)
+    ? v.filter((x): x is string => typeof x === 'string' && x.length > 0)
+    : [];

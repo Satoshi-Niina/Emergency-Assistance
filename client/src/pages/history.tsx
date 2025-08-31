@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { Search, FileText, Image, Calendar, MapPin, Settings, Download, Printer } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -2175,32 +2174,6 @@ const HistoryPage: React.FC = () => {
               console.log('🔧 Read-only mode setup complete');
             }
           }
-                console.log('🔧 Save button hidden');
-              }
-              
-              // 編集モードクラスを削除
-              document.body.classList.remove('edit-mode');
-              console.log('🔧 Removed edit-mode class, classList:', document.body.classList.toString());
-              
-              // 要素の表示を強制的に切り替え
-              readonlyElements.forEach((el, index) => {
-                el.style.display = 'inline';
-                el.style.visibility = 'visible';
-                console.log('🔧 Shown readonly element', index);
-              });
-              
-              editableElements.forEach((el, index) => {
-                el.style.display = 'none';
-                el.style.visibility = 'hidden';
-                console.log('🔧 Hidden editable element', index);
-              });
-              
-              // 編集内容を元に戻す
-              resetToOriginal();
-              
-              console.log('🔧 Read-only mode setup complete');
-            }
-          }
           
           // グローバルスコープでも利用可能にする
           window.toggleEditMode = toggleEditMode;
@@ -2397,39 +2370,6 @@ const HistoryPage: React.FC = () => {
                   'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(updatePayload)
-              });
-              
-              console.log('サーバーレスポンス:', response.status, response.statusText);
-              console.log('レスポンスヘッダー:', Object.fromEntries(response.headers.entries()));
-              
-              if (response.ok) {
-                const result = await response.json();
-                console.log('履歴ファイルが正常に更新されました:', result);
-                
-                // 成功メッセージを表示
-                alert('レポートが元のファイルに正常に上書き保存されました。');
-                
-                return result;
-              } else {
-                const errorData = await response.json();
-                console.error('サーバーエラー:', errorData);
-                throw new Error(errorData.error || 'サーバーエラー: ' + response.status);
-              }
-              
-            } catch (error) {
-              console.error('JSONファイル保存エラー:', error);
-              throw error;
-            }
-          }
-                    engineer: updatedData.engineer,
-                    location: updatedData.location,
-                    requestDate: updatedData.requestDate,
-                    repairSchedule: updatedData.repairSchedule,
-                    repairLocation: updatedData.repairLocation,
-                    lastModified: new Date().toISOString()
-                  },
-                  updatedBy: 'user'
-                })
               });
               
               console.log('サーバーレスポンス:', response.status, response.statusText);
@@ -2710,7 +2650,7 @@ const HistoryPage: React.FC = () => {
         <div class="header">
           <h1>機械故障履歴一覧</h1>
           <p>印刷日時: ${new Date().toLocaleString('ja-JP')}</p>
-          <p>対象件数: ${targetItems.length}件${selectedItems.size > 0 ? ' (選択された履歴)' : ''}</p>
+          <p>対象件数: ${targetItems.length}件${selectedItems.size > 0 ? ' (選択済み)' : ''}</p>
         </div>
         
         <div class="summary">
@@ -2734,12 +2674,12 @@ const HistoryPage: React.FC = () => {
             ${targetItems.map((item) => {
               const jsonData = item.jsonData;
               const machineType = jsonData?.machineType || 
-                                jsonData?.originalChatData?.machineInfo?.machineTypeName ||
                                 jsonData?.chatData?.machineInfo?.machineTypeName || 
+                                item.machineInfo?.machineTypeName || 
                                 item.machineType || '';
               const machineNumber = jsonData?.machineNumber || 
-                                  jsonData?.originalChatData?.machineInfo?.machineNumber ||
                                   jsonData?.chatData?.machineInfo?.machineNumber || 
+                                  item.machineInfo?.machineNumber || 
                                   item.machineNumber || '';
               const incidentTitle = jsonData?.title || jsonData?.question || '事象なし';
               const problemDescription = jsonData?.problemDescription || jsonData?.answer || '説明なし';
@@ -3134,7 +3074,7 @@ const HistoryPage: React.FC = () => {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">履歴データを読み込み中...</p>
+            <p className="text-gray-600">履歴データが読み込まれています...</p>
           </div>
         </div>
       </div>

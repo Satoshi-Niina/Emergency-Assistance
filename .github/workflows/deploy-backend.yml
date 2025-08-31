@@ -66,20 +66,20 @@ jobs:
         working-directory: client
         run: npx tsc --noEmit -p tsconfig.json
 
-      - name: ESLint: shared
+      - name: "ESLint: shared"
         if: hashFiles('shared/package.json') != ''
         working-directory: shared
         run: |
           npm ci
           npm run lint
 
-      - name: ESLint: server
+      - name: "ESLint: server"
         working-directory: server
         run: |
           npm ci
           npm run lint
 
-      - name: ESLint: client
+      - name: "ESLint: client"
         if: hashFiles('client/package.json') != ''
         working-directory: client
         run: |

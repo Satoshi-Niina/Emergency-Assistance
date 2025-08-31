@@ -1,6 +1,7 @@
 name: Deploy Frontend (SWA)
 
 on:
+     workflow_dispatch:
   push:
     branches: [ backup-clean ]
     paths:

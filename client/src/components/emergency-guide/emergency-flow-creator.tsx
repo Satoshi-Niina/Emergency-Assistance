@@ -1,5 +1,4 @@
-﻿// @ts-nocheck
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+﻿import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
@@ -25,7 +24,7 @@ import EmergencyFlowEditor from './emergency-flow-editor';
 
 
 import { v4 as uuidv4 } from 'uuid';
-import { convertImageUrl } from '../../lib/utils';
+import { convertImageUrl, normalizeImages } from '../../lib/utils';
 
 interface FlowFile {
   id: string;
@@ -58,6 +57,11 @@ interface Slide {
   content: string;
   conditions?: DecisionCondition[];
   imageUrl?: string;
+}
+
+interface ImageInfo {
+  url: string;
+  fileName: string;
 }
 
 interface EmergencyFlowCreatorProps {
@@ -366,34 +370,26 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         // annotate step/index to avoid implicit any errors
         steps: sourceSteps.map((step: any, index: number) => {
           console.log(`🔧 ステップ[${index}]処理開始:`, step);
-          
-          // 画像情報の処理を改善
-          let processedImages = [];
-          
+
+          // 画像情報の処理を改善 -> normalize to string[] of URLs
+          let processedImages: string[] = [];
           // 新しい 'images' 配列が存在する場合
           if (step.images && Array.isArray(step.images)) {
             console.log(`📸 ステップ[${index}]で新しいimages形式を検出:`, step.images);
-            processedImages = step.images.map((img: any) => ({
-              url: convertImageUrl(img.url),
-              fileName: img.fileName
-            }));
+            processedImages = step.images
+              .map((img: any) => typeof img === 'string' ? img : (img && (img.url || img.path || img.imageUrl)))
+              .filter((u: any) => typeof u === 'string' && u.length > 0)
+              .map((u: string) => convertImageUrl(u));
           }
           // 古い形式の画像情報がある場合、新しい形式に変換
           else if (step.imageUrl && step.imageFileName) {
             console.log(`🔧 ステップ[${index}]を古い形式から変換:`, { imageUrl: step.imageUrl, imageFileName: step.imageFileName });
-            processedImages = [{
-              url: convertImageUrl(step.imageUrl),
-              fileName: step.imageFileName
-            }];
+            processedImages = [convertImageUrl(step.imageUrl)];
           }
           // 古い形式のimageUrlのみの場合
           else if (step.imageUrl) {
             console.log(`🔧 ステップ[${index}]をimageUrlのみから変換:`, { imageUrl: step.imageUrl });
-            const fileName = step.imageUrl.split('/').pop() || 'unknown.jpg';
-            processedImages = [{
-              url: convertImageUrl(step.imageUrl),
-              fileName: fileName
-            }];
+            processedImages = [convertImageUrl(step.imageUrl)];
           }
 
           const processedStep = {
@@ -401,8 +397,8 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
             // description と message の同期
             description: step.description || step.message || '',
             message: step.message || step.description || '',
-            // 画像情報を確実に設定
-            images: processedImages,
+            // 画像情報を確実に設定 (normalized string[])
+            images: normalizeImages(processedImages),
             // 古いプロパティを削除
             imageUrl: undefined,
             imageFileName: undefined,
@@ -537,7 +533,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
       if (selectedFlowForEdit === flowId) {
         setSelectedFlowForEdit(null);
         setCurrentFlowData(null);
-        setSelectedFilePath(null);
+        setSelectedFilePath(undefined);
       }
 
       // フロー一覧から削除されたアイテムを即座に除去
@@ -584,22 +580,29 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
       });
 
       // 画像URLの存在確認
-      const stepsWithImages = savedData.steps.map(step => {
+      const stepsWithImages = savedData.steps.map((step: unknown) => {
+        const s = step as any;
         // 新しい images 配列を優先的に使用する
-        const images = step.images?.map(img => ({
-          url: img.url && img.url.trim() !== '' ? img.url : undefined,
-          fileName: img.fileName && img.fileName.trim() !== '' ? img.fileName : undefined
-        })).filter(img => img.url && img.fileName);
+        const images = s.images?.map((img: unknown) => {
+          const im = img as any;
+          return {
+            url: im.url && im.url.trim() !== '' ? im.url : undefined,
+            fileName: im.fileName && im.fileName.trim() !== '' ? im.fileName : undefined
+          };
+        }).filter((img: unknown) => {
+          const im = img as any;
+          return im.url && im.fileName;
+        });
 
         if (images && images.length > 0) {
           console.log('🖼️ 画像情報確認:', {
-            stepId: step.id,
+            stepId: s.id,
             images: images
           });
         }
-        
+
         // 古いプロパティを削除し、新しい `images` プロパティのみにする
-        const { imageUrl, imageFileName, ...restOfStep } = step;
+        const { imageUrl, imageFileName, ...restOfStep } = s as any;
         return {
           ...restOfStep,
           images: images && images.length > 0 ? images : undefined,
@@ -761,7 +764,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
       if (currentFlowData) {
         const stepToUpdate = currentFlowData.steps.find(step => step.id === stepId);
         if (stepToUpdate && stepToUpdate.images) {
-          const existingImage = stepToUpdate.images.find(img => 
+          const existingImage = stepToUpdate.images.find((img: ImageInfo) => 
             img.fileName === file.name || 
             img.fileName === file.name.replace(/\.[^/.]+$/, '') // 拡張子を除いた比較
           );
@@ -779,7 +782,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
             // 既存の画像を削除
             const updatedSteps = currentFlowData.steps.map(step => {
               if (step.id === stepId) {
-                const updatedImages = step.images?.filter(img => img.fileName !== existingImage.fileName) || [];
+                const updatedImages = step.images?.filter((img: ImageInfo) => img.fileName !== existingImage.fileName) || [];
                 return { ...step, images: updatedImages };
               }
               return step;
@@ -891,9 +894,9 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         }
 
         // フロントエンドの状態を更新
-        const updatedSteps = currentFlowData.steps.map(s => {
+        const updatedSteps = currentFlowData.steps.map((s: any) => {
           if (s.id === slideId) {
-            const updatedImages = s.images?.filter((_, i) => i !== imageIndex) || [];
+            const updatedImages = s.images?.filter((_: any, i: number) => i !== imageIndex) || [];
             return { ...s, images: updatedImages };
           }
           return s;
@@ -970,7 +973,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
               <div className="mt-6">
                 <Label className="text-base-2x font-medium">アップロード済み画像:</Label>
                 <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {step.images.map((image, index) => (
+                  {step.images.map((image: any, index: number) => (
                     <div key={index} className="relative group">
                       <img
                         src={convertImageUrl(image.url)}
@@ -1064,7 +1067,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <EmergencyFlowEditor flowData={null} onSave={handleFlowSave} />
+              <EmergencyFlowEditor flowData={null} currentTab={activeTab} onTabChange={setActiveTab} onSave={handleFlowSave} />
             </CardContent>
           </Card>
         </TabsContent>
