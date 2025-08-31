@@ -1,33 +1,38 @@
 /**
  * バリデーションエラーをユーザーフレンドリーなメッセージに変換
  */
-export function formatValidationError(error: any): string {
-    return error.errors.map((err: any) => err.message).join(', ');
+export function formatValidationError(error: unknown): string {
+    // Try to extract zod-like error messages safely
+    if (typeof error === 'object' && error !== null && 'errors' in error) {
+        const errs = (error as { errors?: Array<{ message?: string }> }).errors || [];
+        return errs.map(e => e?.message || String(e)).join(', ');
+    }
+    return String(error);
 }
 /**
  * APIレスポンスの成功レスポンスを作成
  */
-export function createSuccessResponse(data: any, message: any): any {
+export function createSuccessResponse<T = unknown>(data: T, message?: string) {
     return {
         success: true,
         data,
         message
-    };
+    } as const;
 }
 /**
  * APIレスポンスのエラーレスポンスを作成
  */
-export function createErrorResponse(error: any, data: any): any {
+export function createErrorResponse<T = unknown>(error: string, data?: T) {
     return {
         success: false,
         error,
         data
-    };
+    } as const;
 }
 /**
  * 検索結果を作成
  */
-export function createSearchResult(items: any, total: any, page: any, limit: any): any {
+export function createSearchResult<T = unknown>(items: T[], total: number, page: number, limit: number) {
     return {
         items,
         total,
@@ -48,8 +53,8 @@ export function formatFileSize(bytes: number): string {
 /**
  * 日付をフォーマット
  */
-export function formatDate(date: any, format: any = 'short') {
-    const d: any = typeof date === 'string' ? new Date(date) : date;
+export function formatDate(date: string | Date, format: 'short' | 'long' | 'iso' = 'short') {
+    const d: Date = typeof date === 'string' ? new Date(date) : date;
     switch (format) {
         case 'long':
             return d.toLocaleDateString('ja-JP', {
@@ -74,7 +79,7 @@ export function formatDate(date: any, format: any = 'short') {
 /**
  * 文字列を安全に切り詰める
  */
-export function truncateString(str: any, maxLength: any, suffix: any = '...') {
+export function truncateString(str: string, maxLength: number, suffix: string = '...') {
     if (str.length <= maxLength)
         return str;
     return str.substring(0, maxLength - suffix.length) + suffix;
@@ -82,10 +87,10 @@ export function truncateString(str: any, maxLength: any, suffix: any = '...') {
 /**
  * UUIDを生成
  */
-export function generateUUID() {
+export function generateUUID(): string {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-        const r: any = Math.random() * 16 | 0;
-        const v: any = c === 'x' ? r : (r & 0x3 | 0x8);
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
     });
 }
@@ -174,30 +179,30 @@ export function getSystemConfig() {
 /**
  * デバウンス関数
  */
-export function debounce(func: (...args: any[]) => void, wait: number): (...args: any[]) => void {
-    let timeout: any;
-    return (...args: any[]) => {
-        clearTimeout(timeout);
+export function debounce<T extends (...args: any[]) => void>(func: T, wait: number): T {
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    return ((...args: any[]) => {
+        if (timeout) clearTimeout(timeout);
         timeout = setTimeout(() => func(...args), wait);
-    };
+    }) as T;
 }
 /**
  * スロットル関数
  */
-export function throttle(func: (...args: any[]) => void, limit: number): (...args: any[]) => void {
-    let inThrottle: any;
-    return (...args: any[]) => {
+export function throttle<T extends (...args: any[]) => void>(func: T, limit: number): T {
+    let inThrottle = false;
+    return ((...args: any[]) => {
         if (!inThrottle) {
             func(...args);
             inThrottle = true;
             setTimeout(() => inThrottle = false, limit);
         }
-    };
+    }) as T;
 }
 /**
  * 深いオブジェクトの比較
  */
-export function deepEqual(obj1: any, obj2: any): boolean {
+export function deepEqual(obj1: unknown, obj2: unknown): boolean {
     if (obj1 === obj2)
         return true;
     if (obj1 == null || obj2 == null)
@@ -206,14 +211,16 @@ export function deepEqual(obj1: any, obj2: any): boolean {
         return false;
     if (typeof obj1 !== 'object')
         return false;
-    const keys1: string[] = Object.keys(obj1);
-    const keys2: string[] = Object.keys(obj2);
+    const keys1: string[] = Object.keys(obj1 as object);
+    const keys2: string[] = Object.keys(obj2 as object);
     if (keys1.length !== keys2.length)
         return false;
     for (const key of keys1) {
         if (!keys2.includes(key))
             return false;
-        if (!deepEqual(obj1[key], obj2[key]))
+        const o1 = obj1 as Record<string, unknown>;
+        const o2 = obj2 as Record<string, unknown>;
+        if (!deepEqual(o1[key], o2[key]))
             return false;
     }
     return true;
@@ -221,29 +228,28 @@ export function deepEqual(obj1: any, obj2: any): boolean {
 /**
  * オブジェクトの深いコピー
  */
-export function deepClone(obj: any): any {
+export function deepClone<T>(obj: T): T {
     if (obj === null || typeof obj !== 'object')
         return obj;
     if (obj instanceof Date)
-        return new Date(obj.getTime());
-    if (obj instanceof Array)
-        return obj.map((item: any) => deepClone(item));
+        return new Date(obj.getTime()) as unknown as T;
+    if (Array.isArray(obj))
+        return (obj as unknown[]).map(item => deepClone(item)) as unknown as T;
     if (typeof obj === 'object') {
-        const clonedObj: { [key: string]: any } = {};
-        for (const key in obj) {
-            if (obj.hasOwnProperty(key)) {
-                clonedObj[key] = deepClone(obj[key]);
-            }
+        const clonedObj: { [key: string]: unknown } = {};
+        const src = obj as Record<string, unknown>;
+        for (const key in src) {
+            clonedObj[key] = deepClone(src[key]);
         }
-        return clonedObj;
+        return clonedObj as T;
     }
     return obj;
 }
 /**
  * 配列を指定されたサイズのチャンクに分割
  */
-export function chunkArray(array: any[], size: number): any[][] {
-    const chunks: any[][] = [];
+export function chunkArray<T>(array: T[], size: number): T[][] {
+    const chunks: T[][] = [];
     for (let i = 0; i < array.length; i += size) {
         chunks.push(array.slice(i, i + size));
     }
@@ -252,24 +258,24 @@ export function chunkArray(array: any[], size: number): any[][] {
 /**
  * 配列から重複を除去
  */
-export function removeDuplicates(array: any[], key?: string): any[] {
+export function removeDuplicates<T extends Record<string, unknown>>(array: T[], key?: string): T[] {
     if (key) {
-        const seen: Set<any> = new Set();
-        return array.filter((item: any) => {
-            const value: any = item[key];
+        const seen = new Set<unknown>();
+        return array.filter((item) => {
+            const value = (item as Record<string, unknown>)[key];
             if (seen.has(value))
                 return false;
             seen.add(value);
             return true;
         });
     }
-    return [...new Set(array)];
+    return Array.from(new Set(array));
 }
 /**
  * 非同期処理のリトライ機能
  */
-export async function retry(fn: any, maxAttempts: number = 3, delay: number = 1000) {
-    let lastError;
+export async function retry<T>(fn: () => Promise<T>, maxAttempts: number = 3, delay: number = 1000): Promise<T> {
+    let lastError: unknown;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
             return await fn();
