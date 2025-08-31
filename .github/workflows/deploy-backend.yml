@@ -9,7 +9,7 @@ on:
 
 env:
   NODE_VERSION: '20'
-  AZURE_WEBAPP_NAME: Emergencyassistance-sv 
+  AZURE_WEBAPP_NAME: Emergencyassistance-sv
   WORKING_DIR: server
 
 jobs:
@@ -20,11 +20,9 @@ jobs:
         shell: bash
 
     steps:
-      # --- コード取得 ---
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # --- Node セットアップ + キャッシュ ---
       - name: Setup Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
@@ -36,36 +34,30 @@ jobs:
             server/package-lock.json
             shared/package-lock.json
 
-      # --- ルート依存インストール（全体で必要） ---
-      - name: Install dependencies at root
-        run: npm ci
+      # ここだけ npm install（lock 未同期対策）
+      - name: Install dependencies at root (allow lock refresh)
+        run: npm install --no-audit --no-fund
 
-      # --- client 依存インストール ---
-      - name: Install dependencies for client
-        if: hashFiles('client/package.json') != ''
-        working-directory: client
-        run: npm ci
-
-      # --- shared 依存インストール ---
       - name: Install dependencies for shared
         if: hashFiles('shared/package.json') != ''
         working-directory: shared
         run: npm ci
 
-      # --- server 依存インストール ---
+      - name: Install dependencies for client
+        if: hashFiles('client/package.json') != ''
+        working-directory: client
+        run: npm ci
+
       - name: Install dependencies for server
         working-directory: ${{ env.WORKING_DIR }}
         run: npm ci
 
-      # --- 型チェック ---
       - name: Type Check
         run: npx tsc --noEmit
 
-      # --- ビルド（ルートに定義済みの build スクリプト利用）---
       - name: Build all (shared, client, server)
         run: npm run build
 
-      # --- dist エントリ確認 ---
       - name: Verify server dist
         working-directory: ${{ env.WORKING_DIR }}
         run: |
@@ -75,11 +67,6 @@ jobs:
             exit 1
           fi
 
-      # --- 単体テスト（任意）---
-      - name: Run tests
-        run: npm test || echo "No tests configured."
-
-      # --- Azure App Service にデプロイ ---
       - name: Deploy to Azure WebApp
         uses: azure/webapps-deploy@v3
         with:

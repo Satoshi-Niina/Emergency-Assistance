@@ -63,8 +63,5 @@
   ],
   "author": "Emergency Assistance Team",
   "license": "MIT",
-  "engines": {
-    "node": "18.x",
-    "npm": ">=8.0.0"
-  }
+  "engines": { "node": ">=20", "npm": ">=10" },
 }
