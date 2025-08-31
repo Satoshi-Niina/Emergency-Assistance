@@ -66,4 +66,9 @@ jobs:
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ${{ env.WORKING_DIR_SERVER }}
+          # package should point to the folder or zip to deploy. Use relative path.
+          package: ./server
+          # If deploying to a slot, set slot-name to the exact slot and ensure the
+          # publish profile corresponds to that slot. Commented out to avoid
+          # publish-profile vs slot mismatch errors. Uncomment and set if needed.
+          # slot-name: production
