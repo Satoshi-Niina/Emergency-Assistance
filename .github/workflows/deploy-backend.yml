@@ -1,92 +1,65 @@
 name: Deploy Backend (App Service)
 
-name: Deploy Backend (server + shared)
-
 on:
   push:
     branches: [ backup-clean ]
     paths:
-      - 'server/**'
-      - 'shared/**'
-      - '.github/workflows/deploy-backend.yml'
+      - "server/**"
+      - "shared/**"
+      - ".github/workflows/deploy-backend.yml"
   workflow_dispatch:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      NODE_VERSION: 20
+      AZURE_WEBAPP_NAME: Emergencyassistance-sv
+      WORKING_DIR_SERVER: server
+      WORKING_DIR_SHARED: shared
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node.js 20
+      - name: Use Node ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
+          node-version: ${{ env.NODE_VERSION }}
 
-      - name: Install shared dependencies
-        working-directory: shared
-        run: npm ci
-
-      - name: Build shared (tsc)
+      - name: Install deps (shared)
+        working-directory: ${{ env.WORKING_DIR_SHARED }}
         run: |
-          if [ -f shared/package.json ]; then npm --prefix shared run build || npx -y tsc -p shared/tsconfig.json; else npx -y tsc -p shared/tsconfig.json; fi
-
-      - name: Install server dependencies
-        working-directory: server
-        run: npm ci
-
-      - name: Build server (tsc)
-        run: |
-          if [ -f server/package.json ]; then npm --prefix server run build || npx -y tsc -p server/tsconfig.json; else npx -y tsc -p server/tsconfig.json; fi
-
-      - name: Check publish profile secret exists
-        run: |
-          if [ -z "${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}" ]; then
-            echo "Missing AZURE_WEBAPP_PUBLISH_PROFILE"; exit 1;
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install --no-audit --no-fund
           fi
 
-      - name: Validate publish profile matches app
-        shell: bash
+      - name: Type Check (shared)
+        working-directory: ${{ env.WORKING_DIR_SHARED }}
+        run: npx tsc --noEmit -p tsconfig.json
+
+      - name: Build (shared)
+        working-directory: ${{ env.WORKING_DIR_SHARED }}
+        run: npm run build
+
+      - name: Install deps (server)
+        working-directory: ${{ env.WORKING_DIR_SERVER }}
         run: |
-          APP="Emergencyassistance-sv"
-          echo "${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}" | grep -qi "${APP}\.scm\.azurewebsites\.net" || { echo "NG: profile host not for ${APP}"; exit 1; }
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install --no-audit --no-fund
+          fi
 
-      - name: Deploy to Azure WebApp
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: Emergencyassistance-sv
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: server
+      - name: Type Check (server)
+        working-directory: ${{ env.WORKING_DIR_SERVER }}
+        run: npx tsc --noEmit -p tsconfig.json
 
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Use Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-
-      - name: Install shared dependencies
-        working-directory: shared
-        run: npm ci
-
-      - name: Build shared (tsc)
-        run: |
-          if [ -f shared/package.json ]; then npm --prefix shared run build || npx -y tsc -p shared/tsconfig.json; else npx -y tsc -p shared/tsconfig.json; fi
-
-      - name: Install server dependencies
-        working-directory: server
-        run: npm ci
-
-      - name: Build server (tsc)
-        run: |
-          if [ -f server/package.json ]; then npm --prefix server run build || npx -y tsc -p server/tsconfig.json; else npx -y tsc -p server/tsconfig.json; fi
+      - name: Build (server)
+        working-directory: ${{ env.WORKING_DIR_SERVER }}
+        run: npm run build
 
       - name: Check publish profile secret exists
         run: |
