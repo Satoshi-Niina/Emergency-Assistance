@@ -6,6 +6,7 @@ module.exports = {
   parserOptions: {
     ecmaVersion: 2022,
     sourceType: 'module',
+    tsconfigRootDir: __dirname,
     project: ['./tsconfig.json'],
   },
   env: {
@@ -13,8 +14,12 @@ module.exports = {
     es2022: true,
   },
   rules: {
-    // keep rules aligned with repo strictness, can be relaxed later
-    '@typescript-eslint/no-explicit-any': 'warn',
-    '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    '@typescript-eslint/no-explicit-any': ['error', { fixToUnknown: true, ignoreRestArgs: true }],
+    '@typescript-eslint/no-unsafe-assignment': 'error',
+    '@typescript-eslint/no-unsafe-return': 'error',
+    '@typescript-eslint/no-unsafe-member-access': 'error',
+    '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
+    '@typescript-eslint/consistent-type-imports': 'error',
+    '@typescript-eslint/array-type': ['error', { default: 'array-simple' }]
   },
 };

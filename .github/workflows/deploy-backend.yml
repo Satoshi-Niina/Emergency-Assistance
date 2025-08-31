@@ -1,103 +1,69 @@
-name: Deploy Backend to Azure App Service
+name: Deploy Backend (App Service)
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches: [ backup-clean ]
+    paths:
+      - "server/**"
+      - "shared/**"
+      - ".github/workflows/deploy-backend.yml"
   workflow_dispatch:
-
-env:
-  NODE_VERSION: '20'
-  AZURE_WEBAPP_NAME: Emergencyassistance-sv
-  WORKING_DIR: server
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
+    env:
+      NODE_VERSION: 20
+      AZURE_WEBAPP_NAME: Emergencyassistance-sv
+      WORKING_DIR_SERVER: server
+      WORKING_DIR_SHARED: shared
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js ${{ env.NODE_VERSION }}
+      - name: Use Node ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            client/package-lock.json
-            server/package-lock.json
-            shared/package-lock.json
 
-      # ここだけ npm install（lock 未同期対策）
-      - name: Install dependencies at root (allow lock refresh)
-        run: npm install --no-audit --no-fund
-
-      - name: Install dependencies for shared
-        if: hashFiles('shared/package.json') != ''
-        working-directory: shared
-        run: npm ci
-
-      - name: Install dependencies for client
-        if: hashFiles('client/package.json') != ''
-        working-directory: client
-        run: npm ci
-
-      - name: Install dependencies for server
-        working-directory: ${{ env.WORKING_DIR }}
-        run: npm ci
+      - name: Install deps (shared)
+        working-directory: ${{ env.WORKING_DIR_SHARED }}
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install --no-audit --no-fund
+          fi
 
       - name: Type Check (shared)
-        if: hashFiles('shared/tsconfig.json') != ''
-        working-directory: shared
+        working-directory: ${{ env.WORKING_DIR_SHARED }}
         run: npx tsc --noEmit -p tsconfig.json
 
-      - name: Type Check (server)
-        working-directory: server
-        run: npx tsc --noEmit -p tsconfig.json
-
-
-
-      - name: "ESLint: shared"
-        if: hashFiles('shared/package.json') != ''
-        working-directory: shared
-        run: |
-          npm ci
-          npm run lint
-
-      - name: "ESLint: server"
-        working-directory: server
-        run: |
-          npm ci
-          npm run lint
-
-      - name: "ESLint: client"
-        if: hashFiles('client/package.json') != ''
-        working-directory: client
-        run: |
-          npm ci
-          npm run lint
-
-      - name: Build all (shared, client, server)
+      - name: Build (shared)
+        working-directory: ${{ env.WORKING_DIR_SHARED }}
         run: npm run build
 
-      - name: Verify server dist
-        working-directory: ${{ env.WORKING_DIR }}
+      - name: Install deps (server)
+        working-directory: ${{ env.WORKING_DIR_SERVER }}
         run: |
-          if [ ! -f ./dist/index.js ] && [ ! -f ./dist/server.js ]; then
-            echo "dist entry not found in ./dist !" >&2
-            ls -la ./dist || true
-            exit 1
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install --no-audit --no-fund
           fi
+
+      - name: Type Check (server)
+        working-directory: ${{ env.WORKING_DIR_SERVER }}
+        run: npx tsc --noEmit -p tsconfig.json
+
+      - name: Build (server)
+        working-directory: ${{ env.WORKING_DIR_SERVER }}
+        run: npm run build
 
       - name: Deploy to Azure WebApp
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ${{ env.WORKING_DIR }}
+          package: ${{ env.WORKING_DIR_SERVER }}

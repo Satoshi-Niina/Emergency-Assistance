@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 // ユーザーテーブルの定義
 // システムのユーザー情報を管理
-export const users: any = pgTable('users', {
+export const users = pgTable('users', {
     id: text('id').primaryKey().default(sql `gen_random_uuid()`),
     username: text('username').notNull().unique(),
     password: text('password').notNull(),
@@ -18,7 +18,7 @@ export const users: any = pgTable('users', {
 
 // チャットテーブルの定義
 // チャットセッション情報を管理
-export const chats: any = pgTable('chats', {
+export const chats = pgTable('chats', {
     id: text('id').primaryKey().default(sql `gen_random_uuid()`), // UUIDを自動生成
     userId: text('user_id').notNull(), // チャットを開始したユーザーのID
     title: text('title'), // チャットのタイトル（オプション）
@@ -27,7 +27,7 @@ export const chats: any = pgTable('chats', {
 
 // メッセージテーブルの定義
 // チャット内のメッセージを管理
-export const messages: any = pgTable('messages', {
+export const messages = pgTable('messages', {
     id: text('id').primaryKey().default(sql `gen_random_uuid()`), // UUIDを自動生成
     chatId: text('chat_id').notNull(), // 関連するチャットのID
     senderId: text('sender_id').notNull(), // 送信者のID
@@ -50,7 +50,7 @@ export type Message = {
     timestamp?: string | number | Date;
     isAiResponse?: boolean;
     // optional fields used in UI
-    media?: { id?: string | number; type?: string; url?: string; thumbnail?: string }[];
+    media?: Array<{ id?: string | number; type?: string; url?: string; thumbnail?: string }>;
     role?: string;
     title?: string;
 };
@@ -62,7 +62,7 @@ export type LoginCredentials = {
 
 // メディアテーブルの定義
 // 画像や動画などのメディアファイルを管理
-export const media: any = pgTable('media', {
+export const media = pgTable('media', {
     id: text('id').primaryKey().default(sql `gen_random_uuid()`), // UUIDを自動生成
     messageId: text('message_id').notNull(), // 関連するメッセージのID
     type: text('type').notNull(), // メディアの種類（画像、動画など）
@@ -73,7 +73,7 @@ export const media: any = pgTable('media', {
 
 // 緊急フローテーブルの定義
 // 緊急時の対応手順を管理
-export const emergencyFlows: any = pgTable('emergency_flows', {
+export const emergencyFlows = pgTable('emergency_flows', {
     id: text('id').primaryKey().default(sql `gen_random_uuid()`), // UUIDを自動生成
     title: text('title').notNull(), // フローのタイトル
     description: text('description'), // フローの説明
@@ -85,7 +85,7 @@ export const emergencyFlows: any = pgTable('emergency_flows', {
 
 // 画像テーブルの定義
 // システムで使用する画像とその説明を管理
-export const images: any = pgTable('images', {
+export const images = pgTable('images', {
     id: text('id').primaryKey().default(sql `gen_random_uuid()`), // UUIDを自動生成
     url: text('url').notNull(), // 画像のURL
     description: text('description').notNull(), // 画像の説明
@@ -95,7 +95,7 @@ export const images: any = pgTable('images', {
 
 // ドキュメントテーブルの定義
 // システムで管理する文書を管理
-export const documents: any = pgTable('documents', {
+export const documents = pgTable('documents', {
     id: text('id').primaryKey().default(sql `gen_random_uuid()`), // UUIDを自動生成
     title: text('title').notNull(), // ドキュメントのタイトル
     content: text('content').notNull(), // ドキュメントの内容
@@ -105,7 +105,7 @@ export const documents: any = pgTable('documents', {
 
 // キーワードテーブルの定義
 // ドキュメント検索用のキーワードを管理
-export const keywords: any = pgTable('keywords', {
+export const keywords = pgTable('keywords', {
     id: text('id').primaryKey().default(sql `gen_random_uuid()`), // UUIDを自動生成
     documentId: text('document_id'), // 関連するドキュメントのID
     word: text('word').notNull(), // キーワード
@@ -114,7 +114,7 @@ export const keywords: any = pgTable('keywords', {
 
 // チャットエクスポートテーブルの定義
 // チャット履歴のエクスポート記録を管理
-export const chatExports: any = pgTable('chat_exports', {
+export const chatExports = pgTable('chat_exports', {
     id: text('id').primaryKey().default(sql `gen_random_uuid()`), // UUIDを自動生成
     chatId: text('chat_id').notNull(), // 関連するチャットのID
     userId: text('user_id').notNull(), // エクスポートを実行したユーザーのID

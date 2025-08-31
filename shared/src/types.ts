@@ -15,7 +15,7 @@ export interface ChatMessage {
   content: string;
   role: 'user' | 'assistant' | 'system';
   timestamp: Date;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface Chat {
@@ -42,7 +42,7 @@ export interface EmergencyStep {
   description: string;
   order: number;
   images?: string[];
-  conditions?: Record<string, any>;
+  conditions?: Record<string, unknown>;
 }
 
 export interface MachineType {
@@ -60,7 +60,7 @@ export interface Machine {
   status: 'active' | 'inactive' | 'maintenance';
 }
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
