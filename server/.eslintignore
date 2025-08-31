@@ -1,0 +1,8 @@
+dist/
+temp_zip_check/
+node_modules/
+*.log
+.env
+coverage/
+**/dist/
+**/node_modules/
