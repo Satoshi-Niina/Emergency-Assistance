@@ -2,7 +2,8 @@ name: Deploy Backend to Azure App Service
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - backup-clean          # ← 必要なら main も追加可
     paths:
       - "server/**"
       - ".github/workflows/deploy-backend.yml"
@@ -10,7 +11,7 @@ on:
 
 env:
   NODE_VERSION: "20"
-  AZURE_WEBAPP_NAME: "Emergencyassistance-sv"
+  AZURE_WEBAPP_NAME: "Emergencyassistance-sv"   # ← App Service のリソース名
   WORKING_DIR_SERVER: "server"
   WORKING_DIR_SHARED: "shared"
 
@@ -48,13 +49,13 @@ jobs:
             npm run build
           fi
 
-      - name: Verify dist entry (best-effort)
+      - name: Verify dist entry (info)
         working-directory: ${{ env.WORKING_DIR_SERVER }}
         run: |
           if [ -f "./dist/index.js" ] || [ -f "./dist/server.js" ]; then
             echo "dist entry found."
           else
-            echo "dist entry not found (info): Oryx build may still handle build."
+            echo "dist entry not found (info): Oryx on App Service may build."
           fi
 
       - name: Prepare artifact
@@ -83,7 +84,7 @@ jobs:
           name: server-zip
           path: .
 
-      # ← Secret名を AZURE_WEBAPP_PUBLISH_PROFILE に変更
+      # ★ 発行プロファイル(XML)の検証：Secret名は AZURE_WEBAPP_PUBLISH_PROFILE
       - name: Validate publish profile host
         shell: bash
         env:
@@ -112,7 +113,7 @@ jobs:
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}  # ← ここも変更
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: server.zip
 
       - name: Show Kudu deployment log url
