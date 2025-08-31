@@ -5,7 +5,6 @@ import EmergencyGuideEdit from "../components/emergency-guide/emergency-guide-ed
 import EmergencyGuideDisplay from "../components/emergency-guide/emergency-guide-display";
 
 import { Helmet } from "react-helmet";
-import { Button } from "../components/ui/button";
 import { useToast } from "../hooks/use-toast.ts";
 
 const EmergencyGuidePage: React.FC = () => {

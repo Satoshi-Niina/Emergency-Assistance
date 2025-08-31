@@ -3,37 +3,24 @@ import { useAuth } from "../context/auth-context";
 import { useToast } from "../hooks/use-toast";
 import { API_BASE_URL } from "../lib/api/config";
 import { Button } from "../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Switch } from "../components/ui/switch";
 import { Slider } from "../components/ui/slider";
-import { Badge } from "../components/ui/badge";
 import { 
   Settings, 
   Volume2, 
   Mic, 
-  Monitor, 
-  Smartphone, 
-  LogOut, 
   User, 
   Shield, 
   Save, 
   Trash2, 
   FileX, 
   UserPlus, 
-  FileType, 
-  Info, 
   Plus, 
-  Database, 
   X,
-  CheckCircle,
-  RefreshCw,
-  AlertCircle,
-  MessageSquare,
-  Edit3,
-  Wrench
+  CheckCircle
 } from "lucide-react";
 import { WarningDialog } from "../components/shared/warning-dialog";
-import { Separator } from "../components/ui/separator";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { 
@@ -44,7 +31,6 @@ import {
   SelectValue 
 } from "../components/ui/select";
 import { Link } from "react-router-dom";
-import MachineList from "../components/machine-list";
 
 // SystemHealth interface is removed - integrated into system diagnostic page
 

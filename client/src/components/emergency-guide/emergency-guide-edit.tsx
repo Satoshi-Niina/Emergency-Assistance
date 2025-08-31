@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { useToast } from "../../hooks/use-toast.ts";
-import { FileText, Edit, Trash2, Save, X, Eye } from 'lucide-react';
+import { FileText, Edit, Trash2, X, Eye } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import EmergencyFlowEditor from './emergency-flow-editor';
 import EmergencyGuideDisplay from './emergency-guide-display';

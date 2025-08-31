@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -10,10 +10,7 @@ import {
   Plus, 
   Trash2, 
   X, 
-  Save, 
-  ArrowUp, 
-  ArrowDown, 
-  Image as ImageIcon,
+  Save,
   Upload,
   GripVertical
 } from 'lucide-react';

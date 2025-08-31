@@ -14,7 +14,6 @@ import { Label } from "../../components/ui/label";
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
   TableHead,
   TableHeader,

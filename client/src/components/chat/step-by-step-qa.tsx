@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,7 +6,6 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
-  ChevronRight, 
   CheckCircle, 
   AlertCircle, 
   Lightbulb,
@@ -17,7 +16,6 @@ import {
   Wrench,
   Shield,
   Search,
-  Settings,
   Eye
 } from 'lucide-react';
 import { QAFlowManager, QAFlowStep, QAAnswer } from '../../lib/qa-flow-manager';

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Badge } from '../ui/badge';
-import { Calendar, User, MessageSquare, Image as ImageIcon, Edit, Save, X, Download, Printer } from 'lucide-react';
+import { Calendar, MessageSquare, Image as ImageIcon, Edit, Save, X, Download, Printer } from 'lucide-react';
 
 // 画像ユーティリティ関数（exportして他のコンポーネントでも使用可能）
 const API_BASE = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_BASE_URL || window.location.origin);

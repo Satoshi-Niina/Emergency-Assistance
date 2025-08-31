@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
-import { ArrowLeft, ArrowRight, CheckCircle, Image as ImageIcon, Send, X } from 'lucide-react';
-import { convertImageUrl } from '../../lib/utils.ts';
+import { ArrowLeft, ArrowRight, CheckCircle, Image as ImageIcon, Send } from 'lucide-react';
 
 interface Step {
   id: string;

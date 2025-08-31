@@ -1,17 +1,12 @@
 // @ts-ignore
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Textarea } from "../../components/ui/textarea";
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger,
-} from "../../components/ui/context-menu";
+
+
 import {
   Select,
   SelectContent,
@@ -20,7 +15,7 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
-import { Plus, Trash2, GripVertical, Upload, X, Image as ImageIcon, Save, RotateCcw, AlertTriangle, ChevronUp, ChevronDown, MoreVertical } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Upload, X, Image as ImageIcon, ChevronUp, ChevronDown } from 'lucide-react';
 import { convertImageUrl } from '../../lib/utils.ts';
 
 /**

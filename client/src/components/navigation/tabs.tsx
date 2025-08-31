@@ -1,8 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "../../lib/utils";
 import { Button } from "../../components/ui/button";
-import { Tabs as TabsPrimitive, TabsList, TabsTrigger } from "../../components/ui/tabs";
-import { MessageSquare, Database, Settings, FileText, History, Wrench } from "lucide-react";
+import { MessageSquare, Settings, FileText, History, Wrench } from "lucide-react";
 import { useAuth } from "../../context/auth-context";
 
 interface TabItem {

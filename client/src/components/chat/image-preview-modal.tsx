@@ -1,8 +1,8 @@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { X, ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
 
 // 画像パスを修正するヘルパー関数 - PNG形式に統一
 function fixImagePath(path: string | undefined): string {

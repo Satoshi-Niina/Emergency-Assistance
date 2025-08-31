@@ -1,10 +1,8 @@
 import { useState } from "react";
 import { useAuth } from "../../context/auth-context";
-import { useChat } from "../../context/chat-context";
 import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import { Menu, Settings, LogOut, User, LifeBuoy, FileText, ChevronDown } from "lucide-react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Menu, Settings, LogOut } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetTrigger } from "../../components/ui/sheet";
 import { Tabs } from "./tabs";
 

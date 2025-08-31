@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Upload, Download, Save, FileText, CheckCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Upload, Save, CheckCircle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
@@ -7,7 +7,7 @@ import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import FaultClassificationSection from './FaultClassificationSection';
 import FaultFactorSection from './FaultFactorSection';
-import { VehicleMaintenanceRecord, FormData, FaultClassification, FaultFactor } from './types';
+import { VehicleMaintenanceRecord, FormData } from './types';
 
 export default function VehicleMaintenanceForm() {
   const [formData, setFormData] = useState<FormData>({

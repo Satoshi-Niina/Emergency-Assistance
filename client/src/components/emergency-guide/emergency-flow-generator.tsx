@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { FileUp, Cpu, Send, Loader2, FileText } from 'lucide-react';
 import { useToast } from "../../hooks/use-toast.ts";

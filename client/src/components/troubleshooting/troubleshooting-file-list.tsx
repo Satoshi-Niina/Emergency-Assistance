@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../..
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { ScrollArea } from "../../components/ui/scroll-area";
 import { useToast } from "../../hooks/use-toast.ts";
-import { Plus, RefreshCw, Edit, Trash2, FileEdit } from 'lucide-react';
+import { Plus, RefreshCw, Trash2, FileEdit } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,

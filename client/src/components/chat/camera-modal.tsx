@@ -1,16 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Camera, RotateCcw, X, Download, Upload, Settings, Zap, Eye, EyeOff, Volume2, VolumeX, TabletSmartphone, Video, Pause, Square, Circle } from 'lucide-react';
+import { X, TabletSmartphone, Video, Pause, Square, Circle } from 'lucide-react';
 import { useToast } from '../../hooks/use-toast';
 import { useChat } from '../../context/chat-context';
-import { useAuth } from '../../context/auth-context';
-import { useIsMobile } from '../../hooks/use-mobile';
-import { useIsTablet } from '../../hooks/use-tablet';
-import { useIsDesktop } from '../../hooks/use-desktop';
-import { useIsLargeScreen } from '../../hooks/use-large-screen';
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { useOrientation } from "../../hooks/use-orientation";
 
 export default function CameraModal() {

@@ -1,20 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileText, Image, Calendar, MapPin, Settings, Filter, Download, Trash2, FileDown, FileText as FileTextIcon, Table, Grid3X3, List, ClipboardList, FileSpreadsheet, Grid, Printer } from 'lucide-react';
+import { Search, FileText, Image, Calendar, MapPin, Settings, Download, Printer } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
-import { Badge } from "../components/ui/badge";
-import { SupportHistoryItem, HistorySearchFilters } from '../types/history';
-import { 
-  fetchHistoryList, 
-  fetchMachineData,
+import { SupportHistoryItem } from '../types/history';
+import {
   deleteHistory, 
   exportHistoryItem, 
   exportSelectedHistory, 
-  exportAllHistory,
-  advancedSearch,
-  generateReport
+  exportAllHistory
 } from '../lib/api/history-api';
 import ChatExportReport from '../components/report/chat-export-report';
 

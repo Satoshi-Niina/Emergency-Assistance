@@ -6,21 +6,13 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
-  ChevronRight, 
   CheckCircle, 
   AlertCircle, 
   Lightbulb,
-  Brain,
   History,
   Send,
   RotateCcw,
-  Wrench,
-  Shield,
-  Search,
-  Settings,
-  Eye,
   Clock,
-  Phone,
   Car,
   Zap,
   Battery,

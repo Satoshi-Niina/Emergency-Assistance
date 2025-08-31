@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { extractTextFromPptx } from "@/utils/pptxExtract";
-import { AlertTriangle } from "lucide-react";
 
 const ACCEPT = ".txt,.pdf,.xlsx,.pptx";
 const JSON_ACCEPT = ".json";

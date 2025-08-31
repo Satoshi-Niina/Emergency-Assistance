@@ -1,4 +1,3 @@
-import { apiRequest } from './queryClient';
 import { LoginCredentials } from '@shared/schema';
 import { AUTH_API } from './api/config';
 

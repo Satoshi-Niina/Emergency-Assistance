@@ -34,14 +34,10 @@ import {
   Upload, 
   FileText, 
   Trash2, 
-  Download, 
-  Eye, 
-  Edit, 
   Plus, 
   AlertCircle, 
   BrainCircuit, 
-  Info, 
-  History,
+  Info,
   Filter,
   RefreshCw
 } from "lucide-react";

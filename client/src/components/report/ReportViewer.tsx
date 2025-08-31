@@ -6,14 +6,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { 
   Printer, 
-  Download, 
   Save, 
   Edit, 
   X, 
   ImageIcon,
   FileText,
   Calendar,
-  MapPin,
   Wrench,
   AlertTriangle
 } from 'lucide-react';

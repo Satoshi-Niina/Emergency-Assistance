@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, AlertTriangle, HelpCircle, ArrowRight } from 'lucide-react';
+import { CheckCircle, HelpCircle, ArrowRight } from 'lucide-react';
 
 interface TroubleshootingQABubbleProps {
   question: string;

@@ -2,7 +2,6 @@
 
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
-import { login as authLogin, logout as authLogout, getCurrentUser } from '../lib/auth';
 
 interface User {
   id: string;

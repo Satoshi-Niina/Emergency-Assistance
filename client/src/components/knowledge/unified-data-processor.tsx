@@ -1,14 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "../../components/ui/button";
 import { useToast } from "../../hooks/use-toast.ts";
-import { Loader2, Upload, Trash2, FileText, RefreshCw, Database, Image, AlertTriangle } from "lucide-react";
+import { Loader2, Trash2, FileText, RefreshCw, Database } from "lucide-react";
 import { Checkbox } from "../../components/ui/checkbox";
 import { Label } from "../../components/ui/label";
 import FileIngestPanel from "../../components/FileIngestPanel";
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
