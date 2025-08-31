@@ -22,7 +22,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node ${{ env.NODE_VERSION }}
+      - name: Use Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -30,11 +30,7 @@ jobs:
       - name: Install deps (shared)
         working-directory: ${{ env.WORKING_DIR_SHARED }}
         run: |
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install --no-audit --no-fund
-          fi
+          if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
 
       - name: Type Check (shared)
         working-directory: ${{ env.WORKING_DIR_SHARED }}
@@ -47,11 +43,7 @@ jobs:
       - name: Install deps (server)
         working-directory: ${{ env.WORKING_DIR_SERVER }}
         run: |
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install --no-audit --no-fund
-          fi
+          if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
 
       - name: Type Check (server)
         working-directory: ${{ env.WORKING_DIR_SERVER }}
@@ -72,12 +64,13 @@ jobs:
         run: |
           APP="${{ env.AZURE_WEBAPP_NAME }}"
           expectedHost="$(echo "$APP" | tr '[:upper:]' '[:lower:]').scm.azurewebsites.net"
-          actualHost="$(
-            echo "${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}" \
-            | sed -n 's/.*publishUrl="https:\/\/\([^:"]*\).*/\1/p'
-          )"
+          xml="$(printf '%s' "${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}" | tr -d '\r')"
+          actualHost="$(printf '%s' "$xml" | perl -ne 'print "$1\n" if /publishUrl=[\"\']https?:\/\/([^:\"\'\/]+)/i')"
           echo "expectedHost=${expectedHost}"
           echo "actualHost=${actualHost}"
+          if [ -z "$actualHost" ]; then
+            echo "No publishUrl found in secret. Recreate publish profile from App Service Emergencyassistance-sv and paste XML as-is into secret."; exit 1;
+          fi
           if ! echo "$actualHost" | grep -qi "^$(printf '%s' "$expectedHost" | sed 's/\./\\./g')$"; then
             echo "NG: publish profile host mismatch"; exit 1;
           fi
@@ -85,6 +78,6 @@ jobs:
       - name: Deploy to Azure WebApp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          app-name: emergencyassistance-sv
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: server
