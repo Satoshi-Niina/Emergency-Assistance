@@ -52,8 +52,39 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}
         run: npm ci
 
-      - name: Type Check
-        run: npx tsc --noEmit
+      - name: Type Check (shared)
+        if: hashFiles('shared/tsconfig.json') != ''
+        working-directory: shared
+        run: npx tsc --noEmit -p tsconfig.json
+
+      - name: Type Check (server)
+        working-directory: server
+        run: npx tsc --noEmit -p tsconfig.json
+
+      - name: Type Check (client)
+        if: hashFiles('client/tsconfig.json') != ''
+        working-directory: client
+        run: npx tsc --noEmit -p tsconfig.json
+
+      - name: ESLint: shared
+        if: hashFiles('shared/package.json') != ''
+        working-directory: shared
+        run: |
+          npm ci
+          npm run lint
+
+      - name: ESLint: server
+        working-directory: server
+        run: |
+          npm ci
+          npm run lint
+
+      - name: ESLint: client
+        if: hashFiles('client/package.json') != ''
+        working-directory: client
+        run: |
+          npm ci
+          npm run lint
 
       - name: Build all (shared, client, server)
         run: npm run build

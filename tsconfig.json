@@ -1,0 +1,12 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./shared" },
+    { "path": "./client" },
+    { "path": "./server" }
+  ],
+  "compilerOptions": {
+    "composite": true,
+    "skipLibCheck": true
+  }
+}

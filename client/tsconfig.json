@@ -1,25 +1,16 @@
 {
+  "extends": "../tsconfig.json",
   "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
-  // Temporarily relax strict checks to reduce noise during bulk triage.
-  "strict": false,
-  // Allow imports that include the .ts extension (many files currently use explicit .ts imports)
-  "allowImportingTsExtensions": true,
-    "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "moduleResolution": "node",
+    "target": "ES2020",
+    "module": "esnext",
     "jsx": "react-jsx",
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"],
-      "@shared/*": ["../shared/src/*"]
-    }
+    "types": ["vite/client", "node"],
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true
   },
-  "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
-} 
+  "include": ["src"]
+}

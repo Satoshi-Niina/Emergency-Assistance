@@ -27,7 +27,7 @@ const collectImages = (data: any): Array<{ id: string; url: string; fileName: st
     data.conversationHistory.forEach((message: any, messageIndex: number) => {
       if (message?.content && typeof message.content === 'string' && message.content.startsWith('data:image/')) {
         // base64文字列の正規化（改行除去、全角引用符除去）
-        let normalizedContent = message.content
+        const normalizedContent = message.content
           .replace(/\r?\n/g, '') // 改行除去
           .replace(/[""]/g, '"') // 全角引用符を半角に変換
           .trim();

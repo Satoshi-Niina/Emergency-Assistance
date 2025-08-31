@@ -1,52 +1,13 @@
 {
+  "extends": "../tsconfig.json",
   "compilerOptions": {
+    "outDir": "dist",
+    "moduleResolution": "node",
     "target": "ES2020",
-  "module": "NodeNext",
-  "moduleResolution": "NodeNext",
-    "allowSyntheticDefaultImports": true,
+    "module": "commonjs",
     "esModuleInterop": true,
-    "allowJs": true,
-    "strict": false,
-    "noImplicitAny": false,
-    "strictNullChecks": false,
-    "strictFunctionTypes": false,
-    "noImplicitReturns": false,
-    "noFallthroughCasesInSwitch": false,
-    "noUncheckedIndexedAccess": false,
-    "noImplicitOverride": false,
-    "noPropertyAccessFromIndexSignature": false,
-    "exactOptionalPropertyTypes": false,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "declaration": false,
-  "outDir": "./dist",
-  "rootDir": "../",
-    "baseUrl": "./",
-    "paths": {
-      "@/*": ["../*"],
-      "drizzle-orm": ["node_modules/drizzle-orm"],
-  "drizzle-orm/*": ["node_modules/drizzle-orm/*"],
-  "drizzle-orm/pg-core": ["node_modules/drizzle-orm/pg-core"],
-  "drizzle-orm/pg-core/*": ["node_modules/drizzle-orm/pg-core/*"],
-      "zod": ["node_modules/zod"]
-    },
-    "typeRoots": [
-      "./node_modules/@types",
-      "../node_modules/@types"
-    ]
+    "strict": true,
+    "skipLibCheck": true
   },
-  "include": [
-  "**/*.ts",
-  "../shared/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "**/*.test.ts",
-    "**/*.spec.ts",
-    "temp/**/*",
-    "migrations/**/*.sql"
-  ]
+  "include": ["src", "../shared"]
 }

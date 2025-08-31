@@ -33,9 +33,9 @@
     "migrate:images": "tsx scripts/migrate-images-to-db.ts",
     "test": "npm run test:client && npm run test:server",
     "test:client": "cd client && npm test",
-    "lint": "npm run lint:client && npm run lint:server",
-    "lint:client": "cd client && npm run lint",
-    "lint:server": "cd server && npm run lint"
+  "lint": "npm run lint:client && npm run lint:server",
+  "lint:client": "cd client && npm run lint",
+  "lint:server": "cd server && npm run lint"
   },
   "dependencies": {
     "concurrently": "^9.2.0",

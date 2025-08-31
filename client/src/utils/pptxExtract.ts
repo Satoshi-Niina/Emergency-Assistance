@@ -8,7 +8,7 @@ export async function extractTextFromPptx(file: File): Promise<string> {
   const slideFiles = Object.keys(zip.files)
     .filter(p => p.startsWith("ppt/slides/slide") && p.endsWith(".xml"))
     .sort();
-  let out: string[] = [];
+  const out: string[] = [];
   for (const p of slideFiles) {
     const xml = await zip.file(p)!.async("text");
     const json = parser.parse(xml);

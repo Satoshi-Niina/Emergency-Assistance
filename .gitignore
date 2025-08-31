@@ -108,3 +108,4 @@ secrets.json
 .npm
 .yarn-integrity
 *.tgz
+*.zip

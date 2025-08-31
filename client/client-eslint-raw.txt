@@ -1,0 +1,871 @@
+﻿
+> client@1.0.0 lint
+> eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0
+
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\App.tsx
+  24:17  error  'isLoading' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\FileIngestPanel.tsx
+    3:10  error  'AlertTriangle' is defined but never used    @typescript-eslint/no-unused-vars
+    5:7   error  'ACCEPT' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   12:18  error  'handleFiles' is defined but never used      @typescript-eslint/no-unused-vars
+   50:18  error  Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   64:17  error  Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   92:22  error  Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  125:17  error  Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\InteractiveDiagnosisChat.tsx
+  49:10  error  'sessionId' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\RagSettingsPanel.tsx
+  41:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\chat\FlowGenerationResult.tsx
+  37:3  error  'extractedSteps' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\chat\camera-modal.tsx
+   4:10  error    'Camera' is defined but never used                                                                                                           @typescript-eslint/no-unused-vars
+   4:18  error    'RotateCcw' is defined but never used                                                                                                        @typescript-eslint/no-unused-vars
+   4:32  error    'Download' is defined but never used                                                                                                         @typescript-eslint/no-unused-vars
+   4:42  error    'Upload' is defined but never used                                                                                                           @typescript-eslint/no-unused-vars
+   4:50  error    'Settings' is defined but never used                                                                                                         @typescript-eslint/no-unused-vars
+   4:60  error    'Zap' is defined but never used                                                                                                              @typescript-eslint/no-unused-vars
+   4:65  error    'Eye' is defined but never used                                                                                                              @typescript-eslint/no-unused-vars
+   4:70  error    'EyeOff' is defined but never used                                                                                                           @typescript-eslint/no-unused-vars
+   4:78  error    'Volume2' is defined but never used                                                                                                          @typescript-eslint/no-unused-vars
+   4:87  error    'VolumeX' is defined but never used                                                                                                          @typescript-eslint/no-unused-vars
+   7:10  error    'useAuth' is defined but never used                                                                                                          @typescript-eslint/no-unused-vars
+   8:10  error    'useIsMobile' is defined but never used                                                                                                      @typescript-eslint/no-unused-vars
+   9:10  error    'useIsTablet' is defined but never used                                                                                                      @typescript-eslint/no-unused-vars
+  10:10  error    'useIsDesktop' is defined but never used                                                                                                     @typescript-eslint/no-unused-vars
+  11:10  error    'useIsLargeScreen' is defined but never used                                                                                                 @typescript-eslint/no-unused-vars
+  13:10  error    'Label' is defined but never used                                                                                                            @typescript-eslint/no-unused-vars
+  29:11  error    'captureImage' is assigned a value but never used                                                                                            @typescript-eslint/no-unused-vars
+  81:6   warning  React Hook useEffect has missing dependencies: 'startCamera', 'stopCamera', and 'toast'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\chat\emergency-qa-flow.tsx
+    9:3   error    'ChevronRight' is defined but never used                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+   13:3   error    'Brain' is defined but never used                                                                                                                                                                                                          @typescript-eslint/no-unused-vars
+   17:3   error    'Wrench' is defined but never used                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+   18:3   error    'Shield' is defined but never used                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+   19:3   error    'Search' is defined but never used                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+   20:3   error    'Settings' is defined but never used                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+   21:3   error    'Eye' is defined but never used                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+   23:3   error    'Phone' is defined but never used                                                                                                                                                                                                          @typescript-eslint/no-unused-vars
+  300:21  error    'setFlowSteps' is assigned a value but never used                                                                                                                                                                                          @typescript-eslint/no-unused-vars
+  308:6   warning  React Hook useEffect has a missing dependency: 'flowSteps'. Either include it or remove the dependency array. You can also replace multiple useState variables with useReducer if 'setCurrentStep' needs the current value of 'flowSteps'  react-hooks/exhaustive-deps
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\chat\enhanced-qa-flow.tsx
+   1:38  error    'useCallback' is defined but never used                                                                          @typescript-eslint/no-unused-vars
+   9:3   error    'ChevronRight' is defined but never used                                                                         @typescript-eslint/no-unused-vars
+  17:3   error    'Wrench' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+  18:3   error    'Shield' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+  19:3   error    'Search' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+  20:3   error    'Settings' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+  21:3   error    'Eye' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+  22:3   error    'Clock' is defined but never used                                                                                @typescript-eslint/no-unused-vars
+  23:3   error    'Phone' is defined but never used                                                                                @typescript-eslint/no-unused-vars
+  24:3   error    'Car' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+  25:3   error    'Zap' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+  26:3   error    'Battery' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+  27:3   error    'Key' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+  68:10  error    'flow' is assigned a value but never used                                                                        @typescript-eslint/no-unused-vars
+  74:6   warning  React Hook useEffect has a missing dependency: 'initializeQA'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\chat\image-preview-modal.tsx
+   3:31  error  'useRef' is defined but never used                @typescript-eslint/no-unused-vars
+   5:40  error  'Info' is defined but never used                  @typescript-eslint/no-unused-vars
+  69:10  error  'metadataUrl' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\chat\message-bubble.tsx
+   28:11  error  'user' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   54:56  error  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  110:61  error  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  166:27  error  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  188:44  error  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  191:38  error  'e' is defined but never used              @typescript-eslint/no-unused-vars
+  195:50  error  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  196:53  error  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  204:50  error  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  217:52  error  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  232:38  error  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  234:42  error  Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  331:37  error  'e' is defined but never used              @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\chat\message-input.tsx
+  10:44  error  Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+  17:38  error  Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+  19:5   error  'recordedText' is assigned a value but never used        @typescript-eslint/no-unused-vars
+  26:9   error  'updateDraftMessage' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\chat\qa-flow-initiator.tsx
+  177:17  error  'description' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  213:32  error  'answers' is defined but never used               @typescript-eslint/no-unused-vars
+  230:32  error  'answers' is defined but never used               @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\chat\solution-bubble.tsx
+  52:57  error  Unnecessary escape character: \.          no-useless-escape
+  56:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\chat\step-by-step-qa.tsx
+   1:38  error    'useCallback' is defined but never used                                                                                                                         @typescript-eslint/no-unused-vars
+   9:3   error    'ChevronRight' is defined but never used                                                                                                                        @typescript-eslint/no-unused-vars
+  20:3   error    'Settings' is defined but never used                                                                                                                            @typescript-eslint/no-unused-vars
+  48:10  error    'emergencyAction' is assigned a value but never used                                                                                                            @typescript-eslint/no-unused-vars
+  48:27  error    'setEmergencyAction' is assigned a value but never used                                                                                                         @typescript-eslint/no-unused-vars
+  49:10  error    'problemCategory' is assigned a value but never used                                                                                                            @typescript-eslint/no-unused-vars
+  49:58  error    Unexpected any. Specify a different type                                                                                                                        @typescript-eslint/no-explicit-any
+  59:6   warning  React Hook useEffect has missing dependencies: 'classifyProblemAndStartFlow' and 'generateInitialQuestion'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\chat\troubleshooting-qa-bubble.tsx
+  5:23  error  'AlertTriangle' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\emergency-guide\emergency-flow-creator.tsx
+    3:69   error    'CardFooter' is defined but never used                                                                                @typescript-eslint/no-unused-vars
+    9:18   error    'Save' is defined but never used                                                                                      @typescript-eslint/no-unused-vars
+    9:27   error    'Edit' is defined but never used                                                                                      @typescript-eslint/no-unused-vars
+    9:33   error    'Edit3' is defined but never used                                                                                     @typescript-eslint/no-unused-vars
+    9:62   error    'Download' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+    9:103  error    'AlertTriangle' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+    9:118  error    'Eye' is defined but never used                                                                                       @typescript-eslint/no-unused-vars
+   23:3    error    'ContextMenu' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+   24:3    error    'ContextMenuContent' is defined but never used                                                                        @typescript-eslint/no-unused-vars
+   25:3    error    'ContextMenuItem' is defined but never used                                                                           @typescript-eslint/no-unused-vars
+   26:3    error    'ContextMenuTrigger' is defined but never used                                                                        @typescript-eslint/no-unused-vars
+   29:3    error    'Select' is defined but never used                                                                                    @typescript-eslint/no-unused-vars
+   30:3    error    'SelectContent' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+   31:3    error    'SelectItem' is defined but never used                                                                                @typescript-eslint/no-unused-vars
+   32:3    error    'SelectTrigger' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+   33:3    error    'SelectValue' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+   45:12   error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+   53:10   error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+   72:17   error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+   73:18   error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+   90:10   error    'uploadSuccess' is assigned a value but never used                                                                    @typescript-eslint/no-unused-vars
+   91:10   error    'uploadedFileName' is assigned a value but never used                                                                 @typescript-eslint/no-unused-vars
+  102:17   error    'setTitle' is assigned a value but never used                                                                         @typescript-eslint/no-unused-vars
+  103:23   error    'setDescription' is assigned a value but never used                                                                   @typescript-eslint/no-unused-vars
+  184:6    warning  React Hook useCallback has an unnecessary dependency: 'isFetching'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  189:6    warning  React Hook useEffect has a missing dependency: 'fetchFlowList'. Either include it or remove the dependency array      react-hooks/exhaustive-deps
+  193:33   error    'event' is defined but never used                                                                                     @typescript-eslint/no-unused-vars
+  193:40   error    Unexpected any. Specify a different type                                                                              @typescript-eslint/no-explicit-any
+  250:13   error    'result' is assigned a value but never used                                                                           @typescript-eslint/no-unused-vars
+  607:17   error    'imageUrl' is assigned a value but never used                                                                         @typescript-eslint/no-unused-vars
+  607:27   error    'imageFileName' is assigned a value but never used                                                                    @typescript-eslint/no-unused-vars
+  671:9    error    'handleAddSlide' is assigned a value but never used                                                                   @typescript-eslint/no-unused-vars
+  681:9    error    'handleSlideDelete' is assigned a value but never used                                                                @typescript-eslint/no-unused-vars
+  685:9    error    'handleConditionAdd' is assigned a value but never used                                                               @typescript-eslint/no-unused-vars
+  930:9    error    'renderSlideContent' is assigned a value but never used                                                               @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\emergency-guide\emergency-flow-editor.tsx
+    2:10   error    'Card' is defined but never used                                                                                                    @typescript-eslint/no-unused-vars
+    2:16   error    'CardContent' is defined but never used                                                                                             @typescript-eslint/no-unused-vars
+    7:16   error    'Trash2' is defined but never used                                                                                                  @typescript-eslint/no-unused-vars
+    9:16   error    'uuidv4' is defined but never used                                                                                                  @typescript-eslint/no-unused-vars
+   39:13   error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+   41:18   error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+   47:10   error    'utf8_to_b64' is defined but never used                                                                                             @typescript-eslint/no-unused-vars
+   60:3    error    'onTabChange' is defined but never used                                                                                             @typescript-eslint/no-unused-vars
+   71:38   error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+  163:52   error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+  181:51   error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+  220:17   error    'imageUrl' is assigned a value but never used                                                                                       @typescript-eslint/no-unused-vars
+  220:27   error    'imageFileName' is assigned a value but never used                                                                                  @typescript-eslint/no-unused-vars
+  220:42   error    'options' is assigned a value but never used                                                                                        @typescript-eslint/no-unused-vars
+  273:6    warning  React Hook useEffect has missing dependencies: 'currentTab' and 'steps.length'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  423:102  error    Unexpected any. Specify a different type                                                                                            @typescript-eslint/no-explicit-any
+  462:6    warning  React Hook useEffect has a missing dependency: 'autoSave'. Either include it or remove the dependency array                         react-hooks/exhaustive-deps
+  481:15   error    'imageUrl' is assigned a value but never used                                                                                       @typescript-eslint/no-unused-vars
+  481:25   error    'imageFileName' is assigned a value but never used                                                                                  @typescript-eslint/no-unused-vars
+  481:40   error    'options' is assigned a value but never used                                                                                        @typescript-eslint/no-unused-vars
+  491:13   error    'slides' is assigned a value but never used                                                                                         @typescript-eslint/no-unused-vars
+  528:9    error    'handleTitleChange' is assigned a value but never used                                                                              @typescript-eslint/no-unused-vars
+  533:9    error    'handleDescriptionChange' is assigned a value but never used                                                                        @typescript-eslint/no-unused-vars
+  574:9    error    'handleCleanupUnusedImages' is assigned a value but never used                                                                      @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\emergency-guide\emergency-flow-generator.tsx
+   4:10  error  'Input' is defined but never used         @typescript-eslint/no-unused-vars
+  12:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  68:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\emergency-guide\emergency-guide-display.tsx
+  4:72  error  'X' is defined but never used                @typescript-eslint/no-unused-vars
+  5:10  error  'convertImageUrl' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\emergency-guide\emergency-guide-edit.tsx
+    5:34  error  'Save' is defined but never used                          @typescript-eslint/no-unused-vars
+   58:10  error  'getObjectDiff' is defined but never used                 @typescript-eslint/no-unused-vars
+   58:34  error  Unexpected any. Specify a different type                  @typescript-eslint/no-explicit-any
+   58:46  error  Unexpected any. Specify a different type                  @typescript-eslint/no-explicit-any
+   82:10  error  Unexpected any. Specify a different type                  @typescript-eslint/no-explicit-any
+   83:24  error  Unexpected any. Specify a different type                  @typescript-eslint/no-explicit-any
+   85:25  error  Unexpected any. Specify a different type                  @typescript-eslint/no-explicit-any
+  204:10  error  'selectedFilePath' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  204:28  error  'setSelectedFilePath' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  207:10  error  'currentTab' is assigned a value but never used           @typescript-eslint/no-unused-vars
+  207:22  error  'setCurrentTab' is assigned a value but never used        @typescript-eslint/no-unused-vars
+  210:44  error  'force' is assigned a value but never used                @typescript-eslint/no-unused-vars
+  245:44  error  Unexpected any. Specify a different type                  @typescript-eslint/no-explicit-any
+  433:9   error  'handleDisplayFlow' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  440:50  error  Unexpected any. Specify a different type                  @typescript-eslint/no-explicit-any
+  471:23  error  'prev' is defined but never used                          @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\emergency-guide\emergency-guide-uploader.tsx
+  11:10  error  'Separator' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\emergency-guide\flow-editor-advanced.tsx
+   1:38  error    'useRef' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+   1:46  error    'useCallback' is defined but never used                                                                          @typescript-eslint/no-unused-vars
+  14:3   error    'ArrowUp' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+  15:3   error    'ArrowDown' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+  16:12  error    'ImageIcon' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+  82:6   warning  React Hook useEffect has a missing dependency: 'loadFlowData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\emergency-guide\flow-list-manager.tsx
+   4:10  error    'Table' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+   4:17  error    'TableBody' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+   4:28  error    'TableCell' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+   4:39  error    'TableHead' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+   4:50  error    'TableHeader' is defined but never used                                                                           @typescript-eslint/no-unused-vars
+   4:63  error    'TableRow' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+   5:10  error    'ScrollArea' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+   7:40  error    'Plus' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+  38:3   error    'onNew' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+  50:6   warning  React Hook useEffect has a missing dependency: 'fetchFlowList'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\emergency-guide\flow-preview.tsx
+  4:33  error  'X' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\emergency-guide\step-editor.tsx
+    1:1    error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+    2:46   error  'useCallback' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+    9:3    error  'ContextMenu' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+   10:3    error  'ContextMenuContent' is defined but never used                                                                       @typescript-eslint/no-unused-vars
+   11:3    error  'ContextMenuItem' is defined but never used                                                                          @typescript-eslint/no-unused-vars
+   12:3    error  'ContextMenuSeparator' is defined but never used                                                                     @typescript-eslint/no-unused-vars
+   13:3    error  'ContextMenuTrigger' is defined but never used                                                                       @typescript-eslint/no-unused-vars
+   23:69   error  'Save' is defined but never used                                                                                     @typescript-eslint/no-unused-vars
+   23:75   error  'RotateCcw' is defined but never used                                                                                @typescript-eslint/no-unused-vars
+   23:86   error  'AlertTriangle' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+   23:125  error  'MoreVertical' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+   34:10   error  'utf8_to_b64' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+   49:11   error  'DecisionCondition' is defined but never used                                                                        @typescript-eslint/no-unused-vars
+  166:10   error  'showStepControls' is assigned a value but never used                                                                @typescript-eslint/no-unused-vars
+  166:28   error  'setShowStepControls' is assigned a value but never used                                                             @typescript-eslint/no-unused-vars
+  192:76   error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  710:9    error  'ActionButtons' is assigned a value but never used                                                                   @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\knowledge\knowledge-manager.tsx
+   37:3   error    'Download' is defined but never used                                                                                   @typescript-eslint/no-unused-vars
+   38:3   error    'Eye' is defined but never used                                                                                        @typescript-eslint/no-unused-vars
+   39:3   error    'Edit' is defined but never used                                                                                       @typescript-eslint/no-unused-vars
+   44:3   error    'History' is defined but never used                                                                                    @typescript-eslint/no-unused-vars
+   78:10  error    'selectedType' is assigned a value but never used                                                                      @typescript-eslint/no-unused-vars
+   78:24  error    'setSelectedType' is assigned a value but never used                                                                   @typescript-eslint/no-unused-vars
+  145:6   warning  React Hook useEffect has a missing dependency: 'fetchKnowledgeData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\knowledge\knowledge-uploader.tsx
+    7:3   error    'CardFooter' is defined but never used                                                                                   @typescript-eslint/no-unused-vars
+  121:13  error    'result' is assigned a value but never used                                                                              @typescript-eslint/no-unused-vars
+  203:6   warning  React Hook React.useEffect has a missing dependency: 'fetchDocuments'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\knowledge\tech-support-uploader.tsx
+  17:3  error  'TableCaption' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\knowledge\unified-data-processor.tsx
+   4:19  error    'Upload' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+   4:66  error    'Image' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+   4:73  error    'AlertTriangle' is defined but never used                                                                          @typescript-eslint/no-unused-vars
+  11:3   error    'TableCaption' is defined but never used                                                                           @typescript-eslint/no-unused-vars
+  53:6   warning  React Hook useEffect has a missing dependency: 'fetchDocuments'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\maintenance\VehicleMaintenanceForm.tsx
+   1:27  error  'useEffect' is defined but never used            @typescript-eslint/no-unused-vars
+   2:18  error  'Download' is defined but never used             @typescript-eslint/no-unused-vars
+   2:34  error  'FileText' is defined but never used             @typescript-eslint/no-unused-vars
+  10:46  error  'FaultClassification' is defined but never used  @typescript-eslint/no-unused-vars
+  10:67  error  'FaultFactor' is defined but never used          @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\navigation\header.tsx
+   3:10  error  'useChat' is defined but never used                             @typescript-eslint/no-unused-vars
+   5:10  error  'Input' is defined but never used                               @typescript-eslint/no-unused-vars
+   6:34  error  'User' is defined but never used                                @typescript-eslint/no-unused-vars
+   6:40  error  'LifeBuoy' is defined but never used                            @typescript-eslint/no-unused-vars
+   6:50  error  'FileText' is defined but never used                            @typescript-eslint/no-unused-vars
+   6:60  error  'ChevronDown' is defined but never used                         @typescript-eslint/no-unused-vars
+   7:10  error  'Link' is defined but never used                                @typescript-eslint/no-unused-vars
+  18:9   error  'location' is assigned a value but never used                   @typescript-eslint/no-unused-vars
+  23:10  error  'model' is assigned a value but never used                      @typescript-eslint/no-unused-vars
+  24:10  error  'machineNumber' is assigned a value but never used              @typescript-eslint/no-unused-vars
+  27:9   error  'handleModelChange' is assigned a value but never used          @typescript-eslint/no-unused-vars
+  32:9   error  'handleMachineNumberChange' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\navigation\tabs.tsx
+   4:18  error  'TabsPrimitive' is defined but never used  @typescript-eslint/no-unused-vars
+   4:33  error  'TabsList' is defined but never used       @typescript-eslint/no-unused-vars
+   4:43  error  'TabsTrigger' is defined but never used    @typescript-eslint/no-unused-vars
+   5:25  error  'Database' is defined but never used       @typescript-eslint/no-unused-vars
+  19:11  error  'user' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\report\ReportViewer.tsx
+    9:3   error    'Download' is defined but never used                                                                                @typescript-eslint/no-unused-vars
+   16:3   error    'MapPin' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+   22:15  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+   24:19  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+   48:6   warning  React Hook useEffect has a missing dependency: 'extractImageUrl'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   70:70  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+   81:76  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+   92:68  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+  109:59  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+  515:9   error    'handleDownload' is assigned a value but never used                                                                 @typescript-eslint/no-unused-vars
+  544:73  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\report\chat-export-report.tsx
+    7:20  error    'User' is defined but never used                                                                                                @typescript-eslint/no-unused-vars
+   12:14  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+   20:14  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+   20:35  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+   53:25  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+   77:14  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+   92:12  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  101:14  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  136:68  error    'fileName' is defined but never used                                                                                            @typescript-eslint/no-unused-vars
+  136:95  error    'onPrint' is defined but never used                                                                                             @typescript-eslint/no-unused-vars
+  320:12  error    'pickFirstImage' is defined but never used                                                                                      @typescript-eslint/no-unused-vars
+  320:33  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  322:20  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  335:35  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  350:48  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  432:36  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  482:73  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  853:90  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\report\machine-failure-report.tsx
+   21:30  error  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+   27:48  error  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+   30:13  error  'normalizedContent' is never reassigned. Use 'const' instead  prefer-const
+   56:37  error  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  162:25  error  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  163:22  error  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  164:18  error  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  174:10  error  'pickFirstImage' is defined but never used                    @typescript-eslint/no-unused-vars
+  174:31  error  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  176:18  error  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  197:7   error  'PRINT_STYLES' is assigned a value but never used             @typescript-eslint/no-unused-vars
+  214:46  error  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  450:7   error  'printReport' is assigned a value but never used              @typescript-eslint/no-unused-vars
+  450:34  error  Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\sync\sync-status-indicator.tsx
+   95:6   warning  React Hook useEffect has a missing dependency: 'checkSyncStatus'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  169:21  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\troubleshooting\troubleshooting-file-list.tsx
+   7:27  error    'Edit' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+  38:24  error    'setFlowToDelete' is assigned a value but never used                                                              @typescript-eslint/no-unused-vars
+  73:6   warning  React Hook useEffect has a missing dependency: 'fetchFlowList'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\troubleshooting\troubleshooting-flow.tsx
+    4:21  error  'CheckCircle' is defined but never used                  @typescript-eslint/no-unused-vars
+    4:34  error  'Send' is defined but never used                         @typescript-eslint/no-unused-vars
+    4:52  error  'X' is defined but never used                            @typescript-eslint/no-unused-vars
+   78:10  error  'showPartialSuccess' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  218:9   error  'isLastStep' is assigned a value but never used          @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\troubleshooting\troubleshooting-selector.tsx
+  40:47  error    Unexpected any. Specify a different type                                                                       @typescript-eslint/no-explicit-any
+  63:6   warning  React Hook useEffect has a missing dependency: 'fetchFlows'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\ui\badge.tsx
+  36:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\ui\button.tsx
+  56:18  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\ui\calendar.tsx
+  55:25  error  'props' is defined but never used  @typescript-eslint/no-unused-vars
+  56:26  error  'props' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\ui\chart.tsx
+  70:7  error  '_' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\ui\form.tsx
+  168:3  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\ui\navigation-menu.tsx
+  119:3  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\ui\sidebar.tsx
+  761:3  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\ui\toggle.tsx
+  43:18  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\components\voice-assistant\voice-assistant.ts\VoiceAssistant.tsx
+   57:13  error    'hasImageKeyword' is assigned a value but never used                                                                @typescript-eslint/no-unused-vars
+  144:6   warning  React Hook useEffect has a missing dependency: 'stopRecognition'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\context\auth-context.tsx
+    5:19  error    'authLogin' is defined but never used                                                                                           @typescript-eslint/no-unused-vars
+    5:40  error    'authLogout' is defined but never used                                                                                          @typescript-eslint/no-unused-vars
+    5:52  error    'getCurrentUser' is defined but never used                                                                                      @typescript-eslint/no-unused-vars
+   27:10  error    'authChecked' is assigned a value but never used                                                                                @typescript-eslint/no-unused-vars
+   73:21  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+   91:9   error    'mounted' is assigned a value but never used                                                                                    @typescript-eslint/no-unused-vars
+   99:21  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  194:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\context\chat-context.tsx
+     9:7   error    'MIN_TEXT_LENGTH' is assigned a value but never used                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+    24:18  error    Unexpected any. Specify a different type                                                                                                                                                                                                           @typescript-eslint/no-explicit-any
+    25:31  error    Unexpected any. Specify a different type                                                                                                                                                                                                           @typescript-eslint/no-explicit-any
+    28:35  error    Unexpected any. Specify a different type                                                                                                                                                                                                           @typescript-eslint/no-explicit-any
+    40:38  error    Unexpected any. Specify a different type                                                                                                                                                                                                           @typescript-eslint/no-explicit-any
+    43:37  error    Unexpected any. Specify a different type                                                                                                                                                                                                           @typescript-eslint/no-explicit-any
+    50:14  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                     react-refresh/only-export-components
+    95:54  error    Unexpected any. Specify a different type                                                                                                                                                                                                           @typescript-eslint/no-explicit-any
+   102:10  error    'tempMedia' is assigned a value but never used                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+   114:10  error    'lastSentText' is assigned a value but never used                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+   116:10  error    'sendTimeoutId' is assigned a value but never used                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+   116:25  error    'setSendTimeoutId' is assigned a value but never used                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+   118:10  error    'recognitionPhrases' is assigned a value but never used                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+   120:10  error    'blockSending' is assigned a value but never used                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+   122:10  error    'lastRecognitionTime' is assigned a value but never used                                                                                                                                                                                           @typescript-eslint/no-unused-vars
+   122:31  error    'setLastRecognitionTime' is assigned a value but never used                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+   124:10  error    'silenceDetected' is assigned a value but never used                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+   124:27  error    'setSilenceDetected' is assigned a value but never used                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+   125:10  error    'lastRecognizedText' is assigned a value but never used                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+   125:30  error    'setLastRecognizedText' is assigned a value but never used                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+   127:10  error    'isProcessing' is assigned a value but never used                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+   199:9   error    'isSubstringOrSimilar' is assigned a value but never used                                                                                                                                                                                          @typescript-eslint/no-unused-vars
+   280:38  error    'event' is defined but never used                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+   311:9   error    'searchBySelectedText' is assigned a value but never used                                                                                                                                                                                          @typescript-eslint/no-unused-vars
+   311:65  error    'isManualSearch' is assigned a value but never used                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+   342:9   error    'normalizeMessage' is assigned a value but never used                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+   342:50  error    Unexpected any. Specify a different type                                                                                                                                                                                                           @typescript-eslint/no-explicit-any
+   490:27  error    Unexpected any. Specify a different type                                                                                                                                                                                                           @typescript-eslint/no-explicit-any
+   551:6   warning  React Hook useCallback has an unnecessary dependency: 'setSearchResults'. Either exclude it or remove the dependency array                                                                                                                         react-hooks/exhaustive-deps
+   556:13  error    'currentMedia' is assigned a value but never used                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+   685:6   warning  React Hook useCallback has a missing dependency: 'isLoading'. Either include it or remove the dependency array. You can also replace multiple useState variables with useReducer if 'setRecognitionBuffer' needs the current value of 'isLoading'  react-hooks/exhaustive-deps
+   687:9   error    'startRecording' is assigned a value but never used                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+   700:9   error    'stopRecording' is assigned a value but never used                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+   787:9   error    'exportFormattedData' is assigned a value but never used                                                                                                                                                                                           @typescript-eslint/no-unused-vars
+   805:60  error    Unexpected any. Specify a different type                                                                                                                                                                                                           @typescript-eslint/no-explicit-any
+   837:58  error    Unexpected any. Specify a different type                                                                                                                                                                                                           @typescript-eslint/no-explicit-any
+   838:21  error    Unexpected any. Specify a different type                                                                                                                                                                                                           @typescript-eslint/no-explicit-any
+   948:6   warning  React Hook useCallback has an unnecessary dependency: 'setSearchResults'. Either exclude it or remove the dependency array                                                                                                                         react-hooks/exhaustive-deps
+   951:64  error    Unexpected any. Specify a different type                                                                                                                                                                                                           @typescript-eslint/no-explicit-any
+   985:26  error    Unexpected any. Specify a different type                                                                                                                                                                                                           @typescript-eslint/no-explicit-any
+   986:25  error    Unexpected any. Specify a different type                                                                                                                                                                                                           @typescript-eslint/no-explicit-any
+  1002:41  error    Unexpected any. Specify a different type                                                                                                                                                                                                           @typescript-eslint/no-explicit-any
+  1023:22  error    Unexpected any. Specify a different type                                                                                                                                                                                                           @typescript-eslint/no-explicit-any
+  1254:6   warning  React Hook useCallback has an unnecessary dependency: 'chatId'. Either exclude it or remove the dependency array                                                                                                                                   react-hooks/exhaustive-deps
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\hooks\use-auth.tsx
+    1:48  error    'useState' is defined but never used                                                                                            @typescript-eslint/no-unused-vars
+    1:58  error    'useEffect' is defined but never used                                                                                           @typescript-eslint/no-unused-vars
+   24:14  warning  Fast refresh only works when a file only exports components. Move your React context(s) to a separate file                      react-refresh/only-export-components
+  123:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\lib\api\history-api.ts
+   93:13  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  140:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  248:87  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  265:53  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\lib\auth.ts
+    1:10  error  'apiRequest' is defined but never used         @typescript-eslint/no-unused-vars
+  104:11  error  'response' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\lib\azure-speech.ts
+  44:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  60:38  error  '_s' is defined but never used            @typescript-eslint/no-unused-vars
+  60:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  60:47  error  'e' is defined but never used             @typescript-eslint/no-unused-vars
+  60:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  64:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  64:49  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\lib\history-api.ts
+   32:75  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   55:80  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   82:59  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  101:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\lib\image-api.tsx
+  18:23  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+  56:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+  61:23  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+  78:23  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+  95:23  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\lib\logger.ts
+  15:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  24:34  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  33:34  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  42:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\lib\openai.ts
+  13:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  71:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\lib\qa-flow-manager.ts
+  270:15  error  'timeLimit' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\lib\queryClient.ts
+  379:7  error  'API_BASE_URL' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\lib\service-worker.ts
+  145:3  error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\lib\troubleshooting-search.ts
+  130:33  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  155:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\lib\utils.ts
+  16:60   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  16:101  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  25:27   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\pages\chat-export-preview.tsx
+   27:14  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  167:57  error  'index' is defined but never used         @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\pages\chat.tsx
+    10:8    error    'StepByStepQA' is defined but never used                                                                                                                                     @typescript-eslint/no-unused-vars
+    13:10   error    'Card' is defined but never used                                                                                                                                             @typescript-eslint/no-unused-vars
+    13:16   error    'CardContent' is defined but never used                                                                                                                                      @typescript-eslint/no-unused-vars
+    13:29   error    'CardHeader' is defined but never used                                                                                                                                       @typescript-eslint/no-unused-vars
+    13:41   error    'CardTitle' is defined but never used                                                                                                                                        @typescript-eslint/no-unused-vars
+    14:10   error    'Select' is defined but never used                                                                                                                                           @typescript-eslint/no-unused-vars
+    14:18   error    'SelectContent' is defined but never used                                                                                                                                    @typescript-eslint/no-unused-vars
+    14:33   error    'SelectItem' is defined but never used                                                                                                                                       @typescript-eslint/no-unused-vars
+    14:45   error    'SelectTrigger' is defined but never used                                                                                                                                    @typescript-eslint/no-unused-vars
+    14:60   error    'SelectValue' is defined but never used                                                                                                                                      @typescript-eslint/no-unused-vars
+    15:10   error    'AlertDialog' is defined but never used                                                                                                                                      @typescript-eslint/no-unused-vars
+    15:23   error    'AlertDialogAction' is defined but never used                                                                                                                                @typescript-eslint/no-unused-vars
+    15:42   error    'AlertDialogCancel' is defined but never used                                                                                                                                @typescript-eslint/no-unused-vars
+    15:61   error    'AlertDialogContent' is defined but never used                                                                                                                               @typescript-eslint/no-unused-vars
+    15:81   error    'AlertDialogDescription' is defined but never used                                                                                                                           @typescript-eslint/no-unused-vars
+    15:105  error    'AlertDialogFooter' is defined but never used                                                                                                                                @typescript-eslint/no-unused-vars
+    15:124  error    'AlertDialogHeader' is defined but never used                                                                                                                                @typescript-eslint/no-unused-vars
+    15:143  error    'AlertDialogTitle' is defined but never used                                                                                                                                 @typescript-eslint/no-unused-vars
+    15:161  error    'AlertDialogTrigger' is defined but never used                                                                                                                               @typescript-eslint/no-unused-vars
+    16:10   error    'RotateCcw' is defined but never used                                                                                                                                        @typescript-eslint/no-unused-vars
+    16:21   error    'Download' is defined but never used                                                                                                                                         @typescript-eslint/no-unused-vars
+    16:39   error    'FileText' is defined but never used                                                                                                                                         @typescript-eslint/no-unused-vars
+    16:49   error    'BookOpen' is defined but never used                                                                                                                                         @typescript-eslint/no-unused-vars
+    16:69   error    'ArrowLeft' is defined but never used                                                                                                                                        @typescript-eslint/no-unused-vars
+    16:83   error    'Search' is defined but never used                                                                                                                                           @typescript-eslint/no-unused-vars
+    16:91   error    'Send' is defined but never used                                                                                                                                             @typescript-eslint/no-unused-vars
+    16:113  error    'RefreshCw' is defined but never used                                                                                                                                        @typescript-eslint/no-unused-vars
+    16:131  error    'Wrench' is defined but never used                                                                                                                                           @typescript-eslint/no-unused-vars
+    16:139  error    'Database' is defined but never used                                                                                                                                         @typescript-eslint/no-unused-vars
+    16:149  error    'Save' is defined but never used                                                                                                                                             @typescript-eslint/no-unused-vars
+    18:10   error    'searchTroubleshootingFlows' is defined but never used                                                                                                                       @typescript-eslint/no-unused-vars
+    18:38   error    'japaneseGuideTitles' is defined but never used                                                                                                                              @typescript-eslint/no-unused-vars
+    19:10   error    'QAAnswer' is defined but never used                                                                                                                                         @typescript-eslint/no-unused-vars
+    39:9    error    'navigate' is assigned a value but never used                                                                                                                                @typescript-eslint/no-unused-vars
+    43:58   error    Unexpected any. Specify a different type                                                                                                                                     @typescript-eslint/no-explicit-any
+    44:56   error    Unexpected any. Specify a different type                                                                                                                                     @typescript-eslint/no-explicit-any
+    71:14   error    Unexpected any. Specify a different type                                                                                                                                     @typescript-eslint/no-explicit-any
+    78:10   error    'knowledgeData' is assigned a value but never used                                                                                                                           @typescript-eslint/no-unused-vars
+    78:54   error    Unexpected any. Specify a different type                                                                                                                                     @typescript-eslint/no-explicit-any
+    79:10   error    'isLoadingKnowledge' is assigned a value but never used                                                                                                                      @typescript-eslint/no-unused-vars
+    85:6    warning  React Hook useEffect has missing dependencies: 'fetchKnowledgeData' and 'fetchMachineTypes'. Either include them or remove the dependency array                              react-hooks/exhaustive-deps
+    95:6    warning  React Hook useEffect has a missing dependency: 'filteredMachineTypes.length'. Either include it or remove the dependency array                                               react-hooks/exhaustive-deps
+   105:6    warning  React Hook useEffect has a missing dependency: 'filteredMachines.length'. Either include it or remove the dependency array                                                   react-hooks/exhaustive-deps
+   139:9    error    'processKnowledgeData' is assigned a value but never used                                                                                                                    @typescript-eslint/no-unused-vars
+   193:10   error    'aiSupportSessionData' is assigned a value but never used                                                                                                                    @typescript-eslint/no-unused-vars
+   193:32   error    'setAiSupportSessionData' is assigned a value but never used                                                                                                                 @typescript-eslint/no-unused-vars
+   265:6    warning  React Hook useCallback has missing dependencies: 'filteredMachineTypes.length' and 'machineTypes.length'. Either include them or remove the dependency array                 react-hooks/exhaustive-deps
+   405:9    error    'handleMachineTypeChange' is assigned a value but never used                                                                                                                 @typescript-eslint/no-unused-vars
+   455:6    warning  React Hook useEffect has missing dependencies: 'filterMachineTypes', 'isLoadingMachineTypes', and 'selectedMachineType'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+   487:6    warning  React Hook useEffect has missing dependencies: 'filterMachines', 'isLoadingMachines', and 'selectedMachineNumber'. Either include them or remove the dependency array        react-hooks/exhaustive-deps
+   533:9    error    'handleExport' is assigned a value but never used                                                                                                                            @typescript-eslint/no-unused-vars
+   629:41   error    Unexpected any. Specify a different type                                                                                                                                     @typescript-eslint/no-explicit-any
+   740:9    error    'handleImport' is assigned a value but never used                                                                                                                            @typescript-eslint/no-unused-vars
+   744:9    error    'handleFileChange' is assigned a value but never used                                                                                                                        @typescript-eslint/no-unused-vars
+   991:60   error    Unexpected any. Specify a different type                                                                                                                                     @typescript-eslint/no-explicit-any
+  1084:9    error    'handleStartTroubleshooting' is assigned a value but never used                                                                                                              @typescript-eslint/no-unused-vars
+  1111:10   error    'showCameraModal' is assigned a value but never used                                                                                                                         @typescript-eslint/no-unused-vars
+  1111:27   error    'setShowCameraModal' is assigned a value but never used                                                                                                                      @typescript-eslint/no-unused-vars
+  1112:25   error    'setSelectedImage' is assigned a value but never used                                                                                                                        @typescript-eslint/no-unused-vars
+  1113:28   error    'setShowImagePreview' is assigned a value but never used                                                                                                                     @typescript-eslint/no-unused-vars
+  1116:9    error    'generateEmergencyQuestion' is assigned a value but never used                                                                                                               @typescript-eslint/no-unused-vars
+  1116:44   error    'context' is defined but never used                                                                                                                                          @typescript-eslint/no-unused-vars
+  1116:61   error    'previousAnswers' is defined but never used                                                                                                                                  @typescript-eslint/no-unused-vars
+  1122:9    error    'handleExportChat' is assigned a value but never used                                                                                                                        @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\pages\documents.tsx
+    4:10   error  'useQuery' is defined but never used                 @typescript-eslint/no-unused-vars
+    4:20   error  'useMutation' is defined but never used              @typescript-eslint/no-unused-vars
+    5:10   error  'Button' is defined but never used                   @typescript-eslint/no-unused-vars
+    6:10   error  'Card' is defined but never used                     @typescript-eslint/no-unused-vars
+    6:16   error  'CardContent' is defined but never used              @typescript-eslint/no-unused-vars
+    6:29   error  'CardHeader' is defined but never used               @typescript-eslint/no-unused-vars
+    6:41   error  'CardTitle' is defined but never used                @typescript-eslint/no-unused-vars
+    7:10   error  'Input' is defined but never used                    @typescript-eslint/no-unused-vars
+    8:10   error  'Label' is defined but never used                    @typescript-eslint/no-unused-vars
+    9:10   error  'Textarea' is defined but never used                 @typescript-eslint/no-unused-vars
+   10:10   error  'Badge' is defined but never used                    @typescript-eslint/no-unused-vars
+   12:3    error  'Table' is defined but never used                    @typescript-eslint/no-unused-vars
+   13:3    error  'TableBody' is defined but never used                @typescript-eslint/no-unused-vars
+   14:3    error  'TableCell' is defined but never used                @typescript-eslint/no-unused-vars
+   15:3    error  'TableHead' is defined but never used                @typescript-eslint/no-unused-vars
+   16:3    error  'TableHeader' is defined but never used              @typescript-eslint/no-unused-vars
+   17:3    error  'TableRow' is defined but never used                 @typescript-eslint/no-unused-vars
+   20:3    error  'Dialog' is defined but never used                   @typescript-eslint/no-unused-vars
+   21:3    error  'DialogContent' is defined but never used            @typescript-eslint/no-unused-vars
+   22:3    error  'DialogDescription' is defined but never used        @typescript-eslint/no-unused-vars
+   23:3    error  'DialogFooter' is defined but never used             @typescript-eslint/no-unused-vars
+   24:3    error  'DialogHeader' is defined but never used             @typescript-eslint/no-unused-vars
+   25:3    error  'DialogTitle' is defined but never used              @typescript-eslint/no-unused-vars
+   26:3    error  'DialogTrigger' is defined but never used            @typescript-eslint/no-unused-vars
+   29:3    error  'Select' is defined but never used                   @typescript-eslint/no-unused-vars
+   30:3    error  'SelectContent' is defined but never used            @typescript-eslint/no-unused-vars
+   31:3    error  'SelectItem' is defined but never used               @typescript-eslint/no-unused-vars
+   32:3    error  'SelectTrigger' is defined but never used            @typescript-eslint/no-unused-vars
+   33:3    error  'SelectValue' is defined but never used              @typescript-eslint/no-unused-vars
+   35:10   error  'Upload' is defined but never used                   @typescript-eslint/no-unused-vars
+   35:18   error  'FileText' is defined but never used                 @typescript-eslint/no-unused-vars
+   35:28   error  'Trash2' is defined but never used                   @typescript-eslint/no-unused-vars
+   35:36   error  'Download' is defined but never used                 @typescript-eslint/no-unused-vars
+   35:46   error  'Eye' is defined but never used                      @typescript-eslint/no-unused-vars
+   35:51   error  'Edit' is defined but never used                     @typescript-eslint/no-unused-vars
+   35:57   error  'Plus' is defined but never used                     @typescript-eslint/no-unused-vars
+   35:63   error  'AlertCircle' is defined but never used              @typescript-eslint/no-unused-vars
+   35:90   error  'Info' is defined but never used                     @typescript-eslint/no-unused-vars
+   35:96   error  'History' is defined but never used                  @typescript-eslint/no-unused-vars
+   35:113  error  'AlertTriangle' is defined but never used            @typescript-eslint/no-unused-vars
+   36:10   error  'useLocation' is defined but never used              @typescript-eslint/no-unused-vars
+   36:23   error  'Link' is defined but never used                     @typescript-eslint/no-unused-vars
+   37:10   error  'format' is defined but never used                   @typescript-eslint/no-unused-vars
+   41:8    error  'FileIngestPanel' is defined but never used          @typescript-eslint/no-unused-vars
+   47:11   error  'user' is assigned a value but never used            @typescript-eslint/no-unused-vars
+   47:28   error  'authLoading' is assigned a value but never used     @typescript-eslint/no-unused-vars
+   49:9    error  'navigate' is assigned a value but never used        @typescript-eslint/no-unused-vars
+   52:10   error  'baseData' is assigned a value but never used        @typescript-eslint/no-unused-vars
+   53:10   error  'historyData' is assigned a value but never used     @typescript-eslint/no-unused-vars
+   54:10   error  'processedFiles' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   54:56   error  Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+   55:10   error  'loading' is assigned a value but never used         @typescript-eslint/no-unused-vars
+  121:9    error  'formatDate' is assigned a value but never used      @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\pages\emergency-guide.tsx
+    8:10  error    'Button' is defined but never used                                                                                @typescript-eslint/no-unused-vars
+   21:10  error    'targetGuideId' is assigned a value but never used                                                                @typescript-eslint/no-unused-vars
+   27:10  error    'lastUploadedGuideId' is assigned a value but never used                                                          @typescript-eslint/no-unused-vars
+   32:10  error    'searchQuery' is assigned a value but never used                                                                  @typescript-eslint/no-unused-vars
+   32:23  error    'setSearchQuery' is assigned a value but never used                                                               @typescript-eslint/no-unused-vars
+  128:6   warning  React Hook useEffect has a missing dependency: 'fetchFlowList'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  137:10  error    'isLoadingFlowList' is assigned a value but never used                                                            @typescript-eslint/no-unused-vars
+  138:10  error    'flowList' is assigned a value but never used                                                                     @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\pages\history.tsx
+     2:63   error    'Filter' is defined but never used                                                                                                                               @typescript-eslint/no-unused-vars
+     2:81   error    'Trash2' is defined but never used                                                                                                                               @typescript-eslint/no-unused-vars
+     2:89   error    'FileDown' is defined but never used                                                                                                                             @typescript-eslint/no-unused-vars
+     2:111  error    'FileTextIcon' is defined but never used                                                                                                                         @typescript-eslint/no-unused-vars
+     2:125  error    'Table' is defined but never used                                                                                                                                @typescript-eslint/no-unused-vars
+     2:132  error    'Grid3X3' is defined but never used                                                                                                                              @typescript-eslint/no-unused-vars
+     2:141  error    'List' is defined but never used                                                                                                                                 @typescript-eslint/no-unused-vars
+     2:147  error    'ClipboardList' is defined but never used                                                                                                                        @typescript-eslint/no-unused-vars
+     2:162  error    'FileSpreadsheet' is defined but never used                                                                                                                      @typescript-eslint/no-unused-vars
+     2:179  error    'Grid' is defined but never used                                                                                                                                 @typescript-eslint/no-unused-vars
+     7:10   error    'Badge' is defined but never used                                                                                                                                @typescript-eslint/no-unused-vars
+     8:30   error    'HistorySearchFilters' is defined but never used                                                                                                                 @typescript-eslint/no-unused-vars
+    10:3    error    'fetchHistoryList' is defined but never used                                                                                                                     @typescript-eslint/no-unused-vars
+    11:3    error    'fetchMachineData' is defined but never used                                                                                                                     @typescript-eslint/no-unused-vars
+    16:3    error    'advancedSearch' is defined but never used                                                                                                                       @typescript-eslint/no-unused-vars
+    17:3    error    'generateReport' is defined but never used                                                                                                                       @typescript-eslint/no-unused-vars
+    26:16   error    'fetchDetailFile' is defined but never used                                                                                                                      @typescript-eslint/no-unused-vars
+    54:10   error    'getSelectedItemWithFallback' is defined but never used                                                                                                          @typescript-eslint/no-unused-vars
+    54:44   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+    77:10   error    'searchQuery' is assigned a value but never used                                                                                                                 @typescript-eslint/no-unused-vars
+    77:23   error    'setSearchQuery' is assigned a value but never used                                                                                                              @typescript-eslint/no-unused-vars
+    99:23   error    'setPreviewItem' is assigned a value but never used                                                                                                              @typescript-eslint/no-unused-vars
+   104:10   error    'showPrintDialog' is assigned a value but never used                                                                                                             @typescript-eslint/no-unused-vars
+   104:27   error    'setShowPrintDialog' is assigned a value but never used                                                                                                          @typescript-eslint/no-unused-vars
+   105:10   error    'printMode' is assigned a value but never used                                                                                                                   @typescript-eslint/no-unused-vars
+   105:21   error    'setPrintMode' is assigned a value but never used                                                                                                                @typescript-eslint/no-unused-vars
+   109:64   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+   256:6    warning  React Hook useEffect has a missing dependency: 'fetchHistoryData'. Either include it or remove the dependency array                                              react-hooks/exhaustive-deps
+   272:15   error    'machineTypeSet' is assigned a value but never used                                                                                                              @typescript-eslint/no-unused-vars
+   273:15   error    'machineTypes' is assigned a value but never used                                                                                                                @typescript-eslint/no-unused-vars
+   276:15   error    'machineSet' is assigned a value but never used                                                                                                                  @typescript-eslint/no-unused-vars
+   277:15   error    'machines' is assigned a value but never used                                                                                                                    @typescript-eslint/no-unused-vars
+   359:35   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+   369:52   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+   451:6    warning  React Hook useEffect has missing dependencies: 'currentPage', 'fetchHistoryData', and 'historyItems.length'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+   483:9    error    'handleDeleteHistory' is assigned a value but never used                                                                                                         @typescript-eslint/no-unused-vars
+   533:9    error    'handleExportPDF' is assigned a value but never used                                                                                                             @typescript-eslint/no-unused-vars
+   559:9    error    'handleExportItem' is assigned a value but never used                                                                                                            @typescript-eslint/no-unused-vars
+   598:9    error    'handleGenerateReport' is assigned a value but never used                                                                                                        @typescript-eslint/no-unused-vars
+   663:77   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+   706:77   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+   736:77   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+   754:83   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+   775:75   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+   796:48   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+   811:47   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+   927:9    error    'handleShowReport' is assigned a value but never used                                                                                                            @typescript-eslint/no-unused-vars
+   973:41   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+  1124:9    error    'extractJsonInfo' is assigned a value but never used                                                                                                             @typescript-eslint/no-unused-vars
+  1124:38   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+  1142:9    error    'generateMachineFailureReportHTML' is assigned a value but never used                                                                                            @typescript-eslint/no-unused-vars
+  1142:57   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+  1144:11   error    'safeJsonStringify' is assigned a value but never used                                                                                                           @typescript-eslint/no-unused-vars
+  1144:37   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+  1174:34   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+  1192:50   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+  1222:52   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+  1246:58   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+  1270:41   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+  2567:33   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+  2569:20   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+  2607:41   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+  2657:9    error    'printList' is assigned a value but never used                                                                                                                   @typescript-eslint/no-unused-vars
+  2657:29   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+  2804:70   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+  2824:11   error    'extractedComponents' is assigned a value but never used                                                                                                         @typescript-eslint/no-unused-vars
+  2825:11   error    'extractedSymptoms' is assigned a value but never used                                                                                                           @typescript-eslint/no-unused-vars
+  2826:11   error    'possibleModels' is assigned a value but never used                                                                                                              @typescript-eslint/no-unused-vars
+  2845:68   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+  2857:74   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+  2869:66   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+  2881:57   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+  2901:74   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+  2913:66   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+  2926:43   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+  2926:68   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+  3342:88   error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+  3372:29   error    'messageCount' is assigned a value but never used                                                                                                                @typescript-eslint/no-unused-vars
+  3375:29   error    'exportType' is assigned a value but never used                                                                                                                  @typescript-eslint/no-unused-vars
+  3376:29   error    'fileName' is assigned a value but never used                                                                                                                    @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\pages\login.tsx
+  17:9  error  'location' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\pages\not-found.tsx
+  1:29  error  'CardFooter' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\pages\processing.tsx
+  2:10  error  'useState' is defined but never used       @typescript-eslint/no-unused-vars
+  6:11  error  'user' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\pages\settings.tsx
+    6:52  error    'CardDescription' is defined but never used                                                                      @typescript-eslint/no-unused-vars
+    9:10  error    'Badge' is defined but never used                                                                                @typescript-eslint/no-unused-vars
+   14:3   error    'Monitor' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+   15:3   error    'Smartphone' is defined but never used                                                                           @typescript-eslint/no-unused-vars
+   16:3   error    'LogOut' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+   23:3   error    'FileType' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+   24:3   error    'Info' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+   26:3   error    'Database' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+   29:3   error    'RefreshCw' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+   30:3   error    'AlertCircle' is defined but never used                                                                          @typescript-eslint/no-unused-vars
+   31:3   error    'MessageSquare' is defined but never used                                                                        @typescript-eslint/no-unused-vars
+   32:3   error    'Edit3' is defined but never used                                                                                @typescript-eslint/no-unused-vars
+   33:3   error    'Wrench' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+   36:10  error    'Separator' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+   47:8   error    'MachineList' is defined but never used                                                                          @typescript-eslint/no-unused-vars
+  100:51  error    Unexpected any. Specify a different type                                                                         @typescript-eslint/no-explicit-any
+  102:52  error    Unexpected any. Specify a different type                                                                         @typescript-eslint/no-explicit-any
+  205:6   warning  React Hook useEffect has a missing dependency: 'saveSettings'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  208:9   error    'handleLogout' is assigned a value but never used                                                                @typescript-eslint/no-unused-vars
+  236:13  error    'result' is assigned a value but never used                                                                      @typescript-eslint/no-unused-vars
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\pages\troubleshooting.tsx
+    1:20  error  'useEffect' is defined but never used                   @typescript-eslint/no-unused-vars
+    4:10  error  'Button' is defined but never used                      @typescript-eslint/no-unused-vars
+   13:10  error  'FilePlus' is defined but never used                    @typescript-eslint/no-unused-vars
+   13:20  error  'Edit' is defined but never used                        @typescript-eslint/no-unused-vars
+   13:26  error  'Trash2' is defined but never used                      @typescript-eslint/no-unused-vars
+   13:34  error  'Eye' is defined but never used                         @typescript-eslint/no-unused-vars
+   13:49  error  'List' is defined but never used                        @typescript-eslint/no-unused-vars
+   31:10  error  Unexpected any. Specify a different type                @typescript-eslint/no-explicit-any
+   36:7   error  'newFlowTemplate' is assigned a value but never used    @typescript-eslint/no-unused-vars
+   70:17  error  'flows' is assigned a value but never used              @typescript-eslint/no-unused-vars
+   70:24  error  'isLoading' is assigned a value but never used          @typescript-eslint/no-unused-vars
+  118:9   error  'handleBackToList' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  122:47  error  Unexpected any. Specify a different type                @typescript-eslint/no-explicit-any
+  128:9   error  'handleOpenEditor' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  135:9   error  'handleOpenViewer' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  140:9   error  'handleDeleteClick' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  149:37  error  Unexpected any. Specify a different type                @typescript-eslint/no-explicit-any
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\pages\users.tsx
+   60:9   error  'location' is assigned a value but never used                                                                                @typescript-eslint/no-unused-vars
+   62:10  error  'error' is assigned a value but never used                                                                                   @typescript-eslint/no-unused-vars
+   62:17  error  'setError' is assigned a value but never used                                                                                @typescript-eslint/no-unused-vars
+  230:53  error  React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render  react-hooks/rules-of-hooks
+  231:55  error  React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render  react-hooks/rules-of-hooks
+  232:65  error  React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render  react-hooks/rules-of-hooks
+  233:51  error  React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render  react-hooks/rules-of-hooks
+  234:47  error  React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render  react-hooks/rules-of-hooks
+  235:39  error  React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render  react-hooks/rules-of-hooks
+  236:45  error  React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render  react-hooks/rules-of-hooks
+  236:54  error  Unexpected any. Specify a different type                                                                                     @typescript-eslint/no-explicit-any
+  237:41  error  React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render  react-hooks/rules-of-hooks
+  238:33  error  React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render  react-hooks/rules-of-hooks
+  246:35  error  React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render  react-hooks/rules-of-hooks
+  306:41  error  Unnecessary escape character: \[                                                                                             no-useless-escape
+  306:58  error  Unnecessary escape character: \/                                                                                             no-useless-escape
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\types\global.d.ts
+  3:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\types\globals.d.ts
+  3:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  4:14  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  5:29  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  8:1   error  Unexpected var, use let or const instead  no-var
+  8:32  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\types\history.ts
+  22:10  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  23:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  24:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  25:14  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  26:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  40:27  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  42:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  54:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  77:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\types\service-worker.d.ts
+   9:16  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-explicit-any
+  14:18  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-explicit-any
+  15:46  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-explicit-any
+  16:24  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-explicit-any
+  16:38  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-explicit-any
+  17:47  error  Don't use `Function` as a type. The `Function` type accepts any function-like value.
+It provides no type safety when calling the function, which can be a common source of bugs.
+It also accepts things like class declarations, which will throw at runtime as they will not be called with `new`.
+If you are expecting the function to accept certain arguments, you should explicitly define the function shape  @typescript-eslint/ban-types
+  18:50  error  Don't use `Function` as a type. The `Function` type accepts any function-like value.
+It provides no type safety when calling the function, which can be a common source of bugs.
+It also accepts things like class declarations, which will throw at runtime as they will not be called with `new`.
+If you are expecting the function to accept certain arguments, you should explicitly define the function shape  @typescript-eslint/ban-types
+  21:41  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-explicit-any
+  21:52  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-explicit-any
+  21:66  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-explicit-any
+  25:17  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-explicit-any
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\src\utils\pptxExtract.ts
+  11:7   error  'out' is never reassigned. Use 'const' instead  prefer-const
+  17:22  error  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+
+C:\Users\Satoshi Niina\OneDrive\Desktop\繧ｷ繧ｹ繝・Β\Emergency-Assistance\client\vite.config.ts
+   1:8   error  'dotenv' is defined but never used   @typescript-eslint/no-unused-vars
+  73:30  error  'options' is defined but never used  @typescript-eslint/no-unused-vars
+  74:37  error  'req' is defined but never used      @typescript-eslint/no-unused-vars
+  74:42  error  'res' is defined but never used      @typescript-eslint/no-unused-vars
+  77:50  error  'res' is defined but never used      @typescript-eslint/no-unused-vars
+  80:50  error  'res' is defined but never used      @typescript-eslint/no-unused-vars
+
+笨・697 problems (648 errors, 49 warnings)
+  3 errors and 0 warnings potentially fixable with the `--fix` option.
+

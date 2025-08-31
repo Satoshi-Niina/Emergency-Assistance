@@ -1,0 +1,127 @@
+{
+  "summary": {
+    "totalErrors": 646,
+    "totalWarnings": 49,
+    "totalProblems": 695
+  },
+  "topRules": [
+    {
+      "name": "@typescript-eslint/no-unused-vars",
+      "count": 443
+    },
+    {
+      "name": "@typescript-eslint/no-explicit-any",
+      "count": 185
+    },
+    {
+      "name": "react-hooks/exhaustive-deps",
+      "count": 32
+    },
+    {
+      "name": "react-refresh/only-export-components",
+      "count": 17
+    },
+    {
+      "name": "react-hooks/rules-of-hooks",
+      "count": 10
+    },
+    {
+      "name": "no-useless-escape",
+      "count": 3
+    },
+    {
+      "name": "@typescript-eslint/ban-ts-comment",
+      "count": 2
+    },
+    {
+      "name": "prefer-const",
+      "count": 2
+    },
+    {
+      "name": "no-var",
+      "count": 1
+    }
+  ],
+  "topFiles": [
+    {
+      "name": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\繧ｷ繧ｹ繝・Β\\Emergency-Assistance\\client\\src\\pages\\history.tsx",
+      "count": 80
+    },
+    {
+      "name": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\繧ｷ繧ｹ繝・Β\\Emergency-Assistance\\client\\src\\pages\\chat.tsx",
+      "count": 64
+    },
+    {
+      "name": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\繧ｷ繧ｹ繝・Β\\Emergency-Assistance\\client\\src\\pages\\documents.tsx",
+      "count": 53
+    },
+    {
+      "name": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\繧ｷ繧ｹ繝・Β\\Emergency-Assistance\\client\\src\\context\\chat-context.tsx",
+      "count": 44
+    },
+    {
+      "name": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\繧ｷ繧ｹ繝・Β\\Emergency-Assistance\\client\\src\\components\\emergency-guide\\emergency-flow-creator.tsx",
+      "count": 35
+    },
+    {
+      "name": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\繧ｷ繧ｹ繝・Β\\Emergency-Assistance\\client\\src\\components\\emergency-guide\\emergency-flow-editor.tsx",
+      "count": 24
+    },
+    {
+      "name": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\繧ｷ繧ｹ繝・Β\\Emergency-Assistance\\client\\src\\pages\\settings.tsx",
+      "count": 20
+    },
+    {
+      "name": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\繧ｷ繧ｹ繝・Β\\Emergency-Assistance\\client\\src\\components\\chat\\camera-modal.tsx",
+      "count": 18
+    },
+    {
+      "name": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\繧ｷ繧ｹ繝・Β\\Emergency-Assistance\\client\\src\\components\\report\\chat-export-report.tsx",
+      "count": 18
+    },
+    {
+      "name": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\繧ｷ繧ｹ繝・Β\\Emergency-Assistance\\client\\src\\components\\emergency-guide\\step-editor.tsx",
+      "count": 17
+    },
+    {
+      "name": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\繧ｷ繧ｹ繝・Β\\Emergency-Assistance\\client\\src\\pages\\troubleshooting.tsx",
+      "count": 17
+    },
+    {
+      "name": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\繧ｷ繧ｹ繝・Β\\Emergency-Assistance\\client\\src\\components\\emergency-guide\\emergency-guide-edit.tsx",
+      "count": 16
+    },
+    {
+      "name": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\繧ｷ繧ｹ繝・Β\\Emergency-Assistance\\client\\src\\pages\\users.tsx",
+      "count": 16
+    },
+    {
+      "name": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\繧ｷ繧ｹ繝・Β\\Emergency-Assistance\\client\\src\\components\\chat\\enhanced-qa-flow.tsx",
+      "count": 15
+    },
+    {
+      "name": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\繧ｷ繧ｹ繝・Β\\Emergency-Assistance\\client\\src\\components\\report\\machine-failure-report.tsx",
+      "count": 14
+    },
+    {
+      "name": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\繧ｷ繧ｹ繝・Β\\Emergency-Assistance\\client\\src\\components\\chat\\message-bubble.tsx",
+      "count": 13
+    },
+    {
+      "name": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\繧ｷ繧ｹ繝・Β\\Emergency-Assistance\\client\\src\\components\\navigation\\header.tsx",
+      "count": 12
+    },
+    {
+      "name": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\繧ｷ繧ｹ繝・Β\\Emergency-Assistance\\client\\src\\components\\report\\ReportViewer.tsx",
+      "count": 11
+    },
+    {
+      "name": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\繧ｷ繧ｹ繝・Β\\Emergency-Assistance\\client\\src\\components\\chat\\emergency-qa-flow.tsx",
+      "count": 10
+    },
+    {
+      "name": "C:\\Users\\Satoshi Niina\\OneDrive\\Desktop\\繧ｷ繧ｹ繝・Β\\Emergency-Assistance\\client\\src\\components\\emergency-guide\\flow-list-manager.tsx",
+      "count": 10
+    }
+  ]
+}
