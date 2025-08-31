@@ -60,20 +60,27 @@ jobs:
           fi
 
       - name: Validate publish profile matches app
-        run: |
-          node -e "
-            const app = (process.env.AZURE_WEBAPP_NAME || '').toLowerCase();
-            const expected = `${app}.scm.azurewebsites.net`;
-            const xml = process.env.PP || '';
-            const m = xml.match(/publishUrl=\"https?:\/\/([^:\"'\/]+)/i);
-            const actual = (m ? m[1] : '').toLowerCase();
-            console.log('expectedHost=' + expected);
-            console.log('actualHost=' + actual);
-            if (!actual) { console.error('No publishUrl found in secret. Paste the App Service publish profile XML as-is into the secret.'); process.exit(1); }
-            if (actual !== expected) { console.error('NG: publish profile host mismatch'); process.exit(1); }
-          "
+        shell: bash
         env:
           PP: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        run: |
+          node <<'NODE'
+          const app = (process.env.AZURE_WEBAPP_NAME || '').toLowerCase();
+          const expected = app + '.scm.azurewebsites.net';
+          const xml = (process.env.PP || '').replace(/\r/g, '');
+          const m = xml.match(/publishUrl="https?:\/\/([^:"'\/]+)/i);
+          const actual = (m ? m[1] : '').toLowerCase();
+          console.log('expectedHost=' + expected);
+          console.log('actualHost=' + actual);
+          if (!actual) {
+            console.error('No publishUrl found in secret. Recreate publish profile from the App Service and paste XML as-is.');
+            process.exit(1);
+          }
+          if (actual !== expected) {
+            console.error('NG: publish profile host mismatch');
+            process.exit(1);
+          }
+          NODE
 
       - name: Deploy to Azure WebApp
         uses: azure/webapps-deploy@v3
