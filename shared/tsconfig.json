@@ -5,6 +5,7 @@
     "strict": true,
   "downlevelIteration": true,
   "target": "es2015",
+    "composite": true,
     "esModuleInterop": true,
     "skipLibCheck": true
   },
