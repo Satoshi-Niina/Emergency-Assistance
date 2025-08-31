@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AlertCircle, CheckCircle, CloudOff, CloudSun, Wifi, WifiOff } from 'lucide-react';
-import { useToast } from "../../hooks/use-toast.ts";
+import { useToast } from "../../hooks/use-toast";
 import { Button } from "../../components/ui/button";
 import { Progress } from "../../components/ui/progress";
 import { cn } from '../../lib/utils.ts';

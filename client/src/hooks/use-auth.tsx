@@ -4,9 +4,9 @@ import {
   useMutation,
   UseMutationResult,
 } from "@tanstack/react-query";
-import { User, loginSchema } from "../lib/schema.ts";
-import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient.ts";
-import { useToast } from "../hooks/use-toast.ts";
+import { User, loginSchema } from "../lib/schema";
+import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
+import { useToast } from "../hooks/use-toast";
 import { z } from "zod";
 
 type AuthContextType = {

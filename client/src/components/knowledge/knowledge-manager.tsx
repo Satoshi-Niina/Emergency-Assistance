@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useToast } from "../../hooks/use-toast.ts";
+import { useToast } from "../../hooks/use-toast";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";

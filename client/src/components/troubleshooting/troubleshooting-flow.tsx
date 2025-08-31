@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { convertImageUrl } from '../../lib/utils.ts';
+import { convertImageUrl } from '../../lib/utils';
 
 interface FlowStep {
   id: string;

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "../../components/ui/button";
-import { useToast } from "../../hooks/use-toast.ts";
+import { useToast } from "../../hooks/use-toast";
 import { Loader2, Trash2, FileText, RefreshCw, Database } from "lucide-react";
 import { Checkbox } from "../../components/ui/checkbox";
 import { Label } from "../../components/ui/label";
@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "../../components/ui/table";
-import { buildApiUrl } from "../../lib/api/config.ts";
+import { buildApiUrl } from "../../lib/api/config";
 
 // タイプ定義
 interface ProcessedDocument {

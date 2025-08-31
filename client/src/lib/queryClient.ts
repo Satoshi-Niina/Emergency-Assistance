@@ -1,5 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
-import { buildApiUrl } from "./api/config.ts";
+import { buildApiUrl } from "./api/config";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
