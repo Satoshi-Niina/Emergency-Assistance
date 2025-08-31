@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
-import { useToast } from "../../hooks/use-toast.ts";
+import { useToast } from "../../hooks/use-toast";
 import { Edit, Eye, Trash2, RefreshCw, Loader2 } from 'lucide-react';
-import { buildApiUrl } from "../../lib/api/config.ts";
+import { buildApiUrl } from "../../lib/api/config";
 import {
   AlertDialog,
   AlertDialogAction,

@@ -1,8 +1,8 @@
-import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
-import { useToast } from '../hooks/use-toast.ts';
-import { apiRequest } from '../lib/queryClient.ts';
+﻿import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
+import { useToast } from '../hooks/use-toast';
+import { apiRequest } from '../lib/queryClient';
 import { useQueryClient } from '@tanstack/react-query';
-import { startSpeechRecognition, stopSpeechRecognition, startBrowserSpeechRecognition, stopBrowserSpeechRecognition } from '../lib/azure-speech.ts';
+import { startSpeechRecognition, stopSpeechRecognition, startBrowserSpeechRecognition, stopBrowserSpeechRecognition } from '../lib/azure-speech';
 import { Message } from '@shared/schema';
 
 // 十分な文とみなす最小文字数

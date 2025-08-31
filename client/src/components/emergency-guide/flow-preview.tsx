@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { ArrowLeft, ArrowRight } from 'lucide-react';
-import { convertImageUrl } from '../../lib/utils.ts';
-import { buildApiUrl } from '../../lib/api/config.ts';
+import { convertImageUrl } from '../../lib/utils';
+import { buildApiUrl } from '../../lib/api/config';
 
 interface Step {
   id: string;

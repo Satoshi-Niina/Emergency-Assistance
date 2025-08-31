@@ -1,6 +1,6 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { apiRequest, queryClient } from '../lib/queryClient.ts';
+import { apiRequest, queryClient } from '../lib/queryClient';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import {
 } from '../components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Workflow, BrainCircuit, ListChecks } from 'lucide-react';
-import { useToast } from '../hooks/use-toast.ts';
+import { useToast } from '../hooks/use-toast';
 
 // The two main components for the tabs
 import EmergencyFlowEditor from '../components/emergency-guide/emergency-flow-editor';

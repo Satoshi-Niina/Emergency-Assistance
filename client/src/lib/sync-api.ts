@@ -1,4 +1,4 @@
-import { apiRequest } from "../lib/queryClient.ts";
+﻿import { apiRequest } from "../lib/queryClient";
 import { 
   getUnsyncedMessages, 
   markMessageAsSynced,

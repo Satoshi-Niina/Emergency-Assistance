@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import EmergencyGuideUploader from "../components/emergency-guide/emergency-guide-uploader";
 import EmergencyGuideEdit from "../components/emergency-guide/emergency-guide-edit";
 import EmergencyGuideDisplay from "../components/emergency-guide/emergency-guide-display";
 
 import { Helmet } from "react-helmet";
-import { useToast } from "../hooks/use-toast.ts";
+import { useToast } from "../hooks/use-toast";
 
 const EmergencyGuidePage: React.FC = () => {
   // URLからクエリパラメータを取得
