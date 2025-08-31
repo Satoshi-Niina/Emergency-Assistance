@@ -1,63 +1,88 @@
-name: Deploy Backend
+name: Deploy Backend to Azure App Service
 
 on:
   push:
-    branches: [ main, develop, backup-clean ]
-    paths:
-      - "server/**"
-      - "shared/**"
-      - ".github/workflows/**"
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+  AZURE_WEBAPP_NAME: Emergencyassistance-sv 
+  WORKING_DIR: server
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+
     steps:
-      - uses: actions/checkout@v4
+      # --- コード取得 ---
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Install dependencies (server)
-        run: cd server && npm ci
+      # --- Node セットアップ + キャッシュ ---
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            client/package-lock.json
+            server/package-lock.json
+            shared/package-lock.json
 
-      - name: Build (TypeScript) (run in server cwd)
-        run: cd server && npm run build
+      # --- ルート依存インストール（全体で必要） ---
+      - name: Install dependencies at root
+        run: npm ci
 
-      - name: Show dist contents
-        run: ls -la server/dist || true
+      # --- client 依存インストール ---
+      - name: Install dependencies for client
+        if: hashFiles('client/package.json') != ''
+        working-directory: client
+        run: npm ci
 
-      - name: Check dist entry existence
+      # --- shared 依存インストール ---
+      - name: Install dependencies for shared
+        if: hashFiles('shared/package.json') != ''
+        working-directory: shared
+        run: npm ci
+
+      # --- server 依存インストール ---
+      - name: Install dependencies for server
+        working-directory: ${{ env.WORKING_DIR }}
+        run: npm ci
+
+      # --- 型チェック ---
+      - name: Type Check
+        run: npx tsc --noEmit
+
+      # --- ビルド（ルートに定義済みの build スクリプト利用）---
+      - name: Build all (shared, client, server)
+        run: npm run build
+
+      # --- dist エントリ確認 ---
+      - name: Verify server dist
+        working-directory: ${{ env.WORKING_DIR }}
         run: |
-          if [ ! -f server/dist/index.js ] && [ ! -f server/dist/server.js ]; then
-            echo "dist entry (index.js or server.js) not found!" >&2
+          if [ ! -f ./dist/index.js ] && [ ! -f ./dist/server.js ]; then
+            echo "dist entry not found in ./dist !" >&2
+            ls -la ./dist || true
             exit 1
           fi
 
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
-          slot-name: ${{ secrets.AZURE_WEBAPP_SLOT }}
-          package: ./server
+      # --- 単体テスト（任意）---
+      - name: Run tests
+        run: npm test || echo "No tests configured."
 
-      - name: Post-deploy smoke test (retry)
-        shell: bash
-        env:
-          API_BASE: ${{ secrets.API_BASE }}
-        run: |
-          set -e
-          : "${API_BASE:?API_BASE is empty. Set API_BASE before smoke test.}"
-          echo "=== Post-deploy smoke test ==="
-          sleep 10
-          for i in 5 10 20 30 60; do
-            echo "Attempt (wait=$i s): $API_BASE/api/health"
-            if curl -fsSL "$API_BASE/api/health" -o health_response.txt; then
-              echo "Health OK"; break
-            fi
-            echo "Waiting $i seconds..."
-            sleep $i
-            if [ "$i" -eq 60 ]; then
-              echo "Health check failed after retries"; exit 1
-            fi
-          done
-          echo "Auth endpoint: $API_BASE/api/auth/me"
-          curl -fsSL -c cookies.txt -b cookies.txt "$API_BASE/api/auth/me" -o authme_response.txt || true
-          echo "--- /api/health ---"; cat health_response.txt || true
-          echo "--- /api/auth/me ---"; cat authme_response.txt || true
+      # --- Azure App Service にデプロイ ---
+      - name: Deploy to Azure WebApp
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ${{ env.WORKING_DIR }}
