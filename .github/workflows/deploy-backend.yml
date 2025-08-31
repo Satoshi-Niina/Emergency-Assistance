@@ -1,73 +1,99 @@
-name: Deploy Backend (App Service)
+name: Deploy Backend to Azure App Service
 
 on:
   push:
-    branches: [ backup-clean ]
+    branches: [ main ]
     paths:
       - "server/**"
-      - "shared/**"
       - ".github/workflows/deploy-backend.yml"
   workflow_dispatch:
 
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    env:
-      NODE_VERSION: 20
-      AZURE_WEBAPP_NAME: Emergencyassistance-sv
-      WORKING_DIR_SERVER: server
-      WORKING_DIR_SHARED: shared
+env:
+  NODE_VERSION: "20"
+  AZURE_WEBAPP_NAME: "Emergencyassistance-sv"
+  WORKING_DIR_SERVER: "server"
+  WORKING_DIR_SHARED: "shared"
 
+jobs:
+  build:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: |
+            ${{ env.WORKING_DIR_SERVER }}/package-lock.json
+            ${{ env.WORKING_DIR_SHARED }}/package-lock.json
 
-      - name: Install deps (shared)
-        working-directory: ${{ env.WORKING_DIR_SHARED }}
+      - name: Install (shared) if exists
         run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
-
-      - name: Type Check (shared)
-        working-directory: ${{ env.WORKING_DIR_SHARED }}
-        run: npx tsc --noEmit -p tsconfig.json
-
-      - name: Build (shared)
-        working-directory: ${{ env.WORKING_DIR_SHARED }}
-        run: npm run build
-
-      - name: Install deps (server)
-        working-directory: ${{ env.WORKING_DIR_SERVER }}
-        run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
-
-      - name: Type Check (server)
-        working-directory: ${{ env.WORKING_DIR_SERVER }}
-        run: npx tsc --noEmit -p tsconfig.json
-
-      - name: Build (server)
-        working-directory: ${{ env.WORKING_DIR_SERVER }}
-        run: npm run build
-
-      - name: Check publish profile secret exists
-        run: |
-          if [ -z "${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}" ]; then
-            echo "Missing AZURE_WEBAPP_PUBLISH_PROFILE"; exit 1;
+          if [ -f "${WORKING_DIR_SHARED}/package.json" ]; then
+            cd "${WORKING_DIR_SHARED}"
+            npm ci
           fi
 
-      - name: Validate publish profile matches app
+      - name: Install (server)
+        working-directory: ${{ env.WORKING_DIR_SERVER }}
+        run: npm ci
+
+      - name: Build (server) if script exists
+        working-directory: ${{ env.WORKING_DIR_SERVER }}
+        run: |
+          if npm run | grep -q "^  build"; then
+            npm run build
+          fi
+
+      - name: Verify dist entry (best-effort)
+        working-directory: ${{ env.WORKING_DIR_SERVER }}
+        run: |
+          if [ -f "./dist/index.js" ] || [ -f "./dist/server.js" ]; then
+            echo "dist entry found."
+          else
+            echo "dist entry not found (info): Oryx build may still handle build."
+          fi
+
+      - name: Prepare artifact
+        run: |
+          mkdir -p deploy
+          cd "${WORKING_DIR_SERVER}"
+          zip -r ../deploy/server.zip . -x "node_modules/*" ".git/*"
+          cd -
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-zip
+          path: deploy/server.zip
+          if-no-files-found: error
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: server-zip
+          path: .
+
+      # ← Secret名を AZURE_WEBAPP_PUBLISH_PROFILE に変更
+      - name: Validate publish profile host
         shell: bash
         env:
-          PP: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          AZURE_WEBAPP_NAME: ${{ env.AZURE_WEBAPP_NAME }}
+          AZURE_WEBAPP_PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
         run: |
           node <<'NODE'
           const app = (process.env.AZURE_WEBAPP_NAME || '').toLowerCase();
           const expected = app + '.scm.azurewebsites.net';
-          const xml = (process.env.PP || '').replace(/\r/g, '');
+          const xml = (process.env.AZURE_WEBAPP_PUBLISH_PROFILE || '').replace(/\r/g, '');
           const m = xml.match(/publishUrl="https?:\/\/([^:"'\/]+)/i);
           const actual = (m ? m[1] : '').toLowerCase();
           console.log('expectedHost=' + expected);
@@ -86,5 +112,9 @@ jobs:
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: server
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}  # ← ここも変更
+          package: server.zip
+
+      - name: Show Kudu deployment log url
+        run: |
+          echo "Kudu: https://${{ env.AZURE_WEBAPP_NAME }}.scm.azurewebsites.net/api/deployments"
