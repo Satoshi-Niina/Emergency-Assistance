@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: emergency-backend
+  group: deploy-backend-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -22,8 +22,8 @@ jobs:
     timeout-minutes: 20
     env:
       NODE_VERSION: 20
-      APP_NAME: Emergencyassistance-sv   # ← Azureの実名
-      PACKAGE_PATH: ./server/dist
+      APP_NAME: Emergencyassistance-sv      # ← Azureの実名に変更可
+      PACKAGE_PATH: ./server/dist           # ← dist配布（zip化に切替も可）
 
     steps:
       - name: Checkout
@@ -34,7 +34,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: Preflight: Secrets & Azure settings
+      - name: Preflight: Secrets & Settings
         env:
           C_ID: ${{ secrets.AZURE_CLIENT_ID }}
           T_ID: ${{ secrets.AZURE_TENANT_ID }}
@@ -45,17 +45,13 @@ jobs:
           for k in C_ID T_ID S_ID; do
             v="${!k}"
             if [ -z "$v" ]; then
-              echo "::error title=Missing secret::${k} is empty"
-              miss=1
+              echo "::error title=Missing secret::${k} is empty"; miss=1
             fi
           done
           if [ -z "$APP" ] || [ ${#APP} -lt 3 ]; then
-            echo "::error title=Invalid APP_NAME::APP_NAME is empty or too short"
-            miss=1
+            echo "::error title=Invalid APP_NAME::APP_NAME is empty or too short"; miss=1
           fi
-          if [ "$miss" -ne 0 ]; then
-            echo "Preflight failed"; exit 1
-          fi
+          if [ "$miss" -ne 0 ]; then echo "Preflight failed"; exit 1; fi
           echo "Preflight OK"
 
       - name: Install & Build (server)
@@ -91,8 +87,8 @@ jobs:
 
       - name: Warmup & Health check
         run: |
-          APP=$(echo "${{ env.APP_NAME }}" | tr '[:upper:]' '[:lower:]')
-          URL="https://${APP}.azurewebsites.net/health"
+          APP_LOWER=$(printf "%s" "${APP_NAME}" | tr '[:upper:]' '[:lower:]')
+          URL="https://${APP_LOWER}.azurewebsites.net/health"
           echo "Check: $URL"
           for i in {1..12}; do
             code=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || true)
