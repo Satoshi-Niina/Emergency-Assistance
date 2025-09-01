@@ -1,7 +1,11 @@
 name: Deploy Backend
+
 on:
   push:
-    branches: [ main ]
+    branches: [ main, backup-clean ]
+    paths:
+      - 'server/**'
+      - '.github/workflows/deploy-backend.yml'
   workflow_dispatch:
 
 permissions:
@@ -18,8 +22,8 @@ jobs:
     timeout-minutes: 20
     env:
       NODE_VERSION: 20
-      APP_NAME: Emergencyassistance-sv     # ← Azureの実名に合わせる
-      PACKAGE_PATH: ./server/dist          # ← 当面はdist配布で安定化
+      APP_NAME: Emergencyassistance-sv   # ← Azureの実名
+      PACKAGE_PATH: ./server/dist
 
     steps:
       - name: Checkout
@@ -30,14 +34,12 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      # ← ここが“安全なPreflight”。secretsはstep-envへマップし、runでは環境変数だけ参照
       - name: Preflight: Secrets & Azure settings
         env:
           C_ID: ${{ secrets.AZURE_CLIENT_ID }}
           T_ID: ${{ secrets.AZURE_TENANT_ID }}
           S_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           APP:  ${{ env.APP_NAME }}
-        shell: bash
         run: |
           miss=0
           for k in C_ID T_ID S_ID; do
@@ -57,7 +59,6 @@ jobs:
           echo "Preflight OK"
 
       - name: Install & Build (server)
-        shell: bash
         run: |
           cd server
           npm ci
@@ -65,7 +66,6 @@ jobs:
           cd ..
 
       - name: Verify artifact exists
-        shell: bash
         run: |
           if [ -d "./server/dist" ]; then
             files=$(find ./server/dist -type f | wc -l)
@@ -90,7 +90,6 @@ jobs:
           package: ${{ env.PACKAGE_PATH }}
 
       - name: Warmup & Health check
-        shell: bash
         run: |
           APP=$(echo "${{ env.APP_NAME }}" | tr '[:upper:]' '[:lower:]')
           URL="https://${APP}.azurewebsites.net/health"
