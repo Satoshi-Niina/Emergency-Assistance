@@ -21,59 +21,100 @@ defaults:
     shell: bash -euo pipefail
 
 env:
-  APP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}   # 例: Emergencyassistance-sv
-  PACKAGE_PATH: server
   NODE_VERSION: "20"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    # すべての必須シークレットが空でないことを明示（!= はOK、単項!は使わない）
-    if: ${{ secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_TENANT_ID != '' && secrets.AZURE_SUBSCRIPTION_ID != '' && secrets.AZURE_WEBAPP_NAME != '' }}
+
+    # OIDC & App Service 関連の secrets を env へ受ける（if:に使わない）
+    env:
+      AZURE_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      AZURE_WEBAPP_NAME:     ${{ secrets.AZURE_WEBAPP_NAME }}
 
     steps:
+      - name: Validate required secrets
+        run: |
+          missing=0
+          for v in AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID AZURE_WEBAPP_NAME; do
+            if [ -z "${!v:-}" ]; then
+              echo "::error::Missing required secret env: $v"
+              missing=1
+            fi
+          done
+          [ "$missing" -eq 0 ] || exit 1
+
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 念押しの不足チェック（どれか空なら即Fail）
-      - name: Check OIDC secrets
-        if: ${{ secrets.AZURE_CLIENT_ID == '' || secrets.AZURE_TENANT_ID == '' || secrets.AZURE_SUBSCRIPTION_ID == '' || secrets.AZURE_WEBAPP_NAME == '' }}
-        run: |
-          echo "::error:: Missing OIDC secrets (AZURE_CLIENT_ID / AZURE_TENANT_ID / AZURE_SUBSCRIPTION_ID / AZURE_WEBAPP_NAME)"
-          exit 1
-
-      - name: Use Node
+      - name: Use Node.js 20 (cache npm)
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: server/package-lock.json
 
-      - name: Verify package folder exists
-        run: |
-          test -d "${PACKAGE_PATH}" || (echo "::error:: package path '${PACKAGE_PATH}' not found" && exit 1)
+      # —— 本番ビルド（サーバ側で静的資産やTSをbuildする運用）——
+      - name: Install deps
+        working-directory: server
+        env:
+          npm_config_fund: "false"
+          npm_config_audit: "false"
+        run: npm ci
 
+      - name: Build (backend)
+        working-directory: server
+        env:
+          NODE_ENV: production
+        run: |
+          if jq -e '.scripts.build' package.json >/dev/null 2>&1; then
+            npm run build
+          else
+            echo "no build script; skip build"
+          fi
+
+      # 成果物をzip化（App Service へ「ビルド済み」を送る）
+      - name: Create artifact zip
+        run: |
+          cd server
+          zip -r ../server_artifact.zip . -x "**/node_modules/.cache/**"
+          ls -lh ../server_artifact.zip
+
+      - name: Upload artifact (for logs/debug)
+        uses: actions/upload-artifact@v4
+        with:
+          name: server_artifact
+          path: server_artifact.zip
+          retention-days: 7
+
+      # —— OIDC Login ——
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id:       ${{ env.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Deploy to Azure Web App (source package)
+      # —— デプロイ（ビルド済みzipを送る）——
+      - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: ${{ env.APP_NAME }}
-          package: ${{ env.PACKAGE_PATH }}
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          package: server_artifact.zip
+          # App Service 側での再ビルドを抑止したい場合は以下設定をAppSettings側でON:
+          # SCM_DO_BUILD_DURING_DEPLOYMENT=false
 
+      # —— ヘルスチェック（/health を想定）——
       - name: Warmup & Health check
         run: |
-          APP_LOWER="$(printf "%s" "${APP_NAME}" | tr '[:upper:]' '[:lower:]')"
-          URL="https://${APP_LOWER}.azurewebsites.net/health"
-          echo "Check: $URL"
+          app_lower="$(printf "%s" "${AZURE_WEBAPP_NAME}" | tr '[:upper:]' '[:lower:]')"
+          url="https://${app_lower}.azurewebsites.net/health"
+          echo "Check: $url"
           for i in {1..12}; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || true)
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$url" || true)
             echo "try#$i -> $code"
             if [ "$code" = "200" ]; then exit 0; fi
             sleep 5
