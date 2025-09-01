@@ -21,34 +21,43 @@ jobs:
     timeout-minutes: 20
     env:
       NODE_VERSION: 20
-      APP_NAME: Emergencyassistance-sv            # ← Azure の Web App 実名に変更可
-      PACKAGE_PATH: ./server                      # ← ソース配布（dist ではなく server 一式）
-      RESOURCE_GROUP: <YOUR_RESOURCE_GROUP_NAME>  # ← 必要に応じて実名に変更
+      APP_NAME: Emergencyassistance-sv            # ← 実名に
+      PACKAGE_PATH: ./server                      # ← server 一式を配布（Azure側でビルド）
+      RESOURCE_GROUP: <YOUR_RESOURCE_GROUP_NAME>  # ← 実名に
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      # いずれかの OIDC シークレットが欠けていたら即 Fail
-      - name: Check OIDC secrets
-        if: ${{ !secrets.AZURE_CLIENT_ID || !secrets.AZURE_TENANT_ID || !secrets.AZURE_SUBSCRIPTION_ID }}
-        run: |
-          echo "::error:: Missing OIDC secrets (AZURE_CLIENT_ID / AZURE_TENANT_ID / AZURE_SUBSCRIPTION_ID)"
-          exit 1
 
       - name: Use Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      # ここではローカルビルドは行わない（Azure 側で Oryx ビルドさせる前提）
-      # server 配下の package.json に "build" と "start" があること（start は node dist/xxx.js など）を前提にします。
+      # ← ここで secrets を env に受けて、run では $VAR として判定する（式を使わない）
+      - name: Preflight: OIDC secrets & settings
+        shell: bash
+        env:
+          C_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          T_ID: ${{ secrets.AZURE_TENANT_ID }}
+          S_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          APP:  ${{ env.APP_NAME }}
+        run: |
+          miss=0
+          for k in C_ID T_ID S_ID; do
+            v="${!k}"; if [ -z "$v" ]; then
+              echo "::error title=Missing secret::${k} is empty"; miss=1
+            fi
+          done
+          if [ -z "$APP" ] || [ ${#APP} -lt 3 ]; then
+            echo "::error title=Invalid APP_NAME::APP_NAME is empty or too short"; miss=1
+          fi
+          if [ "$miss" -ne 0 ]; then echo "Preflight failed"; exit 1; fi
+          echo "Preflight OK"
 
       - name: Verify package folder exists
         run: |
-          if [ ! -f "./server/package.json" ]; then
-            echo "::error:: server/package.json not found"; exit 1
-          fi
+          test -f "./server/package.json" || { echo "::error:: server/package.json not found"; exit 1; }
           echo "server folder OK"
 
       - name: Azure Login (OIDC)
@@ -58,7 +67,6 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # Oryx（App Service 側）でビルドさせる設定を有効化
       - name: Enable build during deploy (SCM_DO_BUILD_DURING_DEPLOYMENT)
         uses: azure/CLI@v2
         with:
