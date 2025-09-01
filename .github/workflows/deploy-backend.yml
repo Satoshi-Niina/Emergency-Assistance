@@ -18,7 +18,7 @@ concurrency:
 
 defaults:
   run:
-    shell: bash -euo pipefail
+    shell: bash   # ← ここも bash だけ
 
 env:
   NODE_VERSION: "20"
@@ -27,8 +27,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 25
-
-    # 必要情報は env にマッピング（if:では使わない）
     env:
       AZURE_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
       AZURE_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
@@ -38,6 +36,7 @@ jobs:
     steps:
       - name: Validate required secrets
         run: |
+          set -euo pipefail
           missing=0
           for v in AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID AZURE_WEBAPP_NAME; do
             if [ -z "${!v:-}" ]; then
@@ -45,9 +44,7 @@ jobs:
               missing=1
             fi
           done
-          if [ "$missing" -ne 0 ]; then
-            exit 1
-          fi
+          if [ "$missing" -ne 0 ]; then exit 1; fi
           echo "✅ Secrets OK"
 
       - uses: actions/checkout@v4
@@ -60,16 +57,14 @@ jobs:
 
       - name: Install deps
         working-directory: server
-        env:
-          npm_config_fund: "false"
-          npm_config_audit: "false"
-        run: npm ci
+        run: |
+          set -euo pipefail
+          npm ci
 
       - name: Build (backend)
         working-directory: server
-        env:
-          NODE_ENV: production
         run: |
+          set -euo pipefail
           if jq -e '.scripts.build' package.json >/dev/null 2>&1; then
             npm run build
           else
@@ -78,6 +73,7 @@ jobs:
 
       - name: Create artifact zip
         run: |
+          set -euo pipefail
           cd server
           zip -r ../server_artifact.zip . -x "**/node_modules/.cache/**"
           ls -lh ../server_artifact.zip
@@ -104,6 +100,7 @@ jobs:
 
       - name: Warmup & Health check
         run: |
+          set -euo pipefail
           app_lower="$(printf "%s" "${AZURE_WEBAPP_NAME}" | tr '[:upper:]' '[:lower:]')"
           url="https://${app_lower}.azurewebsites.net/health"
           echo "Check: $url"

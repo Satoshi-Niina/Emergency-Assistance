@@ -17,14 +17,12 @@ concurrency:
 
 defaults:
   run:
-    shell: bash -euo pipefail
+    shell: bash   # ← ここは bash だけにする
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-
-    # ← if: に secrets を使わず、env で受けてシェルで確実に判定
     env:
       SWA_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
       VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
@@ -32,6 +30,7 @@ jobs:
     steps:
       - name: Validate required secrets
         run: |
+          set -euo pipefail
           missing=0
           for v in SWA_TOKEN VITE_API_BASE_URL; do
             if [ -z "${!v:-}" ]; then
@@ -39,9 +38,7 @@ jobs:
               missing=1
             fi
           done
-          if [ "$missing" -ne 0 ]; then
-            exit 1
-          fi
+          if [ "$missing" -ne 0 ]; then exit 1; fi
           echo "✅ Secrets OK"
 
       - uses: actions/checkout@v4
@@ -54,17 +51,16 @@ jobs:
 
       - name: Install deps
         working-directory: client
-        env:
-          npm_config_fund: "false"
-          npm_config_audit: "false"
-        run: npm ci
+        run: |
+          set -euo pipefail
+          npm ci
 
       - name: Build (Vite)
         working-directory: client
         env:
-          NODE_ENV: production
           VITE_API_BASE_URL: ${{ env.VITE_API_BASE_URL }}
         run: |
+          set -euo pipefail
           npm run build
           test -d dist || (echo "::error:: dist not found after build" && ls -la && exit 1)
           echo "✅ Build OK"; ls -la dist || true
