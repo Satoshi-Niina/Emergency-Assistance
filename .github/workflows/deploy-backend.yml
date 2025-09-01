@@ -2,10 +2,9 @@ name: Deploy Backend
 
 on:
   push:
-    branches: [ main, backup-clean ]
-    paths:
-      - 'server/**'
-      - '.github/workflows/deploy-backend.yml'
+    branches:
+      - main
+      - backup-clean
   workflow_dispatch:
 
 permissions:
@@ -22,59 +21,35 @@ jobs:
     timeout-minutes: 20
     env:
       NODE_VERSION: 20
-      APP_NAME: Emergencyassistance-sv      # ← Azureの実名に変更可
-      PACKAGE_PATH: ./server/dist           # ← dist配布（zip化に切替も可）
+      APP_NAME: Emergencyassistance-sv            # ← Azure の Web App 実名に変更可
+      PACKAGE_PATH: ./server                      # ← ソース配布（dist ではなく server 一式）
+      RESOURCE_GROUP: <YOUR_RESOURCE_GROUP_NAME>  # ← 必要に応じて実名に変更
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # いずれかの OIDC シークレットが欠けていたら即 Fail
+      - name: Check OIDC secrets
+        if: ${{ !secrets.AZURE_CLIENT_ID || !secrets.AZURE_TENANT_ID || !secrets.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          echo "::error:: Missing OIDC secrets (AZURE_CLIENT_ID / AZURE_TENANT_ID / AZURE_SUBSCRIPTION_ID)"
+          exit 1
 
       - name: Use Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: Preflight: Secrets & Settings
-        shell: bash
-        env:
-          C_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          T_ID: ${{ secrets.AZURE_TENANT_ID }}
-          S_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          APP_NAME: ${{ env.APP_NAME }}
-        run: |
-          set -e
-          # 必須シークレット3種
-          for k in C_ID T_ID S_ID; do
-            v="${!k}"
-            if [ -z "$v" ]; then
-              echo "::error title=Missing secret::${k} is empty"
-              exit 1
-            fi
-          done
-          # APP_NAME 妥当性
-          if [ -z "${APP_NAME}" ] || [ ${#APP_NAME} -lt 3 ]; then
-            echo "::error title=Invalid APP_NAME::APP_NAME is empty or too short"
-            exit 1
-          fi
-          echo "Preflight OK"
+      # ここではローカルビルドは行わない（Azure 側で Oryx ビルドさせる前提）
+      # server 配下の package.json に "build" と "start" があること（start は node dist/xxx.js など）を前提にします。
 
-      - name: Install & Build (server)
+      - name: Verify package folder exists
         run: |
-          cd server
-          npm ci
-          npm run build
-          cd ..
-
-      - name: Verify artifact exists
-        run: |
-          if [ -d "./server/dist" ]; then
-            files=$(find ./server/dist -type f | wc -l)
-            echo "DIST_FILES=${files}"
-            [ "$files" -gt 0 ] || (echo "dist empty!" >&2; exit 1)
-          else
-            echo "No deployable artifact (./server/dist)!" >&2
-            exit 1
+          if [ ! -f "./server/package.json" ]; then
+            echo "::error:: server/package.json not found"; exit 1
           fi
+          echo "server folder OK"
 
       - name: Azure Login (OIDC)
         uses: azure/login@v2
@@ -83,7 +58,17 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Deploy to Azure Web App
+      # Oryx（App Service 側）でビルドさせる設定を有効化
+      - name: Enable build during deploy (SCM_DO_BUILD_DURING_DEPLOYMENT)
+        uses: azure/CLI@v2
+        with:
+          inlineScript: |
+            az webapp config appsettings set \
+              --name "${{ env.APP_NAME }}" \
+              --resource-group "${{ env.RESOURCE_GROUP }}" \
+              --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true
+
+      - name: Deploy to Azure Web App (source package)
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ env.APP_NAME }}
@@ -91,7 +76,7 @@ jobs:
 
       - name: Warmup & Health check
         run: |
-          APP_LOWER=$(printf "%s" "${APP_NAME}" | tr '[:upper:]' '[:lower:]')
+          APP_LOWER="$(printf "%s" "${APP_NAME}" | tr '[:upper:]' '[:lower:]')"
           URL="https://${APP_LOWER}.azurewebsites.net/health"
           echo "Check: $URL"
           for i in {1..12}; do
@@ -100,5 +85,4 @@ jobs:
             if [ "$code" = "200" ]; then exit 0; fi
             sleep 5
           done
-          echo "Health check failed" >&2
-          exit 1
+          echo "::error:: Health check failed"; exit 1
