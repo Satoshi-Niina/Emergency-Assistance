@@ -35,23 +35,27 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Preflight: Secrets & Settings
+        shell: bash
         env:
           C_ID: ${{ secrets.AZURE_CLIENT_ID }}
           T_ID: ${{ secrets.AZURE_TENANT_ID }}
           S_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          APP:  ${{ env.APP_NAME }}
+          APP_NAME: ${{ env.APP_NAME }}
         run: |
-          miss=0
+          set -e
+          # 必須シークレット3種
           for k in C_ID T_ID S_ID; do
             v="${!k}"
             if [ -z "$v" ]; then
-              echo "::error title=Missing secret::${k} is empty"; miss=1
+              echo "::error title=Missing secret::${k} is empty"
+              exit 1
             fi
           done
-          if [ -z "$APP" ] || [ ${#APP} -lt 3 ]; then
-            echo "::error title=Invalid APP_NAME::APP_NAME is empty or too short"; miss=1
+          # APP_NAME 妥当性
+          if [ -z "${APP_NAME}" ] || [ ${#APP_NAME} -lt 3 ]; then
+            echo "::error title=Invalid APP_NAME::APP_NAME is empty or too short"
+            exit 1
           fi
-          if [ "$miss" -ne 0 ]; then echo "Preflight failed"; exit 1; fi
           echo "Preflight OK"
 
       - name: Install & Build (server)
