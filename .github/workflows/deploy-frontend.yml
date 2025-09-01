@@ -1,88 +1,67 @@
-name: Deploy Frontend to Azure Static Web Apps
+name: Deploy Frontend
 
-# ワークフロー再実行用 - 2025-08-28
-on:
+'on':
   push:
-    branches: [ main, develop, backup-clean ]
+    branches: [ main, backup-clean ]
     paths:
       - "client/**"
-      - "shared/**"
-      - ".github/workflows/**"
-      - "package.json"
-      - "package-lock.json"
-  # 一時的にpull_requestを無効化して重複実行を防止
-  # pull_request:
-  #   branches: [ main, develop, backup-clean ]
-  #   paths:
-  #     - "client/src/**"
-  #     - "client/package.json"
-  #     - "client/package-lock.json"
-  #     - "client/tailwind.config.ts"
-  #     - "client/vite.config.ts"
-  #     - "client/tsconfig.json"
-  #     - "client/tsconfig.node.json"
-  #     - "client/postcss.config.js"
-  #     - "client/index.html"
-  #     - ".github/workflows/deploy-frontend.yml"
+      - ".github/workflows/deploy-frontend.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: deploy-frontend-${{ github.ref }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash -euo pipefail
+
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: client
+    timeout-minutes: 20
+    # SWA は OIDC 非対応 → API トークン必須
+    if: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN && secrets.VITE_API_BASE_URL }}
 
     steps:
-      - uses: actions/checkout@v4
-      
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20 (cache npm)
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: client/package-lock.json
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: "client/package-lock.json"
 
-      - name: Install Dependencies
-        run: |
-          echo "Installing shared module dependencies..."
-          cd ../shared && npm ci
-          echo "Installing client dependencies..."
-          cd ../client && npm ci
-          echo "Installing root dependencies..."
-          cd .. && npm ci
-
-      - name: Build Shared Module
-        run: |
-          echo "Building shared module..."
-          cd ../shared && npm run build
-          echo "Shared module build completed"
-
-      - name: Build Client
-        run: |
-          echo "Building client..."
-          cd ../client && npm run build
-          echo "Client build completed"
+      - name: Install deps (frontend)
+        working-directory: client
         env:
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          npm_config_fund: "false"
+          npm_config_audit: "false"
+        run: npm ci
 
-      - name: Sanity check VITE var (no leak)
-        run: |
-          echo "VITE_API_BASE_URL length: ${#VITE_API_BASE_URL}"
+      - name: Build (frontend)
+        working-directory: client
         env:
+          NODE_ENV: production
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+        run: |
+          if grep -q '"build"' package.json; then
+            npm run build
+          else
+            echo "no build script; skip build"
+          fi
+          test -d dist || (echo "::error:: dist not found after build" && exit 1)
 
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
-        env:
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: upload
           app_location: "client"
           output_location: "dist"
-          skip_app_build: false
-
+          skip_app_build: true

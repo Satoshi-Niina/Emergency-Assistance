@@ -1,10 +1,11 @@
 name: Deploy Backend
 
-on:
+'on':
   push:
-    branches:
-      - main
-      - backup-clean
+    branches: [ main, backup-clean ]
+    paths:
+      - "server/**"
+      - ".github/workflows/deploy-backend.yml"
   workflow_dispatch:
 
 permissions:
@@ -15,50 +16,43 @@ concurrency:
   group: deploy-backend-${{ github.ref }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash -euo pipefail
+
+env:
+  APP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}   # 例: Emergencyassistance-sv
+  PACKAGE_PATH: server
+  NODE_VERSION: "20"
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      NODE_VERSION: 20
-      APP_NAME: Emergencyassistance-sv            # ← 実名に
-      PACKAGE_PATH: ./server                      # ← server 一式を配布（Azure側でビルド）
-      RESOURCE_GROUP: <YOUR_RESOURCE_GROUP_NAME>  # ← 実名に
+    timeout-minutes: 25
+    # すべての必須シークレットが空でないことを明示（!= はOK、単項!は使わない）
+    if: ${{ secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_TENANT_ID != '' && secrets.AZURE_SUBSCRIPTION_ID != '' && secrets.AZURE_WEBAPP_NAME != '' }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # 念押しの不足チェック（どれか空なら即Fail）
+      - name: Check OIDC secrets
+        if: ${{ secrets.AZURE_CLIENT_ID == '' || secrets.AZURE_TENANT_ID == '' || secrets.AZURE_SUBSCRIPTION_ID == '' || secrets.AZURE_WEBAPP_NAME == '' }}
+        run: |
+          echo "::error:: Missing OIDC secrets (AZURE_CLIENT_ID / AZURE_TENANT_ID / AZURE_SUBSCRIPTION_ID / AZURE_WEBAPP_NAME)"
+          exit 1
+
       - name: Use Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-
-      # ← ここで secrets を env に受けて、run では $VAR として判定する（式を使わない）
-      - name: Preflight: OIDC secrets & settings
-        shell: bash
-        env:
-          C_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          T_ID: ${{ secrets.AZURE_TENANT_ID }}
-          S_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          APP:  ${{ env.APP_NAME }}
-        run: |
-          miss=0
-          for k in C_ID T_ID S_ID; do
-            v="${!k}"; if [ -z "$v" ]; then
-              echo "::error title=Missing secret::${k} is empty"; miss=1
-            fi
-          done
-          if [ -z "$APP" ] || [ ${#APP} -lt 3 ]; then
-            echo "::error title=Invalid APP_NAME::APP_NAME is empty or too short"; miss=1
-          fi
-          if [ "$miss" -ne 0 ]; then echo "Preflight failed"; exit 1; fi
-          echo "Preflight OK"
+          cache: npm
+          cache-dependency-path: server/package-lock.json
 
       - name: Verify package folder exists
         run: |
-          test -f "./server/package.json" || { echo "::error:: server/package.json not found"; exit 1; }
-          echo "server folder OK"
+          test -d "${PACKAGE_PATH}" || (echo "::error:: package path '${PACKAGE_PATH}' not found" && exit 1)
 
       - name: Azure Login (OIDC)
         uses: azure/login@v2
@@ -66,15 +60,6 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Enable build during deploy (SCM_DO_BUILD_DURING_DEPLOYMENT)
-        uses: azure/CLI@v2
-        with:
-          inlineScript: |
-            az webapp config appsettings set \
-              --name "${{ env.APP_NAME }}" \
-              --resource-group "${{ env.RESOURCE_GROUP }}" \
-              --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true
 
       - name: Deploy to Azure Web App (source package)
         uses: azure/webapps-deploy@v3
