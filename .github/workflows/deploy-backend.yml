@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
-    # OIDC & App Service 関連の secrets を env へ受ける（if:に使わない）
+    # 必要情報は env にマッピング（if:では使わない）
     env:
       AZURE_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
       AZURE_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
@@ -41,23 +41,23 @@ jobs:
           missing=0
           for v in AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID AZURE_WEBAPP_NAME; do
             if [ -z "${!v:-}" ]; then
-              echo "::error::Missing required secret env: $v"
+              echo "::error:: Missing required secret env: $v"
               missing=1
             fi
           done
-          [ "$missing" -eq 0 ] || exit 1
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+          echo "✅ Secrets OK"
 
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Use Node.js 20 (cache npm)
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: server/package-lock.json
 
-      # —— 本番ビルド（サーバ側で静的資産やTSをbuildする運用）——
       - name: Install deps
         working-directory: server
         env:
@@ -76,21 +76,19 @@ jobs:
             echo "no build script; skip build"
           fi
 
-      # 成果物をzip化（App Service へ「ビルド済み」を送る）
       - name: Create artifact zip
         run: |
           cd server
           zip -r ../server_artifact.zip . -x "**/node_modules/.cache/**"
           ls -lh ../server_artifact.zip
 
-      - name: Upload artifact (for logs/debug)
+      - name: Upload artifact (for debug)
         uses: actions/upload-artifact@v4
         with:
           name: server_artifact
           path: server_artifact.zip
           retention-days: 7
 
-      # —— OIDC Login ——
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
@@ -98,16 +96,12 @@ jobs:
           tenant-id:       ${{ env.AZURE_TENANT_ID }}
           subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
-      # —— デプロイ（ビルド済みzipを送る）——
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           package: server_artifact.zip
-          # App Service 側での再ビルドを抑止したい場合は以下設定をAppSettings側でON:
-          # SCM_DO_BUILD_DURING_DEPLOYMENT=false
 
-      # —— ヘルスチェック（/health を想定）——
       - name: Warmup & Health check
         run: |
           app_lower="$(printf "%s" "${AZURE_WEBAPP_NAME}" | tr '[:upper:]' '[:lower:]')"
@@ -116,7 +110,9 @@ jobs:
           for i in {1..12}; do
             code=$(curl -s -o /dev/null -w "%{http_code}" "$url" || true)
             echo "try#$i -> $code"
-            if [ "$code" = "200" ]; then exit 0; fi
+            if [ "$code" -ge 200 ] && [ "$code" -lt 400 ]; then
+              echo "✅ Health OK ($code)"; exit 0
+            fi
             sleep 5
           done
           echo "::error:: Health check failed"; exit 1

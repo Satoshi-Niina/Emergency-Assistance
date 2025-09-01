@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
-    # ここで secrets を「環境変数」に受ける（if: では使わない）
+    # ← if: に secrets を使わず、env で受けてシェルで確実に判定
     env:
       SWA_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
       VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
@@ -35,17 +35,18 @@ jobs:
           missing=0
           for v in SWA_TOKEN VITE_API_BASE_URL; do
             if [ -z "${!v:-}" ]; then
-              echo "::error::Missing required secret env: $v"
+              echo "::error:: Missing required secret env: $v"
               missing=1
             fi
           done
-          [ "$missing" -eq 0 ] || exit 1
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+          echo "✅ Secrets OK"
 
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Use Node.js 20 (cache npm)
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
@@ -62,11 +63,11 @@ jobs:
         working-directory: client
         env:
           NODE_ENV: production
-          # Vite は VITE_* のみ取り込むのでそのまま渡す
           VITE_API_BASE_URL: ${{ env.VITE_API_BASE_URL }}
         run: |
           npm run build
-          test -d dist || (echo "::error:: dist not found after build" && exit 1)
+          test -d dist || (echo "::error:: dist not found after build" && ls -la && exit 1)
+          echo "✅ Build OK"; ls -la dist || true
 
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
