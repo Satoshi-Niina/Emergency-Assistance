@@ -1,121 +1,105 @@
-name: Deploy Backend to Azure App Service
-
+name: Deploy Backend
 on:
   push:
-    branches:
-      - backup-clean          # ← 必要なら main も追加可
-    paths:
-      - "server/**"
-      - ".github/workflows/deploy-backend.yml"
+    branches: [ main ]
   workflow_dispatch:
 
-env:
-  NODE_VERSION: "20"
-  AZURE_WEBAPP_NAME: "Emergencyassistance-sv"   # ← App Service のリソース名
-  WORKING_DIR_SERVER: "server"
-  WORKING_DIR_SHARED: "shared"
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: emergency-backend
+  cancel-in-progress: true
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NODE_VERSION: 20
+      APP_NAME: Emergencyassistance-sv     # ← Azureの実名に合わせる
+      PACKAGE_PATH: ./server/dist          # ← 当面はdist配布で安定化
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Use Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-          cache-dependency-path: |
-            ${{ env.WORKING_DIR_SERVER }}/package-lock.json
-            ${{ env.WORKING_DIR_SHARED }}/package-lock.json
 
-      - name: Install (shared) if exists
-        run: |
-          if [ -f "${WORKING_DIR_SHARED}/package.json" ]; then
-            cd "${WORKING_DIR_SHARED}"
-            npm ci
-          fi
-
-      - name: Install (server)
-        working-directory: ${{ env.WORKING_DIR_SERVER }}
-        run: npm ci
-
-      - name: Build (server) if script exists
-        working-directory: ${{ env.WORKING_DIR_SERVER }}
-        run: |
-          if npm run | grep -q "^  build"; then
-            npm run build
-          fi
-
-      - name: Verify dist entry (info)
-        working-directory: ${{ env.WORKING_DIR_SERVER }}
-        run: |
-          if [ -f "./dist/index.js" ] || [ -f "./dist/server.js" ]; then
-            echo "dist entry found."
-          else
-            echo "dist entry not found (info): Oryx on App Service may build."
-          fi
-
-      - name: Prepare artifact
-        run: |
-          mkdir -p deploy
-          cd "${WORKING_DIR_SERVER}"
-          zip -r ../deploy/server.zip . -x "node_modules/*" ".git/*"
-          cd -
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: server-zip
-          path: deploy/server.zip
-          if-no-files-found: error
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: production
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: server-zip
-          path: .
-
-      # ★ 発行プロファイル(XML)の検証：Secret名は AZURE_WEBAPP_PUBLISH_PROFILE
-      - name: Validate publish profile host
-        shell: bash
+      # ← ここが“安全なPreflight”。secretsはstep-envへマップし、runでは環境変数だけ参照
+      - name: Preflight: Secrets & Azure settings
         env:
-          AZURE_WEBAPP_NAME: ${{ env.AZURE_WEBAPP_NAME }}
-          AZURE_WEBAPP_PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          C_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          T_ID: ${{ secrets.AZURE_TENANT_ID }}
+          S_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          APP:  ${{ env.APP_NAME }}
+        shell: bash
         run: |
-          node <<'NODE'
-          const app = (process.env.AZURE_WEBAPP_NAME || '').toLowerCase();
-          const expected = app + '.scm.azurewebsites.net';
-          const xml = (process.env.AZURE_WEBAPP_PUBLISH_PROFILE || '').replace(/\r/g, '');
-          const m = xml.match(/publishUrl="https?:\/\/([^:"'\/]+)/i);
-          const actual = (m ? m[1] : '').toLowerCase();
-          console.log('expectedHost=' + expected);
-          console.log('actualHost=' + actual);
-          if (!actual) {
-            console.error('No publishUrl found in secret. Recreate publish profile from the App Service and paste XML as-is.');
-            process.exit(1);
-          }
-          if (actual !== expected) {
-            console.error('NG: publish profile host mismatch');
-            process.exit(1);
-          }
-          NODE
+          miss=0
+          for k in C_ID T_ID S_ID; do
+            v="${!k}"
+            if [ -z "$v" ]; then
+              echo "::error title=Missing secret::${k} is empty"
+              miss=1
+            fi
+          done
+          if [ -z "$APP" ] || [ ${#APP} -lt 3 ]; then
+            echo "::error title=Invalid APP_NAME::APP_NAME is empty or too short"
+            miss=1
+          fi
+          if [ "$miss" -ne 0 ]; then
+            echo "Preflight failed"; exit 1
+          fi
+          echo "Preflight OK"
 
-      - name: Deploy to Azure WebApp
+      - name: Install & Build (server)
+        shell: bash
+        run: |
+          cd server
+          npm ci
+          npm run build
+          cd ..
+
+      - name: Verify artifact exists
+        shell: bash
+        run: |
+          if [ -d "./server/dist" ]; then
+            files=$(find ./server/dist -type f | wc -l)
+            echo "DIST_FILES=${files}"
+            [ "$files" -gt 0 ] || (echo "dist empty!" >&2; exit 1)
+          else
+            echo "No deployable artifact (./server/dist)!" >&2
+            exit 1
+          fi
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: server.zip
+          app-name: ${{ env.APP_NAME }}
+          package: ${{ env.PACKAGE_PATH }}
 
-      - name: Show Kudu deployment log url
+      - name: Warmup & Health check
+        shell: bash
         run: |
-          echo "Kudu: https://${{ env.AZURE_WEBAPP_NAME }}.scm.azurewebsites.net/api/deployments"
+          APP=$(echo "${{ env.APP_NAME }}" | tr '[:upper:]' '[:lower:]')
+          URL="https://${APP}.azurewebsites.net/health"
+          echo "Check: $URL"
+          for i in {1..12}; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || true)
+            echo "try#$i -> $code"
+            if [ "$code" = "200" ]; then exit 0; fi
+            sleep 5
+          done
+          echo "Health check failed" >&2
+          exit 1
