@@ -24,6 +24,7 @@ import troubleshootingQARouter from './routes/troubleshooting-qa.js';
 import configRouter from './routes/config.js';
 import ingestRouter from './routes/ingest.js';
 import searchRouter from './routes/search.js';
+import { healthRouter } from './src/health.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -214,6 +215,9 @@ app.get('/api/history/file', (req, res) => {
 app.get('/', (req: Request, res: Response) => {
   res.type('text/plain').send('OK');
 });
+
+// ルートヘルスチェック（/health） - デプロイ後ワームアップで参照されることを想定
+app.use('/', healthRouter);
 
 // ヘルスチェックAPI (GET /api/health)
 // 200を必ず返す。CORS/プリフライトも有効。

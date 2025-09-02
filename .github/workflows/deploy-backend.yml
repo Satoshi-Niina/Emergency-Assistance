@@ -2,10 +2,11 @@ name: Deploy Backend
 
 on:
   push:
-    branches: [ main ]
+    branches: [ backup-clean ]
     paths:
       - "server/**"
       - ".github/workflows/deploy-backend.yml"
+      - "trigger.txt"   
   workflow_dispatch:
 
 permissions:

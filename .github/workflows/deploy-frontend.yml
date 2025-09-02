@@ -2,10 +2,11 @@ name: Deploy Frontend
 
 on:
   push:
-    branches: [ main ]
+    branches: [ backup-clean ]
     paths:
       - "client/**"
       - ".github/workflows/deploy-frontend.yml"
+      - "trigger.txt"   
   workflow_dispatch:
 
 permissions:
