@@ -1,8 +1,8 @@
 name: Deploy Backend
 
-'on':
+on:
   push:
-    branches: [ main, backup-clean ]
+    branches: [ main ]
     paths:
       - "server/**"
       - ".github/workflows/deploy-backend.yml"
@@ -16,100 +16,89 @@ concurrency:
   group: deploy-backend-${{ github.ref }}
   cancel-in-progress: true
 
-defaults:
-  run:
-    shell: bash   # ← ここも bash だけ
-
 env:
-  NODE_VERSION: "20"
+  # App Service 名とリソースグループ名は実環境に合わせて修正済みか確認
+  AZURE_WEBAPP_NAME: Emergencyassistance-sv
+  AZURE_RESOURCE_GROUP: rg-Emergencyassistant-app
+  NODE_VERSION: 20
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
-    env:
-      AZURE_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
-      AZURE_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
-      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      AZURE_WEBAPP_NAME:     ${{ secrets.AZURE_WEBAPP_NAME }}
 
     steps:
-      - name: Validate required secrets
-        run: |
-          set -euo pipefail
-          missing=0
-          for v in AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID AZURE_WEBAPP_NAME; do
-            if [ -z "${!v:-}" ]; then
-              echo "::error:: Missing required secret env: $v"
-              missing=1
-            fi
-          done
-          if [ "$missing" -ne 0 ]; then exit 1; fi
-          echo "✅ Secrets OK"
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: server/package-lock.json
+          cache: 'npm'
+          cache-dependency-path: |
+            server/package-lock.json
 
-      - name: Install deps
-        working-directory: server
+      - name: 📦 Install dependencies (server)
+        working-directory: ./server
+        run: npm ci
+
+      - name: 🛠️ Build (server)
+        working-directory: ./server
         run: |
           set -euo pipefail
-          npm ci
+          npm run build
+          test -d dist || (echo "::error:: dist not found after build" && ls -la && exit 1)
+          echo "✅ Build OK"; ls -la dist || true
 
-      - name: Build (backend)
-        working-directory: server
-        run: |
-          set -euo pipefail
-          if jq -e '.scripts.build' package.json >/dev/null 2>&1; then
-            npm run build
-          else
-            echo "no build script; skip build"
-          fi
-
-      - name: Create artifact zip
+      - name: 📦 Make deployment zip (backend.zip)
         run: |
           set -euo pipefail
           cd server
-          zip -r ../server_artifact.zip . -x "**/node_modules/.cache/**"
-          ls -lh ../server_artifact.zip
+          # dist + package.json + node_modules を zip に含める
+          zip -r ../backend.zip package.json dist node_modules 2>/dev/null || true
+          cd ..
+          echo "📦 Created artifact:"
+          ls -la backend.zip
+          unzip -l backend.zip | head -n 50
 
-      - name: Upload artifact (for debug)
-        uses: actions/upload-artifact@v4
-        with:
-          name: server_artifact
-          path: server_artifact.zip
-          retention-days: 7
-
-      - name: Azure Login (OIDC)
+      - name: 🔐 Azure login via OIDC
         uses: azure/login@v2
         with:
-          client-id:       ${{ env.AZURE_CLIENT_ID }}
-          tenant-id:       ${{ env.AZURE_TENANT_ID }}
-          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Deploy to Azure Web App
+      - name: 🚀 Deploy to Azure App Service
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          package: server_artifact.zip
+          package: backend.zip
 
-      - name: Warmup & Health check
+      - name: ✅ Health check
+        shell: bash
         run: |
           set -euo pipefail
-          app_lower="$(printf "%s" "${AZURE_WEBAPP_NAME}" | tr '[:upper:]' '[:lower:]')"
-          url="https://${app_lower}.azurewebsites.net/health"
-          echo "Check: $url"
+          echo "🔍 Getting app hostname..."
+          host=$(az webapp show --name "${{ env.AZURE_WEBAPP_NAME }}" --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" --query defaultHostName -o tsv)
+
+          echo "🌐 Checking: https://${host}/health"
           for i in {1..12}; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" "$url" || true)
+            code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 "https://${host}/health" || true)
             echo "try#$i -> $code"
             if [ "$code" -ge 200 ] && [ "$code" -lt 400 ]; then
               echo "✅ Health OK ($code)"; exit 0
             fi
             sleep 5
           done
+
+          echo "::warning:: /health NG. Trying root /"
+          for i in {1..6}; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 "https://${host}/" || true)
+            echo "try(root)#$i -> $code"
+            if [ "$code" -ge 200 ] && [ "$code" -lt 400 ]; then
+              echo "✅ Root OK ($code)"; exit 0
+            fi
+            sleep 5
+          done
+
           echo "::error:: Health check failed"; exit 1
