@@ -1,105 +1,54 @@
-name: Deploy Backend
+name: Deploy Backend to Azure App Service
 
 on:
   push:
-    branches: [ backup-clean ]
+    branches:
+      - backup-clean
     paths:
       - "server/**"
       - ".github/workflows/deploy-backend.yml"
-      - "trigger.txt"   
+      - "trigger.txt"
   workflow_dispatch:
 
-permissions:
-  id-token: write
-  contents: read
-
-concurrency:
-  group: deploy-backend-${{ github.ref }}
-  cancel-in-progress: true
-
-env:
-  # App Service 名とリソースグループ名は実環境に合わせて修正済みか確認
-  AZURE_WEBAPP_NAME: Emergencyassistance-sv
-  AZURE_RESOURCE_GROUP: rg-Emergencyassistant-app
-  NODE_VERSION: 20
-
 jobs:
-  build-and-deploy:
+  build_and_deploy:
     runs-on: ubuntu-latest
-
+    name: Build and Deploy Backend
     steps:
-      - name: 📥 Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
-      - name: ⚙️ Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: |
-            server/package-lock.json
+          node-version: '20'
 
-      - name: 📦 Install dependencies (server)
-        working-directory: ./server
+      - name: Install dependencies
+        working-directory: server
         run: npm ci
 
-      - name: 🛠️ Build (server)
-        working-directory: ./server
-        run: |
-          set -euo pipefail
-          npm run build
-          test -d dist || (echo "::error:: dist not found after build" && ls -la && exit 1)
-          echo "✅ Build OK"; ls -la dist || true
+      - name: Build backend
+        working-directory: server
+        run: npm run build
 
-      - name: 📦 Make deployment zip (backend.zip)
-        run: |
-          set -euo pipefail
-          cd server
-          # dist + package.json + node_modules を zip に含める
-          zip -r ../backend.zip package.json dist node_modules 2>/dev/null || true
-          cd ..
-          echo "📦 Created artifact:"
-          ls -la backend.zip
-          unzip -l backend.zip | head -n 50
-
-      - name: 🔐 Azure login via OIDC
-        uses: azure/login@v2
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          app-name: emergencyassistance-sv-fbanemhrbshuf9bd
+          slot-name: production
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: server
 
-      - name: 🚀 Deploy to Azure App Service
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          package: backend.zip
-
-      - name: ✅ Health check
-        shell: bash
+      - name: Health check
         run: |
-          set -euo pipefail
-          echo "🔍 Getting app hostname..."
-          host=$(az webapp show --name "${{ env.AZURE_WEBAPP_NAME }}" --resource-group "${{ env.AZURE_RESOURCE_GROUP }}" --query defaultHostName -o tsv)
-
-          echo "🌐 Checking: https://${host}/health"
-          for i in {1..12}; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 "https://${host}/health" || true)
-            echo "try#$i -> $code"
-            if [ "$code" -ge 200 ] && [ "$code" -lt 400 ]; then
-              echo "✅ Health OK ($code)"; exit 0
+          echo "🔍 Checking: https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/health"
+          for i in {1..10}; do
+            sleep 6
+            code=$(curl -o /dev/null -s -w "%{http_code}" https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/health)
+            echo "try #$i -> $code"
+            if [ "$code" = "200" ]; then
+              echo "✅ Health check passed"
+              exit 0
             fi
-            sleep 5
           done
-
-          echo "::warning:: /health NG. Trying root /"
-          for i in {1..6}; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 "https://${host}/" || true)
-            echo "try(root)#$i -> $code"
-            if [ "$code" -ge 200 ] && [ "$code" -lt 400 ]; then
-              echo "✅ Root OK ($code)"; exit 0
-            fi
-            sleep 5
-          done
-
-          echo "::error:: Health check failed"; exit 1
+          echo "❌ Health check failed"
+          exit 1
