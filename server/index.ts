@@ -157,14 +157,27 @@ app.get('/api/debug/env', (req, res) => {
   });
 });
 
-// ヘルスチェックエンドポイント
+// ヘルスチェックエンドポイント（統一された実装）
+app.get('/health', (req, res) => {
+  console.log('🔍 ヘルスチェック呼び出し: /health');
+  res.json({
+    success: true,
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    database: process.env.DATABASE_URL ? 'configured' : 'not configured',
+    service: 'emergency-assistance-backend'
+  });
+});
+
+// API用ヘルスチェックエンドポイント
 app.get('/api/health', (req, res) => {
   console.log('🔍 ヘルスチェック呼び出し: /api/health');
   res.json({
     success: true,
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    database: process.env.DATABASE_URL ? 'configured' : 'not configured'
+    database: process.env.DATABASE_URL ? 'configured' : 'not configured',
+    service: 'emergency-assistance-backend'
   });
 });
 

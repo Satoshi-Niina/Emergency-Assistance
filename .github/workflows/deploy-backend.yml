@@ -40,15 +40,41 @@ jobs:
     
       - name: Health check
         run: |
-          echo "🔍 Checking: https://emergencyassistance-sv.japanwest-01.azurewebsites.net/health" # <-- この行を修正
-          for i in {1..20}; do
-            sleep 15
-            code=$(curl -o /dev/null -s -w "%{http_code}" https://emergencyassistance-sv.japanwest-01.azurewebsites.net/health) # <-- この行を修正
-            echo "try #$i -> $code"
-            if [ "$code" = "200" ]; then
-              echo "✅ Health check passed"
-              exit 0
-            fi
+          echo "🔍 Starting health checks..."
+          app_url="https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net"
+          
+          # Wait for app to warm up
+          echo "⏳ Waiting for app to warm up..."
+          sleep 30
+          
+          # Check multiple endpoints
+          endpoints=("/" "/health" "/api/health")
+          
+          for endpoint in "${endpoints[@]}"; do
+            echo "🔍 Checking: ${app_url}${endpoint}"
+            for i in {1..10}; do
+              sleep 10
+              code=$(curl -o /dev/null -s -w "%{http_code}" "${app_url}${endpoint}")
+              echo "  ${endpoint} - try #$i -> $code"
+              if [ "$code" = "200" ]; then
+                echo "✅ Health check passed for $endpoint"
+                break
+              fi
+              if [ $i -eq 10 ]; then
+                echo "❌ Health check failed for $endpoint after 10 attempts"
+              fi
+            done
           done
-          echo "❌ Health check failed"
-          exit 1
+          
+          # Final comprehensive check
+          echo "🔍 Final check: ${app_url}/health"
+          final_code=$(curl -o /dev/null -s -w "%{http_code}" "${app_url}/health")
+          if [ "$final_code" = "200" ]; then
+            echo "✅ Final health check passed"
+            exit 0
+          else
+            echo "❌ Final health check failed with code: $final_code"
+            echo "🔍 Trying to get response body for debugging:"
+            curl -s "${app_url}/health" || echo "Failed to get response body"
+            exit 1
+          fi

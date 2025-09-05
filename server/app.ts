@@ -24,7 +24,6 @@ import troubleshootingQARouter from './routes/troubleshooting-qa.js';
 import configRouter from './routes/config.js';
 import ingestRouter from './routes/ingest.js';
 import searchRouter from './routes/search.js';
-import { healthRouter } from './src/health.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -216,13 +215,22 @@ app.get('/', (req: Request, res: Response) => {
   res.type('text/plain').send('OK');
 });
 
-// ルートヘルスチェック（/health） - デプロイ後ワームアップで参照されることを想定
-app.use('/', healthRouter);
+// ヘルスチェックエンドポイント（統一）
+app.get('/health', (req: Request, res: Response) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    service: 'emergency-assistance-backend' 
+  });
+});
 
 // ヘルスチェックAPI (GET /api/health)
-// 200を必ず返す。CORS/プリフライトも有効。
 app.get('/api/health', (req: Request, res: Response) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    service: 'emergency-assistance-backend' 
+  });
 });
 
 /*
