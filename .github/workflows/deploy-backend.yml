@@ -37,18 +37,18 @@ jobs:
           slot-name: Production 
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: server
-
+    
       - name: Health check
         run: |
-            echo "🔍 Checking: https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/health"
-            for i in {1..20}; do
-              sleep 15
-              code=$(curl -o /dev/null -s -w "%{http_code}" https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/health)
-              echo "try #$i -> $code"
-              if [ "$code" = "200" ]; then
-                echo "✅ Health check passed"
-                exit 0
-              fi
-            done
-            echo "❌ Health check failed"
-            exit 1
+          echo "🔍 Checking: https://emergencyassistance-sv.japanwest-01.azurewebsites.net/health" # <-- この行を修正
+          for i in {1..20}; do
+            sleep 15
+            code=$(curl -o /dev/null -s -w "%{http_code}" https://emergencyassistance-sv.japanwest-01.azurewebsites.net/health) # <-- この行を修正
+            echo "try #$i -> $code"
+            if [ "$code" = "200" ]; then
+              echo "✅ Health check passed"
+              exit 0
+            fi
+          done
+          echo "❌ Health check failed"
+          exit 1
