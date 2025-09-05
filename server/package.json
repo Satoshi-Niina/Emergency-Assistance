@@ -9,9 +9,10 @@
     "clean": "rimraf dist",
     "lint": "eslint \"**/*.{ts,tsx,js,jsx}\" --max-warnings=0",
     "migrate": "drizzle-kit migrate",
+    "prestart": "npm run build",
     "start": "node dist/index.js",
     "start:prod": "npm run migrate && npm run start",
-    "azure:start": "node dist/index.js"
+    "azure:start": "node startup.js"
   },
   "dependencies": {
     "@azure/identity": "^4.0.1",
