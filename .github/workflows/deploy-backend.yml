@@ -40,8 +40,7 @@ jobs:
 
       - name: Health check
         run: |
-          echo "🔍 Checking: emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/health"
-          for i in {1..10}; do
+          echo "🔍 Checking: https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/health"
           for i in {1..10}; do
             sleep 6
             code=$(curl -o /dev/null -s -w "%{http_code}" https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/health)
