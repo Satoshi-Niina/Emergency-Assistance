@@ -34,15 +34,17 @@ jobs:
         uses: azure/webapps-deploy@v2
         with:
           app-name: emergencyassistance-sv
+          slot-name: Production 
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: server
 
       - name: Health check
         run: |
-          echo "🔍 Checking: https://emergencyassistance-sv.japanwest-01.azurewebsites.net/health"
+          echo "🔍 Checking: emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/health"
+          for i in {1..10}; do
           for i in {1..10}; do
             sleep 6
-            code=$(curl -o /dev/null -s -w "%{http_code}" https://emergencyassistance-sv.japanwest-01.azurewebsites.net/health)
+            code=$(curl -o /dev/null -s -w "%{http_code}" https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/health)
             echo "try #$i -> $code"
             if [ "$code" = "200" ]; then
               echo "✅ Health check passed"
