@@ -1,3 +1,4 @@
+// server/src/health.ts
 import express from 'express';
 
 export const healthRouter = express.Router();

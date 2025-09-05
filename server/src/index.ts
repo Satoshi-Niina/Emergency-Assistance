@@ -1,11 +1,11 @@
 import express from "express";
 import cors from "cors";
-import { registerHealth } from "./health.js"; // ← ESMなので .js 拡張子が必須
+import { healthRouter } from "./health.js"; // NodeNext では .js 拡張子が必須
 
 const app = express();
 
 /** ヘルスを最優先で登録（認証/CORSより前） */
-registerHealth(app);
+app.use("/health", healthRouter);
 
 /** 必要最低限のミドルウェア */
 app.use(cors());
