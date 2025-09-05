@@ -212,21 +212,17 @@ app.get('/api/history/file', (req, res) => {
 
 // ルートGETエンドポイント（App Service用OK応答）
 app.get('/', (req: Request, res: Response) => {
-  res.type('text/plain').send('OK');
+  res.status(200).type('text/plain').send('OK');
 });
 
-// ヘルスチェックエンドポイント（統一）
+// 最もシンプルなヘルスチェックエンドポイント
 app.get('/health', (req: Request, res: Response) => {
-  res.status(200).json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    service: 'emergency-assistance-backend' 
-  });
+  res.status(200).send('OK');
 });
 
-// ヘルスチェックAPI (GET /api/health)
+// JSONヘルスチェックエンドポイント
 app.get('/api/health', (req: Request, res: Response) => {
-  res.json({ 
+  res.status(200).json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
     service: 'emergency-assistance-backend' 
