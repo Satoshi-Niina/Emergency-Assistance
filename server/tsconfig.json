@@ -3,7 +3,7 @@
     "target": "ES2020",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "rootDir": ".",
+    "rootDir": "..",
     "outDir": "dist",
     "strict": false,
     "noImplicitAny": false,
@@ -16,7 +16,11 @@
     "resolveJsonModule": true,
     "noImplicitReturns": false,
     "noUnusedLocals": false,
-    "noUnusedParameters": false
+    "noUnusedParameters": false,
+    "strictBindCallApply": false,
+    "strictFunctionTypes": false,
+    "noImplicitThis": false,
+    "noImplicitOverride": false
   },
   "include": [
     "*.ts",
@@ -24,7 +28,9 @@
     "routes/**/*",
     "middleware/**/*",
     "services/**/*",
-    "utils/**/*"
+    "utils/**/*",
+    "types/**/*",
+    "../shared/**/*"
   ],
   "exclude": [
     "node_modules",

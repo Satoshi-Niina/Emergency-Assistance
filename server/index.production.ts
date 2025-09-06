@@ -10,7 +10,7 @@ async function dbCheck(): Promise<{ success: boolean; message: string }> {
     console.log('🔍 データベース接続確認中...');
     const result = await db.execute('SELECT 1 as test');
     
-    if (result && result.length > 0) {
+    if (result) {
       console.log('✅ データベース接続成功: PostgreSQL接続が正常に動作しています');
       return { success: true, message: 'PostgreSQL接続が正常に動作しています' };
     } else {
