@@ -9,21 +9,21 @@ const __dirname = path.dirname(__filename);
 
 // https://vitejs.dev/config/
 export default defineConfig(({ command, mode }) => {
-  // 環境変数を読み込み
-  const env = loadEnv(mode, process.cwd(), '');
+  // 環境変数を読み込み - clientディレクトリから読み込む
+  const env = loadEnv(mode, __dirname, '');
   
-  // APIのベースURLを環境変数から取得（VITE_API_BASE_URLのみ使用）
+  // APIのベースURLを環境変数から取得
   const apiBaseUrl = env.VITE_API_BASE_URL || 'http://localhost:3001';
   const serverPort = parseInt(env.PORT || '3001');
   const clientPort = parseInt(env.CLIENT_PORT || '5002');
   
   console.log('🔧 Vite環境変数確認:', {
+    mode,
+    command,
+    __dirname,
     VITE_API_BASE_URL: env.VITE_API_BASE_URL,
-    VITE_API_BASE_URL_TYPE: typeof env.VITE_API_BASE_URL,
-    VITE_API_BASE_URL_LENGTH: env.VITE_API_BASE_URL?.length,
     apiBaseUrl,
-    serverPort,
-    clientPort
+    NODE_ENV: env.NODE_ENV
   });
   
   console.log('🔧 Vite設定:', {
@@ -108,13 +108,9 @@ export default defineConfig(({ command, mode }) => {
     },
     define: {
       // 環境変数をクライアントサイドで利用可能にする
-      __VITE_API_BASE_URL__: JSON.stringify(apiBaseUrl),
+      __VITE_API_BASE_URL__: JSON.stringify(env.VITE_API_BASE_URL || apiBaseUrl),
       __VITE_MODE__: JSON.stringify(mode),
       __VITE_COMMAND__: JSON.stringify(command),
-      // 環境変数を直接定義
-      'import.meta.env.VITE_API_BASE_URL': JSON.stringify(env.VITE_API_BASE_URL),
-      'import.meta.env.NODE_ENV': JSON.stringify(env.NODE_ENV),
-      'import.meta.env.MODE': JSON.stringify(mode),
     },
     logLevel: 'info'
   };

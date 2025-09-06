@@ -9,14 +9,19 @@ const isReplitEnvironment = window.location.hostname.includes('replit.dev') || w
 const isAzureEnvironment = window.location.hostname.includes('azurewebsites.net') || window.location.hostname.includes('azure.com');
 
 // API Base URLの設定
-// 開発環境ではプロキシ経由でアクセス
 export const API_BASE_URL = (() => {
+  // 環境変数の確認
+  const viteApiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+  
   console.log('🔍 環境変数確認:', {
-    VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
-    VITE_API_BASE_URL_TYPE: typeof import.meta.env.VITE_API_BASE_URL,
-    VITE_API_BASE_URL_LENGTH: import.meta.env.VITE_API_BASE_URL?.length,
+    VITE_API_BASE_URL: viteApiBaseUrl,
+    VITE_API_BASE_URL_TYPE: typeof viteApiBaseUrl,
+    VITE_API_BASE_URL_LENGTH: viteApiBaseUrl?.length,
     NODE_ENV: import.meta.env.NODE_ENV,
-    MODE: import.meta.env.MODE
+    MODE: import.meta.env.MODE,
+    PROD: import.meta.env.PROD,
+    DEV: import.meta.env.DEV,
+    hostname: window.location.hostname
   });
   
   // 開発環境ではプロキシ経由でアクセス（相対パスを使用）
@@ -25,19 +30,16 @@ export const API_BASE_URL = (() => {
     return '';
   }
 
-  // 本番環境では必ずVITE_API_BASE_URLを使う
+  // 本番環境では環境変数またはフォールバック値を使う
   if (isProduction) {
-    if (import.meta.env.VITE_API_BASE_URL && import.meta.env.VITE_API_BASE_URL.trim() !== '') {
-      console.log('✅ 本番: 環境変数からAPI_BASE_URLを取得:', import.meta.env.VITE_API_BASE_URL);
-      return import.meta.env.VITE_API_BASE_URL;
-    } else {
-      throw new Error('VITE_API_BASE_URLが本番環境で未設定です');
-    }
+    const apiUrl = viteApiBaseUrl || 'https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net';
+    console.log('✅ 本番: API_BASE_URL設定完了:', apiUrl);
+    return apiUrl;
   }
 
-  // デフォルト
+  // デフォルト（開発環境でのフォールバック）
   console.log('⚠️ デフォルト値を使用');
-  return '';
+  return viteApiBaseUrl || '';
 })();
 
 console.log('🔧 API設定詳細:', {
