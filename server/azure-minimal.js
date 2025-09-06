@@ -1,5 +1,11 @@
 // Azure App Service用 最小サーバー (CommonJS)
 // Emergency Assistance Backend - Azure Production Version
+console.log('🔥 サーバーファイル開始 - ' + new Date().toISOString());
+console.log('📍 NODE_VERSION:', process.version);
+console.log('📍 PLATFORM:', process.platform);
+console.log('📍 ARCH:', process.arch);
+console.log('📍 ENV vars - PORT:', process.env.PORT, 'NODE_ENV:', process.env.NODE_ENV);
+
 const express = require('express');
 const cors = require('cors');
 
@@ -94,12 +100,13 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ 未処理Promise拒否:', reason);
 });
 
-// サーバー起動
-const server = app.listen(Number(port), '0.0.0.0', () => {
+// サーバー起動 - Azure App Service対応
+const server = app.listen(Number(port), () => {
   console.log(`✅ Azure用最小サーバーが正常に起動しました`);
-  console.log(`🌐 URL: http://0.0.0.0:${port}`);
-  console.log(`📊 ヘルスチェック: http://0.0.0.0:${port}/api/health`);
+  console.log(`🌐 Port: ${port}`);
+  console.log(`📊 ヘルスチェック: /api/health`);
   console.log(`🔐 環境: ${process.env.NODE_ENV || 'production'}`);
+  console.log(`🔧 プロセスID: ${process.pid}`);
 });
 
 server.on('error', (error) => {

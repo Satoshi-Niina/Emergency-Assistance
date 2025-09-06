@@ -48,31 +48,97 @@ jobs:
           echo "=== Preparing deployment package ==="
           
           mkdir -p ../deploy-backend
-          cp -r dist/* ../deploy-backend/
+          
+          # Copy essential files first
+          cp azure-minimal.js ../deploy-backend/index.js
           cp package.json ../deploy-backend/
           cp package-lock.json ../deploy-backend/
           
-          # Ensure web.config exists for IIS
-          if [ -f web.config ]; then
-            cp web.config ../deploy-backend/
-          else
-            echo '<?xml version="1.0" encoding="utf-8"?>' > ../deploy-backend/web.config
-            echo '<configuration>' >> ../deploy-backend/web.config
-            echo '  <system.webServer>' >> ../deploy-backend/web.config
-            echo '    <handlers>' >> ../deploy-backend/web.config
-            echo '      <add name="iisnode" path="index.js" verb="*" modules="iisnode" />' >> ../deploy-backend/web.config
-            echo '    </handlers>' >> ../deploy-backend/web.config
-            echo '  </system.webServer>' >> ../deploy-backend/web.config
-            echo '</configuration>' >> ../deploy-backend/web.config
-            echo "✅ Created web.config"
-          fi
+          # Create startup script for Azure
+          echo '#!/bin/bash' > ../deploy-backend/startup.sh
+          echo 'echo "🚀 Azure startup script starting..."' >> ../deploy-backend/startup.sh
+          echo 'echo "📂 Current directory: $(pwd)"' >> ../deploy-backend/startup.sh
+          echo 'echo "📋 Files in directory:"' >> ../deploy-backend/startup.sh
+          echo 'ls -la' >> ../deploy-backend/startup.sh
+          echo 'echo "📋 Node.js version: $(node --version)"' >> ../deploy-backend/startup.sh
+          echo 'echo "📋 NPM version: $(npm --version)"' >> ../deploy-backend/startup.sh
+          echo 'echo "🔥 Starting Node.js application..."' >> ../deploy-backend/startup.sh
+          echo 'node index.js' >> ../deploy-backend/startup.sh
+          chmod +x ../deploy-backend/startup.sh
+          
+          # Ensure web.config exists for IIS with better configuration
+          cat > ../deploy-backend/web.config << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <configuration>
+            <system.webServer>
+              <handlers>
+                <add name="iisnode" path="index.js" verb="*" modules="iisnode" />
+              </handlers>
+              <rewrite>
+                <rules>
+                  <rule name="NodeInspector" patternSyntax="ECMAScript" stopProcessing="true">
+                    <match url="^index.js\/debug[\/]?" />
+                  </rule>
+                  <rule name="StaticContent">
+                    <action type="Rewrite" url="public{REQUEST_URI}"/>
+                  </rule>
+                  <rule name="DynamicContent">
+                    <conditions>
+                      <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="True"/>
+                    </conditions>
+                    <action type="Rewrite" url="index.js"/>
+                  </rule>
+                </rules>
+              </rewrite>
+              <security>
+                <requestFiltering>
+                  <hiddenSegments>
+                    <remove segment="bin"/>
+                  </hiddenSegments>
+                </requestFiltering>
+              </security>
+              <httpErrors existingResponse="PassThrough" />
+              <iisnode 
+                node_env="production"
+                nodeProcessCountPerApplication="1"
+                maxConcurrentRequestsPerProcess="1024"
+                maxNamedPipeConnectionRetry="3"
+                namedPipeConnectionRetryDelay="2000"
+                maxNamedPipeConnectionPoolSize="512"
+                maxNamedPipePooledConnectionAge="30000"
+                asyncCompletionThreadCount="0"
+                initialRequestBufferSize="4096"
+                maxRequestBufferSize="65536"
+                watchedFiles="*.js"
+                uncFileChangesPollingInterval="5000"
+                gracefulShutdownTimeout="60000"
+                loggingEnabled="true"
+                logDirectoryNameSuffix="logs"
+                debuggingEnabled="false"
+                debuggerPortRange="5058-6058"
+                debuggerPathSegment="debug"
+                maxLogFileSizeInKB="128"
+                appendToExistingLog="false"
+                logFileFlushInterval="5000"
+                devErrorsEnabled="false"
+                flushResponse="false"
+                enableXFF="false"
+                promoteServerVars=""
+              />
+            </system.webServer>
+          </configuration>
+          EOF
           
           cd ../deploy-backend
-          npm ci --production --no-optional
+          
+          # Install production dependencies
+          echo "=== Installing production dependencies ==="
+          npm ci --production --no-optional --no-audit --prefer-offline
           
           echo "=== Package verification ==="
-          ls -la *.js *.json *.config 2>/dev/null || true
+          ls -la *.js *.json *.config *.sh 2>/dev/null || true
           echo "Total files: $(find . -type f | wc -l)"
+          echo "Node modules: $(ls node_modules | wc -l) packages"
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
