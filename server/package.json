@@ -4,12 +4,11 @@
   "type": "module",
   "scripts": {
     "dev": "tsx index.dev.ts",
-    "build": "tsc index-minimal.ts --outDir dist --module NodeNext --target ES2020 --moduleResolution NodeNext --skipLibCheck --esModuleInterop --allowSyntheticDefaultImports && node build-helper.js",
+    "build": "npx tsc index-minimal.ts --outDir dist --module NodeNext --target ES2020 --moduleResolution NodeNext --skipLibCheck --esModuleInterop --allowSyntheticDefaultImports",
     "build:check": "tsc --noEmit",
     "clean": "rimraf dist",
     "lint": "eslint \"**/*.{ts,tsx,js,jsx}\" --max-warnings=0",
     "migrate": "drizzle-kit migrate",
-    "postinstall": "npm run build",
     "start": "node index.js",
     "start:prod": "npm run start",
     "azure:start": "node index.js"

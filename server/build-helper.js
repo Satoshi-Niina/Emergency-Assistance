@@ -1,5 +1,5 @@
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
 // Build process helper
 const distDir = path.join(process.cwd(), 'dist');
