@@ -37,31 +37,30 @@ jobs:
           cp azure-minimal.js dist/index.js
           ls -la dist/
 
-      - name: Prepare deployment package (dist)
+      - name: Prepare deployment package (flat structure)
         working-directory: server
         run: |
           echo "=== Preparing deployment package ==="
           
           mkdir -p ../deploy-backend
           
-          # Copy built files and original manifests
-          cp -r dist ../deploy-backend/dist
+          # Copy built files DIRECTLY to deploy-backend root (not in a subdirectory)
+          # This ensures files go to /home/site/wwwroot/* instead of /home/site/wwwroot/dist/*
+          cp -r dist/* ../deploy-backend/
           cp package.json ../deploy-backend/
           cp package-lock.json ../deploy-backend/ || true
           
-          # Create startup script for Azure (not used on Linux but kept for debugging)
+          # Create startup script for Azure (debugging aid)
           echo '#!/bin/bash' > ../deploy-backend/startup.sh
           echo 'echo "🚀 Azure startup script starting..."' >> ../deploy-backend/startup.sh
           echo 'echo "📂 Current directory: $(pwd)"' >> ../deploy-backend/startup.sh
-          echo 'echo "📋 Files in directory:"' >> ../deploy-backend/startup.sh
+          echo 'echo "📋 Files in wwwroot:"' >> ../deploy-backend/startup.sh
           echo 'ls -la' >> ../deploy-backend/startup.sh
           echo 'echo "📋 Node.js version: $(node --version)"' >> ../deploy-backend/startup.sh
           echo 'echo "📋 NPM version: $(npm --version)"' >> ../deploy-backend/startup.sh
-          echo 'echo "🔥 Starting Node.js application..."' >> ../deploy-backend/startup.sh
-          echo 'node dist/index.js' >> ../deploy-backend/startup.sh
+          echo 'echo "🔥 Starting Node.js application with: node index.js"' >> ../deploy-backend/startup.sh
+          echo 'node index.js' >> ../deploy-backend/startup.sh
           chmod +x ../deploy-backend/startup.sh
-          
-          # Linux App Service uses startup command; no web.config required
           
           cd ../deploy-backend
           
@@ -73,11 +72,24 @@ jobs:
             npm install --omit=dev --no-audit --prefer-offline
           fi
           
-          echo "=== Package verification ==="
-          ls -la dist | head -50 || true
-          ls -la *.json 2>/dev/null || true
+          echo "=== Package structure verification ==="
+          echo "Files in deploy-backend root (will become /home/site/wwwroot):"
+          ls -la *.js *.json 2>/dev/null || echo "No JS/JSON files in root"
+          echo "Directories:"
+          ls -la | grep "^d" || echo "No directories"
           echo "Total files: $(find . -type f | wc -l)"
           if [ -d node_modules ]; then echo "Node modules: $(ls node_modules | wc -l) packages"; fi
+          
+          # Verify index.js exists
+          if [ -f index.js ]; then
+            echo "✅ index.js found in deployment package"
+            echo "First few lines of index.js:"
+            head -5 index.js
+          else
+            echo "❌ index.js NOT found - this will cause startup failure!"
+            echo "Available JS files:"
+            find . -name "*.js" | head -10
+          fi
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
