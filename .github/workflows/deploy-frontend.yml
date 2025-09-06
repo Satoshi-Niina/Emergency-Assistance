@@ -32,7 +32,7 @@ jobs:
         working-directory: client
         run: npm run build
         env:
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net' }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL}}
           NODE_ENV: production
       
       - name: Deploy to Azure Static Web Apps
@@ -43,6 +43,6 @@ jobs:
           action: "upload"
           app_location: "client"
           output_location: "dist"
-          env:
-            VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net' }}
+        env:
+            VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL}}
             NODE_ENV: production
