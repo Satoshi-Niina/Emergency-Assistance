@@ -1,10 +1,9 @@
 {
   "name": "emergency-assistance-server",
   "version": "1.0.0",
-  "type": "module",
   "scripts": {
     "dev": "tsx index.dev.ts",
-    "build": "npx tsc index-minimal.ts --outDir dist --module NodeNext --target ES2020 --moduleResolution NodeNext --skipLibCheck --esModuleInterop --allowSyntheticDefaultImports",
+    "build": "npx tsc index-minimal.ts --outDir dist --module CommonJS --target ES2020 --skipLibCheck --esModuleInterop --allowSyntheticDefaultImports && node build-helper.js",
     "build:check": "tsc --noEmit",
     "clean": "rimraf dist",
     "lint": "eslint \"**/*.{ts,tsx,js,jsx}\" --max-warnings=0",
