@@ -14,17 +14,39 @@ console.log('📂 __dirname:', __dirname);
 const app = express();
 const port = process.env.PORT || 3001;
 
-// 基本的なミドルウェア
+// 基本的なミドルウェア - 開発環境対応のCORS設定
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:5173', // Vite開発サーバー
+  'http://localhost:5002', // 設定されているフロントエンド
+  'http://localhost:3000', // 一般的なReactアプリ
+].filter(Boolean);
+
+console.log('🔧 許可されたOrigin:', allowedOrigins);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL,
-  credentials: true
+  origin: allowedOrigins.length > 0 ? allowedOrigins : true, // 開発用に幅広く許可
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(express.json());
 
-// 単純なヘルスチェック
+// Azure App Service用のヘルスチェックエンドポイント（両方のパスに対応）
+app.get('/health', (req, res) => {
+  console.log('📊 ヘルスチェックリクエスト受信 (/health)');
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    port: port,
+    pid: process.pid,
+    message: '最小サーバーが動作中です'
+  });
+});
+
 app.get('/api/health', (req, res) => {
-  console.log('📊 ヘルスチェックリクエスト受信');
+  console.log('📊 ヘルスチェックリクエスト受信 (/api/health)');
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
