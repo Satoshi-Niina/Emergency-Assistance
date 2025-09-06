@@ -74,6 +74,8 @@ logPathStatus('OpenAI API KEY', process.env.OPENAI_API_KEY ? '[SET]' : '[NOT SET
 logPathStatus('DATABASE_URL', process.env.DATABASE_URL ? '[SET]' : '[NOT SET]');
 
 // 環境変数の確認
+const isProduction = process.env.NODE_ENV === 'production';
+
 console.log('🔧 app.ts: 環境変数確認:', {
   NODE_ENV: process.env.NODE_ENV,
   PORT: process.env.PORT,
@@ -92,10 +94,35 @@ const app = express();
 // === CORS 設定（CORS_ORIGINS 環境変数を利用、express.json()より上） ===
 // CORS_ORIGINS はカンマ区切りの origin リスト。厳密一致で許可する。
 app.set('trust proxy', 1);
-const origins = (process.env.CORS_ORIGINS ?? '')
+let origins = (process.env.CORS_ORIGINS ?? '')
   .split(',')
   .map(s => s.trim())
   .filter(Boolean);
+
+// Always include localhost dev ports in development for smoother DX
+const originSet = new Set<string>(origins);
+if (!isProduction) {
+  [
+    // Vite/ローカル開発 (localhost)
+    'http://localhost:5173',
+    'http://localhost:5002',
+    'http://localhost:3000',
+    // 一部ブラウザ/設定で localhost の代わりに 127.0.0.1 になるケースを許可
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:5002',
+    'http://127.0.0.1:3000'
+  ].forEach(o => originSet.add(o));
+}
+
+// Fallback for production if CORS_ORIGINS is not configured
+if (isProduction && originSet.size === 0) {
+  [
+    process.env.FRONTEND_URL,
+    'https://witty-river-012f39e00.1.azurestaticapps.net'
+  ].filter(Boolean).forEach(o => originSet.add(String(o)));
+}
+
+origins = Array.from(originSet);
 
 console.log('🔧 CORS allowed origins:', origins.length ? origins : '[none - local dev only]');
 
@@ -138,9 +165,9 @@ const sessionConfig = {
   resave: true,
   saveUninitialized: false,
   cookie: {
-    secure: true,
+  secure: isProduction, // devではHTTPなのでfalse
     httpOnly: true,
-    sameSite: 'none' as 'none',
+  sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
     maxAge: 1000 * 60 * 60 * 24 * 7,
     path: '/',
     domain: undefined
