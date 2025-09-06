@@ -2,8 +2,6 @@
 import 'dotenv/config';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-import express, { type Request, Response, NextFunction } from "express";
-import cors from 'cors';
 import dotenv from 'dotenv';
 
 // Emergency Assistance Development Server
@@ -185,57 +183,8 @@ app.get('/api/health', (req, res) => {
 import { registerRoutes } from './routes/index.js';
 registerRoutes(app);
 
-// 開発環境用のエラーハンドリング
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error('[DEV] Error:', err);
-  
-  // APIエンドポイントの場合はJSONレスポンスを返す
-  if (req.path.startsWith('/api/')) {
-    if (!res.headersSent) {
-      res.setHeader('Content-Type', 'application/json');
-      res.status(500).json({
-        error: 'Internal Server Error',
-        message: err.message,
-        stack: isDevelopment ? err.stack : undefined,
-        timestamp: new Date().toISOString(),
-        path: req.path
-      });
-    }
-  } else {
-    // 非APIエンドポイントの場合は通常のエラーハンドリング
-    if (!res.headersSent) {
-      res.status(500).json({
-        error: 'Internal Server Error',
-        message: err.message,
-        stack: isDevelopment ? err.stack : undefined,
-        timestamp: new Date().toISOString()
-      });
-    }
-  }
-});
-
-// 開発環境用の404ハンドリング（JSON形式）
-app.use('/api/*', (req: Request, res: Response) => {
-  console.log('[DEV] API 404 Not Found:', req.originalUrl);
-  res.setHeader('Content-Type', 'application/json');
-  res.status(404).json({
-    error: 'Not Found',
-    path: req.originalUrl,
-    timestamp: new Date().toISOString()
-  });
-});
-
-// 非APIエンドポイントの404ハンドリング
-app.use('*', (req: Request, res: Response) => {
-  if (!req.path.startsWith('/api/')) {
-    console.log('[DEV] Non-API 404 Not Found:', req.originalUrl);
-    res.status(404).json({
-      error: 'Not Found',
-      path: req.originalUrl,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
+// 開発環境用のエラーハンドリング（簡潔版）
+// app.ts で基本的なエラーハンドリングは実装済み
 
 // 開発環境用のグレースフルシャットダウン
 const gracefulShutdown = () => {
@@ -246,11 +195,41 @@ const gracefulShutdown = () => {
 process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
 
+// データベース接続確認関数（app.tsから取得）
+async function dbCheck(): Promise<{ success: boolean; message: string }> {
+  try {
+    const { db } = await import('./db/index.js');
+    
+    console.log('🔍 データベース接続確認中...');
+    const result = await db.execute('SELECT 1 as test');
+    
+    if (result && result.length > 0) {
+      console.log('✅ データベース接続成功: PostgreSQL接続が正常に動作しています');
+      return { success: true, message: 'PostgreSQL接続が正常に動作しています' };
+    } else {
+      console.log('⚠️ データベース接続警告: クエリは実行されましたが結果が空です');
+      return { success: false, message: 'データベースクエリの結果が空です' };
+    }
+  } catch (error) {
+    console.error('❌ データベース接続エラー:', error);
+    const errorMessage = error instanceof Error ? error.message : 'データベース接続に失敗しました';
+    return { success: false, message: errorMessage };
+  }
+}
+
 // 開発サーバーの起動
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
   console.log(`🚀 [DEV] Development server running on http://0.0.0.0:${PORT}`);
   console.log(`🔧 [DEV] Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📊 [DEV] Health check: http://localhost:${PORT}/api/health`);
   console.log(`🔐 [DEV] Auth endpoint: http://localhost:${PORT}/api/auth/login`);
   console.log(`👤 [DEV] Demo login: niina / 0077`);
+  
+  // 起動時にデータベース接続確認を実行
+  const dbCheckResult = await dbCheck();
+  if (dbCheckResult.success) {
+    console.log('🎉 起動完了: バックエンドサーバーとデータベースの準備ができました');
+  } else {
+    console.warn('⚠️ 警告: データベース接続に問題があります -', dbCheckResult.message);
+  }
 });

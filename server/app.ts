@@ -140,7 +140,7 @@ const sessionConfig = {
   cookie: {
     secure: true,
     httpOnly: true,
-    sameSite: 'none' as 'none',
+    sameSite: 'none' as const,
     maxAge: 1000 * 60 * 60 * 24 * 7,
     path: '/',
     domain: undefined
@@ -210,6 +210,28 @@ app.get('/api/history/file', (req, res) => {
 });
 
 
+// PostgreSQL接続確認関数
+async function dbCheck(): Promise<{ success: boolean; message: string }> {
+  try {
+    const { db } = await import('./db/index.js');
+    
+    console.log('🔍 データベース接続確認中...');
+    const result = await db.execute('SELECT 1 as test');
+    
+    if (result && result.length > 0) {
+      console.log('✅ データベース接続成功: PostgreSQL接続が正常に動作しています');
+      return { success: true, message: 'PostgreSQL接続が正常に動作しています' };
+    } else {
+      console.log('⚠️ データベース接続警告: クエリは実行されましたが結果が空です');
+      return { success: false, message: 'データベースクエリの結果が空です' };
+    }
+  } catch (error) {
+    console.error('❌ データベース接続エラー:', error);
+    const errorMessage = error instanceof Error ? error.message : 'データベース接続に失敗しました';
+    return { success: false, message: errorMessage };
+  }
+}
+
 // ルートGETエンドポイント（App Service用OK応答）
 app.get('/', (req: Request, res: Response) => {
   res.status(200).type('text/plain').send('OK');
@@ -218,6 +240,11 @@ app.get('/', (req: Request, res: Response) => {
 // 最もシンプルなヘルスチェックエンドポイント
 app.get('/health', (req: Request, res: Response) => {
   res.status(200).send('OK');
+});
+
+// Azure App Service用ヘルスチェックエンドポイント
+app.get('/healthz', (req: Request, res: Response) => {
+  res.status(200).send('ok');
 });
 
 // JSONヘルスチェックエンドポイント

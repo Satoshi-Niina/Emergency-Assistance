@@ -3,14 +3,14 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "tsx index.dev.ts",
-    "build": "npx tsc index-minimal.ts --outDir dist --module CommonJS --target ES2020 --skipLibCheck --esModuleInterop --allowSyntheticDefaultImports && node build-helper.js",
+    "build": "npx tsc index.production.ts --outDir dist --module CommonJS --target ES2020 --skipLibCheck --esModuleInterop --allowSyntheticDefaultImports && node build-helper.js",
     "build:check": "tsc --noEmit",
     "clean": "rimraf dist",
     "lint": "eslint \"**/*.{ts,tsx,js,jsx}\" --max-warnings=0",
     "migrate": "drizzle-kit migrate",
-    "start": "node index.js",
+    "start": "node dist/index.production.js",
     "start:prod": "npm run start",
-    "azure:start": "node index.js"
+    "azure:start": "node dist/index.production.js"
   },
   "dependencies": {
     "@azure/identity": "^4.0.1",

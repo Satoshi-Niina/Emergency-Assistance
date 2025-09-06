@@ -33,15 +33,14 @@ jobs:
         working-directory: server
         run: |
           echo "=== Building backend with CommonJS ==="
-          # CommonJS TypeScript compilation for better Azure App Service compatibility
-          npx tsc index-minimal.ts --outDir dist --module CommonJS --target ES2020 --skipLibCheck --esModuleInterop --allowSyntheticDefaultImports
+          # Use the updated build script
+          npm run build
           
-          # Ensure index.js exists for Azure App Service
-          if [ -f "dist/index-minimal.js" ]; then
-            mv dist/index-minimal.js dist/index.js
-            echo "✅ Renamed index-minimal.js to index.js"
+          # Verify build output
+          if [ -f "dist/index.production.js" ]; then
+            echo "✅ Build successful: index.production.js created"
           else
-            echo "❌ Build failed: index-minimal.js not found"
+            echo "❌ Build failed: index.production.js not found"
             exit 1
           fi
           
@@ -66,7 +65,7 @@ jobs:
             echo '<configuration>' >> ../deploy-backend/web.config
             echo '  <system.webServer>' >> ../deploy-backend/web.config
             echo '    <handlers>' >> ../deploy-backend/web.config
-            echo '      <add name="iisnode" path="index.js" verb="*" modules="iisnode" />' >> ../deploy-backend/web.config
+            echo '      <add name="iisnode" path="dist/index.production.js" verb="*" modules="iisnode" />' >> ../deploy-backend/web.config
             echo '    </handlers>' >> ../deploy-backend/web.config
             echo '  </system.webServer>' >> ../deploy-backend/web.config
             echo '</configuration>' >> ../deploy-backend/web.config
