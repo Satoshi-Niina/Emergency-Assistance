@@ -27,12 +27,16 @@ const allowedOrigins = [
 
 console.log('🔧 許可されたOrigin:', allowedOrigins);
 
-app.use(cors({
+const corsOptions = {
   origin: allowedOrigins.length > 0 ? allowedOrigins : true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
-}));
+};
+
+// CORS (simple + preflight)
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 app.use(express.json());
 
