@@ -36,6 +36,23 @@ jobs:
         working-directory: client
         run: npm ci --prefer-offline --no-audit
 
+      - name: Create simplified vite config for build
+        working-directory: client
+        run: |
+          cp vite.config.simple.ts vite.config.build.ts
+          echo "Using simplified vite config for reliable build"
+
+      - name: Build application with explicit config
+        working-directory: client
+        run: ./node_modules/.bin/vite build --config vite.config.build.ts
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          NODE_ENV: production
+
+      - name: List build output
+        working-directory: client
+        run: ls -la dist/
+
       - name: Deploy to Azure Static Web Apps
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
@@ -45,10 +62,7 @@ jobs:
           action: "upload"
           app_location: "client"
           output_location: "dist"
-          app_build_command: "npm run build"
-        env:
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
-          NODE_ENV: production
+          skip_app_build: true
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'

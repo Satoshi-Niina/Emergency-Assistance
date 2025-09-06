@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vite",
     "dev:client": "vite",
-    "build": "npx vite build",
+    "build": "./node_modules/.bin/vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext .ts,.tsx --max-warnings=0"
   },
