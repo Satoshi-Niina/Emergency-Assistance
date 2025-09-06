@@ -3,7 +3,7 @@
     "target": "ES2020",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "rootDir": "..",
+    "rootDir": ".",
     "outDir": "dist",
     "strict": false,
     "noImplicitAny": false,
@@ -29,13 +29,13 @@
     "middleware/**/*",
     "services/**/*",
     "utils/**/*",
-    "types/**/*",
-    "../shared/**/*"
+    "types/**/*"
   ],
   "exclude": [
     "node_modules",
     "dist",
     "**/*.test.ts",
-    "**/*.spec.ts"
+    "**/*.spec.ts",
+    "simple-server.ts"
   ]
 }
