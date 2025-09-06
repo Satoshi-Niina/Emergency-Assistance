@@ -10,21 +10,23 @@ console.log('📂 __dirname:', __dirname);
 const app = express();
 const port = process.env.PORT || 3001;
 
-// 基本的なミドルウェア - 開発環境対応のCORS設定
+// 基本的なミドルウェア - Azure環境完全対応のCORS設定
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   'http://localhost:5173', // Vite開発サーバー
   'http://localhost:5002', // 設定されているフロントエンド
   'http://localhost:3000', // 一般的なReactアプリ
+  'https://salmon-desert-065ec5000.5.azurestaticapps.net', // Azure Static Web Apps URL
+  'https://emergency-assistance.azurestaticapps.net', // カスタムドメインがある場合
 ].filter(Boolean);
 
 console.log('🔧 許可されたOrigin:', allowedOrigins);
 
 app.use(cors({
-  origin: allowedOrigins.length > 0 ? allowedOrigins : true, // 開発用に幅広く許可
+  origin: allowedOrigins.length > 0 ? allowedOrigins : true, // 本番環境でも幅広く許可
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
 app.use(express.json());

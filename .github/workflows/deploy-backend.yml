@@ -3,6 +3,7 @@ name: Deploy Backend to Azure App Service
 on:
   push:
     branches:
+      - main
       - backup-clean
     paths:
       - "server/**"
@@ -31,9 +32,9 @@ jobs:
       - name: Build backend
         working-directory: server
         run: |
-          echo "=== Building backend with minimal server ==="
-          # Simple TypeScript compilation without complex build scripts
-          npx tsc index-minimal.ts --outDir dist --module NodeNext --target ES2020 --moduleResolution NodeNext --skipLibCheck --esModuleInterop --allowSyntheticDefaultImports
+          echo "=== Building backend with CommonJS ==="
+          # CommonJS TypeScript compilation for better Azure App Service compatibility
+          npx tsc index-minimal.ts --outDir dist --module CommonJS --target ES2020 --skipLibCheck --esModuleInterop --allowSyntheticDefaultImports
           
           # Ensure index.js exists for Azure App Service
           if [ -f "dist/index-minimal.js" ]; then

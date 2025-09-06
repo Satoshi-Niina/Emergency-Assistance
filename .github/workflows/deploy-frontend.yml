@@ -3,6 +3,7 @@ name: Deploy Frontend to Azure Static Web App
 on:
   push:
     branches:
+      - main
       - backup-clean
     paths:
       - "client/**"
