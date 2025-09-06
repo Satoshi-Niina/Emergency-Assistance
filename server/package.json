@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx index.dev.ts",
-    "build": "tsc index-minimal.ts --outDir dist --module NodeNext --target ES2020 --moduleResolution NodeNext --skipLibCheck --esModuleInterop --allowSyntheticDefaultImports && cd dist && if exist index-minimal.js (del /f index.js 2>nul & ren index-minimal.js index.js)",
+    "build": "tsc index-minimal.ts --outDir dist --module NodeNext --target ES2020 --moduleResolution NodeNext --skipLibCheck --esModuleInterop --allowSyntheticDefaultImports && node build-helper.js",
     "build:check": "tsc --noEmit",
     "clean": "rimraf dist",
     "lint": "eslint \"**/*.{ts,tsx,js,jsx}\" --max-warnings=0",
