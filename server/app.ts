@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
 import session from 'express-session';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -211,22 +211,27 @@ app.get('/api/history/file', (req, res) => {
 
 
 // ルートGETエンドポイント（App Service用OK応答）
-app.get('/', (req: Request, res: Response) => {
+app.get('/', (req, res) => {
   res.status(200).type('text/plain').send('OK');
 });
 
 // 最もシンプルなヘルスチェックエンドポイント
-app.get('/health', (req: Request, res: Response) => {
+app.get('/health', (req, res) => {
   res.status(200).send('OK');
 });
 
 // JSONヘルスチェックエンドポイント
-app.get('/api/health', (req: Request, res: Response) => {
+app.get('/api/health', (req, res) => {
   res.status(200).json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
     service: 'emergency-assistance-backend' 
   });
+});
+
+// Azure App Service用ヘルスチェックエンドポイント
+app.get('/healthz', (req, res) => {
+  res.status(200).type('text/plain').send('OK');
 });
 
 /*

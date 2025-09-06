@@ -2,7 +2,7 @@
 import 'dotenv/config';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-import express, { type Request, Response, NextFunction } from "express";
+import express from "express";
 import cors from 'cors';
 import dotenv from 'dotenv';
 
@@ -186,7 +186,7 @@ import { registerRoutes } from './routes/index.js';
 registerRoutes(app);
 
 // 開発環境用のエラーハンドリング
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+app.use((err, req, res, _next) => {
   console.error('[DEV] Error:', err);
   
   // APIエンドポイントの場合はJSONレスポンスを返す
@@ -215,7 +215,7 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 });
 
 // 開発環境用の404ハンドリング（JSON形式）
-app.use('/api/*', (req: Request, res: Response) => {
+app.use('/api/*', (req, res) => {
   console.log('[DEV] API 404 Not Found:', req.originalUrl);
   res.setHeader('Content-Type', 'application/json');
   res.status(404).json({
@@ -226,7 +226,7 @@ app.use('/api/*', (req: Request, res: Response) => {
 });
 
 // 非APIエンドポイントの404ハンドリング
-app.use('*', (req: Request, res: Response) => {
+app.use('*', (req, res) => {
   if (!req.path.startsWith('/api/')) {
     console.log('[DEV] Non-API 404 Not Found:', req.originalUrl);
     res.status(404).json({

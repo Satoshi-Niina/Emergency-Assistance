@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx index.dev.ts",
-    "build": "npx tsc index-minimal.ts --outDir dist --module NodeNext --target ES2020 --moduleResolution NodeNext --skipLibCheck --esModuleInterop --allowSyntheticDefaultImports",
+    "build": "tsc --skipLibCheck --noEmit false",
     "build:check": "tsc --noEmit",
     "clean": "rimraf dist",
     "lint": "eslint \"**/*.{ts,tsx,js,jsx}\" --max-warnings=0",
