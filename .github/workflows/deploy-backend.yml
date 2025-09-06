@@ -15,45 +15,78 @@ jobs:
     runs-on: ubuntu-latest
     name: Build and Deploy Backend
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'server/package-lock.json'
 
       - name: Install dependencies
         working-directory: server
-        run: npm ci
+        run: npm ci --production=false
 
       - name: Build backend
         working-directory: server
         run: npm run build
 
+      - name: Prepare deployment package
+        working-directory: server
+        run: |
+          echo "=== Preparing deployment package ==="
+          
+          # Create deployment directory
+          mkdir -p ../deploy-backend
+          
+          # Copy built files
+          cp -r dist/* ../deploy-backend/
+          
+          # Copy essential files
+          cp package.json ../deploy-backend/
+          cp package-lock.json ../deploy-backend/
+          
+          # Copy other necessary files
+          [ -f web.config ] && cp web.config ../deploy-backend/ || true
+          [ -f .env.production ] && cp .env.production ../deploy-backend/.env || true
+          
+          # Install production dependencies in deployment directory
+          cd ../deploy-backend
+          npm ci --production
+          
+          # Verify deployment package
+          echo "=== Deployment package contents ==="
+          find . -name "*.js" | head -10
+          echo "Total files: $(find . -type f | wc -l)"
+          ls -la
+
       - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v2
+        uses: azure/webapps-deploy@v3
         with:
           app-name: emergencyassistance-sv
           slot-name: Production 
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: server
-    
+          package: deploy-backend
+
       - name: Health check
         run: |
-          echo "🔍 Starting health check..."
+          echo "🔍 Starting enhanced health check..."
           app_url="https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net"
           
-          # 1. Check root endpoint first (most basic)
-          echo "🔍 Checking root endpoint: ${app_url}/"
-          sleep 30  # Allow app to fully start
+          # Wait for deployment to complete
+          echo "⏳ Waiting for deployment to complete..."
+          sleep 45
           
+          # Check root endpoint
+          echo "🔍 Checking root endpoint: ${app_url}/"
           root_code=$(curl -o /dev/null -s -w "%{http_code}" -L "${app_url}/")
           echo "Root endpoint status: $root_code"
           
           if [ "$root_code" = "200" ] || [ "$root_code" = "302" ]; then
             echo "✅ Root endpoint accessible"
             
-            # 2. Now check health endpoint
+            # Check health endpoint
             echo "🔍 Checking health endpoint: ${app_url}/health"
             health_code=$(curl -o /dev/null -s -w "%{http_code}" -L "${app_url}/health")
             echo "Health endpoint status: $health_code"
@@ -64,10 +97,10 @@ jobs:
             fi
           fi
           
-          # 3. Diagnostic info on failure
+          # Diagnostic info on failure
           echo "❌ Health check failed. Getting diagnostic info..."
           echo "Response headers:"
           curl -I -s "${app_url}/" || true
           echo "Response body sample:"
-          curl -s "${app_url}/" | head -10 || true
+          curl -s "${app_url}/" | head -20 || true
           exit 1
