@@ -1,4 +1,3 @@
-import dotenv from 'dotenv';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -10,34 +9,24 @@ const __dirname = path.dirname(__filename);
 // https://vitejs.dev/config/
 export default defineConfig(({ command, mode }) => {
   // 環境変数を読み込み - clientディレクトリから読み込む
-  const env = loadEnv(mode, __dirname, '');
+  const env = loadEnv(mode, process.cwd(), '');
   
   // APIのベースURLを環境変数から取得
   const apiBaseUrl = env.VITE_API_BASE_URL || 'http://localhost:3001';
-  const serverPort = parseInt(env.PORT || '3001');
+  const _serverPort = parseInt(env.PORT || '3001');
   const clientPort = parseInt(env.CLIENT_PORT || '5002');
   
-  console.log('🔧 Vite環境変数確認:', {
-    mode,
-    command,
-    __dirname,
-    VITE_API_BASE_URL: env.VITE_API_BASE_URL,
-    apiBaseUrl,
-    NODE_ENV: env.NODE_ENV
-  });
-  
-  console.log('🔧 Vite設定:', {
-    command,
-    mode,
-    apiBaseUrl,
-    serverPort,
-    clientPort,
-    env: {
-      VITE_API_BASE_URL: env.VITE_API_BASE_URL, // 使用中: APIのベースURL
-      PORT: env.PORT, // 使用中: サーバーポート
-      NODE_ENV: env.NODE_ENV // 使用中: 環境判別
-    }
-  });
+  // プロダクションビルドでは不要なログを削除
+  if (command !== 'build') {
+    console.log('🔧 Vite環境変数確認:', {
+      mode,
+      command,
+      __dirname,
+      VITE_API_BASE_URL: env.VITE_API_BASE_URL,
+      apiBaseUrl,
+      NODE_ENV: env.NODE_ENV
+    });
+  }
 
   return {
     plugins: [react()],
@@ -54,7 +43,7 @@ export default defineConfig(({ command, mode }) => {
       allowedHosts: true,
       // ローカル開発環境用の設定
       watch: {
-        usePolling: false, // ローカルではポーリング不要
+        usePolling: false,
         followSymlinks: true
       },
       hmr: {
@@ -70,14 +59,14 @@ export default defineConfig(({ command, mode }) => {
           secure: false,
           ws: true,
           rewrite: (path) => path,
-          configure: (proxy, options) => {
-            proxy.on('error', (err, req, res) => {
+          configure: (proxy, _options) => {
+            proxy.on('error', (err, _req, _res) => {
               console.log('🔴 Proxy error:', err);
             });
-            proxy.on('proxyReq', (proxyReq, req, res) => {
+            proxy.on('proxyReq', (proxyReq, req, _res) => {
               console.log('📤 Sending Request to the Target:', req.method, req.url);
             });
-            proxy.on('proxyRes', (proxyRes, req, res) => {
+            proxy.on('proxyRes', (proxyRes, req, _res) => {
               console.log('📥 Received Response from the Target:', proxyRes.statusCode, req.url);
             });
           },
@@ -93,16 +82,26 @@ export default defineConfig(({ command, mode }) => {
       rollupOptions: {
         input: './index.html',
         output: {
-          manualChunks: undefined
+          manualChunks: {
+            vendor: ['react', 'react-dom'],
+            router: ['react-router-dom'],
+            ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu']
+          }
         }
       },
-      sourcemap: true,
-      minify: true,
-      target: 'esnext',
-      modulePreload: true
+      sourcemap: false,
+      minify: 'terser',
+      target: 'es2015',
+      modulePreload: true,
+      terserOptions: {
+        compress: {
+          drop_console: true,
+          drop_debugger: true,
+        },
+      },
     },
     esbuild: {
-      keepNames: true,
+      keepNames: false,
       legalComments: 'none',
       target: 'es2015'
     },
@@ -112,6 +111,6 @@ export default defineConfig(({ command, mode }) => {
       __VITE_MODE__: JSON.stringify(mode),
       __VITE_COMMAND__: JSON.stringify(command),
     },
-    logLevel: 'info'
+    logLevel: command === 'build' ? 'warn' : 'info'
   };
 });
