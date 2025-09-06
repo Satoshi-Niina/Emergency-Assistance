@@ -49,10 +49,24 @@ jobs:
           
           mkdir -p ../deploy-backend
           
-          # Copy essential files first
+          # Copy server entrypoint (CommonJS)
           cp azure-minimal.js ../deploy-backend/index.js
-          cp package.json ../deploy-backend/
-          cp package-lock.json ../deploy-backend/
+          
+          # Create a minimal CommonJS package.json to avoid ESM mode
+          cat > ../deploy-backend/package.json << 'EOF'
+          {
+            "name": "emergency-assistance-backend",
+            "version": "1.0.0",
+            "private": true,
+            "type": "commonjs",
+            "engines": { "node": ">=20" },
+            "scripts": { "start": "node index.js" },
+            "dependencies": {
+              "express": "^4.21.2",
+              "cors": "^2.8.5"
+            }
+          }
+          EOF
           
           # Create startup script for Azure
           echo '#!/bin/bash' > ../deploy-backend/startup.sh
@@ -132,8 +146,8 @@ jobs:
           cd ../deploy-backend
           
           # Install production dependencies
-          echo "=== Installing production dependencies ==="
-          npm ci --production --no-optional --no-audit --prefer-offline
+          echo "=== Installing production dependencies (without lockfile) ==="
+          npm install --omit=dev --no-audit --prefer-offline
           
           echo "=== Package verification ==="
           ls -la *.js *.json *.config *.sh 2>/dev/null || true

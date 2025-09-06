@@ -36,6 +36,9 @@ app.use(cors({
 
 app.use(express.json());
 
+// Avoid 503 noise for favicon
+app.get('/favicon.ico', (_req, res) => res.status(204).end());
+
 // Azure App Service用のヘルスチェックエンドポイント
 app.get('/health', (req, res) => {
   console.log('📊 ヘルスチェックリクエスト受信 (/health)');
