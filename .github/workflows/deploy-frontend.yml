@@ -34,24 +34,14 @@ jobs:
 
       - name: Install dependencies
         working-directory: client
-        run: npm ci --prefer-offline --no-audit
+        run: npm ci
 
-      - name: Create simplified vite config for build
+      - name: Build application
         working-directory: client
-        run: |
-          cp vite.config.simple.ts vite.config.build.ts
-          echo "Using simplified vite config for reliable build"
-
-      - name: Build application with explicit config
-        working-directory: client
-        run: ./node_modules/.bin/vite build --config vite.config.build.ts
+        run: npm run build
         env:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
           NODE_ENV: production
-
-      - name: List build output
-        working-directory: client
-        run: ls -la dist/
 
       - name: Deploy to Azure Static Web Apps
         id: builddeploy
