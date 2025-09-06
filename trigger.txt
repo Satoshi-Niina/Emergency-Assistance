@@ -1,1 +1,6 @@
-final-backend-build-fix-2025-09-06-16-55-00
+Backend CommonJS fix for Azure App Service startup
+2024-12-19 14:30 - Azure ES modules to CommonJS conversion
+- Fixed startup issue with node dist/index.js command
+- Created azure-minimal.js with pure CommonJS compatibility
+- Updated deployment workflow for Azure App Service
+- Should resolve 503 errors and backend startup problems

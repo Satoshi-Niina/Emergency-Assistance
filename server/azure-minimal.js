@@ -1,47 +1,28 @@
+// Azure App Service用 最小サーバー (CommonJS)
+// Emergency Assistance Backend - Azure Production Version
+const express = require('express');
+const cors = require('cors');
 
-import express from "express";
-import cors from "cors";
-import * as path from 'path';
-import { createRequire } from 'module';
-
-// CommonJS互換性のためのrequire作成（ES modules環境向け）
-const require = createRequire(import.meta.url);
-
-// CommonJSとES modulesの両方に対応するディレクトリ取得
-let __filename: string;
-let __dirname: string;
-
-if (typeof import.meta !== 'undefined' && import.meta.url) {
-  // ES modules環境
-  const { fileURLToPath } = await import('url');
-  __filename = fileURLToPath(import.meta.url);
-  __dirname = path.dirname(__filename);
-} else {
-  // CommonJS環境（ビルド後のAzure App Service環境）
-  __filename = __filename || '';
-  __dirname = __dirname || process.cwd();
-}
-
-console.log('🚀 最小サーバー起動開始');
+console.log('🚀 Azure用最小サーバー起動開始');
 console.log('📂 Working directory:', process.cwd());
 console.log('📂 __dirname:', __dirname);
 
 const app = express();
 const port = process.env.PORT || 3001;
 
-// 基本的なミドルウェア - 開発環境対応のCORS設定
+// 基本的なミドルウェア - Azure Production対応のCORS設定
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   'https://witty-river-012f39e00.1.azurestaticapps.net', // Azure Static Web Apps
-  'http://localhost:5173', // Vite開発サーバー
-  'http://localhost:5002', // 設定されているフロントエンド
-  'http://localhost:3000', // 一般的なReactアプリ
+  'http://localhost:5173', // 開発用
+  'http://localhost:5002', // 開発用
+  'http://localhost:3000', // 開発用
 ].filter(Boolean);
 
 console.log('🔧 許可されたOrigin:', allowedOrigins);
 
 app.use(cors({
-  origin: allowedOrigins.length > 0 ? allowedOrigins : true, // 開発用に幅広く許可
+  origin: allowedOrigins.length > 0 ? allowedOrigins : true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -49,7 +30,7 @@ app.use(cors({
 
 app.use(express.json());
 
-// Azure App Service用のヘルスチェックエンドポイント（両方のパスに対応）
+// Azure App Service用のヘルスチェックエンドポイント
 app.get('/health', (req, res) => {
   console.log('📊 ヘルスチェックリクエスト受信 (/health)');
   res.json({
@@ -57,7 +38,7 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     port: port,
     pid: process.pid,
-    message: '最小サーバーが動作中です'
+    message: 'Azure用最小サーバーが動作中です'
   });
 });
 
@@ -68,7 +49,7 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     port: port,
     pid: process.pid,
-    message: '最小サーバーが動作中です'
+    message: 'Azure用最小サーバーが動作中です'
   });
 });
 
@@ -76,13 +57,25 @@ app.get('/api/health', (req, res) => {
 app.get('/', (req, res) => {
   console.log('📊 ルートリクエスト受信');
   res.json({
-    message: '最小サーバーが正常に動作しています',
-    timestamp: new Date().toISOString()
+    message: 'Azure用最小サーバーが正常に動作しています',
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV || 'production'
+  });
+});
+
+// 基本的なAPIテストエンドポイント
+app.get('/api/test', (req, res) => {
+  console.log('🔍 APIテストエンドポイント呼び出し');
+  res.json({
+    success: true,
+    message: 'APIが正常に動作しています',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'production'
   });
 });
 
 // エラーハンドリング
-app.use((error: any, req: any, res: any, next: any) => {
+app.use((error, req, res, next) => {
   console.error('❌ エラー発生:', error);
   res.status(500).json({
     error: 'サーバーエラー',
@@ -103,16 +96,17 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // サーバー起動
 const server = app.listen(Number(port), '0.0.0.0', () => {
-  console.log(`✅ 最小サーバーが正常に起動しました`);
+  console.log(`✅ Azure用最小サーバーが正常に起動しました`);
   console.log(`🌐 URL: http://0.0.0.0:${port}`);
   console.log(`📊 ヘルスチェック: http://0.0.0.0:${port}/api/health`);
+  console.log(`🔐 環境: ${process.env.NODE_ENV || 'production'}`);
 });
 
-server.on('error', (error: any) => {
+server.on('error', (error) => {
   console.error('❌ サーバー起動エラー:', error);
   if (error.code === 'EADDRINUSE') {
     console.error(`❌ ポート ${port} は既に使用されています`);
   }
 });
 
-console.log('✅ 最小サーバーファイル終端');
+console.log('✅ Azure用最小サーバーファイル終端');

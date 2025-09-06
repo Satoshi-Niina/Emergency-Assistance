@@ -31,18 +31,13 @@ jobs:
       - name: Build backend
         working-directory: server
         run: |
-          echo "=== Building backend with minimal server ==="
-          # Simple TypeScript compilation without complex build scripts
-          npx tsc index-minimal.ts --outDir dist --module NodeNext --target ES2020 --moduleResolution NodeNext --skipLibCheck --esModuleInterop --allowSyntheticDefaultImports
+          echo "=== Preparing Azure minimal server ==="
           
-          # Ensure index.js exists for Azure App Service
-          if [ -f "dist/index-minimal.js" ]; then
-            mv dist/index-minimal.js dist/index.js
-            echo "✅ Renamed index-minimal.js to index.js"
-          else
-            echo "❌ Build failed: index-minimal.js not found"
-            exit 1
-          fi
+          mkdir -p dist
+          
+          # Copy CommonJS server file directly
+          cp azure-minimal.js dist/index.js
+          echo "✅ Copied azure-minimal.js to dist/index.js"
           
           echo "=== Build completed ==="
           ls -la dist/
