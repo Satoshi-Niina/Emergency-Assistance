@@ -4,3 +4,6 @@ Backend CommonJS fix for Azure App Service startup
 - Created azure-minimal.js with pure CommonJS compatibility
 - Updated deployment workflow for Azure App Service
 - Should resolve 503 errors and backend startup problems
+
+trigger CI
+2025-09-07T08:30:00Z

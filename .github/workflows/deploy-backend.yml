@@ -4,10 +4,6 @@ on:
   push:
     branches:
       - backup-clean
-    paths:
-      - "server/**"
-      - ".github/workflows/deploy-backend.yml"
-      - "trigger.txt"
   workflow_dispatch:
 
 jobs:
