@@ -1,10 +1,42 @@
 import { BlobServiceClient, ContainerClient } from '@azure/storage-blob';
 
+// ============================================================================
+// Storage 型定義
+// ============================================================================
+
+/**
+ * ファイルメタデータとステータス情報
+ */
+export type ObjectStat = {
+  exists: boolean;
+  size?: number;
+  contentType?: string;
+  etag?: string;
+  lastModified?: Date;
+  metadata?: Record<string, string>;
+};
+
+/**
+ * 共通ストレージドライバーインターフェース
+ */
+export interface StorageDriver {
+  read(key: string): Promise<Buffer>;
+  write?(key: string, data: string | Buffer | ArrayBuffer | ArrayBufferView, contentType?: string): Promise<void>;
+  list?(prefix?: string): Promise<string[]>;
+  exists?(key: string): Promise<boolean>;
+  delete?(key: string): Promise<void>;
+  stat?(key: string): Promise<ObjectStat>; // ★ 追加
+}
+
+// ============================================================================
+// Azure Blob Storage ドライバー実装
+// ============================================================================
+
 /**
  * Azure Blob Storage ドライバー
  * ファイルシステムの代替としてBlob Storageを使用
  */
-export class BlobStorageDriver {
+export class BlobStorageDriver implements StorageDriver {
   private containerClient: ContainerClient;
   private containerName: string;
 
@@ -41,41 +73,11 @@ export class BlobStorageDriver {
   }
 
   /**
-   * ファイルを読み取り（テキスト形式）
-   * @param key ファイルキー（パス）
-   * @returns ファイル内容（UTF-8文字列）
-   */
-  async read(key: string): Promise<string> {
-    try {
-      const blockBlobClient = this.containerClient.getBlockBlobClient(key);
-      const downloadResponse = await blockBlobClient.download();
-      
-      if (!downloadResponse.readableStreamBody) {
-        throw new Error(`Failed to download blob: ${key}`);
-      }
-
-      const chunks: Buffer[] = [];
-      for await (const chunk of downloadResponse.readableStreamBody) {
-        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-      }
-      
-      const buffer = Buffer.concat(chunks);
-      return buffer.toString('utf-8');
-    } catch (error) {
-      if (error && typeof error === 'object' && 'statusCode' in error && (error as { statusCode: number }).statusCode === 404) {
-        throw new Error(`File not found: ${key}`);
-      }
-      console.error(`❌ Blob読み取りエラー (${key}):`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * ファイルを読み取り（バイナリ形式）
+   * ファイルを読み取り（バイナリ形式）- StorageDriver インターフェース準拠
    * @param key ファイルキー（パス）
    * @returns ファイル内容（Buffer）
    */
-  async readBuffer(key: string): Promise<Buffer> {
+  async read(key: string): Promise<Buffer> {
     try {
       const blockBlobClient = this.containerClient.getBlockBlobClient(key);
       const downloadResponse = await blockBlobClient.download();
@@ -97,6 +99,16 @@ export class BlobStorageDriver {
       console.error(`❌ Blob読み取りエラー (${key}):`, error);
       throw error;
     }
+  }
+
+  /**
+   * ファイルを読み取り（テキスト形式）
+   * @param key ファイルキー（パス）
+   * @returns ファイル内容（UTF-8文字列）
+   */
+  async readAsString(key: string): Promise<string> {
+    const buffer = await this.read(key);
+    return buffer.toString('utf-8');
   }
 
   /**
@@ -189,6 +201,38 @@ export class BlobStorageDriver {
   }
 
   /**
+   * ファイルのメタデータとステータスを取得
+   * @param key ファイルキー
+   * @returns ObjectStat オブジェクト
+   */
+  async stat(key: string): Promise<ObjectStat> {
+    try {
+      const blockBlobClient = this.containerClient.getBlockBlobClient(key);
+      const exists = await blockBlobClient.exists();
+      
+      if (!exists) {
+        return { exists: false };
+      }
+      
+      const properties = await blockBlobClient.getProperties();
+      return {
+        exists: true,
+        size: properties.contentLength,
+        contentType: properties.contentType || undefined,
+        etag: properties.etag,
+        lastModified: properties.lastModified,
+        metadata: properties.metadata as Record<string, string> || {}
+      };
+    } catch (error) {
+      console.error(`❌ Blob stat エラー (${key}):`, error);
+      if (error && typeof error === 'object' && 'statusCode' in error && (error as { statusCode: number }).statusCode === 404) {
+        return { exists: false };
+      }
+      throw error;
+    }
+  }
+
+  /**
    * ファイルを削除
    * @param key ファイルキー
    */
@@ -275,11 +319,12 @@ export async function initializeStorage(): Promise<void> {
 // レガシー関数のエクスポート（既存コードとの互換性のため）
 export const blobStorage = {
   read: async (key: string) => getStorageDriver().read(key),
-  readBuffer: async (key: string) => getStorageDriver().readBuffer(key),
+  readAsString: async (key: string) => getStorageDriver().readAsString(key),
   write: async (key: string, data: string | Buffer | ArrayBuffer | ArrayBufferView) => getStorageDriver().write(key, data),
   list: async (prefix?: string) => getStorageDriver().list(prefix),
   exists: async (key: string) => getStorageDriver().exists(key),
-  delete: async (key: string) => getStorageDriver().delete(key)
+  delete: async (key: string) => getStorageDriver().delete(key),
+  stat: async (key: string) => getStorageDriver().stat(key)
 };
 
 export default blobStorage;

@@ -1,10 +1,10 @@
 import express from 'express';
 import multer from 'multer';
-import fs from 'fs';
 import { promises as fsPromises } from 'fs';
 import path from 'path';
 import { loadKnowledgeBaseIndex } from '../lib/knowledge-base.js';
 import { knowledgeBase } from '../knowledge-base-service.js';
+import { getStorageDriver } from '../blob-storage.js';
 
 const router = express.Router();
 
@@ -182,14 +182,18 @@ router.get('/imports', async (req, res) => {
     const fileDetails = await Promise.all(
       importFiles.map(async (file) => {
         try {
-          const data = await knowledgeBase.readJSON(`vehicle-maintenance/${file}`);
+          // Storage Driver の stat() を使用してメタデータを型安全に取得
+          const storage = getStorageDriver();
+          const stat = await storage.stat?.(`vehicle-maintenance/${file}`);
+          const metadata = stat?.metadata ?? {};
+          
           return {
             fileName: file,
-            originalName: data.metadata?.originalFileName || 'Unknown',
-            importedAt: data.metadata?.importedAt || 'Unknown',
-            category: data.metadata?.category || 'general',
-            fileType: data.metadata?.fileType || 'unknown',
-            importId: data.metadata?.importId || 'unknown'
+            originalName: metadata['originalFileName'] || 'Unknown',
+            importedAt: metadata['importedAt'] || 'Unknown',
+            category: metadata['category'] || 'general',
+            fileType: metadata['fileType'] || 'unknown',
+            importId: metadata['importId'] || 'unknown'
           };
         } catch (error) {
           console.error(`ファイル読み込みエラー: ${file}`, error);
