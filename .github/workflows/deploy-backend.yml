@@ -37,34 +37,20 @@ jobs:
           cp azure-minimal.js dist/index.js
           ls -la dist/
 
-      - name: Prepare deployment package (flat structure)
+      - name: Prepare deployment package
         working-directory: server
         run: |
-          echo "=== Preparing deployment package ==="
-          
+          echo "=== Preparing deployment package for npm start ==="
           mkdir -p ../deploy-backend
           
-          # Copy built files DIRECTLY to deploy-backend root (not in a subdirectory)
-          # This ensures files go to /home/site/wwwroot/* instead of /home/site/wwwroot/dist/*
-          cp -r dist/* ../deploy-backend/
+          # Copy built files and package configuration
+          cp -r dist ../deploy-backend/
           cp package.json ../deploy-backend/
-          cp package-lock.json ../deploy-backend/ || true
-          
-          # Create startup script for Azure (debugging aid)
-          echo '#!/bin/bash' > ../deploy-backend/startup.sh
-          echo 'echo "🚀 Azure startup script starting..."' >> ../deploy-backend/startup.sh
-          echo 'echo "📂 Current directory: $(pwd)"' >> ../deploy-backend/startup.sh
-          echo 'echo "📋 Files in wwwroot:"' >> ../deploy-backend/startup.sh
-          echo 'ls -la' >> ../deploy-backend/startup.sh
-          echo 'echo "📋 Node.js version: $(node --version)"' >> ../deploy-backend/startup.sh
-          echo 'echo "📋 NPM version: $(npm --version)"' >> ../deploy-backend/startup.sh
-          echo 'echo "🔥 Starting Node.js application with: node index.js"' >> ../deploy-backend/startup.sh
-          echo 'node index.js' >> ../deploy-backend/startup.sh
-          chmod +x ../deploy-backend/startup.sh
+          cp package-lock.json ../deploy-backend/ || echo "package-lock.json not found, skipping"
           
           cd ../deploy-backend
           
-          # Install production dependencies
+          # Install production dependencies for Azure App Service
           echo "=== Installing production dependencies ==="
           if [ -f package-lock.json ]; then
             npm ci --production --no-audit --prefer-offline
@@ -73,22 +59,25 @@ jobs:
           fi
           
           echo "=== Package structure verification ==="
-          echo "Files in deploy-backend root (will become /home/site/wwwroot):"
-          ls -la *.js *.json 2>/dev/null || echo "No JS/JSON files in root"
-          echo "Directories:"
-          ls -la | grep "^d" || echo "No directories"
-          echo "Total files: $(find . -type f | wc -l)"
-          if [ -d node_modules ]; then echo "Node modules: $(ls node_modules | wc -l) packages"; fi
+          ls -la ../deploy-backend
+          ls -la ../deploy-backend/dist
           
-          # Verify index.js exists
-          if [ -f index.js ]; then
-            echo "✅ index.js found in deployment package"
-            echo "First few lines of index.js:"
-            head -5 index.js
+          # Verify npm start compatibility
+          echo "=== Verifying npm start configuration ==="
+          if grep -q "\"start\":" package.json; then
+            echo "✅ npm start script found in package.json"
+            grep "\"start\":" package.json
           else
-            echo "❌ index.js NOT found - this will cause startup failure!"
-            echo "Available JS files:"
-            find . -name "*.js" | head -10
+            echo "❌ npm start script NOT found - deployment will fail!"
+            exit 1
+          fi
+          
+          # Verify entry point exists
+          if [ -f dist/index.js ]; then
+            echo "✅ Entry point dist/index.js exists"
+          else
+            echo "❌ Entry point dist/index.js NOT found - deployment will fail!"
+            exit 1
           fi
 
       - name: Deploy to Azure Web App
