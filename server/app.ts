@@ -2,20 +2,29 @@ import express from 'express';
 import session from 'express-session';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import { healthRouter } from './routes/health.js';
+import { readyRouter } from './routes/ready.js';
+import { registerRoutes } from './routes/registerRoutes.js';
 
-// 環境変数の確認
-const isProduction = process.env.NODE_ENV === 'production';
+// 非同期でアプリを作成する関数
+export async function createApp() {
+  // 環境変数の確認
+  const isProduction = process.env.NODE_ENV === 'production';
 
-const app = express();
+  const app = express();
 
 // ============================================================================
-// ヘルスチェックエンドポイント（最優先、外部I/Oなし）
+// 健康系エンドポイント（最優先、外部I/Oなし）
 // ============================================================================
-// Azure App Service、GitHub Actions、Load Balancerが最初にチェックするエンドポイント
-app.get('/health', (_req, res) => {
-  res.status(200).json({ status: 'ok', time: new Date().toISOString() });
-});
+app.use('/health', healthRouter);
 
+// Ready endpoint (環境変数で制御)
+if (process.env.ENABLE_READY_ENDPOINT === 'true') {
+  app.use('/ready', readyRouter);
+  console.log('✅ Ready endpoint enabled at /ready');
+}
+
+// 旧形式のエンドポイントも維持（互換性）
 app.get('/api/health', (req, res) => {
   res.status(200).json({ 
     status: 'ok', 
@@ -36,24 +45,34 @@ app.get('/', (req, res) => {
 // ミドルウェア設定
 // ============================================================================
 
+// trust proxy 設定
+app.set('trust proxy', 1);
+
 console.log('🔧 app.ts: 環境変数確認:', {
   NODE_ENV: process.env.NODE_ENV,
   PORT: process.env.PORT,
   DATABASE_URL: process.env.DATABASE_URL ? '[SET]' : '[NOT SET]',
   SESSION_SECRET: process.env.SESSION_SECRET ? '[SET]' : '[NOT SET]',
-  VITE_API_BASE_URL: process.env.VITE_API_BASE_URL ? '[SET]' : '[NOT SET]',
-  FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5002'
+  FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5002',
+  ENABLE_READY_ENDPOINT: process.env.ENABLE_READY_ENDPOINT,
 });
 
-// === CORS 設定（CORS_ORIGINS 環境変数を利用、express.json()より上） ===
-app.set('trust proxy', 1);
-let origins = (process.env.CORS_ORIGINS ?? '')
-  .split(',')
-  .map(s => s.trim())
-  .filter(Boolean);
+// === CORS 設定（FRONTEND_URL を確実に含める） ===
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:5002',
+  'http://localhost:3000',
+  'https://wonderful-grass-0e7cf9b00.5.azurestaticapps.net'
+].filter(Boolean);
+
+// CORS_ORIGINS からも追加
+if (process.env.CORS_ORIGINS) {
+  const corsOrigins = process.env.CORS_ORIGINS.split(',').map(s => s.trim());
+  allowedOrigins.push(...corsOrigins);
+}
 
 // Always include localhost dev ports in development for smoother DX
-const originSet = new Set<string>(origins);
+const originSet = new Set<string>(allowedOrigins);
 if (!isProduction) {
   [
     // Vite/ローカル開発 (localhost)
@@ -75,7 +94,7 @@ if (isProduction && originSet.size === 0) {
   ].filter(Boolean).forEach(o => originSet.add(String(o)));
 }
 
-origins = Array.from(originSet);
+const origins = Array.from(originSet);
 
 console.log('🔧 CORS allowed origins:', origins.length ? origins : '[none - local dev only]');
 
@@ -134,12 +153,22 @@ console.log('🔧 セッション設定:', {
 
 app.use(session(sessionConfig));
 
-// エラーハンドラ（全てを503化しない）
-app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error('[error]', err);
-  const httpError = err as { status?: number };
-  const code = typeof httpError?.status === 'number' ? httpError.status : 500;
-  res.status(code).json({ error: err?.name ?? 'Error', message: err?.message ?? 'Unexpected error' });
-});
+// ============================================================================
+// ルートの登録
+// ============================================================================
+console.log('🔧 Registering routes...');
+await registerRoutes(app);
 
-export default app;
+  // エラーハンドラ（全てを503化しない）
+  app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error('[error]', err);
+    const httpError = err as { status?: number };
+    const code = typeof httpError?.status === 'number' ? httpError.status : 500;
+    res.status(code).json({ error: err?.name ?? 'Error', message: err?.message ?? 'Unexpected error' });
+  });
+
+  return app;
+}
+
+// デフォルトエクスポート（後方互換性のため）
+export default await createApp();

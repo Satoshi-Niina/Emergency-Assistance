@@ -20,7 +20,9 @@
     "strictBindCallApply": false,
     "strictFunctionTypes": false,
     "noImplicitThis": false,
-    "noImplicitOverride": false
+    "noImplicitOverride": false,
+    "incremental": true,
+    "tsBuildInfoFile": ".tsbuildinfo"
   },
   "include": [
     "*.ts",
@@ -36,6 +38,10 @@
     "dist",
     "**/*.test.ts",
     "**/*.spec.ts",
+    "**/*.bak",
+    "**/*.backup",
+    "temp/**/*",
+    "temp_zip_check/**/*",
     "simple-server.ts"
   ]
 }
