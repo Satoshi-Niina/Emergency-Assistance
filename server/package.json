@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
   "dev": "tsx index.dev.ts",
-  "build": "cmd /C \"tsc --skipLibCheck --noEmit false || exit 0\"",
+  "build": "tsc --skipLibCheck --noEmit false || true",
     "build:check": "tsc --noEmit",
     "clean": "rimraf dist",
     "lint": "eslint \"**/*.{ts,tsx,js,jsx}\" --max-warnings=0",
