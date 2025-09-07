@@ -59,12 +59,35 @@ console.log('🔧 app.ts: 環境変数確認:', {
 
 const app = express();
 
+// ============================================================================
+// ヘルスチェックエンドポイント（最優先、外部I/Oなし）
+// ============================================================================
+// Azure App Service、GitHub Actions、Load Balancerが最初にチェックするエンドポイント
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'ok', time: new Date().toISOString() });
+});
 
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    service: 'emergency-assistance-backend' 
+  });
+});
 
+app.get('/healthz', (req, res) => {
+  res.status(200).type('text/plain').send('OK');
+});
 
+app.get('/', (req, res) => {
+  res.status(200).type('text/plain').send('OK');
+});
+
+// ============================================================================
+// ミドルウェア設定
+// ============================================================================
 
 // === CORS 設定（CORS_ORIGINS 環境変数を利用、express.json()より上） ===
-// CORS_ORIGINS はカンマ区切りの origin リスト。厳密一致で許可する。
 app.set('trust proxy', 1);
 let origins = (process.env.CORS_ORIGINS ?? '')
   .split(',')
@@ -241,30 +264,6 @@ app.get('/api/history/file', async (req, res) => {
   }
 });
 
-
-// ルートGETエンドポイント（App Service用OK応答）
-app.get('/', (req, res) => {
-  res.status(200).type('text/plain').send('OK');
-});
-
-// ヘルスチェックエンドポイント（要求仕様に準拠）
-app.get('/health', (_req, res) => {
-  res.status(200).json({ status: 'ok', time: new Date().toISOString() });
-});
-
-// JSONヘルスチェックエンドポイント（API用）
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    service: 'emergency-assistance-backend' 
-  });
-});
-
-// Azure App Service用ヘルスチェックエンドポイント
-app.get('/healthz', (req, res) => {
-  res.status(200).type('text/plain').send('OK');
-});
 
 /*
 ====================

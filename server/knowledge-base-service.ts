@@ -1,16 +1,33 @@
 import path from 'path';
 import { promises as fs } from 'fs';
+import { getStorageDriver } from './blob-storage.js';
+
+// Azure Storage型定義（互換性重視）
+interface AzureStorageService {
+    readFileAsString(path: string): Promise<string>;
+    writeStringToFile(path: string, content: string): Promise<void>;
+    fileExists(path: string): Promise<boolean>;
+    listFiles(path: string): Promise<string[]>;
+    uploadFile(localPath: string, remotePath: string): Promise<string | void>; // 戻り値の柔軟性
+    deleteFile(path: string): Promise<void>;
+}
 
 export class KnowledgeBaseService {
     private readonly localBasePath = './knowledge-base';
     private readonly azureBasePath = 'knowledge-base';
-    private azureStorage: any = null;
+    private azureStorage: AzureStorageService | null = null;
 
     constructor() {
         // 開発環境ではローカル、本番環境ではAzure Storageを使用
         this.useAzureStorage = process.env.NODE_ENV === 'production' && 
                               !!process.env.AZURE_STORAGE_CONNECTION_STRING;
         
+        console.log('🔧 KnowledgeBaseService初期化:', {
+            useAzureStorage: this.useAzureStorage,
+            nodeEnv: process.env.NODE_ENV,
+            hasConnectionString: !!process.env.AZURE_STORAGE_CONNECTION_STRING
+        });
+
         // Azure Storageが必要な場合のみインポート
         if (this.useAzureStorage) {
             this.initializeAzureStorage();
@@ -44,10 +61,18 @@ export class KnowledgeBaseService {
             const azurePath = path.posix.join(this.azureBasePath, relativePath);
             await this.azureStorage.writeStringToFile(azurePath, content);
         } else {
-            const localPath = path.join(this.localBasePath, relativePath);
-            // ディレクトリを作成
-            await fs.mkdir(path.dirname(localPath), { recursive: true });
-            await fs.writeFile(localPath, content, 'utf-8');
+            // ローカル開発環境のみ - ディレクトリ作成せずBlob Storage Driverを使用
+            try {
+                const storage = getStorageDriver();
+                const key = path.posix.join(this.azureBasePath, relativePath);
+                await storage.write(key, content);
+            } catch (error) {
+                // フォールバック: ローカルファイルシステム（開発環境のみ）
+                const localPath = path.join(this.localBasePath, relativePath);
+                const fs = await import('fs/promises');
+                await fs.mkdir(path.dirname(localPath), { recursive: true });
+                await fs.writeFile(localPath, content, 'utf-8');
+            }
         }
     }
 
@@ -88,9 +113,20 @@ export class KnowledgeBaseService {
             const azurePath = path.posix.join(this.azureBasePath, relativePath);
             await this.azureStorage.uploadFile(localFilePath, azurePath);
         } else {
-            const targetPath = path.join(this.localBasePath, relativePath);
-            await fs.mkdir(path.dirname(targetPath), { recursive: true });
-            await fs.copyFile(localFilePath, targetPath);
+            // Blob Storage Driver経由でアップロード（ディレクトリ作成不要）
+            try {
+                const storage = getStorageDriver();
+                const key = path.posix.join(this.azureBasePath, relativePath);
+                const fs = await import('fs/promises');
+                const fileContent = await fs.readFile(localFilePath);
+                await storage.write(key, fileContent);
+            } catch (error) {
+                // フォールバック: ローカルファイルコピー（開発環境のみ）
+                const targetPath = path.join(this.localBasePath, relativePath);
+                const fs = await import('fs/promises');
+                await fs.mkdir(path.dirname(targetPath), { recursive: true });
+                await fs.copyFile(localFilePath, targetPath);
+            }
         }
     }
 
@@ -105,12 +141,12 @@ export class KnowledgeBaseService {
     }
 
     // JSONファイルの読み書き用のヘルパーメソッド
-    async readJSON(relativePath: string): Promise<any> {
+    async readJSON(relativePath: string): Promise<unknown> {
         const content = await this.readFile(relativePath);
         return JSON.parse(content);
     }
 
-    async writeJSON(relativePath: string, data: any): Promise<void> {
+    async writeJSON(relativePath: string, data: unknown): Promise<void> {
         const content = JSON.stringify(data, null, 2);
         await this.writeFile(relativePath, content);
     }

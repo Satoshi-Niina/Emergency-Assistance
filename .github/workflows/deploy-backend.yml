@@ -33,8 +33,8 @@ jobs:
         run: |
           echo "=== Building TypeScript project ==="
           npm run build
-          echo "=== Creating Azure-safe loader ==="
-          cp azure-safe-loader.js dist/index.js
+          # echo "=== Creating Azure-safe loader ==="
+          # cp azure-safe-loader.js dist/index.js
           echo "=== Verifying dist structure ==="
           ls -la dist/
 
