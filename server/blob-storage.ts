@@ -41,9 +41,9 @@ export class BlobStorageDriver {
   }
 
   /**
-   * ファイルを読み取り
+   * ファイルを読み取り（テキスト形式）
    * @param key ファイルキー（パス）
-   * @returns ファイル内容
+   * @returns ファイル内容（UTF-8文字列）
    */
   async read(key: string): Promise<string> {
     try {
@@ -56,10 +56,11 @@ export class BlobStorageDriver {
 
       const chunks: Buffer[] = [];
       for await (const chunk of downloadResponse.readableStreamBody) {
-        chunks.push(chunk);
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
       }
       
-      return Buffer.concat(chunks).toString('utf-8');
+      const buffer = Buffer.concat(chunks);
+      return buffer.toString('utf-8');
     } catch (error) {
       if (error && typeof error === 'object' && 'statusCode' in error && (error as { statusCode: number }).statusCode === 404) {
         throw new Error(`File not found: ${key}`);
@@ -70,22 +71,77 @@ export class BlobStorageDriver {
   }
 
   /**
+   * ファイルを読み取り（バイナリ形式）
+   * @param key ファイルキー（パス）
+   * @returns ファイル内容（Buffer）
+   */
+  async readBuffer(key: string): Promise<Buffer> {
+    try {
+      const blockBlobClient = this.containerClient.getBlockBlobClient(key);
+      const downloadResponse = await blockBlobClient.download();
+      
+      if (!downloadResponse.readableStreamBody) {
+        throw new Error(`Failed to download blob: ${key}`);
+      }
+
+      const chunks: Buffer[] = [];
+      for await (const chunk of downloadResponse.readableStreamBody) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      
+      return Buffer.concat(chunks);
+    } catch (error) {
+      if (error && typeof error === 'object' && 'statusCode' in error && (error as { statusCode: number }).statusCode === 404) {
+        throw new Error(`File not found: ${key}`);
+      }
+      console.error(`❌ Blob読み取りエラー (${key}):`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * データ型をチェックするタイプガード
+   * @param data チェックするデータ
+   * @returns ArrayBufferViewかどうか
+   */
+  private isArrayBufferView(data: unknown): data is ArrayBufferView {
+    return data != null && typeof data === 'object' && 'buffer' in data && 'byteOffset' in data && 'byteLength' in data;
+  }
+
+  /**
    * ファイルを書き込み
    * @param key ファイルキー（パス）
    * @param data 書き込むデータ
    */
-  async write(key: string, data: string | Buffer): Promise<void> {
+  async write(key: string, data: string | Buffer | ArrayBuffer | ArrayBufferView): Promise<void> {
     try {
       const blockBlobClient = this.containerClient.getBlockBlobClient(key);
-      const content = typeof data === 'string' ? data : data.toString('utf-8');
       
-      await blockBlobClient.upload(content, content.length, {
-        blobHTTPHeaders: {
-          blobContentType: this.getContentType(key)
-        }
+      // データを Buffer に正規化
+      let buf: Buffer;
+      if (typeof data === 'string') {
+        buf = Buffer.from(data, 'utf-8');
+      } else if (Buffer.isBuffer(data)) {
+        buf = data;
+      } else if (data instanceof ArrayBuffer) {
+        buf = Buffer.from(data);
+      } else if (this.isArrayBufferView(data)) {
+        // ArrayBufferView の場合（TypedArray, DataView など）
+        buf = Buffer.from(data.buffer, data.byteOffset, data.byteLength);
+      } else {
+        // フォールバック: 文字列に変換
+        buf = Buffer.from(String(data), 'utf-8');
+      }
+      
+      // Content-Type を取得
+      const contentType = this.getContentType(key);
+      
+      // uploadData を使用してBuffer を直接アップロード
+      await blockBlobClient.uploadData(buf, {
+        blobHTTPHeaders: contentType ? { blobContentType: contentType } : undefined,
       });
       
-      console.log(`✅ Blob uploaded: ${key}`);
+      console.log(`✅ Blob uploaded: ${key} (${buf.length} bytes, ${contentType})`);
     } catch (error) {
       console.error(`❌ Blob書き込みエラー (${key}):`, error);
       throw error;
@@ -219,7 +275,8 @@ export async function initializeStorage(): Promise<void> {
 // レガシー関数のエクスポート（既存コードとの互換性のため）
 export const blobStorage = {
   read: async (key: string) => getStorageDriver().read(key),
-  write: async (key: string, data: string | Buffer) => getStorageDriver().write(key, data),
+  readBuffer: async (key: string) => getStorageDriver().readBuffer(key),
+  write: async (key: string, data: string | Buffer | ArrayBuffer | ArrayBufferView) => getStorageDriver().write(key, data),
   list: async (prefix?: string) => getStorageDriver().list(prefix),
   exists: async (key: string) => getStorageDriver().exists(key),
   delete: async (key: string) => getStorageDriver().delete(key)
