@@ -11,7 +11,7 @@
     "dev:client": "cd client && vite",
     "dev:local-server": "tsx server/index.dev.ts",
     "dev:local-client": "cd client && vite",
-    "build": "npm run build:shared && npm run build:client && npm run build:server",
+    "build": "cd server && npm install && npm run build",
     "build:shared": "cd shared && npm run build",
     "build:client": "cd client && npm run build",
     "build:server": "cd server && npm run build",
@@ -34,9 +34,10 @@
     "migrate:images": "tsx scripts/migrate-images-to-db.ts",
     "test": "npm run test:client && npm run test:server",
     "test:client": "cd client && npm test",
-  "lint": "npm run lint:client && npm run lint:server",
-  "lint:client": "cd client && npm run lint",
-  "lint:server": "cd server && npm run lint"
+    "lint": "npm run lint:client && npm run lint:server",
+    "lint:client": "cd client && npm run lint",
+    "lint:server": "cd server && npm run lint",
+    "postinstall": "cd server && npm install"
   },
   "dependencies": {
     "concurrently": "^9.2.0",

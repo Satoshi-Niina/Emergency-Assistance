@@ -33,10 +33,17 @@ jobs:
         run: |
           echo "=== Building TypeScript project ==="
           npm run build
-          # echo "=== Creating Azure-safe loader ==="
-          # cp azure-safe-loader.js dist/index.js
           echo "=== Verifying dist structure ==="
           ls -la dist/
+          echo "=== Checking for azure-minimal-server.js ==="
+          if [ -f dist/azure-minimal-server.js ]; then
+            echo "✅ azure-minimal-server.js found"
+            head -3 dist/azure-minimal-server.js
+          else
+            echo "❌ azure-minimal-server.js NOT found!"
+            echo "Available files in dist:"
+            ls -la dist/
+          fi
 
       - name: Prepare deployment package
         working-directory: server
@@ -76,12 +83,12 @@ jobs:
           fi
           
           # Verify entry point exists with correct path
-          if [ -f dist/index.js ]; then
-            echo "✅ Entry point dist/index.js exists"
+          if [ -f dist/azure-minimal-server.js ]; then
+            echo "✅ Entry point dist/azure-minimal-server.js exists"
             echo "Entry point first lines:"
-            head -3 dist/index.js
+            head -3 dist/azure-minimal-server.js
           else
-            echo "❌ Entry point dist/index.js NOT found - deployment will fail!"
+            echo "❌ Entry point dist/azure-minimal-server.js NOT found - deployment will fail!"
             echo "Available files in dist:"
             ls -la dist/
             exit 1

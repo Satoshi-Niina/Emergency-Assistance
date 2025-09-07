@@ -3,11 +3,23 @@
     "target": "ES2020",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "rootDir": "src",
-    "outDir": "dist",
-    "strict": true,
+    "rootDir": "server",
+    "outDir": "server/dist",
+    "strict": false,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": false
   },
-  "include": ["src/**/*"]
+  "include": [
+    "server/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "server/dist",
+    "server/node_modules",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
 }
