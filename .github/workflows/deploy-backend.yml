@@ -43,7 +43,7 @@ jobs:
           echo "=== Preparing deployment package for npm start ==="
           mkdir -p ../deploy-backend
           
-          # Copy built files and package configuration
+          # Copy dist directory structure and package configuration
           cp -r dist ../deploy-backend/
           cp package.json ../deploy-backend/
           cp package-lock.json ../deploy-backend/ || echo "package-lock.json not found, skipping"
@@ -59,24 +59,30 @@ jobs:
           fi
           
           echo "=== Package structure verification ==="
-          ls -la ../deploy-backend
-          ls -la ../deploy-backend/dist
+          echo "Deploy package structure:"
+          ls -la
+          echo "Dist directory structure:"
+          ls -la dist/
           
           # Verify npm start compatibility
           echo "=== Verifying npm start configuration ==="
           if grep -q "\"start\":" package.json; then
-            echo "✅ npm start script found in package.json"
+            echo "✅ npm start script found in package.json:"
             grep "\"start\":" package.json
           else
             echo "❌ npm start script NOT found - deployment will fail!"
             exit 1
           fi
           
-          # Verify entry point exists
+          # Verify entry point exists with correct path
           if [ -f dist/index.js ]; then
             echo "✅ Entry point dist/index.js exists"
+            echo "Entry point first lines:"
+            head -3 dist/index.js
           else
             echo "❌ Entry point dist/index.js NOT found - deployment will fail!"
+            echo "Available files in dist:"
+            ls -la dist/
             exit 1
           fi
 
