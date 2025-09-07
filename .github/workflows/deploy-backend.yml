@@ -65,6 +65,7 @@ jobs:
             npm ci --production --no-audit --prefer-offline
           else
             npm install --omit=dev --no-audit --prefer-offline
+          fi
           if [ -f dist/index.js ]; then
             echo "✅ Entry point dist/index.js exists"
             echo "Entry point first lines:"
@@ -83,17 +84,6 @@ jobs:
             exit 1
           fi
           
-          # Verify entry point exists with correct path
-          if [ -f dist/azure-minimal-server.js ]; then
-            echo "✅ Entry point dist/azure-minimal-server.js exists"
-            echo "Entry point first lines:"
-            head -3 dist/azure-minimal-server.js
-          else
-            echo "❌ Entry point dist/azure-minimal-server.js NOT found - deployment will fail!"
-            echo "Available files in dist:"
-            ls -la dist/
-            exit 1
-          fi
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
