@@ -17,6 +17,7 @@
     "build:server": "cd server && npm run build",
     "start": "cd server && npm start",
     "hello": "cd server && HELLO_ONLY=1 npm start",
+    "hello:win": "cd server && $env:HELLO_ONLY=\"true\" && npm start",
     "start:prod": "cd server && npm run start:prod",
     "install:all": "npm install && cd client && npm install && cd ../server && npm install && cd ../shared && npm install",
     "clean": "node scripts/clean.mjs",
