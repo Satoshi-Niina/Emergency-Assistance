@@ -14,7 +14,7 @@ import {
   listKnowledgeBaseDocuments, 
   removeDocumentFromKnowledgeBase 
 } from './lib/knowledge-base.js';
-import techSupportRouter from './routes/tech-support.js';
+// import techSupportRouter from './routes/tech-support.js'; // ← 一時的にコメントアウト
 import { registerDataProcessorRoutes } from './routes/data-processor.js';
 import emergencyGuideRouter from './routes/emergency-guide.js';
 import emergencyFlowRoutes from './routes/emergency-flow.js';
@@ -53,7 +53,7 @@ export function registerRoutes(app: Express): void {
   app.use('/public', express.static(path.join(__dirname, '../../public')));
 
   // Register tech support router
-  app.use('/api/tech-support', techSupportRouter);
+  // app.use('/api/tech-support', techSupportRouter); // ← 一時的にコメントアウト
 
   // Register data processor routes
   registerDataProcessorRoutes(app);
