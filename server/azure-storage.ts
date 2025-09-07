@@ -133,6 +133,14 @@ export class AzureStorageService {
 }
 
 // シングルトンインスタンス（環境変数がある場合のみ）
-export const azureStorage = process.env.AZURE_STORAGE_CONNECTION_STRING 
-    ? new AzureStorageService() 
-    : null;
+// Azure Storage 接続文字列が有効な場合のみインスタンス化し、初期化エラーは無視して null フォールバック
+let _azureStorage: AzureStorageService | null = null;
+if (process.env.AZURE_STORAGE_CONNECTION_STRING) {
+    try {
+        _azureStorage = new AzureStorageService();
+    } catch (error) {
+        console.warn('AzureStorageService initialization failed, falling back to null:', error);
+        _azureStorage = null;
+    }
+}
+export const azureStorage = _azureStorage;
