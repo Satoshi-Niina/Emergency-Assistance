@@ -66,14 +66,14 @@ jobs:
           else
             npm install --omit=dev --no-audit --prefer-offline
           fi
-          if [ -f dist/index.js ]; then
-            echo "✅ Entry point dist/index.js exists"
+          if [ -f dist/server/index.js ]; then
+            echo "✅ Entry point dist/server/index.js exists"
             echo "Entry point first lines:"
-            head -3 dist/index.js
+            head -3 dist/server/index.js
           else
-            echo "❌ Entry point dist/index.js NOT found - deployment will fail!"
-            echo "Available files in dist:"
-            ls -la dist/
+            echo "❌ Entry point dist/server/index.js NOT found - deployment will fail!"
+            echo "Available files in dist/server:" 
+            ls -la dist/server/
             exit 1
           fi
           if grep -q "\"start\":" package.json; then
