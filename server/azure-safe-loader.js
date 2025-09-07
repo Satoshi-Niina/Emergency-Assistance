@@ -1,8 +1,9 @@
-// Azure App Service用の最小限ローダー - エラー回避版
+// Azure App Service用の最小限ローダー - エラー回避版 + Blob Storage対応
 console.log('🔥 Azure Loader start -', new Date().toISOString());
 console.log('📍 NODE_VERSION:', process.version);
 console.log('📍 PLATFORM:', process.platform);
 console.log('📍 ENV - PORT:', process.env.PORT, 'NODE_ENV:', process.env.NODE_ENV);
+console.log('📍 BLOB_STORAGE:', process.env.AZURE_STORAGE_CONNECTION_STRING ? 'CONFIGURED' : 'NOT CONFIGURED');
 
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';

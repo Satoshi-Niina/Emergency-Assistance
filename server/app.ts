@@ -2,9 +2,6 @@ import express from 'express';
 import session from 'express-session';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import { fileURLToPath } from 'url';
-import * as path from 'path';
-import * as fs from 'fs';
 import authRouter from './routes/auth.js';
 import techSupportRouter from './routes/tech-support.js';
 import troubleshootingRouter from './routes/troubleshooting.js';
@@ -24,54 +21,29 @@ import troubleshootingQARouter from './routes/troubleshooting-qa.js';
 import configRouter from './routes/config.js';
 import ingestRouter from './routes/ingest.js';
 import searchRouter from './routes/search.js';
+// Blob Storageドライバーをインポート
+import { initializeStorage, getStorageDriver } from './blob-storage.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// サーバー起動時に重要なパス・存在有無をログ出力
-function logPathStatus(label: string, relPath: string) {
-  const absPath = path.resolve(__dirname, relPath);
-  const exists = fs.existsSync(absPath);
-  console.log(`🔎 [起動時パス確認] ${label}: ${absPath} (exists: ${exists})`);
-  return { absPath, exists };
-}
-
-// 必要なディレクトリを自動作成
-function ensureDirectoryExists(dirPath: string, label: string) {
-  if (!fs.existsSync(dirPath)) {
-    try {
-      fs.mkdirSync(dirPath, { recursive: true });
-      console.log(`✅ ディレクトリを作成しました: ${label} (${dirPath})`);
-    } catch (error) {
-      console.error(`❌ ディレクトリ作成エラー: ${label}`, error);
+// Azure Blob Storage初期化（ファイルシステム依存を排除）
+async function initializeBlobStorage() {
+  try {
+    if (process.env.AZURE_STORAGE_CONNECTION_STRING) {
+      await initializeStorage();
+      console.log('✅ Azure Blob Storage初期化完了');
+    } else {
+      console.log('⚠️ Azure Blob Storage設定なし - 開発環境での動作を想定');
     }
-  } else {
-    console.log(`✅ ディレクトリが存在します: ${label} (${dirPath})`);
+  } catch (error) {
+    console.error('❌ Azure Blob Storage初期化エラー:', error);
+    // 本番環境では必須だが、開発環境では続行
+    if (process.env.NODE_ENV === 'production') {
+      throw error;
+    }
   }
 }
 
-// 必要なディレクトリを確認・作成
-const knowledgeBasePath = path.resolve(__dirname, '../../knowledge-base');
-const imagesPath = path.join(knowledgeBasePath, 'images');
-const dataPath = path.join(knowledgeBasePath, 'data');
-const troubleshootingPath = path.join(knowledgeBasePath, 'troubleshooting');
-const tempPath = path.join(knowledgeBasePath, 'temp');
-const qaPath = path.join(knowledgeBasePath, 'qa');
-const jsonPath = path.join(knowledgeBasePath, 'json');
-const backupsPath = path.join(knowledgeBasePath, 'backups');
-
-ensureDirectoryExists(knowledgeBasePath, 'knowledge-base');
-ensureDirectoryExists(imagesPath, 'knowledge-base/images');
-ensureDirectoryExists(dataPath, 'knowledge-base/data');
-ensureDirectoryExists(troubleshootingPath, 'knowledge-base/troubleshooting');
-ensureDirectoryExists(tempPath, 'knowledge-base/temp');
-ensureDirectoryExists(qaPath, 'knowledge-base/qa');
-ensureDirectoryExists(jsonPath, 'knowledge-base/json');
-ensureDirectoryExists(backupsPath, 'knowledge-base/backups');
-
-logPathStatus('.env', '../../.env');
-logPathStatus('OpenAI API KEY', process.env.OPENAI_API_KEY ? '[SET]' : '[NOT SET]');
-logPathStatus('DATABASE_URL', process.env.DATABASE_URL ? '[SET]' : '[NOT SET]');
+// Blob Storage初期化を実行
+initializeBlobStorage().catch(console.error);
 
 // 環境変数の確認
 const isProduction = process.env.NODE_ENV === 'production';
@@ -199,12 +171,14 @@ app.use((req, res, next) => {
   next();
 });
 
-// ★ 認証より前: CSP設定と画像配信
-const KB_BASE = process.env.KNOWLEDGE_BASE_PATH
-  ? process.env.KNOWLEDGE_BASE_PATH.trim()
-  : path.resolve(__dirname, '../knowledge-base'); // フォールバック
+// ★ 認証より前: CSP設定と画像配信（Azure Blob Storage対応）
+// 開発環境ではフォールバック設定、本番環境ではBlob Storage使用
+const isUsingBlobStorage = !!process.env.AZURE_STORAGE_CONNECTION_STRING;
 
-console.log('🔧 Knowledge Base Path:', KB_BASE);
+console.log('🔧 Storage Configuration:', {
+  usingBlobStorage: isUsingBlobStorage,
+  containerName: process.env.BLOB_CONTAINER_NAME || 'knowledge-base'
+});
 
 // CSP設定（data:image/...を許可）
 app.use((req, res, next) => {
@@ -215,23 +189,54 @@ app.use((req, res, next) => {
   next();
 });
 
-// 画像の静的配信（knowledge-base/images）
-app.use('/api/images', express.static(path.join(KB_BASE, 'images'), {
-  fallthrough: true,
-  etag: true,
-  maxAge: '7d',
-}));
+// 画像の静的配信（Azure Blob Storage対応）
+if (isUsingBlobStorage) {
+  // Blob Storageから画像を配信
+  app.get('/api/images/:filename', async (req, res) => {
+    try {
+      const storage = getStorageDriver();
+      const filename = req.params.filename;
+      const key = `images/${filename}`;
+      
+      if (await storage.exists(key)) {
+        const imageData = await storage.read(key);
+        // Base64デコードが必要な場合の処理
+        res.setHeader('Content-Type', 'application/octet-stream');
+        res.send(imageData);
+      } else {
+        res.status(404).json({ error: 'Image not found' });
+      }
+    } catch (error) {
+      console.error('Image fetch error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+} else {
+  // 開発環境用の静的配信（フォールバック）
+  console.log('⚠️ 開発環境: 静的ファイル配信は無効');
+}
 
-// エクスポートJSONの詳細取得（knowledge-base/exports）
-app.get('/api/history/file', (req, res) => {
+// エクスポートJSONの詳細取得（Azure Blob Storage経由）
+app.get('/api/history/file', async (req, res) => {
   const name = String(req.query.name || '');
   if (!name) return res.status(400).json({ error: 'name is required' });
-  const file = path.join(KB_BASE, 'exports', name);
-  if (!fs.existsSync(file)) return res.status(404).json({ error: 'not found' });
+  
   try {
-    const raw = fs.readFileSync(file, 'utf8');
-    res.type('application/json').send(raw);
-  } catch {
+    if (process.env.AZURE_STORAGE_CONNECTION_STRING) {
+      // Blob Storageから取得
+      const storage = getStorageDriver();
+      const key = `exports/${name}`;
+      const exists = await storage.exists(key);
+      if (!exists) return res.status(404).json({ error: 'not found' });
+      
+      const raw = await storage.read(key);
+      res.type('application/json').send(raw);
+    } else {
+      // 開発環境用フォールバック
+      res.status(503).json({ error: 'Storage not available in development mode' });
+    }
+  } catch (error) {
+    console.error('File read error:', error);
     res.status(500).json({ error: 'read error' });
   }
 });
@@ -242,12 +247,12 @@ app.get('/', (req, res) => {
   res.status(200).type('text/plain').send('OK');
 });
 
-// 最もシンプルなヘルスチェックエンドポイント
-app.get('/health', (req, res) => {
-  res.status(200).send('OK');
+// ヘルスチェックエンドポイント（要求仕様に準拠）
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'ok', time: new Date().toISOString() });
 });
 
-// JSONヘルスチェックエンドポイント
+// JSONヘルスチェックエンドポイント（API用）
 app.get('/api/health', (req, res) => {
   res.status(200).json({ 
     status: 'ok', 
