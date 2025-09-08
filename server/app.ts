@@ -1,5 +1,5 @@
 import express from 'express';
-import session from 'express-session';
+import session, { CookieOptions } from 'express-session';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { healthRouter } from './routes/health.js';
@@ -60,8 +60,11 @@ console.log('🔧 app.ts: 環境変数確認:', {
 // === CORS 設定（FRONTEND_URL を確実に含める） ===
 const allowedOrigins = [
   process.env.FRONTEND_URL,
+  // Local dev defaults
   'http://localhost:5002',
   'http://localhost:3000',
+  // Azure Static Web Apps domains (current and legacy)
+  'https://witty-river-012f39e00.1.azurestaticapps.net',
   'https://wonderful-grass-0e7cf9b00.5.azurestaticapps.net'
 ].filter(Boolean);
 
@@ -130,7 +133,17 @@ app.use((req, res, next) => {
 
 // セッション設定 - クロスサイトCookie対応
 // cookie: { httpOnly: true, secure: true, sameSite: 'none' } で統一
-const sessionConfig = {
+// 型: partitioned フィールドを拡張（最新ブラウザのCHIPS対応）
+type SessionCookieOptions = CookieOptions & { partitioned?: boolean };
+
+const sessionConfig: {
+  secret: string;
+  resave: boolean;
+  saveUninitialized: boolean;
+  cookie: SessionCookieOptions;
+  name: string;
+  rolling: boolean;
+} = {
   secret: process.env.SESSION_SECRET || 'dev-session-secret-for-development-only',
   resave: true,
   saveUninitialized: false,
@@ -140,7 +153,10 @@ const sessionConfig = {
     sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
     maxAge: 1000 * 60 * 60 * 24 * 7,
     path: '/',
-    domain: undefined
+    domain: undefined,
+    // CHIPS: Partitioned cookies allow third-party cookie usage in modern browsers
+    // Cast to any to avoid type friction if @types/express-session lacks 'partitioned'
+    ...(isProduction ? { partitioned: true } : {})
   },
   name: 'emergency-assistance-session',
   rolling: true
