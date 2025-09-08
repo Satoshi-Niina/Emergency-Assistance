@@ -13,6 +13,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
+import { buildApiUrl } from "../lib/api/config";
 
 interface CheckResult {
   status: "OK" | "ERROR";
@@ -28,15 +29,12 @@ export default function SystemDiagnosticPage() {
   const [isCheckingDb, setIsCheckingDb] = useState(false);
   const [isCheckingGpt, setIsCheckingGpt] = useState(false);
 
-  // APIのベースURLを取得
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-
   const checkDatabaseConnection = async () => {
     setIsCheckingDb(true);
     setDbCheckResult(null);
     
     try {
-      const response = await fetch(`${apiBaseUrl}/api/db-check`);
+  const response = await fetch(buildApiUrl('/api/db-check'), { credentials: 'include' });
       const result = await response.json();
       
       setDbCheckResult(result);
@@ -76,11 +74,12 @@ export default function SystemDiagnosticPage() {
     setGptCheckResult(null);
     
     try {
-      const response = await fetch(`${apiBaseUrl}/api/gpt-check`, {
+      const response = await fetch(buildApiUrl('/api/gpt-check'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           message: "テスト"
         }),

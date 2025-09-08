@@ -7,6 +7,8 @@ export async function registerRoutes(app: Express) {
   await mountIfExists(app, '/api/knowledge', './knowledge.js');
   await mountIfExists(app, '/api/machines', './machines.js');
   await mountIfExists(app, '/api/openai', './openai.js');
+  // System diagnostics (DB/GPT health checks)
+  await mountIfExists(app, '/api', './system-check.js');
 
   if (process.env.TECH_SUPPORT_ENABLED !== 'false') {
     await mountIfExists(app, '/api/tech-support', './tech-support.js');

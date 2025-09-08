@@ -32,7 +32,8 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { Shield, UserPlus, ArrowLeft, User, Edit, Trash2, AlertCircle, Search, Upload, Download } from "lucide-react";
-import { useLocation, Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { buildApiUrl } from "../lib/api/config";
 
 // ユーザーインターフェース
 interface UserData {
@@ -54,12 +55,13 @@ interface NewUserData {
   description?: string;
 }
 
+// インポート結果の型
+type ImportResults = { success: number; failed: number; errors: string[] } | null;
+
 export default function UsersPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
-  const location = useLocation();
   const navigate = useNavigate();
-  const [error, setError] = useState<Error | null>(null);
 
   // ユーザーが未認証またはadmin以外の場合はリダイレクト
   useEffect(() => {
@@ -75,6 +77,33 @@ export default function UsersPage() {
   const [queryError, setQueryError] = useState<Error | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // 以降の早期returnより前に、全てのフックを宣言して順序を固定
+  // 新規ユーザーフォーム関連の状態
+  const [showNewUserDialog, setShowNewUserDialog] = useState(false);
+  const [showEditUserDialog, setShowEditUserDialog] = useState(false);
+  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importResults, setImportResults] = useState<ImportResults>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [newUser, setNewUser] = useState<Partial<NewUserData>>({
+    username: "",
+    password: "",
+    display_name: "",
+    role: "employee",
+    department: "",
+    description: "",
+  });
+  const [editUser, setEditUser] = useState<Partial<UserData & { password?: string; description?: string }>>({
+    id: "",
+    username: "",
+    display_name: "",
+    role: "employee",
+    password: "",
+    description: "",
+  });
+
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -86,7 +115,7 @@ export default function UsersPage() {
         setIsLoading(true);
         setQueryError(null);
         
-        const res = await fetch('/api/users', {
+        const res = await fetch(buildApiUrl('/api/users'), {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -226,31 +255,7 @@ export default function UsersPage() {
     }
   }
 
-  // 新規ユーザーフォーム
-  const [showNewUserDialog, setShowNewUserDialog] = useState(false);
-  const [showEditUserDialog, setShowEditUserDialog] = useState(false);
-  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
-  const [showImportDialog, setShowImportDialog] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [importFile, setImportFile] = useState<File | null>(null);
-  const [importResults, setImportResults] = useState<any>(null);
-  const [isImporting, setIsImporting] = useState(false);
-  const [newUser, setNewUser] = useState<Partial<NewUserData>>({
-    username: "",
-    password: "",
-    display_name: "",
-    role: "employee",
-    department: "",
-    description: "",
-  });
-  const [editUser, setEditUser] = useState<Partial<UserData & { password?: string; description?: string }>>({
-    id: "",
-    username: "",
-    display_name: "",
-    role: "employee",
-    password: "",
-    description: "",
-  });
+  // 新規ユーザーフォーム（状態は上部で宣言済み）
 
   // フォームの値をリセット
   const resetNewUserForm = () => {
@@ -303,7 +308,7 @@ export default function UsersPage() {
     const hasUpperCase = /[A-Z]/.test(newUser.password);
     const hasLowerCase = /[a-z]/.test(newUser.password);
     const hasNumbers = /\d/.test(newUser.password);
-    const hasSymbols = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newUser.password);
+  const hasSymbols = /[^A-Za-z0-9]/.test(newUser.password);
     
     if (!hasUpperCase) {
       toast({
@@ -364,7 +369,7 @@ export default function UsersPage() {
     try {
       console.log('🔍 新規ユーザー作成開始:', newUser);
       
-      const res = await fetch('/api/users', {
+      const res = await fetch(buildApiUrl('/api/users'), {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -400,7 +405,7 @@ export default function UsersPage() {
         // ユーザー一覧を再取得
         const fetchUsers = async () => {
           try {
-            const res = await fetch('/api/users', {
+            const res = await fetch(buildApiUrl('/api/users'), {
               method: 'GET',
               credentials: 'include',
               headers: {
@@ -497,7 +502,7 @@ export default function UsersPage() {
       const formData = new FormData();
       formData.append('file', importFile);
 
-      const res = await fetch('/api/users/import-excel', {
+      const res = await fetch(buildApiUrl('/api/users/import-excel'), {
         method: 'POST',
         credentials: 'include',
         body: formData
@@ -515,7 +520,7 @@ export default function UsersPage() {
         // ユーザー一覧を再取得
         const fetchUsers = async () => {
           try {
-            const res = await fetch('/api/users', {
+            const res = await fetch(buildApiUrl('/api/users'), {
               method: 'GET',
               credentials: 'include',
               headers: {
@@ -609,7 +614,7 @@ export default function UsersPage() {
         return;
       }
 
-      const res = await fetch(`/api/users/${selectedUserId}`, {
+      const res = await fetch(buildApiUrl(`/api/users/${selectedUserId}`), {
         method: 'DELETE',
         credentials: 'include',
         headers: {
@@ -635,7 +640,7 @@ export default function UsersPage() {
       // ユーザー一覧を再取得
       const fetchUsers = async () => {
         try {
-          const res = await fetch('/api/users', {
+          const res = await fetch(buildApiUrl('/api/users'), {
             method: 'GET',
             credentials: 'include',
             headers: {
@@ -703,7 +708,7 @@ export default function UsersPage() {
       console.log('API URL:', `/api/users/${editUser.id}`);
       console.log('リクエストボディ:', JSON.stringify(sanitizedEditUser, null, 2));
       
-      const res = await fetch(`/api/users/${editUser.id}`, {
+      const res = await fetch(buildApiUrl(`/api/users/${editUser.id}`), {
         method: 'PUT',
         credentials: 'include',
         headers: {
@@ -750,7 +755,7 @@ export default function UsersPage() {
       // ユーザー一覧を再取得
       const fetchUsers = async () => {
         try {
-          const res = await fetch('/api/users', {
+          const res = await fetch(buildApiUrl('/api/users'), {
             method: 'GET',
             credentials: 'include',
             headers: {

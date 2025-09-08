@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/auth-context";
 import { useToast } from "../hooks/use-toast";
-import { API_BASE_URL } from "../lib/api/config";
+import { buildApiUrl } from "../lib/api/config";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Switch } from "../components/ui/switch";
@@ -71,21 +71,25 @@ export default function SettingsPage() {
   const fetchMachineData = async () => {
     try {
       setIsLoadingMachineData(true);
-      const typesResponse = await fetch(`${API_BASE_URL}/api/machines/machine-types`);
+      const typesResponse = await fetch(buildApiUrl('/api/machines/machine-types'), {
+        credentials: 'include'
+      });
       if (typesResponse.ok) {
         const typesResult = await typesResponse.json();
         if (typesResult.success) {
           setMachineTypes(typesResult.data);
         }
       }
-      const machinesResponse = await fetch(`${API_BASE_URL}/api/machines/all-machines`);
+      const machinesResponse = await fetch(buildApiUrl('/api/machines/all-machines'), {
+        credentials: 'include'
+      });
       if (machinesResponse.ok) {
         const machinesResult = await machinesResponse.json();
         if (machinesResult.success) {
           const flatMachines: Array<{id: string, machine_number: string, machine_type_id: string}> = [];
-          machinesResult.data.forEach((typeGroup: any) => {
+          machinesResult.data.forEach((typeGroup: { type_id: string; machines?: Array<{ id: string; machine_number: string }>; }) => {
             if (typeGroup.machines && Array.isArray(typeGroup.machines)) {
-              typeGroup.machines.forEach((machine: any) => {
+              typeGroup.machines.forEach((machine: { id: string; machine_number: string }) => {
                 flatMachines.push({
                   id: machine.id,
                   machine_number: machine.machine_number,
@@ -104,9 +108,10 @@ export default function SettingsPage() {
 
   const addMachineType = async () => {
     if (!newMachineType.trim()) return;
-    const response = await fetch(`/api/machines/machine-types`, {
+    const response = await fetch(buildApiUrl('/api/machines/machine-types'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ machine_type_name: newMachineType.trim() })
     });
     if (response.ok) {
@@ -117,9 +122,10 @@ export default function SettingsPage() {
 
   const addMachineNumber = async () => {
     if (!selectedMachineType || !newMachineNumber.trim()) return;
-    const response = await fetch(`/api/machines/machines`, {
+    const response = await fetch(buildApiUrl('/api/machines/machines'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ machine_number: newMachineNumber.trim(), machine_type_id: selectedMachineType })
     });
     if (response.ok) {
@@ -131,13 +137,13 @@ export default function SettingsPage() {
 
   const deleteMachineType = async (typeId: string, typeName: string) => {
     if (!confirm(`機種「${typeName}」を削除してもよろしいですか？\n関連する機械番号も削除されます。`)) return;
-    const response = await fetch(`/api/machines/machine-types/${typeId}`, { method: 'DELETE' });
+    const response = await fetch(buildApiUrl(`/api/machines/machine-types/${typeId}`), { method: 'DELETE', credentials: 'include' });
     if (response.ok) fetchMachineData();
   };
 
   const deleteMachineNumber = async (machineId: string, machineNumber: string) => {
     if (!confirm(`機械番号「${machineNumber}」を削除してもよろしいですか？`)) return;
-    const response = await fetch(`/api/machines/machines/${machineId}`, { method: 'DELETE' });
+    const response = await fetch(buildApiUrl(`/api/machines/machines/${machineId}`), { method: 'DELETE', credentials: 'include' });
     if (response.ok) fetchMachineData();
   };
 
@@ -166,7 +172,7 @@ export default function SettingsPage() {
   }, []);
 
   // 設定保存関数（トップレベルに移動）
-  const saveSettings = () => {
+  const saveSettings = useCallback(() => {
     try {
       const settings = {
         notifications,
@@ -183,17 +189,14 @@ export default function SettingsPage() {
     } catch (error) {
       console.error('設定の保存に失敗しました:', error);
     }
-  };
+  }, [notifications, textToSpeech, speechVolume, darkMode, autoSave, useOnlyKnowledgeBase]);
 
   // 設定変更時の自動保存
   useEffect(() => {
     saveSettings();
-  }, [notifications, textToSpeech, speechVolume, darkMode, autoSave, useOnlyKnowledgeBase]);
+  }, [saveSettings]);
 
-
-  const handleLogout = async () => {
-    setShowWarningDialog(true);
-  };
+  // ログアウトは確認ダイアログから直接実行
 
   const confirmLogout = async () => {
     try {
@@ -211,15 +214,16 @@ export default function SettingsPage() {
 
   const handleCleanupUploads = async () => {
     try {
-      const response = await fetch('/api/tech-support/cleanup-uploads', {
-        method: 'POST'
+      const response = await fetch(buildApiUrl('/api/tech-support/cleanup-uploads'), {
+        method: 'POST',
+        credentials: 'include'
       });
 
       if (!response.ok) {
         throw new Error('クリーンアップに失敗しました');
       }
 
-      const result = await response.json();
+  await response.json().catch(() => ({}));
       toast({
         title: "クリーンアップ完了",
         description: `アップロードファイルをクリーンアップしました`
@@ -235,8 +239,9 @@ export default function SettingsPage() {
 
   const handleCleanupLogs = async () => {
     try {
-      const response = await fetch('/api/tech-support/cleanup-logs', {
-        method: 'POST'
+      const response = await fetch(buildApiUrl('/api/tech-support/cleanup-logs'), {
+        method: 'POST',
+        credentials: 'include'
       });
 
       if (!response.ok) {

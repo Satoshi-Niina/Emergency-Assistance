@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { buildApiUrl } from "./api/config";
 
@@ -175,7 +174,9 @@ export const getQueryFn: <T>(options: {
 
     console.log('🔍 クエリ実行:', { url, timestamp });
 
-    const res = await fetch(url, {
+    // 相対URLはAPIベースへ変換
+    const fullUrl = (url.startsWith('/')) ? buildApiUrl(url) : url;
+    const res = await fetch(fullUrl, {
       credentials: "include",
       cache: "no-cache", // ブラウザキャッシュを使用しない
       headers: {
@@ -186,7 +187,7 @@ export const getQueryFn: <T>(options: {
     });
 
     console.log('📡 レスポンス受信:', { 
-      url, 
+      url: fullUrl, 
       status: res.status, 
       statusText: res.statusText,
       contentType: res.headers.get('content-type')
@@ -312,28 +313,7 @@ export async function processMessage(text: string): Promise<string> {
 }
 // The change request does not directly modify buildApiUrl but it relies on it, keep the original implementation of buildApiUrl function
 
-// Replit環境を考慮したAPI URL構築
-function buildApiUrl(path: string): string {
-  if (path.startsWith('http')) return path;
-  
-  // Replit環境では専用ポートを使用
-  const isReplitEnvironment = window.location.hostname.includes('replit.dev') || window.location.hostname.includes('replit.app');
-  
-  if (isReplitEnvironment) {
-    return `${window.location.protocol}//${window.location.hostname}:3000${path}`;
-  }
-  
-  // 開発環境ではプロキシ経由でアクセス（相対パスを使用）
-  const isDevelopment = import.meta.env.DEV || window.location.hostname.includes('localhost');
-  
-  if (isDevelopment) {
-    console.log('✅ 開発環境: プロキシ経由でアクセス（相対パス）');
-    return path; // 相対パスを使用してプロキシ経由でアクセス
-  }
-  
-  // その他の環境では相対パス
-  return `${window.location.origin}${path}`;
-}
+// 注意: buildApiUrl は ./api/config からインポートしたものを使用する
 // API設定 - VITE_API_BASE_URLのみを使用
 const VITE_API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -377,21 +357,5 @@ console.log('🔧 API設定:', {
 });
 
 // API Base URLの設定 - VITE_API_BASE_URLのみを使用
-const API_BASE_URL = (() => {
-  const isDevelopment = import.meta.env.DEV || window.location.hostname.includes('localhost');
-  
-  // 開発環境ではプロキシ経由でアクセス（相対パスを使用）
-  if (isDevelopment) {
-    console.log('✅ 開発環境: プロキシ経由でアクセス');
-    return ''; // 空文字列で相対パスを使用
-  }
-  
-  // 環境変数が設定されている場合は優先使用
-  if (VITE_API_BASE_URL && VITE_API_BASE_URL.trim() !== '') {
-    console.log('✅ 環境変数からAPI_BASE_URLを取得:', VITE_API_BASE_URL);
-    return VITE_API_BASE_URL;
-  }
-  
-  // デフォルト
-  return 'http://localhost:3001';
-})();
+// Note: API_BASE_URL 設定は ./api/config で集中管理するため、ここでは使用しません。
+// const API_BASE_URL = (() => { ... })();
