@@ -206,6 +206,71 @@ router.post('/logout', (req, res) => {
   }
 });
 
+// ユーザー登録エンドポイント
+router.post('/register', async (req, res) => {
+  try {
+    const { username, password, displayName, role = 'employee', department, description } = req.body || {};
+
+    // 入力バリデーション
+    if (!username || !password) {
+      return res.status(400).json({
+        success: false,
+        error: 'ユーザー名とパスワードは必須です'
+      });
+    }
+
+    if (typeof username !== 'string' || username.length < 3 || username.length > 50) {
+      return res.status(400).json({ success: false, error: 'ユーザー名は3〜50文字で入力してください' });
+    }
+    if (typeof password !== 'string' || password.length < 6) {
+      return res.status(400).json({ success: false, error: 'パスワードは6文字以上で入力してください' });
+    }
+    if (role && !['employee', 'admin'].includes(role)) {
+      return res.status(400).json({ success: false, error: 'role は "employee" か "admin" を指定してください' });
+    }
+
+    // 既存ユーザー確認
+    const existing = await db.select().from(users).where(eq(users.username, username)).limit(1);
+    if (existing.length > 0) {
+      return res.status(409).json({ success: false, error: 'このユーザー名は既に使用されています' });
+    }
+
+    // パスワードハッシュ
+    const hashed = await bcrypt.hash(password, 10);
+
+    // 作成
+    const inserted = await db
+      .insert(users)
+      .values({
+        username,
+        password: hashed,
+        displayName: displayName || username,
+        role: role || 'employee',
+        department: department ?? null,
+        description: description ?? null
+      })
+      .returning();
+
+    const created = inserted[0];
+
+    return res.status(201).json({
+      success: true,
+      message: 'ユーザー登録成功',
+      user: {
+        id: created.id,
+        username: created.username,
+        displayName: created.displayName,
+        role: created.role,
+        department: created.department,
+        description: created.description
+      }
+    });
+  } catch (error) {
+    console.error('ユーザー登録エラー:', error);
+    return res.status(500).json({ success: false, error: 'ユーザー登録処理中にエラーが発生しました' });
+  }
+});
+
 // 現在のユーザー情報取得
 router.get('/me', async (req, res) => {
   try {
