@@ -38,6 +38,10 @@ jobs:
         run: |
           mkdir -p ./deploy
           cp -r ./client/dist/* ./deploy/
+          # Include Azure Static Web Apps configuration for SPA routing
+          if [ -f ./client/staticwebapp.config.json ]; then
+            cp ./client/staticwebapp.config.json ./deploy/staticwebapp.config.json
+          fi
           echo "Files ready for deployment:"
           ls -la ./deploy/
 
