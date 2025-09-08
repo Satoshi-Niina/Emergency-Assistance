@@ -3,8 +3,7 @@ import { z } from 'zod';
 import { 
   DiagnosisState, 
   updateDiagnosisState, 
-  generateInteractiveResponse,
-  InteractiveResponse 
+  generateInteractiveResponse
 } from '../lib/interactive-diagnosis.js';
 import { processOpenAIRequest } from '../lib/openai.js';
 
@@ -31,7 +30,7 @@ const InteractiveDiagnosisRequestSchema = z.object({
   }).optional()
 });
 
-type InteractiveDiagnosisRequest = z.infer<typeof InteractiveDiagnosisRequestSchema>;
+// 型は実行時検証に委ねる
 
 /**
  * インタラクティブ故障診断 - ユーザーとの対話的な診断プロセス
@@ -250,7 +249,7 @@ router.post('/start', async (req: Request, res: Response) => {
  */
 router.post('/save', async (req: Request, res: Response) => {
   try {
-    const { sessionId, diagnosisState, userNotes } = req.body;
+  const { sessionId } = req.body;
 
     // ここで診断状態をデータベースに保存
     // 実装例：

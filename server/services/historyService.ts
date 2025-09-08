@@ -1,4 +1,4 @@
-import { sql, transaction } from '../db/db.js';
+import { transaction } from '../db/db.js';
 import { storageService } from './storageService.js';
 import { z } from 'zod';
 
@@ -34,7 +34,7 @@ export interface ChatSession {
   machineType?: string;
   machineNumber?: string;
   status: 'active' | 'completed' | 'archived';
-  metadata?: any;
+  metadata?: unknown;
   createdAt: Date;
   updatedAt: Date;
   messageCount?: number;
@@ -49,7 +49,7 @@ export interface ChatHistory {
   imageUrl?: string;
   machineType?: string;
   machineNumber?: string;
-  metadata?: any;
+  metadata?: unknown;
   createdAt: Date;
 }
 
@@ -72,7 +72,7 @@ export class HistoryService {
   /**
    * チャットセッションを作成
    */
-  static async createSession(data: z.infer<typeof createSessionSchema>): Promise<ChatSession> {
+  static async createSession(data: unknown): Promise<ChatSession> {
     try {
       console.log('📋 新規チャットセッション作成:', data);
       
@@ -118,7 +118,7 @@ export class HistoryService {
   /**
    * チャット履歴を作成
    */
-  static async createHistory(data: z.infer<typeof createHistorySchema>): Promise<ChatHistory> {
+  static async createHistory(data: unknown): Promise<ChatHistory> {
     try {
       console.log('📋 新規チャット履歴作成:', data);
       
@@ -187,7 +187,7 @@ export class HistoryService {
 
       // 検索条件を構築
       const conditions: string[] = [];
-      const queryParams: any[] = [];
+  const queryParams: unknown[] = [];
       let paramIndex = 1;
 
       if (machineType) {
@@ -391,12 +391,12 @@ export class HistoryService {
   /**
    * セッションを更新
    */
-  static async updateSession(id: string, data: Partial<z.infer<typeof createSessionSchema>>): Promise<ChatSession | null> {
+  static async updateSession(id: string, data: Partial<{ title?: string; machineType?: string; machineNumber?: string; metadata?: unknown; }>): Promise<ChatSession | null> {
     try {
       console.log(`📋 セッション更新: ${id}`, data);
 
       const updateFields: string[] = [];
-      const params: any[] = [];
+  const params: unknown[] = [];
       let paramIndex = 1;
 
       if (data.title !== undefined) {

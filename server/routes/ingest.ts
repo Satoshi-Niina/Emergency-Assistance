@@ -27,8 +27,7 @@ const IngestResponseSchema = z.object({
   })
 });
 
-type IngestRequest = z.infer<typeof IngestRequestSchema>;
-type IngestResponse = z.infer<typeof IngestResponseSchema>;
+// 型は実行時検証に委ねる（ビルド簡素化のため型エイリアスは未使用化）
 
 /**
  * ドキュメントの取込処理
@@ -91,7 +90,7 @@ router.post('/', async (req: Request, res: Response) => {
           
           await client.query('COMMIT');
           
-          const response: IngestResponse = {
+          const response = {
             doc_id: docId,
             chunks: parseInt(chunkCount.rows[0].count),
             message: 'Document already exists with same content',
@@ -163,7 +162,7 @@ router.post('/', async (req: Request, res: Response) => {
       // 統計情報の計算
       const totalTokens = embeddings.reduce((sum, emb) => sum + emb.tokenCount, 0);
       
-      const response: IngestResponse = {
+  const response = {
         doc_id: docId,
         chunks: chunks.length,
         message: 'Document ingested successfully',

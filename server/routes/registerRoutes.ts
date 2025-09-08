@@ -1,8 +1,12 @@
-import type { Express } from 'express';
+import type { Express, Router } from 'express';
 
 export async function registerRoutes(app: Express) {
   await mountIfExists(app, '/api/files', './files.js');
   await mountIfExists(app, '/api/auth',  './auth.js');
+  await mountIfExists(app, '/api/knowledge-base', './knowledge-base.js');
+  await mountIfExists(app, '/api/knowledge', './knowledge.js');
+  await mountIfExists(app, '/api/machines', './machines.js');
+  await mountIfExists(app, '/api/openai', './openai.js');
 
   if (process.env.TECH_SUPPORT_ENABLED !== 'false') {
     await mountIfExists(app, '/api/tech-support', './tech-support.js');
@@ -17,9 +21,31 @@ export async function registerRoutes(app: Express) {
 
 async function mountIfExists(app: Express, basePath: string, modulePath: string) {
   try {
-    const mod = await import(modulePath);
-    const router = mod.default ?? mod.router ?? mod;
-    if (typeof router === 'function') {
+    // tsx(dev) では .js 拡張子の動的 import が失敗するため、.ts へフォールバック
+    let mod: unknown;
+    try {
+      mod = await import(modulePath);
+    } catch (e) {
+      if (modulePath.endsWith('.js')) {
+        const tsPath = modulePath.replace(/\.js$/,'.ts');
+        try {
+          mod = await import(tsPath);
+          console.log(`[routes] fallback loaded TS module for ${basePath}: ${tsPath}`);
+        } catch (e2) {
+          throw e; // もとのエラーを報告
+        }
+      } else {
+        throw e;
+      }
+    }
+
+    // default export または router を抽出
+    const maybeModule = mod as Record<string, unknown>;
+    const routerCandidate = (maybeModule.default ?? maybeModule.router ?? maybeModule) as unknown;
+
+    // Router のみマウント
+    if (typeof routerCandidate === 'function') {
+      const router = routerCandidate as Router;
       app.use(basePath, router);
       console.log(`[routes] mounted ${basePath} from ${modulePath}`);
     } else {

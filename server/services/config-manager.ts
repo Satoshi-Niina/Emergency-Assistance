@@ -19,7 +19,17 @@ export const RagConfigSchema = z.object({
   similarityThreshold: z.number().min(0).max(1).default(0.7)
 });
 
-export type RagConfig = z.infer<typeof RagConfigSchema>;
+export type RagConfig = {
+  embedDim: number;
+  chunkSize: number;
+  chunkOverlap: number;
+  retrieveK: number;
+  rerankTop: number;
+  rerankMin: number;
+  maxTextLength: number;
+  batchSize: number;
+  similarityThreshold: number;
+};
 
 // 設定ファイルのパス
 const CONFIG_DIR = path.join(process.cwd(), 'server', 'config');

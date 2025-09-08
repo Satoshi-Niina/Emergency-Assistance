@@ -24,8 +24,17 @@ const SearchResultSchema = z.object({
   page: z.number()
 });
 
-type SearchQuery = z.infer<typeof SearchQuerySchema>;
-type SearchResult = z.infer<typeof SearchResultSchema>;
+// 検索結果の行の最小型
+type SearchRow = {
+  id: number;
+  doc_id: string;
+  score: number | string;
+  content: string;
+  filename: string;
+  tags: string[] | null;
+  page: number;
+};
+// 型は実行時検証に委ねる
 
 /**
  * ベクトル検索
@@ -98,10 +107,10 @@ router.get('/', async (req: Request, res: Response) => {
       ]);
       
       // 結果を整形
-      const results: SearchResult[] = searchResult.rows.map(row => ({
+  const results = (searchResult.rows as SearchRow[]).map((row) => ({
         id: row.id,
         doc_id: row.doc_id,
-        score: parseFloat(row.score),
+  score: typeof row.score === 'number' ? row.score : parseFloat(row.score),
         content: row.content,
         filename: row.filename,
         tags: row.tags || [],

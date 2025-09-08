@@ -5,6 +5,28 @@ import path from 'path';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  server: {
+    port: 5173,
+    strictPort: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+        // 500エラー時にHTMLが返るとフロントでJSONパースエラーになるため、
+        // ログを出して原因特定しやすくする
+        configure: (proxy, _options) => {
+          proxy.on('proxyRes', (proxyRes, req) => {
+            const ct = proxyRes.headers['content-type'];
+            if (ct && !ct.includes('application/json')) {
+              console.warn(`[vite-proxy] Non-JSON response for ${req.url}: content-type=${ct}`);
+            }
+          });
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
