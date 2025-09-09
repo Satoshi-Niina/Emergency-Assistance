@@ -13,3 +13,6 @@ trigger CI
 
 trigger CI - Password update deployment
 2025-09-09T19:45:00Z
+
+trigger CI - UI Layout update and Niina admin user creation
+2025-09-09T21:20:00Z
