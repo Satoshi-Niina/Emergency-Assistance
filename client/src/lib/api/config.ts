@@ -24,16 +24,20 @@ export const API_BASE_URL = (() => {
     hostname: window.location.hostname
   });
   
+  // Azure Static Web Apps環境の判定
+  const isAzureStaticWebApps = window.location.hostname.includes('azurestaticapps.net');
+  
   // 開発環境ではプロキシ経由でアクセス（相対パスを使用）
-  if (isDevelopment) {
+  if (isDevelopment && !isAzureStaticWebApps) {
     console.log('✅ 開発環境: プロキシ経由でアクセス');
     return '';
   }
 
-  // 本番環境では環境変数またはフォールバック値を使う
-  if (isProduction) {
+  // Azure Static Web Apps環境または本番環境
+  if (isProduction || isAzureStaticWebApps) {
+    // 本番APIのURL（Azure App Service）
     const apiUrl = viteApiBaseUrl || 'https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net';
-    console.log('✅ 本番: API_BASE_URL設定完了:', apiUrl);
+    console.log('✅ 本番/Azure SWA: API_BASE_URL設定完了:', apiUrl);
     return apiUrl;
   }
 
