@@ -18,7 +18,8 @@ import {
   UserPlus, 
   Plus, 
   X,
-  CheckCircle
+  CheckCircle,
+  Database
 } from "lucide-react";
 import { WarningDialog } from "../components/shared/warning-dialog";
 import { Input } from "../components/ui/input";
@@ -276,7 +277,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* User Profile */}
+        {/* 1段目左: User Profile */}
         <Card className="border border-blue-200 shadow-md overflow-hidden">
           <CardHeader className="pb-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white">
             <CardTitle className="text-lg flex items-center">
@@ -292,8 +293,16 @@ export default function SettingsPage() {
                   <p className="text-sm text-blue-400">{user?.username}</p>
                   <p className="text-sm text-blue-400">{user?.department || '部署未設定'}</p>
                 </div>
-                <div className={`text-white text-xs px-3 py-1 rounded-full ${user?.role === 'admin' ? 'bg-gradient-to-r from-purple-500 to-indigo-500' : 'bg-gradient-to-r from-blue-500 to-green-500'}`}>
-                  {user?.role === 'admin' ? '管理者' : '一般ユーザー'}
+                <div className={`text-white text-xs px-3 py-1 rounded-full ${
+                  user?.role === 'system_admin' ? 'bg-gradient-to-r from-purple-500 to-indigo-500' : 
+                  user?.role === 'operator' ? 'bg-gradient-to-r from-orange-500 to-yellow-500' :
+                  'bg-gradient-to-r from-blue-500 to-green-500'
+                }`}>
+                  {
+                    user?.role === 'system_admin' ? 'システム管理者' :
+                    user?.role === 'operator' ? '運用管理者' :
+                    user?.role === 'user' ? '一般ユーザー' : '不明'
+                  }
                 </div>
               </div>
               
@@ -312,50 +321,52 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Admin Settings (only shown for admins) */}
-        {user?.role === 'admin' && (
+        {/* 1段目右: Admin/Operator Settings */}
+        {(user?.role === 'operator' || user?.role === 'system_admin') && (
           <Card className="border border-blue-200 shadow-md overflow-hidden">
             <CardHeader className="pb-2 bg-gradient-to-r from-blue-700 to-indigo-700 text-white">
               <CardTitle className="text-lg flex items-center">
                 <Shield className="mr-2 h-5 w-5" />
-                管理者設定
+                運用管理者設定
               </CardTitle>
             </CardHeader>
             <CardContent className="bg-white">
               <div className="space-y-4">
-                <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
-                  <div>
-                    <p className="font-medium text-blue-800">ユーザー管理</p>
-                    <p className="text-sm text-blue-400">ユーザーアカウントを管理する</p>
-                  </div>
-                  <Link to="/users">
-                    <Button variant="outline" size="sm" className="border-blue-300 text-blue-700 hover:bg-blue-50">
-                      <UserPlus className="mr-2 h-4 w-4 text-blue-500" />
-                      管理
-                    </Button>
-                  </Link>
-                </div>
+                {user?.role === 'system_admin' && (
+                  <>
+                    <div className="flex items-center justify-between py-2">
+                      <div>
+                        <p className="font-medium text-blue-800">ユーザー管理</p>
+                        <p className="text-sm text-blue-400">ユーザーアカウントの作成・編集・削除</p>
+                      </div>
+                      <Link to="/users">
+                        <Button variant="outline" size="sm" className="border-blue-300 text-blue-700 hover:bg-blue-50">
+                          <UserPlus className="mr-2 h-4 w-4 text-blue-500" />
+                          管理画面
+                        </Button>
+                      </Link>
+                    </div>
 
-                <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
-                  <div>
-                    <p className="font-medium text-blue-800">システム診断</p>
-                    <p className="text-sm text-blue-400">DB接続とGPT接続の状態を確認</p>
-                  </div>
-                  <Link to="/system-diagnostic">
-                    <Button variant="outline" size="sm" className="border-blue-300 text-blue-700 hover:bg-blue-50">
-                      <CheckCircle className="mr-2 h-4 w-4 text-blue-500" />
-                      診断
-                    </Button>
-                  </Link>
-                </div>
-
-
+                    <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
+                      <div>
+                        <p className="font-medium text-blue-800">システム診断</p>
+                        <p className="text-sm text-blue-400">DB接続とGPT接続の状態を確認</p>
+                      </div>
+                      <Link to="/system-diagnostic">
+                        <Button variant="outline" size="sm" className="border-blue-300 text-blue-700 hover:bg-blue-50">
+                          <CheckCircle className="mr-2 h-4 w-4 text-blue-500" />
+                          診断
+                        </Button>
+                      </Link>
+                    </div>
+                  </>
+                )}
 
                 <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
                   <Button
                     onClick={handleCleanupUploads}
                     variant="destructive"
-                    className="w-full"
+                    className="w-full mr-2"
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
                     一時ファイルを削除
@@ -364,115 +375,96 @@ export default function SettingsPage() {
                   <Button
                     onClick={handleCleanupLogs}
                     variant="outline"
-                    className="w-full"
+                    className="w-full ml-2"
                   >
                     <FileX className="mr-2 h-4 w-4" />
                     ログのバックアップ
                   </Button>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-                {/* 機種・機械番号管理UI */}
-                <div className="border-t border-blue-100 pt-4 space-y-4">
-                  {/* 機種追加 */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-blue-700">新規機種追加</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="機種名を入力"
-                        value={newMachineType}
-                        onChange={(e) => setNewMachineType(e.target.value)}
-                        className="flex-1"
-                      />
-                      <Button 
-                        onClick={addMachineType}
-                        size="sm"
-                        className="bg-blue-500 hover:bg-blue-600"
-                      >
-                        <Plus className="mr-1 h-3 w-3" />
-                        追加
-                      </Button>
-                    </div>
+        {/* 一般ユーザー用の空カード */}
+        {user?.role === 'user' && (
+          <Card className="border border-gray-200 shadow-md overflow-hidden">
+            <CardHeader className="pb-2 bg-gradient-to-r from-gray-500 to-gray-600 text-white">
+              <CardTitle className="text-lg flex items-center">
+                <Settings className="mr-2 h-5 w-5" />
+                基本情報
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="bg-white">
+              <div className="py-4 text-center text-gray-600">
+                <p className="text-sm">一般ユーザーに利用可能な追加設定はありません</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 2段目左: 機種・機械番号追加 */}
+        {(user?.role === 'operator' || user?.role === 'system_admin') && (
+          <Card className="border border-green-200 shadow-md overflow-hidden">
+            <CardHeader className="pb-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white">
+              <CardTitle className="text-lg flex items-center">
+                <Plus className="mr-2 h-5 w-5" />
+                機種・機械番号追加
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="bg-white">
+              <div className="space-y-4">
+                {/* 機種追加 */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-green-700">新規機種追加</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="機種名を入力"
+                      value={newMachineType}
+                      onChange={(e) => setNewMachineType(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button 
+                      onClick={addMachineType}
+                      size="sm"
+                      className="bg-green-500 hover:bg-green-600"
+                    >
+                      <Plus className="mr-1 h-3 w-3" />
+                      追加
+                    </Button>
                   </div>
-                  {/* 機械番号追加 */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-blue-700">新規機械番号追加</Label>
-                    <div className="flex gap-2">
-                      <Select value={selectedMachineType} onValueChange={setSelectedMachineType}>
-                        <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="機種を選択" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {machineTypes.map((type) => (
-                            <SelectItem key={type.id} value={type.id}>
-                              {type.machine_type_name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        placeholder="機械番号を入力"
-                        value={newMachineNumber}
-                        onChange={(e) => setNewMachineNumber(e.target.value)}
-                        className="flex-1"
-                      />
-                      <Button 
-                        onClick={addMachineNumber}
-                        size="sm"
-                        className="bg-blue-500 hover:bg-blue-600"
-                      >
-                        <Plus className="mr-1 h-3 w-3" />
-                        追加
-                      </Button>
-                    </div>
-                  </div>
-                  {/* 現在の機種・機械番号一覧 */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-blue-700">現在の登録状況</Label>
-                    {isLoadingMachineData ? (
-                      <div className="text-sm text-blue-400">読み込み中...</div>
-                    ) : (
-                      <div className="space-y-2 max-h-40 overflow-y-auto">
-                        {machineTypes.map((type) => {
-                          const typeMachines = machines.filter(m => m.machine_type_id === type.id);
-                          return (
-                            <div key={type.id} className="text-sm border border-blue-200 rounded p-2">
-                              <div className="flex items-center justify-between">
-                                <div className="font-medium text-blue-700">{type.machine_type_name}</div>
-                                <Button
-                                  onClick={() => deleteMachineType(type.id, type.machine_type_name)}
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              </div>
-                              <div className="text-blue-500 mt-1">
-                                {typeMachines.length > 0 ? (
-                                  <div className="space-y-1">
-                                    {typeMachines.map((machine) => (
-                                      <div key={machine.id} className="flex items-center justify-between bg-blue-50 rounded px-2 py-1">
-                                        <span>{machine.machine_number}</span>
-                                        <Button
-                                          onClick={() => deleteMachineNumber(machine.id, machine.machine_number)}
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-5 w-5 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                        >
-                                          <X className="h-2 w-2" />
-                                        </Button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <span className="text-gray-400">機械番号未登録</span>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                </div>
+                
+                {/* 機械番号追加 */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-green-700">新規機械番号追加</Label>
+                  <div className="flex gap-2">
+                    <Select value={selectedMachineType} onValueChange={setSelectedMachineType}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="機種を選択" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {machineTypes.map((type) => (
+                          <SelectItem key={type.id} value={type.id}>
+                            {type.machine_type_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      placeholder="機械番号を入力"
+                      value={newMachineNumber}
+                      onChange={(e) => setNewMachineNumber(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button 
+                      onClick={addMachineNumber}
+                      size="sm"
+                      className="bg-green-500 hover:bg-green-600"
+                    >
+                      <Plus className="mr-1 h-3 w-3" />
+                      追加
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -480,9 +472,72 @@ export default function SettingsPage() {
           </Card>
         )}
 
-  {/* Q&A質問管理UIは削除済み */}
+        {/* 2段目右: 現在の登録状況 */}
+        {(user?.role === 'operator' || user?.role === 'system_admin') && (
+          <Card className="border border-emerald-200 shadow-md overflow-hidden">
+            <CardHeader className="pb-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white">
+              <CardTitle className="text-lg flex items-center">
+                <Database className="mr-2 h-5 w-5" />
+                現在の登録状況
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="bg-white">
+              <div className="space-y-2">
+                {isLoadingMachineData ? (
+                  <div className="text-sm text-emerald-400 text-center py-4">読み込み中...</div>
+                ) : machineTypes.length === 0 ? (
+                  <div className="text-sm text-gray-400 text-center py-4">機種が登録されていません</div>
+                ) : (
+                  <div className="space-y-3 max-h-80 overflow-y-auto">
+                    {machineTypes.map((type) => {
+                      const typeMachines = machines.filter(m => m.machine_type_id === type.id);
+                      return (
+                        <div key={type.id} className="border border-emerald-200 rounded-lg p-3 bg-emerald-50">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="font-medium text-emerald-800 text-base">{type.machine_type_name}</div>
+                            <Button
+                              onClick={() => deleteMachineType(type.id, type.machine_type_name)}
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              title={`機種「${type.machine_type_name}」を削除`}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <div className="ml-3">
+                            {typeMachines.length > 0 ? (
+                              <div className="space-y-2">
+                                {typeMachines.map((machine) => (
+                                  <div key={machine.id} className="flex items-center justify-between bg-white rounded px-3 py-2 shadow-sm">
+                                    <span className="text-emerald-700 font-mono">{machine.machine_number}</span>
+                                    <Button
+                                      onClick={() => deleteMachineNumber(machine.id, machine.machine_number)}
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                      title={`機械番号「${machine.machine_number}」を削除`}
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-gray-500 text-sm italic bg-white rounded px-3 py-2">機械番号未登録</div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Notifications */}
+        {/* 3段目左: 通知設定 */}
         <Card className="border border-blue-200 shadow-md overflow-hidden">
           <CardHeader className="pb-2 bg-gradient-to-r from-blue-400 to-sky-500 text-white">
             <CardTitle className="text-lg flex items-center">
@@ -536,7 +591,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* App Settings */}
+        {/* 3段目右: アプリ設定 */}
         <Card className="border border-blue-200 shadow-md overflow-hidden">
           <CardHeader className="pb-2 bg-gradient-to-r from-indigo-500 to-blue-600 text-white">
             <CardTitle className="text-lg flex items-center">

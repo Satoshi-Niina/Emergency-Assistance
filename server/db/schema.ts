@@ -11,7 +11,7 @@ export const users = pgTable('users', {
     username: text('username').notNull().unique(),
     password: text('password').notNull(),
     displayName: text('display_name').notNull(),
-    role: text('role').notNull().default('employee'),
+    role: text('role').notNull().default('user'), // 3段階権限: system_admin, operator, user
     department: text('department'),
     description: text('description'),
     created_at: timestamp('created_at').defaultNow().notNull()

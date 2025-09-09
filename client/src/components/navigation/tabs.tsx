@@ -6,9 +6,7 @@ import {
   Settings, 
   FileText, 
   History, 
-  Wrench, 
-  BookOpen, 
-  Users,
+  BookOpen,
   Activity,
   Database
 } from "lucide-react";
@@ -89,14 +87,6 @@ export function Tabs() {
       path: "/settings",
       icon: <Settings className="mr-2 h-4 w-4" />,
       requireRole: 'operator',
-    },
-    
-    // システム管理者専用 - システム管理機能
-    {
-      title: "ユーザー管理",
-      path: "/users",
-      icon: <Users className="mr-2 h-4 w-4" />,
-      requireRole: 'system_admin',
     },
   ];
 

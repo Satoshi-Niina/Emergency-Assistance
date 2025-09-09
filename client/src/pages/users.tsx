@@ -31,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { Shield, UserPlus, ArrowLeft, User, Edit, Trash2, AlertCircle, Search, Upload, Download } from "lucide-react";
+import { Shield, UserPlus, User, Edit, Trash2, AlertCircle, Search, Upload, Download } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { buildApiUrl } from "../lib/api/config";
 
@@ -63,9 +63,9 @@ export default function UsersPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // ユーザーが未認証またはadmin以外の場合はリダイレクト
+  // ユーザーが未認証またはsystem_admin以外の場合はリダイレクト
   useEffect(() => {
-    if (!authLoading && (!user || user.role !== "admin")) {
+    if (!authLoading && (!user || user.role !== "system_admin")) {
       navigate("/chat");
     }
   }, [user, authLoading, navigate]);
@@ -224,12 +224,6 @@ export default function UsersPage() {
               </h1>
               <p className="text-neutral-300">システムの全ユーザーを管理します</p>
             </div>
-            <Link to="/settings">
-              <Button variant="outline" size="sm">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                設定に戻る
-              </Button>
-            </Link>
           </div>
           
           <Card>
@@ -788,7 +782,7 @@ export default function UsersPage() {
   };
 
   // 管理者でない場合のローディング表示
-  if (!user || (user && user.role !== "admin")) {
+  if (!user || (user && user.role !== "system_admin")) {
     return <div>Loading...</div>;
   }
 
@@ -804,12 +798,6 @@ export default function UsersPage() {
         </div>
 
         <div className="flex space-x-2">
-          <Link to="/settings">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              設定に戻る
-            </Button>
-          </Link>
           <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
             <DialogTrigger asChild>
               <Button variant="outline">
