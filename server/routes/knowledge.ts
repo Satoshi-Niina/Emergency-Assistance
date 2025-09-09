@@ -2,19 +2,66 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { KNOWLEDGE_BASE_DIR } from '../lib/knowledge-base.js';
+import { azureStorage } from '../azure-storage.js';
 
 const router = express.Router();
 
 /**
  * GET /api/knowledge
  * knowledge-base/dataフォルダのJSONファイル一覧を取得
+ * Azure環境ではBlob Storage、ローカル環境ではファイルシステムを使用
  */
 router.get('/', async (req, res) => {
   try {
     console.log('📚 ナレッジベースデータ取得リクエスト');
     
+    // Azure環境の場合はBlob Storageを使用
+    if (azureStorage) {
+      console.log('☁️ Azure Blob Storage からファイル一覧を取得');
+      
+      try {
+        // knowledge-base/data/ プレフィックスでファイル一覧を取得
+        const blobNames = await azureStorage.listFiles('knowledge-base/data/');
+        
+        // JSONファイルのみをフィルタリング
+        const jsonFiles = blobNames.filter(name => name.toLowerCase().endsWith('.json'));
+        
+        // ファイル情報を構築
+        const fileList = jsonFiles.map(blobName => {
+          const filename = path.basename(blobName);
+          const name = path.parse(filename).name;
+          
+          return {
+            filename,
+            name,
+            size: 0, // Blob Storageでは個別にサイズ取得が必要なので0とする
+            modifiedAt: new Date().toISOString(), // 実際の更新日時は個別取得が必要
+            path: blobName,
+            isBlob: true
+          };
+        });
+        
+        console.log(`✅ Azure Blob Storage からナレッジベースデータ取得完了: ${fileList.length}件`);
+        
+        return res.json({
+          success: true,
+          data: fileList,
+          total: fileList.length,
+          timestamp: new Date().toISOString(),
+          source: 'azure-blob-storage'
+        });
+        
+      } catch (blobError) {
+        console.error('❌ Blob Storage アクセスエラー:', blobError);
+        // フォールバックとしてローカル処理を継続
+      }
+    }
+    
+    // ローカル環境またはBlob Storage失敗時の処理
+    console.log('💾 ローカルファイルシステムからファイル一覧を取得');
+    
     // knowledge-base/dataフォルダのパスを設定
-  const dataPath = path.join(KNOWLEDGE_BASE_DIR, 'data');
+    const dataPath = path.join(KNOWLEDGE_BASE_DIR, 'data');
     
     // フォルダが存在するか確認
     if (!fs.existsSync(dataPath)) {
@@ -23,7 +70,8 @@ router.get('/', async (req, res) => {
         success: true,
         data: [],
         total: 0,
-        message: 'knowledge-base/data/フォルダが存在しません'
+        message: 'knowledge-base/data/フォルダが存在しません',
+        source: 'local-filesystem'
       });
     }
     
@@ -47,17 +95,19 @@ router.get('/', async (req, res) => {
         name: path.parse(file).name,
         size: stats.size,
         modifiedAt: stats.mtime.toISOString(),
-        path: `/knowledge-base/data/${file}`
+        path: `/knowledge-base/data/${file}`,
+        isBlob: false
       };
     });
     
-    console.log(`✅ ナレッジベースデータ取得完了: ${fileList.length}件`);
+    console.log(`✅ ローカルナレッジベースデータ取得完了: ${fileList.length}件`);
     
     res.json({
       success: true,
       data: fileList,
       total: fileList.length,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      source: 'local-filesystem'
     });
     
   } catch (error) {
@@ -73,14 +123,65 @@ router.get('/', async (req, res) => {
 /**
  * GET /api/knowledge/:filename
  * 特定のJSONファイルの内容を取得
+ * Azure環境ではBlob Storage、ローカル環境ではファイルシステムを使用
  */
 router.get('/:filename', async (req, res) => {
   try {
     const { filename } = req.params;
     console.log(`📚 ナレッジベースファイル取得: ${filename}`);
     
+    // Azure環境の場合はBlob Storageを使用
+    if (azureStorage) {
+      console.log('☁️ Azure Blob Storage からファイル取得');
+      
+      try {
+        // Blob名を構築（knowledge-base/data/プレフィックス付き）
+        const blobName = filename.startsWith('knowledge-base/') 
+          ? filename 
+          : `knowledge-base/data/${filename}`;
+        
+        // ファイルが存在するか確認
+        const exists = await azureStorage.fileExists(blobName);
+        if (!exists) {
+          return res.status(404).json({
+            success: false,
+            error: 'ファイルが見つかりません'
+          });
+        }
+        
+        // JSONファイルかどうか確認
+        if (!blobName.toLowerCase().endsWith('.json')) {
+          return res.status(400).json({
+            success: false,
+            error: 'JSONファイルのみ取得可能です'
+          });
+        }
+        
+        // ファイル内容を読み込み
+        const fileContent = await azureStorage.readFileAsString(blobName);
+        const jsonData = JSON.parse(fileContent);
+        
+        console.log('✅ Azure Blob Storage からナレッジベースファイル取得完了');
+        
+        return res.json({
+          success: true,
+          data: jsonData,
+          filename: path.basename(blobName),
+          size: fileContent.length,
+          source: 'azure-blob-storage'
+        });
+        
+      } catch (blobError) {
+        console.error('❌ Blob Storage ファイル取得エラー:', blobError);
+        // フォールバックとしてローカル処理を継続
+      }
+    }
+    
+    // ローカル環境またはBlob Storage失敗時の処理
+    console.log('💾 ローカルファイルシステムからファイル取得');
+    
     // ファイルパスを構築
-  const filePath = path.join(KNOWLEDGE_BASE_DIR, 'data', filename);
+    const filePath = path.join(KNOWLEDGE_BASE_DIR, 'data', filename);
     
     // ファイルが存在するか確認
     if (!fs.existsSync(filePath)) {
@@ -102,13 +203,14 @@ router.get('/:filename', async (req, res) => {
     const fileContent = fs.readFileSync(filePath, 'utf-8');
     const jsonData = JSON.parse(fileContent);
     
-    console.log('✅ ナレッジベースファイル取得完了');
+    console.log('✅ ローカルナレッジベースファイル取得完了');
     
     res.json({
       success: true,
       data: jsonData,
       filename: filename,
-      size: fileContent.length
+      size: fileContent.length,
+      source: 'local-filesystem'
     });
     
   } catch (error) {
