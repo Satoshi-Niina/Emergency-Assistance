@@ -44,6 +44,33 @@ router.get('/debug/env', (req, res) => {
   });
 });
 
+// 特定ユーザーの存在とハッシュ形式を確認するデバッグ用 (一時利用想定)
+// 利用条件: 環境変数 DEBUG_AUTH_SECRET を設定し、ヘッダ x-debug-auth に同値を送る
+router.get('/debug/user/:username', async (req, res) => {
+  try {
+    const secret = process.env.DEBUG_AUTH_SECRET;
+    if (!secret) return res.status(403).json({ success: false, error: 'DEBUG_AUTH_SECRET not set' });
+    if (req.headers['x-debug-auth'] !== secret) return res.status(403).json({ success: false, error: 'forbidden' });
+    const { username } = req.params;
+    const rows = await db.select().from(users).where(eq(users.username, username)).limit(1);
+    if (rows.length === 0) return res.json({ success: true, exists: false, username });
+    const u = rows[0];
+    const pwd = u.password || '';
+    const isBcrypt = pwd.startsWith('$2a$') || pwd.startsWith('$2b$') || pwd.startsWith('$2y$');
+    return res.json({
+      success: true,
+      exists: true,
+      username: u.username,
+      role: u.role,
+      hasBcryptHash: isBcrypt,
+      hashPrefix: pwd.slice(0, 7)
+    });
+  } catch (e) {
+    console.error('debug user error', e);
+    return res.status(500).json({ success: false, error: 'internal error' });
+  }
+});
+
 // ログインエンドポイント
 router.post('/login', async (req, res) => {
   try {
