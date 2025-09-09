@@ -15,6 +15,8 @@ import { readyRouter } from './routes/ready.js';
 import { registerRoutes } from './routes/registerRoutes.js';
 import { auditLogger } from './middleware/audit-logger.js';
 import { startAuditRotation } from './logging/audit-rotator.js';
+import fs from 'fs';
+import os from 'os';
 import { initInsights } from './telemetry/insights.js';
 
 // アプリ生成
@@ -61,24 +63,47 @@ export async function createApp() {
     ['http://localhost:5173','http://127.0.0.1:5173','http://127.0.0.1:5002','http://127.0.0.1:3000'].forEach(o => originSet.add(o));
   }
   const origins = Array.from(originSet);
-  console.log('🔧 CORS origins:', origins);
-  app.use(cors({
+  const azureStaticPattern = /\.azurestaticapps\.net$/;
+  console.log('🔧 CORS origins (explicit):', origins);
+  app.use((req, _res, next) => {
+    // デバッグ用: 最初の数件のみログ
+    if (Math.random() < 0.02) {
+      console.log('🌐 Incoming Origin:', req.headers.origin, 'Path:', req.method, req.path);
+    }
+    next();
+  });
+  const dynamicCors = cors({
     origin: (origin, cb) => {
-      if (!origin) return cb(null, true);
+      if (!origin) return cb(null, true); // same-origin / curl
       if (origins.includes(origin)) return cb(null, true);
-      console.log('🚫 CORS blocked origin:', origin);
+      if (azureStaticPattern.test(origin)) {
+        // Azure Static Web Apps 全般許可（必要ならホワイトリスト方式に再変更可能）
+        return cb(null, true);
+      }
+      console.log('🚫 CORS blocked origin (not in list):', origin);
       return cb(null, false);
     },
-    credentials: true
-  }));
-  app.options('*', cors({
-    origin: (origin, cb) => {
-      if (!origin) return cb(null, true);
-      if (origins.includes(origin)) return cb(null, true);
-      return cb(null, false);
-    },
-    credentials: true
-  }));
+    credentials: true,
+    methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+    allowedHeaders: ['Content-Type','Authorization','X-Requested-With']
+  });
+  app.use(dynamicCors);
+  app.options('*', dynamicCors);
+  // フェールセーフ: ここまでで CORS ヘッダが付いていないが許可対象なら強制付与
+  app.use((req, res, next) => {
+    const origin = req.headers.origin as string | undefined;
+    if (origin && !res.getHeader('Access-Control-Allow-Origin')) {
+      if (origins.includes(origin) || azureStaticPattern.test(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Vary', 'Origin');
+        // 必要に応じて許可ヘッダ拡張
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+        res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+      }
+    }
+    next();
+  });
 
   app.use(cookieParser());
   // Telemetry
@@ -87,6 +112,28 @@ export async function createApp() {
   app.use(auditLogger({ tag: 'api' }));
   // ローテーション開始
   startAuditRotation();
+  // 追加: 実際の audit.log 書き込み先が存在しないケースを検知 (軽量チェック)
+  try {
+    const auditDirCandidates = [
+      process.env.AUDIT_LOG_DIR,
+      process.cwd() + '/logs',
+      '/home/site/logs',
+      '/home/logs',
+      os.tmpdir() + '/logs'
+    ].filter(Boolean) as string[];
+    let ensured = false;
+    for (const d of auditDirCandidates) {
+      try {
+        if (!fs.existsSync(d)) continue; // ローテータが作成したはず
+        fs.accessSync(d, fs.constants.W_OK);
+        ensured = true;
+        break;
+      } catch {}
+    }
+    if (!ensured) {
+      console.warn('⚠️ audit log directory still not writable after rotation init');
+    }
+  } catch {}
   app.use(express.json());
   app.use((_, res, next) => { res.header('Vary','Origin'); next(); });
 

@@ -12,8 +12,9 @@ import { BlobServiceClient } from '@azure/storage-blob';
 import { forceAuditFlush } from '../middleware/audit-logger.js';
 import zlib from 'zlib';
 
-const baseDir = path.join(process.cwd(), 'logs');
-const auditFile = path.join(baseDir, 'audit.log');
+// 動的にフォールバックするため let
+let baseDir = process.env.AUDIT_LOG_DIR || path.join(process.cwd(), 'logs');
+let auditFile = path.join(baseDir, 'audit.log');
 let rotating = false;
 
 function getConfig() {
@@ -102,7 +103,36 @@ export function startAuditRotation() {
     console.log('ℹ️  Audit log rotation disabled');
     return;
   }
-  if (!fs.existsSync(baseDir)) fs.mkdirSync(baseDir, { recursive: true });
-  console.log(`🗂  Audit log rotation started (every ${intervalSec}s)`);
+  // ディレクトリ作成 & フォールバック
+  const candidates = [
+    baseDir,
+    '/home/site/logs',      // Azure App Service 推奨永続領域
+    '/home/logs',           // 旧パスの保険
+    '/tmp/logs'             // 最終フォールバック (非永続)
+  ];
+  let created = false;
+  for (const dir of candidates) {
+    try {
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      // 書き込みテスト
+      fs.accessSync(dir, fs.constants.W_OK);
+      if (dir !== baseDir) {
+        console.log(`✅ Audit log directory fallback -> ${dir}`);
+        baseDir = dir;
+        auditFile = path.join(baseDir, 'audit.log');
+      } else {
+        console.log(`✅ Audit log directory: ${dir}`);
+      }
+      created = true;
+      break;
+    } catch (e) {
+      console.warn(`⚠️  Cannot use audit log dir ${dir}:`, (e as Error).message);
+    }
+  }
+  if (!created) {
+    console.warn('🚫  監査ログディレクトリを確保できないためローテーション無効化');
+    return;
+  }
+  console.log(`🗂  Audit log rotation started (every ${intervalSec}s) baseDir=${baseDir}`);
   setInterval(rotateIfNeeded, intervalSec * 1000).unref();
 }
