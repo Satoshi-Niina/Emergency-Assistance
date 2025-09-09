@@ -65,27 +65,52 @@ export async function createApp() {
   const origins = Array.from(originSet);
   const azureStaticPattern = /\.azurestaticapps\.net$/;
   console.log('🔧 CORS origins (explicit):', origins);
+  
+  // CORS デバッグログを増強
   app.use((req, _res, next) => {
-    // デバッグ用: 最初の数件のみログ
-    if (Math.random() < 0.02) {
-      console.log('🌐 Incoming Origin:', req.headers.origin, 'Path:', req.method, req.path);
+    const origin = req.headers.origin;
+    const isAuthRequest = req.path.startsWith('/api/auth/');
+    
+    if (isAuthRequest || Math.random() < 0.1) {
+      console.log('🌐 Request details:', {
+        origin,
+        path: req.path,
+        method: req.method,
+        userAgent: req.headers['user-agent']?.substring(0, 50),
+        cookie: req.headers.cookie ? '[PRESENT]' : '[MISSING]',
+        sessionId: req.sessionID,
+        sessionData: req.session?.userId ? { userId: req.session.userId } : '[NO_SESSION]'
+      });
     }
     next();
   });
+  
   const dynamicCors = cors({
     origin: (origin, cb) => {
-      if (!origin) return cb(null, true); // same-origin / curl
-      if (origins.includes(origin)) return cb(null, true);
-      if (azureStaticPattern.test(origin)) {
-        // Azure Static Web Apps 全般許可（必要ならホワイトリスト方式に再変更可能）
+      console.log(`🔍 CORS check for origin: ${origin}`);
+      
+      if (!origin) {
+        console.log('✅ CORS: No origin header (same-origin request)');
         return cb(null, true);
       }
-      console.log('🚫 CORS blocked origin (not in list):', origin);
+      
+      if (origins.includes(origin)) {
+        console.log('✅ CORS: Origin in explicit whitelist');
+        return cb(null, true);
+      }
+      
+      if (azureStaticPattern.test(origin)) {
+        console.log('✅ CORS: Azure Static Web Apps pattern matched');
+        return cb(null, true);
+      }
+      
+      console.log('🚫 CORS: Origin blocked:', origin);
+      console.log('🔍 Available origins:', origins);
       return cb(null, false);
     },
     credentials: true,
     methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-    allowedHeaders: ['Content-Type','Authorization','X-Requested-With']
+    allowedHeaders: ['Content-Type','Authorization','X-Requested-With','Accept','Cache-Control']
   });
   app.use(dynamicCors);
   app.options('*', dynamicCors);
@@ -156,18 +181,30 @@ export async function createApp() {
   }
 
   const usePartitioned = isProduction && process.env.SESSION_PARTITIONED === 'true';
+  
+  // Azure環境でのセッション設定最適化
+  const sessionCookieConfig: SessionCookieOptions = {
+    secure: isProduction,
+    httpOnly: true,
+    sameSite: isProduction ? 'none' : 'lax',
+    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+    path: '/',
+    ...(usePartitioned ? { partitioned: true } : {})
+  };
+  
+  // Azure Static Web Apps環境での特別な設定
+  if (isProduction) {
+    // SameSite=None; Secure を確実に設定（クロスサイトでのセッション維持のため）
+    sessionCookieConfig.sameSite = 'none';
+    sessionCookieConfig.secure = true;
+    console.log('🍪 Production session config: SameSite=None; Secure=true');
+  }
+  
   const sessionConfig = {
     secret: process.env.SESSION_SECRET || 'dev-session-secret',
     resave: true,
     saveUninitialized: false,
-    cookie: {
-      secure: isProduction,
-      httpOnly: true,
-      sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
-      maxAge: 1000 * 60 * 60 * 24 * 7,
-      path: '/',
-      ...(usePartitioned ? { partitioned: true } : {})
-    } as SessionCookieOptions,
+    cookie: sessionCookieConfig,
     name: 'emergency-assistance-session',
     rolling: true,
     store: redisStore || undefined

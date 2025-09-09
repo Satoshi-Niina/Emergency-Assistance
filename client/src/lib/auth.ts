@@ -104,6 +104,17 @@ export const logout = async () => {
       method: 'POST',
       credentials: 'include'
     });
+    
+    console.log('📡 ログアウトレスポンス:', { 
+      status: response.status, 
+      ok: response.ok 
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Logout failed: ${response.status} ${response.statusText}`);
+    }
+    
+    return await response.json();
   } catch (error) {
     console.error('Logout error:', error);
     throw new Error('ログアウトに失敗しました');
@@ -116,20 +127,55 @@ export const logout = async () => {
  */
 export const getCurrentUser = async () => {
   try {
+    console.log('👤 getCurrentUser called');
+    console.log('📡 Request URL:', AUTH_API.ME);
+    console.log('🌐 Current location:', {
+      origin: window.location.origin,
+      hostname: window.location.hostname,
+      protocol: window.location.protocol
+    });
+    
     const response = await fetch(AUTH_API.ME, {
-      credentials: 'include'
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache'
+      }
+    });
+    
+    console.log('📡 getCurrentUser response:', {
+      status: response.status,
+      ok: response.ok,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries())
     });
     
     if (!response.ok) {
       if (response.status === 401) {
+        console.log('🔓 Not authenticated (401)');
         return null;
       }
-      throw new Error('Failed to get current user');
+      
+      console.error('❌ getCurrentUser error:', {
+        status: response.status,
+        statusText: response.statusText
+      });
+      throw new Error(`Failed to get current user: ${response.status} ${response.statusText}`);
     }
     
-    return await response.json();
+    const userData = await response.json();
+    console.log('✅ getCurrentUser success:', userData);
+    return userData;
   } catch (error) {
-    console.error('Get current user error:', error);
+    console.error('❌ getCurrentUser error:', error);
+    
+    // ネットワークエラーの場合
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      console.error('🌐 Network error in getCurrentUser');
+      return null;
+    }
+    
     return null;
   }
 };

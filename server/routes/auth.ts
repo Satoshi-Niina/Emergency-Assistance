@@ -157,22 +157,33 @@ router.post('/login', async (req, res) => {
       sessionData: req.session
     });
     
-    // セッションを明示的に保存
-    req.session.save((err) => {
-      if (err) {
-        console.error('❌ Session save error:', err);
-        return res.status(500).json({
-          success: false,
-          error: 'セッションの保存に失敗しました'
+    // セッションを明示的に保存（Promiseベースで確実に）
+    const saveSession = (): Promise<void> => {
+      return new Promise((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) {
+            console.error('❌ Session save error:', err);
+            reject(err);
+          } else {
+            console.log('💾 Session saved successfully');
+            resolve();
+          }
         });
-      }
+      });
+    };
+
+    try {
+      await saveSession();
       
-      console.log('💾 Session saved successfully:', {
+      console.log('💾 Session state after save:', {
         userId: req.session.userId,
         userRole: req.session.userRole,
-        sessionId: req.session.id,
-        sessionData: req.session
+        sessionId: req.session.id
       });
+
+      // レスポンスヘッダーをログ出力
+      const cookieHeader = res.getHeader('Set-Cookie');
+      console.log('🍪 Response Set-Cookie header:', cookieHeader);
 
       // 成功レスポンス（Reactの認証コンテキストに合わせる）
       return res.json({
@@ -185,15 +196,24 @@ router.post('/login', async (req, res) => {
           role: foundUser.role,
           department: foundUser.department || 'General'
         },
-        debugCookie: {
-          secure: req.session.cookie.secure,
-          sameSite: req.session.cookie.sameSite,
-          originalMaxAge: req.session.cookie.originalMaxAge,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          partitioned: (req.session.cookie as any).partitioned || false
+        debugInfo: {
+          sessionId: req.session.id,
+          cookieSettings: {
+            secure: req.session.cookie.secure,
+            sameSite: req.session.cookie.sameSite,
+            originalMaxAge: req.session.cookie.originalMaxAge,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            partitioned: (req.session.cookie as any).partitioned || false
+          }
         }
       });
-    });
+    } catch (sessionError) {
+      console.error('❌ Session save failed:', sessionError);
+      return res.status(500).json({
+        success: false,
+        error: 'セッションの保存に失敗しました'
+      });
+    }
 
   } catch (error) {
     console.error('❌ Login error:', error);
@@ -304,27 +324,50 @@ router.post('/register', async (req, res) => {
 // 現在のユーザー情報取得
 router.get('/me', async (req, res) => {
   try {
-    console.log('🔍 /me endpoint called:', {
-      session: req.session,
-      sessionId: req.session?.id,
-      userId: req.session?.userId,
-      userRole: req.session?.userRole,
+    const requestInfo = {
+      session: {
+        id: req.session?.id,
+        userId: req.session?.userId,
+        userRole: req.session?.userRole,
+        hasSession: !!req.session,
+        sessionKeys: req.session ? Object.keys(req.session) : []
+      },
       headers: {
         cookie: req.headers.cookie ? '[SET]' : '[NOT SET]',
         origin: req.headers.origin,
         host: req.headers.host,
-        referer: req.headers.referer
+        referer: req.headers.referer,
+        userAgent: req.headers['user-agent']?.substring(0, 50)
+      },
+      request: {
+        method: req.method,
+        url: req.url,
+        path: req.path
       }
-    });
+    };
+    
+    console.log('🔍 /me endpoint called:', requestInfo);
     
     // セッションからユーザーIDを取得
     const userId = req.session?.userId;
     
     if (!userId) {
-      console.log('❌ No user ID in session');
+      console.log('❌ No user ID in session - returning 401');
+      console.log('📊 Session debug:', {
+        sessionExists: !!req.session,
+        sessionId: req.session?.id,
+        sessionData: req.session ? JSON.stringify(req.session, null, 2) : 'NO_SESSION',
+        cookieHeader: req.headers.cookie
+      });
+      
       return res.status(401).json({
         success: false,
-        error: '認証されていません'
+        error: '認証されていません',
+        debug: {
+          hasSession: !!req.session,
+          hasCookie: !!req.headers.cookie,
+          sessionId: req.session?.id || null
+        }
       });
     }
 
