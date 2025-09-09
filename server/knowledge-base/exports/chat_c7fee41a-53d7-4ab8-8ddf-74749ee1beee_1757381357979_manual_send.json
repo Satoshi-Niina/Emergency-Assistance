@@ -1,0 +1,68 @@
+{
+  "savedAt": "2025-09-09T01:29:17.979Z",
+  "chatId": "c7fee41a-53d7-4ab8-8ddf-74749ee1beee",
+  "exportType": "manual_send",
+  "messageCount": 6,
+  "chatData": {
+    "chatId": "c7fee41a-53d7-4ab8-8ddf-74749ee1beee",
+    "timestamp": "2025-09-09T01:29:17.975Z",
+    "machineInfo": {
+      "selectedMachineType": "a8ee08ea-7f26-4595-b6f8-a841840a6f31",
+      "selectedMachineNumber": "",
+      "machineTypeName": "MC300(堀川）",
+      "machineNumber": ""
+    },
+    "messages": [
+      {
+        "id": "e7115eda-c563-4ab0-8a91-8b9af9dd08a0",
+        "content": "サポートします。どのような事象が発生しましたか？お気軽に教えてください。",
+        "isAiResponse": true,
+        "timestamp": "2025-09-09T01:28:30.916Z",
+        "media": []
+      },
+      {
+        "id": "b417b5ad-9f9b-4603-a50e-529c631ab775",
+        "content": "エンジンが停止しない",
+        "isAiResponse": false,
+        "timestamp": "2025-09-09T01:28:46.399Z",
+        "media": []
+      },
+      {
+        "id": "f0038396-d443-4524-ab9f-2e0379ce1040",
+        "content": "何か気になる症状やトラブルはありますか？",
+        "isAiResponse": true,
+        "timestamp": "2025-09-09T01:28:46.399Z",
+        "media": []
+      },
+      {
+        "id": "ccd5761a-f39b-434a-91b1-5e6ceafe7739",
+        "content": "停止しないだけ",
+        "isAiResponse": false,
+        "timestamp": "2025-09-09T01:29:05.343Z",
+        "media": []
+      },
+      {
+        "id": "e436879e-dc8b-49fd-bd4e-75b3e646b0a8",
+        "content": "トラブルの箇所はどこですか？",
+        "isAiResponse": true,
+        "timestamp": "2025-09-09T01:29:05.344Z",
+        "media": []
+      },
+      {
+        "id": "5f7b5963-0562-4f28-b660-72fa8383b051",
+        "content": "画像を送信しました",
+        "isAiResponse": false,
+        "timestamp": "2025-09-09T01:29:13.666Z",
+        "media": [
+          {
+            "id": "95a19183-e464-4968-bc84-24c078bb4c13",
+            "type": "image",
+            "url": "/api/uploads/image/1757381353660_capture.jpg",
+            "title": "画像を送信しました",
+            "fileName": "image_1757381353666_0"
+          }
+        ]
+      }
+    ]
+  }
+}

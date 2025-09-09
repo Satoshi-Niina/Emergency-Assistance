@@ -34,16 +34,26 @@ export default function TroubleshootingSelector({
   const fetchFlows = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/list`);
+  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list`);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const data = await response.json();
-      const normalizedFlows = data.map((flow: any) => ({
-        id: flow.id,
-        title: flow.title || 'タイトルなし',
-        description: flow.description || flow.title || '説明なし',
-        trigger: flow.trigger || flow.triggerKeywords || [],
-        source: flow.dataSource || 'unknown'
-      }));
+  const payload = await response.json();
+  const list: unknown = Array.isArray(payload) ? payload : (payload?.data ?? []);
+      const normalizedFlows: TroubleshootingFlow[] = (Array.isArray(list) ? (list as unknown[]) : []).map((item) => {
+        const flow = (item ?? {}) as Partial<{
+          id: string;
+          title: string;
+          description: string;
+          trigger: string[];
+          triggerKeywords: string[];
+          dataSource: string;
+        }>;
+        return {
+          id: String(flow.id ?? ''),
+          title: flow.title || 'タイトルなし',
+          description: flow.description || flow.title || '説明なし',
+          trigger: flow.trigger || flow.triggerKeywords || [],
+        } as TroubleshootingFlow;
+      });
       setFlows(normalizedFlows);
       setFilteredFlows(normalizedFlows);
     } catch (error) {
@@ -59,7 +69,9 @@ export default function TroubleshootingSelector({
   };
 
   useEffect(() => {
+    // 初回のみ実行
     fetchFlows();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // フローを検索

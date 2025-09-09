@@ -56,7 +56,8 @@ type ViewState =
   | { view: 'edit'; flowId: string | null };
 
 export default function TroubleshootingPage() {
-  const [activeTab, setActiveTab] = useState('generator');
+  // 一覧が見えない問題の回避: 初期タブをeditor（一覧・編集）に設定
+  const [activeTab, setActiveTab] = useState('editor');
   const [flowState, setFlowState] = useState<ViewState>({ view: 'list' });
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isViewerOpen, setIsViewerOpen] = useState(false);

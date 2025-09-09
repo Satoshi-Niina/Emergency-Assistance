@@ -84,41 +84,16 @@ router.post('/login', async (req, res) => {
     const foundUser = user[0];
     console.log('✅ User found:', { id: foundUser.id, username: foundUser.username, role: foundUser.role });
     
-    // パスワードチェック（bcryptでハッシュ化されたパスワードまたは平文パスワード）
-    let isValidPassword = false;
-    
-    console.log('🔐 Password check details:', {
-      inputPassword: password,
-      storedPassword: foundUser.password,
-      passwordLength: foundUser.password.length
+    // パスワードチェック（bcrypt のみ）
+    const isValidPassword = await bcrypt.compare(password, foundUser.password).catch(err => {
+      console.warn('bcrypt compare error:', err);
+      return false;
     });
-    
-    // まずbcryptでハッシュ化されたパスワードをチェック
-    try {
-      isValidPassword = await bcrypt.compare(password, foundUser.password);
-      console.log('🔐 bcrypt password check:', isValidPassword);
-    } catch (error) {
-      console.log('bcrypt比較エラー、平文パスワードをチェック:', error);
-    }
-    
-    // bcryptで失敗した場合、平文パスワードをチェック（開発環境用）
-    if (!isValidPassword) {
-      const plainTextMatch = (foundUser.password === password);
-      console.log('🔐 Plain text password check:', plainTextMatch);
-      isValidPassword = plainTextMatch;
-      if (isValidPassword) {
-        console.log('✅ 平文パスワードで認証成功（開発環境）');
-      }
-    }
-    
     if (!isValidPassword) {
       console.log('❌ Invalid password for:', username);
       console.log('❌ Password validation failed:', {
         username: username,
-        inputPassword: password,
-        storedPassword: foundUser.password,
-        bcryptFailed: true,
-        plainTextFailed: true
+        reason: 'bcrypt_mismatch'
       });
       return res.status(401).json({
         success: false,
@@ -209,7 +184,7 @@ router.post('/logout', (req, res) => {
 // ユーザー登録エンドポイント
 router.post('/register', async (req, res) => {
   try {
-    const { username, password, displayName, role = 'employee', department, description } = req.body || {};
+  const { username, password, displayName, role = 'employee', department, description } = req.body || {};
 
     // 入力バリデーション
     if (!username || !password) {
@@ -222,11 +197,16 @@ router.post('/register', async (req, res) => {
     if (typeof username !== 'string' || username.length < 3 || username.length > 50) {
       return res.status(400).json({ success: false, error: 'ユーザー名は3〜50文字で入力してください' });
     }
-    if (typeof password !== 'string' || password.length < 6) {
-      return res.status(400).json({ success: false, error: 'パスワードは6文字以上で入力してください' });
+    if (typeof password !== 'string') {
+      return res.status(400).json({ success: false, error: 'パスワード形式が不正です' });
     }
-    if (role && !['employee', 'admin'].includes(role)) {
-      return res.status(400).json({ success: false, error: 'role は "employee" か "admin" を指定してください' });
+    // パスワード強度ポリシー: 8文字以上 / 大文字 / 小文字 / 数字 / 記号
+    const policy = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
+    if (!policy.test(password)) {
+      return res.status(400).json({ success: false, error: 'パスワードは英大文字・英小文字・数字・記号を各1文字以上含む8文字以上にしてください' });
+    }
+    if (role && !['employee', 'admin', 'system_admin', 'operator', 'user'].includes(role)) {
+      return res.status(400).json({ success: false, error: 'role は system_admin/operator/user など定義済みの値を指定してください' });
     }
 
     // 既存ユーザー確認

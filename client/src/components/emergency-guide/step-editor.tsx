@@ -1,5 +1,4 @@
-﻿// @ts-ignore
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -26,14 +25,14 @@ import { convertImageUrl } from '../../lib/utils';
  */
 
 // Helper function for UTF-8 safe base64 encoding
-function utf8_to_b64(str: string): string {
-  try {
-    return btoa(unescape(encodeURIComponent(str)));
-  } catch (e) {
-    console.error('Failed to base64 encode:', str, e);
-    return btoa(str); // Fallback to simple btoa
-  }
-}
+// function utf8_to_b64(str: string): string {
+//   try {
+//     return btoa(unescape(encodeURIComponent(str)));
+//   } catch (e) {
+//     console.error('Failed to base64 encode:', str, e);
+//     return btoa(str); // Fallback to simple btoa
+//   }
+// }
 
 // 1. ImageInfoインターフェースをエクスポート可能に変更し、ファイルURLとファイル名を保持するようにします
 export interface ImageInfo {
@@ -41,11 +40,11 @@ export interface ImageInfo {
   fileName: string;
 }
 
-interface DecisionCondition {
-  id: string;
-  text: string;
-  nextSlideId?: string;
-}
+// interface DecisionCondition {
+//   id: string;
+//   text: string;
+//   nextSlideId?: string;
+// }
 
 // 2. Stepインターフェースの画像関連のフィールドを images 配列に変更します
 interface Step {
@@ -54,7 +53,7 @@ interface Step {
   description: string;
   message: string;
   type: 'start' | 'step' | 'decision' | 'condition' | 'end';
-  images?: string[];
+  images?: Array<string | { url?: string; fileName?: string }>;
   options?: Array<{
     text: string;
     nextStepId: string;
@@ -158,7 +157,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   const [imageErrors, setImageErrors] = useState<{ [key: string]: boolean }>({});
   const [expandedSteps, setExpandedSteps] = useState<{ [key: string]: boolean }>({});
-  const [showStepControls, setShowStepControls] = useState<{ [key: string]: boolean }>({});
+  // const [showStepControls, setShowStepControls] = useState<{ [key: string]: boolean }>({});
   
   // すべてのステップを展開状態にする
   useEffect(() => {
@@ -184,7 +183,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
     };
   }, []);
 
-  const handleStepFieldChange = (stepId: string, field: keyof Step, value: any) => {
+  const handleStepFieldChange = (stepId: string, field: keyof Step, value: unknown) => {
     onStepUpdate(stepId, { [field]: value });
   };
 
@@ -222,16 +221,17 @@ const StepEditor: React.FC<StepEditorProps> = ({
       
       // 重複チェック: 同じファイル名の画像が既に存在するかチェック
       const stepToUpdate = steps.find(step => step.id === stepId);
+      const getFileName = (img: string | { url?: string; fileName?: string }): string => {
+        if (typeof img === 'string') return img.split('/').pop() || img;
+        return img.fileName || (img.url ? (img.url.split('/').pop() || img.url) : '');
+      };
+
       if (stepToUpdate && stepToUpdate.images) {
-        const existingImage = (stepToUpdate.images ?? []).find((img: any) => {
-          // support legacy object or string URL
-          if (typeof img === 'string') {
-            const fname = img.split('/').pop() || '';
-            return fname === file.name || fname === file.name.replace(/\.[^/.]+$/, '');
-          } else if (img && typeof img === 'object') {
-            return img.fileName === file.name || img.fileName === file.name.replace(/\.[^/.]+$/, '');
-          }
-          return false;
+        const existingImage = (stepToUpdate.images ?? []).find((img) => {
+          const fname = getFileName(img);
+          const base = file.name;
+          const baseNoExt = base.replace(/\.[^/.]+$/, '');
+          return fname === base || fname === baseNoExt;
         });
 
         if (existingImage) {
@@ -245,10 +245,11 @@ const StepEditor: React.FC<StepEditorProps> = ({
           }
 
           // 既存の画像を削除 (normalize existing to URLs and remove by filename)
-          const updatedImages = (stepToUpdate.images ?? []).filter((img: any) => {
-            const fname = typeof img === 'string' ? (img.split('/').pop() || '') : img.fileName;
-            return fname !== (existingImage && typeof existingImage === 'string' ? existingImage.split('/').pop() : existingImage.fileName);
-          }).map((img: any) => (typeof img === 'string' ? img : img.url));
+          const existingName = existingImage ? getFileName(existingImage) : '';
+          const updatedImages = (stepToUpdate.images ?? [])
+            .filter((img) => getFileName(img) !== existingName)
+            .map((img) => (typeof img === 'string' ? img : (img.url || '')))
+            .filter(Boolean) as string[];
           onStepUpdate(stepId, { images: updatedImages });
         }
       }
@@ -258,7 +259,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
       formData.append('stepId', stepId);
       if (flowId) formData.append('flowId', flowId);
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/upload-image`, {
+  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/upload-image`, {
         method: 'POST',
         body: formData,
       });
@@ -283,7 +284,9 @@ const StepEditor: React.FC<StepEditorProps> = ({
       // 画像アップロード処理を、配列に画像URLを追加するように変更
       const currentStepToUpdate = steps.find(step => step.id === stepId);
       if (currentStepToUpdate) {
-        const currentImagesNormalized = (currentStepToUpdate.images ?? []).map((img: any) => (typeof img === 'string' ? img : img.url));
+        const currentImagesNormalized = (currentStepToUpdate.images ?? [])
+          .map((img) => (typeof img === 'string' ? img : (img.url || '')))
+          .filter(Boolean) as string[];
         if (currentImagesNormalized.length < 3) {
           const updatedImages = [...currentImagesNormalized, newImageUrl];
           onStepUpdate(stepId, { images: updatedImages });
@@ -317,7 +320,9 @@ const StepEditor: React.FC<StepEditorProps> = ({
       const imageToRemove = newImages[imageIndex];
 
       // derive fileName from string or object
-      const fileNameToRemove = typeof imageToRemove === 'string' ? (imageToRemove.split('/').pop() || imageToRemove) : imageToRemove.fileName;
+      const fileNameToRemove = typeof imageToRemove === 'string'
+        ? (imageToRemove.split('/').pop() || imageToRemove)
+        : (imageToRemove.fileName || (imageToRemove.url ? (imageToRemove.url.split('/').pop() || imageToRemove.url) : ''));
 
       // 削除確認
       const confirmDelete = window.confirm(
@@ -327,7 +332,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
       if (confirmDelete) {
         try {
           // APIを呼び出してサーバーから画像を削除
-          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/image/${fileNameToRemove}`);
+          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/image/${fileNameToRemove}`, { method: 'DELETE' });
 
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -336,7 +341,9 @@ const StepEditor: React.FC<StepEditorProps> = ({
 
           // フロントエンドの状態を更新 (normalize stored images to URLs)
           newImages.splice(imageIndex, 1);
-          const normalized = newImages.map((img: any) => (typeof img === 'string' ? img : img.url));
+          const normalized = newImages
+            .map((img) => (typeof img === 'string' ? img : (img.url || '')))
+            .filter(Boolean) as string[];
           onStepUpdate(stepId, { images: normalized });
           console.log('✅ 画像削除完了:', fileNameToRemove);
           alert(`画像 "${fileNameToRemove}" を削除しました。`);
@@ -494,44 +501,47 @@ const StepEditor: React.FC<StepEditorProps> = ({
               {(step.images ?? []).map((image, index) => (
                 <div key={index} className="relative group aspect-video">
                   {(() => {
-                    const convertedUrl = convertImageUrl(image.url);
+                    const originalUrl = typeof image === 'string' ? image : (image.url || '');
+                    const convertedUrl = convertImageUrl(originalUrl);
                     console.log(`🖼️ 画像表示デバッグ [${step.id}][${index}]:`, {
-                      originalUrl: image.url,
-                      convertedUrl: convertedUrl,
-                      fileName: image.fileName
+                      originalUrl,
+                      convertedUrl: convertedUrl
                     });
                     return (
                       <img
                         src={convertedUrl}
-                        alt={image.fileName}
+                        alt={typeof image === 'string' ? (image.split('/').pop() || image) : (image.fileName || '')}
                         className="w-full h-full object-cover rounded-lg border shadow-sm"
                         onError={(e) => {
                           console.error('❌ 画像読み込みエラー:', {
-                            originalUrl: image.url,
+                            originalUrl,
                             convertedUrl: convertedUrl,
-                            fileName: image.fileName,
+                            fileName: typeof image === 'string' ? (image.split('/').pop() || image) : (image.fileName || ''),
                             error: e
                           });
-                          handleImageError(e, image.url);
+                          handleImageError(e, originalUrl);
                         }}
                         onLoad={() => {
                           console.log('✅ 画像読み込み成功:', {
-                            originalUrl: image.url,
+                            originalUrl,
                             convertedUrl: convertedUrl,
-                            fileName: image.fileName
+                            fileName: typeof image === 'string' ? (image.split('/').pop() || image) : (image.fileName || '')
                           });
                           // 画像読み込み成功時にエラーフラグをクリア
-                          setImageErrors(prev => ({ ...prev, [image.url]: false }));
+                          setImageErrors(prev => ({ ...prev, [originalUrl]: false }));
                         }}
                       />
                     );
                   })()}
-                  {imageErrors[image.url] && (
+                  {(() => {
+                    const key = typeof image === 'string' ? image : (image.url || '');
+                    return imageErrors[key];
+                  })() && (
                     <div className="absolute inset-0 bg-red-500 bg-opacity-50 flex items-center justify-center rounded-lg">
                       <div className="text-center text-white p-2">
                         <X className="h-8 w-8 mx-auto" />
                         <p className="text-xs font-bold mt-1">読込失敗</p>
-                        <p className="text-xs mt-1">{image.fileName}</p>
+                        <p className="text-xs mt-1">{typeof image === 'string' ? (image.split('/').pop() || image) : (image.fileName || '')}</p>
                       </div>
                     </div>
                   )}
@@ -552,11 +562,16 @@ const StepEditor: React.FC<StepEditorProps> = ({
                   
                   {/* 画像情報表示 */}
                   <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 truncate rounded-b-lg">
-                    {image.fileName}
+                    {typeof image === 'string' ? (image.split('/').pop() || image) : (image.fileName || '')}
                   </div>
                   
                   {/* 重複画像の場合は警告表示 */}
-                  {(step.images ?? []).filter(img => img.fileName === image.fileName).length > 1 && (
+                  {(step.images ?? []).filter(img => {
+                    const getName = (im: string | { url?: string; fileName?: string }) =>
+                      typeof im === 'string' ? (im.split('/').pop() || im) : (im.fileName || (im.url ? (im.url.split('/').pop() || im.url) : ''));
+                    const cur = getName(image);
+                    return getName(img) === cur;
+                  }).length > 1 && (
                     <div className="absolute top-1 left-1">
                       <div className="bg-yellow-500 text-white text-xs px-1 py-0.5 rounded">
                         重複
@@ -709,16 +724,16 @@ const StepEditor: React.FC<StepEditorProps> = ({
   };
 
   // アクションボタンコンポーネント
-  const ActionButtons = () => (
-    <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg border">
-      <div className="text-sm text-gray-500">
-        スライド数: {steps.length}
-      </div>
-      <div className="text-sm text-gray-600">
-        最後のスライドは自動的に終了スライドになります
-      </div>
-    </div>
-  );
+  // const ActionButtons = () => (
+  //   <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg border">
+  //     <div className="text-sm text-gray-500">
+  //       スライド数: {steps.length}
+  //     </div>
+  //     <div className="text-sm text-gray-600">
+  //       最後のスライドは自動的に終了スライドになります
+  //     </div>
+  //   </div>
+  // );
 
   return (
     <div className="h-full flex flex-col">

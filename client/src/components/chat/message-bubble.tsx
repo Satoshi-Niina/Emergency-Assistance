@@ -8,22 +8,9 @@ import { Copy, Volume2 } from "lucide-react";
 import { useToast } from "../../hooks/use-toast.ts";
 import { speakText, stopSpeaking } from "../../lib/text-to-speech.ts";
 
-interface MessageBubbleProps {
-  message: {
-    id: number;
-    content: string;
-    senderId: number | null;
-    isAiResponse: boolean;
-    timestamp: Date;
-    media?: {
-      id: number;
-      type: string;
-      url: string;
-      thumbnail?: string;
-    }[];
-  };
-  isDraft?: boolean;
-}
+interface ChatMediaItem { id: string | number; type: string; url: string; thumbnail?: string; title?: string; fileName?: string }
+interface ChatMessage { id: string | number; content: string; senderId?: string | number | null; isAiResponse: boolean; timestamp: Date | string; media?: ChatMediaItem[] }
+interface MessageBubbleProps { message: ChatMessage; isDraft?: boolean; }
 
 export default function MessageBubble({ message, isDraft = false }: MessageBubbleProps) {
   const { user } = useAuth();

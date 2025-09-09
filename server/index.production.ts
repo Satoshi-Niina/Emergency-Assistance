@@ -1,6 +1,7 @@
 // Production Server Entry Point
 import 'dotenv/config';
-import { createApp } from './app.js';
+import fs from 'fs';
+import path from 'path';
 
 // PostgreSQL接続確認関数
 async function dbCheck(): Promise<{ success: boolean; message: string }> {
@@ -36,8 +37,43 @@ async function startServer() {
     CORS_ORIGINS: process.env.CORS_ORIGINS || process.env.CORS_ORIGIN || '[NOT SET]'
   });
 
-  // アプリケーションを作成
+  // Knowledge Base パスの自動調整（routes import 前に設定）
+  try {
+    if (!process.env.KNOWLEDGE_BASE_PATH) {
+      const candidates = [
+        path.resolve(process.cwd(), '..', 'knowledge-base'),
+        path.resolve(process.cwd(), 'knowledge-base')
+      ];
+      const found = candidates.find(p => fs.existsSync(p));
+      if (found) {
+        process.env.KNOWLEDGE_BASE_PATH = found;
+        console.log('🧠 KNOWLEDGE_BASE_PATH set to', found);
+      } else {
+        // まだ存在しない場合でも第一候補を設定（後続のAzure同期で作成される）
+        process.env.KNOWLEDGE_BASE_PATH = candidates[0];
+        console.log('🧠 KNOWLEDGE_BASE_PATH preset to', candidates[0]);
+      }
+    }
+  } catch (e) {
+    console.warn('🧠 Failed to preset KNOWLEDGE_BASE_PATH:', (e as Error)?.message);
+  }
+
+  // アプリケーションを作成（環境変数設定後に動的 import）
+  const { createApp } = await import('./app.js');
   const app = await createApp();
+
+  // 起動時に Knowledge Base を Azure から同期（可能な場合）
+  try {
+    const { knowledgeBaseAzure } = await import('./lib/knowledge-base-azure.js');
+    if (knowledgeBaseAzure && typeof knowledgeBaseAzure.initialize === 'function') {
+      console.log('🧠 Initializing Knowledge Base (Azure sync)...');
+      await knowledgeBaseAzure.initialize();
+    } else {
+      console.warn('🧠 Knowledge Base Azure service is not available or has no initialize().');
+    }
+  } catch (e) {
+    console.warn('🧠 Knowledge Base Azure sync skipped:', (e as Error)?.message);
+  }
 
   // グレースフルシャットダウン
   const gracefulShutdown = () => {

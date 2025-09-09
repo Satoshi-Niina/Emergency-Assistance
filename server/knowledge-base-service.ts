@@ -13,8 +13,8 @@ interface AzureStorageService {
 }
 
 export class KnowledgeBaseService {
-    private readonly localBasePath = './knowledge-base';
-    private readonly azureBasePath = 'knowledge-base';
+    private readonly localBasePath = process.env.KNOWLEDGE_BASE_PATH || './knowledge-base';
+    private readonly azureBasePath = process.env.AZURE_KB_PREFIX || '';
     private azureStorage: AzureStorageService | null = null;
 
     constructor() {
@@ -97,8 +97,12 @@ export class KnowledgeBaseService {
                 path.posix.join(this.azureBasePath, relativePath) : 
                 this.azureBasePath;
             const files = await this.azureStorage.listFiles(azurePath);
-            // プレフィックスを除去して相対パスを返す
-            return files.map(file => file.replace(this.azureBasePath + '/', ''));
+            // プレフィックスを除去して相対パスを返す（プレフィックス未設定のときはそのまま返す）
+            if (this.azureBasePath) {
+                const prefix = this.azureBasePath.endsWith('/') ? this.azureBasePath : this.azureBasePath + '/';
+                return files.map(file => file.startsWith(prefix) ? file.slice(prefix.length) : file);
+            }
+            return files;
         } else {
             const localPath = relativePath ? 
                 path.join(this.localBasePath, relativePath) : 

@@ -2502,27 +2502,153 @@ const HistoryPage: React.FC = () => {
     `;
   };
 
-  // 画像取得の共通関数（編集対象ファイル内のみで完結）
+  // 画像取得の共通関数（チャット保存画像を含めて柔軟に探索）
   function pickFirstImage(data: any): string | null {
-    // 1) 直下 or ネスト配列に dataURL があれば優先
-    const dig = (v:any): string | null => {
-      if (!v) return null;
-      if (typeof v === 'string' && v.startsWith('data:image/')) return v;
-      if (Array.isArray(v)) for (const x of v) { const r = dig(x); if (r) return r; }
-      if (typeof v === 'object') for (const k of Object.keys(v)) { const r = dig(v[k]); if (r) return r; }
+    if (!data) return null;
+
+    // Windowsパス / 通常パスを API 経由URLへ変換
+    const normalizePathToApiUrl = (p: string): string | null => {
+      if (!p) return null;
+      // dataURLはそのまま
+      if (p.startsWith('data:image/')) return p;
+      // 既に http(s) or /api/images の場合そのまま
+      if (/^(https?:)?\/\//.test(p) || p.startsWith('/api/images/')) return p;
+      // knowledge-base/images/chat-exports 内の物理パス or 相対ファイル名
+      if (p.includes('chat-exports')) {
+        // パス区切りどちらにも対応
+        const fileName = p.split(/\\|\//).pop();
+        if (fileName) return `/api/images/chat-exports/${fileName}`;
+      }
+      // 先頭がスラッシュならルート配信想定
+      if (p.startsWith('/')) return p; 
       return null;
     };
-    const fromDataUrl = dig(data);
-    if (fromDataUrl) return fromDataUrl;
 
-    // 2) savedImages
-    const saved = data?.savedImages;
-    if (Array.isArray(saved) && saved[0]) return saved[0];
+    // 1) 再帰的に data:image/ を最優先で探索
+    const searchDataUrl = (v: any): string | null => {
+      if (!v) return null;
+      if (typeof v === 'string' && v.startsWith('data:image/')) return v;
+      if (Array.isArray(v)) {
+        for (const x of v) { const r = searchDataUrl(x); if (r) return r; }
+      } else if (typeof v === 'object') {
+        for (const k of Object.keys(v)) { const r = searchDataUrl(v[k]); if (r) return r; }
+      }
+      return null;
+    };
+    const immediate = searchDataUrl(data);
+    if (immediate) return immediate;
 
-    // 3) imagePath(URL)
-    if (typeof data?.imagePath === 'string') return data.imagePath;
+    // 2) 再帰的に savedImages 配列を探す（任意の深さ）
+    let savedImageUrl: string | null = null;
+    const searchSavedImages = (v: any) => {
+      if (savedImageUrl) return; // 見つかったら打ち切り
+      if (!v) return;
+      if (Array.isArray(v)) {
+        // savedImagesそのもの or 各要素の再帰
+        v.forEach(item => {
+          if (savedImageUrl) return;
+          if (item && typeof item === 'object') {
+            // 画像候補抽出優先順位: path > url > dataURL文字列
+            const pathCandidate = (item as any).path || (item as any).filePath;
+            const urlCandidate = (item as any).url;
+            const base64Candidate = (item as any).data || (item as any).base64;
+            let candidate: string | null = null;
+            candidate = normalizePathToApiUrl(pathCandidate);
+            if (!candidate && typeof urlCandidate === 'string') candidate = normalizePathToApiUrl(urlCandidate) || urlCandidate;
+            if (!candidate && typeof base64Candidate === 'string' && base64Candidate.startsWith('data:image/')) candidate = base64Candidate;
+            if (candidate) {
+              savedImageUrl = candidate;
+              return;
+            }
+          }
+          // ネスト継続
+          searchSavedImages(item);
+        });
+      } else if (typeof v === 'object') {
+        for (const k of Object.keys(v)) {
+          if (k === 'savedImages' && Array.isArray(v[k])) {
+            searchSavedImages(v[k]);
+            if (savedImageUrl) return;
+          } else {
+            searchSavedImages(v[k]);
+            if (savedImageUrl) return;
+          }
+        }
+      }
+    };
+    searchSavedImages(data);
+    if (savedImageUrl) return savedImageUrl;
 
-    return null;
+    // 3) imagePath / jsonData.imagePath / chatData.imagePath など文字列候補を探索
+    const pathCandidates: string[] = [];
+    const collectImagePath = (v: any) => {
+      if (!v) return;
+      if (typeof v === 'object') {
+        for (const k of Object.keys(v)) {
+          if (k.toLowerCase().includes('imagepath')) {
+            const val = v[k];
+            if (typeof val === 'string') pathCandidates.push(val);
+          }
+          const child = v[k];
+          if (child && typeof child === 'object') collectImagePath(child);
+        }
+      }
+    };
+    collectImagePath(data);
+    for (const p of pathCandidates) {
+      const url = normalizePathToApiUrl(p);
+      if (url) return url;
+    }
+
+    // 4) 任意の文字列値に /api/images/chat-exports/ を含むものを探索（保険）
+    const searchAnyChatExport = (v: any): string | null => {
+      if (!v) return null;
+      if (typeof v === 'string' && v.includes('/api/images/chat-exports/')) return v;
+      if (Array.isArray(v)) {
+        for (const x of v) { const r = searchAnyChatExport(x); if (r) return r; }
+      } else if (typeof v === 'object') {
+        for (const k of Object.keys(v)) { const r = searchAnyChatExport(v[k]); if (r) return r; }
+      }
+      return null;
+    };
+    const fallbackUrl = searchAnyChatExport(data);
+    if (fallbackUrl) return fallbackUrl;
+
+    return null; // 見つからない
+  }
+
+  // 複数画像抽出: 既存の再帰ロジックを活用し最大 30 件まで収集
+  function pickAllImages(data: any, limit = 30): string[] {
+    const results: string[] = [];
+    const visited = new Set<unknown>();
+    const push = (v?: string | null) => {
+      if (!v) return;
+      if (results.includes(v)) return;
+      results.push(v);
+    };
+    const walk = (obj: any) => {
+      if (!obj || typeof obj !== 'object' || visited.has(obj) || results.length >= limit) return;
+      visited.add(obj);
+      if (Array.isArray(obj)) {
+        for (const el of obj) walk(el);
+        return;
+      }
+      for (const [k, v] of Object.entries(obj)) {
+        if (typeof v === 'string') {
+          if (v.startsWith('data:image/')) push(v);
+          else if (/\.(png|jpe?g|gif|webp|bmp)$/i.test(v) || v.includes('/api/images/chat-exports/')) push(v);
+        } else if (typeof v === 'object' && v) {
+          walk(v);
+        }
+      }
+      // savedImages 形式対応
+      if (obj.savedImages && Array.isArray(obj.savedImages)) {
+        obj.savedImages.forEach((si: any) => { push(si?.url); push(si?.path); });
+      }
+      if (obj.imagePath && typeof obj.imagePath === 'string') push(obj.imagePath);
+    };
+    walk(data);
+    return results;
   }
 
   // 印刷用CSS
@@ -2610,14 +2736,33 @@ const HistoryPage: React.FC = () => {
 
 
   // 印刷機能
-  const handlePrintTable = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-
-    // 選択された履歴のみを印刷対象とする
-    const targetItems = selectedItems.size > 0 
+  const handlePrintTable = async () => {
+    const targetItems = (selectedItems.size > 0
       ? filteredItems.filter(item => selectedItems.has(item.id))
-      : filteredItems;
+      : filteredItems).slice(0);
+
+    const toDataUrl = async (src: string): Promise<string> => {
+      try {
+        if (!src) return '';
+        if (src.startsWith('data:image/')) return src;
+        const abs = src.startsWith('http') ? src : `${window.location.origin}${src.startsWith('/') ? src : (src.startsWith('api/') ? '/' + src : src)}`;
+        const res = await fetch(abs);
+        if (!res.ok) return '';
+        const blob = await res.blob();
+        return await new Promise<string>(resolve => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => resolve('');
+          reader.readAsDataURL(blob);
+        });
+      } catch { return ''; }
+    };
+
+    const imageCache: Record<string,string> = {};
+    for (const it of targetItems) {
+      const raw = pickFirstImage(it);
+      if (raw) imageCache[it.id] = await toDataUrl(raw);
+    }
 
     const tableContent = `
       <!DOCTYPE html>
@@ -2684,8 +2829,7 @@ const HistoryPage: React.FC = () => {
               const incidentTitle = jsonData?.title || jsonData?.question || '事象なし';
               const problemDescription = jsonData?.problemDescription || jsonData?.answer || '説明なし';
               
-              // pickFirstImage関数を使用して画像URLを取得
-              const imageUrl = pickFirstImage(item);
+              const imageUrl = imageCache[item.id] || '';
               
               return `
                 <tr>
@@ -2694,7 +2838,7 @@ const HistoryPage: React.FC = () => {
                   <td>${incidentTitle}</td>
                   <td>${problemDescription}</td>
                   <td>${formatDate(item.createdAt)}</td>
-                  <td class="image-cell">${imageUrl ? `<img class="thumb" src="${imageUrl}" alt="故障画像" onerror="this.style.display='none'; this.nextSibling.style.display='inline';" /><span style="display:none; color: #999; font-size: 10px;">画像読み込みエラー</span>` : 'なし'}</td>
+                  <td class="image-cell">${imageUrl ? `<img class="thumb" src="${imageUrl}" alt="故障画像" />` : 'なし'}</td>
                 </tr>
               `;
             }).join('')}
@@ -2708,363 +2852,151 @@ const HistoryPage: React.FC = () => {
       </html>
     `;
 
-    printWindow.document.write(tableContent);
-    printWindow.document.close();
-    
-    // 印刷ダイアログを自動的に表示
-    setTimeout(() => {
-      printWindow.print();
-    }, 100);
+  const pw = window.open('', '_blank');
+  if (!pw) return;
+  pw.document.write(tableContent);
+  pw.document.close();
+  setTimeout(() => { try { pw.focus(); } catch (_e) { /* ignore */ } pw.print(); }, 120);
   };
 
-  const handlePrintReport = (item: SupportHistoryItem) => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-
+  const handlePrintReport = async (item: SupportHistoryItem) => {
     const jsonData = item.jsonData;
-    
-    // 事象データを抽出（ファイル名から優先的に取得、次にJSONデータから）
+
+    // 事象タイトル抽出
     let incidentTitle = '事象なし';
-    
-    // まずファイル名から事象内容を抽出
     if (item.fileName) {
-      const fileNameParts = item.fileName.split('_');
-      if (fileNameParts.length > 1) {
-        // ファイル名の最初の部分が事象内容
-        incidentTitle = fileNameParts[0];
-      }
+      const parts = item.fileName.split('_');
+      if (parts.length > 1) incidentTitle = parts[0];
     }
-    
-    // ファイル名から取得できない場合は、JSONデータから取得
     if (incidentTitle === '事象なし') {
       incidentTitle = jsonData?.title || jsonData?.question || '事象なし';
       if (incidentTitle === '事象なし' && jsonData?.chatData?.messages) {
-        // 従来フォーマットの場合、ユーザーメッセージから事象を抽出
-        const userMessages = jsonData.chatData.messages.filter((msg: any) => !msg.isAiResponse);
-        if (userMessages.length > 0) {
-          // 最初のユーザーメッセージを事象として使用
-          incidentTitle = userMessages[0].content || '事象なし';
-        }
+        type ChatMsg = { isAiResponse?: boolean; content?: string };
+        const userMessages = (jsonData.chatData.messages as unknown as ChatMsg[]).filter(m => !m.isAiResponse);
+        if (userMessages.length > 0) incidentTitle = userMessages[0]?.content || '事象なし';
       }
     }
-    
-    const problemDescription = jsonData?.problemDescription || jsonData?.answer || '説明なし';
-    
-    // 機種と機械番号を抽出（APIから返されるデータ構造に合わせる）
-    const machineType = item.machineInfo?.machineTypeName || 
-                      jsonData?.machineType || 
-                      jsonData?.chatData?.machineInfo?.machineTypeName || 
-                      item.machineType || '';
-    const machineNumber = item.machineInfo?.machineNumber || 
-                        jsonData?.machineNumber || 
-                        jsonData?.chatData?.machineInfo?.machineNumber || 
-                        item.machineNumber || '';
-    
-    const extractedComponents = jsonData?.extractedComponents || [];
-    const extractedSymptoms = jsonData?.extractedSymptoms || [];
-    const possibleModels = jsonData?.possibleModels || [];
-    
-    // 画像URLを取得（優先順位付き）
-    let imageUrl = '';
-    let imageFileName = '';
-    
-    console.log('個別レポート印刷用画像読み込み処理:', {
-      itemId: item.id,
-      hasJsonData: !!jsonData,
-      jsonDataKeys: jsonData ? Object.keys(jsonData) : [],
-      savedImages: jsonData?.savedImages,
-      conversationHistory: jsonData?.conversationHistory,
-      originalChatData: jsonData?.originalChatData,
-      chatData: jsonData?.chatData,
-      imagePath: item.imagePath
-    });
-    
-    // 優先順位1: conversationHistoryからBase64画像を取得（最優先）
-    if (jsonData?.conversationHistory && jsonData.conversationHistory.length > 0) {
-      const imageMessage = jsonData.conversationHistory.find((msg: any) => 
-        msg.content && msg.content.startsWith('data:image/')
-      );
-      if (imageMessage) {
-        imageUrl = imageMessage.content;
-        imageFileName = `故障画像_${item.id}`;
-        console.log('個別レポート印刷用: conversationHistoryからBase64画像を取得（最優先）');
-      }
-    }
-    
-    // 優先順位2: originalChatData.messagesからBase64画像を取得
-    if (!imageUrl && jsonData?.originalChatData?.messages) {
-      const imageMessage = jsonData.originalChatData.messages.find((msg: any) => 
-        msg.content && msg.content.startsWith('data:image/')
-      );
-      if (imageMessage) {
-        imageUrl = imageMessage.content;
-        imageFileName = `故障画像_${item.id}`;
-        console.log('個別レポート印刷用: originalChatDataからBase64画像を取得（優先順位2）');
-      }
-    }
-    
-    // 優先順位3: chatData.messagesからBase64画像を取得
-    if (!imageUrl && jsonData?.chatData?.messages) {
-      const imageMessage = jsonData.chatData.messages.find((msg: any) => 
-        msg.content && msg.content.startsWith('data:image/')
-      );
-      if (imageMessage) {
-        imageUrl = imageMessage.content;
-        imageFileName = `故障画像_${item.id}`;
-        console.log('個別レポート印刷用: chatDataからBase64画像を取得（優先順位3）');
-      }
-    }
-    
-    // 優先順位4: 直接のmessagesフィールドからBase64画像を検索
-    if (!imageUrl && jsonData?.messages && Array.isArray(jsonData.messages)) {
-      const imageMessage = jsonData.messages.find((msg: any) => 
-        msg.content && msg.content.startsWith('data:image/')
-      );
-      if (imageMessage) {
-        imageUrl = imageMessage.content;
-        imageFileName = `故障画像_${item.id}`;
-        console.log('個別レポート印刷用: messagesフィールドからBase64画像を取得（優先順位4）');
-      }
-    }
-    
-    // 優先順位5: savedImagesから画像を取得（サーバー上のファイル）
-    if (!imageUrl && jsonData?.savedImages && jsonData.savedImages.length > 0) {
-      const savedImage = jsonData.savedImages[0];
-      imageUrl = savedImage.url || '';
-      imageFileName = savedImage.fileName || `故障画像_${item.id}`;
-      console.log('個別レポート印刷用: savedImagesから画像を取得（優先順位5）');
-    }
-    
-    // 優先順位3: originalChatData.messagesからBase64画像を取得
-    if (!imageUrl && jsonData?.originalChatData?.messages) {
-      const imageMessage = jsonData.originalChatData.messages.find((msg: any) => 
-        msg.content && msg.content.startsWith('data:image/')
-      );
-      if (imageMessage) {
-        imageUrl = imageMessage.content;
-        imageFileName = `故障画像_${item.id}`;
-        console.log('個別レポート印刷用: originalChatDataからBase64画像を取得（優先順位3）');
-      }
-    }
-    
-    // 優先順位4: 従来フォーマットのchatData.messagesからBase64画像を取得
-    if (!imageUrl && jsonData?.chatData?.messages) {
-      const imageMessage = jsonData.chatData.messages.find((msg: any) => 
-        msg.content && msg.content.startsWith('data:image/')
-      );
-      if (imageMessage) {
-        imageUrl = imageMessage.content;
-        imageFileName = `故障画像_${item.id}`;
-        console.log('個別レポート印刷用: chatDataからBase64画像を取得（優先順位4）');
-      }
-    }
-    
-    // 優先順位6: その他の可能性のあるフィールドから画像を検索
-    if (!imageUrl) {
-      // 画像データが含まれる可能性のあるフィールドを再帰的に検索
-      const findImagesRecursively = (obj: any, path: string = ''): any[] => {
-        const foundImages = [];
-        if (obj && typeof obj === 'object') {
-          for (const [key, value] of Object.entries(obj)) {
-            const currentPath = path ? `${path}.${key}` : key;
-            if (typeof value === 'string' && value.startsWith('data:image/')) {
-              foundImages.push({
-                path: currentPath,
-                content: value
-              });
-            } else if (Array.isArray(value)) {
-              value.forEach((item, index) => {
-                foundImages.push(...findImagesRecursively(item, `${currentPath}[${index}]`));
-              });
-            } else if (typeof value === 'object' && value !== null) {
-              foundImages.push(...findImagesRecursively(value, currentPath));
-            }
-          }
-        }
-        return foundImages;
-      };
-      
-      const recursiveImages = findImagesRecursively(jsonData);
-      if (recursiveImages.length > 0) {
-        imageUrl = recursiveImages[0].content;
-        imageFileName = `故障画像_${item.id}`;
-        console.log('個別レポート印刷用: 再帰的検索で画像を取得（優先順位6）');
-      }
-    }
-    
-    // 優先順位7: 従来のimagePathフィールド（最終フォールバック）
-    if (!imageUrl && item.imagePath) {
-      imageUrl = item.imagePath.startsWith('http') ? item.imagePath : 
-               item.imagePath.startsWith('/') ? `${window.location.origin}${item.imagePath}` :
-               `${window.location.origin}/api/images/chat-exports/${item.imagePath}`;
-      imageFileName = `故障画像_${item.id}`;
-      console.log('個別レポート印刷用: imagePathから画像を取得（最終フォールバック）');
-    }
-    
-    console.log('個別レポート印刷用: 最終的な画像情報:', {
-      hasImage: !!imageUrl,
-      imageUrl: imageUrl ? imageUrl.substring(0, 100) + '...' : 'なし',
-      imageFileName,
-      isBase64: imageUrl ? imageUrl.startsWith('data:image/') : false
-    });
-    
-    const reportContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>機械故障報告書 - 印刷</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
-          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
-          .header h1 { margin: 0; color: #333; font-size: 24px; }
-          .header p { margin: 5px 0; color: #666; }
-          .section { margin-bottom: 25px; }
-          .section h2 { color: #333; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
-          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-          .info-item { padding: 10px; background-color: #f9f9f9; border-radius: 5px; }
-          .info-item strong { display: block; margin-bottom: 5px; color: #333; }
-          .content-box { background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin-top: 10px; }
-          .image-section { text-align: center; margin: 20px 0; }
-          .image-section img { max-width: 100%; max-height: 300px; border: 1px solid #ddd; border-radius: 5px; }
-          @media print {
-            .no-print { display: none; }
-            body { 
-              margin: 0; 
-              font-size: 10px;
-              line-height: 1.2;
-            }
-            .header h1 { 
-              font-size: 16px; 
-              margin: 5px 0; 
-            }
-            .header p { 
-              font-size: 8px; 
-              margin: 2px 0; 
-            }
-            .section { 
-              margin: 8px 0; 
-              page-break-inside: avoid;
-            }
-            .section h2 { 
-              font-size: 12px; 
-              margin: 5px 0; 
-            }
-            .info-grid { 
-              gap: 4px; 
-            }
-            .info-item { 
-              font-size: 9px; 
-              padding: 2px; 
-            }
-            .content { 
-              font-size: 9px; 
-              line-height: 1.1;
-            }
-            .image-section { 
-              margin: 8px 0; 
-            }
-            .image-section img { 
-              max-height: 150px; 
-            }
-            @page {
-              size: A4;
-              margin: 10mm;
-            }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-                      <h1>機械故障報告書</h1>
-          <p>印刷日時: ${new Date().toLocaleString('ja-JP')}</p>
-        </div>
-        
-        <div class="section">
-          <h2>報告概要</h2>
-          <div class="info-grid">
-            <div class="info-item">
-              <strong>報告書ID</strong>
-              R${item.id.slice(-5).toUpperCase()}
-            </div>
-            <div class="info-item">
-              <strong>機械ID</strong>
-              ${item.machineNumber}
-            </div>
-            <div class="info-item">
-              <strong>日付</strong>
-              ${new Date(item.createdAt).toISOString().split('T')[0]}
-            </div>
-            <div class="info-item">
-              <strong>場所</strong>
-              ○○線
-            </div>
-            <div class="info-item">
-              <strong>故障コード</strong>
-              FC01
-            </div>
-          </div>
-        </div>
-        
-        <div class="section">
-          <h2>事象詳細</h2>
-          <div class="content-box">
-            <p><strong>事象タイトル:</strong> ${incidentTitle}</p>
-            <p><strong>事象説明:</strong> ${problemDescription}</p>
-            <p><strong>ステータス:</strong> 応急処置完了</p>
-            <p><strong>担当エンジニア:</strong> 担当者</p>
-            <p><strong>機種:</strong> ${machineType}</p>
-            <p><strong>機械番号:</strong> ${machineNumber}</p>
-          </div>
-        </div>
-        
-        ${imageUrl ? `
-        <div class="section">
-          <h2>故障箇所画像</h2>
-          <div class="image-section">
-            <p>機械故障箇所の画像</p>
-            <img src="${imageUrl}" alt="故障箇所画像" />
-            <p style="font-size: 12px; color: #666;">上記は故障箇所の写真です。</p>
-          </div>
-        </div>
-        ` : ''}
-        
-        <div class="section">
-          <h2>修繕計画</h2>
-          <div class="info-grid">
-            <div class="info-item">
-              <strong>予定月日</strong>
-              ${item.jsonData?.repairSchedule || '-'}
-            </div>
-            <div class="info-item">
-              <strong>場所</strong>
-              ${item.jsonData?.location || '-'}
-            </div>
-          </div>
-        </div>
-        
-        <div class="section">
-          <h2>記事欄</h2>
-          <div class="content-box">
-            <p>${item.jsonData?.remarks || '記載なし'}</p>
-          </div>
-        </div>
-        
-        <div class="section">
-          <p style="text-align: center; color: #666; font-size: 12px;">
-            © 2025 機械故障報告書. All rights reserved.
-          </p>
-        </div>
-        
-        <div class="no-print" style="margin-top: 30px; text-align: center;">
-          <button onclick="window.print()">印刷</button>
-          <button onclick="window.close()">閉じる</button>
-        </div>
-      </body>
-      </html>
-    `;
 
-    printWindow.document.write(reportContent);
-    printWindow.document.close();
+    const problemDescription = jsonData?.problemDescription || jsonData?.answer || '説明なし';
+    const machineType = item.machineInfo?.machineTypeName || jsonData?.machineType || jsonData?.chatData?.machineInfo?.machineTypeName || item.machineType || '';
+    const machineNumber = item.machineInfo?.machineNumber || jsonData?.machineNumber || jsonData?.chatData?.machineInfo?.machineNumber || item.machineNumber || '';
+
+    // 元データから最初の画像候補
+    let rawImage = pickFirstImage(item) || '';
+    if (!rawImage) {
+      type SavedImg = { url?: string; path?: string };
+      const jd = jsonData as { imagePath?: string; savedImages?: SavedImg[] } | undefined;
+      const candidates: string[] = [];
+      const push = (v?: string) => { if (v && !candidates.includes(v)) candidates.push(v); };
+      push(jd?.imagePath);
+      if (jd?.savedImages) jd.savedImages.forEach((si: SavedImg)=>{ push(si.url); push(si.path); });
+      if (item.imagePath) push(item.imagePath);
+      rawImage = candidates[0] || '';
+    }
+
+    const toDataUrl = async (src: string): Promise<string> => {
+      try {
+        if (!src) return '';
+        if (src.startsWith('data:image/')) return src; // 既にDataURL
+        let normalized = src.trim();
+        // Windowsパス→ファイル名抽出
+        if (/^[A-Za-z]:\\/.test(normalized)) {
+          const f = normalized.split(/[\\/]/).pop();
+          if (f) normalized = `/api/images/chat-exports/${f}`;
+        }
+        // knowledge-base 配下 → chat-exports へ
+        if (normalized.startsWith('knowledge-base')) {
+          const f = normalized.split(/[\\/]/).pop();
+          if (f) normalized = `/api/images/chat-exports/${f}`;
+        }
+        if (!normalized.startsWith('http') && !normalized.startsWith('data:')) {
+          if (!normalized.startsWith('/')) normalized = '/' + normalized;
+        }
+        const absolute = normalized.startsWith('http') ? normalized : `${window.location.origin}${normalized}`;
+        const res = await fetch(absolute);
+        if (!res.ok) return '';
+        const blob = await res.blob();
+        return await new Promise<string>(resolve => {
+          const r = new FileReader();
+            r.onload = () => resolve(r.result as string);
+            r.onerror = () => resolve('');
+            r.readAsDataURL(blob);
+        });
+      } catch { return ''; }
+    };
+
+    // 複数画像 (先頭30枚) を抽出し dataURL 化
+    const rawImages = pickAllImages(item).slice(0,30);
+    if (rawImage && !rawImages.includes(rawImage)) rawImages.unshift(rawImage);
+    const converted: string[] = [];
+    for (const r of rawImages) {
+      const du = await toDataUrl(r);
+      if (du) converted.push(du);
+    }
+  console.log('PRINT_REPORT', { itemId: item.id, rawImage, total: rawImages.length, converted: converted.length });
+
+    const reportContent = `<!DOCTYPE html><html><head><title>機械故障報告書 - 印刷</title>
+    <meta charset="utf-8" />
+    <style>
+      body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+      .header { text-align: center; margin-bottom: 24px; border-bottom: 2px solid #333; padding-bottom: 12px; }
+      .header h1 { margin: 0; font-size: 22px; }
+      .section { margin-bottom: 20px; }
+      .section h2 { font-size: 14px; margin: 0 0 6px; border-bottom: 1px solid #ccc; padding-bottom: 2px; }
+      .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .info-item { background:#f7f7f7; padding:8px; border-radius:4px; font-size:12px; }
+      .info-item strong { display:block; font-size:11px; color:#333; }
+      .content-box { background:#f9f9f9; padding:12px; border-radius:4px; font-size:12px; }
+      .image-section { text-align:center; margin:10px 0; }
+      .image-wrapper { min-height:170px; display:flex; align-items:center; justify-content:center; border:1px solid #ddd; border-radius:4px; background:#fff; }
+      .image-wrapper img { max-height:160px; max-width:100%; object-fit:contain; }
+      @media print { body { margin:0; font-size:10px; } .header h1 { font-size:16px; } .section { margin:10px 0; } .info-item { padding:4px; } .image-wrapper { min-height:150px; } }
+      @page { size:A4; margin:10mm; }
+    </style></head><body>
+      <div class="header"><h1>機械故障報告書</h1><p style="font-size:10px;">印刷日時: ${new Date().toLocaleString('ja-JP')}</p></div>
+      <div class="section"><h2>報告概要</h2><div class="info-grid">
+        <div class="info-item"><strong>報告書ID</strong>R${item.id.slice(-5).toUpperCase()}</div>
+        <div class="info-item"><strong>機械ID</strong>${item.machineNumber}</div>
+        <div class="info-item"><strong>日付</strong>${new Date(item.createdAt).toISOString().split('T')[0]}</div>
+        <div class="info-item"><strong>場所</strong>○○線</div>
+        <div class="info-item"><strong>故障コード</strong>FC01</div>
+      </div></div>
+      <div class="section"><h2>事象詳細</h2><div class="content-box">
+        <p><strong>事象タイトル:</strong> ${incidentTitle}</p>
+        <p><strong>事象説明:</strong> ${problemDescription}</p>
+        <p><strong>ステータス:</strong> 応急処置完了</p>
+        <p><strong>担当エンジニア:</strong> 担当者</p>
+        <p><strong>機種:</strong> ${machineType}</p>
+        <p><strong>機械番号:</strong> ${machineNumber}</p>
+      </div></div>
+      <div class="section"><h2>故障箇所画像 (${converted.length}枚)</h2>
+        <div class="image-section">
+          ${converted.length === 0 ? `<div class='image-wrapper'><span style='color:#999;font-size:11px;'>画像なし</span></div>` : `
+            <div style='display:grid;grid-template-columns:repeat(3,1fr);gap:8px;'>
+              ${converted.map((cu,i)=>`<div style='border:1px solid #ddd;border-radius:4px;padding:4px;display:flex;align-items:center;justify-content:center;min-height:120px;'>
+                <img src='${cu}' alt='故障画像${i+1}' style='max-width:100%;max-height:110px;object-fit:contain;' />
+              </div>`).join('')}
+            </div>`}
+          <p style="font-size:9px;color:#666;margin-top:6px;">内部データから自動抽出 (最大30枚)。</p>
+        </div>
+      </div>
+      <div class="section"><h2>修繕計画</h2><div class="info-grid">
+        <div class="info-item"><strong>予定月日</strong>${item.jsonData?.repairSchedule || '-'}</div>
+        <div class="info-item"><strong>場所</strong>${item.jsonData?.location || '-'}</div>
+      </div></div>
+      <div class="section"><h2>記事欄</h2><div class="content-box">${item.jsonData?.remarks || '記載なし'}</div></div>
+      <div class="section" style="text-align:center;color:#666;font-size:10px;">© 2025 機械故障報告書</div>
+      <div class="no-print" style="margin-top:20px;text-align:center;">
+        <button onclick="window.print()">印刷</button>
+        <button onclick="window.close()">閉じる</button>
+      </div>
+    </body></html>`;
+
+    const pw = window.open('', '_blank');
+    if (!pw) return;
+    pw.document.write(reportContent);
+    pw.document.close();
+  setTimeout(()=>{ try { pw.focus(); } catch(_err) { /* ignore focus error */ } pw.print(); }, 150);
   };
 
   // ローディング状態の表示
@@ -3128,9 +3060,7 @@ const HistoryPage: React.FC = () => {
                   onChange={(e) => handleFilterChange('searchDate', e.target.value)}
                   className="w-full"
                 />
-                <p className="text-xs text-gray-500">
-                  ※ 指定した日付の履歴を検索します
-                </p>
+                <p className="text-xs text-gray-500">※ 指定した日付の履歴を検索します</p>
               </div>
             </div>
 
@@ -3257,8 +3187,7 @@ const HistoryPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredItems.map((item) => {
-                      // 新しいフォーマットのデータ構造に合わせて表示
+                    {filteredItems.map(item => {
                       const jsonData = item.jsonData;
                       
                       // 事象データを抽出（ファイル名から優先的に取得、次にJSONデータから）
@@ -3278,10 +3207,11 @@ const HistoryPage: React.FC = () => {
                         incidentTitle = jsonData?.title || jsonData?.question || '事象なし';
                         if (incidentTitle === '事象なし' && jsonData?.chatData?.messages) {
                           // 従来フォーマットの場合、ユーザーメッセージから事象を抽出
-                          const userMessages = jsonData.chatData.messages.filter((msg: any) => !msg.isAiResponse);
+                          type ChatMessage = { isAiResponse?: boolean; content?: string };
+                          const userMessages = (jsonData.chatData.messages as unknown as ChatMessage[]).filter(m => !m.isAiResponse);
                           if (userMessages.length > 0) {
                             // 最初のユーザーメッセージを事象として使用
-                            incidentTitle = userMessages[0].content || '事象なし';
+                            incidentTitle = userMessages[0]?.content || '事象なし';
                           }
                         }
                       }
@@ -3308,11 +3238,7 @@ const HistoryPage: React.FC = () => {
                         itemMachineNumber: item.machineNumber
                       });
                       
-                      const messageCount = jsonData?.metadata?.total_messages || 
-                                         jsonData?.chatData?.messages?.length || 
-                                         jsonData?.messageCount || 0;
-                      const exportType = jsonData?.exportType || 'manual_send';
-                      const fileName = jsonData?.metadata?.fileName || '';
+                      // 未使用となった統計系フィールドは削除（messageCount/exportType/fileName）
                       
                       return (
                         <tr key={item.id} className="hover:bg-gray-50 bg-blue-50">
@@ -3808,30 +3734,36 @@ const HistoryPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 故障個所の画像（修繕計画の上に移動） */}
+                {/* 故障個所の画像 (複数, 3列グリッド) */}
                 {(() => {
-                  const imageUrl = pickFirstImage(editingItem);
-                  if (imageUrl) {
-                    return (
-                      <div className="bg-purple-50 p-4 rounded-lg">
-                        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                          <Image className="h-5 w-5" />
-                          故障個所の画像
-                        </h3>
-                        <div className="text-center">
-                          <img
-                            src={imageUrl}
-                            alt="故障画像"
-                            className="max-w-full max-h-64 mx-auto border border-gray-300 rounded-md shadow-sm"
-                          />
-                          <p className="text-sm text-gray-600 mt-2">
-                            故障箇所の画像 {imageUrl.startsWith('data:image/') ? '(Base64)' : '(URL)'}
-                          </p>
-                        </div>
+                  const allImages = pickAllImages(editingItem);
+                  if (allImages.length === 0) return null;
+                  return (
+                    <div className="bg-purple-50 p-4 rounded-lg">
+                      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                        <Image className="h-5 w-5" />
+                        故障個所の画像 ({allImages.length}枚)
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {allImages.map((img, idx) => {
+                          const isData = img.startsWith('data:image/');
+                          return (
+                            <div key={idx} className="relative group border border-gray-300 rounded-md bg-white p-2 flex flex-col items-center shadow-sm">
+                              <img
+                                src={img}
+                                alt={`故障画像${idx + 1}`}
+                                className="max-h-40 w-auto object-contain mx-auto"
+                              />
+                              <div className="mt-1 text-[10px] text-gray-600 break-all w-full text-center">
+                                {isData ? 'Base64画像' : '参照URL'}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    );
-                  }
-                  return null;
+                      <p className="text-xs text-gray-500 mt-2">最大30枚まで表示（内部データから自動抽出）</p>
+                    </div>
+                  );
                 })()}
 
                 {/* 修繕計画編集 */}

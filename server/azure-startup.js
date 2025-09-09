@@ -11,7 +11,7 @@ process.env.PORT = process.env.PORT || 8080;
 const startTime = Date.now();
 
 // 基本的なヘルスチェックサーバーを即座に起動
-const http = require('http');
+import http from 'http';
 const healthServer = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({
@@ -37,7 +37,13 @@ setTimeout(async () => {
     console.log('📦 本番サーバーを起動中...');
     
     // 本番サーバーを起動
-    const { default: startServer } = await import('./dist/production-server.js');
+    // 既存の本番エントリポイントに委譲（TypeScript: server/index.production.ts → ビルド後: server/dist/index.production.js）
+    try {
+      await import('./dist/index.production.js');
+    } catch (e) {
+      console.warn('⚠️ dist/index.production.js の読み込みに失敗。フォールバックとして NodeNext で実行を試行');
+      await import('./index.production.js');
+    }
     
     // ヘルスチェックサーバーを停止
     healthServer.close(() => {

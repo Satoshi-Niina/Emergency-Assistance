@@ -485,13 +485,14 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       }
 
-      const timestamp = Date.now();
+  const timestamp = Date.now();
+  const generateId = () => (globalThis.crypto?.randomUUID?.() ?? `id_${Date.now()}_${Math.random().toString(36).slice(2)}`);
 
       // メディアファイルの処理
       let processedMedia: any[] = [];
       if (mediaUrls && mediaUrls.length > 0) {
         processedMedia = mediaUrls.map((media, index) => ({
-          id: `media_${timestamp}_${index}`,
+          id: generateId(),
           type: media.type,
           url: media.url,
           thumbnail: media.thumbnail || media.url,
@@ -502,7 +503,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // メッセージを作成
       const message: Message = {
-        id: timestamp,
+        id: generateId(),
         chatId: currentChatId,
         content: content.trim(),
         text: content.trim(),
@@ -820,12 +821,13 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('応急処置ガイド: チャットID', currentChatId, 'にデータを送信します');
 
       // ChatMessage形式でメッセージを作成
-      const timestamp = Date.now();
+  const timestamp = Date.now();
+  const generateId = () => (globalThis.crypto?.randomUUID?.() ?? `id_${Date.now()}_${Math.random().toString(36).slice(2)}`);
 
       // ユーザーメッセージ（左側）- 構造統一
       const userMessageContent = `応急処置ガイド「${guideData.title}」を実施しました`;
       const userMessage = {
-        id: timestamp,
+        id: generateId(),
         chatId: currentChatId,
         content: userMessageContent,
         text: userMessageContent,
@@ -850,7 +852,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // AI応答メッセージ（右側）- 構造統一（画像情報を含む）
       const aiMessageContent = `■ 応急処置ガイド実施記録\n\n**${guideData.title}**\n\n${guideData.content}\n\n---\n**AI分析**: 応急処置手順が正常に記録されました。実施状況に関して追加のご質問がございましたらお聞かせください。`;
       const aiMessage = {
-        id: timestamp + 1,
+        id: generateId(),
         chatId: currentChatId,
         content: aiMessageContent,
         text: aiMessageContent,

@@ -122,7 +122,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
       // キャッシュバスターパラメータを追加
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 15);
-      const url = `${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/list?ts=${timestamp}&_r=${randomId}${forceRefresh ? '&force=true' : ''}`;
+  const url = `${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list?ts=${timestamp}&_r=${randomId}${forceRefresh ? '&force=true' : ''}`;
 
       console.log('🌐 フロー一覧API呼び出し:', url);
       console.log('🔧 API設定:', {
@@ -233,7 +233,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         setUploadProgress(prev => Math.min(prev + 10, 90));
       }, 100);
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/upload`, {
+  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/upload`, {
         method: 'POST',
         body: formData
       });
@@ -307,7 +307,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
       // 🎯 統一されたAPIエンドポイントで直接取得
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 15);
-      const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/${flowId}?ts=${timestamp}&_r=${randomId}`;
+  const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${flowId}?ts=${timestamp}&_r=${randomId}`;
 
       console.log('🌐 API呼び出し:', apiUrl);
 
@@ -491,7 +491,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
 
       // 削除APIを呼び出し
       const fileName = targetFlow.fileName || flowId + '.json';
-      const url = `/api/emergency-flow/${flowId}?fileName=${encodeURIComponent(fileName)}`;
+  const url = `${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${flowId}?fileName=${encodeURIComponent(fileName)}`;
       console.log('🌐 削除API呼び出し:', url);
       
       const response = await fetch(url, {
@@ -800,7 +800,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
       formData.append('image', file);
       formData.append('stepId', stepId);
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/upload-image`, {
+  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/upload-image`, {
         method: 'POST',
         body: formData
       });
@@ -884,7 +884,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
     if (confirmDelete) {
       try {
         // APIを呼び出してサーバーから画像を削除
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/image/${imageToRemove.fileName}`, {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/image/${imageToRemove.fileName}`, {
           method: 'DELETE',
         });
 

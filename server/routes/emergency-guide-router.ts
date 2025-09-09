@@ -930,96 +930,9 @@ router.post('/save-chat-local', async (req, res) => {
         const fileName = `chat_${safeTitle}_${timestamp}.json`;
         const filePath = path.join(exportsDir, fileName);
 
-        // 画像処理：base64画像を抽出して保存
-        const processedMessages = [];
-        
-        for (let i = 0; i < messages.length; i++) {
-            const message = messages[i];
-            const processedMessage = { ...message };
-            
-            // テキスト内容からbase64画像を検出
-            if (message.content && typeof message.content === 'string') {
-                const base64ImageRegex = /data:image\/([a-zA-Z]*);base64,([^"]*)/g;
-                let match;
-                const imageData = [];
-                
-                while ((match = base64ImageRegex.exec(message.content)) !== null) {
-                    const [fullMatch, imageType, base64Data] = match;
-                    
-                    // 画像ファイル名を生成
-                    const imageFileName = `chat_${safeTitle}_${timestamp}_img_${i}_${imageData.length}.${imageType}`;
-                    const imageFilePath = path.join(exportsDir, imageFileName);
-                    
-                    try {
-                        // base64データをファイルに保存
-                        const imageBuffer = Buffer.from(base64Data, 'base64');
-                        fs.writeFileSync(imageFilePath, imageBuffer);
-                        
-                        imageData.push({
-                            fileName: imageFileName,
-                            filePath: imageFilePath,
-                            type: imageType,
-                            size: imageBuffer.length
-                        });
-                        
-                        console.log(`画像保存完了: ${imageFileName}`);
-                    } catch (imageError) {
-                        console.error('画像保存エラー:', imageError);
-                    }
-                }
-                
-                // 画像情報をメッセージに追加
-                if (imageData.length > 0) {
-                    processedMessage.images = imageData;
-                }
-            }
-            
-            // mediaプロパティにも画像がある場合の処理
-            if (message.media && Array.isArray(message.media)) {
-                const processedMedia = [];
-                
-                for (let j = 0; j < message.media.length; j++) {
-                    const mediaItem = message.media[j];
-                    
-                    if (mediaItem.type === 'image' && mediaItem.url && mediaItem.url.startsWith('data:image/')) {
-                        const base64Match = mediaItem.url.match(/data:image\/([a-zA-Z]*);base64,(.+)/);
-                        
-                        if (base64Match) {
-                            const [, imageType, base64Data] = base64Match;
-                            const imageFileName = `chat_${safeTitle}_${timestamp}_media_${i}_${j}.${imageType}`;
-                            const imageFilePath = path.join(exportsDir, imageFileName);
-                            
-                            try {
-                                const imageBuffer = Buffer.from(base64Data, 'base64');
-                                fs.writeFileSync(imageFilePath, imageBuffer);
-                                
-                                processedMedia.push({
-                                    ...mediaItem,
-                                    fileName: imageFileName,
-                                    filePath: imageFilePath,
-                                    size: imageBuffer.length
-                                });
-                                
-                                console.log(`メディア画像保存完了: ${imageFileName}`);
-                            } catch (imageError) {
-                                console.error('メディア画像保存エラー:', imageError);
-                                processedMedia.push(mediaItem); // エラーの場合は元のデータを保持
-                            }
-                        } else {
-                            processedMedia.push(mediaItem);
-                        }
-                    } else {
-                        processedMedia.push(mediaItem);
-                    }
-                }
-                
-                if (processedMedia.length > 0) {
-                    processedMessage.media = processedMedia;
-                }
-            }
-            
-            processedMessages.push(processedMessage);
-        }
+    // Base64画像抽出/保存ロジックは不要になったため削除
+    // メッセージはそのまま保存（後で必要なら別途ファイルアップロード機構を導入）
+    const processedMessages = messages.map((m: any) => ({ ...m }));
 
         // チャットデータをJSONファイルとして保存
         const chatData = {
@@ -1029,9 +942,7 @@ router.post('/save-chat-local', async (req, res) => {
                 savedAt: new Date().toISOString(),
                 fileName,
                 totalMessages: processedMessages.length,
-                imageCount: processedMessages.reduce((count, msg) => {
-                    return count + (msg.images ? msg.images.length : 0) + (msg.media ? msg.media.length : 0);
-                }, 0)
+                imageCount: 0
             },
             messages: processedMessages
         };
@@ -1040,7 +951,8 @@ router.post('/save-chat-local', async (req, res) => {
 
         console.log(`チャット保存完了: ${filePath}`);
         console.log(`保存されたメッセージ数: ${processedMessages.length}`);
-        console.log(`保存された画像数: ${chatData.metadata.imageCount}`);
+    // 画像数は常に0（Base64非活用方針）
+    console.log(`保存された画像数: 0 (Base64処理無効化)`);
 
         res.json({
             success: true,

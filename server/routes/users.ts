@@ -1,18 +1,21 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
-import multer from 'multer';
+import multer, { FileFilterCallback } from 'multer';
+import { requireAuth, requireSystemAdmin, requireOperatorOrAdmin } from '../middleware/authz.js';
 import * as XLSX from 'xlsx';
 import { db } from '../db/index.js';
 import { users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
+import type { User } from '../db/types.js';
+import { requirePermission, PERM } from '../middleware/authz.js';
 
 const router = express.Router();
 
 // Multer設定（エクセルファイルアップロード用）
 const storage = multer.memoryStorage();
 const upload = multer({ 
-  storage: storage,
-  fileFilter: (req: any, file: any, cb: any) => {
+    storage: storage,
+    fileFilter: (_req: express.Request, file: Express.Multer.File, cb: FileFilterCallback) => {
     // エクセルファイルのみ許可
     if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
         file.mimetype === 'application/vnd.ms-excel' ||
@@ -28,22 +31,10 @@ const upload = multer({
   }
 });
 
-// 認証ミドルウェア（一時的に無効化）
-const requireAuth = async (req: any, res: any, next: any) => {
-  console.log('[DEBUG] 認証チェック一時的に無効化 - すべてのユーザーを許可');
-  // 一時的に認証をスキップ
-  next();
-};
-
-// 管理者権限ミドルウェア（一時的に無効化）
-const requireAdmin = async (req: any, res: any, next: any) => {
-  console.log('[DEBUG] 管理者権限チェック一時的に無効化 - すべてのユーザーを許可');
-  // 一時的に管理者権限チェックをスキップ
-  next();
-};
+// 既存のスタブは削除し、新しいミドルウェアを利用
 
 // デバッグ用エンドポイント - セッション状態を確認
-router.get('/debug', (req: any, res: any) => {
+router.get('/debug', (req, res) => {
   console.log('[DEBUG] ユーザー管理デバッグエンドポイント呼び出し');
   
   const debugInfo = {
@@ -51,7 +42,8 @@ router.get('/debug', (req: any, res: any) => {
       sessionId: req.session?.id,
       userId: req.session?.userId,
       userRole: req.session?.userRole,
-      username: req.session?.username,
+    // username はセッション未設定のため表示しない (将来 user オブジェクト格納時に復活可)
+    username: undefined,
       hasSession: !!req.session,
     },
     request: {
@@ -75,7 +67,7 @@ router.get('/debug', (req: any, res: any) => {
 });
 
 // 全ユーザー取得（管理者のみ）- 一時的に認証を緩和
-router.get('/', async (req: any, res: any) => {
+router.get('/', requireAuth, requireOperatorOrAdmin, requirePermission(PERM.USER_MANAGE), async (req, res) => {
     try {
         // Content-Typeを明示的に設定
         res.setHeader('Content-Type', 'application/json');
@@ -90,7 +82,7 @@ router.get('/', async (req: any, res: any) => {
         });
         
         // Drizzle ORMを使用して全ユーザーを取得
-        const allUsers: any = await db.select({
+    const allUsers = await db.select({
             id: users.id,
             username: users.username,
             display_name: users.displayName,
@@ -124,7 +116,7 @@ router.get('/', async (req: any, res: any) => {
 });
 
 // 新規ユーザー作成（管理者のみ）- 一時的に認証を緩和
-router.post('/', async (req: any, res: any) => {
+router.post('/', requireAuth, requireSystemAdmin, requirePermission(PERM.USER_MANAGE), async (req, res) => {
     try {
         // Content-Typeを明示的に設定
         res.setHeader('Content-Type', 'application/json');
@@ -170,22 +162,25 @@ router.post('/', async (req: any, res: any) => {
         }
 
         // パスワードの強度チェック
-        if (password.length < 6) {
-            return res.status(400).json({
-                success: false,
-                error: 'Password must be at least 6 characters long',
-                timestamp: new Date().toISOString()
-            });
-        }
+                // パスワード強度ポリシー統一 (auth.ts と同一)
+                const policy = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
+                if (!policy.test(password)) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Password must include upper/lower/digit/symbol and be 8+ chars',
+                        timestamp: new Date().toISOString()
+                    });
+                }
 
         // 権限の値チェック
-        if (!['employee', 'admin'].includes(role)) {
-            return res.status(400).json({
-                success: false,
-                error: 'Role must be either "employee" or "admin"',
-                timestamp: new Date().toISOString()
-            });
-        }
+                if (!['system_admin','operator','user','employee','admin'].includes(role)) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Role must be one of system_admin/operator/user',
+                        timestamp: new Date().toISOString()
+                    });
+                }
+                const normalizedRole = role === 'admin' ? 'system_admin' : role === 'employee' ? 'user' : role;
 
         // 既存ユーザーの確認
         const existingUser = await db.select().from(users).where(eq(users.username, username));
@@ -216,7 +211,7 @@ router.post('/', async (req: any, res: any) => {
             username,
             password: hashedPassword,
             displayName: display_name,
-            role,
+            role: normalizedRole,
             department: department || null,
             description: description || null
         }).returning();
@@ -253,15 +248,15 @@ router.post('/', async (req: any, res: any) => {
 });
 
 // 個別ユーザー取得（管理者のみ）
-router.get('/:id', requireAuth, requireAdmin, async (req: any, res: any) => {
+router.get('/:id', requireAuth, requireOperatorOrAdmin, requirePermission(PERM.USER_MANAGE), async (req, res) => {
     try {
         const { id } = req.params;
         
         // まず、Drizzleのクエリで試行
-        let existingUser: any = null;
+    let existingUser: User | null = null;
         try {
             const results = await db.select().from(users).where(eq(users.id, id));
-            existingUser = results[0];
+            existingUser = results[0] as User;
         } catch (dbError) {
             console.log('[DEBUG] Drizzleクエリエラー:', dbError);
         }
@@ -269,7 +264,7 @@ router.get('/:id', requireAuth, requireAdmin, async (req: any, res: any) => {
         // Drizzleクエリが失敗した場合、手動で検索
         if (!existingUser) {
             console.log('[DEBUG] Drizzleクエリ失敗、手動検索を実行');
-            const allUsers: any = await db.select().from(users);
+            const allUsers = await db.select().from(users) as User[];
             console.log(`[DEBUG] 全ユーザー一覧 (${allUsers.length}件):`, allUsers.map(u => ({
                 id: u.id,
                 username: u.username,
@@ -323,7 +318,7 @@ router.get('/:id', requireAuth, requireAdmin, async (req: any, res: any) => {
 
         if (existingUser) {
             // パスワードを除外してレスポンス
-            const { password, ...userWithoutPassword } = existingUser;
+                const { password: _p, ...userWithoutPassword } = existingUser; // eslint-disable-line @typescript-eslint/no-unused-vars
             res.json({
                 success: true,
                 data: userWithoutPassword,
@@ -349,7 +344,7 @@ router.get('/:id', requireAuth, requireAdmin, async (req: any, res: any) => {
 });
 
 // ユーザー更新処理の共通関数
-const updateUserHandler = async (req: any, res: any) => {
+const updateUserHandler = async (req: express.Request, res: express.Response) => {
     try {
         const { id } = req.params;
         const { username, display_name, role, department, description, password } = req.body;
@@ -363,7 +358,7 @@ const updateUserHandler = async (req: any, res: any) => {
             hasPassword: !!password
         });
 
-        const updateData: any = {
+    const updateData: Partial<User> = {
             username,
             displayName: display_name,
             role,
@@ -375,7 +370,7 @@ const updateUserHandler = async (req: any, res: any) => {
             updateData.password = await bcrypt.hash(password, 10);
         }
 
-        const existingUser: any = await db.select().from(users).where(eq(users.id, id));
+    const existingUser = await db.select().from(users).where(eq(users.id, id)) as User[];
         
         if (existingUser.length === 0) {
             console.log(`[ERROR] ユーザーが見つかりません: ID="${id}"`);
@@ -404,13 +399,13 @@ const updateUserHandler = async (req: any, res: any) => {
 };
 
 // PUTメソッド（既存）
-router.put('/:id', requireAuth, requireAdmin, updateUserHandler);
+router.put('/:id', requireAuth, requireSystemAdmin, requirePermission(PERM.USER_MANAGE), updateUserHandler);
 
 // PATCHメソッド（新規追加）
-router.patch('/:id', requireAuth, requireAdmin, updateUserHandler);
+router.patch('/:id', requireAuth, requireSystemAdmin, requirePermission(PERM.USER_MANAGE), updateUserHandler);
 
 // ユーザー削除（管理者のみ）
-router.delete('/:id', requireAuth, requireAdmin, async (req: any, res: any) => {
+router.delete('/:id', requireAuth, requireSystemAdmin, requirePermission(PERM.USER_MANAGE), async (req: express.Request, res: express.Response) => {
     try {
         const { id } = req.params;
 
@@ -448,7 +443,7 @@ router.delete('/:id', requireAuth, requireAdmin, async (req: any, res: any) => {
 });
 
 // エクセルファイルからユーザー一括インポート（管理者のみ）
-router.post('/import-excel', requireAuth, requireAdmin, upload.single('file'), async (req: any, res: any) => {
+router.post('/import-excel', requireAuth, requireSystemAdmin, requirePermission(PERM.USER_MANAGE), upload.single('file'), async (req: express.Request & { file?: Express.Multer.File }, res: express.Response) => {
     try {
         console.log('[DEBUG] エクセルインポートリクエスト受信');
         
@@ -487,7 +482,7 @@ router.post('/import-excel', requireAuth, requireAdmin, upload.single('file'), a
         };
 
         for (let i = 0; i < dataRows.length; i++) {
-            const row = dataRows[i] as any[];
+            const row = dataRows[i] as unknown[];
             const rowNumber = i + 2; // ヘッダー行を除いて1から開始、さらにヘッダー行分+1
 
             try {
@@ -576,7 +571,7 @@ router.post('/import-excel', requireAuth, requireAdmin, upload.single('file'), a
 });
 
 // エラーハンドリングミドルウェア
-router.use((err: any, req: any, res: any, next: any) => {
+router.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('ユーザー管理エラー:', err);
   
   // Content-Typeを明示的に設定
@@ -591,7 +586,7 @@ router.use((err: any, req: any, res: any, next: any) => {
 });
 
 // 404ハンドリング
-router.use('*', (req: any, res: any) => {
+router.use('*', (req: express.Request, res: express.Response) => {
   res.setHeader('Content-Type', 'application/json');
   res.status(404).json({
     success: false,

@@ -9,7 +9,8 @@ export class AzureStorageService {
 
     constructor() {
         const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
-        this.containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge-base';
+        // 既定コンテナ名を 'knowledge' に変更（環境変数で上書き可）
+        this.containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
 
         if (!connectionString) {
             throw new Error('AZURE_STORAGE_CONNECTION_STRING environment variable is required');

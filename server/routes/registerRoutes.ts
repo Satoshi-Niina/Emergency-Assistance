@@ -6,7 +6,18 @@ export async function registerRoutes(app: Express) {
   await mountIfExists(app, '/api/knowledge-base', './knowledge-base.js');
   await mountIfExists(app, '/api/knowledge', './knowledge.js');
   await mountIfExists(app, '/api/machines', './machines.js');
+  // History, Base Data, Flows を有効化
+  await mountIfExists(app, '/api/history', './history.js');
+  await mountIfExists(app, '/api/base-data', './base-data.js');
+  await mountIfExists(app, '/api/flows', './flows.js');
   await mountIfExists(app, '/api/openai', './openai.js');
+  // Additional content/data routes
+  await mountIfExists(app, '/api/troubleshooting', './troubleshooting.js');
+  await mountIfExists(app, '/api/settings', './settings.js');
+  await mountIfExists(app, '/api/reports', './reports.js');
+  await mountIfExists(app, '/api/users', './users.js');
+  await mountIfExists(app, '/api/uploads', './uploads.js');
+  await mountIfExists(app, '/api/chats', './chats.js');
   // System diagnostics (DB/GPT health checks)
   await mountIfExists(app, '/api', './system-check.js');
 

@@ -1,5 +1,4 @@
-// @ts-nocheck
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { X, TabletSmartphone, Video, Pause, Square, Circle } from 'lucide-react';
@@ -12,7 +11,8 @@ export default function CameraModal() {
   const [isOpen, setIsOpen] = useState(false);
   const [isVideoMode, setIsVideoMode] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null); // preview (object URL)
+  const [capturedBlob, setCapturedBlob] = useState<Blob | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   // 常に背面カメラを使用する（切替機能なし）
   const [useBackCamera] = useState(true);
@@ -21,13 +21,13 @@ export default function CameraModal() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<BlobPart[]>([]);
 
-  const { captureImage, sendMessage } = useChat();
+  const { sendMessage } = useChat();
   const { toast } = useToast();
   const orientation = useOrientation();
 
   useEffect(() => {
     // Listen for open-camera event
-    const handleOpenCamera = (event) => {
+  const handleOpenCamera = (event: Event) => {
       console.log('📸 CameraModal: open-camera イベントを受信しました', event);
       setIsOpen(true);
     };
@@ -41,77 +41,19 @@ export default function CameraModal() {
     };
   }, []);
 
-  useEffect(() => {
-    if (isOpen) {
-      // カメラ権限を事前にチェック
-      const checkCameraPermission = async () => {
-        try {
-          const permission = await navigator.permissions.query({ name: 'camera' as PermissionName });
-          console.log('📸 カメラ権限状態:', permission.state);
-          
-          if (permission.state === 'denied') {
-            toast({
-              title: "カメラ権限が拒否されています",
-              description: "ブラウザの設定でカメラアクセスを許可してください。",
-              variant: "destructive",
-            });
-            return;
-          }
-        } catch (err) {
-          console.log('📸 権限APIが利用できません:', err);
-        }
-        
-        // モーダルが開いたらカメラを起動
-        // 少し遅延させることでステートの適用を確実にする
-        setTimeout(() => {
-          startCamera();
-        }, 300);
-      };
-      
-      checkCameraPermission();
-    } else {
-      // モーダルが閉じたらカメラを停止
-      stopCamera();
-    }
-  }, [isOpen]);
-
-  const startCamera = async () => {
+  const startCamera = useCallback(async () => {
     try {
       console.log('📸 カメラアクセス開始');
-      
-      // ブラウザの対応状況を確認
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('このブラウザはカメラ機能をサポートしていません');
       }
-
-      // HTTPSの確認
       const isSecure = location.protocol === 'https:' || location.hostname === 'localhost';
-      console.log('🔒 セキュアコンテキスト:', isSecure, 'プロトコル:', location.protocol, 'ホスト:', location.hostname);
-      
       if (!isSecure) {
         throw new Error('カメラアクセスにはHTTPS接続が必要です');
       }
-
-      // ストリームが既に存在する場合は停止
       if (stream) {
-        console.log('🛑 既存のストリームを停止');
         stream.getTracks().forEach(track => track.stop());
       }
-
-      console.log('📸 カメラ制約設定:', {
-        facingMode: useBackCamera ? "environment" : "user",
-        videoMode: isVideoMode,
-        constraints: {
-          video: { 
-            facingMode: useBackCamera ? "environment" : "user",
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          },
-          audio: isVideoMode 
-        }
-      });
-
-      // カメラ制約を明示的に設定
       const constraints = { 
         video: { 
           facingMode: useBackCamera ? "environment" : "user",
@@ -120,72 +62,70 @@ export default function CameraModal() {
         },
         audio: isVideoMode 
       };
-
-      console.log('📸 getUserMedia呼び出し開始');
       const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-      console.log('✅ getUserMedia成功:', {
-        streamActive: mediaStream.active,
-        videoTracks: mediaStream.getVideoTracks().length,
-        audioTracks: mediaStream.getAudioTracks().length
-      });
-
       setStream(mediaStream);
-
       if (videoRef.current) {
-        console.log('📺 ビデオ要素にストリーム設定');
         videoRef.current.srcObject = mediaStream;
-        
-        // ビデオが再生開始されるのを待つ
         videoRef.current.onloadedmetadata = () => {
-          console.log('✅ ビデオメタデータ読み込み完了');
-          videoRef.current?.play().catch(err => {
-            console.error('❌ ビデオ再生エラー:', err);
-          });
+          videoRef.current?.play().catch(err => console.error('❌ ビデオ再生エラー:', err));
         };
       }
     } catch (error) {
-      console.error('❌ カメラアクセスエラー:', error);
-      
       let errorMessage = 'カメラにアクセスできませんでした';
-      
       if (error instanceof Error) {
-        if (error.name === 'NotAllowedError') {
-          errorMessage = 'カメラの使用が許可されていません。ブラウザの設定でカメラアクセスを許可してください。';
-        } else if (error.name === 'NotFoundError') {
-          errorMessage = 'カメラが見つかりません。デバイスにカメラが接続されているか確認してください。';
-        } else if (error.name === 'NotReadableError') {
-          errorMessage = 'カメラが他のアプリケーションによって使用されています。';
-        } else if (error.name === 'OverconstrainedError') {
-          errorMessage = 'カメラの設定に問題があります。別のカメラを試してください。';
-        } else if (error.name === 'SecurityError') {
-          errorMessage = 'セキュリティ上の理由でカメラにアクセスできません。HTTPSで接続してください。';
-        } else {
-          errorMessage = `カメラエラー: ${error.message}`;
-        }
+        if (error.name === 'NotAllowedError') errorMessage = 'カメラの使用が許可されていません。ブラウザの設定でカメラアクセスを許可してください。';
+        else if (error.name === 'NotFoundError') errorMessage = 'カメラが見つかりません。デバイスにカメラが接続されているか確認してください。';
+        else if (error.name === 'NotReadableError') errorMessage = 'カメラが他のアプリケーションによって使用されています。';
+        else if (error.name === 'OverconstrainedError') errorMessage = 'カメラの設定に問題があります。別のカメラを試してください。';
+        else if (error.name === 'SecurityError') errorMessage = 'セキュリティ上の理由でカメラにアクセスできません。HTTPSで接続してください。';
+        else errorMessage = `カメラエラー: ${error.message}`;
       }
-
-      toast({
-        title: "カメラエラー",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      toast({ title: 'カメラエラー', description: errorMessage, variant: 'destructive' });
     }
-  };
+  }, [isVideoMode, stream, toast, useBackCamera]);
 
-  // カメラ切り替え機能は削除（常に背面カメラのみを使用）
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+    }
+  }, [isRecording]);
 
-  const stopCamera = () => {
+  const stopCamera = useCallback(() => {
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
       setStream(null);
     }
-
     if (isRecording) {
       stopRecording();
     }
-
     setCapturedImage(null);
-  };
+  }, [stream, isRecording, stopRecording]);
+
+  useEffect(() => {
+    if (isOpen) {
+      (async () => {
+        try {
+          const permission = await navigator.permissions.query({ name: 'camera' as PermissionName });
+          if (permission.state === 'denied') {
+            toast({
+              title: 'カメラ権限が拒否されています',
+              description: 'ブラウザの設定でカメラアクセスを許可してください。',
+              variant: 'destructive'
+            });
+            return;
+          }
+        } catch (_e) {
+          // permissions API 非対応ブラウザは無視
+        }
+        setTimeout(() => { startCamera(); }, 300);
+      })();
+    } else {
+      stopCamera();
+    }
+    return () => { stopCamera(); };
+  }, [isOpen, startCamera, stopCamera, toast]);
+
+  // カメラ切り替え機能は削除（常に背面カメラのみを使用）
 
   const handleCapture = () => {
     if (!videoRef.current) return;
@@ -198,7 +138,7 @@ export default function CameraModal() {
         startRecording();
       }
     } else {
-      // Capture image - 150dpi相当（約874px × 1240px）に圧縮
+  // Capture image - 150dpi相当（約874px × 1240px）に圧縮 (Blob運用)
       const canvas = document.createElement('canvas');
       const video = videoRef.current;
       
@@ -227,33 +167,17 @@ export default function CameraModal() {
         ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
         
         try {
-          // より高い圧縮率でファイルサイズを最小化（品質0.4）
-          const imageData = canvas.toDataURL('image/jpeg', 0.4);
-          
-          // Base64データが正しい形式になっているかチェック
-          if (!imageData.startsWith('data:image/')) {
-            console.error('Base64データの形式が不正です:', imageData.substring(0, 50));
-            console.error('canvas.toDataURL()の結果:', typeof imageData, imageData.length);
-            return;
-          }
-          
-          console.log('✅ 撮影画像をBase64形式で生成成功:', {
-            format: 'image/jpeg',
-            quality: 0.4,
-            resolution: '150dpi相当',
-            originalSize: `${video.videoWidth}x${video.videoHeight}`,
-            compressedSize: `${videoWidth}x${videoHeight}`,
-            maxResolution: `${maxWidth}x${maxHeight}`,
-            dataLength: imageData.length,
-            dataSizeMB: (imageData.length / 1024 / 1024).toFixed(2),
-            isValidBase64: imageData.startsWith('data:image/jpeg;base64,'),
-            mimeType: imageData.split(';')[0],
-            preview: imageData.substring(0, 50) + '...'
-          });
-          
-          setCapturedImage(imageData);
+          canvas.toBlob((blob) => {
+            if (!blob) {
+              console.error('Blob生成に失敗');
+              return;
+            }
+            const url = URL.createObjectURL(blob);
+            setCapturedBlob(blob);
+            setCapturedImage(url);
+          }, 'image/jpeg', 0.4);
         } catch (error) {
-          console.error('canvas.toDataURL()でエラーが発生:', error);
+          console.error('画像キャプチャ処理でエラー:', error);
         }
       }
     }
@@ -284,45 +208,57 @@ export default function CameraModal() {
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-    }
-  };
+  // stopRecording は useCallback 化済み
 
   const handleSend = async () => {
-    if (capturedImage) {
-      try {
-        console.log('撮影した画像をチャットに送信します');
+    if (!capturedImage) return;
+    try {
+  const uploadType: 'image' | 'video' = isVideoMode ? 'video' : 'image';
+      let file: Blob | null = null;
 
-        // capturedImageが既にBase64形式かチェック
-        let finalImageData = capturedImage;
-        
-        if (!capturedImage.startsWith('data:image/')) {
-          console.log('画像データがBase64形式ではありません。変換します:', typeof capturedImage);
-          // もしObjectやBlobの場合は、ここで変換処理を追加
-          if (typeof capturedImage === 'object') {
-            console.error('画像データがオブジェクト形式です。Base64変換が必要です。');
-            return;
-          }
-          finalImageData = `data:image/jpeg;base64,${capturedImage}`;
+      if (isVideoMode) {
+        // 録画済み動画 Blob を再生成
+        if (recordedChunksRef.current.length > 0) {
+          file = new Blob(recordedChunksRef.current, { type: 'video/mp4' });
         }
-
-        console.log('送信する画像データ:', {
-          isBase64: finalImageData.startsWith('data:image/'),
-          urlLength: finalImageData.length,
-          mimeType: finalImageData.split(';')[0],
-          preview: finalImageData.substring(0, 50) + '...'
-        });
-
-        // 完全なBase64データURLを直接contentに格納して送信
-        await sendMessage(finalImageData);
-
-        setIsOpen(false);
-        setCapturedImage(null);
-      } catch (error) {
-        console.error('画像送信エラー:', error);
+      } else {
+        file = capturedBlob; // 静止画
       }
+
+      if (!file) {
+        console.warn('アップロード対象のファイルがありません');
+        return;
+      }
+
+      const form = new FormData();
+      form.append('file', file, uploadType === 'image' ? 'capture.jpg' : 'capture.mp4');
+
+      const resp = await fetch('/api/uploads/image', {
+        method: 'POST',
+        body: form,
+        credentials: 'include'
+      });
+      if (!resp.ok) {
+        console.error('アップロード失敗', resp.status, resp.statusText);
+        return;
+      }
+      const data = await resp.json();
+      if (!data?.url) {
+        console.error('URL取得失敗', data);
+        return;
+      }
+
+      // メディア送信用: プレースホルダテキスト + media
+      await sendMessage(uploadType === 'image' ? '画像を送信しました' : '動画を送信しました', [
+        { type: uploadType, url: data.url }
+      ], false);
+
+      setIsOpen(false);
+      setCapturedImage(null);
+      setCapturedBlob(null);
+      recordedChunksRef.current = [];
+    } catch (error) {
+      console.error('画像送信エラー:', error);
     }
   };
 

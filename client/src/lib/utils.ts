@@ -13,16 +13,17 @@ export function cn(...inputs: ClassValue[]) {
  * 選択されたフィールドを順序付けるユーティリティ関数
  * データベースクエリの結果を整形するのに使用します
  */
-export function orderSelectedFields(fields: Record<string, any> | undefined | null): Record<string, any> {
+export function orderSelectedFields<T extends Record<string, unknown>>(fields: T | undefined | null): T {
   if (!fields || typeof fields !== "object" || Array.isArray(fields)) {
     console.warn("Invalid fields argument:", fields);
-    return {};
+    return {} as T;
   }
 
-  return Object.entries(fields).reduce((acc, [key, value]) => {
-    acc[key] = value;
-    return acc;
-  }, {} as Record<string, any>);
+  const result = {} as T;
+  (Object.entries(fields) as Array<[keyof T, T[keyof T]]>).forEach(([key, value]) => {
+    result[key] = value;
+  });
+  return result;
 }
 
 /**
@@ -45,8 +46,8 @@ export function convertImageUrl(url: string | undefined | null): string {
     return url;
   }
   
-  // 既にAPIエンドポイント形式の場合はベースURLを追加
-  if (url.startsWith('/api/emergency-flow/image/')) {
+  // 既にAPIエンドポイント形式の場合はベースURLを追加（2系統をサポート）
+  if (url.startsWith('/api/troubleshooting/image/') || url.startsWith('/api/emergency-flow/image/')) {
     const finalUrl = `${apiBaseUrl}${url}`;
     console.log('APIエンドポイント形式を変換:', { original: url, final: finalUrl });
     return finalUrl;
@@ -66,9 +67,9 @@ export function convertImageUrl(url: string | undefined | null): string {
     return url;
   }
   
-  // 新しいAPIエンドポイント形式に変換して返す
-  const finalUrl = `${apiBaseUrl}/api/emergency-flow/image/${fileName}`;
-  console.log('画像URL変換完了:', { original: url, fileName: fileName, final: finalUrl });
+  // デフォルトは troubleshooting エンドポイントへ
+  const finalUrl = `${apiBaseUrl}/api/troubleshooting/image/${fileName}`;
+  console.log('画像URL変換完了 (デフォルトtroubleshooting):', { original: url, fileName: fileName, final: finalUrl });
   return finalUrl;
 }
 

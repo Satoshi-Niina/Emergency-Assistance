@@ -46,6 +46,36 @@ async function startDevelopmentServer() {
     loadedEnvFile
   });
 
+  // Knowledge Base パスの自動調整（routes import 前に設定）
+  try {
+    if (!process.env.KNOWLEDGE_BASE_PATH) {
+      const candidates = [
+        // プロジェクトルートの knowledge-base
+        path.resolve(process.cwd(), '..', 'knowledge-base'),
+        path.resolve(process.cwd(), 'knowledge-base'),
+        // このファイルの位置からの相対
+        path.resolve(__dirname, '..', 'knowledge-base'),
+        path.resolve(__dirname, 'knowledge-base')
+      ];
+      const fs = await import('fs');
+      const found = candidates.find(p => {
+        try { return fs.existsSync(p); } catch { return false; }
+      });
+      if (found) {
+        process.env.KNOWLEDGE_BASE_PATH = found;
+        console.log('🧠 KNOWLEDGE_BASE_PATH set to', found);
+      } else {
+        // まだ存在しない場合でも第一候補を設定（後続の同期や手動配置で作成される想定）
+        process.env.KNOWLEDGE_BASE_PATH = candidates[0];
+        console.log('🧠 KNOWLEDGE_BASE_PATH preset to', candidates[0]);
+      }
+    } else {
+      console.log('🧠 KNOWLEDGE_BASE_PATH (env):', process.env.KNOWLEDGE_BASE_PATH);
+    }
+  } catch (e) {
+    console.warn('🧠 Failed to preset KNOWLEDGE_BASE_PATH:', (e as Error)?.message);
+  }
+
   // DATABASE_URLが設定されていない場合はエラーで停止
   if (!process.env.DATABASE_URL) {
     console.error('❌ 致命的エラー: DATABASE_URLが設定されていません');

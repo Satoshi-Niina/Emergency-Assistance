@@ -212,8 +212,16 @@ const UnifiedDataProcessor: React.FC = () => {
       if (!response.ok) {
         throw new Error("文書の取得に失敗しました");
       }
-      const data = await response.json();
-      setDocuments(data);
+      const raw = await response.json();
+      // サーバーは { success, data: [{ filename,name,modifiedAt,... }] }
+      const arr = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : [];
+      const mapped: ProcessedDocument[] = arr.map((it: any) => ({
+        id: it.filename?.replace(/\.json$/,'') || it.name || it.id,
+        title: it.name || it.filename || '無題',
+        type: 'json',
+        addedAt: it.modifiedAt || it.createdAt || new Date().toISOString()
+      }));
+      setDocuments(mapped);
     } catch (error) {
       console.error("Fetch documents error:", error);
       toast({

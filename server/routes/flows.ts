@@ -1,14 +1,11 @@
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
+import { KNOWLEDGE_BASE_DIR } from '../lib/knowledge-base.js';
 
 const router = express.Router();
 
-// バリデーションスキーマ
-const createFlowSchema = {
-  title: (value: string) => value && value.length > 0 ? null : 'タイトルは必須です',
-  jsonData: (value: any) => null // オプショナル
-};
+// （注意）以前の createFlowSchema は未使用のため削除し、lint エラーを回避
 
 /**
  * GET /api/flows
@@ -19,10 +16,20 @@ router.get('/', async (req, res) => {
     console.log('🔄 応急処置フロー取得リクエスト');
     
     // トラブルシューティングディレクトリからJSONファイルを読み込み
-    const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
-    console.log('🔍 トラブルシューティングディレクトリ:', troubleshootingDir);
+    const candidates: string[] = [];
+    const kbEnv = process.env.KNOWLEDGE_BASE_PATH;
+  if (kbEnv) candidates.push(path.join(kbEnv, 'troubleshooting'));
+  candidates.push(path.join(KNOWLEDGE_BASE_DIR, 'troubleshooting'));
+
+    let troubleshootingDir = '';
+    for (const p of candidates) {
+      if (fs.existsSync(p)) { troubleshootingDir = p; break; }
+    }
+
+    console.log('🔍 トラブルシューティングディレクトリ候補:', candidates);
+    console.log('📁 使用ディレクトリ:', troubleshootingDir || '[not found]');
     
-    if (!fs.existsSync(troubleshootingDir)) {
+    if (!troubleshootingDir || !fs.existsSync(troubleshootingDir)) {
       console.log('❌ トラブルシューティングディレクトリが存在しません');
       return res.json({
         success: true,
@@ -97,7 +104,7 @@ router.post('/', async (req, res) => {
     console.log('🔄 新規応急処置フロー作成リクエスト');
     
     // トラブルシューティングディレクトリのパスを取得
-    const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+  const troubleshootingDir = path.join(KNOWLEDGE_BASE_DIR, 'troubleshooting');
     
     if (!fs.existsSync(troubleshootingDir)) {
       fs.mkdirSync(troubleshootingDir, { recursive: true });
@@ -153,7 +160,7 @@ router.get('/:id', async (req, res) => {
     console.log(`🔄 応急処置フロー詳細取得: ${id}`);
 
     // トラブルシューティングディレクトリから該当するJSONファイルを検索
-    const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+  const troubleshootingDir = path.join(KNOWLEDGE_BASE_DIR, 'troubleshooting');
     
     if (!fs.existsSync(troubleshootingDir)) {
       return res.status(404).json({
@@ -232,7 +239,7 @@ router.put('/:id', async (req, res) => {
     console.log(`🔄 応急処置フロー更新: ${id}`);
     
     // トラブルシューティングディレクトリから該当するJSONファイルを検索
-    const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+  const troubleshootingDir = path.join(KNOWLEDGE_BASE_DIR, 'troubleshooting');
     
     if (!fs.existsSync(troubleshootingDir)) {
       return res.status(404).json({

@@ -295,7 +295,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
             const formData = new FormData();
             formData.append('image', image.file);
             
-            const uploadResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/upload-image`, {
+            const uploadResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/upload-image`, {
               method: 'POST',
               body: formData
             });

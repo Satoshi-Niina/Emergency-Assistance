@@ -1,6 +1,7 @@
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
+import { KNOWLEDGE_BASE_DIR } from '../lib/knowledge-base.js';
 
 const router = express.Router();
 
@@ -13,7 +14,7 @@ router.get('/', async (req, res) => {
     console.log('📚 ナレッジベースデータ取得リクエスト');
     
     // knowledge-base/dataフォルダのパスを設定
-    const dataPath = path.join(process.cwd(), 'knowledge-base', 'data');
+  const dataPath = path.join(KNOWLEDGE_BASE_DIR, 'data');
     
     // フォルダが存在するか確認
     if (!fs.existsSync(dataPath)) {
@@ -79,7 +80,7 @@ router.get('/:filename', async (req, res) => {
     console.log(`📚 ナレッジベースファイル取得: ${filename}`);
     
     // ファイルパスを構築
-    const filePath = path.join(process.cwd(), 'knowledge-base', 'data', filename);
+  const filePath = path.join(KNOWLEDGE_BASE_DIR, 'data', filename);
     
     // ファイルが存在するか確認
     if (!fs.existsSync(filePath)) {
@@ -115,6 +116,43 @@ router.get('/:filename', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'ナレッジベースファイルの取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * DELETE /api/knowledge/:filename
+ * 指定のJSONファイルを削除
+ */
+router.delete('/:filename', async (req, res) => {
+  try {
+    const { filename } = req.params;
+    console.log(`🗑️ ナレッジベースファイル削除: ${filename}`);
+
+    if (!filename || typeof filename !== 'string') {
+      return res.status(400).json({ success: false, error: 'filename が必要です' });
+    }
+
+    // ディレクトリパスとファイルパス
+    const dataDir = path.join(KNOWLEDGE_BASE_DIR, 'data');
+    const filePath = path.join(dataDir, filename.endsWith('.json') ? filename : `${filename}.json`);
+
+    // 存在確認
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ success: false, error: 'ファイルが見つかりません' });
+    }
+
+    // 削除実行
+    fs.unlinkSync(filePath);
+    console.log('✅ 削除完了:', filePath);
+
+    res.json({ success: true, message: '削除しました', filename });
+  } catch (error) {
+    console.error('❌ ナレッジベースファイル削除エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'ファイルの削除に失敗しました',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }

@@ -249,14 +249,15 @@ export default function SettingsPage() {
       }
 
       const result = await response.json();
+      const count = result.backupCount ?? result.deletedCount ?? 0;
       toast({
-        title: "ログクリーンアップ完了",
-        description: `${result.deletedCount}件のログファイルを削除しました (${(result.totalSize / 1024 / 1024).toFixed(2)} MB)`
+        title: "ログバックアップ完了",
+        description: `${count}件のログファイルをバックアップしました (${(result.totalSize / 1024 / 1024).toFixed(2)} MB)`
       });
     } catch (error) {
       toast({
         title: "エラー",
-        description: "ログクリーンアップに失敗しました",
+        description: "ログバックアップに失敗しました",
         variant: "destructive"
       });
     }
@@ -366,7 +367,7 @@ export default function SettingsPage() {
                     className="w-full"
                   >
                     <FileX className="mr-2 h-4 w-4" />
-                    ログファイルを削除
+                    ログのバックアップ
                   </Button>
                 </div>
 

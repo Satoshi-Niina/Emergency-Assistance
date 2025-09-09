@@ -1,26 +1,30 @@
 
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import fs from 'fs/promises';
 import path from 'path';
-import { existsSync, readdirSync, unlinkSync, writeFileSync, readFileSync } from 'fs';
+import { existsSync, readdirSync } from 'fs';
 import { fileURLToPath } from 'url';
+import { upload } from '../utils/image-uploader.js';
+import multer, { FileFilterCallback } from 'multer';
+import { createKBStorage } from '../storage/kbStorage.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const router = Router();
 
-// トラブルシューティングディレクトリのパス
-const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+// ストレージアダプタ（ローカル or Azure Blob）
+const storage = createKBStorage();
 
 // トラブルシューティングデータを読み込む関数
 async function loadTroubleshootingData() {
   try {
+    const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
     console.log('🔍 トラブルシューティングディレクトリパス:', troubleshootingDir);
     console.log('🔍 現在の作業ディレクトリ:', process.cwd());
     console.log('🔍 絶対パス:', path.resolve(troubleshootingDir));
     
-    if (!existsSync(troubleshootingDir)) {
+  if (!existsSync(troubleshootingDir) && storage.mode === 'local') {
       console.warn(`❌ トラブルシューティングディレクトリが見つかりません: ${troubleshootingDir}`);
       console.warn(`🔍 代替パスを試行中...`);
       
@@ -45,11 +49,22 @@ async function loadTroubleshootingData() {
       return [];
     }
 
-    return await loadFromDirectory(troubleshootingDir);
+    if (storage.mode === 'local') {
+      return await loadFromDirectory(troubleshootingDir);
+    }
+    // blob の場合はアダプタから一覧を取得
+    return await storage.listFlows();
   } catch (error) {
     console.error('❌ トラブルシューティングデータの読み込みエラー:', error);
     return [];
   }
+}
+
+// 指定IDのフローを読み込むヘルパ
+async function getFlowDataById(id: string): Promise<{ data: Record<string, unknown>; fileName: string } | null> {
+  const data = await storage.getFlowById(id);
+  if (!data) return null;
+  return { data, fileName: `${id}.json` };
 }
 
 // 指定されたディレクトリからファイルを読み込む関数
@@ -129,7 +144,7 @@ async function loadFromDirectory(dirPath: string) {
 router.get('/list', async (req, res) => {
   console.log('📋 トラブルシューティング一覧リクエスト受信');
   try {
-    const data = await loadTroubleshootingData();
+  const data = await loadTroubleshootingData();
     console.log(`✅ トラブルシューティング一覧取得完了: ${data.length}件`);
     
     res.setHeader('Content-Type', 'application/json');
@@ -169,55 +184,8 @@ router.get('/:id', async (req, res) => {
       'X-Requested-With': 'XMLHttpRequest'
     });
     
-    console.log('🔍 トラブルシューティングディレクトリ確認:', troubleshootingDir);
-    
-    // トラブルシューティングディレクトリから該当するJSONファイルを検索
-    if (!existsSync(troubleshootingDir)) {
-      console.error('❌ トラブルシューティングディレクトリが見つかりません:', troubleshootingDir);
-      return res.status(404).json({ 
-        success: false,
-        error: 'トラブルシューティングディレクトリが見つかりません',
-        id,
-        timestamp: new Date().toISOString()
-      });
-    }
-    
-    const files = readdirSync(troubleshootingDir);
-    console.log('📁 ディレクトリ内のファイル:', files);
-    
-    const jsonFiles = files.filter(file => file.endsWith('.json'));
-    console.log('📄 JSONファイル:', jsonFiles);
-    
-    let flowData = null;
-    let fileName = null;
-    
-    // IDに一致するファイルを検索
-    for (const file of jsonFiles) {
-      try {
-        console.log(`🔍 ファイル ${file} をチェック中...`);
-        const filePath = path.join(troubleshootingDir, file);
-        const fileContent = await fs.readFile(filePath, 'utf8');
-        const data = JSON.parse(fileContent);
-        
-        console.log(`📋 ファイル ${file} の内容:`, {
-          fileId: data.id,
-          requestId: id,
-          idsMatch: data.id === id,
-          fileNameMatch: file.replace('.json', '') === id
-        });
-        
-        if (data.id === id || file.replace('.json', '') === id) {
-          flowData = data;
-          fileName = file;
-          console.log(`✅ マッチするファイルを発見: ${file}`);
-          break;
-        }
-      } catch (error) {
-        console.error(`❌ ファイル ${file} の読み込みエラー:`, error);
-      }
-    }
-    
-    if (!flowData) {
+  const found = await storage.getFlowById(id);
+  if (!found) {
       console.error('❌ マッチするファイルが見つかりません:', id);
       return res.status(404).json({ 
         success: false,
@@ -226,28 +194,32 @@ router.get('/:id', async (req, res) => {
         timestamp: new Date().toISOString()
       });
     }
-    
+    const flowData = found as Record<string, unknown>;
+    const getProp = <T>(o: Record<string, unknown>, key: string): T | undefined => (o[key] as T | undefined);
+    const steps = getProp<unknown[]>(flowData, 'steps');
+    const stepsCount = Array.isArray(steps) ? steps.length : 0;
+    const idProp = getProp<string>(flowData, 'id');
+    const titleProp = getProp<string>(flowData, 'title');
     console.log(`✅ トラブルシューティング取得完了:`, {
-      id: flowData.id,
-      title: flowData.title,
-      stepsCount: flowData.steps?.length || 0,
-      fileName: fileName,
-      hasSteps: !!flowData.steps,
-      stepsType: typeof flowData.steps,
-      stepsIsArray: Array.isArray(flowData.steps),
+      id: idProp,
+      title: titleProp,
+      stepsCount,
+      hasSteps: Array.isArray(steps),
+      stepsType: Array.isArray(steps) ? 'array' : typeof steps,
+      stepsIsArray: Array.isArray(steps),
       flowDataKeys: Object.keys(flowData)
     });
     
     // データ構造の詳細ログ
-    if (flowData.steps && Array.isArray(flowData.steps)) {
+    if ((flowData as Record<string, unknown>).steps && Array.isArray((flowData as Record<string, unknown>).steps)) {
       console.log('📋 ステップデータ詳細:', {
-        totalSteps: flowData.steps.length,
-        stepIds: flowData.steps.map((step: any, index: number) => ({
+        totalSteps: (flowData as Record<string, unknown> & { steps: unknown[] }).steps.length,
+        stepIds: ((flowData as Record<string, unknown> & { steps: unknown[] }).steps).map((step: Record<string, unknown>, index: number) => ({
           index,
-          id: step.id,
-          title: step.title,
-          hasImages: !!step.images,
-          imagesCount: step.images?.length || 0
+          id: (step as Record<string, unknown>).id,
+          title: (step as Record<string, unknown>).title,
+          hasImages: !!(step as Record<string, unknown>).images,
+          imagesCount: Array.isArray((step as Record<string, unknown>).images) ? ((step as Record<string, unknown>).images as unknown[]).length : 0
         }))
       });
     } else {
@@ -260,14 +232,14 @@ router.get('/:id', async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     const responseData = {
       success: true,
-      data: flowData,
+  data: flowData,
       timestamp: new Date().toISOString()
     };
     
     console.log('📤 レスポンス送信:', {
       success: responseData.success,
-      dataId: responseData.data.id,
-      dataStepsCount: responseData.data.steps?.length || 0
+      dataId: idProp,
+      dataStepsCount: stepsCount
     });
     
     res.json(responseData);
@@ -279,6 +251,25 @@ router.get('/:id', async (req, res) => {
       details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     });
+  }
+});
+
+// 互換エイリアス: /detail/:id -> /:id と同じ応答を返す
+router.get('/detail/:id', async (req, res, next) => {
+  try {
+    // 既存ハンドラーへ委譲（パラメータは同一）
+    const found = await getFlowDataById(req.params.id);
+    if (!found) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'アイテムが見つかりません',
+        id: req.params.id,
+        timestamp: new Date().toISOString()
+      });
+    }
+    return res.json({ success: true, data: found.data, timestamp: new Date().toISOString() });
+  } catch (e) {
+    next(e);
   }
 });
 
@@ -301,12 +292,8 @@ router.put('/:id', async (req, res) => {
     flowData.updatedAt = new Date().toISOString();
     flowData.id = id; // IDを確実に設定
 
-    // ファイルパスを構築
-    const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
-    const filePath = path.join(troubleshootingDir, `${id}.json`);
-
-    // ファイルに保存
-    writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf8');
+  // ストレージへ保存
+  await storage.saveFlowJson(flowData);
     
     console.log('✅ トラブルシューティング更新成功:', {
       id: flowData.id,
@@ -336,12 +323,8 @@ router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
-    // ファイルパスを構築
-    const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
-    const filePath = path.join(troubleshootingDir, `${id}.json`);
-
-    // ファイルの存在確認
-    if (!existsSync(filePath)) {
+  const ok = await storage.deleteFlow(id);
+  if (!ok) {
       return res.status(404).json({
         success: false,
         error: '指定されたトラブルシューティングが見つかりません',
@@ -349,10 +332,7 @@ router.delete('/:id', async (req, res) => {
       });
     }
 
-    // ファイルを削除
-    unlinkSync(filePath);
-    
-    console.log('✅ トラブルシューティング削除成功:', id);
+  console.log('✅ トラブルシューティング削除成功:', id);
 
     res.json({
       success: true,
@@ -371,8 +351,9 @@ router.delete('/:id', async (req, res) => {
 });
 
 // エラーハンドリングミドルウェア
-router.use((err: any, req: any, res: any, next: any) => {
-  console.error('トラブルシューティングエラー:', err);
+router.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
+  const message = err instanceof Error ? err.message : String(err);
+  console.error('トラブルシューティングエラー:', message);
   
   // Content-Typeを明示的に設定
   res.setHeader('Content-Type', 'application/json');
@@ -380,7 +361,7 @@ router.use((err: any, req: any, res: any, next: any) => {
   res.status(500).json({
     success: false,
     error: 'トラブルシューティングの処理中にエラーが発生しました',
-    details: err.message || 'Unknown error',
+  details: message || 'Unknown error',
     timestamp: new Date().toISOString()
   });
 });
@@ -389,68 +370,15 @@ router.use((err: any, req: any, res: any, next: any) => {
 router.get('/image/:fileName', async (req, res) => {
   try {
     const { fileName } = req.params;
-    
-    // まず emergency-flows ディレクトリを確認
-    let uploadDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows');
-    let filePath = path.join(uploadDir, fileName);
-    
-    // emergency-flows にファイルがない場合は chat-exports を確認
-    if (!existsSync(filePath)) {
-      uploadDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports');
-      filePath = path.join(uploadDir, fileName);
-      
-      console.log('🔄 emergency-flows にファイルが見つからないため、chat-exports を確認:', {
-        fileName,
-        chatExportsDir: uploadDir,
-        chatExportsPath: filePath,
-        exists: existsSync(filePath)
-      });
+
+    const img = await storage.getImage(fileName);
+    if (!img) {
+      return res.status(404).json({ success: false, error: 'ファイルが存在しません', fileName });
     }
 
-    // デバッグログ強化
-    console.log('🖼️ 画像リクエスト:', {
-      fileName,
-      uploadDir,
-      filePath,
-      exists: existsSync(filePath),
-      filesInDir: existsSync(uploadDir) ? readdirSync(uploadDir) : []
-    });
-
-    if (!existsSync(filePath)) {
-      return res.status(404).json({
-        error: 'ファイルが存在しません',
-        fileName,
-        emergencyFlowsPath: path.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows', fileName),
-        chatExportsPath: path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports', fileName),
-        emergencyFlowsDir: existsSync(path.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows')) ? readdirSync(path.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows')) : [],
-        chatExportsDir: existsSync(path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports')) ? readdirSync(path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports')) : []
-      });
-    }
-
-    // ファイルのMIMEタイプを判定
-    const ext = path.extname(fileName).toLowerCase();
-    const mimeTypes: { [key: string]: string } = {
-      '.jpg': 'image/jpeg',
-      '.jpeg': 'image/jpeg',
-      '.png': 'image/png',
-      '.gif': 'image/gif',
-      '.webp': 'image/webp'
-    };
-    const contentType = mimeTypes[ext] || 'application/octet-stream';
-
-    // ファイルを読み込んでレスポンス
-    const fileBuffer = readFileSync(filePath);
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1年間キャッシュ
-    res.send(fileBuffer);
-
-    console.log('✅ 画像配信成功:', {
-      fileName,
-      contentType,
-      fileSize: fileBuffer.length,
-      filePath,
-      sourceDir: uploadDir.includes('emergency-flows') ? 'emergency-flows' : 'chat-exports'
-    });
+    res.setHeader('Content-Type', img.contentType);
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    res.send(img.buffer);
 
   } catch (error) {
     console.error('❌ 画像配信エラー:', {
@@ -465,8 +393,92 @@ router.get('/image/:fileName', async (req, res) => {
   }
 });
 
+// 画像アップロード（トラブルシューティング用）
+router.post('/upload-image', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: '画像ファイルが提供されていません' });
+    }
+
+    const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedMimes.includes(req.file.mimetype)) {
+      return res.status(400).json({ success: false, error: '対応していないファイル形式です' });
+    }
+
+    if (req.file.size > 5 * 1024 * 1024) {
+      return res.status(400).json({ success: false, error: 'ファイルサイズは5MB以下にしてください' });
+    }
+
+  const { fileName, isDuplicate } = await storage.saveImage(req.file.buffer, req.file.originalname || 'image.jpg');
+  const imageUrl = `/api/troubleshooting/image/${fileName}`;
+  return res.json({ success: true, imageUrl, fileName, isDuplicate });
+  } catch (error) {
+    console.error('❌ troubleshooting 画像アップロードエラー:', error);
+    res.status(500).json({ success: false, error: '画像のアップロードに失敗しました' });
+  }
+});
+
+// 画像削除（emergency-flows 優先）
+router.delete('/image/:fileName', async (req, res) => {
+  try {
+    const { fileName } = req.params;
+  const deleted = await storage.deleteImage(fileName);
+  if (deleted) return res.json({ success: true, message: '画像を削除しました', fileName });
+  const inChat = await storage.existsInChatExports(fileName);
+  if (inChat) return res.status(403).json({ success: false, error: '参照専用の画像は削除できません', fileName });
+  return res.status(404).json({ success: false, error: '画像ファイルが見つかりません', fileName });
+  } catch (error) {
+    console.error('❌ troubleshooting 画像削除エラー:', error);
+    res.status(500).json({ success: false, error: '画像の削除に失敗しました' });
+  }
+});
+
+// JSONフローファイルのアップロード（FormData: file）
+const jsonUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (_req, file, cb: FileFilterCallback) => {
+    const ok = file.mimetype === 'application/json' || file.originalname.toLowerCase().endsWith('.json');
+    // サイレントに拒否（エラーは返さない）
+    cb(null, ok);
+  },
+  limits: { fileSize: 2 * 1024 * 1024 }
+});
+
+router.post('/upload', jsonUpload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'JSONファイルが提供されていません' });
+    }
+
+    const jsonText = req.file.buffer.toString('utf8');
+  let data: unknown;
+    try {
+      data = JSON.parse(jsonText);
+    } catch (e) {
+      return res.status(400).json({ success: false, error: 'JSONの解析に失敗しました' });
+    }
+
+    // id を決定（ファイル名ベース or JSONの id）
+  const originalName = req.file.originalname || `flow_${Date.now()}.json`;
+  const maybeObj = (typeof data === 'object' && data !== null) ? (data as Record<string, unknown>) : {};
+  const baseId = (maybeObj.id ? String(maybeObj.id) : originalName.replace(/\.json$/i, ''))
+      .replace(/[^a-zA-Z0-9_-]/g, '_');
+  const saved: Record<string, unknown> = { ...(maybeObj as Record<string, unknown>) };
+  saved.id = baseId;
+  const now = new Date().toISOString();
+  saved.updatedAt = now;
+  if (!saved.createdAt) saved.createdAt = now;
+
+  const savedMeta = await storage.saveFlowJson(saved);
+  return res.json({ success: true, id: savedMeta.id, fileName: savedMeta.fileName });
+  } catch (error) {
+    console.error('❌ troubleshooting JSONアップロードエラー:', error);
+    res.status(500).json({ success: false, error: 'フローファイルのアップロードに失敗しました' });
+  }
+});
+
 // 404ハンドリング
-router.use('*', (req: any, res: any) => {
+router.use('*', (req: Request, res: Response) => {
   res.setHeader('Content-Type', 'application/json');
   res.status(404).json({
     success: false,

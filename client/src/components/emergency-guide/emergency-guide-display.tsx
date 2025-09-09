@@ -73,7 +73,7 @@ function handleImageError(e: React.SyntheticEvent<HTMLImageElement, Event>, imag
     const fileName = imageUrl.split('/').pop()?.split('\\').pop();
     if (fileName && fileName !== imageUrl) {
       console.log('ファイル名のみで再試行:', fileName);
-      imgElement.src = `${apiBaseUrl}/api/emergency-flow/image/${fileName}`;
+  imgElement.src = `${apiBaseUrl}/api/troubleshooting/image/${fileName}`;
       return;
     }
 
@@ -99,7 +99,7 @@ function buildImageUrl(imageUrl: string): string {
   }
 
   // 既にAPIエンドポイント形式の場合はベースURLを追加
-  if (imageUrl.startsWith('/api/emergency-flow/image/')) {
+  if (imageUrl.startsWith('/api/troubleshooting/image/')) {
     return `${apiBaseUrl}${imageUrl}`;
   }
   if (imageUrl.startsWith('/api/troubleshooting/image/')) {

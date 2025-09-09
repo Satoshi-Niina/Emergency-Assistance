@@ -77,23 +77,27 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
         throw new Error(`APIエラー: ${response.status} ${response.statusText}`);
       }
       
-      const data = await response.json();
-      console.log('📊 取得したデータ:', data);
+      const raw = await response.json();
+      console.log('📊 取得したデータ:', raw);
 
       // APIレスポンスの構造に合わせてデータを取得
-      let flows = [];
-      if (data.success && data.data) {
-        console.log('✅ dataプロパティからデータを取得');
-        flows = data.data;
-      } else if (data.success && data.flows) {
-        console.log('✅ flowsプロパティからデータを取得');
-        flows = data.flows;
-      } else if (Array.isArray(data)) {
+      let flows: any[] = [];
+      if (raw && typeof raw === 'object' && 'success' in raw) {
+        if (Array.isArray((raw as any).data)) {
+          console.log('✅ dataプロパティからデータを取得');
+          flows = (raw as any).data;
+        } else if (Array.isArray((raw as any).flows)) {
+          console.log('✅ flowsプロパティからデータを取得');
+          flows = (raw as any).flows;
+        }
+      }
+      if (flows.length === 0 && Array.isArray(raw)) {
         console.log('✅ 配列として直接データを取得');
-        flows = data;
-      } else {
-        console.error('❌ 予期しないフローデータ形式:', data);
-        throw new Error("フローデータの形式が不正です");
+        flows = raw as any[];
+      }
+      if (!Array.isArray(flows)) {
+        console.error('❌ 予期しないフローデータ形式:', raw);
+        throw new Error('フローデータの形式が不正です');
       }
 
       console.log('📋 処理前のflows配列:', flows);

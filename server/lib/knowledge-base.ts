@@ -10,7 +10,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const KNOWLEDGE_BASE_DIR = process.env.KNOWLEDGE_BASE_PATH || path.join(process.cwd(), 'knowledge-base');
+export const KNOWLEDGE_BASE_DIR = process.env.KNOWLEDGE_BASE_PATH || path.join(process.cwd(), 'knowledge-base');
 const DATA_DIR = path.join(KNOWLEDGE_BASE_DIR, 'data');
 const TEXT_DIR = path.join(KNOWLEDGE_BASE_DIR, 'text');
 const TROUBLESHOOTING_DIR = path.join(KNOWLEDGE_BASE_DIR, 'troubleshooting');

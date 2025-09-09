@@ -11,14 +11,15 @@ interface Step {
   description: string;
   message: string;
   type: 'step' | 'decision';
-  images?: Array<{
-    url: string;
-    fileName: string;
-  }>;
+  // 旧データ互換: string または { url?, fileName? }
+  images?: Array<string | { url?: string; fileName?: string }>;
   conditions?: Array<{
     label: string;
     nextId: string;
   }>;
+  // 後方互換の単一画像プロパティ
+  imageUrl?: string;
+  imageFileName?: string;
 }
 
 interface FlowData {
@@ -40,17 +41,20 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
-    const fetchFlowData = async () => {
+  const fetchFlowData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(buildApiUrl(`/api/emergency-flow/${flowId}`));
+    // サーバーが提供する実体エンドポイントに合わせる
+    const response = await fetch(buildApiUrl(`/api/troubleshooting/${flowId}`));
         
         if (!response.ok) {
           throw new Error(`Failed to fetch flow data: ${response.status}`);
         }
 
-        const data = await response.json();
-        setFlowData(data);
+    const data = await response.json();
+    // ラッパー { success, data } にも素のオブジェクトにも対応
+    const flow = data && typeof data === 'object' && 'success' in data ? (data.data ?? null) : data;
+    setFlowData(flow);
       } catch (err) {
         console.error("Flow data fetch error:", err);
         setError("フローデータの取得に失敗しました");
@@ -193,14 +197,32 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
           )}
 
           {/* 画像表示エリア */}
-          {currentStep.images && currentStep.images.length > 0 && (
+          {(() => {
+            // 正規化: images配列 or 単一旧プロパティ
+            const normalized: { url: string; fileName: string }[] = [];
+            if (currentStep.images && currentStep.images.length > 0) {
+              for (const img of currentStep.images) {
+                if (typeof img === 'string') {
+                  const fileName = img.split('/').pop() || img;
+                  normalized.push({ url: img, fileName });
+                } else if (img && (img.url || img.fileName)) {
+                  const rawUrl = img.url || img.fileName || '';
+                  const fileName = img.fileName || (rawUrl.split('/').pop() || rawUrl);
+                  normalized.push({ url: rawUrl, fileName });
+                }
+              }
+            } else if (currentStep.imageUrl) {
+              const fileName = currentStep.imageFileName || currentStep.imageUrl.split('/').pop() || currentStep.imageUrl;
+              normalized.push({ url: currentStep.imageUrl, fileName });
+            }
+            if (normalized.length === 0) return null;
+            return (
             <div className="space-y-3">
               <h4 className="font-medium text-gray-900">画像:</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {currentStep.images.map((image, index) => {
+                {normalized.map((image, index) => {
                   const imageUrl = convertImageUrl(image.url);
                   console.log('画像URL変換:', { original: image.url, converted: imageUrl });
-                  
                   return (
                     <div key={index} className="relative">
                       <img
@@ -212,22 +234,20 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
                           console.error('変換後のURL:', imageUrl);
                           const target = e.currentTarget;
                           target.style.display = 'none';
-                          
                           const errorDiv = document.createElement('div');
                           errorDiv.className = 'w-full h-48 bg-red-100 border border-red-300 text-red-700 px-3 py-2 rounded-lg text-sm flex items-center justify-center';
                           errorDiv.textContent = '画像の読み込みに失敗しました';
                           target.parentNode?.appendChild(errorDiv);
                         }}
                       />
-                      <div className="mt-2 text-xs text-gray-500 text-center">
-                        {image.fileName}
-                      </div>
+                      <div className="mt-2 text-xs text-gray-500 text-center">{image.fileName}</div>
                     </div>
                   );
                 })}
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* ナビゲーションボタン */}
           <div className="flex justify-between items-center pt-4 border-t">
