@@ -9,6 +9,11 @@
   ```
   postgresql://username:password@server:5432/database?sslmode=require
   ```
+  
+  **⚠️ 重要な注意事項:**
+  - パスワードにはURL特殊文字（`!@#$%^&*()+={}[]|:;"'<>?,./~`）を使用しないでください
+  - 英数字、ハイフン（`-`）、アンダースコア（`_`）のみを使用してください
+  - 例：`SecurePass2025ABC`、`MyPassword_123`、`Safe-Password-2025`
 
 ### Azure Storage
 - `AZURE_STORAGE_CONNECTION_STRING`: Azure Blob Storage接続文字列
