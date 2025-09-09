@@ -1,0 +1,21 @@
+#!/bin/sh
+# Pre-commit hook to detect secrets
+
+echo "🔍 Checking for secrets in staged files..."
+
+# Check for common secret patterns
+if git diff --cached --name-only | xargs grep -l "password\|PASSWORD\|secret\|SECRET\|token\|TOKEN\|key\|KEY" 2>/dev/null; then
+    echo "❌ WARNING: Potential secrets detected in staged files!"
+    echo "Please review the files and remove any sensitive information."
+    exit 1
+fi
+
+# Check for database URLs
+if git diff --cached | grep -i "postgresql://.*:.*@" > /dev/null; then
+    echo "❌ WARNING: Database connection string detected!"
+    echo "Please use environment variables instead."
+    exit 1
+fi
+
+echo "✅ No secrets detected."
+exit 0
