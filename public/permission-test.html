@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>権限テスト - Emergency Assistance</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .user-card {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px;
+            display: inline-block;
+            width: 300px;
+            vertical-align: top;
+        }
+        .system-admin { border-color: #dc3545; background-color: #fff5f5; }
+        .operator { border-color: #fd7e14; background-color: #fff8f0; }
+        .user { border-color: #0d6efd; background-color: #f0f8ff; }
+        
+        .role-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .system-admin .role-title { color: #dc3545; }
+        .operator .role-title { color: #fd7e14; }
+        .user .role-title { color: #0d6efd; }
+        
+        .credentials {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin-bottom: 15px;
+        }
+        
+        .test-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary { background-color: #0d6efd; color: white; }
+        .btn-success { background-color: #198754; color: white; }
+        .btn-warning { background-color: #fd7e14; color: white; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        .btn:hover { opacity: 0.8; transform: translateY(-1px); }
+        
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .status.loading { background-color: #fff3cd; border: 1px solid #ffeaa7; }
+        .status.success { background-color: #d1edff; border: 1px solid #74c0fc; }
+        .status.error { background-color: #ffe0e6; border: 1px solid #ffa8a8; }
+        
+        .instructions {
+            background-color: #e7f3ff;
+            border: 1px solid #339af0;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .permissions-list {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .permissions-list li {
+            margin: 2px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔐 権限テスト - 3段階のユーザー権限システム</h1>
+    
+    <div class="instructions">
+        <h3>📋 テスト手順:</h3>
+        <ol>
+            <li><strong>それぞれのユーザーでログイン</strong>して、権限に応じてUIが制限されることを確認</li>
+            <li><strong>ナビゲーションメニュー</strong>の表示項目が権限に応じて変わることを確認</li>
+            <li><strong>直接URLアクセス</strong>で権限不足の場合はリダイレクトされることを確認</li>
+        </ol>
+    </div>
+
+    <div class="container">
+        <h2>👥 テスト用ユーザー</h2>
+        
+        <!-- システム管理者 -->
+        <div class="user-card system-admin">
+            <div class="role-title">🔴 システム管理者</div>
+            <div class="credentials">
+                <strong>Username:</strong> sysadmin<br>
+                <strong>Password:</strong> Admin123!
+            </div>
+            <div class="permissions-list">
+                <strong>権限:</strong> すべての権限（システム修正・追加含む）
+                <ul>
+                    <li>✅ チャット機能</li>
+                    <li>✅ システム内の全機能</li>
+                    <li>✅ ユーザー管理</li>
+                    <li>✅ システム設定</li>
+                </ul>
+            </div>
+            <div class="test-buttons">
+                <button class="btn btn-danger" onclick="loginUser('sysadmin', 'Admin123!')">ログイン</button>
+                <a href="http://localhost:5173/users" target="_blank" class="btn btn-primary">ユーザー管理</a>
+                <a href="http://localhost:5173/settings" target="_blank" class="btn btn-warning">設定</a>
+            </div>
+            <div id="sysadmin-status" class="status" style="display:none;"></div>
+        </div>
+
+        <!-- 運用管理者 -->
+        <div class="user-card operator">
+            <div class="role-title">🟠 運用管理者</div>
+            <div class="credentials">
+                <strong>Username:</strong> operator<br>
+                <strong>Password:</strong> Ope123!
+            </div>
+            <div class="permissions-list">
+                <strong>権限:</strong> システム内のすべてを使用可能
+                <ul>
+                    <li>✅ チャット機能</li>
+                    <li>✅ 履歴、ドキュメント、トラブルシューティング</li>
+                    <li>✅ 基礎データ管理</li>
+                    <li>❌ ユーザー管理（システム管理者のみ）</li>
+                </ul>
+            </div>
+            <div class="test-buttons">
+                <button class="btn btn-warning" onclick="loginUser('operator', 'Ope123!')">ログイン</button>
+                <a href="http://localhost:5173/troubleshooting" target="_blank" class="btn btn-success">トラブルシューティング</a>
+                <a href="http://localhost:5173/users" target="_blank" class="btn btn-danger">ユーザー管理（制限テスト）</a>
+            </div>
+            <div id="operator-status" class="status" style="display:none;"></div>
+        </div>
+
+        <!-- 一般ユーザー -->
+        <div class="user-card user">
+            <div class="role-title">🔵 一般ユーザー</div>
+            <div class="credentials">
+                <strong>Username:</strong> user1<br>
+                <strong>Password:</strong> User123!
+            </div>
+            <div class="permissions-list">
+                <strong>権限:</strong> チャットUIの基本機能のみ
+                <ul>
+                    <li>✅ チャット機能</li>
+                    <li>✅ カメラ機能</li>
+                    <li>❌ その他すべての管理機能</li>
+                </ul>
+            </div>
+            <div class="test-buttons">
+                <button class="btn btn-primary" onclick="loginUser('user1', 'User123!')">ログイン</button>
+                <a href="http://localhost:5173/chat" target="_blank" class="btn btn-success">チャット</a>
+                <a href="http://localhost:5173/history" target="_blank" class="btn btn-danger">履歴（制限テスト）</a>
+                <a href="http://localhost:5173/settings" target="_blank" class="btn btn-danger">設定（制限テスト）</a>
+            </div>
+            <div id="user1-status" class="status" style="display:none;"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🧪 権限テストチェックリスト</h2>
+        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 4px;">
+            <h4>✅ 確認項目:</h4>
+            <ul>
+                <li><strong>ナビゲーション制限:</strong> 権限に応じてメニュー項目が表示/非表示になる</li>
+                <li><strong>ルートアクセス制限:</strong> 権限不足の場合は/chatにリダイレクト</li>
+                <li><strong>権限表示:</strong> ヘッダーにユーザー名と権限レベルが表示される</li>
+                <li><strong>システム管理者:</strong> すべての機能にアクセス可能</li>
+                <li><strong>運用管理者:</strong> ユーザー管理以外はアクセス可能</li>
+                <li><strong>一般ユーザー:</strong> チャット機能のみアクセス可能</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        async function loginUser(username, password) {
+            const statusDiv = document.getElementById(username + '-status');
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'status loading';
+            statusDiv.innerHTML = '🔄 ログイン中...';
+
+            try {
+                const response = await fetch('http://localhost:3001/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    statusDiv.className = 'status success';
+                    statusDiv.innerHTML = `
+                        ✅ ログイン成功!<br>
+                        <strong>ユーザー:</strong> ${data.user.displayName}<br>
+                        <strong>権限:</strong> ${data.user.role}<br>
+                        <a href="http://localhost:5173/" target="_blank" style="color: #0d6efd; text-decoration: underline;">
+                            → アプリを開く
+                        </a>
+                    `;
+                } else {
+                    statusDiv.className = 'status error';
+                    statusDiv.innerHTML = `❌ ログイン失敗: ${data.error || data.message || 'Unknown error'}`;
+                }
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = `❌ エラー: ${error.message}`;
+                console.error('Login error:', error);
+            }
+        }
+
+        // 現在の認証状態を確認
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch('http://localhost:3001/api/auth/me', {
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.user) {
+                        document.body.insertAdjacentHTML('afterbegin', `
+                            <div style="background-color: #d1edff; border: 1px solid #339af0; padding: 10px; border-radius: 4px; margin-bottom: 20px;">
+                                <strong>現在のログインユーザー:</strong> ${data.user.displayName} (${data.user.role})
+                                <button onclick="logout()" style="margin-left: 10px; padding: 4px 8px; background-color: #dc3545; color: white; border: none; border-radius: 2px; cursor: pointer;">
+                                    ログアウト
+                                </button>
+                            </div>
+                        `);
+                    }
+                }
+            } catch (error) {
+                console.log('認証状態確認エラー:', error);
+            }
+        }
+
+        async function logout() {
+            try {
+                await fetch('http://localhost:3001/api/auth/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                location.reload();
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        }
+
+        // ページ読み込み時に認証状態を確認
+        checkAuthStatus();
+    </script>
+</body>
+</html>

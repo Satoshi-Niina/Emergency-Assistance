@@ -4,10 +4,15 @@ import { useAuth } from '../../context/auth-context';
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  requireAdmin?: boolean;
+  requireRole?: 'system_admin' | 'operator' | 'user';  // 必要な最小権限を指定
+  requireSystemAdmin?: boolean; // 旧コードとの互換性のため残す
 }
 
-export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
+export function ProtectedRoute({ 
+  children, 
+  requireRole, 
+  requireSystemAdmin = false 
+}: ProtectedRouteProps) {
   const { user, isLoading } = useAuth();
   const location = useLocation();
 
@@ -16,7 +21,8 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
     hasUser: !!user,
     username: user?.username,
     role: user?.role,
-    requireAdmin,
+    requireRole,
+    requireSystemAdmin,
     currentPath: location.pathname,
     timestamp: new Date().toISOString()
   });
@@ -40,12 +46,44 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // 管理者権限が必要で、管理者でない場合
-  if (requireAdmin && user.role !== 'admin') {
-    console.log('🚫 ProtectedRoute - 管理者権限が必要ですが、権限がありません');
+  // 権限チェック関数
+  const hasRequiredPermission = () => {
+    const userRole = user.role;
+    
+    // 旧コードとの互換性：requireSystemAdminが指定されている場合
+    if (requireSystemAdmin && userRole !== 'system_admin') {
+      return false;
+    }
+    
+    // 新しい権限システム：requireRoleが指定されている場合
+    if (requireRole) {
+      // 権限レベルの順序定義
+      const roleHierarchy: Record<string, number> = {
+        'user': 1,
+        'operator': 2,
+        'system_admin': 3
+      };
+      
+      const userLevel = roleHierarchy[userRole] || 0;
+      const requiredLevel = roleHierarchy[requireRole] || 999;
+      
+      return userLevel >= requiredLevel;
+    }
+    
+    // デフォルトは認証済みであればアクセス可能
+    return true;
+  };
+
+  // 権限不足の場合
+  if (!hasRequiredPermission()) {
+    console.log('🚫 ProtectedRoute - 権限不足:', {
+      userRole: user.role,
+      requireRole,
+      requireSystemAdmin
+    });
     return <Navigate to="/chat" replace />;
   }
 
-  console.log('✅ ProtectedRoute - 認証OK、コンテンツを表示');
+  console.log('✅ ProtectedRoute - 認証・権限OK、コンテンツを表示');
   return <>{children}</>;
 }

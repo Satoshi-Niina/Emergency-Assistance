@@ -7,6 +7,49 @@ import { azureStorage } from '../azure-storage.js';
 const router = express.Router();
 
 /**
+ * 画像URLをAzure Blob Storage URLに変換する関数
+ */
+function processImageUrls(data: unknown): unknown {
+  if (!data || typeof data !== 'object') {
+    return data;
+  }
+  
+  // 配列の場合は各要素を処理
+  if (Array.isArray(data)) {
+    return data.map(item => processImageUrls(item));
+  }
+  
+  // オブジェクトの場合は各プロパティを処理
+  const processed = { ...data as Record<string, unknown> };
+  
+  for (const [key, value] of Object.entries(processed)) {
+    if (key === 'images' && Array.isArray(value)) {
+      // images配列の処理
+      processed[key] = value.map((image: unknown) => {
+        if (typeof image === 'object' && image !== null) {
+          const imageObj = image as Record<string, unknown>;
+          if (typeof imageObj.url === 'string' && imageObj.url.startsWith('knowledge-base/images/')) {
+            return {
+              ...imageObj,
+              url: `https://rgemergencyassistanb25b.blob.core.windows.net/knowledge/${imageObj.url}`
+            };
+          }
+        }
+        return image;
+      });
+    } else if (key === 'imageUrl' && typeof value === 'string' && value.startsWith('knowledge-base/images/')) {
+      // 単一imageUrlの処理
+      processed[key] = `https://rgemergencyassistanb25b.blob.core.windows.net/knowledge/${value}`;
+    } else if (typeof value === 'object') {
+      // 再帰的にオブジェクトを処理
+      processed[key] = processImageUrls(value);
+    }
+  }
+  
+  return processed;
+}
+
+/**
  * GET /api/knowledge
  * knowledge-base/dataフォルダのJSONファイル一覧を取得
  * Azure環境ではBlob Storage、ローカル環境ではファイルシステムを使用
@@ -159,7 +202,12 @@ router.get('/:filename', async (req, res) => {
         
         // ファイル内容を読み込み
         const fileContent = await azureStorage.readFileAsString(blobName);
-        const jsonData = JSON.parse(fileContent);
+        let jsonData = JSON.parse(fileContent);
+        
+        // 画像URLを正しいBlob Storage URLに変換
+        if (typeof jsonData === 'object' && jsonData !== null) {
+          jsonData = processImageUrls(jsonData);
+        }
         
         console.log('✅ Azure Blob Storage からナレッジベースファイル取得完了');
         
@@ -201,7 +249,12 @@ router.get('/:filename', async (req, res) => {
     
     // ファイル内容を読み込み
     const fileContent = fs.readFileSync(filePath, 'utf-8');
-    const jsonData = JSON.parse(fileContent);
+    let jsonData = JSON.parse(fileContent);
+    
+    // 画像URLを正しいBlob Storage URLに変換（ローカル環境でも統一）
+    if (typeof jsonData === 'object' && jsonData !== null) {
+      jsonData = processImageUrls(jsonData);
+    }
     
     console.log('✅ ローカルナレッジベースファイル取得完了');
     

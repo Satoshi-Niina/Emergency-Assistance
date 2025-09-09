@@ -46,20 +46,22 @@ function App() {
               <Route path="/dashboard" element={
                 user ? <ChatPage /> : <Navigate to="/login" replace />
               } />
-              {/* 認証が必要なルート */}
+              
+              {/* 全ユーザー共通 - チャット機能 */}
               <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
-              <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
-              <Route path="/documents" element={<ProtectedRoute><DocumentsPage /></ProtectedRoute>} />
-              <Route path="/troubleshooting" element={<ProtectedRoute><TroubleshootingPage /></ProtectedRoute>} />
-              <Route path="/emergency-guide/:id" element={<ProtectedRoute><EmergencyGuidePage /></ProtectedRoute>} />
-              {/* 設定ページ（一般ユーザーもアクセス可能） */}
-              <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-              {/* システム診断ページ（一般ユーザーもアクセス可能） */}
-              <Route path="/system-diagnostic" element={<ProtectedRoute><SystemDiagnosticPage /></ProtectedRoute>} />
-              {/* 基礎データ管理ページ */}
-              <Route path="/base-data" element={<ProtectedRoute><BaseDataPage /></ProtectedRoute>} />
-              {/* 管理者権限が必要なルート */}
-              <Route path="/users" element={<ProtectedRoute requireAdmin={true}><UsersPage /></ProtectedRoute>} />
+              
+              {/* 運用管理者以上 - システム内の各機能 */}
+              <Route path="/history" element={<ProtectedRoute requireRole="operator"><HistoryPage /></ProtectedRoute>} />
+              <Route path="/documents" element={<ProtectedRoute requireRole="operator"><DocumentsPage /></ProtectedRoute>} />
+              <Route path="/troubleshooting" element={<ProtectedRoute requireRole="operator"><TroubleshootingPage /></ProtectedRoute>} />
+              <Route path="/emergency-guide/:id" element={<ProtectedRoute requireRole="operator"><EmergencyGuidePage /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute requireRole="operator"><SettingsPage /></ProtectedRoute>} />
+              <Route path="/system-diagnostic" element={<ProtectedRoute requireRole="operator"><SystemDiagnosticPage /></ProtectedRoute>} />
+              <Route path="/base-data" element={<ProtectedRoute requireRole="operator"><BaseDataPage /></ProtectedRoute>} />
+              
+              {/* システム管理者専用 - システム管理機能 */}
+              <Route path="/users" element={<ProtectedRoute requireRole="system_admin"><UsersPage /></ProtectedRoute>} />
+              
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

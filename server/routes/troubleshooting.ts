@@ -195,8 +195,45 @@ router.get('/:id', async (req, res) => {
       });
     }
     const flowData = found as Record<string, unknown>;
+    
+    // 画像URLを正しいBlob Storage URLに変換する処理を追加
+    const processSteps = (steps: unknown[]): unknown[] => {
+      return steps.map((step: unknown) => {
+        if (typeof step === 'object' && step !== null) {
+          const stepObj = step as Record<string, unknown>;
+          
+          // 画像配列の処理
+          if (Array.isArray(stepObj.images)) {
+            stepObj.images = stepObj.images.map((image: unknown) => {
+              if (typeof image === 'object' && image !== null) {
+                const imgObj = image as Record<string, unknown>;
+                if (typeof imgObj.url === 'string' && imgObj.url.startsWith('knowledge-base/images/')) {
+                  // Azure Blob Storage URLを生成
+                  imgObj.url = `https://rgemergencyassistanb25b.blob.core.windows.net/knowledge/${imgObj.url}`;
+                }
+                return imgObj;
+              }
+              return image;
+            });
+          }
+          
+          // 単一の画像URL処理（後方互換性のため）
+          if (typeof stepObj.imageUrl === 'string' && stepObj.imageUrl.startsWith('knowledge-base/images/')) {
+            stepObj.imageUrl = `https://rgemergencyassistanb25b.blob.core.windows.net/knowledge/${stepObj.imageUrl}`;
+          }
+        }
+        return step;
+      });
+    };
+    
     const getProp = <T>(o: Record<string, unknown>, key: string): T | undefined => (o[key] as T | undefined);
     const steps = getProp<unknown[]>(flowData, 'steps');
+    
+    // ステップの画像URLを処理
+    if (Array.isArray(steps)) {
+      flowData.steps = processSteps(steps);
+    }
+    
     const stepsCount = Array.isArray(steps) ? steps.length : 0;
     const idProp = getProp<string>(flowData, 'id');
     const titleProp = getProp<string>(flowData, 'title');

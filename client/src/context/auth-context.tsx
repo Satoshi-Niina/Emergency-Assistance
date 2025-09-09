@@ -7,7 +7,7 @@ interface User {
   id: string;
   username: string;
   displayName: string;
-  role: 'admin' | 'employee';
+  role: 'system_admin' | 'operator' | 'user';  // 3段階の権限に更新
   department?: string;
 }
 

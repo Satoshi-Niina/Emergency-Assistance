@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blob Storage Access Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ccc; }
+        .result { margin: 10px 0; padding: 10px; background: #f5f5f5; }
+        .error { color: red; }
+        .success { color: green; }
+        img { max-width: 300px; margin: 10px; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <h1>Azure Blob Storage Access Test</h1>
+    
+    <div class="test-section">
+        <h2>1. API エンドポイントテスト</h2>
+        <button onclick="testApiEndpoints()">テスト開始</button>
+        <div id="api-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Blob Storage 直接アクセステスト</h2>
+        <button onclick="testBlobDirectAccess()">テスト開始</button>
+        <div id="blob-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. 画像表示テスト</h2>
+        <button onclick="testImageDisplay()">テスト開始</button>
+        <div id="image-results"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net';
+        const BLOB_BASE_URL = 'https://rgemergencyassistanb25b.blob.core.windows.net/knowledge';
+        
+        async function testApiEndpoints() {
+            const results = document.getElementById('api-results');
+            results.innerHTML = '<p>テスト実行中...</p>';
+            
+            const tests = [
+                {
+                    name: 'Knowledge Base API',
+                    url: `${API_BASE_URL}/api/knowledge`
+                },
+                {
+                    name: 'Troubleshooting API', 
+                    url: `${API_BASE_URL}/api/troubleshooting/list`
+                },
+                {
+                    name: 'Health Check',
+                    url: `${API_BASE_URL}/api/health`
+                }
+            ];
+            
+            let html = '';
+            for (const test of tests) {
+                try {
+                    console.log(`Testing: ${test.name} - ${test.url}`);
+                    const response = await fetch(test.url, {
+                        method: 'GET',
+                        credentials: 'include',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Cache-Control': 'no-cache'
+                        }
+                    });
+                    
+                    const result = {
+                        status: response.status,
+                        statusText: response.statusText,
+                        headers: Object.fromEntries(response.headers.entries())
+                    };
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        html += `<div class="result success">
+                            <strong>${test.name}</strong>: ✅ Success (${response.status})
+                            <br>Data: ${JSON.stringify(data, null, 2).substring(0, 200)}...
+                        </div>`;
+                    } else {
+                        html += `<div class="result error">
+                            <strong>${test.name}</strong>: ❌ Failed (${response.status})
+                            <br>Error: ${response.statusText}
+                        </div>`;
+                    }
+                } catch (error) {
+                    html += `<div class="result error">
+                        <strong>${test.name}</strong>: ❌ Error
+                        <br>Details: ${error.message}
+                    </div>`;
+                }
+            }
+            results.innerHTML = html;
+        }
+        
+        async function testBlobDirectAccess() {
+            const results = document.getElementById('blob-results');
+            results.innerHTML = '<p>テスト実行中...</p>';
+            
+            const testFiles = [
+                'knowledge-base/images/emergency-flows/emergency-flow-step_9e223875dcddf48a850587a2e127e1c6.jpg',
+                'knowledge-base/images/emergency-flows/emergency-flow-step_b5858fa1a4d4dabd90e0e42e5739d751.jpg',
+                'knowledge-base/troubleshooting/31e2226b-e8e4-4c4f-af61-67e6d439d102.json'
+            ];
+            
+            let html = '';
+            for (const file of testFiles) {
+                try {
+                    const url = `${BLOB_BASE_URL}/${file}`;
+                    console.log(`Testing Blob access: ${url}`);
+                    
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        mode: 'cors'
+                    });
+                    
+                    if (response.ok) {
+                        html += `<div class="result success">
+                            <strong>${file}</strong>: ✅ Accessible (${response.status})
+                            <br>Content-Type: ${response.headers.get('content-type')}
+                            <br>Size: ${response.headers.get('content-length')} bytes
+                        </div>`;
+                    } else {
+                        html += `<div class="result error">
+                            <strong>${file}</strong>: ❌ Not Accessible (${response.status})
+                            <br>Error: ${response.statusText}
+                        </div>`;
+                    }
+                } catch (error) {
+                    html += `<div class="result error">
+                        <strong>${file}</strong>: ❌ CORS/Network Error
+                        <br>Details: ${error.message}
+                    </div>`;
+                }
+            }
+            results.innerHTML = html;
+        }
+        
+        async function testImageDisplay() {
+            const results = document.getElementById('image-results');
+            results.innerHTML = '<p>テスト実行中...</p>';
+            
+            const imageUrls = [
+                `${BLOB_BASE_URL}/knowledge-base/images/emergency-flows/emergency-flow-step_9e223875dcddf48a850587a2e127e1c6.jpg`,
+                `${BLOB_BASE_URL}/knowledge-base/images/emergency-flows/emergency-flow-step_b5858fa1a4d4dabd90e0e42e5739d751.jpg`
+            ];
+            
+            let html = '<h3>画像表示テスト結果:</h3>';
+            
+            imageUrls.forEach((url, index) => {
+                html += `<div>
+                    <p><strong>画像 ${index + 1}:</strong> ${url}</p>
+                    <img src="${url}" alt="Test Image ${index + 1}" 
+                         onload="this.nextSibling.innerHTML='✅ 読み込み成功'"
+                         onerror="this.nextSibling.innerHTML='❌ 読み込み失敗'">
+                    <span class="result">読み込み中...</span>
+                </div>`;
+            });
+            
+            results.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
