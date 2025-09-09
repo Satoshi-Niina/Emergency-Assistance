@@ -185,6 +185,14 @@ router.post('/login', async (req, res) => {
       const cookieHeader = res.getHeader('Set-Cookie');
       console.log('🍪 Response Set-Cookie header:', cookieHeader);
 
+      // クロスサイト用の認証トークンを生成（セッションのバックアップ）
+      const authToken = Buffer.from(JSON.stringify({
+        userId: foundUser.id,
+        username: foundUser.username,
+        role: foundUser.role,
+        timestamp: Date.now()
+      })).toString('base64');
+
       // 成功レスポンス（Reactの認証コンテキストに合わせる）
       return res.json({
         success: true,
@@ -196,6 +204,7 @@ router.post('/login', async (req, res) => {
           role: foundUser.role,
           department: foundUser.department || 'General'
         },
+        token: authToken, // フロントエンドでAuthorizationヘッダーに使用
         debugInfo: {
           sessionId: req.session.id,
           cookieSettings: {
@@ -337,7 +346,8 @@ router.get('/me', async (req, res) => {
         origin: req.headers.origin,
         host: req.headers.host,
         referer: req.headers.referer,
-        userAgent: req.headers['user-agent']?.substring(0, 50)
+        userAgent: req.headers['user-agent']?.substring(0, 50),
+        authorization: req.headers.authorization ? '[SET]' : '[NOT SET]'
       },
       request: {
         method: req.method,
@@ -348,16 +358,32 @@ router.get('/me', async (req, res) => {
     
     console.log('🔍 /me endpoint called:', requestInfo);
     
-    // セッションからユーザーIDを取得
-    const userId = req.session?.userId;
+    // Authorization ヘッダーからトークンをチェック（フォールバック）
+    const authHeader = req.headers.authorization;
+    let tokenUserId: number | null = null;
+    
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.substring(7);
+        const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+        tokenUserId = decoded.userId;
+        console.log('🎫 Token found in Authorization header, userId:', tokenUserId);
+      } catch (e) {
+        console.log('⚠️ Invalid token in Authorization header');
+      }
+    }
+    
+    // セッションからユーザーIDを取得（優先）
+    const userId = req.session?.userId || tokenUserId;
     
     if (!userId) {
-      console.log('❌ No user ID in session - returning 401');
+      console.log('❌ No user ID in session or token - returning 401');
       console.log('📊 Session debug:', {
         sessionExists: !!req.session,
         sessionId: req.session?.id,
         sessionData: req.session ? JSON.stringify(req.session, null, 2) : 'NO_SESSION',
-        cookieHeader: req.headers.cookie
+        cookieHeader: req.headers.cookie,
+        authHeader: authHeader ? '[SET]' : '[NOT SET]'
       });
       
       return res.status(401).json({
@@ -366,6 +392,7 @@ router.get('/me', async (req, res) => {
         debug: {
           hasSession: !!req.session,
           hasCookie: !!req.headers.cookie,
+          hasAuthHeader: !!authHeader,
           sessionId: req.session?.id || null
         }
       });

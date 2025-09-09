@@ -74,6 +74,13 @@ export const login = async (credentials: LoginCredentials) => {
     
     const userData = await response.json();
     console.log('✅ ログイン成功:', userData);
+    
+    // トークンをlocalStorageに保存（セッションのバックアップ）
+    if (userData.token) {
+      localStorage.setItem('auth-token', userData.token);
+      console.log('🎫 Token saved to localStorage');
+    }
+    
     return userData;
   } catch (error) {
     console.error('❌ Login error:', error);
@@ -100,23 +107,19 @@ export const logout = async () => {
     
     console.log('🔐 ログアウト試行:', logoutUrl);
     
-    const response = await fetch(logoutUrl, {
+    const _response = await fetch(logoutUrl, {
       method: 'POST',
       credentials: 'include'
     });
     
-    console.log('📡 ログアウトレスポンス:', { 
-      status: response.status, 
-      ok: response.ok 
-    });
+    // トークンもクリア
+    localStorage.removeItem('auth-token');
+    console.log('🎫 Token cleared from localStorage');
     
-    if (!response.ok) {
-      throw new Error(`Logout failed: ${response.status} ${response.statusText}`);
-    }
-    
-    return await response.json();
   } catch (error) {
     console.error('Logout error:', error);
+    // エラーでもトークンはクリアする
+    localStorage.removeItem('auth-token');
     throw new Error('ログアウトに失敗しました');
   }
 };
@@ -135,13 +138,23 @@ export const getCurrentUser = async () => {
       protocol: window.location.protocol
     });
     
+    // localStorage からトークンを取得
+    const authToken = localStorage.getItem('auth-token');
+    const headers: HeadersInit = {
+      'Accept': 'application/json',
+      'Cache-Control': 'no-cache'
+    };
+    
+    // トークンがあればAuthorizationヘッダーに追加
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+      console.log('🎫 Using token from localStorage');
+    }
+    
     const response = await fetch(AUTH_API.ME, {
       method: 'GET',
       credentials: 'include',
-      headers: {
-        'Accept': 'application/json',
-        'Cache-Control': 'no-cache'
-      }
+      headers
     });
     
     console.log('📡 getCurrentUser response:', {
@@ -153,7 +166,8 @@ export const getCurrentUser = async () => {
     
     if (!response.ok) {
       if (response.status === 401) {
-        console.log('🔓 Not authenticated (401)');
+        console.log('🔓 Not authenticated (401) - clearing token');
+        localStorage.removeItem('auth-token');
         return null;
       }
       
