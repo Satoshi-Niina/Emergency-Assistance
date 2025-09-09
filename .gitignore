@@ -102,6 +102,20 @@ secrets.json
 *.crt
 *.cert
 
+# Database connection files
+*connection-string*
+*database-config*
+*db-config*
+*init-*database*
+*azure-db*
+*postgres-config*
+
+# Reports with sensitive information
+*FIX_REPORT*
+*FIXES_SUMMARY*
+azure-*-report.md
+azure-*-summary.md
+
 # ========================================
 # Package manager
 # ========================================
