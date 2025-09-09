@@ -84,28 +84,44 @@ router.post('/login', async (req, res) => {
     const foundUser = user[0];
     console.log('✅ User found:', { id: foundUser.id, username: foundUser.username, role: foundUser.role });
     
-    // パスワードチェック（bcrypt のみ）
-    const isValidPassword = await bcrypt.compare(password, foundUser.password).catch(err => {
-      console.warn('bcrypt compare error:', err);
-      return false;
-    });
-    if (!isValidPassword) {
-      console.log('❌ Invalid password for:', username);
-      console.log('❌ Password validation failed:', {
-        username: username,
-        reason: 'bcrypt_mismatch'
+    let currentPasswordHash = foundUser.password;
+    let passwordValidated = false;
+    const isBcryptHash = currentPasswordHash.startsWith('$2a$') || currentPasswordHash.startsWith('$2b$') || currentPasswordHash.startsWith('$2y$');
+    if (isBcryptHash) {
+      passwordValidated = await bcrypt.compare(password, currentPasswordHash).catch(err => {
+        console.warn('bcrypt compare error:', err);
+        return false;
       });
-      return res.status(401).json({
-        success: false,
-        error: 'ユーザー名またはパスワードが違います'
-      });
+    } else {
+      // レガシー: 平文で保存されていた場合（旧実装の暫定措置）
+      if (password === currentPasswordHash) {
+        passwordValidated = true;
+        try {
+          const newHash = await bcrypt.hash(password, 10);
+          await db.update(users).set({ password: newHash }).where(eq(users.id, foundUser.id));
+          currentPasswordHash = newHash;
+          console.log('🔄 Legacy plaintext password migrated to bcrypt hash for user:', username);
+        } catch (mErr) {
+          console.warn('⚠️ Failed migrating legacy password hash:', mErr);
+        }
+      }
+    }
+    if (!passwordValidated) {
+      console.log('❌ Invalid password for:', username, { reason: isBcryptHash ? 'bcrypt_mismatch' : 'legacy_plaintext_mismatch' });
+      return res.status(401).json({ success: false, error: 'ユーザー名またはパスワードが違います' });
     }
 
     console.log('✅ Login successful for:', username);
 
     // セッションにユーザー情報を保存
     req.session.userId = foundUser.id;
-    req.session.userRole = foundUser.role;
+    // 旧ロール名を新ロールへマッピング（DBは後で移行可能）
+    const normalizedRole = ((): string => {
+      if (foundUser.role === 'admin') return 'system_admin';
+      if (foundUser.role === 'employee') return 'user';
+      return foundUser.role;
+    })();
+    req.session.userRole = normalizedRole;
     
     console.log('💾 Session data before save:', {
       userId: req.session.userId,
@@ -141,6 +157,13 @@ router.post('/login', async (req, res) => {
           displayName: foundUser.displayName || foundUser.username,
           role: foundUser.role,
           department: foundUser.department || 'General'
+        },
+        debugCookie: {
+          secure: req.session.cookie.secure,
+          sameSite: req.session.cookie.sameSite,
+          originalMaxAge: req.session.cookie.originalMaxAge,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          partitioned: (req.session.cookie as any).partitioned || false
         }
       });
     });

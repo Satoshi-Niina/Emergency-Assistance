@@ -155,6 +155,7 @@ export async function createApp() {
     }
   }
 
+  const usePartitioned = isProduction && process.env.SESSION_PARTITIONED === 'true';
   const sessionConfig = {
     secret: process.env.SESSION_SECRET || 'dev-session-secret',
     resave: true,
@@ -165,14 +166,28 @@ export async function createApp() {
       sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
       maxAge: 1000 * 60 * 60 * 24 * 7,
       path: '/',
-      ...(isProduction ? { partitioned: true } : {})
+      ...(usePartitioned ? { partitioned: true } : {})
     } as SessionCookieOptions,
     name: 'emergency-assistance-session',
     rolling: true,
     store: redisStore || undefined
   };
-  console.log('🔧 session config:', { secure: sessionConfig.cookie.secure, sameSite: sessionConfig.cookie.sameSite });
+  console.log('🔧 session config:', { secure: sessionConfig.cookie.secure, sameSite: sessionConfig.cookie.sameSite, partitioned: usePartitioned });
   app.use(session(sessionConfig));
+  // /api/auth/login の直後に Set-Cookie を確認するデバッグラッパ
+  app.use((req, res, next) => {
+    if (req.path === '/api/auth/login') {
+      const originalEnd = res.end;
+      res.end = function(chunk, encoding, cb) {
+        try {
+          const sc = res.getHeader('Set-Cookie');
+          console.log('🍪 [login] Set-Cookie header:', sc);
+        } catch {}
+        return originalEnd.call(this, chunk, encoding, cb);
+      } as typeof res.end;
+    }
+    next();
+  });
 
   // 静的: アップロードされたファイル
   app.use('/uploads', express.static(uploadsDir));
