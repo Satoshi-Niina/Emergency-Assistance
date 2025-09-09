@@ -110,11 +110,12 @@ console.log('🔧 API設定:', {
 
 // 認証APIエンドポイント
 export const AUTH_API = {
-  LOGIN: buildApiUrl('/api/auth/login'),
+  LOGIN: buildApiUrl('/api/auth/token-login'),
   LOGOUT: buildApiUrl('/api/auth/logout'),
-  ME: buildApiUrl('/api/auth/me'),
+  ME: buildApiUrl('/api/auth/token-me'),
   // デバッグ用テストエンドポイント
   TEST: buildApiUrl('/api/health'),
+  DEBUG: buildApiUrl('/api/auth/debug/env'),
 };
 
 // ナレッジベースAPIエンドポイント
