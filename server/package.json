@@ -14,8 +14,7 @@
     "seed:users": "tsx scripts/seed-users.ts",
     "start": "node azure-simple-server.js",
     "start:prod": "node dist/azure-production-server.js",
-    "azure:start": "node dist/azure-production-server.js",
-    "postinstall": "npm run build"
+    "azure:start": "node dist/azure-production-server.js"
   },
   "dependencies": {
     "@azure/identity": "^4.0.1",

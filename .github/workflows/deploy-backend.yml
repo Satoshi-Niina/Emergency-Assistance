@@ -58,17 +58,41 @@ jobs:
           echo "=== Preparing deployment package for Azure App Service ==="
           mkdir -p ../deploy-backend
           
-          # Copy entire server directory structure
+          # Copy server build artifacts and JavaScript files
           cp -r dist ../deploy-backend/ 2>/dev/null || echo "dist directory not found, skipping"
-          cp package.json ../deploy-backend/
-          cp package-lock.json ../deploy-backend/ 2>/dev/null || echo "package-lock.json not found, skipping"
           cp azure-simple-server.js ../deploy-backend/ 2>/dev/null || echo "azure-simple-server.js not found, skipping"
           
-          # Copy root-level entry point and package.json
-          cp ../package.json ../deploy-backend/package.json
+          # Copy root-level entry point and create simplified package.json
           cp ../server.js ../deploy-backend/
           
           cd ../deploy-backend
+          
+          # Create minimal package.json for Azure App Service
+          cat > package.json << 'EOF'
+          {
+            "name": "emergency-assistance-azure",
+            "version": "1.0.0",
+            "description": "Emergency Assistance System - Azure Production",
+            "main": "server.js",
+            "type": "commonjs",
+            "scripts": {
+              "start": "node server.js"
+            },
+            "dependencies": {
+              "@azure/storage-blob": "^12.28.0",
+              "bcrypt": "^6.0.0",
+              "cors": "^2.8.5",
+              "dotenv": "^16.6.1",
+              "express": "^4.21.2",
+              "express-session": "^1.18.0",
+              "pg": "^8.16.3"
+            },
+            "engines": {
+              "node": ">=20",
+              "npm": ">=10"
+            }
+          }
+          EOF
           
           # Install production dependencies for Azure App Service
           echo "=== Installing production dependencies ==="

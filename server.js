@@ -13,11 +13,29 @@ console.log('Working Directory:', process.cwd());
 console.log('Node Version:', process.version);
 console.log('Environment:', process.env.NODE_ENV);
 
-// ビルド済みファイルのパス
-const productionServerPath = path.join(__dirname, 'server', 'dist', 'azure-production-server.js');
-const fallbackServerPath = path.join(__dirname, 'server', 'azure-simple-server.js');
+// 環境判定（ローカル開発環境 vs Azure App Service）
+const isAzureAppService = process.env.WEBSITE_SITE_NAME || process.env.AZURE_APP_SERVICE;
+const isLocalDev = !isAzureAppService;
+
+console.log('Is Azure App Service:', isAzureAppService);
+console.log('Is Local Development:', isLocalDev);
+
+// 環境に応じたパス設定
+let productionServerPath, fallbackServerPath;
+
+if (isAzureAppService) {
+  // Azure App Service環境
+  productionServerPath = path.join(__dirname, 'dist', 'azure-production-server.js');
+  fallbackServerPath = path.join(__dirname, 'azure-simple-server.js');
+} else {
+  // ローカル開発環境
+  productionServerPath = path.join(__dirname, 'server', 'dist', 'azure-production-server.js');
+  fallbackServerPath = path.join(__dirname, 'server', 'azure-simple-server.js');
+}
 
 // ファイル存在確認
+console.log('Production server path:', productionServerPath);
+console.log('Fallback server path:', fallbackServerPath);
 console.log('Production server exists:', fs.existsSync(productionServerPath));
 console.log('Fallback server exists:', fs.existsSync(fallbackServerPath));
 
