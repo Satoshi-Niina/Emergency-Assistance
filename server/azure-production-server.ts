@@ -435,6 +435,139 @@ app.get('/api/system-check/storage-check', async (req, res) => {
   }
 });
 
+// システム診断API - データベーステーブル確認（認証不要）
+app.get('/api/system-check/db-tables', async (req, res) => {
+  try {
+    console.log('🔍 データベーステーブル一覧チェック開始');
+    
+    const client = await createDbClient();
+    
+    // テーブル一覧を取得
+    const tablesResult = await client.query(`
+      SELECT table_name, table_type 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      ORDER BY table_name
+    `);
+    
+    // 各テーブルの行数を取得
+    const tableCounts: { [key: string]: number | string } = {};
+    for (const table of tablesResult.rows) {
+      try {
+        const countResult = await client.query(`SELECT COUNT(*) as count FROM "${table.table_name}"`);
+        tableCounts[table.table_name] = parseInt(countResult.rows[0].count);
+      } catch (error) {
+        console.error(`❌ テーブル ${table.table_name} の行数取得エラー:`, error);
+        tableCounts[table.table_name] = 'error';
+      }
+    }
+    
+    await client.end();
+    
+    console.log('✅ データベーステーブル一覧取得成功');
+    res.json({
+      status: 'OK',
+      timestamp: new Date().toISOString(),
+      database: {
+        connection: 'healthy',
+        tableCount: tablesResult.rows.length,
+      },
+      tables: tablesResult.rows.map(row => ({
+        name: row.table_name,
+        type: row.table_type,
+        rowCount: tableCounts[row.table_name]
+      }))
+    });
+  } catch (error) {
+    console.error('❌ データベーステーブル一覧エラー:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      error: 'データベーステーブル一覧取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// システム診断API - Blob Storage詳細確認（認証不要）
+app.get('/api/system-check/storage-files', async (req, res) => {
+  try {
+    console.log('🔍 Blob Storage詳細チェック開始');
+    
+    const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+    const containerName = process.env.BLOB_CONTAINER_NAME || 'knowledge';
+    
+    if (!connectionString) {
+      return res.status(500).json({
+        status: "ERROR",
+        message: "Azure Storage接続文字列が設定されていません"
+      });
+    }
+
+    const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    
+    // コンテナーの存在確認
+    const containerExists = await containerClient.exists();
+    
+    if (!containerExists) {
+      return res.json({
+        status: "WARNING",
+        message: `コンテナー '${containerName}' が存在しません`,
+        container: {
+          name: containerName,
+          exists: false,
+          files: []
+        }
+      });
+    }
+    
+    // ファイル一覧取得
+    const files: Array<{
+      name: string;
+      size: number;
+      lastModified: string;
+      contentType?: string;
+    }> = [];
+    
+    let totalSize = 0;
+    let fileCount = 0;
+    
+    for await (const blob of containerClient.listBlobsFlat({ includeMetadata: true })) {
+      files.push({
+        name: blob.name,
+        size: blob.properties.contentLength || 0,
+        lastModified: blob.properties.lastModified?.toISOString() || '',
+        contentType: blob.properties.contentType
+      });
+      
+      totalSize += blob.properties.contentLength || 0;
+      fileCount++;
+      
+      if (fileCount >= 50) break; // 最大50ファイルまで
+    }
+    
+    console.log(`✅ Blob Storage詳細チェック完了: ${fileCount}ファイル, 合計${totalSize}バイト`);
+    
+    res.json({
+      status: "OK",
+      timestamp: new Date().toISOString(),
+      container: {
+        name: containerName,
+        exists: true,
+        fileCount: fileCount,
+        totalSize: totalSize,
+        files: files.slice(0, 10) // 最初の10ファイルのみ表示
+      }
+    });
+  } catch (error) {
+    console.error('❌ Blob Storage詳細チェックエラー:', error);
+    res.status(500).json({
+      status: "ERROR",
+      message: error instanceof Error ? error.message : "Azure Storage詳細チェックエラー"
+    });
+  }
+});
+
 // 機種一覧取得API
 app.get('/api/machines/machine-types', async (req, res) => {
   try {
