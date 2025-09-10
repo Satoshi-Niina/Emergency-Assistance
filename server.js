@@ -34,25 +34,35 @@ if (isAzureAppService) {
 }
 
 // ファイル存在確認
+console.log('Production v2 server path:', productionV2ServerPath);
 console.log('Quickfix server path:', quickfixServerPath);
 console.log('Production server path:', productionServerPath);
 console.log('Fallback server path:', fallbackServerPath);
+console.log('Production v2 server exists:', fs.existsSync(productionV2ServerPath));
 console.log('Quickfix server exists:', fs.existsSync(quickfixServerPath));
 console.log('Production server exists:', fs.existsSync(productionServerPath));
 console.log('Fallback server exists:', fs.existsSync(fallbackServerPath));
 
 // 優先順位：
-// 1. クイックフィックスサーバー（一時的な修正用）
-// 2. ビルドされた本番サーバー
-// 3. フォールバック JavaScript サーバー
+// 1. 新しい本番サーバーv2（修正版）
+// 2. クイックフィックスサーバー（一時的な修正用）
+// 3. ビルドされた本番サーバー
+// 4. フォールバック JavaScript サーバー
 
 let serverToStart;
+
+const productionV2ServerPath = isAzureAppService 
+  ? path.join(__dirname, 'dist', 'azure-production-server-v2.js')
+  : path.join(__dirname, 'server', 'dist', 'azure-production-server-v2.js');
 
 const quickfixServerPath = isAzureAppService 
   ? path.join(__dirname, 'azure-quickfix-server.js')
   : path.join(__dirname, 'server', 'azure-quickfix-server.js');
 
-if (fs.existsSync(quickfixServerPath)) {
+if (fs.existsSync(productionV2ServerPath)) {
+    console.log('🚀 新しい本番サーバーv2を起動します...');
+    serverToStart = productionV2ServerPath;
+} else if (fs.existsSync(quickfixServerPath)) {
     console.log('🔧 クイックフィックスサーバーを起動します...');
     serverToStart = quickfixServerPath;
 } else if (fs.existsSync(productionServerPath)) {
@@ -64,6 +74,7 @@ if (fs.existsSync(quickfixServerPath)) {
 } else {
     console.error('❌ 起動可能なサーバーファイルが見つかりません');
     console.error('探したパス:');
+    console.error('- ' + productionV2ServerPath);
     console.error('- ' + quickfixServerPath);
     console.error('- ' + productionServerPath);
     console.error('- ' + fallbackServerPath);

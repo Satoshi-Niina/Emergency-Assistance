@@ -6,6 +6,7 @@
     "dev": "tsx index.dev.ts",
     "build": "tsc",
     "build:azure": "tsc azure-production-server.ts --outDir dist --skipLibCheck --esModuleInterop --allowSyntheticDefaultImports --target ES2020 --module CommonJS --moduleResolution node",
+    "build:v2": "tsc azure-production-server-v2.ts --outDir dist --skipLibCheck --esModuleInterop --allowSyntheticDefaultImports --target ES2020 --module CommonJS --moduleResolution node",
     "build:specific": "tsc ./azure-production-server.ts --outDir dist --skipLibCheck --esModuleInterop --allowSyntheticDefaultImports --target ES2020 --module CommonJS --moduleResolution node",
     "build:check": "tsc --noEmit",
     "clean": "rimraf dist",
@@ -14,7 +15,8 @@
     "seed:users": "tsx scripts/seed-users.ts",
     "start": "node azure-simple-server.js",
     "start:prod": "node dist/azure-production-server.js",
-    "azure:start": "node dist/azure-production-server.js"
+    "azure:start": "node dist/azure-production-server.js",
+    "postinstall": "npm run build:v2"
   },
   "dependencies": {
     "@azure/identity": "^4.0.1",

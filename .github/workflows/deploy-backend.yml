@@ -34,21 +34,21 @@ jobs:
       - name: Build backend (tsc)
         working-directory: server
         run: |
-          echo "=== Building Azure Production Server ==="
-          npm run build:azure
+          echo "=== Building Azure Production Server v2 ==="
+          npm run build:v2
           echo "=== Verifying dist structure ==="
           ls -la dist/
-          echo "=== Checking for azure-production-server.js ==="
-          if [ -f dist/azure-production-server.js ]; then
-            echo "✅ azure-production-server.js found"
-            head -3 dist/azure-production-server.js
+          echo "=== Checking for azure-production-server-v2.js ==="
+          if [ -f dist/azure-production-server-v2.js ]; then
+            echo "✅ azure-production-server-v2.js found"
+            head -3 dist/azure-production-server-v2.js
           else
-            echo "❌ azure-production-server.js NOT found!"
+            echo "❌ azure-production-server-v2.js NOT found!"
             echo "Available files in dist:"
             ls -la dist/
             # Fallback build attempt
             echo "=== Attempting fallback build ==="
-            npx tsc azure-production-server.ts --outDir dist --skipLibCheck --esModuleInterop --allowSyntheticDefaultImports --target ES2020 --module NodeNext --moduleResolution NodeNext
+            npx tsc azure-production-server-v2.ts --outDir dist --skipLibCheck --esModuleInterop --allowSyntheticDefaultImports --target ES2020 --module CommonJS --moduleResolution node
             ls -la dist/
           fi
 
