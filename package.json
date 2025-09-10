@@ -15,7 +15,7 @@
     "build:shared": "cd shared && npm run build",
     "build:client": "cd client && npm run build",
     "build:server": "cd server && npm run build",
-    "start": "cd server && npm start",
+    "start": "node server/dist/azure-production-server.js",
     "hello": "cd server && HELLO_ONLY=1 npm start",
     "hello:win": "cd server && $env:HELLO_ONLY=\"true\" && npm start",
     "start:prod": "cd server && npm run start:prod",

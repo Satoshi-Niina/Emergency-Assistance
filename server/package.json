@@ -12,7 +12,7 @@
     "lint": "eslint \"**/*.{ts,tsx,js,jsx}\" --max-warnings=0",
     "migrate": "drizzle-kit migrate",
     "seed:users": "tsx scripts/seed-users.ts",
-    "start": "node dist/azure-production-server.js",
+    "start": "node azure-simple-server.js",
     "start:prod": "node dist/azure-production-server.js",
     "azure:start": "node dist/azure-production-server.js",
     "postinstall": "npm run build"

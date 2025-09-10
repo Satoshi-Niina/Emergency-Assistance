@@ -20,6 +20,9 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'https://witty-river-012f39e00.
 const SESSION_SECRET = process.env.SESSION_SECRET || 'emergency-assistance-session-secret-2025';
 const DATABASE_URL = process.env.DATABASE_URL;
 
+// Azure App Service環境を明示的に設定
+process.env.AZURE_APP_SERVICE = 'true';
+
 console.log('🚀 Azure App Service Server Starting...');
 console.log('Environment:', NODE_ENV);
 console.log('Port:', PORT);

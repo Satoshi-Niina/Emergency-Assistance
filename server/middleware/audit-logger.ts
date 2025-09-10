@@ -7,22 +7,40 @@ import path from 'path';
 // シンプルなキュー & バッチ書き込み
 const queue: string[] = [];
 let flushing = false;
-const logDir = path.join(process.cwd(), 'logs');
+// Azure App Service環境ではログはコンソールに出力するか、利用可能な一時ディレクトリを使用
+const logDir = process.env.NODE_ENV === 'production' && process.env.AZURE_APP_SERVICE 
+  ? path.join('/tmp', 'logs') 
+  : path.join(process.cwd(), 'logs');
 const logFile = path.join(logDir, 'audit.log');
 
 function ensureDir() {
-  if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
+  try {
+    if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
+  } catch (err) {
+    console.warn('Cannot create log directory, using console logging:', err);
+    return false;
+  }
+  return true;
 }
 
 async function flush() {
   if (flushing || queue.length === 0) return;
   flushing = true;
-  ensureDir();
+  
   const batch = queue.splice(0, queue.length).join('');
+  
+  // Azure環境ではログをファイルに書き込めない場合、コンソール出力にフォールバック
+  if (!ensureDir()) {
+    console.log('[AUDIT]', batch);
+    flushing = false;
+    return;
+  }
+  
   try {
     await fs.promises.appendFile(logFile, batch, 'utf8');
   } catch (err) {
-    console.error('Audit log write failed', err);
+    console.error('Audit log write failed, falling back to console:', err);
+    console.log('[AUDIT]', batch);
   } finally {
     flushing = false;
   }
