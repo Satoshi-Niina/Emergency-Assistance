@@ -7,6 +7,8 @@ on:
     # バックエンドコードの変更時のみトリガー
     paths:
       - 'server/**'
+      - 'package.json'
+      - 'server.js'
       - '.github/workflows/deploy-backend.yml'
       - 'trigger.txt'
   workflow_dispatch:
@@ -53,13 +55,18 @@ jobs:
       - name: Prepare deployment package
         working-directory: server
         run: |
-          echo "=== Preparing deployment package for npm start ==="
+          echo "=== Preparing deployment package for Azure App Service ==="
           mkdir -p ../deploy-backend
           
-          # Copy dist directory structure and package configuration
-          cp -r dist ../deploy-backend/
+          # Copy entire server directory structure
+          cp -r dist ../deploy-backend/ 2>/dev/null || echo "dist directory not found, skipping"
           cp package.json ../deploy-backend/
-          cp package-lock.json ../deploy-backend/ || echo "package-lock.json not found, skipping"
+          cp package-lock.json ../deploy-backend/ 2>/dev/null || echo "package-lock.json not found, skipping"
+          cp azure-simple-server.js ../deploy-backend/ 2>/dev/null || echo "azure-simple-server.js not found, skipping"
+          
+          # Copy root-level entry point and package.json
+          cp ../package.json ../deploy-backend/package.json
+          cp ../server.js ../deploy-backend/
           
           cd ../deploy-backend
           
@@ -70,16 +77,18 @@ jobs:
           else
             npm install --omit=dev --no-audit --prefer-offline
           fi
-          if [ -f dist/azure-production-server.js ]; then
-            echo "✅ Entry point dist/azure-production-server.js exists"
+          
+          # Verify entry point
+          if [ -f server.js ]; then
+            echo "✅ Entry point server.js exists"
             echo "Entry point first lines:"
-            head -3 dist/azure-production-server.js
+            head -5 server.js
           else
-            echo "❌ Entry point dist/azure-production-server.js NOT found - deployment will fail!"
-            echo "Available files in dist:" 
-            ls -la dist/
+            echo "❌ Entry point server.js NOT found - deployment will fail!"
             exit 1
           fi
+          
+          # Verify start script
           if grep -q "\"start\":" package.json; then
             echo "✅ npm start script found in package.json:"
             grep "\"start\":" package.json
@@ -87,6 +96,9 @@ jobs:
             echo "❌ npm start script NOT found - deployment will fail!"
             exit 1
           fi
+          
+          echo "=== Deployment package structure ==="
+          ls -la
           
 
       - name: Deploy to Azure Web App
