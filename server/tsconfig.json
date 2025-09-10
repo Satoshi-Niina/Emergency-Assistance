@@ -3,7 +3,7 @@
     "target": "ES2022",
     "module": "ES2022",
     "moduleResolution": "node",
-    "rootDir": ".",
+    "rootDir": "..",
     "outDir": "dist",
     "strict": false,
     "noImplicitAny": false,
@@ -32,7 +32,8 @@
     "services/**/*",
     "utils/**/*",
     "types/**/*",
-    "types/custom.d.ts"
+    "types/custom.d.ts",
+    "../shared/**/*.ts"
   ],
   "exclude": [
     "node_modules",
@@ -43,6 +44,14 @@
     "**/*.backup",
     "temp/**/*",
     "temp_zip_check/**/*",
-    "simple-server.ts"
+    "../client/**/*",
+    "../scripts/**/*",
+    "../knowledge-base/**/*",
+    "../public/**/*",
+    "../pages/**/*",
+    "../logs/**/*",
+    "../uploads/**/*",
+    "../shared/node_modules/**/*",
+    "../shared/dist/**/*"
   ]
 }
