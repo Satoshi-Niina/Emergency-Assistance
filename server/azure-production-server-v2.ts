@@ -7,6 +7,7 @@
 import express from 'express';
 import cors from 'cors';
 import session from 'express-session';
+import bcrypt from 'bcrypt';
 import { Client } from 'pg';
 import { BlobServiceClient } from '@azure/storage-blob';
 
@@ -165,14 +166,16 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const client = await createDbClient();
+    
+    // ユーザー情報を取得（パスワードハッシュも含む）
     const result = await client.query(
-      'SELECT id, username, role, display_name FROM users WHERE username = $1 AND password = crypt($2, password)',
-      [username, password]
+      'SELECT id, username, password, role, display_name FROM users WHERE username = $1',
+      [username]
     );
-    await client.end();
     
     if (result.rows.length === 0) {
-      console.log('❌ ログイン失敗: 認証情報が無効');
+      await client.end();
+      console.log('❌ ログイン失敗: ユーザーが見つかりません');
       return res.status(401).json({
         success: false,
         error: 'ユーザー名またはパスワードが間違っています'
@@ -180,6 +183,20 @@ app.post('/api/auth/login', async (req, res) => {
     }
     
     const user = result.rows[0];
+    
+    // bcryptでパスワードを検証
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    
+    if (!passwordMatch) {
+      await client.end();
+      console.log('❌ ログイン失敗: パスワードが間違っています');
+      return res.status(401).json({
+        success: false,
+        error: 'ユーザー名またはパスワードが間違っています'
+      });
+    }
+    
+    await client.end();
     
     // セッションに保存
     req.session.userId = user.id;
