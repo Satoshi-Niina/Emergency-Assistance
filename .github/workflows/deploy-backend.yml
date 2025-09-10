@@ -32,17 +32,21 @@ jobs:
       - name: Build backend (tsc)
         working-directory: server
         run: |
-          echo "=== Building TypeScript project ==="
-          npm run build
+          echo "=== Building Azure Production Server ==="
+          npm run build:azure
           echo "=== Verifying dist structure ==="
           ls -la dist/
-          echo "=== Checking for azure-minimal-server.js ==="
-          if [ -f dist/azure-minimal-server.js ]; then
-            echo "✅ azure-minimal-server.js found"
-            head -3 dist/azure-minimal-server.js
+          echo "=== Checking for azure-production-server.js ==="
+          if [ -f dist/azure-production-server.js ]; then
+            echo "✅ azure-production-server.js found"
+            head -3 dist/azure-production-server.js
           else
-            echo "❌ azure-minimal-server.js NOT found!"
+            echo "❌ azure-production-server.js NOT found!"
             echo "Available files in dist:"
+            ls -la dist/
+            # Fallback build attempt
+            echo "=== Attempting fallback build ==="
+            npx tsc azure-production-server.ts --outDir dist --skipLibCheck --esModuleInterop --allowSyntheticDefaultImports --target ES2020 --module NodeNext --moduleResolution NodeNext
             ls -la dist/
           fi
 
@@ -66,14 +70,14 @@ jobs:
           else
             npm install --omit=dev --no-audit --prefer-offline
           fi
-          if [ -f dist/server/index.js ]; then
-            echo "✅ Entry point dist/server/index.js exists"
+          if [ -f dist/azure-production-server.js ]; then
+            echo "✅ Entry point dist/azure-production-server.js exists"
             echo "Entry point first lines:"
-            head -3 dist/server/index.js
+            head -3 dist/azure-production-server.js
           else
-            echo "❌ Entry point dist/server/index.js NOT found - deployment will fail!"
-            echo "Available files in dist/server:" 
-            ls -la dist/server/
+            echo "❌ Entry point dist/azure-production-server.js NOT found - deployment will fail!"
+            echo "Available files in dist:" 
+            ls -la dist/
             exit 1
           fi
           if grep -q "\"start\":" package.json; then

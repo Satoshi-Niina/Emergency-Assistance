@@ -4,15 +4,16 @@
   "type": "module",
   "scripts": {
     "dev": "tsx index.dev.ts",
-    "build": "tsc --skipLibCheck --noEmit false || true",
+    "build": "tsc --skipLibCheck --noEmit false",
+    "build:azure": "tsc azure-production-server.ts --outDir dist --skipLibCheck --esModuleInterop --allowSyntheticDefaultImports --target ES2020 --module NodeNext --moduleResolution NodeNext",
     "build:check": "tsc --noEmit",
     "clean": "rimraf dist",
     "lint": "eslint \"**/*.{ts,tsx,js,jsx}\" --max-warnings=0",
     "migrate": "drizzle-kit migrate",
     "seed:users": "tsx scripts/seed-users.ts",
-    "start": "node dist/server/index.js",
-    "start:prod": "npm run start",
-    "azure:start": "node dist/server/index.js"
+    "start": "node dist/azure-production-server.js",
+    "start:prod": "node dist/azure-production-server.js",
+    "azure:start": "node dist/azure-production-server.js"
   },
   "dependencies": {
     "@azure/identity": "^4.0.1",

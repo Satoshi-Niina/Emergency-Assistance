@@ -40,6 +40,7 @@
     "postinstall": "cd server && npm install"
   },
   "dependencies": {
+    "@azure/storage-blob": "^12.28.0",
     "bcrypt": "^6.0.0",
     "concurrently": "^9.2.0",
     "cors": "^2.8.5",
