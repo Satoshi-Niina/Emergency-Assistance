@@ -4,8 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "tsx index.dev.ts",
-    "build": "tsc azure-production-server.ts --outDir dist --skipLibCheck --esModuleInterop --allowSyntheticDefaultImports --target ES2020 --module CommonJS --moduleResolution node",
-    "build:azure": "tsc azure-production-server.ts --outDir dist --skipLibCheck --esModuleInterop --allowSyntheticDefaultImports --target ES2020 --module CommonJS --moduleResolution node",
+    "build": "tsc",
+    "build:azure": "tsc",
+    "build:specific": "tsc ./azure-production-server.ts --outDir dist --skipLibCheck --esModuleInterop --allowSyntheticDefaultImports --target ES2020 --module CommonJS --moduleResolution node",
     "build:check": "tsc --noEmit",
     "clean": "rimraf dist",
     "lint": "eslint \"**/*.{ts,tsx,js,jsx}\" --max-warnings=0",
