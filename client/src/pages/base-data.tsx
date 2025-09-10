@@ -17,14 +17,25 @@ import {
   Sliders,
   FileSearch,
   Zap,
-  BookOpen
+  BookOpen,
+  Loader2,
+  AlertTriangle,
+  CheckCircle2,
+  X
 } from 'lucide-react';
 import VehicleMaintenanceForm from '../components/maintenance/VehicleMaintenanceForm';
 import { useNavigate } from 'react-router-dom';
 
 // ドキュメント管理関連のコンポーネントをインポート
 import UnifiedDataProcessor from '../components/knowledge/unified-data-processor';
-import RagSettingsPanel from '../components/RagSettingsPanel';
+import { 
+  runFullDiagnostic, 
+  checkDatabaseConnection, 
+  checkGPTConnection, 
+  checkStorageConnection,
+  type DiagnosticResult,
+  type SystemDiagnosticResults
+} from '../lib/system-diagnostic';
 
 export default function BaseDataPage() {
   const [ragSettings, setRagSettings] = useState({
@@ -41,7 +52,98 @@ export default function BaseDataPage() {
       removeSpecialChars: false
     }
   });
+  
+  // システム診断関連の状態
+  const [diagnosticResults, setDiagnosticResults] = useState<SystemDiagnosticResults | null>(null);
+  const [isRunningDiagnostic, setIsRunningDiagnostic] = useState(false);
+  const [individualTests, setIndividualTests] = useState<{
+    database: { running: boolean; result: DiagnosticResult | null };
+    gpt: { running: boolean; result: DiagnosticResult | null };
+    storage: { running: boolean; result: DiagnosticResult | null };
+  }>({
+    database: { running: false, result: null },
+    gpt: { running: false, result: null },
+    storage: { running: false, result: null }
+  });
+  
   const navigate = useNavigate();
+
+  // 全体診断実行
+  const runFullSystemDiagnostic = async () => {
+    setIsRunningDiagnostic(true);
+    try {
+      const results = await runFullDiagnostic();
+      setDiagnosticResults(results);
+    } catch (error) {
+      console.error('診断エラー:', error);
+    } finally {
+      setIsRunningDiagnostic(false);
+    }
+  };
+
+  // 個別テスト実行
+  const runIndividualTest = async (testType: 'database' | 'gpt' | 'storage') => {
+    setIndividualTests(prev => ({
+      ...prev,
+      [testType]: { ...prev[testType], running: true }
+    }));
+
+    try {
+      let result: DiagnosticResult;
+      switch (testType) {
+        case 'database':
+          result = await checkDatabaseConnection();
+          break;
+        case 'gpt':
+          result = await checkGPTConnection();
+          break;
+        case 'storage':
+          result = await checkStorageConnection();
+          break;
+      }
+
+      setIndividualTests(prev => ({
+        ...prev,
+        [testType]: { running: false, result }
+      }));
+    } catch (error) {
+      setIndividualTests(prev => ({
+        ...prev,
+        [testType]: {
+          running: false,
+          result: {
+            status: 'failure',
+            message: error instanceof Error ? error.message : '診断エラー',
+            timestamp: new Date().toISOString()
+          }
+        }
+      }));
+    }
+  };
+
+  // ステータスアイコンを取得する関数
+  const getStatusIcon = (status: 'success' | 'failure' | 'unknown') => {
+    switch (status) {
+      case 'success':
+        return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+      case 'failure':
+        return <X className="h-4 w-4 text-red-600" />;
+      default:
+        return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
+    }
+  };
+
+  // ステータスバッジのクラス名を取得する関数
+  const getStatusBadgeClass = (status: 'success' | 'failure' | 'unknown') => {
+    switch (status) {
+      case 'success':
+        return "bg-green-100 text-green-700";
+      case 'failure':
+        return "bg-red-100 text-red-700";
+      default:
+        return "bg-yellow-100 text-yellow-700";
+    }
+  };
 
   // RAG設定の保存
   const saveRagSettings = async () => {
@@ -102,7 +204,7 @@ export default function BaseDataPage() {
 
         {/* メインコンテンツ */}
         <Tabs defaultValue="documents" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="documents" className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
               ドキュメント管理
@@ -110,10 +212,6 @@ export default function BaseDataPage() {
             <TabsTrigger value="manual" className="flex items-center gap-2">
               <Edit className="h-4 w-4" />
               手動入力
-            </TabsTrigger>
-            <TabsTrigger value="ai-config" className="flex items-center gap-2">
-              <Brain className="h-4 w-4" />
-              AI設定
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
@@ -152,26 +250,178 @@ export default function BaseDataPage() {
           </Card>
         </TabsContent>
 
-        {/* AI設定タブ */}
-        <TabsContent value="ai-config" className="space-y-6">
+        {/* 設定タブ - システム診断機能とRAG設定を統合 */}
+        <TabsContent value="settings" className="space-y-6">
+          {/* システム診断セクション */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Brain className="h-5 w-5" />
-                AI設定・RAG設定
+                <Zap className="h-5 w-5" />
+                システム診断
               </CardTitle>
-              <p className="text-gray-600 text-sm">
-                AI応答精度向上のための設定とパラメーター調整
+              <p className="text-sm text-gray-600">
+                データベース接続、GPT接続、ストレージ接続の状態を確認できます
               </p>
             </CardHeader>
             <CardContent>
-              <RagSettingsPanel />
+              <div className="flex gap-4 mb-6">
+                <Button 
+                  className="bg-blue-600 text-white hover:bg-blue-700"
+                  onClick={runFullSystemDiagnostic}
+                  disabled={isRunningDiagnostic}
+                >
+                  {isRunningDiagnostic ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      診断中...
+                    </>
+                  ) : (
+                    '全体診断実行'
+                  )}
+                </Button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Database className="h-5 w-5" />
+                    <h3 className="font-medium">PostgreSQL接続確認</h3>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-3">
+                    データベースの接続状態を確認
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => runIndividualTest('database')}
+                    disabled={individualTests.database.running}
+                  >
+                    {individualTests.database.running ? (
+                      <>
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        確認中
+                      </>
+                    ) : (
+                      '確認実行'
+                    )}
+                  </Button>
+                  <div className="mt-2">
+                    {individualTests.database.result ? (
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(individualTests.database.result.status)}
+                        <span className={`text-xs px-2 py-1 rounded ${getStatusBadgeClass(individualTests.database.result.status)}`}>
+                          {individualTests.database.result.message}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="inline-block px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
+                        未実行
+                      </span>
+                    )}
+                  </div>
+                </Card>
+
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Brain className="h-5 w-5" />
+                    <h3 className="font-medium">GPT接続確認</h3>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-3">
+                    OpenAI APIの接続状態を確認
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => runIndividualTest('gpt')}
+                    disabled={individualTests.gpt.running}
+                  >
+                    {individualTests.gpt.running ? (
+                      <>
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        確認中
+                      </>
+                    ) : (
+                      '確認実行'
+                    )}
+                  </Button>
+                  <div className="mt-2">
+                    {individualTests.gpt.result ? (
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(individualTests.gpt.result.status)}
+                        <span className={`text-xs px-2 py-1 rounded ${getStatusBadgeClass(individualTests.gpt.result.status)}`}>
+                          {individualTests.gpt.result.message}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="inline-block px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
+                        未実行
+                      </span>
+                    )}
+                  </div>
+                </Card>
+
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FolderOpen className="h-5 w-5" />
+                    <h3 className="font-medium">Azure Storage接続確認</h3>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Azure Blob Storageへのアクセス確認
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => runIndividualTest('storage')}
+                    disabled={individualTests.storage.running}
+                  >
+                    {individualTests.storage.running ? (
+                      <>
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        確認中
+                      </>
+                    ) : (
+                      '確認実行'
+                    )}
+                  </Button>
+                  <div className="mt-2">
+                    {individualTests.storage.result ? (
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(individualTests.storage.result.status)}
+                        <span className={`text-xs px-2 py-1 rounded ${getStatusBadgeClass(individualTests.storage.result.status)}`}>
+                          {individualTests.storage.result.message}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="inline-block px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
+                        未実行
+                      </span>
+                    )}
+                  </div>
+                </Card>
+              </div>
+
+              {diagnosticResults && (
+                <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded">
+                  <h4 className="font-medium text-amber-800 mb-2">診断結果サマリー</h4>
+                  <div className="flex gap-4 text-sm">
+                    <div className="flex items-center gap-1">
+                      {getStatusIcon(diagnosticResults.database.status)}
+                      <span>PostgreSQL: {diagnosticResults.database.status === 'success' ? '正常' : '異常'}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {getStatusIcon(diagnosticResults.gpt.status)}
+                      <span>GPT: {diagnosticResults.gpt.status === 'success' ? '正常' : '異常'}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {getStatusIcon(diagnosticResults.storage.status)}
+                      <span>Storage: {diagnosticResults.storage.status === 'success' ? '正常' : '異常'}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
-        </TabsContent>
 
-        {/* 設定タブ */}
-        <TabsContent value="settings" className="space-y-6">
           {/* 基本設定 */}
           <Card>
             <CardHeader>
@@ -205,15 +455,15 @@ export default function BaseDataPage() {
             </CardContent>
           </Card>
 
-          {/* RAG設定 */}
+          {/* AI・RAG設定 */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Brain className="h-5 w-5" />
-                RAG (Retrieval-Augmented Generation) 設定
+                AI・RAG (Retrieval-Augmented Generation) 設定
               </CardTitle>
               <p className="text-sm text-gray-600">
-                GPTレスポンスの精度向上のための事前処理パラメーター
+                AI応答精度向上のための設定とパラメーター調整
               </p>
             </CardHeader>
             <CardContent className="space-y-6">
