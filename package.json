@@ -37,7 +37,7 @@
     "lint": "npm run lint:client && npm run lint:server",
     "lint:client": "cd client && npm run lint",
     "lint:server": "cd server && npm run lint",
-    "postinstall": "cd server && npm install"
+    "postinstall": "cd server && npm install && npm run build"
   },
   "dependencies": {
     "@azure/storage-blob": "^12.28.0",
