@@ -20,10 +20,19 @@ import {
   Brain,
   Sliders,
   FileSearch,
-  Zap
+  Zap,
+  BookOpen
 } from 'lucide-react';
 import VehicleMaintenanceForm from '../components/maintenance/VehicleMaintenanceForm';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/auth-context';
+import { useToast } from '../hooks/use-toast';
+
+// ドキュメント管理関連のコンポーネントをインポート
+import UnifiedDataProcessor from '../components/knowledge/unified-data-processor';
+import RagSettingsPanel from '../components/RagSettingsPanel';
+import { fetchBaseData, fetchHistoryList, fetchProcessedFiles } from '../lib/api/history-api';
+import { BaseDataItem, SupportHistoryItem } from '../types/history';
 
 interface ImportStatus {
   fileName: string;
@@ -50,6 +59,15 @@ export default function BaseDataPage() {
     }
   });
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState('import');
+  
+  // ドキュメント管理関連の状態
+  const [baseData, setBaseData] = useState<BaseDataItem[]>([]);
+  const [historyData, setHistoryData] = useState<SupportHistoryItem[]>([]);
+  const [processedFiles, setProcessedFiles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // ファイル選択の処理
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,24 +225,30 @@ export default function BaseDataPage() {
         </p>
       </div>
 
-      {/* メインコンテンツ */}
-      <Tabs defaultValue="import" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="import" className="flex items-center gap-2">
-            <Upload className="h-4 w-4" />
-            データインポート
-          </TabsTrigger>
-          <TabsTrigger value="manual" className="flex items-center gap-2">
-            <Edit className="h-4 w-4" />
-            手動入力
-          </TabsTrigger>
-          <TabsTrigger value="settings" className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
-            設定
-          </TabsTrigger>
-        </TabsList>
-
-        {/* インポートタブ */}
+        {/* メインコンテンツ */}
+        <Tabs defaultValue="import" className="w-full">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="import" className="flex items-center gap-2">
+              <Upload className="h-4 w-4" />
+              データインポート
+            </TabsTrigger>
+            <TabsTrigger value="documents" className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              ドキュメント管理
+            </TabsTrigger>
+            <TabsTrigger value="manual" className="flex items-center gap-2">
+              <Edit className="h-4 w-4" />
+              手動入力
+            </TabsTrigger>
+            <TabsTrigger value="ai-config" className="flex items-center gap-2">
+              <Brain className="h-4 w-4" />
+              AI設定
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              システム設定
+            </TabsTrigger>
+          </TabsList>        {/* インポートタブ */}
         <TabsContent value="import" className="space-y-6">
           <Card>
             <CardHeader>
@@ -291,6 +315,24 @@ export default function BaseDataPage() {
           </Card>
         </TabsContent>
 
+        {/* ドキュメント管理タブ */}
+        <TabsContent value="documents" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BookOpen className="h-5 w-5" />
+                ドキュメント管理・AI学習データ処理
+              </CardTitle>
+              <p className="text-gray-600 text-sm">
+                保守用車に関する仕様や機械故障の情報等をGPTの学習用データに変換します
+              </p>
+            </CardHeader>
+            <CardContent>
+              <UnifiedDataProcessor />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* 手動入力タブ */}
         <TabsContent value="manual" className="space-y-6">
           <Card>
@@ -302,6 +344,24 @@ export default function BaseDataPage() {
             </CardHeader>
             <CardContent>
               <VehicleMaintenanceForm />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* AI設定タブ */}
+        <TabsContent value="ai-config" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Brain className="h-5 w-5" />
+                AI設定・RAG設定
+              </CardTitle>
+              <p className="text-gray-600 text-sm">
+                AI応答精度向上のための設定とパラメーター調整
+              </p>
+            </CardHeader>
+            <CardContent>
+              <RagSettingsPanel />
             </CardContent>
           </Card>
         </TabsContent>

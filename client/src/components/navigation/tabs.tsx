@@ -6,8 +6,6 @@ import {
   Settings, 
   FileText, 
   History, 
-  BookOpen,
-  Activity,
   Database
 } from "lucide-react";
 import { useAuth } from "../../context/auth-context";
@@ -59,27 +57,15 @@ export function Tabs() {
       requireRole: 'operator',
     },
     {
-      title: "ドキュメント管理",
-      path: "/documents",
-      icon: <BookOpen className="mr-2 h-4 w-4" />,
-      requireRole: 'operator',
-    },
-    {
-      title: "トラブルシューティング",
-      path: "/troubleshooting",
-      icon: <FileText className="mr-2 h-4 w-4" />,
-      requireRole: 'operator',
-    },
-    {
       title: "基礎データ管理",
       path: "/base-data",
       icon: <Database className="mr-2 h-4 w-4" />,
       requireRole: 'operator',
     },
     {
-      title: "システム診断",
-      path: "/system-diagnostic",
-      icon: <Activity className="mr-2 h-4 w-4" />,
+      title: "応急処置データ管理",
+      path: "/troubleshooting",
+      icon: <FileText className="mr-2 h-4 w-4" />,
       requireRole: 'operator',
     },
     {
