@@ -64,13 +64,12 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(session({
   secret: SESSION_SECRET,
   resave: false,
-  saveUninitialized: false,
+  saveUninitialized: true, // クロスドメイン用に変更
   cookie: {
-    secure: NODE_ENV === 'production',
-    httpOnly: true,
+    secure: false, // デバッグのため一時的にfalse
+    httpOnly: false, // デバッグのため一時的にfalse
     maxAge: 24 * 60 * 60 * 1000, // 24時間
-    sameSite: NODE_ENV === 'production' ? 'none' : 'lax',
-    domain: NODE_ENV === 'production' ? '.japanwest-01.azurewebsites.net' : undefined
+    sameSite: 'none' // クロスドメインに対応
   },
   name: 'emergency-assistance-session'
 }));
@@ -231,16 +230,33 @@ app.post('/api/auth/login', async (req, res) => {
     req.session.userId = user.id;
     req.session.userRole = user.role;
     
-    console.log('✅ ログイン成功:', user.username);
-    
-    res.json({
-      success: true,
-      user: {
-        id: user.id,
-        username: user.username,
-        role: user.role,
-        displayName: user.display_name
+    console.log('✅ ログイン成功 - セッション設定完了:', {
+      sessionId: req.sessionID,
+      userId: req.session.userId,
+      userRole: req.session.userRole,
+      username: user.username
+    });
+
+    // セッションの保存を強制
+    req.session.save((err) => {
+      if (err) {
+        console.error('❌ セッション保存エラー:', err);
+        return res.status(500).json({
+          success: false,
+          error: 'セッション保存中にエラーが発生しました'
+        });
       }
+      
+      console.log('✅ セッション保存成功');
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          username: user.username,
+          role: user.role,
+          displayName: user.display_name
+        }
+      });
     });
     
   } catch (error) {
