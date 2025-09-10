@@ -11,6 +11,23 @@ interface User {
   department?: string;
 }
 
+// ロール変換関数：DBのロールをフロントエンドのロールに変換
+function normalizeRole(dbRole: string): 'system_admin' | 'operator' | 'user' {
+  switch (dbRole) {
+    case 'system_admin':
+      return 'system_admin';
+    case 'operations_admin':  // DBのoperations_adminをoperatorに変換
+    case 'operator':
+      return 'operator';
+    case 'general_user':      // DBのgeneral_userをuserに変換
+    case 'user':
+      return 'user';
+    default:
+      console.warn('未知のロール:', dbRole, '-> userとして扱います');
+      return 'user';
+  }
+}
+
 // グローバルなAuthContextを1回だけ定義（exportしない）
 const AuthContext = createContext<{
   user: User | null;
@@ -60,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             id: userData.user.id,
             username: userData.user.username,
             displayName: userData.user.displayName,
-            role: userData.user.role,
+            role: normalizeRole(userData.user.role),  // ロール変換を適用
             department: userData.user.department
           });
         } else {
@@ -134,7 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: data.user.id,
           username: data.user.username,
           displayName: data.user.displayName,
-          role: data.user.role,
+          role: normalizeRole(data.user.role),  // ロール変換を適用
           department: data.user.department
         });
       } else {
