@@ -99,8 +99,43 @@ app.get('/', (req, res) => {
   });
 });
 
-// ヘルスチェックエンドポイント
+// ヘルスチェックエンドポイント - 複数パスでアクセス可能
 app.get('/health', async (req, res) => {
+  try {
+    // データベース接続テスト
+    const client = await createDbClient();
+    const result = await client.query('SELECT NOW() as current_time, version()');
+    await client.end();
+    
+    res.json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      database: {
+        connected: true,
+        serverTime: result.rows[0].current_time,
+        version: result.rows[0].version.substring(0, 50)
+      },
+      session: {
+        configured: true,
+        hasUserId: !!req.session.userId,
+        userRole: req.session.userRole || 'none'
+      }
+    });
+  } catch (error) {
+    console.error('Health check failed:', error);
+    res.status(500).json({
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      error: error instanceof Error ? error.message : 'Unknown error',
+      database: {
+        connected: false
+      }
+    });
+  }
+});
+
+// API用ヘルスチェックエンドポイント
+app.get('/api/health', async (req, res) => {
   try {
     // データベース接続テスト
     const client = await createDbClient();
