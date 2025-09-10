@@ -278,6 +278,124 @@ router.delete('/machine-types/:id', async (req, res) => {
   }
 });
 
+// 機種更新API
+router.put('/machine-types/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { machine_type_name } = req.body;
+    
+    console.log(`🔍 機種更新リクエスト: ID=${id}`, req.body);
+    
+    // Content-Typeを明示的に設定
+    res.setHeader('Content-Type', 'application/json');
+    
+    // バリデーション
+    if (!machine_type_name || machine_type_name.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        error: '機種名は必須です',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // 既存の機種をチェック
+    const existing = await db.select().from(machineTypes).where(eq(machineTypes.id, id));
+    if (existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: '指定された機種が見つかりません',
+        id,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Drizzle ORMを使用して機種を更新
+    const result = await db.update(machineTypes)
+      .set({ 
+        machineTypeName: machine_type_name.trim(),
+        createdAt: existing[0].createdAt // 元の作成日時を維持
+      })
+      .where(eq(machineTypes.id, id))
+      .returning();
+    
+    console.log('✅ 機種更新完了:', result[0]);
+    
+    res.json({
+      success: true,
+      data: result[0],
+      message: '機種を更新しました',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ 機種更新エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '機種の更新に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 機械番号更新API
+router.put('/machines/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { machine_number } = req.body;
+    
+    console.log(`🔍 機械番号更新リクエスト: ID=${id}`, req.body);
+    
+    // Content-Typeを明示的に設定
+    res.setHeader('Content-Type', 'application/json');
+    
+    // バリデーション
+    if (!machine_number || machine_number.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        error: '機械番号は必須です',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // 既存の機械番号をチェック
+    const existing = await db.select().from(machines).where(eq(machines.id, id));
+    if (existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: '指定された機械番号が見つかりません',
+        id,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Drizzle ORMを使用して機械番号を更新
+    const result = await db.update(machines)
+      .set({ 
+        machineNumber: machine_number.trim(),
+        createdAt: existing[0].createdAt // 元の作成日時を維持
+      })
+      .where(eq(machines.id, id))
+      .returning();
+    
+    console.log('✅ 機械番号更新完了:', result[0]);
+    
+    res.json({
+      success: true,
+      data: result[0],
+      message: '機械番号を更新しました',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ 機械番号更新エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '機械番号の更新に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // 機械番号削除API
 router.delete('/machines/:id', async (req, res) => {
   try {

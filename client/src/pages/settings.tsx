@@ -19,7 +19,10 @@ import {
   Plus, 
   X,
   CheckCircle,
-  Database
+  Database,
+  Edit2,
+  Check,
+  AlertTriangle
 } from "lucide-react";
 import { WarningDialog } from "../components/shared/warning-dialog";
 import { Input } from "../components/ui/input";
@@ -62,6 +65,12 @@ export default function SettingsPage() {
   const [newMachineNumber, setNewMachineNumber] = useState('');
   const [selectedMachineType, setSelectedMachineType] = useState('');
   const [isLoadingMachineData, setIsLoadingMachineData] = useState(false);
+
+  // 編集機能用の状態
+  const [editingMachineType, setEditingMachineType] = useState<{id: string, name: string} | null>(null);
+  const [editingMachine, setEditingMachine] = useState<{id: string, number: string} | null>(null);
+  const [editingMachineTypeName, setEditingMachineTypeName] = useState('');
+  const [editingMachineNumber, setEditingMachineNumber] = useState('');
 
   // 機種データを初期読み込み
   useEffect(() => {
@@ -138,14 +147,140 @@ export default function SettingsPage() {
 
   const deleteMachineType = async (typeId: string, typeName: string) => {
     if (!confirm(`機種「${typeName}」を削除してもよろしいですか？\n関連する機械番号も削除されます。`)) return;
-    const response = await fetch(buildApiUrl(`/api/machines/machine-types/${typeId}`), { method: 'DELETE', credentials: 'include' });
-    if (response.ok) fetchMachineData();
+    
+    try {
+      const response = await fetch(buildApiUrl(`/api/machines/machine-types/${typeId}`), { 
+        method: 'DELETE', 
+        credentials: 'include' 
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "削除完了",
+          description: `機種「${typeName}」を削除しました`,
+        });
+        fetchMachineData();
+      } else {
+        throw new Error('削除に失敗しました');
+      }
+    } catch (error) {
+      toast({
+        title: "エラー",
+        description: `機種の削除に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`,
+        variant: "destructive"
+      });
+    }
   };
 
   const deleteMachineNumber = async (machineId: string, machineNumber: string) => {
     if (!confirm(`機械番号「${machineNumber}」を削除してもよろしいですか？`)) return;
-    const response = await fetch(buildApiUrl(`/api/machines/machines/${machineId}`), { method: 'DELETE', credentials: 'include' });
-    if (response.ok) fetchMachineData();
+    
+    try {
+      const response = await fetch(buildApiUrl(`/api/machines/machines/${machineId}`), { 
+        method: 'DELETE', 
+        credentials: 'include' 
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "削除完了", 
+          description: `機械番号「${machineNumber}」を削除しました`,
+        });
+        fetchMachineData();
+      } else {
+        throw new Error('削除に失敗しました');
+      }
+    } catch (error) {
+      toast({
+        title: "エラー",
+        description: `機械番号の削除に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`,
+        variant: "destructive"
+      });
+    }
+  };
+
+  // 機種編集機能
+  const startEditingMachineType = (type: {id: string, machine_type_name: string}) => {
+    setEditingMachineType({id: type.id, name: type.machine_type_name});
+    setEditingMachineTypeName(type.machine_type_name);
+  };
+
+  const saveEditingMachineType = async () => {
+    if (!editingMachineType || !editingMachineTypeName.trim()) return;
+
+    try {
+      const response = await fetch(buildApiUrl(`/api/machines/machine-types/${editingMachineType.id}`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ machine_type_name: editingMachineTypeName.trim() })
+      });
+
+      if (response.ok) {
+        toast({
+          title: "更新完了",
+          description: `機種名を「${editingMachineTypeName.trim()}」に更新しました`,
+        });
+        setEditingMachineType(null);
+        setEditingMachineTypeName('');
+        fetchMachineData();
+      } else {
+        throw new Error('更新に失敗しました');
+      }
+    } catch (error) {
+      toast({
+        title: "エラー",
+        description: `機種名の更新に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const cancelEditingMachineType = () => {
+    setEditingMachineType(null);
+    setEditingMachineTypeName('');
+  };
+
+  // 機械番号編集機能
+  const startEditingMachine = (machine: {id: string, machine_number: string}) => {
+    setEditingMachine({id: machine.id, number: machine.machine_number});
+    setEditingMachineNumber(machine.machine_number);
+  };
+
+  const saveEditingMachine = async () => {
+    if (!editingMachine || !editingMachineNumber.trim()) return;
+
+    try {
+      const response = await fetch(buildApiUrl(`/api/machines/machines/${editingMachine.id}`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ machine_number: editingMachineNumber.trim() })
+      });
+
+      if (response.ok) {
+        toast({
+          title: "更新完了",
+          description: `機械番号を「${editingMachineNumber.trim()}」に更新しました`,
+        });
+        setEditingMachine(null);
+        setEditingMachineNumber('');
+        fetchMachineData();
+      } else {
+        throw new Error('更新に失敗しました');
+      }
+    } catch (error) {
+      toast({
+        title: "エラー",
+        description: `機械番号の更新に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const cancelEditingMachine = () => {
+    setEditingMachine(null);
+    setEditingMachineNumber('');
   };
 
   // LocalStorageからの設定読み込み
@@ -491,37 +626,129 @@ export default function SettingsPage() {
                   <div className="space-y-3 max-h-80 overflow-y-auto">
                     {machineTypes.map((type) => {
                       const typeMachines = machines.filter(m => m.machine_type_id === type.id);
+                      const isEditingThisType = editingMachineType?.id === type.id;
+                      
                       return (
                         <div key={type.id} className="border border-emerald-200 rounded-lg p-3 bg-emerald-50">
                           <div className="flex items-center justify-between mb-2">
-                            <div className="font-medium text-emerald-800 text-base">{type.machine_type_name}</div>
-                            <Button
-                              onClick={() => deleteMachineType(type.id, type.machine_type_name)}
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                              title={`機種「${type.machine_type_name}」を削除`}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
+                            {isEditingThisType ? (
+                              <div className="flex items-center gap-2 flex-1">
+                                <Input
+                                  value={editingMachineTypeName}
+                                  onChange={(e) => setEditingMachineTypeName(e.target.value)}
+                                  className="h-8 text-emerald-800 font-medium"
+                                  autoFocus
+                                />
+                                <Button
+                                  onClick={saveEditingMachineType}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                  title="保存"
+                                >
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  onClick={cancelEditingMachineType}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0 text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                                  title="キャンセル"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="font-medium text-emerald-800 text-base flex-1">{type.machine_type_name}</div>
+                            )}
+                            
+                            {!isEditingThisType && (
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  onClick={() => startEditingMachineType(type)}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                                  title={`機種「${type.machine_type_name}」を編集`}
+                                >
+                                  <Edit2 className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  onClick={() => deleteMachineType(type.id, type.machine_type_name)}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                  title={`機種「${type.machine_type_name}」を削除`}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
                           </div>
+                          
                           <div className="ml-3">
                             {typeMachines.length > 0 ? (
                               <div className="space-y-2">
-                                {typeMachines.map((machine) => (
-                                  <div key={machine.id} className="flex items-center justify-between bg-white rounded px-3 py-2 shadow-sm">
-                                    <span className="text-emerald-700 font-mono">{machine.machine_number}</span>
-                                    <Button
-                                      onClick={() => deleteMachineNumber(machine.id, machine.machine_number)}
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                      title={`機械番号「${machine.machine_number}」を削除`}
-                                    >
-                                      <X className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                ))}
+                                {typeMachines.map((machine) => {
+                                  const isEditingThisMachine = editingMachine?.id === machine.id;
+                                  
+                                  return (
+                                    <div key={machine.id} className="flex items-center justify-between bg-white rounded px-3 py-2 shadow-sm">
+                                      {isEditingThisMachine ? (
+                                        <div className="flex items-center gap-2 flex-1">
+                                          <Input
+                                            value={editingMachineNumber}
+                                            onChange={(e) => setEditingMachineNumber(e.target.value)}
+                                            className="h-7 font-mono text-emerald-700"
+                                            autoFocus
+                                          />
+                                          <Button
+                                            onClick={saveEditingMachine}
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 w-6 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                            title="保存"
+                                          >
+                                            <Check className="h-3 w-3" />
+                                          </Button>
+                                          <Button
+                                            onClick={cancelEditingMachine}
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                                            title="キャンセル"
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                      ) : (
+                                        <>
+                                          <span className="text-emerald-700 font-mono flex-1">{machine.machine_number}</span>
+                                          <div className="flex items-center gap-1">
+                                            <Button
+                                              onClick={() => startEditingMachine(machine)}
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-6 w-6 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                                              title={`機械番号「${machine.machine_number}」を編集`}
+                                            >
+                                              <Edit2 className="h-3 w-3" />
+                                            </Button>
+                                            <Button
+                                              onClick={() => deleteMachineNumber(machine.id, machine.machine_number)}
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                              title={`機械番号「${machine.machine_number}」を削除`}
+                                            >
+                                              <X className="h-3 w-3" />
+                                            </Button>
+                                          </div>
+                                        </>
+                                      )}
+                                    </div>
+                                  );
+                                })}
                               </div>
                             ) : (
                               <div className="text-gray-500 text-sm italic bg-white rounded px-3 py-2">機械番号未登録</div>

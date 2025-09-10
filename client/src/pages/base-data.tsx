@@ -3,19 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Slider } from '../components/ui/slider';
 import { 
   Database, 
-  FileText, 
-  Upload, 
   Settings, 
   Edit,
   Wrench,
   FolderOpen,
-  AlertTriangle,
   CheckCircle,
   Brain,
   Sliders,
@@ -25,25 +21,12 @@ import {
 } from 'lucide-react';
 import VehicleMaintenanceForm from '../components/maintenance/VehicleMaintenanceForm';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/auth-context';
-import { useToast } from '../hooks/use-toast';
 
 // ドキュメント管理関連のコンポーネントをインポート
 import UnifiedDataProcessor from '../components/knowledge/unified-data-processor';
 import RagSettingsPanel from '../components/RagSettingsPanel';
-import { fetchBaseData, fetchHistoryList, fetchProcessedFiles } from '../lib/api/history-api';
-import { BaseDataItem, SupportHistoryItem } from '../types/history';
-
-interface ImportStatus {
-  fileName: string;
-  status: 'pending' | 'processing' | 'success' | 'error';
-  message?: string;
-}
 
 export default function BaseDataPage() {
-  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
-  const [importStatus, setImportStatus] = useState<ImportStatus[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
   const [ragSettings, setRagSettings] = useState({
     chunkSize: 1000,
     chunkOverlap: 200,
@@ -59,114 +42,6 @@ export default function BaseDataPage() {
     }
   });
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('import');
-  
-  // ドキュメント管理関連の状態
-  const [baseData, setBaseData] = useState<BaseDataItem[]>([]);
-  const [historyData, setHistoryData] = useState<SupportHistoryItem[]>([]);
-  const [processedFiles, setProcessedFiles] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // ファイル選択の処理
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    setSelectedFiles(files);
-    
-    if (files) {
-      const statusList: ImportStatus[] = Array.from(files).map(file => ({
-        fileName: file.name,
-        status: 'pending'
-      }));
-      setImportStatus(statusList);
-    }
-  };
-
-  // ファイルのインポート処理
-  const handleImport = async () => {
-    if (!selectedFiles || selectedFiles.length === 0) {
-      alert('ファイルを選択してください');
-      return;
-    }
-
-    setIsProcessing(true);
-
-    try {
-      for (let i = 0; i < selectedFiles.length; i++) {
-        const file = selectedFiles[i];
-        
-        // ステータスを「処理中」に更新
-        setImportStatus(prev => prev.map((status, index) => 
-          index === i 
-            ? { ...status, status: 'processing' as const }
-            : status
-        ));
-
-        const formData = new FormData();
-        formData.append('file', file);
-
-        try {
-          const response = await fetch('/api/files/import', {
-            method: 'POST',
-            body: formData,
-            credentials: 'include'
-          });
-
-          if (response.ok) {
-            const result = await response.json();
-            setImportStatus(prev => prev.map((status, index) => 
-              index === i 
-                ? { 
-                    ...status, 
-                    status: 'success' as const, 
-                    message: result.message || 'インポート完了'
-                  }
-                : status
-            ));
-          } else {
-            const error = await response.json();
-            setImportStatus(prev => prev.map((status, index) => 
-              index === i 
-                ? { 
-                    ...status, 
-                    status: 'error' as const, 
-                    message: error.message || 'インポートエラー'
-                  }
-                : status
-            ));
-          }
-        } catch (error) {
-          setImportStatus(prev => prev.map((status, index) => 
-            index === i 
-              ? { 
-                  ...status, 
-                  status: 'error' as const, 
-                  message: 'ネットワークエラー'
-                }
-              : status
-          ));
-        }
-      }
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const getStatusBadge = (status: ImportStatus['status']) => {
-    switch (status) {
-      case 'pending':
-        return <Badge variant="secondary">待機中</Badge>;
-      case 'processing':
-        return <Badge variant="default">処理中</Badge>;
-      case 'success':
-        return <Badge variant="default" className="bg-green-500">完了</Badge>;
-      case 'error':
-        return <Badge variant="destructive">エラー</Badge>;
-      default:
-        return <Badge variant="secondary">不明</Badge>;
-    }
-  };
 
   // RAG設定の保存
   const saveRagSettings = async () => {
@@ -226,12 +101,8 @@ export default function BaseDataPage() {
       </div>
 
         {/* メインコンテンツ */}
-        <Tabs defaultValue="import" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="import" className="flex items-center gap-2">
-              <Upload className="h-4 w-4" />
-              データインポート
-            </TabsTrigger>
+        <Tabs defaultValue="documents" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="documents" className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
               ドキュメント管理
@@ -248,74 +119,7 @@ export default function BaseDataPage() {
               <Settings className="h-4 w-4" />
               システム設定
             </TabsTrigger>
-          </TabsList>        {/* インポートタブ */}
-        <TabsContent value="import" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                ファイルインポート
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="file-upload">
-                  ファイルを選択 (TXT, PDF, XLSX, PPTX)
-                </Label>
-                <Input
-                  id="file-upload"
-                  type="file"
-                  multiple
-                  accept=".txt,.pdf,.xlsx,.pptx"
-                  onChange={handleFileSelect}
-                  className="mt-1"
-                />
-              </div>
-
-              {selectedFiles && (
-                <div className="space-y-2">
-                  <h4 className="font-medium">選択されたファイル:</h4>
-                  <div className="space-y-2">
-                    {importStatus.map((status, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4" />
-                          <span className="text-sm">{status.fileName}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {getStatusBadge(status.status)}
-                          {status.message && (
-                            <span className="text-xs text-gray-500">{status.message}</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <Button 
-                onClick={handleImport}
-                disabled={!selectedFiles || isProcessing}
-                className="w-full"
-              >
-                {isProcessing ? (
-                  <>
-                    <AlertTriangle className="mr-2 h-4 w-4" />
-                    処理中...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="mr-2 h-4 w-4" />
-                    インポート実行
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ドキュメント管理タブ */}
+          </TabsList>        {/* ドキュメント管理タブ */}
         <TabsContent value="documents" className="space-y-6">
           <Card>
             <CardHeader>

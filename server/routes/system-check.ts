@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { sql } from '../db/db.js';
 import { processOpenAIRequest } from '../lib/openai.js';
+import { BlobServiceClient } from '@azure/storage-blob';
 
 const router = Router();
 
@@ -44,6 +45,39 @@ router.post('/gpt-check', async (req, res) => {
     res.status(500).json({
       status: "ERROR",
       message: error instanceof Error ? error.message : "GPT接続エラー"
+    });
+  }
+});
+
+// Azure Storage接続確認API
+router.get('/storage-check', async (req, res) => {
+  try {
+    const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+    
+    if (!connectionString) {
+      return res.status(500).json({
+        status: "ERROR",
+        message: "Azure Storage接続文字列が設定されていません"
+      });
+    }
+
+    const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+    
+    // 接続テスト: 既存のコンテナー一覧を取得
+    const containers: string[] = [];
+    for await (const containerItem of blobServiceClient.listContainers()) {
+      containers.push(containerItem.name);
+    }
+    
+    res.json({
+      status: "OK",
+      message: `接続成功 - ${containers.length}個のコンテナーを確認: ${containers.join(', ')}`
+    });
+  } catch (error) {
+    console.error('Storage接続確認エラー:', error);
+    res.status(500).json({
+      status: "ERROR",
+      message: error instanceof Error ? error.message : "Azure Storage接続エラー"
     });
   }
 });
