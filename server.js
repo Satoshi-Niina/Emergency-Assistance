@@ -21,6 +21,18 @@ console.log('Is Azure App Service:', isAzureAppService);
 console.log('Is Local Development:', isLocalDev);
 
 // 環境に応じたパス設定
+const emergencyServerPath = isAzureAppService 
+  ? path.join(__dirname, 'emergency-simple-server.js')
+  : path.join(__dirname, 'server', 'emergency-simple-server.js');
+
+const productionV2ServerPath = isAzureAppService 
+  ? path.join(__dirname, 'dist', 'azure-production-server-v2.js')
+  : path.join(__dirname, 'server', 'dist', 'azure-production-server-v2.js');
+
+const quickfixServerPath = isAzureAppService 
+  ? path.join(__dirname, 'azure-quickfix-server.js')
+  : path.join(__dirname, 'server', 'azure-quickfix-server.js');
+
 let productionServerPath, fallbackServerPath;
 
 if (isAzureAppService) {
@@ -34,10 +46,12 @@ if (isAzureAppService) {
 }
 
 // ファイル存在確認
+console.log('Emergency server path:', emergencyServerPath);
 console.log('Production v2 server path:', productionV2ServerPath);
 console.log('Quickfix server path:', quickfixServerPath);
 console.log('Production server path:', productionServerPath);
 console.log('Fallback server path:', fallbackServerPath);
+console.log('Emergency server exists:', fs.existsSync(emergencyServerPath));
 console.log('Production v2 server exists:', fs.existsSync(productionV2ServerPath));
 console.log('Quickfix server exists:', fs.existsSync(quickfixServerPath));
 console.log('Production server exists:', fs.existsSync(productionServerPath));
@@ -51,18 +65,6 @@ console.log('Fallback server exists:', fs.existsSync(fallbackServerPath));
 // 5. フォールバック JavaScript サーバー
 
 let serverToStart;
-
-const emergencyServerPath = isAzureAppService 
-  ? path.join(__dirname, 'emergency-simple-server.js')
-  : path.join(__dirname, 'server', 'emergency-simple-server.js');
-
-const productionV2ServerPath = isAzureAppService 
-  ? path.join(__dirname, 'dist', 'azure-production-server-v2.js')
-  : path.join(__dirname, 'server', 'dist', 'azure-production-server-v2.js');
-
-const quickfixServerPath = isAzureAppService 
-  ? path.join(__dirname, 'azure-quickfix-server.js')
-  : path.join(__dirname, 'server', 'azure-quickfix-server.js');
 
 if (fs.existsSync(emergencyServerPath)) {
     console.log('🚨 緊急シンプルサーバーを起動します...');
