@@ -53,6 +53,10 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+
+// プリフライトリクエストの処理
+app.options('*', cors(corsOptions));
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -65,7 +69,8 @@ app.use(session({
     secure: NODE_ENV === 'production',
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000, // 24時間
-    sameSite: NODE_ENV === 'production' ? 'none' : 'lax'
+    sameSite: NODE_ENV === 'production' ? 'none' : 'lax',
+    domain: NODE_ENV === 'production' ? '.japanwest-01.azurewebsites.net' : undefined
   },
   name: 'emergency-assistance-session'
 }));
@@ -76,6 +81,30 @@ declare module 'express-session' {
     userId?: string;
     userRole?: string;
   }
+}
+
+// 認証ミドルウェア
+function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+  console.log('🔐 認証チェック:', {
+    sessionId: req.sessionID,
+    userId: req.session?.userId,
+    userRole: req.session?.userRole,
+    cookies: req.headers.cookie,
+    hasSession: !!req.session,
+    url: req.url,
+    method: req.method
+  });
+  
+  if (!req.session || !req.session.userId) {
+    console.log('❌ 認証失敗: セッションまたはユーザーIDが不正');
+    return res.status(401).json({
+      success: false,
+      error: '認証が必要です'
+    });
+  }
+  
+  console.log('✅ 認証成功:', req.session.userId);
+  next();
 }
 
 // データベース接続ヘルパー
@@ -244,13 +273,23 @@ app.post('/api/auth/logout', (req, res) => {
 
 // 認証状態確認
 app.get('/api/auth/me', (req, res) => {
+  console.log('🔍 認証状態チェック:', {
+    sessionId: req.sessionID,
+    userId: req.session?.userId,
+    userRole: req.session?.userRole,
+    hasSession: !!req.session,
+    cookies: req.headers.cookie
+  });
+  
   if (!req.session || !req.session.userId) {
+    console.log('❌ 認証状態確認失敗');
     return res.status(401).json({
       success: false,
       error: '認証されていません'
     });
   }
   
+  console.log('✅ 認証状態確認成功');
   res.json({
     success: true,
     user: {
@@ -263,7 +302,7 @@ app.get('/api/auth/me', (req, res) => {
 // ============= 機械・機種管理エンドポイント =============
 
 // 機種一覧取得
-app.get('/api/machines', async (req, res) => {
+app.get('/api/machines', requireAuth, async (req, res) => {
   try {
     console.log('🔍 機種一覧取得リクエスト');
     
@@ -293,8 +332,44 @@ app.get('/api/machines', async (req, res) => {
   }
 });
 
+// すべての機種データ取得（設定画面用）
+app.get('/api/machines/all-machines', requireAuth, async (req, res) => {
+  try {
+    console.log('🔍 全機種データ取得リクエスト');
+    
+    const client = await createDbClient();
+    const result = await client.query(`
+      SELECT 
+        mt.id as machine_type_id,
+        mt.machine_type_name,
+        array_agg(m.machine_number ORDER BY m.machine_number) as machine_numbers
+      FROM machine_types mt
+      LEFT JOIN machines m ON mt.id = m.machine_type_id
+      GROUP BY mt.id, mt.machine_type_name
+      ORDER BY mt.machine_type_name
+    `);
+    await client.end();
+    
+    console.log(`✅ 全機種データ取得完了: ${result.rows.length}件`);
+    
+    res.json({
+      success: true,
+      data: result.rows,
+      total: result.rows.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ 全機種データ取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '全機種データの取得に失敗しました',
+      details: error.message
+    });
+  }
+});
+
 // 機種別機械番号一覧取得
-app.get('/api/machines/machine-types', async (req, res) => {
+app.get('/api/machines/machine-types', requireAuth, async (req, res) => {
   try {
     console.log('🔍 機種別機械番号一覧取得リクエスト');
     
@@ -355,7 +430,7 @@ app.get('/api/machines/machine-types', async (req, res) => {
 // ============= その他のAPIエンドポイント =============
 
 // ナレッジベース
-app.get('/api/knowledge-base', async (req, res) => {
+app.get('/api/knowledge-base', requireAuth, async (req, res) => {
   try {
     // 基本的な応答（後で拡張）
     res.json({
@@ -377,8 +452,52 @@ app.get('/api/knowledge-base', async (req, res) => {
   }
 });
 
+// ナレッジAPIエンドポイント（フロントエンドが要求）
+app.get('/api/knowledge', requireAuth, async (req, res) => {
+  try {
+    // フロントエンドが期待する形式で返す
+    res.json({
+      success: true,
+      data: [],
+      totalCount: 0,
+      message: 'ナレッジデータは準備中です',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ ナレッジ取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'ナレッジの取得に失敗しました',
+      details: error.message
+    });
+  }
+});
+
+// トラブルシューティングAPIエンドポイント
+app.get('/api/troubleshooting/list', requireAuth, async (req, res) => {
+  try {
+    console.log('🔍 トラブルシューティング一覧取得リクエスト');
+    
+    // 基本的な応答を返す（後でデータベースやストレージから取得）
+    res.json({
+      success: true,
+      data: [],
+      totalCount: 0,
+      message: 'トラブルシューティングデータは準備中です',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ トラブルシューティング一覧取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'トラブルシューティング一覧の取得に失敗しました',
+      details: error.message
+    });
+  }
+});
+
 // 履歴データ
-app.get('/api/history', async (req, res) => {
+app.get('/api/history', requireAuth, async (req, res) => {
   try {
     const client = await createDbClient();
     const result = await client.query(`
@@ -405,7 +524,7 @@ app.get('/api/history', async (req, res) => {
 });
 
 // ユーザー一覧（管理者のみ）
-app.get('/api/users', async (req, res) => {
+app.get('/api/users', requireAuth, async (req, res) => {
   try {
     console.log('📊 ユーザー一覧リクエスト - セッション:', {
       userId: req.session?.userId,
