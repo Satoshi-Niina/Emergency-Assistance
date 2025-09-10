@@ -9,6 +9,7 @@ import cors from 'cors';
 import session from 'express-session';
 import { Client } from 'pg';
 import bcrypt from 'bcrypt';
+import { BlobServiceClient } from '@azure/storage-blob';
 
 const app = express();
 
@@ -323,6 +324,399 @@ app.get('/api/debug', (req, res) => {
   });
 });
 
+// システム診断API - データベース接続確認
+app.get('/api/system-check/db-check', async (req, res) => {
+  try {
+    const client = await createDbClient();
+    const result = await client.query('SELECT NOW() as db_time, version() as db_version');
+    await client.end();
+    
+    res.json({
+      status: "OK",
+      db_time: result.rows[0].db_time,
+      db_version: result.rows[0].db_version.substring(0, 50)
+    });
+  } catch (error) {
+    console.error('DB接続確認エラー:', error);
+    res.status(500).json({
+      status: "ERROR",
+      message: error instanceof Error ? error.message : "データベース接続エラー"
+    });
+  }
+});
+
+// システム診断API - GPT接続確認
+app.post('/api/system-check/gpt-check', async (req, res) => {
+  try {
+    const { message } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({
+        status: "ERROR",
+        message: "メッセージが指定されていません"
+      });
+    }
+
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    
+    if (!OPENAI_API_KEY) {
+      return res.status(500).json({
+        status: "ERROR",
+        message: "OpenAI APIキーが設定されていません"
+      });
+    }
+    
+    // OpenAI API呼び出し
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [{ role: 'user', content: message }],
+        max_tokens: 100,
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    const reply = data.choices?.[0]?.message?.content || 'No response';
+    
+    res.json({
+      status: "OK",
+      reply: reply.trim()
+    });
+  } catch (error) {
+    console.error('GPT接続確認エラー:', error);
+    res.status(500).json({
+      status: "ERROR",
+      message: error instanceof Error ? error.message : "GPT接続エラー"
+    });
+  }
+});
+
+// システム診断API - Azure Storage接続確認
+app.get('/api/system-check/storage-check', async (req, res) => {
+  try {
+    const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+    
+    if (!connectionString) {
+      return res.status(500).json({
+        status: "ERROR",
+        message: "Azure Storage接続文字列が設定されていません"
+      });
+    }
+
+    const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+    
+    // 接続テスト: 既存のコンテナー一覧を取得
+    const containers: string[] = [];
+    for await (const containerItem of blobServiceClient.listContainers()) {
+      containers.push(containerItem.name);
+      if (containers.length >= 10) break; // 最大10個まで
+    }
+    
+    res.json({
+      status: "OK",
+      message: `接続成功 - ${containers.length}個のコンテナーを確認`,
+      containers: containers
+    });
+  } catch (error) {
+    console.error('Storage接続確認エラー:', error);
+    res.status(500).json({
+      status: "ERROR",
+      message: error instanceof Error ? error.message : "Azure Storage接続エラー"
+    });
+  }
+});
+
+// 機種一覧取得API
+app.get('/api/machines/machine-types', async (req, res) => {
+  try {
+    console.log('🔍 機種一覧取得リクエスト');
+    
+    res.setHeader('Content-Type', 'application/json');
+    
+    const client = await createDbClient();
+    const result = await client.query(`
+      SELECT id, machine_type_name 
+      FROM machine_types 
+      ORDER BY machine_type_name
+    `);
+    await client.end();
+    
+    console.log(`✅ 機種一覧取得完了: ${result.rows.length}件`);
+    
+    res.json({
+      success: true,
+      data: result.rows,
+      total: result.rows.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ 機種一覧取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '機種一覧の取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 全機械データ取得API
+app.get('/api/machines/all-machines', async (req, res) => {
+  try {
+    console.log('🔍 全機械データ取得リクエスト');
+    
+    res.setHeader('Content-Type', 'application/json');
+    
+    const client = await createDbClient();
+    const result = await client.query(`
+      SELECT 
+        mt.id as machine_type_id,
+        mt.machine_type_name,
+        m.id as machine_id,
+        m.machine_number
+      FROM machine_types mt
+      LEFT JOIN machines m ON mt.id = m.machine_type_id
+      ORDER BY mt.machine_type_name, m.machine_number
+    `);
+    await client.end();
+    
+    // データをグループ化
+    const groupedData: { [key: string]: { 
+      id: string; 
+      machine_type_name: string; 
+      machines: { id: string; machine_number: string; }[]
+    } } = {};
+    
+    result.rows.forEach((row) => {
+      const key = row.machine_type_id;
+      if (!groupedData[key]) {
+        groupedData[key] = {
+          id: row.machine_type_id,
+          machine_type_name: row.machine_type_name,
+          machines: []
+        };
+      }
+      
+      if (row.machine_id && row.machine_number) {
+        groupedData[key].machines.push({
+          id: row.machine_id,
+          machine_number: row.machine_number
+        });
+      }
+    });
+    
+    res.json({
+      success: true,
+      data: Object.values(groupedData),
+      total: Object.keys(groupedData).length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ 全機械データ取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '機械データの取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 指定機種に紐づく機械番号一覧取得API
+app.get('/api/machines/machines', async (req, res) => {
+  try {
+    console.log('🔍 機械番号一覧取得リクエスト:', req.query);
+    
+    res.setHeader('Content-Type', 'application/json');
+    
+    const { type_id } = req.query;
+    
+    if (!type_id) {
+      return res.status(400).json({
+        success: false,
+        error: '機種IDが指定されていません',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    const client = await createDbClient();
+    const result = await client.query(`
+      SELECT id, machine_number 
+      FROM machines 
+      WHERE machine_type_id = $1 
+      ORDER BY machine_number
+    `, [type_id]);
+    await client.end();
+    
+    console.log(`✅ 機械番号一覧取得完了: ${result.rows.length}件`);
+    
+    res.json({
+      success: true,
+      data: result.rows,
+      total: result.rows.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ 機械番号一覧取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '機械番号一覧の取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// ナレッジベース（Blob Storage）ファイル一覧API
+app.get('/api/knowledge', async (req, res) => {
+  try {
+    console.log('📚 ナレッジベースデータ取得リクエスト');
+    
+    res.setHeader('Content-Type', 'application/json');
+    
+    const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+    
+    if (!connectionString) {
+      return res.status(500).json({
+        success: false,
+        error: 'Azure Storage接続文字列が設定されていません'
+      });
+    }
+
+    const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+    const containerName = process.env.BLOB_CONTAINER_NAME || 'knowledge';
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    
+    // knowledge-base/data/ プレフィックスでファイル一覧を取得
+    const files: string[] = [];
+    for await (const blob of containerClient.listBlobsFlat({ prefix: 'knowledge-base/data/' })) {
+      if (blob.name.toLowerCase().endsWith('.json')) {
+        files.push(blob.name);
+      }
+    }
+    
+    // ファイル情報を構築
+    const fileList = files.map(blobName => {
+      const filename = blobName.split('/').pop() || blobName;
+      const name = filename.replace('.json', '');
+      
+      return {
+        filename,
+        name,
+        size: 0,
+        modifiedAt: new Date().toISOString(),
+        path: blobName,
+        isBlob: true
+      };
+    });
+    
+    console.log(`✅ Azure Blob Storage からナレッジベースデータ取得完了: ${fileList.length}件`);
+    
+    res.json({
+      success: true,
+      data: fileList,
+      total: fileList.length,
+      timestamp: new Date().toISOString(),
+      source: 'azure-blob-storage'
+    });
+  } catch (error) {
+    console.error('❌ ナレッジベースデータ取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'ナレッジベースデータの取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// ナレッジベース個別ファイル取得API
+app.get('/api/knowledge/:filename', async (req, res) => {
+  try {
+    const { filename } = req.params;
+    
+    console.log('📄 ナレッジベースファイル取得リクエスト:', filename);
+    
+    res.setHeader('Content-Type', 'application/json');
+    
+    const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+    
+    if (!connectionString) {
+      return res.status(500).json({
+        success: false,
+        error: 'Azure Storage接続文字列が設定されていません'
+      });
+    }
+
+    const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+    const containerName = process.env.BLOB_CONTAINER_NAME || 'knowledge';
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    
+    const blobName = `knowledge-base/data/${filename}`;
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+    
+    // ファイルの存在確認
+    const exists = await blockBlobClient.exists();
+    if (!exists) {
+      return res.status(404).json({
+        success: false,
+        error: 'ファイルが見つかりません'
+      });
+    }
+    
+    // JSONファイルかどうか確認
+    if (!filename.toLowerCase().endsWith('.json')) {
+      return res.status(400).json({
+        success: false,
+        error: 'JSONファイルのみ取得可能です'
+      });
+    }
+    
+    // ファイル内容を読み込み
+    const downloadResponse = await blockBlobClient.download();
+    if (!downloadResponse.readableStreamBody) {
+      throw new Error('ファイルの読み込みに失敗しました');
+    }
+    
+    // ストリームを文字列に変換
+    const chunks: Buffer[] = [];
+    for await (const chunk of downloadResponse.readableStreamBody) {
+      chunks.push(Buffer.from(chunk));
+    }
+    const fileContent = Buffer.concat(chunks).toString('utf8');
+    
+    const jsonData = JSON.parse(fileContent);
+    
+    console.log('✅ Azure Blob Storage からナレッジベースファイル取得完了');
+    
+    res.json({
+      success: true,
+      data: jsonData,
+      filename: filename,
+      size: fileContent.length,
+      source: 'azure-blob-storage'
+    });
+    
+  } catch (error) {
+    console.error('❌ ナレッジベースファイル取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'ナレッジベースファイルの取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // プリフライトリクエスト対応
 app.options('*', (req, res) => {
   res.header('Access-Control-Allow-Origin', req.get('Origin') || '*');
@@ -333,7 +727,7 @@ app.options('*', (req, res) => {
 });
 
 // グローバルエラーハンドラー
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('🚨 Global error:', err);
   res.status(500).json({
     success: false,
