@@ -8,6 +8,7 @@ import express from 'express';
 import cors from 'cors';
 import session from 'express-session';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 import { Client } from 'pg';
 import { BlobServiceClient } from '@azure/storage-blob';
 
@@ -30,6 +31,7 @@ const PORT = process.env.PORT || 80;
 const NODE_ENV = process.env.NODE_ENV || 'production';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net';
 const SESSION_SECRET = process.env.SESSION_SECRET || 'emergency-assistance-session-secret-2025';
+const JWT_SECRET = process.env.JWT_SECRET || 'emergency-assistance-jwt-secret-2025';
 const DATABASE_URL = process.env.DATABASE_URL;
 
 console.log('🚀 Emergency Assistance Production Server v2.0');
@@ -64,12 +66,16 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(session({
   secret: SESSION_SECRET,
   resave: false,
-  saveUninitialized: true, // クロスドメイン用に変更
+  saveUninitialized: true,
   cookie: {
-    secure: false, // デバッグのため一時的にfalse
-    httpOnly: false, // デバッグのため一時的にfalse
+    secure: NODE_ENV === 'production',
+    httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000, // 24時間
-    sameSite: 'none' // クロスドメインに対応
+    sameSite: NODE_ENV === 'production' ? 'none' : 'lax',
+    // Azureの場合、Partitionedクッキーを有効化
+    ...(NODE_ENV === 'production' && {
+      partitioned: true
+    })
   },
   name: 'emergency-assistance-session'
 }));
@@ -248,6 +254,11 @@ app.post('/api/auth/login', async (req, res) => {
       }
       
       console.log('✅ セッション保存成功');
+      
+      // 認証成功をヘッダーでも伝える
+      res.setHeader('X-Auth-Status', 'success');
+      res.setHeader('X-Session-ID', req.sessionID || 'unknown');
+      
       res.json({
         success: true,
         user: {
@@ -255,6 +266,10 @@ app.post('/api/auth/login', async (req, res) => {
           username: user.username,
           role: user.role,
           displayName: user.display_name
+        },
+        sessionInfo: {
+          sessionId: req.sessionID,
+          authenticated: true
         }
       });
     });
@@ -299,18 +314,36 @@ app.get('/api/auth/me', (req, res) => {
   
   if (!req.session || !req.session.userId) {
     console.log('❌ 認証状態確認失敗');
-    return res.status(401).json({
+    
+    // 詳細なデバッグ情報を追加
+    res.status(401).json({
       success: false,
-      error: '認証されていません'
+      error: '認証されていません',
+      debug: {
+        hasSession: !!req.session,
+        sessionId: req.sessionID || 'none',
+        cookiesReceived: !!req.headers.cookie,
+        timestamp: new Date().toISOString()
+      }
     });
+    return;
   }
   
   console.log('✅ 認証状態確認成功');
+  
+  // 認証成功をヘッダーでも伝える
+  res.setHeader('X-Auth-Status', 'authenticated');
+  res.setHeader('X-Session-ID', req.sessionID || 'unknown');
+  
   res.json({
     success: true,
     user: {
       userId: req.session.userId,
       userRole: req.session.userRole
+    },
+    sessionInfo: {
+      sessionId: req.sessionID,
+      authenticated: true
     }
   });
 });
