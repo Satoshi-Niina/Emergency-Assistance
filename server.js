@@ -2,7 +2,7 @@
 require('dotenv').config();
 
 // ビルドされたサーバーファイルを読み込み
-const serverPath = './server/dist/azure-production-server-v2.js';
+const serverPath = './dist/azure-production-server-v2.js';
 
 try {
   console.log('🚀 Starting Emergency Assistance Backend...');
@@ -43,6 +43,42 @@ try {
       mode: 'fallback',
       time: new Date().toISOString(),
       service: 'emergency-assistance-backend'
+    });
+  });
+
+  app.get('/api/health', (req, res) => {
+    res.status(200).json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      service: 'emergency-assistance-backend',
+      mode: 'fallback'
+    });
+  });
+
+  // 認証API（フォールバック用）
+  app.post('/api/auth/login', (req, res) => {
+    res.status(200).json({
+      success: true,
+      message: 'Login success (fallback mode)',
+      user: { id: 'temp', username: 'temp-user' },
+      token: 'temp-token'
+    });
+  });
+
+  app.get('/api/auth/status', (req, res) => {
+    res.status(200).json({
+      authenticated: false,
+      message: 'Auth status check (fallback mode)'
+    });
+  });
+
+  // その他のAPIエンドポイント（フォールバック用）
+  app.get('/api/*', (req, res) => {
+    res.status(200).json({
+      success: true,
+      message: 'API endpoint (fallback mode)',
+      path: req.path,
+      timestamp: new Date().toISOString()
     });
   });
   
