@@ -164,7 +164,7 @@ app.get('/api/debug/db', async (req, res) => {
       `);
       
       // usersテーブルの構造を確認
-      let usersTableInfo = null;
+      let usersTableInfo: any[] | { error: string } | null = null;
       try {
         const usersResult = await client.query(`
           SELECT column_name, data_type, is_nullable
@@ -174,16 +174,16 @@ app.get('/api/debug/db', async (req, res) => {
         `);
         usersTableInfo = usersResult.rows;
       } catch (err) {
-        usersTableInfo = { error: err.message };
+        usersTableInfo = { error: err instanceof Error ? err.message : 'Unknown error' };
       }
       
       // ユーザー数を確認
-      let userCount = 0;
+      let userCount: number | { error: string } = 0;
       try {
         const countResult = await client.query('SELECT COUNT(*) as count FROM users');
         userCount = countResult.rows[0].count;
       } catch (err) {
-        userCount = { error: err.message };
+        userCount = { error: err instanceof Error ? err.message : 'Unknown error' };
       }
       
       res.status(200).json({
