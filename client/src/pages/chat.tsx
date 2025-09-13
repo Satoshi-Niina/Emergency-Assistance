@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useChat } from "../context/chat-context";
+import { useAuth } from "../context/auth-context";
 import MessageBubble from "../components/chat/message-bubble";
 import MessageInput from "../components/chat/message-input";
 import CameraModal from "../components/chat/camera-modal";
@@ -23,6 +24,7 @@ import InteractiveDiagnosisChat from "../components/InteractiveDiagnosisChat";
 import { Label } from "@/components/ui/label";
 
 export default function ChatPage() {
+  const { user } = useAuth();
   const {
     messages,
     setMessages,
@@ -34,6 +36,9 @@ export default function ChatPage() {
     initializeChat,
     exportChatHistory
   } = useChat();
+  
+  // 管理者権限の確認
+  const isAdmin = user?.role === 'admin';
 
   const { toast } = useToast();
   const navigate = useNavigate();

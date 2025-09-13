@@ -62,7 +62,10 @@ export default function Header({ onModelChange, onMachineNumberChange }: HeaderP
       
       <div className="flex items-center space-x-4">
         <div className="text-xs" style={{ fontSize: '80%' }}>
-          ログインユーザー：{user?.display_name || user?.username || 'ゲスト'}
+          <div>ログインユーザー：{user?.display_name || user?.username || 'ゲスト'}</div>
+          <div className="text-blue-200">
+            {user?.role === 'admin' ? '運用管理者' : '一般ユーザー'}
+          </div>
         </div>
 
         {/* 設定ボタン */}

@@ -90,21 +90,28 @@ function App() {
                       </ProtectedRoute>
                     } />
                     
+                    {/* 管理者専用ルート */}
                     <Route path="/history" element={
-                      <ProtectedRoute>
+                      <ProtectedRoute requireAdmin={true}>
                         <HistoryPage />
                       </ProtectedRoute>
                     } />
                     
                     <Route path="/documents" element={
-                      <ProtectedRoute>
+                      <ProtectedRoute requireAdmin={true}>
                         <DocumentsPage />
                       </ProtectedRoute>
                     } />
                     
                     <Route path="/troubleshooting" element={
-                      <ProtectedRoute>
+                      <ProtectedRoute requireAdmin={true}>
                         <TroubleshootingPage />
+                      </ProtectedRoute>
+                    } />
+                    
+                    <Route path="/base-data" element={
+                      <ProtectedRoute requireAdmin={true}>
+                        <BaseDataPage />
                       </ProtectedRoute>
                     } />
                     
@@ -114,32 +121,23 @@ function App() {
                       </ProtectedRoute>
                     } />
                     
-                    {/* 設定ページ（一般ユーザーもアクセス可能） */}
+                    {/* 管理者専用ルート */}
                     <Route path="/settings" element={
-                      <ProtectedRoute>
+                      <ProtectedRoute requireAdmin={true}>
                         <SettingsPage />
                       </ProtectedRoute>
                     } />
                     
-                    {/* システム診断ページ（一般ユーザーもアクセス可能） */}
-                    <Route path="/system-diagnostic" element={
-                      <ProtectedRoute>
-                        <SystemDiagnosticPage />
-                      </ProtectedRoute>
-                    } />
-                    
-                    {/* 基礎データ管理ページ */}
-                    <Route path="/base-data" element={
-                      <ProtectedRoute>
-                        <BaseDataPage />
-                      </ProtectedRoute>
-                    } />
-                    
-                    {/* 管理者権限が必要なルート */}
-                    
                     <Route path="/users" element={
                       <ProtectedRoute requireAdmin={true}>
                         <UsersPage />
+                      </ProtectedRoute>
+                    } />
+                    
+                    {/* 一般ユーザーもアクセス可能なルート */}
+                    <Route path="/system-diagnostic" element={
+                      <ProtectedRoute>
+                        <SystemDiagnosticPage />
                       </ProtectedRoute>
                     } />
                     
