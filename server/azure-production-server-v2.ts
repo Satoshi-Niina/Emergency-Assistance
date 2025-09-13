@@ -111,7 +111,7 @@ app.post('/api/auth/login', async (req, res) => {
       const user = result.rows[0];
       // パスワード検証（bcrypt使用）
       const bcrypt = require('bcryptjs');
-      const isValidPassword = await bcrypt.compare(password, user.password_hash);
+      const isValidPassword = await bcrypt.compare(password, user.password);
       
       if (!isValidPassword) {
         return res.status(401).json({
@@ -167,7 +167,7 @@ app.get('/api/debug/db', async (req, res) => {
       let usersTableInfo: any[] | { error: string } | null = null;
       try {
         const usersResult = await client.query(`
-          SELECT column_name, data_type, is_nullable
+          SELECT column_name, data_type, is_nullable, column_default
           FROM information_schema.columns
           WHERE table_name = 'users'
           ORDER BY ordinal_position
@@ -175,6 +175,19 @@ app.get('/api/debug/db', async (req, res) => {
         usersTableInfo = usersResult.rows;
       } catch (err) {
         usersTableInfo = { error: err instanceof Error ? err.message : 'Unknown error' };
+      }
+      
+      // 実際のユーザーデータを確認（パスワード以外）
+      let sampleUsers: any[] | { error: string } = [];
+      try {
+        const sampleResult = await client.query(`
+          SELECT id, username, display_name, role, department, created_at
+          FROM users
+          LIMIT 3
+        `);
+        sampleUsers = sampleResult.rows;
+      } catch (err) {
+        sampleUsers = { error: err instanceof Error ? err.message : 'Unknown error' };
       }
       
       // ユーザー数を確認
@@ -190,6 +203,7 @@ app.get('/api/debug/db', async (req, res) => {
         success: true,
         tables: tablesResult.rows,
         usersTableInfo,
+        sampleUsers,
         userCount,
         timestamp: new Date().toISOString()
       });
