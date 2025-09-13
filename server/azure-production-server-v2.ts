@@ -110,7 +110,7 @@ app.post('/api/auth/login', async (req, res) => {
       
       const user = result.rows[0];
       // パスワード検証（bcrypt使用）
-      const bcrypt = require('bcrypt');
+      const bcrypt = require('bcryptjs');
       const isValidPassword = await bcrypt.compare(password, user.password_hash);
       
       if (!isValidPassword) {
@@ -136,7 +136,9 @@ app.post('/api/auth/login', async (req, res) => {
     console.error('Login error:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: 'Internal server error',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
     });
   }
 });
@@ -146,6 +148,62 @@ app.get('/api/auth/status', (req, res) => {
     authenticated: false,
     message: 'Auth status check'
   });
+});
+
+// デバッグ用エンドポイント
+app.get('/api/debug/db', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    try {
+      // テーブル一覧を取得
+      const tablesResult = await client.query(`
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public'
+        ORDER BY table_name
+      `);
+      
+      // usersテーブルの構造を確認
+      let usersTableInfo = null;
+      try {
+        const usersResult = await client.query(`
+          SELECT column_name, data_type, is_nullable
+          FROM information_schema.columns
+          WHERE table_name = 'users'
+          ORDER BY ordinal_position
+        `);
+        usersTableInfo = usersResult.rows;
+      } catch (err) {
+        usersTableInfo = { error: err.message };
+      }
+      
+      // ユーザー数を確認
+      let userCount = 0;
+      try {
+        const countResult = await client.query('SELECT COUNT(*) as count FROM users');
+        userCount = countResult.rows[0].count;
+      } catch (err) {
+        userCount = { error: err.message };
+      }
+      
+      res.status(200).json({
+        success: true,
+        tables: tablesResult.rows,
+        usersTableInfo,
+        userCount,
+        timestamp: new Date().toISOString()
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Debug DB error:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
+  }
 });
 
 // 緊急手順API
