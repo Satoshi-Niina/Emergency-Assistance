@@ -4,6 +4,34 @@ require('dotenv').config();
 // ビルドされたサーバーファイルを読み込み
 const serverPath = './dist/azure-production-server-v2.js';
 
+// デバッグ用: ファイルの存在確認
+const fs = require('fs');
+console.log('🔍 Checking file existence...');
+console.log('Current working directory:', process.cwd());
+console.log('Server path:', serverPath);
+console.log('File exists:', fs.existsSync(serverPath));
+
+if (fs.existsSync(serverPath)) {
+  console.log('✅ Server file found');
+} else {
+  console.log('❌ Server file not found');
+  console.log('Available files in current directory:');
+  try {
+    const files = fs.readdirSync('.');
+    console.log(files);
+  } catch (err) {
+    console.log('Error reading directory:', err.message);
+  }
+  
+  console.log('Available files in dist directory:');
+  try {
+    const distFiles = fs.readdirSync('./dist');
+    console.log(distFiles);
+  } catch (err) {
+    console.log('Error reading dist directory:', err.message);
+  }
+}
+
 try {
   console.log('🚀 Starting Emergency Assistance Backend...');
   console.log(`📁 Loading server from: ${serverPath}`);

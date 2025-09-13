@@ -53,6 +53,18 @@ jobs:
           cp -r ./server/dist ./deploy-backend/
           cp ./server.js ./deploy-backend/
           
+          # Verify file structure
+          echo "=== Verifying deployment package structure ==="
+          ls -la ./deploy-backend/
+          echo "=== Checking for azure-production-server-v2.js ==="
+          if [ -f ./deploy-backend/dist/azure-production-server-v2.js ]; then
+            echo "✅ azure-production-server-v2.js found in dist/"
+          else
+            echo "❌ azure-production-server-v2.js NOT found in dist/"
+            echo "Available files in dist:"
+            ls -la ./deploy-backend/dist/ || echo "dist directory not found"
+          fi
+          
           # Create production package.json
           cat > ./deploy-backend/package.json << 'EOF'
           {
