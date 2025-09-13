@@ -24,7 +24,9 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: client
-        run: npm ci
+        run: |
+          echo "=== Installing frontend dependencies ==="
+          npm install --no-audit --prefer-offline
 
       - name: Build frontend
         working-directory: client
