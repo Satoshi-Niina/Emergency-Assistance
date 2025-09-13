@@ -37,7 +37,8 @@
     "test:server": "cd server && npm test",
     "lint": "npm run lint:client && npm run lint:server",
     "lint:client": "cd client && npm run lint",
-    "lint:server": "cd server && npm run lint"
+    "lint:server": "cd server && npm run lint",
+    "deploy:trigger": "node scripts/trigger-deploy.js"
   },
   "dependencies": {
     "concurrently": "^9.2.0",
