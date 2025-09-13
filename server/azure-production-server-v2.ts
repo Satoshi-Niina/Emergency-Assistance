@@ -150,6 +150,129 @@ app.get('/api/auth/status', (req, res) => {
   });
 });
 
+// Blob Storageテストエンドポイント
+app.get('/api/debug/blob', async (req, res) => {
+  try {
+    const { BlobServiceClient } = require('@azure/storage-blob');
+    
+    // 環境変数の確認
+    const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+    const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
+    
+    if (!connectionString) {
+      return res.status(500).json({
+        success: false,
+        error: 'AZURE_STORAGE_CONNECTION_STRING not set',
+        envVars: {
+          AZURE_STORAGE_CONNECTION_STRING: connectionString ? 'SET' : 'NOT SET',
+          AZURE_STORAGE_CONTAINER_NAME: containerName,
+          NODE_ENV: process.env.NODE_ENV
+        }
+      });
+    }
+    
+    const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    
+    // コンテナの存在確認
+    let containerExists = false;
+    try {
+      containerExists = await containerClient.exists();
+    } catch (err) {
+      console.error('Container exists check error:', err);
+    }
+    
+    // コンテナ内のファイル一覧取得
+    let blobs = [];
+    try {
+      const listOptions = {
+        prefix: 'knowledge-base/',
+        includeMetadata: true
+      };
+      
+      for await (const blob of containerClient.listBlobsFlat(listOptions)) {
+        blobs.push({
+          name: blob.name,
+          size: blob.properties.contentLength,
+          lastModified: blob.properties.lastModified,
+          contentType: blob.properties.contentType,
+          url: containerClient.getBlobClient(blob.name).url
+        });
+      }
+    } catch (err) {
+      console.error('List blobs error:', err);
+    }
+    
+    // テストファイルの書き込みテスト
+    let writeTest = { success: false, error: null };
+    try {
+      const testBlobName = `knowledge-base/test-${Date.now()}.txt`;
+      const testContent = `Test file created at ${new Date().toISOString()}`;
+      const blockBlobClient = containerClient.getBlockBlobClient(testBlobName);
+      
+      await blockBlobClient.upload(testContent, Buffer.byteLength(testContent), {
+        blobHTTPHeaders: {
+          blobContentType: 'text/plain'
+        }
+      });
+      
+      writeTest.success = true;
+      writeTest.blobName = testBlobName;
+      writeTest.url = blockBlobClient.url;
+    } catch (err) {
+      writeTest.error = err instanceof Error ? err.message : 'Unknown error';
+    }
+    
+    // テストファイルの読み込みテスト
+    let readTest = { success: false, error: null, content: null };
+    if (writeTest.success) {
+      try {
+        const testBlobName = writeTest.blobName;
+        const blockBlobClient = containerClient.getBlockBlobClient(testBlobName);
+        const downloadResponse = await blockBlobClient.download();
+        const content = await streamToString(downloadResponse.readableStreamBody);
+        readTest.success = true;
+        readTest.content = content;
+      } catch (err) {
+        readTest.error = err instanceof Error ? err.message : 'Unknown error';
+      }
+    }
+    
+    res.status(200).json({
+      success: true,
+      containerName,
+      containerExists,
+      blobCount: blobs.length,
+      blobs: blobs.slice(0, 10), // 最初の10個のみ表示
+      writeTest,
+      readTest,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Debug Blob Storage error:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
+  }
+});
+
+// ストリームを文字列に変換するヘルパー関数
+async function streamToString(readableStream: any): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: any[] = [];
+    readableStream.on('data', (data: any) => {
+      chunks.push(data.toString());
+    });
+    readableStream.on('end', () => {
+      resolve(chunks.join(''));
+    });
+    readableStream.on('error', reject);
+  });
+}
+
 // デバッグ用エンドポイント
 app.get('/api/debug/db', async (req, res) => {
   try {
