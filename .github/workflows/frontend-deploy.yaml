@@ -42,8 +42,8 @@ jobs:
           cp -r ./client/dist/* ./deploy-frontend/
           
           # Include Azure Static Web Apps configuration
-          if [ -f ./client/staticwebapp.config.json ]; then
-            cp ./client/staticwebapp.config.json ./deploy-frontend/staticwebapp.config.json
+          if [ -f ./staticwebapp.config.json ]; then
+            cp ./staticwebapp.config.json ./deploy-frontend/staticwebapp.config.json
           fi
           
           echo "=== Frontend deployment package ready ==="
