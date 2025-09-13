@@ -13,13 +13,28 @@
       "rewrite": "https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/api/{*path}"
     },
     {
+      "route": "/assets/*",
+      "allowedRoles": ["anonymous"],
+      "methods": ["GET"]
+    },
+    {
+      "route": "/*.css",
+      "allowedRoles": ["anonymous"],
+      "methods": ["GET"]
+    },
+    {
+      "route": "/*.js",
+      "allowedRoles": ["anonymous"],
+      "methods": ["GET"]
+    },
+    {
       "route": "/*",
       "rewrite": "/index.html"
     }
   ],
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/images/*", "/css/*", "/js/*", "/api/*", "/auth/*", "/*.ico", "/*.png", "/*.jpg", "/*.jpeg", "/*.gif", "/*.svg"]
+    "exclude": ["/images/*", "/css/*", "/js/*", "/assets/*", "/api/*", "/auth/*", "/*.ico", "/*.png", "/*.jpg", "/*.jpeg", "/*.gif", "/*.svg", "/*.css", "/*.js"]
   },
   "responseOverrides": {
     "404": {
@@ -33,6 +48,18 @@
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     "X-XSS-Protection": "1; mode=block"
+  },
+  "mimeTypes": {
+    ".css": "text/css",
+    ".js": "application/javascript",
+    ".json": "application/json",
+    ".html": "text/html",
+    ".ico": "image/x-icon",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".svg": "image/svg+xml"
   },
   "platform": {
     "apiRuntime": "node:18"
