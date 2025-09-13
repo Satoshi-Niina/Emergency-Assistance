@@ -36,33 +36,33 @@ FRONTEND_URL=https://witty-river-012f39e00.1.azurestaticapps.net
 
 ### フロントエンド (Static Web Apps)
 ```
-VITE_API_BASE_URL=https://emergency-backend-webapp.azurewebsites.net
+VITE_API_BASE_URL=https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net
 ```
 
 ## 疎通確認用エンドポイント
 
 ### 1. DB疎通確認
 ```
-GET https://emergency-backend-webapp.azurewebsites.net/db-ping
+GET https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/db-ping
 ```
 
 ### 2. API基本ヘルスチェック
 ```
-GET https://emergency-backend-webapp.azurewebsites.net/health
-GET https://emergency-backend-webapp.azurewebsites.net/api/health
+GET https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/health
+GET https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/api/health
 ```
 
 ### 3. データベースチェック
 ```
-GET https://emergency-backend-webapp.azurewebsites.net/api/db-check
+GET https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/api/db-check
 ```
 
 ## デプロイ後の確認手順
 
 1. **バックエンドAPI確認**
    ```bash
-   curl https://emergency-backend-webapp.azurewebsites.net/health
-   curl https://emergency-backend-webapp.azurewebsites.net/db-ping
+   curl https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/health
+   curl https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/db-ping
    ```
 
 2. **フロントエンド確認**
