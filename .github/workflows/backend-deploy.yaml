@@ -1,4 +1,4 @@
-name: Deploy to Azure
+name: Deploy Backend to Azure App Service
 
 on:
   push:
@@ -6,17 +6,16 @@ on:
       - backup
     paths:
       - 'server/**'
-      - 'client/**'
       - 'package.json'
       - 'server.js'
-      - '.github/workflows/deploy.yml'
+      - '.github/workflows/backend-deploy.yaml'
       - 'trigger.txt'
   workflow_dispatch:
 
 jobs:
-  deploy:
+  deploy-backend:
     runs-on: ubuntu-latest
-    name: Deploy Application
+    name: Deploy Backend
     steps:
       - uses: actions/checkout@v4
 
@@ -24,38 +23,37 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'server/package-lock.json'
 
-      - name: Install dependencies
-        run: |
-          echo "=== Installing dependencies ==="
-          npm install
-          cd server && npm install
-          cd ../client && npm install
+      - name: Install server dependencies
+        working-directory: server
+        run: npm install
 
       - name: Build backend
+        working-directory: server
         run: |
-          echo "=== Building backend ==="
-          cd server
+          echo "=== Building Azure Production Server v2 ==="
           npm run build:v2
-          echo "Build completed"
+          echo "=== Verifying build ==="
+          ls -la dist/
+          if [ -f dist/azure-production-server-v2.js ]; then
+            echo "✅ Build successful"
+          else
+            echo "❌ Build failed"
+            exit 1
+          fi
 
-      - name: Build frontend
+      - name: Prepare backend deployment
         run: |
-          echo "=== Building frontend ==="
-          cd client
-          npm run build
-          echo "Frontend build completed"
-
-      - name: Prepare deployment packages
-        run: |
-          echo "=== Preparing deployment packages ==="
-          
-          # Backend package
+          echo "=== Preparing backend deployment package ==="
           mkdir -p ./deploy-backend
+          
+          # Copy built files
           cp -r ./server/dist ./deploy-backend/
           cp ./server.js ./deploy-backend/
           
-          # Create backend package.json
+          # Create production package.json
           cat > ./deploy-backend/package.json << 'EOF'
           {
             "name": "emergency-assistance-azure",
@@ -82,23 +80,16 @@ jobs:
           }
           EOF
           
-          # Install backend dependencies
+          # Install production dependencies
           cd ./deploy-backend
           npm install --omit=dev --no-audit --prefer-offline
           cd ..
           
-          # Frontend package
-          mkdir -p ./deploy-frontend
-          cp -r ./client/dist/* ./deploy-frontend/
-          if [ -f ./client/staticwebapp.config.json ]; then
-            cp ./client/staticwebapp.config.json ./deploy-frontend/
-          fi
-          
-          echo "=== Deployment packages ready ==="
+          echo "=== Backend deployment package ready ==="
           echo "Backend package size:"
           du -sh ./deploy-backend
-          echo "Frontend package size:"
-          du -sh ./deploy-frontend
+          echo "Files in deployment package:"
+          ls -la ./deploy-backend/
 
       - name: Deploy Backend to Azure App Service
         uses: azure/webapps-deploy@v3
@@ -108,20 +99,12 @@ jobs:
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: deploy-backend
 
-      - name: Deploy Frontend to Azure Static Web Apps
-        uses: Azure/static-web-apps-deploy@v1
-        with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-          action: "upload"
-          app_location: "./deploy-frontend"
-          skip_app_build: true
-
-      - name: Health Check
+      - name: Backend Health Check
         run: |
-          echo "🔍 Starting health check..."
+          echo "🔍 Starting backend health check..."
           
           # Wait for deployment
-          echo "⏳ Waiting for deployment to complete (60 seconds)..."
+          echo "⏳ Waiting for backend deployment (60 seconds)..."
           sleep 60
           
           # Check backend
@@ -133,7 +116,8 @@ jobs:
             echo "Backend check $i: $backend_status"
             
             if [ "$backend_status" = "200" ]; then
-              echo "✅ Backend health check passed"
+              echo "✅ Backend deployment successful!"
+              echo "Backend URL: ${backend_url}"
               break
             fi
             
@@ -143,16 +127,7 @@ jobs:
             fi
           done
           
-          # Check frontend
-          frontend_url="https://witty-river-012f39e00.1.azurestaticapps.net"
-          echo "Checking frontend: ${frontend_url}"
-          frontend_status=$(curl -o /dev/null -s -w "%{http_code}" -L "${frontend_url}")
-          echo "Frontend status: $frontend_status"
-          
-          if [ "$backend_status" = "200" ]; then
-            echo "✅ Deployment successful!"
-            echo "Backend: ${backend_url}"
-            echo "Frontend: ${frontend_url}"
-          else
+          if [ "$backend_status" != "200" ]; then
             echo "⚠️ Backend health check failed, but deployment completed"
+            echo "Please check Azure Portal logs for details"
           fi

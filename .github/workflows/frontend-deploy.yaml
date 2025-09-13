@@ -1,0 +1,91 @@
+name: Deploy Frontend to Azure Static Web Apps
+
+on:
+  push:
+    branches:
+      - backup
+    paths:
+      - 'client/**'
+      - '.github/workflows/frontend-deploy.yaml'
+      - 'trigger.txt'
+  workflow_dispatch:
+
+jobs:
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    name: Deploy Frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install frontend dependencies
+        working-directory: client
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: client
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          NODE_ENV: production
+
+      - name: Prepare frontend deployment
+        run: |
+          echo "=== Preparing frontend deployment ==="
+          mkdir -p ./deploy-frontend
+          cp -r ./client/dist/* ./deploy-frontend/
+          
+          # Include Azure Static Web Apps configuration
+          if [ -f ./client/staticwebapp.config.json ]; then
+            cp ./client/staticwebapp.config.json ./deploy-frontend/staticwebapp.config.json
+          fi
+          
+          echo "=== Frontend deployment package ready ==="
+          echo "Frontend package size:"
+          du -sh ./deploy-frontend
+          echo "Files in deployment package:"
+          ls -la ./deploy-frontend/
+
+      - name: Deploy Frontend to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: "upload"
+          app_location: "./deploy-frontend"
+          skip_app_build: true
+
+      - name: Frontend Health Check
+        run: |
+          echo "🔍 Starting frontend health check..."
+          
+          # Wait for deployment
+          echo "⏳ Waiting for frontend deployment (30 seconds)..."
+          sleep 30
+          
+          # Check frontend
+          frontend_url="https://witty-river-012f39e00.1.azurestaticapps.net"
+          echo "Checking frontend: ${frontend_url}"
+          
+          for i in {1..3}; do
+            frontend_status=$(curl -o /dev/null -s -w "%{http_code}" -L "${frontend_url}")
+            echo "Frontend check $i: $frontend_status"
+            
+            if [ "$frontend_status" = "200" ]; then
+              echo "✅ Frontend deployment successful!"
+              echo "Frontend URL: ${frontend_url}"
+              break
+            fi
+            
+            if [ $i -lt 3 ]; then
+              echo "⏳ Retrying in 15 seconds..."
+              sleep 15
+            fi
+          done
+          
+          if [ "$frontend_status" != "200" ]; then
+            echo "⚠️ Frontend health check failed, but deployment completed"
+          fi
