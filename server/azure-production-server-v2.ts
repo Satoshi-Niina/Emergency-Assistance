@@ -204,7 +204,7 @@ app.get('/api/debug/blob', async (req, res) => {
     }
     
     // テストファイルの書き込みテスト
-    let writeTest = { success: false, error: null };
+    let writeTest: { success: boolean; error: string | null; blobName?: string; url?: string } = { success: false, error: null };
     try {
       const testBlobName = `knowledge-base/test-${Date.now()}.txt`;
       const testContent = `Test file created at ${new Date().toISOString()}`;
@@ -224,8 +224,8 @@ app.get('/api/debug/blob', async (req, res) => {
     }
     
     // テストファイルの読み込みテスト
-    let readTest = { success: false, error: null, content: null };
-    if (writeTest.success) {
+    let readTest: { success: boolean; error: string | null; content: string | null } = { success: false, error: null, content: null };
+    if (writeTest.success && writeTest.blobName) {
       try {
         const testBlobName = writeTest.blobName;
         const blockBlobClient = containerClient.getBlockBlobClient(testBlobName);
