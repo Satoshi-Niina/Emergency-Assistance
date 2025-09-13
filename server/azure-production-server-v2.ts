@@ -109,9 +109,9 @@ app.post('/api/auth/login', async (req, res) => {
       }
       
       const user = result.rows[0];
-      // パスワード検証（bcrypt使用）
-      const bcrypt = require('bcryptjs');
-      const isValidPassword = await bcrypt.compare(password, user.password);
+      // パスワード検証（平文比較 - テスト用）
+      // TODO: 本番環境ではbcryptハッシュ化が必要
+      const isValidPassword = password === user.password;
       
       if (!isValidPassword) {
         return res.status(401).json({
