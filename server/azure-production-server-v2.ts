@@ -97,7 +97,7 @@ app.post('/api/auth/login', async (req, res) => {
     const client = await pool.connect();
     try {
       const result = await client.query(
-        'SELECT id, username, password_hash, role FROM users WHERE username = $1',
+        'SELECT id, username, password, role FROM users WHERE username = $1',
         [username]
       );
       
