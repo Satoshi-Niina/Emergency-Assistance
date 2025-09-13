@@ -273,6 +273,70 @@ async function streamToString(readableStream: any): Promise<string> {
   });
 }
 
+// パスワードリセットエンドポイント（管理者専用）
+app.post('/api/admin/reset-password', async (req, res) => {
+  try {
+    const { username, newPassword } = req.body;
+    
+    if (!username || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'ユーザー名と新しいパスワードが必要です'
+      });
+    }
+    
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'パスワードは8文字以上である必要があります'
+      });
+    }
+    
+    const client = await pool.connect();
+    try {
+      // パスワードをハッシュ化
+      const bcrypt = require('bcryptjs');
+      const saltRounds = 12;
+      const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+      
+      // ユーザーのパスワードを更新
+      const result = await client.query(
+        'UPDATE users SET password = $1 WHERE username = $2 RETURNING username, display_name, role',
+        [hashedPassword, username]
+      );
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'ユーザーが見つかりません'
+        });
+      }
+      
+      const user = result.rows[0];
+      res.status(200).json({
+        success: true,
+        message: 'パスワードが正常に更新されました',
+        user: {
+          username: user.username,
+          display_name: user.display_name,
+          role: user.role
+        }
+      });
+      
+    } finally {
+      client.release();
+    }
+    
+  } catch (error) {
+    console.error('Password reset error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'パスワードリセット中にエラーが発生しました',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // デバッグ用エンドポイント
 app.get('/api/debug/db', async (req, res) => {
   try {
