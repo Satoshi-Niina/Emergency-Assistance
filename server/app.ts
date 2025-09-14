@@ -6,10 +6,14 @@ import express, { Request, Response } from 'express';
 import session from 'express-session';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import { securityHeaders, generalLimiter, secureCORS } from './middleware/security';
+import { securityMonitoring, logSecurityEvent } from './middleware/monitoring';
 import { fileURLToPath } from 'url';
 import * as path from 'path';
 import * as fs from 'fs';
-import authRouter from './routes/auth.js';
+import authRouter from './routes/auth-secure.js';
+import userRegistrationRouter from './routes/user-registration.js';
+import securityTestRouter from './routes/security-test.js';
 import { techSupportRouter } from './routes/tech-support.js';
 import { registerChatRoutes } from './routes/chat.js';
 import troubleshootingRouter from './routes/troubleshooting.js';
@@ -21,6 +25,11 @@ import { historyRouter } from './routes/history.js';
 import emergencyGuideRouter from './routes/emergency-guide.js';
 import { usersRouter } from './routes/users.js';
 import machinesRouter from './routes/machines.js';
+import userManagementRouter from './routes/user-management.js';
+import debugAuthRouter from './routes/debug-auth.js';
+import fixUsersRouter from './routes/fix-users.js';
+import directFixRouter from './routes/direct-fix.js';
+import emergencyFixRouter from './routes/emergency-fix.js';
 import { registerDataProcessorRoutes } from './routes/data-processor.js';
 import { usersDebugRouter } from './routes/users-debug.js';
 import { debugRouter } from './routes/debug.js';
@@ -90,7 +99,16 @@ console.log('🔧 app.ts: 環境変数確認:', {
 
 const app = express();
 
-// CORS設定 - セッション維持のため改善
+// セキュリティヘッダーを最初に設定
+app.use(securityHeaders);
+
+// セキュリティ監視を有効化
+app.use(securityMonitoring);
+
+// 一般的なレート制限
+app.use(generalLimiter);
+
+// CORS設定 - セキュリティ強化
 const isProduction = process.env.NODE_ENV === 'production';
 const isReplitEnvironment = process.env.REPLIT_ENVIRONMENT === 'true' || process.env.REPLIT_ID;
 const isAzureEnvironment = process.env.WEBSITE_SITE_NAME || process.env.AZURE_ENVIRONMENT;
@@ -137,52 +155,8 @@ const getAllowedOrigins = () => {
   return baseOrigins;
 };
 
-app.use(cors({
-  origin: function(origin, callback) {
-    const allowedOrigins = getAllowedOrigins();
-    
-    // originがnullの場合（同一オリジンリクエスト）も許可
-    if (!origin) {
-      callback(null, true);
-      return;
-    }
-
-    // ワイルドカードドメインのチェック
-    const isAllowed = allowedOrigins.some(allowedOrigin => {
-      if (allowedOrigin.includes('*')) {
-        const pattern = allowedOrigin.replace('*', '.*');
-        return new RegExp(pattern).test(origin);
-      }
-      return allowedOrigin === origin;
-    });
-
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      console.log('🚫 CORS blocked origin:', origin);
-      console.log('🔍 Allowed origins:', allowedOrigins);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true, // 必須設定 - セッション維持のため
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: [
-    'Content-Type', 
-    'Authorization', 
-    'X-Requested-With', 
-    'Origin', 
-    'Accept', 
-    'Cookie',
-    'credentials',
-    'cache-control',
-    'Cache-Control',
-    'pragma',
-    'Pragma'
-  ],
-  exposedHeaders: ['Set-Cookie'],
-  preflightContinue: false,
-  optionsSuccessStatus: 204
-}));
+// セキュアなCORS設定を使用
+app.use(secureCORS);
 
 // OPTIONSリクエストの明示的処理
 app.options('*', (req, res) => {
@@ -215,8 +189,8 @@ app.use(cookieParser());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// UTF-8エンコーディングのレスポンスヘッダー設定
-app.use((req, res, next) => {
+// UTF-8エンコーディングのレスポンスヘッダー設定（APIエンドポイントのみ）
+app.use('/api', (req, res, next) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   next();
 });
@@ -296,11 +270,11 @@ const KB_BASE = process.env.KNOWLEDGE_BASE_PATH
 
 console.log('🔧 Knowledge Base Path:', KB_BASE);
 
-// CSP設定（data:image/...を許可）
+// CSP設定（data:image/...を許可、インラインスクリプトを許可）
 app.use((req, res, next) => {
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline';"
+    "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';"
   );
   next();
 });
@@ -310,6 +284,46 @@ app.use('/api/images', express.static(path.join(KB_BASE, 'images'), {
   fallthrough: true,
   etag: true,
   maxAge: '7d',
+}));
+
+// favicon.icoの404エラーを解決
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end();
+});
+
+// テストファイル用の明示的なHTMLルート
+app.get('/test-simple-images.html', (req, res) => {
+  const filePath = path.join(__dirname, '../public/test-simple-images.html');
+  console.log('📄 テストファイル配信:', filePath);
+  
+  if (fs.existsSync(filePath)) {
+    // Content-Typeを明示的に設定
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    
+    // ファイルを読み込んで送信
+    const fileContent = fs.readFileSync(filePath, 'utf8');
+    res.send(fileContent);
+    console.log('✅ テストファイル配信成功 - Content-Type: text/html');
+  } else {
+    res.status(404).json({ error: 'Test file not found' });
+    console.log('❌ テストファイルが見つかりません');
+  }
+});
+
+// publicディレクトリの静的ファイル配信（その他のファイル用）
+app.use(express.static(path.join(__dirname, '../public'), {
+  etag: true,
+  maxAge: '1d',
+  setHeaders: (res, filePath) => {
+    console.log('📄 静的ファイル配信:', filePath);
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      console.log('✅ HTML Content-Type設定:', 'text/html; charset=utf-8');
+    }
+  }
 }));
 
 // エクスポートJSONの詳細取得（knowledge-base/exports）
@@ -335,8 +349,10 @@ app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// 認証ルート
+// セキュアな認証ルート
 app.use('/api/auth', authRouter);
+app.use('/api/users', userRegistrationRouter);
+app.use('/api/security', securityTestRouter);
 app.use('/api/tech-support', techSupportRouter);
 
 // チャットルート
@@ -358,6 +374,11 @@ app.use('/api/emergency-guide', emergencyGuideRouter);
 // 不足していたルートを追加
 app.use('/api/users', usersRouter);
 app.use('/api/machines', machinesRouter);
+app.use('/api/user-management', userManagementRouter);
+app.use('/api/debug-auth', debugAuthRouter);
+app.use('/api/fix-users', fixUsersRouter);
+app.use('/api/direct-fix', directFixRouter);
+app.use('/api/emergency-fix', emergencyFixRouter);
 
 // デバッグ用ルートを追加
 app.use('/api/debug/users', usersDebugRouter);

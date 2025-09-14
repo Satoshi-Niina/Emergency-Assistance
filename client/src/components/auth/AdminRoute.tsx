@@ -33,7 +33,8 @@ export function AdminRoute({ children }: AdminRouteProps) {
   }
 
   // 管理者でない場合はチャットページにリダイレクト
-  if (user.role !== 'admin') {
+  // 注意: 一般ユーザーでもすべての機能が使えるように変更
+  if (user.role !== 'admin' && user.role !== 'employee') {
     console.log('🚫 AdminRoute - 管理者権限がありません、チャットページにリダイレクト');
     return <Navigate to="/chat" replace />;
   }

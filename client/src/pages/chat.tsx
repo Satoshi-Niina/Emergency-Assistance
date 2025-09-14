@@ -53,6 +53,8 @@ export default function ChatPage() {
 
   // インタラクティブ診断モードの状態管理
   const [interactiveDiagnosisMode, setInteractiveDiagnosisMode] = useState(false);
+  // AI支援モードの状態管理
+  const [aiSupportMode, setAiSupportMode] = useState(false);
   // 追加: 機種と機械番号のオートコンプリート状態管理
   const [machineTypes, setMachineTypes] = useState<Array<{id: string, machine_type_name: string}>>([]);
   const [machines, setMachines] = useState<Array<{id: string, machine_number: string}>>([]);
@@ -501,15 +503,26 @@ export default function ChatPage() {
 
   // 追加: Q&Aモードの初期化（動的質問生成システムに変更済み）
 
-  // AI支援開始（インタラクティブ診断モードに変更）
+  // AI支援開始（チャットエリア内でやり取り）
   const handleStartAiSupport = async () => {
     try {
-      // インタラクティブ診断モードを開始
-      setInteractiveDiagnosisMode(true);
+      // AI支援モードを開始
+      setAiSupportMode(true);
+      
+      // AI支援の初期メッセージを送信
+      const aiSupportMessage = {
+        id: Date.now().toString(),
+        content: "こんにちは！AI支援です。トラブルの現状を教えてください！どのような問題が発生していますか？",
+        isAiResponse: true,
+        timestamp: new Date(),
+        type: 'ai_support'
+      };
+      
+      setMessages(prev => [...prev, aiSupportMessage]);
       
       toast({
         title: "AI支援開始",
-        description: "インタラクティブ故障診断を開始します",
+        description: "AI支援が開始されました。チャットエリアでやり取りしてください。",
       });
     } catch (error) {
       console.error('AI支援開始エラー:', error);
@@ -518,17 +531,28 @@ export default function ChatPage() {
         description: "AI支援の開始に失敗しました",
         variant: "destructive",
       });
-      setInteractiveDiagnosisMode(false);
     }
   };
 
-  // AI支援終了（インタラクティブ診断モード終了）
+  // AI支援終了（チャットエリア内でやり取り）
   const handleAiSupportExit = () => {
-    setInteractiveDiagnosisMode(false);
+    // AI支援モードを終了
+    setAiSupportMode(false);
+    
+    // AI支援終了メッセージを送信
+    const aiSupportEndMessage = {
+      id: Date.now().toString(),
+      content: "AI支援を終了します。また何かお困りのことがあれば、いつでもお声がけください！",
+      isAiResponse: true,
+      timestamp: new Date(),
+      type: 'ai_support_end'
+    };
+    
+    setMessages(prev => [...prev, aiSupportEndMessage]);
     
     toast({
       title: "AI支援終了",
-      description: "インタラクティブ故障診断を終了しました",
+      description: "AI支援を終了しました。",
     });
   };
 
@@ -989,6 +1013,74 @@ export default function ChatPage() {
     }
   };
 
+  // AI支援メッセージ処理
+  const handleAiSupportMessage = async (content: string, media: any[] = []) => {
+    try {
+      // ユーザーメッセージを追加
+      const userMessage = {
+        id: Date.now().toString(),
+        content: content,
+        isAiResponse: false,
+        timestamp: new Date(),
+        type: 'user_message',
+        media: media
+      };
+      
+      setMessages(prev => [...prev, userMessage]);
+      
+      // AI支援の応答を生成
+      const aiResponse = await generateAiSupportResponse(content);
+      
+      // AI応答メッセージを追加
+      const aiMessage = {
+        id: (Date.now() + 1).toString(),
+        content: aiResponse,
+        isAiResponse: true,
+        timestamp: new Date(),
+        type: 'ai_support_response'
+      };
+      
+      setMessages(prev => [...prev, aiMessage]);
+      
+    } catch (error) {
+      console.error('AI支援メッセージ処理エラー:', error);
+      toast({
+        title: "エラー",
+        description: "AI支援の応答生成に失敗しました",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // AI支援応答生成
+  const generateAiSupportResponse = async (userMessage: string): Promise<string> => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          message: userMessage,
+          context: 'ai_support',
+          machineType: selectedMachineType,
+          machineNumber: selectedMachineNumber
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('AI支援応答の取得に失敗しました');
+      }
+
+      const data = await response.json();
+      return data.response || '申し訳ございません。現在AI支援の応答を生成できません。';
+    } catch (error) {
+      console.error('AI支援応答生成エラー:', error);
+      return '申し訳ございません。現在AI支援の応答を生成できません。しばらく時間をおいてから再度お試しください。';
+    }
+  };
+
   // メッセージ送信処理を拡張
   const handleSendMessage = async (content: string, media: any[] = []) => {
     if (!content.trim() && media.length === 0) return;
@@ -996,6 +1088,12 @@ export default function ChatPage() {
     // トラブルシューティングモードの場合は特別な処理
     if (troubleshootingMode && troubleshootingSession) {
       await handleTroubleshootingAnswer(content);
+      return;
+    }
+
+    // AI支援モードの場合は特別な処理
+    if (aiSupportMode) {
+      await handleAiSupportMessage(content, media);
       return;
     }
 
@@ -1017,6 +1115,7 @@ export default function ChatPage() {
       await clearChatHistory();
       setTroubleshootingMode(false);
       setTroubleshootingSession(null);
+      setAiSupportMode(false);
       toast({
         title: "成功",
         description: "チャット履歴をクリアしました",
@@ -1345,7 +1444,7 @@ export default function ChatPage() {
         {/* 中央：AI支援・カメラ・応急処置ガイドボタン */}
         <div className="flex items-center gap-6">
           {/* AI支援開始/終了ボタン */}
-          {!interactiveDiagnosisMode ? (
+          {!aiSupportMode ? (
             <Button
               variant="outline"
               size="lg"

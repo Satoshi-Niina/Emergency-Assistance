@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ユーザー修正テスト</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { padding: 10px 20px; margin: 10px; font-size: 16px; }
+        .result { margin: 20px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+    </style>
+</head>
+<body>
+    <h1>ユーザー修正テスト</h1>
+    
+    <button onclick="fixUsers()">ユーザーを修正</button>
+    <button onclick="checkUsers()">ユーザーを確認</button>
+    <button onclick="testLogin()">ログインテスト</button>
+    
+    <div id="result"></div>
+
+    <script>
+        async function fixUsers() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>ユーザー修正中...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/fix-users/fix-all-users', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            <h3>✅ ユーザー修正成功！</h3>
+                            <p>修正されたユーザー:</p>
+                            <ul>
+                                ${data.data.map(user => 
+                                    `<li>${user.username}: ${user.password} (${user.displayName}, ${user.role})</li>`
+                                ).join('')}
+                            </ul>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <h3>❌ ユーザー修正失敗</h3>
+                            <p>${data.error}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <h3>❌ エラー</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        async function checkUsers() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>ユーザー確認中...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/debug-auth/users');
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            <h3>📋 現在のユーザー一覧</h3>
+                            <ul>
+                                ${data.data.map(user => 
+                                    `<li>${user.username}: ${user.password} (${user.displayName}, ${user.role})</li>`
+                                ).join('')}
+                            </ul>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <h3>❌ ユーザー確認失敗</h3>
+                            <p>${data.error}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <h3>❌ エラー</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        async function testLogin() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>ログインテスト中...</p>';
+            
+            const users = [
+                { username: 'niina', password: 'G&896845' },
+                { username: 'takabeni1', password: 'Takabeni&1' },
+                { username: 'takabeni2', password: 'Takaben&2' }
+            ];
+            
+            let results = [];
+            
+            for (const user of users) {
+                try {
+                    const response = await fetch('http://localhost:3001/api/auth/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(user)
+                    });
+                    
+                    const data = await response.json();
+                    results.push(`${user.username}: ${data.success ? '✅ 成功' : '❌ 失敗'}`);
+                } catch (error) {
+                    results.push(`${user.username}: ❌ エラー`);
+                }
+            }
+            
+            resultDiv.innerHTML = `
+                <div class="result success">
+                    <h3>🔐 ログインテスト結果</h3>
+                    <ul>
+                        ${results.map(result => `<li>${result}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

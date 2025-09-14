@@ -15,12 +15,8 @@
       "description": "この応急処置ガイドでは、エンジン停止時に対処する手順を説明します。",
       "images": [
         {
-          "url": "/api/emergency-flow/image/emergency-flow-step1-1750567655123.jpg",
-          "fileName": "emergency-flow-step1-1750567655123.jpg"
-        },
-        {
-          "url": "/api/emergency-flow/image/emergency-flow-step1-1750567928673.jpg",
-          "fileName": "emergency-flow-step1-1750567928673.jpg"
+          "url": "/api/emergency-flow/image/emergency-flow-step1757845077496.JPG",
+          "fileName": "emergency-flow-step1757845077496.JPG"
         }
       ],
       "conditions": []
@@ -68,5 +64,5 @@
   ],
   "category": "",
   "dataSource": "database",
-  "updatedAt": "2025-07-09T01:02:40.055Z"
+  "updatedAt": "2025-09-14T10:17:57.814Z"
 }

@@ -31,15 +31,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         // lib/auth の getCurrentUser を利用
         const userData = await fetchCurrentUser();
-        if (userData) {
+        console.log('🔍 getCurrentUser レスポンス:', userData);
+        
+        if (userData && userData.success && userData.user) {
           setUser({
-            id: userData.id,
-            username: userData.username,
-            displayName: userData.display_name || userData.displayName,
-            role: userData.role,
-            department: userData.department
+            id: userData.user.id,
+            username: userData.user.username,
+            displayName: userData.user.displayName || userData.user.display_name,
+            role: userData.user.role,
+            department: userData.user.department
           });
         } else {
+          console.log('❌ ユーザーデータが無効:', userData);
           setUser(null);
         }
       } catch (error) {
@@ -61,13 +64,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // lib/auth の login を利用
       const userData = await authLogin({ username, password });
-      setUser({
-        id: userData.user.id,
-        username: userData.user.username,
-        displayName: userData.user.display_name || userData.user.displayName,
-        role: userData.user.role,
-        department: userData.user.department
-      });
+      console.log('🔍 ログインレスポンス:', userData);
+      
+      if (userData && userData.success && userData.user) {
+        setUser({
+          id: userData.user.id,
+          username: userData.user.username,
+          displayName: userData.user.displayName || userData.user.display_name,
+          role: userData.user.role,
+          department: userData.user.department
+        });
+      } else {
+        console.log('❌ ログインレスポンスが無効:', userData);
+        throw new Error('ログインに失敗しました');
+      }
     } catch (error) {
       setUser(null);
       throw error;

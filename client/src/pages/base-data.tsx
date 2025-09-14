@@ -200,10 +200,10 @@ export default function BaseDataPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
           <Database className="inline mr-2" />
-          基準データ管理
+          基礎データ管理
         </h1>
         <p className="text-gray-600">
-          保守用車両データの管理と設定を行います
+          保守用車両データの管理とAIの設定を行います
         </p>
       </div>
 
@@ -220,7 +220,7 @@ export default function BaseDataPage() {
           </TabsTrigger>
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
-            設定
+            AI調整
           </TabsTrigger>
         </TabsList>
 
@@ -297,7 +297,7 @@ export default function BaseDataPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Wrench className="h-5 w-5" />
-                保守用車両データ入力
+                機械故情報入力
               </CardTitle>
             </CardHeader>
             <CardContent>

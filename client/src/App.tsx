@@ -23,6 +23,7 @@ const TroubleshootingPage = lazy(() => import('./pages/troubleshooting'));
 const EmergencyGuidePage = lazy(() => import('./pages/emergency-guide'));
 const UsersPage = lazy(() => import('./pages/users'));
 const BaseDataPage = lazy(() => import('./pages/base-data'));
+const MachineManagementPage = lazy(() => import('./pages/machine-management'));
 
 const NotFoundPage = lazy(() => import('./pages/not-found'));
 
@@ -123,14 +124,20 @@ function App() {
                     
                     {/* 管理者専用ルート */}
                     <Route path="/settings" element={
-                      <ProtectedRoute requireAdmin={true}>
+                      <ProtectedRoute>
                         <SettingsPage />
                       </ProtectedRoute>
                     } />
                     
                     <Route path="/users" element={
-                      <ProtectedRoute requireAdmin={true}>
+                      <ProtectedRoute>
                         <UsersPage />
+                      </ProtectedRoute>
+                    } />
+                    
+                    <Route path="/machine-management" element={
+                      <ProtectedRoute>
+                        <MachineManagementPage />
                       </ProtectedRoute>
                     } />
                     

@@ -494,28 +494,31 @@ const StepEditor: React.FC<StepEditorProps> = ({
                   {(() => {
                     const convertedUrl = convertImageUrl(image.url);
                     console.log(`🖼️ 画像表示デバッグ [${step.id}][${index}]:`, {
-                      originalUrl: image.url,
-                      convertedUrl: convertedUrl,
-                      fileName: image.fileName
+                      originalUrl: image.url?.substring(0, 100) + '...',
+                      convertedUrl: convertedUrl?.substring(0, 100) + '...',
+                      fileName: image.fileName,
+                      isBase64: image.url?.startsWith('data:image/')
                     });
                     return (
                       <img
                         src={convertedUrl}
                         alt={image.fileName}
                         className="w-full h-full object-cover rounded-lg border shadow-sm"
+                        crossOrigin={image.url?.startsWith('data:') ? undefined : "anonymous"}
                         onError={(e) => {
                           console.error('❌ 画像読み込みエラー:', {
-                            originalUrl: image.url,
-                            convertedUrl: convertedUrl,
+                            originalUrl: image.url?.substring(0, 100) + '...',
+                            convertedUrl: convertedUrl?.substring(0, 100) + '...',
                             fileName: image.fileName,
+                            isBase64: image.url?.startsWith('data:image/'),
                             error: e
                           });
                           handleImageError(e, image.url);
                         }}
                         onLoad={() => {
                           console.log('✅ 画像読み込み成功:', {
-                            originalUrl: image.url,
-                            convertedUrl: convertedUrl,
+                            originalUrl: image.url?.substring(0, 100) + '...',
+                            convertedUrl: convertedUrl?.substring(0, 100) + '...',
                             fileName: image.fileName
                           });
                           // 画像読み込み成功時にエラーフラグをクリア

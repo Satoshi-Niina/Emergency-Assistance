@@ -12,7 +12,7 @@ export class AzureStorageService {
     const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
     const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
     const accountKey = process.env.AZURE_STORAGE_ACCOUNT_KEY;
-    this.containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge-base';
+    this.containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
 
     if (connectionString) {
       this.blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);

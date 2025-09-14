@@ -114,20 +114,31 @@ export const logout = async () => {
  */
 export const getCurrentUser = async () => {
   try {
+    console.log('🔍 getCurrentUser リクエスト:', AUTH_API.ME);
+    
     const response = await fetch(AUTH_API.ME, {
       credentials: 'include'
     });
     
+    console.log('🔍 getCurrentUser レスポンス:', {
+      status: response.status,
+      ok: response.ok,
+      statusText: response.statusText
+    });
+    
     if (!response.ok) {
       if (response.status === 401) {
+        console.log('❌ 認証されていません (401)');
         return null;
       }
-      throw new Error('Failed to get current user');
+      throw new Error(`Failed to get current user: ${response.status} ${response.statusText}`);
     }
     
-    return await response.json();
+    const data = await response.json();
+    console.log('🔍 getCurrentUser データ:', data);
+    return data;
   } catch (error) {
-    console.error('Get current user error:', error);
+    console.error('❌ Get current user error:', error);
     return null;
   }
 };

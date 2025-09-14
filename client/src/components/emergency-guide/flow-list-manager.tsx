@@ -6,6 +6,7 @@ import { ScrollArea } from "../../components/ui/scroll-area";
 import { useToast } from "../../hooks/use-toast.ts";
 import { Edit, Eye, Trash2, RefreshCw, Plus, Loader2 } from 'lucide-react';
 import { buildApiUrl } from "../../lib/api/config.ts";
+import { useAuth } from "../../context/auth-context.tsx";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +39,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
   onNew
 }) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [flowList, setFlowList] = useState<FlowData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -46,11 +48,24 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
   // 実際のAPI呼び出し
   useEffect(() => {
     console.log('🔄 FlowListManager マウント完了');
+    console.log('👤 認証状態:', { user: !!user, userId: user?.id });
     fetchFlowList();
-  }, []);
+  }, [user]);
 
   const fetchFlowList = async () => {
     console.log('🚀 fetchFlowList関数開始');
+    
+    // 認証チェック
+    if (!user) {
+      console.log('❌ ユーザーが認証されていません');
+      toast({
+        title: "認証エラー",
+        description: "ログインが必要です",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       setIsLoading(true);
       console.log('🔄 フロー一覧を取得中...');
@@ -67,15 +82,20 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       
       const response = await fetch(fullUrl, {
         method: 'GET',
+        credentials: 'include', // セッション維持のため必須
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate'
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
         }
       });
 
       console.log('📡 レスポンス状態:', response.status, response.statusText);
 
       if (!response.ok) {
-        throw new Error(`APIエラー: ${response.status} ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('❌ APIエラーレスポンス:', errorText);
+        throw new Error(`APIエラー: ${response.status} ${response.statusText} - ${errorText}`);
       }
       
       const data = await response.json();

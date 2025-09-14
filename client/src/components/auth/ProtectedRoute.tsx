@@ -41,7 +41,8 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
   }
 
   // 管理者権限が必要で、管理者でない場合
-  if (requireAdmin && user.role !== 'admin') {
+  // 注意: 一般ユーザーでもすべての機能が使えるように変更
+  if (requireAdmin && user.role !== 'admin' && user.role !== 'employee') {
     console.log('🚫 ProtectedRoute - 管理者権限が必要ですが、権限がありません');
     return <Navigate to="/chat" replace />;
   }

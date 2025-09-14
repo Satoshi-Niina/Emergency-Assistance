@@ -4,6 +4,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { existsSync, readdirSync, unlinkSync, writeFileSync, readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
+import { requireAuth } from '../middleware/security.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -126,7 +127,7 @@ async function loadFromDirectory(dirPath: string) {
 }
 
 // トラブルシューティング一覧取得
-router.get('/list', async (req, res) => {
+router.get('/list', requireAuth, async (req, res) => {
   console.log('📋 トラブルシューティング一覧リクエスト受信');
   try {
     const data = await loadTroubleshootingData();
@@ -151,7 +152,7 @@ router.get('/list', async (req, res) => {
 });
 
 // 特定のトラブルシューティング取得
-router.get('/:id', async (req, res) => {
+router.get('/:id', requireAuth, async (req, res) => {
   console.log('📋 特定のトラブルシューティング取得開始:', req.params.id);
   try {
     const { id } = req.params;
@@ -283,7 +284,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // トラブルシューティング更新
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAuth, async (req, res) => {
   console.log('📝 トラブルシューティング更新:', req.params.id);
   try {
     const { id } = req.params;
@@ -331,7 +332,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // トラブルシューティング削除
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAuth, async (req, res) => {
   console.log('🗑️ トラブルシューティング削除:', req.params.id);
   try {
     const { id } = req.params;
@@ -385,9 +386,29 @@ router.use((err: any, req: any, res: any, next: any) => {
   });
 });
 
-// 画像配信エンドポイント（knowledge-baseから直接配信）
+// OPTIONSリクエスト用のハンドラー（プリフライトリクエスト対応）
+router.options('/image/:fileName', (req, res) => {
+  // helmetの設定を無効にしてCORSを許可
+  res.removeHeader('Cross-Origin-Resource-Policy');
+  res.removeHeader('Cross-Origin-Opener-Policy');
+  res.removeHeader('Origin-Agent-Cluster');
+  res.removeHeader('Content-Security-Policy');
+  
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Cache-Control, Accept, Pragma, Expires');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.status(200).end();
+});
+
+// 画像配信エンドポイント（knowledge-baseから直接配信）- 認証不要
 router.get('/image/:fileName', async (req, res) => {
   try {
+    // helmetの設定を無効にしてCORSを許可
+    res.removeHeader('Cross-Origin-Resource-Policy');
+    res.removeHeader('Cross-Origin-Opener-Policy');
+    res.removeHeader('Origin-Agent-Cluster');
+    res.removeHeader('Content-Security-Policy');
     const { fileName } = req.params;
     
     // まず emergency-flows ディレクトリを確認
@@ -417,13 +438,18 @@ router.get('/image/:fileName', async (req, res) => {
     });
 
     if (!existsSync(filePath)) {
+      const emergencyFlowsPath = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows', fileName);
+      const chatExportsPath = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports', fileName);
+      const emergencyFlowsDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows');
+      const chatExportsDir = path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports');
+      
       return res.status(404).json({
         error: 'ファイルが存在しません',
         fileName,
-        emergencyFlowsPath: path.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows', fileName),
-        chatExportsPath: path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports', fileName),
-        emergencyFlowsDir: existsSync(path.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows')) ? readdirSync(path.join(process.cwd(), '..', 'knowledge-base', 'images', 'emergency-flows')) : [],
-        chatExportsDir: existsSync(path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports')) ? readdirSync(path.join(process.cwd(), '..', 'knowledge-base', 'images', 'chat-exports')) : []
+        emergencyFlowsPath,
+        chatExportsPath,
+        emergencyFlowsDir: existsSync(emergencyFlowsDir) ? readdirSync(emergencyFlowsDir) : [],
+        chatExportsDir: existsSync(chatExportsDir) ? readdirSync(chatExportsDir) : []
       });
     }
 
@@ -440,6 +466,12 @@ router.get('/image/:fileName', async (req, res) => {
 
     // ファイルを読み込んでレスポンス
     const fileBuffer = readFileSync(filePath);
+    
+    // CORSヘッダーを設定
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Cache-Control, Accept, Pragma, Expires');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1年間キャッシュ
     res.send(fileBuffer);

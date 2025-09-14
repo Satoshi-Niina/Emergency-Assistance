@@ -87,7 +87,12 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
       console.log('🔄 フローデータ読み込み開始:', flowId);
       
       const response = await fetch(buildApiUrl(`/api/troubleshooting/${flowId}`), {
+        method: 'GET',
+        credentials: 'include', // セッション維持のため必須
         headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache'
         }

@@ -818,7 +818,7 @@ const EmergencyFlowCreator: React.FC<EmergencyFlowCreatorProps> = ({
         const imageFileName = result.imageFileName || result.fileName;
 
         const newImage = {
-          url: result.imageUrl,
+          url: `/knowledge-base/images/emergency-flows/${imageFileName}`,
           fileName: imageFileName
         };
 

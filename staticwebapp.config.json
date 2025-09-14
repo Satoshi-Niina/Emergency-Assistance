@@ -34,7 +34,7 @@
   ],
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/images/*", "/css/*", "/js/*", "/assets/*", "/api/*", "/auth/*", "/*.ico", "/*.png", "/*.jpg", "/*.jpeg", "/*.gif", "/*.svg", "/*.css", "/*.js"]
+  "exclude": ["/images/*", "/knowledge-base/images/*", "/css/*", "/js/*", "/assets/*", "/api/*", "/auth/*", "/*.ico", "/*.png", "/*.jpg", "/*.jpeg", "/*.gif", "/*.svg", "/*.css", "/*.js"]
   },
   "responseOverrides": {
     "404": {

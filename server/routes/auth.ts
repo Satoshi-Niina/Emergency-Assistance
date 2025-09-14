@@ -23,6 +23,7 @@ router.get('/debug/env', (req, res) => {
       userId: req.session?.userId,
       userRole: req.session?.userRole,
       hasSession: !!req.session,
+      sessionData: req.session,
     },
     request: {
       headers: {
@@ -40,6 +41,23 @@ router.get('/debug/env', (req, res) => {
   res.json({
     success: true,
     debug: debugInfo,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// セッション状態確認用エンドポイント
+router.get('/debug/session', (req, res) => {
+  console.log('🔍 セッション状態確認エンドポイント呼び出し');
+  
+  res.json({
+    success: true,
+    session: {
+      id: req.session?.id,
+      userId: req.session?.userId,
+      userRole: req.session?.userRole,
+      hasSession: !!req.session,
+      sessionData: req.session,
+    },
     timestamp: new Date().toISOString()
   });
 });
@@ -105,6 +123,11 @@ router.post('/login', async (req, res) => {
     if (!isValidPassword) {
       const plainTextMatch = (foundUser.password === password);
       console.log('🔐 Plain text password check:', plainTextMatch);
+      console.log('🔐 Password comparison:', {
+        stored: foundUser.password,
+        input: password,
+        match: plainTextMatch
+      });
       isValidPassword = plainTextMatch;
       if (isValidPassword) {
         console.log('✅ 平文パスワードで認証成功（開発環境）');

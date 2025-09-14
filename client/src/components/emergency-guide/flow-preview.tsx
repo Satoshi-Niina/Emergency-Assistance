@@ -11,10 +11,7 @@ interface Step {
   description: string;
   message: string;
   type: 'step' | 'decision';
-  images?: Array<{
-    url: string;
-    fileName: string;
-  }>;
+  images?: string[]; // ファイル名の配列
   conditions?: Array<{
     label: string;
     nextId: string;
@@ -43,13 +40,27 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
     const fetchFlowData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(buildApiUrl(`/api/emergency-flow/${flowId}`));
+        const response = await fetch(buildApiUrl(`/api/troubleshooting/${flowId}`), {
+          method: 'GET',
+          credentials: 'include', // セッション維持のため必須
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
         
         if (!response.ok) {
           throw new Error(`Failed to fetch flow data: ${response.status}`);
         }
 
-        const data = await response.json();
+        const responseData = await response.json();
+        console.log('📊 フロープレビューAPIレスポンス:', responseData);
+        
+        // サーバーからのレスポンス構造に合わせてデータを取得
+        const data = responseData.success && responseData.data ? responseData.data : responseData;
+        console.log('📋 フロープレビュー処理対象データ:', data);
+        
         setFlowData(data);
       } catch (err) {
         console.error("Flow data fetch error:", err);
@@ -197,30 +208,45 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
             <div className="space-y-3">
               <h4 className="font-medium text-gray-900">画像:</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {currentStep.images.map((image, index) => {
-                  const imageUrl = convertImageUrl(image.url);
-                  console.log('画像URL変換:', { original: image.url, converted: imageUrl });
-                  
+                {currentStep.images.map((img, index) => {
+                  // 画像情報がオブジェクトの場合はプロパティを参照、文字列の場合はそのまま
+                  const imageUrl = typeof img === 'object' && img !== null ? convertImageUrl((img as {url:string;fileName:string}).url) : convertImageUrl(img);
+                  const altText = typeof img === 'object' && img !== null ? (img as {url:string;fileName:string}).fileName : String(img);
+                  console.log('🖼️ 画像表示デバッグ:', {
+                    index,
+                    fileName: altText,
+                    convertedUrl: imageUrl
+                  });
                   return (
                     <div key={index} className="relative">
                       <img
                         src={imageUrl}
-                        alt={image.fileName}
+                        alt={altText}
                         className="w-full h-48 object-cover rounded-lg border"
+                        onLoad={() => {
+                          console.log('✅ 画像読み込み成功:', {
+                            fileName: altText,
+                            imageUrl: imageUrl?.substring(0, 100) + '...'
+                          });
+                        }}
                         onError={(e) => {
-                          console.error('画像読み込みエラー:', image.url);
-                          console.error('変換後のURL:', imageUrl);
+                          console.error('❌ 画像読み込みエラー:', {
+                            fileName: altText,
+                            convertedUrl: imageUrl?.substring(0, 100) + '...',
+                            error: e,
+                            target: e.currentTarget
+                          });
                           const target = e.currentTarget;
                           target.style.display = 'none';
                           
                           const errorDiv = document.createElement('div');
                           errorDiv.className = 'w-full h-48 bg-red-100 border border-red-300 text-red-700 px-3 py-2 rounded-lg text-sm flex items-center justify-center';
-                          errorDiv.textContent = '画像の読み込みに失敗しました';
+                          errorDiv.textContent = `画像の読み込みに失敗しました: ${altText}`;
                           target.parentNode?.appendChild(errorDiv);
                         }}
                       />
                       <div className="mt-2 text-xs text-gray-500 text-center">
-                        {image.fileName}
+                        {altText}
                       </div>
                     </div>
                   );

@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { cn } from "../../lib/utils";
 import { Button } from "../../components/ui/button";
 import { Tabs as TabsPrimitive, TabsList, TabsTrigger } from "../../components/ui/tabs";
-import { MessageSquare, Database, Settings, FileText, History, Wrench, Users } from "lucide-react";
+import { MessageSquare, Database, Settings, FileText, History, Wrench } from "lucide-react";
 import { useAuth } from "../../context/auth-context";
 
 interface TabItem {
@@ -44,12 +44,6 @@ export function Tabs() {
       title: "応急処置データ管理",
       path: "/troubleshooting",
       icon: <FileText className="mr-2 h-4 w-4" />,
-      adminOnly: true, // 管理者のみ
-    },
-    {
-      title: "ユーザー管理",
-      path: "/users",
-      icon: <Users className="mr-2 h-4 w-4" />,
       adminOnly: true, // 管理者のみ
     },
     {

@@ -286,7 +286,7 @@ const defaultConfig: StorageConfig = {
   azure: process.env.NODE_ENV === 'production' ? {
     accountName: process.env.AZURE_STORAGE_ACCOUNT_NAME || '',
     accountKey: process.env.AZURE_STORAGE_ACCOUNT_KEY || '',
-    containerName: process.env.AZURE_STORAGE_CONTAINER_NAME || 'emergency-assistance-images'
+    containerName: process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge'
   } : undefined
 };
 

@@ -61,9 +61,9 @@ export default function UsersPage() {
   const navigate = useNavigate();
   const [error, setError] = useState<Error | null>(null);
 
-  // ユーザーが未認証またはadmin以外の場合はリダイレクト
+  // ユーザーが未認証の場合はリダイレクト（一般ユーザーでもアクセス可能）
   useEffect(() => {
-    if (!authLoading && (!user || user.role !== "admin")) {
+    if (!authLoading && !user) {
       navigate("/chat");
     }
   }, [user, authLoading, navigate]);
@@ -86,7 +86,7 @@ export default function UsersPage() {
         setIsLoading(true);
         setQueryError(null);
         
-        const res = await fetch('/api/users', {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users`, {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -235,6 +235,7 @@ export default function UsersPage() {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importResults, setImportResults] = useState<any>(null);
   const [isImporting, setIsImporting] = useState(false);
+
   const [newUser, setNewUser] = useState<Partial<NewUserData>>({
     username: "",
     password: "",
@@ -400,7 +401,7 @@ export default function UsersPage() {
         // ユーザー一覧を再取得
         const fetchUsers = async () => {
           try {
-            const res = await fetch('/api/users', {
+            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users`, {
               method: 'GET',
               credentials: 'include',
               headers: {
@@ -515,7 +516,7 @@ export default function UsersPage() {
         // ユーザー一覧を再取得
         const fetchUsers = async () => {
           try {
-            const res = await fetch('/api/users', {
+            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users`, {
               method: 'GET',
               credentials: 'include',
               headers: {
@@ -635,7 +636,7 @@ export default function UsersPage() {
       // ユーザー一覧を再取得
       const fetchUsers = async () => {
         try {
-          const res = await fetch('/api/users', {
+          const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users`, {
             method: 'GET',
             credentials: 'include',
             headers: {
@@ -750,7 +751,7 @@ export default function UsersPage() {
       // ユーザー一覧を再取得
       const fetchUsers = async () => {
         try {
-          const res = await fetch('/api/users', {
+          const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users`, {
             method: 'GET',
             credentials: 'include',
             headers: {
