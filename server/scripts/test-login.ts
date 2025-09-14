@@ -18,7 +18,7 @@ const db = drizzle(client);
 async function testLogin() {
   try {
     const username = 'niina';
-    const password = '0077';
+  // const password = '0077'; // 未使用のため削除
     
     console.log('🔐 ログインテスト開始:', { username, password });
     

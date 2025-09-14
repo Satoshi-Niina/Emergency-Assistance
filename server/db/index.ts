@@ -8,9 +8,8 @@ function getDatabaseUrl(): string {
   if (process.env.DATABASE_URL) {
     return process.env.DATABASE_URL;
   }
-  
-  // デフォルトの接続文字列
-  return 'postgresql://postgres:password@localhost:5432/emergency_assistance';
+  // .env未設定時は空文字を返す（安全対策）
+  return '';
 }
 
 // 本番環境でのSSL設定を改善

@@ -26,7 +26,7 @@ export class DatabaseStorage {
             if (!adminUser) {
                 await this.createUser({
                     username: "niina",
-                    password: "0077", // In a real app, this would be hashed
+                    // password: "0077", // 未使用のため削除
                     displayName: "新納",
                     role: "システム管理者"
                 });
@@ -39,7 +39,7 @@ export class DatabaseStorage {
             if (!employeeUser) {
                 const userData = {
                     username: "employee",
-                    password: "employee123", // In a real app, this would be hashed
+                    // password: "employee123", // 未使用のため削除
                     displayName: "山田太郎",
                     role: "employee"
                 };

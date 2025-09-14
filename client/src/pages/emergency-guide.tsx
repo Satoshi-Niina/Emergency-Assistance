@@ -9,6 +9,27 @@ import { Button } from "../components/ui/button";
 import { useToast } from "../hooks/use-toast.ts";
 
 const EmergencyGuidePage: React.FC = () => {
+  // BLOBファイル一覧表示用
+  const [blobFiles, setBlobFiles] = useState<string[]>([]);
+  const [blobLoading, setBlobLoading] = useState(false);
+  useEffect(() => {
+    const fetchBlobFileList = async () => {
+      setBlobLoading(true);
+      try {
+        const API_BASE = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+        const res = await fetch(`${API_BASE}/api/blob/list?container=knowledge`);
+        const data = await res.json();
+        if (data.success) {
+          setBlobFiles(data.data);
+        }
+      } catch (e) {
+        setBlobFiles([]);
+      } finally {
+        setBlobLoading(false);
+      }
+    };
+    fetchBlobFileList();
+  }, []);
   // URLからクエリパラメータを取得
   const getQueryParam = (name: string): string | null => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -215,6 +236,18 @@ const EmergencyGuidePage: React.FC = () => {
 
   return (
     <div className="h-screen flex flex-col">
+  {/* UI表示時に自動取得するためボタンは削除 */}
+      {blobLoading && <div>取得中...</div>}
+      {blobFiles.length > 0 && (
+        <div style={{marginBottom:16}}>
+          <h3>🗂️ BLOBファイル一覧</h3>
+          <ul>
+            {blobFiles.map((file, idx) => (
+              <li key={idx}>{file}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       <Helmet>
         <title>応急処置ガイド - Emergency Assistance</title>
         <meta name="description" content="応急処置ガイドの管理と表示" />

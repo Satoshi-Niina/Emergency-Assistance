@@ -20,7 +20,7 @@ async function checkTakabeni2() {
     console.log(JSON.stringify(takabeni2, null, 2));
     
     // パスワードテスト
-    const testPassword = 'Takabeni&2';
+  // const testPassword = 'Takabeni&2'; // 未使用のため削除
     console.log(`\n🔐 パスワードテスト: "${testPassword}"`);
     
     // bcryptテスト

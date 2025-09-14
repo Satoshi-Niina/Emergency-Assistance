@@ -27,7 +27,7 @@ async function directFixNiina() {
       
       const newUser = await db.insert(users).values({
         username: 'niina',
-        password: 'G&896845',
+  // password: 'G&896845', // 未使用のため削除
         displayName: '新納 智志',
         role: 'admin',
         department: 'システム管理部',
