@@ -380,6 +380,8 @@ app.use('/api/direct-fix', directFixRouter);
 app.use('/api/emergency-fix', emergencyFixRouter);
 
 // デバッグ用ルートを追加
+import logBackupRouter from './routes/log-backup.js';
+app.use('/api/logs', logBackupRouter);
 app.use('/api/debug/users', usersDebugRouter);
 app.use('/api/debug', debugRouter);
 

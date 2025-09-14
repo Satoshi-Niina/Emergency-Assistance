@@ -15,11 +15,16 @@ router.post('/delete', async (req, res) => {
         if (!filePath) {
             return res.status(400).json({ error: 'ファイルパスが指定されていません' });
         }
-        // 安全のため、パスが指定されたディレクトリ内にあることを確認
+        // 許可ディレクトリ一覧
+        const allowedDirs = [
+            path.join(__dirname, '../../knowledge-base/troubleshooting'),
+            path.join(__dirname, '../../knowledge-base/temp'),
+            path.join(__dirname, '../../cache')
+        ];
         const normalizedPath: any = path.normalize(filePath);
-        const baseDir: any = path.join(__dirname, '../../knowledge-base/troubleshooting');
         const absolutePath: any = path.join(__dirname, '../../', normalizedPath);
-        if (!absolutePath.startsWith(baseDir)) {
+        const isAllowed = allowedDirs.some(dir => absolutePath.startsWith(dir));
+        if (!isAllowed) {
             return res.status(403).json({ error: '許可されていないディレクトリへのアクセスです' });
         }
         // ファイルの存在確認
