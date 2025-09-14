@@ -109,6 +109,10 @@ app.post('/api/auth/login', async (req, res) => {
       }
       
       const user = result.rows[0];
+      
+      // デバッグログ
+      console.log('Login attempt:', { username, providedPassword: password, storedPassword: user.password });
+      
       // パスワード検証（平文比較 - テスト用）
       // TODO: 本番環境ではbcryptハッシュ化が必要
       const isValidPassword = password === user.password;
@@ -332,6 +336,35 @@ app.post('/api/admin/reset-password', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'パスワードリセット中にエラーが発生しました',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// パスワード確認用API（デバッグ用）
+app.get('/api/debug/passwords', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(`
+        SELECT username, password, display_name, role
+        FROM users
+        WHERE username IN ('niina', 'takabeni1', 'takabeni2')
+      `);
+      
+      res.status(200).json({
+        success: true,
+        users: result.rows,
+        timestamp: new Date().toISOString()
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Password debug error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get passwords',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
