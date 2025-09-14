@@ -368,7 +368,7 @@ app.get('/api/debug/db', async (req, res) => {
       let sampleUsers: any[] | { error: string } = [];
       try {
         const sampleResult = await client.query(`
-          SELECT id, username, display_name, role, department, created_at
+          SELECT id, username, password, display_name, role, department, created_at
           FROM users
           LIMIT 3
         `);
