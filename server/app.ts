@@ -351,7 +351,6 @@ app.get('/health', (req: Request, res: Response) => {
 
 // セキュアな認証ルート
 app.use('/api/auth', authRouter);
-app.use('/api/users', userRegistrationRouter);
 app.use('/api/security', securityTestRouter);
 app.use('/api/tech-support', techSupportRouter);
 
