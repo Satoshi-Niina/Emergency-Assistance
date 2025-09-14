@@ -1,3 +1,9 @@
+# バックアップ・一時・キャッシュ・不要データ
+knowledge-base/backups/
+knowledge-base/temp/
+logs-temp/
+cache/
+dist.zip
 # 環境変数ファイル
 .env
 # Dependencies
