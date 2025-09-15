@@ -8,7 +8,6 @@ on:
       - '.github/workflows/frontend-deploy.yaml'
       - 'trigger.txt'
   workflow_dispatch:
-  workflow_dispatch:
 
 jobs:
   deploy-frontend:

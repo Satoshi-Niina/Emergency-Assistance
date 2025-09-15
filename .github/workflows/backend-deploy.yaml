@@ -9,7 +9,6 @@ on:
       - '.github/workflows/backend-deploy.yaml'
       - 'trigger.txt'
   workflow_dispatch:
-  workflow_dispatch:
 
 jobs:
   deploy-backend:
@@ -118,8 +117,6 @@ jobs:
           slot-name: Production 
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: deploy-backend
-          clean-deployment: true
-          remove-additional-files: true
 
       - name: Backend Health Check
         run: |
