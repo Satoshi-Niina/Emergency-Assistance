@@ -75,6 +75,10 @@ app.use('/api/users', usersRouter);
 import machinesRouter from './routes/machines.js';
 app.use('/api/machines', machinesRouter);
 
+// 認証APIルート（auth）
+import authRouter from './routes/auth.js';
+app.use('/api/auth', authRouter);
+
 // ストレージ管理の基本ルート
 app.get('/api/storage/list', async (req: Request, res: Response) => {
   try {
