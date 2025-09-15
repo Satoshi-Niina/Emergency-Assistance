@@ -1,0 +1,18 @@
+{
+  "name": "emergency-assistance-api",
+  "version": "1.0.0",
+  "description": "Azure Functions for Emergency Assistance API",
+  "main": "index.js",
+  "scripts": {
+    "start": "func start",
+    "build": "func extensions install"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.0.0",
+    "drizzle-orm": "^0.44.4",
+    "postgres": "^3.4.4"
+  },
+  "devDependencies": {
+    "@azure/functions": "^4.0.0"
+  }
+}

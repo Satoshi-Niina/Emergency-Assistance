@@ -89,20 +89,21 @@ router.get('/', async (req: any, res: any) => {
             url: req.url
         });
         
-        // Drizzle ORMを使用して全ユーザーを取得
-        const allUsers: any = await db.select({
-            id: users.id,
-            username: users.username,
-            display_name: users.displayName,
-            role: users.role,
-            department: users.department,
-            description: users.description,
-            created_at: users.created_at
-        }).from(users);
+        // 生のSQLクエリで直接データを取得（より確実）
+        const allUsers: any = await db.execute(`
+            SELECT id, username, display_name, role, department, description, created_at
+            FROM users
+            ORDER BY created_at DESC
+        `);
         
-        console.log('[DEBUG] ユーザー一覧取得完了:', {
+        console.log('[DEBUG] 生SQLクエリ結果:', {
             count: allUsers.length,
-            users: allUsers.map(u => ({ id: u.id, username: u.username, role: u.role }))
+            users: allUsers.map((u: any) => ({
+                id: u.id,
+                username: u.username,
+                display_name: u.display_name,
+                role: u.role
+            }))
         });
         
         // フロントエンドが期待する形式でレスポンス
@@ -117,6 +118,98 @@ router.get('/', async (req: any, res: any) => {
         res.status(500).json({ 
             success: false,
             error: 'ユーザー一覧の取得に失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// デバッグ用：データベースの状態確認
+router.get('/debug', async (req: any, res: any) => {
+    try {
+        console.log('[DEBUG] データベース状態確認開始');
+        
+        // 生のSQLクエリでデータベースの状態を確認
+        const rawUsers = await db.execute(`
+            SELECT id, username, display_name, role, department, description, created_at
+            FROM users
+            ORDER BY created_at DESC
+        `);
+        
+        console.log('[DEBUG] 生SQLクエリ結果:', {
+            count: rawUsers.length,
+            users: rawUsers.map((u: any) => ({
+                id: u.id,
+                username: u.username,
+                display_name: u.display_name,
+                role: u.role
+            }))
+        });
+        
+        // Drizzleクエリも試行
+        const drizzleUsers = await db.select().from(users);
+        console.log('[DEBUG] Drizzleクエリ結果:', {
+            count: drizzleUsers.length,
+            users: drizzleUsers.map((u: any) => ({
+                id: u.id,
+                username: u.username,
+                displayName: u.displayName,
+                role: u.role
+            }))
+        });
+        
+        res.json({
+            success: true,
+            rawQuery: {
+                count: rawUsers.length,
+                users: rawUsers
+            },
+            drizzleQuery: {
+                count: drizzleUsers.length,
+                users: drizzleUsers
+            },
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('[DEBUG] データベース状態確認エラー:', error);
+        res.status(500).json({
+            success: false,
+            error: 'データベース状態確認に失敗しました',
+            details: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// 簡単なテストエンドポイント
+router.get('/test', async (req: any, res: any) => {
+    try {
+        console.log('[DEBUG] 簡単テスト開始');
+        
+        // 生のSQLクエリで直接データを取得
+        const result = await db.execute(`
+            SELECT id, username, display_name, role, department, description, created_at
+            FROM users
+            ORDER BY created_at DESC
+        `);
+        
+        console.log('[DEBUG] テスト結果:', {
+            count: result.length,
+            users: result
+        });
+        
+        res.json({
+            success: true,
+            message: 'テスト成功',
+            count: result.length,
+            users: result,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('[DEBUG] テストエラー:', error);
+        res.status(500).json({
+            success: false,
+            error: 'テストに失敗しました',
             details: error instanceof Error ? error.message : 'Unknown error',
             timestamp: new Date().toISOString()
         });

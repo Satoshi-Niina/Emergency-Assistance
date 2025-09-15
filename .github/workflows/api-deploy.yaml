@@ -1,0 +1,91 @@
+name: Deploy API to Azure Functions
+
+on:
+  push:
+    branches:
+      - backup
+    paths:
+      - 'api/**'
+      - 'server/**'
+      - '.github/workflows/api-deploy.yaml'
+      - 'trigger.txt'
+  workflow_dispatch:
+
+jobs:
+  deploy-api:
+    runs-on: ubuntu-latest
+    name: Deploy API
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install API dependencies
+        working-directory: api
+        run: |
+          echo "=== Installing API dependencies ==="
+          npm install --no-audit --prefer-offline
+
+      - name: Install server dependencies
+        working-directory: server
+        run: |
+          echo "=== Installing server dependencies ==="
+          npm install --no-audit --prefer-offline
+
+      - name: Prepare API deployment
+        run: |
+          echo "=== Preparing API deployment ==="
+          mkdir -p ./deploy-api
+          cp -r ./api/* ./deploy-api/
+          cp -r ./server ./deploy-api/
+          cp -r ./shared ./deploy-api/
+          
+          echo "=== API deployment package ready ==="
+          echo "API package size:"
+          du -sh ./deploy-api
+          echo "Files in deployment package:"
+          ls -la ./deploy-api/
+
+      - name: Deploy API to Azure Functions
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ secrets.AZURE_FUNCTION_APP_NAME }}
+          package: ./deploy-api
+          publish-profile: ${{ secrets.AZURE_FUNCTION_PUBLISH_PROFILE }}
+          scm-do-build-during-deployment: true
+          enable-oryx-build: true
+
+      - name: API Health Check
+        run: |
+          echo "🔍 Starting API health check..."
+          
+          # Wait for deployment
+          echo "⏳ Waiting for API deployment (30 seconds)..."
+          sleep 30
+          
+          # Check API
+          api_url="https://${{ secrets.AZURE_FUNCTION_APP_NAME }}.azurewebsites.net/api/health"
+          echo "Checking API: ${api_url}"
+          
+          for i in {1..3}; do
+            api_status=$(curl -o /dev/null -s -w "%{http_code}" -L "${api_url}")
+            echo "API check $i: $api_status"
+            
+            if [ "$api_status" = "200" ]; then
+              echo "✅ API deployment successful!"
+              echo "API URL: ${api_url}"
+              break
+            fi
+            
+            if [ $i -lt 3 ]; then
+              echo "⏳ Retrying in 15 seconds..."
+              sleep 15
+            fi
+          done
+          
+          if [ "$api_status" != "200" ]; then
+            echo "⚠️ API health check failed, but deployment completed"
+          fi
