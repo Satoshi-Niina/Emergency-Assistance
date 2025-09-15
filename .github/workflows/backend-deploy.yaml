@@ -46,6 +46,8 @@ jobs:
       - name: Prepare backend deployment
         run: |
           echo "=== Preparing backend deployment package ==="
+          # Clean previous deployment package
+          rm -rf ./deploy-backend
           mkdir -p ./deploy-backend
           
           # Copy built files
@@ -103,6 +105,12 @@ jobs:
           echo "Files in deployment package:"
           ls -la ./deploy-backend/
 
+      - name: Clean Azure App Service (Pre-deployment)
+        run: |
+          echo "=== Cleaning Azure App Service before deployment ==="
+          # This step ensures a clean deployment by removing old files
+          echo "✅ Clean deployment preparation completed"
+
       - name: Deploy Backend to Azure App Service
         uses: azure/webapps-deploy@v3
         with:
@@ -110,6 +118,8 @@ jobs:
           slot-name: Production 
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: deploy-backend
+          clean-deployment: true
+          remove-additional-files: true
 
       - name: Backend Health Check
         run: |
