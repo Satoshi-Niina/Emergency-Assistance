@@ -7,7 +7,6 @@ on:
     paths:
       - 'server/**'
       - 'package.json'
-      - 'server.js'
       - '.github/workflows/backend-deploy.yaml'
       - 'trigger.txt'
   workflow_dispatch:
@@ -51,18 +50,19 @@ jobs:
           
           # Copy built files
           cp -r ./server/dist ./deploy-backend/
-          cp ./server.js ./deploy-backend/
+          # Copy the main server file to root
+          cp ./server/dist/azure-production-server-v2.js ./deploy-backend/server.js
           
           # Verify file structure
           echo "=== Verifying deployment package structure ==="
           ls -la ./deploy-backend/
-          echo "=== Checking for azure-production-server-v2.js ==="
-          if [ -f ./deploy-backend/dist/azure-production-server-v2.js ]; then
-            echo "✅ azure-production-server-v2.js found in dist/"
+          echo "=== Checking for server.js ==="
+          if [ -f ./deploy-backend/server.js ]; then
+            echo "✅ server.js found in root"
           else
-            echo "❌ azure-production-server-v2.js NOT found in dist/"
-            echo "Available files in dist:"
-            ls -la ./deploy-backend/dist/ || echo "dist directory not found"
+            echo "❌ server.js NOT found in root"
+            echo "Available files in deploy-backend:"
+            ls -la ./deploy-backend/ || echo "deploy-backend directory not found"
           fi
           
           # Create production package.json
@@ -77,7 +77,7 @@ jobs:
             },
             "dependencies": {
               "@azure/storage-blob": "^12.28.0",
-              "bcrypt": "^6.0.0",
+              "bcryptjs": "^2.4.3",
               "cors": "^2.8.5",
               "dotenv": "^16.6.1",
               "express": "^4.21.2",

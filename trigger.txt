@@ -1,0 +1,8 @@
+# GitHub Actions Workflow Trigger
+# This file is used to trigger the backend deployment workflow
+# Last updated: 2025-01-27
+
+Backend deployment trigger for Azure Production Server v2
+- Fixed build:v2 script
+- Updated YAML workflow
+- Ready for deployment
