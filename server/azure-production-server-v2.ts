@@ -1,8 +1,8 @@
 // Azure App Service 本番用統合サーバー v2
-import 'dotenv/config';
-import express from 'express';
-import cors from 'cors';
-import { Pool } from 'pg';
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const { Pool } = require('pg');
 
 const app = express();
 const port = process.env.PORT || 80;
@@ -463,7 +463,7 @@ app.get('/api/emergency-procedures', async (req, res) => {
 });
 
 // エラーハンドリング
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: any, req: any, res: any, next: any) => {
   console.error('Error:', err);
   res.status(500).json({
     success: false,
@@ -473,7 +473,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 // 404ハンドリング
-app.use((req, res) => {
+app.use((req: any, res: any) => {
   res.status(404).json({
     error: 'Not found',
     path: req.path,
@@ -487,4 +487,4 @@ app.listen(port, () => {
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 
-export default app;
+module.exports = app;
