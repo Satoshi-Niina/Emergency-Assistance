@@ -1,14 +1,14 @@
 name: Deploy API to Azure Functions
-
 on:
   push:
     branches:
-      - backup
+      - main
     paths:
       - 'api/**'
       - 'server/**'
       - '.github/workflows/api-deploy.yaml'
       - 'trigger.txt'
+  workflow_dispatch:
   workflow_dispatch:
 
 jobs:

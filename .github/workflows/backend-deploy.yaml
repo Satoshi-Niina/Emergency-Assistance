@@ -1,14 +1,14 @@
 name: Deploy Backend to Azure App Service
-
 on:
   push:
     branches:
-      - backup
+      - main
     paths:
       - 'server/**'
       - 'package.json'
       - '.github/workflows/backend-deploy.yaml'
       - 'trigger.txt'
+  workflow_dispatch:
   workflow_dispatch:
 
 jobs:

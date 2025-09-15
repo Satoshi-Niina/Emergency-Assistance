@@ -1,13 +1,13 @@
 name: Deploy Frontend to Azure Static Web Apps
-
 on:
   push:
     branches:
-      - backup
+      - main
     paths:
       - 'client/**'
       - '.github/workflows/frontend-deploy.yaml'
       - 'trigger.txt'
+  workflow_dispatch:
   workflow_dispatch:
 
 jobs:
