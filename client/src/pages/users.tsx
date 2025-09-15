@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { getJson } from '../lib/apiClient';
 import { useAuth } from "../context/auth-context";
 import { useToast } from "../hooks/use-toast";
 import * as XLSX from 'xlsx';
@@ -102,23 +103,9 @@ export default function UsersPage() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
         setIsLoading(true);
         setQueryError(null);
-        const res = await fetch(`${API_BASE}/users`, {
-          method: 'GET',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-        const contentType = res.headers.get('content-type') || '';
-        if (!res.ok || !contentType.includes('application/json')) {
-          const text = await res.text();
-          console.error('APIレスポンス非JSON:', res.status, contentType, text.slice(0, 200));
-          throw new Error('API非JSON: ' + res.status + ' ' + contentType);
-        }
-        const userData = await res.json();
+        const userData = await getJson('/users');
         if (userData.success && userData.data) {
           setUsers(userData.data);
           setFilteredUsers(userData.data);
@@ -228,20 +215,10 @@ export default function UsersPage() {
         return;
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users`, {
+      const result = await getJson('/users', {
         method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify(newUser)
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-      }
-
-      const result = await response.json();
       console.log('✅ ユーザー作成成功:', result);
 
       toast({
@@ -289,20 +266,10 @@ export default function UsersPage() {
         return;
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users/${editUser.id}`, {
+      const result = await getJson(`/users/${editUser.id}`, {
         method: 'PUT',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify(editUser)
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-      }
-
-      const result = await response.json();
       console.log('✅ ユーザー更新成功:', result);
 
       toast({
@@ -336,19 +303,9 @@ export default function UsersPage() {
     try {
       if (!selectedUserId) return;
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users/${selectedUserId}`, {
-        method: 'DELETE',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+      const result = await getJson(`/users/${selectedUserId}`, {
+        method: 'DELETE'
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-      }
-
-      const result = await response.json();
       console.log('✅ ユーザー削除成功:', result);
 
       toast({
@@ -389,17 +346,10 @@ export default function UsersPage() {
       const formData = new FormData();
       formData.append('file', importFile);
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users/import`, {
+      const result = await getJson('/users/import', {
         method: 'POST',
-        credentials: 'include',
         body: formData
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-      }
-
-      const result = await response.json();
       setImportResults(result);
       
       toast({
@@ -568,13 +518,10 @@ export default function UsersPage() {
       const formData = new FormData();
       formData.append('file', importFile);
 
-      const res = await fetch('/api/users/import-excel', {
+      const result = await getJson('/users/import-excel', {
         method: 'POST',
-        credentials: 'include',
         body: formData
       });
-
-      const result = await res.json();
 
       if (result.success) {
         setImportResults(result.results);
@@ -586,20 +533,10 @@ export default function UsersPage() {
         // ユーザー一覧を再取得
         const fetchUsers = async () => {
           try {
-            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users`, {
-              method: 'GET',
-              credentials: 'include',
-              headers: {
-                'Content-Type': 'application/json'
-              }
-            });
-            
-            if (res.ok) {
-              const userData = await res.json();
-              if (userData.success && userData.data) {
-                setUsers(userData.data);
-                setFilteredUsers(userData.data);
-              }
+            const userData = await getJson('/users');
+            if (userData.success && userData.data) {
+              setUsers(userData.data);
+              setFilteredUsers(userData.data);
             }
           } catch (error) {
             console.error('ユーザー一覧再取得エラー:', error);

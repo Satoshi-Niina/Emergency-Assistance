@@ -106,6 +106,9 @@ router.get('/', async (req: any, res: any) => {
             }))
         });
         
+        // 本番環境用ログ出力
+        console.log({ route: '/api/users', count: allUsers.length });
+        
         // フロントエンドが期待する形式でレスポンス
         res.json({
             success: true,

@@ -22,6 +22,9 @@ router.get('/machine-types', async (req, res) => {
     
     console.log(`✅ 機種一覧取得完了: ${result.length}件`);
     
+    // 本番環境用ログ出力
+    console.log({ route: '/api/machines/machine-types', count: result.length });
+    
     res.json({
       success: true,
       data: result,
@@ -77,6 +80,9 @@ router.get('/all-machines', async (req, res) => {
     }, {});
     
     console.log(`✅ 全機械データ取得完了: ${Object.keys(groupedData).length}機種`);
+    
+    // 本番環境用ログ出力
+    console.log({ route: '/api/machines/all-machines', count: Object.keys(groupedData).length });
     
     res.json({
       success: true,

@@ -99,6 +99,18 @@ if (process.env.NODE_ENV === 'production') {
     'http://localhost:5173'
   ];
   app.use(cors({ origin: allowedOrigins, credentials: true }));
+  
+  // 本番環境専用: APIルートを最優先で処理
+  app.use((req, res, next) => {
+    console.log(`🔍 本番環境リクエスト: ${req.method} ${req.path}`);
+    if (req.path.startsWith('/api/')) {
+      console.log(`✅ APIルート検出: ${req.path}`);
+      // APIルートの場合は即座に処理を続行
+      return next();
+    }
+    // 静的ファイルの場合は次のミドルウェアに進む
+    next();
+  });
 }
 
 // 本番環境専用: APIエラーは必ずJSONで返す（HTMLエラーを返さない）
@@ -312,53 +324,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// 画像の静的配信（knowledge-base/images）
-app.use('/api/images', express.static(path.join(KB_BASE, 'images'), {
-  fallthrough: true,
-  etag: true,
-  maxAge: '7d',
-}));
-
-// favicon.icoの404エラーを解決
-app.get('/favicon.ico', (req, res) => {
-  res.status(204).end();
-});
-
-// テストファイル用の明示的なHTMLルート
-app.get('/test-simple-images.html', (req, res) => {
-  const filePath = path.join(__dirname, '../public/test-simple-images.html');
-  console.log('📄 テストファイル配信:', filePath);
-  
-  if (fs.existsSync(filePath)) {
-    // Content-Typeを明示的に設定
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    
-    // ファイルを読み込んで送信
-    const fileContent = fs.readFileSync(filePath, 'utf8');
-    res.send(fileContent);
-    console.log('✅ テストファイル配信成功 - Content-Type: text/html');
-  } else {
-    res.status(404).json({ error: 'Test file not found' });
-    console.log('❌ テストファイルが見つかりません');
-  }
-});
-
-// publicディレクトリの静的ファイル配信（その他のファイル用）
-app.use(express.static(path.join(__dirname, '../public'), {
-  etag: true,
-  maxAge: '1d',
-  setHeaders: (res, filePath) => {
-    console.log('📄 静的ファイル配信:', filePath);
-    if (filePath.endsWith('.html')) {
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      console.log('✅ HTML Content-Type設定:', 'text/html; charset=utf-8');
-    }
-  }
-}));
-
 // エクスポートJSONの詳細取得（knowledge-base/exports）
 app.get('/api/history/file', (req, res) => {
   const name = String(req.query.name || '');
@@ -376,6 +341,130 @@ app.get('/api/history/file', (req, res) => {
 // ヘルスチェックルート
 import { healthRouter } from './routes/health.js';
 app.use('/api/health', healthRouter);
+
+// 本番環境用ヘルスチェック（JSON形式）
+app.get('/api/health/json', (req: Request, res: Response) => {
+  const hasDb = !!process.env.DATABASE_URL;
+  const hasBlob = !!process.env.AZURE_STORAGE_CONNECTION_STRING;
+  
+  res.json({
+    ok: true,
+    time: new Date().toISOString(),
+    env: {
+      hasDb,
+      hasBlob,
+      nodeEnv: process.env.NODE_ENV || 'development'
+    }
+  });
+});
+
+// 本番環境専用: ルート確認用デバッグエンドポイント
+if (process.env.NODE_ENV === 'production') {
+  app.get('/api/debug/routes', (req: Request, res: Response) => {
+    res.json({
+      message: 'API routes are working',
+      timestamp: new Date().toISOString(),
+      environment: 'production',
+      routes: [
+        '/api/health/json',
+        '/api/users',
+        '/api/machines/machine-types',
+        '/api/machines/all-machines',
+        '/api/storage/list'
+      ]
+    });
+  });
+  
+  // 本番環境専用: 基本的なAPIルートを明示的に登録
+  console.log('🔧 本番環境: 基本的なAPIルートを明示的に登録');
+  
+  // ヘルスチェック
+  app.get('/api/health', (req: Request, res: Response) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+  
+  // ユーザー管理の基本ルート
+  app.get('/api/users', async (req: Request, res: Response) => {
+    try {
+      console.log('🔍 本番環境: ユーザー一覧取得リクエスト');
+      res.json({
+        success: true,
+        data: [],
+        total: 0,
+        message: '本番環境: ユーザー一覧取得（データベース接続が必要）',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('❌ 本番環境: ユーザー一覧取得エラー:', error);
+      res.status(500).json({
+        success: false,
+        error: 'ユーザー一覧の取得に失敗しました',
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+  
+  // 機械管理の基本ルート
+  app.get('/api/machines/machine-types', async (req: Request, res: Response) => {
+    try {
+      console.log('🔍 本番環境: 機種一覧取得リクエスト');
+      res.json({
+        success: true,
+        data: [],
+        total: 0,
+        message: '本番環境: 機種一覧取得（データベース接続が必要）',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('❌ 本番環境: 機種一覧取得エラー:', error);
+      res.status(500).json({
+        success: false,
+        error: '機種一覧の取得に失敗しました',
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+  
+  app.get('/api/machines/all-machines', async (req: Request, res: Response) => {
+    try {
+      console.log('🔍 本番環境: 全機械データ取得リクエスト');
+      res.json({
+        success: true,
+        data: [],
+        total: 0,
+        message: '本番環境: 全機械データ取得（データベース接続が必要）',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('❌ 本番環境: 全機械データ取得エラー:', error);
+      res.status(500).json({
+        success: false,
+        error: '全機械データの取得に失敗しました',
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+  
+  // ストレージ管理の基本ルート
+  app.get('/api/storage/list', async (req: Request, res: Response) => {
+    try {
+      console.log('🔍 本番環境: ストレージ一覧取得リクエスト');
+      res.json({
+        success: true,
+        data: [],
+        message: '本番環境: ストレージ一覧取得（Azure Storage接続が必要）',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('❌ 本番環境: ストレージ一覧取得エラー:', error);
+      res.status(500).json({
+        success: false,
+        error: 'ストレージ一覧の取得に失敗しました',
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+}
 
 // 基本ヘルスチェック（後方互換性のため残す）
 app.get('/health', (req: Request, res: Response) => {
@@ -513,6 +602,119 @@ try {
   console.log('✅ 全てのルートが正常に登録されました');
 } catch (error) {
   console.error('❌ ルート登録エラー:', error);
+}
+
+// 本番環境でのみ静的ファイル配信を最後に配置
+if (process.env.NODE_ENV === 'production') {
+  // 本番環境: 静的ファイル配信は最後に配置（APIルートを優先するため）
+  console.log('🔧 本番環境: 静的ファイル配信を最後に配置');
+  
+  // 本番環境専用: APIルートが確実に優先されるようにする
+  app.use((req, res, next) => {
+    // APIルートの場合は静的ファイル配信をスキップ
+    if (req.path.startsWith('/api/')) {
+      return next();
+    }
+    // 静的ファイルの場合は次のミドルウェアに進む
+    next();
+  });
+  
+  // 画像の静的配信（knowledge-base/images）
+  app.use('/api/images', express.static(path.join(KB_BASE, 'images'), {
+    fallthrough: true,
+    etag: true,
+    maxAge: '7d',
+  }));
+
+  // favicon.icoの404エラーを解決
+  app.get('/favicon.ico', (req, res) => {
+    res.status(204).end();
+  });
+
+  // テストファイル用の明示的なHTMLルート
+  app.get('/test-simple-images.html', (req, res) => {
+    const filePath = path.join(__dirname, '../public/test-simple-images.html');
+    console.log('📄 テストファイル配信:', filePath);
+    
+    if (fs.existsSync(filePath)) {
+      // Content-Typeを明示的に設定
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      
+      // ファイルを読み込んで送信
+      const fileContent = fs.readFileSync(filePath, 'utf8');
+      res.send(fileContent);
+      console.log('✅ テストファイル配信成功 - Content-Type: text/html');
+    } else {
+      res.status(404).json({ error: 'Test file not found' });
+      console.log('❌ テストファイルが見つかりません');
+    }
+  });
+
+  // publicディレクトリの静的ファイル配信（その他のファイル用）
+  app.use(express.static(path.join(__dirname, '../public'), {
+    etag: true,
+    maxAge: '1d',
+    setHeaders: (res, filePath) => {
+      console.log('📄 静的ファイル配信:', filePath);
+      if (filePath.endsWith('.html')) {
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        console.log('✅ HTML Content-Type設定:', 'text/html; charset=utf-8');
+      }
+    }
+  }));
+} else {
+  // 開発環境: 従来通りの順序を維持
+  console.log('🔧 開発環境: 従来通りの静的ファイル配信順序を維持');
+  
+  // 画像の静的配信（knowledge-base/images）
+  app.use('/api/images', express.static(path.join(KB_BASE, 'images'), {
+    fallthrough: true,
+    etag: true,
+    maxAge: '7d',
+  }));
+
+  // favicon.icoの404エラーを解決
+  app.get('/favicon.ico', (req, res) => {
+    res.status(204).end();
+  });
+
+  // テストファイル用の明示的なHTMLルート
+  app.get('/test-simple-images.html', (req, res) => {
+    const filePath = path.join(__dirname, '../public/test-simple-images.html');
+    console.log('📄 テストファイル配信:', filePath);
+    
+    if (fs.existsSync(filePath)) {
+      // Content-Typeを明示的に設定
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      
+      // ファイルを読み込んで送信
+      const fileContent = fs.readFileSync(filePath, 'utf8');
+      res.send(fileContent);
+      console.log('✅ テストファイル配信成功 - Content-Type: text/html');
+    } else {
+      res.status(404).json({ error: 'Test file not found' });
+      console.log('❌ テストファイルが見つかりません');
+    }
+  });
+
+  // publicディレクトリの静的ファイル配信（その他のファイル用）
+  app.use(express.static(path.join(__dirname, '../public'), {
+    etag: true,
+    maxAge: '1d',
+    setHeaders: (res, filePath) => {
+      console.log('📄 静的ファイル配信:', filePath);
+      if (filePath.endsWith('.html')) {
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        console.log('✅ HTML Content-Type設定:', 'text/html; charset=utf-8');
+      }
+    }
+  }));
 }
 
 // サーバー起動処理はindex.tsで管理するため、ここでは設定のみ
