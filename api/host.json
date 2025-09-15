@@ -18,8 +18,22 @@
       "https://*.azurestaticapps.net",
       "https://*.azurewebsites.net",
       "http://localhost:3000",
-      "http://localhost:5173"
+      "http://localhost:5173",
+      "https://witty-river-012f39e00.1.azurestaticapps.net"
     ],
-    "supportCredentials": true
+    "supportCredentials": true,
+    "allowedHeaders": [
+      "Content-Type",
+      "Authorization",
+      "Cookie",
+      "X-Requested-With"
+    ],
+    "allowedMethods": [
+      "GET",
+      "POST",
+      "PUT",
+      "DELETE",
+      "OPTIONS"
+    ]
   }
 }

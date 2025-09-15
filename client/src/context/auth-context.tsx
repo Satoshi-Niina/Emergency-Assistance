@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { login as authLogin, logout as authLogout, getCurrentUser as fetchCurrentUser } from '../lib/auth';
+import { login as authLogin, logout as authLogout, getCurrentUser } from '../lib/auth';
 
 interface User {
   id: string;
@@ -30,7 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(true);
         
         // lib/auth の getCurrentUser を利用
-        const userData = await fetchCurrentUser();
+        const userData = await getCurrentUser();
         console.log('🔍 getCurrentUser レスポンス:', userData);
         
         if (userData && userData.success && userData.user) {

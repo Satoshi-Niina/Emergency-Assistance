@@ -6,3 +6,11 @@ Backend deployment trigger for Azure Production Server v2
 - Fixed build:v2 script
 - Updated YAML workflow
 - Ready for deployment
+
+# Deploy Fix - 2025-01-27
+- Fixed API authentication endpoints
+- Added login/logout endpoints
+- Fixed CORS configuration
+- Added health check endpoint
+- Fixed Blob Storage connection
+- Ready for deployment
