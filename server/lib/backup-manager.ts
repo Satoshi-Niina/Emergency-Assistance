@@ -1,322 +1,248 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+import { createReadStream, createWriteStream } from 'fs';
+import { pipeline } from 'stream/promises';
+import { createGzip } from 'zlib';
+import * as archiver from 'archiver';
 
-export interface BackupConfig {
-  /** バックアップを保持する最大数 */
-  maxBackups: number;
-  /** バックアップフォルダのベースパス */
-  backupBaseDir?: string;
-  /** バックアップを無効にする */
-  disabled?: boolean;
+// ESM用__dirname定義
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+interface BackupResult {
+  backupPath: string;
+  fileCount: number;
+  totalSize: number;
+  success: boolean;
+  message: string;
+}
+
+interface BackupManagerOptions {
+  projectRoot?: string;
+  logsDir?: string;
+  backupsDir?: string;
 }
 
 export class BackupManager {
-  private config: BackupConfig;
+  private projectRoot: string;
+  private logsDir: string;
+  private backupsDir: string;
 
-  constructor(config: Partial<BackupConfig> = {}) {
-    this.config = {
-      maxBackups: 3,
-      backupBaseDir: 'backups',
-      disabled: false,
-      ...config
-    };
-    
-    // 初期化時にバックアップフォルダを作成
-    this.ensureBackupDirectoryExists();
+  constructor(options: BackupManagerOptions = {}) {
+    this.projectRoot = options.projectRoot || path.resolve(__dirname, '../../');
+    this.logsDir = options.logsDir || path.join(this.projectRoot, 'logs');
+    this.backupsDir = options.backupsDir || path.join(this.projectRoot, 'logs', 'backups');
   }
 
   /**
-   * バックアップディレクトリが存在することを確認し、なければ作成
+   * ログファイルをバックアップする
    */
-  private ensureBackupDirectoryExists(): void {
+  async createBackup(): Promise<BackupResult> {
     try {
-      // プロジェクトルートを取得
-      const projectRoot = this.findProjectRoot();
-      console.log('🔍 BackupManager初期化 - プロジェクトルート:', projectRoot);
-      console.log('🔍 BackupManager初期化 - 開始ディレクトリ:', process.cwd());
-      
-      if (projectRoot) {
-        // knowledge-base フォルダ内にバックアップフォルダを作成
-        const knowledgeBaseDir = path.join(projectRoot, 'knowledge-base');
-        const backupBaseDir = path.join(knowledgeBaseDir, this.config.backupBaseDir!);
-        
-        console.log('🔍 BackupManager初期化 - knowledge-baseディレクトリ:', knowledgeBaseDir);
-        console.log('🔍 BackupManager初期化 - バックアップディレクトリ:', backupBaseDir);
-        
-        if (!fs.existsSync(backupBaseDir)) {
-          fs.mkdirSync(backupBaseDir, { recursive: true });
-          console.log('📁 バックアップベースフォルダを作成:', backupBaseDir);
-        } else {
-          console.log('📁 バックアップベースフォルダは既に存在:', backupBaseDir);
-        }
-      } else {
-        console.warn('⚠️ プロジェクトルートが見つかりません');
+      console.log('📦 ログファイルバックアップ処理開始');
+    
+      // バックアップディレクトリを作成
+      if (!fs.existsSync(this.backupsDir)) {
+        fs.mkdirSync(this.backupsDir, { recursive: true });
+        console.log('📁 バックアップディレクトリを作成:', this.backupsDir);
       }
+    
+      // 現在の日時でファイル名を生成
+      const now = new Date();
+      const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+      const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-'); // HH-MM-SS
+      
+      // バックアップファイル名（当日なら差分で上書き）
+      const backupFileName = `logs-backup-${dateStr}.zip`;
+      const backupPath = path.join(this.backupsDir, backupFileName);
+    
+      console.log('📦 バックアップファイル:', backupPath);
+      
+      // ログディレクトリが存在するかチェック
+      if (!fs.existsSync(this.logsDir)) {
+        console.log('⚠️ ログディレクトリが存在しません:', this.logsDir);
+        return {
+          backupPath: '',
+          fileCount: 0,
+          totalSize: 0,
+          success: false,
+          message: 'ログディレクトリが存在しません'
+        };
+      }
+      
+      // ログファイルを取得
+      const logFiles = await this.getLogFiles();
+      console.log('📋 バックアップ対象ファイル:', logFiles.length, '件');
+      
+      if (logFiles.length === 0) {
+        console.log('⚠️ バックアップ対象のログファイルがありません');
+        return {
+          backupPath: '',
+          fileCount: 0,
+          totalSize: 0,
+          success: true,
+          message: 'バックアップ対象のログファイルがありません'
+        };
+      }
+      
+      // ZIPファイルを作成
+      const output = fs.createWriteStream(backupPath);
+      const archive = archiver.default('zip', {
+        zlib: { level: 9 } // 最高圧縮レベル
+      });
+      
+      // エラーハンドリング
+      archive.on('error', (err) => {
+        throw err;
+      });
+      
+      // プログレス表示
+      archive.on('progress', (progress) => {
+        console.log('📦 バックアップ進行状況:', Math.round(progress.entries.processed / progress.entries.total * 100) + '%');
+      });
+      
+      // ストリームを接続
+      await pipeline(archive, output);
+      
+      // ファイルをアーカイブに追加
+      for (const file of logFiles) {
+        const relativePath = path.relative(this.logsDir, file);
+        archive.file(file, { name: relativePath });
+      }
+      
+      // アーカイブを完了
+      await archive.finalize();
+      
+      // ファイルサイズを計算
+      const stats = fs.statSync(backupPath);
+      const totalSize = stats.size;
+      
+      console.log('✅ ログファイルバックアップ完了:', {
+        backupPath,
+        fileCount: logFiles.length,
+        totalSize: this.formatFileSize(totalSize)
+      });
+      
+      return {
+        backupPath: backupFileName,
+        fileCount: logFiles.length,
+        totalSize,
+        success: true,
+        message: `${logFiles.length}件のログファイルをバックアップしました`
+      };
+      
     } catch (error) {
-      console.warn('⚠️ バックアップディレクトリの初期化に失敗:', error);
+      console.error('❌ ログファイルバックアップエラー:', error);
+      throw error;
     }
   }
 
-  /**
-   * プロジェクトルートディレクトリを探す
+    /**
+   * ログディレクトリからログファイルを取得
    */
-  private findProjectRoot(startDir?: string): string | null {
-    let currentDir = startDir || process.cwd();
-    console.log('🔍 プロジェクトルート検索開始:', currentDir);
+  private async getLogFiles(): Promise<string[]> {
+    const logFiles: string[] = [];
     
-    while (currentDir !== path.dirname(currentDir)) {
-      const packageJsonPath = path.join(currentDir, 'package.json');
-      console.log('🔍 package.json検索:', packageJsonPath);
+    try {
+      const items = await fs.promises.readdir(this.logsDir, { withFileTypes: true });
       
-      if (fs.existsSync(packageJsonPath)) {
-        try {
-          const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-          console.log('🔍 package.json発見:', packageJsonPath, 'name:', packageJson.name);
-          
-          // メインのプロジェクトpackage.jsonを識別（workspacesがあるかnameが想定されるもの）
-          if (packageJson.workspaces || packageJson.name === 'emergency-assistance') {
-            console.log('✅ メインプロジェクトpackage.json発見:', currentDir);
-            return currentDir;
+      for (const item of items) {
+        const fullPath = path.join(this.logsDir, item.name);
+        
+        if (item.isDirectory()) {
+          // サブディレクトリも再帰的に検索
+          const subFiles = await this.getLogFilesInDirectory(fullPath);
+          logFiles.push(...subFiles);
+        } else if (item.isFile()) {
+          // ログファイルの拡張子をチェック
+          const ext = path.extname(item.name).toLowerCase();
+          if (['.log', '.txt', '.json', '.csv'].includes(ext)) {
+            logFiles.push(fullPath);
           }
-        } catch (error) {
-          // package.jsonの読み込みに失敗した場合はスキップ
-          console.warn('⚠️ package.json読み込み失敗:', packageJsonPath, error);
         }
       }
-      currentDir = path.dirname(currentDir);
-    }
-    
-    // 見つからなかった場合は、最初に見つかったpackage.jsonの親ディレクトリを使用
-    currentDir = startDir || process.cwd();
-    console.log('🔍 フォールバック検索開始:', currentDir);
-    
-    while (currentDir !== path.dirname(currentDir)) {
-      if (fs.existsSync(path.join(currentDir, 'package.json'))) {
-        console.log('✅ フォールバックでpackage.json発見:', currentDir);
-        return currentDir;
-      }
-      currentDir = path.dirname(currentDir);
-    }
-    
-    console.warn('❌ プロジェクトルートが見つかりません');
-    return null;
-  }
-
-  /**
-   * ファイルのバックアップを作成
-   * @param targetFilePath バックアップ対象のファイルパス
-   * @returns バックアップファイルのパス（バックアップが無効の場合はnull）
-   */
-  createBackup(targetFilePath: string): string | null {
-    console.log('🔄 バックアップ作成開始:', {
-      targetFilePath,
-      disabled: this.config.disabled,
-      config: this.config
-    });
-
-    if (this.config.disabled) {
-      console.log('💾 バックアップが無効化されています');
-      return null;
-    }
-
-    if (!fs.existsSync(targetFilePath)) {
-      console.error(`❌ バックアップ対象ファイルが存在しません: ${targetFilePath}`);
-      throw new Error(`バックアップ対象ファイルが存在しません: ${targetFilePath}`);
-    }
-
-    console.log('✅ バックアップ対象ファイル存在確認済み:', targetFilePath);
-    const dir = path.dirname(targetFilePath);
-    const baseName = path.basename(targetFilePath);
-    
-    // バックアップフォルダを作成（knowledge-base内のbackupsフォルダに統一）
-    const projectRoot = this.findProjectRoot(dir);
-    if (!projectRoot) {
-      throw new Error('プロジェクトルートが見つかりません');
-    }
-    
-    // knowledge-base フォルダ内にバックアップフォルダを作成
-    const knowledgeBaseDir = path.join(projectRoot, 'knowledge-base');
-    const backupBaseDir = path.join(knowledgeBaseDir, this.config.backupBaseDir!);
-    
-    // 元ファイルの相対パス構造を保持（knowledge-baseからの相対パス）
-    const relativePath = path.relative(knowledgeBaseDir, dir);
-    const backupSubDir = path.join(backupBaseDir, relativePath);
-    
-    if (!fs.existsSync(backupBaseDir)) {
-      fs.mkdirSync(backupBaseDir, { recursive: true });
-    }
-    if (!fs.existsSync(backupSubDir)) {
-      fs.mkdirSync(backupSubDir, { recursive: true });
-    }
-    
-    // バックアップファイル名とパス
-    const timestamp = Date.now();
-    const backupFileName = `${baseName}.backup.${timestamp}`;
-    const backupPath = path.join(backupSubDir, backupFileName);
-    
-    try {
-      // バックアップファイルを作成
-      fs.copyFileSync(targetFilePath, backupPath);
-      console.log('💾 バックアップ作成:', backupPath);
-      console.log('📁 バックアップフォルダ構造:', {
-        プロジェクトルート: projectRoot,
-        元ファイル: targetFilePath,
-        knowledge_base: knowledgeBaseDir,
-        相対パス: relativePath,
-        バックアップ先: backupPath
-      });
-      
-      // 古いバックアップを整理
-      this.cleanupOldBackups(targetFilePath);
-      
-      return backupPath;
     } catch (error) {
-      console.error('❌ バックアップ作成エラー:', error);
-      throw error;
+      console.error('❌ ログファイル取得エラー:', error);
     }
+    
+    return logFiles;
   }
 
   /**
-   * 古いバックアップファイルを削除
-   * @param targetFilePath 元のファイルパス
+   * 指定ディレクトリからログファイルを再帰的に取得
    */
-  private cleanupOldBackups(targetFilePath: string): void {
-    const dir = path.dirname(targetFilePath);
-    const baseName = path.basename(targetFilePath);
-    
-    // プロジェクトルートを取得
-    const projectRoot = this.findProjectRoot(dir);
-    if (!projectRoot) {
-      console.warn('プロジェクトルートが見つからないため、バックアップクリーンアップをスキップします');
-      return;
-    }
-    
-    // knowledge-base フォルダ内のバックアップフォルダ
-    const knowledgeBaseDir = path.join(projectRoot, 'knowledge-base');
-    const backupBaseDir = path.join(knowledgeBaseDir, this.config.backupBaseDir!);
-    const relativePath = path.relative(knowledgeBaseDir, dir);
-    const backupSubDir = path.join(backupBaseDir, relativePath);
-    
-    if (!fs.existsSync(backupSubDir)) {
-      return;
-    }
+  private async getLogFilesInDirectory(dirPath: string): Promise<string[]> {
+    const logFiles: string[] = [];
     
     try {
-      const files = fs.readdirSync(backupSubDir);
+      const items = await fs.promises.readdir(dirPath, { withFileTypes: true });
       
-      // 該当ファイルのバックアップファイルを検索
-      const backupFiles = files
-        .filter(file => file.startsWith(baseName + '.backup.'))
-        .map(file => ({
-          name: file,
-          path: path.join(backupSubDir, file),
-          timestamp: parseInt(file.split('.backup.')[1]) || 0
-        }))
-        .sort((a, b) => b.timestamp - a.timestamp); // 新しい順にソート
-      
-      // 古いバックアップファイルを削除
-      const filesToDelete = backupFiles.slice(this.config.maxBackups);
-      filesToDelete.forEach(file => {
-        try {
-          fs.unlinkSync(file.path);
-          console.log('🗑️ 古いバックアップを削除:', file.name);
-        } catch (error) {
-          console.warn('バックアップ削除エラー:', file.name, error);
+      for (const item of items) {
+        const fullPath = path.join(dirPath, item.name);
+        
+        if (item.isDirectory()) {
+          const subFiles = await this.getLogFilesInDirectory(fullPath);
+          logFiles.push(...subFiles);
+        } else if (item.isFile()) {
+          const ext = path.extname(item.name).toLowerCase();
+          if (['.log', '.txt', '.json', '.csv'].includes(ext)) {
+            logFiles.push(fullPath);
+          }
         }
-      });
-    } catch (error) {
-      console.warn('バックアップフォルダ管理エラー:', error);
-    }
-  }
-
-  /**
-   * 指定ファイルのバックアップ一覧を取得
-   * @param targetFilePath 元のファイルパス
-   * @returns バックアップファイル情報の配列
-   */
-  listBackups(targetFilePath: string): Array<{name: string; path: string; timestamp: number; date: Date}> {
-    const dir = path.dirname(targetFilePath);
-    const baseName = path.basename(targetFilePath);
-    
-    // プロジェクトルートを取得
-    const projectRoot = this.findProjectRoot(dir);
-    if (!projectRoot) {
-      console.warn('プロジェクトルートが見つからないため、バックアップ一覧を取得できません');
-      return [];
-    }
-    
-    // knowledge-base フォルダ内のバックアップフォルダ
-    const knowledgeBaseDir = path.join(projectRoot, 'knowledge-base');
-    const backupBaseDir = path.join(knowledgeBaseDir, this.config.backupBaseDir!);
-    const relativePath = path.relative(knowledgeBaseDir, dir);
-    const backupSubDir = path.join(backupBaseDir, relativePath);
-    
-    if (!fs.existsSync(backupSubDir)) {
-      return [];
-    }
-    
-    try {
-      const files = fs.readdirSync(backupSubDir);
-      
-      return files
-        .filter(file => file.startsWith(baseName + '.backup.'))
-        .map(file => {
-          const timestamp = parseInt(file.split('.backup.')[1]) || 0;
-          return {
-            name: file,
-            path: path.join(backupSubDir, file),
-            timestamp,
-            date: new Date(timestamp)
-          };
-        })
-        .sort((a, b) => b.timestamp - a.timestamp); // 新しい順にソート
-    } catch (error) {
-      console.warn('バックアップ一覧取得エラー:', error);
-      return [];
-    }
-  }
-
-  /**
-   * バックアップから復元
-   * @param backupFilePath バックアップファイルのパス
-   * @param targetFilePath 復元先のファイルパス
-   */
-  restoreFromBackup(backupFilePath: string, targetFilePath: string): void {
-    if (!fs.existsSync(backupFilePath)) {
-      throw new Error(`バックアップファイルが存在しません: ${backupFilePath}`);
-    }
-
-    try {
-      // 復元前に現在のファイルのバックアップを作成
-      if (fs.existsSync(targetFilePath)) {
-        this.createBackup(targetFilePath);
       }
-
-      // バックアップから復元
-      fs.copyFileSync(backupFilePath, targetFilePath);
-      console.log('🔄 バックアップから復元完了:', targetFilePath);
     } catch (error) {
-      console.error('❌ バックアップ復元エラー:', error);
-      throw error;
+      console.error('❌ ディレクトリ検索エラー:', dirPath, error);
     }
+    
+    return logFiles;
   }
 
   /**
-   * 設定を更新
-   * @param newConfig 新しい設定
+   * ファイルサイズを人間が読みやすい形式に変換
    */
-  updateConfig(newConfig: Partial<BackupConfig>): void {
-    this.config = { ...this.config, ...newConfig };
+  private formatFileSize(bytes: number): string {
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    if (bytes === 0) return '0 Bytes';
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
   }
 
   /**
-   * 現在の設定を取得
-   * @returns 現在の設定
+   * 古いバックアップファイルを削除（30日以上古いもの）
    */
-  getConfig(): BackupConfig {
-    return { ...this.config };
+  async cleanupOldBackups(): Promise<void> {
+    try {
+      if (!fs.existsSync(this.backupsDir)) {
+        return;
+      }
+      
+      const files = await fs.promises.readdir(this.backupsDir);
+      const now = Date.now();
+      const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
+      
+      for (const file of files) {
+        const filePath = path.join(this.backupsDir, file);
+        const stats = await fs.promises.stat(filePath);
+        
+        if (stats.mtime.getTime() < thirtyDaysAgo) {
+          await fs.promises.unlink(filePath);
+          console.log('🗑️ 古いバックアップファイルを削除:', file);
+        }
+      }
+    } catch (error) {
+      console.error('❌ 古いバックアップファイル削除エラー:', error);
+    }
   }
 }
 
-// デフォルトのバックアップマネージャーインスタンス
-export const defaultBackupManager = new BackupManager();
+// 後方互換性のための関数エクスポート
+export async function createBackup(): Promise<BackupResult> {
+  const backupManager = new BackupManager();
+  return await backupManager.createBackup();
+}
+
+export async function cleanupOldBackups(): Promise<void> {
+  const backupManager = new BackupManager();
+  return await backupManager.cleanupOldBackups();
+}

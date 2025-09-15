@@ -35,72 +35,27 @@ export const messages = pgTable('messages', {
     createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
-// メディアテーブル
-export const media = pgTable('media', {
+// 機種テーブル
+export const machineTypes = pgTable('machine_types', {
     id: text('id').primaryKey().default(sql`gen_random_uuid()`),
-    messageId: text('message_id').notNull(),
-    type: text('type').notNull(),
-    url: text('url').notNull(),
-    description: text('description'),
+    machineTypeName: text('machine_type_name').notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
-// 緊急フローテーブル（削除予定 - JSONファイルに移行）
-// export const emergencyFlows = pgTable('emergency_flows', {
-//     id: text('id').primaryKey().default(sql`gen_random_uuid()`),
-//     title: text('title').notNull(),
-//     description: text('description'),
-//     steps: jsonb('steps').notNull(),
-//     keyword: text('keyword'), // オプショナルに変更
-//     category: text('category').notNull().default(''),
-//     createdAt: timestamp('created_at').defaultNow().notNull()
-// });
-
-// 画像テーブル
-export const images = pgTable('images', {
+// 機械テーブル
+export const machines = pgTable('machines', {
     id: text('id').primaryKey().default(sql`gen_random_uuid()`),
-    url: text('url').notNull(),
-    description: text('description').notNull(),
-    embedding: jsonb('embedding').notNull(),
+    machineNumber: text('machine_number').notNull(),
+    machineTypeId: text('machine_type_id').notNull().references(() => machineTypes.id),
     createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
-// 画像データテーブル（PostgreSQLに保存）
-export const imageData = pgTable('image_data', {
-    id: text('id').primaryKey().default(sql`gen_random_uuid()`),
-    fileName: text('file_name').notNull(),
-    originalFileName: text('original_file_name').notNull(),
-    mimeType: text('mime_type').notNull(),
-    fileSize: text('file_size').notNull(),
-    data: text('data').notNull(), // Base64エンコードされた画像データ
-    category: text('category'), // emergency-flows, knowledge-base, etc.
-    description: text('description'),
-    createdAt: timestamp('created_at').defaultNow().notNull()
-});
-
-// ドキュメントテーブル
-export const documents = pgTable('documents', {
+// 基礎データ（文書）テーブル
+export const baseDocuments = pgTable('base_documents', {
     id: text('id').primaryKey().default(sql`gen_random_uuid()`),
     title: text('title').notNull(),
-    content: text('content').notNull(),
-    userId: text('user_id').notNull(),
+    filePath: text('file_path').notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull()
-});
-
-// キーワードテーブル
-export const keywords = pgTable('keywords', {
-    id: text('id').primaryKey().default(sql`gen_random_uuid()`),
-    documentId: text('document_id'),
-    word: text('word').notNull(),
-    createdAt: timestamp('created_at').defaultNow().notNull()
-});
-
-// チャットエクスポートテーブル
-export const chatExports = pgTable('chat_exports', {
-    id: text('id').primaryKey().default(sql`gen_random_uuid()`),
-    chatId: text('chat_id').notNull(),
-    userId: text('user_id').notNull(),
-    timestamp: timestamp('timestamp').defaultNow().notNull()
 });
 
 // 履歴管理テーブル
@@ -144,54 +99,15 @@ export const supportHistory = pgTable('support_history', {
     createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
-// 基礎データ（文書）テーブル
-export const baseDocuments = pgTable('base_documents', {
-    id: text('id').primaryKey().default(sql`gen_random_uuid()`),
-    title: text('title').notNull(),
-    filePath: text('file_path').notNull(),
-    createdAt: timestamp('created_at').defaultNow().notNull()
-});
-
-// 応急処置フローテーブル（削除予定 - JSONファイルに移行）
-// export const supportFlows = pgTable('support_flows', {
-//     id: text('id').primaryKey().default(sql`gen_random_uuid()`),
-//     title: text('title').notNull(),
-//     jsonData: jsonb('json_data').notNull().default('{}'),
-//     createdAt: timestamp('created_at').defaultNow().notNull()
-// });
-
-// 機種テーブル
-export const machineTypes = pgTable('machine_types', {
-    id: text('id').primaryKey().default(sql`gen_random_uuid()`),
-    machineTypeName: text('machine_type_name').notNull(),
-    createdAt: timestamp('created_at').defaultNow().notNull()
-});
-
-// 機械テーブル
-export const machines = pgTable('machines', {
-    id: text('id').primaryKey().default(sql`gen_random_uuid()`),
-    machineNumber: text('machine_number').notNull(),
-    machineTypeId: text('machine_type_id').notNull().references(() => machineTypes.id),
-    createdAt: timestamp('created_at').defaultNow().notNull()
-});
-
 // スキーマエクスポート
 export const schema = {
     users,
     chats,
     messages,
-    media,
-    documents,
-    keywords,
-    // emergencyFlows, // 削除 - JSONファイルに移行
-    images,
-    imageData,
-    chatExports,
+    machineTypes,
+    machines,
+    baseDocuments,
     historyItems,
     historyImages,
     supportHistory,
-    baseDocuments,
-    // supportFlows, // 削除 - JSONファイルに移行
-    machineTypes,
-    machines,
 };

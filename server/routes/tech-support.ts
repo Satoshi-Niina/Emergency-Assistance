@@ -1278,20 +1278,30 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     }
 });
 /**
- * ログファイルをクリーンアップするエンドポイント
+ * ログファイルをバックアップするエンドポイント
  */
-router.post('/cleanup-logs', async (req, res) => {
+router.post('/backup-logs', async (req, res) => {
     try {
-        // 一時的な実装
-        const cleanupLogFiles = async () => {
-            console.log('Log cleanup completed');
-        };
-
-        await cleanupLogFiles();
-        res.json({ success: true, message: 'Log cleanup completed' });
+        console.log('📦 ログファイルバックアップ開始');
+        
+        const { createBackup } = await import('../lib/backup-manager.js');
+        const result = await createBackup();
+        
+        console.log('✅ ログファイルバックアップ完了:', result);
+        res.json({ 
+            success: true, 
+            message: 'ログファイルのバックアップが完了しました',
+            backupPath: result.backupPath,
+            fileCount: result.fileCount,
+            totalSize: result.totalSize
+        });
     } catch (error) {
-        console.error('Log cleanup error:', error);
-        res.status(500).json({ error: 'Log cleanup failed' });
+        console.error('❌ ログファイルバックアップエラー:', error);
+        res.status(500).json({ 
+            success: false,
+            error: 'ログファイルのバックアップに失敗しました',
+            details: error instanceof Error ? error.message : String(error)
+        });
     }
 });
 /**

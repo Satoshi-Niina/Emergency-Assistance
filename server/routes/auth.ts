@@ -88,64 +88,26 @@ router.post('/login', async (req, res) => {
     }
 
     // データベースからユーザーを検索
-    console.log('🔍 Searching user in database:', username);
-    const user = await db.select().from(users).where(eq(users.username, username)).limit(1);
+    const foundUsers = await db.select().from(users).where(eq(users.username, username)).limit(1);
     
-    if (user.length === 0) {
+    if (foundUsers.length === 0) {
       console.log('❌ User not found:', username);
       return res.status(401).json({
         success: false,
-        error: 'ユーザー名またはパスワードが違います'
+        error: 'ユーザー名またはパスワードが正しくありません'
       });
     }
 
-    const foundUser = user[0];
+    const foundUser = foundUsers[0];
     console.log('✅ User found:', { id: foundUser.id, username: foundUser.username, role: foundUser.role });
     
-    // パスワードチェック（bcryptでハッシュ化されたパスワードまたは平文パスワード）
-    let isValidPassword = false;
-    
-    console.log('🔐 Password check details:', {
-      inputPassword: password,
-      storedPassword: foundUser.password,
-      passwordLength: foundUser.password.length
-    });
-    
-    // まずbcryptでハッシュ化されたパスワードをチェック
-    try {
-      isValidPassword = await bcrypt.compare(password, foundUser.password);
-      console.log('🔐 bcrypt password check:', isValidPassword);
-    } catch (error) {
-      console.log('bcrypt比較エラー、平文パスワードをチェック:', error);
-    }
-    
-    // bcryptで失敗した場合、平文パスワードをチェック（開発環境用）
-    if (!isValidPassword) {
-      const plainTextMatch = (foundUser.password === password);
-      console.log('🔐 Plain text password check:', plainTextMatch);
-      console.log('🔐 Password comparison:', {
-        stored: foundUser.password,
-        input: password,
-        match: plainTextMatch
-      });
-      isValidPassword = plainTextMatch;
-      if (isValidPassword) {
-        console.log('✅ 平文パスワードで認証成功（開発環境）');
-      }
-    }
-    
-    if (!isValidPassword) {
+    // パスワード比較（bcrypt）
+    const isPasswordValid = await bcrypt.compare(password, foundUser.password);
+    if (!isPasswordValid) {
       console.log('❌ Invalid password for:', username);
-      console.log('❌ Password validation failed:', {
-        username: username,
-        inputPassword: password,
-        storedPassword: foundUser.password,
-        bcryptFailed: true,
-        plainTextFailed: true
-      });
       return res.status(401).json({
         success: false,
-        error: 'ユーザー名またはパスワードが違います'
+        error: 'ユーザー名またはパスワードが正しくありません'
       });
     }
 

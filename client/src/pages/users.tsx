@@ -31,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { Shield, UserPlus, ArrowLeft, User, Edit, Trash2, AlertCircle, Search, Upload, Download } from "lucide-react";
+import { Shield, UserPlus, ArrowLeft, User, Edit, Trash2, AlertCircle, Search, Upload, Download, RefreshCw } from "lucide-react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 
 // ユーザーインターフェース
@@ -82,6 +82,7 @@ export default function UsersPage() {
         console.log('🔍 現在のユーザー:', user);
         console.log('🔍 セッション状態:', document.cookie);
         console.log('🔍 現在のURL:', window.location.href);
+        console.log('🔍 VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL);
         
         setIsLoading(true);
         setQueryError(null);
@@ -182,48 +183,50 @@ export default function UsersPage() {
     }
   }, [queryError, toast]);
 
-  // 認証エラーや権限エラーの場合の表示
+  // エラー表示
   if (queryError instanceof Error) {
-    if (queryError.message.includes('認証が必要') || queryError.message.includes('管理者権限')) {
-      return (
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 max-w-5xl mx-auto w-full">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-bold flex items-center">
-                <Shield className="mr-2 h-6 w-6" />
-                ユーザー管理
-              </h1>
-              <p className="text-neutral-300">システムの全ユーザーを管理します</p>
-            </div>
-            <Link to="/settings">
-              <Button variant="outline" size="sm">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                設定に戻る
-              </Button>
-            </Link>
+    return (
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 max-w-5xl mx-auto w-full">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center">
+              <Shield className="mr-2 h-6 w-6" />
+              ユーザー管理
+            </h1>
+            <p className="text-neutral-300">システムの全ユーザーを管理します</p>
           </div>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-center">
-                <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">アクセス権限がありません</h3>
-                <p className="text-gray-600 mb-4">
-                  {queryError.message.includes('認証が必要') 
-                    ? "ログインが必要です。再度ログインしてください。" 
-                    : "このページにアクセスするには管理者権限が必要です。"}
-                </p>
+          <Link to="/settings">
+            <Button variant="outline" size="sm">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              設定に戻る
+            </Button>
+          </Link>
+        </div>
+        
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">
+              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">エラーが発生しました</h3>
+              <p className="text-gray-600 mb-4">
+                {queryError.message}
+              </p>
+              <div className="space-x-2">
+                <Button onClick={() => window.location.reload()}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  再読み込み
+                </Button>
                 <Link to="/chat">
-                  <Button>
+                  <Button variant="outline">
                     チャットに戻る
                   </Button>
                 </Link>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   // 新規ユーザーフォーム
@@ -958,7 +961,10 @@ export default function UsersPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="flex justify-center p-4">読み込み中...</div>
+            <div className="flex flex-col items-center justify-center p-8">
+              <RefreshCw className="h-8 w-8 animate-spin text-blue-500 mb-4" />
+              <p className="text-gray-600">ユーザー一覧を読み込み中...</p>
+            </div>
           ) : (
             <>
               <Table>

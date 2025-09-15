@@ -11,7 +11,7 @@ import { securityMonitoring, logSecurityEvent } from './middleware/monitoring';
 import { fileURLToPath } from 'url';
 import * as path from 'path';
 import * as fs from 'fs';
-import authRouter from './routes/auth-secure.js';
+import authRouter from './routes/auth.js';
 import userRegistrationRouter from './routes/user-registration.js';
 import securityTestRouter from './routes/security-test.js';
 import { techSupportRouter } from './routes/tech-support.js';
@@ -25,13 +25,10 @@ import { historyRouter } from './routes/history.js';
 import emergencyGuideRouter from './routes/emergency-guide.js';
 import { usersRouter } from './routes/users.js';
 import machinesRouter from './routes/machines.js';
-import userManagementRouter from './routes/user-management.js';
-import debugAuthRouter from './routes/debug-auth.js';
 import fixUsersRouter from './routes/fix-users.js';
 import directFixRouter from './routes/direct-fix.js';
 import emergencyFixRouter from './routes/emergency-fix.js';
 import { registerDataProcessorRoutes } from './routes/data-processor.js';
-import { usersDebugRouter } from './routes/users-debug.js';
 import { debugRouter } from './routes/debug.js';
 import systemCheckRouter from './routes/system-check.js';
 import troubleshootingQARouter from './routes/troubleshooting-qa.js';
@@ -349,7 +346,7 @@ app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// セキュアな認証ルート
+// 認証ルート
 app.use('/api/auth', authRouter);
 app.use('/api/security', securityTestRouter);
 app.use('/api/tech-support', techSupportRouter);
@@ -373,8 +370,6 @@ app.use('/api/emergency-guide', emergencyGuideRouter);
 // 不足していたルートを追加
 app.use('/api/users', usersRouter);
 app.use('/api/machines', machinesRouter);
-app.use('/api/user-management', userManagementRouter);
-app.use('/api/debug-auth', debugAuthRouter);
 app.use('/api/fix-users', fixUsersRouter);
 app.use('/api/direct-fix', directFixRouter);
 app.use('/api/emergency-fix', emergencyFixRouter);
@@ -382,7 +377,6 @@ app.use('/api/emergency-fix', emergencyFixRouter);
 // デバッグ用ルートを追加
 import logBackupRouter from './routes/log-backup.js';
 app.use('/api/logs', logBackupRouter);
-app.use('/api/debug/users', usersDebugRouter);
 app.use('/api/debug', debugRouter);
 
 // RAGシステム用ルートを追加

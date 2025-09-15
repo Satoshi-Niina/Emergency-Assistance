@@ -149,25 +149,38 @@ export default function SettingsPage() {
     }
   };
 
-  const handleCleanupLogs = async () => {
+  const handleBackupLogs = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/tech-support/cleanup-logs`, {
+      toast({
+        title: "バックアップ開始",
+        description: "ログファイルのバックアップを開始しています..."
+      });
+
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/tech-support/backup-logs`, {
         method: 'POST'
       });
 
       if (!response.ok) {
-        throw new Error('ログクリーンアップに失敗しました');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'ログファイルバックアップに失敗しました');
       }
 
       const result = await response.json();
-      toast({
-        title: "ログクリーンアップ完了",
-        description: `${result.deletedCount}件のログファイルを削除しました (${(result.totalSize / 1024 / 1024).toFixed(2)} MB)`
-      });
+      
+      if (result.success) {
+        const fileSize = result.totalSize ? (result.totalSize / 1024 / 1024).toFixed(2) : '0';
+        toast({
+          title: "バックアップ完了",
+          description: `${result.fileCount}件のログファイルをバックアップしました (${fileSize} MB)`
+        });
+      } else {
+        throw new Error(result.message || 'バックアップに失敗しました');
+      }
     } catch (error) {
+      console.error('ログファイルバックアップエラー:', error);
       toast({
         title: "エラー",
-        description: "ログクリーンアップに失敗しました",
+        description: error instanceof Error ? error.message : "ログファイルバックアップに失敗しました",
         variant: "destructive"
       });
     }
@@ -273,33 +286,29 @@ export default function SettingsPage() {
 
 
 
-                <div className="flex items-center justify-between py-2 border-t border-blue-100 pt-3">
-                  <Button
-                    onClick={handleCleanupUploads}
-                    variant="destructive"
-                    className="w-full"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    一時ファイルを削除
-                  </Button>
 
-                  <Button
-                    onClick={handleCleanupLogs}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    <FileX className="mr-2 h-4 w-4" />
-                    ログファイルを削除
-                  </Button>
-                </div>
+                {/* システムメンテナンス */}
+                <div className="border-t border-blue-100 pt-4 space-y-3">
+                  <div className="text-sm font-medium text-blue-800 mb-3">システムメンテナンス</div>
+                  
+                  <div className="grid grid-cols-1 gap-3">
+                    <Button
+                      onClick={handleCleanupUploads}
+                      variant="destructive"
+                      className="w-full"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      一時ファイルを削除
+                    </Button>
 
-                {/* 機種・機械番号管理の簡易表示 */}
-                <div className="border-t border-blue-100 pt-4 space-y-2">
-                  <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded">
-                    <p className="font-medium mb-1">機種・機械番号管理</p>
-                    <p className="text-xs text-blue-500">
-                      詳細な管理機能は専用ページでご利用いただけます。
-                    </p>
+                    <Button
+                      onClick={handleBackupLogs}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      <FileType className="mr-2 h-4 w-4" />
+                      ログファイルバックアップ
+                    </Button>
                   </div>
                 </div>
               </div>
