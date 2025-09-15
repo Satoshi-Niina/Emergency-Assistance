@@ -5,20 +5,8 @@
   "scripts": {
     "dev": "tsx index.dev.ts",
     "build": "tsc",
-    "build:v2": "tsc azure-production-server-v2.ts --outDir dist --skipLibCheck --esModuleInterop --allowSyntheticDefaultImports --target ES2020 --module CommonJS --moduleResolution node",
     "start": "tsx --env-file=../.env index-minimal.ts",
-    "start:prod": "NODE_ENV=production tsx --env-file=../.env index-minimal.ts",
-    "migrate": "drizzle-kit migrate",
-    "generate": "drizzle-kit generate",
-    "studio": "drizzle-kit studio",
-    "reset-db": "tsx scripts/reset-db.ts",
-    "fix-db": "tsx scripts/fix-db.ts",
-    "update-niina-admin": "tsx scripts/update-niina-admin.ts",
-    "apply-migration": "tsx scripts/apply-migration.ts",
-    "db:migrate": "psql \"$DATABASE_URL\" -f server/db/migrations/001_init.sql",
-    "db:check": "psql \"$DATABASE_URL\" -c \"SELECT version();\"",
-    "rag:status": "curl -s \"$VITE_API_BASE_URL/api/ingest/status\" | jq .",
-    "rag:config": "curl -s \"$VITE_API_BASE_URL/api/config/rag\" | jq ."
+    "start:prod": "NODE_ENV=production tsx --env-file=../.env index-minimal.ts"
   },
   "dependencies": {
     "@azure/identity": "^4.0.1",

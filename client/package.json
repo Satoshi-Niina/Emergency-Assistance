@@ -8,11 +8,8 @@
   },
   "scripts": {
     "dev": "vite",
-    "dev:client": "vite",
     "build": "vite build",
-    "preview": "vite preview",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "build:server": "tsc -p server"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",

@@ -1,4 +1,5 @@
 import * as schema from "./db/schema.js";
+import bcrypt from "bcrypt";
 import { eq, like } from "drizzle-orm";
 import { storage } from "./storage.js";
 import { db } from "./db/index.js";
@@ -34,6 +35,7 @@ export class DatabaseStorage {
             } else {
                 console.log("✅ niinaユーザーは既に存在します");
             }
+
             
             const employeeUser = await this.getUserByUsername("employee");
             if (!employeeUser) {
@@ -60,7 +62,10 @@ export class DatabaseStorage {
         return user;
     };
     getUserByUsername = async (username: string): Promise<any> => {
-        const user = (await db.select().from(schema.users).where(eq(schema.users.username, username)))[0];
+        const user = (await db.select()
+            .from(schema.users)
+            .where(eq(schema.users.username, username))
+            .limit(1))[0];
         return user;
     };
     getAllUsers = async (): Promise<any[]> => {
