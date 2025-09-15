@@ -1,6 +1,3 @@
-// UTF-8エンコーディング設定
-process.env.LANG = 'ja_JP.UTF-8';
-process.env.LC_ALL = 'ja_JP.UTF-8';
 
 import express, { Request, Response } from 'express';
 import session from 'express-session';
@@ -95,6 +92,45 @@ console.log('🔧 app.ts: 環境変数確認:', {
 });
 
 const app = express();
+// 本番環境専用: CORS設定（Static Web Apps/フロントの本番URLに合わせる）
+if (process.env.NODE_ENV === 'production') {
+  const allowedOrigins = [
+    process.env.FRONTEND_URL || 'https://<frontend-domain>',
+    'http://localhost:5173'
+  ];
+  app.use(cors({ origin: allowedOrigins, credentials: true }));
+}
+
+// 本番環境専用: APIエラーは必ずJSONで返す（HTMLエラーを返さない）
+if (process.env.NODE_ENV === 'production') {
+  app.use((err, req, res, next) => {
+    console.error('APIエラー:', err);
+    if (req.path.startsWith('/api')) {
+      res.status(err.status || 500).type('application/json').json({
+        error: 'internal_error',
+        message: err.message || 'server error',
+        stack: err.stack
+      });
+    } else {
+      next(err);
+    }
+  });
+}
+// 開発環境専用: APIエラーは必ずJSONで返す（HTMLエラーを返さない）
+if (process.env.NODE_ENV === 'development') {
+  app.use((err, req, res, next) => {
+    console.error('APIエラー:', err);
+    if (req.path.startsWith('/api')) {
+      res.status(err.status || 500).type('application/json').json({
+        error: 'internal_error',
+        message: err.message || 'server error',
+        stack: err.stack
+      });
+    } else {
+      next(err);
+    }
+  });
+}
 
 // セキュリティヘッダーを最初に設定
 app.use(securityHeaders);
@@ -383,6 +419,10 @@ app.use('/api/debug', debugRouter);
 app.use('/api/config', configRouter);
 app.use('/api/ingest', ingestRouter);
 app.use('/api/search', searchRouter);
+
+// ストレージ一覧APIルート追加
+import storageRouter from './routes/storage.js';
+app.use('/api/storage', storageRouter);
 
 // インタラクティブ診断システム用ルートを追加
 import interactiveDiagnosisRouter from './routes/interactive-diagnosis.js';

@@ -115,38 +115,47 @@ export default function MachineManagementPage() {
 
   const fetchData = async () => {
     try {
+      const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
       setIsLoading(true);
       setError(null);
 
       // 機種一覧取得
-      const typesResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/machines/machine-types`);
-      if (typesResponse.ok) {
-        const typesResult = await typesResponse.json();
-        if (typesResult.success) {
-          setMachineTypes(typesResult.data);
-        }
+      const typesResponse = await fetch(`${API_BASE}/machines/machine-types`);
+      const contentType = typesResponse.headers.get('content-type') || '';
+      if (!typesResponse.ok || !contentType.includes('application/json')) {
+        const text = await typesResponse.text();
+        console.error('APIレスポンス非JSON:', typesResponse.status, contentType, text.slice(0, 200));
+        throw new Error('API非JSON: ' + typesResponse.status + ' ' + contentType);
+      }
+      const typesResult = await typesResponse.json();
+      if (typesResult.success) {
+        setMachineTypes(typesResult.data);
       }
 
       // 機械一覧取得
-      const machinesResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/machines/all-machines`);
-      if (machinesResponse.ok) {
-        const machinesResult = await machinesResponse.json();
-        if (machinesResult.success) {
-          const flatMachines: Machine[] = [];
-          machinesResult.data.forEach((typeGroup: any) => {
-            if (typeGroup.machines && Array.isArray(typeGroup.machines)) {
-              typeGroup.machines.forEach((machine: any) => {
-                flatMachines.push({
-                  id: machine.id,
-                  machine_number: machine.machine_number,
-                  machine_type_id: typeGroup.type_id,
-                  machine_type_name: typeGroup.machine_type_name
-                });
+      const machinesResponse = await fetch(`${API_BASE}/machines/all-machines`);
+      const contentType2 = machinesResponse.headers.get('content-type') || '';
+      if (!machinesResponse.ok || !contentType2.includes('application/json')) {
+        const text2 = await machinesResponse.text();
+        console.error('APIレスポンス非JSON:', machinesResponse.status, contentType2, text2.slice(0, 200));
+        throw new Error('API非JSON: ' + machinesResponse.status + ' ' + contentType2);
+      }
+      const machinesResult = await machinesResponse.json();
+      if (machinesResult.success) {
+        const flatMachines: Machine[] = [];
+        machinesResult.data.forEach((typeGroup: any) => {
+          if (typeGroup.machines && Array.isArray(typeGroup.machines)) {
+            typeGroup.machines.forEach((machine: any) => {
+              flatMachines.push({
+                id: machine.id,
+                machine_number: machine.machine_number,
+                machine_type_id: typeGroup.type_id,
+                machine_type_name: typeGroup.machine_type_name
               });
-            }
-          });
-          setMachines(flatMachines);
-        }
+            });
+          }
+        });
+        setMachines(flatMachines);
       }
     } catch (error) {
       console.error('データ取得エラー:', error);

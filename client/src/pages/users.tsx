@@ -102,38 +102,23 @@ export default function UsersPage() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        console.log('🔍 ユーザー一覧取得開始');
-        console.log('🔍 現在のユーザー:', user);
-        console.log('🔍 セッション状態:', document.cookie);
-        console.log('🔍 現在のURL:', window.location.href);
-        console.log('🔍 VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL);
-        
+        const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
         setIsLoading(true);
         setQueryError(null);
-        
-        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users`, {
+        const res = await fetch(`${API_BASE}/users`, {
           method: 'GET',
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json'
           }
         });
-        
-        console.log('🔍 ユーザー一覧取得レスポンス:', {
-          status: res.status,
-          ok: res.ok,
-          headers: Object.fromEntries(res.headers.entries())
-        });
-        
-        if (!res.ok) {
-          const errorText = await res.text();
-          console.error('❌ ユーザー一覧取得エラー:', errorText);
-          throw new Error(`HTTP ${res.status}: ${errorText}`);
+        const contentType = res.headers.get('content-type') || '';
+        if (!res.ok || !contentType.includes('application/json')) {
+          const text = await res.text();
+          console.error('APIレスポンス非JSON:', res.status, contentType, text.slice(0, 200));
+          throw new Error('API非JSON: ' + res.status + ' ' + contentType);
         }
-        
         const userData = await res.json();
-        console.log('🔍 ユーザー一覧データ:', userData);
-        
         if (userData.success && userData.data) {
           setUsers(userData.data);
           setFilteredUsers(userData.data);

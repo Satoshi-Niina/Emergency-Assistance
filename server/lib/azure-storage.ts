@@ -7,12 +7,20 @@ export class AzureStorageService {
   private blobServiceClient: BlobServiceClient;
   private containerClient: ContainerClient;
   private containerName: string;
+  private blobPrefix: string;
 
   constructor() {
     const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
     const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
     const accountKey = process.env.AZURE_STORAGE_ACCOUNT_KEY;
     this.containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
+
+    // BLOB_PREFIXの正規化（末尾スラッシュ付与、空文字はそのまま）
+    let prefix = process.env.BLOB_PREFIX || '';
+    if (prefix && !prefix.endsWith('/')) {
+      prefix += '/';
+    }
+    this.blobPrefix = prefix;
 
     if (connectionString) {
       this.blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
@@ -48,9 +56,10 @@ export class AzureStorageService {
   // ファイルをアップロード
   async uploadFile(localPath: string, blobName: string): Promise<string> {
     try {
-      const blockBlobClient = this.containerClient.getBlockBlobClient(blobName);
+      const fullBlobName = this.blobPrefix + blobName.replace(/^\/+/, '');
+      const blockBlobClient = this.containerClient.getBlockBlobClient(fullBlobName);
       const fileBuffer = await fs.readFile(localPath);
-      
+
       await blockBlobClient.upload(fileBuffer, fileBuffer.length, {
         blobHTTPHeaders: {
           blobContentType: this.getContentType(blobName)
@@ -58,7 +67,7 @@ export class AzureStorageService {
       });
 
       const url = blockBlobClient.url;
-      console.log(`✅ File uploaded: ${blobName} -> ${url}`);
+      console.log(`✅ File uploaded: ${fullBlobName} -> ${url}`);
       return url;
     } catch (error) {
       console.error(`❌ Failed to upload file ${blobName}:`, error);
@@ -69,16 +78,17 @@ export class AzureStorageService {
   // ファイルをダウンロード
   async downloadFile(blobName: string, localPath: string): Promise<void> {
     try {
-      const blockBlobClient = this.containerClient.getBlockBlobClient(blobName);
+      const fullBlobName = this.blobPrefix + blobName.replace(/^\/+/, '');
+      const blockBlobClient = this.containerClient.getBlockBlobClient(fullBlobName);
       const downloadResponse = await blockBlobClient.download();
-      
+
       // ディレクトリを作成
       await fs.ensureDir(path.dirname(localPath));
-      
+
       // ファイルに書き込み
       const writeStream = fs.createWriteStream(localPath);
       downloadResponse.readableStreamBody?.pipe(writeStream);
-      
+
       return new Promise((resolve, reject) => {
         writeStream.on('finish', resolve);
         writeStream.on('error', reject);
@@ -92,7 +102,8 @@ export class AzureStorageService {
   // ファイルの存在確認
   async fileExists(blobName: string): Promise<boolean> {
     try {
-      const blockBlobClient = this.containerClient.getBlockBlobClient(blobName);
+      const fullBlobName = this.blobPrefix + blobName.replace(/^\/+/, '');
+      const blockBlobClient = this.containerClient.getBlockBlobClient(fullBlobName);
       await blockBlobClient.getProperties();
       return true;
     } catch (error) {
@@ -103,9 +114,10 @@ export class AzureStorageService {
   // ファイルを削除
   async deleteFile(blobName: string): Promise<void> {
     try {
-      const blockBlobClient = this.containerClient.getBlockBlobClient(blobName);
+      const fullBlobName = this.blobPrefix + blobName.replace(/^\/+/, '');
+      const blockBlobClient = this.containerClient.getBlockBlobClient(fullBlobName);
       await blockBlobClient.delete();
-      console.log(`✅ File deleted: ${blobName}`);
+      console.log(`✅ File deleted: ${fullBlobName}`);
     } catch (error) {
       console.error(`❌ Failed to delete file ${blobName}:`, error);
       throw error;
@@ -116,12 +128,17 @@ export class AzureStorageService {
   async listFiles(prefix?: string): Promise<string[]> {
     try {
       const files: string[] = [];
-      const listOptions = prefix ? { prefix } : {};
-      
+      // BLOB_PREFIX + prefix（prefixが空ならBLOB_PREFIXのみ）
+      let fullPrefix = this.blobPrefix;
+      if (prefix) {
+        fullPrefix += prefix.replace(/^\/+/, '');
+      }
+      const listOptions = fullPrefix ? { prefix: fullPrefix } : {};
+
       for await (const blob of this.containerClient.listBlobsFlat(listOptions)) {
         files.push(blob.name);
       }
-      
+
       return files;
     } catch (error) {
       console.error('❌ Failed to list files:', error);
@@ -131,22 +148,23 @@ export class AzureStorageService {
 
   // ファイルのURLを取得
   getFileUrl(blobName: string): string {
-    const blockBlobClient = this.containerClient.getBlockBlobClient(blobName);
-    return blockBlobClient.url;
+  const fullBlobName = this.blobPrefix + blobName.replace(/^\/+/, '');
+  const blockBlobClient = this.containerClient.getBlockBlobClient(fullBlobName);
+  return blockBlobClient.url;
   }
 
   // ローカルディレクトリ全体をアップロード
   async uploadDirectory(localDir: string, remotePrefix: string = ''): Promise<void> {
     try {
       const files = await this.getAllFiles(localDir);
-      
+
       for (const file of files) {
         const relativePath = path.relative(localDir, file);
-        const blobName = remotePrefix ? `${remotePrefix}/${relativePath}` : relativePath;
-        await this.uploadFile(file, blobName);
+        // remotePrefixは不要、blobPrefixで一元管理
+        await this.uploadFile(file, relativePath);
       }
-      
-      console.log(`✅ Directory uploaded: ${localDir} -> ${remotePrefix}`);
+
+      console.log(`✅ Directory uploaded: ${localDir} -> ${this.blobPrefix}`);
     } catch (error) {
       console.error(`❌ Failed to upload directory ${localDir}:`, error);
       throw error;
@@ -156,17 +174,20 @@ export class AzureStorageService {
   // ディレクトリ全体をダウンロード
   async downloadDirectory(remotePrefix: string, localDir: string): Promise<void> {
     try {
-      const files = await this.listFiles(remotePrefix);
-      
+      const files = await this.listFiles();
+
       for (const blobName of files) {
-        const relativePath = blobName.replace(remotePrefix + '/', '');
+        // blobNameからBLOB_PREFIXを除去して相対パス化
+        const relativePath = blobName.startsWith(this.blobPrefix)
+          ? blobName.slice(this.blobPrefix.length)
+          : blobName;
         const localPath = path.join(localDir, relativePath);
-        await this.downloadFile(blobName, localPath);
+        await this.downloadFile(relativePath, localPath);
       }
-      
-      console.log(`✅ Directory downloaded: ${remotePrefix} -> ${localDir}`);
+
+      console.log(`✅ Directory downloaded: ${this.blobPrefix} -> ${localDir}`);
     } catch (error) {
-      console.error(`❌ Failed to download directory ${remotePrefix}:`, error);
+      console.error(`❌ Failed to download directory ${this.blobPrefix}:`, error);
       throw error;
     }
   }
