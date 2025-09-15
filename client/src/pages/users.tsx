@@ -59,7 +59,38 @@ export default function UsersPage() {
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
+  
+  // すべてのフックを最初に宣言（条件分岐の前に）
   const [error, setError] = useState<Error | null>(null);
+  const [users, setUsers] = useState<UserData[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<UserData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [queryError, setQueryError] = useState<Error | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showNewUserDialog, setShowNewUserDialog] = useState(false);
+  const [showEditUserDialog, setShowEditUserDialog] = useState(false);
+  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importResults, setImportResults] = useState<any>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [newUser, setNewUser] = useState<Partial<NewUserData>>({
+    username: '',
+    password: '',
+    display_name: '',
+    role: 'employee',
+    department: '',
+    description: ''
+  });
+  const [editUser, setEditUser] = useState<Partial<UserData & { password?: string; description?: string }>>({
+    id: '',
+    username: '',
+    display_name: '',
+    role: 'employee',
+    department: '',
+    description: ''
+  });
 
   // ユーザーが未認証の場合はリダイレクト（一般ユーザーでもアクセス可能）
   useEffect(() => {
@@ -67,13 +98,6 @@ export default function UsersPage() {
       navigate("/chat");
     }
   }, [user, authLoading, navigate]);
-
-  // ユーザーデータの取得（簡素化版）
-  const [users, setUsers] = useState<UserData[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<UserData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [queryError, setQueryError] = useState<Error | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -183,6 +207,268 @@ export default function UsersPage() {
     }
   }, [queryError, toast]);
 
+  // フォームの値をリセット
+  const resetNewUserForm = () => {
+    setNewUser({
+      username: "",
+      password: "",
+      display_name: "",
+      role: "employee",
+      department: "",
+      description: "",
+    });
+  };
+
+  const resetEditUserForm = () => {
+    setEditUser({
+      id: "",
+      username: "",
+      display_name: "",
+      role: "employee",
+      department: "",
+      password: "",
+      description: "",
+    });
+  };
+
+  // 新規ユーザー作成
+  const handleCreateUser = async () => {
+    try {
+      if (!newUser.username || !newUser.password || !newUser.display_name) {
+        toast({
+          title: "エラー",
+          description: "必須項目を入力してください",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(newUser)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ ユーザー作成成功:', result);
+
+      toast({
+        title: "成功",
+        description: "ユーザーが作成されました"
+      });
+
+      setShowNewUserDialog(false);
+      resetNewUserForm();
+      
+      // ユーザー一覧を再取得
+      window.location.reload();
+    } catch (error) {
+      console.error('❌ ユーザー作成エラー:', error);
+      toast({
+        title: "エラー",
+        description: error instanceof Error ? error.message : 'ユーザーの作成に失敗しました',
+        variant: "destructive"
+      });
+    }
+  };
+
+  // ユーザー編集
+  const handleEditUser = (user: UserData) => {
+    setEditUser({
+      id: user.id,
+      username: user.username,
+      display_name: user.display_name,
+      role: user.role,
+      department: user.department || '',
+      description: user.description || ''
+    });
+    setShowEditUserDialog(true);
+  };
+
+  // ユーザー更新
+  const handleUpdateUser = async () => {
+    try {
+      if (!editUser.id || !editUser.username || !editUser.display_name) {
+        toast({
+          title: "エラー",
+          description: "必須項目を入力してください",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users/${editUser.id}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(editUser)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ ユーザー更新成功:', result);
+
+      toast({
+        title: "成功",
+        description: "ユーザーが更新されました"
+      });
+
+      setShowEditUserDialog(false);
+      resetEditUserForm();
+      
+      // ユーザー一覧を再取得
+      window.location.reload();
+    } catch (error) {
+      console.error('❌ ユーザー更新エラー:', error);
+      toast({
+        title: "エラー",
+        description: error instanceof Error ? error.message : 'ユーザーの更新に失敗しました',
+        variant: "destructive"
+      });
+    }
+  };
+
+  // ユーザー削除
+  const handleDeleteUser = (userId: string) => {
+    setSelectedUserId(userId);
+    setShowDeleteConfirmDialog(true);
+  };
+
+  // ユーザー削除実行
+  const confirmDeleteUser = async () => {
+    try {
+      if (!selectedUserId) return;
+
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users/${selectedUserId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ ユーザー削除成功:', result);
+
+      toast({
+        title: "成功",
+        description: "ユーザーが削除されました"
+      });
+
+      setShowDeleteConfirmDialog(false);
+      setSelectedUserId(null);
+      
+      // ユーザー一覧を再取得
+      window.location.reload();
+    } catch (error) {
+      console.error('❌ ユーザー削除エラー:', error);
+      toast({
+        title: "エラー",
+        description: error instanceof Error ? error.message : 'ユーザーの削除に失敗しました',
+        variant: "destructive"
+      });
+    }
+  };
+
+  // エクセルファイルインポート
+  const handleImportFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setImportFile(file);
+    }
+  };
+
+  // インポート実行
+  const handleImportUsers = async () => {
+    if (!importFile) return;
+
+    try {
+      setIsImporting(true);
+      
+      const formData = new FormData();
+      formData.append('file', importFile);
+
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users/import`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+      }
+
+      const result = await response.json();
+      setImportResults(result);
+      
+      toast({
+        title: "成功",
+        description: `ユーザーをインポートしました（成功: ${result.successCount}件、失敗: ${result.errorCount}件）`
+      });
+
+      setShowImportDialog(false);
+      setImportFile(null);
+      
+      // ユーザー一覧を再取得
+      window.location.reload();
+    } catch (error) {
+      console.error('❌ インポートエラー:', error);
+      toast({
+        title: "エラー",
+        description: error instanceof Error ? error.message : 'インポートに失敗しました',
+        variant: "destructive"
+      });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  // エクセルファイルエクスポート
+  const handleExportUsers = () => {
+    try {
+      const ws = XLSX.utils.json_to_sheet(users.map(user => ({
+        username: user.username,
+        display_name: user.display_name,
+        role: user.role,
+        department: user.department || '',
+        description: user.description || ''
+      })));
+      
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Users');
+      
+      XLSX.writeFile(wb, `users_${new Date().toISOString().split('T')[0]}.xlsx`);
+      
+      toast({
+        title: "成功",
+        description: "ユーザー一覧をエクスポートしました"
+      });
+    } catch (error) {
+      console.error('❌ エクスポートエラー:', error);
+      toast({
+        title: "エラー",
+        description: "エクスポートに失敗しました",
+        variant: "destructive"
+      });
+    }
+  };
+
   // エラー表示
   if (queryError instanceof Error) {
     return (
@@ -229,214 +515,10 @@ export default function UsersPage() {
     );
   }
 
-  // 新規ユーザーフォーム
-  const [showNewUserDialog, setShowNewUserDialog] = useState(false);
-  const [showEditUserDialog, setShowEditUserDialog] = useState(false);
-  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
-  const [showImportDialog, setShowImportDialog] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [importFile, setImportFile] = useState<File | null>(null);
-  const [importResults, setImportResults] = useState<any>(null);
-  const [isImporting, setIsImporting] = useState(false);
+  // 新規ユーザーフォーム（フックは既に上で宣言済み）
 
-  const [newUser, setNewUser] = useState<Partial<NewUserData>>({
-    username: "",
-    password: "",
-    display_name: "",
-    role: "employee",
-    department: "",
-    description: "",
-  });
-  const [editUser, setEditUser] = useState<Partial<UserData & { password?: string; description?: string }>>({
-    id: "",
-    username: "",
-    display_name: "",
-    role: "employee",
-    password: "",
-    description: "",
-  });
-
-  // フォームの値をリセット
-  const resetNewUserForm = () => {
-    setNewUser({
-      username: "",
-      password: "",
-      display_name: "",
-      role: "employee",
-      department: "",
-      description: "",
-    });
-  };
-
-
-
-  // フォーム送信処理
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // バリデーション
-    if (!newUser.username || !newUser.password || !newUser.display_name || !newUser.role) {
-      toast({
-        title: "入力エラー",
-        description: "ユーザー名、パスワード、表示名、権限は必須項目です",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // ユーザー名の形式チェック
-    if (newUser.username.length < 3 || newUser.username.length > 50) {
-      toast({
-        title: "入力エラー",
-        description: "ユーザー名は3文字以上50文字以下で入力してください",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // パスワードの強度チェック
-    if (newUser.password.length < 8) {
-      toast({
-        title: "パスワードエラー",
-        description: "パスワードは8文字以上で設定してください",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const hasUpperCase = /[A-Z]/.test(newUser.password);
-    const hasLowerCase = /[a-z]/.test(newUser.password);
-    const hasNumbers = /\d/.test(newUser.password);
-    const hasSymbols = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newUser.password);
-    
-    if (!hasUpperCase) {
-      toast({
-        title: "パスワードエラー",
-        description: "パスワードには大文字を1文字以上含めてください",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (!hasLowerCase) {
-      toast({
-        title: "パスワードエラー",
-        description: "パスワードには小文字を1文字以上含めてください",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (!hasNumbers) {
-      toast({
-        title: "パスワードエラー",
-        description: "パスワードには数字を1文字以上含めてください",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (!hasSymbols) {
-      toast({
-        title: "パスワードエラー",
-        description: "パスワードには記号を1文字以上含めてください",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // 表示名の形式チェック
-    if (newUser.display_name.length < 1 || newUser.display_name.length > 100) {
-      toast({
-        title: "入力エラー",
-        description: "表示名は1文字以上100文字以下で入力してください",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // 権限の値チェック
-    if (!['employee', 'admin'].includes(newUser.role || '')) {
-      toast({
-        title: "入力エラー",
-        description: "権限は「一般ユーザー」または「管理者」を選択してください",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      console.log('🔍 新規ユーザー作成開始:', newUser);
-      
-      const res = await fetch('/api/users', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          username: newUser.username,
-          password: newUser.password,
-          display_name: newUser.display_name,
-          role: newUser.role || 'employee',
-          department: newUser.department || undefined,
-          description: newUser.description || undefined
-        })
-      });
-      
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`ユーザー作成失敗: ${errorText}`);
-      }
-      
-      const result = await res.json();
-      console.log('🔍 ユーザー作成結果:', result);
-      
-      if (result.success) {
-        console.log('✅ ユーザー作成成功:', result.data);
-        toast({
-          title: "成功",
-          description: "ユーザーが正常に作成されました",
-        });
-        setShowNewUserDialog(false);
-        resetNewUserForm();
-        
-        // ユーザー一覧を再取得
-        const fetchUsers = async () => {
-          try {
-            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users`, {
-              method: 'GET',
-              credentials: 'include',
-              headers: {
-                'Content-Type': 'application/json'
-              }
-            });
-            
-            if (res.ok) {
-              const userData = await res.json();
-              if (userData.success && userData.data) {
-                setUsers(userData.data);
-                setFilteredUsers(userData.data); // 検索結果も更新
-              }
-            }
-          } catch (error) {
-            console.error('ユーザー一覧再取得エラー:', error);
-          }
-        };
-        
-        fetchUsers();
-      } else {
-        throw new Error(result.error || 'ユーザーの作成に失敗しました');
-      }
-    } catch (error) {
-      console.error('❌ ユーザー作成エラー:', error);
-      toast({
-        title: "エラー",
-        description: error instanceof Error ? error.message : "ユーザーの作成に失敗しました",
-        variant: "destructive",
-      });
-    }
-  };
+  // フォーム送信処理（関数は既に上で定義済み）
+  const handleSubmit = handleCreateUser;
 
   // 入力フィールド更新処理
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -576,215 +658,13 @@ export default function UsersPage() {
     setEditUser((prev) => ({ ...prev, [name]: value }));
   };
 
-  // ユーザー編集準備
-  const handleEditUser = (userData: UserData) => {
-    setSelectedUserId(userData.id);
-    setEditUser({
-      id: userData.id, // IDを追加
-      username: userData.username,
-      display_name: userData.display_name,
-      role: userData.role,
-      department: userData.department,
-      description: userData.description,
-      password: "" // パスワードフィールドを空で初期化
-    });
-    setShowEditUserDialog(true);
-  };
+  // ユーザー編集準備（関数は既に上で定義済み）
 
-  // ユーザー削除準備
-  const handleDeleteUser = (userId: string) => {
-    setSelectedUserId(userId);
-    setShowDeleteConfirmDialog(true);
-  };
+  // ユーザー削除実行（関数は既に上で定義済み）
+  const handleDeleteConfirm = confirmDeleteUser;
 
-  // ユーザー削除実行
-  const handleDeleteConfirm = async () => {
-    if (!selectedUserId) return;
-    
-    try {
-      // 自分自身のアカウントは削除できないチェック
-      if (user && selectedUserId === user.id) {
-        toast({
-          title: "削除エラー",
-          description: "自分自身のアカウントは削除できません",
-          variant: "destructive",
-        });
-        setShowDeleteConfirmDialog(false);
-        return;
-      }
-
-      const res = await fetch(`/api/users/${selectedUserId}`, {
-        method: 'DELETE',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || `HTTP ${res.status}: ユーザー削除に失敗しました`);
-      }
-
-      const result = await res.json();
-      console.log('ユーザー削除結果:', result);
-      
-      toast({
-        title: "削除完了",
-        description: "ユーザーが削除されました",
-      });
-      
-      setShowDeleteConfirmDialog(false);
-      
-      // ユーザー一覧を再取得
-      const fetchUsers = async () => {
-        try {
-          const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users`, {
-            method: 'GET',
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          });
-          
-          if (res.ok) {
-            const userData = await res.json();
-            if (userData.success && userData.data) {
-              setUsers(userData.data);
-              setFilteredUsers(userData.data); // 検索結果も更新
-            }
-          }
-        } catch (error) {
-          console.error('ユーザー一覧再取得エラー:', error);
-        }
-      };
-      
-      fetchUsers();
-      
-    } catch (error) {
-      console.error('ユーザー削除エラー:', error);
-      toast({
-        title: "削除失敗",
-        description: error instanceof Error ? error.message : "ユーザー削除中にエラーが発生しました",
-        variant: "destructive",
-      });
-      setShowDeleteConfirmDialog(false);
-    }
-  };
-
-  // 編集フォーム送信処理
-  const handleEditSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    // バリデーション
-    if (!editUser.username || !editUser.display_name) {
-      toast({
-        title: "入力エラー",
-        description: "必須項目を入力してください",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      // 空のパスワードフィールドを除去して送信
-      const sanitizedEditUser = { ...editUser };
-      
-      // パスワードが空、undefined、null、空白文字の場合は完全に除去
-      if (!sanitizedEditUser.password || 
-          typeof sanitizedEditUser.password !== 'string' || 
-          sanitizedEditUser.password.trim().length === 0) {
-        delete sanitizedEditUser.password;
-        console.log('空のパスワードフィールドを除去しました');
-      } else {
-        console.log('パスワードフィールドを送信します');
-      }
-      
-      console.log('送信するユーザーデータ:', { 
-        ...sanitizedEditUser, 
-        password: sanitizedEditUser.password ? '[SET]' : '[NOT_SET]' 
-      });
-      
-      console.log('API URL:', `/api/users/${editUser.id}`);
-      console.log('リクエストボディ:', JSON.stringify(sanitizedEditUser, null, 2));
-      
-      const res = await fetch(`/api/users/${editUser.id}`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(sanitizedEditUser)
-      });
-      
-      console.log('レスポンスステータス:', res.status);
-      console.log('レスポンスヘッダー:', Object.fromEntries(res.headers.entries()));
-      
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error('エラーレスポンス:', errorText);
-        console.error('エラーレスポンスの詳細:', {
-          status: res.status,
-          statusText: res.statusText,
-          headers: Object.fromEntries(res.headers.entries()),
-          body: errorText
-        });
-        throw new Error(`HTTP ${res.status}: ${errorText}`);
-      }
-      
-      const result = await res.json();
-      console.log('ユーザー更新結果:', result);
-      
-      toast({
-        title: "成功",
-        description: "ユーザー情報を更新しました",
-      });
-      
-      // ダイアログを閉じてユーザー一覧を再取得
-      setShowEditUserDialog(false);
-      setEditUser({
-        id: '',
-        username: '',
-        display_name: '',
-        role: 'employee',
-        department: '',
-        description: '',
-        password: ''
-      });
-      
-      // ユーザー一覧を再取得
-      const fetchUsers = async () => {
-        try {
-          const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users`, {
-            method: 'GET',
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          });
-          
-          if (res.ok) {
-            const userData = await res.json();
-            if (userData.success && userData.data) {
-              setUsers(userData.data);
-              setFilteredUsers(userData.data); // 検索結果も更新
-            }
-          }
-        } catch (error) {
-          console.error('ユーザー一覧再取得エラー:', error);
-        }
-      };
-      
-      fetchUsers();
-      
-    } catch (error) {
-      console.error('ユーザー更新エラー:', error);
-      toast({
-        title: "エラー",
-        description: error instanceof Error ? error.message : "ユーザー更新中にエラーが発生しました",
-        variant: "destructive",
-      });
-    }
-  };
+  // 編集フォーム送信処理（関数は既に上で定義済み）
+  const handleEditSubmit = handleUpdateUser;
 
   // 管理者でない場合のローディング表示
   if (!user || (user && user.role !== "admin")) {
