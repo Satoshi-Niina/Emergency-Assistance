@@ -4,7 +4,9 @@
   "description": "Azure Functions for Emergency Assistance API",
   "main": "index.js",
   "scripts": {
-  "start": "func start"
+    "start": "func start",
+    "build": "tsc",
+    "watch": "tsc --watch"
   },
   "dependencies": {
     "@azure/functions": "^4.0.0",
@@ -13,6 +15,7 @@
     "postgres": "^3.4.4"
   },
   "devDependencies": {
-    "@azure/functions": "^4.0.0"
+    "@azure/functions": "^4.0.0",
+    "typescript": "^5.9.2"
   }
 }
