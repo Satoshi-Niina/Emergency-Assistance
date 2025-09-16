@@ -4,8 +4,7 @@
   "description": "Azure Functions for Emergency Assistance API",
   "main": "index.js",
   "scripts": {
-    "start": "func start",
-    "build": "func extensions install"
+  "start": "func start"
   },
   "dependencies": {
     "@azure/functions": "^4.0.0",
