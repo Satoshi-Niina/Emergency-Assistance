@@ -1,5 +1,5 @@
 const { app } = require('@azure/functions');
-const { db } = require('../../server/db/index.js');
+const { db } = require('../db/index.js');
 
 app.http('machines', {
     methods: ['GET', 'POST', 'PUT', 'DELETE'],

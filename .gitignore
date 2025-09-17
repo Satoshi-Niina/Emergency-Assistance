@@ -4,8 +4,12 @@ knowledge-base/temp/
 logs-temp/
 cache/
 dist.zip
-# 環境変数ファイル
+# 環境変数ファイル（ローカル・Docker用）
 .env
+.env.*
+!*.env.example
+docker/env/*.env
+docker/.env
 # Dependencies
 node_modules/
 */node_modules/
@@ -39,6 +43,9 @@ coverage/
 .env.test
 .env.production
 .env.development.local
+
+
+
 
 # Logs
 *.log
@@ -265,3 +272,7 @@ Desktop.ini
 # Sublime Text
 *.sublime-project
 *.sublime-workspace
+
+# --- Docker runtime ---
+docker/.azurite/
+docker/data/

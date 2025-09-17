@@ -21,7 +21,7 @@ module.exports = async function (context, req) {
         let dbStatus = 'unknown';
         let dbError = null;
         try {
-            const { db } = require('../../server/db/index.js');
+            const { db } = require('../db/index.js');
             await db.execute('SELECT 1 as test');
             dbStatus = 'connected';
         } catch (error) {

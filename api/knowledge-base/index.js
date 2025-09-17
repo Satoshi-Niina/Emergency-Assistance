@@ -1,4 +1,4 @@
-const { db } = require('../../server/db/index.js');
+const { db } = require('../db/index.js');
 
 module.exports = async function (context, req) {
     try {

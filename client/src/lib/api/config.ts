@@ -125,12 +125,12 @@ export const AUTH_API = {
 
 // ナレッジベースAPIエンドポイント
 export const KNOWLEDGE_API = {
-  BASE: buildApiUrl('/api/knowledge'),
-  GPT_DATA: buildApiUrl('/api/knowledge/gpt/data'),
-  FUSE_IMAGES: buildApiUrl('/api/knowledge/fuse/images'),
-  TROUBLESHOOTING_FLOWS: buildApiUrl('/api/knowledge/troubleshooting/flows'),
-  SHARED_DATA: (type: string) => buildApiUrl(`/api/knowledge/shared/${type}`),
-  IMAGES: (category: string, filename: string) => buildApiUrl(`/api/knowledge/images/${category}/${filename}`),
+  BASE: buildApiUrl('/api/knowledge-base'),
+  GPT_DATA: buildApiUrl('/api/knowledge-base/gpt/data'),
+  FUSE_IMAGES: buildApiUrl('/api/knowledge-base/fuse/images'),
+  TROUBLESHOOTING_FLOWS: buildApiUrl('/api/flows'),
+  SHARED_DATA: (type: string) => buildApiUrl(`/api/knowledge-base/shared/${type}`),
+  IMAGES: (category: string, filename: string) => buildApiUrl(`/api/knowledge-base/images/${category}/${filename}`),
 };
 
 // チャットAPIエンドポイント

@@ -2,7 +2,7 @@
   "routes": [
     {
       "route": "/api/*",
-      "allowedRoles": ["anonymous"]
+      "rewrite": "https://<your-api-app-service>.azurewebsites.net/api/:*"
     },
     {
       "route": "/*",
@@ -12,7 +12,7 @@
   ],
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/images/*.{png,jpg,jpeg,gif,svg}", "/api/*"]
+    "exclude": ["/api/*", "/images/*.{png,jpg,jpeg,gif,svg}"]
   },
   "mimeTypes": {
     ".json": "application/json",
@@ -33,7 +33,8 @@
   },
   "responseOverrides": {
     "404": {
-      "rewrite": "/index.html"
+      "rewrite": "/index.html",
+      "exclude": ["/api/*"]
     }
   }
 }

@@ -1,4 +1,4 @@
-const { db } = require('../../server/db/index.js');
+const { db } = require('../db/index.js');
 const { users } = require('../../server/db/schema.js');
 
 module.exports = async function (context, req) {
