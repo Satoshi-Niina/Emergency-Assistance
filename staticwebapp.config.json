@@ -1,10 +1,6 @@
 {
   "routes": [
     {
-      "route": "/api/*",
-      "rewrite": "https://<your-api-app-service>.azurewebsites.net/api/:*"
-    },
-    {
       "route": "/*",
       "serve": "/index.html",
       "statusCode": 200
