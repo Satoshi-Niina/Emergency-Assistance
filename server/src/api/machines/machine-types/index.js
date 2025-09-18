@@ -121,4 +121,5 @@ app.http('machinesMachineTypes', {
                     details: error.message
                 })
             };
-        };
+         }
+};

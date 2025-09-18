@@ -176,4 +176,5 @@ app.http('techSupport', {
                     timestamp: new Date().toISOString()
                 })
             };
-        };
+         }
+};

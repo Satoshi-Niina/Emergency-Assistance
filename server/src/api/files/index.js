@@ -117,4 +117,5 @@ module.exports = async (context, request) => {
                     timestamp: new Date().toISOString()
                 })
             };
-        };
+         }
+};

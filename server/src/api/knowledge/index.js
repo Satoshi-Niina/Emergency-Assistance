@@ -1,10 +1,4 @@
-const { app } = require('@azure/functions');
-
-app.http('knowledge', {
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    authLevel: 'anonymous',
-    route: 'knowledge/{id?}',
-    handler: async (request, context) => {
+module.exports = async (context, request) => {
         try {
             context.log('Knowledge HTTP trigger function processed a request.');
 
@@ -187,4 +181,5 @@ app.http('knowledge', {
                     timestamp: new Date().toISOString()
                 })
             };
-        };
+         }
+};
