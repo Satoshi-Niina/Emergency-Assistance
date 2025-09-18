@@ -8,17 +8,35 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "allowJs": true,
-    "checkJs": false
+    "checkJs": false,
+    "baseUrl": "./",
+    "paths": {}
   },
   "include": [
-    "./**/*.js",
-    "./**/*.ts"
+    "./auth/**/*.js",
+    "./auth/**/*.ts",
+    "./db/**/*.js",
+    "./db/**/*.ts",
+    "./flows/**/*.js",
+    "./flows/**/*.ts",
+    "./health/**/*.js",
+    "./health/**/*.ts",
+    "./knowledge-base/**/*.js",
+    "./knowledge-base/**/*.ts",
+    "./machines/**/*.js",
+    "./machines/**/*.ts",
+    "./users/**/*.js",
+    "./users/**/*.ts",
+    "./*.js",
+    "./*.ts"
   ],
   "exclude": [
-    "../client",
-    "../server",
-    "../shared",
+    "../**/*",
     "node_modules",
-    "dist"
+    "dist",
+    "**/*.test.js",
+    "**/*.test.ts",
+    "**/*.spec.js",
+    "**/*.spec.ts"
   ]
 }
