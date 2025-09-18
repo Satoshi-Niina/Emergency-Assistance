@@ -29,7 +29,7 @@ app.http('flows', {
                     status: 500,
                     headers: {
                         'Content-Type': 'application/json',
-                        'Access-Control-Allow-Origin': 'https://emergency-assist-app.azurestaticapps.net',
+                        'Access-Control-Allow-Origin': 'https://witty-river-012f39e00.1.azurestaticapps.net',
                         'Access-Control-Allow-Credentials': 'true'
                     },
                     body: JSON.stringify({
@@ -55,7 +55,7 @@ app.http('flows', {
                     status: 404,
                     headers: {
                         'Content-Type': 'application/json',
-                        'Access-Control-Allow-Origin': 'https://emergency-assist-app.azurestaticapps.net',
+                        'Access-Control-Allow-Origin': 'https://witty-river-012f39e00.1.azurestaticapps.net',
                         'Access-Control-Allow-Credentials': 'true'
                     },
                     body: JSON.stringify({
@@ -91,7 +91,7 @@ app.http('flows', {
                 status: 200,
                 headers: {
                     'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': 'https://emergency-assist-app.azurestaticapps.net',
+                    'Access-Control-Allow-Origin': 'https://witty-river-012f39e00.1.azurestaticapps.net',
                     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
                     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
                     'Access-Control-Allow-Credentials': 'true'
@@ -109,7 +109,7 @@ app.http('flows', {
                 status: 500,
                 headers: {
                     'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': 'https://emergency-assist-app.azurestaticapps.net',
+                    'Access-Control-Allow-Origin': 'https://witty-river-012f39e00.1.azurestaticapps.net',
                     'Access-Control-Allow-Credentials': 'true'
                 },
                 body: JSON.stringify({

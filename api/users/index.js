@@ -26,7 +26,7 @@ module.exports = async function (context, req) {
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': 'https://emergency-assist-app.azurestaticapps.net',
+                'Access-Control-Allow-Origin': 'https://witty-river-012f39e00.1.azurestaticapps.net',
                 'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
                 'Access-Control-Allow-Headers': 'Content-Type, Authorization',
                 'Access-Control-Allow-Credentials': 'true'
@@ -44,7 +44,7 @@ module.exports = async function (context, req) {
             status: 500,
             headers: {
                 'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': 'https://emergency-assist-app.azurestaticapps.net',
+                'Access-Control-Allow-Origin': 'https://witty-river-012f39e00.1.azurestaticapps.net',
                 'Access-Control-Allow-Credentials': 'true'
             },
             body: JSON.stringify({
