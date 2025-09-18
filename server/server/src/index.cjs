@@ -44,44 +44,132 @@ const troubleshootingHandler = require('./api/troubleshooting/index.js');
 const dataKnowledgeBaseHandler = require('./api/data/knowledge-base/index.js');
 
 // Mount API routes as Azure Functions handlers
-app.all('/api/auth/login', (req, res) => {
-  const context = { log: console.log };
-  authLoginHandler(context, req);
+app.all('/api/auth/login', async (req, res) => {
+  const context = { 
+    log: console.log,
+    res: {
+      status: (code) => ({ json: (data) => res.status(code).json(data) }),
+      json: (data) => res.json(data)
+    }
+  };
+  try {
+    await authLoginHandler(context, req);
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
-app.all('/api/auth/logout', (req, res) => {
-  const context = { log: console.log };
-  authLogoutHandler(context, req);
+app.all('/api/auth/logout', async (req, res) => {
+  const context = { 
+    log: console.log,
+    res: {
+      status: (code) => ({ json: (data) => res.status(code).json(data) }),
+      json: (data) => res.json(data)
+    }
+  };
+  try {
+    await authLogoutHandler(context, req);
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
-app.all('/api/auth/me', (req, res) => {
-  const context = { log: console.log };
-  authMeHandler(context, req);
+app.all('/api/auth/me', async (req, res) => {
+  const context = { 
+    log: console.log,
+    res: {
+      status: (code) => ({ json: (data) => res.status(code).json(data) }),
+      json: (data) => res.json(data)
+    }
+  };
+  try {
+    await authMeHandler(context, req);
+  } catch (error) {
+    console.error('Auth me error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
-app.all('/api/machines', (req, res) => {
-  const context = { log: console.log };
-  machinesHandler(context, req);
+app.all('/api/machines', async (req, res) => {
+  const context = { 
+    log: console.log,
+    res: {
+      status: (code) => ({ json: (data) => res.status(code).json(data) }),
+      json: (data) => res.json(data)
+    }
+  };
+  try {
+    await machinesHandler(context, req);
+  } catch (error) {
+    console.error('Machines error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
-app.all('/api/machines/machine-types', (req, res) => {
-  const context = { log: console.log };
-  machineTypesHandler(context, req);
+app.all('/api/machines/machine-types', async (req, res) => {
+  const context = { 
+    log: console.log,
+    res: {
+      status: (code) => ({ json: (data) => res.status(code).json(data) }),
+      json: (data) => res.json(data)
+    }
+  };
+  try {
+    await machineTypesHandler(context, req);
+  } catch (error) {
+    console.error('Machine types error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
-app.all('/api/knowledge-base', (req, res) => {
-  const context = { log: console.log };
-  knowledgeBaseHandler(context, req);
+app.all('/api/knowledge-base', async (req, res) => {
+  const context = { 
+    log: console.log,
+    res: {
+      status: (code) => ({ json: (data) => res.status(code).json(data) }),
+      json: (data) => res.json(data)
+    }
+  };
+  try {
+    await knowledgeBaseHandler(context, req);
+  } catch (error) {
+    console.error('Knowledge base error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
-app.all('/api/knowledge-base/images', (req, res) => {
-  const context = { log: console.log };
-  knowledgeBaseImagesHandler(context, req);
+app.all('/api/knowledge-base/images', async (req, res) => {
+  const context = { 
+    log: console.log,
+    res: {
+      status: (code) => ({ json: (data) => res.status(code).json(data) }),
+      json: (data) => res.json(data)
+    }
+  };
+  try {
+    await knowledgeBaseImagesHandler(context, req);
+  } catch (error) {
+    console.error('Knowledge base images error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
-app.all('/api/health', (req, res) => {
-  const context = { log: console.log };
-  healthHandler(context, req);
+app.all('/api/health', async (req, res) => {
+  const context = { 
+    log: console.log,
+    res: {
+      status: (code) => ({ json: (data) => res.status(code).json(data) }),
+      json: (data) => res.json(data)
+    }
+  };
+  try {
+    await healthHandler(context, req);
+  } catch (error) {
+    console.error('Health error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // app.all('/api/users', (req, res) => {
@@ -89,64 +177,196 @@ app.all('/api/health', (req, res) => {
 //   usersHandler(context, req);
 // });
 
-app.all('/api/flows', (req, res) => {
-  const context = { log: console.log };
-  flowsHandler(context, req);
+app.all('/api/flows', async (req, res) => {
+  const context = { 
+    log: console.log,
+    res: {
+      status: (code) => ({ json: (data) => res.status(code).json(data) }),
+      json: (data) => res.json(data)
+    }
+  };
+  try {
+    await flowsHandler(context, req);
+  } catch (error) {
+    console.error('Flows error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
-app.all('/api/images', (req, res) => {
-  const context = { log: console.log };
-  imagesHandler(context, req);
+app.all('/api/images', async (req, res) => {
+  const context = { 
+    log: console.log,
+    res: {
+      status: (code) => ({ json: (data) => res.status(code).json(data) }),
+      json: (data) => res.json(data)
+    }
+  };
+  try {
+    await imagesHandler(context, req);
+  } catch (error) {
+    console.error('Images error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
-app.all('/api/tech-support', (req, res) => {
-  const context = { log: console.log };
-  techSupportHandler(context, req);
+app.all('/api/tech-support', async (req, res) => {
+  const context = { 
+    log: console.log,
+    res: {
+      status: (code) => ({ json: (data) => res.status(code).json(data) }),
+      json: (data) => res.json(data)
+    }
+  };
+  try {
+    await techSupportHandler(context, req);
+  } catch (error) {
+    console.error('Tech support error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
-app.all('/api/gpt-check', (req, res) => {
-  const context = { log: console.log };
-  gptCheckHandler(context, req);
+app.all('/api/gpt-check', async (req, res) => {
+  const context = { 
+    log: console.log,
+    res: {
+      status: (code) => ({ json: (data) => res.status(code).json(data) }),
+      json: (data) => res.json(data)
+    }
+  };
+  try {
+    await gptCheckHandler(context, req);
+  } catch (error) {
+    console.error('GPT check error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
-app.all('/api/db-check', (req, res) => {
-  const context = { log: console.log };
-  dbCheckHandler(context, req);
+app.all('/api/db-check', async (req, res) => {
+  const context = { 
+    log: console.log,
+    res: {
+      status: (code) => ({ json: (data) => res.status(code).json(data) }),
+      json: (data) => res.json(data)
+    }
+  };
+  try {
+    await dbCheckHandler(context, req);
+  } catch (error) {
+    console.error('DB check error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
-app.all('/api/data-processor', (req, res) => {
-  const context = { log: console.log };
-  dataProcessorHandler(context, req);
+app.all('/api/data-processor', async (req, res) => {
+  const context = { 
+    log: console.log,
+    res: {
+      status: (code) => ({ json: (data) => res.status(code).json(data) }),
+      json: (data) => res.json(data)
+    }
+  };
+  try {
+    await dataProcessorHandler(context, req);
+  } catch (error) {
+    console.error('Data processor error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
-app.all('/api/settings', (req, res) => {
-  const context = { log: console.log };
-  settingsHandler(context, req);
+app.all('/api/settings', async (req, res) => {
+  const context = { 
+    log: console.log,
+    res: {
+      status: (code) => ({ json: (data) => res.status(code).json(data) }),
+      json: (data) => res.json(data)
+    }
+  };
+  try {
+    await settingsHandler(context, req);
+  } catch (error) {
+    console.error('Settings error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
-app.all('/api/files', (req, res) => {
-  const context = { log: console.log };
-  filesHandler(context, req);
+app.all('/api/files', async (req, res) => {
+  const context = { 
+    log: console.log,
+    res: {
+      status: (code) => ({ json: (data) => res.status(code).json(data) }),
+      json: (data) => res.json(data)
+    }
+  };
+  try {
+    await filesHandler(context, req);
+  } catch (error) {
+    console.error('Files error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
-app.all('/api/history', (req, res) => {
-  const context = { log: console.log };
-  historyHandler(context, req);
+app.all('/api/history', async (req, res) => {
+  const context = { 
+    log: console.log,
+    res: {
+      status: (code) => ({ json: (data) => res.status(code).json(data) }),
+      json: (data) => res.json(data)
+    }
+  };
+  try {
+    await historyHandler(context, req);
+  } catch (error) {
+    console.error('History error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
-app.all('/api/knowledge', (req, res) => {
-  const context = { log: console.log };
-  knowledgeHandler(context, req);
+app.all('/api/knowledge', async (req, res) => {
+  const context = { 
+    log: console.log,
+    res: {
+      status: (code) => ({ json: (data) => res.status(code).json(data) }),
+      json: (data) => res.json(data)
+    }
+  };
+  try {
+    await knowledgeHandler(context, req);
+  } catch (error) {
+    console.error('Knowledge error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
-app.all('/api/troubleshooting', (req, res) => {
-  const context = { log: console.log };
-  troubleshootingHandler(context, req);
+app.all('/api/troubleshooting', async (req, res) => {
+  const context = { 
+    log: console.log,
+    res: {
+      status: (code) => ({ json: (data) => res.status(code).json(data) }),
+      json: (data) => res.json(data)
+    }
+  };
+  try {
+    await troubleshootingHandler(context, req);
+  } catch (error) {
+    console.error('Troubleshooting error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
-app.all('/api/data/knowledge-base', (req, res) => {
-  const context = { log: console.log };
-  dataKnowledgeBaseHandler(context, req);
+app.all('/api/data/knowledge-base', async (req, res) => {
+  const context = { 
+    log: console.log,
+    res: {
+      status: (code) => ({ json: (data) => res.status(code).json(data) }),
+      json: (data) => res.json(data)
+    }
+  };
+  try {
+    await dataKnowledgeBaseHandler(context, req);
+  } catch (error) {
+    console.error('Data knowledge base error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 app.listen(port, () => {
