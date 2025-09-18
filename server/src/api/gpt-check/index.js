@@ -87,4 +87,4 @@ app.http('gptCheck', {
                     timestamp: new Date().toISOString()
                 })
             };
-        }};
+        };

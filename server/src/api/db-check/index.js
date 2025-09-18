@@ -83,4 +83,4 @@ app.http('dbCheck', {
                     timestamp: new Date().toISOString()
                 })
             };
-        }};
+        };
