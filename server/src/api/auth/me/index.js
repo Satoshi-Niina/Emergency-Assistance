@@ -1,11 +1,6 @@
-const { app } = require('@azure/functions');
 const { db } = require('../../db/index.js');
 
-app.http('authMe', {
-    methods: ['GET', 'POST', 'OPTIONS'],
-    authLevel: 'anonymous',
-    route: 'auth/me',
-    handler: async (request, context) => {
+module.exports = async (context, request) => {
         try {
             context.log('Auth me HTTP trigger function processed a request.');
 
@@ -121,5 +116,4 @@ app.http('authMe', {
                 })
             };
         }
-    }
-});
+};

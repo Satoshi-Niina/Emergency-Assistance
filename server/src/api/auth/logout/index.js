@@ -1,10 +1,4 @@
-const { app } = require('@azure/functions');
-
-app.http('authLogout', {
-    methods: ['POST', 'OPTIONS'],
-    authLevel: 'anonymous',
-    route: 'auth/logout',
-    handler: async (request, context) => {
+module.exports = async (context, request) => {
         try {
             context.log('Auth logout HTTP trigger function processed a request.');
 
@@ -54,5 +48,4 @@ app.http('authLogout', {
                 })
             };
         }
-    }
-});
+};
