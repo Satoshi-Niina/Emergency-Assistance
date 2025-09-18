@@ -154,6 +154,84 @@ app.get('/api/auth/status', (req, res) => {
   });
 });
 
+// 現在のユーザー情報取得エンドポイント
+app.get('/api/auth/me', (req, res) => {
+  try {
+    console.log('🔍 /api/auth/me called:', {
+      session: req.session,
+      sessionId: req.session?.id,
+      userId: req.session?.userId,
+      userRole: req.session?.userRole,
+      headers: {
+        cookie: req.headers.cookie ? '[SET]' : '[NOT SET]',
+        origin: req.headers.origin,
+        host: req.headers.host,
+        referer: req.headers.referer
+      }
+    });
+    
+    // セッションからユーザーIDを取得
+    const userId = req.session?.userId;
+    
+    if (!userId) {
+      console.log('❌ No user ID in session');
+      return res.status(401).json({
+        success: false,
+        error: '認証されていません',
+        message: 'セッションまたは認証情報が必要です'
+      });
+    }
+
+    console.log('🔍 Searching user by ID:', userId);
+    
+    // データベースからユーザー情報を取得
+    pool.query(
+      'SELECT id, username, display_name, role, department FROM users WHERE id = $1 LIMIT 1',
+      [userId],
+      (err, result) => {
+        if (err) {
+          console.error('❌ Database query error:', err);
+          return res.status(500).json({
+            success: false,
+            error: 'データベースエラーが発生しました',
+            details: err.message
+          });
+        }
+        
+        if (result.rows.length === 0) {
+          console.log('❌ User not found in database:', userId);
+          return res.status(401).json({
+            success: false,
+            error: 'ユーザーが見つかりません'
+          });
+        }
+
+        const user = result.rows[0];
+        console.log('✅ User found:', { id: user.id, username: user.username, role: user.role });
+        
+        return res.json({
+          success: true,
+          user: {
+            id: user.id,
+            username: user.username,
+            displayName: user.display_name || user.username,
+            role: user.role,
+            department: user.department || 'General'
+          },
+          timestamp: new Date().toISOString()
+        });
+      }
+    );
+  } catch (error) {
+    console.error('❌ Get user error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'サーバーエラーが発生しました',
+      details: error.message
+    });
+  }
+});
+
 // Blob Storageテストエンドポイント
 app.get('/api/debug/blob', async (req, res) => {
   try {
