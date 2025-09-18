@@ -1,11 +1,6 @@
-const { app } = require('@azure/functions');
 const { db } = require('../../db/index.js');
 
-app.http('machinesMachineTypes', {
-    methods: ['GET', 'OPTIONS'],
-    authLevel: 'anonymous',
-    route: 'machines/machine-types',
-    handler: async (request, context) => {
+module.exports = async (context, request) => {
         try {
             context.log('Machine types HTTP trigger function processed a request.');
 

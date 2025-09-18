@@ -1,10 +1,4 @@
-const { app } = require('@azure/functions');
-
-app.http('techSupport', {
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    authLevel: 'anonymous',
-    route: 'tech-support/{action?}',
-    handler: async (request, context) => {
+module.exports = async (context, request) => {
         try {
             context.log('Tech Support HTTP trigger function processed a request.');
 

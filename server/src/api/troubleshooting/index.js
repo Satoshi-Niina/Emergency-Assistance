@@ -1,10 +1,4 @@
-const { app } = require('@azure/functions');
-
-app.http('troubleshooting', {
-    methods: ['GET', 'POST', 'OPTIONS'],
-    authLevel: 'anonymous',
-    route: 'troubleshooting/{id?}',
-    handler: async (request, context) => {
+module.exports = async (context, request) => {
         try {
             context.log('Troubleshooting HTTP trigger function processed a request.');
 
