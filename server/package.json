@@ -8,10 +8,13 @@
     "build:prod": "tsc app-production.ts --outDir dist --target es2020 --module commonjs --moduleResolution node --esModuleInterop --allowSyntheticDefaultImports --skipLibCheck --resolveJsonModule --declaration false --removeComments true",
     "build:v2": "tsc azure-production-server-v2.ts --outDir dist --target es2020 --module commonjs --moduleResolution node --esModuleInterop --allowSyntheticDefaultImports --skipLibCheck --resolveJsonModule --declaration false --removeComments true",
     "build:server": "tsc -p tsconfig.build.json",
-  "start": "tsx --env-file=.env server.ts",
-    "start:prod": "node dist/server.js"
+    "build:api": "tsc -p src/tsconfig.server.json",
+    "start": "tsx --env-file=.env server.ts",
+    "start:prod": "node dist/server.js",
+    "start:api": "node src/index.cjs"
   },
   "dependencies": {
+    "@azure/functions": "^4.0.0",
     "@azure/identity": "^4.0.1",
     "@azure/storage-blob": "^12.20.0",
     "@azure/storage-file-share": "^12.20.0",
