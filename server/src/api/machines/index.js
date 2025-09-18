@@ -1,11 +1,6 @@
-const { app } = require('@azure/functions');
 const { db } = require('../db/index.js');
 
-app.http('machines', {
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    authLevel: 'anonymous',
-    route: 'machines',
-    handler: async (request, context) => {
+module.exports = async (context, request) => {
         try {
             context.log('Machines HTTP trigger function processed a request.');
 
@@ -54,5 +49,4 @@ app.http('machines', {
                 })
             };
         }
-    }
-});
+};

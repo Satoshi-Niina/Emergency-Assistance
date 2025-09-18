@@ -1,13 +1,8 @@
 
-const { app } = require('@azure/functions');
 const { BlobServiceClient } = require('@azure/storage-blob');
 const { BLOB_CONTAINER, BLOB_PREFIX } = require('../blob-config.js');
 
-app.http('flows', {
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    authLevel: 'anonymous',
-    route: 'flows',
-    handler: async (request, context) => {
+module.exports = async (context, request) => {
         const method = request.method;
         const path = request.url || '';
         try {
@@ -124,5 +119,4 @@ app.http('flows', {
                 })
             };
         }
-    }
-});
+};
