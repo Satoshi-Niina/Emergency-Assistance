@@ -1,5 +1,5 @@
 const { db } = require('../db/index.js');
-const { users } = require('../../server/db/schema.js');
+const { users } = require('../../../db/schema.js');
 
 module.exports = async function (context, req) {
     try {

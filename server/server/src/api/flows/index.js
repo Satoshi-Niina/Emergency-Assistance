@@ -1,7 +1,7 @@
 
 const { app } = require('@azure/functions');
 const { BlobServiceClient } = require('@azure/storage-blob');
-const { BLOB_CONTAINER, BLOB_PREFIX } = require('../blob-config');
+const { BLOB_CONTAINER, BLOB_PREFIX } = require('../blob-config.js');
 
 app.http('flows', {
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
