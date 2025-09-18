@@ -23,19 +23,19 @@ jobs:
           node-version: '20'
 
       - name: Install server dependencies
-        working-directory: server
+        working-directory: server/server
         run: |
           echo "=== Installing server dependencies ==="
           npm install --no-audit --prefer-offline
 
       - name: Build backend
-        working-directory: server
+        working-directory: server/server
         run: |
-          echo "=== Building Azure Production Server v2 ==="
-          npm run build:v2
+          echo "=== Building server application ==="
+          npm run build
           echo "=== Verifying build ==="
           ls -la dist/
-          if [ -f dist/azure-production-server-v2.js ]; then
+          if [ -f dist/index.js ]; then
             echo "✅ Build successful"
           else
             echo "❌ Build failed"
@@ -50,9 +50,10 @@ jobs:
           mkdir -p ./deploy-backend
           
           # Copy built files
-          cp -r ./server/dist ./deploy-backend/
+          cp -r ./server/server/dist ./deploy-backend/
+          cp -r ./server/server/src/api ./deploy-backend/
           # Copy the main server file to root
-          cp ./server/dist/azure-production-server-v2.js ./deploy-backend/server.js
+          cp ./server/server/src/index.cjs ./deploy-backend/server.js
           
           # Verify file structure
           echo "=== Verifying deployment package structure ==="
