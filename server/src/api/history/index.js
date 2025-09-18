@@ -234,6 +234,4 @@ app.http('history', {
                     timestamp: new Date().toISOString()
                 })
             };
-        }
-    }
-});
+        }};

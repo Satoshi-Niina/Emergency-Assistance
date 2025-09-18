@@ -257,6 +257,4 @@ app.http('images', {
                     timestamp: new Date().toISOString()
                 })
             };
-        }
-    }
-});
+        }};

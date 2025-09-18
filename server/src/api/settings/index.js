@@ -1,10 +1,4 @@
-const { app } = require('@azure/functions');
-
-app.http('settings', {
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    authLevel: 'anonymous',
-    route: 'settings/{action?}',
-    handler: async (request, context) => {
+module.exports = async (context, request) => {
         try {
             context.log('Settings HTTP trigger function processed a request.');
 
@@ -162,6 +156,4 @@ app.http('settings', {
                     timestamp: new Date().toISOString()
                 })
             };
-        }
-    }
-});
+        };

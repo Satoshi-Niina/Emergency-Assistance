@@ -187,6 +187,4 @@ app.http('knowledge', {
                     timestamp: new Date().toISOString()
                 })
             };
-        }
-    }
-});
+        }};

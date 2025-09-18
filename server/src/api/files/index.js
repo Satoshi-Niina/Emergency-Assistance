@@ -1,10 +1,4 @@
-const { app } = require('@azure/functions');
-
-app.http('files', {
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    authLevel: 'anonymous',
-    route: 'files/{action?}',
-    handler: async (request, context) => {
+module.exports = async (context, request) => {
         try {
             context.log('Files HTTP trigger function processed a request.');
 
@@ -123,6 +117,4 @@ app.http('files', {
                     timestamp: new Date().toISOString()
                 })
             };
-        }
-    }
-});
+        };

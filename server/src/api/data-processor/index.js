@@ -118,6 +118,4 @@ app.http('dataProcessor', {
                     timestamp: new Date().toISOString()
                 })
             };
-        }
-    }
-});
+        }};

@@ -188,6 +188,4 @@ app.http('knowledgeBaseImages', {
                     timestamp: new Date().toISOString()
                 })
             };
-        }
-    }
-});
+        }};
