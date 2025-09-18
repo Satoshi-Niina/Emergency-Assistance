@@ -1,10 +1,4 @@
-const { app } = require('@azure/functions');
-
-app.http('dataProcessor', {
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    authLevel: 'anonymous',
-    route: 'data-processor/{action?}',
-    handler: async (request, context) => {
+module.exports = async (context, request) => {
         try {
             context.log('Data Processor HTTP trigger function processed a request.');
 

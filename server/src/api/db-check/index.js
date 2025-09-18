@@ -1,10 +1,4 @@
-const { app } = require('@azure/functions');
-
-app.http('dbCheck', {
-    methods: ['GET', 'POST', 'OPTIONS'],
-    authLevel: 'anonymous',
-    route: 'db-check',
-    handler: async (request, context) => {
+module.exports = async (context, request) => {
         try {
             context.log('DB Check HTTP trigger function processed a request.');
 
