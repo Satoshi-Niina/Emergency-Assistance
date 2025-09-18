@@ -181,11 +181,24 @@ export default function BaseDataPage() {
       });
 
       if (response.ok) {
-        const settings = await response.json();
-        setRagSettings(settings);
+        const data = await response.json();
+        const settings = data.success ? data.data : data;
+        
+        // デフォルト値とマージして、不足しているプロパティを補完
+        setRagSettings(prev => ({
+          ...prev,
+          ...settings,
+          preprocessing: {
+            removeStopWords: true,
+            normalizeCasing: true,
+            removeSpecialChars: false,
+            ...settings.preprocessing
+          }
+        }));
       }
     } catch (error) {
       console.error('RAG設定読み込みエラー:', error);
+      // エラーの場合はデフォルト値を使用
     }
   };
 

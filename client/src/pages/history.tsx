@@ -73,7 +73,7 @@ interface MachineData {
 
 const HistoryPage: React.FC = () => {
   // BLOBファイル一覧表示用
-  const [blobFiles, setBlobFiles] = useState<string[]>([]);
+  const [blobFiles, setBlobFiles] = useState<any[]>([]);
   const [blobLoading, setBlobLoading] = useState(false);
   useEffect(() => {
     const fetchBlobFileList = async () => {
@@ -3210,7 +3210,9 @@ const HistoryPage: React.FC = () => {
                   <h3>🗂️ BLOBファイル一覧</h3>
                   <ul>
                     {blobFiles.map((file, idx) => (
-                      <li key={idx}>{file}</li>
+                      <li key={idx}>
+                        {typeof file === 'string' ? file : file.name || 'Unknown file'}
+                      </li>
                     ))}
                   </ul>
                 </div>

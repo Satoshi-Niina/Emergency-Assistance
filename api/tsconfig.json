@@ -4,17 +4,21 @@
     "module": "commonjs",
     "outDir": "./dist",
     "rootDir": "./",
-    "strict": true,
+    "strict": false,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "allowJs": true,
+    "checkJs": false
   },
   "include": [
-    "./**/*"
+    "./**/*.js",
+    "./**/*.ts"
   ],
   "exclude": [
     "../client",
     "../server",
     "../shared",
-    "node_modules"
+    "node_modules",
+    "dist"
   ]
 }

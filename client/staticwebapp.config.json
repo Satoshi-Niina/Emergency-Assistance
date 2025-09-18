@@ -3,8 +3,7 @@
     {
       "route": "/api/*",
       "allowedRoles": ["anonymous"],
-      "rewrite": "https://<your-api>.azurewebsites.net/api/{*}",
-      "forwardHeaders": true
+      "proxy": { "backendUri": "https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/api" }
     }
   ],
   "navigationFallback": {

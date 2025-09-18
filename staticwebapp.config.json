@@ -1,6 +1,12 @@
 {
   "routes": [
     {
+      "route": "/api/*",
+      "allowedRoles": ["anonymous"],
+      "rewrite": "https://<your-api>.azurewebsites.net/api/{*}",
+      "forwardHeaders": true
+    },
+    {
       "route": "/*",
       "serve": "/index.html",
       "statusCode": 200

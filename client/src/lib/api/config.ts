@@ -49,7 +49,7 @@ export const API_BASE_URL = (() => {
   
   // デフォルト
   console.log('⚠️ デフォルト値を使用');
-  return 'http://localhost:3001';
+  return 'http://localhost:3003';
 })();
 
 console.log('🔧 API設定詳細:', {

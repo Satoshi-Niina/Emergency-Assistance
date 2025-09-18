@@ -60,11 +60,11 @@ app.http('authLogin', {
 
             context.log('Login attempt:', { username });
 
-            // データベースからユーザーを検索
+            // データベースからユーザーを検索（パスワードも含める）
             let user;
             try {
                 const users = await db.execute(`
-                    SELECT id, username, display_name, role, department, description, created_at
+                    SELECT id, username, password, display_name, role, department, description, created_at
                     FROM users
                     WHERE username = $1
                     LIMIT 1
@@ -102,9 +102,26 @@ app.http('authLogin', {
                 };
             }
 
-            // 簡易パスワード検証（本番環境では適切なハッシュ化が必要）
-            // 現在は任意のパスワードでログイン可能
-            context.log('Password validation passed (simplified)');
+            // パスワード検証（bcrypt使用）
+            const bcrypt = require('bcrypt');
+            const isPasswordValid = await bcrypt.compare(password, user.password);
+            
+            if (!isPasswordValid) {
+                context.log('Password validation failed for user:', username);
+                return {
+                    status: 401,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    body: JSON.stringify({
+                        success: false,
+                        error: 'ユーザー名またはパスワードが間違っています'
+                    })
+                };
+            }
+
+            context.log('Password validation passed for user:', username);
 
             // セッションIDを生成（簡易実装）
             const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;

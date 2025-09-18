@@ -1,4 +1,5 @@
 import * as express from 'express';
+import { safeLen, env } from '../server';
 import * as path from 'path';
 import { existsSync, writeFileSync, mkdirSync, readdirSync, readFileSync, unlinkSync } from 'fs';
 import { processOpenAIRequest } from '../lib/openai.js';
@@ -23,7 +24,7 @@ router.get('/debug', (req, res) => {
     data: {
       OPENAI_API_KEY: process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET',
       OPENAI_API_KEY_PREFIX: process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.substring(0, 10) + '...' : 'NOT FOUND',
-      OPENAI_API_KEY_LENGTH: process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.length : 0,
+  OPENAI_API_KEY_LENGTH: safeLen(env.OPENAI_API_KEY),
       NODE_ENV: process.env.NODE_ENV,
       timestamp: new Date().toISOString()
     }
@@ -177,7 +178,7 @@ router.post('/generate-from-keywords', async (req, res) => {
         console.log('[DEBUG] OpenAI API Key validation:', {
             exists: !!process.env.OPENAI_API_KEY,
             startsWithSk: process.env.OPENAI_API_KEY.startsWith('sk-'),
-            keyLength: process.env.OPENAI_API_KEY.length,
+            keyLength: safeLen(env.OPENAI_API_KEY),
             prefix: process.env.OPENAI_API_KEY.substring(0, 10) + '...'
         });
         

@@ -13,9 +13,9 @@ export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   
   // APIのベースURLを環境変数から取得（VITE_API_BASE_URLのみ使用）
-  const apiBaseUrl = env.VITE_API_BASE_URL || 'http://localhost:3001';
-  const serverPort = parseInt(env.PORT || '3001');
-  const clientPort = parseInt(env.CLIENT_PORT || '5002');
+  const apiBaseUrl = env.VITE_API_BASE_URL || 'http://localhost:3003';
+  const serverPort = parseInt(env.PORT || '3003');
+  const clientPort = parseInt(env.CLIENT_PORT || '5173');
   
   console.log('🔧 Vite環境変数確認:', {
     VITE_API_BASE_URL: env.VITE_API_BASE_URL,
@@ -64,7 +64,7 @@ export default defineConfig(({ command, mode }) => {
       },
         proxy: {
           '/api': {
-            target: 'http://localhost:3001',
+            target: 'http://localhost:3003',
             changeOrigin: true,
             secure: false,
           },

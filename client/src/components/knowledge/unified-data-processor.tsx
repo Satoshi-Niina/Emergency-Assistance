@@ -214,7 +214,27 @@ const UnifiedDataProcessor: React.FC = () => {
         throw new Error("文書の取得に失敗しました");
       }
       const data = await response.json();
-      setDocuments(data);
+      
+      // APIレスポンスの構造に合わせてデータを処理
+      let documentsData = [];
+      if (data.success && data.data) {
+        documentsData = data.data;
+      } else if (Array.isArray(data)) {
+        documentsData = data;
+      } else {
+        console.warn('Unexpected API response structure:', data);
+        documentsData = [];
+      }
+      
+      // ProcessedDocumentの形式に変換
+      const processedDocuments = documentsData.map((item: any, index: number) => ({
+        id: item.id || `doc-${index}`,
+        title: item.title || item.name || '無題',
+        type: item.type || item.category || '不明',
+        addedAt: item.addedAt || item.createdAt || new Date().toISOString()
+      }));
+      
+      setDocuments(processedDocuments);
     } catch (error) {
       console.error("Fetch documents error:", error);
       toast({

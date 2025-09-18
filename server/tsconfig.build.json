@@ -1,0 +1,29 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "noEmitOnError": false,
+    "skipLibCheck": true
+  },
+  "include": [
+    "server.ts",
+    "index-minimal.ts",
+    "routes/**/*.ts",
+    "middleware/**/*.ts",
+    "utils/**/*.ts"
+  ],
+  "exclude": [
+    "scripts/**/*",
+    "tests/**/*",
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "database-storage.ts",
+    "azure-production-server-v2.ts",
+    "routes/history.ts",
+    "routes/auth-secure.ts",
+    "routes/image-storage.ts",
+    "routes/sync-routes.ts",
+    "index.build.ts",
+    "utils/image-matcher.ts"
+  ]
+}
