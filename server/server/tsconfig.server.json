@@ -6,7 +6,9 @@
     "module": "Node16",
     "moduleResolution": "Node16",
     "noEmit": false,
-    "allowImportingTsExtensions": false
+    "allowImportingTsExtensions": false,
+    "types": ["node"]
   },
-  "include": ["src"]
+  "include": ["src/api/**/*.js"],
+  "exclude": ["src/index.*"]
 }

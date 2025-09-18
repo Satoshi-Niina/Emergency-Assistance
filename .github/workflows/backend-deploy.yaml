@@ -28,17 +28,21 @@ jobs:
           echo "=== Installing server dependencies ==="
           npm install --no-audit --prefer-offline
 
-      - name: Build backend
+      - name: Verify server files
         working-directory: server/server
         run: |
-          echo "=== Building server application ==="
-          npm run build
-          echo "=== Verifying build ==="
-          ls -la dist/
-          if [ -f dist/index.js ]; then
-            echo "✅ Build successful"
+          echo "=== Verifying server files ==="
+          ls -la src/
+          if [ -f src/index.cjs ]; then
+            echo "✅ index.cjs found"
           else
-            echo "❌ Build failed"
+            echo "❌ index.cjs NOT found"
+            exit 1
+          fi
+          if [ -d src/api ]; then
+            echo "✅ API directory found"
+          else
+            echo "❌ API directory NOT found"
             exit 1
           fi
 
@@ -49,8 +53,7 @@ jobs:
           rm -rf ./deploy-backend
           mkdir -p ./deploy-backend
           
-          # Copy built files
-          cp -r ./server/server/dist ./deploy-backend/
+          # Copy API files
           cp -r ./server/server/src/api ./deploy-backend/
           # Copy the main server file to root
           cp ./server/server/src/index.cjs ./deploy-backend/server.js
