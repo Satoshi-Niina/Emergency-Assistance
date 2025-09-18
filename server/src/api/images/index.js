@@ -1,10 +1,4 @@
-const { app } = require('@azure/functions');
-
-app.http('images', {
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    authLevel: 'anonymous',
-    route: 'images/{action?}/{param?}',
-    handler: async (request, context) => {
+module.exports = async (context, request) => {
         try {
             context.log('Images HTTP trigger function processed a request.');
 

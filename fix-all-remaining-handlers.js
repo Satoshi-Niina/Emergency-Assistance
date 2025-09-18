@@ -3,8 +3,6 @@ const path = require('path');
 
 // 修正対象のハンドラーファイル
 const handlerFiles = [
-  'server/src/api/history/index.js',
-  'server/src/api/images/index.js',
   'server/src/api/knowledge-base/images/index.js',
   'server/src/api/knowledge/index.js',
   'server/src/api/machines/machine-types/index.js',

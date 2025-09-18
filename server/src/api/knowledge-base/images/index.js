@@ -1,10 +1,4 @@
-const { app } = require('@azure/functions');
-
-app.http('knowledgeBaseImages', {
-    methods: ['GET', 'POST', 'OPTIONS'],
-    authLevel: 'anonymous',
-    route: 'knowledge-base/images/{category?}/{filename?}',
-    handler: async (request, context) => {
+module.exports = async (context, request) => {
         try {
             context.log('Knowledge Base Images HTTP trigger function processed a request.');
 
