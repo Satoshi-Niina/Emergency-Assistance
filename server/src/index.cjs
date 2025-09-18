@@ -20,6 +20,23 @@ app.get('/api/healthz', (req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Root endpoint for debugging
+app.get('/', (req, res) => {
+  res.status(200).json({ 
+    message: 'Emergency Assistance API Server', 
+    status: 'running',
+    timestamp: new Date().toISOString(),
+    endpoints: [
+      '/api/healthz',
+      '/api/auth/login',
+      '/api/auth/logout',
+      '/api/auth/me',
+      '/api/machines',
+      '/api/users'
+    ]
+  });
+});
+
 // Import Azure Functions handlers using require
 const authLoginHandler = require('./api/auth/login/index.js');
 const authLogoutHandler = require('./api/auth/logout/index.js');
