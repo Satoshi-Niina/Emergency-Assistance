@@ -1,11 +1,6 @@
-const { app } = require('@azure/functions');
 const { BlobServiceClient } = require('@azure/storage-blob');
 
-app.http('dataKnowledgeBase', {
-    methods: ['GET', 'OPTIONS'],
-    authLevel: 'anonymous',
-    route: 'data/knowledge-base',
-    handler: async (request, context) => {
+module.exports = async (context, request) => {
         try {
             context.log('Knowledge base data HTTP trigger function processed a request.');
 
@@ -99,8 +94,7 @@ app.http('dataKnowledgeBase', {
                 })
             };
         }
-    }
-});
+};
 
 // ストリームを文字列に変換するヘルパー関数
 async function streamToString(readableStream) {
