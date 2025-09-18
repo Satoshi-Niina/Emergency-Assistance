@@ -75,7 +75,11 @@ jobs:
             "main": "server.js",
             "type": "commonjs",
             "scripts": {
-              "start": "node server.js"
+              "start": "node server.js",
+              "dev": "node server.js"
+            },
+            "engines": {
+              "node": ">=18.0.0"
             },
             "dependencies": {
               "@azure/storage-blob": "^12.28.0",
