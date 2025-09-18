@@ -1,10 +1,4 @@
-const { app } = require('@azure/functions');
-
-app.http('gptCheck', {
-    methods: ['GET', 'POST', 'OPTIONS'],
-    authLevel: 'anonymous',
-    route: 'gpt-check',
-    handler: async (request, context) => {
+module.exports = async (context, request) => {
         try {
             context.log('GPT Check HTTP trigger function processed a request.');
 

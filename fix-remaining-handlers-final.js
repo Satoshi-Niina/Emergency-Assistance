@@ -3,8 +3,6 @@ const path = require('path');
 
 // 修正対象のハンドラーファイル
 const handlerFiles = [
-  'server/src/api/db-check/index.js',
-  'server/src/api/gpt-check/index.js',
   'server/src/api/history/index.js',
   'server/src/api/images/index.js',
   'server/src/api/knowledge-base/images/index.js',
@@ -49,6 +47,6 @@ function fixHandler(filePath) {
 }
 
 // 全ファイルを修正
-console.log('Starting handler fixes...');
+console.log('Starting final handler fixes...');
 handlerFiles.forEach(fixHandler);
-console.log('Handler fixes completed!');
+console.log('Final handler fixes completed!');

@@ -1,10 +1,4 @@
-const { app } = require('@azure/functions');
-
-app.http('history', {
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    authLevel: 'anonymous',
-    route: 'history/{action?}',
-    handler: async (request, context) => {
+module.exports = async (context, request) => {
         try {
             context.log('History HTTP trigger function processed a request.');
 
