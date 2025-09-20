@@ -81,6 +81,8 @@ jobs:
           fi
           # Copy the main server file to root
           cp ./server/dist/app-production.js ./deploy-backend/server.js
+          # Copy web.config for Azure App Service
+          cp ./web.config ./deploy-backend/web.config
           
           # Verify file structure
           echo "=== Verifying deployment package structure ==="
