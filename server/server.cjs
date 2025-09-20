@@ -50,7 +50,7 @@ if (missingEnvVars.length > 0) {
 console.log('🔧 Environment configuration:', {
   NODE_ENV: process.env.NODE_ENV || 'development',
   PORT: process.env.PORT || '8080',
-  FRONTEND_URL: process.env.FRONTEND_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net',
+  FRONTEND_URL: process.env.FRONTEND_URL || 'https://your-swa.azurestaticapps.net',
   SESSION_SECRET: process.env.SESSION_SECRET ? '[SET]' : '[NOT SET]',
   DATABASE_URL: process.env.DATABASE_URL ? '[SET]' : '[NOT SET]'
 });
@@ -62,7 +62,7 @@ console.log('Express app created');
 app.set('trust proxy', 1);
 
 // CORS設定 - 本番環境用
-const frontendUrl = process.env.FRONTEND_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net';
+const frontendUrl = process.env.FRONTEND_URL || 'https://your-swa.azurestaticapps.net';
 app.use(cors({
   origin: [
     frontendUrl,
@@ -268,7 +268,10 @@ app.use('*', (req, res) => {
 // エラーハンドラー
 app.use((err, req, res, next) => {
   console.error('Server error:', err);
-  res.status(500).json({ error: 'Internal Server Error' });
+  res
+    .status(500)
+    .type("application/json")
+    .send({ error: "internal_error" });
 });
 
 // サーバー起動

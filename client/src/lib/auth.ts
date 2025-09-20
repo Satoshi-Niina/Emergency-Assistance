@@ -1,6 +1,7 @@
 import { apiRequest } from './queryClient';
 import { LoginCredentials } from '@shared/schema';
 import { AUTH_API } from './api/config';
+import { apiFetch } from '../api/apiClient';
 
 /**
  * Login a user with the provided credentials
@@ -29,51 +30,12 @@ export const login = async (credentials: LoginCredentials) => {
       port: window.location.port
     });
     
-    const response = await fetch(AUTH_API.LOGIN, {
+    const userData = await apiFetch('/api/auth/login', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
       body: JSON.stringify(credentials)
     });
     
-    console.log('📡 ログインレスポンス:', { 
-      status: response.status, 
-      ok: response.ok 
-    });
-    
-    console.log('📡 レスポンス受信:', { 
-      status: response.status, 
-      ok: response.ok,
-      statusText: response.statusText,
-      headers: Object.fromEntries(response.headers.entries())
-    });
-    
-    if (!response.ok) {
-      let errorMessage = '認証エラー';
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.message || `HTTP ${response.status}: ${response.statusText}`;
-      } catch (parseError) {
-        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-      }
-      
-      console.error('❌ ログインエラー:', {
-        status: response.status,
-        statusText: response.statusText,
-        message: errorMessage
-      });
-      
-      // 503エラーの場合は特別なメッセージ
-      if (response.status === 503) {
-        throw new Error('バックエンドサーバーが利用できません。しばらく待ってから再試行してください。');
-      }
-      
-      throw new Error(errorMessage);
-    }
-    
-    const userData = await response.json();
+    console.log('📡 ログイン成功:', userData);
     console.log('✅ ログイン成功:', userData);
     return userData;
   } catch (error) {
@@ -96,11 +58,10 @@ export const login = async (credentials: LoginCredentials) => {
  */
 export const logout = async () => {
   try {
-    console.log('🔐 ログアウト試行:', AUTH_API.LOGOUT);
+    console.log('🔐 ログアウト試行');
     
-    const response = await fetch(AUTH_API.LOGOUT, {
-      method: 'POST',
-      credentials: 'include'
+    await apiFetch('/api/auth/logout', {
+      method: 'POST'
     });
   } catch (error) {
     console.error('Logout error:', error);
@@ -114,31 +75,17 @@ export const logout = async () => {
  */
 export const getCurrentUser = async () => {
   try {
-    console.log('🔍 getCurrentUser リクエスト:', AUTH_API.ME);
+    console.log('🔍 getCurrentUser リクエスト');
     
-    const response = await fetch(`${import.meta.env.VITE_API_BASE}/api/auth/me`, {
-      credentials: 'include'
-    });
-    
-    console.log('🔍 getCurrentUser レスポンス:', {
-      status: response.status,
-      ok: response.ok,
-      statusText: response.statusText
-    });
-    
-    if (!response.ok) {
-      if (response.status === 401) {
-        console.log('❌ 認証されていません (401)');
-        return null;
-      }
-      throw new Error(`Failed to get current user: ${response.status} ${response.statusText}`);
-    }
-    
-    const data = await response.json();
+    const data = await apiFetch('/api/auth/me');
     console.log('🔍 getCurrentUser データ:', data);
     return data;
   } catch (error) {
     console.error('❌ Get current user error:', error);
+    if (error instanceof Error && error.message.includes('401')) {
+      console.log('❌ 認証されていません (401)');
+      return null;
+    }
     return null;
   }
 };

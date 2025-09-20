@@ -8,6 +8,7 @@ import {
   CreateUserRequest,
   ExportHistoryItem
 } from '../../types/history';
+import { apiFetch } from '../apiClient';
 
 // 履歴データから機種・機械番号一覧取得
 export const fetchMachineData = async (): Promise<{
@@ -15,18 +16,7 @@ export const fetchMachineData = async (): Promise<{
   machines: Array<{ id: string; machineNumber: string; machineTypeName: string }>;
 }> => {
   try {
-    const response = await fetch('/api/history/machine-data');
-    
-    if (!response.ok) {
-      console.warn(`機種データ取得エラー: ${response.status} ${response.statusText}`);
-      // エラーの場合は空のデータを返す
-      return {
-        machineTypes: [],
-        machines: []
-      };
-    }
-    
-    return response.json();
+    return await apiFetch('/api/history/machine-data');
   } catch (error) {
     console.error('機種データ取得エラー:', error);
     // エラーの場合は空のデータを返す
@@ -102,16 +92,10 @@ export const createHistory = async (data: {
     formData.append('image', data.image);
   }
 
-  const response = await fetch('/api/history', {
+  return await apiFetch('/api/history', {
     method: 'POST',
     body: formData
   });
-  
-  if (!response.ok) {
-    throw new Error(`Failed to create history: ${response.statusText}`);
-  }
-  
-  return response.json();
 };
 
 // 履歴削除
@@ -127,13 +111,7 @@ export const deleteHistory = async (id: string): Promise<void> => {
 
 // 基礎データ取得
 export const fetchBaseData = async (): Promise<BaseDataResponse> => {
-  const response = await fetch('/api/base-data');
-  
-  if (!response.ok) {
-    throw new Error(`Failed to fetch base data: ${response.statusText}`);
-  }
-  
-  return response.json();
+  return await apiFetch('/api/base-data');
 };
 
 // 処理済みファイル一覧取得

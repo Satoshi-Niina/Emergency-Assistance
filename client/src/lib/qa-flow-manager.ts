@@ -1,24 +1,18 @@
+import { apiFetch } from './api/apiClient';
+
 // クライアント側ではサーバーAPIを呼び出す
 async function callOpenAIAPI(prompt: string, useKnowledgeBase: boolean = true): Promise<string> {
+
   try {
-    const response = await fetch('/api/chatgpt', {
+    const response = await apiFetch('/api/chatgpt', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
       body: JSON.stringify({
         text: prompt,
         useOnlyKnowledgeBase: useKnowledgeBase
       })
     });
 
-    if (!response.ok) {
-      throw new Error(`API呼び出しエラー: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data.response || '応答を取得できませんでした。';
+    return response.response || '応答を取得できませんでした。';
   } catch (error) {
     console.error('OpenAI API呼び出しエラー:', error);
     throw error;
