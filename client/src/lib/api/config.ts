@@ -124,7 +124,7 @@ export const AUTH_API = {
   LOGOUT: buildApiUrl('/api/auth/logout'),
   ME: buildApiUrl('/api/auth/me'),
   // デバッグ用テストエンドポイント
-  TEST: buildApiUrl('/api/health'),
+  TEST: buildApiUrl('/api/healthz'),
 };
 
 // ナレッジベースAPIエンドポイント
@@ -140,7 +140,7 @@ export const KNOWLEDGE_API = {
 // チャットAPIエンドポイント
 export const CHAT_API = {
   CHATGPT: buildApiUrl('/api/chatgpt'),
-  HEALTH: buildApiUrl('/api/health'),
+  HEALTH: buildApiUrl('/api/healthz'),
 };
 
 // 設定情報

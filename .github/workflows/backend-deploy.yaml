@@ -32,10 +32,10 @@ jobs:
         working-directory: server
         run: |
           echo "=== Building server application ==="
-          npm run build:api
+          npm run build:prod
           echo "=== Verifying build ==="
-          ls -la src/dist/
-          if [ -f src/dist/index.js ]; then
+          ls -la dist/
+          if [ -f dist/app-production.js ]; then
             echo "✅ Build successful"
           else
             echo "❌ Build failed"
@@ -50,10 +50,19 @@ jobs:
           mkdir -p ./deploy-backend
           
           # Copy built files
-          cp -r ./server/src/dist ./deploy-backend/
-          cp -r ./server/src/api ./deploy-backend/
+          cp -r ./server/dist ./deploy-backend/
+          cp -r ./server/db ./deploy-backend/
+          cp -r ./server/lib ./deploy-backend/
+          cp -r ./server/routes ./deploy-backend/
+          cp -r ./server/services ./deploy-backend/
+          cp -r ./server/middleware ./deploy-backend/
+          cp -r ./server/types ./deploy-backend/
+          cp -r ./server/utils ./deploy-backend/
+          cp -r ./server/shared ./deploy-backend/
+          cp -r ./server/knowledge-base ./deploy-backend/
+          cp -r ./server/migrations ./deploy-backend/
           # Copy the main server file to root
-          cp ./server/src/index.cjs ./deploy-backend/server.js
+          cp ./server/dist/app-production.js ./deploy-backend/server.js
           
           # Verify file structure
           echo "=== Verifying deployment package structure ==="
@@ -67,36 +76,8 @@ jobs:
             ls -la ./deploy-backend/ || echo "deploy-backend directory not found"
           fi
           
-          # Create production package.json
-          cat > ./deploy-backend/package.json << 'EOF'
-          {
-            "name": "emergency-assistance-azure",
-            "version": "1.0.0",
-            "main": "server.js",
-            "type": "commonjs",
-            "scripts": {
-              "start": "node server.js",
-              "dev": "node server.js"
-            },
-            "engines": {
-              "node": ">=18.0.0"
-            },
-            "dependencies": {
-              "@azure/storage-blob": "^12.28.0",
-              "bcryptjs": "^2.4.3",
-              "cors": "^2.8.5",
-              "dotenv": "^16.6.1",
-              "express": "^4.21.2",
-              "express-session": "^1.18.0",
-              "pg": "^8.16.3",
-              "jsonwebtoken": "^9.0.2"
-            },
-            "engines": {
-              "node": ">=20",
-              "npm": ">=10"
-            }
-          }
-          EOF
+          # Copy production package.json from server
+          cp ./server/package.json ./deploy-backend/package.json
           
           # Install production dependencies
           cd ./deploy-backend
@@ -133,10 +114,10 @@ jobs:
           
           # Check backend
           backend_url="https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net"
-          echo "Checking backend: ${backend_url}/health"
+          echo "Checking backend: ${backend_url}/api/health/json"
           
           for i in {1..3}; do
-            backend_status=$(curl -o /dev/null -s -w "%{http_code}" -L "${backend_url}/health")
+            backend_status=$(curl -o /dev/null -s -w "%{http_code}" -L "${backend_url}/api/health/json")
             echo "Backend check $i: $backend_status"
             
             if [ "$backend_status" = "200" ]; then
