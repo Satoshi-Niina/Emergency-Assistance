@@ -1,5 +1,5 @@
 // デバッグ用起動スクリプト
-import fs from 'fs';
+const fs = require('fs');
 
 console.log('🔍 Debug startup script started');
 console.log('🔧 Environment variables:');
@@ -19,7 +19,7 @@ try {
 
 console.log('🚀 Starting simple server...');
 try {
-  await import('./simple-server.js');
+  require('./simple-server.js');
 } catch (error) {
   console.error('❌ Error starting server:', error);
   process.exit(1);

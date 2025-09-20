@@ -1,7 +1,7 @@
 // Azure App Service用の確実な起動スクリプト
-import { spawn } from 'child_process';
-import path from 'path';
-import fs from 'fs';
+const { spawn } = require('child_process');
+const path = require('path');
+const fs = require('fs');
 
 console.log('🚀 Azure App Service起動スクリプト開始');
 console.log('📁 現在のディレクトリ:', process.cwd());
