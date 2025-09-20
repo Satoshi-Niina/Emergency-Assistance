@@ -1,8 +1,8 @@
-import express, { Request, Response } from 'express';
-import cors from 'cors';
-import cookieParser from 'cookie-parser';
-import session from 'express-session';
-import * as path from 'path';
+const express = require('express');
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
+const session = require('express-session');
+const path = require('path');
 
 // CommonJS環境での__dirname取得
 const __dirname = path.resolve('.');
@@ -85,7 +85,7 @@ app.use((req, res, next) => {
 });
 
 // ヘルスチェック
-app.get('/api/health/json', (req: Request, res: Response) => {
+app.get('/api/health/json', (req: any, res: any) => {
   const hasDb = !!process.env.DATABASE_URL;
   const hasBlob = !!process.env.AZURE_STORAGE_CONNECTION_STRING;
   
@@ -101,7 +101,7 @@ app.get('/api/health/json', (req: Request, res: Response) => {
 });
 
 // CORS設定確認用エンドポイント
-app.get('/api/cors-test', (req: Request, res: Response) => {
+app.get('/api/cors-test', (req: any, res: any) => {
   console.log('🔍 CORS test request:', {
     origin: req.headers.origin,
     method: req.method,
@@ -124,7 +124,7 @@ app.get('/api/cors-test', (req: Request, res: Response) => {
 });
 
 // デバッグ用ルート
-app.get('/api/debug/routes', (req: Request, res: Response) => {
+app.get('/api/debug/routes', (req: any, res: any) => {
   res.json({
     message: 'API routes are working',
     timestamp: new Date().toISOString(),
@@ -142,21 +142,21 @@ app.get('/api/debug/routes', (req: Request, res: Response) => {
 // ユーザー管理の基本ルート
 
 // 本番もDB取得APIを利用
-import { usersRouter } from './routes/users';
+const { usersRouter } = require('./routes/users');
 app.use('/api/users', usersRouter);
 
 // 機械管理の基本ルート
 
 // 本番もDB取得APIを利用
-import machinesRouter from './routes/machines';
+const machinesRouter = require('./routes/machines');
 app.use('/api/machines', machinesRouter);
 
 // 認証APIルート（auth）
-import authRouter from './routes/auth';
+const authRouter = require('./routes/auth');
 app.use('/api/auth', authRouter);
 
 // 本番環境用デバッグエンドポイント
-app.get('/api/debug/auth', (req: Request, res: Response) => {
+app.get('/api/debug/auth', (req: any, res: any) => {
   res.json({
     success: true,
     message: '認証APIが利用可能です',
@@ -172,7 +172,7 @@ app.get('/api/debug/auth', (req: Request, res: Response) => {
 });
 
 // ストレージ管理の基本ルート
-app.get('/api/storage/list', async (req: Request, res: Response) => {
+app.get('/api/storage/list', async (req: any, res: any) => {
   try {
     console.log('🔍 本番環境: ストレージ一覧取得リクエスト');
     res.json({
@@ -198,7 +198,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
 }));
 
 // 404ハンドリング
-app.use('*', (req: Request, res: Response) => {
+app.use('*', (req: any, res: any) => {
   if (req.path.startsWith('/api/')) {
     res.status(404).json({
       error: 'API endpoint not found',
@@ -216,7 +216,7 @@ app.use('*', (req: Request, res: Response) => {
 });
 
 // エラーハンドリング
-app.use((err: any, req: Request, res: Response, next: any) => {
+app.use((err: any, req: any, res: any, next: any) => {
   console.error('❌ 本番環境エラー:', err);
   res.status(500).json({
     error: 'Internal server error',
