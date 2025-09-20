@@ -4,11 +4,9 @@ const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const path = require('path');
 
-// __dirname is already available in CommonJS modules
-
 const app = express();
 
-// CORS設定 - より確実な設定
+// CORS設定
 app.use(cors({ 
   origin: [
     'https://witty-river-012f39e00.1.azurestaticapps.net',
@@ -23,7 +21,7 @@ app.use(cors({
   optionsSuccessStatus: 200
 }));
 
-// プリフライトリクエストの明示的な処理
+// プリフライトリクエストの処理
 app.options('*', (req, res) => {
   console.log('🔍 OPTIONS request:', req.path);
   res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
@@ -33,40 +31,36 @@ app.options('*', (req, res) => {
   res.sendStatus(200);
 });
 
-// Cookieパーサーを追加
+// ミドルウェア
 app.use(cookieParser());
-
-// JSONパース
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// セッション設定 - 本番環境用
+// セッション設定
 const isProduction = process.env.NODE_ENV === 'production';
-const sessionConfig = {
+app.use(session({
   secret: process.env.SESSION_SECRET || 'production-secret-key-12345',
   resave: true,
   saveUninitialized: false,
   cookie: {
     secure: isProduction ? true : false,
     httpOnly: true,
-    sameSite: isProduction ? 'none' as const : 'lax' as const,
+    sameSite: isProduction ? 'none' : 'lax',
     maxAge: 1000 * 60 * 60 * 24 * 7, // 7日間
     path: '/',
     domain: undefined
   },
   name: 'emergency-assistance-session',
   rolling: true
-};
+}));
 
 console.log('🔧 本番環境セッション設定:', {
-  secure: sessionConfig.cookie.secure,
-  sameSite: sessionConfig.cookie.sameSite,
+  secure: isProduction ? true : false,
+  sameSite: isProduction ? 'none' : 'lax',
   isProduction
 });
 
-app.use(session(sessionConfig));
-
-// 本番環境専用: APIルートを最優先で処理
+// リクエストログ
 app.use((req, res, next) => {
   console.log(`🔍 本番環境リクエスト: ${req.method} ${req.path}`);
   
@@ -76,15 +70,11 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie, X-Requested-With');
   
-  if (req.path.startsWith('/api/')) {
-    console.log(`✅ APIルート検出: ${req.path}`);
-    return next();
-  }
   next();
 });
 
 // ヘルスチェック
-app.get('/api/health/json', (req: any, res: any) => {
+app.get('/api/health/json', (req, res) => {
   const hasDb = !!process.env.DATABASE_URL;
   const hasBlob = !!process.env.AZURE_STORAGE_CONNECTION_STRING;
   
@@ -100,30 +90,23 @@ app.get('/api/health/json', (req: any, res: any) => {
 });
 
 // CORS設定確認用エンドポイント
-app.get('/api/cors-test', (req: any, res: any) => {
+app.get('/api/cors-test', (req, res) => {
   console.log('🔍 CORS test request:', {
     origin: req.headers.origin,
     method: req.method,
-    path: req.path,
-    headers: req.headers
+    path: req.path
   });
   
   res.json({
     success: true,
     message: 'CORS設定が正常に動作しています',
     timestamp: new Date().toISOString(),
-    origin: req.headers.origin,
-    corsHeaders: {
-      'Access-Control-Allow-Origin': res.getHeader('Access-Control-Allow-Origin'),
-      'Access-Control-Allow-Credentials': res.getHeader('Access-Control-Allow-Credentials'),
-      'Access-Control-Allow-Methods': res.getHeader('Access-Control-Allow-Methods'),
-      'Access-Control-Allow-Headers': res.getHeader('Access-Control-Allow-Headers')
-    }
+    origin: req.headers.origin
   });
 });
 
 // デバッグ用ルート
-app.get('/api/debug/routes', (req: any, res: any) => {
+app.get('/api/debug/routes', (req, res) => {
   res.json({
     message: 'API routes are working',
     timestamp: new Date().toISOString(),
@@ -138,9 +121,6 @@ app.get('/api/debug/routes', (req: any, res: any) => {
   });
 });
 
-// ユーザー管理の基本ルート
-
-// 本番環境用の簡易API（依存関係なし）
 // ユーザー管理API
 app.get('/api/users', (req, res) => {
   res.json({
@@ -196,8 +176,8 @@ app.post('/api/auth/logout', (req, res) => {
   });
 });
 
-// 本番環境用デバッグエンドポイント
-app.get('/api/debug/auth', (req: any, res: any) => {
+// デバッグエンドポイント
+app.get('/api/debug/auth', (req, res) => {
   res.json({
     success: true,
     message: '認証APIが利用可能です',
@@ -206,14 +186,13 @@ app.get('/api/debug/auth', (req: any, res: any) => {
     endpoints: [
       'POST /api/auth/login',
       'GET /api/auth/me',
-      'POST /api/auth/logout',
-      'GET /api/auth/debug/env'
+      'POST /api/auth/logout'
     ]
   });
 });
 
-// ストレージ管理の基本ルート
-app.get('/api/storage/list', async (req: any, res: any) => {
+// ストレージ管理API
+app.get('/api/storage/list', (req, res) => {
   try {
     console.log('🔍 本番環境: ストレージ一覧取得リクエスト');
     res.json({
@@ -232,14 +211,14 @@ app.get('/api/storage/list', async (req: any, res: any) => {
   }
 });
 
-// 静的ファイル配信（最後に配置）
+// 静的ファイル配信
 app.use(express.static(path.join(__dirname, 'public'), {
   etag: true,
   maxAge: '1d'
 }));
 
 // 404ハンドリング
-app.use('*', (req: any, res: any) => {
+app.use('*', (req, res) => {
   if (req.path.startsWith('/api/')) {
     res.status(404).json({
       error: 'API endpoint not found',
@@ -257,7 +236,7 @@ app.use('*', (req: any, res: any) => {
 });
 
 // エラーハンドリング
-app.use((err: any, req: any, res: any, next: any) => {
+app.use((err, req, res, next) => {
   console.error('❌ 本番環境エラー:', err);
   res.status(500).json({
     error: 'Internal server error',
