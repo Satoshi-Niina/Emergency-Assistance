@@ -1,8 +1,11 @@
-// Azure App Service用の簡単な起動スクリプト
+// Azure App Service用の確実な起動スクリプト
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
 console.log('🚀 Azure App Service起動スクリプト開始');
+console.log('📁 現在のディレクトリ:', __dirname);
+console.log('📁 ファイル一覧:', fs.readdirSync(__dirname));
 
 // 環境変数の設定
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
@@ -10,16 +13,29 @@ process.env.PORT = process.env.PORT || 8080;
 
 console.log('🔧 環境設定:', {
   NODE_ENV: process.env.NODE_ENV,
-  PORT: process.env.PORT
+  PORT: process.env.PORT,
+  NODE_VERSION: process.version,
+  PLATFORM: process.platform
 });
 
-// server.jsを起動
+// server.jsの存在確認
 const serverPath = path.join(__dirname, 'server.js');
 console.log('📁 サーバーファイルパス:', serverPath);
 
+if (!fs.existsSync(serverPath)) {
+  console.error('❌ server.jsが見つかりません');
+  console.log('📁 利用可能なファイル:', fs.readdirSync(__dirname));
+  process.exit(1);
+}
+
+console.log('✅ server.jsが見つかりました');
+
+// server.jsを起動
+console.log('🚀 server.jsを起動中...');
 const server = spawn('node', [serverPath], {
   stdio: 'inherit',
-  env: process.env
+  env: process.env,
+  cwd: __dirname
 });
 
 server.on('error', (err) => {
@@ -27,9 +43,10 @@ server.on('error', (err) => {
   process.exit(1);
 });
 
-server.on('exit', (code) => {
-  console.log(`🔄 サーバー終了: コード ${code}`);
+server.on('exit', (code, signal) => {
+  console.log(`🔄 サーバー終了: コード ${code}, シグナル ${signal}`);
   if (code !== 0) {
+    console.error('❌ サーバーが異常終了しました');
     process.exit(code);
   }
 });
@@ -44,3 +61,8 @@ process.on('SIGINT', () => {
   console.log('🛑 SIGINT受信、サーバーを終了します');
   server.kill('SIGINT');
 });
+
+// 定期的なヘルスチェック
+setInterval(() => {
+  console.log('💓 ヘルスチェック: サーバーは動作中です');
+}, 30000);
