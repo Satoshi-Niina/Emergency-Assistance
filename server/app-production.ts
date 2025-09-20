@@ -142,17 +142,17 @@ app.get('/api/debug/routes', (req: Request, res: Response) => {
 // ユーザー管理の基本ルート
 
 // 本番もDB取得APIを利用
-import { usersRouter } from './routes/users.js';
+import { usersRouter } from './routes/users';
 app.use('/api/users', usersRouter);
 
 // 機械管理の基本ルート
 
 // 本番もDB取得APIを利用
-import machinesRouter from './routes/machines.js';
+import machinesRouter from './routes/machines';
 app.use('/api/machines', machinesRouter);
 
 // 認証APIルート（auth）
-import authRouter from './routes/auth.js';
+import authRouter from './routes/auth';
 app.use('/api/auth', authRouter);
 
 // 本番環境用デバッグエンドポイント
@@ -239,4 +239,4 @@ app.listen(PORT, () => {
   console.log(`   - GET /api/storage/list`);
 });
 
-export default app;
+module.exports = app;

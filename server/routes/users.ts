@@ -697,4 +697,4 @@ router.use('*', (req: any, res: any) => {
   });
 });
 
-export { router as usersRouter }; 
+module.exports = { usersRouter: router }; 

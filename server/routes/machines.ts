@@ -473,4 +473,4 @@ router.use('*', (req: any, res: any) => {
   });
 });
 
-export default router; 
+module.exports = router; 
