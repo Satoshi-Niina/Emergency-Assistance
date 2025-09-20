@@ -58,9 +58,27 @@ jobs:
           cp -r ./server/middleware ./deploy-backend/
           cp -r ./server/types ./deploy-backend/
           cp -r ./server/utils ./deploy-backend/
-          cp -r ./server/shared ./deploy-backend/
-          cp -r ./server/knowledge-base ./deploy-backend/
-          cp -r ./server/migrations ./deploy-backend/
+          # Copy shared directory if it exists and is not empty
+          if [ -d ./server/shared ] && [ "$(ls -A ./server/shared)" ]; then
+            cp -r ./server/shared ./deploy-backend/
+            echo "✅ shared directory copied"
+          else
+            echo "⚠️ shared directory not found or empty, skipping"
+          fi
+          # Copy knowledge-base directory if it exists and is not empty
+          if [ -d ./server/knowledge-base ] && [ "$(ls -A ./server/knowledge-base)" ]; then
+            cp -r ./server/knowledge-base ./deploy-backend/
+            echo "✅ knowledge-base directory copied"
+          else
+            echo "⚠️ knowledge-base directory not found or empty, skipping"
+          fi
+          # Copy migrations directory if it exists and is not empty
+          if [ -d ./server/migrations ] && [ "$(ls -A ./server/migrations)" ]; then
+            cp -r ./server/migrations ./deploy-backend/
+            echo "✅ migrations directory copied"
+          else
+            echo "⚠️ migrations directory not found or empty, skipping"
+          fi
           # Copy the main server file to root
           cp ./server/dist/app-production.js ./deploy-backend/server.js
           
