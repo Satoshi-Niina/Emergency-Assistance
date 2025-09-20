@@ -85,10 +85,17 @@ app.use((err, req, res, next) => {
   });
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 8080;
 
-app.listen(PORT, () => {
-  console.log(`🚀 Simple server running on port ${PORT}`);
+// Azure環境での起動ログ
+console.log('🔧 Environment variables:');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('PORT:', process.env.PORT);
+console.log('WEBSITE_SITE_NAME:', process.env.WEBSITE_SITE_NAME);
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Simple server running on 0.0.0.0:${PORT}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'production'}`);
   console.log(`📊 Available endpoints:`);
   console.log(`   - GET /api/health/json`);
   console.log(`   - GET /api/auth/me`);
