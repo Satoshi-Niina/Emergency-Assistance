@@ -1,7 +1,6 @@
 {
   "name": "emergency-assistance-server",
   "version": "1.0.0",
-  "type": "module",
   "main": "production-server-standalone.js",
   "scripts": {
     "dev": "tsx index.dev.ts",
