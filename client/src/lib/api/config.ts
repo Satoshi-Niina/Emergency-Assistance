@@ -43,7 +43,11 @@ export const API_BASE_URL = (() => {
     if (isReplitEnvironment) {
       return `${window.location.protocol}//${window.location.hostname.split(':')[0]}:3000`;
     }
-    // その他の本番環境
+    // その他の本番環境（ローカル本番シミュレーション含む）
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      console.log('✅ ローカル本番シミュレーション環境を検出');
+      return 'http://localhost:3003';
+    }
     return window.location.origin;
   }
   

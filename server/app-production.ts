@@ -1,5 +1,7 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import session from 'express-session';
 import { fileURLToPath } from 'url';
 import * as path from 'path';
 
@@ -17,9 +19,38 @@ app.use(cors({
   credentials: true 
 }));
 
+// Cookieパーサーを追加
+app.use(cookieParser());
+
 // JSONパース
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// セッション設定 - 本番環境用
+const isProduction = process.env.NODE_ENV === 'production';
+const sessionConfig = {
+  secret: process.env.SESSION_SECRET || 'production-secret-key-12345',
+  resave: true,
+  saveUninitialized: false,
+  cookie: {
+    secure: isProduction ? true : false,
+    httpOnly: true,
+    sameSite: isProduction ? 'none' as const : 'lax' as const,
+    maxAge: 1000 * 60 * 60 * 24 * 7, // 7日間
+    path: '/',
+    domain: undefined
+  },
+  name: 'emergency-assistance-session',
+  rolling: true
+};
+
+console.log('🔧 本番環境セッション設定:', {
+  secure: sessionConfig.cookie.secure,
+  sameSite: sessionConfig.cookie.sameSite,
+  isProduction
+});
+
+app.use(session(sessionConfig));
 
 // 本番環境専用: APIルートを最優先で処理
 app.use((req, res, next) => {
@@ -78,6 +109,22 @@ app.use('/api/machines', machinesRouter);
 // 認証APIルート（auth）
 import authRouter from './routes/auth.js';
 app.use('/api/auth', authRouter);
+
+// 本番環境用デバッグエンドポイント
+app.get('/api/debug/auth', (req: Request, res: Response) => {
+  res.json({
+    success: true,
+    message: '認証APIが利用可能です',
+    timestamp: new Date().toISOString(),
+    environment: 'production',
+    endpoints: [
+      'POST /api/auth/login',
+      'GET /api/auth/me',
+      'POST /api/auth/logout',
+      'GET /api/auth/debug/env'
+    ]
+  });
+});
 
 // ストレージ管理の基本ルート
 app.get('/api/storage/list', async (req: Request, res: Response) => {

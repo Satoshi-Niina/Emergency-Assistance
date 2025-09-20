@@ -49,7 +49,7 @@ Write-Host ""
 Write-Host "✅ 本番環境シミュレーションが完了しました！" -ForegroundColor Green
 Write-Host "  - バックエンド: http://localhost:3003" -ForegroundColor White
 Write-Host "  - フロントエンド: http://localhost:5173" -ForegroundColor White
-Write-Host "  - テストユーザー: niina / 正しいパスワード" -ForegroundColor White
+Write-Host "  - テストユーザー: niina / G&896845" -ForegroundColor White
 
 Write-Host ""
 Write-Host "🧪 本番環境シミュレーションテスト:" -ForegroundColor Cyan

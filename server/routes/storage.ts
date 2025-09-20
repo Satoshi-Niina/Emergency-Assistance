@@ -12,11 +12,8 @@ router.get('/list', async (req, res) => {
     console.log('🔍 ストレージ一覧取得リクエスト:', { connectionString: !!connectionString, containerName, blobPrefix });
     
     if (!connectionString) {
-      console.error('❌ Azure Storage接続文字列が設定されていません');
-      return res.status(500).type('application/json').json({ 
-        error: 'storage_config_error', 
-        message: 'Azure Storage connection string not configured' 
-      });
+      console.warn('⚠️ Azure Storage接続文字列が設定されていません。空のリストを返します。');
+      return res.status(200).type('application/json').json([]);
     }
     
     const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);

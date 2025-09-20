@@ -520,6 +520,41 @@ app.get('/api/machines/machine-types', async (req, res) => {
   }
 });
 
+// ストレージ一覧取得API（本番環境互換）
+app.get('/api/storage/list', async (req, res) => {
+  try {
+    console.log('[API] ストレージ一覧を取得中...');
+    
+    // ローカルでは空のリストを返す（本番環境ではAzure Blob Storageから取得）
+    const storageList = [];
+    
+    res.status(200).json(storageList);
+  } catch (error) {
+    console.error('[API] エラー:', error);
+    res.status(500).json({ success: false, message: 'ストレージ一覧の取得に失敗しました' });
+  }
+});
+
+// ナレッジベースAPI（本番環境互換）
+app.get('/api/knowledge-base', async (req, res) => {
+  try {
+    console.log('[API] ナレッジベースデータを取得中...');
+    
+    // ローカルでは空のデータを返す（本番環境ではAzure Blob Storageから取得）
+    const knowledgeData = [];
+    
+    res.status(200).json({
+      success: true,
+      data: knowledgeData,
+      total: knowledgeData.length,
+      message: 'ローカル環境: ナレッジベースデータは空です'
+    });
+  } catch (error) {
+    console.error('[API] エラー:', error);
+    res.status(500).json({ success: false, message: 'ナレッジベースデータの取得に失敗しました' });
+  }
+});
+
 // 不足しているAPIエンドポイントを追加
 
 // 機械タイプ一覧取得API

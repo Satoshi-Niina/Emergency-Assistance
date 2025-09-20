@@ -3,7 +3,7 @@
     {
       "route": "/api/*",
       "allowedRoles": ["anonymous"],
-      "rewrite": "https://<your-api>.azurewebsites.net/api/{*}",
+      "rewrite": "https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/api/{*}",
       "forwardHeaders": true
     },
     {
