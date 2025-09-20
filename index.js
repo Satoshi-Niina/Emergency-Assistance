@@ -1,2 +1,2 @@
-// エントリーポイント: デバッグ版起動スクリプトを使用
-require('./start-debug.js');
+// エントリーポイント: ESMサーバーにリダイレクト
+import('./server/index.js');
