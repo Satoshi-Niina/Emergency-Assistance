@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "tsx index.dev.ts",
     "build": "tsc",
-    "build:prod": "tsc app-production.ts --outDir dist --target es2020 --module commonjs --moduleResolution node --esModuleInterop --allowSyntheticDefaultImports --skipLibCheck --resolveJsonModule --declaration false --removeComments true",
+    "build:prod": "tsc app-production.ts --outDir dist --target es2020 --module commonjs --moduleResolution node --esModuleInterop --allowSyntheticDefaultImports --skipLibCheck --resolveJsonModule --declaration false --removeComments true --lib es2020,dom",
     "build:v2": "tsc azure-production-server-v2.ts --outDir dist --target es2020 --module commonjs --moduleResolution node --esModuleInterop --allowSyntheticDefaultImports --skipLibCheck --resolveJsonModule --declaration false --removeComments true",
     "build:server": "tsc -p tsconfig.build.json",
     "build:api": "tsc -p src/tsconfig.server.json",

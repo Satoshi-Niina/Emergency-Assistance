@@ -4,6 +4,7 @@ import bcrypt from 'bcrypt';
 import { db } from '../db/index';
 import { users } from '../db/schema';
 import { eq } from 'drizzle-orm';
+import '../types/session';
 
 const router = express.Router();
 

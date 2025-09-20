@@ -2,10 +2,9 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
-import { fileURLToPath } from 'url';
 import * as path from 'path';
 
-const __filename = fileURLToPath(import.meta.url);
+// CommonJS環境での__dirname取得
 const __dirname = path.dirname(__filename);
 
 const app = express();
