@@ -5,7 +5,7 @@ import session from 'express-session';
 import * as path from 'path';
 
 // CommonJS環境での__dirname取得
-const __dirname = path.dirname(__filename);
+const __dirname = path.resolve('.');
 
 const app = express();
 
@@ -146,7 +146,7 @@ app.get('/api/storage/list', async (req: Request, res: Response) => {
 });
 
 // 静的ファイル配信（最後に配置）
-app.use(express.static(path.join(__dirname, '../public'), {
+app.use(express.static(path.join(__dirname, 'public'), {
   etag: true,
   maxAge: '1d'
 }));
