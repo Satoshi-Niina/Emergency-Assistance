@@ -1,4 +1,6 @@
 // デバッグ用起動スクリプト
+import fs from 'fs';
+
 console.log('🔍 Debug startup script started');
 console.log('🔧 Environment variables:');
 console.log('NODE_ENV:', process.env.NODE_ENV);
@@ -8,7 +10,6 @@ console.log('WEBSITE_NODE_DEFAULT_VERSION:', process.env.WEBSITE_NODE_DEFAULT_VE
 
 console.log('📁 Current directory:', process.cwd());
 console.log('📁 Files in current directory:');
-const fs = require('fs');
 try {
   const files = fs.readdirSync('.');
   console.log(files);
@@ -18,7 +19,7 @@ try {
 
 console.log('🚀 Starting simple server...');
 try {
-  require('./simple-server.js');
+  await import('./simple-server.js');
 } catch (error) {
   console.error('❌ Error starting server:', error);
   process.exit(1);

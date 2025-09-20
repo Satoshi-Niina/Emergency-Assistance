@@ -1,11 +1,11 @@
 // Azure App Service用の確実な起動スクリプト
-const { spawn } = require('child_process');
-const path = require('path');
-const fs = require('fs');
+import { spawn } from 'child_process';
+import path from 'path';
+import fs from 'fs';
 
 console.log('🚀 Azure App Service起動スクリプト開始');
-console.log('📁 現在のディレクトリ:', __dirname);
-console.log('📁 ファイル一覧:', fs.readdirSync(__dirname));
+console.log('📁 現在のディレクトリ:', process.cwd());
+console.log('📁 ファイル一覧:', fs.readdirSync(process.cwd()));
 
 // 環境変数の設定
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
@@ -19,23 +19,23 @@ console.log('🔧 環境設定:', {
 });
 
 // server.jsの存在確認
-const serverPath = path.join(__dirname, 'server.js');
+const serverPath = path.join(process.cwd(), 'production-server-standalone.js');
 console.log('📁 サーバーファイルパス:', serverPath);
 
 if (!fs.existsSync(serverPath)) {
-  console.error('❌ server.jsが見つかりません');
-  console.log('📁 利用可能なファイル:', fs.readdirSync(__dirname));
+  console.error('❌ production-server-standalone.jsが見つかりません');
+  console.log('📁 利用可能なファイル:', fs.readdirSync(process.cwd()));
   process.exit(1);
 }
 
-console.log('✅ server.jsが見つかりました');
+console.log('✅ production-server-standalone.jsが見つかりました');
 
-// server.jsを起動
-console.log('🚀 server.jsを起動中...');
+// production-server-standalone.jsを起動
+console.log('🚀 production-server-standalone.jsを起動中...');
 const server = spawn('node', [serverPath], {
   stdio: 'inherit',
   env: process.env,
-  cwd: __dirname
+  cwd: process.cwd()
 });
 
 server.on('error', (err) => {

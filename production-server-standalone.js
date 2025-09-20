@@ -1,8 +1,8 @@
-const express = require('express');
-const cors = require('cors');
-const cookieParser = require('cookie-parser');
-const session = require('express-session');
-const path = require('path');
+import express from 'express';
+import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import session from 'express-session';
+import path from 'path';
 
 const app = express();
 
@@ -259,4 +259,4 @@ app.listen(PORT, () => {
   console.log(`   - GET /api/storage/list`);
 });
 
-module.exports = app;
+export default app;
