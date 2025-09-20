@@ -80,33 +80,28 @@ jobs:
             echo "⚠️ migrations directory not found or empty, skipping"
           fi
           # Copy the main server file to root
-          cp ./server/dist/app-production.js ./deploy-backend/server.js
+          cp ./server/server.cjs ./deploy-backend/server.cjs
           # Copy web.config for Azure App Service
           cp ./web.config ./deploy-backend/web.config
-          # Copy start script for Azure App Service
-          cp ./start.js ./deploy-backend/start.js
-          # Copy index.js for Azure App Service
-          cp ./server/index.js ./deploy-backend/index.js
+          # Copy package.json and package-lock.json
+          cp ./server/package.json ./deploy-backend/package.json
+          cp ./server/package-lock.json ./deploy-backend/package-lock.json
+          # Install production dependencies
+          cd ./deploy-backend && npm ci --omit=dev && cd ..
           
           # Verify file structure
           echo "=== Verifying deployment package structure ==="
           ls -la ./deploy-backend/
-          echo "=== Checking for server.js ==="
-          if [ -f ./deploy-backend/server.js ]; then
-            echo "✅ server.js found in root"
+          echo "=== Checking for server.cjs ==="
+          if [ -f ./deploy-backend/server.cjs ]; then
+            echo "✅ server.cjs found in root"
           else
-            echo "❌ server.js NOT found in root"
+            echo "❌ server.cjs NOT found in root"
             echo "Available files in deploy-backend:"
             ls -la ./deploy-backend/ || echo "deploy-backend directory not found"
           fi
           
-          # Copy production package.json from server
-          cp ./server/package.json ./deploy-backend/package.json
-          
-          # Install production dependencies
-          cd ./deploy-backend
-          npm install --omit=dev --no-audit --prefer-offline
-          cd ..
+          # Production dependencies already installed above
           
           echo "=== Backend deployment package ready ==="
           echo "Backend package size:"
