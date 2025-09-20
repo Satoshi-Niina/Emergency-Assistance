@@ -2,7 +2,6 @@
   "name": "emergency-assistance-server",
   "version": "1.0.0",
   "main": "index.js",
-  "type": "module",
   "scripts": {
     "dev": "tsx index.dev.ts",
     "build": "tsc",
