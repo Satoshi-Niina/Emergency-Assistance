@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // CommonJS統一エントリーポイント
-require('dotenv').config();
+try { require('dotenv').config(); } catch (e) { /* optional in prod */ }
 
 const express = require('express');
 const cors = require('cors');

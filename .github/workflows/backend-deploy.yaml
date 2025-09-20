@@ -79,14 +79,26 @@ jobs:
           else
             echo "⚠️ migrations directory not found or empty, skipping"
           fi
-          # Copy the main server file to root
-          cp ./server/server.cjs ./deploy-backend/server.cjs
+          # Install production dependencies in server directory
+          cd ./server
+          npm ci --omit=dev --no-audit --prefer-offline
+          cd ..
+          
+          # Copy server directory contents to deploy-backend
+          cp -r ./server/* ./deploy-backend/
           # Copy web.config for Azure App Service
           cp ./web.config ./deploy-backend/web.config
-          # Copy package.json
-          cp ./server/package.json ./deploy-backend/package.json
-          # Install production dependencies
-          cd ./deploy-backend && npm install --omit=dev --no-audit --prefer-offline && cd ..
+          
+          # Sanity checks
+          echo "=== Sanity checks ==="
+          test -f ./deploy-backend/server.cjs || (echo "❌ server.cjs not found" && exit 1)
+          echo "✅ server.cjs found"
+          
+          # Check critical dependencies
+          cd ./deploy-backend
+          node -e "['express','dotenv','cors','cookie-parser','express-session'].forEach(m=>{try{require.resolve(m)}catch(e){console.error('missing',m);process.exit(1)}})"
+          echo "✅ All critical dependencies resolved"
+          cd ..
           
           # Verify file structure
           echo "=== Verifying deployment package structure ==="
