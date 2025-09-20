@@ -9,14 +9,30 @@ const __dirname = path.resolve('.');
 
 const app = express();
 
-// CORS設定
+// CORS設定 - より確実な設定
 app.use(cors({ 
   origin: [
     'https://witty-river-012f39e00.1.azurestaticapps.net',
-    'http://localhost:5173'
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:3003'
   ], 
-  credentials: true 
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With'],
+  optionsSuccessStatus: 200
 }));
+
+// プリフライトリクエストの明示的な処理
+app.options('*', (req, res) => {
+  console.log('🔍 OPTIONS request:', req.path);
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie, X-Requested-With');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.sendStatus(200);
+});
 
 // Cookieパーサーを追加
 app.use(cookieParser());
@@ -54,6 +70,13 @@ app.use(session(sessionConfig));
 // 本番環境専用: APIルートを最優先で処理
 app.use((req, res, next) => {
   console.log(`🔍 本番環境リクエスト: ${req.method} ${req.path}`);
+  
+  // CORSヘッダーを明示的に設定
+  res.header('Access-Control-Allow-Origin', req.headers.origin || 'https://witty-river-012f39e00.1.azurestaticapps.net');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie, X-Requested-With');
+  
   if (req.path.startsWith('/api/')) {
     console.log(`✅ APIルート検出: ${req.path}`);
     return next();
@@ -73,6 +96,29 @@ app.get('/api/health/json', (req: Request, res: Response) => {
       hasDb,
       hasBlob,
       nodeEnv: process.env.NODE_ENV || 'development'
+    }
+  });
+});
+
+// CORS設定確認用エンドポイント
+app.get('/api/cors-test', (req: Request, res: Response) => {
+  console.log('🔍 CORS test request:', {
+    origin: req.headers.origin,
+    method: req.method,
+    path: req.path,
+    headers: req.headers
+  });
+  
+  res.json({
+    success: true,
+    message: 'CORS設定が正常に動作しています',
+    timestamp: new Date().toISOString(),
+    origin: req.headers.origin,
+    corsHeaders: {
+      'Access-Control-Allow-Origin': res.getHeader('Access-Control-Allow-Origin'),
+      'Access-Control-Allow-Credentials': res.getHeader('Access-Control-Allow-Credentials'),
+      'Access-Control-Allow-Methods': res.getHeader('Access-Control-Allow-Methods'),
+      'Access-Control-Allow-Headers': res.getHeader('Access-Control-Allow-Headers')
     }
   });
 });
