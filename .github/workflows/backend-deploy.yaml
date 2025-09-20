@@ -83,11 +83,10 @@ jobs:
           cp ./server/server.cjs ./deploy-backend/server.cjs
           # Copy web.config for Azure App Service
           cp ./web.config ./deploy-backend/web.config
-          # Copy package.json and package-lock.json
+          # Copy package.json
           cp ./server/package.json ./deploy-backend/package.json
-          cp ./server/package-lock.json ./deploy-backend/package-lock.json
           # Install production dependencies
-          cd ./deploy-backend && npm ci --omit=dev && cd ..
+          cd ./deploy-backend && npm install --omit=dev --no-audit --prefer-offline && cd ..
           
           # Verify file structure
           echo "=== Verifying deployment package structure ==="
