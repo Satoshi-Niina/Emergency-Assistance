@@ -12,7 +12,8 @@
     "build:api": "tsc -p src/tsconfig.server.json",
     "start": "tsx --env-file=.env server.ts",
     "start:prod": "node dist/server.js",
-    "start:api": "node dist/app-production.js"
+    "start:api": "node dist/app-production.js",
+    "start:azure": "node start.js"
   },
   "dependencies": {
     "@azure/functions": "^4.0.0",

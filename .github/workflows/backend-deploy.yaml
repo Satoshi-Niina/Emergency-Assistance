@@ -83,6 +83,8 @@ jobs:
           cp ./server/dist/app-production.js ./deploy-backend/server.js
           # Copy web.config for Azure App Service
           cp ./web.config ./deploy-backend/web.config
+          # Copy start script for Azure App Service
+          cp ./start.js ./deploy-backend/start.js
           
           # Verify file structure
           echo "=== Verifying deployment package structure ==="
