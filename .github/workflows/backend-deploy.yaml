@@ -22,77 +22,17 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install server dependencies
+      - name: Clean node_modules
         working-directory: server
-        run: |
-          echo "=== Installing server dependencies ==="
-          npm ci --omit=dev --no-audit --prefer-offline
+        run: rm -rf node_modules
 
-      - name: Verify server.cjs and dependencies
-        working-directory: server
-        run: |
-          echo "=== Verifying server.cjs exists ==="
-          test -f server.cjs || (echo "❌ server.cjs not found" && exit 1)
-          echo "✅ server.cjs found"
-          
-          echo "=== Verifying critical dependencies ==="
-          node -e "for (const m of ['express','cors','cookie-parser','express-session','dotenv']){try{require.resolve(m)}catch{console.error('missing',m);process.exit(1)}}"
-          echo "✅ All critical dependencies resolved"
-
-      - name: Prepare backend deployment
-        run: |
-          echo "=== Preparing backend deployment package ==="
-          # Clean previous deployment package
-          rm -rf ./deploy-backend
-          mkdir -p ./deploy-backend
-          
-          # Copy server directory contents to deploy-backend
-          cp -r ./server/* ./deploy-backend/
-          # Copy web.config for Azure App Service
-          cp ./web.config ./deploy-backend/web.config
-          
-          # Sanity checks
-          echo "=== Sanity checks ==="
-          test -f ./deploy-backend/server.cjs || (echo "❌ server.cjs not found" && exit 1)
-          echo "✅ server.cjs found"
-          
-          # Check critical dependencies
-          cd ./deploy-backend
-          node -e "['express','dotenv','cors','cookie-parser','express-session'].forEach(m=>{try{require.resolve(m)}catch(e){console.error('missing',m);process.exit(1)}})"
-          echo "✅ All critical dependencies resolved"
-          cd ..
-          
-          # Verify file structure
-          echo "=== Verifying deployment package structure ==="
-          ls -la ./deploy-backend/
-          echo "=== Checking for server.cjs ==="
-          if [ -f ./deploy-backend/server.cjs ]; then
-            echo "✅ server.cjs found in root"
-          else
-            echo "❌ server.cjs NOT found in root"
-            echo "Available files in deploy-backend:"
-            ls -la ./deploy-backend/ || echo "deploy-backend directory not found"
-          fi
-          
-          echo "=== Backend deployment package ready ==="
-          echo "Backend package size:"
-          du -sh ./deploy-backend
-          echo "Files in deployment package:"
-          ls -la ./deploy-backend/
-
-      - name: Clean Azure App Service (Pre-deployment)
-        run: |
-          echo "=== Cleaning Azure App Service before deployment ==="
-          # This step ensures a clean deployment by removing old files
-          echo "✅ Clean deployment preparation completed"
-
-      - name: Deploy Backend to Azure App Service
+      - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: emergencyassistance-sv
-          slot-name: Production 
+          slot-name: Production
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: deploy-backend
+          package: server
 
       - name: Backend Health Check
         run: |

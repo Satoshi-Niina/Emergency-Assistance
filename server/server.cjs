@@ -3,14 +3,20 @@
 console.log('Starting server...');
 
 // CommonJS統一エントリーポイント
-// 例外可視化
+// 例外可視化（本番環境ではプロセスを落とさない）
 process.on('unhandledRejection', e => { 
   console.error('UNHANDLED_REJECTION', e); 
-  process.exit(1); 
+  // 本番環境ではプロセスを落とさない
+  if (process.env.NODE_ENV !== 'production') {
+    process.exit(1); 
+  }
 });
 process.on('uncaughtException', e => { 
   console.error('UNCAUGHT_EXCEPTION', e); 
-  process.exit(1); 
+  // 本番環境ではプロセスを落とさない
+  if (process.env.NODE_ENV !== 'production') {
+    process.exit(1); 
+  }
 });
 
 try { 
@@ -30,6 +36,25 @@ const path = require('path');
 
 console.log('Dependencies loaded successfully');
 
+// 必須環境変数の存在チェック
+const requiredEnvVars = ['NODE_ENV'];
+const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
+
+if (missingEnvVars.length > 0) {
+  console.warn('⚠️ Missing environment variables:', missingEnvVars);
+  console.warn('⚠️ Server will continue with default values');
+} else {
+  console.log('✅ All required environment variables are set');
+}
+
+console.log('🔧 Environment configuration:', {
+  NODE_ENV: process.env.NODE_ENV || 'development',
+  PORT: process.env.PORT || '8080',
+  FRONTEND_URL: process.env.FRONTEND_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net',
+  SESSION_SECRET: process.env.SESSION_SECRET ? '[SET]' : '[NOT SET]',
+  DATABASE_URL: process.env.DATABASE_URL ? '[SET]' : '[NOT SET]'
+});
+
 const app = express();
 console.log('Express app created');
 
@@ -39,7 +64,13 @@ app.set('trust proxy', 1);
 // CORS設定 - 本番環境用
 const frontendUrl = process.env.FRONTEND_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net';
 app.use(cors({
-  origin: [frontendUrl, 'http://localhost:3000', 'http://localhost:5173'],
+  origin: [
+    frontendUrl,
+    'https://witty-river-012f39e00.1.azurestaticapps.net',
+    'https://*.azurestaticapps.net', // Static Web Apps のワイルドカードドメイン
+    'http://localhost:3000', 
+    'http://localhost:5173'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With'],
@@ -90,7 +121,12 @@ app.get('/', (req, res) => {
 
 // ヘルスチェック
 app.get('/healthz', (req, res) => {
-  res.status(200).send('ok');
+  res.status(200).json({ status: 'ok' });
+});
+
+// 疎通確認用エンドポイント
+app.get('/ping', (req, res) => {
+  res.status(200).send('pong');
 });
 
 // API ルート

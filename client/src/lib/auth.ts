@@ -116,7 +116,7 @@ export const getCurrentUser = async () => {
   try {
     console.log('🔍 getCurrentUser リクエスト:', AUTH_API.ME);
     
-    const response = await fetch(AUTH_API.ME, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE}/api/auth/me`, {
       credentials: 'include'
     });
     

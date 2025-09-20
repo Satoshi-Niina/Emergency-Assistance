@@ -36,6 +36,7 @@ FRONTEND_URL=https://witty-river-012f39e00.1.azurestaticapps.net
 
 ### フロントエンド (Static Web Apps)
 ```
+VITE_API_BASE=https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net
 VITE_API_BASE_URL=https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net
 ```
 

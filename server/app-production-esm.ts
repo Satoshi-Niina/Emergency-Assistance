@@ -4,6 +4,11 @@ import cookieParser from 'cookie-parser';
 import session from 'express-session';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
+import { eq } from 'drizzle-orm';
+import { users } from './db/schema.js';
+import bcrypt from 'bcryptjs';
 
 // ESM用__dirname取得
 const __filename = fileURLToPath(import.meta.url);
@@ -11,10 +16,28 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// データベース接続設定
+const connectionString = process.env.DATABASE_URL || 'postgresql://satoshi_niina:SecurePass2025ABC@emergencyassistance-db.postgres.database.azure.com:5432/emergency_assistance?sslmode=require';
+const client = postgres(connectionString, {
+  ssl: { rejectUnauthorized: false },
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 0,
+});
+const db = drizzle(client);
+
+console.log('🔧 データベース接続設定:', {
+  hasConnectionString: !!process.env.DATABASE_URL,
+  connectionString: connectionString.substring(0, 50) + '...'
+});
+
 // CORS設定
 app.use(cors({ 
   origin: [
     'https://witty-river-012f39e00.1.azurestaticapps.net',
+    'https://*.azurestaticapps.net', // Static Web Apps のワイルドカードドメイン
     'http://localhost:5173',
     'http://localhost:3000',
     'http://localhost:3001',
@@ -156,29 +179,162 @@ app.get('/api/machines/all-machines', (req, res) => {
 });
 
 // 認証API
-app.post('/api/auth/login', (req, res) => {
-  res.json({
-    success: true,
-    message: 'ログインAPI（本番環境）',
-    timestamp: new Date().toISOString()
-  });
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    
+    console.log('🔐 ログイン試行:', { username });
+    
+    if (!username || !password) {
+      return res.status(400).json({
+        success: false,
+        error: 'ユーザー名とパスワードが必要です'
+      });
+    }
+    
+    // データベースからユーザーを検索
+    const user = await db.select().from(users).where(eq(users.username, username)).limit(1);
+    
+    if (user.length === 0) {
+      console.log('❌ User not found:', username);
+      return res.status(401).json({
+        success: false,
+        error: 'ユーザー名またはパスワードが間違っています'
+      });
+    }
+    
+    const foundUser = user[0];
+    
+    // パスワードを検証
+    const isValidPassword = await bcrypt.compare(password, foundUser.password);
+    
+    if (!isValidPassword) {
+      console.log('❌ Invalid password for user:', username);
+      return res.status(401).json({
+        success: false,
+        error: 'ユーザー名またはパスワードが間違っています'
+      });
+    }
+    
+    // セッションにユーザー情報を保存
+    req.session.userId = foundUser.id;
+    req.session.username = foundUser.username;
+    req.session.userRole = foundUser.role;
+    
+    console.log('✅ Login successful:', { id: foundUser.id, username: foundUser.username, role: foundUser.role });
+    
+    res.json({
+      success: true,
+      user: {
+        id: foundUser.id,
+        username: foundUser.username,
+        displayName: foundUser.displayName || foundUser.username,
+        role: foundUser.role,
+        department: foundUser.department || 'General'
+      }
+    });
+  } catch (error) {
+    console.error('❌ Login error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'サーバーエラーが発生しました'
+    });
+  }
 });
 
-app.get('/api/auth/me', (req, res) => {
-  res.json({
-    success: true,
-    message: 'ユーザー情報取得API（本番環境）',
-    timestamp: new Date().toISOString(),
-    user: null
-  });
+app.get('/api/auth/me', async (req, res) => {
+  try {
+    console.log('🔍 /api/auth/me リクエスト:', {
+      session: req.session,
+      sessionId: req.session?.id,
+      userId: req.session?.userId,
+      userRole: req.session?.userRole,
+      headers: {
+        cookie: req.headers.cookie ? '[SET]' : '[NOT SET]',
+        origin: req.headers.origin,
+        host: req.headers.host,
+        referer: req.headers.referer
+      }
+    });
+    
+    // セッションからユーザーIDを取得
+    const userId = req.session?.userId;
+    
+    if (!userId) {
+      console.log('❌ No user ID in session');
+      return res.status(401).json({
+        success: false,
+        error: '認証されていません'
+      });
+    }
+
+    console.log('🔍 Searching user by ID:', userId);
+    // データベースからユーザー情報を取得
+    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    
+    if (user.length === 0) {
+      console.log('❌ User not found in database:', userId);
+      return res.status(401).json({
+        success: false,
+        error: 'ユーザーが見つかりません'
+      });
+    }
+
+    const foundUser = user[0];
+    console.log('✅ User found:', { id: foundUser.id, username: foundUser.username, role: foundUser.role });
+    
+    return res.json({
+      success: true,
+      user: {
+        id: foundUser.id,
+        username: foundUser.username,
+        displayName: foundUser.displayName || foundUser.username,
+        role: foundUser.role,
+        department: foundUser.department || 'General'
+      }
+    });
+  } catch (error) {
+    console.error('❌ Get user error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'サーバーエラーが発生しました'
+    });
+  }
 });
 
 app.post('/api/auth/logout', (req, res) => {
-  res.json({
-    success: true,
-    message: 'ログアウトAPI（本番環境）',
-    timestamp: new Date().toISOString()
-  });
+  try {
+    console.log('🔓 ログアウト試行:', {
+      sessionId: req.session?.id,
+      userId: req.session?.userId
+    });
+    
+    // セッションを破棄
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('❌ Session destroy error:', err);
+        return res.status(500).json({
+          success: false,
+          error: 'ログアウトに失敗しました'
+        });
+      }
+      
+      // クッキーをクリア
+      res.clearCookie('emergency-assistance-session');
+      
+      console.log('✅ Logout successful');
+      res.json({
+        success: true,
+        message: 'ログアウトしました'
+      });
+    });
+  } catch (error) {
+    console.error('❌ Logout error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'サーバーエラーが発生しました'
+    });
+  }
 });
 
 // デバッグエンドポイント

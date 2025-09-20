@@ -12,15 +12,16 @@ export default defineConfig(({ command, mode }) => {
   // 環境変数を読み込み
   const env = loadEnv(mode, process.cwd(), '');
   
-  // APIのベースURLを環境変数から取得（VITE_API_BASE_URLのみ使用）
-  const apiBaseUrl = env.VITE_API_BASE_URL || 'http://localhost:3003';
+  // APIのベースURLを環境変数から取得（VITE_API_BASEを使用）
+  const apiBaseUrl = env.VITE_API_BASE || env.VITE_API_BASE_URL || 'https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net';
   const serverPort = parseInt(env.PORT || '3003');
   const clientPort = parseInt(env.CLIENT_PORT || '5173');
   
   console.log('🔧 Vite環境変数確認:', {
+    VITE_API_BASE: env.VITE_API_BASE,
     VITE_API_BASE_URL: env.VITE_API_BASE_URL,
-    VITE_API_BASE_URL_TYPE: typeof env.VITE_API_BASE_URL,
-    VITE_API_BASE_URL_LENGTH: env.VITE_API_BASE_URL?.length,
+    VITE_API_BASE_TYPE: typeof env.VITE_API_BASE,
+    VITE_API_BASE_LENGTH: env.VITE_API_BASE?.length,
     apiBaseUrl,
     serverPort,
     clientPort
@@ -33,7 +34,8 @@ export default defineConfig(({ command, mode }) => {
     serverPort,
     clientPort,
     env: {
-      VITE_API_BASE_URL: env.VITE_API_BASE_URL, // 使用中: APIのベースURL
+      VITE_API_BASE: env.VITE_API_BASE, // 使用中: APIのベースURL
+      VITE_API_BASE_URL: env.VITE_API_BASE_URL, // 使用中: APIのベースURL（後方互換性）
       PORT: env.PORT, // 使用中: サーバーポート
       NODE_ENV: env.NODE_ENV // 使用中: 環境判別
     }
@@ -98,6 +100,7 @@ export default defineConfig(({ command, mode }) => {
       __VITE_MODE__: JSON.stringify(mode),
       __VITE_COMMAND__: JSON.stringify(command),
       // 環境変数を直接定義
+      'import.meta.env.VITE_API_BASE': JSON.stringify(env.VITE_API_BASE),
       'import.meta.env.VITE_API_BASE_URL': JSON.stringify(env.VITE_API_BASE_URL),
       'import.meta.env.NODE_ENV': JSON.stringify(env.NODE_ENV),
       'import.meta.env.MODE': JSON.stringify(mode),
