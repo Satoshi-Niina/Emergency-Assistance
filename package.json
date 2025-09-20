@@ -2,7 +2,7 @@
   "name": "emergency-assistance",
   "version": "1.0.0",
   "description": "Emergency Assistance System with AI-powered support",
-  "main": "index.js",
+  "main": "production-server-standalone.js",
   "type": "commonjs",
   "workspaces": [
     "client",

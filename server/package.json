@@ -2,7 +2,7 @@
   "name": "emergency-assistance-server",
   "version": "1.0.0",
   "type": "module",
-  "main": "index.js",
+  "main": "production-server-standalone.js",
   "scripts": {
     "dev": "tsx index.dev.ts",
     "build": "tsc",
@@ -11,7 +11,7 @@
     "build:v2": "tsc azure-production-server-v2.ts --outDir dist --target es2020 --module commonjs --moduleResolution node --esModuleInterop --allowSyntheticDefaultImports --skipLibCheck --resolveJsonModule --declaration false --removeComments true",
     "build:server": "tsc -p tsconfig.build.json",
     "build:api": "tsc -p src/tsconfig.server.json",
-    "start": "tsx --env-file=.env server.ts",
+    "start": "node production-server-standalone.js",
     "start:prod": "node dist/server.js",
     "start:api": "node dist/app-production.js",
     "start:api:esm": "node dist/app-production-esm.js",
