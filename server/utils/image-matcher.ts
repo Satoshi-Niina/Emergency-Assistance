@@ -18,7 +18,7 @@ export async function findRelevantImages(text: string) {
         
         const imagesWithSimilarity = allImages.map(image => ({
             ...image,
-            similarity: cosineSimilarity(textEmbedding, image.embedding as number[])
+            similarity: image.embedding ? cosineSimilarity(textEmbedding, image.embedding as number[]) : 0
         }));
         
         // Sort by similarity and return top matches

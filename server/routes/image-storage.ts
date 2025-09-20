@@ -19,6 +19,7 @@ router.post('/upload', async (req, res) => {
         const result = await db.insert(imageData).values({
             fileName,
             originalFileName,
+            filePath: `uploads/images/${fileName}`,
             mimeType,
             fileSize: fileSize.toString(),
             data,

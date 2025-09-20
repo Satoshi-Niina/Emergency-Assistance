@@ -1261,7 +1261,7 @@ router.put('/update-item/:id', async (req, res) => {
       exists: fs.existsSync(targetFile),
       fileSize: fs.existsSync(targetFile) ? fs.statSync(targetFile).size : 'N/A'
     });
-    const backupPath = backupManager.createBackup(targetFile);
+    const backupPath = await backupManager.createBackup(targetFile);
     console.log('💾 バックアップ作成完了:', {
       backupPath: backupPath || 'バックアップが無効化されています',
       success: !!backupPath

@@ -4,8 +4,7 @@ const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const path = require('path');
 
-// CommonJS環境での__dirname取得
-const __dirname = path.resolve('.');
+// __dirname is already available in CommonJS modules
 
 const app = express();
 

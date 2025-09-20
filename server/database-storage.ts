@@ -266,6 +266,8 @@ export class DatabaseStorage {
         await db.insert(schema.chatExports).values({
                             chatId: chatId,
                             userId: userId,
+                            exportPath: `exports/chat-${chatId}-${timestamp}.json`,
+                            exportType: 'json',
                             timestamp: new Date(timestamp)
         });
     };

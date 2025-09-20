@@ -22,6 +22,9 @@ interface BackupManagerOptions {
   projectRoot?: string;
   logsDir?: string;
   backupsDir?: string;
+  maxBackups?: number;
+  backupBaseDir?: string;
+  disabled?: boolean;
 }
 
 export class BackupManager {
@@ -38,7 +41,7 @@ export class BackupManager {
   /**
    * ログファイルをバックアップする
    */
-  async createBackup(): Promise<BackupResult> {
+  async createLogBackup(): Promise<BackupResult> {
     try {
       console.log('📦 ログファイルバックアップ処理開始');
     
@@ -234,12 +237,95 @@ export class BackupManager {
       console.error('❌ 古いバックアップファイル削除エラー:', error);
     }
   }
+
+  /**
+   * 特定のファイルのバックアップを作成する
+   */
+  async createBackup(targetFile: string): Promise<string> {
+    try {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupFileName = `backup-${path.basename(targetFile)}-${timestamp}.zip`;
+      const backupPath = path.join(this.backupsDir, backupFileName);
+
+      // バックアップディレクトリを作成
+      if (!fs.existsSync(this.backupsDir)) {
+        fs.mkdirSync(this.backupsDir, { recursive: true });
+      }
+
+      // ファイルをコピー
+      fs.copyFileSync(targetFile, backupPath);
+      
+      console.log('📦 ファイルバックアップ作成:', backupPath);
+      return backupPath;
+    } catch (error) {
+      console.error('❌ ファイルバックアップエラー:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * バックアップファイル一覧を取得する
+   */
+  listBackups(targetFile: string): string[] {
+    try {
+      if (!fs.existsSync(this.backupsDir)) {
+        return [];
+      }
+
+      const files = fs.readdirSync(this.backupsDir);
+      const backupFiles = files.filter(file => 
+        file.includes(path.basename(targetFile)) && file.endsWith('.zip')
+      );
+
+      return backupFiles.map(file => path.join(this.backupsDir, file));
+    } catch (error) {
+      console.error('❌ バックアップ一覧取得エラー:', error);
+      return [];
+    }
+  }
+
+  /**
+   * バックアップから復元する
+   */
+  restoreFromBackup(backupPath: string, targetFile: string): void {
+    try {
+      if (!fs.existsSync(backupPath)) {
+        throw new Error('バックアップファイルが見つかりません');
+      }
+
+      fs.copyFileSync(backupPath, targetFile);
+      console.log('🔄 バックアップから復元完了:', targetFile);
+    } catch (error) {
+      console.error('❌ バックアップ復元エラー:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 設定を取得する
+   */
+  getConfig(): BackupManagerOptions {
+    return {
+      projectRoot: this.projectRoot,
+      logsDir: this.logsDir,
+      backupsDir: this.backupsDir
+    };
+  }
+
+  /**
+   * 設定を更新する
+   */
+  updateConfig(newConfig: Partial<BackupManagerOptions>): void {
+    if (newConfig.projectRoot) this.projectRoot = newConfig.projectRoot;
+    if (newConfig.logsDir) this.logsDir = newConfig.logsDir;
+    if (newConfig.backupsDir) this.backupsDir = newConfig.backupsDir;
+  }
 }
 
 // 後方互換性のための関数エクスポート
 export async function createBackup(): Promise<BackupResult> {
   const backupManager = new BackupManager();
-  return await backupManager.createBackup();
+  return await backupManager.createLogBackup();
 }
 
 export async function cleanupOldBackups(): Promise<void> {

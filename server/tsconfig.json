@@ -29,8 +29,18 @@
     }
   },
   "include": [
-    "**/*.ts",
-    "**/*.js"
+    "app.ts",
+    "index.ts",
+    "index.dev.ts",
+    "index-minimal.ts",
+    "server.ts",
+    "vite.ts",
+    "routes/**/*.ts",
+    "lib/**/*.ts",
+    "services/**/*.ts",
+    "middleware/**/*.ts",
+    "utils/**/*.ts",
+    "scripts/**/*.ts"
   ],
   "exclude": [
     "node_modules",

@@ -99,6 +99,64 @@ export const supportHistory = pgTable('support_history', {
     createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
+// メディアテーブル
+export const media = pgTable('media', {
+    id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+    messageId: text('message_id').notNull().references(() => messages.id),
+    fileName: text('file_name').notNull(),
+    filePath: text('file_path').notNull(),
+    mimeType: text('mime_type').notNull(),
+    fileSize: text('file_size'),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+// ドキュメントテーブル
+export const documents = pgTable('documents', {
+    id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+    userId: text('user_id').notNull().references(() => users.id),
+    title: text('title').notNull(),
+    content: text('content'),
+    filePath: text('file_path'),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+// キーワードテーブル
+export const keywords = pgTable('keywords', {
+    id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+    documentId: text('document_id').notNull().references(() => documents.id),
+    word: text('word').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+// チャットエクスポートテーブル
+export const chatExports = pgTable('chat_exports', {
+    id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+    chatId: text('chat_id').notNull().references(() => chats.id),
+    userId: text('user_id').notNull().references(() => users.id),
+    exportPath: text('export_path').notNull(),
+    exportType: text('export_type').notNull(),
+    timestamp: timestamp('timestamp').defaultNow().notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+// 画像データテーブル
+export const images = pgTable('images', {
+    id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+    fileName: text('file_name').notNull(),
+    originalFileName: text('original_file_name'),
+    filePath: text('file_path').notNull(),
+    mimeType: text('mime_type').notNull(),
+    fileSize: text('file_size'),
+    category: text('category'),
+    description: text('description'),
+    data: text('data'),
+    embedding: jsonb('embedding'),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+// 画像データ（別名）
+export const imageData = images;
+
 // スキーマエクスポート
 export const schema = {
     users,
@@ -110,4 +168,10 @@ export const schema = {
     historyItems,
     historyImages,
     supportHistory,
+    media,
+    documents,
+    keywords,
+    chatExports,
+    images,
+    imageData,
 };

@@ -1,7 +1,6 @@
 import app from "./app.js";
 import { createServer } from "node:http";
 import { registerRoutes } from "./routes.js";
-import { setupAuth } from "./auth.js";
 
 async function main() {
   // Azure Storage統合の初期化
