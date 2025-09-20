@@ -3,9 +3,6 @@
   "version": "1.0.0",
   "description": "Emergency Assistance System with AI-powered support",
   "main": "production-server-standalone.js",
-  "engines": {
-    "node": ">=18.0.0"
-  },
   "workspaces": [
     "client",
     "server",
