@@ -15,6 +15,7 @@ console.log('🔧 Environment:', process.env.NODE_ENV || 'production');
 
 // Import and start the main server
 try {
+  console.log('📁 Looking for app-production-esm.js in:', __dirname);
   const { default: app } = await import('./app-production-esm.js');
   const PORT = process.env.PORT || 8080;
   
@@ -24,5 +25,7 @@ try {
   });
 } catch (error) {
   console.error('❌ Failed to start server:', error);
+  console.error('❌ Error details:', error.message);
+  console.error('❌ Current directory:', __dirname);
   process.exit(1);
 }
