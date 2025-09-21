@@ -53,24 +53,20 @@ export default function Login() {
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    console.debug('[login] submit', { usernameLen: username.length });
+    console.trace('[login] submit trace');
     setErrorMessage("");
     if (isLoading) return;
-    // HTML5 required属性により、空欄時はonSubmit自体が呼ばれない（バリデーションで阻止される）
-    // ただし、requiredを外すと空欄でもonSubmitが必ず発火する
-    // → requiredは残し、onSubmitは「実入力時に必ず1回発火」することを保証
-    console.debug('[login] submit', { usernameLen: username.length });
     if (!username.trim() || !password) {
       setErrorMessage("ユーザー名/パスワードを入力してください");
       return;
     }
     setIsLoading(true);
     try {
-      // APIは login を期待するため、username を渡す
       await loginApi(username.trim(), password);
       console.debug('[login] loginApi done');
       const me = await meApi();
       console.debug('[login] me ok', me);
-      // 認証コンテキストの状態更新を待つ（useEffectで自動的に遷移）
     } catch (e: any) {
       setErrorMessage(e?.message ?? "ログインに失敗しました");
       console.debug('[login] failed', e);
@@ -78,6 +74,12 @@ export default function Login() {
       setIsLoading(false);
     }
   };
+  // グローバルsubmit監視（デバッグ用）
+  useEffect(() => {
+    const h = (ev: SubmitEvent) => console.debug('[login] document submit caught', ev);
+    document.addEventListener('submit', h, true);
+    return () => document.removeEventListener('submit', h, true);
+  }, []);
 
   // フォームの状態を監視
   useEffect(() => {
@@ -116,8 +118,10 @@ export default function Login() {
           <CardContent className="pt-6">
             <Form {...form}>
               <form 
+                id="login-form"
                 onSubmit={onSubmit}
                 className="space-y-4"
+                noValidate
               >
                 <FormItem>
                   <FormLabel>ユーザー名</FormLabel>
@@ -153,13 +157,26 @@ export default function Login() {
                     {errorMessage}
                   </div>
                 )}
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-primary" 
-                    disabled={isLoading}
-                  >
-                    {isLoading ? "ログイン中..." : "ログイン"}
-                  </Button>
+                <Button 
+                  type="submit" 
+                  className="w-full bg-primary" 
+                  disabled={isLoading}
+                  form="login-form"
+                >
+                  {isLoading ? "ログイン中..." : "ログイン"}
+                </Button>
+                {/* デバッグ用隠しボタン */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    console.debug('[login] force send');
+                    await loginApi(username.trim(), password);
+                    const me = await meApi();
+                    console.debug('[login] me after force', me);
+                  }}
+                  style={{ display: 'none' }}
+                  data-testid="force-login"
+                >force</button>
               </form>
             </Form>
           </CardContent>
