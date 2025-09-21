@@ -101,8 +101,8 @@ app.get('/', (req, res) => {
 });
 
 // ヘルスチェック
-app.get('/healthz', (req, res) => {
-  res.status(200).json({ status: 'ok' });
+app.get(['/healthz', '/api/healthz'], (req, res) => {
+  res.type('application/json').status(200).send({ ok: true });
 });
 
 // 疎通確認用エンドポイント

@@ -130,16 +130,38 @@ jobs:
           frontend_url="https://witty-river-012f39e00.1.azurestaticapps.net"
           backend_url="https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net"
           
-          # Test frontend-backend connectivity
-          echo "Testing frontend-backend connectivity..."
-          api_response=$(curl -s -w "%{http_code}" -o /dev/null "${backend_url}/api/health")
-          echo "Backend API health check: $api_response"
+          # Test 1: Primary health check (/api/healthz)
+          echo "Testing primary health check (/api/healthz)..."
+          healthz_response=$(curl -s -w "%{http_code}" -o /dev/null "${backend_url}/api/healthz")
+          echo "Primary health check: $healthz_response"
           
-          if [ "$api_response" = "200" ]; then
-            echo "✅ Frontend can reach backend API"
+          if [ "$healthz_response" = "200" ]; then
+            echo "✅ Primary health check passed"
           else
-            echo "❌ Frontend cannot reach backend API"
-            exit 1
+            echo "⚠️ Primary health check failed, trying fallback..."
+            
+            # Test 2: Fallback health check (/healthz)
+            echo "Testing fallback health check (/healthz)..."
+            fallback_response=$(curl -s -w "%{http_code}" -o /dev/null "${backend_url}/healthz")
+            echo "Fallback health check: $fallback_response"
+            
+            if [ "$fallback_response" = "200" ]; then
+              echo "✅ Fallback health check passed"
+            else
+              echo "⚠️ Fallback health check failed, trying legacy endpoint..."
+              
+              # Test 3: Legacy health check (/api/health)
+              echo "Testing legacy health check (/api/health)..."
+              legacy_response=$(curl -s -w "%{http_code}" -o /dev/null "${backend_url}/api/health")
+              echo "Legacy health check: $legacy_response"
+              
+              if [ "$legacy_response" = "200" ]; then
+                echo "✅ Legacy health check passed"
+              else
+                echo "❌ All health checks failed"
+                exit 1
+              fi
+            fi
           fi
           
           # Test authentication flow
