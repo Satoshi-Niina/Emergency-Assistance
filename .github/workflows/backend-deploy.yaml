@@ -1,20 +1,27 @@
 name: Deploy Backend to Azure App Service
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
     paths:
       - 'server/**'
-      - 'package.json'
       - '.github/workflows/backend-deploy.yaml'
-      - 'trigger.txt'
   workflow_dispatch:
 
+# 同ブランチの並行実行をキャンセル
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  deploy-backend:
+  build-and-deploy:
     runs-on: ubuntu-latest
     name: Deploy Backend
+    # 同じ環境名にすると GitHub が自動で直列化（キュー）する
+    environment: production-appservice
     steps:
+      - name: Show trigger
+        run: echo "Triggered by ${{ github.event_name }}"
+
       - uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -26,11 +33,23 @@ jobs:
         working-directory: server
         run: rm -rf node_modules
 
-      - name: Deploy to Azure Web App
+      - name: Deploy Backend
+        id: deploy1
         uses: azure/webapps-deploy@v3
         with:
-          app-name: emergencyassistance-sv
-          slot-name: Production
+          app-name: ${{ secrets.APP_NAME || 'emergencyassistance-sv' }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: server
+
+      - name: Retry once after short wait (409 guard)
+        if: failure()
+        run: sleep 30
+
+      - name: Deploy Backend (retry)
+        if: failure()
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.APP_NAME || 'emergencyassistance-sv' }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: server
 

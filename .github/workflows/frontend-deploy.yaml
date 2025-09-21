@@ -1,21 +1,25 @@
 name: Deploy Frontend to Azure Static Web Apps
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
     paths:
       - 'client/**'
-      - 'api/**'
-      - 'server/**'
       - '.github/workflows/frontend-deploy.yaml'
-      - 'trigger.txt'
   workflow_dispatch:
 
+concurrency:
+  group: frontend-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  deploy-frontend:
+  build-and-deploy:
     runs-on: ubuntu-latest
     name: Deploy Frontend
+    environment: production-swa
     steps:
+      - name: Show trigger
+        run: echo "Triggered by ${{ github.event_name }}"
+
       - uses: actions/checkout@v4
       - name: Setup Node.js
         uses: actions/setup-node@v4
