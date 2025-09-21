@@ -161,14 +161,15 @@ export default function Login() {
                     {errorMessage}
                   </div>
                 )}
-                <Button 
-                  type="submit" 
-                  className="w-full bg-primary" 
-                  disabled={isLoading}
-                  onClick={() => console.log("🔘 ログインボタンクリック")}
-                >
-                  {isLoading ? "ログイン中..." : "ログイン"}
-                </Button>
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-primary" 
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "ログイン中..." : "ログイン"}
+                  </Button>
+  // APIは login を期待するため username を渡す
+  await loginApi(formData.username, formData.password);
               </form>
             </Form>
           </CardContent>
