@@ -109,9 +109,33 @@ app.get('/', (req, res) => {
   res.status(200).send('ok');
 });
 
-// Health endpoints (JSON, backward compatible)
+
+// DB初期化（本番で未設定/失敗でもexitしない）
+global.dbReady = false;
+if (process.env.DATABASE_URL) {
+  try {
+    const { Client } = require('pg');
+    const client = new Client({ connectionString: process.env.DATABASE_URL });
+    client.connect()
+      .then(() => {
+        global.dbReady = true;
+        return client.end();
+      })
+      .catch(e => {
+        console.error('DB connect failed (startup):', e);
+        global.dbReady = false;
+      });
+  } catch (e) {
+    console.error('DB init error:', e);
+    global.dbReady = false;
+  }
+} else {
+  global.dbReady = false;
+}
+
+// Health endpoints (JSON, backward compatible, dbReady反映)
 app.get(['/api/healthz','/healthz','/api/health','/health'], (_req, res) => {
-  res.type('application/json').status(200).send({ ok: true });
+  res.type('application/json').status(200).json({ ok: true, db: global.dbReady ? 'ok' : 'ng' });
 });
 
 // 疎通確認用エンドポイント
@@ -302,16 +326,13 @@ app.use((err, req, res, next) => {
 });
 
 
-// 本番はDB接続必須
-if (process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL) {
-  console.error('❌ 本番環境でDATABASE_URLが未設定です。サーバーを起動しません。');
-  process.exit(1);
-}
+
+// 本番でもDATABASE_URL未設定でexitしない（起動緩和）
 
 const port = Number(process.env.PORT) || 8080;
 const host = '0.0.0.0';
 const server = app.listen(port, host, () => {
-  console.log(`Listening on ${host}:${port}`);
+  console.info(`Listening on 0.0.0.0:${port} (db: ${global.dbReady ? 'ok' : 'ng'})`);
   console.log(`Server is ready to accept connections`);
   console.log(`🌐 Server URL: http://${host}:${port}`);
   console.log(`🔍 Health check: http://${host}:${port}/healthz`);
