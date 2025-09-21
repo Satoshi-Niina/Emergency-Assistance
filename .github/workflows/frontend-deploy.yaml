@@ -119,5 +119,39 @@ jobs:
           done
           
           if [ "$frontend_status" != "200" ]; then
-            echo "⚠️ Frontend health check failed, but deployment completed"
+            echo "❌ Frontend health check failed!"
+            exit 1
           fi
+
+      - name: Frontend Smoke Test
+        run: |
+          echo "🔍 Starting frontend smoke test..."
+          
+          frontend_url="https://witty-river-012f39e00.1.azurestaticapps.net"
+          backend_url="https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net"
+          
+          # Test frontend-backend connectivity
+          echo "Testing frontend-backend connectivity..."
+          api_response=$(curl -s -w "%{http_code}" -o /dev/null "${backend_url}/api/health")
+          echo "Backend API health check: $api_response"
+          
+          if [ "$api_response" = "200" ]; then
+            echo "✅ Frontend can reach backend API"
+          else
+            echo "❌ Frontend cannot reach backend API"
+            exit 1
+          fi
+          
+          # Test authentication flow
+          echo "Testing authentication flow..."
+          auth_response=$(curl -s -w "%{http_code}" -o /dev/null "${backend_url}/api/auth/me")
+          echo "Authentication endpoint check: $auth_response"
+          
+          if [ "$auth_response" = "401" ]; then
+            echo "✅ Authentication endpoint working correctly"
+          else
+            echo "❌ Authentication endpoint not working correctly"
+            exit 1
+          fi
+          
+          echo "✅ Frontend smoke test passed!"

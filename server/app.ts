@@ -92,26 +92,9 @@ console.log('🔧 app.ts: 環境変数確認:', {
 });
 
 const app = express();
-// 本番環境専用: CORS設定（Static Web Apps/フロントの本番URLに合わせる）
-if (process.env.NODE_ENV === 'production') {
-  const allowedOrigins = [
-    process.env.FRONTEND_URL || 'https://<frontend-domain>',
-    'http://localhost:5173'
-  ];
-  app.use(cors({ origin: allowedOrigins, credentials: true }));
-  
-  // 本番環境専用: APIルートを最優先で処理
-  app.use((req, res, next) => {
-    console.log(`🔍 本番環境リクエスト: ${req.method} ${req.path}`);
-    if (req.path.startsWith('/api/')) {
-      console.log(`✅ APIルート検出: ${req.path}`);
-      // APIルートの場合は即座に処理を続行
-      return next();
-    }
-    // 静的ファイルの場合は次のミドルウェアに進む
-    next();
-  });
-}
+
+// 1. Trust proxy設定（最初に配置）
+app.set('trust proxy', 1);
 
 // 本番環境専用: APIエラーは必ずJSONで返す（HTMLエラーを返さない）
 if (process.env.NODE_ENV === 'production') {
@@ -144,153 +127,50 @@ if (process.env.NODE_ENV === 'development') {
   });
 }
 
-// セキュリティヘッダーを最初に設定
-app.use(securityHeaders);
+// 2. CORS設定（trust proxyの後）
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net';
+app.use(cors({
+  origin: FRONTEND_URL,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
+}));
 
-// セキュリティ監視を有効化
-app.use(securityMonitoring);
+// 3. OPTIONSリクエストの明示的処理
+app.options('*', cors({
+  origin: FRONTEND_URL,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
+}));
 
-// 一般的なレート制限
-app.use(generalLimiter);
-
-// CORS設定 - セキュリティ強化
-const isProduction = process.env.NODE_ENV === 'production';
-const isReplitEnvironment = process.env.REPLIT_ENVIRONMENT === 'true' || process.env.REPLIT_ID;
-const isAzureEnvironment = process.env.WEBSITE_SITE_NAME || process.env.AZURE_ENVIRONMENT;
-
-// フロントエンドURLの取得（環境変数から優先、デフォルトはlocalhost:5002）
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5002';
-
-// 許可するオリジンのリスト（環境別）
-const getAllowedOrigins = () => {
-  const baseOrigins = [
-    FRONTEND_URL, // 環境変数から取得したフロントエンドURLを優先
-    'https://witty-river-012f39e00.1.azurestaticapps.net', // 本番環境のStatic Web App URL
-    'http://localhost:5002', 
-    'http://127.0.0.1:5002',
-    'http://localhost:5003',
-    'http://127.0.0.1:5003',
-    'http://localhost:5004',
-    'http://127.0.0.1:5004',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:5173', // Vite開発サーバー
-    'http://127.0.0.1:5173',
-    'http://localhost:3001',
-    'http://127.0.0.1:3001'
-  ];
-
-  // Replit環境の場合
-  if (isReplitEnvironment) {
-    baseOrigins.push(
-      'https://*.replit.app',
-      'https://*.replit.dev'
-    );
-  }
-
-  // Azure環境の場合
-  if (isAzureEnvironment) {
-    baseOrigins.push(
-      'https://*.azurewebsites.net',
-      'https://*.azure.com',
-      'https://*.azurestaticapps.net' // Azure Static Web Appsのサポート追加
-    );
-  }
-
-  return baseOrigins;
-};
-
-// セキュアなCORS設定を使用
-app.use(secureCORS);
-
-// OPTIONSリクエストの明示的処理
-app.options('*', (req, res) => {
-  const origin = req.headers.origin;
-  const allowedOrigins = getAllowedOrigins();
-  
-  // ワイルドカードドメインのチェック
-  const isAllowed = !origin || allowedOrigins.some(allowedOrigin => {
-    if (allowedOrigin.includes('*')) {
-      const pattern = allowedOrigin.replace('*', '.*');
-      return new RegExp(pattern).test(origin);
-    }
-    return allowedOrigin === origin;
-  });
-  
-  if (isAllowed) {
-    res.header('Access-Control-Allow-Origin', origin || '*');
-  }
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept, Cookie, credentials, cache-control, Cache-Control, pragma, Pragma');
-  res.header('Access-Control-Allow-Credentials', 'true'); // 必須設定 - セッション維持のため
-  res.header('Access-Control-Expose-Headers', 'Set-Cookie');
-  res.status(204).end();
-});
-
-// Cookieパーサーを追加
+// 4. Cookieパーサー
 app.use(cookieParser());
 
-// JSONパース - UTF-8エンコーディング設定
+// 5. JSONパース
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// UTF-8エンコーディングのレスポンスヘッダー設定（APIエンドポイントのみ）
-app.use('/api', (req, res, next) => {
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  next();
-});
-
-// CORSヘッダーを確実に設定するミドルウェア
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  const allowedOrigins = getAllowedOrigins();
-  
-  // ワイルドカードドメインのチェック
-  const isAllowed = !origin || allowedOrigins.some(allowedOrigin => {
-    if (allowedOrigin.includes('*')) {
-      const pattern = allowedOrigin.replace('*', '.*');
-      return new RegExp(pattern).test(origin);
-    }
-    return allowedOrigin === origin;
-  });
-  
-  if (isAllowed && origin) {
-    res.header('Access-Control-Allow-Origin', origin);
-  }
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept, Cookie, credentials, cache-control, Cache-Control, pragma, Pragma');
-  res.header('Access-Control-Expose-Headers', 'Set-Cookie');
-  
-  next();
-});
-
-// セッション設定 - 認証維持のため改善
-const sessionConfig = {
+// 6. セッション設定
+const isProduction = process.env.NODE_ENV === 'production';
+app.use(session({
+  name: 'sid',
   secret: process.env.SESSION_SECRET || 'dev-session-secret-for-development-only',
-  resave: true, // セッションを常に保存
+  resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: (isProduction || isReplitEnvironment || isAzureEnvironment) ? true : false, // 明示的にbooleanに変換
     httpOnly: true,
-    sameSite: (isProduction || isReplitEnvironment || isAzureEnvironment) ? 'none' as const : 'lax' as const,
-    maxAge: 1000 * 60 * 60 * 24 * 7, // 7日間
-    path: '/',
-    domain: undefined // 明示的にundefinedに設定
-  },
-  name: 'emergency-assistance-session', // セッション名を統一
-  rolling: true // セッションを更新するたびに期限を延長
-};
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+    maxAge: 24 * 60 * 60 * 1000 // 24時間
+  }
+}));
 
 console.log('🔧 セッション設定:', {
-  secure: sessionConfig.cookie.secure,
-  sameSite: sessionConfig.cookie.sameSite,
-  isProduction,
-  isReplitEnvironment,
-  isAzureEnvironment
+  secure: isProduction,
+  sameSite: isProduction ? 'none' : 'lax',
+  isProduction
 });
-
-app.use(session(sessionConfig));
 
 // セッションデバッグミドルウェア
 app.use((req, res, next) => {
@@ -716,6 +596,44 @@ if (process.env.NODE_ENV === 'production') {
     }
   }));
 }
+
+// 7. ルート登録
+// 認証ルート
+app.use('/api/auth', authRouter);
+
+// その他のルート（既存のコードを維持）
+app.use('/api/security', securityTestRouter);
+app.use('/api/tech-support', techSupportRouter);
+registerChatRoutes(app);
+app.use('/api/troubleshooting', troubleshootingRouter);
+app.use('/api/troubleshooting-qa', troubleshootingQARouter);
+app.use('/api/base-data', baseDataRouter);
+app.use('/api/flows', flowsRouter);
+app.use('/api/knowledge', knowledgeRouter);
+app.use('/api/history', historyRouter);
+app.use('/api/emergency-guide', emergencyGuideRouter);
+app.use('/api/users', usersRouter);
+app.use('/api/machines', machinesRouter);
+app.use('/api/fix-users', fixUsersRouter);
+app.use('/api/direct-fix', directFixRouter);
+app.use('/api/emergency-fix', emergencyFixRouter);
+app.use('/api/logs', logBackupRouter);
+app.use('/api/debug', debugRouter);
+app.use('/api/config', configRouter);
+app.use('/api/ingest', ingestRouter);
+app.use('/api/search', searchRouter);
+app.use('/api/storage', storageRouter);
+app.use('/api/interactive-diagnosis', interactiveDiagnosisRouter);
+
+// ヘルスチェックルート
+import { healthRouter } from './routes/health.js';
+app.use('/api/health', healthRouter);
+
+// 8. JSONエラーハンドラ（最後に配置）
+app.use((err, _req, res, _next) => {
+  console.error(err);
+  res.status(500).type('application/json').send({ error: 'internal_error' });
+});
 
 // サーバー起動処理はindex.tsで管理するため、ここでは設定のみ
 console.log('✅ Expressアプリケーションの設定が完了しました');

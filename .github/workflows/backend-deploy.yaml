@@ -44,10 +44,10 @@ jobs:
           
           # Check backend
           backend_url="https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net"
-          echo "Checking backend: ${backend_url}/healthz"
+          echo "Checking backend: ${backend_url}/api/health"
           
           for i in {1..10}; do
-            backend_status=$(curl -o /dev/null -s -w "%{http_code}" -L "${backend_url}/healthz")
+            backend_status=$(curl -o /dev/null -s -w "%{http_code}" -L "${backend_url}/api/health")
             echo "Backend check $i: $backend_status"
             
             if [ "$backend_status" = "200" ]; then
@@ -63,6 +63,27 @@ jobs:
           done
           
           if [ "$backend_status" != "200" ]; then
-            echo "⚠️ Backend health check failed, but deployment completed"
+            echo "❌ Backend health check failed!"
             echo "Please check Azure Portal logs for details"
+            exit 1
           fi
+
+      - name: Backend Smoke Test
+        run: |
+          echo "🔍 Starting backend smoke test..."
+          
+          backend_url="https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net"
+          
+          # Test authentication endpoints
+          echo "Testing /api/auth/me endpoint..."
+          me_response=$(curl -s -w "%{http_code}" -o /dev/null "${backend_url}/api/auth/me")
+          echo "GET /api/auth/me: $me_response"
+          
+          if [ "$me_response" = "401" ]; then
+            echo "✅ Authentication endpoint working correctly (401 for unauthenticated request)"
+          else
+            echo "❌ Authentication endpoint not working correctly"
+            exit 1
+          fi
+          
+          echo "✅ Backend smoke test passed!"
