@@ -21,6 +21,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Create .env.production for Vite
+        working-directory: client
+        run: |
+          cat > .env.production << 'EOF'
+          VITE_API_BASE_URL=https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net
+          FRONTEND_URL=https://witty-river-012f39e00.1.azurestaticapps.net
+          EOF
       - name: Install frontend dependencies
         working-directory: client
         run: |
