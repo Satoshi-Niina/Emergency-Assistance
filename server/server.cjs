@@ -100,8 +100,8 @@ app.get('/', (req, res) => {
   res.status(200).send('ok');
 });
 
-// ヘルスチェック
-app.get(['/healthz', '/api/healthz'], (req, res) => {
+// Health endpoints (JSON, backward compatible)
+app.get(['/api/healthz','/healthz','/api/health','/health'], (_req, res) => {
   res.type('application/json').status(200).send({ ok: true });
 });
 

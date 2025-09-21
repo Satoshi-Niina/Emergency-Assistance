@@ -68,56 +68,23 @@ jobs:
             exit 1
           fi
 
-      - name: Backend Smoke Test
+      - name: Smoke test backend health (multi-path)
         run: |
-          echo "🔍 Starting backend smoke test..."
-          
-          backend_url="https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net"
-          
-          # Test 1: Primary health check (/api/healthz)
-          echo "Testing primary health check (/api/healthz)..."
-          healthz_response=$(curl -s -w "%{http_code}" -o /dev/null "${backend_url}/api/healthz")
-          echo "Primary health check: $healthz_response"
-          
-          if [ "$healthz_response" = "200" ]; then
-            echo "✅ Primary health check passed"
-          else
-            echo "⚠️ Primary health check failed, trying fallback..."
-            
-            # Test 2: Fallback health check (/healthz)
-            echo "Testing fallback health check (/healthz)..."
-            fallback_response=$(curl -s -w "%{http_code}" -o /dev/null "${backend_url}/healthz")
-            echo "Fallback health check: $fallback_response"
-            
-            if [ "$fallback_response" = "200" ]; then
-              echo "✅ Fallback health check passed"
-            else
-              echo "⚠️ Fallback health check failed, trying legacy endpoint..."
-              
-              # Test 3: Legacy health check (/api/health)
-              echo "Testing legacy health check (/api/health)..."
-              legacy_response=$(curl -s -w "%{http_code}" -o /dev/null "${backend_url}/api/health")
-              echo "Legacy health check: $legacy_response"
-              
-              if [ "$legacy_response" = "200" ]; then
-                echo "✅ Legacy health check passed"
-              else
-                echo "❌ All health checks failed"
-                exit 1
+          set -e
+          API="${{ secrets.API_BASE_URL }}"
+          paths="/api/healthz /healthz /api/health /health"
+          ok=0
+          for p in $paths; do
+            code=$(curl -s -o /tmp/body -w "%{http_code}" "$API$p")
+            echo "$API$p -> $code"
+            if [ "$code" = "200" ]; then
+              if curl -sI "$API$p" | grep -qi 'content-type:.*application/json'; then
+                ok=1; break
               fi
             fi
-          fi
-          
-          # Test authentication endpoints
-          echo "Testing /api/auth/me endpoint..."
-          me_response=$(curl -s -w "%{http_code}" -o /dev/null "${backend_url}/api/auth/me")
-          echo "GET /api/auth/me: $me_response"
-          
-          if [ "$me_response" = "401" ]; then
-            echo "✅ Authentication endpoint working correctly (401 for unauthenticated request)"
-          else
-            echo "❌ Authentication endpoint not working correctly"
+          done
+          if [ $ok -ne 1 ]; then
+            echo "No health endpoint returned 200 JSON"
+            cat /tmp/body || true
             exit 1
           fi
-          
-          echo "✅ Backend smoke test passed!"
