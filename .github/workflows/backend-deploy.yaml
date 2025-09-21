@@ -120,6 +120,10 @@ jobs:
       - name: Smoke test frontend health (static root)
         run: |
           set -e
+          if [ -z "${{ secrets.FRONTEND_BASE_URL }}" ]; then
+            echo "⚠️ FRONTEND_BASE_URL is not set. Skipping frontend smoke test."
+            exit 0
+          fi
           FRONTEND_URL="${{ secrets.FRONTEND_BASE_URL }}"
           code=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_URL/")
           if [ "$code" = "200" ]; then
