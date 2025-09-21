@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { loginSchema } from "../lib/schema.ts";
+import { loginSchema } from "../lib/schema";
 import { useAuth } from "../context/auth-context";
 import { loginApi, meApi } from "../lib/auth";
 import { Button } from "../components/ui/button";
@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../compone
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../components/ui/form";
 import { Input } from "../components/ui/input";
 
+export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -168,5 +169,4 @@ import { Input } from "../components/ui/input";
   );
 }
 
-export default Login;
 
