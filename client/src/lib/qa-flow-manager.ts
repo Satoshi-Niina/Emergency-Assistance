@@ -1,4 +1,4 @@
-import { apiFetch } from './api/apiClient';
+import { apiFetch } from '../api/apiClient';
 
 // クライアント側ではサーバーAPIを呼び出す
 async function callOpenAIAPI(prompt: string, useKnowledgeBase: boolean = true): Promise<string> {

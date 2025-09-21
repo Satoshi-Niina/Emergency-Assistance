@@ -1,5 +1,5 @@
 import { db } from '../db/index.js';
-import { schema } from '../../shared/schema.js';
+import { schema } from '../shared/schema';
 import { eq, desc, like, and, gte, lte } from 'drizzle-orm';
 
 const { emergencyFlows } = schema;

@@ -17,7 +17,7 @@ import { processPerplexityRequest } from "./lib/perplexity.js";
 import fs from "fs";
 import path from "path";
 import { db } from "./db/index.js";
-import { schema } from "../shared/schema.js";
+import { schema } from "./shared/schema";
 import { upload } from './lib/multer-config.js';
 import { 
   addDocumentToKnowledgeBase, 

@@ -1,20 +1,25 @@
-const API = import.meta.env.VITE_API_BASE ?? '/api';
+// client/src/lib/apiClient.ts
+export const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
 
-export async function getJson(path: string, init?: RequestInit) {
-  const url = `${API}${path}`;
+export async function apiFetch(path: string, options: RequestInit = {}) {
+  const url = `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
   const res = await fetch(url, {
-    ...init,
-    headers: {
-      ...(init?.headers || {}),
-      Accept: 'application/json',
-    },
     credentials: 'include',
+    ...options,
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...(options.headers || {})
+    }
   });
   const ct = res.headers.get('content-type') || '';
-  if (!res.ok || !ct.includes('application/json')) {
-    const head = await res.text().then(t => t.slice(0, 200)).catch(() => '<no-body>');
-    console.error('API非JSON/失敗', { url, status: res.status, ct, head });
-    throw new Error(`API非JSON ${res.status}`);
+  if (!ct.includes('application/json')) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Non-JSON response: ${res.status} ${text.slice(0,80)}`);
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(`API error ${res.status}: ${JSON.stringify(err)}`);
   }
   return res.json();
 }

@@ -10,7 +10,7 @@ import { storage } from '../storage.js';
 import { formatChatHistoryForExternalSystem } from '../lib/chat-export-formatter.js';
 import { exportFileManager } from '../lib/export-file-manager.js';
 import { processOpenAIRequest } from '../lib/openai.js';
-import { insertMessageSchema, insertMediaSchema, insertChatSchema, messages } from '../../shared/schema.js';
+import { insertMessageSchema, insertMediaSchema, insertChatSchema, messages } from '../shared/schema';
 
 // セッション型の拡張
 interface SessionData {

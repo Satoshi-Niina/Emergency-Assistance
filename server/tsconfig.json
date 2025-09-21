@@ -1,49 +1,13 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "ESNext",
-    "moduleResolution": "node",
-    "allowSyntheticDefaultImports": true,
+    "module": "Node16",
+    "rootDir": "src",
+    "outDir": "dist",
+    "moduleResolution": "Node16",
     "esModuleInterop": true,
-    "allowJs": true,
-    "strict": false,
-    "noImplicitAny": false,
-    "strictNullChecks": false,
-    "strictFunctionTypes": false,
-    "noImplicitReturns": false,
-    "noFallthroughCasesInSwitch": false,
-    "noUncheckedIndexedAccess": false,
-    "noImplicitOverride": false,
-    "noPropertyAccessFromIndexSignature": false,
-    "exactOptionalPropertyTypes": false,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "declaration": true,
-    "outDir": "./dist",
-    "rootDir": "../",
-    "baseUrl": "./",
-    "paths": {
-      "@/*": ["./*"]
-    }
+    "resolveJsonModule": true
   },
-  "include": [
-    "app.ts",
-    "index.ts",
-    "index.dev.ts",
-    "index-minimal.ts",
-    "server.ts",
-    "vite.ts",
-    "routes/**/*.ts",
-    "lib/**/*.ts",
-    "services/**/*.ts",
-    "middleware/**/*.ts",
-    "utils/**/*.ts",
-    "scripts/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+  "include": ["src"]
 }

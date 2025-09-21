@@ -1,6 +1,6 @@
 import { DatabaseStorage } from "./database-storage.js";
 import { db } from "./db/index.js";
-import { schema } from "../shared/schema.js";
+import { schema } from "./shared/schema";
 
 // データベース接続テスト
 const testDatabaseConnection = async (): Promise<boolean> => {
