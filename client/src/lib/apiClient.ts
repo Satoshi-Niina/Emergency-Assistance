@@ -23,3 +23,20 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
   }
   return res.json();
 }
+
+// ===== Compatibility thin wrappers (keep legacy call sites alive) =====
+export async function getJson(path: string, init: RequestInit = {}) {
+  return apiFetch(path, { method: 'GET', ...init });
+}
+
+export async function postJson(path: string, body?: unknown, init: RequestInit = {}) {
+  return apiFetch(path, { method: 'POST', body: body != null ? JSON.stringify(body) : undefined, ...init });
+}
+
+export async function putJson(path: string, body?: unknown, init: RequestInit = {}) {
+  return apiFetch(path, { method: 'PUT', body: body != null ? JSON.stringify(body) : undefined, ...init });
+}
+
+export async function deleteJson(path: string, init: RequestInit = {}) {
+  return apiFetch(path, { method: 'DELETE', ...init });
+}
