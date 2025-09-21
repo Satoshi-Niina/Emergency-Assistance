@@ -46,6 +46,7 @@
   },
   "dependencies": {
     "archiver": "^7.0.1",
+    "argon2": "^0.30.3",
     "bcrypt": "^6.0.0",
     "concurrently": "^9.2.0",
     "cookie-parser": "^1.4.7",

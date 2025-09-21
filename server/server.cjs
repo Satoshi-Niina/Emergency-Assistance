@@ -120,76 +120,106 @@ app.get('/api/health/json', (req, res) => {
 });
 
 // 認証APIエンドポイント
-// ログイン
-app.post('/api/auth/login', (req, res) => {
-  console.log('🔐 Login request:', {
-    body: req.body,
-    cookies: req.headers.cookie ? '[SET]' : '[NOT SET]',
-    origin: req.headers.origin,
-    sessionId: req.session?.id
-  });
-  
+// ログイン（DB必須・多方式パスワード検証・自動bcrypt移行）
+const { Client } = require('pg');
+const bcrypt = require('bcrypt');
+app.post('/api/auth/login', async (req, res) => {
   const { login, email, password } = req.body || {};
   const id = login || email;
-  
   if (!id || !password) {
-    return res.status(400).json({
-      success: false,
-      error: 'ユーザー名とパスワードを入力してください'
-    });
+    return res.status(400).json({ success: false, error: 'ユーザー名とパスワードを入力してください' });
   }
-  
-  // ダミーログイン（本番環境用）
-  if (id === 'admin' && password === 'admin') {
-    // セッションを明示的に再生成して確実にSet-Cookieを発行
-    req.session.regenerate((err) => {
+  // DB接続必須（本番はモック禁止）
+  if (process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL) {
+    return res.status(500).json({ success: false, error: 'DB接続情報がありません' });
+  }
+  const client = new Client({ connectionString: process.env.DATABASE_URL });
+  try {
+    await client.connect();
+    // loginまたはemailでユーザー取得（LOWERで大小無視）
+    const q = `SELECT * FROM users WHERE LOWER(username)=LOWER($1) OR LOWER(email)=LOWER($1) LIMIT 1`;
+    const { rows } = await client.query(q, [id]);
+    if (!rows[0]) {
+      console.info('user_found: false');
+      return res.status(401).json({ success: false, error: 'ユーザー名またはパスワードが正しくありません' });
+    }
+    const user = rows[0];
+    console.info('user_found: true');
+    const hash = user.password || '';
+    let passwordOk = false;
+    let needsRehash = false;
+    // パスワード方式判定
+    if (/^\$2[aby]\$/.test(hash)) {
+      // bcrypt
+      passwordOk = await bcrypt.compare(password, hash);
+    } else if (/^\$argon2/.test(hash)) {
+      // argon2（動的import）
+      const argon2 = await import('argon2');
+      passwordOk = await argon2.default.verify(hash, password);
+      if (passwordOk) needsRehash = true;
+    } else {
+      // 平文
+      passwordOk = password === hash;
+      if (passwordOk) needsRehash = true;
+    }
+    if (!passwordOk) {
+      console.info('password_ok: false');
+      return res.status(401).json({ success: false, error: 'ユーザー名またはパスワードが正しくありません' });
+    }
+    console.info('password_ok: true');
+    // セッション再生成
+    req.session.regenerate(async (err) => {
       if (err) {
-        console.error('❌ Session regenerate error:', err);
-        return res.status(500).json({
-          success: false,
-          error: 'セッションの再生成に失敗しました'
-        });
+        return res.status(500).json({ success: false, error: 'セッションの再生成に失敗しました' });
       }
-      
-      req.session.userId = 'admin';
-      req.session.userRole = 'admin';
-      req.session.username = 'admin';
-      
-      console.log('✅ Login successful:', id);
-      console.log('🍪 Session after login:', {
-        sessionId: req.session.id,
-        userId: req.session.userId,
-        userRole: req.session.userRole
-      });
-      
-      // セッションを明示的に保存
+      req.session.userId = user.id;
+      req.session.userRole = user.role || 'user';
+      req.session.username = user.username;
+      // パスワード自動再ハッシュ（bcrypt12）
+      if (needsRehash) {
+        const newHash = await bcrypt.hash(password, 12);
+        await client.query('UPDATE users SET password=$1 WHERE id=$2', [newHash, user.id]);
+      }
       req.session.save((err) => {
         if (err) {
-          console.error('❌ Session save error:', err);
-          return res.status(500).json({
-            success: false,
-            error: 'セッションの保存に失敗しました'
-          });
+          return res.status(500).json({ success: false, error: 'セッションの保存に失敗しました' });
         }
-        
-        console.log('✅ Session saved successfully');
         return res.json({
           success: true,
           user: {
-            id: 'admin',
-            login: 'admin',
-            displayName: 'Administrator',
-            role: 'admin',
-            department: 'IT'
+            id: user.id,
+            login: user.username,
+            displayName: user.display_name,
+            role: user.role,
+            department: user.department || ''
           }
         });
       });
     });
-  } else {
-    return res.status(401).json({
-      success: false,
-      error: 'ユーザー名またはパスワードが正しくありません'
-    });
+  } catch (e) {
+    console.error('login error', e);
+    return res.status(500).json({ success: false, error: 'サーバーエラー' });
+  } finally {
+    await client.end();
+  }
+});
+// DBヘルスエンドポイント
+app.get('/api/health/db', async (req, res) => {
+  if (!process.env.DATABASE_URL) {
+    return res.status(200).json({ db: 'ng', users: 0 });
+  }
+  const { Client } = require('pg');
+  const client = new Client({ connectionString: process.env.DATABASE_URL });
+  try {
+    await client.connect();
+    const r = await client.query('SELECT COUNT(*) FROM users');
+    const count = Number(r.rows[0].count || 0);
+    await client.query('SELECT 1');
+    return res.status(200).json({ db: 'ok', users: count });
+  } catch (e) {
+    return res.status(200).json({ db: 'ng', users: 0 });
+  } finally {
+    await client.end();
   }
 });
 
@@ -267,10 +297,15 @@ app.use((err, req, res, next) => {
     .send({ error: "internal_error" });
 });
 
-// サーバー起動
+
+// 本番はDB接続必須
+if (process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL) {
+  console.error('❌ 本番環境でDATABASE_URLが未設定です。サーバーを起動しません。');
+  process.exit(1);
+}
+
 const port = Number(process.env.PORT) || 8080;
 const host = '0.0.0.0';
-
 const server = app.listen(port, host, () => {
   console.log(`Listening on ${host}:${port}`);
   console.log(`Server is ready to accept connections`);
@@ -278,12 +313,10 @@ const server = app.listen(port, host, () => {
   console.log(`🔍 Health check: http://${host}:${port}/healthz`);
   console.log(`🔐 Login API: http://${host}:${port}/api/auth/login`);
 });
-
 server.on('error', (err) => {
   console.error('❌ Server error:', err);
   process.exit(1);
 });
-
 server.on('listening', () => {
   console.log('✅ Server is now listening for connections');
 });
