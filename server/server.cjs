@@ -129,9 +129,10 @@ app.post('/api/auth/login', (req, res) => {
     sessionId: req.session?.id
   });
   
-  const { username, password } = req.body;
+  const { login, email, password } = req.body || {};
+  const id = login || email;
   
-  if (!username || !password) {
+  if (!id || !password) {
     return res.status(400).json({
       success: false,
       error: 'ユーザー名とパスワードを入力してください'
@@ -139,38 +140,49 @@ app.post('/api/auth/login', (req, res) => {
   }
   
   // ダミーログイン（本番環境用）
-  if (username === 'admin' && password === 'admin') {
-    req.session.userId = 'admin';
-    req.session.userRole = 'admin';
-    req.session.username = 'admin';
-    
-    console.log('✅ Login successful:', username);
-    console.log('🍪 Session after login:', {
-      sessionId: req.session.id,
-      userId: req.session.userId,
-      userRole: req.session.userRole
-    });
-    
-    // セッションを明示的に保存
-    req.session.save((err) => {
+  if (id === 'admin' && password === 'admin') {
+    // セッションを明示的に再生成して確実にSet-Cookieを発行
+    req.session.regenerate((err) => {
       if (err) {
-        console.error('❌ Session save error:', err);
+        console.error('❌ Session regenerate error:', err);
         return res.status(500).json({
           success: false,
-          error: 'セッションの保存に失敗しました'
+          error: 'セッションの再生成に失敗しました'
         });
       }
       
-      console.log('✅ Session saved successfully');
-      return res.json({
-        success: true,
-        user: {
-          id: 'admin',
-          username: 'admin',
-          displayName: 'Administrator',
-          role: 'admin',
-          department: 'IT'
+      req.session.userId = 'admin';
+      req.session.userRole = 'admin';
+      req.session.username = 'admin';
+      
+      console.log('✅ Login successful:', id);
+      console.log('🍪 Session after login:', {
+        sessionId: req.session.id,
+        userId: req.session.userId,
+        userRole: req.session.userRole
+      });
+      
+      // セッションを明示的に保存
+      req.session.save((err) => {
+        if (err) {
+          console.error('❌ Session save error:', err);
+          return res.status(500).json({
+            success: false,
+            error: 'セッションの保存に失敗しました'
+          });
         }
+        
+        console.log('✅ Session saved successfully');
+        return res.json({
+          success: true,
+          user: {
+            id: 'admin',
+            login: 'admin',
+            displayName: 'Administrator',
+            role: 'admin',
+            department: 'IT'
+          }
+        });
       });
     });
   } else {

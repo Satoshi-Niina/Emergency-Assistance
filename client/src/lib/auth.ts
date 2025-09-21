@@ -4,12 +4,12 @@ import { AUTH_API } from './api/config';
 import { apiFetch } from '../api/apiClient';
 
 // 明示的なAPI関数（credentials: 'include' を保証）
-export async function loginApi(email: string, password: string) {
+export async function loginApi(login: string, password: string) {
   return apiFetch('/api/auth/login', {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-    body: JSON.stringify({ email, password })
+    body: JSON.stringify({ login, password })
   });
 }
 
