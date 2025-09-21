@@ -167,3 +167,6 @@ import { Input } from "../components/ui/input";
     </div>
   );
 }
+
+export default Login;
+
