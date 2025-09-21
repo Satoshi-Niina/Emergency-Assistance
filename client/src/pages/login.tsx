@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema } from "../lib/schema.ts";
 import { useAuth } from "../context/auth-context";
+import { loginApi, meApi } from "../lib/auth";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../components/ui/form";
@@ -48,17 +49,22 @@ export default function Login() {
     },
   });
 
-  const onSubmit = async (values: { username: string; password: string }) => {
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); // デフォルト遷移を止める
+    setIsLoading(true);
+    setErrorMessage("");
+    
+    const formData = form.getValues();
+    console.debug('[login] start', { email: formData.username });
+    
     try {
-      setIsLoading(true);
-      setErrorMessage("");
-      console.log("🔐 ログイン試行開始:", values.username);
-      console.log("📝 フォーム値:", values);
+      // POST /api/auth/login
+      await loginApi(formData.username, formData.password);
+      console.debug('[login] me check after login');
       
-      // ログイン処理を実行
-      await login(values.username, values.password);
-      
-      console.log("✅ ログイン成功 - 認証状態の更新を待機中");
+      // GET /api/auth/me
+      const me = await meApi();
+      console.log("✅ ログイン成功 - 認証状態確認完了:", me);
       
       // 認証コンテキストの状態更新を待つ（useEffectで自動的に遷移する）
       
@@ -121,10 +127,7 @@ export default function Login() {
           <CardContent className="pt-6">
             <Form {...form}>
               <form 
-                onSubmit={(e) => {
-                  console.log("📤 フォーム送信開始");
-                  form.handleSubmit(onSubmit)(e);
-                }} 
+                onSubmit={onSubmit}
                 className="space-y-4"
               >
                 <FormField
