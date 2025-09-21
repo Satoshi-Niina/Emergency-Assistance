@@ -98,7 +98,6 @@ jobs:
               code=$(curl -s -o /tmp/body -w "%{http_code}" "$API$p")
               echo "$API$p try $i: $code"
               if [ "$code" = "200" ]; then
-                # JSON判定とok:true確認
                 if grep -q '"ok": *true' /tmp/body && grep -q '"db":' /tmp/body; then
                   echo "✅ $API$p returned 200 ok:true"
                   ok=1
@@ -115,5 +114,17 @@ jobs:
           if [ $ok -ne 1 ]; then
             echo "No health endpoint returned 200 JSON ok:true"
             cat /tmp/body || true
+            exit 1
+          fi
+
+      - name: Smoke test frontend health (static root)
+        run: |
+          set -e
+          FRONTEND_URL="${{ secrets.FRONTEND_BASE_URL }}"
+          code=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_URL/")
+          if [ "$code" = "200" ]; then
+            echo "✅ Frontend root returned 200"
+          else
+            echo "❌ Frontend root returned $code"
             exit 1
           fi
