@@ -10,7 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../compone
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../components/ui/form";
 import { Input } from "../components/ui/input";
 
-export default function Login() {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const { login, user, isLoading: authLoading } = useAuth();
@@ -50,41 +51,25 @@ export default function Login() {
   });
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault(); // デフォルト遷移を止める
-    setIsLoading(true);
+    e.preventDefault();
     setErrorMessage("");
-    
-    const formData = form.getValues();
-    console.debug('[login] start', { email: formData.username });
-    
+    if (isLoading) return;
+    if (!username.trim() || !password) {
+      setErrorMessage("ユーザー名/パスワードを入力してください");
+      return;
+    }
+    setIsLoading(true);
     try {
-      // POST /api/auth/login
-      await loginApi(formData.username, formData.password);
-      console.debug('[login] me check after login');
-      
-      // GET /api/auth/me
+      console.debug('[login] submit', { username, len: username.length });
+      // APIは login を期待するため、username を渡す
+      await loginApi(username.trim(), password);
+      console.debug('[login] loginApi done');
       const me = await meApi();
-      console.log("✅ ログイン成功 - 認証状態確認完了:", me);
-      
-      // 認証コンテキストの状態更新を待つ（useEffectで自動的に遷移する）
-      
-    } catch (error) {
-      console.error("❌ ログインエラー:", error);
-      let errorMsg = "ログインに失敗しました";
-      
-      if (error instanceof Error) {
-        if (error.message.includes('ユーザー名またはパスワードが違います')) {
-          errorMsg = "ユーザー名またはパスワードが違います";
-        } else if (error.message.includes('サーバーエラーが発生しました')) {
-          errorMsg = "サーバーエラーが発生しました。しばらく時間をおいて再度お試しください。";
-        } else if (error.message.includes('サーバーに接続できません')) {
-          errorMsg = "サーバーに接続できません。サーバーが起動しているか確認してください。";
-        } else {
-          errorMsg = error.message;
-        }
-      }
-      
-      setErrorMessage(errorMsg);
+      console.debug('[login] me ok', me);
+      // 認証コンテキストの状態更新を待つ（useEffectで自動的に遷移）
+    } catch (e: any) {
+      setErrorMessage(e?.message ?? "ログインに失敗しました");
+      console.debug('[login] failed', e);
     } finally {
       setIsLoading(false);
     }
@@ -130,32 +115,35 @@ export default function Login() {
                 onSubmit={onSubmit}
                 className="space-y-4"
               >
-                <FormField
-                  control={form.control}
-                  name="username"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>ユーザー名</FormLabel>
-                      <FormControl>
-                        <Input placeholder="ユーザー名を入力" autoComplete="off" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>パスワード</FormLabel>
-                      <FormControl>
-                        <Input type="password" placeholder="パスワードを入力" autoComplete="new-password" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <FormItem>
+                  <FormLabel>ユーザー名</FormLabel>
+                  <FormControl>
+                    <Input
+                      name="username"
+                      placeholder="ユーザー名を入力"
+                      autoComplete="off"
+                      value={username}
+                      onChange={e => setUsername(e.target.value)}
+                      disabled={isLoading}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+                <FormItem>
+                  <FormLabel>パスワード</FormLabel>
+                  <FormControl>
+                    <Input
+                      name="password"
+                      type="password"
+                      placeholder="パスワードを入力"
+                      autoComplete="new-password"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      disabled={isLoading}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
                 {errorMessage && (
                   <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
                     {errorMessage}
@@ -168,8 +156,6 @@ export default function Login() {
                   >
                     {isLoading ? "ログイン中..." : "ログイン"}
                   </Button>
-  // APIは login を期待するため username を渡す
-  await loginApi(formData.username, formData.password);
               </form>
             </Form>
           </CardContent>
