@@ -61,54 +61,35 @@ console.log('Express app created');
 // Trust proxy for Azure App Service
 app.set('trust proxy', 1);
 
-// CORS設定 - 本番環境用
-const frontendUrl = process.env.FRONTEND_URL || 'https://your-swa.azurestaticapps.net';
-app.use(cors({
-  origin: [
-    frontendUrl,
-    'https://witty-river-012f39e00.1.azurestaticapps.net',
-    'https://*.azurestaticapps.net', // Static Web Apps のワイルドカードドメイン
-    'http://localhost:3000', 
-    'http://localhost:5173'
-  ],
+// CORS設定 - クロスサイト対応
+const FRONTEND = process.env.FRONTEND_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net';
+
+const corsOpts = {
+  origin: [FRONTEND],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With'],
-  optionsSuccessStatus: 200
-}));
+  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization']
+};
+app.use(cors(corsOpts));
+app.options('*', cors(corsOpts)); // preflight
 
 // ミドルウェア
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 
-// セッション設定 - 本番環境用
-const isProduction = process.env.NODE_ENV === 'production';
-const isLocalProduction = process.env.LOCAL_PRODUCTION === 'true';
-const useSecureCookies = isProduction && !isLocalProduction; // ローカル本番シミュレーションではsecure: false
-
-console.log('🔧 Session configuration:', {
-  isProduction,
-  isLocalProduction,
-  useSecureCookies,
-  NODE_ENV: process.env.NODE_ENV,
-  LOCAL_PRODUCTION: process.env.LOCAL_PRODUCTION
-});
-
+// セッション設定 - クロスサイト対応
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'emergency-assistance-secret',
+  name: 'sid',
+  secret: process.env.SESSION_SECRET || 'change_me',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: useSecureCookies,
     httpOnly: true,
-    sameSite: useSecureCookies ? 'none' : 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7日間
-    path: '/',
-    domain: undefined
-  },
-  name: 'emergency-assistance-session',
-  rolling: true
+    secure: true,          // https 必須
+    sameSite: 'none',      // クロスサイト必須
+    maxAge: 24*60*60*1000  // 24時間
+  }
 }));
 
 // 静的ファイル配信
@@ -250,7 +231,7 @@ app.post('/api/auth/logout', (req, res) => {
       });
     }
     
-    res.clearCookie('emergency-assistance-session');
+    res.clearCookie('sid');
     console.log('✅ Logout successful');
     
     return res.json({
