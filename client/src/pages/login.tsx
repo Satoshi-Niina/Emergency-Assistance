@@ -55,13 +55,16 @@ export default function Login() {
     e.preventDefault();
     setErrorMessage("");
     if (isLoading) return;
+    // HTML5 required属性により、空欄時はonSubmit自体が呼ばれない（バリデーションで阻止される）
+    // ただし、requiredを外すと空欄でもonSubmitが必ず発火する
+    // → requiredは残し、onSubmitは「実入力時に必ず1回発火」することを保証
+    console.debug('[login] submit', { usernameLen: username.length });
     if (!username.trim() || !password) {
       setErrorMessage("ユーザー名/パスワードを入力してください");
       return;
     }
     setIsLoading(true);
     try {
-      console.debug('[login] submit', { username, len: username.length });
       // APIは login を期待するため、username を渡す
       await loginApi(username.trim(), password);
       console.debug('[login] loginApi done');

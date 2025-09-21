@@ -1,3 +1,10 @@
+// セッション状態確認エンドポイント（CHIPS動作確認用）
+app.get('/api/health/session', (req, res) => {
+  res.json({
+    id: req.sessionID,
+    hasUser: !!req.session?.userId
+  });
+});
 #!/usr/bin/env node
 
 console.log('Starting server...');
@@ -84,10 +91,12 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'change_me',
   resave: false,
   saveUninitialized: false,
+  proxy: true, // クロスサイトCookie用
   cookie: {
     httpOnly: true,
     secure: true,          // https 必須
     sameSite: 'none',      // クロスサイト必須
+    partitioned: true,     // CHIPS: Set-Cookieに;Partitionedを付与
     maxAge: 24*60*60*1000  // 24時間
   }
 }));
@@ -124,20 +133,22 @@ app.get('/api/health/json', (req, res) => {
 const { Client } = require('pg');
 const bcrypt = require('bcrypt');
 app.post('/api/auth/login', async (req, res) => {
-  const { login, email, password } = req.body || {};
-  const id = login || email;
+  // 受信ボディのキー名だけをログ（password値は出力しない）
+  console.info('[auth/login] bodyKeys:', Object.keys(req.body||{}));
+  res.set('Cache-Control', 'no-store');
+  const { login, password } = req.body || {};
+  const id = login;
   if (!id || !password) {
     return res.status(400).json({ success: false, error: 'ユーザー名とパスワードを入力してください' });
   }
-  // DB接続必須（本番はモック禁止）
   if (process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL) {
     return res.status(500).json({ success: false, error: 'DB接続情報がありません' });
   }
   const client = new Client({ connectionString: process.env.DATABASE_URL });
   try {
     await client.connect();
-    // loginまたはemailでユーザー取得（LOWERで大小無視）
-    const q = `SELECT * FROM users WHERE LOWER(username)=LOWER($1) OR LOWER(email)=LOWER($1) LIMIT 1`;
+    // usernameのみでユーザー取得（LOWERで大小無視）
+    const q = `SELECT * FROM users WHERE LOWER(username)=LOWER($1) LIMIT 1`;
     const { rows } = await client.query(q, [id]);
     if (!rows[0]) {
       console.info('user_found: false');
@@ -150,15 +161,12 @@ app.post('/api/auth/login', async (req, res) => {
     let needsRehash = false;
     // パスワード方式判定
     if (/^\$2[aby]\$/.test(hash)) {
-      // bcrypt
       passwordOk = await bcrypt.compare(password, hash);
     } else if (/^\$argon2/.test(hash)) {
-      // argon2（動的import）
       const argon2 = await import('argon2');
       passwordOk = await argon2.default.verify(hash, password);
       if (passwordOk) needsRehash = true;
     } else {
-      // 平文
       passwordOk = password === hash;
       if (passwordOk) needsRehash = true;
     }
@@ -167,19 +175,19 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ success: false, error: 'ユーザー名またはパスワードが正しくありません' });
     }
     console.info('password_ok: true');
-    // セッション再生成
     req.session.regenerate(async (err) => {
       if (err) {
         return res.status(500).json({ success: false, error: 'セッションの再生成に失敗しました' });
       }
+      // 必ずregenerate後にuserId等を設定
       req.session.userId = user.id;
       req.session.userRole = user.role || 'user';
       req.session.username = user.username;
-      // パスワード自動再ハッシュ（bcrypt12）
       if (needsRehash) {
         const newHash = await bcrypt.hash(password, 12);
         await client.query('UPDATE users SET password=$1 WHERE id=$2', [newHash, user.id]);
       }
+      // 必ずsave後にres.json
       req.session.save((err) => {
         if (err) {
           return res.status(500).json({ success: false, error: 'セッションの保存に失敗しました' });
@@ -233,7 +241,7 @@ app.get('/api/auth/me', (req, res) => {
     userRole: req.session?.userRole,
     sessionData: req.session
   });
-  
+  res.set('Cache-Control', 'no-store');
   if (!req.session || !req.session.userId) {
     console.log('❌ No session or user ID');
     console.log('🔍 Available session data:', req.session);
@@ -242,9 +250,7 @@ app.get('/api/auth/me', (req, res) => {
       error: '認証されていません'
     });
   }
-  
   console.log('✅ Authenticated user:', req.session.userId);
-  
   return res.json({
     success: true,
     user: {
@@ -263,7 +269,7 @@ app.post('/api/auth/logout', (req, res) => {
     sessionId: req.session?.id,
     userId: req.session?.userId
   });
-  
+  res.set('Cache-Control', 'no-store');
   req.session.destroy((err) => {
     if (err) {
       console.error('❌ Session destroy error:', err);
@@ -272,10 +278,8 @@ app.post('/api/auth/logout', (req, res) => {
         error: 'ログアウトに失敗しました'
       });
     }
-    
     res.clearCookie('sid');
     console.log('✅ Logout successful');
-    
     return res.json({
       success: true,
       message: 'ログアウトしました'
