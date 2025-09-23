@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+console.info('[entry]', __filename);
 console.log('🚀 Starting Azure Emergency Assistance Server...');
 
 // 基本的な依存関係の読み込み
@@ -146,6 +147,81 @@ app.post('/api/auth/logout', (req, res) => {
     res.status(200).json({ success: true, message: 'ログアウトしました' });
   });
 });
+
+// 認証安定化ルート
+app.get('/api/auth/handshake', (req, res) => {
+  res.json({
+    firstParty: !!process.env.COOKIE_DOMAIN,
+    supportsToken: true
+  });
+});
+
+app.post('/api/auth/cookie-probe', (req, res) => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const isFirstParty = !!process.env.COOKIE_DOMAIN;
+  
+  res.cookie('auth-probe', 'test', {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isFirstParty ? 'lax' : 'none',
+    maxAge: 5000, // 5秒
+    ...(isProduction && !isFirstParty && { partitioned: true })
+  });
+  
+  res.status(204).send();
+});
+
+app.get('/api/auth/cookie-probe-check', (req, res) => {
+  const cookieOk = !!req.cookies['auth-probe'];
+  
+  // プローブCookieを削除
+  if (cookieOk) {
+    res.clearCookie('auth-probe');
+  }
+  
+  res.json({ cookieOk });
+});
+
+app.post('/api/auth/refresh', async (req, res) => {
+  try {
+    // セッションが有効な場合
+    if (req.session?.userId) {
+      const jwt = require('jsonwebtoken');
+      const token = jwt.sign({ uid: req.session.userId }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '1d' });
+      return res.json({ token });
+    }
+    
+    // Bearerトークンが有効な場合
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      try {
+        const jwt = require('jsonwebtoken');
+        const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret');
+        
+        // 期限が15分未満の場合は新しいトークンを発行
+        const now = Math.floor(Date.now() / 1000);
+        if (payload.exp - now < 900) { // 15分 = 900秒
+          const newToken = jwt.sign({ uid: payload.uid }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '1d' });
+          return res.json({ token: newToken });
+        }
+        
+        // まだ有効な場合は現在のトークンを返す
+        return res.json({ token });
+      } catch (jwtError) {
+        // JWT無効
+      }
+    }
+    
+    // どちらも無効
+    return res.status(401).json({ success: false, error: '認証が必要です' });
+  } catch (error) {
+    console.error('Refresh error:', error);
+    return res.status(500).json({ success: false, error: 'リフレッシュエラー' });
+  }
+});
+
+console.info('[auth] routes mounted: handshake, cookie-probe, refresh');
 
 // エラーハンドリング
 app.use((err, req, res, next) => {

@@ -153,21 +153,28 @@ export const negotiateAuthMode = async (): Promise<'cookie' | 'token'> => {
     }
     
     // 2. クロスサイトの場合はCookieプローブを実施
-    await apiFetch('/api/auth/cookie-probe', {
-      method: 'POST',
-      credentials: 'include'
-    });
-    
-    const probeResult = await apiFetch('/api/auth/cookie-probe-check');
-    
-    const mode = probeResult.cookieOk ? 'cookie' : 'token';
-    sessionStorage.setItem('AUTH_MODE', mode);
-    
-    console.log(`🔧 認証モード自動切替: ${mode} (cookieOk: ${probeResult.cookieOk})`);
-    return mode;
+    try {
+      await apiFetch('/api/auth/cookie-probe', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      
+      const probeResult = await apiFetch('/api/auth/cookie-probe-check');
+      
+      const mode = probeResult.cookieOk ? 'cookie' : 'token';
+      sessionStorage.setItem('AUTH_MODE', mode);
+      
+      console.log(`🔧 認証モード自動切替: ${mode} (cookieOk: ${probeResult.cookieOk})`);
+      return mode;
+    } catch (probeError) {
+      // Cookieプローブが404/5xxの場合はトークンモードにフォールバック
+      console.error('Cookieプローブエラー:', probeError);
+      sessionStorage.setItem('AUTH_MODE', 'token');
+      return 'token';
+    }
   } catch (error) {
     console.error('認証モード切替エラー:', error);
-    // エラー時はトークンモードにフォールバック
+    // handshakeが404/5xxの場合はトークンモードにフォールバック
     sessionStorage.setItem('AUTH_MODE', 'token');
     return 'token';
   }
