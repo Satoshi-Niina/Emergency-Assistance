@@ -61,20 +61,20 @@ export interface PerplexityResponse {
  */
 export async function getPerplexityAnswer(
   query: string,
-  systemPrompt: string = "保守用車の緊急対応に関する質問に具体的に回答してください。回答は簡潔にしてください。",
+  systemPrompt: string = '保守用車の緊急対応に関する質問に具体的に回答してください。回答は簡潔にしてください。',
   useKnowledgeBaseOnly: boolean = true
-): Promise<{ content: string, citations: PerplexityCitation[] }> {
+): Promise<{ content: string; citations: PerplexityCitation[] }> {
   try {
     // サーバーサイドで実行するAPIリクエスト
     const response = await axios.post('/api/perplexity', {
       query,
       systemPrompt,
-      useKnowledgeBaseOnly
+      useKnowledgeBaseOnly,
     });
 
     return {
       content: response.data.content,
-      citations: response.data.citations || []
+      citations: response.data.citations || [],
     };
   } catch (error) {
     console.error('Perplexity API エラー:', error);

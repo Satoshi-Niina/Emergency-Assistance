@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import OpenAI from 'openai';
 import dotenv from 'dotenv';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../../server/.env') });
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const OPENAI_MODEL = "gpt-4o";
+const OPENAI_MODEL = 'gpt-4o';
 
 // 複数の場所から.envファイルを読み込み
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
@@ -21,41 +21,55 @@ dotenv.config({ path: path.resolve(__dirname, '../../server/.env') });
 const apiKey = process.env.OPENAI_API_KEY;
 
 // デバッグ用ログを有効化
-console.log("[DEBUG] OpenAI initialization - API KEY exists:", apiKey ? "YES" : "NO");
-console.log("[DEBUG] OpenAI API KEY prefix:", apiKey ? apiKey.substring(0, 10) + "..." : "NOT FOUND");
-console.log("[DEBUG] Environment variables:", {
-  OPENAI_API_KEY: process.env.OPENAI_API_KEY ? "SET" : "NOT SET",
+console.log(
+  '[DEBUG] OpenAI initialization - API KEY exists:',
+  apiKey ? 'YES' : 'NO'
+);
+console.log(
+  '[DEBUG] OpenAI API KEY prefix:',
+  apiKey ? apiKey.substring(0, 10) + '...' : 'NOT FOUND'
+);
+console.log('[DEBUG] Environment variables:', {
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET',
   NODE_ENV: process.env.NODE_ENV,
-  PWD: __dirname
+  PWD: __dirname,
 });
 
 // 開発環境ではAPIキーがなくても動作するように条件付き初期化
 let openai: OpenAI | null = null;
-if (apiKey && apiKey !== 'dev-mock-key' && apiKey !== 'your-openai-api-key-here' && apiKey.startsWith('sk-')) {
+if (
+  apiKey &&
+  apiKey !== 'dev-mock-key' &&
+  apiKey !== 'your-openai-api-key-here' &&
+  apiKey.startsWith('sk-')
+) {
   try {
     openai = new OpenAI({
       apiKey: apiKey,
     });
-    console.log("[DEBUG] OpenAI client initialized successfully");
+    console.log('[DEBUG] OpenAI client initialized successfully');
   } catch (error) {
-    console.error("[DEBUG] OpenAI client initialization failed:", error);
+    console.error('[DEBUG] OpenAI client initialization failed:', error);
     openai = null;
   }
 } else {
-  console.log("[DEV] OpenAI client not initialized - API key not available or is mock key");
-  console.log("[DEBUG] API Key validation:", {
+  console.log(
+    '[DEV] OpenAI client not initialized - API key not available or is mock key'
+  );
+  console.log('[DEBUG] API Key validation:', {
     exists: !!apiKey,
-    isMockKey: apiKey === 'dev-mock-key' || apiKey === 'your-openai-api-key-here',
+    isMockKey:
+      apiKey === 'dev-mock-key' || apiKey === 'your-openai-api-key-here',
     startsWithSk: apiKey ? apiKey.startsWith('sk-') : false,
-    keyLength: apiKey ? apiKey.length : 0
+    keyLength: apiKey ? apiKey.length : 0,
   });
 }
 
 // デバッグ用：OpenAIクライアントの状態を確認
-console.log("[DEBUG] Final OpenAI client status:", {
+console.log('[DEBUG] Final OpenAI client status:', {
   clientExists: !!openai,
   apiKeyExists: !!apiKey,
-  apiKeyPrefix: apiKey ? apiKey.substring(0, 10) + '...' : 'NOT FOUND'
+  apiKeyPrefix: apiKey ? apiKey.substring(0, 10) + '...' : 'NOT FOUND',
 });
 
 // OpenAIクライアントの状態を外部から確認する関数
@@ -65,20 +79,30 @@ export function getOpenAIClientStatus() {
     apiKeyExists: !!apiKey,
     apiKeyPrefix: apiKey ? apiKey.substring(0, 10) + '...' : 'NOT FOUND',
     apiKeyLength: apiKey ? apiKey.length : 0,
-    isMockKey: apiKey === 'dev-mock-key' || apiKey === 'your-openai-api-key-here',
-    startsWithSk: apiKey ? apiKey.startsWith('sk-') : false
+    isMockKey:
+      apiKey === 'dev-mock-key' || apiKey === 'your-openai-api-key-here',
+    startsWithSk: apiKey ? apiKey.startsWith('sk-') : false,
   };
 }
 
 // 開発環境用のより専門的で動的なモックレスポンス
 const getMockResponse = (prompt: string): string => {
   const lowerPrompt = prompt.toLowerCase();
-  
+
   // キーワードベースの動的レスポンス生成
-  if (lowerPrompt.includes('応急処置') || lowerPrompt.includes('緊急') || lowerPrompt.includes('故障')) {
-    const vehicleTypes = ['軌道モータカー', 'マルチプルタイタンパー', 'バラストレギュレーター'];
-    const randomVehicle = vehicleTypes[Math.floor(Math.random() * vehicleTypes.length)];
-    
+  if (
+    lowerPrompt.includes('応急処置') ||
+    lowerPrompt.includes('緊急') ||
+    lowerPrompt.includes('故障')
+  ) {
+    const vehicleTypes = [
+      '軌道モータカー',
+      'マルチプルタイタンパー',
+      'バラストレギュレーター',
+    ];
+    const randomVehicle =
+      vehicleTypes[Math.floor(Math.random() * vehicleTypes.length)];
+
     return `🚨 **緊急対応モード** - ${randomVehicle}の故障対応について
 
 **【即座に実行すべき安全確認】**
@@ -107,7 +131,7 @@ const getMockResponse = (prompt: string): string => {
 
 何か具体的な症状や車両について教えていただければ、より詳細な対応をご案内できます。`;
   }
-  
+
   // 車両別の専門的対応
   if (lowerPrompt.includes('タイタンパー') || lowerPrompt.includes('突固')) {
     return `🔧 **マルチプルタイタンパー専門対応**
@@ -151,7 +175,7 @@ const getMockResponse = (prompt: string): string => {
 
 現場での具体的な不具合症状を教えていただければ、経験に基づいた対処法をご提案できます。`;
   }
-  
+
   // 一般的な挨拶への専門的な対応
   if (lowerPrompt.includes('こんにちは') || lowerPrompt.includes('hello')) {
     return `こんにちは！鉄道保守車両技術サポートシステムです。
@@ -169,7 +193,7 @@ const getMockResponse = (prompt: string): string => {
 どのような車両のどのような症状についてお困りでしょうか？
 現場の状況を詳しく教えていただければ、実践的なアドバイスを提供いたします。`;
   }
-  
+
   // より動的なデフォルトレスポンス
   const responses = [
     `🔍 **技術診断サポート準備完了**
@@ -199,9 +223,9 @@ const getMockResponse = (prompt: string): string => {
 - エラー表示や異音の有無
 - 直前に行っていた作業内容
 
-20年以上の現場経験を基に、効果的な対応方法をご案内します。`
+20年以上の現場経験を基に、効果的な対応方法をご案内します。`,
   ];
-  
+
   return responses[Math.floor(Math.random() * responses.length)];
 };
 
@@ -211,15 +235,22 @@ const getMockResponse = (prompt: string): string => {
  * @param useKnowledgeBase ナレッジベースを使用するかどうか
  * @returns OpenAI APIからの応答テキスト
  */
-export async function processOpenAIRequest(prompt: string, useKnowledgeBase: boolean = true): Promise<string> {
+export async function processOpenAIRequest(
+  prompt: string,
+  useKnowledgeBase: boolean = true
+): Promise<string> {
   try {
     // OpenAIクライアントが利用可能かチェック
     if (!openai) {
-      console.log('[DEV] OpenAI client not available, returning development message');
+      console.log(
+        '[DEV] OpenAI client not available, returning development message'
+      );
       console.log('[DEBUG] OpenAI client status:', {
         clientExists: !!openai,
         apiKeyExists: !!process.env.OPENAI_API_KEY,
-        apiKeyPrefix: process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.substring(0, 10) + '...' : 'NOT FOUND'
+        apiKeyPrefix: process.env.OPENAI_API_KEY
+          ? process.env.OPENAI_API_KEY.substring(0, 10) + '...'
+          : 'NOT FOUND',
       });
       return getMockResponse(prompt);
     }
@@ -229,45 +260,62 @@ export async function processOpenAIRequest(prompt: string, useKnowledgeBase: boo
     // コンテキスト分析を実行
     let contextAnalysis;
     try {
-      const { analyzeUserContext, adjustSystemPromptForContext } = await import('./context-analyzer.js');
+      const { analyzeUserContext, adjustSystemPromptForContext } = await import(
+        './context-analyzer.js'
+      );
       contextAnalysis = analyzeUserContext(prompt);
       console.log('[DEBUG] Context analysis:', contextAnalysis);
     } catch (error) {
-      console.warn('[WARN] Context analyzer not available, using default settings');
+      console.warn(
+        '[WARN] Context analyzer not available, using default settings'
+      );
       contextAnalysis = null;
     }
 
     // システムプロンプトを設定
-    let systemPrompt = "あなたは保守用車支援システムの一部として機能するAIアシスタントです。ユーザーの質問に対して、正確で実用的な回答を提供してください。";
+    let systemPrompt =
+      'あなたは保守用車支援システムの一部として機能するAIアシスタントです。ユーザーの質問に対して、正確で実用的な回答を提供してください。';
 
     // ナレッジベースから関連情報を取得して含める
     if (useKnowledgeBase) {
       try {
-        const { generateSystemPromptWithKnowledge } = await import('./knowledge-base.js');
+        const { generateSystemPromptWithKnowledge } = await import(
+          './knowledge-base.js'
+        );
         systemPrompt = await generateSystemPromptWithKnowledge(prompt);
-        
+
         // コンテキスト分析結果でシステムプロンプトを調整
         if (contextAnalysis) {
-          const { adjustSystemPromptForContext } = await import('./context-analyzer.js');
-          systemPrompt = adjustSystemPromptForContext(systemPrompt, contextAnalysis);
+          const { adjustSystemPromptForContext } = await import(
+            './context-analyzer.js'
+          );
+          systemPrompt = adjustSystemPromptForContext(
+            systemPrompt,
+            contextAnalysis
+          );
         }
       } catch (error) {
         console.error('ナレッジベース初期化エラー:', error);
         // エラーが発生した場合は基本的なシステムプロンプトを使用
-        systemPrompt = "あなたは保守用車支援システムの一部として機能するAIアシスタントです。ユーザーの質問に対して、正確で実用的な回答を提供してください。";
+        systemPrompt =
+          'あなたは保守用車支援システムの一部として機能するAIアシスタントです。ユーザーの質問に対して、正確で実用的な回答を提供してください。';
       }
     }
 
     // コンテキストに基づいた動的パラメータ設定
-    const temperature = contextAnalysis?.suggestedResponseStyle.temperature || (useKnowledgeBase ? 0.3 : 0.5);
-    const maxTokens = contextAnalysis?.suggestedResponseStyle.maxTokens || (useKnowledgeBase ? 3000 : 2000);
+    const temperature =
+      contextAnalysis?.suggestedResponseStyle.temperature ||
+      (useKnowledgeBase ? 0.3 : 0.5);
+    const maxTokens =
+      contextAnalysis?.suggestedResponseStyle.maxTokens ||
+      (useKnowledgeBase ? 3000 : 2000);
 
     // OpenAI API呼び出し
     const response = await openai.chat.completions.create({
       model: OPENAI_MODEL,
       messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: prompt }
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt },
       ],
       temperature: temperature,
       max_tokens: maxTokens,
@@ -295,7 +343,7 @@ export async function processOpenAIRequest(prompt: string, useKnowledgeBase: boo
       code: error.code,
       type: error.type,
       status: error.status,
-      stack: error.stack
+      stack: error.stack,
     });
 
     // 特定のエラータイプに応じたメッセージを返す
@@ -333,19 +381,21 @@ export async function summarizeText(text: string): Promise<string> {
     }
 
     // 長すぎるテキストを切り詰める
-    const truncatedText = text.length > 4000 ? text.substring(0, 4000) + "..." : text;
+    const truncatedText =
+      text.length > 4000 ? text.substring(0, 4000) + '...' : text;
 
     const response = await openai.chat.completions.create({
       model: OPENAI_MODEL,
       messages: [
-        { 
-          role: "system", 
-          content: "あなたは技術文書の要約を行う専門家です。文章の要点を保ちながら、簡潔に要約してください。" 
+        {
+          role: 'system',
+          content:
+            'あなたは技術文書の要約を行う専門家です。文章の要点を保ちながら、簡潔に要約してください。',
         },
-        { 
-          role: "user", 
-          content: `以下のテキストを100語程度に要約してください:\n\n${truncatedText}` 
-        }
+        {
+          role: 'user',
+          content: `以下のテキストを100語程度に要約してください:\n\n${truncatedText}`,
+        },
       ],
       temperature: 0.3,
     });
@@ -371,22 +421,24 @@ export async function generateKeywords(text: string): Promise<string[]> {
     }
 
     // 長すぎるテキストを切り詰める
-    const truncatedText = text.length > 4000 ? text.substring(0, 4004) + "..." : text;
+    const truncatedText =
+      text.length > 4000 ? text.substring(0, 4004) + '...' : text;
 
     const response = await openai.chat.completions.create({
       model: OPENAI_MODEL,
       messages: [
-        { 
-          role: "system", 
-          content: "あなたは技術文書からキーワードを抽出する専門家です。与えられたテキストから、検索に役立つ重要なキーワードを抽出してください。" 
+        {
+          role: 'system',
+          content:
+            'あなたは技術文書からキーワードを抽出する専門家です。与えられたテキストから、検索に役立つ重要なキーワードを抽出してください。',
         },
-        { 
-          role: "user", 
-          content: `以下のテキストから、最も重要な5〜10個のキーワードを抽出し、JSON配列形式で返してください。専門用語や固有名詞を優先してください:\n\n${truncatedText}` 
-        }
+        {
+          role: 'user',
+          content: `以下のテキストから、最も重要な5〜10個のキーワードを抽出し、JSON配列形式で返してください。専門用語や固有名詞を優先してください:\n\n${truncatedText}`,
+        },
       ],
       temperature: 0.3,
-      response_format: { type: "json_object" }, // 強制的にJSONオブジェクトとして返す
+      response_format: { type: 'json_object' }, // 強制的にJSONオブジェクトとして返す
     });
 
     const content = response.choices[0].message.content || '{"keywords": []}';
@@ -423,10 +475,14 @@ export async function generateStepResponse(keyword: string): Promise<{
   try {
     // OpenAIクライアントが利用可能かチェック
     if (!openai) {
-      console.log('[DEV] OpenAI client not available for step response generation');
+      console.log(
+        '[DEV] OpenAI client not available for step response generation'
+      );
       return {
         title: keyword,
-        steps: [{ description: "開発環境ではステップ生成機能が利用できません。" }]
+        steps: [
+          { description: '開発環境ではステップ生成機能が利用できません。' },
+        ],
       };
     }
 
@@ -434,29 +490,30 @@ export async function generateStepResponse(keyword: string): Promise<{
       model: OPENAI_MODEL,
       messages: [
         {
-          role: "system",
-          content: "あなたは保守用車の専門家です。キーワードに基づいて、具体的な手順を説明してください。"
+          role: 'system',
+          content:
+            'あなたは保守用車の専門家です。キーワードに基づいて、具体的な手順を説明してください。',
         },
         {
-          role: "user",
-          content: `以下のキーワードに関する対応手順を、3-5つのステップに分けて説明してください:\n${keyword}`
-        }
+          role: 'user',
+          content: `以下のキーワードに関する対応手順を、3-5つのステップに分けて説明してください:\n${keyword}`,
+        },
       ],
       temperature: 0.3,
-      response_format: { type: "json_object" }
+      response_format: { type: 'json_object' },
     });
 
     const content = response.choices[0].message.content || '';
     const result = JSON.parse(content);
     return {
       title: result.title || keyword,
-      steps: result.steps || []
+      steps: result.steps || [],
     };
   } catch (error) {
     console.error('ステップレスポンス生成エラー:', error);
     return {
       title: keyword,
-      steps: [{ description: "レスポンスの生成に失敗しました。" }]
+      steps: [{ description: 'レスポンスの生成に失敗しました。' }],
     };
   }
 }
@@ -465,24 +522,28 @@ export async function generateSearchQuery(text: string): Promise<string> {
   try {
     // OpenAIクライアントが利用可能かチェック
     if (!openai) {
-      console.log('[DEV] OpenAI client not available for search query generation');
+      console.log(
+        '[DEV] OpenAI client not available for search query generation'
+      );
       return text.substring(0, 50); // 開発環境では元のテキストの一部を返す
     }
 
     // 長すぎるテキストを切り詰める
-    const truncatedText = text.length > 200 ? text.substring(0, 200) + "..." : text;
+    const truncatedText =
+      text.length > 200 ? text.substring(0, 200) + '...' : text;
 
     const response = await openai.chat.completions.create({
       model: OPENAI_MODEL,
       messages: [
-        { 
-          role: "system", 
-          content: "You are a search query optimization expert. Generate optimal search queries for search engines from user questions or text." 
+        {
+          role: 'system',
+          content:
+            'You are a search query optimization expert. Generate optimal search queries for search engines from user questions or text.',
         },
-        { 
-          role: "user", 
-          content: `Extract optimal search keywords (5-10 words) from the following text for searching related technical documents. Prioritize technical terms and exclude unnecessary conjunctions and prepositions:\n\n${truncatedText}` 
-        }
+        {
+          role: 'user',
+          content: `Extract optimal search keywords (5-10 words) from the following text for searching related technical documents. Prioritize technical terms and exclude unnecessary conjunctions and prepositions:\n\n${truncatedText}`,
+        },
       ],
       temperature: 0.3,
       max_tokens: 100,
@@ -506,34 +567,37 @@ export async function analyzeVehicleImage(base64Image: string): Promise<any> {
   try {
     // OpenAIクライアントが利用可能かチェック
     if (!openai) {
-      console.log('[DEV] OpenAI client not available for vehicle image analysis');
+      console.log(
+        '[DEV] OpenAI client not available for vehicle image analysis'
+      );
       return {
         analysis: '開発環境では画像分析機能が利用できません。',
         success: false,
-        error: 'OpenAI client not available'
+        error: 'OpenAI client not available',
       };
     }
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o", // ビジョン機能を持つモデルを使用
+      model: 'gpt-4o', // ビジョン機能を持つモデルを使用
       messages: [
         {
-          role: "system",
-          content: "あなたは車両画像分析の専門家です。保守用車・作業用車両・特殊車両の画像を分析し、車両のタイプ、状態、特徴を詳細に説明してください。"
+          role: 'system',
+          content:
+            'あなたは車両画像分析の専門家です。保守用車・作業用車両・特殊車両の画像を分析し、車両のタイプ、状態、特徴を詳細に説明してください。',
         },
         {
-          role: "user",
+          role: 'user',
           content: [
             {
-              type: "text",
-              text: "この車両の画像を分析して、車両の種類、状態、目立つ特徴、および考えられる用途について詳細に説明してください。保守用車の場合は、その種類（軌道モータカー、マルチプルタイタンパー、バラストレギュレーターなど）も特定してください。"
+              type: 'text',
+              text: 'この車両の画像を分析して、車両の種類、状態、目立つ特徴、および考えられる用途について詳細に説明してください。保守用車の場合は、その種類（軌道モータカー、マルチプルタイタンパー、バラストレギュレーターなど）も特定してください。',
             },
             {
-              type: "image_url",
+              type: 'image_url',
               image_url: {
-                url: `data:image/jpeg;base64,${base64Image}`
-              }
-            }
+                url: `data:image/jpeg;base64,${base64Image}`,
+              },
+            },
           ],
         },
       ],
@@ -542,14 +606,14 @@ export async function analyzeVehicleImage(base64Image: string): Promise<any> {
 
     return {
       analysis: response.choices[0].message.content || '',
-      success: true
+      success: true,
     };
   } catch (error) {
     console.error('車両画像分析エラー:', error.message);
     return {
       analysis: '画像の分析中にエラーが発生しました。',
       success: false,
-      error: error.message
+      error: error.message,
     };
   }
 }

@@ -37,8 +37,8 @@ export const speakText = (
     utterance.onend = () => {
       resolve();
     };
-    
-    utterance.onerror = (event) => {
+
+    utterance.onerror = event => {
       reject(new Error(`音声合成エラー: ${event.error}`));
     };
 
@@ -64,7 +64,7 @@ export const stopSpeaking = (): void => {
  * @returns 利用可能な音声の配列
  */
 export const getAvailableVoices = (): Promise<SpeechSynthesisVoice[]> => {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     if (!('speechSynthesis' in window)) {
       resolve([]);
       return;
@@ -94,20 +94,20 @@ export const selectVoiceForLanguage = async (
   lang: string
 ): Promise<SpeechSynthesisVoice | null> => {
   const voices = await getAvailableVoices();
-  
+
   // 指定された言語に完全に一致する音声を検索
   const exactMatch = voices.find(
-    (voice) => voice.lang.toLowerCase() === lang.toLowerCase()
+    voice => voice.lang.toLowerCase() === lang.toLowerCase()
   );
   if (exactMatch) return exactMatch;
-  
+
   // 言語コードの先頭部分が一致する音声を検索（例: 'ja-JP' → 'ja'）
   const langPrefix = lang.split('-')[0].toLowerCase();
-  const prefixMatch = voices.find(
-    (voice) => voice.lang.toLowerCase().startsWith(langPrefix)
+  const prefixMatch = voices.find(voice =>
+    voice.lang.toLowerCase().startsWith(langPrefix)
   );
   if (prefixMatch) return prefixMatch;
-  
+
   // デフォルト音声（最初の音声）を返す、または音声がない場合はnull
   return voices.length > 0 ? voices[0] : null;
 };

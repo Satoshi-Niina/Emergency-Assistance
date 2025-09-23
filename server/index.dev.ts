@@ -20,7 +20,9 @@ console.log('📁 __dirname:', __dirname);
 let loadedEnvFile = null;
 for (const envPath of envPaths) {
   try {
-    const result = await import('dotenv').then(dotenv => dotenv.config({ path: envPath }));
+    const result = await import('dotenv').then(dotenv =>
+      dotenv.config({ path: envPath })
+    );
     if (result.parsed && Object.keys(result.parsed).length > 0) {
       loadedEnvFile = envPath;
       console.log('✅ 環境変数ファイル読み込み成功:', envPath);
@@ -32,7 +34,9 @@ for (const envPath of envPaths) {
 }
 
 if (!loadedEnvFile) {
-  console.log('⚠️ 環境変数ファイルが見つかりません。デフォルト値を使用します。');
+  console.log(
+    '⚠️ 環境変数ファイルが見つかりません。デフォルト値を使用します。'
+  );
   console.log('🔍 試行したパス:', envPaths);
 }
 
@@ -42,15 +46,21 @@ console.log('🔧 環境変数確認:', {
   PORT: process.env.PORT,
   DATABASE_URL: process.env.DATABASE_URL ? '[SET]' : '[NOT SET]',
   SESSION_SECRET: process.env.SESSION_SECRET ? '[SET]' : '[NOT SET]',
-  loadedEnvFile
+  loadedEnvFile,
 });
 
 // DATABASE_URLが設定されていない場合は警告のみ（一時的に無効化）
 if (!process.env.DATABASE_URL) {
   console.warn('⚠️ 警告: DATABASE_URLが設定されていません');
-  console.warn('🔧 解決方法: .envファイルを作成し、DATABASE_URLを設定してください');
-  console.warn('📝 例: DATABASE_URL=postgresql://postgres:password@localhost:5432/emergency_assistance');
-  console.warn('⚠️ データベース接続なしで動作します（認証は一時的にハードコードされたユーザーを使用）');
+  console.warn(
+    '🔧 解決方法: .envファイルを作成し、DATABASE_URLを設定してください'
+  );
+  console.warn(
+    '📝 例: DATABASE_URL=postgresql://postgres:password@localhost:5432/emergency_assistance'
+  );
+  console.warn(
+    '⚠️ データベース接続なしで動作します（認証は一時的にハードコードされたユーザーを使用）'
+  );
 }
 
 // アプリケーションを起動
@@ -63,7 +73,7 @@ console.log('🚀 開発サーバー起動中...');
 console.log('🔧 環境設定:', {
   NODE_ENV: process.env.NODE_ENV,
   PORT: PORT,
-  isDevelopment: isDevelopment
+  isDevelopment: isDevelopment,
 });
 
 // サーバーを起動
@@ -72,7 +82,10 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log('🌐 サーバーURL:', `http://localhost:${PORT}`);
   console.log('🔧 開発環境:', isDevelopment ? '有効' : '無効');
   console.log('📊 ヘルスチェック:', `http://localhost:${PORT}/api/health`);
-  console.log('🔐 認証デバッグ:', `http://localhost:${PORT}/api/auth/debug/env`);
+  console.log(
+    '🔐 認証デバッグ:',
+    `http://localhost:${PORT}/api/auth/debug/env`
+  );
 });
 
 // グレースフルシャットダウン

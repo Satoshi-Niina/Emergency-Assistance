@@ -12,18 +12,18 @@ export async function loginApi(login: string, password: string) {
   const response = await apiFetch('/api/auth/login', {
     method: 'POST',
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-    body: JSON.stringify({ login, password })
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ login, password }),
   });
-  
-    // Store token if received (SWA環境ではlocalStorageを使用)
-    if (response.token || response.accessToken) {
-      const token = response.token || response.accessToken;
-      sessionStorage.setItem('token', token);
-      localStorage.setItem('accessToken', token);
-      console.info('[auth] token saved:', !!token);
-    }
-  
+
+  // Store token if received (SWA環境ではlocalStorageを使用)
+  if (response.token || response.accessToken) {
+    const token = response.token || response.accessToken;
+    sessionStorage.setItem('token', token);
+    localStorage.setItem('accessToken', token);
+    console.info('[auth] token saved:', !!token);
+  }
+
   return response;
 }
 
@@ -31,18 +31,18 @@ export async function meApi() {
   return apiFetch('/api/auth/me', {
     method: 'GET',
     credentials: 'include',
-    headers: { 'Accept': 'application/json' }
+    headers: { Accept: 'application/json' },
   });
 }
 
 export async function logoutApi() {
   // Clear token from sessionStorage
   sessionStorage.removeItem('token');
-  
+
   return apiFetch('/api/auth/logout', {
     method: 'POST',
     credentials: 'include',
-    headers: { 'Accept': 'application/json' }
+    headers: { Accept: 'application/json' },
   });
 }
 
@@ -62,22 +62,22 @@ export const login = async (credentials: LoginCredentials) => {
         'Content-Type': 'application/json',
       },
       credentials: 'include',
-      body: JSON.stringify(credentials)
+      body: JSON.stringify(credentials),
     });
-    
+
     // リクエスト前のデバッグ情報
     console.log('🌐 現在のlocation:', {
       origin: window.location.origin,
       hostname: window.location.hostname,
       protocol: window.location.protocol,
-      port: window.location.port
+      port: window.location.port,
     });
-    
+
     const userData = await apiFetch('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify(credentials)
+      body: JSON.stringify(credentials),
     });
-    
+
     // Store token if received (SWA環境ではlocalStorageを使用)
     if (userData.token || userData.accessToken) {
       const token = userData.token || userData.accessToken;
@@ -85,18 +85,20 @@ export const login = async (credentials: LoginCredentials) => {
       localStorage.setItem('accessToken', token);
       console.info('[auth] token saved:', !!token);
     }
-    
+
     console.log('📡 ログイン成功:', userData);
     console.log('✅ ログイン成功:', userData);
     return userData;
   } catch (error) {
     console.error('❌ Login error:', error);
-    
+
     // ネットワークエラーの場合
     if (error instanceof TypeError && error.message.includes('fetch')) {
-      throw new Error('バックエンドサーバーに接続できません。ネットワーク接続を確認してください。');
+      throw new Error(
+        'バックエンドサーバーに接続できません。ネットワーク接続を確認してください。'
+      );
     }
-    
+
     if (error instanceof Error) {
       throw error;
     }
@@ -110,12 +112,12 @@ export const login = async (credentials: LoginCredentials) => {
 export const logout = async () => {
   try {
     console.log('🔐 ログアウト試行');
-    
+
     // Clear token from sessionStorage
     sessionStorage.removeItem('token');
-    
+
     await apiFetch('/api/auth/logout', {
-      method: 'POST'
+      method: 'POST',
     });
   } catch (error) {
     console.error('Logout error:', error);
@@ -130,14 +132,20 @@ export const logout = async () => {
 export const getCurrentUser = async () => {
   try {
     console.log('🔍 getCurrentUser リクエスト');
-    
+
     const data = await apiFetch('/api/auth/me');
     console.log('🔍 getCurrentUser データ:', data);
     return data;
   } catch (error) {
-    console.error('❌ Get current user error:', error);
+    console.warn('⚠️ Get current user error (正常な動作):', error);
     if (error instanceof Error && error.message.includes('401')) {
-      console.log('❌ 認証されていません (401)');
+      console.log('ℹ️ 認証されていません (401) - ログインが必要です');
+      return null;
+    }
+    if (error instanceof Error && error.message.includes('500')) {
+      console.warn(
+        '⚠️ サーバーエラー (500) - バックエンドサーバーに接続できません'
+      );
       return null;
     }
     return null;
@@ -155,35 +163,37 @@ export const negotiateAuthMode = async (): Promise<'cookie' | 'token'> => {
   try {
     // 1. サーバ設定ヒントを取得
     const handshake = await apiFetch('/api/auth/handshake');
-    
+
     if (handshake.firstParty) {
       // 同一ドメインの場合はCookieを優先
       sessionStorage.setItem('AUTH_MODE', 'cookie');
       return 'cookie';
     }
-    
+
     // 2. クロスサイトの場合はCookieプローブを実施
     try {
       await apiFetch('/api/auth/cookie-probe', {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
       });
-      
+
       const probeResult = await apiFetch('/api/auth/cookie-probe-check');
-      
+
       const mode = probeResult.cookieOk ? 'cookie' : 'token';
       sessionStorage.setItem('AUTH_MODE', mode);
-      
-      console.log(`🔧 認証モード自動切替: ${mode} (cookieOk: ${probeResult.cookieOk})`);
+
+      console.log(
+        `🔧 認証モード自動切替: ${mode} (cookieOk: ${probeResult.cookieOk})`
+      );
       return mode;
     } catch (probeError) {
       // Cookieプローブが404/5xxの場合はトークンモードにフォールバック
-      console.error('Cookieプローブエラー:', probeError);
+      console.warn('Cookieプローブエラー（正常な動作）:', probeError);
       sessionStorage.setItem('AUTH_MODE', 'token');
       return 'token';
     }
   } catch (error) {
-    console.error('認証モード切替エラー:', error);
+    console.warn('認証モード切替エラー（正常な動作）:', error);
     // handshakeが404/5xxの場合はトークンモードにフォールバック
     sessionStorage.setItem('AUTH_MODE', 'token');
     return 'token';
@@ -195,14 +205,14 @@ export const refreshToken = async (): Promise<string | null> => {
   try {
     const response = await apiFetch('/api/auth/refresh', {
       method: 'POST',
-      credentials: 'include'
+      credentials: 'include',
     });
-    
+
     if (response.token) {
       sessionStorage.setItem('token', response.token);
       return response.token;
     }
-    
+
     return null;
   } catch (error) {
     console.error('トークンリフレッシュエラー:', error);

@@ -1,7 +1,14 @@
 import * as express from 'express';
 import { safeLen, getEnvConfig } from '../config/env';
 import * as path from 'path';
-import { existsSync, writeFileSync, mkdirSync, readdirSync, readFileSync, unlinkSync } from 'fs';
+import {
+  existsSync,
+  writeFileSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  unlinkSync,
+} from 'fs';
 import { processOpenAIRequest } from '../lib/openai.js';
 import { searchKnowledgeBase } from '../lib/knowledge-base.js';
 import { cleanJsonResponse } from '../lib/json-helper.js';
@@ -15,34 +22,36 @@ const jsonDir: any = path.join(knowledgeBaseDir, 'json');
 const troubleshootingDir: any = path.join(knowledgeBaseDir, 'troubleshooting');
 // ディレクトリが存在しない場合は作成
 if (!existsSync(troubleshootingDir)) {
-    mkdirSync(troubleshootingDir, { recursive: true });
+  mkdirSync(troubleshootingDir, { recursive: true });
 }
 // デバッグ用エンドポイント
-router.get('/debug', (req, res) => {
+router.get('/debug', (_req, res) => {
   res.json({
     success: true,
     data: {
       OPENAI_API_KEY: process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET',
-      OPENAI_API_KEY_PREFIX: process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.substring(0, 10) + '...' : 'NOT FOUND',
-  OPENAI_API_KEY_LENGTH: safeLen(getEnvConfig().OPENAI_API_KEY),
+      OPENAI_API_KEY_PREFIX: process.env.OPENAI_API_KEY
+        ? process.env.OPENAI_API_KEY.substring(0, 10) + '...'
+        : 'NOT FOUND',
+      OPENAI_API_KEY_LENGTH: safeLen(getEnvConfig().OPENAI_API_KEY),
       NODE_ENV: process.env.NODE_ENV,
-      timestamp: new Date().toISOString()
-    }
+      timestamp: new Date().toISOString(),
+    },
   });
 });
 
 // キーワードからフローを生成するエンドポイント（互換性のため）
-router.post('/keywords', async (req, res) => {
+router.post('/keywords', async (_req, res) => {
   try {
     const { keywords } = req.body;
     if (!keywords || typeof keywords !== 'string' || !keywords.trim()) {
       return res.status(400).json({
         success: false,
-        error: 'キーワードが指定されていません'
+        error: 'キーワードが指定されていません',
       });
     }
     console.log(`キーワード "${keywords}" からフローを生成します`);
-    
+
     // 簡単なフローを生成（ダミー実装）
     const flowData = {
       id: `flow_${Date.now()}`,
@@ -56,7 +65,7 @@ router.post('/keywords', async (req, res) => {
           description: `キーワード「${keywords}」に関する応急処置を開始します`,
           message: `キーワード「${keywords}」に関する応急処置を開始します`,
           type: 'step',
-          options: []
+          options: [],
         },
         {
           id: 'step2',
@@ -67,13 +76,13 @@ router.post('/keywords', async (req, res) => {
           conditions: [
             {
               label: '問題解決',
-              nextId: 'step3'
+              nextId: 'step3',
             },
             {
               label: '問題継続',
-              nextId: 'step4'
-            }
-          ]
+              nextId: 'step4',
+            },
+          ],
         },
         {
           id: 'step3',
@@ -81,7 +90,7 @@ router.post('/keywords', async (req, res) => {
           description: '応急処置が完了しました',
           message: '応急処置が完了しました',
           type: 'step',
-          options: []
+          options: [],
         },
         {
           id: 'step4',
@@ -89,134 +98,151 @@ router.post('/keywords', async (req, res) => {
           description: '専門家に連絡してください',
           message: '専門家に連絡してください',
           type: 'step',
-          options: []
-        }
+          options: [],
+        },
       ],
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
-    
+
     // knowledge-base/troubleshootingフォルダに保存
     try {
-      const troubleshootingDir = path.join(process.cwd(), '..', 'knowledge-base', 'troubleshooting');
+      const troubleshootingDir = path.join(
+        process.cwd(),
+        '..',
+        'knowledge-base',
+        'troubleshooting'
+      );
       const filePath = path.join(troubleshootingDir, `${flowData.id}.json`);
-      
+
       // ディレクトリが存在しない場合は作成
       if (!existsSync(troubleshootingDir)) {
         mkdirSync(troubleshootingDir, { recursive: true });
       }
-      
+
       // ファイルに保存
       writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf8');
-      
+
       console.log('✅ キーワードフロー保存成功:', {
         id: flowData.id,
         title: flowData.title,
-        filePath: filePath
+        filePath: filePath,
       });
     } catch (fileError) {
       console.error('❌ ファイル保存エラー:', fileError);
       return res.status(500).json({
         success: false,
         error: 'ファイルへの保存に失敗しました',
-        details: fileError instanceof Error ? fileError.message : 'Unknown file error'
+        details:
+          fileError instanceof Error ? fileError.message : 'Unknown file error',
       });
     }
-    
+
     res.json({
       success: true,
       message: `フローが正常に生成されました: ${flowData.title}`,
-      flowData
+      flowData,
     });
   } catch (error) {
     console.error('フロー生成エラー:', error);
     res.status(500).json({
       success: false,
-      error: 'フローの生成に失敗しました'
+      error: 'フローの生成に失敗しました',
     });
   }
 });
 
 // キーワードからフローを生成するエンドポイント（元の実装）
-router.post('/generate-from-keywords', async (req, res) => {
-    try {
-        console.log('[DEBUG] generate-from-keywords endpoint called');
-        
-        const { keywords } = req.body;
-        if (!keywords || typeof keywords !== 'string' || !keywords.trim()) {
-            return res.status(400).json({
-                success: false,
-                error: 'キーワードが指定されていません'
-            });
-        }
-        console.log(`キーワード "${keywords}" からフローを生成します`);
-        
-        // OpenAI APIキーの確認
-        console.log('[DEBUG] Checking OpenAI API key...');
-        console.log('[DEBUG] process.env.OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'EXISTS' : 'NOT EXISTS');
-        
-        if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === 'your-openai-api-key-here') {
-            console.log('[DEBUG] OpenAI API key validation failed - missing or default value');
-            return res.status(400).json({
-                success: false,
-                error: 'OpenAI APIキーが設定されていません。環境変数OPENAI_API_KEYを設定してください。',
-                details: '開発環境では.envファイルにOPENAI_API_KEYを設定してください。'
-            });
-        }
-        
-        // APIキーの形式確認
-        if (!process.env.OPENAI_API_KEY.startsWith('sk-')) {
-            console.log('[DEBUG] OpenAI API key validation failed - invalid format');
-            return res.status(400).json({
-                success: false,
-                error: 'OpenAI APIキーの形式が無効です。',
-                details: 'APIキーは「sk-」で始まる必要があります。'
-            });
-        }
-        
-        console.log('[DEBUG] OpenAI API Key validation passed');
-        console.log('[DEBUG] OpenAI API Key validation:', {
-            exists: !!process.env.OPENAI_API_KEY,
-            startsWithSk: process.env.OPENAI_API_KEY.startsWith('sk-'),
-            keyLength: safeLen(getEnvConfig().OPENAI_API_KEY),
-            prefix: process.env.OPENAI_API_KEY.substring(0, 10) + '...'
-        });
-        
-        // OpenAIクライアントの状態を確認
-        console.log('[DEBUG] Importing OpenAI modules...');
-        const { processOpenAIRequest, getOpenAIClientStatus } = await import('../lib/openai.js');
-        console.log('[DEBUG] processOpenAIRequest function imported successfully');
-        
-        // OpenAIクライアントの詳細な状態を確認
-        const clientStatus = getOpenAIClientStatus();
-        console.log('[DEBUG] OpenAI Client Status:', clientStatus);
-        
-        if (!clientStatus.clientExists) {
-            return res.status(400).json({
-                success: false,
-                error: 'OpenAIクライアントが初期化されていません',
-                details: clientStatus
-            });
-        }
-        
-        // ナレッジベースから関連情報を検索
-        console.log('ナレッジベースから関連情報を検索中...');
-        const relevantChunks: any = await searchKnowledgeBase(keywords);
-        console.log(`関連チャンク数: ${relevantChunks.length}`);
-        
-        // 関連情報をプロンプトに追加するための文字列を構築
-        let relatedKnowledgeText = '';
-        if (relevantChunks.length > 0) {
-            relatedKnowledgeText = '\n\n【関連する知識ベース情報】:\n';
-            // 最大5チャンクまで追加(多すぎるとトークン数制限に達する可能性がある)
-            const chunksToInclude: any = relevantChunks.slice(0, 5);
-            for (const chunk of chunksToInclude) {
-                relatedKnowledgeText += `---\n出典: ${chunk.metadata.source || '不明'}\n\n${chunk.text}\n---\n\n`;
-            }
-        }
-        
-        // GPTに渡す強化されたプロンプト
-        const prompt = `以下のキーワードに関連する応急処置フローを生成してください。
+router.post('/generate-from-keywords', async (_req, res) => {
+  try {
+    console.log('[DEBUG] generate-from-keywords endpoint called');
+
+    const { keywords } = req.body;
+    if (!keywords || typeof keywords !== 'string' || !keywords.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'キーワードが指定されていません',
+      });
+    }
+    console.log(`キーワード "${keywords}" からフローを生成します`);
+
+    // OpenAI APIキーの確認
+    console.log('[DEBUG] Checking OpenAI API key...');
+    console.log(
+      '[DEBUG] process.env.OPENAI_API_KEY:',
+      process.env.OPENAI_API_KEY ? 'EXISTS' : 'NOT EXISTS'
+    );
+
+    if (
+      !process.env.OPENAI_API_KEY ||
+      process.env.OPENAI_API_KEY === 'your-openai-api-key-here'
+    ) {
+      console.log(
+        '[DEBUG] OpenAI API key validation failed - missing or default value'
+      );
+      return res.status(400).json({
+        success: false,
+        error:
+          'OpenAI APIキーが設定されていません。環境変数OPENAI_API_KEYを設定してください。',
+        details: '開発環境では.envファイルにOPENAI_API_KEYを設定してください。',
+      });
+    }
+
+    // APIキーの形式確認
+    if (!process.env.OPENAI_API_KEY.startsWith('sk-')) {
+      console.log('[DEBUG] OpenAI API key validation failed - invalid format');
+      return res.status(400).json({
+        success: false,
+        error: 'OpenAI APIキーの形式が無効です。',
+        details: 'APIキーは「sk-」で始まる必要があります。',
+      });
+    }
+
+    console.log('[DEBUG] OpenAI API Key validation passed');
+    console.log('[DEBUG] OpenAI API Key validation:', {
+      exists: !!process.env.OPENAI_API_KEY,
+      startsWithSk: process.env.OPENAI_API_KEY.startsWith('sk-'),
+      keyLength: safeLen(getEnvConfig().OPENAI_API_KEY),
+      prefix: process.env.OPENAI_API_KEY.substring(0, 10) + '...',
+    });
+
+    // OpenAIクライアントの状態を確認
+    console.log('[DEBUG] Importing OpenAI modules...');
+    const { processOpenAIRequest, getOpenAIClientStatus } = await import(
+      '../lib/openai.js'
+    );
+    console.log('[DEBUG] processOpenAIRequest function imported successfully');
+
+    // OpenAIクライアントの詳細な状態を確認
+    const clientStatus = getOpenAIClientStatus();
+    console.log('[DEBUG] OpenAI Client Status:', clientStatus);
+
+    if (!clientStatus.clientExists) {
+      return res.status(400).json({
+        success: false,
+        error: 'OpenAIクライアントが初期化されていません',
+        details: clientStatus,
+      });
+    }
+
+    // ナレッジベースから関連情報を検索
+    console.log('ナレッジベースから関連情報を検索中...');
+    const relevantChunks: any = await searchKnowledgeBase(keywords);
+    console.log(`関連チャンク数: ${relevantChunks.length}`);
+
+    // 関連情報をプロンプトに追加するための文字列を構築
+    let relatedKnowledgeText = '';
+    if (relevantChunks.length > 0) {
+      relatedKnowledgeText = '\n\n【関連する知識ベース情報】:\n';
+      // 最大5チャンクまで追加(多すぎるとトークン数制限に達する可能性がある)
+      const chunksToInclude: any = relevantChunks.slice(0, 5);
+      for (const chunk of chunksToInclude) {
+        relatedKnowledgeText += `---\n出典: ${chunk.metadata.source || '不明'}\n\n${chunk.text}\n---\n\n`;
+      }
+    }
+
+    // GPTに渡す強化されたプロンプト
+    const prompt = `以下のキーワードに関連する応急処置フローを生成してください。
 必ず完全なJSONオブジェクトのみを返してください。追加の説明やテキストは一切含めないでください。
 レスポンスは純粋なJSONデータだけであるべきで、コードブロックのマークダウン記法は使用しないでください。
 生成するJSONは完全な有効なJSONである必要があり、途中で切れたり不完全な構造であってはなりません。
@@ -334,231 +360,268 @@ ${relatedKnowledgeText}
 8. title（タイトル）フィールドには短く明確な見出しを、description（説明）フィールドには詳細な指示や状況説明を入れてください。
 9. 軌道モータカー特有の機器やシステム（例：制御装置、ブレーキシステム、パンタグラフ等）に関する具体的な言及を含めてください。
 10. 最終ステップでは必ず具体的な対応結果や次のステップを明示し、利用者が次にとるべき行動を明確にしてください。`;
-        
-        // OpenAIでフローを生成
-        console.log('OpenAIにフロー生成をリクエスト中...');
-        const generatedFlow: any = await processOpenAIRequest(prompt);
-        
-        // OpenAI APIエラーの確認
-        if (typeof generatedFlow === 'string' && generatedFlow.includes('OpenAI APIキーが無効です')) {
-            return res.status(400).json({
-                success: false,
-                error: 'OpenAI APIキーが無効です。有効なAPIキーを設定してください。',
-                details: '環境変数OPENAI_API_KEYに有効なAPIキーを設定してください。'
-            });
-        }
-        
-        try {
-            // 共通のJSON処理ヘルパーを使用してレスポンスをクリーニング
-            const cleanedResponse: any = cleanJsonResponse(generatedFlow);
-            // JSONとして解析
-            const flowData: any = JSON.parse(cleanedResponse);
-            // IDが設定されていない場合はキーワードから生成
-            if (!flowData.id) {
-                // キーワードからIDを生成(小文字化してスペースをアンダースコアに置換)
-                const generatedId: any = keywords.toLowerCase()
-                    .replace(/[^a-z0-9_]/g, '_')
-                    .replace(/_+/g, '_')
-                    .substring(0, 50); // 長すぎる場合は切り詰め
-                flowData.id = `flow_${generatedId}_${Date.now()}`;
-            }
-            // フローのファイルパス
-            const flowFilePath: any = path.join(troubleshootingDir, `${flowData.id}.json`);
-            // 既存のファイル名と競合しないように確認
-            let finalId = flowData.id;
-            let counter = 1;
-            while (existsSync(path.join(troubleshootingDir, `${finalId}.json`))) {
-                finalId = `${flowData.id}_${counter}`;
+
+    // OpenAIでフローを生成
+    console.log('OpenAIにフロー生成をリクエスト中...');
+    const generatedFlow: any = await processOpenAIRequest(prompt);
+
+    // OpenAI APIエラーの確認
+    if (
+      typeof generatedFlow === 'string' &&
+      generatedFlow.includes('OpenAI APIキーが無効です')
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: 'OpenAI APIキーが無効です。有効なAPIキーを設定してください。',
+        details: '環境変数OPENAI_API_KEYに有効なAPIキーを設定してください。',
+      });
+    }
+
+    try {
+      // 共通のJSON処理ヘルパーを使用してレスポンスをクリーニング
+      const cleanedResponse: any = cleanJsonResponse(generatedFlow);
+      // JSONとして解析
+      const flowData: any = JSON.parse(cleanedResponse);
+      // IDが設定されていない場合はキーワードから生成
+      if (!flowData.id) {
+        // キーワードからIDを生成(小文字化してスペースをアンダースコアに置換)
+        const generatedId: any = keywords
+          .toLowerCase()
+          .replace(/[^a-z0-9_]/g, '_')
+          .replace(/_+/g, '_')
+          .substring(0, 50); // 長すぎる場合は切り詰め
+        flowData.id = `flow_${generatedId}_${Date.now()}`;
+      }
+      // フローのファイルパス
+      const flowFilePath: any = path.join(
+        troubleshootingDir,
+        `${flowData.id}.json`
+      );
+      // 既存のファイル名と競合しないように確認
+      let finalId = flowData.id;
+      let counter = 1;
+      while (existsSync(path.join(troubleshootingDir, `${finalId}.json`))) {
+        finalId = `${flowData.id}_${counter}`;
+        counter++;
+      }
+      flowData.id = finalId;
+      // フローをファイルに保存
+      writeFileSync(
+        path.join(troubleshootingDir, `${flowData.id}.json`),
+        JSON.stringify(flowData, null, 2)
+      );
+      // 生成日時を記録
+      flowData.createdAt = new Date().toISOString();
+      // 成功レスポンス
+      res.json({
+        success: true,
+        message: `フローが正常に生成されました: ${flowData.title}`,
+        flowData,
+      });
+    } catch (parseError) {
+      const error: any = parseError;
+      console.error('生成されたフローの解析エラー:', error);
+      console.error('生成されたテキスト:', generatedFlow);
+      // JSON解析エラーの詳細を確認
+      const errorPosition: any = error.message?.match(/position\s+(\d+)/i);
+      if (errorPosition && errorPosition[1]) {
+        const position: any = parseInt(errorPosition[1], 10);
+        const contextStart: any = Math.max(0, position - 20);
+        const contextEnd: any = Math.min(generatedFlow.length, position + 20);
+        console.error(`エラー位置: ${position}`);
+        console.error(
+          `問題箇所の周辺: "${generatedFlow.substring(contextStart, position)}<<<ERROR HERE>>>${generatedFlow.substring(position, contextEnd)}"`
+        );
+        // 末尾のJSONを切り取る試み
+        if (position > generatedFlow.length * 0.9) {
+          const lastBraceIndex: any = generatedFlow.lastIndexOf('}');
+          if (lastBraceIndex > 0) {
+            const truncated: any = generatedFlow.substring(
+              0,
+              lastBraceIndex + 1
+            );
+            console.log('末尾を切り詰めたJSONを試行...');
+            try {
+              const truncatedData: any = JSON.parse(truncated);
+              // 成功した場合は切り詰めたデータを使用
+              console.log('切り詰めたJSONの解析に成功しました');
+              // 以下、IDの生成などの処理を続行...
+              // この部分は上記のコードと同様
+              const generatedId: any = keywords
+                .toLowerCase()
+                .replace(/[^a-z0-9_]/g, '_')
+                .replace(/_+/g, '_')
+                .substring(0, 50);
+              truncatedData.id = `flow_${generatedId}_${Date.now()}`;
+              // フローのファイルパス
+              const flowFilePath: any = path.join(
+                troubleshootingDir,
+                `${truncatedData.id}.json`
+              );
+              // 既存のファイル名と競合しないように確認
+              let finalId = truncatedData.id;
+              let counter = 1;
+              while (
+                existsSync(path.join(troubleshootingDir, `${finalId}.json`))
+              ) {
+                finalId = `${truncatedData.id}_${counter}`;
                 counter++;
-            }
-            flowData.id = finalId;
-            // フローをファイルに保存
-            writeFileSync(path.join(troubleshootingDir, `${flowData.id}.json`), JSON.stringify(flowData, null, 2));
-            // 生成日時を記録
-            flowData.createdAt = new Date().toISOString();
-            // 成功レスポンス
-            res.json({
+              }
+              truncatedData.id = finalId;
+              // フローをファイルに保存
+              writeFileSync(
+                path.join(troubleshootingDir, `${truncatedData.id}.json`),
+                JSON.stringify(truncatedData, null, 2)
+              );
+              // 生成日時を記録
+              truncatedData.createdAt = new Date().toISOString();
+              // 成功レスポンス
+              return res.json({
                 success: true,
-                message: `フローが正常に生成されました: ${flowData.title}`,
-                flowData
-            });
-        }
-        catch (parseError) {
-            const error: any = parseError;
-            console.error('生成されたフローの解析エラー:', error);
-            console.error('生成されたテキスト:', generatedFlow);
-            // JSON解析エラーの詳細を確認
-            const errorPosition: any = error.message?.match(/position\s+(\d+)/i);
-            if (errorPosition && errorPosition[1]) {
-                const position: any = parseInt(errorPosition[1], 10);
-                const contextStart: any = Math.max(0, position - 20);
-                const contextEnd: any = Math.min(generatedFlow.length, position + 20);
-                console.error(`エラー位置: ${position}`);
-                console.error(`問題箇所の周辺: "${generatedFlow.substring(contextStart, position)}<<<ERROR HERE>>>${generatedFlow.substring(position, contextEnd)}"`);
-                // 末尾のJSONを切り取る試み
-                if (position > generatedFlow.length * 0.9) {
-                    const lastBraceIndex: any = generatedFlow.lastIndexOf('}');
-                    if (lastBraceIndex > 0) {
-                        const truncated: any = generatedFlow.substring(0, lastBraceIndex + 1);
-                        console.log('末尾を切り詰めたJSONを試行...');
-                        try {
-                            const truncatedData: any = JSON.parse(truncated);
-                            // 成功した場合は切り詰めたデータを使用
-                            console.log('切り詰めたJSONの解析に成功しました');
-                            // 以下、IDの生成などの処理を続行...
-                            // この部分は上記のコードと同様
-                            const generatedId: any = keywords.toLowerCase()
-                                .replace(/[^a-z0-9_]/g, '_')
-                                .replace(/_+/g, '_')
-                                .substring(0, 50);
-                            truncatedData.id = `flow_${generatedId}_${Date.now()}`;
-                            // フローのファイルパス
-                            const flowFilePath: any = path.join(troubleshootingDir, `${truncatedData.id}.json`);
-                            // 既存のファイル名と競合しないように確認
-                            let finalId = truncatedData.id;
-                            let counter = 1;
-                            while (existsSync(path.join(troubleshootingDir, `${finalId}.json`))) {
-                                finalId = `${truncatedData.id}_${counter}`;
-                                counter++;
-                            }
-                            truncatedData.id = finalId;
-                            // フローをファイルに保存
-                            writeFileSync(path.join(troubleshootingDir, `${truncatedData.id}.json`), JSON.stringify(truncatedData, null, 2));
-                            // 生成日時を記録
-                            truncatedData.createdAt = new Date().toISOString();
-                            // 成功レスポンス
-                            return res.json({
-                                success: true,
-                                message: `修復したJSONからフローが生成されました: ${truncatedData.title}`,
-                                flowData: truncatedData
-                            });
-                        }
-                        catch (secondError) {
-                            console.error('切り詰めたJSONの解析にも失敗しました:', secondError);
-                        }
-                    }
-                }
+                message: `修復したJSONからフローが生成されました: ${truncatedData.title}`,
+                flowData: truncatedData,
+              });
+            } catch (secondError) {
+              console.error(
+                '切り詰めたJSONの解析にも失敗しました:',
+                secondError
+              );
             }
-            res.status(500).json({
-                success: false,
-                error: 'フローデータの解析に失敗しました',
-                rawResponse: generatedFlow
-            });
+          }
         }
+      }
+      res.status(500).json({
+        success: false,
+        error: 'フローデータの解析に失敗しました',
+        rawResponse: generatedFlow,
+      });
     }
-    catch (error) {
-        console.error('フロー生成エラー:', error);
-        res.status(500).json({
-            success: false,
-            error: error instanceof Error ? error.message : '不明なエラーが発生しました'
-        });
-    }
+  } catch (error) {
+    console.error('フロー生成エラー:', error);
+    res.status(500).json({
+      success: false,
+      error:
+        error instanceof Error ? error.message : '不明なエラーが発生しました',
+    });
+  }
 });
 // トラブルシューティングフローを取得するエンドポイント
-router.get('/list', (req, res) => {
-    try {
-        // トラブルシューティングディレクトリからJSONファイルを取得
-        const files: any = readdirSync(troubleshootingDir)
-            .filter(file => file.endsWith('.json'));
-        const flowList: any = files.map(file => {
-            try {
-                const fileContent: any = readFileSync(path.join(troubleshootingDir, file), 'utf-8');
-                const flowData: any = JSON.parse(fileContent);
-                return {
-                    id: flowData.id || file.replace('.json', ''),
-                    title: flowData.title || 'タイトルなし',
-                    description: flowData.description || '',
-                    triggerKeywords: flowData.triggerKeywords || [],
-                    createdAt: flowData.createdAt || null
-                };
-            }
-            catch (error) {
-                console.error(`ファイル ${file} の解析中にエラーが発生しました:`, error);
-                return null;
-            }
-        }).filter(Boolean);
-        res.json({
-            success: true,
-            flowList
-        });
-    }
-    catch (error) {
-        console.error('フローリスト取得エラー:', error);
-        res.status(500).json({
-            success: false,
-            error: error instanceof Error ? error.message : '不明なエラーが発生しました'
-        });
-    }
+router.get('/list', (_req, res) => {
+  try {
+    // トラブルシューティングディレクトリからJSONファイルを取得
+    const files: any = readdirSync(troubleshootingDir).filter(file =>
+      file.endsWith('.json')
+    );
+    const flowList: any = files
+      .map(file => {
+        try {
+          const fileContent: any = readFileSync(
+            path.join(troubleshootingDir, file),
+            'utf-8'
+          );
+          const flowData: any = JSON.parse(fileContent);
+          return {
+            id: flowData.id || file.replace('.json', ''),
+            title: flowData.title || 'タイトルなし',
+            description: flowData.description || '',
+            triggerKeywords: flowData.triggerKeywords || [],
+            createdAt: flowData.createdAt || null,
+          };
+        } catch (error) {
+          console.error(
+            `ファイル ${file} の解析中にエラーが発生しました:`,
+            error
+          );
+          return null;
+        }
+      })
+      .filter(Boolean);
+    res.json({
+      success: true,
+      flowList,
+    });
+  } catch (error) {
+    console.error('フローリスト取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error:
+        error instanceof Error ? error.message : '不明なエラーが発生しました',
+    });
+  }
 });
 // トラブルシューティングフローの詳細を取得するエンドポイント
-router.get('/detail/:id', (req, res) => {
-    try {
-        const cleanFlowId: any = req.params.id.startsWith('ts_') ? req.params.id.substring(3) : req.params.id;
-        const filePath: any = path.join(troubleshootingDir, `${cleanFlowId}.json`);
-        if (!existsSync(filePath)) {
-            return res.status(404).json({
-                success: false,
-                error: '指定されたフローが見つかりません'
-            });
-        }
-        const fileContent: any = readFileSync(filePath, 'utf-8');
-        const flowData: any = JSON.parse(fileContent);
-        const decisionSteps: any = flowData.steps?.filter((step) => step.type === 'decision') || [];
-        const conditionSteps: any = flowData.steps?.filter((step) => step.type === 'condition') || [];
-        const decisionStepsDetail: any = decisionSteps.map((step) => ({
-            id: step.id,
-            title: step.title,
-            description: step.description,
-            message: step.message,
-            conditions: step.conditions
-        }));
-        const conditionStepsDetail: any = conditionSteps.map((step) => ({
-            id: step.id,
-            title: step.title,
-            description: step.description,
-            message: step.message,
-            conditions: step.conditions
-        }));
-        res.json({
-            success: true,
-            flowData: {
-                ...flowData,
-                decisionSteps: decisionStepsDetail,
-                conditionSteps: conditionStepsDetail
-            }
-        });
+router.get('/detail/:id', (_req, res) => {
+  try {
+    const cleanFlowId: any = req.params.id.startsWith('ts_')
+      ? req.params.id.substring(3)
+      : req.params.id;
+    const filePath: any = path.join(troubleshootingDir, `${cleanFlowId}.json`);
+    if (!existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        error: '指定されたフローが見つかりません',
+      });
     }
-    catch (error) {
-        console.error('フロー詳細取得エラー:', error);
-        res.status(500).json({
-            success: false,
-            error: error instanceof Error ? error.message : '不明なエラーが発生しました'
-        });
-    }
+    const fileContent: any = readFileSync(filePath, 'utf-8');
+    const flowData: any = JSON.parse(fileContent);
+    const decisionSteps: any =
+      flowData.steps?.filter(step => step.type === 'decision') || [];
+    const conditionSteps: any =
+      flowData.steps?.filter(step => step.type === 'condition') || [];
+    const decisionStepsDetail: any = decisionSteps.map(step => ({
+      id: step.id,
+      title: step.title,
+      description: step.description,
+      message: step.message,
+      conditions: step.conditions,
+    }));
+    const conditionStepsDetail: any = conditionSteps.map(step => ({
+      id: step.id,
+      title: step.title,
+      description: step.description,
+      message: step.message,
+      conditions: step.conditions,
+    }));
+    res.json({
+      success: true,
+      flowData: {
+        ...flowData,
+        decisionSteps: decisionStepsDetail,
+        conditionSteps: conditionStepsDetail,
+      },
+    });
+  } catch (error) {
+    console.error('フロー詳細取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error:
+        error instanceof Error ? error.message : '不明なエラーが発生しました',
+    });
+  }
 });
 // トラブルシューティングフローを削除するエンドポイント
-router.delete('/:id', (req, res) => {
-    try {
-        const flowId: any = req.params.id;
-        const filePath: any = path.join(troubleshootingDir, `${flowId}.json`);
-        if (!existsSync(filePath)) {
-            return res.status(404).json({
-                success: false,
-                error: '指定されたフローが見つかりません'
-            });
-        }
-        unlinkSync(filePath);
-        res.json({
-            success: true,
-            message: 'フローが正常に削除されました'
-        });
+router.delete('/:id', (_req, res) => {
+  try {
+    const flowId: any = req.params.id;
+    const filePath: any = path.join(troubleshootingDir, `${flowId}.json`);
+    if (!existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        error: '指定されたフローが見つかりません',
+      });
     }
-    catch (error) {
-        console.error('フロー削除エラー:', error);
-        res.status(500).json({
-            success: false,
-            error: error instanceof Error ? error.message : '不明なエラーが発生しました'
-        });
-    }
+    unlinkSync(filePath);
+    res.json({
+      success: true,
+      message: 'フローが正常に削除されました',
+    });
+  } catch (error) {
+    console.error('フロー削除エラー:', error);
+    res.status(500).json({
+      success: false,
+      error:
+        error instanceof Error ? error.message : '不明なエラーが発生しました',
+    });
+  }
 });
 export default router;

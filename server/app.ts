@@ -1,9 +1,12 @@
-
 import express, { Request, Response } from 'express';
 import session from 'express-session';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import { securityHeaders, generalLimiter, secureCORS } from './middleware/security';
+import {
+  securityHeaders,
+  generalLimiter,
+  secureCORS,
+} from './middleware/security';
 import { securityMonitoring, logSecurityEvent } from './middleware/monitoring';
 import { fileURLToPath } from 'url';
 import * as path from 'path';
@@ -78,7 +81,10 @@ ensureDirectoryExists(jsonPath, 'knowledge-base/json');
 ensureDirectoryExists(backupsPath, 'knowledge-base/backups');
 
 logPathStatus('.env', '../../.env');
-logPathStatus('OpenAI API KEY', process.env.OPENAI_API_KEY ? '[SET]' : '[NOT SET]');
+logPathStatus(
+  'OpenAI API KEY',
+  process.env.OPENAI_API_KEY ? '[SET]' : '[NOT SET]'
+);
 logPathStatus('DATABASE_URL', process.env.DATABASE_URL ? '[SET]' : '[NOT SET]');
 
 // 環境変数の確認
@@ -88,7 +94,7 @@ console.log('🔧 app.ts: 環境変数確認:', {
   DATABASE_URL: process.env.DATABASE_URL ? '[SET]' : '[NOT SET]',
   SESSION_SECRET: process.env.SESSION_SECRET ? '[SET]' : '[NOT SET]',
   VITE_API_BASE_URL: process.env.VITE_API_BASE_URL ? '[SET]' : '[NOT SET]',
-  FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5002'
+  FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5002',
 });
 
 const app = express();
@@ -101,11 +107,14 @@ if (process.env.NODE_ENV === 'production') {
   app.use((err, req, res, next) => {
     console.error('APIエラー:', err);
     if (req.path.startsWith('/api')) {
-      res.status(err.status || 500).type('application/json').json({
-        error: 'internal_error',
-        message: err.message || 'server error',
-        stack: err.stack
-      });
+      res
+        .status(err.status || 500)
+        .type('application/json')
+        .json({
+          error: 'internal_error',
+          message: err.message || 'server error',
+          stack: err.stack,
+        });
     } else {
       next(err);
     }
@@ -116,11 +125,14 @@ if (process.env.NODE_ENV === 'development') {
   app.use((err, req, res, next) => {
     console.error('APIエラー:', err);
     if (req.path.startsWith('/api')) {
-      res.status(err.status || 500).type('application/json').json({
-        error: 'internal_error',
-        message: err.message || 'server error',
-        stack: err.stack
-      });
+      res
+        .status(err.status || 500)
+        .type('application/json')
+        .json({
+          error: 'internal_error',
+          message: err.message || 'server error',
+          stack: err.stack,
+        });
     } else {
       next(err);
     }
@@ -128,21 +140,28 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 // 2. CORS設定（SWA環境では同一オリジン前提）
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net';
-app.use(cors({
-  origin: [FRONTEND_URL, 'http://localhost:5173', 'http://localhost:3000'], // SWA + 開発環境
-  credentials: false, // SWA環境では同一オリジンなので不要
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
-}));
+const FRONTEND_URL =
+  process.env.FRONTEND_URL ||
+  'https://witty-river-012f39e00.1.azurestaticapps.net';
+app.use(
+  cors({
+    origin: [FRONTEND_URL, 'http://localhost:5173', 'http://localhost:3000'], // SWA + 開発環境
+    credentials: false, // SWA環境では同一オリジンなので不要
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  })
+);
 
 // 3. OPTIONSリクエストの明示的処理
-app.options('*', cors({
-  origin: [FRONTEND_URL, 'http://localhost:5173', 'http://localhost:3000'],
-  credentials: false,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
-}));
+app.options(
+  '*',
+  cors({
+    origin: [FRONTEND_URL, 'http://localhost:5173', 'http://localhost:3000'],
+    credentials: false,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  })
+);
 
 // 4. Cookieパーサー
 app.use(cookieParser());
@@ -153,23 +172,26 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // 6. セッション設定
 const isProduction = process.env.NODE_ENV === 'production';
-app.use(session({
-  name: 'sid',
-  secret: process.env.SESSION_SECRET || 'dev-session-secret-for-development-only',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
-    maxAge: 24 * 60 * 60 * 1000 // 24時間
-  }
-}));
+app.use(
+  session({
+    name: 'sid',
+    secret:
+      process.env.SESSION_SECRET || 'dev-session-secret-for-development-only',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+      maxAge: 24 * 60 * 60 * 1000, // 24時間
+    },
+  })
+);
 
 console.log('🔧 セッション設定:', {
   secure: isProduction,
   sameSite: isProduction ? 'none' : 'lax',
-  isProduction
+  isProduction,
 });
 
 // セッションデバッグミドルウェア
@@ -183,7 +205,7 @@ app.use((req, res, next) => {
     method: req.method,
     origin: req.headers.origin,
     host: req.headers.host,
-    referer: req.headers.referer
+    referer: req.headers.referer,
   });
   next();
 });
@@ -222,19 +244,23 @@ app.get('/api/history/file', (req, res) => {
 import { healthRouter } from './routes/health.js';
 app.use('/api/health', healthRouter);
 
+// Ping エンドポイント（セーフモード対応）
+import pingRouter from './routes/ping.js';
+app.use('/api/ping', pingRouter);
+
 // 本番環境用ヘルスチェック（JSON形式）
 app.get('/api/health/json', (req: Request, res: Response) => {
   const hasDb = !!process.env.DATABASE_URL;
   const hasBlob = !!process.env.AZURE_STORAGE_CONNECTION_STRING;
-  
+
   res.json({
     ok: true,
     time: new Date().toISOString(),
     env: {
       hasDb,
       hasBlob,
-      nodeEnv: process.env.NODE_ENV || 'development'
-    }
+      nodeEnv: process.env.NODE_ENV || 'development',
+    },
   });
 });
 
@@ -250,19 +276,19 @@ if (process.env.NODE_ENV === 'production') {
         '/api/users',
         '/api/machines/machine-types',
         '/api/machines/all-machines',
-        '/api/storage/list'
-      ]
+        '/api/storage/list',
+      ],
     });
   });
-  
+
   // 本番環境専用: 基本的なAPIルートを明示的に登録
   console.log('🔧 本番環境: 基本的なAPIルートを明示的に登録');
-  
+
   // ヘルスチェック
   app.get('/api/health', (req: Request, res: Response) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
-  
+
   // ユーザー管理の基本ルート
   app.get('/api/users', async (req: Request, res: Response) => {
     try {
@@ -272,39 +298,42 @@ if (process.env.NODE_ENV === 'production') {
         data: [],
         total: 0,
         message: '本番環境: ユーザー一覧取得（データベース接続が必要）',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       console.error('❌ 本番環境: ユーザー一覧取得エラー:', error);
       res.status(500).json({
         success: false,
         error: 'ユーザー一覧の取得に失敗しました',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
   });
-  
+
   // 機械管理の基本ルート
-  app.get('/api/machines/machine-types', async (req: Request, res: Response) => {
-    try {
-      console.log('🔍 本番環境: 機種一覧取得リクエスト');
-      res.json({
-        success: true,
-        data: [],
-        total: 0,
-        message: '本番環境: 機種一覧取得（データベース接続が必要）',
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('❌ 本番環境: 機種一覧取得エラー:', error);
-      res.status(500).json({
-        success: false,
-        error: '機種一覧の取得に失敗しました',
-        timestamp: new Date().toISOString()
-      });
+  app.get(
+    '/api/machines/machine-types',
+    async (req: Request, res: Response) => {
+      try {
+        console.log('🔍 本番環境: 機種一覧取得リクエスト');
+        res.json({
+          success: true,
+          data: [],
+          total: 0,
+          message: '本番環境: 機種一覧取得（データベース接続が必要）',
+          timestamp: new Date().toISOString(),
+        });
+      } catch (error) {
+        console.error('❌ 本番環境: 機種一覧取得エラー:', error);
+        res.status(500).json({
+          success: false,
+          error: '機種一覧の取得に失敗しました',
+          timestamp: new Date().toISOString(),
+        });
+      }
     }
-  });
-  
+  );
+
   app.get('/api/machines/all-machines', async (req: Request, res: Response) => {
     try {
       console.log('🔍 本番環境: 全機械データ取得リクエスト');
@@ -313,18 +342,18 @@ if (process.env.NODE_ENV === 'production') {
         data: [],
         total: 0,
         message: '本番環境: 全機械データ取得（データベース接続が必要）',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       console.error('❌ 本番環境: 全機械データ取得エラー:', error);
       res.status(500).json({
         success: false,
         error: '全機械データの取得に失敗しました',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
   });
-  
+
   // ストレージ管理の基本ルート
   app.get('/api/storage/list', async (req: Request, res: Response) => {
     try {
@@ -333,14 +362,14 @@ if (process.env.NODE_ENV === 'production') {
         success: true,
         data: [],
         message: '本番環境: ストレージ一覧取得（Azure Storage接続が必要）',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       console.error('❌ 本番環境: ストレージ一覧取得エラー:', error);
       res.status(500).json({
         success: false,
         error: 'ストレージ一覧の取得に失敗しました',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
   });
@@ -402,18 +431,19 @@ app.get('/api/db-check', async (req, res) => {
   try {
     const { db } = await import('./db/index.js');
     const { sql } = await import('drizzle-orm');
-    
+
     const result = await db.execute(sql`SELECT NOW() as db_time`);
-    
+
     res.json({
-      status: "OK",
-      db_time: result[0].db_time
+      status: 'OK',
+      db_time: result[0].db_time,
     });
   } catch (error) {
     console.error('DB接続確認エラー:', error);
     res.status(500).json({
-      status: "ERROR",
-      message: error instanceof Error ? error.message : "データベース接続エラー"
+      status: 'ERROR',
+      message:
+        error instanceof Error ? error.message : 'データベース接続エラー',
     });
   }
 });
@@ -423,23 +453,26 @@ app.get('/db-ping', async (req, res) => {
   try {
     const { db } = await import('./db/index.js');
     const { sql } = await import('drizzle-orm');
-    
-    const result = await db.execute(sql`SELECT NOW() as current_time, 'Database connection successful' as message`);
-    
+
+    const result = await db.execute(
+      sql`SELECT NOW() as current_time, 'Database connection successful' as message`
+    );
+
     res.json({
-      status: "healthy",
-      message: "Database connection successful",
+      status: 'healthy',
+      message: 'Database connection successful',
       current_time: result[0].current_time,
       timestamp: new Date().toISOString(),
-      database_url: process.env.DATABASE_URL ? 'configured' : 'not configured'
+      database_url: process.env.DATABASE_URL ? 'configured' : 'not configured',
     });
   } catch (error) {
     console.error('DB ping エラー:', error);
     res.status(500).json({
-      status: "error",
-      message: error instanceof Error ? error.message : "データベース接続エラー",
+      status: 'error',
+      message:
+        error instanceof Error ? error.message : 'データベース接続エラー',
       timestamp: new Date().toISOString(),
-      database_url: process.env.DATABASE_URL ? 'configured' : 'not configured'
+      database_url: process.env.DATABASE_URL ? 'configured' : 'not configured',
     });
   }
 });
@@ -447,26 +480,26 @@ app.get('/db-ping', async (req, res) => {
 app.post('/api/gpt-check', async (req, res) => {
   try {
     const { message } = req.body;
-    
+
     if (!message) {
       return res.status(400).json({
-        status: "ERROR",
-        message: "メッセージが指定されていません"
+        status: 'ERROR',
+        message: 'メッセージが指定されていません',
       });
     }
 
     const { processOpenAIRequest } = await import('./lib/openai.js');
     const reply = await processOpenAIRequest(message, false);
-    
+
     res.json({
-      status: "OK",
-      reply: reply
+      status: 'OK',
+      reply: reply,
     });
   } catch (error) {
     console.error('GPT接続確認エラー:', error);
     res.status(500).json({
-      status: "ERROR",
-      message: error instanceof Error ? error.message : "GPT接続エラー"
+      status: 'ERROR',
+      message: error instanceof Error ? error.message : 'GPT接続エラー',
     });
   }
 });
@@ -488,7 +521,7 @@ try {
 if (process.env.NODE_ENV === 'production') {
   // 本番環境: 静的ファイル配信は最後に配置（APIルートを優先するため）
   console.log('🔧 本番環境: 静的ファイル配信を最後に配置');
-  
+
   // 本番環境専用: APIルートが確実に優先されるようにする
   app.use((req, res, next) => {
     // APIルートの場合は静的ファイル配信をスキップ
@@ -498,13 +531,16 @@ if (process.env.NODE_ENV === 'production') {
     // 静的ファイルの場合は次のミドルウェアに進む
     next();
   });
-  
+
   // 画像の静的配信（knowledge-base/images）
-  app.use('/api/images', express.static(path.join(KB_BASE, 'images'), {
-    fallthrough: true,
-    etag: true,
-    maxAge: '7d',
-  }));
+  app.use(
+    '/api/images',
+    express.static(path.join(KB_BASE, 'images'), {
+      fallthrough: true,
+      etag: true,
+      maxAge: '7d',
+    })
+  );
 
   // favicon.icoの404エラーを解決
   app.get('/favicon.ico', (req, res) => {
@@ -515,14 +551,14 @@ if (process.env.NODE_ENV === 'production') {
   app.get('/test-simple-images.html', (req, res) => {
     const filePath = path.join(__dirname, '../public/test-simple-images.html');
     console.log('📄 テストファイル配信:', filePath);
-    
+
     if (fs.existsSync(filePath)) {
       // Content-Typeを明示的に設定
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
-      
+
       // ファイルを読み込んで送信
       const fileContent = fs.readFileSync(filePath, 'utf8');
       res.send(fileContent);
@@ -534,27 +570,32 @@ if (process.env.NODE_ENV === 'production') {
   });
 
   // publicディレクトリの静的ファイル配信（その他のファイル用）
-  app.use(express.static(path.join(__dirname, '../public'), {
-    etag: true,
-    maxAge: '1d',
-    setHeaders: (res, filePath) => {
-      console.log('📄 静的ファイル配信:', filePath);
-      if (filePath.endsWith('.html')) {
-        res.setHeader('Content-Type', 'text/html; charset=utf-8');
-        console.log('✅ HTML Content-Type設定:', 'text/html; charset=utf-8');
-      }
-    }
-  }));
+  app.use(
+    express.static(path.join(__dirname, '../public'), {
+      etag: true,
+      maxAge: '1d',
+      setHeaders: (res, filePath) => {
+        console.log('📄 静的ファイル配信:', filePath);
+        if (filePath.endsWith('.html')) {
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          console.log('✅ HTML Content-Type設定:', 'text/html; charset=utf-8');
+        }
+      },
+    })
+  );
 } else {
   // 開発環境: 従来通りの順序を維持
   console.log('🔧 開発環境: 従来通りの静的ファイル配信順序を維持');
-  
+
   // 画像の静的配信（knowledge-base/images）
-  app.use('/api/images', express.static(path.join(KB_BASE, 'images'), {
-    fallthrough: true,
-    etag: true,
-    maxAge: '7d',
-  }));
+  app.use(
+    '/api/images',
+    express.static(path.join(KB_BASE, 'images'), {
+      fallthrough: true,
+      etag: true,
+      maxAge: '7d',
+    })
+  );
 
   // favicon.icoの404エラーを解決
   app.get('/favicon.ico', (req, res) => {
@@ -565,14 +606,14 @@ if (process.env.NODE_ENV === 'production') {
   app.get('/test-simple-images.html', (req, res) => {
     const filePath = path.join(__dirname, '../public/test-simple-images.html');
     console.log('📄 テストファイル配信:', filePath);
-    
+
     if (fs.existsSync(filePath)) {
       // Content-Typeを明示的に設定
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
-      
+
       // ファイルを読み込んで送信
       const fileContent = fs.readFileSync(filePath, 'utf8');
       res.send(fileContent);
@@ -584,17 +625,19 @@ if (process.env.NODE_ENV === 'production') {
   });
 
   // publicディレクトリの静的ファイル配信（その他のファイル用）
-  app.use(express.static(path.join(__dirname, '../public'), {
-    etag: true,
-    maxAge: '1d',
-    setHeaders: (res, filePath) => {
-      console.log('📄 静的ファイル配信:', filePath);
-      if (filePath.endsWith('.html')) {
-        res.setHeader('Content-Type', 'text/html; charset=utf-8');
-        console.log('✅ HTML Content-Type設定:', 'text/html; charset=utf-8');
-      }
-    }
-  }));
+  app.use(
+    express.static(path.join(__dirname, '../public'), {
+      etag: true,
+      maxAge: '1d',
+      setHeaders: (res, filePath) => {
+        console.log('📄 静的ファイル配信:', filePath);
+        if (filePath.endsWith('.html')) {
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          console.log('✅ HTML Content-Type設定:', 'text/html; charset=utf-8');
+        }
+      },
+    })
+  );
 }
 
 // 7. ルート登録
@@ -629,10 +672,45 @@ app.use('/api/interactive-diagnosis', interactiveDiagnosisRouter);
 import { healthRouter } from './routes/health.js';
 app.use('/api/health', healthRouter);
 
-// 8. JSONエラーハンドラ（最後に配置）
-app.use((err, _req, res, _next) => {
-  console.error(err);
-  res.status(500).type('application/json').send({ error: 'internal_error' });
+// 8. JSONエラーハンドラ（最後に配置、セーフモード対応）
+app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const isSafeMode = process.env.SAFE_MODE === 'true';
+  const errorId = Math.random().toString(36).substring(2, 15);
+
+  // 詳細なエラーログ
+  console.error(`[ERROR-${errorId}] Server Error:`, {
+    error: err.message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method,
+    headers: {
+      authorization: req.headers.authorization ? '[SET]' : '[NOT SET]',
+      cookie: req.headers.cookie ? '[SET]' : '[NOT SET]',
+      userAgent: req.headers['user-agent'],
+      origin: req.headers.origin,
+    },
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    safeMode: isSafeMode,
+  });
+
+  // JSONレスポンス（常に200で返す、検証阻害を避ける）
+  if (!res.headersSent) {
+    res
+      .status(200)
+      .type('application/json')
+      .json({
+        ok: false,
+        error: 'internal_server_error',
+        errorId,
+        message: isProduction ? 'サーバーエラーが発生しました' : err.message,
+        timestamp: new Date().toISOString(),
+        path: req.path,
+        mode: isSafeMode ? 'safe' : 'normal',
+        ...(isProduction ? {} : { stack: err.stack }),
+      });
+  }
 });
 
 // サーバー起動処理はindex.tsで管理するため、ここでは設定のみ

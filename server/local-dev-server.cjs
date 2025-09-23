@@ -10,15 +10,18 @@ const app = express();
 const port = 7000; // ローカル専用ポート
 
 // 環境変数
-const DATABASE_URL = 'postgresql://postgres:password@localhost:5432/emergency_assistance';
+const DATABASE_URL =
+  'postgresql://postgres:password@localhost:5432/emergency_assistance';
 const SESSION_SECRET = 'local-development-secret-key-12345';
 const FRONTEND_ORIGIN = 'http://localhost:5173';
 
 // ミドルウェア設定
-app.use(cors({ 
-  origin: FRONTEND_ORIGIN, 
-  credentials: true 
-}));
+app.use(
+  cors({
+    origin: FRONTEND_ORIGIN,
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(cookieParser());
 
@@ -26,10 +29,10 @@ app.use(cookieParser());
 const pool = new Pool({ connectionString: DATABASE_URL });
 
 // JWTユーティリティ
-const signToken = (payload) => 
+const signToken = payload =>
   jwt.sign(payload, SESSION_SECRET, { expiresIn: '7d' });
 
-const readUserFromCookie = (req) => {
+const readUserFromCookie = req => {
   const token = req.cookies?.sid;
   if (!token) return null;
   try {
@@ -52,9 +55,11 @@ app.get('/api/health', async (req, res) => {
 // ログイン
 app.post('/api/auth/login', async (req, res) => {
   const { username, password } = req.body;
-  
+
   if (!username || !password) {
-    return res.status(400).json({ message: 'Username and password are required' });
+    return res
+      .status(400)
+      .json({ message: 'Username and password are required' });
   }
 
   try {
@@ -62,7 +67,7 @@ app.post('/api/auth/login', async (req, res) => {
       'SELECT id, username, password, display_name, role FROM users WHERE username=$1 LIMIT 1',
       [username]
     );
-    
+
     const user = rows[0];
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -88,14 +93,14 @@ app.post('/api/auth/login', async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       user: {
         id: user.id,
         username: user.username,
         displayName: user.display_name,
-        role: user.role
-      }
+        role: user.role,
+      },
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -109,15 +114,15 @@ app.get('/api/auth/me', (req, res) => {
   if (!user) {
     return res.json({ authenticated: false, user: null });
   }
-  
+
   res.json({
     authenticated: true,
     user: {
       id: user.id,
       username: user.username,
       displayName: user.displayName,
-      role: user.role
-    }
+      role: user.role,
+    },
   });
 });
 

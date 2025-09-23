@@ -91,11 +91,11 @@ export class RagClient {
         },
         body: JSON.stringify(partialConfig),
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
       return data.config;
     } catch (error) {
@@ -116,12 +116,14 @@ export class RagClient {
         },
         body: JSON.stringify(request),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        throw new Error(
+          errorData.message || `HTTP error! status: ${response.status}`
+        );
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error('ドキュメント取込に失敗:', error);
@@ -132,18 +134,22 @@ export class RagClient {
   /**
    * ベクトル検索を実行
    */
-  async search(query: string, options?: { limit?: number; threshold?: number }): Promise<SearchResponse> {
+  async search(
+    query: string,
+    options?: { limit?: number; threshold?: number }
+  ): Promise<SearchResponse> {
     try {
       const params = new URLSearchParams({ q: query });
       if (options?.limit) params.append('limit', options.limit.toString());
-      if (options?.threshold) params.append('threshold', options.threshold.toString());
+      if (options?.threshold)
+        params.append('threshold', options.threshold.toString());
 
       const response = await fetch(`${this.baseUrl}/search?${params}`);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error('検索に失敗:', error);
@@ -154,15 +160,22 @@ export class RagClient {
   /**
    * タグによる検索
    */
-  async searchByTags(tags: string[]): Promise<{ results: SearchResult[]; tags: string[]; count: number; message: string }> {
+  async searchByTags(
+    tags: string[]
+  ): Promise<{
+    results: SearchResult[];
+    tags: string[];
+    count: number;
+    message: string;
+  }> {
     try {
       const params = new URLSearchParams({ tags: tags.join(',') });
       const response = await fetch(`${this.baseUrl}/search/tags?${params}`);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error('タグ検索に失敗:', error);
@@ -173,7 +186,12 @@ export class RagClient {
   /**
    * 取込状況を確認
    */
-  async getIngestStatus(): Promise<{ documents: number; chunks: number; vectors: number; timestamp: string }> {
+  async getIngestStatus(): Promise<{
+    documents: number;
+    chunks: number;
+    vectors: number;
+    timestamp: string;
+  }> {
     try {
       const response = await fetch(`${this.baseUrl}/ingest/status`);
       if (!response.ok) {
@@ -189,7 +207,13 @@ export class RagClient {
   /**
    * 検索統計を取得
    */
-  async getSearchStats(): Promise<{ documents: number; chunks: number; vectors: number; topTags: any[]; timestamp: string }> {
+  async getSearchStats(): Promise<{
+    documents: number;
+    chunks: number;
+    vectors: number;
+    topTags: any[];
+    timestamp: string;
+  }> {
     try {
       const response = await fetch(`${this.baseUrl}/search/stats`);
       if (!response.ok) {
@@ -205,7 +229,9 @@ export class RagClient {
   /**
    * 設定の検証
    */
-  async validateConfig(config: Partial<RagConfig>): Promise<{ valid: boolean; message: string; config?: RagConfig }> {
+  async validateConfig(
+    config: Partial<RagConfig>
+  ): Promise<{ valid: boolean; message: string; config?: RagConfig }> {
     try {
       const response = await fetch(`${this.baseUrl}/config/rag/validate`, {
         method: 'POST',
@@ -214,11 +240,11 @@ export class RagClient {
         },
         body: JSON.stringify(config),
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error('設定検証に失敗:', error);
@@ -229,7 +255,9 @@ export class RagClient {
   /**
    * 設定の差分確認
    */
-  async getConfigDiff(config: Partial<RagConfig>): Promise<{ changes: string[]; hasChanges: boolean; message: string }> {
+  async getConfigDiff(
+    config: Partial<RagConfig>
+  ): Promise<{ changes: string[]; hasChanges: boolean; message: string }> {
     try {
       const response = await fetch(`${this.baseUrl}/config/rag/diff`, {
         method: 'POST',
@@ -238,11 +266,11 @@ export class RagClient {
         },
         body: JSON.stringify(config),
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error('設定差分確認に失敗:', error);
@@ -253,16 +281,21 @@ export class RagClient {
   /**
    * 設定をリセット
    */
-  async resetConfig(): Promise<{ message: string; config: RagConfig; changes: string[]; timestamp: string }> {
+  async resetConfig(): Promise<{
+    message: string;
+    config: RagConfig;
+    changes: string[];
+    timestamp: string;
+  }> {
     try {
       const response = await fetch(`${this.baseUrl}/config/rag/reset`, {
         method: 'POST',
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error('設定リセットに失敗:', error);
@@ -292,6 +325,10 @@ export const ragClient = new RagClient();
 
 // 個別関数としてもエクスポート（既存コードとの互換性のため）
 export const getRagConfig = () => ragClient.getRagConfig();
-export const updateRagConfig = (config: Partial<RagConfig>) => ragClient.updateRagConfig(config);
+export const updateRagConfig = (config: Partial<RagConfig>) =>
+  ragClient.updateRagConfig(config);
 export const ingest = (request: IngestRequest) => ragClient.ingest(request);
-export const search = (query: string, options?: { limit?: number; threshold?: number }) => ragClient.search(query, options);
+export const search = (
+  query: string,
+  options?: { limit?: number; threshold?: number }
+) => ragClient.search(query, options);

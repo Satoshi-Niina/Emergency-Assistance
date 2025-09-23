@@ -4,6 +4,25 @@ knowledge-base/temp/
 logs-temp/
 cache/
 dist.zip
+
+# クリーンアップ対象ファイル
+*.log
+*.tmp
+*.temp
+*.bak
+*~
+*backup*
+*copy*
+*old*
+*test*
+*spec*
+*.test.*
+*.spec.*
+cleanup-commit.md
+final-deploy.txt
+force-deploy.txt
+frontend-trigger.txt
+trigger.txt
 # 環境変数ファイル（ローカル・Docker用）
 .env
 .env.*
@@ -48,7 +67,6 @@ coverage/
 
 
 # Logs
-*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -124,11 +142,8 @@ knowledge-base/temp/
 temp/dev/
 uploads/dev/
 logs/dev/
-*.tmp
-*.temp
 
 # Backup files
-*.backup
 backups/
 knowledge-base/backups/
 
@@ -239,7 +254,6 @@ metrics.json
 
 # Local logs
 logs/
-*.log
 
 # ========================================
 # OS and Editor Specific

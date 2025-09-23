@@ -1,8 +1,8 @@
-import React from "react";
-import { createRoot } from "react-dom/client";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import App from "./App";
-import "./index.css";
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import App from './App';
+import './index.css';
 
 // シンプルなQueryClientの作成
 const queryClient = new QueryClient({
@@ -19,7 +19,7 @@ const queryClient = new QueryClient({
 
 // エラーバウンダリー
 class ErrorBoundary extends React.Component<
-  { children: React.ReactNode }, 
+  { children: React.ReactNode },
   { hasError: boolean }
 > {
   constructor(props: { children: React.ReactNode }) {
@@ -38,13 +38,17 @@ class ErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-red-600 mb-4">Application Error</h1>
-            <p className="text-gray-600 mb-4">アプリケーションでエラーが発生しました。</p>
+        <div className='min-h-screen flex items-center justify-center bg-gray-50'>
+          <div className='text-center'>
+            <h1 className='text-2xl font-bold text-red-600 mb-4'>
+              Application Error
+            </h1>
+            <p className='text-gray-600 mb-4'>
+              アプリケーションでエラーが発生しました。
+            </p>
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              className='px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600'
             >
               ページを再読み込み
             </button>
@@ -60,14 +64,14 @@ class ErrorBoundary extends React.Component<
 function initializeApp() {
   try {
     console.log('🚀 アプリケーションを初期化中...');
-    
+
     const container = document.getElementById('root');
     if (!container) {
       throw new Error('Root container not found');
     }
 
     const root = createRoot(container);
-    
+
     root.render(
       <React.StrictMode>
         <ErrorBoundary>
@@ -81,7 +85,7 @@ function initializeApp() {
     console.log('✅ アプリケーションの初期化が完了しました');
   } catch (error) {
     console.error('❌ アプリケーションの初期化に失敗しました:', error);
-    
+
     // エラーが発生した場合のフォールバック表示
     const container = document.getElementById('root');
     if (container) {

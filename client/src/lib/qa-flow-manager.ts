@@ -1,15 +1,17 @@
 import { apiFetch } from '../api/apiClient';
 
 // クライアント側ではサーバーAPIを呼び出す
-async function callOpenAIAPI(prompt: string, useKnowledgeBase: boolean = true): Promise<string> {
-
+async function callOpenAIAPI(
+  prompt: string,
+  useKnowledgeBase: boolean = true
+): Promise<string> {
   try {
     const response = await apiFetch('/api/chatgpt', {
       method: 'POST',
       body: JSON.stringify({
         text: prompt,
-        useOnlyKnowledgeBase: useKnowledgeBase
-      })
+        useOnlyKnowledgeBase: useKnowledgeBase,
+      }),
     });
 
     return response.response || '応答を取得できませんでした。';
@@ -135,12 +137,12 @@ export class QAFlowManager {
 `;
 
       const response = await callOpenAIAPI(classificationPrompt, true);
-      
+
       try {
         const parsed = JSON.parse(response);
         return {
           category: parsed.category,
-          flow: parsed.flow
+          flow: parsed.flow,
         };
       } catch (parseError) {
         console.error('問題分類のJSON解析エラー:', parseError);
@@ -165,15 +167,23 @@ export class QAFlowManager {
         const nextStepIndex = previousAnswers.length;
         if (nextStepIndex < currentFlow.steps.length) {
           const nextStep = currentFlow.steps[nextStepIndex];
-          
+
           // 条件チェック
           if (nextStep.condition) {
-            const shouldShow = this.evaluateCondition(nextStep.condition, previousAnswers);
+            const shouldShow = this.evaluateCondition(
+              nextStep.condition,
+              previousAnswers
+            );
             if (!shouldShow) {
-              return this.generateNextQuestion(context, previousAnswers, knowledgeBase, currentFlow);
+              return this.generateNextQuestion(
+                context,
+                previousAnswers,
+                knowledgeBase,
+                currentFlow
+              );
             }
           }
-          
+
           return nextStep;
         } else {
           // フローが完了した場合、解決策を生成
@@ -216,13 +226,14 @@ export class QAFlowManager {
 `;
 
       const response = await callOpenAIAPI(contextPrompt, true);
-      
+
       try {
         const parsed = JSON.parse(response);
-        
+
         // 選択肢がある場合はchoiceタイプに設定
-        const questionType = parsed.options && parsed.options.length > 0 ? 'choice' : 'text';
-        
+        const questionType =
+          parsed.options && parsed.options.length > 0 ? 'choice' : 'text';
+
         return {
           id: parsed.id,
           question: parsed.question,
@@ -232,19 +243,19 @@ export class QAFlowManager {
           dependsOn: parsed.dependsOn,
           condition: parsed.condition,
           reasoning: parsed.reasoning,
-          expectedOutcome: parsed.expectedOutcome
+          expectedOutcome: parsed.expectedOutcome,
         };
       } catch (parseError) {
         console.error('質問生成のJSON解析エラー:', parseError);
         // フォールバック用の基本的な質問を返す
         return {
           id: `step_${Date.now()}`,
-          question: "問題の具体的な症状を教えてください。",
+          question: '問題の具体的な症状を教えてください。',
           type: 'text',
           required: true,
           options: [],
-          reasoning: "基本的な症状確認",
-          expectedOutcome: "問題の詳細把握"
+          reasoning: '基本的な症状確認',
+          expectedOutcome: '問題の詳細把握',
         };
       }
     } catch (error) {
@@ -261,9 +272,14 @@ export class QAFlowManager {
       if (!lastAnswer) return true;
 
       if (condition.includes('time_limit')) {
-        const timeLimit = parseInt(condition.match(/time_limit:(\d+)/)?.[1] || '0');
+        const timeLimit = parseInt(
+          condition.match(/time_limit:(\d+)/)?.[1] || '0'
+        );
         const timeAnswer = lastAnswer.answer;
-        if (timeAnswer.includes('20分以下') || timeAnswer.includes('30分以下')) {
+        if (
+          timeAnswer.includes('20分以下') ||
+          timeAnswer.includes('30分以下')
+        ) {
           return false; // 時間制限により次の質問をスキップ
         }
       }
@@ -279,9 +295,11 @@ export class QAFlowManager {
   checkEmergencyAction(currentStep: QAFlowStep, answer: string): string | null {
     if (currentStep.emergencyAction && currentStep.timeLimit) {
       const timeAnswer = answer.toLowerCase();
-      if (timeAnswer.includes(`${currentStep.timeLimit}分以下`) || 
-          timeAnswer.includes('20分以下') || 
-          timeAnswer.includes('30分以下')) {
+      if (
+        timeAnswer.includes(`${currentStep.timeLimit}分以下`) ||
+        timeAnswer.includes('20分以下') ||
+        timeAnswer.includes('30分以下')
+      ) {
         return currentStep.emergencyAction;
       }
     }
@@ -312,7 +330,7 @@ export class QAFlowManager {
 `;
 
       const response = await callOpenAIAPI(analysisPrompt, true);
-      
+
       try {
         const parsed = JSON.parse(response);
         const nextStep = flow.steps.find(s => s.id === parsed.nextStepId);
@@ -407,10 +425,9 @@ export class QAFlowManager {
 `;
 
       const response = await callOpenAIAPI(learningPrompt, false);
-      
+
       // 学習データを保存（実際の実装ではデータベースに保存）
       console.log('学習データ生成:', response);
-      
     } catch (error) {
       console.error('学習データ生成エラー:', error);
     }

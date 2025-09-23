@@ -10,23 +10,28 @@ const port = process.env.PORT || 80;
 // PostgreSQL接続設定
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl:
+    process.env.NODE_ENV === 'production'
+      ? { rejectUnauthorized: false }
+      : false,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
 });
 
 // CORS設定
-app.use(cors({
-  origin: [
-    'https://witty-river-012f39e00.1.azurestaticapps.net',
-    'http://localhost:3000',
-    'http://localhost:5002',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:5002'
-  ],
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: [
+      'https://witty-river-012f39e00.1.azurestaticapps.net',
+      'http://localhost:3000',
+      'http://localhost:5002',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:5002',
+    ],
+    credentials: true,
+  })
+);
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -38,7 +43,7 @@ app.get('/', (req, res) => {
     service: 'emergency-assistance-backend',
     time: new Date().toISOString(),
     version: '2.0.0',
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
   });
 });
 
@@ -48,13 +53,13 @@ app.get('/health', async (req, res) => {
     const client = await pool.connect();
     await client.query('SELECT 1');
     client.release();
-    
+
     res.status(200).json({
       status: 'ok',
       database: 'connected',
       time: new Date().toISOString(),
       service: 'emergency-assistance-backend',
-      version: '2.0.0'
+      version: '2.0.0',
     });
   } catch (error) {
     console.error('Health check failed:', error);
@@ -63,7 +68,7 @@ app.get('/health', async (req, res) => {
       database: 'disconnected',
       time: new Date().toISOString(),
       service: 'emergency-assistance-backend',
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -73,7 +78,7 @@ app.get('/api/health', (req, res) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     service: 'emergency-assistance-backend',
-    version: '2.0.0'
+    version: '2.0.0',
   });
 });
 
@@ -85,11 +90,11 @@ app.get('/healthz', (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-    
+
     if (!username || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Username and password are required'
+        message: 'Username and password are required',
       });
     }
 
@@ -100,38 +105,42 @@ app.post('/api/auth/login', async (req, res) => {
         'SELECT id, username, password, role FROM users WHERE username = $1',
         [username]
       );
-      
+
       if (result.rows.length === 0) {
         return res.status(401).json({
           success: false,
-          message: 'Invalid credentials'
+          message: 'Invalid credentials',
         });
       }
-      
+
       const user = result.rows[0];
-      
+
       // デバッグログ
-      console.log('Login attempt:', { username, providedPassword: password, storedPassword: user.password });
-      
+      console.log('Login attempt:', {
+        username,
+        providedPassword: password,
+        storedPassword: user.password,
+      });
+
       // パスワード検証（平文比較 - テスト用）
       // TODO: 本番環境ではbcryptハッシュ化が必要
       const isValidPassword = password === user.password;
-      
+
       if (!isValidPassword) {
         return res.status(401).json({
           success: false,
-          message: 'Invalid credentials'
+          message: 'Invalid credentials',
         });
       }
-      
+
       res.status(200).json({
         success: true,
         message: 'Login successful',
         user: {
           id: user.id,
           username: user.username,
-          role: user.role
-        }
+          role: user.role,
+        },
       });
     } finally {
       client.release();
@@ -142,7 +151,7 @@ app.post('/api/auth/login', async (req, res) => {
       success: false,
       message: 'Internal server error',
       error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
+      stack: error instanceof Error ? error.stack : undefined,
     });
   }
 });
@@ -150,7 +159,7 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/status', (req, res) => {
   res.status(200).json({
     authenticated: false,
-    message: 'Auth status check'
+    message: 'Auth status check',
   });
 });
 
@@ -166,24 +175,24 @@ app.get('/api/auth/me', (req, res) => {
         cookie: req.headers.cookie ? '[SET]' : '[NOT SET]',
         origin: req.headers.origin,
         host: req.headers.host,
-        referer: req.headers.referer
-      }
+        referer: req.headers.referer,
+      },
     });
-    
+
     // セッションからユーザーIDを取得
     const userId = req.session?.userId;
-    
+
     if (!userId) {
       console.log('❌ No user ID in session');
       return res.status(401).json({
         success: false,
         error: '認証されていません',
-        message: 'セッションまたは認証情報が必要です'
+        message: 'セッションまたは認証情報が必要です',
       });
     }
 
     console.log('🔍 Searching user by ID:', userId);
-    
+
     // データベースからユーザー情報を取得
     pool.query(
       'SELECT id, username, display_name, role, department FROM users WHERE id = $1 LIMIT 1',
@@ -194,21 +203,25 @@ app.get('/api/auth/me', (req, res) => {
           return res.status(500).json({
             success: false,
             error: 'データベースエラーが発生しました',
-            details: err.message
+            details: err.message,
           });
         }
-        
+
         if (result.rows.length === 0) {
           console.log('❌ User not found in database:', userId);
           return res.status(401).json({
             success: false,
-            error: 'ユーザーが見つかりません'
+            error: 'ユーザーが見つかりません',
           });
         }
 
         const user = result.rows[0];
-        console.log('✅ User found:', { id: user.id, username: user.username, role: user.role });
-        
+        console.log('✅ User found:', {
+          id: user.id,
+          username: user.username,
+          role: user.role,
+        });
+
         return res.json({
           success: true,
           user: {
@@ -216,9 +229,9 @@ app.get('/api/auth/me', (req, res) => {
             username: user.username,
             displayName: user.display_name || user.username,
             role: user.role,
-            department: user.department || 'General'
+            department: user.department || 'General',
           },
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
       }
     );
@@ -227,7 +240,7 @@ app.get('/api/auth/me', (req, res) => {
     return res.status(500).json({
       success: false,
       error: 'サーバーエラーが発生しました',
-      details: error.message
+      details: error.message,
     });
   }
 });
@@ -236,11 +249,12 @@ app.get('/api/auth/me', (req, res) => {
 app.get('/api/debug/blob', async (req, res) => {
   try {
     const { BlobServiceClient } = require('@azure/storage-blob');
-    
+
     // 環境変数の確認
     const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
-    const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
-    
+    const containerName =
+      process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
+
     if (!connectionString) {
       return res.status(500).json({
         success: false,
@@ -248,14 +262,15 @@ app.get('/api/debug/blob', async (req, res) => {
         envVars: {
           AZURE_STORAGE_CONNECTION_STRING: connectionString ? 'SET' : 'NOT SET',
           AZURE_STORAGE_CONTAINER_NAME: containerName,
-          NODE_ENV: process.env.NODE_ENV
-        }
+          NODE_ENV: process.env.NODE_ENV,
+        },
       });
     }
-    
-    const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+
+    const blobServiceClient =
+      BlobServiceClient.fromConnectionString(connectionString);
     const containerClient = blobServiceClient.getContainerClient(containerName);
-    
+
     // コンテナの存在確認
     let containerExists = false;
     try {
@@ -263,63 +278,79 @@ app.get('/api/debug/blob', async (req, res) => {
     } catch (err) {
       console.error('Container exists check error:', err);
     }
-    
+
     // コンテナ内のファイル一覧取得
-    let blobs = [];
+    const blobs = [];
     try {
       const listOptions = {
         prefix: 'knowledge-base/',
-        includeMetadata: true
+        includeMetadata: true,
       };
-      
+
       for await (const blob of containerClient.listBlobsFlat(listOptions)) {
         blobs.push({
           name: blob.name,
           size: blob.properties.contentLength,
           lastModified: blob.properties.lastModified,
           contentType: blob.properties.contentType,
-          url: containerClient.getBlobClient(blob.name).url
+          url: containerClient.getBlobClient(blob.name).url,
         });
       }
     } catch (err) {
       console.error('List blobs error:', err);
     }
-    
+
     // テストファイルの書き込みテスト
-    let writeTest: { success: boolean; error: string | null; blobName?: string; url?: string } = { success: false, error: null };
+    const writeTest: {
+      success: boolean;
+      error: string | null;
+      blobName?: string;
+      url?: string;
+    } = { success: false, error: null };
     try {
       const testBlobName = `knowledge-base/test-${Date.now()}.txt`;
       const testContent = `Test file created at ${new Date().toISOString()}`;
       const blockBlobClient = containerClient.getBlockBlobClient(testBlobName);
-      
-      await blockBlobClient.upload(testContent, Buffer.byteLength(testContent), {
-        blobHTTPHeaders: {
-          blobContentType: 'text/plain'
+
+      await blockBlobClient.upload(
+        testContent,
+        Buffer.byteLength(testContent),
+        {
+          blobHTTPHeaders: {
+            blobContentType: 'text/plain',
+          },
         }
-      });
-      
+      );
+
       writeTest.success = true;
       writeTest.blobName = testBlobName;
       writeTest.url = blockBlobClient.url;
     } catch (err) {
       writeTest.error = err instanceof Error ? err.message : 'Unknown error';
     }
-    
+
     // テストファイルの読み込みテスト
-    let readTest: { success: boolean; error: string | null; content: string | null } = { success: false, error: null, content: null };
+    const readTest: {
+      success: boolean;
+      error: string | null;
+      content: string | null;
+    } = { success: false, error: null, content: null };
     if (writeTest.success && writeTest.blobName) {
       try {
         const testBlobName = writeTest.blobName;
-        const blockBlobClient = containerClient.getBlockBlobClient(testBlobName);
+        const blockBlobClient =
+          containerClient.getBlockBlobClient(testBlobName);
         const downloadResponse = await blockBlobClient.download();
-        const content = await streamToString(downloadResponse.readableStreamBody);
+        const content = await streamToString(
+          downloadResponse.readableStreamBody
+        );
         readTest.success = true;
         readTest.content = content;
       } catch (err) {
         readTest.error = err instanceof Error ? err.message : 'Unknown error';
       }
     }
-    
+
     res.status(200).json({
       success: true,
       containerName,
@@ -328,15 +359,14 @@ app.get('/api/debug/blob', async (req, res) => {
       blobs: blobs.slice(0, 10), // 最初の10個のみ表示
       writeTest,
       readTest,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-    
   } catch (error) {
     console.error('Debug Blob Storage error:', error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
+      stack: error instanceof Error ? error.stack : undefined,
     });
   }
 });
@@ -359,41 +389,41 @@ async function streamToString(readableStream: any): Promise<string> {
 app.post('/api/admin/reset-password', async (req, res) => {
   try {
     const { username, newPassword } = req.body;
-    
+
     if (!username || !newPassword) {
       return res.status(400).json({
         success: false,
-        message: 'ユーザー名と新しいパスワードが必要です'
+        message: 'ユーザー名と新しいパスワードが必要です',
       });
     }
-    
+
     if (newPassword.length < 8) {
       return res.status(400).json({
         success: false,
-        message: 'パスワードは8文字以上である必要があります'
+        message: 'パスワードは8文字以上である必要があります',
       });
     }
-    
+
     const client = await pool.connect();
     try {
       // パスワードをハッシュ化
       const bcrypt = require('bcryptjs');
       const saltRounds = 12;
       const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-      
+
       // ユーザーのパスワードを更新
       const result = await client.query(
         'UPDATE users SET password = $1 WHERE username = $2 RETURNING username, display_name, role',
         [hashedPassword, username]
       );
-      
+
       if (result.rows.length === 0) {
         return res.status(404).json({
           success: false,
-          message: 'ユーザーが見つかりません'
+          message: 'ユーザーが見つかりません',
         });
       }
-      
+
       const user = result.rows[0];
       res.status(200).json({
         success: true,
@@ -401,20 +431,18 @@ app.post('/api/admin/reset-password', async (req, res) => {
         user: {
           username: user.username,
           display_name: user.display_name,
-          role: user.role
-        }
+          role: user.role,
+        },
       });
-      
     } finally {
       client.release();
     }
-    
   } catch (error) {
     console.error('Password reset error:', error);
     res.status(500).json({
       success: false,
       message: 'パスワードリセット中にエラーが発生しました',
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -429,11 +457,11 @@ app.get('/api/debug/passwords', async (req, res) => {
         FROM users
         WHERE username IN ('niina', 'takabeni1', 'takabeni2')
       `);
-      
+
       res.status(200).json({
         success: true,
         users: result.rows,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } finally {
       client.release();
@@ -443,7 +471,7 @@ app.get('/api/debug/passwords', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to get passwords',
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -460,7 +488,7 @@ app.get('/api/debug/db', async (req, res) => {
         WHERE table_schema = 'public'
         ORDER BY table_name
       `);
-      
+
       // usersテーブルの構造を確認
       let usersTableInfo: any[] | { error: string } | null = null;
       try {
@@ -472,9 +500,11 @@ app.get('/api/debug/db', async (req, res) => {
         `);
         usersTableInfo = usersResult.rows;
       } catch (err) {
-        usersTableInfo = { error: err instanceof Error ? err.message : 'Unknown error' };
+        usersTableInfo = {
+          error: err instanceof Error ? err.message : 'Unknown error',
+        };
       }
-      
+
       // 実際のユーザーデータを確認（パスワード以外）
       let sampleUsers: any[] | { error: string } = [];
       try {
@@ -485,25 +515,31 @@ app.get('/api/debug/db', async (req, res) => {
         `);
         sampleUsers = sampleResult.rows;
       } catch (err) {
-        sampleUsers = { error: err instanceof Error ? err.message : 'Unknown error' };
+        sampleUsers = {
+          error: err instanceof Error ? err.message : 'Unknown error',
+        };
       }
-      
+
       // ユーザー数を確認
       let userCount: number | { error: string } = 0;
       try {
-        const countResult = await client.query('SELECT COUNT(*) as count FROM users');
+        const countResult = await client.query(
+          'SELECT COUNT(*) as count FROM users'
+        );
         userCount = countResult.rows[0].count;
       } catch (err) {
-        userCount = { error: err instanceof Error ? err.message : 'Unknown error' };
+        userCount = {
+          error: err instanceof Error ? err.message : 'Unknown error',
+        };
       }
-      
+
       res.status(200).json({
         success: true,
         tables: tablesResult.rows,
         usersTableInfo,
         sampleUsers,
         userCount,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } finally {
       client.release();
@@ -513,7 +549,7 @@ app.get('/api/debug/db', async (req, res) => {
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
+      stack: error instanceof Error ? error.stack : undefined,
     });
   }
 });
@@ -523,10 +559,12 @@ app.get('/api/emergency-procedures', async (req, res) => {
   try {
     const client = await pool.connect();
     try {
-      const result = await client.query('SELECT * FROM emergency_procedures ORDER BY created_at DESC');
+      const result = await client.query(
+        'SELECT * FROM emergency_procedures ORDER BY created_at DESC'
+      );
       res.status(200).json({
         success: true,
-        data: result.rows
+        data: result.rows,
       });
     } finally {
       client.release();
@@ -535,7 +573,7 @@ app.get('/api/emergency-procedures', async (req, res) => {
     console.error('Emergency procedures error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch emergency procedures'
+      message: 'Failed to fetch emergency procedures',
     });
   }
 });
@@ -546,7 +584,7 @@ app.use((err: any, req: any, res: any, next: any) => {
   res.status(500).json({
     success: false,
     error: 'Internal server error',
-    message: err.message || 'Unknown error'
+    message: err.message || 'Unknown error',
   });
 });
 
@@ -555,7 +593,7 @@ app.use((req: any, res: any) => {
   res.status(404).json({
     error: 'Not found',
     path: req.path,
-    method: req.method
+    method: req.method,
   });
 });
 

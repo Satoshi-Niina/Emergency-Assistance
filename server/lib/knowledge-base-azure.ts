@@ -20,10 +20,13 @@ export class KnowledgeBaseAzureService {
   async syncFromAzure(): Promise<void> {
     try {
       console.log('🔄 Syncing knowledge base from Azure Storage...');
-      
+
       // Azure Storageからダウンロード
-      await azureStorage.downloadDirectory(this.remotePrefix, this.localKnowledgeBasePath);
-      
+      await azureStorage.downloadDirectory(
+        this.remotePrefix,
+        this.localKnowledgeBasePath
+      );
+
       console.log('✅ Knowledge base synced from Azure Storage');
     } catch (error) {
       console.error('❌ Failed to sync knowledge base from Azure:', error);
@@ -35,16 +38,19 @@ export class KnowledgeBaseAzureService {
   async syncToAzure(): Promise<void> {
     try {
       console.log('🔄 Syncing knowledge base to Azure Storage...');
-      
+
       // ローカルディレクトリが存在するか確認
-      if (!await fs.pathExists(this.localKnowledgeBasePath)) {
+      if (!(await fs.pathExists(this.localKnowledgeBasePath))) {
         console.log('📁 Creating local knowledge base directory...');
         await fs.ensureDir(this.localKnowledgeBasePath);
       }
-      
+
       // Azure Storageにアップロード
-      await azureStorage.uploadDirectory(this.localKnowledgeBasePath, this.remotePrefix);
-      
+      await azureStorage.uploadDirectory(
+        this.localKnowledgeBasePath,
+        this.remotePrefix
+      );
+
       console.log('✅ Knowledge base synced to Azure Storage');
     } catch (error) {
       console.error('❌ Failed to sync knowledge base to Azure:', error);
@@ -55,15 +61,21 @@ export class KnowledgeBaseAzureService {
   // 特定のファイルをAzure Storageにアップロード
   async uploadFile(localFilePath: string): Promise<string> {
     try {
-      const relativePath = path.relative(this.localKnowledgeBasePath, localFilePath);
+      const relativePath = path.relative(
+        this.localKnowledgeBasePath,
+        localFilePath
+      );
       const blobName = `${this.remotePrefix}/${relativePath}`;
-      
+
       const url = await azureStorage.uploadFile(localFilePath, blobName);
       console.log(`✅ File uploaded to Azure: ${relativePath}`);
-      
+
       return url;
     } catch (error) {
-      console.error(`❌ Failed to upload file to Azure: ${localFilePath}`, error);
+      console.error(
+        `❌ Failed to upload file to Azure: ${localFilePath}`,
+        error
+      );
       throw error;
     }
   }
@@ -71,14 +83,20 @@ export class KnowledgeBaseAzureService {
   // 特定のファイルをAzure Storageからダウンロード
   async downloadFile(blobName: string): Promise<string> {
     try {
-      const localFilePath = path.join(this.localKnowledgeBasePath, blobName.replace(`${this.remotePrefix}/`, ''));
-      
+      const localFilePath = path.join(
+        this.localKnowledgeBasePath,
+        blobName.replace(`${this.remotePrefix}/`, '')
+      );
+
       await azureStorage.downloadFile(blobName, localFilePath);
       console.log(`✅ File downloaded from Azure: ${blobName}`);
-      
+
       return localFilePath;
     } catch (error) {
-      console.error(`❌ Failed to download file from Azure: ${blobName}`, error);
+      console.error(
+        `❌ Failed to download file from Azure: ${blobName}`,
+        error
+      );
       throw error;
     }
   }
@@ -99,19 +117,22 @@ export class KnowledgeBaseAzureService {
   async initialize(): Promise<void> {
     try {
       console.log('🚀 Initializing Knowledge Base Azure integration...');
-      
+
       // Azure Storageコンテナを初期化
       await azureStorage.initializeContainer();
-      
+
       // ローカルディレクトリを作成
       await fs.ensureDir(this.localKnowledgeBasePath);
-      
+
       // Azure Storageから同期
       await this.syncFromAzure();
-      
+
       console.log('✅ Knowledge Base Azure integration initialized');
     } catch (error) {
-      console.error('❌ Failed to initialize Knowledge Base Azure integration:', error);
+      console.error(
+        '❌ Failed to initialize Knowledge Base Azure integration:',
+        error
+      );
       throw error;
     }
   }
@@ -121,11 +142,14 @@ export class KnowledgeBaseAzureService {
     try {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const backupPrefix = `backups/${timestamp}`;
-      
+
       console.log(`🔄 Creating backup: ${backupPrefix}`);
-      
-      await azureStorage.uploadDirectory(this.localKnowledgeBasePath, backupPrefix);
-      
+
+      await azureStorage.uploadDirectory(
+        this.localKnowledgeBasePath,
+        backupPrefix
+      );
+
       console.log(`✅ Backup created: ${backupPrefix}`);
     } catch (error) {
       console.error('❌ Failed to create backup:', error);
@@ -137,15 +161,21 @@ export class KnowledgeBaseAzureService {
   async restoreFromBackup(backupPrefix: string): Promise<void> {
     try {
       console.log(`🔄 Restoring from backup: ${backupPrefix}`);
-      
+
       // 現在のディレクトリをバックアップ
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const currentBackupPrefix = `backups/restore-${timestamp}`;
-      await azureStorage.uploadDirectory(this.localKnowledgeBasePath, currentBackupPrefix);
-      
+      await azureStorage.uploadDirectory(
+        this.localKnowledgeBasePath,
+        currentBackupPrefix
+      );
+
       // バックアップから復元
-      await azureStorage.downloadDirectory(backupPrefix, this.localKnowledgeBasePath);
-      
+      await azureStorage.downloadDirectory(
+        backupPrefix,
+        this.localKnowledgeBasePath
+      );
+
       console.log(`✅ Restored from backup: ${backupPrefix}`);
     } catch (error) {
       console.error(`❌ Failed to restore from backup: ${backupPrefix}`, error);
@@ -158,14 +188,14 @@ export class KnowledgeBaseAzureService {
     try {
       const files = await azureStorage.listFiles('backups/');
       const backups = new Set<string>();
-      
+
       for (const file of files) {
         const parts = file.split('/');
         if (parts.length >= 2) {
           backups.add(parts[1]); // backups/[timestamp] の部分を取得
         }
       }
-      
+
       return Array.from(backups).sort().reverse(); // 新しい順
     } catch (error) {
       console.error('❌ Failed to list backups:', error);
@@ -177,16 +207,22 @@ export class KnowledgeBaseAzureService {
   async watchAndSync(): Promise<void> {
     try {
       console.log('👀 Starting file watch for auto-sync...');
-      
+
       // ファイル変更を監視（簡易版）
-      const watcher = fs.watch(this.localKnowledgeBasePath, { recursive: true });
-      
+      const watcher = fs.watch(this.localKnowledgeBasePath, {
+        recursive: true,
+      });
+
       let syncTimeout: NodeJS.Timeout;
-      
+
       watcher.on('change', (eventType, filename) => {
-        if (filename && !filename.includes('node_modules') && !filename.includes('.git')) {
+        if (
+          filename &&
+          !filename.includes('node_modules') &&
+          !filename.includes('.git')
+        ) {
           console.log(`📝 File changed: ${filename}`);
-          
+
           // デバウンス処理（1秒後に同期）
           clearTimeout(syncTimeout);
           syncTimeout = setTimeout(async () => {
@@ -198,7 +234,7 @@ export class KnowledgeBaseAzureService {
           }, 1000);
         }
       });
-      
+
       console.log('✅ File watch started');
     } catch (error) {
       console.error('❌ Failed to start file watch:', error);
@@ -208,4 +244,4 @@ export class KnowledgeBaseAzureService {
 }
 
 // シングルトンインスタンス
-export const knowledgeBaseAzure = new KnowledgeBaseAzureService(); 
+export const knowledgeBaseAzure = new KnowledgeBaseAzureService();

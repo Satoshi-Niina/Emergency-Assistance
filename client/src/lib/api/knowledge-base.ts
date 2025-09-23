@@ -55,13 +55,19 @@ export const knowledgeBaseApi = {
 
   // 新しいフローの作成
   createFlow: async (flow: Flow) => {
-    const response = await axios.post(KNOWLEDGE_API.TROUBLESHOOTING_FLOWS, flow);
+    const response = await axios.post(
+      KNOWLEDGE_API.TROUBLESHOOTING_FLOWS,
+      flow
+    );
     return response.data;
   },
 
   // 画像メタデータの更新
   updateImageMetadata: async (metadata: ImageMetadata) => {
-    const response = await axios.post(`${KNOWLEDGE_API.BASE}/fuse/metadata`, metadata);
+    const response = await axios.post(
+      `${KNOWLEDGE_API.BASE}/fuse/metadata`,
+      metadata
+    );
     return response.data;
-  }
-}; 
+  },
+};

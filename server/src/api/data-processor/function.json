@@ -5,13 +5,7 @@
       "type": "httpTrigger",
       "direction": "in",
       "name": "req",
-      "methods": [
-        "get",
-        "post",
-        "put",
-        "delete",
-        "options"
-      ],
+      "methods": ["get", "post", "put", "delete", "options"],
       "route": "data-processor/{action?}"
     },
     {

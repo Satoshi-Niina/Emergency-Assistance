@@ -1,4 +1,3 @@
-
 import { API_BASE_URL } from './api/config';
 
 export interface HistoryCreateData {
@@ -37,7 +36,7 @@ export async function createHistoryItem(data: HistoryCreateData): Promise<any> {
         'Content-Type': 'application/json',
       },
       credentials: 'include',
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
     });
 
     if (!response.ok) {
@@ -52,20 +51,25 @@ export async function createHistoryItem(data: HistoryCreateData): Promise<any> {
 }
 
 // 履歴の検索
-export async function searchHistoryItems(params: HistorySearchParams): Promise<any> {
+export async function searchHistoryItems(
+  params: HistorySearchParams
+): Promise<any> {
   try {
     const searchParams = new URLSearchParams();
-    
+
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== '') {
         searchParams.append(key, String(value));
       }
     });
 
-    const response = await fetch(`${API_BASE_URL}/api/history/list?${searchParams}`, {
-      method: 'GET',
-      credentials: 'include'
-    });
+    const response = await fetch(
+      `${API_BASE_URL}/api/history/list?${searchParams}`,
+      {
+        method: 'GET',
+        credentials: 'include',
+      }
+    );
 
     if (!response.ok) {
       throw new Error(`履歴の検索に失敗しました: ${response.status}`);
@@ -83,7 +87,7 @@ export async function getHistoryItem(id: string): Promise<any> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/history/item/${id}`, {
       method: 'GET',
-      credentials: 'include'
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -102,7 +106,7 @@ export async function getHistoryStats(): Promise<any> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/history/stats`, {
       method: 'GET',
-      credentials: 'include'
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -125,7 +129,7 @@ export async function saveToHistory(data: HistoryCreateData): Promise<void> {
       machineModel: extractMachineModel(data.description),
       office: extractOffice(data.description),
       category: extractCategory(data.description),
-      keywords: extractKeywords(data.description)
+      keywords: extractKeywords(data.description),
     };
 
     await createHistoryItem(enhancedData);
@@ -139,26 +143,26 @@ export async function saveToHistory(data: HistoryCreateData): Promise<void> {
 // テキストから機種を推測
 function extractMachineModel(text: string): string | undefined {
   const machineModels = ['MT-100', 'MR-400', 'TC-250', 'SS-750'];
-  
+
   for (const model of machineModels) {
     if (text.toLowerCase().includes(model.toLowerCase())) {
       return model;
     }
   }
-  
+
   return undefined;
 }
 
 // テキストから事業所を推測
 function extractOffice(text: string): string | undefined {
   const offices = ['東京事業所', '大阪事業所', '名古屋事業所', '福岡事業所'];
-  
+
   for (const office of offices) {
     if (text.includes(office)) {
       return office;
     }
   }
-  
+
   return undefined;
 }
 
@@ -168,36 +172,36 @@ function extractCategory(text: string): string | undefined {
     { name: 'エンジン', keywords: ['エンジン', '始動', '停止', '燃料'] },
     { name: 'ブレーキ', keywords: ['ブレーキ', '制動', '停車'] },
     { name: '電気系統', keywords: ['電気', '電源', 'バッテリー', 'ライト'] },
-    { name: '油圧系統', keywords: ['油圧', 'オイル', '圧力'] }
+    { name: '油圧系統', keywords: ['油圧', 'オイル', '圧力'] },
   ];
-  
+
   for (const category of categories) {
     if (category.keywords.some(keyword => text.includes(keyword))) {
       return category.name;
     }
   }
-  
+
   return undefined;
 }
 
 // テキストからキーワードを抽出
 function extractKeywords(text: string): string[] {
   const keywords: string[] = [];
-  
+
   // 一般的なキーワードパターン
   const patterns = [
     /エンジン[停止起動始動]/g,
     /ブレーキ[不良故障]/g,
     /MT-\d+|MR-\d+|TC-\d+|SS-\d+/g,
-    /[東京大阪名古屋福岡]事業所/g
+    /[東京大阪名古屋福岡]事業所/g,
   ];
-  
+
   patterns.forEach(pattern => {
     const matches = text.match(pattern);
     if (matches) {
       keywords.push(...matches);
     }
   });
-  
+
   return [...new Set(keywords)]; // 重複除去
 }

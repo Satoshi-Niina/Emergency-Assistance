@@ -34,7 +34,7 @@ router.get('/test', requireAuth, (req, res) => {
 });
 
 // パスワード強度テスト
-router.post('/test-password-strength', (req, res) => {
+router.post('/test-password-strength', (_req, res) => {
   const { password } = req.body;
   
   if (!password) {

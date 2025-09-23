@@ -15,7 +15,7 @@ console.log('🔧 環境設定:', {
   NODE_ENV: process.env.NODE_ENV,
   PORT: process.env.PORT,
   NODE_VERSION: process.version,
-  PLATFORM: process.platform
+  PLATFORM: process.platform,
 });
 
 // server.jsの存在確認
@@ -35,10 +35,10 @@ console.log('🚀 production-server-standalone.jsを起動中...');
 const server = spawn('node', [serverPath], {
   stdio: 'inherit',
   env: process.env,
-  cwd: process.cwd()
+  cwd: process.cwd(),
 });
 
-server.on('error', (err) => {
+server.on('error', err => {
   console.error('❌ サーバー起動エラー:', err);
   process.exit(1);
 });

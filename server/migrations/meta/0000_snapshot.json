@@ -604,12 +604,8 @@
           "name": "machines_machine_type_id_machine_types_id_fk",
           "tableFrom": "machines",
           "tableTo": "machine_types",
-          "columnsFrom": [
-            "machine_type_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["machine_type_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -877,9 +873,7 @@
         "users_username_unique": {
           "name": "users_username_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "username"
-          ]
+          "columns": ["username"]
         }
       },
       "policies": {},

@@ -6,38 +6,46 @@ const jwt = require('jsonwebtoken');
 
 const app = express();
 const PORT = 3002; // 利用可能なポートを使用
-const DATABASE_URL = "postgresql://postgres:Takabeni@localhost:5432/webappdb";
-const SESSION_SECRET = "working-local-secret-key-12345";
+const DATABASE_URL = 'postgresql://postgres:Takabeni@localhost:5432/webappdb';
+const SESSION_SECRET = 'working-local-secret-key-12345';
 
 const pool = new Pool({ connectionString: DATABASE_URL });
 
 // CORS設定
-app.use(cors({ 
-  origin: ['http://localhost:5173', 'http://localhost:5002', 'http://localhost:5003', 'http://localhost:3000'],
-  credentials: true 
-}));
+app.use(
+  cors({
+    origin: [
+      'http://localhost:5173',
+      'http://localhost:5002',
+      'http://localhost:5003',
+      'http://localhost:3000',
+    ],
+    credentials: true,
+  })
+);
 
 app.use(express.json());
 app.use(cookieParser());
 
-const signToken = (payload) => jwt.sign(payload, SESSION_SECRET, { expiresIn: '7d' });
+const signToken = payload =>
+  jwt.sign(payload, SESSION_SECRET, { expiresIn: '7d' });
 
 // ヘルスチェック
 app.get('/api/health', async (req, res) => {
   try {
     await pool.query('SELECT 1');
-    res.status(200).json({ 
-      status: 'ok', 
-      db: 'ok', 
+    res.status(200).json({
+      status: 'ok',
+      db: 'ok',
       port: PORT,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   } catch (e) {
-    res.status(500).json({ 
-      status: 'error', 
-      db: 'fail', 
-      message: e.message, 
-      port: PORT 
+    res.status(500).json({
+      status: 'error',
+      db: 'fail',
+      message: e.message,
+      port: PORT,
     });
   }
 });
@@ -56,18 +64,18 @@ app.post('/api/auth/login', async (req, res) => {
 
     if (!user) {
       console.log(`[LOGIN] ユーザーが見つかりません: ${username}`);
-      return res.status(401).json({ 
-        success: false, 
-        message: 'ユーザー名またはパスワードが間違っています' 
+      return res.status(401).json({
+        success: false,
+        message: 'ユーザー名またはパスワードが間違っています',
       });
     }
 
     // 平文パスワードを直接比較（ローカル開発用）
     if (user.password !== password) {
       console.log(`[LOGIN] パスワードが一致しません: ${username}`);
-      return res.status(401).json({ 
-        success: false, 
-        message: 'ユーザー名またはパスワードが間違っています' 
+      return res.status(401).json({
+        success: false,
+        message: 'ユーザー名またはパスワードが間違っています',
       });
     }
 
@@ -97,10 +105,10 @@ app.post('/api/auth/login', async (req, res) => {
     });
   } catch (error) {
     console.error('[LOGIN] エラー:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'サーバーエラーが発生しました', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'サーバーエラーが発生しました',
+      error: error.message,
     });
   }
 });
@@ -110,7 +118,9 @@ app.get('/api/auth/me', async (req, res) => {
   try {
     const token = req.cookies.sid;
     if (!token) {
-      return res.status(401).json({ success: false, message: '認証が必要です' });
+      return res
+        .status(401)
+        .json({ success: false, message: '認証が必要です' });
     }
 
     const decoded = jwt.verify(token, SESSION_SECRET);

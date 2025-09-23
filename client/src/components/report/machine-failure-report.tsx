@@ -18,38 +18,54 @@ const toAbsUrl = (url: string): string => {
 };
 
 // 画像を収集（base64優先、無ければ配信URLへフォールバック）
-const collectImages = (data: any): Array<{ id: string; url: string; fileName: string; description?: string }> => {
-  const images: Array<{ id: string; url: string; fileName: string; description?: string }> = [];
-  
+const collectImages = (
+  data: any
+): Array<{
+  id: string;
+  url: string;
+  fileName: string;
+  description?: string;
+}> => {
+  const images: Array<{
+    id: string;
+    url: string;
+    fileName: string;
+    description?: string;
+  }> = [];
+
   // 1) conversationHistory から base64 画像を探す（最優先）
   if (data?.conversationHistory && Array.isArray(data.conversationHistory)) {
     console.log('🔍 conversationHistory から base64 画像を検索中...');
     data.conversationHistory.forEach((message: any, messageIndex: number) => {
-      if (message?.content && typeof message.content === 'string' && message.content.startsWith('data:image/')) {
+      if (
+        message?.content &&
+        typeof message.content === 'string' &&
+        message.content.startsWith('data:image/')
+      ) {
         // base64文字列の正規化（改行除去、全角引用符除去）
-        let normalizedContent = message.content
+        const normalizedContent = message.content
           .replace(/\r?\n/g, '') // 改行除去
           .replace(/[""]/g, '"') // 全角引用符を半角に変換
           .trim();
-        
+
         console.log(`🖼️ Base64 画像発見 (message ${messageIndex}):`, {
           messageId: message.id,
           contentLength: normalizedContent.length,
           startsWithData: normalizedContent.startsWith('data:image/'),
           hasNewlines: normalizedContent.includes('\n'),
-          hasFullWidthQuotes: /[""]/.test(normalizedContent)
+          hasFullWidthQuotes: /[""]/.test(normalizedContent),
         });
-        
+
         images.push({
           id: `base64-${messageIndex}`,
           url: normalizedContent,
           fileName: `会話画像${messageIndex + 1}`,
-          description: '故障箇所画像（Base64）'
+          description: '故障箇所画像（Base64）',
         });
       }
     });
   }
-  
+
   // 2) savedImages から配信URLを取得（base64がない場合のフォールバック）
   if (data?.savedImages && Array.isArray(data.savedImages)) {
     console.log('🔍 savedImages found:', data.savedImages);
@@ -60,12 +76,12 @@ const collectImages = (data: any): Array<{ id: string; url: string; fileName: st
         path: item.path,
         url: item.url,
         hasPath: !!item.path,
-        hasUrl: !!item.url
+        hasUrl: !!item.url,
       });
-      
+
       // 優先順位: path > url
       let imageUrl: string | null = null;
-      
+
       if (item?.path) {
         // Windows絶対パスの場合はファイル名のみを抽出
         if (item.path.includes('\\') && item.path.includes('chat-exports')) {
@@ -75,18 +91,18 @@ const collectImages = (data: any): Array<{ id: string; url: string; fileName: st
             console.log(`🔄 Windows絶対パスを変換:`, {
               originalPath: item.path,
               fileName: fileName,
-              newUrl: imageUrl
+              newUrl: imageUrl,
             });
           }
         }
       }
-      
+
       // path から取得できない場合は url を使用
       if (!imageUrl && item?.url) {
         imageUrl = item.url;
         console.log(`🔄 savedImages.url を使用:`, imageUrl);
       }
-      
+
       if (imageUrl) {
         const absoluteUrl = toAbsUrl(imageUrl);
         console.log(`🖼️ Image ${index}:`, {
@@ -94,42 +110,51 @@ const collectImages = (data: any): Array<{ id: string; url: string; fileName: st
           originalPath: item.path,
           convertedUrl: imageUrl,
           absoluteUrl: absoluteUrl,
-          fileName: item.fileName
+          fileName: item.fileName,
         });
-        
+
         images.push({
           id: `saved-${index}`,
           url: absoluteUrl,
           fileName: item.fileName || `保存画像${index + 1}`,
-          description: '故障箇所画像（配信URL）'
+          description: '故障箇所画像（配信URL）',
         });
       } else {
-        console.log(`⚠️ savedImages[${index}] から画像URLを取得できませんでした:`, item);
+        console.log(
+          `⚠️ savedImages[${index}] から画像URLを取得できませんでした:`,
+          item
+        );
       }
     });
   }
-  
+
   // 3) imagePath を探す（最後のフォールバック）
   if (data?.imagePath) {
-    const imagePaths = Array.isArray(data.imagePath) ? data.imagePath : [data.imagePath];
+    const imagePaths = Array.isArray(data.imagePath)
+      ? data.imagePath
+      : [data.imagePath];
     imagePaths.forEach((path: string, index: number) => {
       if (path) {
         images.push({
           id: `path-${index}`,
           url: toAbsUrl(path),
           fileName: `画像${index + 1}`,
-          description: '故障箇所画像（パス）'
+          description: '故障箇所画像（パス）',
         });
       }
     });
   }
-  
+
   console.log(`📊 画像収集完了: ${images.length}個の画像を発見`, {
     base64Count: images.filter(img => img.url.startsWith('data:image/')).length,
     urlCount: images.filter(img => !img.url.startsWith('data:image/')).length,
-    images: images.map(img => ({ id: img.id, type: img.url.startsWith('data:image/') ? 'base64' : 'url', fileName: img.fileName }))
+    images: images.map(img => ({
+      id: img.id,
+      type: img.url.startsWith('data:image/') ? 'base64' : 'url',
+      fileName: img.fileName,
+    })),
   });
-  
+
   return images;
 };
 
@@ -173,11 +198,19 @@ interface MachineFailureReportProps {
 // 画像取得の共通関数（編集対象ファイル内のみで完結）
 function pickFirstImage(data: any): string | null {
   // 1) 直下 or ネスト配列に dataURL があれば優先
-  const dig = (v:any): string | null => {
+  const dig = (v: any): string | null => {
     if (!v) return null;
     if (typeof v === 'string' && v.startsWith('data:image/')) return v;
-    if (Array.isArray(v)) for (const x of v) { const r = dig(x); if (r) return r; }
-    if (typeof v === 'object') for (const k of Object.keys(v)) { const r = dig(v[k]); if (r) return r; }
+    if (Array.isArray(v))
+      for (const x of v) {
+        const r = dig(x);
+        if (r) return r;
+      }
+    if (typeof v === 'object')
+      for (const k of Object.keys(v)) {
+        const r = dig(v[k]);
+        if (r) return r;
+      }
     return null;
   };
   const fromDataUrl = dig(data);
@@ -211,18 +244,31 @@ const PRINT_STYLES = `
 `;
 
 // 個票印刷用HTML生成（現在のUIフォーマットと完全に同じ）
-const generateReportPrintHTML = (reportData: any, images: Array<{ id: string; url: string; fileName: string; description?: string }>): string => {
-  const imageSection = images && images.length > 0 
-    ? `<div class="image-section">
+const generateReportPrintHTML = (
+  reportData: any,
+  images: Array<{
+    id: string;
+    url: string;
+    fileName: string;
+    description?: string;
+  }>
+): string => {
+  const imageSection =
+    images && images.length > 0
+      ? `<div class="image-section">
          <h3>故障箇所画像</h3>
-         ${images.map((image, index) => `
+         ${images
+           .map(
+             (image, index) => `
            <div class="image-item" style="margin-bottom: 15px; page-break-inside: avoid;">
              <img class="report-img" src="${image.url}" alt="故障画像${index + 1}" style="max-width: 100%; max-height: 150px; border: 1px solid #ccc; border-radius: 3px; object-fit: contain;" />
              <p style="text-align: center; margin-top: 5px; font-size: 8pt; color: #666;">${image.fileName}</p>
            </div>
-         `).join('')}
+         `
+           )
+           .join('')}
        </div>`
-    : '';
+      : '';
 
   return `
     <!doctype html>
@@ -447,24 +493,32 @@ const generateReportPrintHTML = (reportData: any, images: Array<{ id: string; ur
 };
 
 // 個票印刷実行
-const printReport = (reportData: any, images: Array<{ id: string; url: string; fileName: string; description?: string }>) => {
+const printReport = (
+  reportData: any,
+  images: Array<{
+    id: string;
+    url: string;
+    fileName: string;
+    description?: string;
+  }>
+) => {
   const w = window.open('', '_blank', 'noopener,noreferrer');
   if (!w) return;
-  
+
   const contentHTML = generateReportPrintHTML(reportData, images);
   w.document.write(contentHTML);
   w.document.close();
-  
+
   // 印刷ダイアログを表示
   setTimeout(() => {
     w.print();
   }, 100);
 };
 
-const MachineFailureReport: React.FC<MachineFailureReportProps> = ({ 
-  data, 
-  onClose, 
-  onSave
+const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
+  data,
+  onClose,
+  onSave,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedData, setEditedData] = useState<MachineFailureReportData>(data);
@@ -489,33 +543,37 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
   const handleSave = () => {
     // 編集されたデータを元のデータに反映
     const updatedData = { ...data, ...editedData };
-    
+
     // 親コンポーネントに更新されたデータを渡す
     if (onSave) {
       onSave(updatedData);
     }
-    
+
     // サーバーに更新リクエストを送信
     updateReportOnServer(updatedData);
-    
+
     // 編集モードを終了
     setIsEditing(false);
-    
+
     // 成功メッセージを表示
     alert('レポートが保存されました。');
   };
 
   // サーバーにレポートデータを更新
-  const updateReportOnServer = async (updatedData: MachineFailureReportData) => {
+  const updateReportOnServer = async (
+    updatedData: MachineFailureReportData
+  ) => {
     try {
       // 元のデータからIDを取得（data.idまたはdata.reportIdから）
       const reportId = data.id || data.reportId;
-      
+
       if (!reportId) {
-        console.warn('レポートIDが見つからないため、サーバー更新をスキップします');
+        console.warn(
+          'レポートIDが見つからないため、サーバー更新をスキップします'
+        );
         return;
       }
-      
+
       const response = await fetch(`/api/history/update-item/${reportId}`, {
         method: 'PUT',
         headers: {
@@ -535,20 +593,19 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
             repairLocation: updatedData.repairLocation,
             // レポート固有のデータも保存
             reportData: updatedData,
-            lastUpdated: new Date().toISOString()
+            lastUpdated: new Date().toISOString(),
           },
-          updatedBy: 'user'
-        })
+          updatedBy: 'user',
+        }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'レポートの更新に失敗しました');
       }
-      
+
       const result = await response.json();
       console.log('レポート更新完了:', result);
-      
     } catch (error) {
       console.error('レポート更新エラー:', error);
       // エラーが発生してもユーザーには通知しない（ローカル保存は成功しているため）
@@ -560,10 +617,13 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
     setIsEditing(false);
   };
 
-  const handleInputChange = (field: keyof MachineFailureReportData, value: string) => {
+  const handleInputChange = (
+    field: keyof MachineFailureReportData,
+    value: string
+  ) => {
     setEditedData(prev => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
@@ -574,7 +634,7 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
     // 現在のUIフォーマットと同じレイアウトで印刷
     const w = window.open('', '_blank', 'noopener,noreferrer');
     if (!w) return;
-    
+
     // 現在のUIフォーマットをそのまま印刷用HTMLに変換
     const printHTML = `
       <!doctype html>
@@ -764,17 +824,25 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
             </div>
           </div>
           
-          ${collectedImages && collectedImages.length > 0 ? `
+          ${
+            collectedImages && collectedImages.length > 0
+              ? `
             <div class="image-section">
               <h3>故障箇所画像</h3>
-              ${collectedImages.map((image, index) => `
+              ${collectedImages
+                .map(
+                  (image, index) => `
                 <div class="image-item" style="margin-bottom: 15px; page-break-inside: avoid;">
                   <img class="report-img" src="${image.url}" alt="故障画像${index + 1}" style="max-width: 100%; max-height: 150px; border: 1px solid #ccc; border-radius: 3px; object-fit: contain;" />
                   <p style="text-align: center; margin-top: 5px; font-size: 8pt; color: #666;">${image.fileName}</p>
                 </div>
-              `).join('')}
+              `
+                )
+                .join('')}
             </div>
-          ` : ''}
+          `
+              : ''
+          }
           
           <div class="section">
             <h2>修繕予定</h2>
@@ -806,10 +874,10 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
       </body>
       </html>
     `;
-    
+
     w.document.write(printHTML);
     w.document.close();
-    
+
     // 印刷ダイアログを表示
     setTimeout(() => {
       w.print();
@@ -817,43 +885,54 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 print:p-0 print:bg-white print:min-h-0 print:fixed print:inset-0 print:z-50">
+    <div className='min-h-screen bg-gray-50 p-4 print:p-0 print:bg-white print:min-h-0 print:fixed print:inset-0 print:z-50'>
       {/* レポート専用UI - 編集・印刷・保存機能付き */}
-      <div className="max-w-6xl mx-auto bg-white shadow-lg rounded-lg print:shadow-none print:max-w-none print:rounded-none print:bg-transparent print:relative print:top-0 print:left-0 print:w-full print:h-auto">
+      <div className='max-w-6xl mx-auto bg-white shadow-lg rounded-lg print:shadow-none print:max-w-none print:rounded-none print:bg-transparent print:relative print:top-0 print:left-0 print:w-full print:h-auto'>
         {/* ヘッダー - アクションボタン（印刷時完全非表示） */}
-        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 rounded-t-lg print:hidden">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">機械故障報告書</h1>
-            <div className="flex gap-3">
+        <div className='bg-gray-50 px-6 py-4 border-b border-gray-200 rounded-t-lg print:hidden'>
+          <div className='flex justify-between items-center'>
+            <h1 className='text-2xl font-bold text-gray-900'>機械故障報告書</h1>
+            <div className='flex gap-3'>
               {!isEditing ? (
                 <>
-                  <Button 
+                  <Button
                     onClick={() => {
                       console.log('🔧 Edit button clicked!');
                       handleEdit();
-                    }} 
-                    variant="outline" 
-                    className="flex items-center gap-2"
+                    }}
+                    variant='outline'
+                    className='flex items-center gap-2'
                   >
-                    <Edit className="h-4 w-4" />
+                    <Edit className='h-4 w-4' />
                     編集
                   </Button>
-                  <Button onClick={handlePrint} variant="outline" className="flex items-center gap-2">
-                    <Printer className="h-4 w-4" />
+                  <Button
+                    onClick={handlePrint}
+                    variant='outline'
+                    className='flex items-center gap-2'
+                  >
+                    <Printer className='h-4 w-4' />
                     印刷
                   </Button>
-                  <Button onClick={onClose} variant="outline">
+                  <Button onClick={onClose} variant='outline'>
                     閉じる
                   </Button>
                 </>
               ) : (
                 <>
-                  <Button onClick={handleSave} className="flex items-center gap-2">
-                    <Save className="h-4 w-4" />
+                  <Button
+                    onClick={handleSave}
+                    className='flex items-center gap-2'
+                  >
+                    <Save className='h-4 w-4' />
                     保存
                   </Button>
-                  <Button onClick={handleCancel} variant="outline" className="flex items-center gap-2">
-                    <X className="h-4 w-4" />
+                  <Button
+                    onClick={handleCancel}
+                    variant='outline'
+                    className='flex items-center gap-2'
+                  >
+                    <X className='h-4 w-4' />
                     キャンセル
                   </Button>
                 </>
@@ -863,165 +942,239 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
         </div>
 
         {/* 印刷範囲: 機械故障報告書の内容のみ */}
-        <div className="p-8 print:p-6 print:bg-white print:relative print:z-10">
+        <div className='p-8 print:p-6 print:bg-white print:relative print:z-10'>
           {/* 印刷範囲開始: 機械故障報告書タイトル */}
-          <div className="text-center mb-8 print:mb-6 print:relative print:z-20">
-            <h2 className="text-3xl font-bold text-gray-900 print:text-2xl">機械故障報告書</h2>
+          <div className='text-center mb-8 print:mb-6 print:relative print:z-20'>
+            <h2 className='text-3xl font-bold text-gray-900 print:text-2xl'>
+              機械故障報告書
+            </h2>
           </div>
 
           {/* 印刷範囲: メインコンテンツ - 2列レイアウト */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8 print:gap-6 print:mb-6">
+          <div className='grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8 print:gap-6 print:mb-6'>
             {/* 左列: 報告概要 */}
-            <div className="space-y-6 print:space-y-4">
+            <div className='space-y-6 print:space-y-4'>
               {/* 報告概要カード */}
-              <Card className="print:shadow-none print:border print:border-gray-300 print:bg-white">
-                <CardHeader className="pb-4 print:pb-3">
-                  <CardTitle className="text-xl font-semibold text-gray-900 print:text-lg">報告概要</CardTitle>
+              <Card className='print:shadow-none print:border print:border-gray-300 print:bg-white'>
+                <CardHeader className='pb-4 print:pb-3'>
+                  <CardTitle className='text-xl font-semibold text-gray-900 print:text-lg'>
+                    報告概要
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4 print:space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium text-gray-700">報告書ID:</span>
+                <CardContent className='space-y-4 print:space-y-3'>
+                  <div className='flex justify-between items-center'>
+                    <span className='font-medium text-gray-700'>報告書ID:</span>
                     {isEditing ? (
                       <Input
                         value={currentData.reportId}
-                        onChange={(e) => handleInputChange('reportId', e.target.value)}
-                        className="w-48 text-left font-mono print:hidden"
-                        placeholder="報告書IDを入力"
+                        onChange={e =>
+                          handleInputChange('reportId', e.target.value)
+                        }
+                        className='w-48 text-left font-mono print:hidden'
+                        placeholder='報告書IDを入力'
                       />
                     ) : (
-                      <span className="font-mono text-gray-900">{currentData.reportId}</span>
+                      <span className='font-mono text-gray-900'>
+                        {currentData.reportId}
+                      </span>
                     )}
                     {/* 印刷時用の表示（編集モード時は非表示） */}
                     {isEditing && (
-                      <span className="font-mono text-gray-900 print:block hidden">{currentData.reportId}</span>
+                      <span className='font-mono text-gray-900 print:block hidden'>
+                        {currentData.reportId}
+                      </span>
                     )}
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium text-gray-700">機種:</span>
+                  <div className='flex justify-between items-center'>
+                    <span className='font-medium text-gray-700'>機種:</span>
                     {isEditing ? (
                       <Input
-                        value={currentData.machineType || currentData.originalChatData?.machineInfo?.machineTypeName || ''}
-                        onChange={(e) => handleInputChange('machineType', e.target.value)}
-                        className="w-48 text-left print:hidden"
-                        placeholder="例: MC300"
+                        value={
+                          currentData.machineType ||
+                          currentData.originalChatData?.machineInfo
+                            ?.machineTypeName ||
+                          ''
+                        }
+                        onChange={e =>
+                          handleInputChange('machineType', e.target.value)
+                        }
+                        className='w-48 text-left print:hidden'
+                        placeholder='例: MC300'
                       />
                     ) : (
-                      <span className="text-gray-900">{currentData.machineType || currentData.originalChatData?.machineInfo?.machineTypeName || '未設定'}</span>
+                      <span className='text-gray-900'>
+                        {currentData.machineType ||
+                          currentData.originalChatData?.machineInfo
+                            ?.machineTypeName ||
+                          '未設定'}
+                      </span>
                     )}
                     {/* 印刷時用の表示（編集モード時は非表示） */}
                     {isEditing && (
-                      <span className="text-gray-900 print:block hidden">{currentData.machineType || currentData.originalChatData?.machineInfo?.machineTypeName || '未設定'}</span>
+                      <span className='text-gray-900 print:block hidden'>
+                        {currentData.machineType ||
+                          currentData.originalChatData?.machineInfo
+                            ?.machineTypeName ||
+                          '未設定'}
+                      </span>
                     )}
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium text-gray-700">機械番号:</span>
+                  <div className='flex justify-between items-center'>
+                    <span className='font-medium text-gray-700'>機械番号:</span>
                     {isEditing ? (
                       <Input
-                        value={currentData.machineNumber || currentData.originalChatData?.machineInfo?.machineNumber || ''}
-                        onChange={(e) => handleInputChange('machineNumber', e.target.value)}
-                        className="w-48 text-left print:hidden"
-                        placeholder="例: 200"
+                        value={
+                          currentData.machineNumber ||
+                          currentData.originalChatData?.machineInfo
+                            ?.machineNumber ||
+                          ''
+                        }
+                        onChange={e =>
+                          handleInputChange('machineNumber', e.target.value)
+                        }
+                        className='w-48 text-left print:hidden'
+                        placeholder='例: 200'
                       />
                     ) : (
-                      <span className="text-gray-900">{currentData.machineNumber || currentData.originalChatData?.machineInfo?.machineNumber || '未設定'}</span>
+                      <span className='text-gray-900'>
+                        {currentData.machineNumber ||
+                          currentData.originalChatData?.machineInfo
+                            ?.machineNumber ||
+                          '未設定'}
+                      </span>
                     )}
                     {/* 印刷時用の表示（編集モード時は非表示） */}
                     {isEditing && (
-                      <span className="text-gray-900 print:block hidden">{currentData.machineNumber || currentData.originalChatData?.machineInfo?.machineNumber || '未設定'}</span>
+                      <span className='text-gray-900 print:block hidden'>
+                        {currentData.machineNumber ||
+                          currentData.originalChatData?.machineInfo
+                            ?.machineNumber ||
+                          '未設定'}
+                      </span>
                     )}
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium text-gray-700">日付:</span>
+                  <div className='flex justify-between items-center'>
+                    <span className='font-medium text-gray-700'>日付:</span>
                     {isEditing ? (
                       <Input
                         value={currentData.date}
-                        onChange={(e) => handleInputChange('date', e.target.value)}
-                        className="w-48 text-left print:hidden"
-                        type="date"
+                        onChange={e =>
+                          handleInputChange('date', e.target.value)
+                        }
+                        className='w-48 text-left print:hidden'
+                        type='date'
                       />
                     ) : (
-                      <span className="text-gray-900">{currentData.date}</span>
+                      <span className='text-gray-900'>{currentData.date}</span>
                     )}
                     {/* 印刷時用の表示（編集モード時は非表示） */}
                     {isEditing && (
-                      <span className="text-gray-900 print:block hidden">{currentData.date}</span>
+                      <span className='text-gray-900 print:block hidden'>
+                        {currentData.date}
+                      </span>
                     )}
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium text-gray-700">場所:</span>
+                  <div className='flex justify-between items-center'>
+                    <span className='font-medium text-gray-700'>場所:</span>
                     {isEditing ? (
                       <Input
                         value={currentData.location}
-                        onChange={(e) => handleInputChange('location', e.target.value)}
-                        className="w-48 text-left print:hidden"
-                        placeholder="故障発生場所"
+                        onChange={e =>
+                          handleInputChange('location', e.target.value)
+                        }
+                        className='w-48 text-left print:hidden'
+                        placeholder='故障発生場所'
                       />
                     ) : (
-                      <span className="text-gray-900">{currentData.location}</span>
+                      <span className='text-gray-900'>
+                        {currentData.location}
+                      </span>
                     )}
                     {/* 印刷時用の表示（編集モード時は非表示） */}
                     {isEditing && (
-                      <span className="text-gray-900 print:block hidden">{currentData.location}</span>
+                      <span className='text-gray-900 print:block hidden'>
+                        {currentData.location}
+                      </span>
                     )}
                   </div>
                 </CardContent>
               </Card>
 
               {/* 修繕予定カード */}
-              <Card className="print:shadow-none print:border print:border-gray-300 print:bg-white">
-                <CardHeader className="pb-4 print:pb-3">
-                  <CardTitle className="text-xl font-semibold text-gray-900 print:text-lg">修繕予定</CardTitle>
+              <Card className='print:shadow-none print:border print:border-gray-300 print:bg-white'>
+                <CardHeader className='pb-4 print:pb-3'>
+                  <CardTitle className='text-xl font-semibold text-gray-900 print:text-lg'>
+                    修繕予定
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4 print:space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium text-gray-700">依頼月日:</span>
+                <CardContent className='space-y-4 print:space-y-3'>
+                  <div className='flex justify-between items-center'>
+                    <span className='font-medium text-gray-700'>依頼月日:</span>
                     {isEditing ? (
                       <Input
                         value={currentData.repairRequestDate}
-                        onChange={(e) => handleInputChange('repairRequestDate', e.target.value)}
-                        className="w-48 text-left print:hidden"
-                        type="date"
+                        onChange={e =>
+                          handleInputChange('repairRequestDate', e.target.value)
+                        }
+                        className='w-48 text-left print:hidden'
+                        type='date'
                       />
                     ) : (
-                      <span className="text-gray-900">{currentData.repairRequestDate}</span>
+                      <span className='text-gray-900'>
+                        {currentData.repairRequestDate}
+                      </span>
                     )}
                     {/* 印刷時用の表示（編集モード時は非表示） */}
                     {isEditing && (
-                      <span className="text-gray-900 print:block hidden">{currentData.repairRequestDate}</span>
+                      <span className='text-gray-900 print:block hidden'>
+                        {currentData.repairRequestDate}
+                      </span>
                     )}
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium text-gray-700">予定月日:</span>
+                  <div className='flex justify-between items-center'>
+                    <span className='font-medium text-gray-700'>予定月日:</span>
                     {isEditing ? (
                       <Input
                         value={currentData.repairSchedule}
-                        onChange={(e) => handleInputChange('repairSchedule', e.target.value)}
-                        className="w-48 text-left print:hidden"
-                        type="date"
+                        onChange={e =>
+                          handleInputChange('repairSchedule', e.target.value)
+                        }
+                        className='w-48 text-left print:hidden'
+                        type='date'
                       />
                     ) : (
-                      <span className="text-gray-900">{currentData.repairSchedule}</span>
+                      <span className='text-gray-900'>
+                        {currentData.repairSchedule}
+                      </span>
                     )}
                     {/* 印刷時用の表示（編集モード時は非表示） */}
                     {isEditing && (
-                      <span className="text-gray-900 print:block hidden">{currentData.repairSchedule}</span>
+                      <span className='text-gray-900 print:block hidden'>
+                        {currentData.repairSchedule}
+                      </span>
                     )}
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium text-gray-700">場所:</span>
+                  <div className='flex justify-between items-center'>
+                    <span className='font-medium text-gray-700'>場所:</span>
                     {isEditing ? (
                       <Input
                         value={currentData.repairLocation}
-                        onChange={(e) => handleInputChange('repairLocation', e.target.value)}
-                        className="w-48 text-left print:hidden"
-                        placeholder="修繕予定場所"
+                        onChange={e =>
+                          handleInputChange('repairLocation', e.target.value)
+                        }
+                        className='w-48 text-left print:hidden'
+                        placeholder='修繕予定場所'
                       />
                     ) : (
-                      <span className="text-gray-900">{currentData.repairLocation}</span>
+                      <span className='text-gray-900'>
+                        {currentData.repairLocation}
+                      </span>
                     )}
                     {/* 印刷時用の表示（編集モード時は非表示） */}
                     {isEditing && (
-                      <span className="text-gray-900 print:block hidden">{currentData.repairLocation}</span>
+                      <span className='text-gray-900 print:block hidden'>
+                        {currentData.repairLocation}
+                      </span>
                     )}
                   </div>
                 </CardContent>
@@ -1029,81 +1182,121 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
             </div>
 
             {/* 右列: 故障詳細 */}
-            <div className="space-y-6 print:space-y-4">
+            <div className='space-y-6 print:space-y-4'>
               {/* 故障詳細カード */}
-              <Card className="print:shadow-none print:border print:border-gray-300 print:bg-white">
-                <CardHeader className="pb-4 print:pb-3">
-                  <CardTitle className="text-xl font-semibold text-gray-900 print:text-lg">故障詳細</CardTitle>
+              <Card className='print:shadow-none print:border print:border-gray-300 print:bg-white'>
+                <CardHeader className='pb-4 print:pb-3'>
+                  <CardTitle className='text-xl font-semibold text-gray-900 print:text-lg'>
+                    故障詳細
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4 print:space-y-3">
+                <CardContent className='space-y-4 print:space-y-3'>
                   <div>
-                    <span className="font-medium text-gray-700 block mb-2 print:mb-1">説明:</span>
+                    <span className='font-medium text-gray-700 block mb-2 print:mb-1'>
+                      説明:
+                    </span>
                     {isEditing ? (
                       <Textarea
-                        value={currentData.description || currentData.problemDescription || ''}
-                        onChange={(e) => handleInputChange('description', e.target.value)}
-                        className="w-full h-24 print:hidden"
+                        value={
+                          currentData.description ||
+                          currentData.problemDescription ||
+                          ''
+                        }
+                        onChange={e =>
+                          handleInputChange('description', e.target.value)
+                        }
+                        className='w-full h-24 print:hidden'
                         rows={4}
-                        placeholder="故障の詳細な説明を入力してください"
+                        placeholder='故障の詳細な説明を入力してください'
                       />
                     ) : (
-                      <p className="text-gray-900 whitespace-pre-wrap bg-gray-50 p-3 rounded border print:bg-white">{currentData.description || currentData.problemDescription || '説明なし'}</p>
+                      <p className='text-gray-900 whitespace-pre-wrap bg-gray-50 p-3 rounded border print:bg-white'>
+                        {currentData.description ||
+                          currentData.problemDescription ||
+                          '説明なし'}
+                      </p>
                     )}
                     {/* 印刷時用の表示（編集モード時は非表示） */}
                     {isEditing && (
-                      <p className="text-gray-900 whitespace-pre-wrap bg-gray-50 p-3 rounded border print:bg-white print:block hidden">{currentData.description || currentData.problemDescription || '説明なし'}</p>
+                      <p className='text-gray-900 whitespace-pre-wrap bg-gray-50 p-3 rounded border print:bg-white print:block hidden'>
+                        {currentData.description ||
+                          currentData.problemDescription ||
+                          '説明なし'}
+                      </p>
                     )}
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium text-gray-700">ステータス:</span>
+                  <div className='flex justify-between items-center'>
+                    <span className='font-medium text-gray-700'>
+                      ステータス:
+                    </span>
                     {isEditing ? (
                       <Input
                         value={currentData.status}
-                        onChange={(e) => handleInputChange('status', e.target.value)}
-                        className="w-48 text-left print:hidden"
-                        placeholder="例: 調査中"
+                        onChange={e =>
+                          handleInputChange('status', e.target.value)
+                        }
+                        className='w-48 text-left print:hidden'
+                        placeholder='例: 調査中'
                       />
                     ) : (
-                      <span className="text-gray-900">{currentData.status}</span>
+                      <span className='text-gray-900'>
+                        {currentData.status}
+                      </span>
                     )}
                     {/* 印刷時用の表示（編集モード時は非表示） */}
                     {isEditing && (
-                      <span className="text-gray-900 print:block hidden">{currentData.status}</span>
+                      <span className='text-gray-900 print:block hidden'>
+                        {currentData.status}
+                      </span>
                     )}
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium text-gray-700">責任者:</span>
+                  <div className='flex justify-between items-center'>
+                    <span className='font-medium text-gray-700'>責任者:</span>
                     {isEditing ? (
                       <Input
                         value={currentData.engineer}
-                        onChange={(e) => handleInputChange('engineer', e.target.value)}
-                        className="w-48 text-left print:hidden"
-                        placeholder="責任者名"
+                        onChange={e =>
+                          handleInputChange('engineer', e.target.value)
+                        }
+                        className='w-48 text-left print:hidden'
+                        placeholder='責任者名'
                       />
                     ) : (
-                      <span className="text-gray-900">{currentData.engineer}</span>
+                      <span className='text-gray-900'>
+                        {currentData.engineer}
+                      </span>
                     )}
                     {/* 印刷時用の表示（編集モード時は非表示） */}
                     {isEditing && (
-                      <span className="text-gray-900 print:block hidden">{currentData.engineer}</span>
+                      <span className='text-gray-900 print:block hidden'>
+                        {currentData.engineer}
+                      </span>
                     )}
                   </div>
                   <div>
-                    <span className="font-medium text-gray-700 block mb-2 print:mb-1">備考:</span>
+                    <span className='font-medium text-gray-700 block mb-2 print:mb-1'>
+                      備考:
+                    </span>
                     {isEditing ? (
                       <Textarea
                         value={currentData.notes}
-                        onChange={(e) => handleInputChange('notes', e.target.value)}
-                        className="w-full h-24 print:hidden"
+                        onChange={e =>
+                          handleInputChange('notes', e.target.value)
+                        }
+                        className='w-full h-24 print:hidden'
                         rows={4}
-                        placeholder="追加の備考事項を入力してください"
+                        placeholder='追加の備考事項を入力してください'
                       />
                     ) : (
-                      <p className="text-gray-900 whitespace-pre-wrap bg-gray-50 p-3 rounded border print:bg-white">{currentData.notes}</p>
+                      <p className='text-gray-900 whitespace-pre-wrap bg-gray-50 p-3 rounded border print:bg-white'>
+                        {currentData.notes}
+                      </p>
                     )}
                     {/* 印刷時用の表示（編集モード時は非表示） */}
                     {isEditing && (
-                      <p className="text-gray-900 whitespace-pre-wrap bg-gray-50 p-3 rounded border print:bg-white print:block hidden">{currentData.notes}</p>
+                      <p className='text-gray-900 whitespace-pre-wrap bg-gray-50 p-3 rounded border print:bg-white print:block hidden'>
+                        {currentData.notes}
+                      </p>
                     )}
                   </div>
                 </CardContent>
@@ -1112,39 +1305,47 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
           </div>
 
           {/* 印刷範囲終了: 故障箇所画像カード - フル幅 */}
-          <Card className="print:shadow-none print:border print:border-gray-300 print:bg-white">
-            <CardHeader className="pb-4 print:pb-3">
-              <CardTitle className="text-xl font-semibold text-gray-900 print:text-lg">故障箇所画像</CardTitle>
+          <Card className='print:shadow-none print:border print:border-gray-300 print:bg-white'>
+            <CardHeader className='pb-4 print:pb-3'>
+              <CardTitle className='text-xl font-semibold text-gray-900 print:text-lg'>
+                故障箇所画像
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-600 mb-4 print:mb-3">機械故障箇所の画像</p>
+              <p className='text-gray-600 mb-4 print:mb-3'>
+                機械故障箇所の画像
+              </p>
               {collectedImages && collectedImages.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 print:gap-3">
+                <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 print:gap-3'>
                   {collectedImages.map((image, index) => (
-                    <div key={image.id} className="border rounded-lg p-3 print:break-inside-avoid print:p-2 print:bg-white">
+                    <div
+                      key={image.id}
+                      className='border rounded-lg p-3 print:break-inside-avoid print:p-2 print:bg-white'
+                    >
                       {console.log(`🖼️ 画像表示 [${index}]:`, {
                         id: image.id,
                         url: image.url.substring(0, 100) + '...',
                         fileName: image.fileName,
                         description: image.description,
                         isBase64: image.url.startsWith('data:image/'),
-                        urlLength: image.url.length
+                        urlLength: image.url.length,
                       })}
                       <img
                         src={image.url}
                         alt={`故障箇所画像 ${index + 1}`}
-                        className="w-full h-40 object-cover rounded-lg mb-2 print:h-32 print:mb-1"
-                        crossOrigin="anonymous"
-                        onError={(e) => {
+                        className='w-full h-40 object-cover rounded-lg mb-2 print:h-32 print:mb-1'
+                        crossOrigin='anonymous'
+                        onError={e => {
                           console.log('❌ 画像読み込みエラー:', {
                             imageId: image.id,
                             url: image.url.substring(0, 100) + '...',
                             fileName: image.fileName,
-                            error: e
+                            error: e,
                           });
                           const target = e.target as HTMLImageElement;
                           target.style.display = 'none';
-                          const errorDiv = target.nextElementSibling as HTMLElement;
+                          const errorDiv =
+                            target.nextElementSibling as HTMLElement;
                           if (errorDiv) {
                             errorDiv.style.display = 'block';
                           }
@@ -1154,29 +1355,35 @@ const MachineFailureReport: React.FC<MachineFailureReportProps> = ({
                             imageId: image.id,
                             url: image.url.substring(0, 100) + '...',
                             fileName: image.fileName,
-                            isBase64: image.url.startsWith('data:image/')
+                            isBase64: image.url.startsWith('data:image/'),
                           });
                         }}
                       />
-                      <div className="hidden text-center text-gray-500 text-sm print:block">
+                      <div className='hidden text-center text-gray-500 text-sm print:block'>
                         画像読み込みエラー
                       </div>
-                      <p className="text-sm text-gray-500 text-center">{image.fileName}</p>
+                      <p className='text-sm text-gray-500 text-center'>
+                        {image.fileName}
+                      </p>
                       {image.description && (
-                        <p className="text-sm text-gray-600 text-center mt-1">{image.description}</p>
+                        <p className='text-sm text-gray-600 text-center mt-1'>
+                          {image.description}
+                        </p>
                       )}
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-40 bg-gray-100 rounded-lg print:h-32 print:bg-white">
-                  <div className="text-center">
-                    <ImageIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-500">画像がありません</p>
+                <div className='flex items-center justify-center h-40 bg-gray-100 rounded-lg print:h-32 print:bg-white'>
+                  <div className='text-center'>
+                    <ImageIcon className='h-12 w-12 text-gray-400 mx-auto mb-3' />
+                    <p className='text-gray-500'>画像がありません</p>
                   </div>
                 </div>
               )}
-              <p className="text-gray-600 mt-4 print:mt-3">上記は故障箇所の写真です。</p>
+              <p className='text-gray-600 mt-4 print:mt-3'>
+                上記は故障箇所の写真です。
+              </p>
             </CardContent>
           </Card>
         </div>

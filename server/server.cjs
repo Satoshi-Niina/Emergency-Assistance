@@ -5,26 +5,26 @@ console.log('Starting server...');
 
 // CommonJS統一エントリーポイント
 // 例外可視化（本番環境ではプロセスを落とさない）
-process.on('unhandledRejection', e => { 
-  console.error('UNHANDLED_REJECTION', e); 
+process.on('unhandledRejection', e => {
+  console.error('UNHANDLED_REJECTION', e);
   // 本番環境ではプロセスを落とさない
   if (process.env.NODE_ENV !== 'production') {
-    process.exit(1); 
+    process.exit(1);
   }
 });
-process.on('uncaughtException', e => { 
-  console.error('UNCAUGHT_EXCEPTION', e); 
+process.on('uncaughtException', e => {
+  console.error('UNCAUGHT_EXCEPTION', e);
   // 本番環境ではプロセスを落とさない
   if (process.env.NODE_ENV !== 'production') {
-    process.exit(1); 
+    process.exit(1);
   }
 });
 
-try { 
-  require('dotenv').config(); 
+try {
+  require('dotenv').config();
   console.log('dotenv loaded successfully');
-} catch (e) { 
-  console.log('dotenv not available, continuing...'); 
+} catch (e) {
+  console.log('dotenv not available, continuing...');
 }
 
 console.log('Loading dependencies...');
@@ -51,9 +51,10 @@ if (missingEnvVars.length > 0) {
 console.log('🔧 Environment configuration:', {
   NODE_ENV: process.env.NODE_ENV || 'development',
   PORT: process.env.PORT || '8080',
-  FRONTEND_URL: process.env.FRONTEND_URL || 'https://your-swa.azurestaticapps.net',
+  FRONTEND_URL:
+    process.env.FRONTEND_URL || 'https://your-swa.azurestaticapps.net',
   SESSION_SECRET: process.env.SESSION_SECRET ? '[SET]' : '[NOT SET]',
-  DATABASE_URL: process.env.DATABASE_URL ? '[SET]' : '[NOT SET]'
+  DATABASE_URL: process.env.DATABASE_URL ? '[SET]' : '[NOT SET]',
 });
 
 const app = express();
@@ -63,13 +64,15 @@ console.log('Express app created');
 app.set('trust proxy', 1);
 
 // CORS設定 - クロスサイト対応
-const FRONTEND = process.env.FRONTEND_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net';
+const FRONTEND =
+  process.env.FRONTEND_URL ||
+  'https://witty-river-012f39e00.1.azurestaticapps.net';
 
 const corsOpts = {
   origin: [FRONTEND],
   credentials: true,
-  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization','Accept']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
 };
 app.use(cors(corsOpts));
 app.options('*', cors(corsOpts)); // preflight
@@ -80,9 +83,9 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 
 // Cookie設定の自動切替（First-Party vs Cross-Site）
-const useFirstParty = !!process.env.COOKIE_DOMAIN;        // 例: .example.jp が入っていれば First-Party
+const useFirstParty = !!process.env.COOKIE_DOMAIN; // 例: .example.jp が入っていれば First-Party
 const cookieSameSite = useFirstParty ? 'lax' : 'none';
-const cookieDomain   = useFirstParty ? process.env.COOKIE_DOMAIN : undefined;
+const cookieDomain = useFirstParty ? process.env.COOKIE_DOMAIN : undefined;
 
 // Cross-Siteモードの時だけ（= COOKIE_DOMAIN 未設定時）、Set-Cookie へ ; Partitioned を自動追記
 if (!process.env.COOKIE_DOMAIN) {
@@ -90,10 +93,13 @@ if (!process.env.COOKIE_DOMAIN) {
     const orig = res.setHeader.bind(res);
     res.setHeader = (name, value) => {
       if (String(name).toLowerCase() === 'set-cookie') {
-        const add = v => (typeof v === 'string' &&
-                          v.toLowerCase().includes('samesite=none') &&
-                          v.toLowerCase().includes('secure') &&
-                          !/;\s*partitioned\b/i.test(v)) ? v + '; Partitioned' : v;
+        const add = v =>
+          typeof v === 'string' &&
+          v.toLowerCase().includes('samesite=none') &&
+          v.toLowerCase().includes('secure') &&
+          !/;\s*partitioned\b/i.test(v)
+            ? v + '; Partitioned'
+            : v;
         return orig(name, Array.isArray(value) ? value.map(add) : add(value));
       }
       return orig(name, value);
@@ -103,20 +109,22 @@ if (!process.env.COOKIE_DOMAIN) {
 }
 
 // セッション設定 - 全ブラウザ対応（First-Party/Cross-Site自動切替）
-app.use(session({
-  name: 'sid',
-  secret: process.env.SESSION_SECRET || 'change_me',
-  resave: false,
-  saveUninitialized: false,
-  proxy: true, // クロスサイトCookie用
-  cookie: {
-    httpOnly: true,
-    secure: true,
-    sameSite: cookieSameSite,             // 'lax' or 'none'
-    ...(cookieDomain ? { domain: cookieDomain } : {}), // 設定時のみ付与
-    maxAge: 24*60*60*1000  // 24時間
-  }
-}));
+app.use(
+  session({
+    name: 'sid',
+    secret: process.env.SESSION_SECRET || 'change_me',
+    resave: false,
+    saveUninitialized: false,
+    proxy: true, // クロスサイトCookie用
+    cookie: {
+      httpOnly: true,
+      secure: true,
+      sameSite: cookieSameSite, // 'lax' or 'none'
+      ...(cookieDomain ? { domain: cookieDomain } : {}), // 設定時のみ付与
+      maxAge: 24 * 60 * 60 * 1000, // 24時間
+    },
+  })
+);
 
 // 静的ファイル配信
 app.use(express.static(path.join(__dirname, 'public')));
@@ -126,14 +134,14 @@ app.get('/', (req, res) => {
   res.status(200).send('ok');
 });
 
-
 // DB初期化（本番で未設定/失敗でもexitしない）
 global.dbReady = false;
 if (process.env.DATABASE_URL) {
   try {
     const { Client } = require('pg');
     const client = new Client({ connectionString: process.env.DATABASE_URL });
-    client.connect()
+    client
+      .connect()
       .then(() => {
         global.dbReady = true;
         return client.end();
@@ -151,8 +159,11 @@ if (process.env.DATABASE_URL) {
 }
 
 // Health endpoints (JSON, backward compatible, dbReady反映)
-app.get(['/api/healthz','/healthz','/api/health','/health'], (_req, res) => {
-  res.type('application/json').status(200).json({ ok: true, db: global.dbReady ? 'ok' : 'ng' });
+app.get(['/api/healthz', '/healthz', '/api/health', '/health'], (_req, res) => {
+  res
+    .type('application/json')
+    .status(200)
+    .json({ ok: true, db: global.dbReady ? 'ok' : 'ng' });
 });
 
 // 疎通確認用エンドポイント
@@ -162,10 +173,10 @@ app.get('/ping', (req, res) => {
 
 // API ルート
 app.get('/api/health/json', (req, res) => {
-  res.json({ 
+  res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
   });
 });
 
@@ -175,15 +186,22 @@ const { Client } = require('pg');
 const bcrypt = require('bcrypt');
 app.post('/api/auth/login', async (req, res) => {
   // 受信ボディのキー名だけをログ（password値は出力しない）
-  console.info('[auth/login] bodyKeys:', Object.keys(req.body||{}));
+  console.info('[auth/login] bodyKeys:', Object.keys(req.body || {}));
   res.set('Cache-Control', 'no-store');
   const { login, password } = req.body || {};
   const id = login;
   if (!id || !password) {
-    return res.status(400).json({ success: false, error: 'ユーザー名とパスワードを入力してください' });
+    return res
+      .status(400)
+      .json({
+        success: false,
+        error: 'ユーザー名とパスワードを入力してください',
+      });
   }
   if (process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL) {
-    return res.status(500).json({ success: false, error: 'DB接続情報がありません' });
+    return res
+      .status(500)
+      .json({ success: false, error: 'DB接続情報がありません' });
   }
   const client = new Client({ connectionString: process.env.DATABASE_URL });
   try {
@@ -193,7 +211,12 @@ app.post('/api/auth/login', async (req, res) => {
     const { rows } = await client.query(q, [id]);
     if (!rows[0]) {
       console.info('user_found: false');
-      return res.status(401).json({ success: false, error: 'ユーザー名またはパスワードが正しくありません' });
+      return res
+        .status(401)
+        .json({
+          success: false,
+          error: 'ユーザー名またはパスワードが正しくありません',
+        });
     }
     const user = rows[0];
     console.info('user_found: true');
@@ -213,12 +236,19 @@ app.post('/api/auth/login', async (req, res) => {
     }
     if (!passwordOk) {
       console.info('password_ok: false');
-      return res.status(401).json({ success: false, error: 'ユーザー名またはパスワードが正しくありません' });
+      return res
+        .status(401)
+        .json({
+          success: false,
+          error: 'ユーザー名またはパスワードが正しくありません',
+        });
     }
     console.info('password_ok: true');
-    req.session.regenerate(async (err) => {
+    req.session.regenerate(async err => {
       if (err) {
-        return res.status(500).json({ success: false, error: 'セッションの再生成に失敗しました' });
+        return res
+          .status(500)
+          .json({ success: false, error: 'セッションの再生成に失敗しました' });
       }
       // 必ずregenerate後にuserId等を設定
       req.session.userId = user.id;
@@ -226,12 +256,17 @@ app.post('/api/auth/login', async (req, res) => {
       req.session.username = user.username;
       if (needsRehash) {
         const newHash = await bcrypt.hash(password, 12);
-        await client.query('UPDATE users SET password=$1 WHERE id=$2', [newHash, user.id]);
+        await client.query('UPDATE users SET password=$1 WHERE id=$2', [
+          newHash,
+          user.id,
+        ]);
       }
       // 必ずsave後にres.json
-      req.session.save((err) => {
+      req.session.save(err => {
         if (err) {
-          return res.status(500).json({ success: false, error: 'セッションの保存に失敗しました' });
+          return res
+            .status(500)
+            .json({ success: false, error: 'セッションの保存に失敗しました' });
         }
         return res.json({
           success: true,
@@ -240,8 +275,8 @@ app.post('/api/auth/login', async (req, res) => {
             login: user.username,
             displayName: user.display_name,
             role: user.role,
-            department: user.department || ''
-          }
+            department: user.department || '',
+          },
         });
       });
     });
@@ -280,7 +315,7 @@ app.get('/api/auth/me', (req, res) => {
     sessionId: req.session?.id,
     userId: req.session?.userId,
     userRole: req.session?.userRole,
-    sessionData: req.session
+    sessionData: req.session,
   });
   res.set('Cache-Control', 'no-store');
   if (!req.session || !req.session.userId) {
@@ -288,7 +323,7 @@ app.get('/api/auth/me', (req, res) => {
     console.log('🔍 Available session data:', req.session);
     return res.status(401).json({
       success: false,
-      error: '認証されていません'
+      error: '認証されていません',
     });
   }
   console.log('✅ Authenticated user:', req.session.userId);
@@ -299,8 +334,8 @@ app.get('/api/auth/me', (req, res) => {
       username: req.session.username || req.session.userId,
       displayName: req.session.username || req.session.userId,
       role: req.session.userRole || 'user',
-      department: 'General'
-    }
+      department: 'General',
+    },
   });
 });
 
@@ -308,22 +343,22 @@ app.get('/api/auth/me', (req, res) => {
 app.post('/api/auth/logout', (req, res) => {
   console.log('🚪 Logout request:', {
     sessionId: req.session?.id,
-    userId: req.session?.userId
+    userId: req.session?.userId,
   });
   res.set('Cache-Control', 'no-store');
-  req.session.destroy((err) => {
+  req.session.destroy(err => {
     if (err) {
       console.error('❌ Session destroy error:', err);
       return res.status(500).json({
         success: false,
-        error: 'ログアウトに失敗しました'
+        error: 'ログアウトに失敗しました',
       });
     }
     res.clearCookie('sid');
     console.log('✅ Logout successful');
     return res.json({
       success: true,
-      message: 'ログアウトしました'
+      message: 'ログアウトしました',
     });
   });
 });
@@ -332,33 +367,33 @@ app.post('/api/auth/logout', (req, res) => {
 app.get('/api/auth/handshake', (req, res) => {
   res.json({
     firstParty: !!process.env.COOKIE_DOMAIN,
-    supportsToken: true
+    supportsToken: true,
   });
 });
 
 app.post('/api/auth/cookie-probe', (req, res) => {
   const isProduction = process.env.NODE_ENV === 'production';
   const isFirstParty = !!process.env.COOKIE_DOMAIN;
-  
+
   res.cookie('auth-probe', 'test', {
     httpOnly: true,
     secure: isProduction,
     sameSite: isFirstParty ? 'lax' : 'none',
     maxAge: 5000, // 5秒
-    ...(isProduction && !isFirstParty && { partitioned: true })
+    ...(isProduction && !isFirstParty && { partitioned: true }),
   });
-  
+
   res.status(204).send();
 });
 
 app.get('/api/auth/cookie-probe-check', (req, res) => {
   const cookieOk = !!req.cookies['auth-probe'];
-  
+
   // プローブCookieを削除
   if (cookieOk) {
     res.clearCookie('auth-probe');
   }
-  
+
   res.json({ cookieOk });
 });
 
@@ -367,37 +402,51 @@ app.post('/api/auth/refresh', async (req, res) => {
     // セッションが有効な場合
     if (req.session?.userId) {
       const jwt = require('jsonwebtoken');
-      const token = jwt.sign({ uid: req.session.userId }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '1d' });
+      const token = jwt.sign(
+        { uid: req.session.userId },
+        process.env.JWT_SECRET || 'dev-secret',
+        { expiresIn: '1d' }
+      );
       return res.json({ token });
     }
-    
+
     // Bearerトークンが有効な場合
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
       try {
         const jwt = require('jsonwebtoken');
-        const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret');
-        
+        const payload = jwt.verify(
+          token,
+          process.env.JWT_SECRET || 'dev-secret'
+        );
+
         // 期限が15分未満の場合は新しいトークンを発行
         const now = Math.floor(Date.now() / 1000);
-        if (payload.exp - now < 900) { // 15分 = 900秒
-          const newToken = jwt.sign({ uid: payload.uid }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '1d' });
+        if (payload.exp - now < 900) {
+          // 15分 = 900秒
+          const newToken = jwt.sign(
+            { uid: payload.uid },
+            process.env.JWT_SECRET || 'dev-secret',
+            { expiresIn: '1d' }
+          );
           return res.json({ token: newToken });
         }
-        
+
         // まだ有効な場合は現在のトークンを返す
         return res.json({ token });
       } catch (jwtError) {
         // JWT無効
       }
     }
-    
+
     // どちらも無効
     return res.status(401).json({ success: false, error: '認証が必要です' });
   } catch (error) {
     console.error('Refresh error:', error);
-    return res.status(500).json({ success: false, error: 'リフレッシュエラー' });
+    return res
+      .status(500)
+      .json({ success: false, error: 'リフレッシュエラー' });
   }
 });
 
@@ -411,13 +460,8 @@ app.use('*', (req, res) => {
 // エラーハンドラー
 app.use((err, req, res, next) => {
   console.error('Server error:', err);
-  res
-    .status(500)
-    .type("application/json")
-    .send({ error: "internal_error" });
+  res.status(500).type('application/json').send({ error: 'internal_error' });
 });
-
-
 
 // 本番でもDATABASE_URL未設定でexitしない（起動緩和）
 
@@ -429,7 +473,7 @@ console.log('🔧 Environment:', {
   NODE_ENV: process.env.NODE_ENV,
   PORT: port,
   HOST: host,
-  DATABASE_URL: process.env.DATABASE_URL ? '[SET]' : '[NOT SET]'
+  DATABASE_URL: process.env.DATABASE_URL ? '[SET]' : '[NOT SET]',
 });
 
 // サーバー起動の試行
@@ -440,14 +484,16 @@ try {
     console.log(`🌐 Listening on ${host}:${port}`);
     console.log(`🔍 Health check: http://${host}:${port}/api/health`);
     console.log(`🔐 Login API: http://${host}:${port}/api/auth/login`);
-    console.log(`📊 Database status: ${global.dbReady ? 'connected' : 'not connected'}`);
+    console.log(
+      `📊 Database status: ${global.dbReady ? 'connected' : 'not connected'}`
+    );
     console.log('🚀 Emergency Assistance Server is ready!');
   });
 } catch (error) {
   console.error('❌ Failed to start server:', error);
   process.exit(1);
 }
-server.on('error', (err) => {
+server.on('error', err => {
   console.error('❌ Server error:', err);
   process.exit(1);
 });
@@ -456,7 +502,7 @@ server.on('listening', () => {
 });
 
 // プロセス終了時の処理
-process.on('exit', (code) => {
+process.on('exit', code => {
   console.log(`Process exiting with code: ${code}`);
 });
 

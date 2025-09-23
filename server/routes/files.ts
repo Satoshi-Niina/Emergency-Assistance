@@ -17,36 +17,39 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['.txt', '.pdf', '.xlsx', '.pptx'];
     const ext = path.extname(file.originalname).toLowerCase();
-    
+
     if (allowedTypes.includes(ext)) {
       cb(null, true);
     } else {
       cb(new Error('サポートされていないファイル形式です'));
     }
-  }
+  },
 });
 
 // ファイルからテキストを抽出する関数
-async function extractTextFromFile(filePath: string, originalName: string): Promise<string> {
+async function extractTextFromFile(
+  filePath: string,
+  originalName: string
+): Promise<string> {
   const ext = path.extname(originalName).toLowerCase();
-  
+
   try {
     switch (ext) {
       case '.txt':
         return await fsPromises.readFile(filePath, 'utf-8');
-      
+
       case '.pdf':
         console.log('PDF処理は未実装のため、ファイル名のみ保存');
         return `PDF file: ${originalName}`;
-      
+
       case '.xlsx':
         console.log('Excel処理は未実装のため、ファイル名のみ保存');
         return `Excel file: ${originalName}`;
-      
+
       case '.pptx':
         console.log('PowerPoint処理は未実装のため、ファイル名のみ保存');
         return `PowerPoint file: ${originalName}`;
-      
+
       default:
         throw new Error(`サポートされていないファイル形式: ${ext}`);
     }
@@ -60,34 +63,36 @@ async function extractTextFromFile(filePath: string, originalName: string): Prom
  * GET /api/files/processed
  * 処理済みファイル一覧を取得
  */
-router.get('/processed', async (req, res) => {
+router.get('/processed', async (_req, res) => {
   try {
     console.log('📁 処理済みファイル一覧取得リクエスト');
-    
+
     // knowledge-base/index.jsonからドキュメント情報を取得
     const index = loadKnowledgeBaseIndex();
-    
+
     // documents配列が存在しない場合は初期化
     if (!index.documents) {
       index.documents = [];
     }
-    
+
     console.log(`✅ 処理済みファイル取得成功: ${index.documents.length}件`);
-    
+
     res.json({
       success: true,
       data: index.documents,
       total: index.documents.length,
-      message: index.documents.length > 0 ? '処理済みファイルを取得しました' : '処理済みファイルがありません',
-      timestamp: new Date().toISOString()
+      message:
+        index.documents.length > 0
+          ? '処理済みファイルを取得しました'
+          : '処理済みファイルがありません',
+      timestamp: new Date().toISOString(),
     });
-    
   } catch (error) {
     console.error('❌ 処理済みファイル一覧取得エラー:', error);
     res.status(500).json({
       success: false,
       error: '処理済みファイル一覧の取得に失敗しました',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -115,24 +120,24 @@ router.post('/import', upload.single('file'), async (req, res) => {
         importedAt: new Date().toISOString(),
         category: category,
         fileType: path.extname(originalname).toLowerCase(),
-        processedBy: 'file-import-system'
+        processedBy: 'file-import-system',
       },
       content: {
         extractedText: extractedText,
         summary: `Imported from ${originalname}`,
-        source: 'file-import'
+        source: 'file-import',
       },
       processing: {
         status: 'completed',
         processedAt: new Date().toISOString(),
-        extractionMethod: 'automatic'
-      }
+        extractionMethod: 'automatic',
+      },
     };
 
     // knowledge-base/vehicle-maintenanceフォルダに保存
     const fileName = `import_${Date.now()}_${originalname.replace(/[\\/:*?"<>|]/g, '_')}.json`;
     const filePath = `vehicle-maintenance/${fileName}`;
-    
+
     await knowledgeBase.writeJSON(filePath, importedData);
 
     // 一時ファイルを削除
@@ -151,12 +156,11 @@ router.post('/import', upload.single('file'), async (req, res) => {
       originalName: originalname,
       savedPath: filePath,
       processedEntries: 1,
-      importId: importedData.metadata.importId
+      importId: importedData.metadata.importId,
     });
-
   } catch (error) {
     console.error('ファイルインポートエラー:', error);
-    
+
     // 一時ファイルのクリーンアップ
     if (req.file?.path) {
       try {
@@ -168,28 +172,32 @@ router.post('/import', upload.single('file'), async (req, res) => {
 
     res.status(500).json({
       error: 'ファイルのインポートに失敗しました',
-      details: error instanceof Error ? error.message : '不明なエラー'
+      details: error instanceof Error ? error.message : '不明なエラー',
     });
   }
 });
 
 // インポート済みファイルの一覧取得
-router.get('/imports', async (req, res) => {
+router.get('/imports', async (_req, res) => {
   try {
     const files = await knowledgeBase.listFiles('vehicle-maintenance');
-    const importFiles = files.filter(file => file.startsWith('import_') && file.endsWith('.json'));
-    
+    const importFiles = files.filter(
+      file => file.startsWith('import_') && file.endsWith('.json')
+    );
+
     const fileDetails = await Promise.all(
-      importFiles.map(async (file) => {
+      importFiles.map(async file => {
         try {
-          const data = await knowledgeBase.readJSON(`vehicle-maintenance/${file}`);
+          const data = await knowledgeBase.readJSON(
+            `vehicle-maintenance/${file}`
+          );
           return {
             fileName: file,
             originalName: data.metadata?.originalFileName || 'Unknown',
             importedAt: data.metadata?.importedAt || 'Unknown',
             category: data.metadata?.category || 'general',
             fileType: data.metadata?.fileType || 'unknown',
-            importId: data.metadata?.importId || 'unknown'
+            importId: data.metadata?.importId || 'unknown',
           };
         } catch (error) {
           console.error(`ファイル読み込みエラー: ${file}`, error);
@@ -199,7 +207,7 @@ router.get('/imports', async (req, res) => {
             importedAt: 'Error',
             category: 'error',
             fileType: 'error',
-            importId: 'error'
+            importId: 'error',
           };
         }
       })
@@ -208,16 +216,15 @@ router.get('/imports', async (req, res) => {
     res.json({
       success: true,
       imports: fileDetails,
-      total: fileDetails.length
+      total: fileDetails.length,
     });
-
   } catch (error) {
     console.error('インポート一覧取得エラー:', error);
     res.status(500).json({
       error: 'インポート一覧の取得に失敗しました',
-      details: error instanceof Error ? error.message : '不明なエラー'
+      details: error instanceof Error ? error.message : '不明なエラー',
     });
   }
 });
 
-export default router; 
+export default router;

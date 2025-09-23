@@ -18,7 +18,7 @@ try {
   console.log('📁 Looking for app-production-esm.js in:', __dirname);
   const { default: app } = await import('./app-production-esm.js');
   const PORT = process.env.PORT || 8080;
-  
+
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on 0.0.0.0:${PORT}`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'production'}`);

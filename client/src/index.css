@@ -61,7 +61,10 @@
   }
 
   /* フォーム要素のサイズ調整 */
-  input, textarea, select, button {
+  input,
+  textarea,
+  select,
+  button {
     font-size: 1.5rem !important;
     padding: 0.75rem 1rem !important;
     border-radius: 0.5rem !important;
@@ -79,25 +82,50 @@
   }
 
   /* カードのパディング調整 */
-  .card, [class*="card"] {
+  .card,
+  [class*='card'] {
     padding: 1.5rem !important;
   }
 
   /* テキストサイズの調整 */
-  h1 { font-size: 3rem !important; }
-  h2 { font-size: 2.5rem !important; }
-  h3 { font-size: 2rem !important; }
-  h4 { font-size: 1.75rem !important; }
-  h5 { font-size: 1.5rem !important; }
-  h6 { font-size: 1.25rem !important; }
+  h1 {
+    font-size: 3rem !important;
+  }
+  h2 {
+    font-size: 2.5rem !important;
+  }
+  h3 {
+    font-size: 2rem !important;
+  }
+  h4 {
+    font-size: 1.75rem !important;
+  }
+  h5 {
+    font-size: 1.5rem !important;
+  }
+  h6 {
+    font-size: 1.25rem !important;
+  }
 
   /* 小さいテキストの調整 */
-  .text-xs { font-size: 1rem !important; }
-  .text-sm { font-size: 1.25rem !important; }
-  .text-base { font-size: 1.5rem !important; }
-  .text-lg { font-size: 1.75rem !important; }
-  .text-xl { font-size: 2rem !important; }
-  .text-2xl { font-size: 2.5rem !important; }
+  .text-xs {
+    font-size: 1rem !important;
+  }
+  .text-sm {
+    font-size: 1.25rem !important;
+  }
+  .text-base {
+    font-size: 1.5rem !important;
+  }
+  .text-lg {
+    font-size: 1.75rem !important;
+  }
+  .text-xl {
+    font-size: 2rem !important;
+  }
+  .text-2xl {
+    font-size: 2.5rem !important;
+  }
 }
 
 /* body全体のスタイル */
@@ -138,7 +166,9 @@ body {
   margin: 0 auto;
   background-color: white;
   border-radius: 0.375rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 /* 3Dチャットエリア専用スタイル */
@@ -146,7 +176,7 @@ body {
   background: linear-gradient(145deg, #f8fafc, #e2e8f0);
   border: 4px solid #d1d5db;
   border-radius: 1rem;
-  box-shadow: 
+  box-shadow:
     inset 3px 3px 8px rgba(0, 0, 0, 0.15),
     inset -3px -3px 8px rgba(255, 255, 255, 0.9),
     6px 6px 16px rgba(0, 0, 0, 0.2),
@@ -168,7 +198,7 @@ body {
   background: linear-gradient(145deg, #ffffff, #f1f5f9);
   border: 2px solid #d1d5db;
   border-radius: 0.5rem;
-  box-shadow: 
+  box-shadow:
     inset 2px 2px 6px rgba(0, 0, 0, 0.1),
     inset -2px -2px 6px rgba(255, 255, 255, 0.9),
     4px 4px 12px rgba(0, 0, 0, 0.15);
@@ -202,7 +232,8 @@ body {
 }
 
 /* AIメッセージとユーザーメッセージのスタイル */
-.ai-message, .user-message {
+.ai-message,
+.user-message {
   max-width: 80%;
   padding: 0.75rem 1rem;
   border-radius: 1.5rem;
@@ -264,7 +295,9 @@ body {
 }
 
 @keyframes typing-animation {
-  0%, 80%, 100% {
+  0%,
+  80%,
+  100% {
     transform: scale(0.6);
     opacity: 0.4;
   }
@@ -275,8 +308,8 @@ body {
 }
 
 /* フォーム要素のスタイリング */
-input[type="text"], 
-input[type="password"], 
+input[type='text'],
+input[type='password'],
 textarea {
   width: 100%;
   padding: 0.5rem 1rem;
@@ -286,8 +319,8 @@ textarea {
   transition: border-color 0.15s ease-in-out;
 }
 
-input[type="text"]:focus, 
-input[type="password"]:focus, 
+input[type='text']:focus,
+input[type='password']:focus,
 textarea:focus {
   outline: none;
   border-color: #60a5fa;
@@ -336,12 +369,13 @@ button:disabled {
     border-radius: 0;
   }
 
-  .ai-message, .user-message {
+  .ai-message,
+  .user-message {
     max-width: 90%;
   }
 
-  input[type="text"], 
-  input[type="password"], 
+  input[type='text'],
+  input[type='password'],
   textarea {
     font-size: 1rem; /* モバイルで読みやすいサイズに */
   }
@@ -419,7 +453,7 @@ button:disabled {
       z-index: 1000 !important;
     }
 
-    #mobile-search-slider[style*="transform: none"] {
+    #mobile-search-slider[style*='transform: none'] {
       box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
     }
 
@@ -435,7 +469,7 @@ button:disabled {
 
     /* 検索結果の横スクロール対応 */
     .search-results-container {
-      overflow-x: auto !important; 
+      overflow-x: auto !important;
       white-space: nowrap;
       min-width: 320px;
     }

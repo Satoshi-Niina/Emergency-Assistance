@@ -9,38 +9,46 @@ const path = require('path');
 
 const app = express();
 const PORT = 3003; // 利用可能なポートを使用
-const DATABASE_URL = "postgresql://postgres:Takabeni@localhost:5432/webappdb";
-const SESSION_SECRET = "working-local-secret-key-12345";
+const DATABASE_URL = 'postgresql://postgres:Takabeni@localhost:5432/webappdb';
+const SESSION_SECRET = 'working-local-secret-key-12345';
 
 const pool = new Pool({ connectionString: DATABASE_URL });
 
 // CORS設定
-app.use(cors({ 
-  origin: ['http://localhost:5173', 'http://localhost:5002', 'http://localhost:5003', 'http://localhost:3000'],
-  credentials: true 
-}));
+app.use(
+  cors({
+    origin: [
+      'http://localhost:5173',
+      'http://localhost:5002',
+      'http://localhost:5003',
+      'http://localhost:3000',
+    ],
+    credentials: true,
+  })
+);
 
 app.use(express.json());
 app.use(cookieParser());
 
-const signToken = (payload) => jwt.sign(payload, SESSION_SECRET, { expiresIn: '7d' });
+const signToken = payload =>
+  jwt.sign(payload, SESSION_SECRET, { expiresIn: '7d' });
 
 // ヘルスチェック
 app.get('/api/health', async (req, res) => {
   try {
     await pool.query('SELECT 1');
-    res.status(200).json({ 
-      status: 'ok', 
-      db: 'ok', 
+    res.status(200).json({
+      status: 'ok',
+      db: 'ok',
       port: PORT,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   } catch (e) {
-    res.status(500).json({ 
-      status: 'error', 
-      db: 'fail', 
-      message: e.message, 
-      port: PORT 
+    res.status(500).json({
+      status: 'error',
+      db: 'fail',
+      message: e.message,
+      port: PORT,
     });
   }
 });
@@ -59,9 +67,9 @@ app.post('/api/auth/login', async (req, res) => {
 
     if (!user) {
       console.log(`[LOGIN] ユーザーが見つかりません: ${username}`);
-      return res.status(401).json({ 
-        success: false, 
-        message: 'ユーザー名またはパスワードが間違っています' 
+      return res.status(401).json({
+        success: false,
+        message: 'ユーザー名またはパスワードが間違っています',
       });
     }
 
@@ -69,9 +77,9 @@ app.post('/api/auth/login', async (req, res) => {
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
       console.log(`[LOGIN] パスワードが一致しません: ${username}`);
-      return res.status(401).json({ 
-        success: false, 
-        message: 'ユーザー名またはパスワードが間違っています' 
+      return res.status(401).json({
+        success: false,
+        message: 'ユーザー名またはパスワードが間違っています',
       });
     }
 
@@ -101,10 +109,10 @@ app.post('/api/auth/login', async (req, res) => {
     });
   } catch (error) {
     console.error('[LOGIN] エラー:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'サーバーエラーが発生しました', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'サーバーエラーが発生しました',
+      error: error.message,
     });
   }
 });
@@ -114,7 +122,9 @@ app.get('/api/auth/me', async (req, res) => {
   try {
     const token = req.cookies.sid;
     if (!token) {
-      return res.status(401).json({ success: false, message: '認証が必要です' });
+      return res
+        .status(401)
+        .json({ success: false, message: '認証が必要です' });
     }
 
     const decoded = jwt.verify(token, SESSION_SECRET);
@@ -146,15 +156,17 @@ app.get('/api/users', async (req, res) => {
     const { rows } = await pool.query(
       'SELECT id, username, display_name, role, created_at FROM users ORDER BY created_at DESC'
     );
-    
+
     res.status(200).json({
       success: true,
       data: rows,
-      count: rows.length
+      count: rows.length,
     });
   } catch (error) {
     console.error('[DATA] エラー:', error);
-    res.status(500).json({ success: false, message: 'ユーザー一覧の取得に失敗しました' });
+    res
+      .status(500)
+      .json({ success: false, message: 'ユーザー一覧の取得に失敗しました' });
   }
 });
 
@@ -173,7 +185,7 @@ app.get('/api/machines', async (req, res) => {
         location: '車庫A',
         lastMaintenance: '2025-09-15',
         nextMaintenance: '2025-10-15',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       },
       {
         id: 'machine-2',
@@ -185,7 +197,7 @@ app.get('/api/machines', async (req, res) => {
         location: '整備場',
         lastMaintenance: '2025-09-10',
         nextMaintenance: '2025-09-25',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       },
       {
         id: 'machine-3',
@@ -197,18 +209,20 @@ app.get('/api/machines', async (req, res) => {
         location: '現場',
         lastMaintenance: '2025-09-12',
         nextMaintenance: '2025-10-12',
-        createdAt: new Date().toISOString()
-      }
+        createdAt: new Date().toISOString(),
+      },
     ];
-    
+
     res.status(200).json({
       success: true,
       data: machineData,
-      count: machineData.length
+      count: machineData.length,
     });
   } catch (error) {
     console.error('[DATA] エラー:', error);
-    res.status(500).json({ success: false, message: '機械データの取得に失敗しました' });
+    res
+      .status(500)
+      .json({ success: false, message: '機械データの取得に失敗しました' });
   }
 });
 
@@ -229,7 +243,7 @@ app.get('/api/maintenance/history', async (req, res) => {
         reportedAt: '2025-09-10T10:00:00Z',
         resolvedAt: '2025-09-12T15:30:00Z',
         resolution: 'オイルパンガスケット交換',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       },
       {
         id: 'history-2',
@@ -243,18 +257,20 @@ app.get('/api/maintenance/history', async (req, res) => {
         reportedAt: '2025-09-15T14:20:00Z',
         resolvedAt: null,
         resolution: null,
-        createdAt: new Date().toISOString()
-      }
+        createdAt: new Date().toISOString(),
+      },
     ];
-    
+
     res.status(200).json({
       success: true,
       data: historyData,
-      count: historyData.length
+      count: historyData.length,
     });
   } catch (error) {
     console.error('[DATA] エラー:', error);
-    res.status(500).json({ success: false, message: '故障履歴の取得に失敗しました' });
+    res
+      .status(500)
+      .json({ success: false, message: '故障履歴の取得に失敗しました' });
   }
 });
 
@@ -273,11 +289,11 @@ app.get('/api/flows', async (req, res) => {
           'バッテリーの状態を確認',
           '燃料の残量を確認',
           'キーの状態を確認',
-          '専門業者に連絡'
+          '専門業者に連絡',
         ],
         estimatedTime: '15分',
         requiredTools: ['テスター', 'ジャンプケーブル'],
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       },
       {
         id: 'flow-2',
@@ -289,11 +305,11 @@ app.get('/api/flows', async (req, res) => {
           'パーキングブレーキを確認',
           'ブレーキフルードの状態を確認',
           '安全な場所に停車',
-          '緊急連絡'
+          '緊急連絡',
         ],
         estimatedTime: '5分',
         requiredTools: ['ブレーキフルード'],
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       },
       {
         id: 'flow-3',
@@ -305,22 +321,24 @@ app.get('/api/flows', async (req, res) => {
           '安全な場所に停車',
           'スペアタイヤの確認',
           'ジャッキアップ',
-          'タイヤ交換'
+          'タイヤ交換',
         ],
         estimatedTime: '30分',
         requiredTools: ['ジャッキ', 'レンチ', 'スペアタイヤ'],
-        createdAt: new Date().toISOString()
-      }
+        createdAt: new Date().toISOString(),
+      },
     ];
-    
+
     res.status(200).json({
       success: true,
       data: flowsData,
-      count: flowsData.length
+      count: flowsData.length,
     });
   } catch (error) {
     console.error('[DATA] エラー:', error);
-    res.status(500).json({ success: false, message: 'フロー一覧の取得に失敗しました' });
+    res
+      .status(500)
+      .json({ success: false, message: 'フロー一覧の取得に失敗しました' });
   }
 });
 
@@ -329,15 +347,15 @@ app.get('/api/storage/knowledge-base', async (req, res) => {
   try {
     console.log('[STORAGE] ナレッジベースデータを読み込み中...');
     const knowledgeBasePath = path.join(__dirname, 'knowledge-base');
-    
+
     // ナレッジベースのファイル一覧を取得
     const files = fs.readdirSync(knowledgeBasePath, { withFileTypes: true });
     const dataFiles = files
       .filter(file => file.isFile() && file.name.endsWith('.json'))
       .map(file => file.name);
-    
+
     const knowledgeData = [];
-    
+
     // 各JSONファイルを読み込み
     for (const file of dataFiles) {
       try {
@@ -348,22 +366,30 @@ app.get('/api/storage/knowledge-base', async (req, res) => {
           id: file.replace('.json', ''),
           filename: file,
           data: data,
-          createdAt: fs.statSync(filePath).birthtime.toISOString()
+          createdAt: fs.statSync(filePath).birthtime.toISOString(),
         });
       } catch (fileError) {
-        console.error(`[STORAGE] ファイル読み込みエラー ${file}:`, fileError.message);
+        console.error(
+          `[STORAGE] ファイル読み込みエラー ${file}:`,
+          fileError.message
+        );
       }
     }
-    
+
     res.status(200).json({
       success: true,
       data: knowledgeData,
       count: knowledgeData.length,
-      source: 'local-knowledge-base'
+      source: 'local-knowledge-base',
     });
   } catch (error) {
     console.error('[STORAGE] エラー:', error);
-    res.status(500).json({ success: false, message: 'ストレージデータの読み込みに失敗しました' });
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: 'ストレージデータの読み込みに失敗しました',
+      });
   }
 });
 
@@ -371,24 +397,28 @@ app.get('/api/storage/knowledge-base', async (req, res) => {
 app.get('/api/storage/troubleshooting', async (req, res) => {
   try {
     console.log('[STORAGE] トラブルシューティングデータを読み込み中...');
-    const troubleshootingPath = path.join(__dirname, 'knowledge-base', 'troubleshooting');
-    
+    const troubleshootingPath = path.join(
+      __dirname,
+      'knowledge-base',
+      'troubleshooting'
+    );
+
     if (!fs.existsSync(troubleshootingPath)) {
       return res.status(200).json({
         success: true,
         data: [],
         count: 0,
-        message: 'トラブルシューティングフォルダが存在しません'
+        message: 'トラブルシューティングフォルダが存在しません',
       });
     }
-    
+
     const files = fs.readdirSync(troubleshootingPath, { withFileTypes: true });
     const dataFiles = files
       .filter(file => file.isFile() && file.name.endsWith('.json'))
       .map(file => file.name);
-    
+
     const troubleshootingData = [];
-    
+
     for (const file of dataFiles) {
       try {
         const filePath = path.join(troubleshootingPath, file);
@@ -398,22 +428,30 @@ app.get('/api/storage/troubleshooting', async (req, res) => {
           id: file.replace('.json', ''),
           filename: file,
           data: data,
-          createdAt: fs.statSync(filePath).birthtime.toISOString()
+          createdAt: fs.statSync(filePath).birthtime.toISOString(),
         });
       } catch (fileError) {
-        console.error(`[STORAGE] トラブルシューティングファイル読み込みエラー ${file}:`, fileError.message);
+        console.error(
+          `[STORAGE] トラブルシューティングファイル読み込みエラー ${file}:`,
+          fileError.message
+        );
       }
     }
-    
+
     res.status(200).json({
       success: true,
       data: troubleshootingData,
       count: troubleshootingData.length,
-      source: 'local-troubleshooting'
+      source: 'local-troubleshooting',
     });
   } catch (error) {
     console.error('[STORAGE] エラー:', error);
-    res.status(500).json({ success: false, message: 'トラブルシューティングデータの読み込みに失敗しました' });
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: 'トラブルシューティングデータの読み込みに失敗しました',
+      });
   }
 });
 
@@ -423,23 +461,23 @@ app.get('/api/knowledge-base', async (req, res) => {
     console.log('[API] ナレッジベースAPIを呼び出し中...');
     // ストレージのナレッジベースデータを返す
     const knowledgeBasePath = path.join(__dirname, 'knowledge-base');
-    
+
     if (!fs.existsSync(knowledgeBasePath)) {
       return res.status(200).json({
         success: true,
         data: [],
         count: 0,
-        message: 'ナレッジベースフォルダが存在しません'
+        message: 'ナレッジベースフォルダが存在しません',
       });
     }
-    
+
     const files = fs.readdirSync(knowledgeBasePath, { withFileTypes: true });
     const dataFiles = files
       .filter(file => file.isFile() && file.name.endsWith('.json'))
       .map(file => file.name);
-    
+
     const knowledgeData = [];
-    
+
     for (const file of dataFiles) {
       try {
         const filePath = path.join(knowledgeBasePath, file);
@@ -449,21 +487,26 @@ app.get('/api/knowledge-base', async (req, res) => {
           id: file.replace('.json', ''),
           filename: file,
           data: data,
-          createdAt: fs.statSync(filePath).birthtime.toISOString()
+          createdAt: fs.statSync(filePath).birthtime.toISOString(),
         });
       } catch (fileError) {
-        console.error(`[API] ナレッジベースファイル読み込みエラー ${file}:`, fileError.message);
+        console.error(
+          `[API] ナレッジベースファイル読み込みエラー ${file}:`,
+          fileError.message
+        );
       }
     }
-    
+
     res.status(200).json({
       success: true,
       data: knowledgeData,
-      count: knowledgeData.length
+      count: knowledgeData.length,
     });
   } catch (error) {
     console.error('[API] ナレッジベースエラー:', error);
-    res.status(500).json({ success: false, message: 'ナレッジベースの取得に失敗しました' });
+    res
+      .status(500)
+      .json({ success: false, message: 'ナレッジベースの取得に失敗しました' });
   }
 });
 
@@ -477,46 +520,48 @@ app.get('/api/machines/machine-types', async (req, res) => {
         name: 'トラック',
         description: '貨物輸送用トラック',
         category: 'vehicle',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       },
       {
         id: 'van',
         name: 'バン',
         description: '小型貨物車',
         category: 'vehicle',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       },
       {
         id: 'excavator',
         name: 'ショベルカー',
         description: '建設重機',
         category: 'construction',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       },
       {
         id: 'crane',
         name: 'クレーン',
         description: '重量物運搬用クレーン',
         category: 'construction',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       },
       {
         id: 'generator',
         name: '発電機',
         description: '非常用発電機',
         category: 'equipment',
-        createdAt: new Date().toISOString()
-      }
+        createdAt: new Date().toISOString(),
+      },
     ];
-    
+
     res.status(200).json({
       success: true,
       data: machineTypes,
-      count: machineTypes.length
+      count: machineTypes.length,
     });
   } catch (error) {
     console.error('[API] 機械タイプエラー:', error);
-    res.status(500).json({ success: false, message: '機械タイプの取得に失敗しました' });
+    res
+      .status(500)
+      .json({ success: false, message: '機械タイプの取得に失敗しました' });
   }
 });
 
@@ -524,14 +569,16 @@ app.get('/api/machines/machine-types', async (req, res) => {
 app.get('/api/storage/list', async (req, res) => {
   try {
     console.log('[API] ストレージ一覧を取得中...');
-    
+
     // ローカルでは空のリストを返す（本番環境ではAzure Blob Storageから取得）
     const storageList = [];
-    
+
     res.status(200).json(storageList);
   } catch (error) {
     console.error('[API] エラー:', error);
-    res.status(500).json({ success: false, message: 'ストレージ一覧の取得に失敗しました' });
+    res
+      .status(500)
+      .json({ success: false, message: 'ストレージ一覧の取得に失敗しました' });
   }
 });
 
@@ -539,19 +586,24 @@ app.get('/api/storage/list', async (req, res) => {
 app.get('/api/knowledge-base', async (req, res) => {
   try {
     console.log('[API] ナレッジベースデータを取得中...');
-    
+
     // ローカルでは空のデータを返す（本番環境ではAzure Blob Storageから取得）
     const knowledgeData = [];
-    
+
     res.status(200).json({
       success: true,
       data: knowledgeData,
       total: knowledgeData.length,
-      message: 'ローカル環境: ナレッジベースデータは空です'
+      message: 'ローカル環境: ナレッジベースデータは空です',
     });
   } catch (error) {
     console.error('[API] エラー:', error);
-    res.status(500).json({ success: false, message: 'ナレッジベースデータの取得に失敗しました' });
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: 'ナレッジベースデータの取得に失敗しました',
+      });
   }
 });
 
@@ -570,11 +622,11 @@ app.get('/machines/machine-types', async (req, res) => {
         specifications: {
           engine: 'ディーゼル',
           capacity: '4人乗り',
-          equipment: ['工具セット', '応急処置キット']
+          equipment: ['工具セット', '応急処置キット'],
         },
         maintenanceInterval: 30,
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       },
       {
         id: 2,
@@ -584,22 +636,24 @@ app.get('/machines/machine-types', async (req, res) => {
         specifications: {
           engine: 'ディーゼル',
           capacity: '6人乗り',
-          equipment: ['大型工具', 'クレーン', '照明設備']
+          equipment: ['大型工具', 'クレーン', '照明設備'],
         },
         maintenanceInterval: 45,
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }
+        updatedAt: new Date().toISOString(),
+      },
     ];
-    
+
     res.status(200).json({
       success: true,
       data: machineTypes,
-      count: machineTypes.length
+      count: machineTypes.length,
     });
   } catch (error) {
     console.error('[API] エラー:', error);
-    res.status(500).json({ success: false, message: '機械タイプの取得に失敗しました' });
+    res
+      .status(500)
+      .json({ success: false, message: '機械タイプの取得に失敗しました' });
   }
 });
 
@@ -608,43 +662,52 @@ app.get('/api/blob/list', async (req, res) => {
   try {
     console.log('[API] Blob Storage リストを取得中...');
     const { container } = req.query;
-    
+
     if (container === 'knowledge') {
       // ローカルのknowledge-baseフォルダからファイル一覧を取得
       const knowledgeBasePath = path.join(__dirname, 'knowledge-base');
       const files = [];
-      
+
       try {
-        const items = fs.readdirSync(knowledgeBasePath, { withFileTypes: true });
+        const items = fs.readdirSync(knowledgeBasePath, {
+          withFileTypes: true,
+        });
         items.forEach(item => {
           if (item.isFile() && item.name.endsWith('.json')) {
             files.push({
               name: item.name,
               size: fs.statSync(path.join(knowledgeBasePath, item.name)).size,
-              lastModified: fs.statSync(path.join(knowledgeBasePath, item.name)).mtime.toISOString(),
-              url: `/api/blob/download?container=${container}&blob=${item.name}`
+              lastModified: fs
+                .statSync(path.join(knowledgeBasePath, item.name))
+                .mtime.toISOString(),
+              url: `/api/blob/download?container=${container}&blob=${item.name}`,
             });
           }
         });
       } catch (dirError) {
         console.warn('[API] ディレクトリ読み込みエラー:', dirError.message);
       }
-      
+
       res.status(200).json({
         success: true,
         data: files,
-        count: files.length
+        count: files.length,
       });
     } else {
       res.status(200).json({
         success: true,
         data: [],
-        count: 0
+        count: 0,
       });
     }
   } catch (error) {
     console.error('[API] エラー:', error);
-    res.status(500).json({ success: false, message: 'Blob Storage リストの取得に失敗しました' });
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: 'Blob Storage リストの取得に失敗しました',
+      });
   }
 });
 
@@ -653,7 +716,7 @@ app.get('/api/history', async (req, res) => {
   try {
     console.log('[API] 履歴データを取得中...');
     const { limit = 20, offset = 0 } = req.query;
-    
+
     const historyData = [
       {
         id: 'history-1',
@@ -667,7 +730,7 @@ app.get('/api/history', async (req, res) => {
         reportedAt: '2025-09-10T10:00:00Z',
         resolvedAt: '2025-09-12T15:30:00Z',
         resolution: 'オイルパンガスケット交換',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       },
       {
         id: 'history-2',
@@ -681,20 +744,22 @@ app.get('/api/history', async (req, res) => {
         reportedAt: '2025-09-15T14:20:00Z',
         resolvedAt: null,
         resolution: null,
-        createdAt: new Date().toISOString()
-      }
+        createdAt: new Date().toISOString(),
+      },
     ];
-    
+
     res.status(200).json({
       success: true,
       data: historyData,
       count: historyData.length,
       limit: parseInt(limit),
-      offset: parseInt(offset)
+      offset: parseInt(offset),
     });
   } catch (error) {
     console.error('[API] エラー:', error);
-    res.status(500).json({ success: false, message: '履歴データの取得に失敗しました' });
+    res
+      .status(500)
+      .json({ success: false, message: '履歴データの取得に失敗しました' });
   }
 });
 
@@ -712,7 +777,7 @@ app.get('/api/history/machine-data', async (req, res) => {
         nextMaintenance: '2025-10-01T10:00:00Z',
         totalIssues: 3,
         resolvedIssues: 2,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       },
       {
         id: 'machine-2',
@@ -723,18 +788,20 @@ app.get('/api/history/machine-data', async (req, res) => {
         nextMaintenance: '2025-10-15T14:20:00Z',
         totalIssues: 1,
         resolvedIssues: 0,
-        createdAt: new Date().toISOString()
-      }
+        createdAt: new Date().toISOString(),
+      },
     ];
-    
+
     res.status(200).json({
       success: true,
       data: machineData,
-      count: machineData.length
+      count: machineData.length,
     });
   } catch (error) {
     console.error('[API] エラー:', error);
-    res.status(500).json({ success: false, message: '機械データ履歴の取得に失敗しました' });
+    res
+      .status(500)
+      .json({ success: false, message: '機械データ履歴の取得に失敗しました' });
   }
 });
 
@@ -747,22 +814,27 @@ app.get('/api/history/search-filters', async (req, res) => {
       statuses: ['open', 'in_progress', 'resolved', 'closed'],
       machines: [
         { id: 'machine-1', name: '保守用車両 A-001' },
-        { id: 'machine-2', name: '保守用車両 B-002' }
+        { id: 'machine-2', name: '保守用車両 B-002' },
       ],
       reporters: ['niina', 'yamada', 'employee', 'admin'],
       dateRange: {
         min: '2025-01-01',
-        max: new Date().toISOString().split('T')[0]
-      }
+        max: new Date().toISOString().split('T')[0],
+      },
     };
-    
+
     res.status(200).json({
       success: true,
-      data: filters
+      data: filters,
     });
   } catch (error) {
     console.error('[API] エラー:', error);
-    res.status(500).json({ success: false, message: '履歴検索フィルターの取得に失敗しました' });
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: '履歴検索フィルターの取得に失敗しました',
+      });
   }
 });
 
@@ -770,15 +842,22 @@ app.get('/api/history/search-filters', async (req, res) => {
 app.get('/api/troubleshooting', async (req, res) => {
   try {
     console.log('[API] トラブルシューティングデータを取得中...');
-    const troubleshootingPath = path.join(__dirname, 'knowledge-base', 'troubleshooting');
+    const troubleshootingPath = path.join(
+      __dirname,
+      'knowledge-base',
+      'troubleshooting'
+    );
     const troubleshootingData = [];
-    
+
     try {
       const files = fs.readdirSync(troubleshootingPath);
       files.forEach(file => {
         if (file.endsWith('.json')) {
           try {
-            const content = fs.readFileSync(path.join(troubleshootingPath, file), 'utf8');
+            const content = fs.readFileSync(
+              path.join(troubleshootingPath, file),
+              'utf8'
+            );
             const data = JSON.parse(content);
             troubleshootingData.push({
               id: data.id || file,
@@ -787,25 +866,33 @@ app.get('/api/troubleshooting', async (req, res) => {
               steps: data.steps || [],
               category: data.category || 'general',
               tags: data.tags || [],
-              createdAt: data.createdAt || new Date().toISOString()
+              createdAt: data.createdAt || new Date().toISOString(),
             });
           } catch (parseError) {
-            console.warn(`[API] ファイル解析エラー ${file}:`, parseError.message);
+            console.warn(
+              `[API] ファイル解析エラー ${file}:`,
+              parseError.message
+            );
           }
         }
       });
     } catch (dirError) {
       console.warn('[API] ディレクトリ読み込みエラー:', dirError.message);
     }
-    
+
     res.status(200).json({
       success: true,
       data: troubleshootingData,
-      count: troubleshootingData.length
+      count: troubleshootingData.length,
     });
   } catch (error) {
     console.error('[API] エラー:', error);
-    res.status(500).json({ success: false, message: 'トラブルシューティングデータの取得に失敗しました' });
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: 'トラブルシューティングデータの取得に失敗しました',
+      });
   }
 });
 
@@ -826,7 +913,7 @@ app.get('/api/machines/all-machines', async (req, res) => {
         nextMaintenance: '2025-10-01T10:00:00Z',
         totalIssues: 3,
         resolvedIssues: 2,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       },
       {
         id: 'machine-2',
@@ -838,18 +925,20 @@ app.get('/api/machines/all-machines', async (req, res) => {
         nextMaintenance: '2025-10-15T14:20:00Z',
         totalIssues: 1,
         resolvedIssues: 0,
-        createdAt: new Date().toISOString()
-      }
+        createdAt: new Date().toISOString(),
+      },
     ];
-    
+
     res.status(200).json({
       success: true,
       data: machines,
-      count: machines.length
+      count: machines.length,
     });
   } catch (error) {
     console.error('[API] エラー:', error);
-    res.status(500).json({ success: false, message: '全機械一覧の取得に失敗しました' });
+    res
+      .status(500)
+      .json({ success: false, message: '全機械一覧の取得に失敗しました' });
   }
 });
 
@@ -857,15 +946,22 @@ app.get('/api/machines/all-machines', async (req, res) => {
 app.get('/api/troubleshooting/list', async (req, res) => {
   try {
     console.log('[API] トラブルシューティングリストを取得中...');
-    const troubleshootingPath = path.join(__dirname, 'knowledge-base', 'troubleshooting');
+    const troubleshootingPath = path.join(
+      __dirname,
+      'knowledge-base',
+      'troubleshooting'
+    );
     const troubleshootingList = [];
-    
+
     try {
       const files = fs.readdirSync(troubleshootingPath);
       files.forEach(file => {
         if (file.endsWith('.json')) {
           try {
-            const content = fs.readFileSync(path.join(troubleshootingPath, file), 'utf8');
+            const content = fs.readFileSync(
+              path.join(troubleshootingPath, file),
+              'utf8'
+            );
             const data = JSON.parse(content);
             troubleshootingList.push({
               id: data.id || file,
@@ -873,25 +969,33 @@ app.get('/api/troubleshooting/list', async (req, res) => {
               description: data.description || '',
               category: data.category || 'general',
               tags: data.tags || [],
-              createdAt: data.createdAt || new Date().toISOString()
+              createdAt: data.createdAt || new Date().toISOString(),
             });
           } catch (parseError) {
-            console.warn(`[API] ファイル解析エラー ${file}:`, parseError.message);
+            console.warn(
+              `[API] ファイル解析エラー ${file}:`,
+              parseError.message
+            );
           }
         }
       });
     } catch (dirError) {
       console.warn('[API] ディレクトリ読み込みエラー:', dirError.message);
     }
-    
+
     res.status(200).json({
       success: true,
       data: troubleshootingList,
-      count: troubleshootingList.length
+      count: troubleshootingList.length,
     });
   } catch (error) {
     console.error('[API] エラー:', error);
-    res.status(500).json({ success: false, message: 'トラブルシューティングリストの取得に失敗しました' });
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: 'トラブルシューティングリストの取得に失敗しました',
+      });
   }
 });
 
@@ -907,40 +1011,49 @@ app.get('/api/settings/rag', async (req, res) => {
       knowledgeBase: {
         enabled: true,
         sources: ['documents', 'troubleshooting', 'qa'],
-        searchLimit: 10
+        searchLimit: 10,
       },
       chat: {
         enabled: true,
-        systemPrompt: 'あなたは緊急時対応の専門家です。保守用車両の故障や問題について適切なアドバイスを提供してください。',
-        maxHistory: 50
-      }
+        systemPrompt:
+          'あなたは緊急時対応の専門家です。保守用車両の故障や問題について適切なアドバイスを提供してください。',
+        maxHistory: 50,
+      },
     };
-    
+
     res.status(200).json({
       success: true,
-      data: ragSettings
+      data: ragSettings,
     });
   } catch (error) {
     console.error('[API] エラー:', error);
-    res.status(500).json({ success: false, message: '設定RAGの取得に失敗しました' });
+    res
+      .status(500)
+      .json({ success: false, message: '設定RAGの取得に失敗しました' });
   }
 });
 
 // エラーハンドリング
 app.use((err, req, res, next) => {
   console.error('[SERVER] エラー:', err);
-  res.status(500).json({ success: false, message: 'サーバーエラーが発生しました' });
+  res
+    .status(500)
+    .json({ success: false, message: 'サーバーエラーが発生しました' });
 });
 
 // 404ハンドリング
 app.use((req, res) => {
   console.log(`[SERVER] 404: ${req.method} ${req.path}`);
-  res.status(404).json({ success: false, message: 'エンドポイントが見つかりません' });
+  res
+    .status(404)
+    .json({ success: false, message: 'エンドポイントが見つかりません' });
 });
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[SERVER] 修正済みサーバー起動: http://0.0.0.0:${PORT}`);
   console.log(`[SERVER] データベース: ${DATABASE_URL}`);
-  console.log(`[SERVER] 利用可能ユーザー: niina, yamada, employee, takabeni1, takabeni2, admin`);
+  console.log(
+    `[SERVER] 利用可能ユーザー: niina, yamada, employee, takabeni1, takabeni2, admin`
+  );
   console.log(`[SERVER] エラーハンドリング: 有効`);
 });

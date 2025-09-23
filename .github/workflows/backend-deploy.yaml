@@ -1,7 +1,7 @@
 name: Deploy Backend to Azure App Service
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
       - 'server/**'
       - '.github/workflows/backend-deploy.yaml'
@@ -78,15 +78,15 @@ jobs:
       - name: Backend Health Check
         run: |
           echo "🔍 Starting backend health check..."
-          
+
           # Wait for deployment
           echo "⏳ Waiting for backend deployment (90 seconds)..."
           sleep 90
-          
+
           # Check backend
           backend_url="https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net"
           echo "Checking backend: ${backend_url}/api/health"
-          
+
           for i in {1..15}; do
             echo "=== Health check attempt $i ==="
             
@@ -112,7 +112,7 @@ jobs:
               sleep 10
             fi
           done
-          
+
           if [ "$health_status" != "200" ] && [ "$healthz_status" != "200" ] && [ "$ping_status" != "200" ]; then
             echo "❌ Backend health check failed!"
             echo "All health endpoints are not responding"

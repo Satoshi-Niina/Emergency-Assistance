@@ -1,6 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { loadRagConfig, updateRagConfig, validateRagConfig, getConfigDiff } from '../services/config-manager.js';
+import {
+  loadRagConfig,
+  updateRagConfig,
+  validateRagConfig,
+  getConfigDiff,
+} from '../services/config-manager.js';
 
 const router = Router();
 
@@ -14,7 +19,7 @@ const ConfigUpdateSchema = z.object({
   rerankMin: z.number().min(0).max(1).optional(),
   maxTextLength: z.number().min(1000).max(1000000).optional(),
   batchSize: z.number().min(1).max(20).optional(),
-  similarityThreshold: z.number().min(0).max(1).optional()
+  similarityThreshold: z.number().min(0).max(1).optional(),
 });
 
 type ConfigUpdate = z.infer<typeof ConfigUpdateSchema>;
@@ -26,19 +31,18 @@ type ConfigUpdate = z.infer<typeof ConfigUpdateSchema>;
 router.get('/rag', async (req: Request, res: Response) => {
   try {
     const config = await loadRagConfig();
-    
+
     res.json({
       config,
       message: 'RAG設定を取得しました',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-    
   } catch (error) {
     console.error('❌ RAG設定取得エラー:', error);
-    
+
     res.status(500).json({
       error: 'Failed to load RAG configuration',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -54,52 +58,52 @@ router.patch('/rag', async (req: Request, res: Response) => {
     if (!validationResult.success) {
       return res.status(400).json({
         error: 'Invalid configuration data',
-        details: validationResult.error.errors
+        details: validationResult.error.errors,
       });
     }
-    
+
     const updateData = validationResult.data;
-    
+
     // 設定の検証
     const validation = validateRagConfig(updateData);
     if (!validation.valid) {
       return res.status(400).json({
         error: 'Configuration validation failed',
-        details: validation.errors
+        details: validation.errors,
       });
     }
-    
+
     // 現在の設定との差分を確認
     const changes = await getConfigDiff(updateData);
-    
+
     if (changes.length === 0) {
       return res.json({
         message: '設定に変更はありません',
         config: await loadRagConfig(),
-        changes: []
+        changes: [],
       });
     }
-    
+
     // 設定を更新
     const updatedConfig = await updateRagConfig(updateData);
-    
+
     console.log(`🔧 RAG設定を更新しました: ${changes.join(', ')}`);
-    
+
     res.json({
       message: 'RAG設定を更新しました',
       config: updatedConfig,
       changes,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-    
   } catch (error) {
     console.error('❌ RAG設定更新エラー:', error);
-    
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    
+
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error occurred';
+
     res.status(500).json({
       error: 'Failed to update RAG configuration',
-      message: errorMessage
+      message: errorMessage,
     });
   }
 });
@@ -114,33 +118,32 @@ router.post('/rag/validate', async (req: Request, res: Response) => {
     if (!validationResult.success) {
       return res.status(400).json({
         error: 'Invalid configuration data',
-        details: validationResult.error.errors
+        details: validationResult.error.errors,
       });
     }
-    
+
     const configData = validationResult.data;
     const validation = validateRagConfig(configData);
-    
+
     if (validation.valid) {
       res.json({
         valid: true,
         message: '設定は有効です',
-        config: configData
+        config: configData,
       });
     } else {
       res.status(400).json({
         valid: false,
         message: '設定に問題があります',
-        errors: validation.errors
+        errors: validation.errors,
       });
     }
-    
   } catch (error) {
     console.error('❌ 設定検証エラー:', error);
-    
+
     res.status(500).json({
       error: 'Configuration validation failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -155,25 +158,27 @@ router.post('/rag/diff', async (req: Request, res: Response) => {
     if (!validationResult.success) {
       return res.status(400).json({
         error: 'Invalid configuration data',
-        details: validationResult.error.errors
+        details: validationResult.error.errors,
       });
     }
-    
+
     const newConfig = validationResult.data;
     const changes = await getConfigDiff(newConfig);
-    
+
     res.json({
       changes,
       hasChanges: changes.length > 0,
-      message: changes.length > 0 ? `${changes.length}件の変更があります` : '変更はありません'
+      message:
+        changes.length > 0
+          ? `${changes.length}件の変更があります`
+          : '変更はありません',
     });
-    
   } catch (error) {
     console.error('❌ 設定差分確認エラー:', error);
-    
+
     res.status(500).json({
       error: 'Failed to get configuration diff',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -194,40 +199,40 @@ router.post('/rag/reset', async (req: Request, res: Response) => {
       rerankMin: 0.25,
       maxTextLength: 100000,
       batchSize: 5,
-      similarityThreshold: 0.7
+      similarityThreshold: 0.7,
     };
-    
+
     // 現在の設定との差分を確認
     const changes = await getConfigDiff(defaultConfig);
-    
+
     if (changes.length === 0) {
       return res.json({
         message: '設定は既にデフォルト値です',
         config: await loadRagConfig(),
-        changes: []
+        changes: [],
       });
     }
-    
+
     // 設定をリセット
     const resetConfig = await updateRagConfig(defaultConfig);
-    
+
     console.log(`🔄 RAG設定をリセットしました: ${changes.join(', ')}`);
-    
+
     res.json({
       message: 'RAG設定をリセットしました',
       config: resetConfig,
       changes,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-    
   } catch (error) {
     console.error('❌ RAG設定リセットエラー:', error);
-    
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    
+
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error occurred';
+
     res.status(500).json({
       error: 'Failed to reset RAG configuration',
-      message: errorMessage
+      message: errorMessage,
     });
   }
 });
@@ -239,18 +244,20 @@ router.post('/rag/reset', async (req: Request, res: Response) => {
 router.get('/rag/export', async (req: Request, res: Response) => {
   try {
     const config = await loadRagConfig();
-    
+
     res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Content-Disposition', 'attachment; filename="rag-config.json"');
-    
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="rag-config.json"'
+    );
+
     res.json(config);
-    
   } catch (error) {
     console.error('❌ RAG設定エクスポートエラー:', error);
-    
+
     res.status(500).json({
       error: 'Failed to export RAG configuration',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });

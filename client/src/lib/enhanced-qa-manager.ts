@@ -1,5 +1,10 @@
 // 拡張されたQAマネージャー - OpenAI活用版
-import { QAFlowStep, QAAnswer, QAFlow, ProblemCategory } from './qa-flow-manager';
+import {
+  QAFlowStep,
+  QAAnswer,
+  QAFlow,
+  ProblemCategory,
+} from './qa-flow-manager';
 
 interface EmergencyProcedure {
   id: string;
@@ -33,7 +38,10 @@ interface ContextualQuestion {
 }
 
 // クライアント側ではサーバーAPIを呼び出す
-async function callOpenAIAPI(prompt: string, useKnowledgeBase: boolean = true): Promise<string> {
+async function callOpenAIAPI(
+  prompt: string,
+  useKnowledgeBase: boolean = true
+): Promise<string> {
   try {
     const response = await fetch('/api/chatgpt', {
       method: 'POST',
@@ -43,8 +51,8 @@ async function callOpenAIAPI(prompt: string, useKnowledgeBase: boolean = true): 
       credentials: 'include',
       body: JSON.stringify({
         text: prompt,
-        useOnlyKnowledgeBase: useKnowledgeBase
-      })
+        useOnlyKnowledgeBase: useKnowledgeBase,
+      }),
     });
 
     if (!response.ok) {
@@ -73,9 +81,9 @@ export class EnhancedQAManager {
       // ナレッジベースの取得
       const knowledgeResponse = await fetch('/api/knowledge-base', {
         method: 'GET',
-        credentials: 'include'
+        credentials: 'include',
       });
-      
+
       if (knowledgeResponse.ok) {
         this.knowledgeBase = await knowledgeResponse.json();
       }
@@ -83,9 +91,9 @@ export class EnhancedQAManager {
       // 応急処置情報の取得
       const emergencyResponse = await fetch('/api/emergency-procedures', {
         method: 'GET',
-        credentials: 'include'
+        credentials: 'include',
       });
-      
+
       if (emergencyResponse.ok) {
         this.emergencyProcedures = await emergencyResponse.json();
       }
@@ -98,7 +106,11 @@ export class EnhancedQAManager {
   async analyzeProblemAndGenerateFlow(
     initialDescription: string,
     context: string = ''
-  ): Promise<{ category: ProblemCategory; flow: QAFlow; contextualQuestions: ContextualQuestion[] }> {
+  ): Promise<{
+    category: ProblemCategory;
+    flow: QAFlow;
+    contextualQuestions: ContextualQuestion[];
+  }> {
     try {
       const analysisPrompt = `
 あなたは保守用車の専門技術者です。初期の問題説明を詳細に分析し、最適な質問フローを生成してください。
@@ -161,13 +173,13 @@ export class EnhancedQAManager {
 `;
 
       const response = await callOpenAIAPI(analysisPrompt, true);
-      
+
       try {
         const parsed = JSON.parse(response);
         return {
           category: parsed.category,
           flow: parsed.flow,
-          contextualQuestions: parsed.contextualQuestions || []
+          contextualQuestions: parsed.contextualQuestions || [],
         };
       } catch (parseError) {
         console.error('問題分析のJSON解析エラー:', parseError);
@@ -187,8 +199,14 @@ export class EnhancedQAManager {
   ): Promise<ContextualQuestion> {
     try {
       // 関連するナレッジと応急処置を検索
-      const relevantKnowledge = this.findRelevantKnowledge(currentContext, previousAnswers);
-      const relevantProcedures = this.findRelevantProcedures(currentContext, previousAnswers);
+      const relevantKnowledge = this.findRelevantKnowledge(
+        currentContext,
+        previousAnswers
+      );
+      const relevantProcedures = this.findRelevantProcedures(
+        currentContext,
+        previousAnswers
+      );
 
       const contextualPrompt = `
 あなたは保守用車の専門技術者です。現在の状況に基づいて、最も効果的な質問を生成してください。
@@ -219,7 +237,7 @@ export class EnhancedQAManager {
 `;
 
       const response = await callOpenAIAPI(contextualPrompt, true);
-      
+
       try {
         const parsed = JSON.parse(response);
         return {
@@ -228,14 +246,14 @@ export class EnhancedQAManager {
           expectedOutcome: parsed.expectedOutcome,
           followUpQuestions: parsed.followUpQuestions || [],
           emergencyTriggers: parsed.emergencyTriggers || [],
-          knowledgeReferences: parsed.knowledgeReferences || []
+          knowledgeReferences: parsed.knowledgeReferences || [],
         };
       } catch (parseError) {
         console.error('文脈質問生成のJSON解析エラー:', parseError);
         return {
-          question: "問題の詳細を教えてください。",
-          reasoning: "基本的な情報収集",
-          expectedOutcome: "問題の詳細把握"
+          question: '問題の詳細を教えてください。',
+          reasoning: '基本的な情報収集',
+          expectedOutcome: '問題の詳細把握',
         };
       }
     } catch (error) {
@@ -245,39 +263,51 @@ export class EnhancedQAManager {
   }
 
   // 関連するナレッジベース情報の検索
-  private findRelevantKnowledge(context: string, answers: QAAnswer[]): KnowledgeBaseItem[] {
+  private findRelevantKnowledge(
+    context: string,
+    answers: QAAnswer[]
+  ): KnowledgeBaseItem[] {
     const searchTerms = [
       context,
       ...answers.map(a => a.answer),
-      this.problemCategory?.keywords || []
+      this.problemCategory?.keywords || [],
     ].flat();
 
-    return this.knowledgeBase.filter(item => 
-      searchTerms.some(term => 
-        item.title.toLowerCase().includes(term.toLowerCase()) ||
-        item.content.toLowerCase().includes(term.toLowerCase()) ||
-        item.keywords.some(keyword => 
-          keyword.toLowerCase().includes(term.toLowerCase())
+    return this.knowledgeBase
+      .filter(item =>
+        searchTerms.some(
+          term =>
+            item.title.toLowerCase().includes(term.toLowerCase()) ||
+            item.content.toLowerCase().includes(term.toLowerCase()) ||
+            item.keywords.some(keyword =>
+              keyword.toLowerCase().includes(term.toLowerCase())
+            )
         )
       )
-    ).slice(0, 5); // 上位5件を返す
+      .slice(0, 5); // 上位5件を返す
   }
 
   // 関連する応急処置情報の検索
-  private findRelevantProcedures(context: string, answers: QAAnswer[]): EmergencyProcedure[] {
+  private findRelevantProcedures(
+    context: string,
+    answers: QAAnswer[]
+  ): EmergencyProcedure[] {
     const searchTerms = [
       context,
       ...answers.map(a => a.answer),
-      this.problemCategory?.keywords || []
+      this.problemCategory?.keywords || [],
     ].flat();
 
-    return this.emergencyProcedures.filter(procedure => 
-      searchTerms.some(term => 
-        procedure.title.toLowerCase().includes(term.toLowerCase()) ||
-        procedure.description.toLowerCase().includes(term.toLowerCase()) ||
-        procedure.category.toLowerCase().includes(term.toLowerCase())
+    return this.emergencyProcedures
+      .filter(procedure =>
+        searchTerms.some(
+          term =>
+            procedure.title.toLowerCase().includes(term.toLowerCase()) ||
+            procedure.description.toLowerCase().includes(term.toLowerCase()) ||
+            procedure.category.toLowerCase().includes(term.toLowerCase())
+        )
       )
-    ).slice(0, 3); // 上位3件を返す
+      .slice(0, 3); // 上位3件を返す
   }
 
   // 回答に基づく次のステップの動的決定
@@ -285,7 +315,11 @@ export class EnhancedQAManager {
     currentAnswer: QAAnswer,
     allAnswers: QAAnswer[],
     currentStep: QAFlowStep
-  ): Promise<{ nextStep: QAFlowStep | null; contextualQuestion: ContextualQuestion | null; emergencyAction: string | null }> {
+  ): Promise<{
+    nextStep: QAFlowStep | null;
+    contextualQuestion: ContextualQuestion | null;
+    emergencyAction: string | null;
+  }> {
     try {
       const analysisPrompt = `
 以下の回答を分析して、次のステップを決定してください：
@@ -294,8 +328,15 @@ export class EnhancedQAManager {
 **現在の質問**: ${currentStep.question}
 **これまでの回答**: ${allAnswers.map(a => `${a.stepId}: ${a.answer}`).join(', ')}
 **利用可能なステップ**: ${this.currentFlow?.steps.map(s => s.question).join(', ') || ''}
-**関連ナレッジ**: ${this.findRelevantKnowledge(currentAnswer.answer, allAnswers).map(k => k.title).join(', ')}
-**関連応急処置**: ${this.findRelevantProcedures(currentAnswer.answer, allAnswers).map(p => p.title).join(', ')}
+**関連ナレッジ**: ${this.findRelevantKnowledge(currentAnswer.answer, allAnswers)
+        .map(k => k.title)
+        .join(', ')}
+**関連応急処置**: ${this.findRelevantProcedures(
+        currentAnswer.answer,
+        allAnswers
+      )
+        .map(p => p.title)
+        .join(', ')}
 
 分析結果を以下のJSON形式で返してください：
 {
@@ -314,10 +355,10 @@ export class EnhancedQAManager {
 `;
 
       const response = await callOpenAIAPI(analysisPrompt, true);
-      
+
       try {
         const parsed = JSON.parse(response);
-        
+
         // 緊急対応のチェック
         let emergencyAction = null;
         if (parsed.emergencyAction) {
@@ -327,7 +368,9 @@ export class EnhancedQAManager {
         // 次のステップの決定
         let nextStep = null;
         if (parsed.nextStepId && this.currentFlow) {
-          nextStep = this.currentFlow.steps.find(s => s.id === parsed.nextStepId) || null;
+          nextStep =
+            this.currentFlow.steps.find(s => s.id === parsed.nextStepId) ||
+            null;
         }
 
         // 文脈質問の生成
@@ -339,14 +382,14 @@ export class EnhancedQAManager {
         return {
           nextStep,
           contextualQuestion,
-          emergencyAction
+          emergencyAction,
         };
       } catch (parseError) {
         console.error('次のステップ決定のJSON解析エラー:', parseError);
         return {
           nextStep: null,
           contextualQuestion: null,
-          emergencyAction: null
+          emergencyAction: null,
         };
       }
     } catch (error) {
@@ -449,7 +492,7 @@ export class EnhancedQAManager {
 `;
 
       const response = await callOpenAIAPI(learningPrompt, false);
-      
+
       // 学習データを保存
       try {
         await fetch('/api/learn', {
@@ -465,14 +508,13 @@ export class EnhancedQAManager {
               answers: allAnswers,
               solution,
               success,
-              userFeedback
-            }
-          })
+              userFeedback,
+            },
+          }),
         });
       } catch (saveError) {
         console.error('学習データ保存エラー:', saveError);
       }
-      
     } catch (error) {
       console.error('学習データ生成エラー:', error);
     }

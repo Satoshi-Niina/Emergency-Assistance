@@ -1,7 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { createSpeechRecognizer, ISpeechRecognizer } from '../speech-recognizer';
+import {
+  createSpeechRecognizer,
+  ISpeechRecognizer,
+} from '../speech-recognizer';
 
-const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void }) => {
+const VoiceAssistant = ({
+  onRecognized,
+}: {
+  onRecognized: (text: string) => void;
+}) => {
   const [isRecording, setIsRecording] = useState(false);
   const recognizerRef = useRef<ISpeechRecognizer | null>(null);
   const speechBufferRef = useRef<string[]>([]);
@@ -49,12 +56,41 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
     if (combinedText.length >= MIN_SPEECH_LENGTH) {
       // 画像検索のキーワードかどうかチェック（コンテキストと同じキーワードリストを使用）
       const imageSearchKeywords = [
-        'ブレーキ', 'brake', 'エンジン', 'engine', '冷却', 'cooling', 'ラジエーター', 'radiator',
-        'ホイール', 'wheel', '車輪', 'タイヤ', 'tire', '部品', 'parts', '設備', 'equipment',
-        '機械', 'machine', '保守', 'maintenance', '点検', 'inspection', '修理', 'repair',
-        '故障', 'failure', '異常', 'abnormal', '音', 'sound', '振動', 'vibration'
+        'ブレーキ',
+        'brake',
+        'エンジン',
+        'engine',
+        '冷却',
+        'cooling',
+        'ラジエーター',
+        'radiator',
+        'ホイール',
+        'wheel',
+        '車輪',
+        'タイヤ',
+        'tire',
+        '部品',
+        'parts',
+        '設備',
+        'equipment',
+        '機械',
+        'machine',
+        '保守',
+        'maintenance',
+        '点検',
+        'inspection',
+        '修理',
+        'repair',
+        '故障',
+        'failure',
+        '異常',
+        'abnormal',
+        '音',
+        'sound',
+        '振動',
+        'vibration',
       ];
-      const hasImageKeyword = imageSearchKeywords.some(keyword => 
+      const hasImageKeyword = imageSearchKeywords.some(keyword =>
         combinedText.toLowerCase().includes(keyword.toLowerCase())
       );
 
@@ -81,7 +117,10 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
       speechBufferRef.current = [];
       lastSpeechTimeRef.current = Date.now();
 
-      console.log('🎤 音声認識開始 -', isIOS() ? 'Web Speech API' : 'Azure Speech SDK');
+      console.log(
+        '🎤 音声認識開始 -',
+        isIOS() ? 'Web Speech API' : 'Azure Speech SDK'
+      );
 
       // speech-recognizer.tsのファクトリ関数を使用
       recognizerRef.current = createSpeechRecognizer(azureKey, azureRegion);
@@ -94,7 +133,6 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
 
       // 認識開始
       await recognizerRef.current.start();
-
     } catch (error) {
       console.error('❌ 音声認識開始エラー:', error);
       setIsRecording(false);
@@ -144,15 +182,15 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
   }, [isRecording]);
 
   return (
-    <div className="voice-assistant">
-      <button 
+    <div className='voice-assistant'>
+      <button
         onClick={isRecording ? stopRecognition : startRecognition}
         className={`voice-button ${isRecording ? 'recording' : ''}`}
         disabled={!azureKey && !isIOS()}
       >
         {isRecording ? (
           <span>
-            🔴 録音中... 
+            🔴 録音中...
             <small style={{ display: 'block', fontSize: '0.8em' }}>
               ({speechBufferRef.current.length}件認識済み)
             </small>
@@ -163,12 +201,13 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
       </button>
 
       {isRecording && (
-        <div className="recording-status">
-          <div className="pulse-animation"></div>
+        <div className='recording-status'>
+          <div className='pulse-animation'></div>
           <span>発話を聞いています...</span>
           {speechBufferRef.current.length > 0 && (
-            <div className="buffer-preview">
-              最新: "{speechBufferRef.current[speechBufferRef.current.length - 1]}"
+            <div className='buffer-preview'>
+              最新: "
+              {speechBufferRef.current[speechBufferRef.current.length - 1]}"
             </div>
           )}
         </div>
@@ -185,7 +224,7 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
         .voice-button {
           padding: 12px 24px;
           font-size: 16px;
-          border: 2px solid #4CAF50;
+          border: 2px solid #4caf50;
           background: white;
           border-radius: 25px;
           cursor: pointer;
@@ -229,9 +268,18 @@ const VoiceAssistant = ({ onRecognized }: { onRecognized: (text: string) => void
         }
 
         @keyframes pulse {
-          0% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.2); opacity: 0.7; }
-          100% { transform: scale(1); opacity: 1; }
+          0% {
+            transform: scale(1);
+            opacity: 1;
+          }
+          50% {
+            transform: scale(1.2);
+            opacity: 0.7;
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
         }
       `}</style>
     </div>

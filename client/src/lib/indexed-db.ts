@@ -10,14 +10,17 @@ export const openDatabase = async () => {
       resolve(request.result);
     };
 
-    request.onupgradeneeded = (event) => {
+    request.onupgradeneeded = event => {
       const db = (event.target as IDBOpenDBRequest).result;
-      
+
       // 未同期メッセージ用のストアを作成
       if (!db.objectStoreNames.contains('unsyncedMessages')) {
-        const store = db.createObjectStore('unsyncedMessages', { keyPath: 'localId', autoIncrement: true });
+        const store = db.createObjectStore('unsyncedMessages', {
+          keyPath: 'localId',
+          autoIncrement: true,
+        });
         store.createIndex('by-chat', 'chatId', { unique: false });
       }
     };
   });
-}; 
+};

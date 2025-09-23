@@ -28,12 +28,6 @@
       "Cookie",
       "X-Requested-With"
     ],
-    "allowedMethods": [
-      "GET",
-      "POST",
-      "PUT",
-      "DELETE",
-      "OPTIONS"
-    ]
+    "allowedMethods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
   }
 }

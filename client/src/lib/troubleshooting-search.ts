@@ -21,7 +21,7 @@ const fuseOptions = {
   keys: [
     { name: 'id', weight: 0.5 },
     { name: 'description', weight: 1.0 },
-    { name: 'trigger', weight: 0.8 }
+    { name: 'trigger', weight: 0.8 },
   ],
   threshold: 0.4,
   ignoreLocation: true,
@@ -37,16 +37,16 @@ const fuseOptions = {
 
 // 日本語タイトルにマッピングするためのディクショナリ
 export const japaneseGuideTitles: { [key: string]: string } = {
-  'no_electrical_power': '電源が入らない',
-  'engine_wont_start': 'エンジンが始動しない',
-  'overheating': 'オーバーヒート',
-  'oil_pressure_warning': 'オイル圧力警告',
-  'brake_failure': 'ブレーキ故障',
-  'transmission_failure': '変速機故障',
-  'hydraulic_system_failure': '油圧システム故障',
-  'fuel_system_problem': '燃料システム問題',
-  'electrical_short': '電気回路ショート',
-  'battery_dead': 'バッテリー上がり',
+  no_electrical_power: '電源が入らない',
+  engine_wont_start: 'エンジンが始動しない',
+  overheating: 'オーバーヒート',
+  oil_pressure_warning: 'オイル圧力警告',
+  brake_failure: 'ブレーキ故障',
+  transmission_failure: '変速機故障',
+  hydraulic_system_failure: '油圧システム故障',
+  fuel_system_problem: '燃料システム問題',
+  electrical_short: '電気回路ショート',
+  battery_dead: 'バッテリー上がり',
   // ここに必要に応じて追加
 };
 
@@ -55,16 +55,21 @@ export const japaneseGuideTitles: { [key: string]: string } = {
  * @param id フローID
  * @returns フロー情報またはundefined
  */
-export const getTroubleshootingFlowById = async (id: string): Promise<SearchResult | undefined> => {
+export const getTroubleshootingFlowById = async (
+  id: string
+): Promise<SearchResult | undefined> => {
   try {
     // キャッシュ無効化のためのタイムスタンプを追加
     const timestamp = Date.now();
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${id}?_t=${timestamp}`, {
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache'
+    const response = await fetch(
+      `${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${id}?_t=${timestamp}`,
+      {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+        },
       }
-    });
+    );
 
     if (response.ok) {
       const flow = await response.json();
@@ -72,14 +77,14 @@ export const getTroubleshootingFlowById = async (id: string): Promise<SearchResu
         id: flow.id,
         title: flow.title,
         stepsCount: flow.steps?.length || 0,
-        source: 'troubleshooting-api'
+        source: 'troubleshooting-api',
       });
 
       return {
         id: flow.id,
         title: flow.title || japaneseGuideTitles[flow.id] || flow.id,
         description: flow.description || '',
-        content: flow.content || JSON.stringify(flow.steps || [])
+        content: flow.content || JSON.stringify(flow.steps || []),
       };
     }
 
@@ -96,7 +101,9 @@ export const getTroubleshootingFlowById = async (id: string): Promise<SearchResu
  * @param id フローID
  * @returns 検索結果または未定義
  */
-export const searchTroubleshootingFlow = async (id: string): Promise<SearchResult | undefined> => {
+export const searchTroubleshootingFlow = async (
+  id: string
+): Promise<SearchResult | undefined> => {
   try {
     const response = await apiRequest('GET', `/api/troubleshooting/${id}`);
     if (response.ok) {
@@ -105,7 +112,7 @@ export const searchTroubleshootingFlow = async (id: string): Promise<SearchResul
         id: flow.id,
         title: japaneseGuideTitles[flow.id] || flow.id,
         description: flow.description,
-        content: flow.content || ''
+        content: flow.content || '',
       };
     }
     return undefined;
@@ -120,7 +127,9 @@ export const searchTroubleshootingFlow = async (id: string): Promise<SearchResul
  * @param query 検索クエリ
  * @returns 検索結果の配列
  */
-export const searchTroubleshootingFlows = async (query: string): Promise<SearchResult[]> => {
+export const searchTroubleshootingFlows = async (
+  query: string
+): Promise<SearchResult[]> => {
   if (!query || query.trim() === '') {
     // クエリが空の場合、すべてのフローを返す
     try {
@@ -131,7 +140,7 @@ export const searchTroubleshootingFlows = async (query: string): Promise<SearchR
           id: flow.id,
           title: japaneseGuideTitles[flow.id] || flow.id,
           description: flow.description,
-          content: flow.content || ''
+          content: flow.content || '',
         }));
       }
       return [];
@@ -158,7 +167,7 @@ export const searchTroubleshootingFlows = async (query: string): Promise<SearchR
           title: japaneseGuideTitles[item.id] || item.id,
           description: item.description,
           content: item.content || '',
-          score: result.score
+          score: result.score,
         };
       });
     }

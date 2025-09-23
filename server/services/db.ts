@@ -17,7 +17,7 @@ const pool = new Pool({
 });
 
 // 接続エラーハンドリング
-pool.on('error', (err) => {
+pool.on('error', err => {
   console.error('Unexpected error on idle client', err);
   process.exit(-1);
 });

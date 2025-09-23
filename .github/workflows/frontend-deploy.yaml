@@ -1,7 +1,7 @@
 name: Deploy Frontend to Azure Static Web Apps
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
       - 'client/**'
       - 'server/**'
@@ -23,7 +23,6 @@ jobs:
     name: Deploy Frontend
     environment: production-swa
     steps:
-
       - uses: actions/checkout@v4
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -62,18 +61,17 @@ jobs:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
           NODE_ENV: production
 
-
       - name: Prepare frontend deployment
         run: |
           echo "=== Preparing frontend deployment ==="
           mkdir -p ./deploy-frontend
           cp -r ./client/dist/* ./deploy-frontend/
-          
+
           # Include Azure Static Web Apps configuration
           if [ -f ./staticwebapp.config.json ]; then
             cp ./staticwebapp.config.json ./deploy-frontend/staticwebapp.config.json
           fi
-          
+
           echo "=== Frontend deployment package ready ==="
           echo "Frontend package size:"
           du -sh ./deploy-frontend
@@ -84,10 +82,10 @@ jobs:
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-          action: "upload"
-          app_location: "client"
-          api_location: ""
-          output_location: "dist"
+          action: 'upload'
+          app_location: 'client'
+          api_location: ''
+          output_location: 'dist'
           skip_app_build: false
 
       - name: Session smoke (optional)

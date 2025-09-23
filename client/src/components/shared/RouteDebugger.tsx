@@ -10,9 +10,9 @@ export function RouteDebugger() {
       search: location.search,
       hash: location.hash,
       state: location.state,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }, [location]);
 
   return null; // このコンポーネントは何もレンダリングしない
-} 
+}

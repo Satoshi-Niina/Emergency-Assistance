@@ -4,32 +4,63 @@ import { getOpenAIClientStatus } from '../lib/openai.js';
 
 const router = express.Router();
 
-// 基本的なヘルスチェック
-router.get('/', (req, res) => {
-  res.json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    service: 'Emergency Assistance Backend',
-    environment: process.env.NODE_ENV || 'development'
-  });
+// 基本的なヘルスチェック（セーフモード対応）
+router.get('/', (_req, res) => {
+  try {
+    const isSafeMode = process.env.SAFE_MODE === 'true';
+
+    console.log('🏥 /api/health 呼び出し:', {
+      safeMode: isSafeMode,
+      timestamp: new Date().toISOString(),
+    });
+
+    // セーフモード時は軽量版のヘルスチェック
+    if (isSafeMode) {
+      return res.json({
+        ok: true,
+        status: 'healthy',
+        mode: 'safe',
+        timestamp: new Date().toISOString(),
+        service: 'Emergency Assistance Backend',
+        environment: process.env.NODE_ENV || 'development',
+        dependencies: 'bypassed',
+      });
+    }
+
+    res.json({
+      ok: true,
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      service: 'Emergency Assistance Backend',
+      environment: process.env.NODE_ENV || 'development',
+    });
+  } catch (error) {
+    console.error('❌ /api/health エラー:', error);
+    res.status(200).json({
+      ok: false,
+      errorId: Math.random().toString(36).substring(2, 15),
+      message: 'Health check error',
+      timestamp: new Date().toISOString(),
+    });
+  }
 });
 
 // データベース接続チェック
-router.get('/db', async (req, res) => {
+router.get('/db', async (_req, res) => {
   try {
     const isConnected = await storage.testConnection();
-    
+
     if (isConnected) {
       res.json({
         status: 'healthy',
         database: 'connected',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } else {
       res.status(503).json({
         status: 'unhealthy',
         database: 'disconnected',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
   } catch (error) {
@@ -38,27 +69,31 @@ router.get('/db', async (req, res) => {
       status: 'unhealthy',
       database: 'error',
       error: error.message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 });
 
 // GPT/OpenAI接続チェック
-router.get('/gpt', async (req, res) => {
+router.get('/gpt', async (_req, res) => {
   try {
     const clientStatus = getOpenAIClientStatus();
-    
-    if (clientStatus.clientExists && clientStatus.apiKeyExists && !clientStatus.isMockKey) {
+
+    if (
+      clientStatus.clientExists &&
+      clientStatus.apiKeyExists &&
+      !clientStatus.isMockKey
+    ) {
       // 実際のGPT接続テスト
       const { processOpenAIRequest } = await import('../lib/openai.js');
       const testResponse = await processOpenAIRequest('Health check', false);
-      
+
       res.json({
         status: 'healthy',
         gpt: 'connected',
         apiKeyPrefix: clientStatus.apiKeyPrefix,
         timestamp: new Date().toISOString(),
-        testResponse: testResponse.substring(0, 100) + '...'
+        testResponse: testResponse.substring(0, 100) + '...',
       });
     } else {
       res.status(503).json({
@@ -67,9 +102,9 @@ router.get('/gpt', async (req, res) => {
         details: {
           clientExists: clientStatus.clientExists,
           apiKeyExists: clientStatus.apiKeyExists,
-          isMockKey: clientStatus.isMockKey
+          isMockKey: clientStatus.isMockKey,
         },
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
   } catch (error) {
@@ -78,13 +113,13 @@ router.get('/gpt', async (req, res) => {
       status: 'unhealthy',
       gpt: 'error',
       error: error.message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 });
 
 // 全体的なシステムチェック
-router.get('/system', async (req, res) => {
+router.get('/system', async (_req, res) => {
   const checks = {
     timestamp: new Date().toISOString(),
     service: 'healthy',
@@ -93,9 +128,13 @@ router.get('/system', async (req, res) => {
     environment: {
       NODE_ENV: process.env.NODE_ENV || 'development',
       DATABASE_URL: process.env.DATABASE_URL ? 'configured' : 'not configured',
-      OPENAI_API_KEY: process.env.OPENAI_API_KEY ? 'configured' : 'not configured',
-      SESSION_SECRET: process.env.SESSION_SECRET ? 'configured' : 'not configured'
-    }
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY
+        ? 'configured'
+        : 'not configured',
+      SESSION_SECRET: process.env.SESSION_SECRET
+        ? 'configured'
+        : 'not configured',
+    },
   };
 
   // データベースチェック
@@ -109,7 +148,11 @@ router.get('/system', async (req, res) => {
   // GPTチェック
   try {
     const clientStatus = getOpenAIClientStatus();
-    if (clientStatus.clientExists && clientStatus.apiKeyExists && !clientStatus.isMockKey) {
+    if (
+      clientStatus.clientExists &&
+      clientStatus.apiKeyExists &&
+      !clientStatus.isMockKey
+    ) {
       checks.gpt = 'healthy';
     } else {
       checks.gpt = 'not configured';
@@ -121,7 +164,7 @@ router.get('/system', async (req, res) => {
   // 全体ステータスの決定
   const hasIssues = checks.database !== 'healthy' || checks.gpt !== 'healthy';
   const statusCode = hasIssues ? 503 : 200;
-  
+
   res.status(statusCode).json(checks);
 });
 

@@ -17,7 +17,7 @@ declare module 'workbox-window' {
     addEventListener(event: string, callback: Function): void;
     removeEventListener(event: string, callback: Function): void;
   }
-  
+
   export function messageSW(controller: any, data: any): Promise<any>;
 }
 

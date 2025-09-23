@@ -9,15 +9,18 @@ const app = express();
 const port = 9000; // 確実に空いているポート
 
 // 環境変数
-const DATABASE_URL = 'postgresql://postgres:password@localhost:5432/emergency_assistance';
+const DATABASE_URL =
+  'postgresql://postgres:password@localhost:5432/emergency_assistance';
 const SESSION_SECRET = 'local-development-secret-key-12345';
 const FRONTEND_ORIGIN = 'http://localhost:5173';
 
 // ミドルウェア設定
-app.use(cors({ 
-  origin: FRONTEND_ORIGIN, 
-  credentials: true 
-}));
+app.use(
+  cors({
+    origin: FRONTEND_ORIGIN,
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(cookieParser());
 
@@ -25,10 +28,10 @@ app.use(cookieParser());
 const pool = new Pool({ connectionString: DATABASE_URL });
 
 // JWTユーティリティ
-const signToken = (payload) => 
+const signToken = payload =>
   jwt.sign(payload, SESSION_SECRET, { expiresIn: '7d' });
 
-const readUserFromCookie = (req) => {
+const readUserFromCookie = req => {
   const token = req.cookies?.sid;
   if (!token) return null;
   try {
@@ -51,11 +54,16 @@ app.get('/api/health', async (req, res) => {
 // ログイン
 app.post('/api/auth/login', async (req, res) => {
   const { username, password } = req.body;
-  
-  console.log('🔐 ログイン試行:', { username, password: password ? '***' : 'undefined' });
-  
+
+  console.log('🔐 ログイン試行:', {
+    username,
+    password: password ? '***' : 'undefined',
+  });
+
   if (!username || !password) {
-    return res.status(400).json({ message: 'Username and password are required' });
+    return res
+      .status(400)
+      .json({ message: 'Username and password are required' });
   }
 
   try {
@@ -63,26 +71,26 @@ app.post('/api/auth/login', async (req, res) => {
       'SELECT id, username, password, display_name, role FROM users WHERE username=$1 LIMIT 1',
       [username]
     );
-    
+
     console.log('🔍 データベースクエリ結果:', { rowCount: rows.length });
-    
+
     const user = rows[0];
     if (!user) {
       console.log('❌ ユーザーが見つかりません');
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    console.log('👤 ユーザー情報:', { 
-      id: user.id, 
-      username: user.username, 
+    console.log('👤 ユーザー情報:', {
+      id: user.id,
+      username: user.username,
       role: user.role,
-      passwordLength: user.password ? user.password.length : 0
+      passwordLength: user.password ? user.password.length : 0,
     });
 
     // パスワードの比較（平文）
     const isValidPassword = user.password === password;
     console.log('🔑 パスワード比較結果:', { isValidPassword });
-    
+
     if (!isValidPassword) {
       console.log('❌ パスワードが一致しません');
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -103,14 +111,14 @@ app.post('/api/auth/login', async (req, res) => {
     });
 
     console.log('✅ ログイン成功');
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       user: {
         id: user.id,
         username: user.username,
         displayName: user.display_name,
-        role: user.role
-      }
+        role: user.role,
+      },
     });
   } catch (error) {
     console.error('❌ ログインエラー:', error);
@@ -124,15 +132,15 @@ app.get('/api/auth/me', (req, res) => {
   if (!user) {
     return res.json({ authenticated: false, user: null });
   }
-  
+
   res.json({
     authenticated: true,
     user: {
       id: user.id,
       username: user.username,
       displayName: user.displayName,
-      role: user.role
-    }
+      role: user.role,
+    },
   });
 });
 

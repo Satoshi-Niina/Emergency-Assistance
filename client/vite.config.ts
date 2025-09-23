@@ -11,12 +11,15 @@ const __dirname = path.dirname(__filename);
 export default defineConfig(({ command, mode }) => {
   // 環境変数を読み込み
   const env = loadEnv(mode, process.cwd(), '');
-  
+
   // APIのベースURLを環境変数から取得（VITE_API_BASEを使用）
-  const apiBaseUrl = env.VITE_API_BASE || env.VITE_API_BASE_URL || 'https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net';
+  const apiBaseUrl =
+    env.VITE_API_BASE ||
+    env.VITE_API_BASE_URL ||
+    'https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net';
   const serverPort = parseInt(env.PORT || '3003');
   const clientPort = parseInt(env.CLIENT_PORT || '5173');
-  
+
   console.log('🔧 Vite環境変数確認:', {
     VITE_API_BASE: env.VITE_API_BASE,
     VITE_API_BASE_URL: env.VITE_API_BASE_URL,
@@ -24,9 +27,9 @@ export default defineConfig(({ command, mode }) => {
     VITE_API_BASE_LENGTH: env.VITE_API_BASE?.length,
     apiBaseUrl,
     serverPort,
-    clientPort
+    clientPort,
   });
-  
+
   console.log('🔧 Vite設定:', {
     command,
     mode,
@@ -37,8 +40,8 @@ export default defineConfig(({ command, mode }) => {
       VITE_API_BASE: env.VITE_API_BASE, // 使用中: APIのベースURL
       VITE_API_BASE_URL: env.VITE_API_BASE_URL, // 使用中: APIのベースURL（後方互換性）
       PORT: env.PORT, // 使用中: サーバーポート
-      NODE_ENV: env.NODE_ENV // 使用中: 環境判別
-    }
+      NODE_ENV: env.NODE_ENV, // 使用中: 環境判別
+    },
   });
 
   return {
@@ -57,23 +60,23 @@ export default defineConfig(({ command, mode }) => {
       // ローカル開発環境用の設定
       watch: {
         usePolling: false, // ローカルではポーリング不要
-        followSymlinks: true
+        followSymlinks: true,
       },
       hmr: {
         host: 'localhost',
         port: clientPort,
-        overlay: true
+        overlay: true,
       },
-        proxy: {
-          '/api': {
-            target: 'http://localhost:3003',
-            changeOrigin: true,
-            secure: false,
-          },
+      proxy: {
+        '/api': {
+          target: 'http://localhost:3003',
+          changeOrigin: true,
+          secure: false,
         },
+      },
       fs: {
         allow: [path.resolve(__dirname, '..')],
-      }
+      },
     },
     build: {
       outDir: 'dist',
@@ -81,18 +84,18 @@ export default defineConfig(({ command, mode }) => {
       rollupOptions: {
         input: './index.html',
         output: {
-          manualChunks: undefined
-        }
+          manualChunks: undefined,
+        },
       },
       sourcemap: true,
       minify: true,
       target: 'esnext',
-      modulePreload: true
+      modulePreload: true,
     },
     esbuild: {
       keepNames: true,
       legalComments: 'none',
-      target: 'es2015'
+      target: 'es2015',
     },
     define: {
       // 環境変数をクライアントサイドで利用可能にする
@@ -101,10 +104,12 @@ export default defineConfig(({ command, mode }) => {
       __VITE_COMMAND__: JSON.stringify(command),
       // 環境変数を直接定義
       'import.meta.env.VITE_API_BASE': JSON.stringify(env.VITE_API_BASE),
-      'import.meta.env.VITE_API_BASE_URL': JSON.stringify(env.VITE_API_BASE_URL),
+      'import.meta.env.VITE_API_BASE_URL': JSON.stringify(
+        env.VITE_API_BASE_URL
+      ),
       'import.meta.env.NODE_ENV': JSON.stringify(env.NODE_ENV),
       'import.meta.env.MODE': JSON.stringify(mode),
     },
-    logLevel: 'info'
+    logLevel: 'info',
   };
 });

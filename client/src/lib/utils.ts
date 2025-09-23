@@ -1,5 +1,5 @@
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { type ClassValue, clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
 /**
  * クラス名を結合するユーティリティ関数
@@ -13,16 +13,21 @@ export function cn(...inputs: ClassValue[]) {
  * 選択されたフィールドを順序付けるユーティリティ関数
  * データベースクエリの結果を整形するのに使用します
  */
-export function orderSelectedFields(fields: Record<string, any> | undefined | null): Record<string, any> {
-  if (!fields || typeof fields !== "object" || Array.isArray(fields)) {
-    console.warn("Invalid fields argument:", fields);
+export function orderSelectedFields(
+  fields: Record<string, any> | undefined | null
+): Record<string, any> {
+  if (!fields || typeof fields !== 'object' || Array.isArray(fields)) {
+    console.warn('Invalid fields argument:', fields);
     return {};
   }
 
-  return Object.entries(fields).reduce((acc, [key, value]) => {
-    acc[key] = value;
-    return acc;
-  }, {} as Record<string, any>);
+  return Object.entries(fields).reduce(
+    (acc, [key, value]) => {
+      acc[key] = value;
+      return acc;
+    },
+    {} as Record<string, any>
+  );
 }
 
 /**
@@ -54,6 +59,7 @@ export function convertImageUrl(url: any): string {
     return url;
   }
   // ファイル名のみの場合は、APIエンドポイントに変換
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+  const apiBaseUrl =
+    import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
   return `${apiBaseUrl}/api/troubleshooting/image/${url}`;
 }

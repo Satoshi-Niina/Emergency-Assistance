@@ -1,5 +1,5 @@
 import React from 'react';
-import { useToast } from "../../hooks/use-toast.ts"
+import { useToast } from '../../hooks/use-toast.ts';
 import {
   Toast,
   ToastClose,
@@ -7,17 +7,17 @@ import {
   ToastProvider,
   ToastTitle,
   ToastViewport,
-} from "./toast"
+} from './toast';
 
 export const Toaster: React.FC = () => {
-  const { toasts } = useToast()
+  const { toasts } = useToast();
 
   return (
     <ToastProvider>
       {toasts.map(function ({ id, title, description, action, ...props }) {
         return (
           <Toast key={id} {...props}>
-            <div className="grid gap-1">
+            <div className='grid gap-1'>
               {title && <ToastTitle>{title}</ToastTitle>}
               {description && (
                 <ToastDescription>{description}</ToastDescription>
@@ -26,9 +26,9 @@ export const Toaster: React.FC = () => {
             {action}
             <ToastClose />
           </Toast>
-        )
+        );
       })}
       <ToastViewport />
     </ToastProvider>
-  )
-}
+  );
+};

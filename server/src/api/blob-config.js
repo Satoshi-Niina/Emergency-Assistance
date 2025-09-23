@@ -4,7 +4,9 @@
 function getEnvOrDefault(key, defaultValue) {
   const val = process.env[key];
   if (!val) {
-    console.warn(`[BLOB_CONFIG] 環境変数 ${key} が未定義です。デフォルト値を使用します: ${defaultValue}`);
+    console.warn(
+      `[BLOB_CONFIG] 環境変数 ${key} が未定義です。デフォルト値を使用します: ${defaultValue}`
+    );
     return defaultValue;
   }
   return val;

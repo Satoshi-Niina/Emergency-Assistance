@@ -31,7 +31,7 @@ export class StorageService {
   constructor(config: StorageConfig) {
     this.config = config;
     this.isProduction = process.env.NODE_ENV === 'production';
-    
+
     // ローカルストレージのディレクトリを作成
     if (config.type === 'local' && config.localPath) {
       this.ensureDirectoryExists(config.localPath);
@@ -51,16 +51,19 @@ export class StorageService {
   /**
    * Base64画像をファイルとして保存
    */
-  async saveBase64Image(base64Data: string, filename?: string): Promise<UploadResult> {
+  async saveBase64Image(
+    base64Data: string,
+    filename?: string
+  ): Promise<UploadResult> {
     try {
       // Base64データからヘッダーを除去
       const base64Image = base64Data.replace(/^data:image\/[a-z]+;base64,/, '');
       const buffer = Buffer.from(base64Image, 'base64');
-      
+
       // ファイル名を生成
       const fileExtension = this.getFileExtensionFromBase64(base64Data);
       const finalFilename = filename || `${uuidv4()}.${fileExtension}`;
-      
+
       if (this.config.type === 'local') {
         return await this.saveToLocal(buffer, finalFilename);
       } else if (this.config.type === 'azure') {
@@ -77,33 +80,39 @@ export class StorageService {
   /**
    * ローカルストレージに保存
    */
-  private async saveToLocal(buffer: Buffer, filename: string): Promise<UploadResult> {
+  private async saveToLocal(
+    buffer: Buffer,
+    filename: string
+  ): Promise<UploadResult> {
     if (!this.config.localPath) {
       throw new Error('ローカルストレージパスが設定されていません');
     }
 
     const filePath = path.join(this.config.localPath, filename);
-    
+
     // ファイルを保存
     fs.writeFileSync(filePath, buffer);
-    
+
     const stats = fs.statSync(filePath);
     const url = `/uploads/images/${filename}`; // Webサーバーからの相対パス
-    
+
     console.log(`✅ ローカル保存完了: ${filePath}`);
-    
+
     return {
       url,
       path: filePath,
       filename,
-      size: stats.size
+      size: stats.size,
     };
   }
 
   /**
    * Azure Blob Storageに保存
    */
-  private async saveToAzure(buffer: Buffer, filename: string): Promise<UploadResult> {
+  private async saveToAzure(
+    buffer: Buffer,
+    filename: string
+  ): Promise<UploadResult> {
     if (!this.config.azure) {
       throw new Error('Azure設定がありません');
     }
@@ -111,30 +120,32 @@ export class StorageService {
     try {
       // Azure Blob Storage SDKを動的インポート
       const { BlobServiceClient } = await import('@azure/storage-blob');
-      
+
       const { accountName, accountKey, containerName } = this.config.azure;
       const connectionString = `DefaultEndpointsProtocol=https;AccountName=${accountName};AccountKey=${accountKey};EndpointSuffix=core.windows.net`;
-      
-      const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
-      const containerClient = blobServiceClient.getContainerClient(containerName);
+
+      const blobServiceClient =
+        BlobServiceClient.fromConnectionString(connectionString);
+      const containerClient =
+        blobServiceClient.getContainerClient(containerName);
       const blockBlobClient = containerClient.getBlockBlobClient(filename);
-      
+
       // ファイルをアップロード
       await blockBlobClient.upload(buffer, buffer.length, {
         blobHTTPHeaders: {
-          blobContentType: this.getContentTypeFromFilename(filename)
-        }
+          blobContentType: this.getContentTypeFromFilename(filename),
+        },
       });
-      
+
       const url = blockBlobClient.url;
-      
+
       console.log(`✅ Azure Blob保存完了: ${url}`);
-      
+
       return {
         url,
         path: url,
         filename,
-        size: buffer.length
+        size: buffer.length,
       };
     } catch (error) {
       console.error('❌ Azure Blob保存エラー:', error);
@@ -168,13 +179,13 @@ export class StorageService {
     }
 
     const filePath = path.join(this.config.localPath, filename);
-    
+
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
       console.log(`✅ ローカルファイル削除: ${filePath}`);
       return true;
     }
-    
+
     return false;
   }
 
@@ -188,14 +199,16 @@ export class StorageService {
 
     try {
       const { BlobServiceClient } = await import('@azure/storage-blob');
-      
+
       const { accountName, accountKey, containerName } = this.config.azure;
       const connectionString = `DefaultEndpointsProtocol=https;AccountName=${accountName};AccountKey=${accountKey};EndpointSuffix=core.windows.net`;
-      
-      const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
-      const containerClient = blobServiceClient.getContainerClient(containerName);
+
+      const blobServiceClient =
+        BlobServiceClient.fromConnectionString(connectionString);
+      const containerClient =
+        blobServiceClient.getContainerClient(containerName);
       const blockBlobClient = containerClient.getBlockBlobClient(filename);
-      
+
       await blockBlobClient.delete();
       console.log(`✅ Azure Blob削除: ${filename}`);
       return true;
@@ -227,9 +240,9 @@ export class StorageService {
       '.jpeg': 'image/jpeg',
       '.png': 'image/png',
       '.gif': 'image/gif',
-      '.webp': 'image/webp'
+      '.webp': 'image/webp',
     };
-    
+
     return contentTypes[extension] || 'application/octet-stream';
   }
 
@@ -245,14 +258,16 @@ export class StorageService {
       } else if (this.config.type === 'azure') {
         // Azure Blobの存在確認
         const { BlobServiceClient } = await import('@azure/storage-blob');
-        
+
         const { accountName, accountKey, containerName } = this.config.azure!;
         const connectionString = `DefaultEndpointsProtocol=https;AccountName=${accountName};AccountKey=${accountKey};EndpointSuffix=core.windows.net`;
-        
-        const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
-        const containerClient = blobServiceClient.getContainerClient(containerName);
+
+        const blobServiceClient =
+          BlobServiceClient.fromConnectionString(connectionString);
+        const containerClient =
+          blobServiceClient.getContainerClient(containerName);
         const blockBlobClient = containerClient.getBlockBlobClient(filename);
-        
+
         const exists = await blockBlobClient.exists();
         return exists;
       }
@@ -270,7 +285,7 @@ export class StorageService {
     return {
       type: this.config.type,
       path: this.config.localPath,
-      isProduction: this.isProduction
+      isProduction: this.isProduction,
     };
   }
 }
@@ -282,13 +297,18 @@ const __dirname = path.dirname(__filename);
 // デフォルト設定
 const defaultConfig: StorageConfig = {
   type: process.env.NODE_ENV === 'production' ? 'azure' : 'local',
-  localPath: process.env.LOCAL_STORAGE_PATH || path.join(__dirname, '../uploads/images'),
-  azure: process.env.NODE_ENV === 'production' ? {
-    accountName: process.env.AZURE_STORAGE_ACCOUNT_NAME || '',
-    accountKey: process.env.AZURE_STORAGE_ACCOUNT_KEY || '',
-    containerName: process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge'
-  } : undefined
+  localPath:
+    process.env.LOCAL_STORAGE_PATH || path.join(__dirname, '../uploads/images'),
+  azure:
+    process.env.NODE_ENV === 'production'
+      ? {
+          accountName: process.env.AZURE_STORAGE_ACCOUNT_NAME || '',
+          accountKey: process.env.AZURE_STORAGE_ACCOUNT_KEY || '',
+          containerName:
+            process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge',
+        }
+      : undefined,
 };
 
 // シングルトンインスタンス
-export const storageService = new StorageService(defaultConfig); 
+export const storageService = new StorageService(defaultConfig);

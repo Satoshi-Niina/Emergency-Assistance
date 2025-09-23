@@ -7,7 +7,7 @@ const createSessionSchema = z.object({
   title: z.string().optional(),
   machineType: z.string().optional(),
   machineNumber: z.string().optional(),
-  metadata: z.any().optional()
+  metadata: z.any().optional(),
 });
 
 const createHistorySchema = z.object({
@@ -17,7 +17,7 @@ const createHistorySchema = z.object({
   imageBase64: z.string().optional(),
   machineType: z.string().optional(),
   machineNumber: z.string().optional(),
-  metadata: z.any().optional()
+  metadata: z.any().optional(),
 });
 
 const searchHistorySchema = z.object({
@@ -25,7 +25,7 @@ const searchHistorySchema = z.object({
   machineNumber: z.string().optional(),
   status: z.enum(['active', 'completed', 'archived']).optional(),
   limit: z.number().min(1).max(100).default(20),
-  offset: z.number().min(0).default(0)
+  offset: z.number().min(0).default(0),
 });
 
 export interface ChatSession {
@@ -72,29 +72,39 @@ export class HistoryService {
   /**
    * チャットセッションを作成
    */
-  static async createSession(data: z.infer<typeof createSessionSchema>): Promise<ChatSession> {
+  static async createSession(
+    data: z.infer<typeof createSessionSchema>
+  ): Promise<ChatSession> {
     try {
       console.log('📋 新規チャットセッション作成:', data);
-      
+
       // バリデーション
       const validationResult = createSessionSchema.safeParse(data);
       if (!validationResult.success) {
-        throw new Error(`バリデーションエラー: ${validationResult.error.errors.map(e => e.message).join(', ')}`);
+        throw new Error(
+          `バリデーションエラー: ${validationResult.error.errors.map(e => e.message).join(', ')}`
+        );
       }
 
-      const { title, machineType, machineNumber, metadata } = validationResult.data;
+      const { title, machineType, machineNumber, metadata } =
+        validationResult.data;
 
       // セッションを作成
       const result = await query(
         `INSERT INTO chat_sessions (title, machine_type, machine_number, metadata)
          VALUES ($1, $2, $3, $4)
          RETURNING *`,
-        [title, machineType, machineNumber, metadata ? JSON.stringify(metadata) : null]
+        [
+          title,
+          machineType,
+          machineNumber,
+          metadata ? JSON.stringify(metadata) : null,
+        ]
       );
 
       const session = result.rows[0];
       console.log('✅ チャットセッション作成完了:', session.id);
-      
+
       return {
         id: session.id,
         title: session.title,
@@ -103,9 +113,8 @@ export class HistoryService {
         status: session.status,
         metadata: session.metadata,
         createdAt: session.created_at,
-        updatedAt: session.updated_at
+        updatedAt: session.updated_at,
       };
-      
     } catch (error) {
       console.error('❌ チャットセッション作成エラー:', error);
       throw error;
@@ -115,17 +124,29 @@ export class HistoryService {
   /**
    * チャット履歴を作成
    */
-  static async createHistory(data: z.infer<typeof createHistorySchema>): Promise<ChatHistory> {
+  static async createHistory(
+    data: z.infer<typeof createHistorySchema>
+  ): Promise<ChatHistory> {
     try {
       console.log('📋 新規チャット履歴作成:', data);
-      
+
       // バリデーション
       const validationResult = createHistorySchema.safeParse(data);
       if (!validationResult.success) {
-        throw new Error(`バリデーションエラー: ${validationResult.error.errors.map(e => e.message).join(', ')}`);
+        throw new Error(
+          `バリデーションエラー: ${validationResult.error.errors.map(e => e.message).join(', ')}`
+        );
       }
 
-      const { sessionId, question, answer, imageBase64, machineType, machineNumber, metadata } = validationResult.data;
+      const {
+        sessionId,
+        question,
+        answer,
+        imageBase64,
+        machineType,
+        machineNumber,
+        metadata,
+      } = validationResult.data;
 
       let imageUrl: string | undefined;
 
@@ -140,12 +161,20 @@ export class HistoryService {
         `INSERT INTO chat_history (session_id, question, answer, image_url, machine_type, machine_number, metadata)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING *`,
-        [sessionId, question, answer, imageUrl, machineType, machineNumber, metadata ? JSON.stringify(metadata) : null]
+        [
+          sessionId,
+          question,
+          answer,
+          imageUrl,
+          machineType,
+          machineNumber,
+          metadata ? JSON.stringify(metadata) : null,
+        ]
       );
 
       const history = result.rows[0];
       console.log('✅ チャット履歴作成完了:', history.id);
-      
+
       return {
         id: history.id,
         sessionId: history.session_id,
@@ -155,9 +184,8 @@ export class HistoryService {
         machineType: history.machine_type,
         machineNumber: history.machine_number,
         metadata: history.metadata,
-        createdAt: history.created_at
+        createdAt: history.created_at,
       };
-      
     } catch (error) {
       console.error('❌ チャット履歴作成エラー:', error);
       throw error;
@@ -167,17 +195,27 @@ export class HistoryService {
   /**
    * セッション一覧を取得
    */
-  static async getSessionList(searchParams: HistorySearchParams): Promise<HistorySearchResult> {
+  static async getSessionList(
+    searchParams: HistorySearchParams
+  ): Promise<HistorySearchResult> {
     try {
       console.log('📋 セッション一覧取得:', searchParams);
-      
+
       // バリデーション
       const validationResult = searchHistorySchema.safeParse(searchParams);
       if (!validationResult.success) {
-        throw new Error(`バリデーションエラー: ${validationResult.error.errors.map(e => e.message).join(', ')}`);
+        throw new Error(
+          `バリデーションエラー: ${validationResult.error.errors.map(e => e.message).join(', ')}`
+        );
       }
 
-      const { machineType, machineNumber, status, limit = 20, offset = 0 } = validationResult.data;
+      const {
+        machineType,
+        machineNumber,
+        status,
+        limit = 20,
+        offset = 0,
+      } = validationResult.data;
 
       // 検索条件を構築
       const conditions: string[] = [];
@@ -202,7 +240,8 @@ export class HistoryService {
         paramIndex++;
       }
 
-      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+      const whereClause =
+        conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
       // セッション一覧を取得（ビューを使用）
       const result = await query(
@@ -231,18 +270,19 @@ export class HistoryService {
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         messageCount: parseInt(row.message_count) || 0,
-        lastMessageAt: row.last_message_at
+        lastMessageAt: row.last_message_at,
       }));
 
-      console.log(`✅ セッション一覧取得完了: ${items.length}件 (全${total}件)`);
+      console.log(
+        `✅ セッション一覧取得完了: ${items.length}件 (全${total}件)`
+      );
 
       return {
         items,
         total,
         page,
-        totalPages
+        totalPages,
       };
-      
     } catch (error) {
       console.error('❌ セッション一覧取得エラー:', error);
       throw error;
@@ -256,10 +296,9 @@ export class HistoryService {
     try {
       console.log(`📋 セッション詳細取得: ${id}`);
 
-      const result = await query(
-        `SELECT * FROM chat_sessions WHERE id = $1`,
-        [id]
-      );
+      const result = await query(`SELECT * FROM chat_sessions WHERE id = $1`, [
+        id,
+      ]);
 
       if (result.rows.length === 0) {
         console.log('⚠️  セッションが見つかりません:', id);
@@ -277,9 +316,8 @@ export class HistoryService {
         status: session.status,
         metadata: session.metadata,
         createdAt: session.created_at,
-        updatedAt: session.updated_at
+        updatedAt: session.updated_at,
       };
-      
     } catch (error) {
       console.error('❌ セッション詳細取得エラー:', error);
       throw error;
@@ -309,12 +347,11 @@ export class HistoryService {
         machineType: row.machine_type,
         machineNumber: row.machine_number,
         metadata: row.metadata,
-        createdAt: row.created_at
+        createdAt: row.created_at,
       }));
 
       console.log(`✅ セッション履歴取得完了: ${history.length}件`);
       return history;
-      
     } catch (error) {
       console.error('❌ セッション履歴取得エラー:', error);
       throw error;
@@ -357,7 +394,6 @@ export class HistoryService {
 
       console.log('✅ セッション削除完了:', id);
       return true;
-      
     } catch (error) {
       console.error('❌ セッション削除エラー:', error);
       throw error;
@@ -367,7 +403,10 @@ export class HistoryService {
   /**
    * セッションを更新
    */
-  static async updateSession(id: string, data: Partial<z.infer<typeof createSessionSchema>>): Promise<ChatSession | null> {
+  static async updateSession(
+    id: string,
+    data: Partial<z.infer<typeof createSessionSchema>>
+  ): Promise<ChatSession | null> {
     try {
       console.log(`📋 セッション更新: ${id}`, data);
 
@@ -428,9 +467,8 @@ export class HistoryService {
         status: session.status,
         metadata: session.metadata,
         createdAt: session.created_at,
-        updatedAt: session.updated_at
+        updatedAt: session.updated_at,
       };
-      
     } catch (error) {
       console.error('❌ セッション更新エラー:', error);
       throw error;
@@ -452,7 +490,9 @@ export class HistoryService {
       console.log('📋 履歴統計情報取得');
 
       // 総セッション数
-      const totalResult = await query('SELECT COUNT(*) as total FROM chat_sessions');
+      const totalResult = await query(
+        'SELECT COUNT(*) as total FROM chat_sessions'
+      );
       const totalSessions = parseInt(totalResult.rows[0].total);
 
       // 今日のセッション数
@@ -463,23 +503,25 @@ export class HistoryService {
 
       // 今週のセッション数
       const weekResult = await query(
-        'SELECT COUNT(*) as total FROM chat_sessions WHERE created_at >= CURRENT_DATE - INTERVAL \'7 days\''
+        "SELECT COUNT(*) as total FROM chat_sessions WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'"
       );
       const thisWeekSessions = parseInt(weekResult.rows[0].total);
 
       // 今月のセッション数
       const monthResult = await query(
-        'SELECT COUNT(*) as total FROM chat_sessions WHERE created_at >= CURRENT_DATE - INTERVAL \'30 days\''
+        "SELECT COUNT(*) as total FROM chat_sessions WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'"
       );
       const thisMonthSessions = parseInt(monthResult.rows[0].total);
 
       // 総メッセージ数
-      const messagesResult = await query('SELECT COUNT(*) as total FROM chat_history');
+      const messagesResult = await query(
+        'SELECT COUNT(*) as total FROM chat_history'
+      );
       const totalMessages = parseInt(messagesResult.rows[0].total);
 
       // アクティブセッション数
       const activeResult = await query(
-        'SELECT COUNT(*) as total FROM chat_sessions WHERE status = \'active\''
+        "SELECT COUNT(*) as total FROM chat_sessions WHERE status = 'active'"
       );
       const activeSessions = parseInt(activeResult.rows[0].total);
 
@@ -491,9 +533,8 @@ export class HistoryService {
         thisWeekSessions,
         thisMonthSessions,
         totalMessages,
-        activeSessions
+        activeSessions,
       };
-      
     } catch (error) {
       console.error('❌ 統計情報取得エラー:', error);
       throw error;
@@ -519,12 +560,11 @@ export class HistoryService {
 
       return {
         session,
-        history
+        history,
       };
-      
     } catch (error) {
       console.error('❌ エクスポートデータ取得エラー:', error);
       throw error;
     }
   }
-} 
+}

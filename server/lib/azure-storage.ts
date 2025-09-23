@@ -1,4 +1,8 @@
-import { BlobServiceClient, ContainerClient, StorageSharedKeyCredential } from '@azure/storage-blob';
+import {
+  BlobServiceClient,
+  ContainerClient,
+  StorageSharedKeyCredential,
+} from '@azure/storage-blob';
 import { DefaultAzureCredential } from '@azure/identity';
 import * as fs from 'fs-extra';
 import * as path from 'path';
@@ -13,7 +17,8 @@ export class AzureStorageService {
     const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
     const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
     const accountKey = process.env.AZURE_STORAGE_ACCOUNT_KEY;
-    this.containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
+    this.containerName =
+      process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
 
     // BLOB_PREFIXの正規化（末尾スラッシュ付与、空文字はそのまま）
     let prefix = process.env.BLOB_PREFIX || '';
@@ -23,9 +28,13 @@ export class AzureStorageService {
     this.blobPrefix = prefix;
 
     if (connectionString) {
-      this.blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+      this.blobServiceClient =
+        BlobServiceClient.fromConnectionString(connectionString);
     } else if (accountName && accountKey) {
-      const credential = new StorageSharedKeyCredential(accountName, accountKey);
+      const credential = new StorageSharedKeyCredential(
+        accountName,
+        accountKey
+      );
       this.blobServiceClient = new BlobServiceClient(
         `https://${accountName}.blob.core.windows.net`,
         credential
@@ -39,14 +48,18 @@ export class AzureStorageService {
       );
     }
 
-    this.containerClient = this.blobServiceClient.getContainerClient(this.containerName);
+    this.containerClient = this.blobServiceClient.getContainerClient(
+      this.containerName
+    );
   }
 
   // コンテナの初期化
   async initializeContainer(): Promise<void> {
     try {
       await this.containerClient.createIfNotExists();
-      console.log(`✅ Azure Storage container '${this.containerName}' initialized`);
+      console.log(
+        `✅ Azure Storage container '${this.containerName}' initialized`
+      );
     } catch (error) {
       console.error('❌ Failed to initialize Azure Storage container:', error);
       throw error;
@@ -57,13 +70,14 @@ export class AzureStorageService {
   async uploadFile(localPath: string, blobName: string): Promise<string> {
     try {
       const fullBlobName = this.blobPrefix + blobName.replace(/^\/+/, '');
-      const blockBlobClient = this.containerClient.getBlockBlobClient(fullBlobName);
+      const blockBlobClient =
+        this.containerClient.getBlockBlobClient(fullBlobName);
       const fileBuffer = await fs.readFile(localPath);
 
       await blockBlobClient.upload(fileBuffer, fileBuffer.length, {
         blobHTTPHeaders: {
-          blobContentType: this.getContentType(blobName)
-        }
+          blobContentType: this.getContentType(blobName),
+        },
       });
 
       const url = blockBlobClient.url;
@@ -79,7 +93,8 @@ export class AzureStorageService {
   async downloadFile(blobName: string, localPath: string): Promise<void> {
     try {
       const fullBlobName = this.blobPrefix + blobName.replace(/^\/+/, '');
-      const blockBlobClient = this.containerClient.getBlockBlobClient(fullBlobName);
+      const blockBlobClient =
+        this.containerClient.getBlockBlobClient(fullBlobName);
       const downloadResponse = await blockBlobClient.download();
 
       // ディレクトリを作成
@@ -103,7 +118,8 @@ export class AzureStorageService {
   async fileExists(blobName: string): Promise<boolean> {
     try {
       const fullBlobName = this.blobPrefix + blobName.replace(/^\/+/, '');
-      const blockBlobClient = this.containerClient.getBlockBlobClient(fullBlobName);
+      const blockBlobClient =
+        this.containerClient.getBlockBlobClient(fullBlobName);
       await blockBlobClient.getProperties();
       return true;
     } catch (error) {
@@ -115,7 +131,8 @@ export class AzureStorageService {
   async deleteFile(blobName: string): Promise<void> {
     try {
       const fullBlobName = this.blobPrefix + blobName.replace(/^\/+/, '');
-      const blockBlobClient = this.containerClient.getBlockBlobClient(fullBlobName);
+      const blockBlobClient =
+        this.containerClient.getBlockBlobClient(fullBlobName);
       await blockBlobClient.delete();
       console.log(`✅ File deleted: ${fullBlobName}`);
     } catch (error) {
@@ -135,7 +152,9 @@ export class AzureStorageService {
       }
       const listOptions = fullPrefix ? { prefix: fullPrefix } : {};
 
-      for await (const blob of this.containerClient.listBlobsFlat(listOptions)) {
+      for await (const blob of this.containerClient.listBlobsFlat(
+        listOptions
+      )) {
         files.push(blob.name);
       }
 
@@ -148,13 +167,17 @@ export class AzureStorageService {
 
   // ファイルのURLを取得
   getFileUrl(blobName: string): string {
-  const fullBlobName = this.blobPrefix + blobName.replace(/^\/+/, '');
-  const blockBlobClient = this.containerClient.getBlockBlobClient(fullBlobName);
-  return blockBlobClient.url;
+    const fullBlobName = this.blobPrefix + blobName.replace(/^\/+/, '');
+    const blockBlobClient =
+      this.containerClient.getBlockBlobClient(fullBlobName);
+    return blockBlobClient.url;
   }
 
   // ローカルディレクトリ全体をアップロード
-  async uploadDirectory(localDir: string, remotePrefix: string = ''): Promise<void> {
+  async uploadDirectory(
+    localDir: string,
+    remotePrefix: string = ''
+  ): Promise<void> {
     try {
       const files = await this.getAllFiles(localDir);
 
@@ -172,7 +195,10 @@ export class AzureStorageService {
   }
 
   // ディレクトリ全体をダウンロード
-  async downloadDirectory(remotePrefix: string, localDir: string): Promise<void> {
+  async downloadDirectory(
+    remotePrefix: string,
+    localDir: string
+  ): Promise<void> {
     try {
       const files = await this.listFiles();
 
@@ -187,7 +213,10 @@ export class AzureStorageService {
 
       console.log(`✅ Directory downloaded: ${this.blobPrefix} -> ${localDir}`);
     } catch (error) {
-      console.error(`❌ Failed to download directory ${this.blobPrefix}:`, error);
+      console.error(
+        `❌ Failed to download directory ${this.blobPrefix}:`,
+        error
+      );
       throw error;
     }
   }
@@ -196,18 +225,18 @@ export class AzureStorageService {
   private async getAllFiles(dir: string): Promise<string[]> {
     const files: string[] = [];
     const items = await fs.readdir(dir);
-    
+
     for (const item of items) {
       const fullPath = path.join(dir, item);
       const stat = await fs.stat(fullPath);
-      
+
       if (stat.isDirectory()) {
-        files.push(...await this.getAllFiles(fullPath));
+        files.push(...(await this.getAllFiles(fullPath)));
       } else {
         files.push(fullPath);
       }
     }
-    
+
     return files;
   }
 
@@ -224,16 +253,19 @@ export class AzureStorageService {
       '.gif': 'image/gif',
       '.pdf': 'application/pdf',
       '.doc': 'application/msword',
-      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      '.docx':
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       '.xls': 'application/vnd.ms-excel',
-      '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      '.xlsx':
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       '.ppt': 'application/vnd.ms-powerpoint',
-      '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+      '.pptx':
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     };
-    
+
     return contentTypes[ext] || 'application/octet-stream';
   }
 }
 
 // シングルトンインスタンス
-export const azureStorage = new AzureStorageService(); 
+export const azureStorage = new AzureStorageService();

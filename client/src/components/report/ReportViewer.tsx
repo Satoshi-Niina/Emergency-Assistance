@@ -4,18 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { 
-  Printer, 
-  Download, 
-  Save, 
-  Edit, 
-  X, 
+import {
+  Printer,
+  Download,
+  Save,
+  Edit,
+  X,
   ImageIcon,
   FileText,
   Calendar,
   MapPin,
   Wrench,
-  AlertTriangle
+  AlertTriangle,
 } from 'lucide-react';
 
 interface ReportViewerProps {
@@ -24,10 +24,10 @@ interface ReportViewerProps {
   onSave?: (data: any) => void;
 }
 
-const ReportViewer: React.FC<ReportViewerProps> = ({ 
-  reportData, 
-  onClose, 
-  onSave 
+const ReportViewer: React.FC<ReportViewerProps> = ({
+  reportData,
+  onClose,
+  onSave,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedData, setEditedData] = useState(reportData);
@@ -40,35 +40,42 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
       reportDataKeys: reportData ? Object.keys(reportData) : [],
       imageUrl: reportData?.imageUrl ? 'あり' : 'なし',
       conversationHistory: reportData?.conversationHistory?.length || 0,
-      chatData: reportData?.chatData?.messages?.length || 0
+      chatData: reportData?.chatData?.messages?.length || 0,
     });
-    
+
     // 画像URLを抽出
     extractImageUrl();
   }, [reportData]);
 
   const extractImageUrl = () => {
     let foundImageUrl = null;
-    
+
     console.log('ReportViewer: 画像抽出開始', {
       hasReportData: !!reportData,
       reportDataKeys: reportData ? Object.keys(reportData) : [],
       conversationHistory: reportData?.conversationHistory?.length || 0,
       originalChatData: reportData?.originalChatData?.messages?.length || 0,
       chatData: reportData?.chatData?.messages?.length || 0,
-      savedImages: reportData?.savedImages?.length || 0
+      savedImages: reportData?.savedImages?.length || 0,
     });
 
     // 優先順位1: 直接設定された画像URL
     if (reportData?.imageUrl) {
       foundImageUrl = reportData.imageUrl;
-      console.log('ReportViewer: 直接設定された画像URLを使用:', foundImageUrl.substring(0, 100) + '...');
+      console.log(
+        'ReportViewer: 直接設定された画像URLを使用:',
+        foundImageUrl.substring(0, 100) + '...'
+      );
     }
 
     // 優先順位2: conversationHistoryからBase64画像を取得
-    if (!foundImageUrl && reportData?.conversationHistory && reportData.conversationHistory.length > 0) {
-      const imageMessage = reportData.conversationHistory.find((msg: any) => 
-        msg.content && msg.content.startsWith('data:image/')
+    if (
+      !foundImageUrl &&
+      reportData?.conversationHistory &&
+      reportData.conversationHistory.length > 0
+    ) {
+      const imageMessage = reportData.conversationHistory.find(
+        (msg: any) => msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         foundImageUrl = imageMessage.content;
@@ -78,8 +85,8 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
 
     // 優先順位3: originalChatData.messagesからBase64画像を取得
     if (!foundImageUrl && reportData?.originalChatData?.messages) {
-      const imageMessage = reportData.originalChatData.messages.find((msg: any) => 
-        msg.content && msg.content.startsWith('data:image/')
+      const imageMessage = reportData.originalChatData.messages.find(
+        (msg: any) => msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         foundImageUrl = imageMessage.content;
@@ -89,8 +96,8 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
 
     // 優先順位4: chatData.messagesからBase64画像を取得
     if (!foundImageUrl && reportData?.chatData?.messages) {
-      const imageMessage = reportData.chatData.messages.find((msg: any) => 
-        msg.content && msg.content.startsWith('data:image/')
+      const imageMessage = reportData.chatData.messages.find(
+        (msg: any) => msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         foundImageUrl = imageMessage.content;
@@ -99,15 +106,23 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
     }
 
     // 優先順位5: savedImagesから画像を取得
-    if (!foundImageUrl && reportData?.savedImages && reportData.savedImages.length > 0) {
+    if (
+      !foundImageUrl &&
+      reportData?.savedImages &&
+      reportData.savedImages.length > 0
+    ) {
       foundImageUrl = reportData.savedImages[0].url;
       console.log('ReportViewer: savedImagesから画像を取得');
     }
 
     // 優先順位6: messagesフィールドからBase64画像を検索
-    if (!foundImageUrl && reportData?.messages && Array.isArray(reportData.messages)) {
-      const imageMessage = reportData.messages.find((msg: any) => 
-        msg.content && msg.content.startsWith('data:image/')
+    if (
+      !foundImageUrl &&
+      reportData?.messages &&
+      Array.isArray(reportData.messages)
+    ) {
+      const imageMessage = reportData.messages.find(
+        (msg: any) => msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         foundImageUrl = imageMessage.content;
@@ -115,7 +130,10 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
       }
     }
 
-    console.log('ReportViewer: 最終的な画像URL:', foundImageUrl ? foundImageUrl.substring(0, 100) + '...' : 'なし');
+    console.log(
+      'ReportViewer: 最終的な画像URL:',
+      foundImageUrl ? foundImageUrl.substring(0, 100) + '...' : 'なし'
+    );
     setImageUrl(foundImageUrl);
   };
 
@@ -134,7 +152,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
   const handleSaveToFile = async () => {
     try {
       const data = isEditing ? editedData : reportData;
-      
+
       // 保存用のデータを準備
       const saveData = {
         id: data.id,
@@ -170,13 +188,13 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
         // 直接画像URL
         imageUrl: data.imageUrl,
         // 更新日時
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
 
       // 既存のファイルデータを取得
       const existingData = localStorage.getItem(`report_${data.id}`);
       let existingReport = null;
-      
+
       if (existingData) {
         try {
           existingReport = JSON.parse(existingData);
@@ -186,11 +204,13 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
       }
 
       // 差分を検出して上書き
-      const mergedData = existingReport ? { ...existingReport, ...saveData } : saveData;
-      
+      const mergedData = existingReport
+        ? { ...existingReport, ...saveData }
+        : saveData;
+
       // ローカルストレージに保存
       localStorage.setItem(`report_${data.id}`, JSON.stringify(mergedData));
-      
+
       // サーバーにも保存を試行（APIが利用可能な場合）
       try {
         const response = await fetch('/api/reports/save', {
@@ -200,19 +220,23 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
           },
           body: JSON.stringify(mergedData),
         });
-        
+
         if (response.ok) {
           console.log('サーバーへの保存が完了しました');
         } else {
-          console.warn('サーバーへの保存に失敗しましたが、ローカルには保存されました');
+          console.warn(
+            'サーバーへの保存に失敗しましたが、ローカルには保存されました'
+          );
         }
       } catch (error) {
-        console.warn('サーバーへの保存に失敗しましたが、ローカルには保存されました:', error);
+        console.warn(
+          'サーバーへの保存に失敗しましたが、ローカルには保存されました:',
+          error
+        );
       }
 
       alert('レポートが保存されました。');
       console.log('レポート保存完了:', mergedData);
-      
     } catch (error) {
       console.error('レポート保存中にエラーが発生しました:', error);
       alert('レポートの保存に失敗しました: ' + error.message);
@@ -227,11 +251,9 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
   const handleInputChange = (field: string, value: string) => {
     setEditedData(prev => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
-
-
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank', 'width=800,height=600');
@@ -250,7 +272,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
   // 印刷用HTML生成（現在のレポートデータを使用）
   const generatePrintHTML = (): string => {
     const data = isEditing ? editedData : reportData;
-    
+
     return `
       <!DOCTYPE html>
       <html>
@@ -452,7 +474,9 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
             </div>
           </div>
           
-          ${imageUrl ? `
+          ${
+            imageUrl
+              ? `
           <div class="section">
             <h2>故障箇所画像</h2>
             <div class="image-section">
@@ -460,7 +484,9 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
               <p>上記は故障箇所の写真です。</p>
             </div>
           </div>
-          ` : ''}
+          `
+              : ''
+          }
           
           <div class="section">
             <h2>抽出情報</h2>
@@ -541,9 +567,9 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
 場所: ${data.repairLocation || '-'}
 
 チャット履歴:
-${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) => 
-  `${msg.isAiResponse ? 'AI' : 'ユーザー'}: ${msg.content}`
-).join('\n')}
+${(data.conversationHistory || data.chatData?.messages || [])
+  .map((msg: any) => `${msg.isAiResponse ? 'AI' : 'ユーザー'}: ${msg.content}`)
+  .join('\n')}
     `;
 
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
@@ -560,112 +586,153 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
   const data = isEditing ? editedData : reportData;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+    <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50'>
+      <div className='bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto'>
         {/* ヘッダー */}
-        <div className="flex justify-between items-center p-6 border-b">
-          <h1 className="text-2xl font-bold">報告書ビューアー</h1>
-          <div className="flex gap-2">
+        <div className='flex justify-between items-center p-6 border-b'>
+          <h1 className='text-2xl font-bold'>報告書ビューアー</h1>
+          <div className='flex gap-2'>
             {!isEditing ? (
               <>
-                <Button onClick={handleEdit} variant="outline" className="flex items-center gap-2">
-                  <Edit className="h-4 w-4" />
+                <Button
+                  onClick={handleEdit}
+                  variant='outline'
+                  className='flex items-center gap-2'
+                >
+                  <Edit className='h-4 w-4' />
                   編集
                 </Button>
-                <Button onClick={handlePrint} variant="outline" className="flex items-center gap-2">
-                  <Printer className="h-4 w-4" />
+                <Button
+                  onClick={handlePrint}
+                  variant='outline'
+                  className='flex items-center gap-2'
+                >
+                  <Printer className='h-4 w-4' />
                   印刷
                 </Button>
-                <Button onClick={handleSaveToFile} variant="outline" className="flex items-center gap-2">
-                  <Save className="h-4 w-4" />
+                <Button
+                  onClick={handleSaveToFile}
+                  variant='outline'
+                  className='flex items-center gap-2'
+                >
+                  <Save className='h-4 w-4' />
                   保存
                 </Button>
               </>
             ) : (
               <>
-                <Button onClick={handleSave} className="flex items-center gap-2">
-                  <Save className="h-4 w-4" />
+                <Button
+                  onClick={handleSave}
+                  className='flex items-center gap-2'
+                >
+                  <Save className='h-4 w-4' />
                   保存
                 </Button>
-                <Button onClick={handleCancel} variant="outline">
+                <Button onClick={handleCancel} variant='outline'>
                   キャンセル
                 </Button>
               </>
             )}
-            <Button onClick={onClose} variant="ghost" size="sm">
-              <X className="h-4 w-4" />
+            <Button onClick={onClose} variant='ghost' size='sm'>
+              <X className='h-4 w-4' />
             </Button>
           </div>
         </div>
 
         {/* コンテンツ */}
-        <div className="p-6 space-y-6">
+        <div className='p-6 space-y-6'>
           {/* 報告概要 */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
+              <CardTitle className='flex items-center gap-2'>
+                <FileText className='h-5 w-5' />
                 報告概要
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+            <CardContent className='space-y-4'>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <div className='space-y-2'>
                   <Label>報告書ID</Label>
                   {isEditing ? (
                     <Input
                       value={data.reportId || data.id || ''}
-                      onChange={(e) => handleInputChange('reportId', e.target.value)}
+                      onChange={e =>
+                        handleInputChange('reportId', e.target.value)
+                      }
                     />
                   ) : (
-                    <p className="text-sm text-gray-600">{data.reportId || data.id || '-'}</p>
+                    <p className='text-sm text-gray-600'>
+                      {data.reportId || data.id || '-'}
+                    </p>
                   )}
                 </div>
-                <div className="space-y-2">
+                <div className='space-y-2'>
                   <Label>機種</Label>
                   {isEditing ? (
                     <Input
                       value={data.machineType || data.machineTypeName || ''}
-                      onChange={(e) => handleInputChange('machineType', e.target.value)}
+                      onChange={e =>
+                        handleInputChange('machineType', e.target.value)
+                      }
                     />
                   ) : (
-                    <p className="text-sm text-gray-600">{data.machineType || data.machineTypeName || '-'}</p>
+                    <p className='text-sm text-gray-600'>
+                      {data.machineType || data.machineTypeName || '-'}
+                    </p>
                   )}
                 </div>
-                <div className="space-y-2">
+                <div className='space-y-2'>
                   <Label>機械番号</Label>
                   {isEditing ? (
                     <Input
                       value={data.machineNumber || ''}
-                      onChange={(e) => handleInputChange('machineNumber', e.target.value)}
+                      onChange={e =>
+                        handleInputChange('machineNumber', e.target.value)
+                      }
                     />
                   ) : (
-                    <p className="text-sm text-gray-600">{data.machineNumber || '-'}</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label>日付</Label>
-                  {isEditing ? (
-                    <Input
-                      type="date"
-                      value={data.date || data.timestamp || (data.createdAt ? new Date(data.createdAt).toISOString().split('T')[0] : '')}
-                      onChange={(e) => handleInputChange('date', e.target.value)}
-                    />
-                  ) : (
-                    <p className="text-sm text-gray-600">
-                      {data.date || data.timestamp || (data.createdAt ? new Date(data.createdAt).toLocaleDateString('ja-JP') : '-')}
+                    <p className='text-sm text-gray-600'>
+                      {data.machineNumber || '-'}
                     </p>
                   )}
                 </div>
-                <div className="space-y-2">
+                <div className='space-y-2'>
+                  <Label>日付</Label>
+                  {isEditing ? (
+                    <Input
+                      type='date'
+                      value={
+                        data.date ||
+                        data.timestamp ||
+                        (data.createdAt
+                          ? new Date(data.createdAt).toISOString().split('T')[0]
+                          : '')
+                      }
+                      onChange={e => handleInputChange('date', e.target.value)}
+                    />
+                  ) : (
+                    <p className='text-sm text-gray-600'>
+                      {data.date ||
+                        data.timestamp ||
+                        (data.createdAt
+                          ? new Date(data.createdAt).toLocaleDateString('ja-JP')
+                          : '-')}
+                    </p>
+                  )}
+                </div>
+                <div className='space-y-2'>
                   <Label>場所</Label>
                   {isEditing ? (
                     <Input
                       value={data.location || ''}
-                      onChange={(e) => handleInputChange('location', e.target.value)}
+                      onChange={e =>
+                        handleInputChange('location', e.target.value)
+                      }
                     />
                   ) : (
-                    <p className="text-sm text-gray-600">{data.location || '-'}</p>
+                    <p className='text-sm text-gray-600'>
+                      {data.location || '-'}
+                    </p>
                   )}
                 </div>
               </div>
@@ -675,64 +742,82 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
           {/* 故障詳細 */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5" />
+              <CardTitle className='flex items-center gap-2'>
+                <AlertTriangle className='h-5 w-5' />
                 故障詳細
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
+            <CardContent className='space-y-4'>
+              <div className='space-y-2'>
                 <Label>説明</Label>
                 {isEditing ? (
                   <Textarea
-                    value={data.problemDescription || data.description || data.incidentTitle || ''}
-                    onChange={(e) => handleInputChange('problemDescription', e.target.value)}
+                    value={
+                      data.problemDescription ||
+                      data.description ||
+                      data.incidentTitle ||
+                      ''
+                    }
+                    onChange={e =>
+                      handleInputChange('problemDescription', e.target.value)
+                    }
                     rows={3}
-                    placeholder="説明なし"
+                    placeholder='説明なし'
                   />
                 ) : (
-                  <p className="text-sm text-gray-600">
-                    {data.problemDescription || data.description || data.incidentTitle || '説明なし'}
+                  <p className='text-sm text-gray-600'>
+                    {data.problemDescription ||
+                      data.description ||
+                      data.incidentTitle ||
+                      '説明なし'}
                   </p>
                 )}
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <div className='space-y-2'>
                   <Label>ステータス</Label>
                   {isEditing ? (
                     <Input
                       value={data.status || ''}
-                      onChange={(e) => handleInputChange('status', e.target.value)}
+                      onChange={e =>
+                        handleInputChange('status', e.target.value)
+                      }
                     />
                   ) : (
-                    <p className="text-sm text-gray-600">{data.status || '-'}</p>
+                    <p className='text-sm text-gray-600'>
+                      {data.status || '-'}
+                    </p>
                   )}
                 </div>
-                <div className="space-y-2">
+                <div className='space-y-2'>
                   <Label>責任者</Label>
                   {isEditing ? (
                     <Input
                       value={data.engineer || ''}
-                      onChange={(e) => handleInputChange('engineer', e.target.value)}
+                      onChange={e =>
+                        handleInputChange('engineer', e.target.value)
+                      }
                     />
                   ) : (
-                    <p className="text-sm text-gray-600">{data.engineer || '-'}</p>
+                    <p className='text-sm text-gray-600'>
+                      {data.engineer || '-'}
+                    </p>
                   )}
                 </div>
               </div>
-              
-              <div className="space-y-2">
+
+              <div className='space-y-2'>
                 <Label>備考</Label>
                 {isEditing ? (
                   <Textarea
                     value={data.notes || ''}
-                    onChange={(e) => handleInputChange('notes', e.target.value)}
+                    onChange={e => handleInputChange('notes', e.target.value)}
                     rows={3}
-                    placeholder="備考を入力してください"
+                    placeholder='備考を入力してください'
                   />
                 ) : (
-                  <p className="text-sm text-gray-600">{data.notes || '-'}</p>
+                  <p className='text-sm text-gray-600'>{data.notes || '-'}</p>
                 )}
               </div>
             </CardContent>
@@ -742,27 +827,26 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
           {imageUrl && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ImageIcon className="h-5 w-5" />
+                <CardTitle className='flex items-center gap-2'>
+                  <ImageIcon className='h-5 w-5' />
                   故障箇所画像
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-center">
-                  <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-600 mb-2">画像URL情報:</p>
-                    <p className="text-xs text-gray-500 break-all">
-                      {imageUrl.startsWith('data:image/') 
+                <div className='text-center'>
+                  <div className='mb-4 p-4 bg-gray-50 rounded-lg'>
+                    <p className='text-sm text-gray-600 mb-2'>画像URL情報:</p>
+                    <p className='text-xs text-gray-500 break-all'>
+                      {imageUrl.startsWith('data:image/')
                         ? `Base64画像 (${imageUrl.length}文字)`
-                        : `URL: ${imageUrl.substring(0, 100)}...`
-                      }
+                        : `URL: ${imageUrl.substring(0, 100)}...`}
                     </p>
                   </div>
                   <img
                     src={imageUrl}
-                    alt="故障箇所画像"
-                    className="max-w-full max-h-96 object-contain border rounded-lg"
-                    onError={(e) => {
+                    alt='故障箇所画像'
+                    className='max-w-full max-h-96 object-contain border rounded-lg'
+                    onError={e => {
                       console.error('画像読み込みエラー:', e);
                       const target = e.target as HTMLImageElement;
                       target.style.display = 'none';
@@ -775,12 +859,16 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
                     onLoad={() => {
                       console.log('画像読み込み成功:', {
                         src: imageUrl.substring(0, 100) + '...',
-                        naturalWidth: (e.target as HTMLImageElement).naturalWidth,
-                        naturalHeight: (e.target as HTMLImageElement).naturalHeight
+                        naturalWidth: (e.target as HTMLImageElement)
+                          .naturalWidth,
+                        naturalHeight: (e.target as HTMLImageElement)
+                          .naturalHeight,
                       });
                     }}
                   />
-                  <p className="text-sm text-gray-500 mt-2">上記は故障箇所の写真です。</p>
+                  <p className='text-sm text-gray-500 mt-2'>
+                    上記は故障箇所の写真です。
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -789,51 +877,66 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
           {/* 抽出情報 */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Wrench className="h-5 w-5" />
+              <CardTitle className='flex items-center gap-2'>
+                <Wrench className='h-5 w-5' />
                 抽出情報
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+            <CardContent className='space-y-4'>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <div className='space-y-2'>
                   <Label>影響コンポーネント</Label>
                   {isEditing ? (
                     <Input
                       value={(data.extractedComponents || []).join(', ')}
-                      onChange={(e) => handleInputChange('extractedComponents', e.target.value.split(',').map(s => s.trim()))}
-                      placeholder="カンマ区切りで入力"
+                      onChange={e =>
+                        handleInputChange(
+                          'extractedComponents',
+                          e.target.value.split(',').map(s => s.trim())
+                        )
+                      }
+                      placeholder='カンマ区切りで入力'
                     />
                   ) : (
-                    <p className="text-sm text-gray-600">
+                    <p className='text-sm text-gray-600'>
                       {(data.extractedComponents || []).join(', ') || '-'}
                     </p>
                   )}
                 </div>
-                <div className="space-y-2">
+                <div className='space-y-2'>
                   <Label>症状</Label>
                   {isEditing ? (
                     <Input
                       value={(data.extractedSymptoms || []).join(', ')}
-                      onChange={(e) => handleInputChange('extractedSymptoms', e.target.value.split(',').map(s => s.trim()))}
-                      placeholder="カンマ区切りで入力"
+                      onChange={e =>
+                        handleInputChange(
+                          'extractedSymptoms',
+                          e.target.value.split(',').map(s => s.trim())
+                        )
+                      }
+                      placeholder='カンマ区切りで入力'
                     />
                   ) : (
-                    <p className="text-sm text-gray-600">
+                    <p className='text-sm text-gray-600'>
                       {(data.extractedSymptoms || []).join(', ') || '-'}
                     </p>
                   )}
                 </div>
-                <div className="space-y-2">
+                <div className='space-y-2'>
                   <Label>可能性のある機種</Label>
                   {isEditing ? (
                     <Input
                       value={(data.possibleModels || []).join(', ')}
-                      onChange={(e) => handleInputChange('possibleModels', e.target.value.split(',').map(s => s.trim()))}
-                      placeholder="カンマ区切りで入力"
+                      onChange={e =>
+                        handleInputChange(
+                          'possibleModels',
+                          e.target.value.split(',').map(s => s.trim())
+                        )
+                      }
+                      placeholder='カンマ区切りで入力'
                     />
                   ) : (
-                    <p className="text-sm text-gray-600">
+                    <p className='text-sm text-gray-600'>
                       {(data.possibleModels || []).join(', ') || '-'}
                     </p>
                   )}
@@ -845,46 +948,58 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
           {/* 修繕予定 */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
+              <CardTitle className='flex items-center gap-2'>
+                <Calendar className='h-5 w-5' />
                 修繕予定
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+            <CardContent className='space-y-4'>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <div className='space-y-2'>
                   <Label>依頼月日</Label>
                   {isEditing ? (
                     <Input
-                      type="date"
+                      type='date'
                       value={data.requestDate || ''}
-                      onChange={(e) => handleInputChange('requestDate', e.target.value)}
+                      onChange={e =>
+                        handleInputChange('requestDate', e.target.value)
+                      }
                     />
                   ) : (
-                    <p className="text-sm text-gray-600">{data.requestDate || '-'}</p>
+                    <p className='text-sm text-gray-600'>
+                      {data.requestDate || '-'}
+                    </p>
                   )}
                 </div>
-                <div className="space-y-2">
+                <div className='space-y-2'>
                   <Label>予定月日</Label>
                   {isEditing ? (
                     <Input
-                      type="date"
+                      type='date'
                       value={data.repairSchedule || ''}
-                      onChange={(e) => handleInputChange('repairSchedule', e.target.value)}
+                      onChange={e =>
+                        handleInputChange('repairSchedule', e.target.value)
+                      }
                     />
                   ) : (
-                    <p className="text-sm text-gray-600">{data.repairSchedule || '-'}</p>
+                    <p className='text-sm text-gray-600'>
+                      {data.repairSchedule || '-'}
+                    </p>
                   )}
                 </div>
-                <div className="space-y-2">
+                <div className='space-y-2'>
                   <Label>場所</Label>
                   {isEditing ? (
                     <Input
                       value={data.repairLocation || ''}
-                      onChange={(e) => handleInputChange('repairLocation', e.target.value)}
+                      onChange={e =>
+                        handleInputChange('repairLocation', e.target.value)
+                      }
                     />
                   ) : (
-                    <p className="text-sm text-gray-600">{data.repairLocation || '-'}</p>
+                    <p className='text-sm text-gray-600'>
+                      {data.repairLocation || '-'}
+                    </p>
                   )}
                 </div>
               </div>
@@ -900,12 +1015,12 @@ ${(data.conversationHistory || data.chatData?.messages || []).map((msg: any) =>
               {isEditing ? (
                 <Textarea
                   value={data.notes || ''}
-                  onChange={(e) => handleInputChange('notes', e.target.value)}
+                  onChange={e => handleInputChange('notes', e.target.value)}
                   rows={3}
-                  placeholder="備考を入力してください"
+                  placeholder='備考を入力してください'
                 />
               ) : (
-                <p className="text-sm text-gray-600">{data.notes || '-'}</p>
+                <p className='text-sm text-gray-600'>{data.notes || '-'}</p>
               )}
             </CardContent>
           </Card>

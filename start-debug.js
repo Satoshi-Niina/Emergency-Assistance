@@ -6,7 +6,10 @@ console.log('🔧 Environment variables:');
 console.log('NODE_ENV:', process.env.NODE_ENV);
 console.log('PORT:', process.env.PORT);
 console.log('WEBSITE_SITE_NAME:', process.env.WEBSITE_SITE_NAME);
-console.log('WEBSITE_NODE_DEFAULT_VERSION:', process.env.WEBSITE_NODE_DEFAULT_VERSION);
+console.log(
+  'WEBSITE_NODE_DEFAULT_VERSION:',
+  process.env.WEBSITE_NODE_DEFAULT_VERSION
+);
 
 console.log('📁 Current directory:', process.cwd());
 console.log('📁 Files in current directory:');

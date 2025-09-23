@@ -7,9 +7,7 @@
   "problemDescription": "仕業点検時にエンジンを始動しようとしたが、スターターが全く回らない。\nパネルのランプ類は点灯している\nスタータートキースイッチを回しても、スターターから何も音がしない。",
   "machineType": "MC300",
   "machineNumber": "MC300-001",
-  "extractedComponents": [
-    "エンジン"
-  ],
+  "extractedComponents": ["エンジン"],
   "extractedSymptoms": [],
   "possibleModels": [],
   "conversationHistory": [

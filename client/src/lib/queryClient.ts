@@ -1,5 +1,5 @@
-import { QueryClient, QueryFunction } from "@tanstack/react-query";
-import { buildApiUrl } from "./api/config.ts";
+import { QueryClient, QueryFunction } from '@tanstack/react-query';
+import { buildApiUrl } from './api/config.ts';
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -7,7 +7,7 @@ async function throwIfResNotOk(res: Response) {
     let errorText = res.statusText;
     try {
       const clonedRes = res.clone();
-      errorText = await clonedRes.text() || res.statusText;
+      errorText = (await clonedRes.text()) || res.statusText;
     } catch (e) {
       console.warn('Error reading response body:', e);
     }
@@ -19,7 +19,7 @@ export async function apiRequest(
   methodOrUrl: string,
   urlOrData?: string | unknown,
   dataOrHeaders?: unknown | Record<string, string>,
-  customHeaders?: Record<string, string>,
+  customHeaders?: Record<string, string>
 ): Promise<Response> {
   // 改善された引数の正規化
   let method = 'GET';
@@ -42,8 +42,12 @@ export async function apiRequest(
       // 第二引数がデータオブジェクト: apiRequest('/api/endpoint', {data})
       method = 'POST';
       data = urlOrData;
-      headers = dataOrHeaders as Record<string, string> || {};
-    } else if (urlOrData && typeof urlOrData === 'string' && httpMethods.includes(urlOrData)) {
+      headers = (dataOrHeaders as Record<string, string>) || {};
+    } else if (
+      urlOrData &&
+      typeof urlOrData === 'string' &&
+      httpMethods.includes(urlOrData)
+    ) {
       // 旧形式の互換性維持: apiRequest('POST', '/api/endpoint', {data})
       // 警告メッセージを表示しない（同じ実装を使っているので警告を消す）
       method = urlOrData;
@@ -68,8 +72,8 @@ export async function apiRequest(
   const fullUrl = url.startsWith('/') ? buildApiUrl(url) : url;
 
   // ブラウザキャッシュ対策用のタイムスタンプパラメータを追加
-  const urlWithCache = fullUrl.includes('?') 
-    ? `${fullUrl}&_t=${Date.now()}` 
+  const urlWithCache = fullUrl.includes('?')
+    ? `${fullUrl}&_t=${Date.now()}`
     : `${fullUrl}?_t=${Date.now()}`;
 
   // 修正: URLのパースエラーを防ぐため、ポート番号とパスを確認
@@ -77,9 +81,9 @@ export async function apiRequest(
     console.error('不正なURL:', fullUrl);
   }
 
-  console.log('🔍 APIリクエスト実行:', { 
-    method, 
-    url: urlWithCache, 
+  console.log('🔍 APIリクエスト実行:', {
+    method,
+    url: urlWithCache,
     hasData: !!data,
     headers,
     // 追加のデバッグ情報
@@ -89,7 +93,7 @@ export async function apiRequest(
     isAbsolute: url.startsWith('http'),
     // リクエストの詳細
     requestBody: data ? JSON.stringify(data).substring(0, 200) : 'none',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 
   try {
@@ -97,20 +101,20 @@ export async function apiRequest(
       method,
       headers,
       body: data ? JSON.stringify(data) : undefined,
-      credentials: "include",
+      credentials: 'include',
       mode: 'cors',
       // キャッシュ制御を追加
-      cache: method === 'GET' ? 'no-cache' : 'default'
+      cache: method === 'GET' ? 'no-cache' : 'default',
     });
 
-    console.log('📡 APIレスポンス受信:', { 
+    console.log('📡 APIレスポンス受信:', {
       url: urlWithCache,
       status: res.status,
       statusText: res.statusText,
       ok: res.ok,
       headers: Object.fromEntries(res.headers.entries()),
       cookies: res.headers.get('set-cookie'),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     // エラーレスポンスの詳細ログ
@@ -128,7 +132,7 @@ export async function apiRequest(
         statusText: res.statusText,
         errorText,
         requestBody: data ? JSON.stringify(data) : 'none',
-        cookies: res.headers.get('set-cookie')
+        cookies: res.headers.get('set-cookie'),
       });
     }
 
@@ -138,13 +142,13 @@ export async function apiRequest(
       url: urlWithCache,
       method,
       error: error instanceof Error ? error.message : String(error),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
     throw error;
   }
 }
 
-type UnauthorizedBehavior = "returnNull" | "throw";
+type UnauthorizedBehavior = 'returnNull' | 'throw';
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
@@ -152,10 +156,12 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     // チャットクリア後は強制的に空配列を返す
     if (
-      (queryKey[0] as string).includes('/api/chats') && 
+      (queryKey[0] as string).includes('/api/chats') &&
       (queryKey[0] as string).includes('/messages')
     ) {
-      const chatClearedTimestamp = localStorage.getItem('chat_cleared_timestamp');
+      const chatClearedTimestamp = localStorage.getItem(
+        'chat_cleared_timestamp'
+      );
       if (chatClearedTimestamp) {
         const clearTime = parseInt(chatClearedTimestamp);
         const now = Date.now();
@@ -170,28 +176,30 @@ export const getQueryFn: <T>(options: {
     // クエリキーにキャッシュバスティングパラメータを追加
     let url = queryKey[0] as string;
     const timestamp = Date.now();
-    url = url.includes('?') ? `${url}&_t=${timestamp}` : `${url}?_t=${timestamp}`;
+    url = url.includes('?')
+      ? `${url}&_t=${timestamp}`
+      : `${url}?_t=${timestamp}`;
 
     console.log('🔍 クエリ実行:', { url, timestamp });
 
     const res = await fetch(url, {
-      credentials: "include",
-      cache: "no-cache", // ブラウザキャッシュを使用しない
+      credentials: 'include',
+      cache: 'no-cache', // ブラウザキャッシュを使用しない
       headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      }
+        Pragma: 'no-cache',
+        Expires: '0',
+      },
     });
 
-    console.log('📡 レスポンス受信:', { 
-      url, 
-      status: res.status, 
+    console.log('📡 レスポンス受信:', {
+      url,
+      status: res.status,
       statusText: res.statusText,
-      contentType: res.headers.get('content-type')
+      contentType: res.headers.get('content-type'),
     });
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+    if (unauthorizedBehavior === 'returnNull' && res.status === 401) {
       return null;
     }
 
@@ -214,7 +222,7 @@ export function getQueryClient(): QueryClient {
     _queryClient = new QueryClient({
       defaultOptions: {
         queries: {
-          queryFn: getQueryFn({ on401: "throw" }),
+          queryFn: getQueryFn({ on401: 'throw' }),
           refetchInterval: false,
           refetchOnWindowFocus: false,
           staleTime: 60000, // 1分間はキャッシュを使用
@@ -239,7 +247,10 @@ const setupWebSocket = (token: string) => {
 
   // デプロイメント環境では標準ポートを使用、開発環境では5000番ポートを使用
   let wsUrl;
-  if (window.location.hostname.includes('replit.app') || window.location.hostname.includes('replit.dev')) {
+  if (
+    window.location.hostname.includes('replit.app') ||
+    window.location.hostname.includes('replit.dev')
+  ) {
     // Replitデプロイメント環境
     wsUrl = `${protocol}//${host}/ws?token=${token}`;
   } else {
@@ -252,7 +263,7 @@ const setupWebSocket = (token: string) => {
 
   try {
     const ws = new WebSocket(wsUrl);
-    ws.binaryType = 'arraybuffer';  // バイナリデータの高速処理
+    ws.binaryType = 'arraybuffer'; // バイナリデータの高速処理
     return ws;
   } catch (error) {
     console.error('WebSocket作成エラー:', error);
@@ -262,7 +273,7 @@ const setupWebSocket = (token: string) => {
 
 // WebSocket接続のテスト関数
 export function testWebSocketConnection(): Promise<boolean> {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     try {
       const ws = setupWebSocket('test-token');
 
@@ -314,22 +325,25 @@ export async function processMessage(text: string): Promise<string> {
 // Replit環境を考慮したAPI URL構築
 function buildApiUrl(path: string): string {
   if (path.startsWith('http')) return path;
-  
+
   // Replit環境では専用ポートを使用
-  const isReplitEnvironment = window.location.hostname.includes('replit.dev') || window.location.hostname.includes('replit.app');
-  
+  const isReplitEnvironment =
+    window.location.hostname.includes('replit.dev') ||
+    window.location.hostname.includes('replit.app');
+
   if (isReplitEnvironment) {
     return `${window.location.protocol}//${window.location.hostname}:3000${path}`;
   }
-  
+
   // 開発環境ではプロキシ経由でアクセス（相対パスを使用）
-  const isDevelopment = import.meta.env.DEV || window.location.hostname.includes('localhost');
-  
+  const isDevelopment =
+    import.meta.env.DEV || window.location.hostname.includes('localhost');
+
   if (isDevelopment) {
     console.log('✅ 開発環境: プロキシ経由でアクセス（相対パス）');
     return path; // 相対パスを使用してプロキシ経由でアクセス
   }
-  
+
   // その他の環境では相対パス
   return `${window.location.origin}${path}`;
 }
@@ -350,7 +364,7 @@ console.log('🔍 環境変数詳細確認:', {
   MODE: import.meta.env.MODE,
   BASE_URL: import.meta.env.BASE_URL,
   // 実際に使用されるURL
-  finalApiBaseUrl: VITE_API_BASE_URL || 'http://localhost:3001'
+  finalApiBaseUrl: VITE_API_BASE_URL || 'http://localhost:3001',
 });
 
 console.log('🔧 API設定:', {
@@ -371,26 +385,27 @@ console.log('🔧 API設定:', {
   envVars: {
     VITE_API_BASE_URL,
     NODE_ENV: import.meta.env.NODE_ENV,
-    MODE: import.meta.env.MODE
-  }
+    MODE: import.meta.env.MODE,
+  },
 });
 
 // API Base URLの設定 - VITE_API_BASE_URLのみを使用
 const API_BASE_URL = (() => {
-  const isDevelopment = import.meta.env.DEV || window.location.hostname.includes('localhost');
-  
+  const isDevelopment =
+    import.meta.env.DEV || window.location.hostname.includes('localhost');
+
   // 開発環境ではプロキシ経由でアクセス（相対パスを使用）
   if (isDevelopment) {
     console.log('✅ 開発環境: プロキシ経由でアクセス');
     return ''; // 空文字列で相対パスを使用
   }
-  
+
   // 環境変数が設定されている場合は優先使用
   if (VITE_API_BASE_URL && VITE_API_BASE_URL.trim() !== '') {
     console.log('✅ 環境変数からAPI_BASE_URLを取得:', VITE_API_BASE_URL);
     return VITE_API_BASE_URL;
   }
-  
+
   // デフォルト
   return 'http://localhost:3001';
 })();

@@ -24,7 +24,10 @@ export function getEnvConfig(): EnvConfig {
     console.warn('⚠️ DATABASE_URL is not set');
   }
 
-  if (!config.SESSION_SECRET || config.SESSION_SECRET === 'default-secret-key') {
+  if (
+    !config.SESSION_SECRET ||
+    config.SESSION_SECRET === 'default-secret-key'
+  ) {
     console.warn('⚠️ SESSION_SECRET is not set or using default value');
   }
 

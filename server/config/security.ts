@@ -47,7 +47,7 @@ export const securityConfig = {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
+      imgSrc: ["'self'", 'data:', 'https:'],
       connectSrc: ["'self'"],
       fontSrc: ["'self'"],
       objectSrc: ["'none'"],
@@ -89,26 +89,27 @@ export const securityConfig = {
 // セキュリティ設定の検証
 export function validateSecurityConfig() {
   const config = securityConfig;
-  
+
   // パスワード設定の検証
   if (config.password.minLength < 8) {
     throw new Error('Password minimum length must be at least 8');
   }
-  
+
   if (config.password.saltRounds < 10) {
     throw new Error('Password salt rounds must be at least 10');
   }
-  
+
   // セッション設定の検証
-  if (config.session.maxAge < 60 * 60 * 1000) { // 1時間未満は危険
+  if (config.session.maxAge < 60 * 60 * 1000) {
+    // 1時間未満は危険
     throw new Error('Session max age must be at least 1 hour');
   }
-  
+
   // レート制限設定の検証
   if (config.rateLimit.auth.max < 3) {
     throw new Error('Auth rate limit must allow at least 3 attempts');
   }
-  
+
   console.log('✅ Security configuration validated successfully');
   return true;
 }

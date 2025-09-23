@@ -1,5 +1,16 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { login as authLogin, logout as authLogout, getCurrentUser, negotiateAuthMode } from '../lib/auth';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from 'react';
+import {
+  login as authLogin,
+  logout as authLogout,
+  getCurrentUser,
+  negotiateAuthMode,
+} from '../lib/auth';
 
 interface User {
   id: string;
@@ -28,27 +39,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const checkAuthStatus = async () => {
       try {
         setIsLoading(true);
-        
+
         // 初回起動時に認証モードを自動切替
         await negotiateAuthMode();
-        
+
         // lib/auth の getCurrentUser を利用
         const userData = await getCurrentUser();
         console.log('🔍 getCurrentUser レスポンス:', userData);
-        
+
         if (userData && userData.success && userData.user) {
           setUser({
             id: userData.user.id,
             username: userData.user.username,
-            displayName: userData.user.displayName || userData.user.display_name,
+            displayName:
+              userData.user.displayName || userData.user.display_name,
             role: userData.user.role,
-            department: userData.user.department
+            department: userData.user.department,
           });
         } else {
           console.log('❌ ユーザーデータが無効:', userData);
           setUser(null);
         }
       } catch (error) {
+        console.warn('⚠️ 認証状態確認エラー（正常な動作）:', error);
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -64,18 +77,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       setIsLoading(true);
-      
+
       // lib/auth の login を利用
       const userData = await authLogin({ username, password });
       console.log('🔍 ログインレスポンス:', userData);
-      
+
       if (userData && userData.success && userData.user) {
         setUser({
           id: userData.user.id,
           username: userData.user.username,
           displayName: userData.user.displayName || userData.user.display_name,
           role: userData.user.role,
-          department: userData.user.department
+          department: userData.user.department,
         });
       } else {
         console.log('❌ ログインレスポンスが無効:', userData);
@@ -106,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user: user ? user.username : null,
     isLoading,
     authChecked,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 
   // 認証状態確認中は常にローディング画面を表示（nullレンダリング禁止）
@@ -114,10 +127,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log('⏳ AuthProvider: 認証状態確認中、ローディング画面を表示');
     return (
       <AuthContext.Provider value={{ user, isLoading, login, logout }}>
-        <div className="flex justify-center items-center h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-gray-600">認証状態を確認中...</p>
+        <div className='flex justify-center items-center h-screen'>
+          <div className='text-center'>
+            <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4'></div>
+            <p className='text-gray-600'>認証状態を確認中...</p>
           </div>
         </div>
       </AuthContext.Provider>

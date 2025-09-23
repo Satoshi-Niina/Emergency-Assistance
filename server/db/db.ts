@@ -1,12 +1,20 @@
 import postgres from 'postgres';
 
 // データベース接続設定 - DATABASE_URLのみを使用
-const sql = postgres(process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/emergency_assistance', { // 使用中: データベース接続文字列
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false, // 使用中: 環境判別
-  max: 10,
-  idle_timeout: 20,
-  connect_timeout: 10,
-});
+const sql = postgres(
+  process.env.DATABASE_URL ||
+    'postgresql://postgres:password@localhost:5432/emergency_assistance',
+  {
+    // 使用中: データベース接続文字列
+    ssl:
+      process.env.NODE_ENV === 'production'
+        ? { rejectUnauthorized: false }
+        : false, // 使用中: 環境判別
+    max: 10,
+    idle_timeout: 20,
+    connect_timeout: 10,
+  }
+);
 
 export { sql };
 
@@ -22,9 +30,11 @@ export const query = async (text: string, params?: any[]): Promise<any> => {
 };
 
 // トランザクション実行関数
-export const transaction = async (callback: (client: any) => Promise<any>): Promise<any> => {
+export const transaction = async (
+  callback: (client: any) => Promise<any>
+): Promise<any> => {
   try {
-    return await sql.begin(async (tx) => {
+    return await sql.begin(async tx => {
       return await callback(tx);
     });
   } catch (error) {
@@ -56,5 +66,5 @@ export default {
   transaction,
   closePool,
   testConnection,
-  sql
-}; 
+  sql,
+};

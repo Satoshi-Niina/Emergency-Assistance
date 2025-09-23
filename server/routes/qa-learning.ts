@@ -10,21 +10,21 @@ const router = Router();
 // Q&Aセッションから学習データを生成
 router.post('/generate-learning-data', requireAuth, async (req, res) => {
   try {
-    const { 
-      question, 
-      answer, 
-      solution, 
-      success, 
+    const {
+      question,
+      answer,
+      solution,
+      success,
       category = 'troubleshooting',
       machineType,
       machineNumber,
-      timestamp 
+      timestamp,
     } = req.body;
 
     if (!question || !answer || !solution) {
       return res.status(400).json({
         success: false,
-        error: '必須パラメータが不足しています'
+        error: '必須パラメータが不足しています',
       });
     }
 
@@ -59,7 +59,7 @@ router.post('/generate-learning-data', requireAuth, async (req, res) => {
 `;
 
     const response = await processOpenAIRequest(learningPrompt, false);
-    
+
     let learningData;
     try {
       learningData = JSON.parse(response);
@@ -67,7 +67,7 @@ router.post('/generate-learning-data', requireAuth, async (req, res) => {
       console.error('学習データのJSON解析エラー:', parseError);
       return res.status(500).json({
         success: false,
-        error: '学習データの生成に失敗しました'
+        error: '学習データの生成に失敗しました',
       });
     }
 
@@ -83,7 +83,7 @@ router.post('/generate-learning-data', requireAuth, async (req, res) => {
       machineNumber,
       category,
       timestamp: timestamp || new Date().toISOString(),
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     };
 
     // ナレッジベースに追加
@@ -92,14 +92,13 @@ router.post('/generate-learning-data', requireAuth, async (req, res) => {
     res.json({
       success: true,
       data: savedData,
-      message: '学習データが正常に生成・保存されました'
+      message: '学習データが正常に生成・保存されました',
     });
-
   } catch (error) {
     console.error('学習データ生成エラー:', error);
     res.status(500).json({
       success: false,
-      error: '学習データの生成中にエラーが発生しました'
+      error: '学習データの生成中にエラーが発生しました',
     });
   }
 });
@@ -147,16 +146,22 @@ ${learningData.prevention}
 
     const fileName = `learning_${Date.now()}.json`;
     const filePath = path.join(knowledgeDir, fileName);
-    
-    fs.writeFileSync(filePath, JSON.stringify({
-      content: knowledgeContent,
-      metadata: learningData,
-      keywords: learningData.keywords,
-      category: learningData.category
-    }, null, 2));
+
+    fs.writeFileSync(
+      filePath,
+      JSON.stringify(
+        {
+          content: knowledgeContent,
+          metadata: learningData,
+          keywords: learningData.keywords,
+          category: learningData.category,
+        },
+        null,
+        2
+      )
+    );
 
     console.log(`学習データを保存しました: ${filePath}`);
-
   } catch (error) {
     console.error('ナレッジベースへの追加エラー:', error);
     throw error;
@@ -167,15 +172,16 @@ ${learningData.prevention}
 router.get('/learning-data', requireAuth, async (req, res) => {
   try {
     const knowledgeDir = path.join(process.cwd(), 'knowledge-base', 'learning');
-    
+
     if (!fs.existsSync(knowledgeDir)) {
       return res.json({
         success: true,
-        data: []
+        data: [],
       });
     }
 
-    const files = fs.readdirSync(knowledgeDir)
+    const files = fs
+      .readdirSync(knowledgeDir)
       .filter((file: string) => file.endsWith('.json'))
       .sort((a: string, b: string) => {
         const aTime = fs.statSync(path.join(knowledgeDir, a)).mtime.getTime();
@@ -183,32 +189,33 @@ router.get('/learning-data', requireAuth, async (req, res) => {
         return bTime - aTime;
       });
 
-    const learningData = files.map((file: string) => {
-      try {
-        const filePath = path.join(knowledgeDir, file);
-        const content = fs.readFileSync(filePath, 'utf-8');
-        const data = JSON.parse(content);
-        return {
-          id: file.replace('.json', ''),
-          ...data.metadata,
-          content: data.content
-        };
-      } catch (error) {
-        console.error(`ファイル読み込みエラー: ${file}`, error);
-        return null;
-      }
-    }).filter(Boolean);
+    const learningData = files
+      .map((file: string) => {
+        try {
+          const filePath = path.join(knowledgeDir, file);
+          const content = fs.readFileSync(filePath, 'utf-8');
+          const data = JSON.parse(content);
+          return {
+            id: file.replace('.json', ''),
+            ...data.metadata,
+            content: data.content,
+          };
+        } catch (error) {
+          console.error(`ファイル読み込みエラー: ${file}`, error);
+          return null;
+        }
+      })
+      .filter(Boolean);
 
     res.json({
       success: true,
-      data: learningData
+      data: learningData,
     });
-
   } catch (error) {
     console.error('学習データ取得エラー:', error);
     res.status(500).json({
       success: false,
-      error: '学習データの取得中にエラーが発生しました'
+      error: '学習データの取得中にエラーが発生しました',
     });
   }
 });
@@ -219,25 +226,24 @@ router.delete('/learning-data/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
     const knowledgeDir = path.join(process.cwd(), 'knowledge-base', 'learning');
     const filePath = path.join(knowledgeDir, `${id}.json`);
-    
+
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
       res.json({
         success: true,
-        message: '学習データが削除されました'
+        message: '学習データが削除されました',
       });
     } else {
       res.status(404).json({
         success: false,
-        error: '指定された学習データが見つかりません'
+        error: '指定された学習データが見つかりません',
       });
     }
-
   } catch (error) {
     console.error('学習データ削除エラー:', error);
     res.status(500).json({
       success: false,
-      error: '学習データの削除中にエラーが発生しました'
+      error: '学習データの削除中にエラーが発生しました',
     });
   }
 });

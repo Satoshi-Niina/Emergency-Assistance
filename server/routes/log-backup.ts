@@ -10,7 +10,7 @@ const router = express.Router();
  * ログファイルをzip圧縮してbackupsディレクトリへ保存
  * body: { files: string[] }
  */
-router.post('/backup', async (req, res) => {
+router.post('/backup', async (_req, res) => {
   try {
     const { files } = req.body;
     if (!Array.isArray(files) || files.length === 0) {

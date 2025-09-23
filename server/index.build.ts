@@ -1,13 +1,18 @@
-import app from "./app.js";
-import { createServer } from "node:http";
-import { registerRoutes } from "./routes.js";
+import app from './app.js';
+import { createServer } from 'node:http';
+import { registerRoutes } from './routes.js';
 
 async function main() {
   // Azure Storage統合の初期化
-  if (process.env.NODE_ENV === 'production' && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+  if (
+    process.env.NODE_ENV === 'production' &&
+    process.env.AZURE_STORAGE_CONNECTION_STRING
+  ) {
     try {
       console.log('🚀 Azure Storage統合を初期化中...');
-      const { knowledgeBaseAzure } = await import('./lib/knowledge-base-azure.js');
+      const { knowledgeBaseAzure } = await import(
+        './lib/knowledge-base-azure.js'
+      );
       await knowledgeBaseAzure.initialize();
       console.log('✅ Azure Storage統合初期化完了');
     } catch (azureError) {
@@ -18,7 +23,7 @@ async function main() {
 
   const server = createServer(app);
   const PORT = process.env.PORT || 8080;
-  
+
   server.listen(PORT, () => {
     console.log(`🚀 [BUILD] Server running at http://localhost:${PORT}`);
     console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
@@ -38,7 +43,7 @@ async function main() {
   process.on('SIGINT', gracefulShutdown);
 }
 
-main().catch((err) => {
-  console.error("❌ [BUILD] Failed to start server:");
+main().catch(err => {
+  console.error('❌ [BUILD] Failed to start server:');
   console.error(err);
 });

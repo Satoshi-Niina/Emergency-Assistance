@@ -25,7 +25,7 @@ class SecurityMonitor {
     this.suspiciousIPs = new Set();
     this.failedAttempts = new Map();
     this.lastCleanup = Date.now();
-    
+
     // ログディレクトリを作成
     const logDir = path.dirname(this.logFile);
     if (!fs.existsSync(logDir)) {
@@ -42,7 +42,7 @@ class SecurityMonitor {
       userAgent: req.get('User-Agent') || 'unknown',
       url: req.originalUrl,
       method: req.method,
-      details: this.sanitizeDetails(details)
+      details: this.sanitizeDetails(details),
     };
 
     // コンソールに出力
@@ -60,17 +60,19 @@ class SecurityMonitor {
 
   // クライアントIPを取得
   private getClientIP(req: Request): string {
-    return req.ip || 
-           req.connection.remoteAddress || 
-           req.socket.remoteAddress || 
-           (req.connection as any)?.socket?.remoteAddress || 
-           'unknown';
+    return (
+      req.ip ||
+      req.connection.remoteAddress ||
+      req.socket.remoteAddress ||
+      (req.connection as any)?.socket?.remoteAddress ||
+      'unknown'
+    );
   }
 
   // 機密情報を除去
   private sanitizeDetails(details: any): any {
     const sanitized = { ...details };
-    
+
     // 機密情報を除去
     const sensitiveFields = ['password', 'token', 'secret', 'key', 'auth'];
     for (const field of sensitiveFields) {
@@ -78,7 +80,7 @@ class SecurityMonitor {
         sanitized[field] = '[REDACTED]';
       }
     }
-    
+
     return sanitized;
   }
 
@@ -87,7 +89,7 @@ class SecurityMonitor {
     try {
       const logEntry = JSON.stringify(event) + '\n';
       fs.appendFileSync(this.logFile, logEntry);
-      
+
       // ログファイルサイズをチェック
       const stats = fs.statSync(this.logFile);
       if (stats.size > this.maxLogSize) {
@@ -104,7 +106,7 @@ class SecurityMonitor {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const rotatedFile = this.logFile.replace('.log', `-${timestamp}.log`);
       fs.renameSync(this.logFile, rotatedFile);
-      
+
       // 古いログファイルを削除（30日以上前）
       this.cleanupOldLogs();
     } catch (error) {
@@ -117,13 +119,13 @@ class SecurityMonitor {
     try {
       const logDir = path.dirname(this.logFile);
       const files = fs.readdirSync(logDir);
-      const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-      
+      const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+
       files.forEach(file => {
         if (file.startsWith('security-') && file.endsWith('.log')) {
           const filePath = path.join(logDir, file);
           const stats = fs.statSync(filePath);
-          
+
           if (stats.mtime.getTime() < thirtyDaysAgo) {
             fs.unlinkSync(filePath);
           }
@@ -137,19 +139,21 @@ class SecurityMonitor {
   // 疑わしい活動をチェック
   private checkSuspiciousActivity(event: SecurityEvent) {
     const ip = event.ip;
-    
+
     // 失敗したログイン試行をカウント
     if (event.event.includes('LOGIN_FAILED')) {
       const attempts = this.failedAttempts.get(ip) || 0;
       this.failedAttempts.set(ip, attempts + 1);
-      
+
       // 5回以上失敗した場合は疑わしいIPとしてマーク
       if (attempts + 1 >= 5) {
         this.suspiciousIPs.add(ip);
-        console.log(`🚨 SUSPICIOUS IP DETECTED: ${ip} - Multiple failed login attempts`);
+        console.log(
+          `🚨 SUSPICIOUS IP DETECTED: ${ip} - Multiple failed login attempts`
+        );
       }
     }
-    
+
     // 成功したログインで失敗カウントをリセット
     if (event.event.includes('LOGIN_SUCCESS')) {
       this.failedAttempts.delete(ip);
@@ -161,7 +165,7 @@ class SecurityMonitor {
   private cleanup() {
     const now = Date.now();
     const oneHour = 60 * 60 * 1000;
-    
+
     if (now - this.lastCleanup > oneHour) {
       // 失敗カウントをリセット（1時間ごと）
       this.failedAttempts.clear();
@@ -179,7 +183,7 @@ class SecurityMonitor {
     return {
       suspiciousIPs: Array.from(this.suspiciousIPs),
       failedAttempts: Object.fromEntries(this.failedAttempts),
-      lastCleanup: new Date(this.lastCleanup).toISOString()
+      lastCleanup: new Date(this.lastCleanup).toISOString(),
     };
   }
 }
@@ -188,18 +192,22 @@ class SecurityMonitor {
 export const securityMonitor = new SecurityMonitor();
 
 // セキュリティ監視ミドルウェア
-export const securityMonitoring = (req: Request, res: Response, next: NextFunction) => {
+export const securityMonitoring = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const ip = req.ip || req.connection.remoteAddress || 'unknown';
-  
+
   // 疑わしいIPからのアクセスをブロック
   if (securityMonitor.isSuspiciousIP(ip)) {
     securityMonitor.logEvent('BLOCKED_SUSPICIOUS_IP', { ip }, req);
     return res.status(403).json({
       success: false,
-      error: 'アクセスがブロックされました'
+      error: 'アクセスがブロックされました',
     });
   }
-  
+
   next();
 };
 

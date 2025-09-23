@@ -63,7 +63,12 @@ app.get('/api/health', async (_req: Request, res: Response) => {
   } catch (e: any) {
     return res
       .status(200)
-      .json({ status: 'degraded', db: 'fail', dbUrlLen, message: String(e?.message || e) });
+      .json({
+        status: 'degraded',
+        db: 'fail',
+        dbUrlLen,
+        message: String(e?.message || e),
+      });
   }
 });
 
@@ -103,7 +108,10 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
   if (safeLen(env.SESSION_SECRET) < 16) {
     return res
       .status(503)
-      .json({ error: 'server_not_ready', reason: 'SESSION_SECRET too short or missing' });
+      .json({
+        error: 'server_not_ready',
+        reason: 'SESSION_SECRET too short or missing',
+      });
   }
   const { username, password } = (req.body || {}) as {
     username?: string;
@@ -162,7 +170,9 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
     });
     res.json({ ok: true, mode: 'db' });
   } catch (e: any) {
-    res.status(500).json({ message: 'Login failed', error: String(e?.message || e) });
+    res
+      .status(500)
+      .json({ message: 'Login failed', error: String(e?.message || e) });
   }
 });
 
@@ -194,7 +204,9 @@ app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
   return res.status(500).json({ err: msg, path: req.path, stack: top });
 });
 app.use((req: Request, res: Response) =>
-  res.status(404).json({ error: 'Not found', path: req.path, method: req.method })
+  res
+    .status(404)
+    .json({ error: 'Not found', path: req.path, method: req.method })
 );
 
 // ====== listen を 1 箇所に統一 & 起動ログ ======

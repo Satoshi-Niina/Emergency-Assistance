@@ -1,52 +1,89 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileText, Image, Calendar, MapPin, Settings, Filter, Download, Trash2, FileDown, FileText as FileTextIcon, Table, Grid3X3, List, ClipboardList, FileSpreadsheet, Grid, Printer } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
-import { Badge } from "../components/ui/badge";
+import {
+  Search,
+  FileText,
+  Image,
+  Calendar,
+  MapPin,
+  Settings,
+  Filter,
+  Download,
+  Trash2,
+  FileDown,
+  FileText as FileTextIcon,
+  Table,
+  Grid3X3,
+  List,
+  ClipboardList,
+  FileSpreadsheet,
+  Grid,
+  Printer,
+} from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select';
+import { Badge } from '../components/ui/badge';
 import { SupportHistoryItem, HistorySearchFilters } from '../types/history';
-import { 
-  fetchHistoryList, 
+import {
+  fetchHistoryList,
   fetchMachineData,
-  deleteHistory, 
-  exportHistoryItem, 
-  exportSelectedHistory, 
+  deleteHistory,
+  exportHistoryItem,
+  exportSelectedHistory,
   exportAllHistory,
   advancedSearch,
-  generateReport
+  generateReport,
 } from '../lib/api/history-api';
 import ChatExportReport from '../components/report/chat-export-report';
 
-
-
 // 画像ユーティリティ関数
-const API_BASE = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_BASE_URL || window.location.origin);
+const API_BASE = import.meta.env.DEV
+  ? ''
+  : import.meta.env.VITE_API_BASE_URL || window.location.origin;
 
 async function fetchDetailFile(name: string) {
   // IDベースのエンドポイントを試行
   const endpoints = [
     `${API_BASE}/api/history/${name}`,
     `${API_BASE}/api/history/detail/${name}`,
-    `${API_BASE}/api/history/file/${name}`
+    `${API_BASE}/api/history/file/${name}`,
   ];
-  
+
   for (const url of endpoints) {
     try {
       console.log('[fetchDetailFile] リクエスト開始:', url);
       const r = await fetch(url, { credentials: 'include' });
-      console.log('[fetchDetailFile] レスポンス受信:', { status: r.status, ok: r.ok, url });
-      
+      console.log('[fetchDetailFile] レスポンス受信:', {
+        status: r.status,
+        ok: r.ok,
+        url,
+      });
+
       if (r.ok) {
         const json = await r.json();
-        console.log('[fetchDetailFile] JSON解析完了:', { hasData: !!json, keys: Object.keys(json || {}) });
+        console.log('[fetchDetailFile] JSON解析完了:', {
+          hasData: !!json,
+          keys: Object.keys(json || {}),
+        });
         return json;
       }
     } catch (error) {
       console.warn('[fetchDetailFile] エンドポイント失敗:', url, error);
     }
   }
-  
+
   // すべてのエンドポイントが失敗した場合
   throw new Error(`detail 404 - IDが見つかりません: ${name}`);
 }
@@ -68,7 +105,11 @@ interface SearchFilters {
 
 interface MachineData {
   machineTypes: Array<{ id: string; machineTypeName: string }>;
-  machines: Array<{ id: string; machineNumber: string; machineTypeName: string }>;
+  machines: Array<{
+    id: string;
+    machineNumber: string;
+    machineTypeName: string;
+  }>;
 }
 
 const HistoryPage: React.FC = () => {
@@ -79,8 +120,11 @@ const HistoryPage: React.FC = () => {
     const fetchBlobFileList = async () => {
       setBlobLoading(true);
       try {
-        const API_BASE = import.meta.env.VITE_API_BASE_URL || window.location.origin;
-        const res = await fetch(`${API_BASE}/api/blob/list?container=knowledge`);
+        const API_BASE =
+          import.meta.env.VITE_API_BASE_URL || window.location.origin;
+        const res = await fetch(
+          `${API_BASE}/api/blob/list?container=knowledge`
+        );
         const data = await res.json();
         if (data.success) {
           setBlobFiles(data.data);
@@ -100,44 +144,46 @@ const HistoryPage: React.FC = () => {
     machineType: '',
     machineNumber: '',
     searchText: '',
-    searchDate: ''
+    searchDate: '',
   });
   const [loading, setLoading] = useState(true);
-  const [selectedItem, setSelectedItem] = useState<SupportHistoryItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<SupportHistoryItem | null>(
+    null
+  );
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  
+
   // エクスポート機能の状態
 
   const [exportLoading, setExportLoading] = useState(false);
-  
+
   // レポート機能の状態
   const [reportLoading, setReportLoading] = useState(false);
-  
+
   // 編集・プレビュー機能の状態
-  const [editingItem, setEditingItem] = useState<SupportHistoryItem | null>(null);
-  const [previewItem, setPreviewItem] = useState<SupportHistoryItem | null>(null);
+  const [editingItem, setEditingItem] = useState<SupportHistoryItem | null>(
+    null
+  );
+  const [previewItem, setPreviewItem] = useState<SupportHistoryItem | null>(
+    null
+  );
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
-  
+
   // 印刷機能の状態
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [printMode, setPrintMode] = useState<'table' | 'report'>('table');
-  
+
   // レポート表示の状態
   const [showReport, setShowReport] = useState(false);
   const [selectedReportData, setSelectedReportData] = useState<any>(null);
   const [selectedFileName, setSelectedFileName] = useState<string>('');
-  
-
-  
-
 
   // 機種・機械番号マスターデータ（編集UI用 - PostgreSQLから）
-  const [machineData, setMachineData] = useState<MachineData>({ 
-    machineTypes: [], 
-    machines: [] 
+  const [machineData, setMachineData] = useState<MachineData>({
+    machineTypes: [],
+    machines: [],
   });
 
   // 履歴検索フィルター用データ（保存されたJSONファイルから）
@@ -146,7 +192,7 @@ const HistoryPage: React.FC = () => {
     machineNumbers: string[];
   }>({
     machineTypes: [],
-    machineNumbers: []
+    machineNumbers: [],
   });
 
   const [searchFilterLoading, setSearchFilterLoading] = useState(false);
@@ -154,7 +200,7 @@ const HistoryPage: React.FC = () => {
   // JSONデータを正規化する関数
   const normalizeJsonData = (item: SupportHistoryItem): SupportHistoryItem => {
     console.log('正規化前のアイテム:', item);
-    
+
     if (!item.jsonData) {
       console.log('jsonDataが存在しません');
       return item;
@@ -162,7 +208,10 @@ const HistoryPage: React.FC = () => {
 
     // 既にitem直接にmachineTypeとmachineNumberが存在する場合
     if (item.machineType && item.machineNumber) {
-      console.log('既に正規化済み:', { machineType: item.machineType, machineNumber: item.machineNumber });
+      console.log('既に正規化済み:', {
+        machineType: item.machineType,
+        machineNumber: item.machineNumber,
+      });
       return item;
     }
 
@@ -178,30 +227,37 @@ const HistoryPage: React.FC = () => {
         problemDescription: item.jsonData.problemDescription || '',
         machineType: item.machineType || item.jsonData.machineType || '',
         machineNumber: item.machineNumber || item.jsonData.machineNumber || '',
-        extractedComponents: item.jsonData.extractedComponents || item.extractedComponents || [],
-        extractedSymptoms: item.jsonData.extractedSymptoms || item.extractedSymptoms || [],
-        possibleModels: item.jsonData.possibleModels || item.possibleModels || [],
+        extractedComponents:
+          item.jsonData.extractedComponents || item.extractedComponents || [],
+        extractedSymptoms:
+          item.jsonData.extractedSymptoms || item.extractedSymptoms || [],
+        possibleModels:
+          item.jsonData.possibleModels || item.possibleModels || [],
         conversationHistory: item.jsonData.conversationHistory || [],
-        savedImages: item.jsonData.savedImages || []
-      }
+        savedImages: item.jsonData.savedImages || [],
+      },
     };
 
     // chatDataが存在する場合の追加処理
     if (item.jsonData.chatData) {
       console.log('chatData形式を検出');
       const chatData = item.jsonData.chatData;
-      
+
       // machineInfoからmachineTypeとmachineNumberを取得
       const machineTypeName = chatData.machineInfo?.machineTypeName || '';
       const machineNumber = chatData.machineInfo?.machineNumber || '';
-      
+
       console.log('chatDataから抽出:', { machineTypeName, machineNumber });
 
       // chatDataの値で上書き
-      normalizedItem.machineType = machineTypeName || normalizedItem.machineType;
-      normalizedItem.machineNumber = machineNumber || normalizedItem.machineNumber;
-      normalizedItem.jsonData.machineType = machineTypeName || normalizedItem.jsonData.machineType;
-      normalizedItem.jsonData.machineNumber = machineNumber || normalizedItem.jsonData.machineNumber;
+      normalizedItem.machineType =
+        machineTypeName || normalizedItem.machineType;
+      normalizedItem.machineNumber =
+        machineNumber || normalizedItem.machineNumber;
+      normalizedItem.jsonData.machineType =
+        machineTypeName || normalizedItem.jsonData.machineType;
+      normalizedItem.jsonData.machineNumber =
+        machineNumber || normalizedItem.jsonData.machineNumber;
     }
 
     console.log('正規化後のアイテム:', normalizedItem);
@@ -214,28 +270,32 @@ const HistoryPage: React.FC = () => {
       if (event.data && event.data.type === 'UPDATE_HISTORY_ITEM') {
         const updatedData = event.data.data;
         console.log('履歴データ更新メッセージを受信:', updatedData);
-        
+
         // 履歴一覧表の該当アイテムを更新
-        setHistoryItems(prevItems => 
-          prevItems.map(item => 
-            item.id === updatedData.id || item.chatId === updatedData.chatId 
+        setHistoryItems(prevItems =>
+          prevItems.map(item =>
+            item.id === updatedData.id || item.chatId === updatedData.chatId
               ? { ...item, ...updatedData }
               : item
           )
         );
-        
+
         // フィルタリングされたアイテムも更新
-        setFilteredItems(prevItems => 
-          prevItems.map(item => 
-            item.id === updatedData.id || item.chatId === updatedData.chatId 
+        setFilteredItems(prevItems =>
+          prevItems.map(item =>
+            item.id === updatedData.id || item.chatId === updatedData.chatId
               ? { ...item, ...updatedData }
               : item
           )
         );
-        
+
         // 選択中のアイテムも更新
-        if (selectedItem && (selectedItem.id === updatedData.id || selectedItem.chatId === updatedData.chatId)) {
-          setSelectedItem(prev => prev ? { ...prev, ...updatedData } : null);
+        if (
+          selectedItem &&
+          (selectedItem.id === updatedData.id ||
+            selectedItem.chatId === updatedData.chatId)
+        ) {
+          setSelectedItem(prev => (prev ? { ...prev, ...updatedData } : null));
         }
       }
     };
@@ -262,7 +322,7 @@ const HistoryPage: React.FC = () => {
           }),
           fetchMachineDataFromAPI().catch(error => {
             console.error('機種データ取得エラー:', error);
-          })
+          }),
         ]);
         console.log('🔍 データ初期化完了');
       } catch (error) {
@@ -280,40 +340,53 @@ const HistoryPage: React.FC = () => {
   const fetchMachineDataFromAPI = async () => {
     try {
       setMachineDataLoading(true);
-      
+
       // 機種・機械番号データを専用APIから取得
       console.log('🔍 機種・機械番号データ取得開始');
       const response = await fetch('/api/history/machine-data');
       console.log('🔍 APIレスポンス:', response.status, response.statusText);
       const data = await response.json();
       console.log('🔍 APIレスポンスデータ:', data);
-      
+
       if (data.success && data.machineTypes && data.machines) {
         // 機種一覧を構築（重複除去）
         const machineTypeSet = new Set<string>();
         const machineTypes: Array<{ id: string; machineTypeName: string }> = [];
-        
+
         // 機械番号一覧を構築（重複除去）
         const machineSet = new Set<string>();
-        const machines: Array<{ id: string; machineNumber: string; machineTypeName: string }> = [];
-        
+        const machines: Array<{
+          id: string;
+          machineNumber: string;
+          machineTypeName: string;
+        }> = [];
+
         console.log('🔍 機種・機械番号データは専用APIから取得されます');
-        
+
         const result = {
           machineTypes: data.machineTypes || [],
-          machines: data.machines || []
+          machines: data.machines || [],
         };
-        
+
         console.log('🔍 機種・機械番号データ取得結果:', result);
         console.log('🔍 機種数:', result.machineTypes.length);
         console.log('🔍 機械番号数:', result.machines.length);
-        console.log('🔍 機種一覧:', result.machineTypes.map(t => t.machineTypeName));
-        console.log('🔍 機械番号一覧:', result.machines.map(m => `${m.machineNumber} (${m.machineTypeName})`));
+        console.log(
+          '🔍 機種一覧:',
+          result.machineTypes.map(t => t.machineTypeName)
+        );
+        console.log(
+          '🔍 機械番号一覧:',
+          result.machines.map(m => `${m.machineNumber} (${m.machineTypeName})`)
+        );
         console.log('🔍 setMachineData呼び出し前:', result);
         setMachineData(result);
         console.log('🔍 setMachineData呼び出し完了');
       } else {
-        console.log('⚠️ 機種・機械番号データが正しく取得できませんでした:', data);
+        console.log(
+          '⚠️ 機種・機械番号データが正しく取得できませんでした:',
+          data
+        );
         console.log('⚠️ data.success:', data.success);
         console.log('⚠️ data.machineTypes:', data.machineTypes);
         console.log('⚠️ data.machines:', data.machines);
@@ -332,18 +405,18 @@ const HistoryPage: React.FC = () => {
     try {
       setSearchFilterLoading(true);
       console.log('🔍 履歴検索フィルターデータ取得開始');
-      
+
       const response = await fetch('/api/history/search-filters');
       const result = await response.json();
-      
+
       if (result.success) {
         setSearchFilterData({
           machineTypes: result.machineTypes || [],
-          machineNumbers: result.machineNumbers || []
+          machineNumbers: result.machineNumbers || [],
         });
         console.log('🔍 履歴検索フィルターデータ取得完了:', {
           machineTypes: result.machineTypes?.length || 0,
-          machineNumbers: result.machineNumbers?.length || 0
+          machineNumbers: result.machineNumbers?.length || 0,
         });
       } else {
         console.error('履歴検索フィルターデータ取得失敗:', result.error);
@@ -358,50 +431,56 @@ const HistoryPage: React.FC = () => {
   const fetchHistoryData = async (page: number = 1) => {
     try {
       setLoading(true);
-      
+
       // サーバー側でフィルタリングを行う
       const params = new URLSearchParams();
-      if (filters.machineType) params.append('machineType', filters.machineType);
-      if (filters.machineNumber) params.append('machineNumber', filters.machineNumber);
+      if (filters.machineType)
+        params.append('machineType', filters.machineType);
+      if (filters.machineNumber)
+        params.append('machineNumber', filters.machineNumber);
       if (filters.searchText) params.append('searchText', filters.searchText);
       if (filters.searchDate) params.append('searchDate', filters.searchDate);
       params.append('limit', '20');
       params.append('offset', ((page - 1) * 20).toString());
-      
+
       const response = await fetch(`/api/history?${params.toString()}`);
       const data = await response.json();
-      
+
       console.log('🔍 取得したデータ:', data);
-      
+
       if (data.success && data.items) {
         console.log('🔍 取得件数:', data.items.length);
-        
+
         // 機種・機械番号データの確認
         data.items.forEach((item: any, index: number) => {
           console.log(`🔍 アイテム ${index + 1}:`, {
             fileName: item.fileName,
             machineType: item.machineType,
             machineNumber: item.machineNumber,
-            machineInfo: item.machineInfo
+            machineInfo: item.machineInfo,
           });
         });
-        
+
         // ローカルストレージから保存されたデータを読み込んで履歴データを更新
         const updatedItems = data.items.map((item: any) => {
-          const savedKey = 'savedMachineFailureReport_' + (item.id || item.chatId);
+          const savedKey =
+            'savedMachineFailureReport_' + (item.id || item.chatId);
           const savedData = localStorage.getItem(savedKey);
           let processedItem = item;
-          
+
           if (savedData) {
             try {
               const parsedData = JSON.parse(savedData);
-              console.log('ローカルストレージから保存されたデータを読み込み:', parsedData);
+              console.log(
+                'ローカルストレージから保存されたデータを読み込み:',
+                parsedData
+              );
               processedItem = { ...item, ...parsedData };
             } catch (parseError) {
               console.warn('保存されたデータの解析に失敗:', parseError);
             }
           }
-          
+
           // SupportHistoryItem型に変換
           const convertedItem: SupportHistoryItem = {
             id: processedItem.id,
@@ -410,7 +489,10 @@ const HistoryPage: React.FC = () => {
             machineType: processedItem.machineType || '',
             machineNumber: processedItem.machineNumber || '',
             title: processedItem.title,
-            createdAt: processedItem.createdAt || processedItem.exportTimestamp || new Date().toISOString(),
+            createdAt:
+              processedItem.createdAt ||
+              processedItem.exportTimestamp ||
+              new Date().toISOString(),
             lastModified: processedItem.lastModified,
             extractedComponents: processedItem.extractedComponents,
             extractedSymptoms: processedItem.extractedSymptoms,
@@ -428,20 +510,20 @@ const HistoryPage: React.FC = () => {
               conversationHistory: processedItem.conversationHistory,
               chatData: processedItem.chatData,
               savedImages: processedItem.savedImages,
-              metadata: processedItem.metadata
-            }
+              metadata: processedItem.metadata,
+            },
           };
-          
+
           console.log('変換されたアイテム:', {
             fileName: convertedItem.fileName,
             machineType: convertedItem.machineType,
             machineNumber: convertedItem.machineNumber,
-            jsonData: convertedItem.jsonData
+            jsonData: convertedItem.jsonData,
           });
-          
+
           return convertedItem;
         });
-        
+
         setHistoryItems(updatedItems);
         setFilteredItems(updatedItems);
         setTotalPages(Math.ceil(data.total / 20));
@@ -476,7 +558,7 @@ const HistoryPage: React.FC = () => {
     // filters を更新
     setFilters(prev => ({
       ...prev,
-      [key]: value
+      [key]: value,
     }));
 
     // 編集ダイアログが開いている場合は、編集中のアイテムにも反映する
@@ -484,12 +566,17 @@ const HistoryPage: React.FC = () => {
     try {
       if (editingItem) {
         if (key === 'machineType' || key === 'machineNumber') {
-          setEditingItem(prev => prev ? { ...prev, [key]: value } as SupportHistoryItem : prev);
+          setEditingItem(prev =>
+            prev ? ({ ...prev, [key]: value } as SupportHistoryItem) : prev
+          );
           console.log(`filters -> editingItem sync: ${key} = ${value}`);
         }
       }
     } catch (syncError) {
-      console.warn('フィルターから編集アイテムへの同期に失敗しました:', syncError);
+      console.warn(
+        'フィルターから編集アイテムへの同期に失敗しました:',
+        syncError
+      );
     }
   };
 
@@ -541,7 +628,9 @@ const HistoryPage: React.FC = () => {
 
     try {
       setExportLoading(true);
-      const selectedItemsArray = filteredItems.filter(item => selectedItems.has(item.id));
+      const selectedItemsArray = filteredItems.filter(item =>
+        selectedItems.has(item.id)
+      );
       const blob = await exportSelectedHistory(selectedItemsArray, format);
       downloadFile(blob, `selected_history.${format}`);
     } catch (error) {
@@ -560,11 +649,6 @@ const HistoryPage: React.FC = () => {
     }
   };
 
-
-
-
-
-
   const downloadFile = (blob: Blob, filename: string) => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -576,8 +660,10 @@ const HistoryPage: React.FC = () => {
     document.body.removeChild(a);
   };
 
-
-  const handleExportItem = async (item: SupportHistoryItem, format: 'json' | 'csv' = 'json') => {
+  const handleExportItem = async (
+    item: SupportHistoryItem,
+    format: 'json' | 'csv' = 'json'
+  ) => {
     try {
       setExportLoading(true);
       const blob = await exportHistoryItem(item.id, format);
@@ -588,8 +674,6 @@ const HistoryPage: React.FC = () => {
       setExportLoading(false);
     }
   };
-
-
 
   const handleExportAll = async (format: 'json' | 'csv' = 'json') => {
     try {
@@ -608,7 +692,7 @@ const HistoryPage: React.FC = () => {
       machineType: '',
       machineNumber: '',
       searchText: '',
-      searchDate: ''
+      searchDate: '',
     });
   };
 
@@ -626,23 +710,23 @@ const HistoryPage: React.FC = () => {
     try {
       console.log('=== レポート生成開始 ===');
       setReportLoading(true);
-      
+
       // 選択されたアイテムのみを対象とする
       // 全件を対象とする
       const targetItems = filteredItems;
-      
-      console.log('レポート生成開始:', { 
+
+      console.log('レポート生成開始:', {
         filteredItemsCount: filteredItems.length,
-        targetItemsCount: targetItems.length
+        targetItemsCount: targetItems.length,
       });
-      
+
       // 対象アイテムがない場合は処理を停止
       if (targetItems.length === 0) {
         alert('対象アイテムがありません。');
         setReportLoading(false);
         return;
       }
-      
+
       // 各アイテムのデータ構造を確認
       targetItems.forEach((item, index) => {
         console.log(`アイテム${index + 1}のデータ構造:`, {
@@ -652,22 +736,22 @@ const HistoryPage: React.FC = () => {
           jsonDataKeys: item.jsonData ? Object.keys(item.jsonData) : [],
           machineInfo: item.machineInfo,
           machineType: item.machineType,
-          machineNumber: item.machineNumber
+          machineNumber: item.machineNumber,
         });
       });
-      
+
       // 選択されたアイテムからJSONデータを分析してレポートデータを生成
       const allTitles: string[] = [];
       const allComponents: string[] = [];
       const allSymptoms: string[] = [];
       const allModels: string[] = [];
-      
+
       targetItems.forEach(item => {
         const jsonData = item?.jsonData ?? item?.data ?? {};
-        
+
         // 事象タイトルを抽出（ファイル名から優先的に取得、次にJSONデータから）
         let title = null;
-        
+
         // まずファイル名から事象内容を抽出
         if (item.fileName) {
           const fileNameParts = item.fileName.split('_');
@@ -675,42 +759,47 @@ const HistoryPage: React.FC = () => {
             title = fileNameParts[0];
           }
         }
-        
+
         // ファイル名から取得できない場合は、JSONデータから取得
         if (!title) {
           title = jsonData?.title;
           if (!title && jsonData?.chatData?.messages) {
             // 従来フォーマットの場合、ユーザーメッセージから事象を抽出
-            const userMessages = jsonData?.chatData?.messages?.filter((msg: any) => !msg.isAiResponse);
+            const userMessages = jsonData?.chatData?.messages?.filter(
+              (msg: any) => !msg.isAiResponse
+            );
             if (userMessages?.length > 0) {
               title = userMessages[0]?.content;
             }
           }
         }
-        
+
         if (title) allTitles.push(title);
-        
-        if (jsonData?.extractedComponents) allComponents.push(...jsonData.extractedComponents);
-        if (jsonData?.extractedSymptoms) allSymptoms.push(...jsonData.extractedSymptoms);
-        if (jsonData?.possibleModels) allModels.push(...jsonData.possibleModels);
+
+        if (jsonData?.extractedComponents)
+          allComponents.push(...jsonData.extractedComponents);
+        if (jsonData?.extractedSymptoms)
+          allSymptoms.push(...jsonData.extractedSymptoms);
+        if (jsonData?.possibleModels)
+          allModels.push(...jsonData.possibleModels);
       });
-      
+
       console.log('抽出されたデータ:', {
         titles: allTitles,
         components: allComponents,
         symptoms: allSymptoms,
-        models: allModels
+        models: allModels,
       });
-      
+
       // 各アイテムごとに個別のレポートを生成
       const reportDataArray = targetItems.map((item, index) => {
         console.log(`レポート${index + 1}の生成開始:`, item.fileName);
-        
+
         const jsonData = item?.jsonData ?? item?.data ?? {};
-        
+
         // 事象タイトルを抽出（ファイル名から優先的に取得、次にJSONデータから）
         let title = '事象なし';
-        
+
         // まずファイル名から事象内容を抽出
         if (item.fileName) {
           const fileNameParts = item.fileName.split('_');
@@ -718,64 +807,88 @@ const HistoryPage: React.FC = () => {
             title = fileNameParts[0];
           }
         }
-        
+
         // ファイル名から取得できない場合は、JSONデータから取得
         if (title === '事象なし') {
           title = jsonData?.title;
           if (!title && jsonData?.chatData?.messages) {
             // 従来フォーマットの場合、ユーザーメッセージから事象を抽出
-            const userMessages = jsonData?.chatData?.messages?.filter((msg: any) => !msg.isAiResponse);
+            const userMessages = jsonData?.chatData?.messages?.filter(
+              (msg: any) => !msg.isAiResponse
+            );
             if (userMessages?.length > 0) {
               title = userMessages[0]?.content;
             }
           }
         }
-        
+
         // 機種と機械番号を抽出
-        const machineType = item.machineInfo?.machineTypeName || 
-                          jsonData?.machineType || 
-                          jsonData?.chatData?.machineInfo?.machineTypeName || 
-                          item.machineType || '';
-        const machineNumber = item.machineInfo?.machineNumber || 
-                            jsonData?.machineNumber || 
-                            jsonData?.chatData?.machineInfo?.machineNumber || 
-                            item.machineNumber || '';
-        
+        const machineType =
+          item.machineInfo?.machineTypeName ||
+          jsonData?.machineType ||
+          jsonData?.chatData?.machineInfo?.machineTypeName ||
+          item.machineType ||
+          '';
+        const machineNumber =
+          item.machineInfo?.machineNumber ||
+          jsonData?.machineNumber ||
+          jsonData?.chatData?.machineInfo?.machineNumber ||
+          item.machineNumber ||
+          '';
+
         console.log(`レポート${index + 1}の基本情報:`, {
           title,
           machineType,
-          machineNumber
+          machineNumber,
         });
-        
+
         // 画像データを収集（優先順位付き）
         const images = [];
-        
+
         try {
           // 優先順位1: conversationHistoryからBase64画像を取得（最優先）
           if (jsonData?.conversationHistory?.length > 0) {
-            console.log('handleGenerateReport: conversationHistoryからBase64画像を検索中...', jsonData.conversationHistory.length);
-            const imageMessages = jsonData.conversationHistory.filter((msg: any) => 
-              msg.content && typeof msg.content === 'string' && msg.content.startsWith('data:image/')
+            console.log(
+              'handleGenerateReport: conversationHistoryからBase64画像を検索中...',
+              jsonData.conversationHistory.length
             );
-            console.log('handleGenerateReport: conversationHistoryでBase64画像を発見:', imageMessages.length);
+            const imageMessages = jsonData.conversationHistory.filter(
+              (msg: any) =>
+                msg.content &&
+                typeof msg.content === 'string' &&
+                msg.content.startsWith('data:image/')
+            );
+            console.log(
+              'handleGenerateReport: conversationHistoryでBase64画像を発見:',
+              imageMessages.length
+            );
             imageMessages.forEach((msg, index) => {
               images.push({
                 id: `conv-${index}`,
                 url: msg.content,
                 fileName: `故障画像_${index + 1}`,
                 description: '機械故障箇所の写真',
-                source: 'conversationHistory'
+                source: 'conversationHistory',
               });
             });
           }
-          
+
           // 優先順位2: originalChatData.messagesからBase64画像を取得
           if (jsonData?.originalChatData?.messages?.length > 0) {
-            console.log('handleGenerateReport: originalChatData.messagesからBase64画像を検索中...', jsonData.originalChatData.messages.length);
-            const imageMessages = jsonData.originalChatData.messages.filter((msg: any) => 
-              msg.content && typeof msg.content === 'string' && msg.content.startsWith('data:image/')
+            console.log(
+              'handleGenerateReport: originalChatData.messagesからBase64画像を検索中...',
+              jsonData.originalChatData.messages.length
             );
-            console.log('handleGenerateReport: originalChatData.messagesでBase64画像を発見:', imageMessages.length);
+            const imageMessages = jsonData.originalChatData.messages.filter(
+              (msg: any) =>
+                msg.content &&
+                typeof msg.content === 'string' &&
+                msg.content.startsWith('data:image/')
+            );
+            console.log(
+              'handleGenerateReport: originalChatData.messagesでBase64画像を発見:',
+              imageMessages.length
+            );
             imageMessages.forEach((msg, index) => {
               // 既に追加済みの画像は除外
               if (!images.some(img => img.url === msg.content)) {
@@ -784,19 +897,28 @@ const HistoryPage: React.FC = () => {
                   url: msg.content,
                   fileName: `故障画像_${images.length + 1}`,
                   description: '機械故障箇所の写真',
-                  source: 'originalChatData'
+                  source: 'originalChatData',
                 });
               }
             });
           }
-          
+
           // 優先順位3: chatData.messagesからBase64画像を取得
           if (jsonData?.chatData?.messages?.length > 0) {
-            console.log('handleGenerateReport: chatData.messagesからBase64画像を検索中...', jsonData.chatData.messages.length);
-            const imageMessages = jsonData.chatData.messages.filter((msg: any) => 
-              msg.content && typeof msg.content === 'string' && msg.content.startsWith('data:image/')
+            console.log(
+              'handleGenerateReport: chatData.messagesからBase64画像を検索中...',
+              jsonData.chatData.messages.length
             );
-            console.log('handleGenerateReport: chatData.messagesでBase64画像を発見:', imageMessages.length);
+            const imageMessages = jsonData.chatData.messages.filter(
+              (msg: any) =>
+                msg.content &&
+                typeof msg.content === 'string' &&
+                msg.content.startsWith('data:image/')
+            );
+            console.log(
+              'handleGenerateReport: chatData.messagesでBase64画像を発見:',
+              imageMessages.length
+            );
             imageMessages.forEach((msg, index) => {
               // 既に追加済みの画像は除外
               if (!images.some(img => img.url === msg.content)) {
@@ -805,54 +927,75 @@ const HistoryPage: React.FC = () => {
                   url: msg.content,
                   fileName: `故障画像_${images.length + 1}`,
                   description: '機械故障箇所の写真',
-                  source: 'chatData'
+                  source: 'chatData',
                 });
               }
             });
           }
-          
+
           // 優先順位4: savedImagesフィールドから画像を取得
           if (jsonData?.savedImages?.length > 0) {
-            console.log('handleGenerateReport: savedImagesから画像を取得中...', jsonData.savedImages.length);
+            console.log(
+              'handleGenerateReport: savedImagesから画像を取得中...',
+              jsonData.savedImages.length
+            );
             jsonData.savedImages.forEach((img: any, index: number) => {
               // 既に追加済みの画像は除外
-              if (!images.some(existingImg => existingImg.url === img.url || existingImg.url === img.path)) {
+              if (
+                !images.some(
+                  existingImg =>
+                    existingImg.url === img.url || existingImg.url === img.path
+                )
+              ) {
                 images.push({
                   id: `saved-${index}`,
                   url: img.url || img.path,
                   fileName: img.fileName || `故障画像_${images.length + 1}`,
                   description: img.description || '機械故障箇所の写真',
-                  source: 'savedImages'
+                  source: 'savedImages',
                 });
               }
             });
           }
-          
+
           // 優先順位5: 再帰的にJSONデータ内の画像を検索
-          const findImagesRecursively = (obj: any, path: string = ''): string[] => {
+          const findImagesRecursively = (
+            obj: any,
+            path: string = ''
+          ): string[] => {
             const foundImages: string[] = [];
-            
+
             if (obj && typeof obj === 'object') {
               Object.entries(obj).forEach(([key, value]) => {
                 const currentPath = path ? `${path}.${key}` : key;
-                
-                if (typeof value === 'string' && value.startsWith('data:image/')) {
+
+                if (
+                  typeof value === 'string' &&
+                  value.startsWith('data:image/')
+                ) {
                   foundImages.push(value);
                 } else if (Array.isArray(value)) {
                   value.forEach((item, index) => {
-                    foundImages.push(...findImagesRecursively(item, `${currentPath}[${index}]`));
+                    foundImages.push(
+                      ...findImagesRecursively(item, `${currentPath}[${index}]`)
+                    );
                   });
                 } else if (typeof value === 'object' && value !== null) {
-                  foundImages.push(...findImagesRecursively(value, currentPath));
+                  foundImages.push(
+                    ...findImagesRecursively(value, currentPath)
+                  );
                 }
               });
             }
-            
+
             return foundImages;
           };
-          
+
           const recursiveImages = findImagesRecursively(jsonData);
-          console.log('handleGenerateReport: 再帰検索で画像を発見:', recursiveImages.length);
+          console.log(
+            'handleGenerateReport: 再帰検索で画像を発見:',
+            recursiveImages.length
+          );
           recursiveImages.forEach((imgUrl, index) => {
             // 既に追加済みの画像は除外
             if (!images.some(img => img.url === imgUrl)) {
@@ -861,29 +1004,33 @@ const HistoryPage: React.FC = () => {
                 url: imgUrl,
                 fileName: `故障画像_${images.length + 1}`,
                 description: '機械故障箇所の写真',
-                source: 'recursive'
+                source: 'recursive',
               });
             }
           });
-          
+
           // 優先順位6: imagePathフィールド（最終フォールバック）
-          if (jsonData?.imagePath && typeof jsonData.imagePath === 'string' && !images.some(img => img.url === jsonData.imagePath)) {
+          if (
+            jsonData?.imagePath &&
+            typeof jsonData.imagePath === 'string' &&
+            !images.some(img => img.url === jsonData.imagePath)
+          ) {
             console.log('handleGenerateReport: imagePathから画像を取得中...');
             images.push({
               id: 'imagePath',
               url: jsonData.imagePath,
               fileName: '故障画像',
               description: '機械故障箇所の写真',
-              source: 'imagePath'
+              source: 'imagePath',
             });
           }
         } catch (imageError) {
           console.error('画像データ処理中にエラーが発生しました:', imageError);
           // 画像処理エラーが発生してもレポート生成は続行
         }
-        
+
         console.log(`レポート${index + 1}の画像数:`, images.length, '枚');
-        
+
         const reportData = {
           reportId: `R${Date.now().toString().slice(-5)}-${index + 1}`,
           machineId: machineNumber || '不明',
@@ -895,47 +1042,63 @@ const HistoryPage: React.FC = () => {
           engineer: 'システム管理者',
           notes: `事象タイトル: ${title}\n機種: ${machineType}\n機械番号: ${machineNumber}\n作成日時: ${new Date(item.createdAt).toLocaleString('ja-JP')}\n影響コンポーネント: ${jsonData?.extractedComponents?.join(', ') || 'なし'}\n症状: ${jsonData?.extractedSymptoms?.join(', ') || 'なし'}\n可能性のある機種: ${jsonData?.possibleModels?.join(', ') || 'なし'}`,
           repairRequestDate: new Date().toISOString().split('T')[0],
-          repairSchedule: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          repairSchedule: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split('T')[0],
           repairLocation: '工場内修理スペース',
           images: images.length > 0 ? images : undefined,
-          chatHistory: jsonData?.conversationHistory || jsonData?.chatData?.messages || undefined
+          chatHistory:
+            jsonData?.conversationHistory ||
+            jsonData?.chatData?.messages ||
+            undefined,
         };
-        
+
         console.log(`レポート${index + 1}の生成完了:`, {
           reportId: reportData.reportId,
           description: reportData.description,
-          images: reportData.images?.length || 0
+          images: reportData.images?.length || 0,
         });
-        
+
         return reportData;
       });
-      
+
       console.log('=== レポートデータ生成完了 ===');
       console.log('レポート配列の長さ:', reportDataArray.length);
-      console.log('各レポートの詳細:', reportDataArray.map((report, index) => ({
-        index,
-        reportId: report.reportId,
-        description: report.description,
-        images: report.images?.map(img => ({
-          url: img.url.substring(0, 50) + (img.url.length > 50 ? '...' : ''),
-          fileName: img.fileName,
-          isBase64: img.url.startsWith('data:image/')
+      console.log(
+        '各レポートの詳細:',
+        reportDataArray.map((report, index) => ({
+          index,
+          reportId: report.reportId,
+          description: report.description,
+          images: report.images?.map(img => ({
+            url: img.url.substring(0, 50) + (img.url.length > 50 ? '...' : ''),
+            fileName: img.fileName,
+            isBase64: img.url.startsWith('data:image/'),
+          })),
         }))
-      })));
-      
+      );
+
       setMachineFailureReportData(reportDataArray);
       setShowMachineFailureReport(true);
       console.log('レポート表示状態を設定完了');
-      
+
       // 成功通知
-      alert(`レポートが正常に生成されました。\n対象アイテム: ${targetItems.length}件 (選択済み)\n${targetItems.length > 1 ? '複数ページで表示されます。' : ''}`);
-      
+      alert(
+        `レポートが正常に生成されました。\n対象アイテム: ${targetItems.length}件 (選択済み)\n${targetItems.length > 1 ? '複数ページで表示されます。' : ''}`
+      );
+
       console.log('=== レポート生成完了 ===');
     } catch (error) {
       console.error('=== レポート生成エラー ===');
       console.error('エラー詳細:', error);
-      console.error('エラースタック:', error instanceof Error ? error.stack : 'スタックトレースなし');
-      alert('レポート生成中にエラーが発生しました: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      console.error(
+        'エラースタック:',
+        error instanceof Error ? error.stack : 'スタックトレースなし'
+      );
+      alert(
+        'レポート生成中にエラーが発生しました: ' +
+          (error instanceof Error ? error.message : 'Unknown error')
+      );
     } finally {
       // エラーが発生しても確実にローディング状態をリセット
       setReportLoading(false);
@@ -943,38 +1106,44 @@ const HistoryPage: React.FC = () => {
     }
   };
 
-
-
   const handleShowReport = async (fileName: string) => {
     try {
-      const response = await fetch(`/api/history/file?name=${encodeURIComponent(fileName)}`);
+      const response = await fetch(
+        `/api/history/file?name=${encodeURIComponent(fileName)}`
+      );
       if (!response.ok) {
         throw new Error('チャットエクスポートファイルの取得に失敗しました');
       }
-      
+
       const data = await response.json();
-      
+
       // 新しいフォーマットのデータを確認して、適切な形式に変換
       const reportData = {
         ...data,
         // 新しいフォーマットのフィールドを追加
-        title: data.title || data.chatData?.machineInfo?.machineTypeName || 'タイトルなし',
+        title:
+          data.title ||
+          data.chatData?.machineInfo?.machineTypeName ||
+          'タイトルなし',
         problemDescription: data.problemDescription || '説明なし',
-        machineType: data.machineType || data.chatData?.machineInfo?.machineTypeName || '',
-        machineNumber: data.machineNumber || data.chatData?.machineInfo?.machineNumber || '',
+        machineType:
+          data.machineType || data.chatData?.machineInfo?.machineTypeName || '',
+        machineNumber:
+          data.machineNumber || data.chatData?.machineInfo?.machineNumber || '',
         extractedComponents: data.extractedComponents || [],
         extractedSymptoms: data.extractedSymptoms || [],
         possibleModels: data.possibleModels || [],
-        conversationHistory: data.conversationHistory || data.chatData?.messages || [],
+        conversationHistory:
+          data.conversationHistory || data.chatData?.messages || [],
         metadata: data.metadata || {
           total_messages: data.chatData?.messages?.length || 0,
           user_messages: 0,
           ai_messages: 0,
           total_media: data.savedImages?.length || 0,
-          export_format_version: "1.0"
-        }
+          export_format_version: '1.0',
+        },
       };
-      
+
       setSelectedReportData(reportData);
       setSelectedFileName(fileName);
       setShowReport(true);
@@ -993,18 +1162,20 @@ const HistoryPage: React.FC = () => {
 
   const handleSaveReport = (reportData: any) => {
     console.log('レポートデータを保存:', reportData);
-    
+
     // レポートデータをローカルストレージに保存
-    const savedReports = JSON.parse(localStorage.getItem('savedReports') || '[]');
+    const savedReports = JSON.parse(
+      localStorage.getItem('savedReports') || '[]'
+    );
     const newReport = {
       id: Date.now(),
       fileName: selectedFileName,
       reportData: reportData,
-      savedAt: new Date().toISOString()
+      savedAt: new Date().toISOString(),
     };
     savedReports.push(newReport);
     localStorage.setItem('savedReports', JSON.stringify(savedReports));
-    
+
     console.log('レポートが保存されました:', newReport);
   };
 
@@ -1014,14 +1185,14 @@ const HistoryPage: React.FC = () => {
       console.log('編集された履歴アイテムを保存:', editedItem);
       console.log('編集された履歴アイテムのID:', editedItem.id);
       console.log('編集された履歴アイテムのJSONデータ:', editedItem.jsonData);
-      
+
       // IDの確認と準備（export_プレフィックスを除去）
       let itemId = editedItem.id || editedItem.chatId;
       if (!itemId) {
         alert('アイテムIDが見つかりません。保存できません。');
         return;
       }
-      
+
       // export_プレフィックスがある場合は除去
       if (itemId.startsWith('export_')) {
         itemId = itemId.replace('export_', '');
@@ -1035,9 +1206,14 @@ const HistoryPage: React.FC = () => {
           itemId = parts[1];
         }
       }
-      
-      console.log('使用するID:', itemId, '元のID:', editedItem.id || editedItem.chatId);
-      
+
+      console.log(
+        '使用するID:',
+        itemId,
+        '元のID:',
+        editedItem.id || editedItem.chatId
+      );
+
       // 更新データの準備（editedItemの情報も含める）
       const updatePayload = {
         updatedData: {
@@ -1046,115 +1222,120 @@ const HistoryPage: React.FC = () => {
           machineType: editedItem.machineType,
           machineNumber: editedItem.machineNumber,
           title: editedItem.jsonData?.title || editedItem.title,
-          lastModified: new Date().toISOString()
+          lastModified: new Date().toISOString(),
         },
-        updatedBy: 'user'
+        updatedBy: 'user',
       };
-      
+
       console.log('送信するペイロード:', updatePayload);
-      
+
       // サーバーに更新リクエストを送信
       const response = await fetch(`/api/history/update-item/${itemId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(updatePayload)
+        body: JSON.stringify(updatePayload),
       });
-      
+
       console.log('サーバーレスポンス:', response.status, response.statusText);
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('サーバーエラー詳細:', errorText);
         let errorMessage = `履歴の更新に失敗しました (${response.status})`;
-        
+
         try {
           const errorData = JSON.parse(errorText);
           errorMessage = errorData.error || errorMessage;
         } catch (e) {
           errorMessage += ': ' + errorText;
         }
-        
+
         alert(errorMessage);
         return;
       }
-      
+
       const result = await response.json();
       console.log('履歴更新完了:', result);
-      
+
       // ローカルストレージも更新
       if (itemId) {
         const savedKey = 'savedMachineFailureReport_' + itemId;
         localStorage.setItem(savedKey, JSON.stringify(editedItem.jsonData));
         console.log('ローカルストレージ更新:', savedKey);
       }
-      
+
       // 履歴リストの該当アイテムを更新
-      setHistoryItems(prevItems => 
-        prevItems.map(item => 
-          (item.id === itemId || item.chatId === itemId) 
-            ? { 
-                ...item, 
-                jsonData: editedItem.jsonData, 
+      setHistoryItems(prevItems =>
+        prevItems.map(item =>
+          item.id === itemId || item.chatId === itemId
+            ? {
+                ...item,
+                jsonData: editedItem.jsonData,
                 lastModified: new Date().toISOString(),
                 // 基本情報も更新
-                machineType: editedItem.jsonData?.machineType || item.machineType,
-                machineNumber: editedItem.jsonData?.machineNumber || item.machineNumber,
+                machineType:
+                  editedItem.jsonData?.machineType || item.machineType,
+                machineNumber:
+                  editedItem.jsonData?.machineNumber || item.machineNumber,
                 title: editedItem.jsonData?.title || item.title,
-                incidentTitle: editedItem.jsonData?.title || item.incidentTitle
+                incidentTitle: editedItem.jsonData?.title || item.incidentTitle,
               }
             : item
         )
       );
-      
-      setFilteredItems(prevItems => 
-        prevItems.map(item => 
-          (item.id === itemId || item.chatId === itemId) 
-            ? { 
-                ...item, 
-                jsonData: editedItem.jsonData, 
+
+      setFilteredItems(prevItems =>
+        prevItems.map(item =>
+          item.id === itemId || item.chatId === itemId
+            ? {
+                ...item,
+                jsonData: editedItem.jsonData,
                 lastModified: new Date().toISOString(),
                 // 基本情報も更新
-                machineType: editedItem.jsonData?.machineType || item.machineType,
-                machineNumber: editedItem.jsonData?.machineNumber || item.machineNumber,
+                machineType:
+                  editedItem.jsonData?.machineType || item.machineType,
+                machineNumber:
+                  editedItem.jsonData?.machineNumber || item.machineNumber,
                 title: editedItem.jsonData?.title || item.title,
-                incidentTitle: editedItem.jsonData?.title || item.incidentTitle
+                incidentTitle: editedItem.jsonData?.title || item.incidentTitle,
               }
             : item
         )
       );
-      
+
       // 成功通知
       alert('履歴が正常に更新され、元のファイルに上書き保存されました。');
-      
+
       // 編集ダイアログを閉じる
       setShowEditDialog(false);
       setEditingItem(null);
-      
+
       // 履歴リストの再読み込みは行わない（既に更新済み）
       console.log('履歴更新完了 - リスト再読み込みをスキップ');
-      
     } catch (error) {
       console.error('履歴保存エラー:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       alert('履歴の保存に失敗しました: ' + errorMessage);
     }
   };
 
   const extractJsonInfo = (jsonData: any) => {
     try {
-      const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
+      const data =
+        typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
       return {
         title: data.title || data.name || '',
         description: data.description || data.content || '',
-        emergencyMeasures: data.emergencyMeasures || data.measures || ''
+        emergencyMeasures: data.emergencyMeasures || data.measures || '',
       };
     } catch (error) {
       return {
         title: '',
         description: '',
-        emergencyMeasures: ''
+        emergencyMeasures: '',
       };
     }
   };
@@ -1167,24 +1348,27 @@ const HistoryPage: React.FC = () => {
         let jsonStr = JSON.stringify(obj);
         // HTMLとJavaScriptで問題になる文字を徹底的にエスケープ
         jsonStr = jsonStr
-          .replace(/\\/g, '\\\\')     // バックスラッシュを最初にエスケープ
-          .replace(/"/g, '\\"')       // ダブルクォート
-          .replace(/'/g, "\\'")       // シングルクォート
-          .replace(/</g, '\\u003c')   // <
-          .replace(/>/g, '\\u003e')   // >
-          .replace(/&/g, '\\u0026')   // &
-          .replace(/\//g, '\\/')      // スラッシュ
-          .replace(/:/g, '\\u003a')   // コロン（重要）
-          .replace(/\r/g, '\\r')      // キャリッジリターン
-          .replace(/\n/g, '\\n')      // 改行
-          .replace(/\t/g, '\\t')      // タブ
-          .replace(/\f/g, '\\f')      // フォームフィード
-          .replace(/\b/g, '\\b')      // バックスペース
+          .replace(/\\/g, '\\\\') // バックスラッシュを最初にエスケープ
+          .replace(/"/g, '\\"') // ダブルクォート
+          .replace(/'/g, "\\'") // シングルクォート
+          .replace(/</g, '\\u003c') // <
+          .replace(/>/g, '\\u003e') // >
+          .replace(/&/g, '\\u0026') // &
+          .replace(/\//g, '\\/') // スラッシュ
+          .replace(/:/g, '\\u003a') // コロン（重要）
+          .replace(/\r/g, '\\r') // キャリッジリターン
+          .replace(/\n/g, '\\n') // 改行
+          .replace(/\t/g, '\\t') // タブ
+          .replace(/\f/g, '\\f') // フォームフィード
+          .replace(/\b/g, '\\b') // バックスペース
           .replace(/\u2028/g, '\\u2028') // ラインセパレータ
           .replace(/\u2029/g, '\\u2029'); // パラグラフセパレータ
-        
+
         console.log('🔧 safeJsonStringify result length:', jsonStr.length);
-        console.log('🔧 safeJsonStringify sample:', jsonStr.substring(0, 100) + '...');
+        console.log(
+          '🔧 safeJsonStringify sample:',
+          jsonStr.substring(0, 100) + '...'
+        );
         return jsonStr;
       } catch (e) {
         console.error('JSONのシリアライズに失敗:', e);
@@ -1192,146 +1376,236 @@ const HistoryPage: React.FC = () => {
       }
     };
     // 画像を収集（base64のみ、詳細なデバッグ付き）
-    const collectImages = (data: any): Array<{ id: string; url: string; fileName: string; description?: string }> => {
+    const collectImages = (
+      data: any
+    ): Array<{
+      id: string;
+      url: string;
+      fileName: string;
+      description?: string;
+    }> => {
       console.log('🖼️ 画像収集開始 - reportData:', data);
       console.log('🖼️ reportData keys:', Object.keys(data || {}));
-      
-      const images: Array<{ id: string; url: string; fileName: string; description?: string }> = [];
+
+      const images: Array<{
+        id: string;
+        url: string;
+        fileName: string;
+        description?: string;
+      }> = [];
       const imageUrls = new Set<string>();
-      
+
       // デバッグ: データ構造を詳細確認
       console.log('🖼️ データ構造確認:');
       console.log('🖼️ - chatData:', data?.chatData ? 'あり' : 'なし');
-      console.log('🖼️ - chatData.messages:', data?.chatData?.messages ? 'あり(' + data.chatData.messages.length + '件)' : 'なし');
-      console.log('🖼️ - conversationHistory:', data?.conversationHistory ? 'あり(' + (Array.isArray(data.conversationHistory) ? data.conversationHistory.length : 'non-array') + ')' : 'なし');
-      console.log('🖼️ - originalChatData.messages:', data?.originalChatData?.messages ? 'あり(' + data.originalChatData.messages.length + ')' : 'なし');
-      console.log('🖼️ - messages:', data?.messages ? 'あり(' + (Array.isArray(data.messages) ? data.messages.length : 'non-array') + ')' : 'なし');
-      
+      console.log(
+        '🖼️ - chatData.messages:',
+        data?.chatData?.messages
+          ? 'あり(' + data.chatData.messages.length + '件)'
+          : 'なし'
+      );
+      console.log(
+        '🖼️ - conversationHistory:',
+        data?.conversationHistory
+          ? 'あり(' +
+              (Array.isArray(data.conversationHistory)
+                ? data.conversationHistory.length
+                : 'non-array') +
+              ')'
+          : 'なし'
+      );
+      console.log(
+        '🖼️ - originalChatData.messages:',
+        data?.originalChatData?.messages
+          ? 'あり(' + data.originalChatData.messages.length + ')'
+          : 'なし'
+      );
+      console.log(
+        '🖼️ - messages:',
+        data?.messages
+          ? 'あり(' +
+              (Array.isArray(data.messages)
+                ? data.messages.length
+                : 'non-array') +
+              ')'
+          : 'なし'
+      );
+
       // 1) chatData.messages から base64 画像を探す（メイン）
       if (data?.chatData?.messages && Array.isArray(data.chatData.messages)) {
         console.log('🖼️ chatData.messagesをスキャン中...');
         data.chatData.messages.forEach((message: any, messageIndex: number) => {
-          console.log('🖼️ message[' + messageIndex + ']:', { 
-            id: message?.id, 
-            content: message?.content ? message.content.substring(0, 50) + '...' : 'なし',
-            isBase64: message?.content?.startsWith('data:image/') 
+          console.log('🖼️ message[' + messageIndex + ']:', {
+            id: message?.id,
+            content: message?.content
+              ? message.content.substring(0, 50) + '...'
+              : 'なし',
+            isBase64: message?.content?.startsWith('data:image/'),
           });
-          
-          if (message?.content && typeof message.content === 'string' && message.content.startsWith('data:image/')) {
+
+          if (
+            message?.content &&
+            typeof message.content === 'string' &&
+            message.content.startsWith('data:image/')
+          ) {
             const normalizedContent = message.content
               .replace(/\r?\n/g, '')
               .replace(/[""]/g, '"')
               .trim();
-            
+
             if (!imageUrls.has(normalizedContent)) {
               imageUrls.add(normalizedContent);
               images.push({
                 id: `chatdata-${messageIndex}`,
                 url: normalizedContent,
                 fileName: `故障画像${images.length + 1}`,
-                description: '故障箇所画像（chatData.messages）'
+                description: '故障箇所画像（chatData.messages）',
               });
-              console.log('🖼️ Base64画像見つかりました（chatData.messages）:', images.length);
+              console.log(
+                '🖼️ Base64画像見つかりました（chatData.messages）:',
+                images.length
+              );
             }
           }
         });
       }
-      
+
       // 2) conversationHistory から base64 画像を探す
-      if (data?.conversationHistory && Array.isArray(data.conversationHistory)) {
+      if (
+        data?.conversationHistory &&
+        Array.isArray(data.conversationHistory)
+      ) {
         console.log('🖼️ conversationHistoryをスキャン中...');
-        data.conversationHistory.forEach((message: any, messageIndex: number) => {
-          if (message?.content && typeof message.content === 'string' && message.content.startsWith('data:image/')) {
-            const normalizedContent = message.content
-              .replace(/\r?\n/g, '')
-              .replace(/[""]/g, '"')
-              .trim();
-            
-            if (!imageUrls.has(normalizedContent)) {
-              imageUrls.add(normalizedContent);
-              images.push({
-                id: `conversation-${messageIndex}`,
-                url: normalizedContent,
-                fileName: `故障画像${images.length + 1}`,
-                description: '故障箇所画像（conversationHistory）'
-              });
-              console.log('🖼️ Base64画像見つかりました（conversationHistory）:', images.length);
+        data.conversationHistory.forEach(
+          (message: any, messageIndex: number) => {
+            if (
+              message?.content &&
+              typeof message.content === 'string' &&
+              message.content.startsWith('data:image/')
+            ) {
+              const normalizedContent = message.content
+                .replace(/\r?\n/g, '')
+                .replace(/[""]/g, '"')
+                .trim();
+
+              if (!imageUrls.has(normalizedContent)) {
+                imageUrls.add(normalizedContent);
+                images.push({
+                  id: `conversation-${messageIndex}`,
+                  url: normalizedContent,
+                  fileName: `故障画像${images.length + 1}`,
+                  description: '故障箇所画像（conversationHistory）',
+                });
+                console.log(
+                  '🖼️ Base64画像見つかりました（conversationHistory）:',
+                  images.length
+                );
+              }
             }
           }
-        });
+        );
       }
-      
+
       // 3) originalChatData.messages から base64 画像を探す
-      if (data?.originalChatData?.messages && Array.isArray(data.originalChatData.messages)) {
+      if (
+        data?.originalChatData?.messages &&
+        Array.isArray(data.originalChatData.messages)
+      ) {
         console.log('🖼️ originalChatData.messagesをスキャン中...');
-        data.originalChatData.messages.forEach((message: any, messageIndex: number) => {
-          if (message?.content && typeof message.content === 'string' && message.content.startsWith('data:image/')) {
-            const normalizedContent = message.content
-              .replace(/\r?\n/g, '')
-              .replace(/[""]/g, '"')
-              .trim();
-            
-            if (!imageUrls.has(normalizedContent)) {
-              imageUrls.add(normalizedContent);
-              images.push({
-                id: `original-${messageIndex}`,
-                url: normalizedContent,
-                fileName: `故障画像${images.length + 1}`,
-                description: '故障箇所画像（originalChatData）'
-              });
-              console.log('🖼️ Base64画像見つかりました（originalChatData）:', images.length);
+        data.originalChatData.messages.forEach(
+          (message: any, messageIndex: number) => {
+            if (
+              message?.content &&
+              typeof message.content === 'string' &&
+              message.content.startsWith('data:image/')
+            ) {
+              const normalizedContent = message.content
+                .replace(/\r?\n/g, '')
+                .replace(/[""]/g, '"')
+                .trim();
+
+              if (!imageUrls.has(normalizedContent)) {
+                imageUrls.add(normalizedContent);
+                images.push({
+                  id: `original-${messageIndex}`,
+                  url: normalizedContent,
+                  fileName: `故障画像${images.length + 1}`,
+                  description: '故障箇所画像（originalChatData）',
+                });
+                console.log(
+                  '🖼️ Base64画像見つかりました（originalChatData）:',
+                  images.length
+                );
+              }
             }
           }
-        });
+        );
       }
-      
+
       // 4) messages から base64 画像を探す
       if (data?.messages && Array.isArray(data.messages)) {
         console.log('🖼️ messagesをスキャン中...');
         data.messages.forEach((message: any, messageIndex: number) => {
-          if (message?.content && typeof message.content === 'string' && message.content.startsWith('data:image/')) {
+          if (
+            message?.content &&
+            typeof message.content === 'string' &&
+            message.content.startsWith('data:image/')
+          ) {
             const normalizedContent = message.content
               .replace(/\r?\n/g, '')
               .replace(/[""]/g, '"')
               .trim();
-            
+
             if (!imageUrls.has(normalizedContent)) {
               imageUrls.add(normalizedContent);
               images.push({
                 id: `messages-${messageIndex}`,
                 url: normalizedContent,
                 fileName: `故障画像${images.length + 1}`,
-                description: '故障箇所画像（messages）'
+                description: '故障箇所画像（messages）',
               });
-              console.log('🖼️ Base64画像見つかりました（messages）:', images.length);
+              console.log(
+                '🖼️ Base64画像見つかりました（messages）:',
+                images.length
+              );
             }
           }
         });
       }
-      
+
       console.log('🖼️ 画像収集結果（Base64のみ）:', images.length + '件の画像');
       images.forEach((img, index) => {
-        console.log('🖼️ 画像[' + index + ']:', img.description, '-', img.url.substring(0, 50) + '...');
+        console.log(
+          '🖼️ 画像[' + index + ']:',
+          img.description,
+          '-',
+          img.url.substring(0, 50) + '...'
+        );
       });
-      
+
       return images;
     };
-    
+
     const collectedImages = collectImages(reportData);
-    const imageSection = collectedImages && collectedImages.length > 0 
-      ? `             <div class="image-section">
+    const imageSection =
+      collectedImages && collectedImages.length > 0
+        ? `             <div class="image-section">
                <h3>故障箇所画像</h3>
                <div class="image-grid">
-                 ${collectedImages.map((image, index) => `
+                 ${collectedImages
+                   .map(
+                     (image, index) => `
                    <div class="image-item">
                      <img class="report-img" 
                           src="${image.url}" 
                           alt="故障画像${index + 1}" />
                    </div>
-                 `).join('')}
+                 `
+                   )
+                   .join('')}
                </div>
              </div>`
-      : '';
+        : '';
 
     return `
       <!doctype html>
@@ -2587,11 +2861,19 @@ const HistoryPage: React.FC = () => {
   // 画像取得の共通関数（編集対象ファイル内のみで完結）
   function pickFirstImage(data: any): string | null {
     // 1) 直下 or ネスト配列に dataURL があれば優先
-    const dig = (v:any): string | null => {
+    const dig = (v: any): string | null => {
       if (!v) return null;
       if (typeof v === 'string' && v.startsWith('data:image/')) return v;
-      if (Array.isArray(v)) for (const x of v) { const r = dig(x); if (r) return r; }
-      if (typeof v === 'object') for (const k of Object.keys(v)) { const r = dig(v[k]); if (r) return r; }
+      if (Array.isArray(v))
+        for (const x of v) {
+          const r = dig(x);
+          if (r) return r;
+        }
+      if (typeof v === 'object')
+        for (const k of Object.keys(v)) {
+          const r = dig(v[k]);
+          if (r) return r;
+        }
       return null;
     };
     const fromDataUrl = dig(data);
@@ -2626,13 +2908,14 @@ const HistoryPage: React.FC = () => {
 
   // 一覧印刷用HTML生成
   const generateListPrintHTML = (items: any[]): string => {
-    const rows = items.map(item => {
-      const imageUrl = pickFirstImage(item);
-      const imageCell = imageUrl 
-        ? `<img class="thumb" src="${imageUrl}" alt="画像" />`
-        : '-';
-      
-      return `
+    const rows = items
+      .map(item => {
+        const imageUrl = pickFirstImage(item);
+        const imageCell = imageUrl
+          ? `<img class="thumb" src="${imageUrl}" alt="画像" />`
+          : '-';
+
+        return `
         <tr>
           <td>${item.title || item.incidentTitle || 'タイトルなし'}</td>
           <td>${item.machineType || item.machineTypeName || '-'}</td>
@@ -2642,7 +2925,8 @@ const HistoryPage: React.FC = () => {
           <td>${imageCell}</td>
         </tr>
       `;
-    }).join('');
+      })
+      .join('');
 
     return `
       <!doctype html>
@@ -2678,18 +2962,16 @@ const HistoryPage: React.FC = () => {
   const printList = (items: any[]) => {
     const w = window.open('', '_blank', 'noopener,noreferrer');
     if (!w) return;
-    
+
     const contentHTML = generateListPrintHTML(items);
     w.document.write(contentHTML);
     w.document.close();
-    
+
     // 印刷ダイアログを表示
     setTimeout(() => {
       w.print();
     }, 100);
   };
-
-
 
   // 印刷機能
   const handlePrintTable = () => {
@@ -2697,9 +2979,10 @@ const HistoryPage: React.FC = () => {
     if (!printWindow) return;
 
     // 選択された履歴のみを印刷対象とする
-    const targetItems = selectedItems.size > 0 
-      ? filteredItems.filter(item => selectedItems.has(item.id))
-      : filteredItems;
+    const targetItems =
+      selectedItems.size > 0
+        ? filteredItems.filter(item => selectedItems.has(item.id))
+        : filteredItems;
 
     const tableContent = `
       <!DOCTYPE html>
@@ -2753,23 +3036,32 @@ const HistoryPage: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            ${targetItems.map((item) => {
-              const jsonData = item.jsonData;
-              const machineType = jsonData?.machineType || 
-                                jsonData?.originalChatData?.machineInfo?.machineTypeName ||
-                                jsonData?.chatData?.machineInfo?.machineTypeName || 
-                                item.machineType || '';
-              const machineNumber = jsonData?.machineNumber || 
-                                  jsonData?.originalChatData?.machineInfo?.machineNumber ||
-                                  jsonData?.chatData?.machineInfo?.machineNumber || 
-                                  item.machineNumber || '';
-              const incidentTitle = jsonData?.title || jsonData?.question || '事象なし';
-              const problemDescription = jsonData?.problemDescription || jsonData?.answer || '説明なし';
-              
-              // pickFirstImage関数を使用して画像URLを取得
-              const imageUrl = pickFirstImage(item);
-              
-              return `
+            ${targetItems
+              .map(item => {
+                const jsonData = item.jsonData;
+                const machineType =
+                  jsonData?.machineType ||
+                  jsonData?.originalChatData?.machineInfo?.machineTypeName ||
+                  jsonData?.chatData?.machineInfo?.machineTypeName ||
+                  item.machineType ||
+                  '';
+                const machineNumber =
+                  jsonData?.machineNumber ||
+                  jsonData?.originalChatData?.machineInfo?.machineNumber ||
+                  jsonData?.chatData?.machineInfo?.machineNumber ||
+                  item.machineNumber ||
+                  '';
+                const incidentTitle =
+                  jsonData?.title || jsonData?.question || '事象なし';
+                const problemDescription =
+                  jsonData?.problemDescription ||
+                  jsonData?.answer ||
+                  '説明なし';
+
+                // pickFirstImage関数を使用して画像URLを取得
+                const imageUrl = pickFirstImage(item);
+
+                return `
                 <tr>
                   <td>${machineType}</td>
                   <td>${machineNumber}</td>
@@ -2779,7 +3071,8 @@ const HistoryPage: React.FC = () => {
                   <td class="image-cell">${imageUrl ? `<img class="thumb" src="${imageUrl}" alt="故障画像" onerror="this.style.display='none'; this.nextSibling.style.display='inline';" /><span style="display:none; color: #999; font-size: 10px;">画像読み込みエラー</span>` : 'なし'}</td>
                 </tr>
               `;
-            }).join('')}
+              })
+              .join('')}
           </tbody>
         </table>
         
@@ -2792,7 +3085,7 @@ const HistoryPage: React.FC = () => {
 
     printWindow.document.write(tableContent);
     printWindow.document.close();
-    
+
     // 印刷ダイアログを自動的に表示
     setTimeout(() => {
       printWindow.print();
@@ -2804,10 +3097,10 @@ const HistoryPage: React.FC = () => {
     if (!printWindow) return;
 
     const jsonData = item.jsonData;
-    
+
     // 事象データを抽出（ファイル名から優先的に取得、次にJSONデータから）
     let incidentTitle = '事象なし';
-    
+
     // まずファイル名から事象内容を抽出
     if (item.fileName) {
       const fileNameParts = item.fileName.split('_');
@@ -2816,40 +3109,47 @@ const HistoryPage: React.FC = () => {
         incidentTitle = fileNameParts[0];
       }
     }
-    
+
     // ファイル名から取得できない場合は、JSONデータから取得
     if (incidentTitle === '事象なし') {
       incidentTitle = jsonData?.title || jsonData?.question || '事象なし';
       if (incidentTitle === '事象なし' && jsonData?.chatData?.messages) {
         // 従来フォーマットの場合、ユーザーメッセージから事象を抽出
-        const userMessages = jsonData.chatData.messages.filter((msg: any) => !msg.isAiResponse);
+        const userMessages = jsonData.chatData.messages.filter(
+          (msg: any) => !msg.isAiResponse
+        );
         if (userMessages.length > 0) {
           // 最初のユーザーメッセージを事象として使用
           incidentTitle = userMessages[0].content || '事象なし';
         }
       }
     }
-    
-    const problemDescription = jsonData?.problemDescription || jsonData?.answer || '説明なし';
-    
+
+    const problemDescription =
+      jsonData?.problemDescription || jsonData?.answer || '説明なし';
+
     // 機種と機械番号を抽出（APIから返されるデータ構造に合わせる）
-    const machineType = item.machineInfo?.machineTypeName || 
-                      jsonData?.machineType || 
-                      jsonData?.chatData?.machineInfo?.machineTypeName || 
-                      item.machineType || '';
-    const machineNumber = item.machineInfo?.machineNumber || 
-                        jsonData?.machineNumber || 
-                        jsonData?.chatData?.machineInfo?.machineNumber || 
-                        item.machineNumber || '';
-    
+    const machineType =
+      item.machineInfo?.machineTypeName ||
+      jsonData?.machineType ||
+      jsonData?.chatData?.machineInfo?.machineTypeName ||
+      item.machineType ||
+      '';
+    const machineNumber =
+      item.machineInfo?.machineNumber ||
+      jsonData?.machineNumber ||
+      jsonData?.chatData?.machineInfo?.machineNumber ||
+      item.machineNumber ||
+      '';
+
     const extractedComponents = jsonData?.extractedComponents || [];
     const extractedSymptoms = jsonData?.extractedSymptoms || [];
     const possibleModels = jsonData?.possibleModels || [];
-    
+
     // 画像URLを取得（優先順位付き）
     let imageUrl = '';
     let imageFileName = '';
-    
+
     console.log('個別レポート印刷用画像読み込み処理:', {
       itemId: item.id,
       hasJsonData: !!jsonData,
@@ -2858,57 +3158,68 @@ const HistoryPage: React.FC = () => {
       conversationHistory: jsonData?.conversationHistory,
       originalChatData: jsonData?.originalChatData,
       chatData: jsonData?.chatData,
-      imagePath: item.imagePath
+      imagePath: item.imagePath,
     });
-    
+
     // 優先順位1: conversationHistoryからBase64画像を取得（最優先）
-    if (jsonData?.conversationHistory && jsonData.conversationHistory.length > 0) {
-      const imageMessage = jsonData.conversationHistory.find((msg: any) => 
-        msg.content && msg.content.startsWith('data:image/')
+    if (
+      jsonData?.conversationHistory &&
+      jsonData.conversationHistory.length > 0
+    ) {
+      const imageMessage = jsonData.conversationHistory.find(
+        (msg: any) => msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         imageUrl = imageMessage.content;
         imageFileName = `故障画像_${item.id}`;
-        console.log('個別レポート印刷用: conversationHistoryからBase64画像を取得（最優先）');
+        console.log(
+          '個別レポート印刷用: conversationHistoryからBase64画像を取得（最優先）'
+        );
       }
     }
-    
+
     // 優先順位2: originalChatData.messagesからBase64画像を取得
     if (!imageUrl && jsonData?.originalChatData?.messages) {
-      const imageMessage = jsonData.originalChatData.messages.find((msg: any) => 
-        msg.content && msg.content.startsWith('data:image/')
+      const imageMessage = jsonData.originalChatData.messages.find(
+        (msg: any) => msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         imageUrl = imageMessage.content;
         imageFileName = `故障画像_${item.id}`;
-        console.log('個別レポート印刷用: originalChatDataからBase64画像を取得（優先順位2）');
+        console.log(
+          '個別レポート印刷用: originalChatDataからBase64画像を取得（優先順位2）'
+        );
       }
     }
-    
+
     // 優先順位3: chatData.messagesからBase64画像を取得
     if (!imageUrl && jsonData?.chatData?.messages) {
-      const imageMessage = jsonData.chatData.messages.find((msg: any) => 
-        msg.content && msg.content.startsWith('data:image/')
+      const imageMessage = jsonData.chatData.messages.find(
+        (msg: any) => msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         imageUrl = imageMessage.content;
         imageFileName = `故障画像_${item.id}`;
-        console.log('個別レポート印刷用: chatDataからBase64画像を取得（優先順位3）');
+        console.log(
+          '個別レポート印刷用: chatDataからBase64画像を取得（優先順位3）'
+        );
       }
     }
-    
+
     // 優先順位4: 直接のmessagesフィールドからBase64画像を検索
     if (!imageUrl && jsonData?.messages && Array.isArray(jsonData.messages)) {
-      const imageMessage = jsonData.messages.find((msg: any) => 
-        msg.content && msg.content.startsWith('data:image/')
+      const imageMessage = jsonData.messages.find(
+        (msg: any) => msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         imageUrl = imageMessage.content;
         imageFileName = `故障画像_${item.id}`;
-        console.log('個別レポート印刷用: messagesフィールドからBase64画像を取得（優先順位4）');
+        console.log(
+          '個別レポート印刷用: messagesフィールドからBase64画像を取得（優先順位4）'
+        );
       }
     }
-    
+
     // 優先順位5: savedImagesから画像を取得（サーバー上のファイル）
     if (!imageUrl && jsonData?.savedImages && jsonData.savedImages.length > 0) {
       const savedImage = jsonData.savedImages[0];
@@ -2916,31 +3227,35 @@ const HistoryPage: React.FC = () => {
       imageFileName = savedImage.fileName || `故障画像_${item.id}`;
       console.log('個別レポート印刷用: savedImagesから画像を取得（優先順位5）');
     }
-    
+
     // 優先順位3: originalChatData.messagesからBase64画像を取得
     if (!imageUrl && jsonData?.originalChatData?.messages) {
-      const imageMessage = jsonData.originalChatData.messages.find((msg: any) => 
-        msg.content && msg.content.startsWith('data:image/')
+      const imageMessage = jsonData.originalChatData.messages.find(
+        (msg: any) => msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         imageUrl = imageMessage.content;
         imageFileName = `故障画像_${item.id}`;
-        console.log('個別レポート印刷用: originalChatDataからBase64画像を取得（優先順位3）');
+        console.log(
+          '個別レポート印刷用: originalChatDataからBase64画像を取得（優先順位3）'
+        );
       }
     }
-    
+
     // 優先順位4: 従来フォーマットのchatData.messagesからBase64画像を取得
     if (!imageUrl && jsonData?.chatData?.messages) {
-      const imageMessage = jsonData.chatData.messages.find((msg: any) => 
-        msg.content && msg.content.startsWith('data:image/')
+      const imageMessage = jsonData.chatData.messages.find(
+        (msg: any) => msg.content && msg.content.startsWith('data:image/')
       );
       if (imageMessage) {
         imageUrl = imageMessage.content;
         imageFileName = `故障画像_${item.id}`;
-        console.log('個別レポート印刷用: chatDataからBase64画像を取得（優先順位4）');
+        console.log(
+          '個別レポート印刷用: chatDataからBase64画像を取得（優先順位4）'
+        );
       }
     }
-    
+
     // 優先順位6: その他の可能性のあるフィールドから画像を検索
     if (!imageUrl) {
       // 画像データが含まれる可能性のあるフィールドを再帰的に検索
@@ -2952,11 +3267,13 @@ const HistoryPage: React.FC = () => {
             if (typeof value === 'string' && value.startsWith('data:image/')) {
               foundImages.push({
                 path: currentPath,
-                content: value
+                content: value,
               });
             } else if (Array.isArray(value)) {
               value.forEach((item, index) => {
-                foundImages.push(...findImagesRecursively(item, `${currentPath}[${index}]`));
+                foundImages.push(
+                  ...findImagesRecursively(item, `${currentPath}[${index}]`)
+                );
               });
             } else if (typeof value === 'object' && value !== null) {
               foundImages.push(...findImagesRecursively(value, currentPath));
@@ -2965,7 +3282,7 @@ const HistoryPage: React.FC = () => {
         }
         return foundImages;
       };
-      
+
       const recursiveImages = findImagesRecursively(jsonData);
       if (recursiveImages.length > 0) {
         imageUrl = recursiveImages[0].content;
@@ -2973,23 +3290,27 @@ const HistoryPage: React.FC = () => {
         console.log('個別レポート印刷用: 再帰的検索で画像を取得（優先順位6）');
       }
     }
-    
+
     // 優先順位7: 従来のimagePathフィールド（最終フォールバック）
     if (!imageUrl && item.imagePath) {
-      imageUrl = item.imagePath.startsWith('http') ? item.imagePath : 
-               item.imagePath.startsWith('/') ? `${window.location.origin}${item.imagePath}` :
-               `${window.location.origin}/api/images/chat-exports/${item.imagePath}`;
+      imageUrl = item.imagePath.startsWith('http')
+        ? item.imagePath
+        : item.imagePath.startsWith('/')
+          ? `${window.location.origin}${item.imagePath}`
+          : `${window.location.origin}/api/images/chat-exports/${item.imagePath}`;
       imageFileName = `故障画像_${item.id}`;
-      console.log('個別レポート印刷用: imagePathから画像を取得（最終フォールバック）');
+      console.log(
+        '個別レポート印刷用: imagePathから画像を取得（最終フォールバック）'
+      );
     }
-    
+
     console.log('個別レポート印刷用: 最終的な画像情報:', {
       hasImage: !!imageUrl,
       imageUrl: imageUrl ? imageUrl.substring(0, 100) + '...' : 'なし',
       imageFileName,
-      isBase64: imageUrl ? imageUrl.startsWith('data:image/') : false
+      isBase64: imageUrl ? imageUrl.startsWith('data:image/') : false,
     });
-    
+
     const reportContent = `
       <!DOCTYPE html>
       <html>
@@ -3099,7 +3420,9 @@ const HistoryPage: React.FC = () => {
           </div>
         </div>
         
-        ${imageUrl ? `
+        ${
+          imageUrl
+            ? `
         <div class="section">
           <h2>故障箇所画像</h2>
           <div class="image-section">
@@ -3108,7 +3431,9 @@ const HistoryPage: React.FC = () => {
             <p style="font-size: 12px; color: #666;">上記は故障箇所の写真です。</p>
           </div>
         </div>
-        ` : ''}
+        `
+            : ''
+        }
         
         <div class="section">
           <h2>修繕計画</h2>
@@ -3152,11 +3477,11 @@ const HistoryPage: React.FC = () => {
   // ローディング状態の表示
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">履歴データを読み込み中...</p>
+      <div className='p-6'>
+        <div className='flex items-center justify-center h-64'>
+          <div className='text-center'>
+            <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4'></div>
+            <p className='text-gray-600'>履歴データを読み込み中...</p>
           </div>
         </div>
       </div>
@@ -3165,38 +3490,43 @@ const HistoryPage: React.FC = () => {
 
   // メインコンテンツの表示
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">履歴管理</h1>
-        <p className="text-gray-600">送信されたデータと関連画像の履歴を管理・検索できます</p>
+    <div className='p-6 max-w-7xl mx-auto'>
+      <div className='mb-6'>
+        <h1 className='text-2xl font-bold mb-2'>履歴管理</h1>
+        <p className='text-gray-600'>
+          送信されたデータと関連画像の履歴を管理・検索できます
+        </p>
       </div>
 
       {/* 検索・フィルタエリア */}
-      <Card className="mb-6">
+      <Card className='mb-6'>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
+          <CardTitle className='flex items-center gap-2'>
+            <Search className='h-5 w-5' />
             検索フィルター
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4'>
             {/* テキスト検索 */}
-            <div className="lg:col-span-2">
-              <div className="space-y-2">
+            <div className='lg:col-span-2'>
+              <div className='space-y-2'>
                 <Input
-                  placeholder="タイトル、機種、事業所、応急処置内容、キーワードなどで検索..."
+                  placeholder='タイトル、機種、事業所、応急処置内容、キーワードなどで検索...'
                   value={filters.searchText}
-                  onChange={(e) => handleFilterChange('searchText', e.target.value)}
-                  onKeyDown={(e) => {
+                  onChange={e =>
+                    handleFilterChange('searchText', e.target.value)
+                  }
+                  onKeyDown={e => {
                     if (e.key === 'Enter') {
                       handleSearch();
                     }
                   }}
-                  className="w-full"
+                  className='w-full'
                 />
-                <p className="text-xs text-gray-500">
-                  ※ 複数のキーワードをスペース区切りで入力すると、すべてのキーワードを含む履歴を検索します
+                <p className='text-xs text-gray-500'>
+                  ※
+                  複数のキーワードをスペース区切りで入力すると、すべてのキーワードを含む履歴を検索します
                 </p>
               </div>
             </div>
@@ -3206,25 +3536,29 @@ const HistoryPage: React.FC = () => {
               {/* UI表示時に自動取得するためボタンは削除 */}
               {blobLoading && <div>取得中...</div>}
               {blobFiles.length > 0 && (
-                <div style={{marginBottom:16}}>
+                <div style={{ marginBottom: 16 }}>
                   <h3>🗂️ BLOBファイル一覧</h3>
                   <ul>
                     {blobFiles.map((file, idx) => (
                       <li key={idx}>
-                        {typeof file === 'string' ? file : file.name || 'Unknown file'}
+                        {typeof file === 'string'
+                          ? file
+                          : file.name || 'Unknown file'}
                       </li>
                     ))}
                   </ul>
                 </div>
               )}
-              <div className="space-y-2">
+              <div className='space-y-2'>
                 <Input
-                  type="date"
+                  type='date'
                   value={filters.searchDate}
-                  onChange={(e) => handleFilterChange('searchDate', e.target.value)}
-                  className="w-full"
+                  onChange={e =>
+                    handleFilterChange('searchDate', e.target.value)
+                  }
+                  className='w-full'
                 />
-                <p className="text-xs text-gray-500">
+                <p className='text-xs text-gray-500'>
                   ※ 指定した日付の履歴を検索します
                 </p>
               </div>
@@ -3232,75 +3566,97 @@ const HistoryPage: React.FC = () => {
 
             {/* 機種フィルタ */}
             <div>
-              <div className="space-y-2">
+              <div className='space-y-2'>
                 <Select
-                  value={filters.machineType || "all"}
-                  onValueChange={(value) => handleFilterChange('machineType', value === "all" ? "" : value)}
+                  value={filters.machineType || 'all'}
+                  onValueChange={value =>
+                    handleFilterChange(
+                      'machineType',
+                      value === 'all' ? '' : value
+                    )
+                  }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="機種を選択" />
+                    <SelectValue placeholder='機種を選択' />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">すべての機種</SelectItem>
+                    <SelectItem value='all'>すべての機種</SelectItem>
                     {searchFilterLoading ? (
-                      <SelectItem value="loading" disabled>読み込み中...</SelectItem>
-                    ) : searchFilterData.machineTypes && searchFilterData.machineTypes.length > 0 ? (
+                      <SelectItem value='loading' disabled>
+                        読み込み中...
+                      </SelectItem>
+                    ) : searchFilterData.machineTypes &&
+                      searchFilterData.machineTypes.length > 0 ? (
                       searchFilterData.machineTypes.map((type, index) => (
                         <SelectItem key={`type-${index}`} value={type}>
                           {type}
                         </SelectItem>
                       ))
                     ) : (
-                      <SelectItem value="no-data" disabled>データがありません</SelectItem>
+                      <SelectItem value='no-data' disabled>
+                        データがありません
+                      </SelectItem>
                     )}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-gray-500">
+                <p className='text-xs text-gray-500'>
                   ※ JSONファイルから機種を取得しています
-                  {searchFilterData.machineTypes && ` (${searchFilterData.machineTypes.length}件)`}
+                  {searchFilterData.machineTypes &&
+                    ` (${searchFilterData.machineTypes.length}件)`}
                 </p>
               </div>
             </div>
 
             {/* 機械番号フィルタ */}
             <div>
-              <div className="space-y-2">
+              <div className='space-y-2'>
                 <Select
-                  value={filters.machineNumber || "all"}
-                  onValueChange={(value) => handleFilterChange('machineNumber', value === "all" ? "" : value)}
+                  value={filters.machineNumber || 'all'}
+                  onValueChange={value =>
+                    handleFilterChange(
+                      'machineNumber',
+                      value === 'all' ? '' : value
+                    )
+                  }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="機械番号を選択" />
+                    <SelectValue placeholder='機械番号を選択' />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">すべての機械番号</SelectItem>
+                    <SelectItem value='all'>すべての機械番号</SelectItem>
                     {searchFilterLoading ? (
-                      <SelectItem value="loading" disabled>読み込み中...</SelectItem>
-                    ) : searchFilterData.machineNumbers && searchFilterData.machineNumbers.length > 0 ? (
+                      <SelectItem value='loading' disabled>
+                        読み込み中...
+                      </SelectItem>
+                    ) : searchFilterData.machineNumbers &&
+                      searchFilterData.machineNumbers.length > 0 ? (
                       searchFilterData.machineNumbers.map((number, index) => (
                         <SelectItem key={`number-${index}`} value={number}>
                           {number}
                         </SelectItem>
                       ))
                     ) : (
-                      <SelectItem value="no-data" disabled>データがありません</SelectItem>
+                      <SelectItem value='no-data' disabled>
+                        データがありません
+                      </SelectItem>
                     )}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-gray-500">
+                <p className='text-xs text-gray-500'>
                   ※ JSONファイルから機械番号を取得しています
-                  {searchFilterData.machineNumbers && ` (${searchFilterData.machineNumbers.length}件)`}
+                  {searchFilterData.machineNumbers &&
+                    ` (${searchFilterData.machineNumbers.length}件)`}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <Button onClick={handleSearch} className="flex items-center gap-2">
-              <Search className="h-4 w-4" />
+          <div className='flex gap-2'>
+            <Button onClick={handleSearch} className='flex items-center gap-2'>
+              <Search className='h-4 w-4' />
               検索
             </Button>
-            <Button variant="outline" onClick={clearFilters}>
+            <Button variant='outline' onClick={clearFilters}>
               フィルタークリア
             </Button>
           </div>
@@ -3308,58 +3664,72 @@ const HistoryPage: React.FC = () => {
       </Card>
 
       {/* 履歴一覧 */}
-      <Card className="mb-6">
+      <Card className='mb-6'>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
+          <CardTitle className='flex items-center justify-between'>
+            <div className='flex items-center gap-2'>
+              <FileText className='h-5 w-5' />
               機械故障履歴一覧 ({filteredItems.length}件)
             </div>
-
           </CardTitle>
         </CardHeader>
         <CardContent>
           {filteredItems.length === 0 ? (
-            <div className="text-center py-8">
-              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">履歴データがありません</p>
+            <div className='text-center py-8'>
+              <FileText className='h-12 w-12 text-gray-400 mx-auto mb-4' />
+              <p className='text-gray-600'>履歴データがありません</p>
             </div>
           ) : (
             // テーブル形式表示
-            <div className="space-y-4">
-
-
+            <div className='space-y-4'>
               {/* テーブル */}
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse border border-gray-300">
+              <div className='overflow-x-auto'>
+                <table className='w-full border-collapse border border-gray-300'>
                   <thead>
-                    <tr className="bg-gray-50">
-                      <th className="border border-gray-300 px-3 py-2 text-center text-sm font-medium">
+                    <tr className='bg-gray-50'>
+                      <th className='border border-gray-300 px-3 py-2 text-center text-sm font-medium'>
                         <input
-                          type="checkbox"
-                          checked={selectedItems.size === filteredItems.length && filteredItems.length > 0}
+                          type='checkbox'
+                          checked={
+                            selectedItems.size === filteredItems.length &&
+                            filteredItems.length > 0
+                          }
                           onChange={handleSelectAll}
-                          className="mr-2 w-6 h-6"
+                          className='mr-2 w-6 h-6'
                         />
                         選択
                       </th>
-                      <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">機種</th>
-                      <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">機械番号</th>
-                      <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">事象内容</th>
-                      <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">説明/エクスポート種別</th>
-                      <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">作成日時</th>
-                      <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">画像</th>
-                      <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium">アクション</th>
+                      <th className='border border-gray-300 px-3 py-2 text-left text-sm font-medium'>
+                        機種
+                      </th>
+                      <th className='border border-gray-300 px-3 py-2 text-left text-sm font-medium'>
+                        機械番号
+                      </th>
+                      <th className='border border-gray-300 px-3 py-2 text-left text-sm font-medium'>
+                        事象内容
+                      </th>
+                      <th className='border border-gray-300 px-3 py-2 text-left text-sm font-medium'>
+                        説明/エクスポート種別
+                      </th>
+                      <th className='border border-gray-300 px-3 py-2 text-left text-sm font-medium'>
+                        作成日時
+                      </th>
+                      <th className='border border-gray-300 px-3 py-2 text-left text-sm font-medium'>
+                        画像
+                      </th>
+                      <th className='border border-gray-300 px-3 py-2 text-left text-sm font-medium'>
+                        アクション
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredItems.map((item) => {
+                    {filteredItems.map(item => {
                       // 新しいフォーマットのデータ構造に合わせて表示
                       const jsonData = item.jsonData;
-                      
+
                       // 事象データを抽出（ファイル名から優先的に取得、次にJSONデータから）
                       let incidentTitle = '事象なし';
-                      
+
                       // まずファイル名から事象内容を抽出
                       if (item.fileName) {
                         const fileNameParts = item.fileName.split('_');
@@ -3368,32 +3738,47 @@ const HistoryPage: React.FC = () => {
                           incidentTitle = fileNameParts[0];
                         }
                       }
-                      
+
                       // ファイル名から取得できない場合は、JSONデータから取得
                       if (incidentTitle === '事象なし') {
-                        incidentTitle = jsonData?.title || jsonData?.question || '事象なし';
-                        if (incidentTitle === '事象なし' && jsonData?.chatData?.messages) {
+                        incidentTitle =
+                          jsonData?.title || jsonData?.question || '事象なし';
+                        if (
+                          incidentTitle === '事象なし' &&
+                          jsonData?.chatData?.messages
+                        ) {
                           // 従来フォーマットの場合、ユーザーメッセージから事象を抽出
-                          const userMessages = jsonData.chatData.messages.filter((msg: any) => !msg.isAiResponse);
+                          const userMessages =
+                            jsonData.chatData.messages.filter(
+                              (msg: any) => !msg.isAiResponse
+                            );
                           if (userMessages.length > 0) {
                             // 最初のユーザーメッセージを事象として使用
-                            incidentTitle = userMessages[0].content || '事象なし';
+                            incidentTitle =
+                              userMessages[0].content || '事象なし';
                           }
                         }
                       }
-                      
-                      const problemDescription = jsonData?.problemDescription || jsonData?.answer || '説明なし';
-                      
+
+                      const problemDescription =
+                        jsonData?.problemDescription ||
+                        jsonData?.answer ||
+                        '説明なし';
+
                       // 機種と機械番号を抽出（APIから返されるデータ構造に合わせる）
-                      const machineType = jsonData?.machineType || 
-                                        jsonData?.chatData?.machineInfo?.machineTypeName || 
-                                        item.machineInfo?.machineTypeName || 
-                                        item.machineType || '';
-                      const machineNumber = jsonData?.machineNumber || 
-                                          jsonData?.chatData?.machineInfo?.machineNumber || 
-                                          item.machineInfo?.machineNumber || 
-                                          item.machineNumber || '';
-                      
+                      const machineType =
+                        jsonData?.machineType ||
+                        jsonData?.chatData?.machineInfo?.machineTypeName ||
+                        item.machineInfo?.machineTypeName ||
+                        item.machineType ||
+                        '';
+                      const machineNumber =
+                        jsonData?.machineNumber ||
+                        jsonData?.chatData?.machineInfo?.machineNumber ||
+                        item.machineInfo?.machineNumber ||
+                        item.machineNumber ||
+                        '';
+
                       // デバッグ情報
                       console.log(`🔍 アイテム表示: ${item.fileName}`, {
                         machineType,
@@ -3401,163 +3786,196 @@ const HistoryPage: React.FC = () => {
                         jsonDataMachineType: jsonData?.machineType,
                         jsonDataMachineNumber: jsonData?.machineNumber,
                         itemMachineType: item.machineType,
-                        itemMachineNumber: item.machineNumber
+                        itemMachineNumber: item.machineNumber,
                       });
-                      
-                      const messageCount = jsonData?.metadata?.total_messages || 
-                                         jsonData?.chatData?.messages?.length || 
-                                         jsonData?.messageCount || 0;
+
+                      const messageCount =
+                        jsonData?.metadata?.total_messages ||
+                        jsonData?.chatData?.messages?.length ||
+                        jsonData?.messageCount ||
+                        0;
                       const exportType = jsonData?.exportType || 'manual_send';
                       const fileName = jsonData?.metadata?.fileName || '';
-                      
+
                       return (
-                        <tr key={item.id} className="hover:bg-gray-50 bg-blue-50">
-                          <td className="border border-gray-300 px-3 py-2 text-center text-sm">
+                        <tr
+                          key={item.id}
+                          className='hover:bg-gray-50 bg-blue-50'
+                        >
+                          <td className='border border-gray-300 px-3 py-2 text-center text-sm'>
                             <input
-                              type="checkbox"
+                              type='checkbox'
                               checked={selectedItems.has(item.id)}
                               onChange={() => handleSelectItem(item.id)}
-                              className="w-6 h-6"
+                              className='w-6 h-6'
                             />
                           </td>
-                          <td className="border border-gray-300 px-3 py-2 text-sm">
+                          <td className='border border-gray-300 px-3 py-2 text-sm'>
                             {machineType || '-'}
                           </td>
-                          <td className="border border-gray-300 px-3 py-2 text-sm">
+                          <td className='border border-gray-300 px-3 py-2 text-sm'>
                             {machineNumber || '-'}
                           </td>
-                          <td className="border border-gray-300 px-3 py-2 text-sm max-w-xs truncate" title={incidentTitle}>
+                          <td
+                            className='border border-gray-300 px-3 py-2 text-sm max-w-xs truncate'
+                            title={incidentTitle}
+                          >
                             {incidentTitle}
                           </td>
-                          <td className="border border-gray-300 px-3 py-2 text-sm max-w-xs truncate" title={problemDescription}>
+                          <td
+                            className='border border-gray-300 px-3 py-2 text-sm max-w-xs truncate'
+                            title={problemDescription}
+                          >
                             {problemDescription}
                           </td>
-                          <td className="border border-gray-300 px-3 py-2 text-sm">{formatDate(item.createdAt)}</td>
-                          <td className="border border-gray-300 px-3 py-2">
+                          <td className='border border-gray-300 px-3 py-2 text-sm'>
+                            {formatDate(item.createdAt)}
+                          </td>
+                          <td className='border border-gray-300 px-3 py-2'>
                             {(() => {
                               const imageUrl = pickFirstImage(item);
                               if (imageUrl) {
                                 return (
-                                  <img 
-                                    src={imageUrl} 
-                                    alt="画像" 
-                                    className="w-8 h-8 object-cover rounded border"
-                                    title="故障画像"
-                                    onError={(e) => {
-                                      const target = e.target as HTMLImageElement;
+                                  <img
+                                    src={imageUrl}
+                                    alt='画像'
+                                    className='w-8 h-8 object-cover rounded border'
+                                    title='故障画像'
+                                    onError={e => {
+                                      const target =
+                                        e.target as HTMLImageElement;
                                       target.style.display = 'none';
                                     }}
                                   />
                                 );
                               }
-                              return <span className="text-gray-500">-</span>;
+                              return <span className='text-gray-500'>-</span>;
                             })()}
                           </td>
-                          <td className="border border-gray-300 px-3 py-2">
-                            <div className="flex gap-2">
+                          <td className='border border-gray-300 px-3 py-2'>
+                            <div className='flex gap-2'>
                               <Button
-                                variant="outline"
-                                size="sm"
+                                variant='outline'
+                                size='sm'
                                 onClick={() => {
-                                  console.log('🔍 編集ボタンクリック - 元のアイテム:', item);
-                                  console.log('🔍 item.machineType:', item.machineType);
-                                  console.log('🔍 item.machineNumber:', item.machineNumber);
-                                  console.log('🔍 item.jsonData:', item.jsonData);
-                                  
-                                  const normalizedItem = normalizeJsonData(item);
-                                  console.log('🔍 正規化後のアイテム:', normalizedItem);
-                                  console.log('🔍 正規化後 machineType:', normalizedItem.machineType);
-                                  console.log('🔍 正規化後 machineNumber:', normalizedItem.machineNumber);
-                                  
+                                  console.log(
+                                    '🔍 編集ボタンクリック - 元のアイテム:',
+                                    item
+                                  );
+                                  console.log(
+                                    '🔍 item.machineType:',
+                                    item.machineType
+                                  );
+                                  console.log(
+                                    '🔍 item.machineNumber:',
+                                    item.machineNumber
+                                  );
+                                  console.log(
+                                    '🔍 item.jsonData:',
+                                    item.jsonData
+                                  );
+
+                                  const normalizedItem =
+                                    normalizeJsonData(item);
+                                  console.log(
+                                    '🔍 正規化後のアイテム:',
+                                    normalizedItem
+                                  );
+                                  console.log(
+                                    '🔍 正規化後 machineType:',
+                                    normalizedItem.machineType
+                                  );
+                                  console.log(
+                                    '🔍 正規化後 machineNumber:',
+                                    normalizedItem.machineNumber
+                                  );
+
                                   setEditingItem(normalizedItem);
                                   setShowEditDialog(true);
                                 }}
-                                className="flex items-center gap-1 text-xs"
-                                title="編集画面を開く"
+                                className='flex items-center gap-1 text-xs'
+                                title='編集画面を開く'
                               >
-                                <Settings className="h-3 w-3" />
+                                <Settings className='h-3 w-3' />
                                 編集
                               </Button>
                             </div>
                           </td>
-
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
               </div>
-                         </div>
-           )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
-
-
       {/* エクスポート処理エリア */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">エクスポート処理</h2>
+      <div className='bg-white rounded-lg shadow p-6 mb-6'>
+        <div className='flex items-center justify-between mb-4'>
+          <h2 className='text-xl font-bold'>エクスポート処理</h2>
         </div>
-        
-        <div className="flex flex-wrap gap-4 mb-4">
+
+        <div className='flex flex-wrap gap-4 mb-4'>
           {/* 選択履歴エクスポート */}
-          <div className="flex gap-2">
+          <div className='flex gap-2'>
             <Button
               onClick={() => handleExportSelected('json')}
               disabled={exportLoading || selectedItems.size === 0}
-              variant="default"
-              className="flex items-center gap-2"
+              variant='default'
+              className='flex items-center gap-2'
             >
-              <Download className="h-4 w-4" />
+              <Download className='h-4 w-4' />
               選択履歴をJSONエクスポート ({selectedItems.size})
             </Button>
             <Button
               onClick={() => handleExportSelected('csv')}
               disabled={exportLoading || selectedItems.size === 0}
-              variant="default"
-              className="flex items-center gap-2"
+              variant='default'
+              className='flex items-center gap-2'
             >
-              <Download className="h-4 w-4" />
+              <Download className='h-4 w-4' />
               選択履歴をCSVエクスポート ({selectedItems.size})
             </Button>
             <Button
               onClick={handlePrintTable}
               disabled={exportLoading || selectedItems.size === 0}
-              variant="outline"
-              className="flex items-center gap-2"
+              variant='outline'
+              className='flex items-center gap-2'
             >
-              <FileText className="h-4 w-4" />
+              <FileText className='h-4 w-4' />
               選択の一覧を印刷 ({selectedItems.size})
             </Button>
           </div>
 
           {/* 全履歴エクスポート */}
-          <div className="flex gap-2">
+          <div className='flex gap-2'>
             <Button
               onClick={() => handleExportAll('json')}
               disabled={exportLoading}
-              variant="secondary"
-              className="flex items-center gap-2"
+              variant='secondary'
+              className='flex items-center gap-2'
             >
-              <Download className="h-4 w-4" />
+              <Download className='h-4 w-4' />
               全履歴をJSONエクスポート
             </Button>
             <Button
               onClick={() => handleExportAll('csv')}
               disabled={exportLoading}
-              variant="secondary"
-              className="flex items-center gap-2"
+              variant='secondary'
+              className='flex items-center gap-2'
             >
-              <Download className="h-4 w-4" />
+              <Download className='h-4 w-4' />
               全履歴をCSVエクスポート
             </Button>
           </div>
         </div>
 
         {exportLoading && (
-          <div className="flex items-center gap-2 text-blue-600">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+          <div className='flex items-center gap-2 text-blue-600'>
+            <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600'></div>
             エクスポート処理中...
           </div>
         )}
@@ -3565,31 +3983,32 @@ const HistoryPage: React.FC = () => {
 
       {/* ページネーション */}
       {totalPages > 1 && (
-        <div className="flex justify-center mt-6">
-          <div className="flex gap-2">
+        <div className='flex justify-center mt-6'>
+          <div className='flex gap-2'>
             <Button
-              variant="outline"
+              variant='outline'
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
             >
               前へ
             </Button>
-            
+
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              const page = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+              const page =
+                Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
               return (
                 <Button
                   key={page}
-                  variant={currentPage === page ? "default" : "outline"}
+                  variant={currentPage === page ? 'default' : 'outline'}
                   onClick={() => handlePageChange(page)}
                 >
                   {page}
                 </Button>
               );
             })}
-            
+
             <Button
-              variant="outline"
+              variant='outline'
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
             >
@@ -3601,17 +4020,17 @@ const HistoryPage: React.FC = () => {
 
       {/* プレビューダイアログ */}
       {showPreviewDialog && previewItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">履歴プレビュー</h2>
-                <div className="flex gap-2">
+        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50'>
+          <div className='bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto'>
+            <div className='p-6'>
+              <div className='flex justify-between items-center mb-4'>
+                <h2 className='text-xl font-bold'>履歴プレビュー</h2>
+                <div className='flex gap-2'>
                   <Button
                     onClick={() => handlePrintReport(previewItem)}
-                    className="flex items-center gap-2"
+                    className='flex items-center gap-2'
                   >
-                    <FileText className="h-4 w-4" />
+                    <FileText className='h-4 w-4' />
                     印刷
                   </Button>
                   <Button
@@ -3621,55 +4040,72 @@ const HistoryPage: React.FC = () => {
                       setShowPreviewDialog(false);
                       setShowEditDialog(true);
                     }}
-                    className="flex items-center gap-2"
+                    className='flex items-center gap-2'
                   >
-                    <Settings className="h-4 w-4" />
+                    <Settings className='h-4 w-4' />
                     編集に移動
                   </Button>
-                  <Button variant="ghost" onClick={() => setShowPreviewDialog(false)}>×</Button>
+                  <Button
+                    variant='ghost'
+                    onClick={() => setShowPreviewDialog(false)}
+                  >
+                    ×
+                  </Button>
                 </div>
               </div>
-              
-              <div className="space-y-6">
+
+              <div className='space-y-6'>
                 {/* レポートヘッダー */}
-                <div className="text-center border-b pb-4">
-                  <h1 className="text-2xl font-bold mb-2">応急処置サポート履歴</h1>
-                  <p className="text-sm text-gray-500">
+                <div className='text-center border-b pb-4'>
+                  <h1 className='text-2xl font-bold mb-2'>
+                    応急処置サポート履歴
+                  </h1>
+                  <p className='text-sm text-gray-500'>
                     作成日時: {formatDate(previewItem.createdAt)}
                   </p>
                 </div>
 
                 {/* 基本情報 */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
                   <div>
-                    <h3 className="text-lg font-semibold mb-3">基本情報</h3>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Settings className="h-4 w-4 text-gray-500" />
-                        <span><strong>機種:</strong> {previewItem.machineType}</span>
+                    <h3 className='text-lg font-semibold mb-3'>基本情報</h3>
+                    <div className='space-y-2'>
+                      <div className='flex items-center gap-2'>
+                        <Settings className='h-4 w-4 text-gray-500' />
+                        <span>
+                          <strong>機種:</strong> {previewItem.machineType}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-gray-500" />
-                        <span><strong>機械番号:</strong> {previewItem.machineNumber}</span>
+                      <div className='flex items-center gap-2'>
+                        <MapPin className='h-4 w-4 text-gray-500' />
+                        <span>
+                          <strong>機械番号:</strong> {previewItem.machineNumber}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-gray-500" />
-                        <span><strong>作成日時:</strong> {formatDate(previewItem.createdAt)}</span>
+                      <div className='flex items-center gap-2'>
+                        <Calendar className='h-4 w-4 text-gray-500' />
+                        <span>
+                          <strong>作成日時:</strong>{' '}
+                          {formatDate(previewItem.createdAt)}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Image className="h-4 w-4 text-gray-500" />
-                        <span><strong>画像:</strong> {previewItem.imagePath ? 'あり' : 'なし'}</span>
+                      <div className='flex items-center gap-2'>
+                        <Image className='h-4 w-4 text-gray-500' />
+                        <span>
+                          <strong>画像:</strong>{' '}
+                          {previewItem.imagePath ? 'あり' : 'なし'}
+                        </span>
                       </div>
                     </div>
                   </div>
-                  
+
                   {previewItem.imagePath && (
                     <div>
-                      <h3 className="text-lg font-semibold mb-3">関連画像</h3>
+                      <h3 className='text-lg font-semibold mb-3'>関連画像</h3>
                       <img
                         src={previewItem.imagePath}
-                        alt="履歴画像"
-                        className="w-full h-48 object-cover rounded-md"
+                        alt='履歴画像'
+                        className='w-full h-48 object-cover rounded-md'
                       />
                     </div>
                   )}
@@ -3677,9 +4113,9 @@ const HistoryPage: React.FC = () => {
 
                 {/* 詳細情報 */}
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">詳細情報</h3>
-                  <div className="bg-gray-50 p-4 rounded-md">
-                    <pre className="text-sm overflow-auto max-h-64">
+                  <h3 className='text-lg font-semibold mb-3'>詳細情報</h3>
+                  <div className='bg-gray-50 p-4 rounded-md'>
+                    <pre className='text-sm overflow-auto max-h-64'>
                       {JSON.stringify(previewItem.jsonData, null, 2)}
                     </pre>
                   </div>
@@ -3692,15 +4128,18 @@ const HistoryPage: React.FC = () => {
 
       {/* 編集ダイアログ */}
       {showEditDialog && editingItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-5xl w-full max-h-[95vh] overflow-auto">
-            <div className="p-6">
+        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50'>
+          <div className='bg-white rounded-lg max-w-5xl w-full max-h-[95vh] overflow-auto'>
+            <div className='p-6'>
               {/* 機種・機械番号データが読み込まれていない場合は再取得 */}
               {(() => {
-                if (machineData.machineTypes.length === 0 && !machineDataLoading) {
+                if (
+                  machineData.machineTypes.length === 0 &&
+                  !machineDataLoading
+                ) {
                   fetchMachineDataFromAPI();
                 }
-                
+
                 // デバッグ: 編集ダイアログが開かれた時の初期値をログ出力
                 console.log('編集ダイアログ表示時のeditingItem:', {
                   machineType: editingItem.machineType,
@@ -3708,34 +4147,34 @@ const HistoryPage: React.FC = () => {
                   fileName: editingItem.fileName,
                   title: editingItem.jsonData?.title,
                   question: editingItem.jsonData?.question,
-                  jsonData: editingItem.jsonData
+                  jsonData: editingItem.jsonData,
                 });
-                
+
                 return null;
               })()}
-              
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">機械故障情報編集</h2>
-                <div className="flex gap-2">
+
+              <div className='flex justify-between items-center mb-4'>
+                <h2 className='text-xl font-bold'>機械故障情報編集</h2>
+                <div className='flex gap-2'>
                   <Button
                     onClick={() => {
                       console.log('編集データを保存します:', editingItem);
                       handleSaveEditedItem(editingItem);
                     }}
-                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+                    className='flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white'
                   >
-                    <Download className="h-4 w-4" />
+                    <Download className='h-4 w-4' />
                     保存
                   </Button>
                   <Button
                     onClick={() => handlePrintReport(editingItem)}
-                    className="flex items-center gap-2"
+                    className='flex items-center gap-2'
                   >
-                    <Printer className="h-4 w-4" />
+                    <Printer className='h-4 w-4' />
                     印刷
                   </Button>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant='outline'
                     onClick={() => {
                       console.log('編集をキャンセルします');
                       setShowEditDialog(false);
@@ -3746,48 +4185,59 @@ const HistoryPage: React.FC = () => {
                   </Button>
                 </div>
               </div>
-              
-              <div className="space-y-6">
+
+              <div className='space-y-6'>
                 {/* 基本情報編集 */}
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                    <Settings className="h-5 w-5" />
+                <div className='bg-gray-50 p-4 rounded-lg'>
+                  <h3 className='text-lg font-semibold mb-3 flex items-center gap-2'>
+                    <Settings className='h-5 w-5' />
                     基本情報
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
                     <div>
-                      <label className="block text-sm font-medium mb-2">機種</label>
+                      <label className='block text-sm font-medium mb-2'>
+                        機種
+                      </label>
                       {machineDataLoading ? (
-                        <div className="h-10 flex items-center px-3 border border-gray-300 rounded">
+                        <div className='h-10 flex items-center px-3 border border-gray-300 rounded'>
                           読み込み中...
                         </div>
                       ) : (
                         <Select
                           value={editingItem.machineType || ''}
-                          onValueChange={(value) => {
+                          onValueChange={value => {
                             console.log('機種を変更:', value);
                             setEditingItem({
                               ...editingItem,
                               machineType: value,
                               jsonData: {
                                 ...editingItem.jsonData,
-                                machineType: value
-                              }
+                                machineType: value,
+                              },
                             });
                           }}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="機種を選択" />
+                            <SelectValue placeholder='機種を選択' />
                           </SelectTrigger>
                           <SelectContent>
                             {/* デバッグ: Select要素の値を確認 */}
                             {(() => {
-                              console.log('🔍 機種Select - editingItem.machineType:', editingItem.machineType);
-                              console.log('🔍 機種Select - machineData.machineTypes:', machineData.machineTypes);
+                              console.log(
+                                '🔍 機種Select - editingItem.machineType:',
+                                editingItem.machineType
+                              );
+                              console.log(
+                                '🔍 機種Select - machineData.machineTypes:',
+                                machineData.machineTypes
+                              );
                               return null;
                             })()}
-                            {machineData.machineTypes.map((machineType) => (
-                              <SelectItem key={machineType.id} value={machineType.machineTypeName}>
+                            {machineData.machineTypes.map(machineType => (
+                              <SelectItem
+                                key={machineType.id}
+                                value={machineType.machineTypeName}
+                              >
                                 {machineType.machineTypeName}
                               </SelectItem>
                             ))}
@@ -3796,53 +4246,66 @@ const HistoryPage: React.FC = () => {
                       )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-2">機械番号</label>
+                      <label className='block text-sm font-medium mb-2'>
+                        機械番号
+                      </label>
                       {machineDataLoading ? (
-                        <div className="h-10 flex items-center px-3 border border-gray-300 rounded">
+                        <div className='h-10 flex items-center px-3 border border-gray-300 rounded'>
                           読み込み中...
                         </div>
                       ) : (
                         <Select
                           value={editingItem.machineNumber || ''}
-                          onValueChange={(value) => {
+                          onValueChange={value => {
                             console.log('機械番号を変更:', value);
                             setEditingItem({
                               ...editingItem,
                               machineNumber: value,
                               jsonData: {
                                 ...editingItem.jsonData,
-                                machineNumber: value
-                              }
+                                machineNumber: value,
+                              },
                             });
                           }}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="機械番号を選択" />
+                            <SelectValue placeholder='機械番号を選択' />
                           </SelectTrigger>
                           <SelectContent>
                             {machineData.machines
-                              .filter(machine => !editingItem.machineType || machine.machineTypeName === editingItem.machineType)
-                              .map((machine) => (
-                              <SelectItem key={machine.id} value={machine.machineNumber}>
-                                {machine.machineNumber} ({machine.machineTypeName})
-                              </SelectItem>
-                            ))}
+                              .filter(
+                                machine =>
+                                  !editingItem.machineType ||
+                                  machine.machineTypeName ===
+                                    editingItem.machineType
+                              )
+                              .map(machine => (
+                                <SelectItem
+                                  key={machine.id}
+                                  value={machine.machineNumber}
+                                >
+                                  {machine.machineNumber} (
+                                  {machine.machineTypeName})
+                                </SelectItem>
+                              ))}
                           </SelectContent>
                         </Select>
                       )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-2">ファイル名</label>
+                      <label className='block text-sm font-medium mb-2'>
+                        ファイル名
+                      </label>
                       <Input
                         value={editingItem.fileName || ''}
-                        onChange={(e) => {
+                        onChange={e => {
                           console.log('ファイル名を変更:', e.target.value);
                           setEditingItem({
                             ...editingItem,
-                            fileName: e.target.value
+                            fileName: e.target.value,
                           });
                         }}
-                        placeholder="ファイル名"
+                        placeholder='ファイル名'
                         disabled
                       />
                     </div>
@@ -3850,55 +4313,76 @@ const HistoryPage: React.FC = () => {
                 </div>
 
                 {/* 事象・説明編集 */}
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
+                <div className='bg-blue-50 p-4 rounded-lg'>
+                  <h3 className='text-lg font-semibold mb-3 flex items-center gap-2'>
+                    <FileText className='h-5 w-5' />
                     事象・説明
                   </h3>
-                  <div className="space-y-4">
+                  <div className='space-y-4'>
                     <div>
-                      <label className="block text-sm font-medium mb-2">事象タイトル</label>
+                      <label className='block text-sm font-medium mb-2'>
+                        事象タイトル
+                      </label>
                       <Input
-                        value={editingItem.jsonData?.title || editingItem.jsonData?.question || ''}
-                        onChange={(e) => {
+                        value={
+                          editingItem.jsonData?.title ||
+                          editingItem.jsonData?.question ||
+                          ''
+                        }
+                        onChange={e => {
                           console.log('事象タイトルを変更:', e.target.value);
                           setEditingItem({
                             ...editingItem,
                             jsonData: {
                               ...editingItem.jsonData,
                               title: e.target.value,
-                              question: e.target.value
-                            }
+                              question: e.target.value,
+                            },
                           });
                         }}
-                        placeholder="事象タイトルを入力"
+                        placeholder='事象タイトルを入力'
                       />
                       {/* デバッグ: 事象タイトルの値を確認 */}
                       {(() => {
-                        const titleValue = editingItem.jsonData?.title || editingItem.jsonData?.question || '';
+                        const titleValue =
+                          editingItem.jsonData?.title ||
+                          editingItem.jsonData?.question ||
+                          '';
                         console.log('🔍 事象タイトル - 表示値:', titleValue);
-                        console.log('🔍 事象タイトル - jsonData.title:', editingItem.jsonData?.title);
-                        console.log('🔍 事象タイトル - jsonData.question:', editingItem.jsonData?.question);
+                        console.log(
+                          '🔍 事象タイトル - jsonData.title:',
+                          editingItem.jsonData?.title
+                        );
+                        console.log(
+                          '🔍 事象タイトル - jsonData.question:',
+                          editingItem.jsonData?.question
+                        );
                         return null;
                       })()}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-2">事象説明</label>
+                      <label className='block text-sm font-medium mb-2'>
+                        事象説明
+                      </label>
                       <textarea
-                        value={editingItem.jsonData?.problemDescription || editingItem.jsonData?.answer || ''}
-                        onChange={(e) => {
+                        value={
+                          editingItem.jsonData?.problemDescription ||
+                          editingItem.jsonData?.answer ||
+                          ''
+                        }
+                        onChange={e => {
                           console.log('事象説明を変更:', e.target.value);
                           setEditingItem({
                             ...editingItem,
                             jsonData: {
                               ...editingItem.jsonData,
                               problemDescription: e.target.value,
-                              answer: e.target.value
-                            }
+                              answer: e.target.value,
+                            },
                           });
                         }}
-                        className="w-full h-24 p-3 border border-gray-300 rounded-md"
-                        placeholder="事象の詳細説明を入力"
+                        className='w-full h-24 p-3 border border-gray-300 rounded-md'
+                        placeholder='事象の詳細説明を入力'
                       />
                     </div>
                   </div>
@@ -3909,19 +4393,22 @@ const HistoryPage: React.FC = () => {
                   const imageUrl = pickFirstImage(editingItem);
                   if (imageUrl) {
                     return (
-                      <div className="bg-purple-50 p-4 rounded-lg">
-                        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                          <Image className="h-5 w-5" />
+                      <div className='bg-purple-50 p-4 rounded-lg'>
+                        <h3 className='text-lg font-semibold mb-3 flex items-center gap-2'>
+                          <Image className='h-5 w-5' />
                           故障個所の画像
                         </h3>
-                        <div className="text-center">
+                        <div className='text-center'>
                           <img
                             src={imageUrl}
-                            alt="故障画像"
-                            className="max-w-full max-h-64 mx-auto border border-gray-300 rounded-md shadow-sm"
+                            alt='故障画像'
+                            className='max-w-full max-h-64 mx-auto border border-gray-300 rounded-md shadow-sm'
                           />
-                          <p className="text-sm text-gray-600 mt-2">
-                            故障箇所の画像 {imageUrl.startsWith('data:image/') ? '(Base64)' : '(URL)'}
+                          <p className='text-sm text-gray-600 mt-2'>
+                            故障箇所の画像{' '}
+                            {imageUrl.startsWith('data:image/')
+                              ? '(Base64)'
+                              : '(URL)'}
                           </p>
                         </div>
                       </div>
@@ -3931,67 +4418,73 @@ const HistoryPage: React.FC = () => {
                 })()}
 
                 {/* 修繕計画編集 */}
-                <div className="bg-yellow-50 p-4 rounded-lg">
-                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                    <MapPin className="h-5 w-5" />
+                <div className='bg-yellow-50 p-4 rounded-lg'>
+                  <h3 className='text-lg font-semibold mb-3 flex items-center gap-2'>
+                    <MapPin className='h-5 w-5' />
                     修繕計画
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
                     <div>
-                      <label className="block text-sm font-medium mb-2">修繕予定月日</label>
+                      <label className='block text-sm font-medium mb-2'>
+                        修繕予定月日
+                      </label>
                       <Input
-                        type="date"
+                        type='date'
                         value={editingItem.jsonData?.repairSchedule || ''}
-                        onChange={(e) => {
+                        onChange={e => {
                           setEditingItem({
                             ...editingItem,
                             jsonData: {
                               ...editingItem.jsonData,
-                              repairSchedule: e.target.value
-                            }
+                              repairSchedule: e.target.value,
+                            },
                           });
                         }}
-                        placeholder="修繕予定月日"
+                        placeholder='修繕予定月日'
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-2">場所</label>
+                      <label className='block text-sm font-medium mb-2'>
+                        場所
+                      </label>
                       <Input
                         value={editingItem.jsonData?.location || ''}
-                        onChange={(e) => {
+                        onChange={e => {
                           setEditingItem({
                             ...editingItem,
                             jsonData: {
                               ...editingItem.jsonData,
-                              location: e.target.value
-                            }
+                              location: e.target.value,
+                            },
                           });
                         }}
-                        placeholder="設置場所"
+                        placeholder='設置場所'
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-2">ステータス</label>
+                      <label className='block text-sm font-medium mb-2'>
+                        ステータス
+                      </label>
                       <Select
                         value={editingItem.jsonData?.status || ''}
-                        onValueChange={(value) => {
+                        onValueChange={value => {
                           setEditingItem({
                             ...editingItem,
                             jsonData: {
                               ...editingItem.jsonData,
-                              status: value
-                            }
+                              status: value,
+                            },
                           });
                         }}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="ステータスを選択" />
+                          <SelectValue placeholder='ステータスを選択' />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="報告済み">報告済み</SelectItem>
-                          <SelectItem value="対応中">対応中</SelectItem>
-                          <SelectItem value="完了">完了</SelectItem>
-                          <SelectItem value="保留">保留</SelectItem>
+                          <SelectItem value='報告済み'>報告済み</SelectItem>
+                          <SelectItem value='対応中'>対応中</SelectItem>
+                          <SelectItem value='完了'>完了</SelectItem>
+                          <SelectItem value='保留'>保留</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -3999,40 +4492,42 @@ const HistoryPage: React.FC = () => {
                 </div>
 
                 {/* 記事欄（200文字程度） */}
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
+                <div className='bg-gray-50 p-4 rounded-lg'>
+                  <h3 className='text-lg font-semibold mb-3 flex items-center gap-2'>
+                    <FileText className='h-5 w-5' />
                     記事欄
                   </h3>
                   <div>
-                    <label className="block text-sm font-medium mb-2">備考・記事 (200文字以内)</label>
+                    <label className='block text-sm font-medium mb-2'>
+                      備考・記事 (200文字以内)
+                    </label>
                     <textarea
                       value={editingItem.jsonData?.remarks || ''}
-                      onChange={(e) => {
+                      onChange={e => {
                         if (e.target.value.length <= 200) {
                           setEditingItem({
                             ...editingItem,
                             jsonData: {
                               ...editingItem.jsonData,
-                              remarks: e.target.value
-                            }
+                              remarks: e.target.value,
+                            },
                           });
                         }
                       }}
-                      className="w-full h-24 p-3 border border-gray-300 rounded-md"
-                      placeholder="修繕に関する備考や追加情報を記載してください（200文字以内）"
+                      className='w-full h-24 p-3 border border-gray-300 rounded-md'
+                      placeholder='修繕に関する備考や追加情報を記載してください（200文字以内）'
                       maxLength={200}
                     />
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className='text-xs text-gray-500 mt-1'>
                       {editingItem.jsonData?.remarks?.length || 0}/200文字
                     </p>
                   </div>
                 </div>
 
                 {/* 保存ボタン（下部） */}
-                <div className="flex justify-end gap-2 pt-4 border-t">
+                <div className='flex justify-end gap-2 pt-4 border-t'>
                   <Button
-                    variant="outline"
+                    variant='outline'
                     onClick={() => {
                       console.log('編集をキャンセルします');
                       setShowEditDialog(false);
@@ -4046,7 +4541,7 @@ const HistoryPage: React.FC = () => {
                       console.log('編集データを保存します:', editingItem);
                       handleSaveEditedItem(editingItem);
                     }}
-                    className="bg-green-600 hover:bg-green-700 text-white"
+                    className='bg-green-600 hover:bg-green-700 text-white'
                   >
                     保存して適用
                   </Button>
@@ -4057,10 +4552,6 @@ const HistoryPage: React.FC = () => {
         </div>
       )}
 
-
-
-
-
       {/* チャットエクスポートレポート表示 */}
       {showReport && selectedReportData && (
         <ChatExportReport
@@ -4068,19 +4559,14 @@ const HistoryPage: React.FC = () => {
           fileName={selectedFileName}
           onClose={handleCloseReport}
           onSave={handleSaveReport}
-          onPrint={(reportData) => {
+          onPrint={reportData => {
             console.log('チャットエクスポートレポートを印刷:', reportData);
             window.print();
           }}
         />
       )}
-
-
-
     </div>
   );
 };
 
 export default HistoryPage;
-
-

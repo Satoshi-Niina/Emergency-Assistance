@@ -43,80 +43,103 @@ export interface TroubleshootingResponse {
 export class TroubleshootingQA {
   private openai: OpenAI;
   private hybridSearch: HybridSearchService;
-  
+
   constructor() {
     this.openai = new OpenAI();
     this.hybridSearch = new HybridSearchService();
   }
-  
-  async startTroubleshooting(problemDescription: string): Promise<TroubleshootingResponse> {
+
+  async startTroubleshooting(
+    problemDescription: string
+  ): Promise<TroubleshootingResponse> {
     try {
       console.log('🔍 トラブルシューティング開始:', problemDescription);
-      
+
       // ハイブリッド検索で関連情報を取得
-      const searchResults = await this.hybridSearch.hybridSearch(problemDescription);
-      
+      const searchResults =
+        await this.hybridSearch.hybridSearch(problemDescription);
+
       // 初期質問を生成
-      const initialQuestion = await this.generateInitialQuestion(problemDescription, searchResults);
-      
+      const initialQuestion = await this.generateInitialQuestion(
+        problemDescription,
+        searchResults
+      );
+
       return {
         question: initialQuestion.question,
         options: initialQuestion.options,
         status: 'continue',
-        reasoning: initialQuestion.reasoning
+        reasoning: initialQuestion.reasoning,
       };
-      
     } catch (error) {
       console.error('❌ トラブルシューティング開始エラー:', error);
       return {
         question: '発生した事象を教えてください',
-        options: ['エンジンが止まった', 'ブレーキが効かない', '異音がする', 'その他'],
-        status: 'continue'
+        options: [
+          'エンジンが止まった',
+          'ブレーキが効かない',
+          '異音がする',
+          'その他',
+        ],
+        status: 'continue',
       };
     }
   }
-  
+
   async processAnswer(
     problemDescription: string,
     previousAnswers: TroubleshootingAnswer[],
     currentAnswer: string
   ): Promise<TroubleshootingResponse> {
     try {
-      console.log('🔍 回答処理:', { problemDescription, currentAnswer, previousAnswersCount: previousAnswers.length });
-      
+      console.log('🔍 回答処理:', {
+        problemDescription,
+        currentAnswer,
+        previousAnswersCount: previousAnswers.length,
+      });
+
       // 回答を記録
-      const allAnswers = [...previousAnswers, {
-        stepId: `step_${Date.now()}`,
-        answer: currentAnswer,
-        timestamp: new Date()
-      }];
-      
+      const allAnswers = [
+        ...previousAnswers,
+        {
+          stepId: `step_${Date.now()}`,
+          answer: currentAnswer,
+          timestamp: new Date(),
+        },
+      ];
+
       // ハイブリッド検索で関連情報を取得
       const searchQuery = `${problemDescription} ${currentAnswer} ${allAnswers.map(a => a.answer).join(' ')}`;
       const searchResults = await this.hybridSearch.hybridSearch(searchQuery);
-      
+
       // 次の質問または解決策を生成
-      const response = await this.generateNextStep(problemDescription, allAnswers, searchResults);
-      
+      const response = await this.generateNextStep(
+        problemDescription,
+        allAnswers,
+        searchResults
+      );
+
       return response;
-      
     } catch (error) {
       console.error('❌ 回答処理エラー:', error);
       return {
         question: '詳細な状況を教えてください',
-        status: 'continue'
+        status: 'continue',
       };
     }
   }
-  
-  private async generateInitialQuestion(problemDescription: string, searchResults: any): Promise<{
+
+  private async generateInitialQuestion(
+    problemDescription: string,
+    searchResults: any
+  ): Promise<{
     question: string;
     options?: string[];
     reasoning?: string;
   }> {
     try {
       const context = this.buildContext(searchResults.results);
-      
+
       const prompt = `あなたは保守用車の専門技術者です。以下の問題に対して、段階的な診断を行うための最初の質問を生成してください。
 
 **問題**: ${problemDescription}
@@ -143,43 +166,56 @@ export class TroubleshootingQA {
 選択肢は3-5個程度で、具体的で分かりやすい内容にしてください。`;
 
       const response = await this.openai.chat.completions.create({
-        model: "gpt-4",
+        model: 'gpt-4',
         messages: [
-          { role: "system", content: "あなたは保守用車の専門技術者です。段階的な診断を行うための質問を生成してください。" },
-          { role: "user", content: prompt }
+          {
+            role: 'system',
+            content:
+              'あなたは保守用車の専門技術者です。段階的な診断を行うための質問を生成してください。',
+          },
+          { role: 'user', content: prompt },
         ],
         temperature: 0.1,
-        max_tokens: 1000
+        max_tokens: 1000,
       });
 
       const content = response.choices[0].message.content || '';
-      
+
       try {
         const parsed = JSON.parse(content);
         return {
           question: parsed.question || '発生した事象の詳細を教えてください',
           options: parsed.options || [],
-          reasoning: parsed.reasoning || ''
+          reasoning: parsed.reasoning || '',
         };
       } catch (parseError) {
         console.error('JSON解析エラー:', parseError);
         return {
           question: '発生した事象の詳細を教えてください',
-          options: ['エンジンが止まった', 'ブレーキが効かない', '異音がする', 'その他'],
-          reasoning: '初期症状の確認'
+          options: [
+            'エンジンが止まった',
+            'ブレーキが効かない',
+            '異音がする',
+            'その他',
+          ],
+          reasoning: '初期症状の確認',
         };
       }
-      
     } catch (error) {
       console.error('❌ 初期質問生成エラー:', error);
       return {
         question: '発生した事象の詳細を教えてください',
-        options: ['エンジンが止まった', 'ブレーキが効かない', '異音がする', 'その他'],
-        reasoning: '初期症状の確認'
+        options: [
+          'エンジンが止まった',
+          'ブレーキが効かない',
+          '異音がする',
+          'その他',
+        ],
+        reasoning: '初期症状の確認',
       };
     }
   }
-  
+
   private async generateNextStep(
     problemDescription: string,
     answers: TroubleshootingAnswer[],
@@ -187,8 +223,10 @@ export class TroubleshootingQA {
   ): Promise<TroubleshootingResponse> {
     try {
       const context = this.buildContext(searchResults.results);
-      const answersText = answers.map((a, index) => `Q${index + 1}: ${a.answer}`).join(', ');
-      
+      const answersText = answers
+        .map((a, index) => `Q${index + 1}: ${a.answer}`)
+        .join(', ');
+
       const prompt = `あなたは保守用車の専門技術者です。以下の状況に基づいて、次の質問または解決策を決定してください。
 
 **初期問題**: ${problemDescription}
@@ -219,80 +257,90 @@ export class TroubleshootingQA {
 }`;
 
       const response = await this.openai.chat.completions.create({
-        model: "gpt-4",
+        model: 'gpt-4',
         messages: [
-          { role: "system", content: "あなたは保守用車の専門技術者です。段階的な診断と解決策を提供してください。" },
-          { role: "user", content: prompt }
+          {
+            role: 'system',
+            content:
+              'あなたは保守用車の専門技術者です。段階的な診断と解決策を提供してください。',
+          },
+          { role: 'user', content: prompt },
         ],
         temperature: 0.1,
-        max_tokens: 1500
+        max_tokens: 1500,
       });
 
       const content = response.choices[0].message.content || '';
-      
+
       try {
         const parsed = JSON.parse(content);
-        
+
         if (parsed.status === 'complete') {
           return {
-            solution: parsed.solution || '解決策を生成できませんでした。専門家に相談してください。',
+            solution:
+              parsed.solution ||
+              '解決策を生成できませんでした。専門家に相談してください。',
             status: 'complete',
-            reasoning: parsed.reasoning
+            reasoning: parsed.reasoning,
           };
         } else if (parsed.status === 'emergency') {
           return {
-            emergencyAction: parsed.emergencyAction || '緊急対応が必要です。専門家に連絡してください。',
+            emergencyAction:
+              parsed.emergencyAction ||
+              '緊急対応が必要です。専門家に連絡してください。',
             status: 'emergency',
-            reasoning: parsed.reasoning
+            reasoning: parsed.reasoning,
           };
         } else {
           return {
             question: parsed.question || '詳細な状況を教えてください',
             options: parsed.options || [],
             status: 'continue',
-            reasoning: parsed.reasoning
+            reasoning: parsed.reasoning,
           };
         }
-        
       } catch (parseError) {
         console.error('JSON解析エラー:', parseError);
         return {
           question: '詳細な状況を教えてください',
-          status: 'continue'
+          status: 'continue',
         };
       }
-      
     } catch (error) {
       console.error('❌ 次のステップ生成エラー:', error);
       return {
         question: '詳細な状況を教えてください',
-        status: 'continue'
+        status: 'continue',
       };
     }
   }
-  
+
   private buildContext(searchResults: any[]): string {
     if (!searchResults || searchResults.length === 0) {
       return '関連情報なし';
     }
-    
+
     return searchResults
       .slice(0, 3) // 上位3件のみ使用
       .map(result => {
         const source = result.metadata?.source || result.title || '不明';
-        const score = Math.round((result.finalScore || result.score || result.similarity || 0) * 100);
+        const score = Math.round(
+          (result.finalScore || result.score || result.similarity || 0) * 100
+        );
         return `【${source} (関連度: ${score}%)】${result.text || result.content || ''}`;
       })
       .join('\n');
   }
-  
+
   async generateSolution(
     problemDescription: string,
     answers: TroubleshootingAnswer[]
   ): Promise<string> {
     try {
-      const answersText = answers.map((a, index) => `Q${index + 1}: ${a.answer}`).join(', ');
-      
+      const answersText = answers
+        .map((a, index) => `Q${index + 1}: ${a.answer}`)
+        .join(', ');
+
       const prompt = `あなたは保守用車の専門技術者です。以下の回答に基づいて具体的な解決策を提示してください。
 
 **初期問題**: ${problemDescription}
@@ -309,17 +357,23 @@ export class TroubleshootingQA {
 必ず具体的な手順と安全上の注意を含めてください。`;
 
       const response = await this.openai.chat.completions.create({
-        model: "gpt-4",
+        model: 'gpt-4',
         messages: [
-          { role: "system", content: "あなたは保守用車の専門技術者です。具体的で安全な解決策を提供してください。" },
-          { role: "user", content: prompt }
+          {
+            role: 'system',
+            content:
+              'あなたは保守用車の専門技術者です。具体的で安全な解決策を提供してください。',
+          },
+          { role: 'user', content: prompt },
         ],
         temperature: 0.1,
-        max_tokens: 2000
+        max_tokens: 2000,
       });
 
-      return response.choices[0].message.content || '解決策を生成できませんでした。専門家に相談してください。';
-      
+      return (
+        response.choices[0].message.content ||
+        '解決策を生成できませんでした。専門家に相談してください。'
+      );
     } catch (error) {
       console.error('❌ 解決策生成エラー:', error);
       return '解決策を生成できませんでした。専門家に相談してください。';

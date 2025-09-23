@@ -1,14 +1,17 @@
-import { useState, useEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { ImageUp, BrainCog, Copy } from "lucide-react";
-import { useToast } from "../../hooks/use-toast.ts";
+import { useState, useEffect, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { ImageUp, BrainCog, Copy } from 'lucide-react';
+import { useToast } from '../../hooks/use-toast.ts';
 
 interface TextSelectionControlsProps {
   text: string;
   onSearch: (text: string) => Promise<void>;
 }
 
-export default function TextSelectionControls({ text, onSearch }: TextSelectionControlsProps) {
+export default function TextSelectionControls({
+  text,
+  onSearch,
+}: TextSelectionControlsProps) {
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const [isVisible, setIsVisible] = useState(false);
   const controlsRef = useRef<HTMLDivElement>(null);
@@ -23,7 +26,7 @@ export default function TextSelectionControls({ text, onSearch }: TextSelectionC
 
         setPosition({
           top: rect.top - 40,
-          left: rect.left
+          left: rect.left,
         });
         setIsVisible(true);
       }
@@ -34,7 +37,10 @@ export default function TextSelectionControls({ text, onSearch }: TextSelectionC
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (controlsRef.current && !controlsRef.current.contains(event.target as Node)) {
+      if (
+        controlsRef.current &&
+        !controlsRef.current.contains(event.target as Node)
+      ) {
         setIsVisible(false);
       }
     };
@@ -59,8 +65,8 @@ export default function TextSelectionControls({ text, onSearch }: TextSelectionC
   const handleCopy = () => {
     navigator.clipboard.writeText(text);
     toast({
-      title: "コピー完了",
-      description: "テキストがクリップボードにコピーされました",
+      title: 'コピー完了',
+      description: 'テキストがクリップボードにコピーされました',
       duration: 2000,
     });
     setIsVisible(false);
@@ -69,41 +75,41 @@ export default function TextSelectionControls({ text, onSearch }: TextSelectionC
   if (!isVisible) return null;
 
   return (
-    <div 
+    <div
       ref={controlsRef}
-      className="fixed bg-white shadow-lg rounded-lg border border-neutral-200 p-2 z-10"
+      className='fixed bg-white shadow-lg rounded-lg border border-neutral-200 p-2 z-10'
       style={{
         top: `${position.top}px`,
-        left: `${position.left}px`
+        left: `${position.left}px`,
       }}
     >
-      <div className="flex items-center">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="p-1 hover:bg-neutral-100 rounded mr-1" 
-          title="画像検索"
+      <div className='flex items-center'>
+        <Button
+          variant='ghost'
+          size='icon'
+          className='p-1 hover:bg-neutral-100 rounded mr-1'
+          title='画像検索'
           onClick={handleSearch}
         >
-          <ImageUp className="h-5 w-5 text-primary" />
+          <ImageUp className='h-5 w-5 text-primary' />
         </Button>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="p-1 hover:bg-neutral-100 rounded mr-1" 
-          title="AIに質問"
+        <Button
+          variant='ghost'
+          size='icon'
+          className='p-1 hover:bg-neutral-100 rounded mr-1'
+          title='AIに質問'
           onClick={handleChatGPT}
         >
-          <BrainCog className="h-5 w-5 text-primary" />
+          <BrainCog className='h-5 w-5 text-primary' />
         </Button>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="p-1 hover:bg-neutral-100 rounded" 
-          title="コピー"
+        <Button
+          variant='ghost'
+          size='icon'
+          className='p-1 hover:bg-neutral-100 rounded'
+          title='コピー'
           onClick={handleCopy}
         >
-          <Copy className="h-5 w-5 text-primary" />
+          <Copy className='h-5 w-5 text-primary' />
         </Button>
       </div>
     </div>

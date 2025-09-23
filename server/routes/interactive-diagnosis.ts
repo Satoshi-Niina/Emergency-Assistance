@@ -1,10 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { 
-  DiagnosisState, 
-  updateDiagnosisState, 
+import {
+  DiagnosisState,
+  updateDiagnosisState,
   generateInteractiveResponse,
-  InteractiveResponse 
+  InteractiveResponse,
 } from '../lib/interactive-diagnosis.js';
 import { processOpenAIRequest } from '../lib/openai.js';
 
@@ -13,27 +13,38 @@ const router = Router();
 // リクエストスキーマ
 const InteractiveDiagnosisRequestSchema = z.object({
   userResponse: z.string().min(1),
-  currentState: z.object({
-    phase: z.enum(['initial', 'investigation', 'diagnosis', 'action', 'verification', 'completed']),
-    collectedInfo: z.object({
-      symptoms: z.array(z.string()),
-      vehicleType: z.string().nullable(),
-      safetyStatus: z.string().nullable(),
-      timing: z.string().nullable(),
-      tools: z.string().nullable(),
-      environment: z.string().nullable(),
-      urgency: z.enum(['low', 'medium', 'high', 'critical'])
-    }),
-    suspectedCauses: z.array(z.string()),
-    currentFocus: z.string().nullable(),
-    nextActions: z.array(z.string()),
-  confidence: z.number(),
-  phraseHistory: z.array(z.string()).optional(),
-  lastQuestion: z.string().optional()
-  }).optional()
+  currentState: z
+    .object({
+      phase: z.enum([
+        'initial',
+        'investigation',
+        'diagnosis',
+        'action',
+        'verification',
+        'completed',
+      ]),
+      collectedInfo: z.object({
+        symptoms: z.array(z.string()),
+        vehicleType: z.string().nullable(),
+        safetyStatus: z.string().nullable(),
+        timing: z.string().nullable(),
+        tools: z.string().nullable(),
+        environment: z.string().nullable(),
+        urgency: z.enum(['low', 'medium', 'high', 'critical']),
+      }),
+      suspectedCauses: z.array(z.string()),
+      currentFocus: z.string().nullable(),
+      nextActions: z.array(z.string()),
+      confidence: z.number(),
+      phraseHistory: z.array(z.string()).optional(),
+      lastQuestion: z.string().optional(),
+    })
+    .optional(),
 });
 
-type InteractiveDiagnosisRequest = z.infer<typeof InteractiveDiagnosisRequestSchema>;
+type InteractiveDiagnosisRequest = z.infer<
+  typeof InteractiveDiagnosisRequestSchema
+>;
 
 /**
  * インタラクティブ故障診断 - ユーザーとの対話的な診断プロセス
@@ -42,11 +53,13 @@ type InteractiveDiagnosisRequest = z.infer<typeof InteractiveDiagnosisRequestSch
 router.post('/', async (req: Request, res: Response) => {
   try {
     // リクエストの検証
-    const validationResult = InteractiveDiagnosisRequestSchema.safeParse(req.body);
+    const validationResult = InteractiveDiagnosisRequestSchema.safeParse(
+      req.body
+    );
     if (!validationResult.success) {
       return res.status(400).json({
         error: 'Invalid request body',
-        details: validationResult.error.errors
+        details: validationResult.error.errors,
       });
     }
 
@@ -54,7 +67,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     // 初期状態の設定
     let diagnosisState: DiagnosisState;
-    
+
     if (currentState) {
       diagnosisState = {
         phase: currentState.phase,
@@ -65,14 +78,14 @@ router.post('/', async (req: Request, res: Response) => {
           timing: currentState.collectedInfo.timing,
           tools: currentState.collectedInfo.tools,
           environment: currentState.collectedInfo.environment,
-          urgency: currentState.collectedInfo.urgency
+          urgency: currentState.collectedInfo.urgency,
         },
         suspectedCauses: currentState.suspectedCauses,
         currentFocus: currentState.currentFocus,
         nextActions: currentState.nextActions,
-  confidence: currentState.confidence,
-  phraseHistory: currentState.phraseHistory || [],
-  lastQuestion: currentState.lastQuestion
+        confidence: currentState.confidence,
+        phraseHistory: currentState.phraseHistory || [],
+        lastQuestion: currentState.lastQuestion,
       };
     } else {
       diagnosisState = {
@@ -84,14 +97,14 @@ router.post('/', async (req: Request, res: Response) => {
           timing: null,
           tools: null,
           environment: null,
-          urgency: 'low'
+          urgency: 'low',
         },
         suspectedCauses: [],
         currentFocus: null,
         nextActions: [],
-  confidence: 0.0,
-  phraseHistory: [],
-  lastQuestion: undefined
+        confidence: 0.0,
+        phraseHistory: [],
+        lastQuestion: undefined,
       };
     }
 
@@ -99,7 +112,10 @@ router.post('/', async (req: Request, res: Response) => {
     const updatedState = updateDiagnosisState(diagnosisState, userResponse);
 
     // インタラクティブレスポンスの生成
-    let interactiveResponse = generateInteractiveResponse(updatedState, userResponse);
+    let interactiveResponse = generateInteractiveResponse(
+      updatedState,
+      userResponse
+    );
 
     // 高度な分析が必要な場合はOpenAI APIを使用
     if (updatedState.confidence < 0.6 && updatedState.phase === 'diagnosis') {
@@ -129,14 +145,14 @@ ${context}
         `;
 
         const aiResponse = await processOpenAIRequest(aiPrompt, true);
-        
+
         // AI生成の質問で更新
         if (aiResponse && aiResponse.length > 0) {
           interactiveResponse = {
             ...interactiveResponse,
             message: `🤖 **AI分析結果**\n\n収集した情報を分析しました。より正確な診断のため、以下を確認させてください。`,
             nextQuestion: aiResponse,
-            priority: 'diagnosis'
+            priority: 'diagnosis',
           };
         }
       } catch (error) {
@@ -146,11 +162,15 @@ ${context}
     }
 
     // 応急処置の具体的手順が必要な場合
-    if (updatedState.phase === 'action' && updatedState.suspectedCauses.length > 0) {
+    if (
+      updatedState.phase === 'action' &&
+      updatedState.suspectedCauses.length > 0
+    ) {
       try {
         const primaryCause = updatedState.suspectedCauses[0];
-        const vehicleInfo = updatedState.collectedInfo.vehicleType || '保守用車';
-        
+        const vehicleInfo =
+          updatedState.collectedInfo.vehicleType || '保守用車';
+
         const actionPrompt = `
 ${vehicleInfo}の${primaryCause}に対する応急処置手順を、現場で実行可能な形で提案してください。
 
@@ -167,13 +187,13 @@ ${vehicleInfo}の${primaryCause}に対する応急処置手順を、現場で実
         `;
 
         const actionResponse = await processOpenAIRequest(actionPrompt, true);
-        
+
         if (actionResponse && actionResponse.length > 0) {
           interactiveResponse = {
             ...interactiveResponse,
             message: `🛠️ **専門的応急処置手順**\n\n${actionResponse}`,
-            nextQuestion: "上記の手順を実行しましたか？結果を教えてください。",
-            priority: 'action'
+            nextQuestion: '上記の手順を実行しましたか？結果を教えてください。',
+            priority: 'action',
           };
         }
       } catch (error) {
@@ -181,10 +201,11 @@ ${vehicleInfo}の${primaryCause}に対する応急処置手順を、現場で実
       }
     }
 
-  // 質問重複再表現はロジック層で実施済み（ここでは再処理しない）
+    // 質問重複再表現はロジック層で実施済み（ここでは再処理しない）
 
     // 次回用に lastQuestion を更新
-    (updatedState as any).lastQuestion = interactiveResponse.nextQuestion || null;
+    (updatedState as any).lastQuestion =
+      interactiveResponse.nextQuestion || null;
 
     // レスポンス
     const response = {
@@ -194,17 +215,16 @@ ${vehicleInfo}の${primaryCause}に対する応急処置手順を、現場で実
         phase: updatedState.phase,
         confidence: updatedState.confidence,
         urgency: updatedState.collectedInfo.urgency,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     };
 
     res.json(response);
-
   } catch (error) {
     console.error('インタラクティブ診断エラー:', error);
     res.status(500).json({
       error: 'Interactive diagnosis failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -224,14 +244,14 @@ router.post('/start', async (req: Request, res: Response) => {
         timing: null,
         tools: null,
         environment: null,
-        urgency: 'low'
+        urgency: 'low',
       },
       suspectedCauses: [],
       currentFocus: null,
       nextActions: [],
       confidence: 0.0,
       phraseHistory: [],
-      lastQuestion: undefined
+      lastQuestion: undefined,
     };
 
     const initialResponse = generateInteractiveResponse(initialState);
@@ -244,15 +264,14 @@ router.post('/start', async (req: Request, res: Response) => {
         phase: 'initial',
         confidence: 0.0,
         urgency: 'low',
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
-
   } catch (error) {
     console.error('診断セッション開始エラー:', error);
     res.status(500).json({
       error: 'Failed to start diagnosis session',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -272,14 +291,13 @@ router.post('/save', async (req: Request, res: Response) => {
     res.json({
       success: true,
       message: 'Diagnosis session saved successfully',
-      sessionId
+      sessionId,
     });
-
   } catch (error) {
     console.error('診断セッション保存エラー:', error);
     res.status(500).json({
       error: 'Failed to save diagnosis session',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });

@@ -1,12 +1,17 @@
-import React, { useState, useEffect } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import EmergencyGuideUploader from "../components/emergency-guide/emergency-guide-uploader";
-import EmergencyGuideEdit from "../components/emergency-guide/emergency-guide-edit";
-import EmergencyGuideDisplay from "../components/emergency-guide/emergency-guide-display";
+import React, { useState, useEffect } from 'react';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '../components/ui/tabs';
+import EmergencyGuideUploader from '../components/emergency-guide/emergency-guide-uploader';
+import EmergencyGuideEdit from '../components/emergency-guide/emergency-guide-edit';
+import EmergencyGuideDisplay from '../components/emergency-guide/emergency-guide-display';
 
-import { Helmet } from "react-helmet";
-import { Button } from "../components/ui/button";
-import { useToast } from "../hooks/use-toast.ts";
+import { Helmet } from 'react-helmet';
+import { Button } from '../components/ui/button';
+import { useToast } from '../hooks/use-toast.ts';
 
 const EmergencyGuidePage: React.FC = () => {
   // BLOBファイル一覧表示用
@@ -16,8 +21,11 @@ const EmergencyGuidePage: React.FC = () => {
     const fetchBlobFileList = async () => {
       setBlobLoading(true);
       try {
-        const API_BASE = import.meta.env.VITE_API_BASE_URL || window.location.origin;
-        const res = await fetch(`${API_BASE}/api/blob/list?container=knowledge`);
+        const API_BASE =
+          import.meta.env.VITE_API_BASE_URL || window.location.origin;
+        const res = await fetch(
+          `${API_BASE}/api/blob/list?container=knowledge`
+        );
         const data = await res.json();
         if (data.success) {
           setBlobFiles(data.data);
@@ -37,7 +45,7 @@ const EmergencyGuidePage: React.FC = () => {
   };
 
   // 初期タブをURLから設定
-  const initialTab = getQueryParam('tab') || "edit";
+  const initialTab = getQueryParam('tab') || 'edit';
   const [activeTab, setActiveTab] = useState(initialTab);
   const [targetGuideId, setTargetGuideId] = useState<string | null>(
     getQueryParam('guideId')
@@ -46,11 +54,11 @@ const EmergencyGuidePage: React.FC = () => {
     getQueryParam('display')
   );
   const [lastUploadedGuideId, setLastUploadedGuideId] = useState<string | null>(
-    null,
+    null
   );
 
   // 検索機能の状態
-  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   // タブ切り替えイベントのリスナー
   useEffect(() => {
@@ -58,7 +66,7 @@ const EmergencyGuidePage: React.FC = () => {
       const customEvent = event as CustomEvent;
       if (customEvent.detail && customEvent.detail.guideId) {
         setTargetGuideId(customEvent.detail.guideId);
-        setActiveTab("flow");
+        setActiveTab('flow');
       }
     };
 
@@ -66,16 +74,28 @@ const EmergencyGuidePage: React.FC = () => {
       const customEvent = event as CustomEvent;
       if (customEvent.detail && customEvent.detail.guideId) {
         setDisplayingGuideId(customEvent.detail.guideId);
-        setActiveTab("display");
+        setActiveTab('display');
       }
     };
 
-    window.addEventListener('switch-to-flow-tab', handleSwitchToFlowTab as EventListener);
-    window.addEventListener('display-emergency-guide', handleDisplayGuide as EventListener);
-    
+    window.addEventListener(
+      'switch-to-flow-tab',
+      handleSwitchToFlowTab as EventListener
+    );
+    window.addEventListener(
+      'display-emergency-guide',
+      handleDisplayGuide as EventListener
+    );
+
     return () => {
-      window.removeEventListener('switch-to-flow-tab', handleSwitchToFlowTab as EventListener);
-      window.removeEventListener('display-emergency-guide', handleDisplayGuide as EventListener);
+      window.removeEventListener(
+        'switch-to-flow-tab',
+        handleSwitchToFlowTab as EventListener
+      );
+      window.removeEventListener(
+        'display-emergency-guide',
+        handleDisplayGuide as EventListener
+      );
     };
   }, []);
 
@@ -83,41 +103,51 @@ const EmergencyGuidePage: React.FC = () => {
   useEffect(() => {
     const refreshFlowList = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list?ts=${Date.now()}`, {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json'
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list?ts=${Date.now()}`,
+          {
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+            },
           }
-        });
-        if (!response.ok) throw new Error("読み込み失敗");
+        );
+        if (!response.ok) throw new Error('読み込み失敗');
         const data = await response.json();
         // APIレスポンスの構造に合わせてデータをマッピング
-        const flows = data.success && data.data ? data.data : (Array.isArray(data) ? data : []);
+        const flows =
+          data.success && data.data
+            ? data.data
+            : Array.isArray(data)
+              ? data
+              : [];
         // フロー一覧を直接更新
         if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('forceRefreshFlowList', {
-            detail: { flowList: flows }
-          }));
+          window.dispatchEvent(
+            new CustomEvent('forceRefreshFlowList', {
+              detail: { flowList: flows },
+            })
+          );
         }
       } catch (err) {
-        console.error("フロー一覧取得エラー", err);
+        console.error('フロー一覧取得エラー', err);
       }
     };
 
-    window.addEventListener("flowDataUpdated", refreshFlowList);
-    window.addEventListener("troubleshootingDataUpdated", refreshFlowList);
-    window.addEventListener("emergencyFlowSaved", refreshFlowList);
+    window.addEventListener('flowDataUpdated', refreshFlowList);
+    window.addEventListener('troubleshootingDataUpdated', refreshFlowList);
+    window.addEventListener('emergencyFlowSaved', refreshFlowList);
 
     return () => {
-      window.removeEventListener("flowDataUpdated", refreshFlowList);
-      window.removeEventListener("troubleshootingDataUpdated", refreshFlowList);
-      window.removeEventListener("emergencyFlowSaved", refreshFlowList);
+      window.removeEventListener('flowDataUpdated', refreshFlowList);
+      window.removeEventListener('troubleshootingDataUpdated', refreshFlowList);
+      window.removeEventListener('emergencyFlowSaved', refreshFlowList);
     };
   }, []);
 
   // データ更新を監視（削除されたファイルの再表示問題も修正）
   useEffect(() => {
-    const handleFlowDataUpdated = (event) => {
+    const handleFlowDataUpdated = event => {
       console.log('🔄 フローデータ更新イベントを受信:', event.detail);
       // 強制的にキャッシュをクリアして再取得
       fetchFlowList(true);
@@ -126,9 +156,9 @@ const EmergencyGuidePage: React.FC = () => {
     // 複数のイベントタイプに対応
     const eventTypes = [
       'flowDataUpdated',
-      'troubleshootingDataUpdated', 
+      'troubleshootingDataUpdated',
       'emergencyFlowSaved',
-      'fileSystemUpdated'
+      'fileSystemUpdated',
     ];
 
     eventTypes.forEach(eventType => {
@@ -152,63 +182,73 @@ const EmergencyGuidePage: React.FC = () => {
   const handleUploadSuccess = (guideId: string) => {
     setLastUploadedGuideId(guideId);
     // アップロード成功後に編集タブに切り替え
-    setActiveTab("edit");
+    setActiveTab('edit');
   };
 
   const [isLoadingFlowList, setIsLoadingFlowList] = useState(false);
   const [flowList, setFlowList] = useState([]);
-  const { toast } = useToast()
+  const { toast } = useToast();
 
   const fetchFlowList = async (forceRefresh = false) => {
     try {
       setIsLoadingFlowList(true);
-      console.log(`🔄 応急処置データ一覧の取得を開始します (forceRefresh: ${forceRefresh})`);
+      console.log(
+        `🔄 応急処置データ一覧の取得を開始します (forceRefresh: ${forceRefresh})`
+      );
 
       // キャッシュクリア処理を簡素化
-        if (forceRefresh && typeof window !== 'undefined') {
-          localStorage.clear();
-          sessionStorage.clear();
-          console.log('🧹 キャッシュクリア完了');
-        }
+      if (forceRefresh && typeof window !== 'undefined') {
+        localStorage.clear();
+        sessionStorage.clear();
+        console.log('🧹 キャッシュクリア完了');
+      }
 
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2);
       const cacheParams = `?_t=${timestamp}&_r=${randomId}&no_cache=true&source=troubleshooting`;
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list${cacheParams}`, {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list${cacheParams}`,
+        {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
         }
-      });
+      );
 
       if (!response.ok) {
-        throw new Error(`応急処置データの取得に失敗しました: ${response.status}`);
+        throw new Error(
+          `応急処置データの取得に失敗しました: ${response.status}`
+        );
       }
 
       const data = await response.json();
 
       // APIレスポンスの構造に合わせてデータをマッピング
-      const flows = data.success && data.data ? data.data : (Array.isArray(data) ? data : []);
+      const flows =
+        data.success && data.data ? data.data : Array.isArray(data) ? data : [];
       console.log(`✅ 取得したフローデータ: ${flows.length}件`);
       setFlowList(flows);
 
       // データをキャッシュ
       if (typeof window !== 'undefined') {
-        localStorage.setItem('emergencyFlowList', JSON.stringify({
-          data: flows,
-          timestamp: timestamp,
-          version: '3.0',
-          source: 'knowledge-base/troubleshooting'
-        }));
+        localStorage.setItem(
+          'emergencyFlowList',
+          JSON.stringify({
+            data: flows,
+            timestamp: timestamp,
+            version: '3.0',
+            source: 'knowledge-base/troubleshooting',
+          })
+        );
       }
-
     } catch (error) {
       console.error('❌ 応急処置データ取得エラー:', error);
       toast({
-        title: "エラー",
-        description: "応急処置データの取得に失敗しました",
-        variant: "destructive",
+        title: 'エラー',
+        description: '応急処置データの取得に失敗しました',
+        variant: 'destructive',
       });
       setFlowList([]);
     } finally {
@@ -219,13 +259,13 @@ const EmergencyGuidePage: React.FC = () => {
   // ガイド表示を終了する関数
   const handleExitDisplay = () => {
     setDisplayingGuideId(null);
-    setActiveTab("edit");
+    setActiveTab('edit');
   };
 
   // ガイド表示中の場合
-  if (displayingGuideId && activeTab === "display") {
+  if (displayingGuideId && activeTab === 'display') {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className='container mx-auto px-4 py-8'>
         <EmergencyGuideDisplay
           guideId={displayingGuideId}
           onExit={handleExitDisplay}
@@ -235,11 +275,11 @@ const EmergencyGuidePage: React.FC = () => {
   }
 
   return (
-    <div className="h-screen flex flex-col">
-  {/* UI表示時に自動取得するためボタンは削除 */}
+    <div className='h-screen flex flex-col'>
+      {/* UI表示時に自動取得するためボタンは削除 */}
       {blobLoading && <div>取得中...</div>}
       {blobFiles.length > 0 && (
-        <div style={{marginBottom:16}}>
+        <div style={{ marginBottom: 16 }}>
           <h3>🗂️ BLOBファイル一覧</h3>
           <ul>
             {blobFiles.map((file, idx) => (
@@ -250,22 +290,32 @@ const EmergencyGuidePage: React.FC = () => {
       )}
       <Helmet>
         <title>応急処置ガイド - Emergency Assistance</title>
-        <meta name="description" content="応急処置ガイドの管理と表示" />
+        <meta name='description' content='応急処置ガイドの管理と表示' />
       </Helmet>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-        <div className="px-4 pt-8">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="upload">アップロード</TabsTrigger>
-            <TabsTrigger value="edit">編集・管理</TabsTrigger>
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className='flex-1 flex flex-col min-h-0'
+      >
+        <div className='px-4 pt-8'>
+          <TabsList className='grid w-full grid-cols-2'>
+            <TabsTrigger value='upload'>アップロード</TabsTrigger>
+            <TabsTrigger value='edit'>編集・管理</TabsTrigger>
           </TabsList>
         </div>
 
-        <TabsContent value="upload" className="flex-1 flex flex-col min-h-0 px-4 pb-8">
+        <TabsContent
+          value='upload'
+          className='flex-1 flex flex-col min-h-0 px-4 pb-8'
+        >
           <EmergencyGuideUploader onUploadSuccess={handleUploadSuccess} />
         </TabsContent>
 
-        <TabsContent value="edit" className="flex-1 flex flex-col min-h-0 px-4 pb-8">
+        <TabsContent
+          value='edit'
+          className='flex-1 flex flex-col min-h-0 px-4 pb-8'
+        >
           <EmergencyGuideEdit />
         </TabsContent>
       </Tabs>
