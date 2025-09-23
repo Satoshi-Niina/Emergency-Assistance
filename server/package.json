@@ -2,7 +2,7 @@
   "name": "emergency-assistance-server",
   "version": "1.0.0",
   "type": "commonjs",
-  "main": "production-server.js",
+  "main": "index.js",
   "scripts": {
     "dev": "node --watch production-server.js",
     "build": "echo 'Using production-server.js - no TypeScript build needed'",
