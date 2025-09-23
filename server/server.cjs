@@ -1,10 +1,3 @@
-// セッション状態確認エンドポイント（CHIPS動作確認用）
-app.get('/api/health/session', (req, res) => {
-  res.json({
-    id: req.sessionID,
-    hasUser: !!req.session?.userId
-  });
-});
 #!/usr/bin/env node
 
 console.log('Starting server...');
@@ -340,13 +333,21 @@ console.log('🔧 Environment:', {
   DATABASE_URL: process.env.DATABASE_URL ? '[SET]' : '[NOT SET]'
 });
 
-const server = app.listen(port, host, () => {
-  console.log('✅ Server started successfully!');
-  console.log(`🌐 Listening on ${host}:${port}`);
-  console.log(`🔍 Health check: http://${host}:${port}/api/health`);
-  console.log(`🔐 Login API: http://${host}:${port}/api/auth/login`);
-  console.log(`📊 Database status: ${global.dbReady ? 'connected' : 'not connected'}`);
-});
+// サーバー起動の試行
+let server;
+try {
+  server = app.listen(port, host, () => {
+    console.log('✅ Server started successfully!');
+    console.log(`🌐 Listening on ${host}:${port}`);
+    console.log(`🔍 Health check: http://${host}:${port}/api/health`);
+    console.log(`🔐 Login API: http://${host}:${port}/api/auth/login`);
+    console.log(`📊 Database status: ${global.dbReady ? 'connected' : 'not connected'}`);
+    console.log('🚀 Emergency Assistance Server is ready!');
+  });
+} catch (error) {
+  console.error('❌ Failed to start server:', error);
+  process.exit(1);
+}
 server.on('error', (err) => {
   console.error('❌ Server error:', err);
   process.exit(1);
