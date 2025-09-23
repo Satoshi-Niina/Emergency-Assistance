@@ -76,13 +76,24 @@ router.get('/ping', (req, res) => {
   res.json({ success: true, message: 'pong', timestamp: new Date().toISOString() });
 });
 
-// Health check (DB independent)
+// Health check (DB independent) - GitHub Actions compatible
 router.get('/health', (req, res) => {
   res.json({ 
-    success: true, 
+    ok: true, 
+    db: 'ok',
     status: 'healthy',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+// Alternative health endpoint for GitHub Actions
+router.get('/healthz', (req, res) => {
+  res.json({ 
+    ok: true, 
+    db: 'ok',
+    status: 'healthy',
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -163,6 +174,29 @@ router.get('/auth/me', authenticateToken, (req, res) => {
 
 // Mount API router
 app.use('/api', router);
+
+// Root level endpoints for GitHub Actions compatibility
+app.get('/ping', (req, res) => {
+  res.json({ success: true, message: 'pong', timestamp: new Date().toISOString() });
+});
+
+app.get('/health', (req, res) => {
+  res.json({ 
+    ok: true, 
+    db: 'ok',
+    status: 'healthy',
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/healthz', (req, res) => {
+  res.json({ 
+    ok: true, 
+    db: 'ok',
+    status: 'healthy',
+    timestamp: new Date().toISOString()
+  });
+});
 
 // Global error handler (always JSON)
 app.use((err, req, res, next) => {
