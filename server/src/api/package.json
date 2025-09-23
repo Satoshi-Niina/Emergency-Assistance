@@ -1,0 +1,28 @@
+{
+  "name": "emergency-assistance-api",
+  "version": "1.0.0",
+  "description": "Azure Functions for Emergency Assistance API",
+  "main": "index.js",
+  "scripts": {
+    "start": "func start",
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.0.0",
+    "@azure/storage-blob": "^12.16.0",
+    "bcrypt": "^5.1.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "npmConfig": {
+    "audit": false,
+    "fund": false,
+    "update-notifier": false
+  },
+  "devDependencies": {
+    "@azure/functions": "^4.0.0",
+    "typescript": "^5.9.2"
+  }
+}
