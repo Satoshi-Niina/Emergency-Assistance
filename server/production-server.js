@@ -14,10 +14,10 @@ if (!process.env.JWT_SECRET) {
   process.exit(1);
 }
 
-// DATABASE_URL is optional for safe mode
-const isSafeMode = !process.env.DATABASE_URL;
-if (isSafeMode) {
-  console.log('🛡️ Safe Mode: DATABASE_URL not set, running without database');
+// DATABASE_URL is required for production
+if (!process.env.DATABASE_URL) {
+  console.error('❌ DATABASE_URL is required for production deployment');
+  process.exit(1);
 }
 
 // Initialize Express app
@@ -33,28 +33,23 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Initialize PostgreSQL pool with SSL (safe mode support)
-let pool = null;
-if (process.env.DATABASE_URL) {
-  pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }, // Azure PostgreSQL用
-    max: 10,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
-  });
+// Initialize PostgreSQL pool with SSL
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }, // Azure PostgreSQL用
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
 
-  // Test database connection
-  pool.on('connect', () => {
-    console.log('✅ Database connected');
-  });
+// Test database connection
+pool.on('connect', () => {
+  console.log('✅ Database connected');
+});
 
-  pool.on('error', (err) => {
-    console.error('❌ Database error:', err);
-  });
-} else {
-  console.log('🛡️ Safe Mode: DATABASE_URL not set, running without database');
-}
+pool.on('error', (err) => {
+  console.error('❌ Database error:', err);
+});
 
 // JWT middleware
 const authenticateToken = (req, res, next) => {
@@ -105,15 +100,6 @@ router.get('/healthz', (req, res) => {
 
 // Database readiness check - これが重要！
 router.get('/readiness', async (req, res) => {
-  if (!pool) {
-    return res.status(503).json({ 
-      ok: false, 
-      db: 'not_configured', 
-      error: 'database_url_not_set',
-      timestamp: new Date().toISOString()
-    });
-  }
-  
   try {
     await pool.query('SELECT 1');
     res.json({ ok: true, db: 'ready', timestamp: new Date().toISOString() });
@@ -137,13 +123,6 @@ router.post('/auth/login', async (req, res) => {
       return res.status(400).json({ success: false, error: 'username_password_required' });
     }
 
-    if (!pool) {
-      return res.status(503).json({ 
-        success: false, 
-        error: 'database_not_configured',
-        message: 'Database connection not available'
-      });
-    }
 
     // Query user from database
     const result = await pool.query(
@@ -264,24 +243,16 @@ app.listen(PORT, HOST, () => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, shutting down gracefully');
-  if (pool) {
-    pool.end(() => {
-      console.log('Database pool closed');
-      process.exit(0);
-    });
-  } else {
+  pool.end(() => {
+    console.log('Database pool closed');
     process.exit(0);
-  }
+  });
 });
 
 process.on('SIGINT', () => {
   console.log('SIGINT received, shutting down gracefully');
-  if (pool) {
-    pool.end(() => {
-      console.log('Database pool closed');
-      process.exit(0);
-    });
-  } else {
+  pool.end(() => {
+    console.log('Database pool closed');
     process.exit(0);
-  }
+  });
 });
