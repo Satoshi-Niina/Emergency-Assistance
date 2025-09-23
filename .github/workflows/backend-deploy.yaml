@@ -60,17 +60,31 @@ jobs:
           echo "=== Copied web.config to server directory ==="
           ls -la server/web.config
 
+      - name: Create deployment package
+        run: |
+          cd server
+          zip -r ../server-deploy.zip . -x "node_modules/*"
+          echo "Created server-deploy.zip"
+
       - name: Deploy Backend
         id: deploy1
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ secrets.APP_NAME || 'emergencyassistance-sv' }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: server
+          package: server-deploy.zip
+          deployment-method: zip
 
       - name: Retry once after short wait (409 guard)
         if: failure()
         run: sleep 30
+
+      - name: Create deployment package (retry)
+        if: failure()
+        run: |
+          cd server
+          zip -r ../server-deploy.zip . -x "node_modules/*"
+          echo "Created server-deploy.zip for retry"
 
       - name: Deploy Backend (retry)
         if: failure()
@@ -78,7 +92,8 @@ jobs:
         with:
           app-name: ${{ secrets.APP_NAME || 'emergencyassistance-sv' }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: server
+          package: server-deploy.zip
+          deployment-method: zip
 
       - name: Backend Health Check
         run: |
