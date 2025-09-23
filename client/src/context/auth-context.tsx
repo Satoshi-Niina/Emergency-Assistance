@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { login as authLogin, logout as authLogout, getCurrentUser } from '../lib/auth';
+import { login as authLogin, logout as authLogout, getCurrentUser, negotiateAuthMode } from '../lib/auth';
 
 interface User {
   id: string;
@@ -28,6 +28,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const checkAuthStatus = async () => {
       try {
         setIsLoading(true);
+        
+        // 初回起動時に認証モードを自動切替
+        await negotiateAuthMode();
         
         // lib/auth の getCurrentUser を利用
         const userData = await getCurrentUser();

@@ -1,31 +1,51 @@
-export const authenticateToken = (req: any, res: any, next: any) => {
-    console.log(`🔍 [認証チェック] パス: ${req.path}, メソッド: ${req.method}, Origin: ${req.headers.origin}`);
-    
-    // 開発環境でのヘルスチェックやテスト用エンドポイントは認証をスキップ
-    const skipAuthPaths = ['/api/health', '/api/test', '/api/chatgpt', '/api/auth/login', '/api/auth/logout', '/api/auth/me'];
-    if (skipAuthPaths.some(path => req.path.startsWith(path))) {
-        console.log(`🔓 認証をスキップ: ${req.path}`);
+import jwt from 'jsonwebtoken';
+import { Request, Response, NextFunction } from 'express';
+
+// Extend Request interface to include user
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string;
+      };
+    }
+  }
+}
+
+// Bearer token authentication middleware
+export const authenticateToken = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Check for Bearer token first
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      
+      try {
+        const payload = jwt.verify(token, process.env.JWT_SECRET!) as { uid: string };
+        req.user = { id: payload.uid };
         return next();
+      } catch (jwtError) {
+        // JWT invalid, continue to session check
+        console.log('JWT verification failed, checking session:', jwtError);
+      }
     }
     
-    // OPTIONSリクエストは認証をスキップ
-    if (req.method === 'OPTIONS') {
-        console.log(`🔓 OPTIONSリクエストをスキップ: ${req.path}`);
-        return next();
+    // Fallback to session authentication
+    if (req.session?.userId) {
+      req.user = { id: req.session.userId };
+      return next();
     }
     
-    // セッションチェック
-    if (!req.session || !req.session.userId) {
-        console.log(`🚫 [403 Forbidden] セッションなし - パス: ${req.path}, セッション: ${JSON.stringify(req.session)}`);
-        return res.status(403).json({
-            success: false,
-            error: 'アクセスが拒否されました。認証が必要です。',
-            message: 'Forbidden - Authentication required',
-            path: req.path,
-            method: req.method
-        });
-    }
-    
-    console.log(`✅ 認証成功: ユーザーID ${req.session.userId} - ${req.path}`);
-    next();
+    // No valid authentication found
+    return res.status(401).json({ 
+      success: false, 
+      error: '認証されていません' 
+    });
+  } catch (error) {
+    console.error('Authentication middleware error:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: '認証エラーが発生しました' 
+    });
+  }
 };

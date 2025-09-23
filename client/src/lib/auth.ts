@@ -5,12 +5,19 @@ import { apiFetch } from '../api/apiClient';
 
 // 明示的なAPI関数（credentials: 'include' を保証）
 export async function loginApi(login: string, password: string) {
-  return apiFetch('/api/auth/login', {
+  const response = await apiFetch('/api/auth/login', {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
     body: JSON.stringify({ login, password })
   });
+  
+  // Store token if received
+  if (response.token) {
+    sessionStorage.setItem('token', response.token);
+  }
+  
+  return response;
 }
 
 export async function meApi() {
@@ -22,6 +29,9 @@ export async function meApi() {
 }
 
 export async function logoutApi() {
+  // Clear token from sessionStorage
+  sessionStorage.removeItem('token');
+  
   return apiFetch('/api/auth/logout', {
     method: 'POST',
     credentials: 'include',
@@ -61,6 +71,11 @@ export const login = async (credentials: LoginCredentials) => {
       body: JSON.stringify(credentials)
     });
     
+    // Store token if received
+    if (userData.token) {
+      sessionStorage.setItem('token', userData.token);
+    }
+    
     console.log('📡 ログイン成功:', userData);
     console.log('✅ ログイン成功:', userData);
     return userData;
@@ -85,6 +100,9 @@ export const login = async (credentials: LoginCredentials) => {
 export const logout = async () => {
   try {
     console.log('🔐 ログアウト試行');
+    
+    // Clear token from sessionStorage
+    sessionStorage.removeItem('token');
     
     await apiFetch('/api/auth/logout', {
       method: 'POST'
@@ -112,6 +130,65 @@ export const getCurrentUser = async () => {
       console.log('❌ 認証されていません (401)');
       return null;
     }
+    return null;
+  }
+};
+
+// Export aliases for compatibility with auth-context
+export const authLogin = login;
+export const authLogout = logout;
+
+// 初回アクセスで自動判定（Cookieプローブ）→ Safari 等は自動で Bearer、同一ドメイン時は Cookie を優先。401は自動再発行で復帰。手動操作不要。
+
+// 認証モード自動切替
+export const negotiateAuthMode = async (): Promise<'cookie' | 'token'> => {
+  try {
+    // 1. サーバ設定ヒントを取得
+    const handshake = await apiFetch('/api/auth/handshake');
+    
+    if (handshake.firstParty) {
+      // 同一ドメインの場合はCookieを優先
+      sessionStorage.setItem('AUTH_MODE', 'cookie');
+      return 'cookie';
+    }
+    
+    // 2. クロスサイトの場合はCookieプローブを実施
+    await apiFetch('/api/auth/cookie-probe', {
+      method: 'POST',
+      credentials: 'include'
+    });
+    
+    const probeResult = await apiFetch('/api/auth/cookie-probe-check');
+    
+    const mode = probeResult.cookieOk ? 'cookie' : 'token';
+    sessionStorage.setItem('AUTH_MODE', mode);
+    
+    console.log(`🔧 認証モード自動切替: ${mode} (cookieOk: ${probeResult.cookieOk})`);
+    return mode;
+  } catch (error) {
+    console.error('認証モード切替エラー:', error);
+    // エラー時はトークンモードにフォールバック
+    sessionStorage.setItem('AUTH_MODE', 'token');
+    return 'token';
+  }
+};
+
+// トークンリフレッシュ
+export const refreshToken = async (): Promise<string | null> => {
+  try {
+    const response = await apiFetch('/api/auth/refresh', {
+      method: 'POST',
+      credentials: 'include'
+    });
+    
+    if (response.token) {
+      sessionStorage.setItem('token', response.token);
+      return response.token;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('トークンリフレッシュエラー:', error);
     return null;
   }
 };
