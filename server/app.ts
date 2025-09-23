@@ -127,19 +127,19 @@ if (process.env.NODE_ENV === 'development') {
   });
 }
 
-// 2. CORS設定（trust proxyの後）
+// 2. CORS設定（SWA環境では同一オリジン前提）
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net';
 app.use(cors({
-  origin: FRONTEND_URL,
-  credentials: true,
+  origin: [FRONTEND_URL, 'http://localhost:5173', 'http://localhost:3000'], // SWA + 開発環境
+  credentials: false, // SWA環境では同一オリジンなので不要
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
 
 // 3. OPTIONSリクエストの明示的処理
 app.options('*', cors({
-  origin: FRONTEND_URL,
-  credentials: true,
+  origin: [FRONTEND_URL, 'http://localhost:5173', 'http://localhost:3000'],
+  credentials: false,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));

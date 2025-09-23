@@ -1,10 +1,8 @@
 // client/src/lib/apiClient.ts
-const fallbackUrl = 'https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net';
-export const API_BASE = (import.meta.env.VITE_API_BASE_URL || fallbackUrl).replace(/\/+$/, '');
+// SWA環境では /api に統一（staticwebapp.config.json でリライトされる）
+export const API_BASE = '/api';
 
-if (!import.meta.env.VITE_API_BASE_URL) {
-  console.warn('[api] Using fallback API_BASE_URL:', fallbackUrl);
-}
+console.info('[api] Using API_BASE:', API_BASE);
 
 // RequestInitを拡張して_retriedフラグを追加
 interface ApiFetchOptions extends RequestInit {
@@ -14,22 +12,30 @@ interface ApiFetchOptions extends RequestInit {
 export async function apiFetch(path: string, options: ApiFetchOptions = {}) {
   const url = `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
   
-  // 認証モードに基づいてヘッダーを設定
-  const mode = sessionStorage.getItem('AUTH_MODE');
-  const token = sessionStorage.getItem('token');
+  // リクエスト前インターセプタ: Authorizationヘッダの確実な付与
+  const headers = new Headers(options.headers || {});
+  const token = sessionStorage.getItem('token') || localStorage.getItem('accessToken');
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
   
-  const shouldUseToken = mode === 'token' && token;
-  
-  const res = await fetch(url, {
-    credentials: 'include',
+  // SWA環境では同一オリジンなので credentials は不要
+  const finalOptions = {
     ...options,
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
-      ...(shouldUseToken && { 'Authorization': `Bearer ${token}` }),
-      ...(options.headers || {})
+      ...Object.fromEntries(headers.entries())
     }
+  };
+  
+  console.debug('[api] Request:', {
+    url,
+    hasAuth: headers.has('Authorization'),
+    method: options.method || 'GET'
   });
+  
+  const res = await fetch(url, finalOptions);
   
   const ct = res.headers.get('content-type') || '';
   if (!ct.includes('application/json')) {
@@ -38,14 +44,19 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}) {
   }
   
   // 401エラーの自動リカバリ（一度だけ）
-  if (res.status === 401 && shouldUseToken && !options._retried) {
+  if (res.status === 401 && !options._retried) {
     try {
-      const { refreshToken } = await import('./auth');
-      const newToken = await refreshToken();
-      
-      if (newToken) {
-        // 元のリクエストを再試行
-        return apiFetch(path, { ...options, _retried: true });
+      const refreshRes = await fetch(`${API_BASE}/api/auth/refresh`, { 
+        method: 'POST', 
+        credentials: 'include' 
+      });
+      if (refreshRes.ok) {
+        const { token: newToken } = await refreshRes.json();
+        if (newToken) {
+          sessionStorage.setItem('token', newToken);
+          headers.set('Authorization', `Bearer ${newToken}`);
+          return await fetch(url, { ...options, headers }); // 1回だけ再試行
+        }
       }
     } catch (refreshError) {
       console.error('自動リカバリ失敗:', refreshError);

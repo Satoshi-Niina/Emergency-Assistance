@@ -78,6 +78,15 @@ router.get('/debug/session', (req, res) => {
 // ログインエンドポイント
 router.post('/login', async (req, res) => {
   try {
+    // 診断ログ: リクエストヘッダー
+    console.log('[auth/login] Request headers:', {
+      authorization: req.headers.authorization ? '[SET]' : '[NOT SET]',
+      cookie: req.headers.cookie ? '[SET]' : '[NOT SET]',
+      host: req.headers.host,
+      origin: req.headers.origin,
+      'user-agent': req.headers['user-agent']?.substring(0, 50) + '...'
+    });
+    
     const { username, password } = req.body || {};
     
     // データベースからユーザーを検索
@@ -102,7 +111,16 @@ router.post('/login', async (req, res) => {
     req.session.regenerate(err => {
       if (err) return res.status(500).json({ success: false, error: 'session' });
       req.session.userId = foundUser.id;
-      req.session.save(() => res.json({ success: true, token }));
+      req.session.save(() => {
+        // 診断ログ: レスポンスヘッダー
+        console.log('[auth/login] Response headers:', {
+          'set-cookie': res.getHeader('set-cookie') ? '[SET]' : '[NOT SET]',
+          'access-control-allow-origin': res.getHeader('access-control-allow-origin'),
+          'access-control-allow-credentials': res.getHeader('access-control-allow-credentials')
+        });
+        console.log('[auth/login] Login success for user:', foundUser.username);
+        res.json({ success: true, token, accessToken: token, expiresIn: '1d' });
+      });
     });
 
   } catch (error) {
@@ -124,7 +142,24 @@ router.post('/logout', (req, res) => {
 
 // 現在のユーザー情報取得
 router.get('/me', authenticateToken, (req, res) => {
-  return res.json({ authenticated: true, userId: req.user!.id });
+  // 診断ログ: /me リクエスト
+  console.log('[auth/me] Request headers:', {
+    authorization: req.headers.authorization ? '[SET]' : '[NOT SET]',
+    cookie: req.headers.cookie ? '[SET]' : '[NOT SET]',
+    host: req.headers.host,
+    origin: req.headers.origin
+  });
+  console.log('[auth/me] Auth result:', {
+    userId: req.user?.id,
+    sessionUserId: req.session?.userId,
+    authMethod: req.headers.authorization ? 'Bearer' : 'Session'
+  });
+  
+  return res.json({ 
+    authenticated: true, 
+    userId: req.user!.id,
+    user: { id: req.user!.id }
+  });
 });
 
 // サーバ設定ヒント取得

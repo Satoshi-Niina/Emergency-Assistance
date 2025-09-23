@@ -1,7 +1,11 @@
 import { apiRequest } from './queryClient';
-import { LoginCredentials } from '@shared/schema';
 import { AUTH_API } from './api/config';
 import { apiFetch } from '../api/apiClient';
+
+interface LoginCredentials {
+  username: string;
+  password: string;
+}
 
 // 明示的なAPI関数（credentials: 'include' を保証）
 export async function loginApi(login: string, password: string) {
@@ -12,10 +16,13 @@ export async function loginApi(login: string, password: string) {
     body: JSON.stringify({ login, password })
   });
   
-  // Store token if received
-  if (response.token) {
-    sessionStorage.setItem('token', response.token);
-  }
+    // Store token if received (SWA環境ではlocalStorageを使用)
+    if (response.token || response.accessToken) {
+      const token = response.token || response.accessToken;
+      sessionStorage.setItem('token', token);
+      localStorage.setItem('accessToken', token);
+      console.info('[auth] token saved:', !!token);
+    }
   
   return response;
 }
@@ -71,9 +78,12 @@ export const login = async (credentials: LoginCredentials) => {
       body: JSON.stringify(credentials)
     });
     
-    // Store token if received
-    if (userData.token) {
-      sessionStorage.setItem('token', userData.token);
+    // Store token if received (SWA環境ではlocalStorageを使用)
+    if (userData.token || userData.accessToken) {
+      const token = userData.token || userData.accessToken;
+      sessionStorage.setItem('token', token);
+      localStorage.setItem('accessToken', token);
+      console.info('[auth] token saved:', !!token);
     }
     
     console.log('📡 ログイン成功:', userData);
