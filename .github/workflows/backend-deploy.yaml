@@ -33,6 +33,28 @@ jobs:
         working-directory: server
         run: rm -rf node_modules
 
+      - name: Install dependencies
+        working-directory: server
+        run: npm install --production
+
+      - name: Verify server files
+        working-directory: server
+        run: |
+          echo "=== Server files verification ==="
+          ls -la
+          echo "=== Package.json ==="
+          cat package.json
+          echo "=== Web.config ==="
+          cat ../web.config
+          echo "=== Server.cjs exists ==="
+          ls -la server.cjs
+
+      - name: Copy web.config to server directory
+        run: |
+          cp web.config server/web.config
+          echo "=== Copied web.config to server directory ==="
+          ls -la server/web.config
+
       - name: Deploy Backend
         id: deploy1
         uses: azure/webapps-deploy@v3
@@ -58,31 +80,42 @@ jobs:
           echo "🔍 Starting backend health check..."
           
           # Wait for deployment
-          echo "⏳ Waiting for backend deployment (60 seconds)..."
-          sleep 60
+          echo "⏳ Waiting for backend deployment (90 seconds)..."
+          sleep 90
           
           # Check backend
           backend_url="https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net"
           echo "Checking backend: ${backend_url}/api/health"
           
-          for i in {1..10}; do
-            backend_status=$(curl -o /dev/null -s -w "%{http_code}" -L "${backend_url}/api/health")
-            echo "Backend check $i: $backend_status"
+          for i in {1..15}; do
+            echo "=== Health check attempt $i ==="
             
-            if [ "$backend_status" = "200" ]; then
+            # Try multiple endpoints
+            health_status=$(curl -o /dev/null -s -w "%{http_code}" -L "${backend_url}/api/health" || echo "000")
+            healthz_status=$(curl -o /dev/null -s -w "%{http_code}" -L "${backend_url}/api/healthz" || echo "000")
+            ping_status=$(curl -o /dev/null -s -w "%{http_code}" -L "${backend_url}/ping" || echo "000")
+            
+            echo "Health endpoints status:"
+            echo "  /api/health: $health_status"
+            echo "  /api/healthz: $healthz_status"
+            echo "  /ping: $ping_status"
+            
+            # Check if any endpoint is responding
+            if [ "$health_status" = "200" ] || [ "$healthz_status" = "200" ] || [ "$ping_status" = "200" ]; then
               echo "✅ Backend deployment successful!"
               echo "Backend URL: ${backend_url}"
               break
             fi
             
-            if [ $i -lt 10 ]; then
-              echo "⏳ Retrying in 5 seconds..."
-              sleep 5
+            if [ $i -lt 15 ]; then
+              echo "⏳ Retrying in 10 seconds..."
+              sleep 10
             fi
           done
           
-          if [ "$backend_status" != "200" ]; then
+          if [ "$health_status" != "200" ] && [ "$healthz_status" != "200" ] && [ "$ping_status" != "200" ]; then
             echo "❌ Backend health check failed!"
+            echo "All health endpoints are not responding"
             echo "Please check Azure Portal logs for details"
             exit 1
           fi

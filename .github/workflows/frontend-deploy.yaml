@@ -49,8 +49,12 @@ jobs:
         run: |
           cat > .env.production << 'EOF'
           VITE_API_BASE_URL=https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net
+          VITE_API_BASE=https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net
           FRONTEND_URL=https://witty-river-012f39e00.1.azurestaticapps.net
+          NODE_ENV=production
           EOF
+          echo "=== Created .env.production ==="
+          cat .env.production
       - name: Install frontend dependencies
         working-directory: client
         run: |
@@ -58,7 +62,14 @@ jobs:
           npm install --no-audit --prefer-offline
       - name: Build frontend
         working-directory: client
-        run: npm run build
+        run: |
+          echo "=== Building frontend with environment variables ==="
+          echo "VITE_API_BASE: $VITE_API_BASE"
+          echo "VITE_API_BASE_URL: $VITE_API_BASE_URL"
+          echo "NODE_ENV: $NODE_ENV"
+          echo "=== .env.production contents ==="
+          cat .env.production
+          npm run build
         env:
           VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
