@@ -151,8 +151,15 @@ jobs:
           fi
 
       - name: Session smoke (optional)
-        if: ${{ secrets.LOGIN_URL != '' && secrets.LOGIN_BODY_JSON != '' && secrets.SESSION_CHECK_URL != '' }}
+        shell: bash
+        env:
+          LOGIN_URL: ${{ secrets.LOGIN_URL }}
+          LOGIN_BODY_JSON: ${{ secrets.LOGIN_BODY_JSON }}
+          SESSION_CHECK_URL: ${{ secrets.SESSION_CHECK_URL }}
         run: |
+          if [ -z "${LOGIN_URL}" ] || [ -z "${LOGIN_BODY_JSON}" ] || [ -z "${SESSION_CHECK_URL}" ]; then
+            echo "ℹ️ Skip session smoke: secrets missing"; exit 0;
+          fi
           echo "🔐 Running session smoke test..."
           curl -sS -f -X POST -H "Content-Type: application/json" --data '${{ secrets.LOGIN_BODY_JSON }}' --cookie-jar cookies.txt "${{ secrets.LOGIN_URL }}"
           curl -sS -f --cookie cookies.txt "${{ secrets.SESSION_CHECK_URL }}" | tee /dev/stderr
