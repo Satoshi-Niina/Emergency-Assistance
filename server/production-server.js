@@ -212,10 +212,18 @@ app.use('/api', router);
 // Global error handler (always JSON)
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
+  console.error('Error stack:', err.stack);
+  console.error('Request details:', {
+    method: req.method,
+    url: req.url,
+    headers: req.headers,
+    body: req.body
+  });
   res.status(500).json({
     success: false,
     error: 'internal_server_error',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'An error occurred'
+    message: process.env.NODE_ENV === 'development' ? err.message : 'An error occurred',
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -238,6 +246,10 @@ app.listen(PORT, HOST, () => {
   console.log(`🔐 Login API: http://${HOST}:${PORT}/api/auth/login`);
   console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔍 Database URL configured: ${process.env.DATABASE_URL ? 'YES' : 'NO'}`);
+  console.log(`🔑 JWT Secret configured: ${process.env.JWT_SECRET ? 'YES' : 'NO'}`);
+  console.log(`📁 Working directory: ${process.cwd()}`);
+  console.log(`📄 Main file: ${__filename}`);
+  console.log(`⏰ Start time: ${new Date().toISOString()}`);
 });
 
 // Graceful shutdown
