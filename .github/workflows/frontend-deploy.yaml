@@ -4,7 +4,13 @@ on:
     branches: [ main ]
     paths:
       - 'client/**'
+      - 'server/**'
+      - 'staticwebapp.config.json'
+      - 'README.md'
       - '.github/workflows/frontend-deploy.yaml'
+      - 'trigger.txt'
+      - 'frontend-trigger.txt'
+      - 'force-deploy.txt'
   workflow_dispatch:
 
 concurrency:
@@ -48,6 +54,8 @@ jobs:
           echo "NODE_ENV: $NODE_ENV"
           echo "=== .env.production contents ==="
           cat .env.production
+          echo "=== Force rebuild for cookie authentication fix ==="
+          rm -rf dist
           npm run build
         env:
           VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
