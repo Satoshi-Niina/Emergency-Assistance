@@ -14,9 +14,10 @@ if (!process.env.JWT_SECRET) {
   process.exit(1);
 }
 
-if (!process.env.DATABASE_URL) {
-  console.error('❌ DATABASE_URL is required');
-  process.exit(1);
+// DATABASE_URL is optional for safe mode
+const isSafeMode = !process.env.DATABASE_URL;
+if (isSafeMode) {
+  console.log('🛡️ Safe Mode: DATABASE_URL not set, running without database');
 }
 
 // Initialize Express app
@@ -169,6 +170,15 @@ router.get('/auth/me', authenticateToken, (req, res) => {
       id: req.user.userId,
       username: req.user.username
     }
+  });
+});
+
+// Handshake endpoint for frontend compatibility
+router.get('/auth/handshake', (req, res) => {
+  res.json({
+    success: true,
+    message: 'handshake successful',
+    timestamp: new Date().toISOString()
   });
 });
 
