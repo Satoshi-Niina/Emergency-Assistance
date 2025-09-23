@@ -57,6 +57,66 @@ function RootRedirect() {
   return <Navigate to={user ? '/chat' : '/login'} replace />;
 }
 
+// 現在モードのバッジコンポーネント
+function AuthModeBadge() {
+  const { authMode } = useAuth();
+
+  if (!authMode) return null;
+
+  const getBadgeStyle = (mode: string) => {
+    switch (mode) {
+      case 'safe':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'jwt-bypass':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'jwt':
+        return 'bg-green-100 text-green-800 border-green-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getModeText = (mode: string) => {
+    switch (mode) {
+      case 'safe':
+        return 'セーフモード';
+      case 'jwt-bypass':
+        return 'JWTバイパス';
+      case 'jwt':
+        return '本番モード';
+      default:
+        return mode;
+    }
+  };
+
+  return (
+    <div className={`fixed top-4 right-4 z-50 px-3 py-1 rounded-full border text-sm font-medium ${getBadgeStyle(authMode)}`}>
+      {getModeText(authMode)}
+    </div>
+  );
+}
+
+// 注意文コンポーネント
+function AuthModeNotice() {
+  const { authMode } = useAuth();
+
+  if (authMode === 'jwt') return null; // 本番モードでは注意文を非表示
+
+  return (
+    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+      <div className="flex">
+        <div className="ml-3">
+          <p className="text-sm text-yellow-700">
+            <strong>本番前の検証モードです。</strong>
+            {authMode === 'safe' && ' セーフモードで動作しています。'}
+            {authMode === 'jwt-bypass' && ' JWT認証をバイパスして動作しています。'}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   console.log('🔧 App.tsx: アプリケーション初期化開始');
   console.log('🔧 App.tsx: 環境変数確認:', {
@@ -73,9 +133,11 @@ function App() {
         <RouteDebugger />
         <AuthProvider>
           <ChatProvider>
+            <AuthModeBadge />
             <div className='flex flex-col h-screen'>
               <Header />
               <main className='flex-1 overflow-auto'>
+                <AuthModeNotice />
                 <Suspense
                   fallback={
                     <div className='flex justify-center items-center h-full'>

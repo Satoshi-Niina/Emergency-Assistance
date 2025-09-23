@@ -120,8 +120,9 @@ if (
   console.log('✅ OpenAI APIキーが設定されています');
 }
 
-// DATABASE_URLが設定されていない場合はエラーで停止
-if (!process.env.DATABASE_URL) {
+// DATABASE_URLが設定されていない場合はエラーで停止（セーフモード時はスキップ）
+const isSafeMode = process.env.SAFE_MODE === 'true';
+if (!process.env.DATABASE_URL && !isSafeMode) {
   console.error('❌ 致命的エラー: DATABASE_URLが設定されていません');
   console.error(
     '🔧 解決方法: .envファイルを作成し、DATABASE_URLを設定してください'
@@ -130,6 +131,8 @@ if (!process.env.DATABASE_URL) {
     '📝 例: DATABASE_URL=postgresql://postgres:password@localhost:5432/emergency_assistance'
   );
   process.exit(1);
+} else if (!process.env.DATABASE_URL && isSafeMode) {
+  console.log('🛡️ セーフモード: DATABASE_URLのチェックをスキップ');
 }
 
 console.log('[DEV] Development server starting...');
@@ -262,4 +265,17 @@ app.listen(PORT, '0.0.0.0', () => {
     `🔐 [DEV] Auth endpoint: http://localhost:${PORT}/api/auth/login`
   );
   console.log(`👤 [DEV] Demo login: niina / 0077`);
+  
+  // 段階的移行モード情報をログ出力
+  const isSafeMode = process.env.SAFE_MODE === 'true';
+  const bypassJwt = process.env.BYPASS_JWT === 'true';
+  const dbReadiness = process.env.DB_READINESS === 'true';
+  
+  console.log(`🔄 [DEV] Migration Mode:`, {
+    SAFE_MODE: isSafeMode,
+    BYPASS_JWT: bypassJwt,
+    DB_READINESS: dbReadiness,
+    NODE_ENV: process.env.NODE_ENV || 'development',
+    PORT: PORT,
+  });
 });

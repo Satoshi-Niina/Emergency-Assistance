@@ -25,6 +25,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
+  authMode: 'safe' | 'jwt-bypass' | 'jwt' | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,6 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
+  const [authMode, setAuthMode] = useState<'safe' | 'jwt-bypass' | 'jwt' | null>(null);
 
   // 初期認証状態チェック
   useEffect(() => {
@@ -41,7 +43,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(true);
 
         // 初回起動時に認証モードを自動切替
-        await negotiateAuthMode();
+        const handshakeData = await negotiateAuthMode();
+        console.log('🔍 handshake レスポンス:', handshakeData);
+        
+        // 認証モードを設定
+        if (handshakeData && handshakeData.mode) {
+          setAuthMode(handshakeData.mode);
+        }
 
         // lib/auth の getCurrentUser を利用
         const userData = await getCurrentUser();
@@ -119,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user: user ? user.username : null,
     isLoading,
     authChecked,
+    authMode,
     timestamp: new Date().toISOString(),
   });
 
@@ -126,7 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   if (isLoading) {
     console.log('⏳ AuthProvider: 認証状態確認中、ローディング画面を表示');
     return (
-      <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+      <AuthContext.Provider value={{ user, isLoading, login, logout, authMode }}>
         <div className='flex justify-center items-center h-screen'>
           <div className='text-center'>
             <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4'></div>
@@ -139,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   console.log('✅ AuthProvider: 認証状態確認完了、子コンポーネントを表示');
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout, authMode }}>
       {children}
     </AuthContext.Provider>
   );

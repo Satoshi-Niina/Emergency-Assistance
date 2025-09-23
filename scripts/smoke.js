@@ -8,22 +8,41 @@ const http = require('http');
 const { URL } = require('url');
 
 // Configuration
-const BASE_URL = process.env.SMOKE_TEST_URL || 'http://localhost:3001';
-const TIMEOUT = 10000; // 10 seconds
+let BASE_URL = process.env.SMOKE_TEST_URL || 'http://localhost:8000';
+let TIMEOUT = 10000; // 10 seconds
 
-// Test endpoints
+// Test endpoints - Production mode only
 const ENDPOINTS = [
   { path: '/api/ping', method: 'GET', expectedStatus: 200 },
   { path: '/api/health', method: 'GET', expectedStatus: 200 },
-  { path: '/api/auth/handshake', method: 'GET', expectedStatus: 200 },
+  { path: '/api/readiness', method: 'GET', expectedStatus: 200, expectedDb: 'ready' },
   {
     path: '/api/auth/login',
     method: 'POST',
     expectedStatus: 200,
     body: { username: 'test', password: 'test' },
   },
-  { path: '/api/auth/me', method: 'GET', expectedStatus: 200 },
+  { path: '/api/auth/me', method: 'GET', expectedStatus: 401 }, // No token provided
 ];
+
+// Command line argument parsing
+const urlIndex = process.argv.indexOf('--url');
+if (urlIndex !== -1 && process.argv[urlIndex + 1]) {
+  process.env.SMOKE_TEST_URL = process.argv[urlIndex + 1];
+}
+
+const timeoutIndex = process.argv.indexOf('--timeout');
+if (timeoutIndex !== -1 && process.argv[timeoutIndex + 1]) {
+  const timeout = parseInt(process.argv[timeoutIndex + 1]);
+  if (!isNaN(timeout)) {
+    TIMEOUT = timeout;
+  }
+}
+
+const baseIndex = process.argv.indexOf('--base');
+if (baseIndex !== -1 && process.argv[baseIndex + 1]) {
+  process.env.SMOKE_TEST_URL = process.argv[baseIndex + 1];
+}
 
 // Colors for console output
 const colors = {
@@ -112,7 +131,29 @@ async function testEndpoint(endpoint) {
     });
 
     const duration = Date.now() - startTime;
-    const isSuccess = response.status === endpoint.expectedStatus;
+    let isSuccess = response.status === endpoint.expectedStatus;
+
+    // 追加の検証: モード検証
+    if (endpoint.expectedMode && response.data) {
+      const actualMode = response.data.mode;
+      if (actualMode !== endpoint.expectedMode) {
+        isSuccess = false;
+        console.log(
+          `${colorize('❌ MODE MISMATCH', 'red')} Expected mode '${endpoint.expectedMode}', got '${actualMode}'`
+        );
+      }
+    }
+
+    // 追加の検証: DB readiness検証
+    if (endpoint.expectedDb && response.data) {
+      const actualDb = response.data.db;
+      if (actualDb !== endpoint.expectedDb) {
+        isSuccess = false;
+        console.log(
+          `${colorize('❌ DB MISMATCH', 'red')} Expected db '${endpoint.expectedDb}', got '${actualDb}'`
+        );
+      }
+    }
 
     if (isSuccess) {
       console.log(
@@ -194,13 +235,14 @@ async function runSmokeTest() {
 // Handle command line arguments
 if (process.argv.includes('--help') || process.argv.includes('-h')) {
   console.log(`
-Emergency Assistance Smoke Test
+Emergency Assistance Smoke Test - Production Mode
 
 Usage: node scripts/smoke.js [options]
 
 Options:
   --help, -h     Show this help message
-  --url <url>    Set the base URL for testing (default: http://localhost:3001)
+  --url <url>    Set the base URL for testing (default: http://localhost:8000)
+  --base <url>   Alias for --url
   --timeout <ms> Set the timeout for requests (default: 10000)
 
 Environment Variables:
@@ -208,24 +250,16 @@ Environment Variables:
 
 Examples:
   node scripts/smoke.js
+  node scripts/smoke.js --base http://localhost:8000
   node scripts/smoke.js --url https://your-app.azurewebsites.net
   SMOKE_TEST_URL=https://your-app.azurewebsites.net node scripts/smoke.js
 `);
   process.exit(0);
 }
 
-// Parse command line arguments
-const urlIndex = process.argv.indexOf('--url');
-if (urlIndex !== -1 && process.argv[urlIndex + 1]) {
-  process.env.SMOKE_TEST_URL = process.argv[urlIndex + 1];
-}
-
-const timeoutIndex = process.argv.indexOf('--timeout');
-if (timeoutIndex !== -1 && process.argv[timeoutIndex + 1]) {
-  const timeout = parseInt(process.argv[timeoutIndex + 1]);
-  if (!isNaN(timeout)) {
-    TIMEOUT = timeout;
-  }
+// Update BASE_URL from environment variable
+if (process.env.SMOKE_TEST_URL) {
+  BASE_URL = process.env.SMOKE_TEST_URL;
 }
 
 // Run the smoke test

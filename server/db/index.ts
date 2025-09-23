@@ -33,13 +33,43 @@ const createSafeModeDB = () => ({
     from: () => ({
       where: () => ({
         limit: () => [],
+        execute: () => Promise.resolve([]),
       }),
+      execute: () => Promise.resolve([]),
     }),
+    execute: () => Promise.resolve([]),
+  }),
+  insert: () => ({
+    values: () => ({
+      returning: () => ({
+        execute: () => Promise.resolve([]),
+      }),
+      execute: () => Promise.resolve([]),
+    }),
+    execute: () => Promise.resolve([]),
+  }),
+  update: () => ({
+    set: () => ({
+      where: () => ({
+        returning: () => ({
+          execute: () => Promise.resolve([]),
+        }),
+        execute: () => Promise.resolve([]),
+      }),
+      execute: () => Promise.resolve([]),
+    }),
+    execute: () => Promise.resolve([]),
+  }),
+  delete: () => ({
+    where: () => ({
+      returning: () => ({
+        execute: () => Promise.resolve([]),
+      }),
+      execute: () => Promise.resolve([]),
+    }),
+    execute: () => Promise.resolve([]),
   }),
   execute: () => Promise.resolve([]),
-  insert: () => Promise.resolve({}),
-  update: () => Promise.resolve({}),
-  delete: () => Promise.resolve({}),
 });
 
 // セーフモード用のダミーDB接続
@@ -64,6 +94,9 @@ if (!isSafeMode) {
       '🔍 DEBUG server/db/index.ts: 接続先 =',
       getDatabaseUrl().replace(/\/\/.*@/, '//***:***@')
     );
+    
+    // 接続プールの準備完了ログ
+    console.log('✅ DB: connection pool ready');
   } catch (error) {
     console.error('❌ データベース接続エラー:', error);
     console.log('🛡️ セーフモードに切り替えます');

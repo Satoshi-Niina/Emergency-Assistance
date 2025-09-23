@@ -42,6 +42,56 @@ cd client && npm run dev
 npm run start:prod
 ```
 
+## 🚀 本番環境設定
+
+### 必須環境変数
+```bash
+NODE_ENV=production
+JWT_SECRET=your-32-character-secret-key
+DATABASE_URL=postgresql://user:password@host:port/database?sslmode=require
+```
+
+### App Service設定
+- **Node Version**: 18+
+- **Always On**: On
+- **Startup Command**: `npm run start:prod`
+- **EasyAuth**: Off
+- **Access Restrictions**: 一時Allow → 後でSWAのOutboundへ限定
+
+### SWA設定
+- **staticwebapp.config.json**: `/api/*` → `https://<appservice>.azurewebsites.net/api/{*path}`
+- **statusCode**: 200
+
+### ローカル開発
+```bash
+# PowerShell環境変数設定
+$env:JWT_SECRET="test-secret-key-for-development-only-32chars"
+$env:DATABASE_URL="postgresql://test:test@localhost:5432/testdb"
+$env:PORT="8000"
+
+# サーバービルド・起動
+cd server
+npm run build
+node dist/server.js
+
+# フロントエンド起動
+cd client
+npm run dev
+
+# スモークテスト
+node scripts/smoke.js --base http://localhost:8000
+```
+
+### トラブル時の切り戻し
+```bash
+# App Service環境変数を一時的に変更
+NODE_ENV=development
+JWT_SECRET=dev-secret
+DATABASE_URL=postgresql://localhost:5432/devdb
+
+# 再起動後、ping/healthで復帰確認
+```
+
 ## 🔧 運用チェックリスト
 
 ### 認証API動作確認手順

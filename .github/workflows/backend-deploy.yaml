@@ -46,8 +46,8 @@ jobs:
           cat package.json
           echo "=== Web.config ==="
           cat ../web.config
-          echo "=== Server.cjs exists ==="
-          ls -la server.cjs
+          echo "=== Production server exists ==="
+          ls -la production-server.js
 
       - name: Copy web.config to server directory
         run: |

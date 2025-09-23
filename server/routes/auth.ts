@@ -77,8 +77,9 @@ router.get('/debug/session', (_req, res) => {
 // ログインエンドポイント
 router.post('/login', async (_req, res) => {
   try {
-    // セーフモード判定
+    // 段階的移行モード判定
     const isSafeMode = process.env.SAFE_MODE === 'true';
+    const bypassJwt = process.env.BYPASS_JWT === 'true';
 
     // 診断ログ: リクエストヘッダー
     console.log('[auth/login] Request headers:', {
@@ -88,6 +89,7 @@ router.post('/login', async (_req, res) => {
       origin: req.headers.origin,
       'user-agent': req.headers['user-agent']?.substring(0, 50) + '...',
       safeMode: isSafeMode,
+      bypassJwt: bypassJwt,
     });
 
     // セーフモード時はダミーログインを返す
@@ -102,6 +104,21 @@ router.post('/login', async (_req, res) => {
         accessToken: demoToken,
         expiresIn: '5m',
         mode: 'safe',
+      });
+    }
+
+    // JWTバイパスモード時はダミーログインを返す
+    if (bypassJwt) {
+      console.log('[auth/login] JWT bypass mode: Returning demo login');
+      const demoToken = jwt.sign({ id: 'demo', role: 'user' }, 'dev-secret', {
+        expiresIn: '5m',
+      });
+      return res.json({
+        success: true,
+        token: demoToken,
+        accessToken: demoToken,
+        expiresIn: '5m',
+        mode: 'jwt-bypass',
       });
     }
 
@@ -168,8 +185,9 @@ router.post('/logout', (_req, res) => {
 
 // 現在のユーザー情報取得
 router.get('/me', authenticateToken, (req, res) => {
-  // セーフモード判定
+  // 段階的移行モード判定
   const isSafeMode = process.env.SAFE_MODE === 'true';
+  const bypassJwt = process.env.BYPASS_JWT === 'true';
 
   // 診断ログ: /me リクエスト
   console.log('[auth/me] Request headers:', {
@@ -178,6 +196,7 @@ router.get('/me', authenticateToken, (req, res) => {
     host: req.headers.host,
     origin: req.headers.origin,
     safeMode: isSafeMode,
+    bypassJwt: bypassJwt,
   });
   console.log('[auth/me] Auth result:', {
     userId: req.user?.id,
@@ -196,6 +215,17 @@ router.get('/me', authenticateToken, (req, res) => {
     });
   }
 
+  // JWTバイパスモード時はダミーユーザー情報を返す
+  if (bypassJwt) {
+    console.log('[auth/me] JWT bypass mode: Returning demo user');
+    return res.json({
+      authenticated: true,
+      userId: 'demo',
+      user: { id: 'demo', role: 'user' },
+      mode: 'jwt-bypass',
+    });
+  }
+
   return res.json({
     authenticated: true,
     userId: req.user!.id,
@@ -203,12 +233,13 @@ router.get('/me', authenticateToken, (req, res) => {
   });
 });
 
-// サーバ設定ヒント取得（暫定実装）
+// サーバ設定ヒント取得（段階的移行対応）
 router.get('/handshake', (_req, res) => {
   console.log('🔍 /api/auth/handshake 呼び出し');
 
-  // セーフモード判定
+  // 段階的移行モード判定
   const isSafeMode = process.env.SAFE_MODE === 'true';
+  const bypassJwt = process.env.BYPASS_JWT === 'true';
 
   // 詳細なリクエスト情報をログ出力
   console.log('📊 Handshake request details:', {
@@ -225,12 +256,23 @@ router.get('/handshake', (_req, res) => {
     ips: req.ips,
     timestamp: new Date().toISOString(),
     safeMode: isSafeMode,
+    bypassJwt: bypassJwt,
   });
 
   try {
+    // 段階的移行モード判定
+    let mode: string;
+    if (isSafeMode) {
+      mode = 'safe';
+    } else if (bypassJwt) {
+      mode = 'jwt-bypass';
+    } else {
+      mode = 'jwt';
+    }
+
     res.json({
       ok: true,
-      mode: isSafeMode ? 'safe' : 'jwt',
+      mode: mode,
       firstParty: !!process.env.COOKIE_DOMAIN,
       supportsToken: true,
       timestamp: new Date().toISOString(),
@@ -250,6 +292,59 @@ router.get('/handshake', (_req, res) => {
       message: '握手エンドポイントでエラーが発生しました',
       timestamp: new Date().toISOString(),
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+    });
+  }
+});
+
+// DB readiness チェックエンドポイント
+router.get('/readiness', async (_req, res) => {
+  console.log('🔍 /api/auth/readiness 呼び出し');
+
+  try {
+    // DB_READINESSが有効でない場合はスキップ
+    if (process.env.DB_READINESS !== 'true') {
+      console.log('[auth/readiness] DB_READINESS not enabled, skipping DB check');
+      return res.json({
+        ok: true,
+        db: 'skipped',
+        message: 'DB readiness check is disabled',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // セーフモード時はスキップ
+    const isSafeMode = process.env.SAFE_MODE === 'true';
+    if (isSafeMode) {
+      console.log('[auth/readiness] Safe mode: Skipping DB check');
+      return res.json({
+        ok: true,
+        db: 'skipped',
+        mode: 'safe',
+        message: 'Safe mode: DB check skipped',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // データベース接続テスト
+    console.log('[auth/readiness] Testing database connection...');
+    const result = await db.execute('SELECT 1 as test');
+    
+    console.log('[auth/readiness] Database connection successful');
+    return res.json({
+      ok: true,
+      db: 'ready',
+      message: 'Database connection is ready',
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('[auth/readiness] Database connection failed:', error);
+    return res.status(503).json({
+      ok: false,
+      db: 'error',
+      error: 'database_connection_failed',
+      message: 'Database connection failed',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString(),
     });
   }
 });

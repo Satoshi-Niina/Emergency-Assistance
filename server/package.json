@@ -2,17 +2,15 @@
   "name": "emergency-assistance-server",
   "version": "1.0.0",
   "type": "commonjs",
-  "main": "server.cjs",
+  "main": "server.js",
   "scripts": {
-    "dev": "node --watch server.cjs",
-    "build": "tsc",
-    "build:prod": "tsc app-production.ts --outDir dist --target es2020 --module commonjs --moduleResolution node --esModuleInterop --allowSyntheticDefaultImports --skipLibCheck --resolveJsonModule --declaration false --removeComments true --lib es2020,dom",
-    "build:prod:esm": "tsc app-production-esm.ts --outDir dist --target es2020 --module esnext --moduleResolution node --esModuleInterop --allowSyntheticDefaultImports --skipLibCheck --resolveJsonModule --declaration false --removeComments true --lib es2020,dom",
-    "build:v2": "tsc azure-production-server-v2.ts --outDir dist --target es2020 --module commonjs --moduleResolution node --esModuleInterop --allowSyntheticDefaultImports --skipLibCheck --resolveJsonModule --declaration false --removeComments true",
-    "build:server": "tsc -p tsconfig.build.json",
-    "build:api": "tsc -p src/tsconfig.server.json",
-    "start": "node server.cjs",
-    "azure-start": "node server.cjs"
+    "dev": "node --watch server.js",
+    "build": "tsc -p tsconfig.json",
+    "start:prod": "node production-server.js",
+    "start": "node server.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ext .ts,.js",
+    "predeploy": "npm run build && npm run typecheck && npm run lint"
   },
   "dependencies": {
     "dotenv": "^16.6.1",

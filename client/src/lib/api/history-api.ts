@@ -127,7 +127,7 @@ export const fetchBaseData = async (): Promise<BaseDataResponse> => {
 
 // 処理済みファイル一覧取得
 export const fetchProcessedFiles = async (): Promise<any> => {
-  const response = await fetch('/api/files/processed');
+  const response = await fetch('/files/processed');
 
   if (!response.ok) {
     throw new Error(`Failed to fetch processed files: ${response.statusText}`);
@@ -138,7 +138,7 @@ export const fetchProcessedFiles = async (): Promise<any> => {
 
 // フロー一覧取得
 export const fetchFlows = async (): Promise<FlowListResponse> => {
-  const response = await fetch('/api/flows');
+  const response = await fetch('/flows');
 
   if (!response.ok) {
     throw new Error(`Failed to fetch flows: ${response.statusText}`);
@@ -149,7 +149,7 @@ export const fetchFlows = async (): Promise<FlowListResponse> => {
 
 // ユーザー一覧取得
 export const fetchUsers = async (): Promise<User[]> => {
-  const response = await fetch('/api/users');
+  const response = await fetch('/users');
 
   if (!response.ok) {
     throw new Error(`Failed to fetch users: ${response.statusText}`);
@@ -162,7 +162,7 @@ export const fetchUsers = async (): Promise<User[]> => {
 export const createUser = async (
   userData: CreateUserRequest
 ): Promise<User> => {
-  const response = await fetch('/api/users', {
+  const response = await fetch('/users', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -198,7 +198,7 @@ export const exportSelectedHistory = async (
   ids: string[],
   format: 'json' | 'csv' = 'json'
 ): Promise<Blob> => {
-  const response = await fetch('/api/history/export-selected', {
+  const response = await fetch('/history/export-selected', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -238,7 +238,7 @@ export const exportAllHistory = async (
 
 // エクスポート履歴取得
 export const fetchExportHistory = async (): Promise<ExportHistoryItem[]> => {
-  const response = await fetch('/api/history/export-history');
+  const response = await fetch('/history/export-history');
 
   if (!response.ok) {
     throw new Error(`Failed to fetch export history: ${response.statusText}`);
@@ -252,7 +252,7 @@ export const advancedSearch = async (
   searchText: string,
   limit: number = 50
 ): Promise<any> => {
-  const response = await fetch('/api/history/advanced-search', {
+  const response = await fetch('/history/advanced-search', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -275,7 +275,7 @@ export const generateReport = async (
   reportTitle?: string,
   reportDescription?: string
 ): Promise<Blob> => {
-  const response = await fetch('/api/history/generate-report', {
+  const response = await fetch('/history/generate-report', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

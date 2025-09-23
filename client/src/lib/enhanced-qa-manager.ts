@@ -43,7 +43,7 @@ async function callOpenAIAPI(
   useKnowledgeBase: boolean = true
 ): Promise<string> {
   try {
-    const response = await fetch('/api/chatgpt', {
+    const response = await fetch('/chatgpt', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -79,7 +79,7 @@ export class EnhancedQAManager {
   async initializeKnowledgeBase(): Promise<void> {
     try {
       // ナレッジベースの取得
-      const knowledgeResponse = await fetch('/api/knowledge-base', {
+      const knowledgeResponse = await fetch('/knowledge-base', {
         method: 'GET',
         credentials: 'include',
       });
@@ -89,7 +89,7 @@ export class EnhancedQAManager {
       }
 
       // 応急処置情報の取得
-      const emergencyResponse = await fetch('/api/emergency-procedures', {
+      const emergencyResponse = await fetch('/emergency-procedures', {
         method: 'GET',
         credentials: 'include',
       });
@@ -495,7 +495,7 @@ export class EnhancedQAManager {
 
       // 学習データを保存
       try {
-        await fetch('/api/learn', {
+        await fetch('/learn', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
