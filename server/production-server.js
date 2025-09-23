@@ -172,10 +172,7 @@ router.get('/auth/me', authenticateToken, (req, res) => {
   });
 });
 
-// Mount API router
-app.use('/api', router);
-
-// Root level endpoints for GitHub Actions compatibility
+// Root level endpoints for GitHub Actions compatibility (before API router)
 app.get('/ping', (req, res) => {
   res.json({ success: true, message: 'pong', timestamp: new Date().toISOString() });
 });
@@ -197,6 +194,9 @@ app.get('/healthz', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// Mount API router
+app.use('/api', router);
 
 // Global error handler (always JSON)
 app.use((err, req, res, next) => {
