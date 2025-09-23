@@ -331,12 +331,21 @@ app.use((err, req, res, next) => {
 
 const port = Number(process.env.PORT) || 8080;
 const host = '0.0.0.0';
+
+console.log('🚀 Starting server...');
+console.log('🔧 Environment:', {
+  NODE_ENV: process.env.NODE_ENV,
+  PORT: port,
+  HOST: host,
+  DATABASE_URL: process.env.DATABASE_URL ? '[SET]' : '[NOT SET]'
+});
+
 const server = app.listen(port, host, () => {
-  console.info(`Listening on 0.0.0.0:${port} (db: ${global.dbReady ? 'ok' : 'ng'})`);
-  console.log(`Server is ready to accept connections`);
-  console.log(`🌐 Server URL: http://${host}:${port}`);
-  console.log(`🔍 Health check: http://${host}:${port}/healthz`);
+  console.log('✅ Server started successfully!');
+  console.log(`🌐 Listening on ${host}:${port}`);
+  console.log(`🔍 Health check: http://${host}:${port}/api/health`);
   console.log(`🔐 Login API: http://${host}:${port}/api/auth/login`);
+  console.log(`📊 Database status: ${global.dbReady ? 'connected' : 'not connected'}`);
 });
 server.on('error', (err) => {
   console.error('❌ Server error:', err);
