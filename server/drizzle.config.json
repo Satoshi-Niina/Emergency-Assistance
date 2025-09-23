@@ -1,8 +1,0 @@
-{
-  "out": "./migrations",
-  "schema": "./db/schema.ts",
-  "dialect": "postgresql",
-  "dbCredentials": {
-    "url": "postgresql://postgres:postgres@localhost:5432/emergency_assistance"
-  }
-}
