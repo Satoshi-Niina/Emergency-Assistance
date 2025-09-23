@@ -70,9 +70,9 @@ jobs:
         with:
           inlineScript: |
             echo "Stopping Azure App Service..."
-            az webapp stop --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} || echo "Stop failed, continuing..."
+            az webapp stop --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" || echo "Stop failed, continuing..."
             echo "Starting Azure App Service..."
-            az webapp start --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} || echo "Start failed, continuing..."
+            az webapp start --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" || echo "Start failed, continuing..."
             echo "Azure App Service restart completed"
 
       - name: Create deployment package
@@ -89,20 +89,22 @@ jobs:
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: server-deploy.zip
 
-      - name: Set startup command explicitly
+      - name: Set startup command and environment variables
         uses: azure/CLI@v1
         with:
           inlineScript: |
             echo "Setting startup command to 'node index.js'..."
-            az webapp config set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --startup-file "node index.js" || echo "Startup command setting failed, continuing..."
-            echo "Startup command set to: node index.js"
+            az webapp config set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --startup-file "node index.js" || echo "Startup command setting failed, continuing..."
+            echo "Setting environment variables..."
+            az webapp config appsettings set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --settings DATABASE_URL="${{ secrets.DATABASE_URL }}" JWT_SECRET="${{ secrets.JWT_SECRET }}" || echo "Environment variables setting failed, continuing..."
+            echo "Configuration completed"
 
       - name: Force restart after deployment
         uses: azure/CLI@v1
         with:
           inlineScript: |
             echo "Restarting Azure App Service after deployment..."
-            az webapp restart --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} || echo "Restart failed, continuing..."
+            az webapp restart --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" || echo "Restart failed, continuing..."
             echo "App Service restarted"
 
       - name: Retry once after short wait (409 guard)
