@@ -6,6 +6,12 @@ on:
       - 'server/**'
       - '.github/workflows/backend-deploy.yaml'
   workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force backend deployment'
+        required: false
+        default: 'false'
+        type: boolean
 
 # 同ブランチの並行実行をキャンセル
 concurrency:
