@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
-// Production-ready minimal server for Azure App Service
+// Production-ready minimal server for Azure App Service v3
 // JWT + PostgreSQL only, optimized for production deployment
+// Force cache clear - updated timestamp: 2024-12-19
 
 const express = require('express');
 const cors = require('cors');
