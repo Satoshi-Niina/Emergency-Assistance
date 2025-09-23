@@ -2,12 +2,12 @@
   "name": "emergency-assistance-server",
   "version": "1.0.0",
   "type": "commonjs",
-  "main": "server.js",
+  "main": "production-server.js",
   "scripts": {
-    "dev": "node --watch server.js",
+    "dev": "node --watch production-server.js",
     "build": "echo 'Using production-server.js - no TypeScript build needed'",
     "start:prod": "node production-server.js",
-    "start": "node server.js",
+    "start": "node production-server.js",
     "typecheck": "echo 'Using production-server.js - no TypeScript check needed'",
     "lint": "echo 'Using production-server.js - no linting needed'",
     "predeploy": "echo 'Production server ready'"

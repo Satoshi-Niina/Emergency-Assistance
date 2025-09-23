@@ -33,23 +33,28 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Initialize PostgreSQL pool with SSL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }, // Azure PostgreSQL用
-  max: 10,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
+// Initialize PostgreSQL pool with SSL (safe mode support)
+let pool = null;
+if (process.env.DATABASE_URL) {
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }, // Azure PostgreSQL用
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+  });
 
-// Test database connection
-pool.on('connect', () => {
-  console.log('✅ Database connected');
-});
+  // Test database connection
+  pool.on('connect', () => {
+    console.log('✅ Database connected');
+  });
 
-pool.on('error', (err) => {
-  console.error('❌ Database error:', err);
-});
+  pool.on('error', (err) => {
+    console.error('❌ Database error:', err);
+  });
+} else {
+  console.log('🛡️ Safe Mode: DATABASE_URL not set, running without database');
+}
 
 // JWT middleware
 const authenticateToken = (req, res, next) => {
@@ -100,6 +105,15 @@ router.get('/healthz', (req, res) => {
 
 // Database readiness check - これが重要！
 router.get('/readiness', async (req, res) => {
+  if (!pool) {
+    return res.status(503).json({ 
+      ok: false, 
+      db: 'not_configured', 
+      error: 'database_url_not_set',
+      timestamp: new Date().toISOString()
+    });
+  }
+  
   try {
     await pool.query('SELECT 1');
     res.json({ ok: true, db: 'ready', timestamp: new Date().toISOString() });
@@ -121,6 +135,14 @@ router.post('/auth/login', async (req, res) => {
 
     if (!username || !password) {
       return res.status(400).json({ success: false, error: 'username_password_required' });
+    }
+
+    if (!pool) {
+      return res.status(503).json({ 
+        success: false, 
+        error: 'database_not_configured',
+        message: 'Database connection not available'
+      });
     }
 
     // Query user from database
@@ -242,16 +264,24 @@ app.listen(PORT, HOST, () => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, shutting down gracefully');
-  pool.end(() => {
-    console.log('Database pool closed');
+  if (pool) {
+    pool.end(() => {
+      console.log('Database pool closed');
+      process.exit(0);
+    });
+  } else {
     process.exit(0);
-  });
+  }
 });
 
 process.on('SIGINT', () => {
   console.log('SIGINT received, shutting down gracefully');
-  pool.end(() => {
-    console.log('Database pool closed');
+  if (pool) {
+    pool.end(() => {
+      console.log('Database pool closed');
+      process.exit(0);
+    });
+  } else {
     process.exit(0);
-  });
+  }
 });
