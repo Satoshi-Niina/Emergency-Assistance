@@ -78,7 +78,30 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 
-// セッション設定 - クロスサイト対応
+// Cookie設定の自動切替（First-Party vs Cross-Site）
+const useFirstParty = !!process.env.COOKIE_DOMAIN;        // 例: .example.jp が入っていれば First-Party
+const cookieSameSite = useFirstParty ? 'lax' : 'none';
+const cookieDomain   = useFirstParty ? process.env.COOKIE_DOMAIN : undefined;
+
+// Cross-Siteモードの時だけ（= COOKIE_DOMAIN 未設定時）、Set-Cookie へ ; Partitioned を自動追記
+if (!process.env.COOKIE_DOMAIN) {
+  app.use((req, res, next) => {
+    const orig = res.setHeader.bind(res);
+    res.setHeader = (name, value) => {
+      if (String(name).toLowerCase() === 'set-cookie') {
+        const add = v => (typeof v === 'string' &&
+                          v.toLowerCase().includes('samesite=none') &&
+                          v.toLowerCase().includes('secure') &&
+                          !/;\s*partitioned\b/i.test(v)) ? v + '; Partitioned' : v;
+        return orig(name, Array.isArray(value) ? value.map(add) : add(value));
+      }
+      return orig(name, value);
+    };
+    next();
+  });
+}
+
+// セッション設定 - 全ブラウザ対応（First-Party/Cross-Site自動切替）
 app.use(session({
   name: 'sid',
   secret: process.env.SESSION_SECRET || 'change_me',
@@ -87,9 +110,9 @@ app.use(session({
   proxy: true, // クロスサイトCookie用
   cookie: {
     httpOnly: true,
-    secure: true,          // https 必須
-    sameSite: 'none',      // クロスサイト必須
-    partitioned: true,     // CHIPS: Set-Cookieに;Partitionedを付与
+    secure: true,
+    sameSite: cookieSameSite,             // 'lax' or 'none'
+    ...(cookieDomain ? { domain: cookieDomain } : {}), // 設定時のみ付与
     maxAge: 24*60*60*1000  // 24時間
   }
 }));
