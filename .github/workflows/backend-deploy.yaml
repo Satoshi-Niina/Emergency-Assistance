@@ -150,6 +150,14 @@ jobs:
             exit 1
           fi
 
+      - name: Session smoke (optional)
+        if: ${{ secrets.LOGIN_URL != '' && secrets.LOGIN_BODY_JSON != '' && secrets.SESSION_CHECK_URL != '' }}
+        run: |
+          echo "🔐 Running session smoke test..."
+          curl -sS -f -X POST -H "Content-Type: application/json" --data '${{ secrets.LOGIN_BODY_JSON }}' --cookie-jar cookies.txt "${{ secrets.LOGIN_URL }}"
+          curl -sS -f --cookie cookies.txt "${{ secrets.SESSION_CHECK_URL }}" | tee /dev/stderr
+          echo "✅ Session smoke passed"
+
       - name: Smoke test frontend health (static root)
         run: |
           set -e

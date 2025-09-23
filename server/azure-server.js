@@ -18,24 +18,22 @@ console.log('🔧 Environment:', {
   HOST: host
 });
 
+// Trust proxy for Azure App Service
+app.set('trust proxy', 1);
+
+// CORS設定
+app.use(cors({
+  origin: process.env.FRONTEND_BASE_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With'],
+  optionsSuccessStatus: 200
+}));
+
 // 基本的なミドルウェア
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
-
-// CORS設定
-app.use(cors({
-  origin: [
-    'https://witty-river-012f39e00.1.azurestaticapps.net',
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:3003'
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With']
-}));
 
 // セッション設定
 app.use(session({
@@ -47,7 +45,8 @@ app.use(session({
     httpOnly: true,
     secure: true,
     sameSite: 'none',
-    maxAge: 24 * 60 * 60 * 1000 // 24時間
+    maxAge: 24 * 60 * 60 * 1000, // 24時間
+    ...(process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN })
   }
 }));
 
@@ -70,6 +69,15 @@ app.get('/', (req, res) => {
     status: 'running',
     timestamp: new Date().toISOString()
   });
+});
+
+// セッション確認エンドポイント
+app.get('/api/session/check', (req, res) => {
+  if (req.session && req.session.userId) {
+    res.status(200).json({ ok: true });
+  } else {
+    res.status(401).json({ ok: false });
+  }
 });
 
 // 基本的な認証エンドポイント

@@ -1,5 +1,10 @@
 // client/src/lib/apiClient.ts
-export const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+const fallbackUrl = 'https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net';
+export const API_BASE = (import.meta.env.VITE_API_BASE_URL || fallbackUrl).replace(/\/+$/, '');
+
+if (!import.meta.env.VITE_API_BASE_URL) {
+  console.warn('[api] Using fallback API_BASE_URL:', fallbackUrl);
+}
 
 export async function apiFetch(path: string, options: RequestInit = {}) {
   const url = `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
