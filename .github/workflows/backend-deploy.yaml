@@ -35,7 +35,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: server
-        run: npm install --production
+        run: npm install --omit=dev
 
       - name: Verify server files
         working-directory: server
@@ -48,6 +48,8 @@ jobs:
           cat ../web.config
           echo "=== Production server exists ==="
           ls -la production-server.js
+          echo "=== Node modules installed ==="
+          ls -la node_modules | head -10
 
       - name: Copy web.config to server directory
         run: |
