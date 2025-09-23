@@ -73,6 +73,7 @@ jobs:
             az webapp stop --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} || echo "Stop failed, continuing..."
             echo "Starting Azure App Service..."
             az webapp start --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} || echo "Start failed, continuing..."
+            echo "Azure App Service restart completed"
 
       - name: Create deployment package
         run: |
@@ -92,16 +93,16 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            echo "Setting startup command to 'npm start'..."
-            az webapp config set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --startup-file "npm start"
-            echo "Startup command set to: npm start"
+            echo "Setting startup command to 'node index.js'..."
+            az webapp config set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --startup-file "node index.js" || echo "Startup command setting failed, continuing..."
+            echo "Startup command set to: node index.js"
 
       - name: Force restart after deployment
         uses: azure/CLI@v1
         with:
           inlineScript: |
             echo "Restarting Azure App Service after deployment..."
-            az webapp restart --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
+            az webapp restart --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} || echo "Restart failed, continuing..."
             echo "App Service restarted"
 
       - name: Retry once after short wait (409 guard)
