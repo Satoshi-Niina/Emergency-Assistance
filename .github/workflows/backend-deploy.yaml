@@ -27,11 +27,6 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      - name: Azure Login
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -65,14 +60,6 @@ jobs:
           echo "=== Copied web.config to server directory ==="
           ls -la server/web.config
 
-      - name: Set Azure App Service startup command
-        uses: azure/CLI@v1
-        with:
-          inlineScript: |
-            az webapp config set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --startup-file "node production-server.js"
-            az webapp config set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --linux-fx-version "NODE|20"
-            az webapp config appsettings set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --settings WEBSITE_NODE_DEFAULT_VERSION=20
-
       - name: Deploy Backend
         id: deploy1
         uses: azure/webapps-deploy@v3
@@ -84,15 +71,6 @@ jobs:
       - name: Retry once after short wait (409 guard)
         if: failure()
         run: sleep 30
-
-      - name: Set Azure App Service startup command (retry)
-        if: failure()
-        uses: azure/CLI@v1
-        with:
-          inlineScript: |
-            az webapp config set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --startup-file "node production-server.js"
-            az webapp config set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --linux-fx-version "NODE|20"
-            az webapp config appsettings set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --settings WEBSITE_NODE_DEFAULT_VERSION=20
 
       - name: Deploy Backend (retry)
         if: failure()
