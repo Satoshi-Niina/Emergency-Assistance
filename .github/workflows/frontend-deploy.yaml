@@ -8,16 +8,6 @@ on:
   workflow_dispatch:
 
 concurrency:
-      - name: Dump workflow file and check for /api/
-        run: |
-          echo "==== Current workflow file ===="
-          cat .github/workflows/frontend-deploy.yaml
-          echo "==== Grep for /api/ in workflow file ===="
-          if grep -E '/api/' .github/workflows/frontend-deploy.yaml; then
-            echo '❌ /api/ endpoint found in workflow file. Please remove all /api/ checks from frontend workflow.'
-            exit 1
-          fi
-          echo '✅ No /api/ endpoint found in workflow file.'
   group: frontend-${{ github.ref }}
   cancel-in-progress: true
 
@@ -27,17 +17,6 @@ jobs:
     name: Deploy Frontend
     environment: production-swa
     steps:
-
-      - name: Dump workflow file and check for /api/
-        run: |
-          echo "==== Current workflow file ===="
-          cat .github/workflows/frontend-deploy.yaml
-          echo "==== Grep for /api/ in workflow file ===="
-          if grep -E '/api/' .github/workflows/frontend-deploy.yaml; then
-            echo '❌ /api/ endpoint found in workflow file. Please remove all /api/ checks from frontend workflow.'
-            exit 1
-          fi
-          echo '✅ No /api/ endpoint found in workflow file.'
 
       - uses: actions/checkout@v4
       - name: Setup Node.js
