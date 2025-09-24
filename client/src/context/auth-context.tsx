@@ -36,9 +36,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authChecked, setAuthChecked] = useState(false);
   const [authMode, setAuthMode] = useState<'safe' | 'jwt-bypass' | 'jwt' | null>(null);
 
+  // AUTH_BYPASS設定を確認
+  const authBypass = import.meta.env.VITE_AUTH_BYPASS === 'true';
+
   // 初期認証状態チェック
   useEffect(() => {
     const checkAuthStatus = async () => {
+      // バイパスモード時は仮ユーザーで初期化
+      if (authBypass) {
+        setUser({
+          id: 'demo',
+          username: 'demo',
+          displayName: 'Demo User',
+          role: 'employee'
+        });
+        setIsLoading(false);
+        setAuthChecked(true);
+        return;
+      }
       try {
         setIsLoading(true);
 
@@ -82,6 +97,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (username: string, password: string): Promise<void> => {
     console.log('🔐 ログイン試行開始:', { username });
+
+    // バイパスモード時は仮ログイン
+    if (authBypass) {
+      setUser({
+        id: 'demo',
+        username: username,
+        displayName: username,
+        role: 'employee'
+      });
+      return;
+    }
 
     try {
       setIsLoading(true);

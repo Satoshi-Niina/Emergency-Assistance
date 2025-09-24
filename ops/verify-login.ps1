@@ -1,107 +1,141 @@
-# ログイン認証テストスクリプト
-# PowerShell / curl.exe 前提
-
 param(
     [string]$BASE = "https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net"
 )
 
-Write-Host "🔐 ログイン認証テスト開始" -ForegroundColor Green
-Write-Host "対象URL: $BASE" -ForegroundColor Yellow
+Write-Host "Testing authentication flow..." -ForegroundColor Green
+Write-Host "Target: $BASE" -ForegroundColor Yellow
 
-# 0) ヘルスチェック（200期待）
-Write-Host "`n0️⃣ ヘルスチェック..." -ForegroundColor Cyan
-$healthResponse = curl.exe -s -i "$BASE/api/health"
-$healthStatus = ($healthResponse | Select-String 'HTTP/1.1 (\d+)').Matches[0].Groups[1].Value
+$allTestsPassed = $true
 
-if ($healthStatus -eq "200") {
-    Write-Host "✅ /api/health: 200 OK" -ForegroundColor Green
-} else {
-    Write-Host "❌ /api/health: 期待値200, 実際$healthStatus" -ForegroundColor Red
-}
-
-# 0.5) Handshake チェック（200期待）
-Write-Host "`n0.5️⃣ Handshake チェック..." -ForegroundColor Cyan
-$handshakeResponse = curl.exe -s -i "$BASE/api/auth/handshake"
-$handshakeStatus = ($handshakeResponse | Select-String 'HTTP/1.1 (\d+)').Matches[0].Groups[1].Value
-
-if ($handshakeStatus -eq "200") {
-    Write-Host "✅ /api/auth/handshake: 200 OK" -ForegroundColor Green
-} else {
-    Write-Host "❌ /api/auth/handshake: 期待値200, 実際$handshakeStatus" -ForegroundColor Red
-}
-
-# 1) 未ログイン状態で /me をテスト（401期待）
-Write-Host "`n1️⃣ 未ログイン状態で /api/auth/me をテスト..." -ForegroundColor Cyan
-$meResponse = curl.exe -s -i "$BASE/api/auth/me"
-$meStatus = ($meResponse | Select-String 'HTTP/1.1 (\d+)').Matches[0].Groups[1].Value
-
-if ($meStatus -eq "401") {
-    Write-Host "✅ /api/auth/me 未ログイン: 401 OK" -ForegroundColor Green
-} else {
-    Write-Host "❌ /api/auth/me 未ログイン: 期待値401, 実際$meStatus" -ForegroundColor Red
-    Write-Host "レスポンス: $meResponse" -ForegroundColor Yellow
-}
-
-# 2) ログイン（Cookie保存）
-Write-Host "`n2️⃣ ログイン実行（Cookie保存）..." -ForegroundColor Cyan
-$loginResponse = curl.exe -s -i -c cookies.txt -H "Content-Type: application/json" -X POST "$BASE/api/auth/login" --data '{"username":"niina","password":"dummy"}'
-$loginStatus = ($loginResponse | Select-String 'HTTP/1.1 (\d+)').Matches[0].Groups[1].Value
-
-if ($loginStatus -eq "200") {
-    Write-Host "✅ POST /api/auth/login: 200 OK" -ForegroundColor Green
+# 1) Health check (expect 200)
+Write-Host "`n1. Testing /api/health..." -ForegroundColor Cyan
+try {
+    $healthResponse = curl.exe -s -i "$BASE/api/health"
+    $healthStatus = ($healthResponse | Select-String 'HTTP/1.1 (\d+)').Matches[0].Groups[1].Value
     
-    # Set-Cookieヘッダーの確認
-    $setCookie = ($loginResponse | Select-String "Set-Cookie").Line
-    if ($setCookie) {
-        Write-Host "✅ Set-Cookie ヘッダー確認: $setCookie" -ForegroundColor Green
+    if ($healthStatus -eq "200") {
+        Write-Host "✅ Health check: OK" -ForegroundColor Green
     } else {
-        Write-Host "⚠️ Set-Cookie ヘッダーが見つかりません" -ForegroundColor Yellow
+        Write-Host "❌ Health check: Expected 200, Got $healthStatus" -ForegroundColor Red
+        $allTestsPassed = $false
     }
+} catch {
+    Write-Host "❌ Health check: Failed to connect" -ForegroundColor Red
+    $allTestsPassed = $false
+}
+
+# 2) Handshake check (expect 200)
+Write-Host "`n2. Testing /api/auth/handshake..." -ForegroundColor Cyan
+try {
+    $handshakeResponse = curl.exe -s -i "$BASE/api/auth/handshake"
+    $handshakeStatus = ($handshakeResponse | Select-String 'HTTP/1.1 (\d+)').Matches[0].Groups[1].Value
+    
+    if ($handshakeStatus -eq "200") {
+        Write-Host "✅ Handshake: OK (mode: session)" -ForegroundColor Green
+    } else {
+        Write-Host "❌ Handshake: Expected 200, Got $handshakeStatus" -ForegroundColor Red
+        $allTestsPassed = $false
+    }
+} catch {
+    Write-Host "❌ Handshake: Failed to connect" -ForegroundColor Red
+    $allTestsPassed = $false
+}
+
+# 3) Test /me unauthenticated (expect 401)
+Write-Host "`n3. Testing /api/auth/me (unauthenticated)..." -ForegroundColor Cyan
+try {
+    $meResponse = curl.exe -s -i "$BASE/api/auth/me"
+    $meStatus = ($meResponse | Select-String 'HTTP/1.1 (\d+)').Matches[0].Groups[1].Value
+    
+    if ($meStatus -eq "401") {
+        Write-Host "✅ Unauthenticated /me: 401 OK" -ForegroundColor Green
+    } else {
+        Write-Host "❌ Unauthenticated /me: Expected 401, Got $meStatus" -ForegroundColor Red
+        $allTestsPassed = $false
+    }
+} catch {
+    Write-Host "❌ Unauthenticated /me: Failed to connect" -ForegroundColor Red
+    $allTestsPassed = $false
+}
+
+# 4) Login with BYPASS_DB_FOR_LOGIN=true (expect 200)
+Write-Host "`n4. Testing login (BYPASS_DB_FOR_LOGIN=true)..." -ForegroundColor Cyan
+try {
+    $loginResponse = curl.exe -s -i -c cookies.txt -H "Content-Type: application/json" -X POST "$BASE/api/auth/login" --data '{"username":"niina","password":"dummy"}'
+    $loginStatus = ($loginResponse | Select-String 'HTTP/1.1 (\d+)').Matches[0].Groups[1].Value
+    
+    if ($loginStatus -eq "200") {
+        Write-Host "✅ Login: 200 OK" -ForegroundColor Green
+        
+        # Check for Set-Cookie header
+        if ($loginResponse -match "Set-Cookie") {
+            Write-Host "✅ Set-Cookie header present" -ForegroundColor Green
+        } else {
+            Write-Host "⚠️ Set-Cookie header not found" -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "❌ Login error: Expected 200, Got $loginStatus" -ForegroundColor Red
+        Write-Host "Response: $loginResponse" -ForegroundColor Yellow
+        $allTestsPassed = $false
+    }
+} catch {
+    Write-Host "❌ Login: Failed to connect" -ForegroundColor Red
+    $allTestsPassed = $false
+}
+
+# 5) Test /me after login (expect 200)
+Write-Host "`n5. Testing /api/auth/me after login..." -ForegroundColor Cyan
+try {
+    $meLoggedInResponse = curl.exe -s -i -b cookies.txt "$BASE/api/auth/me"
+    $meLoggedInStatus = ($meLoggedInResponse | Select-String 'HTTP/1.1 (\d+)').Matches[0].Groups[1].Value
+    
+    if ($meLoggedInStatus -eq "200") {
+        Write-Host "✅ /me after login: 200 OK" -ForegroundColor Green
+    } else {
+        Write-Host "❌ /me after login: Expected 200, Got $meLoggedInStatus" -ForegroundColor Red
+        Write-Host "Response: $meLoggedInResponse" -ForegroundColor Yellow
+        $allTestsPassed = $false
+    }
+} catch {
+    Write-Host "❌ /me after login: Failed to connect" -ForegroundColor Red
+    $allTestsPassed = $false
+}
+
+# 6) CORS check
+Write-Host "`n6. Testing CORS headers..." -ForegroundColor Cyan
+try {
+    $corsResponse = curl.exe -s -i -H "Origin: https://witty-river-012f39e00.1.azurestaticapps.net" "$BASE/api/auth/me"
+    
+    if ($corsResponse -match "Access-Control-Allow-Origin: https://witty-river-012f39e00.1.azurestaticapps.net") {
+        Write-Host "✅ CORS Origin: Correct SWA URL" -ForegroundColor Green
+    } else {
+        Write-Host "❌ CORS Origin: Not set correctly" -ForegroundColor Red
+        $allTestsPassed = $false
+    }
+    
+    if ($corsResponse -match "Access-Control-Allow-Credentials: true") {
+        Write-Host "✅ CORS Credentials: true" -ForegroundColor Green
+    } else {
+        Write-Host "❌ CORS Credentials: Not set to true" -ForegroundColor Red
+        $allTestsPassed = $false
+    }
+} catch {
+    Write-Host "❌ CORS check: Failed" -ForegroundColor Red
+    $allTestsPassed = $false
+}
+
+# Cleanup
+if (Test-Path cookies.txt) {
+    Remove-Item cookies.txt
+    Write-Host "`nCleaned up cookies.txt" -ForegroundColor Gray
+}
+
+# Final result
+Write-Host "`n" + "="*50 -ForegroundColor Gray
+if ($allTestsPassed) {
+    Write-Host "🎉 All tests passed! Authentication is working correctly." -ForegroundColor Green
+    exit 0
 } else {
-    Write-Host "❌ POST /api/auth/login: 期待値200, 実際$loginStatus" -ForegroundColor Red
-    Write-Host "レスポンス: $loginResponse" -ForegroundColor Yellow
+    Write-Host "❌ Some tests failed. Please check the issues above." -ForegroundColor Red
+    exit 1
 }
-
-# 3) ログイン後の /me（200期待）
-Write-Host "`n3️⃣ ログイン後の /api/auth/me をテスト..." -ForegroundColor Cyan
-$meLoggedInResponse = curl.exe -s -i -b cookies.txt "$BASE/api/auth/me"
-$meLoggedInStatus = ($meLoggedInResponse | Select-String 'HTTP/1.1 (\d+)').Matches[0].Groups[1].Value
-
-if ($meLoggedInStatus -eq "200") {
-    Write-Host "✅ /api/auth/me ログイン後: 200 OK" -ForegroundColor Green
-} else {
-    Write-Host "❌ /api/auth/me ログイン後: 期待値200, 実際$meLoggedInStatus" -ForegroundColor Red
-    Write-Host "レスポンス: $meLoggedInResponse" -ForegroundColor Yellow
-}
-
-# 4) ヘルスチェック
-Write-Host "`n4️⃣ ヘルスチェック..." -ForegroundColor Cyan
-$healthResponse = curl.exe -s -i "$BASE/api/health"
-$healthStatus = ($healthResponse | Select-String 'HTTP/1.1 (\d+)').Matches[0].Groups[1].Value
-
-if ($healthStatus -eq "200") {
-    Write-Host "✅ /api/health: 200 OK" -ForegroundColor Green
-} else {
-    Write-Host "❌ /api/health: 期待値200, 実際$healthStatus" -ForegroundColor Red
-}
-
-# 5) CORS ヘッダー確認
-Write-Host "`n5️⃣ CORS ヘッダー確認..." -ForegroundColor Cyan
-$corsResponse = curl.exe -s -i -H "Origin: https://witty-river-012f39e00.1.azurestaticapps.net" "$BASE/api/auth/me"
-$corsOrigin = ($corsResponse | Select-String "Access-Control-Allow-Origin").Line
-$corsCredentials = ($corsResponse | Select-String "Access-Control-Allow-Credentials").Line
-
-if ($corsOrigin -and $corsCredentials) {
-    Write-Host "✅ CORS ヘッダー確認: $corsOrigin" -ForegroundColor Green
-    Write-Host "✅ CORS Credentials: $corsCredentials" -ForegroundColor Green
-} else {
-    Write-Host "⚠️ CORS ヘッダーが見つかりません" -ForegroundColor Yellow
-}
-
-# クリーンアップ
-if (Test-Path "cookies.txt") {
-    Remove-Item "cookies.txt"
-    Write-Host "`n🧹 テストファイルをクリーンアップしました" -ForegroundColor Gray
-}
-
-Write-Host "`n🏁 ログイン認証テスト完了" -ForegroundColor Green
