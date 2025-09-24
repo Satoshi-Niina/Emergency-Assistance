@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - 'client/**'
-      - '.github/workflows/frontend-only.yml'
+      - '.github/workflows/frontend.yml'
   workflow_dispatch:
 
 jobs:
