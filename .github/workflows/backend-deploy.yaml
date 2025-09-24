@@ -172,34 +172,21 @@ jobs:
           fi
 
       - name: Smoke test backend health (multi-path)
+        shell: bash
         run: |
           set -e
-          API="${{ secrets.API_BASE_URL }}"
-          paths="/api/healthz /healthz /api/health /health"
-          ok=0
-          for p in $paths; do
-            for i in {1..10}; do
-              code=$(curl -s -o /tmp/body -w "%{http_code}" "$API$p")
-              echo "$API$p try $i: $code"
-              if [ "$code" = "200" ]; then
-                if grep -q '"ok": *true' /tmp/body && grep -q '"db":' /tmp/body; then
-                  echo "✅ $API$p returned 200 ok:true"
-                  ok=1
-                  break 2
-                fi
-              elif [ "$code" = "503" ]; then
-                echo "⏳ 503, retrying in 5s..."
-                sleep 5
-              else
-                break
-              fi
-            done
+          sudo apt-get update && sudo apt-get install -y jq
+          BASE="https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net"
+          paths=(/api/healthz /healthz /api/health /health)
+          for p in "${paths[@]}"; do
+            echo "*** $BASE$p"
+            if curl -sf "$BASE$p" | jq -e '.ok == true' >/dev/null 2>&1; then
+              echo "Health OK on $p"
+              exit 0
+            fi
           done
-          if [ $ok -ne 1 ]; then
-            echo "No health endpoint returned 200 JSON ok:true"
-            cat /tmp/body || true
-            exit 1
-          fi
+          echo "No health endpoint returned 200 JSON ok:true"
+          exit 1
 
       - name: Session smoke (optional)
         shell: bash

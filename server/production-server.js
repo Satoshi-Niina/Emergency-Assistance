@@ -164,7 +164,7 @@ const authenticateToken = (req, res, next) => {
 const router = express.Router();
 
 // Health check - no external dependencies
-router.get('/health', (req, res) => {
+const healthHandler = (req, res) => {
   res.json({
     ok: true,
     status: 'healthy',
@@ -172,7 +172,9 @@ router.get('/health', (req, res) => {
     environment: process.env.NODE_ENV || 'development',
     requestId: req.requestId
   });
-});
+};
+
+router.get('/health', healthHandler);
 
 // Handshake endpoint
 router.get('/auth/handshake', (req, res) => {
@@ -347,6 +349,10 @@ router.post('/auth/logout', (req, res) => {
 
 // Mount API router
 app.use('/api', router);
+
+// Health endpoints (CI compatibility) - root level
+app.get('/health', healthHandler);
+app.get('/healthz', healthHandler);
 
 // Global error handler
 app.use((err, req, res, next) => {
