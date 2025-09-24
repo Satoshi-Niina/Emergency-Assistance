@@ -38,39 +38,26 @@ app.use(helmet({
   contentSecurityPolicy: false,
 }));
 
-// CORS configuration for SWA cross-origin - 本番環境用厳密設定
+// ① ヘルスは CORS より前（Originなしでも通す）
+const health = (_req, res) => res.status(200).json({ ok: true });
+app.get('/api/health', health);
+app.get('/api/healthz', health);
+app.get('/health', health);
+app.get('/healthz', health);
+
+// ② CORS：Originなしは許可、未許可は "false" を返す（throw しない）
+const ALLOW = new Set(['https://witty-river-012f39e00.1.azurestaticapps.net']);
 const corsOptions = {
-  origin: (origin, callback) => {
-    const allowedOrigins = [
-      'https://witty-river-012f39e00.1.azurestaticapps.net',
-      'http://localhost:5173', // Development
-      'http://localhost:3000'   // Development
-    ];
-    
-    // originがundefined（直接アクセス、ヘルスチェック等）の場合は許可
-    if (!origin) {
-      return callback(null, true);
-    }
-    
-    // 本番環境ではSWA URLのみ許可
-    if (process.env.NODE_ENV === 'production') {
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        console.warn(`[CORS] Blocked origin: ${origin}`);
-        callback(new Error('Not allowed by CORS'));
-      }
-    } else {
-      // 開発環境では緩和
-      callback(null, true);
-    }
-  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
-  exposedHeaders: ['Set-Cookie']
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);        // ヘルス/直叩き/curl を許可
+    if (ALLOW.has(origin)) return cb(null, true);
+    return cb(null, false);                    // 403/500にせず CORS ヘッダを付けない
+  },
+  optionsSuccessStatus: 204
 };
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));           // ③ Preflight も同方針
 
 // Request logging
 app.use(morgan('combined', {
@@ -107,30 +94,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Initialize PostgreSQL pool
-let pool;
-if (process.env.DATABASE_URL) {
-  pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { 
-      require: true, 
-      rejectUnauthorized: false 
-    },
-    max: 10,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
-  });
-
-  pool.on('connect', () => {
-    console.log('✅ Database connected');
-  });
-
-  pool.on('error', (err) => {
-    console.error('❌ Database error:', err);
-  });
-} else {
-  console.warn('⚠️ DATABASE_URL not set - running without database');
-}
+// PostgreSQL pool initialization removed - handled in auth routes
 
 // Authentication middleware
 const authenticateToken = (req, res, next) => {
@@ -186,18 +150,7 @@ const authenticateToken = (req, res, next) => {
 // API Routes
 const router = express.Router();
 
-// Health check - no external dependencies
-const healthHandler = (req, res) => {
-  res.json({
-    ok: true,
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    requestId: req.requestId
-  });
-};
-
-router.get('/health', healthHandler);
+// Health check - no external dependencies (moved to top level)
 
 // Handshake endpoint
 router.get('/auth/handshake', (req, res) => {
@@ -227,10 +180,6 @@ app.use('/api/auth', authRouter);
 
 // Mount API router
 app.use('/api', router);
-
-// Health endpoints (CI compatibility) - root level
-app.get('/health', healthHandler);
-app.get('/healthz', healthHandler);
 
 // Global error handler
 app.use((err, req, res, next) => {
@@ -285,24 +234,10 @@ app.listen(PORT, HOST, () => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, shutting down gracefully');
-  if (pool) {
-    pool.end(() => {
-      console.log('Database pool closed');
-      process.exit(0);
-    });
-  } else {
-    process.exit(0);
-  }
+  process.exit(0);
 });
 
 process.on('SIGINT', () => {
   console.log('SIGINT received, shutting down gracefully');
-  if (pool) {
-    pool.end(() => {
-      console.log('Database pool closed');
-      process.exit(0);
-    });
-  } else {
-    process.exit(0);
-  }
+  process.exit(0);
 });

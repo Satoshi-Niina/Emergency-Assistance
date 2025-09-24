@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { Pool } = require('pg');
 
 const router = express.Router();
 
@@ -11,28 +12,8 @@ const issueJwt = (userId, options = {}) => {
   if (options.exp) {
     jwtOptions.expiresIn = Math.floor((options.exp - Date.now()) / 1000) + 's';
   }
-  return jwt.sign(payload, process.env.JWT_SECRET || 'fallback-secret', jwtOptions);
+  return jwt.sign(payload, process.env.JWT_SECRET, jwtOptions);
 };
-
-// デバッグ用エンドポイント - 環境変数とセッション状態を確認
-router.get('/debug', (req, res) => {
-  res.json({
-    success: true,
-    environment: {
-      NODE_ENV: process.env.NODE_ENV,
-      BYPASS_DB_FOR_LOGIN: process.env.BYPASS_DB_FOR_LOGIN,
-      JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'NOT SET',
-      SESSION_SECRET: process.env.SESSION_SECRET ? 'SET' : 'NOT SET',
-    },
-    session: {
-      hasSession: !!req.session,
-      userId: req.session?.userId,
-      user: req.session?.user,
-      sessionId: req.session?.id,
-    },
-    timestamp: new Date().toISOString(),
-  });
-});
 
 // ログインエンドポイント
 router.post('/login', async (req, res) => {
@@ -48,7 +29,7 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // バイパスフラグ確認
+    // バイパスフラグ確認（最初に判定）
     const bypassDb = process.env.BYPASS_DB_FOR_LOGIN === 'true';
     
     console.log('[auth/login] Login attempt:', { 
@@ -57,21 +38,22 @@ router.post('/login', async (req, res) => {
       timestamp: new Date().toISOString()
     });
 
-    // バイパスモード時は仮ログイン
+    // バイパスモード時は即リターン（DBに触れない）
     if (bypassDb) {
       console.log('[auth/login] Bypass mode: Creating demo session');
       
       // セッションにユーザー情報を設定
+      req.session.userId = 'demo';
       req.session.user = { 
         id: 'demo', 
         name: username,
         role: 'user'
       };
       
-      // JWTトークンも生成（オプション）
+      // JWTトークンも生成
       const token = jwt.sign(
         { id: 'demo', username, role: 'user' }, 
-        process.env.JWT_SECRET || 'fallback-secret',
+        process.env.JWT_SECRET,
         { expiresIn: '1d' }
       );
       
@@ -85,18 +67,134 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // 本来のDB認証
+    // DB接続（遅延読み込み）
+    let pool;
     try {
-      // データベースからユーザーを検索（簡易実装）
-      // TODO: 実際のDB接続を実装
-      return res.status(503).json({
-        success: false,
-        error: 'auth_backend_unavailable',
-        message: '認証サービスが一時的に利用できません'
+      // PG_SSL設定に応じてSSL設定を決定
+      const sslMode = process.env.PG_SSL || 'prefer';
+      let sslConfig;
+      
+      if (sslMode === 'disable') {
+        sslConfig = false;
+      } else if (sslMode === 'require') {
+        sslConfig = { rejectUnauthorized: false };
+      } else { // prefer (default)
+        sslConfig = { rejectUnauthorized: false };
+      }
+
+      pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: sslConfig,
+        max: 5,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 5000,
       });
+
+      // 接続テスト
+      const client = await pool.connect();
+      
+      // prefer モードで SSL エラーが出た場合は disable に再接続
+      if (sslMode === 'prefer') {
+        try {
+          await client.query('SELECT 1');
+        } catch (sslError) {
+          if (sslError.message.includes('does not support SSL')) {
+            console.log('[auth/login] SSL not supported, reconnecting with SSL disabled');
+            await client.release();
+            await pool.end();
+            
+            pool = new Pool({
+              connectionString: process.env.DATABASE_URL,
+              ssl: false,
+              max: 5,
+              idleTimeoutMillis: 30000,
+              connectionTimeoutMillis: 5000,
+            });
+            
+            const newClient = await pool.connect();
+            await newClient.query('SELECT 1');
+            await newClient.release();
+          } else {
+            throw sslError;
+          }
+        }
+      } else {
+        await client.release();
+      }
+
+      // データベースからユーザーを検索
+      const result = await pool.query(
+        'SELECT id, username, password, role FROM users WHERE username = $1 LIMIT 1',
+        [username]
+      );
+
+      if (result.rows.length === 0) {
+        await pool.end();
+        return res.status(401).json({ 
+          success: false, 
+          error: 'invalid_credentials',
+          message: 'ユーザー名またはパスワードが正しくありません'
+        });
+      }
+
+      const foundUser = result.rows[0];
+
+      // パスワード比較（bcryptjs）
+      const isPasswordValid = await bcrypt.compare(password, foundUser.password);
+      if (!isPasswordValid) {
+        await pool.end();
+        return res.status(401).json({ 
+          success: false, 
+          error: 'invalid_credentials',
+          message: 'ユーザー名またはパスワードが正しくありません'
+        });
+      }
+
+      // JWTトークン生成
+      const token = issueJwt(foundUser.id);
+
+      // セッション再生
+      req.session.regenerate(err => {
+        if (err) {
+          console.error('[auth/login] Session regenerate error:', err);
+          return res.status(503).json({ 
+            success: false, 
+            error: 'session_error',
+            message: 'セッション作成に失敗しました'
+          });
+        }
+        
+        req.session.userId = foundUser.id;
+        req.session.user = { 
+          id: foundUser.id, 
+          name: foundUser.username,
+          role: foundUser.role || 'user'
+        };
+        
+        req.session.save(() => {
+          console.log('[auth/login] Login success for user:', foundUser.username);
+          res.json({ 
+            success: true, 
+            token, 
+            accessToken: token, 
+            expiresIn: '1d',
+            user: req.session.user
+          });
+        });
+      });
+
+      await pool.end();
       
     } catch (dbError) {
       console.error('[auth/login] Database error:', dbError);
+      if (pool) {
+        try {
+          await pool.end();
+        } catch (endError) {
+          console.error('[auth/login] Pool end error:', endError);
+        }
+      }
+      
       return res.status(503).json({
         success: false,
         error: 'auth_backend_unavailable',
@@ -140,7 +238,7 @@ router.get('/me', (req, res) => {
     if (auth?.startsWith('Bearer ')) {
       try {
         const token = auth.slice(7);
-        const payload = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
+        const payload = jwt.verify(token, process.env.JWT_SECRET);
         console.log('[auth/me] Token-based auth:', payload);
         return res.json({ 
           success: true, 
@@ -175,61 +273,24 @@ router.get('/me', (req, res) => {
   }
 });
 
-// サーバ設定ヒント取得（段階的移行対応）
+// Handshake endpoint
 router.get('/handshake', (req, res) => {
-  console.log('🔍 /api/auth/handshake 呼び出し');
-
-  // 段階的移行モード判定
-  const isSafeMode = process.env.SAFE_MODE === 'true';
-  const bypassJwt = process.env.BYPASS_JWT === 'true';
-
-  // 詳細なリクエスト情報をログ出力
-  console.log('📊 Handshake request details:', {
-    method: req.method,
-    path: req.path,
-    headers: {
-      host: req.headers.host,
-      'x-forwarded-for': req.headers['x-forwarded-for'],
-      'x-forwarded-proto': req.headers['x-forwarded-proto'],
-      'user-agent': req.headers['user-agent'],
-      'content-type': req.headers['content-type'],
-    },
-    ip: req.ip,
-    ips: req.ips,
-    timestamp: new Date().toISOString(),
-    safeMode: isSafeMode,
-    bypassJwt: bypassJwt,
-  });
-
   try {
-    // 段階的移行モード判定
-    let mode;
-    if (isSafeMode) {
-      mode = 'safe';
-    } else if (bypassJwt) {
-      mode = 'jwt-bypass';
-    } else {
-      mode = 'session';
-    }
-
     res.json({
       ok: true,
-      mode: mode,
-      env: process.env.NODE_ENV || 'development',
+      mode: 'session',
+      env: process.env.NODE_ENV || 'production',
       timestamp: new Date().toISOString(),
-      features: {
-        session: true,
-        jwt: true,
-        bypass: process.env.BYPASS_DB_FOR_LOGIN === 'true',
-      },
+      requestId: req.requestId
     });
   } catch (error) {
-    console.error('❌ Handshake error:', error);
+    console.error(`[${req.requestId}] Handshake error:`, error);
     res.status(200).json({
       ok: true,
       mode: 'session',
       env: 'production',
       timestamp: new Date().toISOString(),
+      requestId: req.requestId
     });
   }
 });

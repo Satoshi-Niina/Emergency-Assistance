@@ -1,0 +1,1507 @@
+[1mdiff --git a/PRODUCTION_ENVIRONMENT_VARIABLES.md b/PRODUCTION_ENVIRONMENT_VARIABLES.md[m
+[1mnew file mode 100644[m
+[1mindex 00000000..dca7b4a0[m
+[1m--- /dev/null[m
+[1m+++ b/PRODUCTION_ENVIRONMENT_VARIABLES.md[m
+[36m@@ -0,0 +1,68 @@[m
+[32m+[m[32m# Production Environment Variables[m
+[32m+[m
+[32m+[m[32m## Required Environment Variables for Azure App Service:[m
+[32m+[m
+[32m+[m[32m### Core Authentication[m
+[32m+[m[32m- `JWT_SECRET`: Your JWT signing secret (required)[m
+[32m+[m[32m- `SESSION_SECRET`: Your session secret (required)[m
+[32m+[m
+[32m+[m[32m### Database Configuration[m
+[32m+[m[32m- `DATABASE_URL`: PostgreSQL connection string (required for DB authentication)[m
+[32m+[m[32m- `PG_SSL`: SSL mode for PostgreSQL connection[m
+[32m+[m[32m  - `prefer` (default): Try SSL first, fallback to non-SSL if not supported[m
+[32m+[m[32m  - `require`: Require SSL connection[m
+[32m+[m[32m  - `disable`: Disable SSL connection[m
+[32m+[m
+[32m+[m[32m### Authentication Mode[m
+[32m+[m[32m- `BYPASS_DB_FOR_LOGIN`: Authentication bypass mode[m
+[32m+[m[32m  - `true`: Skip database authentication, use demo login (for testing)[m
+[32m+[m[32m  - `false` or unset: Use database authentication[m
+[32m+[m
+[32m+[m[32m### Environment[m
+[32m+[m[32m- `NODE_ENV`: Set to `production`[m
+[32m+[m
+[32m+[m[32m## Recommended Initial Setup:[m
+[32m+[m
+[32m+[m[32m1. **First Deployment (Safe Mode)**:[m
+[32m+[m[32m   ```[m
+[32m+[m[32m   BYPASS_DB_FOR_LOGIN=true[m
+[32m+[m[32m   JWT_SECRET=<your-secure-jwt-secret>[m
+[32m+[m[32m   SESSION_SECRET=<your-secure-session-secret>[m
+[32m+[m[32m   NODE_ENV=production[m
+[32m+[m[32m   ```[m
+[32m+[m
+[32m+[m[32m2. **After Confirming Basic Functionality**:[m
+[32m+[m[32m   ```[m
+[32m+[m[32m   BYPASS_DB_FOR_LOGIN=false[m
+[32m+[m[32m   DATABASE_URL=<your-postgresql-connection-string>[m
+[32m+[m[32m   PG_SSL=prefer[m
+[32m+[m[32m   JWT_SECRET=<your-secure-jwt-secret>[m
+[32m+[m[32m   SESSION_SECRET=<your-secure-session-secret>[m
+[32m+[m[32m   NODE_ENV=production[m
+[32m+[m[32m   ```[m
+[32m+[m
+[32m+[m[32m3. **If SSL Issues Occur**:[m
+[32m+[m[32m   ```[m
+[32m+[m[32m   PG_SSL=disable[m
+[32m+[m[32m   ```[m
+[32m+[m
+[32m+[m[32m## Testing Checklist:[m
+[32m+[m
+[32m+[m[32m### Health Endpoints (should all return 200 with {"ok":true}):[m
+[32m+[m[32m- `/api/health`[m
+[32m+[m[32m- `/api/healthz`[m
+[32m+[m[32m- `/health`[m
+[32m+[m[32m- `/healthz`[m
+[32m+[m
+[32m+[m[32m### Authentication Endpoints:[m
+[32m+[m[32m- `/api/auth/handshake` → 200 with {"ok":true}[m
+[32m+[m[32m- `/api/auth/me` (unauthenticated) → 401[m
+[32m+[m[32m- `/api/auth/login` → 200 with {"success":true}[m
+[32m+[m
+[32m+[m[32m### CORS Headers (when called from SWA):[m
+[32m+[m[32m- `Access-Control-Allow-Origin: https://witty-river-012f39e00.1.azurestaticapps.net`[m
+[32m+[m[32m- `Access-Control-Allow-Credentials: true`[m
+[32m+[m
+[32m+[m[32m## Rollback Procedure:[m
+[32m+[m
+[32m+[m[32mIf issues occur, set `BYPASS_DB_FOR_LOGIN=true` to restore basic functionality without database dependency.[m
+[1mdiff --git a/app-logs-new.zip b/app-logs-new.zip[m
+[1mnew file mode 100644[m
+[1mindex 00000000..a904016a[m
+Binary files /dev/null and b/app-logs-new.zip differ
+[1mdiff --git a/deploy-production-20250924-194938/DEPLOYMENT_INSTRUCTIONS.md b/deploy-production-20250924-194938/DEPLOYMENT_INSTRUCTIONS.md[m
+[1mnew file mode 100644[m
+[1mindex 00000000..8ad4314c[m
+[1m--- /dev/null[m
+[1m+++ b/deploy-production-20250924-194938/DEPLOYMENT_INSTRUCTIONS.md[m
+[36m@@ -0,0 +1,31 @@[m
+[32m+[m[32m# Production Deployment Instructions[m
+[32m+[m
+[32m+[m[32m## Environment Variables to Set in Azure App Service:[m
+[32m+[m
+[32m+[m[32m1. BYPASS_DB_FOR_LOGIN=true (initially, set to false after DB is confirmed working)[m
+[32m+[m[32m2. JWT_SECRET=<your-jwt-secret>[m
+[32m+[m[32m3. SESSION_SECRET=<your-session-secret>[m
+[32m+[m[32m4. DATABASE_URL=<your-postgresql-connection-string>[m
+[32m+[m[32m5. PG_SSL=prefer (will auto-fallback to disable if SSL not supported)[m
+[32m+[m[32m6. NODE_ENV=production[m
+[32m+[m
+[32m+[m[32m## Deployment Steps:[m
+[32m+[m
+[32m+[m[32m1. Zip the contents of: deploy-production-20250924-194938[m
+[32m+[m[32m2. Deploy to Azure App Service[m
+[32m+[m[32m3. Set environment variables[m
+[32m+[m[32m4. Test endpoints:[m
+[32m+[m[32m   - /api/health, /api/healthz, /health, /healthz (should return 200 with {"ok":true})[m
+[32m+[m[32m   - /api/auth/handshake (should return 200 with {"ok":true})[m
+[32m+[m[32m   - /api/auth/login (should return 200 with {"success":true} in bypass mode)[m
+[32m+[m[32m   - /api/auth/me (should return 401 when unauthenticated)[m
+[32m+[m
+[32m+[m[32m## After Deployment:[m
+[32m+[m
+[32m+[m[32m1. Test with BYPASS_DB_FOR_LOGIN=true first[m
+[32m+[m[32m2. If successful, set BYPASS_DB_FOR_LOGIN=false and test DB connection[m
+[32m+[m[32m3. If SSL errors occur, set PG_SSL=disable[m
+[32m+[m
+[32m+[m[32m## Rollback:[m
+[32m+[m
+[32m+[m[32mIf issues occur, set BYPASS_DB_FOR_LOGIN=true to restore basic functionality.[m
+[1mdiff --git a/deploy-production-20250924-194938/package.json b/deploy-production-20250924-194938/package.json[m
+[1mnew file mode 100644[m
+[1mindex 00000000..a94adacb[m
+[1m--- /dev/null[m
+[1m+++ b/deploy-production-20250924-194938/package.json[m
+[36m@@ -0,0 +1,12 @@[m
+[32m+[m[32m{[m
+[32m+[m[32m  "name": "emergency-assistance-production",[m
+[32m+[m[32m  "version": "1.0.0",[m
+[32m+[m[32m  "type": "commonjs",[m
+[32m+[m[32m  "main": "production-server.js",[m
+[32m+[m[32m  "scripts": {[m
+[32m+[m[32m    "start": "node production-server.js"[m
+[32m+[m[32m  },[m
+[32m+[m[32m  "engines": {[m
+[32m+[m[32m    "node": ">=18 <23"[m
+[32m+[m[32m  }[m
+[32m+[m[32m}[m
+[1mdiff --git a/deploy-production-20250924-194938/production-server.js b/deploy-production-20250924-194938/production-server.js[m
+[1mnew file mode 100644[m
+[1mindex 00000000..c6059d77[m
+[1m--- /dev/null[m
+[1m+++ b/deploy-production-20250924-194938/production-server.js[m
+[36m@@ -0,0 +1,243 @@[m
+[32m+[m[32m#!/usr/bin/env node[m
+[32m+[m
+[32m+[m[32m// Production-ready server for Azure App Service[m
+[32m+[m[32m// SWA + App Service cross-origin authentication support[m
+[32m+[m[32m// Updated: 2024-12-19[m
+[32m+[m
+[32m+[m[32mconst express = require('express');[m
+[32m+[m[32mconst cors = require('cors');[m
+[32m+[m[32mconst helmet = require('helmet');[m
+[32m+[m[32mconst morgan = require('morgan');[m
+[32m+[m[32mconst session = require('express-session');[m
+[32m+[m[32mconst cookieParser = require('cookie-parser');[m
+[32m+[m[32mconst jwt = require('jsonwebtoken');[m
+[32m+[m[32mconst bcrypt = require('bcryptjs');[m
+[32m+[m[32mconst { Pool } = require('pg');[m
+[32m+[m[32mconst crypto = require('crypto');[m
+[32m+[m
+[32m+[m[32m// Environment validation[m
+[32m+[m[32mif (!process.env.JWT_SECRET) {[m
+[32m+[m[32m  console.error('❌ JWT_SECRET is required');[m
+[32m+[m[32m  process.exit(1);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mif (!process.env.SESSION_SECRET) {[m
+[32m+[m[32m  console.error('❌ SESSION_SECRET is required');[m
+[32m+[m[32m  process.exit(1);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m// Initialize Express app[m
+[32m+[m[32mconst app = express();[m
+[32m+[m
+[32m+[m[32m// Trust proxy for Azure App Service[m
+[32m+[m[32mapp.set('trust proxy', 1);[m
+[32m+[m
+[32m+[m[32m// Security middleware[m
+[32m+[m[32mapp.use(helmet({[m
+[32m+[m[32m  crossOriginEmbedderPolicy: false,[m
+[32m+[m[32m  contentSecurityPolicy: false,[m
+[32m+[m[32m}));[m
+[32m+[m
+[32m+[m[32m// ① ヘルスは CORS より前（Originなしでも通す）[m
+[32m+[m[32mconst health = (_req, res) => res.status(200).json({ ok: true });[m
+[32m+[m[32mapp.get('/api/health', health);[m
+[32m+[m[32mapp.get('/api/healthz', health);[m
+[32m+[m[32mapp.get('/health', health);[m
+[32m+[m[32mapp.get('/healthz', health);[m
+[32m+[m
+[32m+[m[32m// ② CORS：Originなしは許可、未許可は "false" を返す（throw しない）[m
+[32m+[m[32mconst ALLOW = new Set(['https://witty-river-012f39e00.1.azurestaticapps.net']);[m
+[32m+[m[32mconst corsOptions = {[m
+[32m+[m[32m  credentials: true,[m
+[32m+[m[32m  origin: (origin, cb) => {[m
+[32m+[m[32m    if (!origin) return cb(null, true);        // ヘルス/直叩き/curl を許可[m
+[32m+[m[32m    if (ALLOW.has(origin)) return cb(null, true);[m
+[32m+[m[32m    return cb(null, false);                    // 403/500にせず CORS ヘッダを付けない[m
+[32m+[m[32m  },[m
+[32m+[m[32m  optionsSuccessStatus: 204[m
+[32m+[m[32m};[m
+[32m+[m[32mapp.use(cors(corsOptions));[m
+[32m+[m[32mapp.options('*', cors(corsOptions));           // ③ Preflight も同方針[m
+[32m+[m
+[32m+[m[32m// Request logging[m
+[32m+[m[32mapp.use(morgan('combined', {[m
+[32m+[m[32m  skip: (req, res) => req.url === '/api/health'[m
+[32m+[m[32m}));[m
+[32m+[m
+[32m+[m[32m// Body parsing[m
+[32m+[m[32mapp.use(express.json({ limit: '10mb' }));[m
+[32m+[m[32mapp.use(express.urlencoded({ extended: true }));[m
+[32m+[m
+[32m+[m[32m// Cookie parsing[m
+[32m+[m[32mapp.use(cookieParser());[m
+[32m+[m
+[32m+[m[32m// Session configuration for cross-origin[m
+[32m+[m[32mapp.use(session({[m
+[32m+[m[32m  secret: process.env.SESSION_SECRET,[m
+[32m+[m[32m  resave: false,[m
+[32m+[m[32m  saveUninitialized: false,[m
+[32m+[m[32m  cookie: {[m
+[32m+[m[32m    httpOnly: true,[m
+[32m+[m[32m    secure: true, // HTTPS only[m
+[32m+[m[32m    sameSite: 'none', // Cross-origin support[m
+[32m+[m[32m    maxAge: 24 * 60 * 60 * 1000, // 24 hours[m
+[32m+[m[32m    domain: undefined // Let browser handle domain[m
+[32m+[m[32m  },[m
+[32m+[m[32m  name: 'sid',[m
+[32m+[m[32m  proxy: true // Trust proxy for Azure App Service[m
+[32m+[m[32m}));[m
+[32m+[m
+[32m+[m[32m// Request ID middleware for error tracking[m
+[32m+[m[32mapp.use((req, res, next) => {[m
+[32m+[m[32m  req.requestId = crypto.randomUUID();[m
+[32m+[m[32m  res.setHeader('X-Request-ID', req.requestId);[m
+[32m+[m[32m  next();[m
+[32m+[m[32m});[m
+[32m+[m
+[32m+[m[32m// PostgreSQL pool initialization removed - handled in auth routes[m
+[32m+[m
+[32m+[m[32m// Authentication middleware[m
+[32m+[m[32mconst authenticateToken = (req, res, next) => {[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    // Check Bearer token first[m
+[32m+[m[32m    const authHeader = req.headers.authorization;[m
+[32m+[m[32m    if (authHeader && authHeader.startsWith('Bearer ')) {[m
+[32m+[m[32m      const token = authHeader.substring(7);[m
+[32m+[m[41m      [m
+[32m+[m[32m      try {[m
+[32m+[m[32m        const payload = jwt.verify(token, process.env.JWT_SECRET);[m
+[32m+[m[32m        req.user = {[m[41m [m
+[32m+[m[32m          id: payload.userId,[m[41m [m
+[32m+[m[32m          username: payload.username,[m
+[32m+[m[32m          authMethod: 'jwt'[m
+[32m+[m[32m        };[m
+[32m+[m[32m        return next();[m
+[32m+[m[32m      } catch (jwtError) {[m
+[32m+[m[32m        console.warn(`[${req.requestId}] JWT verification failed:`, jwtError.message);[m
+[32m+[m[32m        // Fall through to session check[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    // Check session[m
+[32m+[m[32m    if (req.session && req.session.userId) {[m
+[32m+[m[32m      req.user = {[m[41m [m
+[32m+[m[32m        id: req.session.userId,[m[41m [m
+[32m+[m[32m        username: req.session.username,[m
+[32m+[m[32m        authMethod: 'session'[m
+[32m+[m[32m      };[m
+[32m+[m[32m      return next();[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    // No valid authentication[m
+[32m+[m[32m    return res.status(401).json({[m
+[32m+[m[32m      success: false,[m
+[32m+[m[32m      error: 'authentication_required',[m
+[32m+[m[32m      message: '認証が必要です',[m
+[32m+[m[32m      requestId: req.requestId[m
+[32m+[m[32m    });[m
+[32m+[m
+[32m+[m[32m  } catch (error) {[m
+[32m+[m[32m    console.error(`[${req.requestId}] Authentication error:`, error);[m
+[32m+[m[32m    return res.status(500).json({[m
+[32m+[m[32m      success: false,[m
+[32m+[m[32m      error: 'authentication_error',[m
+[32m+[m[32m      message: '認証処理でエラーが発生しました',[m
+[32m+[m[32m      requestId: req.requestId[m
+[32m+[m[32m    });[m
+[32m+[m[32m  }[m
+[32m+[m[32m};[m
+[32m+[m
+[32m+[m[32m// API Routes[m
+[32m+[m[32mconst router = express.Router();[m
+[32m+[m
+[32m+[m[32m// Health check - no external dependencies (moved to top level)[m
+[32m+[m
+[32m+[m[32m// Handshake endpoint[m
+[32m+[m[32mrouter.get('/auth/handshake', (req, res) => {[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    res.json({[m
+[32m+[m[32m      ok: true,[m
+[32m+[m[32m      mode: 'session', // Default to session mode for cross-origin[m
+[32m+[m[32m      env: process.env.NODE_ENV || 'development',[m
+[32m+[m[32m      timestamp: new Date().toISOString(),[m
+[32m+[m[32m      requestId: req.requestId[m
+[32m+[m[32m    });[m
+[32m+[m[32m  } catch (error) {[m
+[32m+[m[32m    console.error(`[${req.requestId}] Handshake error:`, error);[m
+[32m+[m[32m    res.status(200).json({[m
+[32m+[m[32m      ok: true,[m
+[32m+[m[32m      mode: 'session',[m
+[32m+[m[32m      env: 'production',[m
+[32m+[m[32m      timestamp: new Date().toISOString(),[m
+[32m+[m[32m      requestId: req.requestId[m
+[32m+[m[32m    });[m
+[32m+[m[32m  }[m
+[32m+[m[32m});[m
+[32m+[m
+[32m+[m[32m// Mount auth routes from routes/auth.js[m
+[32m+[m[32mconst authRouter = require('./routes/auth.js');[m
+[32m+[m[32mapp.use('/api/auth', authRouter);[m
+[32m+[m
+[32m+[m[32m// Mount API router[m
+[32m+[m[32mapp.use('/api', router);[m
+[32m+[m
+[32m+[m[32m// Global error handler[m
+[32m+[m[32mapp.use((err, req, res, next) => {[m
+[32m+[m[32m  const requestId = req.requestId || crypto.randomUUID();[m
+[32m+[m[41m  [m
+[32m+[m[32m  console.error(`[${requestId}] Unhandled error:`, err);[m
+[32m+[m[32m  console.error(`[${requestId}] Stack trace:`, err.stack);[m
+[32m+[m[32m  console.error(`[${requestId}] Request details:`, {[m
+[32m+[m[32m    method: req.method,[m
+[32m+[m[32m    url: req.url,[m
+[32m+[m[32m    headers: req.headers,[m
+[32m+[m[32m    body: req.body[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  res.status(500).json({[m
+[32m+[m[32m    success: false,[m
+[32m+[m[32m    error: 'internal_error',[m
+[32m+[m[32m    message: 'サーバー内部エラーが発生しました',[m
+[32m+[m[32m    requestId: requestId,[m
+[32m+[m[32m    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined[m
+[32m+[m[32m  });[m
+[32m+[m[32m});[m
+[32m+[m
+[32m+[m[32m// 404 handler[m
+[32m+[m[32mapp.use('*', (req, res) => {[m
+[32m+[m[32m  res.status(404).json({[m
+[32m+[m[32m    success: false,[m
+[32m+[m[32m    error: 'not_found',[m
+[32m+[m[32m    message: 'リソースが見つかりません',[m
+[32m+[m[32m    path: req.originalUrl,[m
+[32m+[m[32m    requestId: req.requestId[m
+[32m+[m[32m  });[m
+[32m+[m[32m});[m
+[32m+[m
+[32m+[m[32m// Start server[m
+[32m+[m[32mconst PORT = Number(process.env.PORT?.trim() || '8000');[m
+[32m+[m[32mconst HOST = '0.0.0.0';[m
+[32m+[m
+[32m+[m[32mapp.listen(PORT, HOST, () => {[m
+[32m+[m[32m  console.log(`🚀 Server running on ${HOST}:${PORT}`);[m
+[32m+[m[32m  console.log(`📊 Health check: http://${HOST}:${PORT}/api/health`);[m
+[32m+[m[32m  console.log(`🔐 Login API: http://${HOST}:${PORT}/api/auth/login`);[m
+[32m+[m[32m  console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);[m
+[32m+[m[32m  console.log(`🔍 Database URL configured: ${process.env.DATABASE_URL ? 'YES' : 'NO'}`);[m
+[32m+[m[32m  console.log(`🔑 JWT Secret configured: ${process.env.JWT_SECRET ? 'YES' : 'NO'}`);[m
+[32m+[m[32m  console.log(`🍪 Session Secret configured: ${process.env.SESSION_SECRET ? 'YES' : 'NO'}`);[m
+[32m+[m[32m  console.log(`📁 Working directory: ${process.cwd()}`);[m
+[32m+[m[32m  console.log(`📄 Main file: ${__filename}`);[m
+[32m+[m[32m  console.log(`⏰ Start time: ${new Date().toISOString()}`);[m
+[32m+[m[32m});[m
+[32m+[m
+[32m+[m[32m// Graceful shutdown[m
+[32m+[m[32mprocess.on('SIGTERM', () => {[m
+[32m+[m[32m  console.log('SIGTERM received, shutting down gracefully');[m
+[32m+[m[32m  process.exit(0);[m
+[32m+[m[32m});[m
+[32m+[m
+[32m+[m[32mprocess.on('SIGINT', () => {[m
+[32m+[m[32m  console.log('SIGINT received, shutting down gracefully');[m
+[32m+[m[32m  process.exit(0);[m
+[32m+[m[32m});[m
+\ No newline at end of file[m
+[1mdiff --git a/deploy-production-20250924-194938/routes/auth.js b/deploy-production-20250924-194938/routes/auth.js[m
+[1mnew file mode 100644[m
+[1mindex 00000000..c5febf1d[m
+[1m--- /dev/null[m
+[1m+++ b/deploy-production-20250924-194938/routes/auth.js[m
+[36m@@ -0,0 +1,298 @@[m
+[32m+[m[32mconst express = require('express');[m
+[32m+[m[32mconst bcrypt = require('bcryptjs');[m
+[32m+[m[32mconst jwt = require('jsonwebtoken');[m
+[32m+[m[32mconst { Pool } = require('pg');[m
+[32m+[m
+[32m+[m[32mconst router = express.Router();[m
+[32m+[m
+[32m+[m[32m// JWT発行ユーティリティ[m
+[32m+[m[32mconst issueJwt = (userId, options = {}) => {[m
+[32m+[m[32m  const payload = { uid: userId };[m
+[32m+[m[32m  const jwtOptions = { expiresIn: '1d' };[m
+[32m+[m[32m  if (options.exp) {[m
+[32m+[m[32m    jwtOptions.expiresIn = Math.floor((options.exp - Date.now()) / 1000) + 's';[m
+[32m+[m[32m  }[m
+[32m+[m[32m  return jwt.sign(payload, process.env.JWT_SECRET, jwtOptions);[m
+[32m+[m[32m};[m
+[32m+[m
+[32m+[m[32m// ログインエンドポイント[m
+[32m+[m[32mrouter.post('/login', async (req, res) => {[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    const { username, password } = req.body || {};[m
+[32m+[m[41m    [m
+[32m+[m[32m    // 入力検証[m
+[32m+[m[32m    if (!username || !password) {[m
+[32m+[m[32m      return res.status(400).json({[m[41m [m
+[32m+[m[32m        success: false,[m[41m [m
+[32m+[m[32m        error: 'bad_request',[m
+[32m+[m[32m        message: 'ユーザー名とパスワードが必要です'[m
+[32m+[m[32m      });[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    // バイパスフラグ確認（最初に判定）[m
+[32m+[m[32m    const bypassDb = process.env.BYPASS_DB_FOR_LOGIN === 'true';[m
+[32m+[m[41m    [m
+[32m+[m[32m    console.log('[auth/login] Login attempt:', {[m[41m [m
+[32m+[m[32m      username,[m[41m [m
+[32m+[m[32m      bypassDb,[m
+[32m+[m[32m      timestamp: new Date().toISOString()[m
+[32m+[m[32m    });[m
+[32m+[m
+[32m+[m[32m    // バイパスモード時は即リターン（DBに触れない）[m
+[32m+[m[32m    if (bypassDb) {[m
+[32m+[m[32m      console.log('[auth/login] Bypass mode: Creating demo session');[m
+[32m+[m[41m      [m
+[32m+[m[32m      // セッションにユーザー情報を設定[m
+[32m+[m[32m      req.session.userId = 'demo';[m
+[32m+[m[32m      req.session.user = {[m[41m [m
+[32m+[m[32m        id: 'demo',[m[41m [m
+[32m+[m[32m        name: username,[m
+[32m+[m[32m        role: 'user'[m
+[32m+[m[32m      };[m
+[32m+[m[41m      [m
+[32m+[m[32m      // JWTトークンも生成[m
+[32m+[m[32m      const token = jwt.sign([m
+[32m+[m[32m        { id: 'demo', username, role: 'user' },[m[41m [m
+[32m+[m[32m        process.env.JWT_SECRET,[m
+[32m+[m[32m        { expiresIn: '1d' }[m
+[32m+[m[32m      );[m
+[32m+[m[41m      [m
+[32m+[m[32m      return res.json({[m[41m [m
+[32m+[m[32m        success: true,[m[41m [m
+[32m+[m[32m        mode: 'session',[m
+[32m+[m[32m        user: req.session.user,[m
+[32m+[m[32m        token,[m
+[32m+[m[32m        accessToken: token,[m
+[32m+[m[32m        expiresIn: '1d'[m
+[32m+[m[32m      });[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    // DB接続（遅延読み込み）[m
+[32m+[m[32m    let pool;[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      // PG_SSL設定に応じてSSL設定を決定[m
+[32m+[m[32m      const sslMode = process.env.PG_SSL || 'prefer';[m
+[32m+[m[32m      let sslConfig;[m
+[32m+[m[41m      [m
+[32m+[m[32m      if (sslMode === 'disable') {[m
+[32m+[m[32m        sslConfig = false;[m
+[32m+[m[32m      } else if (sslMode === 'require') {[m
+[32m+[m[32m        sslConfig = { rejectUnauthorized: false };[m
+[32m+[m[32m      } else { // prefer (default)[m
+[32m+[m[32m        sslConfig = { rejectUnauthorized: false };[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      pool = new Pool({[m
+[32m+[m[32m        connectionString: process.env.DATABASE_URL,[m
+[32m+[m[32m        ssl: sslConfig,[m
+[32m+[m[32m        max: 5,[m
+[32m+[m[32m        idleTimeoutMillis: 30000,[m
+[32m+[m[32m        connectionTimeoutMillis: 5000,[m
+[32m+[m[32m      });[m
+[32m+[m
+[32m+[m[32m      // 接続テスト[m
+[32m+[m[32m      const client = await pool.connect();[m
+[32m+[m[41m      [m
+[32m+[m[32m      // prefer モードで SSL エラーが出た場合は disable に再接続[m
+[32m+[m[32m      if (sslMode === 'prefer') {[m
+[32m+[m[32m        try {[m
+[32m+[m[32m          await client.query('SELECT 1');[m
+[32m+[m[32m        } catch (sslError) {[m
+[32m+[m[32m          if (sslError.message.includes('does not support SSL')) {[m
+[32m+[m[32m            console.log('[auth/login] SSL not supported, reconnecting with SSL disabled');[m
+[32m+[m[32m            await client.release();[m
+[32m+[m[32m            await pool.end();[m
+[32m+[m[41m            [m
+[32m+[m[32m            pool = new Pool({[m
+[32m+[m[32m              connectionString: process.env.DATABASE_URL,[m
+[32m+[m[32m              ssl: false,[m
+[32m+[m[32m              max: 5,[m
+[32m+[m[32m              idleTimeoutMillis: 30000,[m
+[32m+[m[32m              connectionTimeoutMillis: 5000,[m
+[32m+[m[32m            });[m
+[32m+[m[41m            [m
+[32m+[m[32m            const newClient = await pool.connect();[m
+[32m+[m[32m            await newClient.query('SELECT 1');[m
+[32m+[m[32m            await newClient.release();[m
+[32m+[m[32m          } else {[m
+[32m+[m[32m            throw sslError;[m
+[32m+[m[32m          }[m
+[32m+[m[32m        }[m
+[32m+[m[32m      } else {[m
+[32m+[m[32m        await client.release();[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      // データベースからユーザーを検索[m
+[32m+[m[32m      const result = await pool.query([m
+[32m+[m[32m        'SELECT id, username, password, role FROM users WHERE username = $1 LIMIT 1',[m
+[32m+[m[32m        [username][m
+[32m+[m[32m      );[m
+[32m+[m
+[32m+[m[32m      if (result.rows.length === 0) {[m
+[32m+[m[32m        await pool.end();[m
+[32m+[m[32m        return res.status(401).json({[m[41m [m
+[32m+[m[32m          success: false,[m[41m [m
+[32m+[m[32m          error: 'invalid_credentials',[m
+[32m+[m[32m          message: 'ユーザー名またはパスワードが正しくありません'[m
+[32m+[m[32m        });[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      const foundUser = result.rows[0];[m
+[32m+[m
+[32m+[m[32m      // パスワード比較（bcryptjs）[m
+[32m+[m[32m      const isPasswordValid = await bcrypt.compare(password, foundUser.password);[m
+[32m+[m[32m      if (!isPasswordValid) {[m
+[32m+[m[32m        await pool.end();[m
+[32m+[m[32m        return res.status(401).json({[m[41m [m
+[32m+[m[32m          success: false,[m[41m [m
+[32m+[m[32m          error: 'invalid_credentials',[m
+[32m+[m[32m          message: 'ユーザー名またはパスワードが正しくありません'[m
+[32m+[m[32m        });[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      // JWTトークン生成[m
+[32m+[m[32m      const token = issueJwt(foundUser.id);[m
+[32m+[m
+[32m+[m[32m      // セッション再生[m
+[32m+[m[32m      req.session.regenerate(err => {[m
+[32m+[m[32m        if (err) {[m
+[32m+[m[32m          console.error('[auth/login] Session regenerate error:', err);[m
+[32m+[m[32m          return res.status(503).json({[m[41m [m
+[32m+[m[32m            success: false,[m[41m [m
+[32m+[m[32m            error: 'session_error',[m
+[32m+[m[32m            message: 'セッション作成に失敗しました'[m
+[32m+[m[32m          });[m
+[32m+[m[32m        }[m
+[32m+[m[41m        [m
+[32m+[m[32m        req.session.userId = foundUser.id;[m
+[32m+[m[32m        req.session.user = {[m[41m [m
+[32m+[m[32m          id: foundUser.id,[m[41m [m
+[32m+[m[32m          name: foundUser.username,[m
+[32m+[m[32m          role: foundUser.role || 'user'[m
+[32m+[m[32m        };[m
+[32m+[m[41m        [m
+[32m+[m[32m        req.session.save(() => {[m
+[32m+[m[32m          console.log('[auth/login] Login success for user:', foundUser.username);[m
+[32m+[m[32m          res.json({[m[41m [m
+[32m+[m[32m            success: true,[m[41m [m
+[32m+[m[32m            token,[m[41m [m
+[32m+[m[32m            accessToken: token,[m[41m [m
+[32m+[m[32m            expiresIn: '1d',[m
+[32m+[m[32m            user: req.session.user[m
+[32m+[m[32m          });[m
+[32m+[m[32m        });[m
+[32m+[m[32m      });[m
+[32m+[m
+[32m+[m[32m      await pool.end();[m
+[32m+[m[41m      [m
+[32m+[m[32m    } catch (dbError) {[m
+[32m+[m[32m      console.error('[auth/login] Database error:', dbError);[m
+[32m+[m[32m      if (pool) {[m
+[32m+[m[32m        try {[m
+[32m+[m[32m          await pool.end();[m
+[32m+[m[32m        } catch (endError) {[m
+[32m+[m[32m          console.error('[auth/login] Pool end error:', endError);[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+[32m+[m[41m      [m
+[32m+[m[32m      return res.status(503).json({[m
+[32m+[m[32m        success: false,[m
+[32m+[m[32m        error: 'auth_backend_unavailable',[m
+[32m+[m[32m        message: '認証サービスが一時的に利用できません'[m
+[32m+[m[32m      });[m
+[32m+[m[32m    }[m
+[32m+[m[41m    [m
+[32m+[m[32m  } catch (error) {[m
+[32m+[m[32m    console.error('[auth/login] Unexpected error:', error);[m
+[32m+[m[32m    return res.status(503).json({[m
+[32m+[m[32m      success: false,[m
+[32m+[m[32m      error: 'auth_internal_error',[m
+[32m+[m[32m      message: '認証処理中にエラーが発生しました'[m
+[32m+[m[32m    });[m
+[32m+[m[32m  }[m
+[32m+[m[32m});[m
+[32m+[m
+[32m+[m[32m// ログアウトエンドポイント[m
+[32m+[m[32mrouter.post('/logout', (req, res) => {[m
+[32m+[m[32m  req.session.destroy(() => {[m
+[32m+[m[32m    res.clearCookie('sid', { path: '/' });[m
+[32m+[m[32m    res.json({ success: true });[m
+[32m+[m[32m  });[m
+[32m+[m[32m});[m
+[32m+[m
+[32m+[m[32m// 現在のユーザー情報取得[m
+[32m+[m[32mrouter.get('/me', (req, res) => {[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    // セッションベースの認証をチェック[m
+[32m+[m[32m    if (req.session?.user) {[m
+[32m+[m[32m      console.log('[auth/me] Session-based auth:', req.session.user);[m
+[32m+[m[32m      return res.json({[m[41m [m
+[32m+[m[32m        success: true,[m[41m [m
+[32m+[m[32m        user: req.session.user,[m
+[32m+[m[32m        authenticated: true[m
+[32m+[m[32m      });[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    // Bearer token認証をチェック[m
+[32m+[m[32m    const auth = req.get('authorization');[m
+[32m+[m[32m    if (auth?.startsWith('Bearer ')) {[m
+[32m+[m[32m      try {[m
+[32m+[m[32m        const token = auth.slice(7);[m
+[32m+[m[32m        const payload = jwt.verify(token, process.env.JWT_SECRET);[m
+[32m+[m[32m        console.log('[auth/me] Token-based auth:', payload);[m
+[32m+[m[32m        return res.json({[m[41m [m
+[32m+[m[32m          success: true,[m[41m [m
+[32m+[m[32m          user: { id: payload.sub || payload.id, ...payload },[m
+[32m+[m[32m          authenticated: true[m
+[32m+[m[32m        });[m
+[32m+[m[32m      } catch (tokenError) {[m
+[32m+[m[32m        console.log('[auth/me] Invalid token:', tokenError.message);[m
+[32m+[m[32m        return res.status(401).json({[m[41m [m
+[32m+[m[32m          success: false,[m[41m [m
+[32m+[m[32m          error: 'invalid_token',[m
+[32m+[m[32m          message: '無効なトークンです'[m
+[32m+[m[32m        });[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    // 未認証[m
+[32m+[m[32m    console.log('[auth/me] No authentication found');[m
+[32m+[m[32m    return res.status(401).json({[m[41m [m
+[32m+[m[32m      success: false,[m[41m [m
+[32m+[m[32m      error: 'authentication_required',[m
+[32m+[m[32m      message: '認証が必要です'[m
+[32m+[m[32m    });[m
+[32m+[m[41m    [m
+[32m+[m[32m  } catch (error) {[m
+[32m+[m[32m    console.error('[auth/me] Unexpected error:', error);[m
+[32m+[m[32m    return res.status(401).json({[m[41m [m
+[32m+[m[32m      success: false,[m[41m [m
+[32m+[m[32m      error: 'authentication_required',[m
+[32m+[m[32m      message: '認証が必要です'[m
+[32m+[m[32m    });[m
+[32m+[m[32m  }[m
+[32m+[m[32m});[m
+[32m+[m
+[32m+[m[32m// Handshake endpoint[m
+[32m+[m[32mrouter.get('/handshake', (req, res) => {[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    res.json({[m
+[32m+[m[32m      ok: true,[m
+[32m+[m[32m      mode: 'session',[m
+[32m+[m[32m      env: process.env.NODE_ENV || 'production',[m
+[32m+[m[32m      timestamp: new Date().toISOString(),[m
+[32m+[m[32m      requestId: req.requestId[m
+[32m+[m[32m    });[m
+[32m+[m[32m  } catch (error) {[m
+[32m+[m[32m    console.error(`[${req.requestId}] Handshake error:`, error);[m
+[32m+[m[32m    res.status(200).json({[m
+[32m+[m[32m      ok: true,[m
+[32m+[m[32m      mode: 'session',[m
+[32m+[m[32m      env: 'production',[m
+[32m+[m[32m      timestamp: new Date().toISOString(),[m
+[32m+[m[32m      requestId: req.requestId[m
+[32m+[m[32m    });[m
+[32m+[m[32m  }[m
+[32m+[m[32m});[m
+[32m+[m
+[32m+[m[32mmodule.exports = router;[m
+\ No newline at end of file[m
+[1mdiff --git a/deploy-production-20250924-194938/web.config b/deploy-production-20250924-194938/web.config[m
+[1mnew file mode 100644[m
+[1mindex 00000000..95167ae8[m
+[1m--- /dev/null[m
+[1m+++ b/deploy-production-20250924-194938/web.config[m
+[36m@@ -0,0 +1,34 @@[m
+[32m+[m[32m<?xml version="1.0" encoding="utf-8"?>[m
+[32m+[m[32m<configuration>[m
+[32m+[m[32m  <system.webServer>[m
+[32m+[m[32m    <webSocket enabled="false" />[m
+[32m+[m[32m    <handlers>[m
+[32m+[m[32m      <add name="iisnode" path="production-server.js" verb="*" modules="iisnode"/>[m
+[32m+[m[32m    </handlers>[m
+[32m+[m[32m    <rewrite>[m
+[32m+[m[32m      <rules>[m
+[32m+[m[32m        <rule name="NodeInspector" patternSyntax="ECMAScript" stopProcessing="true">[m
+[32m+[m[32m          <match url="^production-server.js\/debug[\/]?" />[m
+[32m+[m[32m        </rule>[m
+[32m+[m[32m        <rule name="StaticContent">[m
+[32m+[m[32m          <action type="Rewrite" url="public{REQUEST_URI}"/>[m
+[32m+[m[32m        </rule>[m
+[32m+[m[32m        <rule name="DynamicContent">[m
+[32m+[m[32m          <conditions>[m
+[32m+[m[32m            <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="True"/>[m
+[32m+[m[32m          </conditions>[m
+[32m+[m[32m          <action type="Rewrite" url="production-server.js"/>[m
+[32m+[m[32m        </rule>[m
+[32m+[m[32m      </rules>[m
+[32m+[m[32m    </rewrite>[m
+[32m+[m[32m    <security>[m
+[32m+[m[32m      <requestFiltering>[m
+[32m+[m[32m        <hiddenSegments>[m
+[32m+[m[32m          <remove segment="bin"/>[m
+[32m+[m[32m        </hiddenSegments>[m
+[32m+[m[32m      </requestFiltering>[m
+[32m+[m[32m    </security>[m
+[32m+[m[32m    <httpErrors existingResponse="PassThrough" />[m
+[32m+[m[32m    <iisnode watchedFiles="web.config;*.js"/>[m
+[32m+[m[32m  </system.webServer>[m
+[32m+[m[32m</configuration>[m
+[1mdiff --git a/deploy-production-fix.ps1 b/deploy-production-fix.ps1[m
+[1mindex e898feb9..55601712 100644[m
+[1m--- a/deploy-production-fix.ps1[m
+[1m+++ b/deploy-production-fix.ps1[m
+[36m@@ -1,119 +1,224 @@[m
+[31m-# Azure App Service 本番環境修正デプロイスクリプト[m
+[31m-# セッション管理とJWT認証を完全実装[m
+[32m+[m[32m# Production deployment fix script[m
+[32m+[m[32m# Fixes authentication and health check issues[m
+ [m
+[31m-Write-Host "🚀 Azure App Service 本番環境修正デプロイを開始..." -ForegroundColor Green[m
+[32m+[m[32mWrite-Host "🚀 Starting production deployment fix..." -ForegroundColor Green[m
+ [m
+[31m-# Azure CLI でログイン確認[m
+[31m-Write-Host "📋 Azure CLI ログイン状態を確認..." -ForegroundColor Yellow[m
+[31m-az account show --query "name" -o tsv[m
+[31m-if ($LASTEXITCODE -ne 0) {[m
+[31m-    Write-Host "❌ Azure CLI にログインしてください: az login" -ForegroundColor Red[m
+[32m+[m[32m# Check if we're in the right directory[m
+[32m+[m[32mif (-not (Test-Path "server/production-server.js")) {[m
+[32m+[m[32m    Write-Host "❌ Error: server/production-server.js not found. Please run from project root." -ForegroundColor Red[m
+     exit 1[m
+ }[m
+ [m
+[31m-# App Service 名とリソースグループ[m
+[31m-$APP_NAME = "emergencyassistance-sv"[m
+[31m-$RESOURCE_GROUP = "emergency-assistance-rg"[m
+[31m-[m
+[31m-Write-Host "🔧 App Service 設定を更新中..." -ForegroundColor Yellow[m
+[31m-[m
+[31m-# 1. 本番環境変数を設定[m
+[31m-Write-Host "📝 本番環境変数を設定中..." -ForegroundColor Cyan[m
+[31m-az webapp config appsettings set `[m
+[31m-    --name $APP_NAME `[m
+[31m-    --resource-group $RESOURCE_GROUP `[m
+[31m-    --settings `[m
+[31m-        NODE_ENV=production `[m
+[31m-        JWT_SECRET="emergency-assistance-jwt-secret-key-32chars-production" `[m
+[31m-        SESSION_SECRET="emergency-assistance-session-secret-key-32chars-production" `[m
+[31m-        DATABASE_URL="$env:DATABASE_URL" `[m
+[31m-        FRONTEND_URL="https://your-swa-url.azurestaticapps.net" `[m
+[31m-    --output table[m
+[31m-[m
+[32m+[m[32m# Step 1: Install dependencies[m
+[32m+[m[32mWrite-Host "📦 Installing dependencies..." -ForegroundColor Yellow[m
+[32m+[m[32mSet-Location server[m
+[32m+[m[32mnpm install --production[m
+ if ($LASTEXITCODE -ne 0) {[m
+[31m-    Write-Host "❌ 環境変数設定に失敗しました" -ForegroundColor Red[m
+[32m+[m[32m    Write-Host "❌ Failed to install dependencies" -ForegroundColor Red[m
+     exit 1[m
+ }[m
+ [m
+[31m-# 2. スタートアップコマンドを設定[m
+[31m-Write-Host "🚀 スタートアップコマンドを設定中..." -ForegroundColor Cyan[m
+[31m-az webapp config set `[m
+[31m-    --name $APP_NAME `[m
+[31m-    --resource-group $RESOURCE_GROUP `[m
+[31m-    --startup-file "node index.js" `[m
+[31m-    --output table[m
+[31m-[m
+[31m-if ($LASTEXITCODE -ne 0) {[m
+[31m-    Write-Host "❌ スタートアップコマンド設定に失敗しました" -ForegroundColor Red[m
+[31m-    exit 1[m
+[32m+[m[32m# Step 2: Create deployment package[m
+[32m+[m[32mWrite-Host "📦 Creating deployment package..." -ForegroundColor Yellow[m
+[32m+[m[32mSet-Location ..[m
+[32m+[m
+[32m+[m[32m# Create a clean deployment directory[m
+[32m+[m[32m$deployDir = "deploy-production-$(Get-Date -Format 'yyyyMMdd-HHmmss')"[m
+[32m+[m[32mNew-Item -ItemType Directory -Path $deployDir -Force[m
+[32m+[m
+[32m+[m[32m# Copy necessary files[m
+[32m+[m[32mCopy-Item "server/production-server.js" "$deployDir/"[m
+[32m+[m[32mCopy-Item "server/routes/auth.js" "$deployDir/routes/" -Force[m
+[32m+[m[32mNew-Item -ItemType Directory -Path "$deployDir/routes" -Force[m
+[32m+[m[32mCopy-Item "server/routes/auth.js" "$deployDir/routes/"[m
+[32m+[m
+[32m+[m[32mCopy-Item "server/package.json" "$deployDir/"[m
+[32m+[m[32mCopy-Item "server/node_modules" "$deployDir/" -Recurse -Force[m
+[32m+[m
+[32m+[m[32m# Create web.config for Azure App Service[m
+[32m+[m[32m$webConfig = @"[m
+[32m+[m[32m<?xml version="1.0" encoding="utf-8"?>[m
+[32m+[m[32m<configuration>[m
+[32m+[m[32m  <system.webServer>[m
+[32m+[m[32m    <webSocket enabled="false" />[m
+[32m+[m[32m    <handlers>[m
+[32m+[m[32m      <add name="iisnode" path="production-server.js" verb="*" modules="iisnode"/>[m
+[32m+[m[32m    </handlers>[m
+[32m+[m[32m    <rewrite>[m
+[32m+[m[32m      <rules>[m
+[32m+[m[32m        <rule name="NodeInspector" patternSyntax="ECMAScript" stopProcessing="true">[m
+[32m+[m[32m          <match url="^production-server.js\/debug[\/]?" />[m
+[32m+[m[32m        </rule>[m
+[32m+[m[32m        <rule name="StaticContent">[m
+[32m+[m[32m          <action type="Rewrite" url="public{REQUEST_URI}"/>[m
+[32m+[m[32m        </rule>[m
+[32m+[m[32m        <rule name="DynamicContent">[m
+[32m+[m[32m          <conditions>[m
+[32m+[m[32m            <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="True"/>[m
+[32m+[m[32m          </conditions>[m
+[32m+[m[32m          <action type="Rewrite" url="production-server.js"/>[m
+[32m+[m[32m        </rule>[m
+[32m+[m[32m      </rules>[m
+[32m+[m[32m    </rewrite>[m
+[32m+[m[32m    <security>[m
+[32m+[m[32m      <requestFiltering>[m
+[32m+[m[32m        <hiddenSegments>[m
+[32m+[m[32m          <remove segment="bin"/>[m
+[32m+[m[32m        </hiddenSegments>[m
+[32m+[m[32m      </requestFiltering>[m
+[32m+[m[32m    </security>[m
+[32m+[m[32m    <httpErrors existingResponse="PassThrough" />[m
+[32m+[m[32m    <iisnode watchedFiles="web.config;*.js"/>[m
+[32m+[m[32m  </system.webServer>[m
+[32m+[m[32m</configuration>[m
+[32m+[m[32m"@[m
+[32m+[m
+[32m+[m[32mSet-Content -Path "$deployDir/web.config" -Value $webConfig[m
+[32m+[m
+[32m+[m[32m# Create package.json for deployment[m
+[32m+[m[32m$deployPackageJson = @"[m
+[32m+[m[32m{[m
+[32m+[m[32m  "name": "emergency-assistance-production",[m
+[32m+[m[32m  "version": "1.0.0",[m
+[32m+[m[32m  "type": "commonjs",[m
+[32m+[m[32m  "main": "production-server.js",[m
+[32m+[m[32m  "scripts": {[m
+[32m+[m[32m    "start": "node production-server.js"[m
+[32m+[m[32m  },[m
+[32m+[m[32m  "engines": {[m
+[32m+[m[32m    "node": ">=18 <23"[m
+[32m+[m[32m  }[m
+ }[m
+[31m-[m
+[31m-# 3. App Service を停止[m
+[31m-Write-Host "⏹️ App Service を停止中..." -ForegroundColor Yellow[m
+[31m-az webapp stop --name $APP_NAME --resource-group $RESOURCE_GROUP --output table[m
+[31m-[m
+[31m-# 4. 修正されたコードをデプロイ[m
+[31m-Write-Host "📦 修正されたコードをデプロイ中..." -ForegroundColor Cyan[m
+[31m-az webapp deployment source config-zip `[m
+[31m-    --name $APP_NAME `[m
+[31m-    --resource-group $RESOURCE_GROUP `[m
+[31m-    --src "server-deploy-production-fixed.zip" `[m
+[31m-    --output table[m
+[31m-[m
+[31m-if ($LASTEXITCODE -ne 0) {[m
+[31m-    Write-Host "❌ デプロイに失敗しました" -ForegroundColor Red[m
+[31m-    exit 1[m
+[32m+[m[32m"@[m
+[32m+[m
+[32m+[m[32mSet-Content -Path "$deployDir/package.json" -Value $deployPackageJson[m
+[32m+[m
+[32m+[m[32mWrite-Host "✅ Deployment package created: $deployDir" -ForegroundColor Green[m
+[32m+[m
+[32m+[m[32m# Step 3: Test the deployment package locally[m
+[32m+[m[32mWrite-Host "🧪 Testing deployment package locally..." -ForegroundColor Yellow[m
+[32m+[m[32mSet-Location $deployDir[m
+[32m+[m
+[32m+[m[32m# Set environment variables for testing[m
+[32m+[m[32m$env:BYPASS_DB_FOR_LOGIN = "true"[m
+[32m+[m[32m$env:JWT_SECRET = "test-secret-key-for-deployment-test"[m
+[32m+[m[32m$env:SESSION_SECRET = "test-session-secret-for-deployment-test"[m
+[32m+[m[32m$env:NODE_ENV = "production"[m
+[32m+[m
+[32m+[m[32m# Start server in background[m
+[32m+[m[32m$serverProcess = Start-Process -FilePath "node" -ArgumentList "production-server.js" -PassThru -NoNewWindow[m
+[32m+[m
+[32m+[m[32m# Wait for server to start[m
+[32m+[m[32mStart-Sleep -Seconds 5[m
+[32m+[m
+[32m+[m[32m# Test health endpoints[m
+[32m+[m[32m$healthTests = @([m
+[32m+[m[32m    "http://localhost:8000/api/health",[m
+[32m+[m[32m    "http://localhost:8000/api/healthz",[m[41m [m
+[32m+[m[32m    "http://localhost:8000/health",[m
+[32m+[m[32m    "http://localhost:8000/healthz"[m
+[32m+[m[32m)[m
+[32m+[m
+[32m+[m[32m$allHealthy = $true[m
+[32m+[m[32mforeach ($url in $healthTests) {[m
+[32m+[m[32m    try {[m
+[32m+[m[32m        $response = Invoke-RestMethod -Uri $url -Method Get -TimeoutSec 10[m
+[32m+[m[32m        if ($response.ok -eq $true) {[m
+[32m+[m[32m            Write-Host "✅ Health check passed: $url" -ForegroundColor Green[m
+[32m+[m[32m        } else {[m
+[32m+[m[32m            Write-Host "❌ Health check failed: $url - Response: $($response | ConvertTo-Json)" -ForegroundColor Red[m
+[32m+[m[32m            $allHealthy = $false[m
+[32m+[m[32m        }[m
+[32m+[m[32m    } catch {[m
+[32m+[m[32m        Write-Host "❌ Health check error: $url - $($_.Exception.Message)" -ForegroundColor Red[m
+[32m+[m[32m        $allHealthy = $false[m
+[32m+[m[32m    }[m
+ }[m
+ [m
+[31m-# 5. App Service を開始[m
+[31m-Write-Host "▶️ App Service を開始中..." -ForegroundColor Yellow[m
+[31m-az webapp start --name $APP_NAME --resource-group $RESOURCE_GROUP --output table[m
+[31m-[m
+[31m-# 6. デプロイ完了を待機[m
+[31m-Write-Host "⏳ デプロイ完了を待機中..." -ForegroundColor Yellow[m
+[31m-Start-Sleep -Seconds 30[m
+[31m-[m
+[31m-# 7. ヘルスチェック[m
+[31m-Write-Host "🔍 ヘルスチェックを実行中..." -ForegroundColor Cyan[m
+[31m-$HEALTH_URL = "https://$APP_NAME-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/api/health"[m
+[32m+[m[32m# Test auth endpoints[m
+ try {[m
+[31m-    $response = Invoke-WebRequest -Uri $HEALTH_URL -Method GET -TimeoutSec 30[m
+[31m-    if ($response.StatusCode -eq 200) {[m
+[31m-        Write-Host "✅ ヘルスチェック成功: $($response.StatusCode)" -ForegroundColor Green[m
+[31m-        Write-Host "📄 レスポンス: $($response.Content)" -ForegroundColor Gray[m
+[32m+[m[32m    $handshakeResponse = Invoke-RestMethod -Uri "http://localhost:8000/api/auth/handshake" -Method Get -TimeoutSec 10[m
+[32m+[m[32m    if ($handshakeResponse.ok -eq $true) {[m
+[32m+[m[32m        Write-Host "✅ Auth handshake passed" -ForegroundColor Green[m
+     } else {[m
+[31m-        Write-Host "⚠️ ヘルスチェック警告: $($response.StatusCode)" -ForegroundColor Yellow[m
+[32m+[m[32m        Write-Host "❌ Auth handshake failed: $($handshakeResponse | ConvertTo-Json)" -ForegroundColor Red[m
+[32m+[m[32m        $allHealthy = $false[m
+     }[m
+ } catch {[m
+[31m-    Write-Host "❌ ヘルスチェック失敗: $($_.Exception.Message)" -ForegroundColor Red[m
+[32m+[m[32m    Write-Host "❌ Auth handshake error: $($_.Exception.Message)" -ForegroundColor Red[m
+[32m+[m[32m    $allHealthy = $false[m
+ }[m
+ [m
+[31m-# 8. ハンドシェイクエンドポイントテスト[m
+[31m-Write-Host "🤝 ハンドシェイクエンドポイントをテスト中..." -ForegroundColor Cyan[m
+[31m-$HANDSHAKE_URL = "https://$APP_NAME-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/api/auth/handshake"[m
+[32m+[m[32m# Test login endpoint[m
+ try {[m
+[31m-    $response = Invoke-WebRequest -Uri $HANDSHAKE_URL -Method GET -TimeoutSec 30[m
+[31m-    if ($response.StatusCode -eq 200) {[m
+[31m-        Write-Host "✅ ハンドシェイク成功: $($response.StatusCode)" -ForegroundColor Green[m
+[31m-        Write-Host "📄 レスポンス: $($response.Content)" -ForegroundColor Gray[m
+[32m+[m[32m    $loginBody = @{[m
+[32m+[m[32m        username = "test"[m
+[32m+[m[32m        password = "test"[m
+[32m+[m[32m    } | ConvertTo-Json[m
+[32m+[m
+[32m+[m[32m    $loginResponse = Invoke-RestMethod -Uri "http://localhost:8000/api/auth/login" -Method Post -Body $loginBody -ContentType "application/json" -TimeoutSec 10[m
+[32m+[m[32m    if ($loginResponse.success -eq $true) {[m
+[32m+[m[32m        Write-Host "✅ Auth login passed (bypass mode)" -ForegroundColor Green[m
+     } else {[m
+[31m-        Write-Host "⚠️ ハンドシェイク警告: $($response.StatusCode)" -ForegroundColor Yellow[m
+[32m+[m[32m        Write-Host "❌ Auth login failed: $($loginResponse | ConvertTo-Json)" -ForegroundColor Red[m
+[32m+[m[32m        $allHealthy = $false[m
+     }[m
+ } catch {[m
+[31m-    Write-Host "❌ ハンドシェイク失敗: $($_.Exception.Message)" -ForegroundColor Red[m
+[32m+[m[32m    Write-Host "❌ Auth login error: $($_.Exception.Message)" -ForegroundColor Red[m
+[32m+[m[32m    $allHealthy = $false[m
+ }[m
+ [m
+[31m-# 9. /me エンドポイントテスト（認証なし）[m
+[31m-Write-Host "👤 /me エンドポイントをテスト中..." -ForegroundColor Cyan[m
+[31m-$ME_URL = "https://$APP_NAME-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/api/auth/me"[m
+[31m-try {[m
+[31m-    $response = Invoke-WebRequest -Uri $ME_URL -Method GET -TimeoutSec 30[m
+[31m-    Write-Host "📄 /me レスポンス: $($response.StatusCode) - $($response.Content)" -ForegroundColor Gray[m
+[31m-} catch {[m
+[31m-    Write-Host "📄 /me エラー（期待される動作）: $($_.Exception.Message)" -ForegroundColor Yellow[m
+[32m+[m[32m# Stop test server[m
+[32m+[m[32mStop-Process -Id $serverProcess.Id -Force -ErrorAction SilentlyContinue[m
+[32m+[m
+[32m+[m[32mSet-Location ..[m
+[32m+[m
+[32m+[m[32mif ($allHealthy) {[m
+[32m+[m[32m    Write-Host "🎉 All local tests passed! Ready for deployment." -ForegroundColor Green[m
+[32m+[m[41m    [m
+[32m+[m[32m    # Create deployment instructions[m
+[32m+[m[32m    $instructions = @"[m
+[32m+[m[32m# Production Deployment Instructions[m
+[32m+[m
+[32m+[m[32m## Environment Variables to Set in Azure App Service:[m
+[32m+[m
+[32m+[m[32m1. BYPASS_DB_FOR_LOGIN=true (initially, set to false after DB is confirmed working)[m
+[32m+[m[32m2. JWT_SECRET=<your-jwt-secret>[m
+[32m+[m[32m3. SESSION_SECRET=<your-session-secret>[m
+[32m+[m[32m4. DATABASE_URL=<your-postgresql-connection-string>[m
+[32m+[m[32m5. PG_SSL=prefer (will auto-fallback to disable if SSL not supported)[m
+[32m+[m[32m6. NODE_ENV=production[m
+[32m+[m
+[32m+[m[32m## Deployment Steps:[m
+[32m+[m
+[32m+[m[32m1. Zip the contents of: $deployDir[m
+[32m+[m[32m2. Deploy to Azure App Service[m
+[32m+[m[32m3. Set environment variables[m
+[32m+[m[32m4. Test endpoints:[m
+[32m+[m[32m   - /api/health, /api/healthz, /health, /healthz (should return 200 with {"ok":true})[m
+[32m+[m[32m   - /api/auth/handshake (should return 200 with {"ok":true})[m
+[32m+[m[32m   - /api/auth/login (should return 200 with {"success":true} in bypass mode)[m
+[32m+[m[32m   - /api/auth/me (should return 401 when unauthenticated)[m
+[32m+[m
+[32m+[m[32m## After Deployment:[m
+[32m+[m
+[32m+[m[32m1. Test with BYPASS_DB_FOR_LOGIN=true first[m
+[32m+[m[32m2. If successful, set BYPASS_DB_FOR_LOGIN=false and test DB connection[m
+[32m+[m[32m3. If SSL errors occur, set PG_SSL=disable[m
+[32m+[m
+[32m+[m[32m## Rollback:[m
+[32m+[m
+[32m+[m[32mIf issues occur, set BYPASS_DB_FOR_LOGIN=true to restore basic functionality.[m
+[32m+[m[32m"@[m
+[32m+[m
+[32m+[m[32m    Set-Content -Path "$deployDir/DEPLOYMENT_INSTRUCTIONS.md" -Value $instructions[m
+[32m+[m[41m    [m
+[32m+[m[32m    Write-Host "📋 Deployment instructions saved to: $deployDir/DEPLOYMENT_INSTRUCTIONS.md" -ForegroundColor Cyan[m
+[32m+[m[32m    Write-Host "📦 Deployment package ready: $deployDir" -ForegroundColor Cyan[m
+[32m+[m[41m    [m
+[32m+[m[32m} else {[m
+[32m+[m[32m    Write-Host "❌ Local tests failed. Please fix issues before deploying." -ForegroundColor Red[m
+[32m+[m[32m    exit 1[m
+ }[m
+ [m
+[31m-Write-Host "🎉 本番環境デプロイ完了！" -ForegroundColor Green[m
+[31m-Write-Host "🌐 App Service URL: https://$APP_NAME-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net" -ForegroundColor Cyan[m
+[31m-Write-Host "📊 ログ確認: az webapp log tail --name $APP_NAME --resource-group $RESOURCE_GROUP" -ForegroundColor Cyan[m
+[31m-Write-Host "🔐 ログインAPI: https://$APP_NAME-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/api/auth/login" -ForegroundColor Cyan[m
+[32m+[m[32mWrite-Host "✅ Production deployment fix completed!" -ForegroundColor Green[m
+\ No newline at end of file[m
+[1mdiff --git a/production-deployment.zip b/production-deployment.zip[m
+[1mnew file mode 100644[m
+[1mindex 00000000..2d153eff[m
+Binary files /dev/null and b/production-deployment.zip differ
+[1mdiff --git a/server/production-server.js b/server/production-server.js[m
+[1mindex e74aaa70..c6059d77 100644[m
+[1m--- a/server/production-server.js[m
+[1m+++ b/server/production-server.js[m
+[36m@@ -38,39 +38,26 @@[m [mapp.use(helmet({[m
+   contentSecurityPolicy: false,[m
+ }));[m
+ [m
+[31m-// CORS configuration for SWA cross-origin - 本番環境用厳密設定[m
+[32m+[m[32m// ① ヘルスは CORS より前（Originなしでも通す）[m
+[32m+[m[32mconst health = (_req, res) => res.status(200).json({ ok: true });[m
+[32m+[m[32mapp.get('/api/health', health);[m
+[32m+[m[32mapp.get('/api/healthz', health);[m
+[32m+[m[32mapp.get('/health', health);[m
+[32m+[m[32mapp.get('/healthz', health);[m
+[32m+[m
+[32m+[m[32m// ② CORS：Originなしは許可、未許可は "false" を返す（throw しない）[m
+[32m+[m[32mconst ALLOW = new Set(['https://witty-river-012f39e00.1.azurestaticapps.net']);[m
+ const corsOptions = {[m
+[31m-  origin: (origin, callback) => {[m
+[31m-    const allowedOrigins = [[m
+[31m-      'https://witty-river-012f39e00.1.azurestaticapps.net',[m
+[31m-      'http://localhost:5173', // Development[m
+[31m-      'http://localhost:3000'   // Development[m
+[31m-    ];[m
+[31m-    [m
+[31m-    // originがundefined（直接アクセス、ヘルスチェック等）の場合は許可[m
+[31m-    if (!origin) {[m
+[31m-      return callback(null, true);[m
+[31m-    }[m
+[31m-    [m
+[31m-    // 本番環境ではSWA URLのみ許可[m
+[31m-    if (process.env.NODE_ENV === 'production') {[m
+[31m-      if (allowedOrigins.includes(origin)) {[m
+[31m-        callback(null, true);[m
+[31m-      } else {[m
+[31m-        console.warn(`[CORS] Blocked origin: ${origin}`);[m
+[31m-        callback(new Error('Not allowed by CORS'));[m
+[31m-      }[m
+[31m-    } else {[m
+[31m-      // 開発環境では緩和[m
+[31m-      callback(null, true);[m
+[31m-    }[m
+[31m-  },[m
+   credentials: true,[m
+[31m-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],[m
+[31m-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],[m
+[31m-  exposedHeaders: ['Set-Cookie'][m
+[32m+[m[32m  origin: (origin, cb) => {[m
+[32m+[m[32m    if (!origin) return cb(null, true);        // ヘルス/直叩き/curl を許可[m
+[32m+[m[32m    if (ALLOW.has(origin)) return cb(null, true);[m
+[32m+[m[32m    return cb(null, false);                    // 403/500にせず CORS ヘッダを付けない[m
+[32m+[m[32m  },[m
+[32m+[m[32m  optionsSuccessStatus: 204[m
+ };[m
+ app.use(cors(corsOptions));[m
+[32m+[m[32mapp.options('*', cors(corsOptions));           // ③ Preflight も同方針[m
+ [m
+ // Request logging[m
+ app.use(morgan('combined', {[m
+[36m@@ -107,30 +94,7 @@[m [mapp.use((req, res, next) => {[m
+   next();[m
+ });[m
+ [m
+[31m-// Initialize PostgreSQL pool[m
+[31m-let pool;[m
+[31m-if (process.env.DATABASE_URL) {[m
+[31m-  pool = new Pool({[m
+[31m-    connectionString: process.env.DATABASE_URL,[m
+[31m-    ssl: { [m
+[31m-      require: true, [m
+[31m-      rejectUnauthorized: false [m
+[31m-    },[m
+[31m-    max: 10,[m
+[31m-    idleTimeoutMillis: 30000,[m
+[31m-    connectionTimeoutMillis: 2000,[m
+[31m-  });[m
+[31m-[m
+[31m-  pool.on('connect', () => {[m
+[31m-    console.log('✅ Database connected');[m
+[31m-  });[m
+[31m-[m
+[31m-  pool.on('error', (err) => {[m
+[31m-    console.error('❌ Database error:', err);[m
+[31m-  });[m
+[31m-} else {[m
+[31m-  console.warn('⚠️ DATABASE_URL not set - running without database');[m
+[31m-}[m
+[32m+[m[32m// PostgreSQL pool initialization removed - handled in auth routes[m
+ [m
+ // Authentication middleware[m
+ const authenticateToken = (req, res, next) => {[m
+[36m@@ -186,18 +150,7 @@[m [mconst authenticateToken = (req, res, next) => {[m
+ // API Routes[m
+ const router = express.Router();[m
+ [m
+[31m-// Health check - no external dependencies[m
+[31m-const healthHandler = (req, res) => {[m
+[31m-  res.json({[m
+[31m-    ok: true,[m
+[31m-    status: 'healthy',[m
+[31m-    timestamp: new Date().toISOString(),[m
+[31m-    environment: process.env.NODE_ENV || 'development',[m
+[31m-    requestId: req.requestId[m
+[31m-  });[m
+[31m-};[m
+[31m-[m
+[31m-router.get('/health', healthHandler);[m
+[32m+[m[32m// Health check - no external dependencies (moved to top level)[m
+ [m
+ // Handshake endpoint[m
+ router.get('/auth/handshake', (req, res) => {[m
+[36m@@ -228,10 +181,6 @@[m [mapp.use('/api/auth', authRouter);[m
+ // Mount API router[m
+ app.use('/api', router);[m
+ [m
+[31m-// Health endpoints (CI compatibility) - root level[m
+[31m-app.get('/health', healthHandler);[m
+[31m-app.get('/healthz', healthHandler);[m
+[31m-[m
+ // Global error handler[m
+ app.use((err, req, res, next) => {[m
+   const requestId = req.requestId || crypto.randomUUID();[m
+[36m@@ -285,24 +234,10 @@[m [mapp.listen(PORT, HOST, () => {[m
+ // Graceful shutdown[m
+ process.on('SIGTERM', () => {[m
+   console.log('SIGTERM received, shutting down gracefully');[m
+[31m-  if (pool) {[m
+[31m-    pool.end(() => {[m
+[31m-      console.log('Database pool closed');[m
+[31m-      process.exit(0);[m
+[31m-    });[m
+[31m-  } else {[m
+[31m-    process.exit(0);[m
+[31m-  }[m
+[32m+[m[32m  process.exit(0);[m
+ });[m
+ [m
+ process.on('SIGINT', () => {[m
+   console.log('SIGINT received, shutting down gracefully');[m
+[31m-  if (pool) {[m
+[31m-    pool.end(() => {[m
+[31m-      console.log('Database pool closed');[m
+[31m-      process.exit(0);[m
+[31m-    });[m
+[31m-  } else {[m
+[31m-    process.exit(0);[m
+[31m-  }[m
+[32m+[m[32m  process.exit(0);[m
+ });[m
+\ No newline at end of file[m
+[1mdiff --git a/server/routes/auth.js b/server/routes/auth.js[m
+[1mindex 49ecb9ca..c5febf1d 100644[m
+[1m--- a/server/routes/auth.js[m
+[1m+++ b/server/routes/auth.js[m
+[36m@@ -1,6 +1,7 @@[m
+ const express = require('express');[m
+ const bcrypt = require('bcryptjs');[m
+ const jwt = require('jsonwebtoken');[m
+[32m+[m[32mconst { Pool } = require('pg');[m
+ [m
+ const router = express.Router();[m
+ [m
+[36m@@ -11,29 +12,9 @@[m [mconst issueJwt = (userId, options = {}) => {[m
+   if (options.exp) {[m
+     jwtOptions.expiresIn = Math.floor((options.exp - Date.now()) / 1000) + 's';[m
+   }[m
+[31m-  return jwt.sign(payload, process.env.JWT_SECRET || 'fallback-secret', jwtOptions);[m
+[32m+[m[32m  return jwt.sign(payload, process.env.JWT_SECRET, jwtOptions);[m
+ };[m
+ [m
+[31m-// デバッグ用エンドポイント - 環境変数とセッション状態を確認[m
+[31m-router.get('/debug', (req, res) => {[m
+[31m-  res.json({[m
+[31m-    success: true,[m
+[31m-    environment: {[m
+[31m-      NODE_ENV: process.env.NODE_ENV,[m
+[31m-      BYPASS_DB_FOR_LOGIN: process.env.BYPASS_DB_FOR_LOGIN,[m
+[31m-      JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'NOT SET',[m
+[31m-      SESSION_SECRET: process.env.SESSION_SECRET ? 'SET' : 'NOT SET',[m
+[31m-    },[m
+[31m-    session: {[m
+[31m-      hasSession: !!req.session,[m
+[31m-      userId: req.session?.userId,[m
+[31m-      user: req.session?.user,[m
+[31m-      sessionId: req.session?.id,[m
+[31m-    },[m
+[31m-    timestamp: new Date().toISOString(),[m
+[31m-  });[m
+[31m-});[m
+[31m-[m
+ // ログインエンドポイント[m
+ router.post('/login', async (req, res) => {[m
+   try {[m
+[36m@@ -48,7 +29,7 @@[m [mrouter.post('/login', async (req, res) => {[m
+       });[m
+     }[m
+ [m
+[31m-    // バイパスフラグ確認[m
+[32m+[m[32m    // バイパスフラグ確認（最初に判定）[m
+     const bypassDb = process.env.BYPASS_DB_FOR_LOGIN === 'true';[m
+     [m
+     console.log('[auth/login] Login attempt:', { [m
+[36m@@ -57,21 +38,22 @@[m [mrouter.post('/login', async (req, res) => {[m
+       timestamp: new Date().toISOString()[m
+     });[m
+ [m
+[31m-    // バイパスモード時は仮ログイン[m
+[32m+[m[32m    // バイパスモード時は即リターン（DBに触れない）[m
+     if (bypassDb) {[m
+       console.log('[auth/login] Bypass mode: Creating demo session');[m
+       [m
+       // セッションにユーザー情報を設定[m
+[32m+[m[32m      req.session.userId = 'demo';[m
+       req.session.user = { [m
+         id: 'demo', [m
+         name: username,[m
+         role: 'user'[m
+       };[m
+       [m
+[31m-      // JWTトークンも生成（オプション）[m
+[32m+[m[32m      // JWTトークンも生成[m
+       const token = jwt.sign([m
+         { id: 'demo', username, role: 'user' }, [m
+[31m-        process.env.JWT_SECRET || 'fallback-secret',[m
+[32m+[m[32m        process.env.JWT_SECRET,[m
+         { expiresIn: '1d' }[m
+       );[m
+       [m
+[36m@@ -85,18 +67,134 @@[m [mrouter.post('/login', async (req, res) => {[m
+       });[m
+     }[m
+ [m
+[31m-    // 本来のDB認証[m
+[32m+[m[32m    // DB接続（遅延読み込み）[m
+[32m+[m[32m    let pool;[m
+     try {[m
+[31m-      // データベースからユーザーを検索（簡易実装）[m
+[31m-      // TODO: 実際のDB接続を実装[m
+[31m-      return res.status(503).json({[m
+[31m-        success: false,[m
+[31m-        error: 'auth_backend_unavailable',[m
+[31m-        message: '認証サービスが一時的に利用できません'[m
+[32m+[m[32m      // PG_SSL設定に応じてSSL設定を決定[m
+[32m+[m[32m      const sslMode = process.env.PG_SSL || 'prefer';[m
+[32m+[m[32m      let sslConfig;[m
+[32m+[m[41m      [m
+[32m+[m[32m      if (sslMode === 'disable') {[m
+[32m+[m[32m        sslConfig = false;[m
+[32m+[m[32m      } else if (sslMode === 'require') {[m
+[32m+[m[32m        sslConfig = { rejectUnauthorized: false };[m
+[32m+[m[32m      } else { // prefer (default)[m
+[32m+[m[32m        sslConfig = { rejectUnauthorized: false };[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      pool = new Pool({[m
+[32m+[m[32m        connectionString: process.env.DATABASE_URL,[m
+[32m+[m[32m        ssl: sslConfig,[m
+[32m+[m[32m        max: 5,[m
+[32m+[m[32m        idleTimeoutMillis: 30000,[m
+[32m+[m[32m        connectionTimeoutMillis: 5000,[m
+[32m+[m[32m      });[m
+[32m+[m
+[32m+[m[32m      // 接続テスト[m
+[32m+[m[32m      const client = await pool.connect();[m
+[32m+[m[41m      [m
+[32m+[m[32m      // prefer モードで SSL エラーが出た場合は disable に再接続[m
+[32m+[m[32m      if (sslMode === 'prefer') {[m
+[32m+[m[32m        try {[m
+[32m+[m[32m          await client.query('SELECT 1');[m
+[32m+[m[32m        } catch (sslError) {[m
+[32m+[m[32m          if (sslError.message.includes('does not support SSL')) {[m
+[32m+[m[32m            console.log('[auth/login] SSL not supported, reconnecting with SSL disabled');[m
+[32m+[m[32m            await client.release();[m
+[32m+[m[32m            await pool.end();[m
+[32m+[m[41m            [m
+[32m+[m[32m            pool = new Pool({[m
+[32m+[m[32m              connectionString: process.env.DATABASE_URL,[m
+[32m+[m[32m              ssl: false,[m
+[32m+[m[32m              max: 5,[m
+[32m+[m[32m              idleTimeoutMillis: 30000,[m
+[32m+[m[32m              connectionTimeoutMillis: 5000,[m
+[32m+[m[32m            });[m
+[32m+[m[41m            [m
+[32m+[m[32m            const newClient = await pool.connect();[m
+[32m+[m[32m            await newClient.query('SELECT 1');[m
+[32m+[m[32m            await newClient.release();[m
+[32m+[m[32m          } else {[m
+[32m+[m[32m            throw sslError;[m
+[32m+[m[32m          }[m
+[32m+[m[32m        }[m
+[32m+[m[32m      } else {[m
+[32m+[m[32m        await client.release();[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      // データベースからユーザーを検索[m
+[32m+[m[32m      const result = await pool.query([m
+[32m+[m[32m        'SELECT id, username, password, role FROM users WHERE username = $1 LIMIT 1',[m
+[32m+[m[32m        [username][m
+[32m+[m[32m      );[m
+[32m+[m
+[32m+[m[32m      if (result.rows.length === 0) {[m
+[32m+[m[32m        await pool.end();[m
+[32m+[m[32m        return res.status(401).json({[m[41m [m
+[32m+[m[32m          success: false,[m[41m [m
+[32m+[m[32m          error: 'invalid_credentials',[m
+[32m+[m[32m          message: 'ユーザー名またはパスワードが正しくありません'[m
+[32m+[m[32m        });[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      const foundUser = result.rows[0];[m
+[32m+[m
+[32m+[m[32m      // パスワード比較（bcryptjs）[m
+[32m+[m[32m      const isPasswordValid = await bcrypt.compare(password, foundUser.password);[m
+[32m+[m[32m      if (!isPasswordValid) {[m
+[32m+[m[32m        await pool.end();[m
+[32m+[m[32m        return res.status(401).json({[m[41m [m
+[32m+[m[32m          success: false,[m[41m [m
+[32m+[m[32m          error: 'invalid_credentials',[m
+[32m+[m[32m          message: 'ユーザー名またはパスワードが正しくありません'[m
+[32m+[m[32m        });[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      // JWTトークン生成[m
+[32m+[m[32m      const token = issueJwt(foundUser.id);[m
+[32m+[m
+[32m+[m[32m      // セッション再生[m
+[32m+[m[32m      req.session.regenerate(err => {[m
+[32m+[m[32m        if (err) {[m
+[32m+[m[32m          console.error('[auth/login] Session regenerate error:', err);[m
+[32m+[m[32m          return res.status(503).json({[m[41m [m
+[32m+[m[32m            success: false,[m[41m [m
+[32m+[m[32m            error: 'session_error',[m
+[32m+[m[32m            message: 'セッション作成に失敗しました'[m
+[32m+[m[32m          });[m
+[32m+[m[32m        }[m
+[32m+[m[41m        [m
+[32m+[m[32m        req.session.userId = foundUser.id;[m
+[32m+[m[32m        req.session.user = {[m[41m [m
+[32m+[m[32m          id: foundUser.id,[m[41m [m
+[32m+[m[32m          name: foundUser.username,[m
+[32m+[m[32m          role: foundUser.role || 'user'[m
+[32m+[m[32m        };[m
+[32m+[m[41m        [m
+[32m+[m[32m        req.session.save(() => {[m
+[32m+[m[32m          console.log('[auth/login] Login success for user:', foundUser.username);[m
+[32m+[m[32m          res.json({[m[41m [m
+[32m+[m[32m            success: true,[m[41m [m
+[32m+[m[32m            token,[m[41m [m
+[32m+[m[32m            accessToken: token,[m[41m [m
+[32m+[m[32m            expiresIn: '1d',[m
+[32m+[m[32m            user: req.session.user[m
+[32m+[m[32m          });[m
+[32m+[m[32m        });[m
+       });[m
+[32m+[m
+[32m+[m[32m      await pool.end();[m
+       [m
+     } catch (dbError) {[m
+       console.error('[auth/login] Database error:', dbError);[m
+[32m+[m[32m      if (pool) {[m
+[32m+[m[32m        try {[m
+[32m+[m[32m          await pool.end();[m
+[32m+[m[32m        } catch (endError) {[m
+[32m+[m[32m          console.error('[auth/login] Pool end error:', endError);[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+[32m+[m[41m      [m
+       return res.status(503).json({[m
+         success: false,[m
+         error: 'auth_backend_unavailable',[m
+[36m@@ -140,7 +238,7 @@[m [mrouter.get('/me', (req, res) => {[m
+     if (auth?.startsWith('Bearer ')) {[m
+       try {[m
+         const token = auth.slice(7);[m
+[31m-        const payload = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');[m
+[32m+[m[32m        const payload = jwt.verify(token, process.env.JWT_SECRET);[m
+         console.log('[auth/me] Token-based auth:', payload);[m
+         return res.json({ [m
+           success: true, [m
+[36m@@ -175,63 +273,26 @@[m [mrouter.get('/me', (req, res) => {[m
+   }[m
+ });[m
+ [m
+[31m-// サーバ設定ヒント取得（段階的移行対応）[m
+[32m+[m[32m// Handshake endpoint[m
+ router.get('/handshake', (req, res) => {[m
+[31m-  console.log('🔍 /api/auth/handshake 呼び出し');[m
+[31m-[m
+[31m-  // 段階的移行モード判定[m
+[31m-  const isSafeMode = process.env.SAFE_MODE === 'true';[m
+[31m-  const bypassJwt = process.env.BYPASS_JWT === 'true';[m
+[31m-[m
+[31m-  // 詳細なリクエスト情報をログ出力[m
+[31m-  console.log('📊 Handshake request details:', {[m
+[31m-    method: req.method,[m
+[31m-    path: req.path,[m
+[31m-    headers: {[m
+[31m-      host: req.headers.host,[m
+[31m-      'x-forwarded-for': req.headers['x-forwarded-for'],[m
+[31m-      'x-forwarded-proto': req.headers['x-forwarded-proto'],[m
+[31m-      'user-agent': req.headers['user-agent'],[m
+[31m-      'content-type': req.headers['content-type'],[m
+[31m-    },[m
+[31m-    ip: req.ip,[m
+[31m-    ips: req.ips,[m
+[31m-    timestamp: new Date().toISOString(),[m
+[31m-    safeMode: isSafeMode,[m
+[31m-    bypassJwt: bypassJwt,[m
+[31m-  });[m
+[31m-[m
+   try {[m
+[31m-    // 段階的移行モード判定[m
+[31m-    let mode;[m
+[31m-    if (isSafeMode) {[m
+[31m-      mode = 'safe';[m
+[31m-    } else if (bypassJwt) {[m
+[31m-      mode = 'jwt-bypass';[m
+[31m-    } else {[m
+[31m-      mode = 'session';[m
+[31m-    }[m
+[31m-[m
+     res.json({[m
+       ok: true,[m
+[31m-      mode: mode,[m
+[31m-      env: process.env.NODE_ENV || 'development',[m
+[32m+[m[32m      mode: 'session',[m
+[32m+[m[32m      env: process.env.NODE_ENV || 'production',[m
+       timestamp: new Date().toISOString(),[m
+[31m-      features: {[m
+[31m-        session: true,[m
+[31m-        jwt: true,[m
+[31m-        bypass: process.env.BYPASS_DB_FOR_LOGIN === 'true',[m
+[31m-      },[m
+[32m+[m[32m      requestId: req.requestId[m
+     });[m
+   } catch (error) {[m
+[31m-    console.error('❌ Handshake error:', error);[m
+[32m+[m[32m    console.error(`[${req.requestId}] Handshake error:`, error);[m
+     res.status(200).json({[m
+       ok: true,[m
+       mode: 'session',[m
+       env: 'production',[m
+       timestamp: new Date().toISOString(),[m
+[32m+[m[32m      requestId: req.requestId[m
+     });[m
+   }[m
+ });[m
+ [m
+[31m-module.exports = router;[m
+[32m+[m[32mmodule.exports = router;[m
+\ No newline at end of file[m

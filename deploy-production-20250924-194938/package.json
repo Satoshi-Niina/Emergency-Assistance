@@ -1,0 +1,12 @@
+{
+  "name": "emergency-assistance-production",
+  "version": "1.0.0",
+  "type": "commonjs",
+  "main": "production-server.js",
+  "scripts": {
+    "start": "node production-server.js"
+  },
+  "engines": {
+    "node": ">=18 <23"
+  }
+}
