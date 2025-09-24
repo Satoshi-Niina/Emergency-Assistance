@@ -80,8 +80,9 @@ jobs:
       - name: Create deployment package
         run: |
           cd server
-          zip -r ../server-deploy.zip . -x "node_modules/*"
+          zip -r ../server-deploy.zip . -x "node_modules/*" "*.log" "*.tmp"
           echo "Created server-deploy.zip"
+          ls -la ../server-deploy.zip
 
       - name: Deploy Backend
         id: deploy1

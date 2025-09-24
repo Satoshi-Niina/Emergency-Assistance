@@ -27,10 +27,19 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: 'client/package-lock.json'
+          cache-dependency-path: 'package-lock.json'
 
       - name: Install deps
         run: npm ci
+
+      - name: Create .env.production
+        run: |
+          cat > .env.production << 'EOF'
+          VITE_API_BASE_URL=https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net
+          NODE_ENV=production
+          EOF
+          echo "=== Created .env.production ==="
+          cat .env.production
 
       - name: Build
         run: npm run build
