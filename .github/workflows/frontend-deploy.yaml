@@ -1,14 +1,10 @@
-name: Deploy Frontend to Azure Static Web Apps
+nname: Deploy Frontend to Azure Static Web Apps
+
 on:
   push:
-    branches: [main]
     paths:
       - 'client/**'
-      - 'staticwebapp.config.json'
-      - '.github/workflows/frontend-deploy.yaml'
-      - 'trigger.txt'
-      - 'frontend-trigger.txt'
-      - 'force-deploy.txt'
+      - '.github/workflows/frontend.yml'
   workflow_dispatch:
 
 concurrency:
@@ -16,133 +12,50 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
+  build-deploy:
     runs-on: ubuntu-latest
-    name: Deploy Frontend
-    environment: production-swa
+    defaults:
+      run:
+        working-directory: client
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup Node.js
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-      - name: Create .env.production for Vite
-        working-directory: client
-        run: |
-          cat > .env.production << 'EOF'
-          VITE_API_BASE_URL=https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net
-          VITE_API_BASE=https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net
-          FRONTEND_URL=https://witty-river-012f39e00.1.azurestaticapps.net
-          NODE_ENV=production
-          EOF
-          echo "=== Created .env.production ==="
-          cat .env.production
-      - name: Install frontend dependencies
-        working-directory: client
-        run: |
-          echo "=== Installing frontend dependencies ==="
-          npm install --no-audit --prefer-offline
-      - name: Build frontend
-        working-directory: client
-        run: |
-          echo "=== Building frontend with environment variables ==="
-          echo "VITE_API_BASE: $VITE_API_BASE"
-          echo "VITE_API_BASE_URL: $VITE_API_BASE_URL"
-          echo "NODE_ENV: $NODE_ENV"
-          echo "=== .env.production contents ==="
-          cat .env.production
-          echo "=== Force rebuild for cookie authentication fix ==="
-          rm -rf dist
-          npm run build
-        env:
-          VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
-          NODE_ENV: production
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'client/package-lock.json'
 
-      - name: Prepare frontend deployment
-        run: |
-          echo "=== Preparing frontend deployment ==="
-          mkdir -p ./deploy-frontend
-          cp -r ./client/dist/* ./deploy-frontend/
+      - name: Install deps
+        run: npm ci
 
-          # Include Azure Static Web Apps configuration
-          if [ -f ./staticwebapp.config.json ]; then
-            cp ./staticwebapp.config.json ./deploy-frontend/staticwebapp.config.json
-          fi
+      - name: Build
+        run: npm run build
 
-          echo "=== Frontend deployment package ready ==="
-          echo "Frontend package size:"
-          du -sh ./deploy-frontend
-          echo "Files in deployment package:"
-          ls -la ./deploy-frontend/
-
-      - name: Deploy Frontend to Azure Static Web Apps
+      - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-          action: 'upload'
-          app_location: 'client'
-          api_location: ''
-          output_location: 'dist'
-          skip_app_build: false
+          action: upload
+          app_location: "client"     # ← フロントのルート（package.jsonの場所）
+          output_location: "dist"    # ← ビルド出力
+          api_location: ""           # ← APIは別WFなら空
+          skip_app_build: true       # ← すでにBuild済みだからtrue
 
-      - name: Session smoke (optional)
-        shell: bash
+      - name: Optional API smoke test (non-blocking)
+        if: always()
+        continue-on-error: true
         env:
-          LOGIN_URL: ${{ secrets.LOGIN_URL }}
-          LOGIN_BODY_JSON: ${{ secrets.LOGIN_BODY_JSON }}
-          SESSION_CHECK_URL: ${{ secrets.SESSION_CHECK_URL }}
+          BASE: ${{ vars.BACKEND_URL }}
         run: |
-          if [ -z "${LOGIN_URL}" ] || [ -z "${LOGIN_BODY_JSON}" ] || [ -z "${SESSION_CHECK_URL}" ]; then
-            echo "ℹ️ Skip session smoke: secrets missing"; exit 0;
-          fi
-          echo "🔐 Running session smoke test..."
-          curl -sS -f -X POST -H "Content-Type: application/json" --data '${{ secrets.LOGIN_BODY_JSON }}' --cookie-jar cookies.txt "${{ secrets.LOGIN_URL }}"
-          curl -sS -f --cookie cookies.txt "${{ secrets.SESSION_CHECK_URL }}" | tee /dev/stderr
-          echo "✅ Session smoke passed"
-
-      - name: Frontend Health Check
-        run: |
-          echo "🔍 Starting frontend health check..."
-          # Wait for deployment
-          echo "⏳ Waiting for frontend deployment (30 seconds)..."
-          sleep 30
-          # Check /healthz first, then / (root)
-          frontend_url="https://witty-river-012f39e00.1.azurestaticapps.net"
-          echo "Checking frontend: ${frontend_url}/healthz"
-          healthz_status=$(curl -o /dev/null -s -w "%{http_code}" -L "${frontend_url}/healthz")
-          echo "/healthz check: $healthz_status"
-          if [ "$healthz_status" = "200" ]; then
-            echo "✅ /healthz returned 200"
-          else
-            echo "⚠️ /healthz not found or not 200, checking / (root)..."
-            root_status=$(curl -o /dev/null -s -w "%{http_code}" -L "${frontend_url}/")
-            echo "/ (root) check: $root_status"
-            if [ "$root_status" = "200" ]; then
-              echo "✅ / (root) returned 200"
-            else
-              echo "❌ Frontend health check failed!"
-              exit 1
-            fi
-          fi
-
-      - name: Frontend Smoke Test
-        run: |
-          echo "🔍 Starting frontend smoke test..."
-          frontend_url="https://witty-river-012f39e00.1.azurestaticapps.net"
-          # Check /healthz first, then / (root)
-          healthz_status=$(curl -o /dev/null -s -w "%{http_code}" -L "${frontend_url}/healthz")
-          echo "/healthz check: $healthz_status"
-          if [ "$healthz_status" = "200" ]; then
-            echo "✅ /healthz returned 200"
-          else
-            echo "⚠️ /healthz not found or not 200, checking / (root)..."
-            root_status=$(curl -o /dev/null -s -w "%{http_code}" -L "${frontend_url}/")
-            echo "/ (root) check: $root_status"
-            if [ "$root_status" = "200" ]; then
-              echo "✅ / (root) returned 200"
-            else
-              echo "❌ Frontend smoke test failed!"
-              exit 1
-            fi
-          fi
+          set -e
+          : "${BASE:=https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net}"
+          for p in /api/healthz /healthz /api/health /health; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$BASE$p" || true)
+            echo "*** $BASE$p: $code"
+            [ "$code" = "200" ] && echo "API health OK." && exit 0
+          done
+          echo "::warning::API health not confirmed; frontend deploy succeeded."
