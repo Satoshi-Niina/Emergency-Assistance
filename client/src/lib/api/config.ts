@@ -1,13 +1,11 @@
-/// API設定
+/// API設定 - 統一APIクライアント使用
+import { api, getJson, postJson } from '../api';
+
+// 統一APIクライアントを使用するため、このファイルは互換性のため残す
 const isProduction =
   import.meta.env.PROD && !window.location.hostname.includes('localhost');
 const isDevelopment =
   import.meta.env.DEV || window.location.hostname.includes('localhost');
-
-// Replit環境の検出
-const isReplitEnvironment =
-  window.location.hostname.includes('replit.dev') ||
-  window.location.hostname.includes('replit.app');
 
 // Azure環境の検出
 const isAzureEnvironment =
@@ -15,7 +13,7 @@ const isAzureEnvironment =
   window.location.hostname.includes('azurestaticapps.net') ||
   window.location.hostname.includes('azure.com');
 
-// API Base URLの設定 - 常に絶対URLを使用
+// API Base URLの設定（統一APIクライアントで処理される）
 export const API_BASE_URL = (() => {
   // 環境変数が設定されている場合は最優先使用
   if (
@@ -30,8 +28,8 @@ export const API_BASE_URL = (() => {
     return 'https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net';
   }
 
-  // 開発環境でも絶対URLを使用（localhost:3001）
-  return 'http://localhost:3001';
+  // 開発環境でも絶対URLを使用（localhost:8000）
+  return 'http://localhost:8000';
 })();
 
 console.log('🔧 API設定詳細:', {
@@ -96,31 +94,30 @@ console.log('🔧 API設定:', {
   },
 });
 
-// 認証APIエンドポイント
+// 認証APIエンドポイント（統一APIクライアント使用）
 export const AUTH_API = {
-  LOGIN: buildApiUrl('/api/auth/login'),
-  LOGOUT: buildApiUrl('/api/auth/logout'),
-  ME: buildApiUrl('/api/auth/me'),
+  LOGIN: '/auth/login',
+  LOGOUT: '/auth/logout',
+  ME: '/auth/me',
   // デバッグ用テストエンドポイント
-  TEST: buildApiUrl('/api/healthz'),
+  TEST: '/healthz',
 };
 
-// ナレッジベースAPIエンドポイント
+// ナレッジベースAPIエンドポイント（統一APIクライアント使用）
 export const KNOWLEDGE_API = {
-  BASE: buildApiUrl('/api/knowledge-base'),
-  GPT_DATA: buildApiUrl('/api/knowledge-base/gpt/data'),
-  FUSE_IMAGES: buildApiUrl('/api/knowledge-base/fuse/images'),
-  TROUBLESHOOTING_FLOWS: buildApiUrl('/api/flows'),
-  SHARED_DATA: (type: string) =>
-    buildApiUrl(`/api/knowledge-base/shared/${type}`),
+  BASE: '/knowledge-base',
+  GPT_DATA: '/knowledge-base/gpt/data',
+  FUSE_IMAGES: '/knowledge-base/fuse/images',
+  TROUBLESHOOTING_FLOWS: '/flows',
+  SHARED_DATA: (type: string) => `/knowledge-base/shared/${type}`,
   IMAGES: (category: string, filename: string) =>
-    buildApiUrl(`/api/knowledge-base/images/${category}/${filename}`),
+    `/knowledge-base/images/${category}/${filename}`,
 };
 
-// チャットAPIエンドポイント
+// チャットAPIエンドポイント（統一APIクライアント使用）
 export const CHAT_API = {
-  CHATGPT: buildApiUrl('/api/chatgpt'),
-  HEALTH: buildApiUrl('/api/healthz'),
+  CHATGPT: '/chatgpt',
+  HEALTH: '/healthz',
 };
 
 // 設定情報

@@ -4,9 +4,7 @@ on:
     branches: [main]
     paths:
       - 'client/**'
-      - 'server/**'
       - 'staticwebapp.config.json'
-      - 'README.md'
       - '.github/workflows/frontend-deploy.yaml'
       - 'trigger.txt'
       - 'frontend-trigger.txt'

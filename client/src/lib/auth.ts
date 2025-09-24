@@ -1,20 +1,15 @@
 import { apiRequest } from './queryClient';
 import { AUTH_API } from './api/config';
-import { apiFetch } from '../api/apiClient';
+import { apiFetch, postJson, getJson } from './api';
 
 interface LoginCredentials {
   username: string;
   password: string;
 }
 
-// 明示的なAPI関数（credentials: 'include' を保証）
+// 明示的なAPI関数（統一APIクライアント使用）
 export async function loginApi(login: string, password: string) {
-  const response = await apiFetch('/api/auth/login', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ login, password }),
-  });
+  const response = await postJson('/auth/login', { login, password });
 
   // Store token if received (SWA環境ではlocalStorageを使用)
   if (response.token || response.accessToken) {
@@ -28,22 +23,14 @@ export async function loginApi(login: string, password: string) {
 }
 
 export async function meApi() {
-  return apiFetch('/api/auth/me', {
-    method: 'GET',
-    credentials: 'include',
-    headers: { Accept: 'application/json' },
-  });
+  return getJson('/auth/me');
 }
 
 export async function logoutApi() {
   // Clear token from sessionStorage
   sessionStorage.removeItem('token');
 
-  return apiFetch('/api/auth/logout', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { Accept: 'application/json' },
-  });
+  return postJson('/auth/logout');
 }
 
 /**
@@ -73,10 +60,7 @@ export const login = async (credentials: LoginCredentials) => {
       port: window.location.port,
     });
 
-    const userData = await apiFetch('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(credentials),
-    });
+    const userData = await postJson('/auth/login', credentials);
 
     // Store token if received (SWA環境ではlocalStorageを使用)
     if (userData.token || userData.accessToken) {
@@ -116,9 +100,7 @@ export const logout = async () => {
     // Clear token from sessionStorage
     sessionStorage.removeItem('token');
 
-    await apiFetch('/api/auth/logout', {
-      method: 'POST',
-    });
+    await postJson('/auth/logout');
   } catch (error) {
     console.error('Logout error:', error);
     throw new Error('ログアウトに失敗しました');
@@ -133,7 +115,7 @@ export const getCurrentUser = async () => {
   try {
     console.log('🔍 getCurrentUser リクエスト');
 
-    const data = await apiFetch('/api/auth/me');
+    const data = await getJson('/auth/me');
     console.log('🔍 getCurrentUser データ:', data);
     return data;
   } catch (error) {
@@ -162,7 +144,7 @@ export const authLogout = logout;
 export const negotiateAuthMode = async (): Promise<'cookie' | 'token'> => {
   try {
     // 1. サーバ設定ヒントを取得
-    const handshake = await apiFetch('/api/auth/handshake');
+    const handshake = await getJson('/auth/handshake');
 
     if (handshake.firstParty) {
       // 同一ドメインの場合はCookieを優先
@@ -172,12 +154,9 @@ export const negotiateAuthMode = async (): Promise<'cookie' | 'token'> => {
 
     // 2. クロスサイトの場合はCookieプローブを実施
     try {
-      await apiFetch('/api/auth/cookie-probe', {
-        method: 'POST',
-        credentials: 'include',
-      });
+      await postJson('/auth/cookie-probe');
 
-      const probeResult = await apiFetch('/api/auth/cookie-probe-check');
+      const probeResult = await getJson('/auth/cookie-probe-check');
 
       const mode = probeResult.cookieOk ? 'cookie' : 'token';
       sessionStorage.setItem('AUTH_MODE', mode);
@@ -203,10 +182,7 @@ export const negotiateAuthMode = async (): Promise<'cookie' | 'token'> => {
 // トークンリフレッシュ
 export const refreshToken = async (): Promise<string | null> => {
   try {
-    const response = await apiFetch('/api/auth/refresh', {
-      method: 'POST',
-      credentials: 'include',
-    });
+    const response = await postJson('/auth/refresh');
 
     if (response.token) {
       sessionStorage.setItem('token', response.token);
