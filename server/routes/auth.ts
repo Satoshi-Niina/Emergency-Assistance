@@ -1,5 +1,5 @@
 import express from 'express';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { db } from '../db/index';
 import { users } from '../db/schema';
@@ -75,102 +75,133 @@ router.get('/debug/session', (_req, res) => {
 });
 
 // ログインエンドポイント
-router.post('/login', async (_req, res) => {
+router.post('/login', async (req, res) => {
   try {
-    // 段階的移行モード判定
-    const isSafeMode = process.env.SAFE_MODE === 'true';
-    const bypassJwt = process.env.BYPASS_JWT === 'true';
-
-    // 診断ログ: リクエストヘッダー
-    console.log('[auth/login] Request headers:', {
-      authorization: req.headers.authorization ? '[SET]' : '[NOT SET]',
-      cookie: req.headers.cookie ? '[SET]' : '[NOT SET]',
-      host: req.headers.host,
-      origin: req.headers.origin,
-      'user-agent': req.headers['user-agent']?.substring(0, 50) + '...',
-      safeMode: isSafeMode,
-      bypassJwt: bypassJwt,
-    });
-
-    // セーフモード時はダミーログインを返す
-    if (isSafeMode) {
-      console.log('[auth/login] Safe mode: Returning demo login');
-      const demoToken = jwt.sign({ id: 'demo', role: 'user' }, 'dev-secret', {
-        expiresIn: '5m',
-      });
-      return res.json({
-        success: true,
-        token: demoToken,
-        accessToken: demoToken,
-        expiresIn: '5m',
-        mode: 'safe',
-      });
-    }
-
-    // JWTバイパスモード時はダミーログインを返す
-    if (bypassJwt) {
-      console.log('[auth/login] JWT bypass mode: Returning demo login');
-      const demoToken = jwt.sign({ id: 'demo', role: 'user' }, 'dev-secret', {
-        expiresIn: '5m',
-      });
-      return res.json({
-        success: true,
-        token: demoToken,
-        accessToken: demoToken,
-        expiresIn: '5m',
-        mode: 'jwt-bypass',
-      });
-    }
-
     const { username, password } = req.body || {};
-
-    // データベースからユーザーを検索
-    const foundUsers = await db
-      .select()
-      .from(users)
-      .where(eq(users.username, username))
-      .limit(1);
-
-    if (foundUsers.length === 0) {
-      return res.status(401).json({ success: false, error: 'invalid' });
-    }
-
-    const foundUser = foundUsers[0];
-
-    // パスワード比較（bcrypt）
-    const isPasswordValid = await bcrypt.compare(password, foundUser.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ success: false, error: 'invalid' });
-    }
-
-    // JWTトークン生成
-    const token = issueJwt(foundUser.id);
-
-    // セッション再生
-    req.session.regenerate(err => {
-      if (err)
-        return res.status(500).json({ success: false, error: 'session' });
-      req.session.userId = foundUser.id;
-      req.session.save(() => {
-        // 診断ログ: レスポンスヘッダー
-        console.log('[auth/login] Response headers:', {
-          'set-cookie': res.getHeader('set-cookie') ? '[SET]' : '[NOT SET]',
-          'access-control-allow-origin': res.getHeader(
-            'access-control-allow-origin'
-          ),
-          'access-control-allow-credentials': res.getHeader(
-            'access-control-allow-credentials'
-          ),
-        });
-        console.log('[auth/login] Login success for user:', foundUser.username);
-        res.json({ success: true, token, accessToken: token, expiresIn: '1d' });
+    
+    // 入力検証
+    if (!username || !password) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'bad_request',
+        message: 'ユーザー名とパスワードが必要です'
       });
+    }
+
+    // バイパスフラグ確認
+    const bypassDb = process.env.BYPASS_DB_FOR_LOGIN === 'true';
+    
+    console.log('[auth/login] Login attempt:', { 
+      username, 
+      bypassDb,
+      timestamp: new Date().toISOString()
     });
+
+    // バイパスモード時は仮ログイン
+    if (bypassDb) {
+      console.log('[auth/login] Bypass mode: Creating demo session');
+      
+      // セッションにユーザー情報を設定
+      req.session.user = { 
+        id: 'demo', 
+        name: username,
+        role: 'user'
+      };
+      
+      // JWTトークンも生成（オプション）
+      const token = jwt.sign(
+        { id: 'demo', username, role: 'user' }, 
+        process.env.JWT_SECRET || 'fallback-secret',
+        { expiresIn: '1d' }
+      );
+      
+      return res.json({ 
+        success: true, 
+        mode: 'session',
+        user: req.session.user,
+        token,
+        accessToken: token,
+        expiresIn: '1d'
+      });
+    }
+
+    // 本来のDB認証
+    try {
+      // データベースからユーザーを検索
+      const foundUsers = await db
+        .select()
+        .from(users)
+        .where(eq(users.username, username))
+        .limit(1);
+
+      if (foundUsers.length === 0) {
+        return res.status(401).json({ 
+          success: false, 
+          error: 'invalid_credentials',
+          message: 'ユーザー名またはパスワードが正しくありません'
+        });
+      }
+
+      const foundUser = foundUsers[0];
+
+      // パスワード比較（bcryptjs）
+      const isPasswordValid = await bcrypt.compare(password, foundUser.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({ 
+          success: false, 
+          error: 'invalid_credentials',
+          message: 'ユーザー名またはパスワードが正しくありません'
+        });
+      }
+
+      // JWTトークン生成
+      const token = issueJwt(foundUser.id);
+
+      // セッション再生
+      req.session.regenerate(err => {
+        if (err) {
+          console.error('[auth/login] Session regenerate error:', err);
+          return res.status(503).json({ 
+            success: false, 
+            error: 'session_error',
+            message: 'セッション作成に失敗しました'
+          });
+        }
+        
+        req.session.userId = foundUser.id;
+        req.session.user = { 
+          id: foundUser.id, 
+          name: foundUser.username,
+          role: foundUser.role || 'user'
+        };
+        
+        req.session.save(() => {
+          console.log('[auth/login] Login success for user:', foundUser.username);
+          res.json({ 
+            success: true, 
+            token, 
+            accessToken: token, 
+            expiresIn: '1d',
+            user: req.session.user
+          });
+        });
+      });
+      
+    } catch (dbError) {
+      console.error('[auth/login] Database error:', dbError);
+      return res.status(503).json({
+        success: false,
+        error: 'auth_backend_unavailable',
+        message: '認証サービスが一時的に利用できません'
+      });
+    }
+    
   } catch (error) {
-    console.error('❌ Login error:', error);
-    return res.status(500).json({
+    console.error('[auth/login] Unexpected error:', error);
+    return res.status(503).json({
       success: false,
-      error: 'サーバーエラーが発生しました',
+      error: 'auth_internal_error',
+      message: '認証処理中にエラーが発生しました'
     });
   }
 });
@@ -184,53 +215,56 @@ router.post('/logout', (_req, res) => {
 });
 
 // 現在のユーザー情報取得
-router.get('/me', authenticateToken, (req, res) => {
-  // 段階的移行モード判定
-  const isSafeMode = process.env.SAFE_MODE === 'true';
-  const bypassJwt = process.env.BYPASS_JWT === 'true';
+router.get('/me', (req, res) => {
+  try {
+    // セッションベースの認証をチェック
+    if (req.session?.user) {
+      console.log('[auth/me] Session-based auth:', req.session.user);
+      return res.json({ 
+        success: true, 
+        user: req.session.user,
+        authenticated: true
+      });
+    }
 
-  // 診断ログ: /me リクエスト
-  console.log('[auth/me] Request headers:', {
-    authorization: req.headers.authorization ? '[SET]' : '[NOT SET]',
-    cookie: req.headers.cookie ? '[SET]' : '[NOT SET]',
-    host: req.headers.host,
-    origin: req.headers.origin,
-    safeMode: isSafeMode,
-    bypassJwt: bypassJwt,
-  });
-  console.log('[auth/me] Auth result:', {
-    userId: req.user?.id,
-    sessionUserId: req.session?.userId,
-    authMethod: req.headers.authorization ? 'Bearer' : 'Session',
-  });
+    // Bearer token認証をチェック
+    const auth = req.get('authorization');
+    if (auth?.startsWith('Bearer ')) {
+      try {
+        const token = auth.slice(7);
+        const payload = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
+        console.log('[auth/me] Token-based auth:', payload);
+        return res.json({ 
+          success: true, 
+          user: { id: payload.sub || payload.id, ...payload },
+          authenticated: true
+        });
+      } catch (tokenError) {
+        console.log('[auth/me] Invalid token:', tokenError.message);
+        return res.status(401).json({ 
+          success: false, 
+          error: 'invalid_token',
+          message: '無効なトークンです'
+        });
+      }
+    }
 
-  // セーフモード時はダミーユーザー情報を返す
-  if (isSafeMode) {
-    console.log('[auth/me] Safe mode: Returning demo user');
-    return res.json({
-      authenticated: true,
-      userId: 'demo',
-      user: { id: 'demo', role: 'user' },
-      mode: 'safe',
+    // 未認証
+    console.log('[auth/me] No authentication found');
+    return res.status(401).json({ 
+      success: false, 
+      error: 'authentication_required',
+      message: '認証が必要です'
+    });
+    
+  } catch (error) {
+    console.error('[auth/me] Unexpected error:', error);
+    return res.status(401).json({ 
+      success: false, 
+      error: 'authentication_required',
+      message: '認証が必要です'
     });
   }
-
-  // JWTバイパスモード時はダミーユーザー情報を返す
-  if (bypassJwt) {
-    console.log('[auth/me] JWT bypass mode: Returning demo user');
-    return res.json({
-      authenticated: true,
-      userId: 'demo',
-      user: { id: 'demo', role: 'user' },
-      mode: 'jwt-bypass',
-    });
-  }
-
-  return res.json({
-    authenticated: true,
-    userId: req.user!.id,
-    user: { id: req.user!.id },
-  });
 });
 
 // サーバ設定ヒント取得（段階的移行対応）

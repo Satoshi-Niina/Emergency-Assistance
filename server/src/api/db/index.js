@@ -7,7 +7,10 @@ const { Pool } = require('pg');
 const dbConfig = {
   connectionString:
     process.env.DATABASE_URL || process.env.POSTGRES_CONNECTION_STRING,
-  ssl: { rejectUnauthorized: false }, // Azure PostgreSQL用
+  ssl: { 
+    require: true, 
+    rejectUnauthorized: false 
+  }, // Azure PostgreSQL用
   max: 5, // 接続プールサイズを削減
   idleTimeoutMillis: 10000, // アイドルタイムアウトを短縮
   connectionTimeoutMillis: 5000, // 接続タイムアウトを5秒に短縮

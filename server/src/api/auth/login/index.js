@@ -104,8 +104,8 @@ module.exports = async (context, request) => {
       };
     }
 
-    // パスワード検証（bcrypt使用）
-    const bcrypt = require('bcrypt');
+    // パスワード検証（bcryptjs使用）
+    const bcrypt = require('bcryptjs');
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {

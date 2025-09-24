@@ -8,7 +8,7 @@ const sql = postgres(
     // 使用中: データベース接続文字列
     ssl:
       process.env.NODE_ENV === 'production'
-        ? { rejectUnauthorized: false }
+        ? { require: true, rejectUnauthorized: false }
         : false, // 使用中: 環境判別
     max: 10,
     idle_timeout: 20,
