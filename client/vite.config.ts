@@ -19,7 +19,7 @@ export default defineConfig(({ command, mode }) => {
     env.VITE_API_BASE_URL ||
     (command === 'serve' ? 'http://localhost:8000' : 'https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net');
   const serverPort = parseInt(env.PORT || '3003');
-  const clientPort = parseInt(env.CLIENT_PORT || '5173');
+  const clientPort = parseInt(env.CLIENT_PORT || '5174');
 
   console.log('🔧 Vite環境変数確認:', {
     VITE_API_BASE: env.VITE_API_BASE,

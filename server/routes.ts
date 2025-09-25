@@ -99,12 +99,27 @@ export function registerRoutes(app: Express): void {
   app.use('/api/qa-learning', qaLearningRouter);
   app.use('/api/maintenance', maintenanceRouter);
 
-  // Add a health check endpoint for testing
+  // Health check endpoints
   app.get('/api/health', (req, res) => {
     res.json({
       status: 'ok',
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV || 'development',
+    });
+  });
+
+  app.get('/api/healthz', (req, res) => {
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development',
+    });
+  });
+
+  app.get('/ping', (req, res) => {
+    res.json({
+      ping: 'pong',
+      timestamp: new Date().toISOString(),
     });
   });
 
@@ -313,21 +328,6 @@ export function registerRoutes(app: Express): void {
     authRouter
   );
 
-  // ヘルスチェックエンドポイント（デバッグ用）
-  app.get('/api/health', (req, res) => {
-    console.log('🏥 ヘルスチェックリクエスト受信');
-    res.setHeader('Content-Type', 'application/json');
-    res.status(200).json({
-      success: true,
-      message: 'Emergency Assistance Backend is running',
-      timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV || 'development',
-      session: {
-        hasSession: !!req.session,
-        userId: req.session?.userId || null,
-      },
-    });
-  });
 
   // デバッグ用エンドポイント
   app.get('/api/debug', (req, res) => {

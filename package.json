@@ -11,6 +11,7 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:local": "concurrently \"npm run dev:local-server\" \"npm run dev:local-client\"",
+    "dev:full": "concurrently \"npm run dev:local-server\" \"npm run dev:local-client\" && start http://localhost:5173",
     "dev:pre-deploy": "concurrently \"npm run dev:pre-deploy-server\" \"npm run dev:pre-deploy-client\"",
     "dev:server": "cd server && set PORT=8000 && npm run dev",
     "dev:client": "cd client && vite",

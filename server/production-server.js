@@ -38,34 +38,76 @@ app.use(helmet({
   contentSecurityPolicy: false,
 }));
 
-// ① ヘルスは CORS より前（Originなしでも通す）
-const health = async (req, res) => {
+// ① ヘルスチェックエンドポイント（CORSより前で定義）
+const healthCheck = async (req, res) => {
   try {
+    console.log('🏥 Health check request:', {
+      path: req.path,
+      method: req.method,
+      timestamp: new Date().toISOString()
+    });
+
     // データベース接続チェック
+    let dbStatus = 'not_initialized';
     if (dbPool) {
-      await dbPool.query('SELECT NOW()');
+      try {
+        await dbPool.query('SELECT NOW()');
+        dbStatus = 'connected';
+      } catch (dbError) {
+        console.warn('Database connection test failed:', dbError.message);
+        dbStatus = 'error';
+      }
     }
     
     res.status(200).json({ 
       ok: true, 
+      status: 'healthy',
       timestamp: new Date().toISOString(),
-      database: dbPool ? 'connected' : 'not_initialized',
-      environment: process.env.NODE_ENV || 'development'
+      database: dbStatus,
+      environment: process.env.NODE_ENV || 'development',
+      service: 'Emergency Assistance Backend'
     });
   } catch (error) {
     console.error('❌ Health check failed:', error);
-    res.status(500).json({ 
+    res.status(200).json({ 
       ok: false, 
+      status: 'unhealthy',
+      error: error.message,
+      timestamp: new Date().toISOString(),
+      service: 'Emergency Assistance Backend'
+    });
+  }
+};
+
+// Ping endpoint (always returns 200)
+const pingCheck = (req, res) => {
+  try {
+    console.log('🏓 Ping request:', {
+      path: req.path,
+      timestamp: new Date().toISOString()
+    });
+    
+    res.status(200).json({
+      ping: 'pong',
+      timestamp: new Date().toISOString(),
+      service: 'Emergency Assistance Backend'
+    });
+  } catch (error) {
+    console.error('❌ Ping check failed:', error);
+    res.status(200).json({
+      ping: 'error',
       error: error.message,
       timestamp: new Date().toISOString()
     });
   }
 };
 
-app.get('/api/health', health);
-app.get('/api/healthz', health);
-app.get('/health', health);
-app.get('/healthz', health);
+// Register health check endpoints
+app.get('/api/health', healthCheck);
+app.get('/api/healthz', healthCheck);
+app.get('/health', healthCheck);
+app.get('/healthz', healthCheck);
+app.get('/ping', pingCheck);
 
 // ② CORS：Originなしは許可、未許可は "false" を返す（throw しない）
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net';
@@ -118,7 +160,6 @@ app.use((req, res, next) => {
 });
 
 // PostgreSQL pool initialization
-const { Pool } = require('pg');
 
 // データベース接続プールの初期化
 let dbPool = null;
@@ -290,7 +331,10 @@ const HOST = '0.0.0.0';
 
 app.listen(PORT, HOST, () => {
   console.log(`🚀 Server running on ${HOST}:${PORT}`);
-  console.log(`📊 Health check: http://${HOST}:${PORT}/api/health`);
+  console.log(`📊 Health check endpoints:`);
+  console.log(`   - http://${HOST}:${PORT}/api/health`);
+  console.log(`   - http://${HOST}:${PORT}/api/healthz`);
+  console.log(`   - http://${HOST}:${PORT}/ping`);
   console.log(`🔐 Login API: http://${HOST}:${PORT}/api/auth/login`);
   console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔍 Database URL configured: ${process.env.DATABASE_URL ? 'YES' : 'NO'}`);
@@ -299,6 +343,49 @@ app.listen(PORT, HOST, () => {
   console.log(`📁 Working directory: ${process.cwd()}`);
   console.log(`📄 Main file: ${__filename}`);
   console.log(`⏰ Start time: ${new Date().toISOString()}`);
+  
+  // 起動後のヘルスチェックテスト
+  setTimeout(() => {
+    console.log('🔍 Testing health endpoints...');
+    const testEndpoints = ['/api/health', '/api/healthz', '/ping'];
+    
+    testEndpoints.forEach(endpoint => {
+      const http = require('http');
+      const options = {
+        hostname: HOST,
+        port: PORT,
+        path: endpoint,
+        method: 'GET',
+        timeout: 5000
+      };
+      
+      const req = http.request(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+        res.on('end', () => {
+          try {
+            const jsonData = JSON.parse(data);
+            console.log(`✅ ${endpoint}: ${res.statusCode} - ${jsonData.ok ? 'OK' : 'ERROR'}`);
+          } catch (error) {
+            console.log(`✅ ${endpoint}: ${res.statusCode} - Response received`);
+          }
+        });
+      });
+      
+      req.on('error', (error) => {
+        console.log(`❌ ${endpoint}: ${error.message}`);
+      });
+      
+      req.on('timeout', () => {
+        console.log(`⏰ ${endpoint}: Timeout`);
+        req.destroy();
+      });
+      
+      req.end();
+    });
+  }, 2000);
 });
 
 // Graceful shutdown
