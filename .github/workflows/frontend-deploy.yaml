@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - 'client/**'
-      - '.github/workflows/frontend.yml'
+      - '.github/workflows/frontend-deploy.yaml'
   workflow_dispatch:
 
 concurrency:
