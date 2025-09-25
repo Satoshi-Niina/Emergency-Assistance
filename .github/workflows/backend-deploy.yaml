@@ -93,38 +93,26 @@ jobs:
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: server-deploy.zip
 
-      - name: Complete Azure App Service Reset
+      - name: Essential Azure App Service Configuration
         uses: azure/CLI@v1
+        timeout-minutes: 5
         with:
           inlineScript: |
-            echo "🔧 Starting complete Azure App Service reset..."
+            echo "🔧 Setting essential Azure App Service configuration..."
             
-            # 1. 認証を完全に無効化
-            echo "🔐 Disabling authentication completely..."
-            az webapp auth update --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --enabled false || echo "Auth disable failed, continuing..."
+            # 1. 認証を無効化（最重要）
+            echo "🔐 Disabling authentication..."
+            az webapp auth update --name ${{ secrets.APP_NAME || 'Emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP || 'rg-Emergencyassistant-app' }}" --enabled false
             
-            # 2. すべてのアクセス制限を削除
-            echo "🚪 Removing all access restrictions..."
-            az webapp config access-restriction remove --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --rule-name "Allow all" --action Allow || echo "Access restriction removal failed, continuing..."
-            az webapp config access-restriction remove --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --rule-name "Deny all" --action Deny || echo "Access restriction removal failed, continuing..."
-            
-            # 3. 新しい許可ルールを追加
-            echo "✅ Adding new allow rule..."
-            az webapp config access-restriction add --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --rule-name "Allow all" --action Allow --priority 100 || echo "Access restriction add failed, continuing..."
-            
-            # 4. 環境変数を設定
+            # 2. 環境変数を設定
             echo "📝 Setting environment variables..."
-            az webapp config appsettings set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --settings DATABASE_URL="${{ secrets.DATABASE_URL }}" JWT_SECRET="${{ secrets.JWT_SECRET }}" SESSION_SECRET="${{ secrets.SESSION_SECRET }}" FRONTEND_URL="${{ secrets.FRONTEND_URL }}" NODE_ENV="production" TRUST_PROXY="1" || echo "Environment variables setting failed, continuing..."
+            az webapp config appsettings set --name ${{ secrets.APP_NAME || 'Emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP || 'rg-Emergencyassistant-app' }}" --settings DATABASE_URL="${{ secrets.DATABASE_URL }}" JWT_SECRET="${{ secrets.JWT_SECRET }}" SESSION_SECRET="${{ secrets.SESSION_SECRET }}" FRONTEND_URL="${{ secrets.FRONTEND_URL }}" NODE_ENV="production" TRUST_PROXY="1"
             
-            # 5. スタートアップコマンドを設定
+            # 3. スタートアップコマンドを設定
             echo "🚀 Setting startup command..."
-            az webapp config set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --startup-file "node production-server.js" || echo "Startup command setting failed, continuing..."
+            az webapp config set --name ${{ secrets.APP_NAME || 'Emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP || 'rg-Emergencyassistant-app' }}" --startup-file "node production-server.js"
             
-            # 6. Always Onを有効化
-            echo "⚡ Enabling Always On..."
-            az webapp config set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --always-on true || echo "Always On setting failed, continuing..."
-            
-            echo "✅ Azure App Service reset completed"
+            echo "✅ Essential configuration completed"
 
       - name: Force restart after deployment
         uses: azure/CLI@v1

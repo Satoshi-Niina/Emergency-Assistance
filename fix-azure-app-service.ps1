@@ -12,8 +12,8 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # App Service 名とリソースグループ
-$APP_NAME = "emergencyassistance-sv"
-$RESOURCE_GROUP = "emergency-assistance-rg"
+$APP_NAME = "Emergencyassistance-sv"
+$RESOURCE_GROUP = "rg-Emergencyassistant-app"
 
 Write-Host "🔧 App Service 設定を完全リセット中..." -ForegroundColor Yellow
 
