@@ -70,11 +70,14 @@ router.post('/login', async (req, res) => {
     // DB接続（遅延読み込み）
     let pool;
     try {
-      // PG_SSL設定に応じてSSL設定を決定
+      // 開発環境ではSSLを無効にする
+      const isDevelopment = process.env.NODE_ENV === 'development';
       const sslMode = process.env.PG_SSL || 'prefer';
       let sslConfig;
       
-      if (sslMode === 'disable') {
+      if (isDevelopment) {
+        sslConfig = false;
+      } else if (sslMode === 'disable') {
         sslConfig = false;
       } else if (sslMode === 'require') {
         sslConfig = { rejectUnauthorized: false };
