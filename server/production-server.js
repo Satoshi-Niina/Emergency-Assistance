@@ -113,6 +113,7 @@ app.get('/ping', pingCheck);
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net';
 const ALLOW = new Set([
   FRONTEND_URL,
+  'https://witty-river-012f39e00.1.azurestaticapps.net',
   'http://localhost:5173',
   'http://localhost:5174', 
   'http://localhost:5175',
