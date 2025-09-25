@@ -80,6 +80,7 @@ export default defineConfig(({ command, mode }) => {
     },
     build: {
       outDir: 'dist',
+      assetsDir: 'assets',
       chunkSizeWarningLimit: 2000,
       rollupOptions: {
         input: './index.html',
