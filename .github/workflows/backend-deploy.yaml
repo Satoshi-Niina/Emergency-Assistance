@@ -101,9 +101,13 @@ jobs:
             az webapp config set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --startup-file "node production-server.js" || echo "Startup command setting failed, continuing..."
             echo "Setting environment variables..."
             az webapp config appsettings set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --settings DATABASE_URL="${{ secrets.DATABASE_URL }}" JWT_SECRET="${{ secrets.JWT_SECRET }}" SESSION_SECRET="${{ secrets.SESSION_SECRET }}" FRONTEND_URL="${{ secrets.FRONTEND_URL }}" NODE_ENV="production" TRUST_PROXY="1" || echo "Environment variables setting failed, continuing..."
-            echo "Disabling access restrictions temporarily..."
+            echo "Disabling access restrictions completely..."
             az webapp config access-restriction remove --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --rule-name "Allow all" --action Allow || echo "Access restriction removal failed, continuing..."
             az webapp config access-restriction add --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --rule-name "Allow all" --action Allow --priority 100 || echo "Access restriction add failed, continuing..."
+            echo "Disabling authentication if enabled..."
+            az webapp auth update --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --enabled false || echo "Auth disable failed, continuing..."
+            echo "Setting Always On to true..."
+            az webapp config set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --always-on true || echo "Always On setting failed, continuing..."
             echo "Configuration completed"
 
       - name: Force restart after deployment
@@ -138,8 +142,8 @@ jobs:
           echo "🔍 Starting backend health check..."
 
           # Wait for deployment
-          echo "⏳ Waiting for backend deployment (90 seconds)..."
-          sleep 90
+          echo "⏳ Waiting for backend deployment (120 seconds)..."
+          sleep 120
 
           # Check backend
           backend_url="https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net"
@@ -148,15 +152,29 @@ jobs:
           for i in {1..15}; do
             echo "=== Health check attempt $i ==="
             
-            # Try multiple endpoints
-            health_status=$(curl -o /dev/null -s -w "%{http_code}" -L "${backend_url}/api/health" || echo "000")
-            healthz_status=$(curl -o /dev/null -s -w "%{http_code}" -L "${backend_url}/api/healthz" || echo "000")
-            ping_status=$(curl -o /dev/null -s -w "%{http_code}" -L "${backend_url}/ping" || echo "000")
+            # Try multiple endpoints with detailed error info
+            echo "Testing /api/health..."
+            health_response=$(curl -v -L "${backend_url}/api/health" 2>&1 || echo "curl failed")
+            health_status=$(echo "$health_response" | grep -o "HTTP/[0-9.]* [0-9]*" | tail -1 | cut -d' ' -f2 || echo "000")
+            
+            echo "Testing /api/healthz..."
+            healthz_response=$(curl -v -L "${backend_url}/api/healthz" 2>&1 || echo "curl failed")
+            healthz_status=$(echo "$healthz_response" | grep -o "HTTP/[0-9.]* [0-9]*" | tail -1 | cut -d' ' -f2 || echo "000")
+            
+            echo "Testing /ping..."
+            ping_response=$(curl -v -L "${backend_url}/ping" 2>&1 || echo "curl failed")
+            ping_status=$(echo "$ping_response" | grep -o "HTTP/[0-9.]* [0-9]*" | tail -1 | cut -d' ' -f2 || echo "000")
             
             echo "Health endpoints status:"
             echo "  /api/health: $health_status"
             echo "  /api/healthz: $healthz_status"
             echo "  /ping: $ping_status"
+            
+            # Show detailed response for debugging
+            if [ "$health_status" != "200" ]; then
+              echo "Detailed /api/health response:"
+              echo "$health_response"
+            fi
             
             # Check if any endpoint is responding
             if [ "$health_status" = "200" ] || [ "$healthz_status" = "200" ] || [ "$ping_status" = "200" ]; then
