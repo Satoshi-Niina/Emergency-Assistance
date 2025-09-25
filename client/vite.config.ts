@@ -9,6 +9,7 @@ const __dirname = path.dirname(__filename);
 
 // https://vitejs.dev/config/
 export default defineConfig(({ command, mode }) => {
+  // 本番安定化のためbaseを明示
   // 環境変数を読み込み
   const env = loadEnv(mode, process.cwd(), '');
 
@@ -45,72 +46,16 @@ export default defineConfig(({ command, mode }) => {
   });
 
   return {
+    base: '/',
     plugins: [react()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, './src'),
-        '@shared': path.resolve(__dirname, '../shared'),
-      },
-      extensions: ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.json'],
-    },
-    server: {
-      host: '0.0.0.0',
-      port: clientPort,
-      allowedHosts: true,
-      // ローカル開発環境用の設定
-      watch: {
-        usePolling: false, // ローカルではポーリング不要
-        followSymlinks: true,
-      },
-      hmr: {
-        host: 'localhost',
-        port: clientPort,
-        overlay: true,
-      },
-      proxy: {
-        '/api': {
-          target: 'http://localhost:8000',
-          changeOrigin: true,
-          secure: false,
-        },
-      },
-      fs: {
-        allow: [path.resolve(__dirname, '..')],
-      },
+        '@': path.resolve(__dirname, './src')
+      }
     },
     build: {
       outDir: 'dist',
-      assetsDir: 'assets',
-      chunkSizeWarningLimit: 2000,
-      rollupOptions: {
-        input: './index.html',
-        output: {
-          manualChunks: undefined,
-        },
-      },
-      sourcemap: true,
-      minify: true,
-      target: 'esnext',
-      modulePreload: true,
-    },
-    esbuild: {
-      keepNames: true,
-      legalComments: 'none',
-      target: 'es2015',
-    },
-    define: {
-      // 環境変数をクライアントサイドで利用可能にする
-      __VITE_API_BASE_URL__: JSON.stringify(apiBaseUrl),
-      __VITE_MODE__: JSON.stringify(mode),
-      __VITE_COMMAND__: JSON.stringify(command),
-      // 環境変数を直接定義
-      'import.meta.env.VITE_API_BASE': JSON.stringify(env.VITE_API_BASE),
-      'import.meta.env.VITE_API_BASE_URL': JSON.stringify(
-        env.VITE_API_BASE_URL
-      ),
-      'import.meta.env.NODE_ENV': JSON.stringify(env.NODE_ENV),
-      'import.meta.env.MODE': JSON.stringify(mode),
-    },
-    logLevel: 'info',
+      assetsDir: 'assets'
+    }
   };
 });
