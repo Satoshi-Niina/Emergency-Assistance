@@ -38,18 +38,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
       - name: Clean node_modules
         working-directory: server
         run: rm -rf node_modules
 
-      - name: Clear npm cache
-        working-directory: server
-        run: npm cache clean --force
-
       - name: Install dependencies
         working-directory: server
-        run: npm install --omit=dev --no-cache
+        run: npm ci --omit=dev
 
       - name: Verify server files
         working-directory: server

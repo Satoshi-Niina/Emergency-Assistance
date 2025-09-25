@@ -28,7 +28,7 @@
     "start:prod": "node server/start-production.js",
     "diagnose:azure": "node scripts/diagnose-azure-connections.mjs",
     "install:all": "npm install && cd client && npm install && cd ../server && npm install && cd ../shared && npm install",
-    "clean": "rimraf client/dist server/dist shared/dist *.tsbuildinfo",
+    "clean": "npx rimraf client/dist server/dist shared/dist *.tsbuildinfo",
     "clean:build": "rimraf client/dist server/dist shared/dist",
     "clean:all": "rimraf client/dist server/dist shared/dist node_modules client/node_modules server/node_modules shared/node_modules *.tsbuildinfo",
     "typecheck": "tsc --noEmit",
