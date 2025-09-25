@@ -45,7 +45,17 @@ jobs:
           cat .env.production
 
       - name: Build
-        run: npm run build
+        run: |
+          echo "=== Starting build process ==="
+          npm run build
+          echo "=== Build completed ==="
+          echo "=== Checking dist folder ==="
+          ls -la dist/
+          echo "=== Checking index.html ==="
+          cat dist/index.html
+          echo "=== Checking assets folder ==="
+          ls -la dist/assets/ || echo "No assets folder found"
+          echo "=== Build verification complete ==="
 
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
