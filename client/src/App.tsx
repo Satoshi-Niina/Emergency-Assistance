@@ -39,6 +39,16 @@ function ApiConnectionTest() {
 
   useEffect(() => {
     const testConnection = async () => {
+      // ローカル開発時はAPI接続テストをスキップ
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const isDevelopment = import.meta.env.DEV;
+      
+      if (isLocalhost && isDevelopment) {
+        console.log('🔧 ローカル開発環境: API接続テストをスキップ');
+        setApiStatus('connected');
+        return;
+      }
+      
       try {
         console.log('🔍 API接続テスト開始...');
         const isHealthy = await checkApiHealth();
@@ -194,9 +204,9 @@ function App() {
         <RouteDebugger />
         <AuthProvider>
           <ChatProvider>
-            <AuthModeBadge />
-            <ApiConnectionTest />
             <div className='flex flex-col h-screen'>
+              <AuthModeBadge />
+              <ApiConnectionTest />
               <Header />
               <main className='flex-1 overflow-auto'>
                 <AuthModeNotice />

@@ -43,6 +43,12 @@ export function buildApiUrl(path: string): string {
     return `/api${cleanPath}`;
   }
   
+  // ローカル開発環境でAPIサーバーが起動していない場合はモックレスポンスを返す
+  if (isDevelopment && !API_BASE_URL.includes('localhost')) {
+    console.log('🔧 ローカル開発環境: API接続をスキップ');
+    return '/api/mock' + cleanPath;
+  }
+  
   // その他の場合は絶対URLを使用
   return `${API_BASE_URL}/api${cleanPath}`;
 }

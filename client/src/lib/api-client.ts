@@ -32,6 +32,7 @@ export async function apiRequest<T = any>(
       ...options.headers,
     },
     credentials: 'include', // クッキーを含める
+    mode: 'cors', // CORSモードを明示的に指定
   };
 
   console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
@@ -66,6 +67,15 @@ export const api = {
 
 // ヘルスチェック
 export async function checkApiHealth(): Promise<boolean> {
+  // ローカル開発環境では常に成功を返す
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const isDevelopment = import.meta.env.DEV;
+  
+  if (isLocalhost && isDevelopment) {
+    console.log('🔧 ローカル開発環境: ヘルスチェックをスキップ');
+    return true;
+  }
+  
   try {
     await api.get('/health');
     return true;

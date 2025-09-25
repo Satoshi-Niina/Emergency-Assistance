@@ -33,7 +33,6 @@ export const API_BASE_URL = (() => {
 })();
 
 console.log('🔧 API設定詳細:', {
-  isReplitEnvironment,
   isAzureEnvironment,
   isProduction,
   isDevelopment,

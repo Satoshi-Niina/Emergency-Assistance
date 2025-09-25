@@ -4,7 +4,7 @@ Write-Host "🚀 開発環境を起動中..." -ForegroundColor Green
 # 環境変数を設定
 $env:NODE_ENV = "development"
 $env:PORT = "8000"
-$env:DATABASE_URL = "postgresql://postgres@localhost:5432/emergency_assistance"
+$env:DATABASE_URL = "postgresql://postgres@localhost:5432/emergency_assistance?sslmode=disable"
 $env:JWT_SECRET = "dev-jwt-secret-key-32-characters-long"
 $env:SESSION_SECRET = "dev-session-secret-32-characters-long"
 $env:FRONTEND_URL = "http://localhost:5174"

@@ -111,15 +111,34 @@ app.get('/ping', pingCheck);
 
 // ② CORS：Originなしは許可、未許可は "false" を返す（throw しない）
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net';
-const ALLOW = new Set([FRONTEND_URL]);
+const ALLOW = new Set([
+  FRONTEND_URL,
+  'http://localhost:5173',
+  'http://localhost:5174', 
+  'http://localhost:5175',
+  'http://localhost:5176',
+  'http://localhost:5177',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+  'http://127.0.0.1:5175',
+  'http://127.0.0.1:5176',
+  'http://127.0.0.1:5177'
+]);
 const corsOptions = {
   credentials: true,
   origin: (origin, cb) => {
-    if (!origin) return cb(null, true);        // ヘルス/直叩き/curl を許可
+    console.log('🔍 CORS Origin check:', { origin, allowed: ALLOW.has(origin) });
+    // 開発環境では localhost をすべて許可
+    if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return cb(null, true);
+    }
     if (ALLOW.has(origin)) return cb(null, true);
-    return cb(null, false);                    // 403/500にせず CORS ヘッダを付けない
+    console.log('❌ CORS Origin rejected:', origin);
+    return cb(null, false);
   },
-  optionsSuccessStatus: 204
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));           // ③ Preflight も同方針
@@ -171,12 +190,16 @@ function initializeDatabase() {
   }
 
   try {
+    // 開発環境ではSSLを無効にする
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const sslConfig = isDevelopment ? false : { 
+      require: true, 
+      rejectUnauthorized: false 
+    };
+    
     dbPool = new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: { 
-        require: true, 
-        rejectUnauthorized: false 
-      },
+      ssl: sslConfig,
       max: 10,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
