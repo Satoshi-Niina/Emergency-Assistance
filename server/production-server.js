@@ -39,14 +39,37 @@ app.use(helmet({
 }));
 
 // ① ヘルスは CORS より前（Originなしでも通す）
-const health = (_req, res) => res.status(200).json({ ok: true });
+const health = async (req, res) => {
+  try {
+    // データベース接続チェック
+    if (dbPool) {
+      await dbPool.query('SELECT NOW()');
+    }
+    
+    res.status(200).json({ 
+      ok: true, 
+      timestamp: new Date().toISOString(),
+      database: dbPool ? 'connected' : 'not_initialized',
+      environment: process.env.NODE_ENV || 'development'
+    });
+  } catch (error) {
+    console.error('❌ Health check failed:', error);
+    res.status(500).json({ 
+      ok: false, 
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+};
+
 app.get('/api/health', health);
 app.get('/api/healthz', health);
 app.get('/health', health);
 app.get('/healthz', health);
 
 // ② CORS：Originなしは許可、未許可は "false" を返す（throw しない）
-const ALLOW = new Set(['https://witty-river-012f39e00.1.azurestaticapps.net']);
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net';
+const ALLOW = new Set([FRONTEND_URL]);
 const corsOptions = {
   credentials: true,
   origin: (origin, cb) => {
@@ -94,7 +117,54 @@ app.use((req, res, next) => {
   next();
 });
 
-// PostgreSQL pool initialization removed - handled in auth routes
+// PostgreSQL pool initialization
+const { Pool } = require('pg');
+
+// データベース接続プールの初期化
+let dbPool = null;
+
+function initializeDatabase() {
+  if (!process.env.DATABASE_URL) {
+    console.error('❌ DATABASE_URL is required');
+    process.exit(1);
+  }
+
+  try {
+    dbPool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { 
+        require: true, 
+        rejectUnauthorized: false 
+      },
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+    });
+
+    // 接続テスト
+    dbPool.query('SELECT NOW()', (err, result) => {
+      if (err) {
+        console.error('❌ Database connection test failed:', err.message);
+      } else {
+        console.log('✅ Database connection test successful:', result.rows[0]);
+      }
+    });
+
+    console.log('✅ Database pool initialized');
+  } catch (error) {
+    console.error('❌ Database initialization failed:', error);
+    process.exit(1);
+  }
+}
+
+// データベース接続を初期化
+initializeDatabase();
+
+// データベース接続をリクエストに追加
+app.use((req, res, next) => {
+  req.db = dbPool;
+  next();
+});
 
 // Authentication middleware
 const authenticateToken = (req, res, next) => {

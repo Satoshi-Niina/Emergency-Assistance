@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import {
   BrowserRouter as Router,
   Routes,
@@ -14,6 +14,7 @@ import { Toaster } from './components/ui/toaster';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { RouteDebugger } from './components/shared/RouteDebugger';
 import { DebugError } from './components/shared/DebugError';
+import { checkApiHealth } from './lib/api-client';
 
 // Lazy load pages
 import { lazy } from 'react';
@@ -30,6 +31,66 @@ const BaseDataPage = lazy(() => import('./pages/base-data'));
 const MachineManagementPage = lazy(() => import('./pages/machine-management'));
 
 const NotFoundPage = lazy(() => import('./pages/not-found'));
+
+// API接続テストコンポーネント
+function ApiConnectionTest() {
+  const [apiStatus, setApiStatus] = useState<'checking' | 'connected' | 'failed'>('checking');
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const testConnection = async () => {
+      try {
+        console.log('🔍 API接続テスト開始...');
+        const isHealthy = await checkApiHealth();
+        if (isHealthy) {
+          setApiStatus('connected');
+          console.log('✅ API接続成功');
+        } else {
+          setApiStatus('failed');
+          setError('API接続に失敗しました');
+          console.log('❌ API接続失敗');
+        }
+      } catch (err) {
+        setApiStatus('failed');
+        setError(err instanceof Error ? err.message : '不明なエラー');
+        console.error('❌ API接続エラー:', err);
+      }
+    };
+
+    testConnection();
+  }, []);
+
+  if (apiStatus === 'checking') {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">API接続を確認中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (apiStatus === 'failed') {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center max-w-md mx-auto p-6 bg-red-50 border border-red-200 rounded-lg">
+          <div className="text-red-600 text-4xl mb-4">⚠️</div>
+          <h2 className="text-xl font-bold text-red-800 mb-2">API接続エラー</h2>
+          <p className="text-red-600 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            ページを再読み込み
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return null; // 接続成功時は何も表示しない
+}
 
 // 認証状態に基づいてルートパスを制御するコンポーネント
 function RootRedirect() {
@@ -134,6 +195,7 @@ function App() {
         <AuthProvider>
           <ChatProvider>
             <AuthModeBadge />
+            <ApiConnectionTest />
             <div className='flex flex-col h-screen'>
               <Header />
               <main className='flex-1 overflow-auto'>

@@ -39,6 +39,7 @@ jobs:
         run: |
           cat > .env.production << 'EOF'
           VITE_API_BASE_URL=https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net
+          VITE_API_BASE=https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net
           NODE_ENV=production
           EOF
           echo "=== Created .env.production ==="

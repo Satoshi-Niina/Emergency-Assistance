@@ -97,10 +97,10 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            echo "Setting startup command to 'node index.js'..."
-            az webapp config set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --startup-file "node index.js" || echo "Startup command setting failed, continuing..."
+            echo "Setting startup command to 'node production-server.js'..."
+            az webapp config set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --startup-file "node production-server.js" || echo "Startup command setting failed, continuing..."
             echo "Setting environment variables..."
-            az webapp config appsettings set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --settings DATABASE_URL="${{ secrets.DATABASE_URL }}" JWT_SECRET="${{ secrets.JWT_SECRET }}" || echo "Environment variables setting failed, continuing..."
+            az webapp config appsettings set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --settings DATABASE_URL="${{ secrets.DATABASE_URL }}" JWT_SECRET="${{ secrets.JWT_SECRET }}" SESSION_SECRET="${{ secrets.SESSION_SECRET }}" FRONTEND_URL="${{ secrets.FRONTEND_URL }}" NODE_ENV="production" TRUST_PROXY="1" || echo "Environment variables setting failed, continuing..."
             echo "Configuration completed"
 
       - name: Force restart after deployment
