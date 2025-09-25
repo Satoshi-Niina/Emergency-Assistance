@@ -16,7 +16,7 @@
     "dev:client": "cd client && vite",
     "dev:pre-deploy-server": "cd server && set PORT=3001 && npm run dev",
     "dev:pre-deploy-client": "cd client && vite",
-    "dev:local-server": "tsx server/index.dev.ts",
+    "dev:local-server": "cd server && node production-server.js",
     "dev:local-client": "cd client && vite",
     "dev:api": "cd api && func start",
     "watch": "concurrently \"npm run dev:server\" \"npm run dev:client\" \"npm run dev:api\"",
