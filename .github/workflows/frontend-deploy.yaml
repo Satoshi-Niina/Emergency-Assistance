@@ -39,6 +39,9 @@ jobs:
       - name: Clear npm cache
         run: npm cache clean --force
 
+      - name: Clean dist folder
+        run: npm run clean
+
       - name: Install deps
         run: npm ci --no-cache
 
