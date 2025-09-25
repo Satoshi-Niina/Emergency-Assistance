@@ -93,22 +93,38 @@ jobs:
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: server-deploy.zip
 
-      - name: Set startup command and environment variables
+      - name: Complete Azure App Service Reset
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            echo "Setting startup command to 'node production-server.js'..."
-            az webapp config set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --startup-file "node production-server.js" || echo "Startup command setting failed, continuing..."
-            echo "Setting environment variables..."
-            az webapp config appsettings set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --settings DATABASE_URL="${{ secrets.DATABASE_URL }}" JWT_SECRET="${{ secrets.JWT_SECRET }}" SESSION_SECRET="${{ secrets.SESSION_SECRET }}" FRONTEND_URL="${{ secrets.FRONTEND_URL }}" NODE_ENV="production" TRUST_PROXY="1" || echo "Environment variables setting failed, continuing..."
-            echo "Disabling access restrictions completely..."
-            az webapp config access-restriction remove --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --rule-name "Allow all" --action Allow || echo "Access restriction removal failed, continuing..."
-            az webapp config access-restriction add --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --rule-name "Allow all" --action Allow --priority 100 || echo "Access restriction add failed, continuing..."
-            echo "Disabling authentication if enabled..."
+            echo "🔧 Starting complete Azure App Service reset..."
+            
+            # 1. 認証を完全に無効化
+            echo "🔐 Disabling authentication completely..."
             az webapp auth update --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --enabled false || echo "Auth disable failed, continuing..."
-            echo "Setting Always On to true..."
+            
+            # 2. すべてのアクセス制限を削除
+            echo "🚪 Removing all access restrictions..."
+            az webapp config access-restriction remove --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --rule-name "Allow all" --action Allow || echo "Access restriction removal failed, continuing..."
+            az webapp config access-restriction remove --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --rule-name "Deny all" --action Deny || echo "Access restriction removal failed, continuing..."
+            
+            # 3. 新しい許可ルールを追加
+            echo "✅ Adding new allow rule..."
+            az webapp config access-restriction add --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --rule-name "Allow all" --action Allow --priority 100 || echo "Access restriction add failed, continuing..."
+            
+            # 4. 環境変数を設定
+            echo "📝 Setting environment variables..."
+            az webapp config appsettings set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --settings DATABASE_URL="${{ secrets.DATABASE_URL }}" JWT_SECRET="${{ secrets.JWT_SECRET }}" SESSION_SECRET="${{ secrets.SESSION_SECRET }}" FRONTEND_URL="${{ secrets.FRONTEND_URL }}" NODE_ENV="production" TRUST_PROXY="1" || echo "Environment variables setting failed, continuing..."
+            
+            # 5. スタートアップコマンドを設定
+            echo "🚀 Setting startup command..."
+            az webapp config set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --startup-file "node production-server.js" || echo "Startup command setting failed, continuing..."
+            
+            # 6. Always Onを有効化
+            echo "⚡ Enabling Always On..."
             az webapp config set --name ${{ secrets.APP_NAME || 'emergencyassistance-sv' }} --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" --always-on true || echo "Always On setting failed, continuing..."
-            echo "Configuration completed"
+            
+            echo "✅ Azure App Service reset completed"
 
       - name: Force restart after deployment
         uses: azure/CLI@v1
