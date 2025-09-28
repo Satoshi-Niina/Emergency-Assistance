@@ -7,7 +7,7 @@ import {
 } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { ArrowLeft, ArrowRight, X } from 'lucide-react';
-import { convertImageUrl } from '../../lib/utils.ts';
+import { convertImageUrl } from '../../lib/image-utils.ts';
 import { buildApiUrl } from '../../lib/api/config.ts';
 
 interface Step {
@@ -46,7 +46,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
       try {
         setLoading(true);
         const response = await fetch(
-          buildApiUrl(`/api/troubleshooting/${flowId}`),
+          `http://localhost:8000/api/emergency-flow/detail/${flowId}`,
           {
             method: 'GET',
             credentials: 'include', // セッション維持のため必須
@@ -59,7 +59,13 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
         );
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch flow data: ${response.status}`);
+          const errorText = await response.text();
+          console.error('❌ API エラーレスポンス:', {
+            status: response.status,
+            statusText: response.statusText,
+            body: errorText
+          });
+          throw new Error(`Failed to fetch flow data: ${response.status} - ${errorText}`);
         }
 
         const responseData = await response.json();
@@ -251,6 +257,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
                     index,
                     fileName: altText,
                     convertedUrl: imageUrl,
+                    originalImg: img,
                   });
                   return (
                     <div key={index} className='relative'>
@@ -258,6 +265,7 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
                         src={imageUrl}
                         alt={altText}
                         className='w-full h-48 object-cover rounded-lg border'
+                        crossOrigin="anonymous"
                         onLoad={() => {
                           console.log('✅ 画像読み込み成功:', {
                             fileName: altText,

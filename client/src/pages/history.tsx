@@ -46,6 +46,7 @@ import {
   advancedSearch,
   generateReport,
 } from '../lib/api/history-api';
+import { storage } from '../lib/api-unified';
 import ChatExportReport from '../components/report/chat-export-report';
 
 // 画像ユーティリティ関数
@@ -113,30 +114,6 @@ interface MachineData {
 }
 
 const HistoryPage: React.FC = () => {
-  // BLOBファイル一覧表示用
-  const [blobFiles, setBlobFiles] = useState<any[]>([]);
-  const [blobLoading, setBlobLoading] = useState(false);
-  useEffect(() => {
-    const fetchBlobFileList = async () => {
-      setBlobLoading(true);
-      try {
-        const API_BASE =
-          import.meta.env.VITE_API_BASE_URL || window.location.origin;
-        const res = await fetch(
-          `${API_BASE}/api/blob/list?container=knowledge`
-        );
-        const data = await res.json();
-        if (data.success) {
-          setBlobFiles(data.data);
-        }
-      } catch (e) {
-        setBlobFiles([]);
-      } finally {
-        setBlobLoading(false);
-      }
-    };
-    fetchBlobFileList();
-  }, []);
   const [historyItems, setHistoryItems] = useState<SupportHistoryItem[]>([]);
   const [filteredItems, setFilteredItems] = useState<SupportHistoryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -196,6 +173,19 @@ const HistoryPage: React.FC = () => {
   });
 
   const [searchFilterLoading, setSearchFilterLoading] = useState(false);
+
+  // アイテム選択ハンドラー
+  const handleItemSelect = (itemId: string, isSelected: boolean) => {
+    setSelectedItems(prev => {
+      const newSet = new Set(prev);
+      if (isSelected) {
+        newSet.add(itemId);
+      } else {
+        newSet.delete(itemId);
+      }
+      return newSet;
+    });
+  };
 
   // JSONデータを正規化する関数
   const normalizeJsonData = (item: SupportHistoryItem): SupportHistoryItem => {
@@ -343,7 +333,7 @@ const HistoryPage: React.FC = () => {
 
       // 機種・機械番号データを専用APIから取得
       console.log('🔍 機種・機械番号データ取得開始');
-      const response = await fetch('/api/history/machine-data');
+      const response = await fetch('http://localhost:8000/api/history/machine-data');
       console.log('🔍 APIレスポンス:', response.status, response.statusText);
       const data = await response.json();
       console.log('🔍 APIレスポンスデータ:', data);
@@ -400,29 +390,28 @@ const HistoryPage: React.FC = () => {
     }
   };
 
-  // 履歴検索フィルター用データ（保存されたJSONファイルから取得）
+  // 履歴検索フィルター用データ（履歴データから動的に生成）
   const fetchSearchFilterData = async () => {
     try {
       setSearchFilterLoading(true);
-      console.log('🔍 履歴検索フィルターデータ取得開始');
+      console.log('🔍 履歴検索フィルターデータ生成開始');
 
-      const response = await fetch('/api/history/search-filters');
-      const result = await response.json();
+      // 履歴データから動的にフィルターデータを生成
+      const allItems = [...historyItems];
+      const machineTypes = [...new Set(allItems.map(item => item.machineType).filter(Boolean))];
+      const machineNumbers = [...new Set(allItems.map(item => item.machineNumber).filter(Boolean))];
 
-      if (result.success) {
-        setSearchFilterData({
-          machineTypes: result.machineTypes || [],
-          machineNumbers: result.machineNumbers || [],
-        });
-        console.log('🔍 履歴検索フィルターデータ取得完了:', {
-          machineTypes: result.machineTypes?.length || 0,
-          machineNumbers: result.machineNumbers?.length || 0,
-        });
-      } else {
-        console.error('履歴検索フィルターデータ取得失敗:', result.error);
-      }
+      setSearchFilterData({
+        machineTypes,
+        machineNumbers,
+      });
+      
+      console.log('🔍 履歴検索フィルターデータ生成完了:', {
+        machineTypes: machineTypes.length,
+        machineNumbers: machineNumbers.length,
+      });
     } catch (error) {
-      console.error('履歴検索フィルターデータ取得エラー:', error);
+      console.error('履歴検索フィルターデータ生成エラー:', error);
     } finally {
       setSearchFilterLoading(false);
     }
@@ -443,16 +432,30 @@ const HistoryPage: React.FC = () => {
       params.append('limit', '20');
       params.append('offset', ((page - 1) * 20).toString());
 
-      const response = await fetch(`/api/history?${params.toString()}`);
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      const requestUrl = `${apiBaseUrl}/api/history?${params.toString()}`;
+      console.log('🔍 APIリクエストURL:', requestUrl);
+      
+      const response = await fetch(requestUrl);
+      console.log('🔍 レスポンスステータス:', response.status, response.statusText);
+      
       const data = await response.json();
 
       console.log('🔍 取得したデータ:', data);
+      console.log('🔍 レスポンス構造:', {
+        success: data.success,
+        hasItems: !!data.items,
+        hasData: !!data.data,
+        itemsLength: data.items?.length,
+        dataLength: data.data?.length,
+        total: data.total
+      });
 
-      if (data.success && data.items) {
-        console.log('🔍 取得件数:', data.items.length);
+      if (data.success && data.data) {
+        console.log('🔍 取得件数:', data.data.length);
 
         // 機種・機械番号データの確認
-        data.items.forEach((item: any, index: number) => {
+        data.data.forEach((item: any, index: number) => {
           console.log(`🔍 アイテム ${index + 1}:`, {
             fileName: item.fileName,
             machineType: item.machineType,
@@ -462,7 +465,7 @@ const HistoryPage: React.FC = () => {
         });
 
         // ローカルストレージから保存されたデータを読み込んで履歴データを更新
-        const updatedItems = data.items.map((item: any) => {
+        const updatedItems = data.data.map((item: any) => {
           const savedKey =
             'savedMachineFailureReport_' + (item.id || item.chatId);
           const savedData = localStorage.getItem(savedKey);
@@ -524,10 +527,21 @@ const HistoryPage: React.FC = () => {
           return convertedItem;
         });
 
+        console.log('🔍 設定前の状態:', {
+          historyItemsLength: historyItems.length,
+          filteredItemsLength: filteredItems.length,
+          updatedItemsLength: updatedItems.length
+        });
+        
         setHistoryItems(updatedItems);
         setFilteredItems(updatedItems);
         setTotalPages(Math.ceil(data.total / 20));
         setCurrentPage(page);
+        
+        console.log('🔍 設定後の状態:', {
+          updatedItemsLength: updatedItems.length,
+          totalPages: Math.ceil(data.total / 20)
+        });
       } else {
         console.log('🔍 データ取得成功せず:', data);
         setHistoryItems([]);
@@ -536,6 +550,10 @@ const HistoryPage: React.FC = () => {
       }
     } catch (error) {
       console.error('履歴データの取得に失敗しました:', error);
+      console.error('エラー詳細:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
       setHistoryItems([]);
       setFilteredItems([]);
       setTotalPages(1);
@@ -544,14 +562,19 @@ const HistoryPage: React.FC = () => {
     }
   };
 
-  // 検索とフィルタリング
+  // 初期ロード
   useEffect(() => {
-    // 初期ロード時のみ実行
-    if (currentPage === 1 && historyItems.length === 0) {
+    fetchHistoryData(1);
+    fetchSearchFilterData(); // 履歴検索用フィルターデータを取得
+  }, []); // 初期ロード時のみ実行
+
+  // フィルター変更時の処理
+  useEffect(() => {
+    // フィルターが変更された時のみ再取得（初期ロード時は除外）
+    if (historyItems.length > 0) {
       fetchHistoryData(1);
-      fetchSearchFilterData(); // 履歴検索用フィルターデータを取得
     }
-  }, []); // filtersの依存を削除
+  }, [filters]); // filtersの変更を監視
 
   // フィルター変更時の処理
   const handleFilterChange = (key: keyof SearchFilters, value: string) => {
@@ -3093,8 +3116,14 @@ const HistoryPage: React.FC = () => {
   };
 
   const handlePrintReport = (item: SupportHistoryItem) => {
+    console.log('🖨️ 印刷レポート開始:', item);
     const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
+    if (!printWindow) {
+      console.error('❌ 印刷ウィンドウを開けませんでした');
+      alert('印刷ウィンドウを開けませんでした。ポップアップブロックを無効にしてください。');
+      return;
+    }
+    console.log('✅ 印刷ウィンドウを開きました');
 
     const jsonData = item.jsonData;
 
@@ -3395,7 +3424,7 @@ const HistoryPage: React.FC = () => {
             </div>
             <div class="info-item">
               <strong>日付</strong>
-              ${new Date(item.createdAt).toISOString().split('T')[0]}
+              ${item.createdAt ? new Date(item.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
             </div>
             <div class="info-item">
               <strong>場所</strong>
@@ -3470,8 +3499,57 @@ const HistoryPage: React.FC = () => {
       </html>
     `;
 
-    printWindow.document.write(reportContent);
-    printWindow.document.close();
+    console.log('🖨️ HTMLコンテンツの長さ:', reportContent.length);
+    console.log('🖨️ HTMLコンテンツの先頭100文字:', reportContent.substring(0, 100));
+    
+    // HTMLコンテンツを書き込み
+    try {
+      printWindow.document.write(reportContent);
+      printWindow.document.close();
+      console.log('✅ document.write()でHTMLを書き込みました');
+    } catch (writeError) {
+      console.error('❌ document.write()でエラー:', writeError);
+      // 代替方法: innerHTMLを使用
+      try {
+        printWindow.document.documentElement.innerHTML = reportContent;
+        console.log('✅ innerHTMLでHTMLを書き込みました');
+      } catch (innerError) {
+        console.error('❌ innerHTMLでもエラー:', innerError);
+        // 最終手段: 新しいドキュメントを作成
+        printWindow.document.open();
+        printWindow.document.write(reportContent);
+        printWindow.document.close();
+        console.log('✅ 新しいドキュメントでHTMLを書き込みました');
+      }
+    }
+    
+    // 追加の確認: 書き込まれたHTMLを確認
+    setTimeout(() => {
+      console.log('🖨️ 書き込まれたHTMLの長さ:', printWindow.document.documentElement.innerHTML.length);
+      console.log('🖨️ 書き込まれたHTMLの先頭100文字:', printWindow.document.documentElement.innerHTML.substring(0, 100));
+    }, 100);
+    
+    console.log('✅ 印刷レポートHTMLを書き込みました');
+    
+    // 印刷ウィンドウが読み込まれた後に印刷ダイアログを表示
+    printWindow.onload = () => {
+      console.log('✅ 印刷ウィンドウが読み込まれました');
+      // 印刷ウィンドウをフォーカスして表示
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+        console.log('✅ 印刷ダイアログを表示しました');
+      }, 1000);
+    };
+    
+    // フォールバック: 一定時間後に印刷ダイアログを表示
+    setTimeout(() => {
+      if (!printWindow.closed) {
+        printWindow.focus();
+        printWindow.print();
+        console.log('✅ フォールバック: 印刷ダイアログを表示しました');
+      }
+    }, 2000);
   };
 
   // ローディング状態の表示
@@ -3534,21 +3612,6 @@ const HistoryPage: React.FC = () => {
             {/* 日付検索 */}
             <div>
               {/* UI表示時に自動取得するためボタンは削除 */}
-              {blobLoading && <div>取得中...</div>}
-              {blobFiles.length > 0 && (
-                <div style={{ marginBottom: 16 }}>
-                  <h3>🗂️ BLOBファイル一覧</h3>
-                  <ul>
-                    {blobFiles.map((file, idx) => (
-                      <li key={idx}>
-                        {typeof file === 'string'
-                          ? file
-                          : file.name || 'Unknown file'}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
               <div className='space-y-2'>
                 <Input
                   type='date'
@@ -3674,6 +3737,11 @@ const HistoryPage: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {console.log('🔍 レンダリング時の状態:', {
+            filteredItemsLength: filteredItems.length,
+            historyItemsLength: historyItems.length,
+            loading: loading
+          })}
           {filteredItems.length === 0 ? (
             <div className='text-center py-8'>
               <FileText className='h-12 w-12 text-gray-400 mx-auto mb-4' />
@@ -3723,6 +3791,7 @@ const HistoryPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
+                    {/* 履歴アイテムを表示 */}
                     {filteredItems.map(item => {
                       // 新しいフォーマットのデータ構造に合わせて表示
                       const jsonData = item.jsonData;
@@ -3904,6 +3973,7 @@ const HistoryPage: React.FC = () => {
                         </tr>
                       );
                     })}
+                    
                   </tbody>
                 </table>
               </div>
@@ -4167,7 +4237,36 @@ const HistoryPage: React.FC = () => {
                     保存
                   </Button>
                   <Button
-                    onClick={() => handlePrintReport(editingItem)}
+                    onClick={() => {
+                      console.log('🖨️ 編集ダイアログから印刷を実行:', editingItem);
+                      console.log('🖨️ editingItem.jsonData:', editingItem.jsonData);
+                      console.log('🖨️ editingItem.id:', editingItem.id);
+                      console.log('🖨️ editingItem.fileName:', editingItem.fileName);
+                      
+                      // 編集画面のHTML生成処理を使用
+                      const reportHTML = generateMachineFailureReportHTML(editingItem.jsonData);
+                      console.log('🖨️ 生成されたHTMLの長さ:', reportHTML.length);
+                      
+                      // 新しいウィンドウで編集画面を開く
+                      const editWindow = window.open('', '_blank', 'width=1200,height=800');
+                      if (!editWindow) {
+                        alert('印刷ウィンドウを開けませんでした。ポップアップブロックを無効にしてください。');
+                        return;
+                      }
+                      
+                      editWindow.document.write(reportHTML);
+                      editWindow.document.close();
+                      
+                      // 編集画面が読み込まれた後に印刷ダイアログを表示
+                      editWindow.onload = () => {
+                        console.log('✅ 編集画面が読み込まれました');
+                        editWindow.focus();
+                        setTimeout(() => {
+                          editWindow.print();
+                          console.log('✅ 印刷ダイアログを表示しました');
+                        }, 1000);
+                      };
+                    }}
                     className='flex items-center gap-2'
                   >
                     <Printer className='h-4 w-4' />

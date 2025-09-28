@@ -8,7 +8,7 @@ import {
   CreateUserRequest,
   ExportHistoryItem,
 } from '../../types/history';
-import { apiFetch } from '../apiClient';
+import { apiRequest } from '../api-unified';
 
 // 履歴データから機種・機械番号一覧取得
 export const fetchMachineData = async (): Promise<{
@@ -20,7 +20,7 @@ export const fetchMachineData = async (): Promise<{
   }>;
 }> => {
   try {
-    return await apiFetch('/history/machine-data');
+    return await apiRequest('/history/machine-data');
   } catch (error) {
     console.error('機種データ取得エラー:', error);
     // エラーの場合は空のデータを返す
@@ -46,7 +46,7 @@ export const fetchHistoryList = async (
     if (filters.limit) params.append('limit', filters.limit.toString());
     if (filters.offset) params.append('offset', filters.offset.toString());
 
-    const response = await apiFetch(`/history?${params.toString()}`);
+    const response = await apiRequest(`/history?${params.toString()}`);
 
     if (!response.ok) {
       console.warn(
@@ -78,7 +78,7 @@ export const fetchHistoryList = async (
 export const fetchHistoryDetail = async (
   id: string
 ): Promise<SupportHistoryItem> => {
-  const response = await apiFetch(`/history/${id}`);
+  const response = await apiRequest(`/history/${id}`);
 
   if (!response.ok) {
     throw new Error(`Failed to fetch history detail: ${response.statusText}`);
@@ -103,7 +103,7 @@ export const createHistory = async (data: {
     formData.append('image', data.image);
   }
 
-  return await apiFetch('/history', {
+  return await apiRequest('/history', {
     method: 'POST',
     body: formData,
   });
@@ -111,7 +111,7 @@ export const createHistory = async (data: {
 
 // 履歴削除
 export const deleteHistory = async (id: string): Promise<void> => {
-  const response = await apiFetch(`/history/${id}`, {
+  const response = await apiRequest(`/history/${id}`, {
     method: 'DELETE',
   });
 
@@ -122,7 +122,7 @@ export const deleteHistory = async (id: string): Promise<void> => {
 
 // 基礎データ取得
 export const fetchBaseData = async (): Promise<BaseDataResponse> => {
-  return await apiFetch('/base-data');
+  return await apiRequest('/base-data');
 };
 
 // 処理済みファイル一覧取得
@@ -184,7 +184,7 @@ export const exportHistoryItem = async (
   id: string,
   format: 'json' | 'csv' = 'json'
 ): Promise<Blob> => {
-  const response = await apiFetch(`/history/${id}/export?format=${format}`);
+  const response = await apiRequest(`/history/${id}/export?format=${format}`);
 
   if (!response.ok) {
     throw new Error(`Failed to export history: ${response.statusText}`);
@@ -227,7 +227,7 @@ export const exportAllHistory = async (
   if (filters.machineNumber)
     params.append('machineNumber', filters.machineNumber);
 
-  const response = await apiFetch(`/history/export-all?${params.toString()}`);
+  const response = await apiRequest(`/history/export-all?${params.toString()}`);
 
   if (!response.ok) {
     throw new Error(`Failed to export all history: ${response.statusText}`);

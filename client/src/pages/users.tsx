@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getJson } from '../lib/apiClient';
+import { api } from '../lib/api-unified';
 import { useAuth } from '../context/auth-context';
 import { useToast } from '../hooks/use-toast';
 import * as XLSX from 'xlsx';
@@ -124,7 +124,7 @@ export default function UsersPage() {
       try {
         setIsLoading(true);
         setQueryError(null);
-        const userData = await getJson('/users');
+        const userData = await api.get('/users');
         if (userData.success && userData.data) {
           setUsers(userData.data);
           setFilteredUsers(userData.data);
@@ -236,7 +236,7 @@ export default function UsersPage() {
         return;
       }
 
-      const result = await getJson('/users', {
+      const result = await api.get('/users', {
         method: 'POST',
         body: JSON.stringify(newUser),
       });
@@ -290,7 +290,7 @@ export default function UsersPage() {
         return;
       }
 
-      const result = await getJson(`/users/${editUser.id}`, {
+      const result = await api.get(`/users/${editUser.id}`, {
         method: 'PUT',
         body: JSON.stringify(editUser),
       });
@@ -330,7 +330,7 @@ export default function UsersPage() {
     try {
       if (!selectedUserId) return;
 
-      const result = await getJson(`/users/${selectedUserId}`, {
+      const result = await api.get(`/users/${selectedUserId}`, {
         method: 'DELETE',
       });
       console.log('✅ ユーザー削除成功:', result);
@@ -376,7 +376,7 @@ export default function UsersPage() {
       const formData = new FormData();
       formData.append('file', importFile);
 
-      const result = await getJson('/users/import', {
+      const result = await api.get('/users/import', {
         method: 'POST',
         body: formData,
       });
@@ -554,7 +554,7 @@ export default function UsersPage() {
       const formData = new FormData();
       formData.append('file', importFile);
 
-      const result = await getJson('/users/import-excel', {
+      const result = await api.get('/users/import-excel', {
         method: 'POST',
         body: formData,
       });
@@ -569,7 +569,7 @@ export default function UsersPage() {
         // ユーザー一覧を再取得
         const fetchUsers = async () => {
           try {
-            const userData = await getJson('/users');
+            const userData = await api.get('/users');
             if (userData.success && userData.data) {
               setUsers(userData.data);
               setFilteredUsers(userData.data);

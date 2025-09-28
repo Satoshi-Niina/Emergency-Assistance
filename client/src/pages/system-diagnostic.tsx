@@ -20,10 +20,16 @@ import {
 import { useToast } from '../hooks/use-toast';
 
 interface CheckResult {
+  success: boolean;
   status: 'OK' | 'ERROR';
   message?: string;
-  db_time?: string;
-  reply?: string;
+  error?: string;
+  details?: string;
+  connected?: boolean;
+  current_time?: string;
+  version?: string;
+  environment?: string;
+  timestamp?: string;
 }
 
 export default function SystemDiagnosticPage() {
@@ -37,7 +43,7 @@ export default function SystemDiagnosticPage() {
 
   // APIのベースURLを取得
   const apiBaseUrl =
-    import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+    import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
   const checkDatabaseConnection = async () => {
     setIsCheckingDb(true);
@@ -58,7 +64,7 @@ export default function SystemDiagnosticPage() {
       } else {
         toast({
           title: 'DB接続確認',
-          description: result.message || 'データベース接続エラー',
+          description: result.error || result.message || 'データベース接続エラー',
           variant: 'destructive',
         });
       }
@@ -67,7 +73,7 @@ export default function SystemDiagnosticPage() {
         error instanceof Error ? error.message : 'ネットワークエラー';
       setDbCheckResult({
         status: 'ERROR',
-        message: errorMessage,
+        error: errorMessage,
       });
 
       toast({
@@ -107,7 +113,7 @@ export default function SystemDiagnosticPage() {
       } else {
         toast({
           title: 'GPT接続確認',
-          description: result.message || 'GPT接続エラー',
+          description: result.error || result.message || 'GPT接続エラー',
           variant: 'destructive',
         });
       }
@@ -116,7 +122,7 @@ export default function SystemDiagnosticPage() {
         error instanceof Error ? error.message : 'ネットワークエラー';
       setGptCheckResult({
         status: 'ERROR',
-        message: errorMessage,
+        error: errorMessage,
       });
 
       toast({
@@ -216,18 +222,18 @@ export default function SystemDiagnosticPage() {
                   </Badge>
                 </div>
 
-                {dbCheckResult.status === 'OK' && dbCheckResult.db_time && (
+                {dbCheckResult.status === 'OK' && dbCheckResult.current_time && (
                   <div className='text-sm'>
                     <span className='font-medium'>DB時刻:</span>{' '}
-                    {new Date(dbCheckResult.db_time).toLocaleString('ja-JP')}
+                    {new Date(dbCheckResult.current_time).toLocaleString('ja-JP')}
                   </div>
                 )}
 
-                {dbCheckResult.status === 'ERROR' && dbCheckResult.message && (
+                {dbCheckResult.status === 'ERROR' && (dbCheckResult.error || dbCheckResult.message) && (
                   <div className='text-sm text-red-600 bg-red-50 p-3 rounded-md'>
                     <div className='flex items-start gap-2'>
                       <AlertCircle className='h-4 w-4 mt-0.5 flex-shrink-0' />
-                      <span>{dbCheckResult.message}</span>
+                      <span>{dbCheckResult.error || dbCheckResult.message}</span>
                     </div>
                   </div>
                 )}
@@ -282,21 +288,29 @@ export default function SystemDiagnosticPage() {
                   </Badge>
                 </div>
 
-                {gptCheckResult.status === 'OK' && gptCheckResult.reply && (
+                {gptCheckResult.status === 'OK' && gptCheckResult.message && (
                   <div className='text-sm'>
                     <span className='font-medium'>GPT応答:</span>
                     <div className='mt-1 p-2 bg-gray-50 rounded text-xs max-h-20 overflow-y-auto'>
-                      {gptCheckResult.reply}
+                      {gptCheckResult.message}
                     </div>
                   </div>
                 )}
 
                 {gptCheckResult.status === 'ERROR' &&
-                  gptCheckResult.message && (
+                  (gptCheckResult.error || gptCheckResult.message) && (
                     <div className='text-sm text-red-600 bg-red-50 p-3 rounded-md'>
                       <div className='flex items-start gap-2'>
                         <AlertCircle className='h-4 w-4 mt-0.5 flex-shrink-0' />
-                        <span>{gptCheckResult.message}</span>
+                        <div className='flex-1'>
+                          <div className='font-medium'>{gptCheckResult.error}</div>
+                          <div className='text-red-500 mt-1'>{gptCheckResult.message}</div>
+                          {gptCheckResult.details && (
+                            <div className='text-xs text-red-400 mt-1 font-mono'>
+                              {gptCheckResult.details}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}

@@ -16,6 +16,7 @@ import {
 } from '../../components/ui/tabs';
 import EmergencyFlowEditor from './emergency-flow-editor';
 import EmergencyGuideDisplay from './emergency-guide-display';
+import { convertImageUrl } from '../../lib/image-utils';
 
 interface FlowData {
   id: string;
@@ -176,6 +177,9 @@ const FlowList: React.FC<FlowListProps> = ({
                 更新日時
               </th>
               <th className='border border-gray-300 p-3 text-center text-sm font-medium'>
+                画像
+              </th>
+              <th className='border border-gray-300 p-3 text-center text-sm font-medium'>
                 操作
               </th>
             </tr>
@@ -203,6 +207,81 @@ const FlowList: React.FC<FlowListProps> = ({
                   <span className='text-xs text-gray-500'>
                     {formatDate(flow.updatedAt)}
                   </span>
+                </td>
+                <td className='border border-gray-300 p-3'>
+                  <div className='flex justify-center'>
+                    {flow.steps && flow.steps.length > 0 && flow.steps.some((step: any) => step.imageUrl || (step.images && step.images.length > 0)) ? (
+                      <div className='flex gap-1'>
+                        {flow.steps.slice(0, 3).map((step: any, stepIndex: number) => {
+                          // 新しい images 配列を優先的に使用
+                          if (step.images && step.images.length > 0) {
+                            return step.images.slice(0, 1).map((image: any, imageIndex: number) => {
+                              const imageUrl = convertImageUrl(image);
+                              console.log('🖼️ フロー一覧画像表示:', {
+                                stepId: step.id,
+                                imageIndex,
+                                originalImage: image,
+                                convertedUrl: imageUrl
+                              });
+                              return (
+                                <img
+                                  key={`${stepIndex}-${imageIndex}`}
+                                  src={imageUrl}
+                                  alt={`${step.title} - 画像`}
+                                  className='w-8 h-8 object-cover rounded border'
+                                  onError={(e) => {
+                                    console.error('画像読み込みエラー:', {
+                                      imageUrl,
+                                      originalImage: image,
+                                      stepId: step.id
+                                    });
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                  onLoad={() => {
+                                    console.log('画像読み込み成功:', imageUrl);
+                                  }}
+                                />
+                              );
+                            });
+                          }
+                          // 古い imageUrl プロパティの処理（後方互換性）
+                          if (step.imageUrl) {
+                            const imageUrl = convertImageUrl(step.imageUrl);
+                            console.log('🖼️ フロー一覧画像表示（古い形式）:', {
+                              stepId: step.id,
+                              originalImageUrl: step.imageUrl,
+                              convertedUrl: imageUrl
+                            });
+                            return (
+                              <img
+                                key={stepIndex}
+                                src={imageUrl}
+                                alt={`${step.title} - 画像`}
+                                className='w-8 h-8 object-cover rounded border'
+                                onError={(e) => {
+                                  console.error('画像読み込みエラー（古い形式）:', {
+                                    imageUrl,
+                                    originalImageUrl: step.imageUrl,
+                                    stepId: step.id
+                                  });
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                                onLoad={() => {
+                                  console.log('画像読み込み成功（古い形式）:', imageUrl);
+                                }}
+                              />
+                            );
+                          }
+                          return null;
+                        })}
+                        {flow.steps.filter((step: any) => step.imageUrl || (step.images && step.images.length > 0)).length > 3 && (
+                          <span className='text-xs text-gray-500'>+{flow.steps.filter((step: any) => step.imageUrl || (step.images && step.images.length > 0)).length - 3}</span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className='text-xs text-gray-400'>画像なし</span>
+                    )}
+                  </div>
                 </td>
                 <td className='border border-gray-300 p-3'>
                   <div className='flex justify-center gap-1'>
@@ -265,18 +344,21 @@ const EmergencyGuideEdit: React.FC = () => {
         const randomId = Math.random().toString(36).substring(2);
         const cacheBuster = `?ts=${timestamp}&r=${randomId}`;
 
-        const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/list${cacheBuster}`,
-          {
-            method: 'GET',
-            headers: {
-              'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
-              Pragma: 'no-cache',
-              Expires: 'Thu, 01 Jan 1970 00:00:00 GMT',
-              'X-Requested-With': 'XMLHttpRequest',
-            },
-          }
-        );
+        // 統一API設定を使用 - emergency-flow APIを使用
+        const { buildApiUrl } = await import('../../lib/api-unified');
+        const apiUrl = buildApiUrl(`/emergency-flow/list${cacheBuster}`);
+        
+        console.log('🌐 フロー一覧API URL:', apiUrl);
+        
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+            Pragma: 'no-cache',
+            Expires: 'Thu, 01 Jan 1970 00:00:00 GMT',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+        });
 
         console.log('📡 レスポンス状態:', response.status, response.statusText);
 
@@ -302,7 +384,7 @@ const EmergencyGuideEdit: React.FC = () => {
 
         const mappedFlows = flows.map((flow: any) => ({
           id: flow.id || flow.fileName?.replace('.json', '') || '',
-          title: flow.title || 'タイトルなし',
+          title: flow.title || flow.fileName?.replace('.json', '') || 'タイトルなし',
           description: flow.description || '',
           triggerKeywords: flow.triggerKeywords || flow.trigger || [],
           steps: flow.steps || [],
@@ -375,7 +457,7 @@ const EmergencyGuideEdit: React.FC = () => {
 
       // フローの詳細データを取得
       const timestamp = Date.now();
-      const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${flow.id}?_t=${timestamp}`;
+      const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/${flow.id}?_t=${timestamp}`;
       console.log('🌐 API呼び出し:', apiUrl);
 
       const response = await fetch(apiUrl, {
@@ -465,20 +547,22 @@ const EmergencyGuideEdit: React.FC = () => {
     try {
       console.log('🔄 プレビュー用フロー詳細データを取得中:', flow.id);
 
-      // フローの詳細データを取得
+      // フローの詳細データを取得 - emergency-flow APIを使用
       const timestamp = Date.now();
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${flow.id}?_t=${timestamp}`,
-        {
-          credentials: 'include',
-          headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            Pragma: 'no-cache',
-            'X-Force-Fresh': 'true',
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      const { buildApiUrl } = await import('../../lib/api-unified');
+      const apiUrl = buildApiUrl(`/emergency-flow/detail/${flow.id}?_t=${timestamp}`);
+      
+      console.log('🌐 プレビュー用フロー詳細API URL:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
+        credentials: 'include',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+          'X-Force-Fresh': 'true',
+          'Content-Type': 'application/json',
+        },
+      });
 
       if (!response.ok) {
         throw new Error(`フロー詳細の取得に失敗しました: ${response.status}`);
@@ -528,7 +612,7 @@ const EmergencyGuideEdit: React.FC = () => {
       });
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${updatedFlowData.id}`,
+        `${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/${updatedFlowData.id}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -571,7 +655,7 @@ const EmergencyGuideEdit: React.FC = () => {
       });
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${flowId}`,
+        `${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/${flowId}`,
         {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },

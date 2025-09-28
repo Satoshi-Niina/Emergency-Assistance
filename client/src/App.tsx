@@ -8,13 +8,27 @@ import {
 import { AuthProvider, useAuth } from './context/auth-context';
 import { ChatProvider } from './context/chat-context';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
+
+// API接続確認ログ（開発中のみ）
+console.info('API BASE =', import.meta.env.VITE_API_BASE_URL);
+
+// Service Worker無効化（開発中のみ）
+// Networkタブで /api/health, /api/version が本番APIホストへ飛ぶことを確認
+if (import.meta.env.DEV && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(registrations => {
+    registrations.forEach(registration => {
+      console.warn('⚠️ Service Worker detected, unregistering for development');
+      registration.unregister();
+    });
+  });
+}
 import { AdminRoute } from './components/auth/AdminRoute';
 import Header from './components/navigation/header';
 import { Toaster } from './components/ui/toaster';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { RouteDebugger } from './components/shared/RouteDebugger';
 import { DebugError } from './components/shared/DebugError';
-import { checkApiHealth } from './lib/api-client';
+import { health } from './lib/api-unified';
 
 // Lazy load pages
 import { lazy } from 'react';
@@ -51,7 +65,7 @@ function ApiConnectionTest() {
       
       try {
         console.log('🔍 API接続テスト開始...');
-        const isHealthy = await checkApiHealth();
+        const isHealthy = await health.check();
         if (isHealthy) {
           setApiStatus('connected');
           console.log('✅ API接続成功');
@@ -126,6 +140,118 @@ function RootRedirect() {
 
   // 認証済みの場合はチャット画面に、未認証の場合はログイン画面にリダイレクト
   return <Navigate to={user ? '/chat' : '/login'} replace />;
+}
+
+// アプリケーション内側コンポーネント（AuthProvider内で使用）
+function AppContent() {
+  return (
+    <div className='flex flex-col h-screen'>
+      <AuthModeBadge />
+      <ApiConnectionTest />
+      <Header />
+      <main className='flex-1 overflow-auto'>
+        <AuthModeNotice />
+        <Suspense
+          fallback={
+            <div className='flex justify-center items-center h-full'>
+              <div className='text-center'>
+                <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4'></div>
+                <p className='text-gray-600'>読み込み中...</p>
+              </div>
+            </div>
+          }
+        >
+          <Routes>
+            <Route path='/login' element={<LoginPage />} />
+            <Route
+              path='/chat'
+              element={
+                <ProtectedRoute>
+                  <ChatPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path='/settings'
+              element={
+                <ProtectedRoute>
+                  <SettingsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path='/system-diagnostic'
+              element={
+                <ProtectedRoute>
+                  <SystemDiagnosticPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path='/history'
+              element={
+                <ProtectedRoute>
+                  <HistoryPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path='/documents'
+              element={
+                <ProtectedRoute>
+                  <DocumentsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path='/troubleshooting'
+              element={
+                <ProtectedRoute>
+                  <TroubleshootingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path='/emergency-guide'
+              element={
+                <ProtectedRoute>
+                  <EmergencyGuidePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path='/users'
+              element={
+                <AdminRoute>
+                  <UsersPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path='/base-data'
+              element={
+                <AdminRoute>
+                  <BaseDataPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path='/machine-management'
+              element={
+                <AdminRoute>
+                  <MachineManagementPage />
+                </AdminRoute>
+              }
+            />
+            <Route path='/not-found' element={<NotFoundPage />} />
+            <Route path='/' element={<RootRedirect />} />
+            <Route path='*' element={<Navigate to='/not-found' replace />} />
+          </Routes>
+        </Suspense>
+      </main>
+      <Toaster />
+    </div>
+  );
 }
 
 // 現在モードのバッジコンポーネント
@@ -204,127 +330,7 @@ function App() {
         <RouteDebugger />
         <AuthProvider>
           <ChatProvider>
-            <div className='flex flex-col h-screen'>
-              <AuthModeBadge />
-              <ApiConnectionTest />
-              <Header />
-              <main className='flex-1 overflow-auto'>
-                <AuthModeNotice />
-                <Suspense
-                  fallback={
-                    <div className='flex justify-center items-center h-full'>
-                      <div className='text-center'>
-                        <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4'></div>
-                        <p className='text-gray-600'>読み込み中...</p>
-                      </div>
-                    </div>
-                  }
-                >
-                  <Routes>
-                    <Route path='/' element={<RootRedirect />} />
-                    <Route path='/login' element={<LoginPage />} />
-
-                    {/* 認証が必要なルート */}
-                    <Route
-                      path='/chat'
-                      element={
-                        <ProtectedRoute>
-                          <ChatPage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    {/* 管理者専用ルート */}
-                    <Route
-                      path='/history'
-                      element={
-                        <ProtectedRoute requireAdmin={true}>
-                          <HistoryPage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    <Route
-                      path='/documents'
-                      element={
-                        <ProtectedRoute requireAdmin={true}>
-                          <DocumentsPage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    <Route
-                      path='/troubleshooting'
-                      element={
-                        <ProtectedRoute requireAdmin={true}>
-                          <TroubleshootingPage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    <Route
-                      path='/base-data'
-                      element={
-                        <ProtectedRoute requireAdmin={true}>
-                          <BaseDataPage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    <Route
-                      path='/emergency-guide/:id'
-                      element={
-                        <ProtectedRoute>
-                          <EmergencyGuidePage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    {/* 管理者専用ルート */}
-                    <Route
-                      path='/settings'
-                      element={
-                        <ProtectedRoute>
-                          <SettingsPage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    <Route
-                      path='/users'
-                      element={
-                        <ProtectedRoute>
-                          <UsersPage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    <Route
-                      path='/machine-management'
-                      element={
-                        <ProtectedRoute>
-                          <MachineManagementPage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    {/* 一般ユーザーもアクセス可能なルート */}
-                    <Route
-                      path='/system-diagnostic'
-                      element={
-                        <ProtectedRoute>
-                          <SystemDiagnosticPage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    <Route path='*' element={<NotFoundPage />} />
-                  </Routes>
-                </Suspense>
-              </main>
-            </div>
-            <Toaster />
-            <DebugError enabled={false} />
+            <AppContent />
           </ChatProvider>
         </AuthProvider>
       </Router>

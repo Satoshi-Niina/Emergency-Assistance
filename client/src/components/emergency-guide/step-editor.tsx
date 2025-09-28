@@ -39,7 +39,7 @@ import {
   ChevronDown,
   MoreVertical,
 } from 'lucide-react';
-import { convertImageUrl } from '../../lib/utils.ts';
+import { convertImageUrl } from '../../lib/image-utils.ts';
 
 /**
  * ⚠️ AI編集制限: このファイルはスライド編集UI専用です
@@ -49,14 +49,9 @@ import { convertImageUrl } from '../../lib/utils.ts';
  */
 
 // Helper function for UTF-8 safe base64 encoding
-function utf8_to_b64(str: string): string {
-  try {
-    return btoa(unescape(encodeURIComponent(str)));
-  } catch (e) {
-    console.error('Failed to base64 encode:', str, e);
-    return btoa(str); // Fallback to simple btoa
-  }
-}
+// 統一されたユーティリティを使用
+import { utf8ToBase64 } from '../../lib/image-utils';
+const utf8_to_b64 = utf8ToBase64;
 
 // 1. ImageInfoインターフェースをエクスポート可能に変更し、ファイルURLとファイル名を保持するようにします
 export interface ImageInfo {
@@ -264,10 +259,17 @@ const StepEditor: React.FC<StepEditorProps> = ({
       return;
     }
 
+    // ファイルサイズチェック（10MB）
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      alert(`ファイル "${file.name}" のサイズが大きすぎます。10MB以下のファイルを選択してください。`);
+      return;
+    }
+
     setUploadingImages(prev => ({ ...prev, [stepId]: true }));
 
     try {
-      console.log('🖼️ 画像アップロード開始:', { stepId, fileName: file.name });
+      console.log('🖼️ 画像アップロード開始:', { stepId, fileName: file.name, fileSize: file.size });
 
       // 重複チェック: 同じファイル名の画像が既に存在するかチェック
       const stepToUpdate = steps.find(step => step.id === stepId);
@@ -302,13 +304,15 @@ const StepEditor: React.FC<StepEditorProps> = ({
       formData.append('stepId', stepId);
       if (flowId) formData.append('flowId', flowId);
 
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/upload-image`,
-        {
-          method: 'POST',
-          body: formData,
-        }
-      );
+      const { buildApiUrl } = await import('../../lib/api-unified');
+      const uploadUrl = buildApiUrl('/emergency-flow/upload-image');
+      
+      console.log('🖼️ 画像アップロードURL:', uploadUrl);
+      
+      const response = await fetch(uploadUrl, {
+        method: 'POST',
+        body: formData,
+      });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -336,7 +340,23 @@ const StepEditor: React.FC<StepEditorProps> = ({
         const currentImages = currentStepToUpdate.images ?? [];
         if (currentImages.length < 3) {
           const updatedImages = [...currentImages, newImage];
+          
+          console.log('🖼️ 画像を即座にUIに反映:', {
+            stepId,
+            currentImagesCount: currentImages.length,
+            newImagesCount: updatedImages.length,
+            newImage: newImage,
+          });
+          
+          // 即座にUIに反映
           onStepUpdate(stepId, { images: updatedImages });
+
+          // 画像追加後の自動保存（ファイル一覧に戻らない）
+          if (onSave) {
+            setTimeout(() => {
+              onSave();
+            }, 100);
+          }
 
           // 成功通知
           const message = result.isDuplicate
@@ -377,9 +397,14 @@ const StepEditor: React.FC<StepEditorProps> = ({
         if (confirmDelete) {
           try {
             // APIを呼び出してサーバーから画像を削除
-            const response = await fetch(
-              `${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/image/${imageToRemove.fileName}`
-            );
+            const { buildApiUrl } = await import('../../lib/api-unified');
+            const deleteUrl = buildApiUrl(`/emergency-flow/image/${imageToRemove.fileName}`);
+            
+            console.log('🗑️ 画像削除URL:', deleteUrl);
+            
+            const response = await fetch(deleteUrl, {
+              method: 'DELETE',
+            });
 
             if (!response.ok) {
               const errorData = await response.json().catch(() => ({}));
@@ -572,18 +597,29 @@ const StepEditor: React.FC<StepEditorProps> = ({
             onDrop={e => handleDrop(step.id, e)}
           >
             <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4'>
-              {(step.images ?? []).map((image, index) => (
+              {console.log(`🖼️ ステップ[${step.id}]の画像レンダリング:`, {
+                stepId: step.id,
+                stepTitle: step.title,
+                imagesCount: step.images?.length || 0,
+                images: step.images,
+              })}
+              {(step.images ?? []).filter(image => image && image.url && image.url.trim() !== '').map((image, index) => (
                 <div key={index} className='relative group aspect-video'>
                   {(() => {
-                    const convertedUrl = convertImageUrl(image.url);
+                    // 既に完全なURLの場合は再変換しない
+                    const convertedUrl = (image.url?.startsWith('http://') || image.url?.startsWith('https://') || image.url?.startsWith('data:'))
+                      ? image.url
+                      : convertImageUrl(image.url);
                     console.log(`🖼️ 画像表示デバッグ [${step.id}][${index}]:`, {
                       originalUrl: image.url?.substring(0, 100) + '...',
                       convertedUrl: convertedUrl?.substring(0, 100) + '...',
                       fileName: image.fileName,
                       isBase64: image.url?.startsWith('data:image/'),
+                      isAlreadyConverted: image.url?.startsWith('http://') || image.url?.startsWith('https://'),
                     });
                     return (
                       <img
+                        key={`${step.id}-${index}-${image.fileName}`}
                         src={convertedUrl}
                         alt={image.fileName}
                         className='w-full h-full object-cover rounded-lg border shadow-sm'
@@ -593,22 +629,27 @@ const StepEditor: React.FC<StepEditorProps> = ({
                             : 'anonymous'
                         }
                         onError={e => {
-                          console.error('❌ 画像読み込みエラー:', {
+                          console.error('❌ 画像読み込みエラー (step-editor):', {
                             originalUrl: image.url?.substring(0, 100) + '...',
                             convertedUrl:
                               convertedUrl?.substring(0, 100) + '...',
                             fileName: image.fileName,
                             isBase64: image.url?.startsWith('data:image/'),
                             error: e,
+                            stepId: step.id,
+                            imageIndex: index,
                           });
-                          handleImageError(e, image.url);
+                          // 画像読み込みエラー時は非表示にする（サンプル画像を表示しない）
+                          e.currentTarget.style.display = 'none';
                         }}
                         onLoad={() => {
-                          console.log('✅ 画像読み込み成功:', {
+                          console.log('✅ 画像読み込み成功 (step-editor):', {
                             originalUrl: image.url?.substring(0, 100) + '...',
                             convertedUrl:
                               convertedUrl?.substring(0, 100) + '...',
                             fileName: image.fileName,
+                            stepId: step.id,
+                            imageIndex: index,
                           });
                           // 画像読み込み成功時にエラーフラグをクリア
                           setImageErrors(prev => ({
@@ -661,7 +702,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
                 </div>
               ))}
 
-              {(!step.images || (step.images ?? []).length < 3) && (
+              {(!step.images || (step.images ?? []).filter(image => image && image.url && image.url.trim() !== '').length < 3) && (
                 <div
                   className='flex items-center justify-center aspect-video border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors'
                   onClick={() => fileInputRefs.current[step.id]?.click()}
@@ -678,7 +719,7 @@ const StepEditor: React.FC<StepEditorProps> = ({
                         : '画像を追加'}
                     </span>
                     <p className='text-xs text-gray-500'>
-                      {step.images?.length || 0} / 3枚
+                      {(step.images ?? []).filter(image => image && image.url && image.url.trim() !== '').length} / 3枚
                     </p>
                     <p className='text-xs text-gray-400 mt-1'>
                       ドラッグ&ドロップ対応

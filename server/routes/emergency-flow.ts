@@ -81,7 +81,6 @@ router.post('/update-step-title', async (_req, res) => {
     // トラブルシューティングディレクトリから該当するJSONファイルを検索
     const troubleshootingDir = path.join(
       process.cwd(),
-      '..',
       'knowledge-base',
       'troubleshooting'
     );
@@ -270,7 +269,7 @@ router.post('/', async (_req, res) => {
 });
 
 // フロー更新エンドポイント
-router.put('/:id', async (_req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const flowData = req.body;
@@ -292,13 +291,9 @@ router.put('/:id', async (_req, res) => {
       });
     }
 
-    // タイムスタンプを更新
-    flowData.updatedAt = new Date().toISOString();
-
     // トラブルシューティングディレクトリから該当するJSONファイルを検索
     const troubleshootingDir = path.join(
       process.cwd(),
-      '..',
       'knowledge-base',
       'troubleshooting'
     );
@@ -338,20 +333,203 @@ router.put('/:id', async (_req, res) => {
       });
     }
 
-    // JSONファイルを更新
+    // 既存ファイルの読み込み
     const filePath = path.join(troubleshootingDir, fileName);
-    fs.writeFileSync(filePath, JSON.stringify(flowData, null, 2), 'utf-8');
+    let originalData = null;
+    if (fs.existsSync(filePath)) {
+      try {
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        originalData = JSON.parse(fileContent);
+        console.log('📖 既存データ読み込み成功:', {
+          id: originalData.id,
+          title: originalData.title,
+          stepsCount: originalData.steps?.length || 0,
+          hasImages: originalData.steps?.some((step: any) => step.images && step.images.length > 0) || false
+        });
+      } catch (error) {
+        console.error('❌ 既存ファイル読み込みエラー:', error);
+        originalData = null;
+      }
+    }
+
+    // 差分を適用して更新（深いマージ）
+    const mergeData = (original: any, updates: any): any => {
+      const result = { ...original };
+
+      for (const [key, value] of Object.entries(updates)) {
+        if (
+          value !== null &&
+          typeof value === 'object' &&
+          !Array.isArray(value)
+        ) {
+          // オブジェクトの場合は再帰的にマージ
+          result[key] = mergeData(result[key] || {}, value);
+        } else if (Array.isArray(value) && key === 'steps') {
+          // steps配列の場合は特別な処理
+          if (result[key] && Array.isArray(result[key])) {
+            // 既存のstepsと新しいstepsをマージ
+            result[key] = value.map((newStep: any) => {
+              const existingStep = result[key].find((step: any) => step.id === newStep.id);
+              if (existingStep) {
+                // 既存のステップがある場合は、画像データを保持してマージ
+                return {
+                  ...existingStep,
+                  ...newStep,
+                  // 画像データは新しいデータを優先するが、既存の画像も保持
+                  images: newStep.images || existingStep.images || []
+                };
+              }
+              return newStep;
+            });
+          } else {
+            result[key] = value;
+          }
+        } else {
+          // プリミティブ値やその他の配列は直接代入
+          result[key] = value;
+        }
+      }
+
+      return result;
+    };
+
+    // 画像情報の詳細ログと処理
+    if (flowData.steps) {
+      flowData.steps.forEach((step: any, index: number) => {
+        // 画像配列が存在しない場合は空配列を設定
+        if (!step.images) {
+          step.images = [];
+        }
+        
+        // 画像配列が存在する場合の処理
+        if (step.images && step.images.length > 0) {
+          console.log(`🖼️ ステップ[${index}]の画像情報:`, {
+            stepId: step.id,
+            stepTitle: step.title,
+            imagesCount: step.images.length,
+            images: step.images.map((img: any) => ({
+              fileName: img.fileName,
+              url: img.url?.substring(0, 100) + '...',
+              hasFile: !!img.file,
+              urlValid: img.url && img.url.trim() !== '',
+              fileNameValid: img.fileName && img.fileName.trim() !== ''
+            }))
+          });
+          
+          // 画像情報の検証と修正
+          step.images = step.images.filter((img: any) => {
+            if (!img || !img.url || img.url.trim() === '') {
+              console.log(`❌ 無効な画像情報を除外:`, img);
+              return false;
+            }
+            
+            // ファイル名が無い場合はURLから抽出
+            if (!img.fileName || img.fileName.trim() === '') {
+              if (img.url.includes('/')) {
+                img.fileName = img.url.split('/').pop() || '';
+              } else if (img.url.includes('\\')) {
+                img.fileName = img.url.split('\\').pop() || '';
+              } else {
+                img.fileName = img.url;
+              }
+              console.log(`📁 ファイル名を補完:`, { url: img.url, fileName: img.fileName });
+            }
+            
+            return true;
+          });
+        } else {
+          console.log(`📝 ステップ[${index}]に画像なし:`, {
+            stepId: step.id,
+            stepTitle: step.title,
+            imagesCount: 0
+          });
+        }
+      });
+    }
+
+    const updatedFlowData = mergeData(originalData || {}, {
+      ...flowData,
+      updatedAt: new Date().toISOString(),
+      // 更新履歴を追加
+      updateHistory: [
+        ...(originalData?.updateHistory || []),
+        {
+          timestamp: new Date().toISOString(),
+          updatedFields: Object.keys(flowData),
+          updatedBy: 'user', // 必要に応じて認証情報から取得
+        },
+      ],
+    });
+
+    // 画像データの最終的な検証と修正
+    if (updatedFlowData.steps) {
+      updatedFlowData.steps.forEach((step: any, index: number) => {
+        if (step.images && Array.isArray(step.images)) {
+          // 画像配列の検証とクリーニング
+          step.images = step.images.filter((img: any) => {
+            if (!img || typeof img !== 'object') {
+              console.log(`❌ 無効な画像オブジェクトを除外:`, img);
+              return false;
+            }
+            
+            if (!img.url || typeof img.url !== 'string' || img.url.trim() === '') {
+              console.log(`❌ URLが無効な画像を除外:`, img);
+              return false;
+            }
+            
+            // ファイル名が無い場合はURLから抽出
+            if (!img.fileName || img.fileName.trim() === '') {
+              if (img.url.includes('/')) {
+                img.fileName = img.url.split('/').pop() || '';
+              } else if (img.url.includes('\\')) {
+                img.fileName = img.url.split('\\').pop() || '';
+              } else {
+                img.fileName = img.url;
+              }
+              console.log(`📁 ファイル名を補完:`, { url: img.url, fileName: img.fileName });
+            }
+            
+            return true;
+          });
+          
+          console.log(`🖼️ ステップ[${index}]の最終画像データ:`, {
+            stepId: step.id,
+            stepTitle: step.title,
+            imagesCount: step.images.length,
+            images: step.images.map((img: any) => ({
+              fileName: img.fileName,
+              url: img.url?.substring(0, 100) + '...',
+              urlValid: img.url && img.url.trim() !== ''
+            }))
+          });
+        }
+      });
+    }
+
+
+    // JSONファイルを更新
+    fs.writeFileSync(filePath, JSON.stringify(updatedFlowData, null, 2), 'utf-8');
 
     console.log('✅ フロー更新成功:', {
-      id: flowData.id,
-      title: flowData.title,
-      stepsCount: flowData.steps?.length || 0,
+      id: updatedFlowData.id,
+      title: updatedFlowData.title,
+      stepsCount: updatedFlowData.steps?.length || 0,
+      stepsWithImages: updatedFlowData.steps?.filter((step: any) => step.images && step.images.length > 0).length || 0,
+      allStepsImages: updatedFlowData.steps?.map((step: any) => ({
+        stepId: step.id,
+        stepTitle: step.title,
+        imagesCount: step.images?.length || 0,
+        images: step.images?.map((img: any) => ({
+          fileName: img.fileName,
+          url: img.url?.substring(0, 100) + '...'
+        })) || []
+      })) || [],
       filePath: filePath,
     });
 
     res.json({
       success: true,
-      data: flowData,
+      data: updatedFlowData,
       message: 'フローが正常に更新されました',
     });
   } catch (error) {
@@ -377,7 +555,6 @@ router.get('/', async (_req, res) => {
     // トラブルシューティングディレクトリからJSONファイルを読み込み
     const troubleshootingDir = path.join(
       process.cwd(),
-      '..',
       'knowledge-base',
       'troubleshooting'
     );
@@ -491,9 +668,17 @@ async function loadFromDirectory(dirPath: string) {
           description = firstStep.description || firstStep.message || '';
         }
 
+        // タイトルを複数のソースから取得
+        let title = flowData.title || 
+                   flowData.metadata?.title || 
+                   flowData.metadata?.タイトル ||
+                   flowData.name ||
+                   flowData.problemDescription ||
+                   'タイトルなし';
+
         const result = {
           id: flowData.id || file.replace('.json', ''),
-          title: flowData.title || 'タイトルなし',
+          title: title,
           description: description,
           fileName: file,
           filePath: `knowledge-base/troubleshooting/${file}`,
@@ -515,10 +700,32 @@ async function loadFromDirectory(dirPath: string) {
           message: error instanceof Error ? error.message : 'Unknown error',
           stack: error instanceof Error ? error.stack : undefined,
         });
+        
+        // JSONファイルが破損している場合は、バックアップファイルを作成
+        if (error instanceof SyntaxError && error.message.includes('JSON')) {
+          console.log(`🔄 破損したJSONファイルを検出: ${file}`);
+          
+          // バックアップファイルを作成
+          const backupPath = path.join(dirPath, `${file}.backup.${Date.now()}`);
+          try {
+            fs.copyFileSync(filePath, backupPath);
+            console.log(`✅ バックアップファイルを作成: ${backupPath}`);
+          } catch (backupError) {
+            console.error(`❌ バックアップファイル作成失敗:`, backupError);
+          }
+        }
+        
+        continue; // エラーファイルをスキップして続行
       }
     }
 
     console.log(`📋 有効なファイル数: ${fileList.length}/${jsonFiles.length}`);
+    
+    // 有効なファイルがない場合は警告を出力
+    if (fileList.length === 0) {
+      console.warn(`⚠️ 有効なフローファイルが見つかりませんでした: ${dirPath}`);
+    }
+    
     return fileList;
   } catch (error) {
     console.error(`❌ ディレクトリ ${dirPath} からの読み込みエラー:`, error);
@@ -530,13 +737,12 @@ async function loadFromDirectory(dirPath: string) {
 router.get('/list', async (_req, res) => {
   try {
     console.log(
-      '🔍 トラブルシューティングディレクトリからフロー一覧を取得中（/list）...'
+      '🔍 応急処置フローディレクトリからフロー一覧を取得中（/list）...'
     );
 
-    // トラブルシューティングディレクトリからJSONファイルを読み込み
+    // 応急処置フローディレクトリからJSONファイルを読み込み
     const troubleshootingDir = path.join(
       process.cwd(),
-      '..',
       'knowledge-base',
       'troubleshooting'
     );
@@ -608,7 +814,7 @@ router.get('/list', async (_req, res) => {
 });
 
 // フロー詳細取得エンドポイント
-router.get('/detail/:id', async (_req, res) => {
+router.get('/detail/:id', async (req, res) => {
   try {
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2);
@@ -630,7 +836,6 @@ router.get('/detail/:id', async (_req, res) => {
     // トラブルシューティングディレクトリから該当するJSONファイルを検索
     const troubleshootingDir = path.join(
       process.cwd(),
-      '..',
       'knowledge-base',
       'troubleshooting'
     );
@@ -649,15 +854,22 @@ router.get('/detail/:id', async (_req, res) => {
     let fileName = null;
 
     // IDに一致するファイルを検索
+    console.log(`🔍 検索対象ファイル数: ${jsonFiles.length}`);
+    console.log(`🔍 検索対象ファイル一覧:`, jsonFiles);
+    
     for (const file of jsonFiles) {
       try {
         const filePath = path.join(troubleshootingDir, file);
+        console.log(`🔍 ファイル読み込み中: ${filePath}`);
         const fileContent = fs.readFileSync(filePath, 'utf-8');
         const data = JSON.parse(fileContent);
 
+        console.log(`🔍 ファイル ${file} のID: ${data.id}, 検索ID: ${id}`);
+        
         if (data.id === id || file.replace('.json', '') === id) {
           flowData = data;
           fileName = file;
+          console.log(`✅ マッチするファイル発見: ${file}`);
           break;
         }
       } catch (error) {
@@ -667,7 +879,30 @@ router.get('/detail/:id', async (_req, res) => {
 
     if (!flowData) {
       console.log(`❌ フローが見つかりません: ${id}`);
-      return res.status(404).json({ error: 'フローが見つかりません' });
+      return res.status(404).json({ 
+        success: false,
+        error: 'フローが見つかりません',
+        details: `ID: ${id} のフローデータが見つかりませんでした`,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // 画像情報の詳細ログ
+    if (flowData.steps) {
+      flowData.steps.forEach((step: any, index: number) => {
+        if (step.images && step.images.length > 0) {
+          console.log(`🖼️ フロー詳細取得 - ステップ[${index}]の画像情報:`, {
+            stepId: step.id,
+            stepTitle: step.title,
+            imagesCount: step.images.length,
+            images: step.images.map((img: any) => ({
+              fileName: img.fileName,
+              url: img.url?.substring(0, 100) + '...',
+              hasFile: !!img.file
+            }))
+          });
+        }
+      });
     }
 
     console.log(`✅ フロー詳細読み込み成功: ${id}`, {
@@ -676,6 +911,16 @@ router.get('/detail/:id', async (_req, res) => {
       hasSteps: !!flowData.steps,
       stepsCount: flowData.steps?.length || 0,
       fileName: fileName,
+      stepsWithImages: flowData.steps?.filter((step: any) => step.images && step.images.length > 0).length || 0,
+      allStepsImages: flowData.steps?.map((step: any) => ({
+        stepId: step.id,
+        stepTitle: step.title,
+        imagesCount: step.images?.length || 0,
+        images: step.images?.map((img: any) => ({
+          fileName: img.fileName,
+          url: img.url?.substring(0, 100) + '...'
+        })) || []
+      })) || []
     });
 
     // 条件分岐ステップの確認
@@ -732,15 +977,30 @@ router.get('/detail/:id', async (_req, res) => {
       decisionStepsCount: decisionSteps.length,
       conditionStepsCount: conditionSteps.length,
       responseSize: JSON.stringify(data).length,
+      stepsWithImages: data.steps?.filter((step: any) => step.images && step.images.length > 0).length || 0,
+      allStepsImages: data.steps?.map((step: any) => ({
+        stepId: step.id,
+        stepTitle: step.title,
+        imagesCount: step.images?.length || 0,
+        images: step.images?.map((img: any) => ({
+          fileName: img.fileName,
+          url: img.url?.substring(0, 100) + '...'
+        })) || []
+      })) || []
     });
   } catch (error) {
     console.error('❌ フロー詳細取得エラー:', error);
-    res.status(500).json({ error: 'フロー詳細の取得に失敗しました' });
+    res.status(500).json({ 
+      success: false,
+      error: 'フロー詳細の取得に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
 // フロー削除エンドポイント
-router.delete('/:id', async (_req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`🗑️ フロー削除開始: ID=${id}`);
@@ -748,7 +1008,6 @@ router.delete('/:id', async (_req, res) => {
     // トラブルシューティングディレクトリから該当するJSONファイルを検索
     const troubleshootingDir = path.join(
       process.cwd(),
-      '..',
       'knowledge-base',
       'troubleshooting'
     );
@@ -828,7 +1087,6 @@ router.get('/get/:id', async (_req, res) => {
     // トラブルシューティングディレクトリから該当するJSONファイルを検索
     const troubleshootingDir = path.join(
       process.cwd(),
-      '..',
       'knowledge-base',
       'troubleshooting'
     );
@@ -871,6 +1129,16 @@ router.get('/get/:id', async (_req, res) => {
       title: flowData.title,
       hasSteps: !!flowData.steps,
       stepsCount: flowData.steps?.length || 0,
+      stepsWithImages: flowData.steps?.filter((step: any) => step.images && step.images.length > 0).length || 0,
+      allStepsImages: flowData.steps?.map((step: any) => ({
+        stepId: step.id,
+        stepTitle: step.title,
+        imagesCount: step.images?.length || 0,
+        images: step.images?.map((img: any) => ({
+          fileName: img.fileName,
+          url: img.url?.substring(0, 100) + '...'
+        })) || []
+      })) || []
     });
 
     // フローデータを整形
@@ -911,6 +1179,16 @@ router.get('/get/:id', async (_req, res) => {
       stepsCount: data.steps?.length || 0,
       decisionStepsCount: decisionSteps.length,
       conditionStepsCount: conditionSteps.length,
+      stepsWithImages: data.steps?.filter((step: any) => step.images && step.images.length > 0).length || 0,
+      allStepsImages: data.steps?.map((step: any) => ({
+        stepId: step.id,
+        stepTitle: step.title,
+        imagesCount: step.images?.length || 0,
+        images: step.images?.map((img: any) => ({
+          fileName: img.fileName,
+          url: img.url?.substring(0, 100) + '...'
+        })) || []
+      })) || []
     });
   } catch (error) {
     console.error('❌ フロー直接取得エラー:', error);
@@ -1320,7 +1598,16 @@ if (process.env.NODE_ENV === 'development') {
 // 画像アップロードエンドポイント
 router.post('/upload-image', upload.single('image'), async (req, res) => {
   try {
+    console.log('🖼️ 画像アップロードリクエスト受信:', {
+      hasFile: !!req.file,
+      fileSize: req.file?.size,
+      fileName: req.file?.originalname,
+      mimetype: req.file?.mimetype,
+      body: req.body
+    });
+
     if (!req.file) {
+      console.log('❌ 画像ファイルが提供されていません');
       return res.status(400).json({
         success: false,
         error: '画像ファイルが提供されていません',
@@ -1342,11 +1629,11 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
       });
     }
 
-    // ファイルサイズチェック（5MB）
-    if (req.file.size > 5 * 1024 * 1024) {
+    // ファイルサイズチェック（10MB）
+    if (req.file.size > 10 * 1024 * 1024) {
       return res.status(400).json({
         success: false,
-        error: 'ファイルサイズは5MB以下にしてください',
+        error: 'ファイルサイズは10MB以下にしてください',
       });
     }
 
@@ -1358,18 +1645,42 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
 
     // 保存先ディレクトリを作成
     const uploadDir = path.join(
-      __dirname,
-      '../../knowledge-base/images/emergency-flows'
+      process.cwd(),
+      '..',
+      'knowledge-base',
+      'images',
+      'emergency-flows'
     );
+    console.log('📁 アップロードディレクトリ:', uploadDir);
+    
     if (!fs.existsSync(uploadDir)) {
+      console.log('📁 ディレクトリを作成中:', uploadDir);
       fs.mkdirSync(uploadDir, { recursive: true });
     }
+    
+    console.log('📁 ディレクトリ確認:', {
+      exists: fs.existsSync(uploadDir),
+      isDirectory: fs.statSync(uploadDir).isDirectory(),
+      canWrite: true // 基本的に作成できていれば書き込み可能
+    });
 
     // ファイルの重複チェック
-    const fileHash = calculateFileHash(req.file.buffer);
-    console.log('🔍 ファイルハッシュ計算:', { fileHash });
+    let fileHash: string;
+    try {
+      fileHash = calculateFileHash(req.file.buffer);
+      console.log('🔍 ファイルハッシュ計算:', { fileHash });
+    } catch (hashError) {
+      console.error('❌ ハッシュ計算エラー:', hashError);
+      throw new Error(`ファイルハッシュの計算に失敗しました: ${hashError instanceof Error ? hashError.message : 'Unknown error'}`);
+    }
 
-    const existingFile = findExistingImageByHash(uploadDir, fileHash);
+    let existingFile: string | null = null;
+    try {
+      existingFile = findExistingImageByHash(uploadDir, fileHash);
+    } catch (searchError) {
+      console.warn('⚠️ 重複ファイル検索エラー（続行）:', searchError);
+    }
+
     let finalFileName = fileName;
     let isDuplicate = false;
 
@@ -1380,7 +1691,26 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
     } else {
       // 新しいファイルを保存
       const filePath = path.join(uploadDir, fileName);
-      fs.writeFileSync(filePath, req.file.buffer);
+      console.log('💾 ファイル保存中:', {
+        filePath,
+        fileSize: req.file.buffer.length,
+        fileName,
+        uploadDirExists: fs.existsSync(uploadDir)
+      });
+      
+      try {
+        // ディレクトリが存在しない場合は作成
+        if (!fs.existsSync(uploadDir)) {
+          console.log('📁 ディレクトリを作成中:', uploadDir);
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        
+        fs.writeFileSync(filePath, req.file.buffer);
+        console.log('✅ ファイル保存成功:', filePath);
+      } catch (writeError) {
+        console.error('❌ ファイル保存エラー:', writeError);
+        throw new Error(`ファイルの保存に失敗しました: ${writeError instanceof Error ? writeError.message : 'Unknown error'}`);
+      }
     }
 
     // APIエンドポイントのURLを生成
@@ -1408,7 +1738,8 @@ router.post('/upload-image', upload.single('image'), async (req, res) => {
     console.error('❌ 画像アップロードエラー:', error);
     res.status(500).json({
       success: false,
-      error: '画像のアップロードに失敗しました',
+      error: '応急処置フローの処理中にエラーが発生しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -1446,22 +1777,30 @@ function decryptUri(encryptedFileName: string): string {
 */
 
 // 画像配信エンドポイント（knowledge-baseから直接配信）
-router.get('/image/:fileName', async (_req, res) => {
+router.get('/image/:fileName', async (req, res) => {
   try {
     const { fileName } = req.params;
 
+    // CORSヘッダーを設定（本番環境対応）
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+
     // まず emergency-flows ディレクトリを確認
     let uploadDir = path.join(
-      __dirname,
-      '../../knowledge-base/images/emergency-flows'
+      process.cwd(),
+      '..',
+      'knowledge-base/images/emergency-flows'
     );
     let filePath = path.join(uploadDir, fileName);
 
     // emergency-flows にファイルがない場合は chat-exports を確認
     if (!fs.existsSync(filePath)) {
       uploadDir = path.join(
-        __dirname,
-        '../../knowledge-base/images/chat-exports'
+        process.cwd(),
+        '..',
+        'knowledge-base/images/chat-exports'
       );
       filePath = path.join(uploadDir, fileName);
 
@@ -1569,7 +1908,15 @@ function findExistingImageByHash(
   fileHash: string
 ): string | null {
   try {
+    // ディレクトリが存在しない場合はnullを返す
+    if (!fs.existsSync(uploadDir)) {
+      console.log(`📁 ディレクトリが存在しません: ${uploadDir}`);
+      return null;
+    }
+
     const files = fs.readdirSync(uploadDir);
+    console.log(`🔍 ディレクトリ内のファイル数: ${files.length}`, { uploadDir, files });
+    
     for (const file of files) {
       if (
         file.endsWith('.jpg') ||
@@ -1578,13 +1925,18 @@ function findExistingImageByHash(
         file.endsWith('.gif') ||
         file.endsWith('.webp')
       ) {
-        const filePath = path.join(uploadDir, file);
-        const fileBuffer = fs.readFileSync(filePath);
-        const existingHash = calculateFileHash(fileBuffer);
+        try {
+          const filePath = path.join(uploadDir, file);
+          const fileBuffer = fs.readFileSync(filePath);
+          const existingHash = calculateFileHash(fileBuffer);
 
-        if (existingHash === fileHash) {
-          console.log(`🔄 同じハッシュの画像を発見: ${file}`);
-          return file;
+          if (existingHash === fileHash) {
+            console.log(`🔄 同じハッシュの画像を発見: ${file}`);
+            return file;
+          }
+        } catch (fileError) {
+          console.warn(`ファイル読み込みエラー (${file}):`, fileError);
+          continue;
         }
       }
     }
@@ -1595,32 +1947,78 @@ function findExistingImageByHash(
 }
 
 // フロー取得エンドポイント（/:id）
-router.get('/:id', async (_req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`🔄 フロー取得開始: ID=${id}`);
 
     const troubleshootingDir = path.join(
-      __dirname,
-      '../../knowledge-base/troubleshooting'
+      process.cwd(),
+      'knowledge-base',
+      'troubleshooting'
     );
-    const filePath = path.join(troubleshootingDir, `${id}.json`);
-
-    if (!fs.existsSync(filePath)) {
-      console.log(`❌ ファイルが存在しません: ${filePath}`);
-      return res.status(404).json({ error: 'フローファイルが見つかりません' });
+    
+    console.log(`📁 トラブルシューティングディレクトリ: ${troubleshootingDir}`);
+    
+    if (!fs.existsSync(troubleshootingDir)) {
+      console.log(`❌ トラブルシューティングディレクトリが見つかりません: ${troubleshootingDir}`);
+      return res.status(404).json({ error: 'トラブルシューティングディレクトリが見つかりません' });
     }
 
-    const content = fs.readFileSync(filePath, 'utf8');
-    const data = JSON.parse(content);
+    const files = fs.readdirSync(troubleshootingDir);
+    const jsonFiles = files.filter(file => file.endsWith('.json'));
+    
+    console.log(`🔍 利用可能なJSONファイル:`, jsonFiles);
+
+    let flowData = null;
+    let fileName = null;
+
+    // IDに一致するファイルを検索
+    for (const file of jsonFiles) {
+      try {
+        const filePath = path.join(troubleshootingDir, file);
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const data = JSON.parse(fileContent);
+
+        console.log(`🔍 ファイル ${file} のID: ${data.id}, 検索ID: ${id}`);
+
+        if (data.id === id || file.replace('.json', '') === id) {
+          flowData = data;
+          fileName = file;
+          console.log(`✅ マッチするファイル発見: ${file}`);
+          break;
+        }
+      } catch (error) {
+        console.error(`❌ ファイル ${file} の読み込みエラー:`, error);
+      }
+    }
+
+    if (!flowData) {
+      console.log(`❌ フローが見つかりません: ${id}`);
+      return res.status(404).json({ 
+        error: 'フローファイルが見つかりません',
+        details: `ID: ${id} のフローデータが見つかりませんでした`,
+        availableFiles: jsonFiles
+      });
+    }
 
     console.log(`✅ フロー取得成功:`, {
-      id: data.id,
-      title: data.title,
-      stepsCount: data.steps?.length || 0,
+      id: flowData.id,
+      title: flowData.title,
+      stepsCount: flowData.steps?.length || 0,
+      stepsWithImages: flowData.steps?.filter((step: any) => step.images && step.images.length > 0).length || 0,
+      allStepsImages: flowData.steps?.map((step: any) => ({
+        stepId: step.id,
+        stepTitle: step.title,
+        imagesCount: step.images?.length || 0,
+        images: step.images?.map((img: any) => ({
+          fileName: img.fileName,
+          url: img.url?.substring(0, 100) + '...'
+        })) || []
+      })) || []
     });
 
-    res.json(data);
+    res.json(flowData);
   } catch (error) {
     console.error('❌ フロー取得エラー:', error);
     res.status(500).json({ error: 'フローの取得に失敗しました' });

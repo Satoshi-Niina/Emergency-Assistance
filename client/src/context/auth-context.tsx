@@ -9,8 +9,7 @@ import {
   login as authLogin,
   logout as authLogout,
   getCurrentUser,
-  negotiateAuthMode,
-} from '../lib/auth';
+} from '../lib/auth-unified';
 
 interface User {
   id: string;
@@ -57,32 +56,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         setIsLoading(true);
 
-        // 初回起動時に認証モードを自動切替
-        const handshakeData = await negotiateAuthMode();
-        console.log('🔍 handshake レスポンス:', handshakeData);
-        
-        // 認証モードを設定
-        if (handshakeData && handshakeData.mode) {
-          setAuthMode(handshakeData.mode);
-        }
-
-        // lib/auth の getCurrentUser を利用
-        const userData = await getCurrentUser();
-        console.log('🔍 getCurrentUser レスポンス:', userData);
-
-        if (userData && userData.success && userData.user) {
-          setUser({
-            id: userData.user.id,
-            username: userData.user.username,
-            displayName:
-              userData.user.displayName || userData.user.display_name,
-            role: userData.user.role,
-            department: userData.user.department,
-          });
-        } else {
-          console.log('❌ ユーザーデータが無効:', userData);
-          setUser(null);
-        }
+        // 初回起動時は認証状態確認をスキップ（ログイン画面を表示）
+        console.log('ℹ️ 初回起動: ログイン画面を表示');
+        setUser(null);
       } catch (error) {
         console.warn('⚠️ 認証状態確認エラー（正常な動作）:', error);
         setUser(null);

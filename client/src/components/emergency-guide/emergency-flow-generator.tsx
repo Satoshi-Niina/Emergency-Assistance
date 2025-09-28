@@ -11,7 +11,6 @@ import {
 } from '../../components/ui/card';
 import { FileUp, Cpu, Send, Loader2, FileText } from 'lucide-react';
 import { useToast } from '../../hooks/use-toast.ts';
-import { apiRequest } from '../../lib/queryClient.ts';
 import { Label } from '../../components/ui/label';
 
 interface FlowGeneratorProps {
@@ -61,11 +60,16 @@ export default function EmergencyFlowGenerator({
         // Generate from file
         const formData = new FormData();
         formData.append('file', file);
-        const response = await apiRequest(
-          'POST',
-          '/api/flow-generator/file',
-          formData
-        );
+        const response = await fetch('/api/flow-generator/file', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include',
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         flowData = await response.json();
         toast({
           title: '成功',
@@ -73,11 +77,19 @@ export default function EmergencyFlowGenerator({
         });
       } else {
         // Generate from keywords
-        const response = await apiRequest(
-          'POST',
-          '/api/flow-generator/keywords',
-          { keywords }
-        );
+        const response = await fetch('/api/flow-generator/keywords', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ keywords }),
+          credentials: 'include',
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         flowData = await response.json();
         toast({
           title: '成功',
@@ -88,6 +100,7 @@ export default function EmergencyFlowGenerator({
       // Pass the generated flow data to the parent component
       onFlowGenerated(flowData);
     } catch (error: any) {
+      console.error('フロー生成エラー:', error);
       toast({
         title: '生成エラー',
         description:

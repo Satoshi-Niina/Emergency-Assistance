@@ -127,13 +127,13 @@ exports.db = {
   },
 };
 
-// プロセス終了時に接続を閉じる
-process.on('SIGINT', async () => {
-  await exports.db.close();
-  process.exit(0);
-});
+// プロセス終了時に接続を閉じる（競合回避のため無効化）
+// process.on('SIGINT', async () => {
+//   await exports.db.close();
+//   process.exit(0);
+// });
 
-process.on('SIGTERM', async () => {
-  await exports.db.close();
-  process.exit(0);
-});
+// process.on('SIGTERM', async () => {
+//   await exports.db.close();
+//   process.exit(0);
+// });

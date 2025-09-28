@@ -12,7 +12,18 @@
       "description": "キーワード「エンジンを始動しようとしたが、スターターが全く回転しない」に関する応急処置を開始します",
       "message": "キーワード「エンジンを始動しようとしたが、スターターが全く回転しない」に関する応急処置を開始します",
       "type": "step",
-      "options": []
+      "options": [],
+      "images": [
+        {
+          "url": "/api/emergency-flow/image/emergency-flow-step1759035342219.JPG",
+          "fileName": "emergency-flow-step1759035342219.JPG"
+        },
+        {
+          "url": "/api/emergency-flow/image/emergency-flow-step1759035582991.JPG",
+          "fileName": "emergency-flow-step1759035582991.JPG"
+        }
+      ],
+      "conditions": []
     },
     {
       "id": "step2",
@@ -29,7 +40,8 @@
           "label": "問題継続",
           "nextId": "step4"
         }
-      ]
+      ],
+      "images": []
     },
     {
       "id": "step3",
@@ -37,7 +49,9 @@
       "description": "応急処置が完了しました",
       "message": "応急処置が完了しました",
       "type": "step",
-      "options": []
+      "options": [],
+      "images": [],
+      "conditions": []
     },
     {
       "id": "step4",
@@ -45,9 +59,94 @@
       "description": "専門家に連絡してください",
       "message": "専門家に連絡してください",
       "type": "step",
-      "options": []
+      "options": [],
+      "images": [],
+      "conditions": []
     }
   ],
   "createdAt": "2025-08-05T11:35:18.848Z",
-  "updatedAt": "2025-08-05T11:35:18.848Z"
+  "updatedAt": "2025-09-28T06:23:50.930Z",
+  "updateHistory": [
+    {
+      "timestamp": "2025-09-28T05:49:52.012Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "steps",
+        "triggerKeywords",
+        "createdAt",
+        "updatedAt"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-09-28T05:49:52.020Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "triggerKeywords",
+        "steps",
+        "createdAt",
+        "updatedAt",
+        "updateHistory"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-09-28T06:18:37.571Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "steps",
+        "triggerKeywords",
+        "createdAt",
+        "updatedAt"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-09-28T06:18:37.580Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "triggerKeywords",
+        "steps",
+        "createdAt",
+        "updatedAt",
+        "updateHistory"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-09-28T06:23:50.922Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "steps",
+        "triggerKeywords",
+        "createdAt",
+        "updatedAt"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-09-28T06:23:50.930Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "triggerKeywords",
+        "steps",
+        "createdAt",
+        "updatedAt",
+        "updateHistory"
+      ],
+      "updatedBy": "user"
+    }
+  ]
 }

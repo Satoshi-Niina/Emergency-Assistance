@@ -326,6 +326,13 @@ export async function processMessage(text: string): Promise<string> {
 function buildApiUrl(path: string): string {
   if (path.startsWith('http')) return path;
 
+  // 環境変数が設定されている場合は優先使用
+  const VITE_API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  if (VITE_API_BASE_URL && VITE_API_BASE_URL.trim() !== '') {
+    console.log('✅ 環境変数からAPI_BASE_URLを取得:', VITE_API_BASE_URL);
+    return `${VITE_API_BASE_URL}${path}`;
+  }
+
   // Replit環境では専用ポートを使用
   const isReplitEnvironment =
     window.location.hostname.includes('replit.dev') ||
@@ -335,13 +342,13 @@ function buildApiUrl(path: string): string {
     return `${window.location.protocol}//${window.location.hostname}:3000${path}`;
   }
 
-  // 開発環境ではプロキシ経由でアクセス（相対パスを使用）
+  // 開発環境ではポート8000を使用
   const isDevelopment =
     import.meta.env.DEV || window.location.hostname.includes('localhost');
 
   if (isDevelopment) {
-    console.log('✅ 開発環境: プロキシ経由でアクセス（相対パス）');
-    return path; // 相対パスを使用してプロキシ経由でアクセス
+    console.log('✅ 開発環境: ポート8000を使用');
+    return `http://localhost:8000${path}`;
   }
 
   // その他の環境では相対パス

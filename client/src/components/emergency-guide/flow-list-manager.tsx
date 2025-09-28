@@ -62,6 +62,28 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
     console.log('🔄 FlowListManager マウント完了');
     console.log('👤 認証状態:', { user: !!user, userId: user?.id });
     fetchFlowList();
+    
+    // フロー生成完了イベントをリッスン
+    const handleFlowGenerated = () => {
+      console.log('🔄 フロー生成完了イベントを受信、一覧を更新します');
+      fetchFlowList();
+    };
+    
+    // フロー削除完了イベントをリッスン
+    const handleFlowDeleted = () => {
+      console.log('🔄 フロー削除完了イベントを受信、一覧を更新します');
+      fetchFlowList();
+    };
+    
+    // カスタムイベントリスナーを追加
+    window.addEventListener('flowGenerated', handleFlowGenerated);
+    window.addEventListener('flowDeleted', handleFlowDeleted);
+    
+    // クリーンアップ
+    return () => {
+      window.removeEventListener('flowGenerated', handleFlowGenerated);
+      window.removeEventListener('flowDeleted', handleFlowDeleted);
+    };
   }, [user]);
 
   const fetchFlowList = async () => {
@@ -82,7 +104,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
       setIsLoading(true);
       console.log('🔄 フロー一覧を取得中...');
 
-      const apiUrl = buildApiUrl('/api/troubleshooting/list');
+      const apiUrl = buildApiUrl('/api/emergency-flow/list');
       console.log('🔗 API URL:', apiUrl);
 
       // キャッシュ無効化のためのタイムスタンプ
@@ -179,9 +201,76 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
 
   const handleDeleteConfirm = async () => {
     if (!flowToDelete) return;
-    console.log('🗑️ フロー削除:', flowToDelete);
-    setShowDeleteConfirm(false);
-    setFlowToDelete(null);
+    
+    try {
+      console.log('🗑️ フロー削除開始:', flowToDelete);
+      
+      // 削除APIを呼び出し
+      const response = await fetch(`/api/emergency-flow/${flowToDelete}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      console.log('📡 削除レスポンス:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+      });
+
+      if (!response.ok) {
+        let errorMessage = `削除に失敗しました: ${response.status} - ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          console.log('❌ 削除エラーデータ:', errorData);
+          errorMessage = errorData.error || errorData.details || errorMessage;
+        } catch (parseError) {
+          console.warn('⚠️ エラーレスポンスの解析に失敗:', parseError);
+        }
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      console.log('✅ 削除レスポンス:', result);
+
+      // 成功メッセージを表示
+      toast({
+        title: '削除完了',
+        description: 'フローが正常に削除されました',
+      });
+
+      // フロー一覧から削除されたアイテムを即座に除去
+      setFlowList(prevList => {
+        const filteredList = prevList.filter(flow => flow.id !== flowToDelete);
+        console.log(
+          '📋 フロー一覧から除去: ' +
+            flowToDelete +
+            ' (残り: ' +
+            filteredList.length +
+            '件)'
+        );
+        return filteredList;
+      });
+
+      // サーバーから最新のフロー一覧を強制取得
+      console.log('🔄 フロー一覧を再取得中...');
+      await fetchFlowList();
+
+    } catch (error) {
+      console.error('❌ 削除エラー:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'フローの削除に失敗しました';
+      toast({
+        title: '削除エラー',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setShowDeleteConfirm(false);
+      setFlowToDelete(null);
+    }
   };
 
   const formatDate = (dateString: string | undefined) => {
@@ -258,7 +347,7 @@ const FlowListManager: React.FC<FlowListManagerProps> = ({
                       <tr key={flow.id} className='hover:bg-gray-50'>
                         <td className='border border-gray-300 p-2'>
                           <div className='break-words leading-tight text-sm'>
-                            {flow.title}
+                            {flow.title || flow.fileName || 'タイトルなし'}
                           </div>
                         </td>
                         <td className='border border-gray-300 p-2 text-xs text-gray-500'>

@@ -7,7 +7,8 @@ import { Textarea } from '../../components/ui/textarea';
 import { Plus, Trash2, X } from 'lucide-react';
 import StepEditor from './step-editor';
 import { v4 as uuidv4 } from 'uuid';
-import { convertImageUrl } from '../../lib/utils.ts';
+import { convertImageUrl } from '../../lib/image-utils.ts';
+import { saveFlowData, validateAndCleanFlowData, getFlowImageInfo, FlowData } from '../../lib/flow-save-manager';
 
 interface Step {
   id: string;
@@ -44,14 +45,9 @@ interface EmergencyFlowEditorProps {
 }
 
 // Helper function for UTF-8 safe base64 encoding
-function utf8_to_b64(str: string): string {
-  try {
-    return btoa(unescape(encodeURIComponent(str)));
-  } catch (e) {
-    console.error('Failed to base64 encode:', str, e);
-    return btoa(str); // Fallback to simple btoa
-  }
-}
+// 統一されたユーティリティを使用
+import { utf8ToBase64 } from '../../lib/image-utils';
+const utf8_to_b64 = utf8ToBase64;
 
 const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
   flowData,
@@ -201,11 +197,29 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
             `✅ ステップ[${step.id}]で新しい 'images' 形式を検出:`,
             step.images
           );
-          // 画像URLを変換
-          processedImages = step.images.map((img: any) => ({
-            url: convertImageUrl(img.url),
-            fileName: img.fileName,
-          }));
+          // 画像URLを変換（既に完全なURLの場合は再変換しない）
+          processedImages = step.images.map((img: any) => {
+            // 有効な画像URLかチェック
+            if (!img.url || img.url.trim() === '') {
+              console.log(`❌ 無効な画像URLをスキップ:`, img);
+              return null;
+            }
+            
+            const convertedUrl = (img.url?.startsWith('http://') || img.url?.startsWith('https://') || img.url?.startsWith('data:'))
+              ? img.url
+              : convertImageUrl(img.url);
+            console.log(`🖼️ EmergencyFlowEditor 画像URL変換:`, {
+              stepId: step.id,
+              originalUrl: img.url,
+              convertedUrl: convertedUrl,
+              fileName: img.fileName,
+              isAlreadyConverted: img.url?.startsWith('http://') || img.url?.startsWith('https://'),
+            });
+            return {
+              url: convertedUrl,
+              fileName: img.fileName,
+            };
+          }).filter(img => img !== null); // nullを除外
         }
         // 'images' がない場合、古い形式からの移行を試みる
         else if (step.imageUrl && step.imageFileName) {
@@ -216,9 +230,16 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
               imageFileName: step.imageFileName,
             }
           );
+          const convertedUrl = convertImageUrl(step.imageUrl);
+          console.log(`🖼️ EmergencyFlowEditor 古い形式画像URL変換:`, {
+            stepId: step.id,
+            originalUrl: step.imageUrl,
+            convertedUrl: convertedUrl,
+            fileName: step.imageFileName,
+          });
           processedImages = [
             {
-              url: convertImageUrl(step.imageUrl),
+              url: convertedUrl,
               fileName: step.imageFileName,
             },
           ];
@@ -232,9 +253,16 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
             }
           );
           const fileName = step.imageUrl.split('/').pop() || 'unknown.jpg';
+          const convertedUrl = convertImageUrl(step.imageUrl);
+          console.log(`🖼️ EmergencyFlowEditor imageUrlのみ画像URL変換:`, {
+            stepId: step.id,
+            originalUrl: step.imageUrl,
+            convertedUrl: convertedUrl,
+            fileName: fileName,
+          });
           processedImages = [
             {
-              url: convertImageUrl(step.imageUrl),
+              url: convertedUrl,
               fileName: fileName,
             },
           ];
@@ -242,6 +270,11 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
         // 画像情報が何もない場合
         else {
           console.log(`📝 ステップ[${step.id}]に画像情報なし`);
+          processedImages = [];
+        }
+        
+        // 画像が存在しない場合、空の配列を確実に設定
+        if (!processedImages || processedImages.length === 0) {
           processedImages = [];
         }
 
@@ -419,8 +452,26 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
       const updatedSteps = [...currentSteps];
       updatedSteps[stepIndex] = { ...updatedSteps[stepIndex], ...updatedStep };
 
-      console.log('✏️ ステップ更新:', { stepId, updatedStep, stepIndex });
+      console.log('✏️ ステップ更新:', { 
+        stepId, 
+        updatedStep, 
+        stepIndex,
+        isImageUpdate: 'images' in updatedStep,
+        imageCount: updatedStep.images?.length || 0,
+        previousImageCount: currentSteps[stepIndex].images?.length || 0,
+      });
+      
+      // 即座にUIに反映
       setSteps(updatedSteps);
+      
+      // 画像更新の場合は追加ログ
+      if ('images' in updatedStep) {
+        console.log('🖼️ 画像更新完了 - UIに即座に反映:', {
+          stepId,
+          newImages: updatedStep.images,
+          stepTitle: updatedSteps[stepIndex].title,
+        });
+      }
     },
     []
   );
@@ -562,24 +613,71 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
     console.log('🔄 自動保存を実行します...');
 
     const cleanedSteps = currentSteps.map(step => {
+      console.log('🔍 EmergencyFlowEditor ステップ画像処理開始:', {
+        stepId: step.id,
+        stepTitle: step.title,
+        originalImages: step.images,
+        hasImages: !!step.images,
+        imagesLength: step.images?.length || 0,
+      });
+
       const images = step.images
-        ?.map(img => ({
-          url: img.url && img.url.trim() !== '' ? img.url : undefined,
-          fileName:
-            img.fileName && img.fileName.trim() !== ''
-              ? img.fileName
-              : undefined,
-        }))
-        .filter(img => img.url && img.fileName);
+        ?.map(img => {
+          console.log('🖼️ EmergencyFlowEditor 画像処理:', {
+            originalImg: img,
+            url: img.url,
+            fileName: img.fileName,
+            urlValid: img.url && img.url.trim() !== '',
+            fileNameValid: img.fileName && img.fileName.trim() !== '',
+          });
+          
+          // URLが存在する場合は有効な画像として扱う
+          if (img.url && img.url.trim() !== '') {
+            return {
+              url: img.url,
+              fileName: img.fileName && img.fileName.trim() !== '' 
+                ? img.fileName 
+                : img.url.split('/').pop() || '', // URLからファイル名を抽出
+            };
+          }
+          return null;
+        })
+        .filter(img => img !== null) || []; // nullを除外
+
+      if (images && images.length > 0) {
+        console.log('✅ EmergencyFlowEditor 有効な画像情報:', {
+          stepId: step.id,
+          stepTitle: step.title,
+          imagesCount: images.length,
+          images: images,
+        });
+      } else {
+        console.log('❌ EmergencyFlowEditor 有効な画像なし:', {
+          stepId: step.id,
+          stepTitle: step.title,
+          originalImages: step.images,
+          processedImages: images,
+        });
+      }
 
       // 古いプロパティや不要なプロパティを確実に除去
       const { imageUrl, imageFileName, options, ...restOfStep } = step;
 
-      return {
+      const processedStep = {
         ...restOfStep,
-        images: images && images.length > 0 ? images : undefined,
+        images: images && images.length > 0 ? images : [],
         // optionsはdecisionタイプの時だけ保持するなどのロジックはここではない
       };
+
+      console.log('🔍 EmergencyFlowEditor 処理後のステップ:', {
+        stepId: processedStep.id,
+        stepTitle: processedStep.title,
+        finalImages: processedStep.images,
+        hasFinalImages: !!processedStep.images,
+        finalImagesLength: processedStep.images?.length || 0,
+      });
+
+      return processedStep;
     });
 
     // 1. flowDataから古いslidesプロパティを確実に除去する
@@ -597,32 +695,48 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
       filePath: `knowledge-base/troubleshooting/${flowData.id}.json`,
       ...saveData,
     };
-    console.log(
-      '🔄 [AutoSave] 送信ペイロード:',
-      JSON.stringify(payload, null, 2)
-    );
+    console.log('🔄 [AutoSave] 送信ペイロード詳細:', {
+      id: payload.id,
+      title: payload.title,
+      stepsCount: payload.steps?.length || 0,
+      stepsWithImages: payload.steps?.filter(s => s.images && s.images.length > 0).length || 0,
+      allStepsImages: payload.steps?.map(step => ({
+        stepId: step.id,
+        stepTitle: step.title,
+        imagesCount: step.images?.length || 0,
+        images: step.images?.map(img => ({
+          fileName: img.fileName,
+          url: img.url?.substring(0, 100) + '...'
+        })) || []
+      })) || []
+    });
 
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${flowData.id}`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        }
-      );
+      // 統一された保存処理を使用
+      const result = await saveFlowData(saveData, {
+        validateImages: true,
+        logDetails: true
+      });
 
-      if (response.ok) {
-        console.log('✅ 自動保存完了');
+      if (result.success) {
+        console.log('✅ EmergencyFlowEditor 自動保存成功:', {
+          flowId: result.data?.id || saveData.id,
+          title: result.data?.title || saveData.title,
+          stepsCount: result.data?.steps?.length || saveData.steps.length,
+        });
+
+        // 自動保存時はonSaveを呼ばず、内部状態のみ更新
+        console.log('EmergencyFlowEditor 自動保存完了');
+        
+        // 変更フラグをリセット
         setHasChanges(false);
-        setOriginalSteps(cleanedSteps);
+        setOriginalSteps(result.data?.steps || saveData.steps);
       } else {
-        const errorData = await response.json();
-        console.error('❌ 自動保存失敗:', errorData.error);
-        alert(`自動保存に失敗しました: ${errorData.error}`);
+        console.error('❌ EmergencyFlowEditor 自動保存失敗:', result.error);
+        alert(`自動保存に失敗しました: ${result.error}`);
       }
     } catch (error) {
-      console.error('❌ 自動保存中にエラー:', error);
+      console.error('❌ EmergencyFlowEditor 自動保存エラー:', error);
     }
   }, [flowData, title, description, hasChanges]);
 
@@ -655,7 +769,21 @@ const EmergencyFlowEditor: React.FC<EmergencyFlowEditorProps> = ({
         updatedAt: new Date().toISOString(),
       };
 
-      console.log('💾 保存するデータ:', flowDataToSave);
+      console.log('💾 保存するデータ詳細:', {
+        id: flowDataToSave.id,
+        title: flowDataToSave.title,
+        stepsCount: flowDataToSave.steps.length,
+        stepsWithImages: flowDataToSave.steps.filter(s => s.images && s.images.length > 0).length,
+        allStepsImages: flowDataToSave.steps.map(step => ({
+          stepId: step.id,
+          stepTitle: step.title,
+          imagesCount: step.images?.length || 0,
+          images: step.images?.map(img => ({
+            fileName: img.fileName,
+            url: img.url?.substring(0, 100) + '...'
+          })) || []
+        }))
+      });
       onSave(flowDataToSave);
     } catch (error) {
       console.error('❌ フロー保存エラー:', error);

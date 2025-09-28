@@ -1,9 +1,14 @@
 import { Router, Request, Response } from 'express';
-import { authenticateToken } from '../middleware/auth';
+import { authenticateToken } from '../middleware/auth.js';
 import path from 'path';
 import fs from 'fs/promises';
+import { fileURLToPath } from 'url';
 
 const router = Router();
+
+// ES module用の__dirname代替
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // RAG設定の保存・読み込み用のファイルパス
 const RAG_SETTINGS_FILE = path.join(__dirname, '../data/rag-settings.json');
@@ -38,7 +43,7 @@ async function ensureDataDirectory() {
 }
 
 // RAG設定を取得
-router.get('/rag', authenticateToken, async (req: Request, res: Response) => {
+router.get('/rag', async (req: Request, res: Response) => {
   try {
     console.log('🔍 RAG設定取得リクエスト');
 
@@ -134,6 +139,76 @@ router.post('/rag', authenticateToken, async (req: Request, res: Response) => {
     console.error('❌ RAG設定保存エラー:', error);
     res.status(500).json({
       error: 'RAG設定の保存に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// OpenAI APIキーを保存
+router.post('/openai-api-key', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    console.log('🔑 OpenAI APIキー保存リクエスト');
+
+    const { apiKey } = req.body;
+
+    if (!apiKey || typeof apiKey !== 'string') {
+      return res.status(400).json({
+        error: 'APIキーが提供されていません',
+      });
+    }
+
+    if (!apiKey.startsWith('sk-')) {
+      return res.status(400).json({
+        error: 'OpenAI APIキーは「sk-」で始まる必要があります',
+      });
+    }
+
+    // 環境変数として設定（実際の本番環境では環境変数ファイルに保存することを推奨）
+    process.env.OPENAI_API_KEY = apiKey;
+
+    console.log('✅ OpenAI APIキー保存成功');
+    res.json({ 
+      success: true, 
+      message: 'OpenAI APIキーを保存しました',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ OpenAI APIキー保存エラー:', error);
+    res.status(500).json({
+      error: 'OpenAI APIキーの保存に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// OpenAI APIキーを取得
+router.get('/openai-api-key', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    console.log('🔍 OpenAI APIキー取得リクエスト');
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    
+    if (!apiKey) {
+      return res.json({
+        success: true,
+        hasApiKey: false,
+        message: 'OpenAI APIキーが設定されていません',
+      });
+    }
+
+    // セキュリティのため、APIキーの一部のみを返す
+    const maskedApiKey = apiKey.substring(0, 8) + '...' + apiKey.substring(apiKey.length - 4);
+
+    res.json({
+      success: true,
+      hasApiKey: true,
+      maskedApiKey,
+      message: 'OpenAI APIキーが設定されています',
+    });
+  } catch (error) {
+    console.error('❌ OpenAI APIキー取得エラー:', error);
+    res.status(500).json({
+      error: 'OpenAI APIキーの取得に失敗しました',
       details: error instanceof Error ? error.message : 'Unknown error',
     });
   }

@@ -1,17 +1,28 @@
 {
   "id": "flow_1751972559928",
-  "title": "走行中に突然エンジンが停止した。",
-  "description": "キーワード「走行中に突然エンジンが停止した。」から自動生成されたフロー",
-  "triggerKeywords": ["走行中に突然エンジンが停止した。"],
+  "title": "エンジンが急に停止した - テスト編集",
+  "description": "エンジンが急に停止した場合の応急処置フロー - テスト用に編集",
+  "triggerKeywords": [
+    "エンジンが急に停止した"
+  ],
   "steps": [
     {
+      "images": [
+        {
+          "url": "/api/emergency-flow/image/emergency-flow-step1759034200650.JPG",
+          "fileName": "emergency-flow-step1759034200650.JPG"
+        },
+        {
+          "url": "/api/emergency-flow/image/emergency-flow-step1759034747453.JPG",
+          "fileName": "emergency-flow-step1759034747453.JPG"
+        }
+      ],
+      "title": "エンジン停止の確認",
       "id": "step1",
-      "title": "開始",
-      "description": "キーワード「走行中に突然エンジンが停止した。」に関する応急処置を開始します",
-      "message": "キーワード「走行中に突然エンジンが停止した。」に関する応急処置を開始します",
+      "description": "エンジンが停止した状況を確認します",
+      "message": "急激な停止もしくは徐々に停止により判断が分かれます。",
       "type": "step",
       "options": [],
-      "images": [],
       "conditions": []
     },
     {
@@ -54,5 +65,253 @@
     }
   ],
   "createdAt": "2025-07-08T11:02:39.928Z",
-  "updatedAt": "2025-08-12T01:22:47.822Z"
+  "updatedAt": "2025-09-28T06:38:30.056Z",
+  "updateHistory": [
+    {
+      "timestamp": "2025-09-28T04:40:21.277Z",
+      "updatedFields": [
+        "title",
+        "id",
+        "steps"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-09-28T04:41:17.610Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "steps"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-09-28T04:49:35.162Z",
+      "updatedFields": [
+        "id",
+        "description",
+        "createdAt",
+        "triggerKeywords",
+        "steps",
+        "title",
+        "updatedAt"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-09-28T05:34:49.429Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "steps",
+        "triggerKeywords",
+        "createdAt",
+        "updatedAt"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-09-28T05:34:49.436Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "triggerKeywords",
+        "steps",
+        "createdAt",
+        "updatedAt",
+        "updateHistory"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-09-28T05:36:49.695Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "steps",
+        "triggerKeywords",
+        "createdAt",
+        "updatedAt"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-09-28T05:36:49.703Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "triggerKeywords",
+        "steps",
+        "createdAt",
+        "updatedAt",
+        "updateHistory"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-09-28T05:40:14.651Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "steps",
+        "triggerKeywords",
+        "createdAt",
+        "updatedAt"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-09-28T05:40:14.657Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "triggerKeywords",
+        "steps",
+        "createdAt",
+        "updatedAt"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-09-28T06:19:02.183Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "steps",
+        "triggerKeywords",
+        "createdAt",
+        "updatedAt"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-09-28T06:19:02.190Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "triggerKeywords",
+        "steps",
+        "createdAt",
+        "updatedAt",
+        "updateHistory"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-09-28T06:33:27.615Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "steps",
+        "triggerKeywords",
+        "createdAt",
+        "updatedAt"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-09-28T06:33:27.623Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "triggerKeywords",
+        "steps",
+        "createdAt",
+        "updatedAt",
+        "updateHistory"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-09-28T06:36:52.070Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "steps",
+        "triggerKeywords",
+        "createdAt",
+        "updatedAt"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-09-28T06:36:52.077Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "triggerKeywords",
+        "steps",
+        "createdAt",
+        "updatedAt",
+        "updateHistory"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-09-28T06:36:59.676Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "steps",
+        "triggerKeywords",
+        "createdAt",
+        "updatedAt"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-09-28T06:36:59.682Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "triggerKeywords",
+        "steps",
+        "createdAt",
+        "updatedAt",
+        "updateHistory"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-09-28T06:38:30.049Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "steps",
+        "triggerKeywords",
+        "createdAt",
+        "updatedAt"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-09-28T06:38:30.056Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "triggerKeywords",
+        "steps",
+        "createdAt",
+        "updatedAt",
+        "updateHistory"
+      ],
+      "updatedBy": "user"
+    }
+  ]
 }

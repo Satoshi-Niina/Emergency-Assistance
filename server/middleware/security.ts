@@ -249,6 +249,11 @@ export const secureCORS = (req: Request, res: Response, next: NextFunction) => {
     'https://witty-river-012f39e00.1.azurestaticapps.net',
   ];
 
+  // FRONTEND_URL環境変数があれば追加
+  if (process.env.FRONTEND_URL) {
+    allowedOrigins.push(process.env.FRONTEND_URL);
+  }
+
   if (origin && allowedOrigins.includes(origin)) {
     res.header('Access-Control-Allow-Origin', origin);
   }

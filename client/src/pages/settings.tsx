@@ -31,10 +31,8 @@ import {
   Plus,
   Database,
   X,
-  CheckCircle,
-  RefreshCw,
-  AlertCircle,
   Wrench,
+  CheckCircle,
 } from 'lucide-react';
 import { WarningDialog } from '../components/shared/warning-dialog';
 import { Separator } from '../components/ui/separator';
@@ -56,7 +54,7 @@ export default function SettingsPage() {
   const [darkMode, setDarkMode] = useState(false);
   const [autoSave, setAutoSave] = useState(true);
   const [useOnlyKnowledgeBase, setUseOnlyKnowledgeBase] = useState(true);
-
+  
   // システム健全性チェック
   // System health state removed - integrated into system diagnostic page
 

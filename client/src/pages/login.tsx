@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema } from '../lib/schema';
 import { useAuth } from '../context/auth-context';
-import { loginApi, meApi } from '../lib/auth';
+// import { loginApi, meApi } from '../lib/auth-unified';
 import { Button } from '../components/ui/button';
 import {
   Card,
@@ -76,10 +76,14 @@ export default function Login() {
     }
     setIsLoading(true);
     try {
-      await loginApi(username.trim(), password);
-      console.debug('[login] loginApi done');
-      const me = await meApi();
-      console.debug('[login] me ok', me);
+      console.log('🔐 ログイン試行開始:', { username: username.trim() });
+      
+      // 認証コンテキストのlogin関数を使用
+      await login(username.trim(), password);
+      console.log('✅ ログイン成功: チャット画面に遷移');
+      
+      // ログイン成功後、チャット画面に遷移
+      navigate('/chat');
     } catch (e: any) {
       console.warn('[login] ログインエラー:', e);
 

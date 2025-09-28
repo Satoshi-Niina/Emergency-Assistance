@@ -16,18 +16,32 @@
 
 ## 🚀 開発環境の起動
 
-### 一人開発用（推奨）
+### クイックスタート（推奨）
 ```bash
-# Linux/Mac
-./scripts/dev.sh
+# Windows PowerShell（推奨）
+.\quick-start.ps1
 
-# Windows
-scripts\dev.bat
+# Windows バッチファイル
+.\quick-start.bat
 
-# または手動で
+# 詳細な開発環境セットアップ
+.\start-local-dev.ps1
+```
+
+### 手動起動
+```bash
+# npmコマンドで同時起動
+npm run dev
+
+# 個別起動
 cd server && npm run dev
 cd client && npm run dev
 ```
+
+### アクセスURL
+- **フロントエンド**: http://localhost:5173
+- **バックエンドAPI**: http://localhost:8000
+- **ヘルスチェック**: http://localhost:8000/api/health
 
 ## 🐳 本番環境へのデプロイ
 

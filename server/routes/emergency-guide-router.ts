@@ -4,31 +4,31 @@ import * as path from 'path';
 import multer from 'multer';
 import AdmZip from 'adm-zip';
 import fetch from 'node-fetch';
-import { log } from '../vite.js';
+
 
 const router = express.Router();
-// 知識ベースディレクトリの設定 - uploadsフォルダの使用を廃止
+// 知識�EースチE��レクトリの設宁E- uploadsフォルダの使用を廁E��
 const knowledgeBaseDir: any = path.resolve('./knowledge-base');
 const kbPptDir: any = path.join(knowledgeBaseDir, 'ppt');
 const kbJsonDir: any = path.join(knowledgeBaseDir, 'json');
 const kbImageDir: any = path.join(knowledgeBaseDir, 'images');
 const kbTempDir: any = path.join(knowledgeBaseDir, 'temp');
-// ディレクトリの存在確認と作成
+// チE��レクトリの存在確認と作�E
 [knowledgeBaseDir, kbPptDir, kbJsonDir, kbImageDir, kbTempDir].forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
 });
-// クリーンアップ処理：問題となるファイルを削除 (開発用)
+// クリーンアチE�E処琁E��問題となるファイルを削除 (開発用)
 const cleanupSpecificFiles = () => {
   try {
-    // 問題のあるガイドファイルを確認して削除
+    // 問題�Eあるガイドファイルを確認して削除
     const problemFile: any = path.join(
       kbJsonDir,
       'guide_1744876404679_metadata.json'
     );
     if (fs.existsSync(problemFile)) {
-      console.log('問題となるファイルを削除します:', problemFile);
+      console.console.log('問題となるファイルを削除しまぁE', problemFile);
       fs.unlinkSync(problemFile);
     }
     // 関連する画像を削除
@@ -41,17 +41,17 @@ const cleanupSpecificFiles = () => {
         const imgPath: any = path.join(kbImageDir, imgFile);
         if (fs.existsSync(imgPath)) {
           fs.unlinkSync(imgPath);
-          console.log('関連画像を削除しました:', imgPath);
+          console.console.log('関連画像を削除しました:', imgPath);
         }
       });
     }
   } catch (error) {
-    console.error('クリーンアップ中にエラーが発生しました:', error);
+    console.error('クリーンアチE�E中にエラーが発生しました:', error);
   }
 };
-// アプリケーション起動時にクリーンアップを実行
+// アプリケーション起動時にクリーンアチE�Eを実衁E
 cleanupSpecificFiles();
-// Multerの設定
+// Multerの設宁E
 const storage: any = multer.diskStorage({
   destination: (_req, _file, cb) => {
     cb(null, kbPptDir);
@@ -64,7 +64,7 @@ const storage: any = multer.diskStorage({
     cb(null, fileName);
   },
 });
-// ファイルフィルター（PPTX、PDFとJSONを許可）
+// ファイルフィルター�E�EPTX、PDFとJSONを許可�E�E
 const fileFilter = (_req: any, file: any, cb) => {
   const allowedExtensions = ['.pptx', '.ppt', '.pdf', '.xlsx', '.xls', '.json'];
   const ext: any = path.extname(file.originalname).toLowerCase();
@@ -73,7 +73,7 @@ const fileFilter = (_req: any, file: any, cb) => {
   } else {
     cb(
       new Error(
-        'サポートされていないファイル形式です。PowerPoint (.pptx, .ppt)、Excel (.xlsx, .xls)、PDF (.pdf)、またはJSON (.json) ファイルのみアップロードできます。'
+        'サポ�EトされてぁE��ぁE��ァイル形式です。PowerPoint (.pptx, .ppt)、Excel (.xlsx, .xls)、PDF (.pdf)、また�EJSON (.json) ファイルのみアチE�Eロードできます、E
       )
     );
   }
@@ -85,16 +85,16 @@ const upload: any = multer({
     fileSize: 10 * 1024 * 1024, // 10MB
   },
 });
-// PowerPoint（PPTX）ファイルを処理してJSONデータに変換する関数
+// PowerPoint�E�EPTX�E�ファイルを�E琁E��てJSONチE�Eタに変換する関数
 async function processPowerPointFile(filePath) {
   try {
     const fileId = `guide_${Date.now()}`;
     const fileExtension: any = path.extname(filePath);
-    // PPTXファイルを解凍してXMLとして処理
+    // PPTXファイルを解凍してXMLとして処琁E
     if (fileExtension.toLowerCase() === '.pptx') {
       const zip: any = new AdmZip(filePath);
       const extractDir: any = path.join(kbTempDir, fileId);
-      // 一時ディレクトリが存在しない場合は作成
+      // 一時ディレクトリが存在しなぁE��合�E作�E
       if (!fs.existsSync(kbTempDir)) {
         fs.mkdirSync(kbTempDir, { recursive: true });
       }
@@ -103,27 +103,27 @@ async function processPowerPointFile(filePath) {
       }
       // ZIPとして展開
       zip.extractAllTo(extractDir, true);
-      // スライドXMLファイルを探す
+      // スライドXMLファイルを探ぁE
       const slidesDir: any = path.join(extractDir, 'ppt', 'slides');
       const slideFiles: any = fs.existsSync(slidesDir)
         ? fs
             .readdirSync(slidesDir)
             .filter(file => file.startsWith('slide') && file.endsWith('.xml'))
         : [];
-      // スライドのテキスト内容を抽出
+      // スライド�EチE��スト�E容を抽出
       const slides = [];
       for (let i = 0; i < slideFiles.length; i++) {
         const slideNumber: any = i + 1;
         const slideFilePath: any = path.join(slidesDir, slideFiles[i]);
         const slideContent: any = fs.readFileSync(slideFilePath, 'utf8');
-        // 画像の参照を探す
+        // 画像�E参�Eを探ぁE
         const imageRefs = [];
         const imageRegex = /r:embed="rId(\d+)"/g;
         let match;
         while ((match = imageRegex.exec(slideContent)) !== null) {
           imageRefs.push(match[1]);
         }
-        // テキスト内容の抽出
+        // チE��スト�E容の抽出
         const textRegex = /<a:t>(.*?)<\/a:t>/g;
         const texts = [];
         while ((match = textRegex.exec(slideContent)) !== null) {
@@ -131,7 +131,7 @@ async function processPowerPointFile(filePath) {
             texts.push(match[1].trim());
           }
         }
-        // ノート（スピーカーノート）の内容を取得
+        // ノ�Eト（スピ�Eカーノ�Eト）�E冁E��を取征E
         const noteFilePath: any = path.join(
           extractDir,
           'ppt',
@@ -148,39 +148,39 @@ async function processPowerPointFile(filePath) {
             }
           }
         }
-        // メディアファイルを探して保存
+        // メチE��アファイルを探して保孁E
         const imageTexts = [];
         const mediaDir: any = path.join(extractDir, 'ppt', 'media');
         if (fs.existsSync(mediaDir)) {
           const mediaFiles: any = fs.readdirSync(mediaDir);
-          // 各画像ファイルを処理
+          // 吁E��像ファイルを�E琁E
           for (const mediaFile of mediaFiles) {
             const sourcePath: any = path.join(mediaDir, mediaFile);
             const targetFileName = `${fileId}_slide${slideNumber}_${mediaFile}`;
             const targetPath: any = path.join(kbImageDir, targetFileName);
-            // 画像をコピー
+            // 画像をコピ�E
             fs.copyFileSync(sourcePath, targetPath);
-            // 画像パスの作成（相対パス）
+            // 画像パスの作�E�E�相対パス�E�E
             const relativePath = `/knowledge-base/images/${targetFileName}`;
-            // 画像に関連するテキストを見つける（画像の近くのテキスト要素から）
+            // 画像に関連するチE��ストを見つける�E�画像�E近くのチE��スト要素から�E�E
             const imageText: any =
-              texts.length > 0 ? texts[0] : '画像の説明がありません';
+              texts.length > 0 ? texts[0] : '画像�E説明がありません';
             imageTexts.push({
               画像パス: relativePath,
-              テキスト: imageText,
+              チE��スチE imageText,
             });
           }
         }
-        // スライドデータの構築
+        // スライドデータの構篁E
         slides.push({
           スライド番号: slideNumber,
-          タイトル: texts.length > 0 ? texts[0] : `スライド ${slideNumber}`,
-          本文: texts.slice(1), // 先頭（タイトル）以外のテキスト
-          ノート: noteContent,
-          画像テキスト: imageTexts,
+          タイトル: texts.length > 0 ? texts[0] : `スライチE${slideNumber}`,
+          本斁E texts.slice(1), // 先頭�E�タイトル�E�以外�EチE��スチE
+          ノ�EチE noteContent,
+          画像テキスチE imageTexts,
         });
       }
-      // プレゼンテーションのメタデータを取得
+      // プレゼンチE�EションのメタチE�Eタを取征E
       const corePropsPath: any = path.join(extractDir, 'docProps', 'core.xml');
       let title = path.basename(filePath, fileExtension);
       let creator = '';
@@ -188,24 +188,24 @@ async function processPowerPointFile(filePath) {
       let modified = new Date().toISOString();
       if (fs.existsSync(corePropsPath)) {
         const coreProps: any = fs.readFileSync(corePropsPath, 'utf8');
-        // タイトルを取得
+        // タイトルを取征E
         const titleMatch = /<dc:title>(.*?)<\/dc:title>/g.exec(coreProps);
         if (titleMatch && titleMatch[1]) {
           title = titleMatch[1];
         }
-        // 作成者を取得
+        // 作�E老E��取征E
         const creatorMatch = /<dc:creator>(.*?)<\/dc:creator>/g.exec(coreProps);
         if (creatorMatch && creatorMatch[1]) {
           creator = creatorMatch[1];
         }
-        // 作成日を取得
+        // 作�E日を取征E
         const createdMatch = /<dcterms:created>(.*?)<\/dcterms:created>/g.exec(
           coreProps
         );
         if (createdMatch && createdMatch[1]) {
           created = createdMatch[1];
         }
-        // 更新日を取得
+        // 更新日を取征E
         const modifiedMatch =
           /<dcterms:modified>(.*?)<\/dcterms:modified>/g.exec(coreProps);
         if (modifiedMatch && modifiedMatch[1]) {
@@ -214,18 +214,18 @@ async function processPowerPointFile(filePath) {
       }
       // 一時ディレクトリを削除
       fs.rmSync(extractDir, { recursive: true, force: true });
-      // 最終的なJSONオブジェクトを作成
+      // 最終的なJSONオブジェクトを作�E
       const result = {
         metadata: {
           タイトル: title,
-          作成者: creator || 'Unknown',
-          作成日: created,
+          作�E老E creator || 'Unknown',
+          作�E日: created,
           修正日: modified,
-          説明: `PowerPointから生成された応急処置ガイド「${title}」です。接続番号: 123`,
+          説昁E `PowerPointから生�Eされた応急処置ガイド、E{title}」です。接続番号: 123`,
         },
         slides,
       };
-      // JSONファイルを知識ベースディレクトリに保存
+      // JSONファイルを知識�EースチE��レクトリに保孁E
       const kbJsonFilePath: any = path.join(
         kbJsonDir,
         `${fileId}_metadata.json`
@@ -241,29 +241,29 @@ async function processPowerPointFile(filePath) {
         data: result,
       };
     } else {
-      throw new Error('サポートされていないファイル形式です');
+      throw new Error('サポ�EトされてぁE��ぁE��ァイル形式でぁE);
     }
   } catch (error) {
-    console.error('PowerPointファイル処理エラー:', error);
+    console.error('PowerPointファイル処琁E��ラー:', error);
     throw error;
   }
 }
-// JSONファイルを処理する関数
+// JSONファイルを�E琁E��る関数
 async function processJsonFile(filePath) {
   try {
     const fileId = `guide_${Date.now()}`;
-    console.log(`JSONファイル処理: ID=${fileId}`);
-    // 知識ベースディレクトリが存在することを確認
+    console.console.log(`JSONファイル処琁E ID=${fileId}`);
+    // 知識�EースチE��レクトリが存在することを確誁E
     if (!fs.existsSync(kbJsonDir)) {
       fs.mkdirSync(kbJsonDir, { recursive: true });
-      console.log(`知識ベースJSONディレクトリを作成: ${kbJsonDir}`);
+      console.console.log(`知識�EースJSONチE��レクトリを作�E: ${kbJsonDir}`);
     }
     const fileContent: any = fs.readFileSync(filePath, 'utf8');
     const jsonData: any = JSON.parse(fileContent);
-    // ファイルパスとファイル名をログ出力
-    console.log(`元のファイルパス: ${filePath}`);
-    console.log(`元のファイル名: ${path.basename(filePath)}`);
-    // アップロードされた画像パスがある場合、相対パスに変換
+    // ファイルパスとファイル名をログ出劁E
+    console.console.log(`允E�Eファイルパス: ${filePath}`);
+    console.console.log(`允E�Eファイル吁E ${path.basename(filePath)}`);
+    // アチE�Eロードされた画像パスがある場合、相対パスに変換
     if (jsonData.steps) {
       for (const step of jsonData.steps) {
         if (step.imageUrl && step.imageUrl.startsWith('/uploads/')) {
@@ -274,13 +274,13 @@ async function processJsonFile(filePath) {
         }
       }
     }
-    // 知識ベースディレクトリに一箇所だけ保存（画像パスはナレッジベースの相対パスを使用）
+    // 知識�EースチE��レクトリに一箁E��だけ保存（画像パスはナレチE��ベ�Eスの相対パスを使用�E�E
     const kbJsonFilePath: any = path.join(kbJsonDir, `${fileId}_metadata.json`);
-    console.log(`保存先ファイルパス: ${kbJsonFilePath}`);
-    // JSONデータを文字列に変換して保存（コピーではなく書き込み）
+    console.console.log(`保存�Eファイルパス: ${kbJsonFilePath}`);
+    // JSONチE�Eタを文字�Eに変換して保存（コピ�Eではなく書き込み�E�E
     fs.writeFileSync(kbJsonFilePath, JSON.stringify(jsonData, null, 2));
-    console.log(`ファイルを保存しました: ${kbJsonFilePath}`);
-    // タイトルなどの情報を取得
+    console.console.log(`ファイルを保存しました: ${kbJsonFilePath}`);
+    // タイトルなどの惁E��を取征E
     const title: any = jsonData.title || path.basename(filePath, '.json');
     const slideCount: any = jsonData.steps ? jsonData.steps.length : 0;
     return {
@@ -293,11 +293,11 @@ async function processJsonFile(filePath) {
       data: jsonData,
     };
   } catch (error) {
-    console.error('JSONファイル処理エラー:', error);
+    console.error('JSONファイル処琁E��ラー:', error);
     throw error;
   }
 }
-// ファイルアップロードと処理のエンドポイント
+// ファイルアチE�Eロードと処琁E�Eエンド�EインチE
 router.post('/process', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
@@ -305,31 +305,31 @@ router.post('/process', upload.single('file'), async (req, res) => {
         .status(400)
         .json({
           success: false,
-          error: 'ファイルがアップロードされていません',
+          error: 'ファイルがアチE�EロードされてぁE��せん',
         });
     }
-    // 自動フロー生成オプションを取得
+    // 自動フロー生�Eオプションを取征E
     const autoGenerateFlow: any = req.body.autoGenerateFlow === 'true';
     const filePath: any = req.file.path;
     const fileExtension: any = path.extname(filePath).toLowerCase();
     let result;
-    // ファイル形式に応じた処理
+    // ファイル形式に応じた�E琁E
     if (fileExtension === '.json') {
-      log(`JSONファイル処理: ${filePath}`);
+      console.log(`JSONファイル処琁E ${filePath}`);
       result = await processJsonFile(filePath);
     } else if (['.pptx', '.ppt'].includes(fileExtension)) {
-      log(`PowerPointファイル処理: ${filePath}`);
+      console.log(`PowerPointファイル処琁E ${filePath}`);
       result = await processPowerPointFile(filePath);
     } else {
       return res.status(400).json({
         success: false,
         error:
-          'サポートされていないファイル形式です。現在の処理はPowerPointとJSONのみサポートしています。',
+          'サポ�EトされてぁE��ぁE��ァイル形式です。現在の処琁E�EPowerPointとJSONのみサポ�EトしてぁE��す、E,
       });
     }
-    // JSONに保存されている画像パスがナレッジベース形式に変換されていることを確認
+    // JSONに保存されてぁE��画像パスがナレチE��ベ�Eス形式に変換されてぁE��ことを確誁E
     if (fileExtension === '.json') {
-      // ナレッジベースディレクトリのパスを確保
+      // ナレチE��ベ�EスチE��レクトリのパスを確俁E
       const knowledgeBaseDir: any = path.join('knowledge-base');
       if (!fs.existsSync(knowledgeBaseDir)) {
         fs.mkdirSync(knowledgeBaseDir, { recursive: true });
@@ -339,20 +339,20 @@ router.post('/process', upload.single('file'), async (req, res) => {
         fs.mkdirSync(knowledgeBaseImagesDir, { recursive: true });
       }
     }
-    // レスポンス用のデータ
+    // レスポンス用のチE�Eタ
     const responseData = {
       success: true,
-      message: 'ファイルが正常に処理されました',
+      message: 'ファイルが正常に処琁E��れました',
       guideId: result.id,
       data: result,
     };
-    // 自動フロー生成が有効な場合は、非同期でフロー生成プロセスを開始
+    // 自動フロー生�Eが有効な場合�E、E��同期でフロー生�Eプロセスを開姁E
     if (autoGenerateFlow) {
-      // まずレスポンスを返してクライアントを待たせない
+      // まずレスポンスを返してクライアントを征E��せなぁE
       res.json(responseData);
       try {
-        console.log(`自動フロー生成を開始: ${result.id}`);
-        // 別プロセスでフロー生成APIを呼び出す（バックグラウンド処理）
+        console.console.log(`自動フロー生�Eを開姁E ${result.id}`);
+        // 別プロセスでフロー生�EAPIを呼び出す（バチE��グラウンド�E琁E��E
         fetch(
           `http://localhost:${process.env.PORT || 3000}/api/flow-generator/generate-from-guide/${result.id}`,
           {
@@ -365,69 +365,69 @@ router.post('/process', upload.single('file'), async (req, res) => {
           .then(async response => {
             if (response.ok) {
               const generationResult: any = await response.json();
-              console.log(`フロー生成成功: ${generationResult.flowData.id}`);
+              console.console.log(`フロー生�E成功: ${generationResult.flowData.id}`);
             } else {
-              console.error('フロー生成エラー:', await response.text());
+              console.error('フロー生�Eエラー:', await response.text());
             }
           })
           .catch(err => {
-            console.error('フロー生成リクエストエラー:', err);
+            console.error('フロー生�Eリクエストエラー:', err);
           });
       } catch (error) {
-        console.error('自動フロー生成開始エラー:', error);
-        // エラーが発生してもクライアントには既にレスポンスを返しているので何もしない
+        console.error('自動フロー生�E開始エラー:', error);
+        // エラーが発生してもクライアントには既にレスポンスを返してぁE��ので何もしなぁE
       }
-      // レスポンスは既に返しているのでここでは何もしない
+      // レスポンスは既に返してぁE��のでここでは何もしなぁE
       return;
     }
-    // 自動フロー生成が無効な場合は通常のレスポンスを返す
+    // 自動フロー生�Eが無効な場合�E通常のレスポンスを返す
     return res.json(responseData);
   } catch (error) {
-    console.error('ファイル処理エラー:', error);
+    console.error('ファイル処琁E��ラー:', error);
     return res.status(500).json({
       success: false,
       error:
-        error instanceof Error ? error.message : '不明なエラーが発生しました',
+        error instanceof Error ? error.message : '不�Eなエラーが発生しました',
     });
   }
 });
-// ガイドファイル一覧を取得するエンドポイント
+// ガイドファイル一覧を取得するエンド�EインチE
 router.get('/list', (_req, res) => {
   try {
-    console.log('ガイド一覧を取得します...');
-    // 知識ベースディレクトリからファイルを読み取る
+    console.console.log('ガイド一覧を取得しまぁE..');
+    // 知識�EースチE��レクトリからファイルを読み取る
     if (!fs.existsSync(kbJsonDir)) {
-      return res.status(404).json({ error: 'ディレクトリが見つかりません' });
+      return res.status(404).json({ error: 'チE��レクトリが見つかりません' });
     }
-    // キャッシュバスティングのためにファイル一覧を再スキャン
+    // キャチE��ュバスチE��ングのためにファイル一覧を�Eスキャン
     const allFiles: any = fs.readdirSync(kbJsonDir);
-    console.log('全ファイル一覧:', allFiles);
-    // 特定のファイルを除外するためのブラックリスト
+    console.console.log('全ファイル一覧:', allFiles);
+    // 特定�Eファイルを除外するため�EブラチE��リスチE
     const blacklist = ['guide_1744876404679_metadata.json'];
-    // メタデータファイルのみをフィルタリング（かつブラックリストを除外）
+    // メタチE�Eタファイルのみをフィルタリング�E�かつブラチE��リストを除外！E
     const files: any = allFiles.filter(
       file => file.endsWith('_metadata.json') && !blacklist.includes(file)
     );
-    console.log('フィルタリング後のメタデータファイル一覧:', files);
+    console.console.log('フィルタリング後�EメタチE�Eタファイル一覧:', files);
     const guides: any = files.map(file => {
       try {
         const filePath: any = path.join(kbJsonDir, file);
         const content: any = fs.readFileSync(filePath, 'utf8');
         const data: any = JSON.parse(content);
         const id: any = file.split('_')[0] + '_' + file.split('_')[1];
-        // JSONデータの形式に応じて処理
-        // 通常のPowerPoint由来の形式
+        // JSONチE�Eタの形式に応じて処琁E
+        // 通常のPowerPoint由来の形弁E
         if (data.metadata && data.slides) {
           return {
             id,
             filePath,
             fileName: data.metadata.タイトル || `ファイル_${id}`,
             title: data.metadata.タイトル || `ファイル_${id}`,
-            createdAt: data.metadata.作成日,
+            createdAt: data.metadata.作�E日,
             slideCount: data.slides.length,
           };
         }
-        // JSON由来の応急処置フロー形式
+        // JSON由来の応急処置フロー形弁E
         else if (data.title && data.steps) {
           return {
             id,
@@ -438,7 +438,7 @@ router.get('/list', (_req, res) => {
             slideCount: data.steps.length,
           };
         }
-        // その他の形式の場合はファイル名をタイトルとして使用
+        // そ�E他�E形式�E場合�Eファイル名をタイトルとして使用
         else {
           return {
             id,
@@ -450,8 +450,8 @@ router.get('/list', (_req, res) => {
           };
         }
       } catch (err) {
-        console.error(`ファイル処理エラー: ${file}`, err);
-        // エラーの場合は最低限の情報を返す
+        console.error(`ファイル処琁E��ラー: ${file}`, err);
+        // エラーの場合�E最低限の惁E��を返す
         const id: any = file.split('_')[0] + '_' + file.split('_')[1];
         return {
           id,
@@ -463,12 +463,12 @@ router.get('/list', (_req, res) => {
         };
       }
     });
-    // リスト取得前の最終状態チェック（完全にファイルシステムと同期するため）
-    console.log('応急ガイド一覧をレスポンス送信前に最終検証:');
-    console.log('- JSONディレクトリの内容:', fs.readdirSync(kbJsonDir));
-    console.log('- 返却するガイド数:', guides.length);
-    console.log('- ガイドID一覧:', guides.map(g => g.id).join(', '));
-    // ヘッダーの追加でキャッシュを無効化
+    // リスト取得前の最終状態チェチE���E�完�EにファイルシスチE��と同期するため�E�E
+    console.console.log('応急ガイド一覧をレスポンス送信前に最終検証:');
+    console.console.log('- JSONチE��レクトリの冁E��:', fs.readdirSync(kbJsonDir));
+    console.console.log('- 返却するガイド数:', guides.length);
+    console.console.log('- ガイドID一覧:', guides.map(g => g.id).join(', '));
+    // ヘッダーの追加でキャチE��ュを無効匁E
     res.setHeader(
       'Cache-Control',
       'no-store, no-cache, must-revalidate, proxy-revalidate'
@@ -483,7 +483,7 @@ router.get('/list', (_req, res) => {
     res.status(500).json({ error: 'ガイド一覧の取得に失敗しました' });
   }
 });
-// 特定のガイド詳細データを取得するエンドポイント
+// 特定�Eガイド詳細チE�Eタを取得するエンド�EインチE
 router.get('/detail/:id', (_req, res) => {
   try {
     const id: any = req.params.id;
@@ -496,25 +496,25 @@ router.get('/detail/:id', (_req, res) => {
     const filePath: any = path.join(kbJsonDir, files[0]);
     const content: any = fs.readFileSync(filePath, 'utf8');
     const data: any = JSON.parse(content);
-    // アップロードパス(/uploads/)からナレッジベースパス(/knowledge-base/)への変換
-    // スライド内の画像パスを更新
+    // アチE�Eロードパス(/uploads/)からナレチE��ベ�Eスパス(/knowledge-base/)への変換
+    // スライド�Eの画像パスを更新
     if (data.slides && Array.isArray(data.slides)) {
       data.slides.forEach(slide => {
-        if (slide.画像テキスト && Array.isArray(slide.画像テキスト)) {
-          slide.画像テキスト.forEach(imgText => {
+        if (slide.画像テキスチE&& Array.isArray(slide.画像テキスチE) {
+          slide.画像テキスチEforEach(imgText => {
             if (imgText.画像パス && imgText.画像パス.startsWith('/uploads/')) {
-              // パスを/knowledge-baseに置き換え
+              // パスめEknowledge-baseに置き換ぁE
               imgText.画像パス = imgText.画像パス.replace(
                 '/uploads/',
                 '/knowledge-base/'
               );
-              console.log(`画像パスを更新: ${imgText.画像パス}`);
+              console.console.log(`画像パスを更新: ${imgText.画像パス}`);
             }
           });
         }
       });
     }
-    // JSONファイル内のデータが修正されたらファイルも更新（オプション）
+    // JSONファイル冁E�EチE�Eタが修正されたらファイルも更新�E�オプション�E�E
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
     res.json({
       id,
@@ -527,13 +527,13 @@ router.get('/detail/:id', (_req, res) => {
     res.status(500).json({ error: 'ガイド詳細の取得に失敗しました' });
   }
 });
-// ガイドデータを更新するエンドポイント
+// ガイドデータを更新するエンド�EインチE
 router.post('/update/:id', (_req, res) => {
   try {
     const id: any = req.params.id;
     const { data } = req.body;
     if (!data) {
-      return res.status(400).json({ error: 'データが提供されていません' });
+      return res.status(400).json({ error: 'チE�Eタが提供されてぁE��せん' });
     }
     const files: any = fs
       .readdirSync(kbJsonDir)
@@ -542,7 +542,7 @@ router.post('/update/:id', (_req, res) => {
       return res.status(404).json({ error: 'ガイドが見つかりません' });
     }
     const filePath: any = path.join(kbJsonDir, files[0]);
-    // 更新日時を現在の日時に設定
+    // 更新日時を現在の日時に設宁E
     if (data.metadata) {
       data.metadata.修正日 = new Date().toISOString();
     }
@@ -555,55 +555,55 @@ router.post('/update/:id', (_req, res) => {
     });
   } catch (error) {
     console.error('ガイド更新エラー:', error);
-    res.status(500).json({ error: 'ガイドの更新に失敗しました' });
+    res.status(500).json({ error: 'ガイド�E更新に失敗しました' });
   }
 });
-// ガイドデータを削除するエンドポイント
+// ガイドデータを削除するエンド�EインチE
 router.delete('/delete/:id', async (_req, res) => {
   try {
     const id: any = req.params.id;
-    console.log(`応急処置ガイド削除リクエスト: ID=${id}`);
-    // 知識ベースJson（メタデータ）ディレクトリから直接ファイルを検索
+    console.console.log(`応急処置ガイド削除リクエスチE ID=${id}`);
+    // 知識�EースJson�E�メタチE�Eタ�E�ディレクトリから直接ファイルを検索
     if (!fs.existsSync(kbJsonDir)) {
       return res
         .status(404)
-        .json({ error: 'JSONディレクトリが見つかりません' });
+        .json({ error: 'JSONチE��レクトリが見つかりません' });
     }
-    // すべてのJSONファイルを検索し、マッチするものを選択
+    // すべてのJSONファイルを検索し、�EチE��するも�Eを選抁E
     const jsonFiles: any = fs.readdirSync(kbJsonDir);
-    console.log(`削除処理: ID=${id}, ファイル一覧:`, jsonFiles);
-    // IDによる検索方法を選択
+    console.console.log(`削除処琁E ID=${id}, ファイル一覧:`, jsonFiles);
+    // IDによる検索方法を選抁E
     const matchingFiles = [];
     if (id.startsWith('mc_')) {
-      // mc_形式のIDの場合は厳密なID検索 (数値部分で照合)
+      // mc_形式�EIDの場合�E厳寁E��ID検索 (数値部刁E��照吁E
       const idPrefix: any = id.split('_')[1]; // mc_123456 -> 123456
-      console.log(`mc_タイプのID検索: プレフィックス=${idPrefix}`);
+      console.console.log(`mc_タイプ�EID検索: プレフィチE��ス=${idPrefix}`);
       jsonFiles.forEach(file => {
         if (file.includes(idPrefix)) {
           matchingFiles.push(file);
         }
       });
     } else {
-      // guide_形式のIDは前方一致で検索
+      // guide_形式�EIDは前方一致で検索
       jsonFiles.forEach(file => {
         if (file.startsWith(id)) {
           matchingFiles.push(file);
         }
       });
     }
-    console.log(
+    console.console.log(
       `マッチするファイル (${matchingFiles.length}件):`,
       matchingFiles
     );
     if (matchingFiles.length === 0) {
       return res
         .status(404)
-        .json({ error: `指定されたガイド (ID: ${id}) が見つかりません` });
+        .json({ error: `持E��されたガイチE(ID: ${id}) が見つかりません` });
     }
-    // 最初のファイルからタイトル情報などを取得
+    // 最初�Eファイルからタイトル惁E��などを取征E
     const mainFilePath: any = path.join(kbJsonDir, matchingFiles[0]);
     let title = `ファイル_${id}`;
-    // JSONファイルの内容を読み取り、タイトルなどを取得
+    // JSONファイルの冁E��を読み取り、タイトルなどを取征E
     try {
       const content: any = fs.readFileSync(mainFilePath, 'utf8');
       const data: any = JSON.parse(content);
@@ -614,7 +614,7 @@ router.delete('/delete/:id', async (_req, res) => {
       }
     } catch (readError) {
       console.warn(
-        `削除前のファイル内容読み取りに失敗: ${mainFilePath}`,
+        `削除前�Eファイル冁E��読み取りに失敁E ${mainFilePath}`,
         readError
       );
     }
@@ -624,31 +624,31 @@ router.delete('/delete/:id', async (_req, res) => {
       const filePath: any = path.join(kbJsonDir, file);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
-        console.log(`JSONファイルを削除しました: ${filePath}`);
+        console.console.log(`JSONファイルを削除しました: ${filePath}`);
         deletedCount++;
       }
     }
-    console.log(`削除されたJSONファイル数: ${deletedCount}件`);
-    // index.jsonから該当エントリを削除（存在する場合）
+    console.console.log(`削除されたJSONファイル数: ${deletedCount}件`);
+    // index.jsonから該当エントリを削除�E�存在する場合！E
     const indexPath: any = path.join(knowledgeBaseDir, 'index.json');
     if (fs.existsSync(indexPath)) {
       try {
         const indexContent: any = fs.readFileSync(indexPath, 'utf8');
         const indexData: any = JSON.parse(indexContent);
-        // IDに基づいてエントリを削除
+        // IDに基づぁE��エントリを削除
         if (Array.isArray(indexData.guides)) {
           const beforeCount: any = indexData.guides.length;
           indexData.guides = indexData.guides.filter(guide => guide.id !== id);
           const afterCount: any = indexData.guides.length;
           if (beforeCount !== afterCount) {
             fs.writeFileSync(indexPath, JSON.stringify(indexData, null, 2));
-            console.log(
-              `インデックスから削除しました: ${beforeCount - afterCount}エントリ`
+            console.console.log(
+              `インチE��クスから削除しました: ${beforeCount - afterCount}エントリ`
             );
           }
         }
       } catch (indexError) {
-        console.warn('インデックスの更新に失敗しました:', indexError);
+        console.warn('インチE��クスの更新に失敗しました:', indexError);
       }
     }
     // 関連する画像ファイルを削除
@@ -659,58 +659,58 @@ router.delete('/delete/:id', async (_req, res) => {
         for (const imgFile of relatedImages) {
           const imgPath: any = path.join(kbImageDir, imgFile);
           fs.unlinkSync(imgPath);
-          console.log(`関連画像を削除しました: ${imgPath}`);
+          console.console.log(`関連画像を削除しました: ${imgPath}`);
         }
       }
     } catch (imgError) {
-      console.warn('関連画像の削除中にエラーが発生しました:', imgError);
+      console.warn('関連画像�E削除中にエラーが発生しました:', imgError);
     }
-    console.log(`応急処置ガイドを削除しました: ID=${id}, タイトル=${title}`);
-    // 削除後の最終確認（ファイルシステムを再チェック）
+    console.console.log(`応急処置ガイドを削除しました: ID=${id}, タイトル=${title}`);
+    // 削除後�E最終確認（ファイルシスチE��を�EチェチE���E�E
     const remainingFiles: any = fs.readdirSync(kbJsonDir);
-    console.log('----------- 削除後の状態 -----------');
-    console.log('削除したID:', id);
-    console.log('削除後のディレクトリ内容:', remainingFiles);
-    console.log('削除したファイル:', matchingFiles);
-    // 削除が不完全な場合は強制再試行（最大3回）
+    console.console.log('----------- 削除後�E状慁E-----------');
+    console.console.log('削除したID:', id);
+    console.console.log('削除後�EチE��レクトリ冁E��:', remainingFiles);
+    console.console.log('削除したファイル:', matchingFiles);
+    // 削除が不完�Eな場合�E強制再試行（最大3回！E
     for (let attempt = 0; attempt < 3; attempt++) {
       let allDeleted = true;
       for (const file of matchingFiles) {
         const filePath: any = path.join(kbJsonDir, file);
         if (fs.existsSync(filePath)) {
           allDeleted = false;
-          console.log(
-            `削除が不完全なため強制再試行 (${attempt + 1}/3): ${filePath}`
+          console.console.log(
+            `削除が不完�Eなため強制再試衁E(${attempt + 1}/3): ${filePath}`
           );
           try {
-            // ファイルを強制的に削除
+            // ファイルを強制皁E��削除
             fs.unlinkSync(filePath);
-            console.log(`  → 削除成功: ${filePath}`);
+            console.console.log(`  ↁE削除成功: ${filePath}`);
           } catch (e) {
-            console.error(`  → 削除失敗: ${e}`);
-            // 100ms待機してから再試行
+            console.error(`  ↁE削除失敁E ${e}`);
+            // 100ms征E��してから再試衁E
             await new Promise(resolve => setTimeout(resolve, 100));
             try {
               if (fs.existsSync(filePath)) {
                 fs.unlinkSync(filePath);
-                console.log(`  → 2回目の削除が成功: ${filePath}`);
+                console.console.log(`  ↁE2回目の削除が�E劁E ${filePath}`);
               }
             } catch (e2) {
-              console.error(`  → 2回目の削除も失敗: ${e2}`);
+              console.error(`  ↁE2回目の削除も失敁E ${e2}`);
             }
           }
         }
       }
       if (allDeleted) {
-        console.log(
-          `すべてのファイルが正常に削除されました (試行: ${attempt + 1}回目で完了)`
+        console.console.log(
+          `すべてのファイルが正常に削除されました (試衁E ${attempt + 1}回目で完亁E`
         );
         break;
       }
-      // 次の試行前に少し待機
+      // 次の試行前に少し征E��E
       await new Promise(resolve => setTimeout(resolve, 200));
     }
-    // 最終チェック（すべての試行が終わった後）
+    // 最終チェチE���E�すべての試行が終わった後！E
     // 非同期で削除タスクをキューに入れる
     setTimeout(() => {
       try {
@@ -718,10 +718,10 @@ router.delete('/delete/:id', async (_req, res) => {
           const filePath: any = path.join(kbJsonDir, file);
           if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
-            console.log(`バックグラウンド削除: ${filePath}`);
+            console.console.log(`バックグラウンド削除: ${filePath}`);
           }
         }
-        // 追加のクリーンアップ: トラブルシューティングディレクトリ内の関連ファイルも削除
+        // 追加のクリーンアチE�E: トラブルシューチE��ングチE��レクトリ冁E�E関連ファイルも削除
         const troubleshootingDir: any = path.join(
           knowledgeBaseDir,
           'troubleshooting'
@@ -732,8 +732,8 @@ router.delete('/delete/:id', async (_req, res) => {
             if (tsFile.includes(id.split('_')[1])) {
               const tsFilePath: any = path.join(troubleshootingDir, tsFile);
               fs.unlinkSync(tsFilePath);
-              console.log(
-                `バックグラウンド削除（トラブルシューティング）: ${tsFilePath}`
+              console.console.log(
+                `バックグラウンド削除�E�トラブルシューチE��ング�E�E ${tsFilePath}`
               );
             }
           }
@@ -742,7 +742,7 @@ router.delete('/delete/:id', async (_req, res) => {
         console.error('バックグラウンド削除エラー:', e);
       }
     }, 1000);
-    // キャッシュバスティングのためのヘッダー設定
+    // キャチE��ュバスチE��ングのためのヘッダー設宁E
     res.setHeader(
       'Cache-Control',
       'no-store, no-cache, must-revalidate, proxy-revalidate'
@@ -753,63 +753,63 @@ router.delete('/delete/:id', async (_req, res) => {
     res.setHeader('Content-Type', 'application/json');
     return res.json({
       success: true,
-      message: `応急処置ガイド「${title}」を削除しました`,
+      message: `応急処置ガイド、E{title}」を削除しました`,
       deletedFiles: matchingFiles,
     });
   } catch (error) {
     console.error('ガイド削除エラー:', error);
-    res.status(500).json({ error: 'ガイドの削除に失敗しました' });
+    res.status(500).json({ error: 'ガイド�E削除に失敗しました' });
   }
 });
-// チャットに応急処置ガイドを送信するエンドポイント
-// 緊急ガイドデータをチャットに直接送信するエンドポイント
+// チャチE��に応急処置ガイドを送信するエンド�EインチE
+// 緊急ガイドデータをチャチE��に直接送信するエンド�EインチE
 router.post('/send', async (_req, res) => {
   try {
     const { chatId, guideData } = req.body;
     if (!chatId || !guideData) {
       return res.status(400).json({
         success: false,
-        message: 'チャットIDとガイドデータが必要です',
+        message: 'チャチE��IDとガイドデータが忁E��でぁE,
       });
     }
-    // ログ出力強化
-    console.log('------------------------------------');
-    console.log('応急処置ガイドデータをチャットに送信:');
-    console.log(`chatId: ${chatId}`);
-    console.log(`title: ${guideData.title || '無題'}`);
-    console.log(`content: ${guideData.content?.substring(0, 100)}...`);
-    console.log(`sessionUserId: ${req?.session?.userId || 'unknown'}`);
-    console.log('------------------------------------');
-    // ユーザーIDの取得（認証済みでない場合のフォールバック）
-    const senderId: any = req.session?.userId || 1; // 認証されていない場合はデフォルトユーザーIDを使用
-    // ストレージの取得
+    // ログ出力強匁E
+    console.console.log('------------------------------------');
+    console.console.log('応急処置ガイドデータをチャチE��に送信:');
+    console.console.log(`chatId: ${chatId}`);
+    console.console.log(`title: ${guideData.title || '無顁E}`);
+    console.console.log(`content: ${guideData.content?.substring(0, 100)}...`);
+    console.console.log(`sessionUserId: ${req?.session?.userId || 'unknown'}`);
+    console.console.log('------------------------------------');
+    // ユーザーIDの取得（認証済みでなぁE��合�Eフォールバック�E�E
+    const senderId: any = req.session?.userId || 1; // 認証されてぁE��ぁE��合�EチE��ォルトユーザーIDを使用
+    // ストレージの取征E
     const storage: any = req.app.locals.storage;
     if (!storage) {
-      console.error('ストレージが初期化されていません');
+      console.error('ストレージが�E期化されてぁE��せん');
       return res
         .status(500)
         .json({
           success: false,
-          message: 'サーバー内部エラー: ストレージが初期化されていません',
+          message: 'サーバ�E冁E��エラー: ストレージが�E期化されてぁE��せん',
         });
     }
     try {
-      // 1. ユーザーのガイド内容メッセージを作成
+      // 1. ユーザーのガイド�E容メチE��ージを作�E
       const userMessage: any = await storage.createMessage({
         chatId: Number(chatId),
-        content: guideData.content || guideData.title || '応急処置ガイド',
+        content: guideData.content || guideData.title || '応急処置ガイチE,
         isAiResponse: false,
         senderId,
       });
-      // 2. AIの応答メッセージを作成（確認応答）
+      // 2. AIの応答メチE��ージを作�E�E�確認応答！E
       const aiMessage: any = await storage.createMessage({
         chatId: Number(chatId),
-        content: `■ ${guideData.title}\n\n【実施した手順の詳細】\n${guideData.content}\n\n【AI分析】\nAIが分析した結果をここに表示します。`,
+        content: `■ ${guideData.title}\n\n【実施した手頁E�E詳細】\n${guideData.content}\n\n【AI刁E��】\nAIが�E析した結果をここに表示します。`,
         isAiResponse: true,
         senderId,
       });
-      console.log(
-        'チャットメッセージを作成しました:',
+      console.console.log(
+        'チャチE��メチE��ージを作�Eしました:',
         userMessage.id,
         aiMessage.id
       );
@@ -820,49 +820,49 @@ router.post('/send', async (_req, res) => {
       });
     } catch (dbError) {
       console.error(
-        'メッセージ作成中にデータベースエラーが発生しました:',
+        'メチE��ージ作�E中にチE�Eタベ�Eスエラーが発生しました:',
         dbError
       );
       return res.status(500).json({
         success: false,
-        message: 'メッセージの保存中にエラーが発生しました',
+        message: 'メチE��ージの保存中にエラーが発生しました',
         error:
-          dbError instanceof Error ? dbError.message : 'データベースエラー',
+          dbError instanceof Error ? dbError.message : 'チE�Eタベ�Eスエラー',
       });
     }
   } catch (error) {
     console.error('緊急ガイド送信エラー:', error);
     return res.status(500).json({
       success: false,
-      message: '緊急ガイドの送信中にエラーが発生しました',
-      error: error instanceof Error ? error.message : '不明なエラー',
+      message: '緊急ガイド�E送信中にエラーが発生しました',
+      error: error instanceof Error ? error.message : '不�Eなエラー',
     });
   }
 });
-// システムメッセージをチャットに送信するエンドポイント（フォールバック用）
+// シスチE��メチE��ージをチャチE��に送信するエンド�Eイント（フォールバック用�E�E
 router.post('/system-message', async (_req, res) => {
   try {
     const { chatId, content, isUserMessage = false } = req.body;
     if (!chatId || !content) {
       return res.status(400).json({
         success: false,
-        message: 'チャットIDとメッセージ内容が必要です',
+        message: 'チャチE��IDとメチE��ージ冁E��が忁E��でぁE,
       });
     }
-    // ログ出力
-    console.log('------------------------------------');
-    console.log('システムメッセージをチャットに送信:');
-    console.log(`chatId: ${chatId}`);
-    console.log(`content: ${content.substring(0, 100)}...`);
-    console.log(`isUserMessage: ${isUserMessage}`);
-    console.log(`sessionUserId: ${req?.session?.userId || 'unknown'}`);
-    console.log('------------------------------------');
-    // ユーザーIDの取得（認証済みでない場合のフォールバック）
+    // ログ出劁E
+    console.console.log('------------------------------------');
+    console.console.log('シスチE��メチE��ージをチャチE��に送信:');
+    console.console.log(`chatId: ${chatId}`);
+    console.console.log(`content: ${content.substring(0, 100)}...`);
+    console.console.log(`isUserMessage: ${isUserMessage}`);
+    console.console.log(`sessionUserId: ${req?.session?.userId || 'unknown'}`);
+    console.console.log('------------------------------------');
+    // ユーザーIDの取得（認証済みでなぁE��合�Eフォールバック�E�E
     const senderId: any = req.session?.userId || 1;
-    // DBストレージが直接使用可能か確認
+    // DBストレージが直接使用可能か確誁E
     try {
       const { storage } = await import('../storage.js');
-      // メッセージを作成
+      // メチE��ージを作�E
       const message: any = await storage.createMessage({
         chatId: Number(chatId),
         content,
@@ -870,17 +870,17 @@ router.post('/system-message', async (_req, res) => {
         isUserMessage: isUserMessage,
         timestamp: new Date(),
       });
-      console.log('システムメッセージを作成しました:', message.id);
+      console.console.log('シスチE��メチE��ージを作�Eしました:', message.id);
       return res.json({
         success: true,
         message,
       });
     } catch (storageError) {
       console.error('ストレージエラー:', storageError);
-      // 代替手段: アプリケーション変数からストレージを取得
+      // 代替手段: アプリケーション変数からストレージを取征E
       const appStorage: any = req.app.locals.storage;
       if (appStorage) {
-        // メッセージを作成
+        // メチE��ージを作�E
         const message: any = await appStorage.createMessage({
           chatId: Number(chatId),
           content,
@@ -888,8 +888,8 @@ router.post('/system-message', async (_req, res) => {
           isUserMessage: isUserMessage,
           timestamp: new Date(),
         });
-        console.log(
-          '代替ストレージでシステムメッセージを作成しました:',
+        console.console.log(
+          '代替ストレージでシスチE��メチE��ージを作�Eしました:',
           message.id
         );
         return res.json({
@@ -901,19 +901,19 @@ router.post('/system-message', async (_req, res) => {
       }
     }
   } catch (error) {
-    console.error('システムメッセージ送信エラー:', error);
+    console.error('シスチE��メチE��ージ送信エラー:', error);
     return res.status(500).json({
       success: false,
-      message: 'メッセージの送信中にエラーが発生しました',
-      error: error instanceof Error ? error.message : '不明なエラー',
+      message: 'メチE��ージの送信中にエラーが発生しました',
+      error: error instanceof Error ? error.message : '不�Eなエラー',
     });
   }
 });
-// 古い実装 - 特定のガイドをチャットに送信するエンドポイント
+// 古ぁE��裁E- 特定�EガイドをチャチE��に送信するエンド�EインチE
 router.post('/send-to-chat/:guideId/:chatId', async (_req, res) => {
   try {
     const { guideId, chatId } = req.params;
-    // ガイドデータを取得
+    // ガイドデータを取征E
     const files: any = fs
       .readdirSync(kbJsonDir)
       .filter(
@@ -925,21 +925,21 @@ router.post('/send-to-chat/:guideId/:chatId', async (_req, res) => {
     const filePath: any = path.join(kbJsonDir, files[0]);
     const content: any = fs.readFileSync(filePath, 'utf8');
     const guideData: any = JSON.parse(content);
-    // JSONデータの形式に応じてメッセージ内容を作成
+    // JSONチE�Eタの形式に応じてメチE��ージ冁E��を作�E
     let messageContent = '';
-    // PowerPoint由来の形式の場合
+    // PowerPoint由来の形式�E場吁E
     if (guideData.metadata && guideData.slides) {
-      messageContent = `応急処置ガイド「${guideData.metadata.タイトル}」が共有されました。\n\n${guideData.metadata.説明}`;
+      messageContent = `応急処置ガイド、E{guideData.metadata.タイトル}」が共有されました、En\n${guideData.metadata.説明}`;
     }
-    // JSON由来の応急処置フロー形式の場合
+    // JSON由来の応急処置フロー形式�E場吁E
     else if (guideData.title && guideData.description) {
-      messageContent = `応急処置ガイド「${guideData.title}」が共有されました。\n\n${guideData.description}`;
+      messageContent = `応急処置ガイド、E{guideData.title}」が共有されました、En\n${guideData.description}`;
     }
-    // その他の形式の場合
+    // そ�E他�E形式�E場吁E
     else {
-      messageContent = `応急処置ガイド「${path.basename(filePath, '_metadata.json')}」が共有されました。`;
+      messageContent = `応急処置ガイド、E{path.basename(filePath, '_metadata.json')}」が共有されました。`;
     }
-    // チャットにメッセージを送信するAPIを呼び出す
+    // チャチE��にメチE��ージを送信するAPIを呼び出ぁE
     const response: any = await fetch(
       `http://localhost:${process.env.PORT || 3000}/api/chats/${chatId}/messages/system`,
       {
@@ -954,23 +954,23 @@ router.post('/send-to-chat/:guideId/:chatId', async (_req, res) => {
       }
     );
     if (!response.ok) {
-      throw new Error('チャットへのメッセージ送信に失敗しました');
+      throw new Error('チャチE��へのメチE��ージ送信に失敗しました');
     }
     const result: any = await response.json();
     res.json({
       success: true,
-      message: 'ガイドがチャットに送信されました',
+      message: 'ガイドがチャチE��に送信されました',
       messageId: result.id,
     });
   } catch (error) {
     console.error('ガイド送信エラー:', error);
     res
       .status(500)
-      .json({ error: '応急処置ガイドのチャットへの送信に失敗しました' });
+      .json({ error: '応急処置ガイド�EチャチE��への送信に失敗しました' });
   }
 });
 
-// チャット内容をローカルJSONファイルに保存するエンドポイント
+// チャチE��冁E��をローカルJSONファイルに保存するエンド�EインチE
 router.post('/save-chat-local', async (_req, res) => {
   try {
     const { title, messages, metadata = {} } = req.body;
@@ -978,17 +978,17 @@ router.post('/save-chat-local', async (_req, res) => {
     if (!title || !messages || !Array.isArray(messages)) {
       return res.status(400).json({
         success: false,
-        message: 'タイトルとメッセージ配列が必要です',
+        message: 'タイトルとメチE��ージ配�Eが忁E��でぁE,
       });
     }
 
-    // エクスポートディレクトリのパスを設定
+    // エクスポ�Eトディレクトリのパスを設宁E
     const exportsDir = path.join(knowledgeBaseDir, 'exports');
     if (!fs.existsSync(exportsDir)) {
       fs.mkdirSync(exportsDir, { recursive: true });
     }
 
-    // ファイル名をタイトルから生成（安全な文字列に変換）
+    // ファイル名をタイトルから生�E�E�安�Eな斁E���Eに変換�E�E
     const safeTitle = title
       .replace(/[^\w\s-]/g, '')
       .replace(/\s+/g, '_')
@@ -997,14 +997,14 @@ router.post('/save-chat-local', async (_req, res) => {
     const fileName = `chat_${safeTitle}_${timestamp}.json`;
     const filePath = path.join(exportsDir, fileName);
 
-    // 画像処理：base64画像を抽出して保存
+    // 画像�E琁E��base64画像を抽出して保孁E
     const processedMessages = [];
 
     for (let i = 0; i < messages.length; i++) {
       const message = messages[i];
       const processedMessage = { ...message };
 
-      // テキスト内容からbase64画像を検出
+      // チE��スト�E容からbase64画像を検�E
       if (message.content && typeof message.content === 'string') {
         const base64ImageRegex = /data:image\/([a-zA-Z]*);base64,([^"]*)/g;
         let match;
@@ -1013,12 +1013,12 @@ router.post('/save-chat-local', async (_req, res) => {
         while ((match = base64ImageRegex.exec(message.content)) !== null) {
           const [fullMatch, imageType, base64Data] = match;
 
-          // 画像ファイル名を生成
+          // 画像ファイル名を生�E
           const imageFileName = `chat_${safeTitle}_${timestamp}_img_${i}_${imageData.length}.${imageType}`;
           const imageFilePath = path.join(exportsDir, imageFileName);
 
           try {
-            // base64データをファイルに保存
+            // base64チE�Eタをファイルに保孁E
             const imageBuffer = Buffer.from(base64Data, 'base64');
             fs.writeFileSync(imageFilePath, imageBuffer);
 
@@ -1029,19 +1029,19 @@ router.post('/save-chat-local', async (_req, res) => {
               size: imageBuffer.length,
             });
 
-            console.log(`画像保存完了: ${imageFileName}`);
+            console.console.log(`画像保存完亁E ${imageFileName}`);
           } catch (imageError) {
             console.error('画像保存エラー:', imageError);
           }
         }
 
-        // 画像情報をメッセージに追加
+        // 画像情報をメチE��ージに追加
         if (imageData.length > 0) {
           processedMessage.images = imageData;
         }
       }
 
-      // mediaプロパティにも画像がある場合の処理
+      // mediaプロパティにも画像がある場合�E処琁E
       if (message.media && Array.isArray(message.media)) {
         const processedMedia = [];
 
@@ -1073,10 +1073,10 @@ router.post('/save-chat-local', async (_req, res) => {
                   size: imageBuffer.length,
                 });
 
-                console.log(`メディア画像保存完了: ${imageFileName}`);
+                console.console.log(`メチE��ア画像保存完亁E ${imageFileName}`);
               } catch (imageError) {
-                console.error('メディア画像保存エラー:', imageError);
-                processedMedia.push(mediaItem); // エラーの場合は元のデータを保持
+                console.error('メチE��ア画像保存エラー:', imageError);
+                processedMedia.push(mediaItem); // エラーの場合�E允E�EチE�Eタを保持
               }
             } else {
               processedMedia.push(mediaItem);
@@ -1094,7 +1094,7 @@ router.post('/save-chat-local', async (_req, res) => {
       processedMessages.push(processedMessage);
     }
 
-    // チャットデータをJSONファイルとして保存
+    // チャチE��チE�EタをJSONファイルとして保孁E
     const chatData = {
       title,
       metadata: {
@@ -1115,13 +1115,13 @@ router.post('/save-chat-local', async (_req, res) => {
 
     fs.writeFileSync(filePath, JSON.stringify(chatData, null, 2), 'utf8');
 
-    console.log(`チャット保存完了: ${filePath}`);
-    console.log(`保存されたメッセージ数: ${processedMessages.length}`);
-    console.log(`保存された画像数: ${chatData.metadata.imageCount}`);
+    console.console.log(`チャチE��保存完亁E ${filePath}`);
+    console.console.log(`保存されたメチE��ージ数: ${processedMessages.length}`);
+    console.console.log(`保存された画像数: ${chatData.metadata.imageCount}`);
 
     res.json({
       success: true,
-      message: `チャット内容をローカルに保存しました`,
+      message: `チャチE��冁E��をローカルに保存しました`,
       fileName,
       filePath,
       messageCount: processedMessages.length,
@@ -1131,7 +1131,7 @@ router.post('/save-chat-local', async (_req, res) => {
     console.error('ローカル保存エラー:', error);
     res.status(500).json({
       success: false,
-      message: 'チャット内容の保存に失敗しました',
+      message: 'チャチE��冁E��の保存に失敗しました',
       error: error instanceof Error ? error.message : 'Unknown error',
     });
   }

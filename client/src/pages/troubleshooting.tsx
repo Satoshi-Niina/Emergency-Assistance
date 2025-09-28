@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '../lib/queryClient.ts';
+import { storage } from '../lib/api-unified';
+import { saveFlowData, validateAndCleanFlowData, getFlowImageInfo, FlowData } from '../lib/flow-save-manager';
 import { Button } from '../components/ui/button';
 import {
   Dialog,
@@ -92,25 +94,52 @@ export default function TroubleshootingPage() {
   const { toast } = useToast();
 
   const { data: flows, isLoading } = useQuery<Flow[]>({
-    queryKey: ['/api/troubleshooting/list'],
+    queryKey: ['/api/emergency-flow/list'],
     queryFn: async () => {
-      const res = await apiRequest('GET', '/api/troubleshooting/list');
-      if (!res.ok) throw new Error('ファイル一覧の取得に失敗しました');
-      return await res.json();
+      // emergency-flow APIを使用
+      const response = await fetch('http://localhost:8000/api/emergency-flow/list');
+      const data = await response.json();
+      return data.success ? data.data : [];
     },
   });
 
   const saveMutation = useMutation({
-    mutationFn: (flowData: Partial<Flow>) => {
-      const url = flowData.id
-        ? `/api/troubleshooting/${flowData.id}`
-        : '/api/troubleshooting';
-      const method = flowData.id ? 'PUT' : 'POST';
-      return apiRequest(method, url, flowData);
+    mutationFn: async (flowData: Partial<Flow>) => {
+      console.log('💾 saveMutation 保存処理開始:', {
+        flowDataId: flowData.id,
+        stepsCount: flowData.steps?.length || 0,
+        stepsWithImages: flowData.steps?.filter(step => step.images && step.images.length > 0).length || 0,
+        allStepsImages: flowData.steps?.map(step => ({
+          stepId: step.id,
+          stepTitle: step.title,
+          imagesCount: step.images?.length || 0,
+          images: step.images?.map(img => ({
+            fileName: img.fileName,
+            url: img.url?.substring(0, 100) + '...'
+          })) || []
+        })) || []
+      });
+
+      // 統一された保存処理を使用
+      const result = await saveFlowData(flowData as FlowData, {
+        validateImages: true,
+        logDetails: true
+      });
+
+      if (result.success) {
+        console.log('✅ saveMutation 保存成功:', {
+          flowId: result.data?.id || flowData.id,
+          title: result.data?.title || flowData.title,
+          stepsCount: result.data?.steps?.length || flowData.steps?.length || 0,
+        });
+        return result.data || flowData;
+      } else {
+        throw new Error(result.error || '保存に失敗しました');
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['/api/troubleshooting/list'],
+        queryKey: ['/api/emergency-flow/list'],
       });
       toast({ title: '成功', description: 'ファイルが正常に保存されました。' });
       setIsEditorOpen(false);
@@ -126,22 +155,59 @@ export default function TroubleshootingPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (flowId: string) =>
-      apiRequest('DELETE', `/api/troubleshooting/${flowId}`),
+    mutationFn: async (flowId: string) => {
+      console.log('🗑️ フロー削除開始:', flowId);
+      
+      const response = await fetch(`/api/emergency-flow/${flowId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      console.log('📡 削除レスポンス:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+      });
+
+      if (!response.ok) {
+        let errorMessage = `削除に失敗しました: ${response.status} - ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          console.log('❌ 削除エラーデータ:', errorData);
+          errorMessage = errorData.error || errorData.details || errorMessage;
+        } catch (parseError) {
+          console.warn('⚠️ エラーレスポンスの解析に失敗:', parseError);
+        }
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      console.log('✅ 削除レスポンス:', result);
+      return result;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['/api/troubleshooting/list'],
+        queryKey: ['/api/emergency-flow/list'],
       });
+      
+      // カスタムイベントを発火してフロー一覧を更新
+      window.dispatchEvent(new CustomEvent('flowDeleted'));
+      
       toast({ title: '成功', description: 'ファイルが削除されました。' });
       setFlowToDelete(null);
       setIsWarningOpen(false);
     },
-    onError: error =>
+    onError: error => {
+      console.error('❌ 削除エラー:', error);
       toast({
         title: 'エラー',
         description: `ファイルの削除中にエラーが発生しました: ${error.message}`,
         variant: 'destructive',
-      }),
+      });
+    },
   });
 
   const handleEdit = (flowId: string) => {
@@ -161,13 +227,31 @@ export default function TroubleshootingPage() {
   };
 
   const handleFlowGenerated = (generatedFlow: any) => {
+    // フロー生成後はフロー一覧を表示
     setActiveTab('editor');
-    handleNew();
-    console.log('Generated Flow, ready for editing:', generatedFlow);
+    setFlowState({ view: 'list' });
+    
+    // フロー一覧を再読み込み
+    queryClient.invalidateQueries({
+      queryKey: ['/api/emergency-flow/list'],
+    });
+    
+    // カスタムイベントを発火してフロー一覧を更新
+    window.dispatchEvent(new CustomEvent('flowGenerated', {
+      detail: { generatedFlow }
+    }));
+    
+    console.log('Generated Flow, showing in list:', generatedFlow);
+    
+    // 成功メッセージを表示
+    toast({
+      title: 'フロー生成完了',
+      description: `「${generatedFlow.title || '新しいフロー'}」が生成されました。フロー一覧で確認できます。`,
+    });
   };
 
   const handleOpenEditor = (flowId: string) => {
-    apiRequest('GET', `/api/troubleshooting/detail/${flowId}`)
+    apiRequest('GET', `/api/emergency-flow/detail/${flowId}`)
       .then(res => res.json())
       .then(fullFlowData => {
         setSelectedFlow(fullFlowData);
@@ -197,6 +281,21 @@ export default function TroubleshootingPage() {
   };
 
   const handleSaveFlow = (flowData: any) => {
+    console.log('💾 handleSaveFlow 呼び出し:', {
+      flowId: flowData.id,
+      title: flowData.title,
+      stepsCount: flowData.steps?.length || 0,
+      stepsWithImages: flowData.steps?.filter(step => step.images && step.images.length > 0).length || 0,
+      allStepsImages: flowData.steps?.map(step => ({
+        stepId: step.id,
+        stepTitle: step.title,
+        imagesCount: step.images?.length || 0,
+        images: step.images?.map(img => ({
+          fileName: img.fileName,
+          url: img.url?.substring(0, 100) + '...'
+        })) || []
+      })) || []
+    });
     saveMutation.mutate(flowData);
   };
 

@@ -22,7 +22,7 @@ const EmergencyGuidePage: React.FC = () => {
       setBlobLoading(true);
       try {
         const API_BASE =
-          import.meta.env.VITE_API_BASE_URL || window.location.origin;
+          import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
         const res = await fetch(
           `${API_BASE}/api/blob/list?container=knowledge`
         );

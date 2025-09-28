@@ -1,4 +1,4 @@
-import { apiFetch } from './apiClient';
+import { apiRequest } from './api-unified';
 
 // クライアント側ではサーバーAPIを呼び出す
 async function callOpenAIAPI(
@@ -6,7 +6,7 @@ async function callOpenAIAPI(
   useKnowledgeBase: boolean = true
 ): Promise<string> {
   try {
-    const response = await apiFetch('/chatgpt', {
+    const response = await apiRequest('/chatgpt', {
       method: 'POST',
       body: JSON.stringify({
         text: prompt,

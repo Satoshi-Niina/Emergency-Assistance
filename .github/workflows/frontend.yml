@@ -1,0 +1,106 @@
+name: Frontend CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'client/**'
+      - 'shared/**'
+      - '.github/workflows/frontend.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'client/**'
+      - 'shared/**'
+      - '.github/workflows/frontend.yml'
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: |
+        npm ci
+        cd client && npm ci
+        cd ../shared && npm ci
+        
+    - name: Type check
+      run: |
+        npm run typecheck:client
+        npm run typecheck:shared
+        
+    - name: Lint check
+      run: |
+        npm run lint:client
+        
+    - name: Build client
+      run: |
+        npm run build:client
+        
+    - name: Build shared
+      run: |
+        npm run build:shared
+        
+    - name: Test build artifacts
+      run: |
+        if [ ! -d "client/dist" ]; then
+          echo "Client build failed - dist directory not found"
+          exit 1
+        fi
+        if [ ! -f "client/dist/index.html" ]; then
+          echo "Client build failed - index.html not found"
+          exit 1
+        fi
+        
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: |
+        npm ci
+        cd client && npm ci
+        
+    - name: Build for production
+      run: |
+        npm run build:client
+        
+    - name: Deploy to Azure Static Web Apps
+      uses: Azure/static-web-apps-deploy@v1
+      with:
+        azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_DEPLOYMENT_TOKEN }}
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        action: "upload"
+        app_location: "/client"
+        output_location: "dist"
+        skip_app_build: false
+        
+    - name: Health check after deployment
+      run: |
+        echo "Waiting for deployment to complete..."
+        sleep 30
+        # Add health check URL here if available

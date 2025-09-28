@@ -29,8 +29,10 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from '../../components/ui/context-menu';
-import { convertImageUrl } from '../../lib/utils.ts';
+import { convertImageUrl } from '../../lib/image-utils';
 import { buildApiUrl } from '../../lib/api/config.ts';
+import { storage } from '../../lib/api-unified';
+import { saveFlowData, validateAndCleanFlowData, getFlowImageInfo, FlowData } from '../../lib/flow-save-manager';
 
 interface Step {
   id: string;
@@ -91,38 +93,40 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
       setIsLoading(true);
       console.log('🔄 フローデータ読み込み開始:', flowId);
 
-      const response = await fetch(
-        buildApiUrl(`/api/troubleshooting/${flowId}`),
-        {
-          method: 'GET',
-          credentials: 'include', // セッション維持のため必須
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            Pragma: 'no-cache',
-          },
-        }
-      );
-
+      // 統一APIクライアントを使用
+      const { buildApiUrl } = await import('../../lib/api-unified');
+      const detailUrl = buildApiUrl(`/emergency-flow/detail/${flowId}`);
+      
+      console.log('🌐 フロー詳細API URL:', detailUrl);
+      
+      const response = await fetch(detailUrl, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+          Pragma: 'no-cache',
+          Expires: 'Thu, 01 Jan 1970 00:00:00 GMT',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
+      
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ API エラー:', errorText);
-        throw new Error(
-          `フローデータの取得に失敗しました: ${response.status} ${response.statusText}`
-        );
+        console.error('❌ emergency-flow API エラーレスポンス:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        throw new Error(`フロー詳細の取得に失敗しました: ${response.status} - ${errorText}`);
       }
-
-      const responseData = await response.json();
-      console.log('📊 APIレスポンス:', responseData);
-
-      // サーバーからのレスポンス構造に合わせてデータを取得
-      const data =
-        responseData.success && responseData.data
-          ? responseData.data
-          : responseData;
-      console.log('📋 処理対象データ:', data);
+      
+      const result = await response.json();
+      console.log('📊 emergency-flow APIレスポンス:', result);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'フローデータの取得に失敗しました');
+      }
+      
+      const data = result.data;
 
       // データ構造の正規化
       if (data.steps && Array.isArray(data.steps)) {
@@ -139,6 +143,22 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
         id: data.id,
         title: data.title,
         stepsCount: data.steps.length,
+        stepsWithImages: data.steps.filter(step => step.images && step.images.length > 0).length
+      });
+
+      // 画像情報の詳細ログ
+      data.steps.forEach((step: any, index: number) => {
+        if (step.images && step.images.length > 0) {
+          console.log(`📸 読み込み済みステップ[${index}]の画像情報:`, {
+            stepId: step.id,
+            stepTitle: step.title,
+            imagesCount: step.images.length,
+            images: step.images.map((img: any) => ({
+              fileName: img.fileName,
+              url: img.url?.substring(0, 50) + '...'
+            }))
+          });
+        }
       });
 
       setFlowData(data);
@@ -187,12 +207,99 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
 
   // ステップの更新
   const updateStep = (stepId: string, updates: Partial<Step>) => {
-    setFlowData(prev => ({
-      ...prev,
-      steps: prev.steps.map(step =>
-        step.id === stepId ? { ...step, ...updates } : step
-      ),
-    }));
+    console.log('🔄 updateStep 呼び出し:', {
+      stepId,
+      updates,
+      isImageUpdate: 'images' in updates,
+      imageCount: updates.images?.length || 0,
+      currentFlowData: {
+        id: flowData.id,
+        stepsCount: flowData.steps.length,
+        stepsWithImages: flowData.steps.filter(s => s.images && s.images.length > 0).length
+      }
+    });
+    
+    setFlowData(prev => {
+      const updated = {
+        ...prev,
+        steps: prev.steps.map(step => {
+          if (step.id === stepId) {
+            const updatedStep = { ...step, ...updates };
+            console.log('🔄 ステップ更新詳細:', {
+              stepId,
+              beforeUpdate: {
+                id: step.id,
+                title: step.title,
+                hasImages: !!step.images,
+                imagesCount: step.images?.length || 0,
+                images: step.images?.map(img => ({
+                  fileName: img.fileName,
+                  url: img.url?.substring(0, 50) + '...'
+                })) || []
+              },
+              afterUpdate: {
+                id: updatedStep.id,
+                title: updatedStep.title,
+                hasImages: !!updatedStep.images,
+                imagesCount: updatedStep.images?.length || 0,
+                images: updatedStep.images?.map(img => ({
+                  fileName: img.fileName,
+                  url: img.url?.substring(0, 50) + '...'
+                })) || []
+              }
+            });
+            return updatedStep;
+          }
+          return step;
+        }),
+      };
+      
+      const updatedStep = updated.steps.find(s => s.id === stepId);
+      
+      console.log('🔄 updateStep 完了:', {
+        stepId,
+        updatedStep: updatedStep ? {
+          id: updatedStep.id,
+          title: updatedStep.title,
+          hasImages: !!updatedStep.images,
+          imagesCount: updatedStep.images?.length || 0,
+          images: updatedStep.images?.map(img => ({
+            fileName: img.fileName,
+            url: img.url?.substring(0, 50) + '...'
+          })) || []
+        } : null,
+        allStepsImages: updated.steps.map(s => ({
+          stepId: s.id,
+          stepTitle: s.title,
+          imagesCount: s.images?.length || 0,
+          images: s.images?.map(img => ({
+            fileName: img.fileName,
+            url: img.url?.substring(0, 50) + '...'
+          })) || []
+        }))
+      });
+      
+      return updated;
+    });
+    
+    // 状態更新後の確認（同期的に実行）
+    console.log('🔍 updateStep 状態更新後の確認:', {
+      stepId,
+      updatedFlowData: {
+        id: flowData.id,
+        stepsCount: flowData.steps.length,
+        stepsWithImages: flowData.steps.filter(s => s.images && s.images.length > 0).length,
+        allStepsImages: flowData.steps.map(s => ({
+          stepId: s.id,
+          stepTitle: s.title,
+          imagesCount: s.images?.length || 0,
+          images: s.images?.map(img => ({
+            fileName: img.fileName,
+            url: img.url?.substring(0, 50) + '...'
+          })) || []
+        }))
+      }
+    });
   };
 
   // ドラッグ&ドロップ機能
@@ -225,35 +332,135 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
     setDraggedStepId(null);
   };
 
-  // 画像アップロード
+  // 画像のアップロード
   const handleImageUpload = async (stepId: string, files: FileList) => {
-    const newImages = Array.from(files).map(file => ({
-      url: URL.createObjectURL(file),
-      fileName: file.name,
-      file,
-    }));
+    const currentStep = flowData.steps.find(s => s.id === stepId);
+    const currentImages = currentStep?.images || [];
+    
+    if (currentImages.length + files.length > 3) {
+      alert('画像は最大3枚までアップロードできます');
+      return;
+    }
 
-    updateStep(stepId, {
-      images: [
-        ...(flowData.steps.find(s => s.id === stepId)?.images || []),
-        ...newImages,
-      ],
-    });
-  };
+    const uploadedImages = [];
+    for (const file of Array.from(files)) {
+      try {
+        const formData = new FormData();
+        formData.append('image', file);
 
-  // 画像の削除
-  const removeImage = (stepId: string, imageIndex: number) => {
-    setFlowData(prev => ({
-      ...prev,
-      steps: prev.steps.map(step => {
+        const { buildApiUrl } = await import('../../lib/api-unified');
+        const uploadUrl = buildApiUrl('/emergency-flow/upload-image');
+        
+        const response = await fetch(uploadUrl, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error(`アップロード失敗: ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (result.success && result.imageUrl) {
+          uploadedImages.push({
+            url: result.imageUrl,
+            fileName: result.fileName || result.imageFileName,
+          });
+        }
+      } catch (error) {
+        console.error('画像アップロードエラー:', error);
+        alert(`画像 ${file.name} のアップロードに失敗しました`);
+      }
+    }
+
+    if (uploadedImages.length === 0) return;
+
+    // フローデータを更新
+    const updatedFlowData = {
+      ...flowData,
+      steps: flowData.steps.map(step => {
         if (step.id === stepId) {
-          const newImages = [...step.images];
-          newImages.splice(imageIndex, 1);
-          return { ...step, images: newImages };
+          return {
+            ...step,
+            images: [...currentImages, ...uploadedImages],
+          };
         }
         return step;
       }),
-    }));
+    };
+
+    setFlowData(updatedFlowData);
+
+    // 自動保存（ファイル一覧に戻らない）
+    setTimeout(async () => {
+      try {
+        const result = await saveFlowData(updatedFlowData);
+        if (result.success) {
+          // 画像追加時はonSaveを呼ばず、内部状態のみ更新
+          console.log('画像追加後の自動保存完了');
+        }
+      } catch (error) {
+        console.error('自動保存エラー:', error);
+      }
+    }, 100);
+  };
+
+  // 画像の削除
+  const removeImage = async (stepId: string, imageIndex: number) => {
+    const step = flowData.steps.find(s => s.id === stepId);
+    if (!step || !step.images || imageIndex >= step.images.length) {
+      return;
+    }
+
+    const imageToRemove = step.images[imageIndex];
+    
+    // 削除確認
+    const confirmDelete = window.confirm(
+      `画像 "${imageToRemove.fileName}" を削除しますか？\n` +
+        `サーバーからファイルが完全に削除され、この操作は元に戻せません。`
+    );
+
+    if (!confirmDelete) {
+      return;
+    }
+
+    try {
+      // サーバーから画像を削除（APIエンドポイントが存在する場合）
+      if (imageToRemove.fileName && !imageToRemove.fileName.startsWith('blob:')) {
+        const { buildApiUrl } = await import('../../lib/api-unified');
+        const deleteUrl = buildApiUrl(`/emergency-flow/image/${imageToRemove.fileName}`);
+        
+        console.log('🗑️ flow-editor-advanced 画像削除URL:', deleteUrl);
+        
+        const response = await fetch(deleteUrl, {
+          method: 'DELETE',
+        });
+
+        if (!response.ok) {
+          console.warn('サーバーからの画像削除に失敗しましたが、フロントエンドからは削除します');
+        } else {
+          console.log('✅ サーバーからの画像削除完了:', imageToRemove.fileName);
+        }
+      }
+
+      // フロントエンドの状態を更新
+      setFlowData(prev => ({
+        ...prev,
+        steps: prev.steps.map(step => {
+          if (step.id === stepId) {
+            const newImages = [...step.images];
+            newImages.splice(imageIndex, 1);
+            return { ...step, images: newImages };
+          }
+          return step;
+        }),
+      }));
+
+      console.log('✅ 画像削除完了:', imageToRemove.fileName);
+    } catch (error) {
+      console.error('❌ 画像削除エラー:', error);
+      alert(`画像削除に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   // 条件の追加
@@ -318,48 +525,49 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
     try {
       setIsLoading(true);
 
-      // 画像ファイルのアップロード
-      const updatedFlowData = { ...flowData };
-      for (const step of updatedFlowData.steps) {
-        const uploadedImages = [];
-        for (const image of step.images) {
-          if (image.file) {
-            // 画像ファイルをアップロード
-            const formData = new FormData();
-            formData.append('image', image.file);
-
-            const uploadResponse = await fetch(
-              `${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/upload-image`,
-              {
-                method: 'POST',
-                body: formData,
-              }
-            );
-
-            if (uploadResponse.ok) {
-              const uploadResult = await uploadResponse.json();
-              uploadedImages.push({
-                url: uploadResult.imageUrl,
-                fileName: uploadResult.fileName,
-              });
-            }
-          } else {
-            uploadedImages.push(image);
-          }
-        }
-        step.images = uploadedImages;
-      }
-
-      onSave(updatedFlowData);
-      toast({
-        title: '成功',
-        description: 'フローが保存されました',
+      console.log('💾 flow-editor-advanced 保存開始:', {
+        flowId: flowData.id,
+        stepsCount: flowData.steps.length,
+        stepsWithImages: flowData.steps.filter(step => step.images && step.images.length > 0).length,
+        allStepsImages: flowData.steps.map(step => ({
+          stepId: step.id,
+          stepTitle: step.title,
+          imagesCount: step.images?.length || 0,
+          images: step.images?.map(img => ({
+            fileName: img.fileName,
+            url: img.url?.substring(0, 50) + '...'
+          })) || []
+        }))
       });
+
+      // 統一された保存処理を使用
+      const result = await saveFlowData(flowData, {
+        validateImages: true,
+        logDetails: true
+      });
+
+      if (result.success) {
+        console.log('✅ flow-editor-advanced 保存成功:', {
+          flowId: result.data?.id || flowData.id,
+          title: result.data?.title || flowData.title,
+          stepsCount: result.data?.steps?.length || flowData.steps.length,
+        });
+
+        // 成功時のコールバック呼び出し
+        onSave(result.data || flowData);
+        
+        toast({
+          title: '成功',
+          description: 'フローが保存されました',
+        });
+      } else {
+        throw new Error(result.error || '保存に失敗しました');
+      }
     } catch (error) {
-      console.error('保存エラー:', error);
+      console.error('❌ flow-editor-advanced 保存エラー:', error);
       toast({
         title: 'エラー',
-        description: 'フローの保存に失敗しました',
+        description: `保存に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: 'destructive',
       });
     } finally {
@@ -539,53 +747,74 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
                                 <div>
                                   <Label>画像</Label>
                                   <div className='flex flex-wrap gap-2 mt-2'>
-                                    {step.images.map((image, imageIndex) => (
-                                      <div
-                                        key={imageIndex}
-                                        className='relative'
+                                    {(() => {
+                                      const images = step.images || [];
+                                      const validImages = images.filter(image => image && image.url && image.url.trim() !== '');
+                                      
+                                      return validImages.map((image, imageIndex) => {
+                                        // 画像URLを正しく構築
+                                        let imageUrl = image.url;
+                                        
+                                        // APIパスの場合は完全なURLに変換
+                                        if (imageUrl.startsWith('/api/')) {
+                                          // 開発環境ではlocalhost:8000を使用
+                                          const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                                          const apiBase = isDev ? 'http://localhost:8000' : window.location.origin;
+                                          imageUrl = `${apiBase}${imageUrl}`;
+                                        }
+                                        
+                                        return (
+                                          <div key={`${step.id}-${imageIndex}`} className='relative'>
+                                            <img
+                                              src={imageUrl}
+                                              alt={image.fileName || '画像'}
+                                              className='w-20 h-20 object-cover rounded border'
+                                              onError={e => {
+                                                console.error('画像読み込みエラー:', imageUrl);
+                                                e.currentTarget.style.display = 'none';
+                                              }}
+                                            />
+                                            <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b">
+                                              {image.fileName || '画像'}
+                                            </div>
+                                            <Button
+                                              variant='ghost'
+                                              size='sm'
+                                              className='absolute -top-2 -right-2 h-6 w-6 p-0 bg-red-500 text-white hover:bg-red-600'
+                                              onClick={() => removeImage(step.id, imageIndex)}
+                                            >
+                                              <X className='h-3 w-3' />
+                                            </Button>
+                                          </div>
+                                        );
+                                      });
+                                    })()}
+                                    {(step.images || []).filter(image => image && image.url && image.url.trim() !== '').length < 3 && (
+                                      <Button
+                                        variant='outline'
+                                        size='sm'
+                                        onClick={() => {
+                                          const input =
+                                            document.createElement('input');
+                                          input.type = 'file';
+                                          input.multiple = true;
+                                          input.accept = 'image/*';
+                                          input.onchange = e => {
+                                            const files = (
+                                              e.target as HTMLInputElement
+                                            ).files;
+                                            if (files) {
+                                              handleImageUpload(step.id, files);
+                                            }
+                                          };
+                                          input.click();
+                                        }}
+                                        className='w-20 h-20 flex flex-col items-center justify-center'
                                       >
-                                        <img
-                                          key={convertImageUrl(image.url)}
-                                          src={convertImageUrl(image.url)}
-                                          alt={image.fileName}
-                                          className='w-20 h-20 object-cover rounded border'
-                                        />
-                                        <Button
-                                          variant='ghost'
-                                          size='sm'
-                                          className='absolute -top-2 -right-2 h-6 w-6 p-0 bg-red-500 text-white hover:bg-red-600'
-                                          onClick={() =>
-                                            removeImage(step.id, imageIndex)
-                                          }
-                                        >
-                                          <X className='h-3 w-3' />
-                                        </Button>
-                                      </div>
-                                    ))}
-                                    <Button
-                                      variant='outline'
-                                      size='sm'
-                                      onClick={() => {
-                                        const input =
-                                          document.createElement('input');
-                                        input.type = 'file';
-                                        input.multiple = true;
-                                        input.accept = 'image/*';
-                                        input.onchange = e => {
-                                          const files = (
-                                            e.target as HTMLInputElement
-                                          ).files;
-                                          if (files) {
-                                            handleImageUpload(step.id, files);
-                                          }
-                                        };
-                                        input.click();
-                                      }}
-                                      className='w-20 h-20 flex flex-col items-center justify-center'
-                                    >
-                                      <Upload className='h-4 w-4' />
-                                      <span className='text-xs'>追加</span>
-                                    </Button>
+                                        <Upload className='h-4 w-4' />
+                                        <span className='text-xs'>追加</span>
+                                      </Button>
+                                    )}
                                   </div>
                                 </div>
 

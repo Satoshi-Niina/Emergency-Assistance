@@ -30,36 +30,6 @@ export function orderSelectedFields(
   );
 }
 
-/**
- * 画像URLを変換する関数
- * シンプルなURLベースの画像表示
- */
-export function convertImageUrl(url: any): string {
-  if (!url) {
-    return '';
-  }
-  // urlがオブジェクトの場合はurlプロパティを参照
-  if (typeof url !== 'string') {
-    if (typeof url.url === 'string') {
-      url = url.url;
-    } else {
-      return '';
-    }
-  }
-  // 既に完全なURLの場合はそのまま返す
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return url;
-  }
-  // Base64データの場合はそのまま返す
-  if (url.startsWith('data:image/')) {
-    return url;
-  }
-  // 相対パスの場合はそのまま返す（静的ファイルとして配信）
-  if (url.startsWith('/')) {
-    return url;
-  }
-  // ファイル名のみの場合は、APIエンドポイントに変換
-  const apiBaseUrl =
-    import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-  return `${apiBaseUrl}/api/troubleshooting/image/${url}`;
-}
+// 画像URL変換関数は image-utils.ts に移動しました
+// 後方互換性のため、ここから再エクスポート
+export { convertImageUrl, buildImageUrl, handleImageError, utf8ToBase64 } from './image-utils';

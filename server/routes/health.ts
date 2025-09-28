@@ -118,6 +118,50 @@ router.get('/gpt', async (_req, res) => {
   }
 });
 
+// 軽量ヘルスチェック（依存関係チェック）
+router.get('z', async (_req, res) => {
+  try {
+    console.log('🏥 /api/healthz 呼び出し:', {
+      timestamp: new Date().toISOString(),
+    });
+
+    // Blob接続テスト
+    let blobStatus = 'not_configured';
+    if (process.env.AZURE_STORAGE_CONNECTION_STRING) {
+      try {
+        const { azureStorage } = await import('../azure-storage.js');
+        if (azureStorage) {
+          // 軽量テスト: コンテナの存在確認
+          await azureStorage.ensureContainerExists();
+          blobStatus = 'connected';
+        }
+      } catch (error) {
+        console.warn('Blob connection test failed:', error.message);
+        blobStatus = 'error';
+      }
+    }
+
+    res.json({
+      ok: true,
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      service: 'Emergency Assistance Backend',
+      environment: process.env.NODE_ENV || 'development',
+      dependencies: {
+        blob: blobStatus,
+      }
+    });
+  } catch (error) {
+    console.error('❌ /api/healthz エラー:', error);
+    res.status(503).json({
+      ok: false,
+      status: 'unhealthy',
+      error: error.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
 // 全体的なシステムチェック
 router.get('/system', async (_req, res) => {
   const checks = {

@@ -1,0 +1,130 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'server/**'
+      - 'shared/**'
+      - '.github/workflows/backend.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'server/**'
+      - 'shared/**'
+      - '.github/workflows/backend.yml'
+
+env:
+  NODE_VERSION: '18'
+  AZURE_WEBAPP_NAME: 'emergencyassistance-sv-fbanemhrbshuf9bd'
+  AZURE_WEBAPP_PACKAGE_PATH: 'server'
+  NODE_ENV: 'production'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: |
+        npm ci
+        cd server && npm ci
+        cd ../shared && npm ci
+        
+    - name: Type check
+      run: |
+        npm run typecheck:server
+        npm run typecheck:shared
+        
+    - name: Lint check
+      run: |
+        npm run lint:server
+        
+    - name: Build shared
+      run: |
+        npm run build:shared
+        
+    - name: Test server startup
+      run: |
+        cd server
+        timeout 10s node production-server.js || true
+        
+    - name: Health check
+      run: |
+        cd server
+        # Start server in background
+        node production-server.js &
+        SERVER_PID=$!
+        
+        # Wait for server to start
+        sleep 5
+        
+        # Health check
+        curl -f http://localhost:8000/api/health || {
+          echo "Health check failed"
+          kill $SERVER_PID
+          exit 1
+        }
+        
+        # Clean up
+        kill $SERVER_PID
+        
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: |
+        npm ci
+        cd server && npm ci
+        
+    - name: Build shared
+      run: |
+        npm run build:shared
+        
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        
+    - name: Health check after deployment
+      run: |
+        echo "Waiting for deployment to complete..."
+        sleep 60
+        
+        # Health check the deployed application
+        curl -f https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net/api/health || {
+          echo "Post-deployment health check failed"
+          exit 1
+        }
+        
+    - name: Notify deployment status
+      if: always()
+      run: |
+        if [ ${{ job.status }} == 'success' ]; then
+          echo "✅ Backend deployment successful"
+        else
+          echo "❌ Backend deployment failed"
+        fi

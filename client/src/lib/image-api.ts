@@ -121,24 +121,4 @@ function fileToBase64(file: File): Promise<string> {
     });
 }
 
-// Reactコンポーネント用の画像表示コンポーネント
-export function DatabaseImage({ 
-    imageId, 
-    alt, 
-    className,
-    onError 
-}: { 
-    imageId: string; 
-    alt?: string; 
-    className?: string;
-    onError?: () => void;
-}) {
-    return (
-        <img
-            src={getImageUrl(imageId)}
-            alt={alt || '画像'}
-            className={className}
-            onError={onError}
-        />
-    );
-} 
+// Reactコンポーネント用の画像表示コンポーネントは image-api.tsx に移動

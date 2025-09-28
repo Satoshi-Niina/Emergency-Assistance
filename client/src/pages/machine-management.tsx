@@ -128,7 +128,7 @@ export default function MachineManagementPage() {
 
   const fetchData = async () => {
     try {
-      const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+      const API_BASE = 'http://localhost:8000/api';
       setIsLoading(true);
       setError(null);
 
@@ -203,8 +203,8 @@ export default function MachineManagementPage() {
 
     try {
       const url = editingType
-        ? `${import.meta.env.VITE_API_BASE_URL}/api/machines/machine-types/${editingType.id}`
-        : `${import.meta.env.VITE_API_BASE_URL}/api/machines/machine-types`;
+        ? `http://localhost:8000/api/machines/machine-types/${editingType.id}`
+        : `http://localhost:8000/api/machines/machine-types`;
 
       const method = editingType ? 'PUT' : 'POST';
 
@@ -242,8 +242,8 @@ export default function MachineManagementPage() {
 
     try {
       const url = editingMachine
-        ? `${import.meta.env.VITE_API_BASE_URL}/api/machines/machines/${editingMachine.id}`
-        : `${import.meta.env.VITE_API_BASE_URL}/api/machines/machines`;
+        ? `http://localhost:8000/api/machines/machines/${editingMachine.id}`
+        : `http://localhost:8000/api/machines/machines`;
 
       const method = editingMachine ? 'PUT' : 'POST';
 
@@ -292,7 +292,7 @@ export default function MachineManagementPage() {
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/machines/machine-types/${typeId}`,
+        `http://localhost:8000/api/machines/machine-types/${typeId}`,
         {
           method: 'DELETE',
         }
@@ -327,7 +327,7 @@ export default function MachineManagementPage() {
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/machines/machines/${machineId}`,
+        `http://localhost:8000/api/machines/machines/${machineId}`,
         {
           method: 'DELETE',
         }

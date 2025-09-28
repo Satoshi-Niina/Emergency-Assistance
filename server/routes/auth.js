@@ -1,7 +1,7 @@
-const express = require('express');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { Pool } = require('pg');
+import express from 'express';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { Pool } from 'pg';
 
 const router = express.Router();
 
@@ -126,12 +126,18 @@ router.post('/login', async (req, res) => {
       }
 
       // データベースからユーザーを検索
+      console.log('[auth/login] ユーザー検索開始:', { username });
       const result = await pool.query(
-        'SELECT id, username, password, role FROM users WHERE username = $1 LIMIT 1',
+        'SELECT id, username, password, role, display_name, department FROM users WHERE username = $1 LIMIT 1',
         [username]
       );
+      console.log('[auth/login] ユーザー検索結果:', { 
+        found: result.rows.length > 0,
+        userCount: result.rows.length 
+      });
 
       if (result.rows.length === 0) {
+        console.log('[auth/login] ユーザーが見つかりません');
         await pool.end();
         return res.status(401).json({ 
           success: false, 
@@ -141,10 +147,19 @@ router.post('/login', async (req, res) => {
       }
 
       const foundUser = result.rows[0];
+      console.log('[auth/login] ユーザー情報取得:', { 
+        id: foundUser.id, 
+        username: foundUser.username, 
+        role: foundUser.role 
+      });
 
       // パスワード比較（bcryptjs）
+      console.log('[auth/login] パスワード比較開始');
       const isPasswordValid = await bcrypt.compare(password, foundUser.password);
+      console.log('[auth/login] パスワード比較結果:', { isValid: isPasswordValid });
+      
       if (!isPasswordValid) {
+        console.log('[auth/login] パスワードが一致しません');
         await pool.end();
         return res.status(401).json({ 
           success: false, 
@@ -170,8 +185,11 @@ router.post('/login', async (req, res) => {
         req.session.userId = foundUser.id;
         req.session.user = { 
           id: foundUser.id, 
-          name: foundUser.username,
-          role: foundUser.role || 'user'
+          username: foundUser.username,
+          displayName: foundUser.display_name,
+          display_name: foundUser.display_name,
+          role: foundUser.role || 'user',
+          department: foundUser.department
         };
         
         req.session.save(() => {
@@ -226,6 +244,14 @@ router.post('/logout', (req, res) => {
 // 現在のユーザー情報取得
 router.get('/me', (req, res) => {
   try {
+    console.log('[auth/me] リクエスト詳細:', {
+      hasSession: !!req.session,
+      sessionId: req.session?.id,
+      sessionUser: req.session?.user,
+      sessionUserId: req.session?.userId,
+      cookies: req.headers.cookie
+    });
+    
     // セッションベースの認証をチェック
     if (req.session?.user) {
       console.log('[auth/me] Session-based auth:', req.session.user);
@@ -276,6 +302,59 @@ router.get('/me', (req, res) => {
   }
 });
 
+// Database check endpoint
+router.get('/db-check', async (req, res) => {
+  try {
+    console.log('[db-check] データベース接続チェック開始');
+    
+    // データベース接続テスト
+    const { Pool } = require('pg');
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const sslMode = process.env.PG_SSL || 'prefer';
+    let sslConfig;
+    
+    if (isDevelopment) {
+      sslConfig = false;
+    } else if (sslMode === 'disable') {
+      sslConfig = false;
+    } else if (sslMode === 'require') {
+      sslConfig = { rejectUnauthorized: false };
+    } else { // prefer (default)
+      sslConfig = { rejectUnauthorized: false };
+    }
+
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: sslConfig,
+      max: 5,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 5000,
+    });
+
+    const client = await pool.connect();
+    const result = await client.query('SELECT NOW() as current_time, COUNT(*) as user_count FROM users');
+    await client.release();
+    await pool.end();
+
+    console.log('[db-check] データベース接続成功:', result.rows[0]);
+
+    res.json({
+      status: 'OK',
+      message: 'データベース接続が正常です',
+      db_time: result.rows[0].current_time,
+      user_count: result.rows[0].user_count,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[db-check] データベース接続エラー:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      message: `データベース接続エラー: ${error.message}`,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Handshake endpoint
 router.get('/handshake', (req, res) => {
   try {
@@ -298,4 +377,6 @@ router.get('/handshake', (req, res) => {
   }
 });
 
-module.exports = router;
+// 認証関連のエンドポイントのみを保持
+
+export default router;

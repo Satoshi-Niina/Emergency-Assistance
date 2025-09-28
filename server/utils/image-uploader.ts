@@ -18,6 +18,6 @@ export const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB制限
+    fileSize: 10 * 1024 * 1024, // 10MB制限に増加
   },
 });

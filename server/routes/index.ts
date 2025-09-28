@@ -1,90 +1,40 @@
-import emergencyFlowRoutes from './emergency-flow';
-import { registerChatRoutes } from './chat';
-import { techSupportRouter } from './tech-support';
-import troubleshootingRouter from './troubleshooting';
-import { usersRouter } from './users';
-import { registerKnowledgeBaseRoutes } from './knowledge-base';
-import { registerSyncRoutes } from './sync-routes';
-import { registerDataProcessorRoutes } from './data-processor';
-import flowGeneratorRoutes from './flow-generator';
-import { registerSearchRoutes } from './search';
-import authRouter from './auth';
-import settingsRouter from './settings';
+import emergencyFlowRoutes from './emergency-flow.js';
+// import { registerChatRoutes } from './chat.js'; // 一時的に無効化（insertChatSchemaエラーのため）
+import { techSupportRouter } from './tech-support.js';
+import troubleshootingRouter from './troubleshooting.js';
+import { usersRouter } from './users.js';
+import { registerKnowledgeBaseRoutes } from './knowledge-base.js';
+import { registerSyncRoutes } from './sync-routes.js';
+import dataProcessorRouter from './data-processor.js';
+import flowGeneratorRoutes from './flow-generator.js';
+import { registerSearchRoutes } from './search.js';
+import authRouter from './auth.js';
+import settingsRouter from './settings.js';
 // machinesRouterはapp.tsで直接マウントされているため、ここでは除外
-import imageStorageRouter from './image-storage';
-import systemCheckRouter from './system-check';
-import { flowsRouter } from './flows';
-import filesRouter from './files';
-import reportsRouter from './reports';
+import imageStorageRouter from './image-storage.js';
+import systemCheckRouter from './system-check.js';
+import { flowsRouter } from './flows.js';
+import filesRouter from './files.js';
+import reportsRouter from './reports.js';
+import storageUnifiedRouter from './storage-unified.js';
+import { healthRouter } from './health.js';
+import pingRouter from './ping.js';
+import mountDiag from './_diag.js';
+import { historyRouter } from './history.js';
 
-export function registerRoutes(app: any) {
-  // Ping endpoint（最小応答で生存確認）
-  app.get('/api/ping', (req: any, res: any) => {
-    console.log('🏓 /api/ping 呼び出し');
-    try {
-      res.json({
-        ping: 'pong',
-        timestamp: new Date().toISOString(),
-      });
-    } catch (error) {
-      console.error('❌ /api/ping エラー:', error);
-      res.status(500).json({
-        ping: 'error',
-        error: error.message,
-        timestamp: new Date().toISOString(),
-      });
-    }
-  });
-
-  // Health check（暫定実装）
-  app.get('/api/health', (req: any, res: any) => {
-    console.log('🔍 /api/health 呼び出し');
-
-    // 詳細なリクエスト情報をログ出力
-    console.log('📊 Request details:', {
-      method: req.method,
-      path: req.path,
-      headers: {
-        host: req.headers.host,
-        'x-forwarded-for': req.headers['x-forwarded-for'],
-        'x-forwarded-proto': req.headers['x-forwarded-proto'],
-        'user-agent': req.headers['user-agent'],
-        'content-type': req.headers['content-type'],
-      },
-      ip: req.ip,
-      ips: req.ips,
-      timestamp: new Date().toISOString(),
-    });
-
-    try {
-      res.json({
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development',
-        version: '1.0.0',
-        server: {
-          port: process.env.PORT,
-          trustProxy: req.app.get('trust proxy'),
-          nodeVersion: process.version,
-        },
-      });
-    } catch (error) {
-      console.error('❌ /api/health エラー:', error);
-      console.error('❌ Stack trace:', error.stack);
-      res.status(500).json({
-        status: 'error',
-        error: 'health_check_failed',
-        message: 'ヘルスチェックでエラーが発生しました',
-        timestamp: new Date().toISOString(),
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-      });
-    }
-  });
-
+export default function registerRoutes(app: any) {
   // API routes
+  app.use('/api/health', healthRouter);
+  app.use('/api/ping', pingRouter);
+  app.use('/api/storage', storageUnifiedRouter);
   app.use('/api/auth', authRouter);
   app.use('/api/settings', settingsRouter);
-  registerChatRoutes(app);
+  app.use('/api/history', historyRouter);
+  
+  // 診断用エンドポイント
+  mountDiag(app);
+  
+  // registerChatRoutes(app); // 一時的に無効化
   app.use('/api/emergency-flow', emergencyFlowRoutes);
   app.use('/api/tech-support', techSupportRouter);
   app.use('/api/troubleshooting', troubleshootingRouter);
@@ -93,7 +43,7 @@ export function registerRoutes(app: any) {
   // Register other route modules
   registerKnowledgeBaseRoutes(app);
   registerSyncRoutes(app);
-  registerDataProcessorRoutes(app);
+  app.use('/api/data-processor', dataProcessorRouter);
   app.use('/api/flow-generator', flowGeneratorRoutes);
   registerSearchRoutes(app);
   // machinesRouterはapp.tsで直接マウントされているため、ここでは除外
@@ -102,4 +52,6 @@ export function registerRoutes(app: any) {
   app.use('/api/flows', flowsRouter);
   app.use('/api/files', filesRouter);
   app.use('/api/reports', reportsRouter);
+  
+  console.log('[BOOT] routes mounted');
 }

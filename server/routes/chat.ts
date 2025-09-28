@@ -711,42 +711,20 @@ export function registerChatRoutes(app: any): void {
       const finalFilePath = path.join(exportsDir, finalFileName);
       console.log('🔍 事象抽出 - 最終ファイル名:', finalFileName);
 
-      // ダブルクオーテーションを英数小文字に統一してJSONファイルを保存
+      // UTF-8エンコーディングでJSONファイルを保存（BOMなし）
       const jsonString = JSON.stringify(exportData, null, 2);
-      fs.writeFileSync(finalFilePath, jsonString, 'utf8');
-      console.log('チャットデータを保存しました:', finalFilePath);
-
-      // 履歴データベースにも保存（テスト用）
       try {
-        const { HistoryService } = await import(
-          '../services/historyService.js'
-        );
-
-        // 履歴アイテムを作成
-        const historyData = {
-          sessionId: chatId,
-          question: chatData.messages.map(msg => msg.content).join('\n'),
-          answer: 'チャット送信完了（テスト用）',
-          machineType: chatData.machineInfo?.machineTypeName || '',
-          machineNumber: chatData.machineInfo?.machineNumber || '',
-          metadata: {
-            messageCount: chatData.messages.length,
-            exportType: exportType,
-            fileName: finalFileName, // 最終的なファイル名を使用
-            machineInfo: chatData.machineInfo,
-            isTest: true,
-          },
-        };
-
-        await HistoryService.createHistory(historyData);
-        console.log('履歴データベースに保存しました（テスト用）');
-      } catch (historyError) {
-        console.warn(
-          '履歴データベース保存エラー（ファイル保存は成功）:',
-          historyError
-        );
-        // 履歴データベースエラーはファイル保存の成功を妨げない
+        // UTF-8 BOMなしで保存
+        fs.writeFileSync(finalFilePath, jsonString, 'utf8');
+        console.log('チャットデータを保存しました:', finalFilePath);
+        console.log('保存されたデータサイズ:', Buffer.byteLength(jsonString, 'utf8'), 'bytes');
+      } catch (writeError) {
+        console.error('ファイル保存エラー:', writeError);
+        throw writeError;
       }
+
+      // ファイルベースの保存のみ（DB保存は削除）
+      console.log('チャットエクスポートがファイルに保存されました');
 
       // 成功レスポンス
       res.json({
@@ -1022,115 +1000,20 @@ export function registerChatRoutes(app: any): void {
       // 保存した画像情報をエクスポートデータに追加
       exportData.savedImages = savedImages;
 
-      // ダブルクオーテーションを英数小文字に統一してJSONファイルを保存
+      // UTF-8エンコーディングでJSONファイルを保存（BOMなし）
       const jsonString = JSON.stringify(exportData, null, 2);
-      fs.writeFileSync(filePath, jsonString, 'utf8');
-      console.log('チャットデータを保存しました:', filePath);
-
-      // データベース保存は不要（ファイルベースの保存のみ）
-      console.log('チャットエクスポートがファイルに保存されました');
-
-      // 履歴データベースにも保存
       try {
-        const { HistoryService } = await import(
-          '../services/historyService.js'
-        );
-
-        // 新しいフォーマット関数を使用して履歴データを生成
-        const { formatChatHistoryForHistoryUI } = await import(
-          '../lib/chat-export-formatter.js'
-        );
-
-        // チャットとメッセージ情報を取得
-        const chat = await storage.getChat(chatId);
-        const allMessages = await storage.getMessagesForChat(chatId);
-
-        // メッセージIDごとにメディアを取得
-        const messageMedia: Record<string, any[]> = {};
-        for (const message of allMessages) {
-          try {
-            messageMedia[message.id] = await storage.getMediaForMessage(
-              message.id
-            );
-          } catch (mediaError) {
-            console.warn(
-              `メッセージ ${message.id} のメディア取得エラー:`,
-              mediaError
-            );
-            messageMedia[message.id] = [];
-          }
-        }
-
-        // 履歴管理UI用にフォーマット（エラーをキャッチ）
-        let formattedHistoryData;
-        try {
-          formattedHistoryData = await formatChatHistoryForHistoryUI(
-            chat,
-            allMessages,
-            messageMedia,
-            chatData.machineInfo
-          );
-        } catch (formatError) {
-          console.error('履歴データフォーマット処理エラー:', formatError);
-          // フォーマット処理が失敗した場合のフォールバック
-          formattedHistoryData = {
-            title: '車両トラブル',
-            problem_description: '詳細情報なし',
-            machine_type: chatData.machineInfo?.machineTypeName || '',
-            machine_number: chatData.machineInfo?.machineNumber || '',
-            extracted_components: [],
-            extracted_symptoms: [],
-            possible_models: [],
-            conversation_history: allMessages.map((m: any) => ({
-              id: m.id,
-              content: m.content,
-              isAiResponse: m.isAiResponse,
-              timestamp: m.createdAt,
-              media: [],
-            })),
-            export_timestamp: new Date().toISOString(),
-            metadata: {
-              total_messages: allMessages.length,
-              user_messages: allMessages.filter((m: any) => !m.isAiResponse)
-                .length,
-              ai_messages: allMessages.filter((m: any) => m.isAiResponse)
-                .length,
-              total_media: 0,
-              export_format_version: '2.0',
-            },
-          };
-        }
-
-        // 履歴アイテムを作成
-        const historyData = {
-          sessionId: chatId,
-          question: formattedHistoryData.title,
-          answer: formattedHistoryData.problem_description,
-          machineType: formattedHistoryData.machine_type,
-          machineNumber: formattedHistoryData.machine_number,
-          metadata: {
-            title: formattedHistoryData.title,
-            problemDescription: formattedHistoryData.problem_description,
-            extractedComponents: formattedHistoryData.extracted_components,
-            extractedSymptoms: formattedHistoryData.extracted_symptoms,
-            possibleModels: formattedHistoryData.possible_models,
-            messageCount: formattedHistoryData.metadata.total_messages,
-            exportType: exportType,
-            fileName: fileName,
-            machineInfo: chatData.machineInfo,
-            exportTimestamp: formattedHistoryData.export_timestamp,
-          },
-        };
-
-        await HistoryService.createHistory(historyData);
-        console.log('履歴データベースに保存しました（新しいフォーマット）');
-      } catch (historyError) {
-        console.warn(
-          '履歴データベース保存エラー（ファイル保存は成功）:',
-          historyError
-        );
-        // 履歴データベースエラーはファイル保存の成功を妨げない
+        // UTF-8 BOMなしで保存
+        fs.writeFileSync(filePath, jsonString, 'utf8');
+        console.log('チャットデータを保存しました:', filePath);
+        console.log('保存されたデータサイズ:', Buffer.byteLength(jsonString, 'utf8'), 'bytes');
+      } catch (writeError) {
+        console.error('ファイル保存エラー:', writeError);
+        throw writeError;
       }
+
+      // ファイルベースの保存のみ（DB保存は削除）
+      console.log('チャットエクスポートがファイルに保存されました');
 
       // 成功レスポンス
       res.json({

@@ -164,7 +164,10 @@ export default function ChatPage() {
   const fetchKnowledgeData = async () => {
     try {
       setIsLoadingKnowledge(true);
-      const response = await fetch(`/api/knowledge-base`);
+      // 統一API設定を使用
+      const { buildApiUrl } = await import('../lib/api-unified');
+      const apiUrl = buildApiUrl('/knowledge-base');
+      const response = await fetch(apiUrl);
 
       if (response.ok) {
         const result = await response.json();
@@ -200,7 +203,11 @@ export default function ChatPage() {
   const processKnowledgeData = async () => {
     try {
       setIsLoadingKnowledge(true);
-      const response = await fetch(`/api/knowledge-base/process`, {
+      // 統一API設定を使用
+      const { buildApiUrl } = await import('../lib/api-unified');
+      const apiUrl = buildApiUrl('/knowledge-base/process');
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -278,10 +285,16 @@ export default function ChatPage() {
       setIsLoadingMachineTypes(true);
       console.log('🔍 機種一覧取得開始');
 
-      // プロキシ経由でアクセス（相対パスを使用）
-      const apiUrl = `/api/machines/machine-types`;
+      // 統一API設定を使用
+      const { buildApiUrl } = await import('../lib/api-unified');
+      const apiUrl = buildApiUrl('/machines/machine-types');
       console.log('🔍 機種一覧取得URL:', apiUrl);
       console.log('🔍 現在のURL:', window.location.href);
+      console.log('🔍 環境変数:', {
+        VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+        NODE_ENV: import.meta.env.NODE_ENV,
+        MODE: import.meta.env.MODE
+      });
 
       const response = await fetch(apiUrl, {
         headers: {
@@ -435,8 +448,9 @@ export default function ChatPage() {
         setIsLoadingMachines(true);
         console.log('🔍 機械番号一覧取得開始, 機種ID:', typeId);
 
-        // プロキシ経由でアクセス（相対パスを使用）
-        const apiUrl = `/api/machines/machines?type_id=${typeId}`;
+        // 統一API設定を使用
+        const { buildApiUrl } = await import('../lib/api-unified');
+        const apiUrl = buildApiUrl(`/machines/machines?type_id=${typeId}`);
         console.log('🔍 機械番号一覧取得URL:', apiUrl);
 
         const response = await fetch(apiUrl, {
@@ -779,17 +793,26 @@ export default function ChatPage() {
         totalDataSize: JSON.stringify(chatData).length,
       });
 
-      // サーバーに送信（開発環境ではテスト用エンドポイントを使用）
-      const isDevelopment =
-        process.env.NODE_ENV === 'development' ||
-        window.location.hostname === 'localhost';
-      const apiUrl = isDevelopment
-        ? `/api/chats/${chatId}/send-test`
-        : `/api/chats/${chatId}/send`;
+      // 統一API設定を使用してサーバーに送信
+      const { buildApiUrl } = await import('../lib/api-unified');
+      
+      // 環境に応じてエンドポイントを選択
+      const isDevelopment = import.meta.env.DEV || window.location.hostname === 'localhost';
+      const endpoint = isDevelopment 
+        ? `/chats/${chatId}/send-test`  // 開発環境ではテスト用エンドポイント
+        : `/chats/${chatId}/send`;      // 本番環境では本番用エンドポイント
+      
+      const apiUrl = buildApiUrl(endpoint);
 
       console.log('🌐 送信URL:', apiUrl);
       console.log('🏗️ 開発環境:', isDevelopment);
       console.log('🏠 ホスト名:', window.location.hostname);
+      console.log('🔧 環境変数:', {
+        NODE_ENV: import.meta.env.MODE,
+        DEV: import.meta.env.DEV,
+        PROD: import.meta.env.PROD,
+        VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL
+      });
 
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -922,22 +945,60 @@ export default function ChatPage() {
   const fetchAvailableGuides = async () => {
     try {
       setIsLoadingGuides(true);
-      const response = await fetch(`/api/troubleshooting/list`);
+      console.log('🔄 応急処置ガイド一覧取得開始');
+      
+      // キャッシュ無効化のためにタイムスタンプを追加
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2);
+      const cacheBuster = `?ts=${timestamp}&r=${randomId}`;
+      
+      // 統一API設定を使用 - emergency-flow APIを使用
+      const { buildApiUrl } = await import('../lib/api-unified');
+      const apiUrl = buildApiUrl(`/emergency-flow/list${cacheBuster}`);
+      
+      console.log('🌐 API URL:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+          Pragma: 'no-cache',
+          Expires: 'Thu, 01 Jan 1970 00:00:00 GMT',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
+
+      console.log('📡 レスポンス状態:', response.status, response.statusText);
 
       if (response.ok) {
         const data = await response.json();
+        console.log('📊 取得したデータ:', data);
+        
         if (data.success) {
-          setAvailableGuides(data.data || []);
-          setFilteredGuides(data.data || []);
-          console.log('✅ 応急処置ガイド取得成功:', data.data?.length + '件');
+          const guides = data.data || [];
+          setAvailableGuides(guides);
+          setFilteredGuides(guides);
+          console.log('✅ 応急処置ガイド取得成功:', guides.length + '件');
+          
+          // デバッグ用：各ガイドの詳細をログ出力
+          guides.forEach((guide: any, index: number) => {
+            console.log(`📋 ガイド ${index + 1}:`, {
+              id: guide.id,
+              title: guide.title,
+              fileName: guide.fileName,
+              description: guide.description?.substring(0, 50) + '...',
+            });
+          });
         } else {
           console.error('❌ 応急処置ガイド取得失敗:', data.message);
           setAvailableGuides([]);
           setFilteredGuides([]);
         }
       } else {
+        const errorText = await response.text();
+        console.error('❌ API エラー:', errorText);
         throw new Error(
-          `Failed to fetch emergency guides: ${response.statusText}`
+          `Failed to fetch emergency guides: ${response.status} - ${errorText}`
         );
       }
     } catch (error) {
@@ -1018,8 +1079,11 @@ export default function ChatPage() {
         answers: [],
       });
 
-      // トラブルシューティングQA APIを呼び出し
-      const response = await fetch(`/api/troubleshooting-qa/start`, {
+      // 統一API設定を使用してトラブルシューティングQA APIを呼び出し
+      const { buildApiUrl } = await import('../lib/api-unified');
+      const apiUrl = buildApiUrl('/troubleshooting-qa/start');
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1078,8 +1142,11 @@ export default function ChatPage() {
       // 回答をメッセージとして追加
       sendMessage(answer, [], false);
 
-      // トラブルシューティングQA APIを呼び出し
-      const response = await fetch(`/api/troubleshooting-qa/answer`, {
+      // 統一API設定を使用してトラブルシューティングQA APIを呼び出し
+      const { buildApiUrl } = await import('../lib/api-unified');
+      const apiUrl = buildApiUrl('/troubleshooting-qa/answer');
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1180,22 +1247,21 @@ export default function ChatPage() {
     userMessage: string
   ): Promise<string> => {
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/chat`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            message: userMessage,
-            context: 'ai_support',
-            machineType: selectedMachineType,
-            machineNumber: selectedMachineNumber,
-          }),
-        }
-      );
+      // 統一API設定を使用
+      const { buildApiUrl } = await import('../lib/api-unified');
+      const apiUrl = buildApiUrl('/chatgpt');
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          text: userMessage,
+          useOnlyKnowledgeBase: false,
+        }),
+      });
 
       if (!response.ok) {
         throw new Error('AI支援応答の取得に失敗しました');

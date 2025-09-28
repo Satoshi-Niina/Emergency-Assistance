@@ -39,7 +39,7 @@ const createSessionSchema = z.object({
  * GET /api/history
  * 履歴一覧を取得
  */
-router.get('/', async (_req, res) => {
+router.get('/', async (req, res) => {
   try {
     console.log('📋 履歴一覧取得リクエスト:', req.query);
 

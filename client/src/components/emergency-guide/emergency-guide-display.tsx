@@ -14,7 +14,7 @@ import {
   Send,
   X,
 } from 'lucide-react';
-import { convertImageUrl } from '../../lib/utils.ts';
+import { convertImageUrl } from '../../lib/image-utils.ts';
 
 interface Step {
   id: string;
@@ -68,72 +68,12 @@ interface FlowExecutionStep {
 // 画像URL変換の改善
 
 // 画像エラーハンドリングの改善
-function handleImageError(
-  e: React.SyntheticEvent<HTMLImageElement, Event>,
-  imageUrl: string
-) {
-  const imgElement = e.currentTarget;
-  console.error('画像表示エラー:', imageUrl);
-
-  // 元のURLをログ出力
-  console.log('元の画像URL:', imageUrl);
-  console.log('変換後のURL:', imgElement.src);
-
-  // エラー時のフォールバック処理
-  try {
-    // API設定 - VITE_API_BASE_URLのみを使用
-    const apiBaseUrl =
-      import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-
-    // 1. ファイル名のみで再試行
-    const fileName = imageUrl.split('/').pop()?.split('\\').pop();
-    if (fileName && fileName !== imageUrl) {
-      console.log('ファイル名のみで再試行:', fileName);
-      imgElement.src = `${apiBaseUrl}/api/emergency-flow/image/${fileName}`;
-      return;
-    }
-
-    // 2. 元のURLをそのまま使用
-    console.log('元のURLをそのまま使用');
-    imgElement.src = imageUrl;
-  } catch (error) {
-    console.error('画像エラーハンドリング失敗:', error);
-    // エラー画像を表示
-    imgElement.src =
-      'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMDAgNzBDMTE2LjU2OSA3MCAxMzAgODMuNDMxIDEzMCAxMDBDMTMwIDExNi41NjkgMTE2LjU2OSAxMzAgMTAwIDEzMEM4My40MzEgMTMwIDcwIDExNi41NjkgNzAgMTAwQzcwIDgzLjQzMSA4My40MzEgNzAgMTAwIDcwWiIgZmlsbD0iIzlDQTBBNiIvPgo8cGF0aCBkPSJNMTAwIDE0MEMxMTYuNTY5IDE0MCAxMzAgMTUzLjQzMSAxMzAgMTcwQzEzMCAxODYuNTY5IDExNi41NjkgMjAwIDEwMCAyMDBDODMuNDMxIDIwMCA3MCAxODYuNTY5IDcwIDE3MEM3MCAxNTMuNDMxIDgzLjQzMSAxNDAgMTAwIDE0MFoiIGZpbGw9IiM5Q0EwQTYiLz4KPHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDIwQzIwIDE3LjIzOSAyMi4yMzkgMTUgMjUgMTVIMzVDMzcuNzYxIDE1IDQwIDE3LjIzOSA0MCAyMFYzMEM0MCAzMi43NjEgMzcuNzYxIDM1IDM1IDM1SDI1QzIyLjIzOSAzNSAyMCAzMi43NjEgMjAgMzBWMjBaIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yNSAxN0MyNSAxNi40NDc3IDI1LjQ0NzcgMTYgMjYgMTZIMzRDMzQuNTUyMyAxNiAzNSAxNi40NDc3IDM1IDE3VjI5QzM1IDI5LjU1MjMgMzQuNTUyMyAzMCAzNCAzMEgyNkMyNS40NDc3IDMwIDI1IDI5LjU1MjMgMjUgMjlWMTdaIiBmaWxsPSIjOTlBM0Y2Ii8+Cjwvc3ZnPgo8L3N2Zz4K';
-  }
-}
+// 統一されたユーティリティを使用
+import { handleImageError } from '../../lib/image-utils';
 
 // 画像URLを正しく構築する関数
-function buildImageUrl(imageUrl: string): string {
-  // API設定 - VITE_API_BASE_URLのみを使用
-  const apiBaseUrl =
-    import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-
-  // 既に完全なURLの場合はそのまま返す
-  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-    return imageUrl;
-  }
-
-  // 既にAPIエンドポイント形式の場合はベースURLを追加
-  if (imageUrl.startsWith('/api/emergency-flow/image/')) {
-    return `${apiBaseUrl}${imageUrl}`;
-  }
-  if (imageUrl.startsWith('/api/troubleshooting/image/')) {
-    return `${apiBaseUrl}${imageUrl}`;
-  }
-
-  // ファイル名を抽出
-  let fileName = imageUrl;
-  if (imageUrl.includes('/')) {
-    fileName = imageUrl.split('/').pop() || imageUrl;
-  } else if (imageUrl.includes('\\')) {
-    fileName = imageUrl.split('\\').pop() || imageUrl;
-  }
-
-  // 新しいAPIエンドポイント形式に変換
-  return `${apiBaseUrl}/api/troubleshooting/image/${fileName}`;
-}
+// 統一されたユーティリティを使用
+import { buildImageUrl } from '../../lib/image-utils';
 
 export default function EmergencyGuideDisplay({
   guideId,
@@ -161,19 +101,46 @@ export default function EmergencyGuideDisplay({
     const fetchGuideData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL}/api/troubleshooting/${guideId}`
-        );
+        console.log('🔄 応急処置ガイドデータ取得開始:', guideId);
+        
+        // キャッシュ無効化のためにタイムスタンプを追加
+        const timestamp = Date.now();
+        const randomId = Math.random().toString(36).substring(2);
+        const cacheBuster = `?ts=${timestamp}&r=${randomId}`;
+        
+        // 統一API設定を使用 - emergency-flow APIを使用
+        const { buildApiUrl } = await import('../../lib/api-unified');
+        const apiUrl = buildApiUrl(`/emergency-flow/detail/${guideId}${cacheBuster}`);
+        
+        console.log('🌐 ガイド詳細API URL:', apiUrl);
+        
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+            Pragma: 'no-cache',
+            Expires: 'Thu, 01 Jan 1970 00:00:00 GMT',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+        });
+
+        console.log('📡 レスポンス状態:', response.status, response.statusText);
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch guide data: ${response.status}`);
+          const errorText = await response.text();
+          console.error('❌ API エラー:', errorText);
+          throw new Error(`Failed to fetch guide data: ${response.status} - ${errorText}`);
         }
 
         const responseData = await response.json();
+        console.log('📊 取得したデータ:', responseData);
+        
         const data =
           responseData.success && responseData.data
             ? responseData.data
             : responseData;
+            
+        console.log('📋 処理対象データ:', data);
         setGuideData(data);
 
         // 初期ステップを履歴に追加
@@ -471,7 +438,26 @@ export default function EmergencyGuideDisplay({
                       src={buildImageUrl(image.url)}
                       alt={`${currentStep.title} - ${image.fileName || '画像'}`}
                       className='w-full h-auto rounded-lg shadow-md'
-                      onError={e => handleImageError(e, image.url)}
+                      crossOrigin="anonymous"
+                      onError={e => {
+                        console.error('❌ 画像読み込みエラー (emergency-guide-display):', {
+                          imageUrl: image.url,
+                          builtUrl: buildImageUrl(image.url),
+                          fileName: image.fileName,
+                          stepTitle: currentStep.title,
+                          index,
+                        });
+                        handleImageError(e, image.url);
+                      }}
+                      onLoad={() => {
+                        console.log('✅ 画像読み込み成功 (emergency-guide-display):', {
+                          imageUrl: image.url,
+                          builtUrl: buildImageUrl(image.url),
+                          fileName: image.fileName,
+                          stepTitle: currentStep.title,
+                          index,
+                        });
+                      }}
                     />
                     {image.fileName && (
                       <div className='text-sm text-gray-600 mt-1'>
@@ -489,7 +475,22 @@ export default function EmergencyGuideDisplay({
                 src={buildImageUrl(currentStep.imageUrl)}
                 alt={currentStep.title}
                 className='w-full h-auto rounded-lg shadow-md'
-                onError={e => handleImageError(e, currentStep.imageUrl)}
+                crossOrigin="anonymous"
+                onError={e => {
+                  console.error('❌ 画像読み込みエラー (legacy imageUrl):', {
+                    imageUrl: currentStep.imageUrl,
+                    builtUrl: buildImageUrl(currentStep.imageUrl),
+                    stepTitle: currentStep.title,
+                  });
+                  handleImageError(e, currentStep.imageUrl);
+                }}
+                onLoad={() => {
+                  console.log('✅ 画像読み込み成功 (legacy imageUrl):', {
+                    imageUrl: currentStep.imageUrl,
+                    builtUrl: buildImageUrl(currentStep.imageUrl),
+                    stepTitle: currentStep.title,
+                  });
+                }}
               />
             </div>
           ) : (

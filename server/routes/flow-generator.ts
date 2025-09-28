@@ -17,7 +17,7 @@ import { cleanJsonResponse } from '../lib/json-helper.js';
 
 const router = express.Router();
 // 知識ベースディレクトリ
-const knowledgeBaseDir = path.join(process.cwd(), '..', 'knowledge-base');
+const knowledgeBaseDir = path.join(process.cwd(), 'knowledge-base');
 const jsonDir: any = path.join(knowledgeBaseDir, 'json');
 const troubleshootingDir: any = path.join(knowledgeBaseDir, 'troubleshooting');
 // ディレクトリが存在しない場合は作成
@@ -41,7 +41,7 @@ router.get('/debug', (_req, res) => {
 });
 
 // キーワードからフローを生成するエンドポイント（互換性のため）
-router.post('/keywords', async (_req, res) => {
+router.post('/keywords', async (req, res) => {
   try {
     const { keywords } = req.body;
     if (!keywords || typeof keywords !== 'string' || !keywords.trim()) {
@@ -52,64 +52,305 @@ router.post('/keywords', async (_req, res) => {
     }
     console.log(`キーワード "${keywords}" からフローを生成します`);
 
-    // 簡単なフローを生成（ダミー実装）
-    const flowData = {
-      id: `flow_${Date.now()}`,
-      title: `キーワード生成フロー: ${keywords}`,
-      description: `キーワード「${keywords}」から自動生成されたフロー`,
-      triggerKeywords: keywords.split(',').map(k => k.trim()),
-      steps: [
+    // OpenAI APIキーの確認
+    console.log('[DEBUG] Checking OpenAI API key...');
+    console.log(
+      '[DEBUG] process.env.OPENAI_API_KEY:',
+      process.env.OPENAI_API_KEY ? 'EXISTS' : 'NOT EXISTS'
+    );
+
+    if (
+      !process.env.OPENAI_API_KEY ||
+      process.env.OPENAI_API_KEY === 'your-openai-api-key-here'
+    ) {
+      console.log(
+        '[DEBUG] OpenAI API key validation failed - missing or default value'
+      );
+      return res.status(400).json({
+        success: false,
+        error:
+          'OpenAI APIキーが設定されていません。環境変数OPENAI_API_KEYを設定してください。',
+        details: '開発環境では.envファイルにOPENAI_API_KEYを設定してください。',
+      });
+    }
+
+    // APIキーの形式確認
+    if (!process.env.OPENAI_API_KEY.startsWith('sk-')) {
+      console.log('[DEBUG] OpenAI API key validation failed - invalid format');
+      return res.status(400).json({
+        success: false,
+        error: 'OpenAI APIキーの形式が無効です。',
+        details: 'APIキーは「sk-」で始まる必要があります。',
+      });
+    }
+
+    console.log('[DEBUG] OpenAI API Key validation passed');
+
+    // ナレッジベースから関連情報を検索
+    let knowledgeContext = '';
+    try {
+      console.log('🔍 ナレッジベース検索開始:', keywords);
+      const searchResults = await searchKnowledgeBase(keywords, {
+        maxResults: 5,
+        similarityThreshold: 0.3,
+      });
+      
+      if (searchResults && searchResults.length > 0) {
+        console.log(`📚 ナレッジベースから ${searchResults.length} 件の関連情報を取得`);
+        for (const chunk of searchResults) {
+          knowledgeContext += `出典: ${chunk.metadata.source || '不明'}\n\n${chunk.text}\n---\n\n`;
+        }
+      } else {
+        console.log('📚 ナレッジベースから関連情報が見つかりませんでした');
+      }
+    } catch (searchError) {
+      console.warn('⚠️ ナレッジベース検索エラー（フロー生成は続行）:', searchError);
+      // ナレッジベース検索が失敗してもフロー生成は続行
+    }
+
+    // GPTに渡す強化されたプロンプト
+    const prompt = `以下のキーワードに関連する応急処置フローを生成してください。
+必ず完全なJSONオブジェクトのみを返してください。追加の説明やテキストは一切含めないでください。
+レスポンスは純粋なJSONデータだけであるべきで、コードブロックのマークダウン記法は使用しないでください。
+生成するJSONは完全な有効なJSONである必要があり、途中で切れたり不完全な構造であってはなりません。
+特に、各配列やオブジェクトが適切に閉じられていることを確認してください。
+
+**重要な要求事項:**
+- titleフィールドには、キーワードの内容を要約した簡潔で分かりやすいタイトルを設定してください
+- 「キーワード生成フロー:」や「フロー:」などの接頭辞は使用しないでください
+- キーワードの本質的な問題や状況を表現するタイトルにしてください
+- 例：「エンジンオイル漏れ」「ブレーキが効かない」「エンジンが始動しない」「タイヤがパンクした」など
+
+以下の形式に厳密に従ってください。条件分岐ノード（"type": "condition"）では必ず"conditions"配列と"message"フィールドを含めてください:
+
+{
+  "id": "機械的なID（英数字とアンダースコアのみ）",
+  "title": "キーワードの内容を要約した簡潔で分かりやすいタイトル",
+  "description": "簡潔な説明",
+  "triggerKeywords": ["キーワード1", "キーワード2"],
+  "steps": [
+    {
+      "id": "step1",
+      "title": "開始",
+      "description": "この応急処置ガイドでは、[主な症状や問題]に対処する手順を説明します。安全を確保しながら、原因を特定し解決するための手順に従ってください。",
+      "message": "この応急処置ガイドでは、[主な症状や問題]に対処する手順を説明します。安全を確保しながら、原因を特定し解決するための手順に従ってください。",
+      "imageUrl": "",
+      "type": "step",
+      "options": []
+    },
+    {
+      "id": "step2",
+      "title": "安全確保",
+      "description": "1. 二次災害を防ぐため、車両が安全な場所に停止していることを確認します。\n2. 接近する列車や障害物がないか周囲を確認します。\n3. 必要に応じて停止表示器や防護無線を使用します。",
+      "message": "1. 二次災害を防ぐため、車両が安全な場所に停止していることを確認します。\n2. 接近する列車や障害物がないか周囲を確認します。\n3. 必要に応じて停止表示器や防護無線を使用します。",
+      "imageUrl": "",
+      "type": "step",
+      "options": []
+    },
+    {
+      "id": "step3",
+      "title": "原因特定",
+      "description": "問題の原因を特定するための手順",
+      "message": "問題の原因を特定するための手順",
+      "imageUrl": "",
+      "type": "condition",
+      "conditions": [
         {
-          id: 'step1',
-          title: '開始',
-          description: `キーワード「${keywords}」に関する応急処置を開始します`,
-          message: `キーワード「${keywords}」に関する応急処置を開始します`,
-          type: 'step',
-          options: [],
+          "label": "原因特定できた",
+          "nextId": "step4"
         },
         {
-          id: 'step2',
-          title: '状況確認',
-          description: '現在の状況を確認してください',
-          message: '現在の状況を確認してください',
-          type: 'condition',
-          conditions: [
-            {
-              label: '問題解決',
-              nextId: 'step3',
-            },
-            {
-              label: '問題継続',
-              nextId: 'step4',
-            },
-          ],
-        },
-        {
-          id: 'step3',
-          title: '完了',
-          description: '応急処置が完了しました',
-          message: '応急処置が完了しました',
-          type: 'step',
-          options: [],
-        },
-        {
-          id: 'step4',
-          title: '専門家連絡',
-          description: '専門家に連絡してください',
-          message: '専門家に連絡してください',
-          type: 'step',
-          options: [],
-        },
-      ],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+          "label": "原因不明",
+          "nextId": "step5"
+        }
+      ]
+    },
+    {
+      "id": "step4",
+      "title": "応急処置実行",
+      "description": "特定された原因に対する応急処置手順",
+      "message": "特定された原因に対する応急処置手順",
+      "imageUrl": "",
+      "type": "step",
+      "options": []
+    },
+    {
+      "id": "step5",
+      "title": "専門家連絡",
+      "description": "原因が特定できない場合は、専門技術者に連絡してください。",
+      "message": "原因が特定できない場合は、専門技術者に連絡してください。",
+      "imageUrl": "",
+      "type": "step",
+      "options": []
+    }
+  ],
+  "createdAt": "現在の日時（ISO形式）",
+  "updatedAt": "現在の日時（ISO形式）"
+}
+
+キーワード: ${keywords}
+
+${knowledgeContext ? `関連する技術情報:\n${knowledgeContext}` : ''}
+
+上記の形式に厳密に従って、キーワード「${keywords}」に関連する具体的で実用的な応急処置フローを生成してください。`;
+
+    // OpenAI APIを使用してフローを生成
+    const { processOpenAIRequest } = await import('../lib/openai.js');
+    const generatedFlow = await processOpenAIRequest(prompt);
+
+    console.log('🤖 GPT生成レスポンス:', generatedFlow);
+    console.log('🤖 GPT生成レスポンスの詳細:', {
+      length: generatedFlow?.length || 0,
+      type: typeof generatedFlow,
+      startsWithBrace: generatedFlow?.startsWith('{'),
+      endsWithBrace: generatedFlow?.endsWith('}'),
+      firstChars: generatedFlow?.substring(0, 100),
+      lastChars: generatedFlow?.substring(Math.max(0, generatedFlow.length - 100)),
+    });
+
+    // JSONレスポンスを解析
+    let flowData;
+    try {
+      flowData = JSON.parse(generatedFlow);
+    } catch (parseError) {
+      console.error('❌ JSON解析エラー:', parseError);
+      console.log('🔍 生のレスポンス:', generatedFlow);
+      
+      // JSON解析に失敗した場合のフォールバック処理
+      const cleanedResponse = cleanJsonResponse(generatedFlow);
+      try {
+        flowData = JSON.parse(cleanedResponse);
+      } catch (secondError) {
+        console.error('❌ クリーニング後のJSON解析も失敗:', secondError);
+        
+        // 最後の手段として、レスポンスを切り詰めて再試行
+        const truncatedResponse = generatedFlow.substring(0, Math.min(generatedFlow.length, 2000));
+        const lastCompleteObject = truncatedResponse.lastIndexOf('}');
+        if (lastCompleteObject > 0) {
+          try {
+            const truncatedData = JSON.parse(truncatedResponse.substring(0, lastCompleteObject + 1));
+            console.log('✅ 切り詰めたJSONの解析に成功');
+            
+            // 生成日時を記録
+            truncatedData.createdAt = new Date().toISOString();
+            truncatedData.updatedAt = new Date().toISOString();
+            
+            // 成功レスポンス
+            return res.json({
+              success: true,
+              message: `修復したJSONからフローが生成されました: ${truncatedData.title}`,
+              flowData: truncatedData,
+            });
+          } catch (secondError) {
+            console.error('切り詰めたJSONの解析にも失敗しました:', secondError);
+          }
+        }
+      }
+    }
+
+    if (!flowData) {
+      console.log('🔄 フォールバック: シンプルなフローを生成します');
+      
+      // キーワードから適切なタイトルを生成
+      const generateTitleFromKeywords = (keywords: string): string => {
+        const keyword = keywords.trim();
+        
+        // よくある問題パターンに基づいてタイトルを生成
+        if (keyword.includes('エンジン') && keyword.includes('停止')) {
+          return 'エンジンが停止した';
+        } else if (keyword.includes('エンジン') && keyword.includes('始動')) {
+          return 'エンジンが始動しない';
+        } else if (keyword.includes('ブレーキ') && keyword.includes('効かない')) {
+          return 'ブレーキが効かない';
+        } else if (keyword.includes('ブレーキ') && keyword.includes('解放')) {
+          return 'ブレーキが解放しない';
+        } else if (keyword.includes('オイル') && keyword.includes('漏れ')) {
+          return 'オイル漏れ';
+        } else if (keyword.includes('タイヤ') && keyword.includes('パンク')) {
+          return 'タイヤがパンクした';
+        } else if (keyword.includes('バッテリー') && keyword.includes('上がり')) {
+          return 'バッテリーが上がった';
+        } else if (keyword.includes('オーバーヒート')) {
+          return 'エンジンオーバーヒート';
+        } else if (keyword.includes('異音')) {
+          return 'エンジン異音';
+        } else if (keyword.includes('振動')) {
+          return '車体振動';
+        } else if (keyword.includes('警告灯')) {
+          return '警告灯が点灯';
+        } else {
+          // キーワードが短い場合はそのまま使用、長い場合は要約
+          if (keyword.length <= 20) {
+            return keyword;
+          } else {
+            // 長いキーワードの場合は最初の部分を取る
+            return keyword.substring(0, 20) + '...';
+          }
+        }
+      };
+      
+      const title = generateTitleFromKeywords(keywords);
+      
+      // GPTレスポンスの解析に失敗した場合のフォールバック
+      flowData = {
+        id: `flow_${Date.now()}`,
+        title: title,
+        description: `キーワード「${keywords}」から自動生成されたフロー`,
+        triggerKeywords: keywords.split(',').map(k => k.trim()),
+        steps: [
+          {
+            id: 'step1',
+            title: '開始',
+            description: `キーワード「${keywords}」に関する応急処置を開始します`,
+            message: `キーワード「${keywords}」に関する応急処置を開始します`,
+            type: 'step',
+            options: [],
+          },
+          {
+            id: 'step2',
+            title: '状況確認',
+            description: '現在の状況を確認してください',
+            message: '現在の状況を確認してください',
+            type: 'condition',
+            conditions: [
+              {
+                label: '問題解決',
+                nextId: 'step3',
+              },
+              {
+                label: '問題継続',
+                nextId: 'step4',
+              },
+            ],
+          },
+          {
+            id: 'step3',
+            title: '完了',
+            description: '応急処置が完了しました',
+            message: '応急処置が完了しました',
+            type: 'step',
+            options: [],
+          },
+          {
+            id: 'step4',
+            title: '専門家連絡',
+            description: '専門家に連絡してください',
+            message: '専門家に連絡してください',
+            type: 'step',
+            options: [],
+          },
+        ],
+      };
+    }
+
+    // 生成日時を記録
+    flowData.createdAt = new Date().toISOString();
+    flowData.updatedAt = new Date().toISOString();
 
     // knowledge-base/troubleshootingフォルダに保存
     try {
       const troubleshootingDir = path.join(
         process.cwd(),
-        '..',
         'knowledge-base',
         'troubleshooting'
       );
@@ -144,16 +385,23 @@ router.post('/keywords', async (_req, res) => {
       flowData,
     });
   } catch (error) {
-    console.error('フロー生成エラー:', error);
+    console.error('❌ フロー生成エラー:', error);
+    console.error('❌ エラーの詳細:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined,
+    });
     res.status(500).json({
       success: false,
       error: 'フローの生成に失敗しました',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString(),
     });
   }
 });
 
 // キーワードからフローを生成するエンドポイント（元の実装）
-router.post('/generate-from-keywords', async (_req, res) => {
+router.post('/generate-from-keywords', async (req, res) => {
   try {
     console.log('[DEBUG] generate-from-keywords endpoint called');
 

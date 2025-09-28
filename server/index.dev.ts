@@ -16,7 +16,7 @@ const server = spawn('node', [serverPath], {
     ...process.env,
     NODE_ENV: 'development',
     PORT: '8000',
-    DATABASE_URL: process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/emergency_assistance',
+    DATABASE_URL: process.env.DATABASE_URL || 'postgresql://postgres:takabeni@localhost:5432/webappdb',
     JWT_SECRET: process.env.JWT_SECRET || 'dev-secret-key-32-characters-long',
     SESSION_SECRET: process.env.SESSION_SECRET || 'dev-session-secret-32-characters-long',
     FRONTEND_URL: 'http://localhost:5173',
