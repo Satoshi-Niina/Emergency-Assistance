@@ -55,36 +55,47 @@ jobs:
         echo "Preparing deployment package..."
         # Copy shared build to server
         cp -r shared/dist server/
-        # Copy root node_modules to server (fallback approach)
-        echo "Copying root node_modules to server..."
-        cp -r node_modules server/
+        # Ensure server has all dependencies
         cd server
-        echo "Checking if express exists in copied node_modules..."
+        echo "Installing all dependencies for ES Modules..."
+        rm -rf node_modules package-lock.json
+        npm install
+        echo "Verifying express installation..."
         if [ -d "node_modules/express" ]; then
-          echo "✅ Express found in copied node_modules"
+          echo "✅ Express found in node_modules"
           ls -la node_modules/express
         else
-          echo "❌ Express not found in copied node_modules, trying fresh install..."
-          rm -rf node_modules package-lock.json
-          npm install --omit=dev
-          if [ -d "node_modules/express" ]; then
-            echo "✅ Express found after fresh install"
-            ls -la node_modules/express
-          else
-            echo "❌ Express still not found, listing all packages:"
-            ls -la node_modules/ | head -20
-            echo "Installing express directly..."
-            npm install express@4.21.2 --save
-            ls -la node_modules/express
-          fi
+          echo "❌ Express not found, this is a critical error"
+          exit 1
         fi
-        echo "Final verification of deployment package..."
-        echo "Server directory contents:"
-        ls -la
-        echo "Node modules contents:"
-        ls -la node_modules/ | head -10
-        echo "Express package:"
-        ls -la node_modules/express/ 2>/dev/null || echo "Express not found"
+        echo "Creating package.json for deployment..."
+        cat > package.json << 'EOF'
+{
+  "name": "emergency-assistance-server",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "production-server.js",
+  "scripts": {
+    "start": "node production-server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "cors": "^2.8.5",
+    "helmet": "^8.1.0",
+    "morgan": "^1.10.0",
+    "express-session": "^1.18.0",
+    "cookie-parser": "^1.4.7",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "pg": "^8.13.1",
+    "dotenv": "^16.6.1"
+  }
+}
+EOF
+        echo "Installing minimal dependencies..."
+        npm install
+        echo "Final verification..."
+        ls -la node_modules/express/ || echo "Express still not found"
         cd ..
         
     - name: Deploy to Azure Web App
