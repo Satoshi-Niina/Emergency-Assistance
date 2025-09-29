@@ -110,28 +110,44 @@ jobs:
       if: success()
       run: |
         echo "Waiting for deployment to complete..."
-        sleep 90
+        sleep 120
         
         echo "🔍 Performing comprehensive health checks..."
         
-        # 1. Basic connectivity test
-        echo "1. Testing basic connectivity..."
-        curl -f --max-time 30 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net/ping || {
-          echo "❌ Basic connectivity failed"
-          exit 1
-        }
+        # 1. Basic connectivity test with retry
+        echo "1. Testing basic connectivity with retry..."
+        for i in {1..5}; do
+          echo "Attempt $i/5..."
+          if curl -f --max-time 60 --connect-timeout 30 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net/ping; then
+            echo "✅ Basic connectivity successful on attempt $i"
+            break
+          else
+            echo "❌ Attempt $i failed, waiting 30 seconds..."
+            sleep 30
+            if [ $i -eq 5 ]; then
+              echo "❌ All connectivity attempts failed"
+              echo "🔍 Checking Azure App Service status..."
+              curl -I --max-time 30 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net || echo "❌ App Service not responding"
+              exit 1
+            fi
+          fi
+        done
         
         # 2. Health endpoint test
         echo "2. Testing health endpoint..."
-        curl -f --max-time 30 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net/api/health || {
+        curl -f --max-time 60 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net/api/health || {
           echo "❌ Health endpoint failed"
+          echo "🔍 Checking if app is starting up..."
+          curl -I --max-time 30 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net || echo "❌ App Service not responding"
           exit 1
         }
         
         # 3. API endpoints test
         echo "3. Testing API endpoints..."
-        curl -f --max-time 30 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net/api/auth/handshake || {
+        curl -f --max-time 60 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net/api/auth/handshake || {
           echo "❌ API endpoints failed"
+          echo "🔍 Checking basic app response..."
+          curl -I --max-time 30 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net || echo "❌ App Service not responding"
           exit 1
         }
         
