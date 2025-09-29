@@ -55,29 +55,28 @@ jobs:
         echo "Preparing deployment package..."
         # Copy shared build to server
         cp -r shared/dist server/
-        # Ensure node_modules is in server directory
+        # Copy root node_modules to server (fallback approach)
+        echo "Copying root node_modules to server..."
+        cp -r node_modules server/
         cd server
-        echo "Checking package.json..."
-        cat package.json | grep -A 5 -B 5 express
-        echo "Installing production dependencies..."
-        # Force clean install with verbose output
-        rm -rf node_modules package-lock.json
-        echo "Installing all dependencies with verbose output..."
-        npm install --omit=dev --verbose
-        echo "Verifying express installation..."
+        echo "Checking if express exists in copied node_modules..."
         if [ -d "node_modules/express" ]; then
-          echo "✅ Express found in node_modules"
+          echo "✅ Express found in copied node_modules"
           ls -la node_modules/express
         else
-          echo "❌ Express still not found, listing all packages:"
-          ls -la node_modules/ | head -20
-          echo "Checking npm cache..."
-          npm cache verify
-          echo "Trying fresh install..."
+          echo "❌ Express not found in copied node_modules, trying fresh install..."
           rm -rf node_modules package-lock.json
-          npm cache clean --force
           npm install --omit=dev
-          ls -la node_modules/express
+          if [ -d "node_modules/express" ]; then
+            echo "✅ Express found after fresh install"
+            ls -la node_modules/express
+          else
+            echo "❌ Express still not found, listing all packages:"
+            ls -la node_modules/ | head -20
+            echo "Installing express directly..."
+            npm install express@4.21.2 --save
+            ls -la node_modules/express
+          fi
         fi
         cd ..
         
