@@ -69,8 +69,7 @@ jobs:
           exit 1
         fi
         echo "Creating package.json for deployment..."
-        cat > package.json << 'EOF'
-{
+        echo '{
   "name": "emergency-assistance-server",
   "version": "1.0.0",
   "type": "module",
@@ -90,8 +89,7 @@ jobs:
     "pg": "^8.13.1",
     "dotenv": "^16.6.1"
   }
-}
-EOF
+}' > package.json
         echo "Installing minimal dependencies..."
         npm install
         echo "Final verification..."
