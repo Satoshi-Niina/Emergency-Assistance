@@ -80,6 +80,10 @@ jobs:
         echo "Checking package.json..."
         cat package.json | grep -A 5 -B 5 "start"
         
+        echo "Verifying routes directory..."
+        ls -la routes/ || echo "❌ Routes directory not found"
+        ls -la routes/index.js || echo "❌ routes/index.js not found"
+        
         echo "Final package structure:"
         ls -la
         cd ..
