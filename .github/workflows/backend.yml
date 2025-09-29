@@ -52,23 +52,29 @@ jobs:
         
     - name: Prepare deployment package
       run: |
-        echo "Preparing deployment package..."
+        echo "Preparing deployment package for Azure App Service Windows..."
+        
         # Copy shared build to server
         cp -r shared/dist server/
-        # Copy root node_modules to server (simple approach)
-        echo "Copying root node_modules to server..."
-        cp -r node_modules server/
+        
+        # Clean and reinstall server dependencies
         cd server
-        echo "Verifying express installation..."
-        if [ -d "node_modules/express" ]; then
-          echo "✅ Express found in copied node_modules"
-          ls -la node_modules/express
-        else
-          echo "❌ Express not found, installing directly..."
-          npm install express cors helmet morgan express-session cookie-parser jsonwebtoken bcryptjs pg dotenv
-        fi
-        echo "Final verification..."
-        ls -la node_modules/express/ || echo "Express still not found"
+        echo "Cleaning server node_modules..."
+        rm -rf node_modules package-lock.json
+        
+        echo "Installing server dependencies..."
+        npm install --production --no-optional
+        
+        echo "Verifying critical packages..."
+        ls -la node_modules/express/ || echo "❌ Express not found"
+        ls -la node_modules/cors/ || echo "❌ CORS not found"
+        ls -la node_modules/pg/ || echo "❌ PG not found"
+        
+        echo "Checking package.json..."
+        cat package.json | grep -A 5 -B 5 "start"
+        
+        echo "Final package structure:"
+        ls -la
         cd ..
         
     - name: Deploy to Azure Web App
@@ -78,18 +84,59 @@ jobs:
         package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
       continue-on-error: true
+      
+    - name: Verify deployment
+      if: failure()
+      run: |
+        echo "❌ Deployment failed. This might be due to:"
+        echo "1. Invalid publish profile credentials"
+        echo "2. Missing dependencies in node_modules"
+        echo "3. Azure App Service Windows configuration issues"
+        echo "4. web.config configuration problems"
+        echo ""
+        echo "To fix this:"
+        echo "1. Download a new publish profile from Azure Portal"
+        echo "2. Update the AZURE_WEBAPP_PUBLISH_PROFILE secret"
+        echo "3. Check Azure App Service Windows settings:"
+        echo "   - Platform: Windows"
+        echo "   - Node.js version: 20.19.3"
+        echo "   - Startup command: npm start"
+        echo "   - web.config: nodeProcessCommandLine='npm start'"
+        echo ""
+        echo "Current app name: ${{ env.AZURE_WEBAPP_NAME }}"
+        echo "Package path: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}"
         
     - name: Health check after deployment
       if: success()
       run: |
         echo "Waiting for deployment to complete..."
-        sleep 60
+        sleep 90
         
-        # Health check the deployed application
-        curl -f https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net/api/health || {
-          echo "Post-deployment health check failed - this is expected if the app is not running"
-          echo "Deployment completed successfully"
+        echo "🔍 Performing comprehensive health checks..."
+        
+        # 1. Basic connectivity test
+        echo "1. Testing basic connectivity..."
+        curl -f --max-time 30 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net/ping || {
+          echo "❌ Basic connectivity failed"
+          exit 1
         }
+        
+        # 2. Health endpoint test
+        echo "2. Testing health endpoint..."
+        curl -f --max-time 30 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net/api/health || {
+          echo "❌ Health endpoint failed"
+          exit 1
+        }
+        
+        # 3. API endpoints test
+        echo "3. Testing API endpoints..."
+        curl -f --max-time 30 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net/api/auth/handshake || {
+          echo "❌ API endpoints failed"
+          exit 1
+        }
+        
+        echo "✅ All health checks passed!"
+        echo "🚀 Application is ready for production use"
         
     - name: Notify deployment status
       if: always()
