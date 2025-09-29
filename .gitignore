@@ -290,3 +290,8 @@ Desktop.ini
 # --- Docker runtime ---
 docker/.azurite/
 docker/data/
+
+# --- Continue AI and other tools ---
+.continue/
+.conda/
+.config/
