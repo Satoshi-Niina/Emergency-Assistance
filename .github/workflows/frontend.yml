@@ -27,7 +27,7 @@ jobs:
     - name: Install dependencies
       run: |
         npm ci
-        cd client && npm ci
+        cd client && npm ci --include=dev
         cd ../shared && npm ci
         
     - name: Build shared
@@ -36,7 +36,7 @@ jobs:
         
     - name: Build for production
       run: |
-        cd client && npx vite build
+        cd client && npm run build
         
     - name: Deploy to Azure Static Web Apps
       uses: Azure/static-web-apps-deploy@v1
