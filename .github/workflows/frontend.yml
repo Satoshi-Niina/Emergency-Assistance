@@ -30,6 +30,10 @@ jobs:
         cd client && npm ci
         cd ../shared && npm ci
         
+    - name: Build shared
+      run: |
+        npm run build:shared
+        
     - name: Build for production
       run: |
         npm run build:client
