@@ -51,13 +51,13 @@ jobs:
         cp -r shared/dist server/
         # Ensure node_modules is in server directory
         cd server
+        echo "Checking package.json..."
+        cat package.json | grep -A 5 -B 5 express
         echo "Installing production dependencies..."
         # Force clean install with verbose output
         rm -rf node_modules package-lock.json
-        echo "Installing express explicitly..."
-        npm install express --save
-        echo "Installing all dependencies..."
-        npm install --omit=dev
+        echo "Installing all dependencies with verbose output..."
+        npm install --omit=dev --verbose
         echo "Verifying express installation..."
         if [ -d "node_modules/express" ]; then
           echo "✅ Express found in node_modules"
@@ -65,8 +65,12 @@ jobs:
         else
           echo "❌ Express still not found, listing all packages:"
           ls -la node_modules/ | head -20
-          echo "Trying to install express again..."
-          npm install express --force
+          echo "Checking npm cache..."
+          npm cache verify
+          echo "Trying fresh install..."
+          rm -rf node_modules package-lock.json
+          npm cache clean --force
+          npm install --omit=dev
           ls -la node_modules/express
         fi
         cd ..
