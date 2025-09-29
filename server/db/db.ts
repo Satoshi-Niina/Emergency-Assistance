@@ -3,7 +3,7 @@ import postgres from 'postgres';
 // データベース接続設定 - DATABASE_URLのみを使用
 const sql = postgres(
   process.env.DATABASE_URL ||
-  'postgresql://postgres:takabeni@localhost:5432/webappdb',
+  'postgresql://postgres:CHANGE_THIS_PASSWORD@localhost:5432/webappdb',
   {
     // 使用中: データベース接続文字列
     ssl:

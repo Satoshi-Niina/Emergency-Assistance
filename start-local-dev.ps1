@@ -9,14 +9,14 @@ if (-not (Test-Path "package.json")) {
     exit 1
 }
 
-# 環境変数の設定
+# 環境変数の設定（実際の値に変更してください）
 $env:NODE_ENV = "development"
 $env:PORT = "8000"
-$env:DATABASE_URL = "postgresql://postgres:password@localhost:5432/emergency_assistance"
-$env:JWT_SECRET = "dev-jwt-secret-key-32-characters-long"
-$env:SESSION_SECRET = "dev-session-secret-32-characters-long"
+$env:DATABASE_URL = "postgresql://postgres:CHANGE_THIS_PASSWORD@localhost:5432/emergency_assistance"
+$env:JWT_SECRET = "CHANGE_THIS_JWT_SECRET_TO_32_CHARACTERS_MINIMUM"
+$env:SESSION_SECRET = "CHANGE_THIS_SESSION_SECRET_TO_32_CHARACTERS_MINIMUM"
 $env:FRONTEND_URL = "http://localhost:5173"
-$env:OPENAI_API_KEY = "sk-proj-TP8fCh3xQCaUgXaCKuq_h8ckh8VAhfuDi-0Ln"
+$env:OPENAI_API_KEY = "sk-CHANGE_THIS_TO_YOUR_ACTUAL_OPENAI_API_KEY"
 
 Write-Host "📋 設定された環境変数:" -ForegroundColor Yellow
 Write-Host "  NODE_ENV: $env:NODE_ENV" -ForegroundColor White
@@ -83,7 +83,7 @@ Write-Host ""
 
 # バックエンドサーバーを起動
 Write-Host "🔧 バックエンドサーバーを起動中..." -ForegroundColor Cyan
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd server; `$env:NODE_ENV='development'; `$env:PORT='8000'; `$env:DATABASE_URL='postgresql://postgres:password@localhost:5432/emergency_assistance'; `$env:JWT_SECRET='dev-jwt-secret-key-32-characters-long'; `$env:SESSION_SECRET='dev-session-secret-32-characters-long'; `$env:FRONTEND_URL='http://localhost:5173'; `$env:OPENAI_API_KEY='sk-proj-TP8fCh3xQCaUgXaCKuq_h8ckh8VAhfuDi-0Ln'; node production-server.js" -WindowStyle Normal
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd server; `$env:NODE_ENV='development'; `$env:PORT='8000'; `$env:DATABASE_URL='postgresql://postgres:CHANGE_THIS_PASSWORD@localhost:5432/emergency_assistance'; `$env:JWT_SECRET='CHANGE_THIS_JWT_SECRET_TO_32_CHARACTERS_MINIMUM'; `$env:SESSION_SECRET='CHANGE_THIS_SESSION_SECRET_TO_32_CHARACTERS_MINIMUM'; `$env:FRONTEND_URL='http://localhost:5173'; `$env:OPENAI_API_KEY='sk-CHANGE_THIS_TO_YOUR_ACTUAL_OPENAI_API_KEY'; node production-server.js" -WindowStyle Normal
 
 # バックエンドの起動を待機
 Write-Host "⏳ バックエンドの起動を待機中..." -ForegroundColor Yellow

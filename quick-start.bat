@@ -1,14 +1,14 @@
 @echo off
 echo 🚀 Emergency Assistance クイックスタート...
 
-REM 環境変数の設定
+REM 環境変数の設定（実際の値に変更してください）
 set NODE_ENV=development
 set PORT=8000
-set DATABASE_URL=postgresql://postgres:password@localhost:5432/emergency_assistance
-set JWT_SECRET=dev-jwt-secret-key-32-characters-long
-set SESSION_SECRET=dev-session-secret-32-characters-long
+set DATABASE_URL=postgresql://postgres:CHANGE_THIS_PASSWORD@localhost:5432/emergency_assistance
+set JWT_SECRET=CHANGE_THIS_JWT_SECRET_TO_32_CHARACTERS_MINIMUM
+set SESSION_SECRET=CHANGE_THIS_SESSION_SECRET_TO_32_CHARACTERS_MINIMUM
 set FRONTEND_URL=http://localhost:5173
-set OPENAI_API_KEY=sk-proj-TP8fCh3xQCaUgXaCKuq_h8ckh8VAhfuDi-0Ln
+set OPENAI_API_KEY=sk-CHANGE_THIS_TO_YOUR_ACTUAL_OPENAI_API_KEY
 
 echo 📦 依存関係をインストール中...
 call npm install
