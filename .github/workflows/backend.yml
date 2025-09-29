@@ -44,6 +44,16 @@ jobs:
         echo "Cleaning existing Azure Web App files..."
         # Azure Web App deployment automatically replaces all files
         
+    - name: Prepare deployment package
+      run: |
+        echo "Preparing deployment package..."
+        # Copy shared build to server
+        cp -r shared/dist server/
+        # Ensure node_modules is in server directory
+        cd server
+        npm install --production
+        cd ..
+        
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v2
       with:
