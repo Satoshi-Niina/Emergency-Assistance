@@ -25,13 +25,15 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
         
-    - name: Install dependencies
+    - name: Clean install dependencies
       run: |
-        npm ci
-        cd server && npm ci
-        cd ../shared && npm ci
+        rm -rf node_modules package-lock.json
+        rm -rf server/node_modules server/package-lock.json
+        rm -rf shared/node_modules shared/package-lock.json
+        npm install
+        cd server && npm install
+        cd ../shared && npm install
         
     - name: Build shared
       run: |
