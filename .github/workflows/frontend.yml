@@ -23,19 +23,38 @@ jobs:
       with:
         node-version: ${{ env.NODE_VERSION }}
         
-    - name: Clean install dependencies
+    - name: Cache node modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          node_modules
+          client/node_modules
+          shared/node_modules
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
+        
+    - name: Install dependencies
       run: |
-        rm -rf node_modules package-lock.json
-        rm -rf client/node_modules client/package-lock.json
-        rm -rf shared/node_modules shared/package-lock.json
-        npm install
-        cd client && npm install
-        cd ../shared && npm install
+        npm ci
+        cd client && npm ci
+        cd ../shared && npm ci
         
     - name: Verify vite installation
       run: |
-        cd client && ls -la node_modules/.bin/vite
-        cd client && npx vite --version
+        cd client
+        echo "Checking if vite is installed..."
+        if [ -f "node_modules/.bin/vite" ]; then
+          echo "✅ Vite found in node_modules/.bin/"
+          ls -la node_modules/.bin/vite
+        else
+          echo "❌ Vite not found in node_modules/.bin/"
+          echo "Checking if vite is in package.json..."
+          grep -q "vite" package.json && echo "✅ Vite found in package.json" || echo "❌ Vite not found in package.json"
+          echo "Reinstalling dependencies..."
+          npm install
+        fi
+        npx vite --version
         
     - name: Build shared
       run: |
@@ -59,7 +78,6 @@ jobs:
         app_location: "/client"
         output_location: "dist"
         skip_app_build: false
-        skip_deploy_on_missing_secrets: true
         
     - name: Health check after deployment
       run: |
