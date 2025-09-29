@@ -52,6 +52,8 @@ jobs:
         # Ensure node_modules is in server directory
         cd server
         npm install --production
+        # Verify express is installed
+        ls -la node_modules/express
         cd ..
         
     - name: Deploy to Azure Web App
