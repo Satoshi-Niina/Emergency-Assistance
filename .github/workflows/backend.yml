@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: '20'
   AZURE_WEBAPP_NAME: 'emergencyassistance-sv-fbanemhrbshuf9bd'
   AZURE_WEBAPP_PACKAGE_PATH: 'server'
   NODE_ENV: 'production'
