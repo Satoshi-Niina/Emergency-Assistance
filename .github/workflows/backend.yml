@@ -3,16 +3,8 @@ name: Backend CI/CD
 on:
   push:
     branches: [ main, develop ]
-    paths:
-      - 'server/**'
-      - 'shared/**'
-      - '.github/workflows/backend.yml'
   pull_request:
     branches: [ main, develop ]
-    paths:
-      - 'server/**'
-      - 'shared/**'
-      - '.github/workflows/backend.yml'
 
 env:
   NODE_VERSION: '18'
