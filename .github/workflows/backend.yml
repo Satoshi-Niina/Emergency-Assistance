@@ -76,10 +76,39 @@ jobs:
         echo "NODE_VERSION=20.19.3" >> .env
         
         echo "Copying startup scripts..."
-        cp ../../startup.sh .
-        cp ../../simple-startup.sh .
-        chmod +x startup.sh
-        chmod +x simple-startup.sh
+        if [ -f "../startup.sh" ]; then
+          cp ../startup.sh .
+          chmod +x startup.sh
+          echo "✅ startup.sh copied successfully"
+        else
+          echo "⚠️  startup.sh not found, creating simple version"
+          echo '#!/bin/bash
+export NODE_ENV=production
+export PORT=8080
+export JWT_SECRET=emergency-assistance-jwt-secret-key-32chars-minimum
+export SESSION_SECRET=emergency-assistance-session-secret-32chars-minimum
+export FRONTEND_URL=https://witty-river-012f39e00.1.azurestaticapps.net
+echo "🚀 Starting application..."
+node production-server.js' > startup.sh
+          chmod +x startup.sh
+        fi
+        
+        if [ -f "../simple-startup.sh" ]; then
+          cp ../simple-startup.sh .
+          chmod +x simple-startup.sh
+          echo "✅ simple-startup.sh copied successfully"
+        else
+          echo "⚠️  simple-startup.sh not found, creating simple version"
+          echo '#!/bin/bash
+export NODE_ENV=production
+export PORT=8080
+export JWT_SECRET=emergency-assistance-jwt-secret-key-32chars-minimum
+export SESSION_SECRET=emergency-assistance-session-secret-32chars-minimum
+export FRONTEND_URL=https://witty-river-012f39e00.1.azurestaticapps.net
+echo "🚀 Starting application..."
+node production-server.js' > simple-startup.sh
+          chmod +x simple-startup.sh
+        fi
         
         echo "Verifying critical packages..."
         ls -la node_modules/express/ || echo "❌ Express not found"
