@@ -78,6 +78,13 @@ jobs:
             ls -la node_modules/express
           fi
         fi
+        echo "Final verification of deployment package..."
+        echo "Server directory contents:"
+        ls -la
+        echo "Node modules contents:"
+        ls -la node_modules/ | head -10
+        echo "Express package:"
+        ls -la node_modules/express/ 2>/dev/null || echo "Express not found"
         cd ..
         
     - name: Deploy to Azure Web App
