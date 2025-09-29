@@ -65,6 +65,13 @@ jobs:
         echo "Installing server dependencies..."
         npm install --omit=dev --no-optional
         
+        echo "Setting up environment variables..."
+        echo "NODE_ENV=production" > .env
+        echo "PORT=8080" >> .env
+        echo "JWT_SECRET=emergency-assistance-jwt-secret-key-32chars-minimum" >> .env
+        echo "SESSION_SECRET=emergency-assistance-session-secret-32chars-minimum" >> .env
+        echo "FRONTEND_URL=https://witty-river-012f39e00.1.azurestaticapps.net" >> .env
+        
         echo "Verifying critical packages..."
         ls -la node_modules/express/ || echo "❌ Express not found"
         ls -la node_modules/cors/ || echo "❌ CORS not found"
