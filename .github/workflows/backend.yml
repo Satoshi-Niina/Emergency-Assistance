@@ -52,16 +52,21 @@ jobs:
         # Ensure node_modules is in server directory
         cd server
         echo "Installing production dependencies..."
-        # Force clean install
+        # Force clean install with verbose output
         rm -rf node_modules package-lock.json
+        echo "Installing express explicitly..."
+        npm install express --save
+        echo "Installing all dependencies..."
         npm install --omit=dev
         echo "Verifying express installation..."
         if [ -d "node_modules/express" ]; then
           echo "✅ Express found in node_modules"
           ls -la node_modules/express
         else
-          echo "❌ Express still not found, trying full install..."
-          npm install
+          echo "❌ Express still not found, listing all packages:"
+          ls -la node_modules/ | head -20
+          echo "Trying to install express again..."
+          npm install express --force
           ls -la node_modules/express
         fi
         cd ..
