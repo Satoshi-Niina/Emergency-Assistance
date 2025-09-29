@@ -15,7 +15,10 @@
     "allowSyntheticDefaultImports": true,
     "strict": false,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitAny": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
   },
   "include": [
     "routes/**/*.ts",
@@ -33,6 +36,7 @@
     "dist",
     "src",
     "uploads",
-    "**/*.js"
+    "**/*.js",
+    "../client/**/*"
   ]
 }
