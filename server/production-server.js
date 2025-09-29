@@ -108,6 +108,7 @@ const pingCheck = (req, res) => {
     });
     
     res.status(200).json({
+      ok: true,
       ping: 'pong',
       timestamp: new Date().toISOString(),
       service: 'Emergency Assistance Backend'
@@ -115,6 +116,7 @@ const pingCheck = (req, res) => {
   } catch (error) {
     console.error('❌ Ping check failed:', error);
     res.status(200).json({
+      ok: false,
       ping: 'error',
       error: error.message,
       timestamp: new Date().toISOString()
@@ -1878,7 +1880,7 @@ app.use('*', (req, res) => {
 const PORT = Number(process.env.PORT?.trim() || '8000');
 const HOST = '0.0.0.0';
 
-app.listen(PORT, HOST, () => {
+const server = app.listen(PORT, HOST, () => {
   console.log(`🚀 Server running on ${HOST}:${PORT}`);
   console.log(`📊 Health check endpoints:`);
   console.log(`   - http://${HOST}:${PORT}/api/health`);
@@ -1941,10 +1943,30 @@ app.listen(PORT, HOST, () => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, shutting down gracefully');
-  process.exit(0);
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
 });
 
 process.on('SIGINT', () => {
   console.log('SIGINT received, shutting down gracefully');
-  process.exit(0);
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+});
+
+// Handle port already in use error
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`❌ Port ${PORT} is already in use. Please check for running processes:`);
+    console.error(`   Windows: netstat -ano | findstr :${PORT}`);
+    console.error(`   Then kill the process: taskkill /PID <PID> /F`);
+    console.error(`   Or use a different port by setting PORT environment variable`);
+    process.exit(1);
+  } else {
+    console.error('Server error:', err);
+    process.exit(1);
+  }
 });

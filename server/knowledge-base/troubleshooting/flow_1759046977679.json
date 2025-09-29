@@ -12,7 +12,14 @@
       "description": "キーワード「ブレーキが効かない」に関する応急処置を開始します",
       "message": "キーワード「ブレーキが効かない」に関する応急処置を開始します",
       "type": "step",
-      "options": []
+      "options": [],
+      "images": [
+        {
+          "url": "/api/emergency-flow/image/emergency-flow-step1759060059415.jpg",
+          "fileName": "emergency-flow-step1759060059415.jpg"
+        }
+      ],
+      "conditions": []
     },
     {
       "id": "step2",
@@ -29,7 +36,8 @@
           "label": "問題継続",
           "nextId": "step4"
         }
-      ]
+      ],
+      "images": []
     },
     {
       "id": "step3",
@@ -37,7 +45,9 @@
       "description": "応急処置が完了しました",
       "message": "応急処置が完了しました",
       "type": "step",
-      "options": []
+      "options": [],
+      "images": [],
+      "conditions": []
     },
     {
       "id": "step4",
@@ -45,9 +55,53 @@
       "description": "専門家に連絡してください",
       "message": "専門家に連絡してください",
       "type": "step",
-      "options": []
+      "options": [],
+      "images": [],
+      "conditions": []
     }
   ],
   "createdAt": "2025-09-28T08:09:37.679Z",
-  "updatedAt": "2025-09-28T08:09:37.679Z"
+  "updatedAt": "2025-09-28T11:47:42.778Z",
+  "updateHistory": [
+    {
+      "timestamp": "2025-09-28T11:47:39.531Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "steps",
+        "triggerKeywords",
+        "createdAt",
+        "updatedAt"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-09-28T11:47:42.769Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "steps",
+        "triggerKeywords",
+        "createdAt",
+        "updatedAt"
+      ],
+      "updatedBy": "user"
+    },
+    {
+      "timestamp": "2025-09-28T11:47:42.778Z",
+      "updatedFields": [
+        "id",
+        "title",
+        "description",
+        "triggerKeywords",
+        "steps",
+        "createdAt",
+        "updatedAt",
+        "updateHistory"
+      ],
+      "updatedBy": "user"
+    }
+  ]
 }
