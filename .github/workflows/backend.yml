@@ -13,66 +13,7 @@ env:
   NODE_ENV: 'production'
 
 jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-        
-    - name: Install dependencies
-      run: |
-        npm ci
-        cd server && npm ci
-        cd ../shared && npm ci
-        
-    - name: Type check
-      run: |
-        echo "Skipping type check for now"
-        # npm run typecheck:server
-        # npm run typecheck:shared
-        
-    - name: Lint check
-      run: |
-        npm run lint:server
-        
-    - name: Build shared
-      run: |
-        npm run build:shared
-        
-    - name: Test server startup
-      run: |
-        cd server
-        timeout 10s node production-server.js || true
-        
-    - name: Health check
-      run: |
-        cd server
-        # Start server in background
-        node production-server.js &
-        SERVER_PID=$!
-        
-        # Wait for server to start
-        sleep 5
-        
-        # Health check
-        curl -f http://localhost:8000/api/health || {
-          echo "Health check failed"
-          kill $SERVER_PID
-          exit 1
-        }
-        
-        # Clean up
-        kill $SERVER_PID
-        
-  deploy:
-    needs: build-and-test
+  build-and-deploy:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     

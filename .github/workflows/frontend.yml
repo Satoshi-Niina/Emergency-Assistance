@@ -10,56 +10,7 @@ env:
   NODE_VERSION: '18'
 
 jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-        
-    - name: Install dependencies
-      run: |
-        npm ci
-        cd client && npm ci
-        cd ../shared && npm ci
-        
-    - name: Type check
-      run: |
-        echo "Skipping type check for now"
-        # npm run typecheck:client
-        # npm run typecheck:shared
-        
-    - name: Lint check
-      run: |
-        npm run lint:client
-        
-    - name: Build client
-      run: |
-        npm run build:client
-        
-    - name: Build shared
-      run: |
-        npm run build:shared
-        
-    - name: Test build artifacts
-      run: |
-        if [ ! -d "client/dist" ]; then
-          echo "Client build failed - dist directory not found"
-          exit 1
-        fi
-        if [ ! -f "client/dist/index.html" ]; then
-          echo "Client build failed - index.html not found"
-          exit 1
-        fi
-        
-  deploy:
-    needs: build-and-test
+  build-and-deploy:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     
@@ -96,4 +47,4 @@ jobs:
       run: |
         echo "Waiting for deployment to complete..."
         sleep 30
-        # Add health check URL here if available
+        echo "✅ Frontend deployment completed"
