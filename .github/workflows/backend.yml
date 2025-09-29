@@ -71,6 +71,13 @@ jobs:
         echo "JWT_SECRET=emergency-assistance-jwt-secret-key-32chars-minimum" >> .env
         echo "SESSION_SECRET=emergency-assistance-session-secret-32chars-minimum" >> .env
         echo "FRONTEND_URL=https://witty-river-012f39e00.1.azurestaticapps.net" >> .env
+        echo "WEBSITES_NODE_DEFAULT_VERSION=20.19.3" >> .env
+        echo "NODEJS_VERSION=20.19.3" >> .env
+        echo "NODE_VERSION=20.19.3" >> .env
+        
+        echo "Copying startup script..."
+        cp ../../startup.sh .
+        chmod +x startup.sh
         
         echo "Verifying critical packages..."
         ls -la node_modules/express/ || echo "❌ Express not found"
