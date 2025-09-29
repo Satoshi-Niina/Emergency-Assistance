@@ -63,7 +63,7 @@ jobs:
         rm -rf node_modules package-lock.json
         
         echo "Installing server dependencies..."
-        npm install --production --no-optional
+        npm install --omit=dev --no-optional
         
         echo "Verifying critical packages..."
         ls -la node_modules/express/ || echo "❌ Express not found"
