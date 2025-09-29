@@ -6,16 +6,11 @@
       "rewrite": "https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/api/{*path}",
       "forwardHeaders": true,
       "statusCode": 200
-    },
-    {
-      "route": "/*",
-      "serve": "/index.html",
-      "statusCode": 200
     }
   ],
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/api/*", "/images/*.{png,jpg,jpeg,gif,svg}"]
+    "exclude": ["/api/*", "/images/*.{png,jpg,jpeg,gif,svg}", "/assets/*"]
   },
   "mimeTypes": {
     ".json": "application/json",
@@ -36,7 +31,7 @@
   "responseOverrides": {
     "404": {
       "rewrite": "/index.html",
-      "exclude": ["/api/*"]
+      "exclude": ["/api/*", "/assets/*"]
     }
   }
 }
