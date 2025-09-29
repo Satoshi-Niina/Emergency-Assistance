@@ -1,11 +1,10 @@
 name: Backend CI/CD
 
 on:
-  # Temporarily disabled - backend is complete
-  # push:
-  #   branches: [ main, develop ]
-  # pull_request:
-  #   branches: [ main, develop ]
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
   workflow_dispatch:
 
 env:
