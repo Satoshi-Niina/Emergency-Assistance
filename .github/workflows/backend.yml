@@ -3,8 +3,20 @@ name: Backend CI/CD
 on:
   push:
     branches: [ main, develop ]
+    paths:
+      - 'server/**'
+      - 'shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/backend.yml'
   pull_request:
     branches: [ main, develop ]
+    paths:
+      - 'server/**'
+      - 'shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/backend.yml'
   workflow_dispatch:
 
 env:
@@ -40,6 +52,7 @@ jobs:
         cd server && npm install
         echo "Installing shared dependencies..."
         cd ../shared && npm install
+        echo "✅ All dependencies installed successfully"
         
     - name: Build shared
       run: |
@@ -82,14 +95,14 @@ jobs:
           echo "✅ startup.sh copied successfully"
         else
           echo "⚠️  startup.sh not found, creating simple version"
-          echo '#!/bin/bash
-export NODE_ENV=production
-export PORT=8080
-export JWT_SECRET=emergency-assistance-jwt-secret-key-32chars-minimum
-export SESSION_SECRET=emergency-assistance-session-secret-32chars-minimum
-export FRONTEND_URL=https://witty-river-012f39e00.1.azurestaticapps.net
-echo "🚀 Starting application..."
-node production-server.js' > startup.sh
+          echo '#!/bin/bash' > startup.sh
+          echo 'export NODE_ENV=production' >> startup.sh
+          echo 'export PORT=8080' >> startup.sh
+          echo 'export JWT_SECRET=emergency-assistance-jwt-secret-key-32chars-minimum' >> startup.sh
+          echo 'export SESSION_SECRET=emergency-assistance-session-secret-32chars-minimum' >> startup.sh
+          echo 'export FRONTEND_URL=https://witty-river-012f39e00.1.azurestaticapps.net' >> startup.sh
+          echo 'echo "🚀 Starting application..."' >> startup.sh
+          echo 'node production-server.js' >> startup.sh
           chmod +x startup.sh
         fi
         
@@ -99,14 +112,14 @@ node production-server.js' > startup.sh
           echo "✅ simple-startup.sh copied successfully"
         else
           echo "⚠️  simple-startup.sh not found, creating simple version"
-          echo '#!/bin/bash
-export NODE_ENV=production
-export PORT=8080
-export JWT_SECRET=emergency-assistance-jwt-secret-key-32chars-minimum
-export SESSION_SECRET=emergency-assistance-session-secret-32chars-minimum
-export FRONTEND_URL=https://witty-river-012f39e00.1.azurestaticapps.net
-echo "🚀 Starting application..."
-node production-server.js' > simple-startup.sh
+          echo '#!/bin/bash' > simple-startup.sh
+          echo 'export NODE_ENV=production' >> simple-startup.sh
+          echo 'export PORT=8080' >> simple-startup.sh
+          echo 'export JWT_SECRET=emergency-assistance-jwt-secret-key-32chars-minimum' >> simple-startup.sh
+          echo 'export SESSION_SECRET=emergency-assistance-session-secret-32chars-minimum' >> simple-startup.sh
+          echo 'export FRONTEND_URL=https://witty-river-012f39e00.1.azurestaticapps.net' >> simple-startup.sh
+          echo 'echo "🚀 Starting application..."' >> simple-startup.sh
+          echo 'node production-server.js' >> simple-startup.sh
           chmod +x simple-startup.sh
         fi
         
@@ -132,12 +145,11 @@ node production-server.js' > simple-startup.sh
         app-name: ${{ env.AZURE_WEBAPP_NAME }}
         package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-      continue-on-error: true
-      
+        
     - name: Verify deployment
       if: failure()
       run: |
-        echo "❌ Deployment failed. This might be due to:"
+        echo "❌ Backend deployment failed. This might be due to:"
         echo "1. Invalid publish profile credentials"
         echo "2. Missing dependencies in node_modules"
         echo "3. Azure App Service Windows configuration issues"
@@ -208,6 +220,8 @@ node production-server.js' > simple-startup.sh
       run: |
         if [ ${{ job.status }} == 'success' ]; then
           echo "✅ Backend deployment successful"
+          echo "🚀 Backend API is ready at: https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net"
         else
           echo "❌ Backend deployment failed"
+          echo "🔍 Check the logs above for detailed error information"
         fi

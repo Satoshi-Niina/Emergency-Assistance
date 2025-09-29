@@ -3,8 +3,20 @@
 on:
   push:
     branches: [ main, develop ]
+    paths:
+      - 'client/**'
+      - 'shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/frontend.yml'
   pull_request:
     branches: [ main, develop ]
+    paths:
+      - 'client/**'
+      - 'shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/frontend.yml'
   workflow_dispatch:
 
 env:
@@ -23,21 +35,19 @@ jobs:
       with:
         node-version: ${{ env.NODE_VERSION }}
         
-    - name: Cache node modules
-      uses: actions/cache@v3
-      with:
-        path: |
-          node_modules
-          client/node_modules
-          shared/node_modules
-        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-node-
-        
-    - name: Install dependencies
+    - name: Clean install dependencies
       run: |
+        echo "Cleaning all node_modules and package-lock.json files..."
+        rm -rf node_modules package-lock.json
+        rm -rf client/node_modules client/package-lock.json
+        rm -rf shared/node_modules shared/package-lock.json
+        echo "Clearing npm cache..."
+        npm cache clean --force
+        echo "Installing root dependencies..."
         npm install
+        echo "Installing client dependencies..."
         cd client && npm install
+        echo "Installing shared dependencies..."
         cd ../shared && npm install
         
     - name: Verify vite installation
@@ -82,5 +92,26 @@ jobs:
     - name: Health check after deployment
       run: |
         echo "Waiting for deployment to complete..."
-        sleep 30
-        echo "✅ Frontend deployment completed"
+        sleep 60
+        echo "🔍 Performing frontend health checks..."
+        
+        # Check if the frontend is accessible
+        echo "Testing frontend accessibility..."
+        curl -f --max-time 30 --connect-timeout 10 https://witty-river-012f39e00.1.azurestaticapps.net/ || {
+          echo "❌ Frontend not accessible"
+          echo "🔍 Checking deployment status..."
+          exit 1
+        }
+        
+        echo "✅ Frontend deployment completed and accessible"
+        
+    - name: Notify deployment status
+      if: always()
+      run: |
+        if [ ${{ job.status }} == 'success' ]; then
+          echo "✅ Frontend deployment successful"
+          echo "🚀 Frontend is ready at: https://witty-river-012f39e00.1.azurestaticapps.net"
+        else
+          echo "❌ Frontend deployment failed"
+          echo "🔍 Check the logs above for detailed error information"
+        fi
