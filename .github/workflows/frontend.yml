@@ -28,6 +28,7 @@ jobs:
       run: |
         npm ci
         cd client && npm ci
+        cd ../shared && npm ci
         
     - name: Build for production
       run: |
@@ -42,6 +43,7 @@ jobs:
         app_location: "/client"
         output_location: "dist"
         skip_app_build: false
+        skip_deploy_on_missing_secrets: true
         
     - name: Health check after deployment
       run: |

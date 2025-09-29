@@ -31,6 +31,7 @@ jobs:
       run: |
         npm ci
         cd server && npm ci
+        cd ../shared && npm ci
         
     - name: Build shared
       run: |
