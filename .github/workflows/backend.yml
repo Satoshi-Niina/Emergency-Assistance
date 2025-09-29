@@ -63,7 +63,7 @@ jobs:
         rm -rf node_modules package-lock.json
         
         echo "Installing server dependencies..."
-        npm install --omit=dev --no-optional
+        npm install --omit=dev --no-optional --engine-strict=false
         
         echo "Setting up environment variables..."
         echo "NODE_ENV=production" > .env

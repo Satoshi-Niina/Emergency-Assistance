@@ -19,6 +19,33 @@ export FRONTEND_URL=https://witty-river-012f39e00.1.azurestaticapps.net
 echo "📊 Node.js version: $(node --version)"
 echo "📊 NPM version: $(npm --version)"
 
-# Start the application
-echo "🚀 Starting application..."
-node production-server.js
+# Check if we can use Node.js 20
+if command -v node20 &> /dev/null; then
+    echo "🔄 Using Node.js 20..."
+    node20 production-server.js
+elif [ -f "/opt/nodejs/20.19.3/bin/node" ]; then
+    echo "🔄 Using Node.js 20 from /opt/nodejs/20.19.3/bin/node..."
+    /opt/nodejs/20.19.3/bin/node production-server.js
+elif [ -f "/usr/local/bin/node20" ]; then
+    echo "🔄 Using Node.js 20 from /usr/local/bin/node20..."
+    /usr/local/bin/node20 production-server.js
+else
+    echo "⚠️  Node.js 20 not found, using default Node.js..."
+    echo "📊 Current Node.js version: $(node --version)"
+    
+    # Try to install Node.js 20 without sudo
+    echo "🔄 Attempting to install Node.js 20..."
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+    apt-get update
+    apt-get install -y nodejs
+    
+    # Check if installation was successful
+    if command -v node &> /dev/null; then
+        echo "✅ Node.js installation successful"
+        echo "📊 New Node.js version: $(node --version)"
+        node production-server.js
+    else
+        echo "❌ Node.js installation failed, using default version"
+        node production-server.js
+    fi
+fi
