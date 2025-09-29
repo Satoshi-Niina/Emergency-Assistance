@@ -39,12 +39,18 @@ jobs:
       run: |
         npm run build:shared
         
+    - name: Clean Azure Web App
+      run: |
+        echo "Cleaning existing Azure Web App files..."
+        # Azure Web App deployment automatically replaces all files
+        
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v2
       with:
         app-name: ${{ env.AZURE_WEBAPP_NAME }}
         package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        clean: true
       continue-on-error: true
         
     - name: Health check after deployment
