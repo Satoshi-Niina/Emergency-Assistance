@@ -75,9 +75,11 @@ jobs:
         echo "NODEJS_VERSION=20.19.3" >> .env
         echo "NODE_VERSION=20.19.3" >> .env
         
-        echo "Copying startup script..."
+        echo "Copying startup scripts..."
         cp ../../startup.sh .
+        cp ../../simple-startup.sh .
         chmod +x startup.sh
+        chmod +x simple-startup.sh
         
         echo "Verifying critical packages..."
         ls -la node_modules/express/ || echo "❌ Express not found"
