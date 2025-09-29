@@ -8,18 +8,6 @@
       "statusCode": 200
     },
     {
-      "route": "/assets/*.js",
-      "headers": {
-        "Content-Type": "application/javascript"
-      }
-    },
-    {
-      "route": "/assets/*.mjs",
-      "headers": {
-        "Content-Type": "application/javascript"
-      }
-    },
-    {
       "route": "/*",
       "serve": "/index.html",
       "statusCode": 200
@@ -32,29 +20,18 @@
   "mimeTypes": {
     ".json": "application/json",
     ".js": "application/javascript",
-    ".mjs": "application/javascript",
-    ".jsx": "application/javascript",
-    ".ts": "application/javascript",
-    ".tsx": "application/javascript",
     ".css": "text/css",
     ".html": "text/html",
-    ".htm": "text/html",
     ".png": "image/png",
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
     ".gif": "image/gif",
-    ".svg": "image/svg+xml",
-    ".ico": "image/x-icon",
-    ".woff": "font/woff",
-    ".woff2": "font/woff2",
-    ".ttf": "font/ttf",
-    ".eot": "application/vnd.ms-fontobject"
+    ".svg": "image/svg+xml"
   },
   "globalHeaders": {
     "Content-Security-Policy": "default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https: wss: ws:; font-src 'self' https://fonts.gstatic.com;",
     "X-Frame-Options": "DENY",
-    "X-XSS-Protection": "1; mode=block",
-    "X-Content-Type-Options": "nosniff"
+    "X-XSS-Protection": "1; mode=block"
   },
   "responseOverrides": {
     "404": {
