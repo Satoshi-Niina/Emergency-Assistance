@@ -64,6 +64,15 @@ jobs:
       run: |
         cd client && npx vite build
         
+    - name: Verify build output
+      run: |
+        cd client
+        echo "Build output verification:"
+        ls -la dist/
+        ls -la dist/assets/ | head -10
+        echo "Checking main JS file:"
+        file dist/assets/*.js | head -5
+        
     - name: Clean Azure Static Web App
       run: |
         echo "Cleaning existing Azure Static Web App files..."
@@ -78,7 +87,7 @@ jobs:
         app_location: "/client"
         output_location: "dist"
         skip_app_build: false
-        skip_deploy_on_missing_secrets: true
+        deployment_environment: "production"
         
     - name: Health check after deployment
       run: |
