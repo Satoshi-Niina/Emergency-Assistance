@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '18'
   AZURE_WEBAPP_NAME: 'emergencyassistance-sv-fbanemhrbshuf9bd'
   AZURE_WEBAPP_PACKAGE_PATH: 'server'
   NODE_ENV: 'production'
@@ -71,9 +71,9 @@ jobs:
         echo "JWT_SECRET=emergency-assistance-jwt-secret-key-32chars-minimum" >> .env
         echo "SESSION_SECRET=emergency-assistance-session-secret-32chars-minimum" >> .env
         echo "FRONTEND_URL=https://witty-river-012f39e00.1.azurestaticapps.net" >> .env
-        echo "WEBSITES_NODE_DEFAULT_VERSION=20.19.3" >> .env
-        echo "NODEJS_VERSION=20.19.3" >> .env
-        echo "NODE_VERSION=20.19.3" >> .env
+        echo "WEBSITES_NODE_DEFAULT_VERSION=18.17.1" >> .env
+        echo "NODEJS_VERSION=18.17.1" >> .env
+        echo "NODE_VERSION=18.17.1" >> .env
         
         echo "Copying startup scripts..."
         if [ -f "../startup.sh" ]; then
@@ -148,9 +148,9 @@ node production-server.js' > simple-startup.sh
         echo "2. Update the AZURE_WEBAPP_PUBLISH_PROFILE secret"
         echo "3. Check Azure App Service Windows settings:"
         echo "   - Platform: Windows"
-        echo "   - Node.js version: 20.19.3"
-        echo "   - Startup command: npm start"
-        echo "   - web.config: nodeProcessCommandLine='npm start'"
+        echo "   - Node.js version: 18.17.1 (or 18 LTS)"
+        echo "   - Startup command: node production-server.js"
+        echo "   - web.config: nodeProcessCommandLine='node production-server.js'"
         echo ""
         echo "Current app name: ${{ env.AZURE_WEBAPP_NAME }}"
         echo "Package path: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}"
