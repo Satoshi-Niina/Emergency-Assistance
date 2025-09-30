@@ -143,6 +143,89 @@ app.post('/api/auth/login', (req, res) => {
   }
 });
 
+// 機種・機械番号管理API
+app.get('/api/machines/machine-types', (req, res) => {
+  res.json({
+    success: true,
+    data: [
+      { id: '1', name: 'ディーゼル機関車', type: 'locomotive' },
+      { id: '2', name: '電車', type: 'train' },
+      { id: '3', name: '保線機械', type: 'maintenance' }
+    ],
+    message: '機種一覧を取得しました'
+  });
+});
+
+// ユーザー管理API
+app.get('/api/users', (req, res) => {
+  res.json({
+    success: true,
+    data: [
+      { id: 'admin-001', username: 'admin', role: 'admin', displayName: '管理者' },
+      { id: 'niina-001', username: 'niina', role: 'admin', displayName: 'Niina' },
+      { id: 'takabeni1-001', username: 'takabeni1', role: 'admin', displayName: 'Takabeni1' },
+      { id: 'takabeni2-001', username: 'takabeni2', role: 'employee', displayName: 'Takabeni2' },
+      { id: 'employee-001', username: 'employee', role: 'employee', displayName: '一般ユーザー' }
+    ],
+    message: 'ユーザー一覧を取得しました'
+  });
+});
+
+// ナレッジベースAPI
+app.get('/api/knowledge-base', (req, res) => {
+  res.json({
+    success: true,
+    data: [],
+    message: 'ナレッジベースデータを取得しました（本番環境では空です）'
+  });
+});
+
+// 応急処置フローAPI
+app.get('/api/emergency-flow/list', (req, res) => {
+  res.json({
+    success: true,
+    data: [],
+    message: '応急処置フロー一覧を取得しました（本番環境では空です）'
+  });
+});
+
+// ChatGPT API
+app.post('/api/chatgpt', (req, res) => {
+  res.json({
+    success: true,
+    response: 'AI支援機能は本番環境では利用できません。ローカル開発環境でご利用ください。',
+    message: 'ChatGPT APIは本番環境では無効です'
+  });
+});
+
+// 履歴管理API
+app.get('/api/history', (req, res) => {
+  res.json({
+    success: true,
+    data: [],
+    message: '履歴データを取得しました（本番環境では空です）'
+  });
+});
+
+app.get('/api/history/machine-data', (req, res) => {
+  res.json({
+    success: true,
+    data: [],
+    message: '機械データ履歴を取得しました（本番環境では空です）'
+  });
+});
+
+// RAG設定API
+app.get('/api/settings/rag', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      enabled: false,
+      message: 'RAG設定は本番環境では無効です'
+    }
+  });
+});
+
 // ルートエンドポイント
 app.get('/', (req, res) => {
   res.json({
