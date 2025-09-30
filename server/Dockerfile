@@ -8,13 +8,13 @@ RUN apk add --no-cache curl
 WORKDIR /app
 
 # package.jsonをコピー
-COPY azure-package.json ./package.json
+COPY package.json ./
 
 # 依存関係をインストール
 RUN npm install --only=production
 
 # アプリケーションコードをコピー
-COPY azure-server.js ./
+COPY production-server.js ./
 
 # ポートを公開
 EXPOSE 8080
@@ -24,4 +24,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD curl -f http://localhost:8080/api/health || exit 1
 
 # アプリケーションを起動
-CMD ["node", "azure-server.js"]
+CMD ["node", "production-server.js"]
