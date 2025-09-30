@@ -218,30 +218,7 @@ const ALLOW = new Set([
 ]);
 const corsOptions = {
   credentials: true,
-  origin: (origin, cb) => {
-    console.log('🔍 CORS Origin check:', { origin, allowed: ALLOW.has(origin) });
-    
-    // Azure Static Web Appsからのリクエスト（Originなし）を許可
-    if (!origin) {
-      console.log('✅ Azure Static Web Apps request (no origin) - allowing');
-      return cb(null, true);
-    }
-    
-    // 開発環境では localhost をすべて許可
-    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-      console.log('✅ Localhost request - allowing');
-      return cb(null, true);
-    }
-    
-    // 許可されたオリジンのチェック
-    if (ALLOW.has(origin)) {
-      console.log('✅ Allowed origin - allowing');
-      return cb(null, true);
-    }
-    
-    console.log('❌ CORS Origin rejected:', origin);
-    return cb(null, false);
-  },
+  origin: true, // 一時的にすべてのOriginを許可（デバッグ用）
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cache-Control', 'Pragma', 'Expires']
