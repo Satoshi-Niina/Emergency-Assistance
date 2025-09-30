@@ -4,78 +4,15 @@
       "route": "/api/*",
       "allowedRoles": ["anonymous"],
       "rewrite": "https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/api/{*path}",
-      "forwardHeaders": true,
-      "statusCode": 200
-    },
-    {
-      "route": "/login",
-      "rewrite": "/index.html"
-    },
-    {
-      "route": "/chat",
-      "rewrite": "/index.html"
-    },
-    {
-      "route": "/settings",
-      "rewrite": "/index.html"
-    },
-    {
-      "route": "/history",
-      "rewrite": "/index.html"
-    },
-    {
-      "route": "/documents",
-      "rewrite": "/index.html"
-    },
-    {
-      "route": "/troubleshooting",
-      "rewrite": "/index.html"
-    },
-    {
-      "route": "/emergency-guide",
-      "rewrite": "/index.html"
-    },
-    {
-      "route": "/users",
-      "rewrite": "/index.html"
-    },
-    {
-      "route": "/base-data",
-      "rewrite": "/index.html"
-    },
-    {
-      "route": "/machine-management",
-      "rewrite": "/index.html"
-    },
-    {
-      "route": "/system-diagnostic",
-      "rewrite": "/index.html"
+      "forwardHeaders": true
     }
   ],
   "navigationFallback": {
-    "rewrite": "/index.html",
-    "exclude": ["/api/*", "/images/*.{png,jpg,jpeg,gif,svg}", "/assets/*", "*.{js,css,png,jpg,jpeg,gif,svg,ico,woff,woff2,ttf,eot}"]
-  },
-  "mimeTypes": {
-    ".json": "application/json",
-    ".js": "application/javascript",
-    ".css": "text/css",
-    ".html": "text/html",
-    ".png": "image/png",
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".gif": "image/gif",
-    ".svg": "image/svg+xml"
-  },
-  "globalHeaders": {
-    "Content-Security-Policy": "default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https: wss: ws:; font-src 'self' https://fonts.gstatic.com;",
-    "X-Frame-Options": "DENY",
-    "X-XSS-Protection": "1; mode=block"
+    "rewrite": "/index.html"
   },
   "responseOverrides": {
     "404": {
-      "rewrite": "/index.html",
-      "exclude": ["/api/*", "/assets/*", "*.{js,css,png,jpg,jpeg,gif,svg,ico,woff,woff2,ttf,eot}"]
+      "rewrite": "/index.html"
     }
   }
 }

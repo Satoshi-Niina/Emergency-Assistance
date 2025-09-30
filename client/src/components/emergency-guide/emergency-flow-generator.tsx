@@ -60,7 +60,10 @@ export default function EmergencyFlowGenerator({
         // Generate from file
         const formData = new FormData();
         formData.append('file', file);
-        const response = await fetch('/api/flow-generator/file', {
+        const { buildApiUrl } = await import('../../lib/api-unified');
+        const apiUrl = buildApiUrl('/flow-generator/file');
+        
+        const response = await fetch(apiUrl, {
           method: 'POST',
           body: formData,
           credentials: 'include',
@@ -77,12 +80,15 @@ export default function EmergencyFlowGenerator({
         });
       } else {
         // Generate from keywords
-        const response = await fetch('/api/flow-generator/keywords', {
+        const { buildApiUrl } = await import('../../lib/api-unified');
+        const apiUrl = buildApiUrl('/emergency-flow/generate');
+        
+        const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ keywords }),
+          body: JSON.stringify({ keyword: keywords }),
           credentials: 'include',
         });
         
@@ -91,6 +97,40 @@ export default function EmergencyFlowGenerator({
         }
         
         flowData = await response.json();
+        
+        // emergency-flow/generateエンドポイントのレスポンス形式に合わせて処理
+        if (flowData.success && flowData.flowData) {
+          flowData = flowData.flowData;
+        } else if (flowData.success && flowData.response) {
+          // テキスト形式のレスポンスの場合は、シンプルなフロー構造に変換
+          flowData = {
+            id: `flow_${Date.now()}`,
+            title: keywords,
+            description: `キーワード「${keywords}」から自動生成されたフロー`,
+            triggerKeywords: [keywords],
+            steps: [
+              {
+                id: 'step1',
+                title: '開始',
+                description: `キーワード「${keywords}」に関する応急処置を開始します`,
+                message: `キーワード「${keywords}」に関する応急処置を開始します`,
+                type: 'step',
+                options: [],
+              },
+              {
+                id: 'step2',
+                title: '応急処置手順',
+                description: flowData.response,
+                message: flowData.response,
+                type: 'step',
+                options: [],
+              },
+            ],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        
         toast({
           title: '成功',
           description: 'キーワードからフローが生成されました。',

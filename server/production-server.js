@@ -1476,19 +1476,39 @@ apiRouter.get('/emergency-flow/list', async (req, res) => {
         const files = fs.readdirSync(troubleshootingPath);
         const jsonFiles = files.filter(file => file.endsWith('.json'));
         
-        const flowList = jsonFiles.map(file => {
-          const filePath = path.join(troubleshootingPath, file);
-          const stats = fs.statSync(filePath);
-          
-          return {
-            id: file.replace('.json', ''),
-            name: file.replace('.json', ''),
-            filename: file,
-            size: stats.size,
-            modified: stats.mtime.toISOString(),
-            created: stats.birthtime.toISOString()
-          };
-        });
+        const flowList = [];
+        
+        for (const file of jsonFiles) {
+          try {
+            const filePath = path.join(troubleshootingPath, file);
+            const stats = fs.statSync(filePath);
+            const fileContent = fs.readFileSync(filePath, 'utf-8');
+            const flowData = JSON.parse(fileContent);
+            
+            // フローデータを整形してクライアントが期待する形式に合わせる
+            const flow = {
+              id: flowData.id || file.replace('.json', ''),
+              title: flowData.title || 'タイトルなし',
+              description: flowData.description || '',
+              fileName: file,
+              filePath: `knowledge-base/troubleshooting/${file}`,
+              createdAt: flowData.createdAt || stats.birthtime.toISOString(),
+              updatedAt: flowData.updatedAt || stats.mtime.toISOString(),
+              triggerKeywords: flowData.triggerKeywords || flowData.trigger || [],
+              category: flowData.category || '',
+              steps: flowData.steps || [],
+              dataSource: 'file',
+              size: stats.size,
+              modified: stats.mtime.toISOString(),
+              created: stats.birthtime.toISOString()
+            };
+            
+            flowList.push(flow);
+          } catch (parseError) {
+            console.error(`❌ ファイル ${file} の読み込みエラー:`, parseError);
+            // パースエラーが発生したファイルはスキップして続行
+          }
+        }
         
         console.log(`[api/emergency-flow/list] ${flowList.length}個のフローファイルを発見`);
         

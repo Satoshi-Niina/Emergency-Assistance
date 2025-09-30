@@ -120,6 +120,8 @@ const FlowList: React.FC<FlowListProps> = ({
   onPreviewFlow,
   isLoading,
 }) => {
+  console.log('🔍 FlowList レンダリング:', { flowsLength: flows.length, isLoading, flows });
+  
   if (isLoading) {
     return (
       <div className='flex justify-center items-center p-8'>
@@ -344,9 +346,9 @@ const EmergencyGuideEdit: React.FC = () => {
         const randomId = Math.random().toString(36).substring(2);
         const cacheBuster = `?ts=${timestamp}&r=${randomId}`;
 
-        // 統一API設定を使用 - emergency-flow APIを使用
+        // 統一API設定を使用 - flows APIを使用（確実に動作するエンドポイント）
         const { buildApiUrl } = await import('../../lib/api-unified');
-        const apiUrl = buildApiUrl(`/emergency-flow/list${cacheBuster}`);
+        const apiUrl = buildApiUrl(`/flows${cacheBuster}`);
         
         console.log('🌐 フロー一覧API URL:', apiUrl);
         
@@ -375,11 +377,13 @@ const EmergencyGuideEdit: React.FC = () => {
 
         // APIレスポンスの構造に合わせてデータをマッピング
         const flows =
-          data.success && data.data
-            ? data.data
-            : Array.isArray(data)
-              ? data
-              : [];
+          data.success && data.flows
+            ? data.flows
+            : data.success && data.data
+              ? data.data
+              : Array.isArray(data)
+                ? data
+                : [];
         console.log('🔄 処理対象フロー数:', flows.length);
 
         const mappedFlows = flows.map((flow: any) => ({
@@ -400,6 +404,7 @@ const EmergencyGuideEdit: React.FC = () => {
         }));
 
         console.log('✅ マッピング完了:', mappedFlows.length + '件');
+        console.log('🔍 マッピングされたフロー詳細:', mappedFlows);
         setFlowList(mappedFlows);
       } catch (error) {
         console.error('❌ フロー取得エラー:', error);
@@ -809,6 +814,14 @@ const EmergencyGuideEdit: React.FC = () => {
             onPreviewFlow={handlePreviewFlow}
             isLoading={isLoading}
           />
+          {/* デバッグ情報 */}
+          <div className="mt-4 p-4 bg-gray-100 rounded text-xs">
+            <h4>デバッグ情報:</h4>
+            <p>flowList.length: {flowList.length}</p>
+            <p>isLoading: {isLoading.toString()}</p>
+            <p>selectedFlow: {selectedFlow ? selectedFlow.id : 'null'}</p>
+            <p>previewFlow: {previewFlow ? previewFlow.id : 'null'}</p>
+          </div>
         </div>
       )}
     </div>
