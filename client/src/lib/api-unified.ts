@@ -37,12 +37,7 @@ export const API_BASE_URL = (() => {
 export function buildApiUrl(path: string): string {
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   
-  // Azure Static Web Appの場合は相対パスでAPIプロキシを使用
-  if (isAzureStaticWebApp) {
-    return `/api${cleanPath}`;
-  }
-  
-  // その他の場合は絶対URLを使用
+  // すべての環境で絶対URLを使用（プロキシ問題を回避）
   return `${API_BASE_URL}/api${cleanPath}`;
 }
 
