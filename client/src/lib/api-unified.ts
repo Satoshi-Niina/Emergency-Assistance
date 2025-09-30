@@ -10,6 +10,10 @@ const isAzureStaticWebApp = /\.azurestaticapps\.net$/i.test(window.location.host
 
 // API Base URLの決定
 export const API_BASE_URL = (() => {
+  // 強制的にAzure App ServiceのURLを使用（デバッグ用）
+  console.log('🔧 強制的にAzure App ServiceのURLを使用');
+  return 'https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net';
+  
   // 環境変数が設定されている場合は最優先
   if (import.meta.env.VITE_API_BASE_URL && import.meta.env.VITE_API_BASE_URL.trim() !== '') {
     console.log('✅ 環境変数からAPI_BASE_URLを取得:', import.meta.env.VITE_API_BASE_URL);

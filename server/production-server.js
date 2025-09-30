@@ -34,17 +34,32 @@ const require = createRequire(import.meta.url);
 const localEnvPath = path.join(__dirname, '..', 'local.env');
 const envPath = path.join(__dirname, '..', '.env');
 
+console.log('🔍 Checking for environment files:');
+console.log('  - local.env:', localEnvPath, fs.existsSync(localEnvPath) ? 'EXISTS' : 'NOT FOUND');
+console.log('  - .env:', envPath, fs.existsSync(envPath) ? 'EXISTS' : 'NOT FOUND');
+
 if (fs.existsSync(localEnvPath)) {
   console.log('📄 Loading environment from local.env');
   dotenv.config({ path: localEnvPath });
+  console.log('✅ Environment loaded from local.env');
 } else if (fs.existsSync(envPath)) {
   console.log('📄 Loading environment from .env');
   dotenv.config({ path: envPath });
+  console.log('✅ Environment loaded from .env');
 } else {
   console.log('📄 No .env file found, using system environment variables');
 }
 
 // Environment validation (warnings only, don't exit)
+console.log('🔍 Environment variables loaded:');
+console.log('  - NODE_ENV:', process.env.NODE_ENV || 'NOT SET');
+console.log('  - PORT:', process.env.PORT || 'NOT SET');
+console.log('  - DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
+console.log('  - JWT_SECRET:', process.env.JWT_SECRET ? 'SET' : 'NOT SET');
+console.log('  - SESSION_SECRET:', process.env.SESSION_SECRET ? 'SET' : 'NOT SET');
+console.log('  - OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET');
+console.log('  - FRONTEND_URL:', process.env.FRONTEND_URL || 'NOT SET');
+
 if (!process.env.JWT_SECRET) {
   console.warn('⚠️ JWT_SECRET is not set - authentication may not work properly');
 }
