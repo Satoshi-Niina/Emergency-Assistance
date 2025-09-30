@@ -105,27 +105,31 @@ jobs:
         echo "Node version is already configured in Azure App Service settings"
         echo "Skipping configuration to avoid permission errors"
         
-    - name: Deploy to Azure Web App
+    - name: Build and Deploy to Azure Web App
       run: |
-        echo "Deploying to Azure Web App using Azure CLI..."
+        echo "Building and deploying to Azure Web App..."
         cd server
         
-        # Create essential files only package
-        echo "Creating essential files only package..."
-        zip ../deployment.zip production-server.js package.json
+        # Install dependencies in GitHub Actions
+        echo "Installing dependencies..."
+        npm install --production
+        
+        # Create complete deployment package with node_modules
+        echo "Creating complete deployment package..."
+        zip -r ../deployment.zip . -x "*.log" "*.tmp" "test/*" "*.test.js" "*.md" "*.txt"
         
         # Check package size
         echo "Package size:"
         ls -lh ../deployment.zip
         
-        # Deploy using Azure CLI with different method
-        echo "Deploying to Azure using alternative method..."
+        # Deploy complete package to Azure
+        echo "Deploying complete package to Azure..."
         az webapp deployment source config-zip \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
           --src ../deployment.zip
         
-        echo "✅ Deployment completed"
+        echo "✅ Build and deployment completed"
         
     - name: Verify deployment
       if: failure()
