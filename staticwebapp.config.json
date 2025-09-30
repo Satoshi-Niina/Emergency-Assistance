@@ -6,11 +6,55 @@
       "rewrite": "https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/api/{*path}",
       "forwardHeaders": true,
       "statusCode": 200
+    },
+    {
+      "route": "/login",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/chat",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/settings",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/history",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/documents",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/troubleshooting",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/emergency-guide",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/users",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/base-data",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/machine-management",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/system-diagnostic",
+      "rewrite": "/index.html"
     }
   ],
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/api/*", "/images/*.{png,jpg,jpeg,gif,svg}", "/assets/*"]
+    "exclude": ["/api/*", "/images/*.{png,jpg,jpeg,gif,svg}", "/assets/*", "*.{js,css,png,jpg,jpeg,gif,svg,ico,woff,woff2,ttf,eot}"]
   },
   "mimeTypes": {
     ".json": "application/json",
@@ -31,7 +75,7 @@
   "responseOverrides": {
     "404": {
       "rewrite": "/index.html",
-      "exclude": ["/api/*", "/assets/*"]
+      "exclude": ["/api/*", "/assets/*", "*.{js,css,png,jpg,jpeg,gif,svg,ico,woff,woff2,ttf,eot}"]
     }
   }
 }
