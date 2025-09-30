@@ -220,11 +220,25 @@ const corsOptions = {
   credentials: true,
   origin: (origin, cb) => {
     console.log('🔍 CORS Origin check:', { origin, allowed: ALLOW.has(origin) });
-    // 開発環境では localhost をすべて許可
-    if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+    
+    // Azure Static Web Appsからのリクエスト（Originなし）を許可
+    if (!origin) {
+      console.log('✅ Azure Static Web Apps request (no origin) - allowing');
       return cb(null, true);
     }
-    if (ALLOW.has(origin)) return cb(null, true);
+    
+    // 開発環境では localhost をすべて許可
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      console.log('✅ Localhost request - allowing');
+      return cb(null, true);
+    }
+    
+    // 許可されたオリジンのチェック
+    if (ALLOW.has(origin)) {
+      console.log('✅ Allowed origin - allowing');
+      return cb(null, true);
+    }
+    
     console.log('❌ CORS Origin rejected:', origin);
     return cb(null, false);
   },
