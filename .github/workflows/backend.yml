@@ -21,7 +21,7 @@ on:
 
 env:
   NODE_VERSION: '20.x'
-  AZURE_WEBAPP_NAME: 'emergencyassistance-sv-fbanemhrbshuf9bd'
+  AZURE_WEBAPP_NAME: 'Emergencyassistance-sv'
   AZURE_WEBAPP_PACKAGE_PATH: 'server'
   NODE_ENV: 'production'
   AZURE_RESOURCE_GROUP: 'rg-Emergencyassistant-app'
@@ -113,11 +113,12 @@ jobs:
         # Create deployment package
         zip -r ../deployment.zip . -x "node_modules/*" "*.log" "*.tmp"
         
-        # Deploy using Azure CLI
-        az webapp deployment source config-zip \
+        # Deploy using new Azure CLI command
+        az webapp deploy \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
-          --src ../deployment.zip
+          --src-path ../deployment.zip \
+          --type zip
         
         echo "✅ Deployment completed"
         
