@@ -1,30 +1,20 @@
-name: Backend CI/CD
+name: Deploy Backend with Docker (Primary)
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
     paths:
       - 'server/**'
-      - 'shared/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/workflows/backend.yml'
-  pull_request:
-    branches: [ main, develop ]
-    paths:
-      - 'server/**'
-      - 'shared/**'
-      - 'package.json'
-      - 'package-lock.json'
+      - 'Dockerfile'
+      - '.dockerignore'
       - '.github/workflows/backend.yml'
   workflow_dispatch:
 
 env:
-  NODE_VERSION: '20.x'
-  AZURE_WEBAPP_NAME: 'Emergencyassistance-sv'
-  AZURE_WEBAPP_PACKAGE_PATH: 'server'
-  NODE_ENV: 'production'
   AZURE_RESOURCE_GROUP: 'rg-Emergencyassistant-app'
+  AZURE_WEBAPP_NAME: 'Emergencyassistance-sv'
+  REGISTRY_NAME: 'emergencyassistance'
+  IMAGE_NAME: 'backend'
 
 jobs:
   build-and-deploy:
@@ -34,207 +24,88 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-        
-    - name: Clean install dependencies
-      run: |
-        echo "Cleaning all node_modules and package-lock.json files..."
-        rm -rf node_modules package-lock.json
-        rm -rf server/node_modules server/package-lock.json
-        rm -rf shared/node_modules shared/package-lock.json
-        echo "Clearing npm cache..."
-        npm cache clean --force
-        echo "Installing root dependencies..."
-        npm install
-        echo "Installing server dependencies..."
-        cd server && npm install
-        echo "Installing shared dependencies..."
-        cd ../shared && npm install
-        echo "✅ All dependencies installed successfully"
-        
-    - name: Build shared
-      run: |
-        npm run build:shared
-        
-    - name: Clean Azure Web App
-      run: |
-        echo "Cleaning existing Azure Web App files..."
-        # Azure Web App deployment automatically replaces all files
-        
-    - name: Prepare deployment package (Oryx Build)
-      run: |
-        echo "Preparing deployment package for Azure App Service Linux (Oryx Build)..."
-        
-        # Copy shared build to server
-        cp -r shared/dist server/
-        
-        # For Oryx build, we only need source files
-        # Dependencies will be installed by Oryx during deployment
-        cd server
-        
-        echo "Setting up environment variables..."
-        echo "NODE_ENV=production" > .env
-        echo "PORT=8080" >> .env
-        echo "JWT_SECRET=emergency-assistance-jwt-secret-key-32chars-minimum" >> .env
-        echo "SESSION_SECRET=emergency-assistance-session-secret-32chars-minimum" >> .env
-        echo "FRONTEND_URL=https://witty-river-012f39e00.1.azurestaticapps.net" >> .env
-        echo "WEBSITE_NODE_DEFAULT_VERSION=~20" >> .env
-        echo "NODEJS_VERSION=20" >> .env
-        echo "NODE_VERSION=20" >> .env
-        
-        echo "Verifying source files..."
-        ls -la production-server.js || echo "❌ production-server.js not found"
-        ls -la package.json || echo "❌ package.json not found"
-        ls -la routes/ || echo "❌ Routes directory not found"
-        
-        echo "Final package structure:"
-        ls -la
-        cd ..
-        
-    - name: Login to Azure
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Login to Azure Container Registry
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
         
-    - name: Configure Azure App Service Node Version (SKIPPED - Already configured)
+    - name: Create Azure Container Registry
       run: |
-        echo "Node version is already configured in Azure App Service settings"
-        echo "Skipping configuration to avoid permission errors"
-        
-    - name: Deploy Azure-Only Server
+        # Create ACR if it doesn't exist
+        az acr create \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --name ${{ env.REGISTRY_NAME }} \
+          --sku Basic \
+          --admin-enabled true \
+          || echo "ACR already exists"
+          
+    - name: Login to Azure Container Registry
       run: |
-        echo "Deploying Azure-only server to Azure App Service..."
-        cd server
+        az acr login --name ${{ env.REGISTRY_NAME }}
         
-        # Create Azure-only deployment package
-        echo "Creating Azure-only deployment package..."
-        zip ../azure-deployment.zip azure-server.js azure-package.json
+    - name: Build and push Docker image
+      run: |
+        # Build Docker image
+        docker build -t ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest .
         
-        # Check package size
-        echo "Package size:"
-        ls -lh ../azure-deployment.zip
+        # Push to ACR
+        docker push ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
         
-        # Deploy Azure-only package
-        echo "Deploying Azure-only package..."
-        az webapp deployment source config-zip \
+    - name: Deploy to Azure App Service
+      run: |
+        # Get ACR credentials
+        ACR_USERNAME=$(az acr credential show --name ${{ env.REGISTRY_NAME }} --query username --output tsv)
+        ACR_PASSWORD=$(az acr credential show --name ${{ env.REGISTRY_NAME }} --query passwords[0].value --output tsv)
+        
+        # Configure App Service to use Docker
+        az webapp config container set \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
-          --src ../azure-deployment.zip
+          --docker-custom-image-name ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest \
+          --docker-registry-server-url https://${{ env.REGISTRY_NAME }}.azurecr.io \
+          --docker-registry-server-user $ACR_USERNAME \
+          --docker-registry-server-password $ACR_PASSWORD
         
-        echo "✅ Azure-only server deployment completed"
-        
-    - name: Verify deployment
-      if: failure()
-      run: |
-        echo "❌ Backend deployment failed. This might be due to:"
-        echo "1. Invalid publish profile credentials"
-        echo "2. Missing dependencies in node_modules"
-        echo "3. Azure App Service Windows configuration issues"
-        echo "4. web.config configuration problems"
-        echo ""
-        echo "To fix this:"
-        echo "1. Download a new publish profile from Azure Portal"
-        echo "2. Update the AZURE_WEBAPP_PUBLISH_PROFILE secret"
-        echo "3. Check Azure App Service Windows settings:"
-        echo "   - Platform: Linux"
-        echo "   - Node.js version: 20.19.3 (or 20 LTS)"
-        echo "   - Startup command: npm start"
-        echo "   - Environment variables: NODE_ENV=production, PORT=8080"
-        echo ""
-        echo "Current app name: ${{ env.AZURE_WEBAPP_NAME }}"
-        echo "Package path: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}"
+        # Restart App Service
+        az webapp restart \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }}
         
     - name: Health check after deployment
-      if: success()
       run: |
         echo "Waiting for deployment to complete..."
-        sleep 120
+        sleep 60
         
-        echo "🔍 Performing comprehensive health checks..."
+        echo "🔍 Performing health checks..."
         
-        # 1. Basic connectivity test with retry
-        echo "1. Testing basic connectivity with retry..."
+        # Health check with retry
         for i in {1..5}; do
-          echo "Attempt $i/5..."
-          if curl -f --max-time 60 --connect-timeout 30 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net/ping; then
-            echo "✅ Basic connectivity successful on attempt $i"
+          echo "Health check attempt $i/5..."
+          if curl -f --max-time 30 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net/api/health; then
+            echo "✅ Health check successful on attempt $i"
             break
           else
             echo "❌ Attempt $i failed, waiting 30 seconds..."
             sleep 30
             if [ $i -eq 5 ]; then
-              echo "❌ All connectivity attempts failed"
-              echo "🔍 Checking Azure App Service status..."
-              curl -I --max-time 30 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net || echo "❌ App Service not responding"
+              echo "❌ All health check attempts failed"
               exit 1
             fi
           fi
         done
         
-        # 2. Health endpoint test
-        echo "2. Testing health endpoint..."
-        HEALTH_RESPONSE=$(curl -s --max-time 60 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net/api/health)
-        if [ $? -eq 0 ]; then
-          echo "✅ Health endpoint successful"
-          echo "Health response: $HEALTH_RESPONSE"
-          # Check if Node version is 20.x
-          NODE_VERSION=$(echo "$HEALTH_RESPONSE" | grep -o '"nodeVersion":"[^"]*"' | cut -d'"' -f4)
-          if [[ "$NODE_VERSION" == v20* ]]; then
-            echo "✅ Node version is correct: $NODE_VERSION"
-          else
-            echo "❌ Node version is incorrect: $NODE_VERSION (expected v20.x)"
-            exit 1
-          fi
-        else
-          echo "❌ Health endpoint failed"
-          echo "🔍 Checking if app is starting up..."
-          curl -I --max-time 30 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net || echo "❌ App Service not responding"
-          exit 1
-        fi
-        
-        # 3. API endpoints test
-        echo "3. Testing API endpoints..."
-        curl -f --max-time 60 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net/api/auth/handshake || {
-          echo "❌ API endpoints failed"
-          echo "🔍 Checking basic app response..."
-          curl -I --max-time 30 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net || echo "❌ App Service not responding"
-          exit 1
-        }
-        
-        # 4. Detailed health check
-        echo "4. Testing detailed health endpoint..."
-        DETAILED_RESPONSE=$(curl -s --max-time 60 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net/api/health/detailed)
-        if [ $? -eq 0 ]; then
-          echo "✅ Detailed health check successful"
-          echo "Detailed response: $DETAILED_RESPONSE"
-        else
-          echo "⚠️ Detailed health check failed, but basic health check passed"
-        fi
-        
-        # 5. Environment variables check
-        echo "5. Testing environment variables endpoint..."
-        ENV_RESPONSE=$(curl -s --max-time 60 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net/api/_diag/env)
-        if [ $? -eq 0 ]; then
-          echo "✅ Environment variables check successful"
-          echo "Environment response: $ENV_RESPONSE"
-        else
-          echo "⚠️ Environment variables check failed"
-        fi
-        
-        echo "✅ All health checks passed!"
-        echo "🚀 Application is ready for production use"
+        echo "✅ Docker deployment successful!"
         
     - name: Notify deployment status
       if: always()
       run: |
         if [ ${{ job.status }} == 'success' ]; then
-          echo "✅ Backend deployment successful"
+          echo "✅ Docker deployment successful"
           echo "🚀 Backend API is ready at: https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net"
         else
-          echo "❌ Backend deployment failed"
+          echo "❌ Docker deployment failed"
           echo "🔍 Check the logs above for detailed error information"
         fi
