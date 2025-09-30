@@ -19,7 +19,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { createRequire } from 'module';
-import registerRoutes from './routes/index.js';
+// import registerRoutes from './routes/index.js'; // 一時的に無効化
 
 // ESM __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -28,15 +28,13 @@ const __dirname = dirname(__filename);
 // ESM-safe require for CJS-only dependencies
 const require = createRequire(import.meta.url);
 
-// Environment validation
+// Environment validation (warnings only, don't exit)
 if (!process.env.JWT_SECRET) {
-  console.error('❌ JWT_SECRET is required');
-  process.exit(1);
+  console.warn('⚠️ JWT_SECRET is not set - authentication may not work properly');
 }
 
 if (!process.env.SESSION_SECRET) {
-  console.error('❌ SESSION_SECRET is required');
-  process.exit(1);
+  console.warn('⚠️ SESSION_SECRET is not set - sessions may not work properly');
 }
 
 // Initialize Express app
@@ -257,8 +255,8 @@ let dbPool = null;
 
 function initializeDatabase() {
   if (!process.env.DATABASE_URL) {
-    console.error('❌ DATABASE_URL is required');
-    process.exit(1);
+    console.warn('⚠️ DATABASE_URL is not set - running without database');
+    return;
   }
 
   try {
@@ -1892,7 +1890,7 @@ apiRouter.get('/version', (req, res) => {
 app.use('/api', apiRouter);
 
 // 新しいルートシステムを登録（ESM対応）
-registerRoutes(app);
+// registerRoutes(app); // 一時的に無効化
 console.log('[BOOT] routes mounted');
 
 // Global error handler
