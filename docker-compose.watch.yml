@@ -13,7 +13,7 @@ services:
       - FRONTEND_URL=http://localhost:5173
     volumes:
       - ./server:/app
-      - /app/node_modules  # node_modulesをボリュームで除外
+      - /app/node_modules
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
@@ -21,11 +21,23 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    # ファイル変更時の自動再ビルド
-    labels:
-      - "com.docker.compose.watch=true"
+    # Docker Compose Watch機能を使用した自動更新
+    develop:
+      watch:
+        - action: rebuild
+          path: ./server
+          ignore:
+            - node_modules/
+            - dist/
+            - logs/
+        - action: sync
+          path: ./server
+          target: /app
+          ignore:
+            - node_modules/
+            - dist/
+            - logs/
 
-  # ローカル開発用のPostgreSQL（必要に応じて）
   postgres:
     image: postgres:15-alpine
     environment:

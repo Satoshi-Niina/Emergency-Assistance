@@ -24,6 +24,13 @@ services:
     # ファイル変更時の自動再ビルド
     labels:
       - "com.docker.compose.watch=true"
+    # 開発用の設定
+    command: >
+      sh -c "
+        echo '🚀 Starting development server...' &&
+        npm install &&
+        node azure-server.js
+      "
 
   # ローカル開発用のPostgreSQL（必要に応じて）
   postgres:

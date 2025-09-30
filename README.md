@@ -43,6 +43,40 @@ cd client && npm run dev
 - **バックエンドAPI**: http://localhost:8000
 - **ヘルスチェック**: http://localhost:8000/api/health
 
+## 🐳 Docker開発環境（自動更新対応）
+
+### Docker Compose起動
+```bash
+# 基本的なDocker環境
+docker-compose up --build
+
+# 開発用（ファイル監視付き）
+docker-compose -f docker-compose.dev.yml up --build
+
+# 高度な自動更新（Docker Compose Watch）
+docker-compose -f docker-compose.watch.yml up --build
+```
+
+### 自動更新スクリプト
+```bash
+# PowerShell（推奨）
+.\start-docker-dev.ps1
+
+# Bash
+./start-docker-dev.sh
+```
+
+### Docker環境の特徴
+- **自動再ビルド**: serverフォルダのファイル変更時に自動でコンテナを再ビルド
+- **ホットリロード**: コード変更が即座に反映
+- **データベース**: PostgreSQLが自動で起動
+- **ヘルスチェック**: 自動でAPIの状態を監視
+
+### DockerアクセスURL
+- **バックエンドAPI**: http://localhost:8080
+- **ヘルスチェック**: http://localhost:8080/api/health
+- **PostgreSQL**: localhost:5432
+
 ## 🐳 本番環境へのデプロイ
 
 ### 自動デプロイ（GitHub Actions）
