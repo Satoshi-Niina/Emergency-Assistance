@@ -4,8 +4,7 @@
       "route": "/api/*",
       "allowedRoles": ["anonymous"],
       "rewrite": "https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/api/{*path}",
-      "forwardHeaders": true,
-      "statusCode": 200
+      "forwardHeaders": true
     },
     {
       "route": "/login",
