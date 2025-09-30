@@ -110,21 +110,22 @@ jobs:
         echo "Deploying to Azure Web App using Azure CLI..."
         cd server
         
-        # Install dependencies
-        echo "Installing dependencies..."
-        npm install --production
+        # Create minimal deployment package
+        echo "Creating minimal deployment package..."
+        zip -r ../deployment.zip . -x "node_modules/*" "*.log" "*.tmp" "test/*" "*.test.js" "*.md" "*.txt"
         
-        # Create deployment package with node_modules
-        echo "Creating deployment package..."
-        zip -r ../deployment.zip . -x "*.log" "*.tmp" "test/*" "*.test.js"
+        # Check package size
+        echo "Package size:"
+        ls -lh ../deployment.zip
         
-        # Deploy using new Azure CLI command
+        # Deploy using Azure CLI
         echo "Deploying to Azure..."
         az webapp deploy \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
           --src-path ../deployment.zip \
-          --type zip
+          --type zip \
+          --timeout 600
         
         echo "✅ Deployment completed"
         
