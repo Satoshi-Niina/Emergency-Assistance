@@ -223,8 +223,23 @@ const corsOptions = {
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cache-Control', 'Pragma', 'Expires']
 };
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));           // ③ Preflight も同方針
+// CORS設定を一時的に無効化（デバッグ用）
+// app.use(cors(corsOptions));
+// app.options('*', cors(corsOptions));
+
+// 代わりに基本的なCORSヘッダーを手動で設定
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Cache-Control, Pragma, Expires');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
 
 // Request logging
 app.use(morgan('combined', {
