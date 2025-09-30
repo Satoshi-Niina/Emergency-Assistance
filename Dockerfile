@@ -4,15 +4,14 @@ FROM node:20-alpine
 # 作業ディレクトリを設定
 WORKDIR /app
 
-# package.jsonとpackage-lock.jsonをコピー
-COPY server/package*.json ./
+# package.jsonをコピー
+COPY server/azure-package.json ./package.json
 
 # 依存関係をインストール
-RUN npm ci --only=production
+RUN npm install --only=production
 
 # アプリケーションコードをコピー
 COPY server/azure-server.js ./
-COPY server/azure-package.json ./package.json
 
 # ポートを公開
 EXPOSE 8080
