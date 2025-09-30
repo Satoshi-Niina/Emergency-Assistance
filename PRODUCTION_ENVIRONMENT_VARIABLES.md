@@ -15,8 +15,10 @@
 
 ### Authentication Mode
 - `BYPASS_DB_FOR_LOGIN`: Authentication bypass mode
-  - `true`: Skip database authentication, use demo login (for testing)
-  - `false` or unset: Use database authentication
+  - `true`: Skip database authentication, use demo login (for testing/development only)
+  - `false` or unset: Use database authentication (required for production)
+  
+  **⚠️ IMPORTANT**: Never set `BYPASS_DB_FOR_LOGIN=true` in production environment!
 
 ### Environment
 - `NODE_ENV`: Set to `production`
@@ -65,4 +67,13 @@
 
 ## Rollback Procedure:
 
-If issues occur, set `BYPASS_DB_FOR_LOGIN=true` to restore basic functionality without database dependency.
+**⚠️ EMERGENCY ONLY**: If critical issues occur, temporarily set `BYPASS_DB_FOR_LOGIN=true` to restore basic functionality without database dependency. 
+
+**⚠️ SECURITY WARNING**: This bypasses all authentication and should be reverted immediately after fixing the underlying issue.
+
+## Security Notes:
+
+- `BYPASS_DB_FOR_LOGIN=true` should ONLY be used in development environments
+- In production, always use `BYPASS_DB_FOR_LOGIN=false` with proper database authentication
+- The bypass mode creates demo users with predefined roles (admin/employee) based on username
+- Never commit production configurations with `BYPASS_DB_FOR_LOGIN=true`

@@ -105,31 +105,27 @@ jobs:
         echo "Node version is already configured in Azure App Service settings"
         echo "Skipping configuration to avoid permission errors"
         
-    - name: Build and Deploy to Azure Web App
+    - name: Build and Deploy Minimal Server
       run: |
-        echo "Building and deploying to Azure Web App..."
+        echo "Building and deploying minimal server to Azure Web App..."
         cd server
         
-        # Install dependencies in GitHub Actions
-        echo "Installing dependencies..."
-        npm install --production
-        
-        # Create complete deployment package with node_modules
-        echo "Creating complete deployment package..."
-        zip -r ../deployment.zip . -x "*.log" "*.tmp" "test/*" "*.test.js" "*.md" "*.txt"
+        # Use minimal files only
+        echo "Creating minimal deployment package..."
+        zip ../deployment.zip minimal-production-server.js minimal-package.json
         
         # Check package size
         echo "Package size:"
         ls -lh ../deployment.zip
         
-        # Deploy complete package to Azure
-        echo "Deploying complete package to Azure..."
+        # Deploy minimal package to Azure
+        echo "Deploying minimal package to Azure..."
         az webapp deployment source config-zip \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
           --src ../deployment.zip
         
-        echo "✅ Build and deployment completed"
+        echo "✅ Minimal server deployment completed"
         
     - name: Verify deployment
       if: failure()

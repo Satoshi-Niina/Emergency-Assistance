@@ -19,6 +19,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { createRequire } from 'module';
+import dotenv from 'dotenv';
 // import registerRoutes from './routes/index.js'; // 一時的に無効化
 
 // ESM __dirname equivalent
@@ -28,6 +29,21 @@ const __dirname = dirname(__filename);
 // ESM-safe require for CJS-only dependencies
 const require = createRequire(import.meta.url);
 
+// Load environment variables from .env files
+// Try local.env first (for local development), then fallback to .env
+const localEnvPath = path.join(__dirname, '..', 'local.env');
+const envPath = path.join(__dirname, '..', '.env');
+
+if (fs.existsSync(localEnvPath)) {
+  console.log('📄 Loading environment from local.env');
+  dotenv.config({ path: localEnvPath });
+} else if (fs.existsSync(envPath)) {
+  console.log('📄 Loading environment from .env');
+  dotenv.config({ path: envPath });
+} else {
+  console.log('📄 No .env file found, using system environment variables');
+}
+
 // Environment validation (warnings only, don't exit)
 if (!process.env.JWT_SECRET) {
   console.warn('⚠️ JWT_SECRET is not set - authentication may not work properly');
@@ -35,6 +51,13 @@ if (!process.env.JWT_SECRET) {
 
 if (!process.env.SESSION_SECRET) {
   console.warn('⚠️ SESSION_SECRET is not set - sessions may not work properly');
+}
+
+// 本番環境でのBYPASS_DB_FOR_LOGIN設定の警告
+if (process.env.NODE_ENV === 'production' && process.env.BYPASS_DB_FOR_LOGIN === 'true') {
+  console.warn('🚨 WARNING: BYPASS_DB_FOR_LOGIN=true in production environment!');
+  console.warn('🚨 This will allow demo login without database authentication.');
+  console.warn('🚨 Please set BYPASS_DB_FOR_LOGIN=false for production use.');
 }
 
 // Initialize Express app
@@ -253,6 +276,34 @@ app.use((req, res, next) => {
 // データベース接続プールの初期化
 let dbPool = null;
 
+// 環境に応じたSSL設定を取得する共通関数
+function getSSLConfig() {
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  
+  // 環境変数で明示的にSSL設定が指定されている場合は優先
+  const sslMode = process.env.PG_SSL;
+  
+  if (sslMode === 'require') {
+    console.log('🔒 環境変数指定: SSL接続を必須に設定');
+    return { require: true, rejectUnauthorized: false };
+  } else if (sslMode === 'disable') {
+    console.log('🔓 環境変数指定: SSL接続を無効化');
+    return false;
+  } else if (sslMode === 'prefer') {
+    console.log('🔧 環境変数指定: SSL接続を優先設定');
+    return { rejectUnauthorized: false };
+  }
+  
+  // デフォルト: 開発環境ではSSL無効、本番環境ではSSL有効
+  if (isDevelopment) {
+    console.log('🔓 開発環境: SSL接続を無効化');
+    return false;
+  } else {
+    console.log('🔒 本番環境: SSL接続を有効化');
+    return { require: true, rejectUnauthorized: false };
+  }
+}
+
 function initializeDatabase() {
   if (!process.env.DATABASE_URL) {
     console.warn('⚠️ DATABASE_URL is not set - running without database');
@@ -260,12 +311,14 @@ function initializeDatabase() {
   }
 
   try {
-    // 開発環境ではSSLを無効にする
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const sslConfig = isDevelopment ? false : { 
-      require: true, 
-      rejectUnauthorized: false 
-    };
+    const sslConfig = getSSLConfig();
+    
+    console.log('🔍 データベース接続設定:', {
+      platform: process.platform,
+      nodeEnv: process.env.NODE_ENV,
+      sslConfig: sslConfig,
+      databaseUrl: process.env.DATABASE_URL.replace(/\/\/.*@/, '//***:***@')
+    });
     
     dbPool = new Pool({
       connectionString: process.env.DATABASE_URL,
@@ -384,6 +437,288 @@ router.get('/auth/handshake', (req, res) => {
 
 // 追加のAPIエンドポイントを直接登録（本番環境に影響しない）
 const apiRouter = express.Router();
+
+// 認証ルートを追加
+apiRouter.post('/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body || {};
+    
+    // 入力検証
+    if (!username || !password) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'bad_request',
+        message: 'ユーザー名とパスワードが必要です'
+      });
+    }
+
+    // バイパスフラグ確認（最初に判定）
+    const bypassDb = process.env.BYPASS_DB_FOR_LOGIN === 'true';
+    
+    console.log('[auth/login] Login attempt:', { 
+      username, 
+      bypassDb,
+      timestamp: new Date().toISOString()
+    });
+
+    // バイパスモード時は即リターン（DBに触れない）
+    if (bypassDb) {
+      console.log('[auth/login] Bypass mode: Creating demo session');
+      
+      // ローカル開発環境での権限管理
+      // 特定のユーザー名に対して適切な権限を設定
+      let userRole = 'employee'; // デフォルトは一般ユーザー
+      let userId = 'demo';
+      
+      // 管理者ユーザーの判定
+      if (username === 'admin' || username === 'niina' || username === 'takabeni1') {
+        userRole = 'admin';
+        userId = `demo-admin-${username}`;
+      } else if (username === 'takabeni2' || username === 'employee') {
+        userRole = 'employee';
+        userId = `demo-employee-${username}`;
+      }
+      
+      console.log('[auth/login] Bypass mode: User role determined:', { username, userRole, userId });
+      
+      // セッションにユーザー情報を設定
+      req.session.userId = userId;
+      req.session.user = { 
+        id: userId, 
+        name: username,
+        role: userRole
+      };
+      
+      // JWTトークンも生成
+      const token = jwt.sign(
+        { id: userId, username, role: userRole }, 
+        process.env.JWT_SECRET || 'fallback-secret',
+        { expiresIn: '1d' }
+      );
+      
+      return res.json({ 
+        success: true, 
+        mode: 'session',
+        user: req.session.user,
+        token,
+        accessToken: token,
+        expiresIn: '1d'
+      });
+    }
+
+    // DB接続（遅延読み込み）
+    let pool;
+    try {
+      const sslConfig = getSSLConfig();
+
+      pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: sslConfig,
+        max: 5,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 5000,
+      });
+
+      // 接続テスト
+      const client = await pool.connect();
+      
+      // prefer モードで SSL エラーが出た場合は disable に再接続
+      if (sslMode === 'prefer') {
+        try {
+          await client.query('SELECT 1');
+        } catch (sslError) {
+          console.warn('⚠️ SSL接続失敗、非SSLで再接続:', sslError.message);
+          client.release();
+          pool.end();
+          
+          pool = new Pool({
+            connectionString: process.env.DATABASE_URL,
+            ssl: false,
+            max: 5,
+            idleTimeoutMillis: 30000,
+            connectionTimeoutMillis: 5000,
+          });
+          await pool.connect();
+        }
+      } else {
+        client.release();
+      }
+
+      // ユーザー認証
+      const result = await pool.query(
+        'SELECT id, username, password_hash, role FROM users WHERE username = $1',
+        [username]
+      );
+
+      if (result.rows.length === 0) {
+        await pool.end();
+        return res.status(401).json({
+          success: false,
+          error: 'invalid_credentials',
+          message: 'ユーザー名またはパスワードが正しくありません'
+        });
+      }
+
+      const user = result.rows[0];
+      const isValidPassword = await bcrypt.compare(password, user.password_hash);
+
+      if (!isValidPassword) {
+        await pool.end();
+        return res.status(401).json({
+          success: false,
+          error: 'invalid_credentials',
+          message: 'ユーザー名またはパスワードが正しくありません'
+        });
+      }
+
+      // セッションにユーザー情報を設定
+      req.session.userId = user.id;
+      req.session.user = {
+        id: user.id,
+        name: user.username,
+        role: user.role
+      };
+
+      // JWTトークンも生成
+      const token = jwt.sign(
+        { id: user.id, username: user.username, role: user.role },
+        process.env.JWT_SECRET,
+        { expiresIn: '1d' }
+      );
+
+      await pool.end();
+
+      return res.json({
+        success: true,
+        mode: 'session',
+        user: req.session.user,
+        token,
+        accessToken: token,
+        expiresIn: '1d'
+      });
+
+    } catch (dbError) {
+      console.error('[auth/login] Database error:', dbError);
+      if (pool) {
+        try {
+          await pool.end();
+        } catch (endError) {
+          console.error('[auth/login] Pool end error:', endError);
+        }
+      }
+      
+      return res.status(500).json({
+        success: false,
+        error: 'database_error',
+        message: 'データベース接続エラーが発生しました'
+      });
+    }
+
+  } catch (error) {
+    console.error('[auth/login] Unexpected error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'internal_error',
+      message: '内部エラーが発生しました'
+    });
+  }
+});
+
+// 認証ハンドシェイクエンドポイント
+apiRouter.get('/auth/handshake', (req, res) => {
+  res.json({
+    ok: true,
+    mode: 'session', // Default to session mode for cross-origin
+    env: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString(),
+    requestId: req.requestId
+  });
+});
+
+// 現在のユーザー情報取得エンドポイント
+apiRouter.get('/auth/me', (req, res) => {
+  if (req.session && req.session.user) {
+    res.json({
+      success: true,
+      user: req.session.user
+    });
+  } else {
+    res.status(401).json({
+      success: false,
+      error: 'not_authenticated',
+      message: '認証されていません'
+    });
+  }
+});
+
+// 権限チェック用ミドルウェア
+function requireRole(requiredRole) {
+  return (req, res, next) => {
+    if (!req.session || !req.session.user) {
+      return res.status(401).json({
+        success: false,
+        error: 'not_authenticated',
+        message: '認証されていません'
+      });
+    }
+
+    const userRole = req.session.user.role;
+    
+    // 管理者は全ての権限を持つ
+    if (userRole === 'admin') {
+      return next();
+    }
+    
+    // 必要な権限をチェック
+    if (userRole !== requiredRole) {
+      return res.status(403).json({
+        success: false,
+        error: 'insufficient_permissions',
+        message: `この操作には${requiredRole}権限が必要です。現在の権限: ${userRole}`
+      });
+    }
+    
+    next();
+  };
+}
+
+// 管理者権限チェックエンドポイント
+apiRouter.get('/auth/check-admin', requireRole('admin'), (req, res) => {
+  res.json({
+    success: true,
+    message: '管理者権限が確認されました',
+    user: req.session.user
+  });
+});
+
+// 一般ユーザー権限チェックエンドポイント
+apiRouter.get('/auth/check-employee', requireRole('employee'), (req, res) => {
+  res.json({
+    success: true,
+    message: '従業員権限が確認されました',
+    user: req.session.user
+  });
+});
+
+// ログアウトエンドポイント
+apiRouter.post('/auth/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('[auth/logout] Session destroy error:', err);
+      return res.status(500).json({
+        success: false,
+        error: 'logout_failed',
+        message: 'ログアウトに失敗しました'
+      });
+    }
+    
+    res.clearCookie('connect.sid');
+    res.json({
+      success: true,
+      message: 'ログアウトしました'
+    });
+  });
+});
 
 // Ping endpoint
 apiRouter.get('/ping', (req, res) => {
@@ -1112,6 +1447,117 @@ apiRouter.get('/emergency-flows', async (req, res) => {
   }
 });
 
+// 応急処置フローAPI（単数形 - クライアント互換性のため）
+apiRouter.get('/emergency-flow/list', async (req, res) => {
+  try {
+    console.log('[api/emergency-flow/list] 応急処置フロー一覧取得リクエスト');
+    
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    
+    if (isDevelopment) {
+      // ローカル開発環境ではknowledge-base/troubleshootingディレクトリからファイルを読み込み
+      const troubleshootingPath = path.join(__dirname, '..', 'knowledge-base', 'troubleshooting');
+      
+      try {
+        const files = fs.readdirSync(troubleshootingPath);
+        const jsonFiles = files.filter(file => file.endsWith('.json'));
+        
+        const flowList = jsonFiles.map(file => {
+          const filePath = path.join(troubleshootingPath, file);
+          const stats = fs.statSync(filePath);
+          
+          return {
+            id: file.replace('.json', ''),
+            name: file.replace('.json', ''),
+            filename: file,
+            size: stats.size,
+            modified: stats.mtime.toISOString(),
+            created: stats.birthtime.toISOString()
+          };
+        });
+        
+        console.log(`[api/emergency-flow/list] ${flowList.length}個のフローファイルを発見`);
+        
+        res.json({
+          success: true,
+          data: flowList,
+          message: `ローカル開発環境から${flowList.length}個のフローファイルを取得しました`,
+          timestamp: new Date().toISOString()
+        });
+      } catch (fsError) {
+        console.warn('[api/emergency-flow/list] ファイル読み込みエラー:', fsError.message);
+        res.json({
+          success: true,
+          data: [],
+          message: 'フローファイルが見つかりません',
+          timestamp: new Date().toISOString()
+        });
+      }
+    } else {
+      res.json({
+        success: true,
+        data: [],
+        message: '本番環境の応急処置フロー取得機能は実装中です',
+        timestamp: new Date().toISOString()
+      });
+    }
+  } catch (error) {
+    console.error('[api/emergency-flow/list] 応急処置フロー一覧取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '応急処置フロー一覧の取得に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// RAG設定API
+apiRouter.get('/settings/rag', async (req, res) => {
+  try {
+    console.log('[api/settings/rag] RAG設定取得リクエスト');
+    
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    
+    if (isDevelopment) {
+      // ローカル開発環境ではデフォルト設定を返す
+      res.json({
+        success: true,
+        data: {
+          enabled: true,
+          model: 'gpt-3.5-turbo',
+          temperature: 0.7,
+          maxTokens: 1000,
+          knowledgeBasePath: 'knowledge-base',
+          troubleshootingPath: 'knowledge-base/troubleshooting'
+        },
+        message: 'ローカル開発環境のRAG設定を取得しました',
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      res.json({
+        success: true,
+        data: {
+          enabled: true,
+          model: 'gpt-3.5-turbo',
+          temperature: 0.7,
+          maxTokens: 1000
+        },
+        message: '本番環境のRAG設定を取得しました',
+        timestamp: new Date().toISOString()
+      });
+    }
+  } catch (error) {
+    console.error('[api/settings/rag] RAG設定取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'RAG設定の取得に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // チャット履歴保存API
 apiRouter.post('/chat-history', async (req, res) => {
   try {
@@ -1380,32 +1826,11 @@ apiRouter.post('/gpt-check', async (req, res) => {
   try {
     console.log('[api/gpt-check] GPT接続チェックリクエスト');
 
-    // 実際のチャット機能と同じ方法でOpenAIクライアントの状態を確認
-    const { getOpenAIClientStatus, processOpenAIRequest } = await import('./lib/openai.js');
-    const clientStatus = getOpenAIClientStatus();
-    
-    console.log('[api/gpt-check] OpenAI Client Status:', clientStatus);
-
     const isDevelopment = process.env.NODE_ENV === 'development';
+    const openaiApiKey = process.env.OPENAI_API_KEY;
 
-    // クライアントが存在しない場合
-    if (!clientStatus.clientExists) {
-      console.log('[api/gpt-check] OpenAIクライアントが初期化されていません');
-      res.json({
-        success: false,
-        status: 'ERROR',
-        connected: false,
-        error: 'OpenAIクライアントが初期化されていません',
-        message: 'OpenAI APIキーが設定されていないか、無効な形式です。設定画面でAPIキーを設定してください。',
-        details: clientStatus,
-        environment: isDevelopment ? 'development' : 'production',
-        timestamp: new Date().toISOString()
-      });
-      return;
-    }
-
-    // APIキーが存在しない場合
-    if (!clientStatus.apiKeyExists) {
+    // APIキーの存在チェック
+    if (!openaiApiKey) {
       console.log('[api/gpt-check] OpenAI APIキーが設定されていません');
       res.json({
         success: false,
@@ -1419,8 +1844,10 @@ apiRouter.post('/gpt-check', async (req, res) => {
       return;
     }
 
-    // モックキーの場合
-    if (clientStatus.isMockKey) {
+    // モックキーのチェック
+    if (openaiApiKey === 'sk-CHANGE_THIS_TO_YOUR_ACTUAL_OPENAI_API_KEY' || 
+        openaiApiKey === 'dev-mock-key' || 
+        openaiApiKey === 'your-openai-api-key-here') {
       console.log('[api/gpt-check] OpenAI APIキーがモックキーです');
       res.json({
         success: false,
@@ -1434,15 +1861,15 @@ apiRouter.post('/gpt-check', async (req, res) => {
       return;
     }
 
-    // APIキーの形式が無効な場合
-    if (!clientStatus.startsWithSk) {
+    // APIキーの形式チェック
+    if (!openaiApiKey.startsWith('sk-')) {
       console.log('[api/gpt-check] OpenAI APIキーの形式が無効です');
       res.json({
         success: false,
         status: 'ERROR',
         connected: false,
         error: 'OpenAI APIキーが無効です',
-        message: `OpenAI APIキーの形式が正しくありません。現在の値: ${clientStatus.apiKeyPrefix} (sk-で始まる必要があります)`,
+        message: `OpenAI APIキーの形式が正しくありません。現在の値: ${openaiApiKey.substring(0, 10)}... (sk-で始まる必要があります)`,
         environment: isDevelopment ? 'development' : 'production',
         timestamp: new Date().toISOString()
       });
@@ -1452,8 +1879,18 @@ apiRouter.post('/gpt-check', async (req, res) => {
     try {
       console.log('[api/gpt-check] OpenAI API接続テスト開始');
       
-      // 実際のチャット機能と同じ方法でAPI接続テスト
-      const testResponse = await processOpenAIRequest('Hello', false);
+      // OpenAIクライアントを初期化
+      const { default: OpenAI } = await import('openai');
+      const openai = new OpenAI({
+        apiKey: openaiApiKey,
+      });
+
+      // 簡単なテストリクエストを送信
+      const testResponse = await openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [{ role: 'user', content: 'Hello' }],
+        max_tokens: 10
+      });
 
       console.log('[api/gpt-check] OpenAI API接続テスト成功');
 
@@ -1462,7 +1899,7 @@ apiRouter.post('/gpt-check', async (req, res) => {
         status: 'OK',
         connected: true,
         message: 'GPT接続が正常です',
-        testResponse: testResponse.substring(0, 100) + '...',
+        testResponse: testResponse.choices[0]?.message?.content || 'テストレスポンス取得',
         environment: isDevelopment ? 'development' : 'production',
         timestamp: new Date().toISOString()
       });

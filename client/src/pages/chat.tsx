@@ -1468,8 +1468,8 @@ export default function ChatPage() {
 
   return (
     <div className='flex flex-col h-screen bg-gray-50'>
-      {/* ヘッダー */}
-      <div className='bg-white border-b px-4 py-3 flex items-center justify-between'>
+      {/* ヘッダー - 固定表示 */}
+      <div className='sticky top-0 z-50 bg-white border-b px-4 py-3 flex items-center justify-between shadow-sm'>
         {/* 左側：機種・機械番号選択 */}
         <div className='flex items-center gap-4'>
           <div className='flex items-center gap-2'>
@@ -1775,7 +1775,7 @@ export default function ChatPage() {
         /* 通常チャットモード */
         <>
           {/* メッセージ表示エリア */}
-          <div className='flex-1 overflow-y-auto p-4 space-y-4'>
+          <div className='flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth'>
             {messages.map(message => (
               <div
                 key={message.id}
@@ -1825,6 +1825,9 @@ export default function ChatPage() {
                 </div>
               </div>
             )}
+            
+            {/* スクロール用の余白 */}
+            <div ref={messagesEndRef} className='h-4' />
           </div>
 
           {/* メッセージ入力エリア（通常チャットモード） */}
