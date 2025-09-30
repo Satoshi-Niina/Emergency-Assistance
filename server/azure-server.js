@@ -6,8 +6,52 @@
 
 import express from 'express';
 import cors from 'cors';
+import { Pool } from 'pg';
 
 const app = express();
+
+// データベース接続プール
+let dbPool = null;
+
+// データベース接続初期化
+function initializeDatabase() {
+  if (!process.env.DATABASE_URL) {
+    console.warn('⚠️ DATABASE_URL is not set - running without database');
+    return;
+  }
+
+  try {
+    const sslConfig = process.env.PG_SSL === 'require' 
+      ? { require: true, rejectUnauthorized: false }
+      : process.env.PG_SSL === 'disable' 
+      ? false 
+      : { rejectUnauthorized: false };
+
+    dbPool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: sslConfig,
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+    });
+
+    console.log('✅ Database pool initialized for Azure production');
+    
+    // 接続テスト
+    dbPool.query('SELECT NOW()', (err, result) => {
+      if (err) {
+        console.warn('⚠️ Database connection test failed:', err.message);
+      } else {
+        console.log('✅ Database connection test successful:', result.rows[0]);
+      }
+    });
+  } catch (error) {
+    console.error('❌ Database initialization failed:', error);
+  }
+}
+
+// データベース接続を初期化
+initializeDatabase();
 
 // Azure App Service用のCORS設定
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net';
@@ -224,31 +268,72 @@ app.get('/api/storage/image-url', (req, res) => {
 });
 
 // 9. ユーザー管理API
-app.get('/api/users', (req, res) => {
-  res.json({
-    success: true,
-    data: [
-      { id: 'admin-001', username: 'admin', role: 'admin', displayName: '管理者' },
-      { id: 'niina-001', username: 'niina', role: 'admin', displayName: 'Niina' },
-      { id: 'takabeni1-001', username: 'takabeni1', role: 'admin', displayName: 'Takabeni1' },
-      { id: 'takabeni2-001', username: 'takabeni2', role: 'employee', displayName: 'Takabeni2' },
-      { id: 'employee-001', username: 'employee', role: 'employee', displayName: '一般ユーザー' }
-    ],
-    message: 'ユーザー一覧を取得しました（本番環境ではモックデータ）'
-  });
+app.get('/api/users', async (req, res) => {
+  try {
+    if (!dbPool) {
+      return res.json({
+        success: true,
+        data: [
+          { id: 'admin-001', username: 'admin', role: 'admin', displayName: '管理者' },
+          { id: 'niina-001', username: 'niina', role: 'admin', displayName: 'Niina' },
+          { id: 'takabeni1-001', username: 'takabeni1', role: 'admin', displayName: 'Takabeni1' },
+          { id: 'takabeni2-001', username: 'takabeni2', role: 'employee', displayName: 'Takabeni2' },
+          { id: 'employee-001', username: 'employee', role: 'employee', displayName: '一般ユーザー' }
+        ],
+        message: 'ユーザー一覧を取得しました（データベース未接続）'
+      });
+    }
+
+    const result = await dbPool.query('SELECT id, username, role, display_name FROM users ORDER BY username');
+    res.json({
+      success: true,
+      data: result.rows.map(row => ({
+        id: row.id,
+        username: row.username,
+        role: row.role,
+        displayName: row.display_name || row.username
+      })),
+      message: 'ユーザー一覧を取得しました（データベース接続済み）'
+    });
+  } catch (error) {
+    console.error('[api/users] エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'ユーザー一覧の取得に失敗しました',
+      message: error.message
+    });
+  }
 });
 
 // 10. 機種一覧API
-app.get('/api/machines/machine-types', (req, res) => {
-  res.json({
-    success: true,
-    data: [
-      { id: '1', name: 'ディーゼル機関車', type: 'locomotive' },
-      { id: '2', name: '電車', type: 'train' },
-      { id: '3', name: '保線機械', type: 'maintenance' }
-    ],
-    message: '機種一覧を取得しました（本番環境ではモックデータ）'
-  });
+app.get('/api/machines/machine-types', async (req, res) => {
+  try {
+    if (!dbPool) {
+      return res.json({
+        success: true,
+        data: [
+          { id: '1', name: 'ディーゼル機関車', type: 'locomotive' },
+          { id: '2', name: '電車', type: 'train' },
+          { id: '3', name: '保線機械', type: 'maintenance' }
+        ],
+        message: '機種一覧を取得しました（データベース未接続）'
+      });
+    }
+
+    const result = await dbPool.query('SELECT id, name, type FROM machine_types ORDER BY name');
+    res.json({
+      success: true,
+      data: result.rows,
+      message: '機種一覧を取得しました（データベース接続済み）'
+    });
+  } catch (error) {
+    console.error('[api/machines/machine-types] エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '機種一覧の取得に失敗しました',
+      message: error.message
+    });
+  }
 });
 
 // 11. 機械番号一覧API（機種ID指定）
@@ -398,18 +483,50 @@ app.get('/api/history', (req, res) => {
 });
 
 // 23. データベース接続チェックAPI
-app.get('/api/db-check', (req, res) => {
-  res.json({
-    success: true,
-    connected: false,
-    message: 'データベース接続チェック（本番環境では無効です）',
-    details: {
-      environment: 'azure-production',
-      database: 'not_configured',
-      ssl: 'not_configured'
-    },
-    timestamp: new Date().toISOString()
-  });
+app.get('/api/db-check', async (req, res) => {
+  try {
+    if (!dbPool) {
+      return res.json({
+        success: true,
+        connected: false,
+        message: 'データベース接続チェック（DATABASE_URL未設定）',
+        details: {
+          environment: 'azure-production',
+          database: 'not_configured',
+          ssl: 'not_configured'
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const result = await dbPool.query('SELECT NOW() as current_time, version() as version');
+    res.json({
+      success: true,
+      connected: true,
+      message: 'データベース接続チェック成功',
+      details: {
+        environment: 'azure-production',
+        database: 'connected',
+        ssl: process.env.PG_SSL || 'prefer',
+        current_time: result.rows[0].current_time,
+        version: result.rows[0].version
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/db-check] エラー:', error);
+    res.status(500).json({
+      success: false,
+      connected: false,
+      message: 'データベース接続チェック失敗',
+      details: {
+        environment: 'azure-production',
+        database: 'connection_failed',
+        error: error.message
+      },
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // 24. GPT接続チェックAPI
