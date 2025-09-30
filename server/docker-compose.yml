@@ -21,9 +21,26 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    # ファイル変更時の自動再ビルド
-    labels:
-      - "com.docker.compose.watch=true"
+    # Docker Compose Watch機能で自動更新
+    develop:
+      watch:
+        - action: rebuild
+          path: .
+          ignore:
+            - node_modules/
+            - dist/
+            - logs/
+            - uploads/
+            - temp/
+        - action: sync
+          path: .
+          target: /app
+          ignore:
+            - node_modules/
+            - dist/
+            - logs/
+            - uploads/
+            - temp/
     # 開発用の設定
     command: >
       sh -c "
