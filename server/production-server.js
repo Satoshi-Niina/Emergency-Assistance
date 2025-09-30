@@ -85,7 +85,10 @@ const healthCheck = async (req, res) => {
       timestamp: new Date().toISOString(),
       database: dbStatus,
       environment: process.env.NODE_ENV || 'development',
-      service: 'Emergency Assistance Backend'
+      service: 'Emergency Assistance Backend',
+      nodeVersion: process.version,
+      app: 'ok',
+      dbStatus: dbStatus
     });
   } catch (error) {
     console.error('❌ Health check failed:', error);
@@ -130,6 +133,49 @@ app.get('/api/healthz', healthCheck);
 app.get('/health', healthCheck);
 app.get('/healthz', healthCheck);
 app.get('/ping', pingCheck);
+
+// Additional health endpoint with more details
+app.get('/api/health/detailed', (req, res) => {
+  try {
+    let dbStatus = 'not_initialized';
+    if (dbPool) {
+      try {
+        dbPool.query('SELECT NOW()');
+        dbStatus = 'connected';
+      } catch (dbError) {
+        dbStatus = 'error';
+      }
+    }
+    
+    res.status(200).json({
+      ok: true,
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      nodeVersion: process.version,
+      environment: process.env.NODE_ENV || 'development',
+      platform: process.platform,
+      arch: process.arch,
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      database: dbStatus,
+      appSettings: {
+        WEBSITE_NODE_DEFAULT_VERSION: process.env.WEBSITE_NODE_DEFAULT_VERSION || 'not_set',
+        NODE_ENV: process.env.NODE_ENV || 'not_set',
+        PORT: process.env.PORT || 'not_set',
+        FRONTEND_URL: process.env.FRONTEND_URL || 'not_set'
+      },
+      service: 'Emergency Assistance Backend'
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      status: 'unhealthy',
+      error: error.message,
+      timestamp: new Date().toISOString(),
+      service: 'Emergency Assistance Backend'
+    });
+  }
+});
 
 // ② CORS：Originなしは許可、未許可は "false" を返す（throw しない）
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net';
@@ -1821,11 +1867,17 @@ apiRouter.get('/_diag/routes', (req, res) => {
 apiRouter.get('/_diag/env', (req, res) => {
   function mark(k){ return process.env[k] ? 'SET' : 'UNSET'; }
   res.json({
+    NODE_ENV: process.env.NODE_ENV || '(empty)',
+    NODE_VERSION: process.version,
+    WEBSITE_NODE_DEFAULT_VERSION: process.env.WEBSITE_NODE_DEFAULT_VERSION || '(empty)',
+    FRONTEND_URL: process.env.FRONTEND_URL || '(empty)',
+    PORT: process.env.PORT || '(empty)',
     STORAGE_BASE_PREFIX: process.env.STORAGE_BASE_PREFIX || '(empty)',
     AZURE_STORAGE_CONNECTION_STRING: mark('AZURE_STORAGE_CONNECTION_STRING'),
     AZURE_STORAGE_CONTAINER_NAME: process.env.AZURE_STORAGE_CONTAINER_NAME || '(empty)',
-    FRONTEND_URL: process.env.FRONTEND_URL || '(empty)',
-    NODE_ENV: process.env.NODE_ENV || '(empty)'
+    JWT_SECRET: mark('JWT_SECRET'),
+    SESSION_SECRET: mark('SESSION_SECRET'),
+    DATABASE_URL: mark('DATABASE_URL')
   });
 });
 
@@ -1877,16 +1929,17 @@ app.use('*', (req, res) => {
 });
 
 // Start server
-const PORT = Number(process.env.PORT?.trim() || '8000');
+const port = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
 
-const server = app.listen(PORT, HOST, () => {
-  console.log(`🚀 Server running on ${HOST}:${PORT}`);
+const server = app.listen(port, HOST, () => {
+  console.log(`🚀 Server running on ${HOST}:${port}`);
   console.log(`📊 Health check endpoints:`);
-  console.log(`   - http://${HOST}:${PORT}/api/health`);
-  console.log(`   - http://${HOST}:${PORT}/api/healthz`);
-  console.log(`   - http://${HOST}:${PORT}/ping`);
-  console.log(`🔐 Login API: http://${HOST}:${PORT}/api/auth/login`);
+  console.log(`   - http://${HOST}:${port}/api/health`);
+  console.log(`   - http://${HOST}:${port}/api/health/detailed`);
+  console.log(`   - http://${HOST}:${port}/api/ping`);
+  console.log(`   - http://${HOST}:${port}/api/_diag/env`);
+  console.log(`🔐 Login API: http://${HOST}:${port}/api/auth/login`);
   console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔍 Database URL configured: ${process.env.DATABASE_URL ? 'YES' : 'NO'}`);
   console.log(`🔑 JWT Secret configured: ${process.env.JWT_SECRET ? 'YES' : 'NO'}`);
@@ -1895,17 +1948,19 @@ const server = app.listen(PORT, HOST, () => {
   console.log(`📁 Working directory: ${process.cwd()}`);
   console.log(`📄 Main file: ${__filename}`);
   console.log(`⏰ Start time: ${new Date().toISOString()}`);
+  console.log(`🔧 Node version: ${process.version}`);
+  console.log(`🌐 Platform: ${process.platform}`);
   
-  // 起動後のヘルスチェックテスト（復活）
+  // 起動後のヘルスチェックテスト
   setTimeout(async () => {
     console.log('🔍 Testing health endpoints...');
-    const testEndpoints = ['/api/health', '/api/healthz', '/ping'];
+    const testEndpoints = ['/api/health', '/api/health/detailed', '/api/ping'];
     const http = await import('http');
     
     for (const endpoint of testEndpoints) {
       const options = {
         hostname: HOST,
-        port: PORT,
+        port: port,
         path: endpoint,
         method: 'GET',
         timeout: 5000
@@ -1960,10 +2015,10 @@ process.on('SIGINT', () => {
 // Handle port already in use error
 server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
-    console.error(`❌ Port ${PORT} is already in use. Please check for running processes:`);
-    console.error(`   Windows: netstat -ano | findstr :${PORT}`);
-    console.error(`   Then kill the process: taskkill /PID <PID> /F`);
-    console.error(`   Or use a different port by setting PORT environment variable`);
+    console.error(`❌ Port ${port} is already in use. Please check for running processes:`);
+    console.error(`   Windows: netstat -ano | findstr :${port}`);
+    console.error(`   Linux: lsof -i :${port}`);
+    console.error(`   Then kill the process or use a different port by setting PORT environment variable`);
     process.exit(1);
   } else {
     console.error('Server error:', err);

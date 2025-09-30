@@ -20,10 +20,11 @@ on:
   workflow_dispatch:
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '20.x'
   AZURE_WEBAPP_NAME: 'emergencyassistance-sv-fbanemhrbshuf9bd'
   AZURE_WEBAPP_PACKAGE_PATH: 'server'
   NODE_ENV: 'production'
+  AZURE_RESOURCE_GROUP: 'emergency-assistance-rg'
 
 jobs:
   build-and-deploy:
@@ -37,6 +38,7 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
         
     - name: Clean install dependencies
       run: |
@@ -63,20 +65,16 @@ jobs:
         echo "Cleaning existing Azure Web App files..."
         # Azure Web App deployment automatically replaces all files
         
-    - name: Prepare deployment package
+    - name: Prepare deployment package (Oryx Build)
       run: |
-        echo "Preparing deployment package for Azure App Service Windows..."
+        echo "Preparing deployment package for Azure App Service Linux (Oryx Build)..."
         
         # Copy shared build to server
         cp -r shared/dist server/
         
-        # Clean and reinstall server dependencies
+        # For Oryx build, we only need source files
+        # Dependencies will be installed by Oryx during deployment
         cd server
-        echo "Cleaning server node_modules..."
-        rm -rf node_modules package-lock.json
-        
-        echo "Installing server dependencies..."
-        npm install --omit=dev --no-optional --engine-strict=false
         
         echo "Setting up environment variables..."
         echo "NODE_ENV=production" > .env
@@ -84,60 +82,32 @@ jobs:
         echo "JWT_SECRET=emergency-assistance-jwt-secret-key-32chars-minimum" >> .env
         echo "SESSION_SECRET=emergency-assistance-session-secret-32chars-minimum" >> .env
         echo "FRONTEND_URL=https://witty-river-012f39e00.1.azurestaticapps.net" >> .env
-        echo "WEBSITES_NODE_DEFAULT_VERSION=20.19.3" >> .env
-        echo "NODEJS_VERSION=20.19.3" >> .env
-        echo "NODE_VERSION=20.19.3" >> .env
+        echo "WEBSITE_NODE_DEFAULT_VERSION=~20" >> .env
+        echo "NODEJS_VERSION=20" >> .env
+        echo "NODE_VERSION=20" >> .env
         
-        echo "Copying startup scripts..."
-        if [ -f "../startup.sh" ]; then
-          cp ../startup.sh .
-          chmod +x startup.sh
-          echo "✅ startup.sh copied successfully"
-        else
-          echo "⚠️  startup.sh not found, creating simple version"
-          echo '#!/bin/bash' > startup.sh
-          echo 'export NODE_ENV=production' >> startup.sh
-          echo 'export PORT=8080' >> startup.sh
-          echo 'export JWT_SECRET=emergency-assistance-jwt-secret-key-32chars-minimum' >> startup.sh
-          echo 'export SESSION_SECRET=emergency-assistance-session-secret-32chars-minimum' >> startup.sh
-          echo 'export FRONTEND_URL=https://witty-river-012f39e00.1.azurestaticapps.net' >> startup.sh
-          echo 'echo "🚀 Starting application..."' >> startup.sh
-          echo 'node production-server.js' >> startup.sh
-          chmod +x startup.sh
-        fi
-        
-        if [ -f "../simple-startup.sh" ]; then
-          cp ../simple-startup.sh .
-          chmod +x simple-startup.sh
-          echo "✅ simple-startup.sh copied successfully"
-        else
-          echo "⚠️  simple-startup.sh not found, creating simple version"
-          echo '#!/bin/bash' > simple-startup.sh
-          echo 'export NODE_ENV=production' >> simple-startup.sh
-          echo 'export PORT=8080' >> simple-startup.sh
-          echo 'export JWT_SECRET=emergency-assistance-jwt-secret-key-32chars-minimum' >> simple-startup.sh
-          echo 'export SESSION_SECRET=emergency-assistance-session-secret-32chars-minimum' >> simple-startup.sh
-          echo 'export FRONTEND_URL=https://witty-river-012f39e00.1.azurestaticapps.net' >> simple-startup.sh
-          echo 'echo "🚀 Starting application..."' >> simple-startup.sh
-          echo 'node production-server.js' >> simple-startup.sh
-          chmod +x simple-startup.sh
-        fi
-        
-        echo "Verifying critical packages..."
-        ls -la node_modules/express/ || echo "❌ Express not found"
-        ls -la node_modules/cors/ || echo "❌ CORS not found"
-        ls -la node_modules/pg/ || echo "❌ PG not found"
-        
-        echo "Checking package.json..."
-        cat package.json | grep -A 5 -B 5 "start"
-        
-        echo "Verifying routes directory..."
+        echo "Verifying source files..."
+        ls -la production-server.js || echo "❌ production-server.js not found"
+        ls -la package.json || echo "❌ package.json not found"
         ls -la routes/ || echo "❌ Routes directory not found"
-        ls -la routes/index.js || echo "❌ routes/index.js not found"
         
         echo "Final package structure:"
         ls -la
         cd ..
+        
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        
+    - name: Configure Azure App Service Node Version
+      run: |
+        echo "Setting Azure App Service Node version to 20..."
+        az webapp config appsettings set \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }} \
+          --settings WEBSITE_NODE_DEFAULT_VERSION=~20 \
+          --output table
         
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v2
@@ -196,12 +166,24 @@ jobs:
         
         # 2. Health endpoint test
         echo "2. Testing health endpoint..."
-        curl -f --max-time 60 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net/api/health || {
+        HEALTH_RESPONSE=$(curl -s --max-time 60 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net/api/health)
+        if [ $? -eq 0 ]; then
+          echo "✅ Health endpoint successful"
+          echo "Health response: $HEALTH_RESPONSE"
+          # Check if Node version is 20.x
+          NODE_VERSION=$(echo "$HEALTH_RESPONSE" | grep -o '"nodeVersion":"[^"]*"' | cut -d'"' -f4)
+          if [[ "$NODE_VERSION" == v20* ]]; then
+            echo "✅ Node version is correct: $NODE_VERSION"
+          else
+            echo "❌ Node version is incorrect: $NODE_VERSION (expected v20.x)"
+            exit 1
+          fi
+        else
           echo "❌ Health endpoint failed"
           echo "🔍 Checking if app is starting up..."
           curl -I --max-time 30 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net || echo "❌ App Service not responding"
           exit 1
-        }
+        fi
         
         # 3. API endpoints test
         echo "3. Testing API endpoints..."
@@ -211,6 +193,26 @@ jobs:
           curl -I --max-time 30 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net || echo "❌ App Service not responding"
           exit 1
         }
+        
+        # 4. Detailed health check
+        echo "4. Testing detailed health endpoint..."
+        DETAILED_RESPONSE=$(curl -s --max-time 60 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net/api/health/detailed)
+        if [ $? -eq 0 ]; then
+          echo "✅ Detailed health check successful"
+          echo "Detailed response: $DETAILED_RESPONSE"
+        else
+          echo "⚠️ Detailed health check failed, but basic health check passed"
+        fi
+        
+        # 5. Environment variables check
+        echo "5. Testing environment variables endpoint..."
+        ENV_RESPONSE=$(curl -s --max-time 60 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net/api/_diag/env)
+        if [ $? -eq 0 ]; then
+          echo "✅ Environment variables check successful"
+          echo "Environment response: $ENV_RESPONSE"
+        else
+          echo "⚠️ Environment variables check failed"
+        fi
         
         echo "✅ All health checks passed!"
         echo "🚀 Application is ready for production use"
