@@ -9,12 +9,49 @@ import cors from 'cors';
 const app = express();
 
 // Azure App Service用のCORS設定
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net';
+const ALLOWED_ORIGINS = [
+  FRONTEND_URL,
+  'https://witty-river-012f39e00.1.azurestaticapps.net',
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5175',
+  'http://localhost:5176',
+  'http://localhost:5177',
+  'http://localhost:5178',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+  'http://127.0.0.1:5175',
+  'http://127.0.0.1:5176',
+  'http://127.0.0.1:5177',
+  'http://127.0.0.1:5178'
+];
+
 app.use(cors({
-  origin: 'https://witty-river-012f39e00.1.azurestaticapps.net',
+  origin: (origin, callback) => {
+    console.log('🔍 CORS Origin check:', { origin, allowed: ALLOWED_ORIGINS.includes(origin) });
+    
+    // 開発環境では localhost をすべて許可
+    if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return callback(null, true);
+    }
+    
+    // 許可されたオリジンのチェック
+    if (ALLOWED_ORIGINS.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    console.log('❌ CORS Origin rejected:', origin);
+    return callback(null, false);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cache-Control', 'Pragma', 'Expires', 'Cookie'],
+  optionsSuccessStatus: 200
 }));
+
+// プリフライトリクエストの明示的な処理
+app.options('*', cors());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
