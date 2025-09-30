@@ -7,13 +7,36 @@
 import express from 'express';
 import cors from 'cors';
 import { Pool } from 'pg';
+import { BlobServiceClient, generateBlobSASQueryParameters, BlobSASPermissions } from '@azure/storage-blob';
 
 const app = express();
+
+// BLOBストレージ関連の設定
+const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
+
+// BLOBサービスクライアントの初期化
+const getBlobServiceClient = () => {
+  if (!connectionString) {
+    throw new Error('AZURE_STORAGE_CONNECTION_STRING is not configured');
+  }
+  return BlobServiceClient.fromConnectionString(connectionString);
+};
+
+// パス正規化ヘルパー
+const BASE = (process.env.STORAGE_BASE_PREFIX ?? 'knowledge-base')
+  .replace(/^[\\/]+|[\\/]+$/g, '');
+const norm = (p) =>
+  [BASE, String(p || '')]
+    .filter(Boolean)
+    .join('/')
+    .replace(/\\+/g, '/')
+    .replace(/\/+/g, '/');
 
 // データベース接続プール
 let dbPool = null;
 
-// データベース接続初期化
+// データベース接続初期化（改善版）
 function initializeDatabase() {
   if (!process.env.DATABASE_URL) {
     console.warn('⚠️ DATABASE_URL is not set - running without database');
@@ -21,8 +44,12 @@ function initializeDatabase() {
   }
 
   try {
+    console.log('🔗 Initializing database connection...');
+    console.log('📊 DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Not set');
+    console.log('🔒 PG_SSL:', process.env.PG_SSL || 'not set');
+
     const sslConfig = process.env.PG_SSL === 'require' 
-      ? { require: true, rejectUnauthorized: false }
+      ? { rejectUnauthorized: false }
       : process.env.PG_SSL === 'disable' 
       ? false 
       : { rejectUnauthorized: false };
@@ -30,21 +57,29 @@ function initializeDatabase() {
     dbPool = new Pool({
       connectionString: process.env.DATABASE_URL,
       ssl: sslConfig,
-      max: 10,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 10000,
+      max: 3, // 接続数をさらに減らす
+      idleTimeoutMillis: 5000, // アイドルタイムアウトを短く
+      connectionTimeoutMillis: 60000, // 接続タイムアウトを長く
+      query_timeout: 60000, // クエリタイムアウトを長く
+      statement_timeout: 60000, // ステートメントタイムアウトを長く
+      keepAlive: true, // Keep-aliveを有効化
+      keepAliveInitialDelayMillis: 0, // Keep-alive初期遅延
     });
 
     console.log('✅ Database pool initialized for Azure production');
     
-    // 接続テスト
-    dbPool.query('SELECT NOW()', (err, result) => {
-      if (err) {
-        console.warn('⚠️ Database connection test failed:', err.message);
-      } else {
+    // 接続テスト（非同期で実行）
+    setTimeout(async () => {
+      try {
+        const client = await dbPool.connect();
+        const result = await client.query('SELECT NOW() as current_time, version() as version');
+        await client.release();
         console.log('✅ Database connection test successful:', result.rows[0]);
+      } catch (err) {
+        console.warn('⚠️ Database connection test failed:', err.message);
+        console.warn('⚠️ Error details:', err);
       }
-    });
+    }, 1000);
   } catch (error) {
     console.error('❌ Database initialization failed:', error);
   }
@@ -604,34 +639,402 @@ app.get('/api/machines/machines', async (req, res) => {
   }
 });
 
+// BLOBストレージ関連API
+
+// ファイル一覧取得API
+app.get('/api/storage/list', async (req, res) => {
+  try {
+    const prefix = req.query.prefix;
+    if (!prefix) {
+      return res.status(400).json({
+        error: 'prefix parameter is required'
+      });
+    }
+
+    console.log('🔍 Storage list request:', { prefix });
+
+    if (!connectionString) {
+      console.warn('⚠️ Azure Storage not configured, returning empty list');
+      return res.json([]);
+    }
+
+    const blobServiceClient = getBlobServiceClient();
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    
+    const listOptions = {
+      prefix: norm(prefix)
+    };
+
+    const blobs = [];
+    for await (const blob of containerClient.listBlobsFlat(listOptions)) {
+      blobs.push({
+        name: blob.name,
+        size: blob.properties.contentLength,
+        lastModified: blob.properties.lastModified,
+        contentType: blob.properties.contentType
+      });
+    }
+
+    console.log(`📁 Found ${blobs.length} blobs with prefix: ${prefix}`);
+    res.json(blobs);
+  } catch (error) {
+    console.error('❌ Storage list error:', error);
+    res.status(500).json({
+      error: 'storage_list_error',
+      message: error.message
+    });
+  }
+});
+
+// ファイル内容取得API
+app.get('/api/storage/get', async (req, res) => {
+  try {
+    const name = req.query.name;
+    if (!name) {
+      return res.status(400).json({
+        error: 'name parameter is required'
+      });
+    }
+
+    console.log('📄 Storage get request:', { name });
+
+    if (!connectionString) {
+      return res.status(500).json({
+        error: 'Azure Storage not configured'
+      });
+    }
+
+    const blobServiceClient = getBlobServiceClient();
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const blockBlobClient = containerClient.getBlockBlobClient(norm(name));
+
+    const downloadResponse = await blockBlobClient.download();
+    
+    if (downloadResponse.readableStreamBody) {
+      const chunks = [];
+      for await (const chunk of downloadResponse.readableStreamBody) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      const content = Buffer.concat(chunks).toString('utf-8');
+      
+      // BOM除去
+      const cleanContent = content.replace(/^\uFEFF/, '');
+      
+      res.json({
+        success: true,
+        content: cleanContent,
+        name: name,
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      res.status(404).json({
+        error: 'File not found or empty'
+      });
+    }
+  } catch (error) {
+    console.error('❌ Storage get error:', error);
+    res.status(500).json({
+      error: 'storage_get_error',
+      message: error.message
+    });
+  }
+});
+
+// ファイル保存API
+app.post('/api/storage/save', async (req, res) => {
+  try {
+    const { name, content } = req.body;
+    if (!name || !content) {
+      return res.status(400).json({
+        error: 'name and content parameters are required'
+      });
+    }
+
+    console.log('💾 Storage save request:', { name, contentLength: content.length });
+
+    if (!connectionString) {
+      return res.status(500).json({
+        error: 'Azure Storage not configured'
+      });
+    }
+
+    const blobServiceClient = getBlobServiceClient();
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const blockBlobClient = containerClient.getBlockBlobClient(norm(name));
+
+    await blockBlobClient.upload(content, content.length, {
+      blobHTTPHeaders: {
+        blobContentType: 'application/json'
+      }
+    });
+
+    console.log(`✅ File saved: ${name}`);
+    res.json({
+      success: true,
+      message: 'File saved successfully',
+      name: name,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Storage save error:', error);
+    res.status(500).json({
+      error: 'storage_save_error',
+      message: error.message
+    });
+  }
+});
+
+// ファイル削除API
+app.delete('/api/storage/delete', async (req, res) => {
+  try {
+    const name = req.query.name;
+    if (!name) {
+      return res.status(400).json({
+        error: 'name parameter is required'
+      });
+    }
+
+    console.log('🗑️ Storage delete request:', { name });
+
+    if (!connectionString) {
+      return res.status(500).json({
+        error: 'Azure Storage not configured'
+      });
+    }
+
+    const blobServiceClient = getBlobServiceClient();
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const blockBlobClient = containerClient.getBlockBlobClient(norm(name));
+
+    await blockBlobClient.delete();
+
+    console.log(`✅ File deleted: ${name}`);
+    res.json({
+      success: true,
+      message: 'File deleted successfully',
+      name: name,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Storage delete error:', error);
+    res.status(500).json({
+      error: 'storage_delete_error',
+      message: error.message
+    });
+  }
+});
+
 // 17. ナレッジベースAPI
-app.get('/api/knowledge-base', (req, res) => {
-  res.json({
-    success: true,
-    data: [],
-    message: 'ナレッジベースデータを取得しました（本番環境では空です）',
-    timestamp: new Date().toISOString()
-  });
+app.get('/api/knowledge-base', async (req, res) => {
+  try {
+    console.log('[api/knowledge-base] ナレッジベース取得リクエスト');
+    
+    if (!connectionString) {
+      return res.json({
+        success: true,
+        data: [],
+        message: 'Azure Storage not configured',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const blobServiceClient = getBlobServiceClient();
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    
+    const listOptions = {
+      prefix: norm('documents/')
+    };
+
+    const documents = [];
+    for await (const blob of containerClient.listBlobsFlat(listOptions)) {
+      if (blob.name.endsWith('.json')) {
+        try {
+          const blockBlobClient = containerClient.getBlockBlobClient(blob.name);
+          const downloadResponse = await blockBlobClient.download();
+          
+          if (downloadResponse.readableStreamBody) {
+            const chunks = [];
+            for await (const chunk of downloadResponse.readableStreamBody) {
+              chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+            }
+            const content = Buffer.concat(chunks).toString('utf-8');
+            const cleanContent = content.replace(/^\uFEFF/, '');
+            const jsonData = JSON.parse(cleanContent);
+            
+            documents.push({
+              id: blob.name,
+              name: jsonData.title || jsonData.name || blob.name.split('/').pop(),
+              content: jsonData.content || jsonData.text || '',
+              type: jsonData.type || 'document',
+              createdAt: blob.properties.lastModified,
+              size: blob.properties.contentLength
+            });
+          }
+        } catch (error) {
+          console.warn(`⚠️ Failed to parse document ${blob.name}:`, error.message);
+        }
+      }
+    }
+
+    console.log('[api/knowledge-base] ナレッジベース取得成功:', documents.length + '件');
+
+    res.json({
+      success: true,
+      data: documents,
+      total: documents.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/knowledge-base] ナレッジベース取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'ナレッジベースの取得に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // 18. 応急処置フローAPI
-app.get('/api/emergency-flows', (req, res) => {
-  res.json({
-    success: true,
-    data: [],
-    message: '応急処置フローを取得しました（本番環境では空です）',
-    timestamp: new Date().toISOString()
-  });
+app.get('/api/emergency-flows', async (req, res) => {
+  try {
+    console.log('[api/emergency-flows] 応急処置フロー取得リクエスト');
+    
+    if (!connectionString) {
+      return res.json({
+        success: true,
+        data: [],
+        message: 'Azure Storage not configured',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const blobServiceClient = getBlobServiceClient();
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    
+    const listOptions = {
+      prefix: norm('flows/')
+    };
+
+    const flows = [];
+    for await (const blob of containerClient.listBlobsFlat(listOptions)) {
+      if (blob.name.endsWith('.json')) {
+        try {
+          const blockBlobClient = containerClient.getBlockBlobClient(blob.name);
+          const downloadResponse = await blockBlobClient.download();
+          
+          if (downloadResponse.readableStreamBody) {
+            const chunks = [];
+            for await (const chunk of downloadResponse.readableStreamBody) {
+              chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+            }
+            const content = Buffer.concat(chunks).toString('utf-8');
+            const cleanContent = content.replace(/^\uFEFF/, '');
+            const jsonData = JSON.parse(cleanContent);
+            
+            flows.push({
+              id: blob.name,
+              name: jsonData.name || jsonData.title || blob.name.split('/').pop(),
+              description: jsonData.description || '',
+              steps: jsonData.steps || [],
+              createdAt: blob.properties.lastModified,
+              updatedAt: blob.properties.lastModified
+            });
+          }
+        } catch (error) {
+          console.warn(`⚠️ Failed to parse flow ${blob.name}:`, error.message);
+        }
+      }
+    }
+
+    console.log('[api/emergency-flows] 応急処置フロー取得成功:', flows.length + '件');
+
+    res.json({
+      success: true,
+      data: flows,
+      total: flows.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/emergency-flows] 応急処置フロー取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '応急処置フローの取得に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // 19. 応急処置フローAPI（単数形 - クライアント互換性のため）
-app.get('/api/emergency-flow/list', (req, res) => {
-  res.json({
-    success: true,
-    data: [],
-    message: '応急処置フロー一覧を取得しました（本番環境では空です）',
-    timestamp: new Date().toISOString()
-  });
+app.get('/api/emergency-flow/list', async (req, res) => {
+  try {
+    console.log('[api/emergency-flow/list] 応急処置フロー一覧取得リクエスト');
+    
+    if (!connectionString) {
+      return res.json({
+        success: true,
+        data: [],
+        message: 'Azure Storage not configured',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const blobServiceClient = getBlobServiceClient();
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    
+    const listOptions = {
+      prefix: norm('flows/')
+    };
+
+    const flows = [];
+    for await (const blob of containerClient.listBlobsFlat(listOptions)) {
+      if (blob.name.endsWith('.json')) {
+        try {
+          const blockBlobClient = containerClient.getBlockBlobClient(blob.name);
+          const downloadResponse = await blockBlobClient.download();
+          
+          if (downloadResponse.readableStreamBody) {
+            const chunks = [];
+            for await (const chunk of downloadResponse.readableStreamBody) {
+              chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+            }
+            const content = Buffer.concat(chunks).toString('utf-8');
+            const cleanContent = content.replace(/^\uFEFF/, '');
+            const jsonData = JSON.parse(cleanContent);
+            
+            flows.push({
+              id: blob.name,
+              name: jsonData.name || jsonData.title || blob.name.split('/').pop(),
+              description: jsonData.description || '',
+              steps: jsonData.steps || [],
+              createdAt: blob.properties.lastModified,
+              updatedAt: blob.properties.lastModified
+            });
+          }
+        } catch (error) {
+          console.warn(`⚠️ Failed to parse flow ${blob.name}:`, error.message);
+        }
+      }
+    }
+
+    console.log('[api/emergency-flow/list] 応急処置フロー一覧取得成功:', flows.length + '件');
+
+    res.json({
+      success: true,
+      data: flows,
+      total: flows.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/emergency-flow/list] 応急処置フロー一覧取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '応急処置フロー一覧の取得に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // 20. RAG設定API
@@ -782,21 +1185,32 @@ app.get('/api/flows', async (req, res) => {
 // 23. データベース接続チェックAPI
 app.get('/api/db-check', async (req, res) => {
   try {
+    console.log('[api/db-check] データベース接続チェックリクエスト');
+    
     if (!dbPool) {
       return res.json({
         success: true,
         connected: false,
-        message: 'データベース接続チェック（DATABASE_URL未設定）',
+        message: 'データベース接続プールが初期化されていません',
         details: {
           environment: 'azure-production',
-          database: 'not_configured',
-          ssl: 'not_configured'
+          database: 'not_initialized',
+          ssl: process.env.PG_SSL || 'not_set',
+          database_url_set: !!process.env.DATABASE_URL
         },
         timestamp: new Date().toISOString()
       });
     }
 
-    const result = await dbPool.query('SELECT NOW() as current_time, version() as version');
+    // 接続タイムアウトを設定
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Database connection timeout')), 30000);
+    });
+
+    const queryPromise = dbPool.query('SELECT NOW() as current_time, version() as version');
+    
+    const result = await Promise.race([queryPromise, timeoutPromise]);
+    
     res.json({
       success: true,
       connected: true,
@@ -806,7 +1220,12 @@ app.get('/api/db-check', async (req, res) => {
         database: 'connected',
         ssl: process.env.PG_SSL || 'prefer',
         current_time: result.rows[0].current_time,
-        version: result.rows[0].version
+        version: result.rows[0].version,
+        pool_stats: {
+          totalCount: dbPool.totalCount,
+          idleCount: dbPool.idleCount,
+          waitingCount: dbPool.waitingCount
+        }
       },
       timestamp: new Date().toISOString()
     });
@@ -819,7 +1238,10 @@ app.get('/api/db-check', async (req, res) => {
       details: {
         environment: 'azure-production',
         database: 'connection_failed',
-        error: error.message
+        error: error.message,
+        error_type: error.constructor.name,
+        database_url_set: !!process.env.DATABASE_URL,
+        ssl_setting: process.env.PG_SSL || 'not_set'
       },
       timestamp: new Date().toISOString()
     });
