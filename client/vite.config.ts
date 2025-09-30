@@ -10,8 +10,18 @@ const __dirname = path.dirname(__filename);
 // https://vitejs.dev/config/
 export default defineConfig(({ command, mode }) => {
   // 本番安定化のためbaseを明示
-  // 環境変数を読み込み
+  // 環境変数を読み込み（productionモードの場合は明示的に指定）
+  const envFile = mode === 'production' ? '.env.production' : '.env';
   const env = loadEnv(mode, process.cwd(), '');
+  
+  // デバッグ用：環境変数の確認
+  console.log('🔍 環境変数デバッグ:', {
+    mode,
+    envFile,
+    VITE_API_BASE_URL: env.VITE_API_BASE_URL,
+    VITE_API_BASE: env.VITE_API_BASE,
+    NODE_ENV: env.NODE_ENV
+  });
 
   // APIのベースURLを環境変数から取得（VITE_API_BASEを使用）
   const apiBaseUrl =
