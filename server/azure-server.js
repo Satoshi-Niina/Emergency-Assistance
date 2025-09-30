@@ -1302,15 +1302,27 @@ app.get('/api/_diag/routes', (req, res) => {
 // 27. 診断用エンドポイント - 環境情報
 app.get('/api/_diag/env', (req, res) => {
   res.json({
-    NODE_ENV: 'azure-production',
-    NODE_VERSION: process.version,
-    WEBSITE_SITE_NAME: process.env.WEBSITE_SITE_NAME || 'unknown',
-    WEBSITE_RESOURCE_GROUP: process.env.WEBSITE_RESOURCE_GROUP || 'unknown',
-    PORT: process.env.PORT || '8080',
-    PLATFORM: process.platform,
-    ARCH: process.arch,
-    UPTIME: process.uptime(),
-    MEMORY: process.memoryUsage(),
+    success: true,
+    environment: {
+      NODE_ENV: process.env.NODE_ENV || 'not_set',
+      PORT: process.env.PORT || 'not_set',
+      DATABASE_URL: process.env.DATABASE_URL ? 'Set (hidden)' : 'Not set',
+      PG_SSL: process.env.PG_SSL || 'not_set',
+      JWT_SECRET: process.env.JWT_SECRET ? 'Set (hidden)' : 'Not set',
+      SESSION_SECRET: process.env.SESSION_SECRET ? 'Set (hidden)' : 'Not set',
+      FRONTEND_URL: process.env.FRONTEND_URL || 'not_set',
+      AZURE_STORAGE_CONNECTION_STRING: process.env.AZURE_STORAGE_CONNECTION_STRING ? 'Set (hidden)' : 'Not set',
+      AZURE_STORAGE_CONTAINER_NAME: process.env.AZURE_STORAGE_CONTAINER_NAME || 'not_set',
+      BYPASS_DB_FOR_LOGIN: process.env.BYPASS_DB_FOR_LOGIN || 'not_set',
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY ? 'Set (hidden)' : 'Not set'
+    },
+    database_pool_status: {
+      initialized: !!dbPool,
+      totalCount: dbPool ? dbPool.totalCount : 0,
+      idleCount: dbPool ? dbPool.idleCount : 0,
+      waitingCount: dbPool ? dbPool.waitingCount : 0
+    },
+    message: '環境変数情報（本番環境）',
     timestamp: new Date().toISOString()
   });
 });
