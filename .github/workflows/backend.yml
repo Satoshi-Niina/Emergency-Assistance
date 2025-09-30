@@ -5,8 +5,6 @@ on:
     branches: [ main ]
     paths:
       - 'server/**'
-      - 'Dockerfile'
-      - '.dockerignore'
       - '.github/workflows/backend.yml'
   workflow_dispatch:
 
@@ -48,8 +46,8 @@ jobs:
         
     - name: Build and push Docker image
       run: |
-        # Build Docker image
-        docker build -t ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest .
+        # Build Docker image from server directory
+        docker build -t ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest ./server
         
         # Push to ACR
         docker push ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest

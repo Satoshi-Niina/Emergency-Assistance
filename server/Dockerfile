@@ -5,13 +5,13 @@ FROM node:20-alpine
 WORKDIR /app
 
 # package.jsonをコピー
-COPY server/azure-package.json ./package.json
+COPY azure-package.json ./package.json
 
 # 依存関係をインストール
 RUN npm install --only=production
 
 # アプリケーションコードをコピー
-COPY server/azure-server.js ./
+COPY azure-server.js ./
 
 # ポートを公開
 EXPOSE 8080
