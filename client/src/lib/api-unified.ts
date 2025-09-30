@@ -16,10 +16,10 @@ export const API_BASE_URL = (() => {
     return import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '');
   }
 
-  // Azure Static Web Appの場合は相対パスを使用（APIプロキシ経由）
+  // Azure Static Web Appの場合でも直接APIサーバーに接続（プロキシの問題を回避）
   if (isAzureStaticWebApp) {
-    console.log('✅ Azure Static Web App: 相対パスを使用（APIプロキシ経由）');
-    return '';
+    console.log('✅ Azure Static Web App: 直接APIサーバーに接続（プロキシ問題回避）');
+    return 'https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net';
   }
 
   // ローカル開発環境
