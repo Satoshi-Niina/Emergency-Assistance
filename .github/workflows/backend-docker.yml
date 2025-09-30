@@ -1,0 +1,111 @@
+name: Deploy Backend with Docker
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'server/**'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - '.github/workflows/backend-docker.yml'
+  workflow_dispatch:
+
+env:
+  AZURE_RESOURCE_GROUP: 'rg-Emergencyassistant-app'
+  AZURE_WEBAPP_NAME: 'Emergencyassistance-sv'
+  REGISTRY_NAME: 'emergencyassistance'
+  IMAGE_NAME: 'backend'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Login to Azure Container Registry
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        
+    - name: Create Azure Container Registry
+      run: |
+        # Create ACR if it doesn't exist
+        az acr create \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --name ${{ env.REGISTRY_NAME }} \
+          --sku Basic \
+          --admin-enabled true \
+          || echo "ACR already exists"
+          
+    - name: Login to Azure Container Registry
+      run: |
+        az acr login --name ${{ env.REGISTRY_NAME }}
+        
+    - name: Build and push Docker image
+      run: |
+        # Build Docker image
+        docker build -t ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest .
+        
+        # Push to ACR
+        docker push ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+        
+    - name: Deploy to Azure App Service
+      run: |
+        # Get ACR credentials
+        ACR_USERNAME=$(az acr credential show --name ${{ env.REGISTRY_NAME }} --query username --output tsv)
+        ACR_PASSWORD=$(az acr credential show --name ${{ env.REGISTRY_NAME }} --query passwords[0].value --output tsv)
+        
+        # Configure App Service to use Docker
+        az webapp config container set \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }} \
+          --docker-custom-image-name ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest \
+          --docker-registry-server-url https://${{ env.REGISTRY_NAME }}.azurecr.io \
+          --docker-registry-server-user $ACR_USERNAME \
+          --docker-registry-server-password $ACR_PASSWORD
+        
+        # Restart App Service
+        az webapp restart \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --name ${{ env.AZURE_WEBAPP_NAME }}
+        
+    - name: Health check after deployment
+      run: |
+        echo "Waiting for deployment to complete..."
+        sleep 60
+        
+        echo "🔍 Performing health checks..."
+        
+        # Health check with retry
+        for i in {1..5}; do
+          echo "Health check attempt $i/5..."
+          if curl -f --max-time 30 https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net/api/health; then
+            echo "✅ Health check successful on attempt $i"
+            break
+          else
+            echo "❌ Attempt $i failed, waiting 30 seconds..."
+            sleep 30
+            if [ $i -eq 5 ]; then
+              echo "❌ All health check attempts failed"
+              exit 1
+            fi
+          fi
+        done
+        
+        echo "✅ Docker deployment successful!"
+        
+    - name: Notify deployment status
+      if: always()
+      run: |
+        if [ ${{ job.status }} == 'success' ]; then
+          echo "✅ Docker deployment successful"
+          echo "🚀 Backend API is ready at: https://${{ env.AZURE_WEBAPP_NAME }}.japanwest-01.azurewebsites.net"
+        else
+          echo "❌ Docker deployment failed"
+          echo "🔍 Check the logs above for detailed error information"
+        fi
