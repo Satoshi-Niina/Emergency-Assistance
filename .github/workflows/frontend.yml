@@ -9,6 +9,7 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/frontend.yml'
+      - 'staticwebapp.config.json'
   pull_request:
     branches: [ main, develop ]
     paths:
@@ -17,6 +18,7 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/frontend.yml'
+      - 'staticwebapp.config.json'
   workflow_dispatch:
 
 env:
