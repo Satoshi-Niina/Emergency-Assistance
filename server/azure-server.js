@@ -8,6 +8,48 @@ import express from 'express';
 import cors from 'cors';
 import { Pool } from 'pg';
 import { BlobServiceClient, generateBlobSASQueryParameters, BlobSASPermissions } from '@azure/storage-blob';
+import { runMigrations } from './startup-migration.js';
+import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+// ESM __dirname equivalent
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load environment variables from .env files
+// Try local.env first (for local development), then fallback to .env
+const localEnvPath = path.join(__dirname, '..', 'local.env');
+const envPath = path.join(__dirname, '..', '.env');
+
+console.log('🔍 Checking for environment files:');
+console.log('  - local.env:', localEnvPath, fs.existsSync(localEnvPath) ? 'EXISTS' : 'NOT FOUND');
+console.log('  - .env:', envPath, fs.existsSync(envPath) ? 'EXISTS' : 'NOT FOUND');
+
+if (fs.existsSync(localEnvPath)) {
+  console.log('📄 Loading environment from local.env');
+  dotenv.config({ path: localEnvPath });
+  console.log('✅ Environment loaded from local.env');
+} else if (fs.existsSync(envPath)) {
+  console.log('📄 Loading environment from .env');
+  dotenv.config({ path: envPath });
+  console.log('✅ Environment loaded from .env');
+} else {
+  console.log('📄 No .env file found, using system environment variables');
+}
+
+// Environment validation (warnings only, don't exit)
+console.log('🔍 Environment variables loaded:');
+console.log('  - NODE_ENV:', process.env.NODE_ENV || 'NOT SET');
+console.log('  - PORT:', process.env.PORT || 'NOT SET');
+console.log('  - DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
+console.log('  - PG_SSL:', process.env.PG_SSL || 'NOT SET');
+console.log('  - OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET');
+console.log('  - JWT_SECRET:', process.env.JWT_SECRET ? 'SET' : 'NOT SET');
+console.log('  - SESSION_SECRET:', process.env.SESSION_SECRET ? 'SET' : 'NOT SET');
+console.log('  - FRONTEND_URL:', process.env.FRONTEND_URL || 'NOT SET');
 
 const app = express();
 
@@ -88,6 +130,24 @@ function initializeDatabase() {
 // データベース接続を初期化
 initializeDatabase();
 
+// スタートアップ時にマイグレーションを実行
+async function startupSequence() {
+  try {
+    console.log('🚀 Starting Azure application startup sequence...');
+    
+    // データベースマイグレーションを実行
+    await runMigrations();
+    
+    console.log('✅ Azure startup sequence completed successfully');
+  } catch (error) {
+    console.error('❌ Azure startup sequence failed:', error);
+    console.warn('⚠️ Server will continue running, but some features may not work properly');
+  }
+}
+
+// 非同期でスタートアップシーケンスを実行
+startupSequence();
+
 // Azure App Service用のCORS設定
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://witty-river-012f39e00.1.azurestaticapps.net';
 const ALLOWED_ORIGINS = [
@@ -148,19 +208,38 @@ app.get('/api/health/detailed', (req, res) => {
   });
 });
 
-// 環境情報
+// 環境情報（詳細版）
 app.get('/api/_diag/env', (req, res) => {
   res.json({
+    success: true,
     nodeVersion: process.version,
     platform: process.platform,
     arch: process.arch,
     environment: 'azure-production',
     env: {
-      NODE_ENV: process.env.NODE_ENV || 'production',
-      PORT: process.env.PORT || '8080',
+      NODE_ENV: process.env.NODE_ENV || 'not_set',
+      PORT: process.env.PORT || 'not_set',
+      DATABASE_URL: process.env.DATABASE_URL ? 'Set (hidden)' : 'Not set',
+      PG_SSL: process.env.PG_SSL || 'not_set',
+      JWT_SECRET: process.env.JWT_SECRET ? 'Set (hidden)' : 'Not set',
+      SESSION_SECRET: process.env.SESSION_SECRET ? 'Set (hidden)' : 'Not set',
+      FRONTEND_URL: process.env.FRONTEND_URL || 'not_set',
+      AZURE_STORAGE_CONNECTION_STRING: process.env.AZURE_STORAGE_CONNECTION_STRING ? 'Set (hidden)' : 'Not set',
+      AZURE_STORAGE_CONTAINER_NAME: process.env.AZURE_STORAGE_CONTAINER_NAME || 'not_set',
+      BYPASS_DB_FOR_LOGIN: process.env.BYPASS_DB_FOR_LOGIN || 'not_set',
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY ? 'Set (hidden)' : 'Not set',
+      SAFE_MODE: process.env.SAFE_MODE || 'not_set',
       WEBSITE_SITE_NAME: process.env.WEBSITE_SITE_NAME || 'unknown',
       WEBSITE_RESOURCE_GROUP: process.env.WEBSITE_RESOURCE_GROUP || 'unknown'
-    }
+    },
+    database_pool_status: {
+      initialized: !!dbPool,
+      totalCount: dbPool ? dbPool.totalCount : 0,
+      idleCount: dbPool ? dbPool.idleCount : 0,
+      waitingCount: dbPool ? dbPool.waitingCount : 0
+    },
+    message: '環境変数情報（本番環境）',
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -1295,34 +1374,6 @@ app.get('/api/_diag/routes', (req, res) => {
       '/api/settings/rag'
     ],
     message: '利用可能なルート一覧（本番環境）',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// 27. 診断用エンドポイント - 環境情報
-app.get('/api/_diag/env', (req, res) => {
-  res.json({
-    success: true,
-    environment: {
-      NODE_ENV: process.env.NODE_ENV || 'not_set',
-      PORT: process.env.PORT || 'not_set',
-      DATABASE_URL: process.env.DATABASE_URL ? 'Set (hidden)' : 'Not set',
-      PG_SSL: process.env.PG_SSL || 'not_set',
-      JWT_SECRET: process.env.JWT_SECRET ? 'Set (hidden)' : 'Not set',
-      SESSION_SECRET: process.env.SESSION_SECRET ? 'Set (hidden)' : 'Not set',
-      FRONTEND_URL: process.env.FRONTEND_URL || 'not_set',
-      AZURE_STORAGE_CONNECTION_STRING: process.env.AZURE_STORAGE_CONNECTION_STRING ? 'Set (hidden)' : 'Not set',
-      AZURE_STORAGE_CONTAINER_NAME: process.env.AZURE_STORAGE_CONTAINER_NAME || 'not_set',
-      BYPASS_DB_FOR_LOGIN: process.env.BYPASS_DB_FOR_LOGIN || 'not_set',
-      OPENAI_API_KEY: process.env.OPENAI_API_KEY ? 'Set (hidden)' : 'Not set'
-    },
-    database_pool_status: {
-      initialized: !!dbPool,
-      totalCount: dbPool ? dbPool.totalCount : 0,
-      idleCount: dbPool ? dbPool.idleCount : 0,
-      waitingCount: dbPool ? dbPool.waitingCount : 0
-    },
-    message: '環境変数情報（本番環境）',
     timestamp: new Date().toISOString()
   });
 });
