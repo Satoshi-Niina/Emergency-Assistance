@@ -1,0 +1,126 @@
+#!/usr/bin/env node
+
+// Azure App Service専用サーバー
+// Linux環境で確実に動作する最小限のサーバー
+
+import express from 'express';
+import cors from 'cors';
+
+const app = express();
+
+// Azure App Service用のCORS設定
+app.use(cors({
+  origin: 'https://witty-river-012f39e00.1.azurestaticapps.net',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
+}));
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// ヘルスチェックエンドポイント
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    nodeVersion: process.version,
+    environment: 'azure-production',
+    platform: process.platform,
+    uptime: process.uptime()
+  });
+});
+
+// 詳細ヘルスチェック
+app.get('/api/health/detailed', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    nodeVersion: process.version,
+    environment: 'azure-production',
+    platform: process.platform,
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    arch: process.arch,
+    pid: process.pid
+  });
+});
+
+// 環境情報
+app.get('/api/_diag/env', (req, res) => {
+  res.json({
+    nodeVersion: process.version,
+    platform: process.platform,
+    arch: process.arch,
+    environment: 'azure-production',
+    env: {
+      NODE_ENV: process.env.NODE_ENV || 'production',
+      PORT: process.env.PORT || '8080',
+      WEBSITE_SITE_NAME: process.env.WEBSITE_SITE_NAME || 'unknown',
+      WEBSITE_RESOURCE_GROUP: process.env.WEBSITE_RESOURCE_GROUP || 'unknown'
+    }
+  });
+});
+
+// ルートエンドポイント
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Emergency Assistance API Server (Azure)',
+    status: 'running',
+    timestamp: new Date().toISOString(),
+    environment: 'azure-production'
+  });
+});
+
+// エラーハンドリング
+app.use((err, req, res, next) => {
+  console.error('Azure Server Error:', err);
+  res.status(500).json({
+    error: 'Internal Server Error',
+    message: 'Azure server error',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// 404ハンドラー
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'Not Found',
+    message: `Route ${req.method} ${req.path} not found`,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Azure App Service用の起動設定
+const port = process.env.PORT || 8080;
+const host = '0.0.0.0';
+
+app.listen(port, host, () => {
+  console.log(`🚀 Azure Server running on ${host}:${port}`);
+  console.log(`📊 Health check: /api/health`);
+  console.log(`🌍 Environment: azure-production`);
+  console.log(`📦 Node.js: ${process.version}`);
+  console.log(`💻 Platform: ${process.platform}`);
+});
+
+// グレースフルシャットダウン
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down gracefully');
+  process.exit(0);
+});
+
+// 未処理の例外をキャッチ
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
