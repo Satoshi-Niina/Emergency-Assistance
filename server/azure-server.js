@@ -100,6 +100,64 @@ app.get('/api/_diag/env', (req, res) => {
   });
 });
 
+// 認証エンドポイント
+app.post('/api/auth/login', (req, res) => {
+  try {
+    const { username, password } = req.body || {};
+    
+    console.log('[auth/login] Login attempt:', { 
+      username, 
+      timestamp: new Date().toISOString()
+    });
+    
+    // 入力検証
+    if (!username || !password) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'bad_request',
+        message: 'ユーザー名とパスワードが必要です'
+      });
+    }
+
+    // デモユーザーの認証（本番環境用）
+    const validUsers = {
+      'admin': { role: 'admin', id: 'admin-001' },
+      'niina': { role: 'admin', id: 'niina-001' },
+      'takabeni1': { role: 'admin', id: 'takabeni1-001' },
+      'takabeni2': { role: 'employee', id: 'takabeni2-001' },
+      'employee': { role: 'employee', id: 'employee-001' }
+    };
+
+    const user = validUsers[username];
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: 'invalid_credentials',
+        message: 'ユーザー名またはパスワードが正しくありません'
+      });
+    }
+
+    // 成功レスポンス
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        username: username,
+        role: user.role
+      },
+      message: 'ログインに成功しました'
+    });
+
+  } catch (error) {
+    console.error('[auth/login] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'internal_error',
+      message: '内部エラーが発生しました'
+    });
+  }
+});
+
 // ルートエンドポイント
 app.get('/', (req, res) => {
   res.json({
