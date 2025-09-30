@@ -110,22 +110,20 @@ jobs:
         echo "Deploying to Azure Web App using Azure CLI..."
         cd server
         
-        # Create minimal deployment package
-        echo "Creating minimal deployment package..."
-        zip -r ../deployment.zip . -x "node_modules/*" "*.log" "*.tmp" "test/*" "*.test.js" "*.md" "*.txt"
+        # Create essential files only package
+        echo "Creating essential files only package..."
+        zip ../deployment.zip production-server.js package.json
         
         # Check package size
         echo "Package size:"
         ls -lh ../deployment.zip
         
-        # Deploy using Azure CLI
-        echo "Deploying to Azure..."
-        az webapp deploy \
+        # Deploy using Azure CLI with different method
+        echo "Deploying to Azure using alternative method..."
+        az webapp deployment source config-zip \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
-          --src-path ../deployment.zip \
-          --type zip \
-          --timeout 600
+          --src ../deployment.zip
         
         echo "✅ Deployment completed"
         
