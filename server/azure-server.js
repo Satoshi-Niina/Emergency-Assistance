@@ -29,22 +29,7 @@ const ALLOWED_ORIGINS = [
 ];
 
 app.use(cors({
-  origin: (origin, callback) => {
-    console.log('🔍 CORS Origin check:', { origin, allowed: ALLOWED_ORIGINS.includes(origin) });
-    
-    // 開発環境では localhost をすべて許可
-    if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) {
-      return callback(null, true);
-    }
-    
-    // 許可されたオリジンのチェック
-    if (ALLOWED_ORIGINS.includes(origin)) {
-      return callback(null, true);
-    }
-    
-    console.log('❌ CORS Origin rejected:', origin);
-    return callback(null, false);
-  },
+  origin: true, // 一時的にすべてのOriginを許可（デバッグ用）
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cache-Control', 'Pragma', 'Expires', 'Cookie'],
