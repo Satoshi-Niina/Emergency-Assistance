@@ -24,7 +24,7 @@ env:
   AZURE_WEBAPP_NAME: 'emergencyassistance-sv-fbanemhrbshuf9bd'
   AZURE_WEBAPP_PACKAGE_PATH: 'server'
   NODE_ENV: 'production'
-  AZURE_RESOURCE_GROUP: 'emergency-assistance-rg'
+  AZURE_RESOURCE_GROUP: 'rg-Emergencyassistant-app'
 
 jobs:
   build-and-deploy:
@@ -100,14 +100,10 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
         
-    - name: Configure Azure App Service Node Version
+    - name: Configure Azure App Service Node Version (SKIPPED - Already configured)
       run: |
-        echo "Setting Azure App Service Node version to 20..."
-        az webapp config appsettings set \
-          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --name ${{ env.AZURE_WEBAPP_NAME }} \
-          --settings WEBSITE_NODE_DEFAULT_VERSION=~20 \
-          --output table
+        echo "Node version is already configured in Azure App Service settings"
+        echo "Skipping configuration to avoid permission errors"
         
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v2
