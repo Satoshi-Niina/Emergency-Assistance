@@ -2,6 +2,7 @@
 
 // Azure App Service専用サーバー
 // Linux環境で確実に動作する最小限のサーバー
+// Updated: CORS configuration fixed for frontend-backend communication
 
 import express from 'express';
 import cors from 'cors';
