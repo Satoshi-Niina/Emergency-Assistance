@@ -401,13 +401,207 @@ app.get('/api/troubleshooting/:id', (req, res) => {
 });
 
 // 16. 履歴API（機種・機械番号データ）
-app.get('/api/history/machine-data', (req, res) => {
-  res.json({
-    success: true,
-    data: [],
-    message: '機種・機械番号データを取得しました（本番環境では空です）',
-    timestamp: new Date().toISOString()
-  });
+app.get('/api/history/machine-data', async (req, res) => {
+  try {
+    console.log('[api/history] 機種・機械番号データ取得リクエスト');
+    
+    if (!dbPool) {
+      return res.json({
+        success: true,
+        machineTypes: [],
+        machines: [],
+        message: 'データベース接続が設定されていません',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const client = await dbPool.connect();
+    const result = await client.query(`
+      SELECT 
+        mt.id as machine_type_id,
+        mt.machine_type_name,
+        m.id as machine_id,
+        m.machine_number
+      FROM machine_types mt
+      LEFT JOIN machines m ON mt.id = m.machine_type_id
+      ORDER BY mt.machine_type_name, m.machine_number
+    `);
+    await client.release();
+
+    // データを整形
+    const machineTypes = [];
+    const machines = [];
+    const typeMap = new Map();
+
+    result.rows.forEach(row => {
+      if (!typeMap.has(row.machine_type_id)) {
+        const typeData = {
+          id: row.machine_type_id,
+          machineTypeName: row.machine_type_name
+        };
+        machineTypes.push(typeData);
+        typeMap.set(row.machine_type_id, typeData);
+      }
+
+      if (row.machine_id) {
+        machines.push({
+          id: row.machine_id,
+          machineNumber: row.machine_number,
+          machineTypeName: row.machine_type_name
+        });
+      }
+    });
+
+    console.log('[api/history] 機種・機械番号データ取得成功:',
+      'machineTypes:', machineTypes.length,
+      'machines:', machines.length
+    );
+
+    res.json({
+      success: true,
+      machineTypes,
+      machines,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/history] 機種・機械番号データ取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '機種・機械番号データの取得に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// ユーザー管理API
+app.get('/api/users', async (req, res) => {
+  try {
+    console.log('[api/users] ユーザー一覧取得リクエスト');
+    
+    if (!dbPool) {
+      return res.json({
+        success: true,
+        data: [],
+        message: 'データベース接続が設定されていません',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const client = await dbPool.connect();
+    const result = await client.query(`
+      SELECT id, username, display_name, role, department, created_at
+      FROM users
+      ORDER BY created_at DESC
+    `);
+    await client.release();
+
+    console.log('[api/users] ユーザー一覧取得成功:', result.rows.length + '件');
+
+    res.json({
+      success: true,
+      data: result.rows,
+      total: result.rows.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/users] ユーザー一覧取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'ユーザー一覧の取得に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 機種一覧API
+app.get('/api/machines/machine-types', async (req, res) => {
+  try {
+    console.log('[api/machines] 機種一覧取得リクエスト');
+    
+    if (!dbPool) {
+      return res.json({
+        success: true,
+        data: [],
+        message: 'データベース接続が設定されていません',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const client = await dbPool.connect();
+    const result = await client.query(`
+      SELECT id, machine_type_name
+      FROM machine_types
+      ORDER BY machine_type_name
+    `);
+    await client.release();
+
+    console.log('[api/machines] 機種一覧取得成功:', result.rows.length + '件');
+
+    res.json({
+      success: true,
+      data: result.rows,
+      total: result.rows.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/machines] 機種一覧取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '機種一覧の取得に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 機械番号一覧API（機種ID指定）
+app.get('/api/machines/machines', async (req, res) => {
+  try {
+    const { type_id } = req.query;
+    console.log('[api/machines] 機械番号一覧取得リクエスト:', { type_id });
+    
+    if (!dbPool) {
+      return res.json({
+        success: true,
+        data: [],
+        message: 'データベース接続が設定されていません',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const client = await dbPool.connect();
+    let query = 'SELECT id, machine_number FROM machines';
+    let params = [];
+    
+    if (type_id) {
+      query += ' WHERE machine_type_id = $1';
+      params.push(type_id);
+    }
+    
+    query += ' ORDER BY machine_number';
+    
+    const result = await client.query(query, params);
+    await client.release();
+
+    console.log('[api/machines] 機械番号一覧取得成功:', result.rows.length + '件');
+
+    res.json({
+      success: true,
+      data: result.rows,
+      total: result.rows.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/machines] 機械番号一覧取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '機械番号一覧の取得に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // 17. ナレッジベースAPI
@@ -471,15 +665,118 @@ app.post('/api/chat-history', (req, res) => {
   });
 });
 
-// 22. 履歴データ取得API
-app.get('/api/history', (req, res) => {
-  const { limit = 50, offset = 0, machineType, machineNumber } = req.query;
-  res.json({
-    success: true,
-    data: [],
-    message: `履歴データを取得しました（本番環境では空です）: limit=${limit}, offset=${offset}`,
-    timestamp: new Date().toISOString()
-  });
+// 履歴データ取得API
+app.get('/api/history', async (req, res) => {
+  try {
+    console.log('[api/history] 履歴データ取得リクエスト');
+
+    const { limit = 50, offset = 0, machineType, machineNumber } = req.query;
+
+    if (!dbPool) {
+      return res.json({
+        success: true,
+        data: [],
+        message: 'データベース接続が設定されていません',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const client = await dbPool.connect();
+    
+    // 履歴データを取得（実際のテーブル構造に応じて調整）
+    let query = `
+      SELECT 
+        h.id,
+        h.title,
+        h.machine_type,
+        h.machine_number,
+        h.created_at,
+        h.content,
+        h.conversation_history
+      FROM chat_history h
+      WHERE 1=1
+    `;
+    let params = [];
+    let paramCount = 0;
+
+    if (machineType) {
+      paramCount++;
+      query += ` AND h.machine_type = $${paramCount}`;
+      params.push(machineType);
+    }
+
+    if (machineNumber) {
+      paramCount++;
+      query += ` AND h.machine_number = $${paramCount}`;
+      params.push(machineNumber);
+    }
+
+    query += ` ORDER BY h.created_at DESC LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
+    params.push(parseInt(limit), parseInt(offset));
+
+    const result = await client.query(query, params);
+    await client.release();
+
+    console.log('[api/history] 履歴データ取得成功:', result.rows.length + '件');
+
+    res.json({
+      success: true,
+      data: result.rows,
+      total: result.rows.length,
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/history] 履歴データ取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '履歴データの取得に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// フロー管理API
+app.get('/api/flows', async (req, res) => {
+  try {
+    console.log('[api/flows] フロー一覧取得リクエスト');
+    
+    if (!dbPool) {
+      return res.json({
+        success: true,
+        data: [],
+        message: 'データベース接続が設定されていません',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const client = await dbPool.connect();
+    const result = await client.query(`
+      SELECT id, name, description, steps, created_at, updated_at
+      FROM emergency_flows
+      ORDER BY created_at DESC
+    `);
+    await client.release();
+
+    console.log('[api/flows] フロー一覧取得成功:', result.rows.length + '件');
+
+    res.json({
+      success: true,
+      data: result.rows,
+      total: result.rows.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[api/flows] フロー一覧取得エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'フロー一覧の取得に失敗しました',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // 23. データベース接続チェックAPI
