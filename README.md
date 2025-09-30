@@ -47,22 +47,19 @@ cd client && npm run dev
 
 ### Docker Compose起動
 ```bash
-# 基本的なDocker環境
+# serverディレクトリに移動してDocker環境を起動
+cd server
 docker-compose up --build
-
-# 開発用（ファイル監視付き）
-docker-compose -f docker-compose.dev.yml up --build
-
-# 高度な自動更新（Docker Compose Watch）
-docker-compose -f docker-compose.watch.yml up --build
 ```
 
 ### 自動更新スクリプト
 ```bash
 # PowerShell（推奨）
+cd server
 .\start-docker-dev.ps1
 
 # Bash
+cd server
 ./start-docker-dev.sh
 ```
 
@@ -71,6 +68,7 @@ docker-compose -f docker-compose.watch.yml up --build
 - **ホットリロード**: コード変更が即座に反映
 - **データベース**: PostgreSQLが自動で起動
 - **ヘルスチェック**: 自動でAPIの状態を監視
+- **統合管理**: Dockerfileとdocker-compose.ymlがserverフォルダに集約
 
 ### DockerアクセスURL
 - **バックエンドAPI**: http://localhost:8080

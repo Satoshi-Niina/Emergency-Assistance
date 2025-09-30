@@ -3,7 +3,7 @@ version: '3.8'
 services:
   backend:
     build:
-      context: ./server
+      context: .
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
@@ -12,7 +12,7 @@ services:
       - PORT=8080
       - FRONTEND_URL=http://localhost:5173
     volumes:
-      - ./server:/app
+      - .:/app
       - /app/node_modules  # node_modulesをボリュームで除外
     restart: unless-stopped
     healthcheck:
@@ -24,6 +24,13 @@ services:
     # ファイル変更時の自動再ビルド
     labels:
       - "com.docker.compose.watch=true"
+    # 開発用の設定
+    command: >
+      sh -c "
+        echo '🚀 Starting development server...' &&
+        npm install &&
+        node azure-server.js
+      "
 
   # ローカル開発用のPostgreSQL（必要に応じて）
   postgres:

@@ -3,8 +3,9 @@
 
 echo "🐳 Docker開発環境を起動中..."
 
-# Docker Composeで開発環境を起動（ファイル監視付き）
-docker-compose -f docker-compose.dev.yml up --build
+# serverディレクトリに移動してDocker Composeを実行
+cd server
+docker-compose up --build
 
 echo "✅ Docker開発環境が起動しました"
 echo "📝 ファイルを編集すると自動的にコンテナが再ビルドされます"
