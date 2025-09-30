@@ -110,10 +110,16 @@ jobs:
         echo "Deploying to Azure Web App using Azure CLI..."
         cd server
         
-        # Create deployment package
-        zip -r ../deployment.zip . -x "node_modules/*" "*.log" "*.tmp"
+        # Install dependencies
+        echo "Installing dependencies..."
+        npm install --production
+        
+        # Create deployment package with node_modules
+        echo "Creating deployment package..."
+        zip -r ../deployment.zip . -x "*.log" "*.tmp" "test/*" "*.test.js"
         
         # Deploy using new Azure CLI command
+        echo "Deploying to Azure..."
         az webapp deploy \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
