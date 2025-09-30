@@ -143,6 +143,8 @@ app.post('/api/auth/login', (req, res) => {
   }
 });
 
+// ===== 重要なAPIエンドポイント（本番環境用） =====
+
 // 機種・機械番号管理API
 app.get('/api/machines/machine-types', (req, res) => {
   res.json({
@@ -153,6 +155,31 @@ app.get('/api/machines/machine-types', (req, res) => {
       { id: '3', name: '保線機械', type: 'maintenance' }
     ],
     message: '機種一覧を取得しました'
+  });
+});
+
+// 機械番号一覧API
+app.get('/api/machines/machines', (req, res) => {
+  const { type_id } = req.query;
+  res.json({
+    success: true,
+    data: [
+      { id: '1', machine_number: '001', type_id: type_id || '1', name: '機械001' },
+      { id: '2', machine_number: '002', type_id: type_id || '1', name: '機械002' }
+    ],
+    message: '機械番号一覧を取得しました'
+  });
+});
+
+// 全機械データ取得API
+app.get('/api/machines/all-machines', (req, res) => {
+  res.json({
+    success: true,
+    data: [
+      { id: '1', machine_type: 'ディーゼル機関車', machine_number: '001', name: '機関車001' },
+      { id: '2', machine_type: '電車', machine_number: '002', name: '電車002' }
+    ],
+    message: '全機械データを取得しました'
   });
 });
 
@@ -223,6 +250,50 @@ app.get('/api/settings/rag', (req, res) => {
       enabled: false,
       message: 'RAG設定は本番環境では無効です'
     }
+  });
+});
+
+// ストレージAPI
+app.get('/api/storage/list', (req, res) => {
+  res.json({
+    success: true,
+    data: [],
+    message: 'ストレージファイル一覧を取得しました（本番環境では空です）'
+  });
+});
+
+// トラブルシューティングAPI
+app.get('/api/troubleshooting/list', (req, res) => {
+  res.json({
+    success: true,
+    data: [],
+    message: 'トラブルシューティング一覧を取得しました（本番環境では空です）'
+  });
+});
+
+// チャット履歴保存API
+app.post('/api/chat-history', (req, res) => {
+  res.json({
+    success: true,
+    message: 'チャット履歴を保存しました（本番環境では無効です）'
+  });
+});
+
+// データベース接続チェックAPI
+app.get('/api/db-check', (req, res) => {
+  res.json({
+    success: true,
+    connected: false,
+    message: 'データベース接続チェック（本番環境では無効です）'
+  });
+});
+
+// GPT接続チェックAPI
+app.post('/api/gpt-check', (req, res) => {
+  res.json({
+    success: true,
+    connected: false,
+    message: 'GPT接続チェック（本番環境では無効です）'
   });
 });
 
