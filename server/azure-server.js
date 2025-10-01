@@ -57,12 +57,18 @@ const app = express();
 const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
 const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
 
-// BLOBサービスクライアントの初期化
+// BLOBサービスクライアントの初期化（エラーハンドリング改善）
 const getBlobServiceClient = () => {
   if (!connectionString) {
-    throw new Error('AZURE_STORAGE_CONNECTION_STRING is not configured');
+    console.warn('⚠️ AZURE_STORAGE_CONNECTION_STRING is not configured - BLOB features disabled');
+    return null;
   }
-  return BlobServiceClient.fromConnectionString(connectionString);
+  try {
+    return BlobServiceClient.fromConnectionString(connectionString);
+  } catch (error) {
+    console.warn('⚠️ Failed to initialize BLOB service client:', error.message);
+    return null;
+  }
 };
 
 // パス正規化ヘルパー
@@ -110,7 +116,7 @@ function initializeDatabase() {
 
     console.log('✅ Database pool initialized for Azure production');
     
-    // 接続テスト（非同期で実行）
+    // 接続テスト（非同期で実行、エラーでもサーバーは継続）
     setTimeout(async () => {
       try {
         const client = await dbPool.connect();
@@ -119,7 +125,8 @@ function initializeDatabase() {
         console.log('✅ Database connection test successful:', result.rows[0]);
       } catch (err) {
         console.warn('⚠️ Database connection test failed:', err.message);
-        console.warn('⚠️ Error details:', err);
+        console.warn('⚠️ Server will continue running without database features');
+        // DB接続に失敗してもサーバーは継続
       }
     }, 1000);
   } catch (error) {
