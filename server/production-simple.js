@@ -7,9 +7,50 @@ import express from 'express';
 import cors from 'cors';
 import session from 'express-session';
 import jwt from 'jsonwebtoken';
+import { Pool } from 'pg';
+import bcrypt from 'bcryptjs';
 
 const app = express();
 const PORT = process.env.PORT || 8080;
+
+// データベース接続プール
+let dbPool = null;
+
+// データベース接続初期化
+function initializeDatabase() {
+  const databaseUrl = process.env.DATABASE_URL || 'postgresql://satoshi_niina:SecurePass2025ABC@emergencyassistance-db.postgres.database.azure.com:5432/emergency_assistance?sslmode=require';
+  
+  try {
+    console.log('🔗 Initializing database connection...');
+    
+    dbPool = new Pool({
+      connectionString: databaseUrl,
+      ssl: { rejectUnauthorized: false },
+      max: 5,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 60000,
+    });
+
+    console.log('✅ Database pool initialized');
+    
+    // 接続テスト
+    setTimeout(async () => {
+      try {
+        const client = await dbPool.connect();
+        const result = await client.query('SELECT NOW() as current_time');
+        await client.release();
+        console.log('✅ Database connection test successful:', result.rows[0]);
+      } catch (err) {
+        console.warn('⚠️ Database connection test failed:', err.message);
+      }
+    }, 1000);
+  } catch (error) {
+    console.error('❌ Database initialization failed:', error);
+  }
+}
+
+// データベース接続を初期化
+initializeDatabase();
 
 // CORS設定（本番用）
 const allowedOrigins = [
@@ -61,20 +102,52 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// ログインエンドポイント（管理者・一般ユーザー対応）
-app.post('/api/auth/login', (req, res) => {
+// ログインエンドポイント（DB認証）
+app.post('/api/auth/login', async (req, res) => {
   const { username, password } = req.body;
   
-  // デモユーザーデータベース
-  const users = {
-    'admin': { id: 'admin', username: 'admin', role: 'admin', password: 'admin123' },
-    'manager': { id: 'manager', username: 'manager', role: 'manager', password: 'manager123' },
-    'user': { id: 'user', username: 'user', role: 'user', password: 'user123' }
-  };
-  
-  // ユーザー認証
-  const user = users[username];
-  if (user && user.password === password) {
+  if (!username || !password) {
+    return res.status(400).json({
+      success: false,
+      message: 'Username and password required'
+    });
+  }
+
+  if (!dbPool) {
+    return res.status(500).json({
+      success: false,
+      message: 'Database connection not available'
+    });
+  }
+
+  try {
+    // ユーザー情報をDBから取得
+    const client = await dbPool.connect();
+    const result = await client.query(
+      'SELECT id, username, password_hash, role FROM users WHERE username = $1',
+      [username]
+    );
+    await client.release();
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid username or password'
+      });
+    }
+
+    const user = result.rows[0];
+    
+    // パスワードをハッシュ化して比較
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid username or password'
+      });
+    }
+
     // セッションにユーザー情報を保存
     req.session.user = {
       id: user.id,
@@ -99,10 +172,66 @@ app.post('/api/auth/login', (req, res) => {
       token: token,
       message: `Login successful as ${user.role}`
     });
-  } else {
-    res.status(401).json({
+
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({
       success: false,
-      message: 'Invalid username or password'
+      message: 'Login failed due to server error'
+    });
+  }
+});
+
+// ユーザー登録エンドポイント（管理者用）
+app.post('/api/auth/register', async (req, res) => {
+  const { username, password, role = 'user' } = req.body;
+  
+  if (!username || !password) {
+    return res.status(400).json({
+      success: false,
+      message: 'Username and password required'
+    });
+  }
+
+  if (!dbPool) {
+    return res.status(500).json({
+      success: false,
+      message: 'Database connection not available'
+    });
+  }
+
+  try {
+    // パスワードをハッシュ化
+    const passwordHash = await bcrypt.hash(password, 10);
+    
+    // ユーザーをDBに登録
+    const client = await dbPool.connect();
+    const result = await client.query(
+      'INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3) RETURNING id, username, role',
+      [username, passwordHash, role]
+    );
+    await client.release();
+
+    res.json({
+      success: true,
+      user: result.rows[0],
+      message: 'User registered successfully'
+    });
+
+  } catch (error) {
+    console.error('Registration error:', error);
+    
+    // ユニーク制約違反の場合
+    if (error.code === '23505') {
+      return res.status(400).json({
+        success: false,
+        message: 'Username already exists'
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Registration failed due to server error'
     });
   }
 });
