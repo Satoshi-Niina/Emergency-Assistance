@@ -86,10 +86,12 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production', // HTTPS環境ではtrue
+    secure: false, // Azure App Serviceではfalseに設定
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24時間
-  }
+    maxAge: 24 * 60 * 60 * 1000, // 24時間
+    sameSite: 'lax' // CORS対応
+  },
+  name: 'sessionId' // セッション名を明示的に設定
 }));
 
 // ヘルスチェックエンドポイント
@@ -98,15 +100,31 @@ app.get('/api/health', (req, res) => {
     status: 'ok', 
     timestamp: new Date().toISOString(),
     environment: 'production',
-    port: PORT
+    port: PORT,
+    database: dbPool ? 'connected' : 'disconnected',
+    session: req.session ? 'available' : 'not available'
+  });
+});
+
+// デバッグ用エンドポイント
+app.get('/api/debug', (req, res) => {
+  res.json({
+    session: req.session,
+    sessionId: req.sessionID,
+    cookies: req.cookies,
+    headers: req.headers,
+    database: dbPool ? 'connected' : 'disconnected'
   });
 });
 
 // ログインエンドポイント（DB認証）
 app.post('/api/auth/login', async (req, res) => {
+  console.log('🔍 Login attempt:', { username: req.body.username, hasPassword: !!req.body.password });
+  
   const { username, password } = req.body;
   
   if (!username || !password) {
+    console.log('❌ Missing username or password');
     return res.status(400).json({
       success: false,
       message: 'Username and password required'
@@ -114,6 +132,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 
   if (!dbPool) {
+    console.log('❌ Database pool not available');
     return res.status(500).json({
       success: false,
       message: 'Database connection not available'
@@ -121,15 +140,21 @@ app.post('/api/auth/login', async (req, res) => {
   }
 
   try {
+    console.log('🔍 Querying database for user:', username);
+    
     // ユーザー情報をDBから取得
     const client = await dbPool.connect();
+    console.log('✅ Database client connected');
+    
     const result = await client.query(
       'SELECT id, username, password_hash, role FROM users WHERE username = $1',
       [username]
     );
     await client.release();
+    console.log('✅ Database query completed, rows:', result.rows.length);
 
     if (result.rows.length === 0) {
+      console.log('❌ User not found:', username);
       return res.status(401).json({
         success: false,
         message: 'Invalid username or password'
@@ -137,11 +162,15 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const user = result.rows[0];
+    console.log('🔍 User found:', { id: user.id, username: user.username, role: user.role });
     
     // パスワードをハッシュ化して比較
+    console.log('🔍 Comparing password...');
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    console.log('🔍 Password valid:', isPasswordValid);
     
     if (!isPasswordValid) {
+      console.log('❌ Invalid password for user:', username);
       return res.status(401).json({
         success: false,
         message: 'Invalid username or password'
@@ -149,11 +178,13 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     // セッションにユーザー情報を保存
+    console.log('🔍 Setting session...');
     req.session.user = {
       id: user.id,
       username: user.username,
       role: user.role
     };
+    console.log('✅ Session set:', req.session.user);
     
     // JWTトークンも生成
     const token = jwt.sign(
@@ -161,7 +192,9 @@ app.post('/api/auth/login', async (req, res) => {
       process.env.JWT_SECRET || 'fallback-jwt-secret',
       { expiresIn: '24h' }
     );
+    console.log('✅ JWT token generated');
     
+    console.log('✅ Login successful for user:', username, 'role:', user.role);
     res.json({
       success: true,
       user: {
@@ -174,10 +207,16 @@ app.post('/api/auth/login', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('❌ Login error:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
     res.status(500).json({
       success: false,
-      message: 'Login failed due to server error'
+      message: 'Login failed due to server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
