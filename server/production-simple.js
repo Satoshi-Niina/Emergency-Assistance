@@ -5,6 +5,8 @@
 
 import express from 'express';
 import cors from 'cors';
+import session from 'express-session';
+import jwt from 'jsonwebtoken';
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -37,6 +39,18 @@ app.use(cors({
 // JSON解析
 app.use(express.json());
 
+// セッション設定
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'fallback-secret-key-for-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // HTTPS環境ではtrue
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24時間
+  }
+}));
+
 // ヘルスチェックエンドポイント
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -47,27 +61,82 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// ログインエンドポイント（デモ用）
+// ログインエンドポイント（管理者・一般ユーザー対応）
 app.post('/api/auth/login', (req, res) => {
   const { username, password } = req.body;
   
-  // デモログイン（任意のユーザー名・パスワードでログイン可能）
-  if (username && password) {
+  // デモユーザーデータベース
+  const users = {
+    'admin': { id: 'admin', username: 'admin', role: 'admin', password: 'admin123' },
+    'manager': { id: 'manager', username: 'manager', role: 'manager', password: 'manager123' },
+    'user': { id: 'user', username: 'user', role: 'user', password: 'user123' }
+  };
+  
+  // ユーザー認証
+  const user = users[username];
+  if (user && user.password === password) {
+    // セッションにユーザー情報を保存
+    req.session.user = {
+      id: user.id,
+      username: user.username,
+      role: user.role
+    };
+    
+    // JWTトークンも生成
+    const token = jwt.sign(
+      { userId: user.id, username: user.username, role: user.role },
+      process.env.JWT_SECRET || 'fallback-jwt-secret',
+      { expiresIn: '24h' }
+    );
+    
     res.json({
       success: true,
       user: {
-        id: 'demo-user',
-        username: username,
-        authMethod: 'demo'
+        id: user.id,
+        username: user.username,
+        role: user.role
       },
-      message: 'Demo login successful'
+      token: token,
+      message: `Login successful as ${user.role}`
     });
   } else {
-    res.status(400).json({
+    res.status(401).json({
       success: false,
-      message: 'Username and password required'
+      message: 'Invalid username or password'
     });
   }
+});
+
+// ユーザー情報取得エンドポイント
+app.get('/api/auth/me', (req, res) => {
+  if (req.session.user) {
+    res.json({
+      success: true,
+      user: req.session.user
+    });
+  } else {
+    res.status(401).json({
+      success: false,
+      message: 'Not authenticated'
+    });
+  }
+});
+
+// ログアウトエンドポイント
+app.post('/api/auth/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      res.status(500).json({
+        success: false,
+        message: 'Logout failed'
+      });
+    } else {
+      res.json({
+        success: true,
+        message: 'Logout successful'
+      });
+    }
+  });
 });
 
 // その他のAPIエンドポイント（デモ用）
