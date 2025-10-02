@@ -43,15 +43,22 @@ if (fs.existsSync(localEnvPath)) {
 }
 
 // Environment validation (warnings only, don't exit)
-console.log('🔍 Environment variables loaded:');
-console.log('  - NODE_ENV:', process.env.NODE_ENV || 'NOT SET');
-console.log('  - PORT:', process.env.PORT || 'NOT SET');
-console.log('  - DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
-console.log('  - PG_SSL:', process.env.PG_SSL || 'NOT SET');
-console.log('  - OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET');
-console.log('  - JWT_SECRET:', process.env.JWT_SECRET ? 'SET' : 'NOT SET');
-console.log('  - SESSION_SECRET:', process.env.SESSION_SECRET ? 'SET' : 'NOT SET');
-console.log('  - FRONTEND_URL:', process.env.FRONTEND_URL || 'NOT SET');
+// OpenAI API設定の確認とフォールバック
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const isOpenAIAvailable = OPENAI_API_KEY && 
+  OPENAI_API_KEY !== 'your-openai-api-key-here' && 
+  OPENAI_API_KEY.startsWith('sk-');
+
+console.log('🤖 OpenAI API Status:', {
+  keyExists: !!OPENAI_API_KEY,
+  isValidFormat: OPENAI_API_KEY ? OPENAI_API_KEY.startsWith('sk-') : false,
+  isAvailable: isOpenAIAvailable,
+  fallbackMode: !isOpenAIAvailable
+});
+
+if (!isOpenAIAvailable) {
+  console.warn('⚠️ OpenAI API key not configured - GPT features will use fallback responses');
+}
 
 const app = express();
 
@@ -1458,20 +1465,61 @@ app.post('/api/gpt-check', (req, res) => {
   });
 });
 
-// 25. GPT APIエンドポイント
-app.post('/api/chatgpt', (req, res) => {
-  const { text, useOnlyKnowledgeBase = false } = req.body;
-  res.json({
-    success: true,
-    response: 'AI支援機能は本番環境では利用できません。ローカル開発環境でご利用ください。',
-    message: 'ChatGPT APIは本番環境では無効です',
-    details: {
-      inputText: text || 'no text provided',
-      useOnlyKnowledgeBase: useOnlyKnowledgeBase,
-      environment: 'azure-production'
-    },
-    timestamp: new Date().toISOString()
-  });
+// 25. GPT APIエンドポイント（本番環境で有効化）
+app.post('/api/chatgpt', async (req, res) => {
+  try {
+    const { text, useOnlyKnowledgeBase = false } = req.body;
+    
+    console.log('[api/chatgpt] GPT request:', { 
+      text: text?.substring(0, 100) + '...', 
+      useOnlyKnowledgeBase,
+      openaiAvailable: isOpenAIAvailable 
+    });
+
+    if (!isOpenAIAvailable) {
+      return res.json({
+        success: false,
+        response: 'OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable.',
+        message: 'GPT機能を利用するにはOpenAI APIキーの設定が必要です',
+        details: {
+          environment: 'azure-production',
+          apiKeyConfigured: false,
+          fallbackMode: true
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // OpenAI APIを使用した実際の処理
+    const { processOpenAIRequest } = await import('./lib/openai.js');
+    const response = await processOpenAIRequest(text, useOnlyKnowledgeBase);
+    
+    res.json({
+      success: true,
+      response: response,
+      message: 'GPT応答を生成しました',
+      details: {
+        inputText: text || 'no text provided',
+        useOnlyKnowledgeBase: useOnlyKnowledgeBase,
+        environment: 'azure-production',
+        model: 'gpt-3.5-turbo'
+      },
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('[api/chatgpt] Error:', error);
+    res.status(500).json({
+      success: false,
+      response: 'GPT処理中にエラーが発生しました',
+      message: error.message,
+      details: {
+        environment: 'azure-production',
+        error: error.name
+      },
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // 26. 診断用エンドポイント - ルート一覧
