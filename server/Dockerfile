@@ -22,8 +22,8 @@ COPY migrations/ ./migrations/
 EXPOSE 8080
 
 # ヘルスチェック
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD curl -f http://localhost:8080/api/health || exit 1
 
-# アプリケーションを起動（Azure App Service用）
+# アプリケーションを起動（マイグレーション付き）
 CMD ["node", "azure-server.js"]

@@ -10,6 +10,7 @@ import { Pool } from 'pg';
 import { BlobServiceClient, generateBlobSASQueryParameters, BlobSASPermissions } from '@azure/storage-blob';
 import { runMigrations } from './startup-migration.js';
 import bcrypt from 'bcryptjs';
+import session from 'express-session';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
@@ -189,6 +190,18 @@ app.options('*', cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// セッション管理の設定
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'azure-production-session-secret-32-chars',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24時間
+  }
+}));
+
 // ヘルスチェックエンドポイント
 app.get('/api/health', (req, res) => {
   res.json({
@@ -325,6 +338,16 @@ app.post('/api/auth/login', async (req, res) => {
 
       // 成功レスポンス
       console.log('[auth/login] Login successful:', { username, role: foundUser.role });
+      
+      // セッションにユーザー情報を保存
+      req.session.user = {
+        id: foundUser.id,
+        username: foundUser.username,
+        role: foundUser.role,
+        displayName: foundUser.display_name,
+        department: foundUser.department
+      };
+      
       res.json({
         success: true,
         user: {
@@ -369,42 +392,79 @@ app.get('/api/auth/handshake', (req, res) => {
   });
 });
 
+// 1. 認証ハンドシェイクエンドポイント
+app.get('/api/auth/handshake', (req, res) => {
+  res.json({
+    ok: true,
+    mode: 'session',
+    env: 'azure-production',
+    timestamp: new Date().toISOString(),
+    sessionId: req.sessionID
+  });
+});
+
 // 2. 現在のユーザー情報取得エンドポイント
 app.get('/api/auth/me', (req, res) => {
-  res.json({
-    success: true,
-    user: {
-      id: 'admin-001',
-      username: 'admin',
-      role: 'admin',
-      displayName: '管理者'
-    }
-  });
+  if (req.session.user) {
+    res.json({
+      success: true,
+      user: req.session.user,
+      message: 'セッションからユーザー情報を取得しました'
+    });
+  } else {
+    res.status(401).json({
+      success: false,
+      message: 'ログインしていません'
+    });
+  }
 });
 
 // 3. 管理者権限チェックエンドポイント
 app.get('/api/auth/check-admin', (req, res) => {
-  res.json({
-    success: true,
-    message: '管理者権限が確認されました',
-    user: { id: 'admin-001', username: 'admin', role: 'admin' }
-  });
+  if (req.session.user && req.session.user.role === 'admin') {
+    res.json({
+      success: true,
+      message: '管理者権限が確認されました',
+      user: req.session.user
+    });
+  } else {
+    res.status(403).json({
+      success: false,
+      message: '管理者権限がありません'
+    });
+  }
 });
 
 // 4. 一般ユーザー権限チェックエンドポイント
 app.get('/api/auth/check-employee', (req, res) => {
-  res.json({
-    success: true,
-    message: '従業員権限が確認されました',
-    user: { id: 'employee-001', username: 'employee', role: 'employee' }
-  });
+  if (req.session.user && req.session.user.role === 'employee') {
+    res.json({
+      success: true,
+      message: '従業員権限が確認されました',
+      user: req.session.user
+    });
+  } else {
+    res.status(403).json({
+      success: false,
+      message: '従業員権限がありません'
+    });
+  }
 });
 
 // 5. ログアウトエンドポイント
 app.post('/api/auth/logout', (req, res) => {
-  res.json({
-    success: true,
-    message: 'ログアウトしました'
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Session destruction error:', err);
+      return res.status(500).json({
+        success: false,
+        message: 'ログアウトに失敗しました'
+      });
+    }
+    res.json({
+      success: true,
+      message: 'ログアウトしました'
+    });
   });
 });
 
