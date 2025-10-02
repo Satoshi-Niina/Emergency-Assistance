@@ -21,25 +21,19 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load environment variables from .env files
-// Try local.env first (for local development), then fallback to .env
-const localEnvPath = path.join(__dirname, '..', 'local.env');
+// Load environment variables from .env files (PRODUCTION ONLY)
+// Azure App Service uses environment variables, not .env files
 const envPath = path.join(__dirname, '..', '.env');
 
 console.log('🔍 Checking for environment files:');
-console.log('  - local.env:', localEnvPath, fs.existsSync(localEnvPath) ? 'EXISTS' : 'NOT FOUND');
 console.log('  - .env:', envPath, fs.existsSync(envPath) ? 'EXISTS' : 'NOT FOUND');
 
-if (fs.existsSync(localEnvPath)) {
-  console.log('📄 Loading environment from local.env');
-  dotenv.config({ path: localEnvPath });
-  console.log('✅ Environment loaded from local.env');
-} else if (fs.existsSync(envPath)) {
+if (fs.existsSync(envPath)) {
   console.log('📄 Loading environment from .env');
   dotenv.config({ path: envPath });
   console.log('✅ Environment loaded from .env');
 } else {
-  console.log('📄 No .env file found, using system environment variables');
+  console.log('📄 Using system environment variables (Azure App Service)');
 }
 
 // Environment validation (warnings only, don't exit)
@@ -61,8 +55,9 @@ if (!isOpenAIAvailable) {
 }
 
 // バージョン情報（デプロイ確認用）
-const VERSION = '1.0.1-' + new Date().toISOString().slice(0, 19).replace(/[-:]/g, '');
+const VERSION = '1.0.2-PRODUCTION-' + new Date().toISOString().slice(0, 19).replace(/[-:]/g, '');
 console.log('🚀 Azure Server Starting - Version:', VERSION);
+console.log('🎯 Environment: PRODUCTION ONLY (no local.env)');
 
 const app = express();
 
