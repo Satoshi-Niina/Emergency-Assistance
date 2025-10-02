@@ -60,22 +60,29 @@ if (!isOpenAIAvailable) {
   console.warn('⚠️ OpenAI API key not configured - GPT features will use fallback responses');
 }
 
+// バージョン情報（デプロイ確認用）
+const VERSION = '1.0.1-' + new Date().toISOString().slice(0, 19).replace(/[-:]/g, '');
+console.log('🚀 Azure Server Starting - Version:', VERSION);
+
 const app = express();
 
 // BLOBストレージ関連の設定
 const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
 const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
 
-// BLOBサービスクライアントの初期化（エラーハンドリング改善）
+// BLOBサービスクライアントの初期化（強制接続版）
 const getBlobServiceClient = () => {
   if (!connectionString) {
-    console.warn('⚠️ AZURE_STORAGE_CONNECTION_STRING is not configured - BLOB features disabled');
+    console.error('❌ AZURE_STORAGE_CONNECTION_STRING is not configured - CRITICAL ERROR');
+    console.error('❌ BLOB storage is REQUIRED for production');
     return null;
   }
   try {
-    return BlobServiceClient.fromConnectionString(connectionString);
+    const client = BlobServiceClient.fromConnectionString(connectionString);
+    console.log('✅ BLOB service client initialized');
+    return client;
   } catch (error) {
-    console.warn('⚠️ Failed to initialize BLOB service client:', error.message);
+    console.error('❌ BLOB service client initialization failed:', error);
     return null;
   }
 };
@@ -152,20 +159,42 @@ async function startupSequence() {
     console.log('🚀 Starting Azure application startup sequence...');
     
     // データベースマイグレーションを実行
-    // データベースマイグレーション実行
-    console.log('🔄 Running database migrations...');
+    // データベースマイグレーション実行（強制版）
+    console.log('🔄 Running database migrations (FORCED)...');
     try {
       await runMigrations();
       console.log('✅ Database migrations completed successfully');
+      
+      // マイグレーション後のテーブル確認
+      if (dbPool) {
+        const client = await dbPool.connect();
+        const tablesResult = await client.query(`
+          SELECT table_name FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name IN ('users', 'machine_types', 'machines')
+          ORDER BY table_name
+        `);
+        await client.release();
+        
+        console.log('📋 Database tables after migration:', tablesResult.rows.map(r => r.table_name));
+        
+        if (tablesResult.rows.length === 0) {
+          console.error('❌ CRITICAL: No required tables found after migration');
+          console.error('❌ Manual database setup required');
+        }
+      }
     } catch (migrationError) {
       console.error('❌ Database migration failed:', migrationError);
-      console.warn('⚠️ Server will continue, but database features may not work');
+      console.error('❌ CRITICAL: Production server requires database tables');
+      console.error('❌ Manual execution of EMERGENCY_DATABASE_SETUP.sql required');
     }
     
     console.log('✅ Azure startup sequence completed successfully');
+    console.log('🎉 Production server is ready for operation');
   } catch (error) {
     console.error('❌ Azure startup sequence failed:', error);
-    console.warn('⚠️ Server will continue running, but some features may not work properly');
+    console.error('❌ CRITICAL: Production server cannot start without proper connections');
+    throw error; // 起動を停止
   }
 }
 
@@ -260,7 +289,7 @@ app.get('/api/health', async (req, res) => {
     status: 'healthy',
     timestamp: new Date().toISOString(),
     environment: 'azure-production',
-    version: '1.0.0',
+    version: VERSION,
     uptime: process.uptime(),
     memory: process.memoryUsage(),
     database_status: {
