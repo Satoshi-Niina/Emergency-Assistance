@@ -557,7 +557,7 @@ app.get('/api/machines/machine-types', async (req, res) => {
       });
     }
 
-    const result = await dbPool.query('SELECT id, name, type FROM machine_types ORDER BY name');
+    const result = await dbPool.query('SELECT id, machine_type_name as name FROM machine_types ORDER BY machine_type_name');
     res.json({
       success: true,
       data: result.rows,
@@ -1491,21 +1491,35 @@ app.post('/api/chatgpt', async (req, res) => {
     }
 
     // OpenAI APIを使用した実際の処理
-    const { processOpenAIRequest } = await import('./lib/openai.js');
-    const response = await processOpenAIRequest(text, useOnlyKnowledgeBase);
-    
-    res.json({
-      success: true,
-      response: response,
-      message: 'GPT応答を生成しました',
-      details: {
-        inputText: text || 'no text provided',
-        useOnlyKnowledgeBase: useOnlyKnowledgeBase,
-        environment: 'azure-production',
-        model: 'gpt-3.5-turbo'
-      },
-      timestamp: new Date().toISOString()
-    });
+    try {
+      const { processOpenAIRequest } = await import('./lib/openai.js');
+      const response = await processOpenAIRequest(text, useOnlyKnowledgeBase);
+      
+      res.json({
+        success: true,
+        response: response,
+        message: 'GPT応答を生成しました',
+        details: {
+          inputText: text || 'no text provided',
+          useOnlyKnowledgeBase: useOnlyKnowledgeBase,
+          environment: 'azure-production',
+          model: 'gpt-3.5-turbo'
+        },
+        timestamp: new Date().toISOString()
+      });
+    } catch (importError) {
+      console.error('[api/chatgpt] Import error:', importError);
+      res.json({
+        success: true,
+        response: 'AI支援機能は現在利用できません。しばらくしてから再度お試しください。',
+        message: 'OpenAI ライブラリの読み込みに失敗しました',
+        details: {
+          environment: 'azure-production',
+          error: 'library_import_failed'
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
 
   } catch (error) {
     console.error('[api/chatgpt] Error:', error);
