@@ -88,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
 
-      // lib/auth の login を利用
+      // 直接APIを呼び出してログイン
       const userData = await authLogin({ username, password });
       console.log('🔍 ログインレスポンス:', userData);
 
@@ -105,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('ログインに失敗しました');
       }
     } catch (error) {
+      console.error('❌ ログインエラー:', error);
       setUser(null);
       throw error;
     } finally {

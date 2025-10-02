@@ -1,0 +1,26 @@
+# 手動Dockerイメージプッシュ手順
+
+Write-Host "🐳 手動Dockerイメージプッシュ手順" -ForegroundColor Green
+
+Write-Host "1. Docker Desktopを起動してください" -ForegroundColor Yellow
+Write-Host "2. 以下のコマンドを順番に実行してください:" -ForegroundColor Yellow
+
+Write-Host "" -ForegroundColor White
+Write-Host "# Azure Container Registryにログイン" -ForegroundColor Cyan
+Write-Host "az acr login --name emergencyassistance" -ForegroundColor White
+
+Write-Host "" -ForegroundColor White
+Write-Host "# Dockerイメージをビルド" -ForegroundColor Cyan
+Write-Host "cd server" -ForegroundColor White
+Write-Host "docker build -t emergencyassistance.azurecr.io/emergency-assistance-backend:latest ." -ForegroundColor White
+
+Write-Host "" -ForegroundColor White
+Write-Host "# Dockerイメージをプッシュ" -ForegroundColor Cyan
+Write-Host "docker push emergencyassistance.azurecr.io/emergency-assistance-backend:latest" -ForegroundColor White
+
+Write-Host "" -ForegroundColor White
+Write-Host "# Azure App Serviceを再起動" -ForegroundColor Cyan
+Write-Host "az webapp restart --name Emergencyassistant-sv --resource-group rg-Emergencyassistant-app" -ForegroundColor White
+
+Write-Host "" -ForegroundColor White
+Write-Host "⚠️ 注意: Docker Desktopが起動している必要があります" -ForegroundColor Red

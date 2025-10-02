@@ -1,0 +1,35 @@
+# 手動Dockerイメージプッシュ手順
+
+Write-Host "🐳 手動Dockerイメージプッシュ手順" -ForegroundColor Green
+
+Write-Host "前提条件:" -ForegroundColor Yellow
+Write-Host "1. Docker Desktopが起動している" -ForegroundColor White
+Write-Host "2. Azure CLIがログイン済み" -ForegroundColor White
+
+Write-Host "" -ForegroundColor White
+Write-Host "実行手順:" -ForegroundColor Yellow
+
+Write-Host "1. Azure Container Registryにログイン" -ForegroundColor Cyan
+Write-Host "az acr login --name emergencyassistance" -ForegroundColor White
+
+Write-Host "" -ForegroundColor White
+Write-Host "2. serverディレクトリに移動" -ForegroundColor Cyan
+Write-Host "cd server" -ForegroundColor White
+
+Write-Host "" -ForegroundColor White
+Write-Host "3. Dockerイメージをビルド" -ForegroundColor Cyan
+Write-Host "docker build -t emergencyassistance.azurecr.io/emergency-assistance-backend:latest ." -ForegroundColor White
+
+Write-Host "" -ForegroundColor White
+Write-Host "4. Dockerイメージをプッシュ" -ForegroundColor Cyan
+Write-Host "docker push emergencyassistance.azurecr.io/emergency-assistance-backend:latest" -ForegroundColor White
+
+Write-Host "" -ForegroundColor White
+Write-Host "5. Azure App Serviceを再起動" -ForegroundColor Cyan
+Write-Host "az webapp restart --name Emergencyassistant-sv --resource-group rg-Emergencyassistant-app" -ForegroundColor White
+
+Write-Host "" -ForegroundColor White
+Write-Host "⚠️ 注意:" -ForegroundColor Red
+Write-Host "- Docker Desktopが起動している必要があります" -ForegroundColor White
+Write-Host "- Azure CLIでログインしている必要があります" -ForegroundColor White
+Write-Host "- App Serviceの環境変数が設定されている必要があります" -ForegroundColor White

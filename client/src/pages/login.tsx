@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema } from '../lib/schema';
 import { useAuth } from '../context/auth-context';
-// import { loginApi, meApi } from '../lib/auth-unified';
+import { loginApi, meApi } from '../lib/auth-unified';
 import { Button } from '../components/ui/button';
 import {
   Card,
