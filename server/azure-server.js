@@ -152,7 +152,15 @@ async function startupSequence() {
     console.log('🚀 Starting Azure application startup sequence...');
     
     // データベースマイグレーションを実行
-    await runMigrations();
+    // データベースマイグレーション実行
+    console.log('🔄 Running database migrations...');
+    try {
+      await runMigrations();
+      console.log('✅ Database migrations completed successfully');
+    } catch (migrationError) {
+      console.error('❌ Database migration failed:', migrationError);
+      console.warn('⚠️ Server will continue, but database features may not work');
+    }
     
     console.log('✅ Azure startup sequence completed successfully');
   } catch (error) {
