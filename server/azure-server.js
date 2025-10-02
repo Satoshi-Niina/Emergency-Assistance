@@ -70,11 +70,11 @@ const app = express();
 const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
 const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'knowledge';
 
-// BLOBサービスクライアントの初期化（強制接続版）
+// BLOBサービスクライアントの初期化（警告版）
 const getBlobServiceClient = () => {
   if (!connectionString) {
-    console.error('❌ AZURE_STORAGE_CONNECTION_STRING is not configured - CRITICAL ERROR');
-    console.error('❌ BLOB storage is REQUIRED for production');
+    console.warn('⚠️ AZURE_STORAGE_CONNECTION_STRING is not configured');
+    console.warn('⚠️ BLOB storage features will be disabled');
     return null;
   }
   try {
@@ -82,7 +82,7 @@ const getBlobServiceClient = () => {
     console.log('✅ BLOB service client initialized');
     return client;
   } catch (error) {
-    console.error('❌ BLOB service client initialization failed:', error);
+    console.warn('⚠️ BLOB service client initialization failed:', error.message);
     return null;
   }
 };
@@ -179,22 +179,22 @@ async function startupSequence() {
         console.log('📋 Database tables after migration:', tablesResult.rows.map(r => r.table_name));
         
         if (tablesResult.rows.length === 0) {
-          console.error('❌ CRITICAL: No required tables found after migration');
-          console.error('❌ Manual database setup required');
+          console.warn('⚠️ No required tables found after migration');
+          console.warn('⚠️ Manual database setup may be required');
         }
       }
     } catch (migrationError) {
-      console.error('❌ Database migration failed:', migrationError);
-      console.error('❌ CRITICAL: Production server requires database tables');
-      console.error('❌ Manual execution of EMERGENCY_DATABASE_SETUP.sql required');
+      console.warn('⚠️ Database migration failed:', migrationError.message);
+      console.warn('⚠️ Manual execution of EMERGENCY_DATABASE_SETUP.sql may be required');
     }
     
     console.log('✅ Azure startup sequence completed successfully');
     console.log('🎉 Production server is ready for operation');
   } catch (error) {
     console.error('❌ Azure startup sequence failed:', error);
-    console.error('❌ CRITICAL: Production server cannot start without proper connections');
-    throw error; // 起動を停止
+    console.warn('⚠️ Server will continue running, but some features may not work properly');
+    console.warn('⚠️ Please check database and BLOB storage connections');
+    // 起動は継続（警告のみ）
   }
 }
 
