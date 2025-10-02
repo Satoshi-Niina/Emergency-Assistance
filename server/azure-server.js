@@ -9,6 +9,7 @@ import cors from 'cors';
 import { Pool } from 'pg';
 import { BlobServiceClient, generateBlobSASQueryParameters, BlobSASPermissions } from '@azure/storage-blob';
 import { runMigrations } from './startup-migration.js';
+import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
@@ -250,8 +251,8 @@ app.get('/api/_diag/env', (req, res) => {
   });
 });
 
-// 認証エンドポイント
-app.post('/api/auth/login', (req, res) => {
+// 認証エンドポイント（データベース認証）
+app.post('/api/auth/login', async (req, res) => {
   try {
     const { username, password } = req.body || {};
     
@@ -269,41 +270,89 @@ app.post('/api/auth/login', (req, res) => {
       });
     }
 
-    // デモユーザーの認証（本番環境用）
-    const validUsers = {
-      'admin': { role: 'admin', id: 'admin-001' },
-      'niina': { role: 'admin', id: 'niina-001' },
-      'takabeni1': { role: 'admin', id: 'takabeni1-001' },
-      'takabeni2': { role: 'employee', id: 'takabeni2-001' },
-      'employee': { role: 'employee', id: 'employee-001' }
-    };
-
-    const user = validUsers[username];
-    if (!user) {
-      return res.status(401).json({
+    // データベース接続がない場合はエラー
+    if (!dbPool) {
+      console.error('[auth/login] Database pool not initialized');
+      return res.status(500).json({
         success: false,
-        error: 'invalid_credentials',
-        message: 'ユーザー名またはパスワードが正しくありません'
+        error: 'database_unavailable',
+        message: 'データベース接続が利用できません'
       });
     }
 
-    // 成功レスポンス
-    res.json({
-      success: true,
-      user: {
-        id: user.id,
-        username: username,
-        role: user.role
-      },
-      message: 'ログインに成功しました'
-    });
+    try {
+      // データベースからユーザーを検索
+      console.log('[auth/login] ユーザー検索開始:', { username });
+      const result = await dbPool.query(
+        'SELECT id, username, password, role, display_name, department FROM users WHERE username = $1 LIMIT 1',
+        [username]
+      );
+      
+      console.log('[auth/login] ユーザー検索結果:', { 
+        found: result.rows.length > 0,
+        userCount: result.rows.length 
+      });
+
+      if (result.rows.length === 0) {
+        console.log('[auth/login] ユーザーが見つかりません');
+        return res.status(401).json({ 
+          success: false, 
+          error: 'invalid_credentials',
+          message: 'ユーザー名またはパスワードが正しくありません'
+        });
+      }
+
+      const foundUser = result.rows[0];
+      console.log('[auth/login] ユーザー情報取得:', { 
+        id: foundUser.id, 
+        username: foundUser.username, 
+        role: foundUser.role 
+      });
+
+      // パスワード比較（bcryptjs）
+      console.log('[auth/login] パスワード比較開始');
+      const isPasswordValid = await bcrypt.compare(password, foundUser.password);
+      console.log('[auth/login] パスワード比較結果:', { isValid: isPasswordValid });
+      
+      if (!isPasswordValid) {
+        console.log('[auth/login] パスワードが一致しません');
+        return res.status(401).json({ 
+          success: false, 
+          error: 'invalid_credentials',
+          message: 'ユーザー名またはパスワードが正しくありません'
+        });
+      }
+
+      // 成功レスポンス
+      console.log('[auth/login] Login successful:', { username, role: foundUser.role });
+      res.json({
+        success: true,
+        user: {
+          id: foundUser.id,
+          username: foundUser.username,
+          role: foundUser.role,
+          displayName: foundUser.display_name,
+          display_name: foundUser.display_name,
+          department: foundUser.department
+        },
+        message: 'ログインに成功しました'
+      });
+
+    } catch (dbError) {
+      console.error('[auth/login] Database error:', dbError);
+      return res.status(500).json({
+        success: false,
+        error: 'database_error',
+        message: 'データベースエラーが発生しました'
+      });
+    }
 
   } catch (error) {
-    console.error('[auth/login] Error:', error);
+    console.error('[auth/login] Login error:', error);
     res.status(500).json({
       success: false,
       error: 'internal_error',
-      message: '内部エラーが発生しました'
+      message: 'Login failed due to server error'
     });
   }
 });
