@@ -55,8 +55,6 @@ import {
   japaneseGuideTitles,
 } from '../lib/troubleshooting-search';
 import { QAAnswer } from '../lib/qa-flow-manager';
-import TroubleshootingQABubble from '../components/chat/troubleshooting-qa-bubble';
-import SolutionBubble from '../components/chat/solution-bubble';
 import InteractiveDiagnosisChat from '../components/InteractiveDiagnosisChat';
 import { Label } from '@/components/ui/label';
 
@@ -93,6 +91,10 @@ export default function ChatPage() {
     useState(false);
   // AI支援モードの状態管理
   const [aiSupportMode, setAiSupportMode] = useState(false);
+  const [aiSupportStartTime, setAiSupportStartTime] = useState<Date | null>(null);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [emergencyStep, setEmergencyStep] = useState<number>(0);
+  const [problemType, setProblemType] = useState<string>('');
   // 追加: 機種と機械番号のオートコンプリート状態管理
   const [machineTypes, setMachineTypes] = useState<
     Array<{ id: string; machine_type_name: string }>
@@ -617,17 +619,37 @@ export default function ChatPage() {
 
   // 追加: Q&Aモードの初期化（動的質問生成システムに変更済み）
 
-  // AI支援開始（チャットエリア内でやり取り）
+  // AI支援時間表示のためのuseEffect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    if (aiSupportMode && aiSupportStartTime) {
+      interval = setInterval(() => {
+        const now = new Date();
+        const elapsed = Math.floor((now.getTime() - aiSupportStartTime.getTime()) / 1000);
+        setElapsedTime(elapsed);
+      }, 1000);
+    }
+    
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [aiSupportMode, aiSupportStartTime]);
+
+  // AI支援開始（シンプル化版）
   const handleStartAiSupport = async () => {
     try {
       // AI支援モードを開始
       setAiSupportMode(true);
+      setAiSupportStartTime(new Date());
+      setElapsedTime(0);
 
-      // AI支援の初期メッセージを送信
+      // シンプルな初期メッセージを送信
       const aiSupportMessage = {
         id: Date.now().toString(),
-        content:
-          'こんにちは！AI支援です。トラブルの現状を教えてください！どのような問題が発生していますか？',
+        content: '何か問題がありましたか？お困りの事象を教えてください！',
         isAiResponse: true,
         timestamp: new Date(),
         type: 'ai_support',
@@ -637,8 +659,7 @@ export default function ChatPage() {
 
       toast({
         title: 'AI支援開始',
-        description:
-          'AI支援が開始されました。チャットエリアでやり取りしてください。',
+        description: 'AI支援が開始されました。チャットエリアでやり取りしてください。',
       });
     } catch (error) {
       console.error('AI支援開始エラー:', error);
@@ -654,6 +675,10 @@ export default function ChatPage() {
   const handleAiSupportExit = () => {
     // AI支援モードを終了
     setAiSupportMode(false);
+    setAiSupportStartTime(null);
+    setElapsedTime(0);
+    setEmergencyStep(0);
+    setProblemType('');
 
     // AI支援終了メッセージを送信
     const aiSupportEndMessage = {
@@ -1204,7 +1229,7 @@ export default function ChatPage() {
     }
   };
 
-  // AI支援メッセージ処理
+  // AI支援メッセージ処理（段階的応急処置フロー対応）
   const handleAiSupportMessage = async (content: string, media: any[] = []) => {
     try {
       // ユーザーメッセージを追加
@@ -1219,9 +1244,9 @@ export default function ChatPage() {
 
       setMessages(prev => [...prev, userMessage]);
 
-      // AI支援の応答を生成
-      const aiResponse = await generateAiSupportResponse(content);
-
+      // 段階的応急処置フローに基づいてAI応答を生成
+      const aiResponse = await generateStepByStepResponse(content);
+      
       // AI応答メッセージを追加
       const aiMessage = {
         id: (Date.now() + 1).toString(),
@@ -1232,8 +1257,21 @@ export default function ChatPage() {
       };
 
       setMessages(prev => [...prev, aiMessage]);
+
     } catch (error) {
       console.error('AI支援メッセージ処理エラー:', error);
+      
+      // エラー時のフォールバック応答
+      const errorMessage = {
+        id: (Date.now() + 1).toString(),
+        content: '申し訳ございません。現在AI支援の応答を生成できません。しばらく時間をおいてから再度お試しください。',
+        isAiResponse: true,
+        timestamp: new Date(),
+        type: 'ai_support_response',
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+      
       toast({
         title: 'エラー',
         description: 'AI支援の応答生成に失敗しました',
@@ -1242,14 +1280,199 @@ export default function ChatPage() {
     }
   };
 
-  // AI支援応答生成
+  // 段階的応急処置フローに基づくAI応答生成
+  const generateStepByStepResponse = async (userInput: string): Promise<string> => {
+    try {
+      // ハードコードされた質問リスト（確実に1つの質問のみを表示）
+      const hardcodedQuestions = getHardcodedQuestion(userInput, emergencyStep, problemType);
+      if (hardcodedQuestions) {
+        return hardcodedQuestions;
+      }
+      
+      // 統一API設定を使用
+      const { buildApiUrl } = await import('../lib/api-unified');
+      const apiUrl = buildApiUrl('/chatgpt');
+      
+      // 現在のステップと問題タイプを送信
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          text: userInput,
+          useOnlyKnowledgeBase: false,
+          aiSupportMode: true,
+          simpleMode: true,
+          emergencyStep: emergencyStep,
+          problemType: problemType,
+          conversationHistory: messages.slice(-4), // 直近4件の履歴
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('AI支援応答の取得に失敗しました');
+      }
+
+      const data = await response.json();
+      let aiResponse = data.response || '申し訳ございません。現在AI支援の応答を生成できません。';
+      
+      // フレンドリーな言い回しに調整
+      aiResponse = makeFriendlyResponse(aiResponse);
+      
+      // ステップの更新
+      updateEmergencyStep(userInput, aiResponse);
+      
+      return aiResponse;
+    } catch (error) {
+      console.error('AI支援応答生成エラー:', error);
+      return '申し訳ございません。現在AI支援の応答を生成できません。しばらく時間をおいてから再度お試しください。';
+    }
+  };
+
+  // ハードコードされた質問を取得
+  const getHardcodedQuestion = (userInput: string, step: number, problemType: string): string | null => {
+    const lowerInput = userInput.toLowerCase();
+    
+    // エンジン回転上昇しない問題の質問リスト
+    if (problemType === 'engine_rpm' || lowerInput.includes('エンジン') && lowerInput.includes('回転')) {
+      const questions = [
+        "応急処置する時間がありますか？",
+        "エンジンルームにあるアクセルワイヤーが外れていませんか？",
+        "アクセルレバーを指で押して動きますか？",
+        "アクセルレバーを押した時、エンジン回転が上昇しますか？"
+      ];
+      
+      if (step < questions.length) {
+        return questions[step];
+      } else if (lowerInput.includes('変わらない') || lowerInput.includes('変化なし')) {
+        return "応急処置は困難です。アイドリング状態で退避してください。";
+      } else if (lowerInput.includes('上昇') || lowerInput.includes('成功')) {
+        return "応急処置完了です。";
+      }
+    }
+    
+    // エンジン始動しない問題の質問リスト
+    if (problemType === 'engine_start' || lowerInput.includes('エンジン') && lowerInput.includes('かからない')) {
+      const questions = [
+        "応急処置する時間がありますか？",
+        "エアー圧はありますか？",
+        "バッテリー電圧は正常ですか？",
+        "スターターモーターは回りますか？"
+      ];
+      
+      if (step < questions.length) {
+        return questions[step];
+      } else if (lowerInput.includes('回らない') || lowerInput.includes('動かない')) {
+        return "応急処置は困難です。専門家に連絡してください。";
+      } else if (lowerInput.includes('回る') || lowerInput.includes('成功')) {
+        return "応急処置完了です。";
+      }
+    }
+    
+    // その他の問題
+    if (step === 0) {
+      return "応急処置する時間がありますか？";
+    }
+    
+    return null;
+  };
+
+  // 応急処置ステップの更新
+  const updateEmergencyStep = (userInput: string, aiResponse: string) => {
+    const lowerInput = userInput.toLowerCase();
+    const lowerResponse = aiResponse.toLowerCase();
+    
+    // 問題タイプの設定（初回のみ）
+    if (emergencyStep === 0 && !problemType) {
+      if (lowerInput.includes('エンジン') && lowerInput.includes('回転')) {
+        setProblemType('engine_rpm');
+      } else if (lowerInput.includes('エンジン') && lowerInput.includes('かからない')) {
+        setProblemType('engine_start');
+      } else if (lowerInput.includes('ブレーキ')) {
+        setProblemType('brake');
+      } else {
+        setProblemType('general');
+      }
+    }
+    
+    // ステップの進行
+    if (lowerResponse.includes('応急処置完了') || lowerResponse.includes('完了')) {
+      setEmergencyStep(0); // リセット
+      setProblemType('');
+    } else if (lowerResponse.includes('困難') || lowerResponse.includes('退避')) {
+      setEmergencyStep(0); // リセット
+      setProblemType('');
+    } else {
+      setEmergencyStep(prev => prev + 1);
+    }
+  };
+
+  // ステップ結果の解析
+  const parseStepResult = (content: string): 'success' | 'no_change' | 'worsened' | 'new_error' | null => {
+    const lowerContent = content.toLowerCase();
+    if (lowerContent.includes('成功')) return 'success';
+    if (lowerContent.includes('変化なし') || lowerContent.includes('変わらない')) return 'no_change';
+    if (lowerContent.includes('悪化')) return 'worsened';
+    if (lowerContent.includes('新しいエラー') || lowerContent.includes('別のエラー')) return 'new_error';
+    return null;
+  };
+
+  // 完了メッセージの生成
+  const generateCompletionMessage = (flow: DiagnosticFlow): string => {
+    return `🎉 **診断完了**
+
+お疲れ様でした！問題の解決が完了しました。
+
+**診断サマリー:**
+- 問題: ${flow.problemDescription}
+- 機種: ${flow.machineType}
+- 対応時間: ${flow.availableTime}分
+- 実行ステップ数: ${flow.stepHistory.length}
+
+何か他にお困りのことがあれば、いつでもお声がけください！`;
+  };
+
+  // 緊急連絡メッセージの生成
+  const generateEmergencyContactMessage = (): string => {
+    return `🚨 **緊急連絡が必要**
+
+現在の状況では、専門家による対応が必要です。
+
+**技術支援センター:**
+📞 0123-456-789
+
+**連絡時に伝える内容:**
+- 発生した問題
+- 実行した処置
+- 現在の状況
+
+安全を最優先に、専門家の指示に従ってください。`;
+  };
+
+  // AI支援応答生成（時間制限と救援要請機能付き）
   const generateAiSupportResponse = async (
-    userMessage: string
+    userMessage: string,
+    conversationHistory: any[] = []
   ): Promise<string> => {
     try {
       // 統一API設定を使用
       const { buildApiUrl } = await import('../lib/api-unified');
       const apiUrl = buildApiUrl('/chatgpt');
+      
+      // 会話履歴から経過時間を計算
+      const startTime = conversationHistory.find(msg => 
+        msg.type === 'ai_support'
+      )?.timestamp;
+      
+      const elapsedMinutes = startTime ? 
+        Math.floor((Date.now() - new Date(startTime).getTime()) / (1000 * 60)) : 0;
+      
+      // 時間制限チェック（20分）
+      if (elapsedMinutes >= 20) {
+        return `⏰ 診断時間が20分を超えました。\n\n技術支援センターへの救援要請をお勧めします：\n📞 技術支援センター: 0123-456-789\n\nお疲れ様でした！また何かお困りのことがあれば、いつでもお声がけください。`;
+      }
       
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -1260,6 +1483,9 @@ export default function ChatPage() {
         body: JSON.stringify({
           text: userMessage,
           useOnlyKnowledgeBase: false,
+          conversationHistory: conversationHistory.slice(-4), // 直近4件の履歴
+          elapsedMinutes: elapsedMinutes,
+          aiSupportMode: true,
         }),
       });
 
@@ -1268,14 +1494,88 @@ export default function ChatPage() {
       }
 
       const data = await response.json();
-      return (
-        data.response ||
-        '申し訳ございません。現在AI支援の応答を生成できません。'
-      );
+      let aiResponse = data.response || '申し訳ございません。現在AI支援の応答を生成できません。';
+      
+      // フレンドリーな言い回しに調整
+      aiResponse = makeFriendlyResponse(aiResponse);
+      
+      // 時間制限の警告を追加（15分経過時）
+      if (elapsedMinutes >= 15 && elapsedMinutes < 20) {
+        aiResponse += `\n\n⏰ 診断開始から${elapsedMinutes}分経過しています。あと5分で技術支援センターへの救援要請をお勧めします。`;
+      }
+      
+      return aiResponse;
     } catch (error) {
       console.error('AI支援応答生成エラー:', error);
       return '申し訳ございません。現在AI支援の応答を生成できません。しばらく時間をおいてから再度お試しください。';
     }
+  };
+
+  // フレンドリーな言い回しに調整する関数（厳格版）
+  const makeFriendlyResponse = (response: string): string => {
+    // テキストをクリーンアップ
+    let cleanResponse = response.trim();
+    
+    // 複数の質問がある場合は最初の質問のみを抽出
+    const questionMarks = cleanResponse.split('？');
+    if (questionMarks.length > 1) {
+      cleanResponse = questionMarks[0] + '？';
+    }
+    
+    // 改行で分割して最初の質問のみを取得
+    const lines = cleanResponse.split('\n');
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (trimmedLine && (
+        trimmedLine.includes('？') || 
+        trimmedLine.includes('ですか') || 
+        trimmedLine.includes('ますか') ||
+        trimmedLine.includes('ありますか') ||
+        trimmedLine.includes('でしょうか')
+      )) {
+        cleanResponse = trimmedLine;
+        break;
+      }
+    }
+    
+    // 長すぎる場合は短縮
+    if (cleanResponse.length > 100) {
+      cleanResponse = cleanResponse.substring(0, 100);
+    }
+    
+    // 硬い表現をフレンドリーに変更
+    const friendlyReplacements = [
+      { from: /確認してください/g, to: '確認してみてくださいね' },
+      { from: /してください/g, to: 'してみてください' },
+      { from: /教えてください/g, to: '教えてくださいね' },
+      { from: /ありますか/g, to: 'ありますか？' },
+      { from: /ありませんか/g, to: 'ありませんか？' },
+      { from: /でしょうか/g, to: 'でしょうか？' },
+      { from: /です。/g, to: 'ですね。' },
+      { from: /ます。/g, to: 'ますね。' },
+    ];
+    
+    let friendlyResponse = cleanResponse;
+    friendlyReplacements.forEach(({ from, to }) => {
+      friendlyResponse = friendlyResponse.replace(from, to);
+    });
+    
+    return friendlyResponse;
+  };
+
+  // 時間表示のためのヘルパー関数
+  const formatElapsedTime = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  // 時間制限の警告レベルを取得
+  const getTimeWarningLevel = (seconds: number): 'normal' | 'warning' | 'critical' => {
+    const minutes = Math.floor(seconds / 60);
+    if (minutes >= 20) return 'critical';
+    if (minutes >= 15) return 'warning';
+    return 'normal';
   };
 
   // メッセージ送信処理を拡張
@@ -1706,15 +2006,43 @@ export default function ChatPage() {
               AI支援
             </Button>
           ) : (
-            <Button
-              variant='outline'
-              size='lg'
-              onClick={handleAiSupportExit}
-              className='bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100 mr-6 px-8 py-3 text-base font-semibold'
-            >
-              <X className='w-6 h-6 mr-3' />
-              AI支援終了
-            </Button>
+            <div className='flex items-center gap-4 mr-6'>
+              <Button
+                variant='outline'
+                size='lg'
+                onClick={handleAiSupportExit}
+                className={`px-8 py-3 text-base font-semibold ${
+                  getTimeWarningLevel(elapsedTime) === 'critical'
+                    ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
+                    : getTimeWarningLevel(elapsedTime) === 'warning'
+                    ? 'bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100'
+                    : 'bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100'
+                }`}
+              >
+                <X className='w-6 h-6 mr-3' />
+                AI支援終了
+              </Button>
+              
+              {/* 時間表示 */}
+              <div className={`px-4 py-2 rounded-lg border text-sm font-medium ${
+                getTimeWarningLevel(elapsedTime) === 'critical'
+                  ? 'bg-red-100 text-red-800 border-red-200'
+                  : getTimeWarningLevel(elapsedTime) === 'warning'
+                  ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                  : 'bg-green-100 text-green-800 border-green-200'
+              }`}>
+                <div className='flex items-center gap-2'>
+                  <span>⏰</span>
+                  <span>{formatElapsedTime(elapsedTime)}</span>
+                  {getTimeWarningLevel(elapsedTime) === 'warning' && (
+                    <span className='text-xs'>(あと5分)</span>
+                  )}
+                  {getTimeWarningLevel(elapsedTime) === 'critical' && (
+                    <span className='text-xs'>(救援要請推奨)</span>
+                  )}
+                </div>
+              </div>
+            </div>
           )}
 
           {/* カメラボタン */}
