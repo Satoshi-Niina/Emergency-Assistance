@@ -43,10 +43,19 @@ export async function runMigrations() {
     const executedFilenames = executedResult.rows.map(row => row.filename);
 
     // マイグレーションファイルを読み込み
-    const migrationsDir = path.join(__dirname, 'migrations');
+    const migrationsDir = path.join(__dirname, '..', 'migrations');
+    console.log('📁 Migrations directory:', migrationsDir);
+    
+    if (!fs.existsSync(migrationsDir)) {
+      console.warn('⚠️ Migrations directory not found:', migrationsDir);
+      return;
+    }
+    
     const migrationFiles = fs.readdirSync(migrationsDir)
       .filter(file => file.endsWith('.sql'))
       .sort();
+    
+    console.log('📋 Found migration files:', migrationFiles);
 
     console.log(`📁 Found ${migrationFiles.length} migration files`);
 
