@@ -16,6 +16,7 @@ RUN npm install --only=production
 # アプリケーションコードをコピー
 COPY azure-server.js ./
 COPY startup-migration.js ./
+COPY missing-endpoints.js ./
 COPY migrations/ ./migrations/
 
 # ポートを公開

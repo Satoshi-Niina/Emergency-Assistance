@@ -1715,6 +1715,9 @@ app.use((req, res) => {
 });
 
 // Azure App Service用の起動設定
+// 不足エンドポイントをインポート
+import './missing-endpoints.js';
+
 const port = process.env.PORT || 8080;
 const host = '0.0.0.0';
 
@@ -1724,6 +1727,7 @@ app.listen(port, host, () => {
   console.log(`🌍 Environment: azure-production`);
   console.log(`📦 Node.js: ${process.version}`);
   console.log(`💻 Platform: ${process.platform}`);
+  console.log(`🎯 Version: ${VERSION}`);
 });
 
 // グレースフルシャットダウン
