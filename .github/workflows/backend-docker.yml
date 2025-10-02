@@ -59,7 +59,7 @@ jobs:
         az webapp config set \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --name ${{ env.AZURE_WEBAPP_NAME }} \
-          --node-version "20-lts"
+          --generic-configurations '{"nodeVersion": "20-lts"}'
         
         # Restart App Service
         az webapp restart \
