@@ -1284,47 +1284,31 @@ export default function ChatPage() {
   const generateStepByStepResponse = async (userInput: string): Promise<string> => {
     try {
       // ハードコードされた質問リスト（確実に1つの質問のみを表示）
-      const hardcodedQuestions = getHardcodedQuestion(userInput, emergencyStep, problemType);
-      if (hardcodedQuestions) {
-        return hardcodedQuestions;
-      }
-      
-      // 統一API設定を使用
-      const { buildApiUrl } = await import('../lib/api-unified');
-      const apiUrl = buildApiUrl('/chatgpt');
-      
-      // 現在のステップと問題タイプを送信
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          text: userInput,
-          useOnlyKnowledgeBase: false,
-          aiSupportMode: true,
-          simpleMode: true,
-          emergencyStep: emergencyStep,
-          problemType: problemType,
-          conversationHistory: messages.slice(-4), // 直近4件の履歴
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('AI支援応答の取得に失敗しました');
+      const hardcodedQuestion = getHardcodedQuestion(userInput, emergencyStep, problemType);
+      if (hardcodedQuestion) {
+        console.log('✅ Using hardcoded question:', hardcodedQuestion);
+        // ステップの更新
+        updateEmergencyStep(userInput, hardcodedQuestion);
+        return hardcodedQuestion;
       }
 
-      const data = await response.json();
-      let aiResponse = data.response || '申し訳ございません。現在AI支援の応答を生成できません。';
+      console.log('⚠️ No hardcoded question found, using fallback...');
       
-      // フレンドリーな言い回しに調整
-      aiResponse = makeFriendlyResponse(aiResponse);
+      // フォールバック: 基本的な質問を返す
+      const fallbackQuestions = [
+        "応急処置する時間がありますか？",
+        "問題の詳細を教えてください",
+        "他に症状はありますか？",
+        "応急処置を試してみてください"
+      ];
+      
+      const fallbackQuestion = fallbackQuestions[emergencyStep % fallbackQuestions.length];
+      console.log('🔄 Using fallback question:', fallbackQuestion);
       
       // ステップの更新
-      updateEmergencyStep(userInput, aiResponse);
+      updateEmergencyStep(userInput, fallbackQuestion);
       
-      return aiResponse;
+      return fallbackQuestion;
     } catch (error) {
       console.error('AI支援応答生成エラー:', error);
       return '申し訳ございません。現在AI支援の応答を生成できません。しばらく時間をおいてから再度お試しください。';
@@ -1385,7 +1369,15 @@ export default function ChatPage() {
       return "応急処置する時間がありますか？";
     }
     
-    return null;
+    // デフォルトの質問リスト（確実に質問を返す）
+    const defaultQuestions = [
+      "応急処置する時間がありますか？",
+      "問題の詳細を教えてください",
+      "他に症状はありますか？",
+      "応急処置を試してみてください"
+    ];
+    
+    return defaultQuestions[step % defaultQuestions.length];
   };
 
   // 応急処置ステップの更新
@@ -1413,35 +1405,21 @@ export default function ChatPage() {
       }
     }
     
-    // ユーザーの回答に基づくステップ進行
-    if (lowerInput.includes('時間') || lowerInput.includes('分') || lowerInput.includes('時間があります')) {
-      // 時間に関する質問への回答
-      setEmergencyStep(prev => prev + 1);
-    } else if (lowerInput.includes('外れ') || lowerInput.includes('つなが') || lowerInput.includes('正常')) {
-      // ワイヤーや接続に関する質問への回答
-      setEmergencyStep(prev => prev + 1);
-    } else if (lowerInput.includes('動く') || lowerInput.includes('動かない') || lowerInput.includes('回る') || lowerInput.includes('回らない')) {
-      // 動作に関する質問への回答
-      setEmergencyStep(prev => prev + 1);
-    } else if (lowerInput.includes('上昇') || lowerInput.includes('変わらない') || lowerInput.includes('変化なし')) {
-      // 結果に関する回答
-      if (lowerInput.includes('変わらない') || lowerInput.includes('変化なし')) {
-        setEmergencyStep(0); // 困難な場合はリセット
-        setProblemType('');
-      } else {
-        setEmergencyStep(0); // 成功の場合はリセット
-        setProblemType('');
-      }
-    } else if (lowerResponse.includes('応急処置完了') || lowerResponse.includes('完了')) {
-      setEmergencyStep(0); // リセット
+    // ユーザーの回答に基づくステップ進行（より確実に）
+    console.log('🔄 Processing user input for step progression:', lowerInput);
+    
+    // 完了・困難・退避の場合はリセット
+    if (lowerInput.includes('完了') || lowerInput.includes('困難') || lowerInput.includes('退避') || 
+        lowerInput.includes('変わらない') || lowerInput.includes('変化なし')) {
+      console.log('🔄 Resetting due to completion/difficulty');
+      setEmergencyStep(0);
       setProblemType('');
-    } else if (lowerResponse.includes('困難') || lowerResponse.includes('退避')) {
-      setEmergencyStep(0); // リセット
-      setProblemType('');
-    } else {
-      // その他の場合はステップを進める
-      setEmergencyStep(prev => prev + 1);
+      return;
     }
+    
+    // その他の場合は確実にステップを進める
+    console.log('🔄 Advancing step from', emergencyStep, 'to', emergencyStep + 1);
+    setEmergencyStep(prev => prev + 1);
   };
 
   // ステップ結果の解析
