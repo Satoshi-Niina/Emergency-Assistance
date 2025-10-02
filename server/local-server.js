@@ -145,6 +145,15 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// ルート設定
+try {
+  const configRoutes = await import('./routes/config.js');
+  app.use('/api/config', configRoutes.default);
+  console.log('✅ Config routes loaded');
+} catch (error) {
+  console.log('⚠️ Config routes not available:', error.message);
+}
+
 // ヘルスチェックエンドポイント
 app.get('/api/health', (req, res) => {
   res.json({ 
