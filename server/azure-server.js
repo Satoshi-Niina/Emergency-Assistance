@@ -197,27 +197,84 @@ app.options('*', cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// セッション管理の設定
+// セッション管理の設定（修正版）
 app.use(session({
   secret: process.env.SESSION_SECRET || 'azure-production-session-secret-32-chars',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: false, // Azure App Serviceではfalseに設定
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24時間
-  }
+    maxAge: 24 * 60 * 60 * 1000, // 24時間
+    sameSite: 'lax' // CORS対応
+  },
+  name: 'sessionId' // セッション名を明示的に設定
 }));
 
 // ヘルスチェックエンドポイント
-app.get('/api/health', (req, res) => {
+// ヘルスチェックエンドポイント（詳細版）
+app.get('/api/health', async (req, res) => {
+  let dbStatus = 'not_initialized';
+  let dbTestResult = null;
+  
+  if (dbPool) {
+    try {
+      const client = await dbPool.connect();
+      const result = await client.query('SELECT NOW() as current_time, version() as pg_version');
+      await client.release();
+      dbStatus = 'connected';
+      dbTestResult = result.rows[0];
+    } catch (error) {
+      dbStatus = 'error';
+      dbTestResult = error.message;
+    }
+  }
+
+  let blobStatus = 'not_configured';
+  let blobTestResult = null;
+  
+  if (connectionString) {
+    try {
+      const blobServiceClient = getBlobServiceClient();
+      if (blobServiceClient) {
+        const containerClient = blobServiceClient.getContainerClient(containerName);
+        const exists = await containerClient.exists();
+        blobStatus = exists ? 'connected' : 'container_not_found';
+        blobTestResult = { containerExists: exists };
+      }
+    } catch (error) {
+      blobStatus = 'error';
+      blobTestResult = error.message;
+    }
+  }
+
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    nodeVersion: process.version,
     environment: 'azure-production',
-    platform: process.platform,
-    uptime: process.uptime()
+    version: '1.0.0',
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    database_status: {
+      status: dbStatus,
+      pool_initialized: !!dbPool,
+      test_result: dbTestResult
+    },
+    blob_storage_status: {
+      status: blobStatus,
+      connectionString: connectionString ? 'Configured' : 'Not configured',
+      containerName: containerName,
+      test_result: blobTestResult
+    },
+    openai_status: {
+      apiKey: OPENAI_API_KEY ? 'Configured' : 'Not configured',
+      isAvailable: isOpenAIAvailable
+    },
+    session_status: {
+      secret: process.env.SESSION_SECRET ? 'Configured' : 'Using fallback',
+      cookie_secure: false,
+      cookie_sameSite: 'lax'
+    }
   });
 });
 
@@ -411,17 +468,35 @@ app.get('/api/auth/handshake', (req, res) => {
 });
 
 // 2. 現在のユーザー情報取得エンドポイント
+// セッション認証エンドポイント（デバッグ強化版）
 app.get('/api/auth/me', (req, res) => {
+  console.log('[api/auth/me] セッション確認:', {
+    sessionId: req.sessionID,
+    hasUser: !!req.session.user,
+    userRole: req.session.user?.role,
+    timestamp: new Date().toISOString()
+  });
+
   if (req.session.user) {
     res.json({
       success: true,
       user: req.session.user,
-      message: 'セッションからユーザー情報を取得しました'
+      message: 'セッションからユーザー情報を取得しました',
+      debug: {
+        sessionId: req.sessionID,
+        userRole: req.session.user.role,
+        timestamp: new Date().toISOString()
+      }
     });
   } else {
     res.status(401).json({
       success: false,
-      message: 'ログインしていません'
+      message: 'ログインしていません',
+      debug: {
+        sessionId: req.sessionID,
+        hasSession: !!req.session,
+        timestamp: new Date().toISOString()
+      }
     });
   }
 });
