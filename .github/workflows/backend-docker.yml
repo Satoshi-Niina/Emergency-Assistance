@@ -6,7 +6,7 @@ on:
     paths:
       - 'server/**'
       - '.github/workflows/backend-docker.yml'
-      - 'migrations/**'
+      - 'server/migrations/**'
   workflow_dispatch:
 
 env:
