@@ -20,17 +20,17 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        cache: 'npm'
-        cache-dependency-path: 'server/package-lock.json'
+     - name: Setup Node.js
+       uses: actions/setup-node@v4
+       with:
+         node-version: '20'
+         cache: 'npm'
+         cache-dependency-path: 'server/package.json'
         
-    - name: Install dependencies
-      run: |
-        cd server
-        npm ci --only=production
+     - name: Install dependencies
+       run: |
+         cd server
+         npm install --only=production
         
     - name: Login to Azure
       uses: azure/login@v1
