@@ -55,9 +55,10 @@ if (!isOpenAIAvailable) {
 }
 
 // バージョン情報（デプロイ確認用）
-const VERSION = '1.0.2-PRODUCTION-' + new Date().toISOString().slice(0, 19).replace(/[-:]/g, '');
+const VERSION = '1.0.3-CORS-FIX-' + new Date().toISOString().slice(0, 19).replace(/[-:]/g, '');
 console.log('🚀 Azure Server Starting - Version:', VERSION);
 console.log('🎯 Environment: PRODUCTION ONLY (no local.env)');
+console.log('🌐 CORS: Updated for new frontend URL');
 
 const app = express();
 
@@ -215,16 +216,30 @@ const ALLOWED_ORIGINS = [
   'http://127.0.0.1:5178'
 ];
 
+// CORS設定（本番環境用）
 app.use(cors({
-  origin: true, // 一時的にすべてのOriginを許可（デバッグ用）
+  origin: [
+    'https://witty-river-012f39e00.1.azurestaticapps.net', // 新しいフロントエンドURL
+    'https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net', // バックエンドURL
+    'http://localhost:5173', // ローカル開発用
+    'http://localhost:3000', // ローカル開発用
+    'http://localhost:8000'  // ローカル開発用
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cache-Control', 'Pragma', 'Expires', 'Cookie'],
   optionsSuccessStatus: 200
 }));
 
-// プリフライトリクエストの明示的な処理
-app.options('*', cors());
+// プリフライトリクエストの明示的な処理（強化版）
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Cache-Control, Pragma, Expires, Cookie');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Max-Age', '86400'); // 24時間
+  res.sendStatus(200);
+});
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
