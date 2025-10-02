@@ -462,7 +462,8 @@ const EmergencyGuideEdit: React.FC = () => {
 
       // フローの詳細データを取得
       const timestamp = Date.now();
-      const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/api/emergency-flow/${flow.id}?_t=${timestamp}`;
+      const { buildApiUrl } = await import('../../lib/api-unified');
+      const apiUrl = buildApiUrl(`/emergency-flow/${flow.id}?_t=${timestamp}`);
       console.log('🌐 API呼び出し:', apiUrl);
 
       const response = await fetch(apiUrl, {

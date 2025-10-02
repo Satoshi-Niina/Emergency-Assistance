@@ -95,7 +95,7 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
 
       // 統一APIクライアントを使用
       const { buildApiUrl } = await import('../../lib/api-unified');
-      const detailUrl = buildApiUrl(`/emergency-flow/detail/${flowId}`);
+      const detailUrl = buildApiUrl(`/emergency-flow/${flowId}`);
       
       console.log('🌐 フロー詳細API URL:', detailUrl);
       
@@ -122,11 +122,8 @@ const FlowEditorAdvanced: React.FC<FlowEditorAdvancedProps> = ({
       const result = await response.json();
       console.log('📊 emergency-flow APIレスポンス:', result);
       
-      if (!result.success) {
-        throw new Error(result.error || 'フローデータの取得に失敗しました');
-      }
-      
-      const data = result.data;
+      // サーバーが直接フローデータを返すように修正したので、successプロパティをチェック
+      const data = result.success ? result : result;
 
       // データ構造の正規化
       if (data.steps && Array.isArray(data.steps)) {

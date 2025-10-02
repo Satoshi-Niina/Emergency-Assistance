@@ -88,7 +88,7 @@ BEGIN
     FROM machine_types mt
     WHERE mt.machine_type_name = '軌道モータカー'
     LIMIT 5
-    ON CONFLICT DO NOTHING;
+    ON CONFLICT (machine_number) DO NOTHING;
     
     INSERT INTO machines (machine_number, machine_type_id) 
     SELECT 
@@ -97,7 +97,7 @@ BEGIN
     FROM machine_types mt
     WHERE mt.machine_type_name = '鉄製トロ（10t）'
     LIMIT 3
-    ON CONFLICT DO NOTHING;
+    ON CONFLICT (machine_number) DO NOTHING;
     
     INSERT INTO machines (machine_number, machine_type_id) 
     SELECT 
@@ -106,7 +106,7 @@ BEGIN
     FROM machine_types mt
     WHERE mt.machine_type_name = '鉄製トロ（25t）'
     LIMIT 3
-    ON CONFLICT DO NOTHING;
+    ON CONFLICT (machine_number) DO NOTHING;
     
     RAISE NOTICE 'サンプルデータの確認・追加が完了しました';
 END $$; 

@@ -8,7 +8,6 @@ import {
 import { Button } from '../../components/ui/button';
 import { ArrowLeft, ArrowRight, X } from 'lucide-react';
 import { convertImageUrl } from '../../lib/image-utils.ts';
-import { buildApiUrl } from '../../lib/api/config.ts';
 
 interface Step {
   id: string;
@@ -45,18 +44,21 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
     const fetchFlowData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(
-          `http://localhost:8000/api/emergency-flow/detail/${flowId}`,
-          {
-            method: 'GET',
-            credentials: 'include', // セッション維持のため必須
-            headers: {
-              'Content-Type': 'application/json',
-              Accept: 'application/json',
-              'X-Requested-With': 'XMLHttpRequest',
-            },
-          }
-        );
+        
+        // 統一APIクライアントを使用
+        const { buildApiUrl } = await import('../../lib/api-unified');
+        const apiUrl = buildApiUrl(`/emergency-flow/${flowId}`);
+        console.log('🌐 フロープレビューAPI URL:', apiUrl);
+        
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          credentials: 'include', // セッション維持のため必須
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+        });
 
         if (!response.ok) {
           const errorText = await response.text();
@@ -72,10 +74,8 @@ const FlowPreview: React.FC<FlowPreviewProps> = ({ flowId, onClose }) => {
         console.log('📊 フロープレビューAPIレスポンス:', responseData);
 
         // サーバーからのレスポンス構造に合わせてデータを取得
-        const data =
-          responseData.success && responseData.data
-            ? responseData.data
-            : responseData;
+        // サーバーが直接フローデータを返すように修正したので、successプロパティをチェック
+        const data = responseData.success ? responseData : responseData;
         console.log('📋 フロープレビュー処理対象データ:', data);
 
         setFlowData(data);

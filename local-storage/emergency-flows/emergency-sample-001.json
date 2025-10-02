@@ -1,0 +1,22 @@
+{
+  "id": "emergency-sample-001",
+  "name": "緊急時対応フロー",
+  "description": "緊急時の基本的な対応フロー",
+  "steps": [
+    {
+      "step": 1,
+      "action": "安全確認",
+      "description": "周囲の安全を確認する"
+    },
+    {
+      "step": 2,
+      "action": "連絡",
+      "description": "関係者に連絡する"
+    },
+    {
+      "step": 3,
+      "action": "対応実施",
+      "description": "適切な対応を実施する"
+    }
+  ]
+}

@@ -51,7 +51,7 @@ import ChatExportReport from '../components/report/chat-export-report';
 
 // 画像ユーティリティ関数
 const API_BASE = import.meta.env.DEV
-  ? ''
+  ? 'http://localhost:8000'
   : import.meta.env.VITE_API_BASE_URL || window.location.origin;
 
 async function fetchDetailFile(name: string) {
@@ -333,7 +333,8 @@ const HistoryPage: React.FC = () => {
 
       // 機種・機械番号データを専用APIから取得
       console.log('🔍 機種・機械番号データ取得開始');
-      const response = await fetch('http://localhost:8000/api/history/machine-data');
+      const { buildApiUrl } = await import('../lib/api-unified');
+      const response = await fetch(buildApiUrl('/history/machine-data'));
       console.log('🔍 APIレスポンス:', response.status, response.statusText);
       const data = await response.json();
       console.log('🔍 APIレスポンスデータ:', data);
@@ -432,8 +433,8 @@ const HistoryPage: React.FC = () => {
       params.append('limit', '20');
       params.append('offset', ((page - 1) * 20).toString());
 
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-      const requestUrl = `${apiBaseUrl}/api/history?${params.toString()}`;
+      const { buildApiUrl } = await import('../lib/api-unified');
+      const requestUrl = buildApiUrl('/history/machine-data');
       console.log('🔍 APIリクエストURL:', requestUrl);
       
       const response = await fetch(requestUrl);
@@ -464,58 +465,49 @@ const HistoryPage: React.FC = () => {
           });
         });
 
-        // ローカルストレージから保存されたデータを読み込んで履歴データを更新
-        const updatedItems = data.data.map((item: any) => {
-          const savedKey =
-            'savedMachineFailureReport_' + (item.id || item.chatId);
-          const savedData = localStorage.getItem(savedKey);
-          let processedItem = item;
-
-          if (savedData) {
-            try {
-              const parsedData = JSON.parse(savedData);
-              console.log(
-                'ローカルストレージから保存されたデータを読み込み:',
-                parsedData
-              );
-              processedItem = { ...item, ...parsedData };
-            } catch (parseError) {
-              console.warn('保存されたデータの解析に失敗:', parseError);
-            }
-          }
-
-          // SupportHistoryItem型に変換
-          const convertedItem: SupportHistoryItem = {
-            id: processedItem.id,
-            chatId: processedItem.chatId,
-            fileName: processedItem.fileName,
-            machineType: processedItem.machineType || '',
-            machineNumber: processedItem.machineNumber || '',
-            title: processedItem.title,
-            createdAt:
-              processedItem.createdAt ||
-              processedItem.exportTimestamp ||
-              new Date().toISOString(),
-            lastModified: processedItem.lastModified,
-            extractedComponents: processedItem.extractedComponents,
-            extractedSymptoms: processedItem.extractedSymptoms,
-            possibleModels: processedItem.possibleModels,
-            machineInfo: processedItem.machineInfo,
-            jsonData: {
-              ...processedItem, // 全ての元データを含める
-              machineType: processedItem.machineType || '',
-              machineNumber: processedItem.machineNumber || '',
-              title: processedItem.title,
-              problemDescription: processedItem.problemDescription,
-              extractedComponents: processedItem.extractedComponents,
-              extractedSymptoms: processedItem.extractedSymptoms,
-              possibleModels: processedItem.possibleModels,
-              conversationHistory: processedItem.conversationHistory,
-              chatData: processedItem.chatData,
-              savedImages: processedItem.savedImages,
-              metadata: processedItem.metadata,
-            },
-          };
+               // 機械故障履歴ファイルを履歴アイテムとして変換
+               const updatedItems = data.data.map((file: any) => {
+                 // SupportHistoryItem型に変換
+                 const convertedItem: SupportHistoryItem = {
+                   id: file.id,
+                   chatId: file.id,
+                   fileName: file.name,
+                   machineType: file.machineType || 'Unknown',
+                   machineNumber: file.machineNumber || 'Unknown',
+                   title: file.title || file.name,
+                   createdAt: file.createdAt,
+                   lastModified: file.createdAt,
+                   extractedComponents: file.extractedComponents || [],
+                   extractedSymptoms: file.extractedSymptoms || [],
+                   possibleModels: file.possibleModels || [],
+                   machineInfo: `${file.machineType} - ${file.machineNumber}`,
+                   jsonData: {
+                     id: file.id,
+                     name: file.name,
+                     title: file.title || file.name,
+                     filePath: file.filePath,
+                     size: file.size,
+                     createdAt: file.createdAt,
+                     category: file.category || 'history',
+                     machineType: file.machineType || 'Unknown',
+                     machineNumber: file.machineNumber || 'Unknown',
+                     problemDescription: file.problemDescription || '',
+                     extractedComponents: file.extractedComponents || [],
+                     extractedSymptoms: file.extractedSymptoms || [],
+                     possibleModels: file.possibleModels || [],
+                     conversationHistory: file.conversationHistory || [],
+                     chatData: null,
+                     savedImages: file.hasImages ? [`http://localhost:8000/api/local-image/${file.id}.jpg`] : [],
+                     metadata: {
+                       fileName: file.name,
+                       filePath: file.filePath,
+                       size: file.size,
+                       category: file.category || 'history',
+                       hasImages: file.hasImages || false,
+                       imageCount: file.imageCount || 0
+                     },
+                   },
+                 };
 
           console.log('変換されたアイテム:', {
             fileName: convertedItem.fileName,

@@ -127,54 +127,27 @@ export const fetchBaseData = async (): Promise<BaseDataResponse> => {
 
 // 処理済みファイル一覧取得
 export const fetchProcessedFiles = async (): Promise<any> => {
-  const response = await fetch('/files/processed');
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch processed files: ${response.statusText}`);
-  }
-
-  return response.json();
+  return await apiRequest('/files/processed');
 };
 
 // フロー一覧取得
 export const fetchFlows = async (): Promise<FlowListResponse> => {
-  const response = await fetch('/flows');
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch flows: ${response.statusText}`);
-  }
-
-  return response.json();
+  return await apiRequest('/flows');
 };
 
 // ユーザー一覧取得
 export const fetchUsers = async (): Promise<User[]> => {
-  const response = await fetch('/users');
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch users: ${response.statusText}`);
-  }
-
-  return response.json();
+  return await apiRequest('/users');
 };
 
 // ユーザー作成
 export const createUser = async (
   userData: CreateUserRequest
 ): Promise<User> => {
-  const response = await fetch('/users', {
+  return await apiRequest('/users', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
     body: JSON.stringify(userData),
   });
-
-  if (!response.ok) {
-    throw new Error(`Failed to create user: ${response.statusText}`);
-  }
-
-  return response.json();
 };
 
 // 履歴エクスポート機能
@@ -198,21 +171,10 @@ export const exportSelectedHistory = async (
   ids: string[],
   format: 'json' | 'csv' = 'json'
 ): Promise<Blob> => {
-  const response = await fetch('/history/export-selected', {
+  return await apiRequest('/history/export-selected', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
     body: JSON.stringify({ ids, format }),
   });
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to export selected history: ${response.statusText}`
-    );
-  }
-
-  return response.blob();
 };
 
 // 全履歴エクスポート
@@ -238,13 +200,7 @@ export const exportAllHistory = async (
 
 // エクスポート履歴取得
 export const fetchExportHistory = async (): Promise<ExportHistoryItem[]> => {
-  const response = await fetch('/history/export-history');
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch export history: ${response.statusText}`);
-  }
-
-  return response.json();
+  return await apiRequest('/history/export-history');
 };
 
 // 高度なテキスト検索
@@ -252,21 +208,10 @@ export const advancedSearch = async (
   searchText: string,
   limit: number = 50
 ): Promise<any> => {
-  const response = await fetch('/history/advanced-search', {
+  return await apiRequest('/history/advanced-search', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
     body: JSON.stringify({ searchText, limit }),
   });
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to perform advanced search: ${response.statusText}`
-    );
-  }
-
-  return response.json();
 };
 
 // レポート生成
@@ -275,17 +220,8 @@ export const generateReport = async (
   reportTitle?: string,
   reportDescription?: string
 ): Promise<Blob> => {
-  const response = await fetch('/history/generate-report', {
+  return await apiRequest('/history/generate-report', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
     body: JSON.stringify({ searchFilters, reportTitle, reportDescription }),
   });
-
-  if (!response.ok) {
-    throw new Error(`Failed to generate report: ${response.statusText}`);
-  }
-
-  return response.blob();
 };

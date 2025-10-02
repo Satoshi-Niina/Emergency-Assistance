@@ -1,0 +1,17 @@
+{
+  "id": "sample-flow-001",
+  "name": "サンプルフロー",
+  "description": "ローカル開発用のサンプルフロー",
+  "steps": [
+    {
+      "step": 1,
+      "action": "確認",
+      "description": "状況を確認する"
+    },
+    {
+      "step": 2,
+      "action": "対応",
+      "description": "適切な対応を実施する"
+    }
+  ]
+}

@@ -50,12 +50,22 @@ export default function SystemDiagnosticPage() {
     setDbCheckResult(null);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/db-check`);
+      const response = await fetch(`${apiBaseUrl}/api/_diag/postgresql`);
       const result = await response.json();
 
-      setDbCheckResult(result);
+      // サーバーのレスポンス形式に合わせて変換
+      const checkResult = {
+        success: result.success,
+        status: result.success ? 'OK' : 'ERROR',
+        message: result.message,
+        error: result.error,
+        current_time: result.data?.current_time,
+        version: result.data?.version,
+        timestamp: result.timestamp
+      };
+      setDbCheckResult(checkResult);
 
-      if (result.status === 'OK') {
+      if (checkResult.status === 'OK') {
         toast({
           title: 'DB接続確認',
           description: 'データベース接続が正常です',
@@ -64,7 +74,7 @@ export default function SystemDiagnosticPage() {
       } else {
         toast({
           title: 'DB接続確認',
-          description: result.error || result.message || 'データベース接続エラー',
+          description: checkResult.error || checkResult.message || 'データベース接続エラー',
           variant: 'destructive',
         });
       }
@@ -91,20 +101,22 @@ export default function SystemDiagnosticPage() {
     setGptCheckResult(null);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/gpt-check`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: 'テスト',
-        }),
-      });
+      const response = await fetch(`${apiBaseUrl}/api/_diag/gpt`);
 
       const result = await response.json();
-      setGptCheckResult(result);
+      
+      // サーバーのレスポンス形式に合わせて変換
+      const checkResult = {
+        success: result.success,
+        status: result.success ? 'OK' : 'ERROR',
+        message: result.message,
+        error: result.error,
+        details: result.details,
+        timestamp: result.timestamp
+      };
+      setGptCheckResult(checkResult);
 
-      if (result.status === 'OK') {
+      if (checkResult.status === 'OK') {
         toast({
           title: 'GPT接続確認',
           description: 'GPT接続が正常です',
@@ -113,7 +125,7 @@ export default function SystemDiagnosticPage() {
       } else {
         toast({
           title: 'GPT接続確認',
-          description: result.error || result.message || 'GPT接続エラー',
+          description: checkResult.error || checkResult.message || 'GPT接続エラー',
           variant: 'destructive',
         });
       }

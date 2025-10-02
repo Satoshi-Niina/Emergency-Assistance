@@ -10,9 +10,11 @@ const isAzureStaticWebApp = /\.azurestaticapps\.net$/i.test(window.location.host
 
 // API Base URLの決定
 export const API_BASE_URL = (() => {
-  // 強制的にAzure App ServiceのURLを使用（デバッグ用）
-  console.log('🔧 強制的にAzure App ServiceのURLを使用');
-  return 'https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net';
+  // ローカル開発環境の強制設定（デバッグ用）
+  if (window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1')) {
+    console.log('🔧 ローカル環境を強制使用: localhost:8000');
+    return 'http://localhost:8000';
+  }
   
   // 環境変数が設定されている場合は最優先
   if (import.meta.env.VITE_API_BASE_URL && import.meta.env.VITE_API_BASE_URL.trim() !== '') {
@@ -20,16 +22,16 @@ export const API_BASE_URL = (() => {
     return import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '');
   }
 
-  // Azure Static Web Appの場合でも直接APIサーバーに接続（プロキシの問題を回避）
-  if (isAzureStaticWebApp) {
-    console.log('✅ Azure Static Web App: 直接APIサーバーに接続（プロキシ問題回避）');
-    return 'https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net';
-  }
-
   // ローカル開発環境
   if (isDevelopment && isLocalhost) {
     console.log('✅ ローカル開発環境: localhost:8000を使用');
     return 'http://localhost:8000';
+  }
+
+  // Azure Static Web Appの場合でも直接APIサーバーに接続（プロキシの問題を回避）
+  if (isAzureStaticWebApp) {
+    console.log('✅ Azure Static Web App: 直接APIサーバーに接続（プロキシ問題回避）');
+    return 'https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net';
   }
 
   // 本番環境のデフォルト

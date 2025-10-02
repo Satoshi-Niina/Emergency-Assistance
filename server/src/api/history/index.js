@@ -77,22 +77,32 @@ module.exports = async (context, request) => {
 
     // GET /api/history/machine-data - マシンデータ履歴
     if (method === 'GET' && action === 'machine-data') {
-      const machineData = [
-        {
-          id: 'machine-1',
-          name: 'マシン1',
-          status: 'running',
-          lastMaintenance: new Date().toISOString(),
-          nextMaintenance: new Date(Date.now() + 7 * 86400000).toISOString(),
-        },
-        {
-          id: 'machine-2',
-          name: 'マシン2',
-          status: 'maintenance',
-          lastMaintenance: new Date(Date.now() - 3 * 86400000).toISOString(),
-          nextMaintenance: new Date(Date.now() + 4 * 86400000).toISOString(),
-        },
-      ];
+      const fs = require('fs');
+      const path = require('path');
+      
+      let allFiles = [];
+      
+      // knowledge-base/exportsディレクトリのみからファイルを取得
+      const exportsPath = path.join(process.cwd(), 'knowledge-base', 'exports');
+      if (fs.existsSync(exportsPath)) {
+        const exportFiles = fs.readdirSync(exportsPath, { withFileTypes: true })
+          .filter(dirent => dirent.isFile() && dirent.name.endsWith('.json'))
+          .map(dirent => {
+            const filePath = path.join(exportsPath, dirent.name);
+            const stats = fs.statSync(filePath);
+            return {
+              id: dirent.name.replace('.json', ''),
+              name: dirent.name.replace('.json', ''),
+              title: dirent.name.replace('.json', ''),
+              type: 'history',
+              createdAt: stats.birthtime.toISOString(),
+              size: stats.size,
+              filePath: `knowledge-base/exports/${dirent.name}`,
+              category: 'exports'
+            };
+          });
+        allFiles = allFiles.concat(exportFiles);
+      }
 
       return {
         status: 200,
@@ -104,7 +114,10 @@ module.exports = async (context, request) => {
         },
         body: JSON.stringify({
           success: true,
-          data: machineData,
+          data: allFiles,
+          total: allFiles.length,
+          message: '機械故障履歴ファイル一覧を取得しました',
+          timestamp: new Date().toISOString()
         }),
       };
     }

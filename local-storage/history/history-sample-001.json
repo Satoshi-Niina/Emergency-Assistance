@@ -1,0 +1,13 @@
+{
+  "id": "history-sample-001",
+  "title": "機械故障履歴サンプル",
+  "description": "ローカル開発用の機械故障履歴サンプル",
+  "machineType": "軌道モータカー",
+  "machineNumber": "MC-001",
+  "failureDate": "2025-10-01T10:00:00.000Z",
+  "failureDescription": "モータが正常に動作しない",
+  "solution": "モータの交換を実施",
+  "status": "resolved",
+  "createdAt": "2025-10-01T10:00:00.000Z",
+  "updatedAt": "2025-10-01T15:00:00.000Z"
+}

@@ -5,9 +5,9 @@ Write-Host "🚀 Starting Local Development Environment..." -ForegroundColor Gre
 
 # 環境変数の確認
 Write-Host "📊 Environment Check:" -ForegroundColor Blue
-Write-Host "  - NODE_ENV: $($env:NODE_ENV ?? 'development')" -ForegroundColor Gray
-Write-Host "  - PORT: $($env:PORT ?? '8000')" -ForegroundColor Gray
-Write-Host "  - FRONTEND_URL: $($env:FRONTEND_URL ?? 'http://localhost:5173')" -ForegroundColor Gray
+Write-Host "  - NODE_ENV: $($env:NODE_ENV)" -ForegroundColor Gray
+Write-Host "  - PORT: $($env:PORT)" -ForegroundColor Gray
+Write-Host "  - FRONTEND_URL: $($env:FRONTEND_URL)" -ForegroundColor Gray
 
 # ローカル環境変数ファイルの確認
 if (Test-Path "local.env") {
