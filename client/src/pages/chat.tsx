@@ -1335,6 +1335,13 @@ export default function ChatPage() {
   const getHardcodedQuestion = (userInput: string, step: number, problemType: string): string | null => {
     const lowerInput = userInput.toLowerCase();
     
+    console.log('🔍 getHardcodedQuestion:', {
+      userInput,
+      lowerInput,
+      step,
+      problemType
+    });
+    
     // エンジン回転上昇しない問題の質問リスト
     if (problemType === 'engine_rpm' || lowerInput.includes('エンジン') && lowerInput.includes('回転')) {
       const questions = [
@@ -1345,6 +1352,7 @@ export default function ChatPage() {
       ];
       
       if (step < questions.length) {
+        console.log('✅ ハードコード質問選択:', questions[step]);
         return questions[step];
       } else if (lowerInput.includes('変わらない') || lowerInput.includes('変化なし')) {
         return "応急処置は困難です。アイドリング状態で退避してください。";
@@ -1363,6 +1371,7 @@ export default function ChatPage() {
       ];
       
       if (step < questions.length) {
+        console.log('✅ ハードコード質問選択:', questions[step]);
         return questions[step];
       } else if (lowerInput.includes('回らない') || lowerInput.includes('動かない')) {
         return "応急処置は困難です。専門家に連絡してください。";
@@ -1384,6 +1393,13 @@ export default function ChatPage() {
     const lowerInput = userInput.toLowerCase();
     const lowerResponse = aiResponse.toLowerCase();
     
+    console.log('🔍 updateEmergencyStep:', {
+      userInput,
+      lowerInput,
+      currentStep: emergencyStep,
+      currentProblemType: problemType
+    });
+    
     // 問題タイプの設定（初回のみ）
     if (emergencyStep === 0 && !problemType) {
       if (lowerInput.includes('エンジン') && lowerInput.includes('回転')) {
@@ -1397,14 +1413,33 @@ export default function ChatPage() {
       }
     }
     
-    // ステップの進行
-    if (lowerResponse.includes('応急処置完了') || lowerResponse.includes('完了')) {
+    // ユーザーの回答に基づくステップ進行
+    if (lowerInput.includes('時間') || lowerInput.includes('分') || lowerInput.includes('時間があります')) {
+      // 時間に関する質問への回答
+      setEmergencyStep(prev => prev + 1);
+    } else if (lowerInput.includes('外れ') || lowerInput.includes('つなが') || lowerInput.includes('正常')) {
+      // ワイヤーや接続に関する質問への回答
+      setEmergencyStep(prev => prev + 1);
+    } else if (lowerInput.includes('動く') || lowerInput.includes('動かない') || lowerInput.includes('回る') || lowerInput.includes('回らない')) {
+      // 動作に関する質問への回答
+      setEmergencyStep(prev => prev + 1);
+    } else if (lowerInput.includes('上昇') || lowerInput.includes('変わらない') || lowerInput.includes('変化なし')) {
+      // 結果に関する回答
+      if (lowerInput.includes('変わらない') || lowerInput.includes('変化なし')) {
+        setEmergencyStep(0); // 困難な場合はリセット
+        setProblemType('');
+      } else {
+        setEmergencyStep(0); // 成功の場合はリセット
+        setProblemType('');
+      }
+    } else if (lowerResponse.includes('応急処置完了') || lowerResponse.includes('完了')) {
       setEmergencyStep(0); // リセット
       setProblemType('');
     } else if (lowerResponse.includes('困難') || lowerResponse.includes('退避')) {
       setEmergencyStep(0); // リセット
       setProblemType('');
     } else {
+      // その他の場合はステップを進める
       setEmergencyStep(prev => prev + 1);
     }
   };
