@@ -29,6 +29,9 @@ if (fs.existsSync(path.join(__dirname, '.env'))) {
 const app = express();
 const PORT = process.env.PORT || 8080;
 
+// 開発環境の判定
+const isDevelopment = process.env.NODE_ENV === 'development';
+
 // データベース接続プール
 let dbPool = null;
 
@@ -42,7 +45,13 @@ function initializeDatabase() {
   try {
     console.log('🔗 Initializing database connection...');
     
-    const sslConfig = process.env.PG_SSL === 'require' 
+    // ローカル開発環境ではSSLを無効化
+    const isLocalhost = process.env.DATABASE_URL.includes('localhost') || 
+                       process.env.DATABASE_URL.includes('127.0.0.1');
+    
+    const sslConfig = isLocalhost 
+      ? false  // ローカルではSSL無効
+      : process.env.PG_SSL === 'require' 
       ? { rejectUnauthorized: false }
       : process.env.PG_SSL === 'disable' 
       ? false 
@@ -167,22 +176,11 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-app.get('/api/auth/me', async (req, res) => {
-  try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    
-    if (!token) {
-      return res.status(401).json({ success: false, message: 'No token provided' });
-    }
-    
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default-secret');
-    res.json({ 
-      success: true,
-      user: { id: decoded.id, username: decoded.username, role: decoded.role }
-    });
-  } catch (error) {
-    res.status(401).json({ success: false, message: 'Invalid token' });
-  }
+app.post('/api/auth/logout', (req, res) => {
+  res.json({ 
+    success: true, 
+    message: 'Logged out successfully' 
+  });
 });
 
 // チャットAPI（簡易版）
@@ -236,6 +234,21 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'production'}`);
   console.log(`🌐 Frontend: http://localhost:${PORT}`);
   console.log(`🔗 API: http://localhost:${PORT}/api`);
+  
+  // runtime-config.jsを生成
+  const runtimeConfig = {
+    API_BASE_URL: process.env.API_BASE_URL || '/api',
+    CORS_ALLOW_ORIGINS: process.env.CORS_ALLOW_ORIGINS || '*'
+  };
+  
+  const runtimeConfigContent = `window.runtimeConfig = ${JSON.stringify(runtimeConfig, null, 2)};`;
+  
+  try {
+    fs.writeFileSync(path.join(__dirname, 'public', 'runtime-config.js'), runtimeConfigContent);
+    console.log('✅ Runtime config generated');
+  } catch (error) {
+    console.error('❌ Failed to generate runtime config:', error);
+  }
 });
 
 // グレースフルシャットダウン

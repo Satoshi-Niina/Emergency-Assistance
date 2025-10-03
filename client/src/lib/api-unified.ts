@@ -7,6 +7,7 @@ import { getApiBaseUrl, getRuntimeConfig } from './runtime-config';
 const isProduction = import.meta.env.PROD;
 const isDevelopment = import.meta.env.DEV;
 const isLocalhost = window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1');
+const isAzureStaticWebApp = /\.azurestaticapps\.net$/i.test(window.location.hostname);
 
 // API Base URLの決定（runtime-config優先）
 export const API_BASE_URL = (() => {

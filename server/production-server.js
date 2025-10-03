@@ -76,7 +76,13 @@ function initializeDatabase() {
   try {
     console.log('🔗 Initializing production database connection...');
     
-    const sslConfig = process.env.PG_SSL === 'require' 
+    // ローカル開発環境ではSSLを無効化
+    const isLocalhost = process.env.DATABASE_URL.includes('localhost') || 
+                       process.env.DATABASE_URL.includes('127.0.0.1');
+    
+    const sslConfig = isLocalhost 
+      ? false  // ローカルではSSL無効
+      : process.env.PG_SSL === 'require' 
       ? { rejectUnauthorized: false }
       : process.env.PG_SSL === 'disable' 
       ? false 

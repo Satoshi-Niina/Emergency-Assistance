@@ -1,4 +1,6 @@
 # Multi-stage Dockerfile for Emergency Assistance System
+# 統合環境: フロントエンド + APIサーバー
+
 # Stage 1: Build client
 FROM node:20-alpine AS client-builder
 
@@ -12,19 +14,7 @@ RUN npm ci --only=production
 COPY client/ ./
 RUN npm run build
 
-# Stage 2: Build server
-FROM node:20-alpine AS server-builder
-
-WORKDIR /app/server
-
-# Copy server package files
-COPY server/package*.json ./
-RUN npm ci --only=production
-
-# Copy server source
-COPY server/ ./
-
-# Stage 3: Runtime
+# Stage 2: Runtime (統合環境)
 FROM node:20-alpine AS runtime
 
 WORKDIR /app
@@ -35,14 +25,12 @@ RUN apk add --no-cache bash
 # Copy built client from client-builder stage
 COPY --from=client-builder /app/client/dist ./public
 
-# Copy server from server-builder stage
-COPY --from=server-builder /app/server ./
+# Copy server dependencies
+COPY server/package*.json ./
+RUN npm ci --only=production
 
 # Copy unified server
 COPY server/unified-server.js ./
-
-# Copy root package.json for workspace management
-COPY package*.json ./
 
 # Create runtime config generation script
 RUN echo '#!/bin/bash' > /app/generate-runtime-config.sh && \
@@ -60,7 +48,7 @@ RUN echo '#!/bin/bash' > /app/start.sh && \
     echo 'echo "🔧 Generating runtime config..."' >> /app/start.sh && \
     echo '/app/generate-runtime-config.sh' >> /app/start.sh && \
     echo 'echo "✅ Runtime config generated"' >> /app/start.sh && \
-    echo 'echo "🌐 Starting server on port ${PORT:-8080}..."' >> /app/start.sh && \
+    echo 'echo "🌐 Starting unified server on port ${PORT:-8080}..."' >> /app/start.sh && \
     echo 'exec node unified-server.js' >> /app/start.sh && \
     chmod +x /app/start.sh
 

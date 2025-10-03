@@ -49,6 +49,8 @@ jobs:
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        build-args: |
+          NODE_ENV=production
 
     - name: Run smoke test
       run: |
@@ -70,6 +72,11 @@ jobs:
         # Test frontend
         curl -f http://localhost:8080/ || exit 1
         
+        # Test login API
+        curl -f -X POST http://localhost:8080/api/auth/login \
+          -H "Content-Type: application/json" \
+          -d '{"username":"admin","password":"admin"}' || exit 1
+        
         # Cleanup
         docker stop test-container
         docker rm test-container
@@ -85,4 +92,5 @@ jobs:
         echo "🚀 Deploying to production..."
         echo "✅ Docker image built and tested successfully"
         echo "📦 Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+        echo "🔧 Environment variables will be set in deployment target"
         # Add your deployment logic here
