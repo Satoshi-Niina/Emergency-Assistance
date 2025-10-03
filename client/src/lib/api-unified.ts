@@ -1,42 +1,32 @@
-// 統一API設定 - 本番環境とローカル環境を統一的に管理
-// 本番環境: Azure Static Web App + APIプロキシ
-// ローカル環境: 直接APIサーバー接続
+// 統一API設定 - runtime-config対応
+// Docker統合環境で動作するAPIクライアント
+
+import { getApiBaseUrl, getRuntimeConfig } from './runtime-config';
 
 // 環境判定
 const isProduction = import.meta.env.PROD;
 const isDevelopment = import.meta.env.DEV;
 const isLocalhost = window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1');
-const isAzureStaticWebApp = /\.azurestaticapps\.net$/i.test(window.location.hostname);
 
-// API Base URLの決定
+// API Base URLの決定（runtime-config優先）
 export const API_BASE_URL = (() => {
-  // ローカル開発環境の強制設定（デバッグ用）
-  if (window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1')) {
-    console.log('🔧 ローカル環境を強制使用: localhost:8000');
-    return 'http://localhost:8000';
+  const runtimeConfig = getRuntimeConfig();
+  
+  // runtime-configから取得
+  if (runtimeConfig.API_BASE_URL) {
+    console.log('✅ Runtime configからAPI_BASE_URLを取得:', runtimeConfig.API_BASE_URL);
+    return runtimeConfig.API_BASE_URL.replace(/\/$/, '');
   }
   
-  // 環境変数が設定されている場合は最優先
-  if (import.meta.env.VITE_API_BASE_URL && import.meta.env.VITE_API_BASE_URL.trim() !== '') {
-    console.log('✅ 環境変数からAPI_BASE_URLを取得:', import.meta.env.VITE_API_BASE_URL);
-    return import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '');
+  // フォールバック: ローカル開発環境
+  if (isLocalhost) {
+    console.log('✅ ローカル環境: localhost:8080を使用');
+    return 'http://localhost:8080';
   }
 
-  // ローカル開発環境
-  if (isDevelopment && isLocalhost) {
-    console.log('✅ ローカル開発環境: localhost:8000を使用');
-    return 'http://localhost:8000';
-  }
-
-  // Azure Static Web Appの場合でも直接APIサーバーに接続（プロキシの問題を回避）
-  if (isAzureStaticWebApp) {
-    console.log('✅ Azure Static Web App: 直接APIサーバーに接続（プロキシ問題回避）');
-    return 'https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net';
-  }
-
-  // 本番環境のデフォルト
-  console.log('✅ 本番環境: デフォルトURLを使用');
-  return 'https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net';
+  // フォールバック: 本番環境
+  console.log('✅ 本番環境: 相対パスを使用');
+  return '';
 })();
 
 // APIエンドポイントの構築

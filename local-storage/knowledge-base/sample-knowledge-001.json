@@ -1,7 +1,0 @@
-{
-  "id": "sample-knowledge-001",
-  "title": "サンプルナレッジ",
-  "content": "これはローカル開発用のサンプルナレッジです。",
-  "category": "general",
-  "tags": ["sample", "local", "development"]
-}

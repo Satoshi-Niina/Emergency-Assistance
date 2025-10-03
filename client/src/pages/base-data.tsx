@@ -17,6 +17,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Slider } from '../components/ui/slider';
+import RagPerformanceDisplay from '../components/RagPerformanceDisplay';
 import {
   Database,
   FileText,
@@ -637,6 +638,9 @@ export default function BaseDataPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* RAGパフォーマンス表示 */}
+          <RagPerformanceDisplay />
         </TabsContent>
       </Tabs>
     </div>
