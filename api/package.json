@@ -11,14 +11,17 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@azure/functions": "^4.0.0"
+    "@azure/functions": "^4.0.0",
+    "pg": "^8.11.0",
+    "bcryptjs": "^2.4.3"
   },
   "devDependencies": {
-    "@azure/functions-core-tools": "^4.0.5455",
-    "@types/node": "^20.0.0",
-    "typescript": "^5.0.0"
+    "@types/node": "^18.0.0",
+    "@types/pg": "^8.10.0",
+    "@types/bcryptjs": "^2.4.0",
+    "typescript": "^4.9.0"
   },
   "engines": {
-    "node": ">=18.0"
+    "node": "18.x"
   }
 }
