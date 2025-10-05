@@ -3,6 +3,7 @@
     {
       "route": "/api/*",
       "allowedRoles": ["anonymous"],
+      "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
       "rewrite": "https://emergencyassistance-sv-fbanemhrbshuf9bd.japanwest-01.azurewebsites.net/api/{*path}"
     },
     {

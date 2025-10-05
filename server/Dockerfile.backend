@@ -28,5 +28,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
 # Expose port (Azure will override with dynamic port)
 EXPOSE 8080
 
-# Use unified-server.js as the main entry point
-CMD ["node", "unified-server.js"]
+# Use azure-server.js as the main entry point for Azure App Service
+CMD ["node", "azure-server.js"]
