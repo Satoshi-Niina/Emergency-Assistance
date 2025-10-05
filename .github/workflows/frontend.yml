@@ -6,7 +6,6 @@ on:
     paths:
       - 'client/**'
       - '.github/workflows/frontend.yml'
-      - 'staticwebapp.config.json'
   workflow_dispatch:
 
 jobs:

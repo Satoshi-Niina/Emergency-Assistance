@@ -6,7 +6,6 @@ on:
     paths:
       - 'server/**'
       - '.github/workflows/backend.yml'
-      - 'BACKEND_DEPLOYMENT_TRIGGER.md'
   workflow_dispatch:
 
 env:
